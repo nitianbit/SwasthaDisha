@@ -95,14 +95,14 @@
   },
   "changed_source_sha256": {
     "test/application/app-bundle.mjs": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2",
-    "test/application/app-bundle.test.mjs": "946d91beef900cbe11854340353667083a64a485378b903c6f283558e1425fde",
+    "test/application/app-bundle.test.mjs": "4aeb825dec2b768b0964a74a2d04a4931fd640c153f3606d5cd12ec981e510df",
     "test/application/bootstrap.mjs": "23851a078af2b2311f17289378556a8871bea3e3cbcd67dede448b525f974c8c",
     "test/application/app-container.mjs": "e0833fa33da450eb39c76a826d54c02deffdef4ec374a1ea7fcc8fac1cbbacfa",
     "test/application/app-container.test.mjs": "584e60d4b25895669c8d119a229ac181cfd7c9bd602e17481a0999bf2c67101b",
-    "test/application/README.md": "3bb629895758c62ad72d646cf2a77c40f7118f7858758cb1e537cb6e3e6474dc",
+    "test/application/README.md": "f7ead1d3e281f5d0b4a7de0967bc19e8c2f33976fb0406bb9ec57427f2d96a64",
     "documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md": "0a93e0d16625bd43b983f037d2c75f70cc336b78bd6bc4ba1c19a4cf3fe3613e",
-    "documentation/planning/implementation/APP_NETWORK_ADMISSION_CONTRACT.md": "da5ef78316fa32b8a9ea6f1b61c4b38d672f9b20c81b70c69d9042ff909cf657",
-    "test/foundation/README.md": "9ecaf4e43bae6c796546f598cc0f346c13a891832612df77e3a1d0f0c89823d8"
+    "documentation/planning/implementation/APP_NETWORK_ADMISSION_CONTRACT.md": "003156a5935912eca7794c4fe312e51a93991162a9bf438cacfc40a315abe291",
+    "test/foundation/README.md": "c3daefc9cc058e22c3e6cc60b0cc874d4ded45088baa4e545265857746cd8182"
   },
   "unchanged_source_sha256": {
     "test/foundation/run.mjs": "f14c1830b0fbe23c1be454cb97003c6c6fb58fdb11bee0ac8bc91134d63ca0c9",
@@ -119,15 +119,15 @@
     "output/qa/foundation-network-admission/baseline-before-change-node22.tap": "aacf7eb1da97a592d93ac2606ee2e1f2e9527a135dcfd2fd630c68b8d1c97a86",
     "output/qa/foundation-network-admission/bootstrap-check.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "output/qa/foundation-network-admission/bootstrap-check.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "output/qa/foundation-network-admission/network-block-probe.mjs": "49581547a9f5011d0b1fc04bd75e160c1e8f481e0c9c43bd67fd312b2b2bd33c",
+    "output/qa/foundation-network-admission/network-block-probe.mjs": "03c5e88ba0162a3c16549740baf72b6162ba7016df7517bc5415e98afded8773",
     "output/qa/foundation-network-admission/node22-network-block.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "output/qa/foundation-network-admission/node22-network-block.stdout.json": "40b35f06fb3b98e54bbc48ba4a2c12f8b90cd61d65ba685a98f0210cb1ac2383",
+    "output/qa/foundation-network-admission/node22-network-block.stdout.json": "ae8db9939c21ec51e2f8e7aa741e492e9ee9cfbd8bdac8f373aebbeca1fffd5e",
     "output/qa/foundation-network-admission/node22.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "output/qa/foundation-network-admission/node22.tap": "f9fc45b531a5aa781a5932ea4f4fd7b30702bdd3ecc869177f79454d43e35708",
+    "output/qa/foundation-network-admission/node22.tap": "834c088adac8e20b6fb5b05283d890af40cb7274c856f894adf02c1067bed8b2",
     "output/qa/foundation-network-admission/node24-network-block.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "output/qa/foundation-network-admission/node24-network-block.stdout.json": "40b35f06fb3b98e54bbc48ba4a2c12f8b90cd61d65ba685a98f0210cb1ac2383",
+    "output/qa/foundation-network-admission/node24-network-block.stdout.json": "ae8db9939c21ec51e2f8e7aa741e492e9ee9cfbd8bdac8f373aebbeca1fffd5e",
     "output/qa/foundation-network-admission/node24.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "output/qa/foundation-network-admission/node24.tap": "e86862e2f9a237eb053274c27c3de347506f2df63cbd91be04513158a53f4b78"
+    "output/qa/foundation-network-admission/node24.tap": "68393f6ae51eafbc19e084cb4616cbe5ac79c86dfc364b2c9558ce4dde6ea295"
   },
   "not_claimed": [
     "real Docker/kernel behaviour",
@@ -135,7 +135,7 @@
     "route or namespace provenance",
     "C3/M0 acceptance"
   ],
-  "revision": "containment-review nits closed (tests, probe and wording only; no admission-semantics change)",
+  "revision": "Standards-review nits closed (tests, probe and documentation only; code files byte-identical to 33cabbe; optional { cause } not adopted)",
   "reviewed_implementation_commit": "a609a60e5bf91afbd523b3ee407ee8c6e060c8d4",
   "mutation_checks": {
     "method": "Scratch copies under /private/tmp, deleted afterwards. Unit mutations patch app-bundle.mjs and run node --test on app-bundle.test.mjs and app-container.test.mjs (Node 22.23.4). The probe mutation patches bootstrap.mjs in a mirrored scratch tree and runs the probe under --permission.",
@@ -238,6 +238,18 @@
       }
     ],
     "killed": 13,
-    "total": 13
+    "total": 13,
+    "scope_note": "Mutation results were recorded at 33cabbe; this revision changes no code file, and the pinned-reason tests only strengthen the same assertions."
+  },
+  "previous_revision_commit": "33cabbecb56ed9890d2b00b134f71357a6c64249",
+  "negative_reasons_pinned": "Every evaluator negative asserts its exact rejection message; N2 rejects for \"loopback missing\" and the N16 non-loopback-name case for \"addressed interfaces\".",
+  "measured_record_copies": {
+    "sha256": "9c2f54c44a0f5398ff65629f2e5071fe956b2aa8d42bc91257864edd2dffc473",
+    "bound_by_probe": [
+      "output/qa/parallel-foundation/verification.json",
+      "test/application/app-bundle.test.mjs",
+      "test/application/app-container.test.mjs"
+    ],
+    "note": "The probe hashes verification.json's record, checks the app-bundle.test.mjs literal and evaluates the app-container.test.mjs copy; all three must equal this hash."
   }
 }

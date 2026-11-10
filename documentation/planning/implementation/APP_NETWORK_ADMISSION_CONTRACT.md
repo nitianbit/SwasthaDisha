@@ -1,6 +1,9 @@
 # Network admission rule contract
 
-**10 November 2026. Amended after pre-review.** Branch `m0/foundation-network-admission`, base `9ea963f`. An internal Claude contract pre-review of `32fdf77` returned APPROVE WITH REQUIRED AMENDMENTS; this revision applies them. It authorizes offline implementation and the admitted unit gate only. It authorizes no Docker access, grant change or invocation.
+**10 November 2026. Amended after pre-review, containment review and Standards review.** Branch `m0/foundation-network-admission`, base `9ea963f`. Internal Claude reviews, each returned to the author for changes:
+- the contract pre-review of `32fdf77` returned APPROVE WITH REQUIRED AMENDMENTS;
+- the containment review of `a609a60` returned APPROVE WITH NITS, closed in `33cabbe`;
+- the Standards review of `33cabbe` returned APPROVE WITH NITS, closed in this revision with test and documentation changes only. It authorizes offline implementation and the admitted unit gate only. It authorizes no Docker access, grant change or invocation.
 
 ## 1. Measured failure
 
@@ -30,10 +33,12 @@ The measured record is only the positive fixture P1. The rule names nothing exce
 
 ## 3. Admission rule
 
-Bootstrap always attempts to capture the `APP-NET-DIAG-1` record. Three failures throw before any record exists, so none is written:
-- the listing itself fails;
-- more than 16 names;
-- invalid names.
+Bootstrap always attempts to capture the `APP-NET-DIAG-1` record. Each of the following throws without writing a record:
+- port or `runId` validation;
+- a failed or non-array listing;
+- more than 16 names, or invalid names;
+- an observation over 8192 bytes;
+- a report line over 8192 bytes, or a failing report write. Either error replaces the admission rejection, and it has no `cause`.
 
 `evaluateNetworkAdmission(observation)` validates the record's complete shape:
 - exact keys and tag;

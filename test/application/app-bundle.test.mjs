@@ -222,96 +222,103 @@ test('P3 an operational-up loopback with IPv4 only and a zero-flag down device i
   assert.deepEqual(summary.loopbackAddresses, ['127.0.0.1']);
 });
 
+const REASON = Object.freeze({
+  malformed: 'malformed observation', loLink: 'loopback is not a device link', loFlags: 'loopback flags',
+  loType: 'loopback type', loState: 'loopback operstate', file: 'control file attributes',
+  devFlags: 'non-loopback device flags', devType: 'non-loopback device type', devState: 'non-loopback device operstate',
+  kind: 'entry kind', loMissing: 'loopback missing', addressed: 'addressed interfaces', loAddresses: 'loopback addresses',
+});
 const negatives = [
-  ['N1 active eth0', () => edit((record) => {
+  ['N1 active eth0', REASON.devFlags, () => edit((record) => {
     insert(record, device('eth0', '0x1003', '1', 'up'));
     record.addressedInterfaces.push({ name: 'eth0', addresses: [v4('172.17.0.2', false)] });
   })],
   // Keeps lo's address row so only the loopback count can reject it.
-  ['N2 loopback missing', () => ({ tag: 'APP-NET-DIAG-1', entries: [device('tunl0', '0x80', '768')],
+  ['N2 loopback missing', REASON.loMissing, () => ({ tag: 'APP-NET-DIAG-1', entries: [device('tunl0', '0x80', '768')],
     addressedInterfaces: [{ name: 'lo', addresses: [v4('127.0.0.1')] }] })],
-  ['N3 loopback down', () => edit((record) => { Object.assign(entry(record, 'lo'), { flags: '0x8', operstate: 'down' }); })],
-  ['N4 loopback without IFF_LOOPBACK', () => edit((record) => { entry(record, 'lo').flags = '0x1'; })],
-  ['N4 loopback with Ethernet type', () => edit((record) => { entry(record, 'lo').type = '1'; })],
-  ['N4 loopback as a control file', () => edit((record) => { Object.assign(entry(record, 'lo'), file('lo')); })],
-  ['N4 loopback as a directory', () => edit((record) => { entry(record, 'lo').kind = 'directory'; })],
-  ['N5 second loopback by type', () => insert(measured(), device('lo2', '0x0', '772'))],
-  ['N5 second loopback by flag', () => insert(measured(), device('dummy0', '0x88', '1'))],
+  ['N3 loopback down', REASON.loFlags, () => edit((record) => { Object.assign(entry(record, 'lo'), { flags: '0x8', operstate: 'down' }); })],
+  ['N4 loopback without IFF_LOOPBACK', REASON.loFlags, () => edit((record) => { entry(record, 'lo').flags = '0x1'; })],
+  ['N4 loopback with Ethernet type', REASON.loType, () => edit((record) => { entry(record, 'lo').type = '1'; })],
+  ['N4 loopback as a control file', REASON.loLink, () => edit((record) => { Object.assign(entry(record, 'lo'), file('lo')); })],
+  ['N4 loopback as a directory', REASON.loLink, () => edit((record) => { entry(record, 'lo').kind = 'directory'; })],
+  ['N5 second loopback by type', REASON.devType, () => insert(measured(), device('lo2', '0x0', '772'))],
+  ['N5 second loopback by flag', REASON.devFlags, () => insert(measured(), device('dummy0', '0x88', '1'))],
 ];
 for (const target of ['lo', 'tunl0']) {
   for (const flags of ['9', '0x', '0xg1', '0X9', '0xA', '0x09', '0x123456789', unavailable('ERR_ACCESS_DENIED')]) {
-    negatives.push([`N6 ${target} flags ${JSON.stringify(flags)}`, () => edit((record) => { entry(record, target).flags = flags; })]);
+    negatives.push([`N6 ${target} flags ${JSON.stringify(flags)}`, target === 'lo' ? REASON.loFlags : REASON.devFlags, () => edit((record) => { entry(record, target).flags = flags; })]);
   }
 }
 for (const flags of ['0X80', '0xA0', '0x080']) {
-  negatives.push([`N6 tunl0 non-canonical flags ${flags}`, () => edit((record) => { entry(record, 'tunl0').flags = flags; })]);
+  negatives.push([`N6 tunl0 non-canonical flags ${flags}`, REASON.devFlags, () => edit((record) => { entry(record, 'tunl0').flags = flags; })]);
 }
 for (const operstate of ['unknown', 'dormant', 'up', 'lowerlayerdown', 'notpresent', 'testing', 'DOWN']) {
-  negatives.push([`N7 non-loopback operstate ${operstate}`, () => edit((record) => { entry(record, 'tunl0').operstate = operstate; })]);
+  negatives.push([`N7 non-loopback operstate ${operstate}`, REASON.devState, () => edit((record) => { entry(record, 'tunl0').operstate = operstate; })]);
 }
 for (const operstate of ['dormant', 'testing', 'lowerlayerdown', 'down', 'notpresent']) {
-  negatives.push([`N8 loopback operstate ${operstate}`, () => edit((record) => { entry(record, 'lo').operstate = operstate; })]);
+  negatives.push([`N8 loopback operstate ${operstate}`, REASON.loState, () => edit((record) => { entry(record, 'lo').operstate = operstate; })]);
 }
 negatives.push(
-  ['N9 IFF_UP with operstate down', () => edit((record) => { entry(record, 'tunl0').flags = '0x81'; })],
-  ['N9 up unaddressed eth0', () => insert(measured(), device('eth0', '0x1003', '1', 'up'))],
+  ['N9 IFF_UP with operstate down', REASON.devFlags, () => edit((record) => { entry(record, 'tunl0').flags = '0x81'; })],
+  ['N9 up unaddressed eth0', REASON.devFlags, () => insert(measured(), device('eth0', '0x1003', '1', 'up'))],
 );
 for (const [target, flags] of [['tunl0', '0xc0'], ['tunl0', '0x10080'], ['tunl0', '0x20080'], ['lo', '0x49']]) {
-  negatives.push([`N10 ${target} volatile flags ${flags}`, () => edit((record) => { entry(record, target).flags = flags; })]);
+  negatives.push([`N10 ${target} volatile flags ${flags}`, target === 'lo' ? REASON.loFlags : REASON.devFlags, () => edit((record) => { entry(record, target).flags = flags; })]);
 }
 for (const kind of ['directory', 'other', unavailable('EACCES')]) {
-  negatives.push([`N11 device kind ${JSON.stringify(kind)}`, () => edit((record) => { entry(record, 'tunl0').kind = kind; })]);
+  negatives.push([`N11 device kind ${JSON.stringify(kind)}`, REASON.kind, () => edit((record) => { entry(record, 'tunl0').kind = kind; })]);
 }
 negatives.push(
-  ['N12 control file with readable flags', () => edit((record) => { entry(record, 'bonding_masters').flags = '0x0'; })],
-  ['N12 control file with access denial', () => edit((record) => { Object.assign(entry(record, 'bonding_masters'), file('bonding_masters', 'ERR_ACCESS_DENIED')); })],
-  ['N12 control file with missing attributes', () => edit((record) => { Object.assign(entry(record, 'bonding_masters'), file('bonding_masters', 'ENOENT')); })],
-  ['N13 device link with all ENOTDIR', () => edit((record) => { Object.assign(entry(record, 'tunl0'), file('tunl0'), { kind: 'symlink' }); })],
-  ['N13 device link with all ENOENT', () => edit((record) => { Object.assign(entry(record, 'tunl0'), file('tunl0', 'ENOENT'), { kind: 'symlink' }); })],
+  ['N12 control file with readable flags', REASON.file, () => edit((record) => { entry(record, 'bonding_masters').flags = '0x0'; })],
+  ['N12 control file with access denial', REASON.file, () => edit((record) => { Object.assign(entry(record, 'bonding_masters'), file('bonding_masters', 'ERR_ACCESS_DENIED')); })],
+  ['N12 control file with missing attributes', REASON.file, () => edit((record) => { Object.assign(entry(record, 'bonding_masters'), file('bonding_masters', 'ENOENT')); })],
+  ['N13 device link with all ENOTDIR', REASON.devFlags, () => edit((record) => { Object.assign(entry(record, 'tunl0'), file('tunl0'), { kind: 'symlink' }); })],
+  ['N13 device link with all ENOENT', REASON.devFlags, () => edit((record) => { Object.assign(entry(record, 'tunl0'), file('tunl0', 'ENOENT'), { kind: 'symlink' }); })],
 );
 for (const type of ['772x', '-1', '70000', '0772', unavailable('ENOENT')]) {
-  negatives.push([`N14 device type ${JSON.stringify(type)}`, () => edit((record) => { entry(record, 'tunl0').type = type; })]);
+  negatives.push([`N14 device type ${JSON.stringify(type)}`, REASON.devType, () => edit((record) => { entry(record, 'tunl0').type = type; })]);
 }
 negatives.push(
-  ['N14 loopback type 0772', () => edit((record) => { entry(record, 'lo').type = '0772'; })],
-  ['N15 addressed down device', () => edit((record) => { record.addressedInterfaces.push({ name: 'tunl0', addresses: [v4('10.0.0.1', false)] }); })],
-  ['N16 non-internal loopback address', () => edit((record) => { loAddresses(record).push(v4('10.1.2.3', false)); })],
-  ['N16 other IPv4 loopback address', () => edit((record) => { loAddresses(record).push(v4('127.0.0.2')); })],
-  ['N16 link-local loopback address', () => edit((record) => { loAddresses(record).push(v6('fe80::1')); })],
-  ['N16 mapped loopback address', () => edit((record) => { loAddresses(record).push(v6('::ffff:127.0.0.1')); })],
-  ['N16 swapped loopback families', () => edit((record) => { record.addressedInterfaces[0].addresses = [v6('127.0.0.1'), v4('::1')]; })],
-  ['N16 duplicate IPv6 loopback', () => edit((record) => { loAddresses(record).push(v6('::1')); })],
-  ['N16 IPv6 loopback only', () => edit((record) => { record.addressedInterfaces[0].addresses = [v6('::1')]; })],
-  ['N16 non-internal 127.0.0.1', () => edit((record) => { loAddresses(record)[0].internal = false; })],
-  ['N16 unavailable addresses', () => edit((record) => { record.addressedInterfaces = unavailable('UNAVAILABLE'); })],
-  ['N16 no addressed loopback', () => edit((record) => { record.addressedInterfaces = []; })],
-  ['N16 empty loopback address list', () => edit((record) => { record.addressedInterfaces[0].addresses = []; })],
-  ['N16 second addressed interface', () => edit((record) => { record.addressedInterfaces.push({ name: 'lo2', addresses: [v4('127.0.0.1')] }); })],
+  ['N14 loopback type 0772', REASON.loType, () => edit((record) => { entry(record, 'lo').type = '0772'; })],
+  ['N15 addressed down device', REASON.addressed, () => edit((record) => { record.addressedInterfaces.push({ name: 'tunl0', addresses: [v4('10.0.0.1', false)] }); })],
+  ['N16 non-internal loopback address', REASON.loAddresses, () => edit((record) => { loAddresses(record).push(v4('10.1.2.3', false)); })],
+  ['N16 other IPv4 loopback address', REASON.loAddresses, () => edit((record) => { loAddresses(record).push(v4('127.0.0.2')); })],
+  ['N16 link-local loopback address', REASON.loAddresses, () => edit((record) => { loAddresses(record).push(v6('fe80::1')); })],
+  ['N16 mapped loopback address', REASON.loAddresses, () => edit((record) => { loAddresses(record).push(v6('::ffff:127.0.0.1')); })],
+  ['N16 swapped loopback families', REASON.loAddresses, () => edit((record) => { record.addressedInterfaces[0].addresses = [v6('127.0.0.1'), v4('::1')]; })],
+  ['N16 duplicate IPv6 loopback', REASON.loAddresses, () => edit((record) => { loAddresses(record).push(v6('::1')); })],
+  ['N16 IPv6 loopback only', REASON.loAddresses, () => edit((record) => { record.addressedInterfaces[0].addresses = [v6('::1')]; })],
+  ['N16 non-internal 127.0.0.1', REASON.loAddresses, () => edit((record) => { loAddresses(record)[0].internal = false; })],
+  ['N16 unavailable addresses', REASON.addressed, () => edit((record) => { record.addressedInterfaces = unavailable('UNAVAILABLE'); })],
+  ['N16 no addressed loopback', REASON.addressed, () => edit((record) => { record.addressedInterfaces = []; })],
+  ['N16 empty loopback address list', REASON.malformed, () => edit((record) => { record.addressedInterfaces[0].addresses = []; })],
+  ['N16 second addressed interface', REASON.addressed, () => edit((record) => { record.addressedInterfaces.push({ name: 'lo2', addresses: [v4('127.0.0.1')] }); })],
   // Only the addressed-name check can reject this: the single row carries a valid loopback address.
-  ['N16 loopback address on a non-loopback name', () => ({ tag: 'APP-NET-DIAG-1',
+  ['N16 loopback address on a non-loopback name', REASON.addressed, () => ({ tag: 'APP-NET-DIAG-1',
     entries: [device('lo', '0x9', '772', 'unknown'), device('tunl0', '0x80', '768')],
     addressedInterfaces: [{ name: 'tunl0', addresses: [v4('127.0.0.1')] }] })],
-  ['N17 seventeen entries', () => {
+  ['N17 seventeen entries', REASON.malformed, () => {
     const record = measured();
     for (let index = 0; index < 6; index++) insert(record, device('zz' + index, '0x80', '768'));
     assert.equal(record.entries.length, 17);
     return record;
   }],
-  ['N18 wrong tag', () => edit((record) => { record.tag = 'APP-NET-DIAG-2'; })],
-  ['N18 unknown key', () => edit((record) => { record.routes = []; })],
-  ['N18 missing key', () => edit((record) => { delete record.addressedInterfaces; })],
-  ['N18 extra entry key', () => edit((record) => { entry(record, 'tunl0').extra = 'synthetic'; })],
-  ['N18 unsorted names', () => edit((record) => { record.entries.reverse(); })],
-  ['N18 duplicate names', () => edit((record) => { record.entries.push(device('tunl0', '0x80', '768')); })],
-  ['N18 null record', () => null],
-  ['N18 empty entries', () => edit((record) => { record.entries = []; })],
-  ['N18 numeric field', () => edit((record) => { entry(record, 'tunl0').type = 768; })],
-  ['N18 unavailable object with extra key', () => edit((record) => { entry(record, 'bonding_masters').flags = { unavailable: 'ENOTDIR', detail: 'x' }; })],
-  ['N18 lowercase unavailable code', () => edit((record) => { entry(record, 'bonding_masters').flags = { unavailable: 'enotdir' }; })],
+  ['N18 wrong tag', REASON.malformed, () => edit((record) => { record.tag = 'APP-NET-DIAG-2'; })],
+  ['N18 unknown key', REASON.malformed, () => edit((record) => { record.routes = []; })],
+  ['N18 missing key', REASON.malformed, () => edit((record) => { delete record.addressedInterfaces; })],
+  ['N18 extra entry key', REASON.malformed, () => edit((record) => { entry(record, 'tunl0').extra = 'synthetic'; })],
+  ['N18 unsorted names', REASON.malformed, () => edit((record) => { record.entries.reverse(); })],
+  ['N18 duplicate names', REASON.malformed, () => edit((record) => { record.entries.push(device('tunl0', '0x80', '768')); })],
+  ['N18 null record', REASON.malformed, () => null],
+  ['N18 empty entries', REASON.malformed, () => edit((record) => { record.entries = []; })],
+  ['N18 numeric field', REASON.malformed, () => edit((record) => { entry(record, 'tunl0').type = 768; })],
+  ['N18 unavailable object with extra key', REASON.malformed, () => edit((record) => { entry(record, 'bonding_masters').flags = { unavailable: 'ENOTDIR', detail: 'x' }; })],
+  ['N18 lowercase unavailable code', REASON.malformed, () => edit((record) => { entry(record, 'bonding_masters').flags = { unavailable: 'enotdir' }; })],
 );
-for (const [label, build] of negatives) {
-  test(`${label} is rejected by a throw`, () => {
-    assert.throws(() => evaluateNetworkAdmission(build()), /^Error: Network admission rejected: /);
+// Each negative pins the exact rejection reason, so its intended check is fixed in the repository.
+for (const [label, reason, build] of negatives) {
+  test(`${label} is rejected for ${reason}`, () => {
+    assert.throws(() => evaluateNetworkAdmission(build()), { name: 'Error', message: `Network admission rejected: ${reason}` });
   });
 }
 
@@ -346,7 +353,7 @@ test('A1 the measured listing is admitted through explicit readers without a rep
 });
 
 test('A2 a rejected observation is reported once with its run identity before the throw', () => {
-  const record = negatives.find(([label]) => label === 'N1 active eth0')[1]();
+  const record = negatives.find(([label]) => label === 'N1 active eth0')[2]();
   const { state, ports } = servedPorts(record);
   assert.throws(() => admitNetwork(ports, runId), /Network admission rejected/);
   assert.equal(state.reports.length, 1);

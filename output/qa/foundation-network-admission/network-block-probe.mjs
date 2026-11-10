@@ -33,6 +33,15 @@ const { runId: measuredRunId, ...measured } = evidence.diagnostic_record.record;
 const MEASURED_RECORD_SHA256 = '9c2f54c44a0f5398ff65629f2e5071fe956b2aa8d42bc91257864edd2dffc473';
 assert.equal(sha256(JSON.stringify(measured)), MEASURED_RECORD_SHA256);
 assert.match(measuredRunId, /^[a-f0-9-]{36}$/);
+// Bind both unit-test copies of the measured record to the same hash, from this checkout's files.
+const bundleTest = readFileSync(new URL('test/application/app-bundle.test.mjs', root), 'utf8');
+assert.ok(bundleTest.includes(`const MEASURED_RECORD_SHA256 = '${MEASURED_RECORD_SHA256}';`));
+const containerTest = readFileSync(new URL('test/application/app-container.test.mjs', root), 'utf8');
+const copyStart = containerTest.indexOf('const notDirectory = ');
+const copyEnd = containerTest.indexOf('const reportedAdmission = ');
+assert.ok(copyStart >= 0 && copyEnd > copyStart);
+const containerCopy = vm.compileFunction(containerTest.slice(copyStart, copyEnd) + '\nreturn measuredObservation();\n', [])();
+assert.equal(sha256(JSON.stringify(containerCopy)), MEASURED_RECORD_SHA256);
 
 const runId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -151,5 +160,6 @@ for (const [label, outcome, expected] of [
 console.log(JSON.stringify({
   mode: 'Extracted bootstrap network and canary blocks with fake ports and fetch; bootstrap initialization, scenario and application code not evaluated',
   bootstrapSha256: sha256(bootstrapBytes), appBundleSha256: sha256(bundleBytes), measuredRecordSha256: MEASURED_RECORD_SHA256,
+  measuredRecordCopiesBound: ['output/qa/parallel-foundation/verification.json', 'test/application/app-bundle.test.mjs', 'test/application/app-container.test.mjs'],
   results, dockerCalls: 0, networkRequests: 0, applicationImports: 0,
 }));

@@ -30,7 +30,13 @@ Bootstrap always attempts to record bounded entry kind/flags/state/type and assi
 - admin-down non-loopback devices;
 - loopback-only internal addresses, which must include `127.0.0.1`.
 
-An admission rejection throws after one bounded stderr record. A failed listing, more than 16 names or invalid names throw before any record exists. The controller recomputes the reported `networkAdmission` summary instead of comparing names. No `/proc` read or new grant is added, and routes are not read.
+An admission rejection throws after one bounded stderr record. The following throw without any record:
+
+- port or `runId` validation;
+- a failed or non-array listing;
+- more than 16 names, or invalid names;
+- an observation or report line over 8192 bytes (the report-limit error replaces the rejection, without a `cause`);
+- a failing report write. The controller recomputes the reported `networkAdmission` summary instead of comparing names. No `/proc` read or new grant is added, and routes are not read.
 
 The canary must fail with `ENETUNREACH`. Given the interface rule, that is consistent with no IPv4 route, but it is not independent proof: an ICMP net-unreachable during connect can also produce it. The [extracted-block probe](../../output/qa/foundation-network-admission/network-block-probe.mjs) covers the bootstrap wiring. [Offline evidence](../../output/qa/foundation-network-admission/verification.json). The candidate has not run against Docker.
 
