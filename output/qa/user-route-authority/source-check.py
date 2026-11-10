@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[3]
 BASELINE = '9ea963f1f7b51aadedcfa7fc9918eb39a2fd737d'
 SOURCE = 'src1/modules/user/controller/index.ts'
 BASELINE_SHA256 = '7822f77598b7ad7ff1fa7ab32fca35d19a973de5d98ba43fca276f477525c5fc'
+ALLOWED_USER_TYPES = ('admin', 'hr', 'user')
 FORBIDDEN = ('isActive', 'isVerified', 'isCorporateEmailVerified', 'corporateId', 'isCorporateUser')
 PINNED = (
     'src1/routes/index.ts',
@@ -293,8 +294,8 @@ def parse_block(text):
             m = re.fullmatch(r'const field of ([A-Z_]+)', text[p + 1:q].strip())
             b = text.index('{', q)
             e = match_close(text, b, '{', '}')
-            if not m:
-                raise Rejected('CLOSED_VOCABULARY', 'unsupported loop')
+            if not m or m.group(1) != 'SELF_FORBIDDEN_FIELDS':
+                raise Rejected('CLOSED_VOCABULARY', 'unsupported loop or constant')
             stmts.append(('for', m.group(1), parse_block(text[b + 1:e])))
             i = e + 1
         elif text.startswith('return;', i):
@@ -371,6 +372,9 @@ ACTOR_MATRIX = (
     ('UNKNOWN_TYPES_DENIED', D403, [({'_id': 'X', 'userType': 'superadmin'}, 'X'),
                                     ({'_id': 'X', 'userType': ''}, 'X'),
                                     ({'_id': 'X', 'userType': 'Admin'}, None),
+                                    ({'_id': 'D', 'userType': 'doctor'}, 'D'),
+                                    ({'_id': 'D', 'userType': 'doctor'}, None),
+                                    ({'_id': 'T', 'userType': 'staff'}, 'T'),
                                     ({'_id': 'X'}, 'X')]),
 )
 
@@ -398,6 +402,10 @@ def lexical_checks(src, failures):
         if '`' in body or '${' in body or len(re.findall(r'message:', body)) != len(
                 re.findall(r"message: '[^'$`]*',", body)):
             failures.append('FIXED_DENIAL_MESSAGE: ' + name)
+    literals = sorted({v for body in bodies.values()
+                       for v in re.findall(r"userType (?:===|!==) '([^']*)'", body)} - set(ALLOWED_USER_TYPES))
+    if literals:
+        failures.append('USERTYPE_LITERALS: guards may name only %s, found %s' % (ALLOWED_USER_TYPES, literals))
     const = re.search(r'^const SELF_FORBIDDEN_FIELDS = \[(.*?)\] as const;$', src, re.M | re.S)
     fields = re.findall(r"'([A-Za-z]+)'", const.group(1)) if const else []
     if sorted(fields) != sorted(FORBIDDEN) or len(fields) != len(set(fields)):
@@ -559,6 +567,12 @@ def controls(original, expected):
          mutate(expected, actor_cond, "      req.user.userType !== 'specialist' &&\n      req.user.userType !== 'pharmacy' &&\n"
                 "      targetId !== undefined &&\n      req.user._id === targetId\n"), 'UNKNOWN_TYPES_DENIED'),
         ('hr_without_corporate_admitted', mutate(expected, hr_block, ''), 'HR_CORPORATE_REQUIRED'),
+        ('unlisted_type_allow_inserted',
+         mutate(expected, '    if (\n' + actor_cond, "    if (req.user.userType === 'doctor') {\n      return;\n    }\n\n"
+                '    if (\n' + actor_cond), 'UNKNOWN_TYPES_DENIED'),
+        ('field_loop_over_other_constant',
+         mutate(expected, 'for (const field of SELF_FORBIDDEN_FIELDS) {', 'for (const field of OTHER_FIELDS) {'),
+         'CLOSED_VOCABULARY'),
         ('id_cast_comparison', mutate(expected, 'req.user._id === targetId', 'String(req.user._id) === String(targetId)'),
          'STRICT_STRING_EQUALITY'),
         ('loose_id_comparison', mutate(expected, 'req.user._id === targetId', 'req.user._id == targetId'),
@@ -632,7 +646,7 @@ def verify(negative_controls):
                 raise AssertionError('Control rejected only by exact comparison: ' + name)
             if want not in [first_check(f) for f in failures]:
                 raise AssertionError('Control %s not rejected by %s: %s' % (name, want, failures))
-            results.append({'control': name, 'rejected_by': rejected_by,
+            results.append({'control': name, 'intended': want, 'rejected_by': rejected_by,
                             'semantic_failures': [first_check(f) for f in failures]})
         return {'status': 'SOURCE_NEGATIVES_REJECTED', 'control_count': len(results), 'controls': results,
                 'exact_comparison_rejections': 0, 'typescript_evaluations': 0}

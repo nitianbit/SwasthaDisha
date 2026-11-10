@@ -18,7 +18,11 @@ Graph-indexed `bfb608e` matches the baseline for the user module, middleware, `c
   - `forUser=true` replaces the corporate filter with `corporateId: {$exists: false}` (`controller:92-98`, `services:229-233`).
   - An HR token without a `corporateId` skips scoping on list and create, because `getHRCorporateId` returns undefined (`controller:16-18,47,92-93`). That field is optional on HR records and in the token (`hr/model:143-146`, `auth/services:391`); `requireAdminOrHR` already denies this case (`middleware/auth.ts:175-181`).
 
-The collection stores only `userType: 'user'` (`user/model/index.ts:37-43`). Admin, HR and specialists are stored separately, so this is cross-patient takeover, not admin escalation. A patient token's `_id` is its document ID (`auth/services/index.ts:405-412`). The defect breaches the M0-B user/contact row and AR-26. Scenario: TC-SEC-002.
+The collection stores only `userType: 'user'` (`user/model/index.ts:37-43`). Admin, HR and specialists are stored separately, so this is cross-patient takeover, not admin escalation. A patient token's `_id` is its document ID (`auth/services/index.ts:405-412`). The defect breaches the M0-B user/contact row and AR-26 (recorded as R04, `documentation/planning/REPOSITORY_REVIEW.md:55`). Scenario: TC-SEC-002.
+
+## Precondition: token authenticity
+
+Every check trusts the `req.user` produced by `jwt.verify(token, CONFIG.JWT_SECRET_KEY)` (`middleware/auth.ts:25`). That key falls back to the public literal `'your-secret-key'` (`config/config.ts:23`; R06, `REPOSITORY_REVIEW.md:57`). If the key is unset, anyone can forge any `userType`, `_id` or `corporateId`, and this slice gives no protection. The fail-closed secret is a separate contract.
 
 ## Required behaviour
 
@@ -42,7 +46,7 @@ Errors use the existing `AppError`/`errorHandler` envelope `{error, message, cod
 - 403 `FORBIDDEN` for HR `forUser=true`: "HR can only access users from their own corporate".
 - 422 `FORBIDDEN_FIELD`: "One or more fields cannot be changed through this endpoint".
 
-Checks run in order: identity, actor/object (including HR corporate), forbidden fields, then the existing HR check and service. Each new denial happens before any `userService` or DB access, so it reveals nothing about whether a record exists. The retained HR path (`ensureHRCanAccessUser`) still reads the record first; its 404 still reveals existence.
+After route-level Joi validation, checks run in order: identity, actor/object (including HR corporate), forbidden fields, then the existing HR check and service. A disallowed actor that sends malformed input therefore gets `400 VALIDATION_ERROR` rather than 403. Joi does no DB access, so the existence claim below still holds. Each new denial happens before any `userService` or DB access, so it reveals nothing about whether a record exists. The retained HR path (`ensureHRCanAccessUser`) still reads the record first; its 404 still reveals existence. That helper's own `HR_CORPORATE_REQUIRED` branch is now unreachable. It is kept deliberately as defence in depth.
 
 On a `user` self-update, sending any of these keys is forbidden, whatever the value (rejected, not stripped; AR-26): `isActive`, `isVerified`, `isCorporateEmailVerified`, `corporateId`, `isCorporateUser`. Corporate membership stays with `/api/v1/auth/corporate-email/*`.
 
@@ -74,7 +78,7 @@ The exact text is frozen in the source check (`CONST_BLOCK` + `HELPERS`, SHA-256
 Legacy `test/test-api.ts:545-557` updates the patient's own profile (`name`/`city`/`state`) through `PUT /api/v1/users/:id`; that call is preserved. The same suite's `GET /api/v1/users` with the login token (`:1581`) becomes 403. Supported client revisions are unverified ([baseline handoff](DEVOPS_BASELINE_REQUEST.md)). These clients would now be denied:
 
 - patient clients that echo whole user objects into PUT, or call list/create;
-- doctor or pharmacy clients that use this router;
+- doctor or pharmacy clients that use this router (`pharmyx_readme.md:718` lists `/api/v1/users` as a pharmacy-usable module);
 - HR clients that send `forUser=true`;
 - HR accounts that lack a corporate.
 
@@ -92,22 +96,22 @@ The evidence is `output/qa/user-route-authority/source-check.py` (stdlib, `-I`, 
 - A Python decision model built from those atoms and run over a synthetic actor/field/query matrix, which covers over-restriction: admin, own ID, admin `forUser`, and profile fields.
 - Handler wiring: order and target.
 
-Only after these do the byte pins run (user module, `middleware/auth.ts`, `errorHandler.ts`, `middleware/index.ts`, `validation.ts`, `asyncHandler.ts`, `routes/index.ts`, auth module, root manifests), followed by the `src1` diff scope and the exact controller match.
+Only after these do the byte pins run (22 files, see `PINNED`: user module, `middleware/auth.ts`, `errorHandler.ts`, `middleware/index.ts`, `validation.ts`, `asyncHandler.ts`, `routes/index.ts`, auth module, root manifests), followed by the `src1` diff scope and the exact controller match.
 
-**Negative controls.** Each must be rejected by its intended named check, never by the exact comparison, and the receipt records that check:
+**Negative controls.** Each must be rejected by a named semantic check, never by the exact comparison. Its intended check must appear among its failures, and the receipt records both `intended` and `rejected_by`:
 - the baseline;
 - actor guard removed or moved after the service, per handler;
 - inverted, cast or loose ID comparison;
 - identity disabled;
 - target-less or no-target admission;
 - non-`user` admitted;
-- deny-list admitting unknown types;
+- deny-list admitting unknown types, or an inserted allow for an unlisted type (any `userType` literal outside `admin`/`hr`/`user` is also rejected lexically);
 - HR without corporate admitted;
 - an ID-echoing message;
 - async unawaited guard;
 - try/catch wrapper;
 - each forbidden field omitted, and over-reach;
-- truthiness check, merged-data source, stripping;
+- truthiness check, merged-data source, stripping, loop over another constant;
 - field guard misordered or applied to admin;
 - HR denial removed, boolean `forUser`, admin `forUser` denied;
 - admin denied, own ID denied.
@@ -120,6 +124,7 @@ Only after these do the byte pins run (user module, `middleware/auth.ts`, `error
 - A against B on every ID route: 403, B unchanged, zero repository calls; an attacker-contact OTP login cannot reach B.
 - Specialist/pharmacy/unknown types: 403 everywhere.
 - Missing principal: 401.
+- Own ID sent in uppercase hex: 403 (fails closed, because the comparison is a strict string match).
 - HR without corporate: 403 `HR_CORPORATE_REQUIRED` on all five, zero DB access.
 - HR own-corporate requests succeed; cross-corporate and `forUser=true` requests return 403.
 - Admin behaviour is unchanged.
@@ -128,7 +133,11 @@ Only after these do the byte pins run (user module, `middleware/auth.ts`, `error
 ## Remaining risks and owner decisions (no code change here)
 
 - Admin, or HR within its corporate, can rewrite a patient's `phone`/`email` and then log in as that patient. Dedicated, verified admin/HR commands for contact, verification, activity and corporate changes are needed (AR-26; product/security owner).
-- `phone` is not unique (`user/model/index.ts:31-36`). A patient who sets their own phone to someone else's number may capture that person's OTP login, depending on lookup order (unverified). This needs the identity/security owner, with contact-change verification ([OTP draft](M0_OTP_AUTHORITY_CONTRACT_DRAFT.md)).
+- An unverified self contact change enables account pre-hijacking (phone and email). A patient can set their own phone or email to an unclaimed value. Email is checked only against existing users (`user/services/index.ts:41-54`), and phone is not checked at all (`user/model/index.ts:31-36` is not unique). When the real owner later signs up with OTP, the lookup finds the attacker's record (`user/repository/index.ts:28-39`, `auth/services/index.ts:125-165`). This needs contact-change verification from the identity/security owner ([OTP draft](M0_OTP_AUTHORITY_CONTRACT_DRAFT.md)).
+- Token residuals:
+  - Existing 30-day JWTs are not revoked (`auth/services/index.ts:415-417`).
+  - Role and corporate claims are login-time snapshots.
+  - Contacts already rewritten through the old defect are not restored, so an attacker who changed a victim's contact keeps OTP login until an owner repairs it. Session revocation and contact repair are R06 and security-owner decisions.
 - Aggravating factor: specialist and pharmacy accounts can be self-created through public OTP signup (`auth/services/index.ts:147-157`), so any caller can obtain those token types.
 - Retained patient self-delete is a hard `deleteOne` (`common/repository/BaseRepository.ts:74-76`). Keeping it is a data-retention owner decision.
 
