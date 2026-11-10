@@ -51,7 +51,9 @@ PINNED = (
     'src1/scripts/migratePharmacyInventoryBatches.ts', 'test/pharmacy.integration.test.ts',
     'test/application/bootstrap.mjs', '.env.example', 'package.json', 'package-lock.json', 'tsconfig.json',
 )
-SCOPE = ('src1', 'test', 'package.json', 'package-lock.json', 'tsconfig.json')
+ALLOWED_CHANGES = frozenset({  # whole-tree diff against BASELINE, tracked and untracked
+    SOURCE, 'documentation/planning/implementation/JWT_SECRET_FAIL_CLOSED_CONTRACT.md',
+    'output/qa/jwt-secret/source-check.py', 'output/qa/jwt-secret/source-verification.json'})
 VALIDATOR_SHA256 = hashlib.sha256(VALIDATOR.encode()).hexdigest()
 
 
@@ -80,10 +82,15 @@ def expected_source():
 
 # ---------------------------------------------------------------- validator model
 
+# ECMAScript String.prototype.trim: WhiteSpace (TAB, VT, FF, ZWNBSP, Zs) plus LineTerminator (LF, CR, LS, PS).
+JS_TRIM = ('\t\x0b\x0c\ufeff \xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009'
+           '\u200a\u202f\u205f\u3000\n\r\u2028\u2029')
+
+
 def strip_js(v):
     if v is None:
         raise ModelCrash()
-    return v.strip()
+    return v.strip(JS_TRIM)
 
 
 ATOMS = {
@@ -135,11 +142,11 @@ def model(atoms, ret, placeholders, value):
 
 
 MATRIX = (
-    ('PRESENCE_CHECK', [None, '', ' ', '\t\n'], ('reject',)),
+    ('PRESENCE_CHECK', [None, '', ' ', '\t\n', '\ufeff', '\u3000', '\u2028'], ('reject',)),
     ('PLACEHOLDER_REJECTED', ['your-secret-key', 'your-secret-key-change-in-production',
                               ' your-secret-key ', 'your-secret-key-change-in-production\n'], ('reject',)),
-    ('VALID_ACCEPTED', ['synthetic-test-key-not-a-secret', 'Your-Secret-Key', 'x'], None),
-    ('RAW_VALUE_RETURNED', [' padded-synthetic ', 'synthetic\t'], None),
+    ('NON_PLACEHOLDER_ACCEPTED', ['synthetic-test-key-not-a-secret', 'Your-Secret-Key', 'x'], None),
+    ('RAW_VALUE_RETURNED', [' padded-synthetic ', 'synthetic\t', '\x1c', '\x85synthetic'], None),
 )
 
 
@@ -159,8 +166,11 @@ def semantic_failures(src, overrides=None):
         failures.append('NO_TRY_CATCH: validation failure must not be caught at load')
     dotenv = [m.start() for m in re.finditer(r'^' + re.escape(DOTENV_LINE) + r'$', src, re.M)]
     later = [m.start() for m in re.finditer(r'function requireJwtSecret\(|const JWT_SECRET_PLACEHOLDERS|requireJwtSecret\(process\.env', src)]
-    if len(dotenv) != 1 or not later or min(later) < dotenv[0]:
-        failures.append('DOTENV_BEFORE_VALIDATION: .env must load before the validator and its call')
+    calls = [m.start() for m in re.finditer(r'requireJwtSecret\(process\.env', src)]
+    if len(dotenv) != 1 or not calls or min(calls) < dotenv[0]:
+        failures.append('DOTENV_BEFORE_VALIDATION: .env must load before the validating call reads the environment')
+    if len(dotenv) == 1 and later and min(later) < dotenv[0]:
+        failures.append('DECLARATION_ORDER_STYLE: validator declaration stays after dotenv.config (style pin)')
     init = re.findall(r'^  JWT_SECRET_KEY: requireJwtSecret\((.*)\),$', src, re.M)
     config_pos = src.find('export const CONFIG')
     if len(init) != 1 or len(re.findall(r'requireJwtSecret\(', src)) != 2 or not header or \
@@ -206,7 +216,7 @@ def single_secret_source(src, overrides):
     if len(re.findall(r'process\.env\.JWT_SECRET_KEY', src)) != 1:
         failures.append('SINGLE_SECRET_SOURCE: config must read process.env.JWT_SECRET_KEY exactly once')
     for path, (signs, verifies) in CONSUMERS.items():
-        text = overrides.get(path, (ROOT / path).read_text())
+        text = overrides.get(path, (ROOT / path).read_bytes().decode('utf-8'))
         secrets = re.findall(r'jwt\.(sign|verify)\([^,]+,\s*([^,)]+)', text)
         if 'process.env.JWT_SECRET_KEY' in text or any(s != 'CONFIG.JWT_SECRET_KEY' for _, s in secrets) or \
                 [k for k, _ in secrets].count('sign') != signs or [k for k, _ in secrets].count('verify') != verifies:
@@ -231,10 +241,11 @@ def tree_checks():
     for path in PINNED:
         if (ROOT / path).read_bytes() != git('show', BASELINE + ':' + path):
             return 'PROTECTED_PINS', ['PROTECTED_PINS: ' + path]
-    changed = git('diff', '--name-only', BASELINE, '--', *SCOPE).decode().split()
-    untracked = git('ls-files', '--others', '--exclude-standard', '--', *SCOPE).decode().split()
-    if changed + untracked != [SOURCE]:
-        return 'DIFF_SCOPE', ['DIFF_SCOPE: %s' % (changed + untracked)]
+    changed = set(git('diff', '--name-only', BASELINE).decode().splitlines())
+    for line in git('status', '--porcelain', '--untracked-files=all').decode().splitlines():
+        changed.add(line[3:].split(' -> ')[-1])
+    if SOURCE not in changed or not changed <= ALLOWED_CHANGES:
+        return 'DIFF_SCOPE', ['DIFF_SCOPE: %s' % sorted(changed - ALLOWED_CHANGES or changed)]
     return None
 
 
@@ -251,7 +262,7 @@ def controls(original, expected):
     moved_dotenv = mutate(expected, dotenv_block, '')
     moved_dotenv = mutate(moved_dotenv, '\n};\n', '\n};\n\n' + dotenv_block.rstrip('\n') + '\n')
     hoisted = mutate(mutate(expected, VALIDATOR, ''), dotenv_block, VALIDATOR + dotenv_block)
-    auth = (ROOT / 'src1/modules/middleware/auth.ts').read_text()
+    auth = (ROOT / 'src1/modules/middleware/auth.ts').read_bytes().decode('utf-8')
     return [
         ('baseline_config', original, None, 'VALIDATOR_PRESENT'),
         ('literal_fallback_or', mutate(expected, NEW_INIT, "  JWT_SECRET_KEY: requireJwtSecret(process.env.JWT_SECRET_KEY || 'dev-only-secret'),\n"),
@@ -273,9 +284,9 @@ def controls(original, expected):
         ('padded_placeholder_accepted', mutate(expected, 'includes(value.trim())', 'includes(value)'), None,
          'PLACEHOLDER_REJECTED'),
         ('valid_key_rejected', mutate(expected, "    value.trim() === '' ||\n", "    value.trim() !== '' ||\n"), None,
-         'VALID_ACCEPTED'),
+         'NON_PLACEHOLDER_ACCEPTED'),
         ('case_folded_placeholder_policy', mutate(expected, 'includes(value.trim())', 'includes(value.trim().toLowerCase())'),
-         None, 'VALID_ACCEPTED'),
+         None, 'NON_PLACEHOLDER_ACCEPTED'),
         ('trimmed_value_returned', mutate(expected, '  return value;\n}', '  return value.trim();\n}'), None,
          'RAW_VALUE_RETURNED'),
         ('warn_instead_of_throw', mutate(expected, "    throw new Error('%s');" % MESSAGE, "    console.warn('%s');" % MESSAGE),
@@ -293,7 +304,7 @@ def controls(original, expected):
         ('validator_wrapped_in_load_time_try_catch',
          mutate(expected, NEW_INIT, '  JWT_SECRET_KEY: (() => {\n    try {\n      return requireJwtSecret(process.env.JWT_SECRET_KEY);\n'
                 '    } catch {\n      return String(process.env.JWT_SECRET_KEY);\n    }\n  })(),\n'), None, 'NO_TRY_CATCH'),
-        ('validator_hoisted_above_dotenv', hoisted, None, 'DOTENV_BEFORE_VALIDATION'),
+        ('validator_declaration_hoisted_above_dotenv', hoisted, None, 'DECLARATION_ORDER_STYLE'),
         ('dotenv_moved_after_config', moved_dotenv, None, 'DOTENV_BEFORE_VALIDATION'),
         ('consumer_reads_env_directly', expected,
          {'src1/modules/middleware/auth.ts': mutate(auth, 'jwt.verify(token, CONFIG.JWT_SECRET_KEY)',
@@ -319,13 +330,17 @@ def verify(negative_controls):
             results.append({'control': name, 'intended': want, 'rejected_by': rejected_by, 'semantic_failures': names})
         return {'status': 'SOURCE_NEGATIVES_REJECTED', 'control_count': len(results), 'controls': results,
                 'exact_comparison_rejections': 0, 'typescript_evaluations': 0}
-    outcome = check((ROOT / SOURCE).read_text(), expected) or tree_checks()
+    raw = (ROOT / SOURCE).read_bytes()
+    outcome = check(raw.decode('utf-8'), expected) or tree_checks()
+    if not outcome and raw != expected.encode('utf-8'):
+        outcome = ('EXACT_TRANSFORM', ['EXACT_TRANSFORM: candidate bytes differ from the reviewed transform'])
     if outcome:
         raise AssertionError(outcome[1][0])
     return {'status': 'SOURCE_ONLY_VERIFIED_RUNTIME_NOT_RUN', 'baseline': BASELINE,
             'source_sha256': hashlib.sha256(expected.encode()).hexdigest(), 'validator_sha256': VALIDATOR_SHA256,
             'binding_gate': 'EXACT_TRANSFORM + PROTECTED_PINS + DIFF_SCOPE; semantic checks are diagnostic',
-            'pinned_files': len(PINNED), 'diff_scope': list(SCOPE), 'typescript_evaluations': 0}
+            'candidate_file_sha256': hashlib.sha256((ROOT / SOURCE).read_bytes()).hexdigest(),
+            'pinned_files': len(PINNED), 'diff_scope': 'whole tree vs baseline incl. untracked, subset of %s' % sorted(ALLOWED_CHANGES), 'typescript_evaluations': 0}
 
 
 if __name__ == '__main__':

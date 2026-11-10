@@ -25,24 +25,25 @@ Validate once, while the config module is evaluated, in every environment.
 - **Safer.** It is one choke point, so no consumer can receive a bad key. A first-use check would start the process and report `/health` 200 while every login and authenticated call failed. It would also need edits at five call sites.
 - **Less disruptive overall.** Failure is immediate and visible at deploy (non-zero exit, PM2 restart loop), not a hidden partial outage. The cost: with a bad key, the public surfaces (webhooks, catalogue, `/health`) are down too. `src1/scripts/*.ts` and `src1/db` also need the key.
 - **Order.** `config.ts` loads `.env` (line 6) before building `CONFIG`. `src1/index.ts:7` imports config as its first application import, ahead of the DB, routes and queue consumers. This ordering is statically observed only, not runtime-verified.
-- **Order is checked and pinned.** The validator and its call must follow `dotenv.config`. Moving either above it would reject a correctly configured `.env`, so `DOTENV_BEFORE_VALIDATION` enforces the order and `src1/index.ts` is byte-pinned.
+- **Order is checked and pinned.** `DOTENV_BEFORE_VALIDATION` protects the call position: the environment is read by the `CONFIG` initializer (`config.ts:36`), and a call placed above `dotenv.config` would reject a correctly configured `.env`. Moving only the declaration is runtime-equivalent, because function declarations hoist; keeping the declaration after `dotenv.config` is a stated style pin (`DECLARATION_ORDER_STYLE`). `src1/index.ts` is byte-pinned.
+- **Precedence (not verified locally).** dotenv does not override a variable already present in the process environment, even an empty one such as a blank PM2 env entry. A valid `.env` key can therefore be shadowed, and the process then refuses to start. That is fail-safe.
 - **Blast radius.** 25 `src1` modules import config. Every entry point now needs the key:
   - `src1/index.ts` (`dev`);
   - `npm run sync-indexes`;
   - `migrate:pharmacy-inventory-batches`;
-  - `test:pharmacy` (`test/pharmacy.integration.test.ts:9-40`).
+  - `test:pharmacy` (`test/pharmacy.integration.test.ts:9-40`). This suite used to skip when `PHARMACY_TEST_MONGODB_URI` was unset (`:44-45`); without a key it now fails at import, before that decision is reached.
 - **Future app-import admission.** The F01 harness environment allowlist (`test/application/bootstrap.mjs:6-9`) has no `JWT_SECRET_KEY`. Any future C3/F01 app-import admission must add a synthetic, non-placeholder key, never a real one. That change belongs to the admission, not to this slice.
 
 ## Amendment
 
 Add a top-level synchronous `requireJwtSecret(value: string | undefined): string` above `CONFIG`, and use `JWT_SECRET_KEY: requireJwtSecret(process.env.JWT_SECRET_KEY)`.
 
-- **Reject** `undefined`, a value whose `value.trim()` is empty, and exactly `your-secret-key` or `your-secret-key-change-in-production` after trimming.
+- **Reject** `undefined`, a value whose `value.trim()` is empty, and exactly `your-secret-key` or `your-secret-key-change-in-production` after trimming. The match is exact and case-sensitive, so case variants such as `Your-Secret-Key` are accepted.
 - **On rejection,** throw `new Error('JWT_SECRET_KEY must be set to a non-placeholder value')`. The message is fixed and never echoes the value.
 - **On acceptance,** return the raw value unchanged, so existing signatures are preserved.
 - **Scope.** No fallback and no `NODE_ENV` condition. Consumers, `ISettings`, `.env.example`, dependencies, scripts and the start command are untouched.
 
-No strength policy is introduced. Minimum length, entropy, format and rotation are security-owner decisions.
+No strength policy is introduced. Minimum length, entropy, format and rotation are security-owner decisions. A future owner strength policy must amend this frozen check, including `NON_PLACEHOLDER_ACCEPTED` and the `case_folded_placeholder_policy` control, rather than bypass it.
 
 The exact text is frozen in the check:
 - validator block SHA-256 `1e6ec2c4e0281e82820e45be775e332a0bd94fb9e54eb89014908627ce8adba8`;
@@ -61,19 +62,22 @@ Startup behaviour changes. Any environment without a real key refuses to start, 
 
 **C2 determination.** C2 does not gate this source edit. Its gate covers root dependency, lockfile, build/start and runtime-pin edits (`M0_START_APPROVAL_STATUS.md:39-45`, `C2_COMPATIBILITY_REVIEW.md:3,30`), and this slice changes none of them.
 
-C2's outstanding baseline facts do gate activation. The owner reports `pm2 start server`, but the tracked `server.js` imports a non-existent `./src/...` tree. Whether the deployed process loads `src1/config`, and which revision is deployed, are therefore unknown. Also, `tsc` emits to `./dist` and leaves the `@/` aliases unresolved. Until the owner confirms that the deployed process loads `src1/config`, neither this guard nor the users or wallet route containment protects the deployed service. Deployment needs separate owner permission.
+C2's outstanding baseline facts do gate activation. The owner reports `pm2 start server`, but the tracked `server.js` imports a non-existent `./src/...` tree. Whether the deployed process loads `src1/config`, and which revision is deployed, are therefore unknown. The `server.js:9-16` imports (`./src/config/config.js`, `./src/db`, `./src/routes`) match a compiled `src1` layout. Also, `tsc` emits to `./dist` and leaves the `@/` aliases unresolved. Owner questions: what is the PM2 cwd, and is the deployed `./src` compiled `src1`? On that path, `server.js`'s own dotenv (`:16`) runs only after config has loaded. The key must therefore come from the process environment or `<cwd>/.env`. Until the owner confirms that the deployed process loads `src1/config`, neither this guard nor the users or wallet route containment protects the deployed service. Deployment needs separate owner permission.
 
 ## Source-data verification plan
 
 The check is `output/qa/jwt-secret/source-check.py` (stdlib, `-I`, sanitized environment), with receipts in `source-verification.json` (argv, cwd, exit codes, stdout/stderr, hashes). It reads TypeScript as text. The named semantic checks are diagnostic and give each control a stated reason. The binding gate is `EXACT_TRANSFORM` plus `PROTECTED_PINS` plus `DIFF_SCOPE`:
 - the pins cover every consumer, `src1/index.ts`, `src1/db`, both scripts, `test:pharmacy`, the harness bootstrap, `.env.example` and the root manifests;
-- the diff scope covers `src1`, `test`, `package.json`, `package-lock.json` and `tsconfig.json`, and must show only `config.ts`.
+- the diff scope covers the whole tree against `9ea963f` (`git diff --name-only` plus `git status --porcelain --untracked-files=all`). It must be a subset of `config.ts`, this contract, the check and the receipt, so a force-added root `.env` or a `server.js` edit fails;
+- the candidate is compared as raw bytes (no newline normalisation), and the receipt reports its real byte hash;
+- trimming is modelled with the explicit ECMAScript WhiteSpace and LineTerminator set, not Python `str.strip()`.
 
 **Named semantic checks.** These run before the exact-candidate comparison:
 - `NO_LITERAL_FALLBACK`: no `||`/`??` on the key; placeholders appear only in the rejection list.
 - `VALIDATED_AT_LOAD`: the initializer calls the validator, which is declared above `CONFIG`.
 - `UNCONDITIONAL`: no `NODE_ENV` guard.
-- `DOTENV_BEFORE_VALIDATION`.
+- `DOTENV_BEFORE_VALIDATION` (call position).
+- `DECLARATION_ORDER_STYLE` (style pin).
 - `NO_TRY_CATCH`.
 - `GUARD_SYNCHRONOUS`.
 - `PRESENCE_CHECK`.
@@ -87,7 +91,7 @@ The check is `output/qa/jwt-secret/source-check.py` (stdlib, `-I`, sanitized env
 
 A decision model is run over these inputs: unset, `''`, whitespace, both placeholders, a padded placeholder and a synthetic valid value.
 
-**Required results.** The `9ea963f` baseline is rejected, the amendment is accepted, and pins, `src1` diff scope and `git diff --check` all pass. Each negative control below must be rejected; the receipt records its `intended` check (which must be among its failures) and its `rejected_by` check:
+**Required results.** The `9ea963f` baseline is rejected, the amendment is accepted, and the pins, the whole-tree diff scope and `git diff --check` all pass. Each negative control below must be rejected; the receipt records its `intended` check (which must be among its failures) and its `rejected_by` check:
 - fallback reintroduced (`||`, `??`);
 - validation gated to production;
 - each placeholder omitted;
@@ -99,9 +103,9 @@ A decision model is run over these inputs: unset, `''`, whitespace, both placeho
 - validation moved to first use;
 - async validator;
 - validator wrapped in a load-time try/catch (`NO_TRY_CATCH`);
-- validator hoisted above `dotenv.config`, or `dotenv.config` moved after `CONFIG` (`DOTENV_BEFORE_VALIDATION`);
+- validator declaration hoisted above `dotenv.config` (`DECLARATION_ORDER_STYLE`), or `dotenv.config` moved after `CONFIG` (`DOTENV_BEFORE_VALIDATION`);
 - an invented extra placeholder;
-- a valid key rejected, or a case-folded placeholder policy;
+- a non-placeholder key rejected, or a case-folded placeholder policy (`NON_PLACEHOLDER_ACCEPTED`);
 - direct `process.env` read in a consumer.
 
 ## Runtime fixtures deferred until full C3 admission
