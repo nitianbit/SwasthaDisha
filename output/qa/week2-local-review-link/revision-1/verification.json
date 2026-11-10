@@ -1,0 +1,37 @@
+{
+  "status": "OFFLINE_FAKE_PORTS_VERIFIED_REAL_OPERATIONS_NOT_RUN",
+  "baseline": "1b0a54144d514bd73f03a99724c8b0d02fcfa25a",
+  "tests": 31,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "command": [
+    "env",
+    "-i",
+    "PATH=/usr/bin:/bin",
+    "TMPDIR=/private/tmp",
+    "/opt/homebrew/bin/python3",
+    "-I",
+    "-B",
+    "output/qa/week2-local-review-link/test_smoke.py"
+  ],
+  "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/local-review-link",
+  "source_sha256": {
+    "tools/agents/ruflo-extension-smoke.py": "b9d3d8db986fca243e68b3d7c30f5bb42abc847f84956406d819505459b20e57",
+    "output/qa/week2-local-review-link/test_smoke.py": "e5fcc9981cd9c52d41913da700b3145dee0c96ff72cbe1244f5d52bc55fa1d72",
+    "output/qa/week2-local-review-link/CONTRACT.md": "7ec844cde9bc08b9fa35322e05f625495b3657ff39fbdfda2e4a55b0400b1ca3",
+    "output/qa/week2-local-review-link/RECIPE.md": "9a7b6e26e8832f5bb9bc89c9f46abafb9d0dfecae5923e8cde6e5d287c48adb5",
+    "output/qa/week2-local-review-link/unit.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/week2-local-review-link/unit.stderr.txt": "004c1d36e5bcefbd2bd9fc5094e09dc2384b4834ba8592aada806c99084f9960"
+  },
+  "real_process_ports_in_tests": "FORBIDDEN_BY_MOCK_GUARDS",
+  "preservation": "SIX_STAGED_FILES_PATCH_AND_ELEVEN_HANDOVER_FILES_MATCH",
+  "application_TypeScript_imports": 0,
+  "real_adapter_Ruflo_processes_started": 0,
+  "model_calls": 0,
+  "Docker_calls": 0,
+  "database_provider_calls": 0,
+  "global_configuration_writes": 0,
+  "real_activation_and_smoke": "NOT_RUN_PENDING_TWO_DIRECT_SOURCE_AND_EXACT_STAGE_REVIEWS",
+  "genuine_Claude_Opus_5_5_max_review": "NOT_RUN_PENDING_API_MILESTONE_AND_EXISTING_CLIENT_HANDOFF"
+}
