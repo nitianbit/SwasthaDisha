@@ -1,0 +1,18 @@
+{
+  "status": "BASELINE_REJECTED",
+  "reason": "AUTHORITY_PLAN",
+  "exit": 1,
+  "oldBootstrapSha256": "669b47f1cf3bdf7b84e1dce26f2255d1df36b2861b6a0bb1b8984e63a9273418",
+  "newPortsSha256": "86d6b909c06387c52c8d62e3b99a10784d9612fb6fc63581faf6d3e96ee13a12",
+  "applicationEvaluations": 0,
+  "configurationEvaluations": 0,
+  "compilerExecutions": 0,
+  "databaseConnections": 0,
+  "DockerCalls": 0,
+  "command": [
+    "/private/tmp/m0-node22/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/swasthadisha-parallel-p1qom53w/week2-meet-shared/test/api-runtime/scenario",
+    "/private/tmp/swasthadisha-parallel-p1qom53w/week2-meet-shared/test/api-runtime/scenario/bootstrap-unit.cjs"
+  ]
+}

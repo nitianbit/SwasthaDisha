@@ -1,7 +1,8 @@
 # Focused production-router API fixture
 
 This candidate stages and exercises the actual production auth/OTP/user/wallet/dependents/notification/FCM
-routers, controllers, services, repositories and models. It uses real HTTP, a
+routers, controllers, services, repositories and models, plus the actual Meet
+administrative router/controller/service. It uses real HTTP, a
 separately admitted owned MongoDB replica set, genuine random OTP generation and
 JWT signing. Email/SMS methods use a recording Axios adapter; logger/FCM transport
 ports are recording only. Payment and coupon services are explicit throwing
@@ -12,10 +13,15 @@ checks under test-only profile2; see
 [execution5](../../../output/qa/week2-api-runtime/execution-5/REVIEW.md).
 Its77 TypeScript sources/13 models and five emitted-model controls were verified;
 816 semantic diagnostics remain retained, with no clean root typecheck claim.
-The reviewed JWT configuration extension appends seven groups/three real-source
-variants, for60 nominal IDs/17 sensitivity IDs. Its108 actual fresh CONFIG loads,
-new emitted mutants and two published-key HTTP denials are NOT_RUN in this
-source candidate. No model/package/provider/grant/profile change is introduced.
+The accepted JWT configuration run passed60 nominal groups/17 actual-source
+variants, including108 fresh CONFIG loads,18 mutation/restoration loads and the
+two published-key HTTP denials; see
+[execution6](../../../output/qa/week2-api-runtime/execution-6/REVIEW.md).
+The Meet extension appends16 groups/four router variants, for76 nominal IDs/21
+sensitivity IDs. These additions remain NOT_RUN in this source candidate. They
+introduce no model/package/grant/profile change. A recording fetch port admits
+only exact synthetic OAuth token and calendar-event intents; native outbound
+fetch stays unreachable and is never delegated to by the recording port.
 `ports-manifest.json` fixes the exact IDs/models/correctness indexes/package roots,
 recording ports and safe output counters. `compile.cjs` stages the declared source
 closure with TypeScript 5.9.3 legacy decorators and emitted metadata. A static AST traversal of emitted nominal CommonJS follows actual literal require
@@ -81,6 +87,29 @@ run only in explicit negative phases with fresh TypeDI classes/server/module
 caches. Nominal source is restored between every phase. Detected defects appear
 only in separate `sensitivity` rows. Output provider counts cover nominal cases;
 negative-phase effects are asserted separately in memory and excluded from those counts.
+
+Meet authority checks exercise valid and malformed inputs for anonymous,
+invalid-signature, expired, user, HR, specialist and pharmacy tokens on all four
+protected registrations. They retain the exact existing authentication/role
+messages before Joi, and separately check admin Joi denials, exact admin replies
+and four anonymous public callback branches. All13 collection snapshots and
+per-collection action read/write counters remain unchanged. Only nominal admin
+code exchange, refresh and event creation advance the Google recording counter:
+one, one and two calls respectively. `providerSummary.calendar` reads the actual
+captured nominal counter and means all admitted Google token/calendar intents,
+with expected nominal total4; it does not count real Google delivery.
+
+Expected requests are queued before HTTP, consumed once in order and compared
+again against private normalized captured method/URL/headers/body records.
+Calendar payloads retain actual builders and genuine `Date.now()` request IDs,
+checked against both real before/after HTTP clock bounds; no clock or payload
+builder is replaced. No event update/delete, service-account grant, booking
+orchestration, OAuth state-session validation or account/token validity is tested.
+Each of the four actual Meet router variants must fail the same fixed nominal
+predicate for its exact anticipated status/message, establish the alternate
+response and effects, then restore fresh nominal classes and repeat that
+predicate before detection. Removing authenticate alone still produces401 from
+requireAdmin, with its distinct existing message.
 
 New authority cases preserve all seven Dependent registrations, all sixteen
 Notification registrations and both FCM routes. Exact admin global generic
@@ -152,9 +181,9 @@ exclusive. The parent copies it as immutable input into a separate owned runtime
 bundle; preparation does not create/start Docker containers or evaluate a driver.
 Exact later Docker execution requires its own two direct reviews/admission.
 
-New JWT seven/three groups and108 real configuration loads remain **NOT_RUN**
+New Meet16/four groups remain **NOT_RUN**
 until fresh preparation/artifact/two exact single-run decisions and actual
-execution succeed. Accepted53/14 PASS is historical evidence, not approval for
+execution succeed. Accepted60/17 PASS is historical evidence, not approval for
 this new run or completion of whole-process startup fixtures. Full application startup,
 root dependency adoption, retained-server C2 facts, broader OTP/money policy,
 owner acceptance, deployment and release gates remain open.

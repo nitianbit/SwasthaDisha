@@ -1,0 +1,49 @@
+{
+  "status": "PURE_SOURCE_PASS_RUNTIME_NOT_RUN",
+  "baseline": "fda17da",
+  "pureCases": 358,
+  "historicalCasesRetained": 267,
+  "newAdmissionCases": 12,
+  "newMeetCases": 79,
+  "pureResult": {
+    "schema": "SD-AUTH-API-OFFLINE-1",
+    "cases": 358,
+    "recordingCases": 31,
+    "meetRecorderCases": 79,
+    "configurationControllerCases": 75,
+    "admissionCases": 44,
+    "setupDiagnosticCases": 117,
+    "ownedCleanupCases": 12,
+    "failed": 0,
+    "applicationImports": 0,
+    "connections": 0,
+    "domainWrites": 0,
+    "processGrants": "DENIED"
+  },
+  "command": [
+    "/private/tmp/m0-node22/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/swasthadisha-parallel-p1qom53w/week2-meet-shared/test/api-runtime/scenario",
+    "test/api-runtime/scenario/bootstrap-unit.cjs"
+  ],
+  "syntaxChecks": [
+    {
+      "file": "test/api-runtime/scenario/bootstrap.cjs",
+      "exit": 0
+    },
+    {
+      "file": "test/api-runtime/scenario/bootstrap-unit.cjs",
+      "exit": 0
+    }
+  ],
+  "whitespace": "PASS",
+  "sourcePreservation": "PASS",
+  "applicationEvaluations": 0,
+  "actualConfigurationLoads": 0,
+  "compilerExecutions": 0,
+  "databaseConnections": 0,
+  "DockerCalls": 0,
+  "providerCalls": 0,
+  "nativeFetchDelegations": 0,
+  "actual76_21Runtime": "NOT_RUN"
+}

@@ -1,0 +1,19 @@
+/private/tmp/swasthadisha-parallel-p1qom53w/week2-meet-shared/test/api-runtime/scenario/bootstrap.cjs:162
+const fail = code => { const error = new Error(code); error.fixtureCode = code; throw error; };
+                                                                                ^
+
+Error: AUTHORITY_PLAN
+    at fail (/private/tmp/swasthadisha-parallel-p1qom53w/week2-meet-shared/test/api-runtime/scenario/bootstrap.cjs:162:38)
+    at need (/private/tmp/swasthadisha-parallel-p1qom53w/week2-meet-shared/test/api-runtime/scenario/bootstrap.cjs:163:39)
+    at validateAdmissionData (/private/tmp/swasthadisha-parallel-p1qom53w/week2-meet-shared/test/api-runtime/scenario/bootstrap.cjs:335:3)
+    at Object.<anonymous> (/private/tmp/swasthadisha-parallel-p1qom53w/week2-meet-shared/test/api-runtime/scenario/bootstrap-unit.cjs:82:29)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function.<anonymous> (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5) {
+  fixtureCode: 'AUTHORITY_PLAN'
+}
+
+Node.js v22.23.4

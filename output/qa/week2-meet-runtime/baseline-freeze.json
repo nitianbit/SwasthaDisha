@@ -1,0 +1,32 @@
+{
+  "schema": "SD-MEET-WRITER-BASELINE-1",
+  "baselineCommit": "bac46d306a5f989c1eafcab5c40d4ce6fdd06e1d",
+  "acceptedRuntimeSource": "0a6da87051dc6eae8c2415c4ea3ce09ded414662",
+  "acceptedRuntime": "60/17 execution-6; both nonauthor postaccepted",
+  "contractSha256": "106a7500049610f6b08f96165598e677a34cd544aeca14d7676bc3f50ffa4d3a",
+  "interfaceSha256": "e407aaf502c7ccdaffd60fb299b8b3417c5d2cc518000b555e13d79054e5fede",
+  "portsSha256": "86d6b909c06387c52c8d62e3b99a10784d9612fb6fc63581faf6d3e96ee13a12",
+  "baselinePortsSha256": "0c4fbf77a3d35be63fdb833ad357964240556879d5ef2c49f2785929e10a6d59",
+  "baselinePins": {
+    "src1/modules/meet/routes/index.ts": "e8bfff4a492ed11a18f1735528bfa4886a338b878852cde9bcea2f5d5bdd71e4",
+    "src1/modules/meet/controller/index.ts": "94b5d080c86ed8b9bb0f1ba4a145ed67d9e51115bbb10e26013a30026bf7aff0",
+    "src1/modules/meet/validation/index.ts": "8543aad3ebb22beabe3e293e278154edda82b47d80dc1b1aa379854260e428a7",
+    "src1/modules/meet/service/index.ts": "edc6972866223a641027fcddc3b1b3bcec47bb31cb189bf4d7b097da33a24644",
+    "src1/modules/meet/types/index.ts": "c2073614952f0d411bacd59896d386df54d8d8310c20234b4ab30eec35bfd863",
+    "src1/modules/middleware/auth.ts": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+    "src1/modules/common/middleware/validation.ts": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef",
+    "src1/modules/middleware/errorHandler.ts": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51",
+    "src1/config/config.ts": "e879b0f9c635283d7c9a271128605c6d8583995356e30f5f1c318d23270d09f6",
+    "test/api-runtime/scenario/bootstrap.cjs": "669b47f1cf3bdf7b84e1dce26f2255d1df36b2861b6a0bb1b8984e63a9273418",
+    "test/api-runtime/scenario/bootstrap-unit.cjs": "e2d0346af2608fa85cc6b51fc596d807e6e3102cb35065a392ec210162ca2d67",
+    "test/api-runtime/scenario/ports-manifest.json": "0c4fbf77a3d35be63fdb833ad357964240556879d5ef2c49f2785929e10a6d59",
+    "test/api-runtime/scenario/scenario.cjs": "64ffadd360d41b1b2a830f1e513931f3368a8f77db8d749b1b3d2588d6e19da7",
+    "test/api-runtime/scenario/compile.cjs": "8fdc3fddc50bd97cf063df179f07cee58373a8571adacac79b7b0de9df33e5a4",
+    "test/api-runtime/scenario/README.md": "3e47db1fc08e8b0aa70777d324c50289e6d827ba9688bdc8340d6ef8388d1fd8"
+  },
+  "appExecutionsInThisSlice": 0,
+  "compilerExecutionsInThisSlice": 0,
+  "models": 13,
+  "proposedNominal": 76,
+  "proposedSensitivity": 21
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "SD-MEET-OWNED-SOURCE-1",
+  "baseline": "fda17dae36a19c74488779de90ce22ddbb6b1361",
+  "baselineRejected": true,
+  "priorNominalCasesPreserved": 60,
+  "priorSensitivityProbesPreserved": 17,
+  "declaredNominalIds": 76,
+  "declaredSensitivityIds": 21,
+  "negativeSourceControlsRejected": 26,
+  "contractSha": "106a7500049610f6b08f96165598e677a34cd544aeca14d7676bc3f50ffa4d3a",
+  "interfaceSha": "e407aaf502c7ccdaffd60fb299b8b3417c5d2cc518000b555e13d79054e5fede",
+  "portsSha": "86d6b909c06387c52c8d62e3b99a10784d9612fb6fc63581faf6d3e96ee13a12",
+  "files": {
+    "test/api-runtime/scenario/scenario.cjs": "4ceca6c30921a3718b1b81912bebf6b8c735adbab6f82293c502e281d1f4f668",
+    "test/api-runtime/scenario/compile.cjs": "ecf823aba516c9c1bba8ce7ae62c2db32a7d648721239c363bb1f6aad84584df",
+    "test/api-runtime/scenario/README.md": "1456a82024105ccdc23c1bc6a2aa7b4c52402d4deef8c6aea6a2c71826b44b20"
+  },
+  "predictedSourceMutants": {
+    "MEET_AUTHENTICATION_REMOVED": "738ce91c0270de39f23c76fe84ad08aa5a459e4d7e6b62cc3b04b9d34c8a0bbe",
+    "MEET_ADMIN_GUARD_REMOVED": "fdc55272d87d3b4f7528a12aa760ae2b551e6c450090ade73b19f38412c04d64",
+    "MEET_GUARDS_AFTER_VALIDATION": "513e9002c32c29a52c906ce76158b1410ca081690f2e5bae3eb71f40fa649ae4",
+    "MEET_CALLBACK_GATED": "d083ae2826a35ea41ff3c63f91f12d2ead4f5f62351ebb48e8ed97ed9ad9511d"
+  },
+  "predictionScope": "TEXT_ANCHORS_ONLY_NOT_COMPILER_OUTPUT",
+  "applicationEvaluations": 0,
+  "compilerExecutions": 0,
+  "actualMeetHttpRequests": 0,
+  "runtime": "NOT_RUN"
+}

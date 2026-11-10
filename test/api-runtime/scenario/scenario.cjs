@@ -59,7 +59,7 @@ async function runScenario(ctx) {
       && response.body.error === response.status && typeof response.body.message === 'string'
       && response.body.code === code, 'ERROR_ENVELOPE');
   }
-  const providerState = () => ['email', 'sms', 'push', 'unexpected', 'excluded', 'jwtIssued', 'dbWrites'].map(k => ctx.counters[k]);
+  const providerState = () => ['email', 'sms', 'push', 'calendar', 'unexpected', 'excluded', 'jwtIssued', 'dbWrites'].map(k => ctx.counters[k]);
   async function snapshot(includeOTP = true) {
     const names = ctx.ports.models.map(row => row.name).filter(name => includeOTP || name !== 'OTP');
     const rows = await Promise.all(names.map(name => model(name).find({}).sort({ _id: 1 }).lean().exec()));
@@ -198,12 +198,13 @@ async function runScenario(ctx) {
       need(digest(retain(observed.before[spec.name])) === digest(retain(observed.after[spec.name])), 'AUTHORITY_UNRELATED_STATE');
     }
   }
-  function effects(observed, expectedWrites = {}, push = 0, logger = 0) {
+  function effects(observed, expectedWrites = {}, push = 0, logger = 0, calendar = 0) {
     for (const [collection, count] of Object.entries(observed.writes))
       need(count === (expectedWrites[collection] || 0), 'AUTHORITY_WRITE_COUNTS');
     need(observed.effects.dbWrites === Object.values(expectedWrites).reduce((sum, n) => sum + n, 0), 'AUTHORITY_TOTAL_WRITES');
     for (const key of ['email', 'sms', 'jwtIssued', 'unexpected', 'excluded']) need(observed.effects[key] === 0, 'AUTHORITY_EFFECTS');
-    need(observed.effects.push === push && observed.pushes.length === push && observed.effects.logger === logger, 'AUTHORITY_RECORDING_COUNTS');
+    need(observed.effects.push === push && observed.pushes.length === push && observed.effects.logger === logger
+      && observed.effects.calendar === calendar, 'AUTHORITY_RECORDING_COUNTS');
   }
   function assertDenied(observed, status, code, beforeLookup = false) {
     need(observed.result.status === status, 'AUTHORITY_DENIAL_STATUS'); errorEnvelope(observed.result, code);
@@ -648,6 +649,201 @@ async function runScenario(ctx) {
     }
   }
 
+  // Administrative Meet routes use their actual controller/service/fetch builders.
+  // Only the admitted recording port produces synthetic provider responses.
+  const canonical = value => Array.isArray(value) ? value.map(canonical)
+    : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
+  const equalMeet = (actual, expected) => same(canonical(actual), canonical(expected));
+  function meetRoutes() {
+    const env = ctx.ports.recordingMeet.environment;
+    const payload = { summary: 'Fixture Google Meet', description: 'Created from test OAuth endpoint',
+      start: { dateTime: '2030-01-15T10:00:00', timeZone: env.GOOGLE_MEET_TIMEZONE },
+      end: { dateTime: '2030-01-15T10:30:00', timeZone: env.GOOGLE_MEET_TIMEZONE },
+      attendees: [{ email: 'patient@example.com' }, { email: 'specialist@example.com' }] };
+    return [
+      { method: 'GET', path: '/google-oauth/url', suffix: '?state=fixture-meet-state', malformedSuffix: '?state=one&state=two',
+        body: undefined, malformed: undefined, validation: '"state" must be a string', expected: [] },
+      { method: 'POST', path: '/google-oauth/exchange', body: { code: 'fixture-authorization-code', redirectUri: env.GOOGLE_OAUTH_REDIRECT_URI },
+        malformed: { code: '' }, validation: 'code is required',
+        expected: [{ kind: 'code', code: 'fixture-authorization-code', redirectUri: env.GOOGLE_OAUTH_REDIRECT_URI }] },
+      { method: 'POST', path: '/google-oauth/refresh', body: { refreshToken: env.GOOGLE_OAUTH_REFRESH_TOKEN },
+        malformed: { refreshToken: ['one', 'two'] }, validation: '"refreshToken" must be a string',
+        expected: [{ kind: 'refresh', refreshToken: env.GOOGLE_OAUTH_REFRESH_TOKEN }] },
+      { method: 'POST', path: '/google-meet/oauth', body: { patientEmail: 'patient@example.com', specialistEmail: 'specialist@example.com',
+        dateYyyymmdd: '20300115', startTime: '10:00 AM', durationMinutes: 30, summary: payload.summary },
+        malformed: { patientEmail: 'invalid', specialistEmail: 'invalid' },
+        validation: 'patientEmail must be a valid email, specialistEmail must be a valid email',
+        expected: [{ kind: 'refresh', refreshToken: env.GOOGLE_OAUTH_REFRESH_TOKEN }, { kind: 'event', payload }] },
+    ];
+  }
+  function meetActors(userToken) {
+    const signed = payload => actor({ _id: uid(), ...payload });
+    return [
+      { token: undefined, status: 401, code: 'UNAUTHORIZED', message: 'Authorization token is required' },
+      { token: ctx.originalSign({ _id: uid(), userType: 'admin' }, crypto.randomBytes(32).toString('hex'), { expiresIn: '5m' }),
+        status: 401, code: 'INVALID_TOKEN', message: 'Invalid token' },
+      { token: ctx.originalSign({ _id: uid(), userType: 'admin' }, ctx.key, { expiresIn: -1 }),
+        status: 401, code: 'TOKEN_EXPIRED', message: 'Token has expired' },
+      ...[userToken, signed({ userType: 'hr' }), signed({ userType: 'specialist' }), signed({ userType: 'pharmacy' })]
+        .map(token => ({ token, status: 403, code: 'FORBIDDEN', message: 'Admin access is required' })),
+    ];
+  }
+  async function observeMeet(method, route, token, body, expected = []) {
+    ctx.expectMeetRequests(expected);
+    const offset = ctx.meetRequests.length; const clockBefore = Date.now();
+    const observed = await observe(method, '/meet' + route, token, body);
+    const clockAfter = Date.now(); const requests = ctx.meetRequests.slice(offset);
+    ctx.expectMeetRequests([]); // Throws rather than discarding an unfinished expectation.
+    return { ...observed, requests, clockBefore, clockAfter };
+  }
+  function assertMeetEffects(observed, count, logger) {
+    unchangedOutside(observed); effects(observed, {}, 0, logger, count);
+    need(Object.values(observed.reads).every(value => value === 0), 'MEET_DATABASE_READS');
+    need(observed.requests.length === count, 'MEET_REQUEST_COUNT');
+  }
+  function assertMeetRequests(observed, expected) {
+    const fixture = ctx.ports.recordingMeet; const env = fixture.environment;
+    const records = expected.map((descriptor, index) => {
+      if (descriptor.kind === 'code' || descriptor.kind === 'refresh') return { kind: descriptor.kind, method: 'POST', url: fixture.tokenUrl,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: descriptor.kind === 'code'
+          ? { code: descriptor.code, client_id: env.GOOGLE_OAUTH_CLIENT_ID, client_secret: env.GOOGLE_OAUTH_CLIENT_SECRET,
+            redirect_uri: descriptor.redirectUri, grant_type: 'authorization_code' }
+          : { client_id: env.GOOGLE_OAUTH_CLIENT_ID, client_secret: env.GOOGLE_OAUTH_CLIENT_SECRET,
+            refresh_token: descriptor.refreshToken, grant_type: 'refresh_token' } };
+      const actualId = observed.requests[index]?.body?.conferenceData?.createRequest?.requestId;
+      if (!(typeof actualId === 'string' && /^meet-[0-9]+$/.test(actualId))) {
+        ctx.counters.unexpected++; need(false, 'MEET_REQUEST_ID_SHAPE');
+      }
+      const timestamp = Number(actualId.slice(5));
+      if (!(Number.isSafeInteger(timestamp) && timestamp >= observed.clockBefore && timestamp <= observed.clockAfter)) {
+        ctx.counters.unexpected++; need(false, 'MEET_REQUEST_ID_WINDOW');
+      }
+      return { kind: 'event', method: 'POST', url: fixture.calendarUrl,
+        headers: { Authorization: 'Bearer ' + fixture.oauthResponse.access_token, 'Content-Type': 'application/json' },
+        body: { ...descriptor.payload, conferenceData: { createRequest: { requestId: actualId, conferenceSolutionKey: { type: 'hangoutsMeet' } } } } };
+    });
+    if (!equalMeet(observed.requests, records)) {
+      ctx.counters.unexpected++; need(false, 'MEET_REQUEST_FIELDS');
+    }
+  }
+  function meetDenied(observed, expected) {
+    need(observed.result.status === expected.status, 'MEET_AUTHORITY_STATUS'); errorEnvelope(observed.result, expected.code);
+    need(observed.result.body.message === expected.message, 'MEET_AUTHORITY_MESSAGE');
+    assertMeetEffects(observed, 0, 1); assertMeetRequests(observed, []);
+  }
+  function meetValidation(route) { return { status: 400, code: 'VALIDATION_ERROR', message: route.validation }; }
+  function meetSuccess(observed, index) {
+    const route = meetRoutes()[index]; const fixture = ctx.ports.recordingMeet;
+    need(observed.result.status === 200, 'MEET_SUCCESS_STATUS');
+    if (index === 0) {
+      const data = observed.result.body?.data;
+      need(data && typeof data.authorizationUrl === 'string', 'MEET_AUTHORIZATION_URL');
+      const url = new URL(data.authorizationUrl);
+      const pairs = [...url.searchParams]; const params = Object.fromEntries(pairs);
+      need(url.origin === 'https://accounts.google.com' && url.pathname === '/o/oauth2/v2/auth'
+        && url.username === '' && url.password === '' && url.hash === '' && pairs.length === 8
+        && equalMeet(params, { client_id: fixture.environment.GOOGLE_OAUTH_CLIENT_ID,
+          redirect_uri: fixture.environment.GOOGLE_OAUTH_REDIRECT_URI, response_type: 'code',
+          scope: 'https://www.googleapis.com/auth/calendar', access_type: 'offline', prompt: 'consent',
+          include_granted_scopes: 'true', state: 'fixture-meet-state' }), 'MEET_AUTHORIZATION_FIELDS');
+      need(equalMeet(observed.result.body, { success: true, message: 'Open authorizationUrl in browser and complete consent',
+        data: { authorizationUrl: data.authorizationUrl, state: 'fixture-meet-state' } }), 'MEET_URL_REPLY');
+    } else {
+      const replies = [null,
+        { success: true, message: 'Code exchanged. Save refresh_token to GOOGLE_OAUTH_REFRESH_TOKEN in .env and restart backend.', data: fixture.oauthResponse },
+        { success: true, message: 'OAuth refresh token is valid', data: { accessTokenPreview: fixture.oauthResponse.access_token.slice(0, 20) + '...' } },
+        { success: true, message: 'Google Meet event created using OAuth flow', data: { event: fixture.eventResponse,
+          joinUrl: fixture.eventResponse.hangoutLink, meetingCode: fixture.eventResponse.conferenceData.conferenceId } },
+      ];
+      need(equalMeet(observed.result.body, replies[index]), 'MEET_PROVIDER_REPLY');
+    }
+    assertMeetEffects(observed, route.expected.length, 0); assertMeetRequests(observed, route.expected);
+  }
+  async function meetAuthority(index, caller, malformed = false, variant) {
+    const route = meetRoutes()[index];
+    const succeeds = variant === 'MEET_ADMIN_GUARD_REMOVED';
+    const observed = await observeMeet(route.method, route.path + (malformed ? route.malformedSuffix || '' : route.suffix || ''),
+      caller.token, malformed ? route.malformed : route.body, succeeds ? route.expected : []);
+    if (!variant) { meetDenied(observed, caller); return; }
+    detectedFailure(() => meetDenied(observed, caller), variant === 'MEET_AUTHENTICATION_REMOVED' ? 'MEET_AUTHORITY_MESSAGE' : 'MEET_AUTHORITY_STATUS');
+    if (variant === 'MEET_AUTHENTICATION_REMOVED') meetDenied(observed, { status: 401, code: 'UNAUTHORIZED', message: 'Authentication is required' });
+    else if (variant === 'MEET_ADMIN_GUARD_REMOVED') meetSuccess(observed, index);
+    else meetDenied(observed, meetValidation(route));
+  }
+  function meetCallback(index) {
+    const root = '/google-oauth/callback';
+    return [
+      { path: root + '?code=fixture-callback-code&state=fixture-meet-state&scope=fixture-calendar-scope', status: 200,
+        body: { success: true, message: 'Google OAuth callback received. Use this code in POST /api/v1/meet/google-oauth/exchange.',
+          data: { code: 'fixture-callback-code', state: 'fixture-meet-state', scope: 'fixture-calendar-scope' } } },
+      { path: root + '?error=access_denied&state=fixture-meet-state', status: 400,
+        body: { success: false, message: 'Google OAuth callback returned an error', data: { error: 'access_denied', state: 'fixture-meet-state' } } },
+      { path: root + '?state=fixture-meet-state&scope=fixture-calendar-scope', status: 400,
+        body: { success: false, message: 'No code found in callback query params', data: { state: 'fixture-meet-state', scope: 'fixture-calendar-scope' } } },
+      { path: root + '?code=one&code=two', status: 400 },
+    ][index];
+  }
+  function meetCallbackPredicate(observed, index) {
+    const expected = meetCallback(index);
+    need(observed.result.status === expected.status, 'MEET_CALLBACK_STATUS');
+    if (index === 3) meetDenied(observed, { status: 400, code: 'VALIDATION_ERROR', message: '"code" must be a string' });
+    else {
+      need(equalMeet(observed.result.body, expected.body), 'MEET_CALLBACK_REPLY');
+      assertMeetEffects(observed, 0, 0); assertMeetRequests(observed, []);
+    }
+  }
+  async function exerciseMeetCallback(index, variant = false) {
+    const observed = await observeMeet('GET', meetCallback(index).path);
+    if (!variant) { meetCallbackPredicate(observed, index); return; }
+    detectedFailure(() => meetCallbackPredicate(observed, index), 'MEET_CALLBACK_STATUS');
+    meetDenied(observed, { status: 401, code: 'UNAUTHORIZED', message: 'Authorization token is required' });
+  }
+  async function runMeetNominal(adminToken, userToken) {
+    const callers = meetActors(userToken); const calendarBefore = ctx.counters.calendar;
+    need(calendarBefore === 0, 'MEET_PRIOR_GOOGLE_EFFECT');
+    const authorityIds = ['MEET_URL_AUTHORITY', 'MEET_EXCHANGE_AUTHORITY', 'MEET_REFRESH_AUTHORITY', 'MEET_CREATE_AUTHORITY'];
+    const validationIds = ['MEET_URL_ADMIN_VALIDATION', 'MEET_EXCHANGE_ADMIN_VALIDATION', 'MEET_REFRESH_ADMIN_VALIDATION', 'MEET_CREATE_ADMIN_VALIDATION'];
+    const successIds = ['MEET_URL_ADMIN_SUCCESS', 'MEET_EXCHANGE_ADMIN_SUCCESS', 'MEET_REFRESH_ADMIN_SUCCESS', 'MEET_CREATE_ADMIN_SUCCESS'];
+    for (let index = 0; index < 4; index++) {
+      for (const caller of callers) for (const malformed of [false, true]) await meetAuthority(index, caller, malformed);
+      record(authorityIds[index]);
+    }
+    for (let index = 0; index < 4; index++) {
+      const route = meetRoutes()[index];
+      const observed = await observeMeet(route.method, route.path + (route.malformedSuffix || ''), adminToken, route.malformed);
+      meetDenied(observed, meetValidation(route)); record(validationIds[index]);
+    }
+    for (let index = 0; index < 4; index++) {
+      const route = meetRoutes()[index];
+      const observed = await observeMeet(route.method, route.path + (route.suffix || ''), adminToken, route.body, route.expected);
+      meetSuccess(observed, index); record(successIds[index]);
+    }
+    const callbacks = ['MEET_CALLBACK_VALID_CODE_PUBLIC', 'MEET_CALLBACK_PROVIDER_ERROR_PUBLIC', 'MEET_CALLBACK_MISSING_CODE_PUBLIC', 'MEET_CALLBACK_INVALID_QUERY_PUBLIC'];
+    for (let index = 0; index < 4; index++) { await exerciseMeetCallback(index); record(callbacks[index]); }
+    need(ctx.counters.calendar - calendarBefore === 4, 'MEET_NOMINAL_GOOGLE_COUNT'); ctx.expectMeetRequests([]);
+  }
+  async function runMeetSensitivity(userToken) {
+    const callers = meetActors(userToken);
+    for (const variant of ['MEET_AUTHENTICATION_REMOVED', 'MEET_ADMIN_GUARD_REMOVED', 'MEET_GUARDS_AFTER_VALIDATION', 'MEET_CALLBACK_GATED']) {
+      need(ctx.plan.mutants[variant]?.file, 'MISSING_SOURCE_MUTANT');
+      await ctx.nextPhase({ '@/modules/meet/routes': ctx.plan.mutants[variant].file });
+      const samples = variant === 'MEET_AUTHENTICATION_REMOVED' ? [callers[0]]
+        : variant === 'MEET_ADMIN_GUARD_REMOVED' ? [callers[3]] : callers;
+      if (variant === 'MEET_CALLBACK_GATED') for (let i = 0; i < 3; i++) await exerciseMeetCallback(i, true);
+      else for (let index = 0; index < 4; index++) for (const caller of samples)
+        for (const malformed of variant === 'MEET_AUTHENTICATION_REMOVED' ? [false, true] : [variant === 'MEET_GUARDS_AFTER_VALIDATION'])
+          await meetAuthority(index, caller, malformed, variant);
+      ctx.expectMeetRequests([]); await ctx.nextPhase({});
+      if (variant === 'MEET_CALLBACK_GATED') for (let i = 0; i < 3; i++) await exerciseMeetCallback(i);
+      else for (let index = 0; index < 4; index++) for (const caller of samples)
+        for (const malformed of variant === 'MEET_AUTHENTICATION_REMOVED' ? [false, true] : [variant === 'MEET_GUARDS_AFTER_VALIDATION'])
+          await meetAuthority(index, caller, malformed);
+      ctx.expectMeetRequests([]);
+      need(ctx.counters.unexpected === 0 && ctx.counters.excluded === 0, 'SENSITIVITY_UNDECLARED_EFFECT');
+      sensitivity.push({ id: variant, detected: true });
+    }
+  }
+
   const alpha = await login({ phone: '9000000001' }); record('PHONE_LOGIN');
   const beta = await login({ email: 'beta@example.com' }); record('EMAIL_LOGIN');
   const a = await model('User').findById(alpha.user._id).lean().exec();
@@ -768,6 +964,9 @@ async function runScenario(ctx) {
   }
   record('JWT_PUBLISHED_FALLBACK_TOKEN_DENIED');
 
+  need(cases.length === 60 && same(cases.map(row => row.id), ctx.ports.requiredCaseIds.slice(0, 60)), 'MEET_PRIOR_CASE_SET');
+  await runMeetNominal(admin.token, alpha.token);
+
   // Separate negative phases use emitted variants of the actual frozen source.
   // Fresh production classes, TypeDI registrations and HTTP server each phase.
   const nominalCounters = { ...ctx.counters };
@@ -792,13 +991,15 @@ async function runScenario(ctx) {
   await runAuthoritySensitivity(admin.token);
   need(sensitivity.length === 14 && same(sensitivity.map(row => row.id), ctx.ports.requiredSensitivityIds.slice(0, 14)), 'JWT_CONFIG_PRIOR_SENSITIVITY_SET');
   for (const row of configuration.sensitivity) sensitivity.push({ id: row.id, detected: true });
+  need(sensitivity.length === 17 && same(sensitivity.map(row => row.id), ctx.ports.requiredSensitivityIds.slice(0, 17)), 'MEET_PRIOR_SENSITIVITY_SET');
+  await runMeetSensitivity(alpha.token);
   // Prove fresh nominal classes restore the two owner boundaries after mutants.
   await deny('GET', '/users/' + id(b), alpha.token, undefined, [403], 'RESTORED_USER_OWNER');
   await deny('GET', '/wallet/' + id(bw), alpha.token, undefined, [403], 'RESTORED_WALLET_OWNER');
   need(ctx.counters.unexpected === 0 && ctx.counters.excluded === 0, 'UNDECLARED_CAPABILITY_EFFECT');
   return { cases, sensitivity, failed: 0, skipped: 0, providerSummary: {
     email: nominalCounters.email, sms: nominalCounters.sms, push: nominalCounters.push, logger: nominalCounters.logger,
-    payments: 0, calendar: 0, storage: 0, queue: 0, deniedCapabilities: nominalCounters.excluded, unexpected: nominalCounters.unexpected,
+    payments: 0, calendar: nominalCounters.calendar, storage: 0, queue: 0, deniedCapabilities: nominalCounters.excluded, unexpected: nominalCounters.unexpected,
   } };
 }
 

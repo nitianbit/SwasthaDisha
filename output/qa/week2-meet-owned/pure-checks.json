@@ -1,0 +1,23 @@
+{
+  "schema": "SD-MEET-OWNED-PURE-1",
+  "configurationEvidenceParser": {
+    "schema": "SD-JWT-EVIDENCE-PURE-1",
+    "cases": 42,
+    "failed": 0,
+    "gettersInvoked": 0,
+    "applicationImports": 0,
+    "connections": 0,
+    "writes": 0,
+    "processGrants": "DENIED",
+    "actualConfigLoads": 0,
+    "runtime": "NOT_RUN"
+  },
+  "syntaxChecks": {
+    "scenario.cjs": "PASS",
+    "compile.cjs": "PASS"
+  },
+  "sourceWhitespace": "PASS",
+  "compilerExecutions": 0,
+  "actualMeetHttpRequests": 0,
+  "runtime": "NOT_RUN"
+}

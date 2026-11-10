@@ -1,0 +1,17 @@
+{
+  "schema": "SD-MEET-RUNTIME-DISCOVERY-1",
+  "baseline": "7517a239b87559d923a2f46583173517ff4a1849",
+  "status": "READONLY_DISCOVERY_NOT_IMPLEMENTATION_OR_EXECUTION",
+  "sourcePins": {
+    "src1/modules/meet/routes/index.ts": "e8bfff4a492ed11a18f1735528bfa4886a338b878852cde9bcea2f5d5bdd71e4",
+    "src1/modules/meet/controller/index.ts": "94b5d080c86ed8b9bb0f1ba4a145ed67d9e51115bbb10e26013a30026bf7aff0",
+    "src1/modules/meet/validation/index.ts": "8543aad3ebb22beabe3e293e278154edda82b47d80dc1b1aa379854260e428a7",
+    "src1/modules/meet/service/index.ts": "edc6972866223a641027fcddc3b1b3bcec47bb31cb189bf4d7b097da33a24644",
+    "src1/modules/meet/types/index.ts": "c2073614952f0d411bacd59896d386df54d8d8310c20234b4ab30eec35bfd863"
+  },
+  "graphProject": "swasthadisha",
+  "graphHead": "bfb608ea1a89551f6cd72ec5ee1349a3ee7abef7",
+  "nativeDiscoveryReviewer": "/root/backend_boot_path",
+  "runtime": "NOT_RUN",
+  "compiler": "NOT_RUN"
+}

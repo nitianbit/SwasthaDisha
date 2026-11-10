@@ -1,0 +1,44 @@
+{
+  "schema": "SD-MEET-COMPOSED-SOURCE-1",
+  "status": "TWO_NONAUTHOR_SOURCE_AND_EXACT_EMISSION_REVIEWS_REQUIRED",
+  "baseline": "bac46d306a5f989c1eafcab5c40d4ce6fdd06e1d",
+  "contractSha": "106a7500049610f6b08f96165598e677a34cd544aeca14d7676bc3f50ffa4d3a",
+  "interfaceSha": "e407aaf502c7ccdaffd60fb299b8b3417c5d2cc518000b555e13d79054e5fede",
+  "authors": {
+    "rootPortsContract": "/root",
+    "bootstrapAndUnit": "/root/meet_recording_bootstrap",
+    "scenarioCompilerReadme": "/root/auth_api_fixture_contract"
+  },
+  "files": {
+    "test/api-runtime/scenario/bootstrap.cjs": "ff7ecad69b71145ba1dad5ad76ca68e836437d2e02077ade8ffa3748c40b6efc",
+    "test/api-runtime/scenario/bootstrap-unit.cjs": "d5079df3aca5023f021a1fa1a3e665d015c9a13de503ff480cec8c5560a5a56b",
+    "test/api-runtime/scenario/ports-manifest.json": "86d6b909c06387c52c8d62e3b99a10784d9612fb6fc63581faf6d3e96ee13a12",
+    "test/api-runtime/scenario/scenario.cjs": "4ceca6c30921a3718b1b81912bebf6b8c735adbab6f82293c502e281d1f4f668",
+    "test/api-runtime/scenario/compile.cjs": "ecf823aba516c9c1bba8ce7ae62c2db32a7d648721239c363bb1f6aad84584df",
+    "test/api-runtime/scenario/README.md": "1456a82024105ccdc23c1bc6a2aa7b4c52402d4deef8c6aea6a2c71826b44b20",
+    "output/qa/week2-meet-owned/source-freeze.json": "c1a1c2f90020c3c82d469b7b82d90c36d84734becc073fba26d56030f41135cc",
+    "output/qa/week2-meet-shared/source-freeze.json": "b3d73639cdf124eed13c83a2a2cdacc29b880abd6f1478fde0088d77b54f7ea9"
+  },
+  "checks": {
+    "rootCombinedSharedFakeCases": 358,
+    "rootCombinedEvidenceParserFakeCases": 42,
+    "rootCombinedOwnedSourceControlsRejected": 26,
+    "sharedLaneSourceChecker": "PASS_ON_EXACT_SHARED_BRANCH; lane scope deliberately not rerun as combined scope",
+    "composedSourceFilePins": "ALL_MATCH",
+    "productionDependenciesLauncherProfileNetworkHelperPrepare": "UNCHANGED",
+    "compilerExecutions": 0,
+    "applicationEvaluations": 0,
+    "configurationEvaluations": 0,
+    "databaseConnections": 0,
+    "DockerCalls": 0
+  },
+  "proposedScope": {
+    "nominalGroups": 76,
+    "actualSourceVariants": 21,
+    "models": 13,
+    "roots": 9,
+    "nominalGoogleRecordingIntents": 4
+  },
+  "priorAcceptedRuntime": "60/17 at0a6da87; new76/21 NOT_RUN",
+  "scopeLimits": "No realGoogle/internalbooking/OAuthstate/fullstartup/rootC2/115register/owner/Week2/release acceptance"
+}
