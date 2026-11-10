@@ -6,6 +6,14 @@ import { AuthRequest } from '@/modules/middleware/auth';
 import { UserService } from '@/modules/user/services';
 import { CreateUserRequest, UpdateUserRequest, UserQueryParams } from '@/modules/user/types';
 
+const SELF_FORBIDDEN_FIELDS = [
+  'isActive',
+  'isVerified',
+  'isCorporateEmailVerified',
+  'corporateId',
+  'isCorporateUser',
+] as const;
+
 export class UserController {
   private userService: UserService;
 
@@ -41,7 +49,74 @@ export class UserController {
     }
   }
 
+  private assertUserRouteActor(req: AuthRequest, targetId?: string): void {
+    if (!req.user?._id) {
+      throw new AppError({
+        status: 401,
+        code: 'UNAUTHORIZED',
+        message: 'Authentication is required',
+      });
+    }
+
+    if (req.user.userType === 'admin') {
+      return;
+    }
+
+    if (req.user.userType === 'hr') {
+      if (!req.user.corporateId) {
+        throw new AppError({
+          status: 403,
+          code: 'HR_CORPORATE_REQUIRED',
+          message: 'HR account must be linked to a corporate',
+        });
+      }
+      return;
+    }
+
+    if (
+      req.user.userType === 'user' &&
+      targetId !== undefined &&
+      req.user._id === targetId
+    ) {
+      return;
+    }
+
+    throw new AppError({
+      status: 403,
+      code: 'FORBIDDEN',
+      message: 'Access to this user resource is not permitted',
+    });
+  }
+
+  private assertNoSelfPrivilegeFields(req: AuthRequest): void {
+    if (req.user?.userType !== 'user') {
+      return;
+    }
+
+    const body = req.body ?? {};
+    for (const field of SELF_FORBIDDEN_FIELDS) {
+      if (Object.prototype.hasOwnProperty.call(body, field)) {
+        throw new AppError({
+          status: 422,
+          code: 'FORBIDDEN_FIELD',
+          message: 'One or more fields cannot be changed through this endpoint',
+        });
+      }
+    }
+  }
+
+  private assertHRListScope(req: AuthRequest): void {
+    if (req.user?.userType === 'hr' && req.query.forUser === 'true') {
+      throw new AppError({
+        status: 403,
+        code: 'FORBIDDEN',
+        message: 'HR can only access users from their own corporate',
+      });
+    }
+  }
+
   create = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    this.assertUserRouteActor(req);
     const data: CreateUserRequest = {
       ...req.body,
       corporateId: this.getHRCorporateId(req) || req.body.corporateId,
@@ -57,6 +132,7 @@ export class UserController {
 
   getById = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const { id } = req.params;
+    this.assertUserRouteActor(req, id);
     await this.ensureHRCanAccessUser(req, id);
     const user = await this.userService.getById(id);
 
@@ -69,6 +145,8 @@ export class UserController {
 
   update = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const { id } = req.params;
+    this.assertUserRouteActor(req, id);
+    this.assertNoSelfPrivilegeFields(req);
     await this.ensureHRCanAccessUser(req, id);
     const data: UpdateUserRequest = {
       ...req.body,
@@ -84,6 +162,8 @@ export class UserController {
   };
 
   getAll = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    this.assertUserRouteActor(req);
+    this.assertHRListScope(req);
     const queryParams: UserQueryParams = {
       userType: req.query.userType as 'user' | undefined,
       name: req.query.name as string,
@@ -108,6 +188,7 @@ export class UserController {
 
   delete = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const { id } = req.params;
+    this.assertUserRouteActor(req, id);
     await this.ensureHRCanAccessUser(req, id);
     await this.userService.delete(id);
 

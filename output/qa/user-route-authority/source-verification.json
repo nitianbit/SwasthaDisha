@@ -1,0 +1,883 @@
+{
+  "commands": [
+    {
+      "phase": "before_edit_baseline_rejected",
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "-I",
+        "output/qa/user-route-authority/source-check.py"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/authority-next",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 1,
+      "stdout": {
+        "status": "REJECTED",
+        "reason": "HELPER_PRESENT: assertUserRouteActor",
+        "typescript_evaluations": 0
+      },
+      "stderr": "",
+      "controller_sha256": "7822f77598b7ad7ff1fa7ab32fca35d19a973de5d98ba43fca276f477525c5fc",
+      "script_sha256": "167486bbc64f7b7ccb63e3aabfa2fb53eb3ed4d7ceef0cebb740e922ab7343fa",
+      "note": "Recorded before the production edit with the 45966f3 script; baseline rejection is re-shown below by the baseline_controller control."
+    },
+    {
+      "phase": "amendment_accepted",
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "-I",
+        "output/qa/user-route-authority/source-check.py"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/authority-next",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": {
+        "status": "SOURCE_ONLY_VERIFIED_RUNTIME_NOT_RUN",
+        "baseline": "9ea963f1f7b51aadedcfa7fc9918eb39a2fd737d",
+        "source_sha256": "25aef90efe3e5142011789dd48d55452d5b1fef9f2e56d70c355e7606e191d74",
+        "frozen_prefix_sha256": "6bcedaf84c6acc8e7021df3575e89b79abc9e75d6de37fd33aa4eded8ba8fb1a",
+        "guarded_handlers": [
+          "create",
+          "getAll",
+          "getById",
+          "update",
+          "delete"
+        ],
+        "pinned_files": 22,
+        "typescript_evaluations": 0
+      },
+      "stderr": "",
+      "controller_sha256": "25aef90efe3e5142011789dd48d55452d5b1fef9f2e56d70c355e7606e191d74",
+      "script_sha256": "aa042640769150a15ccc350b69239d0d58f4105397ad9df31d02b24ae10b4ca7"
+    },
+    {
+      "phase": "negative_controls_rejected_including_baseline",
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "-I",
+        "output/qa/user-route-authority/source-check.py",
+        "--negative-controls"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/authority-next",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": {
+        "status": "SOURCE_NEGATIVES_REJECTED",
+        "control_count": 42,
+        "controls": [
+          {
+            "control": "baseline_controller",
+            "intended": "HELPER_PRESENT",
+            "rejected_by": "HELPER_PRESENT",
+            "semantic_failures": [
+              "HELPER_PRESENT",
+              "HELPER_PRESENT",
+              "HELPER_PRESENT",
+              "GUARD_ORDER",
+              "GUARD_ORDER",
+              "GUARD_ORDER",
+              "GUARD_ORDER",
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "create_actor_guard_removed",
+            "intended": "GUARD_ORDER",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "create_actor_guard_after_service",
+            "intended": "GUARD_ORDER",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "getAll_actor_guard_removed",
+            "intended": "GUARD_ORDER",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "getAll_actor_guard_after_service",
+            "intended": "GUARD_ORDER",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "getById_actor_guard_removed",
+            "intended": "GUARD_ORDER",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "getById_actor_guard_after_service",
+            "intended": "GUARD_ORDER",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "update_actor_guard_removed",
+            "intended": "GUARD_ORDER",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "update_actor_guard_after_service",
+            "intended": "GUARD_ORDER",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "delete_actor_guard_removed",
+            "intended": "GUARD_ORDER",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "delete_actor_guard_after_service",
+            "intended": "GUARD_ORDER",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "inverted_own_id_comparison",
+            "intended": "CROSS_USER_DENIED",
+            "rejected_by": "OWN_USER_ALLOWED",
+            "semantic_failures": [
+              "OWN_USER_ALLOWED",
+              "CROSS_USER_DENIED"
+            ]
+          },
+          {
+            "control": "identity_check_disabled",
+            "intended": "IDENTITY_401",
+            "rejected_by": "IDENTITY_401",
+            "semantic_failures": [
+              "IDENTITY_401"
+            ]
+          },
+          {
+            "control": "targetless_user_admitted_on_create",
+            "intended": "GUARD_TARGET",
+            "rejected_by": "GUARD_TARGET",
+            "semantic_failures": [
+              "GUARD_TARGET"
+            ]
+          },
+          {
+            "control": "non_user_type_admitted_as_owner",
+            "intended": "OTHER_TYPES_DENIED",
+            "rejected_by": "OTHER_TYPES_DENIED",
+            "semantic_failures": [
+              "OTHER_TYPES_DENIED",
+              "UNKNOWN_TYPES_DENIED"
+            ]
+          },
+          {
+            "control": "unknown_type_admitted_by_deny_list",
+            "intended": "UNKNOWN_TYPES_DENIED",
+            "rejected_by": "USERTYPE_LITERALS",
+            "semantic_failures": [
+              "USERTYPE_LITERALS",
+              "UNKNOWN_TYPES_DENIED"
+            ]
+          },
+          {
+            "control": "hr_without_corporate_admitted",
+            "intended": "HR_CORPORATE_REQUIRED",
+            "rejected_by": "HR_CORPORATE_REQUIRED",
+            "semantic_failures": [
+              "HR_CORPORATE_REQUIRED"
+            ]
+          },
+          {
+            "control": "unlisted_type_allow_inserted",
+            "intended": "UNKNOWN_TYPES_DENIED",
+            "rejected_by": "USERTYPE_LITERALS",
+            "semantic_failures": [
+              "USERTYPE_LITERALS",
+              "UNKNOWN_TYPES_DENIED"
+            ]
+          },
+          {
+            "control": "field_loop_over_other_constant",
+            "intended": "CLOSED_VOCABULARY",
+            "rejected_by": "CLOSED_VOCABULARY",
+            "semantic_failures": [
+              "CLOSED_VOCABULARY"
+            ]
+          },
+          {
+            "control": "id_cast_comparison",
+            "intended": "STRICT_STRING_EQUALITY",
+            "rejected_by": "STRICT_STRING_EQUALITY",
+            "semantic_failures": [
+              "STRICT_STRING_EQUALITY",
+              "CLOSED_VOCABULARY"
+            ]
+          },
+          {
+            "control": "loose_id_comparison",
+            "intended": "STRICT_STRING_EQUALITY",
+            "rejected_by": "STRICT_STRING_EQUALITY",
+            "semantic_failures": [
+              "STRICT_STRING_EQUALITY",
+              "CLOSED_VOCABULARY"
+            ]
+          },
+          {
+            "control": "denial_message_echoes_id",
+            "intended": "FIXED_DENIAL_MESSAGE",
+            "rejected_by": "FIXED_DENIAL_MESSAGE",
+            "semantic_failures": [
+              "FIXED_DENIAL_MESSAGE"
+            ]
+          },
+          {
+            "control": "actor_guard_async_unawaited",
+            "intended": "GUARD_SYNCHRONOUS",
+            "rejected_by": "GUARD_SYNCHRONOUS",
+            "semantic_failures": [
+              "GUARD_SYNCHRONOUS"
+            ]
+          },
+          {
+            "control": "actor_guard_wrapped_in_try_catch",
+            "intended": "NO_TRY_CATCH",
+            "rejected_by": "NO_TRY_CATCH",
+            "semantic_failures": [
+              "NO_TRY_CATCH",
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "forbidden_field_omitted_isActive",
+            "intended": "FIELD_LIST_COMPLETE",
+            "rejected_by": "FIELD_LIST_COMPLETE",
+            "semantic_failures": [
+              "FIELD_LIST_COMPLETE",
+              "FIELD_KEY_PRESENCE"
+            ]
+          },
+          {
+            "control": "forbidden_field_omitted_isVerified",
+            "intended": "FIELD_LIST_COMPLETE",
+            "rejected_by": "FIELD_LIST_COMPLETE",
+            "semantic_failures": [
+              "FIELD_LIST_COMPLETE",
+              "FIELD_KEY_PRESENCE"
+            ]
+          },
+          {
+            "control": "forbidden_field_omitted_isCorporateEmailVerified",
+            "intended": "FIELD_LIST_COMPLETE",
+            "rejected_by": "FIELD_LIST_COMPLETE",
+            "semantic_failures": [
+              "FIELD_LIST_COMPLETE",
+              "FIELD_KEY_PRESENCE"
+            ]
+          },
+          {
+            "control": "forbidden_field_omitted_corporateId",
+            "intended": "FIELD_LIST_COMPLETE",
+            "rejected_by": "FIELD_LIST_COMPLETE",
+            "semantic_failures": [
+              "FIELD_LIST_COMPLETE",
+              "FIELD_KEY_PRESENCE"
+            ]
+          },
+          {
+            "control": "forbidden_field_omitted_isCorporateUser",
+            "intended": "FIELD_LIST_COMPLETE",
+            "rejected_by": "FIELD_LIST_COMPLETE",
+            "semantic_failures": [
+              "FIELD_LIST_COMPLETE",
+              "FIELD_KEY_PRESENCE"
+            ]
+          },
+          {
+            "control": "forbidden_list_overreaches_name",
+            "intended": "FIELD_LIST_COMPLETE",
+            "rejected_by": "FIELD_LIST_COMPLETE",
+            "semantic_failures": [
+              "FIELD_LIST_COMPLETE",
+              "FIELD_ALLOWS_PROFILE"
+            ]
+          },
+          {
+            "control": "field_check_by_truthiness",
+            "intended": "FIELD_KEY_PRESENCE",
+            "rejected_by": "FIELD_KEY_PRESENCE",
+            "semantic_failures": [
+              "FIELD_KEY_PRESENCE"
+            ]
+          },
+          {
+            "control": "field_check_on_merged_data",
+            "intended": "FIELD_SOURCE_REQ_BODY",
+            "rejected_by": "FIELD_SOURCE_REQ_BODY",
+            "semantic_failures": [
+              "FIELD_SOURCE_REQ_BODY",
+              "CLOSED_VOCABULARY"
+            ]
+          },
+          {
+            "control": "field_stripped_not_rejected",
+            "intended": "FIELD_REJECT_422",
+            "rejected_by": "FIELD_REJECT_422",
+            "semantic_failures": [
+              "FIELD_REJECT_422",
+              "CLOSED_VOCABULARY"
+            ]
+          },
+          {
+            "control": "field_guard_before_actor_guard",
+            "intended": "GUARD_ORDER",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "field_guard_after_service",
+            "intended": "GUARD_ORDER",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "field_guard_applies_to_admin",
+            "intended": "FIELD_SCOPE_PATIENT",
+            "rejected_by": "FIELD_SCOPE_PATIENT",
+            "semantic_failures": [
+              "FIELD_SCOPE_PATIENT"
+            ]
+          },
+          {
+            "control": "hr_for_user_denial_removed",
+            "intended": "GUARD_ORDER",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "for_user_compared_to_boolean",
+            "intended": "HR_FOR_USER_DENIED",
+            "rejected_by": "HR_FOR_USER_DENIED",
+            "semantic_failures": [
+              "HR_FOR_USER_DENIED"
+            ]
+          },
+          {
+            "control": "admin_for_user_denied",
+            "intended": "ADMIN_FOR_USER_ALLOWED",
+            "rejected_by": "ADMIN_FOR_USER_ALLOWED",
+            "semantic_failures": [
+              "ADMIN_FOR_USER_ALLOWED"
+            ]
+          },
+          {
+            "control": "admin_routes_denied",
+            "intended": "ADMIN_ALLOWED",
+            "rejected_by": "ADMIN_ALLOWED",
+            "semantic_failures": [
+              "ADMIN_ALLOWED"
+            ]
+          },
+          {
+            "control": "own_id_denied",
+            "intended": "OWN_USER_ALLOWED",
+            "rejected_by": "OWN_USER_ALLOWED",
+            "semantic_failures": [
+              "OWN_USER_ALLOWED"
+            ]
+          },
+          {
+            "control": "own_id_routes_pass_no_target",
+            "intended": "GUARD_TARGET",
+            "rejected_by": "GUARD_TARGET",
+            "semantic_failures": [
+              "GUARD_TARGET"
+            ]
+          }
+        ],
+        "exact_comparison_rejections": 0,
+        "typescript_evaluations": 0
+      },
+      "stderr": "",
+      "controller_sha256": "25aef90efe3e5142011789dd48d55452d5b1fef9f2e56d70c355e7606e191d74",
+      "script_sha256": "aa042640769150a15ccc350b69239d0d58f4105397ad9df31d02b24ae10b4ca7"
+    },
+    {
+      "phase": "whitespace_check_staged",
+      "argv": [
+        "git",
+        "diff",
+        "--cached",
+        "--check"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/authority-next",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "controller_sha256": "25aef90efe3e5142011789dd48d55452d5b1fef9f2e56d70c355e7606e191d74",
+      "script_sha256": "aa042640769150a15ccc350b69239d0d58f4105397ad9df31d02b24ae10b4ca7"
+    }
+  ],
+  "baseline": "9ea963f1f7b51aadedcfa7fc9918eb39a2fd737d",
+  "status": "SOURCE_ONLY_VERIFIED_RUNTIME_NOT_RUN",
+  "contract": {
+    "path": "documentation/planning/implementation/USER_ROUTE_AUTHORITY_CONTRACT.md",
+    "sha256": "9f68e4abb5c08e5795a0216341939a4d87a7682662be990058cbae366281ea99",
+    "pre_review": "internal Claude subagent, APPROVE WITH REQUIRED AMENDMENTS on ad6d69d (aca52d0b...)",
+    "final_review": "internal Claude subagents (Standards, Spec), APPROVE WITH NITS on 45966f3; nits applied, production unchanged"
+  },
+  "candidate": {
+    "path": "src1/modules/user/controller/index.ts",
+    "sha256": "25aef90efe3e5142011789dd48d55452d5b1fef9f2e56d70c355e7606e191d74",
+    "baseline_sha256": "7822f77598b7ad7ff1fa7ab32fca35d19a973de5d98ba43fca276f477525c5fc"
+  },
+  "script": {
+    "path": "output/qa/user-route-authority/source-check.py",
+    "sha256": "aa042640769150a15ccc350b69239d0d58f4105397ad9df31d02b24ae10b4ca7"
+  },
+  "pinned_files": {
+    "src1/routes/index.ts": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056",
+    "src1/modules/user/routes/index.ts": "5abcd4fd438ce0a05f24a72f85d40d1a9ab9b9374fd9056a442a8fe6481396bf",
+    "src1/modules/user/validation/index.ts": "db7d64de2ab5276753656681ef1b50cada2a108047ec24db195b384e28bf6fbb",
+    "src1/modules/user/services/index.ts": "e649883d1728b6a39a129d1cde08152628d7a8f13ba68da3de7764799f799290",
+    "src1/modules/user/repository/index.ts": "e730c52b26fbc773bcf92673190b68fe00c91162cb97f37eac1570cbbb85c4e1",
+    "src1/modules/user/model/index.ts": "8ab08c867008d9788fd2105b6ac840794fcd5d8b2c518de500119aa2536cf5c4",
+    "src1/modules/user/types/index.ts": "91d4b48e4749d113733f471d64093c7269dffcf13bf48577c8dbc2edce7d5b71",
+    "src1/modules/middleware/auth.ts": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+    "src1/modules/middleware/errorHandler.ts": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51",
+    "src1/modules/middleware/index.ts": "f98daa479b34ad8c3d7d4698d852b05d77004af3e200b69244c1eefecfac3b32",
+    "src1/modules/common/middleware/validation.ts": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef",
+    "src1/modules/common/utils/asyncHandler.ts": "59fe49db58678ef81242a654f7457f74b067b2583a3f8dc70918b61f50228bd9",
+    "src1/modules/common/types/error.ts": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+    "src1/modules/common/types/index.ts": "63ad3821027150d368e993903e954b4a80b776ff223caf322c104008239d4cbd",
+    "src1/modules/common/repository/BaseRepository.ts": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+    "src1/modules/auth/routes/index.ts": "1f3e6a8076fa0c8aa5f5edc1d95787fd955e81b40c6323a87a97197b54a73893",
+    "src1/modules/auth/controller/index.ts": "2fd46a2824e9842eb820b2a49714245ccd521a7880612ae6b48c2b6e9aed4528",
+    "src1/modules/auth/services/index.ts": "58323c9324411ab48e69d06e4e84ed76e9e01690a9200ac416a937d9a6836390",
+    "src1/modules/auth/validation/index.ts": "c0424a7bf6fb49226dec0aa39babec98221f50fcd842c4137120b8a30a3d3527",
+    "package.json": "65b171e77e8cd3bfd37eb691cf9ce310d9108cedbf571232bd4859c4b16895ab",
+    "package-lock.json": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080",
+    "tsconfig.json": "5555c293a75c85c3f89a539bd2b1be6db1953ffa746b43836929cdc20b9355c3"
+  },
+  "not_run": "No TypeScript import/evaluation, compiler, test suite, application, DB, provider, Docker, network or install. Source checks are not runtime, zero-effect or client-compatibility evidence; mounted fixtures await full C3 admission.",
+  "superseded_runs_at_45966f3": [
+    {
+      "phase": "after_edit_amendment_accepted",
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "-I",
+        "output/qa/user-route-authority/source-check.py"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/authority-next",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": {
+        "status": "SOURCE_ONLY_VERIFIED_RUNTIME_NOT_RUN",
+        "baseline": "9ea963f1f7b51aadedcfa7fc9918eb39a2fd737d",
+        "source_sha256": "25aef90efe3e5142011789dd48d55452d5b1fef9f2e56d70c355e7606e191d74",
+        "frozen_prefix_sha256": "6bcedaf84c6acc8e7021df3575e89b79abc9e75d6de37fd33aa4eded8ba8fb1a",
+        "guarded_handlers": [
+          "create",
+          "getAll",
+          "getById",
+          "update",
+          "delete"
+        ],
+        "pinned_files": 22,
+        "typescript_evaluations": 0
+      },
+      "stderr": "",
+      "controller_sha256": "25aef90efe3e5142011789dd48d55452d5b1fef9f2e56d70c355e7606e191d74",
+      "script_sha256": "167486bbc64f7b7ccb63e3aabfa2fb53eb3ed4d7ceef0cebb740e922ab7343fa"
+    },
+    {
+      "phase": "negative_controls_rejected",
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "-I",
+        "output/qa/user-route-authority/source-check.py",
+        "--negative-controls"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/authority-next",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": {
+        "status": "SOURCE_NEGATIVES_REJECTED",
+        "control_count": 40,
+        "controls": [
+          {
+            "control": "baseline_controller",
+            "rejected_by": "HELPER_PRESENT",
+            "semantic_failures": [
+              "HELPER_PRESENT",
+              "HELPER_PRESENT",
+              "HELPER_PRESENT",
+              "GUARD_ORDER",
+              "GUARD_ORDER",
+              "GUARD_ORDER",
+              "GUARD_ORDER",
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "create_actor_guard_removed",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "create_actor_guard_after_service",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "getAll_actor_guard_removed",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "getAll_actor_guard_after_service",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "getById_actor_guard_removed",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "getById_actor_guard_after_service",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "update_actor_guard_removed",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "update_actor_guard_after_service",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "delete_actor_guard_removed",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "delete_actor_guard_after_service",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "inverted_own_id_comparison",
+            "rejected_by": "OWN_USER_ALLOWED",
+            "semantic_failures": [
+              "OWN_USER_ALLOWED",
+              "CROSS_USER_DENIED"
+            ]
+          },
+          {
+            "control": "identity_check_disabled",
+            "rejected_by": "IDENTITY_401",
+            "semantic_failures": [
+              "IDENTITY_401"
+            ]
+          },
+          {
+            "control": "targetless_user_admitted_on_create",
+            "rejected_by": "GUARD_TARGET",
+            "semantic_failures": [
+              "GUARD_TARGET"
+            ]
+          },
+          {
+            "control": "non_user_type_admitted_as_owner",
+            "rejected_by": "OTHER_TYPES_DENIED",
+            "semantic_failures": [
+              "OTHER_TYPES_DENIED",
+              "UNKNOWN_TYPES_DENIED"
+            ]
+          },
+          {
+            "control": "unknown_type_admitted_by_deny_list",
+            "rejected_by": "UNKNOWN_TYPES_DENIED",
+            "semantic_failures": [
+              "UNKNOWN_TYPES_DENIED"
+            ]
+          },
+          {
+            "control": "hr_without_corporate_admitted",
+            "rejected_by": "HR_CORPORATE_REQUIRED",
+            "semantic_failures": [
+              "HR_CORPORATE_REQUIRED"
+            ]
+          },
+          {
+            "control": "id_cast_comparison",
+            "rejected_by": "STRICT_STRING_EQUALITY",
+            "semantic_failures": [
+              "STRICT_STRING_EQUALITY",
+              "CLOSED_VOCABULARY"
+            ]
+          },
+          {
+            "control": "loose_id_comparison",
+            "rejected_by": "STRICT_STRING_EQUALITY",
+            "semantic_failures": [
+              "STRICT_STRING_EQUALITY",
+              "CLOSED_VOCABULARY"
+            ]
+          },
+          {
+            "control": "denial_message_echoes_id",
+            "rejected_by": "FIXED_DENIAL_MESSAGE",
+            "semantic_failures": [
+              "FIXED_DENIAL_MESSAGE"
+            ]
+          },
+          {
+            "control": "actor_guard_async_unawaited",
+            "rejected_by": "GUARD_SYNCHRONOUS",
+            "semantic_failures": [
+              "GUARD_SYNCHRONOUS"
+            ]
+          },
+          {
+            "control": "actor_guard_wrapped_in_try_catch",
+            "rejected_by": "NO_TRY_CATCH",
+            "semantic_failures": [
+              "NO_TRY_CATCH",
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "forbidden_field_omitted_isActive",
+            "rejected_by": "FIELD_LIST_COMPLETE",
+            "semantic_failures": [
+              "FIELD_LIST_COMPLETE",
+              "FIELD_KEY_PRESENCE"
+            ]
+          },
+          {
+            "control": "forbidden_field_omitted_isVerified",
+            "rejected_by": "FIELD_LIST_COMPLETE",
+            "semantic_failures": [
+              "FIELD_LIST_COMPLETE",
+              "FIELD_KEY_PRESENCE"
+            ]
+          },
+          {
+            "control": "forbidden_field_omitted_isCorporateEmailVerified",
+            "rejected_by": "FIELD_LIST_COMPLETE",
+            "semantic_failures": [
+              "FIELD_LIST_COMPLETE",
+              "FIELD_KEY_PRESENCE"
+            ]
+          },
+          {
+            "control": "forbidden_field_omitted_corporateId",
+            "rejected_by": "FIELD_LIST_COMPLETE",
+            "semantic_failures": [
+              "FIELD_LIST_COMPLETE",
+              "FIELD_KEY_PRESENCE"
+            ]
+          },
+          {
+            "control": "forbidden_field_omitted_isCorporateUser",
+            "rejected_by": "FIELD_LIST_COMPLETE",
+            "semantic_failures": [
+              "FIELD_LIST_COMPLETE",
+              "FIELD_KEY_PRESENCE"
+            ]
+          },
+          {
+            "control": "forbidden_list_overreaches_name",
+            "rejected_by": "FIELD_LIST_COMPLETE",
+            "semantic_failures": [
+              "FIELD_LIST_COMPLETE",
+              "FIELD_ALLOWS_PROFILE"
+            ]
+          },
+          {
+            "control": "field_check_by_truthiness",
+            "rejected_by": "FIELD_KEY_PRESENCE",
+            "semantic_failures": [
+              "FIELD_KEY_PRESENCE"
+            ]
+          },
+          {
+            "control": "field_check_on_merged_data",
+            "rejected_by": "FIELD_SOURCE_REQ_BODY",
+            "semantic_failures": [
+              "FIELD_SOURCE_REQ_BODY",
+              "CLOSED_VOCABULARY"
+            ]
+          },
+          {
+            "control": "field_stripped_not_rejected",
+            "rejected_by": "FIELD_REJECT_422",
+            "semantic_failures": [
+              "FIELD_REJECT_422",
+              "CLOSED_VOCABULARY"
+            ]
+          },
+          {
+            "control": "field_guard_before_actor_guard",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "field_guard_after_service",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "field_guard_applies_to_admin",
+            "rejected_by": "FIELD_SCOPE_PATIENT",
+            "semantic_failures": [
+              "FIELD_SCOPE_PATIENT"
+            ]
+          },
+          {
+            "control": "hr_for_user_denial_removed",
+            "rejected_by": "GUARD_ORDER",
+            "semantic_failures": [
+              "GUARD_ORDER"
+            ]
+          },
+          {
+            "control": "for_user_compared_to_boolean",
+            "rejected_by": "HR_FOR_USER_DENIED",
+            "semantic_failures": [
+              "HR_FOR_USER_DENIED"
+            ]
+          },
+          {
+            "control": "admin_for_user_denied",
+            "rejected_by": "ADMIN_FOR_USER_ALLOWED",
+            "semantic_failures": [
+              "ADMIN_FOR_USER_ALLOWED"
+            ]
+          },
+          {
+            "control": "admin_routes_denied",
+            "rejected_by": "ADMIN_ALLOWED",
+            "semantic_failures": [
+              "ADMIN_ALLOWED"
+            ]
+          },
+          {
+            "control": "own_id_denied",
+            "rejected_by": "OWN_USER_ALLOWED",
+            "semantic_failures": [
+              "OWN_USER_ALLOWED"
+            ]
+          },
+          {
+            "control": "own_id_routes_pass_no_target",
+            "rejected_by": "GUARD_TARGET",
+            "semantic_failures": [
+              "GUARD_TARGET"
+            ]
+          }
+        ],
+        "exact_comparison_rejections": 0,
+        "typescript_evaluations": 0
+      },
+      "stderr": "",
+      "controller_sha256": "25aef90efe3e5142011789dd48d55452d5b1fef9f2e56d70c355e7606e191d74",
+      "script_sha256": "167486bbc64f7b7ccb63e3aabfa2fb53eb3ed4d7ceef0cebb740e922ab7343fa"
+    },
+    {
+      "phase": "whitespace_check_staged",
+      "argv": [
+        "git",
+        "diff",
+        "--cached",
+        "--check"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/authority-next",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "controller_sha256": "25aef90efe3e5142011789dd48d55452d5b1fef9f2e56d70c355e7606e191d74",
+      "script_sha256": "167486bbc64f7b7ccb63e3aabfa2fb53eb3ed4d7ceef0cebb740e922ab7343fa"
+    }
+  ]
+}
