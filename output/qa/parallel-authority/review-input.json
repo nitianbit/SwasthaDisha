@@ -1,0 +1,15 @@
+{
+  "baseline": "bfb608ea1a89551f6cd72ec5ee1349a3ee7abef7",
+  "branch": "m0/parallel-authority",
+  "status": "FROZEN_FOR_DIRECT_INDEPENDENT_REVIEWS",
+  "scope": "four own-recipient notification handlers; controller-only production amendment",
+  "files_sha256": {
+    "src1/modules/notification/controller/index.ts": "37e8a353299cbd69df87cb904c0515061b160e6c73c699e23845349b09723a5c",
+    "documentation/planning/implementation/PARALLEL_AUTHORITY_SLICE.md": "db9aa22ca14f47b4b287598cba4c5984bd42cd367c4aba6100dbe2ca1c1b624e",
+    "output/qa/parallel-authority/source-check.py": "88418fec35104a023951b8c7a1aab9076e72f31265f88799cb9959b9f907d089",
+    "output/qa/parallel-authority/source-verification.json": "8a5ef81bb062502fa77fdf3dfbfcdabf27c50011a7dedffdd9c1fc42e83485d9"
+  },
+  "production_patch_sha256": "a7982b039ef359689c0c722b17518d2b323660089155871e9896451f0b059364",
+  "runtime_or_operational_admission": false,
+  "shared_sources_or_registers_changed": false
+}

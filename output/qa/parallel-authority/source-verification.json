@@ -1,0 +1,109 @@
+{
+  "baseline": "bfb608ea1a89551f6cd72ec5ee1349a3ee7abef7",
+  "status": "SOURCE_ONLY_VERIFIED_RUNTIME_NOT_RUN",
+  "commands": [
+    {
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "output/qa/parallel-authority/source-check.py"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/authority",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 1,
+      "stdout": {
+        "status": "REJECTED",
+        "reason": "Missing or changed own-recipient authority guard",
+        "typescript_evaluations": 0
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "output/qa/parallel-authority/source-check.py"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/authority",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": {
+        "status": "SOURCE_ONLY_VERIFIED_RUNTIME_NOT_RUN",
+        "baseline": "bfb608ea1a89551f6cd72ec5ee1349a3ee7abef7",
+        "source_sha256": "37e8a353299cbd69df87cb904c0515061b160e6c73c699e23845349b09723a5c",
+        "guarded_handlers": [
+          "getByUserId",
+          "getUnreadByUserId",
+          "getUnreadCount",
+          "markAllAsRead"
+        ],
+        "typescript_evaluations": 0
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "output/qa/parallel-authority/source-check.py",
+        "--negative-controls"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/authority",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": {
+        "status": "SOURCE_NEGATIVES_REJECTED",
+        "controls": [
+          "original_unguarded_controller",
+          "getByUserId_guard_removed",
+          "getByUserId_guard_after_service",
+          "getUnreadByUserId_guard_removed",
+          "getUnreadByUserId_guard_after_service",
+          "getUnreadCount_guard_removed",
+          "getUnreadCount_guard_after_service",
+          "markAllAsRead_guard_removed",
+          "markAllAsRead_guard_after_service",
+          "inverted_recipient_comparison",
+          "missing_identity_guard",
+          "admin_cross_recipient_bypass"
+        ],
+        "typescript_evaluations": 0
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/authority",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "source_sha256": "37e8a353299cbd69df87cb904c0515061b160e6c73c699e23845349b09723a5c",
+  "recipe_sha256": "88418fec35104a023951b8c7a1aab9076e72f31265f88799cb9959b9f907d089",
+  "contract_sha256": "12751408b5be67024e063822eab4a65b0d644aa4d9937c94cb7fa7bc54b9d1d5",
+  "preimplementation_review": {
+    "reviewer": "internal Codex /root",
+    "decision": "APPROVE SOURCE-ONLY",
+    "scope": "private own-recipient guard plus four pre-service checks, no runtime admission"
+  },
+  "runtime_scenarios": "NOT_RUN; complete C3 admission still required; no TC-REV-011 or TC-SEC-001 closure",
+  "operations": {
+    "typescript_or_extracted_method_evaluations": 0,
+    "application_imports": 0,
+    "provider_or_DB_calls": 0,
+    "Docker_calls": 0,
+    "test_suites_or_compilers": 0,
+    "operational_access": 0
+  }
+}
