@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateReceipt, requestRun } from './launch.mjs';
+import { validateReceipt, requestRun, validateOperatorEnvironment } from './launch.mjs';
 const decision = 'APPROVE_ONE_FIXED_AUTH_API_RUN';
 const expected = { schema: 'SD-AUTH-API-INVOCATION-APPROVAL-1', decision, sourceCommit: 'a'.repeat(40), templateSha: 'b'.repeat(64) };
 const receipt = () => ({ ...expected, reviewers: [{ agent: '/root/standards', decision }, { agent: '/root/spec', decision }] });
@@ -37,4 +37,16 @@ test('an entered pending run is awaited without an intervening report write', as
   const pending = requestRun(() => { called = true; return new Promise(resolve => { release = resolve; }); }, report, () => writes.push({ ...report }));
   assert.equal(called, true); assert.equal(report.runEntered, true); assert.equal(writes.length, 1);
   release('safe synthetic result'); assert.equal(await pending, 'safe synthetic result');
+});
+test('operator admits exact clean environment without OS locale metadata', () => {
+  assert.doesNotThrow(() => validateOperatorEnvironment({ PATH: '/usr/bin:/bin', TMPDIR: '/private/tmp' }));
+});
+test('operator admits only the observed additional macOS locale key', () => {
+  assert.doesNotThrow(() => validateOperatorEnvironment({ PATH: '/usr/bin:/bin', TMPDIR: '/private/tmp', __CF_USER_TEXT_ENCODING: 'synthetic-platform-metadata' }));
+});
+for (const key of ['NODE_OPTIONS', 'JWT_SECRET_KEY', 'UNREVIEWED_LOCALE']) test('operator still rejects ambient field: ' + key, () => {
+  assert.throws(() => validateOperatorEnvironment({ PATH: '/usr/bin:/bin', TMPDIR: '/private/tmp', [key]: 'synthetic' }), /Unreviewed/);
+});
+test('operator refuses an alternate temporary root', () => {
+  assert.throws(() => validateOperatorEnvironment({ PATH: '/usr/bin:/bin', TMPDIR: '/tmp' }), /Unreviewed/);
 });

@@ -1,0 +1,35 @@
+{
+  "status": "OFFLINE_HOST_ENVIRONMENT_PASS_REAL_API_NOT_RUN",
+  "tests": 90,
+  "failures": 0,
+  "skips": 0,
+  "preflight": {
+    "command": "env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /private/tmp/m0-node22/node -e 'process.stdout.write(JSON.stringify({version:process.version,keys:Object.keys(process.env).sort()}))'",
+    "observed": {
+      "version": "v22.23.4",
+      "keys": [
+        "PATH",
+        "TMPDIR",
+        "__CF_USER_TEXT_ENCODING"
+      ]
+    },
+    "applicationImports": 0,
+    "DockerCalls": 0
+  },
+  "command": "env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /private/tmp/m0-node22/node test/api-runtime/unit.mjs",
+  "sourceSha256": {
+    "test/api-runtime/launch.mjs": "9c6d1c805de4c50542667b90532219c54666b8a764ee5672055f641938b099ed",
+    "test/api-runtime/launch.test.mjs": "9e9316041db0d3a7977a2e78130b9f1d26f331bb51a6c069327257a0c6c719be",
+    "test/api-runtime/unit.mjs": "16f2144a227637e5be3be2d905c50179376c90efeba9d69286097809385a8d17",
+    "test/api-runtime/platform.mjs": "a86d800f283da8a1a5ec2d596300b6cf2a8fda472b64d83273f243318c6ccef4",
+    "test/api-runtime/profile.json": "0ff9d1a10f6d6a34bda10584f4ed3d1308aab707f20d048674019736643859ca",
+    "test/application/app-bundle.mjs": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2"
+  },
+  "oldRuntimeApprovals": "not consumed; no runtime receipt/claim/invocation",
+  "limits": [
+    "Only observed OS locale key added to host input admission",
+    "No host environment inheritance to Git/Docker/container",
+    "No root dependency/runtime/start adoption",
+    "Compiled72source inputs unchanged"
+  ]
+}

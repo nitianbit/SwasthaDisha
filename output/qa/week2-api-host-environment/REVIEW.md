@@ -1,0 +1,9 @@
+# Host locale admission amendment
+
+A pure keys-only pinnedNode22preflight under the exact env-i command observed PATH,TMPDIR,__CF_USER_TEXT_ENCODING. The previous outer launcher allowed only the firsttwo, so the lead withheld actual invocation before a runtime receipt/claim was created. No API/Docker/app launch happened; the earlier d0/a826 decisions remain unused and do not bind changed code.
+
+Only that observed OS locale metadata key is now admitted at the host operator. Its value is ignored and never forwarded to Git, Docker or either container, whose fresh fixed environments are unchanged. TMPDIR/node/version/hash/argv/preload/operational configuration and every C3/resource/provider/cleanup/retry restriction are retained. Six pure checks cover exact clean/observed metadata and rejected unknown/preload/secret/temp-root fields; combined90offline tests pass.
+
+Both actual nonauthor internal Codex reviewers approved exact launcher9c6d1c805de4c50542667b90532219c54666b8a764ee5672055f641938b099ed, tests9e9316041db0d3a7977a2e78130b9f1d26f331bb51a6c069327257a0c6c719be and runner16f2144a227637e5be3be2d905c50179376c90efeba9d69286097809385a8d17 as APPROVE_SOURCE_ONLY. /root/backend_boot_path and /root/local_claude_review_prep independently reran90/90fakechecks,0fail/skip/TODO; neither ran application, driver, Docker, compiler or model code. Parentplatforma86d800f/profile/network remain unchanged.
+
+Although transparent immutable metadata-only rebinding was technically reviewed as possible, no new rebinding helper or artifact rewrite was implemented. The lead keeps the existing fixed fresh locked-install/emit factory for straightforward complete new-commit provenance. A new exact clean-source preparation approval and concrete template/one-run decisions remain required. This source record supplies no runtime authority.

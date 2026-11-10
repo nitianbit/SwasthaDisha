@@ -48,10 +48,18 @@ export async function requestRun(run, report, save) {
   return await pending;
 }
 
+export function validateOperatorEnvironment(environment) {
+  // macOS injects this locale metadata even after env -i. It is never forwarded
+  // to Git, Docker or the container: each has a fresh fixed environment.
+  need(environment && typeof environment === 'object' && !Array.isArray(environment)
+    && Object.keys(environment).every((key) => ['PATH', 'TMPDIR', '__CF_USER_TEXT_ENCODING'].includes(key))
+    && environment.TMPDIR === '/private/tmp', 'Unreviewed operator environment');
+}
+
 async function main() {
+  validateOperatorEnvironment(process.env);
   need(process.argv.length === 2 && process.execArgv.length === 0
-    && Object.keys(process.env).every((key) => ['PATH', 'TMPDIR'].includes(key))
-    && process.env.TMPDIR === '/private/tmp' && process.version === 'v22.23.4'
+    && process.version === 'v22.23.4'
     && process.execPath === '/private/tmp/m0-node22/node' && sha(regular(process.execPath)) === NODE_SHA,
   'Use the exact clean-env pinned operator invocation');
   const approvalStat = lstatSync(APPROVAL);
