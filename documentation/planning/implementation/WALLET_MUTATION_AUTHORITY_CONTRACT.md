@@ -1,6 +1,6 @@
 # Wallet mutation and read authority slice: contract
 
-10 November 2026, branch `m0/money-provider-clinical`, baseline `9ea963f`. This is amendment 1. An internal Claude subagent pre-reviewed `80da7ff` and returned APPROVE WITH REQUIRED AMENDMENTS; the lead widened the scope. Runtime is **NOT RUN**.
+10 November 2026, branch `m0/money-provider-clinical`, baseline `9ea963f`. This is amendment 2. Amendment 1 followed an internal Claude subagent pre-review of `80da7ff` (APPROVE WITH REQUIRED AMENDMENTS) and the lead's wider scope. Amendment 2 follows the nonauthor internal Claude final reviews of `6facb0f` (Standards: APPROVE WITH NITS; Spec: REQUEST CHANGES, documentation only). Production code is unchanged from `6facb0f`. Runtime is **NOT RUN**.
 
 The production change touches only `src1/modules/wallet/routes/index.ts` (baseline SHA-256 `18261ce7a70a8e870d5cabbb675732aa0a424800fe44986ddbec0ec653c83f85`). It adds a local own-or-admin helper and imports the existing `requireAdmin`. Shared middleware is not edited.
 
@@ -25,6 +25,8 @@ All routes are mounted under `authenticate` (`src1/routes/index.ts:72`). Each gu
 | `GET /api/v1/wallet/user/:userId/transactions` (filters) | `requireOwnWalletOrAdmin` | same | same |
 
 ## Current behaviour
+
+Line numbers in this section are baseline `9ea963f` line numbers.
 
 **No route checks the caller's role** (`src1/modules/wallet/routes/index.ts:22-56`, `:65-78`).
 
@@ -79,13 +81,17 @@ Together these break the M0-B wallet row "No caller-chosen initialBalance/credit
 
 ## Residual non-admin value paths
 
-This slice does **not** fully contain the wallet. Remaining paths:
+This slice does **not** fully contain the wallet. Known remaining paths include the following; the list is not claimed to be exhaustive:
 1. A forged webhook cancellation triggers a refund (`externalBookings/services/index.ts:3203-3212`).
 2. Concurrent refunds can be paid twice (`bookings/services/index.ts:460-514`; `externalBookings/services:273-323`; `payment/services:1392-1433`).
 3. A recharge coupon credits more than was collected (`wallet/services/index.ts:305-347`; `payment/services:1318`).
 4. Referral rewards can be farmed (`referral/services/index.ts:194-232`; D2).
 5. The JWT key fallback.
 6. The ID-based reads listed under follow-ups.
+7. **Pharmacy debit of any patient's wallet through bookings.** Pharmacy self-signup is public (`auth/services/index.ts:147-150`). A pharmacy principal can then `POST /api/v1/bookings` with any body `userId` and `useWalletBalance: true` (`bookings/controller/index.ts:34-45`). That debits the patient's wallet (`bookings/services/index.ts:745,800-807,363-415`); the bookings router has no pharmacy guard. Whether pharmacy-assisted bookings may spend a customer's wallet is a product and finance decision, which backend then implements.
+8. **Refund forfeiture through booking PUT.** Any non-HR principal can send `PUT /api/v1/bookings/:id {status:'cancelled'}` for any booking, because `userId` is optional (`bookings/controller/index.ts:296`). This sets `paymentStatus:'refunded'` without a wallet refund (`bookings/services/index.ts:1479-1481`). A later `cancelBooking` then returns early (`:1623-1625`), so the money is silently lost. The fix needs a per-role field allow-list owned by product and clinical, which backend then implements.
+
+Paths 1–6 are owned as stated above: integration/operations (1), backend/DevOps (2), finance (3, 4) and the lead for auth/security (5). Path 6 is a follow-up for this lane's backend.
 
 ## Compatibility
 
@@ -94,7 +100,9 @@ These calls will now get 403:
 - the patient-token credit and debit calls at `:1601-1615` and `:1932-1947`;
 - any patient `POST /api/v1/wallet`.
 
-It is unverified whether HR, doctor or pharmacy clients read other users' wallets. No supported client revision was inspected.
+It is unverified whether HR, doctor or pharmacy clients read other users' wallets. The specific risk is a pharmacy-assisted booking client that reads `GET /api/v1/wallet/user/:customerId`: it now receives 403. No supported client revision was inspected.
+
+**Considered, not adopted:** limiting own-ID reads to `userType === 'user'`. It is recorded as a follow-up, not a containment defect.
 
 ## Decisions
 
@@ -106,12 +114,12 @@ It is unverified whether HR, doctor or pharmacy clients read other users' wallet
 
 `output/qa/money-provider-clinical/source-check.py` uses only the Python standard library. It reads TypeScript as text and never imports or evaluates it. Run it with `/opt/homebrew/bin/python3 -I` if present, otherwise `python3 -I`.
 
-**Named semantic checks, in order:**
+**Named checks, in order (1–14 diagnostic; 15 binding):**
 
 | # | Check |
 | --- | --- |
 | 1 | `required_imports` |
-| 2 | `route_inventory`: exactly the nine baseline registrations, each registered once |
+| 2 | `route_inventory`: the nine baseline registrations, parsed from the standard `walletRouter.<method>(` layout |
 | 3 | `admin_guard_first` |
 | 4 | `own_guard_first` |
 | 5 | `unguarded_routes_unchanged` |
@@ -128,14 +136,17 @@ It is unverified whether HR, doctor or pharmacy clients read other users' wallet
 
 The real tree must also pass three file checks:
 - `pinned_files`: byte equality for `common/middleware/validation.ts`, `middleware/errorHandler.ts`, `middleware/index.ts`, `middleware/auth.ts` and `config/config.ts`;
-- `diff_scope`: `git diff --name-only 9ea963f -- src1 test` lists only the wallet routes file;
-- `untracked_scope`: no untracked files appear in `src1` or `test`.
+- `diff_scope`: `git diff --name-only 9ea963f -- src1 test tsconfig.json package.json package-lock.json` lists only the wallet routes file;
+- `untracked_scope`: no untracked files appear in the same paths.
+
+**Binding gate.** `exact_transform` and `diff_scope` together are the binding gate; `pinned_files` and `untracked_scope` are also mandatory. The named semantic checks are **diagnostic substring lints**: they explain why a defect fails, but they do not prove the file safe by themselves. Known semantic bypasses are retained as binding-gate controls.
 
 **Expected outcomes:**
 - The baseline file is rejected before the edit, and the amendment is accepted after it.
-- Every negative control is rejected by a named semantic check that runs before `exact_transform`. The receipt records which check rejected it.
+- There are 30 diagnostic controls: 29 edited controls plus the baseline. Each must be rejected by a named semantic check before `exact_transform`.
+- There are 6 binding-gate controls, listed at the end of the control list. Each must be rejected, and the receipt records which check rejected it.
 
-**Negative controls:**
+**Diagnostic controls** (beyond the baseline):
 - each guard removed (including `GET /` left open);
 - each guard placed after `validate`;
 - the wrong guard: `requireAdminOrOperationalPharmacy`, `authenticate` or `requireAdminOrHR`;
@@ -149,6 +160,14 @@ The real tree must also pass three file checks:
 - a duplicate unguarded route;
 - the import path changed;
 - `requireAdmin` weakened.
+
+**Binding-gate controls**, which reproduce bypasses found in review:
+- an unguarded chained `.get`;
+- a duplicate `(walletRouter as any).post`;
+- `setImmediate(next)` in the helper;
+- `Object.assign(req.params, req.query)` after the owner check;
+- a shadowed `requireAdmin`;
+- a different exported router.
 
 **Evidence:** `source-verification.json` records the command, cwd, argv, environment, exit code, stdout, stderr and hashes, followed by `git diff --check`. These checks prove neither mounted behaviour, zero runtime effects nor client compatibility.
 

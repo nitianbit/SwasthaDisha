@@ -1,6 +1,9 @@
 """Verify the wallet authority amendment as source data, never as TypeScript.
 
 Reads TypeScript files as text only. Nothing is imported, compiled or evaluated.
+The binding gate is exact_transform plus diff_scope (with pinned_files and
+untracked_scope). The named semantic checks are diagnostic substring lints that
+explain a rejection; known semantic bypasses are retained as binding-gate controls.
 """
 import argparse
 import hashlib
@@ -22,6 +25,7 @@ PINNED = (
     AUTH,
     'src1/config/config.ts',
 )
+SCOPE_PATHS = ('src1', 'test', 'tsconfig.json', 'package.json', 'package-lock.json')
 ADMIN_GUARD = 'requireAdmin'
 OWN_GUARD = 'requireOwnWalletOrAdmin'
 ADMIN_ROUTES = (('post', '/'), ('post', '/transactions'), ('put', '/:id'), ('get', '/'))
@@ -199,10 +203,10 @@ def check(candidate, auth, baseline, expected):
 def tree_checks():
     for path in PINNED:
         require((ROOT / path).read_bytes() == git('show', BASELINE + ':' + path), 'pinned_files', 'pinned file changed: ' + path)
-    changed = git('diff', '--name-only', BASELINE, '--', 'src1', 'test').decode().split()
-    require(changed == [ROUTES], 'diff_scope', 'source/test diff is not exactly the wallet routes file: ' + ','.join(changed))
-    untracked = git('ls-files', '--others', '--exclude-standard', '--', 'src1', 'test').decode().split()
-    require(not untracked, 'untracked_scope', 'untracked source/test files: ' + ','.join(untracked))
+    changed = git('diff', '--name-only', BASELINE, '--', *SCOPE_PATHS).decode().split()
+    require(changed == [ROUTES], 'diff_scope', 'scoped diff is not exactly the wallet routes file: ' + ','.join(changed))
+    untracked = git('ls-files', '--others', '--exclude-standard', '--', *SCOPE_PATHS).decode().split()
+    require(not untracked, 'untracked_scope', 'untracked scoped files: ' + ','.join(untracked))
 
 
 def remove_line(text, method, path, guard):
@@ -275,6 +279,24 @@ def controls(baseline, expected, auth):
     return cases
 
 
+def binding_gate_controls(expected, auth):
+    helper = helper_body(expected)
+    get_by_id_end = "  catchAsync(walletController.getById)\n);\n"
+    return [
+        ('chained_unguarded_get', expected.replace(
+            get_by_id_end, "  catchAsync(walletController.getById)\n).get('/all', catchAsync(walletController.getAll));\n", 1), auth),
+        ('duplicate_cast_router_post', expected.replace(
+            'export default walletRouter;\n',
+            "(walletRouter as any).post('/transactions', catchAsync(walletController.addTransaction));\n\nexport default walletRouter;\n", 1), auth),
+        ('helper_setImmediate_next', expected.replace(helper, helper.replace('  try {\n', '  try {\n    setImmediate(next);\n', 1), 1), auth),
+        ('params_reassigned_after_owner_check', expected.replace(helper, helper.replace(
+            '    next();\n  } catch', '    Object.assign(req.params, req.query);\n    next();\n  } catch', 1), 1), auth),
+        ('shadowed_requireAdmin', expected.replace(
+            HELPER_ANCHOR, HELPER_ANCHOR + 'const requireAdmin = (_req: AuthRequest, _res: Response, next: NextFunction): void => next();\n\n', 1), auth),
+        ('different_exported_router', expected.replace('export default walletRouter;\n', 'export default Router();\n', 1), auth),
+    ]
+
+
 def verify(negative_controls):
     baseline, auth = baseline_sources()
     expected = expected_routes(baseline)
@@ -288,11 +310,23 @@ def verify(negative_controls):
             except Rejected as rejection:
                 if rejection.check == 'exact_transform':
                     raise AssertionError('control only rejected by exact comparison: ' + name)
-                results.append({'control': name, 'rejected_by': rejection.check, 'reason': rejection.reason})
+                results.append({'control': name, 'class': 'diagnostic', 'rejected_by': rejection.check, 'reason': rejection.reason})
             else:
                 raise AssertionError('source negative accepted: ' + name)
+        for name, candidate, auth_text in binding_gate_controls(expected, auth):
+            assert candidate != expected, 'control is not a mutation: ' + name
+            try:
+                check(candidate, auth_text, baseline, expected)
+            except Rejected as rejection:
+                results.append({'control': name, 'class': 'binding_gate', 'rejected_by': rejection.check, 'reason': rejection.reason})
+            else:
+                raise AssertionError('binding-gate control accepted: ' + name)
+        diagnostic = [r for r in results if r['class'] == 'diagnostic']
         return {'status': 'SOURCE_NEGATIVES_REJECTED', 'baseline': BASELINE, 'positive_control': 'expected_candidate_accepted',
-                'control_count': len(results), 'controls': results, 'typescript_evaluations': 0}
+                'binding_gate': 'exact_transform + diff_scope (+ pinned_files, untracked_scope); semantic checks are diagnostic',
+                'control_count': len(results), 'diagnostic_controls': len(diagnostic),
+                'diagnostic_edited_controls': len(diagnostic) - 1, 'binding_gate_controls': len(results) - len(diagnostic),
+                'controls': results, 'typescript_evaluations': 0}
     candidate = (ROOT / ROUTES).read_text(encoding='utf-8')
     check(candidate, (ROOT / AUTH).read_text(encoding='utf-8'), baseline, expected)
     tree_checks()
