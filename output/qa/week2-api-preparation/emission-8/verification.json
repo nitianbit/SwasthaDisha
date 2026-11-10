@@ -1,0 +1,66 @@
+{
+  "status": "PREPARED_NOT_EXECUTED",
+  "invocations": 1,
+  "exitObservation": "TOOL_OUTPUT_TRUNCATED; actual completed result and descriptor independently verified",
+  "sourceRoot": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-8",
+  "sourceCommit": "0a6da87051dc6eae8c2415c4ea3ce09ded414662",
+  "descriptorSha": "fac08229a4bbee1b1ced804babc86cf5655de7d56364cbacc0baafe8298e8d52",
+  "lockSha": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+  "portsSha": "0c4fbf77a3d35be63fdb833ad357964240556879d5ef2c49f2785929e10a6d59",
+  "filesVerified": 2855,
+  "bytes": 44857527,
+  "sourceInputs": 85,
+  "nominalCasesNotRun": 60,
+  "mutantCasesNotRun": 17,
+  "modelCount": 13,
+  "reachableModules": 63,
+  "metadataControls": [
+    {
+      "id": "OMITTED_WELLNESS_PACKAGE",
+      "rejected": true
+    },
+    {
+      "id": "EXTRA_UNREACHABLE_MODEL",
+      "rejected": true
+    },
+    {
+      "id": "DUPLICATE_MODEL",
+      "rejected": true
+    },
+    {
+      "id": "WRONG_MODEL_SOURCE",
+      "rejected": true
+    },
+    {
+      "id": "OMITTED_DEPENDENT",
+      "rejected": true
+    }
+  ],
+  "semanticDiagnostics": 816,
+  "semanticDiagnosticsByteEquivalentToEmission7": true,
+  "transpileDiagnostics": 0,
+  "compilation": "TRANSPILE_ONLY_NOT_TYPECHECKED",
+  "fullBuild": false,
+  "actualPreparationReviewers": [
+    "/root/backend_boot_path",
+    "/root/local_claude_review_prep"
+  ],
+  "decision": "APPROVE_LOCKED_INSTALL_AND_EMIT_ONLY",
+  "approvalConsumed": true,
+  "buildArea": "/private/tmp/sd-auth-api-build-1f746912-d1a0-4a99-a2f7-281c797a5eb8",
+  "applicationEvaluations": 0,
+  "DockerCalls": 0,
+  "fileChangesFromEmission7": [
+    "runtime-plan.json",
+    "scenario.cjs",
+    "ports-manifest.json",
+    "bootstrap.cjs"
+  ],
+  "fileAdditionsFromEmission7": [
+    "compiled/mutants/JWT_CONFIG_PUBLISHED_FALLBACK.js",
+    "compiled/mutants/JWT_CONFIG_PRODUCTION_ONLY_GUARD.js",
+    "compiled/mutants/JWT_CONFIG_TRIMMED_RETURN.js"
+  ],
+  "fileDeletionsFromEmission7": [],
+  "runtimeDecision": "PENDING_TWO_EXACT_REVIEWS"
+}

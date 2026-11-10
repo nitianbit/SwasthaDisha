@@ -1,0 +1,45 @@
+{
+  "status": "FOCUSED_API_PASS",
+  "invocations": 1,
+  "exit": 0,
+  "sourceCommit": "0a6da87051dc6eae8c2415c4ea3ce09ded414662",
+  "templateSha": "fac08229a4bbee1b1ced804babc86cf5655de7d56364cbacc0baafe8298e8d52",
+  "approvalSha": "1564b4d55cabfa16bd5a0ac63dc27e7e91773b33f135ec61cc9c1a1de1b33dbf",
+  "approvalConsumed": true,
+  "actualReviewers": [
+    "/root/backend_boot_path",
+    "/root/local_claude_review_prep"
+  ],
+  "cleanup": "VERIFIED_BY_PARENT_AND_ROOT_READBACK",
+  "nominalCases": {
+    "required": 60,
+    "pass": 60,
+    "failed": 0,
+    "skipped": 0
+  },
+  "sensitivityCases": {
+    "required": 17,
+    "detected": 17
+  },
+  "providerSummary": {
+    "email": 5,
+    "sms": 1,
+    "push": 2,
+    "logger": 289,
+    "payments": 0,
+    "calendar": 0,
+    "storage": 0,
+    "queue": 0,
+    "deniedCapabilities": 0,
+    "unexpected": 0
+  },
+  "scope": "FOCUSED_PRODUCTION_AUTHORITY_ROUTERS_CONFIG_LOAD_THIRTEEN_MODELS",
+  "configurationLoadTrials": 108,
+  "configurationSensitivityAndRestoreTrials": 18,
+  "fullStartup": false,
+  "badKeyWholeProcessExitProven": false,
+  "rootBuildTypecheck": false,
+  "Week2Accepted": false,
+  "moreRuns": "NOT_AUTHORIZED",
+  "postReviews": "PENDING_TWO_ACTUAL_REVIEWS"
+}

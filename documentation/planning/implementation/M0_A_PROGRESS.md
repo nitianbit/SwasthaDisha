@@ -365,3 +365,45 @@ The original six staged changes and eleven handover files were rehashed and
 preserved. Root dependency/build/start/CI, retained-server facts, broader identity/
 clinical/money/recovery, supported clients, the original 115-scenario register,
 named owners and release/100 RPS remain open. Full M0/Week 2 is not complete.
+
+
+## Twentieth increment, 11 November: JWT configuration API milestone achieved
+
+The reviewed JWT configuration extension is integrated. One separately approved
+exact run at clean `0a6da87`, descriptor `fac08229…`, returned
+**FOCUSED_API_PASS:60 nominal groups/17 actual-source regressions,0 fail/skip**.
+Both independent nonauthor internal Codex reviewers accepted
+[the actual result and cleanup](../../../output/qa/week2-api-runtime/execution-6/REVIEW.md).
+The receipt/once claim is consumed; no rerun follows. Earlier36/4 and53/14 successes
+and all failed attempts remain preserved.
+
+Actual fresh CONFIG runs cover108 nominal loads (96 deny/12 raw-value accepts)
+across test/development/production, plus9 source-variant and9 nominal restoration
+loads. Attempt guards, zero-effect checkpoints, owned URI, fresh caches and exact
+environment/guard restoration precede router/model/connect/listen. Real published-
+fallback-key JWTs are denied by actual HTTP, with a current-key positive control.
+These prove same-child CONFIG-load behavior, not bad-key child exit/fullstartup,
+PM2, production keys, .env precedence, strength or rotation policy. The816 existing
+semantic diagnostics are unchanged and zero transpile diagnostics/fullBuild:false
+remain explicit. [Exact preparation](../../../output/qa/week2-api-preparation/emission-8/REVIEW.md).
+
+Recording-only nominal counters are email5/SMS1/push2/logger289, other six zero.
+Parent cleanup and separate fresh root readback confirm exact two captured IDs
+absent, same engine, zero purpose labels and workspace ENOENT; reviewers label
+root's live-query provenance honestly. Original six staged files and all eleven
+handover files were rehashed unchanged. No production effect or deployment.
+
+The local Claude/Ruflo review operator is source-approved after both independent
+reviewers requested and confirmed fixes for held authentication-process cleanup
+and substantive review binding;86 hard-fake cases pass. Initial rejected files/
+69-case proof and all snapshot revisions are preserved.
+[Actual source decisions](../../../output/qa/week2-local-review-link/owned-review-operator/SOURCE_DECISIONS.md).
+Actual Claude authentication/installed-client/policy/effective-effort admission and
+one real review remain open; no model call, forged ACK or hosted worker occurred.
+The pending normal sign-in request remains, without credential or prompt relay.
+
+Next ready work is the Meet administrative HTTP/recording-intent contract, with
+actual callback reachability and no new model/package/grant. Root retained-server
+C2 install/type/build/start/CI, broader clinical/money/recovery/identity policy,
+supported clients, the original115 register, named-owner acceptance, production,
+100RPS/release and full M0/Week2 remain open. The eight-week plan stays a proposal.

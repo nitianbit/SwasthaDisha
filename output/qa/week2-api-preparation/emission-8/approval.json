@@ -1,0 +1,20 @@
+{
+  "schema": "SD-AUTH-API-PREP-APPROVAL-1",
+  "decision": "APPROVE_LOCKED_INSTALL_AND_EMIT_ONLY",
+  "sourceRoot": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-8",
+  "sourceCommit": "0a6da87051dc6eae8c2415c4ea3ce09ded414662",
+  "prepareSha": "39b4085370a09a34069b9f1c4f45cfd8fa38a3a1f0e380abcef9c469a5add598",
+  "compilerSha": "8fdc3fddc50bd97cf063df179f07cee58373a8571adacac79b7b0de9df33e5a4",
+  "packagePlanSha": "d7830a9ce688235bb64f3f9f7ac3d5dd604bb63641cdae97b8b7250bfd957227",
+  "resolvedLockSha": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+  "reviewers": [
+    {
+      "agent": "/root/backend_boot_path",
+      "decision": "APPROVE_LOCKED_INSTALL_AND_EMIT_ONLY"
+    },
+    {
+      "agent": "/root/local_claude_review_prep",
+      "decision": "APPROVE_LOCKED_INSTALL_AND_EMIT_ONLY"
+    }
+  ]
+}
