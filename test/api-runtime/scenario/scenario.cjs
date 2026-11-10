@@ -24,6 +24,12 @@ async function runScenario(ctx) {
     req.setTimeout(8000, () => req.destroy(new Error('HTTP_TIMEOUT')));
     req.once('error', reject); if (payload) req.write(payload); req.end();
   });
+  function errorEnvelope(response, code) {
+    need(response.body && Object.getPrototypeOf(response.body) === Object.prototype
+      && JSON.stringify(Object.keys(response.body).sort()) === JSON.stringify(['code', 'error', 'message'])
+      && response.body.error === response.status && typeof response.body.message === 'string'
+      && response.body.code === code, 'ERROR_ENVELOPE');
+  }
   const providerState = () => ['email', 'sms', 'push', 'unexpected', 'excluded', 'jwtIssued', 'dbWrites'].map(k => ctx.counters[k]);
   async function snapshot(includeOTP = true) {
     const names = ['User', 'Admin', 'HR', 'Wallet', 'WalletTransaction', 'Notification', ...(includeOTP ? ['OTP'] : [])];
@@ -35,7 +41,7 @@ async function runScenario(ctx) {
     const response = await request(method, route, token, body);
     need(statuses.includes(response.status) && !response.body?.data?.token, code + '_STATUS');
     const expected = expectedCode || ({ 400: 'VALIDATION_ERROR', 401: 'UNAUTHORIZED', 403: 'FORBIDDEN', 404: 'WALLET_NOT_FOUND', 422: 'FORBIDDEN_FIELD' })[response.status];
-    need(response.body.code === expected, code + '_ERROR_CODE');
+    errorEnvelope(response, expected);
     need(await snapshot() === before, code + '_STATE');
     need(JSON.stringify(providerState()) === JSON.stringify(effects), code + '_EFFECTS');
     return response;
@@ -66,7 +72,7 @@ async function runScenario(ctx) {
     const result = await request('POST', '/auth/user/verify', undefined, { ...c.contact, otp: options.wrong ? '000000' : c.code });
     need(statuses.includes(result.status) && !result.body?.data?.token, caseId + '_STATUS');
     const expected = result.status === 404 ? 'OTP_NOT_FOUND' : options.verified ? 'OTP_ALREADY_VERIFIED' : 'OTP_EXPIRED';
-    need(result.body.code === expected, caseId + '_ERROR_CODE');
+    errorEnvelope(result, expected);
     need(await snapshot(false) === before && JSON.stringify(providerState()) === JSON.stringify(effects), caseId + '_SIDE_EFFECTS');
     const actual = await model('OTP').findById(c.row._id).lean().exec();
     need((options.expireAt && options.expireAt <= new Date() && !actual) || (actual && actual.isVerified === Boolean(options.verified)), caseId + '_PROOF_UNCHANGED');
@@ -87,6 +93,8 @@ async function runScenario(ctx) {
       }
       return result;
     };
+    const writesBefore = { ...ctx.writeOps };
+    const providersBefore = ['email', 'sms', 'push', 'unexpected', 'excluded'].map(name => ctx.counters[name]);
     const tokens = ctx.counters.jwtIssued; const notifications = await model('Notification').countDocuments({ userId: id(user), type: 'login' });
     const wallets = await model('Wallet').countDocuments({ userId: id(user) });
     let results;
@@ -96,7 +104,16 @@ async function runScenario(ctx) {
     const successes = results.filter(r => r.status === 200 && typeof r.body?.data?.token === 'string').length;
     const expected = mutant ? 2 : 1;
     need(successes === expected && ctx.counters.jwtIssued - tokens === expected, 'OVERLAP_ISSUANCE_COUNT');
-    if (!mutant) need(results.filter(r => r.status === 400 && r.body.code === 'OTP_UNAVAILABLE').length === 1, 'OVERLAP_LOSER_DENIAL');
+    if (!mutant) {
+      const failures = results.filter(r => r.status === 400); need(failures.length === 1, 'OVERLAP_LOSER_DENIAL');
+      errorEnvelope(failures[0], 'OTP_UNAVAILABLE');
+    }
+    need(JSON.stringify(['email', 'sms', 'push', 'unexpected', 'excluded'].map(name => ctx.counters[name]))
+      === JSON.stringify(providersBefore), 'OVERLAP_PROVIDER_EFFECTS');
+    for (const collection of Object.keys(writesBefore)) {
+      const expectedWrites = collection === 'OTP' ? 2 : ['users', 'notifications'].includes(collection) ? expected : 0;
+      need(ctx.writeOps[collection] - writesBefore[collection] === expectedWrites, 'OVERLAP_COLLECTION_WRITES');
+    }
     need(await model('Notification').countDocuments({ userId: id(user), type: 'login' }) === notifications + expected, 'OVERLAP_NOTIFICATION_COUNT');
     need(await model('Wallet').countDocuments({ userId: id(user) }) === wallets && wallets === 1, 'OVERLAP_WALLET_UNCHANGED');
     const stored = await model('OTP').findById(c.row._id).lean().exec(); need(stored?.isVerified === true, 'OVERLAP_CONSUMED');
@@ -110,7 +127,7 @@ async function runScenario(ctx) {
     const response = await request('POST', '/auth/user/verify', undefined, { email: next, otp: c.code });
     if (mutant) need(response.status === 200 && response.body?.data?.token, 'TARGET_MUTANT_NOT_DETECTED');
     else {
-      need(response.status === 404 && response.body.code === 'OTP_NOT_FOUND', 'TARGET_BINDING_STATUS');
+      need(response.status === 404, 'TARGET_BINDING_STATUS'); errorEnvelope(response, 'OTP_NOT_FOUND');
       need(await snapshot(false) === before && JSON.stringify(providerState()) === JSON.stringify(effects), 'TARGET_BINDING_SIDE_EFFECTS');
       need((await model('OTP').findById(c.row._id).lean().exec()).isVerified === false, 'TARGET_BINDING_PROOF');
     }
@@ -212,7 +229,7 @@ async function runScenario(ctx) {
   const state = await snapshot(false); const jwtCount = ctx.counters.jwtIssued; const sentCount = ctx.counters.email + ctx.counters.sms + ctx.counters.push;
   try {
     response = await request('POST', '/auth/user/verify', undefined, { ...expiring.contact, otp: expiring.code });
-    need(delayed && response.status === 400 && response.body.code === 'OTP_EXPIRED', 'INFLIGHT_EXPIRY_STATUS');
+    need(delayed && response.status === 400, 'INFLIGHT_EXPIRY_STATUS'); errorEnvelope(response, 'OTP_EXPIRED');
     need(await snapshot(false) === state && ctx.counters.jwtIssued === jwtCount
       && ctx.counters.email + ctx.counters.sms + ctx.counters.push === sentCount, 'INFLIGHT_EXPIRY_SIDE_EFFECTS');
     const proof = await model('OTP').findById(expiring.row._id).lean().exec();

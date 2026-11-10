@@ -29,30 +29,26 @@ function bytes(relative) {
   return fs.readFileSync(p);
 }
 
-function inspectManifest(manifest, plan, ports) {
+function validateAdmissionData(manifest, plan, ports, observed) {
   need(plain(manifest) && manifest.schema === 'SD-AUTH-API-RUN-1' && manifest.role === ROLE, 'RUN_MANIFEST_SCHEMA');
-  need(/^[a-f0-9-]{36}$/.test(manifest.runId) && manifest.runId === process.env.APP_RUN_ID, 'RUN_ID');
+  need(/^[a-f0-9-]{36}$/.test(manifest.runId) && manifest.runId === observed.runId, 'RUN_ID');
   const nonce = manifest.runId.replaceAll('-', '');
   need(manifest.database === 'sd_api_' + nonce && manifest.replicaSet === 'sd_rs_' + nonce, 'DATABASE_IDENTITY');
-  need(/^[a-f0-9]{64}$/.test(manifest.mongoId) && /^[a-f0-9]{64}$/.test(manifest.templateSha), 'RESOURCE_IDENTITY');
-  need(plain(manifest.files) && Object.keys(manifest.files).length > 5 && Object.keys(manifest.files).length <= 20000, 'FILE_MANIFEST');
-  let size = 0; const observed = [];
-  function walk(directory, prefix = '') {
-    for (const name of fs.readdirSync(directory)) {
-      const relative = prefix + name; const p = path.join(directory, name); const m = fs.lstatSync(p);
-      need(!m.isSymbolicLink(), 'RUNTIME_LINK');
-      if (m.isDirectory()) walk(p, relative + '/');
-      else {
-        need(m.isFile() && m.nlink === 1 && !name.endsWith('.node') && !name.startsWith('.env'), 'RUNTIME_FILE_TYPE');
-        if (relative === '.admission.json') continue;
-        need(typeof manifest.files[relative] === 'string' && sha(fs.readFileSync(p)) === manifest.files[relative], 'RUNTIME_FILE_HASH');
-        observed.push(relative); size += m.size;
-      }
-    }
+  need(/^[a-f0-9]{64}$/.test(manifest.mongoId) && /^[a-f0-9]{64}$/.test(manifest.templateSha)
+    && /^[a-f0-9]{40}$/.test(manifest.sourceCommit), 'RESOURCE_IDENTITY');
+  need(plain(manifest.files) && Object.keys(manifest.files).length > 5 && Object.keys(manifest.files).length <= 20000
+    && plain(observed.files), 'FILE_MANIFEST');
+  need(JSON.stringify(Object.keys(observed.files).sort()) === JSON.stringify(Object.keys(manifest.files).sort()), 'RUNTIME_FILE_SET');
+  let size = 0;
+  for (const [name, data] of Object.entries(observed.files)) {
+    need(Buffer.isBuffer(data) && /^[a-f0-9]{64}$/.test(manifest.files[name])
+      && sha(data) === manifest.files[name], 'RUNTIME_FILE_HASH'); size += data.length;
   }
-  walk(ROOT);
-  need(size <= 256 * 1024 * 1024 && JSON.stringify(observed.sort()) === JSON.stringify(Object.keys(manifest.files).sort()), 'RUNTIME_FILE_SET');
-  need(manifest.lockSha === sha(bytes('package-lock.json')) && manifest.portsSha === sha(bytes('ports-manifest.json')), 'LOCK_PORT_HASH');
+  need(size <= 256 * 1024 * 1024, 'RUNTIME_FILE_LIMIT');
+  need(['bootstrap.cjs', 'scenario.cjs', 'network-admission.mjs', 'runtime-plan.json', 'ports-manifest.json', 'package-lock.json']
+    .every(name => Buffer.isBuffer(observed.files[name])), 'MISSING_RUNTIME_INPUT');
+  need(manifest.lockSha === sha(observed.files['package-lock.json'])
+    && manifest.portsSha === sha(observed.files['ports-manifest.json']), 'LOCK_PORT_HASH');
   need(plan.schema === 'SD-AUTH-API-PLAN-1' && plan.role === ROLE && plan.sourceCommit === manifest.sourceCommit
     && plan.lockSha === manifest.lockSha && plan.portsSha === manifest.portsSha, 'PLAN_IDENTITY');
   need(plan.compilation.status === 'TRANSPILE_ONLY_NOT_TYPECHECKED' && plan.compilation.compiler === '5.9.3', 'COMPILATION_STATUS');
@@ -61,11 +57,42 @@ function inspectManifest(manifest, plan, ports) {
     && JSON.stringify(plan.requiredSensitivityIds) === JSON.stringify(ports.requiredSensitivityIds)
     && JSON.stringify(plan.providerCounterKeys) === JSON.stringify(ports.providerCounterKeys)
     && JSON.stringify(plan.models) === JSON.stringify(ports.models), 'PORT_CONTRACT');
-  need(ports.requiredCaseIds.length >= 20 && new Set(ports.requiredCaseIds).size === ports.requiredCaseIds.length, 'CASE_SET');
+  need(Array.isArray(ports.requiredCaseIds) && ports.requiredCaseIds.length >= 20
+    && new Set(ports.requiredCaseIds).size === ports.requiredCaseIds.length, 'CASE_SET');
+  need(JSON.stringify(ports.recordingModules) === JSON.stringify(['@/services/logger', '@/services/firebase'])
+    && JSON.stringify(ports.excludedCapabilities) === JSON.stringify({ '@/modules/payment/services': ['PaymentService'], '@/modules/coupon/services': ['CouponService'] })
+    && ports.recordingAxios.email === 'https://api.smtp2go.com/v3/email/send'
+    && ports.recordingAxios.sms === 'https://sms.fixture.invalid/send', 'RECORDING_PORT_MAP');
+  need(plain(plan.modules) && plain(plan.mutants) && plain(plan.sourceFiles)
+    && Object.keys(plan.sourceFiles).length > 0 && Object.values(plan.sourceFiles).every(value => /^[a-f0-9]{64}$/.test(value)), 'SOURCE_MANIFEST');
   for (const file of Object.values(plan.modules)) need(Object.hasOwn(manifest.files, file), 'UNDECLARED_COMPILED_SOURCE');
+  for (const alias of ports.roots) need(Object.hasOwn(plan.modules, alias), 'MISSING_ROUTER_SOURCE');
   for (const mutant of Object.values(plan.mutants)) need(Object.hasOwn(manifest.files, mutant.file)
     && mutant.originalSha256 === plan.sourceFiles[mutant.source], 'UNDECLARED_MUTANT');
+  need(Array.isArray(ports.models) && ports.models.length === 11
+    && new Set(ports.models.map(row => row.name)).size === 11
+    && new Set(ports.models.map(row => row.collection)).size === 11
+    && ports.models.every(row => Object.hasOwn(plan.sourceFiles, row.source) && Array.isArray(row.indexes)), 'MODEL_MAP');
   return manifest;
+}
+
+function inspectManifest(manifest, plan, ports) {
+  const observed = {}; let size = 0;
+  function walk(directory, prefix = '') {
+    for (const name of fs.readdirSync(directory)) {
+      const relative = prefix + name; const p = path.join(directory, name); const m = fs.lstatSync(p);
+      need(!m.isSymbolicLink(), 'RUNTIME_LINK');
+      if (m.isDirectory()) walk(p, relative + '/');
+      else {
+        need(m.isFile() && m.nlink === 1 && !name.endsWith('.node') && !name.startsWith('.env'), 'RUNTIME_FILE_TYPE');
+        if (relative === '.admission.json') continue;
+        size += m.size; need(size <= 256 * 1024 * 1024 && Object.keys(observed).length < 20000, 'RUNTIME_FILE_LIMIT');
+        observed[relative] = fs.readFileSync(p);
+      }
+    }
+  }
+  walk(ROOT);
+  return validateAdmissionData(manifest, plan, ports, { runId: process.env.APP_RUN_ID, files: observed });
 }
 
 function closeNetwork() {
@@ -233,6 +260,7 @@ async function main() {
     need(this.databaseName === manifest.database && collections.has(name), 'UNDECLARED_COLLECTION_CREATE');
     return createCollection.call(this, name, options);
   };
+  const writeOps = Object.fromEntries([...collections].map(name => [name, 0]));
   let currentPorts; let server;
   function phase(overrides = {}) {
     if (server) fail('PHASE_SERVER_STILL_OPEN');
@@ -274,11 +302,18 @@ async function main() {
       for (const index of spec.indexes) await mongoose.connection.db.collection(spec.collection).createIndex(index.key, index.options);
     }
     mongoose.connection.getClient().on('commandStarted', event => {
-      if (event.databaseName === manifest.database && ['insert', 'update', 'findAndModify', 'delete'].includes(event.commandName)) counters.dbWrites++;
+      if (event.databaseName === manifest.database && ['insert', 'update', 'findAndModify', 'delete'].includes(event.commandName)) {
+        counters.dbWrites++;
+        const collection = event.command[event.commandName];
+        const count = event.commandName === 'insert' ? event.command.documents.length
+          : event.commandName === 'update' ? event.command.updates.length : event.commandName === 'delete' ? event.command.deletes.length : 1;
+        if (!Object.hasOwn(writeOps, collection)) counters.unexpected++;
+        else writeOps[collection] += count;
+      }
     });
     stage = 'API_SCENARIOS';
     const result = await require('./scenario.cjs').runScenario({ manifest, plan, ports, mongoose, jwt,
-      key, originalSign, counters, need, fail, load: loader.load,
+      key, originalSign, counters, writeOps, need, fail, load: loader.load,
       get deliveries() { return currentPorts.deliveries; },
       get port() { return port; },
       async nextPhase(overrides) { await endPhase(); port = await phase(overrides); },
@@ -307,4 +342,4 @@ if (require.main === module) main().catch(error => {
     failed: 1, skipped: 0 }) + '\n');
   process.exitCode = 1;
 });
-module.exports = { inspectManifest, closeNetwork, installLoader };
+module.exports = { validateAdmissionData, inspectManifest, closeNetwork, installLoader };

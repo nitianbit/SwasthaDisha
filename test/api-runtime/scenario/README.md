@@ -22,19 +22,25 @@ bootstrap generates its JWT key and own URI in memory. `scenario.cjs` reports
 case IDs and safe counts only; raw HTTP responses, OTPs, tokens, keys, synthetic
 identity rows and assertion operands are never printed or persisted.
 
-Nominal denials assert exact status/error code, unchanged DB state and no JWT,
+Nominal denials assert the exact error envelope/status/code, unchanged DB state and no JWT,
 provider or DB-write effects. Two-reader barriers wrap actual completed MongoDB
 query reads; final-expiry scheduling wraps an actual completed conditional update.
-Neither changes a result. Source mutants are separately emitted, manifested and
+Neither changes a result. Race checks count actual per-collection MongoDB write
+commands and provider deltas, including exactly one user update and notification
+insertion for the nominal winner. Source mutants are separately emitted, manifested and
 run only in explicit negative phases with fresh TypeDI classes/server/module
 caches. Nominal source is restored between every phase. Detected defects appear
 only in separate `sensitivity` rows. Output provider counts cover nominal cases;
 negative-phase effects are asserted separately in memory and excluded from those counts.
 
-Offline checks require no package installation or application evaluation:
+Offline checks require no package installation or application evaluation. The
+22 fake admission cases exercise the same pure guard used by bootstrap with all
+application imports, connections and writes blocked; 16 fake lock cases cover
+public URLs/integrities and root-closure drift:
 
 ```sh
 env -i PATH=/usr/bin:/bin /opt/homebrew/bin/python3 -I -B test/api-runtime/scenario/offline-unit.py
+/private/tmp/m0-node22/node --permission --allow-fs-read="$PWD/test/api-runtime/scenario" test/api-runtime/scenario/bootstrap-unit.cjs
 /private/tmp/m0-node22/node --check test/api-runtime/scenario/bootstrap.cjs
 /private/tmp/m0-node22/node --check test/api-runtime/scenario/compile.cjs
 /private/tmp/m0-node22/node --check test/api-runtime/scenario/scenario.cjs

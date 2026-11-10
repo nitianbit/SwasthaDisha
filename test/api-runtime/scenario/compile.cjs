@@ -129,6 +129,11 @@ function compile(sourceRoot, runtimeRoot, inputPlan) {
   const allowedTypeFile = file => sourcePaths.has(path.resolve(file)) || path.resolve(file).startsWith(typeRoot);
   host.fileExists = file => allowedTypeFile(file) && fileExists(file);
   host.readFile = file => allowedTypeFile(file) ? readFile(file) : undefined;
+  host.getSourceFile = (file, languageVersion, onError) => {
+    const text = host.readFile(file);
+    if (text === undefined) { if (onError) onError('DECLARED_TYPE_INPUT_UNAVAILABLE'); return undefined; }
+    return ts.createSourceFile(file, text, languageVersion, true);
+  };
   host.getCurrentDirectory = () => runtimeRoot;
   host.getDefaultLibFileName = () => path.join(typeRoot, 'typescript/lib/lib.es2020.full.d.ts');
   host.resolveModuleNames = (names, containingFile) => names.map(request => {
