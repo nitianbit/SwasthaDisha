@@ -10,7 +10,7 @@ import imageSpecification from './app-image.json' with { type: 'json' };
 const image = Object.freeze({ ...imageSpecification });
 import runtimeSpecification from './app-runtime.json' with { type: 'json' };
 const localRuntime = Object.freeze({ ...runtimeSpecification });
-import { assertBundle, makeManifest, PORT_OPERATIONS, ROLE, requireThat, sha256, SOURCE_NAMES } from './app-bundle.mjs';
+import { assertBundle, makeManifest, NETWORK_ADMISSION_TAG, PORT_OPERATIONS, ROLE, requireThat, sha256, SOURCE_NAMES, verifyNetworkAdmission } from './app-bundle.mjs';
 
 const overrides = ['DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_CONFIG', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH',
   'MONGODB_URL', 'PHARMACY_TEST_MONGODB_URI', 'DATABASE_URL', 'PAYMENT_SECRET', 'NODE_OPTIONS', 'NODE_PATH'];
@@ -206,7 +206,9 @@ export function createApplicationFixture(input, seams = {}) {
         requireThat(result.runId === runId && result.role === ROLE && result.manifestSha === manifestSha
           && result.admissionPassed === true && result.egressBlocked === true
           && result.filesystemCanariesPassed === true && result.databaseMode === 'not-admitted'
-          && JSON.stringify(result.networkInterfaces) === '["lo"]',
+          && !Object.hasOwn(result, 'networkInterfaces')
+          && result.networkAdmission?.tag === NETWORK_ADMISSION_TAG && result.networkAdmission.loopback === 'lo'
+          && verifyNetworkAdmission(result.networkAdmission),
         'Application admission evidence mismatched');
         requireThat(Array.isArray(result.calls) && result.calls.length === Object.keys(PORT_OPERATIONS).length
           && new Set(result.calls.map((call) => call.port)).size === result.calls.length

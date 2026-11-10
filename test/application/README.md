@@ -1,12 +1,12 @@
 # Application import sandbox candidate
 
-**First approved smoke: FAIL at `de1693e`; cleanup independently verified. Do not retry or change interface/mount/permission/network rules before the required failure review.** [Current diagnostic-candidate review](../../documentation/planning/implementation/APP_NETWORK_DIAGNOSTIC_REVIEW_PROMPT.md); [execution evidence](../../output/qa/m0-a/app-isolation/activation-1/verification.json); [contract and limits](../../documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md). The earlier [activation prompt](../../documentation/planning/implementation/APP_ISOLATION_REVIEW_PROMPT.md) is historical at the approved commit.
+**First approved smoke: FAIL at `de1693e`; the `41539ca` diagnostic also FAILed at the strict name guard; both cleanups independently verified. The offline candidate replaces that guard with the [network admission contract](../../documentation/planning/implementation/APP_NETWORK_ADMISSION_CONTRACT.md); no invocation is authorized and mount/permission/network grants are unchanged.** [Current diagnostic-candidate review](../../documentation/planning/implementation/APP_NETWORK_DIAGNOSTIC_REVIEW_PROMPT.md); [execution evidence](../../output/qa/m0-a/app-isolation/activation-1/verification.json); [contract and limits](../../documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md). The earlier [activation prompt](../../documentation/planning/implementation/APP_ISOLATION_REVIEW_PROMPT.md) is historical at the approved commit.
 
 This candidate prepares one local Docker Desktop container to run a fixed, synthetic scenario and one unchanged production search-escaping helper. It provides no backend startup, database connection or legacy integration admission.
 
 - `app-container.mjs`: owns a fresh filesystem bundle and newly created full container ID; validates the recorded local daemon, image, environment, resource limits and read-only bind before start and removal.
-- `app-bundle.mjs`: hashes/validates the fixed six-source-file bundle and admission record. Matching metadata alone never proves resource ownership.
-- `bootstrap.mjs`: checks environment, bundle integrity, permissions and loopback-only interfaces before dynamic imports. The rejected HTTP canary is supplementary evidence, not sole proof of network isolation.
+- `app-bundle.mjs`: hashes/validates the fixed six-source-file bundle and admission record. Matching metadata alone never proves resource ownership. It also holds the pure network observation, admission, parent verification and egress-canary classification functions.
+- `bootstrap.mjs`: checks environment, bundle integrity, the fail-closed network admission rule and permissions before dynamic imports, then requires the documentation-address HTTP canary to fail with `ENETUNREACH`. It only binds read-only ports; decisions live in `app-bundle.mjs`.
 - `app-ports.mjs`: records only the seven fixed synthetic requests; no SDK/transport, payment success, funds movement or queue consumer is provided.
 - `scenario.mjs`: calls the unchanged `src1/modules/common/utils/queryUtils.ts` helper and records synthetic port requests. This helper is not imported by unit tests.
 - `app-image.json`: verified public Node 22.23.4 manifest digest, cached by digest during the single approved smoke. Its JSON observation text is a historical snapshot, not a new grant of authority.
@@ -19,11 +19,26 @@ UNIT_NODE="$(command -v node)"
 env -i TMPDIR=/tmp "$UNIT_NODE" test/foundation/run.mjs
 ```
 
-The 185 unit cases pass on Node 22.23.4 and 24.19.0, using fake Docker and synthetic text fixtures. Any non-empty test-seam object must own an explicit callable executor, captured once; real transport always uses the committed profile and fixed repository sources. Invalid overrides are rejected before allocation or socket/process access. Real bootstrap, scenario and application imports are excluded. Twenty executable negative canaries plus two synthetic positive controls exercise the runner itself.
+The 324 unit cases pass on Node 22.23.4 and 24.19.0, using fake Docker and synthetic text fixtures. Any non-empty test-seam object must own an explicit callable executor, captured once; real transport always uses the committed profile and fixed repository sources. Invalid overrides are rejected before allocation or socket/process access. Real bootstrap, scenario and application imports are excluded. Twenty executable negative canaries plus two synthetic positive controls exercise the runner itself.
 
 `verify_local_admission.py` supplies separate offline companion probes: regular/link bundle identity with owned synthetic files, a copy of the launcher with its entire factory replaced by simulation, and addon permission metadata (no addon loaded). All 20 companion checks pass across the two runtimes, including factory failure/interruption after the captured ID. The controller now synchronously emits the exact create-acknowledged ID/run ID/workspace before its post-create Docker checks; the launcher no longer duplicates that record. This record supports recovery after interruption; it is not ownership proof by itself. [Current offline evidence](../../output/qa/m0-a/app-isolation/revision-2/verification.json) and [candidate contract](../../documentation/planning/implementation/APP_NETWORK_DIAGNOSTIC_CONTRACT.md).
 
-The pending diagnostic candidate records bounded entry kind/flags/state/type and assigned-address evidence before the unchanged assertion. It reads only beneath the existing sysfs grant and uses Node's OS metadata API. Access-denied/unavailable data remain explicit; no `/proc` or new permission grants are added. It does not implement a network-policy repair or prove routes absent. The candidate has not run against Docker.
+Bootstrap always attempts to record bounded entry kind/flags/state/type and assigned-address evidence beneath the existing sysfs grant. `evaluateNetworkAdmission` admits only:
+
+- one up `lo`: IFF_UP and IFF_LOOPBACK set, with RUNNING, LOWER_UP and DORMANT absent;
+- `ENOTDIR` control files;
+- admin-down non-loopback devices;
+- loopback-only internal addresses, which must include `127.0.0.1`.
+
+An admission rejection throws after one bounded stderr record. The following throw without any record:
+
+- port or `runId` validation;
+- a failed or non-array listing;
+- more than 16 names, or invalid names;
+- an observation or report line over 8192 bytes (the report-limit error replaces the rejection, without a `cause`);
+- a failing report write. The controller recomputes the reported `networkAdmission` summary instead of comparing names. No `/proc` read or new grant is added, and routes are not read.
+
+The canary must fail with `ENETUNREACH`. Given the interface rule, that is consistent with no IPv4 route, but it is not independent proof: an ICMP net-unreachable during connect can also produce it. The [extracted-block probe](../../output/qa/foundation-network-admission/network-block-probe.mjs) covers the bootstrap wiring. [Offline evidence](../../output/qa/foundation-network-admission/verification.json). The candidate has not run against Docker.
 
 The single approved invocation cached the exact image through an owned blank Docker config, then failed at `bootstrap.mjs:16` because the sysfs directory listing contained extra entries. The helper/scenario, seven receipts, HTTP canary and subsequent permission assertions were not reached. Extra names alone do not prove inactive or harmless interfaces. The controller cleaned the exact container/workspace; independent same-engine/exact-ID/workspace/label checks confirmed absence. No second container was created.
 

@@ -6,7 +6,7 @@ import { syncBuiltinESMExports } from 'node:module';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createApplicationFixture } from './app-container.mjs';
-import { SOURCE_NAMES } from './app-bundle.mjs';
+import { evaluateNetworkAdmission, SOURCE_NAMES } from './app-bundle.mjs';
 
 const endpoint = 'unix:///synthetic/docker.sock';
 const pinnedImage = 'node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d';
@@ -16,6 +16,18 @@ const bundle = Object.freeze(Object.fromEntries(SOURCE_NAMES.map((name) => [name
 const baseEnv = ['PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'NODE_VERSION=22.23.4', 'YARN_VERSION=1.22.22'];
 const operations = { payments: 'create-order', sms: 'send', email: 'send', push: 'send',
   calendar: 'create-event', storage: 'put', queue: 'enqueue' };
+// The measured 41539ca record (without runId); bootstrap reports its evaluator summary on success.
+const notDirectory = { unavailable: 'ENOTDIR' };
+const downDevice = (name, flags, type) => ({ name, kind: 'symlink', flags, operstate: 'down', type });
+const measuredObservation = () => ({ tag: 'APP-NET-DIAG-1', entries: [
+  { name: 'bonding_masters', kind: 'file', flags: { ...notDirectory }, operstate: { ...notDirectory }, type: { ...notDirectory } },
+  downDevice('erspan0', '0x1002', '1'), downDevice('gre0', '0x80', '778'), downDevice('gretap0', '0x1002', '1'),
+  downDevice('ip6_vti0', '0x80', '769'), downDevice('ip6gre0', '0x80', '823'), downDevice('ip6tnl0', '0x80', '769'),
+  downDevice('ip_vti0', '0x80', '768'), { name: 'lo', kind: 'symlink', flags: '0x9', operstate: 'unknown', type: '772' },
+  downDevice('sit0', '0x80', '776'), downDevice('tunl0', '0x80', '768'),
+], addressedInterfaces: [{ name: 'lo', addresses: [
+  { address: '127.0.0.1', family: 'IPv4', internal: true }, { address: '::1', family: 'IPv6', internal: true }] }] });
+const reportedAdmission = () => JSON.parse(JSON.stringify(evaluateNetworkAdmission(measuredObservation())));
 
 function fakeDocker() {
   const state = { calls: [], engine: 'synthetic-engine', item: null, editResult: (result) => result,
@@ -53,7 +65,7 @@ function fakeDocker() {
       state.item.State.Status = 'exited';
       const env = Object.fromEntries(state.item.Config.Env.map((entry) => { const at = entry.indexOf('='); return [entry.slice(0, at), entry.slice(at + 1)]; }));
       const result = { runId: env.APP_RUN_ID, role: 'synthetic-ports-only', manifestSha: env.APP_MANIFEST_SHA,
-        admissionPassed: true, egressBlocked: true, filesystemCanariesPassed: true, databaseMode: 'not-admitted', networkInterfaces: ['lo'],
+        admissionPassed: true, egressBlocked: true, filesystemCanariesPassed: true, databaseMode: 'not-admitted', networkAdmission: reportedAdmission(),
         calls: Object.entries(operations).map(([port, operation]) => ({ port, operation, status: 'recorded', effect: false })),
         scenario: { literalSearchPassed: true, unknownOperationRejected: true } };
       return JSON.stringify(state.editResult(result));
@@ -170,11 +182,36 @@ test('changed bundle bytes are denied before any container start', (t) => {
   assert.equal(state.calls.some((args) => args[0] === 'start'), false);
 });
 
+test('K1 the measured network admission is accepted only as recomputed evidence', (t) => {
+  const { instance } = fixture(t);
+  const evidence = instance.run();
+  assert.deepEqual(evidence.networkAdmission.controlFiles, ['bonding_masters']);
+  assert.equal(evidence.networkAdmission.downDevices.length, 9);
+  assert.equal(Object.hasOwn(evidence, 'networkInterfaces'), false);
+});
+
 for (const [label, edit] of [
   ['wrong identity', (result) => { result.runId = 'forged'; }],
   ['missing admission', (result) => { result.admissionPassed = false; }],
   ['network success', (result) => { result.egressBlocked = false; }],
-  ['external interface', (result) => { result.networkInterfaces.push('eth0'); }],
+  ['K2 missing network admission', (result) => { delete result.networkAdmission; }],
+  ['K2 legacy interface list only', (result) => { delete result.networkAdmission; result.networkInterfaces = ['lo']; }],
+  ['K3 dropped down device', (result) => { result.networkAdmission.downDevices.pop(); }],
+  ['K3 added control file', (result) => { result.networkAdmission.controlFiles.push('extra_control'); }],
+  ['K3 changed loopback addresses', (result) => { result.networkAdmission.loopbackAddresses = ['127.0.0.1']; }],
+  ['K3 extra summary key', (result) => { result.networkAdmission.routes = []; }],
+  ['K4 forged summary over an active interface', (result) => {
+    const admission = result.networkAdmission;
+    admission.observation.entries.splice(2, 0, { name: 'eth0', kind: 'symlink', flags: '0x1003', operstate: 'up', type: '1' });
+    admission.observation.addressedInterfaces.push({ name: 'eth0', addresses: [{ address: '172.17.0.2', family: 'IPv4', internal: false }] });
+    admission.downDevices.splice(1, 0, 'eth0');
+  }],
+  ['K5 consistent summary over a rejected observation', (result) => {
+    result.networkAdmission.observation.entries.find((row) => row.name === 'lo').operstate = 'dormant';
+  }],
+  ['K6 legacy and new network evidence together', (result) => { result.networkInterfaces = ['lo']; }],
+  ['K7 wrong admission tag', (result) => { result.networkAdmission.tag = 'APP-NET-DIAG-1'; }],
+  ['K7 wrong loopback', (result) => { result.networkAdmission.loopback = 'lo2'; }],
   ['database mode', (result) => { result.databaseMode = 'external'; }],
   ['missing port', (result) => { result.calls.pop(); }],
   ['duplicate port', (result) => { result.calls[1] = result.calls[0]; }],
