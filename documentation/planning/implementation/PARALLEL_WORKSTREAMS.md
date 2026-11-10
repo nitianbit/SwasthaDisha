@@ -21,7 +21,7 @@ The existing historical source approval at `41539ca` was consumed by one relocat
 
 Source/document whitespace checks pass. The archived `relocation.diff` retains its unified-diff blank-context marker byte-for-byte and is excluded from whitespace normalization; its frozen hash remains verified.
 
-## Next work
+## Next work after the first batch (historical)
 
 Foundation needs a separately reviewed bounded process-network-namespace interface/route observation contract and negative parser fixtures before any new read grant, guard change or invocation. The sampled names/down states are not an admission allowlist. Full C3 remains incomplete.
 
@@ -30,3 +30,41 @@ OTP storage/purpose/target/attempt/resend/atomicity and recovery remain separate
 The publicly reachable deployment's revision remains withheld/unverified. No deployment, protected log/mailbox access, challenge/session invalidation or operational provider action occurred. Retained-server C2 facts still precede root dependency/build/start adoption. All existing M0, clinical/finance/security-owner, release and 100 RPS gates remain open.
 
 Worktrees are retained under `/private/tmp/swasthadisha-parallel-p1qom53w/` (`otp`, `authority`, `foundation`, `integration`, plus clean historical `diagnostic-41539`). Feature commits remain independently mergeable. This integration branch is a source/evidence candidate, not a production deployment.
+
+## Second batch, 10 November
+
+Baseline `9ea963f1f7b51aadedcfa7fc9918eb39a2fd737d`. The lead owned integration and shared records. Three native workers authored separate lanes, and nonauthor reviewers handled every contract and implementation. No Ruflo connection, hosted worker or extra account was used.
+
+| Branch | Reviewed head | Result |
+| --- | --- | --- |
+| `m0/authority-next` | `ea0710c405749dbc60cff2e1045fa87c68ef5789` | Users router: patients may only read, update or delete their own record; HR needs a corporate and stays within it; self-set status/corporate fields return 422 |
+| `m0/money-provider-clinical` | `8409858a9e471812cba2aaa99d1004c8a22ee6e4` | Wallet create, credit/debit, update/freeze and listing are admin-only; by-user reads are own-or-admin |
+| `m0/authority-jwt-secret` | `843bdb056ba3c481464ce8cd926ca28ab7ca0f33` | Configuration throws at load on a missing, empty or published placeholder `JWT_SECRET_KEY`; no literal fallback |
+| `m0/foundation-network-admission` | `baaf071babae538d2bf9096e980b8e0155c9af82` | Harness: fail-closed device-state interface rule, controller cross-check and `ENETUNREACH`-only canary; no new grant; offline only |
+
+The [combined verifier](../../../output/qa/parallel-integration-2/verify-source.py) checks:
+- each merged file against its reviewed lane head, and that no file was changed by two lanes;
+- the exact three-file production union and the protected root, harness and register files;
+- that the original checkout's six staged files and eleven handover files are preserved.
+
+The foundation unit gate passes 324/324 on the integrated tree on both runtimes. Reviews, findings and dispositions are in the [batch review record](../../../output/qa/parallel-integration-2/REVIEW.md).
+
+### Open facts and decisions
+
+| Item | Owner | Blocks |
+| --- | --- | --- |
+| Which code the deployed process runs: `server.js` imports a missing `./src`, `tsc` emits to `./dist`; the PM2 working directory | Owner / DevOps | Whether any source fix here protects the deployment |
+| A secret, non-placeholder `JWT_SECRET_KEY` in the deployed environment; rotation invalidates existing tokens | Owner / security | Every role and ownership guard; deploying the fail-closed config |
+| Prior use of the open users/wallet routes; contact details rewritten through the users defect; outstanding 30-day tokens | Owner / security, through protected logs | Operational remediation |
+| Public `/api/static` clinical files, cached publicly for a year | Security + clinical/privacy + mobile (F05, C1) | File access containment |
+| Unsigned lab webhooks that can trigger wallet refunds | Integration / operations (provider callback authentication, F06) | Webhook containment |
+| Booking create for any `userId` (pharmacy wallet debit) and booking PUT cancel without refund | Product + finance + clinical (per-role field rules) | Booking actor/field containment |
+| Non-atomic balances and duplicate refunds; authorized-but-uncaptured payments; recharge coupon over-credit | Backend + DevOps (F11/F13, C2 topology); finance (D3, D2) | Money recovery work |
+
+### Next ready assignments
+
+- **Foundation:** prepare an exact operator recipe for one real invocation of the new admission rule, and obtain its review. Running it needs the recorded Docker engine to be reachable.
+- **Authority, decision-free:** require authentication on the Meet router, which currently lets anyone create calendar invites with the server's Google refresh token. Ownership checks for dependents. Notification listing and ID-based operations, and the FCM `/test` sender.
+- **Money:** a post-fetch ownership check for wallet `GET /:id` and `GET /transactions/:id`. Everything else waits for the decisions above.
+
+Worktrees for this batch are under `/private/tmp/swasthadisha-parallel-p1qom53w/` (`authority-next`, `money-clinical`, `authority-jwt`, `net-admission`). Commits are stored in the shared repository; nothing has been pushed.
