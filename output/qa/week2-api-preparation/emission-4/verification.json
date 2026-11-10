@@ -1,0 +1,41 @@
+{
+  "status": "PREPARED_NOT_EXECUTED",
+  "invocations": 1,
+  "exit": 0,
+  "sourceRoot": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-4",
+  "sourceCommit": "d91e1a3d37f2b229efc7fc2507d666ddc2576d99",
+  "descriptorSha": "75cf55be5d0969e7f1d27b5daa3507ca367266f6675df1ace88eea5fe52d9c5f",
+  "lockSha": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+  "portsSha": "993003d7ec316a99c8189acde7e45277c6f79f9f567a1e26cfed9a7d3d855f94",
+  "filesVerified": 2829,
+  "bytes": 44629877,
+  "productionSources": 64,
+  "sourceInputs": 72,
+  "nominalCasesNotRun": 36,
+  "mutantCasesNotRun": 4,
+  "modelCount": 12,
+  "reachableEmittedModules": 51,
+  "actualStaticMetadataControlsRejected": 4,
+  "semanticDiagnostics": 703,
+  "transpileDiagnostics": 0,
+  "fullBuild": false,
+  "compilation": "TRANSPILE_ONLY_NOT_TYPECHECKED",
+  "actualReviewers": [
+    "/root/backend_boot_path",
+    "/root/local_claude_review_prep"
+  ],
+  "decision": "APPROVE_LOCKED_INSTALL_AND_EMIT_ONLY",
+  "approvalConsumed": true,
+  "buildArea": "/private/tmp/sd-auth-api-build-aa58719b-0f4b-4f1d-868a-bfe4c8d9813e",
+  "command": "env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /opt/homebrew/bin/python3 -I -B test/api-runtime/scenario/prepare.py --install-emit",
+  "applicationEvaluations": 0,
+  "driverEvaluations": 0,
+  "databaseConnections": 0,
+  "DockerCalls": 0,
+  "limits": [
+    "Bootstrap diagnostic only; no cause/repair inference yet",
+    "No new app run or prior consumed approval reuse",
+    "36+4/Dependentsruntime remainNOT_RUN",
+    "Not cleanrootbuild/semantic typecheck"
+  ]
+}

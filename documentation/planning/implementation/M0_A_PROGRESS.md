@@ -221,3 +221,40 @@ Both reviewers source-approved a bootstrap-only diagnostic amendment: fixed CONN
 The reviewed [dependents owner/admin containment](../../../output/qa/week2-dependents/REVIEW.md) is locally integrated: early principal/role checks, authenticated ordinary owner binding, explicit existing admin-onbehalf exception, scoped hidden-object404s, forgedselector403s and rawownershipfield422 before stripping. Only router/controller plus ownedQA changed. Baseline and29weakened source variants are rejected; both independent implementation reviews approvedsourceonly. Real dependentsHTTP/DB/client behavior remainsNOT_RUN and the focused12-modelAPI fixture does not admit that router.
 
 Separately, the existing pinned Ruflo adapter was installed and only the Codexargs line/newClaudeuserMCPprofile were changed once under two exact stage decisions, with verified privatebackups retained outsideGit. Actual status is ACTIVATED_PENDING_SEPARATE_TRANSPORT_REVIEW: no new transport smoke, ClaudeACK or modelreview is claimed. Existingclientreload was not requested. App rootpackage/lock/build/start, retainedproduction facts, namedowner/clinical/finance/security acceptance,115scenario totals and release/100RPS gates remain unchanged.
+
+
+## Sixteenth increment, 11 November: measured index failure and local transport
+
+The separately approved fourth preparation produced a fresh 12-model artifact at
+clean `d91e1a3`. Its locked install/emission succeeded, retaining all 703 semantic
+diagnostics; this is not a clean root typecheck or build. Two direct internal Codex
+reviewers approved exactly one actual diagnostic API run. That run failed with
+`DB_INDEX_CREATE_SERVER`: connection and the explicit replica handshake passed,
+then an index creation action was rejected. The numeric error and exact index are
+unmeasured. All 36 HTTP and four sensitivity cases remain NOT_RUN. The requested
+API milestone and full M0/Week 2 acceptance are still open.
+
+[Actual attempt 2](../../../output/qa/week2-api-runtime/execution-2/REVIEW.md)
+retains its report, consumed approval, exclusive claim and both post-reviews.
+Cleanup passed in the executable parent and a separate read-only root check:
+same recorded engine before/after, both exact acknowledged IDs absent, zero
+purpose-labelled resources and owned workspace ENOENT. Child reviewers inspected
+those records and independently checked workspace absence; they do not claim
+personal live Docker observations. No automatic retry or limit change occurred.
+A separately reviewed diagnostic-only branch now distinguishes known numeric
+server errors; a capacity hypothesis remains unproven until measured.
+
+The actual local Ruflo transport smoke passed under two exact nonauthor stage
+decisions: two owned clients completed filtered-tool and synthetic mailbox checks,
+then exited normally. A fresh root process query confirmed all four captured
+adapter/Ruflo PIDs absent, without signals. Status is
+`LOCAL_TRANSPORT_PASS_PENDING_CLAUDE_ACK`. The live challenge is queued, but no
+actual Claude extension acknowledgement or Opus 5.5/max model review is claimed.
+Existing user configuration backups remain private outside Git, and no account,
+OAuth, hosted model worker or client reload was introduced.
+
+The notification/FCM contract received two independent source pre-reviews and is
+being implemented on its own branch. Production root package/lock/build/start,
+retained-server facts, named security/clinical/finance owners, original 115 scenario
+outcomes and release/100 RPS gates remain unchanged. The original six staged
+changes and all eleven handover files were rehashed and remain intact.

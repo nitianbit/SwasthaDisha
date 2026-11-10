@@ -1,0 +1,4772 @@
+{
+  "schema": "SD-AUTH-API-PLAN-1",
+  "role": "auth-user-wallet-api",
+  "sourceCommit": "d91e1a3d37f2b229efc7fc2507d666ddc2576d99",
+  "sourceFiles": {
+    "src1/modules/auth/routes/index.ts": "1f3e6a8076fa0c8aa5f5edc1d95787fd955e81b40c6323a87a97197b54a73893",
+    "src1/modules/user/routes/index.ts": "5abcd4fd438ce0a05f24a72f85d40d1a9ab9b9374fd9056a442a8fe6481396bf",
+    "src1/modules/wallet/routes/index.ts": "5ce3fc7bdd72140348df94787b0c4e47a19190ada5137a2971be84cbe584197c",
+    "src1/modules/middleware/auth.ts": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+    "src1/modules/middleware/errorHandler.ts": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51",
+    "src1/modules/auth/controller/index.ts": "2fd46a2824e9842eb820b2a49714245ccd521a7880612ae6b48c2b6e9aed4528",
+    "src1/modules/auth/validation/index.ts": "c0424a7bf6fb49226dec0aa39babec98221f50fcd842c4137120b8a30a3d3527",
+    "src1/modules/common/middleware/validation.ts": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef",
+    "src1/modules/common/utils/asyncHandler.ts": "59fe49db58678ef81242a654f7457f74b067b2583a3f8dc70918b61f50228bd9",
+    "src1/modules/user/controller/index.ts": "25aef90efe3e5142011789dd48d55452d5b1fef9f2e56d70c355e7606e191d74",
+    "src1/modules/user/validation/index.ts": "db7d64de2ab5276753656681ef1b50cada2a108047ec24db195b384e28bf6fbb",
+    "src1/modules/common/types/index.ts": "63ad3821027150d368e993903e954b4a80b776ff223caf322c104008239d4cbd",
+    "src1/modules/wallet/controller/index.ts": "3b22b878fd8717b8b88620c2cb5ff3f00337f5d887beea86050fcd34d222264f",
+    "src1/modules/wallet/validation/index.ts": "b14fcba5a716314998d755b16d27db8a43e45e1244fc327543c90f7db41356d1",
+    "src1/config/config.ts": "e879b0f9c635283d7c9a271128605c6d8583995356e30f5f1c318d23270d09f6",
+    "src1/modules/pharmacies/model/index.ts": "beda95d89a9773a8d5851dd923c363c83123a573f7391836dec69b13e5cfa177",
+    "src1/modules/common/utils/mongoErrors.ts": "147a5687832d03c654acd97e0f9e0d9c6c0c7ab51a2841f0eb2260235229d43d",
+    "src1/modules/auth/services/index.ts": "d59d5ea23df586fbbdb5b9c4615bcbe0b716f649bdc02f3738088f87b0fbae56",
+    "src1/modules/auth/types/index.ts": "f6cbff24776d23b029244526d07d6a9af290aec66020d414469388c6f11118e9",
+    "src1/modules/admin/repository/index.ts": "52228e037935bc4fee3265566fe62458d46b25de50457c7ef356df4f24d1661d",
+    "src1/modules/hr/repository/index.ts": "565efdeec1a579b7a31ed01cec2d1ff8f5391969f782b63b35a1075e9c5c0a36",
+    "src1/modules/user/repository/index.ts": "e730c52b26fbc773bcf92673190b68fe00c91162cb97f37eac1570cbbb85c4e1",
+    "src1/modules/specialists/repository/index.ts": "c3b4abd78026639fe9bedda62912ec59ecf6ff1f92e01947bf2be59d4ea4ca00",
+    "src1/modules/pharmacies/repository/index.ts": "f3e1110b139c8158d1c846db7778a45f8ba9f5ce225f4468384f2d070d3718db",
+    "src1/modules/user/services/index.ts": "e649883d1728b6a39a129d1cde08152628d7a8f13ba68da3de7764799f799290",
+    "src1/modules/user/types/index.ts": "91d4b48e4749d113733f471d64093c7269dffcf13bf48577c8dbc2edce7d5b71",
+    "src1/modules/common/types/error.ts": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+    "src1/modules/common/types/response.ts": "44c5dbcf38ea117eaa13f3a715143ea147a7abf25c3491b61817e67b5f3d6f93",
+    "src1/modules/wallet/services/index.ts": "938433ca68e0481bf86d2b69f5d56106fba04f913c94e326947bbd617fbc13ff",
+    "src1/modules/wallet/types/index.ts": "ebe4c82783a032315ff70df33961010ab44ff11413bb29c3cd98e7d0f43e0e6b",
+    "src1/modules/settings/types/index.ts": "1e69283201773cee55f5eaf0f10ccc77d5a8c091cb8aa1ead83a4616d20bfdd8",
+    "src1/modules/pharmacies/types/index.ts": "e43d4c6e5af5ebc9a21e3a35d41e475e92ab7509961cdafe6bfc3043af0b24f0",
+    "src1/modules/corporates/repository/index.ts": "d25d77d0ca37c64877e088ad6cd057dba4920dabab5c139e65deac99e2f3e384",
+    "src1/modules/otp/services/index.ts": "cf59555cb618ace73e78e7fb35ca5ce780075ed30d5c3f7c633b1777b4b07971",
+    "src1/modules/admin/types/index.ts": "40af9ca32f722617f765813d5ef865c45cd40ae2dfe2b68db367740d5239b3ad",
+    "src1/modules/hr/types/index.ts": "3439270c8a405dbe1299717979e8b8802cd671048842506283bfec4476a6399b",
+    "src1/modules/specialists/types/index.ts": "fcd9dcbe1d4e389b05cdf0839406b9547daef96df4360985cc1e483209741bfe",
+    "src1/modules/notification/services/index.ts": "dd343357282c5c80fb02da2913d9eaf1ec772e7df0daa39f9a4b0bfc87c9311d",
+    "src1/modules/email/services/index.ts": "44049e2331f3cc9dbed9e8608f90bc9db1a0c9a2d7b43c9a8eee1e2d4c877afc",
+    "src1/modules/sms/services/index.ts": "7ab0ba42473626e89d23a4fcf4eca4d298b53d6fa30648b36d77ea779bc32b94",
+    "src1/modules/common/repository/index.ts": "6e13d4d0ced3ad40772c5b2c35034544fe49f0d7b715cf0309f954be7ab5cb77",
+    "src1/modules/admin/model/index.ts": "6f0463e094209c158dc59dd58e23e2ca9ec609301ecf7c55c61592cba8a80526",
+    "src1/modules/hr/model/index.ts": "97937e1e9935c78771357a824a52019fbf81fdb1cc5c77fe86107c1516c5f6eb",
+    "src1/modules/common/utils/queryUtils.ts": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d",
+    "src1/modules/user/model/index.ts": "8ab08c867008d9788fd2105b6ac840794fcd5d8b2c518de500119aa2536cf5c4",
+    "src1/modules/specialists/model/index.ts": "0dcbc6b6a88b439181494c514eebdd8cd48273933ea1028cc77c0b6ed2a0d39e",
+    "src1/modules/wallet/repository/index.ts": "4db66107afa4ecb7db99a91c3d9216488a514145187e56bc0d589677e344b726",
+    "src1/modules/common/utils/dateUtils.ts": "87bf2514e890fc3b03f75c68b1661376c13388b07fe5f4af134714013d41dcd1",
+    "src1/modules/corporates/model/index.ts": "1aaa1f45c8cba7b488c803181af71ba9c66c8d638ce5285909c5f814143be89c",
+    "src1/modules/wellnessPackages/model/index.ts": "46dd391deda14d63a041c478b5233010faa186df51651f7d611b8946675acc28",
+    "src1/modules/corporates/types/index.ts": "acc6d8d0ccddaf6b37c7247d4b3f5699bdb6910ca485ff605ff5987bcb5889ea",
+    "src1/modules/wellnessPackages/types/index.ts": "f34ac025b47b73b4d6de30b37768b2fbed980681d245165a98789b4a9d4aa8b1",
+    "src1/modules/otp/repository/index.ts": "8d59e92cb0d019a2d777d9b794278f126714205dce774caee5cd6e96d14a6841",
+    "src1/modules/otp/types/index.ts": "7ee33890ffbbfeefb0921fec4faf53c0af775b963e90202199a542c642ac15fd",
+    "src1/modules/notification/repository/index.ts": "418749c02dbd5844003b355fb6e79f66846377146e708f816ffb7426bc42e897",
+    "src1/modules/fcm/services/index.ts": "5721b5de514461bdc1197cb721bf99440b79df9bf8c889087b691ba47d6c55ec",
+    "src1/modules/notification/types/index.ts": "7c755170cacc5ce208c1522b152543ccbbefba3cc03a9f28f99a3d6d325a6b68",
+    "src1/modules/common/repository/BaseRepository.ts": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+    "src1/modules/wallet/model/index.ts": "18757f38145a2ebab378cd1d00c423170a00fd3b136b1229105244fb1a540538",
+    "src1/modules/otp/model/index.ts": "9891e0b34bbd3b21502540d86a8001c4f666223ddb8628c2922a1953ede6506d",
+    "src1/modules/notification/model/index.ts": "ef6c56aec1cecaac2c0248b76faf1dd4721f4c00a45b2fa8f45c8b79836c1ca9",
+    "src1/modules/fcm/repository/index.ts": "8c472a507a1ae97ba683db83bb8e6d07112f243f91eb0b7eb39ea36abb74baca",
+    "src1/modules/fcm/types/index.ts": "f1beb58d08a91b5c6797d177a21be55cb6d79813f2a510cd164532fa723a6f2c",
+    "src1/modules/fcm/model/index.ts": "7082276e9d66a64ad7dc510dcc37782bb1a4e7ee80accbd1322f5c2d8a6f6b37",
+    "test/api-runtime/scenario/bootstrap.cjs": "9c5ea5ae4275cf9f333b8688470059b66dc28267aa249e18c83ccb15a64ff548",
+    "test/api-runtime/scenario/scenario.cjs": "95c44306f9ab7bddadc7e5be5d9a5e80b9816234167d1a83402a6591f3a88947",
+    "test/api-runtime/scenario/ports-manifest.json": "993003d7ec316a99c8189acde7e45277c6f79f9f567a1e26cfed9a7d3d855f94",
+    "test/api-runtime/scenario/prepare.py": "39b4085370a09a34069b9f1c4f45cfd8fa38a3a1f0e380abcef9c469a5add598",
+    "test/api-runtime/scenario/compile.cjs": "76383b2161dc19d4675f7c21edc1a4fa799cd0287b80628f63bc2d19b38a3a2a",
+    "test/api-runtime/scenario/package-plan.json": "d7830a9ce688235bb64f3f9f7ac3d5dd604bb63641cdae97b8b7250bfd957227",
+    "test/application/app-bundle.mjs": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2",
+    "package-lock.json": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080"
+  },
+  "modules": {
+    "@/modules/auth/routes": "compiled/modules/auth/routes/index.js",
+    "@/modules/auth/routes/index": "compiled/modules/auth/routes/index.js",
+    "@/modules/user/routes": "compiled/modules/user/routes/index.js",
+    "@/modules/user/routes/index": "compiled/modules/user/routes/index.js",
+    "@/modules/wallet/routes": "compiled/modules/wallet/routes/index.js",
+    "@/modules/wallet/routes/index": "compiled/modules/wallet/routes/index.js",
+    "@/modules/middleware/auth": "compiled/modules/middleware/auth.js",
+    "@/modules/middleware/errorHandler": "compiled/modules/middleware/errorHandler.js",
+    "@/modules/auth/controller": "compiled/modules/auth/controller/index.js",
+    "@/modules/auth/controller/index": "compiled/modules/auth/controller/index.js",
+    "@/modules/auth/validation": "compiled/modules/auth/validation/index.js",
+    "@/modules/auth/validation/index": "compiled/modules/auth/validation/index.js",
+    "@/modules/common/middleware/validation": "compiled/modules/common/middleware/validation.js",
+    "@/modules/common/utils/asyncHandler": "compiled/modules/common/utils/asyncHandler.js",
+    "@/modules/user/controller": "compiled/modules/user/controller/index.js",
+    "@/modules/user/controller/index": "compiled/modules/user/controller/index.js",
+    "@/modules/user/validation": "compiled/modules/user/validation/index.js",
+    "@/modules/user/validation/index": "compiled/modules/user/validation/index.js",
+    "@/modules/common/types": "compiled/modules/common/types/index.js",
+    "@/modules/common/types/index": "compiled/modules/common/types/index.js",
+    "@/modules/wallet/controller": "compiled/modules/wallet/controller/index.js",
+    "@/modules/wallet/controller/index": "compiled/modules/wallet/controller/index.js",
+    "@/modules/wallet/validation": "compiled/modules/wallet/validation/index.js",
+    "@/modules/wallet/validation/index": "compiled/modules/wallet/validation/index.js",
+    "@/config/config": "compiled/config/config.js",
+    "@/modules/pharmacies/model": "compiled/modules/pharmacies/model/index.js",
+    "@/modules/pharmacies/model/index": "compiled/modules/pharmacies/model/index.js",
+    "@/modules/common/utils/mongoErrors": "compiled/modules/common/utils/mongoErrors.js",
+    "@/modules/auth/services": "compiled/modules/auth/services/index.js",
+    "@/modules/auth/services/index": "compiled/modules/auth/services/index.js",
+    "@/modules/auth/types": "compiled/modules/auth/types/index.js",
+    "@/modules/auth/types/index": "compiled/modules/auth/types/index.js",
+    "@/modules/admin/repository": "compiled/modules/admin/repository/index.js",
+    "@/modules/admin/repository/index": "compiled/modules/admin/repository/index.js",
+    "@/modules/hr/repository": "compiled/modules/hr/repository/index.js",
+    "@/modules/hr/repository/index": "compiled/modules/hr/repository/index.js",
+    "@/modules/user/repository": "compiled/modules/user/repository/index.js",
+    "@/modules/user/repository/index": "compiled/modules/user/repository/index.js",
+    "@/modules/specialists/repository": "compiled/modules/specialists/repository/index.js",
+    "@/modules/specialists/repository/index": "compiled/modules/specialists/repository/index.js",
+    "@/modules/pharmacies/repository": "compiled/modules/pharmacies/repository/index.js",
+    "@/modules/pharmacies/repository/index": "compiled/modules/pharmacies/repository/index.js",
+    "@/modules/user/services": "compiled/modules/user/services/index.js",
+    "@/modules/user/services/index": "compiled/modules/user/services/index.js",
+    "@/modules/user/types": "compiled/modules/user/types/index.js",
+    "@/modules/user/types/index": "compiled/modules/user/types/index.js",
+    "@/modules/common/types/error": "compiled/modules/common/types/error.js",
+    "@/modules/common/types/response": "compiled/modules/common/types/response.js",
+    "@/modules/wallet/services": "compiled/modules/wallet/services/index.js",
+    "@/modules/wallet/services/index": "compiled/modules/wallet/services/index.js",
+    "@/modules/wallet/types": "compiled/modules/wallet/types/index.js",
+    "@/modules/wallet/types/index": "compiled/modules/wallet/types/index.js",
+    "@/modules/settings/types": "compiled/modules/settings/types/index.js",
+    "@/modules/settings/types/index": "compiled/modules/settings/types/index.js",
+    "@/modules/pharmacies/types": "compiled/modules/pharmacies/types/index.js",
+    "@/modules/pharmacies/types/index": "compiled/modules/pharmacies/types/index.js",
+    "@/modules/corporates/repository": "compiled/modules/corporates/repository/index.js",
+    "@/modules/corporates/repository/index": "compiled/modules/corporates/repository/index.js",
+    "@/modules/otp/services": "compiled/modules/otp/services/index.js",
+    "@/modules/otp/services/index": "compiled/modules/otp/services/index.js",
+    "@/modules/admin/types": "compiled/modules/admin/types/index.js",
+    "@/modules/admin/types/index": "compiled/modules/admin/types/index.js",
+    "@/modules/hr/types": "compiled/modules/hr/types/index.js",
+    "@/modules/hr/types/index": "compiled/modules/hr/types/index.js",
+    "@/modules/specialists/types": "compiled/modules/specialists/types/index.js",
+    "@/modules/specialists/types/index": "compiled/modules/specialists/types/index.js",
+    "@/modules/notification/services": "compiled/modules/notification/services/index.js",
+    "@/modules/notification/services/index": "compiled/modules/notification/services/index.js",
+    "@/modules/email/services": "compiled/modules/email/services/index.js",
+    "@/modules/email/services/index": "compiled/modules/email/services/index.js",
+    "@/modules/sms/services": "compiled/modules/sms/services/index.js",
+    "@/modules/sms/services/index": "compiled/modules/sms/services/index.js",
+    "@/modules/common/repository": "compiled/modules/common/repository/index.js",
+    "@/modules/common/repository/index": "compiled/modules/common/repository/index.js",
+    "@/modules/admin/model": "compiled/modules/admin/model/index.js",
+    "@/modules/admin/model/index": "compiled/modules/admin/model/index.js",
+    "@/modules/hr/model": "compiled/modules/hr/model/index.js",
+    "@/modules/hr/model/index": "compiled/modules/hr/model/index.js",
+    "@/modules/common/utils/queryUtils": "compiled/modules/common/utils/queryUtils.js",
+    "@/modules/user/model": "compiled/modules/user/model/index.js",
+    "@/modules/user/model/index": "compiled/modules/user/model/index.js",
+    "@/modules/specialists/model": "compiled/modules/specialists/model/index.js",
+    "@/modules/specialists/model/index": "compiled/modules/specialists/model/index.js",
+    "@/modules/wallet/repository": "compiled/modules/wallet/repository/index.js",
+    "@/modules/wallet/repository/index": "compiled/modules/wallet/repository/index.js",
+    "@/modules/common/utils/dateUtils": "compiled/modules/common/utils/dateUtils.js",
+    "@/modules/corporates/model": "compiled/modules/corporates/model/index.js",
+    "@/modules/corporates/model/index": "compiled/modules/corporates/model/index.js",
+    "@/modules/wellnessPackages/model": "compiled/modules/wellnessPackages/model/index.js",
+    "@/modules/wellnessPackages/model/index": "compiled/modules/wellnessPackages/model/index.js",
+    "@/modules/corporates/types": "compiled/modules/corporates/types/index.js",
+    "@/modules/corporates/types/index": "compiled/modules/corporates/types/index.js",
+    "@/modules/wellnessPackages/types": "compiled/modules/wellnessPackages/types/index.js",
+    "@/modules/wellnessPackages/types/index": "compiled/modules/wellnessPackages/types/index.js",
+    "@/modules/otp/repository": "compiled/modules/otp/repository/index.js",
+    "@/modules/otp/repository/index": "compiled/modules/otp/repository/index.js",
+    "@/modules/otp/types": "compiled/modules/otp/types/index.js",
+    "@/modules/otp/types/index": "compiled/modules/otp/types/index.js",
+    "@/modules/notification/repository": "compiled/modules/notification/repository/index.js",
+    "@/modules/notification/repository/index": "compiled/modules/notification/repository/index.js",
+    "@/modules/fcm/services": "compiled/modules/fcm/services/index.js",
+    "@/modules/fcm/services/index": "compiled/modules/fcm/services/index.js",
+    "@/modules/notification/types": "compiled/modules/notification/types/index.js",
+    "@/modules/notification/types/index": "compiled/modules/notification/types/index.js",
+    "@/modules/common/repository/BaseRepository": "compiled/modules/common/repository/BaseRepository.js",
+    "@/modules/wallet/model": "compiled/modules/wallet/model/index.js",
+    "@/modules/wallet/model/index": "compiled/modules/wallet/model/index.js",
+    "@/modules/otp/model": "compiled/modules/otp/model/index.js",
+    "@/modules/otp/model/index": "compiled/modules/otp/model/index.js",
+    "@/modules/notification/model": "compiled/modules/notification/model/index.js",
+    "@/modules/notification/model/index": "compiled/modules/notification/model/index.js",
+    "@/modules/fcm/repository": "compiled/modules/fcm/repository/index.js",
+    "@/modules/fcm/repository/index": "compiled/modules/fcm/repository/index.js",
+    "@/modules/fcm/types": "compiled/modules/fcm/types/index.js",
+    "@/modules/fcm/types/index": "compiled/modules/fcm/types/index.js",
+    "@/modules/fcm/model": "compiled/modules/fcm/model/index.js",
+    "@/modules/fcm/model/index": "compiled/modules/fcm/model/index.js"
+  },
+  "mutants": {
+    "OTP_UNCONDITIONAL_CONSUME": {
+      "source": "src1/modules/otp/repository/index.ts",
+      "originalSha256": "8d59e92cb0d019a2d777d9b794278f126714205dce774caee5cd6e96d14a6841",
+      "mutantSha256": "59b2000602573bc34970f0cb0817beb9aab96a828151f084792e95409a8d3bb8",
+      "file": "compiled/mutants/OTP_UNCONDITIONAL_CONSUME.js"
+    },
+    "OTP_LOGIN_TARGET_UNBOUND": {
+      "source": "src1/modules/auth/services/index.ts",
+      "originalSha256": "d59d5ea23df586fbbdb5b9c4615bcbe0b716f649bdc02f3738088f87b0fbae56",
+      "mutantSha256": "fbfad3482a4bf222628752cd7116dd8b8eeb788234d9e8e08229e32f06c91461",
+      "file": "compiled/mutants/OTP_LOGIN_TARGET_UNBOUND.js"
+    },
+    "USER_OTHER_READ": {
+      "source": "src1/modules/user/controller/index.ts",
+      "originalSha256": "25aef90efe3e5142011789dd48d55452d5b1fef9f2e56d70c355e7606e191d74",
+      "mutantSha256": "69399f8f1ce9b493d66bb2e1cb6f1cf00e94a7c65d346f47836578d62dda3ad0",
+      "file": "compiled/mutants/USER_OTHER_READ.js"
+    },
+    "WALLET_OTHER_READ": {
+      "source": "src1/modules/wallet/controller/index.ts",
+      "originalSha256": "3b22b878fd8717b8b88620c2cb5ff3f00337f5d887beea86050fcd34d222264f",
+      "mutantSha256": "ba5c467b1b9745769a1731cfe2354c9c0e16fe37b928aa2b2396ae50f51e6f34",
+      "file": "compiled/mutants/WALLET_OTHER_READ.js"
+    }
+  },
+  "models": [
+    {
+      "name": "User",
+      "collection": "users",
+      "source": "src1/modules/user/model/index.ts",
+      "indexes": [
+        {
+          "key": {
+            "corporateEmail": 1
+          },
+          "options": {
+            "unique": true,
+            "sparse": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "collection": "admins",
+      "source": "src1/modules/admin/model/index.ts",
+      "indexes": []
+    },
+    {
+      "name": "HR",
+      "collection": "hrs",
+      "source": "src1/modules/hr/model/index.ts",
+      "indexes": [
+        {
+          "key": {
+            "employeeId": 1
+          },
+          "options": {
+            "unique": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "Corporate",
+      "collection": "corporates",
+      "source": "src1/modules/corporates/model/index.ts",
+      "indexes": []
+    },
+    {
+      "name": "Specialist",
+      "collection": "specialists",
+      "source": "src1/modules/specialists/model/index.ts",
+      "indexes": []
+    },
+    {
+      "name": "Pharmacy",
+      "collection": "pharmacies",
+      "source": "src1/modules/pharmacies/model/index.ts",
+      "indexes": [
+        {
+          "key": {
+            "phone": 1
+          },
+          "options": {
+            "unique": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "OTP",
+      "collection": "OTP",
+      "source": "src1/modules/otp/model/index.ts",
+      "indexes": [
+        {
+          "key": {
+            "expireAt": 1
+          },
+          "options": {
+            "expireAfterSeconds": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wallet",
+      "collection": "wallets",
+      "source": "src1/modules/wallet/model/index.ts",
+      "indexes": [
+        {
+          "key": {
+            "userId": 1
+          },
+          "options": {
+            "unique": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "WalletTransaction",
+      "collection": "wallettransactions",
+      "source": "src1/modules/wallet/model/index.ts",
+      "indexes": [
+        {
+          "key": {
+            "userId": 1,
+            "transactionType": 1,
+            "referenceType": 1,
+            "referenceId": 1
+          },
+          "options": {
+            "unique": true,
+            "partialFilterExpression": {
+              "transactionType": "refund",
+              "referenceType": "pharmacy_order",
+              "referenceId": {
+                "$exists": true,
+                "$type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notification",
+      "collection": "notifications",
+      "source": "src1/modules/notification/model/index.ts",
+      "indexes": [
+        {
+          "key": {
+            "idempotencyKey": 1
+          },
+          "options": {
+            "unique": true,
+            "partialFilterExpression": {
+              "idempotencyKey": {
+                "$exists": true,
+                "$type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "FcmToken",
+      "collection": "fcmtokens",
+      "source": "src1/modules/fcm/model/index.ts",
+      "indexes": [
+        {
+          "key": {
+            "token": 1
+          },
+          "options": {
+            "unique": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "WellnessPackage",
+      "collection": "wellnesspackages",
+      "source": "src1/modules/wellnessPackages/model/index.ts",
+      "indexes": []
+    }
+  ],
+  "modelDeclarations": [
+    {
+      "name": "Admin",
+      "source": "src1/modules/admin/model/index.ts",
+      "compiled": "compiled/modules/admin/model/index.js"
+    },
+    {
+      "name": "Corporate",
+      "source": "src1/modules/corporates/model/index.ts",
+      "compiled": "compiled/modules/corporates/model/index.js"
+    },
+    {
+      "name": "FcmToken",
+      "source": "src1/modules/fcm/model/index.ts",
+      "compiled": "compiled/modules/fcm/model/index.js"
+    },
+    {
+      "name": "HR",
+      "source": "src1/modules/hr/model/index.ts",
+      "compiled": "compiled/modules/hr/model/index.js"
+    },
+    {
+      "name": "Notification",
+      "source": "src1/modules/notification/model/index.ts",
+      "compiled": "compiled/modules/notification/model/index.js"
+    },
+    {
+      "name": "OTP",
+      "source": "src1/modules/otp/model/index.ts",
+      "compiled": "compiled/modules/otp/model/index.js"
+    },
+    {
+      "name": "Pharmacy",
+      "source": "src1/modules/pharmacies/model/index.ts",
+      "compiled": "compiled/modules/pharmacies/model/index.js"
+    },
+    {
+      "name": "Specialist",
+      "source": "src1/modules/specialists/model/index.ts",
+      "compiled": "compiled/modules/specialists/model/index.js"
+    },
+    {
+      "name": "User",
+      "source": "src1/modules/user/model/index.ts",
+      "compiled": "compiled/modules/user/model/index.js"
+    },
+    {
+      "name": "Wallet",
+      "source": "src1/modules/wallet/model/index.ts",
+      "compiled": "compiled/modules/wallet/model/index.js"
+    },
+    {
+      "name": "WalletTransaction",
+      "source": "src1/modules/wallet/model/index.ts",
+      "compiled": "compiled/modules/wallet/model/index.js"
+    },
+    {
+      "name": "WellnessPackage",
+      "source": "src1/modules/wellnessPackages/model/index.ts",
+      "compiled": "compiled/modules/wellnessPackages/model/index.js"
+    }
+  ],
+  "modelMapAudit": {
+    "status": "STATIC_EMITTED_MODEL_MAP_VERIFIED",
+    "reachableModules": 51,
+    "modelCount": 12,
+    "controls": [
+      {
+        "id": "OMITTED_WELLNESS_PACKAGE",
+        "rejected": true
+      },
+      {
+        "id": "EXTRA_UNREACHABLE_MODEL",
+        "rejected": true
+      },
+      {
+        "id": "DUPLICATE_MODEL",
+        "rejected": true
+      },
+      {
+        "id": "WRONG_MODEL_SOURCE",
+        "rejected": true
+      }
+    ],
+    "applicationEvaluations": 0
+  },
+  "packageVersions": {
+    "axios": "1.8.4",
+    "dotenv": "16.4.5",
+    "express": "4.21.1",
+    "joi": "17.13.3",
+    "jsonwebtoken": "9.0.2",
+    "moment": "2.30.1",
+    "reflect-metadata": "0.2.2",
+    "typedi": "0.10.0",
+    "mongoose": "9.12.0",
+    "typescript": "5.9.3"
+  },
+  "lockSha": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+  "portsSha": "993003d7ec316a99c8189acde7e45277c6f79f9f567a1e26cfed9a7d3d855f94",
+  "requiredCaseIds": [
+    "PHONE_LOGIN",
+    "EMAIL_LOGIN",
+    "LOGIN_SIDE_EFFECTS",
+    "JWT_SIGNATURE_AND_CLAIMS",
+    "OWN_PROFILE",
+    "OWN_USER_READ",
+    "OWN_USER_UPDATE",
+    "OTHER_USER_READ_DENIED",
+    "OTHER_USER_UPDATE_DENIED",
+    "OTHER_USER_DELETE_DENIED",
+    "USER_LIST_DENIED",
+    "SELF_PRIVILEGE_FIELDS_DENIED",
+    "OWN_WALLET_READ",
+    "OTHER_WALLET_ID_DENIED",
+    "OTHER_WALLET_USER_DENIED",
+    "OWN_TRANSACTION_READ",
+    "OTHER_TRANSACTION_DENIED",
+    "TRANSACTION_WITHOUT_WALLET_OWNER",
+    "WALLET_MUTATIONS_DENIED",
+    "ANONYMOUS_DENIED",
+    "WRONG_KEY_DENIED",
+    "EXPIRED_JWT_DENIED",
+    "MISSING_PRINCIPAL_DENIED",
+    "MALFORMED_WALLET_ID",
+    "ABSENT_WALLET",
+    "ADMIN_READS",
+    "HR_CORPORATE_SCOPE",
+    "HR_WITHOUT_CORPORATE_DENIED",
+    "SPECIALIST_AND_PHARMACY_DENIED",
+    "WRONG_OTP_DENIED",
+    "CONSUMED_OTP_DENIED",
+    "EXPIRED_OTP_DENIED",
+    "TARGET_BINDING_DENIED",
+    "UNBOUND_OTP_DENIED",
+    "OTP_SINGLE_WINNER",
+    "OTP_INFLIGHT_EXPIRY_DENIED"
+  ],
+  "requiredSensitivityIds": [
+    "OTP_UNCONDITIONAL_CONSUME",
+    "OTP_LOGIN_TARGET_UNBOUND",
+    "USER_OTHER_READ",
+    "WALLET_OTHER_READ"
+  ],
+  "providerCounterKeys": [
+    "email",
+    "sms",
+    "push",
+    "logger",
+    "payments",
+    "calendar",
+    "storage",
+    "queue",
+    "deniedCapabilities",
+    "unexpected"
+  ],
+  "providerCounterScope": "NOMINAL_ONLY_EXCLUDING_EXPLICIT_SENSITIVITY_PHASES",
+  "compilation": {
+    "status": "TRANSPILE_ONLY_NOT_TYPECHECKED",
+    "compiler": "5.9.3",
+    "diagnostics": [],
+    "semanticDiagnostics": [
+      {
+        "file": null,
+        "code": 2318,
+        "category": 1,
+        "message": "Cannot find global type 'Array'."
+      },
+      {
+        "file": null,
+        "code": 2318,
+        "category": 1,
+        "message": "Cannot find global type 'Boolean'."
+      },
+      {
+        "file": null,
+        "code": 2318,
+        "category": 1,
+        "message": "Cannot find global type 'Function'."
+      },
+      {
+        "file": null,
+        "code": 2318,
+        "category": 1,
+        "message": "Cannot find global type 'IArguments'."
+      },
+      {
+        "file": null,
+        "code": 2318,
+        "category": 1,
+        "message": "Cannot find global type 'Number'."
+      },
+      {
+        "file": null,
+        "code": 2318,
+        "category": 1,
+        "message": "Cannot find global type 'Object'."
+      },
+      {
+        "file": null,
+        "code": 2318,
+        "category": 1,
+        "message": "Cannot find global type 'Promise'."
+      },
+      {
+        "file": null,
+        "code": 2318,
+        "category": 1,
+        "message": "Cannot find global type 'PromiseLike'."
+      },
+      {
+        "file": null,
+        "code": 2318,
+        "category": 1,
+        "message": "Cannot find global type 'RegExp'."
+      },
+      {
+        "file": null,
+        "code": 2318,
+        "category": 1,
+        "message": "Cannot find global type 'String'."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module 'path' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'includes' does not exist on type '{}'."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Error'."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'parseInt'."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'parseInt'."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'parseInt'."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'parseInt'."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'forEach' does not exist on type '{}'."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2584,
+        "category": 1,
+        "message": "Cannot find name 'console'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'dom'."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/modules/admin/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/admin/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/admin/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/admin/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/admin/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/admin/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/admin/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/admin/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/admin/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/admin/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/admin/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/admin/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/admin/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/admin/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/admin/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/admin/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/admin/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/admin/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/admin/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/admin/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/auth/controller/index.ts",
+        "code": 2697,
+        "category": 1,
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      {
+        "file": "src1/modules/auth/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/auth/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/auth/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/auth/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module 'node:crypto' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2584,
+        "category": 1,
+        "message": "Cannot find name 'console'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'dom'."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'split' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Partial'."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'split' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Partial'."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'split' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'split' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/common/middleware/validation.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'map' does not exist on type '{}'."
+      },
+      {
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "code": 2614,
+        "category": 1,
+        "message": "Module '\"mongoose\"' has no exported member 'FilterQuery'. Did you mean to use 'import FilterQuery from \"mongoose\"' instead?"
+      },
+      {
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "code": 2724,
+        "category": 1,
+        "message": "'\"mongoose\"' has no exported member named 'LeanDocument'. Did you mean 'Document'?"
+      },
+      {
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Partial'."
+      },
+      {
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Partial'."
+      },
+      {
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Partial'."
+      },
+      {
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/common/types/error.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Error'."
+      },
+      {
+        "file": "src1/modules/common/types/error.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Error'."
+      },
+      {
+        "file": "src1/modules/common/types/error.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'name' does not exist on type 'AppError'."
+      },
+      {
+        "file": "src1/modules/common/types/error.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Error'."
+      },
+      {
+        "file": "src1/modules/common/types/error.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'constructor' does not exist on type 'AppError'."
+      },
+      {
+        "file": "src1/modules/common/utils/asyncHandler.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/services/logger' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/common/utils/asyncHandler.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/common/utils/asyncHandler.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'test' does not exist on type '{}'."
+      },
+      {
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Error'."
+      },
+      {
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'parseInt'."
+      },
+      {
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'substring' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'parseInt'."
+      },
+      {
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'substring' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'parseInt'."
+      },
+      {
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'substring' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'localeCompare' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/common/utils/mongoErrors.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Array'."
+      },
+      {
+        "file": "src1/modules/common/utils/mongoErrors.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Array'."
+      },
+      {
+        "file": "src1/modules/common/utils/queryUtils.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'replace' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/corporates/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/corporates/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/corporates/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/corporates/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/corporates/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/corporates/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/corporates/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/corporates/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/corporates/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/corporates/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Math'."
+      },
+      {
+        "file": "src1/modules/corporates/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/corporates/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/corporates/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/corporates/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/corporates/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/corporates/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/corporates/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/corporates/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/email/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/fcm/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/fcm/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/fcm/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/fcm/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/fcm/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/fcm/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/fcm/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/fcm/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/fcm/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/fcm/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/fcm/repository/index.ts",
+        "code": 2352,
+        "category": 1,
+        "message": "Conversion of type 'Query<any, any, {}, any, \"findOneAndUpdate\", {}, any>' to type 'IFcmToken' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.\n  Type 'Query<any, any, {}, any, \"findOneAndUpdate\", {}, any>' is missing the following properties from type 'IFcmToken': userId, userType, token, isActive"
+      },
+      {
+        "file": "src1/modules/fcm/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/fcm/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/fcm/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'length' does not exist on type '{}'."
+      },
+      {
+        "file": "src1/modules/fcm/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/services/firebase' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/fcm/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/services/logger' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/fcm/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/fcm/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/fcm/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/fcm/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/fcm/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/fcm/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/fcm/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/fcm/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/fcm/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'length' does not exist on type '{}'."
+      },
+      {
+        "file": "src1/modules/fcm/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/fcm/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/fcm/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/fcm/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/hr/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/hr/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/hr/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'toUpperCase' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/hr/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/hr/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/hr/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/hr/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/hr/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/hr/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/hr/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/hr/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/hr/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/hr/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/hr/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/hr/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/hr/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/hr/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'toUpperCase' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/hr/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'toUpperCase' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/hr/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/hr/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Math'."
+      },
+      {
+        "file": "src1/modules/hr/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Array'."
+      },
+      {
+        "file": "src1/modules/hr/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/hr/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/hr/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Array'."
+      },
+      {
+        "file": "src1/modules/hr/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Array'."
+      },
+      {
+        "file": "src1/modules/hr/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/hr/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/hr/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/hr/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/hr/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/hr/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/hr/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/hr/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/hr/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/hr/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/hr/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/middleware/auth.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'startsWith' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/middleware/auth.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'substring' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/middleware/auth.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'headers' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/middleware/auth.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'headers' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/middleware/auth.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/middleware/auth.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'archivedAt' does not exist on type 'Query<any, any, {}, any, \"findOne\", {}, any>'."
+      },
+      {
+        "file": "src1/modules/middleware/auth.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'isActive' does not exist on type 'Query<any, any, {}, any, \"findOne\", {}, any>'."
+      },
+      {
+        "file": "src1/modules/middleware/auth.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'isVerified' does not exist on type 'Query<any, any, {}, any, \"findOne\", {}, any>'."
+      },
+      {
+        "file": "src1/modules/middleware/auth.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/middleware/auth.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property '_id' does not exist on type 'Query<any, any, {}, any, \"findOne\", {}, any>'."
+      },
+      {
+        "file": "src1/modules/middleware/auth.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/middleware/auth.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/middleware/errorHandler.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/services/logger' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/middleware/errorHandler.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'message' does not exist on type 'CustomError'."
+      },
+      {
+        "file": "src1/modules/middleware/errorHandler.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'message' does not exist on type 'CustomError'."
+      },
+      {
+        "file": "src1/modules/notification/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/notification/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/notification/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/notification/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/notification/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/notification/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/notification/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/notification/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/notification/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/notification/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/notification/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/notification/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/notification/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Partial'."
+      },
+      {
+        "file": "src1/modules/notification/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'length' does not exist on type '{}'."
+      },
+      {
+        "file": "src1/modules/notification/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Math'."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'length' does not exist on type '{}'."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'map' does not exist on type '{}'."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'length' does not exist on type '{}'."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Object'."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Object'."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2488,
+        "category": 1,
+        "message": "Type '[any, any]' must have a '[Symbol.iterator]()' method that returns an iterator."
+      },
+      {
+        "file": "src1/modules/notification/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/notification/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/notification/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/notification/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/notification/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/notification/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/notification/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/notification/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/otp/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/otp/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/otp/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/otp/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/otp/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/otp/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/otp/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/otp/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/otp/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/otp/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/otp/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/otp/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/otp/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/otp/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/otp/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/otp/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/otp/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/otp/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/otp/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/otp/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/otp/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/otp/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/otp/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/otp/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/otp/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/otp/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/otp/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/otp/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/otp/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/otp/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Math'."
+      },
+      {
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Math'."
+      },
+      {
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Math'."
+      },
+      {
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Math'."
+      },
+      {
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "code": 2488,
+        "category": 1,
+        "message": "Type 'Aggregate<Array<R>>' must have a '[Symbol.iterator]()' method that returns an iterator."
+      },
+      {
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'data' does not exist on type 'string | (() => AsyncIterableIterator<Unpacked<ResultType>>)'.\n  Property 'data' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'metadata' does not exist on type 'string | (() => AsyncIterableIterator<Unpacked<ResultType>>)'.\n  Property 'metadata' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Math'."
+      },
+      {
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/pharmacies/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/pharmacies/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/pharmacies/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/pharmacies/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/pharmacies/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/sms/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'replace' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/sms/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/specialists/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/specialists/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/specialists/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/specialists/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/specialists/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/specialists/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/specialists/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/specialists/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/specialists/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/specialists/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/specialists/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Record'."
+      },
+      {
+        "file": "src1/modules/specialists/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/specialists/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/specialists/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/specialists/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Math'."
+      },
+      {
+        "file": "src1/modules/specialists/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Array'."
+      },
+      {
+        "file": "src1/modules/specialists/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/specialists/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2697,
+        "category": 1,
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2488,
+        "category": 1,
+        "message": "Type 'readonly [\"isActive\", \"isVerified\", \"isCorporateEmailVerified\", \"corporateId\", \"isCorporateUser\"]' must have a '[Symbol.iterator]()' method that returns an iterator."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Object'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2697,
+        "category": 1,
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2697,
+        "category": 1,
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2697,
+        "category": 1,
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2697,
+        "category": 1,
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'parseInt'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'parseInt'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2697,
+        "category": 1,
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/user/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/user/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/user/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/user/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/user/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/user/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/user/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/user/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'toUpperCase' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/user/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/user/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/user/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/user/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/user/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/user/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'split' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/user/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/user/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/user/services/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'split' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/user/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/user/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/user/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/user/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2697,
+        "category": 1,
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2697,
+        "category": 1,
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2697,
+        "category": 1,
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'length' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2697,
+        "category": 1,
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'parseInt'."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'parseInt'."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2697,
+        "category": 1,
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2697,
+        "category": 1,
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2697,
+        "category": 1,
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'parseInt'."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'parseInt'."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2697,
+        "category": 1,
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'length' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2697,
+        "category": 1,
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/wallet/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/wallet/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/wallet/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/wallet/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/wallet/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/wallet/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/wallet/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/wallet/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/wallet/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/wallet/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/wallet/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/wallet/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/wallet/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/wallet/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/wallet/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Math'."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Math'."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Math'."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2488,
+        "category": 1,
+        "message": "Type 'Aggregate<Array<R>>' must have a '[Symbol.iterator]()' method that returns an iterator."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'totalEarned' does not exist on type 'string | (() => AsyncIterableIterator<Unpacked<ResultType>>)'.\n  Property 'totalEarned' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'totalTransactions' does not exist on type 'string | (() => AsyncIterableIterator<Unpacked<ResultType>>)'.\n  Property 'totalTransactions' does not exist on type 'string'."
+      },
+      {
+        "file": "src1/modules/wallet/repository/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/routes/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/wallet/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/modules/payment/services' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/wallet/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/modules/coupon/services' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/wallet/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/services/index.ts",
+        "code": 2584,
+        "category": 1,
+        "message": "Cannot find name 'console'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'dom'."
+      },
+      {
+        "file": "src1/modules/wallet/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/services/index.ts",
+        "code": 2583,
+        "category": 1,
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      {
+        "file": "src1/modules/wallet/services/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/wallet/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/wallet/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/wallet/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/wallet/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/wellnessPackages/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/wellnessPackages/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/wellnessPackages/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/wellnessPackages/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/wellnessPackages/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/wellnessPackages/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/wellnessPackages/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/wellnessPackages/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/wellnessPackages/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/wellnessPackages/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/wellnessPackages/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/wellnessPackages/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'String'."
+      },
+      {
+        "file": "src1/modules/wellnessPackages/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/wellnessPackages/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Boolean'."
+      },
+      {
+        "file": "src1/modules/wellnessPackages/model/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Number'."
+      },
+      {
+        "file": "src1/modules/wellnessPackages/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      },
+      {
+        "file": "src1/modules/wellnessPackages/types/index.ts",
+        "code": 2304,
+        "category": 1,
+        "message": "Cannot find name 'Date'."
+      }
+    ],
+    "semanticScope": "DECLARED_CLOSURE_AND_PUBLIC_TYPES_WITH_EXCLUDED_CAPABILITIES_UNRESOLVED",
+    "fullBuild": false
+  }
+}

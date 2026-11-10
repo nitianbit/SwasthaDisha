@@ -1,0 +1,31 @@
+{
+  "status": "FAILED_REVIEW_REQUIRED",
+  "invocations": 1,
+  "commandExit": 1,
+  "runId": "47178d94-3ea1-4ef8-9cc2-e69684544c4d",
+  "sourceRoot": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-4",
+  "sourceCommit": "d91e1a3d37f2b229efc7fc2507d666ddc2576d99",
+  "templateSha": "75cf55be5d0969e7f1d27b5daa3507ca367266f6675df1ace88eea5fe52d9c5f",
+  "command": "env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /private/tmp/m0-node22/node test/api-runtime/launch.mjs",
+  "actualReviewers": [
+    "/root/backend_boot_path",
+    "/root/local_claude_review_prep"
+  ],
+  "approvalConsumed": true,
+  "failureStage": "OWNED_DATABASE_CONNECT",
+  "failureCode": "DB_INDEX_CREATE_SERVER",
+  "cleanup": "VERIFIED_BY_PARENT_AND_SEPARATE_LEAD_READBACK",
+  "nominalCases": "NOT_RUN",
+  "sensitivityCases": "NOT_RUN",
+  "interpretation": [
+    "Connect and hello completed and a create-index operation failed",
+    "Numeric server code and exact index not measured",
+    "No HTTP cases or production entry point executed",
+    "No retry or fixture relaxation follows from this failure"
+  ],
+  "independentReviewers": {
+    "/root/backend_boot_path": "ACCEPT_FAILED_ATTEMPT2_EVIDENCE",
+    "/root/local_claude_review_prep": "ACCEPT_FAILED_ATTEMPT2_EVIDENCE_AND_CLEANUP_RECORD"
+  },
+  "reviewerSocketLimitation": "Child reviewers did not independently requery Docker; they inspected the executable cleanup and fresh root readback, and independently checked workspace absence."
+}
