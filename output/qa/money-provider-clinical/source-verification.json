@@ -1,0 +1,297 @@
+{
+  "slice": "WALLET_MUTATION_AND_READ_AUTHORITY",
+  "baseline": "9ea963f1f7b51aadedcfa7fc9918eb39a2fd737d",
+  "status": "SOURCE_ONLY_VERIFIED_RUNTIME_NOT_RUN",
+  "scope": "Python stdlib source-as-text checks only; no TypeScript, application, compiler, DB, Docker, provider or network execution",
+  "commands": [
+    {
+      "phase": "before_edit",
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "-I",
+        "output/qa/money-provider-clinical/source-check.py"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/money-clinical",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 1,
+      "stdout": {
+        "status": "REJECTED",
+        "check": "required_imports",
+        "reason": "missing or repeated import: import { NextFunction, Response, Router } from 'express';",
+        "typescript_evaluations": 0
+      },
+      "stderr": "",
+      "input_sha256": {
+        "src1/modules/wallet/routes/index.ts": "18261ce7a70a8e870d5cabbb675732aa0a424800fe44986ddbec0ec653c83f85",
+        "output/qa/money-provider-clinical/source-check.py": "9d19bb047a0f322013a206d8e5a2eb5cb7729c809c1c76cbb4d8f8eab115ed1c"
+      }
+    },
+    {
+      "phase": "after_edit",
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "-I",
+        "output/qa/money-provider-clinical/source-check.py"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/money-clinical",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": {
+        "status": "SOURCE_ONLY_VERIFIED_RUNTIME_NOT_RUN",
+        "baseline": "9ea963f1f7b51aadedcfa7fc9918eb39a2fd737d",
+        "routes_baseline_sha256": "18261ce7a70a8e870d5cabbb675732aa0a424800fe44986ddbec0ec653c83f85",
+        "routes_candidate_sha256": "5ce3fc7bdd72140348df94787b0c4e47a19190ada5137a2971be84cbe584197c",
+        "pinned_sha256": {
+          "src1/modules/common/middleware/validation.ts": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef",
+          "src1/modules/middleware/errorHandler.ts": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51",
+          "src1/modules/middleware/index.ts": "f98daa479b34ad8c3d7d4698d852b05d77004af3e200b69244c1eefecfac3b32",
+          "src1/modules/middleware/auth.ts": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+          "src1/config/config.ts": "0fcb0df49527c155083d2f3e4c81b36650bab14e207b5635a0831b2827d884e1"
+        },
+        "admin_guarded": [
+          "POST /",
+          "POST /transactions",
+          "PUT /:id",
+          "GET /"
+        ],
+        "own_or_admin_guarded": [
+          "GET /user/:userId",
+          "GET /user/:userId/transactions"
+        ],
+        "typescript_evaluations": 0
+      },
+      "stderr": ""
+    },
+    {
+      "phase": "negative_controls",
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "-I",
+        "output/qa/money-provider-clinical/source-check.py",
+        "--negative-controls"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/money-clinical",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": {
+        "status": "SOURCE_NEGATIVES_REJECTED",
+        "baseline": "9ea963f1f7b51aadedcfa7fc9918eb39a2fd737d",
+        "positive_control": "expected_candidate_accepted",
+        "control_count": 30,
+        "controls": [
+          {
+            "control": "baseline_original",
+            "rejected_by": "required_imports",
+            "reason": "missing or repeated import: import { NextFunction, Response, Router } from 'express';"
+          },
+          {
+            "control": "admin_guard_removed:POST /",
+            "rejected_by": "admin_guard_first",
+            "reason": "requireAdmin is not the sole first guard on POST /"
+          },
+          {
+            "control": "admin_guard_removed:POST /transactions",
+            "rejected_by": "admin_guard_first",
+            "reason": "requireAdmin is not the sole first guard on POST /TRANSACTIONS"
+          },
+          {
+            "control": "admin_guard_removed:PUT /:id",
+            "rejected_by": "admin_guard_first",
+            "reason": "requireAdmin is not the sole first guard on PUT /:ID"
+          },
+          {
+            "control": "get_root_left_open",
+            "rejected_by": "admin_guard_first",
+            "reason": "requireAdmin is not the sole first guard on GET /"
+          },
+          {
+            "control": "admin_guard_after_validate:POST /",
+            "rejected_by": "admin_guard_first",
+            "reason": "requireAdmin is not the sole first guard on POST /"
+          },
+          {
+            "control": "admin_guard_after_validate:POST /transactions",
+            "rejected_by": "admin_guard_first",
+            "reason": "requireAdmin is not the sole first guard on POST /TRANSACTIONS"
+          },
+          {
+            "control": "admin_guard_after_validate:PUT /:id",
+            "rejected_by": "admin_guard_first",
+            "reason": "requireAdmin is not the sole first guard on PUT /:ID"
+          },
+          {
+            "control": "admin_guard_after_validate:GET /",
+            "rejected_by": "admin_guard_first",
+            "reason": "requireAdmin is not the sole first guard on GET /"
+          },
+          {
+            "control": "own_guard_removed:GET /user/:userId",
+            "rejected_by": "own_guard_first",
+            "reason": "own-or-admin guard is not the sole first guard on GET /USER/:USERID"
+          },
+          {
+            "control": "own_guard_after_validate:GET /user/:userId",
+            "rejected_by": "own_guard_first",
+            "reason": "own-or-admin guard is not the sole first guard on GET /USER/:USERID"
+          },
+          {
+            "control": "own_guard_removed:GET /user/:userId/transactions",
+            "rejected_by": "own_guard_first",
+            "reason": "own-or-admin guard is not the sole first guard on GET /USER/:USERID/TRANSACTIONS"
+          },
+          {
+            "control": "own_guard_after_validate:GET /user/:userId/transactions",
+            "rejected_by": "own_guard_first",
+            "reason": "own-or-admin guard is not the sole first guard on GET /USER/:USERID/TRANSACTIONS"
+          },
+          {
+            "control": "wrong_guard_requireAdminOrOperationalPharmacy",
+            "rejected_by": "admin_guard_first",
+            "reason": "requireAdmin is not the sole first guard on POST /"
+          },
+          {
+            "control": "wrong_guard_authenticate",
+            "rejected_by": "admin_guard_first",
+            "reason": "requireAdmin is not the sole first guard on POST /"
+          },
+          {
+            "control": "wrong_guard_requireAdminOrHR",
+            "rejected_by": "admin_guard_first",
+            "reason": "requireAdmin is not the sole first guard on POST /"
+          },
+          {
+            "control": "guards_on_some_routes_only",
+            "rejected_by": "admin_guard_first",
+            "reason": "requireAdmin is not the sole first guard on PUT /:ID"
+          },
+          {
+            "control": "own_check_loose_inequality",
+            "rejected_by": "own_helper_strict_comparison",
+            "reason": "loose equality in own-or-admin helper"
+          },
+          {
+            "control": "own_check_objectid_cast",
+            "rejected_by": "own_helper_no_cast",
+            "reason": "type cast or conversion in own-or-admin helper"
+          },
+          {
+            "control": "own_check_after_service_call",
+            "rejected_by": "own_guard_first",
+            "reason": "own-or-admin guard is not the sole first guard on GET /USER/:USERID"
+          },
+          {
+            "control": "own_check_next_before_compare",
+            "rejected_by": "own_helper_check_before_next",
+            "reason": "next() can run before the owner comparison"
+          },
+          {
+            "control": "own_check_inverted",
+            "rejected_by": "own_helper_condition",
+            "reason": "strict non-admin owner comparison with fixed 403 absent or misordered"
+          },
+          {
+            "control": "own_check_missing_identity_guard",
+            "rejected_by": "own_helper_identity_guard",
+            "reason": "missing-principal 401 guard absent"
+          },
+          {
+            "control": "own_message_echoes_identifier",
+            "rejected_by": "own_helper_fixed_message",
+            "reason": "403 message not fixed or echoes request data"
+          },
+          {
+            "control": "own_helper_declared_after_use",
+            "rejected_by": "own_helper_present",
+            "reason": "helper declared after first use"
+          },
+          {
+            "control": "guard_added_to_recharge",
+            "rejected_by": "unguarded_routes_unchanged",
+            "reason": "out-of-scope route changed: POST /RECHARGE/INITIATE"
+          },
+          {
+            "control": "duplicate_unguarded_transactions_route",
+            "rejected_by": "route_inventory",
+            "reason": "route registrations differ from the nine baseline registrations"
+          },
+          {
+            "control": "import_path_changed",
+            "rejected_by": "required_imports",
+            "reason": "missing or repeated import: import { AuthRequest, requireAdmin } from '@/modules/middleware/auth';"
+          },
+          {
+            "control": "requireAdmin_weakened",
+            "rejected_by": "require_admin_semantics",
+            "reason": "requireAdmin principal/admin checks changed"
+          },
+          {
+            "control": "requireAdmin_principal_check_removed",
+            "rejected_by": "require_admin_semantics",
+            "reason": "requireAdmin principal/admin checks changed"
+          }
+        ],
+        "typescript_evaluations": 0
+      },
+      "stderr": ""
+    },
+    {
+      "phase": "whitespace",
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/money-clinical",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "phase": "whitespace_against_baseline",
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "9ea963f1f7b51aadedcfa7fc9918eb39a2fd737d"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/money-clinical",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "file_sha256": {
+    "src1/modules/wallet/routes/index.ts": "5ce3fc7bdd72140348df94787b0c4e47a19190ada5137a2971be84cbe584197c",
+    "output/qa/money-provider-clinical/source-check.py": "9d19bb047a0f322013a206d8e5a2eb5cb7729c809c1c76cbb4d8f8eab115ed1c",
+    "documentation/planning/implementation/WALLET_MUTATION_AUTHORITY_CONTRACT.md": "1a0f247646a246d32a8078e4f6dda629196481b1f3d5dfee88eb808bae720c26",
+    "output/qa/money-provider-clinical/fixture-spec.json": "858376d6371c7cd2b20428b52f5c7982f2621d93d4db631498a8ad4e240605b0",
+    "src1/modules/common/middleware/validation.ts": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef",
+    "src1/modules/middleware/errorHandler.ts": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51",
+    "src1/modules/middleware/index.ts": "f98daa479b34ad8c3d7d4698d852b05d77004af3e200b69244c1eefecfac3b32",
+    "src1/modules/middleware/auth.ts": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+    "src1/config/config.ts": "0fcb0df49527c155083d2f3e4c81b36650bab14e207b5635a0831b2827d884e1"
+  },
+  "routes_baseline_sha256": "18261ce7a70a8e870d5cabbb675732aa0a424800fe44986ddbec0ec653c83f85",
+  "limitations": [
+    "Source checks do not prove mounted route behaviour, zero runtime effects or client compatibility",
+    "Runtime fixtures in fixture-spec.json are NOT RUN pending full C3 admission",
+    "Denial holds only with a strong deployed JWT_SECRET_KEY (config fallback unchanged)"
+  ]
+}
