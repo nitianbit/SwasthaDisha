@@ -1,0 +1,81 @@
+{
+  "schema": "SD-AUTH-API-INDEPENDENT-READBACK-1",
+  "scope": "READONLY_EXACT_ENGINE_IDS_PURPOSE",
+  "runId": "72c75925-f397-45de-a335-b35d76ecb0b6",
+  "observer": "/root",
+  "mutations": 0,
+  "engineBefore": [
+    "16ab25f6-88c7-4687-a431-b119b6ab9319",
+    "linux"
+  ],
+  "exactIDsAbsent": {
+    "aed08c17736e5f7847c38c3e0fa61a714ef9d9d840b53306de17c2001dd696d6": true,
+    "19003dcb410b06d8b65403047260d0a638c02f1d09becfe9447c474d2f9c8319": true
+  },
+  "zeroPurposeLabels": true,
+  "engineAfter": [
+    "16ab25f6-88c7-4687-a431-b119b6ab9319",
+    "linux"
+  ],
+  "workspaceAbsent": true,
+  "status": "VERIFIED",
+  "queries": [
+    {
+      "operation": [
+        "info",
+        "--format",
+        "{{json .ID}}|{{json .OSType}}"
+      ],
+      "exit": 0,
+      "output": "\"16ab25f6-88c7-4687-a431-b119b6ab9319\"|\"linux\""
+    },
+    {
+      "operation": [
+        "ps",
+        "--all",
+        "--no-trunc",
+        "--filter",
+        "id=aed08c17736e5f7847c38c3e0fa61a714ef9d9d840b53306de17c2001dd696d6",
+        "--format",
+        "{{.ID}}"
+      ],
+      "exit": 0,
+      "output": ""
+    },
+    {
+      "operation": [
+        "ps",
+        "--all",
+        "--no-trunc",
+        "--filter",
+        "id=19003dcb410b06d8b65403047260d0a638c02f1d09becfe9447c474d2f9c8319",
+        "--format",
+        "{{.ID}}"
+      ],
+      "exit": 0,
+      "output": ""
+    },
+    {
+      "operation": [
+        "ps",
+        "--all",
+        "--no-trunc",
+        "--filter",
+        "label=swasthadisha.test.purpose=auth-api-runtime",
+        "--format",
+        "{{.ID}}"
+      ],
+      "exit": 0,
+      "output": ""
+    },
+    {
+      "operation": [
+        "info",
+        "--format",
+        "{{json .ID}}|{{json .OSType}}"
+      ],
+      "exit": 0,
+      "output": "\"16ab25f6-88c7-4687-a431-b119b6ab9319\"|\"linux\""
+    }
+  ]
+}

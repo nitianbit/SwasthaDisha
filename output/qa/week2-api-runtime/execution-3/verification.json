@@ -1,0 +1,27 @@
+{
+  "status": "FAILED_REVIEW_REQUIRED",
+  "invocations": 1,
+  "exit": 1,
+  "sourceCommit": "ca404f6911e662811702d65fd0110a02e88f7c9a",
+  "templateSha": "a3b266917a12b785f256a29deabac7d0b801dfc130f2ced53588993d67f2710c",
+  "approvalSha": "bb8c4273174c085046b538cf5176660bbaf85d793e146141d4ef8848e23d8861",
+  "approvalConsumed": true,
+  "actualReviewers": [
+    "/root/backend_boot_path",
+    "/root/local_claude_review_prep"
+  ],
+  "failureStage": "OWNED_DATABASE_CONNECT",
+  "failureCode": "DB_INDEX_CREATE_OUT_OF_DISK_SPACE",
+  "measuredNumericClass": 14031,
+  "capacityFamily": "OUT_OF_DISK_SPACE",
+  "exactThresholdAndFreeBytes": "NOT_MEASURED",
+  "cleanup": "VERIFIED_BY_PARENT_AND_ROOT_READBACK",
+  "nominalCases": "NOT_RUN",
+  "sensitivityCases": "NOT_RUN",
+  "retry": "NOT_AUTHORIZED",
+  "postReviews": {
+    "/root/backend_boot_path": "ACCEPT_BOUNDED_FAILED_RUN_EVIDENCE",
+    "/root/local_claude_review_prep": "ACCEPT_FAILED_ATTEMPT_EVIDENCE_AND_RECORDED_CLEANUP"
+  },
+  "reviewerLimit": "Both reviewed root live Docker readback; neither claims personal live socket proof"
+}

@@ -258,3 +258,40 @@ being implemented on its own branch. Production root package/lock/build/start,
 retained-server facts, named security/clinical/finance owners, original 115 scenario
 outcomes and release/100 RPS gates remain unchanged. The original six staged
 changes and all eleven handover files were rehashed and remain intact.
+
+
+## Seventeenth increment, 11 November: capacity identified and notification source closed
+
+Actual diagnostic API attempt 3 at clean `ca404f6`, descriptor `a3b2669…`, failed
+with `DB_INDEX_CREATE_OUT_OF_DISK_SPACE`. The strict numeric classifier identifies
+MongoDB code 14031 during index creation. Available bytes, prior effective
+threshold and index identity were not measured. All 36 HTTP/four sensitivity cases
+remain NOT_RUN. The [actual report and both post-reviews](../../../output/qa/week2-api-runtime/execution-3/REVIEW.md)
+preserve its consumed approval and exact cleanup: same engine, both captured IDs
+absent, zero purpose labels and workspace ENOENT by parent and separate root
+readback. No automatic retry occurred.
+
+Both nonauthor reviewers approved a separate test-only fixture contract and its
+implementation: profile 2 fixes a nonzero 64 MB index-build minimum-free-space
+threshold at mongod startup. The 512 MiB database tmpfs, 1 GiB Mongo RAM and all
+other limits, grants, models/indexes/domain/provider bytes remain unchanged.
+[Source and 96-case offline proof](../../../output/qa/week2-fixture-index-space/REVIEW.md)
+include exact argv inspection and six new parameter drift controls. This is not a
+production setting or guaranteed capacity repair; fresh preparation and exact run
+decisions remain required.
+
+The [notification/FCM source slice](../../../output/qa/week2-notification-reads/REVIEW.md)
+is locally integrated from `200fd1d` after two independent contract and
+implementation reviews. Five generic notification actions now require a canonical
+owner or exact admin, and FCM/test requires admin before validation. Existing
+strict-own/specialist/admin sender/token/internal paths remain unchanged. Baseline
+and 26 weakened source variants are rejected. An additional post-edit Spec review
+also approved the frozen source; it is not a pre-edit or runtime decision.
+Dependents/notification/FCM HTTP coverage is being contracted separately.
+
+Actual local Ruflo activation/transport evidence is now committed with both
+independent postreviews, [execution status](../../../output/qa/week2-local-review-link/EXECUTION_STATUS.md).
+Transport passed; genuine Claude ACK/model/effort review remains pending. Original
+staged/handover bytes, root dependencies/build/start, 115-scenario outcomes, retained
+server facts and named clinical/finance/security/release gates remain unchanged.
+The requested API milestone and full M0/Week 2 are not complete.
