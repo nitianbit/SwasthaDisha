@@ -1,0 +1,36 @@
+{
+  "brand": "SwasthaDisha",
+  "tagline": "Healthcare without Boundaries",
+  "concepts": [
+    {
+      "file": "01-care-compass.png",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "cfb512bbf813a9fd28d894b39d3d7b907588ac1d27262f1cbec58f870282b88e"
+    },
+    {
+      "file": "02-human-embrace.png",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "4eebfe96706ebbced8fd43c0323468b8d64d1fc647d02ae4b94b5a3c64cbc32b"
+    },
+    {
+      "file": "03-open-horizon.png",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "127d8f84ea573a0e1c305d7508e63e035c31b99fe9e2a7b4ce242d001f71be41"
+    },
+    {
+      "file": "04-continuous-care.png",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "152a0b3513deaf9090da51fc8cef0c16504a7925eb318b170c707c11173694cb"
+    },
+    {
+      "file": "05-sd-monogram.png",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "e6fd304b15e229118a43f8b837b67124fa81dd9298209dae9ea3b9c35cb0ea50"
+    }
+  ]
+}

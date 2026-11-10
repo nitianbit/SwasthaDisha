@@ -1,0 +1,2262 @@
+{
+  "observed_date": "2026-11-08",
+  "sources": [
+    {
+      "url": "https://api.github.com/repos/DIGI-UW/OpenELIS-Global-2",
+      "title": "GitHub repository metadata exemplar",
+      "tasks": [
+        "A"
+      ],
+      "id": "S001",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://api.github.com/repos/alextselegidis/easyappointments",
+      "title": "alextselegidis/easyappointments repository metadata",
+      "tasks": [
+        "D"
+      ],
+      "id": "S002",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://api.github.com/repos/calcom/cal.diy",
+      "title": "calcom/cal.diy repository metadata",
+      "tasks": [
+        "D"
+      ],
+      "id": "S003",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://api.github.com/repos/chatwoot/chatwoot/commits?per_page=1",
+      "title": "repos/chatwoot/chatwoot/commits",
+      "tasks": [
+        "C"
+      ],
+      "id": "S004",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://api.github.com/repos/getlago/lago",
+      "title": "getlago/lago repository metadata",
+      "tasks": [
+        "D"
+      ],
+      "id": "S005",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://api.github.com/repos/grafana/k6/commits?per_page=1",
+      "title": "repos/grafana/k6/commits",
+      "tasks": [
+        "C"
+      ],
+      "id": "S006",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://api.github.com/repos/hapifhir/hapi-fhir",
+      "title": "hapifhir/hapi-fhir repository metadata",
+      "tasks": [
+        "D"
+      ],
+      "id": "S007",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://api.github.com/repos/invoiceninja/invoiceninja",
+      "title": "invoiceninja/invoiceninja repository metadata",
+      "tasks": [
+        "D"
+      ],
+      "id": "S008",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://api.github.com/repos/killbill/killbill",
+      "title": "killbill/killbill repository metadata",
+      "tasks": [
+        "D"
+      ],
+      "id": "S009",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://api.github.com/repos/marmelab/react-admin/commits?per_page=1",
+      "title": "repos/marmelab/react-admin/commits",
+      "tasks": [
+        "C"
+      ],
+      "id": "S010",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://api.github.com/repos/medplum/medplum",
+      "title": "medplum/medplum repository metadata",
+      "tasks": [
+        "D"
+      ],
+      "id": "S011",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://api.github.com/repos/medusajs/medusa/commits?per_page=1",
+      "title": "repos/medusajs/medusa/commits",
+      "tasks": [
+        "C"
+      ],
+      "id": "S012",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://api.github.com/repos/novuhq/novu/commits?per_page=1",
+      "title": "repos/novuhq/novu/commits",
+      "tasks": [
+        "C"
+      ],
+      "id": "S013",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://api.github.com/repos/openfga/openfga/commits?per_page=1",
+      "title": "repos/openfga/openfga/commits",
+      "tasks": [
+        "C"
+      ],
+      "id": "S014",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://api.github.com/repos/refinedev/refine/commits?per_page=1",
+      "title": "repos/refinedev/refine/commits",
+      "tasks": [
+        "C"
+      ],
+      "id": "S015",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://api.github.com/repos/stalniy/casl/commits?per_page=1",
+      "title": "repos/stalniy/casl/commits",
+      "tasks": [
+        "C"
+      ],
+      "id": "S016",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://api.github.com/repos/taskforcesh/bullmq/commits?per_page=1",
+      "title": "repos/taskforcesh/bullmq/commits",
+      "tasks": [
+        "C"
+      ],
+      "id": "S017",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://api.github.com/repos/vendurehq/vendure/commits?per_page=1",
+      "title": "repos/vendurehq/vendure/commits",
+      "tasks": [
+        "C"
+      ],
+      "id": "S018",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://cal.com/blog/cal-diy-open-source-to-closed-source",
+      "title": "Cal.com public/private split",
+      "tasks": [
+        "D"
+      ],
+      "id": "S019",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://code.tryton.org/tryton",
+      "title": "code.tryton.org",
+      "tasks": [
+        "B"
+      ],
+      "limitation": "Canonical upstream locator; inspected code evidence uses public mirror.",
+      "id": "S020",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://codeberg.org/gnuhealth/his",
+      "title": "codeberg.org/gnuhealth/his",
+      "tasks": [
+        "A"
+      ],
+      "limitation": "Canonical location established; current source license/activity not retrieved.",
+      "id": "S021",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://developers.chatwoot.com/self-hosted/deployment/requirements",
+      "title": "self-hosted/deployment/requirements",
+      "tasks": [
+        "C"
+      ],
+      "id": "S022",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.bullmq.io/guide/connections",
+      "title": "guide/connections",
+      "tasks": [
+        "C"
+      ],
+      "id": "S023",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.bullmq.io/guide/postgresql",
+      "title": "guide/postgresql",
+      "tasks": [
+        "C"
+      ],
+      "id": "S024",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.frappe.io/erpnext/batch",
+      "title": "erpnext/batch",
+      "tasks": [
+        "B"
+      ],
+      "id": "S025",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.frappe.io/erpnext/item-price",
+      "title": "erpnext/item-price",
+      "tasks": [
+        "B"
+      ],
+      "id": "S026",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.frappe.io/erpnext/pricing-rule",
+      "title": "erpnext/pricing-rule",
+      "tasks": [
+        "B"
+      ],
+      "id": "S027",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.frappe.io/framework/user/en/api/rest",
+      "title": "Frappe REST API",
+      "tasks": [
+        "A",
+        "B"
+      ],
+      "id": "S028",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.frappe.io/framework/user/en/guides/basics/sites",
+      "title": "Frappe sites",
+      "tasks": [
+        "A"
+      ],
+      "id": "S029",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.frappe.io/framework/user/en/guides/integration/webhooks",
+      "title": "Frappe webhooks",
+      "tasks": [
+        "A"
+      ],
+      "id": "S030",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.gnuhealth.org/his/techguide/development/coding.html",
+      "title": "GNU Health coding",
+      "tasks": [
+        "A"
+      ],
+      "id": "S031",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.gnuhealth.org/his/techguide/installation/vanilla.html",
+      "title": "GNU Health installation",
+      "tasks": [
+        "A"
+      ],
+      "id": "S032",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.inventree.org/en/stable/api/schema/stock/",
+      "title": "en/stable/api/schema/stock",
+      "tasks": [
+        "B"
+      ],
+      "id": "S033",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.inventree.org/en/stable/purchasing/purchase_order/",
+      "title": "en/stable/purchasing/purchase_order",
+      "tasks": [
+        "B"
+      ],
+      "id": "S034",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.inventree.org/en/stable/stock/tracking/",
+      "title": "en/stable/stock/tracking",
+      "tasks": [
+        "B"
+      ],
+      "id": "S035",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.medusajs.com/learn/fundamentals/modules",
+      "title": "learn/fundamentals/modules",
+      "tasks": [
+        "C"
+      ],
+      "id": "S036",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.medusajs.com/learn/installation",
+      "title": "learn/installation",
+      "tasks": [
+        "C"
+      ],
+      "id": "S037",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.novu.co/community/self-hosting-novu/overview",
+      "title": "community/self-hosting-novu/overview",
+      "tasks": [
+        "C"
+      ],
+      "id": "S038",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.tryton.org/7.8/modules-stock-lot-sled/index.html",
+      "title": "7.8/modules-stock-lot-sled/index.html",
+      "tasks": [
+        "B"
+      ],
+      "id": "S039",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.tryton.org/7.8/stock.html",
+      "title": "7.8/stock.html",
+      "tasks": [
+        "B"
+      ],
+      "id": "S040",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.vendure.io/current/framework/core-concepts/channels",
+      "title": "current/framework/core-concepts/channels",
+      "tasks": [
+        "C"
+      ],
+      "id": "S041",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://docs.vendure.io/current/framework/developer-guide/overview",
+      "title": "current/framework/developer-guide/overview",
+      "tasks": [
+        "C"
+      ],
+      "id": "S042",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://easyappointments.org/documentation/installation/",
+      "title": "Easy!Appointments installation",
+      "tasks": [
+        "D"
+      ],
+      "id": "S043",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://easyappointments.org/documentation/rest-api/",
+      "title": "Easy!Appointments REST API",
+      "tasks": [
+        "D"
+      ],
+      "id": "S044",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://frappe.io/framework",
+      "title": "Frappe stack",
+      "tasks": [
+        "A"
+      ],
+      "id": "S045",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://getlago.com/",
+      "title": "Lago edition and billing FAQ",
+      "tasks": [
+        "D"
+      ],
+      "id": "S046",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://github.com/Bahmni/bahmni-docker",
+      "title": "Bahmni/bahmni-docker",
+      "tasks": [
+        "A"
+      ],
+      "id": "S047",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/Bahmni/bahmni-docker/blob/master/LICENSE",
+      "title": "Bahmni Docker license",
+      "tasks": [
+        "A"
+      ],
+      "id": "S048",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/DIGI-UW/OpenELIS-Global-2",
+      "title": "DIGI-UW/OpenELIS-Global-2",
+      "tasks": [
+        "A"
+      ],
+      "id": "S049",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/LICENSE",
+      "title": "OpenELIS root license",
+      "tasks": [
+        "A"
+      ],
+      "id": "S050",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/README.md",
+      "title": "OpenELIS canonical README",
+      "tasks": [
+        "A"
+      ],
+      "id": "S051",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/pom.xml",
+      "title": "OpenELIS Java build",
+      "tasks": [
+        "A"
+      ],
+      "id": "S052",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/Dolibarr/dolibarr",
+      "title": "Dolibarr",
+      "tasks": [
+        "B"
+      ],
+      "id": "S053",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/Dolibarr/dolibarr/blob/develop/COPYING",
+      "title": "Dolibarr/dolibarr/blob/develop/COPYING",
+      "tasks": [
+        "B"
+      ],
+      "id": "S054",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/Dolibarr/dolibarr/blob/develop/README.md",
+      "title": "Dolibarr/dolibarr/blob/develop/README.md",
+      "tasks": [
+        "B"
+      ],
+      "id": "S055",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/HospitalRun/hospitalrun",
+      "title": "HospitalRun/hospitalrun",
+      "tasks": [
+        "A"
+      ],
+      "id": "S056",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/HospitalRun/hospitalrun-server/blob/master/package.json",
+      "title": "HospitalRun server manifest",
+      "tasks": [
+        "A"
+      ],
+      "id": "S057",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/HospitalRun/hospitalrun/blob/master/LICENSE",
+      "title": "HospitalRun root license",
+      "tasks": [
+        "A"
+      ],
+      "id": "S058",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/HospitalRun/hospitalrun/blob/master/README.md",
+      "title": "HospitalRun README",
+      "tasks": [
+        "A"
+      ],
+      "id": "S059",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/akaunting/akaunting",
+      "title": "Akaunting",
+      "tasks": [
+        "B"
+      ],
+      "id": "S060",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/akaunting/akaunting/blob/master/LICENSE.txt",
+      "title": "akaunting/akaunting/blob/master/LICENSE.txt",
+      "tasks": [
+        "B"
+      ],
+      "id": "S061",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/akaunting/akaunting/blob/master/README.md",
+      "title": "akaunting/akaunting/blob/master/README.md",
+      "tasks": [
+        "B"
+      ],
+      "id": "S062",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/alextselegidis/easyappointments",
+      "title": "Easy!Appointments",
+      "tasks": [
+        "D"
+      ],
+      "id": "S063",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/alextselegidis/easyappointments/blob/main/LICENSE",
+      "title": "Easy!Appointments license",
+      "tasks": [
+        "D"
+      ],
+      "id": "S064",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/calcom/cal.diy",
+      "title": "Cal.diy",
+      "tasks": [
+        "D"
+      ],
+      "id": "S065",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/calcom/cal.diy/blob/main/LICENSE",
+      "title": "Cal.diy license",
+      "tasks": [
+        "D"
+      ],
+      "id": "S066",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/calcom/cal.diy/blob/main/README.md",
+      "title": "Cal.diy README",
+      "tasks": [
+        "D"
+      ],
+      "id": "S067",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/calcom/cal.diy/blob/main/packages/prisma/schema.prisma",
+      "title": "Cal.diy PostgreSQL schema",
+      "tasks": [
+        "D"
+      ],
+      "id": "S068",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/chatwoot/chatwoot",
+      "title": "Chatwoot",
+      "tasks": [
+        "C"
+      ],
+      "id": "S069",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/chatwoot/chatwoot/blob/develop/LICENSE",
+      "title": "chatwoot/chatwoot/blob/develop/LICENSE",
+      "tasks": [
+        "C"
+      ],
+      "id": "S070",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/chatwoot/chatwoot/blob/develop/enterprise/LICENSE",
+      "title": "chatwoot/chatwoot/blob/develop/enterprise/LICENSE",
+      "tasks": [
+        "C"
+      ],
+      "id": "S071",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/earthians/marley",
+      "title": "earthians/marley",
+      "tasks": [
+        "A"
+      ],
+      "id": "S072",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/earthians/marley/blob/develop/README.md",
+      "title": "Marley README",
+      "tasks": [
+        "A"
+      ],
+      "id": "S073",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/earthians/marley/blob/develop/license.txt",
+      "title": "Marley root license",
+      "tasks": [
+        "A"
+      ],
+      "id": "S074",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/frappe/erpnext",
+      "title": "frappe/erpnext",
+      "tasks": [
+        "A",
+        "B"
+      ],
+      "id": "S075",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/frappe/erpnext/blob/develop/license.txt",
+      "title": "ERPNext root license",
+      "tasks": [
+        "A",
+        "B"
+      ],
+      "id": "S076",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/frappe/erpnext/blob/develop/pyproject.toml",
+      "title": "frappe/erpnext/blob/develop/pyproject.toml",
+      "tasks": [
+        "B"
+      ],
+      "id": "S077",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/getlago/lago",
+      "title": "Lago",
+      "tasks": [
+        "D"
+      ],
+      "id": "S078",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/getlago/lago/blob/main/.gitmodules",
+      "title": "Lago submodules",
+      "tasks": [
+        "D"
+      ],
+      "id": "S079",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/getlago/lago/blob/main/LICENSE",
+      "title": "Lago license",
+      "tasks": [
+        "D"
+      ],
+      "id": "S080",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/getlago/lago/blob/main/docker-compose.yml",
+      "title": "Lago deployment composition",
+      "tasks": [
+        "D"
+      ],
+      "id": "S081",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/grafana/k6",
+      "title": "k6",
+      "tasks": [
+        "C"
+      ],
+      "id": "S082",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/grafana/k6/blob/master/LICENSE.md",
+      "title": "grafana/k6/blob/master/LICENSE.md",
+      "tasks": [
+        "C"
+      ],
+      "id": "S083",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/hapifhir/hapi-fhir",
+      "title": "HAPI FHIR",
+      "tasks": [
+        "D"
+      ],
+      "id": "S084",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/hapifhir/hapi-fhir/blob/master/LICENSE.txt",
+      "title": "HAPI FHIR license",
+      "tasks": [
+        "D"
+      ],
+      "id": "S085",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/hapifhir/hapi-fhir/blob/master/README.md",
+      "title": "HAPI README",
+      "tasks": [
+        "D"
+      ],
+      "id": "S086",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/idurar/idurar-erp-crm",
+      "title": "IDURAR ERP CRM",
+      "tasks": [
+        "B"
+      ],
+      "id": "S087",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/idurar/idurar-erp-crm/blob/master/LICENSE",
+      "title": "idurar/idurar-erp-crm/blob/master/LICENSE",
+      "tasks": [
+        "B"
+      ],
+      "id": "S088",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/idurar/idurar-erp-crm/blob/master/README.md",
+      "title": "idurar/idurar-erp-crm/blob/master/README.md",
+      "tasks": [
+        "B"
+      ],
+      "id": "S089",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/idurar/idurar-erp-crm/blob/master/backend/package.json",
+      "title": "idurar/idurar-erp-crm/blob/master/backend/package.json",
+      "tasks": [
+        "B"
+      ],
+      "id": "S090",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/informatici/openhospital",
+      "title": "informatici/openhospital",
+      "tasks": [
+        "A"
+      ],
+      "id": "S091",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/informatici/openhospital-core",
+      "title": "informatici/openhospital-core",
+      "tasks": [
+        "A"
+      ],
+      "id": "S092",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/informatici/openhospital-core/blob/develop/LICENSE",
+      "title": "core license",
+      "tasks": [
+        "A"
+      ],
+      "id": "S093",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/informatici/openhospital-core/blob/develop/README.md",
+      "title": "Open Hospital core README",
+      "tasks": [
+        "A"
+      ],
+      "id": "S094",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/informatici/openhospital/blob/master/LICENSE",
+      "title": "Distribution license",
+      "tasks": [
+        "A"
+      ],
+      "id": "S095",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/inventree/InvenTree",
+      "title": "InvenTree",
+      "tasks": [
+        "B"
+      ],
+      "id": "S096",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/inventree/InvenTree/blob/master/LICENSE",
+      "title": "inventree/InvenTree/blob/master/LICENSE",
+      "tasks": [
+        "B"
+      ],
+      "id": "S097",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/inventree/InvenTree/blob/master/README.md",
+      "title": "inventree/InvenTree/blob/master/README.md",
+      "tasks": [
+        "B"
+      ],
+      "id": "S098",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/invoiceninja/invoiceninja",
+      "title": "Invoice Ninja",
+      "tasks": [
+        "D"
+      ],
+      "id": "S099",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/invoiceninja/invoiceninja/blob/v5-stable/LICENSE",
+      "title": "Invoice Ninja license",
+      "tasks": [
+        "D"
+      ],
+      "id": "S100",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/killbill/killbill",
+      "title": "Kill Bill",
+      "tasks": [
+        "D"
+      ],
+      "id": "S101",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/killbill/killbill/blob/master/LICENSE",
+      "title": "Kill Bill license",
+      "tasks": [
+        "D"
+      ],
+      "id": "S102",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/marmelab/react-admin",
+      "title": "react-admin",
+      "tasks": [
+        "C"
+      ],
+      "id": "S103",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/marmelab/react-admin/blob/master/LICENSE.md",
+      "title": "marmelab/react-admin/blob/master/LICENSE.md",
+      "tasks": [
+        "C"
+      ],
+      "id": "S104",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/medplum/medplum",
+      "title": "Medplum",
+      "tasks": [
+        "D"
+      ],
+      "id": "S105",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/medplum/medplum/blob/main/LICENSE.txt",
+      "title": "Medplum license",
+      "tasks": [
+        "D"
+      ],
+      "id": "S106",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/medplum/medplum/blob/main/packages/server/package.json",
+      "title": "Medplum server manifest",
+      "tasks": [
+        "D"
+      ],
+      "id": "S107",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/medusajs/medusa",
+      "title": "Medusa",
+      "tasks": [
+        "C"
+      ],
+      "id": "S108",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/medusajs/medusa/blob/develop/ENTERPRISE-LICENSE.md",
+      "title": "medusajs/medusa/blob/develop/ENTERPRISE-LICENSE.md",
+      "tasks": [
+        "C"
+      ],
+      "id": "S109",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/medusajs/medusa/blob/develop/LICENSE",
+      "title": "medusajs/medusa/blob/develop/LICENSE",
+      "tasks": [
+        "C"
+      ],
+      "id": "S110",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/novuhq/novu",
+      "title": "Novu",
+      "tasks": [
+        "C"
+      ],
+      "id": "S111",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/novuhq/novu/blob/next/EE-PACKAGES-LICENSE",
+      "title": "novuhq/novu/blob/next/EE-PACKAGES-LICENSE",
+      "tasks": [
+        "C"
+      ],
+      "id": "S112",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/novuhq/novu/blob/next/LICENSE-MIT",
+      "title": "novuhq/novu/blob/next/LICENSE-MIT",
+      "tasks": [
+        "C"
+      ],
+      "id": "S113",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/odoo/odoo",
+      "title": "Odoo Community",
+      "tasks": [
+        "B"
+      ],
+      "id": "S114",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/odoo/odoo/blob/19.0/addons/point_of_sale/__manifest__.py",
+      "title": "odoo/odoo/blob/19.0/addons/point_of_sale/__manifest__.py",
+      "tasks": [
+        "B"
+      ],
+      "id": "S115",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/odoo/odoo/blob/19.0/addons/product_expiry/__manifest__.py",
+      "title": "odoo/odoo/blob/19.0/addons/product_expiry/__manifest__.py",
+      "tasks": [
+        "B"
+      ],
+      "id": "S116",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/odoo/odoo/blob/20.0/LICENSE",
+      "title": "odoo/odoo/blob/20.0/LICENSE",
+      "tasks": [
+        "B"
+      ],
+      "id": "S117",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/openemr/openemr",
+      "title": "openemr/openemr",
+      "tasks": [
+        "A"
+      ],
+      "id": "S118",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/openemr/openemr/blob/master/API_README.md",
+      "title": "OpenEMR API guide",
+      "tasks": [
+        "A"
+      ],
+      "id": "S119",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/openemr/openemr/blob/master/LICENSE",
+      "title": "OpenEMR root license",
+      "tasks": [
+        "A"
+      ],
+      "id": "S120",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/openemr/openemr/blob/master/README.md",
+      "title": "OpenEMR README",
+      "tasks": [
+        "A"
+      ],
+      "id": "S121",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/openemr/openemr/blob/master/docker/production/docker-compose.yml",
+      "title": "OpenEMR production Compose",
+      "tasks": [
+        "A"
+      ],
+      "id": "S122",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/openfga/openfga",
+      "title": "OpenFGA",
+      "tasks": [
+        "C"
+      ],
+      "id": "S123",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/openfga/openfga/blob/main/LICENSE",
+      "title": "openfga/openfga/blob/main/LICENSE",
+      "tasks": [
+        "C"
+      ],
+      "id": "S124",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/openmrs/openmrs-core",
+      "title": "openmrs/openmrs-core",
+      "tasks": [
+        "A"
+      ],
+      "id": "S125",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/openmrs/openmrs-core/blob/master/LICENSE",
+      "title": "OpenMRS root license",
+      "tasks": [
+        "A"
+      ],
+      "id": "S126",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/openmrs/openmrs-core/blob/master/README.md",
+      "title": "OpenMRS README",
+      "tasks": [
+        "A"
+      ],
+      "id": "S127",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/opensourcepos/opensourcepos",
+      "title": "Open Source POS / OSPOS",
+      "tasks": [
+        "B"
+      ],
+      "id": "S128",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/opensourcepos/opensourcepos/blob/master/LICENSE",
+      "title": "opensourcepos/opensourcepos/blob/master/LICENSE",
+      "tasks": [
+        "B"
+      ],
+      "id": "S129",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/opensourcepos/opensourcepos/blob/master/README.md",
+      "title": "opensourcepos/opensourcepos/blob/master/README.md",
+      "tasks": [
+        "B"
+      ],
+      "id": "S130",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/opensourcepos/opensourcepos/blob/master/composer.json",
+      "title": "opensourcepos/opensourcepos/blob/master/composer.json",
+      "tasks": [
+        "B"
+      ],
+      "id": "S131",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/refinedev/refine",
+      "title": "Refine Core",
+      "tasks": [
+        "C"
+      ],
+      "id": "S132",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/refinedev/refine/blob/main/LICENSE",
+      "title": "refinedev/refine/blob/main/LICENSE",
+      "tasks": [
+        "C"
+      ],
+      "id": "S133",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/refinedev/refine/blob/main/README.md",
+      "title": "refinedev/refine/blob/main/README.md",
+      "tasks": [
+        "C"
+      ],
+      "id": "S134",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/senaite/senaite.core",
+      "title": "senaite/senaite.core",
+      "tasks": [
+        "A"
+      ],
+      "id": "S135",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/senaite/senaite.core/blob/2.x/LICENSE",
+      "title": "SENAITE core license",
+      "tasks": [
+        "A"
+      ],
+      "id": "S136",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/senaite/senaite.core/blob/2.x/README.rst",
+      "title": "SENAITE core README",
+      "tasks": [
+        "A"
+      ],
+      "id": "S137",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/senaite/senaite.lims",
+      "title": "senaite/senaite.lims",
+      "tasks": [
+        "A"
+      ],
+      "id": "S138",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/stalniy/casl",
+      "title": "CASL",
+      "tasks": [
+        "C"
+      ],
+      "id": "S139",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/stalniy/casl/blob/main/LICENSE",
+      "title": "stalniy/casl/blob/main/LICENSE",
+      "tasks": [
+        "C"
+      ],
+      "id": "S140",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/stalniy/casl/blob/main/packages/casl-mongoose/README.md",
+      "title": "stalniy/casl/blob/main/packages/casl-mongoose/README.md",
+      "tasks": [
+        "C"
+      ],
+      "id": "S141",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/stalniy/casl/blob/main/packages/casl-mongoose/package.json",
+      "title": "stalniy/casl/blob/main/packages/casl-mongoose/package.json",
+      "tasks": [
+        "C"
+      ],
+      "id": "S142",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/taskforcesh/bullmq",
+      "title": "BullMQ",
+      "tasks": [
+        "C"
+      ],
+      "id": "S143",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/taskforcesh/bullmq/blob/master/LICENSE",
+      "title": "taskforcesh/bullmq/blob/master/LICENSE",
+      "tasks": [
+        "C"
+      ],
+      "id": "S144",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/taskforcesh/bullmq/blob/master/package.json",
+      "title": "taskforcesh/bullmq/blob/master/package.json",
+      "tasks": [
+        "C"
+      ],
+      "id": "S145",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/tryton/tryton",
+      "title": "Tryton",
+      "tasks": [
+        "B"
+      ],
+      "id": "S146",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/tryton/tryton/blob/main/README.rst",
+      "title": "tryton/tryton/blob/main/README.rst",
+      "tasks": [
+        "B"
+      ],
+      "id": "S147",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/tryton/tryton/blob/main/trytond/COPYRIGHT",
+      "title": "tryton/tryton/blob/main/trytond/COPYRIGHT",
+      "tasks": [
+        "B"
+      ],
+      "id": "S148",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/tryton/tryton/blob/main/trytond/LICENSE",
+      "title": "tryton/tryton/blob/main/trytond/LICENSE",
+      "tasks": [
+        "B"
+      ],
+      "id": "S149",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/vendurehq/vendure",
+      "title": "Vendure",
+      "tasks": [
+        "C"
+      ],
+      "id": "S150",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/vendurehq/vendure/blob/master/LICENSE.md",
+      "title": "vendurehq/vendure/blob/master/LICENSE.md",
+      "tasks": [
+        "C"
+      ],
+      "id": "S151",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://github.com/vendurehq/vendure/blob/master/license/plugin-exception.txt",
+      "title": "vendurehq/vendure/blob/master/license/plugin-exception.txt",
+      "tasks": [
+        "C"
+      ],
+      "id": "S152",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "url": "https://gitlab.com/gnuhealth/gnuhealth/-/blob/master/COPYING",
+      "title": "Historical GNU Health COPYING",
+      "tasks": [
+        "A"
+      ],
+      "id": "S153",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://grafana.com/docs/k6/latest/using-k6/metrics/reference/",
+      "title": "docs/k6/latest/using-k6/metrics/reference",
+      "tasks": [
+        "C"
+      ],
+      "id": "S154",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://grafana.com/docs/k6/latest/using-k6/scenarios/executors/constant-arrival-rate/",
+      "title": "docs/k6/latest/using-k6/scenarios/executors/constant-arrival-rate",
+      "tasks": [
+        "C"
+      ],
+      "id": "S155",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://hapifhir.io/hapi-fhir/docs/server_jpa/introduction.html",
+      "title": "HAPI JPA introduction",
+      "tasks": [
+        "D"
+      ],
+      "id": "S156",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://invoiceninja.github.io/docs/legal/license",
+      "title": "Invoice Ninja license documentation",
+      "tasks": [
+        "D"
+      ],
+      "id": "S157",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://killbill.io/kill-bill-architecture",
+      "title": "Kill Bill architecture",
+      "tasks": [
+        "D"
+      ],
+      "id": "S158",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://marley.frappe.cloud/wiki/patient-appointment",
+      "title": "Marley patient appointment",
+      "tasks": [
+        "A"
+      ],
+      "id": "S159",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://marley.frappe.cloud/wiki/patient-portal",
+      "title": "Marley patient portal",
+      "tasks": [
+        "A"
+      ],
+      "id": "S160",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://marmelab.com/react-admin/Readme.html",
+      "title": "react-admin/Readme.html",
+      "tasks": [
+        "C"
+      ],
+      "id": "S161",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://openelis-global.org/features-and-functionality/",
+      "title": "OpenELIS capabilities",
+      "tasks": [
+        "A"
+      ],
+      "id": "S162",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://openfga.dev/docs/getting-started/setup-openfga/configure-openfga",
+      "title": "docs/getting-started/setup-openfga/configure-openfga",
+      "tasks": [
+        "C"
+      ],
+      "id": "S163",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://ra-enterprise.marmelab.com/documentation/ra-rbac/latest",
+      "title": "documentation/ra-rbac/latest",
+      "tasks": [
+        "C"
+      ],
+      "id": "S164",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://refine.dev/core/docs/advanced-tutorials/access-control/",
+      "title": "core/docs/advanced-tutorials/access-control",
+      "tasks": [
+        "C"
+      ],
+      "id": "S165",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://rest.openmrs.org/",
+      "title": "OpenMRS REST reference",
+      "tasks": [
+        "A"
+      ],
+      "id": "S166",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://unicenta.com/downloads/sources/",
+      "title": "uniCenta oPOS official source route",
+      "tasks": [
+        "B"
+      ],
+      "id": "S167",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://unicenta.com/faqs/",
+      "title": "faqs",
+      "tasks": [
+        "B"
+      ],
+      "id": "S168",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://unicenta.com/unicenta-opos-release-5-0/",
+      "title": "unicenta-opos-release-5-0",
+      "tasks": [
+        "B"
+      ],
+      "id": "S169",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://unicenta.com/unicenta-opos-release-5-5-1/",
+      "title": "unicenta-opos-release-5-5-1",
+      "tasks": [
+        "B"
+      ],
+      "id": "S170",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://wiki.dolibarr.org/index.php/Module_Lot_/_Serial_%28developer%29",
+      "title": "index.php/Module_Lot_/_Serial_%28developer%29",
+      "tasks": [
+        "B"
+      ],
+      "id": "S171",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://wiki.dolibarr.org/index.php/Module_Point_of_sale_%28TakePOS%29",
+      "title": "index.php/Module_Point_of_sale_%28TakePOS%29",
+      "tasks": [
+        "B"
+      ],
+      "id": "S172",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://wiki.dolibarr.org/index.php/Module_Web_Services_REST",
+      "title": "index.php/Module_Web_Services_REST",
+      "tasks": [
+        "B"
+      ],
+      "id": "S173",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://www.bahmni.org/community/",
+      "title": "Bahmni architecture/community",
+      "tasks": [
+        "A"
+      ],
+      "id": "S174",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://www.bahmni.org/license",
+      "title": "Bahmni license policy",
+      "tasks": [
+        "A"
+      ],
+      "id": "S175",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://www.gnuhealth.org/download.html",
+      "title": "GNU Health downloads",
+      "tasks": [
+        "A"
+      ],
+      "id": "S176",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://www.medplum.com/docs/self-hosting/config-settings",
+      "title": "Medplum configuration",
+      "tasks": [
+        "D"
+      ],
+      "id": "S177",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://www.medplum.com/open-source",
+      "title": "Medplum open source scope",
+      "tasks": [
+        "D"
+      ],
+      "id": "S178",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://www.odoo.com/documentation/19.0/administration/on_premise/source.html",
+      "title": "documentation/19.0/administration/on_premise/source.html",
+      "tasks": [
+        "B"
+      ],
+      "id": "S179",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://www.odoo.com/documentation/19.0/applications/inventory_and_mrp/inventory/shipping_receiving/removal_strategies/fefo.html",
+      "title": "documentation/19.0/applications/inventory_and_mrp/inventory/shipping_receiving/removal_strategies/fefo.html",
+      "tasks": [
+        "B"
+      ],
+      "id": "S180",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://www.senaite.com/",
+      "title": "SENAITE workflow",
+      "tasks": [
+        "A"
+      ],
+      "id": "S181",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://www.senaite.com/docs/installation/",
+      "title": "SENAITE installation",
+      "tasks": [
+        "A"
+      ],
+      "id": "S182",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "url": "https://www.senaite.com/docs/json-api/",
+      "title": "JSON API",
+      "tasks": [
+        "A"
+      ],
+      "id": "S183",
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 8
+    },
+    {
+      "id": "S184",
+      "url": "https://github.com/taskforcesh/bullmq/blob/master/docs/gitbook/guide/postgresql.md",
+      "title": "Source guide",
+      "tasks": [
+        "F"
+      ],
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "id": "S185",
+      "url": "https://api.github.com/repos/HospitalRun/hospitalrun",
+      "title": "Umbrella API",
+      "tasks": [
+        "F"
+      ],
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "id": "S186",
+      "url": "https://api.github.com/repos/HospitalRun/hospitalrun-frontend",
+      "title": "frontend API",
+      "tasks": [
+        "F"
+      ],
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    },
+    {
+      "id": "S187",
+      "url": "https://api.github.com/repos/HospitalRun/hospitalrun-server",
+      "title": "server API",
+      "tasks": [
+        "F"
+      ],
+      "source_type": "official",
+      "accessibility": "public",
+      "observed_date": "2026-11-08",
+      "authority": 9
+    }
+  ],
+  "stats": {
+    "approved_urls": 187,
+    "domains": 36,
+    "synthesis_citations": 105,
+    "max_single_url_citations": 1,
+    "official_share": 1.0,
+    "private_sources": 0
+  }
+}

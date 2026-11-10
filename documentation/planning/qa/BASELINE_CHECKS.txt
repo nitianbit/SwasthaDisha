@@ -1,0 +1,22 @@
+Recorded for review dated 9 November 2026
+Commit: 9ca8b54606581f2158e760cad79aa7b845529184
+Environment: local workspace. No install, DB connection, server or provider call performed.
+
+Command: npm test
+Exit code: 1
+> backend@1.0.0 test
+> echo "Error: no test specified" && exit 1
+Error: no test specified
+Meaning: configured default test command is a placeholder; no application test assertions executed.
+
+Command: npm run type-check
+Exit code: 127
+> backend@1.0.0 type-check
+> tsc --noEmit
+sh: tsc: command not found
+Meaning: compiler unavailable; compilation result is unknown, not a demonstrated TypeScript source failure.
+
+Read-only preflight: node_modules/.bin/tsc absent; node_modules/.bin/tsx absent.
+Pharmacy/API scripts not run. Static inspection only: PHARMACY_TEST_MONGODB_URI selects test or test.skip;
+16 integrationTest declarations include a dropDatabase cleanup case. A database-name substring guard does
+not by itself establish disposable isolation. Specialist API script can load .env and seed MongoDB.

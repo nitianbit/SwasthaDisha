@@ -1,0 +1,23 @@
+TAP version 13
+# Subtest: mongo-fixture.test.mjs
+ok 1 - mongo-fixture.test.mjs
+  ---
+  duration_ms: 0.254791
+  type: 'test'
+  ...
+# Subtest: preflight.test.mjs
+ok 2 - preflight.test.mjs
+  ---
+  duration_ms: 0.039417
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 5.557459
+Foundation gate failed or did not execute a complete non-skipped test run.

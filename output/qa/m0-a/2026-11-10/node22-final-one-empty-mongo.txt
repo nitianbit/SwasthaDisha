@@ -1,0 +1,125 @@
+TAP version 13
+# Subtest: mongo-fixture.test.mjs
+ok 1 - mongo-fixture.test.mjs
+  ---
+  duration_ms: 0.331875
+  type: 'test'
+  ...
+# Subtest: a runner-created workspace admits the exact clean unit-test launch
+ok 2 - a runner-created workspace admits the exact clean unit-test launch
+  ---
+  duration_ms: 4.455625
+  type: 'test'
+  ...
+# Subtest: a copied marker and matching directory do not confer ownership
+ok 3 - a copied marker and matching directory do not confer ownership
+  ---
+  duration_ms: 0.973458
+  type: 'test'
+  ...
+# Subtest: unknown resource identity cannot authorize a launch
+ok 4 - unknown resource identity cannot authorize a launch
+  ---
+  duration_ms: 0.081459
+  type: 'test'
+  ...
+# Subtest: inherited NODE_OPTIONS is refused before imports or connectors
+ok 5 - inherited NODE_OPTIONS is refused before imports or connectors
+  ---
+  duration_ms: 0.844333
+  type: 'test'
+  ...
+# Subtest: inherited NODE_PATH is refused before imports or connectors
+ok 6 - inherited NODE_PATH is refused before imports or connectors
+  ---
+  duration_ms: 1.025
+  type: 'test'
+  ...
+# Subtest: inherited MONGODB_URL is refused before imports or connectors
+ok 7 - inherited MONGODB_URL is refused before imports or connectors
+  ---
+  duration_ms: 0.756583
+  type: 'test'
+  ...
+# Subtest: inherited PHARMACY_TEST_MONGODB_URI is refused before imports or connectors
+ok 8 - inherited PHARMACY_TEST_MONGODB_URI is refused before imports or connectors
+  ---
+  duration_ms: 0.672
+  type: 'test'
+  ...
+# Subtest: inherited PAYMENT_SECRET is refused before imports or connectors
+ok 9 - inherited PAYMENT_SECRET is refused before imports or connectors
+  ---
+  duration_ms: 0.794208
+  type: 'test'
+  ...
+# Subtest: a database named latest is not admitted as a disposable resource
+ok 10 - a database named latest is not admitted as a disposable resource
+  ---
+  duration_ms: 0.934834
+  type: 'test'
+  ...
+# Subtest: incorrect working directory or test identity is refused
+ok 11 - incorrect working directory or test identity is refused
+  ---
+  duration_ms: 1.271333
+  type: 'test'
+  ...
+# Subtest: missing environment fields are refused
+ok 12 - missing environment fields are refused
+  ---
+  duration_ms: 0.701833
+  type: 'test'
+  ...
+# Subtest: an operational .env file is refused, including nested files
+ok 13 - an operational .env file is refused, including nested files
+  ---
+  duration_ms: 1.204209
+  type: 'test'
+  ...
+# Subtest: unexpected staged application files are refused
+ok 14 - unexpected staged application files are refused
+  ---
+  duration_ms: 0.744667
+  type: 'test'
+  ...
+# Subtest: the test child cannot create symlinks to escape its filesystem permissions
+ok 15 - the test child cannot create symlinks to escape its filesystem permissions
+  ---
+  duration_ms: 0.575959
+  type: 'test'
+  ...
+# Subtest: changed ownership refuses both execution and cleanup
+ok 16 - changed ownership refuses both execution and cleanup
+  ---
+  duration_ms: 0.7485
+  type: 'test'
+  ...
+# Subtest: a replacement directory with a copied marker is not the owned resource
+ok 17 - a replacement directory with a copied marker is not the owned resource
+  ---
+  duration_ms: 0.975291
+  type: 'test'
+  ...
+# Subtest: cleanup affects only the owned workspace and is idempotent
+ok 18 - cleanup affects only the owned workspace and is idempotent
+  ---
+  duration_ms: 0.867542
+  type: 'test'
+  ...
+# Subtest: the test child cannot read parent files or spawn another process
+ok 19 - the test child cannot read parent files or spawn another process
+  ---
+  duration_ms: 0.541
+  type: 'test'
+  ...
+1..19
+# tests 19
+# suites 0
+# pass 19
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 28.862666
+Foundation gate failed or did not execute a complete non-skipped test run.

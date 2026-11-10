@@ -1,0 +1,40 @@
+{
+  "brand": "SwasthaDisha",
+  "tagline": "Healthcare without Boundaries",
+  "services": [
+    "Doctors",
+    "Pharmacy",
+    "Labs",
+    "Hospitals"
+  ],
+  "concepts": [
+    {
+      "name": "Four-service Care Cross",
+      "file": "01-four-services-care-cross.png",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "eb3f8b9601347979e8b36cf77a7cc530272e03321cebe63d7e127257cd9dcc71"
+    },
+    {
+      "name": "Connected Clinical Circle",
+      "file": "02-connected-clinical-circle.png",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "3990b37cae9bb82f873f8ea21c47919c7c6900299cda0fe562b54b5ace4bbbb7"
+    },
+    {
+      "name": "Care Home with Service Strip",
+      "file": "03-care-home-service-strip.png",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "499e6a9527a21c16c71741be3b9ab986acefab78ce7dc03ded5456eea77b290a"
+    },
+    {
+      "name": "Clinical Wordmark",
+      "file": "04-stethoscope-wordmark-services.png",
+      "width": 1536,
+      "height": 1024,
+      "sha256": "85c0531f10c99ea405b37a4957a6d2f139bb61a29e2540f9e0cc37fc39b059a9"
+    }
+  ]
+}

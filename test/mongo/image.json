@@ -1,0 +1,7 @@
+{
+  "image": "mongo@sha256:b9924c330a8bbc5800fe9c69f04a84e221eca7b28fd049a0354147d9908fa142",
+  "tag_observed": "8.0",
+  "registry": "https://registry-1.docker.io/v2/library/mongo/manifests/8.0",
+  "observed_on": "2026-11-10",
+  "scope": "Local disposable replica-set spike only; not production or application-driver adoption"
+}

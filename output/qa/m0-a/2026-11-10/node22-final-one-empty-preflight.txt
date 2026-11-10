@@ -1,0 +1,245 @@
+TAP version 13
+# Subtest: the owned fixture lifecycle mutates only its acknowledged container ID
+ok 1 - the owned fixture lifecycle mutates only its acknowledged container ID
+  ---
+  duration_ms: 1.079583
+  type: 'test'
+  ...
+# Subtest: TCP endpoint is rejected before any Docker call
+ok 2 - TCP endpoint is rejected before any Docker call
+  ---
+  duration_ms: 0.073292
+  type: 'test'
+  ...
+# Subtest: SSH endpoint is rejected before any Docker call
+ok 3 - SSH endpoint is rejected before any Docker call
+  ---
+  duration_ms: 0.029459
+  type: 'test'
+  ...
+# Subtest: unpinned image is rejected before any Docker call
+ok 4 - unpinned image is rejected before any Docker call
+  ---
+  duration_ms: 0.04025
+  type: 'test'
+  ...
+# Subtest: another registry is rejected before any Docker call
+ok 5 - another registry is rejected before any Docker call
+  ---
+  duration_ms: 0.06775
+  type: 'test'
+  ...
+# Subtest: supplied database URI is rejected before any Docker call
+ok 6 - supplied database URI is rejected before any Docker call
+  ---
+  duration_ms: 0.066291
+  type: 'test'
+  ...
+# Subtest: supplied container ID is rejected before any Docker call
+ok 7 - supplied container ID is rejected before any Docker call
+  ---
+  duration_ms: 0.024583
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_HOST cannot select a different Docker resource
+ok 8 - ambient DOCKER_HOST cannot select a different Docker resource
+  ---
+  duration_ms: 0.049916
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONTEXT cannot select a different Docker resource
+ok 9 - ambient DOCKER_CONTEXT cannot select a different Docker resource
+  ---
+  duration_ms: 0.199625
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONFIG cannot select a different Docker resource
+ok 10 - ambient DOCKER_CONFIG cannot select a different Docker resource
+  ---
+  duration_ms: 0.201125
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_TLS_VERIFY cannot select a different Docker resource
+ok 11 - ambient DOCKER_TLS_VERIFY cannot select a different Docker resource
+  ---
+  duration_ms: 0.064791
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CERT_PATH cannot select a different Docker resource
+ok 12 - ambient DOCKER_CERT_PATH cannot select a different Docker resource
+  ---
+  duration_ms: 0.027667
+  type: 'test'
+  ...
+# Subtest: container ID drift prevents start and cleanup
+ok 13 - container ID drift prevents start and cleanup
+  ---
+  duration_ms: 0.116
+  type: 'test'
+  ...
+# Subtest: run label drift prevents start and cleanup
+ok 14 - run label drift prevents start and cleanup
+  ---
+  duration_ms: 0.064167
+  type: 'test'
+  ...
+# Subtest: image drift prevents start and cleanup
+ok 15 - image drift prevents start and cleanup
+  ---
+  duration_ms: 0.118542
+  type: 'test'
+  ...
+# Subtest: root user drift prevents start and cleanup
+ok 16 - root user drift prevents start and cleanup
+  ---
+  duration_ms: 0.093416
+  type: 'test'
+  ...
+# Subtest: host network drift prevents start and cleanup
+ok 17 - host network drift prevents start and cleanup
+  ---
+  duration_ms: 0.057917
+  type: 'test'
+  ...
+# Subtest: published port drift prevents start and cleanup
+ok 18 - published port drift prevents start and cleanup
+  ---
+  duration_ms: 0.264667
+  type: 'test'
+  ...
+# Subtest: host mount drift prevents start and cleanup
+ok 19 - host mount drift prevents start and cleanup
+  ---
+  duration_ms: 0.053417
+  type: 'test'
+  ...
+# Subtest: persistent volume drift prevents start and cleanup
+ok 20 - persistent volume drift prevents start and cleanup
+  ---
+  duration_ms: 0.113791
+  type: 'test'
+  ...
+# Subtest: writeable root drift prevents start and cleanup
+ok 21 - writeable root drift prevents start and cleanup
+  ---
+  duration_ms: 0.07825
+  type: 'test'
+  ...
+# Subtest: added capability drift prevents start and cleanup
+ok 22 - added capability drift prevents start and cleanup
+  ---
+  duration_ms: 0.061334
+  type: 'test'
+  ...
+# Subtest: host IPC drift prevents start and cleanup
+ok 23 - host IPC drift prevents start and cleanup
+  ---
+  duration_ms: 0.052541
+  type: 'test'
+  ...
+# Subtest: host device drift prevents start and cleanup
+ok 24 - host device drift prevents start and cleanup
+  ---
+  duration_ms: 0.05325
+  type: 'test'
+  ...
+# Subtest: missing memory limit drift prevents start and cleanup
+ok 25 - missing memory limit drift prevents start and cleanup
+  ---
+  duration_ms: 0.048
+  type: 'test'
+  ...
+# Subtest: changed tmpfs drift prevents start and cleanup
+ok 26 - changed tmpfs drift prevents start and cleanup
+  ---
+  duration_ms: 0.048042
+  type: 'test'
+  ...
+# Subtest: daemon changes cannot redirect start or cleanup
+ok 27 - daemon changes cannot redirect start or cleanup
+  ---
+  duration_ms: 0.058209
+  type: 'test'
+  ...
+# Subtest: no external or unknown container is adopted after an unacknowledged create
+ok 28 - no external or unknown container is adopted after an unacknowledged create
+  ---
+  duration_ms: 0.051375
+  type: 'test'
+  ...
+# Subtest: an invalid returned container ID cannot authorize inspection or cleanup
+ok 29 - an invalid returned container ID cannot authorize inspection or cleanup
+  ---
+  duration_ms: 0.040583
+  type: 'test'
+  ...
+# Subtest: database effects require readiness and revalidate ownership after start
+ok 30 - database effects require readiness and revalidate ownership after start
+  ---
+  duration_ms: 0.088542
+  type: 'test'
+  ...
+# Subtest: a caller cannot change the captured image after creation
+ok 31 - a caller cannot change the captured image after creation
+  ---
+  duration_ms: 0.051666
+  type: 'test'
+  ...
+# Subtest: image admission validates the same single snapshot used for creation
+ok 32 - image admission validates the same single snapshot used for creation
+  ---
+  duration_ms: 0.055291
+  type: 'test'
+  ...
+# Subtest: an initially unpinned getter is rejected before Docker is invoked
+ok 33 - an initially unpinned getter is rejected before Docker is invoked
+  ---
+  duration_ms: 0.121167
+  type: 'test'
+  ...
+# Subtest: a second start cannot issue another start command
+ok 34 - a second start cannot issue another start command
+  ---
+  duration_ms: 0.076917
+  type: 'test'
+  ...
+# Subtest: missing commit cannot produce passing transaction evidence
+ok 35 - missing commit cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.131542
+  type: 'test'
+  ...
+# Subtest: failed rollback cannot produce passing transaction evidence
+ok 36 - failed rollback cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.065292
+  type: 'test'
+  ...
+# Subtest: wrong namespace cannot produce passing transaction evidence
+ok 37 - wrong namespace cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.057541
+  type: 'test'
+  ...
+# Subtest: wrong replica set cannot produce passing transaction evidence
+ok 38 - wrong replica set cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.055375
+  type: 'test'
+  ...
+# Subtest: preflight.test.mjs
+ok 39 - preflight.test.mjs
+  ---
+  duration_ms: 0.025584
+  type: 'test'
+  ...
+1..39
+# tests 39
+# suites 0
+# pass 39
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 18.504958
+Foundation gate failed or did not execute a complete non-skipped test run.

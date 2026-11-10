@@ -1,0 +1,17 @@
+{
+  "mode": "built-in image_gen",
+  "prompts": [
+    {
+      "key": "community",
+      "prompt": "Use case: illustration-story. Asset type: premium editorial cover illustration for an internal operations prospectus for SwasthaDisha, Healthcare without Boundaries. Create one wide horizontal 3:2 illustration of a welcoming small Indian city healthcare ecosystem with global-brand quality: a neighborhood pharmacy with pharmacist, a doctor in a consultation room, a laboratory with a technician and test tube rack, a modest modern hospital with reception, and a family approaching care. Connected curved teal paths subtly link these four services. Contemporary Indian people of varied ages, dignified everyday clothes, clean approachable buildings, no luxury megaplex or distressed poverty imagery. Sophisticated hand-drawn architectural forms with soft paper texture and refined flat shaded depth. Warm ivory ground, deep teal and muted sage, small coral accents. Balanced spacious composition, clear silhouettes, editorial rather than cartoon mascot. All people realistic anatomy. No text, no labels, no signage words, no logos, no red cross emblem, no medical claims, no watermark. This will be embedded as an image below a separately typeset title."
+    },
+    {
+      "key": "counter",
+      "prompt": "Use case: illustration-story. Asset type: editorial illustration for SwasthaDisha operations prospectus. One wide horizontal 16:9 scene showing daily in-house healthcare business operations in an Indian tier 3 town: a pharmacy or clinic reception counter with a woman operator using a computer, a patient receiving a printed receipt, a colleague checking neatly organized medicine cartons and supply stock, and a small background consultation room. Focus on helpful staff, paper-to-digital continuity and sensible everyday operations. Premium contemporary architectural editorial illustration, warm ivory paper texture, deep teal, muted sage and small coral accents, soft dimensional shading, readable silhouettes, composed and humane. Screen has abstract color blocks only, no fictitious analytics. No text or readable numbers, no brands, no logos, no red cross emblem, no watermark."
+    },
+    {
+      "key": "phone",
+      "prompt": "Use case: illustration-story. Asset type: editorial image for a SwasthaDisha prospectus section about planned basic-phone doctor consultations. One horizontal 16:9 illustration, two connected human scenes in one coherent composition: on the left an older Indian woman seated at home using a basic keypad mobile phone, with an adult caregiver nearby; on the right a doctor at a desk speaking through a headset, with a simple clinical note page and laptop. A restrained curved teal line connects the scenes. Small town India represented respectfully, everyday warm home, dignified expressions, no poverty imagery. Premium global-health editorial illustration, sophisticated warm ivory paper texture, deep teal and sage with restrained coral accents, flat shaded architectural depth, realistic anatomy. Clearly a conceptual service illustration, not a screenshot. No text, no numbers, no logos, no red cross emblem, no watermark."
+    }
+  ]
+}

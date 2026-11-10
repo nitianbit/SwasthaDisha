@@ -1,0 +1,149 @@
+{
+  "date": "2026-11-09",
+  "baseline": "planning v1.7 + owner clarifications",
+  "pdf": {
+    "path": "/Users/shubham/Desktop/SwasthaDisha/ewa_backend/output/pdf/SwasthaDisha_Operations_Prospectus.pdf",
+    "bytes": 1443365,
+    "sha256": "7d5a2f5ea35d7622c3cb28b56b3738267e2a15a8853f232d39846623882779ef",
+    "pages": 17
+  },
+  "docx": {
+    "path": "/Users/shubham/Desktop/SwasthaDisha/ewa_backend/output/docx/SwasthaDisha_Operations_Prospectus.docx",
+    "bytes": 9300808,
+    "sha256": "8a3d0487c5a20a04c8e26c2614ac8945eea00490d9f035630a3d057d8ea62ff4"
+  },
+  "figures": {
+    "generated_illustrations": 3,
+    "workflow_diagrams": 2
+  },
+  "visual_review_pages": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17
+  ],
+  "page_checks": [
+    {
+      "page": 1,
+      "title": "Healthcare that connects. Operations that work.",
+      "words": 61,
+      "visual_review": "clean"
+    },
+    {
+      "page": 2,
+      "title": "One network. Two ways to use it.",
+      "words": 185,
+      "visual_review": "clean"
+    },
+    {
+      "page": 3,
+      "title": "More ways to reach care.",
+      "words": 257,
+      "visual_review": "clean"
+    },
+    {
+      "page": 4,
+      "title": "Pharmacy sales, across channels.",
+      "words": 250,
+      "visual_review": "clean"
+    },
+    {
+      "page": 5,
+      "title": "The right price for the right buyer.",
+      "words": 228,
+      "visual_review": "clean"
+    },
+    {
+      "page": 6,
+      "title": "One workday. One doctor workspace.",
+      "words": 231,
+      "visual_review": "clean"
+    },
+    {
+      "page": 7,
+      "title": "Third-party labs, with or without APIs.",
+      "words": 189,
+      "visual_review": "clean"
+    },
+    {
+      "page": 8,
+      "title": "Hospital OPD and billing first.",
+      "words": 210,
+      "visual_review": "clean"
+    },
+    {
+      "page": 9,
+      "title": "A workspace for each partner team.",
+      "words": 228,
+      "visual_review": "clean"
+    },
+    {
+      "page": 10,
+      "title": "Direct business, connected operations.",
+      "words": 161,
+      "visual_review": "clean"
+    },
+    {
+      "page": 11,
+      "title": "Make every collection explainable.",
+      "words": 225,
+      "visual_review": "clean"
+    },
+    {
+      "page": 12,
+      "title": "Doctor access by basic phone.",
+      "words": 204,
+      "visual_review": "clean"
+    },
+    {
+      "page": 13,
+      "title": "From onboarding to day-close.",
+      "words": 244,
+      "visual_review": "clean"
+    },
+    {
+      "page": 14,
+      "title": "Care that continues after booking.",
+      "words": 243,
+      "visual_review": "clean"
+    },
+    {
+      "page": 15,
+      "title": "A staged path to launch.",
+      "words": 228,
+      "visual_review": "clean"
+    },
+    {
+      "page": 16,
+      "title": "Keep the expansion path clear.",
+      "words": 217,
+      "visual_review": "clean"
+    },
+    {
+      "page": 17,
+      "title": "The vision and today's baseline.",
+      "words": 224,
+      "visual_review": "clean"
+    }
+  ],
+  "nonblank_chars_within_page_bounds": 23374,
+  "docx_structural_and_accessibility_checks": "passed; accessibility audit reported zero findings",
+  "scenario_register": "115 entries; execution statuses unchanged",
+  "application_checks_executed": false,
+  "generated_image_mode": "built-in image_gen",
+  "image_prompts": "output/operations/source/image_prompts.json",
+  "qa_render_directory": "/private/tmp/swasthadisha-prospectus-final-qa"
+}

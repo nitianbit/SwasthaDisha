@@ -1,0 +1,32 @@
+[
+  {
+    "runtime": "node22",
+    "case": "both-empty",
+    "exit_code": 1
+  },
+  {
+    "runtime": "node22",
+    "case": "one-empty-mongo",
+    "exit_code": 1
+  },
+  {
+    "runtime": "node22",
+    "case": "one-empty-preflight",
+    "exit_code": 1
+  },
+  {
+    "runtime": "node24",
+    "case": "both-empty",
+    "exit_code": 1
+  },
+  {
+    "runtime": "node24",
+    "case": "one-empty-mongo",
+    "exit_code": 1
+  },
+  {
+    "runtime": "node24",
+    "case": "one-empty-preflight",
+    "exit_code": 1
+  }
+]

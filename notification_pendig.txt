@@ -1,0 +1,72 @@
+Booking and Email Notification Pending Items
+
+1. Internal booking cancellation email is missing.
+   Current behavior:
+   - Booking is cancelled and refunded.
+   - Specialist gets an in-app cancellation notification when specialistId exists.
+   - User does not receive a cancellation email.
+   Reference:
+   - src1/modules/bookings/services/index.ts:1648
+
+2. Internal booking reschedule email is missing.
+   Current behavior:
+   - Booking date/time/slot is updated.
+   - Reminders are rescheduled.
+   - Google Meet is synced for confirmed online consultations.
+   - User does not receive a reschedule email.
+   Reference:
+   - src1/modules/bookings/services/index.ts:1724
+
+3. Internal admin/status update emails are missing.
+   Current behavior:
+   - update() changes status, paymentStatus, lifecycle, reminders, and Meet state.
+   - No user email is sent for status changes like confirmed, cancelled, or completed.
+   Reference:
+   - src1/modules/bookings/services/index.ts:1331
+
+4. Booking-created in-app notification text can be misleading.
+   Current message:
+   - "Your booking has been created successfully. We will confirm it shortly."
+   Issue:
+   - This same notification is created even when the booking is immediately confirmed and paid.
+   Reference:
+   - src1/modules/notification/services/index.ts:230
+
+5. Internal paid booking email helper is duplicated.
+   Current behavior:
+   - BookingService and PaymentService both have sendPaidBookingEmailNotification().
+   Issue:
+   - Email behavior can drift if one copy changes and the other does not.
+   References:
+   - src1/modules/bookings/services/index.ts:82
+   - src1/modules/payment/services/index.ts:77
+
+6. EmailService ignores payload.sender.
+   Current behavior:
+   - SendEmailPayload includes sender.
+   - EmailService always uses CONFIG.SMTP2GO_SENDER instead.
+   Reference:
+   - src1/modules/email/services/index.ts:27
+
+7. Booking-created notification does not send FCM push.
+   Current behavior:
+   - Booking-created notification is saved in-app only.
+   - FCM is used for reminders and general notifications, not normal booking-created notifications.
+   References:
+   - src1/modules/notification/services/index.ts:230
+   - src1/modules/queue/service/BookingReminderConsumer.ts:48
+
+8. Internal slot count is incremented before payment completion.
+   Current behavior:
+   - Slot booking count is incremented immediately after booking draft is saved.
+   - If payment is abandoned, the slot may remain occupied unless cleanup handles it elsewhere.
+   References:
+   - src1/modules/bookings/services/index.ts:779
+   - src1/modules/bookings/services/index.ts:1007
+
+Notes
+
+- Internal booking confirmation emails are sent after the booking becomes paid/confirmed.
+- Razorpay-paid internal bookings send email from PaymentService after payment verification.
+- External bookings, including Healthians, already have lifecycle email handling for scheduled, cancelled, rescheduled, and webhook-driven updates.
+- HealthiansService only handles provider API calls; emails are handled by ExternalBookingService.

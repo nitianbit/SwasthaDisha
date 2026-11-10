@@ -1,0 +1,203 @@
+HIPAA BACKEND REMEDIATION PLAN (EWA Backend)
+Assessment date: 2026-03-07
+Scope: Backend code + API security + data storage practices (Hostinger deployment with local file storage)
+Note: This is a technical gap-remediation document, not legal advice. Final HIPAA status requires legal/compliance review and signed BAAs.
+
+===============================================================================
+0) EXECUTIVE SUMMARY
+===============================================================================
+Current backend is NOT HIPAA-ready. Highest blockers are:
+1) Public document access path and local file storage controls
+2) Weak auth/OTP controls and object-level authorization gaps
+3) Missing audit logging, key management, incident response controls
+4) Missing/unclear BAA coverage for hosting and storage vendors
+
+===============================================================================
+1) CRITICAL (BLOCKER) CHANGES - DO FIRST
+===============================================================================
+
+[C1] Remove public static file exposure
+- Current risk:
+  - `src1/routes/index.ts` exposes `GET /api/static/*` without auth.
+  - PHI files (reports/prescriptions) can be fetched if URL is known/guessed.
+- Required change:
+  - Remove public route or gate it with strict auth + object-level authorization.
+  - Serve files through short-lived signed URLs or controlled download endpoint.
+  - Disable public caching for PHI (`Cache-Control: no-store, private`).
+- Target files:
+  - `src1/routes/index.ts`
+  - `src1/modules/file/controller/index.ts`
+
+[C2] Enforce object-level authorization (BOLA/IDOR prevention) everywhere
+- Current risk:
+  - Several modules allow reading/updating data by `:userId` or query `userId` with no forced ownership checks.
+  - A logged-in user can potentially access other users’ data.
+- Required change:
+  - Introduce reusable authorization guard:
+    - Non-admin can only access own resources (`req.user._id`)
+    - Admin can access broader scope
+  - Apply to users/dependents/bookings/wallet/notifications/file access.
+- Target files (examples):
+  - `src1/modules/user/controller/index.ts`
+  - `src1/modules/dependents/controller/index.ts`
+  - `src1/modules/bookings/controller/index.ts`
+  - `src1/modules/wallet/controller/index.ts`
+  - `src1/modules/notification/controller/index.ts`
+
+[C3] Lock down OTP flows for production
+- Current risk:
+  - Default OTP `123456` accepted in `src1/modules/otp/services/index.ts`.
+  - Plaintext OTP stored in DB (`src1/modules/otp/model/index.ts`).
+  - `/api/v1/otp` create/verify endpoints are public (`src1/routes/index.ts` + `src1/modules/otp/routes/index.ts`).
+- Required change:
+  - Remove default OTP bypass entirely.
+  - Hash OTP at rest (e.g., HMAC/bcrypt) and compare hash only.
+  - Restrict direct OTP create/verify APIs to internal/admin-only or remove.
+  - Add retry limits, cooldown, lockout, and per-IP/per-identity rate limiting.
+
+[C4] Replace hardcoded secrets and rotate exposed credentials
+- Current risk:
+  - Hardcoded webhook secret in source:
+    `src1/modules/webhooks/middleware/index.ts`
+- Required change:
+  - Move all secrets to secret manager or protected env vars.
+  - Rotate webhook token, JWT secret, DB credentials, SMS credentials, all exposed values.
+  - Fail fast on missing required secrets in production.
+
+[C5] Verify HIPAA-eligible hosting/storage and execute BAAs
+- Current risk:
+  - You are storing files locally on Hostinger server.
+  - If Hostinger does not sign HIPAA BAA and provide required safeguards, PHI hosting there is non-compliant.
+- Required change:
+  - Obtain signed BAA from each PHI-touching vendor (host, backup, logging, email/SMS, push, payment-related scope where applicable).
+  - If BAA cannot be executed, migrate PHI workloads to HIPAA-eligible platform (compute + encrypted object storage + managed DB with BAA).
+  - Keep PHI file storage in encrypted object store, not direct local filesystem.
+
+===============================================================================
+2) HIGH PRIORITY SECURITY RULE CHANGES
+===============================================================================
+
+[H1] Encrypt ePHI at rest and manage keys properly
+- Required change:
+  - DB volume encryption + backup encryption.
+  - File/object encryption at rest (AES-256) with managed key rotation.
+  - Field-level encryption/tokenization for high-risk PHI fields where needed.
+  - Document key lifecycle and access controls.
+
+[H2] Encrypt ePHI in transit and enforce HTTPS only
+- Required change:
+  - TLS 1.2+ everywhere.
+  - Enforce HTTPS redirect at reverse proxy/app edge.
+  - Enable HSTS and secure cookie/header policies.
+
+[H3] Harden token/session controls
+- Current risk:
+  - JWT expiry currently long (`30d`) in auth service.
+- Required change:
+  - Shorter access token TTL (e.g., 10-30 min) + refresh token rotation.
+  - Add token revocation / session invalidation.
+  - Consider device/session binding and suspicious-login detection.
+
+[H4] Add security headers and abuse protection
+- Required change:
+  - Add `helmet` and strict headers (`X-Content-Type-Options`, etc.).
+  - Add API rate limiting and brute-force protection on auth/OTP.
+  - Add request size/shape constraints and WAF rules.
+
+[H5] Build immutable audit trail for PHI access and admin actions
+- Required change:
+  - Log who accessed/changed which PHI, when, from where, outcome.
+  - Protect logs from tampering; centralize in append-only storage/SIEM.
+  - Ensure logs avoid full PHI payload dumps.
+
+[H6] Strengthen file validation and malware controls
+- Current risk:
+  - Allowed MIME includes `application/octet-stream`.
+- Required change:
+  - Restrict file types to explicit safe list.
+  - Validate magic bytes (not only extension/MIME).
+  - Integrate malware scanning pipeline before file availability.
+
+===============================================================================
+3) PRIVACY RULE / OPERATIONAL CONTROLS
+===============================================================================
+
+[P1] Minimum necessary access controls
+- Required change:
+  - Implement role/scope matrix per endpoint.
+  - Return only necessary fields in each response.
+  - Add purpose-based authorization where applicable.
+
+[P2] Data retention + deletion policy
+- Required change:
+  - Define retention schedule by data class (bookings, files, logs, OTPs).
+  - Implement purge/archive jobs and legal hold handling.
+  - Include backup retention and secure destruction process.
+
+[P3] Breach response and incident handling
+- Required change:
+  - Written incident response runbook.
+  - Breach risk assessment + notification workflows with timelines.
+  - Detection, containment, evidence preservation process.
+
+[P4] Backup, disaster recovery, and emergency mode operations
+- Required change:
+  - Encrypted, tested backups for DB/files.
+  - DR objectives (RTO/RPO), restore drills, documented emergency access process.
+
+[P5] Workforce/admin safeguards
+- Required change:
+  - MFA for admin/support accounts.
+  - Least-privilege admin access and periodic access reviews.
+  - Joiner-mover-leaver process and account deprovisioning SLA.
+
+===============================================================================
+4) BACKEND CODE/PLATFORM IMPLEMENTATION CHECKLIST
+===============================================================================
+
+Immediate code tasks:
+[ ] Remove or secure `/api/static/*` public route
+[ ] Add ownership middleware for user-scoped resources
+[ ] Remove default OTP and hash OTP values
+[ ] Disable public `/api/v1/otp` endpoints or protect with internal auth
+[ ] Move webhook secret to env and rotate immediately
+[ ] Reduce JWT TTL + introduce refresh/session revocation
+[ ] Add `helmet` + rate limiting middleware
+[ ] Restrict file MIME/types and add content sniffing
+[ ] Stop public caching headers for PHI files
+[ ] Add structured audit logging for all PHI CRUD and admin actions
+
+Infrastructure tasks:
+[ ] Confirm BAA with host/storage provider; migrate if unavailable
+[ ] Move file storage from local disk to encrypted object storage
+[ ] Enforce HTTPS/TLS and HSTS at edge
+[ ] Encrypt DB, storage, and backups with managed keys
+[ ] Centralize logs in immutable store/SIEM with retention controls
+[ ] Implement continuous vulnerability scanning + patch SLA
+
+Governance tasks:
+[ ] Risk analysis document (technical + administrative + physical)
+[ ] HIPAA policies/procedures mapped to implemented controls
+[ ] Incident response + breach notification SOP
+[ ] Business associate inventory and signed BAAs
+[ ] Periodic access review and security training evidence
+
+===============================================================================
+5) HIPAA REFERENCES USED FOR MAPPING
+===============================================================================
+
+- HHS Security Rule summary:
+  https://www.hhs.gov/hipaa/for-professionals/security/laws-regulations/index.html
+- eCFR Security Rule standards:
+  - 45 CFR 164.308 (Administrative safeguards)
+  - 45 CFR 164.310 (Physical safeguards)
+  - 45 CFR 164.312 (Technical safeguards)
+  - 45 CFR 164.316 (Policies/procedures/documentation)
+  https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-C
+- HHS Breach Notification Rule:
+  https://www.hhs.gov/hipaa/for-professionals/breach-notification/index.html
+- HHS guidance: cloud computing + BAA responsibilities:
+  https://www.hhs.gov/hipaa/for-professionals/special-topics/cloud-computing/index.html
+- HHS minimum necessary standard:
+  https://www.hhs.gov/hipaa/for-professionals/privacy/guidance/minimum-necessary-requirement/index.html
+

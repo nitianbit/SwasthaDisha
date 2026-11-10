@@ -1,0 +1,322 @@
+TAP version 13
+# Subtest: the owned fixture lifecycle mutates only its acknowledged container ID
+ok 1 - the owned fixture lifecycle mutates only its acknowledged container ID
+  ---
+  duration_ms: 1.35875
+  type: 'test'
+  ...
+# Subtest: TCP endpoint is rejected before any Docker call
+ok 2 - TCP endpoint is rejected before any Docker call
+  ---
+  duration_ms: 0.104208
+  type: 'test'
+  ...
+# Subtest: SSH endpoint is rejected before any Docker call
+ok 3 - SSH endpoint is rejected before any Docker call
+  ---
+  duration_ms: 0.036166
+  type: 'test'
+  ...
+# Subtest: unpinned image is rejected before any Docker call
+ok 4 - unpinned image is rejected before any Docker call
+  ---
+  duration_ms: 0.052958
+  type: 'test'
+  ...
+# Subtest: another registry is rejected before any Docker call
+ok 5 - another registry is rejected before any Docker call
+  ---
+  duration_ms: 0.040042
+  type: 'test'
+  ...
+# Subtest: supplied database URI is rejected before any Docker call
+ok 6 - supplied database URI is rejected before any Docker call
+  ---
+  duration_ms: 0.031458
+  type: 'test'
+  ...
+# Subtest: supplied container ID is rejected before any Docker call
+ok 7 - supplied container ID is rejected before any Docker call
+  ---
+  duration_ms: 0.0275
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_HOST cannot select a different Docker resource
+ok 8 - ambient DOCKER_HOST cannot select a different Docker resource
+  ---
+  duration_ms: 0.049209
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONTEXT cannot select a different Docker resource
+ok 9 - ambient DOCKER_CONTEXT cannot select a different Docker resource
+  ---
+  duration_ms: 0.041875
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONFIG cannot select a different Docker resource
+ok 10 - ambient DOCKER_CONFIG cannot select a different Docker resource
+  ---
+  duration_ms: 0.105125
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_TLS_VERIFY cannot select a different Docker resource
+ok 11 - ambient DOCKER_TLS_VERIFY cannot select a different Docker resource
+  ---
+  duration_ms: 0.056416
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CERT_PATH cannot select a different Docker resource
+ok 12 - ambient DOCKER_CERT_PATH cannot select a different Docker resource
+  ---
+  duration_ms: 0.033583
+  type: 'test'
+  ...
+# Subtest: container ID drift prevents start and cleanup
+ok 13 - container ID drift prevents start and cleanup
+  ---
+  duration_ms: 0.143625
+  type: 'test'
+  ...
+# Subtest: run label drift prevents start and cleanup
+ok 14 - run label drift prevents start and cleanup
+  ---
+  duration_ms: 0.120709
+  type: 'test'
+  ...
+# Subtest: image drift prevents start and cleanup
+ok 15 - image drift prevents start and cleanup
+  ---
+  duration_ms: 0.068166
+  type: 'test'
+  ...
+# Subtest: root user drift prevents start and cleanup
+ok 16 - root user drift prevents start and cleanup
+  ---
+  duration_ms: 0.073958
+  type: 'test'
+  ...
+# Subtest: host network drift prevents start and cleanup
+ok 17 - host network drift prevents start and cleanup
+  ---
+  duration_ms: 0.060541
+  type: 'test'
+  ...
+# Subtest: published port drift prevents start and cleanup
+ok 18 - published port drift prevents start and cleanup
+  ---
+  duration_ms: 0.064042
+  type: 'test'
+  ...
+# Subtest: host mount drift prevents start and cleanup
+ok 19 - host mount drift prevents start and cleanup
+  ---
+  duration_ms: 0.126125
+  type: 'test'
+  ...
+# Subtest: persistent volume drift prevents start and cleanup
+ok 20 - persistent volume drift prevents start and cleanup
+  ---
+  duration_ms: 0.136208
+  type: 'test'
+  ...
+# Subtest: writeable root drift prevents start and cleanup
+ok 21 - writeable root drift prevents start and cleanup
+  ---
+  duration_ms: 0.083
+  type: 'test'
+  ...
+# Subtest: added capability drift prevents start and cleanup
+ok 22 - added capability drift prevents start and cleanup
+  ---
+  duration_ms: 0.084833
+  type: 'test'
+  ...
+# Subtest: host IPC drift prevents start and cleanup
+ok 23 - host IPC drift prevents start and cleanup
+  ---
+  duration_ms: 0.0645
+  type: 'test'
+  ...
+# Subtest: host device drift prevents start and cleanup
+ok 24 - host device drift prevents start and cleanup
+  ---
+  duration_ms: 0.0575
+  type: 'test'
+  ...
+# Subtest: missing memory limit drift prevents start and cleanup
+ok 25 - missing memory limit drift prevents start and cleanup
+  ---
+  duration_ms: 0.060292
+  type: 'test'
+  ...
+# Subtest: changed tmpfs drift prevents start and cleanup
+ok 26 - changed tmpfs drift prevents start and cleanup
+  ---
+  duration_ms: 0.180083
+  type: 'test'
+  ...
+# Subtest: daemon changes cannot redirect start or cleanup
+ok 27 - daemon changes cannot redirect start or cleanup
+  ---
+  duration_ms: 0.077833
+  type: 'test'
+  ...
+# Subtest: no external or unknown container is adopted after an unacknowledged create
+ok 28 - no external or unknown container is adopted after an unacknowledged create
+  ---
+  duration_ms: 0.058125
+  type: 'test'
+  ...
+# Subtest: an invalid returned container ID cannot authorize inspection or cleanup
+ok 29 - an invalid returned container ID cannot authorize inspection or cleanup
+  ---
+  duration_ms: 0.051458
+  type: 'test'
+  ...
+# Subtest: database effects require readiness and revalidate ownership after start
+ok 30 - database effects require readiness and revalidate ownership after start
+  ---
+  duration_ms: 0.099875
+  type: 'test'
+  ...
+# Subtest: a caller cannot change the captured image after creation
+ok 31 - a caller cannot change the captured image after creation
+  ---
+  duration_ms: 0.063292
+  type: 'test'
+  ...
+# Subtest: image admission validates the same single snapshot used for creation
+ok 32 - image admission validates the same single snapshot used for creation
+  ---
+  duration_ms: 0.068333
+  type: 'test'
+  ...
+# Subtest: an initially unpinned getter is rejected before Docker is invoked
+ok 33 - an initially unpinned getter is rejected before Docker is invoked
+  ---
+  duration_ms: 0.036417
+  type: 'test'
+  ...
+# Subtest: a second start cannot issue another start command
+ok 34 - a second start cannot issue another start command
+  ---
+  duration_ms: 0.390583
+  type: 'test'
+  ...
+# Subtest: a runner-created workspace admits the exact clean unit-test launch
+ok 35 - a runner-created workspace admits the exact clean unit-test launch
+  ---
+  duration_ms: 1.396791
+  type: 'test'
+  ...
+# Subtest: a copied marker and matching directory do not confer ownership
+ok 36 - a copied marker and matching directory do not confer ownership
+  ---
+  duration_ms: 0.60475
+  type: 'test'
+  ...
+# Subtest: unknown resource identity cannot authorize a launch
+ok 37 - unknown resource identity cannot authorize a launch
+  ---
+  duration_ms: 0.025208
+  type: 'test'
+  ...
+# Subtest: inherited NODE_OPTIONS is refused before imports or connectors
+ok 38 - inherited NODE_OPTIONS is refused before imports or connectors
+  ---
+  duration_ms: 0.675292
+  type: 'test'
+  ...
+# Subtest: inherited NODE_PATH is refused before imports or connectors
+ok 39 - inherited NODE_PATH is refused before imports or connectors
+  ---
+  duration_ms: 0.640291
+  type: 'test'
+  ...
+# Subtest: inherited MONGODB_URL is refused before imports or connectors
+ok 40 - inherited MONGODB_URL is refused before imports or connectors
+  ---
+  duration_ms: 0.611042
+  type: 'test'
+  ...
+# Subtest: inherited PHARMACY_TEST_MONGODB_URI is refused before imports or connectors
+ok 41 - inherited PHARMACY_TEST_MONGODB_URI is refused before imports or connectors
+  ---
+  duration_ms: 0.628792
+  type: 'test'
+  ...
+# Subtest: inherited PAYMENT_SECRET is refused before imports or connectors
+ok 42 - inherited PAYMENT_SECRET is refused before imports or connectors
+  ---
+  duration_ms: 0.610958
+  type: 'test'
+  ...
+# Subtest: a database named latest is not admitted as a disposable resource
+ok 43 - a database named latest is not admitted as a disposable resource
+  ---
+  duration_ms: 0.613791
+  type: 'test'
+  ...
+# Subtest: incorrect working directory or test identity is refused
+ok 44 - incorrect working directory or test identity is refused
+  ---
+  duration_ms: 0.797917
+  type: 'test'
+  ...
+# Subtest: missing environment fields are refused
+ok 45 - missing environment fields are refused
+  ---
+  duration_ms: 2.978209
+  type: 'test'
+  ...
+# Subtest: an operational .env file is refused, including nested files
+ok 46 - an operational .env file is refused, including nested files
+  ---
+  duration_ms: 0.956917
+  type: 'test'
+  ...
+# Subtest: unexpected staged application files are refused
+ok 47 - unexpected staged application files are refused
+  ---
+  duration_ms: 0.702833
+  type: 'test'
+  ...
+# Subtest: the test child cannot create symlinks to escape its filesystem permissions
+ok 48 - the test child cannot create symlinks to escape its filesystem permissions
+  ---
+  duration_ms: 0.535959
+  type: 'test'
+  ...
+# Subtest: changed ownership refuses both execution and cleanup
+ok 49 - changed ownership refuses both execution and cleanup
+  ---
+  duration_ms: 2.7165
+  type: 'test'
+  ...
+# Subtest: a replacement directory with a copied marker is not the owned resource
+ok 50 - a replacement directory with a copied marker is not the owned resource
+  ---
+  duration_ms: 1.060667
+  type: 'test'
+  ...
+# Subtest: cleanup affects only the owned workspace and is idempotent
+ok 51 - cleanup affects only the owned workspace and is idempotent
+  ---
+  duration_ms: 0.911541
+  type: 'test'
+  ...
+# Subtest: the test child cannot read parent files or spawn another process
+ok 52 - the test child cannot read parent files or spawn another process
+  ---
+  duration_ms: 0.529708
+  type: 'test'
+  ...
+1..52
+# tests 52
+# suites 0
+# pass 52
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 42.672959

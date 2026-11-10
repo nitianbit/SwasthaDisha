@@ -1,0 +1,828 @@
+--- /dev/null
++++ b/documentation/planning/implementation/C3_MONGO_FIXTURE_CONTRACT.md
+@@ -0,0 +1,27 @@
++# C3 disposable MongoDB fixture contract
++
++**10 November 2026. Bounded F01 infrastructure increment, before application integration.** This implements the resource-ownership part of C3 without changing application dependencies, adopting a production database version or running existing integration suites.
++
++## Admission and lifecycle
++
++1. Accept only an explicit local Unix Docker endpoint and a digest-pinned Docker Official Image reference `mongo@sha256:...`. Reject ambient Docker overrides, remote endpoints, supplied database URIs/container IDs and unknown options before any Docker call. The real executor checks that the endpoint resolves to a local Unix socket.
++2. Read the Linux daemon's ID. Create one uniquely named container with a per-run label and namespace, capturing its full returned container ID in a private closure. Never adopt arbitrary existing containers based on labels or names.
++3. Before start, each database execution and removal, recheck daemon identity and inspect that exact ID. Require matching name, run label, image, entrypoint, command and isolation configuration. An ownership or configuration mismatch prevents mutation and cleanup.
++4. Require network `none`, no published ports, no host/named mounts or inherited volumes, read-only root, non-root user, dropped capabilities, no-new-privileges, CPU/memory/PID bounds and explicit tmpfs paths. tmpfs is disposable storage, not a secure-erasure guarantee; it can be backed by host swap.
++5. Bind MongoDB only to container-local loopback. Initialize a single-node replica set with an owned name and use only its generated database namespace. Run a fixed synthetic transaction probe through `docker exec` inside the container. No application module, URI override or arbitrary executable/script is admitted.
++6. Remove only the created and freshly revalidated container. Repeated successful cleanup is idempotent. If ownership/daemon identity is lost, refuse removal and retain an explicit cleanup exception. A failed create with no acknowledged ID is reported with its generated name; do not guess ownership or prune resources.
++
++The image must already be cached (`--pull=never`). Fetching a reviewed image is a separate local-install step. The controller uses an explicit endpoint and clean subprocess environment; no operational `.env`, credentials or default Docker resource overrides are forwarded.
++
++## Required evidence for this increment
++
++- Positive lifecycle and transaction-probe contract; only the captured ID is mutated.
++- Rejection before Docker invocation for remote endpoints, unpinned images, ambient overrides and unknown/resource-override fields.
++- No start/exec/removal after identity, ownership or isolation drift; duplicate cleanup cannot affect other resources.
++- A real test-only replica-set probe verifies transaction commit and rollback plus successful cleanup. Mock transport results alone cannot establish MongoDB runtime behavior.
++
++## Gates retained
++
++The first candidate is MongoDB 8.x in a local test fixture. This is not a production selection and does not establish compatibility with Mongoose 6/driver 4.17. C2 and the separately reviewed runtime/ODM decision still precede application startup/package/dependency edits. This controller does not expose a host database port or admit the legacy pharmacy suite; provider/file stubs and full application pre-import isolation remain unfinished C3 work.
++
++The reviewed v1.7 scope and [M0-A progress](M0_A_PROGRESS.md) remain authoritative for completion. No deployment, external provider or operational database access is included.
+--- /dev/null
++++ b/test/foundation/README.md
+@@ -0,0 +1,28 @@
++# M0-A foundation unit gate
++
++This F01 unit gate runs dependency-free filesystem admission and MongoDB fixture-controller tests. MongoDB/Docker responses are simulated in this gate; it does not import the application, contact Docker or MongoDB, admit a database URI, or run the pharmacy/API suites. A separate [real fixture smoke check](../mongo/README.md) verifies the controller against local Docker.
++
++Use Node 22.13 or later. Resolve the executable before clearing the environment:
++
++```sh
++FOUNDATION_NODE="$(command -v node)"
++env -i TMPDIR=/tmp "$FOUNDATION_NODE" test/foundation/run.mjs
++```
++
++The runner:
++
++1. Creates a fresh temporary workspace with in-memory ownership, directory identity and a per-run marker. A supplied path, copied marker or matching database name cannot confer ownership.
++2. Copies only four approved regular source files: `preflight.mjs`, `preflight.test.mjs`, `mongo-fixture.mjs` and `mongo-fixture.test.mjs`. No application, `.env`, credentials or `node_modules` are staged. It checks for unexpected files and symlinks before executing the child.
++3. Constructs a fresh child environment instead of forwarding the shell's configuration. Resource/preload/provider overrides are rejected by the preflight.
++4. Runs two fixed test entries with filesystem reads/writes limited to the owned workspace. Child processes, workers and native addons receive no permissions; the unit controller uses a fake executor. A bootstrap assertion proves that a pre-existing symlink is denied before the test entries run.
++5. Returns failure for test failure, cancellation, skips, TODOs, either empty entry, timeout or abnormal exit. Node's passing empty-file fallback is rejected for each required entry. Cleanup requires the original ownership evidence and touches only that workspace.
++
++Node and macOS can add test-worker/text-encoding metadata after process creation; the tests distinguish these observed runtime fields from the exact environment supplied at launch. They do not allow operational configuration through the parent preflight.
++
++## Boundary and remaining work
++
++This is a filesystem/environment guard for reviewed unit code, not a security sandbox for hostile JavaScript. Node 22's permission model does not provide a network-denial boundary. No application/database-driver/provider clients are included in this staged suite. The fixture module's real Docker executor is not used by the unit tests and cannot spawn Docker with the child's permissions. Application/integration tests must still wait for provider/file stubs and their own pre-import admission proof; this unit gate and the separate MongoDB smoke check cannot authorize them. [Official Node permission model and limitations](https://nodejs.org/docs/latest-v22.x/api/permissions.html).
++
++The existing `npm test` placeholder and legacy integration entry points are unchanged. Do not treat this command as M0 acceptance, a production start check, database-library compatibility evidence or a replacement for required domain regressions. Startup/package/dependency edits remain gated on Review-B C2 and the separate compatibility decision.
++
++Node 22 uses `--experimental-test-isolation=none`; later versions retain the alias. Running tests in one child process avoids granting that child permission to spawn more test workers. [Node 22 test-runner flag](https://nodejs.org/download/release/v22.23.0/docs/api/cli.html#--experimental-test-isolationmode).
+--- /dev/null
++++ b/test/foundation/mongo-fixture.mjs
+@@ -0,0 +1,171 @@
++import { randomUUID } from 'node:crypto';
++import { statSync, realpathSync } from 'node:fs';
++import { spawnSync } from 'node:child_process';
++import { setTimeout as delay } from 'node:timers/promises';
++import { fileURLToPath } from 'node:url';
++
++const dockerOverrides = ['DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_CONFIG', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH'];
++const tmpfs = Object.freeze({
++  '/data/db': 'rw,noexec,nosuid,size=536870912,mode=1777',
++  '/data/configdb': 'rw,noexec,nosuid,size=16777216,mode=1777',
++  '/tmp': 'rw,noexec,nosuid,size=67108864,mode=1777',
++});
++
++function requireThat(condition, message) {
++  if (!condition) throw new Error(message);
++}
++
++function validateRequest(request) {
++  requireThat(request && Object.keys(request).sort().join(',') === 'endpoint,image', 'Only endpoint and image are accepted');
++  requireThat(typeof request.endpoint === 'string' && /^unix:\/\/\/[^\0?#]+\.sock$/.test(request.endpoint), 'An explicit local Unix Docker socket is required');
++  requireThat(typeof request.image === 'string' && /^mongo@sha256:[a-f0-9]{64}$/.test(request.image), 'A digest-pinned mongo image is required');
++  requireThat(!dockerOverrides.some((key) => Object.hasOwn(process.env, key)), 'Ambient Docker overrides are forbidden');
++}
++
++function dockerExecutor(endpoint) {
++  const socket = fileURLToPath(new URL(endpoint.replace(/^unix:/, 'file:')));
++  requireThat(statSync(realpathSync(socket)).isSocket(), 'Docker endpoint is not a local Unix socket');
++  return (args) => {
++    const result = spawnSync('/usr/local/bin/docker', ['--host', endpoint, ...args], {
++      env: { PATH: '/usr/local/bin:/usr/bin:/bin' },
++      encoding: 'utf8', timeout: 15_000, maxBuffer: 256 * 1024,
++    });
++    requireThat(!result.error && !result.signal && result.status === 0,
++      `Docker ${args[0]} failed: ${(result.stderr || result.error?.message || result.stdout || result.signal || result.status).toString().trim().slice(0, 2000)}`);
++    return result.stdout.trim();
++  };
++}
++
++/** The optional executor is a trusted test transport, never an ownership claim. */
++export function createMongoFixture(request, executor) {
++  request = Object.freeze({ ...request });
++  validateRequest(request);
++  const execute = executor ?? dockerExecutor(request.endpoint);
++  const engine = () => {
++    const info = JSON.parse(execute(['info', '--format', '[{{json .ID}},{{json .OSType}}]']));
++    requireThat(Array.isArray(info) && typeof info[0] === 'string' && info[0] && info[1] === 'linux', 'A known Linux Docker daemon is required');
++    return info[0];
++  };
++  const daemonId = engine();
++  const runId = randomUUID();
++  const name = `sd-mongo-${runId}`;
++  const replicaSet = `sd_rs_${runId.replaceAll('-', '')}`;
++  const database = `sd_test_${runId.replaceAll('-', '')}`;
++  const command = ['--replSet', replicaSet, '--bind_ip', 'localhost', '--port', '27017', '--wiredTigerCacheSizeGB', '0.25', '--setParameter', 'diagnosticDataCollectionEnabled=false'];
++  const args = ['create', '--pull=never', '--name', name,
++    '--label', `swasthadisha.test.run=${runId}`, '--label', 'swasthadisha.test.purpose=mongo-fixture',
++    '--network', 'none', '--read-only', '--user', '65534:65534', '--cap-drop', 'ALL',
++    '--security-opt', 'no-new-privileges', '--memory', '1073741824', '--cpus', '1', '--pids-limit', '128',
++    '--env', 'MONGOSH_DISABLE_TELEMETRY=1', '--env', 'XDG_CONFIG_HOME=/tmp/mongosh',
++    '--entrypoint', 'mongod'];
++  for (const [destination, options] of Object.entries(tmpfs)) args.push('--tmpfs', `${destination}:${options}`);
++  args.push(request.image, ...command);
++  let id;
++  try {
++    id = execute(args).trim();
++  } catch {
++    throw new Error(`Fixture create not acknowledged; possible stopped test resource ${name}; no resource was adopted or removed`);
++  }
++  requireThat(/^[a-f0-9]{64}$/.test(id), `Fixture create returned no trusted ID; inspect the generated name ${name} separately`);
++  let disposed = false;
++  let phase = 'created';
++
++  function assertOwned() {
++    requireThat(!disposed, 'Fixture is already disposed');
++    requireThat(engine() === daemonId, 'Docker daemon identity changed');
++    const rows = JSON.parse(execute(['inspect', id]));
++    requireThat(Array.isArray(rows) && rows.length === 1, 'Fixture inspection is ambiguous');
++    const item = rows[0];
++    const config = item.Config ?? {};
++    const host = item.HostConfig ?? {};
++    requireThat(item.Id === id && item.Name === '/' + name
++      && config.Labels?.['swasthadisha.test.run'] === runId
++      && config.Labels?.['swasthadisha.test.purpose'] === 'mongo-fixture', 'Fixture ownership changed');
++    requireThat(config.Image === request.image && config.User === '65534:65534'
++      && JSON.stringify(config.Entrypoint) === JSON.stringify(['mongod'])
++      && JSON.stringify(config.Cmd) === JSON.stringify(command), 'Fixture executable configuration changed');
++    requireThat(host.NetworkMode === 'none' && !host.PublishAllPorts && !host.Privileged
++      && host.ReadonlyRootfs === true && !host.PidMode && !host.UTSMode
++      && ['', 'private'].includes(host.IpcMode ?? '')
++      && !(host.CapAdd?.length) && !(host.Devices?.length) && !(host.DeviceRequests?.length)
++      && !(host.Binds?.length) && !(host.Mounts?.length) && !(host.VolumesFrom?.length)
++      && Object.keys(host.PortBindings ?? {}).length === 0
++      && Object.values(item.NetworkSettings?.Ports ?? {}).every((value) => value === null), 'Fixture isolation changed');
++    requireThat(host.Memory === 1073741824 && host.NanoCpus === 1_000_000_000 && host.PidsLimit === 128
++      && host.CapDrop?.includes('ALL') && host.SecurityOpt?.some((value) => ['no-new-privileges', 'no-new-privileges=true'].includes(value)), 'Fixture resource/security limits changed');
++    requireThat(Object.keys(host.Tmpfs ?? {}).length === Object.keys(tmpfs).length
++      && Object.entries(tmpfs).every(([key, value]) => host.Tmpfs[key] === value)
++      && (item.Mounts ?? []).every((mount) => mount.Type === 'tmpfs' && Object.hasOwn(tmpfs, mount.Destination)), 'Fixture storage configuration changed');
++  }
++
++  function shell(script) {
++    assertOwned();
++    return execute(['exec', id, 'mongosh', '--norc', '--quiet',
++      'mongodb://localhost:27017/admin?directConnection=true', '--eval', script]);
++  }
++
++  const fixture = Object.freeze({
++    id, runId, database, replicaSet,
++    async start() {
++      assertOwned();
++      requireThat(phase === 'created', 'Fixture start was already attempted');
++      phase = 'starting';
++      execute(['start', id]);
++      const deadline = Date.now() + 30_000;
++      let initialized = false;
++      while (Date.now() < deadline) {
++        try {
++          if (!initialized) {
++            shell(`
++              try {
++                const result=rs.initiate({_id:${JSON.stringify(replicaSet)},members:[{_id:0,host:'localhost:27017'}]});
++                if(result.ok!==1 && result.codeName!=='AlreadyInitialized') throw new Error('Replica-set initialization failed');
++              } catch(error) { if(error.codeName!=='AlreadyInitialized') throw error; }
++            `);
++            initialized = true;
++          }
++          const result = JSON.parse(shell('print(JSON.stringify(db.hello()));'));
++          if (result.isWritablePrimary && result.setName === replicaSet) {
++            phase = 'ready';
++            return;
++          }
++        } catch (error) {
++          // Ownership drift must not be hidden by readiness retries.
++          assertOwned();
++          if (Date.now() >= deadline) throw error;
++        }
++        await delay(250);
++      }
++      throw new Error('Disposable replica set did not become ready');
++    },
++    probeTransactions() {
++      requireThat(phase === 'ready', 'Fixture must be ready before a transaction probe');
++      const result = JSON.parse(shell(`
++        const target=db.getSiblingDB(${JSON.stringify(database)});
++        target.createCollection('effects');
++        const session=db.getMongo().startSession();
++        const effects=session.getDatabase(${JSON.stringify(database)}).effects;
++        session.startTransaction(); effects.insertOne({_id:'aborted',value:1}); session.abortTransaction();
++        const aborted=target.effects.countDocuments({_id:'aborted'});
++        session.startTransaction(); effects.insertOne({_id:'committed',value:1}); session.commitTransaction();
++        const committed=target.effects.countDocuments({_id:'committed'}); session.endSession();
++        print(JSON.stringify({database:${JSON.stringify(database)},replicaSet:${JSON.stringify(replicaSet)},version:db.version(),committed,aborted}));
++      `));
++      requireThat(result.database === database && result.replicaSet === replicaSet
++        && result.committed === 1 && result.aborted === 0, 'Transaction probe returned mismatched evidence');
++      return Object.freeze(result);
++    },
++    dispose() {
++      if (disposed) return;
++      assertOwned();
++      execute(['rm', '--force', '--volumes', id]);
++      disposed = true;
++    },
++  });
++  try {
++    assertOwned();
++  } catch (cause) {
++    throw new Error(`Fixture admission failed; cleanup withheld for created ID ${id}`, { cause });
++  }
++  return fixture;
++}
+--- /dev/null
++++ b/test/foundation/mongo-fixture.test.mjs
+@@ -0,0 +1,217 @@
++import assert from 'node:assert/strict';
++import { test } from 'node:test';
++import { createMongoFixture } from './mongo-fixture.mjs';
++
++const request = Object.freeze({ endpoint: 'unix:///synthetic/docker.sock', image: 'mongo@sha256:' + 'a'.repeat(64) });
++const containerId = 'b'.repeat(64);
++
++function fakeDocker() {
++  const state = { daemon: 'synthetic-engine', calls: [], item: null, namespace: '', replicaSet: '' };
++  function execute(args) {
++    state.calls.push([...args]);
++    if (args[0] === 'info') return JSON.stringify([state.daemon, 'linux']);
++    if (args[0] === 'create') {
++      const labels = {};
++      for (let i = 0; i < args.length; i++) {
++        if (args[i] === '--label') {
++          const [key, value] = args[i + 1].split('='); labels[key] = value;
++        }
++      }
++      const run = labels['swasthadisha.test.run'];
++      state.namespace = 'sd_test_' + run.replaceAll('-', '');
++      state.replicaSet = 'sd_rs_' + run.replaceAll('-', '');
++      state.item = {
++        Id: containerId, Name: '/sd-mongo-' + run,
++        Config: {
++          Labels: labels, Image: request.image, User: '65534:65534', Entrypoint: ['mongod'],
++          Cmd: ['--replSet', state.replicaSet, '--bind_ip', 'localhost', '--port', '27017', '--wiredTigerCacheSizeGB', '0.25', '--setParameter', 'diagnosticDataCollectionEnabled=false'],
++        },
++        HostConfig: {
++          NetworkMode: 'none', PublishAllPorts: false, Privileged: false, ReadonlyRootfs: true,
++          PidMode: '', Binds: null, Mounts: [], VolumesFrom: null, PortBindings: {},
++          Memory: 1073741824, NanoCpus: 1_000_000_000, PidsLimit: 128,
++          CapDrop: ['ALL'], SecurityOpt: ['no-new-privileges=true'],
++          Tmpfs: {
++            '/data/db': 'rw,noexec,nosuid,size=536870912,mode=1777',
++            '/data/configdb': 'rw,noexec,nosuid,size=16777216,mode=1777',
++            '/tmp': 'rw,noexec,nosuid,size=67108864,mode=1777',
++          },
++        }, Mounts: [], NetworkSettings: { Ports: { '27017/tcp': null } },
++      };
++      return containerId;
++    }
++    if (args[0] === 'inspect') return JSON.stringify([state.item]);
++    if (args[0] === 'exec') {
++      const script = args.at(-1);
++      if (script.includes('db.hello()')) return JSON.stringify({ isWritablePrimary: true, setName: state.replicaSet });
++      if (script.includes('startTransaction')) return JSON.stringify({ database: state.namespace, replicaSet: state.replicaSet, version: 'synthetic', committed: 1, aborted: 0 });
++    }
++    return containerId;
++  }
++  return { state, execute };
++}
++
++test('the owned fixture lifecycle mutates only its acknowledged container ID', async () => {
++  const { state, execute } = fakeDocker();
++  const fixture = createMongoFixture(request, execute);
++  assert.equal(Object.isFrozen(fixture), true);
++  assert.match(fixture.database, /^sd_test_[a-f0-9]{32}$/);
++  const create = state.calls.find(([command]) => command === 'create');
++  assert.ok(create.includes('--pull=never'));
++  assert.equal(create[create.indexOf('--network') + 1], 'none');
++  assert.equal(create.some((arg) => ['-p', '--publish', '-v', '--volume'].includes(arg)), false);
++  await fixture.start();
++  assert.equal(fixture.probeTransactions().committed, 1);
++  fixture.dispose();
++  const mutations = state.calls.filter(([command]) => ['start', 'exec', 'rm'].includes(command));
++  assert.ok(mutations.length >= 4);
++  for (const args of mutations) assert.ok(args.includes(containerId));
++  const count = state.calls.length;
++  fixture.dispose();
++  assert.equal(state.calls.length, count);
++  await assert.rejects(() => fixture.start(), /disposed/);
++});
++
++for (const [label, override] of [
++  ['TCP endpoint', { endpoint: 'tcp://remote.invalid:2375' }],
++  ['SSH endpoint', { endpoint: 'ssh://remote.invalid' }],
++  ['unpinned image', { image: 'mongo:8.0' }],
++  ['another registry', { image: 'example.invalid/mongo@sha256:' + 'a'.repeat(64) }],
++  ['supplied database URI', { uri: 'mongodb://shared.invalid/latest' }],
++  ['supplied container ID', { id: containerId }],
++]) {
++  test(`${label} is rejected before any Docker call`, () => {
++    const { state, execute } = fakeDocker();
++    assert.throws(() => createMongoFixture({ ...request, ...override }, execute));
++    assert.equal(state.calls.length, 0);
++  });
++}
++
++for (const key of ['DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_CONFIG', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH']) {
++  test(`ambient ${key} cannot select a different Docker resource`, () => {
++    const { state, execute } = fakeDocker();
++    process.env[key] = 'synthetic-canary';
++    try {
++      assert.throws(() => createMongoFixture(request, execute), /overrides/);
++      assert.equal(state.calls.length, 0);
++    } finally { delete process.env[key]; }
++  });
++}
++
++for (const [label, change] of [
++  ['container ID', (item) => { item.Id = 'c'.repeat(64); }],
++  ['run label', (item) => { item.Config.Labels['swasthadisha.test.run'] = 'other-run'; }],
++  ['image', (item) => { item.Config.Image = 'mongo:latest'; }],
++  ['root user', (item) => { item.Config.User = '0'; }],
++  ['host network', (item) => { item.HostConfig.NetworkMode = 'host'; }],
++  ['published port', (item) => { item.HostConfig.PortBindings = { '27017/tcp': [{ HostPort: '27017' }] }; }],
++  ['host mount', (item) => { item.HostConfig.Binds = ['/host:/data/db']; }],
++  ['persistent volume', (item) => { item.Mounts = [{ Type: 'volume', Destination: '/data/db' }]; }],
++  ['writeable root', (item) => { item.HostConfig.ReadonlyRootfs = false; }],
++  ['added capability', (item) => { item.HostConfig.CapAdd = ['SYS_ADMIN']; }],
++  ['host IPC', (item) => { item.HostConfig.IpcMode = 'host'; }],
++  ['host device', (item) => { item.HostConfig.Devices = [{ PathOnHost: '/dev/synthetic' }]; }],
++  ['missing memory limit', (item) => { item.HostConfig.Memory = 0; }],
++  ['changed tmpfs', (item) => { item.HostConfig.Tmpfs['/data/db'] = 'rw'; }],
++]) {
++  test(`${label} drift prevents start and cleanup`, async () => {
++    const { state, execute } = fakeDocker();
++    const fixture = createMongoFixture(request, execute);
++    change(state.item);
++    await assert.rejects(() => fixture.start(), /changed/);
++    assert.throws(() => fixture.dispose(), /changed/);
++    assert.equal(state.calls.some(([command]) => ['start', 'exec', 'rm'].includes(command)), false);
++  });
++}
++
++test('daemon changes cannot redirect start or cleanup', async () => {
++  const { state, execute } = fakeDocker();
++  const fixture = createMongoFixture(request, execute);
++  state.daemon = 'different-engine';
++  await assert.rejects(() => fixture.start(), /daemon identity changed/);
++  assert.throws(() => fixture.dispose(), /daemon identity changed/);
++  assert.equal(state.calls.some(([command]) => ['start', 'exec', 'rm'].includes(command)), false);
++});
++
++test('no external or unknown container is adopted after an unacknowledged create', () => {
++  const { state, execute } = fakeDocker();
++  assert.throws(() => createMongoFixture(request, (args) => {
++    if (args[0] === 'create') throw new Error('synthetic timeout');
++    return execute(args);
++  }), /not acknowledged/);
++  assert.equal(state.calls.some(([command]) => ['inspect', 'start', 'exec', 'rm'].includes(command)), false);
++});
++
++test('an invalid returned container ID cannot authorize inspection or cleanup', () => {
++  const { state, execute } = fakeDocker();
++  assert.throws(() => createMongoFixture(request, (args) => args[0] === 'create' ? 'some-existing-container' : execute(args)), /trusted ID/);
++  assert.equal(state.calls.some(([command]) => ['inspect', 'start', 'exec', 'rm'].includes(command)), false);
++});
++
++test('database effects require readiness and revalidate ownership after start', async () => {
++  const { state, execute } = fakeDocker();
++  const fixture = createMongoFixture(request, execute);
++  assert.throws(() => fixture.probeTransactions(), /ready/);
++  await fixture.start();
++  state.item.Config.Labels['swasthadisha.test.run'] = 'other-run';
++  const before = state.calls.filter(([command]) => command === 'exec').length;
++  assert.throws(() => fixture.probeTransactions(), /ownership changed/);
++  assert.equal(state.calls.filter(([command]) => command === 'exec').length, before);
++});
++
++test('a caller cannot change the captured image after creation', async () => {
++  const { execute } = fakeDocker();
++  const mutable = { ...request };
++  const fixture = createMongoFixture(mutable, execute);
++  mutable.image = 'mongo:latest';
++  await fixture.start();
++  fixture.dispose();
++});
++
++test('image admission validates the same single snapshot used for creation', () => {
++  const { state, execute } = fakeDocker();
++  let reads = 0;
++  const changing = { endpoint: request.endpoint, get image() { return ++reads <= 2 ? request.image : 'mongo:8.0'; } };
++  const fixture = createMongoFixture(changing, execute);
++  assert.equal(reads, 1);
++  const create = state.calls.find(([command]) => command === 'create');
++  assert.ok(create.includes(request.image));
++  assert.equal(create.includes('mongo:8.0'), false);
++  fixture.dispose();
++});
++
++test('an initially unpinned getter is rejected before Docker is invoked', () => {
++  const { state, execute } = fakeDocker();
++  let reads = 0;
++  assert.throws(() => createMongoFixture({
++    endpoint: request.endpoint, get image() { return ++reads === 1 ? 'mongo:8.0' : request.image; },
++  }, execute), /digest-pinned/);
++  assert.equal(state.calls.length, 0);
++});
++
++test('a second start cannot issue another start command', async () => {
++  const { state, execute } = fakeDocker();
++  const fixture = createMongoFixture(request, execute);
++  await fixture.start();
++  await assert.rejects(() => fixture.start(), /already attempted/);
++  assert.equal(state.calls.filter(([command]) => command === 'start').length, 1);
++  fixture.dispose();
++});
++
++for (const [label, replacement] of [
++  ['missing commit', { committed: 0 }], ['failed rollback', { aborted: 1 }],
++  ['wrong namespace', { database: 'some_other_database' }], ['wrong replica set', { replicaSet: 'other_set' }],
++]) {
++  test(`${label} cannot produce passing transaction evidence`, async () => {
++    const { state, execute } = fakeDocker();
++    const fixture = createMongoFixture(request, (args) => {
++      if (args[0] === 'exec' && args.at(-1).includes('startTransaction')) {
++        return JSON.stringify({ database: state.namespace, replicaSet: state.replicaSet, committed: 1, aborted: 0, ...replacement });
++      }
++      return execute(args);
++    });
++    await fixture.start();
++    assert.throws(() => fixture.probeTransactions(), /mismatched evidence/);
++    fixture.dispose();
++  });
++}
+--- /dev/null
++++ b/test/foundation/preflight.mjs
+@@ -0,0 +1,85 @@
++import { randomUUID } from 'node:crypto';
++import {
++  lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync,
++  realpathSync, rmSync, writeFileSync,
++} from 'node:fs';
++import { tmpdir } from 'node:os';
++import { join } from 'node:path';
++
++const owned = new WeakMap();
++const markerName = '.foundation-owner.json';
++const stagedFiles = new Set([markerName, 'preflight.mjs', 'preflight.test.mjs', 'mongo-fixture.mjs', 'mongo-fixture.test.mjs', 'scratch']);
++
++/** Owns a new filesystem fixture; this never admits a database or provider. */
++export function createWorkspace(parent = tmpdir()) {
++  const directory = realpathSync(mkdtempSync(join(parent, 'swasthadisha-foundation-')));
++  const runId = randomUUID();
++  mkdirSync(join(directory, 'scratch'), { mode: 0o700 });
++  writeFileSync(join(directory, markerName), JSON.stringify({ runId }), { mode: 0o600, flag: 'wx' });
++  const { dev, ino } = lstatSync(directory);
++  const workspace = Object.freeze({ directory, runId });
++  owned.set(workspace, { directory, runId, dev, ino, closed: false });
++  return workspace;
++}
++
++function assertOwnership(workspace) {
++  const record = owned.get(workspace);
++  if (!record || record.closed) throw new Error('Foundation workspace is not owned by this runner');
++  const stat = lstatSync(record.directory);
++  if (stat.isSymbolicLink() || !stat.isDirectory()
++      || stat.dev !== record.dev || stat.ino !== record.ino
++      || realpathSync(record.directory) !== record.directory) {
++    throw new Error('Foundation workspace identity changed');
++  }
++  const marker = join(record.directory, markerName);
++  const markerStat = lstatSync(marker);
++  if (!markerStat.isFile() || markerStat.isSymbolicLink()
++      || JSON.parse(readFileSync(marker, 'utf8')).runId !== record.runId) {
++    throw new Error('Foundation workspace ownership marker changed');
++  }
++  return record;
++}
++
++function assertCleanTree(directory, topLevel = true) {
++  for (const entry of readdirSync(directory, { withFileTypes: true })) {
++    if (entry.isSymbolicLink() || (!entry.isDirectory() && !entry.isFile())
++        || entry.name === '.env' || entry.name.startsWith('.env.')
++        || (topLevel && !stagedFiles.has(entry.name))) {
++      throw new Error('Foundation workspace contains an unapproved file');
++    }
++    if (entry.isDirectory()) assertCleanTree(join(directory, entry.name), false);
++  }
++}
++
++export function childEnvironment(workspace) {
++  const { directory, runId } = assertOwnership(workspace);
++  return Object.freeze({
++    NODE_ENV: 'test',
++    TZ: 'UTC',
++    TMPDIR: join(directory, 'scratch'),
++    FOUNDATION_WORKSPACE: directory,
++    FOUNDATION_RUN_ID: runId,
++  });
++}
++
++/** Call before spawning the fixed foundation test entry, never after imports. */
++export function assertLaunch(workspace, { cwd, env }) {
++  const record = assertOwnership(workspace);
++  assertCleanTree(record.directory);
++  const expected = childEnvironment(workspace);
++  if (cwd !== record.directory
++      || Object.keys(env).length !== Object.keys(expected).length
++      || Object.keys(env).some((key) => !Object.hasOwn(expected, key))
++      || Object.entries(expected).some(([key, value]) => env[key] !== value)) {
++    throw new Error('Foundation launch must use its exact isolated directory and environment');
++  }
++}
++
++export function disposeWorkspace(workspace) {
++  const existing = owned.get(workspace);
++  if (existing?.closed) return;
++  const record = assertOwnership(workspace);
++  // Refuse cleanup after ownership loss; never follow a substituted resource.
++  rmSync(record.directory, { recursive: true, force: false });
++  record.closed = true;
++}
+--- /dev/null
++++ b/test/foundation/preflight.test.mjs
+@@ -0,0 +1,155 @@
++import assert from 'node:assert/strict';
++import { spawnSync } from 'node:child_process';
++import {
++  existsSync, mkdirSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync,
++} from 'node:fs';
++import { dirname, join } from 'node:path';
++import { test } from 'node:test';
++import { assertLaunch, childEnvironment, createWorkspace, disposeWorkspace } from './preflight.mjs';
++
++// Only the fixed staged entry may register tests. No app modules are imported.
++assert.equal(process.env.NODE_ENV, 'test');
++assert.equal(process.cwd(), process.env.FOUNDATION_WORKSPACE);
++assert.ok(process.permission);
++assert.equal(process.permission.has('fs.read', dirname(process.cwd())), false);
++const runtimeEnvironmentKeys = new Set(['NODE_TEST_WORKER_ID']);
++if (process.platform === 'darwin') runtimeEnvironmentKeys.add('__CF_USER_TEXT_ENCODING');
++assert.deepEqual(Object.keys(process.env).filter((key) => !runtimeEnvironmentKeys.has(key)).sort(), [
++  'FOUNDATION_RUN_ID', 'FOUNDATION_WORKSPACE', 'NODE_ENV', 'TMPDIR', 'TZ',
++].sort());
++
++function fixture(t) {
++  const workspace = createWorkspace();
++  t.after(() => disposeWorkspace(workspace));
++  return { workspace, launch: { cwd: workspace.directory, env: childEnvironment(workspace) } };
++}
++
++function deniedBeforeEffects(workspace, launch, pattern) {
++  let imports = 0;
++  let connections = 0;
++  assert.throws(() => {
++    assertLaunch(workspace, launch);
++    imports += 1;
++    connections += 1;
++  }, pattern);
++  assert.equal(imports, 0);
++  assert.equal(connections, 0);
++}
++
++test('a runner-created workspace admits the exact clean unit-test launch', (t) => {
++  const { workspace, launch } = fixture(t);
++  assert.doesNotThrow(() => assertLaunch(workspace, launch));
++  assert.equal(Object.isFrozen(workspace), true);
++  assert.equal(Object.isFrozen(launch.env), true);
++  assert.equal(launch.env.TMPDIR, join(workspace.directory, 'scratch'));
++});
++
++test('a copied marker and matching directory do not confer ownership', (t) => {
++  const { workspace, launch } = fixture(t);
++  deniedBeforeEffects({ ...workspace }, launch, /not owned/);
++});
++
++test('unknown resource identity cannot authorize a launch', () => {
++  deniedBeforeEffects({ directory: '/latest', runId: 'forged' }, { cwd: '/latest', env: {} }, /not owned/);
++});
++
++for (const key of ['NODE_OPTIONS', 'NODE_PATH', 'MONGODB_URL', 'PHARMACY_TEST_MONGODB_URI', 'PAYMENT_SECRET']) {
++  test(`inherited ${key} is refused before imports or connectors`, (t) => {
++    const { workspace, launch } = fixture(t);
++    deniedBeforeEffects(workspace, { ...launch, env: { ...launch.env, [key]: 'synthetic-canary' } }, /exact isolated/);
++  });
++}
++
++test('a database named latest is not admitted as a disposable resource', (t) => {
++  const { workspace, launch } = fixture(t);
++  deniedBeforeEffects(workspace, {
++    ...launch, env: { ...launch.env, PHARMACY_TEST_MONGODB_URI: 'mongodb://shared.invalid/latest' },
++  }, /exact isolated/);
++});
++
++test('incorrect working directory or test identity is refused', (t) => {
++  const { workspace, launch } = fixture(t);
++  deniedBeforeEffects(workspace, { ...launch, cwd: dirname(workspace.directory) }, /exact isolated/);
++  deniedBeforeEffects(workspace, { ...launch, env: { ...launch.env, FOUNDATION_RUN_ID: 'different-run' } }, /exact isolated/);
++});
++
++test('missing environment fields are refused', (t) => {
++  const { workspace, launch } = fixture(t);
++  const { NODE_ENV, ...env } = launch.env;
++  deniedBeforeEffects(workspace, { ...launch, env }, /exact isolated/);
++});
++
++test('an operational .env file is refused, including nested files', (t) => {
++  const { workspace, launch } = fixture(t);
++  for (const path of [join(workspace.directory, '.env'), join(launch.env.TMPDIR, '.env.local')]) {
++    writeFileSync(path, 'SYNTHETIC=1');
++    deniedBeforeEffects(workspace, launch, /unapproved file/);
++    rmSync(path);
++  }
++});
++
++test('unexpected staged application files are refused', (t) => {
++  const { workspace, launch } = fixture(t);
++  writeFileSync(join(workspace.directory, 'server.js'), '// synthetic');
++  deniedBeforeEffects(workspace, launch, /unapproved file/);
++});
++
++test('the test child cannot create symlinks to escape its filesystem permissions', (t) => {
++  const { workspace, launch } = fixture(t);
++  assert.throws(() => symlinkSync(
++    join(workspace.directory, '.foundation-owner.json'), join(launch.env.TMPDIR, 'linked'),
++  ), { code: 'ERR_ACCESS_DENIED' });
++});
++
++test('changed ownership refuses both execution and cleanup', () => {
++  const workspace = createWorkspace();
++  const launch = { cwd: workspace.directory, env: childEnvironment(workspace) };
++  const marker = join(workspace.directory, '.foundation-owner.json');
++  const original = readFileSync(marker);
++  try {
++    writeFileSync(marker, JSON.stringify({ runId: 'forged' }));
++    deniedBeforeEffects(workspace, launch, /ownership marker/);
++    assert.throws(() => disposeWorkspace(workspace), /ownership marker/);
++    assert.equal(existsSync(workspace.directory), true);
++  } finally {
++    writeFileSync(marker, original);
++    disposeWorkspace(workspace);
++  }
++});
++
++test('a replacement directory with a copied marker is not the owned resource', () => {
++  const workspace = createWorkspace();
++  const launch = { cwd: workspace.directory, env: childEnvironment(workspace) };
++  const saved = workspace.directory + '-saved';
++  renameSync(workspace.directory, saved);
++  try {
++    mkdirSync(workspace.directory, { mode: 0o700 });
++    writeFileSync(join(workspace.directory, '.foundation-owner.json'), JSON.stringify({ runId: workspace.runId }));
++    deniedBeforeEffects(workspace, launch, /identity changed/);
++    assert.throws(() => disposeWorkspace(workspace), /identity changed/);
++    assert.equal(existsSync(saved), true);
++  } finally {
++    rmSync(workspace.directory, { recursive: true });
++    renameSync(saved, workspace.directory);
++    disposeWorkspace(workspace);
++  }
++});
++
++test('cleanup affects only the owned workspace and is idempotent', () => {
++  const first = createWorkspace();
++  const second = createWorkspace();
++  try {
++    disposeWorkspace(first);
++    assert.equal(existsSync(first.directory), false);
++    assert.equal(existsSync(second.directory), true);
++    assert.doesNotThrow(() => disposeWorkspace(first));
++    assert.throws(() => childEnvironment(first), /not owned/);
++  } finally {
++    disposeWorkspace(second);
++  }
++});
++
++test('the test child cannot read parent files or spawn another process', () => {
++  assert.throws(() => readFileSync(join(dirname(process.cwd()), 'synthetic-outside')), { code: 'ERR_ACCESS_DENIED' });
++  assert.throws(() => spawnSync(process.execPath, ['--version']), { code: 'ERR_ACCESS_DENIED' });
++});
+--- /dev/null
++++ b/test/foundation/run.mjs
+@@ -0,0 +1,61 @@
++import assert from 'node:assert/strict';
++import { copyFileSync, lstatSync, symlinkSync, unlinkSync } from 'node:fs';
++import { join } from 'node:path';
++import { fileURLToPath } from 'node:url';
++import { spawnSync } from 'node:child_process';
++import { assertLaunch, childEnvironment, createWorkspace, disposeWorkspace } from './preflight.mjs';
++
++const [major, minor] = process.versions.node.split('.').map(Number);
++if (major < 22 || (major === 22 && minor < 13)) {
++  throw new Error('Foundation tests require Node 22.13+ for filesystem permissions');
++}
++if (process.env.NODE_OPTIONS || process.env.NODE_PATH || process.execArgv.length) {
++  throw new Error('Start the foundation runner with a clean environment and no Node preload flags');
++}
++if (process.argv.length !== 2) throw new Error('The foundation runner accepts no resource overrides');
++
++const workspace = createWorkspace();
++const entries = ['preflight.test.mjs', 'mongo-fixture.test.mjs'];
++try {
++  // Stage only reviewed dependency-free tests; no application, .env or key files.
++  for (const file of ['preflight.mjs', 'preflight.test.mjs', 'mongo-fixture.mjs', 'mongo-fixture.test.mjs']) {
++    const source = fileURLToPath(new URL(file, import.meta.url));
++    const stat = lstatSync(source);
++    if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('Foundation source must be a regular file');
++    copyFileSync(source, join(workspace.directory, file));
++  }
++  const launch = { cwd: workspace.directory, env: childEnvironment(workspace) };
++  const linkProbe = join(workspace.directory, 'scratch', 'link-probe');
++  symlinkSync(join(workspace.directory, '.foundation-owner.json'), linkProbe);
++  assert.throws(() => assertLaunch(workspace, launch), /unapproved file/);
++  unlinkSync(linkProbe);
++  assertLaunch(workspace, launch);
++  const child = spawnSync(process.execPath, [
++    '--permission',
++    `--allow-fs-read=${workspace.directory}`,
++    `--allow-fs-write=${workspace.directory}`,
++    '--test', '--experimental-test-isolation=none', '--test-reporter=tap',
++    ...entries,
++  ], { ...launch, encoding: 'utf8', timeout: 30_000, maxBuffer: 1024 * 1024 });
++  process.stdout.write(child.stdout ?? '');
++  process.stderr.write(child.stderr ?? '');
++  const summary = child.stdout ?? '';
++  const tests = Number(/^# tests (\d+)$/m.exec(summary)?.[1] ?? 0);
++  const passes = Number(/^# pass (\d+)$/m.exec(summary)?.[1] ?? 0);
++  const skipped = /^# skipped 0$/m.test(summary);
++  const failures = /^# fail 0$/m.test(summary);
++  const complete = /^# cancelled 0$/m.test(summary) && /^# todo 0$/m.test(summary);
++  // TAP counts empty entries as passed files; reject each required file fallback.
++  const emptyEntry = summary.split('\n').some((line) => {
++    if (!line.startsWith('# Subtest: ')) return false;
++    const name = line.slice('# Subtest: '.length).replaceAll('\\', '/');
++    return entries.some((entry) => name === entry || name.endsWith('/' + entry));
++  });
++  if (child.error || child.signal || child.status !== 0 || tests < 2
++      || emptyEntry || passes !== tests || !skipped || !failures || !complete) {
++    process.exitCode = 1;
++    process.stderr.write('Foundation gate failed or did not execute a complete non-skipped test run.\n');
++  }
++} finally {
++  disposeWorkspace(workspace);
++}
+--- /dev/null
++++ b/test/mongo/README.md
+@@ -0,0 +1,18 @@
++# Owned MongoDB fixture smoke check
++
++This checks the disposable Docker fixture independently of the application and its Mongoose dependencies. It creates a new single-node replica set, measures a synthetic transaction commit and rollback, and removes only its own revalidated container. It does not open a host database port or run the legacy integration tests.
++
++Use Node 22.13+ and a local Linux Docker engine available through a Unix socket. This local adapter expects the Docker CLI at `/usr/local/bin/docker`. The image in [image.json](image.json) must already be cached; the controller uses `--pull=never`. Fetching that public digest is a separate install step. No Docker context, remote daemon, operational database URI, `.env`, credentials or provider configuration is accepted.
++
++Resolve the Node executable and explicitly identify the local Docker socket before invoking:
++
++```sh
++FIXTURE_NODE="$(command -v node)"
++env -i "$FIXTURE_NODE" test/mongo/smoke.mjs unix:///absolute/path/to/docker.sock
++```
++
++The command prints generated resource identifiers and measured counts (`committed: 1`, `aborted: 0`) after successful cleanup. On failure, it attempts cleanup only with current ownership and isolation evidence. Admission failure, an unknown create acknowledgement or ownership drift can require manual investigation; errors identify the captured ID or generated name. Do not use a broad prune or adopt an existing container to resolve an exception. Independently verify the reported ID is absent after the run.
++
++The container has network `none`, loopback-only MongoDB, no published ports or host mounts, a read-only root, a non-root user, bounded resources and explicit tmpfs paths. tmpfs can use host swap and does not establish secure erasure. The daemon and executable are trusted local infrastructure; this is not a sandbox for hostile host code. The image digest is a test fixture selection, not an approved production database target.
++
++See the [fixture contract](../../documentation/planning/implementation/C3_MONGO_FIXTURE_CONTRACT.md) for admission requirements. Passing this smoke check does not establish application-driver compatibility, complete C3, pass the 115 domain scenarios, or accept M0-A.
+--- /dev/null
++++ b/test/mongo/image.json
+@@ -0,0 +1,7 @@
++{
++  "image": "mongo@sha256:b9924c330a8bbc5800fe9c69f04a84e221eca7b28fd049a0354147d9908fa142",
++  "tag_observed": "8.0",
++  "registry": "https://registry-1.docker.io/v2/library/mongo/manifests/8.0",
++  "observed_on": "2026-11-10",
++  "scope": "Local disposable replica-set spike only; not production or application-driver adoption"
++}
+--- /dev/null
++++ b/test/mongo/smoke.mjs
+@@ -0,0 +1,29 @@
++import { readFileSync } from 'node:fs';
++import { createMongoFixture } from '../foundation/mongo-fixture.mjs';
++
++if (process.env.NODE_OPTIONS || process.env.NODE_PATH || process.execArgv.length) {
++  throw new Error('Use a clean Node invocation without preload flags');
++}
++if (process.argv.length !== 3) throw new Error('Provide only the explicit local Unix Docker endpoint');
++const { image } = JSON.parse(readFileSync(new URL('./image.json', import.meta.url), 'utf8'));
++const fixture = createMongoFixture({ endpoint: process.argv[2], image });
++let primaryError;
++let evidence;
++try {
++  await fixture.start();
++  evidence = fixture.probeTransactions();
++} catch (error) {
++  primaryError = error;
++}
++try {
++  fixture.dispose();
++} catch (error) {
++  console.error(JSON.stringify({ containerId: fixture.id, runId: fixture.runId, image, cleanupAcknowledged: false }));
++  if (primaryError) throw new AggregateError([primaryError, error], 'Fixture probe and cleanup failed');
++  throw error;
++}
++if (primaryError) {
++  console.error(JSON.stringify({ containerId: fixture.id, runId: fixture.runId, image, cleanupAcknowledged: true }));
++  throw primaryError;
++}
++console.log(JSON.stringify({ ...evidence, containerId: fixture.id, runId: fixture.runId, image, cleanupAcknowledged: true }, null, 2));

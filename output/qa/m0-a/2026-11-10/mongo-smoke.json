@@ -1,0 +1,11 @@
+{
+  "database": "sd_test_d77e9dd3e3ed4fe5ab97eb1868b32109",
+  "replicaSet": "sd_rs_d77e9dd3e3ed4fe5ab97eb1868b32109",
+  "version": "8.0.34",
+  "committed": 1,
+  "aborted": 0,
+  "containerId": "38b14758582d0501da862e5e165a96e98bc3aafbb51e58bdd806dee46d523bec",
+  "runId": "d77e9dd3-e3ed-4fe5-ab97-eb1868b32109",
+  "image": "mongo@sha256:b9924c330a8bbc5800fe9c69f04a84e221eca7b28fd049a0354147d9908fa142",
+  "cleanupAcknowledged": true
+}

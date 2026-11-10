@@ -1,0 +1,17 @@
+{
+  "base": "9ca8b54606581f2158e760cad79aa7b845529184",
+  "branch": "m0/f01-foundations",
+  "comparison": "bounded uncommitted/untracked WIP against base; no implementation commits yet",
+  "files": {
+    "test/foundation/README.md": "a1916c6912c47f9e9b7dfc5ae0918f3dc14222450876a9a42de8219cc0eefdea",
+    "test/foundation/mongo-fixture.mjs": "b293d107f89b3604a062e7ab709efd633a4e3cddc5dc4e0790bf532e64338e31",
+    "test/foundation/mongo-fixture.test.mjs": "114cf6e955e1b4c1629dbbd72b96be39869b8196f6017a4cdc0ca6d5a27d7888",
+    "test/foundation/preflight.mjs": "e0251445738218d533f51bc11aca7fd668e48234f2b1e18d2e802b15a0829fad",
+    "test/foundation/preflight.test.mjs": "26a84d230fbb17d0952d6f53b7667983597e122580a7fc17a526f7458e49294d",
+    "test/foundation/run.mjs": "a41c4529973112fa8f8993db16820a68f35cc21231ec7c7a995bb33b96c7da2a",
+    "test/mongo/image.json": "1b39bedfc7bfd35b778e1126f38e54b3ad76df29747d367ab723895c1791aac5",
+    "test/mongo/smoke.mjs": "06e143a8ce1a273c70f7a48afc784d1c3266bbfbec164d1f6dbdea1e22ab48ef",
+    "documentation/planning/implementation/C3_MONGO_FIXTURE_CONTRACT.md": "208d702c9a1f7bc2826bda720603fa8fb382bfed9599739e1c8f4605b81368ce"
+  },
+  "patch_sha256": "8ffe3a2be265c7a9d92a5f81754c7cbd3a39b667e1d4a5e7e03d9990b11bb3f0"
+}

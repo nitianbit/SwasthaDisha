@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-10",
+  "repository": "nitianbit/SwasthaDisha",
+  "seed_commit": "f822cdd9150b78a5df2cfbbe2a867d4b4ea7125d",
+  "legacy_source_commit": "9ca8b54606581f2158e760cad79aa7b845529184",
+  "inventory_entries_verified": 545,
+  "unchanged_src1_files": 357,
+  "excluded_paths_absent": 41,
+  "frozen_fixture_source_hashes_matched": 10,
+  "relocated_unit_gate": {
+    "runtime": "v22.23.4",
+    "exit_code": 0,
+    "tests": 56,
+    "pass": 56,
+    "fail": 0,
+    "skipped": 0,
+    "todo": 0,
+    "cancelled": 0,
+    "tap": "output/migration/node22-relocated.tap"
+  },
+  "secret_pattern_check": "output/migration/secret-scan.json",
+  "migration_review": "See output/migration/REVIEW.md for separate Standards and Spec conclusions",
+  "app_imports_or_startup": false,
+  "dependencies_installed": false,
+  "operational_resource_access": false,
+  "full_C3_or_M0_acceptance": false,
+  "excluded_paths_ignored": 41,
+  "env_example_remains_available": true,
+  "entry_documents_local_links_checked": 6,
+  "entry_document_broken_links": 0,
+  "graph_project": "swasthadisha",
+  "transfer_manifest_sha256": "46a9cfd8bf266704ab5ea2bdec57e50212bdbdc055ae098084e18f4cc2aeaa3f"
+}

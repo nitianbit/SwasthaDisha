@@ -1,0 +1,137 @@
+{
+  "source_sha256": {
+    "test/foundation/mongo-fixture.mjs": "a95eec22111a57f4a6e70efc242fe5e54d1a89ab4020975bbdb9fae3cab4afc2",
+    "test/foundation/mongo-fixture.test.mjs": "d837b2496d115a1a9c596ccaa21cf4eb7c51b3863c94af6bc3f4899f07057342",
+    "test/foundation/preflight.mjs": "e0251445738218d533f51bc11aca7fd668e48234f2b1e18d2e802b15a0829fad",
+    "test/foundation/preflight.test.mjs": "26a84d230fbb17d0952d6f53b7667983597e122580a7fc17a526f7458e49294d",
+    "test/foundation/run.mjs": "2fe72e20123b9e638ea3038e14b7a1043ad7e49752e6d45de49dfa292d5839b6"
+  },
+  "results": [
+    {
+      "runtime": "node22",
+      "case": "assertion-failure",
+      "exit_code": 1,
+      "expected": "nonzero exit",
+      "evidence": "node22-final-assertion-failure.txt"
+    },
+    {
+      "runtime": "node22",
+      "case": "required-skip",
+      "exit_code": 1,
+      "expected": "nonzero exit",
+      "evidence": "node22-final-required-skip.txt"
+    },
+    {
+      "runtime": "node22",
+      "case": "required-todo",
+      "exit_code": 1,
+      "expected": "nonzero exit",
+      "evidence": "node22-final-required-todo.txt"
+    },
+    {
+      "runtime": "node22",
+      "case": "both-empty",
+      "exit_code": 1,
+      "expected": "nonzero exit",
+      "evidence": "node22-final-both-empty.txt"
+    },
+    {
+      "runtime": "node22",
+      "case": "one-empty-mongo",
+      "exit_code": 1,
+      "expected": "nonzero exit",
+      "evidence": "node22-final-one-empty-mongo.txt"
+    },
+    {
+      "runtime": "node22",
+      "case": "one-empty-preflight",
+      "exit_code": 1,
+      "expected": "nonzero exit",
+      "evidence": "node22-final-one-empty-preflight.txt"
+    },
+    {
+      "runtime": "node22",
+      "case": "preflight-bypassed",
+      "exit_code": 1,
+      "expected": "nonzero exit",
+      "evidence": "node22-final-preflight-bypassed.txt"
+    },
+    {
+      "runtime": "node22",
+      "case": "symlink-source",
+      "exit_code": 1,
+      "expected": "nonzero exit",
+      "evidence": "node22-final-symlink-source.txt"
+    },
+    {
+      "runtime": "node22",
+      "case": "image-snapshot-regression",
+      "exit_code": 1,
+      "expected": "nonzero exit",
+      "evidence": "node22-final-image-snapshot-regression.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "assertion-failure",
+      "exit_code": 1,
+      "expected": "nonzero exit",
+      "evidence": "node24-final-assertion-failure.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "required-skip",
+      "exit_code": 1,
+      "expected": "nonzero exit",
+      "evidence": "node24-final-required-skip.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "required-todo",
+      "exit_code": 1,
+      "expected": "nonzero exit",
+      "evidence": "node24-final-required-todo.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "both-empty",
+      "exit_code": 1,
+      "expected": "nonzero exit",
+      "evidence": "node24-final-both-empty.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "one-empty-mongo",
+      "exit_code": 1,
+      "expected": "nonzero exit",
+      "evidence": "node24-final-one-empty-mongo.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "one-empty-preflight",
+      "exit_code": 1,
+      "expected": "nonzero exit",
+      "evidence": "node24-final-one-empty-preflight.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "preflight-bypassed",
+      "exit_code": 1,
+      "expected": "nonzero exit",
+      "evidence": "node24-final-preflight-bypassed.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "symlink-source",
+      "exit_code": 1,
+      "expected": "nonzero exit",
+      "evidence": "node24-final-symlink-source.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "image-snapshot-regression",
+      "exit_code": 1,
+      "expected": "nonzero exit",
+      "evidence": "node24-final-image-snapshot-regression.txt"
+    }
+  ]
+}

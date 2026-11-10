@@ -1,0 +1,86 @@
+[
+  {
+    "repository": "calcom/cal.diy",
+    "url": "https://github.com/calcom/cal.diy",
+    "branch": "main",
+    "archived": false,
+    "pushed_at": "2026-11-03T21:35:09Z",
+    "language": "TypeScript",
+    "license": "MIT",
+    "source": "https://api.github.com/repos/calcom/cal.diy",
+    "observed_date": "2026-11-08",
+    "note": "Repository metadata; license detection is not complete license review."
+  },
+  {
+    "repository": "alextselegidis/easyappointments",
+    "url": "https://github.com/alextselegidis/easyappointments",
+    "branch": "main",
+    "archived": false,
+    "pushed_at": "2026-11-02T17:15:59Z",
+    "language": "PHP",
+    "license": "GPL-3.0",
+    "source": "https://api.github.com/repos/alextselegidis/easyappointments",
+    "observed_date": "2026-11-08",
+    "note": "Repository metadata; license detection is not complete license review."
+  },
+  {
+    "repository": "getlago/lago",
+    "url": "https://github.com/getlago/lago",
+    "branch": "main",
+    "archived": false,
+    "pushed_at": "2026-11-06T14:32:50Z",
+    "language": "Go",
+    "license": "AGPL-3.0",
+    "source": "https://api.github.com/repos/getlago/lago",
+    "observed_date": "2026-11-08",
+    "note": "Repository metadata; license detection is not complete license review."
+  },
+  {
+    "repository": "killbill/killbill",
+    "url": "https://github.com/killbill/killbill",
+    "branch": "master",
+    "archived": false,
+    "pushed_at": "2026-10-28T23:42:44Z",
+    "language": "Java",
+    "license": "Apache-2.0",
+    "source": "https://api.github.com/repos/killbill/killbill",
+    "observed_date": "2026-11-08",
+    "note": "Repository metadata; license detection is not complete license review."
+  },
+  {
+    "repository": "invoiceninja/invoiceninja",
+    "url": "https://github.com/invoiceninja/invoiceninja",
+    "branch": "v5-stable",
+    "archived": false,
+    "pushed_at": "2026-11-06T01:34:42Z",
+    "language": "PHP",
+    "license": "NOASSERTION",
+    "source": "https://api.github.com/repos/invoiceninja/invoiceninja",
+    "observed_date": "2026-11-08",
+    "note": "Repository metadata; license detection is not complete license review."
+  },
+  {
+    "repository": "medplum/medplum",
+    "url": "https://github.com/medplum/medplum",
+    "branch": "main",
+    "archived": false,
+    "pushed_at": "2026-11-08T00:59:47Z",
+    "language": "TypeScript",
+    "license": "Apache-2.0",
+    "source": "https://api.github.com/repos/medplum/medplum",
+    "observed_date": "2026-11-08",
+    "note": "Repository metadata; license detection is not complete license review."
+  },
+  {
+    "repository": "hapifhir/hapi-fhir",
+    "url": "https://github.com/hapifhir/hapi-fhir",
+    "branch": "master",
+    "archived": false,
+    "pushed_at": "2026-11-07T03:15:49Z",
+    "language": "Java",
+    "license": "Apache-2.0",
+    "source": "https://api.github.com/repos/hapifhir/hapi-fhir",
+    "observed_date": "2026-11-08",
+    "note": "Repository metadata; license detection is not complete license review."
+  }
+]

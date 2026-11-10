@@ -1,0 +1,79 @@
+{
+  "date": "2026-11-09",
+  "branch": "m0/f01-foundations",
+  "base_commit": "9ca8b54606581f2158e760cad79aa7b845529184",
+  "scope": "foundation unit filesystem/environment preflight only",
+  "runs": [
+    {
+      "runtime": "v22.23.4",
+      "exit_code": 0,
+      "tests": 18,
+      "pass": 18,
+      "fail": 0,
+      "skipped": 0,
+      "todo": 0,
+      "evidence": "output/qa/m0-a/node22.tap"
+    },
+    {
+      "runtime": "v24.19.0",
+      "exit_code": 0,
+      "tests": 18,
+      "pass": 18,
+      "fail": 0,
+      "skipped": 0,
+      "todo": 0,
+      "evidence": "output/qa/m0-a/node24.tap"
+    }
+  ],
+  "negative_canaries": [
+    {
+      "case": "assertion-failure",
+      "expected": "nonzero exit",
+      "exit_code": 1,
+      "evidence": "output/qa/m0-a/assertion-failure.txt",
+      "fixture": "two passing assertion cases plus the failing/skipped/TODO case"
+    },
+    {
+      "case": "required-skip",
+      "expected": "nonzero exit",
+      "exit_code": 1,
+      "evidence": "output/qa/m0-a/required-skip.txt",
+      "fixture": "two passing assertion cases plus the failing/skipped/TODO case"
+    },
+    {
+      "case": "required-todo",
+      "expected": "nonzero exit",
+      "exit_code": 1,
+      "evidence": "output/qa/m0-a/required-todo.txt",
+      "fixture": "two passing assertion cases plus the failing/skipped/TODO case"
+    },
+    {
+      "case": "zero-tests",
+      "expected": "nonzero exit",
+      "exit_code": 1,
+      "evidence": "output/qa/m0-a/zero-tests.txt"
+    },
+    {
+      "case": "preflight-bypassed",
+      "expected": "nonzero exit",
+      "exit_code": 1,
+      "evidence": "output/qa/m0-a/preflight-bypassed.txt"
+    },
+    {
+      "case": "symlink-source",
+      "expected": "nonzero exit",
+      "exit_code": 1,
+      "evidence": "output/qa/m0-a/symlink-source.txt"
+    }
+  ],
+  "source_sha256": {
+    "test/foundation/run.mjs": "4c172efab59dfa7247a64f4cf2cd29ececd3d460594e67ca38c7f742d883f8af",
+    "test/foundation/preflight.test.mjs": "26a84d230fbb17d0952d6f53b7667983597e122580a7fc17a526f7458e49294d",
+    "test/foundation/preflight.mjs": "d946226b2851dea0188d6f14b005a6cc46245eb359c286d6e96db2f1aa6b9170"
+  },
+  "node22_archive_sha256": "c9e1dbc748b33ed2d14f42445191ecaf14c56259c7a9a26d0042c49ec2b66428",
+  "application_imports": false,
+  "database_provider_or_docker_operations": false,
+  "root_package_lock_start_changes": false,
+  "full_C3_or_M0_acceptance": false
+}

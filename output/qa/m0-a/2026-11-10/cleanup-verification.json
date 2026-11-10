@@ -1,0 +1,9 @@
+{
+  "engineId": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+  "exactContainerIdsAbsent": [
+    "38b14758582d0501da862e5e165a96e98bc3aafbb51e58bdd806dee46d523bec",
+    "6c70e19126d24e56bce1a7cb2df6d9b5a3af905e7a74adb666a9b281ac703316"
+  ],
+  "fixturePurposeContainersRemaining": 0,
+  "passed": true
+}

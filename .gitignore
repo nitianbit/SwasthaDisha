@@ -1,0 +1,32 @@
+node_modules/
+dist/
+*.log
+.env
+.DS_Store
+google-service-account.json
+
+# Local secrets, operational records and generated runtime data
+.env.*
+!.env.example
+*service-account*.json
+*firebase-adminsdk*.json
+hybrid-flame-*.json
+*.pem
+*.key
+patient_data.csv
+files/
+uploads
+api-results.json
+api-test.json
+test/api-test-results.json
+Archive.zip
+remaining.tar.gz
+# Machine-local agent/editor/graph state
+.codex
+.vscode/
+.codebase-memory/
+
+# Excluded legacy exports, placeholder and duplicate distribution archives
+*postman_collection*.json
+/doctor_app
+output/brand/**/*.zip

@@ -1,0 +1,67 @@
+{
+  "preset": "compact_reference_guide",
+  "header_pattern": "editorial_cover",
+  "page_inches": [
+    8.5,
+    11
+  ],
+  "margins_inches": [
+    1,
+    1,
+    1,
+    1
+  ],
+  "header_footer_inches": 0.492,
+  "width_dxa": 9360,
+  "body": {
+    "font": "Arial",
+    "size_pt": 11,
+    "before_pt": 0,
+    "after_pt": 6,
+    "line": 1.25
+  },
+  "headings": {
+    "h1": [
+      16,
+      18,
+      10
+    ],
+    "h2": [
+      13,
+      14,
+      7
+    ],
+    "h3": [
+      12,
+      10,
+      5
+    ]
+  },
+  "lists": {
+    "left_dxa": 540,
+    "hanging_dxa": 270,
+    "after_pt": 4,
+    "line": 1.25
+  },
+  "table": {
+    "width_dxa": 9360,
+    "indent_dxa": 120,
+    "cell_margins_dxa": [
+      80,
+      80,
+      120,
+      120
+    ]
+  },
+  "named_overrides": {
+    "BrandTypography": "Arial throughout; teal headings, coral kicker, dark green body.",
+    "EditorialPageTitle": "Separate named paragraph style, 25 pt, line 1.06, 0/10 pt spacing.",
+    "CoverWordmark": "32 pt bold with 12 pt tagline; a typographic treatment, not a selected logo.",
+    "CoverHeadline": "28 pt bold, line 1.08, 0/10 pt spacing.",
+    "BrandTable": "10.5 pt body, 1.12 line; 10 pt white header on teal; exact DXA geometry.",
+    "CaptionAndNote": "9.5 pt, 1.12 line, muted; 8/0 pt spacing.",
+    "OperatingCallout": "10.5 pt, 1.15 line, 8/8 pt spacing; pale mint shading and 6 pt inset/border spacing.",
+    "SourceList": "9 pt, 1.1 line, 0/3 pt spacing.",
+    "FigureParagraph": "0/8 pt spacing, single line; image aspect preserved, no crop."
+  }
+}

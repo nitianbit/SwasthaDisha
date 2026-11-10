@@ -1,0 +1,93 @@
+{
+  "date": "2026-11-10",
+  "base_commit": "9ca8b54606581f2158e760cad79aa7b845529184",
+  "branch": "m0/f01-foundations",
+  "scope": "F01 foundation admission units plus owned standalone Docker MongoDB fixture smoke (not application integration)",
+  "runs": [
+    {
+      "runtime": "v22.23.4",
+      "tests": 56,
+      "pass": 56,
+      "fail": 0,
+      "skipped": 0,
+      "todo": 0,
+      "exit_code": 0,
+      "evidence": "node22-final.tap"
+    },
+    {
+      "runtime": "v24.19.0",
+      "tests": 56,
+      "pass": 56,
+      "fail": 0,
+      "skipped": 0,
+      "todo": 0,
+      "exit_code": 0,
+      "evidence": "node24-final.tap"
+    }
+  ],
+  "negative_canaries": {
+    "executed": 18,
+    "all_expected_nonzero": true,
+    "evidence": "negative-canaries-final.json"
+  },
+  "real_mongo": {
+    "database": "sd_test_d77e9dd3e3ed4fe5ab97eb1868b32109",
+    "replicaSet": "sd_rs_d77e9dd3e3ed4fe5ab97eb1868b32109",
+    "version": "8.0.34",
+    "committed": 1,
+    "aborted": 0,
+    "containerId": "38b14758582d0501da862e5e165a96e98bc3aafbb51e58bdd806dee46d523bec",
+    "runId": "d77e9dd3-e3ed-4fe5-ab97-eb1868b32109",
+    "image": "mongo@sha256:b9924c330a8bbc5800fe9c69f04a84e221eca7b28fd049a0354147d9908fa142",
+    "cleanupAcknowledged": true
+  },
+  "cleanup": {
+    "engineId": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+    "exactContainerIdsAbsent": [
+      "38b14758582d0501da862e5e165a96e98bc3aafbb51e58bdd806dee46d523bec",
+      "6c70e19126d24e56bce1a7cb2df6d9b5a3af905e7a74adb666a9b281ac703316"
+    ],
+    "fixturePurposeContainersRemaining": 0,
+    "passed": true
+  },
+  "probe_development_failures": [
+    "First real attempt initialized the fixture but failed in mongosh execution; cleanup path completed.",
+    "A diagnostic retry identified TypeError: assert.eq is not a function; cleanup acknowledged for ID 6c70e19126d24e56bce1a7cb2df6d9b5a3af905e7a74adb666a9b281ac703316.",
+    "Probe was corrected to return measured counts for Node assertions; the final real run passed."
+  ],
+  "source_sha256": {
+    "documentation/planning/implementation/C3_MONGO_FIXTURE_CONTRACT.md": "208d702c9a1f7bc2826bda720603fa8fb382bfed9599739e1c8f4605b81368ce",
+    "test/foundation/README.md": "19dc45b1e5a173e22b99bc496b0ba671a51be4b6dba5b4c0212293eb337a3789",
+    "test/foundation/mongo-fixture.mjs": "a95eec22111a57f4a6e70efc242fe5e54d1a89ab4020975bbdb9fae3cab4afc2",
+    "test/foundation/mongo-fixture.test.mjs": "d837b2496d115a1a9c596ccaa21cf4eb7c51b3863c94af6bc3f4899f07057342",
+    "test/foundation/preflight.mjs": "e0251445738218d533f51bc11aca7fd668e48234f2b1e18d2e802b15a0829fad",
+    "test/foundation/preflight.test.mjs": "26a84d230fbb17d0952d6f53b7667983597e122580a7fc17a526f7458e49294d",
+    "test/foundation/run.mjs": "2fe72e20123b9e638ea3038e14b7a1043ad7e49752e6d45de49dfa292d5839b6",
+    "test/mongo/README.md": "e0c20712cb2c5b769ec4849ff3fe4e1f821df9b11deac01f3fe2820b6caff052",
+    "test/mongo/image.json": "1b39bedfc7bfd35b778e1126f38e54b3ad76df29747d367ab723895c1791aac5",
+    "test/mongo/smoke.mjs": "9bf15c0e1ffdabe906934a37cbc756709c3d15f61ef2e9f571e30dab90a32f02"
+  },
+  "evidence_sha256": {
+    "node22-final.tap": "80b50fa14e2f1b1db084273593cf18be88b285277bdd6d44fe090a2fa6510830",
+    "node24-final.tap": "f60a3d8d8e8ff11de149aa61aa7bd7e6a95259a06f6f0b8afc465fe06a3e4be3",
+    "negative-canaries-final.json": "c39a8cfc7711e5e68013056bd7be9ce025e2c7e7589d68c82df713ab01b34937",
+    "verify-canaries.py": "5ecfbf4ca9ce3ed71d2dc1896abef351ea6fbf00b775383099cf829f5b0ecc10",
+    "mongo-smoke.json": "28d2ec27bfaa57b86484b8bd48bb22a4d01c991c1cfc72a4c8d2aa6df7134d9c",
+    "mongo-smoke.stdout.txt": "28d2ec27bfaa57b86484b8bd48bb22a4d01c991c1cfc72a4c8d2aa6df7134d9c",
+    "mongo-smoke.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cleanup-verification.json": "48e043319fc4f194ba5c66e8d0d502f90c8e60bbd96bb737cc44f19042d1ed7b"
+  },
+  "review_patch_sha256": "3a7b2cd8533851e12abc8c23d1fe47dbf2c24eef85b313bdbb722c1200fb7e18",
+  "application_imports": false,
+  "root_package_lock_start_changes": false,
+  "production_resource_access": false,
+  "application_driver_compatibility_established": false,
+  "full_C3_or_M0_acceptance": false,
+  "selected_115_scenarios": {
+    "PASS": 0,
+    "FAIL": 1,
+    "BLOCKED": 1,
+    "NOT_RUN": 110,
+    "DEFERRED": 3
+  }
+}
