@@ -1,0 +1,117 @@
+{
+  "baseline": "bfb608ea1a89551f6cd72ec5ee1349a3ee7abef7",
+  "status": "SOURCE_ONLY_VERIFIED_RUNTIME_NOT_RUN",
+  "commands": [
+    {
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "output/qa/parallel-otp/source-check.py"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/otp",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 1,
+      "stdout": {
+        "status": "REJECTED",
+        "reason": "Expected one named node:crypto import",
+        "typescript_evaluations": 0
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "output/qa/parallel-otp/source-check.py"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/otp",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": {
+        "status": "SOURCE_ONLY_VERIFIED_RUNTIME_NOT_RUN",
+        "baseline": "bfb608ea1a89551f6cd72ec5ee1349a3ee7abef7",
+        "source_sha256": "58323c9324411ab48e69d06e4e84ed76e9e01690a9200ac416a937d9a6836390",
+        "sites": 3,
+        "typescript_evaluations": 0
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "output/qa/parallel-otp/source-check.py",
+        "--negative-controls"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/otp",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": {
+        "status": "SOURCE_CONTROLS_REJECTED",
+        "controls": [
+          "original_source",
+          "original_generator_1",
+          "original_generator_2",
+          "original_generator_3",
+          "incorrect_lower_bound",
+          "incorrect_upper_bound",
+          "missing_crypto_import",
+          "insecure_fallback",
+          "unrelated_edit"
+        ],
+        "typescript_evaluations": 0
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/otp",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "author": "/root/parallel_otp",
+  "preimplementation_review": {
+    "reviewer": "/root",
+    "decision": "APPROVE SOURCE-ONLY IMPLEMENTATION",
+    "contract_sha256": "80bf6dba8165080e1f67ec7252067b2e7f715c2a007c97f8112d7693b2bbe1db",
+    "expected_source_sha256": "58323c9324411ab48e69d06e4e84ed76e9e01690a9200ac416a937d9a6836390"
+  },
+  "source_sha256": "58323c9324411ab48e69d06e4e84ed76e9e01690a9200ac416a937d9a6836390",
+  "recipe_sha256": "eda6150e6698154e48ef522b4fa885b1c2c99a7df757038fd414d0a3fed4700b",
+  "protected_source_sha256": {
+    "package.json": "65b171e77e8cd3bfd37eb691cf9ce310d9108cedbf571232bd4859c4b16895ab",
+    "package-lock.json": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080",
+    "server.js": "51ddd18f5baa0f7b94cd821b91831d76979994d4314a77831487adbec49dd4e6",
+    "tsconfig.json": "5555c293a75c85c3f89a539bd2b1be6db1953ffa746b43836929cdc20b9355c3",
+    "src1/modules/otp/services/index.ts": "7aa21a23b21b80a8b08f508de0df9b7f916dcf60bdaa7d0b7e9ce51b9897746e",
+    "src1/modules/otp/repository/index.ts": "5f68f9616f26f9ed8ebe66354d90d5fb25e95c35f9a3f56bec8f6f1a7c4c1306",
+    "src1/modules/otp/model/index.ts": "9891e0b34bbd3b21502540d86a8001c4f666223ddb8628c2922a1953ede6506d",
+    "src1/routes/index.ts": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056",
+    "src1/modules/email/services/index.ts": "44049e2331f3cc9dbed9e8608f90bc9db1a0c9a2d7b43c9a8eee1e2d4c877afc",
+    "test/foundation/run.mjs": "f14c1830b0fbe23c1be454cb97003c6c6fb58fdb11bee0ac8bc91134d63ca0c9",
+    "test/application/bootstrap.mjs": "2fda4ff3bac76fe710c779a6bac5c2acdd13cd71ea4773b3e28b60634f2f6aac"
+  },
+  "runtime_status": "NOT_RUN; no application/extracted method evaluation or provider fixture",
+  "execution_limits": {
+    "application_or_extracted_TypeScript_evaluations": 0,
+    "compiler_or_builds": 0,
+    "provider_calls_or_real_OTP_sends": 0,
+    "DB_or_Docker_calls": 0,
+    "dependency_installs": 0,
+    "deployments": 0
+  },
+  "scenario_statuses": "Unchanged; no shared register/progress/ledger edits, no TC-REV-001/TC-SEC-001 acceptance",
+  "node_API_reference": "https://nodejs.org/docs/latest-v22.x/api/crypto.html#cryptorandomintmin-max-callback"
+}

@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { CONFIG } from '@/config/config';
 import {
   SendCorporateEmailVerificationOTPRequest,
@@ -97,7 +98,7 @@ export class AuthService {
 
   async sendOTP(data: SendOTPRequest): Promise<{ message: string }> {
     // Generate OTP (example - implement your OTP generation logic)
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = randomInt(100000, 1000000).toString();
 
     // Find identity record based on userType
     let userRecord: IUser | IAdmin | ISpecialist | IHR | IPharmacy | null;
@@ -461,7 +462,7 @@ export class AuthService {
       }
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = randomInt(100000, 1000000).toString();
     await this.otpService.createOTP({
       userId,
       otp,
@@ -629,7 +630,7 @@ export class AuthService {
       });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = randomInt(100000, 1000000).toString();
     await this.otpService.createOTP({
       userId,
       otp,

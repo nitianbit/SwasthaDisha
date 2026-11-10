@@ -1,0 +1,17 @@
+{
+  "date": "2026-11-10",
+  "baseline": "bfb608ea1a89551f6cd72ec5ee1349a3ee7abef7",
+  "branch": "m0/parallel-otp",
+  "author": "/root/parallel_otp",
+  "scope": "One Node core import and three six-digit cryptographic OTP generator replacements; all other production bytes unchanged",
+  "status": "FROZEN_FOR_INDEPENDENT_STANDARDS_AND_SPEC_REVIEW",
+  "files_sha256": {
+    "src1/modules/auth/services/index.ts": "58323c9324411ab48e69d06e4e84ed76e9e01690a9200ac416a937d9a6836390",
+    "documentation/planning/implementation/PARALLEL_OTP_SLICE.md": "fa6e8913ffadd739f3d3ba26d6896820d3a374929e3bfea61aa991b2728ff71d",
+    "output/qa/parallel-otp/source-check.py": "eda6150e6698154e48ef522b4fa885b1c2c99a7df757038fd414d0a3fed4700b",
+    "output/qa/parallel-otp/verification.json": "e073da6918f1192e16419e7f4b23bbea147dc305a08fd8b33a7496fa06703b3f"
+  },
+  "production_patch_sha256": "c4a6e33ebe5df00cbc3f5aa6f219863128076e8c1dcf41e6fddfa1969e742adf",
+  "preimplementation_contract_sha256": "80bf6dba8165080e1f67ec7252067b2e7f715c2a007c97f8112d7693b2bbe1db",
+  "runtime_or_release_admission": false
+}
