@@ -1,0 +1,27 @@
+{
+  "status": "OFFLINE_CONTROLLER_UNITS_PASS_REAL_API_NOT_RUN",
+  "baseline": "1b0a54144d514bd73f03a99724c8b0d02fcfa25a",
+  "command": "env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /private/tmp/m0-node22/node test/api-runtime/unit.mjs",
+  "tests": 32,
+  "fail": 0,
+  "skip": 0,
+  "todo": 0,
+  "source_sha256": {
+    "documentation/planning/implementation/C3_AUTH_API_RUNTIME_CONTRACT.md": "73301872982a0f79fa805538f679c08e53ce6ef0528790cc75144ed7e2a7d0ee",
+    "test/api-runtime/profile.json": "0ff9d1a10f6d6a34bda10584f4ed3d1308aab707f20d048674019736643859ca",
+    "test/api-runtime/platform.mjs": "c123d7c0d2d1435e35b5fffa9bdf4d75bcc985cd6fcb8703bf185601ee5040aa",
+    "test/api-runtime/platform.test.mjs": "6785cd738638f716ec10c622ab3006fdffbdc48a385ce1e03aaf440d00d8f446",
+    "test/api-runtime/unit.mjs": "d6546e67e4eb12223629c0cbbf3cd61842b8a7d3774608710a70c88deda61dc9",
+    "test/application/app-bundle.mjs": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2"
+  },
+  "TypeScript_evaluations": 0,
+  "Docker_calls": 0,
+  "database_connections": 0,
+  "limits": [
+    "Explicit fake Docker transports/templates only",
+    "No candidate packages installed or compiled",
+    "No application/DB/provider import or actual API test",
+    "No root dependency/startup adoption or M0 acceptance"
+  ],
+  "initial_runner_observation": "The first invocation with an absolute staged test-entry argument reported file not found before tests. Fixed relative entry matches the existing foundation pattern; no grant was widened."
+}

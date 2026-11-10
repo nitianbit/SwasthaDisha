@@ -1,0 +1,316 @@
+TAP version 13
+# Subtest: reject invalid request, operational configuration and incomplete fake seams before transport
+ok 1 - reject invalid request, operational configuration and incomplete fake seams before transport
+  ---
+  duration_ms: 1.762042
+  type: 'test'
+  ...
+# Subtest: construction and pre-resource disposal make no Docker calls
+ok 2 - construction and pre-resource disposal make no Docker calls
+  ---
+  duration_ms: 5.669125
+  type: 'test'
+  ...
+# Subtest: positive two-resource lifecycle joins only owned Mongo namespace and removes Node first once
+ok 3 - positive two-resource lifecycle joins only owned Mongo namespace and removes Node first once
+  ---
+  duration_ms: 12.728834
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: mongo-network
+ok 4 - reject drift before affected start/cleanup: mongo-network
+  ---
+  duration_ms: 3.205625
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: node-network
+ok 5 - reject drift before affected start/cleanup: node-network
+  ---
+  duration_ms: 10.441667
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: node-root
+ok 6 - reject drift before affected start/cleanup: node-root
+  ---
+  duration_ms: 6.5675
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: mongo-image
+ok 7 - reject drift before affected start/cleanup: mongo-image
+  ---
+  duration_ms: 3.141417
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: command
+ok 8 - reject drift before affected start/cleanup: command
+  ---
+  duration_ms: 10.80925
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: environment
+ok 9 - reject drift before affected start/cleanup: environment
+  ---
+  duration_ms: 5.894583
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: privileged
+ok 10 - reject drift before affected start/cleanup: privileged
+  ---
+  duration_ms: 3.418833
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: host-namespace
+ok 11 - reject drift before affected start/cleanup: host-namespace
+  ---
+  duration_ms: 9.475833
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: runtime
+ok 12 - reject drift before affected start/cleanup: runtime
+  ---
+  duration_ms: 5.636291
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: group
+ok 13 - reject drift before affected start/cleanup: group
+  ---
+  duration_ms: 5.615209
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: sysctl
+ok 14 - reject drift before affected start/cleanup: sysctl
+  ---
+  duration_ms: 2.876166
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: capability
+ok 15 - reject drift before affected start/cleanup: capability
+  ---
+  duration_ms: 5.54975
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: published-port
+ok 16 - reject drift before affected start/cleanup: published-port
+  ---
+  duration_ms: 9.255875
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: memory
+ok 17 - reject drift before affected start/cleanup: memory
+  ---
+  duration_ms: 5.479417
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: writable-bind
+ok 18 - reject drift before affected start/cleanup: writable-bind
+  ---
+  duration_ms: 5.444125
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: mongo-host-mount
+ok 19 - reject drift before affected start/cleanup: mongo-host-mount
+  ---
+  duration_ms: 3.041458
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: tmpfs
+ok 20 - reject drift before affected start/cleanup: tmpfs
+  ---
+  duration_ms: 7.662
+  type: 'test'
+  ...
+# Subtest: unknown Node create acknowledgement preserves known resources and withholds cleanup
+ok 21 - unknown Node create acknowledgement preserves known resources and withholds cleanup
+  ---
+  duration_ms: 5.32325
+  type: 'test'
+  ...
+# Subtest: reject false API evidence: skip
+ok 22 - reject false API evidence: skip
+  ---
+  duration_ms: 12.130292
+  type: 'test'
+  ...
+# Subtest: reject false API evidence: failure
+ok 23 - reject false API evidence: failure
+  ---
+  duration_ms: 7.194875
+  type: 'test'
+  ...
+# Subtest: reject false API evidence: empty
+ok 24 - reject false API evidence: empty
+  ---
+  duration_ms: 9.26075
+  type: 'test'
+  ...
+# Subtest: reject false API evidence: duplicate
+ok 25 - reject false API evidence: duplicate
+  ---
+  duration_ms: 17.28225
+  type: 'test'
+  ...
+# Subtest: reject false API evidence: forged-network
+ok 26 - reject false API evidence: forged-network
+  ---
+  duration_ms: 9.327458
+  type: 'test'
+  ...
+# Subtest: reject false API evidence: wrong-database
+ok 27 - reject false API evidence: wrong-database
+  ---
+  duration_ms: 11.975833
+  type: 'test'
+  ...
+# Subtest: reject false API evidence: wrong-source
+ok 28 - reject false API evidence: wrong-source
+  ---
+  duration_ms: 19.633542
+  type: 'test'
+  ...
+# Subtest: reject false API evidence: raw-token
+ok 29 - reject false API evidence: raw-token
+  ---
+  duration_ms: 6.963833
+  type: 'test'
+  ...
+# Subtest: reject false API evidence: case-otp
+ok 30 - reject false API evidence: case-otp
+  ---
+  duration_ms: 8.733333
+  type: 'test'
+  ...
+# Subtest: unmanifested bundle source is rejected before any resource creation
+ok 31 - unmanifested bundle source is rejected before any resource creation
+  ---
+  duration_ms: 3.939708
+  type: 'test'
+  ...
+# Subtest: replaced workspace with copied marker grants no ownership
+ok 32 - replaced workspace with copied marker grants no ownership
+  ---
+  duration_ms: 2.176791
+  type: 'test'
+  ...
+# Subtest: missing mutation sensitivity cannot count as runtime acceptance
+ok 33 - missing mutation sensitivity cannot count as runtime acceptance
+  ---
+  duration_ms: 10.7185
+  type: 'test'
+  ...
+# Subtest: raw or unexpected provider data cannot count as runtime acceptance
+ok 34 - raw or unexpected provider data cannot count as runtime acceptance
+  ---
+  duration_ms: 9.642042
+  type: 'test'
+  ...
+# Subtest: nested sensitivity payload is rejected with fixed safe error
+ok 35 - nested sensitivity payload is rejected with fixed safe error
+  ---
+  duration_ms: 8.226083
+  type: 'test'
+  ...
+# Subtest: unknown numeric provider counters are rejected
+ok 36 - unknown numeric provider counters are rejected
+  ---
+  duration_ms: 7.61725
+  type: 'test'
+  ...
+# Subtest: invalid result JSON never echoes raw output
+ok 37 - invalid result JSON never echoes raw output
+  ---
+  duration_ms: 6.792209
+  type: 'test'
+  ...
+# Subtest: provider plan rejects unreviewed or incomplete keys: ["unexpected","token123"]
+ok 38 - provider plan rejects unreviewed or incomplete keys: ["unexpected","token123"]
+  ---
+  duration_ms: 0.110542
+  type: 'test'
+  ...
+# Subtest: provider plan rejects unreviewed or incomplete keys: ["unexpected","unexpected"]
+ok 39 - provider plan rejects unreviewed or incomplete keys: ["unexpected","unexpected"]
+  ---
+  duration_ms: 0.042959
+  type: 'test'
+  ...
+# Subtest: provider plan rejects unreviewed or incomplete keys: []
+ok 40 - provider plan rejects unreviewed or incomplete keys: []
+  ---
+  duration_ms: 0.041333
+  type: 'test'
+  ...
+# Subtest: provider plan rejects unreviewed or incomplete keys: ["logger"]
+ok 41 - provider plan rejects unreviewed or incomplete keys: ["logger"]
+  ---
+  duration_ms: 0.039458
+  type: 'test'
+  ...
+# Subtest: Mongo liveness denial: afterMongoStart/stopped
+ok 42 - Mongo liveness denial: afterMongoStart/stopped
+  ---
+  duration_ms: 3.371041
+  type: 'test'
+  ...
+# Subtest: Mongo liveness denial: afterMongoStart/OOM
+ok 43 - Mongo liveness denial: afterMongoStart/OOM
+  ---
+  duration_ms: 3.456542
+  type: 'test'
+  ...
+# Subtest: Mongo liveness denial: afterNodeExit/stopped
+ok 44 - Mongo liveness denial: afterNodeExit/stopped
+  ---
+  duration_ms: 6.228375
+  type: 'test'
+  ...
+# Subtest: Mongo liveness denial: afterNodeExit/OOM
+ok 45 - Mongo liveness denial: afterNodeExit/OOM
+  ---
+  duration_ms: 7.504583
+  type: 'test'
+  ...
+# Subtest: pre-existing purpose labels stop before create without adoption
+ok 46 - pre-existing purpose labels stop before create without adoption
+  ---
+  duration_ms: 1.923583
+  type: 'test'
+  ...
+# Subtest: cleanup refuses incomplete readback: stale-remove-ack
+ok 47 - cleanup refuses incomplete readback: stale-remove-ack
+  ---
+  duration_ms: 6.093084
+  type: 'test'
+  ...
+# Subtest: cleanup refuses incomplete readback: unavailable-absence
+ok 48 - cleanup refuses incomplete readback: unavailable-absence
+  ---
+  duration_ms: 6.161125
+  type: 'test'
+  ...
+# Subtest: cleanup refuses incomplete readback: engine-drift
+ok 49 - cleanup refuses incomplete readback: engine-drift
+  ---
+  duration_ms: 6.944625
+  type: 'test'
+  ...
+# Subtest: cleanup refuses incomplete readback: remaining-purpose-label
+ok 50 - cleanup refuses incomplete readback: remaining-purpose-label
+  ---
+  duration_ms: 6.909792
+  type: 'test'
+  ...
+# Subtest: workspace absence requires ENOENT rather than an unreadable path
+ok 51 - workspace absence requires ENOENT rather than an unreadable path
+  ---
+  duration_ms: 0.1265
+  type: 'test'
+  ...
+1..51
+# tests 51
+# suites 0
+# pass 51
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 350.187542

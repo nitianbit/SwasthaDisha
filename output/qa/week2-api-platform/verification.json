@@ -1,0 +1,34 @@
+{
+  "status": "OFFLINE_CONTROLLER_UNITS_PASS_REAL_API_NOT_RUN",
+  "baseline": "1b0a54144d514bd73f03a99724c8b0d02fcfa25a",
+  "command": "env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /private/tmp/m0-node22/node test/api-runtime/unit.mjs",
+  "tests": 51,
+  "fail": 0,
+  "skip": 0,
+  "todo": 0,
+  "source_sha256": {
+    "documentation/planning/implementation/C3_AUTH_API_RUNTIME_CONTRACT.md": "73301872982a0f79fa805538f679c08e53ce6ef0528790cc75144ed7e2a7d0ee",
+    "test/api-runtime/profile.json": "0ff9d1a10f6d6a34bda10584f4ed3d1308aab707f20d048674019736643859ca",
+    "test/api-runtime/platform.mjs": "05c11565c2b93e8ef24e5a2a5824bb7daf23471611590cc62f65d3046620b5db",
+    "test/api-runtime/platform.test.mjs": "60cdddeb1adb20a59c1de108d43be62bb35713d12d3b5d4b14b650221ffa03a9",
+    "test/api-runtime/unit.mjs": "541289ce4d86e801a01f6cb089d0253a660bc692691c00a3d87926b33a345f60",
+    "test/application/app-bundle.mjs": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2"
+  },
+  "TypeScript_evaluations": 0,
+  "Docker_calls": 0,
+  "database_connections": 0,
+  "limits": [
+    "Explicit fake Docker transports/templates only",
+    "No candidate packages installed or compiled",
+    "No application/DB/provider import or actual API test",
+    "No root dependency/startup adoption or M0 acceptance"
+  ],
+  "initial_runner_observation": "The first invocation with an absolute staged test-entry argument reported file not found before tests. Fixed relative entry matches the existing foundation pattern; no grant was widened.",
+  "revision": 2,
+  "review_findings_disposition": [
+    "Exact-ID successful ps absence proof after each remove; engine checks around proof; zero purpose labels; workspace ENOENT; unresolved cleanup latches",
+    "Closed result/case/sensitivity/provider schema and fixed JSON parse error",
+    "Mongo running and OOM=false at readiness, Node create/start and acceptance"
+  ],
+  "source_protocol_amendment": "Source closure additionally binds a closed exact list of six preparation/scenario files plus app-bundle and root package-lock; all must match current regular source bytes. No arbitrary test/home/config inputs."
+}
