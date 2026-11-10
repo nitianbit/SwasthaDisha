@@ -1,0 +1,134 @@
+{
+  "actual_claude_extension_acknowledged": false,
+  "artifact_directory": "/Users/shubham/.codex/ruflo-state/swasthadisha/local-extension-smoke-9ce98505975a45a5a461708e231e0d0d",
+  "clients_attempted": 2,
+  "clients_completed": 2,
+  "clients_requested": 2,
+  "clients_started": 2,
+  "external_models_requested": false,
+  "first_failure": null,
+  "frozen_sources_preserved": true,
+  "input_hashes": {
+    "/Users/shubham/.codex/ruflo-state/swasthadisha/adapters/57c226be79e9b832e6ee2b7122d387102b878f0ecaa7862a6fd65c4b64268b4d/ruflo-local.mjs": "57c226be79e9b832e6ee2b7122d387102b878f0ecaa7862a6fd65c4b64268b4d",
+    "/Users/shubham/.codex/runtimes/ruflo/3.75.0/node_modules/@claude-flow/cli/bin/cli.js": "5b65e02510e0d94174a557ce77c5a62c5e19093ec4d1d9b39ddfdfa93932a1f7",
+    "/Users/shubham/.codex/runtimes/ruflo/3.75.0/node_modules/@claude-flow/cli/package.json": "a898ebf657810d9894d6505db55c11a94ca8b1766c08468552d41e4378beeaf0",
+    "/Users/shubham/.codex/runtimes/ruflo/3.75.0/package-lock.json": "8ac77ad0a7a64b698abe9566f12fc2d7bd583741bcf9167e5cc5cb6c7d19f646",
+    "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha/tools/agents/ruflo-local.mjs": "57c226be79e9b832e6ee2b7122d387102b878f0ecaa7862a6fd65c4b64268b4d",
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha/tools/agents/ruflo-local.test.mjs": "ca37e313b992af1acce851e8f2b4f1bc13443715396d5c098c0b7a33047cfc3b"
+  },
+  "live_challenge_queued": true,
+  "mutations": [
+    {
+      "acknowledged": true,
+      "team": "sd-link-check-9ce98505975a45a5a461708e231e0d0d",
+      "tool": "team_create"
+    },
+    {
+      "acknowledged": true,
+      "team": "sd-link-check-9ce98505975a45a5a461708e231e0d0d",
+      "tool": "team_spawn"
+    },
+    {
+      "acknowledged": true,
+      "team": "sd-link-check-9ce98505975a45a5a461708e231e0d0d",
+      "tool": "team_spawn"
+    },
+    {
+      "acknowledged": true,
+      "team": "sd-link-check-9ce98505975a45a5a461708e231e0d0d",
+      "tool": "team_send"
+    },
+    {
+      "acknowledged": true,
+      "team": "sd-link-check-9ce98505975a45a5a461708e231e0d0d",
+      "tool": "team_send"
+    },
+    {
+      "acknowledged": true,
+      "team": "sd-link-check-9ce98505975a45a5a461708e231e0d0d",
+      "tool": "team_shutdown"
+    },
+    {
+      "acknowledged": true,
+      "team": "swasthadisha-local",
+      "tool": "team_create"
+    },
+    {
+      "acknowledged": true,
+      "team": "swasthadisha-local",
+      "tool": "team_spawn"
+    },
+    {
+      "acknowledged": true,
+      "team": "swasthadisha-local",
+      "tool": "team_spawn"
+    },
+    {
+      "acknowledged": true,
+      "team": "swasthadisha-local",
+      "tool": "team_send"
+    }
+  ],
+  "network_sandbox_claimed": false,
+  "processes": [
+    {
+      "adapter_identity": [
+        71050,
+        70982,
+        71050,
+        "Wed Nov 11 00:59:49 2026"
+      ],
+      "cleanup": {
+        "adapter_absent": true,
+        "exit_code": 0,
+        "forced": false,
+        "ruflo_absent": true,
+        "safe": true
+      },
+      "completed": true,
+      "filtered_inventory_and_denial": true,
+      "pid": 71050,
+      "ruflo_identity": [
+        71065,
+        71050,
+        71050,
+        "Wed Nov 11 00:59:50 2026"
+      ],
+      "session": 1,
+      "started": true
+    },
+    {
+      "adapter_identity": [
+        71081,
+        70982,
+        71081,
+        "Wed Nov 11 00:59:50 2026"
+      ],
+      "cleanup": {
+        "adapter_absent": true,
+        "exit_code": 0,
+        "forced": false,
+        "ruflo_absent": true,
+        "safe": true
+      },
+      "completed": true,
+      "filtered_inventory_and_denial": true,
+      "pid": 71081,
+      "ruflo_identity": [
+        71083,
+        71081,
+        71081,
+        "Wed Nov 11 00:59:50 2026"
+      ],
+      "session": 2,
+      "started": true
+    }
+  ],
+  "profile_sha256": "da259bf7c092b85ec3966dccf400d5053ffc33d82ec3e6c453a3ef3c39b48fc4",
+  "spawn_unresolved": false,
+  "status": "LOCAL_TRANSPORT_PASS_PENDING_CLAUDE_ACK",
+  "test_team": "sd-link-check-9ce98505975a45a5a461708e231e0d0d",
+  "two_client_mailbox_roundtrip": true,
+  "unknown_mutation": false
+}

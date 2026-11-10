@@ -1,0 +1,49 @@
+{
+  "schema": "SD-RUFLO-INDEPENDENT-PROCESS-READBACK-1",
+  "observer": "/root",
+  "signals": 0,
+  "processes": [
+    {
+      "recordedIdentity": [
+        71050,
+        70982,
+        71050,
+        "Wed Nov 11 00:59:49 2026"
+      ],
+      "status": "PID_ABSENT",
+      "psExit": 1
+    },
+    {
+      "recordedIdentity": [
+        71065,
+        71050,
+        71050,
+        "Wed Nov 11 00:59:50 2026"
+      ],
+      "status": "PID_ABSENT",
+      "psExit": 1
+    },
+    {
+      "recordedIdentity": [
+        71081,
+        70982,
+        71081,
+        "Wed Nov 11 00:59:50 2026"
+      ],
+      "status": "PID_ABSENT",
+      "psExit": 1
+    },
+    {
+      "recordedIdentity": [
+        71083,
+        71081,
+        71081,
+        "Wed Nov 11 00:59:50 2026"
+      ],
+      "status": "PID_ABSENT",
+      "psExit": 1
+    }
+  ],
+  "status": "VERIFIED_ALL_FOUR_PIDS_ABSENT",
+  "actualClaudeACK": false
+}

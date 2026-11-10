@@ -1,0 +1,13 @@
+{
+  "actual_claude_extension_acknowledged": false,
+  "claude_agent": "claude-reviewer",
+  "codex_agent": "codex-lead",
+  "expected_reply": "CLAUDE_EXTENSION_ACK:9ce98505975a45a5a461708e231e0d0d",
+  "external_models_requested": false,
+  "local_transport_test": "PASS",
+  "nonce": "9ce98505975a45a5a461708e231e0d0d",
+  "run_id": "9ce98505975a45a5a461708e231e0d0d",
+  "schema": "sd-local-extension-link-v2",
+  "status": "LOCAL_TRANSPORT_PASS_PENDING_CLAUDE_ACK",
+  "team": "swasthadisha-local"
+}

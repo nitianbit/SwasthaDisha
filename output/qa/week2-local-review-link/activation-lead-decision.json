@@ -1,0 +1,19 @@
+{
+  "schema": "SD-LOCAL-RUFLO-STAGE-DECISION-1",
+  "reviewer": "/root",
+  "decision": "APPROVE_ONE_LOCAL_RUFLO_ACTIVATION",
+  "sourceRoot": "/private/tmp/swasthadisha-parallel-p1qom53w/local-review-link",
+  "programSha": "53a086794a7cb988cd359e0af9022bdc202e6388fbc8174d2ded67b41d2acc30",
+  "planSha": "7e1a9e0a846e106ff3944922cbcae39f6b05e3dc5c07316ed12bd6f835da02da",
+  "smokeSha": "eab90961c8b09109c0fc236008139bc5604b1a81ce2ec5e68a970f67be3387e9",
+  "beforeReadbackSha": "146c2ff9b6488c800fbdd2d0343b058cfd9452f9612590f80a384f850eb4e223",
+  "command": "env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /opt/homebrew/bin/python3 -I -B output/qa/week2-local-review-link/activate.py",
+  "scope": "ONE_FIXED_CONFIG_STAGE_ONLY_NO_RUFLO_SERVER_OR_MODEL",
+  "basis": [
+    "Nonauthor fullprogram and16purecases independently inspected/reran",
+    "Actual fresh private snapshots/backups/currentbytes/identities and all tool/runtime/source pins match",
+    "Only existing Codex Ruflo args line and new absent Claude user stdio profile may change under fixed guards",
+    "No live client reload, hosted worker, auth flow, blanket trust or provider/app/Docker access",
+    "Any postclaim partial/failure stops UNRESOLVED for review; no retry"
+  ]
+}

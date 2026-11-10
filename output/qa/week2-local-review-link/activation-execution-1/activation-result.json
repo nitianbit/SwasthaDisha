@@ -1,0 +1,24 @@
+{
+  "RufloProcessesStarted": 0,
+  "actual_claude_extension_acknowledged": false,
+  "approvalSha": "74805c4d5e26ae472a4af59d896579f14e8ccd1365c2c6e714e4ded9cead014f",
+  "claudeAfterSha": "ee7025e477eb53f9784e8a0b765da240dadf58c5c743998a663a63dbc948432a",
+  "cli_result": {
+    "exit": 0,
+    "stderrSha": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdoutSha": "f5f51f514b737ed0e59106afb1d697780aedbd8d10297e7140f90fbd403e97be"
+  },
+  "client_reload": "NOT_REQUESTED",
+  "codexAfterSha": "8c2cd7d9d56ad7411b782e828e1fbb3642066adff707d4376838b934c0c49a11",
+  "modelCalls": 0,
+  "mutations": [
+    "FROZEN_ADAPTER_INSTALLED",
+    "CODEX_ONLY_ARGS_CHANGED",
+    "CLAUDE_ONLY_RUFLO_ADDED"
+  ],
+  "planSha": "7e1a9e0a846e106ff3944922cbcae39f6b05e3dc5c07316ed12bd6f835da02da",
+  "programSha": "53a086794a7cb988cd359e0af9022bdc202e6388fbc8174d2ded67b41d2acc30",
+  "schema": "SD-LOCAL-RUFLO-ACTIVATION-RESULT-1",
+  "stage": "READBACK",
+  "status": "ACTIVATED_PENDING_SEPARATE_TRANSPORT_REVIEW"
+}

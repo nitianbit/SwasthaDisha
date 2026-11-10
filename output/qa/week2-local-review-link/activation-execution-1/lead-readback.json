@@ -1,0 +1,55 @@
+{
+  "status": "PROFILES_ACTIVATED_TRANSPORT_NOT_RUN",
+  "actualInvocations": 1,
+  "observer": "/root",
+  "programSha": "53a086794a7cb988cd359e0af9022bdc202e6388fbc8174d2ded67b41d2acc30",
+  "planSha": "7e1a9e0a846e106ff3944922cbcae39f6b05e3dc5c07316ed12bd6f835da02da",
+  "profileSha": "da259bf7c092b85ec3966dccf400d5053ffc33d82ec3e6c453a3ef3c39b48fc4",
+  "installedAdapterSha": "57c226be79e9b832e6ee2b7122d387102b878f0ecaa7862a6fd65c4b64268b4d",
+  "codexPublicProfile": {
+    "command": "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+    "args": [
+      "/Users/shubham/.codex/ruflo-state/swasthadisha/adapters/57c226be79e9b832e6ee2b7122d387102b878f0ecaa7862a6fd65c4b64268b4d/ruflo-local.mjs"
+    ],
+    "cwd": "/Users/shubham/.codex/ruflo-state/swasthadisha",
+    "enabledTools": [
+      "mcp_status",
+      "system_health",
+      "team_create",
+      "team_spawn",
+      "team_send",
+      "team_inbox",
+      "team_status",
+      "team_shutdown",
+      "task_create",
+      "task_status",
+      "task_list",
+      "task_update",
+      "task_complete"
+    ],
+    "environmentKeys": [
+      "CLAUDE_FLOW_CWD",
+      "CLAUDE_FLOW_DISABLE_BRIDGE",
+      "CLAUDE_FLOW_MEMORY_PATH",
+      "HF_HOME",
+      "RUFLO_DAEMON_AUTOSTART",
+      "TRANSFORMERS_CACHE",
+      "XDG_CONFIG_HOME"
+    ]
+  },
+  "claudePublicProfile": {
+    "type": "stdio",
+    "command": "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+    "args": [
+      "/Users/shubham/.codex/ruflo-state/swasthadisha/adapters/57c226be79e9b832e6ee2b7122d387102b878f0ecaa7862a6fd65c4b64268b4d/ruflo-local.mjs"
+    ],
+    "environmentKeys": []
+  },
+  "privateBackups": "RETAINED_OUTSIDE_GIT_0600",
+  "originalSixAndEleven": "PRESERVATION_CHECK_PASS",
+  "actualClaudeACK": false,
+  "RufloProcessesStartedByProgram": 0,
+  "ClaudeModelCalls": 0,
+  "hostClientReloadRequested": false,
+  "scope": "Configuration stage only; actual transport and Claude review require later gates"
+}

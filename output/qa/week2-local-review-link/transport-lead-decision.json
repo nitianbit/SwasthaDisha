@@ -1,0 +1,18 @@
+{
+  "schema": "SD-LOCAL-TRANSPORT-STAGE-DECISION-1",
+  "reviewer": "/root",
+  "decision": "APPROVE_ONE_LOCAL_TRANSPORT_SMOKE",
+  "sourceRoot": "/private/tmp/swasthadisha-parallel-p1qom53w/local-review-link",
+  "runnerSha": "eab90961c8b09109c0fc236008139bc5604b1a81ce2ec5e68a970f67be3387e9",
+  "profileSha": "da259bf7c092b85ec3966dccf400d5053ffc33d82ec3e6c453a3ef3c39b48fc4",
+  "actualOtherReviewer": "/root/backend_boot_path",
+  "command": "env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /opt/homebrew/bin/python3 -I -B tools/agents/ruflo-extension-smoke.py",
+  "scope": "ONE_LOCAL_METADATA_TRANSPORT_ONLY_NO_MODEL_OR_HOSTED_WORKER",
+  "basis": [
+    "Fullrunner and33fakechecks inspected and independently passed",
+    "Actual profiles/currentpins/source preservation readback nowpasses",
+    "Stageactivation accepted independently; latercachemetadata left untouched",
+    "Two owned clients/acknowledged direct children and exactbounded cleanup",
+    "ActualClaudeACK remainsfalse; no implementation/test/release/model authority from metadata"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "status": "LOCAL_TRANSPORT_PASS_PENDING_CLAUDE_ACK",
+  "actualInvocations": 1,
+  "sourceRoot": "/private/tmp/swasthadisha-parallel-p1qom53w/local-review-link",
+  "runnerSha": "eab90961c8b09109c0fc236008139bc5604b1a81ce2ec5e68a970f67be3387e9",
+  "profileSha": "da259bf7c092b85ec3966dccf400d5053ffc33d82ec3e6c453a3ef3c39b48fc4",
+  "actualReviewers": [
+    "/root",
+    "/root/backend_boot_path"
+  ],
+  "decision": "APPROVE_ONE_LOCAL_TRANSPORT_SMOKE",
+  "approvalConsumed": true,
+  "clientsStarted": 2,
+  "clientsCompleted": 2,
+  "metadataOnly": true,
+  "actualClaudeExtensionACK": false,
+  "ClaudeModelCalls": 0,
+  "evidenceDirectory": "/Users/shubham/.codex/ruflo-state/swasthadisha/local-extension-smoke-9ce98505975a45a5a461708e231e0d0d",
+  "command": "env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /opt/homebrew/bin/python3 -I -B tools/agents/ruflo-extension-smoke.py",
+  "liveTeam": "swasthadisha-local",
+  "limits": [
+    "Only synthetic roundtrip demonstrates transport",
+    "Live Claude ACK/model/session/effort unproved",
+    "No app/test/release permission follows",
+    "All process cleanup proof is exact to captured owned sessions"
+  ]
+}

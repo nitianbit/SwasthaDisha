@@ -1,0 +1,262 @@
+[
+  {
+    "direction": "request",
+    "id": 1,
+    "method": "initialize",
+    "session": 1,
+    "tool": null
+  },
+  {
+    "accepted": true,
+    "direction": "response",
+    "id": 1,
+    "session": 1
+  },
+  {
+    "direction": "request",
+    "id": 2,
+    "method": "tools/list",
+    "session": 1,
+    "tool": null
+  },
+  {
+    "accepted": true,
+    "direction": "response",
+    "id": 2,
+    "session": 1
+  },
+  {
+    "direction": "request",
+    "id": 3,
+    "method": "tools/call",
+    "session": 1,
+    "tool": "mcp_status"
+  },
+  {
+    "accepted": true,
+    "direction": "response",
+    "id": 3,
+    "session": 1
+  },
+  {
+    "direction": "request",
+    "id": 4,
+    "method": "tools/call",
+    "session": 1,
+    "tool": "__local_forbidden_probe__"
+  },
+  {
+    "accepted": false,
+    "direction": "response",
+    "id": 4,
+    "session": 1
+  },
+  {
+    "direction": "request",
+    "id": 1,
+    "method": "initialize",
+    "session": 2,
+    "tool": null
+  },
+  {
+    "accepted": true,
+    "direction": "response",
+    "id": 1,
+    "session": 2
+  },
+  {
+    "direction": "request",
+    "id": 2,
+    "method": "tools/list",
+    "session": 2,
+    "tool": null
+  },
+  {
+    "accepted": true,
+    "direction": "response",
+    "id": 2,
+    "session": 2
+  },
+  {
+    "direction": "request",
+    "id": 3,
+    "method": "tools/call",
+    "session": 2,
+    "tool": "mcp_status"
+  },
+  {
+    "accepted": true,
+    "direction": "response",
+    "id": 3,
+    "session": 2
+  },
+  {
+    "direction": "request",
+    "id": 4,
+    "method": "tools/call",
+    "session": 2,
+    "tool": "__local_forbidden_probe__"
+  },
+  {
+    "accepted": false,
+    "direction": "response",
+    "id": 4,
+    "session": 2
+  },
+  {
+    "direction": "request",
+    "id": 5,
+    "method": "tools/call",
+    "session": 1,
+    "tool": "team_create"
+  },
+  {
+    "accepted": true,
+    "direction": "response",
+    "id": 5,
+    "session": 1
+  },
+  {
+    "direction": "request",
+    "id": 6,
+    "method": "tools/call",
+    "session": 1,
+    "tool": "team_spawn"
+  },
+  {
+    "accepted": true,
+    "direction": "response",
+    "id": 6,
+    "session": 1
+  },
+  {
+    "direction": "request",
+    "id": 7,
+    "method": "tools/call",
+    "session": 1,
+    "tool": "team_spawn"
+  },
+  {
+    "accepted": true,
+    "direction": "response",
+    "id": 7,
+    "session": 1
+  },
+  {
+    "direction": "request",
+    "id": 8,
+    "method": "tools/call",
+    "session": 1,
+    "tool": "team_send"
+  },
+  {
+    "accepted": true,
+    "direction": "response",
+    "id": 8,
+    "session": 1
+  },
+  {
+    "direction": "request",
+    "id": 5,
+    "method": "tools/call",
+    "session": 2,
+    "tool": "team_inbox"
+  },
+  {
+    "accepted": true,
+    "direction": "response",
+    "id": 5,
+    "session": 2
+  },
+  {
+    "direction": "request",
+    "id": 6,
+    "method": "tools/call",
+    "session": 2,
+    "tool": "team_send"
+  },
+  {
+    "accepted": true,
+    "direction": "response",
+    "id": 6,
+    "session": 2
+  },
+  {
+    "direction": "request",
+    "id": 9,
+    "method": "tools/call",
+    "session": 1,
+    "tool": "team_inbox"
+  },
+  {
+    "accepted": true,
+    "direction": "response",
+    "id": 9,
+    "session": 1
+  },
+  {
+    "direction": "request",
+    "id": 10,
+    "method": "tools/call",
+    "session": 1,
+    "tool": "team_shutdown"
+  },
+  {
+    "accepted": true,
+    "direction": "response",
+    "id": 10,
+    "session": 1
+  },
+  {
+    "direction": "request",
+    "id": 11,
+    "method": "tools/call",
+    "session": 1,
+    "tool": "team_create"
+  },
+  {
+    "accepted": true,
+    "direction": "response",
+    "id": 11,
+    "session": 1
+  },
+  {
+    "direction": "request",
+    "id": 12,
+    "method": "tools/call",
+    "session": 1,
+    "tool": "team_spawn"
+  },
+  {
+    "accepted": true,
+    "direction": "response",
+    "id": 12,
+    "session": 1
+  },
+  {
+    "direction": "request",
+    "id": 13,
+    "method": "tools/call",
+    "session": 1,
+    "tool": "team_spawn"
+  },
+  {
+    "accepted": true,
+    "direction": "response",
+    "id": 13,
+    "session": 1
+  },
+  {
+    "direction": "request",
+    "id": 14,
+    "method": "tools/call",
+    "session": 1,
+    "tool": "team_send"
+  },
+  {
+    "accepted": true,
+    "direction": "response",
+    "id": 14,
+    "session": 1
+  }
+]
