@@ -1,0 +1,20 @@
+{
+  "schema": "SD-NETWORK-RUN-APPROVAL-1",
+  "decision": "APPROVE_ONE_FIXED_NO_DB_RUN",
+  "scope": "ONE_FIXED_NO_DB_RUN_NO_RETRY_NO_PULL_NO_DAEMON_START",
+  "candidate_commit": "eba7e5c82e3ff63af9e9a958fbd100733e1fc439",
+  "candidate_root": "/private/tmp/swasthadisha-parallel-p1qom53w/network-run-eba7e5c",
+  "operator_sha256": "8586e6ad4a3482aa033b5d98a3c9da3eae3c81324824df163ea13bb7b4092651",
+  "source_manifest_sha256": "6d71e8c47f46bc941751515f15e0d3c802be6863d7192d61ad3966d6730dc804",
+  "review_input_sha256": "7ac9f41b4fd75334a68836bfd8f051d1e16a86ea01647c7fbb5044ff06fdf7c8",
+  "reviewers": [
+    {
+      "agent": "/root/batch2_security_check",
+      "decision": "APPROVE_ONE_FIXED_NO_DB_RUN"
+    },
+    {
+      "agent": "/root/outbound_spec_review",
+      "decision": "APPROVE_ONE_FIXED_NO_DB_RUN"
+    }
+  ]
+}

@@ -1,0 +1,188 @@
+{
+  "runId": "1061e125-c648-432e-bd8a-801b7dc3be02",
+  "role": "synthetic-ports-only",
+  "manifestSha": "6f74f9f075dc4e11d3ffdee7b895d445eb7a29f1d53cb2b8b8009c34163e9bd4",
+  "admissionPassed": true,
+  "egressBlocked": true,
+  "filesystemCanariesPassed": true,
+  "databaseMode": "not-admitted",
+  "networkAdmission": {
+    "tag": "APP-NET-ADMIT-1",
+    "observation": {
+      "tag": "APP-NET-DIAG-1",
+      "entries": [
+        {
+          "name": "bonding_masters",
+          "kind": "file",
+          "flags": {
+            "unavailable": "ENOTDIR"
+          },
+          "operstate": {
+            "unavailable": "ENOTDIR"
+          },
+          "type": {
+            "unavailable": "ENOTDIR"
+          }
+        },
+        {
+          "name": "erspan0",
+          "kind": "symlink",
+          "flags": "0x1002",
+          "operstate": "down",
+          "type": "1"
+        },
+        {
+          "name": "gre0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "778"
+        },
+        {
+          "name": "gretap0",
+          "kind": "symlink",
+          "flags": "0x1002",
+          "operstate": "down",
+          "type": "1"
+        },
+        {
+          "name": "ip6_vti0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "769"
+        },
+        {
+          "name": "ip6gre0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "823"
+        },
+        {
+          "name": "ip6tnl0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "769"
+        },
+        {
+          "name": "ip_vti0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "768"
+        },
+        {
+          "name": "lo",
+          "kind": "symlink",
+          "flags": "0x9",
+          "operstate": "unknown",
+          "type": "772"
+        },
+        {
+          "name": "sit0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "776"
+        },
+        {
+          "name": "tunl0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "768"
+        }
+      ],
+      "addressedInterfaces": [
+        {
+          "name": "lo",
+          "addresses": [
+            {
+              "address": "127.0.0.1",
+              "family": "IPv4",
+              "internal": true
+            },
+            {
+              "address": "::1",
+              "family": "IPv6",
+              "internal": true
+            }
+          ]
+        }
+      ]
+    },
+    "loopback": "lo",
+    "controlFiles": [
+      "bonding_masters"
+    ],
+    "downDevices": [
+      "erspan0",
+      "gre0",
+      "gretap0",
+      "ip6_vti0",
+      "ip6gre0",
+      "ip6tnl0",
+      "ip_vti0",
+      "sit0",
+      "tunl0"
+    ],
+    "loopbackAddresses": [
+      "127.0.0.1",
+      "::1"
+    ]
+  },
+  "calls": [
+    {
+      "port": "payments",
+      "operation": "create-order",
+      "status": "recorded",
+      "effect": false
+    },
+    {
+      "port": "sms",
+      "operation": "send",
+      "status": "recorded",
+      "effect": false
+    },
+    {
+      "port": "email",
+      "operation": "send",
+      "status": "recorded",
+      "effect": false
+    },
+    {
+      "port": "push",
+      "operation": "send",
+      "status": "recorded",
+      "effect": false
+    },
+    {
+      "port": "calendar",
+      "operation": "create-event",
+      "status": "recorded",
+      "effect": false
+    },
+    {
+      "port": "storage",
+      "operation": "put",
+      "status": "recorded",
+      "effect": false
+    },
+    {
+      "port": "queue",
+      "operation": "enqueue",
+      "status": "recorded",
+      "effect": false
+    }
+  ],
+  "scenario": {
+    "literalSearchPassed": true,
+    "unknownOperationRejected": true
+  },
+  "containerId": "47e37d5f35ba588bf38cc1df4988d6075c72b960efbcf5e5f226e969f0265d6b",
+  "directory": "/private/tmp/sd-app-isolation-6Q3YI8",
+  "image": "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
+  "cleanupAcknowledged": true
+}
