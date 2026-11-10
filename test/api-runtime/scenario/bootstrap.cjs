@@ -75,7 +75,14 @@ const REQUIRED_CASE_IDS = Object.freeze([
   "NOTIFICATION_PRIOR_ADMIN_SENDERS",
   "FCM_TEST_ADMIN_RECORDING",
   "FCM_TEST_DENIALS",
-  "FCM_TOKEN_REGISTRATION_COMPAT"
+  "FCM_TOKEN_REGISTRATION_COMPAT",
+  "JWT_CONFIG_UNSET_DENIED",
+  "JWT_CONFIG_BLANK_DENIED",
+  "JWT_CONFIG_PLACEHOLDERS_DENIED",
+  "JWT_CONFIG_VALID_VALUE",
+  "JWT_CONFIG_PADDED_VALUE_UNCHANGED",
+  "JWT_CONFIG_NONPLACEHOLDER_VALUES",
+  "JWT_PUBLISHED_FALLBACK_TOKEN_DENIED"
 ]);
 const REQUIRED_SENSITIVITY_IDS = Object.freeze([
   "OTP_UNCONDITIONAL_CONSUME",
@@ -91,7 +98,10 @@ const REQUIRED_SENSITIVITY_IDS = Object.freeze([
   "NOTIFICATION_ID_OWNER_GUARD_REMOVED",
   "NOTIFICATION_PRIOR_STRICT_OWN_ADMIN_EXPANSION",
   "FCM_TEST_ADMIN_GUARD_REMOVED",
-  "FCM_TEST_ADMIN_GUARD_AFTER_VALIDATION"
+  "FCM_TEST_ADMIN_GUARD_AFTER_VALIDATION",
+  "JWT_CONFIG_PUBLISHED_FALLBACK",
+  "JWT_CONFIG_PRODUCTION_ONLY_GUARD",
+  "JWT_CONFIG_TRIMMED_RETURN"
 ]);
 const MODEL_IDENTITIES = Object.freeze({
   "User": [
@@ -337,6 +347,10 @@ function validateAdmissionData(manifest, plan, ports, observed) {
   for (const alias of ports.roots) need(Object.hasOwn(plan.modules, alias), 'MISSING_ROUTER_SOURCE');
   for (const mutant of Object.values(plan.mutants)) need(Object.hasOwn(manifest.files, mutant.file)
     && mutant.originalSha256 === plan.sourceFiles[mutant.source], 'UNDECLARED_MUTANT');
+  need(plan.modules[CONFIG_ALIAS] === 'compiled/config/config.js'
+    && Object.hasOwn(plan.sourceFiles, 'src1/config/config.ts')
+    && CONFIG_MUTANT_IDS.every(id => plan.mutants[id]?.source === 'src1/config/config.ts'
+      && plan.mutants[id].file === 'compiled/mutants/' + id + '.js'), 'CONFIG_SOURCE_BINDING');
   need(Array.isArray(ports.models) && ports.models.length === 13
     && new Set(ports.models.map(row => row.name)).size === 13
     && new Set(ports.models.map(row => row.collection)).size === 13
@@ -498,6 +512,262 @@ function recordingPorts(ports, typedi) {
   };
 }
 
+// This controller has only explicit runtime ports. Offline units supply hard fake
+// ports; main binds the admitted real loader/packages below. No validator is copied.
+const CONFIG_ALIAS = '@/config/config';
+const CONFIG_CASE_IDS = Object.freeze(REQUIRED_CASE_IDS.slice(53, 59));
+const CONFIG_MUTANT_IDS = Object.freeze(REQUIRED_SENSITIVITY_IDS.slice(14));
+const CONFIG_ENVIRONMENTS = Object.freeze(['test', 'development', 'production']);
+const CONFIG_REJECTION = 'JWT_SECRET_KEY must be set to a non-placeholder value';
+const CONFIG_ENV_KEYS = Object.freeze(['NODE_ENV', 'JWT_SECRET_KEY', 'MONGODB_URL']);
+const CONFIG_EFFECT_KEYS = Object.freeze(Object.keys(counters));
+const CONFIG_WRITE_OPS = new Set(['updateOne', 'updateMany', 'replaceOne', 'deleteOne', 'deleteMany',
+  'findOneAndUpdate', 'findOneAndReplace', 'findOneAndDelete']);
+const CONFIG_TRIM_POINTS = Object.freeze([0x0009, 0x000a, 0x000b, 0x000c, 0x000d, 0x0020,
+  0x00a0, 0x1680, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006,
+  0x2007, 0x2008, 0x2009, 0x200a, 0x2028, 0x2029, 0x202f, 0x205f, 0x3000, 0xfeff]);
+
+function configurationSamples(key) {
+  need(typeof key === 'string' && key.length > 0 && key.trim() === key
+    && !['your-secret-key', 'your-secret-key-change-in-production'].includes(key), 'CONFIG_FIXTURE_KEY');
+  const trim = String.fromCodePoint(...CONFIG_TRIM_POINTS); const samples = [];
+  function add(environment, group, name, value, accepted = false) {
+    samples.push(Object.freeze({ id: environment + ':' + name, environment,
+      group: CONFIG_CASE_IDS[group], value, accepted }));
+  }
+  for (const environment of CONFIG_ENVIRONMENTS) {
+    add(environment, 0, 'unset', undefined);
+    add(environment, 1, 'empty', '');
+    for (const point of CONFIG_TRIM_POINTS) add(environment, 1, 'blank-' + point.toString(16), String.fromCodePoint(point));
+    add(environment, 1, 'combined-blank', trim);
+    for (const [index, value] of ['your-secret-key', 'your-secret-key-change-in-production'].entries()) {
+      add(environment, 2, 'placeholder-' + index, value);
+      add(environment, 2, 'padded-placeholder-' + index, trim + value + trim);
+    }
+    add(environment, 3, 'valid', key, true);
+    add(environment, 4, 'padded', trim + key + trim, true);
+    add(environment, 5, 'short', 'x', true);
+    add(environment, 5, 'case-variant', 'Your-Secret-Key', true);
+  }
+  return Object.freeze(samples);
+}
+
+function configurationFinally(action, restorers) {
+  let result; let primary; let failed = false; const secondary = [];
+  try { result = action(); } catch (error) { primary = error; failed = true; }
+  for (const restore of restorers) try { restore(); } catch (error) { secondary.push(error); }
+  if (!failed && secondary.length) {
+    primary = new Error('CONFIG_RESTORATION_FAILED', { cause: secondary[0] });
+    primary.fixtureCode = 'CONFIG_RESTORATION_FAILED'; failed = true;
+  }
+  if (failed) {
+    if (primary !== null && ['object', 'function'].includes(typeof primary) && secondary.length) {
+      try { Object.defineProperty(primary, 'configurationCleanupFailures', { value: Object.freeze(secondary) }); } catch {}
+    }
+    throw primary;
+  }
+  return result;
+}
+
+function configurationEnvironment(env) {
+  const saved = CONFIG_ENV_KEYS.map(name => ({ name, present: Object.hasOwn(env, name), value: env[name] }));
+  return () => {
+    // Attempt every restoration even if one assignment fails.
+    let error;
+    for (const row of saved) try {
+      if (row.present) env[row.name] = row.value; else delete env[row.name];
+      need(Object.hasOwn(env, row.name) === row.present && env[row.name] === row.value, 'CONFIG_ENV_RESTORATION');
+    } catch (caught) { error ||= caught; }
+    if (error) throw error;
+  };
+}
+
+function withConfigurationTaps(runtime, action) {
+  const { mongoose, network, effects, attempts } = runtime;
+  const specs = [
+    [mongoose, 'connect', 'connection'], [mongoose, 'createConnection', 'connection'],
+    [mongoose.Connection?.prototype, 'openUri', 'connection'],
+    [mongoose.mongo?.MongoClient?.prototype, 'connect', 'connection'],
+    [network.Socket?.prototype, 'connect', 'connection'], [network.Server?.prototype, 'listen', 'listen'],
+    [mongoose.Model, 'create', 'write'], [mongoose.Model, 'insertMany', 'write'], [mongoose.Model, 'bulkWrite', 'write'],
+    [mongoose.Model?.prototype, 'save', 'write'], [mongoose.Query?.prototype, 'exec', 'query'],
+  ];
+  const installed = [];
+  return configurationFinally(() => {
+    for (const [target, name, category] of specs) {
+      const descriptor = target && Object.getOwnPropertyDescriptor(target, name);
+      need(descriptor && Object.hasOwn(descriptor, 'value') && typeof descriptor.value === 'function'
+        && (descriptor.writable || descriptor.configurable), 'CONFIG_TAP_MISSING');
+      const original = descriptor.value;
+      const replacement = function (...args) {
+        if (category === 'query' && !CONFIG_WRITE_OPS.has(this.op)) return original.apply(this, args);
+        attempts[category === 'query' ? 'write' : category]++; effects.unexpected++;
+        fail('CONFIG_OPERATION_ATTEMPT');
+      };
+      Object.defineProperty(target, name, { ...descriptor, value: replacement });
+      installed.push({ target, name, descriptor, replacement });
+    }
+    return action();
+  }, [() => {
+    let error;
+    for (const row of installed.reverse()) {
+      try {
+        const current = Object.getOwnPropertyDescriptor(row.target, row.name);
+        const unchanged = current && current.value === row.replacement
+          && current.writable === row.descriptor.writable && current.configurable === row.descriptor.configurable
+          && current.enumerable === row.descriptor.enumerable;
+        Object.defineProperty(row.target, row.name, row.descriptor);
+        const restored = Object.getOwnPropertyDescriptor(row.target, row.name);
+        need(restored.value === row.descriptor.value && restored.writable === row.descriptor.writable
+          && restored.configurable === row.descriptor.configurable && restored.enumerable === row.descriptor.enumerable,
+        'CONFIG_TAP_RESTORATION');
+        need(unchanged, 'CONFIG_TAP_DRIFT');
+      } catch (caught) { error ||= caught; }
+    }
+    if (error) throw error;
+  }]);
+}
+
+function configurationSampleEvidence(expected, seen) {
+  need(Array.isArray(expected) && expected.length === 108 && seen instanceof Set && seen.size === 108,
+    'CONFIG_SAMPLE_SET');
+  const expectedIds = expected.map(row => row.id);
+  need(new Set(expectedIds).size === 108 && expectedIds.every(id => seen.has(id)), 'CONFIG_SAMPLE_SET');
+  const totals = [3, 81, 12, 3, 3, 6];
+  need(expected.filter(row => row.accepted).length === 12
+    && CONFIG_CASE_IDS.every((id, index) => expected.filter(row => row.group === id).length === totals[index]),
+  'CONFIG_SAMPLE_COUNTS');
+  return Object.freeze(CONFIG_CASE_IDS.map(id => Object.freeze({ id, status: 'PASS' })));
+}
+
+function collectConfigurationEvidence(runtime) {
+  need(plain(runtime) && plain(runtime.env) && plain(runtime.effects) && plain(runtime.loader)
+    && plain(runtime.mongoose) && plain(runtime.network) && plain(runtime.substitutes)
+    && typeof runtime.cacheHas === 'function' && typeof runtime.originalSign === 'function'
+    && typeof runtime.jwt?.verify === 'function' && typeof runtime.uri === 'string'
+    && runtime.uri.length > 0 && typeof runtime.loader.phase === 'function'
+    && typeof runtime.loader.resetCompiled === 'function' && typeof runtime.loader.load === 'function', 'CONFIG_RUNTIME_PORTS');
+  const { env, effects, loader, mongoose, uri } = runtime;
+  const nominal = 'compiled/config/config.js';
+  need(runtime.plan?.modules?.[CONFIG_ALIAS] === nominal
+    && typeof runtime.plan.sourceFiles?.['src1/config/config.ts'] === 'string', 'CONFIG_SOURCE_BINDING');
+  const targets = [nominal];
+  for (const id of CONFIG_MUTANT_IDS) {
+    const mutant = runtime.plan.mutants?.[id];
+    need(mutant?.file === 'compiled/mutants/' + id + '.js' && mutant.source === 'src1/config/config.ts'
+      && mutant.originalSha256 === runtime.plan.sourceFiles[mutant.source], 'CONFIG_MUTANT_BINDING');
+    targets.push(mutant.file);
+  }
+  need(CONFIG_EFFECT_KEYS.every(name => Number.isSafeInteger(effects[name]) && effects[name] >= 0
+    && (name === 'console' || effects[name] === 0)), 'CONFIG_PREEXISTING_EFFECT');
+  const attempts = { connection: 0, listen: 0, write: 0 };
+  const exportsSeen = new WeakSet(); const configsSeen = new WeakSet();
+  function checkpoint() {
+    need(mongoose.modelNames().length === 0 && mongoose.connection.readyState === 0, 'CONFIG_MODEL_OR_CONNECTION');
+    return JSON.stringify([CONFIG_EFFECT_KEYS.map(name => effects[name]), Object.values(attempts)]);
+  }
+  function reset() {
+    loader.phase(runtime.substitutes, {}); loader.resetCompiled();
+    need(targets.every(file => !runtime.cacheHas(file)), 'CONFIG_CACHE_NOT_CLEARED');
+  }
+  function signature(input, exported, padded) {
+    const token = runtime.originalSign({ fixture: 'configuration-key-control' }, input,
+      { algorithm: 'HS256', noTimestamp: true });
+    need(runtime.jwt.verify(token, input, { algorithms: ['HS256'] }).fixture === 'configuration-key-control',
+      'CONFIG_SIGNATURE_CONTROL');
+    need(runtime.jwt.verify(token, exported, { algorithms: ['HS256'] }).fixture === 'configuration-key-control',
+      'CONFIG_SIGNATURE_EXPORT');
+    if (padded) rejectSignature(token, input.trim());
+  }
+  function rejectSignature(token, candidate) {
+    let rejected = false;
+    try { runtime.jwt.verify(token, candidate, { algorithms: ['HS256'] }); }
+    catch (error) { need(error instanceof Error && error.name === 'JsonWebTokenError', 'CONFIG_SIGNATURE_WRONG_ERROR'); rejected = true; }
+    need(rejected, 'CONFIG_SIGNATURE_NOT_REJECTED');
+  }
+  function nominalPredicate(outcome, sample) {
+    if (!sample.accepted) {
+      need(outcome.threw && outcome.error instanceof Error && outcome.error.message === CONFIG_REJECTION,
+        'CONFIG_EXPECTED_REJECTION');
+    } else {
+      need(!outcome.threw, 'CONFIG_UNEXPECTED_REJECTION');
+      need(outcome.config.JWT_SECRET_KEY === sample.value, 'CONFIG_RAW_VALUE');
+      need(outcome.config.NODE_ENV === sample.environment && outcome.config.MONGODB_URL === uri, 'CONFIG_SETTINGS_VALUE');
+      signature(sample.value, outcome.config.JWT_SECRET_KEY, sample.group === CONFIG_CASE_IDS[4]);
+    }
+  }
+  function trial(sample, mutant, inspect) {
+    const restoreEnv = configurationEnvironment(env);
+    return configurationFinally(() => {
+      reset();
+      env.NODE_ENV = sample.environment; env.MONGODB_URL = uri;
+      if (sample.value === undefined) delete env.JWT_SECRET_KEY; else env.JWT_SECRET_KEY = sample.value;
+      need(Object.hasOwn(env, 'JWT_SECRET_KEY') === (sample.value !== undefined)
+        && env.JWT_SECRET_KEY === sample.value && env.NODE_ENV === sample.environment && env.MONGODB_URL === uri,
+      'CONFIG_TRIAL_ENV');
+      const overrides = mutant ? { [CONFIG_ALIAS]: runtime.plan.mutants[mutant].file } : {};
+      loader.phase(runtime.substitutes, overrides);
+      const before = checkpoint(); const outcome = { threw: false };
+      try { outcome.exports = loader.load(CONFIG_ALIAS); } catch (error) { outcome.threw = true; outcome.error = error; }
+      // The real load is measured before any intentional signature operation.
+      need(checkpoint() === before, 'CONFIG_LOAD_EFFECT');
+      const target = mutant ? runtime.plan.mutants[mutant].file : nominal;
+      need(targets.every(file => runtime.cacheHas(file) === (!outcome.threw && file === target)), 'CONFIG_TARGET_CACHE');
+      need(env.NODE_ENV === sample.environment && env.MONGODB_URL === uri
+        && Object.hasOwn(env, 'JWT_SECRET_KEY') === (sample.value !== undefined) && env.JWT_SECRET_KEY === sample.value,
+      'CONFIG_LOAD_ENV_DRIFT');
+      if (!outcome.threw) {
+        need(plain(outcome.exports) && plain(outcome.exports.CONFIG)
+          && !exportsSeen.has(outcome.exports) && !configsSeen.has(outcome.exports.CONFIG), 'CONFIG_REUSED_EXPORT');
+        exportsSeen.add(outcome.exports); configsSeen.add(outcome.exports.CONFIG); outcome.config = outcome.exports.CONFIG;
+      }
+      inspect(outcome, sample);
+      need(checkpoint() === before, 'CONFIG_SIGNATURE_EFFECT');
+    }, [restoreEnv, reset]);
+  }
+  const restoreEnv = configurationEnvironment(env);
+  return configurationFinally(() => withConfigurationTaps({ ...runtime, attempts }, () => {
+    reset(); const initial = checkpoint(); const samples = configurationSamples(runtime.key); const seen = new Set();
+    for (const sample of samples) {
+      need(!seen.has(sample.id), 'CONFIG_DUPLICATE_SAMPLE'); trial(sample, undefined, nominalPredicate); seen.add(sample.id);
+    }
+    const cases = configurationSampleEvidence(samples, seen); const sensitivity = [];
+    for (const id of CONFIG_MUTANT_IDS) {
+      for (const environment of CONFIG_ENVIRONMENTS) {
+        const sample = samples.find(row => row.environment === environment
+          && row.group === CONFIG_CASE_IDS[id === 'JWT_CONFIG_TRIMMED_RETURN' ? 4 : 0]);
+        trial(sample, id, outcome => {
+          const controlled = id === 'JWT_CONFIG_PRODUCTION_ONLY_GUARD' && environment === 'production';
+          if (controlled) { nominalPredicate(outcome, sample); return; }
+          let detected = false;
+          try { nominalPredicate(outcome, sample); }
+          catch (error) {
+            const expected = id === 'JWT_CONFIG_TRIMMED_RETURN' ? 'CONFIG_RAW_VALUE' : 'CONFIG_EXPECTED_REJECTION';
+            need(error?.fixtureCode === expected && error.message === expected, 'CONFIG_MUTANT_UNRELATED_FAILURE'); detected = true;
+          }
+          need(detected && !outcome.threw, 'CONFIG_MUTANT_NOT_DETECTED');
+          need(outcome.config.NODE_ENV === environment && outcome.config.MONGODB_URL === uri, 'CONFIG_MUTANT_SETTINGS');
+          if (id === 'JWT_CONFIG_TRIMMED_RETURN') {
+            need(outcome.config.JWT_SECRET_KEY === sample.value.trim() && outcome.config.JWT_SECRET_KEY !== sample.value,
+              'CONFIG_MUTANT_UNSAFE_RETURN');
+            const token = runtime.originalSign({ fixture: 'configuration-key-control' }, sample.value,
+              { algorithm: 'HS256', noTimestamp: true });
+            need(runtime.jwt.verify(token, sample.value, { algorithms: ['HS256'] }).fixture === 'configuration-key-control',
+              'CONFIG_SIGNATURE_CONTROL');
+            rejectSignature(token, outcome.config.JWT_SECRET_KEY);
+          } else need(outcome.config.JWT_SECRET_KEY === (id === 'JWT_CONFIG_PUBLISHED_FALLBACK' ? 'your-secret-key' : undefined),
+            'CONFIG_MUTANT_UNSAFE_RETURN');
+        });
+        // Each selected source variant is followed by the same fresh nominal predicate.
+        trial(sample, undefined, nominalPredicate);
+      }
+      sensitivity.push(Object.freeze({ id, detected: true }));
+    }
+    need(checkpoint() === initial && Object.values(attempts).every(value => value === 0), 'CONFIG_FINAL_EFFECT');
+    return Object.freeze({ cases, sensitivity: Object.freeze(sensitivity) });
+  }), [restoreEnv, reset]);
+}
+
 async function main() {
   const allowed = new Set(['PATH', 'NODE_VERSION', 'YARN_VERSION', 'HOME', 'HOSTNAME', 'NODE_ENV', 'APP_RUN_ID', 'APP_ROLE', 'APP_MANIFEST_SHA']);
   need(Object.keys(process.env).every(key => allowed.has(key)) && process.env.NODE_ENV === 'test'
@@ -594,6 +864,14 @@ async function main() {
   };
   let port;
   const completed = await withOwnedCleanup(async () => {
+    // Recording/sentinel ports precede the first intentional CONFIG domain load.
+    currentPorts = recordingPorts(ports, typedi); loader.phase(currentPorts.substitutes);
+    axios.defaults.adapter = currentPorts.adapter;
+    const configurationEvidence = collectConfigurationEvidence({ env: process.env, effects: counters,
+      loader, plan, mongoose, network: net, substitutes: currentPorts.substitutes, originalSign, jwt, key, uri,
+      cacheHas: relative => Object.hasOwn(require.cache, path.join(ROOT, relative)) });
+    need(process.env.NODE_ENV === 'test' && process.env.JWT_SECRET_KEY === key && process.env.MONGODB_URL === uri,
+      'CONFIG_FINAL_ENV');
     // Router imports register actual production models, still without any connection.
     stage = 'ROUTER_IMPORT'; port = await phase();
     need(JSON.stringify(mongoose.modelNames().sort()) === JSON.stringify(ports.models.map(row => row.name).sort()), 'UNDECLARED_REGISTERED_MODEL');
@@ -623,7 +901,7 @@ async function main() {
     });
     stage = 'API_SCENARIOS';
     const result = await require('./scenario.cjs').runScenario({ manifest, plan, ports, mongoose, jwt,
-      key, originalSign, counters, writeOps, readOps, need, fail, load: loader.load,
+      key, originalSign, counters, writeOps, readOps, need, fail, load: loader.load, configurationEvidence,
       get deliveries() { return currentPorts.deliveries; },
       get pushes() { return currentPorts.pushes; },
       get port() { return port; },
@@ -654,4 +932,6 @@ if (require.main === module) main().catch(error => {
     failed: 1, skipped: 0 }) + '\n');
   process.exitCode = 1;
 });
-module.exports = { validateAdmissionData, inspectManifest, closeNetwork, installLoader, runSetupStep, SETUP_FAILURE_CODES, withOwnedCleanup, recordReadOperation, recordPush };
+module.exports = { validateAdmissionData, inspectManifest, closeNetwork, installLoader, runSetupStep, SETUP_FAILURE_CODES,
+  withOwnedCleanup, recordReadOperation, recordPush, configurationSamples, configurationFinally,
+  configurationEnvironment, withConfigurationTaps, configurationSampleEvidence, collectConfigurationEvidence };

@@ -1,0 +1,53 @@
+{
+  "schema": "SD-JWT-CONFIG-SHARED-SOURCE-1",
+  "baseline": "7517a239b87559d923a2f46583173517ff4a1849",
+  "branch": "m0/week2-jwt-config-shared",
+  "contractSha256": "4c7a4bae2f39e9afdeedc22c97babf684bd2077d31647196d714e5eda3d281f1",
+  "status": "SOURCE_REVIEW_REQUIRED",
+  "actualConfigurationRuntime": "NOT_RUN",
+  "authors": {
+    "test/api-runtime/scenario/bootstrap.cjs": "/root/jwt_config_bootstrap",
+    "test/api-runtime/scenario/bootstrap-unit.cjs": "/root/jwt_config_bootstrap",
+    "test/api-runtime/scenario/ports-manifest.json": "/root"
+  },
+  "files": {
+    "test/api-runtime/scenario/bootstrap.cjs": "669b47f1cf3bdf7b84e1dce26f2255d1df36b2861b6a0bb1b8984e63a9273418",
+    "test/api-runtime/scenario/bootstrap-unit.cjs": "e2d0346af2608fa85cc6b51fc596d807e6e3102cb35065a392ec210162ca2d67",
+    "test/api-runtime/scenario/ports-manifest.json": "0c4fbf77a3d35be63fdb833ad357964240556879d5ef2c49f2785929e10a6d59"
+  },
+  "validation": {
+    "node": "22.23.4",
+    "syntax": "PASS",
+    "pureUnit": "PASS",
+    "pureUnitCases": 267,
+    "whitespace": "PASS",
+    "applicationImports": 0,
+    "connections": 0,
+    "domainWrites": 0,
+    "command": "env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /private/tmp/m0-node22/node --permission --allow-fs-read=\"$PWD/test/api-runtime/scenario\" test/api-runtime/scenario/bootstrap-unit.cjs"
+  },
+  "physicalLoadPlan": {
+    "nominal": 108,
+    "expectedRejectedNominal": 96,
+    "expectedAcceptedNominal": 12,
+    "sourceVariantTrials": 9,
+    "freshNominalRestorations": 9,
+    "total": 126,
+    "intentionalFixtureSignatures": 18
+  },
+  "retained": {
+    "oldAdmissionCases": 29,
+    "oldSetupDiagnosticCases": 117,
+    "oldOwnedCleanupCases": 12,
+    "oldRecordingCases": 31,
+    "newAdmissionCases": 3,
+    "newConfigurationControllerCases": 75,
+    "roots": 8,
+    "models": 13,
+    "requiredCaseIds": 60,
+    "requiredSensitivityIds": 17,
+    "priorCaseIds": 53,
+    "priorSensitivityIds": 14
+  },
+  "limits": "The pure result covers scripted fake controller ports only. Actual CONFIG/packages/application/compiler/MongoDB/Docker/providers were not evaluated. Full child startup for each invalid key, root build/typecheck/start, production/deployment/key state, full Week2/M0,115-scenario and release acceptance remain open. Fresh source reviews, preparation decisions/artifact reconciliation and exact one-run decisions remain required."
+}

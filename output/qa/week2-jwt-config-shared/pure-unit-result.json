@@ -1,0 +1,14 @@
+{
+  "schema": "SD-AUTH-API-OFFLINE-1",
+  "cases": 267,
+  "recordingCases": 31,
+  "configurationControllerCases": 75,
+  "admissionCases": 32,
+  "setupDiagnosticCases": 117,
+  "ownedCleanupCases": 12,
+  "failed": 0,
+  "applicationImports": 0,
+  "connections": 0,
+  "domainWrites": 0,
+  "processGrants": "DENIED"
+}
