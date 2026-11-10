@@ -1,0 +1,17 @@
+{
+  "schema": "SD-SELECTED-INDEX-DISCOVERY-1",
+  "baseline": "bac46d306a5f989c1eafcab5c40d4ce6fdd06e1d",
+  "status": "READONLY_DISCOVERY_CONTRACT_REQUIRED",
+  "reviewer": "/root/backend_boot_path",
+  "files": {
+    "src1/db/index.ts": "f76ca1d1fe1bd040d3d7389e4fa39876f78fe5dc67a923d2ad8cbe5311fe9e39",
+    "src1/index.ts": "d4f7af96f4fcda85be1f8ba942c362fb8b4b809a7c0eebd0e861c36f7f7624df",
+    "src1/routes/index.ts": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056",
+    "src1/scripts/syncIndexes.ts": "0cce64cfcb58d21a301430745bc9f5853fe6f613eeaa58ed0e41c394a56759e5",
+    "test/api-runtime/scenario/ports-manifest.json": "0c4fbf77a3d35be63fdb833ad357964240556879d5ef2c49f2785929e10a6d59",
+    "documentation/planning/SYSTEM_DESIGN.md": "cbd899f6fb442b13db28c389143b529b90da364165dc17291cc829814810bc84",
+    "documentation/planning/ROADMAP.md": "6a5b2e5bfdb42d16021cb28f83531389977d535d9743ae8908ab75ceeabd37cf"
+  },
+  "applicationEvaluations": 0,
+  "DockerCalls": 0
+}
