@@ -1,0 +1,24 @@
+{
+  "status": "LOCK_RESOLVED_INSTALL_NOT_RUN",
+  "invocations": 1,
+  "exit": 0,
+  "sourceRoot": "/private/tmp/swasthadisha-parallel-p1qom53w/api-lock-resolution",
+  "sourceCommit": "a651691a00ee4834851f4a0736dc68ce2a303495",
+  "command": "env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /opt/homebrew/bin/python3 -I -B test/api-runtime/scenario/prepare.py --resolve-lock",
+  "actualReviewers": [
+    "/root/backend_boot_path",
+    "/root/local_claude_review_prep"
+  ],
+  "decision": "APPROVE_PUBLIC_LOCK_RESOLUTION_ONLY",
+  "approvalConsumed": true,
+  "buildArea": "/private/tmp/sd-auth-api-build-67259198-5653-4564-9c0d-c046cbbd5e31",
+  "applicationEvaluations": 0,
+  "installations": 0,
+  "compilations": 0,
+  "DockerCalls": 0,
+  "limitations": [
+    "public metadata preparation only",
+    "runtime draft findings remain open",
+    "no retry or dependency/root adoption"
+  ]
+}
