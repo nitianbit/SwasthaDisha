@@ -1,0 +1,71 @@
+{
+  "installed_version": "3.75.0",
+  "upstream_skill_commit": "4184c5cc24f27d5831f871e6d7160e2a9322cbbb",
+  "runtime_directory": "/Users/shubham/.codex/runtimes/ruflo/3.75.0",
+  "runtime_lock_sha256": "8ac77ad0a7a64b698abe9566f12fc2d7bd583741bcf9167e5cc5cb6c7d19f646",
+  "npm_install_options": [
+    "--save-exact",
+    "--ignore-scripts",
+    "--omit=optional",
+    "--no-audit",
+    "--no-fund"
+  ],
+  "pinned_packages": {
+    "node_modules/ruflo": {
+      "version": "3.75.0",
+      "integrity": "sha512-JzZ9VHt4CF//3kTliFXXeTcFV73elCAgbeHekPgowfeyDeVw/sKEfLNu+tQQI3A5zTpH/FUAyomTnzWTl7HLAg=="
+    },
+    "node_modules/@claude-flow/cli": {
+      "version": "3.75.0",
+      "integrity": "sha512-OxU4Icu+no/FQ4oE+cL4TcgHh/2ir/8pkE/bX+lMuANrYqiJUOIDOZJmnn7w+4hTuGdHw71yKmF5EGMCeWEkUA=="
+    }
+  },
+  "mcp_profile": {
+    "command": "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+    "args": [
+      "/Users/shubham/.codex/runtimes/ruflo/3.75.0/node_modules/@claude-flow/cli/bin/cli.js",
+      "mcp",
+      "start",
+      "--transport",
+      "stdio"
+    ],
+    "cwd": "/Users/shubham/.codex/ruflo-state/swasthadisha",
+    "startup_timeout_sec": 45,
+    "tool_timeout_sec": 30,
+    "enabled_tools": [
+      "mcp_status",
+      "system_health",
+      "team_create",
+      "team_spawn",
+      "team_send",
+      "team_inbox",
+      "team_status",
+      "team_shutdown",
+      "task_create",
+      "task_status",
+      "task_list",
+      "task_update",
+      "task_complete"
+    ],
+    "env": {
+      "CLAUDE_FLOW_CWD": "/Users/shubham/.codex/ruflo-state/swasthadisha",
+      "CLAUDE_FLOW_DISABLE_BRIDGE": "1",
+      "CLAUDE_FLOW_MEMORY_PATH": "/Users/shubham/.codex/ruflo-state/swasthadisha/.swarm",
+      "HF_HOME": "/Users/shubham/.codex/ruflo-state/swasthadisha/model-cache",
+      "RUFLO_DAEMON_AUTOSTART": "0",
+      "TRANSFORMERS_CACHE": "/Users/shubham/.codex/ruflo-state/swasthadisha/model-cache",
+      "XDG_CONFIG_HOME": "/Users/shubham/.codex/ruflo-state/swasthadisha/config"
+    }
+  },
+  "preexisting_codex_configuration_semantically_preserved": true,
+  "codex_config_backup": "/Users/shubham/.codex/backups/ruflo-install-20261110-122701/config.toml",
+  "skill_sha256": {
+    "SKILL.md": "93cbfeffec242515935ceec82f397ae508a083d841a48f8658af37003617de2b",
+    "references/upstream-swarm-orchestration.md": "a6e92fd261a1ce7042cc0ad700c2ddb68b2a8b8857b8ce35fab664891e9de99f",
+    "references/INSTALLATION.md": "aca340a42fc9063fdfa60e858ce0ecb2ee57fe372ab4535ef25756bc81392faf"
+  },
+  "actual_native_concurrency_limit": 4,
+  "coordination_metadata_does_not_launch_native_workers": true,
+  "verification_scope": "five tool calls/two owned processes; task restart persistence; no application acceptance",
+  "application_dependency_changes": false
+}

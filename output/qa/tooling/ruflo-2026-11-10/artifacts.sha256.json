@@ -1,0 +1,9 @@
+{
+  "VERIFICATION.md": "db9fa14ffc74eecdcf6356dc0a818256ebfe1644eee3a40edc8c54592995ae20",
+  "independent-process-check.json": "e04474fbec425f98e4ed4352d32a3403e7f6ae6b45e0d37e123ef0c728367a54",
+  "operator.py": "2550ed4b216f811f2b562d6e2811b8923d8350a1886bc5792c7a6c69c1e5a38e",
+  "protocol.jsonl": "281652691ed46ec6a62144b33fa27e7f3e667d4b05ed5b2fe0154fd2a735890f",
+  "report.json": "25d0011ac8f5b5fd68fc224c254a9772130cdfa04c6465879e4ed8e17838ca0b",
+  "session-1.stderr.txt": "a01b994e3ae74d0fbc65398d663d7b093665951eed13162be7c4ebe91e3a32dd",
+  "session-2.stderr.txt": "53e33fd057039564e072c7c249703c30cead48c8eba765642e604505b863626b"
+}

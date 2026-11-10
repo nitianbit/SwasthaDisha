@@ -1,0 +1,17 @@
+{
+  "candidate_commit": "41539ca749c8a9dbf49ecf43bcca00749eccfe3c",
+  "files_sha256": {
+    "output/qa/m0-a/app-isolation/diagnostic-preflight-2026-11-10/node-restoration.json": "ff70c00543cb435419674cafa8353d86a942b9abdcc033df074b9aab8d6098f6",
+    "output/qa/m0-a/app-isolation/diagnostic-preflight-2026-11-10/operator.py": "8b5ae33d06280060b35397df5fd2ad7e21517c98719cc47723a8281fb25d3486",
+    "output/qa/m0-a/app-isolation/diagnostic-preflight-2026-11-10/verification.json": "10e4860886188bfdd52846d34963b39d073dd43482b4614d4bc1c546c5b99ee4",
+    "output/qa/m0-a/app-isolation/diagnostic-preflight-2026-11-10/attempt-1/operator-result.json": "76bc3c3cd73a887cceb05c426596016587a0a0c7cafbb66b005d38ad4774f6ce",
+    "output/qa/m0-a/app-isolation/diagnostic-preflight-2026-11-10/attempt-1/source-freeze-before-image-check.json": "367eeb090b40f4a6c950532c1cc87c609309ca7b430df6c01b33b02ea4111f3d",
+    "output/qa/m0-a/app-isolation/diagnostic-preflight-2026-11-10/attempt-2/operator-result.json": "8b218b94247b18f1f8b74c8337fc23bd166224860e1967a336b9717f644c0ab9",
+    "output/qa/m0-a/app-isolation/diagnostic-preflight-2026-11-10/attempt-2/engine-before-image-check.stdout.txt": "7f87d47329c7073f7b3a86b6766074db75b106fc7d4473b3f7898b0d7183665e",
+    "output/qa/m0-a/app-isolation/diagnostic-preflight-2026-11-10/attempt-2/source-freeze-before-image-check.json": "367eeb090b40f4a6c950532c1cc87c609309ca7b430df6c01b33b02ea4111f3d",
+    "output/qa/m0-a/app-isolation/diagnostic-preflight-2026-11-10/attempt-2/engine-before-image-check.stderr.txt": "258b525b41ac7581655fcd179657206d4514a01e3ad7f31f7942886c5f8efd8c",
+    "output/review/app-isolation/diagnostic-preflight-2026-11-10/INTERNAL_REVIEW.md": "0b202db549806206e304a0f5e52f6f97fc105ebff9e38d00d8bbc327f505ebdd"
+  },
+  "status": "BLOCKED_BEFORE_LAUNCH",
+  "approval_scope": "historical exact candidate; refreshed review required after HEAD changes"
+}

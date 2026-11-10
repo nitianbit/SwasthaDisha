@@ -1,0 +1,8 @@
+{
+  "version": "v22.23.4",
+  "official_url": "https://nodejs.org/dist/v22.23.4/node-v22.23.4-darwin-arm64.tar.xz",
+  "archive_sha256": "037650d0839f457747396f052073fb48333d31bf5abd3c98b74da20d89ebb1ad",
+  "binary_sha256": "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0",
+  "matches_previous_reviewed_host_binary": true,
+  "target": "/private/tmp/m0-node22/node"
+}

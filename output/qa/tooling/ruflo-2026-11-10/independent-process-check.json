@@ -1,0 +1,21 @@
+{
+  "smoke_pids": [
+    16819,
+    16823
+  ],
+  "smoke_owned_processes_present": [],
+  "other_exact_entry_processes": [
+    {
+      "pid": 13460,
+      "ppid": 12222,
+      "smoke_owned": false
+    },
+    {
+      "pid": 14037,
+      "ppid": 12222,
+      "smoke_owned": false
+    }
+  ],
+  "action": "read-only; no process adopted or terminated",
+  "global_absence_claimed": false
+}

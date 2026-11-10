@@ -1,0 +1,28 @@
+{
+  "approved_commit": "41539ca749c8a9dbf49ecf43bcca00749eccfe3c",
+  "operator_directory": "/private/tmp/sd-reviewed-network-diag-gi0buyd1",
+  "operator_run_id": "0bbb81eb-183f-40f5-86b8-24699f22fb08",
+  "started_at": "2026-11-10T08:15:28Z",
+  "status": "BLOCKED_BEFORE_LAUNCH",
+  "launcher_invocations": 0,
+  "commands": [],
+  "resources": {},
+  "approval": "User delegated direct internal reviews; independent internal Standards and Spec approvals bound to revision-2. Exactly one diagnostic-enabled smoke; no post-create retry",
+  "source_freeze_before_image_check": {
+    "commit": "41539ca749c8a9dbf49ecf43bcca00749eccfe3c",
+    "working_tree": "clean",
+    "manifest_sha256": "54b7192be002ee191447547684fcfbbcfff4cc635c95316c4e1ed163350e9e0b",
+    "verified_counts": {
+      "files": 32,
+      "evidence_sha256": 63,
+      "historical_inputs_sha256": 8
+    },
+    "helper_sha256": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d",
+    "operator_directory_outside_checkout": true
+  },
+  "operator_error": {
+    "type": "FileNotFoundError",
+    "message": "[Errno 2] No such file or directory: '/private/tmp/m0-node22/node'"
+  },
+  "finished_at": "2026-11-10T08:15:28Z"
+}

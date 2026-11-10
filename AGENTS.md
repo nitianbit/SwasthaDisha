@@ -6,6 +6,8 @@ Before implementation, read [current M0-A progress](documentation/planning/imple
 
 For executable checks, read [foundation unit usage](test/foundation/README.md) and the [fixture contract](documentation/planning/implementation/C3_MONGO_FIXTURE_CONTRACT.md). App imports, legacy integration suites and provider effects require complete pre-import admission; the fixed MongoDB smoke check does not supply that admission. Keep local secrets, service-account files, patient records and uploaded documents outside Git.
 
+For parallel implementation or technical-review handoff, follow [the development workflow](documentation/planning/implementation/PARALLEL_DEVELOPMENT_WORKFLOW.md).
+
 ## Codebase knowledge graph
 
 Prefer MCP graph tools for code discovery in project `swasthadisha`:

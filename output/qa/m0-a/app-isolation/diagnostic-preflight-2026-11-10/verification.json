@@ -1,0 +1,27 @@
+{
+  "status": "BLOCKED_BEFORE_LAUNCH",
+  "candidate_commit": "41539ca749c8a9dbf49ecf43bcca00749eccfe3c",
+  "operator_sha256": "8b5ae33d06280060b35397df5fd2ad7e21517c98719cc47723a8281fb25d3486",
+  "launcher_invocations": 0,
+  "created_resources": 0,
+  "application_execution": "NOT_RUN",
+  "diagnostic_metadata": "NOT_RUN",
+  "attempts": [
+    {
+      "path": "attempt-1/operator-result.json",
+      "reason": "temporary Node executable missing",
+      "docker_commands": 0
+    },
+    {
+      "path": "attempt-2/operator-result.json",
+      "reason": "recorded Docker daemon unreachable",
+      "docker_commands": 1
+    }
+  ],
+  "later_binary_restoration_verified": true,
+  "same_daemon_and_image_prerequisites": "NOT_ESTABLISHED",
+  "daemon_started": false,
+  "target_changed": false,
+  "review_provenance": "internal Codex /root/network_review",
+  "selected_115_scenarios": "unchanged: 0 PASS, 1 FAIL, 1 BLOCKED, 110 NOT_RUN, 3 DEFERRED"
+}

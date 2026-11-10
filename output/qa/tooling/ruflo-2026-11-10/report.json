@@ -1,0 +1,139 @@
+{
+  "status": "PASS",
+  "artifact_directory": "/Users/shubham/.codex/ruflo-state/swasthadisha/install-smoke-20261110T081713-c35114f8",
+  "profile_sha256": "6322b7817f94427b49a80024191a56fd0c6406f976bcec307a9ae6e73a8bcc41",
+  "runtime": "ruflo@3.75.0",
+  "tool_calls": [
+    {
+      "session": 1,
+      "tool": "mcp_status",
+      "arguments": {},
+      "result": {
+        "running": true,
+        "pid": 16819,
+        "transport": "stdio",
+        "port": null,
+        "host": null
+      }
+    },
+    {
+      "session": 1,
+      "tool": "task_create",
+      "arguments": {
+        "type": "research",
+        "description": "Local Ruflo install persistence check; no application, provider or model execution.",
+        "tags": [
+          "install-check"
+        ]
+      },
+      "result": {
+        "taskId": "task-1794298633554-foaecg",
+        "type": "research",
+        "description": "Local Ruflo install persistence check; no application, provider or model execution.",
+        "priority": "normal",
+        "status": "pending",
+        "createdAt": "2026-11-10T08:17:13.554Z",
+        "assignedTo": [],
+        "tags": [
+          "install-check"
+        ]
+      }
+    },
+    {
+      "session": 2,
+      "tool": "task_status",
+      "arguments": {
+        "taskId": "task-1794298633554-foaecg"
+      },
+      "result": {
+        "taskId": "task-1794298633554-foaecg",
+        "type": "research",
+        "description": "Local Ruflo install persistence check; no application, provider or model execution.",
+        "status": "pending",
+        "progress": 0,
+        "priority": "normal",
+        "assignedTo": [],
+        "tags": [
+          "install-check"
+        ],
+        "createdAt": "2026-11-10T08:17:13.554Z",
+        "startedAt": null,
+        "completedAt": null,
+        "result": null
+      }
+    },
+    {
+      "session": 2,
+      "tool": "task_complete",
+      "arguments": {
+        "taskId": "task-1794298633554-foaecg",
+        "result": {
+          "check": "local-install-only",
+          "persisted_across_mcp_restart": true
+        }
+      },
+      "result": {
+        "taskId": "task-1794298633554-foaecg",
+        "status": "completed",
+        "completedAt": "2026-11-10T08:17:13.694Z",
+        "result": {
+          "check": "local-install-only",
+          "persisted_across_mcp_restart": true
+        }
+      }
+    },
+    {
+      "session": 2,
+      "tool": "task_status",
+      "arguments": {
+        "taskId": "task-1794298633554-foaecg"
+      },
+      "result": {
+        "taskId": "task-1794298633554-foaecg",
+        "type": "research",
+        "description": "Local Ruflo install persistence check; no application, provider or model execution.",
+        "status": "completed",
+        "progress": 100,
+        "priority": "normal",
+        "assignedTo": [],
+        "tags": [
+          "install-check"
+        ],
+        "createdAt": "2026-11-10T08:17:13.554Z",
+        "startedAt": null,
+        "completedAt": "2026-11-10T08:17:13.694Z",
+        "result": {
+          "check": "local-install-only",
+          "persisted_across_mcp_restart": true
+        }
+      }
+    }
+  ],
+  "processes": [
+    {
+      "session": 1,
+      "pid": 16819,
+      "exit_code": 0,
+      "stdin_closed": true,
+      "advertised_tools": 393,
+      "all_13_enabled_tools_exist": true,
+      "exact_child_absent": true
+    },
+    {
+      "session": 2,
+      "pid": 16823,
+      "exit_code": 0,
+      "stdin_closed": true,
+      "advertised_tools": 393,
+      "all_13_enabled_tools_exist": true,
+      "exact_child_absent": true
+    }
+  ],
+  "external_models_requested": false,
+  "network_sandbox_claimed": false,
+  "started_at": "2026-11-10T08:17:13Z",
+  "task_id": "task-1794298633554-foaecg",
+  "task_persisted_across_restart": true,
+  "exact_children_absent": true,
+  "finished_at": "2026-11-10T08:17:13Z"
+}

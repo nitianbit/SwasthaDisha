@@ -1,0 +1,48 @@
+{
+  "approved_commit": "41539ca749c8a9dbf49ecf43bcca00749eccfe3c",
+  "operator_directory": "/private/tmp/sd-reviewed-network-diag-3fvoj20p",
+  "operator_run_id": "8cf806ad-9d30-4ad7-a386-2ed35946fcae",
+  "started_at": "2026-11-10T08:16:59Z",
+  "status": "BLOCKED_BEFORE_LAUNCH",
+  "launcher_invocations": 0,
+  "commands": [
+    {
+      "step": "engine-before-image-check",
+      "args": [
+        "info",
+        "--format",
+        "[{{json .ID}},{{json .OSType}}]"
+      ],
+      "exit_code": 1,
+      "stdout": "engine-before-image-check.stdout.txt",
+      "stderr": "engine-before-image-check.stderr.txt"
+    }
+  ],
+  "resources": {},
+  "approval": "User delegated direct internal reviews; independent internal Standards and Spec approvals bound to revision-2. Exactly one diagnostic-enabled smoke; no post-create retry",
+  "source_freeze_before_image_check": {
+    "commit": "41539ca749c8a9dbf49ecf43bcca00749eccfe3c",
+    "working_tree": "clean",
+    "manifest_sha256": "54b7192be002ee191447547684fcfbbcfff4cc635c95316c4e1ed163350e9e0b",
+    "verified_counts": {
+      "files": 32,
+      "evidence_sha256": 63,
+      "historical_inputs_sha256": 8
+    },
+    "helper_sha256": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d",
+    "operator_directory_outside_checkout": true
+  },
+  "host_node": {
+    "version": "v22.23.4",
+    "binary_sha256": "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0"
+  },
+  "socket": {
+    "endpoint": "unix:///Users/shubham/.docker/run/docker.sock",
+    "resolved": "/Users/shubham/.docker/run/docker.sock"
+  },
+  "operator_error": {
+    "type": "AssertionError",
+    "message": "('engine-before-image-check', 1, 'Cannot connect to the Docker daemon at unix:///Users/shubham/.docker/run/docker.sock. Is the docker daemon running?\\n')"
+  },
+  "finished_at": "2026-11-10T08:17:00Z"
+}
