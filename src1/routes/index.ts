@@ -1,7 +1,6 @@
 import { Express } from 'express';
 import authRouterV1 from '@/modules/auth/routes';
 import userRouter from '@/modules/user/routes';
-import otpRouter from '@/modules/otp/routes';
 import healthTipRouter from '@/modules/healthTips/routes';
 import newsRouter from '@/modules/news/routes';
 import wellnessPackageRouter from '@/modules/wellnessPackages/routes';
@@ -56,7 +55,6 @@ export const configureRoutes = (app: Express): void => {
 
   // API v1 routes
   app.use('/api/v1/auth', authRouterV1);
-  app.use('/api/v1/otp', otpRouter);
   app.use('/api/v1/users', authenticate, userRouter);
   app.use('/api/v1/addresses', authenticate, addressRouter);
   app.use('/api/v1/health-tips', authenticate, healthTipRouter);

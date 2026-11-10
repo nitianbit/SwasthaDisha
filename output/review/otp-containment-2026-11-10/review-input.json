@@ -1,0 +1,27 @@
+{
+  "date": "2026-11-10",
+  "baseline": "525d435332eb1ff0d904f7aac4996a32a74fe0ba",
+  "branch": "m0/f01-app-isolation",
+  "status": "FROZEN_FOR_DIRECT_FINAL_REVIEW_SOURCE_ONLY",
+  "files_sha256": {
+    "src1/modules/otp/services/index.ts": "7aa21a23b21b80a8b08f508de0df9b7f916dcf60bdaa7d0b7e9ce51b9897746e",
+    "src1/routes/index.ts": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056",
+    "documentation/planning/implementation/OTP_URGENT_CONTAINMENT_CONTRACT.md": "af5d4ddb9d300a92df398ecc59f8ed9e51fe54a666166373aeb3f0d848a70b49",
+    "documentation/planning/implementation/OTP_EMERGENCY_OPERATING_DECISION.md": "8844e7b9b4ccef648a96f6f59fef851e417a593d2c33a9b7e0f3f97a22e7a435",
+    "documentation/planning/implementation/M0_OTP_AUTHORITY_CONTRACT_DRAFT.md": "b2cccf34335be4f6f59588060b603db82cff499b9c017aa59a7150e7e9deb0df",
+    "documentation/planning/implementation/M0_A_PROGRESS.md": "7969d08d0f906ab3afc3aa7aa754f24723347acfb3acd3e915bbf9fb95ef405f",
+    "documentation/planning/M0_START_APPROVAL_STATUS.md": "46d07dc770f68e0f351b4f4edd4a25235593a41f203c95ef7e7b5057c33d1676",
+    "documentation/planning/qa/EXECUTION_REGISTER.csv": "67e82967c36286138dfb6bbab782e363abbc2a6791fcb7134e7a0e42ae0480d7",
+    "output/qa/m0-b/otp-containment-2026-11-10/source-check.py": "4826cdc2c4a46b99ebb07ea4d4fa1ec493543979cbaab1aec8e0a7528960037e",
+    "output/qa/m0-b/otp-containment-2026-11-10/source-verification.json": "aa11bbc129e59f571e4a6a998abf23a58b48a803dc5e4dd63c26984c94126c99"
+  },
+  "production_patch_sha256": "2e47d8fb1b14db6a2b81e73e77f4873d817d2cf50400f7356bb61ec5e12a880f",
+  "only_production_files_changed": [
+    "src1/modules/otp/services/index.ts",
+    "src1/routes/index.ts"
+  ],
+  "preserved_six_staged_patch_sha256": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+  "review_record_excluded": "REVIEW.md contains subsequent independent reviewer decisions; no circular hash",
+  "operational_actions_and_runtime_admission": false,
+  "owner_clarification": "diagnostic41539ca approval unconsumed and exact-source-bound; no diagnostic invocation"
+}

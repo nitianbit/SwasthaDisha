@@ -37,28 +37,12 @@ export class OTPService {
   }
 
   async verifyOTP(data: VerifyOTPRequest): Promise<IOTP> {
-      // Allow default OTP "123456" for testing
-    const isValidOTP = data.otp === '150426';
-
-    let otpRecord: IOTP | null = null;
-
-    if (isValidOTP) {
-      // For default OTP, find the most recent unverified OTP for this user and target
-      otpRecord = await this.otpRepository.findByUserIdAndTarget(
-        data.userId,
-        data.target,
-        false,
-        data.targetValue
-      );
-    } else {
-      // Find OTP by userId and OTP value
-      otpRecord = await this.otpRepository.findByUserIdAndOTP(
-        data.userId,
-        data.otp,
-        data.target,
-        data.targetValue
-      );
-    }
+    const otpRecord = await this.otpRepository.findByUserIdAndOTP(
+      data.userId,
+      data.otp,
+      data.target,
+      data.targetValue
+    );
 
     if (!otpRecord) {
       throw new AppError({
@@ -77,8 +61,8 @@ export class OTPService {
       });
     }
 
-    // Check expiry (skip for default OTP)
-    if (!isValidOTP && otpRecord.expireAt && otpRecord.expireAt < new Date()) {
+    // Check expiry
+    if (otpRecord.expireAt && otpRecord.expireAt < new Date()) {
       throw new AppError({
         status: 400,
         code: 'OTP_EXPIRED',
@@ -86,8 +70,8 @@ export class OTPService {
       });
     }
 
-    // Verify the OTP matches (unless it's the default OTP)
-    if (!isValidOTP && otpRecord.otp !== data.otp) {
+    // Verify the OTP matches
+    if (otpRecord.otp !== data.otp) {
       throw new AppError({
         status: 400,
         code: 'INVALID_OTP',

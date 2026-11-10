@@ -1,5 +1,7 @@
 # M0 OTP authority contract draft
 
+**Urgent containment addendum, 10 November:** the owner's independent review prioritized the fixed-code bypass and public raw challenge API ahead of the remaining M0 work. The [urgent contract](OTP_URGENT_CONTAINMENT_CONTRACT.md) supersedes deferral of those two narrowly scoped source changes; the [operating decision](OTP_EMERGENCY_OPERATING_DECISION.md) governs the unresolved exposure/operator handoff. This broader lifecycle draft remains unapproved for its other implementation. The route descriptions and fourteen source hashes below describe their explicitly recorded historical baseline, not the amended candidate. No runtime or scenario acceptance is implied.
+
 **10 November 2026 — DRAFT_NOT_APPROVED_FOR_IMPLEMENTATION.** Static baseline: `5aecb5578869995063eabad5bc5a4c95c79f017b`, branch `m0/f01-app-isolation`, active `nitianbit/SwasthaDisha` checkout. This records current paths and missing decisions for the next bounded review. It changes no OTP source, schema, API or scenario status.
 
 The [M0 command-authority contract](../M0_IMPLEMENTATION_APPROVAL.md#current-command-authority-contract-for-m0-b), [AR-26](../SYSTEM_DESIGN.md#10-api-contract-and-compatibility), [C2/C3 conditions](../M0_START_APPROVAL_STATUS.md) and [development workflow](PARALLEL_DEVELOPMENT_WORKFLOW.md) govern subsequent work. Existing start authorization does not approve an unseen OTP implementation or its execution.

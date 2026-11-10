@@ -1,0 +1,135 @@
+{
+  "baseline": "525d435332eb1ff0d904f7aac4996a32a74fe0ba",
+  "status": "SOURCE_ONLY_VERIFIED_RUNTIME_NOT_RUN",
+  "commands": [
+    {
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "output/qa/m0-b/otp-containment-2026-11-10/source-check.py"
+      ],
+      "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 1,
+      "stdout": {
+        "status": "REJECTED",
+        "reason": "Special-code selector or exemption remains",
+        "typescript_evaluations": 0
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "output/qa/m0-b/otp-containment-2026-11-10/source-check.py"
+      ],
+      "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": {
+        "status": "SOURCE_ONLY_VERIFIED_RUNTIME_NOT_RUN",
+        "baseline": "525d435332eb1ff0d904f7aac4996a32a74fe0ba",
+        "service_sha256": "7aa21a23b21b80a8b08f508de0df9b7f916dcf60bdaa7d0b7e9ce51b9897746e",
+        "routes_sha256": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056",
+        "typescript_evaluations": 0
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "output/qa/m0-b/otp-containment-2026-11-10/source-check.py",
+        "--negative-controls"
+      ],
+      "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": {
+        "status": "SOURCE_CONTROLS_REJECTED",
+        "controls": [
+          "original_fixed_code_service",
+          "target_only_lookup",
+          "expiry_exemption",
+          "equality_exemption",
+          "raw_import_restored",
+          "raw_mount_restored",
+          "original_public_raw_routes"
+        ],
+        "typescript_evaluations": 0
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "-c",
+        "core.whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol",
+        "diff",
+        "--check"
+      ],
+      "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "recipe_sha256": "4826cdc2c4a46b99ebb07ea4d4fa1ec493543979cbaab1aec8e0a7528960037e",
+  "production_source_sha256": {
+    "src1/modules/otp/services/index.ts": "7aa21a23b21b80a8b08f508de0df9b7f916dcf60bdaa7d0b7e9ce51b9897746e",
+    "src1/routes/index.ts": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056"
+  },
+  "contract_sha256": "af5d4ddb9d300a92df398ecc59f8ed9e51fe54a666166373aeb3f0d848a70b49",
+  "staged_patch_sha256": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+  "preserved_handover_sha256": {
+    "documentation/planning/implementation/SESSION_HANDOVER.md": "a3506a23605ac1092eada9c3c9c1bf194f56873b8100275a96beea15d07314ca",
+    "documentation/planning/implementation/START_NEXT_SESSION.txt": "a5770aeea5f8c10d0c657da3e2389e2c6acd3bba22a436a7256acf86b6ad5e7b",
+    "documentation/planning/implementation/handover/2026-11-10-local-extensions/PRELIMINARY_REVIEWS.md": "dd0171b10fe60540cf22e453a67d884ec0c25fb105eb2578935daff074ee81de",
+    "documentation/planning/implementation/handover/2026-11-10-local-extensions/adapter-unit.json": "61d313e37962f30a1de4ce95a5f65499ed4e529f766ae404de4fbf92fdcea520",
+    "documentation/planning/implementation/handover/2026-11-10-local-extensions/adapter-unit.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "documentation/planning/implementation/handover/2026-11-10-local-extensions/adapter-unit.tap": "a07c05276fd685591bc3007c2fb1756541fbe7630fa761e3792c17db726bb259",
+    "documentation/planning/implementation/handover/2026-11-10-local-extensions/artifacts.sha256.json": "8db501e58ccb11df861273392228c947668c6fe477f7fee43a03a170a45acff5",
+    "documentation/planning/implementation/handover/2026-11-10-local-extensions/candidate.diff": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+    "documentation/planning/implementation/handover/2026-11-10-local-extensions/local-config-baseline.json": "7814976db973f081ed1636e2665466da1ce0bedcca39d6439e99dc87257ae87f",
+    "documentation/planning/implementation/handover/2026-11-10-local-extensions/prepared-local-extension-smoke.py": "b184feb253147e35f2449892aed731c81fc19b0a36fa14d3df5409cfcb1d4c63",
+    "documentation/planning/implementation/handover/2026-11-10-local-extensions/review-input.json": "a6fab192de0c88b1ef113cefb4741922d2138afe225d8952e3474b09a87ba3c8"
+  },
+  "scenario_register": {
+    "rows": 115,
+    "only_TC_REV_001_references_and_notes_changed": true,
+    "execution_and_automation_statuses_unchanged": true,
+    "outcomes": {
+      "PASS": 0,
+      "FAIL": 1,
+      "BLOCKED": 1,
+      "NOT_RUN": 110,
+      "DEFERRED": 3
+    }
+  },
+  "execution_limits": {
+    "application_or_extracted_TypeScript_evaluations": 0,
+    "root_build_or_typecheck": 0,
+    "test_suite_invocations": 0,
+    "database_or_provider_calls": 0,
+    "Docker_calls": 0,
+    "deployments": 0,
+    "operational_log_or_mailbox_access": 0,
+    "challenge_or_session_invalidation": 0
+  },
+  "public_repository_readback": {
+    "provider": "connected GitHub get_repo",
+    "date": "2026-11-10",
+    "repository": "nitianbit/SwasthaDisha",
+    "id": "1452083010",
+    "visibility": "public"
+  },
+  "current_deployment_and_exploitation": "UNKNOWN; last owner report prelaunch is historical; operator response pending",
+  "runtime_scenarios": "TC-REV-001 and TC-SEC-001 NOT_RUN; source-only controls are not authentication or mounted-route evidence"
+}
