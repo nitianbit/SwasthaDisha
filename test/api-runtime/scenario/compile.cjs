@@ -258,6 +258,37 @@ function compile(sourceRoot, runtimeRoot, inputPlan) {
   mutate('JWT_CONFIG_PRODUCTION_ONLY_GUARD', configSource, text => once(text, configInitializer,
     "  JWT_SECRET_KEY: process.env.NODE_ENV === 'production' ? requireJwtSecret(process.env.JWT_SECRET_KEY) : process.env.JWT_SECRET_KEY,"));
   mutate('JWT_CONFIG_TRIMMED_RETURN', configSource, text => once(text, '  return value;\n}', '  return value.trim();\n}'));
+  const meetSourcePins = {
+    'src1/modules/meet/routes/index.ts': 'e8bfff4a492ed11a18f1735528bfa4886a338b878852cde9bcea2f5d5bdd71e4',
+    'src1/modules/meet/controller/index.ts': '94b5d080c86ed8b9bb0f1ba4a145ed67d9e51115bbb10e26013a30026bf7aff0',
+    'src1/modules/meet/validation/index.ts': '8543aad3ebb22beabe3e293e278154edda82b47d80dc1b1aa379854260e428a7',
+    'src1/modules/meet/service/index.ts': 'edc6972866223a641027fcddc3b1b3bcec47bb31cb189bf4d7b097da33a24644',
+    'src1/modules/meet/types/index.ts': 'c2073614952f0d411bacd59896d386df54d8d8310c20234b4ab30eec35bfd863',
+  };
+  for (const [source, hash] of Object.entries(meetSourcePins)) requireThat(sources[source] === hash, 'MEET_SOURCE_PIN');
+  const meetRoutes = 'src1/modules/meet/routes/index.ts';
+  const protectedMeet = [['/google-oauth/url', 'googleOAuthQuerySchema', 'query'],
+    ['/google-oauth/exchange', 'googleOAuthExchangeSchema', 'body'],
+    ['/google-oauth/refresh', 'googleOAuthRefreshTestSchema', 'body'],
+    ['/google-meet/oauth', 'testGoogleMeetSchema', 'body']];
+  function changeMeetGuards(text, kind) {
+    for (const [route, schema, area] of protectedMeet) {
+      const start = `  '${route}',\n`;
+      const validation = `  validate(${schema}, '${area}'),`;
+      const before = start + '  authenticate,\n  requireAdmin,\n' + validation;
+      const after = kind === 'authentication' ? start + '  requireAdmin,\n' + validation
+        : kind === 'admin' ? start + '  authenticate,\n' + validation
+          : start + validation + '\n  authenticate,\n  requireAdmin,';
+      text = once(text, before, after);
+    }
+    return text;
+  }
+  mutate('MEET_AUTHENTICATION_REMOVED', meetRoutes, text => changeMeetGuards(text, 'authentication'));
+  mutate('MEET_ADMIN_GUARD_REMOVED', meetRoutes, text => changeMeetGuards(text, 'admin'));
+  mutate('MEET_GUARDS_AFTER_VALIDATION', meetRoutes, text => changeMeetGuards(text, 'validation'));
+  mutate('MEET_CALLBACK_GATED', meetRoutes, text => once(text,
+    "  '/google-oauth/callback',\n  validate(googleOAuthCallbackQuerySchema, 'query'),",
+    "  '/google-oauth/callback',\n  authenticate,\n  requireAdmin,\n  validate(googleOAuthCallbackQuerySchema, 'query'),"));
   requireThat(JSON.stringify(Object.keys(mutants)) === JSON.stringify(ports.requiredSensitivityIds), 'MUTANT_SET');
   // Retain focused semantic diagnostics without evaluating any application
   // module or resolving excluded capabilities into the rest of the monolith.

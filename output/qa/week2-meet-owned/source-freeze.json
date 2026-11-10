@@ -1,0 +1,22 @@
+{
+  "schema": "SD-MEET-OWNED-SOURCE-FREEZE-1",
+  "baseline": "fda17dae36a19c74488779de90ce22ddbb6b1361",
+  "contractSha": "106a7500049610f6b08f96165598e677a34cd544aeca14d7676bc3f50ffa4d3a",
+  "interfaceSha": "e407aaf502c7ccdaffd60fb299b8b3417c5d2cc518000b555e13d79054e5fede",
+  "portsSha": "86d6b909c06387c52c8d62e3b99a10784d9612fb6fc63581faf6d3e96ee13a12",
+  "files": {
+    "test/api-runtime/scenario/scenario.cjs": "4ceca6c30921a3718b1b81912bebf6b8c735adbab6f82293c502e281d1f4f668",
+    "test/api-runtime/scenario/compile.cjs": "ecf823aba516c9c1bba8ce7ae62c2db32a7d648721239c363bb1f6aad84584df",
+    "test/api-runtime/scenario/README.md": "1456a82024105ccdc23c1bc6a2aa7b4c52402d4deef8c6aea6a2c71826b44b20",
+    "output/qa/week2-meet-owned/verify-source.py": "aa16aa3511c1432b386806fd125d3d38ef2368fe959108a7f633f5ebd86a7acf",
+    "output/qa/week2-meet-owned/source-verification.json": "ccca26f6fd212c5aa5c37935c1b1ed8f7685f237d12d9cd3966133d2719bac16",
+    "output/qa/week2-meet-owned/pure-checks.json": "c0d1db239d9cbaf1bee9445a269d839ee61dd8f875e20c4d1f648903ccd83f60",
+    "output/qa/week2-meet-owned/candidate.diff": "ef9cca8c28dc7482aacc51eb8215bf827042e8fd62ed38e8da6a557704702550",
+    "output/qa/week2-meet-owned/README.md": "8f882f11f7100d81b3720ba765d14bcee5acd01f17d197329b27248550089fc7"
+  },
+  "nominal": 76,
+  "sensitivity": 21,
+  "sourceReview": "PENDING_TWO_COMBINED_NONAUTHOR_REVIEWS",
+  "compiler": "NOT_RUN",
+  "runtime": "NOT_RUN"
+}
