@@ -36,8 +36,8 @@
       "command": "env -i TMPDIR=/tmp /private/tmp/m0-node22/node test/foundation/run.mjs",
       "exit_code": 0,
       "counts": {
-        "tests": 318,
-        "pass": 318,
+        "tests": 324,
+        "pass": 324,
         "fail": 0,
         "cancelled": 0,
         "skipped": 0,
@@ -51,8 +51,8 @@
       "command": "env -i TMPDIR=/tmp /Users/shubham/.nvm/versions/node/v24.19.0/bin/node test/foundation/run.mjs",
       "exit_code": 0,
       "counts": {
-        "tests": 318,
-        "pass": 318,
+        "tests": 324,
+        "pass": 324,
         "fail": 0,
         "cancelled": 0,
         "skipped": 0,
@@ -65,14 +65,14 @@
       "name": "extracted-block probe node22",
       "command": "env -i /private/tmp/m0-node22/node --permission --allow-fs-read=<worktree> output/qa/foundation-network-admission/network-block-probe.mjs",
       "exit_code": 0,
-      "cases": 8,
+      "cases": 9,
       "stdout": "output/qa/foundation-network-admission/node22-network-block.stdout.json"
     },
     {
       "name": "extracted-block probe node24",
       "command": "env -i /Users/shubham/.nvm/versions/node/v24.19.0/bin/node --permission --allow-fs-read=<worktree> output/qa/foundation-network-admission/network-block-probe.mjs",
       "exit_code": 0,
-      "cases": 8,
+      "cases": 9,
       "stdout": "output/qa/foundation-network-admission/node24-network-block.stdout.json",
       "identical_to_node22": true
     },
@@ -87,7 +87,7 @@
       "exit_code": 0
     }
   ],
-  "new_unit_cases": 133,
+  "new_unit_cases": 139,
   "probe_bound_hashes": {
     "bootstrap.mjs": "23851a078af2b2311f17289378556a8871bea3e3cbcd67dede448b525f974c8c",
     "app-bundle.mjs": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2",
@@ -95,13 +95,14 @@
   },
   "changed_source_sha256": {
     "test/application/app-bundle.mjs": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2",
-    "test/application/app-bundle.test.mjs": "8406c4b83b40d6dd888226ba7d81c75957a26f0d448fb50c8d2f7f6c92ebec75",
+    "test/application/app-bundle.test.mjs": "946d91beef900cbe11854340353667083a64a485378b903c6f283558e1425fde",
     "test/application/bootstrap.mjs": "23851a078af2b2311f17289378556a8871bea3e3cbcd67dede448b525f974c8c",
     "test/application/app-container.mjs": "e0833fa33da450eb39c76a826d54c02deffdef4ec374a1ea7fcc8fac1cbbacfa",
     "test/application/app-container.test.mjs": "584e60d4b25895669c8d119a229ac181cfd7c9bd602e17481a0999bf2c67101b",
-    "test/application/README.md": "caf2b06c72c46b0b2fce0fec2ff772967d10717dac1649d8037a3b9c4fbaa3ae",
-    "documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md": "28da67f7535489ace08866d6025f94883dd7f346003d9deb83a7de21ec8232d0",
-    "documentation/planning/implementation/APP_NETWORK_ADMISSION_CONTRACT.md": "a98160c0d430eda011fce1951d8b4b50cf007fa12f841cf5933ce14e051f8483"
+    "test/application/README.md": "3bb629895758c62ad72d646cf2a77c40f7118f7858758cb1e537cb6e3e6474dc",
+    "documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md": "0a93e0d16625bd43b983f037d2c75f70cc336b78bd6bc4ba1c19a4cf3fe3613e",
+    "documentation/planning/implementation/APP_NETWORK_ADMISSION_CONTRACT.md": "da5ef78316fa32b8a9ea6f1b61c4b38d672f9b20c81b70c69d9042ff909cf657",
+    "test/foundation/README.md": "9ecaf4e43bae6c796546f598cc0f346c13a891832612df77e3a1d0f0c89823d8"
   },
   "unchanged_source_sha256": {
     "test/foundation/run.mjs": "f14c1830b0fbe23c1be454cb97003c6c6fb58fdb11bee0ac8bc91134d63ca0c9",
@@ -118,21 +119,125 @@
     "output/qa/foundation-network-admission/baseline-before-change-node22.tap": "aacf7eb1da97a592d93ac2606ee2e1f2e9527a135dcfd2fd630c68b8d1c97a86",
     "output/qa/foundation-network-admission/bootstrap-check.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "output/qa/foundation-network-admission/bootstrap-check.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "output/qa/foundation-network-admission/network-block-probe.mjs": "820440639fc7ecdc0bc1a3c2b9f1188a794428340581e6153622d794e0ec751b",
+    "output/qa/foundation-network-admission/network-block-probe.mjs": "49581547a9f5011d0b1fc04bd75e160c1e8f481e0c9c43bd67fd312b2b2bd33c",
     "output/qa/foundation-network-admission/node22-network-block.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "output/qa/foundation-network-admission/node22-network-block.stdout.json": "02486f75d0c41f79116ee0a9293735ac5b90655b34a1e835b799bc90acf2d513",
+    "output/qa/foundation-network-admission/node22-network-block.stdout.json": "40b35f06fb3b98e54bbc48ba4a2c12f8b90cd61d65ba685a98f0210cb1ac2383",
     "output/qa/foundation-network-admission/node22.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "output/qa/foundation-network-admission/node22.tap": "9e9ca33f9688c9aad7b91288fabc5f3ce722fde0829f44794c49fad7db0d55d0",
+    "output/qa/foundation-network-admission/node22.tap": "f9fc45b531a5aa781a5932ea4f4fd7b30702bdd3ecc869177f79454d43e35708",
     "output/qa/foundation-network-admission/node24-network-block.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "output/qa/foundation-network-admission/node24-network-block.stdout.json": "02486f75d0c41f79116ee0a9293735ac5b90655b34a1e835b799bc90acf2d513",
+    "output/qa/foundation-network-admission/node24-network-block.stdout.json": "40b35f06fb3b98e54bbc48ba4a2c12f8b90cd61d65ba685a98f0210cb1ac2383",
     "output/qa/foundation-network-admission/node24.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "output/qa/foundation-network-admission/node24.tap": "45fa052ba4d2c18172cf906501f4415deccef8f0f26d3c21646f1ccd73c6305f"
+    "output/qa/foundation-network-admission/node24.tap": "e86862e2f9a237eb053274c27c3de347506f2df63cbd91be04513158a53f4b78"
   },
-  "offline_mutation_checks": "Seven scratch-copy mutations in /tmp (lax flags, no volatile-bit check, verify always true, any canary rejection, no 127.0.0.1 requirement, no loopback operstate check, no stderr report) each produced unit failures; scratch removed, not retained.",
   "not_claimed": [
     "real Docker/kernel behaviour",
     "ENETUNREACH at runtime",
     "route or namespace provenance",
     "C3/M0 acceptance"
-  ]
+  ],
+  "revision": "containment-review nits closed (tests, probe and wording only; no admission-semantics change)",
+  "reviewed_implementation_commit": "a609a60e5bf91afbd523b3ee407ee8c6e060c8d4",
+  "mutation_checks": {
+    "method": "Scratch copies under /private/tmp, deleted afterwards. Unit mutations patch app-bundle.mjs and run node --test on app-bundle.test.mjs and app-container.test.mjs (Node 22.23.4). The probe mutation patches bootstrap.mjs in a mirrored scratch tree and runs the probe under --permission.",
+    "controls": {
+      "unit_unmutated_failing_tests": 0,
+      "probe_unmutated_exit_code": 0,
+      "note": "A first probe-control attempt exited 1 because its read grant used /tmp while the script resolved to /private/tmp; that S5 result was discarded and both were rerun with the resolved path."
+    },
+    "results": [
+      {
+        "id": "M1-lax-flags",
+        "check": "unit",
+        "failing_tests": 3,
+        "killed": true,
+        "first_failure": "not ok 44 - N6 lo flags \"0x09\" is rejected by a throw"
+      },
+      {
+        "id": "M2-no-volatile-bits",
+        "check": "unit",
+        "failing_tests": 4,
+        "killed": true,
+        "first_failure": "not ok 72 - N10 tunl0 volatile flags 0xc0 is rejected by a throw"
+      },
+      {
+        "id": "M3-verify-always-true",
+        "check": "unit",
+        "failing_tests": 6,
+        "killed": true,
+        "first_failure": "not ok 202 - K3 dropped down device cannot produce passing application evidence"
+      },
+      {
+        "id": "M4-canary-any-rejection",
+        "check": "unit",
+        "failing_tests": 9,
+        "killed": true,
+        "first_failure": "not ok 135 - E4 timeout is not measured egress blocking"
+      },
+      {
+        "id": "M5-no-127-requirement",
+        "check": "unit",
+        "failing_tests": 1,
+        "killed": true,
+        "first_failure": "not ok 97 - N16 IPv6 loopback only is rejected by a throw"
+      },
+      {
+        "id": "M6-no-loopback-operstate",
+        "check": "unit",
+        "failing_tests": 6,
+        "killed": true,
+        "first_failure": "not ok 65 - N8 loopback operstate dormant is rejected by a throw"
+      },
+      {
+        "id": "M7-no-stderr-report",
+        "check": "unit",
+        "failing_tests": 4,
+        "killed": true,
+        "first_failure": "not ok 117 - A2 a rejected observation is reported once with its run identity before the throw"
+      },
+      {
+        "id": "S1-loopback-count-at-most-one",
+        "check": "unit",
+        "failing_tests": 1,
+        "killed": true,
+        "first_failure": "not ok 31 - N2 loopback missing is rejected by a throw"
+      },
+      {
+        "id": "S2-no-addressed-name-check",
+        "check": "unit",
+        "failing_tests": 1,
+        "killed": true,
+        "first_failure": "not ok 103 - N16 loopback address on a non-loopback name is rejected by a throw"
+      },
+      {
+        "id": "S3-canary-message-text",
+        "check": "unit",
+        "failing_tests": 1,
+        "killed": true,
+        "first_failure": "not ok 153 - E10 ENETUNREACH only in message text is not measured egress blocking"
+      },
+      {
+        "id": "S4-canary-nested-cause",
+        "check": "unit",
+        "failing_tests": 1,
+        "killed": true,
+        "first_failure": "not ok 154 - E11 nested cause code is not measured egress blocking"
+      },
+      {
+        "id": "S6-reader-ports-unchecked-before-list",
+        "check": "unit",
+        "failing_tests": 3,
+        "killed": true,
+        "first_failure": "not ok 125 - A6 missing entryType port is refused before listing"
+      },
+      {
+        "id": "S5-bootstrap-addresses-binding",
+        "check": "probe",
+        "exit_code": 1,
+        "killed": true,
+        "first_error": "AssertionError [ERR_ASSERTION]"
+      }
+    ],
+    "killed": 13,
+    "total": 13
+  }
 }

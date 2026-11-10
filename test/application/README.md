@@ -19,11 +19,20 @@ UNIT_NODE="$(command -v node)"
 env -i TMPDIR=/tmp "$UNIT_NODE" test/foundation/run.mjs
 ```
 
-The 318 unit cases pass on Node 22.23.4 and 24.19.0, using fake Docker and synthetic text fixtures. Any non-empty test-seam object must own an explicit callable executor, captured once; real transport always uses the committed profile and fixed repository sources. Invalid overrides are rejected before allocation or socket/process access. Real bootstrap, scenario and application imports are excluded. Twenty executable negative canaries plus two synthetic positive controls exercise the runner itself.
+The 324 unit cases pass on Node 22.23.4 and 24.19.0, using fake Docker and synthetic text fixtures. Any non-empty test-seam object must own an explicit callable executor, captured once; real transport always uses the committed profile and fixed repository sources. Invalid overrides are rejected before allocation or socket/process access. Real bootstrap, scenario and application imports are excluded. Twenty executable negative canaries plus two synthetic positive controls exercise the runner itself.
 
 `verify_local_admission.py` supplies separate offline companion probes: regular/link bundle identity with owned synthetic files, a copy of the launcher with its entire factory replaced by simulation, and addon permission metadata (no addon loaded). All 20 companion checks pass across the two runtimes, including factory failure/interruption after the captured ID. The controller now synchronously emits the exact create-acknowledged ID/run ID/workspace before its post-create Docker checks; the launcher no longer duplicates that record. This record supports recovery after interruption; it is not ownership proof by itself. [Current offline evidence](../../output/qa/m0-a/app-isolation/revision-2/verification.json) and [candidate contract](../../documentation/planning/implementation/APP_NETWORK_DIAGNOSTIC_CONTRACT.md).
 
-Bootstrap always records bounded entry kind/flags/state/type and assigned-address evidence beneath the existing sysfs grant. `evaluateNetworkAdmission` admits only one running `lo`, `ENOTDIR` control files and admin-down non-loopback devices, with loopback-only internal addresses including `127.0.0.1`; every other observation throws after one bounded stderr record. The controller recomputes the reported `networkAdmission` summary instead of comparing names. No `/proc` read or new grant is added and routes are not read; the `ENETUNREACH` canary is the runtime route measurement. The [extracted-block probe](../../output/qa/foundation-network-admission/network-block-probe.mjs) covers the bootstrap wiring. [Offline evidence](../../output/qa/foundation-network-admission/verification.json). The candidate has not run against Docker.
+Bootstrap always attempts to record bounded entry kind/flags/state/type and assigned-address evidence beneath the existing sysfs grant. `evaluateNetworkAdmission` admits only:
+
+- one up `lo`: IFF_UP and IFF_LOOPBACK set, with RUNNING, LOWER_UP and DORMANT absent;
+- `ENOTDIR` control files;
+- admin-down non-loopback devices;
+- loopback-only internal addresses, which must include `127.0.0.1`.
+
+An admission rejection throws after one bounded stderr record. A failed listing, more than 16 names or invalid names throw before any record exists. The controller recomputes the reported `networkAdmission` summary instead of comparing names. No `/proc` read or new grant is added, and routes are not read.
+
+The canary must fail with `ENETUNREACH`. Given the interface rule, that is consistent with no IPv4 route, but it is not independent proof: an ICMP net-unreachable during connect can also produce it. The [extracted-block probe](../../output/qa/foundation-network-admission/network-block-probe.mjs) covers the bootstrap wiring. [Offline evidence](../../output/qa/foundation-network-admission/verification.json). The candidate has not run against Docker.
 
 The single approved invocation cached the exact image through an owned blank Docker config, then failed at `bootstrap.mjs:16` because the sysfs directory listing contained extra entries. The helper/scenario, seven receipts, HTTP canary and subsequent permission assertions were not reached. Extra names alone do not prove inactive or harmless interfaces. The controller cleaned the exact container/workspace; independent same-engine/exact-ID/workspace/label checks confirmed absence. No second container was created.
 

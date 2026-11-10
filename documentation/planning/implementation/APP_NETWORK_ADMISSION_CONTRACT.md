@@ -20,15 +20,22 @@ The record does **not** establish routes, namespace identity, addresses on down 
 
 This contract **supersedes the route-observation and new-read-path requirement**. Its fixture requirements are kept (section 8).
 
+It also **supersedes the sentence that the evidence does not "justify an observed-name or down-state allowlist"**. The rule is not an allowlist of observed names or sampled states. It admits any admin-down non-loopback device semantically, and that admission rests on the justification below, not on the sample.
+
 The justification is not the sampled names or states. It is:
 1. the capability argument (section 5); and
-2. a new runtime measurement: the egress canary must fail with `ENETUNREACH` (section 4).
+2. a runtime consistency check: the egress canary must fail with `ENETUNREACH` (section 4).
 
 The measured record is only the positive fixture P1. The rule names nothing except `lo`.
 
 ## 3. Admission rule
 
-Bootstrap always captures the `APP-NET-DIAG-1` record. `evaluateNetworkAdmission(observation)` validates the record's complete shape:
+Bootstrap always attempts to capture the `APP-NET-DIAG-1` record. Three failures throw before any record exists, so none is written:
+- the listing itself fails;
+- more than 16 names;
+- invalid names.
+
+`evaluateNetworkAdmission(observation)` validates the record's complete shape:
 - exact keys and tag;
 - 1–16 entries, with valid, strictly ascending names;
 - each field is a string or an exact `{unavailable: CODE}`.
@@ -48,7 +55,7 @@ Parsing rules:
 
 Any other value, kind, unavailable field or reader error rejects.
 
-## 4. Egress measurement
+## 4. Egress canary
 
 `egressCanaryBlocked(settled)` takes a `Promise.allSettled` result for the canary fetch. It returns true only when the fetch was rejected and `reason.cause.code`, or a direct `reason.code`, is `ENETUNREACH`. Every other outcome fails and bootstrap throws:
 - success;
@@ -57,7 +64,9 @@ Any other value, kind, unavailable field or reader error rejects.
 - any other code;
 - a missing or malformed outcome.
 
-Scope (lead decision): the IPv4 documentation address `192.0.2.1:8080` only. No grant is added. At the next real run this measures that no IPv4 route covered that address. IPv6 routing is not measured.
+Scope (lead decision): the IPv4 documentation address `192.0.2.1:8080` only. No grant is added.
+
+Given the interface rule, `ENETUNREACH` at the next real run is consistent with no IPv4 route covering that address. It is **not independent proof**: an ICMP net-unreachable received during SYN_SENT can also produce it. IPv6 routing is not measured.
 
 ## 5. Soundness basis and residual risk
 
@@ -74,9 +83,10 @@ Scope (lead decision): the IPv4 documentation address `192.0.2.1:8080` only. No 
 - a device that is not up cannot transmit;
 - raising links and changing addresses or routes needs CAP_NET_ADMIN, and packet sockets need CAP_NET_RAW;
 - the fallback-tunnel sysctl behaves as described;
-- libuv lists only interfaces that are UP, RUNNING and addressed.
+- libuv lists only interfaces that are UP, RUNNING and addressed;
+- `ENETUNREACH` on connect arises from a missing route, but may also come from a received ICMP net-unreachable.
 
-**Measured at the next real run:** `ENETUNREACH`, and every entry's kind, flags, operstate, type and addresses under the rule.
+**Observed at the next real run:** the canary's error code (consistent with, not proof of, no route), and every entry's kind, flags, operstate, type and addresses under the rule.
 
 **Remaining assumptions after that run:**
 - down devices cannot transmit or be raised;
@@ -84,7 +94,7 @@ Scope (lead decision): the IPv4 documentation address `192.0.2.1:8080` only. No 
 - IPv6 routes.
 
 **Residuals:**
-- Admitted down devices could include a veth whose peer is outside the container. Only the trusted host could raise it.
+- Any admitted down device could have its other end outside the container: a veth peer, a macvlan/ipvlan parent, a tun/tap file-descriptor holder, or a tunnel underlay. Raising or using that path is host-only, under the trusted-host model.
 - `HostConfig.Sysctls`, `Runtime` and `GroupAdd` stay unasserted.
 - The observation is point-in-time.
 
@@ -119,7 +129,7 @@ On rejection, bootstrap writes the bounded `{...observation, runId}` stderr reco
 
 **Evaluator, negative:**
 - **N1:** active `eth0` (`0x1003`, `up`, type 1, non-internal `172.17.0.2`).
-- **N2:** `lo` missing.
+- **N2:** `lo` missing while its address row remains, so only the loopback count can reject it.
 - **N3:** `lo` down (`0x8`).
 - **N4:** `lo` with `0x1`, or type 1, or kind `file`, or kind `directory`.
 - **N5:** `lo2` with `0x0` and type 772; `dummy0` with `0x88`.
@@ -133,7 +143,7 @@ On rejection, bootstrap writes the bounded `{...observation, runId}` stderr reco
 - **N13:** a symlink with all `ENOTDIR`, or all `ENOENT`.
 - **N14:** type `772x`, `-1`, `70000`, `0772` or unavailable; `lo` with type `0772`.
 - **N15:** `tunl0` addressed.
-- **N16:** on `lo`: `10.1.2.3`, `127.0.0.2`, `fe80::1`, `::ffff:127.0.0.1`, swapped families, a duplicate `::1`, `::1` only, a non-internal `127.0.0.1`, addresses unavailable, no `lo` entry, an empty address list, or a second addressed interface.
+- **N16:** on `lo`: `10.1.2.3`, `127.0.0.2`, `fe80::1`, `::ffff:127.0.0.1`, swapped families, a duplicate `::1`, `::1` only, a non-internal `127.0.0.1`, addresses unavailable, no `lo` entry, an empty address list, a second addressed interface, or `127.0.0.1` reported on `tunl0` instead of `lo`.
 - **N17:** 17 entries.
 - **N18:** a malformed record: wrong tag, unknown or missing key, an extra entry key, unsorted or duplicate names, `null`, a numeric field, an unavailable object with an extra key, or a lowercase code.
 
@@ -143,7 +153,7 @@ On rejection, bootstrap writes the bounded `{...observation, runId}` stderr reco
 - **A3:** `list` throws: no record, no reads.
 - **A4:** 17 names: no record, no reads.
 - **A5:** each reader throws: one record, then throws.
-- **A6:** a missing port or invalid `runId` throws before listing.
+- **A6:** a missing `list`, `entryType`, `readText`, `addresses` or `report` port, or an invalid `runId`, throws before listing. Validation already ran before `list()`; no code change was needed.
 - **A7:** `lo` only is admitted; an unsorted listing is sorted.
 
 **`entryKind`:** all four kinds, with symlink taking precedence.
@@ -151,6 +161,7 @@ On rejection, bootstrap writes the bounded `{...observation, runId}` stderr reco
 **Canary:**
 - **E1–E2:** `ENETUNREACH` as `cause.code` or as a direct `code` returns true.
 - **E3–E9:** these return false: success; `TimeoutError`; `AbortError`; `ECONNREFUSED`/`EHOSTUNREACH`/`ENETDOWN`/`ETIMEDOUT`; a null, primitive or absent reason; an unknown status; lowercase `enetunreach`.
+- **E10–E11:** these also return false, which pins the fail-closed decision: `ENETUNREACH` only in the cause's message text, and a code nested in `cause.cause`.
 
 **Controller:**
 - **K1:** P1 is accepted.
@@ -166,6 +177,7 @@ On rejection, bootstrap writes the bounded `{...observation, runId}` stderr reco
 - **B2:** N1 emits one record, then throws.
 - **B3:** `readdirSync` throws: no record.
 - **B4:** `['lo']` continues.
+- **B5:** a down `tunl0` with an address row emits one record, then throws. This pins the `addresses` binding.
 - **C1:** `ENETUNREACH` continues; exactly one fetch to `192.0.2.1:8080` with a signal.
 - **C2–C4:** success, timeout and `ECONNREFUSED` each throw.
 

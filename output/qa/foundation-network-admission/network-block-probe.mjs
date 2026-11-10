@@ -40,6 +40,8 @@ const active = clone(measured);
 active.entries.splice(2, 0, { name: 'eth0', kind: 'symlink', flags: '0x1003', operstate: 'up', type: '1' });
 active.addressedInterfaces.push({ name: 'eth0', addresses: [{ address: '172.17.0.2', family: 'IPv4', internal: false }] });
 const loopbackOnly = { ...clone(measured), entries: measured.entries.filter((row) => row.name === 'lo') };
+const addressedDown = clone(measured);
+addressedDown.addressedInterfaces.push({ name: 'tunl0', addresses: [{ address: '10.0.0.1', family: 'IPv4', internal: false }] });
 
 function runNetworkBlock(mode, record) {
   const state = { lists: 0, reads: 0, records: [], continued: false };
@@ -107,6 +109,14 @@ const results = [];
   const { state, summary } = runNetworkBlock('loopback', loopbackOnly);
   assert.ok(state.continued && state.records.length === 0 && summary.downDevices.length === 0);
   results.push({ case: "B4 ['lo'] continues", continued: true, stderrRecords: 0, metadataReads: state.reads });
+}
+{
+  // Pins bootstrap's addresses binding: only the OS address port can supply this tunl0 row.
+  const { state, error } = runNetworkBlock('addressed-down', addressedDown);
+  assert.ok(!state.continued && /Network admission rejected: addressed interfaces/.test(error?.message));
+  assert.equal(state.records.length, 1);
+  assert.ok(state.records[0].addressedInterfaces.some((row) => row.name === 'tunl0'));
+  results.push({ case: 'B5 addressed down tunl0 reports once then throws', continued: false, stderrRecords: 1, error: error.message });
 }
 
 async function runCanaryBlock(outcome) {

@@ -227,10 +227,9 @@ const negatives = [
     insert(record, device('eth0', '0x1003', '1', 'up'));
     record.addressedInterfaces.push({ name: 'eth0', addresses: [v4('172.17.0.2', false)] });
   })],
-  ['N2 loopback missing', () => edit((record) => {
-    record.entries = record.entries.filter((row) => row.name !== 'lo');
-    record.addressedInterfaces = [];
-  })],
+  // Keeps lo's address row so only the loopback count can reject it.
+  ['N2 loopback missing', () => ({ tag: 'APP-NET-DIAG-1', entries: [device('tunl0', '0x80', '768')],
+    addressedInterfaces: [{ name: 'lo', addresses: [v4('127.0.0.1')] }] })],
   ['N3 loopback down', () => edit((record) => { Object.assign(entry(record, 'lo'), { flags: '0x8', operstate: 'down' }); })],
   ['N4 loopback without IFF_LOOPBACK', () => edit((record) => { entry(record, 'lo').flags = '0x1'; })],
   ['N4 loopback with Ethernet type', () => edit((record) => { entry(record, 'lo').type = '1'; })],
@@ -288,6 +287,10 @@ negatives.push(
   ['N16 no addressed loopback', () => edit((record) => { record.addressedInterfaces = []; })],
   ['N16 empty loopback address list', () => edit((record) => { record.addressedInterfaces[0].addresses = []; })],
   ['N16 second addressed interface', () => edit((record) => { record.addressedInterfaces.push({ name: 'lo2', addresses: [v4('127.0.0.1')] }); })],
+  // Only the addressed-name check can reject this: the single row carries a valid loopback address.
+  ['N16 loopback address on a non-loopback name', () => ({ tag: 'APP-NET-DIAG-1',
+    entries: [device('lo', '0x9', '772', 'unknown'), device('tunl0', '0x80', '768')],
+    addressedInterfaces: [{ name: 'tunl0', addresses: [v4('127.0.0.1')] }] })],
   ['N17 seventeen entries', () => {
     const record = measured();
     for (let index = 0; index < 6; index++) insert(record, device('zz' + index, '0x80', '768'));
@@ -379,6 +382,9 @@ for (const reader of ['entryType', 'readText', 'addresses']) {
 for (const [label, change] of [
   ['missing report port', (ports) => { delete ports.report; return runId; }],
   ['missing list port', (ports) => { delete ports.list; return runId; }],
+  ['missing entryType port', (ports) => { delete ports.entryType; return runId; }],
+  ['missing readText port', (ports) => { delete ports.readText; return runId; }],
+  ['missing addresses port', (ports) => { delete ports.addresses; return runId; }],
   ['invalid run identity', () => 'forged'],
 ]) {
   test(`A6 ${label} is refused before listing`, () => {
@@ -437,6 +443,9 @@ const notBlocked = [
   ...[undefined, null, {}, 'rejected', { status: 'pending' }, { status: 'REJECTED', reason: unreachable() }].map((settled) =>
     [`E8 settled ${JSON.stringify(settled) ?? 'undefined'}`, settled]),
   ['E9 lowercase code', { status: 'rejected', reason: failedFetch(Object.assign(new Error('synthetic'), { code: 'enetunreach' })) }],
+  // Fail closed: message text alone, or a code nested deeper than one cause, is not a measurement.
+  ['E10 ENETUNREACH only in message text', { status: 'rejected', reason: failedFetch(new Error('connect ENETUNREACH 192.0.2.1:8080')) }],
+  ['E11 nested cause code', { status: 'rejected', reason: failedFetch(new Error('wrapper', { cause: unreachable() })) }],
 ];
 for (const [label, settled] of notBlocked) {
   test(`${label} is not measured egress blocking`, () => {
