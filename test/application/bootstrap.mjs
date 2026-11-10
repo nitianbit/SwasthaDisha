@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { lstatSync, readFileSync, readdirSync, writeFileSync, writeSync } from 'node:fs';
 import { networkInterfaces as addressedNetworkInterfaces } from 'node:os';
-import { assertBundle, captureNetworkDiagnostics, PORT_OPERATIONS, ROLE, requireThat } from './app-bundle.mjs';
+import {
+  admitNetwork, assertBundle, egressCanaryBlocked, entryKind, PORT_OPERATIONS, ROLE, requireThat,
+} from './app-bundle.mjs';
 
 const allowedEnvironment = new Set([
   'PATH', 'NODE_VERSION', 'YARN_VERSION', 'HOME', 'HOSTNAME',
@@ -13,21 +15,14 @@ requireThat(Object.keys(process.env).every((key) => allowedEnvironment.has(key))
 requireThat(process.cwd() === '/workspace' && process.version === 'v22.23.4'
   && process.platform === 'linux' && process.permission, 'Unadmitted application runtime');
 assertBundle('/workspace', { runId: process.env.APP_RUN_ID, manifestSha: process.env.APP_MANIFEST_SHA });
-const networkInterfaces = readdirSync('/sys/class/net').sort();
-if (networkInterfaces.length !== 1 || networkInterfaces[0] !== 'lo') {
-  const diagnostics = captureNetworkDiagnostics(networkInterfaces, {
-    entryType(path) {
-      const entry = lstatSync(path);
-      return entry.isSymbolicLink() ? 'symlink' : entry.isFile() ? 'file' : entry.isDirectory() ? 'directory' : 'other';
-    },
-    readText: (path) => readFileSync(path, 'utf8'),
-    addresses: addressedNetworkInterfaces,
-  });
-  const record = JSON.stringify({ ...diagnostics, runId: process.env.APP_RUN_ID });
-  requireThat(Buffer.byteLength(record) <= 8192, 'Network diagnostic output limit exceeded');
-  writeSync(2, record + '\n');
-}
-assert.deepEqual(networkInterfaces, ['lo']);
+// Decision logic is in app-bundle.mjs; this block only binds read-only ports and stderr.
+const networkAdmission = admitNetwork({
+  list: () => readdirSync('/sys/class/net'),
+  entryType: (path) => entryKind(lstatSync(path)),
+  readText: (path) => readFileSync(path, 'utf8'),
+  addresses: addressedNetworkInterfaces,
+  report: (line) => writeSync(2, line),
+}, process.env.APP_RUN_ID);
 
 // These precede dynamic scenario imports. They exercise only synthetic paths.
 assert.throws(() => readFileSync('/etc/passwd'), { code: 'ERR_ACCESS_DENIED' });
@@ -37,12 +32,10 @@ assert.equal(process.permission.has('worker'), false);
 assert.equal(process.permission.has('addon'), false);
 writeFileSync('/tmp/permission-canary', 'synthetic');
 
-let egressBlocked = false;
-try {
-  // RFC 5737 documentation address; never a real provider, with no credentials.
-  await fetch('http://192.0.2.1:8080/', { signal: AbortSignal.timeout(1500) });
-} catch { egressBlocked = true; }
-requireThat(egressBlocked, 'External network canary unexpectedly succeeded');
+// RFC 5737 documentation address; never a real provider, with no credentials.
+const [egressCanary] = await Promise.allSettled([fetch('http://192.0.2.1:8080/', { signal: AbortSignal.timeout(1500) })]);
+const egressBlocked = egressCanaryBlocked(egressCanary);
+requireThat(egressBlocked, 'External network canary was not refused as unreachable');
 
 const { createRecordingPorts } = await import('./app-ports.mjs');
 const ports = createRecordingPorts();
@@ -54,5 +47,5 @@ requireThat(calls.every((call) => call.effect === false && call.status === 'reco
 console.log(JSON.stringify({
   runId: process.env.APP_RUN_ID, role: ROLE, manifestSha: process.env.APP_MANIFEST_SHA,
   admissionPassed: true, egressBlocked, filesystemCanariesPassed: true,
-  databaseMode: 'not-admitted', networkInterfaces, calls, scenario,
+  databaseMode: 'not-admitted', networkAdmission, calls, scenario,
 }));

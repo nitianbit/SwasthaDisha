@@ -1,0 +1,138 @@
+{
+  "status": "OFFLINE_UNIT_GATE_AND_PROBE_PASS",
+  "scope": "network admission candidate; offline unit gate, extracted-block probe and syntax checks only; no Docker, network, install, application/src1 import, push or Ruflo",
+  "branch": "m0/foundation-network-admission",
+  "base_commit": "9ea963f",
+  "contract_commit": "d4ed07f6fcccabbd3149f3b858c618dc1892e123",
+  "runtimes": {
+    "node22": {
+      "path": "/private/tmp/m0-node22/node",
+      "version": "v22.23.4",
+      "sha256": "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0"
+    },
+    "node24": {
+      "path": "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+      "version": "v24.19.0",
+      "sha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1"
+    }
+  },
+  "checks": [
+    {
+      "name": "baseline unit gate before change (node22)",
+      "command": "env -i TMPDIR=/tmp /private/tmp/m0-node22/node test/foundation/run.mjs",
+      "exit_code": 0,
+      "counts": {
+        "tests": 185,
+        "pass": 185,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "tap": "output/qa/foundation-network-admission/baseline-before-change-node22.tap"
+    },
+    {
+      "name": "unit gate node22",
+      "command": "env -i TMPDIR=/tmp /private/tmp/m0-node22/node test/foundation/run.mjs",
+      "exit_code": 0,
+      "counts": {
+        "tests": 318,
+        "pass": 318,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "tap": "output/qa/foundation-network-admission/node22.tap",
+      "stderr": "output/qa/foundation-network-admission/node22.stderr.txt"
+    },
+    {
+      "name": "unit gate node24",
+      "command": "env -i TMPDIR=/tmp /Users/shubham/.nvm/versions/node/v24.19.0/bin/node test/foundation/run.mjs",
+      "exit_code": 0,
+      "counts": {
+        "tests": 318,
+        "pass": 318,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "tap": "output/qa/foundation-network-admission/node24.tap",
+      "stderr": "output/qa/foundation-network-admission/node24.stderr.txt"
+    },
+    {
+      "name": "extracted-block probe node22",
+      "command": "env -i /private/tmp/m0-node22/node --permission --allow-fs-read=<worktree> output/qa/foundation-network-admission/network-block-probe.mjs",
+      "exit_code": 0,
+      "cases": 8,
+      "stdout": "output/qa/foundation-network-admission/node22-network-block.stdout.json"
+    },
+    {
+      "name": "extracted-block probe node24",
+      "command": "env -i /Users/shubham/.nvm/versions/node/v24.19.0/bin/node --permission --allow-fs-read=<worktree> output/qa/foundation-network-admission/network-block-probe.mjs",
+      "exit_code": 0,
+      "cases": 8,
+      "stdout": "output/qa/foundation-network-admission/node24-network-block.stdout.json",
+      "identical_to_node22": true
+    },
+    {
+      "name": "syntax check bootstrap.mjs",
+      "command": "{node22,node24} --check test/application/bootstrap.mjs",
+      "exit_code": 0
+    },
+    {
+      "name": "whitespace",
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "new_unit_cases": 133,
+  "probe_bound_hashes": {
+    "bootstrap.mjs": "23851a078af2b2311f17289378556a8871bea3e3cbcd67dede448b525f974c8c",
+    "app-bundle.mjs": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2",
+    "measured_record_without_runId": "9c2f54c44a0f5398ff65629f2e5071fe956b2aa8d42bc91257864edd2dffc473"
+  },
+  "changed_source_sha256": {
+    "test/application/app-bundle.mjs": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2",
+    "test/application/app-bundle.test.mjs": "8406c4b83b40d6dd888226ba7d81c75957a26f0d448fb50c8d2f7f6c92ebec75",
+    "test/application/bootstrap.mjs": "23851a078af2b2311f17289378556a8871bea3e3cbcd67dede448b525f974c8c",
+    "test/application/app-container.mjs": "e0833fa33da450eb39c76a826d54c02deffdef4ec374a1ea7fcc8fac1cbbacfa",
+    "test/application/app-container.test.mjs": "584e60d4b25895669c8d119a229ac181cfd7c9bd602e17481a0999bf2c67101b",
+    "test/application/README.md": "caf2b06c72c46b0b2fce0fec2ff772967d10717dac1649d8037a3b9c4fbaa3ae",
+    "documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md": "28da67f7535489ace08866d6025f94883dd7f346003d9deb83a7de21ec8232d0",
+    "documentation/planning/implementation/APP_NETWORK_ADMISSION_CONTRACT.md": "a98160c0d430eda011fce1951d8b4b50cf007fa12f841cf5933ce14e051f8483"
+  },
+  "unchanged_source_sha256": {
+    "test/foundation/run.mjs": "f14c1830b0fbe23c1be454cb97003c6c6fb58fdb11bee0ac8bc91134d63ca0c9",
+    "test/foundation/preflight.mjs": "2cdfa366dad210fe5483a52ae4c8c4b6488a4429bc8e0e8dff1f2b7f4f5487da",
+    "test/application/app-ports.mjs": "f7efb3ee12eee3f0ff427b360d9c65776c20f34c80432ac0b5a626df55408cf1",
+    "test/application/scenario.mjs": "b0a9fbc2a990cf344487d9f88a49d927fbb4fa806a794353fb3adcea9059e031",
+    "test/application/run.mjs": "95e1be85da06a121780afe39c17aea1f2bf4fb736a579fb154216ff86135f924",
+    "test/application/app-image.json": "4f1390608939a823788010499cc810801d01fd8ee44248da5424776c816a8611",
+    "test/application/app-runtime.json": "e4e0b67677e084dce5d65d958763057c5ca1b257232b5f007545a327fb40f0b3",
+    "src1/modules/common/utils/queryUtils.ts": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d"
+  },
+  "artifact_sha256": {
+    "output/qa/foundation-network-admission/baseline-before-change-node22.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/foundation-network-admission/baseline-before-change-node22.tap": "aacf7eb1da97a592d93ac2606ee2e1f2e9527a135dcfd2fd630c68b8d1c97a86",
+    "output/qa/foundation-network-admission/bootstrap-check.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/foundation-network-admission/bootstrap-check.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/foundation-network-admission/network-block-probe.mjs": "820440639fc7ecdc0bc1a3c2b9f1188a794428340581e6153622d794e0ec751b",
+    "output/qa/foundation-network-admission/node22-network-block.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/foundation-network-admission/node22-network-block.stdout.json": "02486f75d0c41f79116ee0a9293735ac5b90655b34a1e835b799bc90acf2d513",
+    "output/qa/foundation-network-admission/node22.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/foundation-network-admission/node22.tap": "9e9ca33f9688c9aad7b91288fabc5f3ce722fde0829f44794c49fad7db0d55d0",
+    "output/qa/foundation-network-admission/node24-network-block.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/foundation-network-admission/node24-network-block.stdout.json": "02486f75d0c41f79116ee0a9293735ac5b90655b34a1e835b799bc90acf2d513",
+    "output/qa/foundation-network-admission/node24.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/foundation-network-admission/node24.tap": "45fa052ba4d2c18172cf906501f4415deccef8f0f26d3c21646f1ccd73c6305f"
+  },
+  "offline_mutation_checks": "Seven scratch-copy mutations in /tmp (lax flags, no volatile-bit check, verify always true, any canary rejection, no 127.0.0.1 requirement, no loopback operstate check, no stderr report) each produced unit failures; scratch removed, not retained.",
+  "not_claimed": [
+    "real Docker/kernel behaviour",
+    "ENETUNREACH at runtime",
+    "route or namespace provenance",
+    "C3/M0 acceptance"
+  ]
+}

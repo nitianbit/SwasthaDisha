@@ -3,7 +3,10 @@ import { test } from 'node:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { assertBundle, captureNetworkDiagnostics, makeManifest, PORT_OPERATIONS, sha256, SOURCE_NAMES } from './app-bundle.mjs';
+import {
+  admitNetwork, assertBundle, captureNetworkDiagnostics, egressCanaryBlocked, entryKind, evaluateNetworkAdmission,
+  makeManifest, NETWORK_ADMISSION_TAG, PORT_OPERATIONS, sha256, SOURCE_NAMES, verifyNetworkAdmission,
+} from './app-bundle.mjs';
 import { createRecordingPorts } from './app-ports.mjs';
 
 const runId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -148,3 +151,295 @@ test('network diagnostic error codes cannot leak raw exception text', () => {
   assert.deepEqual(record.entries[0].flags, { unavailable: 'UNAVAILABLE' });
   assert.equal(JSON.stringify(record).includes('synthetic-secret'), false);
 });
+
+// ---- Network admission fixtures (APP_NETWORK_ADMISSION_CONTRACT.md section 8) ----
+
+// Exact measured 41539ca record without runId; the hashed probe ties this hash to verification.json.
+const MEASURED_RECORD_SHA256 = '9c2f54c44a0f5398ff65629f2e5071fe956b2aa8d42bc91257864edd2dffc473';
+const unavailable = (code) => ({ unavailable: code });
+const device = (name, flags, type, operstate = 'down') => ({ name, kind: 'symlink', flags, operstate, type });
+const file = (name, code = 'ENOTDIR') => ({ name, kind: 'file', flags: unavailable(code), operstate: unavailable(code), type: unavailable(code) });
+const v4 = (address, internal = true) => ({ address, family: 'IPv4', internal });
+const v6 = (address, internal = true) => ({ address, family: 'IPv6', internal });
+
+function measured() {
+  return {
+    tag: 'APP-NET-DIAG-1',
+    entries: [
+      file('bonding_masters'), device('erspan0', '0x1002', '1'), device('gre0', '0x80', '778'),
+      device('gretap0', '0x1002', '1'), device('ip6_vti0', '0x80', '769'), device('ip6gre0', '0x80', '823'),
+      device('ip6tnl0', '0x80', '769'), device('ip_vti0', '0x80', '768'), device('lo', '0x9', '772', 'unknown'),
+      device('sit0', '0x80', '776'), device('tunl0', '0x80', '768'),
+    ],
+    addressedInterfaces: [{ name: 'lo', addresses: [v4('127.0.0.1'), v6('::1')] }],
+  };
+}
+const loopbackOnly = () => ({ tag: 'APP-NET-DIAG-1', entries: [device('lo', '0x9', '772', 'unknown')],
+  addressedInterfaces: [{ name: 'lo', addresses: [v4('127.0.0.1'), v6('::1')] }] });
+const measuredDownDevices = ['erspan0', 'gre0', 'gretap0', 'ip6_vti0', 'ip6gre0', 'ip6tnl0', 'ip_vti0', 'sit0', 'tunl0'];
+
+function edit(change, base = measured()) { change(base); return base; }
+const entry = (record, name) => record.entries.find((row) => row.name === name);
+function insert(record, row) {
+  record.entries.push(row);
+  record.entries.sort((left, right) => (left.name < right.name ? -1 : 1));
+  return record;
+}
+const loAddresses = (record) => record.addressedInterfaces[0].addresses;
+
+function assertDeepFrozen(value) {
+  if (value === null || typeof value !== 'object') return;
+  assert.equal(Object.isFrozen(value), true);
+  for (const child of Object.values(value)) assertDeepFrozen(child);
+}
+
+test('P1 the exact measured record is admitted by semantics and summarized', () => {
+  assert.equal(sha256(JSON.stringify(measured())), MEASURED_RECORD_SHA256);
+  const summary = evaluateNetworkAdmission(measured());
+  assert.deepEqual(Object.keys(summary), ['tag', 'observation', 'loopback', 'controlFiles', 'downDevices', 'loopbackAddresses']);
+  assert.equal(summary.tag, NETWORK_ADMISSION_TAG);
+  assert.equal(summary.loopback, 'lo');
+  assert.deepEqual(summary.controlFiles, ['bonding_masters']);
+  assert.deepEqual(summary.downDevices, measuredDownDevices);
+  assert.deepEqual(summary.loopbackAddresses, ['127.0.0.1', '::1']);
+  assert.equal(JSON.stringify(summary.observation), JSON.stringify(measured()));
+  assertDeepFrozen(summary);
+  assert.equal(verifyNetworkAdmission(JSON.parse(JSON.stringify(summary))), true);
+});
+
+test('P2 a loopback-only namespace is admitted', () => {
+  const summary = evaluateNetworkAdmission(loopbackOnly());
+  assert.deepEqual([summary.controlFiles, summary.downDevices, summary.loopbackAddresses], [[], [], ['127.0.0.1', '::1']]);
+});
+
+test('P3 an operational-up loopback with IPv4 only and a zero-flag down device is admitted', () => {
+  const summary = evaluateNetworkAdmission(edit((record) => {
+    record.entries[0].operstate = 'up';
+    record.entries.push(device('tunl0', '0x0', '768'));
+    record.addressedInterfaces[0].addresses = [v4('127.0.0.1')];
+  }, loopbackOnly()));
+  assert.deepEqual(summary.downDevices, ['tunl0']);
+  assert.deepEqual(summary.loopbackAddresses, ['127.0.0.1']);
+});
+
+const negatives = [
+  ['N1 active eth0', () => edit((record) => {
+    insert(record, device('eth0', '0x1003', '1', 'up'));
+    record.addressedInterfaces.push({ name: 'eth0', addresses: [v4('172.17.0.2', false)] });
+  })],
+  ['N2 loopback missing', () => edit((record) => {
+    record.entries = record.entries.filter((row) => row.name !== 'lo');
+    record.addressedInterfaces = [];
+  })],
+  ['N3 loopback down', () => edit((record) => { Object.assign(entry(record, 'lo'), { flags: '0x8', operstate: 'down' }); })],
+  ['N4 loopback without IFF_LOOPBACK', () => edit((record) => { entry(record, 'lo').flags = '0x1'; })],
+  ['N4 loopback with Ethernet type', () => edit((record) => { entry(record, 'lo').type = '1'; })],
+  ['N4 loopback as a control file', () => edit((record) => { Object.assign(entry(record, 'lo'), file('lo')); })],
+  ['N4 loopback as a directory', () => edit((record) => { entry(record, 'lo').kind = 'directory'; })],
+  ['N5 second loopback by type', () => insert(measured(), device('lo2', '0x0', '772'))],
+  ['N5 second loopback by flag', () => insert(measured(), device('dummy0', '0x88', '1'))],
+];
+for (const target of ['lo', 'tunl0']) {
+  for (const flags of ['9', '0x', '0xg1', '0X9', '0xA', '0x09', '0x123456789', unavailable('ERR_ACCESS_DENIED')]) {
+    negatives.push([`N6 ${target} flags ${JSON.stringify(flags)}`, () => edit((record) => { entry(record, target).flags = flags; })]);
+  }
+}
+for (const flags of ['0X80', '0xA0', '0x080']) {
+  negatives.push([`N6 tunl0 non-canonical flags ${flags}`, () => edit((record) => { entry(record, 'tunl0').flags = flags; })]);
+}
+for (const operstate of ['unknown', 'dormant', 'up', 'lowerlayerdown', 'notpresent', 'testing', 'DOWN']) {
+  negatives.push([`N7 non-loopback operstate ${operstate}`, () => edit((record) => { entry(record, 'tunl0').operstate = operstate; })]);
+}
+for (const operstate of ['dormant', 'testing', 'lowerlayerdown', 'down', 'notpresent']) {
+  negatives.push([`N8 loopback operstate ${operstate}`, () => edit((record) => { entry(record, 'lo').operstate = operstate; })]);
+}
+negatives.push(
+  ['N9 IFF_UP with operstate down', () => edit((record) => { entry(record, 'tunl0').flags = '0x81'; })],
+  ['N9 up unaddressed eth0', () => insert(measured(), device('eth0', '0x1003', '1', 'up'))],
+);
+for (const [target, flags] of [['tunl0', '0xc0'], ['tunl0', '0x10080'], ['tunl0', '0x20080'], ['lo', '0x49']]) {
+  negatives.push([`N10 ${target} volatile flags ${flags}`, () => edit((record) => { entry(record, target).flags = flags; })]);
+}
+for (const kind of ['directory', 'other', unavailable('EACCES')]) {
+  negatives.push([`N11 device kind ${JSON.stringify(kind)}`, () => edit((record) => { entry(record, 'tunl0').kind = kind; })]);
+}
+negatives.push(
+  ['N12 control file with readable flags', () => edit((record) => { entry(record, 'bonding_masters').flags = '0x0'; })],
+  ['N12 control file with access denial', () => edit((record) => { Object.assign(entry(record, 'bonding_masters'), file('bonding_masters', 'ERR_ACCESS_DENIED')); })],
+  ['N12 control file with missing attributes', () => edit((record) => { Object.assign(entry(record, 'bonding_masters'), file('bonding_masters', 'ENOENT')); })],
+  ['N13 device link with all ENOTDIR', () => edit((record) => { Object.assign(entry(record, 'tunl0'), file('tunl0'), { kind: 'symlink' }); })],
+  ['N13 device link with all ENOENT', () => edit((record) => { Object.assign(entry(record, 'tunl0'), file('tunl0', 'ENOENT'), { kind: 'symlink' }); })],
+);
+for (const type of ['772x', '-1', '70000', '0772', unavailable('ENOENT')]) {
+  negatives.push([`N14 device type ${JSON.stringify(type)}`, () => edit((record) => { entry(record, 'tunl0').type = type; })]);
+}
+negatives.push(
+  ['N14 loopback type 0772', () => edit((record) => { entry(record, 'lo').type = '0772'; })],
+  ['N15 addressed down device', () => edit((record) => { record.addressedInterfaces.push({ name: 'tunl0', addresses: [v4('10.0.0.1', false)] }); })],
+  ['N16 non-internal loopback address', () => edit((record) => { loAddresses(record).push(v4('10.1.2.3', false)); })],
+  ['N16 other IPv4 loopback address', () => edit((record) => { loAddresses(record).push(v4('127.0.0.2')); })],
+  ['N16 link-local loopback address', () => edit((record) => { loAddresses(record).push(v6('fe80::1')); })],
+  ['N16 mapped loopback address', () => edit((record) => { loAddresses(record).push(v6('::ffff:127.0.0.1')); })],
+  ['N16 swapped loopback families', () => edit((record) => { record.addressedInterfaces[0].addresses = [v6('127.0.0.1'), v4('::1')]; })],
+  ['N16 duplicate IPv6 loopback', () => edit((record) => { loAddresses(record).push(v6('::1')); })],
+  ['N16 IPv6 loopback only', () => edit((record) => { record.addressedInterfaces[0].addresses = [v6('::1')]; })],
+  ['N16 non-internal 127.0.0.1', () => edit((record) => { loAddresses(record)[0].internal = false; })],
+  ['N16 unavailable addresses', () => edit((record) => { record.addressedInterfaces = unavailable('UNAVAILABLE'); })],
+  ['N16 no addressed loopback', () => edit((record) => { record.addressedInterfaces = []; })],
+  ['N16 empty loopback address list', () => edit((record) => { record.addressedInterfaces[0].addresses = []; })],
+  ['N16 second addressed interface', () => edit((record) => { record.addressedInterfaces.push({ name: 'lo2', addresses: [v4('127.0.0.1')] }); })],
+  ['N17 seventeen entries', () => {
+    const record = measured();
+    for (let index = 0; index < 6; index++) insert(record, device('zz' + index, '0x80', '768'));
+    assert.equal(record.entries.length, 17);
+    return record;
+  }],
+  ['N18 wrong tag', () => edit((record) => { record.tag = 'APP-NET-DIAG-2'; })],
+  ['N18 unknown key', () => edit((record) => { record.routes = []; })],
+  ['N18 missing key', () => edit((record) => { delete record.addressedInterfaces; })],
+  ['N18 extra entry key', () => edit((record) => { entry(record, 'tunl0').extra = 'synthetic'; })],
+  ['N18 unsorted names', () => edit((record) => { record.entries.reverse(); })],
+  ['N18 duplicate names', () => edit((record) => { record.entries.push(device('tunl0', '0x80', '768')); })],
+  ['N18 null record', () => null],
+  ['N18 empty entries', () => edit((record) => { record.entries = []; })],
+  ['N18 numeric field', () => edit((record) => { entry(record, 'tunl0').type = 768; })],
+  ['N18 unavailable object with extra key', () => edit((record) => { entry(record, 'bonding_masters').flags = { unavailable: 'ENOTDIR', detail: 'x' }; })],
+  ['N18 lowercase unavailable code', () => edit((record) => { entry(record, 'bonding_masters').flags = { unavailable: 'enotdir' }; })],
+);
+for (const [label, build] of negatives) {
+  test(`${label} is rejected by a throw`, () => {
+    assert.throws(() => evaluateNetworkAdmission(build()), /^Error: Network admission rejected: /);
+  });
+}
+
+function servedPorts(record, overrides = {}) {
+  const state = { lists: 0, reads: 0, reports: [] };
+  const rows = new Map(record.entries.map((row) => [row.name, row]));
+  const raise = (code) => { throw Object.assign(new Error('synthetic denial'), { code }); };
+  const value = (field) => (typeof field === 'string' ? field : raise(field.unavailable));
+  const ports = {
+    list() { state.lists++; return record.entries.map((row) => row.name).reverse(); },
+    entryType(path) { state.reads++; return value(rows.get(path.slice('/sys/class/net/'.length)).kind); },
+    readText(path) {
+      state.reads++;
+      const [, name, field] = /^\/sys\/class\/net\/([^/]+)\/(flags|operstate|type)$/.exec(path);
+      return value(rows.get(name)[field]) + '\n';
+    },
+    addresses: () => (Array.isArray(record.addressedInterfaces)
+      ? Object.fromEntries(record.addressedInterfaces.map((row) => [row.name, row.addresses]))
+      : raise(record.addressedInterfaces.unavailable)),
+    report(line) { state.reports.push(line); },
+    ...overrides,
+  };
+  return { state, ports };
+}
+
+test('A1 the measured listing is admitted through explicit readers without a report', () => {
+  const { state, ports } = servedPorts(measured());
+  const summary = admitNetwork(ports, runId);
+  assert.equal(JSON.stringify(summary), JSON.stringify(evaluateNetworkAdmission(measured())));
+  assert.equal(state.reports.length, 0);
+  assert.equal(state.reads, 11 * 4);
+});
+
+test('A2 a rejected observation is reported once with its run identity before the throw', () => {
+  const record = negatives.find(([label]) => label === 'N1 active eth0')[1]();
+  const { state, ports } = servedPorts(record);
+  assert.throws(() => admitNetwork(ports, runId), /Network admission rejected/);
+  assert.equal(state.reports.length, 1);
+  const [line] = state.reports;
+  assert.ok(line.endsWith('\n') && Buffer.byteLength(line) <= 8193);
+  const reported = JSON.parse(line);
+  assert.equal(reported.tag, 'APP-NET-DIAG-1');
+  assert.equal(reported.runId, runId);
+  assert.equal(reported.entries.find((row) => row.name === 'eth0').flags, '0x1003');
+});
+
+test('A3 a failed listing reports nothing and reads no metadata', () => {
+  const { state, ports } = servedPorts(measured(), { list() { throw new Error('synthetic list failure'); } });
+  assert.throws(() => admitNetwork(ports, runId), /synthetic list failure/);
+  assert.deepEqual([state.reads, state.reports.length], [0, 0]);
+});
+
+test('A4 more than sixteen entries are refused before metadata reads', () => {
+  const { state, ports } = servedPorts(measured(), { list: () => Array.from({ length: 17 }, (_, index) => 'if' + index) });
+  assert.throws(() => admitNetwork(ports, runId), /Invalid diagnostic entry names/);
+  assert.deepEqual([state.reads, state.reports.length], [0, 0]);
+});
+
+for (const reader of ['entryType', 'readText', 'addresses']) {
+  test(`A5 a throwing ${reader} reader is reported as unavailable and rejected`, () => {
+    const { state, ports } = servedPorts(measured(), { [reader]() { throw Object.assign(new Error('synthetic'), { code: 'EIO' }); } });
+    assert.throws(() => admitNetwork(ports, runId), /Network admission rejected/);
+    assert.equal(state.reports.length, 1);
+    assert.ok(state.reports[0].includes('"unavailable":"EIO"'));
+  });
+}
+
+for (const [label, change] of [
+  ['missing report port', (ports) => { delete ports.report; return runId; }],
+  ['missing list port', (ports) => { delete ports.list; return runId; }],
+  ['invalid run identity', () => 'forged'],
+]) {
+  test(`A6 ${label} is refused before listing`, () => {
+    const { state, ports } = servedPorts(measured());
+    const identity = change(ports);
+    assert.throws(() => admitNetwork(ports, identity), /Explicit network admission ports/);
+    assert.equal(state.lists, 0);
+  });
+}
+
+test('A6 a non-array listing is refused before metadata reads', () => {
+  const { state, ports } = servedPorts(measured(), { list: () => 'lo' });
+  assert.throws(() => admitNetwork(ports, runId), /Invalid diagnostic entry names/);
+  assert.equal(state.reads, 0);
+});
+
+test('A7 a loopback-only listing is admitted and listings are sorted before capture', () => {
+  const { ports } = servedPorts(loopbackOnly());
+  assert.deepEqual(admitNetwork(ports, runId).downDevices, []);
+  const seen = [];
+  const { ports: measuredPorts } = servedPorts(measured());
+  const summary = admitNetwork({ ...measuredPorts, entryType(path) { seen.push(path); return measuredPorts.entryType(path); } }, runId);
+  assert.deepEqual(seen, [...seen].sort());
+  assert.deepEqual(summary.downDevices, measuredDownDevices);
+});
+
+test('entryKind maps lstat results with symbolic links taking precedence', () => {
+  const stat = (link, regular, directory) => ({ isSymbolicLink: () => link, isFile: () => regular, isDirectory: () => directory });
+  assert.equal(entryKind(stat(true, true, true)), 'symlink');
+  assert.equal(entryKind(stat(false, true, true)), 'file');
+  assert.equal(entryKind(stat(false, false, true)), 'directory');
+  assert.equal(entryKind(stat(false, false, false)), 'other');
+});
+
+const unreachable = () => Object.assign(new Error('connect ENETUNREACH 192.0.2.1:8080'), { code: 'ENETUNREACH' });
+const failedFetch = (cause) => new TypeError('fetch failed', { cause });
+
+test('E1 a fetch failure caused by ENETUNREACH is measured blocking', async () => {
+  assert.equal(egressCanaryBlocked({ status: 'rejected', reason: failedFetch(unreachable()) }), true);
+  const [settled] = await Promise.allSettled([Promise.reject(failedFetch(unreachable()))]);
+  assert.equal(egressCanaryBlocked(settled), true);
+});
+
+test('E2 a direct ENETUNREACH error is measured blocking', () => {
+  assert.equal(egressCanaryBlocked({ status: 'rejected', reason: unreachable() }), true);
+});
+
+const notBlocked = [
+  ['E3 successful fetch', { status: 'fulfilled', value: { ok: true } }],
+  ['E4 timeout', { status: 'rejected', reason: new DOMException('The operation was aborted due to timeout', 'TimeoutError') }],
+  ['E5 abort', { status: 'rejected', reason: new DOMException('This operation was aborted', 'AbortError') }],
+  ...['ECONNREFUSED', 'EHOSTUNREACH', 'ENETDOWN', 'ETIMEDOUT'].map((code) =>
+    [`E6 ${code}`, { status: 'rejected', reason: failedFetch(Object.assign(new Error('synthetic'), { code })) }]),
+  ...[null, undefined, 'ENETUNREACH', 0].map((reason) => [`E7 reason ${String(reason)}`, { status: 'rejected', reason }]),
+  ['E7 absent reason', { status: 'rejected' }],
+  ...[undefined, null, {}, 'rejected', { status: 'pending' }, { status: 'REJECTED', reason: unreachable() }].map((settled) =>
+    [`E8 settled ${JSON.stringify(settled) ?? 'undefined'}`, settled]),
+  ['E9 lowercase code', { status: 'rejected', reason: failedFetch(Object.assign(new Error('synthetic'), { code: 'enetunreach' })) }],
+];
+for (const [label, settled] of notBlocked) {
+  test(`${label} is not measured egress blocking`, () => {
+    assert.equal(egressCanaryBlocked(settled), false);
+  });
+}
