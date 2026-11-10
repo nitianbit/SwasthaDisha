@@ -1,6 +1,6 @@
 # JWT secret fail-closed contract
 
-10 November 2026. Branch `m0/authority-jwt-secret`, baseline `9ea963f1f7b51aadedcfa7fc9918eb39a2fd737d`. **PROPOSED; preimplementation review required.** Addresses the secret half of R06 (`documentation/planning/REPOSITORY_REVIEW.md:57`). Production scope: `src1/config/config.ts` only.
+10 November 2026. Branch `m0/authority-jwt-secret`, baseline `9ea963f1f7b51aadedcfa7fc9918eb39a2fd737d`. **Pre-reviewed: APPROVE WITH REQUIRED AMENDMENTS** (internal Claude nonauthor Spec review of `e82c31c`; amendments applied below). This is not a named-owner approval. Addresses the secret half of R06 (`documentation/planning/REPOSITORY_REVIEW.md:57`). Production scope: `src1/config/config.ts` only.
 
 ## Defect
 
@@ -24,7 +24,14 @@ Validate once, while the config module is evaluated, in every environment.
 
 - **Safer.** It is one choke point, so no consumer can receive a bad key. A first-use check would start the process and report `/health` 200 while every login and authenticated call failed. It would also need edits at five call sites.
 - **Less disruptive overall.** Failure is immediate and visible at deploy (non-zero exit, PM2 restart loop), not a hidden partial outage. The cost: with a bad key, the public surfaces (webhooks, catalogue, `/health`) are down too. `src1/scripts/*.ts` and `src1/db` also need the key.
-- **Order.** `config.ts` loads `.env` (line 6) before building `CONFIG`. `src1/index.ts:7` imports config before the DB, routes and queue consumers. This ordering is statically observed only, not runtime-verified.
+- **Order.** `config.ts` loads `.env` (line 6) before building `CONFIG`. `src1/index.ts:7` imports config as its first application import, ahead of the DB, routes and queue consumers. This ordering is statically observed only, not runtime-verified.
+- **Order is checked and pinned.** The validator and its call must follow `dotenv.config`. Moving either above it would reject a correctly configured `.env`, so `DOTENV_BEFORE_VALIDATION` enforces the order and `src1/index.ts` is byte-pinned.
+- **Blast radius.** 25 `src1` modules import config. Every entry point now needs the key:
+  - `src1/index.ts` (`dev`);
+  - `npm run sync-indexes`;
+  - `migrate:pharmacy-inventory-batches`;
+  - `test:pharmacy` (`test/pharmacy.integration.test.ts:9-40`).
+- **Future app-import admission.** The F01 harness environment allowlist (`test/application/bootstrap.mjs:6-9`) has no `JWT_SECRET_KEY`. Any future C3/F01 app-import admission must add a synthetic, non-placeholder key, never a real one. That change belongs to the admission, not to this slice.
 
 ## Amendment
 
@@ -37,26 +44,37 @@ Add a top-level synchronous `requireJwtSecret(value: string | undefined): string
 
 No strength policy is introduced. Minimum length, entropy, format and rotation are security-owner decisions.
 
+The exact text is frozen in the check:
+- validator block SHA-256 `1e6ec2c4e0281e82820e45be775e332a0bd94fb9e54eb89014908627ce8adba8`;
+- expected `config.ts` SHA-256 `e879b0f9c635283d7c9a271128605c6d8583995356e30f5f1c318d23270d09f6`.
+
+**What passing proves.** It proves only that the key is present and is not one of the two literals. It does not prove the key is secret. `documentation/hipaa/HIPAA_BACKEND_CHANGES.txt:64` already advises rotating the JWT secret as exposed. Route containment depends on a genuinely secret key, which the owner and security must establish.
+
 ## Operator preconditions and C2
 
 Startup behaviour changes. Any environment without a real key refuses to start, including local copies of `.env.example`.
 
-- **Before deploying,** the operator must set a non-placeholder key.
+- **Before deploying,** the operator must set a non-placeholder key through the process environment or `<cwd>/.env`. `.env` is resolved from `process.cwd()` (`config.ts:6`), and the PM2 working directory is still an open C2 fact (`M0_START_APPROVAL_STATUS.md:41`).
+- **Unreachable `.env`.** A deployment whose key sits in a `.env` its cwd does not reach was already running on the public fallback. It will now refuse to start.
 - **Existing tokens.** If production signs with the fallback or the placeholder, a real key invalidates every existing token, so all users must log in again. It also stops tokens forged under the public value from verifying.
 - **Owner decision.** Choosing or rotating the key, and the broader R06 session revocation, are owner/security decisions. No key value appears in evidence.
 
 **C2 determination.** C2 does not gate this source edit. Its gate covers root dependency, lockfile, build/start and runtime-pin edits (`M0_START_APPROVAL_STATUS.md:39-45`, `C2_COMPATIBILITY_REVIEW.md:3,30`), and this slice changes none of them.
 
-C2's outstanding baseline facts do gate activation. The owner reports `pm2 start server`, but the tracked `server.js` imports a non-existent `./src/...` tree. Whether the deployed process loads `src1/config`, and which revision is deployed, are therefore unknown. Deployment needs separate owner permission.
+C2's outstanding baseline facts do gate activation. The owner reports `pm2 start server`, but the tracked `server.js` imports a non-existent `./src/...` tree. Whether the deployed process loads `src1/config`, and which revision is deployed, are therefore unknown. Also, `tsc` emits to `./dist` and leaves the `@/` aliases unresolved. Until the owner confirms that the deployed process loads `src1/config`, neither this guard nor the users or wallet route containment protects the deployed service. Deployment needs separate owner permission.
 
 ## Source-data verification plan
 
-The check is `output/qa/jwt-secret/source-check.py` (stdlib, `-I`, sanitized environment), with receipts in `source-verification.json` (argv, cwd, exit codes, stdout/stderr, hashes). It reads TypeScript as text.
+The check is `output/qa/jwt-secret/source-check.py` (stdlib, `-I`, sanitized environment), with receipts in `source-verification.json` (argv, cwd, exit codes, stdout/stderr, hashes). It reads TypeScript as text. The named semantic checks are diagnostic and give each control a stated reason. The binding gate is `EXACT_TRANSFORM` plus `PROTECTED_PINS` plus `DIFF_SCOPE`:
+- the pins cover every consumer, `src1/index.ts`, `src1/db`, both scripts, `test:pharmacy`, the harness bootstrap, `.env.example` and the root manifests;
+- the diff scope covers `src1`, `test`, `package.json`, `package-lock.json` and `tsconfig.json`, and must show only `config.ts`.
 
 **Named semantic checks.** These run before the exact-candidate comparison:
 - `NO_LITERAL_FALLBACK`: no `||`/`??` on the key; placeholders appear only in the rejection list.
 - `VALIDATED_AT_LOAD`: the initializer calls the validator, which is declared above `CONFIG`.
 - `UNCONDITIONAL`: no `NODE_ENV` guard.
+- `DOTENV_BEFORE_VALIDATION`.
+- `NO_TRY_CATCH`.
 - `GUARD_SYNCHRONOUS`.
 - `PRESENCE_CHECK`.
 - `PLACEHOLDER_SET_EXACT`.
@@ -80,6 +98,10 @@ A decision model is run over these inputs: unset, `''`, whitespace, both placeho
 - a length policy added;
 - validation moved to first use;
 - async validator;
+- validator wrapped in a load-time try/catch (`NO_TRY_CATCH`);
+- validator hoisted above `dotenv.config`, or `dotenv.config` moved after `CONFIG` (`DOTENV_BEFORE_VALIDATION`);
+- an invented extra placeholder;
+- a valid key rejected, or a case-folded placeholder policy;
 - direct `process.env` read in a consumer.
 
 ## Runtime fixtures deferred until full C3 admission
