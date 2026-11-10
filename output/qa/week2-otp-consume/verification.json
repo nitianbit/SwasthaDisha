@@ -1,0 +1,116 @@
+{
+  "status": "SOURCE_TRANSFORMATION_VERIFIED_RUNTIME_NOT_RUN",
+  "baseline": "1b0a54144d514bd73f03a99724c8b0d02fcfa25a",
+  "baseline_rejection": "REJECTED_AS_EXPECTED",
+  "production_sha256": {
+    "src1/modules/otp/repository/index.ts": "8d59e92cb0d019a2d777d9b794278f126714205dce774caee5cd6e96d14a6841",
+    "src1/modules/otp/services/index.ts": "cf59555cb618ace73e78e7fb35ca5ce780075ed30d5c3f7c633b1777b4b07971",
+    "src1/modules/auth/services/index.ts": "d59d5ea23df586fbbdb5b9c4615bcbe0b716f649bdc02f3738088f87b0fbae56"
+  },
+  "contract_sha256": "2dc40e1b6d40a735a030415e1ff96d3691c1a8ac29fbb86cda98c0b0f5162e3a",
+  "verifier_sha256": "f9adfa0154d132f1b9ef5baeb9f10ba90ae4d8cfb68f4c929a485707ceebf840",
+  "source_controls": [
+    {
+      "name": "missing-id",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "missing-user",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "missing-code",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "missing-target",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "missing-destination",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "missing-pending",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "missing-exact-expiry",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "missing-live-expiry",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "returned-old-document",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "wrong-transition",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "truthy-provided-value",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "loose-destination",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "missing-bound-value",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "allow-blank-destination",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "expiry-not-snapshotted",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "expired-at-equality",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "postcheck-disabled",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "nonfinite-post-expiry",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "stale-final-checkpoint",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "old-infrastructure-error",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "request-phone-binding",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "request-email-binding",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "wrong-selection-precedence",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "no-login-destination",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "name": "unawaited-consumption",
+      "result": "REJECTED_AS_EXPECTED"
+    }
+  ],
+  "TypeScript_evaluations": 0,
+  "runtime_cases": "NOT_RUN_PENDING_C2_C3_PROFILE_AND_FIXTURE"
+}

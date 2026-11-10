@@ -319,12 +319,23 @@ export class AuthService {
       });
     }
 
-    // Verify OTP using OTP service
+    // Verify OTP against the selected identity's current destination.
     const target = data.phone ? 'phone' : 'email';
+    const targetValue = target === 'phone'
+      ? userRecord.phone?.trim()
+      : userRecord.email?.trim().toLowerCase();
+    if (!targetValue) {
+      throw new AppError({
+        status: 400,
+        code: 'OTP_UNAVAILABLE',
+        message: 'OTP is no longer available; request a new OTP',
+      });
+    }
     await this.otpService.verifyOTP({
       userId: userRecord._id!,
       otp: data.otp,
       target,
+      targetValue,
     });
 
     // Create wallet for regular users (not admins) if it doesn't exist

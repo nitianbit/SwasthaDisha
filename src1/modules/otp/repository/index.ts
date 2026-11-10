@@ -1,7 +1,7 @@
 import { Service } from 'typedi';
 import { Model } from 'mongoose';
 import OTPModel from '@/modules/otp/model';
-import { IOTP } from '@/modules/otp/types';
+import { IOTP, VerifyOTPRequest } from '@/modules/otp/types';
 import { BaseRepository } from '@/modules/common/repository';
 
 @Service()
@@ -39,8 +39,25 @@ export class OTPRepository extends BaseRepository<IOTP> {
     return this.findOne(query);
   };
 
-  markAsVerified = async (otpId: string): Promise<IOTP | null> => {
-    return this.update({ _id: otpId }, { isVerified: true });
+  markAsVerified = async (
+    otpId: string,
+    data: VerifyOTPRequest & { targetValue: string },
+    observedExpiry: Date,
+    consumeCheckpoint: Date
+  ): Promise<IOTP | null> => {
+    return this.update(
+      {
+        _id: otpId,
+        userId: data.userId,
+        otp: data.otp,
+        target: data.target,
+        targetValue: data.targetValue,
+        isVerified: false,
+        expireAt: { $eq: observedExpiry, $gt: consumeCheckpoint },
+      },
+      { $set: { isVerified: true } },
+      { new: true }
+    );
   };
 
   deleteExpiredOTPs = async (): Promise<void> => {

@@ -1,0 +1,136 @@
+diff --git a/src1/modules/auth/services/index.ts b/src1/modules/auth/services/index.ts
+index 3506c036883604f7ef1a0acf953bfe9de9463614..3cafab15605fd4c8adbc3499882cff5f2efe16f9 100644
+--- a/src1/modules/auth/services/index.ts
++++ b/src1/modules/auth/services/index.ts
+@@ -319,12 +319,23 @@ export class AuthService {
+       });
+     }
+ 
+-    // Verify OTP using OTP service
++    // Verify OTP against the selected identity's current destination.
+     const target = data.phone ? 'phone' : 'email';
++    const targetValue = target === 'phone'
++      ? userRecord.phone?.trim()
++      : userRecord.email?.trim().toLowerCase();
++    if (!targetValue) {
++      throw new AppError({
++        status: 400,
++        code: 'OTP_UNAVAILABLE',
++        message: 'OTP is no longer available; request a new OTP',
++      });
++    }
+     await this.otpService.verifyOTP({
+       userId: userRecord._id!,
+       otp: data.otp,
+       target,
++      targetValue,
+     });
+ 
+     // Create wallet for regular users (not admins) if it doesn't exist
+diff --git a/src1/modules/otp/repository/index.ts b/src1/modules/otp/repository/index.ts
+index 463258dff8e472ac4e128822d6b291380ee0cfe2..9ea79b808cdb089fb2d407c0988aabc28227acaa 100644
+--- a/src1/modules/otp/repository/index.ts
++++ b/src1/modules/otp/repository/index.ts
+@@ -1,7 +1,7 @@
+ import { Service } from 'typedi';
+ import { Model } from 'mongoose';
+ import OTPModel from '@/modules/otp/model';
+-import { IOTP } from '@/modules/otp/types';
++import { IOTP, VerifyOTPRequest } from '@/modules/otp/types';
+ import { BaseRepository } from '@/modules/common/repository';
+ 
+ @Service()
+@@ -39,8 +39,25 @@ export class OTPRepository extends BaseRepository<IOTP> {
+     return this.findOne(query);
+   };
+ 
+-  markAsVerified = async (otpId: string): Promise<IOTP | null> => {
+-    return this.update({ _id: otpId }, { isVerified: true });
++  markAsVerified = async (
++    otpId: string,
++    data: VerifyOTPRequest & { targetValue: string },
++    observedExpiry: Date,
++    consumeCheckpoint: Date
++  ): Promise<IOTP | null> => {
++    return this.update(
++      {
++        _id: otpId,
++        userId: data.userId,
++        otp: data.otp,
++        target: data.target,
++        targetValue: data.targetValue,
++        isVerified: false,
++        expireAt: { $eq: observedExpiry, $gt: consumeCheckpoint },
++      },
++      { $set: { isVerified: true } },
++      { new: true }
++    );
+   };
+ 
+   deleteExpiredOTPs = async (): Promise<void> => {
+diff --git a/src1/modules/otp/services/index.ts b/src1/modules/otp/services/index.ts
+index 908764574729032435cc597c3e509a3b957ff0e6..eacd468e3cb025e02ab9456e807c2e7c1866fc4b 100644
+--- a/src1/modules/otp/services/index.ts
++++ b/src1/modules/otp/services/index.ts
+@@ -62,7 +62,11 @@ export class OTPService {
+     }
+ 
+     // Check expiry
+-    if (otpRecord.expireAt && otpRecord.expireAt < new Date()) {
++    if (
++      !(otpRecord.expireAt instanceof Date) ||
++      !Number.isFinite(otpRecord.expireAt.getTime()) ||
++      otpRecord.expireAt <= new Date()
++    ) {
+       throw new AppError({
+         status: 400,
+         code: 'OTP_EXPIRED',
+@@ -79,14 +83,43 @@ export class OTPService {
+       });
+     }
+ 
+-    // Mark as verified
+-    const verifiedOTP = await this.otpRepository.markAsVerified(otpRecord._id!);
++    if (
++      typeof otpRecord.targetValue !== 'string' ||
++      otpRecord.targetValue.trim() === '' ||
++      (data.targetValue !== undefined && data.targetValue !== otpRecord.targetValue)
++    ) {
++      throw new AppError({
++        status: 400,
++        code: 'OTP_UNAVAILABLE',
++        message: 'OTP is no longer available; request a new OTP',
++      });
++    }
++
++    const observedExpiry = new Date(otpRecord.expireAt.getTime());
++    const verifiedOTP = await this.otpRepository.markAsVerified(
++      otpRecord._id!,
++      { ...data, targetValue: otpRecord.targetValue },
++      observedExpiry,
++      new Date()
++    );
+ 
+     if (!verifiedOTP) {
+       throw new AppError({
+-        status: 500,
+-        code: 'VERIFICATION_FAILED',
+-        message: 'Failed to verify OTP',
++        status: 400,
++        code: 'OTP_UNAVAILABLE',
++        message: 'OTP is no longer available; request a new OTP',
++      });
++    }
++
++    if (
++      !(verifiedOTP.expireAt instanceof Date) ||
++      !Number.isFinite(verifiedOTP.expireAt.getTime()) ||
++      verifiedOTP.expireAt <= new Date()
++    ) {
++      throw new AppError({
++        status: 400,
++        code: 'OTP_EXPIRED',
++        message: 'OTP has expired',
+       });
+     }
+ 

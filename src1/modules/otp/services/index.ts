@@ -62,7 +62,11 @@ export class OTPService {
     }
 
     // Check expiry
-    if (otpRecord.expireAt && otpRecord.expireAt < new Date()) {
+    if (
+      !(otpRecord.expireAt instanceof Date) ||
+      !Number.isFinite(otpRecord.expireAt.getTime()) ||
+      otpRecord.expireAt <= new Date()
+    ) {
       throw new AppError({
         status: 400,
         code: 'OTP_EXPIRED',
@@ -79,14 +83,43 @@ export class OTPService {
       });
     }
 
-    // Mark as verified
-    const verifiedOTP = await this.otpRepository.markAsVerified(otpRecord._id!);
+    if (
+      typeof otpRecord.targetValue !== 'string' ||
+      otpRecord.targetValue.trim() === '' ||
+      (data.targetValue !== undefined && data.targetValue !== otpRecord.targetValue)
+    ) {
+      throw new AppError({
+        status: 400,
+        code: 'OTP_UNAVAILABLE',
+        message: 'OTP is no longer available; request a new OTP',
+      });
+    }
+
+    const observedExpiry = new Date(otpRecord.expireAt.getTime());
+    const verifiedOTP = await this.otpRepository.markAsVerified(
+      otpRecord._id!,
+      { ...data, targetValue: otpRecord.targetValue },
+      observedExpiry,
+      new Date()
+    );
 
     if (!verifiedOTP) {
       throw new AppError({
-        status: 500,
-        code: 'VERIFICATION_FAILED',
-        message: 'Failed to verify OTP',
+        status: 400,
+        code: 'OTP_UNAVAILABLE',
+        message: 'OTP is no longer available; request a new OTP',
+      });
+    }
+
+    if (
+      !(verifiedOTP.expireAt instanceof Date) ||
+      !Number.isFinite(verifiedOTP.expireAt.getTime()) ||
+      verifiedOTP.expireAt <= new Date()
+    ) {
+      throw new AppError({
+        status: 400,
+        code: 'OTP_EXPIRED',
+        message: 'OTP has expired',
       });
     }
 
