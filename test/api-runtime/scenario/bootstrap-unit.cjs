@@ -28,7 +28,7 @@ Module._load = function (request, parent, isMain) {
   if (request !== bootstrap && !Module.isBuiltin(request)) { applicationImports++; throw new Error('OFFLINE_DOMAIN_IMPORT_DENIED'); }
   return originalLoad.call(this, request, parent, isMain);
 };
-const { validateAdmissionData } = require(bootstrap);
+const { validateAdmissionData, runSetupStep, SETUP_FAILURE_CODES, withOwnedCleanup } = require(bootstrap);
 const need = (condition, label) => { if (!condition) throw new Error(label); };
 need(process.permission && !process.permission.has('child') && !process.permission.has('worker')
   && !process.permission.has('addon') && !process.permission.has('fs.write'), 'OFFLINE_PROCESS_GRANTS');
@@ -95,6 +95,127 @@ check('DUPLICATE_CASES', p => { p.ports.requiredCaseIds.push(p.ports.requiredCas
 check('UNDECLARED_MUTANT_SOURCE', p => { p.plan.mutants.OTP_UNCONDITIONAL_CONSUME.originalSha256 = 'e'.repeat(64); }, true);
 check('OMITTED_WELLNESS_PACKAGE', p => { p.ports.models.pop(); }, true);
 check('PORT_PLAN_MISMATCH', p => { p.plan.portsSha = 'e'.repeat(64); });
-need(applicationImports === 0 && connections === 0 && domainWrites === 0, 'OFFLINE_EFFECTS');
-output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', cases: rows.length, failed: 0,
-  applicationImports, connections, domainWrites, processGrants: 'DENIED' }) + '\n');
+async function setupUnits() {
+  const cases = [];
+  const named = name => Object.assign(new Error('synthetic-private-sentinel'), { name });
+  const coded = code => Object.assign(new Error('synthetic-private-sentinel'), { code });
+  const samples = {
+    PERMISSION: () => coded('ERR_ACCESS_DENIED'),
+    SELECTION: () => named('MongooseServerSelectionError'),
+    NETWORK: () => coded('ECONNREFUSED'),
+    SERVER: () => coded(50),
+    TYPE_ERROR: () => new TypeError('synthetic-private-sentinel'),
+    DUPLICATE_KEY: () => coded(11000),
+    NAMESPACE_EXISTS: () => coded(48),
+    INDEX_CONFLICT: () => coded(85),
+    UNKNOWN: () => new Error('synthetic-private-sentinel'),
+  };
+  const publicCodes = Object.values(SETUP_FAILURE_CODES).flatMap(row => Object.values(row));
+  need(publicCodes.length === 36 && new Set(publicCodes).size === 36
+    && publicCodes.every(code => /^DB_[A-Z_]+$/.test(code)), 'SETUP_LITERAL_CODES');
+  async function failed(step, original, expected) {
+    let calls = 0; let caught;
+    try { await runSetupStep(step, async () => { calls++; throw original; }); } catch (error) { caught = error; }
+    need(calls === 1 && caught instanceof Error && caught.fixtureCode === expected
+      && caught.message === expected && caught.name === 'Error' && caught.errors === undefined
+      && caught.cause === original && Object.keys(caught).join(',') === 'fixtureCode'
+      && Object.getOwnPropertyDescriptor(caught, 'cause').enumerable === false, 'SETUP_SANITIZED_FAILURE');
+  }
+  for (const step of Object.keys(SETUP_FAILURE_CODES)) {
+    const value = {}; let calls = 0;
+    const returned = await runSetupStep(step, () => { calls++; return value; });
+    need(returned === value && calls === 1, 'SETUP_RESULT_PASSTHROUGH');
+    cases.push(step + '_SUCCESS_ONCE');
+    for (const [category, create] of Object.entries(samples)) {
+      await failed(step, create(), SETUP_FAILURE_CODES[step][category]); cases.push(step + '_' + category);
+    }
+    const guard = Object.assign(new Error('synthetic-private-sentinel'), { fixtureCode: 'UNDECLARED_DRIVER_URI' });
+    await failed(step, guard, 'UNDECLARED_DRIVER_URI'); cases.push(step + '_GUARD_PRESERVED');
+    await failed(step, new Error('synthetic-private-sentinel', { cause: guard }), 'UNDECLARED_DRIVER_URI');
+    cases.push(step + '_WRAPPED_GUARD_PRESERVED');
+    await failed(step, new Error('synthetic-private-sentinel', { cause: coded('EPERM') }), SETUP_FAILURE_CODES[step].PERMISSION);
+    cases.push(step + '_KNOWN_CAUSE');
+    const opaque = Object.assign(new Error('synthetic-private-sentinel'), {
+      name: 'synthetic-private-sentinel', code: 'synthetic-private-sentinel',
+      fixtureCode: 'synthetic-private-sentinel', errors: { 'synthetic-private-sentinel': {} },
+      uri: 'synthetic-private-sentinel', rows: [{ private: 'synthetic-private-sentinel' }],
+    });
+    await failed(step, opaque, SETUP_FAILURE_CODES[step].UNKNOWN); cases.push(step + '_PRIVATE_DATA_IGNORED');
+    let getters = 0; const accessorError = new Error('synthetic-private-sentinel');
+    for (const field of ['name', 'code', 'cause', 'fixtureCode'])
+      Object.defineProperty(accessorError, field, { get() { getters++; throw new Error('synthetic-private-sentinel'); } });
+    await failed(step, accessorError, SETUP_FAILURE_CODES[step].UNKNOWN);
+    need(getters === 0, 'SETUP_GETTERS_IGNORED'); cases.push(step + '_ACCESSORS_IGNORED');
+    await failed(step, coded(999999), SETUP_FAILURE_CODES[step].UNKNOWN); cases.push(step + '_UNKNOWN_NUMBER');
+  }
+  let calls = 0; let invalid;
+  try { await runSetupStep('OTHER', () => { calls++; }); } catch (error) { invalid = error; }
+  need(calls === 0 && invalid.fixtureCode === 'UNDECLARED_SETUP_STEP', 'SETUP_UNKNOWN_STEP'); cases.push('UNKNOWN_STEP_NO_ACTION');
+  invalid = undefined;
+  try { await runSetupStep('CONNECT', undefined); } catch (error) { invalid = error; }
+  need(invalid.fixtureCode === 'UNDECLARED_SETUP_STEP', 'SETUP_INVALID_ACTION'); cases.push('INVALID_ACTION');
+  const cycle = new Error('synthetic-private-sentinel'); cycle.cause = cycle;
+  await failed('CONNECT', cycle, SETUP_FAILURE_CODES.CONNECT.UNKNOWN); cases.push('CYCLIC_CAUSE_BOUNDED');
+  const deep = new Error('synthetic-private-sentinel', { cause: new Error('synthetic-private-sentinel',
+    { cause: new Error('synthetic-private-sentinel', { cause: coded('EPERM') }) }) });
+  await failed('CONNECT', deep, SETUP_FAILURE_CODES.CONNECT.UNKNOWN); cases.push('DEEP_CAUSE_NOT_INSPECTED');
+  class MongoServerSelectionError extends Error {}
+  const constructorError = new MongoServerSelectionError('synthetic-private-sentinel');
+  Object.defineProperty(constructorError, 'name', { get() { throw new Error('synthetic-private-sentinel'); } });
+  await failed('CONNECT', constructorError, SETUP_FAILURE_CODES.CONNECT.SELECTION); cases.push('KNOWN_CONSTRUCTOR_WITHOUT_GETTER');
+  const diagnosticCount = cases.length;
+  for (const hasPrimary of [false, true]) for (const badHTTP of [false, true]) for (const badODM of [false, true]) {
+    const order = []; const value = {};
+    const primary = Object.assign(new Error('DB_CONNECT_TYPE_ERROR', { cause: new Error('synthetic-private-sentinel') }),
+      { fixtureCode: 'DB_CONNECT_TYPE_ERROR' });
+    const httpError = new Error('synthetic-private-sentinel'); const odmError = new Error('synthetic-private-sentinel');
+    let result; let caught;
+    try {
+      result = await withOwnedCleanup(
+        () => { order.push('ACTION'); if (hasPrimary) throw primary; return value; },
+        () => { order.push('HTTP'); if (badHTTP) throw httpError; },
+        () => { order.push('ODM'); if (badODM) throw odmError; }
+      );
+    } catch (error) { caught = error; }
+    need(order.join(',') === 'ACTION,HTTP,ODM', 'CLEANUP_BOTH_HANDLES_ONCE');
+    if (hasPrimary) need(caught === primary, 'CLEANUP_PRIMARY_PRESERVED');
+    else if (badHTTP || badODM) need(caught.fixtureCode === 'OWNED_HANDLE_CLEANUP_FAILED'
+      && caught.cause === (badHTTP ? httpError : odmError) && caught.errors === undefined, 'CLEANUP_FIXED_FAILURE');
+    else need(caught === undefined && result === value, 'CLEANUP_SUCCESS_PASSTHROUGH');
+    if (badHTTP || badODM) {
+      need(caught.ownedCleanupFailures.length === Number(badHTTP) + Number(badODM)
+        && Object.getOwnPropertyDescriptor(caught, 'ownedCleanupFailures').enumerable === false
+        && JSON.stringify(caught) === JSON.stringify({ fixtureCode: hasPrimary ? 'DB_CONNECT_TYPE_ERROR' : 'OWNED_HANDLE_CLEANUP_FAILED' }),
+      'CLEANUP_CAUSES_PRIVATE');
+      if (badHTTP) need(caught.ownedCleanupFailures[0].step === 'HTTP'
+        && caught.ownedCleanupFailures[0].error === httpError, 'CLEANUP_HTTP_PROVENANCE');
+      if (badODM) need(caught.ownedCleanupFailures.at(-1).step === 'ODM'
+        && caught.ownedCleanupFailures.at(-1).error === odmError, 'CLEANUP_ODM_PROVENANCE');
+    }
+    cases.push('CLEANUP_MATRIX_' + [hasPrimary, badHTTP, badODM].map(Number).join(''));
+  }
+  const frozenPrimary = Object.freeze(Object.assign(new Error('DB_CONNECT_UNKNOWN'), { fixtureCode: 'DB_CONNECT_UNKNOWN' }));
+  const frozenOrder = []; let frozenCaught;
+  try {
+    await withOwnedCleanup(() => { throw frozenPrimary; },
+      () => { frozenOrder.push('HTTP'); throw new Error('synthetic-private-sentinel'); },
+      () => { frozenOrder.push('ODM'); throw new Error('synthetic-private-sentinel'); });
+  } catch (error) { frozenCaught = error; }
+  need(frozenCaught === frozenPrimary && frozenOrder.join(',') === 'HTTP,ODM', 'CLEANUP_FROZEN_PRIMARY');
+  cases.push('CLEANUP_FROZEN_PRIMARY');
+  for (const missing of [0, 1, 2]) {
+    let effects = 0; let caught; const actions = [() => { effects++; }, () => { effects++; }, () => { effects++; }];
+    actions[missing] = undefined;
+    try { await withOwnedCleanup(...actions); } catch (error) { caught = error; }
+    need(effects === 0 && caught.fixtureCode === 'INVALID_OWNED_CLEANUP_PORTS', 'CLEANUP_MANDATORY_PORTS');
+    cases.push('CLEANUP_MISSING_PORT_' + missing);
+  }
+  need(applicationImports === 0 && connections === 0 && domainWrites === 0, 'OFFLINE_EFFECTS');
+  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', cases: rows.length + cases.length,
+    admissionCases: rows.length, setupDiagnosticCases: diagnosticCount, ownedCleanupCases: cases.length - diagnosticCount, failed: 0,
+    applicationImports, connections, domainWrites, processGrants: 'DENIED' }) + '\n');
+}
+setupUnits().catch(() => {
+  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', failed: 1, code: 'OFFLINE_SETUP_UNIT_FAILED' }) + '\n');
+  process.exitCode = 1;
+});

@@ -1,0 +1,41 @@
+{
+  "schema": "SD-AUTH-API-SCENARIO-SOURCE-1",
+  "baseCommit": "6bf74f09faa84d84f295c3812fea1e050e115161",
+  "files": {
+    "test/api-runtime/scenario/.gitignore": "7987fd3dee925cf21c8b558704a243a79be5be11c382c383eff13f8999664162",
+    "test/api-runtime/scenario/README.md": "b58c021ba5daa5b0132cbc7558057b839cde3c22595b3d8ac9b943aeda1583a4",
+    "test/api-runtime/scenario/bootstrap-unit.cjs": "a332f33d785a84244b53a30bf70001dad5cc4ab35bd5e4b1e5358e4e22db545f",
+    "test/api-runtime/scenario/bootstrap.cjs": "9c5ea5ae4275cf9f333b8688470059b66dc28267aa249e18c83ccb15a64ff548",
+    "test/api-runtime/scenario/compile.cjs": "76383b2161dc19d4675f7c21edc1a4fa799cd0287b80628f63bc2d19b38a3a2a",
+    "test/api-runtime/scenario/offline-unit.py": "026dd325cdf7ecbabaa375de428087b0dcf7bcd16077e30d1107cc6fcaecb906",
+    "test/api-runtime/scenario/package-plan.json": "d7830a9ce688235bb64f3f9f7ac3d5dd604bb63641cdae97b8b7250bfd957227",
+    "test/api-runtime/scenario/ports-manifest.json": "993003d7ec316a99c8189acde7e45277c6f79f9f567a1e26cfed9a7d3d855f94",
+    "test/api-runtime/scenario/prepare.py": "39b4085370a09a34069b9f1c4f45cfd8fa38a3a1f0e380abcef9c469a5add598",
+    "test/api-runtime/scenario/scenario.cjs": "95c44306f9ab7bddadc7e5be5d9a5e80b9816234167d1a83402a6591f3a88947"
+  },
+  "publicCodesSha": "05932949c2205ad2978b5567da8ca7ecddfd752637a3f57e725c911296892c00",
+  "priorInvocationResultSha": "ca3e5793db5c00741bac428971f8c80e63d28496a42465fb59e10f75fe17ac07",
+  "offlineChecks": {
+    "admissionCases": 22,
+    "setupDiagnosticCases": 69,
+    "ownedCleanupCases": 12,
+    "total": 103,
+    "failed": 0,
+    "applicationImports": 0,
+    "connections": 0,
+    "domainWrites": 0,
+    "processGrants": "DENIED",
+    "bootstrapSyntax": "PASS",
+    "whitespace": "PASS"
+  },
+  "failureHandler": "UNCHANGED_SEVEN_FIELDS",
+  "nominalCases": 36,
+  "sensitivityCases": 4,
+  "models": 12,
+  "runtimeAPI": "NOT_RUN_FOR_THIS_AMENDMENT",
+  "applicationEvaluations": 0,
+  "compilerExecutions": 0,
+  "DockerCalls": 0,
+  "databaseCalls": 0,
+  "providerCalls": 0
+}

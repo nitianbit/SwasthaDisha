@@ -25,6 +25,23 @@ bootstrap generates its JWT key and own URI in memory. `scenario.cjs` reports
 case IDs and safe counts only; raw HTTP responses, OTPs, tokens, keys, synthetic
 identity rows and assertion operands are never printed or persisted.
 
+Database setup retains its original CONNECT, HELLO, COLLECTION_CREATE and
+INDEX_CREATE actions, arguments and results. A wrapper calls each action once and
+maps only finite known error names/codes to 36 fixed public step/category literals;
+known guard codes are preserved. It examines at most the original error plus two
+cause objects, reads data descriptors without invoking error accessors, and retains
+the original thrown value only in a non-enumerable in-memory cause. The existing
+seven-field failure protocol is unchanged; new failures contain no original
+message, URI, path, row or validation fields. No retry or permission change follows
+from these diagnostics.
+
+The owned HTTP and ODM handles both receive one cleanup attempt after the action.
+An earlier terminal error remains primary even when either cleanup fails; secondary
+causes stay in non-enumerable memory metadata. Cleanup failure without an earlier
+error uses one fixed public failure code. Success JSON is emitted only after both
+handle closures succeed. The dependency-free fake action matrix checks these
+paths; no new real invocation is authorized.
+
 Nominal denials assert the exact error envelope/status/code, unchanged DB state and no JWT,
 provider or DB-write effects. Two-reader barriers wrap actual completed MongoDB
 query reads; final-expiry scheduling wraps an actual completed conditional update.

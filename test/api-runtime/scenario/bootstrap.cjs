@@ -21,6 +21,123 @@ const counters = { email: 0, sms: 0, push: 0, logger: 0, console: 0, unexpected:
 for (const name of ['log', 'info', 'debug', 'warn', 'error']) console[name] = () => { counters.console++; };
 process.emitWarning = () => { counters.console++; };
 
+// Public literals only: no driver message, URI, path, row or validation fields.
+const SETUP_FAILURE_CODES = Object.freeze({
+  CONNECT: Object.freeze({
+    PERMISSION: 'DB_CONNECT_PERMISSION', SELECTION: 'DB_CONNECT_SELECTION',
+    NETWORK: 'DB_CONNECT_NETWORK', SERVER: 'DB_CONNECT_SERVER', TYPE_ERROR: 'DB_CONNECT_TYPE_ERROR',
+    DUPLICATE_KEY: 'DB_CONNECT_DUPLICATE_KEY', NAMESPACE_EXISTS: 'DB_CONNECT_NAMESPACE_EXISTS',
+    INDEX_CONFLICT: 'DB_CONNECT_INDEX_CONFLICT', UNKNOWN: 'DB_CONNECT_UNKNOWN',
+  }),
+  HELLO: Object.freeze({
+    PERMISSION: 'DB_HELLO_PERMISSION', SELECTION: 'DB_HELLO_SELECTION',
+    NETWORK: 'DB_HELLO_NETWORK', SERVER: 'DB_HELLO_SERVER', TYPE_ERROR: 'DB_HELLO_TYPE_ERROR',
+    DUPLICATE_KEY: 'DB_HELLO_DUPLICATE_KEY', NAMESPACE_EXISTS: 'DB_HELLO_NAMESPACE_EXISTS',
+    INDEX_CONFLICT: 'DB_HELLO_INDEX_CONFLICT', UNKNOWN: 'DB_HELLO_UNKNOWN',
+  }),
+  COLLECTION_CREATE: Object.freeze({
+    PERMISSION: 'DB_COLLECTION_CREATE_PERMISSION', SELECTION: 'DB_COLLECTION_CREATE_SELECTION',
+    NETWORK: 'DB_COLLECTION_CREATE_NETWORK', SERVER: 'DB_COLLECTION_CREATE_SERVER', TYPE_ERROR: 'DB_COLLECTION_CREATE_TYPE_ERROR',
+    DUPLICATE_KEY: 'DB_COLLECTION_CREATE_DUPLICATE_KEY', NAMESPACE_EXISTS: 'DB_COLLECTION_CREATE_NAMESPACE_EXISTS',
+    INDEX_CONFLICT: 'DB_COLLECTION_CREATE_INDEX_CONFLICT', UNKNOWN: 'DB_COLLECTION_CREATE_UNKNOWN',
+  }),
+  INDEX_CREATE: Object.freeze({
+    PERMISSION: 'DB_INDEX_CREATE_PERMISSION', SELECTION: 'DB_INDEX_CREATE_SELECTION',
+    NETWORK: 'DB_INDEX_CREATE_NETWORK', SERVER: 'DB_INDEX_CREATE_SERVER', TYPE_ERROR: 'DB_INDEX_CREATE_TYPE_ERROR',
+    DUPLICATE_KEY: 'DB_INDEX_CREATE_DUPLICATE_KEY', NAMESPACE_EXISTS: 'DB_INDEX_CREATE_NAMESPACE_EXISTS',
+    INDEX_CONFLICT: 'DB_INDEX_CREATE_INDEX_CONFLICT', UNKNOWN: 'DB_INDEX_CREATE_UNKNOWN',
+  }),
+});
+const SETUP_GUARD_CODES = new Set([
+  'UNDECLARED_DATABASE_URI', 'EXTRA_DATABASE_CONNECTION', 'OTHER_DATABASE_NAME',
+  'UNDECLARED_DRIVER_URI', 'OTHER_DRIVER_DATABASE', 'UNDECLARED_COLLECTION',
+  'UNDECLARED_COLLECTION_CREATE', 'UNDECLARED_NETWORK_CONNECTION', 'TLS_NOT_ADMITTED',
+  'DNS_NOT_ADMITTED', 'DENIED_BUILTIN', 'UNDECLARED_DOMAIN_MODULE', 'UNDECLARED_PACKAGE_OR_FILE',
+]);
+const SETUP_ERROR_NAMES = new Set([
+  'MongoServerSelectionError', 'MongooseServerSelectionError', 'MongoNetworkError',
+  'MongoNetworkTimeoutError', 'MongoServerError', 'MongoBulkWriteError',
+  'MongoWriteConcernError', 'TypeError',
+]);
+const ownData = (value, key) => {
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    return descriptor && Object.hasOwn(descriptor, 'value') ? descriptor.value : undefined;
+  } catch { return undefined; }
+};
+function setupErrorName(value) {
+  const own = ownData(value, 'name');
+  if (SETUP_ERROR_NAMES.has(own)) return own;
+  let prototype = value;
+  for (let depth = 0; depth < 3; depth++) {
+    try { prototype = Object.getPrototypeOf(prototype); } catch { return undefined; }
+    if (!prototype) return undefined;
+    const name = ownData(prototype, 'name');
+    if (SETUP_ERROR_NAMES.has(name)) return name;
+    const constructor = ownData(prototype, 'constructor');
+    const constructorName = typeof constructor === 'function' ? ownData(constructor, 'name') : undefined;
+    if (SETUP_ERROR_NAMES.has(constructorName)) return constructorName;
+  }
+  return undefined;
+}
+function setupFailure(error) {
+  const chain = []; const seen = new Set(); let value = error;
+  for (let depth = 0; depth < 3 && value !== null
+    && ['object', 'function'].includes(typeof value) && !seen.has(value); depth++) {
+    chain.push({ value, name: setupErrorName(value), code: ownData(value, 'code') });
+    seen.add(value); value = ownData(value, 'cause');
+  }
+  for (const row of chain) {
+    const guard = ownData(row.value, 'fixtureCode');
+    if (SETUP_GUARD_CODES.has(guard)) return { guard };
+  }
+  if (chain.some(row => ['ERR_ACCESS_DENIED', 'EACCES', 'EPERM', 13, 18].includes(row.code))) return { category: 'PERMISSION' };
+  if (chain.some(row => row.code === 11000)) return { category: 'DUPLICATE_KEY' };
+  if (chain.some(row => row.code === 48)) return { category: 'NAMESPACE_EXISTS' };
+  if (chain.some(row => [85, 86].includes(row.code))) return { category: 'INDEX_CONFLICT' };
+  if (chain.some(row => ['ECONNREFUSED', 'ETIMEDOUT', 'ENETUNREACH', 'EHOSTUNREACH',
+    'ECONNRESET', 'EPIPE', 'ENOTFOUND', 'EAI_AGAIN'].includes(row.code)
+    || ['MongoNetworkError', 'MongoNetworkTimeoutError'].includes(row.name))) return { category: 'NETWORK' };
+  if (chain.some(row => ['MongoServerSelectionError', 'MongooseServerSelectionError'].includes(row.name))) return { category: 'SELECTION' };
+  if (chain.some(row => [26, 50, 91, 10107, 11600, 11602].includes(row.code)
+    || ['MongoServerError', 'MongoBulkWriteError', 'MongoWriteConcernError'].includes(row.name))) return { category: 'SERVER' };
+  if (chain.some(row => row.name === 'TypeError')) return { category: 'TYPE_ERROR' };
+  return { category: 'UNKNOWN' };
+}
+async function runSetupStep(step, action) {
+  need(typeof step === 'string' && Object.hasOwn(SETUP_FAILURE_CODES, step) && typeof action === 'function', 'UNDECLARED_SETUP_STEP');
+  try { return await action(); } catch (error) {
+    const classification = setupFailure(error);
+    const code = classification.guard || SETUP_FAILURE_CODES[step][classification.category];
+    // Preserve the original thrown value only as a non-enumerable memory cause.
+    // The existing seven-field output sees a fresh safe Error, no raw metadata.
+    const wrapped = new Error(code, { cause: error }); wrapped.fixtureCode = code; throw wrapped;
+  }
+}
+
+async function withOwnedCleanup(action, closeHTTP, disconnectODM) {
+  need(typeof action === 'function' && typeof closeHTTP === 'function'
+    && typeof disconnectODM === 'function', 'INVALID_OWNED_CLEANUP_PORTS');
+  let result; let primary; let failed = false;
+  try { result = await action(); } catch (error) { primary = error; failed = true; }
+  const failures = [];
+  for (const [step, close] of [['HTTP', closeHTTP], ['ODM', disconnectODM]]) {
+    try { await close(); } catch (error) { failures.push(Object.freeze({ step, error })); }
+  }
+  function retainPrivately(error) {
+    if (error !== null && ['object', 'function'].includes(typeof error) && failures.length) {
+      try { Object.defineProperty(error, 'ownedCleanupFailures', { value: Object.freeze(failures) }); } catch {}
+    }
+    return error;
+  }
+  if (failed) throw retainPrivately(primary);
+  if (failures.length) {
+    const error = new Error('OWNED_HANDLE_CLEANUP_FAILED', { cause: failures[0].error });
+    error.fixtureCode = 'OWNED_HANDLE_CLEANUP_FAILED'; throw retainPrivately(error);
+  }
+  return result;
+}
+
 function bytes(relative) {
   need(typeof relative === 'string' && relative !== '' && !relative.startsWith('/')
     && !relative.split('/').includes('..') && !relative.includes('\\'), 'BAD_RELATIVE_PATH');
@@ -284,22 +401,22 @@ async function main() {
     await new Promise((resolve, reject) => active.close(error => error ? reject(error) : resolve())); httpPorts.delete(port);
   };
   let port;
-  try {
+  const completed = await withOwnedCleanup(async () => {
     // Router imports register actual production models, still without any connection.
     stage = 'ROUTER_IMPORT'; port = await phase();
     need(JSON.stringify(mongoose.modelNames().sort()) === JSON.stringify(ports.models.map(row => row.name).sort()), 'UNDECLARED_REGISTERED_MODEL');
     for (const spec of ports.models) need(mongoose.model(spec.name).collection.collectionName === spec.collection
       && Object.hasOwn(plan.sourceFiles, spec.source), 'MODEL_COLLECTION_SOURCE');
     stage = 'OWNED_DATABASE_CONNECT';
-    await mongoose.connect(uri, { autoIndex: false, autoCreate: false, serverSelectionTimeoutMS: 5000, monitorCommands: true });
-    const hello = await mongoose.connection.db.admin().command({ hello: 1 });
+    await runSetupStep('CONNECT', () => mongoose.connect(uri, { autoIndex: false, autoCreate: false, serverSelectionTimeoutMS: 5000, monitorCommands: true }));
+    const hello = await runSetupStep('HELLO', () => mongoose.connection.db.admin().command({ hello: 1 }));
     need(hello.setName === manifest.replicaSet && mongoose.connection.name === manifest.database, 'OWNED_DATABASE_HANDSHAKE');
     need(JSON.stringify(mongoose.modelNames().sort()) === JSON.stringify(ports.models.map(row => row.name).sort()), 'UNDECLARED_REGISTERED_MODEL');
     for (const spec of ports.models) {
       const registered = mongoose.model(spec.name);
       need(registered.collection.collectionName === spec.collection && Object.hasOwn(plan.sourceFiles, spec.source), 'MODEL_COLLECTION_SOURCE');
-      await mongoose.connection.db.createCollection(spec.collection);
-      for (const index of spec.indexes) await mongoose.connection.db.collection(spec.collection).createIndex(index.key, index.options);
+      await runSetupStep('COLLECTION_CREATE', () => mongoose.connection.db.createCollection(spec.collection));
+      for (const index of spec.indexes) await runSetupStep('INDEX_CREATE', () => mongoose.connection.db.collection(spec.collection).createIndex(index.key, index.options));
     }
     mongoose.connection.getClient().on('commandStarted', event => {
       if (event.databaseName === manifest.database && ['insert', 'update', 'findAndModify', 'delete'].includes(event.commandName)) {
@@ -326,12 +443,13 @@ async function main() {
     need(JSON.stringify(Object.keys(result.providerSummary).sort()) === JSON.stringify(plan.providerCounterKeys.slice().sort())
       && Object.values(result.providerSummary).every(value => Number.isSafeInteger(value) && value >= 0)
       && result.providerSummary.unexpected === 0 && result.providerSummary.deniedCapabilities === 0, 'PROVIDER_COUNTER_SHAPE');
-    stdout(JSON.stringify({ schema: 'SD-AUTH-API-RESULT-1', runId: manifest.runId, role: ROLE,
+    return { schema: 'SD-AUTH-API-RESULT-1', runId: manifest.runId, role: ROLE,
       database: manifest.database, replicaSet: manifest.replicaSet, sourceCommit: manifest.sourceCommit,
       admissionPassed: true, networkAdmission, egressBlocked: true, filesystemCanariesPassed: true,
       cases: result.cases, sensitivity: result.sensitivity, failed: 0, skipped: 0,
-      providerSummary: result.providerSummary, domainScope: 'FOCUSED_PRODUCTION_ROUTERS' }) + '\n');
-  } finally { await endPhase(); await mongoose.disconnect(); }
+      providerSummary: result.providerSummary, domainScope: 'FOCUSED_PRODUCTION_ROUTERS' };
+  }, endPhase, () => mongoose.disconnect());
+  stdout(JSON.stringify(completed) + '\n');
 }
 
 if (require.main === module) main().catch(error => {
@@ -342,4 +460,4 @@ if (require.main === module) main().catch(error => {
     failed: 1, skipped: 0 }) + '\n');
   process.exitCode = 1;
 });
-module.exports = { validateAdmissionData, inspectManifest, closeNetwork, installLoader };
+module.exports = { validateAdmissionData, inspectManifest, closeNetwork, installLoader, runSetupStep, SETUP_FAILURE_CODES, withOwnedCleanup };

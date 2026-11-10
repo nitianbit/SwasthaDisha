@@ -164,3 +164,74 @@ These internal source-only decisions authorize no compiler, install, application
 DB, provider or Docker evaluation. The AST guard and four metadata controls still
 require the next exact independently approved emit, followed by artifact review and
 fresh runtime invocation decisions. No original packet/emission was overwritten.
+
+## Database setup diagnostic amendment after first API failure, 11 November
+
+The first separately reviewed actual API invocation returned FAILED_REVIEW_REQUIRED
+at OWNED_DATABASE_CONNECT with the generic RUNTIME_FIXTURE_FAILED code. Its parent
+operator independently verified both exact containers and the owned workspace
+absent on the same engine, with zero purpose labels. The fixed operator result is
+retained at `/private/tmp/sd-auth-api-invocation-RJBYHg/operator-result.json` and
+remains unchanged. That consolidated stage cannot identify whether connect, hello,
+collection creation or index creation failed. No cause is asserted by this source
+amendment, and no failed attempt authorizes a retry or relaxed admission.
+
+Both actual nonauthor post-failure reviews recommended a finite safe step/category
+map. The lead assigned this diagnostic-only bootstrap amendment: existing CONNECT,
+HELLO, COLLECTION_CREATE and INDEX_CREATE calls retain their real functions,
+arguments, order, return values and guards, each called once. Known permission,
+selection, network, server, TypeError and finite numeric-code categories map to 36
+full public literal fixture codes; unknown data selects a fixed UNKNOWN literal.
+Recognized guard fixture codes remain unchanged. Classification uses data
+properties and finite constructor names, never error accessor invocation or string
+coercion, and reads at most three error/cause objects with cycle detection.
+
+A fresh safe Error retains the original thrown value only as its non-enumerable
+in-memory cause. Its public message/code are fixed literals, name is Error and it
+has no raw validation fields. The existing seven-field terminal failure handler is
+byte-identical. `db-setup-public-codes.json` lists the complete finite map and three
+fixed helper-guard/cleanup codes for source-bound parent allowlisting. No raw
+message, path, URI, row or validation key is added to failure output.
+
+During source review the lead identified an independent evidence risk: internal
+HTTP cleanup failure could mask the primary setup error and skip ODM disconnect.
+The new helper requires explicit callable action/HTTP/ODM ports, retains the first
+terminal error, attempts both closures once in order, and holds secondary causes
+only in non-enumerable memory metadata. A cleanup failure without a primary uses
+fixed OWNED_HANDLE_CLEANUP_FAILED. Success JSON is emitted only after both closures
+succeed. No new resource/grant/provider behavior, retry or fallback is introduced.
+
+Actual offline checks: 103 permissioned fake cases PASS (22 admission, 69 setup
+classification and 12 primary/cleanup matrix cases), with zero application-import,
+connection or write attempts and no child/worker/addon/fs-write grants. Cases cover
+all 36 mappings, result identity/action-once, direct/wrapped guard codes, unknown
+private fields, accessor avoidance, bounded/cyclic causes, numeric unknowns,
+mandatory cleanup ports, both-closure attempts, primary error identity/private
+secondary provenance and cleanup-only failure. Bootstrap parser and whitespace
+checks pass. These fake ports do not execute an application or real DB operation.
+
+Only bootstrap, its offline unit, README and owned QA changed. Compiler, preparation,
+public package plan/lock, original 703 semantic diagnostics, model/index map, 12
+models, 36 nominal/4 sensitivity cases, application/production source, permissions,
+Docker commands/profile, providers and parent failure decoder are unchanged.
+Earlier source freezes/emissions/claims/failure artifacts remain preserved. The
+exact candidate is `source-freeze-db-setup.json`; two direct independent source
+reviews, fresh exact emission/artifact approval and a new one-run decision remain
+required. No npm, compiler, application/driver/DB/provider or Docker execution
+occurred for this amendment; its actual runtime result remains NOT_RUN.
+
+Both actual independent nonauthors approved the exact DB-setup source packet
+SHA-256 `c94ba7068e0a4dcdc6a3ba94ce77cc72afeaf6b2a6b53e7f2194375d046b5d72`.
+All ten source hashes and the public-code artifact independently match; no source
+or frozen artifact changed after review.
+
+| Reviewer | Actual decision and evidence |
+| --- | --- |
+| `/root/backend_boot_path` | **APPROVE_SOURCE_ONLY**. Inspected the four unchanged action calls/arguments/order/results, finite public-code map, bounded descriptor/cause inspection, original guard-code preservation and private causes. Confirmed both cleanup attempts, primary preservation and success after cleanup. Independently reran all 103 permissioned pure cases with zero effects and no grants, plus bootstrap parser acceptance; terminal seven-field handler independently matched byte-for-byte. |
+| `/root/local_claude_review_prep` | **APPROVE_SOURCE_ONLY**. Reviewed the full helper/delta/test boundary and all exact hashes, 36 codes, cause/accessor limits, guard preservation, private secondary cleanup failures and no premature success. Independently reran 103 pure cases (22/69/12), zero imports/connections/writes with process/write grants denied, plus parser acceptance. Verified public-code artifact and prior actual failed-run hash intact. |
+
+These internal reviews accept a safe diagnostic source change, not a measured
+repair or permission to evaluate npm/compiler/application/driver/DB/provider/
+Docker code. The consumed actual attempt remains failed and preserved; a fresh
+exact prepared artifact and two new invocation decisions are still required.
+All 36 nominal and four sensitivity API cases remain NOT_RUN for this amendment.
