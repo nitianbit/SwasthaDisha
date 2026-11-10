@@ -1,0 +1,40 @@
+{
+  "schema": "SD-JWT-CONFIG-COMPOSED-SOURCE-1",
+  "status": "INDEPENDENT_SOURCE_REVIEWS_REQUIRED",
+  "baseline": "7517a239b87559d923a2f46583173517ff4a1849",
+  "sharedCommit": "d4fe30f888e5a24c6c9ce384aab4fe4dfdb875ed",
+  "contractSha": "4c7a4bae2f39e9afdeedc22c97babf684bd2077d31647196d714e5eda3d281f1",
+  "authors": {
+    "bootstrapAndPureUnit": "/root/jwt_config_bootstrap",
+    "ports": "/root",
+    "scenarioCompilerReadme": "/root/auth_api_fixture_contract"
+  },
+  "files": {
+    "test/api-runtime/scenario/bootstrap.cjs": "669b47f1cf3bdf7b84e1dce26f2255d1df36b2861b6a0bb1b8984e63a9273418",
+    "test/api-runtime/scenario/bootstrap-unit.cjs": "e2d0346af2608fa85cc6b51fc596d807e6e3102cb35065a392ec210162ca2d67",
+    "test/api-runtime/scenario/ports-manifest.json": "0c4fbf77a3d35be63fdb833ad357964240556879d5ef2c49f2785929e10a6d59",
+    "test/api-runtime/scenario/scenario.cjs": "64ffadd360d41b1b2a830f1e513931f3368a8f77db8d749b1b3d2588d6e19da7",
+    "test/api-runtime/scenario/compile.cjs": "8fdc3fddc50bd97cf063df179f07cee58373a8571adacac79b7b0de9df33e5a4",
+    "test/api-runtime/scenario/README.md": "3e47db1fc08e8b0aa70777d324c50289e6d827ba9688bdc8340d6ef8388d1fd8",
+    "output/qa/week2-jwt-config-runtime/owned-source-freeze.json": "8a6c2c9e9c2b8f0bf47a1e762a259457179e38444b3787fa8235218461f24880",
+    "output/qa/week2-jwt-config-shared/source-freeze.json": "12d5eeeeedd6d5e702d22369aef0bd640334a076f08363b2e484a4333f7dacd4",
+    "output/qa/week2-jwt-config-runtime/CONTRACT.md": "4c7a4bae2f39e9afdeedc22c97babf684bd2077d31647196d714e5eda3d281f1"
+  },
+  "checks": {
+    "sharedFakeCases": 267,
+    "evidenceParserFakeCases": 42,
+    "sourceControls": "OWNED_CHECKER_READONLY",
+    "compilerExecution": 0,
+    "configurationExecution": 0,
+    "applicationExecution": 0,
+    "databaseConnections": 0,
+    "DockerCalls": 0
+  },
+  "scope": {
+    "nominalGroups": 60,
+    "sensitivityVariants": 17,
+    "models": 13,
+    "roots": 8
+  },
+  "priorAcceptedRuntime": "53/14 at1c58cf5; new60/17 NOT_RUN"
+}

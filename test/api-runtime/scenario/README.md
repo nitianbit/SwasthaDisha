@@ -7,12 +7,15 @@ JWT signing. Email/SMS methods use a recording Axios adapter; logger/FCM transpo
 ports are recording only. Payment and coupon services are explicit throwing
 exclusions. No application entry point or production provider is admitted.
 
-The accepted core run passed its original36 nominal cases/four actual-source
-sensitivity checks under test-only profile2; see
-[execution4](../../../output/qa/week2-api-runtime/execution-4/REVIEW.md).
-The reviewed authority-extension contract appends17 groups/ten variants for
-53 nominal IDs/14 sensitivity IDs and13 models (Dependent is the sole addition).
-These new cases and emitted AST controls are NOT_RUN in this source candidate.
+The accepted authority run passed53 nominal groups/14 actual-source sensitivity
+checks under test-only profile2; see
+[execution5](../../../output/qa/week2-api-runtime/execution-5/REVIEW.md).
+Its77 TypeScript sources/13 models and five emitted-model controls were verified;
+816 semantic diagnostics remain retained, with no clean root typecheck claim.
+The reviewed JWT configuration extension appends seven groups/three real-source
+variants, for60 nominal IDs/17 sensitivity IDs. Its108 actual fresh CONFIG loads,
+new emitted mutants and two published-key HTTP denials are NOT_RUN in this
+source candidate. No model/package/provider/grant/profile change is introduced.
 `ports-manifest.json` fixes the exact IDs/models/correctness indexes/package roots,
 recording ports and safe output counters. `compile.cjs` stages the declared source
 closure with TypeScript 5.9.3 legacy decorators and emitted metadata. A static AST traversal of emitted nominal CommonJS follows actual literal require
@@ -25,7 +28,16 @@ and reports `TRANSPILE_ONLY_NOT_TYPECHECKED` with `fullBuild:false`. This is not
 root build/type-check or a production compatibility claim.
 
 `bootstrap.cjs` checks the complete run/file/env/port/network/permission admission
-before any domain import or DB connection. It installs a closed CJS map and ODM/
+before any domain import or DB connection. The JWT controller then exercises real
+compiled CONFIG before first router phase, connection or listen. In all three
+environments its108 fresh loads retain the derived owned Mongo URI and restore
+raw-key/env/cache/guard references. Private hard-denial taps count attempted
+connections/listens/writes; no source/validator copy or precomputed PASS is used.
+Caught expected module exceptions prove config-load rejection in the same child,
+not a per-case nonzero child exit, full server startup or PM2 restart behavior.
+Genuine raw/padded signature fixtures occur separately after each module-load
+zero-effect checkpoint. Neither a .env precedence policy nor key strength,
+rotation or production configuration is tested/adopted. It installs a closed CJS map and ODM/
 driver URI/database/collection guards before eager router construction. The
 bootstrap generates its JWT key and own URI in memory. `scenario.cjs` reports
 case IDs and safe counts only; raw HTTP responses, OTPs, tokens, keys, synthetic
@@ -88,6 +100,16 @@ operation, restore nominal classes, repeat the fixed predicate, and delete only
 its exact newly-created identity-bound fixture rows. No arbitrary exception is
 a detected regression. Nominal provider summary excludes every negative phase.
 
+The scenario validates deeply frozen exact data-property six-group/three-mutant
+configuration evidence, rejecting holes, accessors, extra fields and reordered
+IDs before any HTTP request. It appends those six case rows only after all53
+existing groups, then exercises actual own-user HTTP with tokens signed by each
+published placeholder (401 INVALID_TOKEN, zero reads/writes/delivery/JWT and one
+recorded error log), with a current-key positive control. Configuration mutation
+rows append only after all14 existing mutation probes. Public schemas remain
+unchanged. Its42 permissioned pure evidence-parser cases run only the actual
+fixture parser; runScenario/CONFIG/domain code never run in that gate.
+
 Offline checks require no package installation or application evaluation. The
 shared pure admission/diagnostic/cleanup/recorder suite blocks all domain imports,
 connections and writes;16 pure lock cases cover public URLs/integrities and root
@@ -101,6 +123,7 @@ env -i PATH=/usr/bin:/bin /opt/homebrew/bin/python3 -I -B test/api-runtime/scena
 /private/tmp/m0-node22/node --check test/api-runtime/scenario/bootstrap.cjs
 /private/tmp/m0-node22/node --check test/api-runtime/scenario/compile.cjs
 /private/tmp/m0-node22/node --check test/api-runtime/scenario/scenario.cjs
+/private/tmp/m0-node22/node --permission --allow-fs-read="$PWD/test/api-runtime/scenario" --allow-fs-read="$PWD/output/qa/week2-jwt-config-runtime" output/qa/week2-jwt-config-runtime/evidence-unit.cjs
 ```
 
 Preparation has two closed modes, both disabled without exact direct independent
@@ -129,8 +152,9 @@ exclusive. The parent copies it as immutable input into a separate owned runtime
 bundle; preparation does not create/start Docker containers or evaluate a driver.
 Exact later Docker execution requires its own two direct reviews/admission.
 
-New authority17/ten cases and detections remain **NOT_RUN** until fresh
-preparation/artifact/two exact single-run decisions and actual execution succeed.
-Core36/four PASS is preserved historical evidence, not approval for this new run. Full application startup,
+New JWT seven/three groups and108 real configuration loads remain **NOT_RUN**
+until fresh preparation/artifact/two exact single-run decisions and actual
+execution succeed. Accepted53/14 PASS is historical evidence, not approval for
+this new run or completion of whole-process startup fixtures. Full application startup,
 root dependency adoption, retained-server C2 facts, broader OTP/money policy,
 owner acceptance, deployment and release gates remain open.

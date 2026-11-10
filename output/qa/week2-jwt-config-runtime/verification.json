@@ -1,0 +1,25 @@
+{
+  "schema": "SD-JWT-CONFIG-SOURCE-1",
+  "baseline": "7517a239b87559d923a2f46583173517ff4a1849",
+  "baselineRejected": true,
+  "priorNominalCasesPreserved": 53,
+  "priorSensitivityProbesPreserved": 14,
+  "declaredNominalIds": 60,
+  "declaredSensitivityIds": 17,
+  "contractSha": "4c7a4bae2f39e9afdeedc22c97babf684bd2077d31647196d714e5eda3d281f1",
+  "files": {
+    "test/api-runtime/scenario/scenario.cjs": "64ffadd360d41b1b2a830f1e513931f3368a8f77db8d749b1b3d2588d6e19da7",
+    "test/api-runtime/scenario/compile.cjs": "8fdc3fddc50bd97cf063df179f07cee58373a8571adacac79b7b0de9df33e5a4",
+    "test/api-runtime/scenario/README.md": "3e47db1fc08e8b0aa70777d324c50289e6d827ba9688bdc8340d6ef8388d1fd8"
+  },
+  "predictedSourceMutants": {
+    "JWT_CONFIG_PUBLISHED_FALLBACK": "ddc0895948af269684fe32ad2878e054b803df2739d7396584cd672ef77dd0b4",
+    "JWT_CONFIG_PRODUCTION_ONLY_GUARD": "196b5b2d4cada1bc3440ef07291c5ef4e01333fa5e5e9c3d006d54a1b11fc9aa",
+    "JWT_CONFIG_TRIMMED_RETURN": "e3e3078dcc37b8cce046266f579187847fbce7e5cb7f16f2e339d88f97f86699"
+  },
+  "predictionScope": "TEXT_ANCHORS_ONLY_NOT_ACTUAL_COMPILER_OUTPUT",
+  "applicationEvaluations": 0,
+  "compilerExecutions": 0,
+  "actualConfigLoads": 0,
+  "runtime": "NOT_RUN"
+}
