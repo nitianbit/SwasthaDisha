@@ -1,0 +1,22 @@
+{
+  "schema": "SD-DEPENDENTS-SOURCE-FREEZE-1",
+  "baseline": "cca8a5b453a35ce8517694568bd4c5f82c029e7e",
+  "files": {
+    "src1/modules/dependents/controller/index.ts": "5fd4f41f923e38ea8545499f6976b64ecda6070e2ba0eab72ac31608535e47f5",
+    "src1/modules/dependents/routes/index.ts": "a3ade302e3d7453b29135f4347d7ddf2b4b1fbad75aa7c0f5a5c6bc178573344",
+    "output/qa/week2-dependents/CONTRACT.initial-48836e54.md": "48836e54089e460dee0476243655bfeca0e1245e58fa14b11c2335eff064729a",
+    "output/qa/week2-dependents/CONTRACT.md": "7ae9f137a64c037416eb401768de52b3b0936a3a68d7b6ccd9d232f4f0e4232f",
+    "output/qa/week2-dependents/baseline-rejection.json": "fcc0e12f40dad409df7d9cc5bef4ab56a21727b32e5c3d46297c3ea249fea375",
+    "output/qa/week2-dependents/candidate.diff": "92733012f55bd4d0c0f5c899ae8f3a9d4f547c555d4e4cc833df259ac973f3c1",
+    "output/qa/week2-dependents/verification.json": "673ddc825c8c4513f2b4a240236c9df27269f087ffe27943ceed5bf7e8f0cbce",
+    "output/qa/week2-dependents/verify-source.pre-edit.py": "aa38ec43419c3d9d336f132ab2c56cf094f595cbcc4f93fd795fd0c797532c81",
+    "output/qa/week2-dependents/verify-source.py": "0e26d46198eb2cdcb8765f4686d128f4c6f10f960c70f365d7ffe66b42ad0e7d"
+  },
+  "negativeSourceControls": 29,
+  "runtimeHTTP": "NOT_RUN",
+  "applicationEvaluations": 0,
+  "compilerExecutions": 0,
+  "databaseCalls": 0,
+  "providerCalls": 0,
+  "DockerCalls": 0
+}

@@ -15,6 +15,8 @@ const dependentRouter = Router();
 
 const dependentController = new DependentController();
 
+dependentRouter.use(dependentController.authorize);
+
 // Create dependent
 dependentRouter.post(
   '/',
@@ -56,8 +58,9 @@ dependentRouter.get(
 dependentRouter.put(
   '/:id',
   validate(idParamSchema, 'params'),
-  validate(updateDependentSchema, 'body'),
   validate(dependentQuerySchema, 'query'),
+  catchAsync(dependentController.rejectOwnershipChange),
+  validate(updateDependentSchema, 'body'),
   catchAsync(dependentController.update)
 );
 

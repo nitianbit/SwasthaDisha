@@ -1,0 +1,137 @@
+{
+  "schema": "SD-DEPENDENTS-SOURCE-1",
+  "status": "SOURCE_TRANSFORMATION_VERIFIED_RUNTIME_NOT_RUN",
+  "baseline": "cca8a5b453a35ce8517694568bd4c5f82c029e7e",
+  "contractSha": "7ae9f137a64c037416eb401768de52b3b0936a3a68d7b6ccd9d232f4f0e4232f",
+  "originalContractSha": "48836e54089e460dee0476243655bfeca0e1245e58fa14b11c2335eff064729a",
+  "productionSha": {
+    "src1/modules/dependents/controller/index.ts": "5fd4f41f923e38ea8545499f6976b64ecda6070e2ba0eab72ac31608535e47f5",
+    "src1/modules/dependents/routes/index.ts": "a3ade302e3d7453b29135f4347d7ddf2b4b1fbad75aa7c0f5a5c6bc178573344"
+  },
+  "verifierSha": "0e26d46198eb2cdcb8765f4686d128f4c6f10f960c70f365d7ffe66b42ad0e7d",
+  "baselineRejection": "REJECTED_AS_EXPECTED",
+  "negativeSourceControls": [
+    {
+      "id": "router-admission-removed",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "router-admission-after-registration",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "missing-principal-check",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "blank-principal-accepted",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "principal-coercion",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "role-check-removed",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "hr-admitted",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "admin-case-folded",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "owner-mismatch-check-removed",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "ordinary-owner-from-query",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "create-mismatch-ignored",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "create-owner-request-selected",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "create-spread-overrides-owner",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "admin-on-behalf-removed",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "list-unscoped",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "getById-unscoped",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "update-unscoped",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "delete-unscoped",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "getByUserId-path-owner-trusted",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "getActiveDependents-path-owner-trusted",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "raw-owner-detection-removed",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "raw-null-owner-ignored",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "raw-owner-object-check-removed",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "raw-owner-object-check-unscoped",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "raw-owner-preflight-removed",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "raw-owner-preflight-after-strip",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "raw-owner-query-before-validation",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "missing-principal-wrong-error",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "raw-owner-wrong-error",
+      "status": "REJECTED_AS_EXPECTED"
+    }
+  ],
+  "runtimeHTTP": "NOT_RUN",
+  "applicationEvaluations": 0,
+  "compilerExecutions": 0,
+  "databaseCalls": 0,
+  "providerCalls": 0,
+  "DockerCalls": 0
+}
