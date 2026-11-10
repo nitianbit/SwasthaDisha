@@ -1,0 +1,19 @@
+{
+  "status": "OFFLINE_OPERATOR_SOURCE_CANDIDATE_REAL_NOT_RUN",
+  "tests": 66,
+  "failure": 0,
+  "skips": 0,
+  "DockerCalls": 0,
+  "applicationImports": 0,
+  "databaseConnections": 0,
+  "command": "env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /private/tmp/m0-node22/node test/api-runtime/unit.mjs",
+  "sourceSha256": {
+    "test/api-runtime/launch.mjs": "8d679490f8a747725cc79291a9494c7d70f9867a42c06ed9e5f74dd90cdbac52",
+    "test/api-runtime/launch.test.mjs": "87aea95cead4b5bd33f099004b40f7c931fdc096b899ab54ae08c65830d468fc",
+    "test/api-runtime/unit.mjs": "d80d0c710eee4da355d7cc063e4586dfa9190dd5f82e8a09c1b984a709d84fab",
+    "test/api-runtime/platform.mjs": "05c11565c2b93e8ef24e5a2a5824bb7daf23471611590cc62f65d3046620b5db",
+    "test/api-runtime/profile.json": "0ff9d1a10f6d6a34bda10584f4ed3d1308aab707f20d048674019736643859ca",
+    "test/application/app-bundle.mjs": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2"
+  },
+  "prior_review": "Both nonauthor reviewers requested correction of runEntered persisted before actual method invocation. Revision1 evidence retained. Three new pure fake checks cover pre-write failure, rejected entered run and pending-run await ordering."
+}
