@@ -1,0 +1,32 @@
+{
+  "schema": "SD-AUTHORITY-API-EXTENSION-SOURCE-FREEZE-1",
+  "contractBaseline": "94f8804916850caf9c716fae2cc49c6c0d218202",
+  "composedHead": "86936846e937de00396758b99bc9ed7adad7d855",
+  "files": {
+    "test/api-runtime/scenario/scenario.cjs": "991b977c85d065214dd64cef31584c508cb9bd3a08f617f945671c5e0c7c4400",
+    "test/api-runtime/scenario/compile.cjs": "f61398a951f17f349dc42a182795c0de46a0f913699631813f28bccfc82662d5",
+    "test/api-runtime/scenario/README.md": "578e19367381055a2f6c865f9b927114685014a7491478f41e77cfa4ea106962",
+    "test/api-runtime/scenario/bootstrap.cjs": "1e464bfbdfb0ddfa77efea4421bde21fa03eef4d367cc32fa2208ab638063fd6",
+    "test/api-runtime/scenario/bootstrap-unit.cjs": "82f31df87203bfbb9c9c67721697dd777fedd34fc2f43112bb701c36cb4f7764",
+    "test/api-runtime/scenario/ports-manifest.json": "626d384db90b98ea72b3ed81de3e27857231802ba7a1edd542715e2e3abd885f",
+    "test/api-runtime/platform.mjs": "b5117065c90c4698cb9604a8da0cb673a38249d8eee07a8ac39e11040a56e29f",
+    "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+    "output/qa/week2-authority-api-extension/CONTRACT.md": "23f37d31fe77565ce7d5d04689b777d5f539dd079d787b26ca6346e5e42c4f90",
+    "output/qa/week2-authority-api-extension/README.md": "64b62a150c111a8876421b5c5a4d638a55d7d9f35269bcda626a85a2daf01f09",
+    "output/qa/week2-authority-api-extension/candidate.diff": "670d132496ee7e3b7d166b5a166a5bcc51a7919f21eda9c1f2ba0b37ee365c30",
+    "output/qa/week2-authority-api-extension/offline-bootstrap.json": "9f4c2d1d8ef652b5573e0d48f5a3f884e0d16c66be85097b2417b060722db20a",
+    "output/qa/week2-authority-api-extension/syntax.json": "b9be1db02efa6fcc94fb3020f0d9133f5e1df613cc3d56838db63b94434838cf",
+    "output/qa/week2-authority-api-extension/verification.json": "5b5b143195c99f506a68797f99f275c656b62fc729c6e516f6f1dfd4bed9af18",
+    "output/qa/week2-authority-api-extension/verify-source.py": "1d73dafdb0e6aff7c29a4e2119b76fee0dac06186a9e80e4c56ecd5199056dea"
+  },
+  "nominalIds": 53,
+  "sensitivityIds": 14,
+  "models": 13,
+  "sourceControls": 17,
+  "runtime": "NOT_RUN",
+  "compiler": "NOT_RUN",
+  "applicationEvaluations": 0,
+  "databaseCalls": 0,
+  "providerCalls": 0,
+  "DockerCalls": 0
+}

@@ -1,0 +1,21 @@
+{
+  "schema": "SD-AUTHORITY-EXTENSION-SOURCE-CHECK-1",
+  "baseline": "94f8804916850caf9c716fae2cc49c6c0d218202",
+  "baselineRejected": true,
+  "sourceNegativeControlsRejected": 17,
+  "oldNominalCasesPreserved": 36,
+  "oldSensitivityProbesPreserved": 4,
+  "declaredNominalIds": 53,
+  "declaredSensitivityIds": 14,
+  "candidateHashes": {
+    "test/api-runtime/scenario/scenario.cjs": "991b977c85d065214dd64cef31584c508cb9bd3a08f617f945671c5e0c7c4400",
+    "test/api-runtime/scenario/compile.cjs": "f61398a951f17f349dc42a182795c0de46a0f913699631813f28bccfc82662d5",
+    "test/api-runtime/scenario/README.md": "578e19367381055a2f6c865f9b927114685014a7491478f41e77cfa4ea106962"
+  },
+  "contractSha": "23f37d31fe77565ce7d5d04689b777d5f539dd079d787b26ca6346e5e42c4f90",
+  "runtime": "NOT_RUN",
+  "compiler": "NOT_RUN",
+  "applicationEvaluations": 0,
+  "databaseCalls": 0,
+  "providerCalls": 0
+}

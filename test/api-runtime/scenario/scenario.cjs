@@ -11,6 +11,7 @@ async function runScenario(ctx) {
   const uid = () => new mongoose.Types.ObjectId().toString();
   const id = row => String(row._id);
   const cases = []; const sensitivity = [];
+  const completedProofs = new Map();
   const record = name => { need(!cases.some(row => row.id === name), 'DUPLICATE_CASE'); cases.push({ id: name, status: 'PASS' }); };
   const request = (method, route, token, body) => new Promise((resolve, reject) => {
     const payload = body === undefined ? undefined : JSON.stringify(body);
@@ -32,7 +33,7 @@ async function runScenario(ctx) {
   }
   const providerState = () => ['email', 'sms', 'push', 'unexpected', 'excluded', 'jwtIssued', 'dbWrites'].map(k => ctx.counters[k]);
   async function snapshot(includeOTP = true) {
-    const names = ['User', 'Admin', 'HR', 'Wallet', 'WalletTransaction', 'Notification', ...(includeOTP ? ['OTP'] : [])];
+    const names = ctx.ports.models.map(row => row.name).filter(name => includeOTP || name !== 'OTP');
     const rows = await Promise.all(names.map(name => model(name).find({}).sort({ _id: 1 }).lean().exec()));
     return crypto.createHash('sha256').update(JSON.stringify(rows)).digest('hex');
   }
@@ -65,7 +66,16 @@ async function runScenario(ctx) {
     const row = await model('OTP').create({ userId: user._id, otp: code, target,
       ...(options.unbound ? {} : { targetValue: options.destination || user[target] }),
       expireAt: options.expireAt || new Date(Date.now() + 60000), isVerified: options.verified || false });
+    completedProofs.set(id(row), String(user._id));
     return { row, code, contact: { [target]: user[target] } };
+  }
+  async function cleanCompletedProofs() {
+    // Called only after all associated requests/schedulers completed. A TTL-
+    // removed exact proof may already be absent; no assertion diff is ignored.
+    for (const [proofId, ownerId] of completedProofs) {
+      await model('OTP').deleteOne({ _id: proofId, userId: ownerId });
+      completedProofs.delete(proofId);
+    }
   }
   async function rejectChallenge(user, options, caseId, statuses) {
     const c = await challenge(user, options); const before = await snapshot(false); const effects = providerState();
@@ -130,6 +140,483 @@ async function runScenario(ctx) {
       need(response.status === 404, 'TARGET_BINDING_STATUS'); errorEnvelope(response, 'OTP_NOT_FOUND');
       need(await snapshot(false) === before && JSON.stringify(providerState()) === JSON.stringify(effects), 'TARGET_BINDING_SIDE_EFFECTS');
       need((await model('OTP').findById(c.row._id).lean().exec()).isVerified === false, 'TARGET_BINDING_PROOF');
+    }
+  }
+
+  // Additional authority cases use actual HTTP and all admitted collections.
+  // Observations are private so even intentional mutant results never escape.
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  async function authorityRows() {
+    const entries = await Promise.all(ctx.ports.models.map(async spec => [spec.name,
+      await model(spec.name).find({}).sort({ _id: 1 }).lean().exec()]));
+    return Object.fromEntries(entries);
+  }
+  async function observe(method, route, token, body) {
+    const before = await authorityRows(); const countersBefore = { ...ctx.counters };
+    const readsBefore = { ...ctx.readOps }; const writesBefore = { ...ctx.writeOps }; const pushStart = ctx.pushes.length;
+    const result = await request(method, route, token, body);
+    const countersAfter = { ...ctx.counters }; const readsAfter = { ...ctx.readOps }; const writesAfter = { ...ctx.writeOps };
+    const pushes = ctx.pushes.slice(pushStart);
+    const after = await authorityRows();
+    const delta = (next, prior) => Object.fromEntries(Object.keys(prior).map(key => [key, next[key] - prior[key]]));
+    return { result, before, after, pushes, effects: delta(countersAfter, countersBefore),
+      reads: delta(readsAfter, readsBefore), writes: delta(writesAfter, writesBefore) };
+  }
+  function unchangedOutside(observed, permitted = {}) {
+    for (const spec of ctx.ports.models) {
+      const ids = new Set(permitted[spec.name] || []);
+      const retain = rows => rows.filter(row => !ids.has(id(row)));
+      const digest = rows => crypto.createHash('sha256').update(JSON.stringify(rows)).digest('hex');
+      need(digest(retain(observed.before[spec.name])) === digest(retain(observed.after[spec.name])), 'AUTHORITY_UNRELATED_STATE');
+    }
+  }
+  function effects(observed, expectedWrites = {}, push = 0, logger = 0) {
+    for (const [collection, count] of Object.entries(observed.writes))
+      need(count === (expectedWrites[collection] || 0), 'AUTHORITY_WRITE_COUNTS');
+    need(observed.effects.dbWrites === Object.values(expectedWrites).reduce((sum, n) => sum + n, 0), 'AUTHORITY_TOTAL_WRITES');
+    for (const key of ['email', 'sms', 'jwtIssued', 'unexpected', 'excluded']) need(observed.effects[key] === 0, 'AUTHORITY_EFFECTS');
+    need(observed.effects.push === push && observed.pushes.length === push && observed.effects.logger === logger, 'AUTHORITY_RECORDING_COUNTS');
+  }
+  function assertDenied(observed, status, code, beforeLookup = false) {
+    need(observed.result.status === status, 'AUTHORITY_DENIAL_STATUS'); errorEnvelope(observed.result, code);
+    unchangedOutside(observed); effects(observed, {}, 0, 1);
+    if (beforeLookup) need(Object.values(observed.reads).every(value => value === 0), 'AUTHORITY_PRELOOKUP_READS');
+  }
+  async function authorityDeny(method, route, token, body, status, code, beforeLookup = false) {
+    const observed = await observe(method, route, token, body); assertDenied(observed, status, code, beforeLookup); return observed;
+  }
+  function assertSuccess(observed, status, permitted = {}, writes = {}, push = 0, logger = 0) {
+    need(observed.result.status === status && observed.result.body?.success === true, 'AUTHORITY_SUCCESS_STATUS');
+    unchangedOutside(observed, permitted); effects(observed, writes, push, logger);
+  }
+  async function readSuccess(route, token) {
+    const observed = await observe('GET', route, token); assertSuccess(observed, 200); return observed.result.body;
+  }
+  function ownerRows(body, owner) {
+    need(Array.isArray(body.data) && body.data.every(row => row.userId === owner), 'AUTHORITY_LIST_OWNER');
+    return body.data;
+  }
+  function totalRows(body, total) { need(body.pagination?.total === total, 'AUTHORITY_LIST_TOTAL'); }
+  function stored(observed, name, rowId) { return observed.after[name].find(row => id(row) === rowId); }
+  function onlyFields(observed, name, rowId, fields) {
+    const prior = observed.before[name].find(row => id(row) === rowId); const next = stored(observed, name, rowId);
+    const retained = row => Object.fromEntries(Object.entries(row).filter(([key]) => !fields.includes(key)));
+    need(prior && next && same(retained(prior), retained(next)), 'AUTHORITY_UNINTENDED_FIELDS');
+  }
+  function inserted(observed, name, rowId) {
+    need(!observed.before[name].some(row => id(row) === rowId) && stored(observed, name, rowId), 'AUTHORITY_INSERTED_ROW');
+  }
+  function assertPayloads(observed, expected) {
+    const normalize = payload => ({ tokens: payload.tokens.slice().sort(), notification: payload.notification,
+      ...(payload.data === undefined ? {} : { data: Object.fromEntries(Object.entries(payload.data).sort(([a], [b]) => a.localeCompare(b))) }) });
+    let matches = false;
+    try { matches = same(observed.pushes.map(normalize), expected.map(normalize)); } catch { /* Fixed code only. */ }
+    if (!matches) { ctx.counters.unexpected++; need(false, 'AUTHORITY_PUSH_PAYLOAD'); }
+  }
+  const depBody = owner => ({ userId: owner, name: 'Synthetic ' + uid(), relationship: 'Friend' });
+  const noteBody = owner => ({ userId: owner, type: 'general', title: 'Synthetic notice', message: 'Synthetic fixture only' });
+  const seedDependent = (owner, data = {}) => model('Dependent').create({ ...depBody(owner), ...data });
+  const seedNote = (owner, data = {}) => model('Notification').create({ ...noteBody(owner), isRead: false, ...data });
+  async function createDependent(token, owner, data = {}) {
+    const body = { ...depBody(owner), ...data }; const observed = await observe('POST', '/dependents', token, body);
+    const rowId = observed.result.body?.data?._id;
+    need(typeof rowId === 'string', 'DEPENDENT_CREATED_ID');
+    assertSuccess(observed, 201, { Dependent: [rowId] }, { dependents: 1 });
+    inserted(observed, 'Dependent', rowId);
+    const row = stored(observed, 'Dependent', rowId);
+    need(row?.userId === owner && row.name === body.name.trim() && row.relationship === body.relationship, 'DEPENDENT_CREATE_STATE');
+    return row;
+  }
+  async function registerToken(token, owner, role = 'user') {
+    const value = 'synthetic-fixture-' + uid();
+    const observed = await observe('POST', '/fcm/token', token, { token: ' ' + value + ' ', platform: 'web', deviceId: ' synthetic-device ', userId: uid(), userType: 'admin' });
+    const rowId = observed.result.body?.data?.token?._id;
+    need(typeof rowId === 'string', 'FCM_CREATED_ID');
+    assertSuccess(observed, 201, { FcmToken: [rowId] }, { fcmtokens: 1 });
+    inserted(observed, 'FcmToken', rowId);
+    const row = stored(observed, 'FcmToken', rowId);
+    need(row?.token === value && row.userId === owner && row.userType === role && row.platform === 'web'
+      && row.deviceId === 'synthetic-device' && row.isActive === true, 'FCM_TOKEN_OWNER_STATE');
+    return value;
+  }
+  const testPush = tokens => ({ tokens, notification: { title: 'Booking Successful',
+    body: 'Your booking has been confirmed successfully. We will confirm it shortly.' }, data: { type: 'test' } });
+  const dependentRoutes = (owner, rowId) => [
+    ['POST', '/dependents', depBody(owner)], ['GET', '/dependents'], ['GET', '/dependents/user/' + owner],
+    ['GET', '/dependents/user/' + owner + '/active'], ['GET', '/dependents/' + rowId],
+    ['PUT', '/dependents/' + rowId, { name: 'Edited synthetic' }], ['DELETE', '/dependents/' + rowId],
+  ];
+  const genericNoteRoutes = rowId => [['GET', '/notifications/' + rowId], ['PUT', '/notifications/' + rowId, { isRead: true }],
+    ['PATCH', '/notifications/' + rowId + '/read'], ['DELETE', '/notifications/' + rowId]];
+  const strictNoteRoutes = owner => [['GET', '/notifications/user/' + owner], ['GET', '/notifications/user/' + owner + '/unread'],
+    ['GET', '/notifications/user/' + owner + '/unread-count'], ['PATCH', '/notifications/user/' + owner + '/read-all']];
+  async function noteMutation(method, route, token, row, body) {
+    const observed = await observe(method, route, token, body); const rowId = id(row);
+    assertSuccess(observed, 200, { Notification: [rowId] }, { notifications: 1 });
+    const changed = stored(observed, 'Notification', rowId);
+    if (method === 'DELETE') need(!changed, 'NOTIFICATION_DELETED_STATE');
+    else {
+      onlyFields(observed, 'Notification', rowId, ['isRead', 'readAt', 'updatedAt']);
+      need(changed?.userId === row.userId && changed.title === row.title && changed.message === row.message, 'NOTIFICATION_IMMUTABLE_FIELDS');
+      need(changed.isRead === (body?.isRead ?? true), 'NOTIFICATION_READ_STATE');
+      if (changed.isRead) need(changed.readAt instanceof Date, 'NOTIFICATION_READ_AT');
+      return changed;
+    }
+  }
+  async function runAuthorityNominal(adminToken) {
+    const first = await login({ email: 'authority-a-' + uid() + '@example.com' });
+    const second = await login({ email: 'authority-b-' + uid() + '@example.com' });
+    const owner = first.user._id; const other = second.user._id;
+    let row = await createDependent(first.token, owner);
+    let body = await readSuccess('/dependents/' + id(row), first.token); need(body.data.userId === owner, 'DEPENDENT_OWN_ID');
+    for (const suffix of ['', '?userId=' + owner, '?page=1&limit=10', '?userId=' + owner + '&page=1&limit=10']) {
+      body = await readSuccess('/dependents' + suffix, first.token); ownerRows(body, owner);
+      if (body.pagination) totalRows(body, 1);
+    }
+    for (const suffix of ['', '/active']) ownerRows(await readSuccess('/dependents/user/' + owner + suffix, first.token), owner);
+    let observed = await observe('PUT', '/dependents/' + id(row) + '?userId=' + owner, first.token, { name: 'Edited owner fixture' });
+    assertSuccess(observed, 200, { Dependent: [id(row)] }, { dependents: 1 });
+    onlyFields(observed, 'Dependent', id(row), ['name', 'updatedAt']);
+    need(stored(observed, 'Dependent', id(row))?.name === 'Edited owner fixture'
+      && stored(observed, 'Dependent', id(row))?.userId === owner, 'DEPENDENT_UPDATE_STATE');
+    observed = await observe('DELETE', '/dependents/' + id(row), first.token);
+    assertSuccess(observed, 200, { Dependent: [id(row)] }, { dependents: 1 });
+    need(!stored(observed, 'Dependent', id(row)), 'DEPENDENT_DELETE_STATE'); record('DEPENDENT_OWNER_CRUD_LIST');
+
+    row = await createDependent(adminToken, other);
+    await seedDependent(owner, { isActive: false });
+    body = await readSuccess('/dependents', adminToken);
+    need(body.data.some(item => item.userId === owner) && body.data.some(item => item.userId === other), 'DEPENDENT_ADMIN_GLOBAL');
+    for (const suffix of ['', '&page=1&limit=10']) ownerRows(await readSuccess('/dependents?userId=' + other + suffix, adminToken), other);
+    for (const suffix of ['', '/active']) ownerRows(await readSuccess('/dependents/user/' + other + suffix, adminToken), other);
+    body = await readSuccess('/dependents/' + id(row), adminToken); need(body.data.userId === other, 'DEPENDENT_ADMIN_ID');
+    observed = await observe('PUT', '/dependents/' + id(row) + '?userId=' + other, adminToken, { name: 'Admin edited synthetic' });
+    assertSuccess(observed, 200, { Dependent: [id(row)] }, { dependents: 1 });
+    onlyFields(observed, 'Dependent', id(row), ['name', 'updatedAt']);
+    need(stored(observed, 'Dependent', id(row))?.name === 'Admin edited synthetic', 'DEPENDENT_ADMIN_UPDATE');
+    observed = await observe('DELETE', '/dependents/' + id(row), adminToken);
+    assertSuccess(observed, 200, { Dependent: [id(row)] }, { dependents: 1 }); need(!stored(observed, 'Dependent', id(row)), 'DEPENDENT_ADMIN_DELETE');
+    record('DEPENDENT_ADMIN_ON_BEHALF');
+
+    for (const role of ['hr', 'specialist', 'pharmacy', 'unknown', 'Admin']) {
+      const roleId = uid(); const token = actor({ _id: roleId, userType: role }); const owned = await seedDependent(roleId);
+      for (const [method, route, payload] of dependentRoutes(roleId, id(owned))) {
+        await authorityDeny(method, route, token, payload, 403, 'FORBIDDEN', true);
+        const malformedRoute = route.includes(id(owned)) ? route.replace(id(owned), 'bad-id') : route;
+        await authorityDeny(method, malformedRoute, token, method === 'POST' || method === 'PUT' ? {} : undefined, 403, 'FORBIDDEN', true);
+      }
+    }
+    for (const invalid of [undefined, '', ' ', 7, {}]) {
+      const token = actor({ ...(invalid === undefined ? {} : { _id: invalid }), userType: 'user' });
+      for (const [method, route, payload] of dependentRoutes(owner, uid())) await authorityDeny(method, route, token, payload, 401, 'UNAUTHORIZED', true);
+    }
+    await authorityDeny('GET', '/dependents', undefined, undefined, 401, 'UNAUTHORIZED', true);
+    await authorityDeny('GET', '/dependents', 'not-a-jwt', undefined, 401, 'INVALID_TOKEN', true);
+    record('DEPENDENT_ROLE_AND_PRINCIPAL_DENIALS');
+
+    row = await seedDependent(owner); const foreign = await seedDependent(other);
+    for (const [method, route, payload] of [['GET', '/dependents?userId=' + other],
+      ...['GET', 'PUT', 'DELETE'].map(method => [method, '/dependents/' + id(row) + '?userId=' + other, method === 'PUT' ? { name: 'Denied' } : undefined]),
+      ['GET', '/dependents/user/' + other], ['GET', '/dependents/user/' + other + '/active']])
+      await authorityDeny(method, route, first.token, payload, 403, 'FORBIDDEN', true);
+    await authorityDeny('POST', '/dependents', first.token, depBody(other), 422, 'FORBIDDEN_FIELD', true);
+    record('DEPENDENT_OWNER_SELECTORS_DENIED');
+    for (const suffix of ['', '?userId=' + owner]) for (const method of ['GET', 'PUT', 'DELETE'])
+      await authorityDeny(method, '/dependents/' + id(foreign) + suffix, first.token, method === 'PUT' ? { name: 'Denied' } : undefined, 404, 'DEPENDENT_NOT_FOUND');
+    await authorityDeny('GET', '/dependents/' + uid(), first.token, undefined, 404, 'DEPENDENT_NOT_FOUND');
+    await authorityDeny('GET', '/dependents/bad-id', first.token, undefined, 400, 'VALIDATION_ERROR', true);
+    record('DEPENDENT_HIDDEN_ID_DENIALS');
+    for (const token of [first.token, adminToken]) for (const value of [owner, other, null, 7, {}, [], ''])
+      await authorityDeny('PUT', '/dependents/' + id(row), token, { userId: value, name: 'Must not update' }, 422, 'FORBIDDEN_FIELD');
+    for (const target of [id(foreign), uid()]) await authorityDeny('PUT', '/dependents/' + target, first.token,
+      { userId: owner, name: 'Denied' }, 404, 'DEPENDENT_NOT_FOUND');
+    await authorityDeny('PUT', '/dependents/' + id(row) + '?userId=' + other, first.token,
+      { userId: owner, name: 'Denied' }, 403, 'FORBIDDEN', true); record('DEPENDENT_RAW_OWNER_FIELD_DENIALS');
+    await authorityDeny('POST', '/dependents', first.token, { name: 'No owner', relationship: 'Friend' }, 400, 'VALIDATION_ERROR', true);
+    await createDependent(first.token, owner, { relationship: 'Me' });
+    await authorityDeny('POST', '/dependents', first.token, { ...depBody(owner), relationship: 'Me' }, 400, 'ME_DEPENDENT_EXISTS');
+    const duplicate = await createDependent(first.token, owner, { name: 'Case Sensitive Fixture', relationship: 'Father' });
+    await authorityDeny('POST', '/dependents', first.token, { ...depBody(owner), name: ' case sensitive fixture ', relationship: 'Father' }, 400, 'DEPENDENT_ALREADY_EXISTS');
+    for (const relationship of ['wife', 'Wife', 'husband', 'Husband']) await createDependent(first.token, owner, { relationship });
+    body = await readSuccess('/dependents?isActive=false', first.token);
+    need(ownerRows(body, owner).every(item => item.isActive === true), 'DEPENDENT_LEGACY_ACTIVE_HELPER');
+    body = await readSuccess('/dependents?isActive=false&page=1&limit=10', first.token);
+    need(body.pagination.total === 1 && ownerRows(body, owner).every(item => item.isActive === false), 'DEPENDENT_PAGINATED_INACTIVE');
+    need(duplicate.userId === owner, 'DEPENDENT_DUPLICATE_SETUP'); record('DEPENDENT_LEGACY_VALIDATION');
+
+    let ownNote = await seedNote(owner); const otherNote = await seedNote(other);
+    for (const suffix of ['', '?userId=' + owner]) ownerRows(await readSuccess('/notifications' + suffix, first.token), owner);
+    body = await readSuccess('/notifications/' + id(ownNote), first.token); need(body.data.userId === owner, 'NOTIFICATION_OWN_ID');
+    ownNote = await noteMutation('PUT', '/notifications/' + id(ownNote), first.token, ownNote, { isRead: true, userId: other, title: 'Ignored', message: 'Ignored' });
+    const priorReadAt = ownNote.readAt;
+    ownNote = await noteMutation('PUT', '/notifications/' + id(ownNote), first.token, ownNote, { isRead: false });
+    need(same(ownNote.readAt, priorReadAt), 'NOTIFICATION_UNREAD_READAT_PRESERVED');
+    ownNote = await noteMutation('PATCH', '/notifications/' + id(ownNote) + '/read', first.token, ownNote);
+    ownNote = await noteMutation('PATCH', '/notifications/' + id(ownNote) + '/read', first.token, ownNote);
+    await noteMutation('DELETE', '/notifications/' + id(ownNote), first.token, ownNote); record('NOTIFICATION_GENERIC_OWNER_FLOWS');
+    body = await readSuccess('/notifications', adminToken);
+    need(body.data.some(item => item.userId === owner) && body.data.some(item => item.userId === other), 'NOTIFICATION_ADMIN_GLOBAL');
+    ownerRows(await readSuccess('/notifications?userId=' + other + '&page=1&limit=10', adminToken), other);
+    ownNote = await seedNote(other); body = await readSuccess('/notifications/' + id(ownNote), adminToken);
+    need(body.data.userId === other, 'NOTIFICATION_ADMIN_ID');
+    ownNote = await noteMutation('PUT', '/notifications/' + id(ownNote), adminToken, ownNote, { isRead: false });
+    ownNote = await noteMutation('PATCH', '/notifications/' + id(ownNote) + '/read', adminToken, ownNote);
+    await noteMutation('DELETE', '/notifications/' + id(ownNote), adminToken, ownNote); record('NOTIFICATION_GENERIC_ADMIN_FLOWS');
+    await authorityDeny('GET', '/notifications?userId=' + other, first.token, undefined, 403, 'FORBIDDEN', true);
+    for (const [method, route, payload] of genericNoteRoutes(id(otherNote))) await authorityDeny(method, route, first.token, payload, 403, 'FORBIDDEN');
+    await authorityDeny('GET', '/notifications/' + uid(), first.token, undefined, 404, 'NOTIFICATION_NOT_FOUND');
+    await authorityDeny('GET', '/notifications/bad-id', first.token, undefined, 400, 'VALIDATION_ERROR', true);
+    for (const invalid of [undefined, '', ' ', 7, {}]) {
+      const token = actor({ ...(invalid === undefined ? {} : { _id: invalid }), userType: 'user' });
+      await authorityDeny('GET', '/notifications', token, undefined, 401, 'UNAUTHORIZED', true);
+      for (const [method, route, payload] of genericNoteRoutes(id(otherNote))) await authorityDeny(method, route, token, payload, 401, 'UNAUTHORIZED', true);
+    }
+    for (const role of ['hr', 'specialist', 'pharmacy', 'unknown', 'Admin']) {
+      const roleId = uid(); const token = actor({ _id: roleId, userType: role, specialistId: other, pharmacyId: other });
+      let roleNote = await seedNote(roleId);
+      ownerRows(await readSuccess('/notifications', token), roleId);
+      body = await readSuccess('/notifications/' + id(roleNote), token); need(body.data.userId === roleId, 'NOTIFICATION_ROLE_OWN');
+      roleNote = await noteMutation('PUT', '/notifications/' + id(roleNote), token, roleNote, { isRead: true });
+      roleNote = await noteMutation('PATCH', '/notifications/' + id(roleNote) + '/read', token, roleNote);
+      await noteMutation('DELETE', '/notifications/' + id(roleNote), token, roleNote);
+      await authorityDeny('GET', '/notifications?userId=' + other, token, undefined, 403, 'FORBIDDEN', true);
+      for (const [method, route, payload] of genericNoteRoutes(id(otherNote))) await authorityDeny(method, route, token, payload, 403, 'FORBIDDEN');
+    }
+    record('NOTIFICATION_GENERIC_DENIALS');
+
+    const pageOwner = uid(); const pageToken = actor({ _id: pageOwner, userType: 'user' });
+    await seedNote(pageOwner, { referenceType: 'synthetic', referenceId: 'a' });
+    await seedNote(pageOwner, { referenceType: 'synthetic', referenceId: 'b', isRead: true });
+    await seedNote(other, { referenceType: 'synthetic', referenceId: 'a' });
+    body = await readSuccess('/notifications?referenceId=a&page=1&limit=1', pageToken);
+    need(ownerRows(body, pageOwner).length === 1 && body.pagination.totalPages === 1, 'NOTIFICATION_REFERENCE_TOTAL'); totalRows(body, 1);
+    body = await readSuccess('/notifications?referenceId=a', pageToken); need(ownerRows(body, pageOwner).length === 2, 'NOTIFICATION_LEGACY_REFERENCE_FILTER');
+    body = await readSuccess('/notifications?isRead=false&type=general&page=1&limit=1', pageToken);
+    need(ownerRows(body, pageOwner).length === 1 && body.pagination.total === 1, 'NOTIFICATION_FILTER_TOTAL');
+    body = await readSuccess('/notifications/user/' + pageOwner + '/unread-count', pageToken); need(body.data.count === 1, 'NOTIFICATION_OWN_COUNT');
+    const capOwner = uid(); const capToken = actor({ _id: capOwner, userType: 'user' });
+    const capRows = await model('Notification').insertMany(Array.from({ length: 1001 }, () => ({ ...noteBody(capOwner), isRead: false })));
+    body = await readSuccess('/notifications/user/' + capOwner + '/unread-count', capToken); need(body.data.count === 1000, 'NOTIFICATION_COUNT_CAP');
+    await model('Notification').deleteMany({ _id: { $in: capRows.map(item => item._id) }, userId: capOwner });
+    need(await model('Notification').countDocuments({ _id: { $in: capRows.map(item => item._id) }, userId: capOwner }) === 0, 'NOTIFICATION_CAP_CLEANUP');
+    record('NOTIFICATION_PAGINATION_AND_COUNTS');
+
+    const strictOwner = uid(); const strictToken = actor({ _id: strictOwner, userType: 'user' });
+    const strictRows = [await seedNote(strictOwner), await seedNote(strictOwner)];
+    await seedNote(strictOwner, { isRead: true, readAt: new Date('2000-01-01T00:00:00.000Z') });
+    for (const [method, route] of strictNoteRoutes(strictOwner)) {
+      if (method === 'GET') {
+        body = await readSuccess(route, strictToken);
+        if (route.endsWith('unread-count')) need(body.data.count === 2, 'NOTIFICATION_STRICT_COUNT'); else ownerRows(body, strictOwner);
+      } else {
+        observed = await observe(method, route, strictToken);
+        const unreadIds = observed.before.Notification.filter(item => item.userId === strictOwner && item.isRead === false).map(id);
+        assertSuccess(observed, 200, { Notification: unreadIds }, { notifications: 1 });
+        for (const rowId of unreadIds) onlyFields(observed, 'Notification', rowId, ['isRead', 'readAt', 'updatedAt']);
+        need(strictRows.every(item => stored(observed, 'Notification', id(item))?.isRead === true), 'NOTIFICATION_STRICT_READ_ALL');
+      }
+      for (const token of [first.token, adminToken]) await authorityDeny(method, route, token, undefined, 403, 'FORBIDDEN', true);
+    }
+    record('NOTIFICATION_PRIOR_STRICT_OWN_PATHS');
+    for (const alias of [false, true]) {
+      const specialistId = uid(); const token = actor({ _id: alias ? uid() : specialistId, userType: 'specialist', ...(alias ? { specialistId } : {}) });
+      const notes = [await seedNote(specialistId), await seedNote(specialistId)];
+      await seedNote(specialistId, { isRead: true, readAt: new Date('2000-01-01T00:00:00.000Z') });
+      for (const suffix of ['', '/unread', '/unread-count']) {
+        body = await readSuccess('/notifications/specialist/me' + suffix, token);
+        if (suffix.endsWith('count')) need(body.data.count === 2, 'NOTIFICATION_SPECIALIST_COUNT'); else ownerRows(body, specialistId);
+      }
+      for (const rowId of [id(otherNote), uid()]) await authorityDeny('PATCH', '/notifications/specialist/' + rowId + '/read', token, undefined, 404, 'NOTIFICATION_NOT_FOUND');
+      await noteMutation('PATCH', '/notifications/specialist/' + id(notes[0]) + '/read', token, notes[0]);
+      observed = await observe('PATCH', '/notifications/specialist/me/read-all', token);
+      const unreadIds = observed.before.Notification.filter(item => item.userId === specialistId && item.isRead === false).map(id);
+      assertSuccess(observed, 200, { Notification: unreadIds }, { notifications: 1 });
+      for (const rowId of unreadIds) onlyFields(observed, 'Notification', rowId, ['isRead', 'readAt', 'updatedAt']);
+      need(notes.every(item => stored(observed, 'Notification', id(item))?.isRead === true), 'NOTIFICATION_SPECIALIST_READ_ALL');
+    }
+    for (const [method, route] of [['GET', '/notifications/specialist/me'], ['GET', '/notifications/specialist/me/unread'],
+      ['GET', '/notifications/specialist/me/unread-count'], ['PATCH', '/notifications/specialist/me/read-all'], ['PATCH', '/notifications/specialist/' + id(otherNote) + '/read']])
+      await authorityDeny(method, route, first.token, undefined, 403, 'FORBIDDEN', true);
+    record('NOTIFICATION_PRIOR_SPECIALIST_PATHS');
+
+    const ownedToken = await registerToken(first.token, owner); await registerToken(second.token, other);
+    const plainBody = { ...noteBody(owner), data: { fixture: 'single' }, referenceType: 'synthetic', referenceId: uid() };
+    observed = await observe('POST', '/notifications', adminToken, plainBody);
+    const plainId = observed.result.body?.data?._id; need(typeof plainId === 'string', 'NOTIFICATION_SEND_CREATED_ID');
+    assertSuccess(observed, 201, { Notification: [plainId] }, { notifications: 1 });
+    inserted(observed, 'Notification', plainId);
+    const plainStored = stored(observed, 'Notification', plainId);
+    need(plainStored?.userId === owner && plainStored.type === plainBody.type && plainStored.title === plainBody.title
+      && plainStored.message === plainBody.message && same(plainStored.data, plainBody.data) && plainStored.isRead === false
+      && plainStored.readAt === undefined && plainStored.referenceType === plainBody.referenceType
+      && plainStored.referenceId === plainBody.referenceId && observed.result.body.data._id === id(plainStored), 'NOTIFICATION_SINGLE_CREATED');
+    const sendBody = { userIds: [owner], type: 'general', title: 'Synthetic broadcast', message: 'Synthetic recorded message', data: { fixture: 'yes' } };
+    observed = await observe('POST', '/notifications/send', adminToken, sendBody);
+    const added = observed.after.Notification.filter(item => !observed.before.Notification.some(prior => id(prior) === id(item)));
+    need(added.length === 1 && added[0].userId === owner && added[0].title === sendBody.title
+      && added[0].message === sendBody.message && added[0].type === sendBody.type && same(added[0].data, sendBody.data)
+      && added[0].isRead === false && added[0].readAt === undefined && observed.result.body?.data?.created === 1
+      && same(observed.result.body.data.targetUserIds, [owner]), 'NOTIFICATION_BROADCAST_CREATED');
+    assertSuccess(observed, 201, { Notification: added.map(id) }, { notifications: 1 }, 1, 1);
+    assertPayloads(observed, [{ tokens: [ownedToken], notification: { title: sendBody.title, body: sendBody.message }, data: sendBody.data }]);
+    for (const token of [first.token, actor({ _id: owner, userType: 'hr' }), actor({ _id: owner, userType: 'specialist' }), actor({ _id: owner, userType: 'pharmacy' })])
+      for (const [route, payload] of [['/notifications', plainBody], ['/notifications/send', sendBody]])
+        for (const value of [payload, {}]) await authorityDeny('POST', route, token, value, 403, 'FORBIDDEN', true);
+    record('NOTIFICATION_PRIOR_ADMIN_SENDERS');
+    observed = await observe('POST', '/fcm/test', adminToken, { userId: owner });
+    assertSuccess(observed, 200, {}, {}, 1, 1); assertPayloads(observed, [testPush([ownedToken])]);
+    observed = await observe('POST', '/fcm/test', adminToken, { userId: uid() }); assertSuccess(observed, 200);
+    record('FCM_TEST_ADMIN_RECORDING');
+    for (const role of ['user', 'hr', 'specialist', 'pharmacy', 'unknown', 'Admin']) for (const payload of [{ userId: owner }, {}])
+      await authorityDeny('POST', '/fcm/test', actor({ _id: owner, userType: role }), payload, 403, 'FORBIDDEN', true);
+    await authorityDeny('POST', '/fcm/test', undefined, { userId: owner }, 401, 'UNAUTHORIZED', true);
+    await authorityDeny('POST', '/fcm/test', 'not-a-jwt', { userId: owner }, 401, 'INVALID_TOKEN', true);
+    await authorityDeny('POST', '/fcm/test', adminToken, { userId: 'bad-id' }, 400, 'VALIDATION_ERROR', true);
+    record('FCM_TEST_DENIALS');
+    await registerToken(first.token, owner);
+    const tokenSpecialist = uid(); await registerToken(actor({ _id: tokenSpecialist, userType: 'specialist' }), tokenSpecialist, 'specialist');
+    await authorityDeny('POST', '/fcm/token', first.token, {}, 400, 'VALIDATION_ERROR', true);
+    await authorityDeny('POST', '/fcm/token', undefined, { token: 'synthetic-invalid-' + uid() }, 401, 'UNAUTHORIZED', true);
+    record('FCM_TOKEN_REGISTRATION_COMPAT');
+  }
+  function detectedFailure(predicate, expected) {
+    let code; try { predicate(); } catch (error) { code = error.fixtureCode; }
+    need(code === expected, 'AUTHORITY_SENSITIVITY_PREDICATE');
+  }
+  function denialProbe(observed, status, code, beforeLookup, mutant) {
+    if (mutant) detectedFailure(() => assertDenied(observed, status, code, beforeLookup), 'AUTHORITY_DENIAL_STATUS');
+    else assertDenied(observed, status, code, beforeLookup);
+  }
+  async function listProbe(ctxActors, collectionName, path, mutant) {
+    if (collectionName === 'Dependent') { await seedDependent(ctxActors.owner); await seedDependent(ctxActors.other); }
+    else { await seedNote(ctxActors.owner); await seedNote(ctxActors.other); }
+    const total = await model(collectionName).countDocuments({ userId: ctxActors.owner });
+    for (const suffix of ['', '?page=1&limit=100']) {
+      const observed = await observe('GET', path + suffix, ctxActors.token); assertSuccess(observed, 200);
+      if (mutant) {
+        detectedFailure(() => ownerRows(observed.result.body, ctxActors.owner), 'AUTHORITY_LIST_OWNER');
+        need(observed.result.body.data.some(item => item.userId === ctxActors.other), 'AUTHORITY_MUTANT_FOREIGN_ROW');
+        if (suffix) {
+          detectedFailure(() => totalRows(observed.result.body, total), 'AUTHORITY_LIST_TOTAL');
+          const actualTotal = await model(collectionName).countDocuments({});
+          need(observed.result.body.pagination.total === actualTotal, 'AUTHORITY_MUTANT_FOREIGN_TOTAL');
+        }
+      } else { ownerRows(observed.result.body, ctxActors.owner); if (suffix) totalRows(observed.result.body, total); }
+    }
+  }
+  async function idProbe(ctxActors, name, mutant) {
+    const routes = name === 'Dependent' ? ['GET', 'PUT', 'DELETE'] : ['GET', 'PUT', 'PATCH', 'DELETE'];
+    for (const method of routes) {
+      const row = name === 'Dependent' ? await seedDependent(ctxActors.other) : await seedNote(ctxActors.other);
+      const route = (name === 'Dependent' ? '/dependents/' : '/notifications/') + id(row) + (method === 'PATCH' ? '/read' : '');
+      const payload = method === 'PUT' ? name === 'Dependent' ? { name: 'Mutated synthetic name' } : { isRead: true } : undefined;
+      const observed = await observe(method, route, ctxActors.token, payload);
+      denialProbe(observed, name === 'Dependent' ? 404 : 403, name === 'Dependent' ? 'DEPENDENT_NOT_FOUND' : 'FORBIDDEN', false, mutant);
+      if (mutant) {
+        const writes = method === 'GET' ? {} : { [name === 'Dependent' ? 'dependents' : 'notifications']: 1 };
+        assertSuccess(observed, 200, method === 'GET' ? {} : { [name]: [id(row)] }, writes);
+        if (method === 'GET') need(observed.result.body.data.userId === ctxActors.other, 'AUTHORITY_MUTANT_ID_READ');
+        else if (method === 'DELETE') need(!stored(observed, name, id(row)), 'AUTHORITY_MUTANT_ID_DELETE');
+        else need(stored(observed, name, id(row))?.userId === ctxActors.other
+          && (name === 'Dependent' ? stored(observed, name, id(row)).name === payload.name : stored(observed, name, id(row)).isRead === true), 'AUTHORITY_MUTANT_ID_WRITE');
+      }
+    }
+  }
+  async function cleanupSensitivityRows(before, owners) {
+    const after = await authorityRows(); const permitted = {};
+    const additions = [];
+    for (const spec of ctx.ports.models) {
+      const prior = new Set(before[spec.name].map(id));
+      const added = after[spec.name].filter(row => !prior.has(id(row)));
+      permitted[spec.name] = added.map(id);
+      for (const row of added) {
+        need(['User', 'OTP', 'Wallet', 'Notification', 'Dependent', 'FcmToken'].includes(spec.name)
+          && (spec.name === 'User' ? owners.includes(id(row)) : owners.includes(String(row.userId))), 'AUTHORITY_SENSITIVITY_ROW_OWNERSHIP');
+        additions.push([spec.name, row]);
+      }
+    }
+    unchangedOutside({ before, after }, permitted);
+    for (const [name, row] of additions) await model(name).deleteOne({ _id: row._id, ...(name === 'User' ? {} : { userId: row.userId }) });
+    need(same(await authorityRows(), before), 'AUTHORITY_SENSITIVITY_CLEANUP');
+  }
+  async function runAuthoritySensitivity(adminToken) {
+    const probes = [
+      ['DEPENDENT_UNBOUND_CREATE_OWNER', '@/modules/dependents/controller', async (actors, mutant) => {
+        const observed = await observe('POST', '/dependents', actors.token, depBody(actors.other));
+        denialProbe(observed, 422, 'FORBIDDEN_FIELD', true, mutant);
+        if (mutant) {
+          const rowId = observed.result.body?.data?._id;
+          assertSuccess(observed, 201, { Dependent: [rowId] }, { dependents: 1 });
+          need(stored(observed, 'Dependent', rowId)?.userId === actors.other, 'DEPENDENT_MUTANT_CREATED_OWNER');
+        }
+      }],
+      ['DEPENDENT_UNSCOPED_LIST', '@/modules/dependents/controller', (actors, mutant) => listProbe(actors, 'Dependent', '/dependents', mutant)],
+      ['DEPENDENT_UNSCOPED_ID_CALLS', '@/modules/dependents/controller', (actors, mutant) => idProbe(actors, 'Dependent', mutant)],
+      ['DEPENDENT_FORBIDDEN_ROLE_ADMISSION', '@/modules/dependents/controller', async (actors, mutant) => {
+        const token = actor({ _id: actors.owner, userType: 'hr' });
+        const row = await seedDependent(actors.owner);
+        for (const [method, route, payload] of dependentRoutes(actors.owner, id(row))) {
+          const observed = await observe(method, route, token, payload); denialProbe(observed, 403, 'FORBIDDEN', true, mutant);
+          if (mutant) {
+            const permitted = method === 'POST' ? { Dependent: [observed.result.body?.data?._id] }
+              : ['PUT', 'DELETE'].includes(method) ? { Dependent: [id(row)] } : {};
+            assertSuccess(observed, method === 'POST' ? 201 : 200, permitted, method === 'POST' || method === 'PUT' || method === 'DELETE' ? { dependents: 1 } : {});
+          }
+        }
+        const malformed = await observe('POST', '/dependents', token, {}); denialProbe(malformed, 403, 'FORBIDDEN', true, mutant);
+        if (mutant) assertDenied(malformed, 400, 'VALIDATION_ERROR', true);
+      }],
+      ['DEPENDENT_RAW_OWNER_STRIPPED', '@/modules/dependents/routes', async (actors, mutant) => {
+        const row = await seedDependent(actors.owner); const payload = { userId: actors.other, name: 'Stripped-owner mutation' };
+        const observed = await observe('PUT', '/dependents/' + id(row), actors.token, payload);
+        denialProbe(observed, 422, 'FORBIDDEN_FIELD', false, mutant);
+        if (mutant) {
+          assertSuccess(observed, 200, { Dependent: [id(row)] }, { dependents: 1 });
+          need(stored(observed, 'Dependent', id(row))?.name === payload.name
+            && stored(observed, 'Dependent', id(row))?.userId === actors.owner, 'DEPENDENT_MUTANT_STRIPPED_OWNER');
+        }
+      }],
+      ['NOTIFICATION_UNSCOPED_LIST', '@/modules/notification/controller', (actors, mutant) => listProbe(actors, 'Notification', '/notifications', mutant)],
+      ['NOTIFICATION_ID_OWNER_GUARD_REMOVED', '@/modules/notification/controller', (actors, mutant) => idProbe(actors, 'Notification', mutant)],
+      ['NOTIFICATION_PRIOR_STRICT_OWN_ADMIN_EXPANSION', '@/modules/notification/controller', async (actors, mutant) => {
+        for (const [method, route] of strictNoteRoutes(actors.owner)) {
+          await seedNote(actors.owner);
+          const observed = await observe(method, route, adminToken); denialProbe(observed, 403, 'FORBIDDEN', true, mutant);
+          if (mutant) {
+            const unread = observed.before.Notification.filter(row => row.userId === actors.owner && row.isRead === false);
+            assertSuccess(observed, 200, method === 'PATCH' ? { Notification: unread.map(id) } : {}, method === 'PATCH' ? { notifications: 1 } : {});
+            if (method === 'PATCH') need(unread.every(row => stored(observed, 'Notification', id(row))?.isRead === true), 'NOTIFICATION_MUTANT_ADMIN_READ_ALL');
+            else if (route.endsWith('unread-count')) need(observed.result.body.data.count >= 1, 'NOTIFICATION_MUTANT_ADMIN_COUNT');
+            else ownerRows(observed.result.body, actors.owner);
+          }
+        }
+      }],
+      ['FCM_TEST_ADMIN_GUARD_REMOVED', '@/modules/fcm/routes', async (actors, mutant) => {
+        const tokenValue = await registerToken(actors.otherToken, actors.other);
+        const observed = await observe('POST', '/fcm/test', actors.token, { userId: actors.other });
+        denialProbe(observed, 403, 'FORBIDDEN', true, mutant);
+        if (mutant) { assertSuccess(observed, 200, {}, {}, 1, 1); assertPayloads(observed, [testPush([tokenValue])]); }
+      }],
+      ['FCM_TEST_ADMIN_GUARD_AFTER_VALIDATION', '@/modules/fcm/routes', async (actors, mutant) => {
+        const observed = await observe('POST', '/fcm/test', actors.token, {});
+        denialProbe(observed, 403, 'FORBIDDEN', true, mutant);
+        if (mutant) assertDenied(observed, 400, 'VALIDATION_ERROR', true);
+      }],
+    ];
+    for (const [name, alias, probe] of probes) {
+      const before = await authorityRows(); let actors;
+      need(ctx.plan.mutants[name]?.file, 'MISSING_SOURCE_MUTANT');
+      // Failure propagates unchanged to owned HTTP/ODM/container teardown.
+      // Never mutate fixture proofs or import a new phase in a failure finally.
+      await ctx.nextPhase({ [alias]: ctx.plan.mutants[name].file });
+      const first = await login({ email: 'sensitivity-a-' + uid() + '@example.com' });
+      const second = await login({ email: 'sensitivity-b-' + uid() + '@example.com' });
+      actors = { owner: first.user._id, other: second.user._id, token: first.token, otherToken: second.token };
+      await probe(actors, true); await cleanCompletedProofs();
+      need(ctx.counters.unexpected === 0 && ctx.counters.excluded === 0, 'SENSITIVITY_UNDECLARED_EFFECT');
+      await ctx.nextPhase({}); await probe(actors, false);
+      await cleanupSensitivityRows(before, [actors.owner, actors.other]);
+      sensitivity.push({ id: name, detected: true });
     }
   }
 
@@ -238,6 +725,9 @@ async function runScenario(ctx) {
   await model('OTP').deleteOne({ _id: expiring.row._id });
   record('OTP_INFLIGHT_EXPIRY_DENIED');
 
+  await cleanCompletedProofs();
+  await runAuthorityNominal(admin.token);
+
   // Separate negative phases use emitted variants of the actual frozen source.
   // Fresh production classes, TypeDI registrations and HTTP server each phase.
   const nominalCounters = { ...ctx.counters };
@@ -253,14 +743,13 @@ async function runScenario(ctx) {
   ];
   for (const [name, alias, probe] of mutations) {
     need(ctx.plan.mutants[name]?.file, 'MISSING_SOURCE_MUTANT');
-    try {
-      const unexpectedBefore = ctx.counters.unexpected; const excludedBefore = ctx.counters.excluded;
-      await ctx.nextPhase({ [alias]: ctx.plan.mutants[name].file }); await probe();
-      need(ctx.counters.unexpected === unexpectedBefore && ctx.counters.excluded === excludedBefore, 'SENSITIVITY_UNDECLARED_EFFECT');
-      sensitivity.push({ id: name, detected: true });
-    }
-    finally { await ctx.nextPhase({}); }
+    const unexpectedBefore = ctx.counters.unexpected; const excludedBefore = ctx.counters.excluded;
+    await ctx.nextPhase({ [alias]: ctx.plan.mutants[name].file }); await probe();
+    await cleanCompletedProofs();
+    need(ctx.counters.unexpected === unexpectedBefore && ctx.counters.excluded === excludedBefore, 'SENSITIVITY_UNDECLARED_EFFECT');
+    await ctx.nextPhase({}); sensitivity.push({ id: name, detected: true });
   }
+  await runAuthoritySensitivity(admin.token);
   // Prove fresh nominal classes restore the two owner boundaries after mutants.
   await deny('GET', '/users/' + id(b), alpha.token, undefined, [403], 'RESTORED_USER_OWNER');
   await deny('GET', '/wallet/' + id(bw), alpha.token, undefined, [403], 'RESTORED_WALLET_OWNER');

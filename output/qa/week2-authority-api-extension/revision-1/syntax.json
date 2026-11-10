@@ -1,0 +1,20 @@
+{
+  "mode": "CJS_PARSE_ONLY",
+  "results": [
+    {
+      "file": "test/api-runtime/scenario/scenario.cjs",
+      "status": "PASS",
+      "applicationEvaluations": 0
+    },
+    {
+      "file": "test/api-runtime/scenario/compile.cjs",
+      "status": "PASS",
+      "applicationEvaluations": 0
+    },
+    {
+      "file": "test/api-runtime/scenario/bootstrap.cjs",
+      "status": "PASS",
+      "applicationEvaluations": 0
+    }
+  ]
+}
