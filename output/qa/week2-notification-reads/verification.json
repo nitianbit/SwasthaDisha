@@ -1,0 +1,125 @@
+{
+  "schema": "SD-NOTIFICATION-SOURCE-1",
+  "status": "SOURCE_TRANSFORMATION_VERIFIED_RUNTIME_NOT_RUN",
+  "baseline": "d91e1a3d37f2b229efc7fc2507d666ddc2576d99",
+  "contractSha": "f24cd44e9ae5a9734b255c426854f5a0cb8efb56b3c9be6f911a2a3435b2aeb1",
+  "productionSha": {
+    "src1/modules/fcm/routes/index.ts": "bfd18b39dd716a2f34dad8c287670789d56d313eff5879bdc70cf9820a7121c4",
+    "src1/modules/notification/controller/index.ts": "e9b58d50978062ebe7a52b5a2259b9e862415e6e17fd69599ba8945d1f25934f"
+  },
+  "verifierSha": "4493e421bfe0ba34a19c19a5372dceaffe7554d2518234ee4334ad6c7af53ce5",
+  "baselineRejection": "REJECTED_AS_EXPECTED",
+  "negativeSourceControls": [
+    {
+      "id": "missing-canonical-principal-check",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "blank-canonical-principal-accepted",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "principal-string-coercion",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "list-owner-request-selected",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "list-owner-unscoped",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "list-canonical-return-omitted",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "list-explicit-owner-check-removed",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "list-admin-case-folded",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "id-admin-case-folded",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "id-all-roles-global",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "id-stored-owner-check-removed",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "id-stored-owner-request-selected",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "id-get-unprotected",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "update-owner-preflight-removed",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "update-owner-preflight-after-effect",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "markAsRead-owner-preflight-removed",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "markAsRead-owner-preflight-after-effect",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "delete-owner-preflight-removed",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "delete-owner-preflight-after-effect",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "legacy-strict-own-path-admin-expansion",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "legacy-strict-own-path-check-removed",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "legacy-specialist-alias-change",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "fcm-test-admin-removed",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "fcm-test-admin-after-validation",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "fcm-token-admin-restriction",
+      "status": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "id": "fcm-router-wide-admin",
+      "status": "REJECTED_AS_EXPECTED"
+    }
+  ],
+  "unchangedInputPins": 26,
+  "runtimeHTTP": "NOT_RUN",
+  "applicationEvaluations": 0,
+  "compilerExecutions": 0,
+  "databaseCalls": 0,
+  "providerCalls": 0,
+  "DockerCalls": 0
+}

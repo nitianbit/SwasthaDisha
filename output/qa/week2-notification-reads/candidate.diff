@@ -1,0 +1,125 @@
+diff --git a/src1/modules/fcm/routes/index.ts b/src1/modules/fcm/routes/index.ts
+index 7ce022e0358759c6264624fac3e09be109be983c..d6f560f2cca89f818e809903fd3a6842e9253871 100644
+--- a/src1/modules/fcm/routes/index.ts
++++ b/src1/modules/fcm/routes/index.ts
+@@ -3,6 +3,7 @@ import { Router } from 'express';
+ import { catchAsync } from '@/modules/common/utils/asyncHandler';
+ import { validate } from '@/modules/common/middleware/validation';
+ import { FcmController } from '@/modules/fcm/controller';
++import { requireAdmin } from '@/modules/middleware/auth';
+ import { saveFcmTokenSchema, sendTestNotificationSchema } from '@/modules/fcm/validation';
+ 
+ const fcmRouter = Router();
+@@ -17,6 +18,7 @@ fcmRouter.post(
+ // Test endpoint to send a test FCM notification to a given userId
+ fcmRouter.post(
+   '/test',
++  requireAdmin,
+   validate(sendTestNotificationSchema, 'body'),
+   catchAsync(fcmController.sendTestNotification)
+ );
+diff --git a/src1/modules/notification/controller/index.ts b/src1/modules/notification/controller/index.ts
+index 06e112b491128e9e56203834e3ff20aed2cf4243..c11f89557137f0936e142e14d0195d5666c93bcf 100644
+--- a/src1/modules/notification/controller/index.ts
++++ b/src1/modules/notification/controller/index.ts
+@@ -36,6 +36,43 @@ export class NotificationController {
+     }
+   }
+ 
++  private requireCanonicalRecipient(req: AuthRequest): NonNullable<AuthRequest['user']> {
++    const actor = req.user;
++    if (!actor || typeof actor._id !== 'string' || actor._id.trim().length === 0) {
++      throw new AppError({
++        status: 401,
++        code: 'UNAUTHORIZED',
++        message: 'Authentication is required',
++      });
++    }
++
++    return actor;
++  }
++
++  private resolveListRecipient(req: AuthRequest): string | undefined {
++    const actor = this.requireCanonicalRecipient(req);
++    const requestedRecipient = req.query.userId as string | undefined;
++    if (actor.userType === 'admin') {
++      return requestedRecipient;
++    }
++
++    if (requestedRecipient !== undefined) {
++      this.assertOwnRecipient(req, requestedRecipient);
++    }
++
++    return actor._id;
++  }
++
++  private async getAuthorizedNotification(req: AuthRequest, id: string) {
++    const actor = this.requireCanonicalRecipient(req);
++    const notification = await this.notificationService.getById(id);
++    if (actor.userType !== 'admin') {
++      this.assertOwnRecipient(req, notification.userId);
++    }
++
++    return notification;
++  }
++
+   create = async (req: Request, res: Response, _next: NextFunction) => {
+     const data: CreateNotificationRequest = req.body;
+     const result = await this.notificationService.create(data);
+@@ -60,9 +97,9 @@ export class NotificationController {
+     });
+   };
+ 
+-  getById = async (req: Request, res: Response, _next: NextFunction) => {
++  getById = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+     const { id } = req.params;
+-    const result = await this.notificationService.getById(id);
++    const result = await this.getAuthorizedNotification(req, id);
+ 
+     res.status(200).json({
+       success: true,
+@@ -70,9 +107,9 @@ export class NotificationController {
+     });
+   };
+ 
+-  getAll = async (req: Request, res: Response, _next: NextFunction) => {
++  getAll = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+     const queryParams: NotificationQueryParams = {
+-      userId: req.query.userId as string,
++      userId: this.resolveListRecipient(req),
+       type: req.query.type as any,
+       isRead:
+         req.query.isRead !== undefined
+@@ -150,8 +187,9 @@ export class NotificationController {
+     });
+   };
+ 
+-  update = async (req: Request, res: Response, _next: NextFunction) => {
++  update = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+     const { id } = req.params;
++    await this.getAuthorizedNotification(req, id);
+     const data: UpdateNotificationRequest = req.body;
+     const result = await this.notificationService.update(id, data);
+ 
+@@ -162,8 +200,9 @@ export class NotificationController {
+     });
+   };
+ 
+-  markAsRead = async (req: Request, res: Response, _next: NextFunction) => {
++  markAsRead = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+     const { id } = req.params;
++    await this.getAuthorizedNotification(req, id);
+     const result = await this.notificationService.markAsRead(id);
+ 
+     res.status(200).json({
+@@ -264,8 +303,9 @@ export class NotificationController {
+     });
+   };
+ 
+-  delete = async (req: Request, res: Response, _next: NextFunction) => {
++  delete = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+     const { id } = req.params;
++    await this.getAuthorizedNotification(req, id);
+     await this.notificationService.delete(id);
+ 
+     res.status(200).json({

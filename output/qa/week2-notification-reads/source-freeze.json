@@ -1,0 +1,23 @@
+{
+  "schema": "SD-NOTIFICATION-SOURCE-FREEZE-1",
+  "baseline": "d91e1a3d37f2b229efc7fc2507d666ddc2576d99",
+  "files": {
+    "src1/modules/notification/controller/index.ts": "e9b58d50978062ebe7a52b5a2259b9e862415e6e17fd69599ba8945d1f25934f",
+    "src1/modules/fcm/routes/index.ts": "bfd18b39dd716a2f34dad8c287670789d56d313eff5879bdc70cf9820a7121c4",
+    "output/qa/week2-notification-reads/CONTRACT.md": "f24cd44e9ae5a9734b255c426854f5a0cb8efb56b3c9be6f911a2a3435b2aeb1",
+    "output/qa/week2-notification-reads/README.md": "8e24e890c634aa1e37f1e37e522f61c428265fc1d7814050159b73f48c87f0f2",
+    "output/qa/week2-notification-reads/baseline-rejection.json": "34a86ada4a3a1812384c66252eaac36576d10aab616a827c9c9271c25f02b474",
+    "output/qa/week2-notification-reads/candidate.diff": "89858009402f817965f7a0d0fc3dc3179c43fe0bd2908b3486b1342b654c0d85",
+    "output/qa/week2-notification-reads/client-source-observation.json": "d13d639308286a2db361a94dd8d7a15e36d4c1780b2736b739019455de606007",
+    "output/qa/week2-notification-reads/verification.json": "447cc7f6b1069ad26a63af499facc60c5cd772012c9af866415fbed6e58d1d40",
+    "output/qa/week2-notification-reads/verify-source.py": "4493e421bfe0ba34a19c19a5372dceaffe7554d2518234ee4334ad6c7af53ce5"
+  },
+  "negativeSourceControls": 26,
+  "unchangedBackendInputs": 26,
+  "runtimeHTTP": "NOT_RUN",
+  "applicationEvaluations": 0,
+  "compilerExecutions": 0,
+  "databaseCalls": 0,
+  "providerCalls": 0,
+  "DockerCalls": 0
+}

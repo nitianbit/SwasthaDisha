@@ -1,0 +1,14 @@
+{
+  "schema": "SD-NOTIFICATION-CLIENT-SOURCE-1",
+  "head": "db62e8a960a52ee5354d40d696e40924cccd0129",
+  "selectedFilesClean": true,
+  "files": {
+    "src/features/notifications/notificationApi.ts": "ab0f85c0489973919e7fb19cc9308809491ead2bd5d4bd24df220a31bbeaef19",
+    "src/features/notifications/notificationSlice.ts": "663f9bef0dbdcc2db332840adad11d7b643acc43f1aeeb24bbd2c8aeb832c6e8",
+    "src/features/notifications/notificationTypes.ts": "dcba2a56d8b5aac965f3d28c05b0b8dfacbdfb00e4d069ede4e608dae9326feb",
+    "src/api/endpoints.ts": "0337a76adedd66e0a99112b4bd82ac20a7eb796385a54eef8846577d84c6dab5",
+    "src/screens/Other/NotificationsScreen.tsx": "332c11d24838e0c0cc34168ee5075ad2521974aca70f4a99c7482a8dce022274"
+  },
+  "clientExecutions": 0,
+  "status": "READ_ONLY_SOURCE_OBSERVATION_NOT_RUNTIME_COMPATIBILITY"
+}
