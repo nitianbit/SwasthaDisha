@@ -40,7 +40,7 @@ try {
   process.stdout.write(result.stdout || ''); process.stderr.write(result.stderr || '');
   const summary = (name) => [...(result.stdout || '').matchAll(new RegExp('^# ' + name + ' (\\d+)$', 'gm'))].at(-1)?.[1];
   const tests = Number(summary('tests'));
-  if (result.error || result.signal || result.status !== 0 || tests !== 66
+  if (result.error || result.signal || result.status !== 0 || tests !== 84
     || Number(summary('pass')) !== tests || ['fail', 'cancelled', 'skipped', 'todo'].some((name) => summary(name) !== '0')) {
     throw Error('API platform unit gate failed or required cases did not run');
   }

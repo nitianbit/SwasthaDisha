@@ -38,6 +38,44 @@ function safeJson(bytes, message) {
   try { return JSON.parse(bytes); } catch { throw new Error(message); }
 }
 
+const FAILURE_STAGES = Object.freeze(['ADMISSION', 'ROUTER_IMPORT', 'OWNED_DATABASE_CONNECT', 'API_SCENARIOS']);
+const OPERATIONS = Object.freeze(['info', 'image', 'create', 'inspect', 'start', 'exec', 'rm', 'ps']);
+class OwnedOperationFailure extends Error {
+  constructor(diagnostic) { super('Owned Docker operation failed: ' + diagnostic.operation); this.diagnostic = diagnostic; }
+}
+
+/** Only public literals from the frozen fixture can become diagnostic codes. */
+export function fixtureFailureCodes(files) {
+  const literals = new Set(['RUNTIME_FIXTURE_FAILED']);
+  for (const name of ['bootstrap.cjs', 'scenario.cjs']) {
+    const source = files[name]; if (!source) continue;
+    for (const match of source.toString().matchAll(/['"]([A-Z][A-Z0-9_]{1,80})['"]/g)) literals.add(match[1]);
+  }
+  for (const field of ['ISACTIVE', 'ISVERIFIED', 'ISCORPORATEEMAILVERIFIED', 'CORPORATEID', 'ISCORPORATEUSER']) literals.add('SELF_FIELD_' + field);
+  requireThat(literals.size <= 1000, 'Fixture failure-code set exceeds its bound');
+  const codes = new Set(literals);
+  for (const code of literals) for (const suffix of ['_STATUS', '_STATE', '_EFFECTS', '_SIDE_EFFECTS', '_PROOF_UNCHANGED']) codes.add(code + suffix);
+  return codes;
+}
+
+/** No raw stdout, stderr, Error text, errorType or validation fields escape. */
+export function decodeDockerResult(result, args, codes) {
+  requireThat(OPERATIONS.includes(args[0]) && codes instanceof Set, 'Invalid fixed Docker decoder input');
+  if (!result.error && !result.signal && result.status === 0) return result.stdout.trim();
+  let child = null;
+  if (args[0] === 'start' && args[1] === '--attach' && typeof result.stdout === 'string' && result.stdout.length <= 64 * 1024) {
+    let value;
+    try { value = JSON.parse(result.stdout); } catch { /* Unavailable; never echo a parser snippet. */ }
+    if (exactKeys(value, ['schema', 'stage', 'code', 'errorType', 'fieldNames', 'failed', 'skipped'])
+      && value.schema === 'SD-AUTH-API-FAILURE-1' && FAILURE_STAGES.includes(value.stage)
+      && codes.has(value.code) && value.failed === 1 && value.skipped === 0) {
+      child = Object.freeze({ stage: value.stage, code: value.code });
+    }
+  }
+  throw new OwnedOperationFailure(Object.freeze({ operation: args[0],
+    outcome: result.error?.code === 'ETIMEDOUT' ? 'TIMEOUT' : result.signal ? 'INTERRUPTED' : 'FAILED', child }));
+}
+
 /** A failed read is never absence proof. This helper grants no resource ownership. */
 export function assertPathAbsent(path, read = lstatSync) {
   try { read(path); } catch (error) { if (error.code === 'ENOENT') return; throw new Error('Workspace absence proof unavailable'); }
@@ -99,7 +137,7 @@ function reviewedTemplate() {
   return Object.freeze({ meta, files: Object.freeze(files), templateSha: sha256(bytes) });
 }
 
-function realExecutor(endpoint, configuration) {
+function realExecutor(endpoint, configuration, codes) {
   const socket = fileURLToPath(new URL(endpoint.replace(/^unix:/, 'file:')));
   requireThat(statSync(realpathSync(socket)).isSocket(), 'Recorded endpoint is not a local socket');
   return (args, timeout = 25_000) => {
@@ -107,8 +145,7 @@ function realExecutor(endpoint, configuration) {
       env: { PATH: '/usr/local/bin:/usr/bin:/bin' }, encoding: 'utf8', timeout, maxBuffer: 2 * 1024 * 1024,
     });
     // Child output is not interpolated: failures must not disclose test JWT/OTP/key material.
-    requireThat(!r.error && !r.signal && r.status === 0, 'Owned Docker operation failed: ' + args[0]);
-    return r.stdout.trim();
+    return decodeDockerResult(r, args, codes);
   };
 }
 
@@ -127,6 +164,7 @@ export function createApiRuntimeFixture(input, seams = {}) {
     'Operational/preload configuration is forbidden');
   const template = fake ? ports.template : reviewedTemplate();
   requireThat(plain(template.files) && plain(template.meta) && digest(template.templateSha), 'Invalid admitted template');
+  const failureCodes = fixtureFailureCodes(template.files);
   const plan = JSON.parse(template.files['runtime-plan.json'].toString());
   requireThat(plan.schema === 'SD-AUTH-API-PLAN-1' && plan.role === ROLE && Array.isArray(plan.requiredCaseIds)
     && plan.requiredCaseIds.length >= 20 && new Set(plan.requiredCaseIds).size === plan.requiredCaseIds.length
@@ -143,7 +181,7 @@ export function createApiRuntimeFixture(input, seams = {}) {
   const directory = realpathSync(mkdtempSync(join(tmpdir(), 'sd-auth-api-run-')));
   const identity = lstatSync(directory); const marker = join(directory, '.owner.json');
   const bundle = join(directory, 'bundle'); const config = join(directory, 'docker');
-  let phase = 'prepared'; let disposed = false; let uncertainCreate; let cleanupUnresolved = false; let cleanupReceipt;
+  let phase = 'prepared'; let disposed = false; let uncertainCreate; let cleanupUnresolved = false; let cleanupReceipt; let failure;
   const resources = []; const identities = new Map(); let admission; let manifestSha;
 
   function owned() {
@@ -174,9 +212,13 @@ export function createApiRuntimeFixture(input, seams = {}) {
     if (st.isDirectory() && !st.isSymbolicLink() && st.dev === identity.dev && st.ino === identity.ino) rmSync(directory, { recursive: true });
     throw cause;
   }
-  let execute;
-  try { execute = fake ? ports.executor : realExecutor(request.endpoint, config); }
+  let executor;
+  try { executor = fake ? ports.executor : realExecutor(request.endpoint, config, failureCodes); }
   catch (cause) { owned(); rmSync(directory, { recursive: true }); throw cause; }
+  function execute(args, timeout) {
+    try { return executor(args, timeout); }
+    catch (error) { if (!failure && error instanceof OwnedOperationFailure) failure = error.diagnostic; throw error; }
+  }
   function engine() {
     const row = JSON.parse(execute(['info', '--format', '[{{json .ID}},{{json .OSType}}]']));
     requireThat(same(row, [PROFILE.engineId, 'linux']), 'Recorded engine identity changed');
@@ -320,7 +362,15 @@ export function createApiRuntimeFixture(input, seams = {}) {
           }
           const hello = JSON.parse(shell(mongo, 'print(JSON.stringify(db.hello()));'));
           if (hello.isWritablePrimary === true && hello.setName === replicaSet) { ready = true; break; }
-        } catch { validateAll(); mongoRunning(mongo); }
+        } catch (error) {
+          // Only ordinary failed readiness exec probes are tolerated. A lost
+          // command/engine or timeout/interruption is terminal and never retried.
+          if (error instanceof OwnedOperationFailure) {
+            if (error.diagnostic.operation !== 'exec' || error.diagnostic.outcome !== 'FAILED') throw error;
+            if (failure === error.diagnostic) failure = undefined;
+          }
+          validateAll(); mongoRunning(mongo);
+        }
         await delay(100);
       }
       requireThat(ready, 'Owned replica set did not become ready'); mongoRunning(mongo);
@@ -352,7 +402,7 @@ export function createApiRuntimeFixture(input, seams = {}) {
       Object.freeze(result.cases); Object.freeze(result.sensitivity); Object.freeze(result.providerSummary);
       phase = 'finished'; return Object.freeze(result);
     },
-    describe() { return Object.freeze({ runId, directory, phase, uncertainCreate, cleanupUnresolved,
+    describe() { return Object.freeze({ runId, directory, phase, uncertainCreate, cleanupUnresolved, failure,
       resources: resources.map((r) => ({ kind: r.kind, id: r.id, name: r.name, removed: r.removed })) }); },
     dispose() {
       if (disposed) return cleanupReceipt;

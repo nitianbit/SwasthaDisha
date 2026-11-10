@@ -99,7 +99,11 @@ async function main() {
     report.status = 'FAILED_REVIEW_REQUIRED'; process.exitCode = 1;
   } finally {
     if (fixture) {
-      report.created = fixture.describe().resources;
+      const description = fixture.describe(); report.created = description.resources;
+      if (description.failure) {
+        report.failure = description.failure;
+        if (['TIMEOUT', 'INTERRUPTED'].includes(description.failure.outcome)) report.status = 'UNRESOLVED';
+      }
       try { report.cleanupReceipt = fixture.dispose(); report.cleanup = 'VERIFIED'; }
       catch { report.cleanup = 'UNRESOLVED'; report.status = 'UNRESOLVED'; process.exitCode = 1; }
     }

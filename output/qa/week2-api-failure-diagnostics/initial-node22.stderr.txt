@@ -1,0 +1,11 @@
+file:///private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-platform/test/api-runtime/unit.mjs:45
+    throw Error('API platform unit gate failed or required cases did not run');
+          ^
+
+Error: API platform unit gate failed or required cases did not run
+    at file:///private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-platform/test/api-runtime/unit.mjs:45:11
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+Node.js v22.23.4

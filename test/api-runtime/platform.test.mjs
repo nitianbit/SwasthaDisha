@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { PROFILE, createApiRuntimeFixture, sha256, assertPathAbsent } from './platform.mjs';
+import { PROFILE, createApiRuntimeFixture, sha256, assertPathAbsent, decodeDockerResult, fixtureFailureCodes } from './platform.mjs';
 import { evaluateNetworkAdmission } from '../application/app-bundle.mjs';
 
 const CASES = Array.from({ length: 20 }, (_, i) => 'CASE_' + String(i).padStart(2, '0'));
@@ -21,7 +21,8 @@ function transport() {
   const calls = []; const rows = new Map(); const receipts = [];
   const state = { calls, rows, receipts, drift: null, resultMutation: null, failNodeCreate: false, beforeNode: null,
     engineId: PROFILE.engineId, beforeInfo: null, afterMongoStart: null, afterNodeExit: null,
-    leaveRemoved: false, afterRemove: null, failAbsence: false, extraPurposeId: null, rawOutput: null };
+    leaveRemoved: false, afterRemove: null, failAbsence: false, extraPurposeId: null, rawOutput: null, failAttach: false,
+    ordinaryProbeFailures: 0, terminalProbe: null };
   const images = new Map([
     [PROFILE.nodeImage, { Id: 'sha256:' + '1'.repeat(64), Os: 'linux', Architecture: 'arm64', RepoDigests: [PROFILE.nodeImage],
       Config: { Env: ['PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'NODE_VERSION=22.23.4'] } }],
@@ -77,6 +78,12 @@ function transport() {
       state.drift?.(row); return JSON.stringify([row]);
     }
     if (args[0] === 'exec') {
+      if (state.terminalProbe) return decodeDockerResult({ status: null, stdout: '',
+        ...(state.terminalProbe === 'TIMEOUT' ? { error: { code: 'ETIMEDOUT' } } : { signal: 'SIGTERM' }) }, args, new Set());
+      if (state.ordinaryProbeFailures > 0) {
+        state.ordinaryProbeFailures--;
+        return decodeDockerResult({ status: 1, stdout: 'synthetic not ready' }, args, new Set());
+      }
       const row = rows.get(args[1]); const rs = row.Config.Cmd[row.Config.Cmd.indexOf('--replSet') + 1];
       return args.at(-1).includes('db.hello') ? JSON.stringify({ isWritablePrimary: true, setName: rs }) : '';
     }
@@ -84,6 +91,9 @@ function transport() {
       const row = rows.get(args.at(-1));
       if (!args.includes('--attach')) { row.State.Status = 'running'; state.afterMongoStart?.(row); return args.at(-1); }
       row.State.Status = 'exited';
+      if (state.failAttach) return decodeDockerResult({ status: 1, stdout: JSON.stringify({ schema: 'SD-AUTH-API-FAILURE-1',
+        stage: 'ROUTER_IMPORT', code: 'RUNTIME_FIXTURE_FAILED', errorType: 'Error', fieldNames: [], failed: 1, skipped: 0 }) }, args,
+      new Set(['RUNTIME_FIXTURE_FAILED']));
       state.afterNodeExit?.([...rows.values()].find((r) => r.Config.Labels['swasthadisha.test.role'] === 'mongo'));
       const bundle = row.HostConfig.Mounts[0].Source;
       const admission = JSON.parse(readFileSync(join(bundle, '.admission.json')));
@@ -277,4 +287,80 @@ test('workspace absence requires ENOENT rather than an unreadable path', () => {
   assert.doesNotThrow(() => assertPathAbsent('/synthetic', () => error('ENOENT')));
   assert.throws(() => assertPathAbsent('/synthetic', () => error('EACCES')), /proof unavailable/);
   assert.throws(() => assertPathAbsent('/synthetic', () => ({})), /remains present/);
+});
+
+const childFailure = () => ({ schema: 'SD-AUTH-API-FAILURE-1', stage: 'API_SCENARIOS', code: 'ERROR_ENVELOPE',
+  errorType: 'Error', fieldNames: [], failed: 1, skipped: 0 });
+const safeCodes = new Set(['ERROR_ENVELOPE']);
+function decodedFailure(result, args = ['start', '--attach', 'a'.repeat(64)]) {
+  try { decodeDockerResult(result, args, safeCodes); } catch (error) { return error; }
+  throw Error('Expected owned Docker failure');
+}
+test('fixed decoder returns successful stdout for subsequent existing result admission', () => {
+  assert.equal(decodeDockerResult({ status: 0, stdout: ' synthetic ' }, ['info'], safeCodes), 'synthetic');
+});
+test('closed child failure projects only known stage and frozen fixture code', () => {
+  const failure = childFailure(); failure.errorType = 'synthetic-secret'; failure.fieldNames = ['synthetic-secret'];
+  const error = decodedFailure({ status: 1, stdout: JSON.stringify(failure), stderr: 'synthetic-secret' });
+  assert.deepEqual(error.diagnostic, { operation: 'start', outcome: 'FAILED', child: { stage: 'API_SCENARIOS', code: 'ERROR_ENVELOPE' } });
+  assert.equal(JSON.stringify(error.diagnostic).includes('synthetic-secret'), false);
+  assert.equal(error.message, 'Owned Docker operation failed: start');
+});
+for (const [name, mutate] of [
+  ['extra-token', f => { f.token = 'synthetic-secret'; }], ['unknown-code', f => { f.code = 'OTP_123456'; }],
+  ['unknown-stage', f => { f.stage = 'synthetic-secret'; }], ['false-failure', f => { f.failed = 0; }],
+  ['skip', f => { f.skipped = 1; }], ['missing-field', f => { delete f.fieldNames; }],
+]) test('untrusted failure payload is not retained: ' + name, () => {
+  const failure = childFailure(); mutate(failure);
+  assert.equal(decodedFailure({ status: 1, stdout: JSON.stringify(failure) }).diagnostic.child, null);
+});
+test('invalid JSON has no raw parse snippet or error text in failure evidence', () => {
+  const error = decodedFailure({ status: 1, stdout: '{"token":"synthetic-secret" invalid', error: new Error('synthetic-secret') });
+  assert.equal(error.diagnostic.child, null); assert.equal(JSON.stringify(error.diagnostic).includes('synthetic-secret'), false);
+});
+test('timeout records a closed unresolved outcome without system error text', () => {
+  const error = decodedFailure({ error: { code: 'ETIMEDOUT', message: 'synthetic-secret' }, signal: 'SIGTERM', status: null, stdout: '' });
+  assert.equal(error.diagnostic.outcome, 'TIMEOUT'); assert.equal(JSON.stringify(error.diagnostic).includes('synthetic-secret'), false);
+});
+test('signal records interrupted outcome without raw signal/output evidence', () => {
+  const error = decodedFailure({ signal: 'SIGKILL', status: null, stdout: 'synthetic-secret' });
+  assert.deepEqual(error.diagnostic, { operation: 'start', outcome: 'INTERRUPTED', child: null });
+});
+test('other Docker operations cannot masquerade as an attached API failure', () => {
+  assert.equal(decodedFailure({ status: 1, stdout: JSON.stringify(childFailure()) }, ['inspect']).diagnostic.child, null);
+});
+test('failure-code set derives only frozen public literals and known assertion suffixes', () => {
+  const codes = fixtureFailureCodes({ 'bootstrap.cjs': Buffer.from("need(ok, 'ADMISSION_FAILED')"),
+    'scenario.cjs': Buffer.from("deny('OTHER_OWNER')") });
+  assert.equal(codes.has('OTHER_OWNER_STATUS'), true); assert.equal(codes.has('ADMISSION_FAILED'), true);
+  assert.equal(codes.has('OTP_123456'), false);
+});
+test('failed attach retains a closed diagnostic through exact owned cleanup', async (t) => {
+  const f = fixture(t); f.state.failAttach = true;
+  await assert.rejects(f.handle.run(), /Owned Docker operation failed: start/);
+  const diagnostic = f.handle.describe().failure;
+  assert.deepEqual(diagnostic, { operation: 'start', outcome: 'FAILED', child: { stage: 'ROUTER_IMPORT', code: 'RUNTIME_FIXTURE_FAILED' } });
+  f.handle.dispose(); assert.equal(f.state.rows.size, 0); assert.equal(f.handle.describe().failure, diagnostic);
+});
+
+test('ordinary failed readiness probe cannot taint an otherwise successful run', async (t) => {
+  const f = fixture(t); f.state.ordinaryProbeFailures = 1;
+  const result = await f.handle.run(); assert.equal(result.failed, 0);
+  assert.equal(f.handle.describe().failure, undefined);
+  assert.equal(f.state.calls.filter(a => a[0] === 'exec').length, 3);
+  f.handle.dispose(); assert.equal(f.state.rows.size, 0);
+});
+test('tolerated readiness probe cannot mask a later genuine attached-child failure', async (t) => {
+  const f = fixture(t); f.state.ordinaryProbeFailures = 1; f.state.failAttach = true;
+  await assert.rejects(f.handle.run(), /Owned Docker operation failed: start/);
+  assert.deepEqual(f.handle.describe().failure, { operation: 'start', outcome: 'FAILED', child: { stage: 'ROUTER_IMPORT', code: 'RUNTIME_FIXTURE_FAILED' } });
+  f.handle.dispose(); assert.equal(f.state.rows.size, 0);
+});
+for (const outcome of ['TIMEOUT', 'INTERRUPTED']) test('terminal readiness ' + outcome + ' is never retried', async (t) => {
+  const f = fixture(t); f.state.terminalProbe = outcome;
+  await assert.rejects(f.handle.run(), /Owned Docker operation failed: exec/);
+  assert.equal(f.handle.describe().failure.outcome, outcome);
+  assert.equal(f.state.calls.filter(a => a[0] === 'exec').length, 1);
+  assert.equal(f.state.calls.filter(a => a[0] === 'create').length, 1);
+  f.handle.dispose(); assert.equal(f.state.rows.size, 0);
 });

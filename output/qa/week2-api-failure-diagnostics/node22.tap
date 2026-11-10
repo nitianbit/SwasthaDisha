@@ -1,0 +1,514 @@
+TAP version 13
+# Subtest: exact two-review invocation receipt is accepted by the pure validator
+ok 1 - exact two-review invocation receipt is accepted by the pure validator
+  ---
+  duration_ms: 6.166291
+  type: 'test'
+  ...
+# Subtest: changed invocation binding is rejected: schema
+ok 2 - changed invocation binding is rejected: schema
+  ---
+  duration_ms: 0.303667
+  type: 'test'
+  ...
+# Subtest: changed invocation binding is rejected: decision
+ok 3 - changed invocation binding is rejected: decision
+  ---
+  duration_ms: 0.054125
+  type: 'test'
+  ...
+# Subtest: changed invocation binding is rejected: sourceCommit
+ok 4 - changed invocation binding is rejected: sourceCommit
+  ---
+  duration_ms: 0.0395
+  type: 'test'
+  ...
+# Subtest: changed invocation binding is rejected: templateSha
+ok 5 - changed invocation binding is rejected: templateSha
+  ---
+  duration_ms: 0.1225
+  type: 'test'
+  ...
+# Subtest: unsafe invocation receipt is rejected: unknown-field
+ok 6 - unsafe invocation receipt is rejected: unknown-field
+  ---
+  duration_ms: 0.056334
+  type: 'test'
+  ...
+# Subtest: unsafe invocation receipt is rejected: missing-field
+ok 7 - unsafe invocation receipt is rejected: missing-field
+  ---
+  duration_ms: 0.117666
+  type: 'test'
+  ...
+# Subtest: unsafe invocation receipt is rejected: one-reviewer
+ok 8 - unsafe invocation receipt is rejected: one-reviewer
+  ---
+  duration_ms: 0.042875
+  type: 'test'
+  ...
+# Subtest: unsafe invocation receipt is rejected: duplicate-reviewer
+ok 9 - unsafe invocation receipt is rejected: duplicate-reviewer
+  ---
+  duration_ms: 0.329125
+  type: 'test'
+  ...
+# Subtest: unsafe invocation receipt is rejected: author-self-review
+ok 10 - unsafe invocation receipt is rejected: author-self-review
+  ---
+  duration_ms: 0.661458
+  type: 'test'
+  ...
+# Subtest: unsafe invocation receipt is rejected: wrong-decision
+ok 11 - unsafe invocation receipt is rejected: wrong-decision
+  ---
+  duration_ms: 0.276708
+  type: 'test'
+  ...
+# Subtest: unsafe invocation receipt is rejected: unproved-review-payload
+ok 12 - unsafe invocation receipt is rejected: unproved-review-payload
+  ---
+  duration_ms: 0.09575
+  type: 'test'
+  ...
+# Subtest: pre-run report failure cannot record actual method entry
+ok 13 - pre-run report failure cannot record actual method entry
+  ---
+  duration_ms: 0.323875
+  type: 'test'
+  ...
+# Subtest: a called method that rejects still confirms entry after the request record
+ok 14 - a called method that rejects still confirms entry after the request record
+  ---
+  duration_ms: 0.198
+  type: 'test'
+  ...
+# Subtest: an entered pending run is awaited without an intervening report write
+ok 15 - an entered pending run is awaited without an intervening report write
+  ---
+  duration_ms: 0.121292
+  type: 'test'
+  ...
+# Subtest: reject invalid request, operational configuration and incomplete fake seams before transport
+ok 16 - reject invalid request, operational configuration and incomplete fake seams before transport
+  ---
+  duration_ms: 3.206208
+  type: 'test'
+  ...
+# Subtest: construction and pre-resource disposal make no Docker calls
+ok 17 - construction and pre-resource disposal make no Docker calls
+  ---
+  duration_ms: 6.076541
+  type: 'test'
+  ...
+# Subtest: positive two-resource lifecycle joins only owned Mongo namespace and removes Node first once
+ok 18 - positive two-resource lifecycle joins only owned Mongo namespace and removes Node first once
+  ---
+  duration_ms: 16.934708
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: mongo-network
+ok 19 - reject drift before affected start/cleanup: mongo-network
+  ---
+  duration_ms: 3.571541
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: node-network
+ok 20 - reject drift before affected start/cleanup: node-network
+  ---
+  duration_ms: 7.894417
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: node-root
+ok 21 - reject drift before affected start/cleanup: node-root
+  ---
+  duration_ms: 6.203584
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: mongo-image
+ok 22 - reject drift before affected start/cleanup: mongo-image
+  ---
+  duration_ms: 3.068709
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: command
+ok 23 - reject drift before affected start/cleanup: command
+  ---
+  duration_ms: 6.659417
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: environment
+ok 24 - reject drift before affected start/cleanup: environment
+  ---
+  duration_ms: 12.226208
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: privileged
+ok 25 - reject drift before affected start/cleanup: privileged
+  ---
+  duration_ms: 3.124542
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: host-namespace
+ok 26 - reject drift before affected start/cleanup: host-namespace
+  ---
+  duration_ms: 5.763416
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: runtime
+ok 27 - reject drift before affected start/cleanup: runtime
+  ---
+  duration_ms: 6.125292
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: group
+ok 28 - reject drift before affected start/cleanup: group
+  ---
+  duration_ms: 5.401041
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: sysctl
+ok 29 - reject drift before affected start/cleanup: sysctl
+  ---
+  duration_ms: 4.988417
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: capability
+ok 30 - reject drift before affected start/cleanup: capability
+  ---
+  duration_ms: 6.018417
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: published-port
+ok 31 - reject drift before affected start/cleanup: published-port
+  ---
+  duration_ms: 2.894875
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: memory
+ok 32 - reject drift before affected start/cleanup: memory
+  ---
+  duration_ms: 4.918708
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: writable-bind
+ok 33 - reject drift before affected start/cleanup: writable-bind
+  ---
+  duration_ms: 5.995959
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: mongo-host-mount
+ok 34 - reject drift before affected start/cleanup: mongo-host-mount
+  ---
+  duration_ms: 2.728958
+  type: 'test'
+  ...
+# Subtest: reject drift before affected start/cleanup: tmpfs
+ok 35 - reject drift before affected start/cleanup: tmpfs
+  ---
+  duration_ms: 6.292166
+  type: 'test'
+  ...
+# Subtest: unknown Node create acknowledgement preserves known resources and withholds cleanup
+ok 36 - unknown Node create acknowledgement preserves known resources and withholds cleanup
+  ---
+  duration_ms: 4.856833
+  type: 'test'
+  ...
+# Subtest: reject false API evidence: skip
+ok 37 - reject false API evidence: skip
+  ---
+  duration_ms: 7.490375
+  type: 'test'
+  ...
+# Subtest: reject false API evidence: failure
+ok 38 - reject false API evidence: failure
+  ---
+  duration_ms: 8.602042
+  type: 'test'
+  ...
+# Subtest: reject false API evidence: empty
+ok 39 - reject false API evidence: empty
+  ---
+  duration_ms: 7.134917
+  type: 'test'
+  ...
+# Subtest: reject false API evidence: duplicate
+ok 40 - reject false API evidence: duplicate
+  ---
+  duration_ms: 6.825958
+  type: 'test'
+  ...
+# Subtest: reject false API evidence: forged-network
+ok 41 - reject false API evidence: forged-network
+  ---
+  duration_ms: 7.101375
+  type: 'test'
+  ...
+# Subtest: reject false API evidence: wrong-database
+ok 42 - reject false API evidence: wrong-database
+  ---
+  duration_ms: 7.031
+  type: 'test'
+  ...
+# Subtest: reject false API evidence: wrong-source
+ok 43 - reject false API evidence: wrong-source
+  ---
+  duration_ms: 6.01775
+  type: 'test'
+  ...
+# Subtest: reject false API evidence: raw-token
+ok 44 - reject false API evidence: raw-token
+  ---
+  duration_ms: 9.52025
+  type: 'test'
+  ...
+# Subtest: reject false API evidence: case-otp
+ok 45 - reject false API evidence: case-otp
+  ---
+  duration_ms: 10.005458
+  type: 'test'
+  ...
+# Subtest: unmanifested bundle source is rejected before any resource creation
+ok 46 - unmanifested bundle source is rejected before any resource creation
+  ---
+  duration_ms: 4.176833
+  type: 'test'
+  ...
+# Subtest: replaced workspace with copied marker grants no ownership
+ok 47 - replaced workspace with copied marker grants no ownership
+  ---
+  duration_ms: 1.989916
+  type: 'test'
+  ...
+# Subtest: missing mutation sensitivity cannot count as runtime acceptance
+ok 48 - missing mutation sensitivity cannot count as runtime acceptance
+  ---
+  duration_ms: 7.3805
+  type: 'test'
+  ...
+# Subtest: raw or unexpected provider data cannot count as runtime acceptance
+ok 49 - raw or unexpected provider data cannot count as runtime acceptance
+  ---
+  duration_ms: 6.5155
+  type: 'test'
+  ...
+# Subtest: nested sensitivity payload is rejected with fixed safe error
+ok 50 - nested sensitivity payload is rejected with fixed safe error
+  ---
+  duration_ms: 7.715
+  type: 'test'
+  ...
+# Subtest: unknown numeric provider counters are rejected
+ok 51 - unknown numeric provider counters are rejected
+  ---
+  duration_ms: 7.470417
+  type: 'test'
+  ...
+# Subtest: invalid result JSON never echoes raw output
+ok 52 - invalid result JSON never echoes raw output
+  ---
+  duration_ms: 6.852959
+  type: 'test'
+  ...
+# Subtest: provider plan rejects unreviewed or incomplete keys: ["unexpected","token123"]
+ok 53 - provider plan rejects unreviewed or incomplete keys: ["unexpected","token123"]
+  ---
+  duration_ms: 0.127917
+  type: 'test'
+  ...
+# Subtest: provider plan rejects unreviewed or incomplete keys: ["unexpected","unexpected"]
+ok 54 - provider plan rejects unreviewed or incomplete keys: ["unexpected","unexpected"]
+  ---
+  duration_ms: 0.045833
+  type: 'test'
+  ...
+# Subtest: provider plan rejects unreviewed or incomplete keys: []
+ok 55 - provider plan rejects unreviewed or incomplete keys: []
+  ---
+  duration_ms: 0.056541
+  type: 'test'
+  ...
+# Subtest: provider plan rejects unreviewed or incomplete keys: ["logger"]
+ok 56 - provider plan rejects unreviewed or incomplete keys: ["logger"]
+  ---
+  duration_ms: 0.041916
+  type: 'test'
+  ...
+# Subtest: Mongo liveness denial: afterMongoStart/stopped
+ok 57 - Mongo liveness denial: afterMongoStart/stopped
+  ---
+  duration_ms: 3.671708
+  type: 'test'
+  ...
+# Subtest: Mongo liveness denial: afterMongoStart/OOM
+ok 58 - Mongo liveness denial: afterMongoStart/OOM
+  ---
+  duration_ms: 3.043542
+  type: 'test'
+  ...
+# Subtest: Mongo liveness denial: afterNodeExit/stopped
+ok 59 - Mongo liveness denial: afterNodeExit/stopped
+  ---
+  duration_ms: 12.198292
+  type: 'test'
+  ...
+# Subtest: Mongo liveness denial: afterNodeExit/OOM
+ok 60 - Mongo liveness denial: afterNodeExit/OOM
+  ---
+  duration_ms: 11.965625
+  type: 'test'
+  ...
+# Subtest: pre-existing purpose labels stop before create without adoption
+ok 61 - pre-existing purpose labels stop before create without adoption
+  ---
+  duration_ms: 3.738875
+  type: 'test'
+  ...
+# Subtest: cleanup refuses incomplete readback: stale-remove-ack
+ok 62 - cleanup refuses incomplete readback: stale-remove-ack
+  ---
+  duration_ms: 6.757458
+  type: 'test'
+  ...
+# Subtest: cleanup refuses incomplete readback: unavailable-absence
+ok 63 - cleanup refuses incomplete readback: unavailable-absence
+  ---
+  duration_ms: 12.459417
+  type: 'test'
+  ...
+# Subtest: cleanup refuses incomplete readback: engine-drift
+ok 64 - cleanup refuses incomplete readback: engine-drift
+  ---
+  duration_ms: 12.180208
+  type: 'test'
+  ...
+# Subtest: cleanup refuses incomplete readback: remaining-purpose-label
+ok 65 - cleanup refuses incomplete readback: remaining-purpose-label
+  ---
+  duration_ms: 12.219125
+  type: 'test'
+  ...
+# Subtest: workspace absence requires ENOENT rather than an unreadable path
+ok 66 - workspace absence requires ENOENT rather than an unreadable path
+  ---
+  duration_ms: 0.228291
+  type: 'test'
+  ...
+# Subtest: fixed decoder returns successful stdout for subsequent existing result admission
+ok 67 - fixed decoder returns successful stdout for subsequent existing result admission
+  ---
+  duration_ms: 0.124959
+  type: 'test'
+  ...
+# Subtest: closed child failure projects only known stage and frozen fixture code
+ok 68 - closed child failure projects only known stage and frozen fixture code
+  ---
+  duration_ms: 0.167625
+  type: 'test'
+  ...
+# Subtest: untrusted failure payload is not retained: extra-token
+ok 69 - untrusted failure payload is not retained: extra-token
+  ---
+  duration_ms: 0.077375
+  type: 'test'
+  ...
+# Subtest: untrusted failure payload is not retained: unknown-code
+ok 70 - untrusted failure payload is not retained: unknown-code
+  ---
+  duration_ms: 0.051792
+  type: 'test'
+  ...
+# Subtest: untrusted failure payload is not retained: unknown-stage
+ok 71 - untrusted failure payload is not retained: unknown-stage
+  ---
+  duration_ms: 0.048458
+  type: 'test'
+  ...
+# Subtest: untrusted failure payload is not retained: false-failure
+ok 72 - untrusted failure payload is not retained: false-failure
+  ---
+  duration_ms: 0.0495
+  type: 'test'
+  ...
+# Subtest: untrusted failure payload is not retained: skip
+ok 73 - untrusted failure payload is not retained: skip
+  ---
+  duration_ms: 0.045792
+  type: 'test'
+  ...
+# Subtest: untrusted failure payload is not retained: missing-field
+ok 74 - untrusted failure payload is not retained: missing-field
+  ---
+  duration_ms: 0.055542
+  type: 'test'
+  ...
+# Subtest: invalid JSON has no raw parse snippet or error text in failure evidence
+ok 75 - invalid JSON has no raw parse snippet or error text in failure evidence
+  ---
+  duration_ms: 0.077959
+  type: 'test'
+  ...
+# Subtest: timeout records a closed unresolved outcome without system error text
+ok 76 - timeout records a closed unresolved outcome without system error text
+  ---
+  duration_ms: 0.06525
+  type: 'test'
+  ...
+# Subtest: signal records interrupted outcome without raw signal/output evidence
+ok 77 - signal records interrupted outcome without raw signal/output evidence
+  ---
+  duration_ms: 0.1635
+  type: 'test'
+  ...
+# Subtest: other Docker operations cannot masquerade as an attached API failure
+ok 78 - other Docker operations cannot masquerade as an attached API failure
+  ---
+  duration_ms: 0.059708
+  type: 'test'
+  ...
+# Subtest: failure-code set derives only frozen public literals and known assertion suffixes
+ok 79 - failure-code set derives only frozen public literals and known assertion suffixes
+  ---
+  duration_ms: 0.086125
+  type: 'test'
+  ...
+# Subtest: failed attach retains a closed diagnostic through exact owned cleanup
+ok 80 - failed attach retains a closed diagnostic through exact owned cleanup
+  ---
+  duration_ms: 18.143333
+  type: 'test'
+  ...
+# Subtest: ordinary failed readiness probe cannot taint an otherwise successful run
+ok 81 - ordinary failed readiness probe cannot taint an otherwise successful run
+  ---
+  duration_ms: 108.760666
+  type: 'test'
+  ...
+# Subtest: tolerated readiness probe cannot mask a later genuine attached-child failure
+ok 82 - tolerated readiness probe cannot mask a later genuine attached-child failure
+  ---
+  duration_ms: 111.363667
+  type: 'test'
+  ...
+# Subtest: terminal readiness TIMEOUT is never retried
+ok 83 - terminal readiness TIMEOUT is never retried
+  ---
+  duration_ms: 3.618167
+  type: 'test'
+  ...
+# Subtest: terminal readiness INTERRUPTED is never retried
+ok 84 - terminal readiness INTERRUPTED is never retried
+  ---
+  duration_ms: 5.0745
+  type: 'test'
+  ...
+1..84
+# tests 84
+# suites 0
+# pass 84
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 602.288833

@@ -1,0 +1,9 @@
+# Bounded failed-child diagnostic amendment
+
+Root authored this amendment after actual prepared-artifact Spec review found a missing eager WellnessPackage registration. That API source fix is owned separately by the scenario worker. No API/Docker/driver/application run occurred and both old-template runtime decisions are withheld/withdrawn; the first prepared template remains preserved.
+
+The existing parent safely rejected failed children but discarded their closed failure JSON. This amendment retains only a known four-valued stage and a code selected from frozen bootstrap/scenario public literal strings and fixed assertion suffixes. Unknown/extra/raw JSON, unknown codes/stages, parser snippets, stderr, Error text, error types and validation fields never enter evidence. Outcome is a closed FAILED/TIMEOUT/INTERRUPTED enumeration; first failure is retained through cleanup. The operator records that safe diagnostic and marks timeout/interruption UNRESOLVED even after successful resource removal. No subprocess argv, environment, grant, resource profile, domain source or retry policy changes.
+
+Fourteen new fake/pure controls exercise successful decoder forwarding, closed projection, payload corruption, invalid JSON, timeout/signal, operation binding, literal-code derivation and complete failed-attach cleanup. The combined offline gate passes80cases (previous66unchanged). The initial new runner accidentally expected81, so it rejected despite all80tests passing; that bookkeeping count alone was corrected. Initial TAP/stderr are preserved, with the final run alongside. No actual app/driver/compiler/Docker/provider execution.
+
+Two independent amended-source confirmations and a later new exact prepared-template/runtime decision are required. This record grants no invocation authority.
