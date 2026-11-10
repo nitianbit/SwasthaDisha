@@ -1,0 +1,464 @@
+{
+  "schema": "SD-AUTH-API-INVOCATION-1",
+  "sourceCommit": "1c58cf5159fe0fbdc0a4309523f26f974644d43f",
+  "operatorSha": "9c6d1c805de4c50542667b90532219c54666b8a764ee5672055f641938b099ed",
+  "approvalSha": "f8362071b2d9284c02dd276affcd84e92ed85bf9c6128f08db90298b9ea5bcb7",
+  "templateSha": "0c64ca9950c4219d45e47c816a154df26370c3d68b6c7c662ed31722a9e4b7da",
+  "status": "FOCUSED_API_PASS",
+  "fixtureHandleReturned": true,
+  "runRequested": true,
+  "runEntered": true,
+  "cleanup": "VERIFIED",
+  "created": [
+    {
+      "kind": "mongo",
+      "id": "4dcaf6e6078d065b093ded84480d7c23a4b35e943cb7d2e50964683b0637eb50",
+      "name": "sd-api-mongo-7107c7b4-a4a3-494e-b92f-3631bb504407",
+      "removed": false
+    },
+    {
+      "kind": "node",
+      "id": "4a428e3343da75d38b037d75eb3bd9f21bbe7c48641a7b1a1054005bb6b32c4a",
+      "name": "sd-api-node-7107c7b4-a4a3-494e-b92f-3631bb504407",
+      "removed": false
+    }
+  ],
+  "runId": "7107c7b4-a4a3-494e-b92f-3631bb504407",
+  "workspace": "/private/tmp/sd-auth-api-run-zUYS1Q",
+  "result": {
+    "schema": "SD-AUTH-API-RESULT-1",
+    "runId": "7107c7b4-a4a3-494e-b92f-3631bb504407",
+    "role": "auth-user-wallet-api",
+    "database": "sd_api_7107c7b4a4a3494eb92f3631bb504407",
+    "replicaSet": "sd_rs_7107c7b4a4a3494eb92f3631bb504407",
+    "sourceCommit": "1c58cf5159fe0fbdc0a4309523f26f974644d43f",
+    "admissionPassed": true,
+    "networkAdmission": {
+      "tag": "APP-NET-ADMIT-1",
+      "observation": {
+        "tag": "APP-NET-DIAG-1",
+        "entries": [
+          {
+            "name": "bonding_masters",
+            "kind": "file",
+            "flags": {
+              "unavailable": "ENOTDIR"
+            },
+            "operstate": {
+              "unavailable": "ENOTDIR"
+            },
+            "type": {
+              "unavailable": "ENOTDIR"
+            }
+          },
+          {
+            "name": "erspan0",
+            "kind": "symlink",
+            "flags": "0x1002",
+            "operstate": "down",
+            "type": "1"
+          },
+          {
+            "name": "gre0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "778"
+          },
+          {
+            "name": "gretap0",
+            "kind": "symlink",
+            "flags": "0x1002",
+            "operstate": "down",
+            "type": "1"
+          },
+          {
+            "name": "ip6_vti0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "769"
+          },
+          {
+            "name": "ip6gre0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "823"
+          },
+          {
+            "name": "ip6tnl0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "769"
+          },
+          {
+            "name": "ip_vti0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "768"
+          },
+          {
+            "name": "lo",
+            "kind": "symlink",
+            "flags": "0x9",
+            "operstate": "unknown",
+            "type": "772"
+          },
+          {
+            "name": "sit0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "776"
+          },
+          {
+            "name": "tunl0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "768"
+          }
+        ],
+        "addressedInterfaces": [
+          {
+            "name": "lo",
+            "addresses": [
+              {
+                "address": "127.0.0.1",
+                "family": "IPv4",
+                "internal": true
+              },
+              {
+                "address": "::1",
+                "family": "IPv6",
+                "internal": true
+              }
+            ]
+          }
+        ]
+      },
+      "loopback": "lo",
+      "controlFiles": [
+        "bonding_masters"
+      ],
+      "downDevices": [
+        "erspan0",
+        "gre0",
+        "gretap0",
+        "ip6_vti0",
+        "ip6gre0",
+        "ip6tnl0",
+        "ip_vti0",
+        "sit0",
+        "tunl0"
+      ],
+      "loopbackAddresses": [
+        "127.0.0.1",
+        "::1"
+      ]
+    },
+    "egressBlocked": true,
+    "filesystemCanariesPassed": true,
+    "cases": [
+      {
+        "id": "PHONE_LOGIN",
+        "status": "PASS"
+      },
+      {
+        "id": "EMAIL_LOGIN",
+        "status": "PASS"
+      },
+      {
+        "id": "LOGIN_SIDE_EFFECTS",
+        "status": "PASS"
+      },
+      {
+        "id": "JWT_SIGNATURE_AND_CLAIMS",
+        "status": "PASS"
+      },
+      {
+        "id": "OWN_PROFILE",
+        "status": "PASS"
+      },
+      {
+        "id": "OWN_USER_READ",
+        "status": "PASS"
+      },
+      {
+        "id": "OWN_USER_UPDATE",
+        "status": "PASS"
+      },
+      {
+        "id": "OTHER_USER_READ_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "OTHER_USER_UPDATE_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "OTHER_USER_DELETE_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "USER_LIST_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "SELF_PRIVILEGE_FIELDS_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "OWN_WALLET_READ",
+        "status": "PASS"
+      },
+      {
+        "id": "OTHER_WALLET_ID_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "OTHER_WALLET_USER_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "OWN_TRANSACTION_READ",
+        "status": "PASS"
+      },
+      {
+        "id": "OTHER_TRANSACTION_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "TRANSACTION_WITHOUT_WALLET_OWNER",
+        "status": "PASS"
+      },
+      {
+        "id": "WALLET_MUTATIONS_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "ANONYMOUS_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "WRONG_KEY_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "EXPIRED_JWT_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "MISSING_PRINCIPAL_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "MALFORMED_WALLET_ID",
+        "status": "PASS"
+      },
+      {
+        "id": "ABSENT_WALLET",
+        "status": "PASS"
+      },
+      {
+        "id": "ADMIN_READS",
+        "status": "PASS"
+      },
+      {
+        "id": "HR_CORPORATE_SCOPE",
+        "status": "PASS"
+      },
+      {
+        "id": "HR_WITHOUT_CORPORATE_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "SPECIALIST_AND_PHARMACY_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "WRONG_OTP_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "CONSUMED_OTP_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "EXPIRED_OTP_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "TARGET_BINDING_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "UNBOUND_OTP_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "OTP_SINGLE_WINNER",
+        "status": "PASS"
+      },
+      {
+        "id": "OTP_INFLIGHT_EXPIRY_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "DEPENDENT_OWNER_CRUD_LIST",
+        "status": "PASS"
+      },
+      {
+        "id": "DEPENDENT_ADMIN_ON_BEHALF",
+        "status": "PASS"
+      },
+      {
+        "id": "DEPENDENT_ROLE_AND_PRINCIPAL_DENIALS",
+        "status": "PASS"
+      },
+      {
+        "id": "DEPENDENT_OWNER_SELECTORS_DENIED",
+        "status": "PASS"
+      },
+      {
+        "id": "DEPENDENT_HIDDEN_ID_DENIALS",
+        "status": "PASS"
+      },
+      {
+        "id": "DEPENDENT_RAW_OWNER_FIELD_DENIALS",
+        "status": "PASS"
+      },
+      {
+        "id": "DEPENDENT_LEGACY_VALIDATION",
+        "status": "PASS"
+      },
+      {
+        "id": "NOTIFICATION_GENERIC_OWNER_FLOWS",
+        "status": "PASS"
+      },
+      {
+        "id": "NOTIFICATION_GENERIC_ADMIN_FLOWS",
+        "status": "PASS"
+      },
+      {
+        "id": "NOTIFICATION_GENERIC_DENIALS",
+        "status": "PASS"
+      },
+      {
+        "id": "NOTIFICATION_PAGINATION_AND_COUNTS",
+        "status": "PASS"
+      },
+      {
+        "id": "NOTIFICATION_PRIOR_STRICT_OWN_PATHS",
+        "status": "PASS"
+      },
+      {
+        "id": "NOTIFICATION_PRIOR_SPECIALIST_PATHS",
+        "status": "PASS"
+      },
+      {
+        "id": "NOTIFICATION_PRIOR_ADMIN_SENDERS",
+        "status": "PASS"
+      },
+      {
+        "id": "FCM_TEST_ADMIN_RECORDING",
+        "status": "PASS"
+      },
+      {
+        "id": "FCM_TEST_DENIALS",
+        "status": "PASS"
+      },
+      {
+        "id": "FCM_TOKEN_REGISTRATION_COMPAT",
+        "status": "PASS"
+      }
+    ],
+    "sensitivity": [
+      {
+        "id": "OTP_UNCONDITIONAL_CONSUME",
+        "detected": true
+      },
+      {
+        "id": "OTP_LOGIN_TARGET_UNBOUND",
+        "detected": true
+      },
+      {
+        "id": "USER_OTHER_READ",
+        "detected": true
+      },
+      {
+        "id": "WALLET_OTHER_READ",
+        "detected": true
+      },
+      {
+        "id": "DEPENDENT_UNBOUND_CREATE_OWNER",
+        "detected": true
+      },
+      {
+        "id": "DEPENDENT_UNSCOPED_LIST",
+        "detected": true
+      },
+      {
+        "id": "DEPENDENT_UNSCOPED_ID_CALLS",
+        "detected": true
+      },
+      {
+        "id": "DEPENDENT_FORBIDDEN_ROLE_ADMISSION",
+        "detected": true
+      },
+      {
+        "id": "DEPENDENT_RAW_OWNER_STRIPPED",
+        "detected": true
+      },
+      {
+        "id": "NOTIFICATION_UNSCOPED_LIST",
+        "detected": true
+      },
+      {
+        "id": "NOTIFICATION_ID_OWNER_GUARD_REMOVED",
+        "detected": true
+      },
+      {
+        "id": "NOTIFICATION_PRIOR_STRICT_OWN_ADMIN_EXPANSION",
+        "detected": true
+      },
+      {
+        "id": "FCM_TEST_ADMIN_GUARD_REMOVED",
+        "detected": true
+      },
+      {
+        "id": "FCM_TEST_ADMIN_GUARD_AFTER_VALIDATION",
+        "detected": true
+      }
+    ],
+    "failed": 0,
+    "skipped": 0,
+    "providerSummary": {
+      "email": 5,
+      "sms": 1,
+      "push": 2,
+      "logger": 287,
+      "payments": 0,
+      "calendar": 0,
+      "storage": 0,
+      "queue": 0,
+      "deniedCapabilities": 0,
+      "unexpected": 0
+    },
+    "domainScope": "FOCUSED_PRODUCTION_ROUTERS"
+  },
+  "cleanupReceipt": {
+    "runId": "7107c7b4-a4a3-494e-b92f-3631bb504407",
+    "directory": "/private/tmp/sd-auth-api-run-zUYS1Q",
+    "exactIdsAbsent": [
+      "4dcaf6e6078d065b093ded84480d7c23a4b35e943cb7d2e50964683b0637eb50",
+      "4a428e3343da75d38b037d75eb3bd9f21bbe7c48641a7b1a1054005bb6b32c4a"
+    ],
+    "engineId": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+    "zeroPurposeLabels": true,
+    "workspaceAbsent": true
+  }
+}

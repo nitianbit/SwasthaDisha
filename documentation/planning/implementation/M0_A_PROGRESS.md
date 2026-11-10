@@ -327,3 +327,41 @@ build/compiled start/default CI, client coverage, money/recovery/clinical/securi
 owners, full M0/Week 2, production or release/100 RPS. The selected 115 scenario
 register remains unchanged; new focused cases have their own manifest. Original
 six staged files and eleven handover files were rehashed and preserved.
+
+
+## Nineteenth increment, 11 November: expanded authority API milestone achieved
+
+The reviewed source extension is integrated. Its actual locked preparation at
+clean `1c58cf5`, descriptor `0c64ca99…`, established 77 TypeScript sources,
+63 reachable emitted modules and the exact thirteen-model map; all five metadata
+controls rejected defects. It retains 816 semantic diagnostics (all 703 historical
+plus 113 added), zero transpile diagnostics and no clean root typecheck claim.
+
+One separately approved invocation returned **FOCUSED_API_PASS**: all 53 ordered
+case groups passed, all 14 actual-source regressions were detected, zero failures
+or skips. Both nonauthor internal Codex reviewers accepted [the actual result](../../../output/qa/week2-api-runtime/execution-5/REVIEW.md)
+after independent exact-artifact/source/receipt/case/assertion/cleanup review.
+The retained core auth/user/wallet evidence now includes actual Dependents,
+Notification and FCM routers, all their 25 registrations, all-thirteen-collection
+state/read/write/effect comparisons, exact error envelopes, created/push fields,
+unread-only changes, source-regression sensitivity and nominal restoration.
+
+The source review first requested changes for failure-path proof deletion,
+already-read sibling protection and exact created notification fields. The initial
+packet/findings are preserved; both reviewers confirmed the amended source before
+preparation. No expanded runtime occurred before those decisions. Nominal email5/
+SMS1/push2/logger287 are recording intents; other six counters are zero. The
+consumed approval and exact parent/root cleanup prove same engine, both captured
+IDs absent, zero purpose labels and workspace ENOENT. No rerun follows from PASS.
+
+The next ready evidence contracts cover actual JWT configuration load rejection
+and Meet guard/provider-intent boundaries. Broader policy and root startup remain
+separately gated. Genuine existing-client Claude Opus 5.5/max review is still
+AUTH_REQUIRED; the owner was asked only for normal sign-in, never credentials or
+review-prompt relay. Its concrete read-only packet/operator preparation continues
+on a separate lane, with no model/account action or forged acknowledgement.
+
+The original six staged changes and eleven handover files were rehashed and
+preserved. Root dependency/build/start/CI, retained-server facts, broader identity/
+clinical/money/recovery, supported clients, the original 115-scenario register,
+named owners and release/100 RPS remain open. Full M0/Week 2 is not complete.

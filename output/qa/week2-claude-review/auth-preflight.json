@@ -1,0 +1,23 @@
+{
+  "schema": "SD-LOCAL-CLAUDE-AUTH-PREFLIGHT-1",
+  "observer": "/root",
+  "integrationCommit": "94f8804916850caf9c716fae2cc49c6c0d218202",
+  "reviewedRuntimeSource": "1543658ff53e3906f71f4fa8b92a5756b97a7ee1",
+  "clientKind": "EXISTING_VSCODE_EXTENSION_BUNDLED_CLI",
+  "clientVersion": "2.1.322",
+  "clientSha256": "a9d237949db816a0b7afd88a9a8e1df36b3a597a30f5a41d1c0539eb180a3450",
+  "operation": [
+    "auth",
+    "status"
+  ],
+  "exit": 1,
+  "loggedIn": false,
+  "authMethod": "none",
+  "apiProvider": "firstParty",
+  "status": "AUTH_REQUIRED",
+  "modelRequested": false,
+  "actualClaudeReview": false,
+  "accountChanges": 0,
+  "rawAuthOutputRetained": false,
+  "next": "Owner normal existing Claude Code sign-in; independent backend work continues; no credentials or prompt relay requested"
+}

@@ -1,0 +1,41 @@
+{
+  "status": "FOCUSED_API_PASS",
+  "invocations": 1,
+  "exit": 0,
+  "sourceCommit": "1c58cf5159fe0fbdc0a4309523f26f974644d43f",
+  "templateSha": "0c64ca9950c4219d45e47c816a154df26370c3d68b6c7c662ed31722a9e4b7da",
+  "approvalSha": "f8362071b2d9284c02dd276affcd84e92ed85bf9c6128f08db90298b9ea5bcb7",
+  "approvalConsumed": true,
+  "actualReviewers": [
+    "/root/backend_boot_path",
+    "/root/local_claude_review_prep"
+  ],
+  "cleanup": "VERIFIED_BY_PARENT_AND_ROOT_READBACK",
+  "nominalCases": {
+    "required": 53,
+    "pass": 53,
+    "failed": 0,
+    "skipped": 0
+  },
+  "sensitivityCases": {
+    "required": 14,
+    "detected": 14
+  },
+  "providerSummary": {
+    "email": 5,
+    "sms": 1,
+    "push": 2,
+    "logger": 287,
+    "payments": 0,
+    "calendar": 0,
+    "storage": 0,
+    "queue": 0,
+    "deniedCapabilities": 0,
+    "unexpected": 0
+  },
+  "scope": "FOCUSED_PRODUCTION_AUTHORITY_ROUTERS_THIRTEEN_MODELS",
+  "fullStartup": false,
+  "rootBuildTypecheck": false,
+  "Week2Accepted": false,
+  "moreRuns": "NOT_AUTHORIZED"
+}
