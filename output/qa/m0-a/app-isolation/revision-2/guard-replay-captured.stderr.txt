@@ -1,0 +1,47 @@
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
+  [
++   'bonding_masters',
++   'erspan0',
++   'gre0',
++   'gretap0',
++   'ip6_vti0',
++   'ip6gre0',
++   'ip6tnl0',
++   'ip_vti0',
+    'lo',
++   'sit0',
++   'tunl0'
+  ]
+
+    at <anonymous>:2:8
+    at file:///private/tmp/sd-network-guard-replay.mjs:13:53
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [
+    'bonding_masters',
+    'erspan0',
+    'gre0',
+    'gretap0',
+    'ip6_vti0',
+    'ip6gre0',
+    'ip6tnl0',
+    'ip_vti0',
+    'lo',
+    'sit0',
+    'tunl0'
+  ],
+  expected: [ 'lo' ],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v22.23.4

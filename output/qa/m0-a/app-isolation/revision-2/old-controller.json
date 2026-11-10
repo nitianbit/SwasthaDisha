@@ -1,0 +1,36 @@
+{
+  "mode": "offline historical-controller regression detection, not a live Docker reproduction",
+  "baseline": "58980c698bdfcdee5b2eb68d5c8a7577e6758e4d",
+  "exit_code": 1,
+  "expected": "nonzero",
+  "expected_early_reporter_failures": 8,
+  "all_failures": [
+    "create acknowledgement is reported before failing post-create engine checks",
+    "a failed creation reporter withholds start and removal",
+    "an invalid creation reporter is rejected before fixture allocation",
+    "an invalid creation reporter is rejected before fixture allocation",
+    "an invalid creation reporter is rejected before fixture allocation",
+    "an invalid creation reporter is rejected before fixture allocation",
+    "an invalid creation reporter is rejected before fixture allocation",
+    "the creation reporter is snapshotted once on a successful simulated lifecycle"
+  ],
+  "old_controller_sha256": "dd39d993e2e3c0c91ceda34b9b281c7fbfbdc0ae74128740cc0e8a6a4e7f3684",
+  "current_source_sha256": {
+    "test/foundation/run.mjs": "f14c1830b0fbe23c1be454cb97003c6c6fb58fdb11bee0ac8bc91134d63ca0c9",
+    "test/foundation/preflight.mjs": "2cdfa366dad210fe5483a52ae4c8c4b6488a4429bc8e0e8dff1f2b7f4f5487da",
+    "test/foundation/preflight.test.mjs": "26a84d230fbb17d0952d6f53b7667983597e122580a7fc17a526f7458e49294d",
+    "test/foundation/mongo-fixture.mjs": "a95eec22111a57f4a6e70efc242fe5e54d1a89ab4020975bbdb9fae3cab4afc2",
+    "test/foundation/mongo-fixture.test.mjs": "d837b2496d115a1a9c596ccaa21cf4eb7c51b3863c94af6bc3f4899f07057342",
+    "test/application/app-container.mjs": "daa4eeb9986fdf1ad245eca27a05f8a38e6797205c569e93865219a16d3e6bc5",
+    "test/application/app-container.test.mjs": "52efe6d0c7ad93e8d9c9a99b75aa37d49c2218c72bd33ae7541c40b6667e8f22",
+    "test/application/app-bundle.mjs": "714e050ce94a42a9d3acc22c7d0c974db8546b11820796e4761df547f20f0b63",
+    "test/application/app-bundle.test.mjs": "0cf922c7cf62b34afdf6eca736c630a8151acbf58c65b858cc854d7644bd079d",
+    "test/application/app-ports.mjs": "f7efb3ee12eee3f0ff427b360d9c65776c20f34c80432ac0b5a626df55408cf1",
+    "test/application/app-image.json": "4f1390608939a823788010499cc810801d01fd8ee44248da5424776c816a8611",
+    "test/application/app-runtime.json": "e4e0b67677e084dce5d65d958763057c5ca1b257232b5f007545a327fb40f0b3"
+  },
+  "outer_fixture_removed": true,
+  "application_evaluation": false,
+  "real_docker_calls": 0,
+  "containment": "Staged unit child has no child-process permission; new admission regressions also trap allocation/socket/process attempts before effects. Only controller and synthetic unit fixtures are copied."
+}

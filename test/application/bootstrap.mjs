@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { assertBundle, PORT_OPERATIONS, ROLE, requireThat } from './app-bundle.mjs';
+import { lstatSync, readFileSync, readdirSync, writeFileSync, writeSync } from 'node:fs';
+import { networkInterfaces as addressedNetworkInterfaces } from 'node:os';
+import { assertBundle, captureNetworkDiagnostics, PORT_OPERATIONS, ROLE, requireThat } from './app-bundle.mjs';
 
 const allowedEnvironment = new Set([
   'PATH', 'NODE_VERSION', 'YARN_VERSION', 'HOME', 'HOSTNAME',
@@ -13,6 +14,19 @@ requireThat(process.cwd() === '/workspace' && process.version === 'v22.23.4'
   && process.platform === 'linux' && process.permission, 'Unadmitted application runtime');
 assertBundle('/workspace', { runId: process.env.APP_RUN_ID, manifestSha: process.env.APP_MANIFEST_SHA });
 const networkInterfaces = readdirSync('/sys/class/net').sort();
+if (networkInterfaces.length !== 1 || networkInterfaces[0] !== 'lo') {
+  const diagnostics = captureNetworkDiagnostics(networkInterfaces, {
+    entryType(path) {
+      const entry = lstatSync(path);
+      return entry.isSymbolicLink() ? 'symlink' : entry.isFile() ? 'file' : entry.isDirectory() ? 'directory' : 'other';
+    },
+    readText: (path) => readFileSync(path, 'utf8'),
+    addresses: addressedNetworkInterfaces,
+  });
+  const record = JSON.stringify({ ...diagnostics, runId: process.env.APP_RUN_ID });
+  requireThat(Buffer.byteLength(record) <= 8192, 'Network diagnostic output limit exceeded');
+  writeSync(2, record + '\n');
+}
 assert.deepEqual(networkInterfaces, ['lo']);
 
 // These precede dynamic scenario imports. They exercise only synthetic paths.

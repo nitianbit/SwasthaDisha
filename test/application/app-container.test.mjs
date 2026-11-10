@@ -366,3 +366,58 @@ test('a disappeared pre-create workspace does not replace the original failure',
   assert.equal(existsSync(directory), false);
   assert.equal(transport.state.calls.some((args) => ['create', 'start', 'rm'].includes(args[0])), false);
 });
+
+
+test('create acknowledgement is reported before failing post-create engine checks', () => {
+  const transport = fakeDocker(); let record; let commandsAtReport; let metadataCalls = 0;
+  const executor = (args) => {
+    if (args[0] === 'info' && ++metadataCalls === 2) throw new Error('synthetic post-create metadata failure');
+    return transport.executor(args);
+  };
+  assert.throws(() => createApplicationFixture({ endpoint }, { ...transport, executor, reportCreated(value) { record = value; commandsAtReport = transport.state.calls.map((args) => args[0]); } }), /cleanup withheld/);
+  assert.equal(record?.id, id);
+  assert.equal(record?.phase, 'created');
+  assert.deepEqual(commandsAtReport, ['info', 'image', 'create']);
+  assert.equal(JSON.parse(readFileSync(join(record.directory, '.owner.json'))).runId, record.runId);
+  assert.equal(transport.state.calls.some((args) => ['start', 'rm'].includes(args[0])), false);
+});
+
+test('a failed creation reporter withholds start and removal', () => {
+  const transport = fakeDocker();
+  assert.throws(() => createApplicationFixture({ endpoint }, { ...transport, reportCreated() { throw new Error('synthetic reporter failure'); } }), /cleanup withheld/);
+  assert.equal(transport.state.calls.some((args) => ['start', 'rm'].includes(args[0])), false);
+});
+
+for (const reportCreated of [undefined, null, {}, 'not-callable', false]) {
+  test('an invalid creation reporter is rejected before fixture allocation', () => {
+    const transport = fakeDocker(); const original = fs.mkdtempSync; let allocations = 0;
+    fs.mkdtempSync = () => { allocations++; throw new Error('Unexpected allocation'); }; syncBuiltinESMExports();
+    try { assert.throws(() => createApplicationFixture({ endpoint }, { ...transport, reportCreated }), /callable test reporter/); }
+    finally { fs.mkdtempSync = original; syncBuiltinESMExports(); }
+    assert.equal(allocations, 0); assert.equal(transport.state.calls.length, 0);
+  });
+}
+
+test('an unknown create ID emits no resource acknowledgement', () => {
+  const transport = fakeDocker(); const executor = (args) => args[0] === 'create' ? 'unknown-id' : transport.executor(args); let reports = 0;
+  assert.throws(() => createApplicationFixture({ endpoint }, { ...transport, executor, reportCreated() { reports++; } }), /cleanup withheld/);
+  assert.equal(reports, 0);
+});
+
+
+test('the creation reporter is snapshotted once on a successful simulated lifecycle', (t) => {
+  const transport = fakeDocker(); const records = []; let reads = 0;
+  const instance = createApplicationFixture({ endpoint }, { ...transport, get reportCreated() {
+    reads++; return (record) => records.push({ record, commands: transport.state.calls.map((args) => args[0]) });
+  } });
+  t.after(() => instance.dispose());
+  assert.equal(reads, 1); assert.equal(records.length, 1);
+  assert.deepEqual(records[0].commands, ['info', 'image', 'create']);
+  assert.deepEqual(records[0].record, { phase: 'created', id: instance.id, runId: instance.runId, directory: instance.directory });
+  assert.equal(Object.isFrozen(records[0].record), true);
+  assert.equal(instance.run().calls.length, 7);
+});
+
+test('a reporter override without a callable executor cannot reach real transport', () => {
+  rejectBeforeEffects(() => createApplicationFixture({ endpoint }, { reportCreated() { throw new Error('Must not be called'); } }));
+});

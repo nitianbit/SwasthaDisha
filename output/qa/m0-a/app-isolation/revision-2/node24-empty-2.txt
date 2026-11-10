@@ -1,0 +1,53 @@
+TAP version 13
+# Subtest: positive one
+ok 1 - positive one
+  ---
+  duration_ms: 1.192584
+  type: 'test'
+  ...
+# Subtest: positive two
+ok 2 - positive two
+  ---
+  duration_ms: 0.138083
+  type: 'test'
+  ...
+# Subtest: app-container.test.mjs
+ok 3 - app-container.test.mjs
+  ---
+  duration_ms: 0.073042
+  type: 'test'
+  ...
+# Subtest: positive one
+ok 4 - positive one
+  ---
+  duration_ms: 0.095084
+  type: 'test'
+  ...
+# Subtest: positive two
+ok 5 - positive two
+  ---
+  duration_ms: 0.197209
+  type: 'test'
+  ...
+# Subtest: positive one
+ok 6 - positive one
+  ---
+  duration_ms: 0.097708
+  type: 'test'
+  ...
+# Subtest: positive two
+ok 7 - positive two
+  ---
+  duration_ms: 0.088084
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 78.554708
+Foundation gate failed or did not execute a complete non-skipped test run.

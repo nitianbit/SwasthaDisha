@@ -3,9 +3,8 @@ import { createApplicationFixture } from './app-container.mjs';
 if (process.env.NODE_OPTIONS || process.env.NODE_PATH || process.execArgv.length || process.argv.length !== 3) {
   throw new Error('Use a clean Node invocation with only the explicit local Docker Unix endpoint');
 }
-// REVIEW GATE: first real execution and application import are pending approval.
+// REVIEW GATE: a new smoke after the recorded failure requires explicit scoped approval.
 const fixture = createApplicationFixture({ endpoint: process.argv[2] });
-console.error(JSON.stringify({ phase: 'created', id: fixture.id, runId: fixture.runId, directory: fixture.directory }));
 let result;
 let failure;
 try { result = fixture.run(); } catch (error) { failure = error; }

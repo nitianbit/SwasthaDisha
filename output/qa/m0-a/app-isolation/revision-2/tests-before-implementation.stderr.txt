@@ -1,0 +1,1 @@
+Foundation gate failed or did not execute a complete non-skipped test run.

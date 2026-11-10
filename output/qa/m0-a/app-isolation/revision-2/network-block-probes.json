@@ -1,0 +1,23 @@
+{
+  "results": [
+    {
+      "runtime": "node22",
+      "evidence": "node22-network-block.stdout.json",
+      "checks": 5,
+      "exit_code": 0
+    },
+    {
+      "runtime": "node24",
+      "evidence": "node24-network-block.stdout.json",
+      "checks": 5,
+      "exit_code": 0
+    }
+  ],
+  "source_sha256": {
+    "test/application/bootstrap.mjs": "2fda4ff3bac76fe710c779a6bac5c2acdd13cd71ea4773b3e28b60634f2f6aac",
+    "test/application/app-bundle.mjs": "714e050ce94a42a9d3acc22c7d0c974db8546b11820796e4761df547f20f0b63"
+  },
+  "real_docker_calls": 0,
+  "application_imports": 0,
+  "bootstrap_initialization": false
+}

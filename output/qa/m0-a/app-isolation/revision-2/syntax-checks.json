@@ -1,0 +1,52 @@
+{
+  "results": [
+    {
+      "runtime": "v22.23.4",
+      "path": "test/application/app-bundle.mjs",
+      "exit_code": 0,
+      "mode": "parser-only"
+    },
+    {
+      "runtime": "v22.23.4",
+      "path": "test/application/app-container.mjs",
+      "exit_code": 0,
+      "mode": "parser-only"
+    },
+    {
+      "runtime": "v22.23.4",
+      "path": "test/application/bootstrap.mjs",
+      "exit_code": 0,
+      "mode": "parser-only"
+    },
+    {
+      "runtime": "v22.23.4",
+      "path": "test/application/run.mjs",
+      "exit_code": 0,
+      "mode": "parser-only"
+    },
+    {
+      "runtime": "v24.19.0",
+      "path": "test/application/app-bundle.mjs",
+      "exit_code": 0,
+      "mode": "parser-only"
+    },
+    {
+      "runtime": "v24.19.0",
+      "path": "test/application/app-container.mjs",
+      "exit_code": 0,
+      "mode": "parser-only"
+    },
+    {
+      "runtime": "v24.19.0",
+      "path": "test/application/bootstrap.mjs",
+      "exit_code": 0,
+      "mode": "parser-only"
+    },
+    {
+      "runtime": "v24.19.0",
+      "path": "test/application/run.mjs",
+      "exit_code": 0,
+      "mode": "parser-only"
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 """Companion offline probes: real link metadata, fake launcher, permission metadata."""
 import hashlib,json,pathlib,re,shutil,subprocess,tempfile
 ROOT=pathlib.Path(__file__).resolve().parents[2]
-OUT=ROOT/'output/qa/m0-a/app-isolation/revision-1'
+OUT=ROOT/'output/qa/m0-a/app-isolation/revision-2'
 NODES={'node22':'/private/tmp/m0-node22/node','node24':'/Users/shubham/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node'}
 NAMES=['app-bundle.mjs','app-ports.mjs','bootstrap.mjs','package.json','queryUtils.ts','scenario.mjs']
 RUN_ID='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
@@ -34,12 +34,18 @@ for runtime,node in NODES.items():
             results.append({'runtime':runtime,'probe':'bundle-'+kind,'exit_code':run.returncode,'observed':observed,'all_payloads_synthetic':True})
         assert not parent.exists()
 
-    for mode in ['success','failure','interrupted']:
+    for mode in ['success','failure','interrupted','factory-failure','factory-interrupted']:
         with tempfile.TemporaryDirectory(prefix='sd-launcher-probe-',dir='/private/tmp') as area:
             parent=pathlib.Path(area);workspace=parent/'owned-workspace';workspace.mkdir()
             shutil.copyfile(ROOT/'test/application/run.mjs',parent/'run.mjs')
             fake="import {rmSync} from 'node:fs';\n"
-            fake+='export function createApplicationFixture(){return {id:'+json.dumps('d'*64)+',runId:'+json.dumps(RUN_ID)+',directory:'+json.dumps(str(workspace))+',image:"synthetic-not-a-real-image",\n'
+            resource={'phase':'created','id':'d'*64,'runId':RUN_ID,'directory':str(workspace)}
+            fake+='export function createApplicationFixture(){console.error('+json.dumps(json.dumps(resource,separators=(',',':')))+');'
+            if mode.startswith('factory-'):
+                fake+='console.error(JSON.stringify({phase:"post-create-check"}));'
+                if mode=='factory-failure':fake+='throw new Error("synthetic post-create factory failure");'
+                else:fake+='Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0);'
+            fake+='return {id:'+json.dumps('d'*64)+',runId:'+json.dumps(RUN_ID)+',directory:'+json.dumps(str(workspace))+',image:"synthetic-not-a-real-image",\n'
             fake+='run(){console.error(JSON.stringify({phase:"run-entered"}));'
             if mode=='failure':fake+='throw new Error("synthetic run failure");'
             elif mode=='interrupted':fake+='Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0);'
@@ -50,7 +56,7 @@ for runtime,node in NODES.items():
             process=subprocess.Popen(command,env={'TMPDIR':str(parent)},cwd=parent,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
             interrupted=False
             try:
-                try:stdout,stderr=process.communicate(timeout=1 if mode=='interrupted' else 15)
+                try:stdout,stderr=process.communicate(timeout=3 if mode.endswith('interrupted') else 15)
                 except subprocess.TimeoutExpired:
                     interrupted=True;process.terminate();stdout,stderr=process.communicate(timeout=10)
             finally:
@@ -58,9 +64,10 @@ for runtime,node in NODES.items():
                     process.kill();process.communicate(timeout=10)
             lines=stderr.splitlines();first=json.loads(lines[0])
             assert first=={'phase':'created','id':'d'*64,'runId':RUN_ID,'directory':str(workspace)},stderr
-            assert lines[1]=='{"phase":"run-entered"}',stderr
+            assert lines[1]==('{"phase":"post-create-check"}' if mode.startswith('factory-') else '{"phase":"run-entered"}'),stderr
             if mode=='success':assert process.returncode==0 and json.loads(stdout)['cleanupAcknowledged'] and not workspace.exists()
             elif mode=='failure':assert process.returncode!=0 and 'synthetic run failure' in stderr and not workspace.exists()
+            elif mode=='factory-failure':assert process.returncode!=0 and 'synthetic post-create factory failure' in stderr and workspace.exists()
             else:assert interrupted and process.returncode!=0 and workspace.exists()
             results.append({'runtime':runtime,'probe':'launcher-'+mode,'exit_code':process.returncode,'resource_record_first':True,'interrupted':interrupted,'factory_replaced_with_simulation':True,'docker_or_app_calls':0})
         assert not parent.exists()

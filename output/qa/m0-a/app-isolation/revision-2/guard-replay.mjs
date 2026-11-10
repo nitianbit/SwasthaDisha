@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+const root = '/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha';
+const source = readFileSync(root + '/test/application/bootstrap.mjs', 'utf8');
+const guard = /const networkInterfaces = readdirSync\('\/sys\/class\/net'\)\.sort\(\);\nassert\.deepEqual\(networkInterfaces, \['lo'\]\);/.exec(source)?.[0];
+assert.ok(guard, 'Exact current guard must be found once');
+const capture = readFileSync(root + '/output/qa/m0-a/app-isolation/activation-1/launcher.stderr.txt', 'utf8');
+const actual = /actual: \[([\s\S]*?)\]/.exec(capture)?.[1];
+assert.ok(actual);
+const captured = [...actual.matchAll(/'([^']+)'/g)].map((match) => match[1]);
+const names = process.argv[2] === 'loopback' ? ['lo'] : process.argv[2] === 'minimal' ? ['lo', 'tunl0'] : captured;
+vm.compileFunction(guard, ['assert', 'readdirSync'])(assert, (path) => { assert.equal(path, '/sys/class/net'); return [...names]; });
+console.log(JSON.stringify({ guardPassed: true, names, applicationImports: 0, dockerCalls: 0 }));

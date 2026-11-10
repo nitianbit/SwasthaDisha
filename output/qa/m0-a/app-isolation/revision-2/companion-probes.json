@@ -1,0 +1,200 @@
+{
+  "mode": "offline; link files are synthetic, launcher factory simulated, addon probes query permission metadata only",
+  "application_evaluation": false,
+  "docker_calls": 0,
+  "outer_fixtures_removed": true,
+  "source_sha256": {
+    "test/application/app-bundle.mjs": "714e050ce94a42a9d3acc22c7d0c974db8546b11820796e4761df547f20f0b63",
+    "test/application/bootstrap.mjs": "2fda4ff3bac76fe710c779a6bac5c2acdd13cd71ea4773b3e28b60634f2f6aac",
+    "test/application/run.mjs": "95e1be85da06a121780afe39c17aea1f2bf4fb736a579fb154216ff86135f924",
+    "test/application/verify_local_admission.py": "36375fd8cd7596cc322466e4bfa252e0e29e1230103fde1d9285768e934740c5"
+  },
+  "results": [
+    {
+      "runtime": "node22",
+      "probe": "bundle-regular",
+      "exit_code": 0,
+      "observed": {
+        "rejected": false,
+        "continuations": 1
+      },
+      "all_payloads_synthetic": true
+    },
+    {
+      "runtime": "node22",
+      "probe": "bundle-symlink",
+      "exit_code": 0,
+      "observed": {
+        "rejected": true,
+        "continuations": 0
+      },
+      "all_payloads_synthetic": true
+    },
+    {
+      "runtime": "node22",
+      "probe": "bundle-hardlink",
+      "exit_code": 0,
+      "observed": {
+        "rejected": true,
+        "continuations": 0
+      },
+      "all_payloads_synthetic": true
+    },
+    {
+      "runtime": "node22",
+      "probe": "launcher-success",
+      "exit_code": 0,
+      "resource_record_first": true,
+      "interrupted": false,
+      "factory_replaced_with_simulation": true,
+      "docker_or_app_calls": 0
+    },
+    {
+      "runtime": "node22",
+      "probe": "launcher-failure",
+      "exit_code": 1,
+      "resource_record_first": true,
+      "interrupted": false,
+      "factory_replaced_with_simulation": true,
+      "docker_or_app_calls": 0
+    },
+    {
+      "runtime": "node22",
+      "probe": "launcher-interrupted",
+      "exit_code": -15,
+      "resource_record_first": true,
+      "interrupted": true,
+      "factory_replaced_with_simulation": true,
+      "docker_or_app_calls": 0
+    },
+    {
+      "runtime": "node22",
+      "probe": "launcher-factory-failure",
+      "exit_code": 1,
+      "resource_record_first": true,
+      "interrupted": false,
+      "factory_replaced_with_simulation": true,
+      "docker_or_app_calls": 0
+    },
+    {
+      "runtime": "node22",
+      "probe": "launcher-factory-interrupted",
+      "exit_code": -15,
+      "resource_record_first": true,
+      "interrupted": true,
+      "factory_replaced_with_simulation": true,
+      "docker_or_app_calls": 0
+    },
+    {
+      "runtime": "node22",
+      "probe": "addon-scope",
+      "scope_from_bootstrap": "addon",
+      "flag_present": false,
+      "granted": false,
+      "addon_loaded": false,
+      "expected_security_warning": false
+    },
+    {
+      "runtime": "node22",
+      "probe": "addon-scope",
+      "scope_from_bootstrap": "addon",
+      "flag_present": true,
+      "granted": true,
+      "addon_loaded": false,
+      "expected_security_warning": true
+    },
+    {
+      "runtime": "node24",
+      "probe": "bundle-regular",
+      "exit_code": 0,
+      "observed": {
+        "rejected": false,
+        "continuations": 1
+      },
+      "all_payloads_synthetic": true
+    },
+    {
+      "runtime": "node24",
+      "probe": "bundle-symlink",
+      "exit_code": 0,
+      "observed": {
+        "rejected": true,
+        "continuations": 0
+      },
+      "all_payloads_synthetic": true
+    },
+    {
+      "runtime": "node24",
+      "probe": "bundle-hardlink",
+      "exit_code": 0,
+      "observed": {
+        "rejected": true,
+        "continuations": 0
+      },
+      "all_payloads_synthetic": true
+    },
+    {
+      "runtime": "node24",
+      "probe": "launcher-success",
+      "exit_code": 0,
+      "resource_record_first": true,
+      "interrupted": false,
+      "factory_replaced_with_simulation": true,
+      "docker_or_app_calls": 0
+    },
+    {
+      "runtime": "node24",
+      "probe": "launcher-failure",
+      "exit_code": 1,
+      "resource_record_first": true,
+      "interrupted": false,
+      "factory_replaced_with_simulation": true,
+      "docker_or_app_calls": 0
+    },
+    {
+      "runtime": "node24",
+      "probe": "launcher-interrupted",
+      "exit_code": -15,
+      "resource_record_first": true,
+      "interrupted": true,
+      "factory_replaced_with_simulation": true,
+      "docker_or_app_calls": 0
+    },
+    {
+      "runtime": "node24",
+      "probe": "launcher-factory-failure",
+      "exit_code": 1,
+      "resource_record_first": true,
+      "interrupted": false,
+      "factory_replaced_with_simulation": true,
+      "docker_or_app_calls": 0
+    },
+    {
+      "runtime": "node24",
+      "probe": "launcher-factory-interrupted",
+      "exit_code": -15,
+      "resource_record_first": true,
+      "interrupted": true,
+      "factory_replaced_with_simulation": true,
+      "docker_or_app_calls": 0
+    },
+    {
+      "runtime": "node24",
+      "probe": "addon-scope",
+      "scope_from_bootstrap": "addon",
+      "flag_present": false,
+      "granted": false,
+      "addon_loaded": false,
+      "expected_security_warning": false
+    },
+    {
+      "runtime": "node24",
+      "probe": "addon-scope",
+      "scope_from_bootstrap": "addon",
+      "flag_present": true,
+      "granted": true,
+      "addon_loaded": false,
+      "expected_security_warning": true
+    }
+  ]
+}

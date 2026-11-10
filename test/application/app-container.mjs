@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
-  lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync,
+  lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync, writeSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -39,7 +39,7 @@ function realDocker(endpoint, configuration) {
       env: { PATH: '/usr/local/bin:/usr/bin:/bin' }, encoding: 'utf8', timeout: 20_000, maxBuffer: 512 * 1024,
     });
     requireThat(!result.error && !result.signal && result.status === 0,
-      `Docker ${args[0]} failed: ${(result.stderr || result.error?.message || result.stdout || result.signal || result.status).toString().slice(0, 2000)}`);
+      `Docker ${args[0]} failed: ${(result.stderr || result.error?.message || result.stdout || result.signal || result.status).toString().slice(0, 16 * 1024)}`);
     return result.stdout.trim();
   };
 }
@@ -52,6 +52,8 @@ export function createApplicationFixture(input, seams = {}) {
   const testSeams = Object.freeze({ ...seams });
   requireThat(!simulated || (Object.hasOwn(testSeams, 'executor') && typeof testSeams.executor === 'function'),
     'Test seams require an explicit callable test executor');
+  requireThat(!Object.hasOwn(testSeams, 'reportCreated') || typeof testSeams.reportCreated === 'function',
+    'An explicit callable test reporter is required');
   const request = Object.freeze({ ...input });
   requireThat(Object.keys(request).join(',') === 'endpoint'
     && typeof request.endpoint === 'string' && /^unix:\/\/\/[^\0?#]+\.sock$/.test(request.endpoint),
@@ -145,6 +147,9 @@ export function createApplicationFixture(input, seams = {}) {
     createAttempted = true;
     id = execute(args).trim();
     requireThat(/^[a-f0-9]{64}$/.test(id), 'Create returned no trusted container ID');
+    const created = Object.freeze({ phase: 'created', id, runId, directory });
+    if (simulated) testSeams.reportCreated?.(created);
+    else writeSync(2, JSON.stringify(created) + '\n');
 
     function assertOwned(checkSources = true) {
       assertWorkspace();

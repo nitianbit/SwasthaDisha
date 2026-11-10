@@ -1,0 +1,25 @@
+{
+  "mode": "Extracted two-line harness guard only, compiled in same JS realm; captured names or synthetic loopback/minimal inputs; no bootstrap initialization",
+  "results": [
+    {
+      "mode": "captured",
+      "exit_code": 1,
+      "expected": "assertion failure"
+    },
+    {
+      "mode": "minimal",
+      "exit_code": 1,
+      "expected": "assertion failure"
+    },
+    {
+      "mode": "loopback",
+      "exit_code": 0,
+      "expected": "pass"
+    }
+  ],
+  "docker_calls": 0,
+  "application_imports": 0,
+  "source_commit": "58980c698bdfcdee5b2eb68d5c8a7577e6758e4d",
+  "source_bootstrap_sha256": "463a940326082264f39b03e0936c7d9faa4621b4d67d65b2ebdbd0801ea9e10b",
+  "historical_recipe": "Ran before instrumentation was added. Its adjacent two-line pattern applies to the base snapshot; current coverage uses network-block-probes.json."
+}

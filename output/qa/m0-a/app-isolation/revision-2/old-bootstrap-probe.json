@@ -1,0 +1,10 @@
+{
+  "mode": "Old extracted guard rejected captured names, but produced zero diagnostics where one was required; no bootstrap initialization",
+  "baseline": "58980c698bdfcdee5b2eb68d5c8a7577e6758e4d",
+  "old_bootstrap_sha256": "463a940326082264f39b03e0936c7d9faa4621b4d67d65b2ebdbd0801ea9e10b",
+  "exit_code": 1,
+  "expected": "nonzero for missing diagnostic record",
+  "owned_fixture_removed": true,
+  "real_Docker_calls": 0,
+  "application_imports": 0
+}

@@ -1,0 +1,19 @@
+{
+  "results": [
+    {
+      "runtime": "node22",
+      "checks": 5,
+      "evidence": "node22-controller-probes.stdout.json"
+    },
+    {
+      "runtime": "node24",
+      "checks": 5,
+      "evidence": "node24-controller-probes.stdout.json"
+    }
+  ],
+  "source_sha256": {
+    "test/application/app-container.mjs": "daa4eeb9986fdf1ad245eca27a05f8a38e6797205c569e93865219a16d3e6bc5",
+    "test/application/app-bundle.mjs": "714e050ce94a42a9d3acc22c7d0c974db8546b11820796e4761df547f20f0b63"
+  },
+  "realDockerCalls": 0
+}

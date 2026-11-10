@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { assertBundle, makeManifest, PORT_OPERATIONS, sha256, SOURCE_NAMES } from './app-bundle.mjs';
+import { assertBundle, captureNetworkDiagnostics, makeManifest, PORT_OPERATIONS, sha256, SOURCE_NAMES } from './app-bundle.mjs';
 import { createRecordingPorts } from './app-ports.mjs';
 
 const runId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -81,4 +81,70 @@ test('realistic or extra payload fields are rejected without recording a call', 
   assert.throws(() => ports.request('sms', 'send', { phone: 'synthetic-not-a-number' }), /fixed synthetic/);
   assert.throws(() => ports.request('sms', 'send', { syntheticId: 'fixture-only', other: true }), /fixed synthetic/);
   assert.equal(ports.snapshot().length, 0);
+});
+
+
+function diagnosticPorts(overrides = {}) {
+  const calls = [];
+  return { calls,
+    entryType(path) { calls.push(path); return path.endsWith('/bonding_masters') ? 'file' : 'symlink'; },
+    readText(path) { calls.push(path); return path.endsWith('/flags') ? '0x0\n' : path.endsWith('/operstate') ? 'down\n' : '768\n'; },
+    addresses() { return { lo: [{ address: '127.0.0.1', family: 'IPv4', internal: true }] }; },
+    ...overrides };
+}
+
+test('network diagnostics capture raw state and addressed interfaces without admission authority', () => {
+  const ports = diagnosticPorts();
+  const record = captureNetworkDiagnostics(['bonding_masters', 'lo', 'tunl0'], ports);
+  assert.equal(record.tag, 'APP-NET-DIAG-1');
+  assert.equal(record.entries[0].kind, 'file');
+  assert.equal(record.entries[2].flags, '0x0');
+  assert.equal(record.entries[2].operstate, 'down');
+  assert.deepEqual(record.addressedInterfaces, [{ name: 'lo', addresses: [{ address: '127.0.0.1', family: 'IPv4', internal: true }] }]);
+  assert.equal(Object.hasOwn(record, 'admissionPassed'), false);
+  assert.equal(Object.hasOwn(record, 'routes'), false);
+  assert.ok(ports.calls.every((path) => /^\/sys\/class\/net\/(bonding_masters|lo|tunl0)(\/(flags|operstate|type))?$/.test(path)));
+});
+
+for (const code of ['ERR_ACCESS_DENIED', 'ENOENT', 'ENOTDIR']) {
+  test(`network diagnostic ${code} stays unavailable without fallback`, () => {
+    const fail = () => { throw Object.assign(new Error('do not log raw exception or credentials'), { code }); };
+    const record = captureNetworkDiagnostics(['lo', 'tunl0'], diagnosticPorts({ readText: fail, entryType: fail, addresses: fail }));
+    assert.deepEqual(record.entries[1].flags, { unavailable: code });
+    assert.deepEqual(record.entries[1].kind, { unavailable: code });
+    assert.deepEqual(record.addressedInterfaces, { unavailable: code });
+    assert.equal(JSON.stringify(record).includes('credentials'), false);
+  });
+}
+
+for (const names of [['..'], ['../outside'], ['a/b'], ['bad\nname'], ['lo', 'lo'], Array.from({ length: 17 }, (_, i) => 'if' + i)]) {
+  test('invalid or oversized network entry names fail before reading metadata', () => {
+    const ports = diagnosticPorts();
+    assert.throws(() => captureNetworkDiagnostics(names, ports), /Invalid diagnostic entry names/);
+    assert.equal(ports.calls.length, 0);
+  });
+}
+
+test('oversized text and malformed address snapshots are explicitly unavailable', () => {
+  const record = captureNetworkDiagnostics(['lo'], diagnosticPorts({ readText: () => 'x'.repeat(65), addresses: () => ({ lo: 'invalid' }) }));
+  assert.deepEqual(record.entries[0].flags, { unavailable: 'UNAVAILABLE' });
+  assert.deepEqual(record.addressedInterfaces, { unavailable: 'UNAVAILABLE' });
+});
+
+test('network diagnostic output has an explicit byte limit', () => {
+  const names = Array.from({ length: 16 }, (_, i) => 'interface' + i.toString().padStart(2, '0') + 'x'.repeat(20));
+  const addresses = Object.fromEntries(names.map((name) => [name, Array.from({ length: 4 }, () => ({ address: '2001:db8:1234:5678:1234:5678:1234:5678', family: 'IPv6', internal: false }))]));
+  assert.throws(() => captureNetworkDiagnostics(names, diagnosticPorts({ addresses: () => addresses, readText: () => 'x'.repeat(64) })), /diagnostic output limit/);
+});
+
+
+test('network diagnostic readers have no live defaults', () => {
+  assert.throws(() => captureNetworkDiagnostics(['lo'], {}), /Explicit diagnostic readers/);
+});
+
+test('network diagnostic error codes cannot leak raw exception text', () => {
+  const fail = () => { throw Object.assign(new Error('synthetic-private-detail'), { code: 'synthetic-secret=do-not-log' }); };
+  const record = captureNetworkDiagnostics(['lo'], diagnosticPorts({ readText: fail }));
+  assert.deepEqual(record.entries[0].flags, { unavailable: 'UNAVAILABLE' });
+  assert.equal(JSON.stringify(record).includes('synthetic-secret'), false);
 });
