@@ -1,0 +1,28 @@
+{
+  "schema": "SD-FIXTURE-INDEX-SPACE-SOURCE-1",
+  "baseline": "160e9f789929c4783e487d85056db6925b964369",
+  "author": "/root",
+  "files": {
+    "test/api-runtime/platform.mjs": "b5117065c90c4698cb9604a8da0cb673a38249d8eee07a8ac39e11040a56e29f",
+    "test/api-runtime/platform.test.mjs": "334387136951602d44faf72fb351461012409fa4b3f547e2200c9b1ffc81ac16",
+    "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+    "test/api-runtime/unit.mjs": "a1f9cfb45bae4c8f0ffa87625423d8ee548b614aa0a97228133e0e75f000cd66",
+    "output/qa/week2-fixture-index-space/CONTRACT.md": "c6e31ba43133cd6ccb3da6d4f2bdaad134c30fdd49da2e78bf84ed24e49c7124",
+    "output/qa/week2-fixture-index-space/README.md": "0891ef87fff906b7c6462ebe3f3e237709941ca3c54e797c4ef14ed13313bf20",
+    "output/qa/week2-fixture-index-space/baseline-rejection.json": "693994172b09bc5eee93901c0a6ec06a12b5b33965be66f50f37865a384ad1ec",
+    "output/qa/week2-fixture-index-space/pre-review.json": "20ce088a0e463666217d3822604d365935a2554d9d0312e5d1f1b56a82c2f329",
+    "output/qa/week2-fixture-index-space/unit.stderr.txt": "bf9f2684f8966c9fea54582330386f05a9ee099a548046c4b79ebebcbf1e4bb6",
+    "output/qa/week2-fixture-index-space/unit.stdout.tap": "c6575f978c9960c609e7bb4321da248080c9b654af9a98ff862318dc0bc256ab"
+  },
+  "offlineCases": 96,
+  "failed": 0,
+  "baselineFailedCases": 5,
+  "syntax": "PASS",
+  "whitespace": "PASS",
+  "productionChanges": 0,
+  "modelOrIndexChanges": 0,
+  "applicationImports": 0,
+  "DockerCalls": 0,
+  "actualNewRun": "NOT_AUTHORIZED",
+  "scope": "TEST_ONLY_PROFILE_2_FIXED_NONZERO_64_MB"
+}

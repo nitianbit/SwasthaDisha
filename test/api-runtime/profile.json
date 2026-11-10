@@ -1,5 +1,5 @@
 {
-  "schema": "SD-AUTH-API-PROFILE-1",
+  "schema": "SD-AUTH-API-PROFILE-2",
   "role": "auth-user-wallet-api",
   "endpoint": "unix:///Users/shubham/.docker/run/docker.sock",
   "engineId": "16ab25f6-88c7-4687-a431-b119b6ab9319",
@@ -9,5 +9,6 @@
   "mongooseVersion": "9.12.0",
   "mongoVersion": "8.0.34",
   "compilerVersion": "5.9.3",
-  "scope": "TEST_ONLY_FOCUSED_PRODUCTION_ROUTERS_NOT_ROOT_ADOPTION"
+  "scope": "TEST_ONLY_FOCUSED_PRODUCTION_ROUTERS_NOT_ROOT_ADOPTION",
+  "indexBuildMinAvailableDiskSpaceMB": 64
 }

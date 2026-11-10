@@ -1,0 +1,11 @@
+{
+  "contractSha": "c6e31ba43133cd6ccb3da6d4f2bdaad134c30fdd49da2e78bf84ed24e49c7124",
+  "decisions": {
+    "/root/backend_boot_path": "APPROVE_CONTRACT_IMPLEMENTATION_ONLY",
+    "/root/local_claude_review_prep": "APPROVE_CONTRACT_IMPLEMENTATION_ONLY"
+  },
+  "scope": "TEST_ONLY_SOURCE_IMPLEMENTATION; pure offline checks only",
+  "sourceAuthor": "/root",
+  "actualCause": "INDEX_CREATE_NUMERIC_14031",
+  "freeBytesAndOldEffectiveParameter": "NOT_MEASURED"
+}

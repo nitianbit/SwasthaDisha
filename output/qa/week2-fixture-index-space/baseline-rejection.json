@@ -1,0 +1,12 @@
+{
+  "command": "env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /private/tmp/m0-node22/node test/api-runtime/unit.mjs",
+  "implementation": "Unchanged platform/profile plus amended checks",
+  "exit": 1,
+  "tests": 96,
+  "pass": 91,
+  "fail": 5,
+  "skipped": 0,
+  "DockerCalls": 0,
+  "applicationImports": 0,
+  "purpose": "Actual regression rejection before implementation"
+}

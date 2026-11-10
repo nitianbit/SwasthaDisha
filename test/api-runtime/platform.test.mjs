@@ -144,6 +144,12 @@ test('positive two-resource lifecycle joins only owned Mongo namespace and remov
   const [mongo, node] = f.state.receipts;
   assert.equal(f.state.rows.get(node.id).HostConfig.NetworkMode, 'container:' + mongo.id);
   assert.equal(f.state.rows.get(mongo.id).HostConfig.NetworkMode, 'none');
+  assert.equal(PROFILE.schema, 'SD-AUTH-API-PROFILE-2');
+  assert.equal(PROFILE.indexBuildMinAvailableDiskSpaceMB, 64);
+  assert.deepEqual(f.state.rows.get(mongo.id).Config.Cmd, ['--replSet', f.handle.replicaSet,
+    '--bind_ip', 'localhost', '--port', '27017', '--wiredTigerCacheSizeGB', '0.25',
+    '--setParameter', 'diagnosticDataCollectionEnabled=false',
+    '--setParameter', 'indexBuildMinAvailableDiskSpaceMB=64']);
   await assert.rejects(f.handle.run(), /already attempted/);
   const receipt = f.handle.dispose(); assert.equal(f.handle.dispose(), receipt);
   assert.deepEqual(receipt.exactIdsAbsent, [mongo.id, node.id]); assert.equal(receipt.workspaceAbsent, true);
@@ -153,6 +159,15 @@ test('positive two-resource lifecycle joins only owned Mongo namespace and remov
 });
 
 for (const [label, kind, mutate] of [
+  ['index-space-omitted', 'mongo', (r) => {
+    const at = r.Config.Cmd.indexOf('indexBuildMinAvailableDiskSpaceMB=64');
+    if (at > 0) r.Config.Cmd.splice(at - 1, 2);
+  }],
+  ['index-space-zero', 'mongo', (r) => { r.Config.Cmd = r.Config.Cmd.map(v => v === 'indexBuildMinAvailableDiskSpaceMB=64' ? 'indexBuildMinAvailableDiskSpaceMB=0' : v); }],
+  ['index-space-changed', 'mongo', (r) => { r.Config.Cmd = r.Config.Cmd.map(v => v === 'indexBuildMinAvailableDiskSpaceMB=64' ? 'indexBuildMinAvailableDiskSpaceMB=65' : v); }],
+  ['index-space-malformed', 'mongo', (r) => { r.Config.Cmd = r.Config.Cmd.map(v => v === 'indexBuildMinAvailableDiskSpaceMB=64' ? 'indexBuildMinAvailableDiskSpaceMB=64.0' : v); }],
+  ['index-space-extra', 'mongo', (r) => { r.Config.Cmd.push('--setParameter', 'syntheticUnapprovedParameter=1'); }],
+  ['index-space-duplicate', 'mongo', (r) => { r.Config.Cmd.push('--setParameter', 'indexBuildMinAvailableDiskSpaceMB=64'); }],
   ['mongo-network', 'mongo', (r) => { r.HostConfig.NetworkMode = 'bridge'; }],
   ['node-network', 'node', (r) => { r.HostConfig.NetworkMode = 'container:' + 'f'.repeat(64); }],
   ['node-root', 'node', (r) => { r.Config.User = '0:0'; }],

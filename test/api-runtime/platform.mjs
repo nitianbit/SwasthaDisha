@@ -152,6 +152,8 @@ function realExecutor(endpoint, configuration, codes) {
 /** No Docker operation occurs until run(); a returned handle retains all acknowledged IDs. */
 export function createApiRuntimeFixture(input, seams = {}) {
   requireThat(plain(input) && plain(seams), 'Plain input and test seams required');
+  requireThat(PROFILE.schema === 'SD-AUTH-API-PROFILE-2'
+    && PROFILE.indexBuildMinAvailableDiskSpaceMB === 64, 'Unreviewed test-only Mongo index-space profile');
   const request = Object.freeze({ ...input });
   const fake = Reflect.ownKeys(seams).length > 0;
   const ports = Object.freeze({ ...seams });
@@ -350,7 +352,8 @@ export function createApiRuntimeFixture(input, seams = {}) {
       validateAll(); requireThat(purposeIds().length === 0, 'Purpose-labelled resources already exist'); engine();
       const mongoImage = cachedImage(PROFILE.mongoImage, 'mongo'); const nodeImage = cachedImage(PROFILE.nodeImage, 'node');
       const mongo = create('mongo', PROFILE.mongoImage, mongoImage,
-        ['--replSet', replicaSet, '--bind_ip', 'localhost', '--port', '27017', '--wiredTigerCacheSizeGB', '0.25', '--setParameter', 'diagnosticDataCollectionEnabled=false']);
+        ['--replSet', replicaSet, '--bind_ip', 'localhost', '--port', '27017', '--wiredTigerCacheSizeGB', '0.25', '--setParameter', 'diagnosticDataCollectionEnabled=false',
+          '--setParameter', 'indexBuildMinAvailableDiskSpaceMB=64']);
       validateAll(); execute(['start', mongo.id]); mongoRunning(mongo);
       const deadline = Date.now() + 30_000; let ready = false; let initialized = false;
       while (Date.now() < deadline) {
