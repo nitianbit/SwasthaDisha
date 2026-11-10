@@ -80,11 +80,11 @@ def verify():
     assert {row[3:] for row in original_status if row.startswith('?? ')} == set(preserved['preserved_handover_sha256'])
     tracked_status = [row for row in original_status if not row.startswith('?? ')]
     assert len(tracked_status) == 6 and all(row[1] == ' ' for row in tracked_status)
-    return {'status': 'SOURCE_COMPOSITION_VERIFIED_RUNTIME_NOT_ACCEPTED', 'baseline': BASE,
+    return {'status': 'SOURCE_COMPOSITION_VERIFIED_DOMAIN_RUNTIME_NOT_ACCEPTED', 'baseline': BASE,
             'lane_heads': lanes, 'lane_file_counts': counts, 'production_sha256': CODE,
             'staged_patch_sha256': STAGED_SHA, 'preserved_handover_files': len(preserved['preserved_handover_sha256']),
             'unrelated_tracked_files_unchanged': True, 'TypeScript_evaluations': 0,
-            'runtime_scenarios': 'NOT_RUN', 'verifier_sha256': sha(Path(__file__).read_bytes())}
+            'domain_runtime_scenarios': 'NOT_RUN', 'verifier_sha256': sha(Path(__file__).read_bytes())}
 
 
 if __name__ == '__main__':

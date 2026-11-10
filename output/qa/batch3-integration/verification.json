@@ -1,13 +1,15 @@
 {
-  "status": "SOURCE_COMPOSITION_VERIFIED_RUNTIME_NOT_ACCEPTED",
+  "status": "SOURCE_COMPOSITION_VERIFIED_DOMAIN_RUNTIME_NOT_ACCEPTED",
   "baseline": "eba7e5c82e3ff63af9e9a958fbd100733e1fc439",
   "lane_heads": {
     "outbound": "2ea38267c361e6b3322459bcd22c2be1dc22e09c",
-    "wallet-reads": "d3a1f82147c0b3346abab43e6e34d260171b0c25"
+    "wallet-reads": "d3a1f82147c0b3346abab43e6e34d260171b0c25",
+    "network-recipe": "aab5188af3c3dc1223a30c7bd767913f80eaee47"
   },
   "lane_file_counts": {
     "outbound": 6,
-    "wallet-reads": 8
+    "wallet-reads": 8,
+    "network-recipe": 32
   },
   "production_sha256": {
     "src1/modules/notification/routes/index.ts": "d9fe35d82ebda24be5a1f9dd5dcd0d957dbe08bccc81969dac1eb2d834649d6b",
@@ -18,6 +20,6 @@
   "preserved_handover_files": 11,
   "unrelated_tracked_files_unchanged": true,
   "TypeScript_evaluations": 0,
-  "runtime_scenarios": "NOT_RUN",
-  "verifier_sha256": "244eaf5450404c6b81572435d2c88f63c14e2146f63cd088ce4320ff0b218dbb"
+  "domain_runtime_scenarios": "NOT_RUN",
+  "verifier_sha256": "2b1c047e344f9ab82af4f79d098e0c0a59bf26f4b54757533eef2f126ceea45c"
 }

@@ -30,3 +30,24 @@ From integration: `env -i PATH=/usr/bin:/bin TMPDIR=/tmp /opt/homebrew/bin/pytho
 The source changes remain local and are not deployment protection. All new HTTP/JWT/client cases remain NOT_RUN pending complete C3. Current source authority does not prove a secret running JWT key, revoke outstanding tokens, repair rewritten contacts, change a monetary/clinical policy or close other routes. Scenario outcomes remain 0 PASS, 1 FAIL, 1 BLOCKED, 110 NOT_RUN, 3 DEFERRED.
 
 The foundation operator packet is not part of this composition approval. Its initial Spec review requested accurate attempt-versus-invocation bookkeeping; no operator or Docker run occurred before amendment. Any later packet merge, changed lane configuration or real invocation requires its own exact review and truthful result record.
+
+## Foundation follow-up and final composition candidate
+
+The paragraph above records the earlier source-only review boundary. The later foundation lane `aab5188af3c3dc1223a30c7bd767913f80eaee47` adds only 32 files under its evidence prefix. No application/harness source changed. Two nonauthor reviewers separately approved amended operator `8586e6ad4a3482aa033b5d98a3c9da3eae3c81324824df163ea13bb7b4092651` for one exact run, and root executed it once on clean detached `eba7e5c`, with result PASS for the fixed no-DB scope. Both reviewers then returned **ACCEPT_BOUNDED_RUNTIME_EVIDENCE** after independently recomputing the bundle/network summary and checking raw approval/claim/result/source/cleanup evidence. [Actual provenance and archive](../batch3-network-recipe/REVIEW.md).
+
+The archive manifest SHA-256 is `b64ce47ef4a005386db65e47b3fd98b92d0a80f45bff47edc914ab86594379b0`; all 24 archived execution/bookkeeping files remain byte-identical. Approval is consumed. The archive excludes the operator ownership marker and blank Docker configuration. No real provider/DB/domain endpoint was admitted; only the explicitly named pure helper executed.
+
+The final lane configuration includes this evidence-only lane. The composition verifier changes only its status/field wording from generic runtime to **domain runtime** so the independently accepted helper smoke is not described as unexecuted. Its ownership, byte/mode, source-union and original-preservation checks remain the same. The progress records add the measured result and retain every unresolved C2/C3/M0/clinical/finance/security/deployment gate. Final independent review of this bounded configuration/record amendment is pending; the earlier source approvals are not silently extended to it.
+
+### Final decisions (supersede the pending status above)
+
+Both independent nonauthors reviewed source merge HEAD `f47b21dce10a95ec879b0d82dfb2175ecb40d173` and the exact six-record working-tree freeze:
+
+| Reviewer | Final decision | Evidence and limits |
+| --- | --- | --- |
+| `/root/batch2_security_check` | **APPROVE_FINAL_COMPOSITION** | All 46 lane files match reviewed commits/modes, exact three-file production union retained, all 24 archive files and five frozen packet inputs reverified, original staged/handover preserved; no material finding |
+| `/root/outbound_spec_review` | **APPROVE_FINAL_COMPOSITION** | Independently reproduced composition, byte-identical archive and packet/source/summary hashes; checked accurate helper PASS versus unrun domain cases and consumed one-run status; no material finding |
+
+Reviewed hashes: verifier `2b1c047e344f9ab82af4f79d098e0c0a59bf26f4b54757533eef2f126ceea45c`; lane configuration `f3883c378b85fec59551b1cc03519db661df8fe444a8e78eae0f29ed6ef4f69f`; this review before this provenance append `a0b7bee25970fdce32fa2a90547fa7329e28361b12e1aa47f684cda11f16c829`; composition receipt `42013608c861dde7bb86e9be0a2deb909674d539a6c1cb5cdb84ea31b7e005e5`; workstreams `7439003be1f4219e5d0cc2a053554eb10fb2ac7428cf01b79a2cfd815e1cd29e`; progress `5c3af140f403d55868f15b2b5cb54db8afa8de62bb5767be04ce23da6a4804c9`.
+
+Both reviewers ran read-only Git/Python data checks only, with no repeated runtime/unit/Docker/Node/helper execution. These approvals grant no further run, full-C3/domain/backend/DB/provider/M0/deployment or named-owner/release acceptance. This final provenance append changes no reviewed source, packet, archive, verifier, lane configuration, progress record or result receipt.
