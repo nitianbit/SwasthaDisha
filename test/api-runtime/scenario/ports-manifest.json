@@ -6,7 +6,10 @@
     "@/modules/user/routes",
     "@/modules/wallet/routes",
     "@/modules/middleware/auth",
-    "@/modules/middleware/errorHandler"
+    "@/modules/middleware/errorHandler",
+    "@/modules/dependents/routes",
+    "@/modules/notification/routes",
+    "@/modules/fcm/routes"
   ],
   "excludedCapabilities": {
     "@/modules/payment/services": [
@@ -60,13 +63,40 @@
     "TARGET_BINDING_DENIED",
     "UNBOUND_OTP_DENIED",
     "OTP_SINGLE_WINNER",
-    "OTP_INFLIGHT_EXPIRY_DENIED"
+    "OTP_INFLIGHT_EXPIRY_DENIED",
+    "DEPENDENT_OWNER_CRUD_LIST",
+    "DEPENDENT_ADMIN_ON_BEHALF",
+    "DEPENDENT_ROLE_AND_PRINCIPAL_DENIALS",
+    "DEPENDENT_OWNER_SELECTORS_DENIED",
+    "DEPENDENT_HIDDEN_ID_DENIALS",
+    "DEPENDENT_RAW_OWNER_FIELD_DENIALS",
+    "DEPENDENT_LEGACY_VALIDATION",
+    "NOTIFICATION_GENERIC_OWNER_FLOWS",
+    "NOTIFICATION_GENERIC_ADMIN_FLOWS",
+    "NOTIFICATION_GENERIC_DENIALS",
+    "NOTIFICATION_PAGINATION_AND_COUNTS",
+    "NOTIFICATION_PRIOR_STRICT_OWN_PATHS",
+    "NOTIFICATION_PRIOR_SPECIALIST_PATHS",
+    "NOTIFICATION_PRIOR_ADMIN_SENDERS",
+    "FCM_TEST_ADMIN_RECORDING",
+    "FCM_TEST_DENIALS",
+    "FCM_TOKEN_REGISTRATION_COMPAT"
   ],
   "requiredSensitivityIds": [
     "OTP_UNCONDITIONAL_CONSUME",
     "OTP_LOGIN_TARGET_UNBOUND",
     "USER_OTHER_READ",
-    "WALLET_OTHER_READ"
+    "WALLET_OTHER_READ",
+    "DEPENDENT_UNBOUND_CREATE_OWNER",
+    "DEPENDENT_UNSCOPED_LIST",
+    "DEPENDENT_UNSCOPED_ID_CALLS",
+    "DEPENDENT_FORBIDDEN_ROLE_ADMISSION",
+    "DEPENDENT_RAW_OWNER_STRIPPED",
+    "NOTIFICATION_UNSCOPED_LIST",
+    "NOTIFICATION_ID_OWNER_GUARD_REMOVED",
+    "NOTIFICATION_PRIOR_STRICT_OWN_ADMIN_EXPANSION",
+    "FCM_TEST_ADMIN_GUARD_REMOVED",
+    "FCM_TEST_ADMIN_GUARD_AFTER_VALIDATION"
   ],
   "optionalAbsentPackages": [
     "kerberos",
@@ -251,6 +281,12 @@
       "name": "WellnessPackage",
       "collection": "wellnesspackages",
       "source": "src1/modules/wellnessPackages/model/index.ts",
+      "indexes": []
+    },
+    {
+      "name": "Dependent",
+      "collection": "dependents",
+      "source": "src1/modules/dependents/model/index.ts",
       "indexes": []
     }
   ],
