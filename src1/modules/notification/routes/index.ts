@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
 import { NotificationController } from '@/modules/notification/controller';
-import { requireSpecialist } from '@/modules/middleware/auth';
+import { requireAdmin, requireSpecialist } from '@/modules/middleware/auth';
 import {
   createNotificationSchema,
   createGeneralNotificationSchema,
@@ -20,6 +20,7 @@ const notificationController = new NotificationController();
 // Create notification (single user)
 notificationRouter.post(
   '/',
+  requireAdmin,
   validate(createNotificationSchema, 'body'),
   catchAsync(notificationController.create)
 );
@@ -27,6 +28,7 @@ notificationRouter.post(
 // Create and send notification to userIds, corporate users, or all users
 notificationRouter.post(
   '/send',
+  requireAdmin,
   validate(createGeneralNotificationSchema, 'body'),
   catchAsync(notificationController.createGeneral)
 );

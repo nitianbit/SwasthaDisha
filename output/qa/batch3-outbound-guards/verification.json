@@ -1,0 +1,116 @@
+{
+  "status": "SOURCE_TRANSFORMATION_VERIFIED_RUNTIME_NOT_RUN",
+  "baseline": "eba7e5c82e3ff63af9e9a958fbd100733e1fc439",
+  "baseline_rejection": "REJECTED_AS_EXPECTED",
+  "source_negative_controls": [
+    {
+      "control": "notificationRouter:/:missing-admin",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "notificationRouter:/:weakened-admin",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "notificationRouter:/:late-admin",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "notificationRouter:/send:missing-admin",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "notificationRouter:/send:weakened-admin",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "notificationRouter:/send:late-admin",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "meetRouter:/google-oauth/url:missing-admin",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "meetRouter:/google-oauth/url:weakened-admin",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "meetRouter:/google-oauth/url:missing-authenticate",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "meetRouter:/google-oauth/url:admin-before-authenticate",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "meetRouter:/google-oauth/exchange:missing-admin",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "meetRouter:/google-oauth/exchange:weakened-admin",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "meetRouter:/google-oauth/exchange:missing-authenticate",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "meetRouter:/google-oauth/exchange:admin-before-authenticate",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "meetRouter:/google-oauth/refresh:missing-admin",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "meetRouter:/google-oauth/refresh:weakened-admin",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "meetRouter:/google-oauth/refresh:missing-authenticate",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "meetRouter:/google-oauth/refresh:admin-before-authenticate",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "meetRouter:/google-meet/oauth:missing-admin",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "meetRouter:/google-meet/oauth:weakened-admin",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "meetRouter:/google-meet/oauth:missing-authenticate",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "meetRouter:/google-meet/oauth:admin-before-authenticate",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "gated-callback",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "missing-meet-import",
+      "result": "REJECTED_AS_EXPECTED"
+    },
+    {
+      "control": "missing-notification-import",
+      "result": "REJECTED_AS_EXPECTED"
+    }
+  ],
+  "production_sha256": {
+    "src1/modules/notification/routes/index.ts": "d9fe35d82ebda24be5a1f9dd5dcd0d957dbe08bccc81969dac1eb2d834649d6b",
+    "src1/modules/meet/routes/index.ts": "e8bfff4a492ed11a18f1735528bfa4886a338b878852cde9bcea2f5d5bdd71e4"
+  },
+  "contract_sha256": "83022403da91bd374a976c984e89303cceea80ed6e30c30c6f777fc19dcd98b2",
+  "verifier_sha256": "e9b62d31ae86c7982f385cf4289b91172375fcd9ba4084d3585ff834fd13d5b6",
+  "TypeScript_evaluations": 0,
+  "application_DB_provider_Docker_calls": 0,
+  "runtime_cases": "NOT_RUN_PENDING_COMPLETE_C3"
+}
