@@ -1,0 +1,37 @@
+{
+  "schema": "SD-AUTH-API-SCENARIO-SOURCE-1",
+  "baseCommit": "f80b8c43909849517ac671a8922c4ef1df613c05",
+  "files": {
+    "test/api-runtime/scenario/.gitignore": "7987fd3dee925cf21c8b558704a243a79be5be11c382c383eff13f8999664162",
+    "test/api-runtime/scenario/README.md": "48cd635cfa4b08c1f12fc9fc7e9cebb68b3fa499aca4e0cc5c3f2d566bc6e058",
+    "test/api-runtime/scenario/bootstrap.cjs": "8187674c13d4620afe2bdc4447cf4aa71cb0503c5d2bfd744b818897b33427fb",
+    "test/api-runtime/scenario/compile.cjs": "c8f3cdbdfdeffbb00f74304e2361531ad14cb9b6febd24daac83f1e09c3f300f",
+    "test/api-runtime/scenario/offline-unit.py": "026dd325cdf7ecbabaa375de428087b0dcf7bcd16077e30d1107cc6fcaecb906",
+    "test/api-runtime/scenario/package-plan.json": "d7830a9ce688235bb64f3f9f7ac3d5dd604bb63641cdae97b8b7250bfd957227",
+    "test/api-runtime/scenario/ports-manifest.json": "acd7b289600c5d07c3e1466294db75ad7a51e13c4a3d459b14ac0a8d77134c76",
+    "test/api-runtime/scenario/prepare.py": "39b4085370a09a34069b9f1c4f45cfd8fa38a3a1f0e380abcef9c469a5add598",
+    "test/api-runtime/scenario/scenario.cjs": "ef4fa902ae4ce9566fd63dfc4b0eb9bd94ea533634b4e703e597165a8338f35c"
+  },
+  "offlineChecks": {
+    "publicLockUnitCases": 16,
+    "publicLockUnitResult": "PASS",
+    "nodeSyntaxFiles": 3,
+    "nodeSyntaxResult": "PASS",
+    "pythonSyntaxFiles": 2,
+    "pythonSyntaxResult": "PASS",
+    "unadmittedBootstrap": {
+      "exit": 1,
+      "stage": "ADMISSION",
+      "code": "UNADMITTED_ENVIRONMENT",
+      "result": "REJECTED_AS_EXPECTED"
+    }
+  },
+  "declaredNominalCases": 36,
+  "declaredSensitivityCases": 4,
+  "runtimeCases": "NOT_RUN",
+  "sourceMutantRuntimeDetections": "NOT_RUN",
+  "packagePreparation": "NOT_RUN",
+  "applicationEvaluations": 0,
+  "DockerCalls": 0,
+  "providerCalls": 0
+}
