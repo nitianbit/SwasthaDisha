@@ -1,0 +1,63 @@
+{"phase":"created","id":"0da7634fb06a04356bb2e7ec2c79755bd1c5e64921b07106102fb385cd76f8b1","runId":"8218ec91-58cd-4c21-ade3-eebaa1d7c02d","directory":"/private/tmp/sd-app-isolation-TLILOm"}
+{"id":"0da7634fb06a04356bb2e7ec2c79755bd1c5e64921b07106102fb385cd76f8b1","runId":"8218ec91-58cd-4c21-ade3-eebaa1d7c02d","directory":"/private/tmp/sd-app-isolation-TLILOm","cleanupAcknowledged":true}
+file:///private/tmp/swasthadisha-parallel-p1qom53w/diagnostic-41539/test/application/app-bundle.mjs:16
+  if (!condition) throw new Error(message);
+                        ^
+
+Error: Docker start failed: {"tag":"APP-NET-DIAG-1","entries":[{"name":"bonding_masters","kind":"file","flags":{"unavailable":"ENOTDIR"},"operstate":{"unavailable":"ENOTDIR"},"type":{"unavailable":"ENOTDIR"}},{"name":"erspan0","kind":"symlink","flags":"0x1002","operstate":"down","type":"1"},{"name":"gre0","kind":"symlink","flags":"0x80","operstate":"down","type":"778"},{"name":"gretap0","kind":"symlink","flags":"0x1002","operstate":"down","type":"1"},{"name":"ip6_vti0","kind":"symlink","flags":"0x80","operstate":"down","type":"769"},{"name":"ip6gre0","kind":"symlink","flags":"0x80","operstate":"down","type":"823"},{"name":"ip6tnl0","kind":"symlink","flags":"0x80","operstate":"down","type":"769"},{"name":"ip_vti0","kind":"symlink","flags":"0x80","operstate":"down","type":"768"},{"name":"lo","kind":"symlink","flags":"0x9","operstate":"unknown","type":"772"},{"name":"sit0","kind":"symlink","flags":"0x80","operstate":"down","type":"776"},{"name":"tunl0","kind":"symlink","flags":"0x80","operstate":"down","type":"768"}],"addressedInterfaces":[{"name":"lo","addresses":[{"address":"127.0.0.1","family":"IPv4","internal":true},{"address":"::1","family":"IPv6","internal":true}]}],"runId":"8218ec91-58cd-4c21-ade3-eebaa1d7c02d"}
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
+  [
++   'bonding_masters',
++   'erspan0',
++   'gre0',
++   'gretap0',
++   'ip6_vti0',
++   'ip6gre0',
++   'ip6tnl0',
++   'ip_vti0',
+    'lo',
++   'sit0',
++   'tunl0'
+  ]
+
+    at file:///workspace/bootstrap.mjs:30:8
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [
+    'bonding_masters',
+    'erspan0',
+    'gre0',
+    'gretap0',
+    'ip6_vti0',
+    'ip6gre0',
+    'ip6tnl0',
+    'ip_vti0',
+    'lo',
+    'sit0',
+    'tunl0'
+  ],
+  expected: [ 'lo' ],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v22.23.4
+
+    at requireThat (file:///private/tmp/swasthadisha-parallel-p1qom53w/diagnostic-41539/test/application/app-bundle.mjs:16:25)
+    at file:///private/tmp/swasthadisha-parallel-p1qom53w/diagnostic-41539/test/application/app-container.mjs:41:5
+    at Object.run (file:///private/tmp/swasthadisha-parallel-p1qom53w/diagnostic-41539/test/application/app-container.mjs:201:24)
+    at file:///private/tmp/swasthadisha-parallel-p1qom53w/diagnostic-41539/test/application/run.mjs:10:24
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+
+Node.js v22.23.4

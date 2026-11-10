@@ -1,0 +1,27 @@
+--- historical-operator.py
++++ relocated-operator.py
+@@ -1,6 +1,6 @@
+ """One internally reviewed diagnostic invocation; cached image only, no retry."""
+ import hashlib,json,os,pathlib,re,stat,subprocess,tempfile,time,uuid
+-ROOT=pathlib.Path('/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha')
++ROOT=pathlib.Path('/private/tmp/swasthadisha-parallel-p1qom53w/diagnostic-41539')
+ APPROVED='41539ca749c8a9dbf49ecf43bcca00749eccfe3c'
+ NODE='/private/tmp/m0-node22/node'
+ DOCKER='/usr/local/bin/docker'
+@@ -28,7 +28,7 @@
+ 
+ def freeze(label):
+     assert git('rev-parse','HEAD').decode().strip()==APPROVED
+-    assert git('branch','--show-current').decode().strip()=='m0/f01-app-isolation'
++    assert git('branch','--show-current').decode().strip()==''
+     assert git('status','--porcelain','--untracked-files=all')==b''
+     manifest_path='output/review/app-isolation/revision-2/review-input.json'
+     manifest_bytes=(ROOT/manifest_path).read_bytes()
+@@ -71,6 +71,7 @@
+ save()
+ try:
+     report['source_freeze_before_image_check']=freeze('source-freeze-before-image-check')
++    assert hashlib.sha256(pathlib.Path(NODE).read_bytes()).hexdigest()=='2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0','Unreviewed host Node binary'
+     version=subprocess.run([NODE,'--version'],env={},capture_output=True,text=True,check=True).stdout.strip()
+     assert version=='v22.23.4',version
+     report['host_node']={'version':version,'binary_sha256':hashlib.sha256(pathlib.Path(NODE).read_bytes()).hexdigest()}

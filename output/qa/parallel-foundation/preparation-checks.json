@@ -1,0 +1,11 @@
+{
+  "status": "PASS_OFFLINE_PREPARATION_ONLY",
+  "operator_sha256": "deee1489299263190016f2d8119b3fa7189c7cd0d6df199a8ab849ccb3b0dcf3",
+  "checks": {
+    "Python_AST_parse_without_evaluation": true,
+    "reverse_exact_three_amendments_equals_historical_operator": true
+  },
+  "operator_evaluations": 0,
+  "Docker_calls": 0,
+  "application_imports": 0
+}
