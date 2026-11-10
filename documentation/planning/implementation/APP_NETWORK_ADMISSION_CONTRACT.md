@@ -1,47 +1,202 @@
 # Network admission rule contract
 
-**10 November 2026. Contract only.** Branch `m0/foundation-network-admission`, base `9ea963f`. Authorizes no source, grant, guard, Docker change or invocation.
+**10 November 2026. Amended after pre-review.** Branch `m0/foundation-network-admission`, base `9ea963f`. An internal Claude contract pre-review of `32fdf77` returned APPROVE WITH REQUIRED AMENDMENTS; this revision applies them. It authorizes offline implementation and the admitted unit gate only. It authorizes no Docker access, grant change or invocation.
 
 ## 1. Measured failure
 
-The `41539ca` diagnostic failed the unchanged `['lo']` guard and was cleaned ([record](../../../output/qa/parallel-foundation/verification.json)): `lo` symlink, flags `0x9` (IFF_UP|IFF_LOOPBACK), type 772, operstate `unknown`; `bonding_masters` regular file, all attribute reads `ENOTDIR`; nine device symlinks with IFF_UP clear and operstate `down` (`erspan0`/`gretap0` `0x1002` BROADCAST|MULTICAST, type 1 Ethernet; others `0x80` NOARP, ARPHRD tunnel/tunnel6/SIT/IPGRE/IP6GRE 768/769/776/778/823). Addresses: `lo` only, internal `127.0.0.1`/`::1`.
+The `41539ca` diagnostic failed the unchanged `['lo']` guard and was cleaned ([record](../../../output/qa/parallel-foundation/verification.json)):
+- `lo`: symlink, flags `0x9`, type 772, operstate `unknown`.
+- `bonding_masters`: regular file; all three attribute reads failed with `ENOTDIR`.
+- Nine device symlinks, all with IFF_UP clear and operstate `down`. `erspan0`/`gretap0` had flags `0x1002`, type 1. The rest had `0x80`, types 768/769/776/778/823.
+- Addresses: `lo` only, internal `127.0.0.1`/`::1`.
 
-This matches the bonding control file plus per-namespace fallback tunnels from loaded modules (`net.core.fb_tunnels_only_for_init_net` 0); no host-side names appeared. It does **not** establish routes, namespace identity, addresses on down devices (libuv lists only UP+RUNNING addressed interfaces) or later assertions.
+The record does **not** establish routes, namespace identity, addresses on down devices, or anything about the later, unreached assertions.
 
-## 2. Admission rule
+## 2. Superseded requirement
 
-Bootstrap always captures the existing `APP-NET-DIAG-1` record. A pure `evaluateNetworkAdmission(observation)` in `app-bundle.mjs` validates the full shape (exact keys/tag, at most 16 sorted unique valid names) and admits only if:
+[`REVIEW.md` "Measured limits and next gate"](../../../output/qa/parallel-foundation/REVIEW.md) made two statements:
+- the sample does not justify an observed-name or down-state allowlist;
+- the next slice needs a route-observation contract with bounded new read paths.
 
-1. Exactly one entry is named `lo`: kind `symlink`, flags include IFF_UP and IFF_LOOPBACK, type 772, operstate `unknown` or `up`.
-2. Every other entry is either a `file` whose `flags`, `operstate` and `type` are each `{unavailable: 'ENOTDIR'}` (a class control file, not a device), or a `symlink` with IFF_UP and IFF_LOOPBACK clear, type not 772 and operstate exactly `down`.
-3. Addressed interfaces are exactly `lo`, with a non-empty unique subset of {`127.0.0.1`/IPv4, `::1`/IPv6}, all `internal: true`.
+This contract **supersedes the route-observation and new-read-path requirement**. Its fixture requirements are kept (section 8).
 
-Parsing is strict: flags `^0x[0-9a-f]{1,8}$` (kernel `%#x`), type `^(0|[1-9][0-9]{0,4})$` and at most 65535, operstate one of the seven ABI strings. Any `unavailable` field, other kind, reader error or malformed record rejects. Only `lo` is named; no allowlist.
+The justification is not the sampled names or states. It is:
+1. the capability argument (section 5); and
+2. a new runtime measurement: the egress canary must fail with `ENETUNREACH` (section 4).
 
-Deviations from the lead proposal: loopback operstate is checked (the kernel reports `down` for any non-running device); "file" requires the observed `ENOTDIR` reads; a second loopback is type 772 **or** the IFF_LOOPBACK bit; `::1` may be absent on IPv6-disabled kernels.
+The measured record is only the positive fixture P1. The rule names nothing except `lo`.
 
-**Soundness.** A device that is not up cannot transmit (queueless transmit returns `-ENETDOWN`; queued devices hold a dropping qdisc). Raising links or changing addresses/routes needs CAP_NET_ADMIN; packet sockets need CAP_NET_RAW. `assertOwned` (`app-container.mjs:164-179`), before start and after exit, already requires NetworkMode `none` with only `none` networks, CapDrop containing `ALL`, empty CapAdd, not Privileged, exactly one SecurityOpt `no-new-privileges`, user `1000:1000`, no devices and no host PID/UTS/user namespace. No inspect addition is required (unchecked `HostConfig.Sysctls` cannot raise links or add routes). The rule shows only that nothing but `lo` can transmit, not a pristine namespace.
+## 3. Admission rule
 
-## 3. Route and namespace observation: not required
+Bootstrap always captures the `APP-NET-DIAG-1` record. `evaluateNetworkAdmission(observation)` validates the record's complete shape:
+- exact keys and tag;
+- 1–16 entries, with valid, strictly ascending names;
+- each field is a string or an exact `{unavailable: CODE}`.
 
-Option A, reading `/proc/self/net/route` and `ipv6_route`, adds a separately reviewed grant (changing Node `Cmd` and parent inspect) and a kernel-table parser whose IPv6 output carries local/reject entries on `lo`. Option B relies on the rule, absent CAP_NET_ADMIN/CAP_NET_RAW, NetworkMode `none` and the canary. Routes matter only through an up device; the only one admitted, `lo`, delivers back into the namespace. **Recommend B**: smaller, no grant. Residual risk: namespace provenance is inferred (sysfs and netlink views agree; no host interfaces), not measured; routes/addresses on down devices are unmeasured but cannot transmit; observation is point-in-time, with trusted daemon/host changes out of scope except the post-exit inspect. A later reviewed option: require the canary to fail with `ENETUNREACH`, measuring "no IPv4 route" without a grant.
+It **throws** `Network admission rejected: <fixed reason>` on every rejection. Otherwise it returns a deep-frozen summary. It admits only if all of the following hold:
 
-## 4. Controller success evidence
+1. **Loopback.** Exactly one entry is named `lo`. It is a `symlink` whose flags include IFF_UP (0x1) and IFF_LOOPBACK (0x8). Its type is 772 and its operstate is `unknown` or `up`.
+2. **Other entries.** Each is one of:
+   - a `file` whose three attributes are each `{unavailable: 'ENOTDIR'}`. This exemption applies to kind `file` only.
+   - a `symlink` with IFF_UP and IFF_LOOPBACK clear, type not 772, and operstate exactly `down`.
+3. **No volatile bits.** No entry has RUNNING (0x40), LOWER_UP (0x10000) or DORMANT (0x20000) set. Sysfs `flags` is expected not to carry these bits, so their presence fails closed.
+4. **Addresses.** Exactly one addressed interface, `lo`. It must have `127.0.0.1`/IPv4/internal. `::1`/IPv6/internal is optional. No other address and no duplicates are allowed.
 
-Bootstrap success JSON replaces `networkInterfaces` with `networkAdmission`: `tag` (`APP-NET-ADMIT-1`), `observation` (the `APP-NET-DIAG-1` record, at most 8 KiB), `loopback` (`lo`), `controlFiles`, `downDevices` and `loopbackAddresses` (each sorted). The line-209 equality becomes: the parent recomputes `evaluateNetworkAdmission(networkAdmission.observation)` with its already-imported `app-bundle.mjs` and requires JSON equality with the reported object. On rejection, bootstrap writes the bounded `{...observation, runId}` stderr record once and throws; diagnostics are never success evidence.
+Parsing rules:
+- Flags: `^0x(0|[1-9a-f][0-9a-f]{0,7})$`.
+- Type: `^(0|[1-9][0-9]{0,4})$`, at most 65535.
 
-## 5. Fixtures
+Any other value, kind, unavailable field or reader error rejects.
 
-Evaluator positive: **P1** exact measured record (`controlFiles` `[bonding_masters]`, nine `downDevices`, both addresses); **P2** `lo` only; **P3** `lo` operstate `up`, IPv4 only, plus `tunl0` flags `0x0`.
+## 4. Egress measurement
 
-Evaluator negative: **N1** active `eth0` (`0x1003`, `up`, type 1, non-internal `172.17.0.2`); **N2** `lo` missing; **N3** `lo` down (`0x8`, `down`); **N4** `lo` without IFF_LOOPBACK or type 1; **N5** second loopback (`lo2` type 772; non-`lo` flags `0x88`); **N6** flags `9`, `0x`, `0xg1`, `0X9`, nine hex digits, `ERR_ACCESS_DENIED`; **N7** non-`lo` `0x80` with operstate `unknown`, `dormant`, `up`, `lowerlayerdown`, `notpresent`, `testing`, `DOWN`; **N8** inconsistency (non-`lo` `0x81` `down`; `lo` `0x9` `down`); **N9** kind `directory`, `other`, unavailable; **N10** file with readable or non-`ENOTDIR` attributes; **N11** type `772x`, `-1`, `70000`, unavailable; **N12** addressed non-loopback; **N13** `lo` with non-internal `10.1.2.3`, `127.0.0.2`, duplicate `::1`, empty set or unavailable addresses; **N14** 17 entries; **N15** each reader throws; **N16** wrong tag, unknown/missing key, unsorted or duplicate names.
+`egressCanaryBlocked(settled)` takes a `Promise.allSettled` result for the canary fetch. It returns true only when the fetch was rejected and `reason.cause.code`, or a direct `reason.code`, is `ENETUNREACH`. Every other outcome fails and bootstrap throws:
+- success;
+- timeout or abort;
+- refusal;
+- any other code;
+- a missing or malformed outcome.
 
-Controller: **K1** P1 accepted; **K2** missing `networkAdmission`, or legacy `networkInterfaces` only; **K3** summary differs from recomputation; **K4** forged summary over N1. Bootstrap-block probe (own-checkout paths): **B1** P1 continues without a stderr record; **B2** N1 emits one tagged record of at most 8193 bytes then throws; **B3** `readdir` throws, no record; **B4** `['lo']` continues.
+Scope (lead decision): the IPv4 documentation address `192.0.2.1:8080` only. No grant is added. At the next real run this measures that no IPv4 route covered that address. IPv6 routing is not measured.
 
-## 6. Unchanged and future work
+## 5. Soundness basis and residual risk
 
-Unchanged: image digest, six-file bundle, Node grants (reads `/workspace`, `/sys/class/net`; writes `/tmp`), mounts, network none, user, capabilities, limits, labels, early-ID record, 8 KiB/16 KiB bounds, HTTP canary, later permission assertions, ports/scenario/receipts, ownership-aware cleanup, no `/proc` reads or child tools.
+`assertOwned` (`app-container.mjs:164-178`) runs at lines 194, 198 (before start) and 202 (after exit). It requires:
+- NetworkMode `none`;
+- CapDrop `ALL`, no CapAdd, not Privileged;
+- only `no-new-privileges`;
+- user 1000 and no devices.
 
-A future single invocation needs a reviewed implementation commit with exact hashes for the six owned files and evidence; unit/probe passes on Node 22.23.4 and 24.19.0; fresh review and one-run approval bound to those hashes; the recorded socket/engine ID and cached pinned image (no pull) via an owned blank config; and A–D source/baseline/cleanup proof. Later assertions would then run for the first time; any post-create failure stops for review. Success admits only this no-DB scenario.
+**Unverified kernel/libuv facts, recalled from memory (no source access in this session):**
+- the IFF/ARPHRD constants;
+- sysfs `flags` is `dev->flags` (kernel `%#x`, zero rendered as `0x0`);
+- sysfs reports `down` for any device that is not running;
+- a device that is not up cannot transmit;
+- raising links and changing addresses or routes needs CAP_NET_ADMIN, and packet sockets need CAP_NET_RAW;
+- the fallback-tunnel sysctl behaves as described;
+- libuv lists only interfaces that are UP, RUNNING and addressed.
 
-References (not fetched in this offline phase; reviewer to confirm): [if.h](https://github.com/torvalds/linux/blob/v6.12/include/uapi/linux/if.h), [if_arp.h](https://github.com/torvalds/linux/blob/v6.12/include/uapi/linux/if_arp.h), [net-sysfs.c](https://github.com/torvalds/linux/blob/v6.12/net/core/net-sysfs.c), [dev.c `__dev_queue_xmit`](https://github.com/torvalds/linux/blob/v6.12/net/core/dev.c), [sysfs-class-net](https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-class-net), [fallback tunnels](https://docs.kernel.org/admin-guide/sysctl/net.html), [bonding](https://docs.kernel.org/networking/bonding.html), [capabilities(7)](https://man7.org/linux/man-pages/man7/capabilities.7.html), [libuv `uv__ifaddr_exclude`](https://github.com/nodejs/node/blob/v22.23.4/deps/uv/src/unix/linux.c), [Docker none](https://docs.docker.com/engine/network/drivers/none/).
+**Measured at the next real run:** `ENETUNREACH`, and every entry's kind, flags, operstate, type and addresses under the rule.
+
+**Remaining assumptions after that run:**
+- down devices cannot transmit or be raised;
+- namespace provenance;
+- IPv6 routes.
+
+**Residuals:**
+- Admitted down devices could include a veth whose peer is outside the container. Only the trusted host could raise it.
+- `HostConfig.Sysctls`, `Runtime` and `GroupAdd` stay unasserted.
+- The observation is point-in-time.
+
+## 6. Controller evidence
+
+The bootstrap success JSON replaces `networkInterfaces` with `networkAdmission`. Its fields are `tag` (`APP-NET-ADMIT-1`), `observation`, `loopback` (`lo`), `controlFiles`, `downDevices` and `loopbackAddresses`; the lists are sorted.
+
+The parent requires all of these:
+- `networkInterfaces` is absent;
+- `tag` and `loopback` have their exact values;
+- `verifyNetworkAdmission`, which recomputes the summary from `observation`, returns true. It is false if the evaluator throws or the JSON differs.
+
+On rejection, bootstrap writes the bounded `{...observation, runId}` stderr record once and then throws.
+
+## 7. Implementation boundary
+
+**Owned files:**
+- `test/application/` `app-bundle.mjs`, `app-bundle.test.mjs`, `bootstrap.mjs`, `app-container.mjs`, `app-container.test.mjs`, `README.md`;
+- the status lines of `C3_APP_ISOLATION_CONTRACT.md`;
+- `output/qa/foundation-network-admission/`.
+
+**Gate-covered pure functions in `app-bundle.mjs`:** `entryKind`, `captureNetworkDiagnostics`, `evaluateNetworkAdmission`, `verifyNetworkAdmission`, `admitNetwork` and `egressCanaryBlocked`.
+
+**Bootstrap** only binds the `fs`, `os`, `fetch` and stderr ports. A hashed probe, `network-block-probe.mjs`, extracts that wiring and runs it with fakes, using its own checkout's paths. The unit-gate staging list is unchanged.
+
+## 8. Fixtures
+
+**Evaluator, positive:**
+- **P1:** the embedded measured record. The probe matches its SHA-256 against `verification.json`.
+- **P2:** `lo` only.
+- **P3:** `lo` operstate `up`, IPv4 only, plus `tunl0` with flags `0x0`.
+
+**Evaluator, negative:**
+- **N1:** active `eth0` (`0x1003`, `up`, type 1, non-internal `172.17.0.2`).
+- **N2:** `lo` missing.
+- **N3:** `lo` down (`0x8`).
+- **N4:** `lo` with `0x1`, or type 1, or kind `file`, or kind `directory`.
+- **N5:** `lo2` with `0x0` and type 772; `dummy0` with `0x88`.
+- **N6:** flags `9`, `0x`, `0xg1`, `0X9`, `0xA`, `0x09`, `0x123456789` or `ERR_ACCESS_DENIED`, applied on `lo` and on `tunl0`.
+- **N7:** `tunl0` `0x80` with operstate `unknown`, `dormant`, `up`, `lowerlayerdown`, `notpresent`, `testing` or `DOWN`.
+- **N8:** `lo` with operstate `dormant`, `testing`, `lowerlayerdown`, `down` or `notpresent`.
+- **N9:** `tunl0` `0x81` with `down`; an unaddressed `eth0` with `0x1003` and `up`.
+- **N10:** `tunl0` with `0xc0`, `0x10080` or `0x20080`; `lo` with `0x49`.
+- **N11:** `tunl0` with kind `directory`, `other` or unavailable.
+- **N12:** a file entry with readable flags, or all `ERR_ACCESS_DENIED`, or all `ENOENT`.
+- **N13:** a symlink with all `ENOTDIR`, or all `ENOENT`.
+- **N14:** type `772x`, `-1`, `70000`, `0772` or unavailable; `lo` with type `0772`.
+- **N15:** `tunl0` addressed.
+- **N16:** on `lo`: `10.1.2.3`, `127.0.0.2`, `fe80::1`, `::ffff:127.0.0.1`, swapped families, a duplicate `::1`, `::1` only, a non-internal `127.0.0.1`, addresses unavailable, no `lo` entry, an empty address list, or a second addressed interface.
+- **N17:** 17 entries.
+- **N18:** a malformed record: wrong tag, unknown or missing key, an extra entry key, unsorted or duplicate names, `null`, a numeric field, an unavailable object with an extra key, or a lowercase code.
+
+**`admitNetwork`:**
+- **A1:** the measured listing is admitted with no report.
+- **A2:** N1 produces one tagged record of at most 8193 bytes with the matching `runId`, then throws.
+- **A3:** `list` throws: no record, no reads.
+- **A4:** 17 names: no record, no reads.
+- **A5:** each reader throws: one record, then throws.
+- **A6:** a missing port or invalid `runId` throws before listing.
+- **A7:** `lo` only is admitted; an unsorted listing is sorted.
+
+**`entryKind`:** all four kinds, with symlink taking precedence.
+
+**Canary:**
+- **E1–E2:** `ENETUNREACH` as `cause.code` or as a direct `code` returns true.
+- **E3–E9:** these return false: success; `TimeoutError`; `AbortError`; `ECONNREFUSED`/`EHOSTUNREACH`/`ENETDOWN`/`ETIMEDOUT`; a null, primitive or absent reason; an unknown status; lowercase `enetunreach`.
+
+**Controller:**
+- **K1:** P1 is accepted.
+- **K2:** `networkAdmission` missing, or the legacy field only.
+- **K3:** a dropped or added name, changed addresses, or an extra summary key.
+- **K4:** a forged summary over N1.
+- **K5:** a summary consistent with the evaluator but over a rejected observation (`lo` dormant).
+- **K6:** both `networkInterfaces` and `networkAdmission` present.
+- **K7:** wrong `tag` or wrong `loopback`.
+
+**Probe:**
+- **B1:** the exact `verification.json` record continues.
+- **B2:** N1 emits one record, then throws.
+- **B3:** `readdirSync` throws: no record.
+- **B4:** `['lo']` continues.
+- **C1:** `ENETUNREACH` continues; exactly one fetch to `192.0.2.1:8080` with a signal.
+- **C2–C4:** success, timeout and `ECONNREFUSED` each throw.
+
+## 9. Unchanged and future work
+
+**Unchanged:**
+- image, six-file bundle, Node grants, mounts, network none, user, capabilities and limits;
+- labels and the early-ID record;
+- the 8 KiB and 16 KiB bounds;
+- later permission assertions, ports, scenario and receipts;
+- cleanup;
+- no `/proc` reads and no child tools.
+
+A future single invocation needs all of these:
+- exact candidate hashes;
+- gate and probe passes on Node 22.23.4 and 24.19.0;
+- a fresh review and a one-run approval;
+- the recorded socket/engine and cached pinned image, via an owned blank config;
+- A–D source/baseline/cleanup proof.
+
+Any post-create failure stops for review. Success admits only this no-DB scenario.
+
+## References
+
+All unverified in this session:
+- [if.h](https://github.com/torvalds/linux/blob/v6.12/include/uapi/linux/if.h)
+- [if_arp.h](https://github.com/torvalds/linux/blob/v6.12/include/uapi/linux/if_arp.h)
+- [net-sysfs.c](https://github.com/torvalds/linux/blob/v6.12/net/core/net-sysfs.c)
+- [dev.c](https://github.com/torvalds/linux/blob/v6.12/net/core/dev.c)
+- [sysfs-class-net](https://www.kernel.org/doc/Documentation/ABI/testing/sysfs-class-net)
+- [net sysctl](https://docs.kernel.org/admin-guide/sysctl/net.html)
+- [capabilities(7)](https://man7.org/linux/man-pages/man7/capabilities.7.html)
+- [libuv linux.c](https://github.com/nodejs/node/blob/v22.23.4/deps/uv/src/unix/linux.c)
+- [Docker none](https://docs.docker.com/engine/network/drivers/none/)
