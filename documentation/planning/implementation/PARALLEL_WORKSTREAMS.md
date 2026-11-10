@@ -74,3 +74,22 @@ The foundation unit gate passes 324/324 on the integrated tree on both runtimes.
 - **Money:** a post-fetch ownership check for wallet `GET /:id` and `GET /transactions/:id`. Everything else waits for the decisions above.
 
 Worktrees for this batch are under `/private/tmp/swasthadisha-parallel-p1qom53w/` (`authority-next`, `money-clinical`, `authority-jwt`, `net-admission`). Commits are stored in the shared repository; nothing has been pushed.
+
+## Third batch, 10 November
+
+Resumed from `eba7e5c82e3ff63af9e9a958fbd100733e1fc439`. Before new work, direct internal Codex nonauthor reviewers inspected the second batch's production/security and network amendments. The retained second-batch composition verifier passed at that exact clean head, including all 36 lane mappings, 20 protected files and original staged/handover preservation. The network reviewer checked the earlier memory-only kernel/libuv assumptions against primary sources; actual local namespace/kernel/IPv6 conditions remain unmeasured. No new full-C3 or deployment acceptance follows.
+
+| Local branch | Reviewed commit | Result |
+| --- | --- | --- |
+| `m0/batch3-outbound-guards` | `2ea38267c361e6b3322459bcd22c2be1dc22e09c` | Notification `POST /` and `/send` are admin-only; four non-callback Meet routes authenticate then require admin; callback registration and internal service callers unchanged |
+| `m0/batch3-wallet-reads` | `d3a1f82147c0b3346abab43e6e34d260171b0c25` | Wallet and single-transaction ID reads validate the principal, fetch once and authorize against the returned stored `userId` or exact admin before serialization |
+
+Each contract received two nonauthor pre-reviews. Each implementation received independent Standards/security and Spec reviews from `/root/batch2_security_check` and `/root/outbound_spec_review`, both **APPROVE_SOURCE_ONLY**, before its local merge. The lead authored outbound guards; `/root/wallet_read_contract` authored wallet reads. Actual source checks and limits are recorded in the [outbound reviews](../../../output/qa/batch3-outbound-guards/REVIEW.md) and [wallet reviews](../../../output/qa/batch3-wallet-reads/REVIEW.md).
+
+The [third-batch composition verifier](../../../output/qa/batch3-integration/verify-source.py) binds merged files/modes to the reviewed lane heads, rejects unexplained changes and overlapping writers, checks the exact three-file production union, and verifies the original six staged files and eleven handover files. Per-lane scope checks are intentionally run on their own branches; their unrelated-file exclusions are replaced by the composition check on integration.
+
+Source-only evidence: baseline rejection, exact amended acceptance and 25 outbound negative source controls; 22 wallet negative source controls plus five structural scope/input controls. These are checks over source data. No mounted API/JWT/client behavior, actual zero-provider effects or domain acceptance is inferred. The required runtime cases remain NOT_RUN under complete C3 admission. Foundation unit sources remain unchanged from the second batch, so the retained 324-case evidence is reused rather than rerun for these TypeScript route/controller changes.
+
+All commits in this continuation remain local. The eight-week plan remains a proposal; C2 target facts, actual deployment/key/session/exposure response, full C3/M0 and named clinical/finance/security/release gates remain open. No withheld operating fact has been requested again.
+
+Next authority contracts: dependents owner-or-admin, notification general listing and ID operations, and the FCM test sender. Booking/callback/contact/clinical-file and money-recovery decisions retain their assigned owners above; a source fix on a different path does not close them.

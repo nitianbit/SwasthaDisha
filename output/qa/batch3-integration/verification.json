@@ -1,0 +1,23 @@
+{
+  "status": "SOURCE_COMPOSITION_VERIFIED_RUNTIME_NOT_ACCEPTED",
+  "baseline": "eba7e5c82e3ff63af9e9a958fbd100733e1fc439",
+  "lane_heads": {
+    "outbound": "2ea38267c361e6b3322459bcd22c2be1dc22e09c",
+    "wallet-reads": "d3a1f82147c0b3346abab43e6e34d260171b0c25"
+  },
+  "lane_file_counts": {
+    "outbound": 6,
+    "wallet-reads": 8
+  },
+  "production_sha256": {
+    "src1/modules/notification/routes/index.ts": "d9fe35d82ebda24be5a1f9dd5dcd0d957dbe08bccc81969dac1eb2d834649d6b",
+    "src1/modules/meet/routes/index.ts": "e8bfff4a492ed11a18f1735528bfa4886a338b878852cde9bcea2f5d5bdd71e4",
+    "src1/modules/wallet/controller/index.ts": "3b22b878fd8717b8b88620c2cb5ff3f00337f5d887beea86050fcd34d222264f"
+  },
+  "staged_patch_sha256": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+  "preserved_handover_files": 11,
+  "unrelated_tracked_files_unchanged": true,
+  "TypeScript_evaluations": 0,
+  "runtime_scenarios": "NOT_RUN",
+  "verifier_sha256": "244eaf5450404c6b81572435d2c88f63c14e2146f63cd088ce4320ff0b218dbb"
+}
