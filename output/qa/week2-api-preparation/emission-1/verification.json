@@ -1,0 +1,38 @@
+{
+  "status": "PREPARED_NOT_EXECUTED",
+  "invocations": 1,
+  "exit": 0,
+  "sourceRoot": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation",
+  "sourceCommit": "cca8a5b453a35ce8517694568bd4c5f82c029e7e",
+  "descriptorSha": "fc6e93e8bd73b46297e98a41c0e72d32c411abaef9d7becf8d80921645348fcd",
+  "lockSha": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+  "portsSha": "acd7b289600c5d07c3e1466294db75ad7a51e13c4a3d459b14ac0a8d77134c76",
+  "filesVerified": 2829,
+  "bytes": 44620215,
+  "productionSources": 64,
+  "sourceInputs": 72,
+  "nominalCasesNotRun": 36,
+  "mutantCasesNotRun": 4,
+  "semanticDiagnostics": 703,
+  "transpileDiagnostics": 0,
+  "fullBuild": false,
+  "compilation": "TRANSPILE_ONLY_NOT_TYPECHECKED",
+  "actualReviewers": [
+    "/root/backend_boot_path",
+    "/root/local_claude_review_prep"
+  ],
+  "decision": "APPROVE_LOCKED_INSTALL_AND_EMIT_ONLY",
+  "approvalConsumed": true,
+  "buildArea": "/private/tmp/sd-auth-api-build-1991c81f-afb0-445e-9ae6-5b9322a83af0",
+  "command": "env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /opt/homebrew/bin/python3 -I -B test/api-runtime/scenario/prepare.py --install-emit",
+  "applicationEvaluations": 0,
+  "driverEvaluations": 0,
+  "databaseConnections": 0,
+  "DockerCalls": 0,
+  "limitations": [
+    "Not a successful semantic type-check or root build",
+    "No actual application/API/Mongo runtime or provider evaluation",
+    "Public dependency cache/node_modules stay outside Git",
+    "No retry; concrete template/exact runtime needs two separate decisions"
+  ]
+}
