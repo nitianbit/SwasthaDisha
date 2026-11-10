@@ -69,9 +69,9 @@ function validateAdmissionData(manifest, plan, ports, observed) {
   for (const alias of ports.roots) need(Object.hasOwn(plan.modules, alias), 'MISSING_ROUTER_SOURCE');
   for (const mutant of Object.values(plan.mutants)) need(Object.hasOwn(manifest.files, mutant.file)
     && mutant.originalSha256 === plan.sourceFiles[mutant.source], 'UNDECLARED_MUTANT');
-  need(Array.isArray(ports.models) && ports.models.length === 11
-    && new Set(ports.models.map(row => row.name)).size === 11
-    && new Set(ports.models.map(row => row.collection)).size === 11
+  need(Array.isArray(ports.models) && ports.models.length === 12
+    && new Set(ports.models.map(row => row.name)).size === 12
+    && new Set(ports.models.map(row => row.collection)).size === 12
     && ports.models.every(row => Object.hasOwn(plan.sourceFiles, row.source) && Array.isArray(row.indexes)), 'MODEL_MAP');
   return manifest;
 }

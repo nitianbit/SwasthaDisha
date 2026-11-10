@@ -8,9 +8,12 @@ ports are recording only. Payment and coupon services are explicit throwing
 exclusions. No application entry point or production provider is admitted.
 
 `ports-manifest.json` fixes 36 nominal cases, four actual-source sensitivity
-variants, 11 models/collections, exact correctness indexes, package roots,
+variants, 12 models/collections, exact correctness indexes, package roots,
 recording ports and safe output counters. `compile.cjs` stages the declared source
-closure with TypeScript 5.9.3 legacy decorators and emitted metadata. It preserves
+closure with TypeScript 5.9.3 legacy decorators and emitted metadata. A static AST traversal of emitted nominal CommonJS follows actual literal require
+edges and requires every reachable model declaration to match the model/source
+manifest, including WellnessPackage imported by CorporateRepository. Its four
+metadata negative controls run only during separately approved emit. It preserves
 syntactic and focused semantic diagnostics, including missing/excluded types,
 and reports `TRANSPILE_ONLY_NOT_TYPECHECKED` with `fullBuild:false`. This is not a
 root build/type-check or a production compatibility claim.

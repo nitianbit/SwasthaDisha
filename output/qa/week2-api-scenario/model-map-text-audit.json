@@ -1,0 +1,118 @@
+{
+  "schema": "SD-AUTH-API-MODEL-TEXT-AUDIT-1",
+  "status": "READ_ONLY_EMITTED_SOURCE_RECONCILED_APPLICATION_NOT_EVALUATED",
+  "descriptorSha": "fc6e93e8bd73b46297e98a41c0e72d32c411abaef9d7becf8d80921645348fcd",
+  "sourceCommit": "cca8a5b453a35ce8517694568bd4c5f82c029e7e",
+  "runtimePlanSha": "fee2fe3498902822d4d84cfa231e909c6a65844c76c8fa019c772ae92e451b1a",
+  "reachableModules": 51,
+  "actualModelDeclarations": [
+    {
+      "name": "Admin",
+      "compiled": "compiled/modules/admin/model/index.js",
+      "source": "src1/modules/admin/model/index.ts",
+      "requiredBy": [
+        "compiled/modules/admin/repository/index.js"
+      ]
+    },
+    {
+      "name": "Corporate",
+      "compiled": "compiled/modules/corporates/model/index.js",
+      "source": "src1/modules/corporates/model/index.ts",
+      "requiredBy": [
+        "compiled/modules/corporates/repository/index.js"
+      ]
+    },
+    {
+      "name": "FcmToken",
+      "compiled": "compiled/modules/fcm/model/index.js",
+      "source": "src1/modules/fcm/model/index.ts",
+      "requiredBy": [
+        "compiled/modules/fcm/repository/index.js"
+      ]
+    },
+    {
+      "name": "HR",
+      "compiled": "compiled/modules/hr/model/index.js",
+      "source": "src1/modules/hr/model/index.ts",
+      "requiredBy": [
+        "compiled/modules/hr/repository/index.js"
+      ]
+    },
+    {
+      "name": "Notification",
+      "compiled": "compiled/modules/notification/model/index.js",
+      "source": "src1/modules/notification/model/index.ts",
+      "requiredBy": [
+        "compiled/modules/notification/repository/index.js"
+      ]
+    },
+    {
+      "name": "OTP",
+      "compiled": "compiled/modules/otp/model/index.js",
+      "source": "src1/modules/otp/model/index.ts",
+      "requiredBy": [
+        "compiled/modules/otp/repository/index.js"
+      ]
+    },
+    {
+      "name": "Pharmacy",
+      "compiled": "compiled/modules/pharmacies/model/index.js",
+      "source": "src1/modules/pharmacies/model/index.ts",
+      "requiredBy": [
+        "compiled/modules/middleware/auth.js",
+        "compiled/modules/pharmacies/repository/index.js"
+      ]
+    },
+    {
+      "name": "Specialist",
+      "compiled": "compiled/modules/specialists/model/index.js",
+      "source": "src1/modules/specialists/model/index.ts",
+      "requiredBy": [
+        "compiled/modules/corporates/repository/index.js",
+        "compiled/modules/specialists/repository/index.js"
+      ]
+    },
+    {
+      "name": "User",
+      "compiled": "compiled/modules/user/model/index.js",
+      "source": "src1/modules/user/model/index.ts",
+      "requiredBy": [
+        "compiled/modules/user/repository/index.js"
+      ]
+    },
+    {
+      "name": "Wallet",
+      "compiled": "compiled/modules/wallet/model/index.js",
+      "source": "src1/modules/wallet/model/index.ts",
+      "requiredBy": [
+        "compiled/modules/wallet/repository/index.js"
+      ]
+    },
+    {
+      "name": "WalletTransaction",
+      "compiled": "compiled/modules/wallet/model/index.js",
+      "source": "src1/modules/wallet/model/index.ts",
+      "requiredBy": [
+        "compiled/modules/wallet/repository/index.js"
+      ]
+    },
+    {
+      "name": "WellnessPackage",
+      "compiled": "compiled/modules/wellnessPackages/model/index.js",
+      "source": "src1/modules/wellnessPackages/model/index.ts",
+      "requiredBy": [
+        "compiled/modules/corporates/repository/index.js"
+      ]
+    }
+  ],
+  "oldManifestCount": 11,
+  "newManifestCount": 12,
+  "soleMissingOldModel": "WellnessPackage",
+  "newManifestExactNameSourceMatch": true,
+  "oldEmissionUnchanged": true,
+  "ASTGuardAndControls": "NOT_RUN_UNTIL_SEPARATELY_APPROVED_EMIT",
+  "applicationEvaluations": 0,
+  "compilerExecutions": 0,
+  "DockerCalls": 0,
+  "databaseCalls": 0
+}

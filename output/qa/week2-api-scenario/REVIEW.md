@@ -104,3 +104,63 @@ The completed lock and amended final clean source require fresh direct exact
 installation/emission decisions. Those decisions and actual runtime admission
 remain pending. All 36 nominal API and four source-mutant runtime cases remain
 **NOT_RUN**; no focused/full application success is claimed.
+
+## Emitted model-map finding and bounded amendment, 11 November
+
+The first separately approved install/emit created a genuine public dependency and
+emitted-source template; it did not evaluate the application, driver or API.
+Independent artifact review then found the 11-model admission map incomplete:
+CorporateRepository eagerly imports WellnessPackageModel. The actual CommonJS
+chain is auth router → auth controller → AuthService → CorporateRepository →
+WellnessPackage model. The prior 11-model source packet remains historical;
+artifact acceptance/runtime approval was withheld or withdrawn before any API run.
+
+The author and both nonauthor reviewers independently reconciled the emitted
+literal require closure as source data: 51 reachable files, 12 literal model
+registrations, and only WellnessPackage absent from the old manifest. All 11 old
+entries were reachable; the wallet model module declares two models. The retained
+`model-map-text-audit.json` verifies inspected emitted bytes against the first
+fixed template, records exact name/source/require relationships, and confirms the
+old emission/descriptor remained unchanged. Reading emitted JavaScript as text is
+not application evaluation or proof that a model was registered at runtime.
+
+This bounded amendment adds only `WellnessPackage` / `wellnesspackages` /
+`src1/modules/wellnessPackages/model/index.ts`, with no additional correctness
+index (its declared non-_id indexes are performance/text only). The exact bootstrap
+map count becomes 12. The permissioned positive unit requires that precise entry;
+its missing-model case now explicitly removes WellnessPackage, proving the old
+11-entry map is rejected by the actual pure bootstrap guard. All 22 admission and
+16 public-lock cases pass; compiler/bootstrap parser checks and whitespace pass.
+No application/driver/DB/provider/Docker evaluation ran for the amendment.
+
+The compiler now parses nominal emitted CommonJS with the genuine TypeScript AST,
+follows literal require edges, recognizes model declarations from the imported
+Mongoose namespace and compares every reachable name/source against the manifest
+before adding mutants or producing a plan. It retains declarations plus a static
+model-map audit. Four metadata controls (omitted WellnessPackage, extra unreachable
+model, duplicate entry, wrong source) exercise this guard only during the next
+separately approved emission. The AST guard/controls are currently **NOT_RUN**;
+source inspection and parser acceptance do not count as their execution. No model
+import or sentinel replacement is used to establish this closure.
+
+The replacement source packet is `source-freeze-model-map.json`; earlier freezes
+and the first actual emission remain preserved. Two direct reviews of this bounded
+source amendment and fresh exact installation/emission/template/runtime decisions
+are required. All 703 previously retained focused semantic diagnostics remain open;
+this amendment fixes no TypeScript diagnostic or production source. All 36 nominal
+and four source-mutant API cases remain **NOT_RUN**.
+
+Both actual independent nonauthors approved the bounded model-map source packet
+SHA-256 `617cfbf2afea1aab3d157c661ea2f657657a5a9714f581350e7668b6ccf68af1`,
+with all ten frozen hashes independently matching. No source bytes changed after
+that freeze.
+
+| Reviewer | Actual decision and verification |
+| --- | --- |
+| `/root/backend_boot_path` | **APPROVE_SOURCE_ONLY**. Independently checked the old emitted 51-file/12-declaration chain, precise missing model/index scope, AST guard and four deferred controls. Reran inspected 22 permissioned admission cases, 16 lock cases and compiler/bootstrap parser checks: PASS. Earlier old-template runtime approval remains explicitly withdrawn. |
+| `/root/local_claude_review_prep` | **APPROVE_SOURCE_ONLY**. Independently reconciled the same emitted closure and all hashes; confirmed exact name/source comparison before mutants and the four future controls. Reran 22 permissioned admission cases with zero effects and denied process/write grants, plus compiler parser acceptance. No runtime approval on the old artifact. |
+
+These internal source-only decisions authorize no compiler, install, application,
+DB, provider or Docker evaluation. The AST guard and four metadata controls still
+require the next exact independently approved emit, followed by artifact review and
+fresh runtime invocation decisions. No original packet/emission was overwritten.

@@ -246,6 +246,12 @@
           }
         }
       ]
+    },
+    {
+      "name": "WellnessPackage",
+      "collection": "wellnesspackages",
+      "source": "src1/modules/wellnessPackages/model/index.ts",
+      "indexes": []
     }
   ],
   "indexScope": "Only listed correctness indexes and MongoDB default _id indexes are created. Unexercised performance indexes are outside this focused fixture."

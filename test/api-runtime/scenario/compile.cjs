@@ -12,6 +12,90 @@ const once = (text, before, after) => {
   return text.replace(before, after);
 };
 
+function assertModelDeclarations(declarations, models) {
+  const select = rows => rows.map(row => ({ name: row.name, source: row.source }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  requireThat(Array.isArray(models) && models.length > 0
+    && new Set(models.map(row => row.name)).size === models.length, 'DUPLICATE_DECLARED_MODEL');
+  requireThat(new Set(declarations.map(row => row.name)).size === declarations.length, 'DUPLICATE_EMITTED_MODEL');
+  requireThat(JSON.stringify(select(declarations)) === JSON.stringify(select(models)), 'EMITTED_MODEL_MANIFEST_MISMATCH');
+}
+
+// Parse emitted nominal CommonJS as data. Follow actual literal require edges,
+// including erased-import differences, without requiring any domain module.
+function inspectEmittedModels(runtimeRoot, modules, ports) {
+  const excluded = new Set([...Object.keys(ports.excludedCapabilities), ...ports.recordingModules]);
+  const reachable = new Set(); const declarations = []; const queue = ports.roots.map(alias => modules[alias]);
+  const sourceFor = file => 'src1/' + file.slice('compiled/'.length, -3) + '.ts';
+  const unwrap = expression => {
+    while (ts.isParenthesizedExpression(expression)) expression = expression.expression;
+    if (ts.isBinaryExpression(expression) && expression.operatorToken.kind === ts.SyntaxKind.CommaToken) return unwrap(expression.right);
+    return expression;
+  };
+  function requiredName(node) {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'require') {
+      requireThat(node.arguments.length === 1 && ts.isStringLiteralLike(node.arguments[0]), 'DYNAMIC_DOMAIN_REQUIRE');
+      return node.arguments[0].text;
+    }
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression)
+      && ['__importDefault', '__importStar'].includes(node.expression.text) && node.arguments.length === 1)
+      return requiredName(node.arguments[0]);
+    return undefined;
+  }
+  while (queue.length) {
+    const file = queue.shift(); if (reachable.has(file)) continue;
+    requireThat(typeof file === 'string' && file.startsWith('compiled/') && !file.startsWith('compiled/mutants/'), 'MODEL_AUDIT_SOURCE');
+    reachable.add(file);
+    const ast = ts.createSourceFile(file, fs.readFileSync(path.join(runtimeRoot, file), 'utf8'), ts.ScriptTarget.ES2020, true, ts.ScriptKind.JS);
+    const mongooseBindings = new Set();
+    function bindings(node) {
+      if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer
+        && requiredName(node.initializer) === 'mongoose') mongooseBindings.add(node.name.text);
+      ts.forEachChild(node, bindings);
+    }
+    bindings(ast);
+    function visit(node) {
+      if (ts.isCallExpression(node)) {
+        const request = requiredName(node);
+        if (request && !excluded.has(request)) {
+          if (request.startsWith('@/')) { requireThat(modules[request], 'MODEL_AUDIT_UNKNOWN_ALIAS'); queue.push(modules[request]); }
+          else if (request.startsWith('.')) {
+            const base = path.posix.normalize(path.posix.join(path.posix.dirname(file), request));
+            const target = [base + '.js', base + '/index.js'].find(candidate => Object.values(modules).includes(candidate));
+            requireThat(target, 'MODEL_AUDIT_UNKNOWN_RELATIVE'); queue.push(target);
+          }
+        }
+        const expression = unwrap(node.expression);
+        if (ts.isPropertyAccessExpression(expression) && expression.name.text === 'model' && node.arguments.length >= 2) {
+          let receiver = expression.expression;
+          if (ts.isPropertyAccessExpression(receiver) && receiver.name.text === 'default') receiver = receiver.expression;
+          if (ts.isIdentifier(receiver) && mongooseBindings.has(receiver.text)) {
+            requireThat(ts.isStringLiteralLike(node.arguments[0]), 'DYNAMIC_MODEL_DECLARATION');
+            declarations.push({ name: node.arguments[0].text, source: sourceFor(file), compiled: file });
+          }
+        }
+      }
+      ts.forEachChild(node, visit);
+    }
+    visit(ast);
+  }
+  declarations.sort((a, b) => a.name.localeCompare(b.name));
+  assertModelDeclarations(declarations, ports.models);
+  // Genuine guard sensitivity runs only in the separately approved compiler
+  // invocation. These variants change metadata, never production source or DB.
+  const controls = [];
+  const expectRejected = (id, candidate) => {
+    let rejected = false; try { assertModelDeclarations(declarations, candidate); } catch { rejected = true; }
+    requireThat(rejected, 'MODEL_AUDIT_CONTROL_SURVIVED'); controls.push({ id, rejected: true });
+  };
+  expectRejected('OMITTED_WELLNESS_PACKAGE', ports.models.filter(row => row.name !== 'WellnessPackage'));
+  expectRejected('EXTRA_UNREACHABLE_MODEL', [...ports.models, { name: 'UnreachableFixtureModel', source: 'src1/unreachable.ts' }]);
+  expectRejected('DUPLICATE_MODEL', [...ports.models, ports.models[0]]);
+  expectRejected('WRONG_MODEL_SOURCE', ports.models.map((row, index) => index === 0 ? { ...row, source: 'src1/wrong.ts' } : row));
+  return { declarations, audit: { status: 'STATIC_EMITTED_MODEL_MAP_VERIFIED', reachableModules: reachable.size,
+    modelCount: declarations.length, controls, applicationEvaluations: 0 } };
+}
+
 function compile(sourceRoot, runtimeRoot, inputPlan) {
   const ports = JSON.parse(fs.readFileSync(path.join(runtimeRoot, 'ports-manifest.json'), 'utf8'));
   const tracked = new Set(inputPlan.trackedSources);
@@ -75,6 +159,7 @@ function compile(sourceRoot, runtimeRoot, inputPlan) {
     }
     emit(relative, text, output);
   }
+  const modelMap = inspectEmittedModels(runtimeRoot, modules, ports);
   const mutants = {};
   function mutate(id, relative, transform) {
     const original = fs.readFileSync(path.join(sourceRoot, relative), 'utf8');
@@ -153,7 +238,8 @@ function compile(sourceRoot, runtimeRoot, inputPlan) {
     code: item.code, category: item.category, message: ts.flattenDiagnosticMessageText(item.messageText, '\n'),
   }));
   const plan = { schema: 'SD-AUTH-API-PLAN-1', role: ports.role, sourceCommit: inputPlan.sourceCommit, sourceFiles: sources,
-    modules, mutants, models: ports.models, packageVersions: inputPlan.packageVersions, lockSha: inputPlan.lockSha,
+    modules, mutants, models: ports.models, modelDeclarations: modelMap.declarations, modelMapAudit: modelMap.audit,
+    packageVersions: inputPlan.packageVersions, lockSha: inputPlan.lockSha,
     portsSha: inputPlan.portsSha, requiredCaseIds: ports.requiredCaseIds,
     requiredSensitivityIds: ports.requiredSensitivityIds, providerCounterKeys: ports.providerCounterKeys,
     providerCounterScope: 'NOMINAL_ONLY_EXCLUDING_EXPLICIT_SENSITIVITY_PHASES',

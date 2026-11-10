@@ -11,6 +11,9 @@ const dns = require('node:dns');
 const output = process.stdout.write.bind(process.stdout);
 const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const portsOriginal = JSON.parse(fs.readFileSync(path.join(__dirname, 'ports-manifest.json'), 'utf8'));
+if (portsOriginal.models.length !== 12 || !portsOriginal.models.some(row => row.name === 'WellnessPackage'
+  && row.collection === 'wellnesspackages' && row.source === 'src1/modules/wellnessPackages/model/index.ts'
+  && Array.isArray(row.indexes) && row.indexes.length === 0)) throw new Error('OFFLINE_WELLNESS_MAP');
 const bootstrap = path.join(__dirname, 'bootstrap.cjs');
 let applicationImports = 0; let connections = 0; let domainWrites = 0;
 const blockedWrite = () => { domainWrites++; throw new Error('OFFLINE_WRITE_DENIED'); };
@@ -90,7 +93,7 @@ check('UNDECLARED_PROVIDER_HOST', p => { p.ports.recordingAxios.email = 'https:/
 check('EMPTY_CASES', p => { p.ports.requiredCaseIds.length = 0; }, true);
 check('DUPLICATE_CASES', p => { p.ports.requiredCaseIds.push(p.ports.requiredCaseIds[0]); }, true);
 check('UNDECLARED_MUTANT_SOURCE', p => { p.plan.mutants.OTP_UNCONDITIONAL_CONSUME.originalSha256 = 'e'.repeat(64); }, true);
-check('MISSING_MODEL', p => { p.ports.models.pop(); }, true);
+check('OMITTED_WELLNESS_PACKAGE', p => { p.ports.models.pop(); }, true);
 check('PORT_PLAN_MISMATCH', p => { p.plan.portsSha = 'e'.repeat(64); });
 need(applicationImports === 0 && connections === 0 && domainWrites === 0, 'OFFLINE_EFFECTS');
 output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', cases: rows.length, failed: 0,
