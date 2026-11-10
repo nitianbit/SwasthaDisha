@@ -1,0 +1,12 @@
+{
+  "commit": "41539ca749c8a9dbf49ecf43bcca00749eccfe3c",
+  "working_tree": "clean",
+  "manifest_sha256": "54b7192be002ee191447547684fcfbbcfff4cc635c95316c4e1ed163350e9e0b",
+  "verified_counts": {
+    "files": 32,
+    "evidence_sha256": 63,
+    "historical_inputs_sha256": 8
+  },
+  "helper_sha256": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d",
+  "operator_directory_outside_checkout": true
+}

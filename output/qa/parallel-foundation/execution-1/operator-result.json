@@ -1,0 +1,294 @@
+{
+  "approved_commit": "41539ca749c8a9dbf49ecf43bcca00749eccfe3c",
+  "operator_directory": "/private/tmp/sd-reviewed-network-diag-jsletu51",
+  "operator_run_id": "ddce448b-f808-4fdc-b3ae-dc3260807d19",
+  "started_at": "2026-11-10T10:54:02Z",
+  "status": "FAIL",
+  "launcher_invocations": 1,
+  "commands": [
+    {
+      "step": "engine-before-image-check",
+      "args": [
+        "info",
+        "--format",
+        "[{{json .ID}},{{json .OSType}}]"
+      ],
+      "exit_code": 0,
+      "stdout": "engine-before-image-check.stdout.txt",
+      "stderr": "engine-before-image-check.stderr.txt"
+    },
+    {
+      "step": "labels-before-image-check",
+      "args": [
+        "ps",
+        "--all",
+        "--filter",
+        "label=swasthadisha.test.purpose=app-isolation",
+        "--quiet",
+        "--no-trunc"
+      ],
+      "exit_code": 0,
+      "stdout": "labels-before-image-check.stdout.txt",
+      "stderr": "labels-before-image-check.stderr.txt"
+    },
+    {
+      "step": "image-inspect",
+      "args": [
+        "image",
+        "inspect",
+        "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d"
+      ],
+      "exit_code": 0,
+      "stdout": "image-inspect.stdout.txt",
+      "stderr": "image-inspect.stderr.txt"
+    },
+    {
+      "step": "engine-before-launch",
+      "args": [
+        "info",
+        "--format",
+        "[{{json .ID}},{{json .OSType}}]"
+      ],
+      "exit_code": 0,
+      "stdout": "engine-before-launch.stdout.txt",
+      "stderr": "engine-before-launch.stderr.txt"
+    },
+    {
+      "step": "labels-before-create",
+      "args": [
+        "ps",
+        "--all",
+        "--filter",
+        "label=swasthadisha.test.purpose=app-isolation",
+        "--quiet",
+        "--no-trunc"
+      ],
+      "exit_code": 0,
+      "stdout": "labels-before-create.stdout.txt",
+      "stderr": "labels-before-create.stderr.txt"
+    },
+    {
+      "step": "engine-after-launch",
+      "args": [
+        "info",
+        "--format",
+        "[{{json .ID}},{{json .OSType}}]"
+      ],
+      "exit_code": 0,
+      "stdout": "engine-after-launch.stdout.txt",
+      "stderr": "engine-after-launch.stderr.txt"
+    },
+    {
+      "step": "labels-after-launch",
+      "args": [
+        "ps",
+        "--all",
+        "--filter",
+        "label=swasthadisha.test.purpose=app-isolation",
+        "--quiet",
+        "--no-trunc"
+      ],
+      "exit_code": 0,
+      "stdout": "labels-after-launch.stdout.txt",
+      "stderr": "labels-after-launch.stderr.txt"
+    },
+    {
+      "step": "exact-container-after-launch",
+      "args": [
+        "container",
+        "inspect",
+        "0da7634fb06a04356bb2e7ec2c79755bd1c5e64921b07106102fb385cd76f8b1"
+      ],
+      "exit_code": 1,
+      "stdout": "exact-container-after-launch.stdout.txt",
+      "stderr": "exact-container-after-launch.stderr.txt"
+    }
+  ],
+  "resources": {
+    "id": "0da7634fb06a04356bb2e7ec2c79755bd1c5e64921b07106102fb385cd76f8b1",
+    "runId": "8218ec91-58cd-4c21-ade3-eebaa1d7c02d",
+    "directory": "/private/tmp/sd-app-isolation-TLILOm"
+  },
+  "approval": "User delegated direct internal reviews; independent internal Standards and Spec approvals bound to revision-2. Exactly one diagnostic-enabled smoke; no post-create retry",
+  "source_freeze_before_image_check": {
+    "commit": "41539ca749c8a9dbf49ecf43bcca00749eccfe3c",
+    "working_tree": "clean",
+    "manifest_sha256": "54b7192be002ee191447547684fcfbbcfff4cc635c95316c4e1ed163350e9e0b",
+    "verified_counts": {
+      "files": 32,
+      "evidence_sha256": 63,
+      "historical_inputs_sha256": 8
+    },
+    "helper_sha256": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d",
+    "operator_directory_outside_checkout": true
+  },
+  "host_node": {
+    "version": "v22.23.4",
+    "binary_sha256": "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0"
+  },
+  "socket": {
+    "endpoint": "unix:///Users/shubham/.docker/run/docker.sock",
+    "resolved": "/Users/shubham/.docker/run/docker.sock"
+  },
+  "labels-before-image-check_count": 0,
+  "cached_image": {
+    "Id": "sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
+    "RepoDigests": [
+      "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d"
+    ],
+    "Os": "linux",
+    "Architecture": "arm64"
+  },
+  "labels-before-create_count": 0,
+  "source_freeze_before_launch": {
+    "commit": "41539ca749c8a9dbf49ecf43bcca00749eccfe3c",
+    "working_tree": "clean",
+    "manifest_sha256": "54b7192be002ee191447547684fcfbbcfff4cc635c95316c4e1ed163350e9e0b",
+    "verified_counts": {
+      "files": 32,
+      "evidence_sha256": 63,
+      "historical_inputs_sha256": 8
+    },
+    "helper_sha256": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d",
+    "operator_directory_outside_checkout": true
+  },
+  "launcher_exit_code": 1,
+  "internal_review": {
+    "manifest_sha256": "54b7192be002ee191447547684fcfbbcfff4cc635c95316c4e1ed163350e9e0b",
+    "patch_sha256": "efa341314e0c7787651b7b65722dd5a5ab3ebda3bde9b7826ddeab457feca3a3",
+    "review_scope": "one diagnostic-enabled fixed no-DB smoke; current source freeze; cached image only"
+  },
+  "network_diagnostics": [
+    {
+      "record": {
+        "tag": "APP-NET-DIAG-1",
+        "entries": [
+          {
+            "name": "bonding_masters",
+            "kind": "file",
+            "flags": {
+              "unavailable": "ENOTDIR"
+            },
+            "operstate": {
+              "unavailable": "ENOTDIR"
+            },
+            "type": {
+              "unavailable": "ENOTDIR"
+            }
+          },
+          {
+            "name": "erspan0",
+            "kind": "symlink",
+            "flags": "0x1002",
+            "operstate": "down",
+            "type": "1"
+          },
+          {
+            "name": "gre0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "778"
+          },
+          {
+            "name": "gretap0",
+            "kind": "symlink",
+            "flags": "0x1002",
+            "operstate": "down",
+            "type": "1"
+          },
+          {
+            "name": "ip6_vti0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "769"
+          },
+          {
+            "name": "ip6gre0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "823"
+          },
+          {
+            "name": "ip6tnl0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "769"
+          },
+          {
+            "name": "ip_vti0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "768"
+          },
+          {
+            "name": "lo",
+            "kind": "symlink",
+            "flags": "0x9",
+            "operstate": "unknown",
+            "type": "772"
+          },
+          {
+            "name": "sit0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "776"
+          },
+          {
+            "name": "tunl0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "768"
+          }
+        ],
+        "addressedInterfaces": [
+          {
+            "name": "lo",
+            "addresses": [
+              {
+                "address": "127.0.0.1",
+                "family": "IPv4",
+                "internal": true
+              },
+              {
+                "address": "::1",
+                "family": "IPv6",
+                "internal": true
+              }
+            ]
+          }
+        ],
+        "runId": "8218ec91-58cd-4c21-ade3-eebaa1d7c02d"
+      },
+      "bytes": 1207
+    }
+  ],
+  "diagnostic_matched_run_id": true,
+  "diagnostic_within_bounds": true,
+  "strict_interface_guard_line": 30,
+  "failure_at_strict_interface_guard": true,
+  "labels-after-launch_count": 0,
+  "independent_container_absent": true,
+  "independent_workspace_absent": true,
+  "exact_container_readback_exit_code": 1,
+  "source_freeze_after_launch": {
+    "commit": "41539ca749c8a9dbf49ecf43bcca00749eccfe3c",
+    "working_tree": "clean",
+    "manifest_sha256": "54b7192be002ee191447547684fcfbbcfff4cc635c95316c4e1ed163350e9e0b",
+    "verified_counts": {
+      "files": 32,
+      "evidence_sha256": 63,
+      "historical_inputs_sha256": 8
+    },
+    "helper_sha256": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d",
+    "operator_directory_outside_checkout": true
+  },
+  "review_required_before_retry": true,
+  "finished_at": "2026-11-10T10:54:03Z"
+}

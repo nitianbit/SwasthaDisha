@@ -1,0 +1,179 @@
+{
+  "status": "FAIL_AT_UNCHANGED_STRICT_INTERFACE_GUARD",
+  "approval_consumed": true,
+  "launcher_invocations": 1,
+  "retry_invocations": 0,
+  "relocated_operator_sha256": "deee1489299263190016f2d8119b3fa7189c7cd0d6df199a8ab849ccb3b0dcf3",
+  "diagnostic_commit": "41539ca749c8a9dbf49ecf43bcca00749eccfe3c",
+  "lane_baseline": "bfb608ea1a89551f6cd72ec5ee1349a3ee7abef7",
+  "scope": "one exact reviewed no-DB synthetic diagnostic, cached image only",
+  "execution_artifacts_sha256": {
+    "output/qa/parallel-foundation/execution-1/engine-after-launch.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/parallel-foundation/execution-1/engine-after-launch.stdout.txt": "0d3568ea64a9bb77b1002e1f6e02c96e82e5c2dde3878d347d757031b668cfa2",
+    "output/qa/parallel-foundation/execution-1/engine-before-image-check.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/parallel-foundation/execution-1/engine-before-image-check.stdout.txt": "0d3568ea64a9bb77b1002e1f6e02c96e82e5c2dde3878d347d757031b668cfa2",
+    "output/qa/parallel-foundation/execution-1/engine-before-launch.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/parallel-foundation/execution-1/engine-before-launch.stdout.txt": "0d3568ea64a9bb77b1002e1f6e02c96e82e5c2dde3878d347d757031b668cfa2",
+    "output/qa/parallel-foundation/execution-1/exact-container-after-launch.stderr.txt": "38b51f8bc1d7ba26795683271c91cbf28d10d512388bbede5f5ffcc8d10602b0",
+    "output/qa/parallel-foundation/execution-1/exact-container-after-launch.stdout.txt": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "output/qa/parallel-foundation/execution-1/image-inspect.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/parallel-foundation/execution-1/image-inspect.stdout.txt": "fcebf28f631210279339c68e72feae218b52289d0b842db17161dbcdb15a3675",
+    "output/qa/parallel-foundation/execution-1/labels-after-launch.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/parallel-foundation/execution-1/labels-after-launch.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/parallel-foundation/execution-1/labels-before-create.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/parallel-foundation/execution-1/labels-before-create.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/parallel-foundation/execution-1/labels-before-image-check.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/parallel-foundation/execution-1/labels-before-image-check.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/parallel-foundation/execution-1/launcher.stderr.txt": "44539e1e8ecf814a0bf687a2add2a6bf06c80586a9354cbd9fdfb843726a83e3",
+    "output/qa/parallel-foundation/execution-1/launcher.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/parallel-foundation/execution-1/operator-result.json": "9a843f8be5eff58d3ad7fbbfc4a74608b26e35353ce4ffd1de1496aee5007f3d",
+    "output/qa/parallel-foundation/execution-1/source-freeze-after-launch.json": "367eeb090b40f4a6c950532c1cc87c609309ca7b430df6c01b33b02ea4111f3d",
+    "output/qa/parallel-foundation/execution-1/source-freeze-before-image-check.json": "367eeb090b40f4a6c950532c1cc87c609309ca7b430df6c01b33b02ea4111f3d",
+    "output/qa/parallel-foundation/execution-1/source-freeze-before-launch.json": "367eeb090b40f4a6c950532c1cc87c609309ca7b430df6c01b33b02ea4111f3d"
+  },
+  "diagnostic_record": {
+    "record": {
+      "tag": "APP-NET-DIAG-1",
+      "entries": [
+        {
+          "name": "bonding_masters",
+          "kind": "file",
+          "flags": {
+            "unavailable": "ENOTDIR"
+          },
+          "operstate": {
+            "unavailable": "ENOTDIR"
+          },
+          "type": {
+            "unavailable": "ENOTDIR"
+          }
+        },
+        {
+          "name": "erspan0",
+          "kind": "symlink",
+          "flags": "0x1002",
+          "operstate": "down",
+          "type": "1"
+        },
+        {
+          "name": "gre0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "778"
+        },
+        {
+          "name": "gretap0",
+          "kind": "symlink",
+          "flags": "0x1002",
+          "operstate": "down",
+          "type": "1"
+        },
+        {
+          "name": "ip6_vti0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "769"
+        },
+        {
+          "name": "ip6gre0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "823"
+        },
+        {
+          "name": "ip6tnl0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "769"
+        },
+        {
+          "name": "ip_vti0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "768"
+        },
+        {
+          "name": "lo",
+          "kind": "symlink",
+          "flags": "0x9",
+          "operstate": "unknown",
+          "type": "772"
+        },
+        {
+          "name": "sit0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "776"
+        },
+        {
+          "name": "tunl0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "768"
+        }
+      ],
+      "addressedInterfaces": [
+        {
+          "name": "lo",
+          "addresses": [
+            {
+              "address": "127.0.0.1",
+              "family": "IPv4",
+              "internal": true
+            },
+            {
+              "address": "::1",
+              "family": "IPv6",
+              "internal": true
+            }
+          ]
+        }
+      ],
+      "runId": "8218ec91-58cd-4c21-ade3-eebaa1d7c02d"
+    },
+    "bytes": 1207
+  },
+  "cleanup": {
+    "same_recorded_engine_after": true,
+    "exact_container_absent": true,
+    "exact_workspace_absent": true,
+    "purpose_labels_before": 0,
+    "purpose_labels_after": 0
+  },
+  "measured_summary": {
+    "bonding_masters_kind": "file",
+    "extra_device_reported_operstate": "down in this sampled record",
+    "assigned_address_names": [
+      "lo"
+    ],
+    "routes_and_network_namespace_provenance": "NOT_MEASURED"
+  },
+  "not_reached": [
+    "post-interface permission and HTTP assertions",
+    "recording-port dynamic imports and seven receipts",
+    "scenario and production search-helper import",
+    "successful-exit/no-OOM acceptance"
+  ],
+  "not_admitted": [
+    "backend module imports",
+    "database/provider SDK clients",
+    "arbitrary application fixtures"
+  ],
+  "scenario_outcomes_unchanged": {
+    "PASS": 0,
+    "FAIL": 1,
+    "BLOCKED": 1,
+    "NOT_RUN": 110,
+    "DEFERRED": 3
+  },
+  "next_gate": "independent failure review and concrete network-observation contract before any further invocation or source/grant/guard change",
+  "root_internal_execution_review": "APPROVE ONE RELOCATED DIAGNOSTIC INVOCATION; recipe deee1489299263190016f2d8119b3fa7189c7cd0d6df199a8ab849ccb3b0dcf3; clean detached41539ca and all103 mappings independently checked; no retry/pull/daemon/engine/guard/grant change",
+  "owner_scope": "existing exact-source-bound diagnostic approval, now consumed; no external Claude or deployment approval claimed"
+}

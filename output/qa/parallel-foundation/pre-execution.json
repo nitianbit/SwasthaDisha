@@ -1,0 +1,34 @@
+{
+  "status": "NOT_RUN_PENDING_DIRECT_EXECUTION_REVIEW",
+  "lane_branch": "m0/parallel-foundation",
+  "lane_baseline": "bfb608ea1a89551f6cd72ec5ee1349a3ee7abef7",
+  "historical_operator_sha256": "8b5ae33d06280060b35397df5fd2ad7e21517c98719cc47723a8281fb25d3486",
+  "relocated_operator_sha256": "deee1489299263190016f2d8119b3fa7189c7cd0d6df199a8ab849ccb3b0dcf3",
+  "relocation_diff_sha256": "1c5c2ec197862fd017bbdeafc5bee9c070bf4777b3133d1dd7190c0b5973c8cd",
+  "diagnostic_source": {
+    "path": "/private/tmp/swasthadisha-parallel-p1qom53w/diagnostic-41539",
+    "commit": "41539ca749c8a9dbf49ecf43bcca00749eccfe3c",
+    "detached": true,
+    "clean": true,
+    "manifest_sha256": "54b7192be002ee191447547684fcfbbcfff4cc635c95316c4e1ed163350e9e0b",
+    "verified_counts": {
+      "files": 32,
+      "evidence_sha256": 63,
+      "historical_inputs_sha256": 8
+    }
+  },
+  "invocation": {
+    "argv": [
+      "/opt/homebrew/bin/python3",
+      "/private/tmp/swasthadisha-parallel-p1qom53w/foundation/output/qa/parallel-foundation/relocated-operator.py"
+    ],
+    "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/foundation",
+    "environment": {
+      "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+      "TMPDIR": "/private/tmp"
+    }
+  },
+  "Docker_calls": 0,
+  "launcher_invocations": 0,
+  "scope": "exact cached-image-only diagnostic under unchanged profile/103 hashes; no provider/DB/SDK admission; no retry"
+}
