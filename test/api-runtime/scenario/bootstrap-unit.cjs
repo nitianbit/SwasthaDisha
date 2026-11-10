@@ -11,9 +11,11 @@ const dns = require('node:dns');
 const output = process.stdout.write.bind(process.stdout);
 const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const portsOriginal = JSON.parse(fs.readFileSync(path.join(__dirname, 'ports-manifest.json'), 'utf8'));
-if (portsOriginal.models.length !== 12 || !portsOriginal.models.some(row => row.name === 'WellnessPackage'
+if (portsOriginal.models.length !== 13 || !portsOriginal.models.some(row => row.name === 'WellnessPackage'
   && row.collection === 'wellnesspackages' && row.source === 'src1/modules/wellnessPackages/model/index.ts'
-  && Array.isArray(row.indexes) && row.indexes.length === 0)) throw new Error('OFFLINE_WELLNESS_MAP');
+  && Array.isArray(row.indexes) && row.indexes.length === 0)
+  || !portsOriginal.models.some(row => row.name === 'Dependent' && row.collection === 'dependents'
+    && row.source === 'src1/modules/dependents/model/index.ts' && row.indexes.length === 0)) throw new Error('OFFLINE_WELLNESS_MAP');
 const bootstrap = path.join(__dirname, 'bootstrap.cjs');
 let applicationImports = 0; let connections = 0; let domainWrites = 0;
 const blockedWrite = () => { domainWrites++; throw new Error('OFFLINE_WRITE_DENIED'); };
@@ -28,7 +30,7 @@ Module._load = function (request, parent, isMain) {
   if (request !== bootstrap && !Module.isBuiltin(request)) { applicationImports++; throw new Error('OFFLINE_DOMAIN_IMPORT_DENIED'); }
   return originalLoad.call(this, request, parent, isMain);
 };
-const { validateAdmissionData, runSetupStep, SETUP_FAILURE_CODES, withOwnedCleanup } = require(bootstrap);
+const { validateAdmissionData, runSetupStep, SETUP_FAILURE_CODES, withOwnedCleanup, recordReadOperation, recordPush } = require(bootstrap);
 const need = (condition, label) => { if (!condition) throw new Error(label); };
 need(process.permission && !process.permission.has('child') && !process.permission.has('worker')
   && !process.permission.has('addon') && !process.permission.has('fs.write'), 'OFFLINE_PROCESS_GRANTS');
@@ -93,8 +95,75 @@ check('UNDECLARED_PROVIDER_HOST', p => { p.ports.recordingAxios.email = 'https:/
 check('EMPTY_CASES', p => { p.ports.requiredCaseIds.length = 0; }, true);
 check('DUPLICATE_CASES', p => { p.ports.requiredCaseIds.push(p.ports.requiredCaseIds[0]); }, true);
 check('UNDECLARED_MUTANT_SOURCE', p => { p.plan.mutants.OTP_UNCONDITIONAL_CONSUME.originalSha256 = 'e'.repeat(64); }, true);
-check('OMITTED_WELLNESS_PACKAGE', p => { p.ports.models.pop(); }, true);
+check('OMITTED_WELLNESS_PACKAGE', p => { p.ports.models = p.ports.models.filter(row => row.name !== 'WellnessPackage'); }, true);
+check('OMITTED_DEPENDENT', p => { p.ports.models.pop(); }, true);
+check('WRONG_DEPENDENT_SOURCE', p => { p.ports.models.at(-1).source = 'src1/modules/otp/repository/index.ts'; }, true);
+check('WRONG_DEPENDENT_COLLECTION', p => { p.ports.models.at(-1).collection = 'other'; }, true);
+check('DUPLICATE_DEPENDENT_MODEL', p => { p.ports.models[0] = p.ports.models.at(-1); }, true);
+check('MISSING_AUTHORITY_ROUTER', p => { p.ports.roots.pop(); p.plan.modules = Object.fromEntries(p.ports.roots.map(root => [root, 'compiled/entry.js'])); }, true);
+check('MISSING_AUTHORITY_CASE', p => { p.ports.requiredCaseIds.pop(); }, true);
+check('MISSING_AUTHORITY_SENSITIVITY', p => { p.ports.requiredSensitivityIds.pop(); }, true);
 check('PORT_PLAN_MISMATCH', p => { p.plan.portsSha = 'e'.repeat(64); });
+const recordingRows = [];
+function recordingCheck(id, action) { action(); recordingRows.push(id); }
+function recordingUnits() {
+  for (const name of ['find', 'aggregate', 'count', 'getMore']) recordingCheck('READ_' + name, () => {
+    const ops = { users: 0, dependents: 0 }; const effects = { unexpected: 0 };
+    const command = name === 'getMore' ? { getMore: 12345, collection: 'dependents' } : { [name]: 'dependents' };
+    recordReadOperation({ databaseName: 'owned', commandName: name, command }, 'owned', ops, effects);
+    need(ops.users === 0 && ops.dependents === 1 && effects.unexpected === 0
+      && Object.keys(ops).join(',') === 'users,dependents', 'READ_COUNT_PRIVATE_ONLY');
+  });
+  for (const [id, event] of [
+    ['OTHER_DB', { databaseName: 'other', commandName: 'find', command: { find: 'users' } }],
+    ['NONREAD', { databaseName: 'owned', commandName: 'insert', command: { insert: 'users' } }],
+  ]) recordingCheck('READ_IGNORE_' + id, () => {
+    const ops = { users: 0 }; const effects = { unexpected: 0 };
+    recordReadOperation(event, 'owned', ops, effects); need(ops.users === 0 && effects.unexpected === 0, 'READ_IGNORE_SCOPE');
+  });
+  for (const [id, command] of [['UNKNOWN', { find: 'other' }], ['PROTOTYPE', { find: '__proto__' }], ['MALFORMED', {}]])
+    recordingCheck('READ_DENY_' + id, () => {
+      const ops = { users: 0 }; const effects = { unexpected: 0 };
+      recordReadOperation({ databaseName: 'owned', commandName: 'find', command }, 'owned', ops, effects);
+      need(ops.users === 0 && effects.unexpected === 1, 'READ_UNKNOWN_LATCHED');
+    });
+  for (const value of [Number.MAX_SAFE_INTEGER, -1, 0.5, NaN]) recordingCheck('READ_UNSAFE_COUNTER', () => {
+    const ops = { users: value }; const effects = { unexpected: 0 };
+    recordReadOperation({ databaseName: 'owned', commandName: 'find', command: { find: 'users' } }, 'owned', ops, effects);
+    need(Object.is(ops.users, value) && effects.unexpected === 1, 'READ_COUNTER_BOUND');
+  });
+  recordingCheck('READ_CUMULATIVE_SAME_OBJECT', () => {
+    const ops = { users: 0 }; const original = ops; const effects = { unexpected: 0 };
+    for (let i = 0; i < 2; i++) recordReadOperation({ databaseName: 'owned', commandName: 'count', command: { count: 'users' } }, 'owned', ops, effects);
+    need(ops === original && ops.users === 2 && effects.unexpected === 0, 'READ_STABLE_COUNTERS');
+  });
+  const payload = () => ({ tokens: ['fixture-owned-token'], notification: { title: 'Synthetic', body: 'Synthetic' }, data: { type: 'test' } });
+  recordingCheck('PUSH_PRIVATE_COPY_AND_FIXED_RESPONSE', () => {
+    const request = payload(); const captures = []; const effects = { push: 0, unexpected: 0 };
+    const response = recordPush(request, captures, effects);
+    request.tokens[0] = 'changed'; request.notification.title = 'changed'; request.data.type = 'changed';
+    need(effects.push === 1 && effects.unexpected === 0 && captures.length === 1
+      && captures[0].tokens[0] === 'fixture-owned-token' && captures[0].notification.title === 'Synthetic'
+      && captures[0].data.type === 'test' && JSON.stringify(response) === '{"successCount":0,"failureCount":0,"responses":[]}', 'PUSH_COPY');
+  });
+  for (const data of [undefined, {}]) recordingCheck('PUSH_OPTIONAL_DATA', () => {
+    const request = payload(); request.data = data; const captures = []; const effects = { push: 0, unexpected: 0 };
+    recordPush(request, captures, effects); need(captures.length === 1 && effects.push === 1 && effects.unexpected === 0, 'PUSH_OPTIONAL_DATA');
+  });
+  const invalid = [null, [], {}, { ...payload(), tokens: [] }, { ...payload(), tokens: Array(501).fill('synthetic') },
+    { ...payload(), tokens: [4] }, { ...payload(), tokens: [''] }, { ...payload(), notification: {} },
+    { ...payload(), notification: { title: 'Synthetic', body: 4 } },
+    { ...payload(), notification: { title: 'Synthetic', body: 'Synthetic', extra: 'unexpected' } },
+    { ...payload(), data: [] }, { ...payload(), data: { type: 4 } }, { ...payload(), unknown: 'synthetic-private-sentinel' }];
+  const accessor = payload(); Object.defineProperty(accessor, 'tokens', { get() { throw new Error('synthetic-private-sentinel'); } }); invalid.push(accessor);
+  for (let index = 0; index < invalid.length; index++) recordingCheck('PUSH_INVALID_' + index, () => {
+    const captures = []; const effects = { push: 0, unexpected: 0 }; let caught;
+    try { recordPush(invalid[index], captures, effects); } catch (error) { caught = error; }
+    need(caught?.fixtureCode === 'UNDECLARED_PUSH_PAYLOAD' && caught.message === 'UNDECLARED_PUSH_PAYLOAD'
+      && Object.keys(caught).join(',') === 'fixtureCode' && captures.length === 0
+      && effects.push === 1 && effects.unexpected === 1, 'PUSH_UNEXPECTED_LATCHED_DESPITE_CATCH');
+  });
+}
 async function setupUnits() {
   const cases = [];
   const named = name => Object.assign(new Error('synthetic-private-sentinel'), { name });
@@ -225,10 +294,11 @@ async function setupUnits() {
     cases.push('CLEANUP_MISSING_PORT_' + missing);
   }
   need(applicationImports === 0 && connections === 0 && domainWrites === 0, 'OFFLINE_EFFECTS');
-  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', cases: rows.length + cases.length,
+  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', cases: rows.length + cases.length + recordingRows.length, recordingCases: recordingRows.length,
     admissionCases: rows.length, setupDiagnosticCases: diagnosticCount, ownedCleanupCases: cases.length - diagnosticCount, failed: 0,
     applicationImports, connections, domainWrites, processGrants: 'DENIED' }) + '\n');
 }
+recordingUnits();
 setupUnits().catch(() => {
   output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', failed: 1, code: 'OFFLINE_SETUP_UNIT_FAILED' }) + '\n');
   process.exitCode = 1;

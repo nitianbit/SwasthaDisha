@@ -1,0 +1,35 @@
+{
+  "schema": "SD-AUTHORITY-SHARED-SOURCE-1",
+  "baseline": "94f8804916850caf9c716fae2cc49c6c0d218202",
+  "sourceCommit": "9f48806b29f641dc532dddc492ba60c903b43884",
+  "author": "/root",
+  "contractSha": "23f37d31fe77565ce7d5d04689b777d5f539dd079d787b26ca6346e5e42c4f90",
+  "files": {
+    "test/api-runtime/scenario/bootstrap-unit.cjs": "82f31df87203bfbb9c9c67721697dd777fedd34fc2f43112bb701c36cb4f7764",
+    "test/api-runtime/scenario/bootstrap.cjs": "1e464bfbdfb0ddfa77efea4421bde21fa03eef4d367cc32fa2208ab638063fd6",
+    "test/api-runtime/scenario/ports-manifest.json": "626d384db90b98ea72b3ed81de3e27857231802ba7a1edd542715e2e3abd885f",
+    "output/qa/week2-authority-api-shared/CONTRACT.md": "23f37d31fe77565ce7d5d04689b777d5f539dd079d787b26ca6346e5e42c4f90",
+    "output/qa/week2-authority-api-shared/README.md": "664c0a458d88cf036da327efe9cf2f78e2baa0de3048528d67974d3d2b621333",
+    "output/qa/week2-authority-api-shared/admission-baseline-rejection.json": "d108f9f387215f3ff6133a98cf73f286123762cd2d298d09889d71f4380fb13d",
+    "output/qa/week2-authority-api-shared/pre-review.json": "15b7e9f9bd04de7fc41eebc28abfeb388e1d8fbf6b52a6d66a4d56daaf4bf473"
+  },
+  "pureChecks": {
+    "cases": 189,
+    "admission": 29,
+    "diagnostic": 117,
+    "cleanup": 12,
+    "recording": 31,
+    "failed": 0,
+    "applicationImports": 0,
+    "connections": 0,
+    "domainWrites": 0
+  },
+  "syntax": "PASS",
+  "whitespace": "PASS",
+  "oldManifestFields": "EXACT_APPEND_ONLY",
+  "newRuntime": "NOT_RUN",
+  "compilerExecution": 0,
+  "DockerCalls": 0,
+  "profileAndRootDependencies": "UNCHANGED",
+  "metadataNote": "Initial freeze write stopped on relative-path bookkeeping before output; corrected without code change or application execution."
+}

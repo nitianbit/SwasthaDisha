@@ -1,19 +1,25 @@
 # Focused production-router API fixture
 
-This candidate stages and exercises the actual production auth/OTP/user/wallet
+This candidate stages and exercises the actual production auth/OTP/user/wallet/dependents/notification/FCM
 routers, controllers, services, repositories and models. It uses real HTTP, a
 separately admitted owned MongoDB replica set, genuine random OTP generation and
 JWT signing. Email/SMS methods use a recording Axios adapter; logger/FCM transport
 ports are recording only. Payment and coupon services are explicit throwing
 exclusions. No application entry point or production provider is admitted.
 
-`ports-manifest.json` fixes 36 nominal cases, four actual-source sensitivity
-variants, 12 models/collections, exact correctness indexes, package roots,
+The accepted core run passed its original36 nominal cases/four actual-source
+sensitivity checks under test-only profile2; see
+[execution4](../../../output/qa/week2-api-runtime/execution-4/REVIEW.md).
+The reviewed authority-extension contract appends17 groups/ten variants for
+53 nominal IDs/14 sensitivity IDs and13 models (Dependent is the sole addition).
+These new cases and emitted AST controls are NOT_RUN in this source candidate.
+`ports-manifest.json` fixes the exact IDs/models/correctness indexes/package roots,
 recording ports and safe output counters. `compile.cjs` stages the declared source
 closure with TypeScript 5.9.3 legacy decorators and emitted metadata. A static AST traversal of emitted nominal CommonJS follows actual literal require
 edges and requires every reachable model declaration to match the model/source
-manifest, including WellnessPackage imported by CorporateRepository. Its four
-metadata negative controls run only during separately approved emit. It preserves
+manifest, including WellnessPackage imported by CorporateRepository and the
+additional actual Dependent registration. Its five metadata rejection controls
+(the existing four plus missingDependent) run only during separately approved emit. It preserves
 syntactic and focused semantic diagnostics, including missing/excluded types,
 and reports `TRANSPILE_ONLY_NOT_TYPECHECKED` with `fullBuild:false`. This is not a
 root build/type-check or a production compatibility claim.
@@ -30,8 +36,11 @@ INDEX_CREATE actions, arguments and results. A wrapper calls each action once an
 maps only finite known error names/codes to 48 fixed public step/category literals;
 known guard codes are preserved. Exact numeric codes 14031, 67 and 72 have
 separate OUT_OF_DISK_SPACE, CANNOT_CREATE_INDEX and INVALID_OPTIONS categories.
-Numeric strings do not match. These diagnostics do not prove the prior failure
-was caused by capacity, and authorize no capacity or server-parameter change.
+Numeric strings do not match. Actual execution3 measured strict numeric14031;
+the separately accepted profile2 fixes the owned fixture
+indexBuildMinAvailableDiskSpaceMB at nonzero64, with unchanged512 MiB data tmpfs.
+Execution4 subsequently passed. Those facts authorize no further parameter,
+capacity, index or production changes.
 It examines at most the original error plus two
 cause objects, reads data descriptors without invoking error accessors, and retains
 the original thrown value only in a non-enumerable in-memory cause. The existing
@@ -46,8 +55,12 @@ error uses one fixed public failure code. Success JSON is emitted only after bot
 handle closures succeed. The dependency-free fake action matrix checks these
 paths; no new real invocation is authorized.
 
-Nominal denials assert the exact error envelope/status/code, unchanged DB state and no JWT,
-provider or DB-write effects. Two-reader barriers wrap actual completed MongoDB
+Nominal denials assert the exact error envelope/status/code, unchanged state
+across all13 manifested collections and no JWT, delivery or DB-write effects.
+New authority denials require exactly one recording logger call from the actual
+error handler. Read counters are measured between snapshots, proving pre-lookup
+denials where promised. Successful mutations allow only exact target rows and
+fields; other collection/row state and effect counters remain unchanged. Two-reader barriers wrap actual completed MongoDB
 query reads; final-expiry scheduling wraps an actual completed conditional update.
 Neither changes a result. Race checks count actual per-collection MongoDB write
 commands and provider deltas, including exactly one user update and notification
@@ -57,10 +70,30 @@ caches. Nominal source is restored between every phase. Detected defects appear
 only in separate `sensitivity` rows. Output provider counts cover nominal cases;
 negative-phase effects are asserted separately in memory and excluded from those counts.
 
+New authority cases preserve all seven Dependent registrations, all sixteen
+Notification registrations and both FCM routes. Exact admin global generic
+notification scope does not expand old strict-own routes; specialist aliases
+remain specific to their existing routes. Single notification create has no
+push; explicit-target general send and admin FCM/test reach actual services and
+the private recording Firebase port. Payload mismatch latches unexpected even
+when the best-effort domain sender catches an error. No real delivery is claimed.
+
+Synthetic60-second challenge proof IDs and owning fixture identity are tracked
+privately; exact completed proofs are removed only after associated core
+assertions/scheduling and between completed phases, before fresh snapshots.
+No active race/expiry proof, expiry value, TTL/index or unrelated row is changed.
+Each new mutant must fail the same nominal predicate for the precise expected
+reason, establish actual forbidden HTTP/DB/recording behavior for every promised
+operation, restore nominal classes, repeat the fixed predicate, and delete only
+its exact newly-created identity-bound fixture rows. No arbitrary exception is
+a detected regression. Nominal provider summary excludes every negative phase.
+
 Offline checks require no package installation or application evaluation. The
-22 fake admission cases exercise the same pure guard used by bootstrap with all
-application imports, connections and writes blocked; 16 fake lock cases cover
-public URLs/integrities and root-closure drift:
+shared pure admission/diagnostic/cleanup/recorder suite blocks all domain imports,
+connections and writes;16 pure lock cases cover public URLs/integrities and root
+closure drift. The owned Python source-data checker validates preservation/ID/
+transformation scope and deliberately weakened source controls; it proves no
+HTTP/database behavior or emitted AST result:
 
 ```sh
 env -i PATH=/usr/bin:/bin /opt/homebrew/bin/python3 -I -B test/api-runtime/scenario/offline-unit.py
@@ -96,7 +129,8 @@ exclusive. The parent copies it as immutable input into a separate owned runtime
 bundle; preparation does not create/start Docker containers or evaluate a driver.
 Exact later Docker execution requires its own two direct reviews/admission.
 
-All runtime cases and source-mutant detections remain **NOT_RUN** until the
-separate preparation and runtime gates are satisfied. Full application startup,
+New authority17/ten cases and detections remain **NOT_RUN** until fresh
+preparation/artifact/two exact single-run decisions and actual execution succeed.
+Core36/four PASS is preserved historical evidence, not approval for this new run. Full application startup,
 root dependency adoption, retained-server C2 facts, broader OTP/money policy,
 owner acceptance, deployment and release gates remain open.

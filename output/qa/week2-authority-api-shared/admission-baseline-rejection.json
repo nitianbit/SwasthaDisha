@@ -1,0 +1,9 @@
+{
+  "command": "Node22 permissioned bootstrap-unit with amended13-model data",
+  "exit": 1,
+  "stdoutBytes": 0,
+  "expectedFailure": "MODEL_MAP on new positive13-model fixture",
+  "applicationImports": 0,
+  "connections": 0,
+  "writes": 0
+}

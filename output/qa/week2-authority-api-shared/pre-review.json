@@ -1,0 +1,11 @@
+{
+  "contractSha": "23f37d31fe77565ce7d5d04689b777d5f539dd079d787b26ca6346e5e42c4f90",
+  "author": "/root/auth_api_fixture_contract",
+  "sharedSourceAuthor": "/root",
+  "baseline": "94f8804916850caf9c716fae2cc49c6c0d218202",
+  "decisions": {
+    "/root/backend_boot_path": "APPROVE_CONTRACT_IMPLEMENTATION_ONLY",
+    "/root/local_claude_review_prep": "APPROVE_CONTRACT_IMPLEMENTATION_ONLY"
+  },
+  "scope": "SOURCE_IMPLEMENTATION_AND_PURE_OFFLINE_ONLY; no package/app/compiler/database/Docker execution"
+}

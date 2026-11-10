@@ -11,6 +11,143 @@ const Module = require('node:module');
 const { pathToFileURL } = require('node:url');
 const ROOT = '/workspace';
 const ROLE = 'auth-user-wallet-api';
+// Exact authority extension policy, independent of a supplied manifest.
+const ADMITTED_ROOTS = Object.freeze([
+  "@/modules/auth/routes",
+  "@/modules/user/routes",
+  "@/modules/wallet/routes",
+  "@/modules/middleware/auth",
+  "@/modules/middleware/errorHandler",
+  "@/modules/dependents/routes",
+  "@/modules/notification/routes",
+  "@/modules/fcm/routes"
+]);
+const REQUIRED_CASE_IDS = Object.freeze([
+  "PHONE_LOGIN",
+  "EMAIL_LOGIN",
+  "LOGIN_SIDE_EFFECTS",
+  "JWT_SIGNATURE_AND_CLAIMS",
+  "OWN_PROFILE",
+  "OWN_USER_READ",
+  "OWN_USER_UPDATE",
+  "OTHER_USER_READ_DENIED",
+  "OTHER_USER_UPDATE_DENIED",
+  "OTHER_USER_DELETE_DENIED",
+  "USER_LIST_DENIED",
+  "SELF_PRIVILEGE_FIELDS_DENIED",
+  "OWN_WALLET_READ",
+  "OTHER_WALLET_ID_DENIED",
+  "OTHER_WALLET_USER_DENIED",
+  "OWN_TRANSACTION_READ",
+  "OTHER_TRANSACTION_DENIED",
+  "TRANSACTION_WITHOUT_WALLET_OWNER",
+  "WALLET_MUTATIONS_DENIED",
+  "ANONYMOUS_DENIED",
+  "WRONG_KEY_DENIED",
+  "EXPIRED_JWT_DENIED",
+  "MISSING_PRINCIPAL_DENIED",
+  "MALFORMED_WALLET_ID",
+  "ABSENT_WALLET",
+  "ADMIN_READS",
+  "HR_CORPORATE_SCOPE",
+  "HR_WITHOUT_CORPORATE_DENIED",
+  "SPECIALIST_AND_PHARMACY_DENIED",
+  "WRONG_OTP_DENIED",
+  "CONSUMED_OTP_DENIED",
+  "EXPIRED_OTP_DENIED",
+  "TARGET_BINDING_DENIED",
+  "UNBOUND_OTP_DENIED",
+  "OTP_SINGLE_WINNER",
+  "OTP_INFLIGHT_EXPIRY_DENIED",
+  "DEPENDENT_OWNER_CRUD_LIST",
+  "DEPENDENT_ADMIN_ON_BEHALF",
+  "DEPENDENT_ROLE_AND_PRINCIPAL_DENIALS",
+  "DEPENDENT_OWNER_SELECTORS_DENIED",
+  "DEPENDENT_HIDDEN_ID_DENIALS",
+  "DEPENDENT_RAW_OWNER_FIELD_DENIALS",
+  "DEPENDENT_LEGACY_VALIDATION",
+  "NOTIFICATION_GENERIC_OWNER_FLOWS",
+  "NOTIFICATION_GENERIC_ADMIN_FLOWS",
+  "NOTIFICATION_GENERIC_DENIALS",
+  "NOTIFICATION_PAGINATION_AND_COUNTS",
+  "NOTIFICATION_PRIOR_STRICT_OWN_PATHS",
+  "NOTIFICATION_PRIOR_SPECIALIST_PATHS",
+  "NOTIFICATION_PRIOR_ADMIN_SENDERS",
+  "FCM_TEST_ADMIN_RECORDING",
+  "FCM_TEST_DENIALS",
+  "FCM_TOKEN_REGISTRATION_COMPAT"
+]);
+const REQUIRED_SENSITIVITY_IDS = Object.freeze([
+  "OTP_UNCONDITIONAL_CONSUME",
+  "OTP_LOGIN_TARGET_UNBOUND",
+  "USER_OTHER_READ",
+  "WALLET_OTHER_READ",
+  "DEPENDENT_UNBOUND_CREATE_OWNER",
+  "DEPENDENT_UNSCOPED_LIST",
+  "DEPENDENT_UNSCOPED_ID_CALLS",
+  "DEPENDENT_FORBIDDEN_ROLE_ADMISSION",
+  "DEPENDENT_RAW_OWNER_STRIPPED",
+  "NOTIFICATION_UNSCOPED_LIST",
+  "NOTIFICATION_ID_OWNER_GUARD_REMOVED",
+  "NOTIFICATION_PRIOR_STRICT_OWN_ADMIN_EXPANSION",
+  "FCM_TEST_ADMIN_GUARD_REMOVED",
+  "FCM_TEST_ADMIN_GUARD_AFTER_VALIDATION"
+]);
+const MODEL_IDENTITIES = Object.freeze({
+  "User": [
+    "users",
+    "src1/modules/user/model/index.ts"
+  ],
+  "Admin": [
+    "admins",
+    "src1/modules/admin/model/index.ts"
+  ],
+  "HR": [
+    "hrs",
+    "src1/modules/hr/model/index.ts"
+  ],
+  "Corporate": [
+    "corporates",
+    "src1/modules/corporates/model/index.ts"
+  ],
+  "Specialist": [
+    "specialists",
+    "src1/modules/specialists/model/index.ts"
+  ],
+  "Pharmacy": [
+    "pharmacies",
+    "src1/modules/pharmacies/model/index.ts"
+  ],
+  "OTP": [
+    "OTP",
+    "src1/modules/otp/model/index.ts"
+  ],
+  "Wallet": [
+    "wallets",
+    "src1/modules/wallet/model/index.ts"
+  ],
+  "WalletTransaction": [
+    "wallettransactions",
+    "src1/modules/wallet/model/index.ts"
+  ],
+  "Notification": [
+    "notifications",
+    "src1/modules/notification/model/index.ts"
+  ],
+  "FcmToken": [
+    "fcmtokens",
+    "src1/modules/fcm/model/index.ts"
+  ],
+  "WellnessPackage": [
+    "wellnesspackages",
+    "src1/modules/wellnessPackages/model/index.ts"
+  ],
+  "Dependent": [
+    "dependents",
+    "src1/modules/dependents/model/index.ts"
+  ]
+});
+
 const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const fail = code => { const error = new Error(code); error.fixtureCode = code; throw error; };
 const need = (ok, code) => { if (!ok) fail(code); };
@@ -185,6 +322,9 @@ function validateAdmissionData(manifest, plan, ports, observed) {
     && JSON.stringify(plan.requiredSensitivityIds) === JSON.stringify(ports.requiredSensitivityIds)
     && JSON.stringify(plan.providerCounterKeys) === JSON.stringify(ports.providerCounterKeys)
     && JSON.stringify(plan.models) === JSON.stringify(ports.models), 'PORT_CONTRACT');
+  need(JSON.stringify(ports.roots) === JSON.stringify(ADMITTED_ROOTS)
+    && JSON.stringify(ports.requiredCaseIds) === JSON.stringify(REQUIRED_CASE_IDS)
+    && JSON.stringify(ports.requiredSensitivityIds) === JSON.stringify(REQUIRED_SENSITIVITY_IDS), 'AUTHORITY_PLAN');
   need(Array.isArray(ports.requiredCaseIds) && ports.requiredCaseIds.length >= 20
     && new Set(ports.requiredCaseIds).size === ports.requiredCaseIds.length, 'CASE_SET');
   need(JSON.stringify(ports.recordingModules) === JSON.stringify(['@/services/logger', '@/services/firebase'])
@@ -197,10 +337,12 @@ function validateAdmissionData(manifest, plan, ports, observed) {
   for (const alias of ports.roots) need(Object.hasOwn(plan.modules, alias), 'MISSING_ROUTER_SOURCE');
   for (const mutant of Object.values(plan.mutants)) need(Object.hasOwn(manifest.files, mutant.file)
     && mutant.originalSha256 === plan.sourceFiles[mutant.source], 'UNDECLARED_MUTANT');
-  need(Array.isArray(ports.models) && ports.models.length === 12
-    && new Set(ports.models.map(row => row.name)).size === 12
-    && new Set(ports.models.map(row => row.collection)).size === 12
-    && ports.models.every(row => Object.hasOwn(plan.sourceFiles, row.source) && Array.isArray(row.indexes)), 'MODEL_MAP');
+  need(Array.isArray(ports.models) && ports.models.length === 13
+    && new Set(ports.models.map(row => row.name)).size === 13
+    && new Set(ports.models.map(row => row.collection)).size === 13
+    && ports.models.every(row => plain(row) && typeof row.name === 'string' && Object.hasOwn(MODEL_IDENTITIES, row.name)
+      && JSON.stringify(MODEL_IDENTITIES[row.name]) === JSON.stringify([row.collection, row.source])
+      && Object.hasOwn(plan.sourceFiles, row.source) && Array.isArray(row.indexes)), 'MODEL_MAP');
   return manifest;
 }
 
@@ -290,18 +432,53 @@ function installLoader(manifest, plan, ports) {
   };
 }
 
+// Safe telemetry counts only; event commands and cursor metadata are never retained.
+function recordReadOperation(event, database, readOps, effectCounters) {
+  if (event.databaseName !== database || !['find', 'aggregate', 'count', 'getMore'].includes(event.commandName)) return;
+  let collection;
+  try { collection = event.commandName === 'getMore' ? event.command?.collection : event.command?.[event.commandName]; } catch {}
+  if (typeof collection !== 'string' || !Object.hasOwn(readOps, collection)
+    || !Number.isSafeInteger(readOps[collection]) || readOps[collection] < 0 || readOps[collection] >= Number.MAX_SAFE_INTEGER) {
+    effectCounters.unexpected++; return;
+  }
+  readOps[collection]++;
+}
+
+// Only private synthetic request copies survive the recorder. No SDK or provider is loaded.
+function recordPush(payload, pushes, effectCounters) {
+  effectCounters.push++;
+  let captured;
+  try {
+    const keys = plain(payload) ? Object.keys(payload) : [];
+    const notification = payload?.notification;
+    const valid = keys.includes('tokens') && keys.includes('notification')
+      && keys.every(key => ['tokens', 'notification', 'data'].includes(key))
+      && Array.isArray(payload.tokens) && payload.tokens.length > 0 && payload.tokens.length <= 500
+      && payload.tokens.every(token => typeof token === 'string' && token.length > 0)
+      && plain(notification) && Object.keys(notification).length === 2
+      && Object.hasOwn(notification, 'title') && Object.hasOwn(notification, 'body')
+      && typeof notification.title === 'string' && typeof notification.body === 'string'
+      && (payload.data === undefined || (plain(payload.data)
+        && Object.values(payload.data).every(value => typeof value === 'string')));
+    if (valid) captured = structuredClone(payload);
+  } catch {}
+  if (captured === undefined) { effectCounters.unexpected++; fail('UNDECLARED_PUSH_PAYLOAD'); }
+  pushes.push(captured);
+  return { successCount: 0, failureCount: 0, responses: [] };
+}
+
 function recordingPorts(ports, typedi) {
-  const deliveries = [];
+  const deliveries = []; const pushes = [];
   const logger = { info() { counters.logger++; }, error() { counters.logger++; }, warn() { counters.logger++; }, debug() { counters.logger++; } };
   class PaymentService { createOrder() { counters.excluded++; fail('PAYMENT_CAPABILITY_EXCLUDED'); } }
   class CouponService { validateWalletCoupon() { counters.excluded++; fail('COUPON_CAPABILITY_EXCLUDED'); } }
   typedi.Service()(PaymentService); typedi.Service()(CouponService);
   const substitutes = {
     '@/services/logger': { __esModule: true, default: logger, logger, showError() { counters.logger++; } },
-    '@/services/firebase': { getFirebaseMessaging: () => ({ sendEachForMulticast: async () => { counters.push++; return { successCount: 0, failureCount: 0, responses: [] }; } }) },
+    '@/services/firebase': { getFirebaseMessaging: () => ({ sendEachForMulticast: async payload => recordPush(payload, pushes, counters) }) },
     '@/modules/payment/services': { PaymentService }, '@/modules/coupon/services': { CouponService },
   };
-  return { substitutes, deliveries,
+  return { substitutes, deliveries, pushes,
     adapter: async config => {
       const method = (config.method || 'get').toLowerCase();
       let destination; let body;
@@ -389,6 +566,7 @@ async function main() {
     return createCollection.call(this, name, options);
   };
   const writeOps = Object.fromEntries([...collections].map(name => [name, 0]));
+  const readOps = Object.fromEntries([...collections].map(name => [name, 0]));
   let currentPorts; let server;
   function phase(overrides = {}) {
     if (server) fail('PHASE_SERVER_STILL_OPEN');
@@ -400,6 +578,9 @@ async function main() {
     app.use('/api/v1/auth', loader.load('@/modules/auth/routes').default);
     app.use('/api/v1/users', authenticate, loader.load('@/modules/user/routes').default);
     app.use('/api/v1/wallet', authenticate, loader.load('@/modules/wallet/routes').default);
+    app.use('/api/v1/dependents', authenticate, loader.load('@/modules/dependents/routes').default);
+    app.use('/api/v1/notifications', authenticate, loader.load('@/modules/notification/routes').default);
+    app.use('/api/v1/fcm', authenticate, loader.load('@/modules/fcm/routes').default);
     app.use(loader.load('@/modules/middleware/errorHandler').errorHandler);
     return new Promise((resolve, reject) => {
       server = app.listen(0, '127.0.0.1', () => { const port = server.address().port; httpPorts.add(port); resolve(port); });
@@ -430,6 +611,7 @@ async function main() {
       for (const index of spec.indexes) await runSetupStep('INDEX_CREATE', () => mongoose.connection.db.collection(spec.collection).createIndex(index.key, index.options));
     }
     mongoose.connection.getClient().on('commandStarted', event => {
+      recordReadOperation(event, manifest.database, readOps, counters);
       if (event.databaseName === manifest.database && ['insert', 'update', 'findAndModify', 'delete'].includes(event.commandName)) {
         counters.dbWrites++;
         const collection = event.command[event.commandName];
@@ -441,8 +623,9 @@ async function main() {
     });
     stage = 'API_SCENARIOS';
     const result = await require('./scenario.cjs').runScenario({ manifest, plan, ports, mongoose, jwt,
-      key, originalSign, counters, writeOps, need, fail, load: loader.load,
+      key, originalSign, counters, writeOps, readOps, need, fail, load: loader.load,
       get deliveries() { return currentPorts.deliveries; },
+      get pushes() { return currentPorts.pushes; },
       get port() { return port; },
       async nextPhase(overrides) { await endPhase(); port = await phase(overrides); },
     });
@@ -471,4 +654,4 @@ if (require.main === module) main().catch(error => {
     failed: 1, skipped: 0 }) + '\n');
   process.exitCode = 1;
 });
-module.exports = { validateAdmissionData, inspectManifest, closeNetwork, installLoader, runSetupStep, SETUP_FAILURE_CODES, withOwnedCleanup };
+module.exports = { validateAdmissionData, inspectManifest, closeNetwork, installLoader, runSetupStep, SETUP_FAILURE_CODES, withOwnedCleanup, recordReadOperation, recordPush };

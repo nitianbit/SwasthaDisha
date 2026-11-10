@@ -81,6 +81,7 @@ function inspectEmittedModels(runtimeRoot, modules, ports) {
   }
   declarations.sort((a, b) => a.name.localeCompare(b.name));
   assertModelDeclarations(declarations, ports.models);
+  requireThat(declarations.length === 13 && ports.models.length === 13, 'AUTHORITY_MODEL_COUNT');
   // Genuine guard sensitivity runs only in the separately approved compiler
   // invocation. These variants change metadata, never production source or DB.
   const controls = [];
@@ -92,6 +93,7 @@ function inspectEmittedModels(runtimeRoot, modules, ports) {
   expectRejected('EXTRA_UNREACHABLE_MODEL', [...ports.models, { name: 'UnreachableFixtureModel', source: 'src1/unreachable.ts' }]);
   expectRejected('DUPLICATE_MODEL', [...ports.models, ports.models[0]]);
   expectRejected('WRONG_MODEL_SOURCE', ports.models.map((row, index) => index === 0 ? { ...row, source: 'src1/wrong.ts' } : row));
+  expectRejected('OMITTED_DEPENDENT', ports.models.filter(row => row.name !== 'Dependent'));
   return { declarations, audit: { status: 'STATIC_EMITTED_MODEL_MAP_VERIFIED', reachableModules: reachable.size,
     modelCount: declarations.length, controls, applicationEvaluations: 0 } };
 }
@@ -162,6 +164,7 @@ function compile(sourceRoot, runtimeRoot, inputPlan) {
   const modelMap = inspectEmittedModels(runtimeRoot, modules, ports);
   const mutants = {};
   function mutate(id, relative, transform) {
+    requireThat(Object.hasOwn(sources, relative), 'MUTANT_SOURCE_NOT_ADMITTED');
     const original = fs.readFileSync(path.join(sourceRoot, relative), 'utf8');
     const changed = transform(original);
     requireThat(changed !== original, 'EMPTY_MUTANT');
@@ -200,6 +203,55 @@ function compile(sourceRoot, runtimeRoot, inputPlan) {
     for (const statement of remove.reverse()) text = text.slice(0, statement.pos) + text.slice(statement.end);
     return text;
   });
+  function memberText(text, className, memberName, transform) {
+    const ast = ts.createSourceFile('authority.ts', text, ts.ScriptTarget.ES2020, true);
+    const klass = ast.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === className);
+    const member = klass?.members.find(node => node.name?.getText(ast) === memberName);
+    requireThat(member, 'AUTHORITY_MUTANT_MEMBER');
+    const original = text.slice(member.pos, member.end); const changed = transform(original);
+    requireThat(changed !== original, 'AUTHORITY_MUTANT_MEMBER_UNCHANGED');
+    return text.slice(0, member.pos) + changed + text.slice(member.end);
+  }
+  const dependentController = 'src1/modules/dependents/controller/index.ts';
+  const notificationController = 'src1/modules/notification/controller/index.ts';
+  const fcmRoutes = 'src1/modules/fcm/routes/index.ts';
+  mutate('DEPENDENT_UNBOUND_CREATE_OWNER', dependentController, text => memberText(text, 'DependentController', 'create', source => {
+    const ast = ts.createSourceFile('dependent.ts', text, ts.ScriptTarget.ES2020, true);
+    const klass = ast.statements.find(node => ts.isClassDeclaration(node) && node.name?.text === 'DependentController');
+    const member = klass.members.find(node => node.name?.getText(ast) === 'create');
+    const guards = member.initializer.body.statements.filter(ts.isIfStatement);
+    requireThat(guards.length === 1, 'DEPENDENT_CREATE_MUTANT_BOUNDARY');
+    const start = guards[0].pos - member.pos; const end = guards[0].end - member.pos;
+    return once(source.slice(0, start) + source.slice(end),
+      "userId: actor.userType === 'admin' ? req.body.userId : actor._id,", 'userId: req.body.userId,');
+  }));
+  mutate('DEPENDENT_UNSCOPED_LIST', dependentController, text => memberText(text, 'DependentController', 'getAll', source => once(source,
+    'const effectiveUserId = this.resolveOwner(req, req.query.userId as string | undefined);',
+    'const effectiveUserId = req.query.userId as string | undefined;')));
+  mutate('DEPENDENT_UNSCOPED_ID_CALLS', dependentController, text => {
+    for (const name of ['getById', 'update', 'delete']) text = memberText(text, 'DependentController', name, source => once(source,
+      'const userId = this.resolveOwner(req, req.query.userId as string | undefined);',
+      'const userId = req.query.userId as string | undefined;'));
+    return text;
+  });
+  mutate('DEPENDENT_FORBIDDEN_ROLE_ADMISSION', dependentController, text => memberText(text, 'DependentController', 'requireActor', source => once(source,
+    "if (actor.userType !== 'user' && actor.userType !== 'admin')", 'if (false)')));
+  mutate('DEPENDENT_RAW_OWNER_STRIPPED', 'src1/modules/dependents/routes/index.ts', text => once(text,
+    "  catchAsync(dependentController.rejectOwnershipChange),\n  validate(updateDependentSchema, 'body'),",
+    "  validate(updateDependentSchema, 'body'),\n  catchAsync(dependentController.rejectOwnershipChange),"));
+  mutate('NOTIFICATION_UNSCOPED_LIST', notificationController, text => memberText(text, 'NotificationController', 'getAll', source => once(source,
+    'userId: this.resolveListRecipient(req),', 'userId: req.query.userId as string | undefined,')));
+  mutate('NOTIFICATION_ID_OWNER_GUARD_REMOVED', notificationController, text => memberText(text, 'NotificationController', 'getAuthorizedNotification', source => once(source,
+    "    if (actor.userType !== 'admin') {\n      this.assertOwnRecipient(req, notification.userId);\n    }", '')));
+  mutate('NOTIFICATION_PRIOR_STRICT_OWN_ADMIN_EXPANSION', notificationController, text => memberText(text, 'NotificationController', 'assertOwnRecipient', source => once(source,
+    'private assertOwnRecipient(req: AuthRequest, userId: string): void {',
+    "private assertOwnRecipient(req: AuthRequest, userId: string): void {\n    if (req.user?.userType === 'admin') return;")));
+  const testRegistration = "  '/test',\n  requireAdmin,\n  validate(sendTestNotificationSchema, 'body'),";
+  mutate('FCM_TEST_ADMIN_GUARD_REMOVED', fcmRoutes, text => once(text, testRegistration,
+    "  '/test',\n  validate(sendTestNotificationSchema, 'body'),"));
+  mutate('FCM_TEST_ADMIN_GUARD_AFTER_VALIDATION', fcmRoutes, text => once(text, testRegistration,
+    "  '/test',\n  validate(sendTestNotificationSchema, 'body'),\n  requireAdmin,"));
+  requireThat(JSON.stringify(Object.keys(mutants)) === JSON.stringify(ports.requiredSensitivityIds), 'MUTANT_SET');
   // Retain focused semantic diagnostics without evaluating any application
   // module or resolving excluded capabilities into the rest of the monolith.
   // Missing declarations/excluded types remain visible diagnostic failures.
