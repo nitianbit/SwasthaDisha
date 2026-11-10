@@ -1,0 +1,1778 @@
+TAP version 13
+# Subtest: the exact staged bundle admits the expected identity and hashes
+ok 1 - the exact staged bundle admits the expected identity and hashes
+  ---
+  duration_ms: 11.418709
+  type: 'test'
+  ...
+# Subtest: .env is rejected before a scenario import
+ok 2 - .env is rejected before a scenario import
+  ---
+  duration_ms: 3.864166
+  type: 'test'
+  ...
+# Subtest: .env.production is rejected before a scenario import
+ok 3 - .env.production is rejected before a scenario import
+  ---
+  duration_ms: 2.888709
+  type: 'test'
+  ...
+# Subtest: credentials.json is rejected before a scenario import
+ok 4 - credentials.json is rejected before a scenario import
+  ---
+  duration_ms: 2.027917
+  type: 'test'
+  ...
+# Subtest: extra.mjs is rejected before a scenario import
+ok 5 - extra.mjs is rejected before a scenario import
+  ---
+  duration_ms: 1.707875
+  type: 'test'
+  ...
+# Subtest: changed source bytes are rejected before a scenario import
+ok 6 - changed source bytes are rejected before a scenario import
+  ---
+  duration_ms: 4.440542
+  type: 'test'
+  ...
+# Subtest: a copied manifest cannot change the expected run identity
+ok 7 - a copied manifest cannot change the expected run identity
+  ---
+  duration_ms: 2.939166
+  type: 'test'
+  ...
+# Subtest: changed manifest bytes cannot supply their own expected hash
+ok 8 - changed manifest bytes cannot supply their own expected hash
+  ---
+  duration_ms: 2.582792
+  type: 'test'
+  ...
+# Subtest: source construction rejects unknown filenames and non-text values
+ok 9 - source construction rejects unknown filenames and non-text values
+  ---
+  duration_ms: 0.528125
+  type: 'test'
+  ...
+# Subtest: provider ports record each configured request without a transport or success authority
+ok 10 - provider ports record each configured request without a transport or success authority
+  ---
+  duration_ms: 0.904333
+  type: 'test'
+  ...
+# Subtest: unknown provider operations cannot create a recorded effect
+ok 11 - unknown provider operations cannot create a recorded effect
+  ---
+  duration_ms: 0.142959
+  type: 'test'
+  ...
+# Subtest: realistic or extra payload fields are rejected without recording a call
+ok 12 - realistic or extra payload fields are rejected without recording a call
+  ---
+  duration_ms: 0.107167
+  type: 'test'
+  ...
+# Subtest: the owned application fixture runs once and removes only its own resources
+ok 13 - the owned application fixture runs once and removes only its own resources
+  ---
+  duration_ms: 8.846583
+  type: 'test'
+  ...
+# Subtest: remote endpoint is refused before Docker
+ok 14 - remote endpoint is refused before Docker
+  ---
+  duration_ms: 0.195166
+  type: 'test'
+  ...
+# Subtest: supplied image is refused before Docker
+ok 15 - supplied image is refused before Docker
+  ---
+  duration_ms: 0.041542
+  type: 'test'
+  ...
+# Subtest: supplied DB URI is refused before Docker
+ok 16 - supplied DB URI is refused before Docker
+  ---
+  duration_ms: 0.030042
+  type: 'test'
+  ...
+# Subtest: supplied directory is refused before Docker
+ok 17 - supplied directory is refused before Docker
+  ---
+  duration_ms: 0.029
+  type: 'test'
+  ...
+# Subtest: supplied container ID is refused before Docker
+ok 18 - supplied container ID is refused before Docker
+  ---
+  duration_ms: 0.02525
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_HOST is refused before Docker
+ok 19 - ambient DOCKER_HOST is refused before Docker
+  ---
+  duration_ms: 0.064083
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONTEXT is refused before Docker
+ok 20 - ambient DOCKER_CONTEXT is refused before Docker
+  ---
+  duration_ms: 0.027792
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONFIG is refused before Docker
+ok 21 - ambient DOCKER_CONFIG is refused before Docker
+  ---
+  duration_ms: 0.028583
+  type: 'test'
+  ...
+# Subtest: ambient MONGODB_URL is refused before Docker
+ok 22 - ambient MONGODB_URL is refused before Docker
+  ---
+  duration_ms: 0.031042
+  type: 'test'
+  ...
+# Subtest: ambient PHARMACY_TEST_MONGODB_URI is refused before Docker
+ok 23 - ambient PHARMACY_TEST_MONGODB_URI is refused before Docker
+  ---
+  duration_ms: 0.024792
+  type: 'test'
+  ...
+# Subtest: ambient PAYMENT_SECRET is refused before Docker
+ok 24 - ambient PAYMENT_SECRET is refused before Docker
+  ---
+  duration_ms: 0.024541
+  type: 'test'
+  ...
+# Subtest: ambient NODE_OPTIONS is refused before Docker
+ok 25 - ambient NODE_OPTIONS is refused before Docker
+  ---
+  duration_ms: 0.081292
+  type: 'test'
+  ...
+# Subtest: container ID drift refuses start and destructive cleanup
+ok 26 - container ID drift refuses start and destructive cleanup
+  ---
+  duration_ms: 6.369667
+  type: 'test'
+  ...
+# Subtest: engine image ID drift refuses start and destructive cleanup
+ok 27 - engine image ID drift refuses start and destructive cleanup
+  ---
+  duration_ms: 7.021791
+  type: 'test'
+  ...
+# Subtest: run label drift refuses start and destructive cleanup
+ok 28 - run label drift refuses start and destructive cleanup
+  ---
+  duration_ms: 8.091292
+  type: 'test'
+  ...
+# Subtest: image reference drift refuses start and destructive cleanup
+ok 29 - image reference drift refuses start and destructive cleanup
+  ---
+  duration_ms: 6.25525
+  type: 'test'
+  ...
+# Subtest: environment drift refuses start and destructive cleanup
+ok 30 - environment drift refuses start and destructive cleanup
+  ---
+  duration_ms: 4.454084
+  type: 'test'
+  ...
+# Subtest: command drift refuses start and destructive cleanup
+ok 31 - command drift refuses start and destructive cleanup
+  ---
+  duration_ms: 4.104958
+  type: 'test'
+  ...
+# Subtest: root user drift refuses start and destructive cleanup
+ok 32 - root user drift refuses start and destructive cleanup
+  ---
+  duration_ms: 6.200208
+  type: 'test'
+  ...
+# Subtest: working directory drift refuses start and destructive cleanup
+ok 33 - working directory drift refuses start and destructive cleanup
+  ---
+  duration_ms: 3.724583
+  type: 'test'
+  ...
+# Subtest: healthcheck drift refuses start and destructive cleanup
+ok 34 - healthcheck drift refuses start and destructive cleanup
+  ---
+  duration_ms: 14.265833
+  type: 'test'
+  ...
+# Subtest: network mode drift refuses start and destructive cleanup
+ok 35 - network mode drift refuses start and destructive cleanup
+  ---
+  duration_ms: 4.319292
+  type: 'test'
+  ...
+# Subtest: extra network drift refuses start and destructive cleanup
+ok 36 - extra network drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.777083
+  type: 'test'
+  ...
+# Subtest: published port drift refuses start and destructive cleanup
+ok 37 - published port drift refuses start and destructive cleanup
+  ---
+  duration_ms: 8.296
+  type: 'test'
+  ...
+# Subtest: writable root drift refuses start and destructive cleanup
+ok 38 - writable root drift refuses start and destructive cleanup
+  ---
+  duration_ms: 7.209708
+  type: 'test'
+  ...
+# Subtest: privilege drift refuses start and destructive cleanup
+ok 39 - privilege drift refuses start and destructive cleanup
+  ---
+  duration_ms: 3.142583
+  type: 'test'
+  ...
+# Subtest: added capability drift refuses start and destructive cleanup
+ok 40 - added capability drift refuses start and destructive cleanup
+  ---
+  duration_ms: 3.453042
+  type: 'test'
+  ...
+# Subtest: host IPC drift refuses start and destructive cleanup
+ok 41 - host IPC drift refuses start and destructive cleanup
+  ---
+  duration_ms: 4.611084
+  type: 'test'
+  ...
+# Subtest: weakened security profile drift refuses start and destructive cleanup
+ok 42 - weakened security profile drift refuses start and destructive cleanup
+  ---
+  duration_ms: 4.174708
+  type: 'test'
+  ...
+# Subtest: memory bound drift refuses start and destructive cleanup
+ok 43 - memory bound drift refuses start and destructive cleanup
+  ---
+  duration_ms: 3.815791
+  type: 'test'
+  ...
+# Subtest: tmpfs drift refuses start and destructive cleanup
+ok 44 - tmpfs drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.730209
+  type: 'test'
+  ...
+# Subtest: logging drift refuses start and destructive cleanup
+ok 45 - logging drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.779875
+  type: 'test'
+  ...
+# Subtest: declared mount drift refuses start and destructive cleanup
+ok 46 - declared mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 25.435708
+  type: 'test'
+  ...
+# Subtest: effective mount drift refuses start and destructive cleanup
+ok 47 - effective mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 7.071833
+  type: 'test'
+  ...
+# Subtest: host bind syntax drift refuses start and destructive cleanup
+ok 48 - host bind syntax drift refuses start and destructive cleanup
+  ---
+  duration_ms: 6.707833
+  type: 'test'
+  ...
+# Subtest: declared writable mount drift refuses start and destructive cleanup
+ok 49 - declared writable mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 6.042667
+  type: 'test'
+  ...
+# Subtest: writable mount drift refuses start and destructive cleanup
+ok 50 - writable mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 3.644167
+  type: 'test'
+  ...
+# Subtest: extra mount drift refuses start and destructive cleanup
+ok 51 - extra mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 71.6425
+  type: 'test'
+  ...
+# Subtest: daemon drift cannot redirect execution or cleanup
+ok 52 - daemon drift cannot redirect execution or cleanup
+  ---
+  duration_ms: 5.499375
+  type: 'test'
+  ...
+# Subtest: changed bundle bytes are denied before any container start
+ok 53 - changed bundle bytes are denied before any container start
+  ---
+  duration_ms: 3.116041
+  type: 'test'
+  ...
+# Subtest: wrong identity cannot produce passing application evidence
+ok 54 - wrong identity cannot produce passing application evidence
+  ---
+  duration_ms: 3.46325
+  type: 'test'
+  ...
+# Subtest: missing admission cannot produce passing application evidence
+ok 55 - missing admission cannot produce passing application evidence
+  ---
+  duration_ms: 5.21175
+  type: 'test'
+  ...
+# Subtest: network success cannot produce passing application evidence
+ok 56 - network success cannot produce passing application evidence
+  ---
+  duration_ms: 7.607583
+  type: 'test'
+  ...
+# Subtest: external interface cannot produce passing application evidence
+ok 57 - external interface cannot produce passing application evidence
+  ---
+  duration_ms: 3.440666
+  type: 'test'
+  ...
+# Subtest: database mode cannot produce passing application evidence
+ok 58 - database mode cannot produce passing application evidence
+  ---
+  duration_ms: 4.031958
+  type: 'test'
+  ...
+# Subtest: missing port cannot produce passing application evidence
+ok 59 - missing port cannot produce passing application evidence
+  ---
+  duration_ms: 3.173125
+  type: 'test'
+  ...
+# Subtest: duplicate port cannot produce passing application evidence
+ok 60 - duplicate port cannot produce passing application evidence
+  ---
+  duration_ms: 120.159917
+  type: 'test'
+  ...
+# Subtest: reported effect cannot produce passing application evidence
+ok 61 - reported effect cannot produce passing application evidence
+  ---
+  duration_ms: 4.293583
+  type: 'test'
+  ...
+# Subtest: wrong operation cannot produce passing application evidence
+ok 62 - wrong operation cannot produce passing application evidence
+  ---
+  duration_ms: 5.338583
+  type: 'test'
+  ...
+# Subtest: missing scenario assertion cannot produce passing application evidence
+ok 63 - missing scenario assertion cannot produce passing application evidence
+  ---
+  duration_ms: 8.528875
+  type: 'test'
+  ...
+# Subtest: an image lookup failure cleans only its fresh filesystem workspace
+ok 64 - an image lookup failure cleans only its fresh filesystem workspace
+  ---
+  duration_ms: 2.106083
+  type: 'test'
+  ...
+# Subtest: an unacknowledged create never adopts or removes a container
+ok 65 - an unacknowledged create never adopts or removes a container
+  ---
+  duration_ms: 1.286875
+  type: 'test'
+  ...
+# Subtest: a getter is read once and cannot change the admitted endpoint
+ok 66 - a getter is read once and cannot change the admitted endpoint
+  ---
+  duration_ms: 2.76625
+  type: 'test'
+  ...
+# Subtest: nonzero exit rejects an otherwise successful payload
+ok 67 - nonzero exit rejects an otherwise successful payload
+  ---
+  duration_ms: 3.399
+  type: 'test'
+  ...
+# Subtest: OOM kill rejects an otherwise successful payload
+ok 68 - OOM kill rejects an otherwise successful payload
+  ---
+  duration_ms: 3.17275
+  type: 'test'
+  ...
+# Subtest: still-running container rejects an otherwise successful payload
+ok 69 - still-running container rejects an otherwise successful payload
+  ---
+  duration_ms: 3.406
+  type: 'test'
+  ...
+# Subtest: an invalid create ID never authorizes inspection or cleanup
+ok 70 - an invalid create ID never authorizes inspection or cleanup
+  ---
+  duration_ms: 1.255959
+  type: 'test'
+  ...
+# Subtest: an unreviewed engine cannot create an application container
+ok 71 - an unreviewed engine cannot create an application container
+  ---
+  duration_ms: 1.502083
+  type: 'test'
+  ...
+# Subtest: profile-only overrides with omitted executor are rejected before allocation or Docker
+not ok 72 - profile-only overrides with omitted executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.812166
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:268:5'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    "Error: ENOENT: no such file or directory, lstat '/private/tmp/swasthadisha-foundation-iJnMhR/bootstrap.mjs'"
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+    errno: -2
+    syscall: 'lstat'
+    path: '/private/tmp/swasthadisha-foundation-iJnMhR/bootstrap.mjs'
+  error: "ENOENT: no such file or directory, lstat '/private/tmp/swasthadisha-foundation-iJnMhR/bootstrap.mjs'"
+  code: 'ENOENT'
+  stack: |-
+    lstatSync (node:fs:1722:25)
+    reviewedSources (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:27:18)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:58:55)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:33
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: profile-only overrides with undefined executor are rejected before allocation or Docker
+not ok 73 - profile-only overrides with undefined executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.314625
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:268:5'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    "Error: ENOENT: no such file or directory, lstat '/private/tmp/swasthadisha-foundation-iJnMhR/bootstrap.mjs'"
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+    errno: -2
+    syscall: 'lstat'
+    path: '/private/tmp/swasthadisha-foundation-iJnMhR/bootstrap.mjs'
+  error: "ENOENT: no such file or directory, lstat '/private/tmp/swasthadisha-foundation-iJnMhR/bootstrap.mjs'"
+  code: 'ENOENT'
+  stack: |-
+    lstatSync (node:fs:1722:25)
+    reviewedSources (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:27:18)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:58:55)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:33
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: profile-only overrides with null executor are rejected before allocation or Docker
+not ok 74 - profile-only overrides with null executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.240417
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:268:5'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    "Error: ENOENT: no such file or directory, lstat '/private/tmp/swasthadisha-foundation-iJnMhR/bootstrap.mjs'"
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+    errno: -2
+    syscall: 'lstat'
+    path: '/private/tmp/swasthadisha-foundation-iJnMhR/bootstrap.mjs'
+  error: "ENOENT: no such file or directory, lstat '/private/tmp/swasthadisha-foundation-iJnMhR/bootstrap.mjs'"
+  code: 'ENOENT'
+  stack: |-
+    lstatSync (node:fs:1722:25)
+    reviewedSources (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:27:18)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:58:55)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:33
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: profile-only overrides with object executor are rejected before allocation or Docker
+not ok 75 - profile-only overrides with object executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.254041
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:268:5'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    "Error: ENOENT: no such file or directory, lstat '/private/tmp/swasthadisha-foundation-iJnMhR/bootstrap.mjs'"
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+    errno: -2
+    syscall: 'lstat'
+    path: '/private/tmp/swasthadisha-foundation-iJnMhR/bootstrap.mjs'
+  error: "ENOENT: no such file or directory, lstat '/private/tmp/swasthadisha-foundation-iJnMhR/bootstrap.mjs'"
+  code: 'ENOENT'
+  stack: |-
+    lstatSync (node:fs:1722:25)
+    reviewedSources (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:27:18)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:58:55)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:33
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: profile-only overrides with string executor are rejected before allocation or Docker
+not ok 76 - profile-only overrides with string executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.345208
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:268:5'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    "Error: ENOENT: no such file or directory, lstat '/private/tmp/swasthadisha-foundation-iJnMhR/bootstrap.mjs'"
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+    errno: -2
+    syscall: 'lstat'
+    path: '/private/tmp/swasthadisha-foundation-iJnMhR/bootstrap.mjs'
+  error: "ENOENT: no such file or directory, lstat '/private/tmp/swasthadisha-foundation-iJnMhR/bootstrap.mjs'"
+  code: 'ENOENT'
+  stack: |-
+    lstatSync (node:fs:1722:25)
+    reviewedSources (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:27:18)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:58:55)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:33
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: profile-only overrides with boolean executor are rejected before allocation or Docker
+not ok 77 - profile-only overrides with boolean executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.280459
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:268:5'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    "Error: ENOENT: no such file or directory, lstat '/private/tmp/swasthadisha-foundation-iJnMhR/bootstrap.mjs'"
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+    errno: -2
+    syscall: 'lstat'
+    path: '/private/tmp/swasthadisha-foundation-iJnMhR/bootstrap.mjs'
+  error: "ENOENT: no such file or directory, lstat '/private/tmp/swasthadisha-foundation-iJnMhR/bootstrap.mjs'"
+  code: 'ENOENT'
+  stack: |-
+    lstatSync (node:fs:1722:25)
+    reviewedSources (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:27:18)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:58:55)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:33
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: bundle-only overrides with omitted executor are rejected before allocation or Docker
+not ok 78 - bundle-only overrides with omitted executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.171292
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:268:5'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    'Error: Docker target is outside the reviewed local runtime profile'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+  error: 'Docker target is outside the reviewed local runtime profile'
+  stack: |-
+    requireThat (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-bundle.mjs:16:25)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:55:3)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:33
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: bundle-only overrides with undefined executor are rejected before allocation or Docker
+not ok 79 - bundle-only overrides with undefined executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.136916
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:268:5'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    'Error: Docker target is outside the reviewed local runtime profile'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+  error: 'Docker target is outside the reviewed local runtime profile'
+  stack: |-
+    requireThat (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-bundle.mjs:16:25)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:55:3)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:33
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: bundle-only overrides with null executor are rejected before allocation or Docker
+not ok 80 - bundle-only overrides with null executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.267417
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:268:5'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    'Error: Docker target is outside the reviewed local runtime profile'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+  error: 'Docker target is outside the reviewed local runtime profile'
+  stack: |-
+    requireThat (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-bundle.mjs:16:25)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:55:3)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:33
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: bundle-only overrides with object executor are rejected before allocation or Docker
+not ok 81 - bundle-only overrides with object executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.1255
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:268:5'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    'Error: Docker target is outside the reviewed local runtime profile'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+  error: 'Docker target is outside the reviewed local runtime profile'
+  stack: |-
+    requireThat (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-bundle.mjs:16:25)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:55:3)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:33
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: bundle-only overrides with string executor are rejected before allocation or Docker
+not ok 82 - bundle-only overrides with string executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.109125
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:268:5'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    'Error: Docker target is outside the reviewed local runtime profile'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+  error: 'Docker target is outside the reviewed local runtime profile'
+  stack: |-
+    requireThat (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-bundle.mjs:16:25)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:55:3)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:33
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: bundle-only overrides with boolean executor are rejected before allocation or Docker
+not ok 83 - bundle-only overrides with boolean executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.097375
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:268:5'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    'Error: Docker target is outside the reviewed local runtime profile'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+  error: 'Docker target is outside the reviewed local runtime profile'
+  stack: |-
+    requireThat (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-bundle.mjs:16:25)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:55:3)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:33
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: combined overrides with omitted executor are rejected before allocation or Docker
+not ok 84 - combined overrides with omitted executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.184792
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:268:5'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    'Error: Unexpected filesystem allocation'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+  error: 'Unexpected filesystem allocation'
+  stack: |-
+    fs.mkdtempSync (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:246:54)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:61:34)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:33
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: combined overrides with undefined executor are rejected before allocation or Docker
+not ok 85 - combined overrides with undefined executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.110167
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:268:5'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    'Error: Unexpected filesystem allocation'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+  error: 'Unexpected filesystem allocation'
+  stack: |-
+    fs.mkdtempSync (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:246:54)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:61:34)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:33
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: combined overrides with null executor are rejected before allocation or Docker
+not ok 86 - combined overrides with null executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.107583
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:268:5'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    'Error: Unexpected filesystem allocation'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+  error: 'Unexpected filesystem allocation'
+  stack: |-
+    fs.mkdtempSync (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:246:54)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:61:34)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:33
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: combined overrides with object executor are rejected before allocation or Docker
+not ok 87 - combined overrides with object executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.102833
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:268:5'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    'Error: Unexpected filesystem allocation'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+  error: 'Unexpected filesystem allocation'
+  stack: |-
+    fs.mkdtempSync (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:246:54)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:61:34)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:33
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: combined overrides with string executor are rejected before allocation or Docker
+not ok 88 - combined overrides with string executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.099958
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:268:5'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    'Error: Unexpected filesystem allocation'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+  error: 'Unexpected filesystem allocation'
+  stack: |-
+    fs.mkdtempSync (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:246:54)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:61:34)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:33
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: combined overrides with boolean executor are rejected before allocation or Docker
+not ok 89 - combined overrides with boolean executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.101583
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:268:5'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    'Error: Unexpected filesystem allocation'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+  error: 'Unexpected filesystem allocation'
+  stack: |-
+    fs.mkdtempSync (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:246:54)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:61:34)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:33
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:271:7)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: present profile override cannot hide behind a nullish value
+not ok 90 - present profile override cannot hide behind a nullish value
+  ---
+  duration_ms: 0.106875
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:277:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    'Error: Docker target is outside the reviewed local runtime profile'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+  error: 'Docker target is outside the reviewed local runtime profile'
+  stack: |-
+    requireThat (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-bundle.mjs:16:25)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:55:3)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:278:31
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:278:5)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:278:5)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: present profile override cannot hide behind a nullish value
+not ok 91 - present profile override cannot hide behind a nullish value
+  ---
+  duration_ms: 0.244459
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:277:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    'Error: Docker target is outside the reviewed local runtime profile'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+  error: 'Docker target is outside the reviewed local runtime profile'
+  stack: |-
+    requireThat (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-bundle.mjs:16:25)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:55:3)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:278:31
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:278:5)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:278:5)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: present bundle override cannot hide behind a nullish value
+not ok 92 - present bundle override cannot hide behind a nullish value
+  ---
+  duration_ms: 0.094959
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:277:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    'Error: Docker target is outside the reviewed local runtime profile'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+  error: 'Docker target is outside the reviewed local runtime profile'
+  stack: |-
+    requireThat (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-bundle.mjs:16:25)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:55:3)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:278:31
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:278:5)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:278:5)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: present bundle override cannot hide behind a nullish value
+not ok 93 - present bundle override cannot hide behind a nullish value
+  ---
+  duration_ms: 24.975166
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:277:3'
+  failureType: 'testCodeFailure'
+  error: |-
+    The input did not match the regular expression /explicit callable test executor/. Input:
+    
+    'Error: Docker target is outside the reviewed local runtime profile'
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  actual:
+  error: 'Docker target is outside the reviewed local runtime profile'
+  stack: |-
+    requireThat (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-bundle.mjs:16:25)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:55:3)
+    file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:278:31
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:278:5)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+  operator: 'throws'
+  stack: |-
+    rejectBeforeEffects (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:251:12)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:278:5)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: a callable executor is snapshotted once and never falls back to real transport
+ok 94 - a callable executor is snapshotted once and never falls back to real transport
+  ---
+  duration_ms: 20.381042
+  type: 'test'
+  ...
+# Subtest: NODE_OPTIONS is denied by image admission before create
+ok 95 - NODE_OPTIONS is denied by image admission before create
+  ---
+  duration_ms: 1.853542
+  type: 'test'
+  ...
+# Subtest: extra environment key is denied by image admission before create
+ok 96 - extra environment key is denied by image admission before create
+  ---
+  duration_ms: 1.583917
+  type: 'test'
+  ...
+# Subtest: PATH equals suffix is denied by image admission before create
+not ok 97 - PATH equals suffix is denied by image admission before create
+  ---
+  duration_ms: 1.438084
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:299:3'
+  failureType: 'testCodeFailure'
+  error: 'Missing expected exception.'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected:
+  operator: 'throws'
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:301:12)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: duplicate environment key is denied by image admission before create
+ok 98 - duplicate environment key is denied by image admission before create
+  ---
+  duration_ms: 1.733042
+  type: 'test'
+  ...
+# Subtest: RepoDigest mismatch is denied by image admission before create
+ok 99 - RepoDigest mismatch is denied by image admission before create
+  ---
+  duration_ms: 16.778584
+  type: 'test'
+  ...
+# Subtest: image volumes is denied by image admission before create
+ok 100 - image volumes is denied by image admission before create
+  ---
+  duration_ms: 2.384042
+  type: 'test'
+  ...
+# Subtest: a different well-formed Unix endpoint is not the recorded profile
+ok 101 - a different well-formed Unix endpoint is not the recorded profile
+  ---
+  duration_ms: 0.11875
+  type: 'test'
+  ...
+# Subtest: replaced ownership marker prevents execution and cleanup
+ok 102 - replaced ownership marker prevents execution and cleanup
+  ---
+  duration_ms: 3.463625
+  type: 'test'
+  ...
+# Subtest: a replacement directory with a copied marker does not acquire ownership
+ok 103 - a replacement directory with a copied marker does not acquire ownership
+  ---
+  duration_ms: 21.568708
+  type: 'test'
+  ...
+# Subtest: acknowledged container removal is not repeated after workspace-cleanup failure
+ok 104 - acknowledged container removal is not repeated after workspace-cleanup failure
+  ---
+  duration_ms: 9.395958
+  type: 'test'
+  ...
+# Subtest: a disappeared pre-create workspace does not replace the original failure
+not ok 105 - a disappeared pre-create workspace does not replace the original failure
+  ---
+  duration_ms: 3.73125
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:355:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    The validation function is expected to return "true". Received false
+    
+    Caught error:
+    
+    Error: ENOENT: no such file or directory, lstat '/private/tmp/swasthadisha-foundation-iJnMhR/scratch/sd-app-isolation-yZH43r'
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: [Function (anonymous)]
+  actual:
+    errno: -2
+    syscall: 'lstat'
+    path: '/private/tmp/swasthadisha-foundation-iJnMhR/scratch/sd-app-isolation-yZH43r'
+  error: "ENOENT: no such file or directory, lstat '/private/tmp/swasthadisha-foundation-iJnMhR/scratch/sd-app-isolation-yZH43r'"
+  code: 'ENOENT'
+  stack: |-
+    lstatSync (node:fs:1722:25)
+    createApplicationFixture (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.mjs:222:21)
+    fs.mkdtempSync (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:364:29)
+    getActual (node:assert:609:5)
+    Function.throws (node:assert:757:24)
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:364:16)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+  operator: 'throws'
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-iJnMhR/app-container.test.mjs:364:16)
+    Test.runInAsyncScope (node:async_hooks:214:14)
+    Test.run (node:internal/test_runner/test:1047:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:744:18)
+    Test.postRun (node:internal/test_runner/test:1173:19)
+    Test.run (node:internal/test_runner/test:1101:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: the owned fixture lifecycle mutates only its acknowledged container ID
+ok 106 - the owned fixture lifecycle mutates only its acknowledged container ID
+  ---
+  duration_ms: 0.80175
+  type: 'test'
+  ...
+# Subtest: TCP endpoint is rejected before any Docker call
+ok 107 - TCP endpoint is rejected before any Docker call
+  ---
+  duration_ms: 0.045875
+  type: 'test'
+  ...
+# Subtest: SSH endpoint is rejected before any Docker call
+ok 108 - SSH endpoint is rejected before any Docker call
+  ---
+  duration_ms: 0.022
+  type: 'test'
+  ...
+# Subtest: unpinned image is rejected before any Docker call
+ok 109 - unpinned image is rejected before any Docker call
+  ---
+  duration_ms: 0.041625
+  type: 'test'
+  ...
+# Subtest: another registry is rejected before any Docker call
+ok 110 - another registry is rejected before any Docker call
+  ---
+  duration_ms: 0.020584
+  type: 'test'
+  ...
+# Subtest: supplied database URI is rejected before any Docker call
+ok 111 - supplied database URI is rejected before any Docker call
+  ---
+  duration_ms: 0.019417
+  type: 'test'
+  ...
+# Subtest: supplied container ID is rejected before any Docker call
+ok 112 - supplied container ID is rejected before any Docker call
+  ---
+  duration_ms: 0.019416
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_HOST cannot select a different Docker resource
+ok 113 - ambient DOCKER_HOST cannot select a different Docker resource
+  ---
+  duration_ms: 0.040417
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONTEXT cannot select a different Docker resource
+ok 114 - ambient DOCKER_CONTEXT cannot select a different Docker resource
+  ---
+  duration_ms: 0.020834
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONFIG cannot select a different Docker resource
+ok 115 - ambient DOCKER_CONFIG cannot select a different Docker resource
+  ---
+  duration_ms: 0.022333
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_TLS_VERIFY cannot select a different Docker resource
+ok 116 - ambient DOCKER_TLS_VERIFY cannot select a different Docker resource
+  ---
+  duration_ms: 0.018833
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CERT_PATH cannot select a different Docker resource
+ok 117 - ambient DOCKER_CERT_PATH cannot select a different Docker resource
+  ---
+  duration_ms: 0.018875
+  type: 'test'
+  ...
+# Subtest: container ID drift prevents start and cleanup
+ok 118 - container ID drift prevents start and cleanup
+  ---
+  duration_ms: 0.151791
+  type: 'test'
+  ...
+# Subtest: run label drift prevents start and cleanup
+ok 119 - run label drift prevents start and cleanup
+  ---
+  duration_ms: 0.0635
+  type: 'test'
+  ...
+# Subtest: image drift prevents start and cleanup
+ok 120 - image drift prevents start and cleanup
+  ---
+  duration_ms: 0.124667
+  type: 'test'
+  ...
+# Subtest: root user drift prevents start and cleanup
+ok 121 - root user drift prevents start and cleanup
+  ---
+  duration_ms: 0.103417
+  type: 'test'
+  ...
+# Subtest: host network drift prevents start and cleanup
+ok 122 - host network drift prevents start and cleanup
+  ---
+  duration_ms: 0.060958
+  type: 'test'
+  ...
+# Subtest: published port drift prevents start and cleanup
+ok 123 - published port drift prevents start and cleanup
+  ---
+  duration_ms: 0.058958
+  type: 'test'
+  ...
+# Subtest: host mount drift prevents start and cleanup
+ok 124 - host mount drift prevents start and cleanup
+  ---
+  duration_ms: 0.053375
+  type: 'test'
+  ...
+# Subtest: persistent volume drift prevents start and cleanup
+ok 125 - persistent volume drift prevents start and cleanup
+  ---
+  duration_ms: 0.117959
+  type: 'test'
+  ...
+# Subtest: writeable root drift prevents start and cleanup
+ok 126 - writeable root drift prevents start and cleanup
+  ---
+  duration_ms: 0.092959
+  type: 'test'
+  ...
+# Subtest: added capability drift prevents start and cleanup
+ok 127 - added capability drift prevents start and cleanup
+  ---
+  duration_ms: 0.066292
+  type: 'test'
+  ...
+# Subtest: host IPC drift prevents start and cleanup
+ok 128 - host IPC drift prevents start and cleanup
+  ---
+  duration_ms: 0.056666
+  type: 'test'
+  ...
+# Subtest: host device drift prevents start and cleanup
+ok 129 - host device drift prevents start and cleanup
+  ---
+  duration_ms: 0.0555
+  type: 'test'
+  ...
+# Subtest: missing memory limit drift prevents start and cleanup
+ok 130 - missing memory limit drift prevents start and cleanup
+  ---
+  duration_ms: 0.0595
+  type: 'test'
+  ...
+# Subtest: changed tmpfs drift prevents start and cleanup
+ok 131 - changed tmpfs drift prevents start and cleanup
+  ---
+  duration_ms: 0.049709
+  type: 'test'
+  ...
+# Subtest: daemon changes cannot redirect start or cleanup
+ok 132 - daemon changes cannot redirect start or cleanup
+  ---
+  duration_ms: 0.063083
+  type: 'test'
+  ...
+# Subtest: no external or unknown container is adopted after an unacknowledged create
+ok 133 - no external or unknown container is adopted after an unacknowledged create
+  ---
+  duration_ms: 0.05675
+  type: 'test'
+  ...
+# Subtest: an invalid returned container ID cannot authorize inspection or cleanup
+ok 134 - an invalid returned container ID cannot authorize inspection or cleanup
+  ---
+  duration_ms: 0.04325
+  type: 'test'
+  ...
+# Subtest: database effects require readiness and revalidate ownership after start
+ok 135 - database effects require readiness and revalidate ownership after start
+  ---
+  duration_ms: 0.099375
+  type: 'test'
+  ...
+# Subtest: a caller cannot change the captured image after creation
+ok 136 - a caller cannot change the captured image after creation
+  ---
+  duration_ms: 0.054667
+  type: 'test'
+  ...
+# Subtest: image admission validates the same single snapshot used for creation
+ok 137 - image admission validates the same single snapshot used for creation
+  ---
+  duration_ms: 0.064
+  type: 'test'
+  ...
+# Subtest: an initially unpinned getter is rejected before Docker is invoked
+ok 138 - an initially unpinned getter is rejected before Docker is invoked
+  ---
+  duration_ms: 0.047625
+  type: 'test'
+  ...
+# Subtest: a second start cannot issue another start command
+ok 139 - a second start cannot issue another start command
+  ---
+  duration_ms: 0.079
+  type: 'test'
+  ...
+# Subtest: missing commit cannot produce passing transaction evidence
+ok 140 - missing commit cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.088584
+  type: 'test'
+  ...
+# Subtest: failed rollback cannot produce passing transaction evidence
+ok 141 - failed rollback cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.058709
+  type: 'test'
+  ...
+# Subtest: wrong namespace cannot produce passing transaction evidence
+ok 142 - wrong namespace cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.053875
+  type: 'test'
+  ...
+# Subtest: wrong replica set cannot produce passing transaction evidence
+ok 143 - wrong replica set cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.05375
+  type: 'test'
+  ...
+# Subtest: a runner-created workspace admits the exact clean unit-test launch
+ok 144 - a runner-created workspace admits the exact clean unit-test launch
+  ---
+  duration_ms: 1.04275
+  type: 'test'
+  ...
+# Subtest: a copied marker and matching directory do not confer ownership
+ok 145 - a copied marker and matching directory do not confer ownership
+  ---
+  duration_ms: 0.607333
+  type: 'test'
+  ...
+# Subtest: unknown resource identity cannot authorize a launch
+ok 146 - unknown resource identity cannot authorize a launch
+  ---
+  duration_ms: 0.029292
+  type: 'test'
+  ...
+# Subtest: inherited NODE_OPTIONS is refused before imports or connectors
+ok 147 - inherited NODE_OPTIONS is refused before imports or connectors
+  ---
+  duration_ms: 0.781917
+  type: 'test'
+  ...
+# Subtest: inherited NODE_PATH is refused before imports or connectors
+ok 148 - inherited NODE_PATH is refused before imports or connectors
+  ---
+  duration_ms: 0.712292
+  type: 'test'
+  ...
+# Subtest: inherited MONGODB_URL is refused before imports or connectors
+ok 149 - inherited MONGODB_URL is refused before imports or connectors
+  ---
+  duration_ms: 0.767333
+  type: 'test'
+  ...
+# Subtest: inherited PHARMACY_TEST_MONGODB_URI is refused before imports or connectors
+ok 150 - inherited PHARMACY_TEST_MONGODB_URI is refused before imports or connectors
+  ---
+  duration_ms: 0.695625
+  type: 'test'
+  ...
+# Subtest: inherited PAYMENT_SECRET is refused before imports or connectors
+ok 151 - inherited PAYMENT_SECRET is refused before imports or connectors
+  ---
+  duration_ms: 0.675792
+  type: 'test'
+  ...
+# Subtest: a database named latest is not admitted as a disposable resource
+ok 152 - a database named latest is not admitted as a disposable resource
+  ---
+  duration_ms: 0.698916
+  type: 'test'
+  ...
+# Subtest: incorrect working directory or test identity is refused
+ok 153 - incorrect working directory or test identity is refused
+  ---
+  duration_ms: 0.971875
+  type: 'test'
+  ...
+# Subtest: missing environment fields are refused
+ok 154 - missing environment fields are refused
+  ---
+  duration_ms: 0.699083
+  type: 'test'
+  ...
+# Subtest: an operational .env file is refused, including nested files
+ok 155 - an operational .env file is refused, including nested files
+  ---
+  duration_ms: 10.697625
+  type: 'test'
+  ...
+# Subtest: unexpected staged application files are refused
+ok 156 - unexpected staged application files are refused
+  ---
+  duration_ms: 0.877625
+  type: 'test'
+  ...
+# Subtest: the test child cannot create symlinks to escape its filesystem permissions
+ok 157 - the test child cannot create symlinks to escape its filesystem permissions
+  ---
+  duration_ms: 0.637834
+  type: 'test'
+  ...
+# Subtest: changed ownership refuses both execution and cleanup
+ok 158 - changed ownership refuses both execution and cleanup
+  ---
+  duration_ms: 1.310458
+  type: 'test'
+  ...
+# Subtest: a replacement directory with a copied marker is not the owned resource
+ok 159 - a replacement directory with a copied marker is not the owned resource
+  ---
+  duration_ms: 1.098042
+  type: 'test'
+  ...
+# Subtest: cleanup affects only the owned workspace and is idempotent
+ok 160 - cleanup affects only the owned workspace and is idempotent
+  ---
+  duration_ms: 18.969416
+  type: 'test'
+  ...
+# Subtest: the test child cannot read parent files or spawn another process
+ok 161 - the test child cannot read parent files or spawn another process
+  ---
+  duration_ms: 0.608916
+  type: 'test'
+  ...
+1..161
+# tests 161
+# suites 0
+# pass 137
+# fail 24
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 695.309209

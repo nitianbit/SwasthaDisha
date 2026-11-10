@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { chmodSync, existsSync, readdirSync, writeFileSync } from 'node:fs';
+import fs, { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import childProcess from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createApplicationFixture } from './app-container.mjs';
@@ -16,11 +18,12 @@ const operations = { payments: 'create-order', sms: 'send', email: 'send', push:
   calendar: 'create-event', storage: 'put', queue: 'enqueue' };
 
 function fakeDocker() {
-  const state = { calls: [], engine: 'synthetic-engine', item: null, editResult: (result) => result };
+  const state = { calls: [], engine: 'synthetic-engine', item: null, editResult: (result) => result,
+    image: { Id: imageId, Os: 'linux', Architecture: 'arm64', RepoDigests: [pinnedImage], Config: { Env: [...baseEnv] } } };
   const executor = (args) => {
     state.calls.push([...args]);
     if (args[0] === 'info') return JSON.stringify([state.engine, 'linux']);
-    if (args[0] === 'image') return JSON.stringify([{ Id: imageId, Os: 'linux', Architecture: 'arm64', RepoDigests: [pinnedImage], Config: { Env: baseEnv } }]);
+    if (args[0] === 'image') return JSON.stringify([state.image]);
     if (args[0] === 'create') {
       const get = (flag) => args[args.indexOf(flag) + 1];
       const env = []; const labels = {};
@@ -233,5 +236,133 @@ test('an unreviewed engine cannot create an application container', () => {
   const transport = fakeDocker();
   transport.state.engine = 'unreviewed-engine';
   assert.throws(() => createApplicationFixture({ endpoint }, transport), /outside the reviewed local/);
+  assert.equal(transport.state.calls.some((args) => ['create', 'start', 'rm'].includes(args[0])), false);
+});
+
+
+function rejectBeforeEffects(action) {
+  const calls = { allocation: 0, socketMetadata: 0, process: 0 };
+  const original = { mkdtempSync: fs.mkdtempSync, statSync: fs.statSync, spawnSync: childProcess.spawnSync };
+  fs.mkdtempSync = () => { calls.allocation++; throw new Error('Unexpected filesystem allocation'); };
+  fs.statSync = () => { calls.socketMetadata++; throw new Error('Unexpected socket access'); };
+  childProcess.spawnSync = () => { calls.process++; throw new Error('Unexpected Docker process'); };
+  syncBuiltinESMExports();
+  try {
+    assert.throws(action, /explicit callable test executor/);
+    assert.deepEqual(calls, { allocation: 0, socketMetadata: 0, process: 0 });
+  } finally {
+    fs.mkdtempSync = original.mkdtempSync;
+    fs.statSync = original.statSync;
+    childProcess.spawnSync = original.spawnSync;
+    syncBuiltinESMExports();
+  }
+}
+
+for (const [name, settings] of [
+  ['profile-only', { profile: { endpoint, engineId: 'synthetic-engine' } }],
+  ['bundle-only', { bundle }],
+  ['combined', { profile: { endpoint, engineId: 'synthetic-engine' }, bundle }],
+]) {
+  for (const [kind, executor] of [['omitted', undefined], ['undefined', undefined], ['null', null],
+    ['object', {}], ['string', 'not-callable'], ['boolean', false]]) {
+    test(`${name} overrides with ${kind} executor are rejected before allocation or Docker`, () => {
+      const seams = { ...settings };
+      if (kind !== 'omitted') seams.executor = executor;
+      rejectBeforeEffects(() => createApplicationFixture({ endpoint }, seams));
+    });
+  }
+}
+
+for (const settings of [{ profile: undefined }, { profile: null }, { bundle: undefined }, { bundle: null }]) {
+  test(`present ${Object.keys(settings)[0]} override cannot hide behind a nullish value`, () => {
+    rejectBeforeEffects(() => createApplicationFixture({ endpoint }, settings));
+  });
+}
+
+test('a callable executor is snapshotted once and never falls back to real transport', (t) => {
+  const transport = fakeDocker(); let reads = 0;
+  const seams = { profile: transport.profile, bundle, get executor() { return ++reads === 1 ? transport.executor : undefined; } };
+  const instance = createApplicationFixture({ endpoint }, seams);
+  t.after(() => instance.dispose());
+  assert.equal(reads, 1);
+  assert.equal(instance.run().calls.length, 7);
+});
+
+for (const [name, change] of [
+  ['NODE_OPTIONS', (image) => { image.Config.Env.push('NODE_OPTIONS=synthetic-not-executed'); }],
+  ['extra environment key', (image) => { image.Config.Env.push('SYNTHETIC_EXTRA=1'); }],
+  ['PATH equals suffix', (image) => { image.Config.Env[0] += '=x'; }],
+  ['duplicate environment key', (image) => { image.Config.Env.push(image.Config.Env[0]); }],
+  ['RepoDigest mismatch', (image) => { image.RepoDigests = ['node@sha256:' + 'f'.repeat(64)]; }],
+  ['image volumes', (image) => { image.Config.Volumes = { '/data': {} }; }],
+]) {
+  test(`${name} is denied by image admission before create`, () => {
+    const transport = fakeDocker(); change(transport.state.image);
+    assert.throws(() => createApplicationFixture({ endpoint }, transport), /runtime image environment|Pinned Linux image/);
+    assert.equal(transport.state.calls.some((args) => ['create', 'start', 'rm'].includes(args[0])), false);
+  });
+}
+
+test('a different well-formed Unix endpoint is not the recorded profile', () => {
+  const transport = fakeDocker();
+  assert.throws(() => createApplicationFixture({ endpoint: 'unix:///different/docker.sock' }, transport), /outside the reviewed local/);
+  assert.equal(transport.state.calls.length, 0);
+});
+
+test('replaced ownership marker prevents execution and cleanup', (t) => {
+  const { state, instance } = fixture(t);
+  const marker = join(instance.directory, '.owner.json'); const original = readFileSync(marker);
+  try {
+    writeFileSync(marker, JSON.stringify({ runId: 'forged' }));
+    assert.throws(() => instance.run(), /Workspace ownership changed/);
+    assert.throws(() => instance.dispose(), /Workspace ownership changed/);
+    assert.equal(state.calls.some((args) => ['start', 'rm'].includes(args[0])), false);
+  } finally { writeFileSync(marker, original); }
+});
+
+test('a replacement directory with a copied marker does not acquire ownership', (t) => {
+  const { state, instance } = fixture(t);
+  const originalDirectory = instance.directory + '-original';
+  const marker = readFileSync(join(instance.directory, '.owner.json'));
+  renameSync(instance.directory, originalDirectory);
+  try {
+    mkdirSync(instance.directory); writeFileSync(join(instance.directory, '.owner.json'), marker);
+    assert.throws(() => instance.run(), /Workspace identity changed/);
+    assert.throws(() => instance.dispose(), /Workspace identity changed/);
+    assert.equal(state.calls.some((args) => ['start', 'rm'].includes(args[0])), false);
+  } finally {
+    rmSync(instance.directory, { recursive: true, force: false });
+    renameSync(originalDirectory, instance.directory);
+  }
+});
+
+test('acknowledged container removal is not repeated after workspace-cleanup failure', (t) => {
+  const { state, instance } = fixture(t); const original = fs.rmSync;
+  fs.rmSync = (path, options) => {
+    if (path === instance.directory) throw Object.assign(new Error('synthetic cleanup denial'), { code: 'EACCES' });
+    return original(path, options);
+  };
+  syncBuiltinESMExports();
+  try { assert.throws(() => instance.dispose(), /synthetic cleanup denial/); }
+  finally { fs.rmSync = original; syncBuiltinESMExports(); }
+  assert.equal(state.calls.filter((args) => args[0] === 'rm').length, 1);
+  const beforeRetry = state.calls.length;
+  instance.dispose();
+  assert.equal(state.calls.length, beforeRetry);
+  assert.equal(existsSync(instance.directory), false);
+});
+
+test('a disappeared pre-create workspace does not replace the original failure', () => {
+  const transport = fakeDocker(); const originalAllocate = fs.mkdtempSync;
+  const cause = new Error('synthetic original metadata failure'); let directory;
+  fs.mkdtempSync = (...args) => { directory = originalAllocate(...args); return directory; };
+  syncBuiltinESMExports();
+  const executor = (args) => {
+    if (args[0] === 'info') { rmSync(directory, { recursive: true, force: false }); throw cause; }
+    return transport.executor(args);
+  };
+  try { assert.throws(() => createApplicationFixture({ endpoint }, { ...transport, executor }), (error) => error === cause); }
+  finally { fs.mkdtempSync = originalAllocate; syncBuiltinESMExports(); }
+  assert.equal(existsSync(directory), false);
   assert.equal(transport.state.calls.some((args) => ['create', 'start', 'rm'].includes(args[0])), false);
 });

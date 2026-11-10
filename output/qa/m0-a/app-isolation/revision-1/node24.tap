@@ -1,0 +1,976 @@
+TAP version 13
+# Subtest: the exact staged bundle admits the expected identity and hashes
+ok 1 - the exact staged bundle admits the expected identity and hashes
+  ---
+  duration_ms: 3.272917
+  type: 'test'
+  ...
+# Subtest: .env is rejected before a scenario import
+ok 2 - .env is rejected before a scenario import
+  ---
+  duration_ms: 1.222833
+  type: 'test'
+  ...
+# Subtest: .env.production is rejected before a scenario import
+ok 3 - .env.production is rejected before a scenario import
+  ---
+  duration_ms: 0.902375
+  type: 'test'
+  ...
+# Subtest: credentials.json is rejected before a scenario import
+ok 4 - credentials.json is rejected before a scenario import
+  ---
+  duration_ms: 0.861542
+  type: 'test'
+  ...
+# Subtest: extra.mjs is rejected before a scenario import
+ok 5 - extra.mjs is rejected before a scenario import
+  ---
+  duration_ms: 0.843167
+  type: 'test'
+  ...
+# Subtest: changed source bytes are rejected before a scenario import
+ok 6 - changed source bytes are rejected before a scenario import
+  ---
+  duration_ms: 1.174042
+  type: 'test'
+  ...
+# Subtest: a copied manifest cannot change the expected run identity
+ok 7 - a copied manifest cannot change the expected run identity
+  ---
+  duration_ms: 0.880917
+  type: 'test'
+  ...
+# Subtest: changed manifest bytes cannot supply their own expected hash
+ok 8 - changed manifest bytes cannot supply their own expected hash
+  ---
+  duration_ms: 0.928583
+  type: 'test'
+  ...
+# Subtest: source construction rejects unknown filenames and non-text values
+ok 9 - source construction rejects unknown filenames and non-text values
+  ---
+  duration_ms: 0.069917
+  type: 'test'
+  ...
+# Subtest: provider ports record each configured request without a transport or success authority
+ok 10 - provider ports record each configured request without a transport or success authority
+  ---
+  duration_ms: 0.136667
+  type: 'test'
+  ...
+# Subtest: unknown provider operations cannot create a recorded effect
+ok 11 - unknown provider operations cannot create a recorded effect
+  ---
+  duration_ms: 0.083333
+  type: 'test'
+  ...
+# Subtest: realistic or extra payload fields are rejected without recording a call
+ok 12 - realistic or extra payload fields are rejected without recording a call
+  ---
+  duration_ms: 0.073083
+  type: 'test'
+  ...
+# Subtest: the owned application fixture runs once and removes only its own resources
+ok 13 - the owned application fixture runs once and removes only its own resources
+  ---
+  duration_ms: 5.653417
+  type: 'test'
+  ...
+# Subtest: remote endpoint is refused before Docker
+ok 14 - remote endpoint is refused before Docker
+  ---
+  duration_ms: 0.094959
+  type: 'test'
+  ...
+# Subtest: supplied image is refused before Docker
+ok 15 - supplied image is refused before Docker
+  ---
+  duration_ms: 0.026709
+  type: 'test'
+  ...
+# Subtest: supplied DB URI is refused before Docker
+ok 16 - supplied DB URI is refused before Docker
+  ---
+  duration_ms: 0.022667
+  type: 'test'
+  ...
+# Subtest: supplied directory is refused before Docker
+ok 17 - supplied directory is refused before Docker
+  ---
+  duration_ms: 0.022959
+  type: 'test'
+  ...
+# Subtest: supplied container ID is refused before Docker
+ok 18 - supplied container ID is refused before Docker
+  ---
+  duration_ms: 0.021125
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_HOST is refused before Docker
+ok 19 - ambient DOCKER_HOST is refused before Docker
+  ---
+  duration_ms: 0.046583
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONTEXT is refused before Docker
+ok 20 - ambient DOCKER_CONTEXT is refused before Docker
+  ---
+  duration_ms: 0.021667
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONFIG is refused before Docker
+ok 21 - ambient DOCKER_CONFIG is refused before Docker
+  ---
+  duration_ms: 0.025083
+  type: 'test'
+  ...
+# Subtest: ambient MONGODB_URL is refused before Docker
+ok 22 - ambient MONGODB_URL is refused before Docker
+  ---
+  duration_ms: 0.052042
+  type: 'test'
+  ...
+# Subtest: ambient PHARMACY_TEST_MONGODB_URI is refused before Docker
+ok 23 - ambient PHARMACY_TEST_MONGODB_URI is refused before Docker
+  ---
+  duration_ms: 0.025541
+  type: 'test'
+  ...
+# Subtest: ambient PAYMENT_SECRET is refused before Docker
+ok 24 - ambient PAYMENT_SECRET is refused before Docker
+  ---
+  duration_ms: 0.020584
+  type: 'test'
+  ...
+# Subtest: ambient NODE_OPTIONS is refused before Docker
+ok 25 - ambient NODE_OPTIONS is refused before Docker
+  ---
+  duration_ms: 0.019667
+  type: 'test'
+  ...
+# Subtest: container ID drift refuses start and destructive cleanup
+ok 26 - container ID drift refuses start and destructive cleanup
+  ---
+  duration_ms: 3.933042
+  type: 'test'
+  ...
+# Subtest: engine image ID drift refuses start and destructive cleanup
+ok 27 - engine image ID drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.464292
+  type: 'test'
+  ...
+# Subtest: run label drift refuses start and destructive cleanup
+ok 28 - run label drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.217833
+  type: 'test'
+  ...
+# Subtest: image reference drift refuses start and destructive cleanup
+ok 29 - image reference drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.169959
+  type: 'test'
+  ...
+# Subtest: environment drift refuses start and destructive cleanup
+ok 30 - environment drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.138125
+  type: 'test'
+  ...
+# Subtest: command drift refuses start and destructive cleanup
+ok 31 - command drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.216375
+  type: 'test'
+  ...
+# Subtest: root user drift refuses start and destructive cleanup
+ok 32 - root user drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.344917
+  type: 'test'
+  ...
+# Subtest: working directory drift refuses start and destructive cleanup
+ok 33 - working directory drift refuses start and destructive cleanup
+  ---
+  duration_ms: 4.117291
+  type: 'test'
+  ...
+# Subtest: healthcheck drift refuses start and destructive cleanup
+ok 34 - healthcheck drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.28525
+  type: 'test'
+  ...
+# Subtest: network mode drift refuses start and destructive cleanup
+ok 35 - network mode drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.338833
+  type: 'test'
+  ...
+# Subtest: extra network drift refuses start and destructive cleanup
+ok 36 - extra network drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.232875
+  type: 'test'
+  ...
+# Subtest: published port drift refuses start and destructive cleanup
+ok 37 - published port drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.223334
+  type: 'test'
+  ...
+# Subtest: writable root drift refuses start and destructive cleanup
+ok 38 - writable root drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.131625
+  type: 'test'
+  ...
+# Subtest: privilege drift refuses start and destructive cleanup
+ok 39 - privilege drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.2395
+  type: 'test'
+  ...
+# Subtest: added capability drift refuses start and destructive cleanup
+ok 40 - added capability drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.763125
+  type: 'test'
+  ...
+# Subtest: host IPC drift refuses start and destructive cleanup
+ok 41 - host IPC drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.123792
+  type: 'test'
+  ...
+# Subtest: weakened security profile drift refuses start and destructive cleanup
+ok 42 - weakened security profile drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.117292
+  type: 'test'
+  ...
+# Subtest: memory bound drift refuses start and destructive cleanup
+ok 43 - memory bound drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.134667
+  type: 'test'
+  ...
+# Subtest: tmpfs drift refuses start and destructive cleanup
+ok 44 - tmpfs drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.022459
+  type: 'test'
+  ...
+# Subtest: logging drift refuses start and destructive cleanup
+ok 45 - logging drift refuses start and destructive cleanup
+  ---
+  duration_ms: 1.990416
+  type: 'test'
+  ...
+# Subtest: declared mount drift refuses start and destructive cleanup
+ok 46 - declared mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.106625
+  type: 'test'
+  ...
+# Subtest: effective mount drift refuses start and destructive cleanup
+ok 47 - effective mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.107
+  type: 'test'
+  ...
+# Subtest: host bind syntax drift refuses start and destructive cleanup
+ok 48 - host bind syntax drift refuses start and destructive cleanup
+  ---
+  duration_ms: 2.629
+  type: 'test'
+  ...
+# Subtest: declared writable mount drift refuses start and destructive cleanup
+ok 49 - declared writable mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 4.00075
+  type: 'test'
+  ...
+# Subtest: writable mount drift refuses start and destructive cleanup
+ok 50 - writable mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 4.982125
+  type: 'test'
+  ...
+# Subtest: extra mount drift refuses start and destructive cleanup
+ok 51 - extra mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 3.787958
+  type: 'test'
+  ...
+# Subtest: daemon drift cannot redirect execution or cleanup
+ok 52 - daemon drift cannot redirect execution or cleanup
+  ---
+  duration_ms: 2.672792
+  type: 'test'
+  ...
+# Subtest: changed bundle bytes are denied before any container start
+ok 53 - changed bundle bytes are denied before any container start
+  ---
+  duration_ms: 2.648334
+  type: 'test'
+  ...
+# Subtest: wrong identity cannot produce passing application evidence
+ok 54 - wrong identity cannot produce passing application evidence
+  ---
+  duration_ms: 2.60425
+  type: 'test'
+  ...
+# Subtest: missing admission cannot produce passing application evidence
+ok 55 - missing admission cannot produce passing application evidence
+  ---
+  duration_ms: 2.940458
+  type: 'test'
+  ...
+# Subtest: network success cannot produce passing application evidence
+ok 56 - network success cannot produce passing application evidence
+  ---
+  duration_ms: 2.612959
+  type: 'test'
+  ...
+# Subtest: external interface cannot produce passing application evidence
+ok 57 - external interface cannot produce passing application evidence
+  ---
+  duration_ms: 2.713541
+  type: 'test'
+  ...
+# Subtest: database mode cannot produce passing application evidence
+ok 58 - database mode cannot produce passing application evidence
+  ---
+  duration_ms: 2.805125
+  type: 'test'
+  ...
+# Subtest: missing port cannot produce passing application evidence
+ok 59 - missing port cannot produce passing application evidence
+  ---
+  duration_ms: 2.748083
+  type: 'test'
+  ...
+# Subtest: duplicate port cannot produce passing application evidence
+ok 60 - duplicate port cannot produce passing application evidence
+  ---
+  duration_ms: 2.945125
+  type: 'test'
+  ...
+# Subtest: reported effect cannot produce passing application evidence
+ok 61 - reported effect cannot produce passing application evidence
+  ---
+  duration_ms: 3.168709
+  type: 'test'
+  ...
+# Subtest: wrong operation cannot produce passing application evidence
+ok 62 - wrong operation cannot produce passing application evidence
+  ---
+  duration_ms: 2.702209
+  type: 'test'
+  ...
+# Subtest: missing scenario assertion cannot produce passing application evidence
+ok 63 - missing scenario assertion cannot produce passing application evidence
+  ---
+  duration_ms: 2.718333
+  type: 'test'
+  ...
+# Subtest: an image lookup failure cleans only its fresh filesystem workspace
+ok 64 - an image lookup failure cleans only its fresh filesystem workspace
+  ---
+  duration_ms: 1.493667
+  type: 'test'
+  ...
+# Subtest: an unacknowledged create never adopts or removes a container
+ok 65 - an unacknowledged create never adopts or removes a container
+  ---
+  duration_ms: 1.096209
+  type: 'test'
+  ...
+# Subtest: a getter is read once and cannot change the admitted endpoint
+ok 66 - a getter is read once and cannot change the admitted endpoint
+  ---
+  duration_ms: 2.045417
+  type: 'test'
+  ...
+# Subtest: nonzero exit rejects an otherwise successful payload
+ok 67 - nonzero exit rejects an otherwise successful payload
+  ---
+  duration_ms: 2.69025
+  type: 'test'
+  ...
+# Subtest: OOM kill rejects an otherwise successful payload
+ok 68 - OOM kill rejects an otherwise successful payload
+  ---
+  duration_ms: 2.740792
+  type: 'test'
+  ...
+# Subtest: still-running container rejects an otherwise successful payload
+ok 69 - still-running container rejects an otherwise successful payload
+  ---
+  duration_ms: 2.754625
+  type: 'test'
+  ...
+# Subtest: an invalid create ID never authorizes inspection or cleanup
+ok 70 - an invalid create ID never authorizes inspection or cleanup
+  ---
+  duration_ms: 1.153291
+  type: 'test'
+  ...
+# Subtest: an unreviewed engine cannot create an application container
+ok 71 - an unreviewed engine cannot create an application container
+  ---
+  duration_ms: 1.269959
+  type: 'test'
+  ...
+# Subtest: profile-only overrides with omitted executor are rejected before allocation or Docker
+ok 72 - profile-only overrides with omitted executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.232166
+  type: 'test'
+  ...
+# Subtest: profile-only overrides with undefined executor are rejected before allocation or Docker
+ok 73 - profile-only overrides with undefined executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.48725
+  type: 'test'
+  ...
+# Subtest: profile-only overrides with null executor are rejected before allocation or Docker
+ok 74 - profile-only overrides with null executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.115708
+  type: 'test'
+  ...
+# Subtest: profile-only overrides with object executor are rejected before allocation or Docker
+ok 75 - profile-only overrides with object executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.07275
+  type: 'test'
+  ...
+# Subtest: profile-only overrides with string executor are rejected before allocation or Docker
+ok 76 - profile-only overrides with string executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.068125
+  type: 'test'
+  ...
+# Subtest: profile-only overrides with boolean executor are rejected before allocation or Docker
+ok 77 - profile-only overrides with boolean executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.064041
+  type: 'test'
+  ...
+# Subtest: bundle-only overrides with omitted executor are rejected before allocation or Docker
+ok 78 - bundle-only overrides with omitted executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.071167
+  type: 'test'
+  ...
+# Subtest: bundle-only overrides with undefined executor are rejected before allocation or Docker
+ok 79 - bundle-only overrides with undefined executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.067167
+  type: 'test'
+  ...
+# Subtest: bundle-only overrides with null executor are rejected before allocation or Docker
+ok 80 - bundle-only overrides with null executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.057292
+  type: 'test'
+  ...
+# Subtest: bundle-only overrides with object executor are rejected before allocation or Docker
+ok 81 - bundle-only overrides with object executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.050125
+  type: 'test'
+  ...
+# Subtest: bundle-only overrides with string executor are rejected before allocation or Docker
+ok 82 - bundle-only overrides with string executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.046
+  type: 'test'
+  ...
+# Subtest: bundle-only overrides with boolean executor are rejected before allocation or Docker
+ok 83 - bundle-only overrides with boolean executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.047375
+  type: 'test'
+  ...
+# Subtest: combined overrides with omitted executor are rejected before allocation or Docker
+ok 84 - combined overrides with omitted executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.044042
+  type: 'test'
+  ...
+# Subtest: combined overrides with undefined executor are rejected before allocation or Docker
+ok 85 - combined overrides with undefined executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.045667
+  type: 'test'
+  ...
+# Subtest: combined overrides with null executor are rejected before allocation or Docker
+ok 86 - combined overrides with null executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.044458
+  type: 'test'
+  ...
+# Subtest: combined overrides with object executor are rejected before allocation or Docker
+ok 87 - combined overrides with object executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.042292
+  type: 'test'
+  ...
+# Subtest: combined overrides with string executor are rejected before allocation or Docker
+ok 88 - combined overrides with string executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.0425
+  type: 'test'
+  ...
+# Subtest: combined overrides with boolean executor are rejected before allocation or Docker
+ok 89 - combined overrides with boolean executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.12175
+  type: 'test'
+  ...
+# Subtest: present profile override cannot hide behind a nullish value
+ok 90 - present profile override cannot hide behind a nullish value
+  ---
+  duration_ms: 0.1305
+  type: 'test'
+  ...
+# Subtest: present profile override cannot hide behind a nullish value
+ok 91 - present profile override cannot hide behind a nullish value
+  ---
+  duration_ms: 0.056334
+  type: 'test'
+  ...
+# Subtest: present bundle override cannot hide behind a nullish value
+ok 92 - present bundle override cannot hide behind a nullish value
+  ---
+  duration_ms: 0.04975
+  type: 'test'
+  ...
+# Subtest: present bundle override cannot hide behind a nullish value
+ok 93 - present bundle override cannot hide behind a nullish value
+  ---
+  duration_ms: 0.050209
+  type: 'test'
+  ...
+# Subtest: a callable executor is snapshotted once and never falls back to real transport
+ok 94 - a callable executor is snapshotted once and never falls back to real transport
+  ---
+  duration_ms: 3.00575
+  type: 'test'
+  ...
+# Subtest: NODE_OPTIONS is denied by image admission before create
+ok 95 - NODE_OPTIONS is denied by image admission before create
+  ---
+  duration_ms: 1.317542
+  type: 'test'
+  ...
+# Subtest: extra environment key is denied by image admission before create
+ok 96 - extra environment key is denied by image admission before create
+  ---
+  duration_ms: 1.347959
+  type: 'test'
+  ...
+# Subtest: PATH equals suffix is denied by image admission before create
+ok 97 - PATH equals suffix is denied by image admission before create
+  ---
+  duration_ms: 1.285292
+  type: 'test'
+  ...
+# Subtest: duplicate environment key is denied by image admission before create
+ok 98 - duplicate environment key is denied by image admission before create
+  ---
+  duration_ms: 1.363125
+  type: 'test'
+  ...
+# Subtest: RepoDigest mismatch is denied by image admission before create
+ok 99 - RepoDigest mismatch is denied by image admission before create
+  ---
+  duration_ms: 1.205667
+  type: 'test'
+  ...
+# Subtest: image volumes is denied by image admission before create
+ok 100 - image volumes is denied by image admission before create
+  ---
+  duration_ms: 1.260916
+  type: 'test'
+  ...
+# Subtest: a different well-formed Unix endpoint is not the recorded profile
+ok 101 - a different well-formed Unix endpoint is not the recorded profile
+  ---
+  duration_ms: 0.042541
+  type: 'test'
+  ...
+# Subtest: replaced ownership marker prevents execution and cleanup
+ok 102 - replaced ownership marker prevents execution and cleanup
+  ---
+  duration_ms: 2.465208
+  type: 'test'
+  ...
+# Subtest: a replacement directory with a copied marker does not acquire ownership
+ok 103 - a replacement directory with a copied marker does not acquire ownership
+  ---
+  duration_ms: 2.676459
+  type: 'test'
+  ...
+# Subtest: acknowledged container removal is not repeated after workspace-cleanup failure
+ok 104 - acknowledged container removal is not repeated after workspace-cleanup failure
+  ---
+  duration_ms: 2.3585
+  type: 'test'
+  ...
+# Subtest: a disappeared pre-create workspace does not replace the original failure
+ok 105 - a disappeared pre-create workspace does not replace the original failure
+  ---
+  duration_ms: 1.535917
+  type: 'test'
+  ...
+# Subtest: the owned fixture lifecycle mutates only its acknowledged container ID
+ok 106 - the owned fixture lifecycle mutates only its acknowledged container ID
+  ---
+  duration_ms: 0.575291
+  type: 'test'
+  ...
+# Subtest: TCP endpoint is rejected before any Docker call
+ok 107 - TCP endpoint is rejected before any Docker call
+  ---
+  duration_ms: 0.0435
+  type: 'test'
+  ...
+# Subtest: SSH endpoint is rejected before any Docker call
+ok 108 - SSH endpoint is rejected before any Docker call
+  ---
+  duration_ms: 0.022542
+  type: 'test'
+  ...
+# Subtest: unpinned image is rejected before any Docker call
+ok 109 - unpinned image is rejected before any Docker call
+  ---
+  duration_ms: 0.036458
+  type: 'test'
+  ...
+# Subtest: another registry is rejected before any Docker call
+ok 110 - another registry is rejected before any Docker call
+  ---
+  duration_ms: 0.016541
+  type: 'test'
+  ...
+# Subtest: supplied database URI is rejected before any Docker call
+ok 111 - supplied database URI is rejected before any Docker call
+  ---
+  duration_ms: 0.023041
+  type: 'test'
+  ...
+# Subtest: supplied container ID is rejected before any Docker call
+ok 112 - supplied container ID is rejected before any Docker call
+  ---
+  duration_ms: 0.028875
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_HOST cannot select a different Docker resource
+ok 113 - ambient DOCKER_HOST cannot select a different Docker resource
+  ---
+  duration_ms: 0.035542
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONTEXT cannot select a different Docker resource
+ok 114 - ambient DOCKER_CONTEXT cannot select a different Docker resource
+  ---
+  duration_ms: 0.019708
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONFIG cannot select a different Docker resource
+ok 115 - ambient DOCKER_CONFIG cannot select a different Docker resource
+  ---
+  duration_ms: 0.03175
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_TLS_VERIFY cannot select a different Docker resource
+ok 116 - ambient DOCKER_TLS_VERIFY cannot select a different Docker resource
+  ---
+  duration_ms: 0.02025
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CERT_PATH cannot select a different Docker resource
+ok 117 - ambient DOCKER_CERT_PATH cannot select a different Docker resource
+  ---
+  duration_ms: 0.019375
+  type: 'test'
+  ...
+# Subtest: container ID drift prevents start and cleanup
+ok 118 - container ID drift prevents start and cleanup
+  ---
+  duration_ms: 0.109
+  type: 'test'
+  ...
+# Subtest: run label drift prevents start and cleanup
+ok 119 - run label drift prevents start and cleanup
+  ---
+  duration_ms: 0.06225
+  type: 'test'
+  ...
+# Subtest: image drift prevents start and cleanup
+ok 120 - image drift prevents start and cleanup
+  ---
+  duration_ms: 0.061
+  type: 'test'
+  ...
+# Subtest: root user drift prevents start and cleanup
+ok 121 - root user drift prevents start and cleanup
+  ---
+  duration_ms: 0.057875
+  type: 'test'
+  ...
+# Subtest: host network drift prevents start and cleanup
+ok 122 - host network drift prevents start and cleanup
+  ---
+  duration_ms: 0.053917
+  type: 'test'
+  ...
+# Subtest: published port drift prevents start and cleanup
+ok 123 - published port drift prevents start and cleanup
+  ---
+  duration_ms: 0.049708
+  type: 'test'
+  ...
+# Subtest: host mount drift prevents start and cleanup
+ok 124 - host mount drift prevents start and cleanup
+  ---
+  duration_ms: 0.045125
+  type: 'test'
+  ...
+# Subtest: persistent volume drift prevents start and cleanup
+ok 125 - persistent volume drift prevents start and cleanup
+  ---
+  duration_ms: 0.0595
+  type: 'test'
+  ...
+# Subtest: writeable root drift prevents start and cleanup
+ok 126 - writeable root drift prevents start and cleanup
+  ---
+  duration_ms: 0.05375
+  type: 'test'
+  ...
+# Subtest: added capability drift prevents start and cleanup
+ok 127 - added capability drift prevents start and cleanup
+  ---
+  duration_ms: 0.058917
+  type: 'test'
+  ...
+# Subtest: host IPC drift prevents start and cleanup
+ok 128 - host IPC drift prevents start and cleanup
+  ---
+  duration_ms: 0.047208
+  type: 'test'
+  ...
+# Subtest: host device drift prevents start and cleanup
+ok 129 - host device drift prevents start and cleanup
+  ---
+  duration_ms: 0.054209
+  type: 'test'
+  ...
+# Subtest: missing memory limit drift prevents start and cleanup
+ok 130 - missing memory limit drift prevents start and cleanup
+  ---
+  duration_ms: 0.052792
+  type: 'test'
+  ...
+# Subtest: changed tmpfs drift prevents start and cleanup
+ok 131 - changed tmpfs drift prevents start and cleanup
+  ---
+  duration_ms: 0.049625
+  type: 'test'
+  ...
+# Subtest: daemon changes cannot redirect start or cleanup
+ok 132 - daemon changes cannot redirect start or cleanup
+  ---
+  duration_ms: 0.055167
+  type: 'test'
+  ...
+# Subtest: no external or unknown container is adopted after an unacknowledged create
+ok 133 - no external or unknown container is adopted after an unacknowledged create
+  ---
+  duration_ms: 0.049042
+  type: 'test'
+  ...
+# Subtest: an invalid returned container ID cannot authorize inspection or cleanup
+ok 134 - an invalid returned container ID cannot authorize inspection or cleanup
+  ---
+  duration_ms: 0.042208
+  type: 'test'
+  ...
+# Subtest: database effects require readiness and revalidate ownership after start
+ok 135 - database effects require readiness and revalidate ownership after start
+  ---
+  duration_ms: 0.093291
+  type: 'test'
+  ...
+# Subtest: a caller cannot change the captured image after creation
+ok 136 - a caller cannot change the captured image after creation
+  ---
+  duration_ms: 0.049792
+  type: 'test'
+  ...
+# Subtest: image admission validates the same single snapshot used for creation
+ok 137 - image admission validates the same single snapshot used for creation
+  ---
+  duration_ms: 0.071959
+  type: 'test'
+  ...
+# Subtest: an initially unpinned getter is rejected before Docker is invoked
+ok 138 - an initially unpinned getter is rejected before Docker is invoked
+  ---
+  duration_ms: 0.034875
+  type: 'test'
+  ...
+# Subtest: a second start cannot issue another start command
+ok 139 - a second start cannot issue another start command
+  ---
+  duration_ms: 0.067708
+  type: 'test'
+  ...
+# Subtest: missing commit cannot produce passing transaction evidence
+ok 140 - missing commit cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.076333
+  type: 'test'
+  ...
+# Subtest: failed rollback cannot produce passing transaction evidence
+ok 141 - failed rollback cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.048
+  type: 'test'
+  ...
+# Subtest: wrong namespace cannot produce passing transaction evidence
+ok 142 - wrong namespace cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.051625
+  type: 'test'
+  ...
+# Subtest: wrong replica set cannot produce passing transaction evidence
+ok 143 - wrong replica set cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.381292
+  type: 'test'
+  ...
+# Subtest: a runner-created workspace admits the exact clean unit-test launch
+ok 144 - a runner-created workspace admits the exact clean unit-test launch
+  ---
+  duration_ms: 1.328666
+  type: 'test'
+  ...
+# Subtest: a copied marker and matching directory do not confer ownership
+ok 145 - a copied marker and matching directory do not confer ownership
+  ---
+  duration_ms: 0.746292
+  type: 'test'
+  ...
+# Subtest: unknown resource identity cannot authorize a launch
+ok 146 - unknown resource identity cannot authorize a launch
+  ---
+  duration_ms: 0.02175
+  type: 'test'
+  ...
+# Subtest: inherited NODE_OPTIONS is refused before imports or connectors
+ok 147 - inherited NODE_OPTIONS is refused before imports or connectors
+  ---
+  duration_ms: 1.037334
+  type: 'test'
+  ...
+# Subtest: inherited NODE_PATH is refused before imports or connectors
+ok 148 - inherited NODE_PATH is refused before imports or connectors
+  ---
+  duration_ms: 0.858459
+  type: 'test'
+  ...
+# Subtest: inherited MONGODB_URL is refused before imports or connectors
+ok 149 - inherited MONGODB_URL is refused before imports or connectors
+  ---
+  duration_ms: 0.627
+  type: 'test'
+  ...
+# Subtest: inherited PHARMACY_TEST_MONGODB_URI is refused before imports or connectors
+ok 150 - inherited PHARMACY_TEST_MONGODB_URI is refused before imports or connectors
+  ---
+  duration_ms: 0.627209
+  type: 'test'
+  ...
+# Subtest: inherited PAYMENT_SECRET is refused before imports or connectors
+ok 151 - inherited PAYMENT_SECRET is refused before imports or connectors
+  ---
+  duration_ms: 0.589
+  type: 'test'
+  ...
+# Subtest: a database named latest is not admitted as a disposable resource
+ok 152 - a database named latest is not admitted as a disposable resource
+  ---
+  duration_ms: 0.60725
+  type: 'test'
+  ...
+# Subtest: incorrect working directory or test identity is refused
+ok 153 - incorrect working directory or test identity is refused
+  ---
+  duration_ms: 0.865167
+  type: 'test'
+  ...
+# Subtest: missing environment fields are refused
+ok 154 - missing environment fields are refused
+  ---
+  duration_ms: 0.653584
+  type: 'test'
+  ...
+# Subtest: an operational .env file is refused, including nested files
+ok 155 - an operational .env file is refused, including nested files
+  ---
+  duration_ms: 0.839042
+  type: 'test'
+  ...
+# Subtest: unexpected staged application files are refused
+ok 156 - unexpected staged application files are refused
+  ---
+  duration_ms: 0.620458
+  type: 'test'
+  ...
+# Subtest: the test child cannot create symlinks to escape its filesystem permissions
+ok 157 - the test child cannot create symlinks to escape its filesystem permissions
+  ---
+  duration_ms: 0.628833
+  type: 'test'
+  ...
+# Subtest: changed ownership refuses both execution and cleanup
+ok 158 - changed ownership refuses both execution and cleanup
+  ---
+  duration_ms: 0.683
+  type: 'test'
+  ...
+# Subtest: a replacement directory with a copied marker is not the owned resource
+ok 159 - a replacement directory with a copied marker is not the owned resource
+  ---
+  duration_ms: 0.892417
+  type: 'test'
+  ...
+# Subtest: cleanup affects only the owned workspace and is idempotent
+ok 160 - cleanup affects only the owned workspace and is idempotent
+  ---
+  duration_ms: 0.801375
+  type: 'test'
+  ...
+# Subtest: the test child cannot read parent files or spawn another process
+ok 161 - the test child cannot read parent files or spawn another process
+  ---
+  duration_ms: 0.725542
+  type: 'test'
+  ...
+1..161
+# tests 161
+# suites 0
+# pass 161
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 192.943583

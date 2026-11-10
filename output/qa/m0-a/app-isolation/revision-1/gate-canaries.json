@@ -1,0 +1,173 @@
+{
+  "mode": "synthetic runner canaries, not application acceptance",
+  "source_sha256": {
+    "test/foundation/run.mjs": "f14c1830b0fbe23c1be454cb97003c6c6fb58fdb11bee0ac8bc91134d63ca0c9",
+    "test/foundation/preflight.mjs": "2cdfa366dad210fe5483a52ae4c8c4b6488a4429bc8e0e8dff1f2b7f4f5487da",
+    "test/foundation/preflight.test.mjs": "26a84d230fbb17d0952d6f53b7667983597e122580a7fc17a526f7458e49294d",
+    "test/foundation/mongo-fixture.mjs": "a95eec22111a57f4a6e70efc242fe5e54d1a89ab4020975bbdb9fae3cab4afc2",
+    "test/foundation/mongo-fixture.test.mjs": "d837b2496d115a1a9c596ccaa21cf4eb7c51b3863c94af6bc3f4899f07057342",
+    "test/application/app-container.mjs": "dd39d993e2e3c0c91ceda34b9b281c7fbfbdc0ae74128740cc0e8a6a4e7f3684",
+    "test/application/app-container.test.mjs": "3cc69dbab094c146413656d21993573e602ce77625b5b619bdc4ace02cbd2c5d",
+    "test/application/app-bundle.mjs": "1b0535ed89ca1834043a8b11c4e0f43cc4d1ace91497bc32b8b9dec313feeb54",
+    "test/application/app-bundle.test.mjs": "acfd27c0d7892154b6980ae3aa61bd2973c5f8a0e588a3c1225f2bdae909a95b",
+    "test/application/app-ports.mjs": "f7efb3ee12eee3f0ff427b360d9c65776c20f34c80432ac0b5a626df55408cf1",
+    "test/application/app-image.json": "4f1390608939a823788010499cc810801d01fd8ee44248da5424776c816a8611",
+    "test/application/app-runtime.json": "e4e0b67677e084dce5d65d958763057c5ca1b257232b5f007545a327fb40f0b3"
+  },
+  "results": [
+    {
+      "runtime": "node22",
+      "case": "positive-control",
+      "exit_code": 0,
+      "expected": "zero",
+      "evidence": "node22-positive-control.txt"
+    },
+    {
+      "runtime": "node22",
+      "case": "empty-0",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node22-empty-0.txt"
+    },
+    {
+      "runtime": "node22",
+      "case": "empty-1",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node22-empty-1.txt"
+    },
+    {
+      "runtime": "node22",
+      "case": "empty-2",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node22-empty-2.txt"
+    },
+    {
+      "runtime": "node22",
+      "case": "empty-3",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node22-empty-3.txt"
+    },
+    {
+      "runtime": "node22",
+      "case": "all-empty",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node22-all-empty.txt"
+    },
+    {
+      "runtime": "node22",
+      "case": "assertion-failure",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node22-assertion-failure.txt"
+    },
+    {
+      "runtime": "node22",
+      "case": "required-skip",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node22-required-skip.txt"
+    },
+    {
+      "runtime": "node22",
+      "case": "required-todo",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node22-required-todo.txt"
+    },
+    {
+      "runtime": "node22",
+      "case": "source-symlink",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node22-source-symlink.txt"
+    },
+    {
+      "runtime": "node22",
+      "case": "preflight-bypass",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node22-preflight-bypass.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "positive-control",
+      "exit_code": 0,
+      "expected": "zero",
+      "evidence": "node24-positive-control.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "empty-0",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node24-empty-0.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "empty-1",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node24-empty-1.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "empty-2",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node24-empty-2.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "empty-3",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node24-empty-3.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "all-empty",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node24-all-empty.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "assertion-failure",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node24-assertion-failure.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "required-skip",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node24-required-skip.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "required-todo",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node24-required-todo.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "source-symlink",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node24-source-symlink.txt"
+    },
+    {
+      "runtime": "node24",
+      "case": "preflight-bypass",
+      "exit_code": 1,
+      "expected": "nonzero",
+      "evidence": "node24-preflight-bypass.txt"
+    }
+  ]
+}

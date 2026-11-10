@@ -1,0 +1,123 @@
+{
+  "date": "2026-11-10",
+  "branch": "m0/f01-app-isolation",
+  "amendment_base_commit": "00f30fcc08ae14d7940f239e6ef654d123006197",
+  "original_slice_base_commit": "555bec4b4729fb14487bcfc48c40c53b6f85421f",
+  "review_status": "AMENDED_REVIEW_REQUIRED_BEFORE_IMAGE_CACHING_OR_REAL_DOCKER",
+  "runs": [
+    {
+      "runtime": "v22.23.4",
+      "tests": 161,
+      "pass": 161,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "evidence": "node22.tap",
+      "stderr": "node22.stderr.txt"
+    },
+    {
+      "runtime": "v24.19.0",
+      "tests": 161,
+      "pass": 161,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "evidence": "node24.tap",
+      "stderr": "node24.stderr.txt"
+    }
+  ],
+  "runner_canaries": {
+    "positive_controls": 2,
+    "expected_rejections": 20,
+    "evidence": "gate-canaries.json"
+  },
+  "offline_companions": {
+    "checks": 16,
+    "evidence": "companion-probes.json",
+    "application_evaluation": false,
+    "real_docker_calls": 0
+  },
+  "historical_controller_regression": {
+    "expected_nonzero": true,
+    "total_failures": 24,
+    "seam_matrix_failures": 18,
+    "evidence": "old-controller.json",
+    "live_docker_reproduction": false
+  },
+  "syntax_checks": "syntax-checks.json",
+  "source_sha256": {
+    "README.md": "15a6edece57131e1b62e903a9fad2a21fe7a418c3ee23142e3e6b921319e7fc8",
+    "documentation/planning/M0_START_APPROVAL_STATUS.md": "87540445c81ee4abc484754a887237f9ad49972e4f268101afb43f323edae4e8",
+    "documentation/planning/implementation/APP_ISOLATION_REVIEW_PROMPT.md": "38c17ac1f9805516816a0404455f376fd9fb86955a3d7d4056ecd61cbc0cb22d",
+    "documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md": "9b0eff3cf6d6116eaba9f3489e36b29e63db1bb747d829ce3a71f923d223d9e9",
+    "documentation/planning/implementation/M0_A_PROGRESS.md": "a634258db1cff5aeddb7c854444f0d96e99b7ac62286ec634cd026210ee502a5",
+    "src1/modules/common/utils/queryUtils.ts": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d",
+    "test/application/README.md": "8c7f508320fcae8987b4cd840108dcaf033d756223776f73adbd43fab68645c1",
+    "test/application/app-bundle.mjs": "1b0535ed89ca1834043a8b11c4e0f43cc4d1ace91497bc32b8b9dec313feeb54",
+    "test/application/app-bundle.test.mjs": "acfd27c0d7892154b6980ae3aa61bd2973c5f8a0e588a3c1225f2bdae909a95b",
+    "test/application/app-container.mjs": "dd39d993e2e3c0c91ceda34b9b281c7fbfbdc0ae74128740cc0e8a6a4e7f3684",
+    "test/application/app-container.test.mjs": "3cc69dbab094c146413656d21993573e602ce77625b5b619bdc4ace02cbd2c5d",
+    "test/application/app-image.json": "4f1390608939a823788010499cc810801d01fd8ee44248da5424776c816a8611",
+    "test/application/app-ports.mjs": "f7efb3ee12eee3f0ff427b360d9c65776c20f34c80432ac0b5a626df55408cf1",
+    "test/application/app-runtime.json": "e4e0b67677e084dce5d65d958763057c5ca1b257232b5f007545a327fb40f0b3",
+    "test/application/bootstrap.mjs": "463a940326082264f39b03e0936c7d9faa4621b4d67d65b2ebdbd0801ea9e10b",
+    "test/application/run.mjs": "fb5d0eb85f23ff7e5c393447357c487689709f0469c8698610efb7937c51d537",
+    "test/application/scenario.mjs": "b0a9fbc2a990cf344487d9f88a49d927fbb4fa806a794353fb3adcea9059e031",
+    "test/application/verify_local_admission.py": "c79bcf13e05ef2e513b7ad04386cb8a5f234832bf6c86904f4c25dfcf775f971",
+    "test/foundation/README.md": "387b5aa4baab1e26ee591cf4c85eabbddb8a17c733715f43f3dad7fa4bd31e2d",
+    "test/foundation/mongo-fixture.mjs": "a95eec22111a57f4a6e70efc242fe5e54d1a89ab4020975bbdb9fae3cab4afc2",
+    "test/foundation/mongo-fixture.test.mjs": "d837b2496d115a1a9c596ccaa21cf4eb7c51b3863c94af6bc3f4899f07057342",
+    "test/foundation/preflight.mjs": "2cdfa366dad210fe5483a52ae4c8c4b6488a4429bc8e0e8dff1f2b7f4f5487da",
+    "test/foundation/preflight.test.mjs": "26a84d230fbb17d0952d6f53b7667983597e122580a7fc17a526f7458e49294d",
+    "test/foundation/run.mjs": "f14c1830b0fbe23c1be454cb97003c6c6fb58fdb11bee0ac8bc91134d63ca0c9"
+  },
+  "original_evidence_byte_preserved": true,
+  "original_source_snapshots": "historical at 00f30fc; intentional amendments do not match old source hashes",
+  "unchanged_since_original_slice_base": [
+    "package.json",
+    "package-lock.json",
+    "npm-shrinkwrap.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "server.js",
+    "tsconfig.json",
+    "src1",
+    "test/foundation/mongo-fixture.mjs",
+    "test/foundation/mongo-fixture.test.mjs"
+  ],
+  "unchanged_since_amendment_base": [
+    "test/foundation/run.mjs",
+    "test/foundation/preflight.mjs",
+    "test/application/app-image.json",
+    "test/application/app-runtime.json",
+    "test/application/app-bundle.mjs",
+    "test/application/app-ports.mjs",
+    "test/application/scenario.mjs"
+  ],
+  "proposed_production_helper": {
+    "path": "src1/modules/common/utils/queryUtils.ts",
+    "sha256": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d",
+    "modified": false,
+    "runtime_import": "NOT_RUN"
+  },
+  "real_docker_calls": 0,
+  "image_pulls": 0,
+  "new_containers": 0,
+  "real_sandbox_bootstrap_or_scenario": "NOT_RUN",
+  "real_mount_network_permission_assertions": "NOT_RUN",
+  "real_sandbox_cleanup_readback": "NOT_RUN",
+  "database_mode": "not-admitted",
+  "real_provider_calls": 0,
+  "root_dependency_start_or_app_changes": false,
+  "full_C3_or_M0_acceptance": false,
+  "selected_115_scenarios": {
+    "PASS": 0,
+    "FAIL": 1,
+    "BLOCKED": 1,
+    "NOT_RUN": 110,
+    "DEFERRED": 3
+  },
+  "initial_run": "node22-initial.tap is preliminary; final evidence is node22.tap and node24.tap"
+}

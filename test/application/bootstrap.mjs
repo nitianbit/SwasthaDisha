@@ -20,7 +20,7 @@ assert.throws(() => readFileSync('/etc/passwd'), { code: 'ERR_ACCESS_DENIED' });
 assert.throws(() => writeFileSync('/workspace/unexpected-file', 'synthetic'), { code: 'ERR_ACCESS_DENIED' });
 assert.equal(process.permission.has('child'), false);
 assert.equal(process.permission.has('worker'), false);
-assert.equal(process.permission.has('addons'), false);
+assert.equal(process.permission.has('addon'), false);
 writeFileSync('/tmp/permission-canary', 'synthetic');
 
 let egressBlocked = false;

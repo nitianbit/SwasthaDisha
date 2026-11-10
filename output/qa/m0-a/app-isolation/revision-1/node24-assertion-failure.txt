@@ -1,0 +1,85 @@
+TAP version 13
+# Subtest: positive one
+ok 1 - positive one
+  ---
+  duration_ms: 0.684208
+  type: 'test'
+  ...
+# Subtest: positive two
+ok 2 - positive two
+  ---
+  duration_ms: 0.109083
+  type: 'test'
+  ...
+# Subtest: positive one
+ok 3 - positive one
+  ---
+  duration_ms: 0.079666
+  type: 'test'
+  ...
+# Subtest: positive two
+ok 4 - positive two
+  ---
+  duration_ms: 0.077333
+  type: 'test'
+  ...
+# Subtest: required failing assertion
+not ok 5 - required failing assertion
+  ---
+  duration_ms: 0.576791
+  type: 'test'
+  location: '/private/tmp/swasthadisha-foundation-K7JEBB/app-container.test.mjs:5:1'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    1 !== 2
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 2
+  actual: 1
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (file:///private/tmp/swasthadisha-foundation-K7JEBB/app-container.test.mjs:5:46)
+    Test.runInAsyncScope (node:async_hooks:227:14)
+    Test.run (node:internal/test_runner/test:1382:25)
+    Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+    Test.postRun (node:internal/test_runner/test:1522:19)
+    Test.run (node:internal/test_runner/test:1447:12)
+    async Test.processPendingSubtests (node:internal/test_runner/test:960:7)
+  ...
+# Subtest: positive one
+ok 6 - positive one
+  ---
+  duration_ms: 0.069875
+  type: 'test'
+  ...
+# Subtest: positive two
+ok 7 - positive two
+  ---
+  duration_ms: 0.047208
+  type: 'test'
+  ...
+# Subtest: positive one
+ok 8 - positive one
+  ---
+  duration_ms: 0.039417
+  type: 'test'
+  ...
+# Subtest: positive two
+ok 9 - positive two
+  ---
+  duration_ms: 0.0575
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 8
+# fail 1
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 19.285292
+Foundation gate failed or did not execute a complete non-skipped test run.

@@ -10,7 +10,7 @@ This existing TypeScript healthcare backend can become Jansetu's daily business-
 
 | Document | Purpose |
 | --- | --- |
-| [M0-A development progress](documentation/planning/implementation/M0_A_PROGRESS.md) | Current application-sandbox candidate: 127 unit checks pass on Node 22/24; first real activation awaits scoped review. Full application/build gates remain open |
+| [M0-A development progress](documentation/planning/implementation/M0_A_PROGRESS.md) | Amended application-sandbox candidate: 161 unit checks pass on Node 22/24; first real activation awaits review of the revised commit. Full application/build gates remain open |
 | [Application sandbox activation review](documentation/planning/implementation/APP_ISOLATION_REVIEW_PROMPT.md) | Exact review prompt, source inventory and evidence for the first local synthetic/no-DB smoke; real execution NOT_RUN |
 | [Static compatibility results](documentation/planning/implementation/C2_STATIC_RESULTS.md) | Selected source passes with current Mongoose; candidate 9 has eight diagnostics across three migration groups. Root adoption awaits the [existing-server baseline](documentation/planning/implementation/DEVOPS_BASELINE_REQUEST.md) and reviewed migration diff |
 | [Operations prospectus](output/pdf/SwasthaDisha_Operations_Prospectus.pdf) / [editable Word](output/docx/SwasthaDisha_Operations_Prospectus.docx) / [source text](documentation/operations/SWASTHADISHA_PROSPECTUS.md) | Illustrated feature prospectus for operations: services, private business workflows, phone access, delivery phases and honest pre-launch readiness |
@@ -99,7 +99,7 @@ FOUNDATION_NODE="$(command -v node)"
 env -i TMPDIR=/tmp "$FOUNDATION_NODE" test/foundation/run.mjs
 ```
 
-See [foundation usage](test/foundation/README.md) for the four-file staging boundary and separate MongoDB smoke check. The current standalone unit gate passes 127 checks on Node 22 and Node 24; the application-sandbox activation remains review pending; [migration evidence](output/migration/verification.json) and [M0-A progress](documentation/planning/implementation/M0_A_PROGRESS.md) separate this result from application acceptance.
+See [foundation usage](test/foundation/README.md) for the eleven-file staging boundary and separate MongoDB smoke check. The amended standalone unit gate passes 161 checks on Node 22 and Node 24; the application-sandbox activation awaits amended review; [migration evidence](output/migration/verification.json) and [M0-A progress](documentation/planning/implementation/M0_A_PROGRESS.md) separate this result from application acceptance.
 
 Legacy application findings remain open: the lock omits the declared `xlsx` dependency, the root default test command is a placeholder, compiled aliases need resolution, and `npm start` targets the legacy `server.js` with absent `src/` imports. The owner selected Node major 22; a supported runtime/ODM target still needs C2 resolution. No root install, type-check, application build or startup was performed for this import.
 

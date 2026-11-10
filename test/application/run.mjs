@@ -5,6 +5,7 @@ if (process.env.NODE_OPTIONS || process.env.NODE_PATH || process.execArgv.length
 }
 // REVIEW GATE: first real execution and application import are pending approval.
 const fixture = createApplicationFixture({ endpoint: process.argv[2] });
+console.error(JSON.stringify({ phase: 'created', id: fixture.id, runId: fixture.runId, directory: fixture.directory }));
 let result;
 let failure;
 try { result = fixture.run(); } catch (error) { failure = error; }

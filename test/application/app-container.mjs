@@ -46,16 +46,22 @@ function realDocker(endpoint, configuration) {
 
 /** Test seams are trusted transports/text fixtures, not resource-ownership claims. */
 export function createApplicationFixture(input, seams = {}) {
+  requireThat(seams !== null && typeof seams === 'object'
+    && [Object.prototype, null].includes(Object.getPrototypeOf(seams)), 'Test seams must be a plain object');
+  const simulated = Reflect.ownKeys(seams).length > 0;
+  const testSeams = Object.freeze({ ...seams });
+  requireThat(!simulated || (Object.hasOwn(testSeams, 'executor') && typeof testSeams.executor === 'function'),
+    'Test seams require an explicit callable test executor');
   const request = Object.freeze({ ...input });
   requireThat(Object.keys(request).join(',') === 'endpoint'
     && typeof request.endpoint === 'string' && /^unix:\/\/\/[^\0?#]+\.sock$/.test(request.endpoint),
   'Only an explicit local Unix Docker endpoint is accepted');
   requireThat(!overrides.some((name) => Object.hasOwn(process.env, name)), 'Ambient Docker overrides are forbidden');
-  const profile = Object.freeze({ ...(seams.profile ?? localRuntime) });
+  const profile = Object.freeze({ ...((simulated ? testSeams.profile : undefined) ?? localRuntime) });
   requireThat(request.endpoint === profile.endpoint && typeof profile.engineId === 'string' && profile.engineId,
     'Docker target is outside the reviewed local runtime profile');
   requireThat(/^node@sha256:[a-f0-9]{64}$/.test(image.image) && image.nodeVersion === '22.23.4', 'Invalid pinned runtime');
-  const sources = Object.freeze({ ...(seams.bundle ?? reviewedSources()) });
+  const sources = Object.freeze({ ...((simulated ? testSeams.bundle : undefined) ?? reviewedSources()) });
   const runId = randomUUID();
   const manifest = makeManifest(runId, sources);
   const directory = realpathSync(mkdtempSync(join(tmpdir(), 'sd-app-isolation-')));
@@ -96,7 +102,7 @@ export function createApplicationFixture(input, seams = {}) {
     const configDirectory = join(directory, 'docker');
     mkdirSync(configDirectory, { mode: 0o700 });
     writeFileSync(join(configDirectory, 'config.json'), '{"auths":{}}\n', { mode: 0o600, flag: 'wx' });
-    const execute = seams.executor ?? realDocker(request.endpoint, configDirectory);
+    const execute = simulated ? testSeams.executor : realDocker(request.endpoint, configDirectory);
     const engine = () => {
       const row = JSON.parse(execute(['info', '--format', '[{{json .ID}},{{json .OSType}}]']));
       requireThat(Array.isArray(row) && typeof row[0] === 'string' && row[0] && row[1] === 'linux', 'Unknown Docker engine');
@@ -111,14 +117,19 @@ export function createApplicationFixture(input, seams = {}) {
       && Object.keys(images[0].Config?.Volumes ?? {}).length === 0, 'Pinned Linux image is not cached or supported');
     const imageId = images[0].Id;
     const baseEnvironment = images[0].Config?.Env ?? [];
-    const environmentKeys = baseEnvironment.map((entry) => entry.split('=')[0]);
+    requireThat(Array.isArray(baseEnvironment) && baseEnvironment.every((entry) =>
+      typeof entry === 'string' && entry.indexOf('=') > 0), 'Unexpected runtime image environment');
+    const imageEntries = baseEnvironment.map((entry) => {
+      const separator = entry.indexOf('=');
+      return [entry.slice(0, separator), entry.slice(separator + 1)];
+    });
+    const environmentKeys = imageEntries.map(([key]) => key);
     requireThat(environmentKeys.includes('PATH') && environmentKeys.includes('NODE_VERSION')
-      && baseEnvironment.every((entry) => {
-      const [key, value] = entry.split('=');
-      return (key === 'PATH' && value === '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin') || (key === 'NODE_VERSION' && value === image.nodeVersion)
-        || (key === 'YARN_VERSION' && /^[0-9.]+$/.test(value));
-    }) && new Set(baseEnvironment.map((entry) => entry.split('=')[0])).size === baseEnvironment.length,
-    'Unexpected runtime image environment');
+      && imageEntries.every(([key, value]) =>
+        (key === 'PATH' && value === '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin')
+        || (key === 'NODE_VERSION' && value === image.nodeVersion)
+        || (key === 'YARN_VERSION' && /^[0-9.]+$/.test(value)))
+      && new Set(environmentKeys).size === baseEnvironment.length, 'Unexpected runtime image environment');
     const environment = [...baseEnvironment, 'NODE_ENV=test', 'APP_RUN_ID=' + runId,
       'APP_ROLE=' + ROLE, 'APP_MANIFEST_SHA=' + manifestSha];
     assertWorkspace();
@@ -219,9 +230,17 @@ export function createApplicationFixture(input, seams = {}) {
       throw new Error(`Application fixture unresolved; cleanup withheld for ${id ?? name}; workspace ${directory}`, { cause });
     }
     // Before create, this exact new workspace is the only allocated resource.
-    const current = lstatSync(directory);
-    if (current.isDirectory() && !current.isSymbolicLink() && current.dev === rootIdentity.dev && current.ino === rootIdentity.ino) {
-      rmSync(directory, { recursive: true, force: false });
+    let current;
+    try { current = lstatSync(directory); } catch (cleanupError) {
+      if (cleanupError.code === 'ENOENT') throw cause;
+      throw new AggregateError([cause, cleanupError], `Pre-create cleanup failed; workspace ${directory}`);
+    }
+    if (!current.isDirectory() || current.isSymbolicLink()
+      || current.dev !== rootIdentity.dev || current.ino !== rootIdentity.ino) {
+      throw new Error(`Pre-create cleanup withheld; workspace identity changed at ${directory}`, { cause });
+    }
+    try { rmSync(directory, { recursive: true, force: false }); } catch (cleanupError) {
+      throw new AggregateError([cause, cleanupError], `Pre-create cleanup failed; workspace ${directory}`);
     }
     throw cause;
   }
