@@ -39,7 +39,6 @@ export class EmailService {
         {
           sender,
           to: payload.to,
-          cc: ['mala@myewacare.com'],
           subject: payload.subject,
           text_body: payload.textBody,
           ...(payload.htmlBody ? { html_body: payload.htmlBody } : {}),

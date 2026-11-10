@@ -1,0 +1,166 @@
+{
+  "date": "2026-11-10",
+  "baseline": "5aecb5578869995063eabad5bc5a4c95c79f017b",
+  "status": "SOURCE_ONLY_VERIFIED_RUNTIME_NOT_RUN",
+  "verification": "Python standard-library byte comparisons and recipient-property scan; TypeScript treated only as data",
+  "source": "src1/modules/email/services/index.ts",
+  "baseline_sha256": "e77a0ae0da335e5f39adffab3aa9cef83201fb6f6eafe5c87f3a105bcf390261",
+  "candidate_sha256": "44049e2331f3cc9dbed9e8608f90bc9db1a0c9a2d7b43c9a8eee1e2d4c877afc",
+  "contract_sha256": "6eb7df3e41be0bddb1129329394501acfecb54e947eee42e1f0305398a9f83a0",
+  "checks": {
+    "exactly_one_cc_line_removed": true,
+    "every_other_source_byte_unchanged": true,
+    "secondary_recipient_property_absent": true,
+    "baseline_negative_control_rejected": true,
+    "seven_call_sites_in_four_files_unchanged": true,
+    "six_staged_sources_unchanged": true,
+    "staged_full_index_patch_matches_archive": true,
+    "all_archived_artifact_hashes_match": true,
+    "root_dependency_start_and_foundation_sources_unchanged": true
+  },
+  "caller_inventory": [
+    {
+      "path": "src1/modules/auth/services/index.ts",
+      "call_lines": [
+        225,
+        472,
+        640
+      ],
+      "unchanged_from_baseline": true,
+      "sha256": "cfdc147df14c4bb9f9974d7211a8cabc3b3af5af2a4ec562a71c2bcaadbe03ad"
+    },
+    {
+      "path": "src1/modules/bookings/services/index.ts",
+      "call_lines": [
+        100
+      ],
+      "unchanged_from_baseline": true,
+      "sha256": "f239aa5a35b56c96b483a7ed009ef0e2a9e8b5ec2cd43d796fc72c6d853c6508"
+    },
+    {
+      "path": "src1/modules/payment/services/index.ts",
+      "call_lines": [
+        302,
+        341
+      ],
+      "unchanged_from_baseline": true,
+      "sha256": "39c29b050dbca15db431f5415ebaa5dec8bbf77c31637ee13112796cf13ab5a0"
+    },
+    {
+      "path": "src1/modules/externalBookings/services/index.ts",
+      "call_lines": [
+        157
+      ],
+      "unchanged_from_baseline": true,
+      "sha256": "4a13a02cca31c0d4833937643e362b78096f4135933a59ed3372577635a24f83"
+    }
+  ],
+  "staged_patch_sha256": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+  "preserved_handover_sha256": {
+    "documentation/planning/implementation/SESSION_HANDOVER.md": "a3506a23605ac1092eada9c3c9c1bf194f56873b8100275a96beea15d07314ca",
+    "documentation/planning/implementation/START_NEXT_SESSION.txt": "a5770aeea5f8c10d0c657da3e2389e2c6acd3bba22a436a7256acf86b6ad5e7b",
+    "documentation/planning/implementation/handover/2026-11-10-local-extensions/PRELIMINARY_REVIEWS.md": "dd0171b10fe60540cf22e453a67d884ec0c25fb105eb2578935daff074ee81de",
+    "documentation/planning/implementation/handover/2026-11-10-local-extensions/adapter-unit.json": "61d313e37962f30a1de4ce95a5f65499ed4e529f766ae404de4fbf92fdcea520",
+    "documentation/planning/implementation/handover/2026-11-10-local-extensions/adapter-unit.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "documentation/planning/implementation/handover/2026-11-10-local-extensions/adapter-unit.tap": "a07c05276fd685591bc3007c2fb1756541fbe7630fa761e3792c17db726bb259",
+    "documentation/planning/implementation/handover/2026-11-10-local-extensions/artifacts.sha256.json": "8db501e58ccb11df861273392228c947668c6fe477f7fee43a03a170a45acff5",
+    "documentation/planning/implementation/handover/2026-11-10-local-extensions/candidate.diff": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+    "documentation/planning/implementation/handover/2026-11-10-local-extensions/local-config-baseline.json": "7814976db973f081ed1636e2665466da1ce0bedcca39d6439e99dc87257ae87f",
+    "documentation/planning/implementation/handover/2026-11-10-local-extensions/prepared-local-extension-smoke.py": "b184feb253147e35f2449892aed731c81fc19b0a36fa14d3df5409cfcb1d4c63",
+    "documentation/planning/implementation/handover/2026-11-10-local-extensions/review-input.json": "a6fab192de0c88b1ef113cefb4741922d2138afe225d8952e3474b09a87ba3c8"
+  },
+  "protected_files": [
+    "package.json",
+    "package-lock.json",
+    "server.js",
+    "tsconfig.json",
+    "test/foundation/run.mjs",
+    "test/foundation/preflight.mjs",
+    "test/application/bootstrap.mjs",
+    "test/application/app-container.mjs"
+  ],
+  "application_imports_or_evaluations": 0,
+  "extracted_method_evaluations": 0,
+  "provider_calls": 0,
+  "docker_calls": 0,
+  "compiler_or_test_suite_invocations": 0,
+  "TC_REV_012": "NOT_RUN; runtime fixture not implemented; complete C3 admission required",
+  "selected_115_scenario_outcomes": {
+    "PASS": 0,
+    "FAIL": 1,
+    "BLOCKED": 1,
+    "NOT_RUN": 110,
+    "DEFERRED": 3
+  },
+  "limitations": [
+    "Source comparison is not runtime recipient-envelope or delivery evidence",
+    "No historical exposure or credential assessment",
+    "No F01/C3/M0/release/100RPS acceptance"
+  ],
+  "commands": [
+    {
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "output/qa/m0-b/mail-recipient-2026-11-10/source-check.py"
+      ],
+      "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": {
+        "status": "SOURCE_ONLY_VERIFIED_RUNTIME_NOT_RUN",
+        "baseline": "5aecb5578869995063eabad5bc5a4c95c79f017b",
+        "candidate_sha256": "44049e2331f3cc9dbed9e8608f90bc9db1a0c9a2d7b43c9a8eee1e2d4c877afc",
+        "call_sites": 7,
+        "staged_patch_sha256": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+        "typescript_evaluations": 0
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "output/qa/m0-b/mail-recipient-2026-11-10/source-check.py",
+        "--check-baseline"
+      ],
+      "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 1,
+      "stdout": {
+        "status": "REJECTED",
+        "reason": "Secondary-recipient property present",
+        "typescript_evaluations": 0
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "src1/modules/email/services/index.ts",
+        "documentation/planning/implementation/M0_MAIL_RECIPIENT_CONTRACT.md"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "initial_recipe_receipt_attempt": {
+    "argv": [
+      "/usr/bin/python3",
+      "output/qa/m0-b/mail-recipient-2026-11-10/source-check.py"
+    ],
+    "environment": {
+      "PATH": "/usr/bin:/bin"
+    },
+    "source_check_exit_code": 0,
+    "receipt_wrapper": "REJECTED_NONEMPTY_STDERR",
+    "reason": "Apple Python/git shims emitted temp/cache discovery warnings under stripped environment; wrapper stopped after positive command, before baseline negative. Corrected invocation uses resolved Homebrew Python/git and explicit TMPDIR."
+  },
+  "verification_recipe_sha256": "b9460a258e0e0bd5d92e872f95533c80d2f8762d49514f89582a9fcd8ae4a0e0"
+}

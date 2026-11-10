@@ -1,0 +1,28 @@
+{
+  "date": "2026-11-10",
+  "baseline": "5aecb5578869995063eabad5bc5a4c95c79f017b",
+  "branch": "m0/f01-app-isolation",
+  "scope": "one-property mail source containment plus source-only evidence, status notes and explicitly unapproved OTP draft",
+  "status": "FROZEN_FOR_DIRECT_FINAL_STANDARDS_AND_SPEC_REVIEW",
+  "files_sha256": {
+    "src1/modules/email/services/index.ts": "44049e2331f3cc9dbed9e8608f90bc9db1a0c9a2d7b43c9a8eee1e2d4c877afc",
+    "documentation/planning/implementation/M0_MAIL_RECIPIENT_CONTRACT.md": "6eb7df3e41be0bddb1129329394501acfecb54e947eee42e1f0305398a9f83a0",
+    "documentation/planning/implementation/M0_OTP_AUTHORITY_CONTRACT_DRAFT.md": "436abd7b388fa095fbd066b0536d63dbd2114e8d5e9b5ee2ec718b67ec8fc833",
+    "documentation/planning/implementation/M0_A_PROGRESS.md": "632502215df3c79a3a47693828bffba2ec570e139e4e1bee9427c0caca48dabd",
+    "documentation/planning/M0_START_APPROVAL_STATUS.md": "ac07a8465a69890de915bf5c9182d2d78ed0e966031547ac549a78ca731cfde7",
+    "documentation/planning/qa/EXECUTION_REGISTER.csv": "62ead75231514b6fa6009279d7286e6f802302a706fb6adeaf0576ab8b5f603d",
+    "output/qa/m0-b/mail-recipient-2026-11-10/source-check.py": "b9460a258e0e0bd5d92e872f95533c80d2f8762d49514f89582a9fcd8ae4a0e0",
+    "output/qa/m0-b/mail-recipient-2026-11-10/source-verification.json": "cda33ef15b52c8d8fb3b12b0b4bc3811b673b946f2b12df7442107c9993eb002"
+  },
+  "production_patch_sha256": "7b0be286d718c38ac3dd2b1de0d5e2d50bfa9015262b3423f63c57597cf75ede",
+  "preserved_six_staged_patch_sha256": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+  "scenario_register_checks": {
+    "rows": 115,
+    "only_TC_REV_012_references_and_notes_changed": true,
+    "all_execution_and_automation_statuses_unchanged": true
+  },
+  "OTP_draft_source_hashes_checked": 14,
+  "review_record_excluded": "REVIEW.md records the subsequent reviewer decisions and is excluded to avoid circular hashes",
+  "connection_work": "DEFERRED_BY_OWNER; no configuration, activation or integration smoke",
+  "runtime_or_release_admission": false
+}
