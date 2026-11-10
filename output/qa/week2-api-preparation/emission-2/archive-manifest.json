@@ -1,0 +1,13 @@
+{
+  "approval.json": "0b70b641325f9bdd84a5ff7baed57c1e7552a65a4825069d4aca4e88f6c23691",
+  "compiler.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "compiler.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "npm.stderr.txt": "799f544422ef20e84949c8feabb844390db9306ac5cf97419981d0291eb45156",
+  "npm.stdout.txt": "0f1e2ef3b41d020cd43330e99f05a65647e95d4c643535c0c0db139b48d5353a",
+  "package-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+  "ports-manifest.json": "993003d7ec316a99c8189acde7e45277c6f79f9f567a1e26cfed9a7d3d855f94",
+  "result.json": "0f7fa1a8620bb0d80456a579b92cf6170807267a7fb2ec9cc81171897384afe6",
+  "runtime-plan.json": "9f2f34f8cf47cc19251134b0fda119fc5bfd1f9984377151977f6b15f8624f12",
+  "runtime-template.json": "a826490b50302a46ce2d3788b0cb22692db15cd71a9465b530ca25b8935e9e0c",
+  "verification.json": "8391c199343733098cd9462f8ad9eafce14b84366d690ae9a56361b941ebbccc"
+}

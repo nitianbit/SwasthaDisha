@@ -1,0 +1,41 @@
+{
+  "status": "PREPARED_NOT_EXECUTED",
+  "invocations": 1,
+  "exit": 0,
+  "sourceRoot": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-2",
+  "sourceCommit": "d0db1ed1107478a6d1f7fb7ceef920882b8d9db3",
+  "descriptorSha": "a826490b50302a46ce2d3788b0cb22692db15cd71a9465b530ca25b8935e9e0c",
+  "lockSha": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+  "portsSha": "993003d7ec316a99c8189acde7e45277c6f79f9f567a1e26cfed9a7d3d855f94",
+  "filesVerified": 2829,
+  "bytes": 44622946,
+  "productionSources": 64,
+  "sourceInputs": 72,
+  "nominalCasesNotRun": 36,
+  "mutantCasesNotRun": 4,
+  "modelCount": 12,
+  "reachableEmittedModules": 51,
+  "actualStaticMetadataControlsRejected": 4,
+  "semanticDiagnostics": 703,
+  "transpileDiagnostics": 0,
+  "fullBuild": false,
+  "compilation": "TRANSPILE_ONLY_NOT_TYPECHECKED",
+  "actualReviewers": [
+    "/root/backend_boot_path",
+    "/root/local_claude_review_prep"
+  ],
+  "decision": "APPROVE_LOCKED_INSTALL_AND_EMIT_ONLY",
+  "approvalConsumed": true,
+  "buildArea": "/private/tmp/sd-auth-api-build-d45cfef9-2bfc-414c-bb3b-c3e5434db0b1",
+  "command": "env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /opt/homebrew/bin/python3 -I -B test/api-runtime/scenario/prepare.py --install-emit",
+  "applicationEvaluations": 0,
+  "driverEvaluations": 0,
+  "databaseConnections": 0,
+  "DockerCalls": 0,
+  "limitations": [
+    "Not clean semantic typecheck/rootbuild",
+    "No actual application/API/Mongo/provider/model evaluation",
+    "All first emission bytes/receipt preserved",
+    "New exact runtime approval required; no automatic retry"
+  ]
+}
