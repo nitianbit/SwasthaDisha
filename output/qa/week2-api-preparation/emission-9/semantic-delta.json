@@ -1,0 +1,1617 @@
+{
+  "priorCount": 816,
+  "currentCount": 1084,
+  "retainedCount": 816,
+  "noLongerReported": [],
+  "newlyReported": [
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'Boolean'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'Boolean'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'Number'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'Number'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/model/index.ts",
+      "message": "Cannot find name 'Number'."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Record'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Record'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Record'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Record'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Record'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Record'."
+    },
+    {
+      "category": 1,
+      "code": 2488,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Type 'Aggregate<Array<R>>' must have a '[Symbol.iterator]()' method that returns an iterator."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Property 'totalAppointments' does not exist on type 'string | (() => AsyncIterableIterator<Unpacked<ResultType>>)'.\n  Property 'totalAppointments' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Property 'totalPatients' does not exist on type 'string | (() => AsyncIterableIterator<Unpacked<ResultType>>)'.\n  Property 'totalPatients' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Property 'totalUniquePatients' does not exist on type 'string | (() => AsyncIterableIterator<Unpacked<ResultType>>)'.\n  Property 'totalUniquePatients' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Property 'totalFollowUpAppointments' does not exist on type 'string | (() => AsyncIterableIterator<Unpacked<ResultType>>)'.\n  Property 'totalFollowUpAppointments' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'RegExp'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Math'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Math'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Property 'length' does not exist on type '{}'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/repository/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/types/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/types/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/types/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/types/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/types/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/types/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/types/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/types/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/types/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/types/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/types/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/types/index.ts",
+      "message": "Cannot find name 'Array'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/bookings/types/index.ts",
+      "message": "Cannot find name 'Array'."
+    },
+    {
+      "category": 1,
+      "code": 2697,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+    },
+    {
+      "category": 1,
+      "code": 2697,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+    },
+    {
+      "category": 1,
+      "code": 2697,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+    },
+    {
+      "category": 1,
+      "code": 2697,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+    },
+    {
+      "category": 1,
+      "code": 2697,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Property 'query' does not exist on type 'AuthRequest'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Property 'body' does not exist on type 'AuthRequest'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Property 'body' does not exist on type 'AuthRequest'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Property 'body' does not exist on type 'AuthRequest'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Property 'body' does not exist on type 'AuthRequest'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Property 'body' does not exist on type 'AuthRequest'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Property 'body' does not exist on type 'AuthRequest'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Property 'body' does not exist on type 'AuthRequest'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Property 'body' does not exist on type 'AuthRequest'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Property 'body' does not exist on type 'AuthRequest'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Property 'body' does not exist on type 'AuthRequest'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Property 'slice' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Property 'slice' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Property 'slice' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Property 'trim' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/controller/index.ts",
+      "message": "Cannot find name 'Number'."
+    },
+    {
+      "category": 1,
+      "code": 2307,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find module 'crypto' or its corresponding type declarations."
+    },
+    {
+      "category": 1,
+      "code": 2307,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find module '@/services/logger' or its corresponding type declarations."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Error'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Error'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Error'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Error'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Error'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Error'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Error'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Error'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Error'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Error'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Error'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Error'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Error'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'URL'."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Record'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Record'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Record'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Record'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Record'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'fetch'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'fetch'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'fetch'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'fetch'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'fetch'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'fetch'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'URLSearchParams'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'URLSearchParams'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'URLSearchParams'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'JSON'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'JSON'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'JSON'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'JSON'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'JSON'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'JSON'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'JSON'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'JSON'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'JSON'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Math'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Math'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Property 'replace' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Property 'replace' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Property 'length' does not exist on type '{}'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Array'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Array'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'encodeURIComponent'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'encodeURIComponent'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'encodeURIComponent'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'encodeURIComponent'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'encodeURIComponent'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Property 'split' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Property 'split' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Boolean'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Boolean'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Boolean'."
+    },
+    {
+      "category": 1,
+      "code": 2591,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+    },
+    {
+      "category": 1,
+      "code": 2591,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Property 'trim' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Property 'trim' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Number'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Number'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Number'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Number'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Number'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Property 'slice' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Property 'slice' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Property 'slice' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Property 'slice' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Property 'slice' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Property 'slice' does not exist on type 'string'."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Property 'filter' does not exist on type '{}'."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/meet/service/index.ts",
+      "message": "Cannot find name 'Set'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/slots/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/slots/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/slots/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/slots/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/slots/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/slots/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/slots/model/index.ts",
+      "message": "Cannot find name 'String'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/slots/model/index.ts",
+      "message": "Cannot find name 'Number'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/slots/model/index.ts",
+      "message": "Cannot find name 'Number'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/slots/model/index.ts",
+      "message": "Cannot find name 'Number'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/slots/model/index.ts",
+      "message": "Cannot find name 'Boolean'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/slots/model/index.ts",
+      "message": "Cannot find name 'Boolean'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/slots/model/index.ts",
+      "message": "Cannot find name 'Boolean'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/slots/repository/index.ts",
+      "message": "Cannot find name 'Partial'."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/slots/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/slots/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/slots/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/slots/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/slots/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/slots/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/slots/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/slots/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/slots/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2583,
+      "file": "src1/modules/slots/repository/index.ts",
+      "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+    },
+    {
+      "category": 1,
+      "code": 2339,
+      "file": "src1/modules/slots/repository/index.ts",
+      "message": "Property 'length' does not exist on type '{}'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/slots/repository/index.ts",
+      "message": "Cannot find name 'Record'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/slots/repository/index.ts",
+      "message": "Cannot find name 'Math'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/slots/types/index.ts",
+      "message": "Cannot find name 'Date'."
+    },
+    {
+      "category": 1,
+      "code": 2304,
+      "file": "src1/modules/slots/types/index.ts",
+      "message": "Cannot find name 'Date'."
+    }
+  ],
+  "scope": "GENUINE_SEMANTIC_REPORT_DELTA_FROM_EXPANDED_DECLARED_CLOSURE; NOT_A_ROOT_TYPECHECK"
+}

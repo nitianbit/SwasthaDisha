@@ -1,0 +1,48 @@
+{
+  "status": "FOCUSED_API_PASS",
+  "invocations": 1,
+  "exit": 0,
+  "sourceCommit": "c2dbac3e44b0bbf30e4574640cd940e2f0075975",
+  "templateSha": "185fb708ef0af3b4bbf106b836baee69d20b922a6089b418e42ed739f6e801e7",
+  "approvalSha": "bba3fc15c0ac73cd32adbfa8ed0aace71c8086e1a7e9700984fa102e6a629998",
+  "approvalConsumed": true,
+  "actualReviewers": [
+    "/root/backend_boot_path",
+    "/root/local_claude_review_prep"
+  ],
+  "cleanup": "VERIFIED_BY_PARENT_AND_ROOT_READBACK",
+  "nominalCases": {
+    "required": 76,
+    "pass": 76,
+    "failed": 0,
+    "skipped": 0
+  },
+  "sensitivityCases": {
+    "required": 21,
+    "detected": 21
+  },
+  "providerSummary": {
+    "email": 5,
+    "sms": 1,
+    "push": 2,
+    "logger": 350,
+    "payments": 0,
+    "calendar": 4,
+    "storage": 0,
+    "queue": 0,
+    "deniedCapabilities": 0,
+    "unexpected": 0
+  },
+  "scope": "FOCUSED_AUTHORITY_CONFIG_MEET_ROUTERS_THIRTEEN_MODELS_RECORDING_ONLY",
+  "modelCount": 13,
+  "fullStartup": false,
+  "rootBuildTypecheck": false,
+  "internalBookingWorkflowAccepted": false,
+  "realGoogleDelivery": false,
+  "Week2Accepted": false,
+  "moreRuns": "NOT_AUTHORIZED",
+  "postReviews": {
+    "/root/backend_boot_path": "ACCEPT_BOUNDED_FOCUSED_API_RUNTIME_EVIDENCE",
+    "/root/local_claude_review_prep": "ACCEPT_FOCUSED_MEET_API_EVIDENCE"
+  }
+}

@@ -407,3 +407,49 @@ actual callback reachability and no new model/package/grant. Root retained-serve
 C2 install/type/build/start/CI, broader clinical/money/recovery/identity policy,
 supported clients, the original115 register, named-owner acceptance, production,
 100RPS/release and full M0/Week2 remain open. The eight-week plan stays a proposal.
+
+
+## Twenty-first increment, 11 November: Meet API milestone achieved
+
+The reviewed Meet extension is integrated. One exact independently approved
+invocation at cleanc2dbac3, descriptor185fb708…, returned
+**FOCUSED_API_PASS:76 nominal groups/21 actual-source variants,0fail/skip**.
+Both independent nonauthor internal Codex reviewers accepted
+[the actual result](../../../output/qa/week2-api-runtime/execution-7/REVIEW.md).
+The receipt/once claim is consumed; no rerun follows. Previous60/17,53/14,36/4
+and all failures remain preserved. [Exact prepared artifact](../../../output/qa/week2-api-preparation/emission-9/REVIEW.md).
+
+The real Meet router retains public callback behavior and four protected routes.
+Seven actor/token categories with valid/malformed payloads give56pre-validation
+denials, plus admin Joi/success and callback cases. Exact generated OAuth forms,
+calendar payloads/replies and genuine Date.now request-ID window are checked,
+with all13collections/actionreads/writes/JWT/otherprovider effects unchanged.
+Four precisely queued local Google recording intents (three token,one event)
+never reach native fetch. Four actual source variants fail the same nominal
+predicates, prove concrete alternate behavior and restore fresh nominal classes.
+Success follows drained queues/HTTP/ODM closure and held-fetch restoration.
+
+Actual nominal counters email5/SMS1/push2/logger350/calendar4,other5zero; logger is
+old289+56authority+4adminvalidation+1callback-validation denials. This is recording
+intent evidence, not real Google/OAuth/account/invitation delivery or internal
+booking acceptance. The bound executed predicates support private assertions;
+reviewers did not independently re-observe private HTTP/trial values. All88TS,
+67actualreachable modules and same13models are reconciled.1084semantic diagnostics
+retain all816old plus268new in newly discovered files,0transpile/fullBuild:false;
+no clean root typecheck or whole-startup claim.
+
+Parent cleanup plus fresh root readback verify same engine, both captured IDs
+absent, zero purpose labels and workspace ENOENT; reviewer/live-query provenance
+is explicit. Original six staged changes and all eleven handover files remain
+byte-identical. All commits are local; no deployment or production-key change.
+
+The next ready scoped preparation is a selected-index observation comparator,
+from actual F13/startup discovery. A separate draft proposes a pure data-only
+library and later separately admitted metadata readback, without index changes,
+startup/writer/health activation or full F13 claims. It needs lead freeze and two
+contract reviews before source implementation. No new metadata command or app
+execution is granted by the draft. Genuine requested Claude review still needs
+normal owner sign-in/client admission; no model call or forged acknowledgement.
+Root C2 retained-server facts/install/type/build/compiled start/defaultCI, broader
+identity/clinical/money/recovery/owner/security response, supported clients,
+original115 scenario outcomes, full M0/Week2,100RPS/release remain open.

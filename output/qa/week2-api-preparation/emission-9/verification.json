@@ -1,0 +1,81 @@
+{
+  "status": "PREPARED_NOT_EXECUTED",
+  "invocations": 1,
+  "exit": 0,
+  "sourceRoot": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9",
+  "sourceCommit": "c2dbac3e44b0bbf30e4574640cd940e2f0075975",
+  "descriptorSha": "185fb708ef0af3b4bbf106b836baee69d20b922a6089b418e42ed739f6e801e7",
+  "lockSha": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+  "portsSha": "86d6b909c06387c52c8d62e3b99a10784d9612fb6fc63581faf6d3e96ee13a12",
+  "filesVerified": 2870,
+  "bytes": 45011047,
+  "sourceInputs": 96,
+  "typescriptInputs": 88,
+  "nominalCasesNotRun": 76,
+  "mutantCasesNotRun": 21,
+  "modelCount": 13,
+  "reachableModules": 67,
+  "metadataControls": [
+    {
+      "id": "OMITTED_WELLNESS_PACKAGE",
+      "rejected": true
+    },
+    {
+      "id": "EXTRA_UNREACHABLE_MODEL",
+      "rejected": true
+    },
+    {
+      "id": "DUPLICATE_MODEL",
+      "rejected": true
+    },
+    {
+      "id": "WRONG_MODEL_SOURCE",
+      "rejected": true
+    },
+    {
+      "id": "OMITTED_DEPENDENT",
+      "rejected": true
+    }
+  ],
+  "semanticDiagnostics": 1084,
+  "priorSemanticDiagnosticsRetained": 816,
+  "priorSemanticDiagnosticsNoLongerReported": 0,
+  "newSemanticDiagnostics": 268,
+  "transpileDiagnostics": 0,
+  "compilation": "TRANSPILE_ONLY_NOT_TYPECHECKED",
+  "fullBuild": false,
+  "actualPreparationReviewers": [
+    "/root/backend_boot_path",
+    "/root/local_claude_review_prep"
+  ],
+  "decision": "APPROVE_LOCKED_INSTALL_AND_EMIT_ONLY",
+  "approvalConsumed": true,
+  "buildArea": "/private/tmp/sd-auth-api-build-a9f64d75-9506-4c72-a420-f273f42b886c",
+  "applicationEvaluations": 0,
+  "DockerCalls": 0,
+  "changesFromEmission8": [
+    "runtime-plan.json",
+    "scenario.cjs",
+    "ports-manifest.json",
+    "bootstrap.cjs"
+  ],
+  "additionsFromEmission8": [
+    "compiled/mutants/MEET_CALLBACK_GATED.js",
+    "compiled/mutants/MEET_AUTHENTICATION_REMOVED.js",
+    "compiled/mutants/MEET_GUARDS_AFTER_VALIDATION.js",
+    "compiled/mutants/MEET_ADMIN_GUARD_REMOVED.js",
+    "compiled/modules/slots/repository/index.js",
+    "compiled/modules/slots/types/index.js",
+    "compiled/modules/slots/model/index.js",
+    "compiled/modules/meet/types/index.js",
+    "compiled/modules/meet/controller/index.js",
+    "compiled/modules/meet/service/index.js",
+    "compiled/modules/meet/routes/index.js",
+    "compiled/modules/meet/validation/index.js",
+    "compiled/modules/bookings/repository/index.js",
+    "compiled/modules/bookings/types/index.js",
+    "compiled/modules/bookings/model/index.js"
+  ],
+  "deletionsFromEmission8": [],
+  "runtimeDecision": "PENDING_TWO_EXACT_REVIEWS"
+}

@@ -1,0 +1,37 @@
+{
+  "status": "ROOT_READONLY_INDEPENDENT_READBACK",
+  "runId": "0616600e-fdeb-40ef-a494-4c960fdf7e61",
+  "queries": [
+    {
+      "query": "engineBefore",
+      "exit": 0,
+      "stdout": "\"16ab25f6-88c7-4687-a431-b119b6ab9319\"|\"linux\""
+    },
+    {
+      "query": "mongoExactIdAbsent",
+      "exit": 0,
+      "stdout": ""
+    },
+    {
+      "query": "nodeExactIdAbsent",
+      "exit": 0,
+      "stdout": ""
+    },
+    {
+      "query": "zeroPurposeLabels",
+      "exit": 0,
+      "stdout": ""
+    },
+    {
+      "query": "engineAfter",
+      "exit": 0,
+      "stdout": "\"16ab25f6-88c7-4687-a431-b119b6ab9319\"|\"linux\""
+    }
+  ],
+  "workspaceAbsent": "ENOENT",
+  "originalPreservation": {
+    "stagedFiles": 6,
+    "stagedPatchSha": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+    "handoverFilesVerified": 11
+  }
+}
