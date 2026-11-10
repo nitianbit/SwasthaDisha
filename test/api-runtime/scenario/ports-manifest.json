@@ -9,7 +9,8 @@
     "@/modules/middleware/errorHandler",
     "@/modules/dependents/routes",
     "@/modules/notification/routes",
-    "@/modules/fcm/routes"
+    "@/modules/fcm/routes",
+    "@/modules/meet/routes"
   ],
   "excludedCapabilities": {
     "@/modules/payment/services": [
@@ -87,7 +88,23 @@
     "JWT_CONFIG_VALID_VALUE",
     "JWT_CONFIG_PADDED_VALUE_UNCHANGED",
     "JWT_CONFIG_NONPLACEHOLDER_VALUES",
-    "JWT_PUBLISHED_FALLBACK_TOKEN_DENIED"
+    "JWT_PUBLISHED_FALLBACK_TOKEN_DENIED",
+    "MEET_URL_AUTHORITY",
+    "MEET_EXCHANGE_AUTHORITY",
+    "MEET_REFRESH_AUTHORITY",
+    "MEET_CREATE_AUTHORITY",
+    "MEET_URL_ADMIN_VALIDATION",
+    "MEET_EXCHANGE_ADMIN_VALIDATION",
+    "MEET_REFRESH_ADMIN_VALIDATION",
+    "MEET_CREATE_ADMIN_VALIDATION",
+    "MEET_URL_ADMIN_SUCCESS",
+    "MEET_EXCHANGE_ADMIN_SUCCESS",
+    "MEET_REFRESH_ADMIN_SUCCESS",
+    "MEET_CREATE_ADMIN_SUCCESS",
+    "MEET_CALLBACK_VALID_CODE_PUBLIC",
+    "MEET_CALLBACK_PROVIDER_ERROR_PUBLIC",
+    "MEET_CALLBACK_MISSING_CODE_PUBLIC",
+    "MEET_CALLBACK_INVALID_QUERY_PUBLIC"
   ],
   "requiredSensitivityIds": [
     "OTP_UNCONDITIONAL_CONSUME",
@@ -106,7 +123,11 @@
     "FCM_TEST_ADMIN_GUARD_AFTER_VALIDATION",
     "JWT_CONFIG_PUBLISHED_FALLBACK",
     "JWT_CONFIG_PRODUCTION_ONLY_GUARD",
-    "JWT_CONFIG_TRIMMED_RETURN"
+    "JWT_CONFIG_TRIMMED_RETURN",
+    "MEET_AUTHENTICATION_REMOVED",
+    "MEET_ADMIN_GUARD_REMOVED",
+    "MEET_GUARDS_AFTER_VALIDATION",
+    "MEET_CALLBACK_GATED"
   ],
   "optionalAbsentPackages": [
     "kerberos",
@@ -300,5 +321,34 @@
       "indexes": []
     }
   ],
-  "indexScope": "Only listed correctness indexes and MongoDB default _id indexes are created. Unexercised performance indexes are outside this focused fixture."
+  "indexScope": "Only listed correctness indexes and MongoDB default _id indexes are created. Unexercised performance indexes are outside this focused fixture.",
+  "recordingMeet": {
+    "tokenUrl": "https://oauth2.googleapis.com/token",
+    "calendarUrl": "https://www.googleapis.com/calendar/v3/calendars/fixture-calendar%40example.com/events?conferenceDataVersion=1&sendUpdates=all",
+    "bodyBytes": 8192,
+    "recordLimit": 256,
+    "environment": {
+      "GOOGLE_OAUTH_CLIENT_ID": "fixture-google-client-id",
+      "GOOGLE_OAUTH_CLIENT_SECRET": "fixture-google-client-secret",
+      "GOOGLE_OAUTH_REDIRECT_URI": "https://fixture.example.com/oauth/callback",
+      "GOOGLE_OAUTH_REFRESH_TOKEN": "fixture-refresh-token",
+      "GOOGLE_CALENDAR_ID": "fixture-calendar@example.com",
+      "GOOGLE_MEET_TIMEZONE": "Asia/Kolkata"
+    },
+    "oauthResponse": {
+      "access_token": "fixture-access-token-1234567890",
+      "token_type": "Bearer",
+      "expires_in": 3600,
+      "refresh_token": "fixture-refresh-token"
+    },
+    "eventResponse": {
+      "id": "fixture-event-id",
+      "hangoutLink": "https://meet.google.com/abc-defg-hij",
+      "conferenceData": {
+        "conferenceId": "abc-defg-hij"
+      }
+    },
+    "providerCounter": "calendar",
+    "providerCounterScope": "ALL_NOMINAL_RECORDED_GOOGLE_TOKEN_AND_CALENDAR_REQUESTS_EXCLUDING_SENSITIVITY"
+  }
 }
