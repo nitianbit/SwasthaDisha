@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { NotificationService } from '@/modules/notification/services';
 import { AuthRequest } from '@/modules/middleware/auth';
+import { AppError } from '@/modules/common/types';
 import {
   CreateNotificationRequest,
   CreateGeneralNotificationRequest,
@@ -15,6 +16,24 @@ export class NotificationController {
 
   constructor() {
     this.notificationService = Container.get(NotificationService);
+  }
+
+  private assertOwnRecipient(req: AuthRequest, userId: string): void {
+    if (!req.user?._id) {
+      throw new AppError({
+        status: 401,
+        code: 'UNAUTHORIZED',
+        message: 'Authentication is required',
+      });
+    }
+
+    if (req.user._id !== userId) {
+      throw new AppError({
+        status: 403,
+        code: 'FORBIDDEN',
+        message: 'Access to another recipient is not permitted',
+      });
+    }
   }
 
   create = async (req: Request, res: Response, _next: NextFunction) => {
@@ -90,8 +109,9 @@ export class NotificationController {
     }
   };
 
-  getByUserId = async (req: Request, res: Response, _next: NextFunction) => {
+  getByUserId = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const { userId } = req.params;
+    this.assertOwnRecipient(req, userId);
     const result = await this.notificationService.getByUserId(userId);
 
     res.status(200).json({
@@ -101,11 +121,12 @@ export class NotificationController {
   };
 
   getUnreadByUserId = async (
-    req: Request,
+    req: AuthRequest,
     res: Response,
     _next: NextFunction
   ) => {
     const { userId } = req.params;
+    this.assertOwnRecipient(req, userId);
     const result = await this.notificationService.getUnreadByUserId(userId);
 
     res.status(200).json({
@@ -115,11 +136,12 @@ export class NotificationController {
   };
 
   getUnreadCount = async (
-    req: Request,
+    req: AuthRequest,
     res: Response,
     _next: NextFunction
   ) => {
     const { userId } = req.params;
+    this.assertOwnRecipient(req, userId);
     const count = await this.notificationService.getUnreadCount(userId);
 
     res.status(200).json({
@@ -152,11 +174,12 @@ export class NotificationController {
   };
 
   markAllAsRead = async (
-    req: Request,
+    req: AuthRequest,
     res: Response,
     _next: NextFunction
   ) => {
     const { userId } = req.params;
+    this.assertOwnRecipient(req, userId);
     await this.notificationService.markAllAsRead(userId);
 
     res.status(200).json({
