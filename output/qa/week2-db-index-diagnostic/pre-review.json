@@ -1,0 +1,11 @@
+{
+  "schema": "SD-SOURCE-CONTRACT-DECISIONS-1",
+  "contractSha": "91a948e009b1e6280337fed06a195e1abd19cfa0ff7ea6f0ba7c8a0b959ad002",
+  "sourceBaseline": "d91e1a3d37f2b229efc7fc2507d666ddc2576d99",
+  "provenance": "direct internal Codex reviews; no Claude or owner acceptance",
+  "decisions": {
+    "/root/backend_boot_path": "APPROVE_CONTRACT_IMPLEMENTATION_ONLY",
+    "/root/local_claude_review_prep": "APPROVE_CONTRACT_IMPLEMENTATION_ONLY"
+  },
+  "executionAuthority": "PURE_OFFLINE_ONLY; no new real invocation"
+}

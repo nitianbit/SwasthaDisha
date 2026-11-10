@@ -1,0 +1,12 @@
+{
+  "command": "env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /private/tmp/m0-node22/node --permission --allow-fs-read=<owned-scenario-dir> test/api-runtime/scenario/bootstrap-unit.cjs",
+  "implementation": "original d91e1a3 bootstrap with amended pure tests",
+  "exit": 1,
+  "stdout": {
+    "schema": "SD-AUTH-API-OFFLINE-1",
+    "failed": 1,
+    "code": "OFFLINE_SETUP_UNIT_FAILED"
+  },
+  "applicationImports": 0,
+  "purpose": "Actual regression rejection before changing implementation"
+}

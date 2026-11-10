@@ -108,10 +108,13 @@ async function setupUnits() {
     DUPLICATE_KEY: () => coded(11000),
     NAMESPACE_EXISTS: () => coded(48),
     INDEX_CONFLICT: () => coded(85),
+    OUT_OF_DISK_SPACE: () => Object.assign(named('MongoServerError'), { code: 14031 }),
+    CANNOT_CREATE_INDEX: () => Object.assign(named('MongoServerError'), { code: 67 }),
+    INVALID_OPTIONS: () => Object.assign(named('MongoServerError'), { code: 72 }),
     UNKNOWN: () => new Error('synthetic-private-sentinel'),
   };
   const publicCodes = Object.values(SETUP_FAILURE_CODES).flatMap(row => Object.values(row));
-  need(publicCodes.length === 36 && new Set(publicCodes).size === 36
+  need(publicCodes.length === 48 && new Set(publicCodes).size === 48
     && publicCodes.every(code => /^DB_[A-Z_]+$/.test(code)), 'SETUP_LITERAL_CODES');
   async function failed(step, original, expected) {
     let calls = 0; let caught;
@@ -128,6 +131,17 @@ async function setupUnits() {
     cases.push(step + '_SUCCESS_ONCE');
     for (const [category, create] of Object.entries(samples)) {
       await failed(step, create(), SETUP_FAILURE_CODES[step][category]); cases.push(step + '_' + category);
+    }
+    for (const [category, code] of [['OUT_OF_DISK_SPACE', 14031], ['CANNOT_CREATE_INDEX', 67], ['INVALID_OPTIONS', 72]]) {
+      const nested = Object.assign(named('MongoServerError'), {
+        cause: new Error('synthetic-private-sentinel', { cause: coded(code) }),
+      });
+      await failed(step, nested, SETUP_FAILURE_CODES[step][category]); cases.push(step + '_NESTED_' + category);
+      await failed(step, coded(String(code)), SETUP_FAILURE_CODES[step].UNKNOWN); cases.push(step + '_STRING_' + category);
+      const guarded = Object.assign(named('MongoServerError'), { code,
+        cause: Object.assign(new Error('synthetic-private-sentinel'), { fixtureCode: 'UNDECLARED_DRIVER_URI' }),
+      });
+      await failed(step, guarded, 'UNDECLARED_DRIVER_URI'); cases.push(step + '_GUARD_BEFORE_' + category);
     }
     const guard = Object.assign(new Error('synthetic-private-sentinel'), { fixtureCode: 'UNDECLARED_DRIVER_URI' });
     await failed(step, guard, 'UNDECLARED_DRIVER_URI'); cases.push(step + '_GUARD_PRESERVED');

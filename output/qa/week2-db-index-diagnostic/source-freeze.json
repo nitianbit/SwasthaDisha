@@ -1,0 +1,33 @@
+{
+  "schema": "SD-DB-INDEX-DIAGNOSTIC-SOURCE-1",
+  "baseline": "d91e1a3d37f2b229efc7fc2507d666ddc2576d99",
+  "author": "/root",
+  "files": {
+    "test/api-runtime/scenario/README.md": "619ed9faab1917e80cf801263609027f029397861eeb1ae0bcc8641956080f55",
+    "test/api-runtime/scenario/bootstrap-unit.cjs": "29b50ff0e754988c46be8a25ae2c7706447a0006914d0fb7607193bbcce08f61",
+    "test/api-runtime/scenario/bootstrap.cjs": "861be44d5f28beebbde9bd81c75c4e8fe575bb76f67d5c16451bdcf6d01bbb4f",
+    "output/qa/week2-db-index-diagnostic/CONTRACT.md": "91a948e009b1e6280337fed06a195e1abd19cfa0ff7ea6f0ba7c8a0b959ad002",
+    "output/qa/week2-db-index-diagnostic/baseline-rejection.json": "d406b47bf48efaa835e48bfbfbbf9ace2b96b3ff6e934b4bb6024edb853c96b4",
+    "output/qa/week2-db-index-diagnostic/pre-review.json": "4f3a613ef5e362bf0c54cea613f4f9d45887f9fa5b5ed36663535456aab067d9",
+    "output/qa/week2-db-index-diagnostic/public-codes.json": "61e804c150dca621e4b983affb9e7d0b0b3b4dbe9211de4d8eb944c84127b5b0"
+  },
+  "offlineChecks": {
+    "baselineRejected": true,
+    "cases": 151,
+    "admissionCases": 22,
+    "setupDiagnosticCases": 117,
+    "ownedCleanupCases": 12,
+    "failed": 0,
+    "applicationImports": 0,
+    "connections": 0,
+    "domainWrites": 0,
+    "syntax": "PASS",
+    "whitespace": "PASS"
+  },
+  "publicCodes": 48,
+  "productionChanges": 0,
+  "runtimeProfileChanges": 0,
+  "sevenFieldFailureHandler": "UNCHANGED",
+  "newActualRun": "NOT_AUTHORIZED",
+  "capacityCause": "UNPROVEN"
+}

@@ -27,8 +27,12 @@ identity rows and assertion operands are never printed or persisted.
 
 Database setup retains its original CONNECT, HELLO, COLLECTION_CREATE and
 INDEX_CREATE actions, arguments and results. A wrapper calls each action once and
-maps only finite known error names/codes to 36 fixed public step/category literals;
-known guard codes are preserved. It examines at most the original error plus two
+maps only finite known error names/codes to 48 fixed public step/category literals;
+known guard codes are preserved. Exact numeric codes 14031, 67 and 72 have
+separate OUT_OF_DISK_SPACE, CANNOT_CREATE_INDEX and INVALID_OPTIONS categories.
+Numeric strings do not match. These diagnostics do not prove the prior failure
+was caused by capacity, and authorize no capacity or server-parameter change.
+It examines at most the original error plus two
 cause objects, reads data descriptors without invoking error accessors, and retains
 the original thrown value only in a non-enumerable in-memory cause. The existing
 seven-field failure protocol is unchanged; new failures contain no original
