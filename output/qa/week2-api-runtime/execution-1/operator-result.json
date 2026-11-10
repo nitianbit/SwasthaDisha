@@ -1,0 +1,47 @@
+{
+  "schema": "SD-AUTH-API-INVOCATION-1",
+  "sourceCommit": "b3a04bc5bb9ee551a5c4d8fadf95f695f07896f5",
+  "operatorSha": "9c6d1c805de4c50542667b90532219c54666b8a764ee5672055f641938b099ed",
+  "approvalSha": "b1cec531a5ccb20055bc5b9629f0fcc327e51b425122ad0b5257213f37f7f73f",
+  "templateSha": "ff0d67244b09764755880630a414737ee0d1ccd7d0d86cb1e5bb8cc068927cce",
+  "status": "FAILED_REVIEW_REQUIRED",
+  "fixtureHandleReturned": true,
+  "runRequested": true,
+  "runEntered": true,
+  "cleanup": "VERIFIED",
+  "created": [
+    {
+      "kind": "mongo",
+      "id": "e18e87135c33790195f863bdc2a96442bd3a71b1c6397bd0c6040484acd80b7a",
+      "name": "sd-api-mongo-37eef024-2531-4208-8aa2-de532f4af1db",
+      "removed": false
+    },
+    {
+      "kind": "node",
+      "id": "1dd89e6704f0fff9413b215fdb7b10480345fe6bf0542031c4b9ee41cfbe7a28",
+      "name": "sd-api-node-37eef024-2531-4208-8aa2-de532f4af1db",
+      "removed": false
+    }
+  ],
+  "runId": "37eef024-2531-4208-8aa2-de532f4af1db",
+  "workspace": "/private/tmp/sd-auth-api-run-azKIQy",
+  "failure": {
+    "operation": "start",
+    "outcome": "FAILED",
+    "child": {
+      "stage": "OWNED_DATABASE_CONNECT",
+      "code": "RUNTIME_FIXTURE_FAILED"
+    }
+  },
+  "cleanupReceipt": {
+    "runId": "37eef024-2531-4208-8aa2-de532f4af1db",
+    "directory": "/private/tmp/sd-auth-api-run-azKIQy",
+    "exactIdsAbsent": [
+      "e18e87135c33790195f863bdc2a96442bd3a71b1c6397bd0c6040484acd80b7a",
+      "1dd89e6704f0fff9413b215fdb7b10480345fe6bf0542031c4b9ee41cfbe7a28"
+    ],
+    "engineId": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+    "zeroPurposeLabels": true,
+    "workspaceAbsent": true
+  }
+}

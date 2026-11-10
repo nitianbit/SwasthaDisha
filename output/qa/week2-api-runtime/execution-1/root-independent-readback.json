@@ -1,0 +1,22 @@
+{
+  "schema": "SD-AUTH-API-INDEPENDENT-READBACK-1",
+  "scope": "READONLY_EXACT_ENGINE_IDS_PURPOSE",
+  "runId": "37eef024-2531-4208-8aa2-de532f4af1db",
+  "observer": "/root",
+  "mutations": 0,
+  "engineBefore": [
+    "16ab25f6-88c7-4687-a431-b119b6ab9319",
+    "linux"
+  ],
+  "exactIDsAbsent": {
+    "e18e87135c33790195f863bdc2a96442bd3a71b1c6397bd0c6040484acd80b7a": true,
+    "1dd89e6704f0fff9413b215fdb7b10480345fe6bf0542031c4b9ee41cfbe7a28": true
+  },
+  "zeroPurposeLabels": true,
+  "engineAfter": [
+    "16ab25f6-88c7-4687-a431-b119b6ab9319",
+    "linux"
+  ],
+  "workspaceAbsent": true,
+  "status": "VERIFIED"
+}

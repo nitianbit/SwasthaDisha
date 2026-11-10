@@ -1,0 +1,28 @@
+{
+  "status": "FAILED_REVIEW_REQUIRED",
+  "invocations": 1,
+  "commandExit": 1,
+  "runId": "37eef024-2531-4208-8aa2-de532f4af1db",
+  "sourceRoot": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-3",
+  "sourceCommit": "b3a04bc5bb9ee551a5c4d8fadf95f695f07896f5",
+  "templateSha": "ff0d67244b09764755880630a414737ee0d1ccd7d0d86cb1e5bb8cc068927cce",
+  "command": "env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /private/tmp/m0-node22/node test/api-runtime/launch.mjs",
+  "actualReviewers": [
+    "/root/backend_boot_path",
+    "/root/local_claude_review_prep"
+  ],
+  "decision": "APPROVE_ONE_FIXED_AUTH_API_RUN",
+  "approvalConsumed": true,
+  "failureStage": "OWNED_DATABASE_CONNECT",
+  "failureCode": "RUNTIME_FIXTURE_FAILED",
+  "cleanup": "VERIFIED_BY_PARENT_READBACK_PENDING_INDEPENDENT_CONFIRMATION",
+  "nominalCases": "NOT_RUN",
+  "sensitivityCases": "NOT_RUN",
+  "interpretation": [
+    "Frozen child phase implies preimport/canary/router and exact12model registration checks were passed",
+    "DB setup covers connect/hello/collection/index initialization; successful handshake and precise failed operation not proven",
+    "No actual HTTP scenarios or JWT/login assertions executed",
+    "No second invocation, repair or retry is authorized by this result",
+    "Driver/app code was evaluated inside admitted owned runtime; no full src1/index startup or roottype/build success"
+  ]
+}
