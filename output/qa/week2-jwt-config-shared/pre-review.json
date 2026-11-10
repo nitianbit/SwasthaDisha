@@ -1,0 +1,11 @@
+{
+  "contractSha": "4c7a4bae2f39e9afdeedc22c97babf684bd2077d31647196d714e5eda3d281f1",
+  "author": "/root/auth_api_fixture_contract",
+  "sharedSourceAuthor": "/root",
+  "baseline": "7517a239b87559d923a2f46583173517ff4a1849",
+  "decisions": {
+    "/root/backend_boot_path": "APPROVE_CONTRACT_IMPLEMENTATION_ONLY",
+    "/root/local_claude_review_prep": "APPROVE_CONTRACT_IMPLEMENTATION_ONLY"
+  },
+  "scope": "SOURCE_IMPLEMENTATION_AND_PURE_OFFLINE_ONLY"
+}

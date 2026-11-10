@@ -1,0 +1,12 @@
+{
+  "schema": "SD-JWT-CONFIG-BASELINE-1",
+  "baseline": "7517a239b87559d923a2f46583173517ff4a1849",
+  "bootstrapSha256": "1e464bfbdfb0ddfa77efea4421bde21fa03eef4d367cc32fa2208ab638063fd6",
+  "unitSha256": "82f31df87203bfbb9c9c67721697dd777fedd34fc2f43112bb701c36cb4f7764",
+  "portsSha256": "0c4fbf77a3d35be63fdb833ad357964240556879d5ef2c49f2785929e10a6d59",
+  "node": "22.23.4",
+  "command": "env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /private/tmp/m0-node22/node --permission --allow-fs-read=\"$PWD/test/api-runtime/scenario\" test/api-runtime/scenario/bootstrap-unit.cjs",
+  "exitCode": 1,
+  "observedFailure": "AUTHORITY_PLAN",
+  "boundary": "The new 60/17 positive fake admission fixture is rejected by original 53/14 bootstrap before application imports. No real CONFIG, package, application, MongoDB or provider was evaluated."
+}

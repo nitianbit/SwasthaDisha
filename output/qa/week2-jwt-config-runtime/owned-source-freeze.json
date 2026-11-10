@@ -1,0 +1,24 @@
+{
+  "schema": "SD-JWT-CONFIG-OWNED-SOURCE-FREEZE-1",
+  "baseline": "7517a239b87559d923a2f46583173517ff4a1849",
+  "scope": "OWNED_FILES_ONLY_PENDING_SHARED_COMPOSITION",
+  "files": {
+    "test/api-runtime/scenario/scenario.cjs": "64ffadd360d41b1b2a830f1e513931f3368a8f77db8d749b1b3d2588d6e19da7",
+    "test/api-runtime/scenario/compile.cjs": "8fdc3fddc50bd97cf063df179f07cee58373a8571adacac79b7b0de9df33e5a4",
+    "test/api-runtime/scenario/README.md": "3e47db1fc08e8b0aa70777d324c50289e6d827ba9688bdc8340d6ef8388d1fd8",
+    "output/qa/week2-jwt-config-runtime/CONTRACT.md": "4c7a4bae2f39e9afdeedc22c97babf684bd2077d31647196d714e5eda3d281f1",
+    "output/qa/week2-jwt-config-runtime/README.md": "7601f329dc6902825cc028bd8b838ae38080247fa52ade42eb5bb447bd063678",
+    "output/qa/week2-jwt-config-runtime/candidate.diff": "e9d26fb688775b27ac8402079d713155e64687fc0564979458fdafda5c12186b",
+    "output/qa/week2-jwt-config-runtime/evidence-unit-result.json": "7d3abbb48fd29030269f58cf2a57f9c8cad55b966433309a739e70450a82cc39",
+    "output/qa/week2-jwt-config-runtime/evidence-unit.cjs": "95ef7cce2fa6fd58409d2229a41e2d57b7e98e0904d27c3237f4129e07280908",
+    "output/qa/week2-jwt-config-runtime/verification.json": "cf47dfe485228e664fcf54daaf41b881a61c55f9bed3724e2816a34e3a0a33bb",
+    "output/qa/week2-jwt-config-runtime/verify-source.py": "7e0ca0140b4da0dd6927fbbb1cebb7719115c4ee06b9b000f5e9a3d81ca6ff7e"
+  },
+  "nominalIds": 60,
+  "sensitivityIds": 17,
+  "parserUnitCases": 42,
+  "actualConfigLoads": 0,
+  "applicationEvaluations": 0,
+  "compilerExecutions": 0,
+  "runtime": "NOT_RUN"
+}

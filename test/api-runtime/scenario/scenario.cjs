@@ -5,6 +5,33 @@ const http = require('node:http');
 const crypto = require('node:crypto');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
+function requireConfigurationEvidence(evidence, need) {
+  if (typeof need !== 'function') throw new Error('JWT_CONFIG_EVIDENCE_CHECKER_REQUIRED');
+  const configurationCaseIds = ['JWT_CONFIG_UNSET_DENIED', 'JWT_CONFIG_BLANK_DENIED', 'JWT_CONFIG_PLACEHOLDERS_DENIED',
+    'JWT_CONFIG_VALID_VALUE', 'JWT_CONFIG_PADDED_VALUE_UNCHANGED', 'JWT_CONFIG_NONPLACEHOLDER_VALUES'];
+  const configurationSensitivityIds = ['JWT_CONFIG_PUBLISHED_FALLBACK', 'JWT_CONFIG_PRODUCTION_ONLY_GUARD', 'JWT_CONFIG_TRIMMED_RETURN'];
+  function frozenData(value, names) {
+    if (!value || Object.getPrototypeOf(value) !== Object.prototype || !Object.isFrozen(value) || Object.getOwnPropertySymbols(value).length !== 0
+      || JSON.stringify(Object.getOwnPropertyNames(value).sort()) !== JSON.stringify(names.slice().sort())) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    return Object.values(descriptors).every(row => Object.hasOwn(row, 'value')) ? descriptors : null;
+  }
+  function configurationRows(rows, names, field, expected) {
+    return Array.isArray(rows) && Object.isFrozen(rows) && Object.getOwnPropertySymbols(rows).length === 0
+      && JSON.stringify(Object.getOwnPropertyNames(rows).sort()) === JSON.stringify([...names.map((_, i) => String(i)), 'length'].sort())
+      && rows.length === names.length && names.every((name, index) => {
+        const descriptor = Object.getOwnPropertyDescriptor(rows, String(index));
+        if (!descriptor || !Object.hasOwn(descriptor, 'value')) return false;
+        const values = frozenData(descriptor.value, ['id', field]);
+        return values?.id.value === name && values[field].value === expected;
+      });
+  }
+  const configuration = frozenData(evidence, ['cases', 'sensitivity']);
+  need(configuration && configurationRows(configuration.cases.value, configurationCaseIds, 'status', 'PASS')
+    && configurationRows(configuration.sensitivity.value, configurationSensitivityIds, 'detected', true), 'JWT_CONFIG_EVIDENCE');
+  return evidence;
+}
+
 async function runScenario(ctx) {
   const { mongoose, need } = ctx;
   const model = name => mongoose.model(name);
@@ -13,6 +40,7 @@ async function runScenario(ctx) {
   const cases = []; const sensitivity = [];
   const completedProofs = new Map();
   const record = name => { need(!cases.some(row => row.id === name), 'DUPLICATE_CASE'); cases.push({ id: name, status: 'PASS' }); };
+  const configuration = requireConfigurationEvidence(ctx.configurationEvidence, need);
   const request = (method, route, token, body) => new Promise((resolve, reject) => {
     const payload = body === undefined ? undefined : JSON.stringify(body);
     const req = http.request({ hostname: '127.0.0.1', port: ctx.port, path: '/api/v1' + route,
@@ -728,6 +756,18 @@ async function runScenario(ctx) {
   await cleanCompletedProofs();
   await runAuthorityNominal(admin.token);
 
+  need(cases.length === 53 && same(cases.map(row => row.id), ctx.ports.requiredCaseIds.slice(0, 53)), 'JWT_CONFIG_PRIOR_CASE_SET');
+  for (const row of configuration.cases) record(row.id);
+  const currentKeyRead = await readSuccess('/users/' + id(a), alpha.token);
+  need(currentKeyRead.data?.user?._id === id(a), 'JWT_CONFIG_CURRENT_KEY_OWNER');
+  for (const published of ['your-secret-key', 'your-secret-key-change-in-production']) {
+    // Explicit fixture tokens use the genuine library; neither value comes from
+    // a real deployment/environment and no token or key is retained in output.
+    const forged = ctx.originalSign({ _id: id(a), userType: 'user' }, published, { algorithm: 'HS256', expiresIn: '5m' });
+    await authorityDeny('GET', '/users/' + id(a), forged, undefined, 401, 'INVALID_TOKEN', true);
+  }
+  record('JWT_PUBLISHED_FALLBACK_TOKEN_DENIED');
+
   // Separate negative phases use emitted variants of the actual frozen source.
   // Fresh production classes, TypeDI registrations and HTTP server each phase.
   const nominalCounters = { ...ctx.counters };
@@ -750,6 +790,8 @@ async function runScenario(ctx) {
     await ctx.nextPhase({}); sensitivity.push({ id: name, detected: true });
   }
   await runAuthoritySensitivity(admin.token);
+  need(sensitivity.length === 14 && same(sensitivity.map(row => row.id), ctx.ports.requiredSensitivityIds.slice(0, 14)), 'JWT_CONFIG_PRIOR_SENSITIVITY_SET');
+  for (const row of configuration.sensitivity) sensitivity.push({ id: row.id, detected: true });
   // Prove fresh nominal classes restore the two owner boundaries after mutants.
   await deny('GET', '/users/' + id(b), alpha.token, undefined, [403], 'RESTORED_USER_OWNER');
   await deny('GET', '/wallet/' + id(bw), alpha.token, undefined, [403], 'RESTORED_WALLET_OWNER');
@@ -760,4 +802,4 @@ async function runScenario(ctx) {
   } };
 }
 
-module.exports = { runScenario };
+module.exports = { runScenario, requireConfigurationEvidence };

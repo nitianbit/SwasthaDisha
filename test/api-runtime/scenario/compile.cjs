@@ -251,6 +251,13 @@ function compile(sourceRoot, runtimeRoot, inputPlan) {
     "  '/test',\n  validate(sendTestNotificationSchema, 'body'),"));
   mutate('FCM_TEST_ADMIN_GUARD_AFTER_VALIDATION', fcmRoutes, text => once(text, testRegistration,
     "  '/test',\n  validate(sendTestNotificationSchema, 'body'),\n  requireAdmin,"));
+  const configSource = 'src1/config/config.ts';
+  const configInitializer = '  JWT_SECRET_KEY: requireJwtSecret(process.env.JWT_SECRET_KEY),';
+  mutate('JWT_CONFIG_PUBLISHED_FALLBACK', configSource, text => once(text, configInitializer,
+    "  JWT_SECRET_KEY: process.env.JWT_SECRET_KEY || 'your-secret-key',"));
+  mutate('JWT_CONFIG_PRODUCTION_ONLY_GUARD', configSource, text => once(text, configInitializer,
+    "  JWT_SECRET_KEY: process.env.NODE_ENV === 'production' ? requireJwtSecret(process.env.JWT_SECRET_KEY) : process.env.JWT_SECRET_KEY,"));
+  mutate('JWT_CONFIG_TRIMMED_RETURN', configSource, text => once(text, '  return value;\n}', '  return value.trim();\n}'));
   requireThat(JSON.stringify(Object.keys(mutants)) === JSON.stringify(ports.requiredSensitivityIds), 'MUTANT_SET');
   // Retain focused semantic diagnostics without evaluating any application
   // module or resolving excluded capabilities into the rest of the monolith.

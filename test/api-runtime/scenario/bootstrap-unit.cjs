@@ -24,13 +24,16 @@ for (const name of ['writeFile', 'writeFileSync', 'appendFile', 'appendFileSync'
 for (const name of ['writeFile', 'appendFile', 'mkdir', 'rm', 'unlink', 'rename', 'copyFile']) fs.promises[name] = blockedWrite;
 const blockedNetwork = () => { connections++; throw new Error('OFFLINE_NETWORK_DENIED'); };
 net.Socket.prototype.connect = blockedNetwork; net.connect = blockedNetwork;
+net.Server.prototype.listen = blockedNetwork;
 net.createConnection = blockedNetwork; tls.connect = blockedNetwork; dns.lookup = blockedNetwork;
 const originalLoad = Module._load;
 Module._load = function (request, parent, isMain) {
   if (request !== bootstrap && !Module.isBuiltin(request)) { applicationImports++; throw new Error('OFFLINE_DOMAIN_IMPORT_DENIED'); }
   return originalLoad.call(this, request, parent, isMain);
 };
-const { validateAdmissionData, runSetupStep, SETUP_FAILURE_CODES, withOwnedCleanup, recordReadOperation, recordPush } = require(bootstrap);
+const { validateAdmissionData, runSetupStep, SETUP_FAILURE_CODES, withOwnedCleanup, recordReadOperation, recordPush,
+  configurationSamples, configurationFinally, configurationEnvironment, withConfigurationTaps,
+  configurationSampleEvidence, collectConfigurationEvidence } = require(bootstrap);
 const need = (condition, label) => { if (!condition) throw new Error(label); };
 need(process.permission && !process.permission.has('child') && !process.permission.has('worker')
   && !process.permission.has('addon') && !process.permission.has('fs.write'), 'OFFLINE_PROCESS_GRANTS');
@@ -43,15 +46,17 @@ function fixture() {
     'compiled/entry.js': Buffer.from('inert'), 'node_modules/public/index.js': Buffer.from('inert') };
   const sources = Object.fromEntries(ports.models.map(row => [row.source, 'a'.repeat(64)]));
   sources['src1/modules/otp/repository/index.ts'] = 'a'.repeat(64);
+  sources['src1/config/config.ts'] = 'a'.repeat(64);
   const mutants = Object.fromEntries(ports.requiredSensitivityIds.map(name => {
     const file = 'compiled/mutants/' + name + '.js'; files[file] = Buffer.from('inert');
-    return [name, { source: 'src1/modules/otp/repository/index.ts', originalSha256: 'a'.repeat(64), file }];
+    return [name, { source: name.startsWith('JWT_CONFIG_') ? 'src1/config/config.ts' : 'src1/modules/otp/repository/index.ts', originalSha256: 'a'.repeat(64), file }];
   }));
   const plan = { schema: 'SD-AUTH-API-PLAN-1', role: ports.role, sourceCommit, sourceFiles: sources,
     compilation: { compiler: '5.9.3', status: 'TRANSPILE_ONLY_NOT_TYPECHECKED' },
     modules: Object.fromEntries(ports.roots.map(root => [root, 'compiled/entry.js'])), mutants,
     models: ports.models, requiredCaseIds: ports.requiredCaseIds, requiredSensitivityIds: ports.requiredSensitivityIds,
     providerCounterKeys: ports.providerCounterKeys };
+  plan.modules['@/config/config'] = 'compiled/config/config.js'; files['compiled/config/config.js'] = Buffer.from('inert');
   const manifest = { schema: 'SD-AUTH-API-RUN-1', role: ports.role, runId, sourceCommit,
     database: 'sd_api_' + runId.replaceAll('-', ''), replicaSet: 'sd_rs_' + runId.replaceAll('-', ''),
     mongoId: 'c'.repeat(64), templateSha: 'd'.repeat(64) };
@@ -104,7 +109,235 @@ check('MISSING_AUTHORITY_ROUTER', p => { p.ports.roots.pop(); p.plan.modules = O
 check('MISSING_AUTHORITY_CASE', p => { p.ports.requiredCaseIds.pop(); }, true);
 check('MISSING_AUTHORITY_SENSITIVITY', p => { p.ports.requiredSensitivityIds.pop(); }, true);
 check('PORT_PLAN_MISMATCH', p => { p.plan.portsSha = 'e'.repeat(64); });
+check('CONFIG_ALIAS_REBOUND', p => { p.plan.modules['@/config/config'] = 'compiled/entry.js'; }, true);
+check('CONFIG_SOURCE_MISSING', p => { delete p.plan.sourceFiles['src1/config/config.ts']; }, true);
+check('CONFIG_MUTANT_REBOUND', p => { p.plan.mutants.JWT_CONFIG_TRIMMED_RETURN.source = 'src1/modules/otp/repository/index.ts'; }, true);
 const recordingRows = [];
+const configurationRows = [];
+function configurationCheck(id, action) { action(); configurationRows.push(id); }
+function configurationFailure(action, code) {
+  let caught; try { action(); } catch (error) { caught = error; }
+  need(caught?.fixtureCode === code && caught.message === code, 'CONFIG_EXPECTED_FIXED_UNIT_FAILURE'); return caught;
+}
+// Every configuration load/signature/connection below is a scripted fake. This
+// tests orchestration and rejection, never evaluates a modeled/copied app guard.
+function fakeConfigurationRuntime() {
+  const key = 'synthetic-private-config-key'; const uri = 'synthetic-owned-uri';
+  const env = { NODE_ENV: 'test', JWT_SECRET_KEY: key, MONGODB_URL: uri };
+  const effects = Object.fromEntries(['email', 'sms', 'push', 'logger', 'console', 'unexpected', 'excluded', 'jwtIssued', 'dbWrites'].map(name => [name, 0]));
+  const state = { cache: new Set(), loads: [], delegated: 0, signatures: 0, overrides: {}, models: [], hook: undefined };
+  const delegated = function () { state.delegated++; return 'fake-read'; };
+  const mongoose = { connect: delegated, createConnection: delegated, Connection: function () {},
+    mongo: { MongoClient: function () {} }, Model: function () {}, Query: function () {},
+    connection: { readyState: 0 }, modelNames: () => state.models.slice() };
+  mongoose.Connection.prototype.openUri = delegated; mongoose.mongo.MongoClient.prototype.connect = delegated;
+  for (const name of ['create', 'insertMany', 'bulkWrite']) mongoose.Model[name] = delegated;
+  mongoose.Model.prototype.save = delegated; mongoose.Query.prototype.exec = delegated;
+  const network = { Socket: function () {}, Server: function () {} };
+  network.Socket.prototype.connect = delegated; network.Server.prototype.listen = delegated;
+  const plan = { modules: { '@/config/config': 'compiled/config/config.js' },
+    sourceFiles: { 'src1/config/config.ts': 'a'.repeat(64) }, mutants: {} };
+  for (const id of portsOriginal.requiredSensitivityIds.slice(14)) plan.mutants[id] = {
+    source: 'src1/config/config.ts', originalSha256: 'a'.repeat(64), file: 'compiled/mutants/' + id + '.js',
+  };
+  const samples = configurationSamples(key);
+  const loader = {
+    phase(substitutes, overrides = {}) { need(substitutes === runtime.substitutes, 'FAKE_RECORDERS_MANDATORY'); state.overrides = overrides; },
+    resetCompiled() { state.cache.clear(); },
+    load(alias) {
+      need(alias === '@/config/config', 'FAKE_ALIAS');
+      const target = state.overrides[alias] || plan.modules[alias];
+      const mutant = Object.entries(plan.mutants).find(([, row]) => row.file === target)?.[0];
+      const sample = samples.find(row => row.environment === env.NODE_ENV && row.value === env.JWT_SECRET_KEY);
+      need(sample && Object.hasOwn(env, 'JWT_SECRET_KEY') === (sample.value !== undefined) && env.MONGODB_URL === uri, 'FAKE_SCRIPT_SAMPLE');
+      state.loads.push({ sample: sample.id, mutant });
+      if (state.hook) state.hook(sample, mutant);
+      if (!sample.accepted && !(mutant === 'JWT_CONFIG_PUBLISHED_FALLBACK'
+        || (mutant === 'JWT_CONFIG_PRODUCTION_ONLY_GUARD' && env.NODE_ENV !== 'production')))
+        throw new Error('JWT_SECRET_KEY must be set to a non-placeholder value');
+      let value = sample.value;
+      if (mutant === 'JWT_CONFIG_PUBLISHED_FALLBACK') value = 'your-secret-key';
+      if (mutant === 'JWT_CONFIG_PRODUCTION_ONLY_GUARD' && env.NODE_ENV !== 'production') value = undefined;
+      if (mutant === 'JWT_CONFIG_TRIMMED_RETURN') value = sample.value.trim();
+      state.cache.add(target);
+      return state.reuse || { CONFIG: { JWT_SECRET_KEY: value, NODE_ENV: env.NODE_ENV, MONGODB_URL: uri } };
+    },
+  };
+  const runtime = { env, effects, loader, plan, mongoose, network, substitutes: {}, key, uri,
+    cacheHas: target => state.cache.has(target),
+    originalSign(payload, signingKey) { state.signatures++; return { payload, signingKey }; },
+    jwt: { verify(token, verifyingKey) {
+      if (token.signingKey !== verifyingKey) { const error = new Error('FAKE_INVALID_SIGNATURE'); error.name = 'JsonWebTokenError'; throw error; }
+      return token.payload;
+    } },
+  };
+  return { runtime, state };
+}
+function configurationUnits() {
+  configurationCheck('CONFIG_SCRIPTED_126_LOADS_AND_DEEP_FROZEN_SAFE_EVIDENCE', () => {
+    const { runtime, state } = fakeConfigurationRuntime(); const original = runtime.mongoose.connect;
+    const evidence = collectConfigurationEvidence(runtime);
+    need(state.loads.length === 126 && state.loads.filter(row => !row.mutant).length === 117
+      && state.loads.filter(row => row.mutant).length === 9 && state.signatures === 18
+      && state.delegated === 0 && state.cache.size === 0 && Object.keys(state.overrides).length === 0,
+    'CONFIG_FAKE_OPERATION_COUNTS');
+    need(runtime.mongoose.connect === original && Object.isFrozen(evidence) && Object.isFrozen(evidence.cases)
+      && Object.isFrozen(evidence.sensitivity) && evidence.cases.every(Object.isFrozen) && evidence.sensitivity.every(Object.isFrozen)
+      && JSON.stringify(evidence) === JSON.stringify({ cases: portsOriginal.requiredCaseIds.slice(53, 59).map(id => ({ id, status: 'PASS' })),
+        sensitivity: portsOriginal.requiredSensitivityIds.slice(14).map(id => ({ id, detected: true })) }), 'CONFIG_SAFE_EVIDENCE');
+    need(runtime.env.NODE_ENV === 'test' && runtime.env.JWT_SECRET_KEY === runtime.key && runtime.env.MONGODB_URL === runtime.uri,
+      'CONFIG_FINAL_ENV_RESTORED');
+  });
+  const samples = configurationSamples('synthetic-key');
+  configurationCheck('CONFIG_EXACT_108_SAMPLE_IDENTITIES_AND_25_TRIM_POINTS', () => {
+    const seen = new Set(samples.map(row => row.id));
+    const evidence = configurationSampleEvidence(samples, seen);
+    need(evidence.length === 6 && seen.size === 108 && samples.filter(row => row.accepted).length === 12
+      && samples.filter(row => row.group === portsOriginal.requiredCaseIds[54] && row.environment === 'test').length === 27
+      && samples.every(Object.isFrozen) && Object.isFrozen(samples), 'CONFIG_MATRIX_FIXED');
+  });
+  for (const [id, change] of [
+    ['MISSING', (expected, seen) => seen.delete(expected[0].id)],
+    ['EXTRA', (expected, seen) => seen.add('not-admitted')],
+    ['DUPLICATE_EXPECTED', expected => { expected[1] = expected[0]; }],
+    ['WRONG_GROUP', expected => { expected[0] = { ...expected[0], group: expected[1].group }; }],
+    ['WRONG_ACCEPTANCE_COUNT', expected => { expected[0] = { ...expected[0], accepted: true }; }],
+  ]) configurationCheck('CONFIG_SAMPLE_SET_' + id, () => {
+    const expected = samples.slice(); const seen = new Set(expected.map(row => row.id)); change(expected, seen);
+    let failed = false; try { configurationSampleEvidence(expected, seen); } catch { failed = true; }
+    need(failed, 'CONFIG_BAD_SAMPLE_SET_REJECTED');
+  });
+  for (const absent of [[], ['JWT_SECRET_KEY'], ['NODE_ENV', 'MONGODB_URL'], ['NODE_ENV', 'JWT_SECRET_KEY', 'MONGODB_URL']])
+    configurationCheck('CONFIG_ENV_PRESENCE_' + absent.join('_'), () => {
+      const env = { NODE_ENV: 'original-env', JWT_SECRET_KEY: 'original-key', MONGODB_URL: 'original-uri' };
+      for (const key of absent) delete env[key]; const before = JSON.stringify(env); const restore = configurationEnvironment(env);
+      Object.assign(env, { NODE_ENV: 'changed-env', JWT_SECRET_KEY: 'changed-key', MONGODB_URL: 'changed-uri' }); restore();
+      need(JSON.stringify(env) === before && absent.every(key => !Object.hasOwn(env, key)), 'CONFIG_OWN_ENV_EXACT');
+    });
+  for (const port of ['env', 'effects', 'loader', 'mongoose', 'network', 'substitutes', 'cacheHas', 'originalSign', 'jwt', 'uri'])
+    configurationCheck('CONFIG_MISSING_PORT_' + port, () => {
+      const { runtime } = fakeConfigurationRuntime(); delete runtime[port];
+      configurationFailure(() => collectConfigurationEvidence(runtime), 'CONFIG_RUNTIME_PORTS');
+    });
+  const adversaries = [
+    ['WRONG_EXCEPTION', f => { f.state.hook = () => { throw new Error('synthetic-private-sentinel'); }; }, 'CONFIG_EXPECTED_REJECTION'],
+    ['CAUGHT_CONNECTION', f => { f.state.hook = () => { try { f.runtime.mongoose.connect(); } catch {} }; }, 'CONFIG_LOAD_EFFECT'],
+    ['CAUGHT_LISTEN', f => { f.state.hook = () => { try { f.runtime.network.Server.prototype.listen(); } catch {} }; }, 'CONFIG_LOAD_EFFECT'],
+    ['CAUGHT_WRITE', f => { f.state.hook = () => { try { f.runtime.mongoose.Model.create(); } catch {} }; }, 'CONFIG_LOAD_EFFECT'],
+    ['CAUGHT_QUERY_WRITE', f => { f.state.hook = () => { try { f.runtime.mongoose.Query.prototype.exec.call({ op: 'updateOne' }); } catch {} }; }, 'CONFIG_LOAD_EFFECT'],
+    ['PROVIDER', f => { f.state.hook = () => { f.runtime.effects.email++; }; }, 'CONFIG_LOAD_EFFECT'],
+    ['LOGGER', f => { f.state.hook = () => { f.runtime.effects.logger++; }; }, 'CONFIG_LOAD_EFFECT'],
+    ['JWT_ISSUANCE', f => { f.state.hook = () => { f.runtime.effects.jwtIssued++; }; }, 'CONFIG_LOAD_EFFECT'],
+    ['MODEL_REGISTRATION', f => { f.state.hook = () => { f.state.models.push('Unadmitted'); }; }, 'CONFIG_MODEL_OR_CONNECTION'],
+    ['CONNECTION_STATE', f => { f.state.hook = () => { f.runtime.mongoose.connection.readyState = 1; }; }, 'CONFIG_MODEL_OR_CONNECTION'],
+    ['ENV_DRIFT', f => { f.state.hook = () => { f.runtime.env.MONGODB_URL = 'other'; }; }, 'CONFIG_LOAD_ENV_DRIFT'],
+    ['UNCLEARED_CACHE', f => { f.state.cache.add('compiled/config/config.js'); f.runtime.loader.resetCompiled = () => {}; }, 'CONFIG_CACHE_NOT_CLEARED'],
+    ['WRONG_CACHE_TARGET', f => { f.runtime.cacheHas = () => false; }, 'CONFIG_TARGET_CACHE'],
+    ['REUSED_EXPORT', f => { f.state.reuse = { CONFIG: { JWT_SECRET_KEY: f.runtime.key, NODE_ENV: 'test', MONGODB_URL: f.runtime.uri } }; }, 'CONFIG_REUSED_EXPORT'],
+    ['SIGNATURE_CONTROL', f => { f.runtime.jwt.verify = () => ({}); }, 'CONFIG_SIGNATURE_CONTROL'],
+    ['TRIM_SIGNATURE_ACCEPTED', f => { f.runtime.jwt.verify = token => token.payload; }, 'CONFIG_SIGNATURE_NOT_REJECTED'],
+    ['SIGNATURE_WRONG_EXCEPTION', f => { f.runtime.jwt.verify = (token, key) => { if (token.signingKey !== key) throw new Error('private'); return token.payload; }; }, 'CONFIG_SIGNATURE_WRONG_ERROR'],
+    ['MUTANT_UNRELATED_EXCEPTION', f => { f.state.hook = (sample, mutant) => { if (mutant) throw new Error('private'); }; }, 'CONFIG_MUTANT_NOT_DETECTED'],
+    ['NOMINAL_RESTORATION_FAILURE', f => { f.state.hook = (sample, mutant) => { if (!mutant && f.state.loads.length > 109) throw new Error('private'); }; }, 'CONFIG_EXPECTED_REJECTION'],
+  ];
+  for (const [id, mutate, code] of adversaries) configurationCheck('CONFIG_REJECTS_' + id, () => {
+    const fake = fakeConfigurationRuntime(); const original = fake.runtime.mongoose.connect; mutate(fake);
+    configurationFailure(() => collectConfigurationEvidence(fake.runtime), code);
+    need(fake.runtime.env.NODE_ENV === 'test' && fake.runtime.env.JWT_SECRET_KEY === fake.runtime.key
+      && fake.runtime.env.MONGODB_URL === fake.runtime.uri && fake.runtime.mongoose.connect === original
+      && Object.keys(fake.state.overrides).length === 0 && fake.state.delegated === 0, 'CONFIG_FAILURE_RESTORES_BOUNDARY');
+  });
+  for (const name of ['sms', 'push', 'console', 'unexpected', 'excluded', 'dbWrites'])
+    configurationCheck('CONFIG_REJECTS_EFFECT_' + name, () => {
+      const fake = fakeConfigurationRuntime(); fake.state.hook = () => { fake.runtime.effects[name]++; };
+      configurationFailure(() => collectConfigurationEvidence(fake.runtime), 'CONFIG_LOAD_EFFECT');
+    });
+  const tapSelectors = [
+    runtime => [runtime.mongoose, 'connect'], runtime => [runtime.mongoose, 'createConnection'],
+    runtime => [runtime.mongoose.Connection.prototype, 'openUri'],
+    runtime => [runtime.mongoose.mongo.MongoClient.prototype, 'connect'],
+    runtime => [runtime.network.Socket.prototype, 'connect'], runtime => [runtime.network.Server.prototype, 'listen'],
+    runtime => [runtime.mongoose.Model, 'create'], runtime => [runtime.mongoose.Model, 'insertMany'],
+    runtime => [runtime.mongoose.Model, 'bulkWrite'], runtime => [runtime.mongoose.Model.prototype, 'save'],
+    runtime => [runtime.mongoose.Query.prototype, 'exec'],
+  ];
+  for (const [index, select] of tapSelectors.entries()) {
+    configurationCheck('CONFIG_EVERY_TAP_REQUIRED_' + index, () => {
+      const { runtime } = fakeConfigurationRuntime(); const originals = tapSelectors.map(get => {
+        const [target, name] = get(runtime); return Object.getOwnPropertyDescriptor(target, name);
+      });
+      const [target, name] = select(runtime); delete target[name];
+      configurationFailure(() => collectConfigurationEvidence(runtime), 'CONFIG_TAP_MISSING');
+      tapSelectors.forEach((get, position) => {
+        if (position === index) return;
+        const [object, key] = get(runtime); const descriptor = Object.getOwnPropertyDescriptor(object, key);
+        need(descriptor.value === originals[position].value && descriptor.writable === originals[position].writable
+          && descriptor.configurable === originals[position].configurable && descriptor.enumerable === originals[position].enumerable,
+        'CONFIG_ALL_PRIOR_GUARDED_DESCRIPTORS_RESTORED');
+      });
+    });
+    configurationCheck('CONFIG_EVERY_TAP_BLOCKS_BEFORE_DELEGATION_' + index, () => {
+      const { runtime, state } = fakeConfigurationRuntime(); const attempts = { connection: 0, listen: 0, write: 0 };
+      withConfigurationTaps({ ...runtime, attempts }, () => {
+        const [target, name] = select(runtime);
+        configurationFailure(() => target[name].call({ op: 'deleteMany' }), 'CONFIG_OPERATION_ATTEMPT');
+      });
+      need(state.delegated === 0 && runtime.effects.unexpected === 1
+        && attempts.connection + attempts.listen + attempts.write === 1, 'CONFIG_EVERY_ATTEMPT_LATCHED');
+    });
+  }
+  configurationCheck('CONFIG_PARTIAL_TAP_INSTALL_RESTORES_PREVIOUS_GUARDED_REFERENCES', () => {
+    const { runtime } = fakeConfigurationRuntime(); const original = runtime.mongoose.connect;
+    delete runtime.mongoose.Model.bulkWrite;
+    configurationFailure(() => collectConfigurationEvidence(runtime), 'CONFIG_TAP_MISSING');
+    need(runtime.mongoose.connect === original, 'CONFIG_PARTIAL_INSTALL_RESTORED');
+  });
+  configurationCheck('CONFIG_TAP_DRIFT_RESTORED_AND_REJECTED', () => {
+    const { runtime } = fakeConfigurationRuntime(); const original = runtime.mongoose.connect;
+    configurationFailure(() => withConfigurationTaps({ ...runtime, attempts: { connection: 0, listen: 0, write: 0 } },
+      () => { runtime.mongoose.connect = () => {}; }), 'CONFIG_RESTORATION_FAILED');
+    need(runtime.mongoose.connect === original, 'CONFIG_DRIFT_RESTORED');
+  });
+  configurationCheck('CONFIG_QUERY_NONWRITE_DELEGATES_AND_ALL_WRITE_OPS_DENY', () => {
+    const { runtime, state } = fakeConfigurationRuntime(); const attempts = { connection: 0, listen: 0, write: 0 };
+    withConfigurationTaps({ ...runtime, attempts }, () => {
+      need(runtime.mongoose.Query.prototype.exec.call({ op: 'find' }) === 'fake-read', 'CONFIG_NONWRITE_QUERY');
+      for (const op of ['updateOne', 'updateMany', 'replaceOne', 'deleteOne', 'deleteMany', 'findOneAndUpdate', 'findOneAndReplace', 'findOneAndDelete'])
+        configurationFailure(() => runtime.mongoose.Query.prototype.exec.call({ op }), 'CONFIG_OPERATION_ATTEMPT');
+    });
+    need(state.delegated === 1 && attempts.write === 8 && runtime.effects.unexpected === 8, 'CONFIG_WRITE_ATTEMPT_LATCHES');
+  });
+  configurationCheck('CONFIG_PRIMARY_FAILURE_PRESERVED_WITH_PRIVATE_CLEANUP_ERRORS', () => {
+    const primary = Object.assign(new Error('CONFIG_EXPECTED_REJECTION'), { fixtureCode: 'CONFIG_EXPECTED_REJECTION' });
+    const order = []; const caught = configurationFailure(() => configurationFinally(() => { throw primary; }, [
+      () => { order.push(1); throw new Error('private-a'); }, () => { order.push(2); throw new Error('private-b'); },
+    ]), 'CONFIG_EXPECTED_REJECTION');
+    need(caught === primary && order.join(',') === '1,2' && caught.configurationCleanupFailures.length === 2
+      && !Object.getOwnPropertyDescriptor(caught, 'configurationCleanupFailures').enumerable
+      && JSON.stringify(caught) === '{"fixtureCode":"CONFIG_EXPECTED_REJECTION"}', 'CONFIG_PRIVATE_RESTORATION_FAILURES');
+  });
+  configurationCheck('CONFIG_FROZEN_PRIMARY_SURVIVES_CLEANUP', () => {
+    const primary = Object.freeze(Object.assign(new Error('CONFIG_EXPECTED_REJECTION'), { fixtureCode: 'CONFIG_EXPECTED_REJECTION' }));
+    const caught = configurationFailure(() => configurationFinally(() => { throw primary; }, [() => { throw new Error('private'); }]), 'CONFIG_EXPECTED_REJECTION');
+    need(caught === primary, 'CONFIG_FROZEN_PRIMARY_PRESERVED');
+  });
+  configurationCheck('CONFIG_TAP_DRIFT_PRESERVES_EXISTING_PRIMARY', () => {
+    const { runtime } = fakeConfigurationRuntime(); const original = runtime.network.Server.prototype.listen;
+    const primary = Object.assign(new Error('CONFIG_EXPECTED_REJECTION'), { fixtureCode: 'CONFIG_EXPECTED_REJECTION' });
+    const caught = configurationFailure(() => withConfigurationTaps({ ...runtime, attempts: { connection: 0, listen: 0, write: 0 } }, () => {
+      runtime.network.Server.prototype.listen = () => {}; throw primary;
+    }), 'CONFIG_EXPECTED_REJECTION');
+    need(caught === primary && caught.configurationCleanupFailures.length === 1
+      && runtime.network.Server.prototype.listen === original, 'CONFIG_DRIFT_PRIMARY_RESTORED');
+  });
+  configurationCheck('CONFIG_ENV_RESTORES_AFTER_UNSET_LOAD_THROWS', () => {
+    const { runtime, state } = fakeConfigurationRuntime(); delete runtime.env.JWT_SECRET_KEY;
+    state.hook = () => { throw new Error('private'); };
+    configurationFailure(() => collectConfigurationEvidence(runtime), 'CONFIG_EXPECTED_REJECTION');
+    need(!Object.hasOwn(runtime.env, 'JWT_SECRET_KEY') && runtime.env.NODE_ENV === 'test'
+      && runtime.env.MONGODB_URL === runtime.uri && state.cache.size === 0, 'CONFIG_UNSET_FAILURE_RESTORED');
+  });
+}
 function recordingCheck(id, action) { action(); recordingRows.push(id); }
 function recordingUnits() {
   for (const name of ['find', 'aggregate', 'count', 'getMore']) recordingCheck('READ_' + name, () => {
@@ -294,11 +527,13 @@ async function setupUnits() {
     cases.push('CLEANUP_MISSING_PORT_' + missing);
   }
   need(applicationImports === 0 && connections === 0 && domainWrites === 0, 'OFFLINE_EFFECTS');
-  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', cases: rows.length + cases.length + recordingRows.length, recordingCases: recordingRows.length,
+  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', cases: rows.length + cases.length + recordingRows.length + configurationRows.length, recordingCases: recordingRows.length,
+    configurationControllerCases: configurationRows.length,
     admissionCases: rows.length, setupDiagnosticCases: diagnosticCount, ownedCleanupCases: cases.length - diagnosticCount, failed: 0,
     applicationImports, connections, domainWrites, processGrants: 'DENIED' }) + '\n');
 }
 recordingUnits();
+configurationUnits();
 setupUnits().catch(() => {
   output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', failed: 1, code: 'OFFLINE_SETUP_UNIT_FAILED' }) + '\n');
   process.exitCode = 1;
