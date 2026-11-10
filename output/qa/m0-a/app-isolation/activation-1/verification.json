@@ -1,0 +1,77 @@
+{
+  "approved_commit": "de1693ed80538099bab2874a3ea8254df5f62143",
+  "status": "FAIL",
+  "failure": "bootstrap exact sysfs directory listing assertion",
+  "failure_location": "test/application/bootstrap.mjs:16",
+  "observed_sysfs_entries": [
+    "bonding_masters",
+    "erspan0",
+    "gre0",
+    "gretap0",
+    "ip6_vti0",
+    "ip6gre0",
+    "ip6tnl0",
+    "ip_vti0",
+    "lo",
+    "sit0",
+    "tunl0"
+  ],
+  "expected_sysfs_entries": [
+    "lo"
+  ],
+  "one_launcher_invocation": true,
+  "source_frozen_before_caching_launch_and_after": true,
+  "all_71_review_hashes_verified_at_each_freeze": true,
+  "image_cached_by_pinned_digest": {
+    "Id": "sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
+    "RepoDigests": [
+      "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d"
+    ],
+    "Os": "linux",
+    "Architecture": "arm64"
+  },
+  "same_engine_verified_before_and_after": true,
+  "created_container": {
+    "id": "0c3d023374d471ce39fcc951e9aaf3ff64aa0bd91c539dd86c0b2146791a7627",
+    "runId": "79a5709c-5395-4128-9b15-5fa48698b47d",
+    "directory": "/private/tmp/sd-app-isolation-BqOkXi"
+  },
+  "cleanup": {
+    "controller_acknowledged": true,
+    "independent_exact_container_absent": true,
+    "independent_workspace_absent": true,
+    "purpose_label_count_before": 0,
+    "purpose_label_count_after": 0,
+    "exceptional_recovery_used": false
+  },
+  "executed": {
+    "real_container_create_start": true,
+    "bootstrap_entered": true,
+    "pre_interface_bundle_validation": "passed by code ordering before assertion",
+    "declared_effective_mount_and_isolation_admission": "passed by controller code path; full inspect not separately persisted",
+    "interface_assertion": "FAIL"
+  },
+  "not_run": [
+    "post-interface filesystem denial/write canaries",
+    "child/worker/addon runtime permission assertions",
+    "HTTP egress rejection canary",
+    "app-ports dynamic import/receipts",
+    "scenario and production queryUtils.ts import",
+    "scenario assertions",
+    "successful-exit/no-OOM acceptance"
+  ],
+  "extra_interface_state": "NOT_MEASURED; directory entry names do not establish inactive/harmless status",
+  "real_DB_or_SDK_operations": 0,
+  "smoke_retries": 0,
+  "root_package_lock_start_src1_changes": false,
+  "unit_evidence": "Prior 161-pass-per-runtime artifacts unchanged; not rerun for this documentation/evidence increment",
+  "selected_115_scenarios": {
+    "PASS": 0,
+    "FAIL": 1,
+    "BLOCKED": 1,
+    "NOT_RUN": 110,
+    "DEFERRED": 3
+  },
+  "full_C3_or_M0_or_100RPS_acceptance": false,
+  "next_gate": "review this post-create failure before any rerun or rule change"
+}

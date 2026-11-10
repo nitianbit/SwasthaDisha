@@ -1,0 +1,184 @@
+{
+  "approved_commit": "de1693ed80538099bab2874a3ea8254df5f62143",
+  "operator_directory": "/private/tmp/sd-approved-app-smoke-ld6dr31k",
+  "operator_run_id": "fda2910a-49d9-4f34-bd93-0743491e5c3e",
+  "started_at": "2026-11-10T05:20:05Z",
+  "status": "FAIL",
+  "launcher_invocations": 1,
+  "commands": [
+    {
+      "step": "engine-before-caching",
+      "args": [
+        "info",
+        "--format",
+        "[{{json .ID}},{{json .OSType}}]"
+      ],
+      "exit_code": 0,
+      "stdout": "engine-before-caching.stdout.txt",
+      "stderr": "engine-before-caching.stderr.txt"
+    },
+    {
+      "step": "labels-before-caching",
+      "args": [
+        "ps",
+        "--all",
+        "--filter",
+        "label=swasthadisha.test.purpose=app-isolation",
+        "--quiet",
+        "--no-trunc"
+      ],
+      "exit_code": 0,
+      "stdout": "labels-before-caching.stdout.txt",
+      "stderr": "labels-before-caching.stderr.txt"
+    },
+    {
+      "step": "pull-pinned-image",
+      "args": [
+        "pull",
+        "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d"
+      ],
+      "exit_code": 0,
+      "stdout": "pull-pinned-image.stdout.txt",
+      "stderr": "pull-pinned-image.stderr.txt"
+    },
+    {
+      "step": "image-inspect",
+      "args": [
+        "image",
+        "inspect",
+        "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d"
+      ],
+      "exit_code": 0,
+      "stdout": "image-inspect.stdout.txt",
+      "stderr": "image-inspect.stderr.txt"
+    },
+    {
+      "step": "engine-before-launch",
+      "args": [
+        "info",
+        "--format",
+        "[{{json .ID}},{{json .OSType}}]"
+      ],
+      "exit_code": 0,
+      "stdout": "engine-before-launch.stdout.txt",
+      "stderr": "engine-before-launch.stderr.txt"
+    },
+    {
+      "step": "labels-before-create",
+      "args": [
+        "ps",
+        "--all",
+        "--filter",
+        "label=swasthadisha.test.purpose=app-isolation",
+        "--quiet",
+        "--no-trunc"
+      ],
+      "exit_code": 0,
+      "stdout": "labels-before-create.stdout.txt",
+      "stderr": "labels-before-create.stderr.txt"
+    },
+    {
+      "step": "engine-after-launch",
+      "args": [
+        "info",
+        "--format",
+        "[{{json .ID}},{{json .OSType}}]"
+      ],
+      "exit_code": 0,
+      "stdout": "engine-after-launch.stdout.txt",
+      "stderr": "engine-after-launch.stderr.txt"
+    },
+    {
+      "step": "labels-after-launch",
+      "args": [
+        "ps",
+        "--all",
+        "--filter",
+        "label=swasthadisha.test.purpose=app-isolation",
+        "--quiet",
+        "--no-trunc"
+      ],
+      "exit_code": 0,
+      "stdout": "labels-after-launch.stdout.txt",
+      "stderr": "labels-after-launch.stderr.txt"
+    },
+    {
+      "step": "exact-container-after-launch",
+      "args": [
+        "container",
+        "inspect",
+        "0c3d023374d471ce39fcc951e9aaf3ff64aa0bd91c539dd86c0b2146791a7627"
+      ],
+      "exit_code": 1,
+      "stdout": "exact-container-after-launch.stdout.txt",
+      "stderr": "exact-container-after-launch.stderr.txt"
+    }
+  ],
+  "resources": {
+    "id": "0c3d023374d471ce39fcc951e9aaf3ff64aa0bd91c539dd86c0b2146791a7627",
+    "runId": "79a5709c-5395-4128-9b15-5fa48698b47d",
+    "directory": "/private/tmp/sd-app-isolation-BqOkXi"
+  },
+  "approval": "user-supplied APPROVE FIRST ISOLATED SMOKE; source/evidence manifest revision-1; no post-create retry",
+  "source_freeze_before_caching": {
+    "commit": "de1693ed80538099bab2874a3ea8254df5f62143",
+    "working_tree": "clean",
+    "manifest_sha256": "7f55d651fe3f740f22d8500a3536e826235d23797c8b0151dfc492d6b07140e9",
+    "verified_counts": {
+      "files": 28,
+      "evidence_sha256": 37,
+      "historical_inputs_sha256": 6
+    },
+    "helper_sha256": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d",
+    "operator_directory_outside_checkout": true
+  },
+  "host_node": {
+    "version": "v22.23.4",
+    "binary_sha256": "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0"
+  },
+  "socket": {
+    "endpoint": "unix:///Users/shubham/.docker/run/docker.sock",
+    "resolved": "/Users/shubham/.docker/run/docker.sock"
+  },
+  "labels-before-caching_count": 0,
+  "cached_image": {
+    "Id": "sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
+    "RepoDigests": [
+      "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d"
+    ],
+    "Os": "linux",
+    "Architecture": "arm64"
+  },
+  "labels-before-create_count": 0,
+  "source_freeze_before_launch": {
+    "commit": "de1693ed80538099bab2874a3ea8254df5f62143",
+    "working_tree": "clean",
+    "manifest_sha256": "7f55d651fe3f740f22d8500a3536e826235d23797c8b0151dfc492d6b07140e9",
+    "verified_counts": {
+      "files": 28,
+      "evidence_sha256": 37,
+      "historical_inputs_sha256": 6
+    },
+    "helper_sha256": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d",
+    "operator_directory_outside_checkout": true
+  },
+  "launcher_exit_code": 1,
+  "labels-after-launch_count": 0,
+  "independent_container_absent": true,
+  "independent_workspace_absent": true,
+  "exact_container_readback_exit_code": 1,
+  "source_freeze_after_launch": {
+    "commit": "de1693ed80538099bab2874a3ea8254df5f62143",
+    "working_tree": "clean",
+    "manifest_sha256": "7f55d651fe3f740f22d8500a3536e826235d23797c8b0151dfc492d6b07140e9",
+    "verified_counts": {
+      "files": 28,
+      "evidence_sha256": 37,
+      "historical_inputs_sha256": 6
+    },
+    "helper_sha256": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d",
+    "operator_directory_outside_checkout": true
+  },
+  "review_required_before_retry": true,
+  "finished_at": "2026-11-10T05:20:35Z"
+}

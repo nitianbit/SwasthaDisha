@@ -1,0 +1,11 @@
+{
+  "scope": "Only the fresh operator-owned evidence/config workspace, after byte-for-byte archive verification; no Docker mutation",
+  "directory": "/private/tmp/sd-approved-app-smoke-ld6dr31k",
+  "run_id": "fda2910a-49d9-4f34-bd93-0743491e5c3e",
+  "dev": 16777233,
+  "ino": 51399638,
+  "archived_files_verified": true,
+  "removed": true,
+  "independent_path_absent": true,
+  "cached_image_retained": true
+}

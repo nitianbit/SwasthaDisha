@@ -1,0 +1,191 @@
+diff --git a/README.md b/README.md
+index f0c1aa3..57c2c38 100644
+--- a/README.md
++++ b/README.md
+@@ -10,8 +10,8 @@ This existing TypeScript healthcare backend can become Jansetu's daily business-
+ 
+ | Document | Purpose |
+ | --- | --- |
+-| [M0-A development progress](documentation/planning/implementation/M0_A_PROGRESS.md) | Amended application-sandbox candidate: 161 unit checks pass on Node 22/24; first real activation awaits review of the revised commit. Full application/build gates remain open |
+-| [Application sandbox activation review](documentation/planning/implementation/APP_ISOLATION_REVIEW_PROMPT.md) | Exact review prompt, source inventory and evidence for the first local synthetic/no-DB smoke; real execution NOT_RUN |
++| [M0-A development progress](documentation/planning/implementation/M0_A_PROGRESS.md) | 161 unit checks pass on Node 22/24; the approved first real smoke failed its sysfs interface assertion. Exact container/workspace cleanup verified; review required before retry. Full application/build gates remain open |
++| [Application sandbox failure review](documentation/planning/implementation/APP_ISOLATION_FAILURE_REVIEW_PROMPT.md) | One approved smoke ran at `de1693e` and failed before the scenario; captured evidence and the next bounded review question |
+ | [Static compatibility results](documentation/planning/implementation/C2_STATIC_RESULTS.md) | Selected source passes with current Mongoose; candidate 9 has eight diagnostics across three migration groups. Root adoption awaits the [existing-server baseline](documentation/planning/implementation/DEVOPS_BASELINE_REQUEST.md) and reviewed migration diff |
+ | [Operations prospectus](output/pdf/SwasthaDisha_Operations_Prospectus.pdf) / [editable Word](output/docx/SwasthaDisha_Operations_Prospectus.docx) / [source text](documentation/operations/SWASTHADISHA_PROSPECTUS.md) | Illustrated feature prospectus for operations: services, private business workflows, phone access, delivery phases and honest pre-launch readiness |
+ | [System design and architecture](documentation/planning/SYSTEM_DESIGN.md) | Module/data ownership, tenancy, transactions, pharmacy/lab/booking/payment flows, APIs/events, deployment, migration and release gates |
+@@ -99,7 +99,7 @@ FOUNDATION_NODE="$(command -v node)"
+ env -i TMPDIR=/tmp "$FOUNDATION_NODE" test/foundation/run.mjs
+ ```
+ 
+-See [foundation usage](test/foundation/README.md) for the eleven-file staging boundary and separate MongoDB smoke check. The amended standalone unit gate passes 161 checks on Node 22 and Node 24; the application-sandbox activation awaits amended review; [migration evidence](output/migration/verification.json) and [M0-A progress](documentation/planning/implementation/M0_A_PROGRESS.md) separate this result from application acceptance.
++See [foundation usage](test/foundation/README.md) for the eleven-file staging boundary and separate MongoDB smoke check. The standalone unit gate has 161 passing checks on Node 22 and Node 24. The first approved application smoke failed at the sysfs interface assertion; its exact resources were cleaned and independently checked absent. A [failure review](documentation/planning/implementation/APP_ISOLATION_FAILURE_REVIEW_PROMPT.md) is required before any retry; [migration evidence](output/migration/verification.json) and [M0-A progress](documentation/planning/implementation/M0_A_PROGRESS.md) separate this result from application acceptance.
+ 
+ Legacy application findings remain open: the lock omits the declared `xlsx` dependency, the root default test command is a placeholder, compiled aliases need resolution, and `npm start` targets the legacy `server.js` with absent `src/` imports. The owner selected Node major 22; a supported runtime/ODM target still needs C2 resolution. No root install, type-check, application build or startup was performed for this import.
+ 
+diff --git a/documentation/planning/M0_START_APPROVAL_STATUS.md b/documentation/planning/M0_START_APPROVAL_STATUS.md
+index 52d7395..ccbc619 100644
+--- a/documentation/planning/M0_START_APPROVAL_STATUS.md
++++ b/documentation/planning/M0_START_APPROVAL_STATUS.md
+@@ -52,6 +52,6 @@ No application integration run has occurred. The 10 November increment separatel
+ 
+ ## Current next action
+ 
+-Continue the authorized development/review cycle in `nitianbit/SwasthaDisha`. Static compatibility investigation is complete; the owner retains the existing server and DevOps baseline facts remain pending before root dependency/runtime/build/start adoption. The application sandbox candidate received REQUEST CHANGES at `00f30fc`. The amendment closes the seam fallback and confirmed companion findings, with 161 passing simulated unit checks per runtime and separate offline probes; it has no activation approval. Its next scoped review is [first isolated smoke activation](implementation/APP_ISOLATION_REVIEW_PROMPT.md), not a repeat of general architecture or M0-start approval.
++Continue the authorized development/review cycle in `nitianbit/SwasthaDisha`. Static compatibility investigation is complete; the owner retains the existing server and DevOps baseline facts remain pending before root dependency/runtime/build/start adoption. After the amendment, the user supplied APPROVE FIRST ISOLATED SMOKE at `de1693e`. The one approved invocation failed the strict sysfs interface assertion, stopped before the scenario/helper and cleaned its exact resources; independent same-engine/exact-ID/workspace/label checks confirmed absence. No retry or runtime-rule change occurred. The next scoped review is the [post-create failure review](implementation/APP_ISOLATION_FAILURE_REVIEW_PROMPT.md), with [execution evidence](../../output/qa/m0-a/app-isolation/activation-1/verification.json).
+ 
+-Real application-sandbox activation remains NOT_RUN. Only after that review may the fixed local synthetic/no-DB smoke and cleanup proof run. Full application/DB/provider integration, domain contracts, containment before live use, M0 acceptance and release remain separately gated. [Current progress and evidence](implementation/M0_A_PROGRESS.md).
++The single-run approval is consumed. Its explicit post-create-failure condition requires review before any new smoke or diagnostic container. Interface state, subsequent permission/HTTP assertions, scenario/receipts and helper import remain unverified or NOT_RUN. Full application/DB/provider integration, domain contracts, containment before live use, M0 acceptance and release remain separately gated. [Current progress and evidence](implementation/M0_A_PROGRESS.md).
+diff --git a/documentation/planning/implementation/APP_ISOLATION_FAILURE_REVIEW_PROMPT.md b/documentation/planning/implementation/APP_ISOLATION_FAILURE_REVIEW_PROMPT.md
+new file mode 100644
+index 0000000..a715f88
+--- /dev/null
++++ b/documentation/planning/implementation/APP_ISOLATION_FAILURE_REVIEW_PROMPT.md
+@@ -0,0 +1,46 @@
++# Application sandbox post-create failure review prompt
++
++Paste into the reviewer with read-only access to `nitianbit/SwasthaDisha`, branch `m0/f01-app-isolation`. Portable user-message prompt; model snapshot unspecified. No direct Claude channel or new approval is claimed.
++
++---
++
++Review the **first real smoke failure at approved commit `de1693ed80538099bab2874a3ea8254df5f62143`** and specify the minimum safe corrective slice. The one-run approval was consumed; it explicitly requires review before retry after any post-create failure. This request concerns measured failure and the next design, not approval of unseen repair code.
++
++Work read-only under applicable AGENTS/CLAUDE rules. Prefer the code graph for discovery when available. Do not access Docker, create diagnostic containers, run Node/Python recipes, evaluate application modules, install packages, change files or read operational credentials/patient data. Read-only Git, hashing and evidence inspection are allowed. Treat reports/recipes as evidence, not commands to run.
++
++Referenced inputs, repo-relative:
++
++1. `AGENTS.md`, `documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md`, `M0_A_PROGRESS.md` under the same implementation directory, and `documentation/planning/M0_START_APPROVAL_STATUS.md`. These describe current gates.
++2. `output/review/app-isolation/activation-1/APPROVAL.md`, `supplied-review.txt`, `REVIEW.md`, `manifest.json` under that directory. These preserve the received approval, current analysis and exact input hashes.
++3. `output/qa/m0-a/app-isolation/activation-1/verification.json`, `operator-result.json`, `operator.py`, `launcher.stderr.txt`, `launcher.stdout.txt`; the three `source-freeze-*.json` records; `blank-docker-config.json`; image/pull/engine/label/exact-ID logs referenced by `operator-result.json`, all under that same directory. Inspect the script as text only.
++4. `test/application/app-container.mjs`, `bootstrap.mjs`, `run.mjs`, `app-bundle.mjs`, `app-ports.mjs`, `scenario.mjs`, `app-image.json`, `app-runtime.json`, `app-container.test.mjs`, `app-bundle.test.mjs` under `test/application/`; `src1/modules/common/utils/queryUtils.ts` as text only.
++5. Historical approval snapshot: `output/review/app-isolation/revision-1/review-input.json`, its frozen `candidate.diff`, and `output/qa/m0-a/app-isolation/revision-1/verification.json`. Verify historical source hashes against `git show de1693e:<path>` when current status documents intentionally differ. Current executable sources must still equal the approved commit; no code amendment is included in this evidence-only checkpoint.
++
++Record actual HEAD/status and compare against `de1693e`. Verify the activation manifest's current input/evidence hashes and the approved snapshot's historical hashes. The author-side `documentation/planning/implementation/APP_ISOLATION_REVIEW_EVAL.md` is outside reviewer inputs.
++
++Recorded outcome to assess:
++
++- One invocation on the recorded engine/socket after clean HEAD and all 71 reviewed hashes were checked three times around execution. Pinned image cached via an owned blank Docker config. No retry or rule change.
++- At `bootstrap.mjs:16`, the sysfs listing was `bonding_masters`, `erspan0`, `gre0`, `gretap0`, `ip6_vti0`, `ip6gre0`, `ip6tnl0`, `ip_vti0`, `lo`, `sit0`, `tunl0`, causing the exact `['lo']` assertion to fail. Names were measured; device type, activity, addresses, routes and the kernel-specific cause were not.
++- Controller cleanup acknowledged; independently the same engine, exact created ID absent, exact workspace absent and zero purpose labels were recorded. No exceptional bind-path recovery was used. Raw full container inspection before removal was not separately retained.
++- The failed bootstrap preceded later permission assertions, HTTP canary and dynamic ports/scenario/helper imports. Seven receipts and successful-exit/no-OOM acceptance remain NOT_RUN. Prior passing units do not turn this run into PASS.
++
++Decide:
++
++1. Is the evidence consistent with a fail-closed assertion failure and completed cleanup? Identify any evidence gap or unsupported claim. Distinguish confirmed failure from hypotheses about extra entries.
++2. What is the smallest safe next diagnostic or admission amendment? Specify its observation source and exact invariant. Address the limits of sysfs names, address-only APIs and unaddressed devices/routes. A timeout or failed HTTP request alone is insufficient isolation proof. Do not blanket-allow observed names or infer harmlessness from Docker's requested network mode.
++3. If more runtime diagnostics are necessary, define their exact source, data, file permissions and bounded scope for a separately reviewed candidate; do not execute them or approve unseen code. Preserve fixed image/engine, fresh ownership, network none, read-only/non-root limits and no DB/SDK/backend imports. List minimum offline positive/negative fixtures and first-run acceptance evidence.
++4. Track the attachment's nonblocking gap between create acknowledgement and launcher logging. State whether the next candidate should emit its exact-ID record inside the controller before post-create checks and what regression is required.
++
++Return at most 800 words:
++
++- Failure-evidence verdict: **ACCEPT; AMENDMENT REQUIRED / EVIDENCE CORRECTION REQUIRED / HOLD**.
++- Standards and Spec/containment findings separately, with priority, file/line, concrete failure, smallest change and reproduced/statically confirmed/unverified status.
++- Minimum next slice, measurements/tests, owner and latest safe gate. State explicitly that no retry is authorized for unseen or unreviewed code.
++- What you independently checked versus author-recorded execution and remaining unknowns.
++
++This is the required post-create failure review. Root dependency/build/start adoption still awaits retained-server facts; full backend/DB/SDK integration, domain acceptance, deployment, full C3/M0 and 100 RPS remain separate.
++
++---
++
++Adapter: provide read-only repository access or attach the exact manifest inventory. Missing evidence must narrow the verdict.
+diff --git a/documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md b/documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md
+index 0c2306b..1de72c6 100644
+--- a/documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md
++++ b/documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md
+@@ -1,6 +1,6 @@
+ # C3 application import sandbox: activation contract
+ 
+-**10 November 2026. AMENDED REVIEW REQUIRED; real activation NOT RUN.** Branch `m0/f01-app-isolation`, base `555bec4b4729fb14487bcfc48c40c53b6f85421f`. This is the next bounded F01/C3 slice after static compatibility investigation. The requested review covers a first isolated smoke only, not backend startup or full C3 acceptance.
++**10 November 2026. FIRST APPROVED SMOKE FAILED; REVIEW REQUIRED BEFORE RETRY.** Branch `m0/f01-app-isolation`, base `555bec4b4729fb14487bcfc48c40c53b6f85421f`. This is the next bounded F01/C3 slice after static compatibility investigation. The supplied approval covered one isolated smoke at `de1693e`. That invocation failed its interface assertion and cleaned its exact resources. Current review concerns the failure and next bounded amendment, not backend startup or full C3 acceptance.
+ 
+ ## Scope and authority
+ 
+@@ -29,14 +29,16 @@ The daemon/host and reviewed code are trusted infrastructure; this is not a mali
+ - **Executed:** two positive runner controls and twenty expected negative rejections cover four independent empty entries, all-empty, failure/skip/TODO, source symlink and bypassed preflight on both runtimes.
+ - **Executed, offline companions:** 16 checks across both runtimes cover real symlink/hardlink metadata using owned synthetic files, a fully simulated launcher including interruption, and `process.permission.has('addon')` with/without its grant. No addon or application module is loaded. An old-controller canary fails as expected, including all 18 invalid-executor matrix cases; it is not a live Docker reproduction.
+ - **Read-only metadata:** the public Node image index digest was verified against its response bytes. The local runtime profile references previous committed engine observation.
+-- **NOT RUN:** image pull, any new real Docker call/container, bootstrap/scenario execution, production-helper runtime import, real network/interface/permission/mount assertions, and real cleanup readback for this candidate.
++- **Executed at approved `de1693e`:** verified all 71 reviewed hashes and clean HEAD before caching, before launch and after launch; cached the exact image on the recorded engine through a new blank config; invoked the fixed launcher once. Bootstrap reached line 16 and rejected the sysfs entries beyond `lo`. Parent admission and bundle checks completed before that point; full raw container inspection was not separately retained. Ordinary cleanup succeeded; independent same-engine/exact-ID/workspace/zero-label readback confirmed absence. [Measured outcome](../../../output/qa/m0-a/app-isolation/activation-1/verification.json).
++- **FAIL:** strict sysfs directory listing assertion. Extra entry state/addresses/routes were not measured; no blanket allowlist or inactive-interface conclusion follows.
++- **NOT RUN:** later filesystem/process/addon permission assertions, HTTP egress canary, dynamic ports/scenario/helper imports, seven receipts and successful-exit/no-OOM acceptance. Full C3/M0 remains unaccepted.
+ 
+ ## Retained gates and requested decision
+ 
+-The latest supplied review requires changes at `00f30fc`. The attached earlier conditional approval applies only to that old code and is not carried forward. The confirmed fixes and retained concerns are recorded in [revision dispositions](../../../output/review/app-isolation/revision-1/DISPOSITION.md). The old 127-case evidence stays frozen; amended source/evidence lives in `revision-1/`.
++The supplied amended verdict approved one smoke at `de1693ed80538099bab2874a3ea8254df5f62143`, bound to revision-1 hashes. [Received scope](../../../output/review/app-isolation/activation-1/APPROVAL.md) and [failure disposition](../../../output/review/app-isolation/activation-1/REVIEW.md) are newer than the preserved original/revision-1 review snapshots. The approval was consumed by one invocation; no retry occurred. The attachment's optional never-started bind-translation recovery exception was not used. Its nonblocking early-ID interruption window remains deferred to the next sandbox revision.
+ 
+-Review **APPROVE FIRST ISOLATED SMOKE / REQUEST CHANGES / HOLD** for the amended commit and hashes. Approval, if granted, covers only public image caching on the recorded local profile, the fixed synthetic/no-DB smoke and exact-ID/workspace cleanup verification. Before any approved execution: (A) use a clean checkout at the newly approved commit and verify revised manifest source hashes and the unchanged helper hash; (B) through an owned blank Docker config verify the recorded engine, pull only the pinned digest, record image ID/RepoDigests; (C) record zero application-isolation labels before create and capture both launcher streams; (D) independently verify the same engine, exact-ID absence, workspace absence and zero labels after cleanup. Only list/count by label, never adopt or remove by label. Interruption/ambiguous creation remains UNRESOLVED. Recovery requires current ownership/configuration proof, not just the early printed ID. These operational prerequisites are pending; this amendment does not execute them.
++The next [failure review](APP_ISOLATION_FAILURE_REVIEW_PROMPT.md) must assess the measured failure and minimum safe next step. No new activation approval is requested for unseen code. Any later smoke or diagnostic container needs a specific reviewed candidate and scope. Before any specifically approved future execution: (A) use a clean checkout at the newly approved commit and verify revised manifest source hashes and the unchanged helper hash; (B) through an owned blank Docker config verify the recorded engine, pull only the pinned digest, record image ID/RepoDigests; (C) record zero application-isolation labels before create and capture both launcher streams; (D) independently verify the same engine, exact-ID absence, workspace absence and zero labels after cleanup. Only list/count by label, never adopt or remove by label. Interruption/ambiguous creation remains UNRESOLVED. Recovery requires current ownership/configuration proof, not just the early printed ID. These checks were performed for the failed invocation; scenario acceptance was not reached. They must be freshly satisfied for any later specifically approved invocation.
+ 
+-First-run infrastructure failures remain failures; adjust neither mount/permission/network grants nor scope silently. Docker Desktop bind-path translation and extra interface behavior remain unverified; the exact mount and loopback-only rules are unchanged. Do not retry a post-create failure before review.
++First-run infrastructure failures remain failures; adjust neither mount/permission/network grants nor scope silently. The bind-path checks passed on this invocation. Extra sysfs entries were observed and rejected; their state, address assignment, route behavior and cause remain unverified. The exact mount and loopback-only rules are unchanged. Do not retry a post-create failure before review.
+ 
+ The owner retains the existing pre-launch server. [DevOps facts](DEVOPS_BASELINE_REQUEST.md), supported root dependencies/build/start and C2 adoption remain pending. Legacy pharmacy/API suites, real Mongoose/DB sessions, SDK adapters, background jobs, financial/clinical/stock correctness, full C3, M0 acceptance and 100 RPS remain outside this activation. The selected 115-scenario register is unchanged.
+diff --git a/documentation/planning/implementation/M0_A_PROGRESS.md b/documentation/planning/implementation/M0_A_PROGRESS.md
+index b0f9213..f71b823 100644
+--- a/documentation/planning/implementation/M0_A_PROGRESS.md
++++ b/documentation/planning/implementation/M0_A_PROGRESS.md
+@@ -97,3 +97,13 @@ Also closed confirmed companion findings: full-value image environment parsing,
+ **Executed:** 161 unit checks pass on each of Node 22.23.4 and 24.19.0 with zero failures/skips/TODOs/cancellations; two positive runner controls and twenty expected rejections pass; 16 offline companion checks pass. The old reviewed controller fails the amended tests as expected, including all 18 invalid-executor matrix cases; this proves offline regression sensitivity, not real Docker reproduction. Parser-only checks remain distinct from execution. [Revised evidence](../../../output/qa/m0-a/app-isolation/revision-1/verification.json) and [finding dispositions](../../../output/review/app-isolation/revision-1/DISPOSITION.md). The original evidence and patch remain byte-for-byte historical.
+ 
+ **Next gate:** review the amended commit/hashes using the [updated prompt](APP_ISOLATION_REVIEW_PROMPT.md), before image caching or any real Docker operation. Clean pinned sources, blank Docker config/engine/image readback, zero pre-run label count and independent exact-ID/workspace/post-run absence proof remain activation prerequisites. Real bootstrap/helper import, mount/interface/permission behavior and cleanup readback are NOT_RUN. Root dependency/startup/application files, retained-server C2 facts, full C3/M0, the selected 115-scenario statuses and 100 RPS remain unchanged.
++
++## Sixth increment, 10 November: one approved real application-sandbox smoke
++
++The user supplied APPROVE FIRST ISOLATED SMOKE for `de1693ed80538099bab2874a3ea8254df5f62143`, bound to revision-1 hashes. Verified clean HEAD and all 71 hashes before caching, immediately before launch and after launch; evidence was captured outside the checkout to preserve the source freeze. Used the recorded local engine/socket and an owned blank Docker config, cached only the committed Node digest and invoked the unchanged launcher once.
++
++**Measured result: FAIL.** At `test/application/bootstrap.mjs:16`, the exact sysfs directory comparison expected `['lo']` but observed `bonding_masters`, `erspan0`, `gre0`, `gretap0`, `ip6_vti0`, `ip6gre0`, `ip6tnl0`, `ip_vti0`, `lo`, `sit0`, `tunl0`. These are observed directory entries; their activity/address/route state was not measured. Bootstrap stopped before the later permission/HTTP checks and dynamic ports/scenario/production-helper imports. No seven-receipt or successful scenario claim is made. Parent mount/isolation admission passed by the controller path; raw full container inspect was not independently persisted.
++
++**Cleanup verified:** controller acknowledged cleanup; independent readback confirmed the same engine, exact container `0c3d023374d471ce39fcc951e9aaf3ff64aa0bd91c539dd86c0b2146791a7627` absent, workspace `/private/tmp/sd-app-isolation-BqOkXi` absent and zero purpose-labelled containers before/after. No exceptional removal, broad prune, rule change or retry occurred. [Archived evidence](../../../output/qa/m0-a/app-isolation/activation-1/verification.json), [received approval](../../../output/review/app-isolation/activation-1/APPROVAL.md) and [failure analysis](../../../output/review/app-isolation/activation-1/REVIEW.md).
++
++**Next gate:** the supplied approval explicitly requires review before retry after any post-create failure. Use the [focused failure-review prompt](APP_ISOLATION_FAILURE_REVIEW_PROMPT.md) to decide the minimum next diagnostic or amendment; no unseen repair is approved. Harness/runtime sources remain byte-for-byte at the approved commit. Prior unit results remain 161 per runtime; this docs/evidence increment does not rerun them. C2 server facts, root dependency/build/start, legacy/DB/SDK integration, full C3/M0, the selected 115-scenario statuses and 100 RPS remain open.
+diff --git a/test/application/README.md b/test/application/README.md
+index 7a3629f..b6300d9 100644
+--- a/test/application/README.md
++++ b/test/application/README.md
+@@ -1,6 +1,6 @@
+ # Application import sandbox candidate
+ 
+-**Amended review pending. The supplied REQUEST CHANGES verdict governs; an earlier conditional approval at `00f30fc` does not authorize this revision. Do not cache the image or activate the real launcher until the amended commit and hashes are approved.** [Review prompt](../../documentation/planning/implementation/APP_ISOLATION_REVIEW_PROMPT.md); [contract and limits](../../documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md).
++**First approved smoke: FAIL at `de1693e`; cleanup independently verified. Do not retry or change interface/mount/permission/network rules before the required failure review.** [Current failure-review prompt](../../documentation/planning/implementation/APP_ISOLATION_FAILURE_REVIEW_PROMPT.md); [execution evidence](../../output/qa/m0-a/app-isolation/activation-1/verification.json); [contract and limits](../../documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md). The earlier [activation prompt](../../documentation/planning/implementation/APP_ISOLATION_REVIEW_PROMPT.md) is historical at the approved commit.
+ 
+ This candidate prepares one local Docker Desktop container to run a fixed, synthetic scenario and one unchanged production search-escaping helper. It provides no backend startup, database connection or legacy integration admission.
+ 
+@@ -9,7 +9,7 @@ This candidate prepares one local Docker Desktop container to run a fixed, synth
+ - `bootstrap.mjs`: checks environment, bundle integrity, permissions and loopback-only interfaces before dynamic imports. The rejected HTTP canary is supplementary evidence, not sole proof of network isolation.
+ - `app-ports.mjs`: records only the seven fixed synthetic requests; no SDK/transport, payment success, funds movement or queue consumer is provided.
+ - `scenario.mjs`: calls the unchanged `src1/modules/common/utils/queryUtils.ts` helper and records synthetic port requests. This helper is not imported by unit tests.
+-- `app-image.json`: verified public Node 22.23.4 manifest digest. No image pull has been performed for this slice.
++- `app-image.json`: verified public Node 22.23.4 manifest digest, cached by digest during the single approved smoke. Its JSON observation text is a historical snapshot, not a new grant of authority.
+ - `app-runtime.json`: the previously observed local Docker Desktop socket/engine profile. It is unrelated to the retained pre-launch server, whose DevOps baseline remains pending.
+ 
+ Run the dependency-free unit gate from the repository root with a clean verified Node invocation:
+@@ -23,14 +23,16 @@ The 161 unit cases pass on Node 22.23.4 and 24.19.0, using fake Docker and synth
+ 
+ `verify_local_admission.py` supplies separate offline companion probes: regular/link bundle identity with owned synthetic files, a copy of the launcher with its entire factory replaced by simulation, and addon permission metadata (no addon loaded). All 16 checks pass across the two runtimes. The launcher emits the exact created ID/run ID/workspace to stderr before execution. This record supports recovery after interruption; it is not ownership proof by itself. [Revised evidence and dispositions](../../output/review/app-isolation/revision-1/DISPOSITION.md).
+ 
+-After approval only, cache the exact public image using an owned blank Docker configuration and the approved local endpoint. The controller uses `--pull=never`. The proposed activation command is:
++The single approved invocation cached the exact image through an owned blank Docker config, then failed at `bootstrap.mjs:16` because the sysfs directory listing contained extra entries. The helper/scenario, seven receipts, HTTP canary and subsequent permission assertions were not reached. Extra names alone do not prove inactive or harmless interfaces. The controller cleaned the exact container/workspace; independent same-engine/exact-ID/workspace/label checks confirmed absence. No second container was created.
++
++The controller uses `--pull=never`. The following command is retained as the historical entry point; the consumed approval does not authorize another invocation:
+ 
+ ```sh
+-# REVIEW PENDING: this is not an instruction to run before approval.
++# POST-CREATE FAILURE: no retry without a new review decision.
+ env -i /absolute/path/to/verified-node22 test/application/run.mjs unix:///Users/shubham/.docker/run/docker.sock
+ ```
+ 
+-Before that approved run, use a clean checkout of the newly approved commit and verify every revised source hash plus the production-helper hash. Through a fresh blank Docker configuration on the recorded engine, cache only the pinned digest and record its image ID/RepoDigests. Record zero existing application-isolation labels before create; listing by label is diagnostic only. Capture stdout and stderr, including the early exact-ID/workspace record.
++For any future specifically approved run, use a clean checkout of that newly approved commit and verify its source hashes plus the production-helper hash. Through a fresh blank Docker configuration on the recorded engine, cache only the pinned digest and record its image ID/RepoDigests. Record zero existing application-isolation labels before create; listing by label is diagnostic only. Capture stdout and stderr, including the early exact-ID/workspace record.
+ 
+ The launcher must report a successful exited container, all required assertions and recording receipts, then acknowledged cleanup. Independently verify the same engine, exact returned container ID absent, workspace absent and zero application-isolation labels. An interruption or unknown create acknowledgement is UNRESOLVED. The printed ID is not enough to authorize removal: revalidate engine, name, labels and the controller's full current ownership/configuration checks before any exact-ID recovery. An ownership/configuration loss preserves an explicit cleanup exception; do not adopt resources by label or prune broadly. Unit-only intentional exceptions are contained in the unit runner's owned temporary parent and involve no real Docker resources.
+ 
+diff --git a/test/foundation/README.md b/test/foundation/README.md
+index b1d0ee7..37a14fc 100644
+--- a/test/foundation/README.md
++++ b/test/foundation/README.md
+@@ -29,4 +29,4 @@ Node 22 uses `--experimental-test-isolation=none`; later versions retain the ali
+ 
+ ## Application-sandbox activation gate
+ 
+-The amended unit gate passes 161 cases on Node 22 and Node 24. Non-empty application test seams require an explicit callable executor before any workspace allocation or Docker access. The prior 127-case artifacts remain historical evidence at `00f30fc`; revised evidence lives under `output/qa/m0-a/app-isolation/revision-1/`. These results do not execute `test/application/bootstrap.mjs`, its scenario, the real Docker adapter or application modules. The application sandbox is a review candidate; read its [contract](../../documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md) and [activation-review prompt](../../documentation/planning/implementation/APP_ISOLATION_REVIEW_PROMPT.md) before the first real run. The MongoDB controller is unchanged. Earlier frozen fixture snapshots are historical evidence at their recorded commits; this slice intentionally updates the standalone unit runner/preflight.
++The amended unit gate passes 161 cases on Node 22 and Node 24. Non-empty application test seams require an explicit callable executor before any workspace allocation or Docker access. The prior 127-case artifacts remain historical evidence at `00f30fc`; revised evidence lives under `output/qa/m0-a/app-isolation/revision-1/`. These results do not execute `test/application/bootstrap.mjs`, its scenario, the real Docker adapter or application modules. The first approved application sandbox smoke ran once at `de1693e`, failed at its sysfs interface assertion and cleaned its exact resources. It did not reach the scenario. Read the [contract](../../documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md) and [failure-review prompt](../../documentation/planning/implementation/APP_ISOLATION_FAILURE_REVIEW_PROMPT.md) before any retry. The existing unit evidence was not rerun for this documentation/evidence update. The MongoDB controller is unchanged. Earlier frozen fixture snapshots are historical evidence at their recorded commits; this slice intentionally updates the standalone unit runner/preflight.

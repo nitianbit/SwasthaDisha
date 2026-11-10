@@ -40,3 +40,13 @@ Concrete criticism of the original: it had no amendment baseline, could let an o
 Added eval cases: old APPROVE plus later REQUEST CHANGES must preserve the latter; a profile/bundle override without executor must be checked before effects; simulated interruption must not be counted as real container recovery; an expected old-controller failure must not be called a live-daemon reproduction; plural-addon metadata must not certify native-addon denial. Existing cases/holdouts remain. Paths, counts, unchanged-scope statements and frozen diff/hash consistency are checked during packaging; unseen reviewers and drift/ambiguous-create holdouts were not model-tested.
 
 Main prompt changes: two baselines instead of one; explicit superseded approval; new evidence directory; focused regression/companion scrutiny; A–D operational prerequisites; unchanged runtime uncertainty. Human handoff and independent review remain required before real activation.
+
+## Post-create failure prompt refinement
+
+Target: a portable user-message failure review after the one approved runtime invocation. Success is evidence-qualified diagnosis and a minimum next diagnostic/amendment, preserving the mandatory no-retry gate. Loaded: supplied approval/body, actual frozen-run evidence and current connected source. Referenced: five exact input groups in the failure prompt. Runtime/Docker execution, unseen repairs and operational data are outside reviewer authority.
+
+The old activation prompt cannot serve this state: its first-smoke question is consumed, and unit/metadata evidence no longer describes all executed work. Candidate A would merely update its counts/status; candidate B isolates failure evidence and asks for a bounded next design while withholding approval of unseen code. Manual contract inspection selected B. No model benchmark, external prompt run or score is claimed.
+
+Cases checked by inspection: observed extra names must not imply inactive interfaces; cleanup acknowledgement alone must not prove absence; a Docker inspect error must identify the exact missing ID on the verified engine; bootstrap entry must not imply later helper/HTTP/permission checks ran; address-only interface APIs must not prove all devices absent; historical doc hashes must be checked at the approved commit. Holdouts remain missing evidence and forged/drifted runtime sources; no model run against holdouts was performed. Packaging checks validate source equality, hashes, links and one invocation.
+
+Residual limit: no route/flag/address measurements survive because the reviewed bootstrap did not collect them. A new diagnostic or repaired runtime candidate requires a new scoped review before execution.

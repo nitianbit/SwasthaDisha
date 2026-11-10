@@ -1,0 +1,88 @@
+Written for: you and the implementing agent, in the format the amended review prompt asks for.
+
+## Verdict: **APPROVE FIRST ISOLATED SMOKE**
+
+This covers only commit `de1693ed80538099bab2874a3ea8254df5f62143`, its frozen patch (`42dfc191…`) and the 71 hashes in [revision-1/review-input.json](output/review/app-isolation/revision-1/review-input.json). **The original P2, test overrides falling back to real Docker, is closed.** I found no new material defect. The two runtime concerns are still unverified and still stop safely.
+
+## Standards findings
+
+1. **Original P2 — closed** (statically confirmed; offline regressions exist). The guard at [app-container.mjs:49-54](test/application/app-container.mjs#L49-L54) runs before input validation, source reads, temp-dir creation (`mkdtemp`, [line 67](test/application/app-container.mjs#L67)), the socket check and Docker.
+   - Any override object that doesn't carry its own callable `executor` is rejected.
+   - The override object is copied once and never re-read.
+   - Every override read and the executor choice ([60, 64, 105](test/application/app-container.mjs#L60)) depend on whether overrides were supplied. The real path can only use the committed profile, the fixed repo sources and real Docker.
+   - The 18 executor cases plus 4 null/undefined cases expect the exact error and zero allocation, socket or process calls. All of them fail against the `00f30fc` controller.
+   - The test spies don't count source reads, but source reading comes after the guard, so the ordering is still covered.
+2. **Earlier findings 2–7 — closed** (statically confirmed):
+   - Image environment entries are split at the first `=` only.
+   - The ID/run ID/workspace record is written to stderr before `run()`.
+   - The original error is kept when the workspace has already disappeared.
+   - The permission check now uses `addon`. The offline probe shows it reads false without the grant and true with it, on Node 22 and 24.
+   - The stale "four-file" note now says eleven.
+   - The new image, endpoint, marker, directory-replacement and cleanup-retry tests would catch real regressions. They use only the fake Docker transport and synthetic text that is never imported.
+   - The link probes import only `app-bundle.mjs`. The hard-link probe keeps identical bytes, so only the link-count check can reject it.
+3. **P3 — the ID record can still be missed** ([run.mjs:8](test/application/run.mjs#L8)). The record is printed after the controller returns. An interruption during its post-create `info` + `inspect` checks (up to about 40 s) leaves no record. Statically confirmed. The UNRESOLVED rule covers this case. Fix in a later revision: have the controller emit the record right after it validates the ID. Not blocking.
+
+## Spec/containment findings
+
+1. **Docker Desktop bind-path translation and inactive tunnel interfaces — unverified, and both still fail closed.** The exact path matching ([176](test/application/app-container.mjs#L176), [182](test/application/app-container.mjs#L182)) and the `['lo']`-only interface check ([bootstrap.mjs:16](test/application/bootstrap.mjs#L16)) are unchanged. Neither has run on a real engine.
+   - If either fails, record a FAIL. Relaxing either rule needs a new review.
+   - Isolation still needs all three signals: Docker reporting network mode `none`, the in-container interface check, and the rejected HTTP request. The rejected request alone proves nothing.
+2. **P2 — cleanup has no allowed path if the bind path is translated** (procedure gap, statically confirmed; runtime unverified). A translated bind path fails admission right after create ([line 230](test/application/app-container.mjs#L230)), so cleanup is withheld. Prerequisite D's recovery rule then requires the controller's full ownership and configuration checks to pass, which can't happen when the path mismatch is permanent. A never-started container would sit there until another review.
+
+   **This approval allows one narrow exception:** remove that exact container ID only if all of these hold:
+   - The engine ID is the same.
+   - `docker inspect <id>` shows `State.Status: created`.
+   - The name is `/sd-app-<runId>`, and both labels match the `runId` in the kept workspace's `.owner.json`.
+   - The bind-path mismatch is the only check that failed.
+
+   Record the inspect output first. Then remove the workspace after checking its marker. Anything else stays UNRESOLVED and goes back for review.
+
+## Approved scope
+
+Only on `unix:///Users/shubham/.docker/run/docker.sock`, engine `16ab25f6-88c7-4687-a431-b119b6ab9319`:
+- One cache of `node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d`, through a fresh empty Docker config.
+- One run of the fixed six-file synthetic no-DB smoke at `de1693e`.
+- The exact-ID and workspace cleanup proof, including the exception above.
+
+Not approved:
+- Any retry after a failure that happens after the container is created.
+- Changed mounts, permissions, interface rules, engine or image.
+- A database, SDKs, backend imports or root package/build/start changes.
+
+## Prerequisites (operator, before caching)
+
+Prerequisites A–D in [DISPOSITION.md](output/review/app-isolation/revision-1/DISPOSITION.md) are sufficient as written, plus the recovery exception above:
+- **A.** Clean checkout at `de1693e`. Every `files` hash matches, and the `queryUtils.ts` hash is still `fb65a0b5…`.
+- **B.** Empty Docker config. Confirm the engine ID, pull by digest only, and record the image ID and RepoDigests.
+- **C.** Zero containers with the app-isolation label before the run. Capture both stdout and stderr.
+- **D.** After the run: same engine ID, the exact container ID and the workspace are gone, and the label count is still zero. Listing by label is only for checking, never for removal.
+
+## Gates and owners
+
+| Gate | Owner | Latest safe point |
+|---|---|---|
+| Prerequisites A–D | Local operator | Before image caching |
+| Path or interface rule change after a FAIL | Author + reviewer | Before any rerun |
+| Standards 3 | Author | Next sandbox revision |
+| DevOps baseline / C2 | DevOps, then compatibility review | Before root dependency/build/start adoption |
+| Full C3: DB sessions, SDK adapters, legacy suites | Harness author + reviewers | Before any backend import |
+| Containment, M0 acceptance, release | Project owner | Before first live use |
+
+## Checked vs recorded
+
+**Checked myself (read-only):**
+- HEAD `de1693e` matches the remote branch, and the working tree is clean.
+- All 71 revision-1 hashes match: sources, evidence and historical inputs. No drift.
+- `candidate.diff` matches its recorded `patch_sha256` and is byte-identical to the specified `git diff 00f30fc..HEAD` (excluding `output/` and the eval file).
+- Unchanged: `src1`, the root package/lock/tsconfig, the MongoDB controller and its tests, the foundation runner/preflight, and the bundle/ports/scenario/image/runtime files.
+- Test logs: 161 of 161 pass on both runtimes with empty stderr. The old controller fails 24 tests, including all 18 executor cases.
+- The runner canary manifest shows 2 expected passes and 20 expected rejections.
+- I read the source of both offline verifier scripts.
+
+**Recorded by the author, not re-run by me:** all unit, canary, companion, old-controller and parser-only runs, and the `addon` permission behaviour.
+
+**Not run by anyone:** any Docker operation, the image pull, the bootstrap/scenario, importing the helper at runtime, real mount/network/permission behaviour and the cleanup readback. I ran nothing.
+
+---
+
+No repository files were changed in this pass.
