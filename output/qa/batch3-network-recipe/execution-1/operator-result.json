@@ -1,0 +1,323 @@
+{
+  "attempt_claimed": true,
+  "launcher_invocations": 1,
+  "status": "PASS",
+  "candidate": "eba7e5c82e3ff63af9e9a958fbd100733e1fc439",
+  "operator_sha256": "8586e6ad4a3482aa033b5d98a3c9da3eae3c81324824df163ea13bb7b4092651",
+  "source_manifest_sha256": "6d71e8c47f46bc941751515f15e0d3c802be6863d7192d61ad3966d6730dc804",
+  "approval_sha256": "60f3c632bea45168205b4e86722beb315c8f46e8d51a97870e6b88be6bb17084",
+  "operator_run_id": "6120a7bf-fba0-429c-9b03-12ff443771f5",
+  "operator_directory": "/private/tmp/sd-network-admission-run-0_ws9v0p",
+  "started_at": "2026-11-10T15:27:08Z",
+  "commands": [
+    {
+      "step": "engine-before-image",
+      "arguments": [
+        "info",
+        "--format",
+        "[{{json .ID}},{{json .OSType}}]"
+      ],
+      "exit_code": 0
+    },
+    {
+      "step": "labels-before-image",
+      "arguments": [
+        "ps",
+        "--all",
+        "--filter",
+        "label=swasthadisha.test.purpose=app-isolation",
+        "--quiet",
+        "--no-trunc"
+      ],
+      "exit_code": 0
+    },
+    {
+      "step": "cached-image",
+      "arguments": [
+        "image",
+        "inspect",
+        "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d"
+      ],
+      "exit_code": 0
+    },
+    {
+      "step": "engine-before-launch",
+      "arguments": [
+        "info",
+        "--format",
+        "[{{json .ID}},{{json .OSType}}]"
+      ],
+      "exit_code": 0
+    },
+    {
+      "step": "labels-before-create",
+      "arguments": [
+        "ps",
+        "--all",
+        "--filter",
+        "label=swasthadisha.test.purpose=app-isolation",
+        "--quiet",
+        "--no-trunc"
+      ],
+      "exit_code": 0
+    },
+    {
+      "step": "engine-after-launch",
+      "arguments": [
+        "info",
+        "--format",
+        "[{{json .ID}},{{json .OSType}}]"
+      ],
+      "exit_code": 0
+    },
+    {
+      "step": "exact-container-after-launch",
+      "arguments": [
+        "container",
+        "inspect",
+        "47e37d5f35ba588bf38cc1df4988d6075c72b960efbcf5e5f226e969f0265d6b"
+      ],
+      "exit_code": 1
+    },
+    {
+      "step": "labels-after-launch",
+      "arguments": [
+        "ps",
+        "--all",
+        "--filter",
+        "label=swasthadisha.test.purpose=app-isolation",
+        "--quiet",
+        "--no-trunc"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "resources": {
+    "id": "47e37d5f35ba588bf38cc1df4988d6075c72b960efbcf5e5f226e969f0265d6b",
+    "runId": "1061e125-c648-432e-bd8a-801b7dc3be02",
+    "directory": "/private/tmp/sd-app-isolation-6Q3YI8"
+  },
+  "scope": "ONE_FIXED_NO_DB_RUN_NO_RETRY_NO_PULL_NO_DAEMON_START",
+  "source_before_image": {
+    "candidate": "eba7e5c82e3ff63af9e9a958fbd100733e1fc439",
+    "clean_detached": true,
+    "source_manifest_sha256": "6d71e8c47f46bc941751515f15e0d3c802be6863d7192d61ad3966d6730dc804",
+    "verified_file_count": 34
+  },
+  "labels-before-image_count": 0,
+  "cached_image": {
+    "Id": "sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
+    "RepoDigests": [
+      "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d"
+    ],
+    "Os": "linux",
+    "Architecture": "arm64"
+  },
+  "source_before_launch": {
+    "candidate": "eba7e5c82e3ff63af9e9a958fbd100733e1fc439",
+    "clean_detached": true,
+    "source_manifest_sha256": "6d71e8c47f46bc941751515f15e0d3c802be6863d7192d61ad3966d6730dc804",
+    "verified_file_count": 34
+  },
+  "labels-before-create_count": 0,
+  "attempt_claim": "/private/tmp/sd-network-run-eba7e5c-8586e6ad4a3482aa033b5d98a3c9da3eae3c81324824df163ea13bb7b4092651.claim.json",
+  "launcher_exit_code": 0,
+  "independent_container_absent": true,
+  "independent_workspace_absent": true,
+  "labels-after-launch_count": 0,
+  "source_after_launch": {
+    "candidate": "eba7e5c82e3ff63af9e9a958fbd100733e1fc439",
+    "clean_detached": true,
+    "source_manifest_sha256": "6d71e8c47f46bc941751515f15e0d3c802be6863d7192d61ad3966d6730dc804",
+    "verified_file_count": 34
+  },
+  "result": {
+    "runId": "1061e125-c648-432e-bd8a-801b7dc3be02",
+    "role": "synthetic-ports-only",
+    "manifestSha": "6f74f9f075dc4e11d3ffdee7b895d445eb7a29f1d53cb2b8b8009c34163e9bd4",
+    "admissionPassed": true,
+    "egressBlocked": true,
+    "filesystemCanariesPassed": true,
+    "databaseMode": "not-admitted",
+    "networkAdmission": {
+      "tag": "APP-NET-ADMIT-1",
+      "observation": {
+        "tag": "APP-NET-DIAG-1",
+        "entries": [
+          {
+            "name": "bonding_masters",
+            "kind": "file",
+            "flags": {
+              "unavailable": "ENOTDIR"
+            },
+            "operstate": {
+              "unavailable": "ENOTDIR"
+            },
+            "type": {
+              "unavailable": "ENOTDIR"
+            }
+          },
+          {
+            "name": "erspan0",
+            "kind": "symlink",
+            "flags": "0x1002",
+            "operstate": "down",
+            "type": "1"
+          },
+          {
+            "name": "gre0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "778"
+          },
+          {
+            "name": "gretap0",
+            "kind": "symlink",
+            "flags": "0x1002",
+            "operstate": "down",
+            "type": "1"
+          },
+          {
+            "name": "ip6_vti0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "769"
+          },
+          {
+            "name": "ip6gre0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "823"
+          },
+          {
+            "name": "ip6tnl0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "769"
+          },
+          {
+            "name": "ip_vti0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "768"
+          },
+          {
+            "name": "lo",
+            "kind": "symlink",
+            "flags": "0x9",
+            "operstate": "unknown",
+            "type": "772"
+          },
+          {
+            "name": "sit0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "776"
+          },
+          {
+            "name": "tunl0",
+            "kind": "symlink",
+            "flags": "0x80",
+            "operstate": "down",
+            "type": "768"
+          }
+        ],
+        "addressedInterfaces": [
+          {
+            "name": "lo",
+            "addresses": [
+              {
+                "address": "127.0.0.1",
+                "family": "IPv4",
+                "internal": true
+              },
+              {
+                "address": "::1",
+                "family": "IPv6",
+                "internal": true
+              }
+            ]
+          }
+        ]
+      },
+      "loopback": "lo",
+      "controlFiles": [
+        "bonding_masters"
+      ],
+      "downDevices": [
+        "erspan0",
+        "gre0",
+        "gretap0",
+        "ip6_vti0",
+        "ip6gre0",
+        "ip6tnl0",
+        "ip_vti0",
+        "sit0",
+        "tunl0"
+      ],
+      "loopbackAddresses": [
+        "127.0.0.1",
+        "::1"
+      ]
+    },
+    "calls": [
+      {
+        "port": "payments",
+        "operation": "create-order",
+        "status": "recorded",
+        "effect": false
+      },
+      {
+        "port": "sms",
+        "operation": "send",
+        "status": "recorded",
+        "effect": false
+      },
+      {
+        "port": "email",
+        "operation": "send",
+        "status": "recorded",
+        "effect": false
+      },
+      {
+        "port": "push",
+        "operation": "send",
+        "status": "recorded",
+        "effect": false
+      },
+      {
+        "port": "calendar",
+        "operation": "create-event",
+        "status": "recorded",
+        "effect": false
+      },
+      {
+        "port": "storage",
+        "operation": "put",
+        "status": "recorded",
+        "effect": false
+      },
+      {
+        "port": "queue",
+        "operation": "enqueue",
+        "status": "recorded",
+        "effect": false
+      }
+    ],
+    "scenario": {
+      "literalSearchPassed": true,
+      "unknownOperationRejected": true
+    },
+    "containerId": "47e37d5f35ba588bf38cc1df4988d6075c72b960efbcf5e5f226e969f0265d6b",
+    "directory": "/private/tmp/sd-app-isolation-6Q3YI8",
+    "image": "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
+    "cleanupAcknowledged": true
+  },
+  "finished_at": "2026-11-10T15:27:11Z"
+}

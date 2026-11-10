@@ -1,0 +1,132 @@
+{
+  "status": "PASS_FIXED_NO_DB_SCENARIO",
+  "candidate_commit": "eba7e5c82e3ff63af9e9a958fbd100733e1fc439",
+  "candidate_root": "/private/tmp/swasthadisha-parallel-p1qom53w/network-run-eba7e5c",
+  "operator": "/root executed the exact reviewed operator once; author archives retained evidence only",
+  "frozen_packet_sha256": {
+    "CONTRACT.md": "e5f2897a5361080956c5b3be37e405134c91ddb7836dc3c58ac4f1673523c141",
+    "operator.py": "8586e6ad4a3482aa033b5d98a3c9da3eae3c81324824df163ea13bb7b4092651",
+    "review-input.json": "7ac9f41b4fd75334a68836bfd8f051d1e16a86ea01647c7fbb5044ff06fdf7c8",
+    "source-manifest.json": "6d71e8c47f46bc941751515f15e0d3c802be6863d7192d61ad3966d6730dc804",
+    "PRIMARY_SOURCE_VALIDATION.md": "0010a5ad90fa8e9fb9c0a39e547b54d78ab390a5f0fbe1fd1cdffe29a99ccbd3"
+  },
+  "run_approval": "CONSUMED_ONE_RUN; no retry or further invocation authorized",
+  "approval_sha256": "60f3c632bea45168205b4e86722beb315c8f46e8d51a97870e6b88be6bb17084",
+  "actual_reviewers": [
+    {
+      "agent": "/root/batch2_security_check",
+      "decision": "APPROVE_ONE_FIXED_NO_DB_RUN"
+    },
+    {
+      "agent": "/root/outbound_spec_review",
+      "decision": "APPROVE_ONE_FIXED_NO_DB_RUN"
+    }
+  ],
+  "attempt_claimed": true,
+  "launcher_invocations": 1,
+  "launcher_exit_code": 0,
+  "started_at_utc": "2026-11-10T15:27:08Z",
+  "finished_at_utc": "2026-11-10T15:27:11Z",
+  "source_freezes": {
+    "clean_detached_before_image": true,
+    "clean_detached_before_launch": true,
+    "clean_detached_after_launch": true,
+    "verified_files_each": 34
+  },
+  "scope": {
+    "role": "synthetic-ports-only",
+    "databaseMode": "not-admitted",
+    "production_code_executed": "Only unchanged src1/modules/common/utils/queryUtils.ts through fixed scenario",
+    "production_helper_sha256": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d",
+    "provider_receipts": 7,
+    "receipt_status": "recorded",
+    "receipt_effect": false,
+    "scenario": {
+      "literalSearchPassed": true,
+      "unknownOperationRejected": true
+    },
+    "filesystemCanariesPassed": true,
+    "egressBlocked": true,
+    "egress_limit": "The frozen ENETUNREACH-only classifier reached its true result; raw successful canary error is not printed and no route table or namespace provenance was measured"
+  },
+  "network_observation_summary": {
+    "tag": "APP-NET-ADMIT-1",
+    "loopback": "lo",
+    "controlFiles": [
+      "bonding_masters"
+    ],
+    "downDevices": [
+      "erspan0",
+      "gre0",
+      "gretap0",
+      "ip6_vti0",
+      "ip6gre0",
+      "ip6tnl0",
+      "ip_vti0",
+      "sit0",
+      "tunl0"
+    ],
+    "loopbackAddresses": [
+      "127.0.0.1",
+      "::1"
+    ]
+  },
+  "cleanup": {
+    "engine_before_after": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+    "container_id": "47e37d5f35ba588bf38cc1df4988d6075c72b960efbcf5e5f226e969f0265d6b",
+    "workspace": "/private/tmp/sd-app-isolation-6Q3YI8",
+    "cleanupAcknowledged": true,
+    "exact_container_absent": true,
+    "exact_workspace_absent": true,
+    "labels_before_image": 0,
+    "labels_before_create": 0,
+    "labels_after_launch": 0,
+    "evidence": "Retained same-engine readback, exact missing-container response and operator filesystem absence check; no fresh Docker/socket calls by archiver"
+  },
+  "archive": {
+    "raw_directory": "/private/tmp/sd-network-admission-run-0_ws9v0p",
+    "files_sha256": {
+      "execution-1/cached-image.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "execution-1/cached-image.stdout.txt": "fcebf28f631210279339c68e72feae218b52289d0b842db17161dbcdb15a3675",
+      "execution-1/engine-after-launch.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "execution-1/engine-after-launch.stdout.txt": "0d3568ea64a9bb77b1002e1f6e02c96e82e5c2dde3878d347d757031b668cfa2",
+      "execution-1/engine-before-image.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "execution-1/engine-before-image.stdout.txt": "0d3568ea64a9bb77b1002e1f6e02c96e82e5c2dde3878d347d757031b668cfa2",
+      "execution-1/engine-before-launch.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "execution-1/engine-before-launch.stdout.txt": "0d3568ea64a9bb77b1002e1f6e02c96e82e5c2dde3878d347d757031b668cfa2",
+      "execution-1/exact-container-after-launch.stderr.txt": "48369daa275d874923a4a810408afec73dd22ea2fe5e362c7a2e45c9214bec66",
+      "execution-1/exact-container-after-launch.stdout.txt": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "execution-1/labels-after-launch.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "execution-1/labels-after-launch.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "execution-1/labels-before-create.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "execution-1/labels-before-create.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "execution-1/labels-before-image.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "execution-1/labels-before-image.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "execution-1/launcher.stderr.txt": "35223ddbe04e8a90341c15053b8dd0ea770083a2106b73ebe03c77659caabf7e",
+      "execution-1/launcher.stdout.txt": "b132cf33a79947134fd19ac80ea44c60f717c619a68b4f0d56f2c621499f35b4",
+      "execution-1/operator-result.json": "95117a73da1eda185e65df2af2e425893c4c7f7f2b2e5ae0743cde34371a3dc9",
+      "execution-1/source-after-launch.json": "97c24c6d896c18bff5f79c188e67f028639716d46b5393a84f1f5492327a36e1",
+      "execution-1/source-before-image.json": "97c24c6d896c18bff5f79c188e67f028639716d46b5393a84f1f5492327a36e1",
+      "execution-1/source-before-launch.json": "97c24c6d896c18bff5f79c188e67f028639716d46b5393a84f1f5492327a36e1",
+      "execution-1/one-run-approval.json": "60f3c632bea45168205b4e86722beb315c8f46e8d51a97870e6b88be6bb17084",
+      "execution-1/attempt-claim.json": "ff4c85b2ebce8064a666c2ed9e27895da813e6ee90b47f133caf788040934685"
+    },
+    "excluded": [
+      ".operator-owner.json",
+      "docker/ including blank auth config"
+    ],
+    "synthetic_bookkeeping": [
+      "execution-1/one-run-approval.json",
+      "execution-1/attempt-claim.json"
+    ],
+    "byte_identical": true
+  },
+  "limits": [
+    "No application entry point/config or domain-service import; only the explicitly named pure helper executed",
+    "No Mongoose/DB/provider SDK, operational configuration or service effects admitted",
+    "No root install/type/build/compiled start or legacy integration suites",
+    "No full C3/M0/domain-scenario/100 RPS/release acceptance",
+    "Kernel/configuration, IPv6 routes and namespace provenance remain unmeasured",
+    "This archival step ran no operator, Node, Docker/socket, launcher, helper or application code"
+  ]
+}

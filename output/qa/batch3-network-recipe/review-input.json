@@ -1,0 +1,82 @@
+{
+  "schema": "SD-NET-RUN-PREPARATION-1",
+  "status": "PREPARATION_ONLY_NOT_RUN_NO_EXECUTION_APPROVAL",
+  "author": "/root/batch2_network_check",
+  "candidate_commit": "eba7e5c82e3ff63af9e9a958fbd100733e1fc439",
+  "files": {
+    "CONTRACT.md": "e5f2897a5361080956c5b3be37e405134c91ddb7836dc3c58ac4f1673523c141",
+    "PRIMARY_SOURCE_VALIDATION.md": "0010a5ad90fa8e9fb9c0a39e547b54d78ab390a5f0fbe1fd1cdffe29a99ccbd3",
+    "source-manifest.json": "6d71e8c47f46bc941751515f15e0d3c802be6863d7192d61ad3966d6730dc804",
+    "operator.py": "8586e6ad4a3482aa033b5d98a3c9da3eae3c81324824df163ea13bb7b4092651"
+  },
+  "static_checks": {
+    "operator_ast_parse": "PASS (syntax only, never imported/evaluated/invoked)",
+    "source_manifest_files": 34,
+    "source_files_match_committed_candidate": true,
+    "scope": "Only output/qa/batch3-network-recipe/ written",
+    "launch_accounting_ast": "PASS: exclusive claim flag first; only UNKNOWN-before-call and 1-after-return writes; both stream opens before ambiguity; shared outer state preserved; no claim deletion. AST/source inspection only."
+  },
+  "not_performed": [
+    "operator or launcher invocation",
+    "Node executable invocation",
+    "Docker/socket/daemon/image access",
+    "bootstrap/helper/app/DB/provider execution",
+    "worktree creation",
+    "commit or push"
+  ],
+  "future_prerequisites": [
+    "Two direct nonauthor exact one-run approvals; preparation review is insufficient",
+    "Fixed clean detached candidate worktree must be created separately",
+    "Recorded socket/engine and cached image availability must pass future preflight; not checked now"
+  ],
+  "amendment": {
+    "finding": "Spec REQUEST_CHANGES: launcher count was assigned 1 before save/open/subprocess.run, so a pre-spawn failure falsely claimed invocation.",
+    "previous_operator_sha256": "7ca93c239835023a8be1ad32c8ea1e0ccabb85e6773ae694858269ea966b39ef",
+    "previous_review_input_sha256": "79d420c2e555b741259d2fd0c3b58a55509ca7dbbf43601e337852093673b3dd",
+    "disposition": "Separate persistent attempt_claimed from actual launcher count; preserve state through inner and outer evidence failures. A claimed attempt is never deleted/retried. Targets, source manifest and allowed actions unchanged. Fresh exact reviews required; previous preparation approval is not execution approval.",
+    "expected_states_from_source_inspection": [
+      {
+        "boundary": "preclaim failure",
+        "attempt_claimed": false,
+        "launcher_invocations": 0,
+        "status": "BLOCKED_BEFORE_LAUNCH",
+        "review_required_before_retry": false
+      },
+      {
+        "boundary": "postclaim save failure",
+        "attempt_claimed": true,
+        "launcher_invocations": 0,
+        "status": "UNRESOLVED",
+        "review_required_before_retry": true
+      },
+      {
+        "boundary": "postclaim stdout/stderr open failure",
+        "attempt_claimed": true,
+        "launcher_invocations": 0,
+        "status": "UNRESOLVED",
+        "review_required_before_retry": true
+      },
+      {
+        "boundary": "process creation/completion uncertain",
+        "attempt_claimed": true,
+        "launcher_invocations": "UNKNOWN",
+        "status": "UNRESOLVED",
+        "review_required_before_retry": true
+      },
+      {
+        "boundary": "subprocess.run returned; later evidence failure",
+        "attempt_claimed": true,
+        "launcher_invocations": 1,
+        "status": "UNRESOLVED",
+        "review_required_before_retry": true
+      },
+      {
+        "boundary": "completed launch and all acceptance/cleanup checks pass",
+        "attempt_claimed": true,
+        "launcher_invocations": 1,
+        "status": "PASS"
+      }
+    ],
+    "control_limits": "Expected-state table is derived from AST/source order, not a simulation or execution of operator behavior; no extracted operator block, Node, Docker or launcher executed."
+  }
+}
