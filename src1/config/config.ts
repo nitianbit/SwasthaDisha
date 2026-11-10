@@ -5,6 +5,19 @@ import { ISettings } from '@/modules/settings/types';
 // Load environment variables
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
+const JWT_SECRET_PLACEHOLDERS = ['your-secret-key', 'your-secret-key-change-in-production'];
+
+function requireJwtSecret(value: string | undefined): string {
+  if (
+    value === undefined ||
+    value.trim() === '' ||
+    JWT_SECRET_PLACEHOLDERS.includes(value.trim())
+  ) {
+    throw new Error('JWT_SECRET_KEY must be set to a non-placeholder value');
+  }
+  return value;
+}
+
 /**
  * Application Configuration
  * Centralized configuration object containing all environment variables
@@ -20,7 +33,7 @@ export const CONFIG: ISettings = {
   MONGODB_URL: process.env.MONGODB_URL || 'mongodb://localhost:27017/ewa-healthcare',
   
   // Authentication configuration
-  JWT_SECRET_KEY: process.env.JWT_SECRET_KEY || 'your-secret-key',
+  JWT_SECRET_KEY: requireJwtSecret(process.env.JWT_SECRET_KEY),
   
   // Email configuration
   EMAIL: process.env.EMAIL,

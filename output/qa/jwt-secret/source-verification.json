@@ -1,0 +1,351 @@
+{
+  "commands": [
+    {
+      "phase": "before_edit_baseline_rejected",
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "-I",
+        "output/qa/jwt-secret/source-check.py"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/authority-jwt",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 1,
+      "stdout": {
+        "status": "REJECTED",
+        "reason": "VALIDATOR_PRESENT: requireJwtSecret declaration missing",
+        "typescript_evaluations": 0
+      },
+      "stderr": "",
+      "config_sha256": "0fcb0df49527c155083d2f3e4c81b36650bab14e207b5635a0831b2827d884e1",
+      "script_sha256": "ac4968058369de83626ce3c2493de62a425cc0ba4da32db503a9bff8eaffed63"
+    },
+    {
+      "phase": "after_edit_amendment_accepted",
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "-I",
+        "output/qa/jwt-secret/source-check.py"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/authority-jwt",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": {
+        "status": "SOURCE_ONLY_VERIFIED_RUNTIME_NOT_RUN",
+        "baseline": "9ea963f1f7b51aadedcfa7fc9918eb39a2fd737d",
+        "source_sha256": "e879b0f9c635283d7c9a271128605c6d8583995356e30f5f1c318d23270d09f6",
+        "validator_sha256": "1e6ec2c4e0281e82820e45be775e332a0bd94fb9e54eb89014908627ce8adba8",
+        "binding_gate": "EXACT_TRANSFORM + PROTECTED_PINS + DIFF_SCOPE; semantic checks are diagnostic",
+        "pinned_files": 15,
+        "diff_scope": [
+          "src1",
+          "test",
+          "package.json",
+          "package-lock.json",
+          "tsconfig.json"
+        ],
+        "typescript_evaluations": 0
+      },
+      "stderr": "",
+      "config_sha256": "e879b0f9c635283d7c9a271128605c6d8583995356e30f5f1c318d23270d09f6",
+      "script_sha256": "ac4968058369de83626ce3c2493de62a425cc0ba4da32db503a9bff8eaffed63"
+    },
+    {
+      "phase": "negative_controls_rejected",
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "-I",
+        "output/qa/jwt-secret/source-check.py",
+        "--negative-controls"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/authority-jwt",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": {
+        "status": "SOURCE_NEGATIVES_REJECTED",
+        "control_count": 23,
+        "controls": [
+          {
+            "control": "baseline_config",
+            "intended": "VALIDATOR_PRESENT",
+            "rejected_by": "VALIDATOR_PRESENT",
+            "semantic_failures": [
+              "VALIDATOR_PRESENT",
+              "DOTENV_BEFORE_VALIDATION",
+              "VALIDATED_AT_LOAD",
+              "NO_LITERAL_FALLBACK",
+              "PLACEHOLDER_SET_EXACT"
+            ]
+          },
+          {
+            "control": "literal_fallback_or",
+            "intended": "NO_LITERAL_FALLBACK",
+            "rejected_by": "NO_LITERAL_FALLBACK",
+            "semantic_failures": [
+              "NO_LITERAL_FALLBACK"
+            ]
+          },
+          {
+            "control": "literal_fallback_nullish",
+            "intended": "NO_LITERAL_FALLBACK",
+            "rejected_by": "NO_LITERAL_FALLBACK",
+            "semantic_failures": [
+              "NO_LITERAL_FALLBACK"
+            ]
+          },
+          {
+            "control": "original_fallback_restored",
+            "intended": "NO_LITERAL_FALLBACK",
+            "rejected_by": "VALIDATED_AT_LOAD",
+            "semantic_failures": [
+              "VALIDATED_AT_LOAD",
+              "NO_LITERAL_FALLBACK"
+            ]
+          },
+          {
+            "control": "production_only_gating",
+            "intended": "UNCONDITIONAL",
+            "rejected_by": "NO_LITERAL_FALLBACK",
+            "semantic_failures": [
+              "NO_LITERAL_FALLBACK",
+              "UNCONDITIONAL",
+              "CLOSED_VOCABULARY"
+            ]
+          },
+          {
+            "control": "placeholder_omitted_your_secret_key",
+            "intended": "PLACEHOLDER_SET_EXACT",
+            "rejected_by": "NO_LITERAL_FALLBACK",
+            "semantic_failures": [
+              "NO_LITERAL_FALLBACK",
+              "PLACEHOLDER_SET_EXACT",
+              "PLACEHOLDER_REJECTED"
+            ]
+          },
+          {
+            "control": "placeholder_omitted_change_in_production",
+            "intended": "PLACEHOLDER_SET_EXACT",
+            "rejected_by": "NO_LITERAL_FALLBACK",
+            "semantic_failures": [
+              "NO_LITERAL_FALLBACK",
+              "PLACEHOLDER_SET_EXACT",
+              "PLACEHOLDER_REJECTED"
+            ]
+          },
+          {
+            "control": "extra_placeholder_invented",
+            "intended": "PLACEHOLDER_SET_EXACT",
+            "rejected_by": "PLACEHOLDER_SET_EXACT",
+            "semantic_failures": [
+              "PLACEHOLDER_SET_EXACT"
+            ]
+          },
+          {
+            "control": "whitespace_accepted",
+            "intended": "PRESENCE_CHECK",
+            "rejected_by": "PRESENCE_CHECK",
+            "semantic_failures": [
+              "PRESENCE_CHECK"
+            ]
+          },
+          {
+            "control": "presence_check_removed",
+            "intended": "PRESENCE_CHECK",
+            "rejected_by": "PRESENCE_CHECK",
+            "semantic_failures": [
+              "PRESENCE_CHECK"
+            ]
+          },
+          {
+            "control": "padded_placeholder_accepted",
+            "intended": "PLACEHOLDER_REJECTED",
+            "rejected_by": "PLACEHOLDER_REJECTED",
+            "semantic_failures": [
+              "PLACEHOLDER_REJECTED"
+            ]
+          },
+          {
+            "control": "valid_key_rejected",
+            "intended": "VALID_ACCEPTED",
+            "rejected_by": "PRESENCE_CHECK",
+            "semantic_failures": [
+              "PRESENCE_CHECK",
+              "VALID_ACCEPTED",
+              "RAW_VALUE_RETURNED"
+            ]
+          },
+          {
+            "control": "case_folded_placeholder_policy",
+            "intended": "VALID_ACCEPTED",
+            "rejected_by": "VALID_ACCEPTED",
+            "semantic_failures": [
+              "VALID_ACCEPTED"
+            ]
+          },
+          {
+            "control": "trimmed_value_returned",
+            "intended": "RAW_VALUE_RETURNED",
+            "rejected_by": "RAW_VALUE_RETURNED",
+            "semantic_failures": [
+              "RAW_VALUE_RETURNED"
+            ]
+          },
+          {
+            "control": "warn_instead_of_throw",
+            "intended": "THROWS_NOT_WARNS",
+            "rejected_by": "THROWS_NOT_WARNS",
+            "semantic_failures": [
+              "THROWS_NOT_WARNS",
+              "CLOSED_VOCABULARY"
+            ]
+          },
+          {
+            "control": "message_echoes_value",
+            "intended": "FIXED_MESSAGE",
+            "rejected_by": "FIXED_MESSAGE",
+            "semantic_failures": [
+              "FIXED_MESSAGE",
+              "CLOSED_VOCABULARY"
+            ]
+          },
+          {
+            "control": "length_policy_invented",
+            "intended": "NO_STRENGTH_POLICY",
+            "rejected_by": "NO_STRENGTH_POLICY",
+            "semantic_failures": [
+              "NO_STRENGTH_POLICY",
+              "CLOSED_VOCABULARY"
+            ]
+          },
+          {
+            "control": "validation_moved_to_first_use",
+            "intended": "VALIDATED_AT_LOAD",
+            "rejected_by": "VALIDATED_AT_LOAD",
+            "semantic_failures": [
+              "VALIDATED_AT_LOAD",
+              "NO_LITERAL_FALLBACK"
+            ]
+          },
+          {
+            "control": "async_validator",
+            "intended": "GUARD_SYNCHRONOUS",
+            "rejected_by": "GUARD_SYNCHRONOUS",
+            "semantic_failures": [
+              "GUARD_SYNCHRONOUS"
+            ]
+          },
+          {
+            "control": "validator_wrapped_in_load_time_try_catch",
+            "intended": "NO_TRY_CATCH",
+            "rejected_by": "NO_TRY_CATCH",
+            "semantic_failures": [
+              "NO_TRY_CATCH",
+              "VALIDATED_AT_LOAD",
+              "NO_LITERAL_FALLBACK",
+              "SINGLE_SECRET_SOURCE"
+            ]
+          },
+          {
+            "control": "validator_hoisted_above_dotenv",
+            "intended": "DOTENV_BEFORE_VALIDATION",
+            "rejected_by": "DOTENV_BEFORE_VALIDATION",
+            "semantic_failures": [
+              "DOTENV_BEFORE_VALIDATION"
+            ]
+          },
+          {
+            "control": "dotenv_moved_after_config",
+            "intended": "DOTENV_BEFORE_VALIDATION",
+            "rejected_by": "DOTENV_BEFORE_VALIDATION",
+            "semantic_failures": [
+              "DOTENV_BEFORE_VALIDATION"
+            ]
+          },
+          {
+            "control": "consumer_reads_env_directly",
+            "intended": "SINGLE_SECRET_SOURCE",
+            "rejected_by": "SINGLE_SECRET_SOURCE",
+            "semantic_failures": [
+              "SINGLE_SECRET_SOURCE"
+            ]
+          }
+        ],
+        "exact_comparison_rejections": 0,
+        "typescript_evaluations": 0
+      },
+      "stderr": "",
+      "config_sha256": "e879b0f9c635283d7c9a271128605c6d8583995356e30f5f1c318d23270d09f6",
+      "script_sha256": "ac4968058369de83626ce3c2493de62a425cc0ba4da32db503a9bff8eaffed63"
+    },
+    {
+      "phase": "whitespace_check_staged",
+      "argv": [
+        "git",
+        "diff",
+        "--cached",
+        "--check"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/authority-jwt",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "config_sha256": "e879b0f9c635283d7c9a271128605c6d8583995356e30f5f1c318d23270d09f6",
+      "script_sha256": "ac4968058369de83626ce3c2493de62a425cc0ba4da32db503a9bff8eaffed63"
+    }
+  ],
+  "baseline": "9ea963f1f7b51aadedcfa7fc9918eb39a2fd737d",
+  "status": "SOURCE_ONLY_VERIFIED_RUNTIME_NOT_RUN",
+  "binding_gate": "EXACT_TRANSFORM + PROTECTED_PINS + DIFF_SCOPE; named semantic checks are diagnostic",
+  "contract": {
+    "path": "documentation/planning/implementation/JWT_SECRET_FAIL_CLOSED_CONTRACT.md",
+    "sha256": "823cfc24c181e6334961beb2b8e1fe6de9e33c624882d6199bb8d01328228740",
+    "pre_review": "internal Claude nonauthor Spec review of e82c31c: APPROVE WITH REQUIRED AMENDMENTS; applied"
+  },
+  "candidate": {
+    "path": "src1/config/config.ts",
+    "sha256": "e879b0f9c635283d7c9a271128605c6d8583995356e30f5f1c318d23270d09f6",
+    "baseline_sha256": "0fcb0df49527c155083d2f3e4c81b36650bab14e207b5635a0831b2827d884e1",
+    "validator_sha256": "1e6ec2c4e0281e82820e45be775e332a0bd94fb9e54eb89014908627ce8adba8"
+  },
+  "script": {
+    "path": "output/qa/jwt-secret/source-check.py",
+    "sha256": "ac4968058369de83626ce3c2493de62a425cc0ba4da32db503a9bff8eaffed63"
+  },
+  "pinned_files": {
+    "src1/index.ts": "d4f7af96f4fcda85be1f8ba942c362fb8b4b809a7c0eebd0e861c36f7f7624df",
+    "src1/modules/middleware/auth.ts": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+    "src1/modules/auth/services/index.ts": "58323c9324411ab48e69d06e4e84ed76e9e01690a9200ac416a937d9a6836390",
+    "src1/modules/settings/services/index.ts": "aebc4544bb1283a11d4063f020651111d950b218772f3c2783b5ca357ffe7558",
+    "src1/modules/settings/types/index.ts": "1e69283201773cee55f5eaf0f10ccc77d5a8c091cb8aa1ead83a4616d20bfdd8",
+    "src1/modules/settings/index.ts": "8be5f65dcfdafb8e9c7dd824534da4badc4ca11bd193a12e3aedf9a983cabf9d",
+    "src1/db/index.ts": "f76ca1d1fe1bd040d3d7389e4fa39876f78fe5dc67a923d2ad8cbe5311fe9e39",
+    "src1/scripts/syncIndexes.ts": "0cce64cfcb58d21a301430745bc9f5853fe6f613eeaa58ed0e41c394a56759e5",
+    "src1/scripts/migratePharmacyInventoryBatches.ts": "3100f53d8e81bdbabe5b5c87e487dccafeded182dcb8bd99c540af58740d194e",
+    "test/pharmacy.integration.test.ts": "49f97bb67d22423e58412b291d8019c0eb52ab0232a49e0909dd55b1b52565c3",
+    "test/application/bootstrap.mjs": "2fda4ff3bac76fe710c779a6bac5c2acdd13cd71ea4773b3e28b60634f2f6aac",
+    ".env.example": "218b357a6e2a0f3c6de35174908b8bf594dbe8cc7753625db16dfa76cd60b725",
+    "package.json": "65b171e77e8cd3bfd37eb691cf9ce310d9108cedbf571232bd4859c4b16895ab",
+    "package-lock.json": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080",
+    "tsconfig.json": "5555c293a75c85c3f89a539bd2b1be6db1953ffa746b43836929cdc20b9355c3"
+  },
+  "diff_scope": [
+    "src1",
+    "test",
+    "package.json",
+    "package-lock.json",
+    "tsconfig.json"
+  ],
+  "not_run": "No TypeScript import/evaluation, application/script start, compiler, suite, DB, provider, Docker, network or install. No secret value was read or recorded. Source checks are not startup, runtime or deployed-entry-point evidence; fixtures await full C3 admission."
+}
