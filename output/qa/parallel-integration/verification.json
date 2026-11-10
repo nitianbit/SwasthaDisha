@@ -1,0 +1,120 @@
+{
+  "baseline": "bfb608ea1a89551f6cd72ec5ee1349a3ee7abef7",
+  "integration_branch": "m0/parallel-integration",
+  "feature_heads": {
+    "otp": "66de4894f666449331e7c90fb0e94b6c01a54418",
+    "authority": "0a1f77a97eede0d8e0b3eb41d85796c817ae9996",
+    "foundation": "4c38e0b4612e42a800b99bf6c3cc8c184bed24a3"
+  },
+  "status": "SOURCE_COMPOSITION_VERIFIED_RUNTIME_NOT_ADMITTED",
+  "checks": [
+    {
+      "lane": "otp",
+      "source": "src1/modules/auth/services/index.ts",
+      "sha256": "58323c9324411ab48e69d06e4e84ed76e9e01690a9200ac416a937d9a6836390",
+      "source_comparison": "PASS"
+    },
+    {
+      "lane": "authority",
+      "source": "src1/modules/notification/controller/index.ts",
+      "sha256": "37e8a353299cbd69df87cb904c0515061b160e6c73c699e23845349b09723a5c",
+      "source_comparison": "PASS"
+    }
+  ],
+  "frozen_manifests": {
+    "otp": {
+      "sha256": "6bc6c87cee4023acb09e04c2376b43dc28628a3d4d7b4dfa724e0224ad68c0c7",
+      "verified_files": 4
+    },
+    "authority": {
+      "sha256": "f78ee9674ac27afa6be9c48162ea9c7988762e1a5af8690334bf8e979144ff7c",
+      "verified_files": 4
+    },
+    "foundation": {
+      "sha256": "e9b435bcba088fd1bebf04571f8b5444c2232895642145cad2525839a96d421f",
+      "verified_files": 28
+    }
+  },
+  "only_two_approved_production_files_changed": true,
+  "protected_files_unchanged": [
+    "package.json",
+    "package-lock.json",
+    "server.js",
+    "tsconfig.json",
+    "documentation/planning/qa/EXECUTION_REGISTER.csv",
+    "test/foundation/run.mjs",
+    "test/application/bootstrap.mjs",
+    "test/application/app-container.mjs"
+  ],
+  "original_six_staged_patch_sha256": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+  "original_handover_files_preserved": 11,
+  "merge_conflicts": 0,
+  "TypeScript_evaluations_during_integration": 0,
+  "Docker_calls_during_integration": 0,
+  "scenario_outcomes_unchanged": {
+    "PASS": 0,
+    "FAIL": 1,
+    "BLOCKED": 1,
+    "NOT_RUN": 110,
+    "DEFERRED": 3
+  },
+  "foundation_measured_result": "FAIL at unchanged guard, one invocation, exact cleanup verified; approval consumed; no retry",
+  "source_negative_controls_previously_recorded": {
+    "otp": 9,
+    "authority": 12
+  },
+  "method": "Python runpy loaded only retained source-data checker definitions; called expected_source/check on each merged file; no application or extracted TypeScript evaluation",
+  "commands": [
+    {
+      "argv": [
+        "/opt/homebrew/bin/python3",
+        "output/qa/parallel-integration/verify-source.py"
+      ],
+      "cwd": "/private/tmp/swasthadisha-parallel-p1qom53w/integration",
+      "environment": {
+        "PATH": "/opt/homebrew/bin:/usr/bin:/bin",
+        "TMPDIR": "/private/tmp"
+      },
+      "exit_code": 0,
+      "stdout": {
+        "status": "SOURCE_COMPOSITION_VERIFIED_RUNTIME_NOT_ADMITTED",
+        "baseline": "bfb608ea1a89551f6cd72ec5ee1349a3ee7abef7",
+        "feature_heads": {
+          "otp": "66de4894f666449331e7c90fb0e94b6c01a54418",
+          "authority": "0a1f77a97eede0d8e0b3eb41d85796c817ae9996",
+          "foundation": "4c38e0b4612e42a800b99bf6c3cc8c184bed24a3"
+        },
+        "verified_lane_files": {
+          "otp": 4,
+          "authority": 4,
+          "foundation": 28
+        },
+        "source_sha256": {
+          "src1/modules/auth/services/index.ts": "58323c9324411ab48e69d06e4e84ed76e9e01690a9200ac416a937d9a6836390",
+          "src1/modules/notification/controller/index.ts": "37e8a353299cbd69df87cb904c0515061b160e6c73c699e23845349b09723a5c"
+        },
+        "original_staged_files_preserved": 6,
+        "original_handover_files_preserved": 11,
+        "TypeScript_evaluations": 0,
+        "Docker_calls": 0
+      },
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "bfb608ea1a89551f6cd72ec5ee1349a3ee7abef7..HEAD",
+        "--",
+        ".",
+        ":(exclude)output/qa/parallel-foundation/relocation.diff"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "raw_artifact_whitespace_exception": "Unfiltered git diff --check reports the preserved unified-diff blank context marker at relocation.diff:12. That frozen evidence is byte-identical and excluded from whitespace normalization; source and other merged files pass.",
+  "verification_recipe_sha256": "8e19c8e66ef3517b5e9be4f8ccbb8f3455c4c3366024aa53d9950dc8796be7b6"
+}

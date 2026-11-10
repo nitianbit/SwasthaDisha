@@ -1,0 +1,20 @@
+{
+  "baseline": "bfb608ea1a89551f6cd72ec5ee1349a3ee7abef7",
+  "merged_tip": "8127ee1f8f554c474911a6481d74012cca45ff34",
+  "branch": "m0/parallel-integration",
+  "status": "FROZEN_FOR_INDEPENDENT_COMPOSITION_REVIEW",
+  "files_sha256": {
+    "documentation/planning/implementation/PARALLEL_WORKSTREAMS.md": "40354030f6558ad89c32addec206919f0aa2e0a582ef9abbec48c0538b7ff8a1",
+    "documentation/planning/implementation/M0_A_PROGRESS.md": "bd605cf63135d1717fb77c1aeaf56b86c0fa0ea3d9799f4e04f9e025c32eb968",
+    "documentation/planning/implementation/OTP_EMERGENCY_OPERATING_DECISION.md": "1ff4468cf737fb29e3266c56baec4da015c4639766dcbc59470d6027a591ece6",
+    "output/qa/parallel-integration/verify-source.py": "8e19c8e66ef3517b5e9be4f8ccbb8f3455c4c3366024aa53d9950dc8796be7b6",
+    "output/qa/parallel-integration/verification.json": "510fbc336056694945a3c3dc9d9246365929d8b100a5812482ce215bb1d40b06"
+  },
+  "lane_manifest_sha256": {
+    "otp": "6bc6c87cee4023acb09e04c2376b43dc28628a3d4d7b4dfa724e0224ad68c0c7",
+    "authority": "f78ee9674ac27afa6be9c48162ea9c7988762e1a5af8690334bf8e979144ff7c",
+    "foundation": "e9b435bcba088fd1bebf04571f8b5444c2232895642145cad2525839a96d421f"
+  },
+  "review_record_excluded": "REVIEW.md records subsequent decisions; no circular hashes",
+  "TypeScript_or_operational_admission": false
+}
