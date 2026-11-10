@@ -50,7 +50,9 @@ The retained per-lane source checks are lane-scoped. Run on the integrated tree,
 
 Additional open P3: `fixture-spec.json:141` and DEN-21 still list removing the key fallback as excluded, although the integrated tree now includes it. Fix together with the `:125` label.
 
-The lead merged the four reviewed heads without conflicts (`57a1b23`, `6e482a3`, `92ef4e5`, `790f276`) and ran the unit gate on the combined tree: 324/324 on Node 22.23.4 and 24.19.0, with empty stderr. The combined verifier and its receipt are in this directory. ## Integration reviews
+The lead merged the four reviewed heads without conflicts (`57a1b23`, `6e482a3`, `92ef4e5`, `790f276`) and ran the unit gate on the combined tree: 324/324 on Node 22.23.4 and 24.19.0, with empty stderr. The combined verifier and its receipt are in this directory.
+
+## Integration reviews
 
 | Reviewer | Candidate | Decision | Findings and disposition |
 | --- | --- | --- | --- |

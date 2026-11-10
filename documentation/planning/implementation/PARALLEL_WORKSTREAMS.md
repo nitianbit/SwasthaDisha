@@ -67,7 +67,7 @@ The foundation unit gate passes 324/324 on the integrated tree on both runtimes.
 
 - **Foundation:** prepare an exact operator recipe for one real invocation of the new admission rule, and obtain its review. Running it needs the recorded Docker engine to be reachable.
 - **Authority, decision-free, in priority order:**
-  1. Notification `POST /` and `POST /send`: any signed-in user can push an arbitrary title and message to every patient by FCM (`notification/routes/index.ts:28-32`, `services/index.ts:365-410`). Interim containment: admin-only.
+  1. Notification `POST /send` lets any signed-in user push an arbitrary title and message to every patient by FCM (`notification/routes/index.ts:28-32`, `services/index.ts:365-410`), and `POST /` lets them send one to any chosen user. Interim containment: admin-only on both.
   2. Meet router: mounted with no authentication (`src1/routes/index.ts:66`), and it uses the server's Google refresh token. Containment needs `authenticate` and `requireAdmin` on the invite routes, matching the commented-out import at `meet/routes/index.ts:4`. The `/google-oauth/callback` route is reached by Google's browser redirect without a bearer token, so it must be handled separately, not covered by a router-wide guard.
   3. Dependents: own-or-admin, with everyone else getting 403, and `create` forcing `userId` to the caller. HR access to dependents would be a product decision.
   4. Notification general listing and ID-based operations, and the fixed-text FCM `/test` sender.
