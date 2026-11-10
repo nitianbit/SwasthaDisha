@@ -1,0 +1,10 @@
+test_invalid_tool_metadata_allocates_no_workspace (test_static_mongoose.StaticProbeSafety.test_invalid_tool_metadata_allocates_no_workspace) ... ok
+test_migration_diagnostic_can_complete_the_static_comparison (test_static_mongoose.StaticProbeSafety.test_migration_diagnostic_can_complete_the_static_comparison) ... ok
+test_missing_module_cannot_complete_a_comparison (test_static_mongoose.StaticProbeSafety.test_missing_module_cannot_complete_a_comparison) ... ok
+test_registry_failure_keeps_root_readback_and_cleanup_evidence (test_static_mongoose.StaticProbeSafety.test_registry_failure_keeps_root_readback_and_cleanup_evidence) ... ok
+test_unrelated_negative_diagnostic_cannot_satisfy_the_canary (test_static_mongoose.StaticProbeSafety.test_unrelated_negative_diagnostic_cannot_satisfy_the_canary) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.058s
+
+OK

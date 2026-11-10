@@ -1,0 +1,665 @@
+diff --git a/README.md b/README.md
+index df5e938..47a9530 100644
+--- a/README.md
++++ b/README.md
+@@ -11,7 +11,7 @@ This existing TypeScript healthcare backend can become Jansetu's daily business-
+ | Document | Purpose |
+ | --- | --- |
+ | [M0-A development progress](documentation/planning/implementation/M0_A_PROGRESS.md) | 10 Nov: 56 unit checks pass on Node 22 and 24; real owned MongoDB commit/rollback and cleanup pass; internal Standards/Spec reviews approve this increment; application compatibility/build gates remain open |
+-| [Next runtime/ODM review](documentation/planning/implementation/C2_COMPATIBILITY_REVIEW.md) | Concrete C2 decision packet before root dependency/start changes; [portable Claude/agent review prompt](documentation/planning/implementation/C2_REVIEW_PROMPT.md) |
++| [Static compatibility results](documentation/planning/implementation/C2_STATIC_RESULTS.md) | Selected source passes with current Mongoose; candidate 9 has eight diagnostics across three migration groups. Root adoption awaits the [existing-server baseline](documentation/planning/implementation/DEVOPS_BASELINE_REQUEST.md) and reviewed migration diff |
+ | [Operations prospectus](output/pdf/SwasthaDisha_Operations_Prospectus.pdf) / [editable Word](output/docx/SwasthaDisha_Operations_Prospectus.docx) / [source text](documentation/operations/SWASTHADISHA_PROSPECTUS.md) | Illustrated feature prospectus for operations: services, private business workflows, phone access, delivery phases and honest pre-launch readiness |
+ | [System design and architecture](documentation/planning/SYSTEM_DESIGN.md) | Module/data ownership, tenancy, transactions, pharmacy/lab/booking/payment flows, APIs/events, deployment, migration and release gates |
+ | [Architecture review and disposition](documentation/planning/ARCHITECTURE_REVIEW.md) | AR-01–AR-36, source rechecks, qualified amendments and remaining implementation/owner gates |
+diff --git a/documentation/planning/M0_DEPLOYMENT_BASELINE.md b/documentation/planning/M0_DEPLOYMENT_BASELINE.md
+index 4a67a87..1c2ae94 100644
+--- a/documentation/planning/M0_DEPLOYMENT_BASELINE.md
++++ b/documentation/planning/M0_DEPLOYMENT_BASELINE.md
+@@ -49,3 +49,9 @@ The observations above precede implementation. The owner subsequently requested
+ The bounded foundation suite now has 56 passing checks on each runtime and 18 executable rejection canaries. A separately owned local Docker fixture ran MongoDB 8.0.34 with measured transaction commit/rollback; cleanup acknowledgement and independent absence readback are recorded. This is a new local test resource, not an existing deployment probe or application-driver compatibility proof. No application startup, real provider, root install/dependency or deployment change occurred. See the [dated implementation evidence](implementation/M0_A_PROGRESS.md#second-increment-10-november-owned-mongodb-fixture).
+ 
+ The [C2 decision packet](implementation/C2_COMPATIBILITY_REVIEW.md) is ready for the separately scoped compatibility review. Its local/CI target and ODM candidates remain proposals; missing intended-deployment facts above remain UNKNOWN.
++
++## Owner target update, 10 November 2026
++
++The owner chose to **retain the existing server** and obtain its details from DevOps. The fresh managed Mumbai replica-set recommendation above is therefore not the selected deployment plan. MongoDB server version/topology/hosting and exact Node/PM2/build facts remain unknown. The local MongoDB 8.0.34 fixture establishes no such deployment facts.
++
++The [DevOps handoff](implementation/DEVOPS_BASELINE_REQUEST.md) is the required non-secret baseline input. Internal technical reviews approve a static-only Mongoose type comparison in owned temporary resources; root package/lock/start/runtime edits still await the intended-server facts and reviewed adoption diff.
+diff --git a/documentation/planning/M0_START_APPROVAL_STATUS.md b/documentation/planning/M0_START_APPROVAL_STATUS.md
+index 6d90651..4359ad1 100644
+--- a/documentation/planning/M0_START_APPROVAL_STATUS.md
++++ b/documentation/planning/M0_START_APPROVAL_STATUS.md
+@@ -34,6 +34,8 @@ Proposed sequence for owner decision:
+ 
+ [Read-only baseline](M0_DEPLOYMENT_BASELINE.md) separates local observations from owner-reported target facts. The owner confirmed pre-launch and reported `pm2 start server`, target Node major 22 and Mumbai server location. The exact Node patch and MongoDB hosting type/server version/topology remain unknown; the PM2 working directory/resolved script and build command still need reconciliation. DevOps/backend must also record the target source revision and relevant supported client builds without secrets. These are intended-target facts, not evidence of a live deployment.
+ 
++**10 November owner choice:** retain the existing server; DevOps will provide the missing baseline. No new managed MongoDB deployment is selected. Use the [baseline handoff](implementation/DEVOPS_BASELINE_REQUEST.md); static-only investigation has internal technical approval, while root adoption and application execution remain gated.
++
+ F01 investigation may proceed now. Changes to scripts/dependency/runtime choices wait for those facts and compatibility review. Retain the current ODM/driver major lines during investigation; do not make a major Mongoose upgrade a prerequisite for containment. Any necessary major change is a separate reviewed slice, not a conclusion drawn from the local Node version. No live credentials, connection strings, tokens or patient payloads belong in the baseline.
+ 
+ ## C3 disposable ownership before integration execution
+diff --git a/documentation/planning/implementation/C2_COMPATIBILITY_REVIEW.md b/documentation/planning/implementation/C2_COMPATIBILITY_REVIEW.md
+index ad0a1d3..c029338 100644
+--- a/documentation/planning/implementation/C2_COMPATIBILITY_REVIEW.md
++++ b/documentation/planning/implementation/C2_COMPATIBILITY_REVIEW.md
+@@ -1,8 +1,18 @@
+ # C2 runtime and ODM decision packet
+ 
+-**10 November 2026. Status: PROPOSAL; target and migration not adopted.** This is the next decision gate before root dependency, lockfile, build/start or runtime-pin edits. It does not request another general M0 start approval. The existing [deployment baseline](../M0_DEPLOYMENT_BASELINE.md) and [C2 condition](../M0_START_APPROVAL_STATUS.md#c2-deployed-baseline-before-script-or-dependency-changes) remain authoritative.
++**10 November 2026. Status: STATIC INVESTIGATION COMPLETE; target and root migration not adopted.** This is the next decision gate before root dependency, lockfile, build/start or runtime-pin edits. It does not request another general M0 start approval. The existing [deployment baseline](../M0_DEPLOYMENT_BASELINE.md) and [C2 condition](../M0_START_APPROVAL_STATUS.md#c2-deployed-baseline-before-script-or-dependency-changes) remain authoritative.
+ 
+-## Decision requested
++## Current decision, 10 November 2026
++
++The owner selected **retain the existing server; DevOps will provide its details**. A new managed MongoDB deployment is not selected. MongoDB 8 remains a local test fixture/candidate only; the proposed fresh target below is not evidence about that server.
++
++Two internal technical reviews approved a **static-only compatibility investigation** under existing M0-A authorization. This permits owned, script-disabled public dependency installation and direct noEmit analysis of a reviewed source closure. It does not permit application module evaluation, database/provider connections, root adoption or startup. Current and candidate major lines in the root remain unchanged.
++
++The [probe usage contract](../../../test/compatibility/README.md) describes the eight source files, workspace-only normalizer extraction and compiler controls. Deployment facts still gate the affected root changes; the [DevOps baseline handoff](DEVOPS_BASELINE_REQUEST.md) lists the exact missing fields. The earlier external Review-A/Review-B approvals are not being replaced by these internal investigation reviews.
++
++The [executed comparison](C2_STATIC_RESULTS.md) records a clean selected-source baseline and eight candidate diagnostics across three migration groups. Root adoption still waits for the existing-server baseline and reviewed migration contracts/diff.
++
++## Original proposal to investigate
+ 
+ Review a fresh local/CI target using **Node 22.23.4, a digest-pinned MongoDB 8.0 replica set, and a supported Mongoose major**. Prefer a bounded compatibility investigation of current Mongoose **9.12.0**, proceeding through the documented 6→7→8→9 migration steps. Compare **8.24.8** as a temporary bridge if measured impact makes 9 unsuitable for this foundation slice. Neither option is a drop-in upgrade. Select one exact root candidate only after that investigation and review its actual package/lock/source diff separately.
+ 
+diff --git a/documentation/planning/implementation/C2_REVIEW_PROMPT.md b/documentation/planning/implementation/C2_REVIEW_PROMPT.md
+index 74d6192..981c6ee 100644
+--- a/documentation/planning/implementation/C2_REVIEW_PROMPT.md
++++ b/documentation/planning/implementation/C2_REVIEW_PROMPT.md
+@@ -1,4 +1,6 @@
+-# Next review prompt
++# Static-investigation review prompt
++
++**Status, 10 November 2026:** this investigation scope has been internally approved and completed. Read [the results](C2_STATIC_RESULTS.md) and [DevOps handoff](DEVOPS_BASELINE_REQUEST.md) for current next steps. The original prompt below remains a reusable record; do not request the same start approval again. Root adoption needs its own concrete target and migration diff.
+ 
+ Paste the prompt below into Claude or another reviewer with repository access. This session has no direct Claude channel; nothing has been sent to Claude. Target: portable user-message prompt, model snapshot unspecified. The reviewer must follow its own higher-priority instructions and the repository's applicable agent rules.
+ 
+@@ -21,7 +23,7 @@ Load these exact inputs:
+ 
+ The active repository is `nitianbit/SwasthaDisha`; read `documentation/planning/implementation/REPOSITORY_TRANSITION.md` and record its actual branch/HEAD/status. Its initial README-only commit is `f822cdd9150b78a5df2cfbbe2a867d4b4ea7125d`; compare the imported work against that seed when needed. The fixture was originally reviewed as untracked WIP in `nitianbit/ewa_backend` at `9ca8b54606581f2158e760cad79aa7b845529184`; its ten-file snapshot remains historical evidence. Verify those source hashes in the new checkout instead of treating the legacy SHA as the new HEAD. Report drift and leave unrelated work untouched.
+ 
+-Established context: owner says pre-launch, Node major 22, `pm2 start server`, Mumbai, and does not know MongoDB hosting/version/topology. Do not invent those facts. Current root lock has Mongoose 6.13.8/driver 4.17.2. The proposal prefers investigating Mongoose 9.12.0, with 8.24.8 as a conditional bridge; no new ODM or production server target is adopted. Current evidence reports 56 unit checks per runtime, 18 expected negative rejections, and a separate real owned MongoDB 8.0.34 transaction/cleanup probe. Those checks do not establish application compatibility, full C3, root install/build/start success, 100 RPS, or M0 acceptance.
++Established context: owner says pre-launch, Node major 22, `pm2 start server`, Mumbai, and selected retaining the existing server while DevOps supplies MongoDB hosting/version/topology and exact build/PM2 details. Do not invent those facts or assume the fresh managed MongoDB proposal was selected. Current root lock has Mongoose 6.13.8/driver 4.17.2. The proposal prefers investigating Mongoose 9.12.0, with 8.24.8 as a conditional bridge; no new ODM or production server target is adopted. Current evidence reports 56 unit checks per runtime, 18 expected negative rejections, and a separate real owned MongoDB 8.0.34 transaction/cleanup probe. Those checks do not establish application compatibility, full C3, root install/build/start success, 100 RPS, or M0 acceptance.
+ 
+ Review these questions:
+ 
+diff --git a/documentation/planning/implementation/M0_A_PROGRESS.md b/documentation/planning/implementation/M0_A_PROGRESS.md
+index da9892e..55c4de7 100644
+--- a/documentation/planning/implementation/M0_A_PROGRESS.md
++++ b/documentation/planning/implementation/M0_A_PROGRESS.md
+@@ -62,3 +62,16 @@ Two code-review findings were corrected before the real run: empty required entr
+ - **F01 exit:** clean install, root type-check/build, compiled application start, default assertion-running test command and isolated CI/application integration remain outstanding. The root `npm test` placeholder is unchanged.
+ 
+ The selected 115-scenario register remains **0 PASS, 1 FAIL, 1 BLOCKED, 110 NOT_RUN, 3 DEFERRED**. Foundation checks do not change those statuses. No operational databases, real providers, application startup, deployment, production migration or external account action were used. The frozen v1.7 and prospectus PDFs remain publication-time snapshots. The 100 RPS target has not been load-tested.
++
++## Third increment, 10 November: static compatibility evidence
++
++Active branch: `m0/f01-static-compatibility` in `nitianbit/SwasthaDisha`, base `b06be010c8bee7468eaaeb432952c787b300a5b4`. The owner selected retaining the existing server; [DevOps baseline fields](DEVOPS_BASELINE_REQUEST.md) remain pending. The local MongoDB 8 fixture is not a selected deployment target.
++
++Internal technical reviews approved the narrowed static-only investigation. Implemented the [probe](../../../test/compatibility/static_mongoose.py) and five offline safety regressions, corrected review findings before public package installation, then ran the real restricted compiler comparison in owned temporary resources. No application modules, validations, queries or provider clients were executed.
++
++- Same compiler/declarations: TypeScript 5.9.3 and @types/node 20.19.31 under Node 22.23.4. Eight actual source files plus the explicitly extracted normalizer and evaluation canary were checked.
++- Mongoose 6.13.8: zero selected-source diagnostics. Mongoose 9.12.0: eight diagnostics in three migration groups (removed types, operation/session options, pre-validation hook). This is not a full backend build or runtime result.
++- Both real compiler semantic negatives were rejected. Five offline controller regressions pass; the same regressions reject the original controller (three failures, one error).
++- Temporary locks/metadata/configs/diagnostics are retained; owned resources were removed and independently checked absent. Root app/package hashes remain unchanged.
++
++See [executed results and evidence](C2_STATIC_RESULTS.md). Root ODM/driver adoption, clean install/build/start and full C3 application admission remain gated. The 115-scenario statuses and 100 RPS acceptance remain unchanged. No deployment or M0 acceptance occurred.
+--- /dev/null
++++ b/test/compatibility/README.md
+@@ -0,0 +1,27 @@
++# Static Mongoose compatibility investigation
++
++This is the reviewed C2 investigation, not a root dependency upgrade or application test. It compares exact Mongoose 6.13.8 and 9.12.0 types with the same TypeScript 5.9.3, Node 20 declaration package 20.19.31 and TypeDI 0.10.0. It uses the verified local Node 22.23.4 executable.
++
++The probe downloads public npm metadata/packages into a newly owned temporary workspace and cache. It supplies explicit blank user/global npm configuration, no inherited HOME/configuration/credentials, and disables lifecycle scripts. It resolves and validates registry-only lock entries before installing with `npm ci --ignore-scripts`. This is an intentional public-network install step; no root dependencies are installed or changed.
++
++Only eight fixed application source files are staged as compiler input: the shared repository, blog model/repository/types, common regex helper and medicine model/types. The medicine normalizer's three-line function is extracted into a workspace-only module because its original containing module imports the model cyclically and constructs a logger. The report records the original source hash and extracted text. That substitution prevents any claim of full module/runtime compatibility.
++
++The compiler runs directly under Node filesystem permissions with explicit source files and noEmit. It has no subprocess, addon or worker permissions. A source file that throws if evaluated is included; an independent invalid-type check must be rejected. Node 22 permissions do not deny networking; this boundary relies on the trusted compiler and never evaluates application modules, decorators, model validation, queries or generated JavaScript.
++
++After reviewing the probe and verifying the two local tool paths:
++
++```sh
++python3 test/compatibility/static_mongoose.py /absolute/path/to/verified-node22 /absolute/path/to/trusted-npm/bin/npm-cli.js
++```
++
++Each run creates a new UUID evidence directory under `output/qa/m0-a/c2-static/`, preserving exact package locks, metadata, config, diagnostics and source/tool hashes. A successful probe may report type errors: baseline and candidate diagnostics are evidence, not a full build result. Infrastructure errors remain failures and cannot be counted as library incompatibility. Cleanup verifies ownership before removing only the temporary workspace; source/root hashes must remain unchanged.
++
++Root adoption still requires the C2 target facts and reviewed migration diff. The owner chose to retain the existing server; DevOps will provide hosting, MongoDB version/topology and exact build/PM2 details. No MongoDB 8 production target is selected. Complete C3 admission still precedes application runtime and integration checks.
++
++## Offline controller regressions
++
++```sh
++python3 -B -m unittest discover -s test/compatibility -p test_static_mongoose.py -v
++```
++
++These five cases simulate every npm/network/compiler call. They validate controller failure handling; the separate real comparison supplies actual compiler evidence. The saved historical-controller canary demonstrates that the regressions reject the initial defects. [Results and remaining gates](../../documentation/planning/implementation/C2_STATIC_RESULTS.md).
+--- /dev/null
++++ b/test/compatibility/static_mongoose.py
+@@ -0,0 +1,293 @@
++"""Static-only Mongoose comparison; never evaluates application modules."""
++import hashlib
++import json
++import os
++from pathlib import Path
++import re
++import shutil
++import subprocess
++import sys
++import tempfile
++import urllib.parse
++import urllib.request
++import uuid
++
++
++ROOT = Path(__file__).resolve().parents[2]
++SOURCES = [
++    'src1/modules/common/repository/BaseRepository.ts',
++    'src1/modules/common/repository/index.ts',
++    'src1/modules/common/utils/queryUtils.ts',
++    'src1/modules/blogs/repository/index.ts',
++    'src1/modules/blogs/model/index.ts',
++    'src1/modules/blogs/types/index.ts',
++    'src1/modules/pharmacyMedicines/model/index.ts',
++    'src1/modules/pharmacyMedicines/types/index.ts',
++]
++HELPER = 'src1/modules/pharmacyMedicines/services/nameKeyMigration.ts'
++GUARDED = ['package.json', 'package-lock.json', 'tsconfig.json', 'server.js',
++           'src1/index.ts', 'src1/db/index.ts', *SOURCES, HELPER]
++VERSIONS = {'typescript': '5.9.3', '@types/node': '20.19.31', 'typedi': '0.10.0'}
++CANDIDATES = ['6.13.8', '9.12.0']
++
++
++def digest(path):
++    return hashlib.sha256(path.read_bytes()).hexdigest()
++
++
++def registry_url(value):
++    parsed = urllib.parse.urlsplit(value)
++    return (parsed.scheme == 'https' and parsed.hostname == 'registry.npmjs.org'
++            and parsed.port in [None, 443] and not parsed.username
++            and not parsed.password and not parsed.query and not parsed.fragment)
++
++
++class RegistryRedirect(urllib.request.HTTPRedirectHandler):
++    def redirect_request(self, req, fp, code, msg, headers, newurl):
++        if not registry_url(newurl):
++            raise ValueError('Registry redirect left the admitted host')
++        return super().redirect_request(req, fp, code, msg, headers, newurl)
++
++
++def main():
++    if len(sys.argv) != 3:
++        raise ValueError('Provide the verified Node 22 executable and trusted npm-cli.js paths')
++    node, npm_cli = [Path(value).resolve(strict=True) for value in sys.argv[1:]]
++    if not node.is_file() or not npm_cli.is_file() or npm_cli.name != 'npm-cli.js':
++        raise ValueError('Expected regular Node executable and npm-cli.js')
++    version = subprocess.check_output([str(node), '--version'], env={}, text=True).strip()
++    if version != 'v22.23.4':
++        raise ValueError('This recorded comparison requires Node 22.23.4')
++    originals = {name: digest(ROOT / name) for name in GUARDED}
++    helper_source = (ROOT / HELPER).read_text()
++    normalizer = re.search(
++        r'export function buildMedicineNameKey\(name: string\): string \{\n'
++        r'  return name\.trim\(\)\.toLowerCase\(\);\n\}', helper_source)
++    if not normalizer:
++        raise ValueError('Review the normalizer extraction after source drift')
++
++    npm_package = json.loads((npm_cli.parents[1] / 'package.json').read_text())
++    run_id = str(uuid.uuid4())
++    report_dir = ROOT / 'output/qa/m0-a/c2-static' / run_id
++    report = {'runId': run_id, 'node': version, 'nodeSha256': digest(node),
++              'npmVersion': npm_package['version'],
++              'npmCliSha256': digest(npm_cli), 'sourceSha256': originals,
++              'adaptation': {'path': HELPER, 'reason': 'Exclude migration/logger imports',
++                             'extractedSource': normalizer.group() + '\n'},
++              'candidates': [], 'completed': False, 'applicationEvaluation': False,
++              'databaseOrProviderConnections': False, 'rootAdoption': False}
++    workspace = None
++    identity = None
++    marker = None
++    marker_ready = False
++    report_ready = False
++
++    def owned(require_marker=True):
++        if workspace is None or identity is None:
++            raise ValueError('No captured workspace identity; cleanup withheld')
++        stat = workspace.lstat()
++        if (workspace.is_symlink() or not workspace.is_dir()
++                or (stat.st_dev, stat.st_ino) != identity):
++            raise ValueError('Temporary workspace ownership changed; cleanup withheld')
++        if require_marker and (not marker_ready or marker.is_symlink()
++                or json.loads(marker.read_text()) != {'runId': run_id}):
++            raise ValueError('Temporary workspace marker changed; cleanup withheld')
++
++    def command(args, cwd, env, timeout=90):
++        owned()
++        if not cwd.resolve().is_relative_to(workspace):
++            raise ValueError('Command working directory is outside the owned fixture')
++        return subprocess.run([str(arg) for arg in args], cwd=cwd, env=env,
++                              capture_output=True, text=True, timeout=timeout)
++
++    try:
++        workspace = Path(tempfile.mkdtemp(prefix='sd-static-mongoose-', dir='/private/tmp')).resolve()
++        identity = (workspace.stat().st_dev, workspace.stat().st_ino)
++        marker = workspace / '.owner.json'
++        marker.write_text(json.dumps({'runId': run_id}))
++        marker_ready = True
++        for parent in report_dir.parents:
++            if parent == ROOT.parent:
++                break
++            if parent.is_symlink():
++                raise ValueError('Report path contains a symlink')
++        report_dir.mkdir(parents=True, exist_ok=False)
++        report_ready = True
++        cache = workspace / 'cache'
++        temporary = workspace / 'tmp'
++        cache.mkdir()
++        temporary.mkdir()
++        user_config = workspace / 'user.npmrc'
++        global_config = workspace / 'global.npmrc'
++        user_config.write_text('')
++        global_config.write_text('')
++        # No inherited HOME, npm credentials/config, preload options or resource URIs.
++        npm_env = {'PATH': '/usr/bin:/bin', 'TMPDIR': str(temporary),
++                   'NO_UPDATE_NOTIFIER': '1'}
++        npm_options = ['--ignore-scripts', '--no-audit', '--no-fund',
++                       '--update-notifier=false', '--registry=https://registry.npmjs.org/',
++                       '--cache=' + str(cache), '--userconfig=' + str(user_config),
++                       '--globalconfig=' + str(global_config)]
++        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), RegistryRedirect())
++        metadata = {}
++        for name, requested in [*VERSIONS.items(), *[('mongoose', v) for v in CANDIDATES]]:
++            url = 'https://registry.npmjs.org/' + urllib.parse.quote(name, safe='') + '/' + requested
++            with opener.open(url, timeout=30) as response:
++                if not registry_url(response.url):
++                    raise ValueError('Metadata response left the registry')
++                raw = response.read(5_000_001)
++            if len(raw) > 5_000_000:
++                raise ValueError('Package metadata exceeded the admitted size')
++            package = json.loads(raw)
++            dist = package['dist']
++            if (package['name'] != name or package['version'] != requested
++                    or not registry_url(dist['tarball'])
++                    or not dist.get('integrity', '').startswith('sha512-')):
++                raise ValueError('Package metadata identity/integrity mismatch')
++            metadata[name + '@' + requested] = {
++                'name': name, 'version': requested, 'dist': dist,
++                'engines': package.get('engines', {}),
++                'dependencies': package.get('dependencies', {})}
++        (report_dir / 'registry-metadata.json').write_text(json.dumps(metadata, indent=2) + '\n')
++
++        for mongoose_version in CANDIDATES:
++            case = workspace / mongoose_version
++            case.mkdir()
++            case_output = report_dir / mongoose_version
++            case_output.mkdir()
++            dependencies = {**VERSIONS, 'mongoose': mongoose_version}
++            (case / 'package.json').write_text(json.dumps({
++                'name': 'swasthadisha-static-only', 'version': '0.0.0', 'private': True,
++                'dependencies': dependencies}))
++            npm = [node, npm_cli, '--prefix=' + str(case)]
++            config = command([*npm, 'config', 'get', 'userconfig', *npm_options], case, npm_env)
++            if config.returncode or config.stdout.strip() != str(user_config):
++                raise ValueError('npm did not select the owned configuration')
++            lock_run = command([*npm, 'install', '--package-lock-only', *npm_options], case, npm_env)
++            (case_output / 'lock.stdout.txt').write_text(lock_run.stdout)
++            (case_output / 'lock.stderr.txt').write_text(lock_run.stderr)
++            if lock_run.returncode:
++                raise RuntimeError('Script-disabled lock resolution failed: ' + lock_run.stderr[:1500])
++            lock = json.loads((case / 'package-lock.json').read_text())
++            shutil.copyfile(case / 'package-lock.json', case_output / 'package-lock.json')
++            for path, package in lock['packages'].items():
++                if not path:
++                    continue
++                if (not registry_url(package.get('resolved', ''))
++                        or not package.get('integrity', '').startswith(('sha512-', 'sha1-'))
++                        or package.get('link')):
++                    raise ValueError('A resolved dependency left the registry/integrity boundary')
++            for name, requested in dependencies.items():
++                actual = lock['packages']['node_modules/' + name]
++                expected = metadata[name + '@' + requested]
++                if (actual['version'] != requested
++                        or actual['integrity'] != expected['dist']['integrity']):
++                    raise ValueError('Resolved package differs from reviewed exact metadata')
++            installed = command([*npm, 'ci', *npm_options], case, npm_env)
++            (case_output / 'install.stdout.txt').write_text(installed.stdout)
++            (case_output / 'install.stderr.txt').write_text(installed.stderr)
++            if installed.returncode:
++                raise RuntimeError('Script-disabled install failed: ' + installed.stderr[:1500])
++            for path in case.rglob('*'):
++                if path.is_symlink() and not path.resolve().is_relative_to(case):
++                    raise ValueError('Installed dependency symlink escaped its fixture')
++            for name in SOURCES:
++                target = case / name
++                target.parent.mkdir(parents=True, exist_ok=True)
++                source = ROOT / name
++                if source.is_symlink() or digest(source) != originals[name]:
++                    raise ValueError('Source identity changed before staging')
++                shutil.copyfile(source, target)
++            helper = case / HELPER
++            helper.parent.mkdir(parents=True, exist_ok=True)
++            helper.write_text(normalizer.group() + '\n')
++            (case / 'evaluation-canary.ts').write_text(
++                "throw new Error('C2_STATIC_SOURCE_MUST_NOT_EXECUTE');\n")
++            options = json.loads((ROOT / 'tsconfig.json').read_text())['compilerOptions']
++            options = {**options, 'baseUrl': '.', 'noEmit': True, 'incremental': False,
++                       'declaration': False, 'declarationMap': False, 'rootDir': '.'}
++            options.pop('outDir', None)
++            config_path = case / 'tsconfig.json'
++            config_path.write_text(json.dumps({'compilerOptions': options,
++                'files': [*SOURCES, HELPER, 'evaluation-canary.ts']}, indent=2))
++            shutil.copyfile(config_path, case_output / 'tsconfig.json')
++            scratch = case / 'scratch'
++            scratch.mkdir()
++            compiler = [node, '--permission', '--allow-fs-read=' + str(case),
++                        '--allow-fs-write=' + str(scratch),
++                        case / 'node_modules/typescript/lib/tsc.js',
++                        '--project', config_path, '--pretty', 'false', '--listFiles']
++            compiler_env = {'TMPDIR': str(scratch), 'NODE_ENV': 'test', 'TZ': 'UTC'}
++            result = command(compiler, case, compiler_env)
++            (case_output / 'diagnostics.txt').write_text(result.stdout)
++            (case_output / 'compiler.stderr.txt').write_text(result.stderr)
++            if result.returncode not in [0, 2] or result.stderr:
++                raise RuntimeError('Compiler infrastructure failed: ' + (result.stderr or result.stdout)[:1500])
++            codes = re.findall(r'error TS(\d+):', result.stdout)
++            infrastructure_codes = {2307, 2688, 2792, 6053, 6054, 6059, 18002, 18003}
++            if any(int(code) in infrastructure_codes or 5000 <= int(code) < 6000 for code in codes):
++                raise ValueError('Compiler file/config/module resolution failed; see saved diagnostics')
++            if result.returncode == 2 and not codes:
++                raise ValueError('Compiler failed without a classified diagnostic')
++            listed = [line for line in result.stdout.splitlines() if line.startswith(str(case) + '/')]
++            if not all(str(case / name) in listed for name in [*SOURCES, HELPER, 'evaluation-canary.ts']):
++                raise ValueError('Required staged source was not included in compilation')
++            if 'C2_STATIC_SOURCE_MUST_NOT_EXECUTE' in result.stdout:
++                raise ValueError('Static source appears to have been evaluated')
++            # An independent semantic error proves the compiler rejects invalid types.
++            negative = case / 'negative.ts'
++            negative.write_text("export const invalid: number = 'must be rejected';\n")
++            negative_config = {'compilerOptions': options, 'files': ['negative.ts']}
++            config_path.write_text(json.dumps(negative_config))
++            denied = command(compiler, case, compiler_env)
++            (case_output / 'negative-diagnostics.txt').write_text(denied.stdout)
++            (case_output / 'negative.stderr.txt').write_text(denied.stderr)
++            if (denied.returncode != 2 or denied.stderr
++                    or not re.search(r'^negative\.ts\(1,\d+\): error TS2322:', denied.stdout, re.M)
++                    or re.findall(r'error TS\d+:', denied.stdout) != ['error TS2322:']):
++                raise ValueError('Required negative compiler check did not fail semantically')
++            report['candidates'].append({'mongoose': mongoose_version,
++                'exitCode': result.returncode,
++                'diagnosticCodes': re.findall(r'error (TS\d+):', result.stdout),
++                'requiredSourceFilesChecked': len(SOURCES) + 2,
++                'semanticNegativeRejected': True,
++                'resolvedMongoDriver': lock['packages']['node_modules/mongodb']['version'],
++                'dependencies': dependencies})
++        report['completed'] = True
++    except BaseException as error:
++        report['errorClass'] = type(error).__name__
++        report['error'] = str(error)[:2000]
++        raise
++    finally:
++        active_error = sys.exc_info()[1]
++        changed = []
++        for name, expected in originals.items():
++            try:
++                if digest(ROOT / name) != expected:
++                    changed.append(name)
++            except OSError:
++                changed.append(name)
++        report['rootHashesUnchanged'] = not changed
++        report['changedRootPaths'] = changed
++        cleanup_error = None
++        try:
++            if workspace is not None:
++                owned(require_marker=marker_ready)
++                shutil.rmtree(workspace)
++            report['ownedWorkspaceRemoved'] = workspace is None or not workspace.exists()
++        except Exception as error:
++            cleanup_error = error
++            report['ownedWorkspaceRemoved'] = False
++            report['cleanupError'] = str(error)[:1000]
++        if changed or cleanup_error:
++            report['completed'] = False
++        if report_ready:
++            (report_dir / 'verification.json').write_text(json.dumps(report, indent=2) + '\n')
++        if active_error is None and (changed or cleanup_error):
++            raise RuntimeError('Root readback or owned cleanup failed; see verification evidence') from cleanup_error
++    print(json.dumps({'evidence': str(report_dir.relative_to(ROOT)),
++                      'candidates': report['candidates'], 'cleanup': report['ownedWorkspaceRemoved']}))
++
++
++if __name__ == '__main__':
++    main()
+--- /dev/null
++++ b/test/compatibility/test_static_mongoose.py
+@@ -0,0 +1,162 @@
++"""Offline controller regressions; npm, network and compiler are simulated."""
++import contextlib
++import importlib.util
++import io
++import json
++from pathlib import Path
++import shutil
++import subprocess
++import tempfile
++import unittest
++from unittest import mock
++import urllib.parse
++
++SPEC = importlib.util.spec_from_file_location('static_probe', Path(__file__).with_name('static_mongoose.py'))
++PROBE = importlib.util.module_from_spec(SPEC)
++SPEC.loader.exec_module(PROBE)
++SOURCE_ROOT = PROBE.ROOT
++
++
++class StaticProbeSafety(unittest.TestCase):
++    def setUp(self):
++        self.area = tempfile.TemporaryDirectory(prefix='sd-static-probe-test-', dir='/private/tmp')
++        self.addCleanup(self.area.cleanup)
++        self.root = Path(self.area.name).resolve()
++        for name in PROBE.GUARDED:
++            target = self.root / name
++            target.parent.mkdir(parents=True, exist_ok=True)
++            shutil.copyfile(SOURCE_ROOT / name, target)
++        self.node = self.root / 'tools/node'
++        self.node.parent.mkdir()
++        self.node.write_text('synthetic executable; never invoked')
++        self.npm = self.root / 'tools/npm/bin/npm-cli.js'
++        self.npm.parent.mkdir(parents=True)
++        self.npm.write_text('synthetic npm; never invoked')
++        (self.npm.parents[1] / 'package.json').write_text('{"version":"synthetic"}')
++        self.allocated = []
++        self.real_allocate = tempfile.mkdtemp
++        self.registry_failure = False
++        self.missing_module = False
++        self.wrong_negative = False
++
++    def allocate(self, *args, **kwargs):
++        kwargs['dir'] = str(self.root)  # Keep a regressed leak inside the outer owned test fixture.
++        path = self.real_allocate(*args, **kwargs)
++        self.allocated.append(Path(path))
++        return path
++
++    def metadata(self, url, timeout):
++        if self.registry_failure:
++            raise ConnectionError('synthetic registry outage')
++        name, version = urllib.parse.unquote(urllib.parse.urlsplit(url).path).lstrip('/').rsplit('/', 1)
++        package = {'name': name, 'version': version, 'dist': {
++            'tarball': 'https://registry.npmjs.org/synthetic/-/package.tgz',
++            'integrity': 'sha512-synthetic-offline-transport-only'}}
++
++        class Response:
++            def __enter__(self):
++                self.url = url
++                return self
++
++            def __exit__(self, *args):
++                return False
++
++            def read(self, size):
++                return json.dumps(package).encode()
++
++        return Response()
++
++    def process(self, args, cwd, **kwargs):
++        args = [str(value) for value in args]
++        case = Path(cwd)
++        output = ''
++        status = 0
++        if str(self.npm) in args:
++            if 'config' in args:
++                output = next(arg.split('=', 1)[1] for arg in args if arg.startswith('--userconfig='))
++            elif 'install' in args:
++                deps = json.loads((case / 'package.json').read_text())['dependencies']
++                packages = {'': {'name': 'synthetic'}}
++                for name, version in deps.items():
++                    packages['node_modules/' + name] = {'version': version,
++                        'resolved': 'https://registry.npmjs.org/synthetic/-/package.tgz',
++                        'integrity': 'sha512-synthetic-offline-transport-only'}
++                packages['node_modules/mongodb'] = {'version': '4.17.2' if case.name == '6.13.8' else '7.8.0',
++                    'resolved': 'https://registry.npmjs.org/synthetic/-/driver.tgz', 'integrity': 'sha512-synthetic'}
++                (case / 'package-lock.json').write_text(json.dumps({'packages': packages}))
++            elif 'ci' not in args:
++                raise AssertionError('Unexpected npm operation')
++        elif any(arg.endswith('/typescript/lib/tsc.js') for arg in args):
++            config = json.loads((case / 'tsconfig.json').read_text())
++            if config['files'] == ['negative.ts']:
++                filename = 'some-declaration.d.ts' if self.wrong_negative else 'negative.ts'
++                output = filename + '(1,14): error TS2322: synthetic negative\n'
++                status = 2
++            else:
++                if self.missing_module:
++                    output = 'src1/modules/blogs/repository/index.ts(1,1): error TS2307: synthetic missing module\n'
++                    status = 2
++                elif case.name == '9.12.0':
++                    output = 'src1/modules/common/repository/BaseRepository.ts(4,3): error TS2305: synthetic removed export\n'
++                    status = 2
++                output += '\n'.join(str(case / name) for name in config['files']) + '\n'
++        else:
++            raise AssertionError('Unexpected child process')
++        return subprocess.CompletedProcess(args, status, output, '')
++
++    def invoke(self):
++        opener = mock.Mock()
++        opener.open.side_effect = self.metadata
++        with mock.patch.object(PROBE, 'ROOT', self.root), \
++                mock.patch.object(PROBE.sys, 'argv', ['probe', str(self.node), str(self.npm)]), \
++                mock.patch.object(PROBE.subprocess, 'check_output', return_value='v22.23.4\n'), \
++                mock.patch.object(PROBE.subprocess, 'run', side_effect=self.process), \
++                mock.patch.object(PROBE.urllib.request, 'build_opener', return_value=opener), \
++                mock.patch.object(PROBE.tempfile, 'mkdtemp', side_effect=self.allocate), \
++                contextlib.redirect_stdout(io.StringIO()):
++            PROBE.main()
++
++    def report(self):
++        paths = list((self.root / 'output/qa/m0-a/c2-static').glob('*/verification.json'))
++        self.assertEqual(len(paths), 1)
++        report = json.loads(paths[0].read_text())
++        self.assertTrue(report['rootHashesUnchanged'])
++        self.assertTrue(report['ownedWorkspaceRemoved'])
++        self.assertTrue(all(not path.exists() for path in self.allocated))
++        return report
++
++    def test_migration_diagnostic_can_complete_the_static_comparison(self):
++        self.invoke()
++        result = self.report()
++        self.assertTrue(result['completed'])
++        self.assertEqual([case['exitCode'] for case in result['candidates']], [0, 2])
++
++    def test_invalid_tool_metadata_allocates_no_workspace(self):
++        (self.npm.parents[1] / 'package.json').write_text('invalid JSON')
++        with self.assertRaises(json.JSONDecodeError):
++            self.invoke()
++        self.assertEqual(self.allocated, [])
++
++    def test_registry_failure_keeps_root_readback_and_cleanup_evidence(self):
++        self.registry_failure = True
++        with self.assertRaisesRegex(ConnectionError, 'synthetic registry outage'):
++            self.invoke()
++        result = self.report()
++        self.assertFalse(result['completed'])
++        self.assertEqual(result['errorClass'], 'ConnectionError')
++
++    def test_missing_module_cannot_complete_a_comparison(self):
++        self.missing_module = True
++        with self.assertRaisesRegex(ValueError, 'resolution failed'):
++            self.invoke()
++        self.assertFalse(self.report()['completed'])
++
++    def test_unrelated_negative_diagnostic_cannot_satisfy_the_canary(self):
++        self.wrong_negative = True
++        with self.assertRaisesRegex(ValueError, 'negative compiler check'):
++            self.invoke()
++        self.assertFalse(self.report()['completed'])
++
++
++if __name__ == '__main__':
++    unittest.main()
+--- /dev/null
++++ b/documentation/planning/implementation/DEVOPS_BASELINE_REQUEST.md
+@@ -0,0 +1,20 @@
++# Existing-server baseline handoff
++
++**10 November 2026. Owner decision: retain the existing server; DevOps will supply facts.** This is an information request for C2, not permission to connect, provision, migrate or deploy.
++
++Provide the non-secret fields below for the intended pre-launch environment. Use a logical environment name and existing config/runbook path where possible. Keep credentials, connection strings, tokens, private keys, environment dumps and patient data out of this record.
++
++| Required field | DevOps response | Purpose / latest gate |
++| --- | --- | --- |
++| Logical environment name and region | PENDING | Confirm which existing server the build targets; before root adoption |
++| Node exact version, OS and CPU architecture | PENDING | Verify supported packages/native modules; before runtime/dependency pin |
++| PM2 version, logical app name, script path, cwd and interpreter | PENDING | Resolve owner-reported pm2 start server; before startup edits |
++| Build command, compiled output and source revision | PENDING | Reconcile TypeScript build and aliases; before build/start adoption |
++| MongoDB hosting type and exact server version | PENDING | Select a supported ODM/driver/server combination; before root dependency adoption |
++| MongoDB topology and feature compatibility version | PENDING | Establish transaction capability and migration constraints; before affected data/runtime adoption |
++| Existing relevant client source/build revisions, or explicitly none enabled | PENDING | Preserve legitimate current calls; before affected containment contracts |
++| Baseline recorder and check date | PENDING | Make these actual observations rather than assumptions |
++
++Known owner facts remain: pre-launch, Node major 22, Mumbai location and reported command `pm2 start server`. Local Node 22.23.4 and local MongoDB 8.0.34 are test tooling; they do not fill these deployment fields.
++
++Backend can continue the approved static-only compatibility investigation and other independently admitted work. Once DevOps fills this record, review the exact intended target and root migration diff. C3 application/provider admission, M0 acceptance and release remain separate gates.
+--- /dev/null
++++ b/documentation/planning/implementation/C2_STATIC_RESULTS.md
+@@ -0,0 +1,41 @@
++# Static compatibility investigation results
++
++**10 November 2026. Complete for the approved static-only slice; root adoption remains unapproved.** Branch `m0/f01-static-compatibility`, base `b06be010c8bee7468eaaeb432952c787b300a5b4`. The owner selected retaining the existing server; DevOps will provide its baseline. No MongoDB 8 production target is selected.
++
++## Observed comparison
++
++| Input / result | Current baseline | Candidate |
++| --- | --- | --- |
++| Mongoose | 6.13.8 | 9.12.0 |
++| Resolved temporary MongoDB driver | 4.17.2 | 7.8.0 |
++| Node / compiler / declarations | Node 22.23.4 / TypeScript 5.9.3 / @types/node 20.19.31 | Identical |
++| Selected source type-check | Exit 0; zero diagnostics | Exit 2; eight migration diagnostics |
++| Independent invalid-type canary | Expected TS2322 from negative.ts | Expected TS2322 from negative.ts |
++
++The [verification record](../../../output/qa/m0-a/c2-static/67466c79-36a5-44ab-abc5-16df26100529/verification.json), exact package locks and configs, registry metadata and full diagnostics are retained under the same run directory. Public packages were installed only into owned temporary resources with lifecycle scripts disabled. The exact compiler ran with noEmit and filesystem restrictions. Root source/package hashes remained unchanged. The controller removed the workspace; [separate absence readback](../../../output/qa/m0-a/c2-static/67466c79-36a5-44ab-abc5-16df26100529/cleanup-readback.json) confirms it is gone.
++
++## Migration work now confirmed
++
++Eight diagnostics represent three groups, not eight independently reproduced application bugs:
++
++1. **Removed or renamed types:** blogs repository and shared BaseRepository import FilterQuery; BaseRepository also imports LeanDocument. A future migration must use the new filter interface and an explicit plain-record return contract. Replacing lean records with hydrated documents or suppressing errors with casts would change the interface rather than prove compatibility.
++2. **Operation/session options:** BaseRepository deleteOne, deleteMany and updateMany pass QueryOptions whose session accepts null; the candidate driver operation types accept a session or undefined. Review operation-specific options and null/unset/session semantics before changing them. Transaction propagation needs admitted behavioral fixtures, not only a type repair.
++3. **Medicine validation middleware:** the existing next() call is incompatible with the candidate pre-hook signature. Preserve name trimming/nameKey normalization and unique partial-index behavior in the eventual runtime migration fixtures.
++
++These are real compiler observations on the selected source. No production module was executed, no queries or validations ran, and there is no whole-backend type-check/build claim. Mongoose 8 was not installed: this first comparison quantifies the preferred candidate's impact; a bridge is not selected without server facts and a justified owner/exit milestone.
++
++## Scope and safety evidence
++
++Eight byte-identical source files cover the shared repository, blog model/repository/types, regex helper and medicine model/types. The three-line normalizer was explicitly extracted into a workspace-only module, excluding its effectful migration/logger imports. The report records this adaptation and original hashes. A source canary that would throw on evaluation was included only as compiler input.
++
++Five offline controller regressions pass. They cover invalid tool metadata before allocation, failure-time readback/cleanup, infrastructure diagnostic rejection, the exact negative fixture and legitimate migration diagnostics. Running the same regressions against the original controller returns nonzero (three failures and one error), demonstrating detection of the reviewed defects. [Offline evidence](../../../output/review/c2-static/offline-verification.json).
++
++The source review corrected allocation/finalization gaps, failure evidence loss and false completion after unresolved imports. The final separate review dispositions live in [the review record](../../../output/review/c2-static/REVIEW.md). These are internal coding-agent reviews, not new external Review-A/Review-B approval.
++
++## What proceeds next
++
++- DevOps supplies [the existing-server baseline](DEVOPS_BASELINE_REQUEST.md) before root runtime/dependency/build/start adoption. Keep current root Mongoose/driver majors meanwhile.
++- Backend/QA can continue C3 application-child admission and provider/queue/timer/file/network isolation under the retained gates. The fixed MongoDB smoke controller does not admit the application.
++- Once the target is known, review a specific supported stack and the shared repository/model migration contracts, then implement the actual root package/lock/source diff with isolated runtime evidence. Type-check success alone cannot approve finance, stock, clinical or release behavior.
++
++Full clean install, whole-backend type-check/build, compiled startup, wired default test command, 115-scenario regressions, security/financial/clinical fixes and 100 RPS acceptance remain outstanding. Their statuses were not changed by this comparison.

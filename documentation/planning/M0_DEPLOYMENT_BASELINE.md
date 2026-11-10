@@ -49,3 +49,9 @@ The observations above precede implementation. The owner subsequently requested 
 The bounded foundation suite now has 56 passing checks on each runtime and 18 executable rejection canaries. A separately owned local Docker fixture ran MongoDB 8.0.34 with measured transaction commit/rollback; cleanup acknowledgement and independent absence readback are recorded. This is a new local test resource, not an existing deployment probe or application-driver compatibility proof. No application startup, real provider, root install/dependency or deployment change occurred. See the [dated implementation evidence](implementation/M0_A_PROGRESS.md#second-increment-10-november-owned-mongodb-fixture).
 
 The [C2 decision packet](implementation/C2_COMPATIBILITY_REVIEW.md) is ready for the separately scoped compatibility review. Its local/CI target and ODM candidates remain proposals; missing intended-deployment facts above remain UNKNOWN.
+
+## Owner target update, 10 November 2026
+
+The owner chose to **retain the existing server** and obtain its details from DevOps. The fresh managed Mumbai replica-set recommendation above is therefore not the selected deployment plan. MongoDB server version/topology/hosting and exact Node/PM2/build facts remain unknown. The local MongoDB 8.0.34 fixture establishes no such deployment facts.
+
+The [DevOps handoff](implementation/DEVOPS_BASELINE_REQUEST.md) is the required non-secret baseline input. Internal technical reviews approve a static-only Mongoose type comparison in owned temporary resources; root package/lock/start/runtime edits still await the intended-server facts and reviewed adoption diff.

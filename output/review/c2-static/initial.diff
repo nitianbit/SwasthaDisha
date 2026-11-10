@@ -1,0 +1,273 @@
+--- /dev/null
++++ b/test/compatibility/static_mongoose.py
+@@ -0,0 +1,248 @@
++"""Static-only Mongoose comparison; never evaluates application modules."""
++import hashlib
++import json
++import os
++from pathlib import Path
++import re
++import shutil
++import subprocess
++import sys
++import tempfile
++import urllib.parse
++import urllib.request
++import uuid
++
++
++ROOT = Path(__file__).resolve().parents[2]
++SOURCES = [
++    'src1/modules/common/repository/BaseRepository.ts',
++    'src1/modules/common/repository/index.ts',
++    'src1/modules/common/utils/queryUtils.ts',
++    'src1/modules/blogs/repository/index.ts',
++    'src1/modules/blogs/model/index.ts',
++    'src1/modules/blogs/types/index.ts',
++    'src1/modules/pharmacyMedicines/model/index.ts',
++    'src1/modules/pharmacyMedicines/types/index.ts',
++]
++HELPER = 'src1/modules/pharmacyMedicines/services/nameKeyMigration.ts'
++GUARDED = ['package.json', 'package-lock.json', 'tsconfig.json', 'server.js',
++           'src1/index.ts', 'src1/db/index.ts', *SOURCES, HELPER]
++VERSIONS = {'typescript': '5.9.3', '@types/node': '20.19.31', 'typedi': '0.10.0'}
++CANDIDATES = ['6.13.8', '9.12.0']
++
++
++def digest(path):
++    return hashlib.sha256(path.read_bytes()).hexdigest()
++
++
++def registry_url(value):
++    parsed = urllib.parse.urlsplit(value)
++    return (parsed.scheme == 'https' and parsed.hostname == 'registry.npmjs.org'
++            and parsed.port in [None, 443] and not parsed.username
++            and not parsed.password and not parsed.query and not parsed.fragment)
++
++
++class RegistryRedirect(urllib.request.HTTPRedirectHandler):
++    def redirect_request(self, req, fp, code, msg, headers, newurl):
++        if not registry_url(newurl):
++            raise ValueError('Registry redirect left the admitted host')
++        return super().redirect_request(req, fp, code, msg, headers, newurl)
++
++
++def main():
++    if len(sys.argv) != 3:
++        raise ValueError('Provide the verified Node 22 executable and trusted npm-cli.js paths')
++    node, npm_cli = [Path(value).resolve(strict=True) for value in sys.argv[1:]]
++    if not node.is_file() or not npm_cli.is_file() or npm_cli.name != 'npm-cli.js':
++        raise ValueError('Expected regular Node executable and npm-cli.js')
++    version = subprocess.check_output([str(node), '--version'], env={}, text=True).strip()
++    if version != 'v22.23.4':
++        raise ValueError('This recorded comparison requires Node 22.23.4')
++    originals = {name: digest(ROOT / name) for name in GUARDED}
++    helper_source = (ROOT / HELPER).read_text()
++    normalizer = re.search(
++        r'export function buildMedicineNameKey\(name: string\): string \{\n'
++        r'  return name\.trim\(\)\.toLowerCase\(\);\n\}', helper_source)
++    if not normalizer:
++        raise ValueError('Review the normalizer extraction after source drift')
++
++    run_id = str(uuid.uuid4())
++    workspace = Path(tempfile.mkdtemp(prefix='sd-static-mongoose-', dir='/private/tmp')).resolve()
++    identity = (workspace.stat().st_dev, workspace.stat().st_ino)
++    marker = workspace / '.owner.json'
++    marker.write_text(json.dumps({'runId': run_id}))
++    report_dir = ROOT / 'output/qa/m0-a/c2-static' / run_id
++    npm_package = json.loads((npm_cli.parents[1] / 'package.json').read_text())
++    report = {'runId': run_id, 'node': version, 'nodeSha256': digest(node),
++              'npmVersion': npm_package['version'],
++              'npmCliSha256': digest(npm_cli), 'sourceSha256': originals,
++              'adaptation': {'path': HELPER, 'reason': 'Exclude migration/logger imports',
++                             'extractedSource': normalizer.group() + '\n'},
++              'candidates': [], 'completed': False, 'applicationEvaluation': False,
++              'databaseOrProviderConnections': False, 'rootAdoption': False}
++
++    def owned():
++        stat = workspace.lstat()
++        if (workspace.is_symlink() or not workspace.is_dir()
++                or (stat.st_dev, stat.st_ino) != identity
++                or marker.is_symlink()
++                or json.loads(marker.read_text()) != {'runId': run_id}):
++            raise ValueError('Temporary workspace ownership changed; cleanup withheld')
++
++    def command(args, cwd, env, timeout=90):
++        owned()
++        if not cwd.resolve().is_relative_to(workspace):
++            raise ValueError('Command working directory is outside the owned fixture')
++        return subprocess.run([str(arg) for arg in args], cwd=cwd, env=env,
++                              capture_output=True, text=True, timeout=timeout)
++
++    try:
++        for parent in report_dir.parents:
++            if parent == ROOT.parent:
++                break
++            if parent.is_symlink():
++                raise ValueError('Report path contains a symlink')
++        report_dir.mkdir(parents=True, exist_ok=False)
++        cache = workspace / 'cache'
++        temporary = workspace / 'tmp'
++        cache.mkdir()
++        temporary.mkdir()
++        user_config = workspace / 'user.npmrc'
++        global_config = workspace / 'global.npmrc'
++        user_config.write_text('')
++        global_config.write_text('')
++        # No inherited HOME, npm credentials/config, preload options or resource URIs.
++        npm_env = {'PATH': '/usr/bin:/bin', 'TMPDIR': str(temporary),
++                   'NO_UPDATE_NOTIFIER': '1'}
++        npm_options = ['--ignore-scripts', '--no-audit', '--no-fund',
++                       '--update-notifier=false', '--registry=https://registry.npmjs.org/',
++                       '--cache=' + str(cache), '--userconfig=' + str(user_config),
++                       '--globalconfig=' + str(global_config)]
++        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), RegistryRedirect())
++        metadata = {}
++        for name, requested in [*VERSIONS.items(), *[('mongoose', v) for v in CANDIDATES]]:
++            url = 'https://registry.npmjs.org/' + urllib.parse.quote(name, safe='') + '/' + requested
++            with opener.open(url, timeout=30) as response:
++                if not registry_url(response.url):
++                    raise ValueError('Metadata response left the registry')
++                raw = response.read(5_000_001)
++            if len(raw) > 5_000_000:
++                raise ValueError('Package metadata exceeded the admitted size')
++            package = json.loads(raw)
++            dist = package['dist']
++            if (package['name'] != name or package['version'] != requested
++                    or not registry_url(dist['tarball'])
++                    or not dist.get('integrity', '').startswith('sha512-')):
++                raise ValueError('Package metadata identity/integrity mismatch')
++            metadata[name + '@' + requested] = {
++                'name': name, 'version': requested, 'dist': dist,
++                'engines': package.get('engines', {}),
++                'dependencies': package.get('dependencies', {})}
++        (report_dir / 'registry-metadata.json').write_text(json.dumps(metadata, indent=2) + '\n')
++
++        for mongoose_version in CANDIDATES:
++            case = workspace / mongoose_version
++            case.mkdir()
++            dependencies = {**VERSIONS, 'mongoose': mongoose_version}
++            (case / 'package.json').write_text(json.dumps({
++                'name': 'swasthadisha-static-only', 'version': '0.0.0', 'private': True,
++                'dependencies': dependencies}))
++            npm = [node, npm_cli]
++            config = command([*npm, 'config', 'get', 'userconfig', *npm_options], case, npm_env)
++            if config.returncode or config.stdout.strip() != str(user_config):
++                raise ValueError('npm did not select the owned configuration')
++            lock_run = command([*npm, 'install', '--package-lock-only', *npm_options], case, npm_env)
++            if lock_run.returncode:
++                raise RuntimeError('Script-disabled lock resolution failed: ' + lock_run.stderr[:1500])
++            lock = json.loads((case / 'package-lock.json').read_text())
++            for path, package in lock['packages'].items():
++                if not path:
++                    continue
++                if (not registry_url(package.get('resolved', ''))
++                        or not package.get('integrity', '').startswith(('sha512-', 'sha1-'))
++                        or package.get('link')):
++                    raise ValueError('A resolved dependency left the registry/integrity boundary')
++            for name, requested in dependencies.items():
++                actual = lock['packages']['node_modules/' + name]
++                expected = metadata[name + '@' + requested]
++                if (actual['version'] != requested
++                        or actual['integrity'] != expected['dist']['integrity']):
++                    raise ValueError('Resolved package differs from reviewed exact metadata')
++            installed = command([*npm, 'ci', *npm_options], case, npm_env)
++            if installed.returncode:
++                raise RuntimeError('Script-disabled install failed: ' + installed.stderr[:1500])
++            for path in case.rglob('*'):
++                if path.is_symlink() and not path.resolve().is_relative_to(case):
++                    raise ValueError('Installed dependency symlink escaped its fixture')
++            for name in SOURCES:
++                target = case / name
++                target.parent.mkdir(parents=True, exist_ok=True)
++                source = ROOT / name
++                if source.is_symlink() or digest(source) != originals[name]:
++                    raise ValueError('Source identity changed before staging')
++                shutil.copyfile(source, target)
++            helper = case / HELPER
++            helper.parent.mkdir(parents=True, exist_ok=True)
++            helper.write_text(normalizer.group() + '\n')
++            (case / 'evaluation-canary.ts').write_text(
++                "throw new Error('C2_STATIC_SOURCE_MUST_NOT_EXECUTE');\n")
++            options = json.loads((ROOT / 'tsconfig.json').read_text())['compilerOptions']
++            options = {**options, 'baseUrl': '.', 'noEmit': True, 'incremental': False,
++                       'declaration': False, 'declarationMap': False, 'rootDir': '.'}
++            options.pop('outDir', None)
++            config_path = case / 'tsconfig.json'
++            config_path.write_text(json.dumps({'compilerOptions': options,
++                'files': [*SOURCES, HELPER, 'evaluation-canary.ts']}, indent=2))
++            scratch = case / 'scratch'
++            scratch.mkdir()
++            compiler = [node, '--permission', '--allow-fs-read=' + str(case),
++                        '--allow-fs-write=' + str(scratch),
++                        case / 'node_modules/typescript/lib/tsc.js',
++                        '--project', config_path, '--pretty', 'false', '--listFiles']
++            compiler_env = {'TMPDIR': str(scratch), 'NODE_ENV': 'test', 'TZ': 'UTC'}
++            result = command(compiler, case, compiler_env)
++            if result.returncode not in [0, 2] or result.stderr:
++                raise RuntimeError('Compiler infrastructure failed: ' + result.stderr[:1500])
++            listed = [line for line in result.stdout.splitlines() if line.startswith(str(case) + '/')]
++            if not all(str(case / name) in listed for name in [*SOURCES, HELPER, 'evaluation-canary.ts']):
++                raise ValueError('Required staged source was not included in compilation')
++            if 'C2_STATIC_SOURCE_MUST_NOT_EXECUTE' in result.stdout:
++                raise ValueError('Static source appears to have been evaluated')
++            # An independent semantic error proves the compiler rejects invalid types.
++            negative = case / 'negative.ts'
++            negative.write_text("export const invalid: number = 'must be rejected';\n")
++            negative_config = {'compilerOptions': options, 'files': ['negative.ts']}
++            config_path.write_text(json.dumps(negative_config))
++            denied = command(compiler, case, compiler_env)
++            if denied.returncode != 2 or 'error TS2322:' not in denied.stdout:
++                raise ValueError('Required negative compiler check did not fail semantically')
++            case_output = report_dir / mongoose_version
++            case_output.mkdir()
++            (case_output / 'diagnostics.txt').write_text(result.stdout)
++            (case_output / 'negative-diagnostics.txt').write_text(denied.stdout)
++            shutil.copyfile(case / 'package-lock.json', case_output / 'package-lock.json')
++            (case_output / 'tsconfig.json').write_text(json.dumps({
++                'compilerOptions': options, 'files': [*SOURCES, HELPER, 'evaluation-canary.ts']}, indent=2))
++            report['candidates'].append({'mongoose': mongoose_version,
++                'exitCode': result.returncode,
++                'diagnosticCodes': re.findall(r'error (TS\d+):', result.stdout),
++                'requiredSourceFilesChecked': len(SOURCES) + 2,
++                'semanticNegativeRejected': True,
++                'resolvedMongoDriver': lock['packages']['node_modules/mongodb']['version'],
++                'dependencies': dependencies})
++        if any(digest(ROOT / name) != expected for name, expected in originals.items()):
++            raise ValueError('Root application or dependency source changed')
++        report['rootHashesUnchanged'] = True
++        report['completed'] = True
++    finally:
++        owned()
++        shutil.rmtree(workspace)
++        report['ownedWorkspaceRemoved'] = not workspace.exists()
++        if report_dir.exists():
++            (report_dir / 'verification.json').write_text(json.dumps(report, indent=2) + '\n')
++    print(json.dumps({'evidence': str(report_dir.relative_to(ROOT)),
++                      'candidates': report['candidates'], 'cleanup': report['ownedWorkspaceRemoved']}))
++
++
++if __name__ == '__main__':
++    main()
+--- /dev/null
++++ b/test/compatibility/README.md
+@@ -0,0 +1,19 @@
++# Static Mongoose compatibility investigation
++
++This is the reviewed C2 investigation, not a root dependency upgrade or application test. It compares exact Mongoose 6.13.8 and 9.12.0 types with the same TypeScript 5.9.3, Node 20 declaration package 20.19.31 and TypeDI 0.10.0. It uses the verified local Node 22.23.4 executable.
++
++The probe downloads public npm metadata/packages into a newly owned temporary workspace and cache. It supplies explicit blank user/global npm configuration, no inherited HOME/configuration/credentials, and disables lifecycle scripts. It resolves and validates registry-only lock entries before installing with `npm ci --ignore-scripts`. This is an intentional public-network install step; no root dependencies are installed or changed.
++
++Only eight fixed application source files are staged as compiler input: the shared repository, blog model/repository/types, common regex helper and medicine model/types. The medicine normalizer's three-line function is extracted into a workspace-only module because its original containing module imports the model cyclically and constructs a logger. The report records the original source hash and extracted text. That substitution prevents any claim of full module/runtime compatibility.
++
++The compiler runs directly under Node filesystem permissions with explicit source files and noEmit. It has no subprocess, addon or worker permissions. A source file that throws if evaluated is included; an independent invalid-type check must be rejected. Node 22 permissions do not deny networking; this boundary relies on the trusted compiler and never evaluates application modules, decorators, model validation, queries or generated JavaScript.
++
++After reviewing the probe and verifying the two local tool paths:
++
++```sh
++python3 test/compatibility/static_mongoose.py /absolute/path/to/verified-node22 /absolute/path/to/trusted-npm/bin/npm-cli.js
++```
++
++Each run creates a new UUID evidence directory under `output/qa/m0-a/c2-static/`, preserving exact package locks, metadata, config, diagnostics and source/tool hashes. A successful probe may report type errors: baseline and candidate diagnostics are evidence, not a full build result. Infrastructure errors remain failures and cannot be counted as library incompatibility. Cleanup verifies ownership before removing only the temporary workspace; source/root hashes must remain unchanged.
++
++Root adoption still requires the C2 target facts and reviewed migration diff. The owner chose to retain the existing server; DevOps will provide hosting, MongoDB version/topology and exact build/PM2 details. No MongoDB 8 production target is selected. Complete C3 admission still precedes application runtime and integration checks.

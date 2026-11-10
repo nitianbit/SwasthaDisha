@@ -1,0 +1,251 @@
+src1/modules/blogs/repository/index.ts(2,10): error TS2614: Module '"mongoose"' has no exported member 'FilterQuery'. Did you mean to use 'import FilterQuery from "mongoose"' instead?
+src1/modules/common/repository/BaseRepository.ts(3,3): error TS2614: Module '"mongoose"' has no exported member 'FilterQuery'. Did you mean to use 'import FilterQuery from "mongoose"' instead?
+src1/modules/common/repository/BaseRepository.ts(4,3): error TS2724: '"mongoose"' has no exported member named 'LeanDocument'. Did you mean 'Document'?
+src1/modules/common/repository/BaseRepository.ts(75,39): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(filter?: QueryFilter<T> | undefined, options?: (DeleteOptions & Pick<QueryOptions<T>, "lean" | "timestamps" | MongooseBaseQueryOptionKeys> & { ...; }) | null | undefined): Query<...>', gave the following error.
+    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'DeleteOptions & Pick<QueryOptions<T>, "lean" | "timestamps" | MongooseBaseQueryOptionKeys> & { [other: string]: any; }'.
+      Type 'QueryOptions<unknown>' is not assignable to type 'DeleteOptions'.
+        Types of property 'session' are incompatible.
+          Type 'ClientSession | null | undefined' is not assignable to type 'ClientSession | undefined'.
+            Type 'null' is not assignable to type 'ClientSession | undefined'.
+  Overload 2 of 2, '(filter?: Query<any, any, {}, unknown, "find", Record<string, never>, unknown> | undefined, options?: (DeleteOptions & Pick<QueryOptions<T>, "lean" | ... 1 more ... | MongooseBaseQueryOptionKeys> & { ...; }) | null | undefined): Query<...>', gave the following error.
+    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'DeleteOptions & Pick<QueryOptions<T>, "lean" | "timestamps" | MongooseBaseQueryOptionKeys> & { [other: string]: any; }'.
+      Type 'QueryOptions<unknown>' is not assignable to type 'DeleteOptions'.
+        Types of property 'session' are incompatible.
+          Type 'ClientSession | null | undefined' is not assignable to type 'ClientSession | undefined'.
+            Type 'null' is not assignable to type 'ClientSession | undefined'.
+src1/modules/common/repository/BaseRepository.ts(79,40): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(filter?: QueryFilter<T> | undefined, options?: (DeleteOptions & Pick<QueryOptions<T>, "lean" | "timestamps" | MongooseBaseQueryOptionKeys> & { ...; }) | null | undefined): Query<...>', gave the following error.
+    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'DeleteOptions & Pick<QueryOptions<T>, "lean" | "timestamps" | MongooseBaseQueryOptionKeys> & { [other: string]: any; }'.
+      Type 'QueryOptions<unknown>' is not assignable to type 'DeleteOptions'.
+        Types of property 'session' are incompatible.
+          Type 'ClientSession | null | undefined' is not assignable to type 'ClientSession | undefined'.
+            Type 'null' is not assignable to type 'ClientSession | undefined'.
+  Overload 2 of 2, '(filter?: Query<any, any, {}, unknown, "find", Record<string, never>, unknown> | undefined, options?: (DeleteOptions & Pick<QueryOptions<T>, "lean" | ... 1 more ... | MongooseBaseQueryOptionKeys> & { ...; }) | null | undefined): Query<...>', gave the following error.
+    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'DeleteOptions & Pick<QueryOptions<T>, "lean" | "timestamps" | MongooseBaseQueryOptionKeys> & { [other: string]: any; }'.
+      Type 'QueryOptions<unknown>' is not assignable to type 'DeleteOptions'.
+        Types of property 'session' are incompatible.
+          Type 'ClientSession | null | undefined' is not assignable to type 'ClientSession | undefined'.
+            Type 'null' is not assignable to type 'ClientSession | undefined'.
+src1/modules/common/repository/BaseRepository.ts(87,53): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(filter: QueryFilter<T>, update: UpdateQuery<T> | UpdateWithAggregationPipeline, options?: (UpdateOptions & MongooseUpdateQueryOptions<...>) | null | undefined): Query<...>', gave the following error.
+    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'UpdateOptions & MongooseUpdateQueryOptions<T>'.
+      Type 'QueryOptions<unknown>' is not assignable to type 'UpdateOptions'.
+        Types of property 'session' are incompatible.
+          Type 'ClientSession | null | undefined' is not assignable to type 'ClientSession | undefined'.
+            Type 'null' is not assignable to type 'ClientSession | undefined'.
+  Overload 2 of 2, '(filter: Query<any, any, {}, unknown, "find", Record<string, never>, unknown>, update: UpdateQuery<T> | UpdateWithAggregationPipeline, options?: (UpdateOptions & MongooseUpdateQueryOptions<...>) | ... 1 more ... | undefined): Query<...>', gave the following error.
+    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'UpdateOptions & MongooseUpdateQueryOptions<T>'.
+      Type 'QueryOptions<unknown>' is not assignable to type 'UpdateOptions'.
+        Types of property 'session' are incompatible.
+          Type 'ClientSession | null | undefined' is not assignable to type 'ClientSession | undefined'.
+            Type 'null' is not assignable to type 'ClientSession | undefined'.
+src1/modules/pharmacyMedicines/model/index.ts(89,3): error TS2349: This expression is not callable.
+  Type 'Record<string, any>' has no call signatures.
+src1/modules/pharmacyMedicines/model/index.ts(89,3): error TS2722: Cannot invoke an object which is possibly 'undefined'.
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es5.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2015.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2016.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2017.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2018.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2019.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2020.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2015.core.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2015.collection.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2015.generator.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2015.iterable.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2015.promise.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2015.proxy.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2015.reflect.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2015.symbol.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2015.symbol.wellknown.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2016.array.include.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2016.intl.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2017.arraybuffer.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2017.date.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2017.object.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2017.sharedmemory.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2017.string.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2017.intl.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2017.typedarrays.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2018.asyncgenerator.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2018.asynciterable.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2018.intl.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2018.promise.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2018.regexp.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2019.array.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2019.object.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2019.string.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2019.symbol.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2019.intl.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2020.bigint.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2020.date.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2020.promise.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2020.sharedmemory.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2020.string.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2020.symbol.wellknown.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2020.intl.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.es2020.number.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.decorators.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typescript/lib/lib.decorators.legacy.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/bson/bson.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongodb/mongodb.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/aggregate.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/callback.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/collection.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/connection.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/cursor.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/document.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/error.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/expressions.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/helpers.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/kareem/index.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/middlewares.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/indexes.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@standard-schema/spec/dist/index.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/models.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/mongooseoptions.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/pipelinestage.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/populate.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/query.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/schemaoptions.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/schematypes.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/session.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/types.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/utility.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/validation.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/inferschematype.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/inferhydrateddoctype.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/inferrawdoctype.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/virtuals.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/tracing.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/augmentations.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/mongoose/types/index.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/src1/modules/common/repository/BaseRepository.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/src1/modules/common/repository/index.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/src1/modules/common/utils/queryUtils.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typedi/types/token.class.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typedi/types/types/constructable.type.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typedi/types/types/abstract-constructable.type.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typedi/types/types/service-identifier.type.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typedi/types/interfaces/service-metadata.interface.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typedi/types/interfaces/service-options.interface.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typedi/types/container-instance.class.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typedi/types/interfaces/handler.interface.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typedi/types/container.class.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typedi/types/decorators/inject-many.decorator.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typedi/types/decorators/inject.decorator.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typedi/types/decorators/service.decorator.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typedi/types/error/cannot-inject-value.error.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typedi/types/error/cannot-instantiate-value.error.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typedi/types/error/service-not-found.error.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/typedi/types/index.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/src1/modules/blogs/types/index.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/src1/modules/blogs/model/index.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/src1/modules/blogs/repository/index.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/src1/modules/pharmacyMedicines/types/index.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/src1/modules/pharmacyMedicines/services/nameKeyMigration.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/src1/modules/pharmacyMedicines/model/index.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/evaluation-canary.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/compatibility/disposable.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/compatibility/indexable.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/compatibility/iterators.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/compatibility/index.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/globals.typedarray.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/buffer.buffer.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/globals.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/web-globals/abortcontroller.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/web-globals/domexception.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/web-globals/events.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/header.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/readable.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/file.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/fetch.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/formdata.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/connector.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/client.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/errors.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/dispatcher.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/global-dispatcher.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/global-origin.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/pool-stats.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/pool.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/handlers.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/balanced-pool.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/agent.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/mock-interceptor.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/mock-agent.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/mock-client.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/mock-pool.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/mock-errors.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/proxy-agent.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/env-http-proxy-agent.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/retry-handler.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/retry-agent.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/api.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/interceptors.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/util.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/cookies.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/patch.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/websocket.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/eventsource.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/filereader.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/diagnostics-channel.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/content-type.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/cache.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/undici-types/index.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/web-globals/fetch.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/assert.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/assert/strict.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/async_hooks.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/buffer.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/child_process.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/cluster.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/console.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/constants.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/crypto.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/dgram.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/diagnostics_channel.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/dns.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/dns/promises.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/domain.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/events.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/fs.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/fs/promises.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/http.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/http2.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/https.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/inspector.generated.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/module.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/net.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/os.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/path.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/perf_hooks.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/process.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/punycode.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/querystring.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/readline.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/readline/promises.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/repl.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/sea.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/stream.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/stream/promises.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/stream/consumers.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/stream/web.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/string_decoder.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/test.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/timers.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/timers/promises.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/tls.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/trace_events.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/tty.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/url.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/util.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/v8.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/vm.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/wasi.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/worker_threads.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/zlib.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/node/index.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/webidl-conversions/index.d.ts
+/private/tmp/sd-static-mongoose-wmoatftr/9.12.0/node_modules/@types/whatwg-url/index.d.ts

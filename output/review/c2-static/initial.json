@@ -1,0 +1,9 @@
+{
+  "base": "b06be010c8bee7468eaaeb432952c787b300a5b4",
+  "branch": "m0/f01-static-compatibility",
+  "files": {
+    "test/compatibility/static_mongoose.py": "d4414264b2e6faa3050ca2c0bfdcb1b644ff72b868fe959d715eff0fc3b4602c",
+    "test/compatibility/README.md": "bbc9e2f4b0f6c37a04efe6b69f74495e684acaca204899732039f7ab567bfb6d"
+  },
+  "patch_sha256": "9519e76a2bb425319e06d924e3f28a22f1f8a64806e386d10281b7e64a062f65"
+}

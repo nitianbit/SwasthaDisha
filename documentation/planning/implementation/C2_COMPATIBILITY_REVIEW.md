@@ -1,8 +1,18 @@
 # C2 runtime and ODM decision packet
 
-**10 November 2026. Status: PROPOSAL; target and migration not adopted.** This is the next decision gate before root dependency, lockfile, build/start or runtime-pin edits. It does not request another general M0 start approval. The existing [deployment baseline](../M0_DEPLOYMENT_BASELINE.md) and [C2 condition](../M0_START_APPROVAL_STATUS.md#c2-deployed-baseline-before-script-or-dependency-changes) remain authoritative.
+**10 November 2026. Status: STATIC INVESTIGATION COMPLETE; target and root migration not adopted.** This is the next decision gate before root dependency, lockfile, build/start or runtime-pin edits. It does not request another general M0 start approval. The existing [deployment baseline](../M0_DEPLOYMENT_BASELINE.md) and [C2 condition](../M0_START_APPROVAL_STATUS.md#c2-deployed-baseline-before-script-or-dependency-changes) remain authoritative.
 
-## Decision requested
+## Current decision, 10 November 2026
+
+The owner selected **retain the existing server; DevOps will provide its details**. A new managed MongoDB deployment is not selected. MongoDB 8 remains a local test fixture/candidate only; the proposed fresh target below is not evidence about that server.
+
+Two internal technical reviews approved a **static-only compatibility investigation** under existing M0-A authorization. This permits owned, script-disabled public dependency installation and direct noEmit analysis of a reviewed source closure. It does not permit application module evaluation, database/provider connections, root adoption or startup. Current and candidate major lines in the root remain unchanged.
+
+The [probe usage contract](../../../test/compatibility/README.md) describes the eight source files, workspace-only normalizer extraction and compiler controls. Deployment facts still gate the affected root changes; the [DevOps baseline handoff](DEVOPS_BASELINE_REQUEST.md) lists the exact missing fields. The earlier external Review-A/Review-B approvals are not being replaced by these internal investigation reviews.
+
+The [executed comparison](C2_STATIC_RESULTS.md) records a clean selected-source baseline and eight candidate diagnostics across three migration groups. Root adoption still waits for the existing-server baseline and reviewed migration contracts/diff.
+
+## Original proposal to investigate
 
 Review a fresh local/CI target using **Node 22.23.4, a digest-pinned MongoDB 8.0 replica set, and a supported Mongoose major**. Prefer a bounded compatibility investigation of current Mongoose **9.12.0**, proceeding through the documented 6→7→8→9 migration steps. Compare **8.24.8** as a temporary bridge if measured impact makes 9 unsuitable for this foundation slice. Neither option is a drop-in upgrade. Select one exact root candidate only after that investigation and review its actual package/lock/source diff separately.
 

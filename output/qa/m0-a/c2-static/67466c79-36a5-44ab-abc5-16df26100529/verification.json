@@ -1,0 +1,75 @@
+{
+  "runId": "67466c79-36a5-44ab-abc5-16df26100529",
+  "node": "v22.23.4",
+  "nodeSha256": "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0",
+  "npmVersion": "11.17.0",
+  "npmCliSha256": "8e5f6f3429f8cdbe693cdc29904e9d5a7b127a494bd15c804bd54c7403bfcbe7",
+  "sourceSha256": {
+    "package.json": "65b171e77e8cd3bfd37eb691cf9ce310d9108cedbf571232bd4859c4b16895ab",
+    "package-lock.json": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080",
+    "tsconfig.json": "5555c293a75c85c3f89a539bd2b1be6db1953ffa746b43836929cdc20b9355c3",
+    "server.js": "51ddd18f5baa0f7b94cd821b91831d76979994d4314a77831487adbec49dd4e6",
+    "src1/index.ts": "d4f7af96f4fcda85be1f8ba942c362fb8b4b809a7c0eebd0e861c36f7f7624df",
+    "src1/db/index.ts": "f76ca1d1fe1bd040d3d7389e4fa39876f78fe5dc67a923d2ad8cbe5311fe9e39",
+    "src1/modules/common/repository/BaseRepository.ts": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+    "src1/modules/common/repository/index.ts": "6e13d4d0ced3ad40772c5b2c35034544fe49f0d7b715cf0309f954be7ab5cb77",
+    "src1/modules/common/utils/queryUtils.ts": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d",
+    "src1/modules/blogs/repository/index.ts": "e6af96dc0ffba1c7cdc95fa57a3f9b741d02e6500505e8e424f49cafd80e3f15",
+    "src1/modules/blogs/model/index.ts": "c536fa799437589281037345f18381ffe44c9775e3745359e516217d3bdc4ff6",
+    "src1/modules/blogs/types/index.ts": "8ac5afe8fe47a2180ffb33b0f1f79b5e466c76af7872af1eb6d2dc49d727dafe",
+    "src1/modules/pharmacyMedicines/model/index.ts": "2dd98cd59a4e9a3aaa156d917f7cc131d7e30c7546ad7296b8a0ca4920c70725",
+    "src1/modules/pharmacyMedicines/types/index.ts": "527e6987a95bae02c27bcd2d7547624c26251547efbc235a30fa2e52912fdf8d",
+    "src1/modules/pharmacyMedicines/services/nameKeyMigration.ts": "8d802056921bd569ceb06cdbaac436bc191e582af228c818fbc27c188843dd1f"
+  },
+  "adaptation": {
+    "path": "src1/modules/pharmacyMedicines/services/nameKeyMigration.ts",
+    "reason": "Exclude migration/logger imports",
+    "extractedSource": "export function buildMedicineNameKey(name: string): string {\n  return name.trim().toLowerCase();\n}\n"
+  },
+  "candidates": [
+    {
+      "mongoose": "6.13.8",
+      "exitCode": 0,
+      "diagnosticCodes": [],
+      "requiredSourceFilesChecked": 10,
+      "semanticNegativeRejected": true,
+      "resolvedMongoDriver": "4.17.2",
+      "dependencies": {
+        "typescript": "5.9.3",
+        "@types/node": "20.19.31",
+        "typedi": "0.10.0",
+        "mongoose": "6.13.8"
+      }
+    },
+    {
+      "mongoose": "9.12.0",
+      "exitCode": 2,
+      "diagnosticCodes": [
+        "TS2614",
+        "TS2614",
+        "TS2724",
+        "TS2769",
+        "TS2769",
+        "TS2769",
+        "TS2349",
+        "TS2722"
+      ],
+      "requiredSourceFilesChecked": 10,
+      "semanticNegativeRejected": true,
+      "resolvedMongoDriver": "7.8.0",
+      "dependencies": {
+        "typescript": "5.9.3",
+        "@types/node": "20.19.31",
+        "typedi": "0.10.0",
+        "mongoose": "9.12.0"
+      }
+    }
+  ],
+  "completed": true,
+  "applicationEvaluation": false,
+  "databaseOrProviderConnections": false,
+  "rootAdoption": false,
+  "rootHashesUnchanged": true,
+  "changedRootPaths": [],
+  "ownedWorkspaceRemoved": true
+}

@@ -1,0 +1,50 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "lib": [
+      "ES2020"
+    ],
+    "rootDir": ".",
+    "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strictPropertyInitialization": false,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "src1/*"
+      ]
+    },
+    "noEmit": true,
+    "incremental": false
+  },
+  "files": [
+    "src1/modules/common/repository/BaseRepository.ts",
+    "src1/modules/common/repository/index.ts",
+    "src1/modules/common/utils/queryUtils.ts",
+    "src1/modules/blogs/repository/index.ts",
+    "src1/modules/blogs/model/index.ts",
+    "src1/modules/blogs/types/index.ts",
+    "src1/modules/pharmacyMedicines/model/index.ts",
+    "src1/modules/pharmacyMedicines/types/index.ts",
+    "src1/modules/pharmacyMedicines/services/nameKeyMigration.ts",
+    "evaluation-canary.ts"
+  ]
+}

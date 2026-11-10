@@ -1,4 +1,6 @@
-# Next review prompt
+# Static-investigation review prompt
+
+**Status, 10 November 2026:** this investigation scope has been internally approved and completed. Read [the results](C2_STATIC_RESULTS.md) and [DevOps handoff](DEVOPS_BASELINE_REQUEST.md) for current next steps. The original prompt below remains a reusable record; do not request the same start approval again. Root adoption needs its own concrete target and migration diff.
 
 Paste the prompt below into Claude or another reviewer with repository access. This session has no direct Claude channel; nothing has been sent to Claude. Target: portable user-message prompt, model snapshot unspecified. The reviewer must follow its own higher-priority instructions and the repository's applicable agent rules.
 
@@ -21,7 +23,7 @@ Load these exact inputs:
 
 The active repository is `nitianbit/SwasthaDisha`; read `documentation/planning/implementation/REPOSITORY_TRANSITION.md` and record its actual branch/HEAD/status. Its initial README-only commit is `f822cdd9150b78a5df2cfbbe2a867d4b4ea7125d`; compare the imported work against that seed when needed. The fixture was originally reviewed as untracked WIP in `nitianbit/ewa_backend` at `9ca8b54606581f2158e760cad79aa7b845529184`; its ten-file snapshot remains historical evidence. Verify those source hashes in the new checkout instead of treating the legacy SHA as the new HEAD. Report drift and leave unrelated work untouched.
 
-Established context: owner says pre-launch, Node major 22, `pm2 start server`, Mumbai, and does not know MongoDB hosting/version/topology. Do not invent those facts. Current root lock has Mongoose 6.13.8/driver 4.17.2. The proposal prefers investigating Mongoose 9.12.0, with 8.24.8 as a conditional bridge; no new ODM or production server target is adopted. Current evidence reports 56 unit checks per runtime, 18 expected negative rejections, and a separate real owned MongoDB 8.0.34 transaction/cleanup probe. Those checks do not establish application compatibility, full C3, root install/build/start success, 100 RPS, or M0 acceptance.
+Established context: owner says pre-launch, Node major 22, `pm2 start server`, Mumbai, and selected retaining the existing server while DevOps supplies MongoDB hosting/version/topology and exact build/PM2 details. Do not invent those facts or assume the fresh managed MongoDB proposal was selected. Current root lock has Mongoose 6.13.8/driver 4.17.2. The proposal prefers investigating Mongoose 9.12.0, with 8.24.8 as a conditional bridge; no new ODM or production server target is adopted. Current evidence reports 56 unit checks per runtime, 18 expected negative rejections, and a separate real owned MongoDB 8.0.34 transaction/cleanup probe. Those checks do not establish application compatibility, full C3, root install/build/start success, 100 RPS, or M0 acceptance.
 
 Review these questions:
 

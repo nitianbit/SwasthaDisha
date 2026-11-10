@@ -34,6 +34,8 @@ Proposed sequence for owner decision:
 
 [Read-only baseline](M0_DEPLOYMENT_BASELINE.md) separates local observations from owner-reported target facts. The owner confirmed pre-launch and reported `pm2 start server`, target Node major 22 and Mumbai server location. The exact Node patch and MongoDB hosting type/server version/topology remain unknown; the PM2 working directory/resolved script and build command still need reconciliation. DevOps/backend must also record the target source revision and relevant supported client builds without secrets. These are intended-target facts, not evidence of a live deployment.
 
+**10 November owner choice:** retain the existing server; DevOps will provide the missing baseline. No new managed MongoDB deployment is selected. Use the [baseline handoff](implementation/DEVOPS_BASELINE_REQUEST.md); static-only investigation has internal technical approval, while root adoption and application execution remain gated.
+
 F01 investigation may proceed now. Changes to scripts/dependency/runtime choices wait for those facts and compatibility review. Retain the current ODM/driver major lines during investigation; do not make a major Mongoose upgrade a prerequisite for containment. Any necessary major change is a separate reviewed slice, not a conclusion drawn from the local Node version. No live credentials, connection strings, tokens or patient payloads belong in the baseline.
 
 ## C3 disposable ownership before integration execution

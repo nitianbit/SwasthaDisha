@@ -62,3 +62,16 @@ Two code-review findings were corrected before the real run: empty required entr
 - **F01 exit:** clean install, root type-check/build, compiled application start, default assertion-running test command and isolated CI/application integration remain outstanding. The root `npm test` placeholder is unchanged.
 
 The selected 115-scenario register remains **0 PASS, 1 FAIL, 1 BLOCKED, 110 NOT_RUN, 3 DEFERRED**. Foundation checks do not change those statuses. No operational databases, real providers, application startup, deployment, production migration or external account action were used. The frozen v1.7 and prospectus PDFs remain publication-time snapshots. The 100 RPS target has not been load-tested.
+
+## Third increment, 10 November: static compatibility evidence
+
+Active branch: `m0/f01-static-compatibility` in `nitianbit/SwasthaDisha`, base `b06be010c8bee7468eaaeb432952c787b300a5b4`. The owner selected retaining the existing server; [DevOps baseline fields](DEVOPS_BASELINE_REQUEST.md) remain pending. The local MongoDB 8 fixture is not a selected deployment target.
+
+Internal technical reviews approved the narrowed static-only investigation. Implemented the [probe](../../../test/compatibility/static_mongoose.py) and five offline safety regressions, corrected review findings before public package installation, then ran the real restricted compiler comparison in owned temporary resources. No application modules, validations, queries or provider clients were executed.
+
+- Same compiler/declarations: TypeScript 5.9.3 and @types/node 20.19.31 under Node 22.23.4. Eight actual source files plus the explicitly extracted normalizer and evaluation canary were checked.
+- Mongoose 6.13.8: zero selected-source diagnostics. Mongoose 9.12.0: eight diagnostics in three migration groups (removed types, operation/session options, pre-validation hook). This is not a full backend build or runtime result.
+- Both real compiler semantic negatives were rejected. Five offline controller regressions pass; the same regressions reject the original controller (three failures, one error).
+- Temporary locks/metadata/configs/diagnostics are retained; owned resources were removed and independently checked absent. Root app/package hashes remain unchanged.
+
+See [executed results and evidence](C2_STATIC_RESULTS.md). Root ODM/driver adoption, clean install/build/start and full C3 application admission remain gated. The 115-scenario statuses and 100 RPS acceptance remain unchanged. No deployment or M0 acceptance occurred.

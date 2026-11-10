@@ -1,0 +1,11 @@
+{
+  "current_exit_code": 0,
+  "current_tests": 5,
+  "current_pass": 5,
+  "historical_controller_exit_code": 1,
+  "historical_failure_expected": true,
+  "fixtures_cleanup": "owned outer fixtures",
+  "application_or_network_execution": false,
+  "probe_sha256": "d58f267c312a30fcecb517850e386181b0a33ffe88b74156edf27843d2802cbb",
+  "test_sha256": "115c8288fca76d70b97b104427f8b1227352512b61548476a04f35750a832738"
+}

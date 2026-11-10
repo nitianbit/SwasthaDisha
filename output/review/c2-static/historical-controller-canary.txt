@@ -1,0 +1,55 @@
+test_invalid_tool_metadata_allocates_no_workspace (test_static_mongoose.StaticProbeSafety.test_invalid_tool_metadata_allocates_no_workspace) ... FAIL
+test_migration_diagnostic_can_complete_the_static_comparison (test_static_mongoose.StaticProbeSafety.test_migration_diagnostic_can_complete_the_static_comparison) ... ok
+test_missing_module_cannot_complete_a_comparison (test_static_mongoose.StaticProbeSafety.test_missing_module_cannot_complete_a_comparison) ... FAIL
+test_registry_failure_keeps_root_readback_and_cleanup_evidence (test_static_mongoose.StaticProbeSafety.test_registry_failure_keeps_root_readback_and_cleanup_evidence) ... ERROR
+test_unrelated_negative_diagnostic_cannot_satisfy_the_canary (test_static_mongoose.StaticProbeSafety.test_unrelated_negative_diagnostic_cannot_satisfy_the_canary) ... FAIL
+
+======================================================================
+ERROR: test_registry_failure_keeps_root_readback_and_cleanup_evidence (test_static_mongoose.StaticProbeSafety.test_registry_failure_keeps_root_readback_and_cleanup_evidence)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/sd-static-regression-canary-w9y51oct/test/compatibility/test_static_mongoose.py", line 144, in test_registry_failure_keeps_root_readback_and_cleanup_evidence
+    result = self.report()
+  File "/private/tmp/sd-static-regression-canary-w9y51oct/test/compatibility/test_static_mongoose.py", line 123, in report
+    self.assertTrue(report['rootHashesUnchanged'])
+                    ~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+KeyError: 'rootHashesUnchanged'
+
+======================================================================
+FAIL: test_invalid_tool_metadata_allocates_no_workspace (test_static_mongoose.StaticProbeSafety.test_invalid_tool_metadata_allocates_no_workspace)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/sd-static-regression-canary-w9y51oct/test/compatibility/test_static_mongoose.py", line 138, in test_invalid_tool_metadata_allocates_no_workspace
+    self.assertEqual(self.allocated, [])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: [PosixPath('/private/tmp/sd-static-probe-t[38 chars]qp')] != []
+
+First list contains 1 additional elements.
+First extra element 0:
+PosixPath('/private/tmp/sd-static-probe-test-b_fnz2_w/sd-static-mongoose-368_p1qp')
+
+- [PosixPath('/private/tmp/sd-static-probe-test-b_fnz2_w/sd-static-mongoose-368_p1qp')]
++ []
+
+======================================================================
+FAIL: test_missing_module_cannot_complete_a_comparison (test_static_mongoose.StaticProbeSafety.test_missing_module_cannot_complete_a_comparison)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/sd-static-regression-canary-w9y51oct/test/compatibility/test_static_mongoose.py", line 150, in test_missing_module_cannot_complete_a_comparison
+    with self.assertRaisesRegex(ValueError, 'resolution failed'):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_unrelated_negative_diagnostic_cannot_satisfy_the_canary (test_static_mongoose.StaticProbeSafety.test_unrelated_negative_diagnostic_cannot_satisfy_the_canary)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/sd-static-regression-canary-w9y51oct/test/compatibility/test_static_mongoose.py", line 156, in test_unrelated_negative_diagnostic_cannot_satisfy_the_canary
+    with self.assertRaisesRegex(ValueError, 'negative compiler check'):
+         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ValueError not raised
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.082s
+
+FAILED (failures=3, errors=1)

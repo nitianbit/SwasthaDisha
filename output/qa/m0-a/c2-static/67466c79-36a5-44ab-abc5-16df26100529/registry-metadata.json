@@ -1,0 +1,132 @@
+{
+  "typescript@5.9.3": {
+    "name": "typescript",
+    "version": "5.9.3",
+    "dist": {
+      "shasum": "5b4f59e15310ab17a216f5d6cf53ee476ede670f",
+      "tarball": "https://registry.npmjs.org/typescript/-/typescript-5.9.3.tgz",
+      "fileCount": 132,
+      "integrity": "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==",
+      "signatures": [
+        {
+          "sig": "MEYCIQC5ifNi1il+zAZC19ov+Q5oSrhOwlpOpghAaAAXYA0RpAIhAKdcZ6pMNZGuprpke8Zi3OPB1zol9c88KVW+apJNVjTy",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "unpackedSize": 23625066
+    },
+    "engines": {
+      "node": ">=14.17"
+    },
+    "dependencies": {}
+  },
+  "@types/node@20.19.31": {
+    "name": "@types/node",
+    "version": "20.19.31",
+    "dist": {
+      "shasum": "762ddf4088b3ac2389077cf1fb5336800a1fb4d5",
+      "tarball": "https://registry.npmjs.org/@types/node/-/node-20.19.31.tgz",
+      "fileCount": 79,
+      "integrity": "sha512-5jsi0wpncvTD33Sh1UCgacK37FFwDn+EG7wCmEvs62fCvBL+n8/76cAYDok21NF6+jaVWIqKwCZyX7Vbu8eB3A==",
+      "signatures": [
+        {
+          "sig": "MEUCICUv0t4otSf63j5ThYwEBLaYZYgmsPkOuWtXaORW/cMkAiEA7l2pJMPjNuRq0dHS/gbaO7DtaZJAIxSqO3Vl/FTmDsM=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "unpackedSize": 2282558
+    },
+    "engines": {},
+    "dependencies": {
+      "undici-types": "~6.21.0"
+    }
+  },
+  "typedi@0.10.0": {
+    "name": "typedi",
+    "version": "0.10.0",
+    "dist": {
+      "shasum": "e8f9a5ee100b84addbdfb57fe90d8d9ed2a21dea",
+      "tarball": "https://registry.npmjs.org/typedi/-/typedi-0.10.0.tgz",
+      "fileCount": 133,
+      "integrity": "sha512-v3UJF8xm68BBj6AF4oQML3ikrfK2c9EmZUyLOfShpJuItAqVBHWP/KtpGinkSsIiP6EZyyb6Z3NXyW9dgS9X1w==",
+      "signatures": [
+        {
+          "sig": "MEYCIQCVM3kwsT1LHI3hrmdlFX3pEoNEQqKjiYOrO8rzO/y3wgIhAKcpi/Vgtq8DAINsEljePmtBzRgC1NV64V44QwaFsLZD",
+          "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+        }
+      ],
+      "unpackedSize": 432802,
+      "npm-signature": "-----BEGIN PGP SIGNATURE-----\r\nVersion: OpenPGP.js v3.0.13\r\nComment: https://openpgpjs.org\r\n\r\nwsFcBAEBCAAQBQJgAbYDCRA9TVsSAnZWagAA4E8P/0+GcSOOORMHSNuy9fUV\nbU4SpSKyKbKgslynfVodf6s3xZM1NtfOgF6m0j5o4kd99F8JZOKm/qhjMEVa\nOp4NzAWdf0K2zOdi2pZTsQ84Uc1u0H+vtROFd3ASM2Pdl3hM1ssrFVt43Ep0\n8EXWNx5mf4fh7+eeYHaoy1nXTuDbETH4l5MTisHb9o5JyC0IX3ZJB0a5Vs+b\nEpdoYH+UysB98VQSFYYoJHAgeBoSBy2hXb0FNbhUOCE0hEqVVNzxUzysapfG\nHwMKjG6loUCAsUUUu91SjrzxJUVjeLVZ/804E4920dgu7tJZh2a0zxdqg9u4\nN57JXRBcXAzp6bO0YG+0DtUuHNslK9oAD1chg18AaZn0+5uUg2pdiRTJKi05\nEnQuOqXGHguJc0EmRE8+9h0OCqA4iW3tiQLHAcIZ2iJ0Rx81qEhN3S9MjLIN\nNvmrt8k/NyGgAdzC1eWymkkBHH6er1zotFHS6jJtm9OBEgYR6j6GCbgXj1yF\nL5EigWzPiNCKCcEj7eBAuh4T0PtJ/mqTGQXx5ZS9tE3c9HSrvdy3XJCa0aoa\npTlpIik6dhIVrmGLcibdbQz0IhP6C6mZTgBIhA7X79Mj8o6gTmyLVmOC6DTe\nk57uZjLIs580u5VTENJ8ACjs1QkdSbFm/0AsKwoigsrUscPefHW3qaJt+cAV\nEtdA\r\n=yd63\r\n-----END PGP SIGNATURE-----\r\n"
+    },
+    "engines": {},
+    "dependencies": {}
+  },
+  "mongoose@6.13.8": {
+    "name": "mongoose",
+    "version": "6.13.8",
+    "dist": {
+      "shasum": "6d57b513fde0b4351d1354fb2d86c446779570c0",
+      "tarball": "https://registry.npmjs.org/mongoose/-/mongoose-6.13.8.tgz",
+      "fileCount": 292,
+      "integrity": "sha512-JHKco/533CyVrqCbyQsnqMpLn8ZCiKrPDTd2mvo2W7ygIvhygWjX2wj+RPjn6upZZgw0jC6U51RD7kUsyK8NBg==",
+      "signatures": [
+        {
+          "sig": "MEUCIQCWxU5ndfdMLbeB0MItjWoACtgvbfGYpgNYdcdK/ewyggIgNwqMYispjSttmvDJI4ChuenPkqnyn941FUWZRWARUQM=",
+          "keyid": "SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA"
+        }
+      ],
+      "unpackedSize": 2607616
+    },
+    "engines": {
+      "node": ">=12.0.0"
+    },
+    "dependencies": {
+      "ms": "2.1.3",
+      "bson": "^4.7.2",
+      "sift": "16.0.1",
+      "mpath": "0.9.0",
+      "kareem": "2.5.1",
+      "mquery": "4.0.3",
+      "mongodb": "4.17.2"
+    }
+  },
+  "mongoose@9.12.0": {
+    "name": "mongoose",
+    "version": "9.12.0",
+    "dist": {
+      "shasum": "4cb1bafb245a2ce4ebd1a871ca1ff0a5e4c2d2c1",
+      "tarball": "https://registry.npmjs.org/mongoose/-/mongoose-9.12.0.tgz",
+      "fileCount": 305,
+      "integrity": "sha512-nM8yl6hPcXuT+LbJYV7aFk1PmBF+0xR159pHHlaDzrovT89yQ5k+ty38Vcnd5elLYixndveBFtHJaWS9b80cKg==",
+      "signatures": [
+        {
+          "sig": "MEQCIESsfxiL49KdaR7Cwu63jvmt4dvOa1ePf15lnLRtBr0rAiAB9KPvBdCxaoms4O/+KXzNzHyY3Id2ikKCaI5osfHfIA==",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        },
+        {
+          "sig": "MEUCIGkuBK7LGp3EpUq02GzWNQ9mMA2FJRhl6jIUl1cmkCQRAiEAgBU8EMZl80GUqlFrHARKFOV0sf8lhX3eW8QojoA/XEs=",
+          "keyid": "SHA256:DhQ8wR5APBvFHLF/+Tc+AYvPOdTpcIDqOhxsBHRwC7U"
+        }
+      ],
+      "attestations": {
+        "url": "https://registry.npmjs.org/-/npm/v1/attestations/mongoose@9.12.0",
+        "provenance": {
+          "predicateType": "https://slsa.dev/provenance/v1"
+        }
+      },
+      "unpackedSize": 2197060
+    },
+    "engines": {
+      "node": ">=20.19.0"
+    },
+    "dependencies": {
+      "ms": "2.1.3",
+      "sift": "17.1.4",
+      "mpath": "0.9.0",
+      "kareem": "3.4.1",
+      "mquery": "6.0.1",
+      "mongodb": "~7.8",
+      "@standard-schema/spec": "^1.1.0"
+    }
+  }
+}
