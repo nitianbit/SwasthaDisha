@@ -40,10 +40,21 @@ Open P3: `fixture-spec.json:125` names own-or-admin as an example of an admin-de
 | Contract pre-review | `32fdf77` | APPROVE WITH REQUIRED AMENDMENTS | Core capability argument confirmed against controller lines 164-178. P2: evaluator must throw; the old canary measured nothing, so `ENETUNREACH`-only was adopted; prior "Measured limits" explicitly superseded; 14 fixture groups added. P3: logic moved into the unit gate; stricter flags parsing; `127.0.0.1` required |
 | Spec/containment final | `a609a60` | APPROVE WITH NITS | No fail-open input found. P3: five surviving mutations closed by isolating fixtures; canary wording no longer claims independent route proof; residuals generalised |
 | Standards final | `33cabbe` | APPROVE WITH NITS | No code defects; 324/324 and probe reproduced. P3: exact rejection reasons pinned; complete list of pre-record throws; hash copies bound |
-| Amendment confirmation (Standards reviewer) | `baaf071` | AMENDMENT CONFIRMED | Code unchanged since `a609a60`; 324/324 on both runtimes; probe 9/9 |
+| Amendment confirmation (Standards reviewer) | `baaf071` | AMENDMENT CONFIRMED | Harness modules unchanged since `a609a60` (tests changed only in `33cabbe` and `baaf071`); 324/324 on both runtimes; probe 9/9 |
 
 Open P3: in the application README and contract header, a sentence that follows a list was merged into its last bullet (formatting only). Kernel and libuv facts behind the capability argument remain unverified from memory; the next real run measures `ENETUNREACH` and the observed device state.
 
 ## Integration
 
-The lead merged the four reviewed heads without conflicts (`57a1b23`, `6e482a3`, `92ef4e5`, `790f276`) and ran the unit gate on the combined tree: 324/324 on Node 22.23.4 and 24.19.0, with empty stderr. The combined verifier and its receipt are in this directory. Two nonauthor composition reviews of the integration commit are recorded below once complete.
+The retained per-lane source checks are lane-scoped. Run on the integrated tree, two of them reject it, because they pin files a sibling lane changed: the wallet check pins `config.ts` (changed by the JWT lane), and the JWT check pins `bootstrap.mjs` (changed by the network lane). This is benign. The bootstrap environment allowlist still excludes `JWT_SECRET_KEY` (now `bootstrap.mjs:8-11`, cited as `:6-9` in the JWT contract), and removing the key fallback only strengthens the wallet guards. The combined verifier replaces these lane-scoped checks for the integrated tree.
+
+Additional open P3: `fixture-spec.json:141` and DEN-21 still list removing the key fallback as excluded, although the integrated tree now includes it. Fix together with the `:125` label.
+
+The lead merged the four reviewed heads without conflicts (`57a1b23`, `6e482a3`, `92ef4e5`, `790f276`) and ran the unit gate on the combined tree: 324/324 on Node 22.23.4 and 24.19.0, with empty stderr. The combined verifier and its receipt are in this directory. ## Integration reviews
+
+| Reviewer | Candidate | Decision | Findings and disposition |
+| --- | --- | --- | --- |
+| Internal Claude subagent, Standards/composition, nonauthor | `4720062` | APPROVE WITH NITS | Independently confirmed all 36 lane files (content and mode), conflict-free merge trees, verifier output, unit gate and preservation. P2: rename detection could hide a deletion, so the verifier now uses `--no-renames`. P3: mode comparison added; clean-tree check without exemption; preservation hashes pinned from the committed receipt, with the handover file set asserted; sibling-pin note; wording fixes |
+| Internal Claude subagent, Spec/composition, nonauthor | `4720062` | APPROVE WITH NITS | Composition sound and strictly safer than the isolated lanes. P2: Meet containment needs admin plus callback handling; notification broadcast added as the top decision-free item; contact-takeover residuals added to open decisions. P3: progress wording narrowed to the wallet router; dependents role rule stated; fixture DEN-21 note |
+
+The amended records and verifier are confirmed by a nonauthor reviewer before the batch is reported complete.

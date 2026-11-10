@@ -43,6 +43,7 @@ Baseline `9ea963f1f7b51aadedcfa7fc9918eb39a2fd737d`. The lead owned integration 
 | `m0/foundation-network-admission` | `baaf071babae538d2bf9096e980b8e0155c9af82` | Harness: fail-closed device-state interface rule, controller cross-check and `ENETUNREACH`-only canary; no new grant; offline only |
 
 The [combined verifier](../../../output/qa/parallel-integration-2/verify-source.py) checks:
+
 - each merged file against its reviewed lane head, and that no file was changed by two lanes;
 - the exact three-file production union and the protected root, harness and register files;
 - that the original checkout's six staged files and eleven handover files are preserved.
@@ -59,12 +60,17 @@ The foundation unit gate passes 324/324 on the integrated tree on both runtimes.
 | Public `/api/static` clinical files, cached publicly for a year | Security + clinical/privacy + mobile (F05, C1) | File access containment |
 | Unsigned lab webhooks that can trigger wallet refunds | Integration / operations (provider callback authentication, F06) | Webhook containment |
 | Booking create for any `userId` (pharmacy wallet debit) and booking PUT cancel without refund | Product + finance + clinical (per-role field rules) | Booking actor/field containment |
+| Account takeover by contact change: admin or HR can rewrite a patient's phone or email and then log in as them; a patient can change their own contact without verification, which allows pre-hijacking a future user's account | Identity / security owner | Contact-change verification and dedicated admin/HR commands |
 | Non-atomic balances and duplicate refunds; authorized-but-uncaptured payments; recharge coupon over-credit | Backend + DevOps (F11/F13, C2 topology); finance (D3, D2) | Money recovery work |
 
 ### Next ready assignments
 
 - **Foundation:** prepare an exact operator recipe for one real invocation of the new admission rule, and obtain its review. Running it needs the recorded Docker engine to be reachable.
-- **Authority, decision-free:** require authentication on the Meet router, which currently lets anyone create calendar invites with the server's Google refresh token. Ownership checks for dependents. Notification listing and ID-based operations, and the FCM `/test` sender.
+- **Authority, decision-free, in priority order:**
+  1. Notification `POST /` and `POST /send`: any signed-in user can push an arbitrary title and message to every patient by FCM (`notification/routes/index.ts:28-32`, `services/index.ts:365-410`). Interim containment: admin-only.
+  2. Meet router: mounted with no authentication (`src1/routes/index.ts:66`), and it uses the server's Google refresh token. Containment needs `authenticate` and `requireAdmin` on the invite routes, matching the commented-out import at `meet/routes/index.ts:4`. The `/google-oauth/callback` route is reached by Google's browser redirect without a bearer token, so it must be handled separately, not covered by a router-wide guard.
+  3. Dependents: own-or-admin, with everyone else getting 403, and `create` forcing `userId` to the caller. HR access to dependents would be a product decision.
+  4. Notification general listing and ID-based operations, and the fixed-text FCM `/test` sender.
 - **Money:** a post-fetch ownership check for wallet `GET /:id` and `GET /transactions/:id`. Everything else waits for the decisions above.
 
 Worktrees for this batch are under `/private/tmp/swasthadisha-parallel-p1qom53w/` (`authority-next`, `money-clinical`, `authority-jwt`, `net-admission`). Commits are stored in the shared repository; nothing has been pushed.

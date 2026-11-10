@@ -67,8 +67,21 @@ def git(*args, cwd=ROOT):
     return subprocess.check_output(['git', *args], cwd=cwd)
 
 
+ORIGINAL_HEAD = 'bfb608ea1a89551f6cd72ec5ee1349a3ee7abef7'
+ORIGINAL_STAGED_PATCH = '00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a'
+PRESERVATION_RECEIPT = 'output/qa/m0-b/otp-containment-2026-11-10/source-verification.json'
+
+
 def changed(base, head):
-    return set(git('diff', '--name-only', base, head).decode().splitlines())
+    # --no-renames: a deletion paired with a similar addition must list both paths.
+    return set(git('diff', '--no-renames', '--name-only', base, head).decode().splitlines())
+
+
+def tree_entry(rev, name):
+    line = git('ls-tree', rev, '--', name).decode().strip()
+    assert line, 'Missing tree entry: ' + rev + ':' + name
+    mode, _kind, oid = line.split('\t')[0].split()
+    return mode, oid
 
 
 def verify():
@@ -80,8 +93,10 @@ def verify():
         for name in files:
             assert name not in owner, 'File changed by two lanes: ' + name
             owner[name] = lane
+            assert tree_entry('HEAD', name) == tree_entry(head, name), \
+                'Merged file mode or content differs from reviewed lane head: ' + name
             assert (ROOT / name).read_bytes() == git('show', head + ':' + name), \
-                'Merged file differs from reviewed lane head: ' + name
+                'Working file differs from reviewed lane head: ' + name
         lane_files[lane] = len(files)
     for name, digest in REVIEWED_CODE.items():
         assert sha((ROOT / name).read_bytes()) == digest, 'Reviewed code hash changed: ' + name
@@ -92,15 +107,23 @@ def verify():
     assert src1 == PRODUCTION_UNION, 'Production union differs: ' + ', '.join(sorted(src1))
     for name in PROTECTED:
         assert (ROOT / name).read_bytes() == git('show', BASELINE + ':' + name), 'Protected file changed: ' + name
-    untracked = git('status', '--porcelain', '--untracked-files=all').decode().splitlines()
-    assert not [line for line in untracked if not line.startswith('?? output/qa/parallel-integration-2/')], \
-        'Unexpected working-tree change'
+    assert not git('status', '--porcelain', '--untracked-files=all').decode().strip(), \
+        'Integration working tree is not clean'
     original = Path(git('rev-parse', '--git-common-dir').decode().strip()).parent
-    receipt = json.loads((original / 'output/qa/m0-b/otp-containment-2026-11-10/source-verification.json').read_text())
-    for name, digest in receipt['preserved_handover_sha256'].items():
+    assert git('rev-parse', 'HEAD', cwd=original).decode().strip() == ORIGINAL_HEAD, 'Original checkout HEAD moved'
+    # Expected hashes come from the committed receipt object, not the original's working tree.
+    receipt = json.loads(git('show', ORIGINAL_HEAD + ':' + PRESERVATION_RECEIPT))
+    assert receipt['staged_patch_sha256'] == ORIGINAL_STAGED_PATCH, 'Preservation receipt changed'
+    handover = receipt['preserved_handover_sha256']
+    for name, digest in handover.items():
         assert sha((original / name).read_bytes()) == digest, 'Original handover changed: ' + name
-    assert sha(git('diff', '--cached', '--binary', '--full-index', cwd=original)) == receipt['staged_patch_sha256'], \
+    assert sha(git('diff', '--cached', '--binary', '--full-index', cwd=original)) == ORIGINAL_STAGED_PATCH, \
         'Original staged patch changed'
+    status = git('status', '--porcelain', '--untracked-files=all', cwd=original).decode().splitlines()
+    untracked = {line[3:] for line in status if line.startswith('?? ')}
+    assert untracked == set(handover), 'Original untracked files differ from the preserved handover set'
+    assert all(line[1] == ' ' for line in status if not line.startswith('?? ')), \
+        'Original checkout has unstaged edits'
     return {
         'status': 'SOURCE_COMPOSITION_VERIFIED_RUNTIME_NOT_ADMITTED',
         'baseline': BASELINE,
@@ -109,8 +132,9 @@ def verify():
         'production_union': sorted(PRODUCTION_UNION),
         'reviewed_code_sha256': REVIEWED_CODE,
         'protected_files_unchanged': len(PROTECTED),
-        'original_staged_patch_preserved': receipt['staged_patch_sha256'],
-        'original_handover_files_preserved': len(receipt['preserved_handover_sha256']),
+        'original_head': ORIGINAL_HEAD,
+        'original_staged_patch_preserved': ORIGINAL_STAGED_PATCH,
+        'original_handover_files_preserved': len(handover),
         'TypeScript_evaluations': 0,
         'Docker_calls': 0,
     }
