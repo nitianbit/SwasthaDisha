@@ -1,0 +1,19 @@
+{
+  "baseline_commit": "eba7e5c82e3ff63af9e9a958fbd100733e1fc439",
+  "status": "SOURCE_ONLY_READY_FOR_TWO_IMPLEMENTATION_REVIEWS",
+  "controller_sha256": "3b22b878fd8717b8b88620c2cb5ff3f00337f5d887beea86050fcd34d222264f",
+  "artifacts_sha256": {
+    "CONTRACT.md": "1b87df138ddc5038a53678f316c947503630c020423e1d4bb571cd61b32ab727",
+    "verify-source.py": "786f7d2f292206eba66763877a684b176f41c6cc1eb9bd738c3e011fd9a273a5",
+    "pre-edit.json": "d29f07ec82153eccd517f6951666829418c8af95184de707121d1b93e2def810",
+    "post-edit.json": "2e179b2fca74bba9b30e7727744c62103e5163a0b168568ef75df7c780998032",
+    "candidate.diff": "f0cf7d10621f8224e2c27b26fa38f99112970b57e302055bf73b932ffa78789f"
+  },
+  "source_controls_rejected": 22,
+  "structural_controls_rejected": 5,
+  "pre_edit": "REJECTED required_import before production edits",
+  "post_edit": "ACCEPTED exact reviewed transformation",
+  "whitespace": "git diff --check PASS",
+  "runtime": "NOT_RUN",
+  "limits": "TypeScript read only as data. No app/extracted-method/provider/DB/Docker execution. No commit/push."
+}
