@@ -1,0 +1,31 @@
+{
+  "status": "PURE_OFFLINE_ACTIVATION_ADMISSION_ONLY",
+  "tests": 16,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "source_sha256": {
+    "output/qa/week2-local-review-link/activate.py": "53a086794a7cb988cd359e0af9022bdc202e6388fbc8174d2ded67b41d2acc30",
+    "output/qa/week2-local-review-link/test_activation.py": "7a109693d67eee8ee4e2752fe7364a0a3ef9f37d64c0a6ce059399e466ff5428",
+    "output/qa/week2-local-review-link/ACTIVATION.md": "d39c7104a05bed0b9b52f28e79855a4c0238729b5de1f1e2f4f0d70b7182be4e",
+    "output/qa/week2-local-review-link/activation-unit.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/week2-local-review-link/activation-unit.stderr.txt": "c233347637246a5e20e0945ce57edbf3400e838206dd83067f7780ffe59bd9fe"
+  },
+  "private_plan_sha256": "7e1a9e0a846e106ff3944922cbcae39f6b05e3dc5c07316ed12bd6f835da02da",
+  "command": [
+    "env",
+    "-i",
+    "PATH=/usr/bin:/bin",
+    "TMPDIR=/private/tmp",
+    "/opt/homebrew/bin/python3",
+    "-I",
+    "-B",
+    "output/qa/week2-local-review-link/test_activation.py"
+  ],
+  "real_subprocess_ports": "FORBIDDEN_BY_MOCK_GUARDS",
+  "global_configuration_writes": 0,
+  "adapter_installs": 0,
+  "real_Ruflo_or_model_calls": 0,
+  "actual_activation": "NOT_RUN_PENDING_TWO_EXACT_NONAUTHOR_STAGE_DECISIONS",
+  "amendment": "Only exact empty env on new Claude server normalizes; all other state/value types remain exact"
+}

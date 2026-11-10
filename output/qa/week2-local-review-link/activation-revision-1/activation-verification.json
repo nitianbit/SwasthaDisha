@@ -1,0 +1,30 @@
+{
+  "status": "PURE_OFFLINE_ACTIVATION_ADMISSION_ONLY",
+  "tests": 13,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "source_sha256": {
+    "output/qa/week2-local-review-link/activate.py": "3bcb268185864373f8b98b2e24fa9e5e499379b4ed012ce0f4755af68f55c3b3",
+    "output/qa/week2-local-review-link/test_activation.py": "75772df24c5d8489669e3f21be51da3d89818df407b533603cb9d7593cc310cb",
+    "output/qa/week2-local-review-link/ACTIVATION.md": "a2826c584c38917ca6e1533e077ee34c749c8f7e08f29972c56e1edeb1f3055e",
+    "output/qa/week2-local-review-link/activation-unit.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/week2-local-review-link/activation-unit.stderr.txt": "c96a7c3808d3de94d99bc51f74776867854d7bf26b535e8411017875a2d74db9"
+  },
+  "private_plan_sha256": "7e1a9e0a846e106ff3944922cbcae39f6b05e3dc5c07316ed12bd6f835da02da",
+  "command": [
+    "env",
+    "-i",
+    "PATH=/usr/bin:/bin",
+    "TMPDIR=/private/tmp",
+    "/opt/homebrew/bin/python3",
+    "-I",
+    "-B",
+    "output/qa/week2-local-review-link/test_activation.py"
+  ],
+  "real_subprocess_ports": "FORBIDDEN_BY_MOCK_GUARDS",
+  "global_configuration_writes": 0,
+  "adapter_installs": 0,
+  "real_Ruflo_or_model_calls": 0,
+  "actual_activation": "NOT_RUN_PENDING_TWO_EXACT_NONAUTHOR_STAGE_DECISIONS"
+}

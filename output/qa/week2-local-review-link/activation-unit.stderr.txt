@@ -1,0 +1,21 @@
+test_changed_other_table_args_denied (__main__.CandidateTests.test_changed_other_table_args_denied) ... ok
+test_only_existing_ruflo_args_line_can_change (__main__.CandidateTests.test_only_existing_ruflo_args_line_can_change) ... ok
+test_profile_must_match_exact_public_candidate (__main__.CandidateTests.test_profile_must_match_exact_public_candidate) ... ok
+test_unrelated_byte_change_denied (__main__.CandidateTests.test_unrelated_byte_change_denied) ... ok
+test_nonempty_env_auth_and_unknown_new_fields_are_denied (__main__.ClaudeStateTests.test_nonempty_env_auth_and_unknown_new_fields_are_denied) ... ok
+test_only_omitted_or_empty_new_server_env_is_equivalent (__main__.ClaudeStateTests.test_only_omitted_or_empty_new_server_env_is_equivalent) ... ok
+test_unrelated_fields_and_boolean_numeric_change_are_denied (__main__.ClaudeStateTests.test_unrelated_fields_and_boolean_numeric_change_are_denied) ... ok
+test_author_reviewer_denied (__main__.ReceiptTests.test_author_reviewer_denied) ... ok
+test_duplicate_review_denied (__main__.ReceiptTests.test_duplicate_review_denied) ... ok
+test_every_binding_matters (__main__.ReceiptTests.test_every_binding_matters) ... ok
+test_extra_field_denied (__main__.ReceiptTests.test_extra_field_denied) ... ok
+test_fixed_isolated_invocation_accepts_only_platform_locale_metadata (__main__.ReceiptTests.test_fixed_isolated_invocation_accepts_only_platform_locale_metadata) ... ok
+test_invocation_rejects_arguments_ambient_auth_and_nonisolated_start (__main__.ReceiptTests.test_invocation_rejects_arguments_ambient_auth_and_nonisolated_start) ... ok
+test_malformed_identity_and_extra_payload_denied (__main__.ReceiptTests.test_malformed_identity_and_extra_payload_denied) ... ok
+test_two_actual_nonauthor_identifiers_include_canonical_root (__main__.ReceiptTests.test_two_actual_nonauthor_identifiers_include_canonical_root) ... ok
+test_wrong_stage_decision_denied (__main__.ReceiptTests.test_wrong_stage_decision_denied) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.001s
+
+OK
