@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { WalletService } from '@/modules/wallet/services';
 import { AuthRequest } from '@/modules/middleware/auth';
+import { AppError } from '@/modules/common/types';
 import {
   CreateWalletRequest,
   UpdateWalletRequest,
@@ -40,9 +41,25 @@ export class WalletController {
     });
   };
 
-  getById = async (req: Request, res: Response, _next: NextFunction) => {
+  getById = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    if (typeof req.user?._id !== 'string' || req.user._id.length === 0) {
+      throw new AppError({
+        status: 401,
+        code: 'UNAUTHORIZED',
+        message: 'Authentication is required',
+      });
+    }
+
     const { id } = req.params;
     const result = await this.walletService.getById(id);
+
+    if (req.user.userType !== 'admin' && result.userId !== req.user._id) {
+      throw new AppError({
+        status: 403,
+        code: 'FORBIDDEN',
+        message: 'Access to another wallet is not permitted',
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -156,12 +173,28 @@ export class WalletController {
   };
 
   getTransactionById = async (
-    req: Request,
+    req: AuthRequest,
     res: Response,
     _next: NextFunction
   ) => {
+    if (typeof req.user?._id !== 'string' || req.user._id.length === 0) {
+      throw new AppError({
+        status: 401,
+        code: 'UNAUTHORIZED',
+        message: 'Authentication is required',
+      });
+    }
+
     const { id } = req.params;
     const result = await this.walletService.getTransactionById(id);
+
+    if (req.user.userType !== 'admin' && result.userId !== req.user._id) {
+      throw new AppError({
+        status: 403,
+        code: 'FORBIDDEN',
+        message: 'Access to another wallet is not permitted',
+      });
+    }
 
     res.status(200).json({
       success: true,
