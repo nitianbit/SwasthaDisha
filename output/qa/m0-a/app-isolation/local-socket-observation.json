@@ -1,0 +1,9 @@
+{
+  "endpoint": "unix:///Users/shubham/.docker/run/docker.sock",
+  "resolvedSocket": "/Users/shubham/.docker/run/docker.sock",
+  "isUnixSocket": true,
+  "socketOwnerMatchesOperator": true,
+  "engineIdentitySource": "output/qa/m0-a/2026-11-10/cleanup-verification.json",
+  "freshDockerConnectionMade": false,
+  "note": "Filesystem metadata only; actual engine equality remains an activation precondition."
+}

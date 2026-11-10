@@ -8,7 +8,7 @@ import { join } from 'node:path';
 
 const owned = new WeakMap();
 const markerName = '.foundation-owner.json';
-const stagedFiles = new Set([markerName, 'preflight.mjs', 'preflight.test.mjs', 'mongo-fixture.mjs', 'mongo-fixture.test.mjs', 'scratch']);
+const stagedFiles = new Set([markerName, 'preflight.mjs', 'preflight.test.mjs', 'mongo-fixture.mjs', 'mongo-fixture.test.mjs', 'app-container.mjs', 'app-container.test.mjs', 'app-bundle.mjs', 'app-bundle.test.mjs', 'app-ports.mjs', 'app-image.json', 'app-runtime.json', 'scratch']);
 
 /** Owns a new filesystem fixture; this never admits a database or provider. */
 export function createWorkspace(parent = tmpdir()) {

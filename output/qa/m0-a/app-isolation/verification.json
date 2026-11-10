@@ -1,0 +1,74 @@
+{
+  "date": "2026-11-10",
+  "branch": "m0/f01-app-isolation",
+  "base_commit": "555bec4b4729fb14487bcfc48c40c53b6f85421f",
+  "review_status": "PENDING_FIRST_ISOLATED_SMOKE",
+  "runs": [
+    {
+      "runtime": "v22.23.4",
+      "tests": 127,
+      "pass": 127,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "evidence": "node22.tap"
+    },
+    {
+      "runtime": "v24.19.0",
+      "tests": 127,
+      "pass": 127,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0,
+      "evidence": "node24.tap"
+    }
+  ],
+  "runner_canaries": {
+    "positive_controls": 2,
+    "expected_rejections": 20,
+    "evidence": "gate-canaries.json"
+  },
+  "syntax_checks": "syntax-checks.json",
+  "image_index_sha256": "sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
+  "local_profile_observation": "local-socket-observation.json",
+  "source_sha256": {
+    "test/foundation/preflight.mjs": "2cdfa366dad210fe5483a52ae4c8c4b6488a4429bc8e0e8dff1f2b7f4f5487da",
+    "test/foundation/run.mjs": "f14c1830b0fbe23c1be454cb97003c6c6fb58fdb11bee0ac8bc91134d63ca0c9",
+    "test/application/app-bundle.mjs": "1b0535ed89ca1834043a8b11c4e0f43cc4d1ace91497bc32b8b9dec313feeb54",
+    "test/application/app-bundle.test.mjs": "acfd27c0d7892154b6980ae3aa61bd2973c5f8a0e588a3c1225f2bdae909a95b",
+    "test/application/app-container.mjs": "159153910335faf12d9a94390e85b25e607476762081de29eba884bfb4a38df3",
+    "test/application/app-container.test.mjs": "235d02f18df0ec5d1658d378523ff4e63fe4b0089d50698d274dcee540202267",
+    "test/application/app-image.json": "4f1390608939a823788010499cc810801d01fd8ee44248da5424776c816a8611",
+    "test/application/app-ports.mjs": "f7efb3ee12eee3f0ff427b360d9c65776c20f34c80432ac0b5a626df55408cf1",
+    "test/application/app-runtime.json": "e4e0b67677e084dce5d65d958763057c5ca1b257232b5f007545a327fb40f0b3",
+    "test/application/bootstrap.mjs": "7d124428b1530e80236ede08c88018678ee16ccd8afdef2d2c8c587cf36b76d7",
+    "test/application/run.mjs": "78445ca1dddc2e66aea9086d1d57587d450fa68dd9e7ce0b56c34915d3a4d162",
+    "test/application/scenario.mjs": "b0a9fbc2a990cf344487d9f88a49d927fbb4fa806a794353fb3adcea9059e031"
+  },
+  "proposed_production_helper": {
+    "path": "src1/modules/common/utils/queryUtils.ts",
+    "sha256": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d",
+    "modified": false,
+    "runtime_import": "NOT_RUN"
+  },
+  "real_docker_calls": 0,
+  "image_pulls": 0,
+  "new_containers": 0,
+  "real_sandbox_bootstrap_or_scenario": "NOT_RUN",
+  "real_mount_network_permission_assertions": "NOT_RUN",
+  "real_sandbox_cleanup_readback": "NOT_RUN",
+  "database_mode": "not-admitted",
+  "real_provider_calls": 0,
+  "root_dependency_start_or_app_changes": false,
+  "full_C3_or_M0_acceptance": false,
+  "selected_115_scenarios": {
+    "PASS": 0,
+    "FAIL": 1,
+    "BLOCKED": 1,
+    "NOT_RUN": 110,
+    "DEFERRED": 3
+  },
+  "historical_initial_run": "node22-initial.tap predates profile/interface refinements; final source evidence is node22.tap and node24.tap"
+}

@@ -1,0 +1,14 @@
+{
+  "image": "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
+  "nodeVersion": "22.23.4",
+  "tagObserved": "22.23.4-bookworm-slim",
+  "registry": "https://registry-1.docker.io/v2/library/node/manifests/22.23.4-bookworm-slim",
+  "observedOn": "2026-11-10",
+  "platforms": [
+    "linux/amd64",
+    "linux/arm",
+    "linux/arm64",
+    "linux/ppc64le"
+  ],
+  "scope": "Proposed local isolated test runtime only; no image pull/container/app execution yet"
+}

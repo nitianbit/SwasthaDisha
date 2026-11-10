@@ -1,0 +1,6 @@
+{
+  "endpoint": "unix:///Users/shubham/.docker/run/docker.sock",
+  "engineId": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+  "recordedFrom": "output/qa/m0-a/2026-11-10/cleanup-verification.json",
+  "scope": "Previously observed local Docker Desktop only; first application sandbox activation remains review pending"
+}

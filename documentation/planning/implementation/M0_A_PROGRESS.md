@@ -75,3 +75,15 @@ Internal technical reviews approved the narrowed static-only investigation. Impl
 - Temporary locks/metadata/configs/diagnostics are retained; owned resources were removed and independently checked absent. Root app/package hashes remain unchanged.
 
 See [executed results and evidence](C2_STATIC_RESULTS.md). Root ODM/driver adoption, clean install/build/start and full C3 application admission remain gated. The 115-scenario statuses and 100 RPS acceptance remain unchanged. No deployment or M0 acceptance occurred.
+
+## Fourth increment, 10 November: application sandbox candidate
+
+Branch `m0/f01-app-isolation`, base `555bec4b4729fb14487bcfc48c40c53b6f85421f`. Implemented a local Node container controller, fixed-bundle admission, bootstrap, recording ports and a proposed pure-helper scenario. The candidate explicitly permits one owned read-only source bind on the previously recorded local Docker Desktop profile; it does not alter the existing no-host-mount MongoDB fixture. Root packages, startup/configuration and application source remain unchanged.
+
+**Executed:** the expanded dependency-free gate passes **127** checks on Node 22.23.4 and 24.19.0. All four required entries run with zero skips/TODOs/cancellations. New application cases use fake Docker and synthetic bundles. Two positive runner controls and twenty expected negative rejections pass. Trusted bootstrap/scenario/launcher syntax checks are separate parser-only evidence. The public image manifest/index digest was verified without pulling the image.
+
+**Review pending / NOT RUN:** any new real Docker call, image pull, container creation/start, real bootstrap/scenario, production search-helper runtime import or real sandbox cleanup readback. Unit checks do not establish actual egress isolation, real mount behavior, SDK coverage, full C3, domain acceptance or 100 RPS. Prior standalone runner snapshots are historical; this slice intentionally updates its staging guard/runner and retains all earlier test cases.
+
+The genuine next gate is [first isolated smoke activation](C3_APP_ISOLATION_CONTRACT.md), with a [ready-to-paste review prompt](APP_ISOLATION_REVIEW_PROMPT.md). Review the exact new code/evidence before caching the image and running the fixed smoke. Approval would cover only that synthetic no-DB scenario and exact-ID/workspace cleanup proof; legacy entry points, DB clients, real SDK/provider callbacks and operational resources stay unadmitted.
+
+C2 adoption still awaits the [retained-server baseline](DEVOPS_BASELINE_REQUEST.md). The selected 115-scenario register remains 0 PASS, 1 FAIL, 1 BLOCKED, 110 NOT_RUN, 3 DEFERRED. No generic M0-start approval is being requested again.

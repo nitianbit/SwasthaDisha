@@ -1,0 +1,20 @@
+{
+  "mode": "parser-only, no module evaluation",
+  "checks": [
+    {
+      "path": "test/application/bootstrap.mjs",
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "path": "test/application/scenario.mjs",
+      "exit_code": 0,
+      "stderr": ""
+    },
+    {
+      "path": "test/application/run.mjs",
+      "exit_code": 0,
+      "stderr": ""
+    }
+  ]
+}

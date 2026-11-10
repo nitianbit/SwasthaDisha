@@ -15,14 +15,17 @@ if (process.env.NODE_OPTIONS || process.env.NODE_PATH || process.execArgv.length
 if (process.argv.length !== 2) throw new Error('The foundation runner accepts no resource overrides');
 
 const workspace = createWorkspace();
-const entries = ['preflight.test.mjs', 'mongo-fixture.test.mjs'];
+const entries = ['preflight.test.mjs', 'mongo-fixture.test.mjs', 'app-container.test.mjs', 'app-bundle.test.mjs'];
 try {
   // Stage only reviewed dependency-free tests; no application, .env or key files.
-  for (const file of ['preflight.mjs', 'preflight.test.mjs', 'mongo-fixture.mjs', 'mongo-fixture.test.mjs']) {
+  for (const file of ['preflight.mjs', 'preflight.test.mjs', 'mongo-fixture.mjs', 'mongo-fixture.test.mjs',
+    '../application/app-container.mjs', '../application/app-container.test.mjs', '../application/app-bundle.mjs',
+    '../application/app-bundle.test.mjs', '../application/app-ports.mjs', '../application/app-image.json', '../application/app-runtime.json']) {
     const source = fileURLToPath(new URL(file, import.meta.url));
+    const destination = file.split('/').at(-1);
     const stat = lstatSync(source);
     if (!stat.isFile() || stat.isSymbolicLink()) throw new Error('Foundation source must be a regular file');
-    copyFileSync(source, join(workspace.directory, file));
+    copyFileSync(source, join(workspace.directory, destination));
   }
   const launch = { cwd: workspace.directory, env: childEnvironment(workspace) };
   const linkProbe = join(workspace.directory, 'scratch', 'link-probe');

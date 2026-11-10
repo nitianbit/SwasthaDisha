@@ -1,0 +1,772 @@
+TAP version 13
+# Subtest: the exact staged bundle admits the expected identity and hashes
+ok 1 - the exact staged bundle admits the expected identity and hashes
+  ---
+  duration_ms: 13.433875
+  type: 'test'
+  ...
+# Subtest: .env is rejected before a scenario import
+ok 2 - .env is rejected before a scenario import
+  ---
+  duration_ms: 3.870458
+  type: 'test'
+  ...
+# Subtest: .env.production is rejected before a scenario import
+ok 3 - .env.production is rejected before a scenario import
+  ---
+  duration_ms: 4.284
+  type: 'test'
+  ...
+# Subtest: credentials.json is rejected before a scenario import
+ok 4 - credentials.json is rejected before a scenario import
+  ---
+  duration_ms: 2.0885
+  type: 'test'
+  ...
+# Subtest: extra.mjs is rejected before a scenario import
+ok 5 - extra.mjs is rejected before a scenario import
+  ---
+  duration_ms: 2.241291
+  type: 'test'
+  ...
+# Subtest: changed source bytes are rejected before a scenario import
+ok 6 - changed source bytes are rejected before a scenario import
+  ---
+  duration_ms: 2.646042
+  type: 'test'
+  ...
+# Subtest: a copied manifest cannot change the expected run identity
+ok 7 - a copied manifest cannot change the expected run identity
+  ---
+  duration_ms: 2.204125
+  type: 'test'
+  ...
+# Subtest: changed manifest bytes cannot supply their own expected hash
+ok 8 - changed manifest bytes cannot supply their own expected hash
+  ---
+  duration_ms: 2.077667
+  type: 'test'
+  ...
+# Subtest: source construction rejects unknown filenames and non-text values
+ok 9 - source construction rejects unknown filenames and non-text values
+  ---
+  duration_ms: 0.218959
+  type: 'test'
+  ...
+# Subtest: provider ports record each configured request without a transport or success authority
+ok 10 - provider ports record each configured request without a transport or success authority
+  ---
+  duration_ms: 0.4195
+  type: 'test'
+  ...
+# Subtest: unknown provider operations cannot create a recorded effect
+ok 11 - unknown provider operations cannot create a recorded effect
+  ---
+  duration_ms: 0.087417
+  type: 'test'
+  ...
+# Subtest: realistic or extra payload fields are rejected without recording a call
+ok 12 - realistic or extra payload fields are rejected without recording a call
+  ---
+  duration_ms: 0.07925
+  type: 'test'
+  ...
+# Subtest: the owned application fixture runs once and removes only its own resources
+ok 13 - the owned application fixture runs once and removes only its own resources
+  ---
+  duration_ms: 11.37575
+  type: 'test'
+  ...
+# Subtest: remote endpoint is refused before Docker
+ok 14 - remote endpoint is refused before Docker
+  ---
+  duration_ms: 0.129584
+  type: 'test'
+  ...
+# Subtest: supplied image is refused before Docker
+ok 15 - supplied image is refused before Docker
+  ---
+  duration_ms: 0.04825
+  type: 'test'
+  ...
+# Subtest: supplied DB URI is refused before Docker
+ok 16 - supplied DB URI is refused before Docker
+  ---
+  duration_ms: 0.040208
+  type: 'test'
+  ...
+# Subtest: supplied directory is refused before Docker
+ok 17 - supplied directory is refused before Docker
+  ---
+  duration_ms: 0.055917
+  type: 'test'
+  ...
+# Subtest: supplied container ID is refused before Docker
+ok 18 - supplied container ID is refused before Docker
+  ---
+  duration_ms: 0.036041
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_HOST is refused before Docker
+ok 19 - ambient DOCKER_HOST is refused before Docker
+  ---
+  duration_ms: 0.2055
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONTEXT is refused before Docker
+ok 20 - ambient DOCKER_CONTEXT is refused before Docker
+  ---
+  duration_ms: 0.070792
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONFIG is refused before Docker
+ok 21 - ambient DOCKER_CONFIG is refused before Docker
+  ---
+  duration_ms: 0.041083
+  type: 'test'
+  ...
+# Subtest: ambient MONGODB_URL is refused before Docker
+ok 22 - ambient MONGODB_URL is refused before Docker
+  ---
+  duration_ms: 0.069667
+  type: 'test'
+  ...
+# Subtest: ambient PHARMACY_TEST_MONGODB_URI is refused before Docker
+ok 23 - ambient PHARMACY_TEST_MONGODB_URI is refused before Docker
+  ---
+  duration_ms: 0.038375
+  type: 'test'
+  ...
+# Subtest: ambient PAYMENT_SECRET is refused before Docker
+ok 24 - ambient PAYMENT_SECRET is refused before Docker
+  ---
+  duration_ms: 0.036625
+  type: 'test'
+  ...
+# Subtest: ambient NODE_OPTIONS is refused before Docker
+ok 25 - ambient NODE_OPTIONS is refused before Docker
+  ---
+  duration_ms: 0.113625
+  type: 'test'
+  ...
+# Subtest: container ID drift refuses start and destructive cleanup
+ok 26 - container ID drift refuses start and destructive cleanup
+  ---
+  duration_ms: 15.081916
+  type: 'test'
+  ...
+# Subtest: engine image ID drift refuses start and destructive cleanup
+ok 27 - engine image ID drift refuses start and destructive cleanup
+  ---
+  duration_ms: 9.846333
+  type: 'test'
+  ...
+# Subtest: run label drift refuses start and destructive cleanup
+ok 28 - run label drift refuses start and destructive cleanup
+  ---
+  duration_ms: 7.336375
+  type: 'test'
+  ...
+# Subtest: image reference drift refuses start and destructive cleanup
+ok 29 - image reference drift refuses start and destructive cleanup
+  ---
+  duration_ms: 6.079417
+  type: 'test'
+  ...
+# Subtest: environment drift refuses start and destructive cleanup
+ok 30 - environment drift refuses start and destructive cleanup
+  ---
+  duration_ms: 6.67525
+  type: 'test'
+  ...
+# Subtest: command drift refuses start and destructive cleanup
+ok 31 - command drift refuses start and destructive cleanup
+  ---
+  duration_ms: 6.399291
+  type: 'test'
+  ...
+# Subtest: root user drift refuses start and destructive cleanup
+ok 32 - root user drift refuses start and destructive cleanup
+  ---
+  duration_ms: 149.184875
+  type: 'test'
+  ...
+# Subtest: working directory drift refuses start and destructive cleanup
+ok 33 - working directory drift refuses start and destructive cleanup
+  ---
+  duration_ms: 4.797209
+  type: 'test'
+  ...
+# Subtest: healthcheck drift refuses start and destructive cleanup
+ok 34 - healthcheck drift refuses start and destructive cleanup
+  ---
+  duration_ms: 326.610041
+  type: 'test'
+  ...
+# Subtest: network mode drift refuses start and destructive cleanup
+ok 35 - network mode drift refuses start and destructive cleanup
+  ---
+  duration_ms: 6.732625
+  type: 'test'
+  ...
+# Subtest: extra network drift refuses start and destructive cleanup
+ok 36 - extra network drift refuses start and destructive cleanup
+  ---
+  duration_ms: 6.060375
+  type: 'test'
+  ...
+# Subtest: published port drift refuses start and destructive cleanup
+ok 37 - published port drift refuses start and destructive cleanup
+  ---
+  duration_ms: 4.878208
+  type: 'test'
+  ...
+# Subtest: writable root drift refuses start and destructive cleanup
+ok 38 - writable root drift refuses start and destructive cleanup
+  ---
+  duration_ms: 7.824625
+  type: 'test'
+  ...
+# Subtest: privilege drift refuses start and destructive cleanup
+ok 39 - privilege drift refuses start and destructive cleanup
+  ---
+  duration_ms: 5.3535
+  type: 'test'
+  ...
+# Subtest: added capability drift refuses start and destructive cleanup
+ok 40 - added capability drift refuses start and destructive cleanup
+  ---
+  duration_ms: 5.971958
+  type: 'test'
+  ...
+# Subtest: host IPC drift refuses start and destructive cleanup
+ok 41 - host IPC drift refuses start and destructive cleanup
+  ---
+  duration_ms: 134.868292
+  type: 'test'
+  ...
+# Subtest: weakened security profile drift refuses start and destructive cleanup
+ok 42 - weakened security profile drift refuses start and destructive cleanup
+  ---
+  duration_ms: 4.539875
+  type: 'test'
+  ...
+# Subtest: memory bound drift refuses start and destructive cleanup
+ok 43 - memory bound drift refuses start and destructive cleanup
+  ---
+  duration_ms: 5.6965
+  type: 'test'
+  ...
+# Subtest: tmpfs drift refuses start and destructive cleanup
+ok 44 - tmpfs drift refuses start and destructive cleanup
+  ---
+  duration_ms: 7.71325
+  type: 'test'
+  ...
+# Subtest: logging drift refuses start and destructive cleanup
+ok 45 - logging drift refuses start and destructive cleanup
+  ---
+  duration_ms: 14.403583
+  type: 'test'
+  ...
+# Subtest: declared mount drift refuses start and destructive cleanup
+ok 46 - declared mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 7.5
+  type: 'test'
+  ...
+# Subtest: effective mount drift refuses start and destructive cleanup
+ok 47 - effective mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 4.380083
+  type: 'test'
+  ...
+# Subtest: host bind syntax drift refuses start and destructive cleanup
+ok 48 - host bind syntax drift refuses start and destructive cleanup
+  ---
+  duration_ms: 13.425625
+  type: 'test'
+  ...
+# Subtest: declared writable mount drift refuses start and destructive cleanup
+ok 49 - declared writable mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 19.065209
+  type: 'test'
+  ...
+# Subtest: writable mount drift refuses start and destructive cleanup
+ok 50 - writable mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 375.562625
+  type: 'test'
+  ...
+# Subtest: extra mount drift refuses start and destructive cleanup
+ok 51 - extra mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 7.521292
+  type: 'test'
+  ...
+# Subtest: daemon drift cannot redirect execution or cleanup
+ok 52 - daemon drift cannot redirect execution or cleanup
+  ---
+  duration_ms: 5.319
+  type: 'test'
+  ...
+# Subtest: changed bundle bytes are denied before any container start
+ok 53 - changed bundle bytes are denied before any container start
+  ---
+  duration_ms: 386.468917
+  type: 'test'
+  ...
+# Subtest: wrong identity cannot produce passing application evidence
+ok 54 - wrong identity cannot produce passing application evidence
+  ---
+  duration_ms: 7.132083
+  type: 'test'
+  ...
+# Subtest: missing admission cannot produce passing application evidence
+ok 55 - missing admission cannot produce passing application evidence
+  ---
+  duration_ms: 8.847084
+  type: 'test'
+  ...
+# Subtest: network success cannot produce passing application evidence
+ok 56 - network success cannot produce passing application evidence
+  ---
+  duration_ms: 6.616125
+  type: 'test'
+  ...
+# Subtest: external interface cannot produce passing application evidence
+ok 57 - external interface cannot produce passing application evidence
+  ---
+  duration_ms: 17.688333
+  type: 'test'
+  ...
+# Subtest: database mode cannot produce passing application evidence
+ok 58 - database mode cannot produce passing application evidence
+  ---
+  duration_ms: 29.575917
+  type: 'test'
+  ...
+# Subtest: missing port cannot produce passing application evidence
+ok 59 - missing port cannot produce passing application evidence
+  ---
+  duration_ms: 5.573542
+  type: 'test'
+  ...
+# Subtest: duplicate port cannot produce passing application evidence
+ok 60 - duplicate port cannot produce passing application evidence
+  ---
+  duration_ms: 10.83975
+  type: 'test'
+  ...
+# Subtest: reported effect cannot produce passing application evidence
+ok 61 - reported effect cannot produce passing application evidence
+  ---
+  duration_ms: 10.07825
+  type: 'test'
+  ...
+# Subtest: wrong operation cannot produce passing application evidence
+ok 62 - wrong operation cannot produce passing application evidence
+  ---
+  duration_ms: 17.648875
+  type: 'test'
+  ...
+# Subtest: missing scenario assertion cannot produce passing application evidence
+ok 63 - missing scenario assertion cannot produce passing application evidence
+  ---
+  duration_ms: 7.747334
+  type: 'test'
+  ...
+# Subtest: an image lookup failure cleans only its fresh filesystem workspace
+ok 64 - an image lookup failure cleans only its fresh filesystem workspace
+  ---
+  duration_ms: 248.807917
+  type: 'test'
+  ...
+# Subtest: an unacknowledged create never adopts or removes a container
+ok 65 - an unacknowledged create never adopts or removes a container
+  ---
+  duration_ms: 10.245208
+  type: 'test'
+  ...
+# Subtest: a getter is read once and cannot change the admitted endpoint
+ok 66 - a getter is read once and cannot change the admitted endpoint
+  ---
+  duration_ms: 4.11625
+  type: 'test'
+  ...
+# Subtest: nonzero exit rejects an otherwise successful payload
+ok 67 - nonzero exit rejects an otherwise successful payload
+  ---
+  duration_ms: 48.114542
+  type: 'test'
+  ...
+# Subtest: OOM kill rejects an otherwise successful payload
+ok 68 - OOM kill rejects an otherwise successful payload
+  ---
+  duration_ms: 293.497042
+  type: 'test'
+  ...
+# Subtest: still-running container rejects an otherwise successful payload
+ok 69 - still-running container rejects an otherwise successful payload
+  ---
+  duration_ms: 5.318167
+  type: 'test'
+  ...
+# Subtest: an invalid create ID never authorizes inspection or cleanup
+ok 70 - an invalid create ID never authorizes inspection or cleanup
+  ---
+  duration_ms: 1.905625
+  type: 'test'
+  ...
+# Subtest: an unreviewed engine cannot create an application container
+ok 71 - an unreviewed engine cannot create an application container
+  ---
+  duration_ms: 135.940166
+  type: 'test'
+  ...
+# Subtest: the owned fixture lifecycle mutates only its acknowledged container ID
+ok 72 - the owned fixture lifecycle mutates only its acknowledged container ID
+  ---
+  duration_ms: 1.71825
+  type: 'test'
+  ...
+# Subtest: TCP endpoint is rejected before any Docker call
+ok 73 - TCP endpoint is rejected before any Docker call
+  ---
+  duration_ms: 0.101625
+  type: 'test'
+  ...
+# Subtest: SSH endpoint is rejected before any Docker call
+ok 74 - SSH endpoint is rejected before any Docker call
+  ---
+  duration_ms: 0.044042
+  type: 'test'
+  ...
+# Subtest: unpinned image is rejected before any Docker call
+ok 75 - unpinned image is rejected before any Docker call
+  ---
+  duration_ms: 0.086541
+  type: 'test'
+  ...
+# Subtest: another registry is rejected before any Docker call
+ok 76 - another registry is rejected before any Docker call
+  ---
+  duration_ms: 0.035333
+  type: 'test'
+  ...
+# Subtest: supplied database URI is rejected before any Docker call
+ok 77 - supplied database URI is rejected before any Docker call
+  ---
+  duration_ms: 0.035667
+  type: 'test'
+  ...
+# Subtest: supplied container ID is rejected before any Docker call
+ok 78 - supplied container ID is rejected before any Docker call
+  ---
+  duration_ms: 0.034042
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_HOST cannot select a different Docker resource
+ok 79 - ambient DOCKER_HOST cannot select a different Docker resource
+  ---
+  duration_ms: 0.0845
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONTEXT cannot select a different Docker resource
+ok 80 - ambient DOCKER_CONTEXT cannot select a different Docker resource
+  ---
+  duration_ms: 0.044875
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONFIG cannot select a different Docker resource
+ok 81 - ambient DOCKER_CONFIG cannot select a different Docker resource
+  ---
+  duration_ms: 0.04275
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_TLS_VERIFY cannot select a different Docker resource
+ok 82 - ambient DOCKER_TLS_VERIFY cannot select a different Docker resource
+  ---
+  duration_ms: 0.035208
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CERT_PATH cannot select a different Docker resource
+ok 83 - ambient DOCKER_CERT_PATH cannot select a different Docker resource
+  ---
+  duration_ms: 0.04475
+  type: 'test'
+  ...
+# Subtest: container ID drift prevents start and cleanup
+ok 84 - container ID drift prevents start and cleanup
+  ---
+  duration_ms: 55.492833
+  type: 'test'
+  ...
+# Subtest: run label drift prevents start and cleanup
+ok 85 - run label drift prevents start and cleanup
+  ---
+  duration_ms: 0.223125
+  type: 'test'
+  ...
+# Subtest: image drift prevents start and cleanup
+ok 86 - image drift prevents start and cleanup
+  ---
+  duration_ms: 0.292791
+  type: 'test'
+  ...
+# Subtest: root user drift prevents start and cleanup
+ok 87 - root user drift prevents start and cleanup
+  ---
+  duration_ms: 0.253333
+  type: 'test'
+  ...
+# Subtest: host network drift prevents start and cleanup
+ok 88 - host network drift prevents start and cleanup
+  ---
+  duration_ms: 0.143083
+  type: 'test'
+  ...
+# Subtest: published port drift prevents start and cleanup
+ok 89 - published port drift prevents start and cleanup
+  ---
+  duration_ms: 0.1315
+  type: 'test'
+  ...
+# Subtest: host mount drift prevents start and cleanup
+ok 90 - host mount drift prevents start and cleanup
+  ---
+  duration_ms: 0.122959
+  type: 'test'
+  ...
+# Subtest: persistent volume drift prevents start and cleanup
+ok 91 - persistent volume drift prevents start and cleanup
+  ---
+  duration_ms: 0.221
+  type: 'test'
+  ...
+# Subtest: writeable root drift prevents start and cleanup
+ok 92 - writeable root drift prevents start and cleanup
+  ---
+  duration_ms: 0.196042
+  type: 'test'
+  ...
+# Subtest: added capability drift prevents start and cleanup
+ok 93 - added capability drift prevents start and cleanup
+  ---
+  duration_ms: 0.153208
+  type: 'test'
+  ...
+# Subtest: host IPC drift prevents start and cleanup
+ok 94 - host IPC drift prevents start and cleanup
+  ---
+  duration_ms: 0.156791
+  type: 'test'
+  ...
+# Subtest: host device drift prevents start and cleanup
+ok 95 - host device drift prevents start and cleanup
+  ---
+  duration_ms: 0.138459
+  type: 'test'
+  ...
+# Subtest: missing memory limit drift prevents start and cleanup
+ok 96 - missing memory limit drift prevents start and cleanup
+  ---
+  duration_ms: 0.117833
+  type: 'test'
+  ...
+# Subtest: changed tmpfs drift prevents start and cleanup
+ok 97 - changed tmpfs drift prevents start and cleanup
+  ---
+  duration_ms: 0.111542
+  type: 'test'
+  ...
+# Subtest: daemon changes cannot redirect start or cleanup
+ok 98 - daemon changes cannot redirect start or cleanup
+  ---
+  duration_ms: 28.270334
+  type: 'test'
+  ...
+# Subtest: no external or unknown container is adopted after an unacknowledged create
+ok 99 - no external or unknown container is adopted after an unacknowledged create
+  ---
+  duration_ms: 0.218416
+  type: 'test'
+  ...
+# Subtest: an invalid returned container ID cannot authorize inspection or cleanup
+ok 100 - an invalid returned container ID cannot authorize inspection or cleanup
+  ---
+  duration_ms: 0.112708
+  type: 'test'
+  ...
+# Subtest: database effects require readiness and revalidate ownership after start
+ok 101 - database effects require readiness and revalidate ownership after start
+  ---
+  duration_ms: 0.25625
+  type: 'test'
+  ...
+# Subtest: a caller cannot change the captured image after creation
+ok 102 - a caller cannot change the captured image after creation
+  ---
+  duration_ms: 0.126083
+  type: 'test'
+  ...
+# Subtest: image admission validates the same single snapshot used for creation
+ok 103 - image admission validates the same single snapshot used for creation
+  ---
+  duration_ms: 2.946667
+  type: 'test'
+  ...
+# Subtest: an initially unpinned getter is rejected before Docker is invoked
+ok 104 - an initially unpinned getter is rejected before Docker is invoked
+  ---
+  duration_ms: 0.15775
+  type: 'test'
+  ...
+# Subtest: a second start cannot issue another start command
+ok 105 - a second start cannot issue another start command
+  ---
+  duration_ms: 0.239792
+  type: 'test'
+  ...
+# Subtest: missing commit cannot produce passing transaction evidence
+ok 106 - missing commit cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.212417
+  type: 'test'
+  ...
+# Subtest: failed rollback cannot produce passing transaction evidence
+ok 107 - failed rollback cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.128458
+  type: 'test'
+  ...
+# Subtest: wrong namespace cannot produce passing transaction evidence
+ok 108 - wrong namespace cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.123041
+  type: 'test'
+  ...
+# Subtest: wrong replica set cannot produce passing transaction evidence
+ok 109 - wrong replica set cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.120375
+  type: 'test'
+  ...
+# Subtest: a runner-created workspace admits the exact clean unit-test launch
+ok 110 - a runner-created workspace admits the exact clean unit-test launch
+  ---
+  duration_ms: 187.509584
+  type: 'test'
+  ...
+# Subtest: a copied marker and matching directory do not confer ownership
+ok 111 - a copied marker and matching directory do not confer ownership
+  ---
+  duration_ms: 1.472583
+  type: 'test'
+  ...
+# Subtest: unknown resource identity cannot authorize a launch
+ok 112 - unknown resource identity cannot authorize a launch
+  ---
+  duration_ms: 0.072584
+  type: 'test'
+  ...
+# Subtest: inherited NODE_OPTIONS is refused before imports or connectors
+ok 113 - inherited NODE_OPTIONS is refused before imports or connectors
+  ---
+  duration_ms: 1.76825
+  type: 'test'
+  ...
+# Subtest: inherited NODE_PATH is refused before imports or connectors
+ok 114 - inherited NODE_PATH is refused before imports or connectors
+  ---
+  duration_ms: 2.133
+  type: 'test'
+  ...
+# Subtest: inherited MONGODB_URL is refused before imports or connectors
+ok 115 - inherited MONGODB_URL is refused before imports or connectors
+  ---
+  duration_ms: 2.178917
+  type: 'test'
+  ...
+# Subtest: inherited PHARMACY_TEST_MONGODB_URI is refused before imports or connectors
+ok 116 - inherited PHARMACY_TEST_MONGODB_URI is refused before imports or connectors
+  ---
+  duration_ms: 114.382667
+  type: 'test'
+  ...
+# Subtest: inherited PAYMENT_SECRET is refused before imports or connectors
+ok 117 - inherited PAYMENT_SECRET is refused before imports or connectors
+  ---
+  duration_ms: 2.228958
+  type: 'test'
+  ...
+# Subtest: a database named latest is not admitted as a disposable resource
+ok 118 - a database named latest is not admitted as a disposable resource
+  ---
+  duration_ms: 1.280833
+  type: 'test'
+  ...
+# Subtest: incorrect working directory or test identity is refused
+ok 119 - incorrect working directory or test identity is refused
+  ---
+  duration_ms: 1.966667
+  type: 'test'
+  ...
+# Subtest: missing environment fields are refused
+ok 120 - missing environment fields are refused
+  ---
+  duration_ms: 1.853833
+  type: 'test'
+  ...
+# Subtest: an operational .env file is refused, including nested files
+ok 121 - an operational .env file is refused, including nested files
+  ---
+  duration_ms: 1.694208
+  type: 'test'
+  ...
+# Subtest: unexpected staged application files are refused
+ok 122 - unexpected staged application files are refused
+  ---
+  duration_ms: 1.303042
+  type: 'test'
+  ...
+# Subtest: the test child cannot create symlinks to escape its filesystem permissions
+ok 123 - the test child cannot create symlinks to escape its filesystem permissions
+  ---
+  duration_ms: 2.797416
+  type: 'test'
+  ...
+# Subtest: changed ownership refuses both execution and cleanup
+ok 124 - changed ownership refuses both execution and cleanup
+  ---
+  duration_ms: 2.539917
+  type: 'test'
+  ...
+# Subtest: a replacement directory with a copied marker is not the owned resource
+ok 125 - a replacement directory with a copied marker is not the owned resource
+  ---
+  duration_ms: 128.113666
+  type: 'test'
+  ...
+# Subtest: cleanup affects only the owned workspace and is idempotent
+ok 126 - cleanup affects only the owned workspace and is idempotent
+  ---
+  duration_ms: 88.083
+  type: 'test'
+  ...
+# Subtest: the test child cannot read parent files or spawn another process
+ok 127 - the test child cannot read parent files or spawn another process
+  ---
+  duration_ms: 0.990625
+  type: 'test'
+  ...
+1..127
+# tests 127
+# suites 0
+# pass 127
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 4197.690584
