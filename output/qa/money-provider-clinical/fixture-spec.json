@@ -1,0 +1,143 @@
+{
+  "schema": "swasthadisha.qa.fixture-spec/1",
+  "slice": "WALLET_MUTATION_AND_READ_AUTHORITY",
+  "amendment": 2,
+  "contract": "documentation/planning/implementation/WALLET_MUTATION_AUTHORITY_CONTRACT.md",
+  "branch": "m0/money-provider-clinical",
+  "baseline_commit": "9ea963f",
+  "baseline_routes_sha256": "18261ce7a70a8e870d5cabbb675732aa0a424800fe44986ddbec0ec653c83f85",
+  "status": "SPEC_ONLY_NOT_RUN",
+  "scenario_mapping": ["TC-REV-003 (wallet portion only)"],
+  "admission_preconditions": [
+    "Complete C3 pre-import application admission per documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md; the fixed MongoDB smoke check is not that admission",
+    "C2 retained-server baseline and reviewed runtime/ODM decision before any application import",
+    "Owned disposable single-node replica set and generated namespace per documentation/planning/implementation/C3_MONGO_FIXTURE_CONTRACT.md; no supplied or operational database URI",
+    "Sanitized configuration only: a per-run strong ephemeral JWT_SECRET_KEY generated inside the harness (never the 'your-secret-key' fallback or an operational key); synthetic REFERRAL_REWARD_AMOUNT 25; no .env or provider credentials",
+    "Recording ports installed before application import for Razorpay, LabStack, Healthians, FCM, email, SMS and Meet; each records call count and performs no network effect",
+    "Network none; zero real provider, payment or message calls; synthetic identifiers only"
+  ],
+  "units": "Legacy wallet balance/amount are stored as Number in existing legacy major units; fixtures use small integers so no rounding or unit policy is exercised or introduced",
+  "synthetic_principals": {
+    "PATIENT_A": {"_id": "aaaaaaaaaaaaaaaaaaaa0001", "userType": "user"},
+    "PATIENT_B": {"_id": "aaaaaaaaaaaaaaaaaaaa0002", "userType": "user"},
+    "USER_C_NO_WALLET": {"_id": "aaaaaaaaaaaaaaaaaaaa0003", "userType": "user"},
+    "PATIENT_F_FROZEN": {"_id": "aaaaaaaaaaaaaaaaaaaa0006", "userType": "user"},
+    "HR_H": {"_id": "bbbbbbbbbbbbbbbbbbbb0001", "userType": "hr", "corporateId": "cccccccccccccccccccc0001"},
+    "SPECIALIST_S": {"_id": "dddddddddddddddddddd0001", "userType": "specialist", "specialistId": "dddddddddddddddddddd00f1"},
+    "PHARMACY_P": {"_id": "eeeeeeeeeeeeeeeeeeee0001", "userType": "pharmacy", "pharmacyId": "eeeeeeeeeeeeeeeeeeee00f1"},
+    "ADMIN_X": {"_id": "ffffffffffffffffffff0001", "userType": "admin"}
+  },
+  "token_variants": {
+    "valid": "Signed with the per-run ephemeral key, 15-minute expiry",
+    "wrong_key_admin": "Claims ADMIN_X but signed with a second ephemeral key",
+    "fallback_key_admin": "Claims ADMIN_X signed with the literal fallback 'your-secret-key'; must be rejected because the deployment precondition sets a strong key",
+    "expired_admin": "ADMIN_X claims with expiry in the past, signed with the per-run key",
+    "none": "No Authorization header"
+  },
+  "seed": {
+    "users": [
+      {"_id": "aaaaaaaaaaaaaaaaaaaa0001", "userType": "user", "name": "Synthetic Patient A", "phone": "0000000001", "referralCode": "SYNTHA01"},
+      {"_id": "aaaaaaaaaaaaaaaaaaaa0002", "userType": "user", "name": "Synthetic Patient B", "phone": "0000000002", "referralCode": "SYNTHB02"},
+      {"_id": "aaaaaaaaaaaaaaaaaaaa0003", "userType": "user", "name": "Synthetic User C", "phone": "0000000003"},
+      {"_id": "aaaaaaaaaaaaaaaaaaaa0006", "userType": "user", "name": "Synthetic Patient F", "phone": "0000000006", "referralCode": "SYNTHF06"}
+    ],
+    "pharmacies": [
+      {"_id": "eeeeeeeeeeeeeeeeeeee00f1", "name": "Synthetic Pharmacy P", "phone": "0000000101", "isActive": true, "isVerified": true, "archivedAt": null}
+    ],
+    "wallets": [
+      {"_id": "f00000000000000000000a01", "userId": "aaaaaaaaaaaaaaaaaaaa0001", "balance": 0, "isActive": true},
+      {"_id": "f00000000000000000000a02", "userId": "aaaaaaaaaaaaaaaaaaaa0002", "balance": 250, "isActive": true},
+      {"_id": "f00000000000000000000a06", "userId": "aaaaaaaaaaaaaaaaaaaa0006", "balance": 40, "isActive": false}
+    ],
+    "walletTransactions": [
+      {"_id": "f10000000000000000000b02", "userId": "aaaaaaaaaaaaaaaaaaaa0002", "walletId": "f00000000000000000000a02", "transactionType": "credit", "amount": 250, "balanceBefore": 0, "balanceAfter": 250, "status": "completed", "referenceType": "fixture_seed", "transactionDate": "20261110"}
+    ],
+    "notifications": [],
+    "reset": "Each case starts from a fresh copy of this seed unless it is a replay or race group, which shares one seed across its steps"
+  },
+  "observations": [
+    "HTTP status and body.code; body.message for 403 must not contain any seeded identifier",
+    "Wallet documents for every seeded or named userId: existence, balance, isActive, updatedAt",
+    "walletTransactions count and rows by userId",
+    "notifications count by userId",
+    "Call count on every recording port",
+    "Task-queue rows created"
+  ],
+  "denial_invariants": "For every denied request: wallet documents equal the pre-request snapshot including updatedAt, no wallet is auto-created, zero new walletTransactions, notifications or task rows, and zero calls on every recording port",
+  "cases": [
+    {"id": "DEN-01", "kind": "denial", "actor": "PATIENT_A", "request": {"method": "POST", "path": "/api/v1/wallet/transactions", "body": {"userId": "aaaaaaaaaaaaaaaaaaaa0001", "transactionType": "credit", "amount": 500}}, "expect": {"status": 403, "code": "FORBIDDEN", "A_balance": 0}},
+    {"id": "DEN-02", "kind": "denial", "actor": "PATIENT_A", "request": {"method": "POST", "path": "/api/v1/wallet/transactions", "body": {"userId": "aaaaaaaaaaaaaaaaaaaa0002", "transactionType": "credit", "amount": 500}}, "expect": {"status": 403, "code": "FORBIDDEN", "B_balance": 250}},
+    {"id": "DEN-03", "kind": "denial", "actor": "PATIENT_A", "request": {"method": "POST", "path": "/api/v1/wallet/transactions", "body": {"userId": "aaaaaaaaaaaaaaaaaaaa0002", "transactionType": "debit", "amount": 100}}, "expect": {"status": 403, "code": "FORBIDDEN", "B_balance": 250}},
+    {"id": "DEN-04", "kind": "denial", "actor": "PATIENT_A", "variants": ["refund", "cashback", "promotion"], "request": {"method": "POST", "path": "/api/v1/wallet/transactions", "body": {"userId": "aaaaaaaaaaaaaaaaaaaa0001", "transactionType": "<variant>", "amount": 500}}, "expect": {"status": 403, "code": "FORBIDDEN", "A_balance": 0}},
+    {"id": "DEN-05", "kind": "denial", "actor": "PATIENT_A", "request": {"method": "POST", "path": "/api/v1/wallet", "body": {"userId": "aaaaaaaaaaaaaaaaaaaa0003", "initialBalance": 500}}, "expect": {"status": 403, "code": "FORBIDDEN", "C_wallet_exists": false}},
+    {"id": "DEN-06", "kind": "denial", "actor": "USER_C_NO_WALLET", "request": {"method": "POST", "path": "/api/v1/wallet", "body": {"userId": "aaaaaaaaaaaaaaaaaaaa0003"}}, "expect": {"status": 403, "code": "FORBIDDEN", "C_wallet_exists": false}, "note": "Own creation without a pre-seeded wallet; client-compatibility probe. Wallets are still created by login and own GET /user/:userId (SUC-09)"},
+    {"id": "DEN-07", "kind": "denial", "actor": "PATIENT_A", "request": {"method": "POST", "path": "/api/v1/wallet", "body": {"initialBalance": -1}}, "expect": {"status": 403, "code": "FORBIDDEN"}, "note": "Authority precedes validation; 400 means the guard is after validate"},
+    {"id": "DEN-08", "kind": "denial", "actor": "PATIENT_A", "request": {"method": "POST", "path": "/api/v1/wallet/transactions", "body": {"userId": "aaaaaaaaaaaaaaaaaaaa0001", "transactionType": "mint", "amount": -1}}, "expect": {"status": 403, "code": "FORBIDDEN"}},
+    {"id": "DEN-09", "kind": "denial", "actor": "PATIENT_A", "request": {"method": "POST", "path": "/api/v1/wallet/transactions", "body": {"userId": "aaaaaaaaaaaaaaaaaaaa0001", "transactionType": "credit", "amount": 500, "userType": "admin", "isAdmin": true}}, "expect": {"status": 403, "code": "FORBIDDEN"}},
+    {"id": "DEN-10", "kind": "denial", "actor": "PATIENT_A", "request": {"method": "PUT", "path": "/api/v1/wallet/f00000000000000000000a02", "body": {"isActive": false}}, "expect": {"status": 403, "code": "FORBIDDEN", "B_isActive": true, "B_updatedAt_unchanged": true}},
+    {"id": "DEN-11", "kind": "denial", "actor": "PATIENT_F_FROZEN", "request": {"method": "PUT", "path": "/api/v1/wallet/f00000000000000000000a06", "body": {"isActive": true}}, "expect": {"status": 403, "code": "FORBIDDEN", "F_isActive": false}, "note": "Self re-activation of a frozen wallet is not a patient capability"},
+    {"id": "DEN-12", "kind": "denial", "actor": "PATIENT_A", "request": {"method": "PUT", "path": "/api/v1/wallet/f00000000000000000000a01", "body": {}}, "expect": {"status": 403, "code": "FORBIDDEN"}, "note": "Invalid body still 403"},
+    {"id": "DEN-13", "kind": "denial", "actor": "PATIENT_A", "request": {"method": "GET", "path": "/api/v1/wallet"}, "variants_query": ["", "?userId=aaaaaaaaaaaaaaaaaaaa0002", "?page=1&limit=100", "?sortBy=bogus"], "expect": {"status": 403, "code": "FORBIDDEN", "body_contains_wallet_ids": false}},
+    {"id": "DEN-14", "kind": "denial", "actor": "PATIENT_A", "request": {"method": "GET", "path": "/api/v1/wallet/user/aaaaaaaaaaaaaaaaaaaa0002"}, "expect": {"status": 403, "code": "FORBIDDEN", "message": "Access to another wallet is not permitted", "body_contains_B_balance": false}},
+    {"id": "DEN-15", "kind": "denial", "actor": "PATIENT_A", "request": {"method": "GET", "path": "/api/v1/wallet/user/aaaaaaaaaaaaaaaaaaaa0003"}, "expect": {"status": 403, "code": "FORBIDDEN", "C_wallet_exists": false}, "note": "Non-admin can no longer trigger wallet creation for an arbitrary userId"},
+    {"id": "DEN-16", "kind": "denial", "actor": "PATIENT_A", "request": {"method": "GET", "path": "/api/v1/wallet/user/aaaaaaaaaaaaaaaaaaaa0002/transactions"}, "variants_query": ["", "?transactionType=credit&page=1&limit=10", "?userId=aaaaaaaaaaaaaaaaaaaa0001"], "expect": {"status": 403, "code": "FORBIDDEN", "body_contains_B_transactions": false}},
+    {"id": "DEN-23", "kind": "denial", "actor": "PATIENT_A", "request": {"method": "GET", "path": "/api/v1/wallet/user/aaaaaaaaaaaaaaaaaaaa0002/transactions?sortBy=bogus"}, "expect": {"status": 403, "code": "FORBIDDEN"}, "note": "Own-guard validation order: 400 VALIDATION_ERROR means the own-or-admin guard runs after validate"},
+    {"id": "DEN-17", "kind": "denial", "actor": "PATIENT_A", "variants_path": ["/api/v1/wallet/user/aaaaaaaaaaaaaaaaaaaa0001%20", "/api/v1/wallet/user/AAAAAAAAAAAAAAAAAAAA0001", "/api/v1/wallet/user/aaaaaaaaaaaaaaaaaaaa0001/transactions/../../aaaaaaaaaaaaaaaaaaaa0002"], "request": {"method": "GET"}, "expect": {"status_in": [403, 404], "no_wallet_created": true, "body_contains_other_user_data": false}, "note": "Strict string identity: case/whitespace variants are not the owner"},
+    {"id": "DEN-18", "kind": "denial", "actors": ["HR_H", "SPECIALIST_S", "PHARMACY_P"], "requests": ["POST /api/v1/wallet/transactions with DEN-02 body", "POST /api/v1/wallet with DEN-05 body", "PUT /api/v1/wallet/f00000000000000000000a02 {isActive:false}", "GET /api/v1/wallet", "GET /api/v1/wallet/user/aaaaaaaaaaaaaaaaaaaa0002", "GET /api/v1/wallet/user/aaaaaaaaaaaaaaaaaaaa0002/transactions"], "expect": {"status": 403, "code": "FORBIDDEN"}},
+    {"id": "DEN-19", "kind": "denial", "token": "none", "routes": ["POST /api/v1/wallet/transactions", "POST /api/v1/wallet", "PUT /api/v1/wallet/f00000000000000000000a02", "GET /api/v1/wallet", "GET /api/v1/wallet/user/aaaaaaaaaaaaaaaaaaaa0002", "GET /api/v1/wallet/user/aaaaaaaaaaaaaaaaaaaa0002/transactions"], "expect": {"status": 401, "code": "UNAUTHORIZED"}},
+    {"id": "DEN-20", "kind": "denial", "token": "wrong_key_admin", "routes": "DEN-19 routes", "expect": {"status": 401, "code": "INVALID_TOKEN"}},
+    {"id": "DEN-21", "kind": "denial", "token": "fallback_key_admin", "routes": "DEN-19 routes", "expect": {"status": 401, "code": "INVALID_TOKEN"}, "note": "Proves the strong-key deployment precondition in the fixture; does not prove production configuration"},
+    {"id": "DEN-22", "kind": "denial", "token": "expired_admin", "routes": "DEN-19 routes", "expect": {"status": 401, "code": "TOKEN_EXPIRED"}},
+    {"id": "SUC-01", "kind": "success_preserved", "actor": "ADMIN_X", "request": {"method": "POST", "path": "/api/v1/wallet/transactions", "body": {"userId": "aaaaaaaaaaaaaaaaaaaa0002", "transactionType": "credit", "amount": 100, "referenceType": "fixture_adjustment"}}, "expect": {"status": 201, "B_balance": 350, "new_transactions_B": 1, "new_notifications_B": 1, "provider_calls": 0}, "note": "Baseline behaviour preserved; not evidence of approved funded/audited admin authority"},
+    {"id": "SUC-02", "kind": "success_preserved", "actor": "ADMIN_X", "request": {"method": "POST", "path": "/api/v1/wallet/transactions", "body": {"userId": "aaaaaaaaaaaaaaaaaaaa0002", "transactionType": "debit", "amount": 50}}, "expect": {"status": 201, "B_balance": 200, "new_transactions_B": 1, "new_notifications_B": 0}},
+    {"id": "SUC-03", "kind": "success_preserved", "actor": "ADMIN_X", "request": {"method": "POST", "path": "/api/v1/wallet", "body": {"userId": "aaaaaaaaaaaaaaaaaaaa0003", "initialBalance": 50}}, "expect": {"status": 201, "C_balance": 50, "new_transactions_C": 1, "transaction_referenceType": "initial"}},
+    {"id": "SUC-04", "kind": "success_preserved", "actor": "ADMIN_X", "request": {"method": "POST", "path": "/api/v1/wallet/transactions", "body": {"userId": "aaaaaaaaaaaaaaaaaaaa0002", "transactionType": "mint", "amount": -1}}, "expect": {"status": 400, "code": "VALIDATION_ERROR", "B_balance": 250}, "note": "Admin validation behaviour unchanged"},
+    {"id": "SUC-05", "kind": "success_preserved", "actor": "ADMIN_X", "request": {"method": "PUT", "path": "/api/v1/wallet/f00000000000000000000a02", "body": {"isActive": false}}, "expect": {"status": 200, "B_isActive": false, "B_balance": 250}},
+    {"id": "SUC-14", "kind": "success_preserved", "actor": "ADMIN_X", "request": {"method": "PUT", "path": "/api/v1/wallet/f00000000000000000000a06", "body": {"isActive": true}}, "expect": {"status": 200, "F_isActive": true, "F_balance": 40}, "note": "Admin unfreeze preserved; pairs with DEN-11 patient self-unfreeze denial"},
+    {"id": "SUC-06", "kind": "success_preserved", "actor": "ADMIN_X", "request": {"method": "GET", "path": "/api/v1/wallet?page=1&limit=10"}, "expect": {"status": 200, "data_wallet_count": 3, "pagination_total": 3}},
+    {"id": "SUC-07", "kind": "unchanged_surface", "actor": "USER_C_NO_WALLET", "request": {"method": "POST", "path": "/api/v1/referrals/apply", "body": {"referralCode": "SYNTHA01"}}, "expect": {"A_new_promotion_transactions": 1, "A_balance": 25, "C_referredByUserId": "aaaaaaaaaaaaaaaaaaaa0001", "wallet_route_invoked": false}, "note": "In-process WalletService.addTransaction remains reachable; reward amount is the synthetic configured 25, not a policy"},
+    {"id": "SUC-08", "kind": "success_preserved", "actor": "PATIENT_A", "request": {"method": "GET", "path": "/api/v1/wallet/user/aaaaaaaaaaaaaaaaaaaa0001"}, "expect": {"status": 200, "data_userId": "aaaaaaaaaaaaaaaaaaaa0001", "A_balance": 0}},
+    {"id": "SUC-09", "kind": "success_preserved", "actor": "USER_C_NO_WALLET", "request": {"method": "GET", "path": "/api/v1/wallet/user/aaaaaaaaaaaaaaaaaaaa0003"}, "expect": {"status": 200, "C_wallet_exists": true, "C_balance": 0, "new_transactions_C": 0}, "note": "Own auto-creation preserved"},
+    {"id": "SUC-10", "kind": "success_preserved", "actor": "PATIENT_B", "request": {"method": "GET", "path": "/api/v1/wallet/user/aaaaaaaaaaaaaaaaaaaa0002/transactions?transactionType=credit&page=1&limit=10"}, "expect": {"status": 200, "data_ids": ["f10000000000000000000b02"]}},
+    {"id": "SUC-11", "kind": "success_preserved", "actor": "ADMIN_X", "requests": ["GET /api/v1/wallet/user/aaaaaaaaaaaaaaaaaaaa0002", "GET /api/v1/wallet/user/aaaaaaaaaaaaaaaaaaaa0002/transactions"], "expect": {"status": 200, "B_balance": 250, "B_transaction_count": 1}},
+    {"id": "SUC-12", "kind": "unchanged_surface", "actor": "PATIENT_A", "request": {"method": "POST", "path": "/api/v1/wallet/recharge/initiate", "body": {"amount": 100}}, "expect": {"status": 200, "razorpay_order_port_calls": 1, "A_balance": 0, "payment_record_status": "created"}},
+    {"id": "SUC-13", "kind": "unchanged_surface_open_followup", "actor": "PATIENT_A", "requests": ["GET /api/v1/wallet/f00000000000000000000a02", "GET /api/v1/wallet/transactions/f10000000000000000000b02"], "observe": "Baseline returns B's records (200); recorded as KNOWN_OPEN_FOLLOWUP, not acceptance", "acceptance": false},
+    {"id": "RPL-01", "kind": "replay", "actor": "PATIENT_A", "steps": "Send the DEN-01 request three times with identical body", "expect": {"each_status": 403, "A_balance": 0, "new_transactions": 0}},
+    {"id": "RPL-02", "kind": "replay", "actor": "PATIENT_A", "steps": "Send DEN-05 twice and DEN-15 twice", "expect": {"each_status": 403, "C_wallet_exists": false}},
+    {"id": "RPL-03", "kind": "replay", "actor": "PATIENT_A", "steps": "Send DEN-10 three times", "expect": {"each_status": 403, "B_isActive": true}},
+    {"id": "RPL-04", "kind": "replay_observation", "actor": "ADMIN_X", "steps": "Send the SUC-01 request twice", "observe": "Two credits are expected from unchanged non-idempotent baseline", "classification": "KNOWN_DEFECT_UNCHANGED_F11", "acceptance": false},
+    {"id": "RACE-01", "kind": "race", "actor": "PATIENT_A", "steps": "Twenty concurrent requests mixing DEN-01, DEN-02, DEN-03, DEN-10 and DEN-14", "expect": {"all_status": 403, "A_balance": 0, "B_balance": 250, "B_isActive": true, "new_transactions": 0, "provider_calls": 0}},
+    {"id": "RACE-02", "kind": "race", "actors": ["ADMIN_X", "PATIENT_A"], "steps": "Concurrently: SUC-01 by ADMIN_X and DEN-02 by PATIENT_A", "expect": {"admin_status": 201, "patient_status": 403, "B_balance": 350, "new_transactions_B": 1}},
+    {"id": "RACE-03", "kind": "race", "actor": "PATIENT_A", "steps": "Ten concurrent DEN-05 and ten concurrent DEN-15 requests", "expect": {"all_status": 403, "C_wallet_exists": false}},
+    {"id": "RACE-04", "kind": "race", "actors": ["PATIENT_A", "PATIENT_B"], "steps": "Concurrently: DEN-10 by PATIENT_A and SUC-10 by PATIENT_B", "expect": {"A_status": 403, "B_status": 200, "B_isActive": true}},
+    {"id": "RACE-05", "kind": "race_observation", "actor": "ADMIN_X", "steps": "Two concurrent SUC-01 requests", "observe": "Absolute balance overwrite may lose one update while two transactions exist", "classification": "KNOWN_DEFECT_UNCHANGED_F11_F13", "acceptance": false}
+  ],
+  "regression_sensitivity": {
+    "baseline_must_fail": ["DEN-01", "DEN-02", "DEN-03", "DEN-04", "DEN-05", "DEN-06", "DEN-07", "DEN-08", "DEN-09", "DEN-10", "DEN-11", "DEN-12", "DEN-13", "DEN-14", "DEN-15", "DEN-16", "DEN-17", "DEN-18", "DEN-23", "RPL-01", "RPL-02", "RPL-03", "RACE-01", "RACE-02", "RACE-03", "RACE-04"],
+    "reintroduced_defect_to_failing_cases": {
+      "admin_guard_removed:POST /transactions": ["DEN-01", "DEN-02", "DEN-03", "DEN-04", "DEN-08", "DEN-09", "RPL-01", "RACE-01", "RACE-02"],
+      "admin_guard_removed:POST /": ["DEN-05", "DEN-06", "DEN-07", "RPL-02", "RACE-03"],
+      "admin_guard_removed:PUT /:id": ["DEN-10", "DEN-11", "DEN-12", "RPL-03", "RACE-04"],
+      "get_root_left_open": ["DEN-13"],
+      "own_guard_removed:GET /user/:userId": ["DEN-14", "DEN-15", "DEN-17", "RPL-02", "RACE-03"],
+      "own_guard_removed:GET /user/:userId/transactions": ["DEN-16", "DEN-23"],
+      "guard_after_validate": ["DEN-07", "DEN-08", "DEN-12", "DEN-13", "DEN-23"],
+      "admin_overblocked:PUT /:id (guard denying admin, e.g. requireOperationalPharmacy or own-or-admin substituted)": ["SUC-14", "SUC-05"],
+      "wrong_guard_requireAdminOrOperationalPharmacy": ["DEN-18"],
+      "wrong_guard_requireAdminOrHR": ["DEN-18"],
+      "wrong_guard_authenticate": ["DEN-01", "DEN-13", "DEN-18"],
+      "own_check_loose_or_cast": ["DEN-17"],
+      "own_check_admin_only_inverted": ["SUC-08", "SUC-10", "DEN-14"],
+      "guard_added_to_recharge": ["SUC-12"],
+      "unguarded_duplicate_route": ["DEN-01", "DEN-02"]
+    },
+    "rule": "A cleanup, skip, stubbed verifier or saved HTTP 200 cannot certify a case; each case asserts database and recording-port state"
+  },
+  "out_of_scope": [
+    "GET /api/v1/wallet/:id and GET /api/v1/wallet/transactions/:id (post-fetch ownership follow-up; SUC-13 observation only)",
+    "POST /api/v1/wallet/recharge/initiate and pharmacy-wallet routes (unchanged)",
+    "Atomic balance effects and unique wallet-effect keys (F11/F13)",
+    "Approval of admin adjustment as narrow audited finance command (D2/AR-26)",
+    "Production JWT_SECRET_KEY configuration and fallback removal (lead-owned auth/security follow-up)"
+  ]
+}
