@@ -26,6 +26,7 @@ const blockedNetwork = () => { connections++; throw new Error('OFFLINE_NETWORK_D
 net.Socket.prototype.connect = blockedNetwork; net.connect = blockedNetwork;
 net.Server.prototype.listen = blockedNetwork;
 net.createConnection = blockedNetwork; tls.connect = blockedNetwork; dns.lookup = blockedNetwork;
+globalThis.fetch = blockedNetwork;
 const originalLoad = Module._load;
 Module._load = function (request, parent, isMain) {
   if (request !== bootstrap && !Module.isBuiltin(request)) { applicationImports++; throw new Error('OFFLINE_DOMAIN_IMPORT_DENIED'); }
@@ -33,7 +34,8 @@ Module._load = function (request, parent, isMain) {
 };
 const { validateAdmissionData, runSetupStep, SETUP_FAILURE_CODES, withOwnedCleanup, recordReadOperation, recordPush,
   configurationSamples, configurationFinally, configurationEnvironment, withConfigurationTaps,
-  configurationSampleEvidence, collectConfigurationEvidence } = require(bootstrap);
+  configurationSampleEvidence, collectConfigurationEvidence, meetData, meetSame, createMeetRecorder,
+  meetFetchLifecycle, withMeetFetchCleanup } = require(bootstrap);
 const need = (condition, label) => { if (!condition) throw new Error(label); };
 need(process.permission && !process.permission.has('child') && !process.permission.has('worker')
   && !process.permission.has('addon') && !process.permission.has('fs.write'), 'OFFLINE_PROCESS_GRANTS');
@@ -47,9 +49,10 @@ function fixture() {
   const sources = Object.fromEntries(ports.models.map(row => [row.source, 'a'.repeat(64)]));
   sources['src1/modules/otp/repository/index.ts'] = 'a'.repeat(64);
   sources['src1/config/config.ts'] = 'a'.repeat(64);
+  for (const name of ['routes', 'controller', 'validation', 'service', 'types']) sources['src1/modules/meet/' + name + '/index.ts'] = 'a'.repeat(64);
   const mutants = Object.fromEntries(ports.requiredSensitivityIds.map(name => {
     const file = 'compiled/mutants/' + name + '.js'; files[file] = Buffer.from('inert');
-    return [name, { source: name.startsWith('JWT_CONFIG_') ? 'src1/config/config.ts' : 'src1/modules/otp/repository/index.ts', originalSha256: 'a'.repeat(64), file }];
+    return [name, { source: name.startsWith('JWT_CONFIG_') ? 'src1/config/config.ts' : name.startsWith('MEET_') ? 'src1/modules/meet/routes/index.ts' : 'src1/modules/otp/repository/index.ts', originalSha256: 'a'.repeat(64), file }];
   }));
   const plan = { schema: 'SD-AUTH-API-PLAN-1', role: ports.role, sourceCommit, sourceFiles: sources,
     compilation: { compiler: '5.9.3', status: 'TRANSPILE_ONLY_NOT_TYPECHECKED' },
@@ -57,6 +60,7 @@ function fixture() {
     models: ports.models, requiredCaseIds: ports.requiredCaseIds, requiredSensitivityIds: ports.requiredSensitivityIds,
     providerCounterKeys: ports.providerCounterKeys };
   plan.modules['@/config/config'] = 'compiled/config/config.js'; files['compiled/config/config.js'] = Buffer.from('inert');
+  plan.modules['@/modules/meet/routes'] = 'compiled/modules/meet/routes/index.js'; files['compiled/modules/meet/routes/index.js'] = Buffer.from('inert');
   const manifest = { schema: 'SD-AUTH-API-RUN-1', role: ports.role, runId, sourceCommit,
     database: 'sd_api_' + runId.replaceAll('-', ''), replicaSet: 'sd_rs_' + runId.replaceAll('-', ''),
     mongoId: 'c'.repeat(64), templateSha: 'd'.repeat(64) };
@@ -112,8 +116,23 @@ check('PORT_PLAN_MISMATCH', p => { p.plan.portsSha = 'e'.repeat(64); });
 check('CONFIG_ALIAS_REBOUND', p => { p.plan.modules['@/config/config'] = 'compiled/entry.js'; }, true);
 check('CONFIG_SOURCE_MISSING', p => { delete p.plan.sourceFiles['src1/config/config.ts']; }, true);
 check('CONFIG_MUTANT_REBOUND', p => { p.plan.mutants.JWT_CONFIG_TRIMMED_RETURN.source = 'src1/modules/otp/repository/index.ts'; }, true);
+for (const [id, mutate] of [
+  ['MISSING_MAP', p => { delete p.ports.recordingMeet; }],
+  ['WRONG_TOKEN_URL', p => { p.ports.recordingMeet.tokenUrl = 'https://example.com/token'; }],
+  ['WRONG_CALENDAR_URL', p => { p.ports.recordingMeet.calendarUrl += '&unexpected=true'; }],
+  ['WRONG_ENVIRONMENT', p => { p.ports.recordingMeet.environment.GOOGLE_OAUTH_CLIENT_SECRET = 'other'; }],
+  ['EXTRA_ENVIRONMENT', p => { p.ports.recordingMeet.environment.GOOGLE_SERVICE_ACCOUNT_FILE = 'forbidden'; }],
+  ['WRONG_BODY_BOUND', p => { p.ports.recordingMeet.bodyBytes++; }],
+  ['WRONG_RECORD_BOUND', p => { p.ports.recordingMeet.recordLimit++; }],
+  ['WRONG_RESPONSE', p => { p.ports.recordingMeet.oauthResponse.access_token = 'other'; }],
+  ['WRONG_COUNTER_SCOPE', p => { p.ports.recordingMeet.providerCounterScope = 'OTHER'; }],
+  ['ALIAS_REBOUND', p => { p.plan.modules['@/modules/meet/routes'] = 'compiled/entry.js'; }],
+  ['SOURCE_OMITTED', p => { delete p.plan.sourceFiles['src1/modules/meet/service/index.ts']; }],
+  ['MUTANT_REBOUND', p => { p.plan.mutants.MEET_CALLBACK_GATED.source = 'src1/config/config.ts'; }],
+]) check('MEET_ADMISSION_' + id, mutate, true);
 const recordingRows = [];
 const configurationRows = [];
+const meetRows = [];
 function configurationCheck(id, action) { action(); configurationRows.push(id); }
 function configurationFailure(action, code) {
   let caught; try { action(); } catch (error) { caught = error; }
@@ -124,7 +143,7 @@ function configurationFailure(action, code) {
 function fakeConfigurationRuntime() {
   const key = 'synthetic-private-config-key'; const uri = 'synthetic-owned-uri';
   const env = { NODE_ENV: 'test', JWT_SECRET_KEY: key, MONGODB_URL: uri };
-  const effects = Object.fromEntries(['email', 'sms', 'push', 'logger', 'console', 'unexpected', 'excluded', 'jwtIssued', 'dbWrites'].map(name => [name, 0]));
+  const effects = Object.fromEntries(['email', 'sms', 'push', 'logger', 'console', 'unexpected', 'excluded', 'jwtIssued', 'dbWrites', 'calendar'].map(name => [name, 0]));
   const state = { cache: new Set(), loads: [], delegated: 0, signatures: 0, overrides: {}, models: [], hook: undefined };
   const delegated = function () { state.delegated++; return 'fake-read'; };
   const mongoose = { connect: delegated, createConnection: delegated, Connection: function () {},
@@ -137,7 +156,7 @@ function fakeConfigurationRuntime() {
   network.Socket.prototype.connect = delegated; network.Server.prototype.listen = delegated;
   const plan = { modules: { '@/config/config': 'compiled/config/config.js' },
     sourceFiles: { 'src1/config/config.ts': 'a'.repeat(64) }, mutants: {} };
-  for (const id of portsOriginal.requiredSensitivityIds.slice(14)) plan.mutants[id] = {
+  for (const id of portsOriginal.requiredSensitivityIds.slice(14, 17)) plan.mutants[id] = {
     source: 'src1/config/config.ts', originalSha256: 'a'.repeat(64), file: 'compiled/mutants/' + id + '.js',
   };
   const samples = configurationSamples(key);
@@ -184,7 +203,7 @@ function configurationUnits() {
     need(runtime.mongoose.connect === original && Object.isFrozen(evidence) && Object.isFrozen(evidence.cases)
       && Object.isFrozen(evidence.sensitivity) && evidence.cases.every(Object.isFrozen) && evidence.sensitivity.every(Object.isFrozen)
       && JSON.stringify(evidence) === JSON.stringify({ cases: portsOriginal.requiredCaseIds.slice(53, 59).map(id => ({ id, status: 'PASS' })),
-        sensitivity: portsOriginal.requiredSensitivityIds.slice(14).map(id => ({ id, detected: true })) }), 'CONFIG_SAFE_EVIDENCE');
+        sensitivity: portsOriginal.requiredSensitivityIds.slice(14, 17).map(id => ({ id, detected: true })) }), 'CONFIG_SAFE_EVIDENCE');
     need(runtime.env.NODE_ENV === 'test' && runtime.env.JWT_SECRET_KEY === runtime.key && runtime.env.MONGODB_URL === runtime.uri,
       'CONFIG_FINAL_ENV_RESTORED');
   });
@@ -397,6 +416,235 @@ function recordingUnits() {
       && effects.push === 1 && effects.unexpected === 1, 'PUSH_UNEXPECTED_LATCHED_DESPITE_CATCH');
   });
 }
+async function meetUnits() {
+  const spec = portsOriginal.recordingMeet;
+  const effects = () => ({ calendar: 0, unexpected: 0 });
+  const code = () => ({ kind: 'code', code: 'fixture-code', redirectUri: spec.environment.GOOGLE_OAUTH_REDIRECT_URI });
+  const refresh = () => ({ kind: 'refresh', refreshToken: spec.environment.GOOGLE_OAUTH_REFRESH_TOKEN });
+  const event = () => ({ kind: 'event', payload: { summary: 'Fixture Meet event', description: 'Created from test OAuth endpoint',
+    start: { dateTime: '2030-01-15T10:00:00', timeZone: 'Asia/Kolkata' },
+    end: { dateTime: '2030-01-15T10:30:00', timeZone: 'Asia/Kolkata' },
+    attendees: [{ email: 'patient@example.com' }, { email: 'specialist@example.com' }] } });
+  function request(expected) {
+    const credentials = { client_id: spec.environment.GOOGLE_OAUTH_CLIENT_ID, client_secret: spec.environment.GOOGLE_OAUTH_CLIENT_SECRET };
+    if (expected.kind === 'code' || expected.kind === 'refresh') return [spec.tokenUrl, { method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(expected.kind === 'code'
+        ? { code: expected.code, ...credentials, redirect_uri: expected.redirectUri, grant_type: 'authorization_code' }
+        : { ...credentials, refresh_token: expected.refreshToken, grant_type: 'refresh_token' }) }];
+    return [spec.calendarUrl, { method: 'POST', headers: { Authorization: 'Bearer ' + spec.oauthResponse.access_token,
+      'Content-Type': 'application/json' }, body: JSON.stringify({ ...expected.payload,
+        conferenceData: { createRequest: { requestId: 'meet-1234567890', conferenceSolutionKey: { type: 'hangoutsMeet' } } } }) }];
+  }
+  async function test(id, action) { await action(); meetRows.push(id); }
+  function failure(action, code) {
+    let caught; try { action(); } catch (error) { caught = error; }
+    need(caught?.fixtureCode === code && caught.message === code && Object.keys(caught).join(',') === 'fixtureCode', 'MEET_FIXED_FAILURE');
+    return caught;
+  }
+  async function rejection(action, code) {
+    let caught; try { await action(); } catch (error) { caught = error; }
+    need(caught?.fixtureCode === code && caught.message === code && Object.keys(caught).join(',') === 'fixtureCode', 'MEET_FIXED_ASYNC_FAILURE');
+    return caught;
+  }
+  for (const expected of [code(), refresh(), event()]) await test('MEET_EXACT_' + expected.kind.toUpperCase(), async () => {
+    const counters = effects(); const port = createMeetRecorder(spec, counters); port.expectMeetRequests([expected]);
+    const args = request(expected); const response = await port.fetch(...args);
+    need(response.ok === true && Object.keys(response).join(',') === 'ok,text' && Object.isFrozen(response), 'MEET_RESPONSE_SURFACE');
+    const wanted = expected.kind === 'event' ? spec.eventResponse : spec.oauthResponse;
+    need(meetSame(JSON.parse(await response.text()), wanted) && counters.calendar === 1 && counters.unexpected === 0, 'MEET_REPLY_AND_COUNTER');
+    port.expectMeetRequests([]); port.assertDone();
+    const captures = port.meetRequests;
+    need(Object.isFrozen(captures) && captures.length === 1 && Object.isFrozen(captures[0])
+      && meetSame(Object.keys(captures[0]).sort(), ['body', 'headers', 'kind', 'method', 'url'])
+      && captures[0].kind === expected.kind && captures[0].url === args[0] && captures[0].method === 'POST'
+      && Object.isFrozen(captures[0].headers) && Object.isFrozen(captures[0].body), 'MEET_IMMUTABLE_CAPTURE');
+    let immutable = false; try { captures.push({}); } catch (error) { immutable = error instanceof TypeError; }
+    need(immutable, 'MEET_CAPTURE_ARRAY_IMMUTABLE');
+  });
+  // Plain TypeError is intentionally not fed through a fixture-code assertion.
+  await test('MEET_QUEUE_COPY_AND_CAPTURE_IMMUTABILITY', async () => {
+    const counters = effects(); const port = createMeetRecorder(spec, counters); const queued = refresh();
+    port.expectMeetRequests([queued]); queued.refreshToken = 'changed-after-queue';
+    const args = request(refresh()); await port.fetch(...args); args[1].headers['Content-Type'] = 'changed'; args[1].body.set('refresh_token', 'changed');
+    const first = port.meetRequests; const second = port.meetRequests;
+    let frozen = false; try { first[0].body.refresh_token = 'changed'; } catch { frozen = true; }
+    need(first !== second && frozen && second[0].body.refresh_token === refresh().refreshToken
+      && second[0].headers['Content-Type'] === 'application/x-www-form-urlencoded', 'MEET_DETACHED_PRIVATE_CAPTURES');
+    port.assertDone();
+  });
+  await test('MEET_UNQUEUED_REQUEST_LATCHES_EVEN_IF_CAUGHT', async () => {
+    const counters = effects(); const port = createMeetRecorder(spec, counters);
+    try { await port.fetch(...request(refresh())); } catch {}
+    need(counters.unexpected === 1 && counters.calendar === 0 && port.meetRequests.length === 0, 'MEET_UNEXPECTED_LATCH');
+  });
+  await test('MEET_DUPLICATE_REQUEST_DENIED', async () => {
+    const counters = effects(); const port = createMeetRecorder(spec, counters); port.expectMeetRequests([refresh()]);
+    await port.fetch(...request(refresh())); await rejection(() => port.fetch(...request(refresh())), 'MEET_RECORDING_REQUEST');
+    need(counters.calendar === 1 && counters.unexpected === 1 && port.meetRequests.length === 1, 'MEET_NO_DUPLICATE_RECORD');
+  });
+  await test('MEET_PENDING_QUEUE_CANNOT_BE_REPLACED_OR_CLEARED', async () => {
+    const counters = effects(); const port = createMeetRecorder(spec, counters); port.expectMeetRequests([code()]);
+    failure(() => port.expectMeetRequests([]), 'MEET_RECORDING_QUEUE');
+    failure(() => port.expectMeetRequests([refresh()]), 'MEET_RECORDING_QUEUE');
+    failure(() => port.assertDone(), 'MEET_RECORDING_PENDING');
+    await port.fetch(...request(code())); port.assertDone();
+    need(counters.calendar === 1 && counters.unexpected === 3 && port.meetRequests[0].kind === 'code', 'MEET_PENDING_PRESERVED');
+  });
+  const queueInvalid = [null, {}, [null], [{}], [refresh(), ...Array(256).fill(refresh())], Array(1),
+    [{ ...refresh(), extra: true }], [{ kind: 'refresh', refreshToken: '' }],
+    [{ ...code(), redirectUri: 'https://unexpected.example.com/' }],
+    [{ ...code(), code: 'x'.repeat(8193) }], [{ kind: 'event', payload: {} }]];
+  const arrayExtra = [refresh()]; arrayExtra.extra = true; queueInvalid.push(arrayExtra);
+  const arraySymbol = [refresh()]; arraySymbol[Symbol('unexpected')] = true; queueInvalid.push(arraySymbol);
+  let getters = 0; const accessor = refresh(); Object.defineProperty(accessor, 'refreshToken', { get() { getters++; return 'private-sentinel'; } }); queueInvalid.push([accessor]);
+  const cyclic = refresh(); cyclic.refreshToken = cyclic; queueInvalid.push([cyclic]);
+  const prototype = Object.assign(Object.create({ private: 'synthetic' }), refresh()); queueInvalid.push([prototype]);
+  const symbol = refresh(); symbol[Symbol('unexpected')] = true; queueInvalid.push([symbol]);
+  const wrongEvent = event(); wrongEvent.payload.start.timeZone = 'UTC'; queueInvalid.push([wrongEvent]);
+  const wrongAttendee = event(); wrongAttendee.payload.attendees[0].email = 'real@unexpected.invalid'; queueInvalid.push([wrongAttendee]);
+  for (const [index, input] of queueInvalid.entries()) await test('MEET_QUEUE_REJECT_' + index, async () => {
+    const counters = effects(); const port = createMeetRecorder(spec, counters);
+    failure(() => port.expectMeetRequests(input), 'MEET_RECORDING_QUEUE');
+    need(counters.unexpected === 1 && counters.calendar === 0 && port.meetRequests.length === 0, 'MEET_INVALID_QUEUE_ZERO_EFFECT');
+    port.assertDone();
+  });
+  need(getters === 0, 'MEET_QUEUE_ACCESSORS_UNREAD');
+  const malformed = [
+    ['URL', args => { args[0] = 'https://unexpected.invalid/token'; }],
+    ['URL_OBJECT', args => { args[0] = new URL(args[0]); }],
+    ['METHOD', args => { args[1].method = 'GET'; }],
+    ['EXTRA_OPTION', args => { args[1].redirect = 'follow'; }],
+    ['EXTRA_HEADER', args => { args[1].headers.Cookie = 'synthetic-private-sentinel'; }],
+    ['WRONG_HEADER', args => { args[1].headers['Content-Type'] = 'application/json'; }],
+    ['FORM_STRING', args => { args[1].body = args[1].body.toString(); }],
+    ['FORM_DUPLICATE', args => { args[1].body.append('client_id', 'duplicate'); }],
+    ['FORM_EXTRA', args => { args[1].body.append('assertion', 'not-admitted'); }],
+    ['FORM_WRONG_GRANT', args => { args[1].body.set('grant_type', 'urn:ietf:params:oauth:grant-type:jwt-bearer'); }],
+    ['FORM_WRONG_SECRET', args => { args[1].body.set('client_secret', 'other'); }],
+    ['FORM_WRONG_TOKEN', args => { args[1].body.set('refresh_token', 'other'); }],
+    ['FORM_SIZE', args => { args[1].body.set('refresh_token', 'x'.repeat(8193)); }],
+    ['WRONG_OPTION_PROTOTYPE', args => { args[1] = Object.assign(Object.create({ method: 'POST' }), args[1]); }],
+    ['OPTION_ACCESSOR', args => { Object.defineProperty(args[1], 'method', { get() { getters++; return 'POST'; } }); }],
+    ['HEADER_ACCESSOR', args => { Object.defineProperty(args[1].headers, 'Content-Type', { get() { getters++; return 'application/x-www-form-urlencoded'; } }); }],
+  ];
+  for (const [id, mutate] of malformed) await test('MEET_REQUEST_REJECT_' + id, async () => {
+    const counters = effects(); const port = createMeetRecorder(spec, counters); port.expectMeetRequests([refresh()]);
+    const args = request(refresh()); mutate(args); await rejection(() => port.fetch(...args), 'MEET_RECORDING_REQUEST');
+    need(counters.calendar === 0 && counters.unexpected === 1 && port.meetRequests.length === 0, 'MEET_MALFORMED_REQUEST_NOT_CAPTURED');
+  });
+  for (const [id, mutate] of [
+    ['EXTRA_FIELD', body => { body.unexpected = true; }],
+    ['WRONG_SUMMARY', body => { body.summary = 'other'; }],
+    ['WRONG_START', body => { body.start.dateTime = '2030-01-15T11:00:00'; }],
+    ['WRONG_ATTENDEES', body => { body.attendees.reverse(); }],
+    ['WRONG_REQUEST_ID', body => { body.conferenceData.createRequest.requestId = 'not-generated'; }],
+    ['EXTRA_CONFERENCE_FIELD', body => { body.conferenceData.unexpected = true; }],
+    ['EXTRA_CREATE_FIELD', body => { body.conferenceData.createRequest.unexpected = true; }],
+    ['WRONG_SOLUTION', body => { body.conferenceData.createRequest.conferenceSolutionKey.type = 'other'; }],
+  ]) await test('MEET_EVENT_REJECT_' + id, async () => {
+    const counters = effects(); const port = createMeetRecorder(spec, counters); port.expectMeetRequests([event()]);
+    const args = request(event()); const body = JSON.parse(args[1].body); mutate(body); args[1].body = JSON.stringify(body);
+    await rejection(() => port.fetch(...args), 'MEET_RECORDING_REQUEST');
+    need(counters.calendar === 0 && counters.unexpected === 1 && port.meetRequests.length === 0, 'MEET_EVENT_MISMATCH_LATCHED');
+  });
+  await test('MEET_REQUEST_ORDER_ENFORCED', async () => {
+    const counters = effects(); const port = createMeetRecorder(spec, counters); port.expectMeetRequests([code(), refresh()]);
+    await rejection(() => port.fetch(...request(refresh())), 'MEET_RECORDING_REQUEST');
+    await port.fetch(...request(code())); await port.fetch(...request(refresh())); port.assertDone();
+    need(counters.calendar === 2 && counters.unexpected === 1 && port.meetRequests.map(row => row.kind).join(',') === 'code,refresh', 'MEET_ORDER_NO_SHIFT_ON_REJECTION');
+  });
+  await test('MEET_EXACT_256_RECORD_BOUND', async () => {
+    const counters = effects(); const port = createMeetRecorder(spec, counters); port.expectMeetRequests(Array.from({ length: 256 }, refresh));
+    for (let index = 0; index < 256; index++) await port.fetch(...request(refresh())); port.assertDone();
+    failure(() => port.expectMeetRequests([refresh()]), 'MEET_RECORDING_QUEUE');
+    need(counters.calendar === 256 && counters.unexpected === 1 && port.meetRequests.length === 256, 'MEET_RECORD_LIMIT_CLOSED');
+  });
+  let nativeCalls = 0;
+  function host() { return { fetch() { nativeCalls++; throw new Error('OFFLINE_NATIVE_FETCH_DENIED'); } }; }
+  await test('MEET_PHASE_RESETS_RECORDS_PRESERVES_HELD_NATIVE_AND_ZERO_DELEGATION', async () => {
+    const target = host(); const original = target.fetch; const descriptor = Object.getOwnPropertyDescriptor(target, 'fetch');
+    const counters = effects(); const life = meetFetchLifecycle(target, spec, counters); const first = life.phase();
+    first.expectMeetRequests([code()]); await target.fetch(...request(code())); first.assertDone();
+    const second = life.phase(); need(first !== second && second.meetRequests.length === 0 && first.meetRequests.length === 1, 'MEET_NEW_PHASE_RECORDS');
+    second.expectMeetRequests([refresh()]); await target.fetch(...request(refresh())); second.assertDone(); life.restore();
+    const restored = Object.getOwnPropertyDescriptor(target, 'fetch');
+    need(target.fetch === original && meetSame(Object.keys(restored), Object.keys(descriptor))
+      && restored.writable === descriptor.writable && restored.enumerable === descriptor.enumerable
+      && restored.configurable === descriptor.configurable && nativeCalls === 0, 'MEET_HELD_FETCH_RESTORED');
+    failure(() => life.phase(), 'MEET_FETCH_CLOSED'); failure(() => life.restore(), 'MEET_FETCH_CLOSED');
+  });
+  await test('MEET_PENDING_PHASE_DENIES_BUT_FINAL_RESTORE_STILL_RUNS', async () => {
+    const target = host(); const original = target.fetch; const counters = effects(); const life = meetFetchLifecycle(target, spec, counters);
+    const first = life.phase(); first.expectMeetRequests([code()]); failure(() => life.phase(), 'MEET_RECORDING_PENDING');
+    failure(() => life.restore(), 'MEET_RECORDING_PENDING'); need(target.fetch === original && nativeCalls === 0, 'MEET_PENDING_RESTORED');
+  });
+  await test('MEET_FETCH_DRIFT_RESTORES_ORIGINAL_AND_REJECTS', async () => {
+    const target = host(); const original = target.fetch; const life = meetFetchLifecycle(target, spec, effects()); life.phase();
+    target.fetch = () => {}; failure(() => life.restore(), 'MEET_FETCH_DRIFT'); need(target.fetch === original, 'MEET_DRIFT_RESTORED');
+  });
+  await test('MEET_PHASE_DESCRIPTOR_DRIFT_DENIED_BEFORE_REPLACEMENT', async () => {
+    const target = host(); const original = target.fetch; const life = meetFetchLifecycle(target, spec, effects()); life.phase();
+    Object.defineProperty(target, 'fetch', { writable: false });
+    failure(() => life.phase(), 'MEET_FETCH_DRIFT'); failure(() => life.restore(), 'MEET_FETCH_DRIFT');
+    need(target.fetch === original && Object.getOwnPropertyDescriptor(target, 'fetch').writable, 'MEET_PHASE_DESCRIPTOR_RESTORED');
+  });
+  await test('MEET_PENDING_AND_RESTORATION_DRIFT_KEEP_BOTH_PRIVATE', async () => {
+    const target = host(); const original = target.fetch; const life = meetFetchLifecycle(target, spec, effects());
+    life.phase().expectMeetRequests([code()]); target.fetch = () => {};
+    const error = failure(() => life.restore(), 'MEET_RECORDING_PENDING');
+    need(target.fetch === original && error.meetFetchRestorationFailure.fixtureCode === 'MEET_FETCH_DRIFT'
+      && !Object.getOwnPropertyDescriptor(error, 'meetFetchRestorationFailure').enumerable, 'MEET_BOTH_BOUNDARY_FAILURES_RETAINED');
+  });
+  await test('MEET_NO_PHASE_RESTORE_IS_SAFE', async () => {
+    const target = host(); const original = target.fetch; meetFetchLifecycle(target, spec, effects()).restore();
+    need(target.fetch === original && nativeCalls === 0, 'MEET_NO_INSTALL_NO_DELEGATION');
+  });
+  for (const primary of [false, true]) for (const badHTTP of [false, true]) for (const badODM of [false, true]) for (const badRestore of [false, true])
+    await test('MEET_OWNED_CLEANUP_COMPOSITION_' + [primary, badHTTP, badODM, badRestore].map(Number).join(''), async () => {
+      const order = []; const initial = new Error('synthetic-private-primary'); const httpError = new Error('synthetic-private-http');
+      const odmError = new Error('synthetic-private-odm'); const fetchError = new Error('synthetic-private-fetch'); let caught; let result;
+      try { result = await withMeetFetchCleanup(() => withOwnedCleanup(() => { order.push('ACTION'); if (primary) throw initial; return 'done'; },
+        () => { order.push('HTTP'); if (badHTTP) throw httpError; }, () => { order.push('ODM'); if (badODM) throw odmError; }),
+      () => { order.push('FETCH'); if (badRestore) throw fetchError; }); } catch (error) { caught = error; }
+      need(order.join(',') === 'ACTION,HTTP,ODM,FETCH', 'MEET_ALL_CLEANUP_ONCE');
+      if (primary) need(caught === initial, 'MEET_FIRST_PRIMARY_PRESERVED');
+      else if (badHTTP || badODM) need(caught?.fixtureCode === 'OWNED_HANDLE_CLEANUP_FAILED' && caught.cause === (badHTTP ? httpError : odmError), 'MEET_OWNED_FAILURE_PRESERVED');
+      else if (badRestore) need(caught === fetchError, 'MEET_FETCH_FAILURE_TERMINAL');
+      else need(result === 'done' && caught === undefined, 'MEET_SUCCESS_AFTER_ALL_CLEANUP');
+      if (badRestore && (primary || badHTTP || badODM)) need(caught.meetFetchCleanupFailure === fetchError
+        && !Object.getOwnPropertyDescriptor(caught, 'meetFetchCleanupFailure').enumerable, 'MEET_SECONDARY_RESTORATION_PRIVATE');
+    });
+  await test('MEET_FROZEN_PRIMARY_AND_PENDING_QUEUE_RETAINED', async () => {
+    const target = host(); const original = target.fetch; const life = meetFetchLifecycle(target, spec, effects());
+    life.phase().expectMeetRequests([code()]); const first = Object.freeze(new Error('synthetic-private-primary')); let caught;
+    try { await withMeetFetchCleanup(() => { throw first; }, () => life.restore()); } catch (error) { caught = error; }
+    need(caught === first && target.fetch === original && nativeCalls === 0, 'MEET_FROZEN_PRIMARY_SAFE');
+  });
+  for (const missing of [0, 1]) await test('MEET_CLEANUP_PORT_MANDATORY_' + missing, async () => {
+    let calls = 0; const args = [() => { calls++; }, () => { calls++; }]; args[missing] = undefined;
+    await rejection(() => withMeetFetchCleanup(...args), 'MEET_FETCH_CLEANUP_PORTS'); need(calls === 0, 'MEET_NO_FALLBACK_PORT');
+  });
+  await test('MEET_STATIC_CANARY_AND_CONFIG_IMPORT_ORDER', async () => {
+    const source = fs.readFileSync(bootstrap, 'utf8');
+    const canary = source.indexOf("  const [canary] = await Promise.allSettled([fetch(");
+    const guard = source.indexOf('  const httpPorts = closeNetwork();');
+    const env = source.indexOf('    ...ports.recordingMeet.environment });');
+    const held = source.indexOf('  const meetLifecycle = meetFetchLifecycle(globalThis, ports.recordingMeet, counters);');
+    const install = source.indexOf('    currentMeet = meetLifecycle.phase();', source.indexOf('  const completed = await withMeetFetchCleanup('));
+    const config = source.indexOf('    const configurationEvidence = collectConfigurationEvidence(');
+    need(canary >= 0 && guard > canary && env > guard && held > env && install > held && config > install, 'MEET_STATIC_PREIMPORT_ORDER');
+  });
+  await test('MEET_STATIC_PUBLIC_MOUNT_AND_OWNED_CLEANUP_COMPOSITION', async () => {
+    const source = fs.readFileSync(bootstrap, 'utf8');
+    need(source.includes("    app.use('/api/v1/meet', loader.load('@/modules/meet/routes').default);")
+      && !source.includes("app.use('/api/v1/meet', authenticate")
+      && source.includes('  const completed = await withMeetFetchCleanup(() => withOwnedCleanup(async () => {')
+      && source.includes('  }, endPhase, () => mongoose.disconnect()), () => meetLifecycle.restore());'), 'MEET_STATIC_MOUNT_AND_CLEANUP');
+  });
+  need(getters === 0 && nativeCalls === 0 && applicationImports === 0 && connections === 0 && domainWrites === 0, 'MEET_PURE_BOUNDARY');
+}
+
 async function setupUnits() {
   const cases = [];
   const named = name => Object.assign(new Error('synthetic-private-sentinel'), { name });
@@ -527,14 +775,15 @@ async function setupUnits() {
     cases.push('CLEANUP_MISSING_PORT_' + missing);
   }
   need(applicationImports === 0 && connections === 0 && domainWrites === 0, 'OFFLINE_EFFECTS');
-  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', cases: rows.length + cases.length + recordingRows.length + configurationRows.length, recordingCases: recordingRows.length,
+  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', cases: rows.length + cases.length + recordingRows.length + configurationRows.length + meetRows.length, recordingCases: recordingRows.length,
+    meetRecorderCases: meetRows.length,
     configurationControllerCases: configurationRows.length,
     admissionCases: rows.length, setupDiagnosticCases: diagnosticCount, ownedCleanupCases: cases.length - diagnosticCount, failed: 0,
     applicationImports, connections, domainWrites, processGrants: 'DENIED' }) + '\n');
 }
 recordingUnits();
 configurationUnits();
-setupUnits().catch(() => {
+meetUnits().then(setupUnits).catch(() => {
   output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', failed: 1, code: 'OFFLINE_SETUP_UNIT_FAILED' }) + '\n');
   process.exitCode = 1;
 });

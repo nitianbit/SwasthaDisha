@@ -1,0 +1,42 @@
+{
+  "schema": "SD-MEET-SHARED-SOURCE-FREEZE-1",
+  "author": "/root/meet_recording_bootstrap",
+  "status": "TWO_NONAUTHOR_SOURCE_REVIEWS_REQUIRED",
+  "preimplementationCommit": "fda17da",
+  "acceptedBaseline": "bac46d306a5f989c1eafcab5c40d4ce6fdd06e1d",
+  "files": {
+    "test/api-runtime/scenario/bootstrap.cjs": "ff7ecad69b71145ba1dad5ad76ca68e836437d2e02077ade8ffa3748c40b6efc",
+    "test/api-runtime/scenario/bootstrap-unit.cjs": "d5079df3aca5023f021a1fa1a3e665d015c9a13de503ff480cec8c5560a5a56b",
+    "test/api-runtime/scenario/ports-manifest.json": "86d6b909c06387c52c8d62e3b99a10784d9612fb6fc63581faf6d3e96ee13a12",
+    "output/qa/week2-meet-runtime/CONTRACT.md": "106a7500049610f6b08f96165598e677a34cd544aeca14d7676bc3f50ffa4d3a",
+    "output/qa/week2-meet-runtime/INTERFACE.md": "e407aaf502c7ccdaffd60fb299b8b3417c5d2cc518000b555e13d79054e5fede",
+    "output/qa/week2-meet-runtime/baseline-freeze.json": "d95b17bb9d817cf6187df66276fe1f87db7d217d9d631a42c93476f466fab054",
+    "output/qa/week2-meet-shared/README.md": "b6a6d61e16e21b5e7162a296bb298c0a87fb820afea3c759d055c819a61c8e2c",
+    "output/qa/week2-meet-shared/REVIEW.md": "9be82d7218a5d8a54f066214a05add66f13dd9d3751205690e46e9d60478711b",
+    "output/qa/week2-meet-shared/baseline-rejection.json": "20a4a5562dd0ee4cd996c949d08e30e142a9e15419f58ece56812e4f866d2cc0",
+    "output/qa/week2-meet-shared/baseline.stderr.txt": "bcc8b17d611437b4a058d00e66f0a66f32412146e2444448fc851b1e92e718da",
+    "output/qa/week2-meet-shared/candidate.diff": "7262da4e2081c4a24649dc84799562dfa313c33988644bf3d7fff3858ed46688",
+    "output/qa/week2-meet-shared/pure-unit-result.json": "3adc743c9ce8b909362931553547cff5a5c27500c0f0e8130759233684bb4d81",
+    "output/qa/week2-meet-shared/source-verification.json": "66bebba5e4b3009cb9e668f78fd33191b1fcefb38b8a67c397fd639fc4e96bb4",
+    "output/qa/week2-meet-shared/verification.json": "af513f77f8f548d49ff4e2ff1cfb9805c1615fb574d746c08d6e59a40e0a562c",
+    "output/qa/week2-meet-shared/verify-source.py": "d1fd457ad8fa1d242fccfd8c912ac28df9bf246f702fb2dde4678c7fe0e928e0"
+  },
+  "checks": {
+    "pureCases": 358,
+    "historical267CaseBodiesPreserved": true,
+    "newMeetCases": 79,
+    "newAdmissionCases": 12,
+    "syntaxChecks": 2,
+    "sourcePreservation": "PASS",
+    "whitespace": "PASS",
+    "applicationEvaluations": 0,
+    "configurationEvaluations": 0,
+    "compilerExecutions": 0,
+    "databaseConnections": 0,
+    "providerCalls": 0,
+    "DockerCalls": 0,
+    "nativeFetchDelegations": 0
+  },
+  "runtime": "76/21 NOT_RUN",
+  "rootBuildTypecheck": "NOT_RUN"
+}

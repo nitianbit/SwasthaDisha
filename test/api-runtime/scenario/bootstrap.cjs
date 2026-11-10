@@ -20,7 +20,8 @@ const ADMITTED_ROOTS = Object.freeze([
   "@/modules/middleware/errorHandler",
   "@/modules/dependents/routes",
   "@/modules/notification/routes",
-  "@/modules/fcm/routes"
+  "@/modules/fcm/routes",
+  "@/modules/meet/routes"
 ]);
 const REQUIRED_CASE_IDS = Object.freeze([
   "PHONE_LOGIN",
@@ -82,7 +83,23 @@ const REQUIRED_CASE_IDS = Object.freeze([
   "JWT_CONFIG_VALID_VALUE",
   "JWT_CONFIG_PADDED_VALUE_UNCHANGED",
   "JWT_CONFIG_NONPLACEHOLDER_VALUES",
-  "JWT_PUBLISHED_FALLBACK_TOKEN_DENIED"
+  "JWT_PUBLISHED_FALLBACK_TOKEN_DENIED",
+  "MEET_URL_AUTHORITY",
+  "MEET_EXCHANGE_AUTHORITY",
+  "MEET_REFRESH_AUTHORITY",
+  "MEET_CREATE_AUTHORITY",
+  "MEET_URL_ADMIN_VALIDATION",
+  "MEET_EXCHANGE_ADMIN_VALIDATION",
+  "MEET_REFRESH_ADMIN_VALIDATION",
+  "MEET_CREATE_ADMIN_VALIDATION",
+  "MEET_URL_ADMIN_SUCCESS",
+  "MEET_EXCHANGE_ADMIN_SUCCESS",
+  "MEET_REFRESH_ADMIN_SUCCESS",
+  "MEET_CREATE_ADMIN_SUCCESS",
+  "MEET_CALLBACK_VALID_CODE_PUBLIC",
+  "MEET_CALLBACK_PROVIDER_ERROR_PUBLIC",
+  "MEET_CALLBACK_MISSING_CODE_PUBLIC",
+  "MEET_CALLBACK_INVALID_QUERY_PUBLIC"
 ]);
 const REQUIRED_SENSITIVITY_IDS = Object.freeze([
   "OTP_UNCONDITIONAL_CONSUME",
@@ -101,7 +118,11 @@ const REQUIRED_SENSITIVITY_IDS = Object.freeze([
   "FCM_TEST_ADMIN_GUARD_AFTER_VALIDATION",
   "JWT_CONFIG_PUBLISHED_FALLBACK",
   "JWT_CONFIG_PRODUCTION_ONLY_GUARD",
-  "JWT_CONFIG_TRIMMED_RETURN"
+  "JWT_CONFIG_TRIMMED_RETURN",
+  "MEET_AUTHENTICATION_REMOVED",
+  "MEET_ADMIN_GUARD_REMOVED",
+  "MEET_GUARDS_AFTER_VALIDATION",
+  "MEET_CALLBACK_GATED"
 ]);
 const MODEL_IDENTITIES = Object.freeze({
   "User": [
@@ -164,7 +185,7 @@ const need = (ok, code) => { if (!ok) fail(code); };
 const plain = value => value && typeof value === 'object' && !Array.isArray(value);
 const stdout = process.stdout.write.bind(process.stdout);
 let stage = 'ADMISSION';
-const counters = { email: 0, sms: 0, push: 0, logger: 0, console: 0, unexpected: 0, excluded: 0, jwtIssued: 0, dbWrites: 0 };
+const counters = { email: 0, sms: 0, push: 0, logger: 0, console: 0, unexpected: 0, excluded: 0, jwtIssued: 0, dbWrites: 0, calendar: 0 };
 for (const name of ['log', 'info', 'debug', 'warn', 'error']) console[name] = () => { counters.console++; };
 process.emitWarning = () => { counters.console++; };
 
@@ -341,6 +362,7 @@ function validateAdmissionData(manifest, plan, ports, observed) {
     && JSON.stringify(ports.excludedCapabilities) === JSON.stringify({ '@/modules/payment/services': ['PaymentService'], '@/modules/coupon/services': ['CouponService'] })
     && ports.recordingAxios.email === 'https://api.smtp2go.com/v3/email/send'
     && ports.recordingAxios.sms === 'https://sms.fixture.invalid/send', 'RECORDING_PORT_MAP');
+  need(meetSame(meetData(ports.recordingMeet), MEET_RECORDING), 'MEET_RECORDING_MAP');
   need(plain(plan.modules) && plain(plan.mutants) && plain(plan.sourceFiles)
     && Object.keys(plan.sourceFiles).length > 0 && Object.values(plan.sourceFiles).every(value => /^[a-f0-9]{64}$/.test(value)), 'SOURCE_MANIFEST');
   for (const file of Object.values(plan.modules)) need(Object.hasOwn(manifest.files, file), 'UNDECLARED_COMPILED_SOURCE');
@@ -351,6 +373,11 @@ function validateAdmissionData(manifest, plan, ports, observed) {
     && Object.hasOwn(plan.sourceFiles, 'src1/config/config.ts')
     && CONFIG_MUTANT_IDS.every(id => plan.mutants[id]?.source === 'src1/config/config.ts'
       && plan.mutants[id].file === 'compiled/mutants/' + id + '.js'), 'CONFIG_SOURCE_BINDING');
+  need(plan.modules['@/modules/meet/routes'] === 'compiled/modules/meet/routes/index.js'
+    && ['routes', 'controller', 'validation', 'service', 'types'].every(name =>
+      Object.hasOwn(plan.sourceFiles, 'src1/modules/meet/' + name + '/index.ts'))
+    && REQUIRED_SENSITIVITY_IDS.slice(17, 21).every(id => plan.mutants[id]?.source === 'src1/modules/meet/routes/index.ts'
+      && plan.mutants[id].file === 'compiled/mutants/' + id + '.js'), 'MEET_SOURCE_BINDING');
   need(Array.isArray(ports.models) && ports.models.length === 13
     && new Set(ports.models.map(row => row.name)).size === 13
     && new Set(ports.models.map(row => row.collection)).size === 13
@@ -481,6 +508,240 @@ function recordPush(payload, pushes, effectCounters) {
   return { successCount: 0, failureCount: 0, responses: [] };
 }
 
+// Fixed synthetic settings and a closed, nondelegating fetch boundary. The
+// literals are independent of the supplied manifest and contain no real account.
+const MEET_RECORDING = {
+  "tokenUrl": "https://oauth2.googleapis.com/token",
+  "calendarUrl": "https://www.googleapis.com/calendar/v3/calendars/fixture-calendar%40example.com/events?conferenceDataVersion=1&sendUpdates=all",
+  "bodyBytes": 8192,
+  "recordLimit": 256,
+  "environment": {
+    "GOOGLE_OAUTH_CLIENT_ID": "fixture-google-client-id",
+    "GOOGLE_OAUTH_CLIENT_SECRET": "fixture-google-client-secret",
+    "GOOGLE_OAUTH_REDIRECT_URI": "https://fixture.example.com/oauth/callback",
+    "GOOGLE_OAUTH_REFRESH_TOKEN": "fixture-refresh-token",
+    "GOOGLE_CALENDAR_ID": "fixture-calendar@example.com",
+    "GOOGLE_MEET_TIMEZONE": "Asia/Kolkata"
+  },
+  "oauthResponse": {
+    "access_token": "fixture-access-token-1234567890",
+    "token_type": "Bearer",
+    "expires_in": 3600,
+    "refresh_token": "fixture-refresh-token"
+  },
+  "eventResponse": {
+    "id": "fixture-event-id",
+    "hangoutLink": "https://meet.google.com/abc-defg-hij",
+    "conferenceData": {
+      "conferenceId": "abc-defg-hij"
+    }
+  },
+  "providerCounter": "calendar",
+  "providerCounterScope": "ALL_NOMINAL_RECORDED_GOOGLE_TOKEN_AND_CALENDAR_REQUESTS_EXCLUDING_SENSITIVITY"
+};
+
+function meetObject(value, keys) {
+  need(value !== null && typeof value === 'object' && !Array.isArray(value)
+    && [Object.prototype, null].includes(Object.getPrototypeOf(value)), 'MEET_RECORDING_DATA');
+  const own = Reflect.ownKeys(value);
+  need(own.length === keys.length && own.every(key => typeof key === 'string' && keys.includes(key)), 'MEET_RECORDING_DATA');
+  const result = {};
+  for (const key of keys) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    need(descriptor && Object.hasOwn(descriptor, 'value') && descriptor.enumerable, 'MEET_RECORDING_DATA');
+    Object.defineProperty(result, key, { value: descriptor.value, enumerable: true });
+  }
+  return result;
+}
+function meetArray(value, limit) {
+  need(Array.isArray(value) && Object.getPrototypeOf(value) === Array.prototype, 'MEET_RECORDING_DATA');
+  const length = Object.getOwnPropertyDescriptor(value, 'length')?.value;
+  need(Number.isSafeInteger(length) && length >= 0 && length <= limit, 'MEET_RECORDING_DATA');
+  const keys = Reflect.ownKeys(value);
+  need(keys.length === length + 1 && keys.every(key => key === 'length'
+    || (typeof key === 'string' && /^(0|[1-9][0-9]*)$/.test(key) && Number(key) < length)), 'MEET_RECORDING_DATA');
+  const output = [];
+  for (let index = 0; index < length; index++) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    need(descriptor && Object.hasOwn(descriptor, 'value') && descriptor.enumerable, 'MEET_RECORDING_DATA');
+    output.push(descriptor.value);
+  }
+  return output;
+}
+function meetData(value) {
+  let nodes = 0; const seen = new Set();
+  function copy(input, depth) {
+    need(depth <= 16 && ++nodes <= 2048, 'MEET_RECORDING_DATA');
+    if (input === null || typeof input === 'boolean') return input;
+    if (typeof input === 'string') {
+      need(Buffer.byteLength(input, 'utf8') <= 8192, 'MEET_RECORDING_DATA'); return input;
+    }
+    if (typeof input === 'number') { need(Number.isFinite(input), 'MEET_RECORDING_DATA'); return input; }
+    need(input !== null && typeof input === 'object' && !seen.has(input), 'MEET_RECORDING_DATA'); seen.add(input);
+    let result;
+    if (Array.isArray(input)) result = meetArray(input, 256).map(item => copy(item, depth + 1));
+    else {
+      const keys = Reflect.ownKeys(input);
+      need(keys.length <= 64 && keys.every(key => typeof key === 'string'
+        && !['__proto__', 'constructor', 'prototype'].includes(key)), 'MEET_RECORDING_DATA');
+      const own = meetObject(input, keys); result = {};
+      for (const key of keys.sort()) Object.defineProperty(result, key,
+        { value: copy(own[key], depth + 1), enumerable: true });
+    }
+    seen.delete(input); return Object.freeze(result);
+  }
+  const result = copy(value, 0);
+  need(Buffer.byteLength(JSON.stringify(result), 'utf8') <= 8192, 'MEET_RECORDING_DATA'); return result;
+}
+const meetSame = (left, right) => JSON.stringify(meetData(left)) === JSON.stringify(meetData(right));
+
+function createMeetRecorder(spec, effects) {
+  need(meetSame(spec, MEET_RECORDING), 'MEET_RECORDING_MAP');
+  need(plain(effects) && Number.isSafeInteger(effects.calendar) && effects.calendar >= 0
+    && Number.isSafeInteger(effects.unexpected) && effects.unexpected >= 0, 'MEET_RECORDING_COUNTERS');
+  const settings = meetData(spec); const captures = []; let expected = [];
+  const text = value => typeof value === 'string' && value.length > 0 && Buffer.byteLength(value, 'utf8') <= settings.bodyBytes;
+  function guarded(code, action) {
+    try { return action(); } catch {
+      effects.unexpected++; fail(code);
+    }
+  }
+  function descriptor(input) {
+    const data = meetData(input);
+    if (data?.kind === 'code') {
+      meetObject(data, ['kind', 'code', 'redirectUri']);
+      need(text(data.code) && data.redirectUri === settings.environment.GOOGLE_OAUTH_REDIRECT_URI, 'MEET_RECORDING_DATA');
+    } else if (data?.kind === 'refresh') {
+      meetObject(data, ['kind', 'refreshToken']);
+      need(text(data.refreshToken), 'MEET_RECORDING_DATA');
+    } else {
+      meetObject(data, ['kind', 'payload']); need(data.kind === 'event', 'MEET_RECORDING_DATA');
+      const payload = meetObject(data.payload, ['summary', 'description', 'start', 'end', 'attendees']);
+      need(text(payload.summary) && text(payload.description), 'MEET_RECORDING_DATA');
+      for (const value of [payload.start, payload.end]) {
+        const date = meetObject(value, ['dateTime', 'timeZone']);
+        need(typeof date.dateTime === 'string' && /^2030-01-15T(?:10:00|10:30):00$/.test(date.dateTime)
+          && date.timeZone === settings.environment.GOOGLE_MEET_TIMEZONE, 'MEET_RECORDING_DATA');
+      }
+      const attendees = meetArray(payload.attendees, 2);
+      need(attendees.length === 2, 'MEET_RECORDING_DATA');
+      for (const attendee of attendees) {
+        const row = meetObject(attendee, ['email']);
+        need(typeof row.email === 'string' && /^[A-Za-z0-9._+-]+@example\.com$/.test(row.email), 'MEET_RECORDING_DATA');
+      }
+    }
+    return data;
+  }
+  function expectMeetRequests(requests) {
+    return guarded('MEET_RECORDING_QUEUE', () => {
+      need(expected.length === 0, 'MEET_RECORDING_DATA');
+      const values = meetArray(requests, settings.recordLimit);
+      const next = values.map(descriptor);
+      need(captures.length + next.length <= settings.recordLimit, 'MEET_RECORDING_DATA');
+      expected = next;
+    });
+  }
+  async function fetch(input, options) {
+    return guarded('MEET_RECORDING_REQUEST', () => {
+      need(expected.length > 0 && captures.length < settings.recordLimit
+        && typeof input === 'string' && Buffer.byteLength(input, 'utf8') <= settings.bodyBytes, 'MEET_RECORDING_DATA');
+      const request = meetObject(options, ['method', 'headers', 'body']);
+      need(request.method === 'POST', 'MEET_RECORDING_DATA');
+      const current = expected[0]; let body; let headers; let reply;
+      if (current.kind === 'code' || current.kind === 'refresh') {
+        need(input === settings.tokenUrl && Object.getPrototypeOf(request.body) === URLSearchParams.prototype, 'MEET_RECORDING_DATA');
+        headers = meetData(request.headers);
+        need(meetSame(headers, { 'Content-Type': 'application/x-www-form-urlencoded' }), 'MEET_RECORDING_DATA');
+        const encoded = URLSearchParams.prototype.toString.call(request.body);
+        need(Buffer.byteLength(encoded, 'utf8') <= settings.bodyBytes, 'MEET_RECORDING_DATA');
+        const entries = [...URLSearchParams.prototype.entries.call(request.body)];
+        need(new Set(entries.map(row => row[0])).size === entries.length, 'MEET_RECORDING_DATA');
+        body = meetData(Object.fromEntries(entries));
+        const credentials = { client_id: settings.environment.GOOGLE_OAUTH_CLIENT_ID,
+          client_secret: settings.environment.GOOGLE_OAUTH_CLIENT_SECRET };
+        const wanted = current.kind === 'code'
+          ? { code: current.code, ...credentials, redirect_uri: current.redirectUri, grant_type: 'authorization_code' }
+          : { ...credentials, refresh_token: current.refreshToken, grant_type: 'refresh_token' };
+        need(meetSame(body, wanted), 'MEET_RECORDING_DATA'); reply = settings.oauthResponse;
+      } else {
+        need(input === settings.calendarUrl && typeof request.body === 'string'
+          && Buffer.byteLength(request.body, 'utf8') <= settings.bodyBytes, 'MEET_RECORDING_DATA');
+        headers = meetData(request.headers);
+        need(meetSame(headers, { Authorization: 'Bearer ' + settings.oauthResponse.access_token,
+          'Content-Type': 'application/json' }), 'MEET_RECORDING_DATA');
+        body = meetData(JSON.parse(request.body));
+        const event = meetObject(body, ['summary', 'description', 'start', 'end', 'attendees', 'conferenceData']);
+        const conference = meetObject(event.conferenceData, ['createRequest']);
+        const create = meetObject(conference.createRequest, ['requestId', 'conferenceSolutionKey']);
+        need(typeof create.requestId === 'string' && /^meet-[0-9]+$/.test(create.requestId)
+          && meetSame(create.conferenceSolutionKey, { type: 'hangoutsMeet' }), 'MEET_RECORDING_DATA');
+        const { conferenceData, ...payload } = event;
+        need(meetSame(payload, current.payload), 'MEET_RECORDING_DATA'); reply = settings.eventResponse;
+      }
+      const record = meetData({ kind: current.kind, method: 'POST', url: input, headers, body });
+      const replyText = JSON.stringify(meetData(reply));
+      need(Number.isSafeInteger(effects.calendar) && effects.calendar >= 0 && effects.calendar < Number.MAX_SAFE_INTEGER,
+        'MEET_RECORDING_DATA');
+      expected.shift(); captures.push(record); effects.calendar++;
+      return Object.freeze({ ok: true, text: async () => replyText });
+    });
+  }
+  return Object.freeze({ fetch, expectMeetRequests,
+    get meetRequests() { return Object.freeze(captures.slice()); },
+    assertDone() { return guarded('MEET_RECORDING_PENDING', () => need(expected.length === 0, 'MEET_RECORDING_DATA')); },
+  });
+}
+
+function meetFetchLifecycle(target, spec, effects) {
+  const held = Object.getOwnPropertyDescriptor(target, 'fetch');
+  need(held && Object.hasOwn(held, 'value') && typeof held.value === 'function'
+    && (held.writable || held.configurable), 'MEET_FETCH_PORT');
+  let active; let closed = false;
+  return Object.freeze({
+    phase() {
+      need(!closed, 'MEET_FETCH_CLOSED');
+      const current = Object.getOwnPropertyDescriptor(target, 'fetch');
+      need(current && current.value === (active ? active.fetch : held.value)
+        && current.enumerable === held.enumerable && current.writable === held.writable
+        && current.configurable === held.configurable, 'MEET_FETCH_DRIFT');
+      if (active) active.assertDone();
+      const next = createMeetRecorder(spec, effects);
+      Object.defineProperty(target, 'fetch', { ...held, value: next.fetch }); active = next; return next;
+    },
+    restore() {
+      need(!closed, 'MEET_FETCH_CLOSED'); closed = true;
+      let first;
+      try { active?.assertDone(); } catch (error) { first = error; }
+      try {
+        const current = Object.getOwnPropertyDescriptor(target, 'fetch');
+        const unchanged = current && current.value === (active ? active.fetch : held.value)
+          && current.enumerable === held.enumerable && current.writable === held.writable && current.configurable === held.configurable;
+        Object.defineProperty(target, 'fetch', held);
+        const restored = Object.getOwnPropertyDescriptor(target, 'fetch');
+        need(restored.value === held.value && restored.enumerable === held.enumerable && restored.writable === held.writable
+          && restored.configurable === held.configurable, 'MEET_FETCH_RESTORATION');
+        need(unchanged, 'MEET_FETCH_DRIFT');
+      } catch (error) {
+        if (!first) first = error;
+        else try { Object.defineProperty(first, 'meetFetchRestorationFailure', { value: error }); } catch {}
+      }
+      if (first) throw first;
+    },
+  });
+}
+async function withMeetFetchCleanup(action, restore) {
+  need(typeof action === 'function' && typeof restore === 'function', 'MEET_FETCH_CLEANUP_PORTS');
+  let result; let first; let failed = false;
+  try { result = await action(); } catch (error) { first = error; failed = true; }
+  try { restore(); } catch (error) {
+    if (!failed) { first = error; failed = true; }
+    else if (first !== null && ['object', 'function'].includes(typeof first)) {
+      try { Object.defineProperty(first, 'meetFetchCleanupFailure', { value: error }); } catch {}
+    }
+  }
+  if (failed) throw first; return result;
+}
+
 function recordingPorts(ports, typedi) {
   const deliveries = []; const pushes = [];
   const logger = { info() { counters.logger++; }, error() { counters.logger++; }, warn() { counters.logger++; }, debug() { counters.logger++; } };
@@ -516,7 +777,7 @@ function recordingPorts(ports, typedi) {
 // ports; main binds the admitted real loader/packages below. No validator is copied.
 const CONFIG_ALIAS = '@/config/config';
 const CONFIG_CASE_IDS = Object.freeze(REQUIRED_CASE_IDS.slice(53, 59));
-const CONFIG_MUTANT_IDS = Object.freeze(REQUIRED_SENSITIVITY_IDS.slice(14));
+const CONFIG_MUTANT_IDS = Object.freeze(REQUIRED_SENSITIVITY_IDS.slice(14, 17));
 const CONFIG_ENVIRONMENTS = Object.freeze(['test', 'development', 'production']);
 const CONFIG_REJECTION = 'JWT_SECRET_KEY must be set to a non-placeholder value';
 const CONFIG_ENV_KEYS = Object.freeze(['NODE_ENV', 'JWT_SECRET_KEY', 'MONGODB_URL']);
@@ -797,7 +1058,8 @@ async function main() {
   const uri = 'mongodb://127.0.0.1:27017/' + manifest.database + '?replicaSet=' + manifest.replicaSet + '&directConnection=true';
   Object.assign(process.env, { JWT_SECRET_KEY: key, MONGODB_URL: uri, NODE_ENV: 'test',
     SMTP2GO_API_KEY: 'fixture-only', SMTP2GO_SENDER: 'fixture@example.com',
-    SMS_API_BASE_URL: ports.recordingAxios.sms, SMS_USERNAME: 'fixture', SMS_PASSWORD: 'fixture', SMS_FROM: 'fixture' });
+    SMS_API_BASE_URL: ports.recordingAxios.sms, SMS_USERNAME: 'fixture', SMS_PASSWORD: 'fixture', SMS_FROM: 'fixture',
+    ...ports.recordingMeet.environment });
   require('reflect-metadata');
   const typedi = require('typedi'); const axios = require('axios'); const jwt = require('jsonwebtoken'); const mongoose = require('mongoose');
   const originalSign = jwt.sign; jwt.sign = (...args) => { counters.jwtIssued++; return originalSign(...args); };
@@ -837,11 +1099,14 @@ async function main() {
   };
   const writeOps = Object.fromEntries([...collections].map(name => [name, 0]));
   const readOps = Object.fromEntries([...collections].map(name => [name, 0]));
-  let currentPorts; let server;
+  const meetLifecycle = meetFetchLifecycle(globalThis, ports.recordingMeet, counters);
+  let currentMeet; let currentPorts; let server;
   function phase(overrides = {}) {
     if (server) fail('PHASE_SERVER_STILL_OPEN');
+    currentMeet = meetLifecycle.phase();
     typedi.Container.of().reset({ strategy: 'resetServices' });
-    loader.resetCompiled(); currentPorts = recordingPorts(ports, typedi); loader.phase(currentPorts.substitutes, overrides);
+    loader.resetCompiled();
+    currentPorts = recordingPorts(ports, typedi); loader.phase(currentPorts.substitutes, overrides);
     axios.defaults.adapter = currentPorts.adapter;
     const express = require('express'); const app = express(); app.use(express.json({ limit: '16kb' }));
     const authenticate = loader.load('@/modules/middleware/auth').authenticate;
@@ -851,6 +1116,7 @@ async function main() {
     app.use('/api/v1/dependents', authenticate, loader.load('@/modules/dependents/routes').default);
     app.use('/api/v1/notifications', authenticate, loader.load('@/modules/notification/routes').default);
     app.use('/api/v1/fcm', authenticate, loader.load('@/modules/fcm/routes').default);
+    app.use('/api/v1/meet', loader.load('@/modules/meet/routes').default);
     app.use(loader.load('@/modules/middleware/errorHandler').errorHandler);
     return new Promise((resolve, reject) => {
       server = app.listen(0, '127.0.0.1', () => { const port = server.address().port; httpPorts.add(port); resolve(port); });
@@ -863,8 +1129,9 @@ async function main() {
     await new Promise((resolve, reject) => active.close(error => error ? reject(error) : resolve())); httpPorts.delete(port);
   };
   let port;
-  const completed = await withOwnedCleanup(async () => {
+  const completed = await withMeetFetchCleanup(() => withOwnedCleanup(async () => {
     // Recording/sentinel ports precede the first intentional CONFIG domain load.
+    currentMeet = meetLifecycle.phase();
     currentPorts = recordingPorts(ports, typedi); loader.phase(currentPorts.substitutes);
     axios.defaults.adapter = currentPorts.adapter;
     const configurationEvidence = collectConfigurationEvidence({ env: process.env, effects: counters,
@@ -872,6 +1139,7 @@ async function main() {
       cacheHas: relative => Object.hasOwn(require.cache, path.join(ROOT, relative)) });
     need(process.env.NODE_ENV === 'test' && process.env.JWT_SECRET_KEY === key && process.env.MONGODB_URL === uri,
       'CONFIG_FINAL_ENV');
+    need(Object.entries(ports.recordingMeet.environment).every(([name, value]) => process.env[name] === value), 'MEET_CONFIG_ENV_DRIFT');
     // Router imports register actual production models, still without any connection.
     stage = 'ROUTER_IMPORT'; port = await phase();
     need(JSON.stringify(mongoose.modelNames().sort()) === JSON.stringify(ports.models.map(row => row.name).sort()), 'UNDECLARED_REGISTERED_MODEL');
@@ -904,9 +1172,12 @@ async function main() {
       key, originalSign, counters, writeOps, readOps, need, fail, load: loader.load, configurationEvidence,
       get deliveries() { return currentPorts.deliveries; },
       get pushes() { return currentPorts.pushes; },
+      get meetRequests() { return currentMeet.meetRequests; },
+      expectMeetRequests(expected) { currentMeet.expectMeetRequests(expected); },
       get port() { return port; },
       async nextPhase(overrides) { await endPhase(); port = await phase(overrides); },
     });
+    currentMeet.assertDone();
     need(result.failed === 0 && result.skipped === 0 && counters.unexpected === 0 && counters.excluded === 0, 'CASE_OR_EFFECT_FAILURE');
     need(JSON.stringify(result.cases.map(row => row.id).sort()) === JSON.stringify(ports.requiredCaseIds.slice().sort())
       && result.cases.every(row => row.status === 'PASS'), 'MISSING_REQUIRED_CASE');
@@ -920,7 +1191,7 @@ async function main() {
       admissionPassed: true, networkAdmission, egressBlocked: true, filesystemCanariesPassed: true,
       cases: result.cases, sensitivity: result.sensitivity, failed: 0, skipped: 0,
       providerSummary: result.providerSummary, domainScope: 'FOCUSED_PRODUCTION_ROUTERS' };
-  }, endPhase, () => mongoose.disconnect());
+  }, endPhase, () => mongoose.disconnect()), () => meetLifecycle.restore());
   stdout(JSON.stringify(completed) + '\n');
 }
 
@@ -934,4 +1205,5 @@ if (require.main === module) main().catch(error => {
 });
 module.exports = { validateAdmissionData, inspectManifest, closeNetwork, installLoader, runSetupStep, SETUP_FAILURE_CODES,
   withOwnedCleanup, recordReadOperation, recordPush, configurationSamples, configurationFinally,
-  configurationEnvironment, withConfigurationTaps, configurationSampleEvidence, collectConfigurationEvidence };
+  configurationEnvironment, withConfigurationTaps, configurationSampleEvidence, collectConfigurationEvidence,
+  meetData, meetSame, createMeetRecorder, meetFetchLifecycle, withMeetFetchCleanup };

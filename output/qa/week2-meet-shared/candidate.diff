@@ -1,0 +1,761 @@
+diff --git a/test/api-runtime/scenario/bootstrap-unit.cjs b/test/api-runtime/scenario/bootstrap-unit.cjs
+index 038031190bdb18cd37231ab8b955c308e2f3cc27..88e81dabede7f55f97290b6ecdb618dd1579c3a3 100644
+--- a/test/api-runtime/scenario/bootstrap-unit.cjs
++++ b/test/api-runtime/scenario/bootstrap-unit.cjs
+@@ -26,6 +26,7 @@ const blockedNetwork = () => { connections++; throw new Error('OFFLINE_NETWORK_D
+ net.Socket.prototype.connect = blockedNetwork; net.connect = blockedNetwork;
+ net.Server.prototype.listen = blockedNetwork;
+ net.createConnection = blockedNetwork; tls.connect = blockedNetwork; dns.lookup = blockedNetwork;
++globalThis.fetch = blockedNetwork;
+ const originalLoad = Module._load;
+ Module._load = function (request, parent, isMain) {
+   if (request !== bootstrap && !Module.isBuiltin(request)) { applicationImports++; throw new Error('OFFLINE_DOMAIN_IMPORT_DENIED'); }
+@@ -33,7 +34,8 @@ Module._load = function (request, parent, isMain) {
+ };
+ const { validateAdmissionData, runSetupStep, SETUP_FAILURE_CODES, withOwnedCleanup, recordReadOperation, recordPush,
+   configurationSamples, configurationFinally, configurationEnvironment, withConfigurationTaps,
+-  configurationSampleEvidence, collectConfigurationEvidence } = require(bootstrap);
++  configurationSampleEvidence, collectConfigurationEvidence, meetData, meetSame, createMeetRecorder,
++  meetFetchLifecycle, withMeetFetchCleanup } = require(bootstrap);
+ const need = (condition, label) => { if (!condition) throw new Error(label); };
+ need(process.permission && !process.permission.has('child') && !process.permission.has('worker')
+   && !process.permission.has('addon') && !process.permission.has('fs.write'), 'OFFLINE_PROCESS_GRANTS');
+@@ -47,9 +49,10 @@ function fixture() {
+   const sources = Object.fromEntries(ports.models.map(row => [row.source, 'a'.repeat(64)]));
+   sources['src1/modules/otp/repository/index.ts'] = 'a'.repeat(64);
+   sources['src1/config/config.ts'] = 'a'.repeat(64);
++  for (const name of ['routes', 'controller', 'validation', 'service', 'types']) sources['src1/modules/meet/' + name + '/index.ts'] = 'a'.repeat(64);
+   const mutants = Object.fromEntries(ports.requiredSensitivityIds.map(name => {
+     const file = 'compiled/mutants/' + name + '.js'; files[file] = Buffer.from('inert');
+-    return [name, { source: name.startsWith('JWT_CONFIG_') ? 'src1/config/config.ts' : 'src1/modules/otp/repository/index.ts', originalSha256: 'a'.repeat(64), file }];
++    return [name, { source: name.startsWith('JWT_CONFIG_') ? 'src1/config/config.ts' : name.startsWith('MEET_') ? 'src1/modules/meet/routes/index.ts' : 'src1/modules/otp/repository/index.ts', originalSha256: 'a'.repeat(64), file }];
+   }));
+   const plan = { schema: 'SD-AUTH-API-PLAN-1', role: ports.role, sourceCommit, sourceFiles: sources,
+     compilation: { compiler: '5.9.3', status: 'TRANSPILE_ONLY_NOT_TYPECHECKED' },
+@@ -57,6 +60,7 @@ function fixture() {
+     models: ports.models, requiredCaseIds: ports.requiredCaseIds, requiredSensitivityIds: ports.requiredSensitivityIds,
+     providerCounterKeys: ports.providerCounterKeys };
+   plan.modules['@/config/config'] = 'compiled/config/config.js'; files['compiled/config/config.js'] = Buffer.from('inert');
++  plan.modules['@/modules/meet/routes'] = 'compiled/modules/meet/routes/index.js'; files['compiled/modules/meet/routes/index.js'] = Buffer.from('inert');
+   const manifest = { schema: 'SD-AUTH-API-RUN-1', role: ports.role, runId, sourceCommit,
+     database: 'sd_api_' + runId.replaceAll('-', ''), replicaSet: 'sd_rs_' + runId.replaceAll('-', ''),
+     mongoId: 'c'.repeat(64), templateSha: 'd'.repeat(64) };
+@@ -112,8 +116,23 @@ check('PORT_PLAN_MISMATCH', p => { p.plan.portsSha = 'e'.repeat(64); });
+ check('CONFIG_ALIAS_REBOUND', p => { p.plan.modules['@/config/config'] = 'compiled/entry.js'; }, true);
+ check('CONFIG_SOURCE_MISSING', p => { delete p.plan.sourceFiles['src1/config/config.ts']; }, true);
+ check('CONFIG_MUTANT_REBOUND', p => { p.plan.mutants.JWT_CONFIG_TRIMMED_RETURN.source = 'src1/modules/otp/repository/index.ts'; }, true);
++for (const [id, mutate] of [
++  ['MISSING_MAP', p => { delete p.ports.recordingMeet; }],
++  ['WRONG_TOKEN_URL', p => { p.ports.recordingMeet.tokenUrl = 'https://example.com/token'; }],
++  ['WRONG_CALENDAR_URL', p => { p.ports.recordingMeet.calendarUrl += '&unexpected=true'; }],
++  ['WRONG_ENVIRONMENT', p => { p.ports.recordingMeet.environment.GOOGLE_OAUTH_CLIENT_SECRET = 'other'; }],
++  ['EXTRA_ENVIRONMENT', p => { p.ports.recordingMeet.environment.GOOGLE_SERVICE_ACCOUNT_FILE = 'forbidden'; }],
++  ['WRONG_BODY_BOUND', p => { p.ports.recordingMeet.bodyBytes++; }],
++  ['WRONG_RECORD_BOUND', p => { p.ports.recordingMeet.recordLimit++; }],
++  ['WRONG_RESPONSE', p => { p.ports.recordingMeet.oauthResponse.access_token = 'other'; }],
++  ['WRONG_COUNTER_SCOPE', p => { p.ports.recordingMeet.providerCounterScope = 'OTHER'; }],
++  ['ALIAS_REBOUND', p => { p.plan.modules['@/modules/meet/routes'] = 'compiled/entry.js'; }],
++  ['SOURCE_OMITTED', p => { delete p.plan.sourceFiles['src1/modules/meet/service/index.ts']; }],
++  ['MUTANT_REBOUND', p => { p.plan.mutants.MEET_CALLBACK_GATED.source = 'src1/config/config.ts'; }],
++]) check('MEET_ADMISSION_' + id, mutate, true);
+ const recordingRows = [];
+ const configurationRows = [];
++const meetRows = [];
+ function configurationCheck(id, action) { action(); configurationRows.push(id); }
+ function configurationFailure(action, code) {
+   let caught; try { action(); } catch (error) { caught = error; }
+@@ -124,7 +143,7 @@ function configurationFailure(action, code) {
+ function fakeConfigurationRuntime() {
+   const key = 'synthetic-private-config-key'; const uri = 'synthetic-owned-uri';
+   const env = { NODE_ENV: 'test', JWT_SECRET_KEY: key, MONGODB_URL: uri };
+-  const effects = Object.fromEntries(['email', 'sms', 'push', 'logger', 'console', 'unexpected', 'excluded', 'jwtIssued', 'dbWrites'].map(name => [name, 0]));
++  const effects = Object.fromEntries(['email', 'sms', 'push', 'logger', 'console', 'unexpected', 'excluded', 'jwtIssued', 'dbWrites', 'calendar'].map(name => [name, 0]));
+   const state = { cache: new Set(), loads: [], delegated: 0, signatures: 0, overrides: {}, models: [], hook: undefined };
+   const delegated = function () { state.delegated++; return 'fake-read'; };
+   const mongoose = { connect: delegated, createConnection: delegated, Connection: function () {},
+@@ -137,7 +156,7 @@ function fakeConfigurationRuntime() {
+   network.Socket.prototype.connect = delegated; network.Server.prototype.listen = delegated;
+   const plan = { modules: { '@/config/config': 'compiled/config/config.js' },
+     sourceFiles: { 'src1/config/config.ts': 'a'.repeat(64) }, mutants: {} };
+-  for (const id of portsOriginal.requiredSensitivityIds.slice(14)) plan.mutants[id] = {
++  for (const id of portsOriginal.requiredSensitivityIds.slice(14, 17)) plan.mutants[id] = {
+     source: 'src1/config/config.ts', originalSha256: 'a'.repeat(64), file: 'compiled/mutants/' + id + '.js',
+   };
+   const samples = configurationSamples(key);
+@@ -184,7 +203,7 @@ function configurationUnits() {
+     need(runtime.mongoose.connect === original && Object.isFrozen(evidence) && Object.isFrozen(evidence.cases)
+       && Object.isFrozen(evidence.sensitivity) && evidence.cases.every(Object.isFrozen) && evidence.sensitivity.every(Object.isFrozen)
+       && JSON.stringify(evidence) === JSON.stringify({ cases: portsOriginal.requiredCaseIds.slice(53, 59).map(id => ({ id, status: 'PASS' })),
+-        sensitivity: portsOriginal.requiredSensitivityIds.slice(14).map(id => ({ id, detected: true })) }), 'CONFIG_SAFE_EVIDENCE');
++        sensitivity: portsOriginal.requiredSensitivityIds.slice(14, 17).map(id => ({ id, detected: true })) }), 'CONFIG_SAFE_EVIDENCE');
+     need(runtime.env.NODE_ENV === 'test' && runtime.env.JWT_SECRET_KEY === runtime.key && runtime.env.MONGODB_URL === runtime.uri,
+       'CONFIG_FINAL_ENV_RESTORED');
+   });
+@@ -397,6 +416,235 @@ function recordingUnits() {
+       && effects.push === 1 && effects.unexpected === 1, 'PUSH_UNEXPECTED_LATCHED_DESPITE_CATCH');
+   });
+ }
++async function meetUnits() {
++  const spec = portsOriginal.recordingMeet;
++  const effects = () => ({ calendar: 0, unexpected: 0 });
++  const code = () => ({ kind: 'code', code: 'fixture-code', redirectUri: spec.environment.GOOGLE_OAUTH_REDIRECT_URI });
++  const refresh = () => ({ kind: 'refresh', refreshToken: spec.environment.GOOGLE_OAUTH_REFRESH_TOKEN });
++  const event = () => ({ kind: 'event', payload: { summary: 'Fixture Meet event', description: 'Created from test OAuth endpoint',
++    start: { dateTime: '2030-01-15T10:00:00', timeZone: 'Asia/Kolkata' },
++    end: { dateTime: '2030-01-15T10:30:00', timeZone: 'Asia/Kolkata' },
++    attendees: [{ email: 'patient@example.com' }, { email: 'specialist@example.com' }] } });
++  function request(expected) {
++    const credentials = { client_id: spec.environment.GOOGLE_OAUTH_CLIENT_ID, client_secret: spec.environment.GOOGLE_OAUTH_CLIENT_SECRET };
++    if (expected.kind === 'code' || expected.kind === 'refresh') return [spec.tokenUrl, { method: 'POST',
++      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
++      body: new URLSearchParams(expected.kind === 'code'
++        ? { code: expected.code, ...credentials, redirect_uri: expected.redirectUri, grant_type: 'authorization_code' }
++        : { ...credentials, refresh_token: expected.refreshToken, grant_type: 'refresh_token' }) }];
++    return [spec.calendarUrl, { method: 'POST', headers: { Authorization: 'Bearer ' + spec.oauthResponse.access_token,
++      'Content-Type': 'application/json' }, body: JSON.stringify({ ...expected.payload,
++        conferenceData: { createRequest: { requestId: 'meet-1234567890', conferenceSolutionKey: { type: 'hangoutsMeet' } } } }) }];
++  }
++  async function test(id, action) { await action(); meetRows.push(id); }
++  function failure(action, code) {
++    let caught; try { action(); } catch (error) { caught = error; }
++    need(caught?.fixtureCode === code && caught.message === code && Object.keys(caught).join(',') === 'fixtureCode', 'MEET_FIXED_FAILURE');
++    return caught;
++  }
++  async function rejection(action, code) {
++    let caught; try { await action(); } catch (error) { caught = error; }
++    need(caught?.fixtureCode === code && caught.message === code && Object.keys(caught).join(',') === 'fixtureCode', 'MEET_FIXED_ASYNC_FAILURE');
++    return caught;
++  }
++  for (const expected of [code(), refresh(), event()]) await test('MEET_EXACT_' + expected.kind.toUpperCase(), async () => {
++    const counters = effects(); const port = createMeetRecorder(spec, counters); port.expectMeetRequests([expected]);
++    const args = request(expected); const response = await port.fetch(...args);
++    need(response.ok === true && Object.keys(response).join(',') === 'ok,text' && Object.isFrozen(response), 'MEET_RESPONSE_SURFACE');
++    const wanted = expected.kind === 'event' ? spec.eventResponse : spec.oauthResponse;
++    need(meetSame(JSON.parse(await response.text()), wanted) && counters.calendar === 1 && counters.unexpected === 0, 'MEET_REPLY_AND_COUNTER');
++    port.expectMeetRequests([]); port.assertDone();
++    const captures = port.meetRequests;
++    need(Object.isFrozen(captures) && captures.length === 1 && Object.isFrozen(captures[0])
++      && meetSame(Object.keys(captures[0]).sort(), ['body', 'headers', 'kind', 'method', 'url'])
++      && captures[0].kind === expected.kind && captures[0].url === args[0] && captures[0].method === 'POST'
++      && Object.isFrozen(captures[0].headers) && Object.isFrozen(captures[0].body), 'MEET_IMMUTABLE_CAPTURE');
++    let immutable = false; try { captures.push({}); } catch (error) { immutable = error instanceof TypeError; }
++    need(immutable, 'MEET_CAPTURE_ARRAY_IMMUTABLE');
++  });
++  // Plain TypeError is intentionally not fed through a fixture-code assertion.
++  await test('MEET_QUEUE_COPY_AND_CAPTURE_IMMUTABILITY', async () => {
++    const counters = effects(); const port = createMeetRecorder(spec, counters); const queued = refresh();
++    port.expectMeetRequests([queued]); queued.refreshToken = 'changed-after-queue';
++    const args = request(refresh()); await port.fetch(...args); args[1].headers['Content-Type'] = 'changed'; args[1].body.set('refresh_token', 'changed');
++    const first = port.meetRequests; const second = port.meetRequests;
++    let frozen = false; try { first[0].body.refresh_token = 'changed'; } catch { frozen = true; }
++    need(first !== second && frozen && second[0].body.refresh_token === refresh().refreshToken
++      && second[0].headers['Content-Type'] === 'application/x-www-form-urlencoded', 'MEET_DETACHED_PRIVATE_CAPTURES');
++    port.assertDone();
++  });
++  await test('MEET_UNQUEUED_REQUEST_LATCHES_EVEN_IF_CAUGHT', async () => {
++    const counters = effects(); const port = createMeetRecorder(spec, counters);
++    try { await port.fetch(...request(refresh())); } catch {}
++    need(counters.unexpected === 1 && counters.calendar === 0 && port.meetRequests.length === 0, 'MEET_UNEXPECTED_LATCH');
++  });
++  await test('MEET_DUPLICATE_REQUEST_DENIED', async () => {
++    const counters = effects(); const port = createMeetRecorder(spec, counters); port.expectMeetRequests([refresh()]);
++    await port.fetch(...request(refresh())); await rejection(() => port.fetch(...request(refresh())), 'MEET_RECORDING_REQUEST');
++    need(counters.calendar === 1 && counters.unexpected === 1 && port.meetRequests.length === 1, 'MEET_NO_DUPLICATE_RECORD');
++  });
++  await test('MEET_PENDING_QUEUE_CANNOT_BE_REPLACED_OR_CLEARED', async () => {
++    const counters = effects(); const port = createMeetRecorder(spec, counters); port.expectMeetRequests([code()]);
++    failure(() => port.expectMeetRequests([]), 'MEET_RECORDING_QUEUE');
++    failure(() => port.expectMeetRequests([refresh()]), 'MEET_RECORDING_QUEUE');
++    failure(() => port.assertDone(), 'MEET_RECORDING_PENDING');
++    await port.fetch(...request(code())); port.assertDone();
++    need(counters.calendar === 1 && counters.unexpected === 3 && port.meetRequests[0].kind === 'code', 'MEET_PENDING_PRESERVED');
++  });
++  const queueInvalid = [null, {}, [null], [{}], [refresh(), ...Array(256).fill(refresh())], Array(1),
++    [{ ...refresh(), extra: true }], [{ kind: 'refresh', refreshToken: '' }],
++    [{ ...code(), redirectUri: 'https://unexpected.example.com/' }],
++    [{ ...code(), code: 'x'.repeat(8193) }], [{ kind: 'event', payload: {} }]];
++  const arrayExtra = [refresh()]; arrayExtra.extra = true; queueInvalid.push(arrayExtra);
++  const arraySymbol = [refresh()]; arraySymbol[Symbol('unexpected')] = true; queueInvalid.push(arraySymbol);
++  let getters = 0; const accessor = refresh(); Object.defineProperty(accessor, 'refreshToken', { get() { getters++; return 'private-sentinel'; } }); queueInvalid.push([accessor]);
++  const cyclic = refresh(); cyclic.refreshToken = cyclic; queueInvalid.push([cyclic]);
++  const prototype = Object.assign(Object.create({ private: 'synthetic' }), refresh()); queueInvalid.push([prototype]);
++  const symbol = refresh(); symbol[Symbol('unexpected')] = true; queueInvalid.push([symbol]);
++  const wrongEvent = event(); wrongEvent.payload.start.timeZone = 'UTC'; queueInvalid.push([wrongEvent]);
++  const wrongAttendee = event(); wrongAttendee.payload.attendees[0].email = 'real@unexpected.invalid'; queueInvalid.push([wrongAttendee]);
++  for (const [index, input] of queueInvalid.entries()) await test('MEET_QUEUE_REJECT_' + index, async () => {
++    const counters = effects(); const port = createMeetRecorder(spec, counters);
++    failure(() => port.expectMeetRequests(input), 'MEET_RECORDING_QUEUE');
++    need(counters.unexpected === 1 && counters.calendar === 0 && port.meetRequests.length === 0, 'MEET_INVALID_QUEUE_ZERO_EFFECT');
++    port.assertDone();
++  });
++  need(getters === 0, 'MEET_QUEUE_ACCESSORS_UNREAD');
++  const malformed = [
++    ['URL', args => { args[0] = 'https://unexpected.invalid/token'; }],
++    ['URL_OBJECT', args => { args[0] = new URL(args[0]); }],
++    ['METHOD', args => { args[1].method = 'GET'; }],
++    ['EXTRA_OPTION', args => { args[1].redirect = 'follow'; }],
++    ['EXTRA_HEADER', args => { args[1].headers.Cookie = 'synthetic-private-sentinel'; }],
++    ['WRONG_HEADER', args => { args[1].headers['Content-Type'] = 'application/json'; }],
++    ['FORM_STRING', args => { args[1].body = args[1].body.toString(); }],
++    ['FORM_DUPLICATE', args => { args[1].body.append('client_id', 'duplicate'); }],
++    ['FORM_EXTRA', args => { args[1].body.append('assertion', 'not-admitted'); }],
++    ['FORM_WRONG_GRANT', args => { args[1].body.set('grant_type', 'urn:ietf:params:oauth:grant-type:jwt-bearer'); }],
++    ['FORM_WRONG_SECRET', args => { args[1].body.set('client_secret', 'other'); }],
++    ['FORM_WRONG_TOKEN', args => { args[1].body.set('refresh_token', 'other'); }],
++    ['FORM_SIZE', args => { args[1].body.set('refresh_token', 'x'.repeat(8193)); }],
++    ['WRONG_OPTION_PROTOTYPE', args => { args[1] = Object.assign(Object.create({ method: 'POST' }), args[1]); }],
++    ['OPTION_ACCESSOR', args => { Object.defineProperty(args[1], 'method', { get() { getters++; return 'POST'; } }); }],
++    ['HEADER_ACCESSOR', args => { Object.defineProperty(args[1].headers, 'Content-Type', { get() { getters++; return 'application/x-www-form-urlencoded'; } }); }],
++  ];
++  for (const [id, mutate] of malformed) await test('MEET_REQUEST_REJECT_' + id, async () => {
++    const counters = effects(); const port = createMeetRecorder(spec, counters); port.expectMeetRequests([refresh()]);
++    const args = request(refresh()); mutate(args); await rejection(() => port.fetch(...args), 'MEET_RECORDING_REQUEST');
++    need(counters.calendar === 0 && counters.unexpected === 1 && port.meetRequests.length === 0, 'MEET_MALFORMED_REQUEST_NOT_CAPTURED');
++  });
++  for (const [id, mutate] of [
++    ['EXTRA_FIELD', body => { body.unexpected = true; }],
++    ['WRONG_SUMMARY', body => { body.summary = 'other'; }],
++    ['WRONG_START', body => { body.start.dateTime = '2030-01-15T11:00:00'; }],
++    ['WRONG_ATTENDEES', body => { body.attendees.reverse(); }],
++    ['WRONG_REQUEST_ID', body => { body.conferenceData.createRequest.requestId = 'not-generated'; }],
++    ['EXTRA_CONFERENCE_FIELD', body => { body.conferenceData.unexpected = true; }],
++    ['EXTRA_CREATE_FIELD', body => { body.conferenceData.createRequest.unexpected = true; }],
++    ['WRONG_SOLUTION', body => { body.conferenceData.createRequest.conferenceSolutionKey.type = 'other'; }],
++  ]) await test('MEET_EVENT_REJECT_' + id, async () => {
++    const counters = effects(); const port = createMeetRecorder(spec, counters); port.expectMeetRequests([event()]);
++    const args = request(event()); const body = JSON.parse(args[1].body); mutate(body); args[1].body = JSON.stringify(body);
++    await rejection(() => port.fetch(...args), 'MEET_RECORDING_REQUEST');
++    need(counters.calendar === 0 && counters.unexpected === 1 && port.meetRequests.length === 0, 'MEET_EVENT_MISMATCH_LATCHED');
++  });
++  await test('MEET_REQUEST_ORDER_ENFORCED', async () => {
++    const counters = effects(); const port = createMeetRecorder(spec, counters); port.expectMeetRequests([code(), refresh()]);
++    await rejection(() => port.fetch(...request(refresh())), 'MEET_RECORDING_REQUEST');
++    await port.fetch(...request(code())); await port.fetch(...request(refresh())); port.assertDone();
++    need(counters.calendar === 2 && counters.unexpected === 1 && port.meetRequests.map(row => row.kind).join(',') === 'code,refresh', 'MEET_ORDER_NO_SHIFT_ON_REJECTION');
++  });
++  await test('MEET_EXACT_256_RECORD_BOUND', async () => {
++    const counters = effects(); const port = createMeetRecorder(spec, counters); port.expectMeetRequests(Array.from({ length: 256 }, refresh));
++    for (let index = 0; index < 256; index++) await port.fetch(...request(refresh())); port.assertDone();
++    failure(() => port.expectMeetRequests([refresh()]), 'MEET_RECORDING_QUEUE');
++    need(counters.calendar === 256 && counters.unexpected === 1 && port.meetRequests.length === 256, 'MEET_RECORD_LIMIT_CLOSED');
++  });
++  let nativeCalls = 0;
++  function host() { return { fetch() { nativeCalls++; throw new Error('OFFLINE_NATIVE_FETCH_DENIED'); } }; }
++  await test('MEET_PHASE_RESETS_RECORDS_PRESERVES_HELD_NATIVE_AND_ZERO_DELEGATION', async () => {
++    const target = host(); const original = target.fetch; const descriptor = Object.getOwnPropertyDescriptor(target, 'fetch');
++    const counters = effects(); const life = meetFetchLifecycle(target, spec, counters); const first = life.phase();
++    first.expectMeetRequests([code()]); await target.fetch(...request(code())); first.assertDone();
++    const second = life.phase(); need(first !== second && second.meetRequests.length === 0 && first.meetRequests.length === 1, 'MEET_NEW_PHASE_RECORDS');
++    second.expectMeetRequests([refresh()]); await target.fetch(...request(refresh())); second.assertDone(); life.restore();
++    const restored = Object.getOwnPropertyDescriptor(target, 'fetch');
++    need(target.fetch === original && meetSame(Object.keys(restored), Object.keys(descriptor))
++      && restored.writable === descriptor.writable && restored.enumerable === descriptor.enumerable
++      && restored.configurable === descriptor.configurable && nativeCalls === 0, 'MEET_HELD_FETCH_RESTORED');
++    failure(() => life.phase(), 'MEET_FETCH_CLOSED'); failure(() => life.restore(), 'MEET_FETCH_CLOSED');
++  });
++  await test('MEET_PENDING_PHASE_DENIES_BUT_FINAL_RESTORE_STILL_RUNS', async () => {
++    const target = host(); const original = target.fetch; const counters = effects(); const life = meetFetchLifecycle(target, spec, counters);
++    const first = life.phase(); first.expectMeetRequests([code()]); failure(() => life.phase(), 'MEET_RECORDING_PENDING');
++    failure(() => life.restore(), 'MEET_RECORDING_PENDING'); need(target.fetch === original && nativeCalls === 0, 'MEET_PENDING_RESTORED');
++  });
++  await test('MEET_FETCH_DRIFT_RESTORES_ORIGINAL_AND_REJECTS', async () => {
++    const target = host(); const original = target.fetch; const life = meetFetchLifecycle(target, spec, effects()); life.phase();
++    target.fetch = () => {}; failure(() => life.restore(), 'MEET_FETCH_DRIFT'); need(target.fetch === original, 'MEET_DRIFT_RESTORED');
++  });
++  await test('MEET_PHASE_DESCRIPTOR_DRIFT_DENIED_BEFORE_REPLACEMENT', async () => {
++    const target = host(); const original = target.fetch; const life = meetFetchLifecycle(target, spec, effects()); life.phase();
++    Object.defineProperty(target, 'fetch', { writable: false });
++    failure(() => life.phase(), 'MEET_FETCH_DRIFT'); failure(() => life.restore(), 'MEET_FETCH_DRIFT');
++    need(target.fetch === original && Object.getOwnPropertyDescriptor(target, 'fetch').writable, 'MEET_PHASE_DESCRIPTOR_RESTORED');
++  });
++  await test('MEET_PENDING_AND_RESTORATION_DRIFT_KEEP_BOTH_PRIVATE', async () => {
++    const target = host(); const original = target.fetch; const life = meetFetchLifecycle(target, spec, effects());
++    life.phase().expectMeetRequests([code()]); target.fetch = () => {};
++    const error = failure(() => life.restore(), 'MEET_RECORDING_PENDING');
++    need(target.fetch === original && error.meetFetchRestorationFailure.fixtureCode === 'MEET_FETCH_DRIFT'
++      && !Object.getOwnPropertyDescriptor(error, 'meetFetchRestorationFailure').enumerable, 'MEET_BOTH_BOUNDARY_FAILURES_RETAINED');
++  });
++  await test('MEET_NO_PHASE_RESTORE_IS_SAFE', async () => {
++    const target = host(); const original = target.fetch; meetFetchLifecycle(target, spec, effects()).restore();
++    need(target.fetch === original && nativeCalls === 0, 'MEET_NO_INSTALL_NO_DELEGATION');
++  });
++  for (const primary of [false, true]) for (const badHTTP of [false, true]) for (const badODM of [false, true]) for (const badRestore of [false, true])
++    await test('MEET_OWNED_CLEANUP_COMPOSITION_' + [primary, badHTTP, badODM, badRestore].map(Number).join(''), async () => {
++      const order = []; const initial = new Error('synthetic-private-primary'); const httpError = new Error('synthetic-private-http');
++      const odmError = new Error('synthetic-private-odm'); const fetchError = new Error('synthetic-private-fetch'); let caught; let result;
++      try { result = await withMeetFetchCleanup(() => withOwnedCleanup(() => { order.push('ACTION'); if (primary) throw initial; return 'done'; },
++        () => { order.push('HTTP'); if (badHTTP) throw httpError; }, () => { order.push('ODM'); if (badODM) throw odmError; }),
++      () => { order.push('FETCH'); if (badRestore) throw fetchError; }); } catch (error) { caught = error; }
++      need(order.join(',') === 'ACTION,HTTP,ODM,FETCH', 'MEET_ALL_CLEANUP_ONCE');
++      if (primary) need(caught === initial, 'MEET_FIRST_PRIMARY_PRESERVED');
++      else if (badHTTP || badODM) need(caught?.fixtureCode === 'OWNED_HANDLE_CLEANUP_FAILED' && caught.cause === (badHTTP ? httpError : odmError), 'MEET_OWNED_FAILURE_PRESERVED');
++      else if (badRestore) need(caught === fetchError, 'MEET_FETCH_FAILURE_TERMINAL');
++      else need(result === 'done' && caught === undefined, 'MEET_SUCCESS_AFTER_ALL_CLEANUP');
++      if (badRestore && (primary || badHTTP || badODM)) need(caught.meetFetchCleanupFailure === fetchError
++        && !Object.getOwnPropertyDescriptor(caught, 'meetFetchCleanupFailure').enumerable, 'MEET_SECONDARY_RESTORATION_PRIVATE');
++    });
++  await test('MEET_FROZEN_PRIMARY_AND_PENDING_QUEUE_RETAINED', async () => {
++    const target = host(); const original = target.fetch; const life = meetFetchLifecycle(target, spec, effects());
++    life.phase().expectMeetRequests([code()]); const first = Object.freeze(new Error('synthetic-private-primary')); let caught;
++    try { await withMeetFetchCleanup(() => { throw first; }, () => life.restore()); } catch (error) { caught = error; }
++    need(caught === first && target.fetch === original && nativeCalls === 0, 'MEET_FROZEN_PRIMARY_SAFE');
++  });
++  for (const missing of [0, 1]) await test('MEET_CLEANUP_PORT_MANDATORY_' + missing, async () => {
++    let calls = 0; const args = [() => { calls++; }, () => { calls++; }]; args[missing] = undefined;
++    await rejection(() => withMeetFetchCleanup(...args), 'MEET_FETCH_CLEANUP_PORTS'); need(calls === 0, 'MEET_NO_FALLBACK_PORT');
++  });
++  await test('MEET_STATIC_CANARY_AND_CONFIG_IMPORT_ORDER', async () => {
++    const source = fs.readFileSync(bootstrap, 'utf8');
++    const canary = source.indexOf("  const [canary] = await Promise.allSettled([fetch(");
++    const guard = source.indexOf('  const httpPorts = closeNetwork();');
++    const env = source.indexOf('    ...ports.recordingMeet.environment });');
++    const held = source.indexOf('  const meetLifecycle = meetFetchLifecycle(globalThis, ports.recordingMeet, counters);');
++    const install = source.indexOf('    currentMeet = meetLifecycle.phase();', source.indexOf('  const completed = await withMeetFetchCleanup('));
++    const config = source.indexOf('    const configurationEvidence = collectConfigurationEvidence(');
++    need(canary >= 0 && guard > canary && env > guard && held > env && install > held && config > install, 'MEET_STATIC_PREIMPORT_ORDER');
++  });
++  await test('MEET_STATIC_PUBLIC_MOUNT_AND_OWNED_CLEANUP_COMPOSITION', async () => {
++    const source = fs.readFileSync(bootstrap, 'utf8');
++    need(source.includes("    app.use('/api/v1/meet', loader.load('@/modules/meet/routes').default);")
++      && !source.includes("app.use('/api/v1/meet', authenticate")
++      && source.includes('  const completed = await withMeetFetchCleanup(() => withOwnedCleanup(async () => {')
++      && source.includes('  }, endPhase, () => mongoose.disconnect()), () => meetLifecycle.restore());'), 'MEET_STATIC_MOUNT_AND_CLEANUP');
++  });
++  need(getters === 0 && nativeCalls === 0 && applicationImports === 0 && connections === 0 && domainWrites === 0, 'MEET_PURE_BOUNDARY');
++}
++
+ async function setupUnits() {
+   const cases = [];
+   const named = name => Object.assign(new Error('synthetic-private-sentinel'), { name });
+@@ -527,14 +775,15 @@ async function setupUnits() {
+     cases.push('CLEANUP_MISSING_PORT_' + missing);
+   }
+   need(applicationImports === 0 && connections === 0 && domainWrites === 0, 'OFFLINE_EFFECTS');
+-  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', cases: rows.length + cases.length + recordingRows.length + configurationRows.length, recordingCases: recordingRows.length,
++  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', cases: rows.length + cases.length + recordingRows.length + configurationRows.length + meetRows.length, recordingCases: recordingRows.length,
++    meetRecorderCases: meetRows.length,
+     configurationControllerCases: configurationRows.length,
+     admissionCases: rows.length, setupDiagnosticCases: diagnosticCount, ownedCleanupCases: cases.length - diagnosticCount, failed: 0,
+     applicationImports, connections, domainWrites, processGrants: 'DENIED' }) + '\n');
+ }
+ recordingUnits();
+ configurationUnits();
+-setupUnits().catch(() => {
++meetUnits().then(setupUnits).catch(() => {
+   output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', failed: 1, code: 'OFFLINE_SETUP_UNIT_FAILED' }) + '\n');
+   process.exitCode = 1;
+ });
+diff --git a/test/api-runtime/scenario/bootstrap.cjs b/test/api-runtime/scenario/bootstrap.cjs
+index f0beb65ce4ef919974cf5076e6c2d4c13c3f0407..f56c58f2dc7938c2f5cdccff50ec1569e9efb77e 100644
+--- a/test/api-runtime/scenario/bootstrap.cjs
++++ b/test/api-runtime/scenario/bootstrap.cjs
+@@ -20,7 +20,8 @@ const ADMITTED_ROOTS = Object.freeze([
+   "@/modules/middleware/errorHandler",
+   "@/modules/dependents/routes",
+   "@/modules/notification/routes",
+-  "@/modules/fcm/routes"
++  "@/modules/fcm/routes",
++  "@/modules/meet/routes"
+ ]);
+ const REQUIRED_CASE_IDS = Object.freeze([
+   "PHONE_LOGIN",
+@@ -82,7 +83,23 @@ const REQUIRED_CASE_IDS = Object.freeze([
+   "JWT_CONFIG_VALID_VALUE",
+   "JWT_CONFIG_PADDED_VALUE_UNCHANGED",
+   "JWT_CONFIG_NONPLACEHOLDER_VALUES",
+-  "JWT_PUBLISHED_FALLBACK_TOKEN_DENIED"
++  "JWT_PUBLISHED_FALLBACK_TOKEN_DENIED",
++  "MEET_URL_AUTHORITY",
++  "MEET_EXCHANGE_AUTHORITY",
++  "MEET_REFRESH_AUTHORITY",
++  "MEET_CREATE_AUTHORITY",
++  "MEET_URL_ADMIN_VALIDATION",
++  "MEET_EXCHANGE_ADMIN_VALIDATION",
++  "MEET_REFRESH_ADMIN_VALIDATION",
++  "MEET_CREATE_ADMIN_VALIDATION",
++  "MEET_URL_ADMIN_SUCCESS",
++  "MEET_EXCHANGE_ADMIN_SUCCESS",
++  "MEET_REFRESH_ADMIN_SUCCESS",
++  "MEET_CREATE_ADMIN_SUCCESS",
++  "MEET_CALLBACK_VALID_CODE_PUBLIC",
++  "MEET_CALLBACK_PROVIDER_ERROR_PUBLIC",
++  "MEET_CALLBACK_MISSING_CODE_PUBLIC",
++  "MEET_CALLBACK_INVALID_QUERY_PUBLIC"
+ ]);
+ const REQUIRED_SENSITIVITY_IDS = Object.freeze([
+   "OTP_UNCONDITIONAL_CONSUME",
+@@ -101,7 +118,11 @@ const REQUIRED_SENSITIVITY_IDS = Object.freeze([
+   "FCM_TEST_ADMIN_GUARD_AFTER_VALIDATION",
+   "JWT_CONFIG_PUBLISHED_FALLBACK",
+   "JWT_CONFIG_PRODUCTION_ONLY_GUARD",
+-  "JWT_CONFIG_TRIMMED_RETURN"
++  "JWT_CONFIG_TRIMMED_RETURN",
++  "MEET_AUTHENTICATION_REMOVED",
++  "MEET_ADMIN_GUARD_REMOVED",
++  "MEET_GUARDS_AFTER_VALIDATION",
++  "MEET_CALLBACK_GATED"
+ ]);
+ const MODEL_IDENTITIES = Object.freeze({
+   "User": [
+@@ -164,7 +185,7 @@ const need = (ok, code) => { if (!ok) fail(code); };
+ const plain = value => value && typeof value === 'object' && !Array.isArray(value);
+ const stdout = process.stdout.write.bind(process.stdout);
+ let stage = 'ADMISSION';
+-const counters = { email: 0, sms: 0, push: 0, logger: 0, console: 0, unexpected: 0, excluded: 0, jwtIssued: 0, dbWrites: 0 };
++const counters = { email: 0, sms: 0, push: 0, logger: 0, console: 0, unexpected: 0, excluded: 0, jwtIssued: 0, dbWrites: 0, calendar: 0 };
+ for (const name of ['log', 'info', 'debug', 'warn', 'error']) console[name] = () => { counters.console++; };
+ process.emitWarning = () => { counters.console++; };
+ 
+@@ -341,6 +362,7 @@ function validateAdmissionData(manifest, plan, ports, observed) {
+     && JSON.stringify(ports.excludedCapabilities) === JSON.stringify({ '@/modules/payment/services': ['PaymentService'], '@/modules/coupon/services': ['CouponService'] })
+     && ports.recordingAxios.email === 'https://api.smtp2go.com/v3/email/send'
+     && ports.recordingAxios.sms === 'https://sms.fixture.invalid/send', 'RECORDING_PORT_MAP');
++  need(meetSame(meetData(ports.recordingMeet), MEET_RECORDING), 'MEET_RECORDING_MAP');
+   need(plain(plan.modules) && plain(plan.mutants) && plain(plan.sourceFiles)
+     && Object.keys(plan.sourceFiles).length > 0 && Object.values(plan.sourceFiles).every(value => /^[a-f0-9]{64}$/.test(value)), 'SOURCE_MANIFEST');
+   for (const file of Object.values(plan.modules)) need(Object.hasOwn(manifest.files, file), 'UNDECLARED_COMPILED_SOURCE');
+@@ -351,6 +373,11 @@ function validateAdmissionData(manifest, plan, ports, observed) {
+     && Object.hasOwn(plan.sourceFiles, 'src1/config/config.ts')
+     && CONFIG_MUTANT_IDS.every(id => plan.mutants[id]?.source === 'src1/config/config.ts'
+       && plan.mutants[id].file === 'compiled/mutants/' + id + '.js'), 'CONFIG_SOURCE_BINDING');
++  need(plan.modules['@/modules/meet/routes'] === 'compiled/modules/meet/routes/index.js'
++    && ['routes', 'controller', 'validation', 'service', 'types'].every(name =>
++      Object.hasOwn(plan.sourceFiles, 'src1/modules/meet/' + name + '/index.ts'))
++    && REQUIRED_SENSITIVITY_IDS.slice(17, 21).every(id => plan.mutants[id]?.source === 'src1/modules/meet/routes/index.ts'
++      && plan.mutants[id].file === 'compiled/mutants/' + id + '.js'), 'MEET_SOURCE_BINDING');
+   need(Array.isArray(ports.models) && ports.models.length === 13
+     && new Set(ports.models.map(row => row.name)).size === 13
+     && new Set(ports.models.map(row => row.collection)).size === 13
+@@ -481,6 +508,240 @@ function recordPush(payload, pushes, effectCounters) {
+   return { successCount: 0, failureCount: 0, responses: [] };
+ }
+ 
++// Fixed synthetic settings and a closed, nondelegating fetch boundary. The
++// literals are independent of the supplied manifest and contain no real account.
++const MEET_RECORDING = {
++  "tokenUrl": "https://oauth2.googleapis.com/token",
++  "calendarUrl": "https://www.googleapis.com/calendar/v3/calendars/fixture-calendar%40example.com/events?conferenceDataVersion=1&sendUpdates=all",
++  "bodyBytes": 8192,
++  "recordLimit": 256,
++  "environment": {
++    "GOOGLE_OAUTH_CLIENT_ID": "fixture-google-client-id",
++    "GOOGLE_OAUTH_CLIENT_SECRET": "fixture-google-client-secret",
++    "GOOGLE_OAUTH_REDIRECT_URI": "https://fixture.example.com/oauth/callback",
++    "GOOGLE_OAUTH_REFRESH_TOKEN": "fixture-refresh-token",
++    "GOOGLE_CALENDAR_ID": "fixture-calendar@example.com",
++    "GOOGLE_MEET_TIMEZONE": "Asia/Kolkata"
++  },
++  "oauthResponse": {
++    "access_token": "fixture-access-token-1234567890",
++    "token_type": "Bearer",
++    "expires_in": 3600,
++    "refresh_token": "fixture-refresh-token"
++  },
++  "eventResponse": {
++    "id": "fixture-event-id",
++    "hangoutLink": "https://meet.google.com/abc-defg-hij",
++    "conferenceData": {
++      "conferenceId": "abc-defg-hij"
++    }
++  },
++  "providerCounter": "calendar",
++  "providerCounterScope": "ALL_NOMINAL_RECORDED_GOOGLE_TOKEN_AND_CALENDAR_REQUESTS_EXCLUDING_SENSITIVITY"
++};
++
++function meetObject(value, keys) {
++  need(value !== null && typeof value === 'object' && !Array.isArray(value)
++    && [Object.prototype, null].includes(Object.getPrototypeOf(value)), 'MEET_RECORDING_DATA');
++  const own = Reflect.ownKeys(value);
++  need(own.length === keys.length && own.every(key => typeof key === 'string' && keys.includes(key)), 'MEET_RECORDING_DATA');
++  const result = {};
++  for (const key of keys) {
++    const descriptor = Object.getOwnPropertyDescriptor(value, key);
++    need(descriptor && Object.hasOwn(descriptor, 'value') && descriptor.enumerable, 'MEET_RECORDING_DATA');
++    Object.defineProperty(result, key, { value: descriptor.value, enumerable: true });
++  }
++  return result;
++}
++function meetArray(value, limit) {
++  need(Array.isArray(value) && Object.getPrototypeOf(value) === Array.prototype, 'MEET_RECORDING_DATA');
++  const length = Object.getOwnPropertyDescriptor(value, 'length')?.value;
++  need(Number.isSafeInteger(length) && length >= 0 && length <= limit, 'MEET_RECORDING_DATA');
++  const keys = Reflect.ownKeys(value);
++  need(keys.length === length + 1 && keys.every(key => key === 'length'
++    || (typeof key === 'string' && /^(0|[1-9][0-9]*)$/.test(key) && Number(key) < length)), 'MEET_RECORDING_DATA');
++  const output = [];
++  for (let index = 0; index < length; index++) {
++    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
++    need(descriptor && Object.hasOwn(descriptor, 'value') && descriptor.enumerable, 'MEET_RECORDING_DATA');
++    output.push(descriptor.value);
++  }
++  return output;
++}
++function meetData(value) {
++  let nodes = 0; const seen = new Set();
++  function copy(input, depth) {
++    need(depth <= 16 && ++nodes <= 2048, 'MEET_RECORDING_DATA');
++    if (input === null || typeof input === 'boolean') return input;
++    if (typeof input === 'string') {
++      need(Buffer.byteLength(input, 'utf8') <= 8192, 'MEET_RECORDING_DATA'); return input;
++    }
++    if (typeof input === 'number') { need(Number.isFinite(input), 'MEET_RECORDING_DATA'); return input; }
++    need(input !== null && typeof input === 'object' && !seen.has(input), 'MEET_RECORDING_DATA'); seen.add(input);
++    let result;
++    if (Array.isArray(input)) result = meetArray(input, 256).map(item => copy(item, depth + 1));
++    else {
++      const keys = Reflect.ownKeys(input);
++      need(keys.length <= 64 && keys.every(key => typeof key === 'string'
++        && !['__proto__', 'constructor', 'prototype'].includes(key)), 'MEET_RECORDING_DATA');
++      const own = meetObject(input, keys); result = {};
++      for (const key of keys.sort()) Object.defineProperty(result, key,
++        { value: copy(own[key], depth + 1), enumerable: true });
++    }
++    seen.delete(input); return Object.freeze(result);
++  }
++  const result = copy(value, 0);
++  need(Buffer.byteLength(JSON.stringify(result), 'utf8') <= 8192, 'MEET_RECORDING_DATA'); return result;
++}
++const meetSame = (left, right) => JSON.stringify(meetData(left)) === JSON.stringify(meetData(right));
++
++function createMeetRecorder(spec, effects) {
++  need(meetSame(spec, MEET_RECORDING), 'MEET_RECORDING_MAP');
++  need(plain(effects) && Number.isSafeInteger(effects.calendar) && effects.calendar >= 0
++    && Number.isSafeInteger(effects.unexpected) && effects.unexpected >= 0, 'MEET_RECORDING_COUNTERS');
++  const settings = meetData(spec); const captures = []; let expected = [];
++  const text = value => typeof value === 'string' && value.length > 0 && Buffer.byteLength(value, 'utf8') <= settings.bodyBytes;
++  function guarded(code, action) {
++    try { return action(); } catch {
++      effects.unexpected++; fail(code);
++    }
++  }
++  function descriptor(input) {
++    const data = meetData(input);
++    if (data?.kind === 'code') {
++      meetObject(data, ['kind', 'code', 'redirectUri']);
++      need(text(data.code) && data.redirectUri === settings.environment.GOOGLE_OAUTH_REDIRECT_URI, 'MEET_RECORDING_DATA');
++    } else if (data?.kind === 'refresh') {
++      meetObject(data, ['kind', 'refreshToken']);
++      need(text(data.refreshToken), 'MEET_RECORDING_DATA');
++    } else {
++      meetObject(data, ['kind', 'payload']); need(data.kind === 'event', 'MEET_RECORDING_DATA');
++      const payload = meetObject(data.payload, ['summary', 'description', 'start', 'end', 'attendees']);
++      need(text(payload.summary) && text(payload.description), 'MEET_RECORDING_DATA');
++      for (const value of [payload.start, payload.end]) {
++        const date = meetObject(value, ['dateTime', 'timeZone']);
++        need(typeof date.dateTime === 'string' && /^2030-01-15T(?:10:00|10:30):00$/.test(date.dateTime)
++          && date.timeZone === settings.environment.GOOGLE_MEET_TIMEZONE, 'MEET_RECORDING_DATA');
++      }
++      const attendees = meetArray(payload.attendees, 2);
++      need(attendees.length === 2, 'MEET_RECORDING_DATA');
++      for (const attendee of attendees) {
++        const row = meetObject(attendee, ['email']);
++        need(typeof row.email === 'string' && /^[A-Za-z0-9._+-]+@example\.com$/.test(row.email), 'MEET_RECORDING_DATA');
++      }
++    }
++    return data;
++  }
++  function expectMeetRequests(requests) {
++    return guarded('MEET_RECORDING_QUEUE', () => {
++      need(expected.length === 0, 'MEET_RECORDING_DATA');
++      const values = meetArray(requests, settings.recordLimit);
++      const next = values.map(descriptor);
++      need(captures.length + next.length <= settings.recordLimit, 'MEET_RECORDING_DATA');
++      expected = next;
++    });
++  }
++  async function fetch(input, options) {
++    return guarded('MEET_RECORDING_REQUEST', () => {
++      need(expected.length > 0 && captures.length < settings.recordLimit
++        && typeof input === 'string' && Buffer.byteLength(input, 'utf8') <= settings.bodyBytes, 'MEET_RECORDING_DATA');
++      const request = meetObject(options, ['method', 'headers', 'body']);
++      need(request.method === 'POST', 'MEET_RECORDING_DATA');
++      const current = expected[0]; let body; let headers; let reply;
++      if (current.kind === 'code' || current.kind === 'refresh') {
++        need(input === settings.tokenUrl && Object.getPrototypeOf(request.body) === URLSearchParams.prototype, 'MEET_RECORDING_DATA');
++        headers = meetData(request.headers);
++        need(meetSame(headers, { 'Content-Type': 'application/x-www-form-urlencoded' }), 'MEET_RECORDING_DATA');
++        const encoded = URLSearchParams.prototype.toString.call(request.body);
++        need(Buffer.byteLength(encoded, 'utf8') <= settings.bodyBytes, 'MEET_RECORDING_DATA');
++        const entries = [...URLSearchParams.prototype.entries.call(request.body)];
++        need(new Set(entries.map(row => row[0])).size === entries.length, 'MEET_RECORDING_DATA');
++        body = meetData(Object.fromEntries(entries));
++        const credentials = { client_id: settings.environment.GOOGLE_OAUTH_CLIENT_ID,
++          client_secret: settings.environment.GOOGLE_OAUTH_CLIENT_SECRET };
++        const wanted = current.kind === 'code'
++          ? { code: current.code, ...credentials, redirect_uri: current.redirectUri, grant_type: 'authorization_code' }
++          : { ...credentials, refresh_token: current.refreshToken, grant_type: 'refresh_token' };
++        need(meetSame(body, wanted), 'MEET_RECORDING_DATA'); reply = settings.oauthResponse;
++      } else {
++        need(input === settings.calendarUrl && typeof request.body === 'string'
++          && Buffer.byteLength(request.body, 'utf8') <= settings.bodyBytes, 'MEET_RECORDING_DATA');
++        headers = meetData(request.headers);
++        need(meetSame(headers, { Authorization: 'Bearer ' + settings.oauthResponse.access_token,
++          'Content-Type': 'application/json' }), 'MEET_RECORDING_DATA');
++        body = meetData(JSON.parse(request.body));
++        const event = meetObject(body, ['summary', 'description', 'start', 'end', 'attendees', 'conferenceData']);
++        const conference = meetObject(event.conferenceData, ['createRequest']);
++        const create = meetObject(conference.createRequest, ['requestId', 'conferenceSolutionKey']);
++        need(typeof create.requestId === 'string' && /^meet-[0-9]+$/.test(create.requestId)
++          && meetSame(create.conferenceSolutionKey, { type: 'hangoutsMeet' }), 'MEET_RECORDING_DATA');
++        const { conferenceData, ...payload } = event;
++        need(meetSame(payload, current.payload), 'MEET_RECORDING_DATA'); reply = settings.eventResponse;
++      }
++      const record = meetData({ kind: current.kind, method: 'POST', url: input, headers, body });
++      const replyText = JSON.stringify(meetData(reply));
++      need(Number.isSafeInteger(effects.calendar) && effects.calendar >= 0 && effects.calendar < Number.MAX_SAFE_INTEGER,
++        'MEET_RECORDING_DATA');
++      expected.shift(); captures.push(record); effects.calendar++;
++      return Object.freeze({ ok: true, text: async () => replyText });
++    });
++  }
++  return Object.freeze({ fetch, expectMeetRequests,
++    get meetRequests() { return Object.freeze(captures.slice()); },
++    assertDone() { return guarded('MEET_RECORDING_PENDING', () => need(expected.length === 0, 'MEET_RECORDING_DATA')); },
++  });
++}
++
++function meetFetchLifecycle(target, spec, effects) {
++  const held = Object.getOwnPropertyDescriptor(target, 'fetch');
++  need(held && Object.hasOwn(held, 'value') && typeof held.value === 'function'
++    && (held.writable || held.configurable), 'MEET_FETCH_PORT');
++  let active; let closed = false;
++  return Object.freeze({
++    phase() {
++      need(!closed, 'MEET_FETCH_CLOSED');
++      const current = Object.getOwnPropertyDescriptor(target, 'fetch');
++      need(current && current.value === (active ? active.fetch : held.value)
++        && current.enumerable === held.enumerable && current.writable === held.writable
++        && current.configurable === held.configurable, 'MEET_FETCH_DRIFT');
++      if (active) active.assertDone();
++      const next = createMeetRecorder(spec, effects);
++      Object.defineProperty(target, 'fetch', { ...held, value: next.fetch }); active = next; return next;
++    },
++    restore() {
++      need(!closed, 'MEET_FETCH_CLOSED'); closed = true;
++      let first;
++      try { active?.assertDone(); } catch (error) { first = error; }
++      try {
++        const current = Object.getOwnPropertyDescriptor(target, 'fetch');
++        const unchanged = current && current.value === (active ? active.fetch : held.value)
++          && current.enumerable === held.enumerable && current.writable === held.writable && current.configurable === held.configurable;
++        Object.defineProperty(target, 'fetch', held);
++        const restored = Object.getOwnPropertyDescriptor(target, 'fetch');
++        need(restored.value === held.value && restored.enumerable === held.enumerable && restored.writable === held.writable
++          && restored.configurable === held.configurable, 'MEET_FETCH_RESTORATION');
++        need(unchanged, 'MEET_FETCH_DRIFT');
++      } catch (error) {
++        if (!first) first = error;
++        else try { Object.defineProperty(first, 'meetFetchRestorationFailure', { value: error }); } catch {}
++      }
++      if (first) throw first;
++    },
++  });
++}
++async function withMeetFetchCleanup(action, restore) {
++  need(typeof action === 'function' && typeof restore === 'function', 'MEET_FETCH_CLEANUP_PORTS');
++  let result; let first; let failed = false;
++  try { result = await action(); } catch (error) { first = error; failed = true; }
++  try { restore(); } catch (error) {
++    if (!failed) { first = error; failed = true; }
++    else if (first !== null && ['object', 'function'].includes(typeof first)) {
++      try { Object.defineProperty(first, 'meetFetchCleanupFailure', { value: error }); } catch {}
++    }
++  }
++  if (failed) throw first; return result;
++}
++
+ function recordingPorts(ports, typedi) {
+   const deliveries = []; const pushes = [];
+   const logger = { info() { counters.logger++; }, error() { counters.logger++; }, warn() { counters.logger++; }, debug() { counters.logger++; } };
+@@ -516,7 +777,7 @@ function recordingPorts(ports, typedi) {
+ // ports; main binds the admitted real loader/packages below. No validator is copied.
+ const CONFIG_ALIAS = '@/config/config';
+ const CONFIG_CASE_IDS = Object.freeze(REQUIRED_CASE_IDS.slice(53, 59));
+-const CONFIG_MUTANT_IDS = Object.freeze(REQUIRED_SENSITIVITY_IDS.slice(14));
++const CONFIG_MUTANT_IDS = Object.freeze(REQUIRED_SENSITIVITY_IDS.slice(14, 17));
+ const CONFIG_ENVIRONMENTS = Object.freeze(['test', 'development', 'production']);
+ const CONFIG_REJECTION = 'JWT_SECRET_KEY must be set to a non-placeholder value';
+ const CONFIG_ENV_KEYS = Object.freeze(['NODE_ENV', 'JWT_SECRET_KEY', 'MONGODB_URL']);
+@@ -797,7 +1058,8 @@ async function main() {
+   const uri = 'mongodb://127.0.0.1:27017/' + manifest.database + '?replicaSet=' + manifest.replicaSet + '&directConnection=true';
+   Object.assign(process.env, { JWT_SECRET_KEY: key, MONGODB_URL: uri, NODE_ENV: 'test',
+     SMTP2GO_API_KEY: 'fixture-only', SMTP2GO_SENDER: 'fixture@example.com',
+-    SMS_API_BASE_URL: ports.recordingAxios.sms, SMS_USERNAME: 'fixture', SMS_PASSWORD: 'fixture', SMS_FROM: 'fixture' });
++    SMS_API_BASE_URL: ports.recordingAxios.sms, SMS_USERNAME: 'fixture', SMS_PASSWORD: 'fixture', SMS_FROM: 'fixture',
++    ...ports.recordingMeet.environment });
+   require('reflect-metadata');
+   const typedi = require('typedi'); const axios = require('axios'); const jwt = require('jsonwebtoken'); const mongoose = require('mongoose');
+   const originalSign = jwt.sign; jwt.sign = (...args) => { counters.jwtIssued++; return originalSign(...args); };
+@@ -837,11 +1099,14 @@ async function main() {
+   };
+   const writeOps = Object.fromEntries([...collections].map(name => [name, 0]));
+   const readOps = Object.fromEntries([...collections].map(name => [name, 0]));
+-  let currentPorts; let server;
++  const meetLifecycle = meetFetchLifecycle(globalThis, ports.recordingMeet, counters);
++  let currentMeet; let currentPorts; let server;
+   function phase(overrides = {}) {
+     if (server) fail('PHASE_SERVER_STILL_OPEN');
++    currentMeet = meetLifecycle.phase();
+     typedi.Container.of().reset({ strategy: 'resetServices' });
+-    loader.resetCompiled(); currentPorts = recordingPorts(ports, typedi); loader.phase(currentPorts.substitutes, overrides);
++    loader.resetCompiled();
++    currentPorts = recordingPorts(ports, typedi); loader.phase(currentPorts.substitutes, overrides);
+     axios.defaults.adapter = currentPorts.adapter;
+     const express = require('express'); const app = express(); app.use(express.json({ limit: '16kb' }));
+     const authenticate = loader.load('@/modules/middleware/auth').authenticate;
+@@ -851,6 +1116,7 @@ async function main() {
+     app.use('/api/v1/dependents', authenticate, loader.load('@/modules/dependents/routes').default);
+     app.use('/api/v1/notifications', authenticate, loader.load('@/modules/notification/routes').default);
+     app.use('/api/v1/fcm', authenticate, loader.load('@/modules/fcm/routes').default);
++    app.use('/api/v1/meet', loader.load('@/modules/meet/routes').default);
+     app.use(loader.load('@/modules/middleware/errorHandler').errorHandler);
+     return new Promise((resolve, reject) => {
+       server = app.listen(0, '127.0.0.1', () => { const port = server.address().port; httpPorts.add(port); resolve(port); });
+@@ -863,8 +1129,9 @@ async function main() {
+     await new Promise((resolve, reject) => active.close(error => error ? reject(error) : resolve())); httpPorts.delete(port);
+   };
+   let port;
+-  const completed = await withOwnedCleanup(async () => {
++  const completed = await withMeetFetchCleanup(() => withOwnedCleanup(async () => {
+     // Recording/sentinel ports precede the first intentional CONFIG domain load.
++    currentMeet = meetLifecycle.phase();
+     currentPorts = recordingPorts(ports, typedi); loader.phase(currentPorts.substitutes);
+     axios.defaults.adapter = currentPorts.adapter;
+     const configurationEvidence = collectConfigurationEvidence({ env: process.env, effects: counters,
+@@ -872,6 +1139,7 @@ async function main() {
+       cacheHas: relative => Object.hasOwn(require.cache, path.join(ROOT, relative)) });
+     need(process.env.NODE_ENV === 'test' && process.env.JWT_SECRET_KEY === key && process.env.MONGODB_URL === uri,
+       'CONFIG_FINAL_ENV');
++    need(Object.entries(ports.recordingMeet.environment).every(([name, value]) => process.env[name] === value), 'MEET_CONFIG_ENV_DRIFT');
+     // Router imports register actual production models, still without any connection.
+     stage = 'ROUTER_IMPORT'; port = await phase();
+     need(JSON.stringify(mongoose.modelNames().sort()) === JSON.stringify(ports.models.map(row => row.name).sort()), 'UNDECLARED_REGISTERED_MODEL');
+@@ -904,9 +1172,12 @@ async function main() {
+       key, originalSign, counters, writeOps, readOps, need, fail, load: loader.load, configurationEvidence,
+       get deliveries() { return currentPorts.deliveries; },
+       get pushes() { return currentPorts.pushes; },
++      get meetRequests() { return currentMeet.meetRequests; },
++      expectMeetRequests(expected) { currentMeet.expectMeetRequests(expected); },
+       get port() { return port; },
+       async nextPhase(overrides) { await endPhase(); port = await phase(overrides); },
+     });
++    currentMeet.assertDone();
+     need(result.failed === 0 && result.skipped === 0 && counters.unexpected === 0 && counters.excluded === 0, 'CASE_OR_EFFECT_FAILURE');
+     need(JSON.stringify(result.cases.map(row => row.id).sort()) === JSON.stringify(ports.requiredCaseIds.slice().sort())
+       && result.cases.every(row => row.status === 'PASS'), 'MISSING_REQUIRED_CASE');
+@@ -920,7 +1191,7 @@ async function main() {
+       admissionPassed: true, networkAdmission, egressBlocked: true, filesystemCanariesPassed: true,
+       cases: result.cases, sensitivity: result.sensitivity, failed: 0, skipped: 0,
+       providerSummary: result.providerSummary, domainScope: 'FOCUSED_PRODUCTION_ROUTERS' };
+-  }, endPhase, () => mongoose.disconnect());
++  }, endPhase, () => mongoose.disconnect()), () => meetLifecycle.restore());
+   stdout(JSON.stringify(completed) + '\n');
+ }
+ 
+@@ -934,4 +1205,5 @@ if (require.main === module) main().catch(error => {
+ });
+ module.exports = { validateAdmissionData, inspectManifest, closeNetwork, installLoader, runSetupStep, SETUP_FAILURE_CODES,
+   withOwnedCleanup, recordReadOperation, recordPush, configurationSamples, configurationFinally,
+-  configurationEnvironment, withConfigurationTaps, configurationSampleEvidence, collectConfigurationEvidence };
++  configurationEnvironment, withConfigurationTaps, configurationSampleEvidence, collectConfigurationEvidence,
++  meetData, meetSame, createMeetRecorder, meetFetchLifecycle, withMeetFetchCleanup };
