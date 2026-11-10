@@ -1,0 +1,11 @@
+{
+  "schema": "SD-CLAUDE-PACKET-REVISION-3",
+  "status": "RETAINED_BEFORE_STRUCTURED_RESULT_AMENDMENT",
+  "files": {
+    "claude-review-invocation.json": "1c84ae2158145e668aeed3c382c1964a1ed6d0665beaee5506ebc8779cc223d5",
+    "claude-review-input-manifest.json": "01257c8251664f4097206477a3ee6f64e6e4e560e15ee4fd704040397ca7f92f",
+    "CLAUDE_CLI_REVIEW_PROMPT.md": "68fc88bbc798f1d31d826064bbcf32cabd13c164d9ee07e84350da63dfc45470",
+    "claude-review-mcp.json": "a612d678b74998efe9b9d91c029d7f66731ff4fb8e5e096e41f07243369743b0",
+    "CLAUDE_CLI_REVIEW_PACKET.md": "42236ca73e6a30c47fa12133fbfaabce0787c84dded95316a91c1f048b38903f"
+  }
+}

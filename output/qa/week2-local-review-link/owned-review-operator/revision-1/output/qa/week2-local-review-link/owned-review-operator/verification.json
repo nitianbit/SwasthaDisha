@@ -1,0 +1,19 @@
+{
+  "schema": "SD-CLAUDE-OPERATOR-OFFLINE-1",
+  "status": "SOURCE_REVIEW_PENDING",
+  "unitTests": 69,
+  "unitPassed": 69,
+  "syntaxParsed": 2,
+  "whitespace": "PASS",
+  "python": "3.14.7",
+  "realSubprocessesInUnit": 0,
+  "realSocketsInUnit": 0,
+  "realSignalsInUnit": 0,
+  "realAuthOrReviewCalls": 0,
+  "effectiveEffort": "UNPROVEN",
+  "actualClaudeExtensionACK": false,
+  "originalStagedFileHashesMatched": 6,
+  "archiveFileHashesMatched": 8,
+  "handoverFilesMatched": 2,
+  "preservationLimit": "Read-only file hashes; no new independent staged-patch comparison in this receipt."
+}

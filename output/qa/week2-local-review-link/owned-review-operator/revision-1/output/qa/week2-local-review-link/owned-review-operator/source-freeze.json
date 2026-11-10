@@ -1,0 +1,20 @@
+{
+  "schema": "SD-CLAUDE-OPERATOR-SOURCE-FREEZE-1",
+  "author": "/root/local_claude_review_prep",
+  "contractSha256": "97dc92ae0469a346eb2094833cc4c697b4c7ad105a753dc086a52289544895a9",
+  "status": "SOURCE_REVIEW_PENDING",
+  "files": {
+    "tools/agents/claude-ruflo-review.py": "d05bd5ed24560e0f55ca283fc6cb28502b33aa87d829ee0485ab2102a2fa9051",
+    "tools/agents/claude-ruflo-review.test.py": "c6fadf784a13151f9124a5947dc121abe2ce64ad27dab1dfdd0cb7c48577c0df",
+    "output/qa/week2-local-review-link/OWNED_REVIEW_OPERATOR_CONTRACT.md": "97dc92ae0469a346eb2094833cc4c697b4c7ad105a753dc086a52289544895a9",
+    "output/qa/week2-local-review-link/claude-review-invocation.json": "1c84ae2158145e668aeed3c382c1964a1ed6d0665beaee5506ebc8779cc223d5",
+    "output/qa/week2-local-review-link/claude-review-input-manifest.json": "01257c8251664f4097206477a3ee6f64e6e4e560e15ee4fd704040397ca7f92f",
+    "output/qa/week2-local-review-link/CLAUDE_CLI_REVIEW_PROMPT.md": "68fc88bbc798f1d31d826064bbcf32cabd13c164d9ee07e84350da63dfc45470",
+    "output/qa/week2-local-review-link/claude-review-mcp.json": "a612d678b74998efe9b9d91c029d7f66731ff4fb8e5e096e41f07243369743b0",
+    "output/qa/week2-local-review-link/CLAUDE_CLI_REVIEW_PACKET.md": "42236ca73e6a30c47fa12133fbfaabce0787c84dded95316a91c1f048b38903f",
+    "output/qa/week2-local-review-link/owned-review-operator/README.md": "ee4e1cf2787dffb6880fe2ca9a139884d28c01b750d32757de5d6a2bcf552714",
+    "output/qa/week2-local-review-link/owned-review-operator/REVIEW.md": "9ac394dd84525c63380a18619d96c6205ad9d3ce25bda9b33d5943ee1330a433",
+    "output/qa/week2-local-review-link/owned-review-operator/unit.txt": "c0d4300e3cffe41cb467c4e97d4cdac8a7207cfe6e28c8e49c3ad4bcfbde8add",
+    "output/qa/week2-local-review-link/owned-review-operator/verification.json": "275b1ce7d6db14536fc5f858e6bb34300ea16c9385434bffc15f2b7e3f96b6e1"
+  }
+}

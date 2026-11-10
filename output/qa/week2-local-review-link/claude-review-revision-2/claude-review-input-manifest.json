@@ -1,0 +1,552 @@
+{
+  "schema": "SD-CLAUDE-REVIEW-PREPARED-INPUT-1",
+  "status": "PREPARED_AUTH_AND_OPERATOR_REQUIRED_NOT_INVOKED",
+  "clientKind": "local-bundled-CLI",
+  "sourceCommit": "1543658ff53e3906f71f4fa8b92a5756b97a7ee1",
+  "evidenceCommit": "94f8804916850caf9c716fae2cc49c6c0d218202",
+  "descriptorSha256": "067c3c39f574f439c48f6c6f70e031306fc7c4ea5a6d5934e610b9213006ffde",
+  "promptSha256": "68fc88bbc798f1d31d826064bbcf32cabd13c164d9ee07e84350da63dfc45470",
+  "mcpConfigSha256": "a612d678b74998efe9b9d91c029d7f66731ff4fb8e5e096e41f07243369743b0",
+  "privateInput": "/private/tmp/sd-claude-review-input-0yo81r5x/review-input.json",
+  "inputSha256": "2be325a6f57728ec062d5a8ebc064d4def7dc67791504fe82479ce81a9141354",
+  "inputBytes": 1035167,
+  "fileCount": 106,
+  "files": [
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/auth/routes/index.ts",
+      "sha256": "1f3e6a8076fa0c8aa5f5edc1d95787fd955e81b40c6323a87a97197b54a73893"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/user/routes/index.ts",
+      "sha256": "5abcd4fd438ce0a05f24a72f85d40d1a9ab9b9374fd9056a442a8fe6481396bf"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/wallet/routes/index.ts",
+      "sha256": "5ce3fc7bdd72140348df94787b0c4e47a19190ada5137a2971be84cbe584197c"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/middleware/auth.ts",
+      "sha256": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/middleware/errorHandler.ts",
+      "sha256": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/auth/controller/index.ts",
+      "sha256": "2fd46a2824e9842eb820b2a49714245ccd521a7880612ae6b48c2b6e9aed4528"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/auth/validation/index.ts",
+      "sha256": "c0424a7bf6fb49226dec0aa39babec98221f50fcd842c4137120b8a30a3d3527"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/middleware/validation.ts",
+      "sha256": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/utils/asyncHandler.ts",
+      "sha256": "59fe49db58678ef81242a654f7457f74b067b2583a3f8dc70918b61f50228bd9"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/user/controller/index.ts",
+      "sha256": "25aef90efe3e5142011789dd48d55452d5b1fef9f2e56d70c355e7606e191d74"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/user/validation/index.ts",
+      "sha256": "db7d64de2ab5276753656681ef1b50cada2a108047ec24db195b384e28bf6fbb"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/types/index.ts",
+      "sha256": "63ad3821027150d368e993903e954b4a80b776ff223caf322c104008239d4cbd"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/wallet/controller/index.ts",
+      "sha256": "3b22b878fd8717b8b88620c2cb5ff3f00337f5d887beea86050fcd34d222264f"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/wallet/validation/index.ts",
+      "sha256": "b14fcba5a716314998d755b16d27db8a43e45e1244fc327543c90f7db41356d1"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/config/config.ts",
+      "sha256": "e879b0f9c635283d7c9a271128605c6d8583995356e30f5f1c318d23270d09f6"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/pharmacies/model/index.ts",
+      "sha256": "beda95d89a9773a8d5851dd923c363c83123a573f7391836dec69b13e5cfa177"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/utils/mongoErrors.ts",
+      "sha256": "147a5687832d03c654acd97e0f9e0d9c6c0c7ab51a2841f0eb2260235229d43d"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/auth/services/index.ts",
+      "sha256": "d59d5ea23df586fbbdb5b9c4615bcbe0b716f649bdc02f3738088f87b0fbae56"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/auth/types/index.ts",
+      "sha256": "f6cbff24776d23b029244526d07d6a9af290aec66020d414469388c6f11118e9"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/admin/repository/index.ts",
+      "sha256": "52228e037935bc4fee3265566fe62458d46b25de50457c7ef356df4f24d1661d"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/hr/repository/index.ts",
+      "sha256": "565efdeec1a579b7a31ed01cec2d1ff8f5391969f782b63b35a1075e9c5c0a36"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/user/repository/index.ts",
+      "sha256": "e730c52b26fbc773bcf92673190b68fe00c91162cb97f37eac1570cbbb85c4e1"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/specialists/repository/index.ts",
+      "sha256": "c3b4abd78026639fe9bedda62912ec59ecf6ff1f92e01947bf2be59d4ea4ca00"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/pharmacies/repository/index.ts",
+      "sha256": "f3e1110b139c8158d1c846db7778a45f8ba9f5ce225f4468384f2d070d3718db"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/user/services/index.ts",
+      "sha256": "e649883d1728b6a39a129d1cde08152628d7a8f13ba68da3de7764799f799290"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/user/types/index.ts",
+      "sha256": "91d4b48e4749d113733f471d64093c7269dffcf13bf48577c8dbc2edce7d5b71"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/types/error.ts",
+      "sha256": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/types/response.ts",
+      "sha256": "44c5dbcf38ea117eaa13f3a715143ea147a7abf25c3491b61817e67b5f3d6f93"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/wallet/services/index.ts",
+      "sha256": "938433ca68e0481bf86d2b69f5d56106fba04f913c94e326947bbd617fbc13ff"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/wallet/types/index.ts",
+      "sha256": "ebe4c82783a032315ff70df33961010ab44ff11413bb29c3cd98e7d0f43e0e6b"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/settings/types/index.ts",
+      "sha256": "1e69283201773cee55f5eaf0f10ccc77d5a8c091cb8aa1ead83a4616d20bfdd8"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/pharmacies/types/index.ts",
+      "sha256": "e43d4c6e5af5ebc9a21e3a35d41e475e92ab7509961cdafe6bfc3043af0b24f0"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/corporates/repository/index.ts",
+      "sha256": "d25d77d0ca37c64877e088ad6cd057dba4920dabab5c139e65deac99e2f3e384"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/otp/services/index.ts",
+      "sha256": "cf59555cb618ace73e78e7fb35ca5ce780075ed30d5c3f7c633b1777b4b07971"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/admin/types/index.ts",
+      "sha256": "40af9ca32f722617f765813d5ef865c45cd40ae2dfe2b68db367740d5239b3ad"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/hr/types/index.ts",
+      "sha256": "3439270c8a405dbe1299717979e8b8802cd671048842506283bfec4476a6399b"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/specialists/types/index.ts",
+      "sha256": "fcd9dcbe1d4e389b05cdf0839406b9547daef96df4360985cc1e483209741bfe"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/notification/services/index.ts",
+      "sha256": "dd343357282c5c80fb02da2913d9eaf1ec772e7df0daa39f9a4b0bfc87c9311d"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/email/services/index.ts",
+      "sha256": "44049e2331f3cc9dbed9e8608f90bc9db1a0c9a2d7b43c9a8eee1e2d4c877afc"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/sms/services/index.ts",
+      "sha256": "7ab0ba42473626e89d23a4fcf4eca4d298b53d6fa30648b36d77ea779bc32b94"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/repository/index.ts",
+      "sha256": "6e13d4d0ced3ad40772c5b2c35034544fe49f0d7b715cf0309f954be7ab5cb77"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/admin/model/index.ts",
+      "sha256": "6f0463e094209c158dc59dd58e23e2ca9ec609301ecf7c55c61592cba8a80526"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/hr/model/index.ts",
+      "sha256": "97937e1e9935c78771357a824a52019fbf81fdb1cc5c77fe86107c1516c5f6eb"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/utils/queryUtils.ts",
+      "sha256": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/user/model/index.ts",
+      "sha256": "8ab08c867008d9788fd2105b6ac840794fcd5d8b2c518de500119aa2536cf5c4"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/specialists/model/index.ts",
+      "sha256": "0dcbc6b6a88b439181494c514eebdd8cd48273933ea1028cc77c0b6ed2a0d39e"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/wallet/repository/index.ts",
+      "sha256": "4db66107afa4ecb7db99a91c3d9216488a514145187e56bc0d589677e344b726"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/utils/dateUtils.ts",
+      "sha256": "87bf2514e890fc3b03f75c68b1661376c13388b07fe5f4af134714013d41dcd1"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/corporates/model/index.ts",
+      "sha256": "1aaa1f45c8cba7b488c803181af71ba9c66c8d638ce5285909c5f814143be89c"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/wellnessPackages/model/index.ts",
+      "sha256": "46dd391deda14d63a041c478b5233010faa186df51651f7d611b8946675acc28"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/corporates/types/index.ts",
+      "sha256": "acc6d8d0ccddaf6b37c7247d4b3f5699bdb6910ca485ff605ff5987bcb5889ea"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/wellnessPackages/types/index.ts",
+      "sha256": "f34ac025b47b73b4d6de30b37768b2fbed980681d245165a98789b4a9d4aa8b1"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/otp/repository/index.ts",
+      "sha256": "8d59e92cb0d019a2d777d9b794278f126714205dce774caee5cd6e96d14a6841"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/otp/types/index.ts",
+      "sha256": "7ee33890ffbbfeefb0921fec4faf53c0af775b963e90202199a542c642ac15fd"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/notification/repository/index.ts",
+      "sha256": "418749c02dbd5844003b355fb6e79f66846377146e708f816ffb7426bc42e897"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/fcm/services/index.ts",
+      "sha256": "5721b5de514461bdc1197cb721bf99440b79df9bf8c889087b691ba47d6c55ec"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/notification/types/index.ts",
+      "sha256": "7c755170cacc5ce208c1522b152543ccbbefba3cc03a9f28f99a3d6d325a6b68"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/repository/BaseRepository.ts",
+      "sha256": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/wallet/model/index.ts",
+      "sha256": "18757f38145a2ebab378cd1d00c423170a00fd3b136b1229105244fb1a540538"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/otp/model/index.ts",
+      "sha256": "9891e0b34bbd3b21502540d86a8001c4f666223ddb8628c2922a1953ede6506d"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/notification/model/index.ts",
+      "sha256": "ef6c56aec1cecaac2c0248b76faf1dd4721f4c00a45b2fa8f45c8b79836c1ca9"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/fcm/repository/index.ts",
+      "sha256": "8c472a507a1ae97ba683db83bb8e6d07112f243f91eb0b7eb39ea36abb74baca"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/fcm/types/index.ts",
+      "sha256": "f1beb58d08a91b5c6797d177a21be55cb6d79813f2a510cd164532fa723a6f2c"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/fcm/model/index.ts",
+      "sha256": "7082276e9d66a64ad7dc510dcc37782bb1a4e7ee80accbd1322f5c2d8a6f6b37"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/scenario/bootstrap.cjs",
+      "sha256": "861be44d5f28beebbde9bd81c75c4e8fe575bb76f67d5c16451bdcf6d01bbb4f"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/scenario/scenario.cjs",
+      "sha256": "95c44306f9ab7bddadc7e5be5d9a5e80b9816234167d1a83402a6591f3a88947"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/scenario/ports-manifest.json",
+      "sha256": "993003d7ec316a99c8189acde7e45277c6f79f9f567a1e26cfed9a7d3d855f94"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/scenario/prepare.py",
+      "sha256": "39b4085370a09a34069b9f1c4f45cfd8fa38a3a1f0e380abcef9c469a5add598"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/scenario/compile.cjs",
+      "sha256": "76383b2161dc19d4675f7c21edc1a4fa799cd0287b80628f63bc2d19b38a3a2a"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/scenario/package-plan.json",
+      "sha256": "d7830a9ce688235bb64f3f9f7ac3d5dd604bb63641cdae97b8b7250bfd957227"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/application/app-bundle.mjs",
+      "sha256": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/package-lock.json",
+      "sha256": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/AGENTS.md",
+      "sha256": "c591a4943214fe22bd8c74b47311aa2a1ffc218013fea20d1ab9d86c1ead5866"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/documentation/planning/M0_START_APPROVAL_STATUS.md",
+      "sha256": "67eea927661cf1a94d8644ede28eaa7315d4774866958ff346b37aac5a559be3"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/documentation/planning/implementation/C2_COMPATIBILITY_REVIEW.md",
+      "sha256": "e703e7bc43495868edd2ab535cb38b0f5f2ac54b5d572c2c38467b59e2ae67d4"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/documentation/planning/implementation/C3_MONGO_FIXTURE_CONTRACT.md",
+      "sha256": "208d702c9a1f7bc2826bda720603fa8fb382bfed9599739e1c8f4605b81368ce"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/documentation/planning/implementation/C3_AUTH_API_RUNTIME_CONTRACT.md",
+      "sha256": "73301872982a0f79fa805538f679c08e53ce6ef0528790cc75144ed7e2a7d0ee"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/documentation/planning/implementation/PARALLEL_DEVELOPMENT_WORKFLOW.md",
+      "sha256": "c4f99a171df17ae98405a1fdd1c6aad0f9ab2dedfdb4aafabff60cb292d6148a"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/launch.mjs",
+      "sha256": "9c6d1c805de4c50542667b90532219c54666b8a764ee5672055f641938b099ed"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/launch.test.mjs",
+      "sha256": "9e9316041db0d3a7977a2e78130b9f1d26f331bb51a6c069327257a0c6c719be"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/platform.mjs",
+      "sha256": "b5117065c90c4698cb9604a8da0cb673a38249d8eee07a8ac39e11040a56e29f"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/platform.test.mjs",
+      "sha256": "334387136951602d44faf72fb351461012409fa4b3f547e2200c9b1ffc81ac16"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/profile.json",
+      "sha256": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/unit.mjs",
+      "sha256": "a1f9cfb45bae4c8f0ffa87625423d8ee548b614aa0a97228133e0e75f000cd66"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/output/qa/week2-fixture-index-space/CONTRACT.md",
+      "sha256": "c6e31ba43133cd6ccb3da6d4f2bdaad134c30fdd49da2e78bf84ed24e49c7124"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/output/qa/week2-fixture-index-space/README.md",
+      "sha256": "0891ef87fff906b7c6462ebe3f3e237709941ca3c54e797c4ef14ed13313bf20"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/output/qa/week2-fixture-index-space/source-freeze.json",
+      "sha256": "cef26a185f5f04d45af2e226bb25bf1ebf96edf5b8768e45ffd889450c6048e3"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/output/qa/week2-fixture-index-space/baseline-rejection.json",
+      "sha256": "693994172b09bc5eee93901c0a6ec06a12b5b33965be66f50f37865a384ad1ec"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/output/qa/week2-fixture-index-space/pre-review.json",
+      "sha256": "20ce088a0e463666217d3822604d365935a2554d9d0312e5d1f1b56a82c2f329"
+    },
+    {
+      "kind": "PREPARED_PUBLIC_DATA",
+      "path": "/private/tmp/sd-auth-api-build-a5b8aac5-af8d-4d71-ab51-0f76d5ed75fa/runtime/runtime-plan.json",
+      "sha256": "416b998e2c444c65887208293bc0682d8ec432dd38747e23d570c147de958f34"
+    },
+    {
+      "kind": "PREPARED_PUBLIC_DATA",
+      "path": "/private/tmp/sd-auth-api-build-a5b8aac5-af8d-4d71-ab51-0f76d5ed75fa/runtime/package-lock.json",
+      "sha256": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5"
+    },
+    {
+      "kind": "PREPARED_PUBLIC_DATA",
+      "path": "/private/tmp/sd-auth-api-build-a5b8aac5-af8d-4d71-ab51-0f76d5ed75fa/runtime/ports-manifest.json",
+      "sha256": "993003d7ec316a99c8189acde7e45277c6f79f9f567a1e26cfed9a7d3d855f94"
+    },
+    {
+      "kind": "DESCRIPTOR_SUMMARY",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/scenario/runtime-template.json#summary",
+      "sha256": "7b90de27ca4a7db16f369b87f01c220a16b9ece7682a9587725e677e3a091e01"
+    },
+    {
+      "kind": "ACTUAL_RUN_EVIDENCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-4/REVIEW.md",
+      "sha256": "974cd7afe16aa580b49ba8677ca82015faec5919e8b8dcdd1132f848ce5aad40"
+    },
+    {
+      "kind": "ACTUAL_RUN_EVIDENCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-4/attempt-claim.json",
+      "sha256": "857f30df0bf00792b538aca9d28f8076a58160de0fba809fe7f5ed43888c1083"
+    },
+    {
+      "kind": "ACTUAL_RUN_EVIDENCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-4/initial-archive-manifest.json",
+      "sha256": "45d10958c33d2c168b02e3ad3e2434d0cdb0a0c034deb595591ce53b1823391c"
+    },
+    {
+      "kind": "ACTUAL_RUN_EVIDENCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-4/initial-verification.json",
+      "sha256": "38a8cd7501c4477996a41955d39c3797e0c0fdebfd5292c315215670d0d5b460"
+    },
+    {
+      "kind": "ACTUAL_RUN_EVIDENCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-4/one-run-approval.json",
+      "sha256": "387b7fbef2de6679f914d22673a2bf327fa2d3438d4703bc26b9b1c29fc7b961"
+    },
+    {
+      "kind": "ACTUAL_RUN_EVIDENCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-4/operator-result.json",
+      "sha256": "7b6d246d5a81666131aa652326c40173ccfb0d253505865000af74fb3b9a0cc1"
+    },
+    {
+      "kind": "ACTUAL_RUN_EVIDENCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-4/root-independent-readback.json",
+      "sha256": "814484020cfa799507062928df358328bf929e2f5285724221b13bf6ab3b3028"
+    },
+    {
+      "kind": "ACTUAL_RUN_EVIDENCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-4/verification.json",
+      "sha256": "68b3738eca6266d5bfe1c5ca4740d797b5a0095db82aa8d84ab81196df49347f"
+    },
+    {
+      "kind": "ACTUAL_RUN_EVIDENCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-4/archive-manifest.json",
+      "sha256": "5aa4228a1d95fd894c18cea46571c71e407bfaaecd6e45c7c69b6ac49092efc4"
+    },
+    {
+      "kind": "FAILED_ATTEMPT_HISTORY",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-1/verification.json",
+      "sha256": "7a65f1fd800a13cd59c8eaecd5457721c9259b7c8497bd90845e94d4316b1597"
+    },
+    {
+      "kind": "FAILED_ATTEMPT_HISTORY",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-2/verification.json",
+      "sha256": "ce62cd803ad890ff1d788aad385127116e349d7cac03b2769a04cb979609f9f0"
+    },
+    {
+      "kind": "FAILED_ATTEMPT_HISTORY",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-3/verification.json",
+      "sha256": "11de9dc7c0492173425350240148b8b2a4eb9f065e5c6c2d7c9d08916a54d898"
+    },
+    {
+      "kind": "SAFE_PENDING_LINK_METADATA",
+      "path": "/Users/shubham/.codex/ruflo-state/swasthadisha/extension-link.json",
+      "sha256": "2608f1424d9e9c0bfc7af882a74b9003b5cceef573c602d386a037bbba61ff7f"
+    }
+  ],
+  "applicationEvaluations": 0,
+  "modelRequests": 0,
+  "accountChanges": 0,
+  "actualClaudeExtensionACK": false,
+  "contextLimitation": "Source/evidence snapshot; model cannot independently execute hashes or query host filesystem.",
+  "previousInputSha256": "3311286ee931d726da527bab37058674bf3d6489162f4e49d8c7e5b0b3b41d4f"
+}
