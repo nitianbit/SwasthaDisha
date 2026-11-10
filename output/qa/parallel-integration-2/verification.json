@@ -1,0 +1,84 @@
+{
+  "date": "2026-11-10",
+  "integration_head_verified": "c7b54ff25fd83ff0834bd4d2014d2e379f13c21b",
+  "command": "env -i PATH=/usr/bin:/bin TMPDIR=/tmp /opt/homebrew/bin/python3 -I output/qa/parallel-integration-2/verify-source.py",
+  "verifier_sha256": "2bc5526bbd5ba28d0be38a4e3dd2ed61b9388cc482abccadad57bc793cb62c0f",
+  "exit_code": 0,
+  "stdout": {
+    "status": "SOURCE_COMPOSITION_VERIFIED_RUNTIME_NOT_ADMITTED",
+    "baseline": "9ea963f1f7b51aadedcfa7fc9918eb39a2fd737d",
+    "lane_heads": {
+      "user-route-authority": "ea0710c405749dbc60cff2e1045fa87c68ef5789",
+      "wallet-mutation-authority": "8409858a9e471812cba2aaa99d1004c8a22ee6e4",
+      "foundation-network-admission": "baaf071babae538d2bf9096e980b8e0155c9af82",
+      "jwt-secret-fail-closed": "843bdb056ba3c481464ce8cd926ca28ab7ca0f33"
+    },
+    "lane_file_counts": {
+      "user-route-authority": 4,
+      "wallet-mutation-authority": 5,
+      "foundation-network-admission": 23,
+      "jwt-secret-fail-closed": 4
+    },
+    "production_union": [
+      "src1/config/config.ts",
+      "src1/modules/user/controller/index.ts",
+      "src1/modules/wallet/routes/index.ts"
+    ],
+    "reviewed_code_sha256": {
+      "src1/modules/user/controller/index.ts": "25aef90efe3e5142011789dd48d55452d5b1fef9f2e56d70c355e7606e191d74",
+      "src1/modules/wallet/routes/index.ts": "5ce3fc7bdd72140348df94787b0c4e47a19190ada5137a2971be84cbe584197c",
+      "src1/config/config.ts": "e879b0f9c635283d7c9a271128605c6d8583995356e30f5f1c318d23270d09f6",
+      "test/application/app-bundle.mjs": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2",
+      "test/application/bootstrap.mjs": "23851a078af2b2311f17289378556a8871bea3e3cbcd67dede448b525f974c8c",
+      "test/application/app-container.mjs": "e0833fa33da450eb39c76a826d54c02deffdef4ec374a1ea7fcc8fac1cbbacfa",
+      "test/application/app-container.test.mjs": "584e60d4b25895669c8d119a229ac181cfd7c9bd602e17481a0999bf2c67101b",
+      "test/application/app-bundle.test.mjs": "4aeb825dec2b768b0964a74a2d04a4931fd640c153f3606d5cd12ec981e510df"
+    },
+    "protected_files_unchanged": 20,
+    "original_staged_patch_preserved": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+    "original_handover_files_preserved": 11,
+    "TypeScript_evaluations": 0,
+    "Docker_calls": 0
+  },
+  "stderr_bytes": 0,
+  "unit_gate_on_integrated_tree": {
+    "command": "env -i TMPDIR=/tmp <node> test/foundation/run.mjs",
+    "runs": {
+      "v22.23.4": {
+        "exit_code": 0,
+        "summary": {
+          "tests": 324,
+          "suites": 0,
+          "pass": 324,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "stderr_bytes": 0
+      },
+      "v24.19.0": {
+        "exit_code": 0,
+        "summary": {
+          "tests": 324,
+          "suites": 0,
+          "pass": 324,
+          "fail": 0,
+          "cancelled": 0,
+          "skipped": 0,
+          "todo": 0
+        },
+        "stderr_bytes": 0
+      }
+    }
+  },
+  "not_run": [
+    "TypeScript or application execution",
+    "compiler/build/start",
+    "Docker invocation of the new admission rule",
+    "runtime fixtures",
+    "provider/database effects",
+    "deployment"
+  ],
+  "selected_115_scenarios": "unchanged: 0 PASS, 1 FAIL, 1 BLOCKED, 110 NOT_RUN, 3 DEFERRED"
+}
