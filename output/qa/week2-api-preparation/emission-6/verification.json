@@ -1,0 +1,32 @@
+{
+  "status": "PREPARED_NOT_EXECUTED",
+  "invocations": 1,
+  "exit": 0,
+  "sourceRoot": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6",
+  "sourceCommit": "1543658ff53e3906f71f4fa8b92a5756b97a7ee1",
+  "descriptorSha": "067c3c39f574f439c48f6c6f70e031306fc7c4ea5a6d5934e610b9213006ffde",
+  "lockSha": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+  "portsSha": "993003d7ec316a99c8189acde7e45277c6f79f9f567a1e26cfed9a7d3d855f94",
+  "filesVerified": 2829,
+  "bytes": 44630815,
+  "sourceInputs": 72,
+  "nominalCasesNotRun": 36,
+  "mutantCasesNotRun": 4,
+  "modelCount": 12,
+  "semanticDiagnostics": 703,
+  "transpileDiagnostics": 0,
+  "compilation": "TRANSPILE_ONLY_NOT_TYPECHECKED",
+  "fullBuild": false,
+  "actualReviewers": [
+    "/root/backend_boot_path",
+    "/root/local_claude_review_prep"
+  ],
+  "decision": "APPROVE_LOCKED_INSTALL_AND_EMIT_ONLY",
+  "approvalConsumed": true,
+  "buildArea": "/private/tmp/sd-auth-api-build-a5b8aac5-af8d-4d71-ab51-0f76d5ed75fa",
+  "applicationEvaluations": 0,
+  "driverEvaluations": 0,
+  "databaseConnections": 0,
+  "DockerCalls": 0,
+  "parentProfile": "REVIEWED_TEST_ONLY_PROFILE_2_INDEX_MIN_SPACE_64_MB"
+}

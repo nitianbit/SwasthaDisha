@@ -1,0 +1,24 @@
+{
+  "schema": "SD-AUTH-API-INVOCATION-APPROVAL-1",
+  "decision": "APPROVE_ONE_FIXED_AUTH_API_RUN",
+  "sourceRoot": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6",
+  "sourceCommit": "1543658ff53e3906f71f4fa8b92a5756b97a7ee1",
+  "operatorSha": "9c6d1c805de4c50542667b90532219c54666b8a764ee5672055f641938b099ed",
+  "platformSha": "b5117065c90c4698cb9604a8da0cb673a38249d8eee07a8ac39e11040a56e29f",
+  "profileSha": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+  "networkSha": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2",
+  "templateSha": "067c3c39f574f439c48f6c6f70e031306fc7c4ea5a6d5934e610b9213006ffde",
+  "lockSha": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+  "portsSha": "993003d7ec316a99c8189acde7e45277c6f79f9f567a1e26cfed9a7d3d855f94",
+  "hostNodeSha": "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0",
+  "reviewers": [
+    {
+      "agent": "/root/backend_boot_path",
+      "decision": "APPROVE_ONE_FIXED_AUTH_API_RUN"
+    },
+    {
+      "agent": "/root/local_claude_review_prep",
+      "decision": "APPROVE_ONE_FIXED_AUTH_API_RUN"
+    }
+  ]
+}

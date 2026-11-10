@@ -295,3 +295,35 @@ Transport passed; genuine Claude ACK/model/effort review remains pending. Origin
 staged/handover bytes, root dependencies/build/start, 115-scenario outcomes, retained
 server facts and named clinical/finance/security/release gates remain unchanged.
 The requested API milestone and full M0/Week 2 are not complete.
+
+
+## Eighteenth increment, 11 November: focused real API milestone achieved
+
+The reviewed test-only profile 2 completed one exact run at clean `1543658`,
+descriptor `067c3c39…`: **FOCUSED_API_PASS**. All 36 required real HTTP/DB/JWT
+cases passed, all four actual-source regressions were detected, and failure/skip
+counts are zero. Both independent nonauthor internal Codex reviewers accepted
+[the actual runtime evidence](../../../output/qa/week2-api-runtime/execution-4/REVIEW.md)
+after checking exact receipts, source/artifact pins, scenario assertions, effect
+counters and cleanup records. The approval is consumed; no rerun is implied.
+
+This proves the bounded actual auth/OTP/user/wallet paths, including phone/email
+login, JWT signature/claims, cross-owner/role denials, single-winner conditional
+OTP consumption and in-flight expiry denial. Email/SMS/logger are recording
+intents, with no unexpected effects. Exact parent cleanup plus a separate fresh
+root readback confirms the same engine, both captured IDs absent, zero purpose
+labels and workspace ENOENT. Earlier failures remain preserved. The successful
+fixture retains its original resource/grant limits; the fixed nonzero 64 MB
+index-space setting is test-only.
+
+The next step is the requested genuine existing-client Claude Opus 5.5/max review
+through local Ruflo. Transport has passed; actual Claude acknowledgement/model/
+effort evidence is still pending. No hosted worker or account/authentication flow
+is introduced. The current dependents/notification/FCM fixture extension remains
+contract preparation, not executed coverage.
+
+This focused milestone does not accept full app startup, root C2 install/type/
+build/compiled start/default CI, client coverage, money/recovery/clinical/security
+owners, full M0/Week 2, production or release/100 RPS. The selected 115 scenario
+register remains unchanged; new focused cases have their own manifest. Original
+six staged files and eleven handover files were rehashed and preserved.

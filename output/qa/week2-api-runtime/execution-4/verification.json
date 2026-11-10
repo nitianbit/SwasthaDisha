@@ -1,0 +1,45 @@
+{
+  "status": "FOCUSED_API_PASS",
+  "invocations": 1,
+  "exit": 0,
+  "sourceCommit": "1543658ff53e3906f71f4fa8b92a5756b97a7ee1",
+  "templateSha": "067c3c39f574f439c48f6c6f70e031306fc7c4ea5a6d5934e610b9213006ffde",
+  "approvalSha": "387b7fbef2de6679f914d22673a2bf327fa2d3438d4703bc26b9b1c29fc7b961",
+  "approvalConsumed": true,
+  "actualReviewers": [
+    "/root/backend_boot_path",
+    "/root/local_claude_review_prep"
+  ],
+  "cleanup": "VERIFIED_BY_PARENT_AND_ROOT_READBACK",
+  "nominalCases": {
+    "required": 36,
+    "pass": 36,
+    "failed": 0,
+    "skipped": 0
+  },
+  "sensitivityCases": {
+    "required": 4,
+    "detected": 4
+  },
+  "providerSummary": {
+    "email": 3,
+    "sms": 1,
+    "push": 0,
+    "logger": 36,
+    "payments": 0,
+    "calendar": 0,
+    "storage": 0,
+    "queue": 0,
+    "deniedCapabilities": 0,
+    "unexpected": 0
+  },
+  "scope": "FOCUSED_PRODUCTION_AUTH_OTP_USER_WALLET_ROUTERS",
+  "fullStartup": false,
+  "rootBuildTypecheck": false,
+  "Week2Accepted": false,
+  "moreRuns": "NOT_AUTHORIZED",
+  "postReviews": {
+    "/root/backend_boot_path": "ACCEPT_BOUNDED_FOCUSED_API_RUNTIME_EVIDENCE",
+    "/root/local_claude_review_prep": "ACCEPT_FOCUSED_AUTH_API_EVIDENCE"
+  }
+}
