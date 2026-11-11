@@ -519,3 +519,46 @@ Original staged patch and eleven handover files were rehashed unchanged.
 Backend work continues with the separate selected-index C3 behavioral/readback
 contract. Accepted API evidence remains 76/21; full M0/Week2 and the existing root
 C2, named-owner, original115, deployment and release gates remain open.
+
+## Twenty-fourth increment, 11 November: selected-index runtime milestone achieved
+
+The composed selected-index fixture is integrated and one exact independently
+approved invocation at cleanea2a39c, descriptorc1618428, returned
+**FOCUSED_API_PASS:83 nominal groups/27 actual-source variants,0 fail/skip**.
+Both independent nonauthor internal Codex reviewers accepted
+[the actual result and cleanup](../../../output/qa/week2-api-runtime/execution-8/REVIEW.md).
+The receipt/once claim is consumed. All previous76/21 and earlier results/failures
+remain preserved; no rerun is authorized by this success.
+
+Actual complete selected build-info metadata precedes fixture writers. The
+independent command port and collector hold the owned Db/client/session/cursor
+and bound namespace, continuation, rows, bytes and deadline. The real helper
+executes172 trials/343 nominal comparisons and six source variants with150
+unsafe/300 fresh restoration comparisons. Safe frozen results, immutability,
+zero helper effects and exact cache/descriptor/port restoration are mandatory.
+Private raw listings/trials were not persisted or independently replayed; the
+reviewed bound executed predicates and safe PASS support these outcomes.
+
+Both reviewers requested correction of independent cursor/handle checks; Root
+and Standards also found a total-deadline gap. Both were fixed before execution,
+with initial source167789/16-file archive and414/416 check history preserved.
+Final433 builtins-only fake cases and49 parser cases pass independently.
+[Actual composed source decisions](../../../output/qa/week2-index-readiness-runtime/SOURCE_DECISIONS.md).
+
+Genuine selected-helper strict TypeScript5.9.3 checking reports0 diagnostics with
+45 pinned ES2020 libraries; the exact virtual old TDZ source is rejected at the
+required TS2448 span. [Prepared artifact](../../../output/qa/week2-api-preparation/emission-10/REVIEW.md).
+The inherited partial broader diagnostic collector retains all1084 old entries
+plus85 new helper-only missing-global entries,1169 total/0 transpile/fullBuild:false;
+the separate strict result supplies no clean root/backend typecheck claim.
+All2755 dependency files,88 old compiled modules and21 old variants are exact.
+There are89TS/68 reachable modules and the same13 models/five model controls.
+
+Nominal recording counters stay email5/SMS1/push2/logger350/calendar4, others0.
+Parent, Root and both reviewers independently verified same-engine exact two-ID
+absence, zero purpose labels and workspace ENOENT. Original six staged/working
+files, patch and all eleven handover files remain exact. No production/provider
+delivery, account or deployment action occurred; the library is not activated
+in production startup, health or writers. FullF13/M0/Week2, rootC2 and existing
+owner/original115/client/100RPS/release gates remain open. Claude sign-in is
+deferred without polling; ready backend work continues through the next slice.

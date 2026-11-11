@@ -1,0 +1,368 @@
+{
+  "schema": "SD-AUTH-API-PORTS-1",
+  "role": "auth-user-wallet-api",
+  "roots": [
+    "@/modules/auth/routes",
+    "@/modules/user/routes",
+    "@/modules/wallet/routes",
+    "@/modules/middleware/auth",
+    "@/modules/middleware/errorHandler",
+    "@/modules/dependents/routes",
+    "@/modules/notification/routes",
+    "@/modules/fcm/routes",
+    "@/modules/meet/routes",
+    "@/modules/common/utils/indexReadiness"
+  ],
+  "excludedCapabilities": {
+    "@/modules/payment/services": [
+      "PaymentService"
+    ],
+    "@/modules/coupon/services": [
+      "CouponService"
+    ]
+  },
+  "recordingModules": [
+    "@/services/logger",
+    "@/services/firebase"
+  ],
+  "recordingAxios": {
+    "email": "https://api.smtp2go.com/v3/email/send",
+    "sms": "https://sms.fixture.invalid/send"
+  },
+  "requiredCaseIds": [
+    "PHONE_LOGIN",
+    "EMAIL_LOGIN",
+    "LOGIN_SIDE_EFFECTS",
+    "JWT_SIGNATURE_AND_CLAIMS",
+    "OWN_PROFILE",
+    "OWN_USER_READ",
+    "OWN_USER_UPDATE",
+    "OTHER_USER_READ_DENIED",
+    "OTHER_USER_UPDATE_DENIED",
+    "OTHER_USER_DELETE_DENIED",
+    "USER_LIST_DENIED",
+    "SELF_PRIVILEGE_FIELDS_DENIED",
+    "OWN_WALLET_READ",
+    "OTHER_WALLET_ID_DENIED",
+    "OTHER_WALLET_USER_DENIED",
+    "OWN_TRANSACTION_READ",
+    "OTHER_TRANSACTION_DENIED",
+    "TRANSACTION_WITHOUT_WALLET_OWNER",
+    "WALLET_MUTATIONS_DENIED",
+    "ANONYMOUS_DENIED",
+    "WRONG_KEY_DENIED",
+    "EXPIRED_JWT_DENIED",
+    "MISSING_PRINCIPAL_DENIED",
+    "MALFORMED_WALLET_ID",
+    "ABSENT_WALLET",
+    "ADMIN_READS",
+    "HR_CORPORATE_SCOPE",
+    "HR_WITHOUT_CORPORATE_DENIED",
+    "SPECIALIST_AND_PHARMACY_DENIED",
+    "WRONG_OTP_DENIED",
+    "CONSUMED_OTP_DENIED",
+    "EXPIRED_OTP_DENIED",
+    "TARGET_BINDING_DENIED",
+    "UNBOUND_OTP_DENIED",
+    "OTP_SINGLE_WINNER",
+    "OTP_INFLIGHT_EXPIRY_DENIED",
+    "DEPENDENT_OWNER_CRUD_LIST",
+    "DEPENDENT_ADMIN_ON_BEHALF",
+    "DEPENDENT_ROLE_AND_PRINCIPAL_DENIALS",
+    "DEPENDENT_OWNER_SELECTORS_DENIED",
+    "DEPENDENT_HIDDEN_ID_DENIALS",
+    "DEPENDENT_RAW_OWNER_FIELD_DENIALS",
+    "DEPENDENT_LEGACY_VALIDATION",
+    "NOTIFICATION_GENERIC_OWNER_FLOWS",
+    "NOTIFICATION_GENERIC_ADMIN_FLOWS",
+    "NOTIFICATION_GENERIC_DENIALS",
+    "NOTIFICATION_PAGINATION_AND_COUNTS",
+    "NOTIFICATION_PRIOR_STRICT_OWN_PATHS",
+    "NOTIFICATION_PRIOR_SPECIALIST_PATHS",
+    "NOTIFICATION_PRIOR_ADMIN_SENDERS",
+    "FCM_TEST_ADMIN_RECORDING",
+    "FCM_TEST_DENIALS",
+    "FCM_TOKEN_REGISTRATION_COMPAT",
+    "JWT_CONFIG_UNSET_DENIED",
+    "JWT_CONFIG_BLANK_DENIED",
+    "JWT_CONFIG_PLACEHOLDERS_DENIED",
+    "JWT_CONFIG_VALID_VALUE",
+    "JWT_CONFIG_PADDED_VALUE_UNCHANGED",
+    "JWT_CONFIG_NONPLACEHOLDER_VALUES",
+    "JWT_PUBLISHED_FALLBACK_TOKEN_DENIED",
+    "MEET_URL_AUTHORITY",
+    "MEET_EXCHANGE_AUTHORITY",
+    "MEET_REFRESH_AUTHORITY",
+    "MEET_CREATE_AUTHORITY",
+    "MEET_URL_ADMIN_VALIDATION",
+    "MEET_EXCHANGE_ADMIN_VALIDATION",
+    "MEET_REFRESH_ADMIN_VALIDATION",
+    "MEET_CREATE_ADMIN_VALIDATION",
+    "MEET_URL_ADMIN_SUCCESS",
+    "MEET_EXCHANGE_ADMIN_SUCCESS",
+    "MEET_REFRESH_ADMIN_SUCCESS",
+    "MEET_CREATE_ADMIN_SUCCESS",
+    "MEET_CALLBACK_VALID_CODE_PUBLIC",
+    "MEET_CALLBACK_PROVIDER_ERROR_PUBLIC",
+    "MEET_CALLBACK_MISSING_CODE_PUBLIC",
+    "MEET_CALLBACK_INVALID_QUERY_PUBLIC",
+    "INDEX_SELECTED_READBACK",
+    "INDEX_REQUIRED_REMOVAL_DENIALS",
+    "INDEX_KEY_AND_IDENTITY_DENIALS",
+    "INDEX_OPTIONS_DENIALS",
+    "INDEX_OBSERVATION_DENIALS",
+    "INDEX_INPUT_ADMISSION_DENIALS",
+    "INDEX_IMMUTABILITY_AND_SAFE_RESULT"
+  ],
+  "requiredSensitivityIds": [
+    "OTP_UNCONDITIONAL_CONSUME",
+    "OTP_LOGIN_TARGET_UNBOUND",
+    "USER_OTHER_READ",
+    "WALLET_OTHER_READ",
+    "DEPENDENT_UNBOUND_CREATE_OWNER",
+    "DEPENDENT_UNSCOPED_LIST",
+    "DEPENDENT_UNSCOPED_ID_CALLS",
+    "DEPENDENT_FORBIDDEN_ROLE_ADMISSION",
+    "DEPENDENT_RAW_OWNER_STRIPPED",
+    "NOTIFICATION_UNSCOPED_LIST",
+    "NOTIFICATION_ID_OWNER_GUARD_REMOVED",
+    "NOTIFICATION_PRIOR_STRICT_OWN_ADMIN_EXPANSION",
+    "FCM_TEST_ADMIN_GUARD_REMOVED",
+    "FCM_TEST_ADMIN_GUARD_AFTER_VALIDATION",
+    "JWT_CONFIG_PUBLISHED_FALLBACK",
+    "JWT_CONFIG_PRODUCTION_ONLY_GUARD",
+    "JWT_CONFIG_TRIMMED_RETURN",
+    "MEET_AUTHENTICATION_REMOVED",
+    "MEET_ADMIN_GUARD_REMOVED",
+    "MEET_GUARDS_AFTER_VALIDATION",
+    "MEET_CALLBACK_GATED",
+    "INDEX_MISSING_REQUIREMENT_ACCEPTED",
+    "INDEX_KEY_ORDER_IGNORED",
+    "INDEX_OPTIONS_IGNORED",
+    "INDEX_PARTIAL_FILTER_IGNORED",
+    "INDEX_INCOMPLETE_ACCEPTED",
+    "INDEX_BUILD_STATUS_IGNORED"
+  ],
+  "optionalAbsentPackages": [
+    "kerberos",
+    "@mongodb-js/zstd",
+    "mongodb-client-encryption",
+    "snappy",
+    "socks",
+    "@aws-sdk/credential-providers",
+    "gcp-metadata"
+  ],
+  "limits": "Recording receipts are not real provider success. No application entry point, root build, monetary policy or full M0 acceptance.",
+  "providerCounterKeys": [
+    "email",
+    "sms",
+    "push",
+    "logger",
+    "payments",
+    "calendar",
+    "storage",
+    "queue",
+    "deniedCapabilities",
+    "unexpected"
+  ],
+  "models": [
+    {
+      "name": "User",
+      "collection": "users",
+      "source": "src1/modules/user/model/index.ts",
+      "indexes": [
+        {
+          "key": {
+            "corporateEmail": 1
+          },
+          "options": {
+            "unique": true,
+            "sparse": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "collection": "admins",
+      "source": "src1/modules/admin/model/index.ts",
+      "indexes": []
+    },
+    {
+      "name": "HR",
+      "collection": "hrs",
+      "source": "src1/modules/hr/model/index.ts",
+      "indexes": [
+        {
+          "key": {
+            "employeeId": 1
+          },
+          "options": {
+            "unique": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "Corporate",
+      "collection": "corporates",
+      "source": "src1/modules/corporates/model/index.ts",
+      "indexes": []
+    },
+    {
+      "name": "Specialist",
+      "collection": "specialists",
+      "source": "src1/modules/specialists/model/index.ts",
+      "indexes": []
+    },
+    {
+      "name": "Pharmacy",
+      "collection": "pharmacies",
+      "source": "src1/modules/pharmacies/model/index.ts",
+      "indexes": [
+        {
+          "key": {
+            "phone": 1
+          },
+          "options": {
+            "unique": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "OTP",
+      "collection": "OTP",
+      "source": "src1/modules/otp/model/index.ts",
+      "indexes": [
+        {
+          "key": {
+            "expireAt": 1
+          },
+          "options": {
+            "expireAfterSeconds": 0
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wallet",
+      "collection": "wallets",
+      "source": "src1/modules/wallet/model/index.ts",
+      "indexes": [
+        {
+          "key": {
+            "userId": 1
+          },
+          "options": {
+            "unique": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "WalletTransaction",
+      "collection": "wallettransactions",
+      "source": "src1/modules/wallet/model/index.ts",
+      "indexes": [
+        {
+          "key": {
+            "userId": 1,
+            "transactionType": 1,
+            "referenceType": 1,
+            "referenceId": 1
+          },
+          "options": {
+            "unique": true,
+            "partialFilterExpression": {
+              "transactionType": "refund",
+              "referenceType": "pharmacy_order",
+              "referenceId": {
+                "$exists": true,
+                "$type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notification",
+      "collection": "notifications",
+      "source": "src1/modules/notification/model/index.ts",
+      "indexes": [
+        {
+          "key": {
+            "idempotencyKey": 1
+          },
+          "options": {
+            "unique": true,
+            "partialFilterExpression": {
+              "idempotencyKey": {
+                "$exists": true,
+                "$type": "string"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "FcmToken",
+      "collection": "fcmtokens",
+      "source": "src1/modules/fcm/model/index.ts",
+      "indexes": [
+        {
+          "key": {
+            "token": 1
+          },
+          "options": {
+            "unique": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "WellnessPackage",
+      "collection": "wellnesspackages",
+      "source": "src1/modules/wellnessPackages/model/index.ts",
+      "indexes": []
+    },
+    {
+      "name": "Dependent",
+      "collection": "dependents",
+      "source": "src1/modules/dependents/model/index.ts",
+      "indexes": []
+    }
+  ],
+  "indexScope": "Only listed correctness indexes and MongoDB default _id indexes are created. Unexercised performance indexes are outside this focused fixture.",
+  "recordingMeet": {
+    "tokenUrl": "https://oauth2.googleapis.com/token",
+    "calendarUrl": "https://www.googleapis.com/calendar/v3/calendars/fixture-calendar%40example.com/events?conferenceDataVersion=1&sendUpdates=all",
+    "bodyBytes": 8192,
+    "recordLimit": 256,
+    "environment": {
+      "GOOGLE_OAUTH_CLIENT_ID": "fixture-google-client-id",
+      "GOOGLE_OAUTH_CLIENT_SECRET": "fixture-google-client-secret",
+      "GOOGLE_OAUTH_REDIRECT_URI": "https://fixture.example.com/oauth/callback",
+      "GOOGLE_OAUTH_REFRESH_TOKEN": "fixture-refresh-token",
+      "GOOGLE_CALENDAR_ID": "fixture-calendar@example.com",
+      "GOOGLE_MEET_TIMEZONE": "Asia/Kolkata"
+    },
+    "oauthResponse": {
+      "access_token": "fixture-access-token-1234567890",
+      "token_type": "Bearer",
+      "expires_in": 3600,
+      "refresh_token": "fixture-refresh-token"
+    },
+    "eventResponse": {
+      "id": "fixture-event-id",
+      "hangoutLink": "https://meet.google.com/abc-defg-hij",
+      "conferenceData": {
+        "conferenceId": "abc-defg-hij"
+      }
+    },
+    "providerCounter": "calendar",
+    "providerCounterScope": "ALL_NOMINAL_RECORDED_GOOGLE_TOKEN_AND_CALENDAR_REQUESTS_EXCLUDING_SENSITIVITY"
+  }
+}

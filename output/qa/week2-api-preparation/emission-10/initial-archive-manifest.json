@@ -1,0 +1,18 @@
+{
+  "schema": "SD-INDEX-PREPARATION-ARCHIVE-1",
+  "sourceCommit": "ea2a39c9e2734a7b3cfd5ee20523906373c1fef6",
+  "files": {
+    "approval.json": "0efb0b565f8ba9ef21c298b388a2cd845a0bb93b898e0e7084860c42e8dcd013",
+    "compiler.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "compiler.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "npm.stderr.txt": "799f544422ef20e84949c8feabb844390db9306ac5cf97419981d0291eb45156",
+    "npm.stdout.txt": "52cbdbf5f53ac2eef836ed174f9b29f4bb8696f5f988178aac2089794fe067f2",
+    "package-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+    "ports-manifest.json": "08583e74231bb02151ae2c89537233b198e1241ac769d65c874ee5aa8f06b33b",
+    "result.json": "40a6006bc5fd24c12ac2e927d2412fc712be8509d0c5e680bc9069283c9cf79e",
+    "runtime-plan.json": "d78343d6568e00c45738c1bcc5b9232d7e8613e2e724e025d4d9e133365208ec",
+    "runtime-template.json": "c16184288ad56ed3ffdb6989116bd8d83cbff87b3e7e1ce39fc51fa896ff13c4",
+    "semantic-delta.json": "59037d2e9788b4dbacb788cb2f6bc28f2fe4e550aaa09494bd46a8720515b523",
+    "verification.json": "981c5e4b9ca6b8511eaffca36e44c62c5b6d341299f0ad4f73a2b2ff5a4c8d22"
+  }
+}

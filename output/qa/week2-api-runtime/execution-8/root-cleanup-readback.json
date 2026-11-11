@@ -1,0 +1,26 @@
+{
+  "schema": "SD-INDEX-RUNTIME-ROOT-READBACK-1",
+  "observer": "/root fresh separate read-only Docker CLI queries after parent disposal; reviewers can inspect this record, not claim their own live query",
+  "observedAt": "2026-11-11T04:55:02.230108+00:00",
+  "engineBeforeAndAfter": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+  "exactContainerAbsence": [
+    {
+      "id": "863726df0a1ed761143311c3a7bc14149e6eceda0a399aad7584697e96bc641b",
+      "exitCode": 1,
+      "absence": "EXACT_ID_NOT_FOUND"
+    },
+    {
+      "id": "57bac5b69ad33751e3b42f4b348f7de521515fc8ed7e546800617d3a149b4dc9",
+      "exitCode": 1,
+      "absence": "EXACT_ID_NOT_FOUND"
+    }
+  ],
+  "zeroPurposeLabels": true,
+  "workspace": "/private/tmp/sd-auth-api-run-KGoB70",
+  "workspaceAbsent": "ENOENT",
+  "ownedReadbackConfigRemoved": true,
+  "mutations": 0,
+  "originalSixStagedAndWorkingFilesExact": true,
+  "originalStagedPatchSha": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+  "originalElevenHandoverFilesExact": true
+}

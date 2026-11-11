@@ -1,0 +1,14 @@
+{
+  "schema": "SD-INDEX-RUNTIME-READINESS-1",
+  "observedAt": "2026-11-11T04:49:40.523966+00:00",
+  "engineId": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+  "images": {
+    "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d": "CACHED",
+    "mongo@sha256:b9924c330a8bbc5800fe9c69f04a84e221eca7b28fd049a0354147d9908fa142": "CACHED"
+  },
+  "mutations": 0,
+  "applicationEvaluations": 0,
+  "DockerCreates": 0,
+  "ownedReadOnlyConfigRemoved": true,
+  "actualRuntimeApproval": "PENDING_TWO_DECISIONS"
+}

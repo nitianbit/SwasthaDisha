@@ -1,0 +1,29 @@
+{
+  "schema": "SD-INDEX-RUNTIME-VERIFICATION-1",
+  "status": "ACTUAL_PASS_PENDING_TWO_POSTREVIEWS",
+  "sourceCommit": "ea2a39c9e2734a7b3cfd5ee20523906373c1fef6",
+  "descriptorSha": "c16184288ad56ed3ffdb6989116bd8d83cbff87b3e7e1ce39fc51fa896ff13c4",
+  "resultSha": "296d3be27569f5b447ddbb0bdfe9a7b2eedbdc16eac9d59ceddd7bdcf8870d7e",
+  "runId": "ba167fb6-5eb8-429f-99b9-780274cc3534",
+  "cases": 83,
+  "sensitivity": 27,
+  "failed": 0,
+  "skipped": 0,
+  "providerSummary": {
+    "email": 5,
+    "sms": 1,
+    "push": 2,
+    "logger": 350,
+    "payments": 0,
+    "calendar": 4,
+    "storage": 0,
+    "queue": 0,
+    "deniedCapabilities": 0,
+    "unexpected": 0
+  },
+  "parentCleanup": "VERIFIED",
+  "freshRootReadback": "VERIFIED",
+  "privateAssertions": "Bound executed predicates only; private raw listings/trials were not persisted or independently reobserved",
+  "actualClaudeReview": false,
+  "fullM0Week2": "OPEN"
+}

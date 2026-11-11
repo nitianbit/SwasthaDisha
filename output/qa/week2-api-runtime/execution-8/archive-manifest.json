@@ -1,0 +1,13 @@
+{
+  "schema": "SD-FINAL-MILESTONE-ARCHIVE-1",
+  "sourceCommit": "ea2a39c9e2734a7b3cfd5ee20523906373c1fef6",
+  "files": {
+    "REVIEW.md": "3f0be16fbbbfdca5133866a6fc8eac17715a2aa3bc87fbb265a815e3e5a236af",
+    "consumed-claim.json": "b4b1bbc6a9e80126b17d7db47a22c5ab2a1e7732eb44d5a525aadaec7f6eb6f0",
+    "initial-archive-manifest.json": "6aa4d7d410cf57502cfc8f7f16dc8627efdfffecef548a1c2ee244de7f646428",
+    "one-run-approval.json": "8d7a7c4bd175e6d3189fd8afdd6d73d15a76b6e32a1cd4554fcf4a30ba4bd9ee",
+    "operator-result.json": "296d3be27569f5b447ddbb0bdfe9a7b2eedbdc16eac9d59ceddd7bdcf8870d7e",
+    "root-cleanup-readback.json": "b707dfc94474d63e52606997b9a3cc3c2fa12cc24d03806df468170e77842f65",
+    "verification.json": "ede29eb5e821baea64c56414566df22db3d72b4ecf58c52737415d7b3ddbbb5b"
+  }
+}

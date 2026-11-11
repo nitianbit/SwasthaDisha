@@ -1,0 +1,50 @@
+{
+  "schema": "SD-INDEX-PREPARED-ARTIFACT-1",
+  "status": "PREPARED_NOT_EXECUTED_PENDING_TWO_ARTIFACT_REVIEWS",
+  "sourceCommit": "ea2a39c9e2734a7b3cfd5ee20523906373c1fef6",
+  "descriptorSha256": "c16184288ad56ed3ffdb6989116bd8d83cbff87b3e7e1ce39fc51fa896ff13c4",
+  "directory": "/private/tmp/sd-auth-api-build-4add256e-665f-4c52-b459-bc5408d6ac3c/runtime",
+  "fileCount": 2877,
+  "bytes": 45253896,
+  "sourceInputs": 97,
+  "typeScriptInputs": 89,
+  "reachableModules": 68,
+  "models": 13,
+  "modelRejectionControls": 5,
+  "added": [
+    "compiled/modules/common/utils/indexReadiness.js",
+    "compiled/mutants/INDEX_BUILD_STATUS_IGNORED.js",
+    "compiled/mutants/INDEX_INCOMPLETE_ACCEPTED.js",
+    "compiled/mutants/INDEX_KEY_ORDER_IGNORED.js",
+    "compiled/mutants/INDEX_MISSING_REQUIREMENT_ACCEPTED.js",
+    "compiled/mutants/INDEX_OPTIONS_IGNORED.js",
+    "compiled/mutants/INDEX_PARTIAL_FILTER_IGNORED.js"
+  ],
+  "removed": [],
+  "modified": [
+    "bootstrap.cjs",
+    "ports-manifest.json",
+    "runtime-plan.json",
+    "scenario.cjs"
+  ],
+  "oldDependenciesAndCompiledAnd21MutantsUnchanged": true,
+  "nominalGroups": 83,
+  "sensitivity": 27,
+  "selectedHelperDiagnostics": 0,
+  "selectedProgramFiles": 46,
+  "selectedLibraries": 45,
+  "tdzCodes": [
+    7022,
+    2448,
+    7022
+  ],
+  "priorSemanticDiagnostics": 1084,
+  "semanticDiagnostics": 1169,
+  "addedSemanticDiagnostics": 85,
+  "removedSemanticDiagnostics": 0,
+  "transpileDiagnostics": 0,
+  "applicationEvaluations": 0,
+  "DockerCalls": 0,
+  "runtime": "NOT_APPROVED_NOT_RUN",
+  "reviewers": "PENDING"
+}
