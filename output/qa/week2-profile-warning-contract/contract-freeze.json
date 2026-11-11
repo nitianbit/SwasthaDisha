@@ -1,0 +1,37 @@
+{
+  "schema": "SD-PROFILE-WARNING-CONTRACT-FREEZE-1",
+  "baseline": "ce95c7f8a0db3d716e98d335e71eb427c3e9bb22",
+  "files": {
+    "test/api-runtime/scenario/bootstrap.cjs": "6b682e5c43e1ea03c71e8ae94e6ac551774110ac92b979e991d6e122838137b8",
+    "test/api-runtime/scenario/bootstrap-unit.cjs": "04b7703affafab0d8213458706702eefeed9ab2857ba5d252fa3d18fc0f22bd0",
+    "test/api-runtime/scenario/scenario.cjs": "fd68f7133a862b6aed5df5543377a11b3f3bab314685905e3029282e4516b558",
+    "test/api-runtime/scenario/README.md": "5c2c77675613344da4b58f6b8f548cca1e8617496d7a5ccafecbd0ccce07b72e",
+    "test/api-runtime/scenario/compile.cjs": "8d25c7d7c8291fd02b179750dd761db4129750043c3501eb02ea0f759bfa1b6f",
+    "test/api-runtime/scenario/ports-manifest.json": "59c410ffc991fdcb4b1ee384f55ba896363011a207573c6f7abc7aa8763f948b",
+    "test/api-runtime/scenario/prepare.py": "39b4085370a09a34069b9f1c4f45cfd8fa38a3a1f0e380abcef9c469a5add598",
+    "test/api-runtime/scenario/package-plan.json": "d7830a9ce688235bb64f3f9f7ac3d5dd604bb63641cdae97b8b7250bfd957227",
+    "test/api-runtime/launch.mjs": "9c6d1c805de4c50542667b90532219c54666b8a764ee5672055f641938b099ed",
+    "test/api-runtime/platform.mjs": "b5117065c90c4698cb9604a8da0cb673a38249d8eee07a8ac39e11040a56e29f",
+    "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+    "test/application/app-bundle.mjs": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2",
+    "src1/modules/common/repository/BaseRepository.ts": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+    "src1/modules/specialistPortal/services/index.ts": "631a2bc6e92e522db35bad35eacd9f7d46aa8e4dcdb508acc16dc44891fef27c",
+    "output/qa/week2-api-runtime/execution-9/operator-result.json": "64e2a94df4011b0eaffa636897ad48526193da9ceaa10e96aa8dcf6776aeb6b5",
+    "output/qa/week2-api-runtime/execution-9/REVIEW.md": "56b1d1cfaa551d552d0209e878bb5a7557276f53f740c2a289ac28991fd76656",
+    "output/qa/week2-api-runtime/execution-9/archive-manifest-final.json": "e309abc0a76a6a86c946292b28f0b934fe21cf9a94342039dcacf77216a5ab70",
+    "output/qa/week2-specialist-profile-runtime/CONTRACT.md": "06477b433fee77df5baf5509bc20fc5d1eb4c51b712a9798056cf4c91dbd30de",
+    "output/qa/week2-specialist-profile-runtime/shared-interfaces.json": "d1d936422bc9655dcfb38357892f2caf55729beecf97c0b62945d69ce3819351",
+    "output/qa/week2-api-preparation/emission-12/runtime-template.json": "9c7b9ed771f2309ac7ab21c2ea0093cf31872a59c8a0e9f1b13eb4601430d761",
+    "documentation/planning/implementation/PARALLEL_DEVELOPMENT_WORKFLOW.md": "c4f99a171df17ae98405a1fdd1c6aad0f9ab2dedfdb4aafabff60cb292d6148a",
+    "documentation/planning/implementation/M0_A_PROGRESS.md": "707065813ec766bf0059b19e48612c005e3c13971652a465f54672f6f89068f5",
+    "output/qa/week2-profile-warning-contract/CONTRACT.md": "8809dec3e5c7610e0e577476512abf5036c95277cb7ce3f22401087f1fd307dd",
+    "output/qa/week2-profile-warning-contract/inputs.json": "12d2f556bb3672dda963649a798d120ee1c22ee23d0eb1139efe7270d6fa706d"
+  },
+  "publicFiles": {
+    "compiled/modules/common/repository/BaseRepository.js": "af4309451a980694a588cfa2b01de9e013dff9a161f190db9bcaebdd96b549ef",
+    "node_modules/mongoose/lib/query.js": "8a97c61152deb4d8a5ddeff9d1c146e8fc88894b20f788c86303c013a7d9b6d8",
+    "node_modules/mongoose/lib/utils.js": "b4911b06dc27522467ab204ff7feacc39ad9c9e712bcfd069ace1e8ec6afe923",
+    "node_modules/mongoose/package.json": "0844d4e4ff5ad8038200d4dab55c67d463e28bd66ec4aaab1e1262a3bb428364"
+  },
+  "authority": "TWO_IMPLEMENTATION_ONLY_DECISIONS_REQUIRED_NO_SOURCE_EDIT_EXECUTION_OR_RETRY"
+}
