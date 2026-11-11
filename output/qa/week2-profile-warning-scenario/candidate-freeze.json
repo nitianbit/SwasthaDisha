@@ -1,0 +1,32 @@
+{
+  "schema": "SD-PROFILE-WARNING-SCENARIO-FREEZE-1",
+  "baseline": "ed7e1e4a455114784cbb836156fffc85c276f0d6",
+  "files": {
+    "test/api-runtime/scenario/scenario.cjs": "cbb1260c887a7a5dc664fec9a6b47c680e1d180f78b102716122596baaae6500",
+    "test/api-runtime/scenario/README.md": "c0eb92ef72994a62e7178bb0e565605d3413265a1fea5b1ca87d77bff0254d9f",
+    "test/api-runtime/scenario/compile.cjs": "8d25c7d7c8291fd02b179750dd761db4129750043c3501eb02ea0f759bfa1b6f",
+    "test/api-runtime/scenario/ports-manifest.json": "59c410ffc991fdcb4b1ee384f55ba896363011a207573c6f7abc7aa8763f948b",
+    "output/qa/week2-profile-warning-contract/CONTRACT.md": "8809dec3e5c7610e0e577476512abf5036c95277cb7ce3f22401087f1fd307dd",
+    "output/qa/week2-profile-warning-contract/inputs.json": "12d2f556bb3672dda963649a798d120ee1c22ee23d0eb1139efe7270d6fa706d",
+    "output/qa/week2-profile-warning-contract/contract-freeze.json": "c74f018bbfdc08bfe5e43f8a009756debd0e655e32bdcc741439ce56a45d6ace",
+    "output/qa/week2-profile-warning-contract/PRE_REVIEW.md": "45e9d36ef625fdb0fdc82e892ae548c2214b04f557e1c9b18cc2de5a43a5826f",
+    "output/qa/week2-profile-warning-scenario/AUTHOR_NOTES.md": "dcfb558016eee1c392fc47c882658d6c5ea79485140fa806156222ca3a6643b6",
+    "output/qa/week2-profile-warning-scenario/baseline-rejection.json": "a3cc4f9bd3f528370cd7b43ecbf66ce19a849293c162b56d7992914d3d434b6a",
+    "output/qa/week2-profile-warning-scenario/candidate.diff": "1b7074b2baa1b10e40e1ebf0810d4d6ca5b22792c0d44aab4bb8546d911f5232",
+    "output/qa/week2-profile-warning-scenario/checks.json": "5a0909cb61b94b091510e8eceb43470ed3f8431bf654b0a508afe28580ed2b8e",
+    "output/qa/week2-profile-warning-scenario/source-check.json": "4e3ef96aab6441a398ce0ddde8a8514f86b9cbfc673839d2cc5ac5fe45718742",
+    "output/qa/week2-profile-warning-scenario/unit.json": "005ff453edc237c73f6aa5d9d870bc75af913c038ea037d248f1c58de3495a3d",
+    "output/qa/week2-profile-warning-scenario/unit.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "output/qa/week2-profile-warning-scenario/verify-source.py": "29b754af02e67db465d66264d4a6e75292cece9d086d489b719b932a69c22f09",
+    "output/qa/week2-profile-warning-scenario/warning-budget-unit.cjs": "34e39fb18e88eab03e73f636a583ac2400e29a6ec6cbee901f26b721ff29c246"
+  },
+  "authority": "IMPLEMENTATION_SOURCE_ONLY; NO_PREPARATION_OR_RUNTIME",
+  "pureFixtureFixedCases": 66,
+  "phaseRestorationChecks": 6,
+  "missingCheckerChecks": 1,
+  "executableWeakenedFixtureVariants": 4,
+  "weakenedCaseExecutions": 264,
+  "sourceByteChecks": 16,
+  "sourceWiringControls": 4,
+  "realHttpWarningBudget": "NOT_RUN"
+}

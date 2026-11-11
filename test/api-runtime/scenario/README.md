@@ -19,7 +19,9 @@ diagnostics and no clean root typecheck claim; see
 [emission11](../../../output/qa/week2-api-preparation/emission-11/REVIEW.md).
 Earlier76/21,60/17 and53/14 results and every failed attempt remain preserved.
 The next specialist-profile extension proposes90 groups/33 actual-source
-variants; its new HTTP/Joi/ODM behavior remains NOT_RUN until all exact C3 gates.
+variants. Its first admitted attempt failed (execution9); no90/33 acceptance
+was obtained. The warning-accounting candidate below remains NOT_RUN under fresh
+exact C3 gates; run9 does not authorize a retry.
 Predicted conservative/reachable counts are97TS/76, with the same13 real models,
 packages/lock/indexes/resources and permissions. Genuine emission must reconcile
 those predictions and preserve every old89 nominal/27 mutant/dependency output.
@@ -253,7 +255,7 @@ artifact postreviews precede acceptance. No API/database rerun is needed solely
 for this diagnostic-metadata correction, and no runtime receipt is reopened.
 
 
-## Specialist self-profile extension (new actual behavior NOT_RUN)
+## Specialist self-profile extension (run9 failed;90/33 unaccepted)
 
 The approved [bounded C3 contract](../../../output/qa/week2-specialist-profile-runtime/CONTRACT.md)
 and immutable trial section bind the actual specialists router/controller,
@@ -310,3 +312,42 @@ Two exact source/locked-emission decisions precede a new clean preparation;
 artifact reviews and two separate single-run decisions precede actual HTTP/DB
 execution. No existing consumed receipt may be reused, and a failure never
 authorizes a retry, extra package, grant, resource or limit.
+
+
+## Exact private warning accounting (source candidate, not a retry approval)
+
+The separately approved [warning contract](../../../output/qa/week2-profile-warning-contract/CONTRACT.md)
+preserves the failed [execution9 result and independent reviews](../../../output/qa/week2-api-runtime/execution-9/REVIEW.md).
+That exact attempt failed at API_SCENARIOS/SPECIALIST_PROFILE_EXCLUDED_EFFECTS,
+with separately verified exact cleanup. Pinned public Mongoose9 source emits a
+new/after deprecation warning when the unchanged BaseRepository new:true update
+path runs; the old predicate demanded consoleDelta0. This strongly supports the
+cause, but run9 persisted neither numeric console delta nor trial ID. It is an
+inference, not a measured warning attribution or successful profile test.
+
+The proposed fixture amendment keeps the existing total console counter for EVERY
+console-method/warning event. Bootstrap additionally recognizes only the exact
+public primitive message, exactly two arguments, and ordinary one-own-DATA-key
+options code:MONGOOSE, without getters/coercion/raw retention/native delegation.
+Every other signature or console method remains unknown. The extra private
+mongooseNewAfterWarnings counter is monotonic across phases; no new ctx getter,
+public provider/result key, production default, dependency or permission is added.
+
+The actual HTTP effects predicate calls the SAME exported pure fixture
+assertProfileWarningBudget function tested by builtins-only hardfakes. Expected
+specialist writes must be exactly0or1, actual/expected specialist and dbWrites
+counts must agree, known-warning delta must be a finite nonnegative safeinteger
+equal to BOTH actual and frozen expected specialist writes, and totalconsole
+must be safe/nonnegative with total-known exactly0. Missing/extra/multiple known
+warnings, unknown/log residuals, counter resets or additional writes fail closed.
+Capability, invalid declared-provider plan, known-count and unknown-console
+failures have separate fixed safe codes. All prior status/actionread/write/JWT/
+provider checks precede this budget, preserving six variant mismatch semantics.
+
+No actor/field/Joi/error/response/all13state/ownership-three-ID-proof/OTP180s/index
+343/150/300 expectation changes. The source predicts6nominal,10unsafe-reference
+and11restoration known warnings; none is a retained run9 measurement. Actual90/33
+and the new per-request warning proof remain NOT_RUN pending two exact source/
+one-emission decisions, fresh clean locked preparation/artifact reviews, two
+separate exact one-run decisions, a fresh receipt/claim, one run and postreviews.
+Consumed run9 approval cannot be reused; no automatic retry or wider gate follows.

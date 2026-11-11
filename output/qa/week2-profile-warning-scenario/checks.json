@@ -1,0 +1,37 @@
+{
+  "schema": "SD-PROFILE-WARNING-SCENARIO-CHECKS-1",
+  "sourceCommit": "ed7e1e4a455114784cbb836156fffc85c276f0d6",
+  "commands": [
+    {
+      "command": "env -i PATH=/usr/bin:/bin /private/tmp/m0-node22/node --permission --allow-fs-read=\"$PWD/test/api-runtime/scenario\" --allow-fs-read=\"$PWD/output/qa/week2-profile-warning-scenario\" output/qa/week2-profile-warning-scenario/warning-budget-unit.cjs",
+      "exitCode": 0,
+      "stdoutArtifact": "unit.json",
+      "stderrArtifact": "unit.stderr.txt",
+      "scope": "ACTUAL_PURE_FIXTURE_EXPORT_ONLY"
+    },
+    {
+      "command": "env -i PATH=/usr/bin:/bin /opt/homebrew/bin/python3 -I -B output/qa/week2-profile-warning-scenario/verify-source.py",
+      "exitCode": 0,
+      "stdoutArtifact": "source-check.json",
+      "scope": "SOURCE_BYTES_JSON_ONLY"
+    },
+    {
+      "command": "env -i PATH=/usr/bin:/bin /private/tmp/m0-node22/node --check test/api-runtime/scenario/scenario.cjs",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "",
+      "sourceSha256": "cbb1260c887a7a5dc664fec9a6b47c680e1d180f78b102716122596baaae6500",
+      "scope": "CJS_SYNTAX_ONLY"
+    },
+    {
+      "command": "git diff --check -- test/api-runtime/scenario/scenario.cjs test/api-runtime/scenario/README.md",
+      "exitCode": 0,
+      "scope": "OWNED_SOURCE_WHITESPACE_ONLY"
+    }
+  ],
+  "nodeSha256": "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0",
+  "applicationImports": 0,
+  "domainEvaluations": 0,
+  "compilerExecutions": 0,
+  "newRuntimeInvocation": false
+}

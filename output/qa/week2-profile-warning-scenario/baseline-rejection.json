@@ -1,0 +1,13 @@
+{
+  "schema": "SD-PROFILE-WARNING-SCENARIO-BASELINE-1",
+  "sourceCommit": "ed7e1e4a455114784cbb836156fffc85c276f0d6",
+  "scenarioSha256": "fd68f7133a862b6aed5df5543377a11b3f3bab314685905e3029282e4516b558",
+  "checks": {
+    "exportedPureBudgetPresent": false,
+    "actualHttpCallsBudget": false,
+    "knownCounterCompared": false,
+    "oldUnconditionalConsoleZero": true
+  },
+  "status": "REJECTED_BEFORE_SOURCE_EDIT",
+  "scope": "SOURCE_BYTES_ONLY; no fixture/domain code executed."
+}
