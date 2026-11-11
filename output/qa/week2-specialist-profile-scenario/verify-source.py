@@ -59,6 +59,26 @@ def between(text, before, after):
     return text[start:end] if start >= 0 and end >= 0 else None
 
 
+def reservation_checks(scenario):
+    trial = between(scenario, '  async function withProfileTrial(', '  async function runProfileNominal(') or ''
+    query = "const reservations = await model('Specialist').find({ _id: { $in: reservationIds } }).select({ _id: 1 }).lean().exec();"
+    guard = "need(Array.isArray(reservations) && reservations.length === 0, 'SPECIALIST_PROFILE_RESERVATION_NOT_EMPTY');"
+    eligibility = "cleanupEligible.add('SPECIALIST_A'); cleanupEligible.add('SPECIALIST_B');"
+    create = "await model('Specialist').create(fixture.rows);"
+    cleanup_guard = "if (!cleanupEligible.has(key)) return;"
+    cleanup_delete = "await model('Specialist').deleteOne({ _id: fixture.ids[key] });"
+    return {
+        'reservation_all_three_ids': "const reservationIds = ['SPECIALIST_A', 'SPECIALIST_B', 'ABSENT_SPECIALIST'].map(key => fixture.ids[key]);" in trial,
+        'reservation_eligibility_initially_empty': "const fixture = profileFixture(); const cleanupEligible = new Set();" in trial,
+        'reservation_actual_query_required': query in trial,
+        'reservation_zero_rows_required': guard in trial,
+        'reservation_proof_before_pair_eligibility_and_create': 0 <= trial.find(query) < trial.find(guard) < trial.find(eligibility) < trial.find(create),
+        'reservation_only_pair_delete_eligible': eligibility in trial and trial.count('cleanupEligible.add(') == 2 and "cleanupEligible.add('ABSENT_SPECIALIST')" not in trial,
+        'reservation_cleanup_guard_before_delete': 0 <= trial.find(cleanup_guard) < trial.find(cleanup_delete) and trial.count('deleteOne(') == 1,
+        'reservation_proof_not_swallowed': 'catch' not in trial[:trial.find(create)] and 'return profileFinally(async () => {' in trial,
+    }
+
+
 def checks(compiler, scenario, prior_compiler, prior_scenario):
     binding = "const PROFILE_SECTION_SHA = '" + SECTION + "';"
     old_mutant_begin = "  mutate('OTP_UNCONDITIONAL_CONSUME'"
@@ -97,6 +117,7 @@ def checks(compiler, scenario, prior_compiler, prior_scenario):
         'scenario_first_error_cleanup': "for (const cleanup of cleanups)" in scenario and "if (!failed) { failed = true; primary = error; }" in scenario and "if (failed) throw primary;" in scenario,
         'scenario_exact_owned_id_cleanup': "deleteOne({ _id: fixture.ids[key] })" in scenario and "'SPECIALIST_A', 'SPECIALIST_B'" in scenario,
         'scenario_old_prefixes_and_final_sets': "cases.length === 83" in scenario and "cases.length === 90" in scenario and "sensitivity.length === 27" in scenario and "sensitivity.length === 33" in scenario,
+        **reservation_checks(scenario),
     }
 
 
@@ -126,6 +147,14 @@ def run():
         ('FIRST_ERROR_OVERWRITTEN', 'scenario', 'if (!failed) { failed = true; primary = error; }', '{ failed = true; primary = error; }'),
         ('TARGET_TIMESTAMP_WINDOW_REMOVED', 'scenario', 'next.updatedAt.getTime() <= observed.ended', 'true'),
         ('RETURNED_STORED_ROW_CHECK_REMOVED', 'scenario', 'profileSame(observed.result.body.data, row)', 'true'),
+        ('RESERVATION_QUERY_FABRICATED', 'scenario', "const reservations = await model('Specialist').find({ _id: { $in: reservationIds } }).select({ _id: 1 }).lean().exec();", 'const reservations = [];'),
+        ('RESERVATION_ABSENT_ID_OMITTED', 'scenario', "const reservationIds = ['SPECIALIST_A', 'SPECIALIST_B', 'ABSENT_SPECIALIST'].map(key => fixture.ids[key]);", "const reservationIds = ['SPECIALIST_A', 'SPECIALIST_B'].map(key => fixture.ids[key]);"),
+        ('CLEANUP_ELIGIBILITY_PREGRANTED', 'scenario', 'const fixture = profileFixture(); const cleanupEligible = new Set();', "const fixture = profileFixture(); const cleanupEligible = new Set(['SPECIALIST_A', 'SPECIALIST_B']);"),
+        ('EMPTY_RESERVATION_ASSERTION_REMOVED', 'scenario', "need(Array.isArray(reservations) && reservations.length === 0, 'SPECIALIST_PROFILE_RESERVATION_NOT_EMPTY');", 'void reservations;'),
+        ('ELIGIBILITY_GRANTED_BEFORE_PROOF', 'scenario', "const reservations = await model('Specialist').find({ _id: { $in: reservationIds } }).select({ _id: 1 }).lean().exec();", "cleanupEligible.add('SPECIALIST_A'); cleanupEligible.add('SPECIALIST_B'); const reservations = await model('Specialist').find({ _id: { $in: reservationIds } }).select({ _id: 1 }).lean().exec();"),
+        ('CLEANUP_ELIGIBILITY_GUARD_REMOVED', 'scenario', 'if (!cleanupEligible.has(key)) return;', ''),
+        ('ABSENT_ID_MADE_DELETE_ELIGIBLE', 'scenario', "cleanupEligible.add('SPECIALIST_A'); cleanupEligible.add('SPECIALIST_B');", "cleanupEligible.add('SPECIALIST_A'); cleanupEligible.add('SPECIALIST_B'); cleanupEligible.add('ABSENT_SPECIALIST');"),
+        ('PROOF_QUERY_EXCEPTION_SWALLOWED', 'scenario', "const reservations = await model('Specialist').find({ _id: { $in: reservationIds } }).select({ _id: 1 }).lean().exec();", "let reservations; try { reservations = await model('Specialist').find({ _id: { $in: reservationIds } }).select({ _id: 1 }).lean().exec(); } catch { reservations = []; }"),
     ]
     sensitivity = []
     for name, file, before, after in controls:

@@ -1,0 +1,35 @@
+{
+  "schema": "SD-PROFILE-SCENARIO-CANDIDATE-FREEZE-1",
+  "baseline": "1355bd9af2c9d8d5170527c8c0fc565de997b6fe",
+  "files": {
+    "test/api-runtime/scenario/compile.cjs": "8d25c7d7c8291fd02b179750dd761db4129750043c3501eb02ea0f759bfa1b6f",
+    "test/api-runtime/scenario/scenario.cjs": "1a1f8b0971e3f1d9711472255e93809fd8a957bad8807484241703177189cfee",
+    "test/api-runtime/scenario/README.md": "5c2c77675613344da4b58f6b8f548cca1e8617496d7a5ccafecbd0ccce07b72e",
+    "output/qa/week2-specialist-profile-scenario/AUTHOR_NOTES.md": "14390496fc2c1dc2dc90b35a5695fc153470e4a906f85307483f90106a0ab70c",
+    "output/qa/week2-specialist-profile-scenario/CHECKER_DISPOSITION.md": "e2ab83f6d5caba4de69a3b7ed439a86d652f74d0c2ff8bfe6ffe560911e930cb",
+    "output/qa/week2-specialist-profile-scenario/baseline-rejection.json": "a5688784d0124d2d4eb4ade54f8eca1e6bfc0e783ea99ded075bdd0cd3fd8a05",
+    "output/qa/week2-specialist-profile-scenario/baseline.json": "8bccb2ecae9be98d2bc777bfa4c2c5293cb90722b0b6c5015ddb0a7aa79452aa",
+    "output/qa/week2-specialist-profile-scenario/candidate.diff": "317d47c4bc3e52134655a29d6be786641dfb3314a2634bb2d5b2be72887f63a8",
+    "output/qa/week2-specialist-profile-scenario/initial-checker/manifest.json": "f39c73938eb0c2ec26045d5e74f3e8432d6f7b7e43544c0e06083348725bedc0",
+    "output/qa/week2-specialist-profile-scenario/initial-checker/source-check-initial.json": "120795b0cc49e85a7490c3ef5a1c7c6ef97683507ff4c329c780e74d59614fc5",
+    "output/qa/week2-specialist-profile-scenario/initial-checker/verify-source.py": "504785296ea9db20d86005d31a4e49eedad363c17684fd7a16f4aab2a77b770a",
+    "output/qa/week2-specialist-profile-scenario/source-check-initial.json": "120795b0cc49e85a7490c3ef5a1c7c6ef97683507ff4c329c780e74d59614fc5",
+    "output/qa/week2-specialist-profile-scenario/source-check.json": "f9a9dfacd5a1382ddf07d454abd16f4589b926108a75a4157e3d47407062b797",
+    "output/qa/week2-specialist-profile-scenario/syntax-checks.json": "00bc2506f3868d149f215106fdaf31401d5d65696aa3af8ee87602f0850d4671",
+    "output/qa/week2-specialist-profile-scenario/verify-source.py": "a95bfec79f42d21785f924c38cdb35b209f3b638f3a3fe0e9ddcfb7bc7c6f15a",
+    "output/qa/week2-specialist-profile-runtime/CONTRACT.md": "06477b433fee77df5baf5509bc20fc5d1eb4c51b712a9798056cf4c91dbd30de",
+    "output/qa/week2-specialist-profile-runtime/inputs.json": "3fbe330c4cb86dc11e8074bf54c7f14c7057fcb3185bf5750db5a537b9454a7a",
+    "output/qa/week2-specialist-profile-runtime/PRE_REVIEW.md": "dde0a50b99fb9b5366823a29e442f2f7c9578151b336046489560de98bd4cf53",
+    "output/qa/week2-specialist-profile-runtime/shared-interfaces.json": "d1d936422bc9655dcfb38357892f2caf55729beecf97c0b62945d69ce3819351",
+    "test/api-runtime/scenario/ports-manifest.json": "59c410ffc991fdcb4b1ee384f55ba896363011a207573c6f7abc7aa8763f948b",
+    "src1/modules/specialistPortal/services/index.ts": "631a2bc6e92e522db35bad35eacd9f7d46aa8e4dcdb508acc16dc44891fef27c"
+  },
+  "authority": "SOURCE_IMPLEMENTATION_ONLY; NO_EMISSION_OR_RUNTIME",
+  "actualSourceDataChecks": 34,
+  "actualTextControlsRejected": 18,
+  "actualSyntaxChecks": 2,
+  "newHttpGroupsAndVariantsNotRun": [
+    90,
+    33
+  ]
+}

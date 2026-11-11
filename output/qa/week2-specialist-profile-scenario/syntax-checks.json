@@ -1,5 +1,5 @@
 {
-  "schema": "SD-PROFILE-SCENARIO-SYNTAX-1",
+  "schema": "SD-PROFILE-SCENARIO-SYNTAX-2",
   "runtime": "/private/tmp/m0-node22/node",
   "runtimeSha256": "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0",
   "checks": [
@@ -10,29 +10,16 @@
         "PATH=/usr/bin:/bin",
         "/private/tmp/m0-node22/node",
         "--check",
-        "test/api-runtime/scenario/compile.cjs"
-      ],
-      "sourceSha256": "8d25c7d7c8291fd02b179750dd761db4129750043c3501eb02ea0f759bfa1b6f",
-      "exitCode": 0,
-      "stdout": "",
-      "stderr": ""
-    },
-    {
-      "command": [
-        "env",
-        "-i",
-        "PATH=/usr/bin:/bin",
-        "/private/tmp/m0-node22/node",
-        "--check",
         "test/api-runtime/scenario/scenario.cjs"
       ],
-      "sourceSha256": "1a1f8b0971e3f1d9711472255e93809fd8a957bad8807484241703177189cfee",
+      "sourceSha256": "fd68f7133a862b6aed5df5543377a11b3f3bab314685905e3029282e4516b558",
       "exitCode": 0,
       "stdout": "",
       "stderr": ""
     }
   ],
+  "retainedCompilerSyntaxEvidence": "revision-1/qa/syntax-checks.json; compiler hash unchanged; not rerun",
   "applicationImports": 0,
   "typeScriptCompilerExecutions": 0,
-  "scope": "CJS syntax only; the checked files were not executed."
+  "scope": "CJS syntax only. Separate49case pure index evidence parser ran guarded; runScenario was not called."
 }

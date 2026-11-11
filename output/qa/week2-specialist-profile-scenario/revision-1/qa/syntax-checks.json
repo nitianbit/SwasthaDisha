@@ -1,0 +1,38 @@
+{
+  "schema": "SD-PROFILE-SCENARIO-SYNTAX-1",
+  "runtime": "/private/tmp/m0-node22/node",
+  "runtimeSha256": "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0",
+  "checks": [
+    {
+      "command": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin",
+        "/private/tmp/m0-node22/node",
+        "--check",
+        "test/api-runtime/scenario/compile.cjs"
+      ],
+      "sourceSha256": "8d25c7d7c8291fd02b179750dd761db4129750043c3501eb02ea0f759bfa1b6f",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin",
+        "/private/tmp/m0-node22/node",
+        "--check",
+        "test/api-runtime/scenario/scenario.cjs"
+      ],
+      "sourceSha256": "1a1f8b0971e3f1d9711472255e93809fd8a957bad8807484241703177189cfee",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "applicationImports": 0,
+  "typeScriptCompilerExecutions": 0,
+  "scope": "CJS syntax only; the checked files were not executed."
+}

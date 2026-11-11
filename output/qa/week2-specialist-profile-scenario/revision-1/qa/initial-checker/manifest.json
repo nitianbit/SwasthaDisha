@@ -1,0 +1,8 @@
+{
+  "schema": "SD-PROFILE-SOURCE-CHECKER-INITIAL-1",
+  "files": {
+    "verify-source.py": "504785296ea9db20d86005d31a4e49eedad363c17684fd7a16f4aab2a77b770a",
+    "source-check-initial.json": "120795b0cc49e85a7490c3ef5a1c7c6ef97683507ff4c329c780e74d59614fc5"
+  },
+  "finding": "UNSAFE_PROOF_REMOVED text control survived because missing anchor find returned -1, which compared less than the nominal predicate offset. Production/fixture source was not executed or changed by this correction."
+}

@@ -55,3 +55,13 @@ preparation/artifact review, two exact single-run decisions and one real run;
 consumed receipts cannot be reused. No app/Joi/TS/helper evaluation, TypeScript
 parser/compiler invocation, package installation, Docker, DB, provider, auth,
 model call, native child, C2 root adoption, Week2 or release approval occurred.
+
+
+## Current source-review amendment
+
+The original candidate is preserved under revision-1. Root reported matching
+Spec/Standards cleanup-ownership findings. RESERVATION_AMENDMENT.md records actual
+absence-proof-before-eligibility source correction. Current source-data checks42,
+text controls26, scenario syntax and pure parser49 pass. Compiler/README unchanged;
+no application/compiler/DB execution. Independent amendment confirmation and fresh
+exact C3 preparation/runtime gates remain. All former failures are retained.

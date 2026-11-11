@@ -1,0 +1,22 @@
+{
+  "schema": "SD-PROFILE-SOURCE-DATA-BASELINE-REJECTION-1",
+  "checks": {
+    "compiler_section_binding": false,
+    "compiler_static_only": false,
+    "compiler_output_pin": false,
+    "compiler_mutation_pin": false,
+    "scenario_section_binding": false,
+    "scenario_fixed_predicate": false,
+    "scenario_real_http": false,
+    "scenario_whole_state": false,
+    "scenario_exact_reads": false,
+    "scenario_nominal_93": false,
+    "scenario_unsafe_proof": false,
+    "scenario_precise_detection": false,
+    "scenario_restoration": false,
+    "scenario_proof_horizon": false,
+    "scenario_first_error": false
+  },
+  "outcome": "REJECTED_AS_EXPECTED_BEFORE_SOURCE_EDIT",
+  "runtimeExecuted": false
+}

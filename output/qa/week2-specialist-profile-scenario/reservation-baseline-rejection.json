@@ -1,0 +1,18 @@
+{
+  "schema": "SD-PROFILE-RESERVATION-SOURCE-BASELINE-1",
+  "sourceCommit": "5a3b4b934607c94fa8930fa820d145f63f2e24a9",
+  "sourceSha256": "1a1f8b0971e3f1d9711472255e93809fd8a957bad8807484241703177189cfee",
+  "checks": {
+    "reservation_all_three_ids": false,
+    "reservation_eligibility_initially_empty": false,
+    "reservation_actual_query_required": false,
+    "reservation_zero_rows_required": false,
+    "reservation_proof_before_pair_eligibility_and_create": false,
+    "reservation_only_pair_delete_eligible": false,
+    "reservation_cleanup_guard_before_delete": false,
+    "reservation_proof_not_swallowed": true
+  },
+  "status": "REJECTED_AS_EXPECTED_SOURCE_DATA_ONLY",
+  "applicationExecutions": 0,
+  "databaseQueriesExecuted": 0
+}

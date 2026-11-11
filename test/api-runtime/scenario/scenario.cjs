@@ -1043,13 +1043,22 @@ async function runScenario(ctx) {
       'SPECIALIST_PROFILE_CONCRETE_UNSAFE_CHANGE');
   }
   async function withProfileTrial(trial, adminToken, check) {
-    const fixture = profileFixture();
+    const fixture = profileFixture(); const cleanupEligible = new Set();
+    const reservationIds = ['SPECIALIST_A', 'SPECIALIST_B', 'ABSENT_SPECIALIST'].map(key => fixture.ids[key]);
     return profileFinally(async () => {
+      // The drained, private owned fixture is the sole writer. A failed query
+      // or a pre-existing row confers no delete eligibility for any generated ID.
+      const reservations = await model('Specialist').find({ _id: { $in: reservationIds } }).select({ _id: 1 }).lean().exec();
+      need(Array.isArray(reservations) && reservations.length === 0, 'SPECIALIST_PROFILE_RESERVATION_NOT_EMPTY');
+      // Reserve only the proven-empty insertable pair before create, so an
+      // acknowledged partial insert failure can still clean exactly those IDs.
+      cleanupEligible.add('SPECIALIST_A'); cleanupEligible.add('SPECIALIST_B');
       await model('Specialist').create(fixture.rows);
       const observed = await observeProfile(trial, fixture, adminToken);
       check(observed, fixture); return observed;
     }, ['SPECIALIST_A', 'SPECIALIST_B'].map(key => async () => {
-      // Only IDs freshly generated and inserted by this invocation are eligible.
+      // Empty-reservation proof is mandatory even when create itself throws.
+      if (!cleanupEligible.has(key)) return;
       await model('Specialist').deleteOne({ _id: fixture.ids[key] });
       need(await model('Specialist').findById(fixture.ids[key]).lean().exec() === null, 'SPECIALIST_PROFILE_CLEANUP');
     }));

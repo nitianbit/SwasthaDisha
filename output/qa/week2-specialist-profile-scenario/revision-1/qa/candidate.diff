@@ -1,0 +1,419 @@
+diff --git a/test/api-runtime/scenario/README.md b/test/api-runtime/scenario/README.md
+index ae963c31a24519504ba6ba6b9c7680da8846390b..868ea2392e893f2238d9809c98ddd785367f1fa0 100644
+--- a/test/api-runtime/scenario/README.md
++++ b/test/api-runtime/scenario/README.md
+@@ -11,12 +11,15 @@ exclusions. No application entry point or production provider is admitted.
+-The accepted Meet run passed76 nominal groups/21 actual-source sensitivity checks
+-under test-only profile2; see
+-[execution7](../../../output/qa/week2-api-runtime/execution-7/REVIEW.md).
+-Its88 TypeScript sources,67 emitted reachable modules,13 models and five model
+-controls were verified.1084 semantic diagnostics remain retained, with no clean
+-root typecheck claim. Earlier53/14 and60/17 evidence, including108 nominal and18
+-mutation/restoration CONFIG loads, remains preserved in execution5/execution6.
+-The index-readiness extension appends seven groups/six actual-source variants,
+-for83 nominal IDs/27 sensitivity IDs. These additions remain NOT_RUN. Its
+-expected emission deltas are one import-free helper source/root and six compiled
+-helper variants:89 TS sources/68 reachable modules, the same13 models and no
+-dependency/grant/profile/index change; genuine emission must verify these facts.
++The accepted selected-index run passed83 nominal groups/27 actual-source
++sensitivity checks under test-only profile2; see
++[execution8](../../../output/qa/week2-api-runtime/execution-8/REVIEW.md).
++Its89 TypeScript sources,68 emitted reachable modules,13 models and five model
++controls were verified. The same actual source/helper behavior remains frozen.
++The subsequent compiler-library checkpoint has two preparation-only acceptances
++at descriptor5d784043, with169 complete broader semantic diagnostics,0transpile
++diagnostics and no clean root typecheck claim; see
++[emission11](../../../output/qa/week2-api-preparation/emission-11/REVIEW.md).
++Earlier76/21,60/17 and53/14 results and every failed attempt remain preserved.
++The next specialist-profile extension proposes90 groups/33 actual-source
++variants; its new HTTP/Joi/ODM behavior remains NOT_RUN until all exact C3 gates.
++Predicted conservative/reachable counts are97TS/76, with the same13 real models,
++packages/lock/indexes/resources and permissions. Genuine emission must reconcile
++those predictions and preserve every old89 nominal/27 mutant/dependency output.
+@@ -37,4 +40,4 @@ root build/type-check or a production compatibility claim.
+-The selected index helper source050ecc99 is accepted SOURCE_ONLY following the
+-reviewed TDZ amendment. Its functional behavior and typecheck remain NOT_RUN.
+-During a later separately approved preparation, a genuine isolated TypeScript
+-5.9.3 noEmit program must require zero diagnostics for ONLY that helper under
++The selected index helper source050ecc99 is accepted with actual83/27 runtime
++and isolated strict typing evidence following the reviewed TDZ amendment.
++The retained genuine isolated TypeScript5.9.3 noEmit program requires zero
++diagnostics for ONLY that helper under
+@@ -222,2 +225,3 @@ owner acceptance, deployment and release gates remain open.
+-The following compiler-library correction is a **source candidate; genuine
+-compiler controls remain NOT_RUN**. The inherited broad diagnostic host placed
++The following compiler-library correction has two **preparation-only actual
++acceptances at emission11**. All four compiler controls passed in that exact
++preparation; no API rerun or portal execution was admitted by it. The inherited broad diagnostic host placed
+@@ -249,0 +254,59 @@ for this diagnostic-metadata correction, and no runtime receipt is reopened.
++
++
++## Specialist self-profile extension (new actual behavior NOT_RUN)
++
++The approved [bounded C3 contract](../../../output/qa/week2-specialist-profile-runtime/CONTRACT.md)
++and immutable trial section bind the actual specialists router/controller,
++PortalService, SpecialistService/repository/model, Joi schemas and authenticate/
++role middleware. Two incoming signed-claim forms test normalized identity
++selection; they do not prove a separate controller fallback branch or supported
++specialist-client/auth-issuer compatibility. Seven groups contain93 nominal
++HTTP requests:2descriptive successes,14protected-subset denials,24false/zero/
++conversion/unchanged-value denials,22Joi-before-lookup cases,8missing-target cases,
++18authority-before-validation cases and5existing admin compatibility cases.
++All87actual errors must add one logger call each; the nominal summary reads
++actual email5/SMS1/push2/calendar4/logger437 counters, other5zero. No provider
++success, startup, production or whole Week2 acceptance is implied.
++
++Each request measures actual per-collection reads/writes, JWT/provider/private
++capability attempts and complete all13-collection snapshots. Denials preserve
++every row/field. Success changes only declared target fields and genuine
++updatedAt within actual request clock bounds; its entire returned row must match
++stored data. Mixed protected payloads retain no contact uniqueness queries.
++False/convertedfalse/rating0/converted0 remain protected; numeric boolean0 and
++other malformed bodies preserve existing Joi400 before any lookup, and a valid
++missing profile preserves404 before422. Existing admin PUT retains real updates.
++
++The bootstrap cuts Booking/Slot service/repository classes before TypeDI import/
++construction and substitutes throw-only child_process/fs exports only for the
++exact nominal Portal file and six source/hash-bound mutant parents. Native child
++permissions remain absent. Unknown class methods/capabilities latch failure even
++if domain code catches their fixed throw. Four prior Booking/Slot repository/
++model source files are separately emitted as pinned STATIC AUDIT INPUTS only;
++they add no runtime root/model and every alias/relative/absolute runtime path is
++denied. No upload middleware, PDF generation, booking/slot, prescription or file
++operation is admitted. Exact emitted import/model audit must verify the cut.
++
++The source variants remove each protected key, use truthiness, omit the existence
++lookup, and perform a real update before denial. Eleven fixed references must
++first show the concrete unsafe HTTP/state/read/write behavior, then fail the
++SAME fixed nominal predicate at only the anticipated mismatch code. Arbitrary
++exceptions do not count. Each reference restores fresh nominal classes/server,
++repeats that same predicate and an allowed positive;11unsafe and22restoration
++requests are excluded from nominal recording counters. Fresh synthetic pairs
++are tracked by exact generated IDs, all assertions precede cleanup/reset, and
++cleanup preserves an earlier failure while attempting both owned rows.
++
++Both append boundaries require original Query.exec restoration, completion of
++prior race/expiry work, existing exact completed-proof cleanup/mapempty, and
++finite verified remaining OTP expiry more than180s ahead. Remaining proofs are
++asserted only, never adopted/deleted or extended; no TTL/index/time limit change
++or OTP snapshot omission hides background state changes. Existing index evidence
++stays seven/six rows and343/150/300 comparison checkpoints, with old prefix
++slices bounded at83/27. Final proposed counts90/33 depend on genuine execution.
++
++Source-data checks and fixture syntax checks prove only their stated boundaries.
++Two exact source/locked-emission decisions precede a new clean preparation;
++artifact reviews and two separate single-run decisions precede actual HTTP/DB
++execution. No existing consumed receipt may be reused, and a failure never
++authorizes a retry, extra package, grant, resource or limit.
+diff --git a/test/api-runtime/scenario/compile.cjs b/test/api-runtime/scenario/compile.cjs
+index d6f6582249e33c4c28efe1476dcd8e9f45fad744..a2c0bd36fc82002ec46d2f0ca8847a71b12bb37e 100644
+--- a/test/api-runtime/scenario/compile.cjs
++++ b/test/api-runtime/scenario/compile.cjs
+@@ -9,0 +10,14 @@ const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
++const PROFILE_SECTION_SHA = '887792c1e2851fe3dfd37d93b3a1870da3adaed7fe41a4fd5e50bb62ea5c7212';
++const PROFILE_SOURCE = 'src1/modules/specialistPortal/services/index.ts';
++const PROFILE_SOURCE_SHA = '631a2bc6e92e522db35bad35eacd9f7d46aa8e4dcdb508acc16dc44891fef27c';
++
++function profileData(ports) {
++  const profile = ports.specialistProfile;
++  requireThat(profile && sha(Buffer.from(JSON.stringify(profile))) === PROFILE_SECTION_SHA, 'PROFILE_SECTION_HASH');
++  requireThat(profile.schema === 'SD-SPECIALIST-PROFILE-FIXTURE-1'
++    && profile.sourceGuard.path === PROFILE_SOURCE && profile.sourceGuard.sha256 === PROFILE_SOURCE_SHA
++    && profile.trials.length === 93 && profile.sourceMutations.length === 6
++    && profile.staticAuditInputs.length === 4, 'PROFILE_DATA_SHAPE');
++  return profile;
++}
++
+@@ -490,0 +505 @@ function compile(sourceRoot, runtimeRoot, inputPlan) {
++  const profile = profileData(ports);
+@@ -544 +559,5 @@ function compile(sourceRoot, runtimeRoot, inputPlan) {
+-        else if (!request.startsWith('node:') && !['crypto', 'path', 'fs', 'stream', 'util'].includes(request)) {
++        else if (['os', 'node:os', 'child_process', 'node:child_process'].includes(request)) {
++          // These new builtins are admitted only in the exact Portal source;
++          // the runtime loader substitutes child_process before resolution.
++          requireThat(relative === PROFILE_SOURCE && sources[relative] === PROFILE_SOURCE_SHA, 'PROFILE_BUILTIN_PARENT');
++        } else if (!request.startsWith('node:') && !['crypto', 'path', 'fs', 'stream', 'util'].includes(request)) {
+@@ -551,0 +571,19 @@ function compile(sourceRoot, runtimeRoot, inputPlan) {
++  // Preserve four previously emitted conservative inputs as static data only.
++  // Do not traverse their imports or append them to the runtime roots/model map.
++  const staticAudit = [];
++  for (const audit of profile.staticAuditInputs) {
++    requireThat(tracked.has(audit.source) && !Object.hasOwn(sources, audit.source), 'PROFILE_STATIC_SOURCE_SCOPE');
++    const absolute = path.join(sourceRoot, audit.source); const stat = fs.lstatSync(absolute);
++    requireThat(stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1, 'PROFILE_STATIC_SOURCE_REGULAR');
++    const bytes = fs.readFileSync(absolute);
++    requireThat(sha(bytes) === audit.sourceSha256
++      && audit.compiled === 'compiled/' + audit.source.slice(5, -3) + '.js', 'PROFILE_STATIC_SOURCE_HASH');
++    sources[audit.source] = audit.sourceSha256;
++    const alias = '@/' + audit.source.slice(5, -3).replace(/\/index$/, '');
++    modules[alias] = audit.compiled; modules['@/' + audit.source.slice(5, -3)] = audit.compiled;
++    emit(audit.source, bytes.toString('utf8'), audit.compiled);
++    requireThat(sha(fs.readFileSync(path.join(runtimeRoot, audit.compiled))) === audit.compiledSha256, 'PROFILE_STATIC_COMPILED_HASH');
++    staticAudit.push({ source: audit.source, sourceSha256: audit.sourceSha256,
++      compiled: audit.compiled, compiledSha256: audit.compiledSha256, runtimeRoot: false });
++  }
++  requireThat(sources[PROFILE_SOURCE] === PROFILE_SOURCE_SHA, 'PROFILE_NOMINAL_SOURCE_HASH');
+@@ -712,0 +751,10 @@ function compile(sourceRoot, runtimeRoot, inputPlan) {
++  for (const variant of profile.sourceMutations) {
++    requireThat(variant.source === PROFILE_SOURCE && variant.originalSha256 === PROFILE_SOURCE_SHA
++      && variant.occurrences === 1, 'PROFILE_MUTANT_SCOPE');
++    mutate(variant.id, PROFILE_SOURCE, text => {
++      requireThat(sha(Buffer.from(text)) === PROFILE_SOURCE_SHA, 'PROFILE_MUTANT_ORIGINAL_HASH');
++      const changed = once(text, variant.before, variant.after);
++      requireThat(sha(Buffer.from(changed)) === variant.predictedTransformedSourceSha256, 'PROFILE_MUTANT_SOURCE_HASH');
++      return changed;
++    });
++  }
+@@ -764 +812,3 @@ function compile(sourceRoot, runtimeRoot, inputPlan) {
+-      selectedHelperTypecheck: indexTypecheck, libraryAdmission: broadLibraryReport } };
++      selectedHelperTypecheck: indexTypecheck, libraryAdmission: broadLibraryReport,
++      specialistProfile: { schema: 'SD-SPECIALIST-PROFILE-COMPILE-1', sectionSha256: PROFILE_SECTION_SHA,
++        source: PROFILE_SOURCE, sourceSha256: PROFILE_SOURCE_SHA, staticAudit, applicationEvaluations: 0 } } };
+diff --git a/test/api-runtime/scenario/scenario.cjs b/test/api-runtime/scenario/scenario.cjs
+index fe3c361f1ef9541a846713bb0ea7cccd26923361..51e00191a5342cfb254c9576cc378738b88174df 100644
+--- a/test/api-runtime/scenario/scenario.cjs
++++ b/test/api-runtime/scenario/scenario.cjs
+@@ -6,0 +7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
++const PROFILE_SECTION_SHA = '887792c1e2851fe3dfd37d93b3a1870da3adaed7fe41a4fd5e50bb62ea5c7212';
+@@ -72,0 +74,3 @@ async function runScenario(ctx) {
++  const profileQueryExec = mongoose.Query.prototype.exec;
++  const profile = ctx.ports.specialistProfile;
++  need(profile && crypto.createHash('sha256').update(JSON.stringify(profile)).digest('hex') === PROFILE_SECTION_SHA, 'SPECIALIST_PROFILE_SECTION_HASH');
+@@ -878,0 +883,229 @@ async function runScenario(ctx) {
++  // Frozen private HTTP matrix; genuine domain classes/Joi/ODM run only inside
++  // the completely admitted child. No response/identity/assertion value escapes.
++  const profileAttemptKeys = ['BookingRepository', 'BookingService', 'SlotRepository', 'SlotService',
++    'execFile', 'mkdirSync', 'writeFileSync', 'unlinkSync'];
++  function profileStable(value) {
++    const sort = item => Array.isArray(item) ? item.map(sort)
++      : item !== null && typeof item === 'object'
++        ? Object.fromEntries(Object.keys(item).sort().map(key => [key, sort(item[key])])) : item;
++    return JSON.stringify(sort(JSON.parse(JSON.stringify(value))));
++  }
++  const profileSame = (left, right) => profileStable(left) === profileStable(right);
++  function profileAttemptSnapshot() {
++    const value = ctx.profileAttempts;
++    need(value && Object.isFrozen(value) && Object.getPrototypeOf(value) === Object.prototype
++      && profileSame(Reflect.ownKeys(value), profileAttemptKeys)
++      && profileAttemptKeys.every(key => {
++        const descriptor = Object.getOwnPropertyDescriptor(value, key);
++        return descriptor && Object.hasOwn(descriptor, 'value') && Number.isSafeInteger(descriptor.value) && descriptor.value === 0;
++      }), 'SPECIALIST_PROFILE_PRIVATE_ATTEMPTS');
++    return value;
++  }
++  async function profileFinally(action, cleanups) {
++    let failed = false; let primary; let result;
++    try { result = await action(); } catch (error) { failed = true; primary = error; }
++    for (const cleanup of cleanups) {
++      try { await cleanup(); } catch (error) { if (!failed) { failed = true; primary = error; } }
++    }
++    if (failed) throw primary;
++    return result;
++  }
++  async function profileAppendBoundary() {
++    // All prior promises/schedulers are awaited by their sequential callers;
++    // require the actual Query.exec hook to be restored before exact cleanup.
++    need(mongoose.Query.prototype.exec === profileQueryExec, 'SPECIALIST_PROFILE_QUERY_RESTORATION');
++    await cleanCompletedProofs();
++    need(completedProofs.size === 0 && mongoose.Query.prototype.exec === profileQueryExec, 'SPECIALIST_PROFILE_COMPLETED_PROOFS');
++    const proofs = await model('OTP').find({}).lean().exec(); const checkpoint = Date.now();
++    need(proofs.every(proof => proof.isVerified === true && proof.expireAt instanceof Date
++      && Number.isFinite(proof.expireAt.getTime()) && proof.expireAt.getTime() > checkpoint + 180000), 'SPECIALIST_PROFILE_PROOF_HORIZON');
++    profileAttemptSnapshot();
++  }
++  let profileSequence = 0;
++  function profileFixture() {
++    const fixture = { ids: { SPECIALIST_A: uid(), SPECIALIST_B: uid(), ABSENT_SPECIALIST: uid() } };
++    need(new Set(Object.values(fixture.ids)).size === 3, 'SPECIALIST_PROFILE_DISTINCT_IDS');
++    profileSequence++;
++    fixture.rows = ['SPECIALIST_A', 'SPECIALIST_B'].map((key, index) => ({ _id: fixture.ids[key],
++      name: 'Baseline Specialist', bio: 'Baseline specialist biography', isVerified: true, isActive: true, rating: 3.5,
++      email: 'profile-' + fixture.ids[key] + '@example.com', phone: '8' + String(profileSequence).padStart(8, '0') + index }));
++    need(fixture.rows.every(row => /^\d{10}$/.test(row.phone)) && fixture.rows[0].phone !== fixture.rows[1].phone,
++      'SPECIALIST_PROFILE_FIXTURE_CONTACTS');
++    return fixture;
++  }
++  function profileToken(trial, fixture, adminToken) {
++    const definition = profile.identityActors[trial.actor]; need(definition, 'SPECIALIST_PROFILE_ACTOR');
++    if (definition.kind === 'NO_AUTHORIZATION_HEADER') return undefined;
++    if (definition.kind === 'EXISTING_ACCEPTED_REAL_ADMIN_LOGIN_TOKEN') return adminToken;
++    const claims = Object.fromEntries(Object.entries(definition.claims).map(([key, value]) => [key,
++      typeof value === 'string' && value.startsWith('$') ? fixture.ids[value.slice(1)] : value]));
++    need(Object.values(claims).every(value => value !== undefined), 'SPECIALIST_PROFILE_ACTOR_CLAIMS');
++    if (definition.kind === 'FOREIGN_KEY_HS256_FIXTURE') {
++      let foreignKey; do { foreignKey = crypto.randomBytes(32).toString('hex'); } while (foreignKey === ctx.key);
++      return ctx.originalSign(claims, foreignKey, { algorithm: 'HS256', expiresIn: '5m' });
++    }
++    need(['CURRENT_KEY_HS256_FIXTURE', 'CURRENT_KEY_HS256_EXPIRED_FIXTURE'].includes(definition.kind), 'SPECIALIST_PROFILE_ACTOR_KIND');
++    return ctx.originalSign(claims, ctx.key, { algorithm: 'HS256',
++      expiresIn: definition.kind === 'CURRENT_KEY_HS256_EXPIRED_FIXTURE' ? -1 : '5m' });
++  }
++  async function observeProfile(trial, fixture, adminToken) {
++    const route = trial.path.replace('$SPECIALIST_A', fixture.ids.SPECIALIST_A)
++      .replace('$ABSENT_SPECIALIST', fixture.ids.ABSENT_SPECIALIST);
++    need(trial.method === 'PUT' && route.startsWith('/api/v1/specialists/'), 'SPECIALIST_PROFILE_REQUEST_SCOPE');
++    const token = profileToken(trial, fixture, adminToken);
++    const before = await authorityRows(); const countersBefore = { ...ctx.counters };
++    const readsBefore = { ...ctx.readOps }; const writesBefore = { ...ctx.writeOps }; const attemptsBefore = profileAttemptSnapshot();
++    const started = Date.now();
++    const result = await request(trial.method, route.slice('/api/v1'.length), token, trial.body);
++    const ended = Date.now();
++    const countersAfter = { ...ctx.counters }; const readsAfter = { ...ctx.readOps }; const writesAfter = { ...ctx.writeOps };
++    const attemptsAfter = profileAttemptSnapshot(); const after = await authorityRows();
++    const delta = (next, prior) => Object.fromEntries(Object.keys(prior).map(key => [key, next[key] - prior[key]]));
++    return { result, before, after, started, ended, effects: delta(countersAfter, countersBefore),
++      reads: delta(readsAfter, readsBefore), writes: delta(writesAfter, writesBefore), attempts: delta(attemptsAfter, attemptsBefore) };
++  }
++  function assertProfileEffects(observed, expected) {
++    const collections = ctx.ports.models.map(row => row.collection);
++    need(profileSame(Object.keys(observed.reads).sort(), collections.slice().sort())
++      && profileSame(Object.keys(observed.writes).sort(), collections.slice().sort()), 'SPECIALIST_PROFILE_COLLECTION_SET');
++    need(collections.every(key => observed.reads[key] === expected.readOpsDelta[key]), 'SPECIALIST_PROFILE_ACTION_READS');
++    need(collections.every(key => observed.writes[key] === expected.writeOpsDelta[key]), 'SPECIALIST_PROFILE_ACTION_WRITES');
++    need(observed.effects.dbWrites === expected.dbWritesDelta && observed.effects.jwtIssued === expected.jwtIssuedDelta,
++      'SPECIALIST_PROFILE_WRITE_JWT_EFFECTS');
++    for (const key of ['email', 'sms', 'push', 'logger', 'calendar', 'unexpected'])
++      need(observed.effects[key] === expected.providerDelta[key], 'SPECIALIST_PROFILE_PROVIDER_EFFECTS');
++    need(observed.effects.excluded === expected.providerDelta.deniedCapabilities && observed.effects.console === 0
++      && ['payments', 'storage', 'queue'].every(key => expected.providerDelta[key] === 0)
++      && observed.effects.unexpected === 0 && observed.effects.excluded === 0, 'SPECIALIST_PROFILE_EXCLUDED_EFFECTS');
++    need(profileAttemptKeys.every(key => observed.attempts[key] === expected.privatePortalAttemptDelta[key]
++      && observed.attempts[key] === 0), 'SPECIALIST_PROFILE_PRIVATE_EFFECTS');
++  }
++  function assertProfileState(observed, fixture, selected, changedFields) {
++    const changed = Object.keys(changedFields).length > 0;
++    const rowId = selected ? fixture.ids[selected] : null;
++    for (const spec of ctx.ports.models) {
++      const keep = rows => spec.name === 'Specialist' && changed ? rows.filter(row => id(row) !== rowId) : rows;
++      need(profileSame(keep(observed.before[spec.name]), keep(observed.after[spec.name])), 'SPECIALIST_PROFILE_STATE');
++    }
++    need(!observed.before.Specialist.some(row => id(row) === fixture.ids.ABSENT_SPECIALIST)
++      && !observed.after.Specialist.some(row => id(row) === fixture.ids.ABSENT_SPECIALIST), 'SPECIALIST_PROFILE_ABSENT_ID');
++    if (changed) {
++      const prior = observed.before.Specialist.find(row => id(row) === rowId);
++      const next = observed.after.Specialist.find(row => id(row) === rowId);
++      const preserved = row => Object.fromEntries(Object.entries(row).filter(([key]) => ![...Object.keys(changedFields), 'updatedAt'].includes(key)));
++      need(prior && next && profileSame(preserved(prior), preserved(next))
++        && Object.entries(changedFields).every(([key, value]) => profileSame(next[key], value)), 'SPECIALIST_PROFILE_CHANGED_FIELDS');
++      need(observed.ended >= observed.started && next.updatedAt instanceof Date
++        && Number.isFinite(next.updatedAt.getTime()) && next.updatedAt.getTime() >= observed.started
++        && next.updatedAt.getTime() <= observed.ended, 'SPECIALIST_PROFILE_UPDATED_AT');
++      return next;
++    }
++    return null;
++  }
++  function assertProfileResponse(observed, expected, row) {
++    need(observed.result.status === expected.status, 'SPECIALIST_PROFILE_STATUS');
++    if (expected.status >= 400) {
++      errorEnvelope(observed.result, expected.code);
++      need(observed.result.body.message === expected.message, 'SPECIALIST_PROFILE_ERROR_MESSAGE');
++    } else {
++      need(profileSame(Object.keys(observed.result.body).sort(), ['data', 'message', 'success'])
++        && observed.result.body.success === true && observed.result.body.message === expected.message
++        && profileSame(observed.result.body.data, row), 'SPECIALIST_PROFILE_SUCCESS_RESPONSE');
++    }
++  }
++  function assertProfileObservation(observed, trial, fixture) {
++    const expected = trial.expected;
++    // Keep status first: exact mismatch codes are part of source-sensitivity proof.
++    need(observed.result.status === expected.status, 'SPECIALIST_PROFILE_STATUS');
++    if (expected.status >= 400) assertProfileResponse(observed, expected, null);
++    assertProfileEffects(observed, expected);
++    const row = assertProfileState(observed, fixture, expected.selectedIdentity, expected.state.changedFields);
++    if (expected.status < 400) assertProfileResponse(observed, expected, row);
++  }
++  function profileConvertedFields(body) {
++    return Object.fromEntries(Object.entries(body).map(([key, value]) => {
++      need(['name', 'bio', 'isVerified', 'isActive', 'rating'].includes(key), 'SPECIALIST_PROFILE_UNSAFE_BODY_SCOPE');
++      return [key, ['name', 'bio'].includes(key) ? value.trim()
++        : ['isVerified', 'isActive'].includes(key) && value === 'false' ? false : key === 'rating' && value === '0' ? 0 : value];
++    }));
++  }
++  function assertProfileUnsafe(observed, trial, fixture, reference) {
++    const unsafe = reference.unsafe; const expected = structuredClone(trial.expected);
++    expected.status = unsafe.status; expected.code = unsafe.code; expected.message = unsafe.message;
++    expected.readOpsDelta.specialists = unsafe.readOpsSpecialists;
++    expected.writeOpsDelta.specialists = unsafe.writeOpsSpecialists;
++    expected.dbWritesDelta = unsafe.dbWritesDelta; expected.providerDelta.logger = unsafe.loggerDelta;
++    const fields = unsafe.writeOpsSpecialists === 1 ? profileConvertedFields(trial.body) : {};
++    const row = assertProfileState(observed, fixture, trial.expected.selectedIdentity, fields);
++    assertProfileResponse(observed, expected, row); assertProfileEffects(observed, expected);
++    need(unsafe.writeOpsSpecialists === 0 || Object.keys(fields).some(key => !profileSame(
++      observed.before.Specialist.find(item => id(item) === fixture.ids[trial.expected.selectedIdentity])[key], fields[key])),
++      'SPECIALIST_PROFILE_CONCRETE_UNSAFE_CHANGE');
++  }
++  async function withProfileTrial(trial, adminToken, check) {
++    const fixture = profileFixture();
++    return profileFinally(async () => {
++      await model('Specialist').create(fixture.rows);
++      const observed = await observeProfile(trial, fixture, adminToken);
++      check(observed, fixture); return observed;
++    }, ['SPECIALIST_A', 'SPECIALIST_B'].map(key => async () => {
++      // Only IDs freshly generated and inserted by this invocation are eligible.
++      await model('Specialist').deleteOne({ _id: fixture.ids[key] });
++      need(await model('Specialist').findById(fixture.ids[key]).lean().exec() === null, 'SPECIALIST_PROFILE_CLEANUP');
++    }));
++  }
++  async function runProfileNominal(adminToken) {
++    await profileAppendBoundary();
++    need(profile.trials.length === 93 && profile.requiredGroupIds.length === 7, 'SPECIALIST_PROFILE_TRIAL_SET');
++    const counts = new Map(profile.requiredGroupIds.map(key => [key, 0])); const seen = new Set();
++    const loggerBefore = ctx.counters.logger; let success = 0; let errors = 0;
++    for (const trial of profile.trials) {
++      need(!seen.has(trial.id) && counts.has(trial.group), 'SPECIALIST_PROFILE_TRIAL_ID');
++      await withProfileTrial(trial, adminToken, (observed, fixture) => assertProfileObservation(observed, trial, fixture));
++      seen.add(trial.id); counts.set(trial.group, counts.get(trial.group) + 1);
++      if (trial.expected.status === 200) success++; else errors++;
++    }
++    need(seen.size === 93 && success === 6 && errors === 87 && ctx.counters.logger - loggerBefore === 87
++      && profile.requiredGroupIds.every(key => counts.get(key) === profile.requiredGroupTrialCounts[key]), 'SPECIALIST_PROFILE_NOMINAL_COMPLETE');
++    profileAttemptSnapshot(); for (const key of profile.requiredGroupIds) record(key);
++  }
++  async function runProfileSensitivity(adminToken) {
++    await profileAppendBoundary();
++    const trials = new Map(profile.trials.map(trial => [trial.id, trial]));
++    const positive = trials.get('SP_ALLOWED_ALIAS'); let references = 0; let restorations = 0;
++    need(positive && profile.sourceMutations.length === 6, 'SPECIALIST_PROFILE_SENSITIVITY_SET');
++    for (const variant of profile.sourceMutations) {
++      const emitted = ctx.plan.mutants[variant.id];
++      need(emitted?.source === profile.sourceGuard.path && emitted.originalSha256 === profile.sourceGuard.sha256
++        && emitted.mutantSha256 === variant.predictedTransformedSourceSha256, 'SPECIALIST_PROFILE_EMITTED_VARIANT');
++      for (const reference of variant.probeReferences) {
++        const trial = trials.get(reference.trialId); need(trial, 'SPECIALIST_PROFILE_REFERENCE');
++        await profileFinally(async () => {
++          await ctx.nextPhase({ '@/modules/specialistPortal/services': emitted.file });
++          await withProfileTrial(trial, adminToken, (observed, fixture) => {
++            assertProfileUnsafe(observed, trial, fixture, reference);
++            let detected = false;
++            try { assertProfileObservation(observed, trial, fixture); }
++            catch (error) {
++              const descriptor = error !== null && ['object', 'function'].includes(typeof error)
++                ? Object.getOwnPropertyDescriptor(error, 'fixtureCode') : undefined;
++              if (!descriptor || !Object.hasOwn(descriptor, 'value') || descriptor.value !== reference.unsafe.expectedNominalFailureCode) throw error;
++              detected = true;
++            }
++            need(detected, 'SPECIALIST_PROFILE_PRECISE_DETECTION');
++          });
++          references++;
++        }, [() => ctx.nextPhase({})]);
++        // The same real trial/predicate plus a fresh allowed positive must pass
++        // through newly loaded nominal classes/server before any detected row.
++        for (const restored of [trial, positive]) {
++          await withProfileTrial(restored, adminToken, (observed, fixture) => assertProfileObservation(observed, restored, fixture));
++          restorations++;
++        }
++      }
++      sensitivity.push({ id: variant.id, detected: true });
++    }
++    need(references === 11 && restorations === 22, 'SPECIALIST_PROFILE_RESTORATION_COMPLETE');
++    profileAttemptSnapshot();
++  }
++
+@@ -1003,0 +1237,3 @@ async function runScenario(ctx) {
++  need(cases.length === 83 && same(cases.map(row => row.id), ctx.ports.requiredCaseIds.slice(0, 83)), 'SPECIALIST_PROFILE_PRIOR_CASE_SET');
++  await runProfileNominal(admin.token);
++  need(cases.length === 90 && same(cases.map(row => row.id), ctx.ports.requiredCaseIds), 'SPECIALIST_PROFILE_CASE_SET');
+@@ -1035,0 +1272,3 @@ async function runScenario(ctx) {
++  need(sensitivity.length === 27 && same(sensitivity.map(row => row.id), ctx.ports.requiredSensitivityIds.slice(0, 27)), 'SPECIALIST_PROFILE_PRIOR_SENSITIVITY_SET');
++  await runProfileSensitivity(admin.token);
++  need(sensitivity.length === 33 && same(sensitivity.map(row => row.id), ctx.ports.requiredSensitivityIds), 'SPECIALIST_PROFILE_SENSITIVITY_SET');
