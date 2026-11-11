@@ -1,0 +1,106 @@
+{
+  "schema": "SD-INDEX-RUNTIME-DRAFT-INPUTS-1",
+  "status": "DRAFT_ONLY_NOT_IMPLEMENTATION_OR_EXECUTION",
+  "baseline": "fd1c855b7405dd020cc7e7db1efa0f47d624af39",
+  "files": {
+    "output/qa/week2-index-readiness/CONTRACT.md": "d626f54222ab4f60f32bf9c94c97f3815ec8f71e35bebd5f604d58fb0ac01459",
+    "output/qa/week2-index-readiness/contract-freeze.json": "c61f2234affbec93b4a3d0ce8a141572db6e4165b652a2be62bc8606193d2f92",
+    "output/qa/week2-index-readiness/PRE_REVIEW.md": "694116447ee37ef7d347e60d95edac46d94709235db71b6f7e580037f7a02f97",
+    "output/qa/week2-index-readiness/draft-inputs.json": "c8ae5989506dbf0b34b0e562319ffd3d6b2d3d257574903cc463b2a4ac5b585a",
+    "output/qa/week2-api-runtime/execution-7/REVIEW.md": "3a1cca2ced03f1a02aee0d90478505bb53dde81a937352713d77a24a23661665",
+    "output/qa/week2-api-preparation/emission-9/runtime-template.json": "185fb708ef0af3b4bbf106b836baee69d20b922a6089b418e42ed739f6e801e7",
+    "documentation/planning/implementation/M0_A_PROGRESS.md": "52415a4b5b90627bf86cdeb85299539cbd3d4e062b68cf99db211dee9e31dfa2",
+    "documentation/planning/implementation/PARALLEL_DEVELOPMENT_WORKFLOW.md": "c4f99a171df17ae98405a1fdd1c6aad0f9ab2dedfdb4aafabff60cb292d6148a",
+    "documentation/planning/M0_START_APPROVAL_STATUS.md": "67eea927661cf1a94d8644ede28eaa7315d4774866958ff346b37aac5a559be3",
+    "documentation/planning/implementation/C2_COMPATIBILITY_REVIEW.md": "e703e7bc43495868edd2ab535cb38b0f5f2ac54b5d572c2c38467b59e2ae67d4",
+    "documentation/planning/implementation/C3_MONGO_FIXTURE_CONTRACT.md": "208d702c9a1f7bc2826bda720603fa8fb382bfed9599739e1c8f4605b81368ce",
+    "test/api-runtime/scenario/bootstrap.cjs": "ff7ecad69b71145ba1dad5ad76ca68e836437d2e02077ade8ffa3748c40b6efc",
+    "test/api-runtime/scenario/bootstrap-unit.cjs": "d5079df3aca5023f021a1fa1a3e665d015c9a13de503ff480cec8c5560a5a56b",
+    "test/api-runtime/scenario/compile.cjs": "ecf823aba516c9c1bba8ce7ae62c2db32a7d648721239c363bb1f6aad84584df",
+    "test/api-runtime/scenario/scenario.cjs": "4ceca6c30921a3718b1b81912bebf6b8c735adbab6f82293c502e281d1f4f668",
+    "test/api-runtime/scenario/ports-manifest.json": "86d6b909c06387c52c8d62e3b99a10784d9612fb6fc63581faf6d3e96ee13a12",
+    "test/api-runtime/scenario/package-plan.json": "d7830a9ce688235bb64f3f9f7ac3d5dd604bb63641cdae97b8b7250bfd957227",
+    "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+    "test/api-runtime/platform.mjs": "b5117065c90c4698cb9604a8da0cb673a38249d8eee07a8ac39e11040a56e29f"
+  },
+  "partASource": {
+    "path": "src1/modules/common/utils/indexReadiness.ts",
+    "status": "CANDIDATE_READ_AS_TEXT_ONLY_SOURCE_REVIEWS_PENDING",
+    "sha": null,
+    "mutationAnchors": "PROVISIONAL_CURRENT_CANDIDATE_NOT_IMPLEMENTATION_APPROVAL",
+    "currentCandidateWorktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-index-readiness",
+    "currentCandidateSha": "6597c1a03c54702d89042a29263da81399934e68e8fb6c46f91c638cbe954400"
+  },
+  "acceptedRuntime": {
+    "source": "c2dbac3e44b0bbf30e4574640cd940e2f0075975",
+    "groups": 76,
+    "sensitivity": 21,
+    "execution": 7,
+    "templateSha": "185fb708ef0af3b4bbf106b836baee69d20b922a6089b418e42ed739f6e801e7",
+    "newRuntimeAuthority": false
+  },
+  "pinnedDriverTextEvidence": {
+    "runtimeDirectory": "/private/tmp/sd-auth-api-build-a9f64d75-9506-4c72-a420-f273f42b886c/runtime",
+    "sourceTemplateCommit": "c2dbac3e44b0bbf30e4574640cd940e2f0075975",
+    "lockSha": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+    "files": {
+      "node_modules/mongoose/node_modules/mongodb/src/db.ts": "15730681d44e8a43d0d9cad3ab84f2256b5e8f22f2ce1d66b8b403c4e4103b32",
+      "node_modules/mongoose/node_modules/mongodb/src/operations/run_command.ts": "ec4a810c98d16521eb5fba57cf0b135f07bd2f6d05288e4b07c3c33203500e59",
+      "node_modules/mongoose/node_modules/mongodb/src/operations/get_more.ts": "866ceb6ff3146c6bb8f563022bbeff2c84d589be600ddbcb3af1d900b65b930c",
+      "node_modules/mongoose/node_modules/mongodb/src/bson.ts": "6765d9ec3c61343226a38f75981f3920947beb3e170dfaa5a38be2cd1eaf448b",
+      "node_modules/mongoose/node_modules/mongodb/src/sessions.ts": "618811a34100f9139c8fadd4da0cd7977d478968cfbd127c239ff10f058e03d5",
+      "node_modules/mongoose/node_modules/mongodb/package.json": "c66238ee7172351c0bcfdbe5c5e52068c80cd0e904e8ca0e789a6ed0f5f892d2",
+      "node_modules/bson/src/long.ts": "fc4f30e8b1776c10a4ff75aab061e3d2b6d26b2a3180476e253c5578b13c4ae8",
+      "node_modules/bson/package.json": "6fd7e1928c2176b55c460a6cfe83a8f0b79fa7b8830e1f403f66e32e0f6c8379"
+    },
+    "versions": {
+      "mongodb": "7.8.0",
+      "bson": "7.3.4"
+    },
+    "evaluation": "NONE_TEXT_ONLY"
+  },
+  "selectedCollections": [
+    "users",
+    "admins",
+    "hrs",
+    "corporates",
+    "specialists",
+    "pharmacies",
+    "OTP",
+    "wallets",
+    "wallettransactions",
+    "notifications",
+    "fcmtokens",
+    "wellnesspackages",
+    "dependents"
+  ],
+  "selectedExplicitIndexes": 8,
+  "selectedImplicitIdIndexes": 13,
+  "selectedManifestCanonicalSha": "9160db1c3e937f49f6a68cb87d5c55b2c9e0f662310b560f874a4d4a7f61e3c7",
+  "proposedGroups": 83,
+  "proposedSensitivity": 27,
+  "openLeadChoices": [
+    "accepted-source-anchors-and-final-trial-table",
+    "metadata-command-and-deadline-batch-bounds",
+    "metadata-versus-API-observer-lifecycle",
+    "helper-cache-port-and-context-interface"
+  ],
+  "appEvaluations": 0,
+  "compilerExecutions": 0,
+  "databaseCommands": 0,
+  "dockerCalls": 0,
+  "gitWrites": 0,
+  "provisionalSourceAnchorIntents": {
+    "INDEX_MISSING_REQUIREMENT_ACCEPTED": "return makeResult(\"REQUIRED_INDEX_UNSATISFIED\", collectionOrdinal, indexOrdinal); -> return makeResult(\"READY\");",
+    "INDEX_KEY_ORDER_IGNORED": "sameKey current ordered right.every(entry,index) -> pair-membership comparison preserving private copies",
+    "INDEX_OPTIONS_IGNORED": "matchesIndex remove hidden/unique/sparse/ttl option refusal conjuncts only; retain key/name/partial predicate",
+    "INDEX_PARTIAL_FILTER_IGNORED": "return !requirement.partialPresent || equalJson(requirement.partial, observed.partial); -> return true;",
+    "INDEX_INCOMPLETE_ACCEPTED": "if (listing.status === \"INCOMPLETE\") return makeResult(\"OBSERVATION_INCOMPLETE\", collectionOrdinal); -> READY at that branch",
+    "INDEX_BUILD_STATUS_IGNORED": "if (listing.building) return makeResult(\"OBSERVATION_UNREADY\", collectionOrdinal); -> READY at that branch"
+  },
+  "leadEngineeringChoices": {
+    "sameOwnedMetadataSession": "ACCEPTED_PROPOSAL_NOT_EXECUTION",
+    "knownLongScalarProjection": "TTL high0 low0..2147483647; v high0 low1/2; direction(high0,low1)/(high-1,low-1); exact-own-driver-Long, no conversion/coercion; cursors never demoted",
+    "partialNormalization": "NONE"
+  }
+}
