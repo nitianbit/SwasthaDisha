@@ -1,0 +1,92 @@
+{
+  "schema": "SD-SPECIALIST-PROFILE-DRAFT-1",
+  "status": "DRAFT_ONLY_NO_IMPLEMENTATION",
+  "baseline": "b33a9daac01628a48043e85764819a5f855431ed",
+  "contractDraftSha256": "a973f070e3986b7d3e468d2607ae31fa847ca57d80f8ce94c19526b44ad111f6",
+  "files": {
+    "documentation/planning/M0_IMPLEMENTATION_APPROVAL.md": "c09be47e12ecc433f873bd967c5e72e9717734ef5e3af8b119fb555fec1671c9",
+    "documentation/planning/PRINCIPAL_REVIEW_DISPOSITION.md": "de97b17c986e5cf832efae38078d9bfdbbdc95d694f08e6dfe36ad0ab397197e",
+    "documentation/planning/SYSTEM_DESIGN.md": "cbd899f6fb442b13db28c389143b529b90da364165dc17291cc829814810bc84",
+    "documentation/planning/qa/TEST_SCENARIOS.md": "bd8c6e8952a8c1cc2f2c2063a4d7a79000dc5566b966a6650d49d60ff841f09e",
+    "documentation/planning/qa/PRINCIPAL_DISPOSITION.csv": "2df7847b5d463b4a417f4cef1425803b36a0d40bffc8b826776033742c0b27fa",
+    "documentation/planning/qa/PRINCIPAL_FINDING_TRACEABILITY.csv": "11f93f253cb6965af83432b1029bcc9b17d46a428582e3e26046dc4f1a83d50e",
+    "documentation/planning/REPOSITORY_REVIEW.md": "07159ce9ef7630374ed9b974f346db82c26fae0f3e2d0e06e7cef4ac4c3b736d",
+    "documentation/planning/implementation/M0_A_PROGRESS.md": "6874e23e58ac06bb1c5ec0e1b6ae5e803f99b217cc6443a6836ea94cf4417dec",
+    "documentation/planning/implementation/PARALLEL_DEVELOPMENT_WORKFLOW.md": "c4f99a171df17ae98405a1fdd1c6aad0f9ab2dedfdb4aafabff60cb292d6148a",
+    "src1/routes/index.ts": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056",
+    "src1/modules/specialists/routes/index.ts": "307a9ad75371bd34c6dc34f70d10d0f482007890c98e107fb6b1a4b5bb25c8cc",
+    "src1/modules/specialists/controller/index.ts": "d5e4d4f20d1422d994ea4fc07017793ccb6bfca3d77c8d886af8e63bdf95d827",
+    "src1/modules/specialists/services/index.ts": "64e11b06405342b5ac42433032691e1d2ef328caef91f1b107360e5787850472",
+    "src1/modules/specialists/validation/index.ts": "0cbbb2139513af04ee6f813ea5bed98187faa8829a458a6087fca771ebd99812",
+    "src1/modules/specialists/repository/index.ts": "c3b4abd78026639fe9bedda62912ec59ecf6ff1f92e01947bf2be59d4ea4ca00",
+    "src1/modules/specialists/model/index.ts": "0dcbc6b6a88b439181494c514eebdd8cd48273933ea1028cc77c0b6ed2a0d39e",
+    "src1/modules/specialists/types/index.ts": "fcd9dcbe1d4e389b05cdf0839406b9547daef96df4360985cc1e483209741bfe",
+    "src1/modules/specialistPortal/services/index.ts": "f5d90a49987bcc312b7b4acd614ba6833e5551b601f17ff5097d4d1ef9351ed4",
+    "src1/modules/specialistPortal/validation/index.ts": "264b39185cbfecf501e73ad737a91db2aa7e0eb4c832fd1e1c6d03bb96f6e11f",
+    "src1/modules/middleware/auth.ts": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+    "src1/modules/common/middleware/validation.ts": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef",
+    "src1/modules/middleware/errorHandler.ts": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51",
+    "src1/modules/common/types/error.ts": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+    "test/specialist-portal-api-test.ts": "86748d3fc0298f17291989fb96804a7af5bf0bd256e1e2a5f01ada5a842dfaee",
+    "output/qa/week2-api-runtime/execution-8/REVIEW.md": "3f0be16fbbbfdca5133866a6fc8eac17715a2aa3bc87fbb265a815e3e5a236af",
+    "output/qa/week2-api-runtime/execution-8/operator-result.json": "296d3be27569f5b447ddbb0bdfe9a7b2eedbdc16eac9d59ceddd7bdcf8870d7e"
+  },
+  "proposedProductionFiles": [
+    "src1/modules/specialistPortal/services/index.ts"
+  ],
+  "protectedOwnTopLevelFields": [
+    "isVerified",
+    "isActive",
+    "rating"
+  ],
+  "proposal": {
+    "preserveCurrentMalformed400": true,
+    "validProtectedMissing404": "SPECIALIST_NOT_FOUND",
+    "validProtectedExisting422": "FORBIDDEN_FIELD",
+    "extraReadsOnAllowedUpdate": 0,
+    "protectedDenialObjectReads": 1,
+    "schemaAndAdminUnchanged": true
+  },
+  "graph": {
+    "project": "swasthadisha",
+    "canonicalRoot": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha",
+    "indexedHead": "bfb608ea1a89551f6cd72ec5ee1349a3ee7abef7",
+    "fresh": false,
+    "currentWorktreeBytesAuthoritative": true,
+    "arrowCallerEdgesIncomplete": true
+  },
+  "observedClient": {
+    "root": "/Users/shubham/Desktop/myewacare-mobile-app",
+    "head": "db62e8a960a52ee5354d40d696e40924cccd0129",
+    "files": {
+      "src/features/specialists/specialistApi.ts": "fac350a89f2fa2f320442b95bb511859157a04d29546cd0023d9c0ed38e32661",
+      "src/features/auth/authApi.ts": "1a5c19c9f63a442dfb44aee9467f02dc40f01537bbc4921a1df67e787dbf3cf9"
+    },
+    "targetFilesClean": true,
+    "observedSpecialistMethods": "DISCOVERY_GET_ONLY",
+    "doctorSelfProfileClientIdentified": false,
+    "deployedCompatibility": "UNVERIFIED"
+  },
+  "sourceExecutions": 0,
+  "compilerExecutions": 0,
+  "databaseCommands": 0,
+  "dockerCalls": 0,
+  "providerCalls": 0,
+  "gitWrites": 0,
+  "preimplementationReviews": "PENDING_TWO_DIRECT_INDEPENDENT_REVIEWS",
+  "leadChoice": "ONE_PORTAL_SERVICE_FILE_PRESERVE_JOI400",
+  "pinnedPublicJoiSourceData": {
+    "root": "/private/tmp/sd-auth-api-build-4add256e-665f-4c52-b459-bc5408d6ac3c/runtime",
+    "version": "17.13.3",
+    "files": {
+      "node_modules/joi/package.json": "7e8c03372bb144def46da99a173da52dff214a4d09a2f4f594b77a85662b476b",
+      "node_modules/joi/lib/common.js": "7fc184b3c51c866f7e15fb045491ca74f5b1f554fdd64c4854b247125e888a49",
+      "node_modules/joi/lib/validator.js": "787b3d8357e3f54fd1b17a2598d39d8a0083fe40cf20503399c67cbd0f7c5645",
+      "node_modules/joi/lib/types/keys.js": "6303ebc86dd4ce8d0cf0ddd9d550b578e4374d92565e16cac9987971a88dc040",
+      "node_modules/joi/lib/types/boolean.js": "ae43b0c6bae60ba75e76c006c3dfaba06d7b6fbc56cb3963a3d56bbcb745235c",
+      "node_modules/joi/lib/types/number.js": "db11d3c4a33ddc52711b1c39b4818faf0ef023a8321895701c2dfcdd9f22fb7e"
+    },
+    "evaluations": 0,
+    "productionCompatibilityClaim": false
+  }
+}
