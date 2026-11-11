@@ -1,0 +1,12 @@
+{
+  "src1/modules/pharmacyInventory/repository/index.ts": [
+    [
+      "    batch.status = availableQtyAfter === 0 && batch.reservedQty === 0 ? 'depleted' : 'active';\n    batch.depletedAt = batch.status === 'depleted' ? new Date() : undefined;",
+      "    if (\n      batch.status !== 'recalled' &&\n      batch.status !== 'quarantined' &&\n      batch.status !== 'expired'\n    ) {\n      batch.status = availableQtyAfter === 0 && batch.reservedQty === 0 ? 'depleted' : 'active';\n      batch.depletedAt = batch.status === 'depleted' ? new Date() : undefined;\n    }"
+    ],
+    [
+      "      batch.status = batch.expiryDate < today ? 'expired' : 'active';\n      batch.depletedAt = undefined;",
+      "      if (\n        batch.status !== 'recalled' &&\n        batch.status !== 'quarantined' &&\n        batch.status !== 'expired'\n      ) {\n        batch.status = batch.expiryDate < today ? 'expired' : 'active';\n        batch.depletedAt = undefined;\n      }"
+    ]
+  ]
+}
