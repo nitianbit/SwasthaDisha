@@ -90,9 +90,9 @@ export class MedicineController {
     });
   };
 
-  update = async (req: Request, res: Response, _next: NextFunction) => {
+  update = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const data: UpdateMedicineRequest = req.body;
-    const result = await this.medicineService.update(req.params.id, data);
+    const result = await this.medicineService.update(req.params.id, data, req.user?.userType);
     res.status(200).json({ success: true, message: 'Medicine updated successfully', data: result });
   };
 

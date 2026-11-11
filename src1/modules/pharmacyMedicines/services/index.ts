@@ -88,10 +88,23 @@ export class MedicineService {
     );
   }
 
-  async update(id: string, data: UpdateMedicineRequest): Promise<IMedicine> {
+  async update(id: string, data: UpdateMedicineRequest, actorUserType?: string): Promise<IMedicine> {
     const medicine = await this.medicineRepository.findById(id);
     if (!medicine) {
       throw new AppError({ status: 404, code: 'MEDICINE_NOT_FOUND', message: 'Medicine not found' });
+    }
+
+    if (
+      actorUserType !== 'admin' &&
+      data !== null &&
+      typeof data === 'object' &&
+      Object.prototype.hasOwnProperty.call(data, 'prescriptionRequired')
+    ) {
+      throw new AppError({
+        status: 422,
+        code: 'FORBIDDEN_FIELD',
+        message: 'Medicine prescription requirement cannot be updated by this actor',
+      });
     }
 
     if (data.name && this.normalizeName(data.name) !== medicine.name) {

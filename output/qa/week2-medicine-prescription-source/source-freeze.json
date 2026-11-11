@@ -1,0 +1,26 @@
+{
+  "schema": "SD-BOUNDED-CATALOGUE-QUALITY-SOURCE-FREEZE-1",
+  "baseline": "1db3da7bf90106e1b2f3ef03eec2c9999161286c",
+  "author": "/root",
+  "sourceScope": [
+    "src1/modules/pharmacyMedicines/controller/index.ts",
+    "src1/modules/pharmacyMedicines/services/index.ts"
+  ],
+  "files": {
+    "src1/modules/pharmacyMedicines/controller/index.ts": "63b870e1418f4c0983d923349acff7ceb7b7b56c8810c8061e9c8be2690e8179",
+    "src1/modules/pharmacyMedicines/services/index.ts": "dcc2f9f594bd990190e2379f0064ea6eeda2e6c5a4faefc12cb58afa13d2454a",
+    "output/qa/week2-catalogue-quality-contract/MEDICINE_CONTRACT.md": "7325e7ca37c15b9fdb8e60643d41b0178d8a9aee4e8c6fd02c8a38317eecd15a",
+    "output/qa/week2-catalogue-quality-contract/PRE_REVIEW.md": "e736b5a46cc69dca3395bb1e48c8b02fc0888aceee7f894f45a40c2f240e2408",
+    "output/qa/week2-catalogue-quality-contract/contract-freeze.json": "740247c510e49b71afacce6c93d6540ad7e9022ac9d3c6f81637d399265c7a78",
+    "output/qa/week2-medicine-prescription-source/AUDIT_AMENDMENT.md": "3e9c3a005cf4f787f844b8e2a5037151ede2a1f2d3e77ba7ca48a906565c317a",
+    "output/qa/week2-medicine-prescription-source/AUTHOR_NOTES.md": "75332313a5bdd12d98e22b9965a396d023177173559e1835043ad4d08dcabe7e",
+    "output/qa/week2-medicine-prescription-source/audit_source.py": "ca63d2662c5f5780413faa96a5b7df901446a2965759602ddb8adf60c8bda9bc",
+    "output/qa/week2-medicine-prescription-source/baseline-rejection.json": "2b2c8e0c40c1eaeacf751ab6317589eac464bdff65272a44acfeac71298b6c0f",
+    "output/qa/week2-medicine-prescription-source/candidate.diff": "fd4d3720f304a72b41cc84a5efd2d56978a317dc265fba3d65233d0379dc9a2b",
+    "output/qa/week2-medicine-prescription-source/initial-audit/audit_source.py": "f424ab8b6518448b3c1595a2ec1664a3390c37ed1d26e8d1899a04dbbe9e45ba",
+    "output/qa/week2-medicine-prescription-source/initial-audit/source-audit.json": "dc845c17fe11114d46e9a1d084725a25c434e35bd4b21cc517a537f6adbebc1e",
+    "output/qa/week2-medicine-prescription-source/literal-transform.json": "2fcc2f3bb360553791c0daf26d6cce817c4318788f536b8fe42f0752441b2d16",
+    "output/qa/week2-medicine-prescription-source/source-audit.json": "5c4b2f9250cfa6fefbb4ca676bbfcc4c2334b15eaee5338903f762b8e17c6334"
+  },
+  "status": "SOURCE_CANDIDATE_REQUIRES_TWO_NONAUTHOR_REVIEWS_RUNTIME_NOT_RUN"
+}

@@ -1,0 +1,1 @@
+{"status": "BASELINE_REJECTED", "scope": "SOURCE_DATA_ONLY_NOT_BEHAVIOR_OR_TYPES", "sourceFiles": ["src1/modules/pharmacyMedicines/controller/index.ts", "src1/modules/pharmacyMedicines/services/index.ts"]}
