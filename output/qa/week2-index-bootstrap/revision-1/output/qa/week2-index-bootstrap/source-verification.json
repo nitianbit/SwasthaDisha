@@ -1,0 +1,22 @@
+{
+  "schema": "SD-INDEX-BOOTSTRAP-SOURCE-DATA-1",
+  "status": "PASS_SOURCE_DATA_ONLY",
+  "baseline": "4275053",
+  "oldBootstrapRestoredExactly": true,
+  "oldConfigurationRecordingMeetUnitsExact": true,
+  "trialDefinitions": 172,
+  "plannedNominalComparisons": 343,
+  "plannedSensitivityReferences": 75,
+  "exactSourceTransforms": 6,
+  "matrixFragmentVerbatim": true,
+  "originalStaged": 6,
+  "originalHandover": 11,
+  "applicationEvaluations": 0,
+  "compilerExecutions": 0,
+  "databaseCommands": 0,
+  "files": {
+    "test/api-runtime/scenario/bootstrap.cjs": "f62173f290c43a12cb6cb786b35208d8b6b67c2aacd7b4a30a854733a91211b6",
+    "test/api-runtime/scenario/bootstrap-unit.cjs": "5748e1279be44e2ef117c5e8f9d6870e3237739d9a99f45171a2482410bb447f",
+    "test/api-runtime/scenario/ports-manifest.json": "08583e74231bb02151ae2c89537233b198e1241ac769d65c874ee5aa8f06b33b"
+  }
+}

@@ -32,10 +32,11 @@ Module._load = function (request, parent, isMain) {
   if (request !== bootstrap && !Module.isBuiltin(request)) { applicationImports++; throw new Error('OFFLINE_DOMAIN_IMPORT_DENIED'); }
   return originalLoad.call(this, request, parent, isMain);
 };
-const { validateAdmissionData, runSetupStep, SETUP_FAILURE_CODES, withOwnedCleanup, recordReadOperation, recordPush,
+const { validateAdmissionData, installLoader, runSetupStep, SETUP_FAILURE_CODES, withOwnedCleanup, recordReadOperation, recordPush,
   configurationSamples, configurationFinally, configurationEnvironment, withConfigurationTaps,
   configurationSampleEvidence, collectConfigurationEvidence, meetData, meetSame, createMeetRecorder,
-  meetFetchLifecycle, withMeetFetchCleanup } = require(bootstrap);
+  meetFetchLifecycle, withMeetFetchCleanup, indexLongWords, indexScalar, projectIndexRow,
+  indexManifest, collectIndexObservations, withIndexTaps, validateIndexTypeReport, createIndexCommandPort, INDEX_SOURCE_SHA, INDEX_MUTANTS } = require(bootstrap);
 const need = (condition, label) => { if (!condition) throw new Error(label); };
 need(process.permission && !process.permission.has('child') && !process.permission.has('worker')
   && !process.permission.has('addon') && !process.permission.has('fs.write'), 'OFFLINE_PROCESS_GRANTS');
@@ -49,23 +50,40 @@ function fixture() {
   const sources = Object.fromEntries(ports.models.map(row => [row.source, 'a'.repeat(64)]));
   sources['src1/modules/otp/repository/index.ts'] = 'a'.repeat(64);
   sources['src1/config/config.ts'] = 'a'.repeat(64);
+  sources['src1/modules/common/utils/indexReadiness.ts'] = INDEX_SOURCE_SHA;
   for (const name of ['routes', 'controller', 'validation', 'service', 'types']) sources['src1/modules/meet/' + name + '/index.ts'] = 'a'.repeat(64);
   const mutants = Object.fromEntries(ports.requiredSensitivityIds.map(name => {
     const file = 'compiled/mutants/' + name + '.js'; files[file] = Buffer.from('inert');
-    return [name, { source: name.startsWith('JWT_CONFIG_') ? 'src1/config/config.ts' : name.startsWith('MEET_') ? 'src1/modules/meet/routes/index.ts' : 'src1/modules/otp/repository/index.ts', originalSha256: 'a'.repeat(64), file }];
+    return [name, { source: name.startsWith('JWT_CONFIG_') ? 'src1/config/config.ts' : name.startsWith('MEET_') ? 'src1/modules/meet/routes/index.ts'
+      : name.startsWith('INDEX_') ? 'src1/modules/common/utils/indexReadiness.ts' : 'src1/modules/otp/repository/index.ts',
+      originalSha256: name.startsWith('INDEX_') ? INDEX_SOURCE_SHA : 'a'.repeat(64),
+      ...(name.startsWith('INDEX_') ? { mutantSha256: INDEX_MUTANTS[name].sourceSha } : {}), file }];
   }));
   const plan = { schema: 'SD-AUTH-API-PLAN-1', role: ports.role, sourceCommit, sourceFiles: sources,
-    compilation: { compiler: '5.9.3', status: 'TRANSPILE_ONLY_NOT_TYPECHECKED' },
+    compilation: { compiler: '5.9.3', status: 'TRANSPILE_ONLY_NOT_TYPECHECKED', selectedHelperTypecheck: fakeIndexTypeReport() },
     modules: Object.fromEntries(ports.roots.map(root => [root, 'compiled/entry.js'])), mutants,
     models: ports.models, requiredCaseIds: ports.requiredCaseIds, requiredSensitivityIds: ports.requiredSensitivityIds,
     providerCounterKeys: ports.providerCounterKeys };
   plan.modules['@/config/config'] = 'compiled/config/config.js'; files['compiled/config/config.js'] = Buffer.from('inert');
   plan.modules['@/modules/meet/routes'] = 'compiled/modules/meet/routes/index.js'; files['compiled/modules/meet/routes/index.js'] = Buffer.from('inert');
+  plan.modules['@/modules/common/utils/indexReadiness'] = 'compiled/modules/common/utils/indexReadiness.js';
+  files['compiled/modules/common/utils/indexReadiness.js'] = Buffer.from('inert');
   const manifest = { schema: 'SD-AUTH-API-RUN-1', role: ports.role, runId, sourceCommit,
     database: 'sd_api_' + runId.replaceAll('-', ''), replicaSet: 'sd_rs_' + runId.replaceAll('-', ''),
     mongoId: 'c'.repeat(64), templateSha: 'd'.repeat(64) };
   const packet = { manifest, plan, ports, observed: { runId, files } };
   rebind(packet); return packet;
+}
+function fakeIndexTypeReport() {
+  // Scripted metadata exercises admission only. No compiler/source is evaluated.
+  const libraryFiles = Object.fromEntries(Array.from({ length: 45 }, (_, i) => ['lib.fake' + i + '.d.ts', 'a'.repeat(64)]));
+  const programFiles = ['src1/modules/common/utils/indexReadiness.ts', ...Object.keys(libraryFiles).map(name => 'node_modules/typescript/lib/' + name)].sort();
+  return { schema: 'SD-SELECTED-INDEX-TYPECHECK-1', status: 'PASS', compiler: '5.9.3',
+    compilerSha256: '3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675',
+    source: 'src1/modules/common/utils/indexReadiness.ts', sourceSha256: INDEX_SOURCE_SHA, libraryFiles, options: {}, programFiles,
+    diagnostics: [], tdzControl: { status: 'REJECTED', sourceSha256: '6597c1a03c54702d89042a29263da81399934e68e8fb6c46f91c638cbe954400',
+      requiredCode: 2448, referenceOffset: 42, programFiles: programFiles.slice(),
+      diagnostics: [{ sourceId: 'VIRTUAL_SELECTED_INDEX_TDZ.ts', code: 2448, category: 1, start: 42, length: 12 }] } };
 }
 function rebind(p) {
   p.observed.files['ports-manifest.json'] = Buffer.from(JSON.stringify(p.ports));
@@ -130,9 +148,20 @@ for (const [id, mutate] of [
   ['SOURCE_OMITTED', p => { delete p.plan.sourceFiles['src1/modules/meet/service/index.ts']; }],
   ['MUTANT_REBOUND', p => { p.plan.mutants.MEET_CALLBACK_GATED.source = 'src1/config/config.ts'; }],
 ]) check('MEET_ADMISSION_' + id, mutate, true);
+for (const [id, mutate] of [
+  ['HELPER_SOURCE_HASH', p => { p.plan.sourceFiles['src1/modules/common/utils/indexReadiness.ts'] = 'a'.repeat(64); }],
+  ['HELPER_ALIAS', p => { p.plan.modules['@/modules/common/utils/indexReadiness'] = 'compiled/entry.js'; }],
+  ['MUTANT_HASH', p => { p.plan.mutants.INDEX_KEY_ORDER_IGNORED.mutantSha256 = 'a'.repeat(64); }],
+  ['MUTANT_SOURCE', p => { p.plan.mutants.INDEX_KEY_ORDER_IGNORED.source = 'src1/config/config.ts'; }],
+  ['TYPE_REPORT_MISSING', p => { delete p.plan.compilation.selectedHelperTypecheck; }],
+  ['TYPE_DIAGNOSTIC', p => { p.plan.compilation.selectedHelperTypecheck.diagnostics.push({ code: 1 }); }],
+  ['TDZ_NOT_REJECTED', p => { p.plan.compilation.selectedHelperTypecheck.tdzControl.status = 'PASS'; }],
+  ['TDZ_WRONG_REFERENCE', p => { p.plan.compilation.selectedHelperTypecheck.tdzControl.referenceOffset++; }],
+]) check('INDEX_ADMISSION_' + id, mutate, true);
 const recordingRows = [];
 const configurationRows = [];
 const meetRows = [];
+const indexRows = [];
 function configurationCheck(id, action) { action(); configurationRows.push(id); }
 function configurationFailure(action, code) {
   let caught; try { action(); } catch (error) { caught = error; }
@@ -645,6 +674,308 @@ async function meetUnits() {
   need(getters === 0 && nativeCalls === 0 && applicationImports === 0 && connections === 0 && domainWrites === 0, 'MEET_PURE_BOUNDARY');
 }
 
+class FakeIndexLong {
+  constructor(low, high = 0, unsigned = false) { this.low = low; this.high = high; this.unsigned = unsigned; }
+  toNumber() { throw new Error('FAKE_LONG_COERCION_FORBIDDEN'); }
+  toString() { throw new Error('FAKE_LONG_COERCION_FORBIDDEN'); }
+  valueOf() { throw new Error('FAKE_LONG_COERCION_FORBIDDEN'); }
+}
+function fakeIndexCollector() {
+  const selected = indexManifest(portsOriginal.models); const database = 'sd_api_' + '1'.repeat(32);
+  const session = { inTransaction: () => false }; const state = { starts: 0, ends: 0, commands: [], responses: 0, clock: 0, change: undefined };
+  const port = { database, collections: portsOriginal.models.map(row => row.collection), Long: FakeIndexLong,
+    now: () => state.clock, signal: milliseconds => ({ milliseconds }),
+    startSession(options) { need(options.causalConsistency === false && Object.keys(options).length === 1, 'FAKE_INDEX_SESSION_OPTIONS'); state.starts++; return session; },
+    async endSession(value) { need(value === session, 'FAKE_INDEX_SAME_SESSION'); state.ends++; if (state.endFailure) throw state.endFailure; },
+    async runCommand(collection, command, options, bits) {
+      need(options.session === session && options.promoteLongs === false && options.readPreference === 'primary'
+        && options.signal.milliseconds === 5000, 'FAKE_INDEX_OPTIONS');
+      const ordinal = port.collections.indexOf(collection); const initial = Object.hasOwn(command, 'listIndexes');
+      if (initial) need(command.listIndexes === collection && command.includeIndexBuildInfo === true
+        && command.cursor.batchSize === 1 && command.maxTimeMS === 5000 && bits === null, 'FAKE_INDEX_INITIAL_COMMAND');
+      else need(command.collection === collection && command.batchSize === 1 && !Object.hasOwn(command, 'maxTimeMS')
+        && command.getMore === state.lastCursor && bits[0] === -2 && bits[1] === 2147483647, 'FAKE_INDEX_GETMORE_COMMAND');
+      state.commands.push(initial ? 'initial' : 'more'); state.responses++;
+      const explicit = selected[ordinal].indexes[0];
+      const spec = initial ? { name: '_id_', key: { _id: 1 }, v: 2 }
+        : explicit ? { name: 'fixture' + ordinal, key: Object.fromEntries(explicit.key), ...explicit.options }
+          : { name: 'fixture-extra', key: { fixtureExtra: 1 } };
+      const cursor = initial && explicit ? new FakeIndexLong(-2, 2147483647) : new FakeIndexLong(0, 0);
+      state.lastCursor = cursor;
+      let reply = { ok: 1, cursor: { id: cursor, ns: database + '.' + collection,
+        [initial ? 'firstBatch' : 'nextBatch']: [{ spec }] } };
+      if (state.change) reply = state.change(reply, { collection, ordinal, initial, command, options, bits }) ?? reply;
+      state.lastCursor = reply.cursor?.id;
+      if (state.commandFailure) throw state.commandFailure;
+      return reply;
+    },
+  };
+  return { port, state, session };
+}
+function fakeIndexTaps() {
+  const state = { delegated: 0 }; const delegate = function () { state.delegated++; };
+  const mongoose = { connect: delegate, createConnection: delegate, Connection: function () {},
+    mongo: { MongoClient: function () {}, Db: function () {}, Collection: function () {} }, Model: function () {} };
+  for (const name of ['openUri', 'useDb']) mongoose.Connection.prototype[name] = delegate;
+  for (const name of ['connect', 'db']) mongoose.mongo.MongoClient.prototype[name] = delegate;
+  for (const name of ['command', 'collection', 'createCollection']) mongoose.mongo.Db.prototype[name] = delegate;
+  for (const name of ['find', 'aggregate', 'countDocuments', 'distinct', 'insertOne', 'insertMany', 'updateOne', 'updateMany',
+    'replaceOne', 'deleteOne', 'deleteMany', 'findOneAndUpdate', 'findOneAndReplace', 'findOneAndDelete', 'createIndex', 'createIndexes', 'dropIndex', 'dropIndexes']) mongoose.mongo.Collection.prototype[name] = delegate;
+  for (const name of ['create', 'insertMany', 'bulkWrite']) mongoose.Model[name] = delegate;
+  function BaseQuery() {} BaseQuery.prototype.exec = delegate;
+  function SubQuery() {} Object.setPrototypeOf(SubQuery.prototype, BaseQuery.prototype);
+  const models = { A: { Query: BaseQuery }, B: { Query: SubQuery } };
+  mongoose.modelNames = () => ['A', 'B']; mongoose.model = name => models[name];
+  const network = { Socket: function () {}, Server: function () {} };
+  network.Socket.prototype.connect = delegate; network.Server.prototype.listen = delegate;
+  const filesystem = { promises: {} };
+  for (const name of ['writeFile', 'writeFileSync', 'appendFile', 'appendFileSync', 'createWriteStream', 'mkdir', 'mkdirSync',
+    'rm', 'rmSync', 'unlink', 'unlinkSync', 'rename', 'renameSync', 'copyFile', 'copyFileSync']) filesystem[name] = delegate;
+  for (const name of ['writeFile', 'appendFile', 'mkdir', 'rm', 'unlink', 'rename', 'copyFile']) filesystem.promises[name] = delegate;
+  const globals = Object.fromEntries(['fetch', 'setTimeout', 'setInterval', 'setImmediate'].map(name => [name, delegate]));
+  const logger = Object.fromEntries(['info', 'error', 'warn', 'debug'].map(name => [name, delegate]));
+  const attempts = Object.fromEntries(['denied', 'connection', 'listen', 'read', 'write', 'query', 'metadata', 'jwt', 'provider', 'timer', 'import', 'loads'].map(name => [name, 0]));
+  return { runtime: { mongoose, network, jwt: { sign: delegate }, axios: { defaults: { adapter: delegate } },
+    substitutes: { '@/services/firebase': { getFirebaseMessaging: delegate }, '@/services/logger': { logger } },
+    filesystem, globals, attempts }, state, delegate };
+}
+async function indexUnits() {
+  const record = (id, action) => { action(); indexRows.push(id); };
+  const reject = async (id, change, code) => {
+    const fixture = fakeIndexCollector(); change(fixture); let error;
+    try { await collectIndexObservations(fixture.port); } catch (caught) { error = caught; }
+    need(error?.fixtureCode === code && fixture.state.starts === 1 && fixture.state.ends === 1
+      && applicationImports === 0 && connections === 0 && domainWrites === 0, 'INDEX_FAKE_EXPECTED_FAILURE');
+    indexRows.push(id);
+  };
+  const positive = fakeIndexCollector(); const acquired = await collectIndexObservations(positive.port);
+  need(positive.state.starts === 1 && positive.state.ends === 1 && acquired.observations.length === 13
+    && acquired.counts.initial === 13 && acquired.counts.continuation === 8 && acquired.counts.batches === 21
+    && acquired.counts.rows === 21 && acquired.counts.active === 0 && acquired.counts.exhausted === 13,
+  'INDEX_FAKE_COMPLETE_COUNTS'); indexRows.push('INDEX_FAKE_COMPLETE_13_LISTINGS_8_HIGH64_CONTINUATIONS');
+  for (const [id, change, code] of [
+    ['BAD_REPLY_OK', f => { f.state.change = reply => ({ ...reply, ok: 0 }); }, 'INDEX_METADATA_REPLY'],
+    ['BAD_TOP_FIELD', f => { f.state.change = reply => ({ ...reply, partialResultsReturned: false }); }, 'INDEX_METADATA_REPLY'],
+    ['BAD_CURSOR_FIELD', f => { f.state.change = reply => { reply.cursor.postBatchResumeToken = {}; }; }, 'INDEX_METADATA_CURSOR'],
+    ['BAD_INITIAL_BATCH_KIND', f => { f.state.change = reply => { reply.cursor.nextBatch = reply.cursor.firstBatch; delete reply.cursor.firstBatch; }; }, 'INDEX_METADATA_CURSOR'],
+    ['BAD_LATER_BATCH_KIND', f => { f.state.change = (reply, ctx) => { if (!ctx.initial) { reply.cursor.firstBatch = reply.cursor.nextBatch; delete reply.cursor.nextBatch; } }; }, 'INDEX_METADATA_CURSOR'],
+    ['BAD_NAMESPACE_INITIAL', f => { f.state.change = reply => { reply.cursor.ns += '.other'; }; }, 'INDEX_CURSOR_NAMESPACE'],
+    ['BAD_NAMESPACE_LATER', f => { f.state.change = (reply, ctx) => { if (!ctx.initial) reply.cursor.ns += '.other'; }; }, 'INDEX_CURSOR_NAMESPACE'],
+    ['NUMBER_CURSOR_REFUSED', f => { f.state.change = reply => { reply.cursor.id = 0; }; }, 'INDEX_CURSOR_LONG'],
+    ['DUCK_CURSOR_REFUSED', f => { f.state.change = reply => { reply.cursor.id = { low: 0, high: 0, unsigned: false }; }; }, 'INDEX_CURSOR_LONG'],
+    ['UNSIGNED_CURSOR_REFUSED', f => { f.state.change = reply => { reply.cursor.id.unsigned = true; }; }, 'INDEX_CURSOR_LONG'],
+    ['EXTRA_LONG_FIELD_REFUSED', f => { f.state.change = reply => { reply.cursor.id.extra = 1; }; }, 'INDEX_CURSOR_LONG'],
+    ['FRACTIONAL_LONG_FIELD_REFUSED', f => { f.state.change = reply => { reply.cursor.id.low = 0.5; }; }, 'INDEX_CURSOR_LONG'],
+    ['DRIFTED_NONZERO_CURSOR', f => { f.state.change = (reply, ctx) => { if (!ctx.initial) reply.cursor.id = new FakeIndexLong(-1, 2147483647); }; }, 'INDEX_CURSOR_DRIFT'],
+    ['MISSING_REAL_CONTINUATION', f => { f.state.change = reply => { reply.cursor.id = new FakeIndexLong(0); }; }, 'INDEX_CONTINUATION_REQUIRED'],
+    ['INFINITE_EMPTY_BATCHES_BOUNDED', f => { f.state.change = (reply, ctx) => { reply.cursor.id = new FakeIndexLong(-2, 2147483647); reply.cursor[ctx.initial ? 'firstBatch' : 'nextBatch'] = []; }; }, 'INDEX_BATCH_LIMIT'],
+    ['COLLECTION_ROW_BOUND', f => { f.state.change = (reply, ctx) => { reply.cursor[ctx.initial ? 'firstBatch' : 'nextBatch'] = Array(65).fill({ spec: { name: 'fixture', key: { field: 1 } } }); }; }, 'INDEX_METADATA_BATCH'],
+    ['UNADMITTED_NATIVE_METADATA', f => { f.state.change = reply => { reply.cursor.firstBatch[0].spec.future = new FakeIndexLong(0); }; }, 'INDEX_METADATA_DATA'],
+    ['CONTROL_CHARACTER_ENCODED_BOUND', f => { f.state.change = reply => { reply.cursor.firstBatch[0].spec.future = '\u0000'.repeat(50000); }; }, 'INDEX_METADATA_LIMIT'],
+    ['ACQUISITION_TOTAL_DEADLINE', f => { f.state.change = reply => { f.state.clock = 30001; return reply; }; }, 'INDEX_DEADLINE'],
+    ['RESERVE_FIXED_5S_WITHIN_TOTAL_30S', f => { f.state.change = reply => { f.state.clock = 25001; return reply; }; }, 'INDEX_DEADLINE'],
+    ['SESSION_TRANSACTION_REFUSED', f => { f.session.inTransaction = () => true; }, 'INDEX_SESSION'],
+  ]) await reject('INDEX_COLLECTOR_' + id, change, code);
+  {
+    const f = fakeIndexCollector(); f.state.change = reply => { f.state.clock = 25000; return reply; };
+    await collectIndexObservations(f.port);
+    need(f.state.commands.length === 21 && f.state.ends === 1, 'INDEX_FIXED_DEADLINE_BOUNDARY');
+    indexRows.push('INDEX_COLLECTOR_EXACT_25S_START_BOUNDARY');
+  }
+  await reject('INDEX_COLLECTOR_GLOBAL_BATCH_BOUND', f => {
+    const seen = new Map();
+    f.state.change = (reply, ctx) => {
+      const count = (seen.get(ctx.collection) || 0) + 1; seen.set(ctx.collection, count);
+      reply.cursor.id = count === 8 ? new FakeIndexLong(0) : new FakeIndexLong(-2, 2147483647);
+      reply.cursor[ctx.initial ? 'firstBatch' : 'nextBatch'] = [];
+    };
+  }, 'INDEX_BATCH_LIMIT');
+  await reject('INDEX_COLLECTOR_GLOBAL_ROW_BOUND', f => {
+    f.state.change = (reply, ctx) => {
+      const count = ctx.initial && portsOriginal.models[ctx.ordinal].indexes.length ? 1
+        : ctx.initial ? 20 : 19;
+      reply.cursor[ctx.initial ? 'firstBatch' : 'nextBatch'] = Array.from({ length: count }, (_, i) => ({ spec: { name: 'fixture' + i, key: { ['fixture' + i]: 1 } } }));
+    };
+  }, 'INDEX_ROW_LIMIT');
+  {
+    const f = fakeIndexCollector(); const cleanup = Object.freeze(new Error('private-session-cleanup')); f.state.endFailure = cleanup;
+    let caught; try { await collectIndexObservations(f.port); } catch (error) { caught = error; }
+    need(caught === cleanup && f.state.ends === 1 && f.state.commands.length === 21, 'INDEX_SESSION_CLEANUP_FAILURE');
+    indexRows.push('INDEX_COLLECTOR_SESSION_CLEANUP_FAILURE_IS_TERMINAL');
+  }
+  for (const later of [false, true]) {
+    const f = fakeIndexCollector(); const primary = Object.freeze(new Error('private-fake')); const secondary = new Error('private-cleanup');
+    f.state.change = (reply, ctx) => { if (later === !ctx.initial) { f.state.commandFailure = primary; f.state.endFailure = secondary; } return reply; };
+    let caught; try { await collectIndexObservations(f.port); } catch (error) { caught = error; }
+    need(caught === primary && f.state.starts === 1 && f.state.ends === 1 && f.state.commands.length === (later ? 2 : 1), 'INDEX_FIRST_FAILURE_SESSION_CLEANUP');
+    indexRows.push('INDEX_COLLECTOR_FIRST_FAILURE_' + (later ? 'LATER' : 'INITIAL'));
+  }
+  record('INDEX_KNOWN_LONG_SCALARS_LOSSLESS', () => {
+    need(indexScalar(new FakeIndexLong(0), 'ttl', FakeIndexLong) === 0
+      && indexScalar(new FakeIndexLong(2147483647), 'ttl', FakeIndexLong) === 2147483647
+      && indexScalar(new FakeIndexLong(2), 'version', FakeIndexLong) === 2
+      && indexScalar(new FakeIndexLong(-1, -1), 'direction', FakeIndexLong) === -1, 'INDEX_SCALAR_POSITIVE');
+  });
+  for (const [id, value, kind] of [
+    ['TTL_HIGH_WORD', new FakeIndexLong(0, 1), 'ttl'], ['TTL_NEGATIVE_LOW', new FakeIndexLong(-1), 'ttl'],
+    ['VERSION_OUTSIDE', new FakeIndexLong(3), 'version'], ['DIRECTION_ZERO', new FakeIndexLong(0), 'direction'],
+    ['UNSIGNED', new FakeIndexLong(0, 0, true), 'ttl'], ['INFINITE', Infinity, 'ttl'],
+  ]) record('INDEX_SCALAR_REFUSAL_' + id, () => {
+    let rejected = false; try { indexScalar(value, kind, FakeIndexLong); } catch { rejected = true; } need(rejected, 'INDEX_SCALAR_REFUSAL');
+  });
+  record('INDEX_MARKER_OPAQUE_IDENTITY_AND_ORDER', () => {
+    let invokes = 0; const marker = Object.create(null);
+    Object.defineProperty(marker, 'toJSON', { get() { invokes++; throw new Error('private'); } });
+    const raw = { spec: { name: 'fixture', key: { userId: new FakeIndexLong(1), transactionType: 1 },
+      expireAfterSeconds: new FakeIndexLong(0), v: new FakeIndexLong(2), buildUUID: marker }, indexBuildInfo: marker };
+    const projected = projectIndexRow(raw, FakeIndexLong);
+    need(projected.spec.key[0][0] === 'userId' && projected.spec.key[1][0] === 'transactionType'
+      && projected.spec.expireAfterSeconds === 0 && projected.spec.v === 2 && projected.spec.buildUUID === marker
+      && projected.indexBuildInfo === marker && invokes === 0, 'INDEX_OPAQUE_DATA');
+  });
+  record('INDEX_CURSOR_ACCESSOR_NEVER_INVOKED', () => {
+    let invoked = 0; const value = new FakeIndexLong(0);
+    Object.defineProperty(value, 'low', { get() { invoked++; return 0; } });
+    let rejected = false; try { indexLongWords(value, FakeIndexLong); } catch { rejected = true; }
+    need(rejected && invoked === 0, 'INDEX_LONG_ACCESSOR');
+  });
+  for (const [category, select] of [
+    ['connection', r => [r.mongoose, 'connect']], ['listen', r => [r.network.Server.prototype, 'listen']],
+    ['metadata', r => [r.mongoose.mongo.Db.prototype, 'command']], ['read', r => [r.mongoose.mongo.Collection.prototype, 'find']],
+    ['write', r => [r.mongoose.Model, 'create']], ['query', r => [r.mongoose.model('B').Query.prototype, 'exec']],
+    ['jwt', r => [r.jwt, 'sign']], ['provider', r => [r.substitutes['@/services/firebase'], 'getFirebaseMessaging']],
+    ['timer', r => [r.globals, 'setTimeout']],
+  ]) record('INDEX_DENIAL_TAP_' + category.toUpperCase(), () => {
+    const f = fakeIndexTaps(); const [target, name] = select(f.runtime); const original = target[name]; let caught;
+    try { withIndexTaps(f.runtime, () => target[name]()); } catch (error) { caught = error; }
+    need(caught?.fixtureCode === 'INDEX_OPERATION_ATTEMPT' && f.runtime.attempts.denied === 1
+      && f.runtime.attempts[category] === 1 && f.state.delegated === 0 && target[name] === original
+      && !Object.hasOwn(f.runtime.mongoose.model('B').Query.prototype, 'exec'), 'INDEX_DENIAL_TAP_PROOF');
+  });
+  record('INDEX_TAPS_RESTORE_AFTER_PRIMARY_AND_DESCRIPTOR_DRIFT', () => {
+    const f = fakeIndexTaps(); const primary = Object.freeze(new Error('private-primary')); let caught;
+    try { withIndexTaps(f.runtime, () => { f.runtime.globals.fetch = function drifted() {}; throw primary; }); }
+    catch (error) { caught = error; }
+    need(caught === primary && f.runtime.globals.fetch === f.delegate && f.runtime.mongoose.connect === f.delegate
+      && f.runtime.filesystem.promises.writeFile === f.delegate && f.state.delegated === 0, 'INDEX_TAPS_PRIMARY_RESTORATION');
+  });
+  record('INDEX_TAPS_REQUIRE_ALL_PATHS_BEFORE_INSTALL', () => {
+    const f = fakeIndexTaps(); delete f.runtime.globals.setImmediate; let caught;
+    try { withIndexTaps(f.runtime, () => { throw new Error('MUST_NOT_RUN'); }); } catch (error) { caught = error; }
+    need(caught?.fixtureCode === 'INDEX_TAP_MISSING' && f.runtime.mongoose.connect === f.delegate
+      && f.state.delegated === 0, 'INDEX_TAPS_EARLY_DENIAL');
+  });
+  for (const nested of [false, true]) record('INDEX_HELPER_ONLY_CACHE_LIFECYCLE_' + (nested ? 'NESTED_IMPORT_DENIED' : 'FRESH_RESTORED'), () => {
+    const heldLoad = Module._load; const heldResolve = Module._resolveFilename;
+    const packet = fixture(); const state = { loads: 0 }; let scope; let caught;
+    const attempts = { import: 0, loads: 0 }; const parents = new Map();
+    Module._load = function (request, parent, isMain) {
+      if (request !== '@/modules/common/utils/indexReadiness') return heldLoad.call(this, request, parent, isMain);
+      state.loads++;
+      if (nested) Module._load('node:fs', parent, false);
+      const filename = Module._resolveFilename(request, parent);
+      if (!parents.has(parent)) parents.set(parent, { array: parent.children, values: parent.children.slice() });
+      const exports = { evaluateIndexReadiness() { throw new Error('FAKE_HELPER_MUST_NOT_EXECUTE'); } };
+      Object.defineProperty(exports, '__esModule', { value: true });
+      const entry = { filename, exports }; require.cache[filename] = entry; parent.children.push(entry); return exports;
+    };
+    try {
+      const loader = installLoader(packet.manifest, packet.plan, packet.ports); scope = loader.indexScope(attempts);
+      if (nested) {
+        try { scope.load(null); } catch (error) { caught = error; }
+        need(caught?.fixtureCode === 'INDEX_NESTED_IMPORT' && attempts.import === 1 && attempts.loads === 0, 'INDEX_NESTED_IMPORT_PROOF');
+      } else {
+        const first = scope.load(null); const second = scope.load('INDEX_KEY_ORDER_IGNORED'); const third = scope.load(null);
+        need(typeof first === 'function' && typeof second === 'function' && typeof third === 'function'
+          && first !== third && attempts.loads === 3 && state.loads === 3 && attempts.import === 0, 'INDEX_FRESH_LOAD_PROOF');
+      }
+      scope.restore(); scope = undefined;
+      need(Object.keys(require.cache).every(name => !name.startsWith('/workspace/compiled/'))
+        && [...parents].every(([parent, held]) => parent.children === held.array
+          && parent.children.length === held.values.length && parent.children.every((entry, i) => entry === held.values[i])), 'INDEX_CACHE_CHILDREN_PROOF');
+    } finally {
+      try { if (scope) scope.restore(); } finally { Module._load = heldLoad; Module._resolveFilename = heldResolve; }
+    }
+  });
+  function commandFixture() {
+    const database = 'sd_api_' + '1'.repeat(32); const db = { databaseName: database }; const client = {};
+    const session = { inTransaction: () => false }; const telemetry = { metadata: 0, forbidden: 0 };
+    const state = { calls: 0, db, client, session, ended: false, pending: null, change: undefined, last: null };
+    const api = createIndexCommandPort({ db, client, database, Long: FakeIndexLong, telemetry,
+      getDb: () => state.db, getClient: () => state.client, getSession: () => state.session, sessionOpen: () => !state.ended,
+      setPending(value) { state.pending = value; if (value === null && state.cleanupFailure) throw state.cleanupFailure; },
+      async runRaw(command, options) {
+        state.calls++; telemetry.metadata++;
+        const initial = Object.hasOwn(command, 'listIndexes'); const collection = command.listIndexes || command.collection;
+        const ordinal = portsOriginal.models.findIndex(row => row.collection === collection);
+        const cursor = initial && portsOriginal.models[ordinal].indexes.length ? new FakeIndexLong(-2, 2147483647) : new FakeIndexLong(0);
+        const reply = { ok: 1, cursor: { id: cursor, ns: database + '.' + collection,
+          [initial ? 'firstBatch' : 'nextBatch']: [] } };
+        state.last = cursor;
+        if (state.change) state.change(reply, { command, options, initial });
+        if (state.rawFailure) throw state.rawFailure;
+        return reply;
+      },
+    });
+    const options = () => ({ promoteLongs: false, readPreference: 'primary', session, signal: new AbortController().signal });
+    const initial = collection => api.run(collection, { listIndexes: collection, includeIndexBuildInfo: true,
+      cursor: { batchSize: 1 }, maxTimeMS: 5000 }, options(), null);
+    const more = (collection, cursor = state.last, bits = [-2, 2147483647]) => api.run(collection,
+      { getMore: cursor, collection, batchSize: 1 }, options(), bits);
+    return { api, state, initial, more, options };
+  }
+  {
+    const f = commandFixture();
+    for (const row of portsOriginal.models) { await f.initial(row.collection); if (row.indexes.length) await f.more(row.collection); }
+    f.api.assertComplete(); need(f.state.calls === 21 && f.state.pending === null, 'INDEX_COMMAND_POSITIVE');
+    indexRows.push('INDEX_COMMAND_INDEPENDENT_13_COLLECTION_21_COMMAND_STATE');
+  }
+  async function portRejected(id, action, code, expectedCalls) {
+    const f = commandFixture(); let caught;
+    try { await action(f); } catch (error) { caught = error; }
+    need(caught?.fixtureCode === code && f.state.calls === expectedCalls && f.state.pending === null, 'INDEX_COMMAND_EXPECTED_REFUSAL');
+    let retry; try { await f.initial('users'); } catch (error) { retry = error; }
+    need(retry?.fixtureCode === 'INDEX_COMMAND_STATE' && f.state.calls === expectedCalls, 'INDEX_COMMAND_NO_RETRY');
+    indexRows.push(id);
+  }
+  await portRejected('INDEX_COMMAND_FOREIGN_COLLECTION_BEFORE_IO', f => f.initial('admins'), 'INDEX_COMMAND_STATE', 0);
+  await portRejected('INDEX_COMMAND_IDENTICAL_BITS_REPLACEMENT_ID_REFUSED', async f => {
+    await f.initial('users'); await f.more('users', new FakeIndexLong(-2, 2147483647));
+  }, 'INDEX_COMMAND_CURSOR', 1);
+  await portRejected('INDEX_COMMAND_FORGED_CURSOR_AND_SUPPLIED_BITS_REFUSED', async f => {
+    await f.initial('users'); await f.more('users', new FakeIndexLong(7, 9), [7, 9]);
+  }, 'INDEX_COMMAND_CURSOR', 1);
+  await portRejected('INDEX_COMMAND_CROSS_COLLECTION_BEFORE_EXHAUSTION', async f => {
+    await f.initial('users'); await f.more('admins');
+  }, 'INDEX_COMMAND_STATE', 1);
+  await portRejected('INDEX_COMMAND_REPEATED_INITIAL_BEFORE_EXHAUSTION', async f => {
+    await f.initial('users'); await f.initial('users');
+  }, 'INDEX_COMMAND_PORT', 1);
+  for (const [id, mutate, code] of [
+    ['NAMESPACE', reply => { reply.cursor.ns += '.foreign'; }, 'INDEX_COMMAND_NAMESPACE'],
+    ['UNKNOWN_REPLY_FIELD', reply => { reply.partialResultsReturned = false; }, 'INDEX_COMMAND_REPLY'],
+    ['UNKNOWN_CURSOR_FIELD', reply => { reply.cursor.postBatchResumeToken = {}; }, 'INDEX_COMMAND_REPLY'],
+    ['WRONG_BATCH_KIND', reply => { reply.cursor.nextBatch = []; delete reply.cursor.firstBatch; }, 'INDEX_COMMAND_REPLY'],
+    ['CURSOR_NUMBER', reply => { reply.cursor.id = 0; }, 'INDEX_CURSOR_LONG'],
+  ]) await portRejected('INDEX_COMMAND_RESPONSE_' + id, async f => { f.state.change = mutate; await f.initial('users'); }, code, 1);
+  await portRejected('INDEX_COMMAND_RESPONSE_ORIGIN_DRIFT', async f => {
+    await f.initial('users'); f.state.change = reply => { reply.cursor.id = new FakeIndexLong(1, 2); }; await f.more('users');
+  }, 'INDEX_COMMAND_CURSOR', 2);
+  for (const key of ['db', 'client', 'session']) await portRejected('INDEX_COMMAND_POST_RESPONSE_' + key.toUpperCase() + '_IDENTITY', async f => {
+    f.state.change = () => { f.state[key] = {}; }; await f.initial('users');
+  }, 'INDEX_COMMAND_HANDLES', 1);
+  await portRejected('INDEX_COMMAND_POST_RESPONSE_SESSION_CLOSED', async f => {
+    f.state.change = () => { f.state.ended = true; }; await f.initial('users');
+  }, 'INDEX_COMMAND_HANDLES', 1);
+  {
+    const f = commandFixture(); const primary = Object.freeze(new Error('private-raw-failure'));
+    f.state.rawFailure = primary; f.state.cleanupFailure = new Error('private-pending-cleanup'); let caught;
+    try { await f.initial('users'); } catch (error) { caught = error; }
+    need(caught === primary && f.state.calls === 1 && f.state.pending === null, 'INDEX_COMMAND_FIRST_FAILURE');
+    indexRows.push('INDEX_COMMAND_FIRST_FAILURE_RETAINS_RAW_AND_ATTEMPTS_PENDING_RESTORE');
+  }
+}
+
 async function setupUnits() {
   const cases = [];
   const named = name => Object.assign(new Error('synthetic-private-sentinel'), { name });
@@ -775,7 +1106,8 @@ async function setupUnits() {
     cases.push('CLEANUP_MISSING_PORT_' + missing);
   }
   need(applicationImports === 0 && connections === 0 && domainWrites === 0, 'OFFLINE_EFFECTS');
-  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', cases: rows.length + cases.length + recordingRows.length + configurationRows.length + meetRows.length, recordingCases: recordingRows.length,
+  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', cases: rows.length + cases.length + recordingRows.length + configurationRows.length + meetRows.length + indexRows.length, recordingCases: recordingRows.length,
+    indexCollectorCases: indexRows.length,
     meetRecorderCases: meetRows.length,
     configurationControllerCases: configurationRows.length,
     admissionCases: rows.length, setupDiagnosticCases: diagnosticCount, ownedCleanupCases: cases.length - diagnosticCount, failed: 0,
@@ -783,7 +1115,7 @@ async function setupUnits() {
 }
 recordingUnits();
 configurationUnits();
-meetUnits().then(setupUnits).catch(() => {
+meetUnits().then(indexUnits).then(setupUnits).catch(() => {
   output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', failed: 1, code: 'OFFLINE_SETUP_UNIT_FAILED' }) + '\n');
   process.exitCode = 1;
 });
