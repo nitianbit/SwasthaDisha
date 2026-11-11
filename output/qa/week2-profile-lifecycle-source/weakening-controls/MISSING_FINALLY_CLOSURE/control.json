@@ -1,0 +1,25 @@
+{
+  "id": "MISSING_FINALLY_CLOSURE",
+  "sourceSha256": "35ce82d00259d82b749d20ba7c9ba1e1e252e492889b104043735bbb8a327c87",
+  "before": "try { reset(); } finally { containerResetWindow = false; }",
+  "after": "try { reset(); } finally {}",
+  "command": [
+    "/private/tmp/m0-node22/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-lifecycle-source/test/api-runtime/scenario",
+    "test/api-runtime/scenario/bootstrap-unit.cjs"
+  ],
+  "environment": {
+    "PATH": "/usr/bin:/bin"
+  },
+  "exitCode": 1,
+  "result": {
+    "schema": "SD-AUTH-API-OFFLINE-1",
+    "failed": 1,
+    "code": "OFFLINE_SETUP_UNIT_FAILED",
+    "profileCase": "PROFILE_RESET_WINDOW_OUTSIDE_DENIED_BookingRepository",
+    "warningCase": null
+  },
+  "requiredFixedCase": "PROFILE_RESET_WINDOW_OUTSIDE_DENIED_BookingRepository",
+  "rejected": true
+}

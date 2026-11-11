@@ -1,0 +1,58 @@
+{
+  "schema": "SD-PROFILE-LIFECYCLE-CHECKS-1",
+  "baseline": "7eb4a6b3753917925d799b096f0a54dfbe1d8154",
+  "node": "/private/tmp/m0-node22/node",
+  "nodeSha256": "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0",
+  "commands": [
+    {
+      "command": "env -i PATH=/usr/bin:/bin /private/tmp/m0-node22/node --permission --allow-fs-read=\"$PWD/test/api-runtime/scenario\" test/api-runtime/scenario/bootstrap-unit.cjs",
+      "exitCode": 1,
+      "result": "baseline/red-unit.json",
+      "scope": "PREPATCH_BOOTSTRAP874_NEW_UNIT_RED"
+    },
+    {
+      "command": "env -i PATH=/usr/bin:/bin /private/tmp/m0-node22/node --permission --allow-fs-read=\"$PWD/test/api-runtime/scenario\" test/api-runtime/scenario/bootstrap-unit.cjs",
+      "exitCode": 0,
+      "result": "unit.json",
+      "cases": 680,
+      "scope": "ACTUAL_FIXTURE_AND_FAKE_PORTS_ONLY"
+    },
+    {
+      "command": "env -i PATH=/usr/bin:/bin /private/tmp/m0-node22/node --permission --allow-fs-read=\"$PWD/test/api-runtime/scenario\" --allow-fs-read=\"$PWD/output/qa/week2-index-scenario\" output/qa/week2-index-scenario/evidence-unit.cjs",
+      "exitCode": 0,
+      "result": "parser-unit.json",
+      "cases": 49,
+      "scope": "ACTUAL_PURE_FIXTURE_PARSER_ONLY"
+    },
+    {
+      "command": "env -i PATH=/usr/bin:/bin /private/tmp/m0-node22/node --check test/api-runtime/scenario/bootstrap.cjs",
+      "exitCode": 0,
+      "scope": "CJS_SYNTAX_ONLY"
+    },
+    {
+      "command": "env -i PATH=/usr/bin:/bin /private/tmp/m0-node22/node --check test/api-runtime/scenario/bootstrap-unit.cjs",
+      "exitCode": 0,
+      "scope": "CJS_SYNTAX_ONLY"
+    },
+    {
+      "command": "env -i PATH=/usr/bin:/bin /opt/homebrew/bin/python3 -I -B output/qa/week2-profile-lifecycle-source/run-weakening-controls.py",
+      "exitCode": 0,
+      "result": "weakening-controls.json",
+      "scope": "FIVE_TEMPORARY_OWNED_FIXTURE_VARIANTS_EXACTLY_RESTORED"
+    },
+    {
+      "command": "env -i PATH=/usr/bin:/bin /opt/homebrew/bin/python3 -I -B output/qa/week2-profile-lifecycle-source/verify-source.py",
+      "exitCode": 0,
+      "result": "source-check.json",
+      "scope": "SOURCE_BYTES_JSON_GIT_ONLY"
+    },
+    {
+      "command": "git diff --check -- test/api-runtime/scenario/bootstrap.cjs test/api-runtime/scenario/bootstrap-unit.cjs",
+      "exitCode": 0,
+      "scope": "OWNED_SOURCE_WHITESPACE_ONLY"
+    }
+  ],
+  "applicationOrTypeDiPackageExecutions": 0,
+  "newRuntimeInvocation": false,
+  "limits": "No permission increase, unreviewed runtime resource, app/dependency/business helper/compiler/DB/provider/account/model/nativechild execution."
+}

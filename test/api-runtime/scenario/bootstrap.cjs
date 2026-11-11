@@ -647,8 +647,14 @@ function createProfileBoundary(admission, effects) {
   const classAliases = Object.keys(admission.policy.throwingClasses);
   const substituteAliases = new Set([...classAliases, '@/services/logger', '@/services/firebase',
     '@/modules/payment/services', '@/modules/coupon/services']);
-  let registered;
+  let registered; let containerResetWindow = false;
   return Object.freeze({
+    withContainerReset(reset) {
+      need(typeof reset === 'function', 'SPECIALIST_PROFILE_RESET_CALLBACK');
+      need(!containerResetWindow, 'SPECIALIST_PROFILE_RESET_REENTRANT');
+      containerResetWindow = true;
+      try { reset(); } finally { containerResetWindow = false; }
+    },
     builtin(request, parent) {
       if (!['child_process', 'node:child_process', 'fs', 'node:fs'].includes(request)
         || !parent || !parents.has(parent.filename)) return undefined;
@@ -670,7 +676,8 @@ function createProfileBoundary(admission, effects) {
         const Constructor = { [name]: class {
           constructor() {
             return new Proxy(this, { get(target, key, receiver) {
-              // TypeDI's constructor/prototype metadata is the only inert instance access.
+              // Only the owned synchronous reset may probe this absent lifecycle hook.
+              if (containerResetWindow && key === 'destroy') return undefined;
               if (key === 'constructor' || spec.methods.includes(key)) return Reflect.get(target, key, receiver);
               return deny(name);
             }, set() { return deny(name); }, defineProperty() { return deny(name); }, deleteProperty() { return deny(name); } });
@@ -856,6 +863,7 @@ function installLoader(manifest, plan, ports, effects = counters) {
   };
   return {
     profileClasses: typedi => profile.classes(typedi),
+    withProfileContainerReset: reset => profile.withContainerReset(reset),
     assertProfileClean: () => profile.assertClean(),
     get profileAttempts() { return profile.attempts; },
     phase(nextSubstitutes, nextOverrides = {}) {
@@ -2329,7 +2337,7 @@ async function main() {
   function phase(overrides = {}) {
     if (server) fail('PHASE_SERVER_STILL_OPEN');
     currentMeet = meetLifecycle.phase();
-    typedi.Container.of().reset({ strategy: 'resetServices' });
+    loader.withProfileContainerReset(() => typedi.Container.of().reset({ strategy: 'resetServices' }));
     loader.resetCompiled();
     currentPorts = recordingPorts(ports, typedi, loader); loader.phase(currentPorts.substitutes, overrides);
     axios.defaults.adapter = currentPorts.adapter;

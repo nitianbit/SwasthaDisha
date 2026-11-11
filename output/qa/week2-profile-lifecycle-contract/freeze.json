@@ -1,0 +1,27 @@
+{
+  "schema": "SD-PROFILE-LIFECYCLE-CONTRACT-FREEZE-1",
+  "files": {
+    "output/qa/week2-profile-lifecycle-contract/CONTRACT.md": "b420e1a765ef85f4528a4cf5cd18c49abcf3d3f14058432b31103f60cee044e4",
+    "output/qa/week2-profile-lifecycle-contract/inputs.json": "6599158cb6f593f2e57b3370d14dda1d67a602fcbbfb3d13b5023eb15b0e9e58"
+  },
+  "repositoryInputs": {
+    "test/api-runtime/scenario/bootstrap.cjs": "874025665f5f93454303f3823ed7ba9f606ce36c9119c7f58fe0759cd3214a78",
+    "test/api-runtime/scenario/bootstrap-unit.cjs": "cafb8d2940e258f6fcf685d072b3693be091f36f009bb49880034b0599d1a8e7",
+    "test/api-runtime/scenario/scenario.cjs": "cbb1260c887a7a5dc664fec9a6b47c680e1d180f78b102716122596baaae6500",
+    "test/api-runtime/scenario/ports-manifest.json": "59c410ffc991fdcb4b1ee384f55ba896363011a207573c6f7abc7aa8763f948b",
+    "test/api-runtime/scenario/prepare.py": "39b4085370a09a34069b9f1c4f45cfd8fa38a3a1f0e380abcef9c469a5add598",
+    "test/api-runtime/scenario/compile.cjs": "8d25c7d7c8291fd02b179750dd761db4129750043c3501eb02ea0f759bfa1b6f",
+    "test/api-runtime/scenario/package-plan.json": "d7830a9ce688235bb64f3f9f7ac3d5dd604bb63641cdae97b8b7250bfd957227",
+    "test/api-runtime/launch.mjs": "9c6d1c805de4c50542667b90532219c54666b8a764ee5672055f641938b099ed",
+    "test/api-runtime/platform.mjs": "b5117065c90c4698cb9604a8da0cb673a38249d8eee07a8ac39e11040a56e29f",
+    "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+    "output/qa/week2-profile-warning-contract/CONTRACT.md": "8809dec3e5c7610e0e577476512abf5036c95277cb7ce3f22401087f1fd307dd",
+    "output/qa/week2-api-runtime/execution-10/operator-result.json": "2ae585df4e75acc53b7bb1ab44dbbef9685bb8438e27c534a0ddb15247a6cf43",
+    "output/qa/week2-api-runtime/execution-10/REVIEW.md": "c548f1b97d5455d6e25dce99905f0c3c2c6105ab33a76789ae35d75559768922",
+    "output/qa/week2-api-runtime/execution-10/archive-manifest-final.json": "aae5c215a183f42639f7ded10e39aa4c5c3d7f98dd11991d4231dca2ca498ba3"
+  },
+  "publicInputs": {
+    "/private/tmp/sd-auth-api-build-4c4021cc-f518-4a10-af30-ef6e4d5841ca/runtime/node_modules/typedi/cjs/container-instance.class.js": "7ccf9684b09c01aa2733eddf37b4e91028dade1f231f469d7cfa493f2e8262d3",
+    "/private/tmp/sd-auth-api-build-4c4021cc-f518-4a10-af30-ef6e4d5841ca/runtime/node_modules/typedi/package.json": "a55da1e1a6e6878ec4979179483990d53046c8e91dbe412d6d9f3aaeb53c52af"
+  }
+}
