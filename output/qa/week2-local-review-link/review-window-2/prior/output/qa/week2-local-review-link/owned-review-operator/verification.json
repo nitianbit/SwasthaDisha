@@ -1,0 +1,20 @@
+{
+  "schema": "SD-CLAUDE-OPERATOR-OFFLINE-2",
+  "status": "AMENDMENT_CONFIRMATION_PENDING",
+  "unitTests": 86,
+  "unitPassed": 86,
+  "newActualAuthLifecycleFakeCases": 10,
+  "newDeclaredReviewParserCases": 7,
+  "syntaxParsed": 2,
+  "whitespace": "PASS",
+  "python": "3.14.7",
+  "realSubprocessesInUnit": 0,
+  "realSocketsInUnit": 0,
+  "realSignalsInUnit": 0,
+  "realAuthOrReviewCalls": 0,
+  "effectiveEffort": "UNPROVEN",
+  "actualClaudeExtensionACK": false,
+  "framedFileBodiesUnchanged": 106,
+  "initialSourceFreezeSha256": "c96eeb8a16e88c00c06f63c06bf8b63f9b6495a6ec1304a637e12c3713c18225",
+  "originalPreservation": "Initial69-case file-hash receipt retained; no new independent staged-patch comparison claimed."
+}

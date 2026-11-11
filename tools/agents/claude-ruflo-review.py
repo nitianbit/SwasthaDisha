@@ -18,12 +18,13 @@ import time
 import uuid
 
 
-AUTHOR = '/root/local_claude_review_prep'
+AUTHOR = '/root/claude_review_window'
 REVIEWERS = {'/root', '/root/backend_boot_path'}
 MODEL = 'claude-opus-5-5'
-REVIEW_SOURCE = '1543658ff53e3906f71f4fa8b92a5756b97a7ee1'
-REVIEW_TEMPLATE = '067c3c39f574f439c48f6c6f70e031306fc7c4ea5a6d5934e610b9213006ffde'
-REVIEW_EVIDENCE = '94f8804916850caf9c716fae2cc49c6c0d218202'
+REVIEW_SOURCE = 'c2dbac3e44b0bbf30e4574640cd940e2f0075975'
+REVIEW_TEMPLATE = '185fb708ef0af3b4bbf106b836baee69d20b922a6089b418e42ed739f6e801e7'
+REVIEW_EVIDENCE = '638f44dea50fca667e4cf2accfb2f6c82b5e9cd5'
+AMENDMENT_SHA = '5b67a3e5582d094cd2579850e1060673f999a539574f5323dd7842ef5a1c5ddd'
 TEAM = 'swasthadisha-local'
 MEMBER = 'claude-reviewer'
 INBOX = 'mcp__ruflo__team_inbox'
@@ -31,17 +32,19 @@ SEND = 'mcp__ruflo__team_send'
 MAX_STDOUT = 8 * 1024 * 1024
 MAX_STDERR = 64 * 1024
 MAX_FRAME = 2 * 1024 * 1024
-REVIEW_SECONDS = 1200
+REVIEW_SECONDS = 3600
+MAX_TURNS = 8
+SNAPSHOT_FILE_COUNT = 141
 EOF_SECONDS = 9
 CLI = '/Users/shubham/.vscode/extensions/anthropic.claude-code-2.1.322-darwin-arm64/resources/native-binary/claude'
 NODE = '/Users/shubham/.nvm/versions/node/v24.19.0/bin/node'
 ADAPTER = '/Users/shubham/.codex/ruflo-state/swasthadisha/adapters/57c226be79e9b832e6ee2b7122d387102b878f0ecaa7862a6fd65c4b64268b4d/ruflo-local.mjs'
 RUFLO = '/Users/shubham/.codex/runtimes/ruflo/3.75.0/node_modules/@claude-flow/cli/bin/cli.js'
 ENVIRONMENT = {'HOME': '/Users/shubham', 'PATH': '/usr/bin:/bin', 'TMPDIR': '/private/tmp'}
-ROOT = Path('/private/tmp/swasthadisha-parallel-p1qom53w/local-review-link')
+ROOT = Path('/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window')
 QA = ROOT / 'output/qa/week2-local-review-link'
-CANDIDATE_SHA = 'f5667c8933e825ac32db87f293795dc92bc9d02825a8e9758f200eb7940de280'
-MANIFEST_SHA = '366e3d80a9bd0859758c58380849be25824248d43c1d28e8756d818d091e962c'
+CANDIDATE_SHA = '14f64e0167ee81cc47862ae15f6732d93a2a288e01f953d5407fec3d907e53f7'
+MANIFEST_SHA = '8ef9b22e6a52774ca1b3aa0661b3d11690bfb6ce9d9a709f14b3d5cae358ec6e'
 PROOF_PATH = Path('/private/tmp/sd-claude-ruflo-review-startup-proof.json')
 APPROVAL_PATH = Path('/private/tmp/sd-claude-ruflo-review-approval.json')
 PINNED_FILES = {
@@ -152,6 +155,11 @@ def load_fixed(*, reader=None, proof_exists=None, directory_reader=None):
     candidate = json.loads(candidate_bytes)
     manifest = json.loads(manifest_bytes)
     need(candidate['environment'] == ENVIRONMENT and candidate['executable'] == CLI
+         and candidate['timeoutSeconds'] == REVIEW_SECONDS and candidate['maxTurns'] == MAX_TURNS
+         and candidate['sourceCommit'] == manifest['sourceCommit'] == REVIEW_SOURCE
+         and candidate['evidenceCommit'] == manifest['evidenceCommit'] == REVIEW_EVIDENCE
+         and manifest['descriptorSha256'] == REVIEW_TEMPLATE
+         and manifest['fileCount'] == SNAPSHOT_FILE_COUNT
          and candidate['stdinFile'] == manifest['privateInput']
          and candidate['stdinSha256'] == manifest['inputSha256']
          and candidate['inputManifestSha256'] == MANIFEST_SHA
@@ -163,8 +171,8 @@ def load_fixed(*, reader=None, proof_exists=None, directory_reader=None):
     payload = read(candidate['stdinFile'], private=True)
     need(len(payload) == candidate['stdinBytes'] and digest(payload) == candidate['stdinSha256'], 'INPUT_REJECTED')
     snapshot = json.loads(payload)
-    need(isinstance(snapshot.get('files'), list) and len(snapshot['files']) == 106
-         and len({f['path'] for f in snapshot['files']}) == 106
+    need(isinstance(snapshot.get('files'), list) and len(snapshot['files']) == SNAPSHOT_FILE_COUNT
+         and len({f['path'] for f in snapshot['files']}) == SNAPSHOT_FILE_COUNT
          and [{k: v for k, v in f.items() if k != 'content'} for f in snapshot['files']] == manifest['files']
          and all(exact(f, ['kind', 'path', 'sha256', 'content'])
                  and digest(f['content'].encode()) == f['sha256'] for f in snapshot['files'])
@@ -189,6 +197,7 @@ def load_fixed(*, reader=None, proof_exists=None, directory_reader=None):
                 'decision': 'APPROVE_ONE_OWNED_CLAUDE_REVIEW', 'operatorSha256': digest(read(__file__)),
                 'testsSha256': digest(read(Path(__file__).with_name('claude-ruflo-review.test.py'))),
                 'contractSha256': '97dc92ae0469a346eb2094833cc4c697b4c7ad105a753dc086a52289544895a9',
+                'amendmentSha256': AMENDMENT_SHA,
                 'candidateSha256': CANDIDATE_SHA, 'inputManifestSha256': MANIFEST_SHA,
                 'stdinSha256': candidate['stdinSha256'], 'startupProofSha256': digest(proof_bytes),
                 'sourceCommit': candidate['sourceCommit'], 'evidenceCommit': candidate['evidenceCommit'],
@@ -373,6 +382,10 @@ class StreamEvidence:
             need(not self.initialized and event.get('subtype') == 'init'
                  and event.get('model') == MODEL and event.get('claude_code_version') == '2.1.322',
                  'CLIENT_INIT_UNSUPPORTED')
+            # Vendor docs reserve non-null init.effort for Remote Control,
+            # omitting it from application print streams. It cannot certify
+            # this fixed local CLI route, even when the value claims max.
+            need(event.get('effort') is None, 'CLIENT_INIT_UNSUPPORTED')
             tools = event.get('tools')
             need(isinstance(tools, list) and len(tools) == len(set(tools))
                  and set(tools) in [{INBOX, SEND}, {INBOX, SEND, 'EndConversation'}], 'MODEL_TOOL_SCOPE')
@@ -405,7 +418,7 @@ class StreamEvidence:
             need(event.get('subtype') == 'success' and event.get('is_error') is False
                  and event.get('permission_denials') == []
                  and isinstance(event.get('result'), str) and event['result'].strip()
-                 and type(event.get('num_turns')) is int and 0 < event['num_turns'] <= 8
+                 and type(event.get('num_turns')) is int and 0 < event['num_turns'] <= MAX_TURNS
                  and set(event.get('modelUsage', {})) == {MODEL}, 'REVIEW_RESULT_REJECTED')
             need(declared_review(event['result']) == self.declared, 'REVIEW_RESULT_MISMATCH')
             self.result = {'sha256': digest(event['result'].encode()), 'bytes': len(event['result'].encode())}

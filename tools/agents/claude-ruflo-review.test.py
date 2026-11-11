@@ -28,6 +28,7 @@ spec = importlib.util.spec_from_file_location('owned_review', Path(__file__).wit
 m = importlib.util.module_from_spec(spec)
 sys.modules[spec.name] = m
 spec.loader.exec_module(m)
+original_collect = m.RealPorts.collect
 for name in ['command', 'admit', 'auth', 'auth_start', 'auth_capture', 'auth_close', 'revalidate', 'reserve', 'start', 'collect',
              'identity', 'child_pids', 'group_empty', 'observe', 'close_input',
              'wait_grace', 'signal_exact', 'private_write', 'save', 'finish']:
@@ -530,6 +531,58 @@ class DeclarationTests(unittest.TestCase):
         self.assertNotIn('private-sentinel', json.dumps(report))
 
 
+class LocalEffortProvenanceTests(unittest.TestCase):
+    def test_missing_and_null_vendor_effort_remain_unproven(self):
+        for explicit_null in [False, True]:
+            rows = events()
+            if explicit_null: rows[0]['effort'] = None
+            evidence = m.StreamEvidence(SID, LINK)
+            for row in rows: evidence.accept(row)
+            self.assertEqual(evidence.summary()['effectiveEffort'], 'UNPROVEN')
+
+    def test_nonnull_effort_is_unsupported_on_local_print_even_claimed_max(self):
+        for value in ['max', 'xhigh', 'high', 'medium', 'low', 'unknown', True, 8, {'effort': 'max'}]:
+            evidence = m.StreamEvidence(SID, LINK)
+            first = events()[0]; first['effort'] = value
+            with self.assertRaises(m.ReviewError) as caught: evidence.accept(first)
+            self.assertEqual(caught.exception.code, 'CLIENT_INIT_UNSUPPORTED')
+            self.assertFalse(evidence.initialized)
+
+    def test_assistant_text_and_result_effort_never_certify_requested_mode(self):
+        rows = events()
+        rows[1]['message']['content'].insert(0, {'type': 'text', 'text': '{"effort":"max","effectiveEffort":"max"}'})
+        rows[-1]['effort'] = 'max'
+        evidence = m.StreamEvidence(SID, LINK)
+        for row in rows: evidence.accept(row)
+        result = evidence.summary()
+        self.assertEqual(result['requestedEffort'], 'max')
+        self.assertEqual(result['effectiveEffort'], 'UNPROVEN')
+        self.assertFalse(result['actualClaudeExtensionACK'])
+
+    def test_wrong_session_model_and_duplicate_init_cannot_supply_effort(self):
+        for field, value in [('session_id', 'forged-session'), ('model', 'claude-other')]:
+            evidence = m.StreamEvidence(SID, LINK); first = events()[0]; first[field] = value
+            with self.assertRaises(m.ReviewError): evidence.accept(first)
+        evidence = m.StreamEvidence(SID, LINK); evidence.accept(events()[0])
+        duplicate = events()[0]; duplicate['effort'] = 'max'
+        with self.assertRaises(m.ReviewError): evidence.accept(duplicate)
+
+    def test_unsupported_effort_never_completes_review_even_after_safe_cleanup(self):
+        ports = FakePorts(); ports.event_rows[0]['effort'] = 'max'
+        result = m.run_operator(bundle(), ports)
+        self.assertEqual(result['firstFailure'], 'CLIENT_INIT_UNSUPPORTED')
+        self.assertEqual(result['reviewCompleted'], 0)
+        self.assertTrue(result['cleanup']['safe'])
+        self.assertEqual(result['effectiveEffort'], 'UNPROVEN')
+
+    def test_unsupported_effort_preserves_primary_when_cleanup_unknown(self):
+        ports = FakePorts(); ports.event_rows[0]['effort'] = 'xhigh'; ports.empty_group = False
+        result = m.run_operator(bundle(), ports)
+        self.assertEqual(result['status'], 'UNRESOLVED')
+        self.assertEqual(result['firstFailure'], 'CLIENT_INIT_UNSUPPORTED')
+        self.assertEqual(result['reviewCompleted'], 0)
+
+
 class LifecycleTests(unittest.TestCase):
     def test_valid_fake_review_is_effort_unproven_not_pass(self):
         p = FakePorts(); report = m.run_operator(bundle(), p)
@@ -693,7 +746,7 @@ class FixedInputTests(unittest.TestCase):
         self.link_path = '/synthetic-owned/link.json'
         link_bytes = encode(link)
         files = [{'kind': 'FROZEN_SOURCE', 'path': '/synthetic/' + str(i),
-                  'sha256': m.digest(b'inert source'), 'content': 'inert source'} for i in range(105)]
+                  'sha256': m.digest(b'inert source'), 'content': 'inert source'} for i in range(m.SNAPSHOT_FILE_COUNT - 1)]
         files.append({'kind': 'SAFE_PENDING_LINK_METADATA', 'path': self.link_path,
                       'sha256': m.digest(link_bytes), 'content': link_bytes.decode()})
         prompt = b'synthetic instructions, not a model request'
@@ -702,6 +755,8 @@ class FixedInputTests(unittest.TestCase):
         config = b'{"mcpServers":{"ruflo":{"type":"stdio"}}}'
         manifest = {'privateInput': self.payload_path, 'inputSha256': m.digest(payload),
                     'mcpConfigSha256': m.digest(config), 'promptSha256': m.digest(prompt),
+                    'sourceCommit': m.REVIEW_SOURCE, 'evidenceCommit': m.REVIEW_EVIDENCE,
+                    'descriptorSha256': m.REVIEW_TEMPLATE, 'fileCount': m.SNAPSHOT_FILE_COUNT,
                     'files': [{k: v for k, v in f.items() if k != 'content'} for f in files]}
         manifest_bytes = encode(manifest)
         m.MANIFEST_SHA = m.digest(manifest_bytes)
@@ -710,7 +765,8 @@ class FixedInputTests(unittest.TestCase):
             'stdinSha256': m.digest(payload), 'stdinBytes': len(payload),
             'inputManifestSha256': m.MANIFEST_SHA, 'mcpConfigSha256': m.digest(config),
             'sessionId': SID, 'argv': ['--print', '--model', m.MODEL, '--effort', 'max', '--tools', '', '--session-id', SID],
-            'sourceCommit': 'a' * 40, 'evidenceCommit': 'b' * 40,
+            'sourceCommit': m.REVIEW_SOURCE, 'evidenceCommit': m.REVIEW_EVIDENCE,
+            'timeoutSeconds': m.REVIEW_SECONDS, 'maxTurns': m.MAX_TURNS,
             'privateOutputDirectory': '/synthetic-owned/output'}
         candidate_bytes = encode(candidate)
         m.CANDIDATE_SHA = m.digest(candidate_bytes)
@@ -720,6 +776,7 @@ class FixedInputTests(unittest.TestCase):
         receipt = {'schema': 'SD-CLAUDE-REVIEW-APPROVAL-1', 'decision': 'APPROVE_ONE_OWNED_CLAUDE_REVIEW',
             'operatorSha256': m.digest(helper), 'testsSha256': m.digest(b'synthetic-fake-tests'),
             'contractSha256': '97dc92ae0469a346eb2094833cc4c697b4c7ad105a753dc086a52289544895a9',
+            'amendmentSha256': m.AMENDMENT_SHA,
             'candidateSha256': m.CANDIDATE_SHA,
             'inputManifestSha256': m.MANIFEST_SHA, 'stdinSha256': candidate['stdinSha256'],
             'startupProofSha256': m.digest(proof_bytes), 'sourceCommit': candidate['sourceCommit'],
@@ -761,6 +818,18 @@ class FixedInputTests(unittest.TestCase):
         self.data[path] = json.dumps(value).encode()
         with self.assertRaises(m.ReviewError): self.load()
         self.assertNotIn(str(m.PROOF_PATH), [p for p, _ in self.reads])
+
+    def test_rehashed_stale_window_and_target_fail_before_startup_metadata(self):
+        path = str(m.QA / 'claude-review-invocation.json')
+        initial = self.data[path]
+        for field, value in [('timeoutSeconds', 1200), ('timeoutSeconds', 0),
+                             ('maxTurns', 32), ('sourceCommit', 'a' * 40),
+                             ('evidenceCommit', 'b' * 40)]:
+            item = json.loads(initial); item[field] = value
+            changed = json.dumps(item).encode()
+            self.data[path] = changed; m.CANDIDATE_SHA = m.digest(changed); self.reads.clear()
+            with self.assertRaises(m.ReviewError): self.load()
+            self.assertNotIn(str(m.PROOF_PATH), [p for p, _ in self.reads])
 
     def test_manifest_tamper(self):
         self.data[str(m.QA / 'claude-review-input-manifest.json')] += b' '
@@ -809,6 +878,43 @@ class FixedInputTests(unittest.TestCase):
         with self.assertRaises(m.ReviewError):
             original_load_fixed(reader=self.reader, proof_exists=lambda: True,
                                 directory_reader=lambda path: (111, 333))
+
+
+class ReviewWindowTests(unittest.TestCase):
+    def test_real_collection_clock_survives_old_deadline_and_stops_at_new_bound(self):
+        class Pipe:
+            def fileno(self): return 88
+        class Selector:
+            def __init__(self): self.closed = False
+            def register(self, *args): pass
+            def get_map(self): return {'active': None}
+            def select(self, timeout): return []
+            def close(self): self.closed = True
+        class Collector:
+            def __init__(self): self.observations = 0
+            def observe(self, process, captured): self.observations += 1
+        ports = Collector()
+        process = SimpleNamespace(stdin=Pipe(), stdout=Pipe(), stderr=Pipe(), poll=lambda: None)
+        selector = Selector(); clock = iter([0, 1201, 3599, 3600])
+        previous = m.time.monotonic, m.selectors.DefaultSelector, m.os.set_blocking
+        try:
+            m.time.monotonic = lambda: next(clock)
+            m.selectors.DefaultSelector = lambda: selector
+            m.os.set_blocking = lambda *args: None
+            with self.assertRaises(m.ReviewError) as caught:
+                original_collect(ports, process, {'payload': b'inert'}, m.StreamEvidence(SID, LINK), dict(CAPTURED))
+            self.assertEqual(caught.exception.code, 'TIMEOUT')
+            self.assertEqual(ports.observations, 3)
+            self.assertTrue(selector.closed)
+        finally:
+            m.time.monotonic, m.selectors.DefaultSelector, m.os.set_blocking = previous
+
+    def test_only_wall_clock_limit_changes_no_cleanup_or_tool_budget_increase(self):
+        self.assertEqual(m.REVIEW_SECONDS, 3600)
+        self.assertEqual(m.MAX_TURNS, 8)
+        self.assertEqual(m.EOF_SECONDS, 9)
+        self.assertEqual(m.MAX_STDOUT, 8 * 1024 * 1024)
+        self.assertEqual(m.MAX_STDERR, 64 * 1024)
 
 
 if __name__ == '__main__':

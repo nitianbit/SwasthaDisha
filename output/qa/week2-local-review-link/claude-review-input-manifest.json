@@ -1,541 +1,712 @@
 {
-  "schema": "SD-CLAUDE-REVIEW-PREPARED-INPUT-1",
-  "status": "PREPARED_AUTH_AND_OPERATOR_REQUIRED_NOT_INVOKED",
+  "accountChanges": 0,
+  "actualClaudeExtensionACK": false,
+  "applicationEvaluations": 0,
   "clientKind": "local-bundled-CLI",
-  "sourceCommit": "1543658ff53e3906f71f4fa8b92a5756b97a7ee1",
-  "evidenceCommit": "94f8804916850caf9c716fae2cc49c6c0d218202",
-  "descriptorSha256": "067c3c39f574f439c48f6c6f70e031306fc7c4ea5a6d5934e610b9213006ffde",
-  "promptSha256": "3fac7e4e2416231b43f02c528a153e95dd5a39f62744732c5728a226fe263e8f",
-  "mcpConfigSha256": "a612d678b74998efe9b9d91c029d7f66731ff4fb8e5e096e41f07243369743b0",
-  "privateInput": "/private/tmp/sd-claude-review-input-wzq9b7wh/review-input.json",
-  "inputSha256": "1a360957b39f953e7a011eebd40d60767689181bb4cb9f1921aeaee3e0756345",
-  "inputBytes": 1035962,
-  "fileCount": 106,
+  "contextLimitation": "Source/evidence snapshot; model cannot independently execute hashes or query host filesystem.",
+  "descriptorSha256": "185fb708ef0af3b4bbf106b836baee69d20b922a6089b418e42ed739f6e801e7",
+  "evidenceCommit": "638f44dea50fca667e4cf2accfb2f6c82b5e9cd5",
+  "fileCount": 141,
   "files": [
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/auth/routes/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/auth/routes/index.ts",
       "sha256": "1f3e6a8076fa0c8aa5f5edc1d95787fd955e81b40c6323a87a97197b54a73893"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/user/routes/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/user/routes/index.ts",
       "sha256": "5abcd4fd438ce0a05f24a72f85d40d1a9ab9b9374fd9056a442a8fe6481396bf"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/wallet/routes/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/wallet/routes/index.ts",
       "sha256": "5ce3fc7bdd72140348df94787b0c4e47a19190ada5137a2971be84cbe584197c"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/middleware/auth.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/middleware/auth.ts",
       "sha256": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/middleware/errorHandler.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/middleware/errorHandler.ts",
       "sha256": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/auth/controller/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/dependents/routes/index.ts",
+      "sha256": "a3ade302e3d7453b29135f4347d7ddf2b4b1fbad75aa7c0f5a5c6bc178573344"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/notification/routes/index.ts",
+      "sha256": "d9fe35d82ebda24be5a1f9dd5dcd0d957dbe08bccc81969dac1eb2d834649d6b"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/fcm/routes/index.ts",
+      "sha256": "bfd18b39dd716a2f34dad8c287670789d56d313eff5879bdc70cf9820a7121c4"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/meet/routes/index.ts",
+      "sha256": "e8bfff4a492ed11a18f1735528bfa4886a338b878852cde9bcea2f5d5bdd71e4"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/auth/controller/index.ts",
       "sha256": "2fd46a2824e9842eb820b2a49714245ccd521a7880612ae6b48c2b6e9aed4528"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/auth/validation/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/auth/validation/index.ts",
       "sha256": "c0424a7bf6fb49226dec0aa39babec98221f50fcd842c4137120b8a30a3d3527"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/middleware/validation.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/common/middleware/validation.ts",
       "sha256": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/utils/asyncHandler.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/common/utils/asyncHandler.ts",
       "sha256": "59fe49db58678ef81242a654f7457f74b067b2583a3f8dc70918b61f50228bd9"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/user/controller/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/user/controller/index.ts",
       "sha256": "25aef90efe3e5142011789dd48d55452d5b1fef9f2e56d70c355e7606e191d74"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/user/validation/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/user/validation/index.ts",
       "sha256": "db7d64de2ab5276753656681ef1b50cada2a108047ec24db195b384e28bf6fbb"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/types/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/common/types/index.ts",
       "sha256": "63ad3821027150d368e993903e954b4a80b776ff223caf322c104008239d4cbd"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/wallet/controller/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/wallet/controller/index.ts",
       "sha256": "3b22b878fd8717b8b88620c2cb5ff3f00337f5d887beea86050fcd34d222264f"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/wallet/validation/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/wallet/validation/index.ts",
       "sha256": "b14fcba5a716314998d755b16d27db8a43e45e1244fc327543c90f7db41356d1"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/config/config.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/config/config.ts",
       "sha256": "e879b0f9c635283d7c9a271128605c6d8583995356e30f5f1c318d23270d09f6"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/pharmacies/model/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/pharmacies/model/index.ts",
       "sha256": "beda95d89a9773a8d5851dd923c363c83123a573f7391836dec69b13e5cfa177"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/utils/mongoErrors.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/common/utils/mongoErrors.ts",
       "sha256": "147a5687832d03c654acd97e0f9e0d9c6c0c7ab51a2841f0eb2260235229d43d"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/auth/services/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/dependents/controller/index.ts",
+      "sha256": "5fd4f41f923e38ea8545499f6976b64ecda6070e2ba0eab72ac31608535e47f5"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/dependents/validation/index.ts",
+      "sha256": "6174811e3981865a75ff4a3fb195c4be0ad5bb9b0645761b474b1532fda9030d"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/notification/controller/index.ts",
+      "sha256": "e9b58d50978062ebe7a52b5a2259b9e862415e6e17fd69599ba8945d1f25934f"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/notification/validation/index.ts",
+      "sha256": "11d7286fb287e5a51282da6b025896871d048ca4b58086a40e8fc61b58bd9c9b"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/fcm/controller/index.ts",
+      "sha256": "53544029ca0616db46a326d9f1414c91252178f5ddfd2e15a6c337328335b464"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/fcm/validation/index.ts",
+      "sha256": "80fe3ca9f6cdd0f20afe689852cdafb3ae915ff8f2e0334c345084571f69fc7b"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/meet/controller/index.ts",
+      "sha256": "94b5d080c86ed8b9bb0f1ba4a145ed67d9e51115bbb10e26013a30026bf7aff0"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/meet/validation/index.ts",
+      "sha256": "8543aad3ebb22beabe3e293e278154edda82b47d80dc1b1aa379854260e428a7"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/auth/services/index.ts",
       "sha256": "d59d5ea23df586fbbdb5b9c4615bcbe0b716f649bdc02f3738088f87b0fbae56"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/auth/types/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/auth/types/index.ts",
       "sha256": "f6cbff24776d23b029244526d07d6a9af290aec66020d414469388c6f11118e9"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/admin/repository/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/admin/repository/index.ts",
       "sha256": "52228e037935bc4fee3265566fe62458d46b25de50457c7ef356df4f24d1661d"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/hr/repository/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/hr/repository/index.ts",
       "sha256": "565efdeec1a579b7a31ed01cec2d1ff8f5391969f782b63b35a1075e9c5c0a36"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/user/repository/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/user/repository/index.ts",
       "sha256": "e730c52b26fbc773bcf92673190b68fe00c91162cb97f37eac1570cbbb85c4e1"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/specialists/repository/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/specialists/repository/index.ts",
       "sha256": "c3b4abd78026639fe9bedda62912ec59ecf6ff1f92e01947bf2be59d4ea4ca00"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/pharmacies/repository/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/pharmacies/repository/index.ts",
       "sha256": "f3e1110b139c8158d1c846db7778a45f8ba9f5ce225f4468384f2d070d3718db"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/user/services/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/user/services/index.ts",
       "sha256": "e649883d1728b6a39a129d1cde08152628d7a8f13ba68da3de7764799f799290"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/user/types/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/user/types/index.ts",
       "sha256": "91d4b48e4749d113733f471d64093c7269dffcf13bf48577c8dbc2edce7d5b71"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/types/error.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/common/types/error.ts",
       "sha256": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/types/response.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/common/types/response.ts",
       "sha256": "44c5dbcf38ea117eaa13f3a715143ea147a7abf25c3491b61817e67b5f3d6f93"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/wallet/services/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/wallet/services/index.ts",
       "sha256": "938433ca68e0481bf86d2b69f5d56106fba04f913c94e326947bbd617fbc13ff"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/wallet/types/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/wallet/types/index.ts",
       "sha256": "ebe4c82783a032315ff70df33961010ab44ff11413bb29c3cd98e7d0f43e0e6b"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/settings/types/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/settings/types/index.ts",
       "sha256": "1e69283201773cee55f5eaf0f10ccc77d5a8c091cb8aa1ead83a4616d20bfdd8"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/pharmacies/types/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/pharmacies/types/index.ts",
       "sha256": "e43d4c6e5af5ebc9a21e3a35d41e475e92ab7509961cdafe6bfc3043af0b24f0"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/corporates/repository/index.ts",
-      "sha256": "d25d77d0ca37c64877e088ad6cd057dba4920dabab5c139e65deac99e2f3e384"
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/dependents/services/index.ts",
+      "sha256": "adc2f3cf156bfa807bf125904ecd83c8f84dee38a072c7b78d1e90c8822cc044"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/otp/services/index.ts",
-      "sha256": "cf59555cb618ace73e78e7fb35ca5ce780075ed30d5c3f7c633b1777b4b07971"
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/dependents/types/index.ts",
+      "sha256": "ce0d110b55330c5dadd24fdbea2dd1313a818deb4828723a64b151334a9b8717"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/admin/types/index.ts",
-      "sha256": "40af9ca32f722617f765813d5ef865c45cd40ae2dfe2b68db367740d5239b3ad"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/hr/types/index.ts",
-      "sha256": "3439270c8a405dbe1299717979e8b8802cd671048842506283bfec4476a6399b"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/specialists/types/index.ts",
-      "sha256": "fcd9dcbe1d4e389b05cdf0839406b9547daef96df4360985cc1e483209741bfe"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/notification/services/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/notification/services/index.ts",
       "sha256": "dd343357282c5c80fb02da2913d9eaf1ec772e7df0daa39f9a4b0bfc87c9311d"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/email/services/index.ts",
-      "sha256": "44049e2331f3cc9dbed9e8608f90bc9db1a0c9a2d7b43c9a8eee1e2d4c877afc"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/sms/services/index.ts",
-      "sha256": "7ab0ba42473626e89d23a4fcf4eca4d298b53d6fa30648b36d77ea779bc32b94"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/repository/index.ts",
-      "sha256": "6e13d4d0ced3ad40772c5b2c35034544fe49f0d7b715cf0309f954be7ab5cb77"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/admin/model/index.ts",
-      "sha256": "6f0463e094209c158dc59dd58e23e2ca9ec609301ecf7c55c61592cba8a80526"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/hr/model/index.ts",
-      "sha256": "97937e1e9935c78771357a824a52019fbf81fdb1cc5c77fe86107c1516c5f6eb"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/utils/queryUtils.ts",
-      "sha256": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/user/model/index.ts",
-      "sha256": "8ab08c867008d9788fd2105b6ac840794fcd5d8b2c518de500119aa2536cf5c4"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/specialists/model/index.ts",
-      "sha256": "0dcbc6b6a88b439181494c514eebdd8cd48273933ea1028cc77c0b6ed2a0d39e"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/wallet/repository/index.ts",
-      "sha256": "4db66107afa4ecb7db99a91c3d9216488a514145187e56bc0d589677e344b726"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/utils/dateUtils.ts",
-      "sha256": "87bf2514e890fc3b03f75c68b1661376c13388b07fe5f4af134714013d41dcd1"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/corporates/model/index.ts",
-      "sha256": "1aaa1f45c8cba7b488c803181af71ba9c66c8d638ce5285909c5f814143be89c"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/wellnessPackages/model/index.ts",
-      "sha256": "46dd391deda14d63a041c478b5233010faa186df51651f7d611b8946675acc28"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/corporates/types/index.ts",
-      "sha256": "acc6d8d0ccddaf6b37c7247d4b3f5699bdb6910ca485ff605ff5987bcb5889ea"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/wellnessPackages/types/index.ts",
-      "sha256": "f34ac025b47b73b4d6de30b37768b2fbed980681d245165a98789b4a9d4aa8b1"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/otp/repository/index.ts",
-      "sha256": "8d59e92cb0d019a2d777d9b794278f126714205dce774caee5cd6e96d14a6841"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/otp/types/index.ts",
-      "sha256": "7ee33890ffbbfeefb0921fec4faf53c0af775b963e90202199a542c642ac15fd"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/notification/repository/index.ts",
-      "sha256": "418749c02dbd5844003b355fb6e79f66846377146e708f816ffb7426bc42e897"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/fcm/services/index.ts",
-      "sha256": "5721b5de514461bdc1197cb721bf99440b79df9bf8c889087b691ba47d6c55ec"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/notification/types/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/notification/types/index.ts",
       "sha256": "7c755170cacc5ce208c1522b152543ccbbefba3cc03a9f28f99a3d6d325a6b68"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/common/repository/BaseRepository.ts",
-      "sha256": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a"
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/fcm/services/index.ts",
+      "sha256": "5721b5de514461bdc1197cb721bf99440b79df9bf8c889087b691ba47d6c55ec"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/wallet/model/index.ts",
-      "sha256": "18757f38145a2ebab378cd1d00c423170a00fd3b136b1229105244fb1a540538"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/otp/model/index.ts",
-      "sha256": "9891e0b34bbd3b21502540d86a8001c4f666223ddb8628c2922a1953ede6506d"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/notification/model/index.ts",
-      "sha256": "ef6c56aec1cecaac2c0248b76faf1dd4721f4c00a45b2fa8f45c8b79836c1ca9"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/fcm/repository/index.ts",
-      "sha256": "8c472a507a1ae97ba683db83bb8e6d07112f243f91eb0b7eb39ea36abb74baca"
-    },
-    {
-      "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/fcm/types/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/fcm/types/index.ts",
       "sha256": "f1beb58d08a91b5c6797d177a21be55cb6d79813f2a510cd164532fa723a6f2c"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/src1/modules/fcm/model/index.ts",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/meet/service/index.ts",
+      "sha256": "edc6972866223a641027fcddc3b1b3bcec47bb31cb189bf4d7b097da33a24644"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/corporates/repository/index.ts",
+      "sha256": "d25d77d0ca37c64877e088ad6cd057dba4920dabab5c139e65deac99e2f3e384"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/otp/services/index.ts",
+      "sha256": "cf59555cb618ace73e78e7fb35ca5ce780075ed30d5c3f7c633b1777b4b07971"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/admin/types/index.ts",
+      "sha256": "40af9ca32f722617f765813d5ef865c45cd40ae2dfe2b68db367740d5239b3ad"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/hr/types/index.ts",
+      "sha256": "3439270c8a405dbe1299717979e8b8802cd671048842506283bfec4476a6399b"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/specialists/types/index.ts",
+      "sha256": "fcd9dcbe1d4e389b05cdf0839406b9547daef96df4360985cc1e483209741bfe"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/email/services/index.ts",
+      "sha256": "44049e2331f3cc9dbed9e8608f90bc9db1a0c9a2d7b43c9a8eee1e2d4c877afc"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/sms/services/index.ts",
+      "sha256": "7ab0ba42473626e89d23a4fcf4eca4d298b53d6fa30648b36d77ea779bc32b94"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/common/repository/index.ts",
+      "sha256": "6e13d4d0ced3ad40772c5b2c35034544fe49f0d7b715cf0309f954be7ab5cb77"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/admin/model/index.ts",
+      "sha256": "6f0463e094209c158dc59dd58e23e2ca9ec609301ecf7c55c61592cba8a80526"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/hr/model/index.ts",
+      "sha256": "97937e1e9935c78771357a824a52019fbf81fdb1cc5c77fe86107c1516c5f6eb"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/common/utils/queryUtils.ts",
+      "sha256": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/user/model/index.ts",
+      "sha256": "8ab08c867008d9788fd2105b6ac840794fcd5d8b2c518de500119aa2536cf5c4"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/specialists/model/index.ts",
+      "sha256": "0dcbc6b6a88b439181494c514eebdd8cd48273933ea1028cc77c0b6ed2a0d39e"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/wallet/repository/index.ts",
+      "sha256": "4db66107afa4ecb7db99a91c3d9216488a514145187e56bc0d589677e344b726"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/common/utils/dateUtils.ts",
+      "sha256": "87bf2514e890fc3b03f75c68b1661376c13388b07fe5f4af134714013d41dcd1"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/dependents/repository/index.ts",
+      "sha256": "cda1c7463c2dae2b692e8f629c7395ef23f1af20340401fae63b186ba7960845"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/notification/repository/index.ts",
+      "sha256": "418749c02dbd5844003b355fb6e79f66846377146e708f816ffb7426bc42e897"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/fcm/repository/index.ts",
+      "sha256": "8c472a507a1ae97ba683db83bb8e6d07112f243f91eb0b7eb39ea36abb74baca"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/bookings/repository/index.ts",
+      "sha256": "d54ebba522cd290589296918eb2dcb4f7609e42d836ef3f23dfb89114b375713"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/bookings/types/index.ts",
+      "sha256": "30d1a615c3f157ec9a73f9a13968c3afcec59f84bdfa0178413f22c906f42a79"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/slots/repository/index.ts",
+      "sha256": "1b1c71269c326a94360efc0c45748df1157bd3d7962dac03705fb0ceb1141bd5"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/meet/types/index.ts",
+      "sha256": "c2073614952f0d411bacd59896d386df54d8d8310c20234b4ab30eec35bfd863"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/corporates/model/index.ts",
+      "sha256": "1aaa1f45c8cba7b488c803181af71ba9c66c8d638ce5285909c5f814143be89c"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/wellnessPackages/model/index.ts",
+      "sha256": "46dd391deda14d63a041c478b5233010faa186df51651f7d611b8946675acc28"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/corporates/types/index.ts",
+      "sha256": "acc6d8d0ccddaf6b37c7247d4b3f5699bdb6910ca485ff605ff5987bcb5889ea"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/wellnessPackages/types/index.ts",
+      "sha256": "f34ac025b47b73b4d6de30b37768b2fbed980681d245165a98789b4a9d4aa8b1"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/otp/repository/index.ts",
+      "sha256": "8d59e92cb0d019a2d777d9b794278f126714205dce774caee5cd6e96d14a6841"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/otp/types/index.ts",
+      "sha256": "7ee33890ffbbfeefb0921fec4faf53c0af775b963e90202199a542c642ac15fd"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/common/repository/BaseRepository.ts",
+      "sha256": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/wallet/model/index.ts",
+      "sha256": "18757f38145a2ebab378cd1d00c423170a00fd3b136b1229105244fb1a540538"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/dependents/model/index.ts",
+      "sha256": "6e517f2882822cfd587111a5fb5f1bf959a7cd2772026ccb943ad758e1b4071e"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/notification/model/index.ts",
+      "sha256": "ef6c56aec1cecaac2c0248b76faf1dd4721f4c00a45b2fa8f45c8b79836c1ca9"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/fcm/model/index.ts",
       "sha256": "7082276e9d66a64ad7dc510dcc37782bb1a4e7ee80accbd1322f5c2d8a6f6b37"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/scenario/bootstrap.cjs",
-      "sha256": "861be44d5f28beebbde9bd81c75c4e8fe575bb76f67d5c16451bdcf6d01bbb4f"
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/bookings/model/index.ts",
+      "sha256": "219f8115e5eec4bebd7205c763638e8755bde57122866430a1b3bcd0f69ead72"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/scenario/scenario.cjs",
-      "sha256": "95c44306f9ab7bddadc7e5be5d9a5e80b9816234167d1a83402a6591f3a88947"
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/slots/model/index.ts",
+      "sha256": "afefe8b261e73918a446caaa537ecbbd34a8a4a416995b43e6484bb54add3df6"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/scenario/ports-manifest.json",
-      "sha256": "993003d7ec316a99c8189acde7e45277c6f79f9f567a1e26cfed9a7d3d855f94"
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/slots/types/index.ts",
+      "sha256": "65ae5f367bb140d6bd068ebe2d6e9701ab33c59d1863da6e82d86cdd6895581b"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/scenario/prepare.py",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/src1/modules/otp/model/index.ts",
+      "sha256": "9891e0b34bbd3b21502540d86a8001c4f666223ddb8628c2922a1953ede6506d"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/test/api-runtime/scenario/bootstrap.cjs",
+      "sha256": "ff7ecad69b71145ba1dad5ad76ca68e836437d2e02077ade8ffa3748c40b6efc"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/test/api-runtime/scenario/scenario.cjs",
+      "sha256": "4ceca6c30921a3718b1b81912bebf6b8c735adbab6f82293c502e281d1f4f668"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/test/api-runtime/scenario/ports-manifest.json",
+      "sha256": "86d6b909c06387c52c8d62e3b99a10784d9612fb6fc63581faf6d3e96ee13a12"
+    },
+    {
+      "kind": "FROZEN_SOURCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/test/api-runtime/scenario/prepare.py",
       "sha256": "39b4085370a09a34069b9f1c4f45cfd8fa38a3a1f0e380abcef9c469a5add598"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/scenario/compile.cjs",
-      "sha256": "76383b2161dc19d4675f7c21edc1a4fa799cd0287b80628f63bc2d19b38a3a2a"
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/test/api-runtime/scenario/compile.cjs",
+      "sha256": "ecf823aba516c9c1bba8ce7ae62c2db32a7d648721239c363bb1f6aad84584df"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/scenario/package-plan.json",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/test/api-runtime/scenario/package-plan.json",
       "sha256": "d7830a9ce688235bb64f3f9f7ac3d5dd604bb63641cdae97b8b7250bfd957227"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/application/app-bundle.mjs",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/test/application/app-bundle.mjs",
       "sha256": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2"
     },
     {
       "kind": "FROZEN_SOURCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/package-lock.json",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/package-lock.json",
       "sha256": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080"
     },
     {
       "kind": "FROZEN_REVIEW_CONTEXT",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/AGENTS.md",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/AGENTS.md",
       "sha256": "c591a4943214fe22bd8c74b47311aa2a1ffc218013fea20d1ab9d86c1ead5866"
     },
     {
       "kind": "FROZEN_REVIEW_CONTEXT",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/documentation/planning/M0_START_APPROVAL_STATUS.md",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/documentation/planning/M0_START_APPROVAL_STATUS.md",
       "sha256": "67eea927661cf1a94d8644ede28eaa7315d4774866958ff346b37aac5a559be3"
     },
     {
       "kind": "FROZEN_REVIEW_CONTEXT",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/documentation/planning/implementation/C2_COMPATIBILITY_REVIEW.md",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/documentation/planning/implementation/C2_COMPATIBILITY_REVIEW.md",
       "sha256": "e703e7bc43495868edd2ab535cb38b0f5f2ac54b5d572c2c38467b59e2ae67d4"
     },
     {
       "kind": "FROZEN_REVIEW_CONTEXT",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/documentation/planning/implementation/C3_MONGO_FIXTURE_CONTRACT.md",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/documentation/planning/implementation/C3_MONGO_FIXTURE_CONTRACT.md",
       "sha256": "208d702c9a1f7bc2826bda720603fa8fb382bfed9599739e1c8f4605b81368ce"
     },
     {
       "kind": "FROZEN_REVIEW_CONTEXT",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/documentation/planning/implementation/C3_AUTH_API_RUNTIME_CONTRACT.md",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/documentation/planning/implementation/C3_AUTH_API_RUNTIME_CONTRACT.md",
       "sha256": "73301872982a0f79fa805538f679c08e53ce6ef0528790cc75144ed7e2a7d0ee"
     },
     {
       "kind": "FROZEN_REVIEW_CONTEXT",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/documentation/planning/implementation/PARALLEL_DEVELOPMENT_WORKFLOW.md",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/documentation/planning/implementation/PARALLEL_DEVELOPMENT_WORKFLOW.md",
       "sha256": "c4f99a171df17ae98405a1fdd1c6aad0f9ab2dedfdb4aafabff60cb292d6148a"
     },
     {
       "kind": "FROZEN_REVIEW_CONTEXT",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/launch.mjs",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/test/api-runtime/launch.mjs",
       "sha256": "9c6d1c805de4c50542667b90532219c54666b8a764ee5672055f641938b099ed"
     },
     {
       "kind": "FROZEN_REVIEW_CONTEXT",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/launch.test.mjs",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/test/api-runtime/launch.test.mjs",
       "sha256": "9e9316041db0d3a7977a2e78130b9f1d26f331bb51a6c069327257a0c6c719be"
     },
     {
       "kind": "FROZEN_REVIEW_CONTEXT",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/platform.mjs",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/test/api-runtime/platform.mjs",
       "sha256": "b5117065c90c4698cb9604a8da0cb673a38249d8eee07a8ac39e11040a56e29f"
     },
     {
       "kind": "FROZEN_REVIEW_CONTEXT",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/platform.test.mjs",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/test/api-runtime/platform.test.mjs",
       "sha256": "334387136951602d44faf72fb351461012409fa4b3f547e2200c9b1ffc81ac16"
     },
     {
       "kind": "FROZEN_REVIEW_CONTEXT",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/profile.json",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/test/api-runtime/profile.json",
       "sha256": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54"
     },
     {
       "kind": "FROZEN_REVIEW_CONTEXT",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/unit.mjs",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/test/api-runtime/unit.mjs",
       "sha256": "a1f9cfb45bae4c8f0ffa87625423d8ee548b614aa0a97228133e0e75f000cd66"
     },
     {
       "kind": "FROZEN_REVIEW_CONTEXT",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/output/qa/week2-fixture-index-space/CONTRACT.md",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/output/qa/week2-fixture-index-space/CONTRACT.md",
       "sha256": "c6e31ba43133cd6ccb3da6d4f2bdaad134c30fdd49da2e78bf84ed24e49c7124"
     },
     {
       "kind": "FROZEN_REVIEW_CONTEXT",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/output/qa/week2-fixture-index-space/README.md",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/output/qa/week2-fixture-index-space/README.md",
       "sha256": "0891ef87fff906b7c6462ebe3f3e237709941ca3c54e797c4ef14ed13313bf20"
     },
     {
       "kind": "FROZEN_REVIEW_CONTEXT",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/output/qa/week2-fixture-index-space/source-freeze.json",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/output/qa/week2-fixture-index-space/source-freeze.json",
       "sha256": "cef26a185f5f04d45af2e226bb25bf1ebf96edf5b8768e45ffd889450c6048e3"
     },
     {
       "kind": "FROZEN_REVIEW_CONTEXT",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/output/qa/week2-fixture-index-space/baseline-rejection.json",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/output/qa/week2-fixture-index-space/baseline-rejection.json",
       "sha256": "693994172b09bc5eee93901c0a6ec06a12b5b33965be66f50f37865a384ad1ec"
     },
     {
       "kind": "FROZEN_REVIEW_CONTEXT",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/output/qa/week2-fixture-index-space/pre-review.json",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/output/qa/week2-fixture-index-space/pre-review.json",
       "sha256": "20ce088a0e463666217d3822604d365935a2554d9d0312e5d1f1b56a82c2f329"
     },
     {
-      "kind": "PREPARED_PUBLIC_DATA",
-      "path": "/private/tmp/sd-auth-api-build-a5b8aac5-af8d-4d71-ab51-0f76d5ed75fa/runtime/runtime-plan.json",
-      "sha256": "416b998e2c444c65887208293bc0682d8ec432dd38747e23d570c147de958f34"
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/output/qa/week2-authority-api-shared/CONTRACT.md",
+      "sha256": "23f37d31fe77565ce7d5d04689b777d5f539dd079d787b26ca6346e5e42c4f90"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/output/qa/week2-authority-api-extension/CONTRACT.md",
+      "sha256": "23f37d31fe77565ce7d5d04689b777d5f539dd079d787b26ca6346e5e42c4f90"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/output/qa/week2-jwt-config-runtime/CONTRACT.md",
+      "sha256": "4c7a4bae2f39e9afdeedc22c97babf684bd2077d31647196d714e5eda3d281f1"
+    },
+    {
+      "kind": "FROZEN_REVIEW_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/output/qa/week2-meet-runtime/CONTRACT.md",
+      "sha256": "106a7500049610f6b08f96165598e677a34cd544aeca14d7676bc3f50ffa4d3a"
     },
     {
       "kind": "PREPARED_PUBLIC_DATA",
-      "path": "/private/tmp/sd-auth-api-build-a5b8aac5-af8d-4d71-ab51-0f76d5ed75fa/runtime/package-lock.json",
+      "path": "/private/tmp/sd-auth-api-build-a9f64d75-9506-4c72-a420-f273f42b886c/runtime/runtime-plan.json",
+      "sha256": "3ea54d24d22ffb372ed1d749d6904f4424ed07c91ef1473679c31612731fded8"
+    },
+    {
+      "kind": "PREPARED_PUBLIC_DATA",
+      "path": "/private/tmp/sd-auth-api-build-a9f64d75-9506-4c72-a420-f273f42b886c/runtime/package-lock.json",
       "sha256": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5"
     },
     {
       "kind": "PREPARED_PUBLIC_DATA",
-      "path": "/private/tmp/sd-auth-api-build-a5b8aac5-af8d-4d71-ab51-0f76d5ed75fa/runtime/ports-manifest.json",
-      "sha256": "993003d7ec316a99c8189acde7e45277c6f79f9f567a1e26cfed9a7d3d855f94"
+      "path": "/private/tmp/sd-auth-api-build-a9f64d75-9506-4c72-a420-f273f42b886c/runtime/ports-manifest.json",
+      "sha256": "86d6b909c06387c52c8d62e3b99a10784d9612fb6fc63581faf6d3e96ee13a12"
     },
     {
       "kind": "DESCRIPTOR_SUMMARY",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6/test/api-runtime/scenario/runtime-template.json#summary",
-      "sha256": "7b90de27ca4a7db16f369b87f01c220a16b9ece7682a9587725e677e3a091e01"
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9/test/api-runtime/scenario/runtime-template.json#summary",
+      "sha256": "1127c6cc7b2075f2939f2c20e8292b31e3636ca4221b47f0e735398ecb2589b5"
     },
     {
       "kind": "ACTUAL_RUN_EVIDENCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-4/REVIEW.md",
-      "sha256": "974cd7afe16aa580b49ba8677ca82015faec5919e8b8dcdd1132f848ce5aad40"
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window/output/qa/week2-api-runtime/execution-7/REVIEW.md",
+      "sha256": "3a1cca2ced03f1a02aee0d90478505bb53dde81a937352713d77a24a23661665"
     },
     {
       "kind": "ACTUAL_RUN_EVIDENCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-4/attempt-claim.json",
-      "sha256": "857f30df0bf00792b538aca9d28f8076a58160de0fba809fe7f5ed43888c1083"
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window/output/qa/week2-api-runtime/execution-7/attempt-claim.json",
+      "sha256": "0fb7c0ac6bd93e0591d974c01c523dbc9862e0fbfa7017257d293c3c6c9764e5"
     },
     {
       "kind": "ACTUAL_RUN_EVIDENCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-4/initial-archive-manifest.json",
-      "sha256": "45d10958c33d2c168b02e3ad3e2434d0cdb0a0c034deb595591ce53b1823391c"
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window/output/qa/week2-api-runtime/execution-7/initial-archive-manifest.json",
+      "sha256": "53ef5a821a2a80bbd7bbd05dc89d5c8679000ca0b1a7f1aa397264940d6d86c2"
     },
     {
       "kind": "ACTUAL_RUN_EVIDENCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-4/initial-verification.json",
-      "sha256": "38a8cd7501c4477996a41955d39c3797e0c0fdebfd5292c315215670d0d5b460"
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window/output/qa/week2-api-runtime/execution-7/initial-verification.json",
+      "sha256": "3e119e73b1dae8e88d4e760b945aecfde2bd14f71d85848cece6f0b8118039c3"
     },
     {
       "kind": "ACTUAL_RUN_EVIDENCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-4/one-run-approval.json",
-      "sha256": "387b7fbef2de6679f914d22673a2bf327fa2d3438d4703bc26b9b1c29fc7b961"
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window/output/qa/week2-api-runtime/execution-7/one-run-approval.json",
+      "sha256": "bba3fc15c0ac73cd32adbfa8ed0aace71c8086e1a7e9700984fa102e6a629998"
     },
     {
       "kind": "ACTUAL_RUN_EVIDENCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-4/operator-result.json",
-      "sha256": "7b6d246d5a81666131aa652326c40173ccfb0d253505865000af74fb3b9a0cc1"
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window/output/qa/week2-api-runtime/execution-7/operator-result.json",
+      "sha256": "e46bcbe7e451851888a797a4afc4ee5b28536fbe5cc6c635ee45eacab527c1d1"
     },
     {
       "kind": "ACTUAL_RUN_EVIDENCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-4/root-independent-readback.json",
-      "sha256": "814484020cfa799507062928df358328bf929e2f5285724221b13bf6ab3b3028"
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window/output/qa/week2-api-runtime/execution-7/root-independent-readback.json",
+      "sha256": "00af9e70e24311c96b0ddaee7d470ca41307d700a8166058ac837a15e63efe72"
     },
     {
       "kind": "ACTUAL_RUN_EVIDENCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-4/verification.json",
-      "sha256": "68b3738eca6266d5bfe1c5ca4740d797b5a0095db82aa8d84ab81196df49347f"
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window/output/qa/week2-api-runtime/execution-7/verification.json",
+      "sha256": "097ffff654d5a6e2ee5eb74af433d54f6ea108d137f5949814de456ced1f6e87"
     },
     {
       "kind": "ACTUAL_RUN_EVIDENCE",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-4/archive-manifest.json",
-      "sha256": "5aa4228a1d95fd894c18cea46571c71e407bfaaecd6e45c7c69b6ac49092efc4"
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window/output/qa/week2-api-runtime/execution-7/archive-manifest.json",
+      "sha256": "be0ab146da3c7f214b6f41156341780be0da83932bb8bdd3c349d1889b8b522c"
+    },
+    {
+      "kind": "PREPARATION_EVIDENCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window/output/qa/week2-api-preparation/emission-9/REVIEW.md",
+      "sha256": "8ef31f7b0ff518bbf6c5056a782c6e5f3cec059cce63b9dc7300ce4c6717820e"
+    },
+    {
+      "kind": "PREPARATION_EVIDENCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window/output/qa/week2-api-preparation/emission-9/approval.json",
+      "sha256": "08218aba7532bf08d9f1e9ee9fadeb3478c92d9c23de768265b922114d35b394"
+    },
+    {
+      "kind": "PREPARATION_EVIDENCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window/output/qa/week2-api-preparation/emission-9/result.json",
+      "sha256": "9c451058928c228bbd1e11f6daff987f24140dfd35046a1da59130191beb1f51"
+    },
+    {
+      "kind": "PREPARATION_EVIDENCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window/output/qa/week2-api-preparation/emission-9/semantic-delta.json",
+      "sha256": "fedabeedf8a7191bae88333360af1d6abe9ac2a6cd6624fde007d03fbbb7d643"
+    },
+    {
+      "kind": "PREPARATION_EVIDENCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window/output/qa/week2-api-preparation/emission-9/verification.json",
+      "sha256": "7c5224839de0344e91c26ce09abef2c880d361af58ae746f5e26785962081868"
+    },
+    {
+      "kind": "PREPARATION_EVIDENCE",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window/output/qa/week2-api-preparation/emission-9/archive-manifest.json",
+      "sha256": "3361f0b1892a0ccd32fa4f8f46571325a547b11c84e24ef4489bb9a7ad53e719"
     },
     {
       "kind": "FAILED_ATTEMPT_HISTORY",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-1/verification.json",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window/output/qa/week2-api-runtime/execution-1/verification.json",
       "sha256": "7a65f1fd800a13cd59c8eaecd5457721c9259b7c8497bd90845e94d4316b1597"
     },
     {
       "kind": "FAILED_ATTEMPT_HISTORY",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-2/verification.json",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window/output/qa/week2-api-runtime/execution-2/verification.json",
       "sha256": "ce62cd803ad890ff1d788aad385127116e349d7cac03b2769a04cb979609f9f0"
     },
     {
       "kind": "FAILED_ATTEMPT_HISTORY",
-      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/integration/output/qa/week2-api-runtime/execution-3/verification.json",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window/output/qa/week2-api-runtime/execution-3/verification.json",
       "sha256": "11de9dc7c0492173425350240148b8b2a4eb9f065e5c6c2d7c9d08916a54d898"
+    },
+    {
+      "kind": "ACTUAL_RUN_CONTEXT",
+      "path": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window/documentation/planning/implementation/M0_A_PROGRESS.md",
+      "sha256": "52415a4b5b90627bf86cdeb85299539cbd3d4e062b68cf99db211dee9e31dfa2"
     },
     {
       "kind": "SAFE_PENDING_LINK_METADATA",
@@ -543,10 +714,14 @@
       "sha256": "2608f1424d9e9c0bfc7af882a74b9003b5cceef573c602d386a037bbba61ff7f"
     }
   ],
-  "applicationEvaluations": 0,
+  "inputBytes": 1861731,
+  "inputSha256": "984eb002cf45a31844a3563ece15509b88a7db5b8f22accaf3e6c1f0c65dc73a",
+  "mcpConfigSha256": "a612d678b74998efe9b9d91c029d7f66731ff4fb8e5e096e41f07243369743b0",
   "modelRequests": 0,
-  "accountChanges": 0,
-  "actualClaudeExtensionACK": false,
-  "contextLimitation": "Source/evidence snapshot; model cannot independently execute hashes or query host filesystem.",
-  "previousInputSha256": "2be325a6f57728ec062d5a8ebc064d4def7dc67791504fe82479ce81a9141354"
+  "previousInputSha256": "1a360957b39f953e7a011eebd40d60767689181bb4cb9f1921aeaee3e0756345",
+  "privateInput": "/var/folders/d4/cg1dnqfx7gq6y21yr0tz_mp80000gn/T/sd-claude-review-input-window2-oew1h557/review-input.json",
+  "promptSha256": "385a59d245bfd2bab3f73b169054f48df4b15bb3b27d8c9857e9e092a1e3feba",
+  "schema": "SD-CLAUDE-REVIEW-PREPARED-INPUT-1",
+  "sourceCommit": "c2dbac3e44b0bbf30e4574640cd940e2f0075975",
+  "status": "PREPARED_AUTH_AND_OPERATOR_REQUIRED_NOT_INVOKED"
 }

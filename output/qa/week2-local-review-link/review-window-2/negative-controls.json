@@ -1,0 +1,56 @@
+{
+  "schema": "SD-CLAUDE-WINDOW-NEGATIVE-CONTROLS-2",
+  "controls": [
+    {
+      "id": "RESTORE_1200_DEADLINE",
+      "detected": true,
+      "exit": 1,
+      "failedCases": [
+        "test_rehashed_stale_window_and_target_fail_before_startup_metadata",
+        "test_only_wall_clock_limit_changes_no_cleanup_or_tool_budget_increase",
+        "test_real_collection_clock_survives_old_deadline_and_stops_at_new_bound"
+      ],
+      "outputSha256": "99e12f413748a7fdae042863ff6ff5e7dbc8bc19d51bc0a20400b0cc99ff01c4"
+    },
+    {
+      "id": "SHORTEN_EOF_GRACE",
+      "detected": true,
+      "exit": 1,
+      "failedCases": [
+        "test_valid_fake_review_is_effort_unproven_not_pass",
+        "test_only_wall_clock_limit_changes_no_cleanup_or_tool_budget_increase"
+      ],
+      "outputSha256": "ff13b5b19a552dd00b7fa20b8c3a20c274a43d65c2057e0155b82de14f1c19ca"
+    },
+    {
+      "id": "ALLOW_REMOTE_ONLY_EFFORT_ON_LOCAL_PRINT",
+      "detected": true,
+      "exit": 1,
+      "failedCases": [
+        "test_nonnull_effort_is_unsupported_on_local_print_even_claimed_max",
+        "test_unsupported_effort_never_completes_review_even_after_safe_cleanup",
+        "test_unsupported_effort_preserves_primary_when_cleanup_unknown"
+      ],
+      "outputSha256": "91c5c26f67949c2f09e3d88868dacfa1a41afb3a0e2149990d9544e89a127ace"
+    },
+    {
+      "id": "SELF_CERTIFY_EFFECTIVE_MAX",
+      "detected": true,
+      "exit": 1,
+      "failedCases": [
+        "test_substantive_request_changes_preserves_declared_outcome_without_acceptance",
+        "test_fake_supported_shape_correlated_three_calls_but_effort_never_self_certifies",
+        "test_assistant_text_and_result_effort_never_certify_requested_mode",
+        "test_missing_and_null_vendor_effort_remain_unproven",
+        "test_unsupported_effort_never_completes_review_even_after_safe_cleanup"
+      ],
+      "outputSha256": "3b21265d1be539f87c19e7e293b1042b0abd0695cd6a0000428fe56546218e35"
+    }
+  ],
+  "required": 4,
+  "detected": 4,
+  "modelRequests": 0,
+  "nativeClientRequests": 0,
+  "appEvaluations": 0,
+  "allOwnedTemporaryDirectoriesRemoved": true
+}

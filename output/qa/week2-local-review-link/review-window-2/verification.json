@@ -1,0 +1,30 @@
+{
+  "schema": "SD-CLAUDE-REVIEW-WINDOW-SOURCE-VERIFICATION-2",
+  "status": "PASS_OFFLINE_SOURCE_REVIEWS_PENDING",
+  "baseline": "52b70b2",
+  "author": "/root/claude_review_window",
+  "fakeCases": 95,
+  "failed": 0,
+  "skipped": 0,
+  "negativeControlsDetected": 4,
+  "syntaxChecks": 2,
+  "localReviewSeconds": 3600,
+  "eofSeconds": 9,
+  "maxTurns": 8,
+  "requestedEffort": "max",
+  "effectiveEffort": "UNPROVEN",
+  "contextAdmission": "UNRESOLVED_NOT_TOKEN_COUNTED_OR_EFFECTIVE_WINDOW_MEASURED",
+  "actualClaudeExtensionACK": false,
+  "actualModelRequests": 0,
+  "authStatusRequestsByWorker": 0,
+  "authorizedHelpMetadataProbes": 1,
+  "applicationEvaluations": 0,
+  "compilerRuns": 0,
+  "DockerCalls": 0,
+  "newSourceReviews": "PENDING",
+  "actualStage": "NOT_APPROVED_NOT_RUN",
+  "contractDecisions": {
+    "/root": "APPROVE_TOOLING_AMENDMENT_IMPLEMENTATION_ONLY",
+    "/root/index_standards_fresh": "APPROVE_TOOLING_AMENDMENT_IMPLEMENTATION_ONLY"
+  }
+}

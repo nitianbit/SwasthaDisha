@@ -1,0 +1,24 @@
+{
+  "schema": "SD-CLAUDE-PUBLIC-ROUTING-PROJECTION-1",
+  "observedFiles": [
+    {
+      "path": "/Users/shubham/Library/Application Support/Code/User/settings.json",
+      "parsed": true,
+      "claudeSettingCount": 2,
+      "environmentEntryCount": 0,
+      "configDirRouting": [],
+      "processPathPresent": false
+    }
+  ],
+  "enumeratedOtherLocations": [
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha/.vscode/settings.json",
+    "/Users/shubham/Library/Application Support/Code/User/profiles/*/settings.json"
+  ],
+  "otherSettingsFilesFound": 0,
+  "authStatusRequests": 0,
+  "credentialsRead": false,
+  "accountIdentityRead": false,
+  "hiddenIpcRead": false,
+  "alternateAuthenticatedRouteEstablished": false,
+  "status": "NO_ALTERNATE_PUBLIC_ROUTE_FOUND_NOT_AUTHENTICATION_PROOF"
+}

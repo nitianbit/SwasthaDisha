@@ -1,0 +1,22 @@
+{
+  "schema": "SD-CLAUDE-REVIEW-WINDOW-VERIFICATION-2",
+  "sourceCommit": "c2dbac3e44b0bbf30e4574640cd940e2f0075975",
+  "evidenceCommit": "638f44dea50fca667e4cf2accfb2f6c82b5e9cd5",
+  "candidateSha256": "14f64e0167ee81cc47862ae15f6732d93a2a288e01f953d5407fec3d907e53f7",
+  "inputManifestSha256": "8ef9b22e6a52774ca1b3aa0661b3d11690bfb6ce9d9a709f14b3d5cae358ec6e",
+  "bodyHashesVerified": 141,
+  "descriptorInputs": 96,
+  "priorPublicHashesVerified": 16,
+  "priorPrivateOriginalAndArchiveUnchanged": true,
+  "originalStagedFiles": 6,
+  "originalHandoverFiles": 11,
+  "originalStagedPatchUnchanged": true,
+  "syntaxChecks": 2,
+  "modelRequests": 0,
+  "authStatusRequests": 0,
+  "appEvaluations": 0,
+  "DockerCalls": 0,
+  "contextAdmission": "UNRESOLVED_EXACT_TOKENS_AND_EFFECTIVE_SESSION_WINDOW_NOT_MEASURED",
+  "effectiveEffort": "UNPROVEN",
+  "actualClaudeExtensionACK": false
+}

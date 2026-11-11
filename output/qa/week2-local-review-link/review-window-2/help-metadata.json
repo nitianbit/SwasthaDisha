@@ -1,0 +1,46 @@
+{
+  "schema": "SD-CLAUDE-HELP-METADATA-1",
+  "clientSha256": "a9d237949db816a0b7afd88a9a8e1df36b3a597a30f5a41d1c0539eb180a3450",
+  "argv": [
+    "--help"
+  ],
+  "modelRequests": 0,
+  "authStatusRequests": 0,
+  "exitCode": 0,
+  "firstFailure": null,
+  "stdoutBytes": 22344,
+  "stdoutSha256": "5ca3a9dac2026e56c221fdd34380c7d7d45ebbb51c1d01b7c17c75cb076a0be8",
+  "stderrBytes": 0,
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "supportedFlagsInHelp": {
+    "--print": true,
+    "--model": true,
+    "--effort": true,
+    "--output-format": true,
+    "--verbose": true,
+    "--restricted": true,
+    "--max-turns": false,
+    "--tools": true,
+    "--strict-mcp-config": true,
+    "--mcp-config": true,
+    "--allowedTools": true,
+    "--disallowedTools": true,
+    "--permission-mode": true,
+    "--permission-prompts": true,
+    "--no-chrome": true,
+    "--no-session-persistence": true,
+    "--disable-slash-commands": true,
+    "--session-id": true
+  },
+  "effortEnumsInHelp": [],
+  "effectiveEffortProof": "UNPROVEN",
+  "managedPolicyProof": "UNPROVEN",
+  "nativeStreamSchemaProof": "UNPROVEN",
+  "cleanup": {
+    "heldPid": 24603,
+    "pidAbsent": true,
+    "freshGroupEmpty": true,
+    "pipesClosed": true,
+    "signals": []
+  }
+}

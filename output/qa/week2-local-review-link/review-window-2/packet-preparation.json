@@ -1,0 +1,20 @@
+{
+  "DockerCalls": 0,
+  "applicationEvaluations": 0,
+  "candidateSha256": "14f64e0167ee81cc47862ae15f6732d93a2a288e01f953d5407fec3d907e53f7",
+  "descriptorSha256": "185fb708ef0af3b4bbf106b836baee69d20b922a6089b418e42ed739f6e801e7",
+  "eofSecondsUnchanged": 9,
+  "evidenceCommit": "638f44dea50fca667e4cf2accfb2f6c82b5e9cd5",
+  "framedBodies": 141,
+  "inputBytes": 1861731,
+  "inputManifestSha256": "8ef9b22e6a52774ca1b3aa0661b3d11690bfb6ce9d9a709f14b3d5cae358ec6e",
+  "inputSha256": "984eb002cf45a31844a3563ece15509b88a7db5b8f22accaf3e6c1f0c65dc73a",
+  "localReviewSeconds": 3600,
+  "maxTurns": 8,
+  "modelRequests": 0,
+  "rootBuilds": 0,
+  "schema": "SD-CLAUDE-REVIEW-WINDOW-PREPARATION-2",
+  "sourceCommit": "c2dbac3e44b0bbf30e4574640cd940e2f0075975",
+  "sourceInputs": 96,
+  "status": "PREPARED_SOURCE_REVIEWS_AUTH_POLICY_AND_EXACT_STAGE_REQUIRED"
+}
