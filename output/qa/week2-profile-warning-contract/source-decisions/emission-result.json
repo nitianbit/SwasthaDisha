@@ -1,0 +1,11 @@
+{
+  "status": "PREPARED_NOT_EXECUTED",
+  "source": "bc3233bb249b5e5603d61f4e294accbcda7a0fc6",
+  "templateSha256": "01cd79690a39ccb741ae06ab6b5e6f8ceb6329b983cb20830e156e7a48c7c1a7",
+  "receiptSha256": "64b2382a55bb5ec0082f618e59e9dc8dffef6a4cfff98390ca3bdf4969cfb85c",
+  "receipt": "CONSUMED_ONCE",
+  "actualSession": 97865,
+  "actualExitCode": 0,
+  "applicationEvaluations": 0,
+  "DockerCalls": 0
+}

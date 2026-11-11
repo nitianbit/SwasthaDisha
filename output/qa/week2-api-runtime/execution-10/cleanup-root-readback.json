@@ -1,0 +1,26 @@
+{
+  "schema": "SD-SPECIALIST-API-FAILED-RUN-CLEANUP-1",
+  "UTC": "2026-11-11T07:53:23.550709+00:00",
+  "provenance": "Root fresh read-only live Docker metadata after operator exit1; separate from reviewer observations",
+  "sourceCommit": "bc3233bb249b5e5603d61f4e294accbcda7a0fc6",
+  "rawOperatorSha256": "2ae585df4e75acc53b7bb1ab44dbbef9685bb8438e27c534a0ddb15247a6cf43",
+  "runId": "11003d58-434a-4ece-a315-2dfc6edb1bba",
+  "engineBefore": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+  "exactIds": {
+    "522d69bd78bbbe04cad20a0acf3b9025a1dcba4c82635d5f2706549355bb8786": {
+      "absent": true,
+      "exitCode": 1,
+      "stderr": "Error response from daemon: No such container: 522d69bd78bbbe04cad20a0acf3b9025a1dcba4c82635d5f2706549355bb8786"
+    },
+    "4025639ee211305bc8ebb3b5e03086415b0dc0fe16c7c35dabf1d0b5bbcd7b0f": {
+      "absent": true,
+      "exitCode": 1,
+      "stderr": "Error response from daemon: No such container: 4025639ee211305bc8ebb3b5e03086415b0dc0fe16c7c35dabf1d0b5bbcd7b0f"
+    }
+  },
+  "exactPurposeIds": [],
+  "engineAfter": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+  "workspaceAbsent": true,
+  "workspace": "/private/tmp/sd-auth-api-run-SlcCkZ",
+  "ownedConfigRemoved": true
+}

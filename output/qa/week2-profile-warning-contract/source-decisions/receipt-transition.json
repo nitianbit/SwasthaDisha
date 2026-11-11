@@ -1,0 +1,22 @@
+{
+  "schema": "SD-EXACT-WARNING-EMISSION-TRANSITION-1",
+  "source": "bc3233bb249b5e5603d61f4e294accbcda7a0fc6",
+  "oldArchive": "/private/tmp/sd-auth-api-emission-approval-0f0d36b.consumed.json",
+  "oldSha256": "64626783b49c7e94ba60bbf542bc33b8ce2bdc9596ed47f9cc7874bcb812d3be",
+  "exclusiveSameInodeNlink2Proof": true,
+  "oldFinalNlink": 1,
+  "oldDevInode": [
+    16777231,
+    53252687
+  ],
+  "freshPath": "/private/tmp/sd-auth-api-emission-approval.json",
+  "freshSha256": "64b2382a55bb5ec0082f618e59e9dc8dffef6a4cfff98390ca3bdf4969cfb85c",
+  "freshMode": "0600",
+  "freshUid": 501,
+  "freshNlink": 1,
+  "freshDevInode": [
+    16777231,
+    53477770
+  ],
+  "status": "FRESH_APPROVED_RECEIPT_BEFORE_INVOCATION"
+}

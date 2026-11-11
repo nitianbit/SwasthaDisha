@@ -1,0 +1,153 @@
+{
+  "schema": "SD-EXACT-WARNING-SINGLE-RUN-PROPOSAL-10",
+  "status": "PROPOSED_AFTER_BOTH_ARTIFACT_ACCEPTANCES_REQUIRES_TWO_NEW_EXACT_RUN_DECISIONS",
+  "artifact": {
+    "source": "bc3233bb249b5e5603d61f4e294accbcda7a0fc6",
+    "templateSha": "01cd79690a39ccb741ae06ab6b5e6f8ceb6329b983cb20830e156e7a48c7c1a7",
+    "runtimeDirectory": "/private/tmp/sd-auth-api-build-4c4021cc-f518-4a10-af30-ef6e4d5841ca/runtime",
+    "archiveInitialManifest": "603e26e75fe0790ad74794945f02b7fd4ec78e299e031759cf555f60cf22d5d0",
+    "sourceInputs": 105,
+    "typeScriptSources": 97,
+    "files": 2891,
+    "bytes": 45632297,
+    "reachable": 76,
+    "models": 13,
+    "semanticDiagnostics": 228,
+    "fullBuild": false
+  },
+  "receipt": {
+    "schema": "SD-AUTH-API-INVOCATION-APPROVAL-1",
+    "decision": "APPROVE_ONE_FIXED_AUTH_API_RUN",
+    "sourceRoot": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-14",
+    "sourceCommit": "bc3233bb249b5e5603d61f4e294accbcda7a0fc6",
+    "operatorSha": "9c6d1c805de4c50542667b90532219c54666b8a764ee5672055f641938b099ed",
+    "platformSha": "b5117065c90c4698cb9604a8da0cb673a38249d8eee07a8ac39e11040a56e29f",
+    "profileSha": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+    "networkSha": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2",
+    "templateSha": "01cd79690a39ccb741ae06ab6b5e6f8ceb6329b983cb20830e156e7a48c7c1a7",
+    "lockSha": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+    "portsSha": "59c410ffc991fdcb4b1ee384f55ba896363011a207573c6f7abc7aa8763f948b",
+    "hostNodeSha": "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0",
+    "reviewers": []
+  },
+  "oldReceiptPreservation": {
+    "path": "/private/tmp/sd-auth-api-runtime-approval.json",
+    "sha256": "1faa3907d1d53f7a7d07ff57fc0f1a339358271e9f7ddb404cd5fa2dbece48ab",
+    "archive": "/private/tmp/sd-auth-api-runtime-approval-0f0d36b.consumed.json",
+    "method": "AFTER_TWO_NEW_ACTUAL_RUN_DECISIONS: oldconsumed1faa regular600uid/singlelink/hash;exclusivehardlink0farchive,sameinode/nlink2/hash;unlinkfixed,archivefinal1;newO_EXCL O_NOFOLLOW600 actualreviewers"
+  },
+  "claimMustBeAbsent": "/private/tmp/sd-auth-api-once-bc3233bb249b5e5603d61f4e294accbcda7a0fc6-01cd79690a39ccb741ae06ab6b5e6f8ceb6329b983cb20830e156e7a48c7c1a7.claim.json",
+  "invocation": [
+    "env",
+    "-i",
+    "PATH=/usr/bin:/bin",
+    "TMPDIR=/private/tmp",
+    "/private/tmp/m0-node22/node",
+    "test/api-runtime/launch.mjs"
+  ],
+  "profile": {
+    "schema": "SD-AUTH-API-PROFILE-2",
+    "role": "auth-user-wallet-api",
+    "endpoint": "unix:///Users/shubham/.docker/run/docker.sock",
+    "engineId": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+    "nodeImage": "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
+    "mongoImage": "mongo@sha256:b9924c330a8bbc5800fe9c69f04a84e221eca7b28fd049a0354147d9908fa142",
+    "nodeVersion": "22.23.4",
+    "mongooseVersion": "9.12.0",
+    "mongoVersion": "8.0.34",
+    "compilerVersion": "5.9.3",
+    "scope": "TEST_ONLY_FOCUSED_PRODUCTION_ROUTERS_NOT_ROOT_ADOPTION",
+    "indexBuildMinAvailableDiskSpaceMB": 64
+  },
+  "bounds": {
+    "wholeChildSeconds": 180,
+    "MongoUid": 65534,
+    "nodeUid": 1000,
+    "MongoMemoryBytes": 1073741824,
+    "nodeMemoryBytes": 536870912,
+    "MongoPids": 128,
+    "nodePids": 64,
+    "MongoCpus": 1,
+    "nodeCpus": 1,
+    "readOnly": true,
+    "caps": "ALL_DROPPED",
+    "noNewPrivileges": true,
+    "hostPorts": false,
+    "hostBindMounts": [
+      {
+        "source": "Only exclusively created/identified private fixture workspace/bundle copied from reviewed template",
+        "target": "/workspace",
+        "readonly": true,
+        "propagation": "rprivate"
+      }
+    ],
+    "MongoNetwork": "none",
+    "nodeNetwork": "only captured Mongo namespace",
+    "MongoTmpfsBytes": {
+      "data": 536870912,
+      "config": 16777216,
+      "tmp": 67108864
+    },
+    "nodeTmpfsBytes": 134217728,
+    "WTCacheGiB": 0.25,
+    "diagnosticDataCollectionEnabled": false,
+    "indexBuildMinAvailableDiskSpaceMB": 64,
+    "NodePermissions": "read /workspace /sys/class/net /tmp; write /tmp; child/worker/addon denied",
+    "images": "cached frozen digests ONLY; no pull",
+    "runtimeWrites": "only fresh owned UUID namespace, exact13models/indexes/scenarios; no external source or clinical data",
+    "otherHostBindMounts": false
+  },
+  "expected": {
+    "nominalGroups": 90,
+    "sourceVariants": 33,
+    "failed": 0,
+    "skipped": 0,
+    "newProfileNominalHttpTrials": 93,
+    "newProfileVariantReferences": 11,
+    "newProfileFreshRestorationHttpRequests": 22,
+    "priorIndexNominalComparisons": 343,
+    "priorIndexVariantComparisons": 150,
+    "priorIndexRestorations": 300,
+    "providerSummary": {
+      "email": 5,
+      "sms": 1,
+      "push": 2,
+      "logger": 437,
+      "payments": 0,
+      "calendar": 4,
+      "storage": 0,
+      "queue": 0,
+      "deniedCapabilities": 0,
+      "unexpected": 0
+    },
+    "transport": "Recording intents only; four Google requests, no real provider delivery"
+  },
+  "lifecycle": "Handle owned before create; exact full IDs verified same engine/labels before mutation; Node thenMongo cleanup; exactID absence, zeroPurpose labels/workspaceENOENT plus Root independent live readback; no adoption/prune/retry; any failure reviewed before next attempt",
+  "forbidden": "No production/deployment/protectedlogs/secrets/providers/account/model/hostedworker action; no rootC2/defaultCI/adoption/100RPS/Week2/release acceptance; no limit/grant/package/index-policy changes",
+  "ownershipFix": "Actual all3ID absence proof before A/B cleanupeligibility/create, no delete on queryfailure/nonempty proof; partialinsert cleanedonlyeligiblepair; absentnevereligible; firsterrorpreserved",
+  "draftCorrection": {
+    "oldProposal": "/private/tmp/swasthadisha-parallel-p1qom53w/profile-runtime-9-proposal.json",
+    "oldSha256": "35fb5cbd49899b47802b83145e1a7fc249ae976e5d9eb12c1a9860ac7fc4e3a6",
+    "detail": "Initial unreviewed proposal incorrectly said no bind mounts. Existing unchanged platformb511 uses only read-only owned bundle\u2192/workspace rprivate; this packet accurately states that existing grant, adds none. Old unreviewed draft retained unused."
+  },
+  "readOnlyReadiness": {
+    "metadata": "/private/tmp/swasthadisha-parallel-p1qom53w/profile-runtime-10-readiness.json",
+    "sha256": "c9d6f47d91d75cdef10267bc9f1138776bf6d5785c26bcd931668a9abe4dab4f",
+    "exactPurposePredicate": "label=swasthadisha.test.purpose=auth-api-runtime",
+    "provenance": "Root fresh live read-only actualquery; reviewer should label reliance honestly"
+  },
+  "warningContract": {
+    "contractSha256": "8809dec3e5c7610e0e577476512abf5036c95277cb7ce3f22401087f1fd307dd",
+    "bootstrapSha256": "874025665f5f93454303f3823ed7ba9f606ce36c9119c7f58fe0759cd3214a78",
+    "scenarioSha256": "cbb1260c887a7a5dc664fec9a6b47c680e1d180f78b102716122596baaae6500",
+    "requiredRealPredicate": "private exactknownwarning delta==measuredspecialistwriteDelta==frozenexpected0or1 ANDtotalconsole-known0; allotherguards unchanged",
+    "predictedProfileWarnings": {
+      "nominal": 6,
+      "unsafeReferences": 10,
+      "freshRestorations": 11
+    },
+    "priorRunCause": "Historicalrun9warningattribution strongSOURCEinference, not retainednumerics; actualnewrun mustestablishperrequestbudget, no expectedvaluestand-in",
+    "publicCounters": "UNCHANGED10keys email5sms1push2logger437calendar4others0"
+  },
+  "history": "Run9FAILED/source0f0d/template9c7/receipt1faa/onceclaim consumed, exactcleanupRoot+2reviewersverified; allsource/report/diagnostic/firstproposalhistory retained. New sourcebc323/template01cd/newactualapprovals/claim required, no oldapprovalreuse."
+}

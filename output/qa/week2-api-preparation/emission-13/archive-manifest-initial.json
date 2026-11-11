@@ -1,0 +1,18 @@
+{
+  "schema": "SD-EXACT-WARNING-EMISSION13-ARCHIVE-1",
+  "files": {
+    "README.md": "29a87def368754f40c1e0f50fa55913491cd610ad8e5a0c4b940b900f29a75a7",
+    "compiler-input.json": "d35020ee1674f4adf12149842297da86a90536e0e7bb44e07691e35c50cf4ec2",
+    "compiler.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "compiler.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "install.stderr.txt": "799f544422ef20e84949c8feabb844390db9306ac5cf97419981d0291eb45156",
+    "install.stdout.txt": "b5066906f9014e97cd6c773ca10d8b643cf76a67bfc49749b5a9f1c1e6a93b27",
+    "preparation-result.json": "52b8ed1873edfe5f2ef9990a975468f5f31dbb6c770c1e76ce8b731a4095bbcc",
+    "runtime-plan.json": "8aa5b445d4fa03356ae54e1d315f3c7d10c16513f63411cb388d4df2429ac123",
+    "runtime-template.json": "01cd79690a39ccb741ae06ab6b5e6f8ceb6329b983cb20830e156e7a48c7c1a7",
+    "semantic-delta.json": "c90ebc245ff8fa5ecdb2330d6c30469fae9abec5fc398fe6afdc24176dc6b397",
+    "verification.json": "95680ec14c128d41fe40bcdb679d32cdbde8ed4b6ff0707c59b182bdae11a639"
+  },
+  "runtime": "NOT_RUN_PENDING_TWO_ARTIFACT_REVIEWS",
+  "source": "bc3233bb249b5e5603d61f4e294accbcda7a0fc6"
+}

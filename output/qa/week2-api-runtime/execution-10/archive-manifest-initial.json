@@ -1,0 +1,17 @@
+{
+  "schema": "SD-API-RUN10-FAILURE-ARCHIVE-1",
+  "sourceCommit": "bc3233bb249b5e5603d61f4e294accbcda7a0fc6",
+  "status": "FAILED_REVIEW_REQUIRED",
+  "noRetryGranted": true,
+  "pins": {
+    "RUN_DECISIONS.md": "b0f78609fec83e856f27b7e25d71c5f5d0101477f2fff55f6dc84df7fb067027",
+    "captured-run-approval.json": "7243689ff2d88362dc56e85e1d05d66d627d4762e3066afea436e2f950f86b06",
+    "cleanup-root-readback.json": "a51bddbbcaa43796ee571cb27c998d7518ffe89f4ae6274e0e5d04b32bcc7fe1",
+    "consumed-once-claim.json": "0f2aa74c613f92186cae4d9b7a94080f523a641812969fa530e5f3163d34f038",
+    "one-run-approval.json": "7243689ff2d88362dc56e85e1d05d66d627d4762e3066afea436e2f950f86b06",
+    "one-run-proposal.json": "a343a51ccaef574223f092437bb58f0f1c401aa9855d26df980bcf7dae19a5eb",
+    "operator-result.json": "2ae585df4e75acc53b7bb1ab44dbbef9685bb8438e27c534a0ddb15247a6cf43",
+    "readiness.json": "c9d6f47d91d75cdef10267bc9f1138776bf6d5785c26bcd931668a9abe4dab4f",
+    "receipt-transition.json": "4d7352579c6d7191569f1168908591e951d2811ace516c1107365e02bf5f9df9"
+  }
+}
