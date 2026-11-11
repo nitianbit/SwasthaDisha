@@ -1,0 +1,206 @@
+{
+  "schema": "SD-COMPILER-LIBRARY-TEXT-CONTROLS-1",
+  "controls": [
+    {
+      "id": "correct_library_location",
+      "detected": true,
+      "sourceSha256": "ddaffd5bab19a8214ac68ccf1a73124c00ccbe85cac20e742e3db069553723b2",
+      "failedPredicates": [
+        "correct_library_location",
+        "existing_compiler_restored_exactly"
+      ]
+    },
+    {
+      "id": "capture_inherited_location",
+      "detected": true,
+      "sourceSha256": "32209976ff58c1d8b3109a9e0c76098297287b8b09eec0b9aa3ea6cfa353f3e5",
+      "failedPredicates": [
+        "capture_inherited_location",
+        "existing_compiler_restored_exactly"
+      ]
+    },
+    {
+      "id": "same_guarded_read",
+      "detected": true,
+      "sourceSha256": "52e63dbeadc01e6ece6a520d96ec991f59329c69774a6cbf3d977bd9f92e282c",
+      "failedPredicates": [
+        "same_guarded_read",
+        "existing_compiler_restored_exactly"
+      ]
+    },
+    {
+      "id": "same_host_probe",
+      "detected": true,
+      "sourceSha256": "a2949a57168d08500113a27e45887b21ba6bf0dd043c894e6ff43345a0c072f8",
+      "failedPredicates": [
+        "same_host_probe"
+      ]
+    },
+    {
+      "id": "exact_default_closure",
+      "detected": true,
+      "sourceSha256": "cf2550e0986b3bd1e114fc6972880887157afca542b190bd43e8472b36be72a4",
+      "failedPredicates": [
+        "exact_default_closure"
+      ]
+    },
+    {
+      "id": "positive_zero",
+      "detected": true,
+      "sourceSha256": "25aff4d04ec7009f89cdc17066125565dce28eb2b47562f53b47ed6381d6c190",
+      "failedPredicates": [
+        "positive_zero"
+      ]
+    },
+    {
+      "id": "negative_exact_one",
+      "detected": true,
+      "sourceSha256": "3f05659199047f5e21d354d2a7db97457fa8c0bfd6852eda566f3548612ef580",
+      "failedPredicates": [
+        "negative_exact_one"
+      ]
+    },
+    {
+      "id": "negative_exact_code",
+      "detected": true,
+      "sourceSha256": "5c63098d660397567033c7a5bd0ba0b7bd349783c631ef38cb10aba7ce53a668",
+      "failedPredicates": [
+        "negative_exact_code"
+      ]
+    },
+    {
+      "id": "negative_exact_span",
+      "detected": true,
+      "sourceSha256": "d0027419c0eae52acac610cfc8924132f5e3d45cd4cf9f9b6140b2a2d4fd03cb",
+      "failedPredicates": [
+        "negative_exact_span"
+      ]
+    },
+    {
+      "id": "old_same_predicate",
+      "detected": true,
+      "sourceSha256": "9e6fa77e63e684e1632b791689ee4c2e333bc4d9b0f985e9162b4986bb88f67b",
+      "failedPredicates": [
+        "old_same_predicate"
+      ]
+    },
+    {
+      "id": "old_array_required",
+      "detected": true,
+      "sourceSha256": "ec076b8d05cd386d4e0fad0c679cdadb451851a7b1a4c29e2c4b06d224cfc0a5",
+      "failedPredicates": [
+        "old_array_required"
+      ]
+    },
+    {
+      "id": "old_incomplete",
+      "detected": true,
+      "sourceSha256": "1ef07851e3b13acfda2b16ecacc2c2939536ccfb49dddb06379fdf6fe7e2dead",
+      "failedPredicates": [
+        "old_incomplete"
+      ]
+    },
+    {
+      "id": "old_exception_not_detection",
+      "detected": true,
+      "sourceSha256": "e9060ea9479112196d8a567f3e89024ce352df19cd0bb58a8d8954592e674551",
+      "failedPredicates": [
+        "old_exception_not_detection"
+      ]
+    },
+    {
+      "id": "old_restore",
+      "detected": true,
+      "sourceSha256": "77c1744a669e188f151c38385c864c48f9992d64ea10acddc5c630abd0a3cc1d",
+      "failedPredicates": [
+        "old_restore"
+      ]
+    },
+    {
+      "id": "restored_positive",
+      "detected": true,
+      "sourceSha256": "600b02578a8899078f4694f995edf8c9c89c74d15f33e05586fc20debdccd6b7",
+      "failedPredicates": [
+        "restored_positive"
+      ]
+    },
+    {
+      "id": "hash_guard",
+      "detected": true,
+      "sourceSha256": "27e46667eccc426ea03b7dee799401fae87ac1bcc7ddc6b73b3149ea872a5245",
+      "failedPredicates": [
+        "hash_guard"
+      ]
+    },
+    {
+      "id": "actual_used_hashes",
+      "detected": true,
+      "sourceSha256": "63f8a2798085110491fac4a3031091c339d05a89339b7a31dfd1008d87f2a81e",
+      "failedPredicates": [
+        "actual_used_hashes"
+      ]
+    },
+    {
+      "id": "fixed_failure",
+      "detected": true,
+      "sourceSha256": "d73238d39263caef338fafd7a52b6817a510ff1fc66e75ab69cec58a59346d80",
+      "failedPredicates": [
+        "fixed_failure"
+      ]
+    },
+    {
+      "id": "new_report",
+      "detected": true,
+      "sourceSha256": "825f70e3b92b4d16b056f3ca93b2d0aa097ee84c38a410891b058324c36c50ec",
+      "failedPredicates": [
+        "new_report",
+        "existing_compiler_restored_exactly"
+      ]
+    },
+    {
+      "id": "all_public_hashes",
+      "detected": true,
+      "sourceSha256": "65fa660d2345b3b2eb2e43f3e5ad8b177da502f7864ae27030059d5a01acc9c3",
+      "failedPredicates": [
+        "all_public_hashes"
+      ]
+    },
+    {
+      "id": "default_closure_hashes",
+      "detected": true,
+      "sourceSha256": "12963c65c2996ef2b987d4162db59738420ae6fd29cc4a6af724118c02378b9e",
+      "failedPredicates": [
+        "default_closure_hashes"
+      ]
+    },
+    {
+      "id": "positive_fixed_source",
+      "detected": true,
+      "sourceSha256": "0bf8130ca72f775dd6e179c43b2d6c1000c928c406946117b644143a7b188780",
+      "failedPredicates": [
+        "positive_fixed_source"
+      ]
+    },
+    {
+      "id": "negative_fixed_source",
+      "detected": true,
+      "sourceSha256": "bdd996916ba76229b21c2eb2e23066b844954f217c5c19a1cc8a534887a3bb26",
+      "failedPredicates": [
+        "negative_fixed_source"
+      ]
+    },
+    {
+      "id": "existing_compiler_restored_exactly",
+      "detected": true,
+      "sourceSha256": "0ecfa19f50f854a4367bb9ef88595fe5484a815d08c6e957bd379c0763328e64",
+      "failedPredicates": [
+        "existing_compiler_restored_exactly"
+      ]
+    }
+  ],
+  "detected": 24,
+  "total": 24,
+  "scope": "SOURCE_TEXT_ONLY_NOT_COMPILER_BEHAVIOR",
+  "applicationEvaluations": 0,
+  "compilerExecutions": 0
+}

@@ -210,9 +210,40 @@ exclusive. The parent copies it as immutable input into a separate owned runtime
 bundle; preparation does not create/start Docker containers or evaluate a driver.
 Exact later Docker execution requires its own two direct reviews/admission.
 
-New selected-index seven/six groups, helper typing and actual metadata readback remain **NOT_RUN**
-until fresh preparation/artifact/two exact single-run decisions and actual
-execution succeed. Accepted76/21 PASS is historical evidence, not approval for
-this new run or completion of whole-process startup fixtures. Full application startup,
+The selected-index run is accepted at sourceea2a39c/descriptorc1618428:
+83 nominal groups/27 source variants pass, with selected-helper strict typing
+and complete owned metadata readback. Its receipt is consumed; see
+[execution8](../../../output/qa/week2-api-runtime/execution-8/REVIEW.md).
+This is bounded historical evidence, not approval to run a new descriptor or
+completion of whole-process startup fixtures. Full application startup,
 root dependency adoption, retained-server C2 facts, broader OTP/money policy,
 owner acceptance, deployment and release gates remain open.
+
+The following compiler-library correction is a **source candidate; genuine
+compiler controls remain NOT_RUN**. The inherited broad diagnostic host placed
+its default entry library in the admitted runtime package but retained a default
+library directory from the other compiler installation. The candidate binds
+both paths to the same existing runtime TypeScript5.9.3 lib directory, preserves
+the existing source/type read guards and excluded capabilities, and checks every
+actually used standard library against the100 frozen public hashes. It adds no
+source root, dependency, ambient root type, permission or runtime operation.
+
+Four preparation-only programs use that same guarded host/options: a fixed
+Set/Promise/Array/Object positive with zero diagnostics and the exact51-file
+ES2020.full closure, one fixed TS2322 negative at the required source span, the
+same positive under only the inherited library-directory method (actual TS2318
+for Array plus incomplete libraries), then a fresh positive after exact host
+restoration. A compiler exception cannot count as a detected prior-host defect.
+The virtual sources are served in memory and never persisted/evaluated.
+
+`compilation.libraryAdmission` reports actual public file IDs, library hashes,
+options and all control diagnostic metadata. Probe messages use fixed public
+2318/2322 text or a fixed marker for another diagnostic; no actual entry is
+discarded. Failure uses bounded existing compiler stdout and one fixed code.
+The whole semantic report remains complete and separate. A lower diagnostic
+count would reflect corrected library visibility, not repaired application code.
+The prior1169 report is preserved for a full added/removed multiset audit.
+Selected-helper strict/TDZ code and emitted89 nominal/27 variant behavior remain
+unchanged. Two exact independent source/locked-emission decisions and two actual
+artifact postreviews precede acceptance. No API/database rerun is needed solely
+for this diagnostic-metadata correction, and no runtime receipt is reopened.
