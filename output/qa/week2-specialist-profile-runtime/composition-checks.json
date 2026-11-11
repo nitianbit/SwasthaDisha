@@ -1,7 +1,6 @@
 {
-  "schema": "SD-SPECIALIST-PROFILE-COMPOSITION-CHECKS-1",
+  "schema": "SD-SPECIALIST-PROFILE-COMPOSITION-CHECKS-2",
   "base": "1355bd9af2c9d8d5170527c8c0fc565de997b6fe",
-  "sourceCommitBeforeEvidence": "3738efe670359d8fab65f18f162c6ec5fa589cad",
   "exactNonQaUnion": [
     "test/api-runtime/scenario/bootstrap.cjs",
     "test/api-runtime/scenario/bootstrap-unit.cjs",
@@ -10,7 +9,9 @@
     "test/api-runtime/scenario/README.md"
   ],
   "allAuthorFrozenPins": true,
-  "bootstrapScope": "Feature-only checker passed postcommit on aceaeb9; composition uses explicit five-source union, not that feature-only scope check",
+  "amendment": "Actual all3ID absence proof before pair cleanup eligibility; query failure/collision authorize no delete; exact pair only beforecreate; absentnevereligible",
+  "priorCandidate": "17957201d54418f2dcae182626c642e9a0bdee60 NOT_APPROVED; immutable source-review-1 and authorrevision-1 retained",
+  "bootstrapScope": "Own-feature verifier passed on aceaeb9; composed scope uses exact five-source union",
   "checks": {
     "unit587": {
       "command": [
@@ -64,7 +65,7 @@
       },
       "stderr": ""
     },
-    "scenarioSource34": {
+    "source42": {
       "command": [
         "/opt/homebrew/bin/python3",
         "-I",
@@ -110,9 +111,17 @@
           "scenario_two_actual_restorations": true,
           "scenario_first_error_cleanup": true,
           "scenario_exact_owned_id_cleanup": true,
-          "scenario_old_prefixes_and_final_sets": true
+          "scenario_old_prefixes_and_final_sets": true,
+          "reservation_all_three_ids": true,
+          "reservation_eligibility_initially_empty": true,
+          "reservation_actual_query_required": true,
+          "reservation_zero_rows_required": true,
+          "reservation_proof_before_pair_eligibility_and_create": true,
+          "reservation_only_pair_delete_eligible": true,
+          "reservation_cleanup_guard_before_delete": true,
+          "reservation_proof_not_swallowed": true
         },
-        "checkCount": 34,
+        "checkCount": 42,
         "baselineRejected": true,
         "baselineMissingChecks": [
           "compiler_binding_before_source_traversal",
@@ -145,7 +154,15 @@
           "scenario_two_actual_restorations",
           "scenario_first_error_cleanup",
           "scenario_exact_owned_id_cleanup",
-          "scenario_old_prefixes_and_final_sets"
+          "scenario_old_prefixes_and_final_sets",
+          "reservation_all_three_ids",
+          "reservation_eligibility_initially_empty",
+          "reservation_actual_query_required",
+          "reservation_zero_rows_required",
+          "reservation_proof_before_pair_eligibility_and_create",
+          "reservation_only_pair_delete_eligible",
+          "reservation_cleanup_guard_before_delete",
+          "reservation_proof_not_swallowed"
         ],
         "sensitivity": [
           {
@@ -272,6 +289,67 @@
             "rejected": true,
             "failedChecks": [
               "scenario_exact_reply"
+            ]
+          },
+          {
+            "id": "RESERVATION_QUERY_FABRICATED",
+            "rejected": true,
+            "failedChecks": [
+              "reservation_actual_query_required",
+              "reservation_proof_before_pair_eligibility_and_create"
+            ]
+          },
+          {
+            "id": "RESERVATION_ABSENT_ID_OMITTED",
+            "rejected": true,
+            "failedChecks": [
+              "reservation_all_three_ids"
+            ]
+          },
+          {
+            "id": "CLEANUP_ELIGIBILITY_PREGRANTED",
+            "rejected": true,
+            "failedChecks": [
+              "reservation_eligibility_initially_empty"
+            ]
+          },
+          {
+            "id": "EMPTY_RESERVATION_ASSERTION_REMOVED",
+            "rejected": true,
+            "failedChecks": [
+              "reservation_zero_rows_required",
+              "reservation_proof_before_pair_eligibility_and_create"
+            ]
+          },
+          {
+            "id": "ELIGIBILITY_GRANTED_BEFORE_PROOF",
+            "rejected": true,
+            "failedChecks": [
+              "reservation_proof_before_pair_eligibility_and_create",
+              "reservation_only_pair_delete_eligible"
+            ]
+          },
+          {
+            "id": "CLEANUP_ELIGIBILITY_GUARD_REMOVED",
+            "rejected": true,
+            "failedChecks": [
+              "reservation_cleanup_guard_before_delete"
+            ]
+          },
+          {
+            "id": "ABSENT_ID_MADE_DELETE_ELIGIBLE",
+            "rejected": true,
+            "failedChecks": [
+              "reservation_only_pair_delete_eligible"
+            ]
+          },
+          {
+            "id": "PROOF_QUERY_EXCEPTION_SWALLOWED",
+            "rejected": true,
+            "failedChecks": [
+              "reservation_actual_query_required",
+              "reservation_proof_before_pair_eligibility_and_create",
+              "reservation_proof_not_swallowed"
             ]
           }
         ],

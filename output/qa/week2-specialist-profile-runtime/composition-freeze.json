@@ -1,11 +1,11 @@
 {
-  "schema": "SD-SPECIALIST-PROFILE-COMPOSED-FREEZE-1",
+  "schema": "SD-SPECIALIST-PROFILE-COMPOSED-FREEZE-2",
   "base": "1355bd9af2c9d8d5170527c8c0fc565de997b6fe",
   "files": {
     "test/api-runtime/scenario/bootstrap.cjs": "6b682e5c43e1ea03c71e8ae94e6ac551774110ac92b979e991d6e122838137b8",
     "test/api-runtime/scenario/bootstrap-unit.cjs": "04b7703affafab0d8213458706702eefeed9ab2857ba5d252fa3d18fc0f22bd0",
     "test/api-runtime/scenario/compile.cjs": "8d25c7d7c8291fd02b179750dd761db4129750043c3501eb02ea0f759bfa1b6f",
-    "test/api-runtime/scenario/scenario.cjs": "1a1f8b0971e3f1d9711472255e93809fd8a957bad8807484241703177189cfee",
+    "test/api-runtime/scenario/scenario.cjs": "fd68f7133a862b6aed5df5543377a11b3f3bab314685905e3029282e4516b558",
     "test/api-runtime/scenario/README.md": "5c2c77675613344da4b58f6b8f548cca1e8617496d7a5ccafecbd0ccce07b72e",
     "test/api-runtime/scenario/ports-manifest.json": "59c410ffc991fdcb4b1ee384f55ba896363011a207573c6f7abc7aa8763f948b",
     "src1/modules/specialistPortal/services/index.ts": "631a2bc6e92e522db35bad35eacd9f7d46aa8e4dcdb508acc16dc44891fef27c",
@@ -17,9 +17,9 @@
     "output/qa/week2-specialist-profile-runtime/CONTRACT.md": "06477b433fee77df5baf5509bc20fc5d1eb4c51b712a9798056cf4c91dbd30de",
     "output/qa/week2-specialist-profile-runtime/inputs.json": "3fbe330c4cb86dc11e8074bf54c7f14c7057fcb3185bf5750db5a537b9454a7a",
     "output/qa/week2-specialist-profile-runtime/shared-interfaces.json": "d1d936422bc9655dcfb38357892f2caf55729beecf97c0b62945d69ce3819351",
-    "output/qa/week2-specialist-profile-runtime/composition-checks.json": "35fdfa7e376b37bd6fb17149ca943d07a07ab40ea875575a765a79cec5449051",
+    "output/qa/week2-specialist-profile-runtime/composition-checks.json": "f41b5bc46d83ff9e8b9bb0506cfdac93f09ee53cb4b3bcbfe52b44ca6ee62161",
     "output/qa/week2-specialist-profile-bootstrap/candidate-freeze.json": "d5f538ef92f2006caf1c4411b41f75e3dcddf15b4ef5df638b938949384d8555",
-    "output/qa/week2-specialist-profile-scenario/candidate-freeze.json": "7820dab07f1be8150a0cf906e5127b81a52dc712107c9c6a605188c0c2347540"
+    "output/qa/week2-specialist-profile-scenario/candidate-freeze.json": "76c1bb45d5af6dd59bbeacf491e4a9899c845a4ac2ff64e1cec5741613bb6085"
   },
   "authority": "SOURCE_CANDIDATE_REQUIRES_TWO_SOURCE_AND_SEPARATE_EXACT_EMISSION_DECISIONS"
 }
