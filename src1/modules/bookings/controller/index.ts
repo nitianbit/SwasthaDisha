@@ -23,6 +23,39 @@ export class BookingController {
     this.bookingService = Container.get(BookingService);
   }
 
+  private resolveHRBookingReadScope(req: AuthRequest): string | undefined {
+    if (req.user?.userType !== 'hr') {
+      return undefined;
+    }
+
+    const corporateId = req.user.corporateId;
+    if (
+      typeof corporateId !== 'string' ||
+      !/^[0-9a-fA-F]{24}$/.test(corporateId)
+    ) {
+      throw new AppError({
+        status: 403,
+        code: 'HR_CORPORATE_REQUIRED',
+        message: 'HR account must be linked to a corporate',
+      });
+    }
+
+    const requestedCorporateId = req.query.corporateId;
+    const forUser: unknown = req.query.forUser;
+    if (
+      (requestedCorporateId !== undefined && requestedCorporateId !== corporateId) ||
+      (forUser !== undefined && forUser !== false && forUser !== 'false')
+    ) {
+      throw new AppError({
+        status: 403,
+        code: 'FORBIDDEN',
+        message: 'HR can only access bookings from their own corporate',
+      });
+    }
+
+    return corporateId;
+  }
+
   private getHRCorporateId(req: AuthRequest): string | undefined {
     return req.user?.userType === 'hr' ? req.user.corporateId : undefined;
   }
@@ -228,6 +261,7 @@ export class BookingController {
   };
 
   getAll = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const requiredCorporateId = this.resolveHRBookingReadScope(req);
     const effectiveUserId =
       req.user?.userType === 'admin'
         ? (req.query.userId as string | undefined)
@@ -266,7 +300,9 @@ export class BookingController {
       forUser: req.query.forUser === 'true',
     };
 
-    const result = await this.bookingService.getAll(queryParams);
+    const result = requiredCorporateId === undefined
+      ? await this.bookingService.getAll(queryParams)
+      : await this.bookingService.getAll(queryParams, requiredCorporateId);
 
     if (result.total !== undefined) {
       // Paginated response
@@ -316,6 +352,7 @@ export class BookingController {
   };
 
   getByUserId = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const requiredCorporateId = this.resolveHRBookingReadScope(req);
     const { userId } = req.params;
     const result =
       req.user?.userType === 'hr'
@@ -323,7 +360,7 @@ export class BookingController {
             await this.bookingService.getAll({
               userId,
               corporateId: this.getHRCorporateId(req),
-            })
+            }, requiredCorporateId)
           ).data
         : await this.bookingService.getByUserId(userId);
 
@@ -338,11 +375,12 @@ export class BookingController {
     res: Response,
     _next: NextFunction
   ) => {
+    const requiredCorporateId = this.resolveHRBookingReadScope(req);
     if (req.user?.userType === 'hr') {
       const result = await this.bookingService.getAll({
         corporateId: this.getHRCorporateId(req),
         bookingDateFrom: getTodayYyyymmdd(),
-      });
+      }, requiredCorporateId);
 
       res.status(200).json({
         success: true,

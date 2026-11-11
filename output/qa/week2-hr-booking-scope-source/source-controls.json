@@ -1,0 +1,330 @@
+{
+  "schema": "SD-HR-READ-SOURCE-CONTROLS-1",
+  "controls": [
+    {
+      "id": "DECLARE_C_HR_ONLY",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "resolver",
+      "old": "if (req.user?.userType !== 'hr') {\n      return undefined;",
+      "new": "if (req.user?.userType === 'hr') {\n      return undefined;",
+      "requiredFailure": "DECL:C_HR_ONLY",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_C_PRIMITIVE",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "resolver",
+      "old": "typeof corporateId !== 'string' ||",
+      "new": "false ||",
+      "requiredFailure": "DECL:C_PRIMITIVE",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_C_EXACT_HEX",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "resolver",
+      "old": "!/^[0-9a-fA-F]{24}$/.test(corporateId)",
+      "new": "!/^[0-9a-fA-F]{1,24}$/.test(corporateId)",
+      "requiredFailure": "DECL:C_EXACT_HEX",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_C_SCOPE_ERROR",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "resolver",
+      "old": "status: 403,\n        code: 'HR_CORPORATE_REQUIRED',\n        message: 'HR account must be linked to a corporate'",
+      "new": "status: 401,\n        code: 'HR_CORPORATE_REQUIRED',\n        message: 'HR account must be linked to a corporate'",
+      "requiredFailure": "DECL:C_SCOPE_ERROR",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_C_CORPORATE_SELECTOR",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "resolver",
+      "old": "(requestedCorporateId !== undefined && requestedCorporateId !== corporateId) ||",
+      "new": "false ||",
+      "requiredFailure": "DECL:C_CORPORATE_SELECTOR",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_C_FALSE_ONLY_SELECTOR",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "resolver",
+      "old": "(forUser !== undefined && forUser !== false && forUser !== 'false')",
+      "new": "(false)",
+      "requiredFailure": "DECL:C_FALSE_ONLY_SELECTOR",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_C_UNKNOWN_SELECTOR_TYPE",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "resolver",
+      "old": "const forUser: unknown = req.query.forUser;",
+      "new": "const forUser: any = req.query.forUser;",
+      "requiredFailure": "DECL:C_UNKNOWN_SELECTOR_TYPE",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_C_SELECTOR_ERROR",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "resolver",
+      "old": "status: 403,\n        code: 'FORBIDDEN',\n        message: 'HR can only access bookings from their own corporate'",
+      "new": "status: 403,\n        code: 'HR_CORPORATE_REQUIRED',\n        message: 'HR can only access bookings from their own corporate'",
+      "requiredFailure": "DECL:C_SELECTOR_ERROR",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_C_FIRST_LIST",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "file",
+      "old": "  getAll = async (req: AuthRequest, res: Response, _next: NextFunction) => {\n    const requiredCorporateId = this.resolveHRBookingReadScope(req);\n",
+      "new": "  getAll = async (req: AuthRequest, res: Response, _next: NextFunction) => {\n    const requiredCorporateId = undefined;\n",
+      "requiredFailure": "DECL:C_FIRST_LIST",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_C_FIRST_USER",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "file",
+      "old": "  getByUserId = async (req: AuthRequest, res: Response, _next: NextFunction) => {\n    const requiredCorporateId = this.resolveHRBookingReadScope(req);\n",
+      "new": "  getByUserId = async (req: AuthRequest, res: Response, _next: NextFunction) => {\n    const requiredCorporateId = undefined;\n",
+      "requiredFailure": "DECL:C_FIRST_USER",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_C_FIRST_UPCOMING",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "file",
+      "old": "  getUpcomingBookings = async (\n    req: AuthRequest,\n    res: Response,\n    _next: NextFunction\n  ) => {\n    const requiredCorporateId = this.resolveHRBookingReadScope(req);\n",
+      "new": "  getUpcomingBookings = async (\n    req: AuthRequest,\n    res: Response,\n    _next: NextFunction\n  ) => {\n    const requiredCorporateId = undefined;\n",
+      "requiredFailure": "DECL:C_FIRST_UPCOMING",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_C_SCALAR_LIST",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "file",
+      "old": "    const result = requiredCorporateId === undefined\n      ? await this.bookingService.getAll(queryParams)\n      : await this.bookingService.getAll(queryParams, requiredCorporateId);",
+      "new": "    const result = requiredCorporateId === undefined\n      ? await this.bookingService.getAll(queryParams)\n      : await this.bookingService.getAll(queryParams);",
+      "requiredFailure": "DECL:C_SCALAR_LIST",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_C_SCALAR_USER",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "file",
+      "old": "            await this.bookingService.getAll({\n              userId,\n              corporateId: this.getHRCorporateId(req),\n            }, requiredCorporateId)",
+      "new": "            await this.bookingService.getAll({\n              userId,\n              corporateId: this.getHRCorporateId(req),\n            })",
+      "requiredFailure": "DECL:C_SCALAR_USER",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_C_SCALAR_UPCOMING",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "file",
+      "old": "      const result = await this.bookingService.getAll({\n        corporateId: this.getHRCorporateId(req),\n        bookingDateFrom: getTodayYyyymmdd(),\n      }, requiredCorporateId);",
+      "new": "      const result = await this.bookingService.getAll({\n        corporateId: this.getHRCorporateId(req),\n        bookingDateFrom: getTodayYyyymmdd(),\n      });",
+      "requiredFailure": "DECL:C_SCALAR_UPCOMING",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_S_OPTIONAL_SCALAR",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "getAll",
+      "old": "queryParams: BookingQueryParams = {},\n    requiredCorporateId?: string",
+      "new": "queryParams: BookingQueryParams = {},\n    requiredCorporateId?: any",
+      "requiredFailure": "DECL:S_OPTIONAL_SCALAR",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_S_SCOPE_PRESENCE",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "old": "if (requiredCorporateId !== undefined) {",
+      "new": "if (requiredCorporateId) {",
+      "requiredFailure": "DECL:S_SCOPE_PRESENCE",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_S_PRIMITIVE",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "old": "typeof requiredCorporateId !== 'string' ||",
+      "new": "false ||",
+      "requiredFailure": "DECL:S_PRIMITIVE",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_S_EXACT_HEX",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "old": "!/^[0-9a-fA-F]{24}$/.test(requiredCorporateId)",
+      "new": "!/^[0-9a-fA-F]{1,24}$/.test(requiredCorporateId)",
+      "requiredFailure": "DECL:S_EXACT_HEX",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_S_SCOPE_ERROR",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "old": "status: 403,\n          code: 'HR_CORPORATE_REQUIRED',\n          message: 'HR account must be linked to a corporate'",
+      "new": "status: 400,\n          code: 'HR_CORPORATE_REQUIRED',\n          message: 'HR account must be linked to a corporate'",
+      "requiredFailure": "DECL:S_SCOPE_ERROR",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_S_FRESH_QUERY",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "old": "const scopedQuery: BookingQueryParams = {\n        ...queryParams,\n        corporateId: requiredCorporateId,\n        forUser: false,\n      };",
+      "new": "const scopedQuery: BookingQueryParams = {\n        ...queryParams,\n        corporateId: queryParams.corporateId,\n        forUser: false,\n      };",
+      "requiredFailure": "DECL:S_FRESH_QUERY",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_S_PAGINATION",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "old": "if (scopedQuery.page && scopedQuery.limit) {\n        return this.bookingRepository.findWithPagination(\n          scopedQuery,\n          scopedQuery.page,\n          scopedQuery.limit\n        );\n      }",
+      "new": "if (scopedQuery.page && scopedQuery.limit) {\n        return this.bookingRepository.findWithPagination(\n          queryParams,\n          scopedQuery.page,\n          scopedQuery.limit\n        );\n      }",
+      "requiredFailure": "DECL:S_PAGINATION",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_S_CORPORATE_FILTER",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "old": "const filter: any = { corporateId: requiredCorporateId };",
+      "new": "const filter: any = {};",
+      "requiredFailure": "DECL:S_CORPORATE_FILTER",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_S_USER_PRIORITY",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "old": "if (scopedQuery.userId) {\n        filter.userId = scopedQuery.userId;\n      } else if (scopedQuery.dependentId) {\n        filter.dependentId = scopedQuery.dependentId;",
+      "new": "if (scopedQuery.userId) {\n        filter.userId = undefined;\n      } else if (scopedQuery.dependentId) {\n        filter.dependentId = scopedQuery.dependentId;",
+      "requiredFailure": "DECL:S_USER_PRIORITY",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_S_DEFAULT_SORT",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "old": "let sort: any = { bookingDate: -1, createdAt: -1 };",
+      "new": "let sort: any = { bookingDate: 1, createdAt: -1 };",
+      "requiredFailure": "DECL:S_DEFAULT_SORT",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_S_WELLNESS_SHORTCUT",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "old": "} else if (scopedQuery.wellnessPackageId) {\n        filter.wellnessPackageId = scopedQuery.wellnessPackageId;\n        filter.bookingType = 'package';\n        sort = { bookingDate: -1 };",
+      "new": "} else if (scopedQuery.wellnessPackageId) {\n        filter.wellnessPackageId = scopedQuery.wellnessPackageId;\n        filter.bookingType = 'consultation';\n        sort = { bookingDate: -1 };",
+      "requiredFailure": "DECL:S_WELLNESS_SHORTCUT",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_S_SPECIALIST_SHORTCUT",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "old": "} else if (scopedQuery.specialistId) {\n        filter.specialistId = scopedQuery.specialistId;\n        filter.bookingType = 'consultation';\n        sort = { bookingDate: -1 };",
+      "new": "} else if (scopedQuery.specialistId) {\n        filter.specialistId = scopedQuery.specialistId;\n        filter.bookingType = 'second-opinion';\n        sort = { bookingDate: -1 };",
+      "requiredFailure": "DECL:S_SPECIALIST_SHORTCUT",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_S_GENERAL_PHARMACYID",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "old": "if (scopedQuery.pharmacyId) {\n          filter.pharmacyId = scopedQuery.pharmacyId;\n        }",
+      "new": "if (scopedQuery.pharmacyId) {\n          filter.pharmacyId = undefined;\n        }",
+      "requiredFailure": "DECL:S_GENERAL_PHARMACYID",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_S_GENERAL_BOOKINGTYPE",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "old": "if (scopedQuery.bookingType) {\n          filter.bookingType = scopedQuery.bookingType;\n        }",
+      "new": "if (scopedQuery.bookingType) {\n          filter.bookingType = undefined;\n        }",
+      "requiredFailure": "DECL:S_GENERAL_BOOKINGTYPE",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_S_GENERAL_STATUS",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "old": "if (scopedQuery.status) {\n          filter.status = scopedQuery.status;\n        }",
+      "new": "if (scopedQuery.status) {\n          filter.status = undefined;\n        }",
+      "requiredFailure": "DECL:S_GENERAL_STATUS",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_S_GENERAL_PAYMENTSTATUS",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "old": "if (scopedQuery.paymentStatus) {\n          filter.paymentStatus = scopedQuery.paymentStatus;\n        }",
+      "new": "if (scopedQuery.paymentStatus) {\n          filter.paymentStatus = undefined;\n        }",
+      "requiredFailure": "DECL:S_GENERAL_PAYMENTSTATUS",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_S_GENERAL_SORT",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "old": "if (scopedQuery.sortBy) {\n          sort = {\n            [scopedQuery.sortBy]: scopedQuery.sortOrder === 'desc' ? -1 : 1,\n          };\n        }",
+      "new": "if (scopedQuery.sortBy) {\n          sort = {\n            [scopedQuery.sortBy]: scopedQuery.sortOrder === 'asc' ? -1 : 1,\n          };\n        }",
+      "requiredFailure": "DECL:S_GENERAL_SORT",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_S_ACTUAL_ONE_READ",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "old": "const data = await this.bookingRepository.findAll(filter, { sort });\n      return { data };",
+      "new": "const data = await this.bookingRepository.findAll({});\n      return { data };",
+      "requiredFailure": "DECL:S_ACTUAL_ONE_READ",
+      "claim": "Literal declaration rejection only, not proof of TypeScript validity or HTTP/DB behavior."
+    },
+    {
+      "id": "DECLARE_S_FORUSER_OVERRIDE",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "old": "const scopedQuery: BookingQueryParams = {\n        ...queryParams,\n        corporateId: requiredCorporateId,\n        forUser: false,\n      };",
+      "new": "const scopedQuery: BookingQueryParams = {\n        ...queryParams,\n        corporateId: requiredCorporateId,\n        forUser: true,\n      };",
+      "requiredFailure": "DECL:S_FRESH_QUERY",
+      "claim": "Source declaration only."
+    },
+    {
+      "id": "DECLARE_UPCOMING_BOTH_SCOPE_SINKS",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "file",
+      "old": "      const result = await this.bookingService.getAll({\n        corporateId: this.getHRCorporateId(req),\n        bookingDateFrom: getTodayYyyymmdd(),\n      }, requiredCorporateId);",
+      "new": "      const result = await this.bookingService.getAll({\n        bookingDateFrom: getTodayYyyymmdd(),\n      });",
+      "requiredFailure": "DECL:C_SCALAR_UPCOMING",
+      "claim": "Source declaration only; actual runtime sensitivity remains NOT_ADMITTED."
+    },
+    {
+      "id": "INVERSE_SHARED_HELPER_MUST_STAY",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "file",
+      "old": "    return req.user?.userType === 'hr' ? req.user.corporateId : undefined;",
+      "new": "    return req.user?.userType === 'hr' ? req.user.corporateId || String(req.query.corporateId) : undefined;",
+      "requiredFailure": "EXACT_SOURCE:src1/modules/bookings/controller/index.ts",
+      "claim": "Exact inverse/untouched method containment only."
+    },
+    {
+      "id": "INVERSE_LEGACY_BODY_MUST_STAY",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "getAll",
+      "old": "    if (queryParams.page && queryParams.limit) {",
+      "new": "    if (queryParams.page || queryParams.limit) {",
+      "requiredFailure": "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+      "claim": "Exact inverse/untouched one-argument body only."
+    }
+  ],
+  "limits": "All variants are inert source strings. No parser/compiler/domain/application execution or HTTP sensitivity result."
+}
