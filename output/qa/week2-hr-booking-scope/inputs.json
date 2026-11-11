@@ -1,0 +1,4496 @@
+{
+  "schemaVersion": 1,
+  "status": "ROOT_FINAL_SOURCE_CONTRACT_REQUIRES_TWO_PREIMPLEMENTATION_DECISIONS",
+  "baseline": {
+    "repository": "nitianbit/SwasthaDisha",
+    "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-hr-booking-scope-contract",
+    "branch": "m0/week2-hr-booking-scope-contract",
+    "commitProvidedByRoot": "17957201d54418f2dcae182626c642e9a0bdee60",
+    "gitExecuted": false,
+    "graph": {
+      "project": "swasthadisha",
+      "indexedRoot": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha",
+      "indexedHead": "bfb608ea1a89551f6cd72ec5ee1349a3ee7abef7",
+      "stale": true,
+      "authority": "Current source bytes; graph arrow-method caller gaps corroborated by literal/source reads."
+    },
+    "finalRootCommit": "ed7e1e4a455114784cbb836156fffc85c276f0d6",
+    "historicalDraftCommit": "17957201d54418f2dcae182626c642e9a0bdee60"
+  },
+  "productionEditAllowlist": [
+    "src1/modules/bookings/controller/index.ts",
+    "src1/modules/bookings/services/index.ts"
+  ],
+  "draftOwnedFiles": [
+    "output/qa/week2-hr-booking-scope/CONTRACT_DRAFT.md",
+    "output/qa/week2-hr-booking-scope/draft-inputs.json"
+  ],
+  "sourceDependencyPolicyPins": {
+    "AGENTS.md": "c591a4943214fe22bd8c74b47311aa2a1ffc218013fea20d1ab9d86c1ead5866",
+    "src1/modules/bookings/controller/index.ts": "c6a0aeae7f86d2bef6777bde2c07025cb439e5b76254f974bf27f04648bb2080",
+    "src1/modules/bookings/services/index.ts": "f239aa5a35b56c96b483a7ed009ef0e2a9e8b5ec2cd43d796fc72c6d853c6508",
+    "src1/modules/bookings/repository/index.ts": "d54ebba522cd290589296918eb2dcb4f7609e42d836ef3f23dfb89114b375713",
+    "src1/modules/bookings/routes/index.ts": "b2ed40c971e35ceb28eeccb8b491bcf7c4b2dcaf35a7267c783a8345760e3cfb",
+    "src1/modules/bookings/validation/index.ts": "ce9743b4cc50af6b230089c0ff0523f490f8685c6fbb48cc475f4b8e52e6f728",
+    "src1/modules/bookings/types/index.ts": "30d1a615c3f157ec9a73f9a13968c3afcec59f84bdfa0178413f22c906f42a79",
+    "src1/modules/bookings/model/index.ts": "219f8115e5eec4bebd7205c763638e8755bde57122866430a1b3bcd0f69ead72",
+    "src1/modules/middleware/auth.ts": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+    "src1/modules/middleware/errorHandler.ts": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51",
+    "src1/modules/common/middleware/validation.ts": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef",
+    "src1/modules/common/types/index.ts": "63ad3821027150d368e993903e954b4a80b776ff223caf322c104008239d4cbd",
+    "src1/modules/user/controller/index.ts": "25aef90efe3e5142011789dd48d55452d5b1fef9f2e56d70c355e7606e191d74",
+    "src1/modules/auth/services/index.ts": "d59d5ea23df586fbbdb5b9c4615bcbe0b716f649bdc02f3738088f87b0fbae56",
+    "src1/modules/hr/model/index.ts": "97937e1e9935c78771357a824a52019fbf81fdb1cc5c77fe86107c1516c5f6eb",
+    "src1/routes/index.ts": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056",
+    "documentation/planning/implementation/M0_A_PROGRESS.md": "707065813ec766bf0059b19e48612c005e3c13971652a465f54672f6f89068f5",
+    "documentation/planning/implementation/PARALLEL_WORKSTREAMS.md": "7439003be1f4219e5d0cc2a053554eb10fb2ac7428cf01b79a2cfd815e1cd29e",
+    "documentation/planning/implementation/PARALLEL_DEVELOPMENT_WORKFLOW.md": "c4f99a171df17ae98405a1fdd1c6aad0f9ab2dedfdb4aafabff60cb292d6148a",
+    "documentation/planning/implementation/REPOSITORY_TRANSITION.md": "a4a9bd91441efec38d6c3ba3914c3536fcac820ae53f95abe23ebd3e21f48969",
+    "documentation/planning/M0_IMPLEMENTATION_APPROVAL.md": "c09be47e12ecc433f873bd967c5e72e9717734ef5e3af8b119fb555fec1671c9",
+    "documentation/planning/PRINCIPAL_REVIEW_DISPOSITION.md": "de97b17c986e5cf832efae38078d9bfdbbdc95d694f08e6dfe36ad0ab397197e",
+    "documentation/planning/SYSTEM_DESIGN.md": "cbd899f6fb442b13db28c389143b529b90da364165dc17291cc829814810bc84",
+    "documentation/planning/qa/TEST_SCENARIOS.md": "bd8c6e8952a8c1cc2f2c2063a4d7a79000dc5566b966a6650d49d60ff841f09e",
+    "documentation/planning/implementation/USER_ROUTE_AUTHORITY_CONTRACT.md": "9f68e4abb5c08e5795a0216341939a4d87a7682662be990058cbae366281ea99"
+  },
+  "clientEvidence": {
+    "root": "/Users/shubham/Desktop/admin_panel_template",
+    "readOnlySourceOnly": true,
+    "pins": {
+      "src/services/bookings/index.tsx": "37f6d4eecfd14e45c539042236d9746187859bc575f4076c1a0f8e2e8f5c10ce",
+      "src/pages/Bookings/index.tsx": "5ad4d777018d4e3bd5c96118096d73e4f1372cb2659a7560f395a1d5fe4eb864",
+      "src/utils/helper.tsx": "b8dce7a3c08026b4ddf2cc16085e55e639058f552864e0beacd61a2b7ee4d858",
+      "src/routes/index.tsx": "5d6ef5885a82c92f7c71523c602257edd1644591f2f15247c6671915e8971eae"
+    },
+    "references": [
+      "src/utils/helper.tsx:52 permits HR /bookings",
+      "src/routes/index.tsx:459 renders Bookings through AdminElement",
+      "src/services/bookings/index.tsx:16 paginated fetchBookingPage; :225 /user/:userId; :242 /upcoming; :257 unpaginated export",
+      "src/pages/Bookings/index.tsx:240 optional corporate selector"
+    ],
+    "deployedSupportedBuildVerified": false
+  },
+  "interfaceProposal": {
+    "rootFinalDecisionPending": false,
+    "controller": "private resolveHRBookingReadScope(req: AuthRequest): string | undefined",
+    "service": "async getAll(queryParams: BookingQueryParams = {}, requiredCorporateId?: string): Promise<existing return type>",
+    "nonHR": "resolver returns undefined immediately; same original one-argument calls/legacy body remain, with no new general actor policy",
+    "HRPrincipal": "corporateId must be a primitive string matching ^[0-9a-fA-F]{24}$; no trim/case normalization/coercion, no membership DB lookup",
+    "HRSelectors": "corporateId absent or strict-equal string own scope; forUser absent, false, or string false allowed; true and string true plus all other present values denied. Existing LIST/UPCOMING Joi runs first. USER has no query Joi.",
+    "trustedScope": "Only exact HR handlers supply validated scalar from resolver; never infer service authority from caller query corporateId or forUser. No scope mutation of request/query.",
+    "serviceScopeValidation": "Provided second scalar must also be primitive24hex before DB; invalidprovided403HR_CORPORATE_REQUIRED, undefined preserveslegacyonearg."
+  },
+  "scopeSemantics": {
+    "readHandlers": [
+      "BookingController.getAll",
+      "BookingController.getByUserId",
+      "BookingController.getUpcomingBookings"
+    ],
+    "helperMustRemainByteIdentical": "getHRCorporateId and its fourth caller ensureHRCanAccessBooking; create/write paths not touched",
+    "guardOrder": "Existing authenticate -> existing route Joi -> dedicated resolver as first handler operation -> same downstream service; no new database read for resolver",
+    "errorEnvelope": "{error:status,message,code}; existing errorHandler invokes logger.error exactly once per HTTP error; no new logger/provider capability",
+    "scopeErrors": {
+      "invalidPrincipal": {
+        "status": 403,
+        "code": "HR_CORPORATE_REQUIRED",
+        "message": "HR account must be linked to a corporate"
+      },
+      "forbiddenSelector": {
+        "status": 403,
+        "code": "FORBIDDEN",
+        "message": "HR can only access bookings from their own corporate"
+      }
+    },
+    "servicePreferred": "Separate trusted scoped path before unchanged original body. Presence uses requiredCorporateId !== undefined. Paginated delegates once with fresh query copy forcing corporateId and forUser:false. Ordinary chooses exact legacy shortcut priority/filter/sort, adds corporateId in final database query, and calls actual findAll once.",
+    "ordinaryScopedPriority": [
+      {
+        "when": "userId truthy",
+        "filter": [
+          "userId",
+          "requiredCorporateId as corporateId"
+        ],
+        "sort": {
+          "bookingDate": -1,
+          "createdAt": -1
+        },
+        "otherSelectors": "still ignored as in original shortcut"
+      },
+      {
+        "when": "else dependentId truthy",
+        "filter": [
+          "dependentId",
+          "requiredCorporateId as corporateId"
+        ],
+        "sort": {
+          "bookingDate": -1,
+          "createdAt": -1
+        },
+        "otherSelectors": "still ignored as in original shortcut"
+      },
+      {
+        "when": "else wellnessPackageId truthy",
+        "filter": [
+          "wellnessPackageId",
+          "bookingType literal package",
+          "requiredCorporateId as corporateId"
+        ],
+        "sort": {
+          "bookingDate": -1
+        },
+        "otherSelectors": "still ignored as in original shortcut"
+      },
+      {
+        "when": "else specialistId truthy",
+        "filter": [
+          "specialistId",
+          "bookingType literal consultation",
+          "requiredCorporateId as corporateId"
+        ],
+        "sort": {
+          "bookingDate": -1
+        },
+        "otherSelectors": "still ignored as in original shortcut"
+      },
+      {
+        "when": "else general",
+        "filter": "same current ordinary getAll filter with forced corporate; forUser cannot replace it",
+        "sort": "same current general getAll sort; no new date-range handling"
+      }
+    ],
+    "pagination": "Same real findWithPagination: one find and one count; current no-implicit-bookingType behavior, date predicates and omission of pharmacyId preserved. No extra lookups.",
+    "rejectedImplicitMigration": "Do not switch all ordinary HR shortcuts to a general conjunction/custom sort or change their implicit bookingType; that expands this contract. Root may select an explicit alternative before source authoring, requiring amended data/review.",
+    "upcoming": "Retain getTodayYyyymmdd passed as bookingDateFrom and existing pending/confirmed post-filter. Ordinary getAll currently ignores date bounds, so this slice intentionally does not repair upcoming dates.",
+    "emptyResults": "Authorized lists return200 empty data (pagination total0 when used); no new record-existence probe or404.",
+    "effectBudget": "zero writes, provider/queue/file/timer effects; one ordinary real read or existing paginated find+count; error logger exactly once on errors; all owned row/state snapshots unchanged."
+  },
+  "futureFixture": {
+    "notAdmitted": true,
+    "rowsAre": "Finite read-set descriptors with synthetic identities, not permission to import model/seed/run current fixture. Actual C3 must separately freeze canonical complete model constructors, Date conversions, clock horizon, full pre-import closure, indices, paths, packages, safe counters, permissions and cleanup. No real patient/contact/provider values.",
+    "clockLimitation": "2030 dates are finite fixture data and do not authorize clock patching; freeze actual run horizon separately. A_OLD_PENDING intentionally tests current HR upcoming date limitation.",
+    "ids": {
+      "corporateA": "100000000000000000000001",
+      "corporateB": "100000000000000000000002",
+      "hr": "200000000000000000000001",
+      "admin": "200000000000000000000002",
+      "userShared": "300000000000000000000001",
+      "userA": "300000000000000000000002",
+      "userB": "300000000000000000000003",
+      "userPublic": "300000000000000000000004",
+      "userMissing": "300000000000000000000099",
+      "dependentShared": "400000000000000000000001",
+      "dependentA": "400000000000000000000002",
+      "dependentB": "400000000000000000000003",
+      "dependentPublic": "400000000000000000000004",
+      "wellness": "500000000000000000000001",
+      "specialist": "600000000000000000000001",
+      "pharmacyP": "700000000000000000000001",
+      "pharmacyQ": "700000000000000000000002"
+    },
+    "rows": [
+      {
+        "key": "A_PACKAGE",
+        "_id": "800000000000000000000001",
+        "userId": "300000000000000000000001",
+        "dependentId": "400000000000000000000001",
+        "bookingType": "package",
+        "bookingDate": "20300101",
+        "bookingTime": "09:00",
+        "serviceMode": "in-person",
+        "price": 100,
+        "status": "pending",
+        "paymentStatus": "paid",
+        "pharmacyId": "700000000000000000000001",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "wellnessPackageId": "500000000000000000000001",
+        "corporateId": "100000000000000000000001"
+      },
+      {
+        "key": "B_PACKAGE",
+        "_id": "800000000000000000000002",
+        "userId": "300000000000000000000001",
+        "dependentId": "400000000000000000000001",
+        "bookingType": "package",
+        "bookingDate": "20300102",
+        "bookingTime": "09:00",
+        "serviceMode": "in-person",
+        "price": 100,
+        "status": "pending",
+        "paymentStatus": "paid",
+        "pharmacyId": "700000000000000000000002",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "wellnessPackageId": "500000000000000000000001",
+        "corporateId": "100000000000000000000002"
+      },
+      {
+        "key": "PUBLIC_PACKAGE",
+        "_id": "800000000000000000000003",
+        "userId": "300000000000000000000001",
+        "dependentId": "400000000000000000000001",
+        "bookingType": "package",
+        "bookingDate": "20300103",
+        "bookingTime": "09:00",
+        "serviceMode": "in-person",
+        "price": 100,
+        "status": "pending",
+        "paymentStatus": "paid",
+        "pharmacyId": "700000000000000000000001",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "wellnessPackageId": "500000000000000000000001"
+      },
+      {
+        "key": "A_CONSULT",
+        "_id": "800000000000000000000004",
+        "userId": "300000000000000000000002",
+        "dependentId": "400000000000000000000002",
+        "bookingType": "consultation",
+        "bookingDate": "20300104",
+        "bookingTime": "09:00",
+        "serviceMode": "in-person",
+        "price": 100,
+        "status": "confirmed",
+        "paymentStatus": "paid",
+        "pharmacyId": "700000000000000000000001",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "specialistId": "600000000000000000000001",
+        "corporateId": "100000000000000000000001"
+      },
+      {
+        "key": "B_CONSULT",
+        "_id": "800000000000000000000005",
+        "userId": "300000000000000000000003",
+        "dependentId": "400000000000000000000003",
+        "bookingType": "consultation",
+        "bookingDate": "20300105",
+        "bookingTime": "09:00",
+        "serviceMode": "in-person",
+        "price": 100,
+        "status": "confirmed",
+        "paymentStatus": "paid",
+        "pharmacyId": "700000000000000000000002",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "specialistId": "600000000000000000000001",
+        "corporateId": "100000000000000000000002"
+      },
+      {
+        "key": "A_COMPLETED",
+        "_id": "800000000000000000000006",
+        "userId": "300000000000000000000001",
+        "dependentId": "400000000000000000000002",
+        "bookingType": "consultation",
+        "bookingDate": "20300106",
+        "bookingTime": "09:00",
+        "serviceMode": "in-person",
+        "price": 100,
+        "status": "completed",
+        "paymentStatus": "paid",
+        "pharmacyId": "700000000000000000000002",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "specialistId": "600000000000000000000001",
+        "corporateId": "100000000000000000000001"
+      },
+      {
+        "key": "A_CANCELLED",
+        "_id": "800000000000000000000007",
+        "userId": "300000000000000000000002",
+        "dependentId": "400000000000000000000002",
+        "bookingType": "consultation",
+        "bookingDate": "20300107",
+        "bookingTime": "09:00",
+        "serviceMode": "in-person",
+        "price": 100,
+        "status": "cancelled",
+        "paymentStatus": "failed",
+        "pharmacyId": "700000000000000000000001",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "specialistId": "600000000000000000000001",
+        "corporateId": "100000000000000000000001"
+      },
+      {
+        "key": "A_SECOND_OPINION",
+        "_id": "800000000000000000000008",
+        "userId": "300000000000000000000001",
+        "dependentId": "400000000000000000000001",
+        "bookingType": "second-opinion",
+        "bookingDate": "20300108",
+        "bookingTime": "09:00",
+        "serviceMode": "in-person",
+        "price": 100,
+        "status": "pending",
+        "paymentStatus": "pending",
+        "pharmacyId": "700000000000000000000001",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "specialistId": "600000000000000000000001",
+        "corporateId": "100000000000000000000001"
+      },
+      {
+        "key": "PUBLIC_CONSULT",
+        "_id": "800000000000000000000009",
+        "userId": "300000000000000000000004",
+        "dependentId": "400000000000000000000004",
+        "bookingType": "consultation",
+        "bookingDate": "20300109",
+        "bookingTime": "09:00",
+        "serviceMode": "in-person",
+        "price": 100,
+        "status": "pending",
+        "paymentStatus": "pending",
+        "pharmacyId": "700000000000000000000002",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "specialistId": "600000000000000000000001"
+      },
+      {
+        "key": "A_OLD_PENDING",
+        "_id": "800000000000000000000010",
+        "userId": "300000000000000000000002",
+        "dependentId": "400000000000000000000002",
+        "bookingType": "consultation",
+        "bookingDate": "20000101",
+        "bookingTime": "09:00",
+        "serviceMode": "in-person",
+        "price": 100,
+        "status": "pending",
+        "paymentStatus": "paid",
+        "pharmacyId": "700000000000000000000001",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T00:00:00.000Z",
+        "specialistId": "600000000000000000000001",
+        "corporateId": "100000000000000000000001"
+      }
+    ],
+    "routes": {
+      "LIST": {
+        "path": "/api/v1/bookings",
+        "validation": [
+          "bookingQuerySchema(query)"
+        ]
+      },
+      "USER": {
+        "path": "/api/v1/bookings/user/300000000000000000000001",
+        "validation": [
+          "userIdParamSchema(params)"
+        ],
+        "queryValidation": false
+      },
+      "UPCOMING": {
+        "path": "/api/v1/bookings/upcoming",
+        "validation": [
+          "bookingQuerySchema(query)"
+        ]
+      }
+    },
+    "actors": {
+      "HR_BOUND": {
+        "auth": "valid-synthetic-jwt",
+        "claims": {
+          "_id": "200000000000000000000001",
+          "userType": "hr",
+          "corporateId": "100000000000000000000001"
+        }
+      },
+      "ADMIN": {
+        "auth": "valid-synthetic-jwt",
+        "claims": {
+          "_id": "200000000000000000000002",
+          "userType": "admin"
+        }
+      },
+      "USER": {
+        "auth": "valid-synthetic-jwt",
+        "claims": {
+          "_id": "300000000000000000000001",
+          "userType": "user"
+        }
+      },
+      "PHARMACY": {
+        "auth": "valid-synthetic-jwt",
+        "claims": {
+          "_id": "700000000000000000000001",
+          "pharmacyId": "700000000000000000000001",
+          "userType": "pharmacy"
+        }
+      },
+      "HR_ABSENT": {
+        "auth": "valid-synthetic-jwt",
+        "claims": {
+          "_id": "200000000000000000000001",
+          "userType": "hr"
+        },
+        "reachability": "ABSENT is issuer-reachable because HR corporateId is optional; other malformed JSON claim values are verifier-boundary canaries, not a claim that ordinary login issues them."
+      },
+      "HR_NULL": {
+        "auth": "valid-synthetic-jwt",
+        "claims": {
+          "_id": "200000000000000000000001",
+          "userType": "hr",
+          "corporateId": null
+        },
+        "reachability": "ABSENT is issuer-reachable because HR corporateId is optional; other malformed JSON claim values are verifier-boundary canaries, not a claim that ordinary login issues them."
+      },
+      "HR_EMPTY": {
+        "auth": "valid-synthetic-jwt",
+        "claims": {
+          "_id": "200000000000000000000001",
+          "userType": "hr",
+          "corporateId": ""
+        },
+        "reachability": "ABSENT is issuer-reachable because HR corporateId is optional; other malformed JSON claim values are verifier-boundary canaries, not a claim that ordinary login issues them."
+      },
+      "HR_WHITESPACE": {
+        "auth": "valid-synthetic-jwt",
+        "claims": {
+          "_id": "200000000000000000000001",
+          "userType": "hr",
+          "corporateId": " "
+        },
+        "reachability": "ABSENT is issuer-reachable because HR corporateId is optional; other malformed JSON claim values are verifier-boundary canaries, not a claim that ordinary login issues them."
+      },
+      "HR_ZERO": {
+        "auth": "valid-synthetic-jwt",
+        "claims": {
+          "_id": "200000000000000000000001",
+          "userType": "hr",
+          "corporateId": 0
+        },
+        "reachability": "ABSENT is issuer-reachable because HR corporateId is optional; other malformed JSON claim values are verifier-boundary canaries, not a claim that ordinary login issues them."
+      },
+      "HR_FALSE": {
+        "auth": "valid-synthetic-jwt",
+        "claims": {
+          "_id": "200000000000000000000001",
+          "userType": "hr",
+          "corporateId": false
+        },
+        "reachability": "ABSENT is issuer-reachable because HR corporateId is optional; other malformed JSON claim values are verifier-boundary canaries, not a claim that ordinary login issues them."
+      },
+      "HR_ARRAY": {
+        "auth": "valid-synthetic-jwt",
+        "claims": {
+          "_id": "200000000000000000000001",
+          "userType": "hr",
+          "corporateId": [
+            "100000000000000000000001"
+          ]
+        },
+        "reachability": "ABSENT is issuer-reachable because HR corporateId is optional; other malformed JSON claim values are verifier-boundary canaries, not a claim that ordinary login issues them."
+      },
+      "HR_OBJECT": {
+        "auth": "valid-synthetic-jwt",
+        "claims": {
+          "_id": "200000000000000000000001",
+          "userType": "hr",
+          "corporateId": {
+            "corporateId": "100000000000000000000001"
+          }
+        },
+        "reachability": "ABSENT is issuer-reachable because HR corporateId is optional; other malformed JSON claim values are verifier-boundary canaries, not a claim that ordinary login issues them."
+      },
+      "HR_SHORT": {
+        "auth": "valid-synthetic-jwt",
+        "claims": {
+          "_id": "200000000000000000000001",
+          "userType": "hr",
+          "corporateId": "bad"
+        },
+        "reachability": "ABSENT is issuer-reachable because HR corporateId is optional; other malformed JSON claim values are verifier-boundary canaries, not a claim that ordinary login issues them."
+      },
+      "HR_NON_HEX": {
+        "auth": "valid-synthetic-jwt",
+        "claims": {
+          "_id": "200000000000000000000001",
+          "userType": "hr",
+          "corporateId": "gggggggggggggggggggggggg"
+        },
+        "reachability": "ABSENT is issuer-reachable because HR corporateId is optional; other malformed JSON claim values are verifier-boundary canaries, not a claim that ordinary login issues them."
+      },
+      "HR_LENGTH_23": {
+        "auth": "valid-synthetic-jwt",
+        "claims": {
+          "_id": "200000000000000000000001",
+          "userType": "hr",
+          "corporateId": "11111111111111111111111"
+        },
+        "reachability": "ABSENT is issuer-reachable because HR corporateId is optional; other malformed JSON claim values are verifier-boundary canaries, not a claim that ordinary login issues them."
+      },
+      "HR_PADDED": {
+        "auth": "valid-synthetic-jwt",
+        "claims": {
+          "_id": "200000000000000000000001",
+          "userType": "hr",
+          "corporateId": " 100000000000000000000001"
+        },
+        "reachability": "ABSENT is issuer-reachable because HR corporateId is optional; other malformed JSON claim values are verifier-boundary canaries, not a claim that ordinary login issues them."
+      },
+      "AUTH_MISSING": {
+        "auth": "no-authorization-header"
+      },
+      "AUTH_BAD_SIGNATURE": {
+        "auth": "synthetic-jwt-wrong-signing-key"
+      },
+      "AUTH_EXPIRED": {
+        "auth": "synthetic-jwt-expired"
+      }
+    },
+    "groups": {
+      "HR_PRINCIPAL_DENIALS": 36,
+      "HR_SELECTOR_DENIALS": 15,
+      "HR_AUTH_VALIDATION_PRECEDENCE": 12,
+      "HR_LIST_SCOPE_CONSERVATION": 24,
+      "HR_OTHER_READ_HANDLERS": 8,
+      "NON_HR_COMPATIBILITY": 8
+    },
+    "trialCount": 103,
+    "trials": [
+      {
+        "id": "HR_PRINCIPAL_ABSENT_LIST",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_ABSENT",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_ABSENT_USER",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_ABSENT",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_ABSENT_UPCOMING",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_ABSENT",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_NULL_LIST",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_NULL",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_NULL_USER",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_NULL",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_NULL_UPCOMING",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_NULL",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_EMPTY_LIST",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_EMPTY",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_EMPTY_USER",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_EMPTY",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_EMPTY_UPCOMING",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_EMPTY",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_WHITESPACE_LIST",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_WHITESPACE",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_WHITESPACE_USER",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_WHITESPACE",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_WHITESPACE_UPCOMING",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_WHITESPACE",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_ZERO_LIST",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_ZERO",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_ZERO_USER",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_ZERO",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_ZERO_UPCOMING",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_ZERO",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_FALSE_LIST",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_FALSE",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_FALSE_USER",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_FALSE",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_FALSE_UPCOMING",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_FALSE",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_ARRAY_LIST",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_ARRAY",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_ARRAY_USER",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_ARRAY",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_ARRAY_UPCOMING",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_ARRAY",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_OBJECT_LIST",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_OBJECT",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_OBJECT_USER",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_OBJECT",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_OBJECT_UPCOMING",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_OBJECT",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_SHORT_LIST",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_SHORT",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_SHORT_USER",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_SHORT",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_SHORT_UPCOMING",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_SHORT",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_NON_HEX_LIST",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_NON_HEX",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_NON_HEX_USER",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_NON_HEX",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_NON_HEX_UPCOMING",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_NON_HEX",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_LENGTH_23_LIST",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_LENGTH_23",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_LENGTH_23_USER",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_LENGTH_23",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_LENGTH_23_UPCOMING",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_LENGTH_23",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_PADDED_LIST",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_PADDED",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_PADDED_USER",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_PADDED",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_PRINCIPAL_PADDED_UPCOMING",
+        "group": "HR_PRINCIPAL_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_PADDED",
+          "query": {}
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "HR_CORPORATE_REQUIRED",
+          "message": "HR account must be linked to a corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_SELECTOR_OTHER_CORPORATE_LIST",
+        "group": "HR_SELECTOR_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "corporateId": "100000000000000000000002"
+          }
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "FORBIDDEN",
+          "message": "HR can only access bookings from their own corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_SELECTOR_FOR_USER_TRUE_LIST",
+        "group": "HR_SELECTOR_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "forUser": "true"
+          }
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "FORBIDDEN",
+          "message": "HR can only access bookings from their own corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_SELECTOR_BOTH_LIST",
+        "group": "HR_SELECTOR_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "corporateId": "100000000000000000000002",
+            "forUser": "true"
+          }
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "FORBIDDEN",
+          "message": "HR can only access bookings from their own corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_SELECTOR_BAD_CORPORATE_LIST",
+        "group": "HR_SELECTOR_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "corporateId": "bad"
+          }
+        },
+        "expected": {
+          "status": 400,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "VALIDATION_ERROR",
+          "message": "existing pinned Joi error message, frozen exactly before runtime admission",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_SELECTOR_BAD_FOR_USER_LIST",
+        "group": "HR_SELECTOR_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "forUser": "invalid"
+          }
+        },
+        "expected": {
+          "status": 400,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "VALIDATION_ERROR",
+          "message": "existing pinned Joi error message, frozen exactly before runtime admission",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_SELECTOR_OTHER_CORPORATE_USER",
+        "group": "HR_SELECTOR_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_BOUND",
+          "query": {
+            "corporateId": "100000000000000000000002"
+          }
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "FORBIDDEN",
+          "message": "HR can only access bookings from their own corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_SELECTOR_FOR_USER_TRUE_USER",
+        "group": "HR_SELECTOR_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_BOUND",
+          "query": {
+            "forUser": "true"
+          }
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "FORBIDDEN",
+          "message": "HR can only access bookings from their own corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_SELECTOR_BOTH_USER",
+        "group": "HR_SELECTOR_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_BOUND",
+          "query": {
+            "corporateId": "100000000000000000000002",
+            "forUser": "true"
+          }
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "FORBIDDEN",
+          "message": "HR can only access bookings from their own corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_SELECTOR_BAD_CORPORATE_USER",
+        "group": "HR_SELECTOR_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_BOUND",
+          "query": {
+            "corporateId": "bad"
+          }
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "FORBIDDEN",
+          "message": "HR can only access bookings from their own corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_SELECTOR_BAD_FOR_USER_USER",
+        "group": "HR_SELECTOR_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_BOUND",
+          "query": {
+            "forUser": "invalid"
+          }
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "FORBIDDEN",
+          "message": "HR can only access bookings from their own corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_SELECTOR_OTHER_CORPORATE_UPCOMING",
+        "group": "HR_SELECTOR_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_BOUND",
+          "query": {
+            "corporateId": "100000000000000000000002"
+          }
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "FORBIDDEN",
+          "message": "HR can only access bookings from their own corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_SELECTOR_FOR_USER_TRUE_UPCOMING",
+        "group": "HR_SELECTOR_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_BOUND",
+          "query": {
+            "forUser": "true"
+          }
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "FORBIDDEN",
+          "message": "HR can only access bookings from their own corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_SELECTOR_BOTH_UPCOMING",
+        "group": "HR_SELECTOR_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_BOUND",
+          "query": {
+            "corporateId": "100000000000000000000002",
+            "forUser": "true"
+          }
+        },
+        "expected": {
+          "status": 403,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "FORBIDDEN",
+          "message": "HR can only access bookings from their own corporate",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_SELECTOR_BAD_CORPORATE_UPCOMING",
+        "group": "HR_SELECTOR_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_BOUND",
+          "query": {
+            "corporateId": "bad"
+          }
+        },
+        "expected": {
+          "status": 400,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "VALIDATION_ERROR",
+          "message": "existing pinned Joi error message, frozen exactly before runtime admission",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_SELECTOR_BAD_FOR_USER_UPCOMING",
+        "group": "HR_SELECTOR_DENIALS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_BOUND",
+          "query": {
+            "forUser": "invalid"
+          }
+        },
+        "expected": {
+          "status": 400,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "VALIDATION_ERROR",
+          "message": "existing pinned Joi error message, frozen exactly before runtime admission",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "AUTH_MISSING_LIST",
+        "group": "HR_AUTH_VALIDATION_PRECEDENCE",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "AUTH_MISSING",
+          "query": {}
+        },
+        "expected": {
+          "status": 401,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "UNAUTHORIZED",
+          "message": "Authorization token is required",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "AUTH_BAD_SIGNATURE_LIST",
+        "group": "HR_AUTH_VALIDATION_PRECEDENCE",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "AUTH_BAD_SIGNATURE",
+          "query": {}
+        },
+        "expected": {
+          "status": 401,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "INVALID_TOKEN",
+          "message": "Invalid token",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "AUTH_EXPIRED_LIST",
+        "group": "HR_AUTH_VALIDATION_PRECEDENCE",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "AUTH_EXPIRED",
+          "query": {}
+        },
+        "expected": {
+          "status": 401,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "TOKEN_EXPIRED",
+          "message": "Token has expired",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "AUTH_MISSING_USER",
+        "group": "HR_AUTH_VALIDATION_PRECEDENCE",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "AUTH_MISSING",
+          "query": {}
+        },
+        "expected": {
+          "status": 401,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "UNAUTHORIZED",
+          "message": "Authorization token is required",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "AUTH_BAD_SIGNATURE_USER",
+        "group": "HR_AUTH_VALIDATION_PRECEDENCE",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "AUTH_BAD_SIGNATURE",
+          "query": {}
+        },
+        "expected": {
+          "status": 401,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "INVALID_TOKEN",
+          "message": "Invalid token",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "AUTH_EXPIRED_USER",
+        "group": "HR_AUTH_VALIDATION_PRECEDENCE",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "AUTH_EXPIRED",
+          "query": {}
+        },
+        "expected": {
+          "status": 401,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "TOKEN_EXPIRED",
+          "message": "Token has expired",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "AUTH_MISSING_UPCOMING",
+        "group": "HR_AUTH_VALIDATION_PRECEDENCE",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "AUTH_MISSING",
+          "query": {}
+        },
+        "expected": {
+          "status": 401,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "UNAUTHORIZED",
+          "message": "Authorization token is required",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "AUTH_BAD_SIGNATURE_UPCOMING",
+        "group": "HR_AUTH_VALIDATION_PRECEDENCE",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "AUTH_BAD_SIGNATURE",
+          "query": {}
+        },
+        "expected": {
+          "status": 401,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "INVALID_TOKEN",
+          "message": "Invalid token",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "AUTH_EXPIRED_UPCOMING",
+        "group": "HR_AUTH_VALIDATION_PRECEDENCE",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "AUTH_EXPIRED",
+          "query": {}
+        },
+        "expected": {
+          "status": 401,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "TOKEN_EXPIRED",
+          "message": "Token has expired",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_UNBOUND_BAD_PAGE",
+        "group": "HR_AUTH_VALIDATION_PRECEDENCE",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_ABSENT",
+          "query": {
+            "page": "0"
+          }
+        },
+        "expected": {
+          "status": 400,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "VALIDATION_ERROR",
+          "message": "existing pinned Joi error message, frozen exactly before runtime admission",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_UNBOUND_BAD_LIMIT",
+        "group": "HR_AUTH_VALIDATION_PRECEDENCE",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_ABSENT",
+          "query": {
+            "limit": "0"
+          }
+        },
+        "expected": {
+          "status": 400,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "VALIDATION_ERROR",
+          "message": "existing pinned Joi error message, frozen exactly before runtime admission",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "HR_UNBOUND_BAD_USER_PARAM",
+        "group": "HR_AUTH_VALIDATION_PRECEDENCE",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/%20",
+          "actor": "HR_ABSENT",
+          "query": {}
+        },
+        "expected": {
+          "status": 400,
+          "bookingReadOperations": 0,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 1,
+          "envelope": "{error:status,message,code}",
+          "code": "VALIDATION_ERROR",
+          "message": "existing pinned Joi error message, frozen exactly before runtime admission",
+          "rowsAbsent": true
+        }
+      },
+      {
+        "id": "LIST_ALL",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {}
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_CANCELLED",
+            "A_COMPLETED",
+            "A_CONSULT",
+            "A_PACKAGE",
+            "A_OLD_PENDING"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "LIST_OWN_SELECTOR",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "corporateId": "100000000000000000000001"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_CANCELLED",
+            "A_COMPLETED",
+            "A_CONSULT",
+            "A_PACKAGE",
+            "A_OLD_PENDING"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "LIST_FALSE",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "forUser": "false"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_CANCELLED",
+            "A_COMPLETED",
+            "A_CONSULT",
+            "A_PACKAGE",
+            "A_OLD_PENDING"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "LIST_PAGE_ONE",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "page": "1",
+            "limit": "2"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 2,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows,pagination:{page,limit,total,totalPages}}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_CANCELLED"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "paginated",
+          "pagination": {
+            "page": 1,
+            "limit": 2,
+            "total": 6,
+            "totalPages": 3
+          },
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "LIST_PAGE_TWO",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "page": "2",
+            "limit": "2"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 2,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows,pagination:{page,limit,total,totalPages}}",
+          "rowKeys": [
+            "A_COMPLETED",
+            "A_CONSULT"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "paginated",
+          "pagination": {
+            "page": 2,
+            "limit": 2,
+            "total": 6,
+            "totalPages": 3
+          },
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "LIST_USER",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "userId": "300000000000000000000001"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_COMPLETED",
+            "A_PACKAGE"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "LIST_USER_PAGE",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "userId": "300000000000000000000001",
+            "page": "1",
+            "limit": "10"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 2,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows,pagination:{page,limit,total,totalPages}}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_COMPLETED",
+            "A_PACKAGE"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "paginated",
+          "pagination": {
+            "page": 1,
+            "limit": 10,
+            "total": 3,
+            "totalPages": 1
+          },
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "LIST_FOREIGN_USER",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "userId": "300000000000000000000003"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "LIST_FOREIGN_USER_PAGE",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "userId": "300000000000000000000003",
+            "page": "1",
+            "limit": "10"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 2,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows,pagination:{page,limit,total,totalPages}}",
+          "rowKeys": [],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "paginated",
+          "pagination": {
+            "page": 1,
+            "limit": 10,
+            "total": 0,
+            "totalPages": 0
+          },
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "LIST_MISSING_USER",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "userId": "300000000000000000000099"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "LIST_MISSING_USER_PAGE",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "userId": "300000000000000000000099",
+            "page": "1",
+            "limit": "10"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 2,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows,pagination:{page,limit,total,totalPages}}",
+          "rowKeys": [],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "paginated",
+          "pagination": {
+            "page": 1,
+            "limit": 10,
+            "total": 0,
+            "totalPages": 0
+          },
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "LIST_DEPENDENT",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "dependentId": "400000000000000000000001"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_PACKAGE"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "LIST_DEPENDENT_PAGE",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "dependentId": "400000000000000000000001",
+            "page": "1",
+            "limit": "10"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 2,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows,pagination:{page,limit,total,totalPages}}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_PACKAGE"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "paginated",
+          "pagination": {
+            "page": 1,
+            "limit": 10,
+            "total": 2,
+            "totalPages": 1
+          },
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "LIST_WELLNESS",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "wellnessPackageId": "500000000000000000000001"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_PACKAGE"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        },
+        "intentionalLegacyBehavior": "Retain implicit package filter and bookingDate:-1 shortcut sort."
+      },
+      {
+        "id": "LIST_WELLNESS_PAGE",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "wellnessPackageId": "500000000000000000000001",
+            "page": "1",
+            "limit": "10"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 2,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows,pagination:{page,limit,total,totalPages}}",
+          "rowKeys": [
+            "A_PACKAGE"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "paginated",
+          "pagination": {
+            "page": 1,
+            "limit": 10,
+            "total": 1,
+            "totalPages": 1
+          },
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "LIST_SPECIALIST",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "specialistId": "600000000000000000000001"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_CANCELLED",
+            "A_COMPLETED",
+            "A_CONSULT",
+            "A_OLD_PENDING"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        },
+        "intentionalLegacyBehavior": "Retain implicit consultation filter and bookingDate:-1 shortcut sort; second-opinion remains excluded."
+      },
+      {
+        "id": "LIST_SPECIALIST_PAGE",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "specialistId": "600000000000000000000001",
+            "page": "1",
+            "limit": "10"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 2,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows,pagination:{page,limit,total,totalPages}}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_CANCELLED",
+            "A_COMPLETED",
+            "A_CONSULT",
+            "A_OLD_PENDING"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "paginated",
+          "pagination": {
+            "page": 1,
+            "limit": 10,
+            "total": 5,
+            "totalPages": 1
+          },
+          "everyReturnedCorporateId": "100000000000000000000001"
+        },
+        "intentionalLegacyBehavior": "Pagination retains its existing lack of implicit consultation filter."
+      },
+      {
+        "id": "LIST_SHORTCUT_PRECEDENCE",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "userId": "300000000000000000000001",
+            "dependentId": "400000000000000000000002",
+            "wellnessPackageId": "500000000000000000000001",
+            "specialistId": "600000000000000000000001",
+            "status": "cancelled",
+            "paymentStatus": "failed"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_COMPLETED",
+            "A_PACKAGE"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        },
+        "intentionalLegacyBehavior": "User shortcut still wins and ignores lower-priority selectors/status; only corporate intersection is added."
+      },
+      {
+        "id": "LIST_PAGED_INTERSECTION",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "userId": "300000000000000000000001",
+            "dependentId": "400000000000000000000002",
+            "wellnessPackageId": "500000000000000000000001",
+            "specialistId": "600000000000000000000001",
+            "status": "cancelled",
+            "paymentStatus": "failed",
+            "page": "1",
+            "limit": "10"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 2,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows,pagination:{page,limit,total,totalPages}}",
+          "rowKeys": [],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "paginated",
+          "pagination": {
+            "page": 1,
+            "limit": 10,
+            "total": 0,
+            "totalPages": 0
+          },
+          "everyReturnedCorporateId": "100000000000000000000001"
+        },
+        "intentionalLegacyBehavior": "Pagination continues to combine declared repository selectors."
+      },
+      {
+        "id": "LIST_SPECIALIST_EXPLICIT_TYPE",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "specialistId": "600000000000000000000001",
+            "bookingType": "second-opinion"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_CANCELLED",
+            "A_COMPLETED",
+            "A_CONSULT",
+            "A_OLD_PENDING"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        },
+        "intentionalLegacyBehavior": "Ordinary specialist shortcut still uses implicit consultation rather than caller bookingType."
+      },
+      {
+        "id": "LIST_SPECIALIST_EXPLICIT_TYPE_PAGE",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "specialistId": "600000000000000000000001",
+            "bookingType": "second-opinion",
+            "page": "1",
+            "limit": "10"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 2,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows,pagination:{page,limit,total,totalPages}}",
+          "rowKeys": [
+            "A_SECOND_OPINION"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "paginated",
+          "pagination": {
+            "page": 1,
+            "limit": 10,
+            "total": 1,
+            "totalPages": 1
+          },
+          "everyReturnedCorporateId": "100000000000000000000001"
+        },
+        "intentionalLegacyBehavior": "Pagination honors explicit bookingType."
+      },
+      {
+        "id": "LIST_CUSTOM_SORT",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "sortBy": "bookingDate",
+            "sortOrder": "asc"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_OLD_PENDING",
+            "A_PACKAGE",
+            "A_CONSULT",
+            "A_COMPLETED",
+            "A_CANCELLED",
+            "A_SECOND_OPINION"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "LIST_PHARMACY",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "pharmacyId": "700000000000000000000001"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_CANCELLED",
+            "A_CONSULT",
+            "A_PACKAGE",
+            "A_OLD_PENDING"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "LIST_PHARMACY_PAGE",
+        "group": "HR_LIST_SCOPE_CONSERVATION",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "HR_BOUND",
+          "query": {
+            "pharmacyId": "700000000000000000000001",
+            "page": "1",
+            "limit": "10"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 2,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows,pagination:{page,limit,total,totalPages}}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_CANCELLED",
+            "A_COMPLETED",
+            "A_CONSULT",
+            "A_PACKAGE",
+            "A_OLD_PENDING"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "paginated",
+          "pagination": {
+            "page": 1,
+            "limit": 10,
+            "total": 6,
+            "totalPages": 1
+          },
+          "everyReturnedCorporateId": "100000000000000000000001"
+        },
+        "intentionalLegacyBehavior": "Repository pagination currently ignores pharmacyId; containment adds only corporate scope, preserving this limitation."
+      },
+      {
+        "id": "USER_ROUTE_SHARED",
+        "group": "HR_OTHER_READ_HANDLERS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_BOUND",
+          "query": {}
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_COMPLETED",
+            "A_PACKAGE"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "USER_ROUTE_FOREIGN",
+        "group": "HR_OTHER_READ_HANDLERS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000003",
+          "actor": "HR_BOUND",
+          "query": {}
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "USER_ROUTE_MISSING",
+        "group": "HR_OTHER_READ_HANDLERS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000099",
+          "actor": "HR_BOUND",
+          "query": {}
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "USER_ROUTE_OWN_FALSE",
+        "group": "HR_OTHER_READ_HANDLERS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_BOUND",
+          "query": {
+            "corporateId": "100000000000000000000001",
+            "forUser": "false"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_COMPLETED",
+            "A_PACKAGE"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "UPCOMING_ALL",
+        "group": "HR_OTHER_READ_HANDLERS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_BOUND",
+          "query": {}
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_CONSULT",
+            "A_PACKAGE",
+            "A_OLD_PENDING"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        },
+        "intentionalLegacyBehavior": "Existing HR path ignores bookingDateFrom in ordinary getAll; its existing pending/confirmed post-filter remains. A_OLD_PENDING intentionally remains."
+      },
+      {
+        "id": "UPCOMING_OWN_FALSE",
+        "group": "HR_OTHER_READ_HANDLERS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_BOUND",
+          "query": {
+            "corporateId": "100000000000000000000001",
+            "forUser": "false"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_CONSULT",
+            "A_PACKAGE",
+            "A_OLD_PENDING"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        }
+      },
+      {
+        "id": "UPCOMING_OTHER_FILTERS",
+        "group": "HR_OTHER_READ_HANDLERS",
+        "request": {
+          "method": "GET",
+          "route": "UPCOMING",
+          "path": "/api/v1/bookings/upcoming",
+          "actor": "HR_BOUND",
+          "query": {
+            "userId": "300000000000000000000003",
+            "status": "completed",
+            "bookingType": "surgery"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_CONSULT",
+            "A_PACKAGE",
+            "A_OLD_PENDING"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        },
+        "intentionalLegacyBehavior": "Existing HR upcoming handler ignores these selectors; only scope authority is inspected."
+      },
+      {
+        "id": "USER_ROUTE_OTHER_FILTERS",
+        "group": "HR_OTHER_READ_HANDLERS",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "HR_BOUND",
+          "query": {
+            "wellnessPackageId": "500000000000000000000001",
+            "status": "cancelled"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_COMPLETED",
+            "A_PACKAGE"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary",
+          "everyReturnedCorporateId": "100000000000000000000001"
+        },
+        "intentionalLegacyBehavior": "No query Joi on this route; unrelated query filters remain unused."
+      },
+      {
+        "id": "ADMIN_LIST_PAGE",
+        "group": "NON_HR_COMPATIBILITY",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "ADMIN",
+          "query": {
+            "page": "1",
+            "limit": "100"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 2,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows,pagination:{page,limit,total,totalPages}}",
+          "rowKeys": [
+            "PUBLIC_CONSULT",
+            "A_SECOND_OPINION",
+            "A_CANCELLED",
+            "A_COMPLETED",
+            "B_CONSULT",
+            "A_CONSULT",
+            "PUBLIC_PACKAGE",
+            "B_PACKAGE",
+            "A_PACKAGE",
+            "A_OLD_PENDING"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "paginated",
+          "pagination": {
+            "page": 1,
+            "limit": 100,
+            "total": 10,
+            "totalPages": 1
+          }
+        }
+      },
+      {
+        "id": "ADMIN_CORPORATE_LIST",
+        "group": "NON_HR_COMPATIBILITY",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "ADMIN",
+          "query": {
+            "corporateId": "100000000000000000000002"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "B_CONSULT",
+            "B_PACKAGE"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary"
+        }
+      },
+      {
+        "id": "ADMIN_FOR_USER",
+        "group": "NON_HR_COMPATIBILITY",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "ADMIN",
+          "query": {
+            "forUser": "true"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "PUBLIC_CONSULT",
+            "PUBLIC_PACKAGE"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary"
+        }
+      },
+      {
+        "id": "ADMIN_EXISTING_SHORTCUT",
+        "group": "NON_HR_COMPATIBILITY",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "ADMIN",
+          "query": {
+            "userId": "300000000000000000000001",
+            "corporateId": "100000000000000000000001"
+          }
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_COMPLETED",
+            "PUBLIC_PACKAGE",
+            "B_PACKAGE",
+            "A_PACKAGE"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary"
+        },
+        "intentionalLegacyBehavior": "Exact non-HR legacy shortcut remains; this contract makes no global service-authority claim."
+      },
+      {
+        "id": "USER_OWN_LIST",
+        "group": "NON_HR_COMPATIBILITY",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "USER",
+          "query": {}
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_COMPLETED",
+            "PUBLIC_PACKAGE",
+            "B_PACKAGE",
+            "A_PACKAGE"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary"
+        }
+      },
+      {
+        "id": "PHARMACY_EXISTING_LIST",
+        "group": "NON_HR_COMPATIBILITY",
+        "request": {
+          "method": "GET",
+          "route": "LIST",
+          "path": "/api/v1/bookings",
+          "actor": "PHARMACY",
+          "query": {}
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_CANCELLED",
+            "A_CONSULT",
+            "PUBLIC_PACKAGE",
+            "A_PACKAGE",
+            "A_OLD_PENDING"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary"
+        }
+      },
+      {
+        "id": "ADMIN_USER_ROUTE",
+        "group": "NON_HR_COMPATIBILITY",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "ADMIN",
+          "query": {}
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_COMPLETED",
+            "PUBLIC_PACKAGE",
+            "B_PACKAGE",
+            "A_PACKAGE"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary"
+        }
+      },
+      {
+        "id": "USER_OWN_USER_ROUTE",
+        "group": "NON_HR_COMPATIBILITY",
+        "request": {
+          "method": "GET",
+          "route": "USER",
+          "path": "/api/v1/bookings/user/300000000000000000000001",
+          "actor": "USER",
+          "query": {}
+        },
+        "expected": {
+          "status": 200,
+          "bookingReadOperations": 1,
+          "effects": {
+            "bookingWrites": 0,
+            "otherModelWrites": 0,
+            "otherModelReads": 0,
+            "providerCalls": 0,
+            "queueCalls": 0,
+            "fileEffects": 0,
+            "timers": 0,
+            "extraLoggerCalls": 0
+          },
+          "existingErrorLoggerCalls": 0,
+          "envelope": "{success:true,data:rows}",
+          "rowKeys": [
+            "A_SECOND_OPINION",
+            "A_COMPLETED",
+            "PUBLIC_PACKAGE",
+            "B_PACKAGE",
+            "A_PACKAGE"
+          ],
+          "rowOrder": "exact finite vector; all bookingDate values are distinct",
+          "queryMode": "ordinary"
+        }
+      }
+    ]
+  },
+  "futureSourceSensitivities": {
+    "status": "PREDICTED_ONLY_ANCHORS_AND_SOURCE_HASHES_NOT_YET_FROZEN",
+    "predicateFailureCode": "HR_BOOKING_SCOPE_RESULT_MISMATCH",
+    "variants": [
+      {
+        "id": "HR_READ_DROP_PRINCIPAL_DENIAL",
+        "source": "controller",
+        "transform": "Remove only absent/invalid corporate rejection from dedicated resolver; missing claim then returns undefined.",
+        "references": [
+          {
+            "caseId": "HR_PRINCIPAL_ABSENT_LIST",
+            "unsafe": {
+              "status": 200,
+              "rowKeys": [
+                "PUBLIC_CONSULT",
+                "A_SECOND_OPINION",
+                "A_CANCELLED",
+                "A_COMPLETED",
+                "B_CONSULT",
+                "A_CONSULT",
+                "PUBLIC_PACKAGE",
+                "B_PACKAGE",
+                "A_PACKAGE",
+                "A_OLD_PENDING"
+              ],
+              "bookingReadOperations": 1,
+              "bookingWrites": 0,
+              "otherModelWrites": 0,
+              "providerCalls": 0,
+              "existingErrorLoggerCalls": 0
+            }
+          }
+        ]
+      },
+      {
+        "id": "HR_READ_DROP_FOR_USER_DENIAL",
+        "source": "controller",
+        "transform": "Remove only present forUser authority condition from dedicated resolver.",
+        "references": [
+          {
+            "caseId": "HR_SELECTOR_FOR_USER_TRUE_LIST",
+            "unsafe": {
+              "status": 200,
+              "rowKeys": [
+                "A_SECOND_OPINION",
+                "A_CANCELLED",
+                "A_COMPLETED",
+                "A_CONSULT",
+                "A_PACKAGE",
+                "A_OLD_PENDING"
+              ],
+              "bookingReadOperations": 1,
+              "bookingWrites": 0,
+              "otherModelWrites": 0,
+              "providerCalls": 0,
+              "existingErrorLoggerCalls": 0
+            }
+          },
+          {
+            "caseId": "HR_SELECTOR_FOR_USER_TRUE_USER",
+            "unsafe": {
+              "status": 200,
+              "rowKeys": [
+                "A_SECOND_OPINION",
+                "A_COMPLETED",
+                "A_PACKAGE"
+              ],
+              "bookingReadOperations": 1,
+              "bookingWrites": 0,
+              "otherModelWrites": 0,
+              "providerCalls": 0,
+              "existingErrorLoggerCalls": 0
+            }
+          }
+        ]
+      },
+      {
+        "id": "HR_READ_DROP_CONFLICT_DENIAL",
+        "source": "controller",
+        "transform": "Remove only conflicting corporate selector condition from dedicated resolver.",
+        "references": [
+          {
+            "caseId": "HR_SELECTOR_OTHER_CORPORATE_LIST",
+            "unsafe": {
+              "status": 200,
+              "rowKeys": [
+                "A_SECOND_OPINION",
+                "A_CANCELLED",
+                "A_COMPLETED",
+                "A_CONSULT",
+                "A_PACKAGE",
+                "A_OLD_PENDING"
+              ],
+              "bookingReadOperations": 1,
+              "bookingWrites": 0,
+              "otherModelWrites": 0,
+              "providerCalls": 0,
+              "existingErrorLoggerCalls": 0
+            }
+          },
+          {
+            "caseId": "HR_SELECTOR_OTHER_CORPORATE_USER",
+            "unsafe": {
+              "status": 200,
+              "rowKeys": [
+                "A_SECOND_OPINION",
+                "A_COMPLETED",
+                "A_PACKAGE"
+              ],
+              "bookingReadOperations": 1,
+              "bookingWrites": 0,
+              "otherModelWrites": 0,
+              "providerCalls": 0,
+              "existingErrorLoggerCalls": 0
+            }
+          }
+        ]
+      },
+      {
+        "id": "HR_READ_DROP_USER_SCOPE_ARGUMENT",
+        "source": "controller",
+        "transform": "Remove requiredCorporateId argument only from HR getByUserId getAll call, retaining its query corporate. Legacy user shortcut discards that filter.",
+        "references": [
+          {
+            "caseId": "USER_ROUTE_SHARED",
+            "unsafe": {
+              "status": 200,
+              "rowKeys": [
+                "A_SECOND_OPINION",
+                "A_COMPLETED",
+                "PUBLIC_PACKAGE",
+                "B_PACKAGE",
+                "A_PACKAGE"
+              ],
+              "bookingReadOperations": 1,
+              "bookingWrites": 0,
+              "otherModelWrites": 0,
+              "providerCalls": 0,
+              "existingErrorLoggerCalls": 0
+            }
+          }
+        ]
+      },
+      {
+        "id": "HR_READ_DROP_UPCOMING_SCOPE_SINKS",
+        "source": "controller",
+        "transform": "In HR upcoming call remove BOTH requiredCorporateId argument and corporateId query property; single argument removal is behaviorally redundant and is NOT a qualifying variant.",
+        "references": [
+          {
+            "caseId": "UPCOMING_ALL",
+            "unsafe": {
+              "status": 200,
+              "rowKeys": [
+                "PUBLIC_CONSULT",
+                "A_SECOND_OPINION",
+                "B_CONSULT",
+                "A_CONSULT",
+                "PUBLIC_PACKAGE",
+                "B_PACKAGE",
+                "A_PACKAGE",
+                "A_OLD_PENDING"
+              ],
+              "bookingReadOperations": 1,
+              "bookingWrites": 0,
+              "otherModelWrites": 0,
+              "providerCalls": 0,
+              "existingErrorLoggerCalls": 0
+            }
+          }
+        ]
+      },
+      {
+        "id": "HR_READ_DELETE_ORDINARY_CORPORATE",
+        "source": "service",
+        "transform": "Delete corporateId from final scoped ordinary query immediately before the single real findAll call; do not change nominal source or data.",
+        "references": [
+          {
+            "caseId": "LIST_ALL",
+            "unsafe": {
+              "status": 200,
+              "rowKeys": [
+                "PUBLIC_CONSULT",
+                "A_SECOND_OPINION",
+                "A_CANCELLED",
+                "A_COMPLETED",
+                "B_CONSULT",
+                "A_CONSULT",
+                "PUBLIC_PACKAGE",
+                "B_PACKAGE",
+                "A_PACKAGE",
+                "A_OLD_PENDING"
+              ],
+              "bookingReadOperations": 1,
+              "bookingWrites": 0,
+              "otherModelWrites": 0,
+              "providerCalls": 0,
+              "existingErrorLoggerCalls": 0
+            }
+          },
+          {
+            "caseId": "LIST_USER",
+            "unsafe": {
+              "status": 200,
+              "rowKeys": [
+                "A_SECOND_OPINION",
+                "A_COMPLETED",
+                "PUBLIC_PACKAGE",
+                "B_PACKAGE",
+                "A_PACKAGE"
+              ],
+              "bookingReadOperations": 1,
+              "bookingWrites": 0,
+              "otherModelWrites": 0,
+              "providerCalls": 0,
+              "existingErrorLoggerCalls": 0
+            }
+          },
+          {
+            "caseId": "LIST_DEPENDENT",
+            "unsafe": {
+              "status": 200,
+              "rowKeys": [
+                "A_SECOND_OPINION",
+                "PUBLIC_PACKAGE",
+                "B_PACKAGE",
+                "A_PACKAGE"
+              ],
+              "bookingReadOperations": 1,
+              "bookingWrites": 0,
+              "otherModelWrites": 0,
+              "providerCalls": 0,
+              "existingErrorLoggerCalls": 0
+            }
+          },
+          {
+            "caseId": "LIST_WELLNESS",
+            "unsafe": {
+              "status": 200,
+              "rowKeys": [
+                "PUBLIC_PACKAGE",
+                "B_PACKAGE",
+                "A_PACKAGE"
+              ],
+              "bookingReadOperations": 1,
+              "bookingWrites": 0,
+              "otherModelWrites": 0,
+              "providerCalls": 0,
+              "existingErrorLoggerCalls": 0
+            }
+          },
+          {
+            "caseId": "LIST_SPECIALIST",
+            "unsafe": {
+              "status": 200,
+              "rowKeys": [
+                "PUBLIC_CONSULT",
+                "A_CANCELLED",
+                "A_COMPLETED",
+                "B_CONSULT",
+                "A_CONSULT",
+                "A_OLD_PENDING"
+              ],
+              "bookingReadOperations": 1,
+              "bookingWrites": 0,
+              "otherModelWrites": 0,
+              "providerCalls": 0,
+              "existingErrorLoggerCalls": 0
+            }
+          }
+        ]
+      },
+      {
+        "id": "HR_READ_DELETE_PAGED_CORPORATE",
+        "source": "service",
+        "transform": "In trusted pagination fresh query replace corporateId:requiredCorporateId with corporateId:undefined; preserve real repository delegation.",
+        "references": [
+          {
+            "caseId": "LIST_PAGE_ONE",
+            "unsafe": {
+              "status": 200,
+              "rowKeys": [
+                "PUBLIC_CONSULT",
+                "A_SECOND_OPINION"
+              ],
+              "bookingReadOperations": 2,
+              "bookingWrites": 0,
+              "otherModelWrites": 0,
+              "providerCalls": 0,
+              "existingErrorLoggerCalls": 0,
+              "total": 10
+            }
+          },
+          {
+            "caseId": "LIST_USER_PAGE",
+            "unsafe": {
+              "status": 200,
+              "rowKeys": [
+                "A_SECOND_OPINION",
+                "A_COMPLETED",
+                "PUBLIC_PACKAGE",
+                "B_PACKAGE",
+                "A_PACKAGE"
+              ],
+              "bookingReadOperations": 2,
+              "bookingWrites": 0,
+              "otherModelWrites": 0,
+              "providerCalls": 0,
+              "existingErrorLoggerCalls": 0,
+              "total": 5
+            }
+          }
+        ]
+      },
+      {
+        "id": "HR_READ_RESTORE_UNSCOPED_SHORTCUTS",
+        "source": "service",
+        "transform": "Disable trusted ordinary scoped branch ONLY, leaving trusted pagination intact, so the same four original repository shortcut calls run.",
+        "references": [
+          {
+            "caseId": "LIST_USER",
+            "unsafe": {
+              "status": 200,
+              "rowKeys": [
+                "A_SECOND_OPINION",
+                "A_COMPLETED",
+                "PUBLIC_PACKAGE",
+                "B_PACKAGE",
+                "A_PACKAGE"
+              ],
+              "bookingReadOperations": 1,
+              "bookingWrites": 0,
+              "otherModelWrites": 0,
+              "providerCalls": 0,
+              "existingErrorLoggerCalls": 0
+            }
+          },
+          {
+            "caseId": "LIST_DEPENDENT",
+            "unsafe": {
+              "status": 200,
+              "rowKeys": [
+                "A_SECOND_OPINION",
+                "PUBLIC_PACKAGE",
+                "B_PACKAGE",
+                "A_PACKAGE"
+              ],
+              "bookingReadOperations": 1,
+              "bookingWrites": 0,
+              "otherModelWrites": 0,
+              "providerCalls": 0,
+              "existingErrorLoggerCalls": 0
+            }
+          },
+          {
+            "caseId": "LIST_WELLNESS",
+            "unsafe": {
+              "status": 200,
+              "rowKeys": [
+                "PUBLIC_PACKAGE",
+                "B_PACKAGE",
+                "A_PACKAGE"
+              ],
+              "bookingReadOperations": 1,
+              "bookingWrites": 0,
+              "otherModelWrites": 0,
+              "providerCalls": 0,
+              "existingErrorLoggerCalls": 0
+            }
+          },
+          {
+            "caseId": "LIST_SPECIALIST",
+            "unsafe": {
+              "status": 200,
+              "rowKeys": [
+                "PUBLIC_CONSULT",
+                "A_CANCELLED",
+                "A_COMPLETED",
+                "B_CONSULT",
+                "A_CONSULT",
+                "A_OLD_PENDING"
+              ],
+              "bookingReadOperations": 1,
+              "bookingWrites": 0,
+              "otherModelWrites": 0,
+              "providerCalls": 0,
+              "existingErrorLoggerCalls": 0
+            }
+          }
+        ]
+      }
+    ],
+    "variantCount": 8,
+    "referenceCount": 18,
+    "executionRule": "Only after separate exact actual-source/fixture/artifact/one-run admission. For every reference: one fresh actual source variant; SAME nominal full response/order/scope/read/write/effect predicate must fail exact fixed code; independently assert predicted unsafe status/rows/read/logger and zero mutations/effects. Then fresh exact nominal rerun of same trial plus LIST_ALL allowed counterpart with complete predicate and unchanged-state proof. No precomputed PASS, fake comparator, extracted business execution or mocked service implementation. Shared mutant state cannot establish detection.",
+    "scopeCheckRule": "Commit-resilient exact two-production-file union plus explicit owned QA directories; reject any other non-QA delta; do not rely on untracked/precommit state or refresh unrelated pins."
+  },
+  "sourceOnlyControls": [
+    "Reject unchanged baseline; exact two-file amendment and all untargeted bytes/modes preserved.",
+    "Resolver wired before service in all three handlers; no shared helper or fourth caller amendment.",
+    "Both boolean true and string true handled; malformed principal types cannot coerce into a corporate; USER raw selector arrays/objects cannot bypass exact equality.",
+    "No inferred trusted scope from query params; all three HR sinks receive validated scope; non-HR ordinary branch unchanged.",
+    "Paginated query has forced corporate and cannot be forUser; ordinary four shortcuts retain filters/priority/sorts plus corporate predicate.",
+    "No post-read-only filtering, writes/provider/new logger/lookup; no schema/router/repository/type/client/generated/dependency/root/harness edits.",
+    "Freeze actual source-control anchors/mutant hashes and verify each mutant reaches distinct unsafe real behavior only in separately admitted runtime; source-text check alone proves no HTTP result."
+  ],
+  "profilePinConflict": {
+    "blockingIntegrationGate": "Current specialist90 milestone first accepted; then Root explicitly reviews pin/artifact/admission refresh for changed excluded BookingService. Draft/source branch alone grants no refresh.",
+    "pinnedPath": "src1/modules/bookings/services/index.ts",
+    "pinnedSha256": "f239aa5a35b56c96b483a7ed009ef0e2a9e8b5ec2cd43d796fc72c6d853c6508",
+    "knownBinding": "Historical contract-input source pin; BookingService/controller NOT among actual105 template sources; executable fixture substitutes class. Root explicitly reviews changed excluded-source hash/provenance and required admission refresh after accepted90; no silent pin or source change.",
+    "noDraftAuthorChanges": true
+  },
+  "outOfScope": [
+    "booking create corporate body fallback",
+    "external bookings",
+    "patient/admin/pharmacy/unknown-role general read redesign",
+    "current HR membership/version/revocation or30-day JWT repair",
+    "HR _id hardening or full authentication issuer validation",
+    "clinical sharing/field visibility",
+    "benefits/coupons/payments/finance/contact/recovery/deployment policy",
+    "date/sort/filter cleanup beyond adding mandatory HR corporate intersection",
+    "schema/router/repository/type/client/generated/package/root or specialist fixture edits",
+    "new model/package/native-child/fs/network permission",
+    "TC-REV-002 closure or Week2/M0/release acceptance"
+  ],
+  "preservation": {
+    "originalSixStagedAndElevenHandover": "Do not edit/reset/stash/clean/commit; Root owns Git.",
+    "historicalStagedDiffSha256": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+    "recheckedByThisDraft": false
+  },
+  "workPerformed": "Read-only source/policy/graph/client inspection and inert Python/JSON draft construction/validation. No application/Joi/TS/parser/compiler/helper/DB/Docker/provider/package/model/auth/native-child/extracted-business execution or Git command.",
+  "contractSha256": "09136c8f661435e36897f80949dfc4e1f88e2665737b228c843b14affb398edd",
+  "historicalDraftFiles": {
+    "CONTRACT_DRAFT.md": "c60ad2c0c6f2f356ba79bb1b342e006ea1dc3d4f3d04eb725e0f2ab7493b557b",
+    "draft-inputs.json": "bed33efaecd2daed0f3964ef60902b86e35246a020ba21f744b3863a1b11a829"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "schema": "SD-HR-BOOKING-SOURCE-CONTRACT-FREEZE-1",
+  "baseline": "ed7e1e4a455114784cbb836156fffc85c276f0d6",
+  "files": {
+    "AGENTS.md": "c591a4943214fe22bd8c74b47311aa2a1ffc218013fea20d1ab9d86c1ead5866",
+    "src1/modules/bookings/controller/index.ts": "c6a0aeae7f86d2bef6777bde2c07025cb439e5b76254f974bf27f04648bb2080",
+    "src1/modules/bookings/services/index.ts": "f239aa5a35b56c96b483a7ed009ef0e2a9e8b5ec2cd43d796fc72c6d853c6508",
+    "src1/modules/bookings/repository/index.ts": "d54ebba522cd290589296918eb2dcb4f7609e42d836ef3f23dfb89114b375713",
+    "src1/modules/bookings/routes/index.ts": "b2ed40c971e35ceb28eeccb8b491bcf7c4b2dcaf35a7267c783a8345760e3cfb",
+    "src1/modules/bookings/validation/index.ts": "ce9743b4cc50af6b230089c0ff0523f490f8685c6fbb48cc475f4b8e52e6f728",
+    "src1/modules/bookings/types/index.ts": "30d1a615c3f157ec9a73f9a13968c3afcec59f84bdfa0178413f22c906f42a79",
+    "src1/modules/bookings/model/index.ts": "219f8115e5eec4bebd7205c763638e8755bde57122866430a1b3bcd0f69ead72",
+    "src1/modules/middleware/auth.ts": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+    "src1/modules/middleware/errorHandler.ts": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51",
+    "src1/modules/common/middleware/validation.ts": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef",
+    "src1/modules/common/types/index.ts": "63ad3821027150d368e993903e954b4a80b776ff223caf322c104008239d4cbd",
+    "src1/modules/user/controller/index.ts": "25aef90efe3e5142011789dd48d55452d5b1fef9f2e56d70c355e7606e191d74",
+    "src1/modules/auth/services/index.ts": "d59d5ea23df586fbbdb5b9c4615bcbe0b716f649bdc02f3738088f87b0fbae56",
+    "src1/modules/hr/model/index.ts": "97937e1e9935c78771357a824a52019fbf81fdb1cc5c77fe86107c1516c5f6eb",
+    "src1/routes/index.ts": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056",
+    "documentation/planning/implementation/M0_A_PROGRESS.md": "707065813ec766bf0059b19e48612c005e3c13971652a465f54672f6f89068f5",
+    "documentation/planning/implementation/PARALLEL_WORKSTREAMS.md": "7439003be1f4219e5d0cc2a053554eb10fb2ac7428cf01b79a2cfd815e1cd29e",
+    "documentation/planning/implementation/PARALLEL_DEVELOPMENT_WORKFLOW.md": "c4f99a171df17ae98405a1fdd1c6aad0f9ab2dedfdb4aafabff60cb292d6148a",
+    "documentation/planning/implementation/REPOSITORY_TRANSITION.md": "a4a9bd91441efec38d6c3ba3914c3536fcac820ae53f95abe23ebd3e21f48969",
+    "documentation/planning/M0_IMPLEMENTATION_APPROVAL.md": "c09be47e12ecc433f873bd967c5e72e9717734ef5e3af8b119fb555fec1671c9",
+    "documentation/planning/PRINCIPAL_REVIEW_DISPOSITION.md": "de97b17c986e5cf832efae38078d9bfdbbdc95d694f08e6dfe36ad0ab397197e",
+    "documentation/planning/SYSTEM_DESIGN.md": "cbd899f6fb442b13db28c389143b529b90da364165dc17291cc829814810bc84",
+    "documentation/planning/qa/TEST_SCENARIOS.md": "bd8c6e8952a8c1cc2f2c2063a4d7a79000dc5566b966a6650d49d60ff841f09e",
+    "documentation/planning/implementation/USER_ROUTE_AUTHORITY_CONTRACT.md": "9f68e4abb5c08e5795a0216341939a4d87a7682662be990058cbae366281ea99",
+    "output/qa/week2-hr-booking-scope/CONTRACT_DRAFT.md": "c60ad2c0c6f2f356ba79bb1b342e006ea1dc3d4f3d04eb725e0f2ab7493b557b",
+    "output/qa/week2-hr-booking-scope/draft-inputs.json": "bed33efaecd2daed0f3964ef60902b86e35246a020ba21f744b3863a1b11a829",
+    "output/qa/week2-hr-booking-scope/CONTRACT.md": "09136c8f661435e36897f80949dfc4e1f88e2665737b228c843b14affb398edd",
+    "output/qa/week2-hr-booking-scope/inputs.json": "7f491685d222feecaeafdaeeb30a2c95e853bcc232b2277259efa4431975e7b9"
+  },
+  "clientRoot": "/Users/shubham/Desktop/admin_panel_template",
+  "clientFiles": {
+    "src/services/bookings/index.tsx": "37f6d4eecfd14e45c539042236d9746187859bc575f4076c1a0f8e2e8f5c10ce",
+    "src/pages/Bookings/index.tsx": "5ad4d777018d4e3bd5c96118096d73e4f1372cb2659a7560f395a1d5fe4eb864",
+    "src/utils/helper.tsx": "b8dce7a3c08026b4ddf2cc16085e55e639058f552864e0beacd61a2b7ee4d858",
+    "src/routes/index.tsx": "5d6ef5885a82c92f7c71523c602257edd1644591f2f15247c6671915e8971eae"
+  },
+  "authority": "TWO_PREIMPLEMENTATION_SOURCE_DECISIONS_REQUIRED_NO_RUNTIME; INTEGRATION_AFTER90_AND_EXCLUDED_SOURCE_PROVENANCE_REVIEW"
+}
