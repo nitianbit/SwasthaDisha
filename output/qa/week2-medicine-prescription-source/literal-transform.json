@@ -1,0 +1,22 @@
+{
+  "src1/modules/pharmacyMedicines/controller/index.ts": [
+    [
+      "  update = async (req: Request, res: Response, _next: NextFunction) => {",
+      "  update = async (req: AuthRequest, res: Response, _next: NextFunction) => {"
+    ],
+    [
+      "this.medicineService.update(req.params.id, data);",
+      "this.medicineService.update(req.params.id, data, req.user?.userType);"
+    ]
+  ],
+  "src1/modules/pharmacyMedicines/services/index.ts": [
+    [
+      "  async update(id: string, data: UpdateMedicineRequest): Promise<IMedicine> {",
+      "  async update(id: string, data: UpdateMedicineRequest, actorUserType?: string): Promise<IMedicine> {"
+    ],
+    [
+      "    if (data.name && this.normalizeName(data.name) !== medicine.name) {",
+      "    if (\n      actorUserType !== 'admin' &&\n      data !== null &&\n      typeof data === 'object' &&\n      Object.prototype.hasOwnProperty.call(data, 'prescriptionRequired')\n    ) {\n      throw new AppError({\n        status: 422,\n        code: 'FORBIDDEN_FIELD',\n        message: 'Medicine prescription requirement cannot be updated by this actor',\n      });\n    }\n\n    if (data.name && this.normalizeName(data.name) !== medicine.name) {"
+    ]
+  ]
+}

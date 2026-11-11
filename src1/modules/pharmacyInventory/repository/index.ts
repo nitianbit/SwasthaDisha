@@ -108,8 +108,14 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
     batch.mrp = input.mrp ?? batch.mrp;
     batch.retailPrice = input.retailPrice ?? batch.retailPrice;
     batch.wholesalePrice = input.wholesalePrice ?? batch.wholesalePrice;
-    batch.status = availableQtyAfter === 0 && batch.reservedQty === 0 ? 'depleted' : 'active';
-    batch.depletedAt = batch.status === 'depleted' ? new Date() : undefined;
+    if (
+      batch.status !== 'recalled' &&
+      batch.status !== 'quarantined' &&
+      batch.status !== 'expired'
+    ) {
+      batch.status = availableQtyAfter === 0 && batch.reservedQty === 0 ? 'depleted' : 'active';
+      batch.depletedAt = batch.status === 'depleted' ? new Date() : undefined;
+    }
 
     document.availableQty += input.quantityDelta;
     document.reorderThreshold = input.reorderThreshold ?? document.reorderThreshold;
@@ -199,8 +205,14 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
       if (!batch || batch.reservedQty < allocation.quantity) return null;
       batch.reservedQty -= allocation.quantity;
       batch.availableQty += allocation.quantity;
-      batch.status = batch.expiryDate < today ? 'expired' : 'active';
-      batch.depletedAt = undefined;
+      if (
+        batch.status !== 'recalled' &&
+        batch.status !== 'quarantined' &&
+        batch.status !== 'expired'
+      ) {
+        batch.status = batch.expiryDate < today ? 'expired' : 'active';
+        batch.depletedAt = undefined;
+      }
       total += allocation.quantity;
     }
 
