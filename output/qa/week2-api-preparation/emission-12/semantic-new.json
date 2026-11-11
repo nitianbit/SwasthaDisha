@@ -1,0 +1,1370 @@
+[
+  {
+    "file": "src1/config/config.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module 'path' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/config/config.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/modules/auth/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/auth/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/auth/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/auth/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/auth/services/index.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module 'node:crypto' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/common/repository/BaseRepository.ts",
+    "code": 2614,
+    "category": 1,
+    "message": "Module '\"mongoose\"' has no exported member 'FilterQuery'. Did you mean to use 'import FilterQuery from \"mongoose\"' instead?"
+  },
+  {
+    "file": "src1/modules/common/repository/BaseRepository.ts",
+    "code": 2724,
+    "category": 1,
+    "message": "'\"mongoose\"' has no exported member named 'LeanDocument'. Did you mean 'Document'?"
+  },
+  {
+    "file": "src1/modules/common/repository/BaseRepository.ts",
+    "code": 2769,
+    "category": 1,
+    "message": "No overload matches this call.\n  Overload 1 of 2, '(filter?: QueryFilter<T>, options?: DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { ...; }): Query<...>', gave the following error.\n    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { [other: string]: any; }'.\n      Type 'QueryOptions<unknown>' is not assignable to type 'DeleteOptions'.\n        Types of property 'readPreference' are incompatible.\n          Type 'string' is not assignable to type 'ReadPreferenceLike'.\n  Overload 2 of 2, '(filter?: Query<any, any, {}, unknown, \"find\", Record<string, never>, unknown>, options?: DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { ...; }): Query<...>', gave the following error.\n    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { [other: string]: any; }'.\n      Type 'QueryOptions<unknown>' is not assignable to type 'DeleteOptions'.\n        Types of property 'readPreference' are incompatible.\n          Type 'string' is not assignable to type 'ReadPreferenceLike'."
+  },
+  {
+    "file": "src1/modules/common/repository/BaseRepository.ts",
+    "code": 2769,
+    "category": 1,
+    "message": "No overload matches this call.\n  Overload 1 of 2, '(filter?: QueryFilter<T>, options?: DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { ...; }): Query<...>', gave the following error.\n    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { [other: string]: any; }'.\n      Type 'QueryOptions<unknown>' is not assignable to type 'DeleteOptions'.\n        Types of property 'readPreference' are incompatible.\n          Type 'string' is not assignable to type 'ReadPreferenceLike'.\n  Overload 2 of 2, '(filter?: Query<any, any, {}, unknown, \"find\", Record<string, never>, unknown>, options?: DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { ...; }): Query<...>', gave the following error.\n    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { [other: string]: any; }'.\n      Type 'QueryOptions<unknown>' is not assignable to type 'DeleteOptions'.\n        Types of property 'readPreference' are incompatible.\n          Type 'string' is not assignable to type 'ReadPreferenceLike'."
+  },
+  {
+    "file": "src1/modules/common/repository/BaseRepository.ts",
+    "code": 2769,
+    "category": 1,
+    "message": "No overload matches this call.\n  Overload 1 of 2, '(filter: QueryFilter<T>, update: UpdateWithAggregationPipeline | UpdateQuery<T>, options?: UpdateOptions & MongooseUpdateQueryOptions<...>): Query<...>', gave the following error.\n    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'UpdateOptions & MongooseUpdateQueryOptions<T>'.\n      Type 'QueryOptions<unknown>' is not assignable to type 'UpdateOptions'.\n        Types of property 'readPreference' are incompatible.\n          Type 'string' is not assignable to type 'ReadPreferenceLike'.\n  Overload 2 of 2, '(filter: Query<any, any, {}, unknown, \"find\", Record<string, never>, unknown>, update: UpdateWithAggregationPipeline | UpdateQuery<T>, options?: UpdateOptions & MongooseUpdateQueryOptions<...>): Query<...>', gave the following error.\n    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'UpdateOptions & MongooseUpdateQueryOptions<T>'.\n      Type 'QueryOptions<unknown>' is not assignable to type 'UpdateOptions'.\n        Types of property 'readPreference' are incompatible.\n          Type 'string' is not assignable to type 'ReadPreferenceLike'."
+  },
+  {
+    "file": "src1/modules/common/types/error.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'captureStackTrace' does not exist on type 'ErrorConstructor'."
+  },
+  {
+    "file": "src1/modules/common/utils/asyncHandler.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module '@/services/logger' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/common/utils/indexReadiness.ts",
+    "code": 2322,
+    "category": 1,
+    "message": "Type 'unknown' is not assignable to type 'Data'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/dependents/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/fcm/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/fcm/services/index.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module '@/services/firebase' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/fcm/services/index.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module '@/services/logger' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/meet/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/meet/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/meet/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/meet/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/meet/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/meet/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/meet/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/meet/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/meet/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/meet/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/meet/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/meet/service/index.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module 'crypto' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/meet/service/index.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module '@/modules/bookings/repository' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/meet/service/index.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module '@/modules/slots/repository' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/meet/service/index.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module '@/services/logger' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/meet/service/index.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/modules/meet/service/index.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/modules/middleware/auth.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'headers' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/middleware/auth.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'headers' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/middleware/errorHandler.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module '@/services/logger' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/notification/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialistPortal/services/index.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module '@/modules/slots/services' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/specialistPortal/services/index.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module '@/modules/slots/repository' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/specialistPortal/services/index.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module '@/modules/bookings/repository' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/specialistPortal/services/index.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module '@/modules/bookings/services' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/specialistPortal/services/index.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module 'child_process' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/specialistPortal/services/index.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module 'fs' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/specialistPortal/services/index.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module 'os' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/specialistPortal/services/index.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module 'path' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/specialistPortal/services/index.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module 'util' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/specialistPortal/services/index.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/modules/specialistPortal/services/index.ts",
+    "code": 2591,
+    "category": 1,
+    "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/specialists/services/index.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module '@/modules/bookings/repository' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/specialists/services/index.ts",
+    "code": 2322,
+    "category": 1,
+    "message": "Type '((ISpecialist & Required<{ _id: string; }> & { __v: number; }) | Omit<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> | (Pick<...> & Pick<...>))[]' is not assignable to type 'ISpecialist[]'.\n  Type '(ISpecialist & Required<{ _id: string; }> & { __v: number; }) | Omit<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> | (Pick<...> & Pick<...>)' is not assignable to type 'ISpecialist'.\n    Property 'name' is missing in type 'Pick<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> & Pick<ISpecialist & Required<{ _id: string; }> & { ...; }, \"_id\">' but required in type 'ISpecialist'."
+  },
+  {
+    "file": "src1/modules/specialists/services/index.ts",
+    "code": 2322,
+    "category": 1,
+    "message": "Type '((ISpecialist & Required<{ _id: string; }> & { __v: number; }) | Omit<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> | (Pick<...> & Pick<...>))[]' is not assignable to type 'ISpecialist[]'.\n  Type '(ISpecialist & Required<{ _id: string; }> & { __v: number; }) | Omit<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> | (Pick<...> & Pick<...>)' is not assignable to type 'ISpecialist'.\n    Property 'name' is missing in type 'Pick<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> & Pick<ISpecialist & Required<{ _id: string; }> & { ...; }, \"_id\">' but required in type 'ISpecialist'."
+  },
+  {
+    "file": "src1/modules/specialists/services/index.ts",
+    "code": 2322,
+    "category": 1,
+    "message": "Type '((ISpecialist & Required<{ _id: string; }> & { __v: number; }) | Omit<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> | (Pick<...> & Pick<...>))[]' is not assignable to type 'ISpecialist[]'.\n  Type '(ISpecialist & Required<{ _id: string; }> & { __v: number; }) | Omit<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> | (Pick<...> & Pick<...>)' is not assignable to type 'ISpecialist'.\n    Property 'name' is missing in type 'Pick<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> & Pick<ISpecialist & Required<{ _id: string; }> & { ...; }, \"_id\">' but required in type 'ISpecialist'."
+  },
+  {
+    "file": "src1/modules/specialists/services/index.ts",
+    "code": 2322,
+    "category": 1,
+    "message": "Type '((ISpecialist & Required<{ _id: string; }> & { __v: number; }) | Omit<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> | (Pick<...> & Pick<...>))[]' is not assignable to type 'ISpecialist[]'.\n  Type '(ISpecialist & Required<{ _id: string; }> & { __v: number; }) | Omit<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> | (Pick<...> & Pick<...>)' is not assignable to type 'ISpecialist'.\n    Property 'name' is missing in type 'Pick<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> & Pick<ISpecialist & Required<{ _id: string; }> & { ...; }, \"_id\">' but required in type 'ISpecialist'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'query' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/user/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/wallet/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/wallet/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/wallet/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/wallet/controller/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'body' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/wallet/routes/index.ts",
+    "code": 2339,
+    "category": 1,
+    "message": "Property 'params' does not exist on type 'AuthRequest'."
+  },
+  {
+    "file": "src1/modules/wallet/services/index.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module '@/modules/payment/services' or its corresponding type declarations."
+  },
+  {
+    "file": "src1/modules/wallet/services/index.ts",
+    "code": 2307,
+    "category": 1,
+    "message": "Cannot find module '@/modules/coupon/services' or its corresponding type declarations."
+  }
+]

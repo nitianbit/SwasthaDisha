@@ -1,0 +1,12 @@
+{
+  "status": "PREPARED_NOT_EXECUTED",
+  "source": "0f0d36bf4f1df92ad5492991c27524b8e5a25a8f",
+  "descriptorSha256": "9c7b9ed771f2309ac7ab21c2ea0093cf31872a59c8a0e9f1b13eb4601430d761",
+  "receiptSha256": "64626783b49c7e94ba60bbf542bc33b8ce2bdc9596ed47f9cc7874bcb812d3be",
+  "receiptStatus": "CONSUMED_BY_ONE_ACTUAL_PUBLIC_INSTALL_AND_EMIT",
+  "actualToolSession": 50503,
+  "actualExitCode": 0,
+  "applicationEvaluations": 0,
+  "DockerCalls": 0,
+  "runtime": "NOT_RUN"
+}

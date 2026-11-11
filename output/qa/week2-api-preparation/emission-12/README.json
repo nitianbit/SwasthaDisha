@@ -1,0 +1,6 @@
+{
+  "stage": "One actual reviewed public install+emit; application never executed",
+  "oldRejectedPrep12": "No invocation occurred, source/proposal/clean worktree preserved",
+  "next": "Two independent artifact decisions; separate two exact single-run decisions; no runtime receipt reused",
+  "evidence": "Full raw semantic reports and0removed/59added multiset; 57 in newly admitted source,2 missing-declaration observations from new exclusions in unchanged Meet source; not59 application regressions or a clean root typecheck"
+}

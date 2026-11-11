@@ -1,0 +1,22 @@
+{
+  "schema": "SD-SPECIALIST-PROFILE-EMISSION-12-FINAL-ARCHIVE-1",
+  "files": {
+    "README.json": "32b946e4acc51b9420ce639b555d9da7630daa27c8dab7335e0d2551419fa3d3",
+    "REVIEW.md": "a3001108677c49df691724ee90bd01aeb5092970b9090496563abdd81f0fdd6c",
+    "archive-manifest-initial.json": "84b3405f5173680f04fbeb74350af3116483ae7cee8ac7a0cf435a35a31fb552",
+    "compiler-input.json": "a357ef546b442898e21e4a13588827c7d84ab6c4af61869043a5db3cc6c984dc",
+    "compiler.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "compiler.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "install.stderr.txt": "799f544422ef20e84949c8feabb844390db9306ac5cf97419981d0291eb45156",
+    "install.stdout.txt": "0f1e2ef3b41d020cd43330e99f05a65647e95d4c643535c0c0db139b48d5353a",
+    "preparation-result.json": "626f7820771edf83626b617709f634c0caa8c84836bbb1387869fef6d9ae73b5",
+    "runtime-plan.json": "5f5c0c4dd3360521a3fd9e7648a43db28b40612ea92611befced5851420c1950",
+    "runtime-template.json": "9c7b9ed771f2309ac7ab21c2ea0093cf31872a59c8a0e9f1b13eb4601430d761",
+    "semantic-delta-precise.json": "9b1962e4ea9faebd51eb15ee95f78651203daa2dc41aeda2c2b700d661d04372",
+    "semantic-new.json": "4fbe4bf602f2f3e66ee15f3f57ee0fd3b187625a07f0f21d7e18ffab64379a28",
+    "semantic-old.json": "1853c5d590f7c0c3b8ada1aae12f6fb6b7ee47757b027e1f0680bff116624247",
+    "verification.json": "37c179788d28010c33090f181f7acc870511768c1b6a68b4d28418b04135361e"
+  },
+  "twoActualArtifactAcceptances": true,
+  "runtime": "NOT_RUN"
+}

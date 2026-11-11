@@ -1,0 +1,163 @@
+{
+  "normalization": "Only generated build UUID strings replaced; preserve null and all other JSON types/keys/messages/multiplicity",
+  "old": 169,
+  "new": 228,
+  "removedOccurrences": 0,
+  "addedOccurrences": 59,
+  "removed": [],
+  "added": [
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2307,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Cannot find module '@/modules/bookings/repository' or its corresponding type declarations."
+      },
+      "occurrences": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2307,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Cannot find module '@/modules/slots/repository' or its corresponding type declarations."
+      },
+      "occurrences": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2307,
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "message": "Cannot find module '@/modules/slots/services' or its corresponding type declarations."
+      },
+      "occurrences": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2307,
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "message": "Cannot find module '@/modules/slots/repository' or its corresponding type declarations."
+      },
+      "occurrences": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2307,
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "message": "Cannot find module '@/modules/bookings/repository' or its corresponding type declarations."
+      },
+      "occurrences": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2307,
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "message": "Cannot find module '@/modules/bookings/services' or its corresponding type declarations."
+      },
+      "occurrences": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2307,
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "message": "Cannot find module 'child_process' or its corresponding type declarations."
+      },
+      "occurrences": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2307,
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "message": "Cannot find module 'fs' or its corresponding type declarations."
+      },
+      "occurrences": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2307,
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "message": "Cannot find module 'os' or its corresponding type declarations."
+      },
+      "occurrences": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2307,
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "message": "Cannot find module 'path' or its corresponding type declarations."
+      },
+      "occurrences": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2307,
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "message": "Cannot find module 'util' or its corresponding type declarations."
+      },
+      "occurrences": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2591,
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      "occurrences": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/specialists/controller/index.ts",
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      "occurrences": 30
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/specialists/controller/index.ts",
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      "occurrences": 5
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/specialists/controller/index.ts",
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      "occurrences": 6
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2307,
+        "file": "src1/modules/specialists/services/index.ts",
+        "message": "Cannot find module '@/modules/bookings/repository' or its corresponding type declarations."
+      },
+      "occurrences": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2322,
+        "file": "src1/modules/specialists/services/index.ts",
+        "message": "Type '((ISpecialist & Required<{ _id: string; }> & { __v: number; }) | Omit<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> | (Pick<...> & Pick<...>))[]' is not assignable to type 'ISpecialist[]'.\n  Type '(ISpecialist & Required<{ _id: string; }> & { __v: number; }) | Omit<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> | (Pick<...> & Pick<...>)' is not assignable to type 'ISpecialist'.\n    Property 'name' is missing in type 'Pick<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> & Pick<ISpecialist & Required<{ _id: string; }> & { ...; }, \"_id\">' but required in type 'ISpecialist'."
+      },
+      "occurrences": 4
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schema": "SD-EMISSION-RECEIPT-PRESERVATION-1",
+  "archive": "/private/tmp/sd-auth-api-emission-approval-b26012c.consumed.json",
+  "archiveSha256": "9fadd0ae8bb4c44bc6cb48e5b1bf52d30fca819165345642e837261d673f7e94",
+  "archiveNlink": 1,
+  "oldDevInode": [
+    16777231,
+    53115523
+  ],
+  "exclusiveHardlinkSameInodeNlink2Verified": true,
+  "newPath": "/private/tmp/sd-auth-api-emission-approval.json",
+  "newSha256": "64626783b49c7e94ba60bbf542bc33b8ce2bdc9596ed47f9cc7874bcb812d3be",
+  "newDevInode": [
+    16777231,
+    53252687
+  ],
+  "newMode": "0600",
+  "newNlink": 1,
+  "sameUid": true,
+  "actualReviewers": [
+    "/root/index_standards_fresh",
+    "/root/index_spec_fresh"
+  ],
+  "sourceCommit": "0f0d36bf4f1df92ad5492991c27524b8e5a25a8f",
+  "status": "FRESH_APPROVED_RECEIPT_CREATED_INVOCATION_NOT_STARTED"
+}

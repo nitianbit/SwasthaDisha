@@ -1,0 +1,100 @@
+{
+  "schema": "SD-SPECIALIST-PROFILE-PREPARATION-1",
+  "status": "PREPARED_NOT_EXECUTED_PENDING_TWO_ARTIFACT_REVIEWS",
+  "sourceCommit": "0f0d36bf4f1df92ad5492991c27524b8e5a25a8f",
+  "descriptorSha256": "9c7b9ed771f2309ac7ab21c2ea0093cf31872a59c8a0e9f1b13eb4601430d761",
+  "runtimeDirectory": "/private/tmp/sd-auth-api-build-39121d3f-60be-4419-99c8-743093b81a56/runtime",
+  "fileCount": 2891,
+  "bytes": 45628840,
+  "sourceInputs": 105,
+  "typeScriptSources": 97,
+  "reachableModules": 76,
+  "models": 13,
+  "modelControls": [
+    {
+      "id": "OMITTED_WELLNESS_PACKAGE",
+      "rejected": true
+    },
+    {
+      "id": "EXTRA_UNREACHABLE_MODEL",
+      "rejected": true
+    },
+    {
+      "id": "DUPLICATE_MODEL",
+      "rejected": true
+    },
+    {
+      "id": "WRONG_MODEL_SOURCE",
+      "rejected": true
+    },
+    {
+      "id": "OMITTED_DEPENDENT",
+      "rejected": true
+    }
+  ],
+  "added": [
+    "compiled/modules/bookings/utils/lifecycle.js",
+    "compiled/modules/slots/validation/index.js",
+    "compiled/modules/specialistPortal/services/index.js",
+    "compiled/modules/specialistPortal/validation/index.js",
+    "compiled/modules/specialists/controller/index.js",
+    "compiled/modules/specialists/routes/index.js",
+    "compiled/modules/specialists/services/index.js",
+    "compiled/modules/specialists/validation/index.js",
+    "compiled/mutants/SPECIALIST_PROFILE_ACTIVE_GUARD_REMOVED.js",
+    "compiled/mutants/SPECIALIST_PROFILE_LOOKUP_REMOVED.js",
+    "compiled/mutants/SPECIALIST_PROFILE_RATING_GUARD_REMOVED.js",
+    "compiled/mutants/SPECIALIST_PROFILE_TRUTHINESS_GUARD.js",
+    "compiled/mutants/SPECIALIST_PROFILE_UPDATE_BEFORE_DENIAL.js",
+    "compiled/mutants/SPECIALIST_PROFILE_VERIFIED_GUARD_REMOVED.js"
+  ],
+  "removed": [],
+  "modified": [
+    "bootstrap.cjs",
+    "ports-manifest.json",
+    "runtime-plan.json",
+    "scenario.cjs"
+  ],
+  "old2755DependencyFilesExact": true,
+  "old89NominalCompiledExact": true,
+  "old27VariantsExact": true,
+  "all4StaticAuditOutputsExact": true,
+  "sourceGuard": "631a2bc6e92e522db35bad35eacd9f7d46aa8e4dcdb508acc16dc44891fef27c",
+  "sourceVariants": 33,
+  "selectedStrictAndTdzReportByteEquivalent": true,
+  "all4LibraryControlsAnd51LibraryPinsIdentical": true,
+  "broaderSemanticProgramFileCount": [
+    193,
+    201
+  ],
+  "broaderSemanticAddedSourceFiles": [
+    "src1/modules/bookings/utils/lifecycle.ts",
+    "src1/modules/slots/validation/index.ts",
+    "src1/modules/specialistPortal/services/index.ts",
+    "src1/modules/specialistPortal/validation/index.ts",
+    "src1/modules/specialists/controller/index.ts",
+    "src1/modules/specialists/routes/index.ts",
+    "src1/modules/specialists/services/index.ts",
+    "src1/modules/specialists/validation/index.ts"
+  ],
+  "semanticDiagnostics": [
+    169,
+    228
+  ],
+  "removedDiagnosticOccurrences": 0,
+  "addedDiagnosticOccurrences": 59,
+  "newDiagnosticFiles": {
+    "src1/modules/specialists/controller/index.ts": 41,
+    "src1/modules/specialistPortal/services/index.ts": 11,
+    "src1/modules/specialists/services/index.ts": 5,
+    "src1/modules/meet/service/index.ts": 2
+  },
+  "meetNewDiagnostics": "Two TS2307 because new explicit Booking/Slot repository exclusions are unresolved in this partial semantic collector; emitted Meet bytes stay exact",
+  "transpileDiagnostics": 0,
+  "fullBuild": false,
+  "applicationEvaluations": 0,
+  "DockerCalls": 0,
+  "runtime": "NOT_RUN",
+  "actual90_33": "NOT_RUN",
+  "receipt": "64626783b49c7e94ba60bbf542bc33b8ce2bdc9596ed47f9cc7874bcb812d3be consumed by this one actual invocation; no retry"
+}
