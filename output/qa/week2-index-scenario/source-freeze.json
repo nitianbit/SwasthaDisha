@@ -1,0 +1,25 @@
+{
+  "schema": "SD-INDEX-SCENARIO-SOURCE-FREEZE-1",
+  "baseline": "427505327155e749bbddd5001a7be11bdf6a168c",
+  "contractSha": "8d43ee0a67d10a5b627a66cf9dc49d0b30d8a16e8c38c62da2936330e0d5ce99",
+  "pinsSha": "d41c56e2d019117c612c7cae93580daa5d84a69ccf87b9eb8264093a9ddc7bf7",
+  "rootPortsSha": "08583e74231bb02151ae2c89537233b198e1241ac769d65c874ee5aa8f06b33b",
+  "files": {
+    "test/api-runtime/scenario/compile.cjs": "4ea28cff8a99ebe645a324e5e2a699402f8a69c6412bd7da7e697eeaaaa2e9b8",
+    "test/api-runtime/scenario/scenario.cjs": "6067f4c2a15fcf51091f963dd285ceaed596fda748fd9f77ee94101393962d01",
+    "test/api-runtime/scenario/README.md": "0414ed6dc3d8dbfb57d5260138bc885af07b579585602b567bf0a14107657380",
+    "output/qa/week2-index-scenario/verify-source.py": "8eccbe362ad73dfdf3987c78ab0f3fc1e8faa27ff920cf6e5b2f250a3f8c49d0",
+    "output/qa/week2-index-scenario/evidence-unit.cjs": "33077ee31e12bd2adcb8c1abcbc851367da37cd38687feaeb7c0d37ea72ef45a",
+    "output/qa/week2-index-scenario/source-verification.json": "9db4036a6007ade3ccd15c28e66677e929f151064ec2ba0770b2ff5be62babca",
+    "output/qa/week2-index-scenario/pure-checks.json": "68562afa28e42770633815204ebd9aeaa1cfee3ef174e5e810382f153ab170ee",
+    "output/qa/week2-index-scenario/source-control-disposition.json": "450529c50f43037ce73006e70e427e5d6cbcf01a2e2deffa898c41781379423e",
+    "output/qa/week2-index-scenario/candidate.diff": "590b590c151df032938abb843785db79170d32ffcf3f2796b8d38bc4d93dc664",
+    "output/qa/week2-index-scenario/README.md": "63f77f452be47d7fd3ff51ada5fa357c6b17429b91a31b43263d71cc1ee7cbd2"
+  },
+  "declaredNominal": 83,
+  "declaredSensitivity": 27,
+  "implementationReview": "PENDING_TWO_COMBINED_NONAUTHORS",
+  "compilerPrograms": "NOT_RUN",
+  "applicationHelperBehavior": "NOT_RUN",
+  "runtime": "NOT_RUN"
+}

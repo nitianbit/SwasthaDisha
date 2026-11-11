@@ -1,0 +1,24 @@
+{
+  "schema": "SD-INDEX-SCENARIO-SOURCE-1",
+  "baseline": "427505327155e749bbddd5001a7be11bdf6a168c",
+  "baselineRejected": true,
+  "negativeSourceControlsRejected": 24,
+  "priorNominalGroupsPreserved": 76,
+  "priorSensitivityPreserved": 21,
+  "declaredNominal": 83,
+  "declaredSensitivity": 27,
+  "typeLibraryMapFiles": 45,
+  "contractSha": "8d43ee0a67d10a5b627a66cf9dc49d0b30d8a16e8c38c62da2936330e0d5ce99",
+  "pinsSha": "d41c56e2d019117c612c7cae93580daa5d84a69ccf87b9eb8264093a9ddc7bf7",
+  "rootPortsSha": "08583e74231bb02151ae2c89537233b198e1241ac769d65c874ee5aa8f06b33b",
+  "files": {
+    "test/api-runtime/scenario/compile.cjs": "4ea28cff8a99ebe645a324e5e2a699402f8a69c6412bd7da7e697eeaaaa2e9b8",
+    "test/api-runtime/scenario/scenario.cjs": "6067f4c2a15fcf51091f963dd285ceaed596fda748fd9f77ee94101393962d01",
+    "test/api-runtime/scenario/README.md": "0414ed6dc3d8dbfb57d5260138bc885af07b579585602b567bf0a14107657380"
+  },
+  "helperSourceSha": "050ecc993c862638cf4912bb854e04baa5d80241cb124e7831fc3c95a78db5bd",
+  "reconstructedTDZSha": "6597c1a03c54702d89042a29263da81399934e68e8fb6c46f91c638cbe954400",
+  "actualCompilerPrograms": 0,
+  "applicationHelperEvaluations": 0,
+  "runtime": "NOT_RUN"
+}

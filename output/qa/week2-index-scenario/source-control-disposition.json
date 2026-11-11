@@ -1,0 +1,11 @@
+{
+  "schema": "SD-INDEX-SOURCE-CHECKER-DISPOSITION-1",
+  "initialObservedResult": "SOURCE_CONTROL_SURVIVED:3",
+  "stage": "UNFROZEN_AUTHOR_SOURCE_DATA_CHECKER",
+  "cause": "Options anchor appeared twice; altering the report-options literal still left an identical literal in actual compiler options.",
+  "amendment": "Parse the whole static options object as data and require exact contract equality before inspecting compiler guard anchors.",
+  "productionOrFixtureLogicChangedForCheckerFix": false,
+  "applicationEvaluations": 0,
+  "compilerExecutions": 0,
+  "disposition": "All24 source controls now rejected; source-only transformation evidence, not genuine compiler mutation proof."
+}
