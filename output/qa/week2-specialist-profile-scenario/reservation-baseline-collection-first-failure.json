@@ -1,0 +1,16 @@
+{
+  "schema": "SD-PROFILE-RESERVATION-EVIDENCE-COLLECTION-FAILURE-1",
+  "step": "Initial metadata collection asserted every new source predicate would reject old source; one no-catch property already existed. AssertionError stopped before evidence changes.",
+  "actualOldSourceChecks": {
+    "reservation_all_three_ids": false,
+    "reservation_eligibility_initially_empty": false,
+    "reservation_actual_query_required": false,
+    "reservation_zero_rows_required": false,
+    "reservation_proof_before_pair_eligibility_and_create": false,
+    "reservation_only_pair_delete_eligible": false,
+    "reservation_cleanup_guard_before_delete": false,
+    "reservation_proof_not_swallowed": true
+  },
+  "correction": "Require overall rejection and record exact individual outcomes; no source expectation or target implementation was relaxed.",
+  "applicationOrDatabaseExecution": false
+}

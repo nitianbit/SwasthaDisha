@@ -1,0 +1,233 @@
+{
+  "schema": "SD-PROFILE-SCENARIO-SOURCE-DATA-1",
+  "status": "FAIL",
+  "baseline": "1355bd9af2c9d8d5170527c8c0fc565de997b6fe",
+  "checks": {
+    "compiler_binding_before_source_traversal": true,
+    "compiler_section_verification": true,
+    "compiler_static_separate_no_queue": true,
+    "compiler_static_source_pin": true,
+    "compiler_static_exact_output_pin": true,
+    "compiler_parent_bound_builtins": true,
+    "compiler_exact_mutation": true,
+    "compiler_old_type_and_model_controls_preserved": true,
+    "compiler_old_27_variants_preserved": true,
+    "compiler_old_broad_host_program_preserved": true,
+    "compiler_transpile_only_no_adoption": true,
+    "scenario_binding": true,
+    "scenario_old_83_27_code_preserved": true,
+    "scenario_real_http_observation": true,
+    "scenario_13_collection_snapshot": true,
+    "scenario_exact_reads": true,
+    "scenario_exact_writes": true,
+    "scenario_provider_jwt_private": true,
+    "scenario_exact_state_fields": true,
+    "scenario_actual_updated_timestamp": true,
+    "scenario_exact_reply": true,
+    "scenario_query_hook_restored": true,
+    "scenario_completed_proof_cleanup": true,
+    "scenario_verified_full_horizon": true,
+    "scenario_both_append_boundaries": true,
+    "scenario_nonempty_nominal_complete": true,
+    "scenario_actual_logger_delta": true,
+    "scenario_unsafe_before_same_nominal": true,
+    "scenario_only_exact_detection": true,
+    "scenario_fresh_phase_unwind": true,
+    "scenario_two_actual_restorations": true,
+    "scenario_first_error_cleanup": true,
+    "scenario_exact_owned_id_cleanup": true,
+    "scenario_old_prefixes_and_final_sets": true
+  },
+  "checkCount": 34,
+  "baselineRejected": true,
+  "baselineMissingChecks": [
+    "compiler_binding_before_source_traversal",
+    "compiler_section_verification",
+    "compiler_static_separate_no_queue",
+    "compiler_static_source_pin",
+    "compiler_static_exact_output_pin",
+    "compiler_parent_bound_builtins",
+    "compiler_exact_mutation",
+    "compiler_old_27_variants_preserved",
+    "compiler_transpile_only_no_adoption",
+    "scenario_binding",
+    "scenario_old_83_27_code_preserved",
+    "scenario_real_http_observation",
+    "scenario_exact_reads",
+    "scenario_exact_writes",
+    "scenario_provider_jwt_private",
+    "scenario_exact_state_fields",
+    "scenario_actual_updated_timestamp",
+    "scenario_exact_reply",
+    "scenario_query_hook_restored",
+    "scenario_completed_proof_cleanup",
+    "scenario_verified_full_horizon",
+    "scenario_both_append_boundaries",
+    "scenario_nonempty_nominal_complete",
+    "scenario_actual_logger_delta",
+    "scenario_unsafe_before_same_nominal",
+    "scenario_only_exact_detection",
+    "scenario_fresh_phase_unwind",
+    "scenario_two_actual_restorations",
+    "scenario_first_error_cleanup",
+    "scenario_exact_owned_id_cleanup",
+    "scenario_old_prefixes_and_final_sets"
+  ],
+  "sensitivity": [
+    {
+      "id": "COMPILER_SECTION_PIN_REMOVED",
+      "rejected": true,
+      "failedChecks": [
+        "compiler_section_verification"
+      ]
+    },
+    {
+      "id": "COMPILER_STATIC_OUTPUT_PIN_REMOVED",
+      "rejected": true,
+      "failedChecks": [
+        "compiler_static_exact_output_pin"
+      ]
+    },
+    {
+      "id": "COMPILER_NEW_BUILTIN_PARENT_REMOVED",
+      "rejected": true,
+      "failedChecks": [
+        "compiler_parent_bound_builtins"
+      ]
+    },
+    {
+      "id": "COMPILER_MUTANT_PIN_REMOVED",
+      "rejected": true,
+      "failedChecks": [
+        "compiler_exact_mutation"
+      ]
+    },
+    {
+      "id": "HTTP_REPLACED_BY_EMPTY_OBSERVATION",
+      "rejected": true,
+      "failedChecks": [
+        "scenario_real_http_observation"
+      ]
+    },
+    {
+      "id": "ACTION_READ_CHECK_REMOVED",
+      "rejected": true,
+      "failedChecks": [
+        "scenario_exact_reads"
+      ]
+    },
+    {
+      "id": "ACTION_WRITE_CHECK_REMOVED",
+      "rejected": true,
+      "failedChecks": [
+        "scenario_exact_writes"
+      ]
+    },
+    {
+      "id": "WHOLE_STATE_CHECK_REMOVED",
+      "rejected": true,
+      "failedChecks": [
+        "scenario_exact_state_fields"
+      ]
+    },
+    {
+      "id": "PRIVATE_ATTEMPT_SOURCE_REMOVED",
+      "rejected": true,
+      "failedChecks": [
+        "scenario_provider_jwt_private"
+      ]
+    },
+    {
+      "id": "VERIFIED_PROOF_CHECK_REMOVED",
+      "rejected": true,
+      "failedChecks": [
+        "scenario_verified_full_horizon"
+      ]
+    },
+    {
+      "id": "PROOF_HORIZON_REMOVED",
+      "rejected": true,
+      "failedChecks": [
+        "scenario_verified_full_horizon"
+      ]
+    },
+    {
+      "id": "NOMINAL_TRIALS_EMPTIED",
+      "rejected": true,
+      "failedChecks": [
+        "scenario_nonempty_nominal_complete"
+      ]
+    },
+    {
+      "id": "UNSAFE_PROOF_REMOVED",
+      "rejected": false,
+      "failedChecks": []
+    },
+    {
+      "id": "ARBITRARY_EXCEPTION_ACCEPTED",
+      "rejected": true,
+      "failedChecks": [
+        "scenario_only_exact_detection"
+      ]
+    },
+    {
+      "id": "RESTORATIONS_EMPTIED",
+      "rejected": true,
+      "failedChecks": [
+        "scenario_two_actual_restorations"
+      ]
+    },
+    {
+      "id": "FIRST_ERROR_OVERWRITTEN",
+      "rejected": true,
+      "failedChecks": [
+        "scenario_first_error_cleanup"
+      ]
+    },
+    {
+      "id": "TARGET_TIMESTAMP_WINDOW_REMOVED",
+      "rejected": true,
+      "failedChecks": [
+        "scenario_actual_updated_timestamp"
+      ]
+    },
+    {
+      "id": "RETURNED_STORED_ROW_CHECK_REMOVED",
+      "rejected": true,
+      "failedChecks": [
+        "scenario_exact_reply"
+      ]
+    }
+  ],
+  "unchangedCriticalInputs": {
+    "src1/modules/specialistPortal/services/index.ts": true,
+    "test/api-runtime/scenario/ports-manifest.json": true,
+    "test/api-runtime/scenario/prepare.py": true,
+    "test/api-runtime/scenario/package-plan.json": true,
+    "test/api-runtime/launch.mjs": true,
+    "test/api-runtime/platform.mjs": true,
+    "test/api-runtime/profile.json": true,
+    "package.json": true,
+    "package-lock.json": true,
+    "tsconfig.json": true,
+    "server.js": true
+  },
+  "sectionHashMatches": true,
+  "scope": {
+    "ownedThreeChanged": true,
+    "unexpectedPaths": [],
+    "closedCompositionAllowance": [
+      "documentation/planning/implementation/CONTINUATION_INSTRUCTIONS.md",
+      "documentation/planning/implementation/M0_A_PROGRESS.md",
+      "test/api-runtime/scenario/bootstrap-unit.cjs",
+      "test/api-runtime/scenario/bootstrap.cjs"
+    ],
+    "qaPrefixes": [
+      "output/qa/week2-specialist-profile-scenario/",
+      "output/qa/week2-specialist-profile-bootstrap/",
+      "output/qa/week2-specialist-profile-runtime/"
+    ],
+    "regular644SingleLinkFiles": true
+  },
+  "limitations": "SOURCE_BYTES_JSON_ONLY; does not parse JS/TS, import domain/Joi/compiler or execute HTTP/DB/providers; other lane content is separately reviewed by Root."
+}

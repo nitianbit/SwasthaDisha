@@ -1,0 +1,20 @@
+diff --git a/test/api-runtime/scenario/scenario.cjs b/test/api-runtime/scenario/scenario.cjs
+index 51e00191a5342cfb254c9576cc378738b88174df..2566f0c8cfd33fe6d098fc96120d3ddbf9b1455c 100644
+--- a/test/api-runtime/scenario/scenario.cjs
++++ b/test/api-runtime/scenario/scenario.cjs
+@@ -1046 +1046,2 @@ async function runScenario(ctx) {
+-    const fixture = profileFixture();
++    const fixture = profileFixture(); const cleanupEligible = new Set();
++    const reservationIds = ['SPECIALIST_A', 'SPECIALIST_B', 'ABSENT_SPECIALIST'].map(key => fixture.ids[key]);
+@@ -1047,0 +1049,7 @@ async function runScenario(ctx) {
++      // The drained, private owned fixture is the sole writer. A failed query
++      // or a pre-existing row confers no delete eligibility for any generated ID.
++      const reservations = await model('Specialist').find({ _id: { $in: reservationIds } }).select({ _id: 1 }).lean().exec();
++      need(Array.isArray(reservations) && reservations.length === 0, 'SPECIALIST_PROFILE_RESERVATION_NOT_EMPTY');
++      // Reserve only the proven-empty insertable pair before create, so an
++      // acknowledged partial insert failure can still clean exactly those IDs.
++      cleanupEligible.add('SPECIALIST_A'); cleanupEligible.add('SPECIALIST_B');
+@@ -1052 +1060,2 @@ async function runScenario(ctx) {
+-      // Only IDs freshly generated and inserted by this invocation are eligible.
++      // Empty-reservation proof is mandatory even when create itself throws.
++      if (!cleanupEligible.has(key)) return;

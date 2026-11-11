@@ -1,0 +1,10 @@
+{
+  "schema": "SD-PROFILE-SCENARIO-BASELINE-1",
+  "source": "1355bd9af2c9d8d5170527c8c0fc565de997b6fe",
+  "files": {
+    "test/api-runtime/scenario/compile.cjs": "cb5c781d445b0e935efba7326d5bc4bba5192a26ced036eaaa574df51b4b82ca",
+    "test/api-runtime/scenario/scenario.cjs": "6067f4c2a15fcf51091f963dd285ceaed596fda748fd9f77ee94101393962d01",
+    "test/api-runtime/scenario/README.md": "e1a683fd8d68f9203ba77d81cec65443930490e90079fbd9d780c508e042cee6"
+  },
+  "authority": "SOURCE_DATA_ONLY_NO_APP_OR_COMPILER_EXECUTION"
+}

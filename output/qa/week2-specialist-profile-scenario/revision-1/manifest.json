@@ -1,0 +1,24 @@
+{
+  "schema": "SD-PROFILE-SCENARIO-REVISION-1-ARCHIVE-1",
+  "reason": "Independent Spec and Standards finding: cleanup eligibility granted before proof of empty reserved IDs. No application/compiler/runtime was executed.",
+  "sourceCommit": "5a3b4b934607c94fa8930fa820d145f63f2e24a9",
+  "candidateFreezeSha256": "7820dab07f1be8150a0cf906e5127b81a52dc712107c9c6a605188c0c2347540",
+  "files": {
+    "qa/AUTHOR_NOTES.md": "14390496fc2c1dc2dc90b35a5695fc153470e4a906f85307483f90106a0ab70c",
+    "qa/CHECKER_DISPOSITION.md": "e2ab83f6d5caba4de69a3b7ed439a86d652f74d0c2ff8bfe6ffe560911e930cb",
+    "qa/baseline-rejection.json": "a5688784d0124d2d4eb4ade54f8eca1e6bfc0e783ea99ded075bdd0cd3fd8a05",
+    "qa/baseline.json": "8bccb2ecae9be98d2bc777bfa4c2c5293cb90722b0b6c5015ddb0a7aa79452aa",
+    "qa/candidate-freeze.json": "7820dab07f1be8150a0cf906e5127b81a52dc712107c9c6a605188c0c2347540",
+    "qa/candidate.diff": "317d47c4bc3e52134655a29d6be786641dfb3314a2634bb2d5b2be72887f63a8",
+    "qa/initial-checker/manifest.json": "f39c73938eb0c2ec26045d5e74f3e8432d6f7b7e43544c0e06083348725bedc0",
+    "qa/initial-checker/source-check-initial.json": "120795b0cc49e85a7490c3ef5a1c7c6ef97683507ff4c329c780e74d59614fc5",
+    "qa/initial-checker/verify-source.py": "504785296ea9db20d86005d31a4e49eedad363c17684fd7a16f4aab2a77b770a",
+    "qa/source-check-initial.json": "120795b0cc49e85a7490c3ef5a1c7c6ef97683507ff4c329c780e74d59614fc5",
+    "qa/source-check.json": "f9a9dfacd5a1382ddf07d454abd16f4589b926108a75a4157e3d47407062b797",
+    "qa/syntax-checks.json": "00bc2506f3868d149f215106fdaf31401d5d65696aa3af8ee87602f0850d4671",
+    "qa/verify-source.py": "a95bfec79f42d21785f924c38cdb35b209f3b638f3a3fe0e9ddcfb7bc7c6f15a",
+    "source/scenario.cjs": "1a1f8b0971e3f1d9711472255e93809fd8a957bad8807484241703177189cfee",
+    "source/compile.cjs": "8d25c7d7c8291fd02b179750dd761db4129750043c3501eb02ea0f759bfa1b6f",
+    "source/README.md": "5c2c77675613344da4b58f6b8f548cca1e8617496d7a5ccafecbd0ccce07b72e"
+  }
+}

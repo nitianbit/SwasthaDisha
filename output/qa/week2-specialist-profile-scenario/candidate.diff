@@ -170,7 +170,7 @@ index d6f6582249e33c4c28efe1476dcd8e9f45fad744..a2c0bd36fc82002ec46d2f0ca8847a71
 +      specialistProfile: { schema: 'SD-SPECIALIST-PROFILE-COMPILE-1', sectionSha256: PROFILE_SECTION_SHA,
 +        source: PROFILE_SOURCE, sourceSha256: PROFILE_SOURCE_SHA, staticAudit, applicationEvaluations: 0 } } };
 diff --git a/test/api-runtime/scenario/scenario.cjs b/test/api-runtime/scenario/scenario.cjs
-index fe3c361f1ef9541a846713bb0ea7cccd26923361..51e00191a5342cfb254c9576cc378738b88174df 100644
+index fe3c361f1ef9541a846713bb0ea7cccd26923361..2566f0c8cfd33fe6d098fc96120d3ddbf9b1455c 100644
 --- a/test/api-runtime/scenario/scenario.cjs
 +++ b/test/api-runtime/scenario/scenario.cjs
 @@ -6,0 +7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -179,7 +179,7 @@ index fe3c361f1ef9541a846713bb0ea7cccd26923361..51e00191a5342cfb254c9576cc378738
 +  const profileQueryExec = mongoose.Query.prototype.exec;
 +  const profile = ctx.ports.specialistProfile;
 +  need(profile && crypto.createHash('sha256').update(JSON.stringify(profile)).digest('hex') === PROFILE_SECTION_SHA, 'SPECIALIST_PROFILE_SECTION_HASH');
-@@ -878,0 +883,229 @@ async function runScenario(ctx) {
+@@ -878,0 +883,238 @@ async function runScenario(ctx) {
 +  // Frozen private HTTP matrix; genuine domain classes/Joi/ODM run only inside
 +  // the completely admitted child. No response/identity/assertion value escapes.
 +  const profileAttemptKeys = ['BookingRepository', 'BookingService', 'SlotRepository', 'SlotService',
@@ -343,13 +343,22 @@ index fe3c361f1ef9541a846713bb0ea7cccd26923361..51e00191a5342cfb254c9576cc378738
 +      'SPECIALIST_PROFILE_CONCRETE_UNSAFE_CHANGE');
 +  }
 +  async function withProfileTrial(trial, adminToken, check) {
-+    const fixture = profileFixture();
++    const fixture = profileFixture(); const cleanupEligible = new Set();
++    const reservationIds = ['SPECIALIST_A', 'SPECIALIST_B', 'ABSENT_SPECIALIST'].map(key => fixture.ids[key]);
 +    return profileFinally(async () => {
++      // The drained, private owned fixture is the sole writer. A failed query
++      // or a pre-existing row confers no delete eligibility for any generated ID.
++      const reservations = await model('Specialist').find({ _id: { $in: reservationIds } }).select({ _id: 1 }).lean().exec();
++      need(Array.isArray(reservations) && reservations.length === 0, 'SPECIALIST_PROFILE_RESERVATION_NOT_EMPTY');
++      // Reserve only the proven-empty insertable pair before create, so an
++      // acknowledged partial insert failure can still clean exactly those IDs.
++      cleanupEligible.add('SPECIALIST_A'); cleanupEligible.add('SPECIALIST_B');
 +      await model('Specialist').create(fixture.rows);
 +      const observed = await observeProfile(trial, fixture, adminToken);
 +      check(observed, fixture); return observed;
 +    }, ['SPECIALIST_A', 'SPECIALIST_B'].map(key => async () => {
-+      // Only IDs freshly generated and inserted by this invocation are eligible.
++      // Empty-reservation proof is mandatory even when create itself throws.
++      if (!cleanupEligible.has(key)) return;
 +      await model('Specialist').deleteOne({ _id: fixture.ids[key] });
 +      need(await model('Specialist').findById(fixture.ids[key]).lean().exec() === null, 'SPECIALIST_PROFILE_CLEANUP');
 +    }));
@@ -409,11 +418,11 @@ index fe3c361f1ef9541a846713bb0ea7cccd26923361..51e00191a5342cfb254c9576cc378738
 +    profileAttemptSnapshot();
 +  }
 +
-@@ -1003,0 +1237,3 @@ async function runScenario(ctx) {
+@@ -1003,0 +1246,3 @@ async function runScenario(ctx) {
 +  need(cases.length === 83 && same(cases.map(row => row.id), ctx.ports.requiredCaseIds.slice(0, 83)), 'SPECIALIST_PROFILE_PRIOR_CASE_SET');
 +  await runProfileNominal(admin.token);
 +  need(cases.length === 90 && same(cases.map(row => row.id), ctx.ports.requiredCaseIds), 'SPECIALIST_PROFILE_CASE_SET');
-@@ -1035,0 +1272,3 @@ async function runScenario(ctx) {
+@@ -1035,0 +1281,3 @@ async function runScenario(ctx) {
 +  need(sensitivity.length === 27 && same(sensitivity.map(row => row.id), ctx.ports.requiredSensitivityIds.slice(0, 27)), 'SPECIALIST_PROFILE_PRIOR_SENSITIVITY_SET');
 +  await runProfileSensitivity(admin.token);
 +  need(sensitivity.length === 33 && same(sensitivity.map(row => row.id), ctx.ports.requiredSensitivityIds), 'SPECIALIST_PROFILE_SENSITIVITY_SET');
