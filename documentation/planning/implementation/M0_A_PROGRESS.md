@@ -453,3 +453,48 @@ normal owner sign-in/client admission; no model call or forged acknowledgement.
 Root C2 retained-server facts/install/type/build/compiled start/defaultCI, broader
 identity/clinical/money/recovery/owner/security response, supported clients,
 original115 scenario outcomes, full M0/Week2,100RPS/release remain open.
+
+
+## Twenty-second increment, 11 November: index predicate source reviewed
+
+The new dependency-free selected-index observation comparator is integrated as
+unactivated source, with no caller, health/startup/writer or index changes.
+Both fresh independent nonauthor internal Codex reviewers confirmed amended
+source050ecc99 under contractd626f542 after one material Spec finding was fixed.
+[Actual source decisions](../../../output/qa/week2-index-readiness-source/SOURCE_DECISIONS.md).
+Initialsource6597/freeze691 contained a block-scope shadow/TDZ that would return
+INPUT_INVALID for valid comparisons. Initial Standards missed it; Spec rejected
+it. Root removed only the inner alias and used the existing collection variable
+for two index accesses; both reviewers independently confirmed the three-line
+fix. Initial source, failure, old controls and all16 archived files are retained.
+
+Source-data proof is deliberately limited:57positive/preservation checks and52
+text sensitivities pass in an explicitly post-review checker. Original checkers
+remain unchanged; the correct rename invalidates their old loop-anchor literal,
+and that new failure is retained alongside the historical47/49 initial controls.
+No text check proves control flow, types or helper behavior. Actual helper behavior
+and type correctness remain NOT_RUN pending the distinct complete-C3 extension.
+Root dependency/build/start adoption, full F13/stock/wallet and M0Week2 are not
+accepted by adding this file. Existing accepted API evidence remains76/21.
+
+Two previously queued review turns failed with a Codex/model compatibility error
+before any source decision. Fresh native sessions recovered direct independent
+review without global tool/model changes; failed turns receive no review credit.
+All original six staged changes/eleven handover files remain exact.
+
+The next C3 draft proposes83/27: actual helper/metadata behavior, owned complete
+build-status index listings with bounded same-session cursor continuation, and
+six emitted source regressions. It still needs lead freeze/two preimplementation
+reviews and all source/preparation/artifact/single-run/postreview stages. No new
+metadata command or helper execution has occurred. A focused genuine ES2020 helper
+semantic check plus archived-TDZ compiler control is proposed for reviewed emit;
+the existing closure/type debt remains separately reported.
+
+Owner requested continuous later-week work and longer Claude review time. The
+ordinary bundled CLI recheck after reported sign-in still returned AUTH_REQUIRED,
+with owned PID/group/pipes safely absent and no model/account action. Owner chose
+continue backend/sign in later; no polling follows. A separate worker prepares
+3600-second review window and latest accepted76/21 packet; source reviews and
+actual account/policy/stage admission remain. SDK init effort was found to be
+Remote-Control-only, so this local route retains effective effort UNPROVEN rather
+than inventing max proof. [Continuation instruction](CONTINUATION_INSTRUCTIONS.md).
