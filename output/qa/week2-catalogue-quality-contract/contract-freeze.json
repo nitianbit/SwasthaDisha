@@ -1,0 +1,29 @@
+{
+  "schema": "SD-CATALOGUE-QUALITY-SOURCE-CONTRACTS-1",
+  "baseline": "1355bd9af2c9d8d5170527c8c0fc565de997b6fe",
+  "files": {
+    "src1/modules/pharmacyMedicines/controller/index.ts": "bd32f7c14d2902e378457e7ce0e35ba6ef3c67450bb165f6cf62de1930ff4c4d",
+    "src1/modules/pharmacyMedicines/services/index.ts": "964bfc53f4e1710f31627ed482aa87cb3a5d630621edd11678f3f99f4f408b96",
+    "src1/modules/pharmacyMedicines/routes/index.ts": "dcac08ec970f47ebf0361074767d6da2fa53204f830c14eb0b53d83115aeb970",
+    "src1/modules/pharmacyMedicines/validation/index.ts": "c3f877989629c227824ef1006e0bcd36edabcc7406116f9bd9b3a77c616964ea",
+    "src1/modules/pharmacyMedicines/types/index.ts": "527e6987a95bae02c27bcd2d7547624c26251547efbc235a30fa2e52912fdf8d",
+    "src1/modules/pharmacyInventory/repository/index.ts": "5af8a18a895db6ab3e2c4583fb7e011472e342fa47c0476f90391dd867aff7ca",
+    "src1/modules/pharmacyInventory/types/index.ts": "83aba7263dd3a97315b63d36ed24f39b9932a6ae578219b35c0b082f20e744c4",
+    "src1/modules/pharmacyInventory/model/index.ts": "098fc86bc14e553b60a81fdb7bf33ebacb8c44f799a2cb665420ea5debe52313",
+    "src1/modules/pharmacyInventory/services/index.ts": "bb02c3bf808ad4101a156be755bb39d26e6585ee1fcfaa5d12cb0000f5efee06",
+    "src1/modules/pharmacyOrders/services/index.ts": "a03cf441e9638edfd6ee48d6a8c407096c257348e37e157904d9f42642940b94",
+    "documentation/planning/M0_IMPLEMENTATION_APPROVAL.md": "c09be47e12ecc433f873bd967c5e72e9717734ef5e3af8b119fb555fec1671c9",
+    "documentation/planning/SYSTEM_DESIGN.md": "cbd899f6fb442b13db28c389143b529b90da364165dc17291cc829814810bc84",
+    "documentation/planning/PRINCIPAL_REVIEW_DISPOSITION.md": "de97b17c986e5cf832efae38078d9bfdbbdc95d694f08e6dfe36ad0ab397197e",
+    "documentation/planning/qa/TEST_SCENARIOS.md": "bd8c6e8952a8c1cc2f2c2063a4d7a79000dc5566b966a6650d49d60ff841f09e",
+    "documentation/planning/implementation/PARALLEL_DEVELOPMENT_WORKFLOW.md": "c4f99a171df17ae98405a1fdd1c6aad0f9ab2dedfdb4aafabff60cb292d6148a",
+    "documentation/planning/implementation/M0_A_PROGRESS.md": "707065813ec766bf0059b19e48612c005e3c13971652a465f54672f6f89068f5",
+    "output/qa/week2-catalogue-quality-contract/MEDICINE_CONTRACT.md": "7325e7ca37c15b9fdb8e60643d41b0178d8a9aee4e8c6fd02c8a38317eecd15a",
+    "output/qa/week2-catalogue-quality-contract/INVENTORY_CONTRACT.md": "3abe1c31fa12c614002df4726818b1ff281230dd94d4ca55286c06de48f1479a",
+    "src1/modules/pharmacyInventoryImports/services/index.ts": "8549b5b7409236d95f424a3b76b994bef0d158fb367d80da7f89777301f41dee",
+    "src1/modules/payment/services/index.ts": "39c29b050dbca15db431f5415ebaa5dec8bbf77c31637ee13112796cf13ab5a0"
+  },
+  "authority": "TWO_PREIMPLEMENTATION_DECISIONS_REQUIRED_SOURCE_ONLY",
+  "scout": "/root/index_matrix_fragment read-only; graph stale bfb608e, exact source governed; no source/runtime/Git action",
+  "amendment": "Standards discovered unchanged PaymentService release caller234; include source pin and future complete-C3 compatibility. Original three draft files preserved in initial-caller-map; no implementation scope/algorithm change."
+}
