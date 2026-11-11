@@ -1,0 +1,9 @@
+{
+  "schema": "SD-PROFILE-LIFECYCLE-SOURCE-BASELINE-1",
+  "sourceCommit": "7eb4a6b3753917925d799b096f0a54dfbe1d8154",
+  "files": {
+    "bootstrap.cjs": "874025665f5f93454303f3823ed7ba9f606ce36c9119c7f58fe0759cd3214a78",
+    "bootstrap-unit.cjs": "cafb8d2940e258f6fcf685d072b3693be091f36f009bb49880034b0599d1a8e7"
+  },
+  "authority": "SOURCE_AND_BUILTINS_FIXTURE_ONLY; NO_APP_OR_PACKAGE_EXECUTION"
+}

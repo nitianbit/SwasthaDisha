@@ -1,0 +1,25 @@
+{
+  "id": "CAUGHT_FORBIDDEN_LATCHES_CLEARED",
+  "sourceSha256": "95755baa221128ddc74cabe01184f3a384b65f06255093b7b072325cd328c723",
+  "before": "if (containerResetWindow && key === 'destroy') return undefined;",
+  "after": "if (containerResetWindow && key === 'destroy') { effects.excluded = 0; effects.unexpected = 0; attempts[name] = 0; return undefined; }",
+  "command": [
+    "/private/tmp/m0-node22/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-lifecycle-source/test/api-runtime/scenario",
+    "test/api-runtime/scenario/bootstrap-unit.cjs"
+  ],
+  "environment": {
+    "PATH": "/usr/bin:/bin"
+  },
+  "exitCode": 1,
+  "result": {
+    "schema": "SD-AUTH-API-OFFLINE-1",
+    "failed": 1,
+    "code": "OFFLINE_SETUP_UNIT_FAILED",
+    "profileCase": "PROFILE_RESET_WINDOW_OUTSIDE_DENIED_BookingRepository",
+    "warningCase": null
+  },
+  "requiredFixedCase": "PROFILE_RESET_WINDOW_OUTSIDE_DENIED_BookingRepository",
+  "rejected": true
+}

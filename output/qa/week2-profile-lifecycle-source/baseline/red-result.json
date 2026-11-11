@@ -1,0 +1,15 @@
+{
+  "schema": "SD-PROFILE-LIFECYCLE-PREPATCH-RED-1",
+  "command": "env -i PATH=/usr/bin:/bin /private/tmp/m0-node22/node --permission --allow-fs-read=\"$PWD/test/api-runtime/scenario\" test/api-runtime/scenario/bootstrap-unit.cjs",
+  "exitCode": 1,
+  "bootstrapSha256": "874025665f5f93454303f3823ed7ba9f606ce36c9119c7f58fe0759cd3214a78",
+  "unitSha256": "5e07b774142608676d6a3aa81b0d58b74fce71022538e46e9d103c4cc639ca84",
+  "actualResult": {
+    "schema": "SD-AUTH-API-OFFLINE-1",
+    "failed": 1,
+    "code": "OFFLINE_SETUP_UNIT_FAILED",
+    "profileCase": "PROFILE_RESET_WINDOW_INERT_BookingRepository",
+    "warningCase": null
+  },
+  "scope": "NEW_PURE_FIXTURE_UNIT_BEFORE_BOOTSTRAP_EDIT; NO_APP_OR_PACKAGE"
+}

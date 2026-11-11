@@ -1,0 +1,25 @@
+{
+  "id": "BUSINESS_METHOD_BYPASS_INSIDE_WINDOW",
+  "sourceSha256": "3b990669aa6d1aaaba2872c892d811ffe4c6dbd2082ee54fe666360ce7429620",
+  "before": "if (containerResetWindow && key === 'destroy') return undefined;",
+  "after": "if (containerResetWindow && key === 'destroy') return undefined;\n              if (containerResetWindow && spec.methods.includes(key)) return () => undefined;",
+  "command": [
+    "/private/tmp/m0-node22/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-lifecycle-source/test/api-runtime/scenario",
+    "test/api-runtime/scenario/bootstrap-unit.cjs"
+  ],
+  "environment": {
+    "PATH": "/usr/bin:/bin"
+  },
+  "exitCode": 1,
+  "result": {
+    "schema": "SD-AUTH-API-OFFLINE-1",
+    "failed": 1,
+    "code": "OFFLINE_SETUP_UNIT_FAILED",
+    "profileCase": "PROFILE_RESET_WINDOW_BUSINESS_DENIALS_BookingRepository",
+    "warningCase": null
+  },
+  "requiredFixedCase": "PROFILE_RESET_WINDOW_BUSINESS_DENIALS_BookingRepository",
+  "rejected": true
+}

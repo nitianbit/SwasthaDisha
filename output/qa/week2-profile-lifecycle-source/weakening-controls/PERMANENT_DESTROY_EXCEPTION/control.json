@@ -1,0 +1,25 @@
+{
+  "id": "PERMANENT_DESTROY_EXCEPTION",
+  "sourceSha256": "2b188dbaec067b6815c269254b33a4cf83aca20051f5e323a09fd86cd696505c",
+  "before": "if (containerResetWindow && key === 'destroy') return undefined;",
+  "after": "if (key === 'destroy') return undefined;",
+  "command": [
+    "/private/tmp/m0-node22/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-lifecycle-source/test/api-runtime/scenario",
+    "test/api-runtime/scenario/bootstrap-unit.cjs"
+  ],
+  "environment": {
+    "PATH": "/usr/bin:/bin"
+  },
+  "exitCode": 1,
+  "result": {
+    "schema": "SD-AUTH-API-OFFLINE-1",
+    "failed": 1,
+    "code": "OFFLINE_SETUP_UNIT_FAILED",
+    "profileCase": "PROFILE_RESET_WINDOW_OUTSIDE_DENIED_BookingRepository",
+    "warningCase": null
+  },
+  "requiredFixedCase": "PROFILE_RESET_WINDOW_OUTSIDE_DENIED_BookingRepository",
+  "rejected": true
+}

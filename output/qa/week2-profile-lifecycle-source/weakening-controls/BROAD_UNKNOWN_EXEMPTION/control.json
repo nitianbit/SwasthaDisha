@@ -1,0 +1,25 @@
+{
+  "id": "BROAD_UNKNOWN_EXEMPTION",
+  "sourceSha256": "c8e999cb52652794b56488294bb4e80a8dead74f9f9f581c272f58338512b614",
+  "before": "if (containerResetWindow && key === 'destroy') return undefined;",
+  "after": "if (containerResetWindow && key !== 'constructor' && !spec.methods.includes(key)) return undefined;",
+  "command": [
+    "/private/tmp/m0-node22/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-lifecycle-source/test/api-runtime/scenario",
+    "test/api-runtime/scenario/bootstrap-unit.cjs"
+  ],
+  "environment": {
+    "PATH": "/usr/bin:/bin"
+  },
+  "exitCode": 1,
+  "result": {
+    "schema": "SD-AUTH-API-OFFLINE-1",
+    "failed": 1,
+    "code": "OFFLINE_SETUP_UNIT_FAILED",
+    "profileCase": "PROFILE_RESET_WINDOW_UNKNOWN_DENIALS_BookingRepository",
+    "warningCase": null
+  },
+  "requiredFixedCase": "PROFILE_RESET_WINDOW_UNKNOWN_DENIALS_BookingRepository",
+  "rejected": true
+}

@@ -1326,6 +1326,152 @@ async function profileUnits() {
         && [...held].every(([filename, entry]) => require.cache[filename] === entry), 'PROFILE_CACHE_SCOPE');
     } finally { delete require.cache[fakeModule]; delete require.cache[fakeModel]; }
   }));
+  // Lifecycle contract: actual fixture factory/classes, handwritten fake reset
+  // probes only. No TypeDI package or application code is executed by these cases.
+  function resetClass(name) {
+    const f = freshBoundary(); const classes = f.boundary.classes({ Service: () => () => {} });
+    const alias = Object.keys(classes).find(key => Object.hasOwn(classes[key], name));
+    return { ...f, Constructor: classes[alias][name], instance: new classes[alias][name](),
+      methods: f.admission.policy.throwingClasses[alias].methods };
+  }
+  for (const name of ['BookingRepository', 'BookingService', 'SlotRepository', 'SlotService']) {
+    await record('PROFILE_RESET_WINDOW_INERT_' + name, () => {
+      const f = resetClass(name); let calls = 0; let thenReads = 0;
+      need(typeof f.boundary.withContainerReset === 'function', 'PROFILE_RESET_WINDOW_REQUIRED');
+      const before = JSON.stringify([f.effects, f.boundary.attempts]);
+      const returned = f.boundary.withContainerReset(() => {
+        calls++;
+        need(f.instance.constructor === f.Constructor && f.instance.destroy === undefined
+          && typeof f.instance['destroy'] === 'undefined' && !Object.hasOwn(f.instance, 'destroy')
+          && Object.getOwnPropertyDescriptor(f.Constructor.prototype, 'destroy') === undefined, 'PROFILE_RESET_DESTROY_EXACT_ABSENCE');
+        return Object.defineProperty({}, 'then', { get() { thenReads++; throw new Error('synthetic-private-sentinel'); } });
+      });
+      need(returned === undefined && calls === 1 && thenReads === 0
+        && JSON.stringify([f.effects, f.boundary.attempts]) === before
+        && Object.isFrozen(f.boundary.attempts) && Object.keys(f.boundary.attempts).length === 8, 'PROFILE_RESET_INERT_RETURN_AND_COUNTERS');
+      f.boundary.assertClean();
+    });
+    await record('PROFILE_RESET_WINDOW_OUTSIDE_DENIED_' + name, () => {
+      const f = resetClass(name);
+      fixedFailure(() => f.instance.destroy, 'SPECIALIST_PROFILE_CAPABILITY_EXCLUDED');
+      const before = JSON.stringify([f.effects, f.boundary.attempts]);
+      f.boundary.withContainerReset(() => need(f.instance.destroy === undefined, 'PROFILE_RESET_INSIDE_AFTER_OUTSIDE_DENIAL'));
+      need(JSON.stringify([f.effects, f.boundary.attempts]) === before, 'PROFILE_RESET_DOES_NOT_CLEAR_LATCH');
+      fixedFailure(() => f.instance.destroy, 'SPECIALIST_PROFILE_CAPABILITY_EXCLUDED');
+      need(f.boundary.attempts[name] === 2 && f.effects.excluded === 2 && f.effects.unexpected === 2, 'PROFILE_RESET_OUTSIDE_LATCHES');
+      fixedFailure(() => f.boundary.assertClean(), 'SPECIALIST_PROFILE_CAUGHT_EFFECT');
+    });
+    await record('PROFILE_RESET_WINDOW_BUSINESS_DENIALS_' + name, () => {
+      const f = resetClass(name);
+      f.boundary.withContainerReset(() => {
+        for (const method of f.methods) {
+          fixedFailure(() => f.instance[method](), 'SPECIALIST_PROFILE_CAPABILITY_EXCLUDED');
+          need(f.instance.destroy === undefined, 'PROFILE_RESET_METADATA_AFTER_CAUGHT_BUSINESS');
+        }
+      });
+      need(f.boundary.attempts[name] === f.methods.length && f.effects.excluded === f.methods.length
+        && f.effects.unexpected === f.methods.length, 'PROFILE_RESET_BUSINESS_LATCHES_RETAINED');
+      fixedFailure(() => f.boundary.assertClean(), 'SPECIALIST_PROFILE_CAUGHT_EFFECT');
+    });
+    await record('PROFILE_RESET_WINDOW_UNKNOWN_DENIALS_' + name, () => {
+      const f = resetClass(name);
+      const unknown = ['Destroy', 'destroy ', 'then', 'toJSON', 'toString', 'unknownBusinessMethod',
+        Symbol('destroy'), Symbol.toStringTag, Symbol.for('nodejs.util.inspect.custom')];
+      f.boundary.withContainerReset(() => {
+        for (const key of unknown) fixedFailure(() => f.instance[key], 'SPECIALIST_PROFILE_CAPABILITY_EXCLUDED');
+        need(f.instance.destroy === undefined, 'PROFILE_RESET_EXACT_KEY_ONLY');
+      });
+      need(f.boundary.attempts[name] === unknown.length && f.effects.excluded === unknown.length
+        && f.effects.unexpected === unknown.length, 'PROFILE_RESET_UNKNOWN_LATCHES');
+      fixedFailure(() => f.boundary.assertClean(), 'SPECIALIST_PROFILE_CAUGHT_EFFECT');
+    });
+    await record('PROFILE_RESET_WINDOW_MUTATIONS_DENIED_' + name, () => {
+      const f = resetClass(name);
+      f.boundary.withContainerReset(() => {
+        fixedFailure(() => { f.instance.destroy = () => {}; }, 'SPECIALIST_PROFILE_CAPABILITY_EXCLUDED');
+        fixedFailure(() => Object.defineProperty(f.instance, 'destroy', { value: () => {} }), 'SPECIALIST_PROFILE_CAPABILITY_EXCLUDED');
+        fixedFailure(() => { delete f.instance.destroy; }, 'SPECIALIST_PROFILE_CAPABILITY_EXCLUDED');
+        need(f.instance.destroy === undefined && !Object.hasOwn(f.instance, 'destroy'), 'PROFILE_RESET_MUTATION_NOT_INSTALLED');
+      });
+      need(f.boundary.attempts[name] === 3 && f.effects.excluded === 3 && f.effects.unexpected === 3, 'PROFILE_RESET_MUTATION_LATCHES');
+      fixedFailure(() => f.boundary.assertClean(), 'SPECIALIST_PROFILE_CAUGHT_EFFECT');
+    });
+    await record('PROFILE_RESET_WINDOW_THROW_CLOSES_' + name, () => {
+      const f = resetClass(name); const primary = Object.freeze(new Error('synthetic-private-sentinel')); let calls = 0; let caught;
+      try { f.boundary.withContainerReset(() => { calls++; need(f.instance.destroy === undefined, 'PROFILE_RESET_THROW_BEFORE'); throw primary; }); }
+      catch (error) { caught = error; }
+      need(caught === primary && calls === 1, 'PROFILE_RESET_THROW_IDENTITY');
+      fixedFailure(() => f.instance.destroy, 'SPECIALIST_PROFILE_CAPABILITY_EXCLUDED');
+      need(f.boundary.attempts[name] === 1 && f.effects.excluded === 1 && f.effects.unexpected === 1, 'PROFILE_RESET_THROW_CLOSED');
+    });
+    await record('PROFILE_RESET_WINDOW_NESTED_RETAINS_OUTER_' + name, () => {
+      const f = resetClass(name); let outer = 0; let inner = 0;
+      f.boundary.withContainerReset(() => {
+        outer++;
+        fixedFailure(() => f.boundary.withContainerReset(() => { inner++; }), 'SPECIALIST_PROFILE_RESET_REENTRANT');
+        need(f.instance.destroy === undefined, 'PROFILE_RESET_OUTER_REMAINS_OPEN');
+      });
+      need(outer === 1 && inner === 0 && f.effects.excluded === 0 && f.effects.unexpected === 0, 'PROFILE_RESET_NESTED_CALLBACK_COUNTS');
+      fixedFailure(() => f.instance.destroy, 'SPECIALIST_PROFILE_CAPABILITY_EXCLUDED');
+    });
+    await record('PROFILE_RESET_WINDOW_ASYNC_CONTINUATION_CLOSED_' + name, async () => {
+      const f = resetClass(name); let continuation; let calls = 0;
+      const returned = f.boundary.withContainerReset(() => {
+        need(f.instance.destroy === undefined, 'PROFILE_RESET_ASYNC_SYNC_PORTION');
+        continuation = Promise.resolve().then(() => {
+          fixedFailure(() => f.instance.destroy, 'SPECIALIST_PROFILE_CAPABILITY_EXCLUDED'); calls++;
+        });
+        return continuation;
+      });
+      need(returned === undefined, 'PROFILE_RESET_PROMISE_NOT_AUTHORITY'); await continuation;
+      need(calls === 1 && f.boundary.attempts[name] === 1 && f.effects.excluded === 1 && f.effects.unexpected === 1,
+        'PROFILE_RESET_ASYNC_WINDOW_CLOSED');
+    });
+  }
+  await record('PROFILE_RESET_WINDOW_INVALID_CALLBACKS_CLOSED', () => {
+    const f = resetClass('BookingRepository');
+    for (const value of [undefined, null, 1, {}])
+      fixedFailure(() => f.boundary.withContainerReset(value), 'SPECIALIST_PROFILE_RESET_CALLBACK');
+    fixedFailure(() => f.instance.destroy, 'SPECIALIST_PROFILE_CAPABILITY_EXCLUDED');
+    need(f.boundary.attempts.BookingRepository === 1 && f.effects.excluded === 1 && f.effects.unexpected === 1,
+      'PROFILE_RESET_INVALID_NEVER_OPENS');
+  });
+  await record('PROFILE_RESET_WINDOW_UNCAUGHT_NESTED_CLOSES', () => {
+    const f = resetClass('BookingRepository'); let calls = 0;
+    fixedFailure(() => f.boundary.withContainerReset(() => f.boundary.withContainerReset(() => { calls++; })),
+      'SPECIALIST_PROFILE_RESET_REENTRANT');
+    need(calls === 0, 'PROFILE_RESET_UNCAUGHT_NESTED_NOT_INVOKED');
+    fixedFailure(() => f.instance.destroy, 'SPECIALIST_PROFILE_CAPABILITY_EXCLUDED');
+  });
+  await record('PROFILE_RESET_ACTUAL_LOADER_FORWARDING_FAKE_RESET_REPEAT', () => withLoader(f => {
+    need(typeof f.loader.withProfileContainerReset === 'function', 'PROFILE_RESET_LOADER_FORWARD_REQUIRED');
+    let resetCalls = 0; let destroyDelegates = 0; let probeReads = 0; let previous; let lastInstances;
+    function fakeReset(entries) {
+      // Handwritten contract fake, not imported/copied TypeDI implementation.
+      resetCalls++;
+      for (const entry of entries) {
+        probeReads++;
+        if (typeof entry.value['destroy'] === 'function') { destroyDelegates++; entry.value.destroy(); }
+      }
+      return entries;
+    }
+    for (let phase = 0; phase < 3; phase++) {
+      const classes = f.loader.profileClasses({ Service: () => () => {} }); f.loader.phase(classes, {});
+      const entries = Object.entries(classes).map(([alias, exported]) => {
+        const name = portsOriginal.specialistProfile.throwingClasses[alias].export; return { value: new exported[name](), Constructor: exported[name] };
+      });
+      need(!previous || entries.every((entry, index) => entry.Constructor !== previous[index].Constructor), 'PROFILE_RESET_FRESH_PHASE_CLASSES');
+      need(f.loader.withProfileContainerReset(() => fakeReset(entries)) === undefined, 'PROFILE_RESET_FORWARD_RETURN');
+      need(Object.values(f.loader.profileAttempts).every(value => value === 0) && f.effects.excluded === 0 && f.effects.unexpected === 0,
+        'PROFILE_RESET_FORWARD_SAME_BOUNDARY');
+      previous = entries; lastInstances = entries;
+    }
+    need(resetCalls === 3 && probeReads === 12 && destroyDelegates === 0 && f.state.loads === 0 && f.state.resolves === 0,
+      'PROFILE_RESET_FAKE_ONLY_COUNTS');
+    f.loader.assertProfileClean();
+    fixedFailure(() => lastInstances[0].value.destroy, 'SPECIALIST_PROFILE_CAPABILITY_EXCLUDED');
+    fixedFailure(() => f.loader.assertProfileClean(), 'SPECIALIST_PROFILE_CAUGHT_EFFECT');
+  }));
   need(applicationImports === 0 && connections === 0 && domainWrites === 0 && nativeChildLoads === 0, 'PROFILE_OFFLINE_EFFECTS');
 }
 
