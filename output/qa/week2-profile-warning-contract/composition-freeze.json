@@ -1,0 +1,27 @@
+{
+  "schema": "SD-EXACT-WARNING-COMPOSITION-FREEZE-1",
+  "base": "ed7e1e4a455114784cbb836156fffc85c276f0d6",
+  "files": {
+    "test/api-runtime/scenario/bootstrap.cjs": "874025665f5f93454303f3823ed7ba9f606ce36c9119c7f58fe0759cd3214a78",
+    "test/api-runtime/scenario/bootstrap-unit.cjs": "cafb8d2940e258f6fcf685d072b3693be091f36f009bb49880034b0599d1a8e7",
+    "test/api-runtime/scenario/scenario.cjs": "cbb1260c887a7a5dc664fec9a6b47c680e1d180f78b102716122596baaae6500",
+    "test/api-runtime/scenario/README.md": "c0eb92ef72994a62e7178bb0e565605d3413265a1fea5b1ca87d77bff0254d9f",
+    "test/api-runtime/scenario/compile.cjs": "8d25c7d7c8291fd02b179750dd761db4129750043c3501eb02ea0f759bfa1b6f",
+    "test/api-runtime/scenario/ports-manifest.json": "59c410ffc991fdcb4b1ee384f55ba896363011a207573c6f7abc7aa8763f948b",
+    "test/api-runtime/scenario/prepare.py": "39b4085370a09a34069b9f1c4f45cfd8fa38a3a1f0e380abcef9c469a5add598",
+    "test/api-runtime/scenario/package-plan.json": "d7830a9ce688235bb64f3f9f7ac3d5dd604bb63641cdae97b8b7250bfd957227",
+    "test/api-runtime/launch.mjs": "9c6d1c805de4c50542667b90532219c54666b8a764ee5672055f641938b099ed",
+    "test/api-runtime/platform.mjs": "b5117065c90c4698cb9604a8da0cb673a38249d8eee07a8ac39e11040a56e29f",
+    "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+    "test/application/app-bundle.mjs": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2",
+    "src1/modules/common/repository/BaseRepository.ts": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+    "src1/modules/specialistPortal/services/index.ts": "631a2bc6e92e522db35bad35eacd9f7d46aa8e4dcdb508acc16dc44891fef27c",
+    "output/qa/week2-profile-warning-bootstrap/candidate-freeze.json": "e4abecc25fe43087c0644366a62dffbb0d55ee8dc1ab20eabb818f62f7ad6ff7",
+    "output/qa/week2-profile-warning-scenario/candidate-freeze.json": "01850ababe559e8c78f6e1ab16bafacd923fef6a13461eb34d443bcc9a79f608",
+    "output/qa/week2-profile-warning-contract/CONTRACT.md": "8809dec3e5c7610e0e577476512abf5036c95277cb7ce3f22401087f1fd307dd",
+    "output/qa/week2-profile-warning-contract/inputs.json": "12d2f556bb3672dda963649a798d120ee1c22ee23d0eb1139efe7270d6fa706d",
+    "output/qa/week2-profile-warning-contract/PRE_REVIEW.md": "45e9d36ef625fdb0fdc82e892ae548c2214b04f557e1c9b18cc2de5a43a5826f",
+    "output/qa/week2-profile-warning-contract/composition-checks.json": "3f53fa3cb1d8be1f232aab7d0b2bac72bc6fe5a2649db25510d912a6f8fc0585"
+  },
+  "authority": "TWO_SOURCE_AND_DISTINCT_LOCKED_EMISSION_DECISIONS_REQUIRED; NO_APPLICATION_OR_RETRY_APPROVAL"
+}
