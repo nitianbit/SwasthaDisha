@@ -1,0 +1,27 @@
+{
+  "schema": "SD-COMPILER-LIBRARY-SOURCE-FREEZE-1",
+  "baseline": "b33a9daac01628a48043e85764819a5f855431ed",
+  "author": "/root/index_runtime_bootstrap",
+  "status": "TWO_INDEPENDENT_SOURCE_AND_LOCKED_EMIT_DECISIONS_PENDING",
+  "sourceChecks": 24,
+  "textControlsDetected": 24,
+  "syntaxChecks": 1,
+  "actualCompilerPrograms": "NOT_RUN",
+  "applicationEvaluations": 0,
+  "compilerExecutions": 0,
+  "files": {
+    "test/api-runtime/scenario/compile.cjs": "cb5c781d445b0e935efba7326d5bc4bba5192a26ced036eaaa574df51b4b82ca",
+    "test/api-runtime/scenario/README.md": "e1a683fd8d68f9203ba77d81cec65443930490e90079fbd9d780c508e042cee6",
+    "output/qa/week2-compiler-library-admission/CONTRACT.md": "a1e7c9de99b7a27bb5e71357cca3e4262f92d929ea5fc7cf790d376e597b79eb",
+    "output/qa/week2-compiler-library-admission/contract-inputs.json": "64dfab51c2e50e45f322c72f27bd431d12359c3cc206a5230f42f20c8f016552",
+    "output/qa/week2-compiler-library-admission/contract-freeze.json": "980bfbd072f66af184a5bb5e132a8934eb7f6f54f1ac90fed4438c49299847a9",
+    "output/qa/week2-compiler-library-admission-source/README.md": "530d834fc0dc2867e8b0c94bcd877a015e932010a6837f97907c1addb94ba35e",
+    "output/qa/week2-compiler-library-admission-source/baseline-rejection.json": "ed64c1a7294a1b24457b5dbea63cab98d60b749656345cf2f888601bf388c1d0",
+    "output/qa/week2-compiler-library-admission-source/scope-preservation.json": "115b5aae395a97dccb0dfd289e3c0009f840bc9daaf4b126d6e62bf1fd6e883c",
+    "output/qa/week2-compiler-library-admission-source/source-verification.json": "39ec2e93040a1cd6bae025fcece57a508484b629807136179e9927e0755d42fc",
+    "output/qa/week2-compiler-library-admission-source/text-controls.json": "93b9d59c98bbee945f79dc5101916168b633505d0256d9eeeb465176e499cecb",
+    "output/qa/week2-compiler-library-admission-source/verifier-freeze.json": "ebbf8f7490d979dea9728f0e218ecc8ef672056373e3e2e9c017ca5a8346aa7e",
+    "output/qa/week2-compiler-library-admission-source/verify_controls.py": "79e7d377cdc48416f329f0757619137ec5650b6c80fd2f95b4bd48036924631c",
+    "output/qa/week2-compiler-library-admission-source/verify_source.py": "ee4e696c704d314806774c2c64ec8c733fc5b1844aeeddc2ef8bc7704286b311"
+  }
+}

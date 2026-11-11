@@ -1,0 +1,9 @@
+{
+  "schema": "SD-COMPILER-LIBRARY-CONTRACT-FREEZE-1",
+  "baseline": "b33a9daac01628a48043e85764819a5f855431ed",
+  "status": "TWO_PREIMPLEMENTATION_REVIEWS_PENDING",
+  "files": {
+    "output/qa/week2-compiler-library-admission/CONTRACT.md": "a1e7c9de99b7a27bb5e71357cca3e4262f92d929ea5fc7cf790d376e597b79eb",
+    "output/qa/week2-compiler-library-admission/contract-inputs.json": "64dfab51c2e50e45f322c72f27bd431d12359c3cc206a5230f42f20c8f016552"
+  }
+}

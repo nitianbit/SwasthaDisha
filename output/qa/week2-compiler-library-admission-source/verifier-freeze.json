@@ -1,0 +1,9 @@
+{
+  "schema": "SD-COMPILER-LIBRARY-VERIFIER-FREEZE-1",
+  "status": "FROZEN_BEFORE_SOURCE_PATCH",
+  "baseline": "b33a9daac01628a48043e85764819a5f855431ed",
+  "files": {
+    "output/qa/week2-compiler-library-admission-source/verify_source.py": "ee4e696c704d314806774c2c64ec8c733fc5b1844aeeddc2ef8bc7704286b311"
+  },
+  "executionScope": "Source strings and JSON only; no TypeScript parse/import/compiler/app evaluation"
+}

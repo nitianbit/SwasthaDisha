@@ -1,0 +1,14 @@
+{
+  "schema": "SD-COMPILER-LIBRARY-SCOPE-1",
+  "status": "PASS_SOURCE_DATA_ONLY",
+  "changedTrackedFiles": [
+    "test/api-runtime/scenario/README.md",
+    "test/api-runtime/scenario/compile.cjs"
+  ],
+  "otherContractFiles": 8,
+  "originalStagedAndWorking": 6,
+  "originalHandover": 11,
+  "stagedPatchSha256": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+  "applicationEvaluations": 0,
+  "compilerExecutions": 0
+}
