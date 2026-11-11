@@ -22,7 +22,8 @@ const ADMITTED_ROOTS = Object.freeze([
   "@/modules/notification/routes",
   "@/modules/fcm/routes",
   "@/modules/meet/routes",
-  "@/modules/common/utils/indexReadiness"
+  "@/modules/common/utils/indexReadiness",
+  "@/modules/specialists/routes"
 ]);
 const REQUIRED_CASE_IDS = Object.freeze([
   "PHONE_LOGIN",
@@ -107,7 +108,14 @@ const REQUIRED_CASE_IDS = Object.freeze([
   "INDEX_OPTIONS_DENIALS",
   "INDEX_OBSERVATION_DENIALS",
   "INDEX_INPUT_ADMISSION_DENIALS",
-  "INDEX_IMMUTABILITY_AND_SAFE_RESULT"
+  "INDEX_IMMUTABILITY_AND_SAFE_RESULT",
+  "SPECIALIST_PROFILE_DESCRIPTIVE_SUCCESS",
+  "SPECIALIST_PROFILE_PROTECTED_DENIALS",
+  "SPECIALIST_PROFILE_FALSE_ZERO_CONVERSIONS",
+  "SPECIALIST_PROFILE_VALIDATION_PRECEDENCE",
+  "SPECIALIST_PROFILE_NOT_FOUND_PRECEDENCE",
+  "SPECIALIST_PROFILE_AUTHORITY",
+  "SPECIALIST_PROFILE_ADMIN_PATH_COMPAT"
 ]);
 const REQUIRED_SENSITIVITY_IDS = Object.freeze([
   "OTP_UNCONDITIONAL_CONSUME",
@@ -136,7 +144,13 @@ const REQUIRED_SENSITIVITY_IDS = Object.freeze([
   "INDEX_OPTIONS_IGNORED",
   "INDEX_PARTIAL_FILTER_IGNORED",
   "INDEX_INCOMPLETE_ACCEPTED",
-  "INDEX_BUILD_STATUS_IGNORED"
+  "INDEX_BUILD_STATUS_IGNORED",
+  "SPECIALIST_PROFILE_VERIFIED_GUARD_REMOVED",
+  "SPECIALIST_PROFILE_ACTIVE_GUARD_REMOVED",
+  "SPECIALIST_PROFILE_RATING_GUARD_REMOVED",
+  "SPECIALIST_PROFILE_TRUTHINESS_GUARD",
+  "SPECIALIST_PROFILE_LOOKUP_REMOVED",
+  "SPECIALIST_PROFILE_UPDATE_BEFORE_DENIAL"
 ]);
 const INDEX_FAILURE_CODES = Object.freeze(["INDEX_ACQUISITION_COUNTS","INDEX_ACQUISITION_FAILED","INDEX_ACQUISITION_INCOMPLETE","INDEX_BATCH_LIMIT","INDEX_CACHE_RESTORATION","INDEX_COLLECTOR_PORTS","INDEX_COMMAND_CURSOR","INDEX_COMMAND_HANDLES","INDEX_COMMAND_INCOMPLETE","INDEX_COMMAND_NAMESPACE","INDEX_COMMAND_OBSERVER","INDEX_COMMAND_PORT","INDEX_COMMAND_REPLY","INDEX_COMMAND_STATE","INDEX_CONFLICT","INDEX_CONTINUATION_REQUIRED","INDEX_CREATE","INDEX_CURSOR_DRIFT","INDEX_CURSOR_LONG","INDEX_CURSOR_NAMESPACE","INDEX_DATA_SHAPE","INDEX_DEADLINE","INDEX_FINAL_EFFECT","INDEX_FIXTURE_BASE_DATA","INDEX_FIXTURE_CONSTRUCTION_LIMIT","INDEX_FIXTURE_SELECTION","INDEX_FIXTURE_SNAPSHOT_DATA","INDEX_FIXTURE_TRIAL_ID","INDEX_HELPER_EXPORT","INDEX_HELPER_EXPORTS","INDEX_HELPER_IMPORT_COUNT","INDEX_HELPER_SELECTION","INDEX_INPUT_EXECUTION","INDEX_INPUT_MUTATION","INDEX_KEY_DUPLICATE","INDEX_LOADER_CLOSED","INDEX_LOADER_DRIFT","INDEX_MATRIX_INCOMPLETE","INDEX_MATRIX_PORTS","INDEX_METADATA_BATCH","INDEX_METADATA_CURSOR","INDEX_METADATA_DATA","INDEX_METADATA_LIMIT","INDEX_METADATA_REPLY","INDEX_MODULE_PATHS","INDEX_MUTANT_INCOMPLETE","INDEX_MUTANT_NOT_DETECTED","INDEX_MUTANT_SET","INDEX_MUTANT_TRIAL_COUNTS","INDEX_MUTANT_TRIAL_SET","INDEX_MUTANT_UNRELATED_FAILURE","INDEX_NAME_DUPLICATE","INDEX_NESTED_IMPORT","INDEX_OPERATION_ATTEMPT","INDEX_OTHER_CACHE_DRIFT","INDEX_OVERRIDE_STATE","INDEX_OWNED_HANDLES","INDEX_PARENT_CHILDREN","INDEX_PORT_DRIFT","INDEX_PREEXISTING_HELPER","INDEX_PURE_EFFECT","INDEX_RESULT_MISMATCH","INDEX_RESULT_MUTATION","INDEX_RESULT_SHAPE","INDEX_ROW_LIMIT","INDEX_SCALAR_LONG","INDEX_SELECTION","INDEX_SENSITIVITY_INCOMPLETE","INDEX_SESSION","INDEX_SOURCE_BINDING","INDEX_TAP_DRIFT","INDEX_TAP_MISSING","INDEX_TAP_RESTORATION","INDEX_TRIAL_COUNTS","INDEX_TRIAL_DUPLICATE","INDEX_TRIAL_SET","INDEX_TYPE_REPORT","INDEX_UNDECLARED_COMMAND"]);
 // Fixed selected-index fixture policy. The application comparator contains no policy copy.
@@ -145,8 +159,8 @@ const INDEX_SOURCE = 'src1/modules/common/utils/indexReadiness.ts';
 const INDEX_SOURCE_SHA = '050ecc993c862638cf4912bb854e04baa5d80241cb124e7831fc3c95a78db5bd';
 const INDEX_MANIFEST_SHA = '9160db1c3e937f49f6a68cb87d5c55b2c9e0f662310b560f874a4d4a7f61e3c7';
 const INDEX_MODE = 'MONGODB_8_INCLUDE_INDEX_BUILD_INFO';
-const INDEX_CASE_IDS = Object.freeze(REQUIRED_CASE_IDS.slice(76));
-const INDEX_MUTANT_IDS = Object.freeze(REQUIRED_SENSITIVITY_IDS.slice(21));
+const INDEX_CASE_IDS = Object.freeze(REQUIRED_CASE_IDS.slice(76, 83));
+const INDEX_MUTANT_IDS = Object.freeze(REQUIRED_SENSITIVITY_IDS.slice(21, 27));
 const INDEX_COLLECTIONS = Object.freeze(["users","admins","hrs","corporates","specialists","pharmacies","OTP","wallets","wallettransactions","notifications","fcmtokens","wellnesspackages","dependents"]);
 const INDEX_MUTANTS = Object.freeze({"INDEX_MISSING_REQUIREMENT_ACCEPTED":{"sourceSha":"38840d330b825e2feb7240b73845ca11728cf516f4853d89e6e5e6d3ce6438f6","trials":["REMOVE_ID_00","REMOVE_ID_01","REMOVE_ID_02","REMOVE_ID_03","REMOVE_ID_04","REMOVE_ID_05","REMOVE_ID_06","REMOVE_ID_07","REMOVE_ID_08","REMOVE_ID_09","REMOVE_ID_10","REMOVE_ID_11","REMOVE_ID_12","REMOVE_EXPLICIT_00","REMOVE_EXPLICIT_02","REMOVE_EXPLICIT_05","REMOVE_EXPLICIT_06","REMOVE_EXPLICIT_07","REMOVE_EXPLICIT_08","REMOVE_EXPLICIT_09","REMOVE_EXPLICIT_10"]},"INDEX_KEY_ORDER_IGNORED":{"sourceSha":"03cedbf95c229c2bcacb4aa5913bc6b723b6dcaab10cab24d9dfd68278cca2d9","trials":["KEY_COMPOUND_REVERSED"]},"INDEX_OPTIONS_IGNORED":{"sourceSha":"cba386c2e53905dc8ef137d33a03c9ddc6841456addcf18d4539854664b1ad9c","trials":["ID_EXPLICIT_NONUNIQUE","UNIQUE_FALSE_00","UNIQUE_ABSENT_00","UNIQUE_FALSE_02","UNIQUE_ABSENT_02","UNIQUE_FALSE_05","UNIQUE_ABSENT_05","UNIQUE_FALSE_07","UNIQUE_ABSENT_07","UNIQUE_FALSE_08","UNIQUE_ABSENT_08","UNIQUE_FALSE_09","UNIQUE_ABSENT_09","UNIQUE_FALSE_10","UNIQUE_ABSENT_10","SPARSE_FALSE","SPARSE_ABSENT","TTL_ABSENT","TTL_ONE","TTL_UNEXPECTED","ID_TTL_UNEXPECTED","HIDDEN_REQUIRED"]},"INDEX_PARTIAL_FILTER_IGNORED":{"sourceSha":"37cc8f34866d598d7c2474627992c35eaf0e2fb3949386fc0bc0c22bd9bddb40","trials":["PARTIAL_EMPTY","PARTIAL_REFUND_VALUE","PARTIAL_REFERENCE_VALUE","PARTIAL_EXISTS","PARTIAL_TYPE_ALIAS","PARTIAL_EQ_FORM","PARTIAL_ARRAY_ORDER","PARTIAL_SCALAR_TYPE"]},"INDEX_INCOMPLETE_ACCEPTED":{"sourceSha":"be8b32e10a16334d68b8df8cfa0b55d5ffbaf161d826261366f6adbc8a8ab150","trials":["STATUS_INCOMPLETE"]},"INDEX_BUILD_STATUS_IGNORED":{"sourceSha":"a72e944ce170bbc8d6b68ce19ec2628bbfc4d86ba19be24e0aa19e219710104c","trials":["MARKER_WRAPPER_indexBuildInfo_NULL","MARKER_WRAPPER_indexBuildInfo_FALSE","MARKER_WRAPPER_indexBuildInfo_EMPTY","MARKER_WRAPPER_indexBuildInfo_CYCLE","MARKER_WRAPPER_indexBuildInfo_DRIVER_UUID","MARKER_WRAPPER_buildUUID_NULL","MARKER_WRAPPER_buildUUID_FALSE","MARKER_WRAPPER_buildUUID_EMPTY","MARKER_WRAPPER_buildUUID_CYCLE","MARKER_WRAPPER_buildUUID_DRIVER_UUID","MARKER_SPEC_indexBuildInfo_NULL","MARKER_SPEC_indexBuildInfo_FALSE","MARKER_SPEC_indexBuildInfo_EMPTY","MARKER_SPEC_indexBuildInfo_CYCLE","MARKER_SPEC_indexBuildInfo_DRIVER_UUID","MARKER_SPEC_buildUUID_NULL","MARKER_SPEC_buildUUID_FALSE","MARKER_SPEC_buildUUID_EMPTY","MARKER_SPEC_buildUUID_CYCLE","MARKER_SPEC_buildUUID_DRIVER_UUID","BUILDING_EXTRA","BUILDING_BEFORE_REQUIREMENT"]}});
 const INDEX_TRIALS = Object.freeze([
@@ -524,6 +538,131 @@ function bytes(relative) {
   return fs.readFileSync(p);
 }
 
+// The shared profile table is immutable policy data, never a copied validator.
+const PROFILE_POLICY_SHA = '887792c1e2851fe3dfd37d93b3a1870da3adaed7fe41a4fd5e50bb62ea5c7212';
+const PROFILE_SOURCE = 'src1/modules/specialistPortal/services/index.ts';
+const PROFILE_SOURCE_SHA = '631a2bc6e92e522db35bad35eacd9f7d46aa8e4dcdb508acc16dc44891fef27c';
+const PROFILE_ALIAS = '@/modules/specialistPortal/services';
+const PROFILE_PARENT = 'compiled/modules/specialistPortal/services/index.js';
+const PROFILE_ATTEMPT_KEYS = Object.freeze(['BookingRepository', 'BookingService', 'SlotRepository', 'SlotService',
+  'execFile', 'mkdirSync', 'writeFileSync', 'unlinkSync']);
+const PROFILE_SOURCE_PINS = Object.freeze({"src1/modules/specialists/routes/index.ts":"307a9ad75371bd34c6dc34f70d10d0f482007890c98e107fb6b1a4b5bb25c8cc","src1/modules/specialists/controller/index.ts":"d5e4d4f20d1422d994ea4fc07017793ccb6bfca3d77c8d886af8e63bdf95d827","src1/modules/specialists/validation/index.ts":"0cbbb2139513af04ee6f813ea5bed98187faa8829a458a6087fca771ebd99812","src1/modules/specialists/services/index.ts":"64e11b06405342b5ac42433032691e1d2ef328caef91f1b107360e5787850472","src1/modules/specialistPortal/services/index.ts":"631a2bc6e92e522db35bad35eacd9f7d46aa8e4dcdb508acc16dc44891fef27c","src1/modules/specialistPortal/validation/index.ts":"264b39185cbfecf501e73ad737a91db2aa7e0eb4c832fd1e1c6d03bb96f6e11f","src1/modules/slots/validation/index.ts":"8c46fbec049b401d2710e20f12337461689024e31bab008fb82d02a9b93678e5","src1/modules/bookings/utils/lifecycle.ts":"8551c300b245d98ad730f1cd09912f4e83b58e56adceb0e8421eea574480df44"});
+const PROFILE_VARIANTS = Object.freeze({"SPECIALIST_PROFILE_VERIFIED_GUARD_REMOVED":"930b3b4531ff5bc1fc4d37f4c07c0d73b0d0e629b141c99b710ce994c83c3d58","SPECIALIST_PROFILE_ACTIVE_GUARD_REMOVED":"04e31ea1fa058b74a1eef8c31692fb07f6464a33b18dc5779c23640d22ed4f30","SPECIALIST_PROFILE_RATING_GUARD_REMOVED":"943afba6cd672beba4ccd4aee855dcd28f1c4dc0052de306958aeeb2ef7334cb","SPECIALIST_PROFILE_TRUTHINESS_GUARD":"ce5e12c83d246d0de2ee643f8bdeae8de52bb14ede06d43ca86ca75d456c615b","SPECIALIST_PROFILE_LOOKUP_REMOVED":"35ca0dcda8550755142266f832faa85efb9ae9370dd56ba17b7272d741cd0168","SPECIALIST_PROFILE_UPDATE_BEFORE_DENIAL":"6ea66fa5f0f9a2e51ab987e0be37e31851e454dea8e4d8078a773f0827e2463d"});
+const PROFILE_STATIC_INPUTS = freezeProfileData([{"source":"src1/modules/bookings/repository/index.ts","sourceSha256":"d54ebba522cd290589296918eb2dcb4f7609e42d836ef3f23dfb89114b375713","compiled":"compiled/modules/bookings/repository/index.js","compiledSha256":"8ab6799c778d49f9997d347dabe72561c253ea2a3f89fae4270406644de2dd0b","role":"STATIC_AUDIT_INPUT_ONLY_NOT_RUNTIME_ROOT_OR_MODEL_ADMISSION"},{"source":"src1/modules/bookings/model/index.ts","sourceSha256":"219f8115e5eec4bebd7205c763638e8755bde57122866430a1b3bcd0f69ead72","compiled":"compiled/modules/bookings/model/index.js","compiledSha256":"ee42b9c99c01af276eb96654fb5d48005dac0d793b401e7ea8d3ce7f01690188","role":"STATIC_AUDIT_INPUT_ONLY_NOT_RUNTIME_ROOT_OR_MODEL_ADMISSION"},{"source":"src1/modules/slots/repository/index.ts","sourceSha256":"1b1c71269c326a94360efc0c45748df1157bd3d7962dac03705fb0ceb1141bd5","compiled":"compiled/modules/slots/repository/index.js","compiledSha256":"0795af614479fcd6f59db2e40b603da5b1e50be0fa9fda507a23e28c6841d4b4","role":"STATIC_AUDIT_INPUT_ONLY_NOT_RUNTIME_ROOT_OR_MODEL_ADMISSION"},{"source":"src1/modules/slots/model/index.ts","sourceSha256":"afefe8b261e73918a446caaa537ecbbd34a8a4a416995b43e6484bb54add3df6","compiled":"compiled/modules/slots/model/index.js","compiledSha256":"50858482cb86865ee64fc22073ac58ed76ae033732e3eb244d4328ffa27052b4","role":"STATIC_AUDIT_INPUT_ONLY_NOT_RUNTIME_ROOT_OR_MODEL_ADMISSION"}]);
+const PROFILE_EXCLUSIONS = freezeProfileData({"@/modules/payment/services":["PaymentService"],"@/modules/coupon/services":["CouponService"],"@/modules/bookings/repository":["BookingRepository"],"@/modules/bookings/services":["BookingService"],"@/modules/slots/repository":["SlotRepository"],"@/modules/slots/services":["SlotService"]});
+
+function freezeProfileData(value) {
+  if (value !== null && typeof value === 'object') { Object.values(value).forEach(freezeProfileData); Object.freeze(value); }
+  return value;
+}
+
+function profilePolicy(ports) {
+  need(plain(ports.specialistProfile), 'SPECIALIST_PROFILE_POLICY');
+  const text = JSON.stringify(ports.specialistProfile);
+  need(sha(Buffer.from(text)) === PROFILE_POLICY_SHA, 'SPECIALIST_PROFILE_POLICY');
+  // Hold an independent frozen JSON snapshot; later caller mutation cannot alter cuts.
+  return freezeProfileData(JSON.parse(text));
+}
+
+function profileAdmission(manifest, plan, ports) {
+  const policy = profilePolicy(ports);
+  need(plain(plan.sourceFiles) && plain(plan.modules) && plain(plan.mutants) && plain(manifest.files), 'SPECIALIST_PROFILE_SOURCE_BINDING');
+  need(Object.entries(PROFILE_SOURCE_PINS).every(([file, hash]) => plan.sourceFiles[file] === hash)
+    && plan.modules['@/modules/specialists/routes'] === 'compiled/modules/specialists/routes/index.js'
+    && plan.modules[PROFILE_ALIAS] === PROFILE_PARENT, 'SPECIALIST_PROFILE_SOURCE_BINDING');
+  const parents = [PROFILE_PARENT];
+  for (const [id, hash] of Object.entries(PROFILE_VARIANTS)) {
+    const mutant = plan.mutants[id]; const file = 'compiled/mutants/' + id + '.js';
+    need(plain(mutant) && mutant.source === PROFILE_SOURCE && mutant.originalSha256 === PROFILE_SOURCE_SHA
+      && mutant.mutantSha256 === hash && mutant.file === file, 'SPECIALIST_PROFILE_MUTANT_BINDING'); parents.push(file);
+  }
+  need(parents.length === 7 && new Set(parents).size === 7
+    && parents.every(file => /^[a-f0-9]{64}$/.test(manifest.files[file])), 'SPECIALIST_PROFILE_PARENT_BINDING');
+  need(PROFILE_STATIC_INPUTS.every(row => {
+    const alias = '@/' + row.source.slice(5, -3).replace(/\/index$/, '');
+    return plan.sourceFiles[row.source] === row.sourceSha256 && /^[a-f0-9]{64}$/.test(manifest.files[row.compiled])
+      && plan.modules[alias] === row.compiled && plan.modules[alias + '/index'] === row.compiled;
+  }), 'SPECIALIST_PROFILE_STATIC_BINDING');
+  need(JSON.stringify(ports.excludedCapabilities) === JSON.stringify(PROFILE_EXCLUSIONS), 'SPECIALIST_PROFILE_EXCLUSIONS');
+  return Object.freeze({ policy, parents: Object.freeze(parents),
+    staticPaths: Object.freeze(PROFILE_STATIC_INPUTS.map(row => row.compiled)) });
+}
+
+// Every substitute is nondelegating. Registration/construction is inert; any
+// business capability attempt remains latched even if domain code catches it.
+function createProfileBoundary(admission, effects) {
+  need(admission && Array.isArray(admission.parents) && plain(effects), 'SPECIALIST_PROFILE_BOUNDARY_PORTS');
+  const attempts = Object.fromEntries(PROFILE_ATTEMPT_KEYS.map(key => [key, 0]));
+  function deny(key) {
+    if (key !== null) { need(Object.hasOwn(attempts, key), 'SPECIALIST_PROFILE_ATTEMPT_KEY'); attempts[key]++; }
+    effects.excluded++; effects.unexpected++; fail('SPECIALIST_PROFILE_CAPABILITY_EXCLUDED');
+  }
+  function capabilityObject(methods, metadata = []) {
+    const target = Object.fromEntries(methods.map(key => [key, () => deny(key)]));
+    Object.freeze(target);
+    return new Proxy(target, { get(object, key, receiver) {
+      if (Object.hasOwn(object, key)) return Reflect.get(object, key, receiver);
+      if (metadata.includes(key)) return undefined;
+      return deny(null);
+    }, set() { return deny(null); }, defineProperty() { return deny(null); }, deleteProperty() { return deny(null); } });
+  }
+  const child = capabilityObject(['execFile']);
+  const filesystem = capabilityObject(['mkdirSync', 'writeFileSync', 'unlinkSync'], ['__esModule']);
+  const parents = new Set(admission.parents.map(relative => path.join(ROOT, relative)));
+  const staticPaths = new Set(admission.staticPaths.map(relative => path.join(ROOT, relative)));
+  const staticAliases = new Set(PROFILE_STATIC_INPUTS.flatMap(row => {
+    const alias = '@/' + row.source.slice(5, -3).replace(/\/index$/, ''); return [alias, alias + '/index'];
+  }));
+  const classAliases = Object.keys(admission.policy.throwingClasses);
+  const substituteAliases = new Set([...classAliases, '@/services/logger', '@/services/firebase',
+    '@/modules/payment/services', '@/modules/coupon/services']);
+  let registered;
+  return Object.freeze({
+    builtin(request, parent) {
+      if (!['child_process', 'node:child_process', 'fs', 'node:fs'].includes(request)
+        || !parent || !parents.has(parent.filename)) return undefined;
+      return request.replace(/^node:/, '') === 'fs' ? filesystem : child;
+    },
+    staticPath(filename) { return staticPaths.has(filename); },
+    staticAlias(alias) { return staticAliases.has(alias); },
+    validatePhase(substitutes, overrides) {
+      need(plain(substitutes) && plain(overrides) && registered
+        && Object.keys(substitutes).every(alias => substituteAliases.has(alias))
+        && classAliases.every(alias => substitutes[alias] === registered[alias])
+        && Object.keys(overrides).every(alias => !staticAliases.has(alias)), 'SPECIALIST_PROFILE_PHASE_BINDING');
+    },
+    classes(typedi) {
+      need(typedi && typeof typedi.Service === 'function', 'SPECIALIST_PROFILE_TYPEDI_PORT');
+      const substitutes = {};
+      for (const [alias, spec] of Object.entries(admission.policy.throwingClasses)) {
+        const name = spec.export;
+        const Constructor = { [name]: class {
+          constructor() {
+            return new Proxy(this, { get(target, key, receiver) {
+              // TypeDI's constructor/prototype metadata is the only inert instance access.
+              if (key === 'constructor' || spec.methods.includes(key)) return Reflect.get(target, key, receiver);
+              return deny(name);
+            }, set() { return deny(name); }, defineProperty() { return deny(name); }, deleteProperty() { return deny(name); } });
+          }
+        } }[name];
+        for (const method of spec.methods) Object.defineProperty(Constructor.prototype, method,
+          { value: () => deny(name), writable: false, configurable: false });
+        const before = JSON.stringify(effects); const beforeAttempts = JSON.stringify(attempts);
+        typedi.Service()(Constructor);
+        need(JSON.stringify(effects) === before && JSON.stringify(attempts) === beforeAttempts, 'SPECIALIST_PROFILE_REGISTRATION_EFFECT');
+        Object.freeze(Constructor.prototype); Object.freeze(Constructor);
+        substitutes[alias] = Object.freeze({ [name]: Constructor });
+      }
+      registered = Object.freeze(substitutes); return registered;
+    },
+    assertClean() {
+      need(Object.values(attempts).every(value => value === 0) && effects.excluded === 0 && effects.unexpected === 0,
+        'SPECIALIST_PROFILE_CAUGHT_EFFECT');
+    },
+    get attempts() { return Object.freeze({ ...attempts }); },
+  });
+}
+
 function validateAdmissionData(manifest, plan, ports, observed) {
   need(plain(manifest) && manifest.schema === 'SD-AUTH-API-RUN-1' && manifest.role === ROLE, 'RUN_MANIFEST_SCHEMA');
   need(/^[a-f0-9-]{36}$/.test(manifest.runId) && manifest.runId === observed.runId, 'RUN_ID');
@@ -558,7 +697,7 @@ function validateAdmissionData(manifest, plan, ports, observed) {
   need(Array.isArray(ports.requiredCaseIds) && ports.requiredCaseIds.length >= 20
     && new Set(ports.requiredCaseIds).size === ports.requiredCaseIds.length, 'CASE_SET');
   need(JSON.stringify(ports.recordingModules) === JSON.stringify(['@/services/logger', '@/services/firebase'])
-    && JSON.stringify(ports.excludedCapabilities) === JSON.stringify({ '@/modules/payment/services': ['PaymentService'], '@/modules/coupon/services': ['CouponService'] })
+    && JSON.stringify(ports.excludedCapabilities) === JSON.stringify(PROFILE_EXCLUSIONS)
     && ports.recordingAxios.email === 'https://api.smtp2go.com/v3/email/send'
     && ports.recordingAxios.sms === 'https://sms.fixture.invalid/send', 'RECORDING_PORT_MAP');
   need(meetSame(meetData(ports.recordingMeet), MEET_RECORDING), 'MEET_RECORDING_MAP');
@@ -583,6 +722,7 @@ function validateAdmissionData(manifest, plan, ports, observed) {
       && plan.mutants[id].originalSha256 === INDEX_SOURCE_SHA
       && plan.mutants[id].mutantSha256 === INDEX_MUTANTS[id].sourceSha
       && plan.mutants[id].file === 'compiled/mutants/' + id + '.js'), 'INDEX_SOURCE_BINDING');
+  profileAdmission(manifest, plan, ports);
   validateIndexTypeReport(plan.compilation.selectedHelperTypecheck);
   need(Array.isArray(ports.models) && ports.models.length === 13
     && new Set(ports.models.map(row => row.name)).size === 13
@@ -638,7 +778,8 @@ function closeNetwork() {
   return httpPorts;
 }
 
-function installLoader(manifest, plan, ports) {
+function installLoader(manifest, plan, ports, effects = counters) {
+  const profile = createProfileBoundary(profileAdmission(manifest, plan, ports), effects);
   const originalResolve = Module._resolveFilename;
   const originalLoad = Module._load;
   const builtins = new Set(Module.builtinModules.map(name => name.replace(/^node:/, '')));
@@ -646,8 +787,11 @@ function installLoader(manifest, plan, ports) {
   const optional = new Set(ports.optionalAbsentPackages);
   let substitutes = {}; let overrides = {};
   Module._resolveFilename = function (request, parent, isMain, options) {
+    if (profile.builtin(request, parent) !== undefined) return 'fixture:profile:' + request.replace(/^node:/, '');
     if (request.startsWith('@/')) {
+      need(!profile.staticAlias(request), 'SPECIALIST_PROFILE_STATIC_ONLY');
       const relative = overrides[request] || plan.modules[request];
+      need(!profile.staticPath(path.join(ROOT, relative || '')), 'SPECIALIST_PROFILE_STATIC_ONLY');
       need(relative && Object.hasOwn(manifest.files, relative), 'UNDECLARED_DOMAIN_MODULE');
       return path.join(ROOT, relative);
     }
@@ -658,17 +802,34 @@ function installLoader(manifest, plan, ports) {
     }
     if (optional.has(request)) { const error = new Error('Optional fixture package absent'); error.code = 'MODULE_NOT_FOUND'; throw error; }
     const filename = originalResolve.call(this, request, parent, isMain, options);
+    need(!profile.staticPath(filename), 'SPECIALIST_PROFILE_STATIC_ONLY');
     const relative = path.relative(ROOT, filename).split(path.sep).join('/');
     need(!relative.startsWith('../') && Object.hasOwn(manifest.files, relative), 'UNDECLARED_PACKAGE_OR_FILE');
     return filename;
   };
   Module._load = function (request, parent, isMain) {
+    const cut = profile.builtin(request, parent); if (cut !== undefined) return cut;
+    const builtin = request.replace(/^node:/, '');
+    // Node's node: builtin fast path may bypass _resolveFilename entirely.
+    need(!builtins.has(builtin) || !deniedBuiltins.has(builtin), 'DENIED_BUILTIN');
     if (Object.hasOwn(substitutes, request)) return substitutes[request];
+    if (request.startsWith('@/')) {
+      need(!profile.staticAlias(request), 'SPECIALIST_PROFILE_STATIC_ONLY');
+      const relative = overrides[request] || plan.modules[request];
+      need(!profile.staticPath(path.join(ROOT, relative || '')), 'SPECIALIST_PROFILE_STATIC_ONLY');
+    } else if (request.startsWith('.') || path.isAbsolute(request)) {
+      const filename = originalResolve.call(this, request, parent, isMain);
+      need(!profile.staticPath(filename), 'SPECIALIST_PROFILE_STATIC_ONLY');
+    }
     return originalLoad.call(this, request, parent, isMain);
   };
   return {
+    profileClasses: typedi => profile.classes(typedi),
+    assertProfileClean: () => profile.assertClean(),
+    get profileAttempts() { return profile.attempts; },
     phase(nextSubstitutes, nextOverrides = {}) {
-      substitutes = nextSubstitutes; overrides = nextOverrides;
+      profile.validatePhase(nextSubstitutes, nextOverrides);
+      substitutes = Object.freeze({ ...nextSubstitutes }); overrides = Object.freeze({ ...nextOverrides });
     },
     resetCompiled() {
       for (const filename of Object.keys(require.cache)) {
@@ -1007,7 +1168,7 @@ async function withMeetFetchCleanup(action, restore) {
   if (failed) throw first; return result;
 }
 
-function recordingPorts(ports, typedi) {
+function recordingPorts(ports, typedi, loader) {
   const deliveries = []; const pushes = [];
   const logger = { info() { counters.logger++; }, error() { counters.logger++; }, warn() { counters.logger++; }, debug() { counters.logger++; } };
   class PaymentService { createOrder() { counters.excluded++; fail('PAYMENT_CAPABILITY_EXCLUDED'); } }
@@ -1017,6 +1178,7 @@ function recordingPorts(ports, typedi) {
     '@/services/logger': { __esModule: true, default: logger, logger, showError() { counters.logger++; } },
     '@/services/firebase': { getFirebaseMessaging: () => ({ sendEachForMulticast: async payload => recordPush(payload, pushes, counters) }) },
     '@/modules/payment/services': { PaymentService }, '@/modules/coupon/services': { CouponService },
+    ...loader.profileClasses(typedi),
   };
   return { substitutes, deliveries, pushes,
     adapter: async config => {
@@ -2138,7 +2300,7 @@ async function main() {
     currentMeet = meetLifecycle.phase();
     typedi.Container.of().reset({ strategy: 'resetServices' });
     loader.resetCompiled();
-    currentPorts = recordingPorts(ports, typedi); loader.phase(currentPorts.substitutes, overrides);
+    currentPorts = recordingPorts(ports, typedi, loader); loader.phase(currentPorts.substitutes, overrides);
     axios.defaults.adapter = currentPorts.adapter;
     const express = require('express'); const app = express(); app.use(express.json({ limit: '16kb' }));
     const authenticate = loader.load('@/modules/middleware/auth').authenticate;
@@ -2149,7 +2311,9 @@ async function main() {
     app.use('/api/v1/notifications', authenticate, loader.load('@/modules/notification/routes').default);
     app.use('/api/v1/fcm', authenticate, loader.load('@/modules/fcm/routes').default);
     app.use('/api/v1/meet', loader.load('@/modules/meet/routes').default);
+    app.use('/api/v1/specialists', authenticate, loader.load('@/modules/specialists/routes').default);
     app.use(loader.load('@/modules/middleware/errorHandler').errorHandler);
+    loader.assertProfileClean();
     return new Promise((resolve, reject) => {
       server = app.listen(0, '127.0.0.1', () => { const port = server.address().port; httpPorts.add(port); resolve(port); });
       server.once('error', reject);
@@ -2164,7 +2328,7 @@ async function main() {
   const completed = await withMeetFetchCleanup(() => withOwnedCleanup(async () => {
     // Recording/sentinel ports precede the first intentional CONFIG domain load.
     currentMeet = meetLifecycle.phase();
-    currentPorts = recordingPorts(ports, typedi); loader.phase(currentPorts.substitutes);
+    currentPorts = recordingPorts(ports, typedi, loader); loader.phase(currentPorts.substitutes);
     axios.defaults.adapter = currentPorts.adapter;
     const configurationEvidence = collectConfigurationEvidence({ env: process.env, effects: counters,
       loader, plan, mongoose, network: net, substitutes: currentPorts.substitutes, originalSign, jwt, key, uri,
@@ -2204,6 +2368,7 @@ async function main() {
     stage = 'API_SCENARIOS';
     const result = await require('./scenario.cjs').runScenario({ manifest, plan, ports, mongoose, jwt,
       key, originalSign, counters, writeOps, readOps, need, fail, load: loader.load, configurationEvidence, indexEvidence,
+      get profileAttempts() { return loader.profileAttempts; },
       get deliveries() { return currentPorts.deliveries; },
       get pushes() { return currentPorts.pushes; },
       get meetRequests() { return currentMeet.meetRequests; },
@@ -2242,4 +2407,4 @@ module.exports = { validateAdmissionData, inspectManifest, closeNetwork, install
   configurationEnvironment, withConfigurationTaps, configurationSampleEvidence, collectConfigurationEvidence,
   meetData, meetSame, createMeetRecorder, meetFetchLifecycle, withMeetFetchCleanup,
   indexLongWords, indexScalar, projectIndexRow, indexManifest, collectIndexObservations, withIndexTaps, validateIndexTypeReport, createIndexCommandPort,
-  INDEX_SOURCE_SHA, INDEX_MUTANTS };
+  INDEX_SOURCE_SHA, INDEX_MUTANTS, INDEX_CASE_IDS, INDEX_MUTANT_IDS, profilePolicy, profileAdmission, createProfileBoundary, PROFILE_POLICY_SHA, PROFILE_SOURCE_PINS, PROFILE_VARIANTS, PROFILE_STATIC_INPUTS };

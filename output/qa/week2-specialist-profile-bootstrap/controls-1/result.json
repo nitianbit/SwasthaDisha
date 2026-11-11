@@ -1,0 +1,158 @@
+{
+  "schema": "SD-PROFILE-BOOTSTRAP-EXECUTABLE-CONTROLS-1",
+  "results": [
+    {
+      "id": "POLICY_HASH_REMOVED",
+      "returncode": 1,
+      "rejected": true,
+      "expectedFailureMarker": "PROFILE_ADMISSION_POLICY_TRIAL_CHANGED",
+      "syntaxStatus": "PASS",
+      "transformations": [
+        [
+          "need(sha(Buffer.from(text)) === PROFILE_POLICY_SHA, 'SPECIALIST_PROFILE_POLICY');",
+          "need(true, 'SPECIALIST_PROFILE_POLICY');"
+        ]
+      ],
+      "sourceSha256": "e5ac1192016523924ae9b9e80cc6959c6f3dde7645114a1e5250bd8748ce72b9",
+      "unitSha256": "c7cf61b5188f03ec318b7a02c7a078ec64ee85beb40f70da11c1c38a27ddf2a0",
+      "portsSha256": "59c410ffc991fdcb4b1ee384f55ba896363011a207573c6f7abc7aa8763f948b"
+    },
+    {
+      "id": "PARENT_SCOPE_REMOVED",
+      "returncode": 1,
+      "rejected": true,
+      "expectedFailureMarker": "PROFILE_CHILD_OUTSIDE_DENIED_",
+      "syntaxStatus": "PASS",
+      "transformations": [
+        [
+          "|| !parent || !parents.has(parent.filename)) return undefined;",
+          "|| !parent) return undefined;"
+        ]
+      ],
+      "sourceSha256": "6705945aa9b5f0809c11f3cc82339fb54c1e3c66ba463c74642dafc312502663",
+      "unitSha256": "c7cf61b5188f03ec318b7a02c7a078ec64ee85beb40f70da11c1c38a27ddf2a0",
+      "portsSha256": "59c410ffc991fdcb4b1ee384f55ba896363011a207573c6f7abc7aa8763f948b"
+    },
+    {
+      "id": "NATIVE_NODE_PREFIX_DENIAL_REMOVED",
+      "returncode": 1,
+      "rejected": true,
+      "expectedFailureMarker": "PROFILE_CHILD_OUTSIDE_DENIED_",
+      "syntaxStatus": "PASS",
+      "transformations": [
+        [
+          "need(!builtins.has(builtin) || !deniedBuiltins.has(builtin), 'DENIED_BUILTIN');",
+          "need(true, 'DENIED_BUILTIN');"
+        ]
+      ],
+      "sourceSha256": "5bc59b295ebf23f57cf87a9bcaea3884cf12c9c03a58bcb6899f9f9f494dd9ac",
+      "unitSha256": "c7cf61b5188f03ec318b7a02c7a078ec64ee85beb40f70da11c1c38a27ddf2a0",
+      "portsSha256": "59c410ffc991fdcb4b1ee384f55ba896363011a207573c6f7abc7aa8763f948b"
+    },
+    {
+      "id": "CLASS_UNKNOWN_MEMBER_LATCH_REMOVED",
+      "returncode": 1,
+      "rejected": true,
+      "expectedFailureMarker": "PROFILE_CLASS_UNKNOWN_BookingRepository_unknownBusinessMethod",
+      "syntaxStatus": "PASS",
+      "transformations": [
+        [
+          "if (key === 'constructor' || spec.methods.includes(key)) return Reflect.get(target, key, receiver);\n              return deny(name);",
+          "if (key === 'constructor' || spec.methods.includes(key)) return Reflect.get(target, key, receiver);\n              return undefined;"
+        ]
+      ],
+      "sourceSha256": "fa7c1320bae49298838ae3803e8990a3bfa3bca8b58280d4ad74e7de8d8cc450",
+      "unitSha256": "c7cf61b5188f03ec318b7a02c7a078ec64ee85beb40f70da11c1c38a27ddf2a0",
+      "portsSha256": "59c410ffc991fdcb4b1ee384f55ba896363011a207573c6f7abc7aa8763f948b"
+    },
+    {
+      "id": "CAUGHT_REGISTRATION_EFFECT_CHECK_REMOVED",
+      "returncode": 1,
+      "rejected": true,
+      "expectedFailureMarker": "PROFILE_CAUGHT_REGISTRATION_CONSTRUCTOR_EFFECT_BookingRepository",
+      "syntaxStatus": "PASS",
+      "transformations": [
+        [
+          "need(JSON.stringify(effects) === before && JSON.stringify(attempts) === beforeAttempts, 'SPECIALIST_PROFILE_REGISTRATION_EFFECT');",
+          "need(true, 'SPECIALIST_PROFILE_REGISTRATION_EFFECT');"
+        ]
+      ],
+      "sourceSha256": "24b6e2a285731dc6ca595ba14baccb967ff68a8a9bb2423b37c3bd6c21602b1b",
+      "unitSha256": "c7cf61b5188f03ec318b7a02c7a078ec64ee85beb40f70da11c1c38a27ddf2a0",
+      "portsSha256": "59c410ffc991fdcb4b1ee384f55ba896363011a207573c6f7abc7aa8763f948b"
+    },
+    {
+      "id": "STATIC_ALIAS_AND_PATH_DENIAL_REMOVED",
+      "returncode": 1,
+      "rejected": true,
+      "expectedFailureMarker": "PROFILE_STATIC_DENIED_",
+      "syntaxStatus": "PASS",
+      "transformations": [
+        [
+          "staticPath(filename) { return staticPaths.has(filename); }",
+          "staticPath(filename) { return false; }"
+        ],
+        [
+          "staticAlias(alias) { return staticAliases.has(alias); }",
+          "staticAlias(alias) { return false; }"
+        ]
+      ],
+      "sourceSha256": "b1cde5a45aa1d2c880c880bc89ef40040216098b8fca5735615ad71f666734b4",
+      "unitSha256": "c7cf61b5188f03ec318b7a02c7a078ec64ee85beb40f70da11c1c38a27ddf2a0",
+      "portsSha256": "59c410ffc991fdcb4b1ee384f55ba896363011a207573c6f7abc7aa8763f948b"
+    },
+    {
+      "id": "CALLER_MAP_SNAPSHOTS_REMOVED",
+      "returncode": 1,
+      "rejected": true,
+      "expectedFailureMarker": "PROFILE_PHASE_HOLDS_INDEPENDENT_SUBSTITUTE_AND_OVERRIDE_MAPS",
+      "syntaxStatus": "PASS",
+      "transformations": [
+        [
+          "substitutes = Object.freeze({ ...nextSubstitutes }); overrides = Object.freeze({ ...nextOverrides });",
+          "substitutes = nextSubstitutes; overrides = nextOverrides;"
+        ]
+      ],
+      "sourceSha256": "8b48ac36631b644ca623f0d4ecdf0e53bc77f791f98f140c14c8fc14538d247d",
+      "unitSha256": "c7cf61b5188f03ec318b7a02c7a078ec64ee85beb40f70da11c1c38a27ddf2a0",
+      "portsSha256": "59c410ffc991fdcb4b1ee384f55ba896363011a207573c6f7abc7aa8763f948b"
+    },
+    {
+      "id": "INDEX_CASE_END_BOUND_REMOVED",
+      "returncode": 1,
+      "rejected": true,
+      "expectedFailureMarker": "PROFILE_BOUNDED_INDEX_CASE_AND_VARIANT_PREFIX",
+      "syntaxStatus": "PASS",
+      "transformations": [
+        [
+          "REQUIRED_CASE_IDS.slice(76, 83)",
+          "REQUIRED_CASE_IDS.slice(76)"
+        ]
+      ],
+      "sourceSha256": "86991a4bc106648fdace9c93bfd26e92ba1340b6114558d48ca122f014a3da97",
+      "unitSha256": "c7cf61b5188f03ec318b7a02c7a078ec64ee85beb40f70da11c1c38a27ddf2a0",
+      "portsSha256": "59c410ffc991fdcb4b1ee384f55ba896363011a207573c6f7abc7aa8763f948b"
+    },
+    {
+      "id": "INDEX_VARIANT_END_BOUND_REMOVED",
+      "returncode": 1,
+      "rejected": true,
+      "expectedFailureMarker": "INDEX_SOURCE_BINDING",
+      "syntaxStatus": "PASS",
+      "transformations": [
+        [
+          "REQUIRED_SENSITIVITY_IDS.slice(21, 27)",
+          "REQUIRED_SENSITIVITY_IDS.slice(21)"
+        ]
+      ],
+      "sourceSha256": "092bf038d1172d36659fca012d79fe2d1ecb6ad5d85ea651649a7a1f01318c32",
+      "unitSha256": "c7cf61b5188f03ec318b7a02c7a078ec64ee85beb40f70da11c1c38a27ddf2a0",
+      "portsSha256": "59c410ffc991fdcb4b1ee384f55ba896363011a207573c6f7abc7aa8763f948b"
+    }
+  ],
+  "count": 9,
+  "nominalSourceSha256": "73f3bdd44e6fbcd21254d271e772eedb187eb4cec2d395aa60e3725cda5d7890",
+  "applicationEvaluations": 0,
+  "compilerEvaluations": 0,
+  "authority": "BUILTINS_ONLY_FIXTURE_WEAKENING_REJECTION_NOT_BUSINESS_RUNTIME"
+}

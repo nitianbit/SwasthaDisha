@@ -1,0 +1,11 @@
+--- nominal/bootstrap.cjs
++++ POLICY_HASH_REMOVED/bootstrap.cjs
+@@ -559,7 +559,7 @@
+ function profilePolicy(ports) {
+   need(plain(ports.specialistProfile), 'SPECIALIST_PROFILE_POLICY');
+   const text = JSON.stringify(ports.specialistProfile);
+-  need(sha(Buffer.from(text)) === PROFILE_POLICY_SHA, 'SPECIALIST_PROFILE_POLICY');
++  need(true, 'SPECIALIST_PROFILE_POLICY');
+   // Hold an independent frozen JSON snapshot; later caller mutation cannot alter cuts.
+   return freezeProfileData(JSON.parse(text));
+ }

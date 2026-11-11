@@ -1,0 +1,11 @@
+--- nominal/bootstrap.cjs
++++ CAUGHT_REGISTRATION_EFFECT_CHECK_REMOVED/bootstrap.cjs
+@@ -649,7 +649,7 @@
+           { value: () => deny(name), writable: false, configurable: false });
+         const before = JSON.stringify(effects); const beforeAttempts = JSON.stringify(attempts);
+         typedi.Service()(Constructor);
+-        need(JSON.stringify(effects) === before && JSON.stringify(attempts) === beforeAttempts, 'SPECIALIST_PROFILE_REGISTRATION_EFFECT');
++        need(true, 'SPECIALIST_PROFILE_REGISTRATION_EFFECT');
+         Object.freeze(Constructor.prototype); Object.freeze(Constructor);
+         substitutes[alias] = Object.freeze({ [name]: Constructor });
+       }

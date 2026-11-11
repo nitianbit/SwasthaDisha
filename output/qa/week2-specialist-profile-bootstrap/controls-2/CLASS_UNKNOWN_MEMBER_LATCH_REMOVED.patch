@@ -1,0 +1,11 @@
+--- nominal/bootstrap.cjs
++++ CLASS_UNKNOWN_MEMBER_LATCH_REMOVED/bootstrap.cjs
+@@ -641,7 +641,7 @@
+             return new Proxy(this, { get(target, key, receiver) {
+               // TypeDI's constructor/prototype metadata is the only inert instance access.
+               if (key === 'constructor' || spec.methods.includes(key)) return Reflect.get(target, key, receiver);
+-              return deny(name);
++              return undefined;
+             }, set() { return deny(name); }, defineProperty() { return deny(name); }, deleteProperty() { return deny(name); } });
+           }
+         } }[name];

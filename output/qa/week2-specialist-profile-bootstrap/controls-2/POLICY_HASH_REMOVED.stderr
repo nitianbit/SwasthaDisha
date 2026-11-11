@@ -1,0 +1,17 @@
+/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-bootstrap/output/qa/week2-specialist-profile-bootstrap/controls-2/owned-control-qja6n05b/bootstrap-unit.cjs:43
+const need = (condition, label) => { if (!condition) throw new Error(label); };
+                                                     ^
+
+Error: PROFILE_ADMISSION_POLICY_TRIAL_CHANGED
+    at need (/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-bootstrap/output/qa/week2-specialist-profile-bootstrap/controls-2/owned-control-qja6n05b/bootstrap-unit.cjs:43:60)
+    at check (/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-bootstrap/output/qa/week2-specialist-profile-bootstrap/controls-2/owned-control-qja6n05b/bootstrap-unit.cjs:115:3)
+    at Object.<anonymous> (/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-bootstrap/output/qa/week2-specialist-profile-bootstrap/controls-2/owned-control-qja6n05b/bootstrap-unit.cjs:184:4)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function.<anonymous> (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49
+
+Node.js v22.23.4
