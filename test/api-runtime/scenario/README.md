@@ -8,18 +8,21 @@ JWT signing. Email/SMS methods use a recording Axios adapter; logger/FCM transpo
 ports are recording only. Payment and coupon services are explicit throwing
 exclusions. No application entry point or production provider is admitted.
 
-The accepted Meet run passed76 nominal groups/21 actual-source sensitivity checks
-under test-only profile2; see
-[execution7](../../../output/qa/week2-api-runtime/execution-7/REVIEW.md).
-Its88 TypeScript sources,67 emitted reachable modules,13 models and five model
-controls were verified.1084 semantic diagnostics remain retained, with no clean
-root typecheck claim. Earlier53/14 and60/17 evidence, including108 nominal and18
-mutation/restoration CONFIG loads, remains preserved in execution5/execution6.
-The index-readiness extension appends seven groups/six actual-source variants,
-for83 nominal IDs/27 sensitivity IDs. These additions remain NOT_RUN. Its
-expected emission deltas are one import-free helper source/root and six compiled
-helper variants:89 TS sources/68 reachable modules, the same13 models and no
-dependency/grant/profile/index change; genuine emission must verify these facts.
+The accepted selected-index run passed83 nominal groups/27 actual-source
+sensitivity checks under test-only profile2; see
+[execution8](../../../output/qa/week2-api-runtime/execution-8/REVIEW.md).
+Its89 TypeScript sources,68 emitted reachable modules,13 models and five model
+controls were verified. The same actual source/helper behavior remains frozen.
+The subsequent compiler-library checkpoint has two preparation-only acceptances
+at descriptor5d784043, with169 complete broader semantic diagnostics,0transpile
+diagnostics and no clean root typecheck claim; see
+[emission11](../../../output/qa/week2-api-preparation/emission-11/REVIEW.md).
+Earlier76/21,60/17 and53/14 results and every failed attempt remain preserved.
+The next specialist-profile extension proposes90 groups/33 actual-source
+variants; its new HTTP/Joi/ODM behavior remains NOT_RUN until all exact C3 gates.
+Predicted conservative/reachable counts are97TS/76, with the same13 real models,
+packages/lock/indexes/resources and permissions. Genuine emission must reconcile
+those predictions and preserve every old89 nominal/27 mutant/dependency output.
 A recording fetch port admits
 only exact synthetic OAuth token and calendar-event intents; native outbound
 fetch stays unreachable and is never delegated to by the recording port.
@@ -34,10 +37,10 @@ syntactic and focused semantic diagnostics, including missing/excluded types,
 and reports `TRANSPILE_ONLY_NOT_TYPECHECKED` with `fullBuild:false`. This is not a
 root build/type-check or a production compatibility claim.
 
-The selected index helper source050ecc99 is accepted SOURCE_ONLY following the
-reviewed TDZ amendment. Its functional behavior and typecheck remain NOT_RUN.
-During a later separately approved preparation, a genuine isolated TypeScript
-5.9.3 noEmit program must require zero diagnostics for ONLY that helper under
+The selected index helper source050ecc99 is accepted with actual83/27 runtime
+and isolated strict typing evidence following the reviewed TDZ amendment.
+The retained genuine isolated TypeScript5.9.3 noEmit program requires zero
+diagnostics for ONLY that helper under
 ES2020/CommonJS, strict/noImplicit/noUnused flags and the exact45 public stdlib
 files, with no ambient Node/application types. A second virtual-file program
 reconstructs exact archived6597 TDZ bytes through the three-line inverse edit
@@ -219,8 +222,9 @@ completion of whole-process startup fixtures. Full application startup,
 root dependency adoption, retained-server C2 facts, broader OTP/money policy,
 owner acceptance, deployment and release gates remain open.
 
-The following compiler-library correction is a **source candidate; genuine
-compiler controls remain NOT_RUN**. The inherited broad diagnostic host placed
+The following compiler-library correction has two **preparation-only actual
+acceptances at emission11**. All four compiler controls passed in that exact
+preparation; no API rerun or portal execution was admitted by it. The inherited broad diagnostic host placed
 its default entry library in the admitted runtime package but retained a default
 library directory from the other compiler installation. The candidate binds
 both paths to the same existing runtime TypeScript5.9.3 lib directory, preserves
@@ -247,3 +251,62 @@ Selected-helper strict/TDZ code and emitted89 nominal/27 variant behavior remain
 unchanged. Two exact independent source/locked-emission decisions and two actual
 artifact postreviews precede acceptance. No API/database rerun is needed solely
 for this diagnostic-metadata correction, and no runtime receipt is reopened.
+
+
+## Specialist self-profile extension (new actual behavior NOT_RUN)
+
+The approved [bounded C3 contract](../../../output/qa/week2-specialist-profile-runtime/CONTRACT.md)
+and immutable trial section bind the actual specialists router/controller,
+PortalService, SpecialistService/repository/model, Joi schemas and authenticate/
+role middleware. Two incoming signed-claim forms test normalized identity
+selection; they do not prove a separate controller fallback branch or supported
+specialist-client/auth-issuer compatibility. Seven groups contain93 nominal
+HTTP requests:2descriptive successes,14protected-subset denials,24false/zero/
+conversion/unchanged-value denials,22Joi-before-lookup cases,8missing-target cases,
+18authority-before-validation cases and5existing admin compatibility cases.
+All87actual errors must add one logger call each; the nominal summary reads
+actual email5/SMS1/push2/calendar4/logger437 counters, other5zero. No provider
+success, startup, production or whole Week2 acceptance is implied.
+
+Each request measures actual per-collection reads/writes, JWT/provider/private
+capability attempts and complete all13-collection snapshots. Denials preserve
+every row/field. Success changes only declared target fields and genuine
+updatedAt within actual request clock bounds; its entire returned row must match
+stored data. Mixed protected payloads retain no contact uniqueness queries.
+False/convertedfalse/rating0/converted0 remain protected; numeric boolean0 and
+other malformed bodies preserve existing Joi400 before any lookup, and a valid
+missing profile preserves404 before422. Existing admin PUT retains real updates.
+
+The bootstrap cuts Booking/Slot service/repository classes before TypeDI import/
+construction and substitutes throw-only child_process/fs exports only for the
+exact nominal Portal file and six source/hash-bound mutant parents. Native child
+permissions remain absent. Unknown class methods/capabilities latch failure even
+if domain code catches their fixed throw. Four prior Booking/Slot repository/
+model source files are separately emitted as pinned STATIC AUDIT INPUTS only;
+they add no runtime root/model and every alias/relative/absolute runtime path is
+denied. No upload middleware, PDF generation, booking/slot, prescription or file
+operation is admitted. Exact emitted import/model audit must verify the cut.
+
+The source variants remove each protected key, use truthiness, omit the existence
+lookup, and perform a real update before denial. Eleven fixed references must
+first show the concrete unsafe HTTP/state/read/write behavior, then fail the
+SAME fixed nominal predicate at only the anticipated mismatch code. Arbitrary
+exceptions do not count. Each reference restores fresh nominal classes/server,
+repeats that same predicate and an allowed positive;11unsafe and22restoration
+requests are excluded from nominal recording counters. Fresh synthetic pairs
+are tracked by exact generated IDs, all assertions precede cleanup/reset, and
+cleanup preserves an earlier failure while attempting both owned rows.
+
+Both append boundaries require original Query.exec restoration, completion of
+prior race/expiry work, existing exact completed-proof cleanup/mapempty, and
+finite verified remaining OTP expiry more than180s ahead. Remaining proofs are
+asserted only, never adopted/deleted or extended; no TTL/index/time limit change
+or OTP snapshot omission hides background state changes. Existing index evidence
+stays seven/six rows and343/150/300 comparison checkpoints, with old prefix
+slices bounded at83/27. Final proposed counts90/33 depend on genuine execution.
+
+Source-data checks and fixture syntax checks prove only their stated boundaries.
+Two exact source/locked-emission decisions precede a new clean preparation;
+artifact reviews and two separate single-run decisions precede actual HTTP/DB
+execution. No existing consumed receipt may be reused, and a failure never
+authorizes a retry, extra package, grant, resource or limit.

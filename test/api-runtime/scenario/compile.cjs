@@ -7,6 +7,20 @@ const ts = require('typescript');
 
 const requireThat = (ok, code) => { if (!ok) throw new Error(code); };
 const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+const PROFILE_SECTION_SHA = '887792c1e2851fe3dfd37d93b3a1870da3adaed7fe41a4fd5e50bb62ea5c7212';
+const PROFILE_SOURCE = 'src1/modules/specialistPortal/services/index.ts';
+const PROFILE_SOURCE_SHA = '631a2bc6e92e522db35bad35eacd9f7d46aa8e4dcdb508acc16dc44891fef27c';
+
+function profileData(ports) {
+  const profile = ports.specialistProfile;
+  requireThat(profile && sha(Buffer.from(JSON.stringify(profile))) === PROFILE_SECTION_SHA, 'PROFILE_SECTION_HASH');
+  requireThat(profile.schema === 'SD-SPECIALIST-PROFILE-FIXTURE-1'
+    && profile.sourceGuard.path === PROFILE_SOURCE && profile.sourceGuard.sha256 === PROFILE_SOURCE_SHA
+    && profile.trials.length === 93 && profile.sourceMutations.length === 6
+    && profile.staticAuditInputs.length === 4, 'PROFILE_DATA_SHAPE');
+  return profile;
+}
+
 const once = (text, before, after) => {
   requireThat(text.split(before).length === 2, 'MUTANT_SOURCE_SHAPE');
   return text.replace(before, after);
@@ -488,6 +502,7 @@ function inspectEmittedModels(runtimeRoot, modules, ports) {
 
 function compile(sourceRoot, runtimeRoot, inputPlan) {
   const ports = JSON.parse(fs.readFileSync(path.join(runtimeRoot, 'ports-manifest.json'), 'utf8'));
+  const profile = profileData(ports);
   const tracked = new Set(inputPlan.trackedSources);
   const excluded = new Set([...Object.keys(ports.excludedCapabilities), ...ports.recordingModules]);
   const modules = {}; const sources = {}; const queue = [...ports.roots];
@@ -541,7 +556,11 @@ function compile(sourceRoot, runtimeRoot, inputPlan) {
         const request = statement.moduleSpecifier.text;
         if (excluded.has(request)) continue;
         if (request.startsWith('@/') || request.startsWith('.')) queue.push(resolveAlias(request, relative));
-        else if (!request.startsWith('node:') && !['crypto', 'path', 'fs', 'stream', 'util'].includes(request)) {
+        else if (['os', 'node:os', 'child_process', 'node:child_process'].includes(request)) {
+          // These new builtins are admitted only in the exact Portal source;
+          // the runtime loader substitutes child_process before resolution.
+          requireThat(relative === PROFILE_SOURCE && sources[relative] === PROFILE_SOURCE_SHA, 'PROFILE_BUILTIN_PARENT');
+        } else if (!request.startsWith('node:') && !['crypto', 'path', 'fs', 'stream', 'util'].includes(request)) {
           const root = request.startsWith('@') ? request.split('/').slice(0, 2).join('/') : request.split('/')[0];
           requireThat(externalRoots.has(root), 'UNREVIEWED_PACKAGE:' + root);
         }
@@ -549,6 +568,25 @@ function compile(sourceRoot, runtimeRoot, inputPlan) {
     }
     emit(relative, text, output);
   }
+  // Preserve four previously emitted conservative inputs as static data only.
+  // Do not traverse their imports or append them to the runtime roots/model map.
+  const staticAudit = [];
+  for (const audit of profile.staticAuditInputs) {
+    requireThat(tracked.has(audit.source) && !Object.hasOwn(sources, audit.source), 'PROFILE_STATIC_SOURCE_SCOPE');
+    const absolute = path.join(sourceRoot, audit.source); const stat = fs.lstatSync(absolute);
+    requireThat(stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1, 'PROFILE_STATIC_SOURCE_REGULAR');
+    const bytes = fs.readFileSync(absolute);
+    requireThat(sha(bytes) === audit.sourceSha256
+      && audit.compiled === 'compiled/' + audit.source.slice(5, -3) + '.js', 'PROFILE_STATIC_SOURCE_HASH');
+    sources[audit.source] = audit.sourceSha256;
+    const alias = '@/' + audit.source.slice(5, -3).replace(/\/index$/, '');
+    modules[alias] = audit.compiled; modules['@/' + audit.source.slice(5, -3)] = audit.compiled;
+    emit(audit.source, bytes.toString('utf8'), audit.compiled);
+    requireThat(sha(fs.readFileSync(path.join(runtimeRoot, audit.compiled))) === audit.compiledSha256, 'PROFILE_STATIC_COMPILED_HASH');
+    staticAudit.push({ source: audit.source, sourceSha256: audit.sourceSha256,
+      compiled: audit.compiled, compiledSha256: audit.compiledSha256, runtimeRoot: false });
+  }
+  requireThat(sources[PROFILE_SOURCE] === PROFILE_SOURCE_SHA, 'PROFILE_NOMINAL_SOURCE_HASH');
   const modelMap = inspectEmittedModels(runtimeRoot, modules, ports);
   requireThat(sources[INDEX_HELPER_SOURCE] === INDEX_HELPER_SHA, 'INDEX_SOURCE_PIN');
   const indexTypecheck = selectedHelperTypecheck(sourceRoot, runtimeRoot,
@@ -710,6 +748,16 @@ function compile(sourceRoot, runtimeRoot, inputPlan) {
     requireThat(sha(Buffer.from(changed)) === "a72e944ce170bbc8d6b68ce19ec2628bbfc4d86ba19be24e0aa19e219710104c", 'INDEX_MUTANT_SOURCE_HASH');
     return changed;
   });
+  for (const variant of profile.sourceMutations) {
+    requireThat(variant.source === PROFILE_SOURCE && variant.originalSha256 === PROFILE_SOURCE_SHA
+      && variant.occurrences === 1, 'PROFILE_MUTANT_SCOPE');
+    mutate(variant.id, PROFILE_SOURCE, text => {
+      requireThat(sha(Buffer.from(text)) === PROFILE_SOURCE_SHA, 'PROFILE_MUTANT_ORIGINAL_HASH');
+      const changed = once(text, variant.before, variant.after);
+      requireThat(sha(Buffer.from(changed)) === variant.predictedTransformedSourceSha256, 'PROFILE_MUTANT_SOURCE_HASH');
+      return changed;
+    });
+  }
   requireThat(JSON.stringify(Object.keys(mutants)) === JSON.stringify(ports.requiredSensitivityIds), 'MUTANT_SET');
   // Retain focused semantic diagnostics without evaluating any application
   // module or resolving excluded capabilities into the rest of the monolith.
@@ -761,7 +809,9 @@ function compile(sourceRoot, runtimeRoot, inputPlan) {
     providerCounterScope: 'NOMINAL_ONLY_EXCLUDING_EXPLICIT_SENSITIVITY_PHASES',
     compilation: { status: 'TRANSPILE_ONLY_NOT_TYPECHECKED', compiler: ts.version, diagnostics,
       semanticDiagnostics, semanticScope: 'DECLARED_CLOSURE_AND_PUBLIC_TYPES_WITH_EXCLUDED_CAPABILITIES_UNRESOLVED', fullBuild: false,
-      selectedHelperTypecheck: indexTypecheck, libraryAdmission: broadLibraryReport } };
+      selectedHelperTypecheck: indexTypecheck, libraryAdmission: broadLibraryReport,
+      specialistProfile: { schema: 'SD-SPECIALIST-PROFILE-COMPILE-1', sectionSha256: PROFILE_SECTION_SHA,
+        source: PROFILE_SOURCE, sourceSha256: PROFILE_SOURCE_SHA, staticAudit, applicationEvaluations: 0 } } };
   fs.writeFileSync(path.join(runtimeRoot, 'runtime-plan.json'), JSON.stringify(plan, null, 2) + '\n');
   return plan;
 }

@@ -4,6 +4,7 @@
 const http = require('node:http');
 const crypto = require('node:crypto');
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+const PROFILE_SECTION_SHA = '887792c1e2851fe3dfd37d93b3a1870da3adaed7fe41a4fd5e50bb62ea5c7212';
 
 function requireConfigurationEvidence(evidence, need) {
   if (typeof need !== 'function') throw new Error('JWT_CONFIG_EVIDENCE_CHECKER_REQUIRED');
@@ -70,6 +71,9 @@ async function runScenario(ctx) {
   const id = row => String(row._id);
   const cases = []; const sensitivity = [];
   const completedProofs = new Map();
+  const profileQueryExec = mongoose.Query.prototype.exec;
+  const profile = ctx.ports.specialistProfile;
+  need(profile && crypto.createHash('sha256').update(JSON.stringify(profile)).digest('hex') === PROFILE_SECTION_SHA, 'SPECIALIST_PROFILE_SECTION_HASH');
   const record = name => { need(!cases.some(row => row.id === name), 'DUPLICATE_CASE'); cases.push({ id: name, status: 'PASS' }); };
   const configuration = requireConfigurationEvidence(ctx.configurationEvidence, need);
   const indexEvidence = requireIndexEvidence(ctx.indexEvidence, need);
@@ -876,6 +880,235 @@ async function runScenario(ctx) {
     }
   }
 
+  // Frozen private HTTP matrix; genuine domain classes/Joi/ODM run only inside
+  // the completely admitted child. No response/identity/assertion value escapes.
+  const profileAttemptKeys = ['BookingRepository', 'BookingService', 'SlotRepository', 'SlotService',
+    'execFile', 'mkdirSync', 'writeFileSync', 'unlinkSync'];
+  function profileStable(value) {
+    const sort = item => Array.isArray(item) ? item.map(sort)
+      : item !== null && typeof item === 'object'
+        ? Object.fromEntries(Object.keys(item).sort().map(key => [key, sort(item[key])])) : item;
+    return JSON.stringify(sort(JSON.parse(JSON.stringify(value))));
+  }
+  const profileSame = (left, right) => profileStable(left) === profileStable(right);
+  function profileAttemptSnapshot() {
+    const value = ctx.profileAttempts;
+    need(value && Object.isFrozen(value) && Object.getPrototypeOf(value) === Object.prototype
+      && profileSame(Reflect.ownKeys(value), profileAttemptKeys)
+      && profileAttemptKeys.every(key => {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        return descriptor && Object.hasOwn(descriptor, 'value') && Number.isSafeInteger(descriptor.value) && descriptor.value === 0;
+      }), 'SPECIALIST_PROFILE_PRIVATE_ATTEMPTS');
+    return value;
+  }
+  async function profileFinally(action, cleanups) {
+    let failed = false; let primary; let result;
+    try { result = await action(); } catch (error) { failed = true; primary = error; }
+    for (const cleanup of cleanups) {
+      try { await cleanup(); } catch (error) { if (!failed) { failed = true; primary = error; } }
+    }
+    if (failed) throw primary;
+    return result;
+  }
+  async function profileAppendBoundary() {
+    // All prior promises/schedulers are awaited by their sequential callers;
+    // require the actual Query.exec hook to be restored before exact cleanup.
+    need(mongoose.Query.prototype.exec === profileQueryExec, 'SPECIALIST_PROFILE_QUERY_RESTORATION');
+    await cleanCompletedProofs();
+    need(completedProofs.size === 0 && mongoose.Query.prototype.exec === profileQueryExec, 'SPECIALIST_PROFILE_COMPLETED_PROOFS');
+    const proofs = await model('OTP').find({}).lean().exec(); const checkpoint = Date.now();
+    need(proofs.every(proof => proof.isVerified === true && proof.expireAt instanceof Date
+      && Number.isFinite(proof.expireAt.getTime()) && proof.expireAt.getTime() > checkpoint + 180000), 'SPECIALIST_PROFILE_PROOF_HORIZON');
+    profileAttemptSnapshot();
+  }
+  let profileSequence = 0;
+  function profileFixture() {
+    const fixture = { ids: { SPECIALIST_A: uid(), SPECIALIST_B: uid(), ABSENT_SPECIALIST: uid() } };
+    need(new Set(Object.values(fixture.ids)).size === 3, 'SPECIALIST_PROFILE_DISTINCT_IDS');
+    profileSequence++;
+    fixture.rows = ['SPECIALIST_A', 'SPECIALIST_B'].map((key, index) => ({ _id: fixture.ids[key],
+      name: 'Baseline Specialist', bio: 'Baseline specialist biography', isVerified: true, isActive: true, rating: 3.5,
+      email: 'profile-' + fixture.ids[key] + '@example.com', phone: '8' + String(profileSequence).padStart(8, '0') + index }));
+    need(fixture.rows.every(row => /^\d{10}$/.test(row.phone)) && fixture.rows[0].phone !== fixture.rows[1].phone,
+      'SPECIALIST_PROFILE_FIXTURE_CONTACTS');
+    return fixture;
+  }
+  function profileToken(trial, fixture, adminToken) {
+    const definition = profile.identityActors[trial.actor]; need(definition, 'SPECIALIST_PROFILE_ACTOR');
+    if (definition.kind === 'NO_AUTHORIZATION_HEADER') return undefined;
+    if (definition.kind === 'EXISTING_ACCEPTED_REAL_ADMIN_LOGIN_TOKEN') return adminToken;
+    const claims = Object.fromEntries(Object.entries(definition.claims).map(([key, value]) => [key,
+      typeof value === 'string' && value.startsWith('$') ? fixture.ids[value.slice(1)] : value]));
+    need(Object.values(claims).every(value => value !== undefined), 'SPECIALIST_PROFILE_ACTOR_CLAIMS');
+    if (definition.kind === 'FOREIGN_KEY_HS256_FIXTURE') {
+      let foreignKey; do { foreignKey = crypto.randomBytes(32).toString('hex'); } while (foreignKey === ctx.key);
+      return ctx.originalSign(claims, foreignKey, { algorithm: 'HS256', expiresIn: '5m' });
+    }
+    need(['CURRENT_KEY_HS256_FIXTURE', 'CURRENT_KEY_HS256_EXPIRED_FIXTURE'].includes(definition.kind), 'SPECIALIST_PROFILE_ACTOR_KIND');
+    return ctx.originalSign(claims, ctx.key, { algorithm: 'HS256',
+      expiresIn: definition.kind === 'CURRENT_KEY_HS256_EXPIRED_FIXTURE' ? -1 : '5m' });
+  }
+  async function observeProfile(trial, fixture, adminToken) {
+    const route = trial.path.replace('$SPECIALIST_A', fixture.ids.SPECIALIST_A)
+      .replace('$ABSENT_SPECIALIST', fixture.ids.ABSENT_SPECIALIST);
+    need(trial.method === 'PUT' && route.startsWith('/api/v1/specialists/'), 'SPECIALIST_PROFILE_REQUEST_SCOPE');
+    const token = profileToken(trial, fixture, adminToken);
+    const before = await authorityRows(); const countersBefore = { ...ctx.counters };
+    const readsBefore = { ...ctx.readOps }; const writesBefore = { ...ctx.writeOps }; const attemptsBefore = profileAttemptSnapshot();
+    const started = Date.now();
+    const result = await request(trial.method, route.slice('/api/v1'.length), token, trial.body);
+    const ended = Date.now();
+    const countersAfter = { ...ctx.counters }; const readsAfter = { ...ctx.readOps }; const writesAfter = { ...ctx.writeOps };
+    const attemptsAfter = profileAttemptSnapshot(); const after = await authorityRows();
+    const delta = (next, prior) => Object.fromEntries(Object.keys(prior).map(key => [key, next[key] - prior[key]]));
+    return { result, before, after, started, ended, effects: delta(countersAfter, countersBefore),
+      reads: delta(readsAfter, readsBefore), writes: delta(writesAfter, writesBefore), attempts: delta(attemptsAfter, attemptsBefore) };
+  }
+  function assertProfileEffects(observed, expected) {
+    const collections = ctx.ports.models.map(row => row.collection);
+    need(profileSame(Object.keys(observed.reads).sort(), collections.slice().sort())
+      && profileSame(Object.keys(observed.writes).sort(), collections.slice().sort()), 'SPECIALIST_PROFILE_COLLECTION_SET');
+    need(collections.every(key => observed.reads[key] === expected.readOpsDelta[key]), 'SPECIALIST_PROFILE_ACTION_READS');
+    need(collections.every(key => observed.writes[key] === expected.writeOpsDelta[key]), 'SPECIALIST_PROFILE_ACTION_WRITES');
+    need(observed.effects.dbWrites === expected.dbWritesDelta && observed.effects.jwtIssued === expected.jwtIssuedDelta,
+      'SPECIALIST_PROFILE_WRITE_JWT_EFFECTS');
+    for (const key of ['email', 'sms', 'push', 'logger', 'calendar', 'unexpected'])
+      need(observed.effects[key] === expected.providerDelta[key], 'SPECIALIST_PROFILE_PROVIDER_EFFECTS');
+    need(observed.effects.excluded === expected.providerDelta.deniedCapabilities && observed.effects.console === 0
+      && ['payments', 'storage', 'queue'].every(key => expected.providerDelta[key] === 0)
+      && observed.effects.unexpected === 0 && observed.effects.excluded === 0, 'SPECIALIST_PROFILE_EXCLUDED_EFFECTS');
+    need(profileAttemptKeys.every(key => observed.attempts[key] === expected.privatePortalAttemptDelta[key]
+      && observed.attempts[key] === 0), 'SPECIALIST_PROFILE_PRIVATE_EFFECTS');
+  }
+  function assertProfileState(observed, fixture, selected, changedFields) {
+    const changed = Object.keys(changedFields).length > 0;
+    const rowId = selected ? fixture.ids[selected] : null;
+    for (const spec of ctx.ports.models) {
+      const keep = rows => spec.name === 'Specialist' && changed ? rows.filter(row => id(row) !== rowId) : rows;
+      need(profileSame(keep(observed.before[spec.name]), keep(observed.after[spec.name])), 'SPECIALIST_PROFILE_STATE');
+    }
+    need(!observed.before.Specialist.some(row => id(row) === fixture.ids.ABSENT_SPECIALIST)
+      && !observed.after.Specialist.some(row => id(row) === fixture.ids.ABSENT_SPECIALIST), 'SPECIALIST_PROFILE_ABSENT_ID');
+    if (changed) {
+      const prior = observed.before.Specialist.find(row => id(row) === rowId);
+      const next = observed.after.Specialist.find(row => id(row) === rowId);
+      const preserved = row => Object.fromEntries(Object.entries(row).filter(([key]) => ![...Object.keys(changedFields), 'updatedAt'].includes(key)));
+      need(prior && next && profileSame(preserved(prior), preserved(next))
+        && Object.entries(changedFields).every(([key, value]) => profileSame(next[key], value)), 'SPECIALIST_PROFILE_CHANGED_FIELDS');
+      need(observed.ended >= observed.started && next.updatedAt instanceof Date
+        && Number.isFinite(next.updatedAt.getTime()) && next.updatedAt.getTime() >= observed.started
+        && next.updatedAt.getTime() <= observed.ended, 'SPECIALIST_PROFILE_UPDATED_AT');
+      return next;
+    }
+    return null;
+  }
+  function assertProfileResponse(observed, expected, row) {
+    need(observed.result.status === expected.status, 'SPECIALIST_PROFILE_STATUS');
+    if (expected.status >= 400) {
+      errorEnvelope(observed.result, expected.code);
+      need(observed.result.body.message === expected.message, 'SPECIALIST_PROFILE_ERROR_MESSAGE');
+    } else {
+      need(profileSame(Object.keys(observed.result.body).sort(), ['data', 'message', 'success'])
+        && observed.result.body.success === true && observed.result.body.message === expected.message
+        && profileSame(observed.result.body.data, row), 'SPECIALIST_PROFILE_SUCCESS_RESPONSE');
+    }
+  }
+  function assertProfileObservation(observed, trial, fixture) {
+    const expected = trial.expected;
+    // Keep status first: exact mismatch codes are part of source-sensitivity proof.
+    need(observed.result.status === expected.status, 'SPECIALIST_PROFILE_STATUS');
+    if (expected.status >= 400) assertProfileResponse(observed, expected, null);
+    assertProfileEffects(observed, expected);
+    const row = assertProfileState(observed, fixture, expected.selectedIdentity, expected.state.changedFields);
+    if (expected.status < 400) assertProfileResponse(observed, expected, row);
+  }
+  function profileConvertedFields(body) {
+    return Object.fromEntries(Object.entries(body).map(([key, value]) => {
+      need(['name', 'bio', 'isVerified', 'isActive', 'rating'].includes(key), 'SPECIALIST_PROFILE_UNSAFE_BODY_SCOPE');
+      return [key, ['name', 'bio'].includes(key) ? value.trim()
+        : ['isVerified', 'isActive'].includes(key) && value === 'false' ? false : key === 'rating' && value === '0' ? 0 : value];
+    }));
+  }
+  function assertProfileUnsafe(observed, trial, fixture, reference) {
+    const unsafe = reference.unsafe; const expected = structuredClone(trial.expected);
+    expected.status = unsafe.status; expected.code = unsafe.code; expected.message = unsafe.message;
+    expected.readOpsDelta.specialists = unsafe.readOpsSpecialists;
+    expected.writeOpsDelta.specialists = unsafe.writeOpsSpecialists;
+    expected.dbWritesDelta = unsafe.dbWritesDelta; expected.providerDelta.logger = unsafe.loggerDelta;
+    const fields = unsafe.writeOpsSpecialists === 1 ? profileConvertedFields(trial.body) : {};
+    const row = assertProfileState(observed, fixture, trial.expected.selectedIdentity, fields);
+    assertProfileResponse(observed, expected, row); assertProfileEffects(observed, expected);
+    need(unsafe.writeOpsSpecialists === 0 || Object.keys(fields).some(key => !profileSame(
+      observed.before.Specialist.find(item => id(item) === fixture.ids[trial.expected.selectedIdentity])[key], fields[key])),
+      'SPECIALIST_PROFILE_CONCRETE_UNSAFE_CHANGE');
+  }
+  async function withProfileTrial(trial, adminToken, check) {
+    const fixture = profileFixture();
+    return profileFinally(async () => {
+      await model('Specialist').create(fixture.rows);
+      const observed = await observeProfile(trial, fixture, adminToken);
+      check(observed, fixture); return observed;
+    }, ['SPECIALIST_A', 'SPECIALIST_B'].map(key => async () => {
+      // Only IDs freshly generated and inserted by this invocation are eligible.
+      await model('Specialist').deleteOne({ _id: fixture.ids[key] });
+      need(await model('Specialist').findById(fixture.ids[key]).lean().exec() === null, 'SPECIALIST_PROFILE_CLEANUP');
+    }));
+  }
+  async function runProfileNominal(adminToken) {
+    await profileAppendBoundary();
+    need(profile.trials.length === 93 && profile.requiredGroupIds.length === 7, 'SPECIALIST_PROFILE_TRIAL_SET');
+    const counts = new Map(profile.requiredGroupIds.map(key => [key, 0])); const seen = new Set();
+    const loggerBefore = ctx.counters.logger; let success = 0; let errors = 0;
+    for (const trial of profile.trials) {
+      need(!seen.has(trial.id) && counts.has(trial.group), 'SPECIALIST_PROFILE_TRIAL_ID');
+      await withProfileTrial(trial, adminToken, (observed, fixture) => assertProfileObservation(observed, trial, fixture));
+      seen.add(trial.id); counts.set(trial.group, counts.get(trial.group) + 1);
+      if (trial.expected.status === 200) success++; else errors++;
+    }
+    need(seen.size === 93 && success === 6 && errors === 87 && ctx.counters.logger - loggerBefore === 87
+      && profile.requiredGroupIds.every(key => counts.get(key) === profile.requiredGroupTrialCounts[key]), 'SPECIALIST_PROFILE_NOMINAL_COMPLETE');
+    profileAttemptSnapshot(); for (const key of profile.requiredGroupIds) record(key);
+  }
+  async function runProfileSensitivity(adminToken) {
+    await profileAppendBoundary();
+    const trials = new Map(profile.trials.map(trial => [trial.id, trial]));
+    const positive = trials.get('SP_ALLOWED_ALIAS'); let references = 0; let restorations = 0;
+    need(positive && profile.sourceMutations.length === 6, 'SPECIALIST_PROFILE_SENSITIVITY_SET');
+    for (const variant of profile.sourceMutations) {
+      const emitted = ctx.plan.mutants[variant.id];
+      need(emitted?.source === profile.sourceGuard.path && emitted.originalSha256 === profile.sourceGuard.sha256
+        && emitted.mutantSha256 === variant.predictedTransformedSourceSha256, 'SPECIALIST_PROFILE_EMITTED_VARIANT');
+      for (const reference of variant.probeReferences) {
+        const trial = trials.get(reference.trialId); need(trial, 'SPECIALIST_PROFILE_REFERENCE');
+        await profileFinally(async () => {
+          await ctx.nextPhase({ '@/modules/specialistPortal/services': emitted.file });
+          await withProfileTrial(trial, adminToken, (observed, fixture) => {
+            assertProfileUnsafe(observed, trial, fixture, reference);
+            let detected = false;
+            try { assertProfileObservation(observed, trial, fixture); }
+            catch (error) {
+              const descriptor = error !== null && ['object', 'function'].includes(typeof error)
+                ? Object.getOwnPropertyDescriptor(error, 'fixtureCode') : undefined;
+              if (!descriptor || !Object.hasOwn(descriptor, 'value') || descriptor.value !== reference.unsafe.expectedNominalFailureCode) throw error;
+              detected = true;
+            }
+            need(detected, 'SPECIALIST_PROFILE_PRECISE_DETECTION');
+          });
+          references++;
+        }, [() => ctx.nextPhase({})]);
+        // The same real trial/predicate plus a fresh allowed positive must pass
+        // through newly loaded nominal classes/server before any detected row.
+        for (const restored of [trial, positive]) {
+          await withProfileTrial(restored, adminToken, (observed, fixture) => assertProfileObservation(observed, restored, fixture));
+          restorations++;
+        }
+      }
+      sensitivity.push({ id: variant.id, detected: true });
+    }
+    need(references === 11 && restorations === 22, 'SPECIALIST_PROFILE_RESTORATION_COMPLETE');
+    profileAttemptSnapshot();
+  }
+
   const alpha = await login({ phone: '9000000001' }); record('PHONE_LOGIN');
   const beta = await login({ email: 'beta@example.com' }); record('EMAIL_LOGIN');
   const a = await model('User').findById(alpha.user._id).lean().exec();
@@ -1001,6 +1234,9 @@ async function runScenario(ctx) {
 
   need(cases.length === 76 && same(cases.map(row => row.id), ctx.ports.requiredCaseIds.slice(0, 76)), 'INDEX_PRIOR_CASE_SET');
   for (const row of indexEvidence.cases) record(row.id);
+  need(cases.length === 83 && same(cases.map(row => row.id), ctx.ports.requiredCaseIds.slice(0, 83)), 'SPECIALIST_PROFILE_PRIOR_CASE_SET');
+  await runProfileNominal(admin.token);
+  need(cases.length === 90 && same(cases.map(row => row.id), ctx.ports.requiredCaseIds), 'SPECIALIST_PROFILE_CASE_SET');
 
   // Separate negative phases use emitted variants of the actual frozen source.
   // Fresh production classes, TypeDI registrations and HTTP server each phase.
@@ -1033,6 +1269,9 @@ async function runScenario(ctx) {
   // Prove fresh nominal classes restore the two owner boundaries after mutants.
   await deny('GET', '/users/' + id(b), alpha.token, undefined, [403], 'RESTORED_USER_OWNER');
   await deny('GET', '/wallet/' + id(bw), alpha.token, undefined, [403], 'RESTORED_WALLET_OWNER');
+  need(sensitivity.length === 27 && same(sensitivity.map(row => row.id), ctx.ports.requiredSensitivityIds.slice(0, 27)), 'SPECIALIST_PROFILE_PRIOR_SENSITIVITY_SET');
+  await runProfileSensitivity(admin.token);
+  need(sensitivity.length === 33 && same(sensitivity.map(row => row.id), ctx.ports.requiredSensitivityIds), 'SPECIALIST_PROFILE_SENSITIVITY_SET');
   need(ctx.counters.unexpected === 0 && ctx.counters.excluded === 0, 'UNDECLARED_CAPABILITY_EFFECT');
   return { cases, sensitivity, failed: 0, skipped: 0, providerSummary: {
     email: nominalCounters.email, sms: nominalCounters.sms, push: nominalCounters.push, logger: nominalCounters.logger,
