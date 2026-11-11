@@ -596,3 +596,47 @@ historical exact source. Portal source is outside that fixture's97inputs and
 still needs its separate complete-C3 extension. Original6staged/working files,
 patch and11handover files remain exact. Ready work continues on that portal
 fixture contract; no fullM0/Week2, production, client/owner or release acceptance.
+
+
+## Twenty-sixth increment, 11 November: catalogue source composition reviewed
+
+The medicine-authority and inventory-quality branches are combined separately
+at85c09ef7 with their frozen contracts and source histories. Both independent
+nonauthor internal Codex reviewers approved
+[the actual source composition](../../../output/qa/week2-catalogue-integration/REVIEW.md).
+All29merged files exactly match their reviewed branch bytes; only three
+production files changed, and all105 current fixture input hashes remain exact.
+The actual source diff whitespace check passes; whole-diff warnings are confined
+to unchanged frozen patch-evidence context spaces/EOF, which remain preserved.
+
+Medicine update passes the trusted actor scalar to its existing service lookup;
+nonadmin attempts to set own prescriptionRequired preserve404 for missing records
+then return422 before normalization or writes. Ordinary fields/admin behavior
+remain. Inventory quantity adjustment and reservation release retain recalled,
+quarantined and expired quality state and depletedAt together; other quantity,
+price/date/session and normal active/depleted algorithms remain byte-identical.
+The payment-abandonment release caller is included in the reviewed source map.
+
+These are SOURCE_ONLY changes: no TypeScript validity, HTTP, DB, concurrency or
+provider result is claimed. Existing13/17 source controls remain historical
+byte-sensitive evidence. The historical83/27 API fixture does not import these
+modules. Complete future C3 coverage, broader catalogue authority/stock races,
+AR26/F06/original115, named owners and release remain open.
+
+The specialist90 extension has had two separately admitted failed invocations,
+both retained and reviewed, with exact cleanup independently verified by Root
+and both reviewers. Warning accounting was separately amended/reviewed; run10
+then exposed a likely TypeDI reset metadata-probe incompatibility. No90/33 or
+warning-count acceptance follows from those failures. Its reviewed synchronous
+reset-window contract proceeds separately, retaining all other capability
+latches and exact source/emission/artifact/one-run gates. The HR booking read
+scope has two SOURCE_ONLY approvals on its separate branch and retains its
+explicit specialist90/provenance integration hold. No overlapping source edit.
+
+The owner deferred Claude sign-in; no polling/model request follows. The3600-second
+local review deadline does not change account limits or prove effective max.
+Original six staged/working changes, patch and all eleven handover files were
+rehashed unchanged during this continuation. All commits remain local; no
+production, protected-log, credential, provider or deployment action occurred.
+Root retained-server C2, full Week2/M0, client/owner,100RPS/release gates remain open.
+Ready backend and separate evidence lanes continue.
