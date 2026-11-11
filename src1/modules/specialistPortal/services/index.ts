@@ -80,6 +80,21 @@ export class SpecialistPortalService {
     specialistId: string,
     body: UpdateSpecialistRequest
   ): Promise<ISpecialist> {
+    if (
+      body !== null &&
+      typeof body === 'object' &&
+      ['isVerified', 'isActive', 'rating'].some((field) =>
+        Object.prototype.hasOwnProperty.call(body, field)
+      )
+    ) {
+      await this.specialistService.getById(specialistId);
+      throw new AppError({
+        status: 422,
+        code: 'FORBIDDEN_FIELD',
+        message: 'Specialist profile contains fields that cannot be updated',
+      });
+    }
+
     return this.specialistService.update(specialistId, body);
   }
 

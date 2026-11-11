@@ -1,0 +1,10 @@
+{
+  "schema": "SD-SPECIALIST-SOURCE-BASELINE-1",
+  "baseline": "b33a9daac01628a48043e85764819a5f855431ed",
+  "sourceSha256": "f5d90a49987bcc312b7b4acd614ba6833e5551b601f17ff5097d4d1ef9351ed4",
+  "verifierSha256": "98962ddf362969d3886534c1a7ecd8523245bbe5dd014899d719758b82d2955f",
+  "actualBaselineRejected": true,
+  "candidateAccepted": false,
+  "sourceDataOnly": true,
+  "applicationEvaluations": 0
+}
