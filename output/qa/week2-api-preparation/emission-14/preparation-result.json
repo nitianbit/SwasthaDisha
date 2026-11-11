@@ -1,0 +1,2372 @@
+{
+  "status": "PREPARED_NOT_EXECUTED",
+  "sourceCommit": "5901bc20e8def58f023b9ef4fe43c8e80fec1f1e",
+  "templateSha": "0753c30bcf7a1a46eff1abad69009b070d848e5090aab6435270897010c5ed50",
+  "fileCount": 2891,
+  "bytes": 45632811,
+  "compilation": {
+    "status": "TRANSPILE_ONLY_NOT_TYPECHECKED",
+    "compiler": "5.9.3",
+    "diagnostics": [],
+    "semanticDiagnostics": [
+      {
+        "file": "src1/config/config.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module 'path' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/config/config.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/modules/auth/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/auth/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/auth/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/auth/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/auth/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module 'node:crypto' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "code": 2614,
+        "category": 1,
+        "message": "Module '\"mongoose\"' has no exported member 'FilterQuery'. Did you mean to use 'import FilterQuery from \"mongoose\"' instead?"
+      },
+      {
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "code": 2724,
+        "category": 1,
+        "message": "'\"mongoose\"' has no exported member named 'LeanDocument'. Did you mean 'Document'?"
+      },
+      {
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "code": 2769,
+        "category": 1,
+        "message": "No overload matches this call.\n  Overload 1 of 2, '(filter?: QueryFilter<T>, options?: DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { ...; }): Query<...>', gave the following error.\n    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { [other: string]: any; }'.\n      Type 'QueryOptions<unknown>' is not assignable to type 'DeleteOptions'.\n        Types of property 'readPreference' are incompatible.\n          Type 'string' is not assignable to type 'ReadPreferenceLike'.\n  Overload 2 of 2, '(filter?: Query<any, any, {}, unknown, \"find\", Record<string, never>, unknown>, options?: DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { ...; }): Query<...>', gave the following error.\n    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { [other: string]: any; }'.\n      Type 'QueryOptions<unknown>' is not assignable to type 'DeleteOptions'.\n        Types of property 'readPreference' are incompatible.\n          Type 'string' is not assignable to type 'ReadPreferenceLike'."
+      },
+      {
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "code": 2769,
+        "category": 1,
+        "message": "No overload matches this call.\n  Overload 1 of 2, '(filter?: QueryFilter<T>, options?: DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { ...; }): Query<...>', gave the following error.\n    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { [other: string]: any; }'.\n      Type 'QueryOptions<unknown>' is not assignable to type 'DeleteOptions'.\n        Types of property 'readPreference' are incompatible.\n          Type 'string' is not assignable to type 'ReadPreferenceLike'.\n  Overload 2 of 2, '(filter?: Query<any, any, {}, unknown, \"find\", Record<string, never>, unknown>, options?: DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { ...; }): Query<...>', gave the following error.\n    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { [other: string]: any; }'.\n      Type 'QueryOptions<unknown>' is not assignable to type 'DeleteOptions'.\n        Types of property 'readPreference' are incompatible.\n          Type 'string' is not assignable to type 'ReadPreferenceLike'."
+      },
+      {
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "code": 2769,
+        "category": 1,
+        "message": "No overload matches this call.\n  Overload 1 of 2, '(filter: QueryFilter<T>, update: UpdateWithAggregationPipeline | UpdateQuery<T>, options?: UpdateOptions & MongooseUpdateQueryOptions<...>): Query<...>', gave the following error.\n    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'UpdateOptions & MongooseUpdateQueryOptions<T>'.\n      Type 'QueryOptions<unknown>' is not assignable to type 'UpdateOptions'.\n        Types of property 'readPreference' are incompatible.\n          Type 'string' is not assignable to type 'ReadPreferenceLike'.\n  Overload 2 of 2, '(filter: Query<any, any, {}, unknown, \"find\", Record<string, never>, unknown>, update: UpdateWithAggregationPipeline | UpdateQuery<T>, options?: UpdateOptions & MongooseUpdateQueryOptions<...>): Query<...>', gave the following error.\n    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'UpdateOptions & MongooseUpdateQueryOptions<T>'.\n      Type 'QueryOptions<unknown>' is not assignable to type 'UpdateOptions'.\n        Types of property 'readPreference' are incompatible.\n          Type 'string' is not assignable to type 'ReadPreferenceLike'."
+      },
+      {
+        "file": "src1/modules/common/types/error.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'captureStackTrace' does not exist on type 'ErrorConstructor'."
+      },
+      {
+        "file": "src1/modules/common/utils/asyncHandler.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/services/logger' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "code": 2322,
+        "category": 1,
+        "message": "Type 'unknown' is not assignable to type 'Data'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/dependents/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/fcm/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/fcm/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/services/firebase' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/fcm/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/services/logger' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/meet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/meet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/meet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/meet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/meet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/meet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/meet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/meet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/meet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/meet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/meet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/meet/service/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module 'crypto' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/meet/service/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/modules/bookings/repository' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/meet/service/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/modules/slots/repository' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/meet/service/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/services/logger' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/meet/service/index.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/modules/meet/service/index.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'Buffer'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/modules/middleware/auth.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'headers' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/middleware/auth.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'headers' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/middleware/errorHandler.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/services/logger' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/notification/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/modules/slots/services' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/modules/slots/repository' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/modules/bookings/repository' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/modules/bookings/services' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module 'child_process' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module 'fs' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module 'os' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module 'path' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module 'util' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/modules/specialistPortal/services/index.ts",
+        "code": 2591,
+        "category": 1,
+        "message": "Cannot find name 'process'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/specialists/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/modules/bookings/repository' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/specialists/services/index.ts",
+        "code": 2322,
+        "category": 1,
+        "message": "Type '((ISpecialist & Required<{ _id: string; }> & { __v: number; }) | Omit<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> | (Pick<...> & Pick<...>))[]' is not assignable to type 'ISpecialist[]'.\n  Type '(ISpecialist & Required<{ _id: string; }> & { __v: number; }) | Omit<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> | (Pick<...> & Pick<...>)' is not assignable to type 'ISpecialist'.\n    Property 'name' is missing in type 'Pick<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> & Pick<ISpecialist & Required<{ _id: string; }> & { ...; }, \"_id\">' but required in type 'ISpecialist'."
+      },
+      {
+        "file": "src1/modules/specialists/services/index.ts",
+        "code": 2322,
+        "category": 1,
+        "message": "Type '((ISpecialist & Required<{ _id: string; }> & { __v: number; }) | Omit<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> | (Pick<...> & Pick<...>))[]' is not assignable to type 'ISpecialist[]'.\n  Type '(ISpecialist & Required<{ _id: string; }> & { __v: number; }) | Omit<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> | (Pick<...> & Pick<...>)' is not assignable to type 'ISpecialist'.\n    Property 'name' is missing in type 'Pick<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> & Pick<ISpecialist & Required<{ _id: string; }> & { ...; }, \"_id\">' but required in type 'ISpecialist'."
+      },
+      {
+        "file": "src1/modules/specialists/services/index.ts",
+        "code": 2322,
+        "category": 1,
+        "message": "Type '((ISpecialist & Required<{ _id: string; }> & { __v: number; }) | Omit<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> | (Pick<...> & Pick<...>))[]' is not assignable to type 'ISpecialist[]'.\n  Type '(ISpecialist & Required<{ _id: string; }> & { __v: number; }) | Omit<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> | (Pick<...> & Pick<...>)' is not assignable to type 'ISpecialist'.\n    Property 'name' is missing in type 'Pick<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> & Pick<ISpecialist & Required<{ _id: string; }> & { ...; }, \"_id\">' but required in type 'ISpecialist'."
+      },
+      {
+        "file": "src1/modules/specialists/services/index.ts",
+        "code": 2322,
+        "category": 1,
+        "message": "Type '((ISpecialist & Required<{ _id: string; }> & { __v: number; }) | Omit<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> | (Pick<...> & Pick<...>))[]' is not assignable to type 'ISpecialist[]'.\n  Type '(ISpecialist & Required<{ _id: string; }> & { __v: number; }) | Omit<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> | (Pick<...> & Pick<...>)' is not assignable to type 'ISpecialist'.\n    Property 'name' is missing in type 'Pick<ISpecialist & Required<{ _id: string; }> & { __v: number; }, never> & Pick<ISpecialist & Required<{ _id: string; }> & { ...; }, \"_id\">' but required in type 'ISpecialist'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'query' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/user/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/wallet/controller/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'body' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/wallet/routes/index.ts",
+        "code": 2339,
+        "category": 1,
+        "message": "Property 'params' does not exist on type 'AuthRequest'."
+      },
+      {
+        "file": "src1/modules/wallet/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/modules/payment/services' or its corresponding type declarations."
+      },
+      {
+        "file": "src1/modules/wallet/services/index.ts",
+        "code": 2307,
+        "category": 1,
+        "message": "Cannot find module '@/modules/coupon/services' or its corresponding type declarations."
+      }
+    ],
+    "semanticScope": "DECLARED_CLOSURE_AND_PUBLIC_TYPES_WITH_EXCLUDED_CAPABILITIES_UNRESOLVED",
+    "fullBuild": false,
+    "selectedHelperTypecheck": {
+      "schema": "SD-SELECTED-INDEX-TYPECHECK-1",
+      "status": "PASS",
+      "compiler": "5.9.3",
+      "compilerSha256": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+      "source": "src1/modules/common/utils/indexReadiness.ts",
+      "sourceSha256": "050ecc993c862638cf4912bb854e04baa5d80241cb124e7831fc3c95a78db5bd",
+      "libraryFiles": {
+        "lib.decorators.d.ts": "8e7f8264d0fb4c5339605a15daadb037bf238c10b654bb3eee14208f860a32ea",
+        "lib.decorators.legacy.d.ts": "782dec38049b92d4e85c1585fbea5474a219c6984a35b004963b00beb1aab538",
+        "lib.es2015.collection.d.ts": "dc2df20b1bcdc8c2d34af4926e2c3ab15ffe1160a63e58b7e09833f616efff44",
+        "lib.es2015.core.d.ts": "c57796738e7f83dbc4b8e65132f11a377649c00dd3eee333f672b8f0a6bea671",
+        "lib.es2015.d.ts": "45b7ab580deca34ae9729e97c13cfd999df04416a79116c3bfb483804f85ded4",
+        "lib.es2015.generator.d.ts": "515d0b7b9bea2e31ea4ec968e9edd2c39d3eebf4a2d5cbd04e88639819ae3b71",
+        "lib.es2015.iterable.d.ts": "0559b1f683ac7505ae451f9a96ce4c3c92bdc71411651ca6ddb0e88baaaad6a3",
+        "lib.es2015.promise.d.ts": "0dc1e7ceda9b8b9b455c3a2d67b0412feab00bd2f66656cd8850e8831b08b537",
+        "lib.es2015.proxy.d.ts": "ce691fb9e5c64efb9547083e4a34091bcbe5bdb41027e310ebba8f7d96a98671",
+        "lib.es2015.reflect.d.ts": "8d697a2a929a5fcb38b7a65594020fcef05ec1630804a33748829c5ff53640d0",
+        "lib.es2015.symbol.d.ts": "4ff2a353abf8a80ee399af572debb8faab2d33ad38c4b4474cff7f26e7653b8d",
+        "lib.es2015.symbol.wellknown.d.ts": "fb0f136d372979348d59b3f5020b4cdb81b5504192b1cacff5d1fbba29378aa1",
+        "lib.es2016.array.include.d.ts": "d15bea3d62cbbdb9797079416b8ac375ae99162a7fba5de2c6c505446486ac0a",
+        "lib.es2016.d.ts": "3facaf05f0c5fc569c5649dd359892c98a85557e3e0c847964caeb67076f4d75",
+        "lib.es2016.intl.d.ts": "68d18b664c9d32a7336a70235958b8997ebc1c3b8505f4f1ae2b7e7753b87618",
+        "lib.es2017.arraybuffer.d.ts": "eb3d66c8327153d8fa7dd03f9c58d351107fe824c79e9b56b462935176cdf12a",
+        "lib.es2017.d.ts": "e44bb8bbac7f10ecc786703fe0a6a4b952189f908707980ba8f3c8975a760962",
+        "lib.es2017.date.d.ts": "38f0219c9e23c915ef9790ab1d680440d95419ad264816fa15009a8851e79119",
+        "lib.es2017.intl.d.ts": "4de680d5bb41c17f7f68e0419412ca23c98d5749dcaaea1896172f06435891fc",
+        "lib.es2017.object.d.ts": "69ab18c3b76cd9b1be3d188eaf8bba06112ebbe2f47f6c322b5105a6fbc45a2e",
+        "lib.es2017.sharedmemory.d.ts": "a680117f487a4d2f30ea46f1b4b7f58bef1480456e18ba53ee85c2746eeca012",
+        "lib.es2017.string.d.ts": "2f11ff796926e0832f9ae148008138ad583bd181899ab7dd768a2666700b1893",
+        "lib.es2017.typedarrays.d.ts": "954296b30da6d508a104a3a0b5d96b76495c709785c1d11610908e63481ee667",
+        "lib.es2018.asyncgenerator.d.ts": "ac9538681b19688c8eae65811b329d3744af679e0bdfa5d842d0e32524c73e1c",
+        "lib.es2018.asynciterable.d.ts": "0a969edff4bd52585473d24995c5ef223f6652d6ef46193309b3921d65dd4376",
+        "lib.es2018.d.ts": "5e1c4c362065a6b95ff952c0eab010f04dcd2c3494e813b493ecfd4fcb9fc0d8",
+        "lib.es2018.intl.d.ts": "9e9fbd7030c440b33d021da145d3232984c8bb7916f277e8ffd3dc2e3eae2bdb",
+        "lib.es2018.promise.d.ts": "811ec78f7fefcabbda4bfa93b3eb67d9ae166ef95f9bff989d964061cbf81a0c",
+        "lib.es2018.regexp.d.ts": "717937616a17072082152a2ef351cb51f98802fb4b2fdabd32399843875974ca",
+        "lib.es2019.array.d.ts": "d7e7d9b7b50e5f22c915b525acc5a49a7a6584cf8f62d0569e557c5cfc4b2ac2",
+        "lib.es2019.d.ts": "68d73b4a11549f9c0b7d352d10e91e5dca8faa3322bfb77b661839c42b1ddec7",
+        "lib.es2019.intl.d.ts": "74f7fa2d027d5b33eb0471c8e82a6c87216223181ec31247c357a3e8e2fddc5b",
+        "lib.es2019.object.d.ts": "71c37f4c9543f31dfced6c7840e068c5a5aacb7b89111a4364b1d5276b852557",
+        "lib.es2019.string.d.ts": "576711e016cf4f1804676043e6a0a5414252560eb57de9faceee34d79798c850",
+        "lib.es2019.symbol.d.ts": "89c1b1281ba7b8a96efc676b11b264de7a8374c5ea1e6617f11880a13fc56dc6",
+        "lib.es2020.bigint.d.ts": "d6d7ae4d1f1f3772e2a3cde568ed08991a8ae34a080ff1151af28b7f798e22ca",
+        "lib.es2020.d.ts": "5efce4fc3c29ea84e8928f97adec086e3dc876365e0982cc8479a07954a3efd4",
+        "lib.es2020.date.d.ts": "063600664504610fe3e99b717a1223f8b1900087fab0b4cad1496a114744f8df",
+        "lib.es2020.intl.d.ts": "639e512c0dfc3fad96a84caad71b8834d66329a1f28dc95e3946c9b58176c73a",
+        "lib.es2020.number.d.ts": "368af93f74c9c932edd84c58883e736c9e3d53cec1fe24c0b0ff451f529ceab1",
+        "lib.es2020.promise.d.ts": "934019d7e3c81950f9a8426d093458b65d5aff2c7c1511233c0fd5b941e608ab",
+        "lib.es2020.sharedmemory.d.ts": "52ada8e0b6e0482b728070b7639ee42e83a9b1c22d205992756fe020fd9f4a47",
+        "lib.es2020.string.d.ts": "3bdefe1bfd4d6dee0e26f928f93ccc128f1b64d5d501ff4a8cf3c6371200e5e6",
+        "lib.es2020.symbol.wellknown.d.ts": "59fb2c069260b4ba00b5643b907ef5d5341b167e7d1dbf58dfd895658bda2867",
+        "lib.es5.d.ts": "c430d44666289dae81f30fa7b2edebf186ecc91a2d4c71266ea6ae76388792e1"
+      },
+      "options": {
+        "target": "ES2020",
+        "module": "CommonJS",
+        "moduleResolution": "Node10",
+        "noEmit": true,
+        "lib": [
+          "lib.es2020.d.ts"
+        ],
+        "types": [],
+        "typeRoots": [],
+        "strict": true,
+        "noImplicitAny": true,
+        "noImplicitThis": true,
+        "noImplicitReturns": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noFallthroughCasesInSwitch": true,
+        "skipLibCheck": false
+      },
+      "programFiles": [
+        "node_modules/typescript/lib/lib.decorators.d.ts",
+        "node_modules/typescript/lib/lib.decorators.legacy.d.ts",
+        "node_modules/typescript/lib/lib.es2015.collection.d.ts",
+        "node_modules/typescript/lib/lib.es2015.core.d.ts",
+        "node_modules/typescript/lib/lib.es2015.d.ts",
+        "node_modules/typescript/lib/lib.es2015.generator.d.ts",
+        "node_modules/typescript/lib/lib.es2015.iterable.d.ts",
+        "node_modules/typescript/lib/lib.es2015.promise.d.ts",
+        "node_modules/typescript/lib/lib.es2015.proxy.d.ts",
+        "node_modules/typescript/lib/lib.es2015.reflect.d.ts",
+        "node_modules/typescript/lib/lib.es2015.symbol.d.ts",
+        "node_modules/typescript/lib/lib.es2015.symbol.wellknown.d.ts",
+        "node_modules/typescript/lib/lib.es2016.array.include.d.ts",
+        "node_modules/typescript/lib/lib.es2016.d.ts",
+        "node_modules/typescript/lib/lib.es2016.intl.d.ts",
+        "node_modules/typescript/lib/lib.es2017.arraybuffer.d.ts",
+        "node_modules/typescript/lib/lib.es2017.d.ts",
+        "node_modules/typescript/lib/lib.es2017.date.d.ts",
+        "node_modules/typescript/lib/lib.es2017.intl.d.ts",
+        "node_modules/typescript/lib/lib.es2017.object.d.ts",
+        "node_modules/typescript/lib/lib.es2017.sharedmemory.d.ts",
+        "node_modules/typescript/lib/lib.es2017.string.d.ts",
+        "node_modules/typescript/lib/lib.es2017.typedarrays.d.ts",
+        "node_modules/typescript/lib/lib.es2018.asyncgenerator.d.ts",
+        "node_modules/typescript/lib/lib.es2018.asynciterable.d.ts",
+        "node_modules/typescript/lib/lib.es2018.d.ts",
+        "node_modules/typescript/lib/lib.es2018.intl.d.ts",
+        "node_modules/typescript/lib/lib.es2018.promise.d.ts",
+        "node_modules/typescript/lib/lib.es2018.regexp.d.ts",
+        "node_modules/typescript/lib/lib.es2019.array.d.ts",
+        "node_modules/typescript/lib/lib.es2019.d.ts",
+        "node_modules/typescript/lib/lib.es2019.intl.d.ts",
+        "node_modules/typescript/lib/lib.es2019.object.d.ts",
+        "node_modules/typescript/lib/lib.es2019.string.d.ts",
+        "node_modules/typescript/lib/lib.es2019.symbol.d.ts",
+        "node_modules/typescript/lib/lib.es2020.bigint.d.ts",
+        "node_modules/typescript/lib/lib.es2020.d.ts",
+        "node_modules/typescript/lib/lib.es2020.date.d.ts",
+        "node_modules/typescript/lib/lib.es2020.intl.d.ts",
+        "node_modules/typescript/lib/lib.es2020.number.d.ts",
+        "node_modules/typescript/lib/lib.es2020.promise.d.ts",
+        "node_modules/typescript/lib/lib.es2020.sharedmemory.d.ts",
+        "node_modules/typescript/lib/lib.es2020.string.d.ts",
+        "node_modules/typescript/lib/lib.es2020.symbol.wellknown.d.ts",
+        "node_modules/typescript/lib/lib.es5.d.ts",
+        "src1/modules/common/utils/indexReadiness.ts"
+      ],
+      "diagnostics": [],
+      "tdzControl": {
+        "status": "REJECTED",
+        "sourceSha256": "6597c1a03c54702d89042a29263da81399934e68e8fb6c46f91c638cbe954400",
+        "requiredCode": 2448,
+        "referenceOffset": 16639,
+        "programFiles": [
+          "VIRTUAL_SELECTED_INDEX_TDZ.ts",
+          "node_modules/typescript/lib/lib.decorators.d.ts",
+          "node_modules/typescript/lib/lib.decorators.legacy.d.ts",
+          "node_modules/typescript/lib/lib.es2015.collection.d.ts",
+          "node_modules/typescript/lib/lib.es2015.core.d.ts",
+          "node_modules/typescript/lib/lib.es2015.d.ts",
+          "node_modules/typescript/lib/lib.es2015.generator.d.ts",
+          "node_modules/typescript/lib/lib.es2015.iterable.d.ts",
+          "node_modules/typescript/lib/lib.es2015.promise.d.ts",
+          "node_modules/typescript/lib/lib.es2015.proxy.d.ts",
+          "node_modules/typescript/lib/lib.es2015.reflect.d.ts",
+          "node_modules/typescript/lib/lib.es2015.symbol.d.ts",
+          "node_modules/typescript/lib/lib.es2015.symbol.wellknown.d.ts",
+          "node_modules/typescript/lib/lib.es2016.array.include.d.ts",
+          "node_modules/typescript/lib/lib.es2016.d.ts",
+          "node_modules/typescript/lib/lib.es2016.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2017.arraybuffer.d.ts",
+          "node_modules/typescript/lib/lib.es2017.d.ts",
+          "node_modules/typescript/lib/lib.es2017.date.d.ts",
+          "node_modules/typescript/lib/lib.es2017.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2017.object.d.ts",
+          "node_modules/typescript/lib/lib.es2017.sharedmemory.d.ts",
+          "node_modules/typescript/lib/lib.es2017.string.d.ts",
+          "node_modules/typescript/lib/lib.es2017.typedarrays.d.ts",
+          "node_modules/typescript/lib/lib.es2018.asyncgenerator.d.ts",
+          "node_modules/typescript/lib/lib.es2018.asynciterable.d.ts",
+          "node_modules/typescript/lib/lib.es2018.d.ts",
+          "node_modules/typescript/lib/lib.es2018.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2018.promise.d.ts",
+          "node_modules/typescript/lib/lib.es2018.regexp.d.ts",
+          "node_modules/typescript/lib/lib.es2019.array.d.ts",
+          "node_modules/typescript/lib/lib.es2019.d.ts",
+          "node_modules/typescript/lib/lib.es2019.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2019.object.d.ts",
+          "node_modules/typescript/lib/lib.es2019.string.d.ts",
+          "node_modules/typescript/lib/lib.es2019.symbol.d.ts",
+          "node_modules/typescript/lib/lib.es2020.bigint.d.ts",
+          "node_modules/typescript/lib/lib.es2020.d.ts",
+          "node_modules/typescript/lib/lib.es2020.date.d.ts",
+          "node_modules/typescript/lib/lib.es2020.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2020.number.d.ts",
+          "node_modules/typescript/lib/lib.es2020.promise.d.ts",
+          "node_modules/typescript/lib/lib.es2020.sharedmemory.d.ts",
+          "node_modules/typescript/lib/lib.es2020.string.d.ts",
+          "node_modules/typescript/lib/lib.es2020.symbol.wellknown.d.ts",
+          "node_modules/typescript/lib/lib.es5.d.ts"
+        ],
+        "diagnostics": [
+          {
+            "sourceId": "VIRTUAL_SELECTED_INDEX_TDZ.ts",
+            "code": 7022,
+            "category": 1,
+            "start": 16611,
+            "length": 25
+          },
+          {
+            "sourceId": "VIRTUAL_SELECTED_INDEX_TDZ.ts",
+            "code": 2448,
+            "category": 1,
+            "start": 16639,
+            "length": 12
+          },
+          {
+            "sourceId": "VIRTUAL_SELECTED_INDEX_TDZ.ts",
+            "code": 7022,
+            "category": 1,
+            "start": 17389,
+            "length": 12
+          }
+        ]
+      }
+    },
+    "libraryAdmission": {
+      "schema": "SD-COMPILER-LIBRARY-ADMISSION-1",
+      "status": "PASS",
+      "compiler": "5.9.3",
+      "compilerSha256": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+      "options": {
+        "target": 7,
+        "module": 1,
+        "moduleResolution": 2,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "esModuleInterop": true,
+        "noEmit": true,
+        "skipLibCheck": true,
+        "types": []
+      },
+      "semanticProgram": {
+        "programFiles": [
+          "node_modules/@standard-schema/spec/dist/index.d.ts",
+          "node_modules/axios/index.d.ts",
+          "node_modules/bson/bson.d.ts",
+          "node_modules/dotenv/lib/main.d.ts",
+          "node_modules/joi/lib/index.d.ts",
+          "node_modules/kareem/index.d.ts",
+          "node_modules/mongoose/node_modules/mongodb/mongodb.d.ts",
+          "node_modules/mongoose/types/aggregate.d.ts",
+          "node_modules/mongoose/types/augmentations.d.ts",
+          "node_modules/mongoose/types/callback.d.ts",
+          "node_modules/mongoose/types/collection.d.ts",
+          "node_modules/mongoose/types/connection.d.ts",
+          "node_modules/mongoose/types/cursor.d.ts",
+          "node_modules/mongoose/types/document.d.ts",
+          "node_modules/mongoose/types/error.d.ts",
+          "node_modules/mongoose/types/expressions.d.ts",
+          "node_modules/mongoose/types/helpers.d.ts",
+          "node_modules/mongoose/types/index.d.ts",
+          "node_modules/mongoose/types/indexes.d.ts",
+          "node_modules/mongoose/types/inferhydrateddoctype.d.ts",
+          "node_modules/mongoose/types/inferrawdoctype.d.ts",
+          "node_modules/mongoose/types/inferschematype.d.ts",
+          "node_modules/mongoose/types/middlewares.d.ts",
+          "node_modules/mongoose/types/models.d.ts",
+          "node_modules/mongoose/types/mongooseoptions.d.ts",
+          "node_modules/mongoose/types/pipelinestage.d.ts",
+          "node_modules/mongoose/types/populate.d.ts",
+          "node_modules/mongoose/types/query.d.ts",
+          "node_modules/mongoose/types/schemaoptions.d.ts",
+          "node_modules/mongoose/types/schematypes.d.ts",
+          "node_modules/mongoose/types/session.d.ts",
+          "node_modules/mongoose/types/tracing.d.ts",
+          "node_modules/mongoose/types/types.d.ts",
+          "node_modules/mongoose/types/utility.d.ts",
+          "node_modules/mongoose/types/validation.d.ts",
+          "node_modules/mongoose/types/virtuals.d.ts",
+          "node_modules/reflect-metadata/index.d.ts",
+          "node_modules/typedi/types/container-instance.class.d.ts",
+          "node_modules/typedi/types/container.class.d.ts",
+          "node_modules/typedi/types/decorators/inject-many.decorator.d.ts",
+          "node_modules/typedi/types/decorators/inject.decorator.d.ts",
+          "node_modules/typedi/types/decorators/service.decorator.d.ts",
+          "node_modules/typedi/types/error/cannot-inject-value.error.d.ts",
+          "node_modules/typedi/types/error/cannot-instantiate-value.error.d.ts",
+          "node_modules/typedi/types/error/service-not-found.error.d.ts",
+          "node_modules/typedi/types/index.d.ts",
+          "node_modules/typedi/types/interfaces/handler.interface.d.ts",
+          "node_modules/typedi/types/interfaces/service-metadata.interface.d.ts",
+          "node_modules/typedi/types/interfaces/service-options.interface.d.ts",
+          "node_modules/typedi/types/token.class.d.ts",
+          "node_modules/typedi/types/types/abstract-constructable.type.d.ts",
+          "node_modules/typedi/types/types/constructable.type.d.ts",
+          "node_modules/typedi/types/types/service-identifier.type.d.ts",
+          "node_modules/typescript/lib/lib.decorators.d.ts",
+          "node_modules/typescript/lib/lib.decorators.legacy.d.ts",
+          "node_modules/typescript/lib/lib.dom.asynciterable.d.ts",
+          "node_modules/typescript/lib/lib.dom.d.ts",
+          "node_modules/typescript/lib/lib.dom.iterable.d.ts",
+          "node_modules/typescript/lib/lib.es2015.collection.d.ts",
+          "node_modules/typescript/lib/lib.es2015.core.d.ts",
+          "node_modules/typescript/lib/lib.es2015.d.ts",
+          "node_modules/typescript/lib/lib.es2015.generator.d.ts",
+          "node_modules/typescript/lib/lib.es2015.iterable.d.ts",
+          "node_modules/typescript/lib/lib.es2015.promise.d.ts",
+          "node_modules/typescript/lib/lib.es2015.proxy.d.ts",
+          "node_modules/typescript/lib/lib.es2015.reflect.d.ts",
+          "node_modules/typescript/lib/lib.es2015.symbol.d.ts",
+          "node_modules/typescript/lib/lib.es2015.symbol.wellknown.d.ts",
+          "node_modules/typescript/lib/lib.es2016.array.include.d.ts",
+          "node_modules/typescript/lib/lib.es2016.d.ts",
+          "node_modules/typescript/lib/lib.es2016.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2017.arraybuffer.d.ts",
+          "node_modules/typescript/lib/lib.es2017.d.ts",
+          "node_modules/typescript/lib/lib.es2017.date.d.ts",
+          "node_modules/typescript/lib/lib.es2017.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2017.object.d.ts",
+          "node_modules/typescript/lib/lib.es2017.sharedmemory.d.ts",
+          "node_modules/typescript/lib/lib.es2017.string.d.ts",
+          "node_modules/typescript/lib/lib.es2017.typedarrays.d.ts",
+          "node_modules/typescript/lib/lib.es2018.asyncgenerator.d.ts",
+          "node_modules/typescript/lib/lib.es2018.asynciterable.d.ts",
+          "node_modules/typescript/lib/lib.es2018.d.ts",
+          "node_modules/typescript/lib/lib.es2018.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2018.promise.d.ts",
+          "node_modules/typescript/lib/lib.es2018.regexp.d.ts",
+          "node_modules/typescript/lib/lib.es2019.array.d.ts",
+          "node_modules/typescript/lib/lib.es2019.d.ts",
+          "node_modules/typescript/lib/lib.es2019.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2019.object.d.ts",
+          "node_modules/typescript/lib/lib.es2019.string.d.ts",
+          "node_modules/typescript/lib/lib.es2019.symbol.d.ts",
+          "node_modules/typescript/lib/lib.es2020.bigint.d.ts",
+          "node_modules/typescript/lib/lib.es2020.d.ts",
+          "node_modules/typescript/lib/lib.es2020.date.d.ts",
+          "node_modules/typescript/lib/lib.es2020.full.d.ts",
+          "node_modules/typescript/lib/lib.es2020.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2020.number.d.ts",
+          "node_modules/typescript/lib/lib.es2020.promise.d.ts",
+          "node_modules/typescript/lib/lib.es2020.sharedmemory.d.ts",
+          "node_modules/typescript/lib/lib.es2020.string.d.ts",
+          "node_modules/typescript/lib/lib.es2020.symbol.wellknown.d.ts",
+          "node_modules/typescript/lib/lib.es5.d.ts",
+          "node_modules/typescript/lib/lib.scripthost.d.ts",
+          "node_modules/typescript/lib/lib.webworker.importscripts.d.ts",
+          "src1/config/config.ts",
+          "src1/modules/admin/model/index.ts",
+          "src1/modules/admin/repository/index.ts",
+          "src1/modules/admin/types/index.ts",
+          "src1/modules/auth/controller/index.ts",
+          "src1/modules/auth/routes/index.ts",
+          "src1/modules/auth/services/index.ts",
+          "src1/modules/auth/types/index.ts",
+          "src1/modules/auth/validation/index.ts",
+          "src1/modules/bookings/model/index.ts",
+          "src1/modules/bookings/repository/index.ts",
+          "src1/modules/bookings/types/index.ts",
+          "src1/modules/bookings/utils/lifecycle.ts",
+          "src1/modules/common/middleware/validation.ts",
+          "src1/modules/common/repository/BaseRepository.ts",
+          "src1/modules/common/repository/index.ts",
+          "src1/modules/common/types/error.ts",
+          "src1/modules/common/types/index.ts",
+          "src1/modules/common/types/response.ts",
+          "src1/modules/common/utils/asyncHandler.ts",
+          "src1/modules/common/utils/dateUtils.ts",
+          "src1/modules/common/utils/indexReadiness.ts",
+          "src1/modules/common/utils/mongoErrors.ts",
+          "src1/modules/common/utils/queryUtils.ts",
+          "src1/modules/corporates/model/index.ts",
+          "src1/modules/corporates/repository/index.ts",
+          "src1/modules/corporates/types/index.ts",
+          "src1/modules/dependents/controller/index.ts",
+          "src1/modules/dependents/model/index.ts",
+          "src1/modules/dependents/repository/index.ts",
+          "src1/modules/dependents/routes/index.ts",
+          "src1/modules/dependents/services/index.ts",
+          "src1/modules/dependents/types/index.ts",
+          "src1/modules/dependents/validation/index.ts",
+          "src1/modules/email/services/index.ts",
+          "src1/modules/fcm/controller/index.ts",
+          "src1/modules/fcm/model/index.ts",
+          "src1/modules/fcm/repository/index.ts",
+          "src1/modules/fcm/routes/index.ts",
+          "src1/modules/fcm/services/index.ts",
+          "src1/modules/fcm/types/index.ts",
+          "src1/modules/fcm/validation/index.ts",
+          "src1/modules/hr/model/index.ts",
+          "src1/modules/hr/repository/index.ts",
+          "src1/modules/hr/types/index.ts",
+          "src1/modules/meet/controller/index.ts",
+          "src1/modules/meet/routes/index.ts",
+          "src1/modules/meet/service/index.ts",
+          "src1/modules/meet/types/index.ts",
+          "src1/modules/meet/validation/index.ts",
+          "src1/modules/middleware/auth.ts",
+          "src1/modules/middleware/errorHandler.ts",
+          "src1/modules/notification/controller/index.ts",
+          "src1/modules/notification/model/index.ts",
+          "src1/modules/notification/repository/index.ts",
+          "src1/modules/notification/routes/index.ts",
+          "src1/modules/notification/services/index.ts",
+          "src1/modules/notification/types/index.ts",
+          "src1/modules/notification/validation/index.ts",
+          "src1/modules/otp/model/index.ts",
+          "src1/modules/otp/repository/index.ts",
+          "src1/modules/otp/services/index.ts",
+          "src1/modules/otp/types/index.ts",
+          "src1/modules/pharmacies/model/index.ts",
+          "src1/modules/pharmacies/repository/index.ts",
+          "src1/modules/pharmacies/types/index.ts",
+          "src1/modules/settings/types/index.ts",
+          "src1/modules/slots/model/index.ts",
+          "src1/modules/slots/repository/index.ts",
+          "src1/modules/slots/types/index.ts",
+          "src1/modules/slots/validation/index.ts",
+          "src1/modules/sms/services/index.ts",
+          "src1/modules/specialistPortal/services/index.ts",
+          "src1/modules/specialistPortal/validation/index.ts",
+          "src1/modules/specialists/controller/index.ts",
+          "src1/modules/specialists/model/index.ts",
+          "src1/modules/specialists/repository/index.ts",
+          "src1/modules/specialists/routes/index.ts",
+          "src1/modules/specialists/services/index.ts",
+          "src1/modules/specialists/types/index.ts",
+          "src1/modules/specialists/validation/index.ts",
+          "src1/modules/user/controller/index.ts",
+          "src1/modules/user/model/index.ts",
+          "src1/modules/user/repository/index.ts",
+          "src1/modules/user/routes/index.ts",
+          "src1/modules/user/services/index.ts",
+          "src1/modules/user/types/index.ts",
+          "src1/modules/user/validation/index.ts",
+          "src1/modules/wallet/controller/index.ts",
+          "src1/modules/wallet/model/index.ts",
+          "src1/modules/wallet/repository/index.ts",
+          "src1/modules/wallet/routes/index.ts",
+          "src1/modules/wallet/services/index.ts",
+          "src1/modules/wallet/types/index.ts",
+          "src1/modules/wallet/validation/index.ts",
+          "src1/modules/wellnessPackages/model/index.ts",
+          "src1/modules/wellnessPackages/types/index.ts"
+        ],
+        "libraryFiles": {
+          "lib.decorators.d.ts": "8e7f8264d0fb4c5339605a15daadb037bf238c10b654bb3eee14208f860a32ea",
+          "lib.decorators.legacy.d.ts": "782dec38049b92d4e85c1585fbea5474a219c6984a35b004963b00beb1aab538",
+          "lib.dom.asynciterable.d.ts": "d7a3c8b952931daebdfc7a2897c53c0a1c73624593fa070e46bd537e64dcd20a",
+          "lib.dom.d.ts": "080941d9f9ff9307f7e27a83bcd888b7c8270716c39af943532438932ec1d0b9",
+          "lib.dom.iterable.d.ts": "2e80ee7a49e8ac312cc11b77f1475804bee36b3b2bc896bead8b6e1266befb43",
+          "lib.es2015.collection.d.ts": "dc2df20b1bcdc8c2d34af4926e2c3ab15ffe1160a63e58b7e09833f616efff44",
+          "lib.es2015.core.d.ts": "c57796738e7f83dbc4b8e65132f11a377649c00dd3eee333f672b8f0a6bea671",
+          "lib.es2015.d.ts": "45b7ab580deca34ae9729e97c13cfd999df04416a79116c3bfb483804f85ded4",
+          "lib.es2015.generator.d.ts": "515d0b7b9bea2e31ea4ec968e9edd2c39d3eebf4a2d5cbd04e88639819ae3b71",
+          "lib.es2015.iterable.d.ts": "0559b1f683ac7505ae451f9a96ce4c3c92bdc71411651ca6ddb0e88baaaad6a3",
+          "lib.es2015.promise.d.ts": "0dc1e7ceda9b8b9b455c3a2d67b0412feab00bd2f66656cd8850e8831b08b537",
+          "lib.es2015.proxy.d.ts": "ce691fb9e5c64efb9547083e4a34091bcbe5bdb41027e310ebba8f7d96a98671",
+          "lib.es2015.reflect.d.ts": "8d697a2a929a5fcb38b7a65594020fcef05ec1630804a33748829c5ff53640d0",
+          "lib.es2015.symbol.d.ts": "4ff2a353abf8a80ee399af572debb8faab2d33ad38c4b4474cff7f26e7653b8d",
+          "lib.es2015.symbol.wellknown.d.ts": "fb0f136d372979348d59b3f5020b4cdb81b5504192b1cacff5d1fbba29378aa1",
+          "lib.es2016.array.include.d.ts": "d15bea3d62cbbdb9797079416b8ac375ae99162a7fba5de2c6c505446486ac0a",
+          "lib.es2016.d.ts": "3facaf05f0c5fc569c5649dd359892c98a85557e3e0c847964caeb67076f4d75",
+          "lib.es2016.intl.d.ts": "68d18b664c9d32a7336a70235958b8997ebc1c3b8505f4f1ae2b7e7753b87618",
+          "lib.es2017.arraybuffer.d.ts": "eb3d66c8327153d8fa7dd03f9c58d351107fe824c79e9b56b462935176cdf12a",
+          "lib.es2017.d.ts": "e44bb8bbac7f10ecc786703fe0a6a4b952189f908707980ba8f3c8975a760962",
+          "lib.es2017.date.d.ts": "38f0219c9e23c915ef9790ab1d680440d95419ad264816fa15009a8851e79119",
+          "lib.es2017.intl.d.ts": "4de680d5bb41c17f7f68e0419412ca23c98d5749dcaaea1896172f06435891fc",
+          "lib.es2017.object.d.ts": "69ab18c3b76cd9b1be3d188eaf8bba06112ebbe2f47f6c322b5105a6fbc45a2e",
+          "lib.es2017.sharedmemory.d.ts": "a680117f487a4d2f30ea46f1b4b7f58bef1480456e18ba53ee85c2746eeca012",
+          "lib.es2017.string.d.ts": "2f11ff796926e0832f9ae148008138ad583bd181899ab7dd768a2666700b1893",
+          "lib.es2017.typedarrays.d.ts": "954296b30da6d508a104a3a0b5d96b76495c709785c1d11610908e63481ee667",
+          "lib.es2018.asyncgenerator.d.ts": "ac9538681b19688c8eae65811b329d3744af679e0bdfa5d842d0e32524c73e1c",
+          "lib.es2018.asynciterable.d.ts": "0a969edff4bd52585473d24995c5ef223f6652d6ef46193309b3921d65dd4376",
+          "lib.es2018.d.ts": "5e1c4c362065a6b95ff952c0eab010f04dcd2c3494e813b493ecfd4fcb9fc0d8",
+          "lib.es2018.intl.d.ts": "9e9fbd7030c440b33d021da145d3232984c8bb7916f277e8ffd3dc2e3eae2bdb",
+          "lib.es2018.promise.d.ts": "811ec78f7fefcabbda4bfa93b3eb67d9ae166ef95f9bff989d964061cbf81a0c",
+          "lib.es2018.regexp.d.ts": "717937616a17072082152a2ef351cb51f98802fb4b2fdabd32399843875974ca",
+          "lib.es2019.array.d.ts": "d7e7d9b7b50e5f22c915b525acc5a49a7a6584cf8f62d0569e557c5cfc4b2ac2",
+          "lib.es2019.d.ts": "68d73b4a11549f9c0b7d352d10e91e5dca8faa3322bfb77b661839c42b1ddec7",
+          "lib.es2019.intl.d.ts": "74f7fa2d027d5b33eb0471c8e82a6c87216223181ec31247c357a3e8e2fddc5b",
+          "lib.es2019.object.d.ts": "71c37f4c9543f31dfced6c7840e068c5a5aacb7b89111a4364b1d5276b852557",
+          "lib.es2019.string.d.ts": "576711e016cf4f1804676043e6a0a5414252560eb57de9faceee34d79798c850",
+          "lib.es2019.symbol.d.ts": "89c1b1281ba7b8a96efc676b11b264de7a8374c5ea1e6617f11880a13fc56dc6",
+          "lib.es2020.bigint.d.ts": "d6d7ae4d1f1f3772e2a3cde568ed08991a8ae34a080ff1151af28b7f798e22ca",
+          "lib.es2020.d.ts": "5efce4fc3c29ea84e8928f97adec086e3dc876365e0982cc8479a07954a3efd4",
+          "lib.es2020.date.d.ts": "063600664504610fe3e99b717a1223f8b1900087fab0b4cad1496a114744f8df",
+          "lib.es2020.full.d.ts": "1305d1e76ca44e30fb8b2b8075fa522b83f60c0bcf5d4326a9d2cf79b53724f8",
+          "lib.es2020.intl.d.ts": "639e512c0dfc3fad96a84caad71b8834d66329a1f28dc95e3946c9b58176c73a",
+          "lib.es2020.number.d.ts": "368af93f74c9c932edd84c58883e736c9e3d53cec1fe24c0b0ff451f529ceab1",
+          "lib.es2020.promise.d.ts": "934019d7e3c81950f9a8426d093458b65d5aff2c7c1511233c0fd5b941e608ab",
+          "lib.es2020.sharedmemory.d.ts": "52ada8e0b6e0482b728070b7639ee42e83a9b1c22d205992756fe020fd9f4a47",
+          "lib.es2020.string.d.ts": "3bdefe1bfd4d6dee0e26f928f93ccc128f1b64d5d501ff4a8cf3c6371200e5e6",
+          "lib.es2020.symbol.wellknown.d.ts": "59fb2c069260b4ba00b5643b907ef5d5341b167e7d1dbf58dfd895658bda2867",
+          "lib.es5.d.ts": "c430d44666289dae81f30fa7b2edebf186ecc91a2d4c71266ea6ae76388792e1",
+          "lib.scripthost.d.ts": "cd034f499c6cdca722b60c04b5b1b78e058487a7085a8e0d6fb50809947ee573",
+          "lib.webworker.importscripts.d.ts": "80e18897e5884b6723488d4f5652167e7bb5024f946743134ecc4aa4ee731f89"
+        }
+      },
+      "positive": {
+        "sourceId": "VIRTUAL_BROAD_LIBRARY_POSITIVE.ts",
+        "sourceSha256": "a87b8ce179592546ff13030df86086acbc248858e865ca6f7bc47d9e57aa9c6d",
+        "status": "COMPLETE",
+        "programFiles": [
+          "VIRTUAL_BROAD_LIBRARY_POSITIVE.ts",
+          "node_modules/typescript/lib/lib.decorators.d.ts",
+          "node_modules/typescript/lib/lib.decorators.legacy.d.ts",
+          "node_modules/typescript/lib/lib.dom.asynciterable.d.ts",
+          "node_modules/typescript/lib/lib.dom.d.ts",
+          "node_modules/typescript/lib/lib.dom.iterable.d.ts",
+          "node_modules/typescript/lib/lib.es2015.collection.d.ts",
+          "node_modules/typescript/lib/lib.es2015.core.d.ts",
+          "node_modules/typescript/lib/lib.es2015.d.ts",
+          "node_modules/typescript/lib/lib.es2015.generator.d.ts",
+          "node_modules/typescript/lib/lib.es2015.iterable.d.ts",
+          "node_modules/typescript/lib/lib.es2015.promise.d.ts",
+          "node_modules/typescript/lib/lib.es2015.proxy.d.ts",
+          "node_modules/typescript/lib/lib.es2015.reflect.d.ts",
+          "node_modules/typescript/lib/lib.es2015.symbol.d.ts",
+          "node_modules/typescript/lib/lib.es2015.symbol.wellknown.d.ts",
+          "node_modules/typescript/lib/lib.es2016.array.include.d.ts",
+          "node_modules/typescript/lib/lib.es2016.d.ts",
+          "node_modules/typescript/lib/lib.es2016.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2017.arraybuffer.d.ts",
+          "node_modules/typescript/lib/lib.es2017.d.ts",
+          "node_modules/typescript/lib/lib.es2017.date.d.ts",
+          "node_modules/typescript/lib/lib.es2017.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2017.object.d.ts",
+          "node_modules/typescript/lib/lib.es2017.sharedmemory.d.ts",
+          "node_modules/typescript/lib/lib.es2017.string.d.ts",
+          "node_modules/typescript/lib/lib.es2017.typedarrays.d.ts",
+          "node_modules/typescript/lib/lib.es2018.asyncgenerator.d.ts",
+          "node_modules/typescript/lib/lib.es2018.asynciterable.d.ts",
+          "node_modules/typescript/lib/lib.es2018.d.ts",
+          "node_modules/typescript/lib/lib.es2018.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2018.promise.d.ts",
+          "node_modules/typescript/lib/lib.es2018.regexp.d.ts",
+          "node_modules/typescript/lib/lib.es2019.array.d.ts",
+          "node_modules/typescript/lib/lib.es2019.d.ts",
+          "node_modules/typescript/lib/lib.es2019.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2019.object.d.ts",
+          "node_modules/typescript/lib/lib.es2019.string.d.ts",
+          "node_modules/typescript/lib/lib.es2019.symbol.d.ts",
+          "node_modules/typescript/lib/lib.es2020.bigint.d.ts",
+          "node_modules/typescript/lib/lib.es2020.d.ts",
+          "node_modules/typescript/lib/lib.es2020.date.d.ts",
+          "node_modules/typescript/lib/lib.es2020.full.d.ts",
+          "node_modules/typescript/lib/lib.es2020.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2020.number.d.ts",
+          "node_modules/typescript/lib/lib.es2020.promise.d.ts",
+          "node_modules/typescript/lib/lib.es2020.sharedmemory.d.ts",
+          "node_modules/typescript/lib/lib.es2020.string.d.ts",
+          "node_modules/typescript/lib/lib.es2020.symbol.wellknown.d.ts",
+          "node_modules/typescript/lib/lib.es5.d.ts",
+          "node_modules/typescript/lib/lib.scripthost.d.ts",
+          "node_modules/typescript/lib/lib.webworker.importscripts.d.ts"
+        ],
+        "libraryFiles": {
+          "lib.decorators.d.ts": "8e7f8264d0fb4c5339605a15daadb037bf238c10b654bb3eee14208f860a32ea",
+          "lib.decorators.legacy.d.ts": "782dec38049b92d4e85c1585fbea5474a219c6984a35b004963b00beb1aab538",
+          "lib.dom.asynciterable.d.ts": "d7a3c8b952931daebdfc7a2897c53c0a1c73624593fa070e46bd537e64dcd20a",
+          "lib.dom.d.ts": "080941d9f9ff9307f7e27a83bcd888b7c8270716c39af943532438932ec1d0b9",
+          "lib.dom.iterable.d.ts": "2e80ee7a49e8ac312cc11b77f1475804bee36b3b2bc896bead8b6e1266befb43",
+          "lib.es2015.collection.d.ts": "dc2df20b1bcdc8c2d34af4926e2c3ab15ffe1160a63e58b7e09833f616efff44",
+          "lib.es2015.core.d.ts": "c57796738e7f83dbc4b8e65132f11a377649c00dd3eee333f672b8f0a6bea671",
+          "lib.es2015.d.ts": "45b7ab580deca34ae9729e97c13cfd999df04416a79116c3bfb483804f85ded4",
+          "lib.es2015.generator.d.ts": "515d0b7b9bea2e31ea4ec968e9edd2c39d3eebf4a2d5cbd04e88639819ae3b71",
+          "lib.es2015.iterable.d.ts": "0559b1f683ac7505ae451f9a96ce4c3c92bdc71411651ca6ddb0e88baaaad6a3",
+          "lib.es2015.promise.d.ts": "0dc1e7ceda9b8b9b455c3a2d67b0412feab00bd2f66656cd8850e8831b08b537",
+          "lib.es2015.proxy.d.ts": "ce691fb9e5c64efb9547083e4a34091bcbe5bdb41027e310ebba8f7d96a98671",
+          "lib.es2015.reflect.d.ts": "8d697a2a929a5fcb38b7a65594020fcef05ec1630804a33748829c5ff53640d0",
+          "lib.es2015.symbol.d.ts": "4ff2a353abf8a80ee399af572debb8faab2d33ad38c4b4474cff7f26e7653b8d",
+          "lib.es2015.symbol.wellknown.d.ts": "fb0f136d372979348d59b3f5020b4cdb81b5504192b1cacff5d1fbba29378aa1",
+          "lib.es2016.array.include.d.ts": "d15bea3d62cbbdb9797079416b8ac375ae99162a7fba5de2c6c505446486ac0a",
+          "lib.es2016.d.ts": "3facaf05f0c5fc569c5649dd359892c98a85557e3e0c847964caeb67076f4d75",
+          "lib.es2016.intl.d.ts": "68d18b664c9d32a7336a70235958b8997ebc1c3b8505f4f1ae2b7e7753b87618",
+          "lib.es2017.arraybuffer.d.ts": "eb3d66c8327153d8fa7dd03f9c58d351107fe824c79e9b56b462935176cdf12a",
+          "lib.es2017.d.ts": "e44bb8bbac7f10ecc786703fe0a6a4b952189f908707980ba8f3c8975a760962",
+          "lib.es2017.date.d.ts": "38f0219c9e23c915ef9790ab1d680440d95419ad264816fa15009a8851e79119",
+          "lib.es2017.intl.d.ts": "4de680d5bb41c17f7f68e0419412ca23c98d5749dcaaea1896172f06435891fc",
+          "lib.es2017.object.d.ts": "69ab18c3b76cd9b1be3d188eaf8bba06112ebbe2f47f6c322b5105a6fbc45a2e",
+          "lib.es2017.sharedmemory.d.ts": "a680117f487a4d2f30ea46f1b4b7f58bef1480456e18ba53ee85c2746eeca012",
+          "lib.es2017.string.d.ts": "2f11ff796926e0832f9ae148008138ad583bd181899ab7dd768a2666700b1893",
+          "lib.es2017.typedarrays.d.ts": "954296b30da6d508a104a3a0b5d96b76495c709785c1d11610908e63481ee667",
+          "lib.es2018.asyncgenerator.d.ts": "ac9538681b19688c8eae65811b329d3744af679e0bdfa5d842d0e32524c73e1c",
+          "lib.es2018.asynciterable.d.ts": "0a969edff4bd52585473d24995c5ef223f6652d6ef46193309b3921d65dd4376",
+          "lib.es2018.d.ts": "5e1c4c362065a6b95ff952c0eab010f04dcd2c3494e813b493ecfd4fcb9fc0d8",
+          "lib.es2018.intl.d.ts": "9e9fbd7030c440b33d021da145d3232984c8bb7916f277e8ffd3dc2e3eae2bdb",
+          "lib.es2018.promise.d.ts": "811ec78f7fefcabbda4bfa93b3eb67d9ae166ef95f9bff989d964061cbf81a0c",
+          "lib.es2018.regexp.d.ts": "717937616a17072082152a2ef351cb51f98802fb4b2fdabd32399843875974ca",
+          "lib.es2019.array.d.ts": "d7e7d9b7b50e5f22c915b525acc5a49a7a6584cf8f62d0569e557c5cfc4b2ac2",
+          "lib.es2019.d.ts": "68d73b4a11549f9c0b7d352d10e91e5dca8faa3322bfb77b661839c42b1ddec7",
+          "lib.es2019.intl.d.ts": "74f7fa2d027d5b33eb0471c8e82a6c87216223181ec31247c357a3e8e2fddc5b",
+          "lib.es2019.object.d.ts": "71c37f4c9543f31dfced6c7840e068c5a5aacb7b89111a4364b1d5276b852557",
+          "lib.es2019.string.d.ts": "576711e016cf4f1804676043e6a0a5414252560eb57de9faceee34d79798c850",
+          "lib.es2019.symbol.d.ts": "89c1b1281ba7b8a96efc676b11b264de7a8374c5ea1e6617f11880a13fc56dc6",
+          "lib.es2020.bigint.d.ts": "d6d7ae4d1f1f3772e2a3cde568ed08991a8ae34a080ff1151af28b7f798e22ca",
+          "lib.es2020.d.ts": "5efce4fc3c29ea84e8928f97adec086e3dc876365e0982cc8479a07954a3efd4",
+          "lib.es2020.date.d.ts": "063600664504610fe3e99b717a1223f8b1900087fab0b4cad1496a114744f8df",
+          "lib.es2020.full.d.ts": "1305d1e76ca44e30fb8b2b8075fa522b83f60c0bcf5d4326a9d2cf79b53724f8",
+          "lib.es2020.intl.d.ts": "639e512c0dfc3fad96a84caad71b8834d66329a1f28dc95e3946c9b58176c73a",
+          "lib.es2020.number.d.ts": "368af93f74c9c932edd84c58883e736c9e3d53cec1fe24c0b0ff451f529ceab1",
+          "lib.es2020.promise.d.ts": "934019d7e3c81950f9a8426d093458b65d5aff2c7c1511233c0fd5b941e608ab",
+          "lib.es2020.sharedmemory.d.ts": "52ada8e0b6e0482b728070b7639ee42e83a9b1c22d205992756fe020fd9f4a47",
+          "lib.es2020.string.d.ts": "3bdefe1bfd4d6dee0e26f928f93ccc128f1b64d5d501ff4a8cf3c6371200e5e6",
+          "lib.es2020.symbol.wellknown.d.ts": "59fb2c069260b4ba00b5643b907ef5d5341b167e7d1dbf58dfd895658bda2867",
+          "lib.es5.d.ts": "c430d44666289dae81f30fa7b2edebf186ecc91a2d4c71266ea6ae76388792e1",
+          "lib.scripthost.d.ts": "cd034f499c6cdca722b60c04b5b1b78e058487a7085a8e0d6fb50809947ee573",
+          "lib.webworker.importscripts.d.ts": "80e18897e5884b6723488d4f5652167e7bb5024f946743134ecc4aa4ee731f89"
+        },
+        "diagnostics": []
+      },
+      "negative": {
+        "sourceId": "VIRTUAL_BROAD_LIBRARY_NEGATIVE.ts",
+        "sourceSha256": "b9c73432db9319697fc34612cbc2188123e6f29fb4b2716a9b388499bdc31bce",
+        "status": "COMPLETE",
+        "programFiles": [
+          "VIRTUAL_BROAD_LIBRARY_NEGATIVE.ts",
+          "node_modules/typescript/lib/lib.decorators.d.ts",
+          "node_modules/typescript/lib/lib.decorators.legacy.d.ts",
+          "node_modules/typescript/lib/lib.dom.asynciterable.d.ts",
+          "node_modules/typescript/lib/lib.dom.d.ts",
+          "node_modules/typescript/lib/lib.dom.iterable.d.ts",
+          "node_modules/typescript/lib/lib.es2015.collection.d.ts",
+          "node_modules/typescript/lib/lib.es2015.core.d.ts",
+          "node_modules/typescript/lib/lib.es2015.d.ts",
+          "node_modules/typescript/lib/lib.es2015.generator.d.ts",
+          "node_modules/typescript/lib/lib.es2015.iterable.d.ts",
+          "node_modules/typescript/lib/lib.es2015.promise.d.ts",
+          "node_modules/typescript/lib/lib.es2015.proxy.d.ts",
+          "node_modules/typescript/lib/lib.es2015.reflect.d.ts",
+          "node_modules/typescript/lib/lib.es2015.symbol.d.ts",
+          "node_modules/typescript/lib/lib.es2015.symbol.wellknown.d.ts",
+          "node_modules/typescript/lib/lib.es2016.array.include.d.ts",
+          "node_modules/typescript/lib/lib.es2016.d.ts",
+          "node_modules/typescript/lib/lib.es2016.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2017.arraybuffer.d.ts",
+          "node_modules/typescript/lib/lib.es2017.d.ts",
+          "node_modules/typescript/lib/lib.es2017.date.d.ts",
+          "node_modules/typescript/lib/lib.es2017.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2017.object.d.ts",
+          "node_modules/typescript/lib/lib.es2017.sharedmemory.d.ts",
+          "node_modules/typescript/lib/lib.es2017.string.d.ts",
+          "node_modules/typescript/lib/lib.es2017.typedarrays.d.ts",
+          "node_modules/typescript/lib/lib.es2018.asyncgenerator.d.ts",
+          "node_modules/typescript/lib/lib.es2018.asynciterable.d.ts",
+          "node_modules/typescript/lib/lib.es2018.d.ts",
+          "node_modules/typescript/lib/lib.es2018.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2018.promise.d.ts",
+          "node_modules/typescript/lib/lib.es2018.regexp.d.ts",
+          "node_modules/typescript/lib/lib.es2019.array.d.ts",
+          "node_modules/typescript/lib/lib.es2019.d.ts",
+          "node_modules/typescript/lib/lib.es2019.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2019.object.d.ts",
+          "node_modules/typescript/lib/lib.es2019.string.d.ts",
+          "node_modules/typescript/lib/lib.es2019.symbol.d.ts",
+          "node_modules/typescript/lib/lib.es2020.bigint.d.ts",
+          "node_modules/typescript/lib/lib.es2020.d.ts",
+          "node_modules/typescript/lib/lib.es2020.date.d.ts",
+          "node_modules/typescript/lib/lib.es2020.full.d.ts",
+          "node_modules/typescript/lib/lib.es2020.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2020.number.d.ts",
+          "node_modules/typescript/lib/lib.es2020.promise.d.ts",
+          "node_modules/typescript/lib/lib.es2020.sharedmemory.d.ts",
+          "node_modules/typescript/lib/lib.es2020.string.d.ts",
+          "node_modules/typescript/lib/lib.es2020.symbol.wellknown.d.ts",
+          "node_modules/typescript/lib/lib.es5.d.ts",
+          "node_modules/typescript/lib/lib.scripthost.d.ts",
+          "node_modules/typescript/lib/lib.webworker.importscripts.d.ts"
+        ],
+        "libraryFiles": {
+          "lib.decorators.d.ts": "8e7f8264d0fb4c5339605a15daadb037bf238c10b654bb3eee14208f860a32ea",
+          "lib.decorators.legacy.d.ts": "782dec38049b92d4e85c1585fbea5474a219c6984a35b004963b00beb1aab538",
+          "lib.dom.asynciterable.d.ts": "d7a3c8b952931daebdfc7a2897c53c0a1c73624593fa070e46bd537e64dcd20a",
+          "lib.dom.d.ts": "080941d9f9ff9307f7e27a83bcd888b7c8270716c39af943532438932ec1d0b9",
+          "lib.dom.iterable.d.ts": "2e80ee7a49e8ac312cc11b77f1475804bee36b3b2bc896bead8b6e1266befb43",
+          "lib.es2015.collection.d.ts": "dc2df20b1bcdc8c2d34af4926e2c3ab15ffe1160a63e58b7e09833f616efff44",
+          "lib.es2015.core.d.ts": "c57796738e7f83dbc4b8e65132f11a377649c00dd3eee333f672b8f0a6bea671",
+          "lib.es2015.d.ts": "45b7ab580deca34ae9729e97c13cfd999df04416a79116c3bfb483804f85ded4",
+          "lib.es2015.generator.d.ts": "515d0b7b9bea2e31ea4ec968e9edd2c39d3eebf4a2d5cbd04e88639819ae3b71",
+          "lib.es2015.iterable.d.ts": "0559b1f683ac7505ae451f9a96ce4c3c92bdc71411651ca6ddb0e88baaaad6a3",
+          "lib.es2015.promise.d.ts": "0dc1e7ceda9b8b9b455c3a2d67b0412feab00bd2f66656cd8850e8831b08b537",
+          "lib.es2015.proxy.d.ts": "ce691fb9e5c64efb9547083e4a34091bcbe5bdb41027e310ebba8f7d96a98671",
+          "lib.es2015.reflect.d.ts": "8d697a2a929a5fcb38b7a65594020fcef05ec1630804a33748829c5ff53640d0",
+          "lib.es2015.symbol.d.ts": "4ff2a353abf8a80ee399af572debb8faab2d33ad38c4b4474cff7f26e7653b8d",
+          "lib.es2015.symbol.wellknown.d.ts": "fb0f136d372979348d59b3f5020b4cdb81b5504192b1cacff5d1fbba29378aa1",
+          "lib.es2016.array.include.d.ts": "d15bea3d62cbbdb9797079416b8ac375ae99162a7fba5de2c6c505446486ac0a",
+          "lib.es2016.d.ts": "3facaf05f0c5fc569c5649dd359892c98a85557e3e0c847964caeb67076f4d75",
+          "lib.es2016.intl.d.ts": "68d18b664c9d32a7336a70235958b8997ebc1c3b8505f4f1ae2b7e7753b87618",
+          "lib.es2017.arraybuffer.d.ts": "eb3d66c8327153d8fa7dd03f9c58d351107fe824c79e9b56b462935176cdf12a",
+          "lib.es2017.d.ts": "e44bb8bbac7f10ecc786703fe0a6a4b952189f908707980ba8f3c8975a760962",
+          "lib.es2017.date.d.ts": "38f0219c9e23c915ef9790ab1d680440d95419ad264816fa15009a8851e79119",
+          "lib.es2017.intl.d.ts": "4de680d5bb41c17f7f68e0419412ca23c98d5749dcaaea1896172f06435891fc",
+          "lib.es2017.object.d.ts": "69ab18c3b76cd9b1be3d188eaf8bba06112ebbe2f47f6c322b5105a6fbc45a2e",
+          "lib.es2017.sharedmemory.d.ts": "a680117f487a4d2f30ea46f1b4b7f58bef1480456e18ba53ee85c2746eeca012",
+          "lib.es2017.string.d.ts": "2f11ff796926e0832f9ae148008138ad583bd181899ab7dd768a2666700b1893",
+          "lib.es2017.typedarrays.d.ts": "954296b30da6d508a104a3a0b5d96b76495c709785c1d11610908e63481ee667",
+          "lib.es2018.asyncgenerator.d.ts": "ac9538681b19688c8eae65811b329d3744af679e0bdfa5d842d0e32524c73e1c",
+          "lib.es2018.asynciterable.d.ts": "0a969edff4bd52585473d24995c5ef223f6652d6ef46193309b3921d65dd4376",
+          "lib.es2018.d.ts": "5e1c4c362065a6b95ff952c0eab010f04dcd2c3494e813b493ecfd4fcb9fc0d8",
+          "lib.es2018.intl.d.ts": "9e9fbd7030c440b33d021da145d3232984c8bb7916f277e8ffd3dc2e3eae2bdb",
+          "lib.es2018.promise.d.ts": "811ec78f7fefcabbda4bfa93b3eb67d9ae166ef95f9bff989d964061cbf81a0c",
+          "lib.es2018.regexp.d.ts": "717937616a17072082152a2ef351cb51f98802fb4b2fdabd32399843875974ca",
+          "lib.es2019.array.d.ts": "d7e7d9b7b50e5f22c915b525acc5a49a7a6584cf8f62d0569e557c5cfc4b2ac2",
+          "lib.es2019.d.ts": "68d73b4a11549f9c0b7d352d10e91e5dca8faa3322bfb77b661839c42b1ddec7",
+          "lib.es2019.intl.d.ts": "74f7fa2d027d5b33eb0471c8e82a6c87216223181ec31247c357a3e8e2fddc5b",
+          "lib.es2019.object.d.ts": "71c37f4c9543f31dfced6c7840e068c5a5aacb7b89111a4364b1d5276b852557",
+          "lib.es2019.string.d.ts": "576711e016cf4f1804676043e6a0a5414252560eb57de9faceee34d79798c850",
+          "lib.es2019.symbol.d.ts": "89c1b1281ba7b8a96efc676b11b264de7a8374c5ea1e6617f11880a13fc56dc6",
+          "lib.es2020.bigint.d.ts": "d6d7ae4d1f1f3772e2a3cde568ed08991a8ae34a080ff1151af28b7f798e22ca",
+          "lib.es2020.d.ts": "5efce4fc3c29ea84e8928f97adec086e3dc876365e0982cc8479a07954a3efd4",
+          "lib.es2020.date.d.ts": "063600664504610fe3e99b717a1223f8b1900087fab0b4cad1496a114744f8df",
+          "lib.es2020.full.d.ts": "1305d1e76ca44e30fb8b2b8075fa522b83f60c0bcf5d4326a9d2cf79b53724f8",
+          "lib.es2020.intl.d.ts": "639e512c0dfc3fad96a84caad71b8834d66329a1f28dc95e3946c9b58176c73a",
+          "lib.es2020.number.d.ts": "368af93f74c9c932edd84c58883e736c9e3d53cec1fe24c0b0ff451f529ceab1",
+          "lib.es2020.promise.d.ts": "934019d7e3c81950f9a8426d093458b65d5aff2c7c1511233c0fd5b941e608ab",
+          "lib.es2020.sharedmemory.d.ts": "52ada8e0b6e0482b728070b7639ee42e83a9b1c22d205992756fe020fd9f4a47",
+          "lib.es2020.string.d.ts": "3bdefe1bfd4d6dee0e26f928f93ccc128f1b64d5d501ff4a8cf3c6371200e5e6",
+          "lib.es2020.symbol.wellknown.d.ts": "59fb2c069260b4ba00b5643b907ef5d5341b167e7d1dbf58dfd895658bda2867",
+          "lib.es5.d.ts": "c430d44666289dae81f30fa7b2edebf186ecc91a2d4c71266ea6ae76388792e1",
+          "lib.scripthost.d.ts": "cd034f499c6cdca722b60c04b5b1b78e058487a7085a8e0d6fb50809947ee573",
+          "lib.webworker.importscripts.d.ts": "80e18897e5884b6723488d4f5652167e7bb5024f946743134ecc4aa4ee731f89"
+        },
+        "diagnostics": [
+          {
+            "sourceId": "VIRTUAL_BROAD_LIBRARY_NEGATIVE.ts",
+            "code": 2322,
+            "category": 1,
+            "start": 13,
+            "length": 12,
+            "message": "Type 'string' is not assignable to type 'number'."
+          }
+        ]
+      },
+      "oldHostControl": {
+        "sourceId": "VIRTUAL_BROAD_LIBRARY_POSITIVE.ts",
+        "sourceSha256": "a87b8ce179592546ff13030df86086acbc248858e865ca6f7bc47d9e57aa9c6d",
+        "status": "COMPLETE",
+        "programFiles": [
+          "VIRTUAL_BROAD_LIBRARY_POSITIVE.ts",
+          "node_modules/typescript/lib/lib.es2020.full.d.ts"
+        ],
+        "libraryFiles": {
+          "lib.es2020.full.d.ts": "1305d1e76ca44e30fb8b2b8075fa522b83f60c0bcf5d4326a9d2cf79b53724f8"
+        },
+        "diagnostics": [
+          {
+            "sourceId": null,
+            "code": 2318,
+            "category": 1,
+            "start": null,
+            "length": null,
+            "message": "Cannot find global type 'Array'."
+          },
+          {
+            "sourceId": null,
+            "code": 2318,
+            "category": 1,
+            "start": null,
+            "length": null,
+            "message": "Cannot find global type 'Boolean'."
+          },
+          {
+            "sourceId": null,
+            "code": 2318,
+            "category": 1,
+            "start": null,
+            "length": null,
+            "message": "Cannot find global type 'Function'."
+          },
+          {
+            "sourceId": null,
+            "code": 2318,
+            "category": 1,
+            "start": null,
+            "length": null,
+            "message": "Cannot find global type 'IArguments'."
+          },
+          {
+            "sourceId": null,
+            "code": 2318,
+            "category": 1,
+            "start": null,
+            "length": null,
+            "message": "Cannot find global type 'Number'."
+          },
+          {
+            "sourceId": null,
+            "code": 2318,
+            "category": 1,
+            "start": null,
+            "length": null,
+            "message": "Cannot find global type 'Object'."
+          },
+          {
+            "sourceId": null,
+            "code": 2318,
+            "category": 1,
+            "start": null,
+            "length": null,
+            "message": "Cannot find global type 'RegExp'."
+          },
+          {
+            "sourceId": null,
+            "code": 2318,
+            "category": 1,
+            "start": null,
+            "length": null,
+            "message": "Cannot find global type 'String'."
+          },
+          {
+            "sourceId": "VIRTUAL_BROAD_LIBRARY_POSITIVE.ts",
+            "code": 2583,
+            "category": 1,
+            "start": 25,
+            "length": 3,
+            "message": "PUBLIC_COMPILER_DIAGNOSTIC"
+          },
+          {
+            "sourceId": "VIRTUAL_BROAD_LIBRARY_POSITIVE.ts",
+            "code": 2583,
+            "category": 1,
+            "start": 43,
+            "length": 3,
+            "message": "PUBLIC_COMPILER_DIAGNOSTIC"
+          },
+          {
+            "sourceId": "VIRTUAL_BROAD_LIBRARY_POSITIVE.ts",
+            "code": 2583,
+            "category": 1,
+            "start": 90,
+            "length": 7,
+            "message": "PUBLIC_COMPILER_DIAGNOSTIC"
+          },
+          {
+            "sourceId": "VIRTUAL_BROAD_LIBRARY_POSITIVE.ts",
+            "code": 2583,
+            "category": 1,
+            "start": 108,
+            "length": 7,
+            "message": "PUBLIC_COMPILER_DIAGNOSTIC"
+          },
+          {
+            "sourceId": "VIRTUAL_BROAD_LIBRARY_POSITIVE.ts",
+            "code": 2304,
+            "category": 1,
+            "start": 166,
+            "length": 5,
+            "message": "PUBLIC_COMPILER_DIAGNOSTIC"
+          },
+          {
+            "sourceId": "VIRTUAL_BROAD_LIBRARY_POSITIVE.ts",
+            "code": 2304,
+            "category": 1,
+            "start": 219,
+            "length": 6,
+            "message": "PUBLIC_COMPILER_DIAGNOSTIC"
+          }
+        ]
+      },
+      "restoredPositive": {
+        "sourceId": "VIRTUAL_BROAD_LIBRARY_POSITIVE.ts",
+        "sourceSha256": "a87b8ce179592546ff13030df86086acbc248858e865ca6f7bc47d9e57aa9c6d",
+        "status": "COMPLETE",
+        "programFiles": [
+          "VIRTUAL_BROAD_LIBRARY_POSITIVE.ts",
+          "node_modules/typescript/lib/lib.decorators.d.ts",
+          "node_modules/typescript/lib/lib.decorators.legacy.d.ts",
+          "node_modules/typescript/lib/lib.dom.asynciterable.d.ts",
+          "node_modules/typescript/lib/lib.dom.d.ts",
+          "node_modules/typescript/lib/lib.dom.iterable.d.ts",
+          "node_modules/typescript/lib/lib.es2015.collection.d.ts",
+          "node_modules/typescript/lib/lib.es2015.core.d.ts",
+          "node_modules/typescript/lib/lib.es2015.d.ts",
+          "node_modules/typescript/lib/lib.es2015.generator.d.ts",
+          "node_modules/typescript/lib/lib.es2015.iterable.d.ts",
+          "node_modules/typescript/lib/lib.es2015.promise.d.ts",
+          "node_modules/typescript/lib/lib.es2015.proxy.d.ts",
+          "node_modules/typescript/lib/lib.es2015.reflect.d.ts",
+          "node_modules/typescript/lib/lib.es2015.symbol.d.ts",
+          "node_modules/typescript/lib/lib.es2015.symbol.wellknown.d.ts",
+          "node_modules/typescript/lib/lib.es2016.array.include.d.ts",
+          "node_modules/typescript/lib/lib.es2016.d.ts",
+          "node_modules/typescript/lib/lib.es2016.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2017.arraybuffer.d.ts",
+          "node_modules/typescript/lib/lib.es2017.d.ts",
+          "node_modules/typescript/lib/lib.es2017.date.d.ts",
+          "node_modules/typescript/lib/lib.es2017.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2017.object.d.ts",
+          "node_modules/typescript/lib/lib.es2017.sharedmemory.d.ts",
+          "node_modules/typescript/lib/lib.es2017.string.d.ts",
+          "node_modules/typescript/lib/lib.es2017.typedarrays.d.ts",
+          "node_modules/typescript/lib/lib.es2018.asyncgenerator.d.ts",
+          "node_modules/typescript/lib/lib.es2018.asynciterable.d.ts",
+          "node_modules/typescript/lib/lib.es2018.d.ts",
+          "node_modules/typescript/lib/lib.es2018.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2018.promise.d.ts",
+          "node_modules/typescript/lib/lib.es2018.regexp.d.ts",
+          "node_modules/typescript/lib/lib.es2019.array.d.ts",
+          "node_modules/typescript/lib/lib.es2019.d.ts",
+          "node_modules/typescript/lib/lib.es2019.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2019.object.d.ts",
+          "node_modules/typescript/lib/lib.es2019.string.d.ts",
+          "node_modules/typescript/lib/lib.es2019.symbol.d.ts",
+          "node_modules/typescript/lib/lib.es2020.bigint.d.ts",
+          "node_modules/typescript/lib/lib.es2020.d.ts",
+          "node_modules/typescript/lib/lib.es2020.date.d.ts",
+          "node_modules/typescript/lib/lib.es2020.full.d.ts",
+          "node_modules/typescript/lib/lib.es2020.intl.d.ts",
+          "node_modules/typescript/lib/lib.es2020.number.d.ts",
+          "node_modules/typescript/lib/lib.es2020.promise.d.ts",
+          "node_modules/typescript/lib/lib.es2020.sharedmemory.d.ts",
+          "node_modules/typescript/lib/lib.es2020.string.d.ts",
+          "node_modules/typescript/lib/lib.es2020.symbol.wellknown.d.ts",
+          "node_modules/typescript/lib/lib.es5.d.ts",
+          "node_modules/typescript/lib/lib.scripthost.d.ts",
+          "node_modules/typescript/lib/lib.webworker.importscripts.d.ts"
+        ],
+        "libraryFiles": {
+          "lib.decorators.d.ts": "8e7f8264d0fb4c5339605a15daadb037bf238c10b654bb3eee14208f860a32ea",
+          "lib.decorators.legacy.d.ts": "782dec38049b92d4e85c1585fbea5474a219c6984a35b004963b00beb1aab538",
+          "lib.dom.asynciterable.d.ts": "d7a3c8b952931daebdfc7a2897c53c0a1c73624593fa070e46bd537e64dcd20a",
+          "lib.dom.d.ts": "080941d9f9ff9307f7e27a83bcd888b7c8270716c39af943532438932ec1d0b9",
+          "lib.dom.iterable.d.ts": "2e80ee7a49e8ac312cc11b77f1475804bee36b3b2bc896bead8b6e1266befb43",
+          "lib.es2015.collection.d.ts": "dc2df20b1bcdc8c2d34af4926e2c3ab15ffe1160a63e58b7e09833f616efff44",
+          "lib.es2015.core.d.ts": "c57796738e7f83dbc4b8e65132f11a377649c00dd3eee333f672b8f0a6bea671",
+          "lib.es2015.d.ts": "45b7ab580deca34ae9729e97c13cfd999df04416a79116c3bfb483804f85ded4",
+          "lib.es2015.generator.d.ts": "515d0b7b9bea2e31ea4ec968e9edd2c39d3eebf4a2d5cbd04e88639819ae3b71",
+          "lib.es2015.iterable.d.ts": "0559b1f683ac7505ae451f9a96ce4c3c92bdc71411651ca6ddb0e88baaaad6a3",
+          "lib.es2015.promise.d.ts": "0dc1e7ceda9b8b9b455c3a2d67b0412feab00bd2f66656cd8850e8831b08b537",
+          "lib.es2015.proxy.d.ts": "ce691fb9e5c64efb9547083e4a34091bcbe5bdb41027e310ebba8f7d96a98671",
+          "lib.es2015.reflect.d.ts": "8d697a2a929a5fcb38b7a65594020fcef05ec1630804a33748829c5ff53640d0",
+          "lib.es2015.symbol.d.ts": "4ff2a353abf8a80ee399af572debb8faab2d33ad38c4b4474cff7f26e7653b8d",
+          "lib.es2015.symbol.wellknown.d.ts": "fb0f136d372979348d59b3f5020b4cdb81b5504192b1cacff5d1fbba29378aa1",
+          "lib.es2016.array.include.d.ts": "d15bea3d62cbbdb9797079416b8ac375ae99162a7fba5de2c6c505446486ac0a",
+          "lib.es2016.d.ts": "3facaf05f0c5fc569c5649dd359892c98a85557e3e0c847964caeb67076f4d75",
+          "lib.es2016.intl.d.ts": "68d18b664c9d32a7336a70235958b8997ebc1c3b8505f4f1ae2b7e7753b87618",
+          "lib.es2017.arraybuffer.d.ts": "eb3d66c8327153d8fa7dd03f9c58d351107fe824c79e9b56b462935176cdf12a",
+          "lib.es2017.d.ts": "e44bb8bbac7f10ecc786703fe0a6a4b952189f908707980ba8f3c8975a760962",
+          "lib.es2017.date.d.ts": "38f0219c9e23c915ef9790ab1d680440d95419ad264816fa15009a8851e79119",
+          "lib.es2017.intl.d.ts": "4de680d5bb41c17f7f68e0419412ca23c98d5749dcaaea1896172f06435891fc",
+          "lib.es2017.object.d.ts": "69ab18c3b76cd9b1be3d188eaf8bba06112ebbe2f47f6c322b5105a6fbc45a2e",
+          "lib.es2017.sharedmemory.d.ts": "a680117f487a4d2f30ea46f1b4b7f58bef1480456e18ba53ee85c2746eeca012",
+          "lib.es2017.string.d.ts": "2f11ff796926e0832f9ae148008138ad583bd181899ab7dd768a2666700b1893",
+          "lib.es2017.typedarrays.d.ts": "954296b30da6d508a104a3a0b5d96b76495c709785c1d11610908e63481ee667",
+          "lib.es2018.asyncgenerator.d.ts": "ac9538681b19688c8eae65811b329d3744af679e0bdfa5d842d0e32524c73e1c",
+          "lib.es2018.asynciterable.d.ts": "0a969edff4bd52585473d24995c5ef223f6652d6ef46193309b3921d65dd4376",
+          "lib.es2018.d.ts": "5e1c4c362065a6b95ff952c0eab010f04dcd2c3494e813b493ecfd4fcb9fc0d8",
+          "lib.es2018.intl.d.ts": "9e9fbd7030c440b33d021da145d3232984c8bb7916f277e8ffd3dc2e3eae2bdb",
+          "lib.es2018.promise.d.ts": "811ec78f7fefcabbda4bfa93b3eb67d9ae166ef95f9bff989d964061cbf81a0c",
+          "lib.es2018.regexp.d.ts": "717937616a17072082152a2ef351cb51f98802fb4b2fdabd32399843875974ca",
+          "lib.es2019.array.d.ts": "d7e7d9b7b50e5f22c915b525acc5a49a7a6584cf8f62d0569e557c5cfc4b2ac2",
+          "lib.es2019.d.ts": "68d73b4a11549f9c0b7d352d10e91e5dca8faa3322bfb77b661839c42b1ddec7",
+          "lib.es2019.intl.d.ts": "74f7fa2d027d5b33eb0471c8e82a6c87216223181ec31247c357a3e8e2fddc5b",
+          "lib.es2019.object.d.ts": "71c37f4c9543f31dfced6c7840e068c5a5aacb7b89111a4364b1d5276b852557",
+          "lib.es2019.string.d.ts": "576711e016cf4f1804676043e6a0a5414252560eb57de9faceee34d79798c850",
+          "lib.es2019.symbol.d.ts": "89c1b1281ba7b8a96efc676b11b264de7a8374c5ea1e6617f11880a13fc56dc6",
+          "lib.es2020.bigint.d.ts": "d6d7ae4d1f1f3772e2a3cde568ed08991a8ae34a080ff1151af28b7f798e22ca",
+          "lib.es2020.d.ts": "5efce4fc3c29ea84e8928f97adec086e3dc876365e0982cc8479a07954a3efd4",
+          "lib.es2020.date.d.ts": "063600664504610fe3e99b717a1223f8b1900087fab0b4cad1496a114744f8df",
+          "lib.es2020.full.d.ts": "1305d1e76ca44e30fb8b2b8075fa522b83f60c0bcf5d4326a9d2cf79b53724f8",
+          "lib.es2020.intl.d.ts": "639e512c0dfc3fad96a84caad71b8834d66329a1f28dc95e3946c9b58176c73a",
+          "lib.es2020.number.d.ts": "368af93f74c9c932edd84c58883e736c9e3d53cec1fe24c0b0ff451f529ceab1",
+          "lib.es2020.promise.d.ts": "934019d7e3c81950f9a8426d093458b65d5aff2c7c1511233c0fd5b941e608ab",
+          "lib.es2020.sharedmemory.d.ts": "52ada8e0b6e0482b728070b7639ee42e83a9b1c22d205992756fe020fd9f4a47",
+          "lib.es2020.string.d.ts": "3bdefe1bfd4d6dee0e26f928f93ccc128f1b64d5d501ff4a8cf3c6371200e5e6",
+          "lib.es2020.symbol.wellknown.d.ts": "59fb2c069260b4ba00b5643b907ef5d5341b167e7d1dbf58dfd895658bda2867",
+          "lib.es5.d.ts": "c430d44666289dae81f30fa7b2edebf186ecc91a2d4c71266ea6ae76388792e1",
+          "lib.scripthost.d.ts": "cd034f499c6cdca722b60c04b5b1b78e058487a7085a8e0d6fb50809947ee573",
+          "lib.webworker.importscripts.d.ts": "80e18897e5884b6723488d4f5652167e7bb5024f946743134ecc4aa4ee731f89"
+        },
+        "diagnostics": []
+      }
+    },
+    "specialistProfile": {
+      "schema": "SD-SPECIALIST-PROFILE-COMPILE-1",
+      "sectionSha256": "887792c1e2851fe3dfd37d93b3a1870da3adaed7fe41a4fd5e50bb62ea5c7212",
+      "source": "src1/modules/specialistPortal/services/index.ts",
+      "sourceSha256": "631a2bc6e92e522db35bad35eacd9f7d46aa8e4dcdb508acc16dc44891fef27c",
+      "staticAudit": [
+        {
+          "source": "src1/modules/bookings/repository/index.ts",
+          "sourceSha256": "d54ebba522cd290589296918eb2dcb4f7609e42d836ef3f23dfb89114b375713",
+          "compiled": "compiled/modules/bookings/repository/index.js",
+          "compiledSha256": "8ab6799c778d49f9997d347dabe72561c253ea2a3f89fae4270406644de2dd0b",
+          "runtimeRoot": false
+        },
+        {
+          "source": "src1/modules/bookings/model/index.ts",
+          "sourceSha256": "219f8115e5eec4bebd7205c763638e8755bde57122866430a1b3bcd0f69ead72",
+          "compiled": "compiled/modules/bookings/model/index.js",
+          "compiledSha256": "ee42b9c99c01af276eb96654fb5d48005dac0d793b401e7ea8d3ce7f01690188",
+          "runtimeRoot": false
+        },
+        {
+          "source": "src1/modules/slots/repository/index.ts",
+          "sourceSha256": "1b1c71269c326a94360efc0c45748df1157bd3d7962dac03705fb0ceb1141bd5",
+          "compiled": "compiled/modules/slots/repository/index.js",
+          "compiledSha256": "0795af614479fcd6f59db2e40b603da5b1e50be0fa9fda507a23e28c6841d4b4",
+          "runtimeRoot": false
+        },
+        {
+          "source": "src1/modules/slots/model/index.ts",
+          "sourceSha256": "afefe8b261e73918a446caaa537ecbbd34a8a4a416995b43e6484bb54add3df6",
+          "compiled": "compiled/modules/slots/model/index.js",
+          "compiledSha256": "50858482cb86865ee64fc22073ac58ed76ae033732e3eb244d4328ffa27052b4",
+          "runtimeRoot": false
+        }
+      ],
+      "applicationEvaluations": 0
+    }
+  },
+  "applicationEvaluations": 0,
+  "DockerCalls": 0
+}

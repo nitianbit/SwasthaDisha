@@ -1,0 +1,33 @@
+{
+  "schema": "SD-API-RUN11-READONLY-READINESS-1",
+  "UTC": "2026-11-11T08:15:35.473938+00:00",
+  "provenance": "Root actual live read-only metadata; no reviewer observation claimed",
+  "endpoint": "unix:///Users/shubham/.docker/run/docker.sock",
+  "engineBefore": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+  "engineAfter": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+  "images": {
+    "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d": {
+      "cached": true,
+      "id": "sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
+      "architecture": "arm64",
+      "os": "linux",
+      "repoDigests": [
+        "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d"
+      ]
+    },
+    "mongo@sha256:b9924c330a8bbc5800fe9c69f04a84e221eca7b28fd049a0354147d9908fa142": {
+      "cached": true,
+      "id": "sha256:b9924c330a8bbc5800fe9c69f04a84e221eca7b28fd049a0354147d9908fa142",
+      "architecture": "arm64",
+      "os": "linux",
+      "repoDigests": [
+        "mongo@sha256:b9924c330a8bbc5800fe9c69f04a84e221eca7b28fd049a0354147d9908fa142"
+      ]
+    }
+  },
+  "purposePredicate": "label=swasthadisha.test.purpose=auth-api-runtime",
+  "purposeIds": [],
+  "ownedEmptyConfigRemoved": true,
+  "resourceMutations": 0,
+  "doesNotAuthorizeRun": true
+}

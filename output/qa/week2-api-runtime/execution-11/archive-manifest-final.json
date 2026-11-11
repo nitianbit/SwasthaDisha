@@ -1,0 +1,19 @@
+{
+  "schema": "SD-API-RUN11-FINAL-ARCHIVE-1",
+  "sourceCommit": "5901bc20e8def58f023b9ef4fe43c8e80fec1f1e",
+  "status": "ACCEPT_BOUNDED_RUNTIME_EVIDENCE_TWO_INDEPENDENT_POSTREVIEWS",
+  "files": {
+    "RESULT.md": "e57f775f9a022a1a54828f72ca2d4638c06a9fa27530bb8a444aad9b91269e5b",
+    "REVIEW.md": "711edbeaee44e39b49490f958881de9755c2d280be0b7dd615395a1ef9bb9d9f",
+    "RUN_DECISIONS.md": "e5f66edbee422e8ce84d54320a002627a97f34049d06c4b790146c889a895f0d",
+    "archive-manifest-initial.json": "c3694398ca11239cc3beca39f9bab8e5fdac8250cbe595969a39b2ee747cc989",
+    "captured-run-approval.json": "7d5da5c7e47e0100a494c7cfcd7462b11d46db2c443fe936bf363bb948bd7def",
+    "cleanup-root-readback.json": "5e8d680a4651509fca99deef686f51e3853fd0084e39776e559618e2e932264c",
+    "consumed-once-claim.json": "7b595c2f57dd4cdfc3722c04ca5c13c589471333d0c9a0ce6135633775896f4f",
+    "one-run-approval.json": "7d5da5c7e47e0100a494c7cfcd7462b11d46db2c443fe936bf363bb948bd7def",
+    "one-run-proposal.json": "c7288487dd869dcf84b49b5aa5f41f7265af6ba07e8dbf1eaa897934614c9c71",
+    "operator-result.json": "8b8cd18769b0410167f681f96041e9042c2defe2d2e789a2d951f703d141059e",
+    "readiness.json": "ab0346310894e86236c8af094997a372454de7d654efc7b4ce11b3a2077278bb",
+    "receipt-transition.json": "1585e3804e00734465836425b90503288c8df5753a6b9c0bef06af7f80cd830a"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "schema": "SD-RUNTIME-RECEIPT-TRANSITION-1",
+  "oldSHA256": "7243689ff2d88362dc56e85e1d05d66d627d4762e3066afea436e2f950f86b06",
+  "archive": "/private/tmp/sd-auth-api-runtime-approval-bc3233b.consumed.json",
+  "oldInode": 53499174,
+  "archiveInode": 53499174,
+  "archiveFinalNlink": 1,
+  "freshSHA256": "7d5da5c7e47e0100a494c7cfcd7462b11d46db2c443fe936bf363bb948bd7def",
+  "freshMode": "0600",
+  "freshNlink": 1,
+  "reviewers": [
+    {
+      "agent": "/root/index_standards_fresh",
+      "decision": "APPROVE_ONE_FIXED_AUTH_API_RUN"
+    },
+    {
+      "agent": "/root/index_spec_fresh",
+      "decision": "APPROVE_ONE_FIXED_AUTH_API_RUN"
+    }
+  ],
+  "invocation": "ONE_FIXED_NEW_AUTH_API_RUN_ONLY"
+}

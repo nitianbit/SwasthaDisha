@@ -1,0 +1,27 @@
+{
+  "schema": "SD-API-RUN11-CLEANUP-1",
+  "UTC": "2026-11-11T08:20:18.859129+00:00",
+  "provenance": "Root fresh read-only live Docker metadata after actual exit0; not reviewer observation",
+  "sourceCommit": "5901bc20e8def58f023b9ef4fe43c8e80fec1f1e",
+  "rawOperatorSha256": "8b8cd18769b0410167f681f96041e9042c2defe2d2e789a2d951f703d141059e",
+  "runId": "2430280a-3b58-4c75-bab1-8692c30982c4",
+  "engineBefore": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+  "exactIds": {
+    "1667e1e2d316b3e765114b44434e0d60143b24678e9e7a782542819d9f328688": {
+      "absent": true,
+      "exitCode": 1,
+      "stderr": "Error response from daemon: No such container: 1667e1e2d316b3e765114b44434e0d60143b24678e9e7a782542819d9f328688"
+    },
+    "2ada1210b3b553fe950bd7d648e0808ea4e87899403a41b667bd19832cf7e6f9": {
+      "absent": true,
+      "exitCode": 1,
+      "stderr": "Error response from daemon: No such container: 2ada1210b3b553fe950bd7d648e0808ea4e87899403a41b667bd19832cf7e6f9"
+    }
+  },
+  "exactPurposeIds": [],
+  "engineAfter": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+  "workspace": "/private/tmp/sd-auth-api-run-UylhzM",
+  "workspaceAbsent": true,
+  "ownedEmptyConfigRemoved": true,
+  "resourceMutations": 0
+}

@@ -1,0 +1,21 @@
+{
+  "schema": "SD-LIFECYCLE-PREPARATION-ARCHIVE-14-FINAL-1",
+  "sourceCommit": "5901bc20e8def58f023b9ef4fe43c8e80fec1f1e",
+  "descriptorSha256": "0753c30bcf7a1a46eff1abad69009b070d848e5090aab6435270897010c5ed50",
+  "decision": "ACCEPT_PREPARATION_ONLY_EXACT_LIFECYCLE_ARTIFACT_EVIDENCE",
+  "files": {
+    "README.md": "eba91249eac0844e7fd18464072963078776d272420739c40a327a44cc69d655",
+    "REVIEW.md": "e0b5b7ea768ba6239bed9a0834508f707e99ccc05e6b3fa6cf1307062745c13e",
+    "archive-manifest-initial.json": "324cd06872292ea2f9c9b2cb2d83803938a837c7a8dc3ffa246f8599304150fe",
+    "compiler-input.json": "049f006cbb2893aa80bedd04cd1fb83920514dde3b9d76ee013acaefc994bcf1",
+    "compiler.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "compiler.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "install.stderr.txt": "799f544422ef20e84949c8feabb844390db9306ac5cf97419981d0291eb45156",
+    "install.stdout.txt": "24e259c450d14c1a814583dc8c205d7e5fc3278ea657a8c540d4b9ceea60194e",
+    "preparation-result.json": "bf2311729ec02992aa8d9c03185274327a52c2ff1814486ef6f85c87c8f51e0b",
+    "runtime-plan.json": "2b6dabb2458f675b70db771f57b3de9f7b1818cb9bf4fec1a738785e4482da5d",
+    "runtime-template.json": "0753c30bcf7a1a46eff1abad69009b070d848e5090aab6435270897010c5ed50",
+    "semantic-delta.json": "c90ebc245ff8fa5ecdb2330d6c30469fae9abec5fc398fe6afdc24176dc6b397",
+    "verification.json": "d1a429b148070c57900b45b2f479bc4572312c8e2cacbba7f6b9bdb9d389a1cb"
+  }
+}

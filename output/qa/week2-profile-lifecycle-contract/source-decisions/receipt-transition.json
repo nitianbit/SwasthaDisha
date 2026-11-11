@@ -1,0 +1,23 @@
+{
+  "schema": "SD-EMISSION-RECEIPT-TRANSITION-1",
+  "priorSha256": "64b2382a55bb5ec0082f618e59e9dc8dffef6a4cfff98390ca3bdf4969cfb85c",
+  "archive": "/private/tmp/sd-auth-api-emission-approval-bc3233b.consumed.json",
+  "priorInode": 53477770,
+  "archiveInode": 53477770,
+  "finalArchiveNlink": 1,
+  "freshSha256": "ec7bddd052a99f1402c56de478728e7f113630c409ad6d3975358a3121f02267",
+  "freshMode": "0600",
+  "freshNlink": 1,
+  "reviewers": [
+    {
+      "agent": "/root/index_standards_fresh",
+      "decision": "APPROVE_LOCKED_INSTALL_AND_EMIT_ONLY"
+    },
+    {
+      "agent": "/root/index_spec_fresh",
+      "decision": "APPROVE_LOCKED_INSTALL_AND_EMIT_ONLY"
+    }
+  ],
+  "approvalUsed": "ONE_NEW_LOCKED_EMISSION_ONLY",
+  "runtimeAuthorized": false
+}
