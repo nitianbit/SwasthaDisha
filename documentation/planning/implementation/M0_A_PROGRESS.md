@@ -640,3 +640,69 @@ rehashed unchanged during this continuation. All commits remain local; no
 production, protected-log, credential, provider or deployment action occurred.
 Root retained-server C2, full Week2/M0, client/owner,100RPS/release gates remain open.
 Ready backend and separate evidence lanes continue.
+
+
+## Twenty-seventh increment, 11 November: specialist profile API milestone achieved
+
+One separately approved exact invocation at clean5901bc20/descriptor0753c30b
+returned FOCUSED_API_PASS:90ordered nominalgroups,33actual-source variants
+all detected,0fail/0skip. Both direct independent nonauthor internal Codex
+reviewers accepted [the actual result](../../../output/qa/week2-api-runtime/execution-11/REVIEW.md).
+The receipt/onceclaim is consumed; no rerun follows. Both prior failed specialist
+attempts and their source/checkers/artifacts/approvals/cleanup remain preserved.
+Exact warning accounting and a narrowly controlled TypeDI reset metadata window
+were separately contracted, source-reviewed, prepared and admitted before this
+one new attempt; neither old cause is retroactively a captured attribution.
+
+The real specialist router/profile path completed93HTTPrequests across seven
+newgroups, six actual Portal sourcevariants with11concreteunsafe references and
+22freshsame-trial/allowed-positive restorations. Status/Joi/auth, exactresponse,
+all13model/sibling states, actualread/write/JWT/provider and eightprivate lifetime
+capability latches are mandatory. Per-request known-warning delta equals measured
+and frozen0or1specialistwrites/dbWrites, withtotal-known0; the realTypeDI reset
+runs inside the synchronous/finallyclosed window. Private HTTP/index/rawwarning
+values were not retained or independently replayed: acceptance is bound mandatory
+executed-predicate evidence, not a recorded global27-warning total. Two normalized
+claim forms do not prove separate issuer/client or controllerfallback behavior.
+
+Actual public recording counters are email5/SMS1/push2/logger437/calendar4,
+otherfive0. No provider delivery occurred. Oldindex172trials/343nominal/150unsafe/
+300restored comparisons remain completed. All2891files/105inputs97TS were checked;
+[preparation14](../../../output/qa/week2-api-preparation/emission-14/REVIEW.md)
+retains the complete201-file/228semantic/0transpile compilation result, strict
+helper/TDZ/fourlibrarycontrols and fullBuild:false, not a cleanrootbuild claim.
+Root and BOTH reviewers personally freshqueried the sameengine: both exactcaptured
+IDs absent,correctpurposeempty,workspaceENOENT,ownemptyconfigsremoved. Original
+sixstaged/working/patch and11handover remain unchanged. This accepts focused90/33,
+not fullF13/original115/rootC2/Week2/M0/client/owner/production/100RPS/release.
+
+## Twenty-eighth increment, 11 November: reviewed authority/quality sources integrated
+
+The separate medicine/inventory composition and HR booking read branch are merged
+locally with [two independent combined-source approvals](../../../output/qa/week2-backend-composition/REVIEW.md).
+All54mergedsource/QA/progress files exactly match their reviewed origins; onlyfive
+applicationfiles changed:medicinecontroller/service,inventoryrepository,booking
+controller/service. Every source slice retains two preimplementation/two source
+decisions and its initial failures/controls. The earlier increment26hold is now
+historical: Root cleared HR only AFTER both actual90postacceptances and committed
+its explicit excluded-source provenance review BEFORE the HR merge.
+
+Actual artifact0753doesnotinclude the realBookingService/controller sources or
+compiledaliases; the same throwingBookingService substitute exposesONLYupdate.
+The changedgetAll scope and threeHRcontrollerguards therefore require no silent
+fixturehash/port/compiler/model refresh or identical90rerun. All105accepted
+runtime input hashes still match. Historical90remains bound to5901bc20 and does
+NOT test thesefiveapplicationchanges or a laterGitcommit. HR103/eightvariants,
+medicineHTTP and inventoryODM/session behavior still require their own completeC3.
+No type/runtime/wholeTC-REV002/AR26/F06 acceptance is inferred from source checks.
+
+Next ready technical work is a separate closed inventory repository fixture:
+sevenTSinputs/threeactualmodels, onlytwo real methods, preservedqualitypairs and
+existingquantity/session/error behavior, with no wider service/HTTP/money/stockrace
+policy. A draft exists; Root still freezes its complete protocol/default/version/
+error/session rules and obtains two contractdecisions before implementation.
+The owner deferred Claude sign-in; no authpoll/model request or fabricatedClaude
+review follows. The3600-second localreviewdeadline doesnotchange vendorlimits or
+proveeffectivemax. Allcommits remainlocal; no push/deployment/protectedlogs/keys/
+provider/account action. RootC2, fullWeek2/M0, original115, supportedclients,
+namedowners and release remainopen. Ready work continues through those gates.
