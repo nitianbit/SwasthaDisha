@@ -1,0 +1,64 @@
+{
+  "schema": "SD-CATALOGUE-COMPOSITION-SOURCE-1",
+  "baseline": "c0d19859f8b9f62951e805657ab569cb15fddcb1",
+  "candidateBeforeEvidence": "85c09ef7e440f21e46b6bdabf79567674a4fecc7",
+  "reviewedBranchOrigins": {
+    "output/qa/week2-catalogue-quality-contract/": "1db3da7bf90106e1b2f3ef03eec2c9999161286c",
+    "output/qa/week2-medicine-prescription-source/": "b399ff98e0e86b7fdb46ec6cf624f6a94197ada8",
+    "output/qa/week2-inventory-quality-source/": "c39e8af3e5f22f96c6a053c28677fdf1106afd22"
+  },
+  "changedFiles": [
+    "output/qa/week2-catalogue-quality-contract/INVENTORY_CONTRACT.md",
+    "output/qa/week2-catalogue-quality-contract/MEDICINE_CONTRACT.md",
+    "output/qa/week2-catalogue-quality-contract/PRE_REVIEW.md",
+    "output/qa/week2-catalogue-quality-contract/contract-freeze.json",
+    "output/qa/week2-catalogue-quality-contract/initial-caller-map/INVENTORY_CONTRACT.md",
+    "output/qa/week2-catalogue-quality-contract/initial-caller-map/MEDICINE_CONTRACT.md",
+    "output/qa/week2-catalogue-quality-contract/initial-caller-map/contract-freeze.json",
+    "output/qa/week2-inventory-quality-source/AUTHOR_NOTES.md",
+    "output/qa/week2-inventory-quality-source/SOURCE_DECISIONS.md",
+    "output/qa/week2-inventory-quality-source/audit_source.py",
+    "output/qa/week2-inventory-quality-source/baseline-rejection.json",
+    "output/qa/week2-inventory-quality-source/candidate.diff",
+    "output/qa/week2-inventory-quality-source/literal-transform.json",
+    "output/qa/week2-inventory-quality-source/source-audit.json",
+    "output/qa/week2-inventory-quality-source/source-freeze.json",
+    "output/qa/week2-medicine-prescription-source/AUDIT_AMENDMENT.md",
+    "output/qa/week2-medicine-prescription-source/AUTHOR_NOTES.md",
+    "output/qa/week2-medicine-prescription-source/SOURCE_DECISIONS.md",
+    "output/qa/week2-medicine-prescription-source/audit_source.py",
+    "output/qa/week2-medicine-prescription-source/baseline-rejection.json",
+    "output/qa/week2-medicine-prescription-source/candidate.diff",
+    "output/qa/week2-medicine-prescription-source/initial-audit/audit_source.py",
+    "output/qa/week2-medicine-prescription-source/initial-audit/source-audit.json",
+    "output/qa/week2-medicine-prescription-source/literal-transform.json",
+    "output/qa/week2-medicine-prescription-source/source-audit.json",
+    "output/qa/week2-medicine-prescription-source/source-freeze.json",
+    "src1/modules/pharmacyInventory/repository/index.ts",
+    "src1/modules/pharmacyMedicines/controller/index.ts",
+    "src1/modules/pharmacyMedicines/services/index.ts"
+  ],
+  "productionHashes": {
+    "src1/modules/pharmacyMedicines/controller/index.ts": "63b870e1418f4c0983d923349acff7ceb7b7b56c8810c8061e9c8be2690e8179",
+    "src1/modules/pharmacyMedicines/services/index.ts": "dcc2f9f594bd990190e2379f0064ea6eeda2e6c5a4faefc12cb58afa13d2454a",
+    "src1/modules/pharmacyInventory/repository/index.ts": "2cc825908777950cbfcf1cf4dea6cc12f0e6e97a41660fb413565db3fdd6e659"
+  },
+  "allComposedChangesByteIdenticalToReviewedBranches": true,
+  "all105SourceBindingsUnchanged": true,
+  "changedProductionOutsideFixtureInputs": true,
+  "sourceDiffCheck": {
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "wholeDiffCheck": {
+    "exit": 2,
+    "stdout": "output/qa/week2-inventory-quality-source/candidate.diff:19: trailing whitespace.\n+ \noutput/qa/week2-inventory-quality-source/candidate.diff:38: trailing whitespace.\n+ \noutput/qa/week2-inventory-quality-source/candidate.diff:38: new blank line at EOF.\noutput/qa/week2-medicine-prescription-source/candidate.diff:8: trailing whitespace.\n+ \noutput/qa/week2-medicine-prescription-source/candidate.diff:16: trailing whitespace.\n+ \noutput/qa/week2-medicine-prescription-source/candidate.diff:24: trailing whitespace.\n+ \noutput/qa/week2-medicine-prescription-source/candidate.diff:31: trailing whitespace.\n+ \n",
+    "stderr": "",
+    "interpretation": "Only unchanged preserved literal candidate.diff context-space and EOF bytes; no normalization. Actual production-source diff check is zero."
+  },
+  "execution": "SOURCE_BYTES_ONLY_NO_TYPESCRIPT_OR_APPLICATION",
+  "twoIndependentCompositionReviews": "PENDING",
+  "runtimeEvidence": "NOT_RUN_NOT_ADMITTED_FOR_MEDICINE_OR_INVENTORY",
+  "original115AndWeek2": "OPEN"
+}
