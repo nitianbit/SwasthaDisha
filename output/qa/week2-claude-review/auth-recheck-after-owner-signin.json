@@ -1,0 +1,43 @@
+{
+  "schema": "SD-LOCAL-CLAUDE-AUTH-RECHECK-1",
+  "observer": "/root",
+  "userRequestedRecheck": true,
+  "observedAtUTC": "2026-11-11T02:48:31.772155+00:00",
+  "clientSha256": "a9d237949db816a0b7afd88a9a8e1df36b3a597a30f5a41d1c0539eb180a3450",
+  "operation": [
+    "auth",
+    "status"
+  ],
+  "modelRequested": false,
+  "actualClaudeReview": false,
+  "accountChanges": 0,
+  "rawAuthOutputRetained": false,
+  "status": "AUTH_REQUIRED",
+  "exit": 1,
+  "loggedIn": false,
+  "authMethod": "none",
+  "apiProvider": "firstParty",
+  "ownedAuthProcess": {
+    "requested": true,
+    "started": true,
+    "startUnconfirmed": false,
+    "pid": 72561,
+    "identity": {
+      "pid": 72561,
+      "parent": 72549,
+      "group": 72561,
+      "started": "Wed Nov 11 08:18:31 2026",
+      "executable": "/Users/shubham/.vscode/extensions/anthropic.claude-code-2.1.322-darwin-arm64/resources/native-binary/claude"
+    },
+    "firstFailure": null,
+    "cleanup": {
+      "safe": true,
+      "pidAbsent": true,
+      "groupEmpty": true,
+      "exit": 1,
+      "pipesClosed": true,
+      "signals": [],
+      "errors": []
+    }
+  }
+}
