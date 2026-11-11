@@ -498,3 +498,24 @@ continue backend/sign in later; no polling follows. A separate worker prepares
 actual account/policy/stage admission remain. SDK init effort was found to be
 Remote-Control-only, so this local route retains effective effort UNPROVEN rather
 than inventing max proof. [Continuation instruction](CONTINUATION_INSTRUCTIONS.md).
+
+## Twenty-third increment, 11 November: longer local review window source ready
+
+The local review operator now has a 3600-second monotonic deadline and a refreshed
+packet bound to accepted 76/21 evidence. Both independent nonauthor internal Codex
+reviewers approved exact operator6369bad2/tests cf850ff0/freeze7c4d346b after
+independently reproducing 95 hard-fake tests and four weakened-source controls.
+[Actual source decisions](../../../output/qa/week2-local-review-link/review-window-2/SOURCE_DECISIONS.md).
+The former packet and rejected effort proposal remain preserved. EOF9, eight
+turns, three mailbox calls, finite output/ownership/cleanup and once claims stay
+bounded. The packet excludes the later unexecuted index extension.
+
+No genuine Claude model request has occurred. Requested max is recorded, effective
+effort remains UNPROVEN, and authentication plus authoritative client/policy/context
+and exact-stage admission remain open. The owner chose backend work and sign-in
+later; no auth polling follows. Local timeout code cannot change account quotas.
+Original staged patch and eleven handover files were rehashed unchanged.
+
+Backend work continues with the separate selected-index C3 behavioral/readback
+contract. Accepted API evidence remains 76/21; full M0/Week2 and the existing root
+C2, named-owner, original115, deployment and release gates remain open.
