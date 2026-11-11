@@ -1,0 +1,10 @@
+{
+  "schema": "SD-SOURCE-CHECKER-AUTHORING-1",
+  "productionSourceStillBaseline": true,
+  "checkerSha256": "a7b160c882bdfb12e160a9e973426bfea5f2b801523826d199ae86d3e07c7d18",
+  "observedFailure": "CONTROL_ANCHOR:DENIAL_NOT_THROWN",
+  "commandExit": 1,
+  "cause": "Control anchor matched multiple existing AppError throws; no production or contract finding.",
+  "amendment": "Use unique lookup-plus-throw text for this single source variant.",
+  "appExecutions": 0
+}

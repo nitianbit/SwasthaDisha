@@ -1,0 +1,29 @@
+{
+  "schema": "SD-SPECIALIST-PROFILE-SOURCE-FREEZE-1",
+  "baseline": "b33a9daac01628a48043e85764819a5f855431ed",
+  "contractSha256": "2a49c33b6b7b93d50be5c6c04f5ec863a8d5848ab6d5120a61870b695b8ccc39",
+  "files": {
+    "src1/modules/specialistPortal/services/index.ts": "631a2bc6e92e522db35bad35eacd9f7d46aa8e4dcdb508acc16dc44891fef27c",
+    "output/qa/week2-specialist-profile-source/README.md": "b089094616456d187e6b141594b9f196bd1c18607ff40bb1921ff2ea511dd213",
+    "output/qa/week2-specialist-profile-source/baseline-proof.json": "e8bbfa269eada5a72d1487e0a9d0a62a88cab927da5260381ff9165be659d1c7",
+    "output/qa/week2-specialist-profile-source/baseline-rejection.json": "144479b14fb9c8573ec8b40f1c5b553f88445e8256600179e69e3e2a5d374666",
+    "output/qa/week2-specialist-profile-source/candidate.diff": "87ffa64004fe86c693b8143c41cc3b5dddcb0f6c90b1a9e1c163d862e7547ce6",
+    "output/qa/week2-specialist-profile-source/checker-authoring-1/DISPOSITION.json": "3b60316ab341fc2e33245f3f0300c634a84e8de6a5e9c1377616cb99a4bdcaad",
+    "output/qa/week2-specialist-profile-source/checker-authoring-1/baseline-proof.json": "79383301b34830a75cd142c3a88661ecb32da6ca5006123fe35bf2e96c215228",
+    "output/qa/week2-specialist-profile-source/checker-authoring-1/verify-source.py": "a7b160c882bdfb12e160a9e973426bfea5f2b801523826d199ae86d3e07c7d18",
+    "output/qa/week2-specialist-profile-source/source-inputs.json": "04ed718a7df351b007b95af7c0baef11616188aaa69dd1b1df55efc787cad95e",
+    "output/qa/week2-specialist-profile-source/source-verification.json": "f729cb74b43b47e5ccba67a7848c948a3b93e4ac7f285c8234d3760be655d63f",
+    "output/qa/week2-specialist-profile-source/verify-source.py": "98962ddf362969d3886534c1a7ecd8523245bbe5dd014899d719758b82d2955f"
+  },
+  "productionFiles": [
+    "src1/modules/specialistPortal/services/index.ts"
+  ],
+  "scope": "SOURCE_TRANSFORMATION_ONLY",
+  "implementationReviews": "PENDING_TWO_DIRECT_NONAUTHOR_DECISIONS",
+  "applicationEvaluations": 0,
+  "joiEvaluations": 0,
+  "compilerExecutions": 0,
+  "databaseCommands": 0,
+  "providerCalls": 0,
+  "runtimeStatus": "NOT_RUN"
+}

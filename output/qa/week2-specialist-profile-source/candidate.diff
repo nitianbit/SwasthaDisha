@@ -1,0 +1,26 @@
+diff --git a/src1/modules/specialistPortal/services/index.ts b/src1/modules/specialistPortal/services/index.ts
+index bf275e02a9fd6f6f1ef800ad764cdb5e672b0833..bb53f277c69b32b364fd11ece23cc421844f6b2d 100644
+--- a/src1/modules/specialistPortal/services/index.ts
++++ b/src1/modules/specialistPortal/services/index.ts
+@@ -80,6 +80,21 @@ export class SpecialistPortalService {
+     specialistId: string,
+     body: UpdateSpecialistRequest
+   ): Promise<ISpecialist> {
++    if (
++      body !== null &&
++      typeof body === 'object' &&
++      ['isVerified', 'isActive', 'rating'].some((field) =>
++        Object.prototype.hasOwnProperty.call(body, field)
++      )
++    ) {
++      await this.specialistService.getById(specialistId);
++      throw new AppError({
++        status: 422,
++        code: 'FORBIDDEN_FIELD',
++        message: 'Specialist profile contains fields that cannot be updated',
++      });
++    }
++
+     return this.specialistService.update(specialistId, body);
+   }
+ 
