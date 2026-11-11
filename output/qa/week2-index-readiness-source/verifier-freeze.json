@@ -1,0 +1,8 @@
+{
+  "stage": "PRE_SOURCE_FROZEN_VERIFIER",
+  "sourceAbsent": true,
+  "verifierSha256": "d3e7b8ae23bf451121a256ea10174c0ee23d8b72e06c38b673288eb400df3e08",
+  "scopeBaselineSha256": "275b1f71bb16d465c133e64b3b185f71b97e8a0f16d50312757ac28f90c535be",
+  "contractSha256": "d626f54222ab4f60f32bf9c94c97f3815ec8f71e35bebd5f604d58fb0ac01459",
+  "behavioralExecution": "NOT_RUN"
+}

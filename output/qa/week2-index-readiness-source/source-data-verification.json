@@ -1,0 +1,60 @@
+{
+  "schema": "SD-INDEX-SOURCE-CONTROL-CONTEXT-2",
+  "stage": "POST_SOURCE_COMPANION_NOT_PREIMPLEMENTATION_FROZEN",
+  "originalVerifierUnchanged": true,
+  "originalVerifierSha256": "d3e7b8ae23bf451121a256ea10174c0ee23d8b72e06c38b673288eb400df3e08",
+  "sourceSha256": "6597c1a03c54702d89042a29263da81399934e68e8fb6c46f91c638cbe954400",
+  "positivePredicates": 56,
+  "positivePredicatesPassed": true,
+  "contextualPositivePredicates": {
+    "string_bound": true,
+    "property_string_bound": true,
+    "explicit_id_denial": true,
+    "reserved_id_field_denial": true,
+    "id_name_and_key_exception": true
+  },
+  "originalUnchangedControlsRejected": 47,
+  "originalSurvivingVariants": [
+    {
+      "name": "string_bound",
+      "anchorOccurrences": 2,
+      "variantSha256": "4a6a41f103bb47e12cb381fe6853c01eaecad35a0215ab6a87a10f321c2eea70",
+      "preservedVariant": "string_bound-original-single-occurrence.txt",
+      "originalSamePredicateRejected": false,
+      "postSourceContextPredicateRejected": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION",
+      "semanticLimit": "Separately checks the scalar-string budget guard in takeNode rather than the property-name guard in copyData."
+    },
+    {
+      "name": "explicit_id_denial",
+      "anchorOccurrences": 2,
+      "variantSha256": "287fa70455442600f60a670ea8f48971e49b3b87fe61059fe6733efe5ebe7cf1",
+      "preservedVariant": "explicit_id_denial-original-single-occurrence.txt",
+      "originalSamePredicateRejected": false,
+      "postSourceContextPredicateRejected": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION",
+      "semanticLimit": "The broad reserved-_id field guard remains: this original single-occurrence change removes a redundant guard, not a demonstrated behavior defect."
+    }
+  ],
+  "additionalContextControls": [
+    {
+      "name": "reserved_id_field_denial",
+      "rejectedByContextPredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "id_name_and_key_exception",
+      "rejectedByContextPredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    }
+  ],
+  "passed": true,
+  "applicationBehavior": "NOT_RUN",
+  "typeCheck": "NOT_RUN",
+  "applicationImports": 0,
+  "compilerExecutions": 0,
+  "databaseCommands": 0,
+  "DockerCalls": 0,
+  "providerCalls": 0,
+  "limits": "Source anchors are necessary textual evidence, not a parser, proof of control flow, functional behavior, type correctness, acquisition completeness or activation."
+}

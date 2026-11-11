@@ -1,0 +1,375 @@
+export type IndexReadinessCode =
+    | "READY"
+    | "MANIFEST_INVALID"
+    | "OBSERVATIONS_INVALID"
+    | "OBSERVATION_FAILED"
+    | "OBSERVATION_INCOMPLETE"
+    | "OBSERVATION_UNSUPPORTED"
+    | "OBSERVATION_UNREADY"
+    | "REQUIRED_INDEX_UNSATISFIED"
+    | "INPUT_INVALID";
+
+export interface IndexReadinessResult {
+    readonly ready: boolean;
+    readonly code: IndexReadinessCode;
+    readonly collectionOrdinal: number | null;
+    readonly indexOrdinal: number | null;
+}
+
+type Data = null | boolean | number | string | Data[] | DataObject;
+interface DataObject { [key: string]: Data; }
+interface Budget { nodes: number; strings: number; }
+type CopyContext = "data" | "observations" | "listing" | "rows" | "row" | "spec";
+interface CopyFrame {
+    source: object;
+    target: DataObject | Data[];
+    keys: string[];
+    next: number;
+    context: CopyContext;
+}
+interface CopyStep { value: Data; frame: CopyFrame | null; }
+type Key = Array<[string, 1 | -1]>;
+interface Options {
+    unique: boolean;
+    sparse: boolean;
+    hidden: boolean;
+    ttl: number | null;
+    partialPresent: boolean;
+    partial: Data | null;
+}
+interface IndexDefinition extends Options { key: Key; name: string | null; }
+interface Requirements { collection: string; indexes: IndexDefinition[]; }
+interface Listing {
+    collection: string;
+    status: "COMPLETE" | "INCOMPLETE" | "FAILED";
+    mode: string;
+    indexes: IndexDefinition[];
+    unsupported: boolean;
+    building: boolean;
+}
+
+function makeResult(
+    code: IndexReadinessCode,
+    collectionOrdinal: number | null = null,
+    indexOrdinal: number | null = null,
+): IndexReadinessResult {
+    return Object.freeze({ ready: code === "READY", code, collectionOrdinal, indexOrdinal });
+}
+
+function has(value: DataObject, key: string): boolean {
+    return Object.prototype.hasOwnProperty.call(value, key);
+}
+
+function isObject(value: Data): value is DataObject {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function exactFields(value: DataObject, allowed: string[], required: string[]): boolean {
+    return Object.keys(value).every((key) => allowed.includes(key)) && required.every((key) => has(value, key));
+}
+
+function nextContext(context: CopyContext, key: string): CopyContext {
+    if (context === "observations") return "listing";
+    if (context === "listing" && key === "indexes") return "rows";
+    if (context === "rows") return "row";
+    if (context === "row" && key === "spec") return "spec";
+    return "data";
+}
+
+function takeNode(value: unknown, budget: Budget): boolean {
+    budget.nodes += 1;
+    if (typeof value === "string") budget.strings += value.length;
+    return !(budget.nodes > 8192 || budget.strings > 65536);
+}
+
+function initializeCopy(value: unknown, budget: Budget, active: Set<object>, context: CopyContext): CopyStep | null {
+    if (!takeNode(value, budget)) return null;
+    if (value === null || typeof value === "boolean" || typeof value === "string") {
+        return { value, frame: null };
+    }
+    if (typeof value === "number") return Number.isFinite(value) ? { value, frame: null } : null;
+    if (typeof value !== "object" || active.has(value)) return null;
+    const prototype: unknown = Object.getPrototypeOf(value);
+    const ownKeys = Reflect.ownKeys(value);
+    if (ownKeys.some((key) => typeof key !== "string")) return null;
+    const keys = ownKeys as string[];
+    let target: DataObject | Data[];
+    let dataKeys: string[];
+    if (Array.isArray(value)) {
+        if (prototype !== Array.prototype) return null;
+        const length = Object.getOwnPropertyDescriptor(value, "length");
+        const size: unknown = length === undefined ? undefined : length.value;
+        if (length === undefined || !Object.prototype.hasOwnProperty.call(length, "value") ||
+            typeof size !== "number" || !Number.isInteger(size) || size < 0 || size > 8192 ||
+            keys.length !== size + 1) return null;
+        dataKeys = keys.filter((key) => key !== "length");
+        if (dataKeys.length !== size || dataKeys.some((key, index) => key !== String(index))) return null;
+        target = [];
+    } else {
+        if (prototype !== Object.prototype && prototype !== null) return null;
+        dataKeys = keys;
+        target = Object.create(null) as DataObject;
+    }
+    if (dataKeys.length > 8192 - budget.nodes) return null;
+    active.add(value);
+    return { value: target, frame: { source: value, target, keys: dataKeys, next: 0, context } };
+}
+
+function writeCopy(target: DataObject | Data[], key: string, value: Data): void {
+    if (Array.isArray(target)) target[Number(key)] = value;
+    else target[key] = value;
+}
+
+// Inspect descriptors once and match only private data copies. An explicit stack
+// bounds deeply nested malformed inputs without relying on the JS call stack.
+function copyData(value: unknown, budget: Budget, context: CopyContext): CopyStep | null {
+    const active = new Set<object>();
+    const initial = initializeCopy(value, budget, active, context);
+    if (initial === null || initial.frame === null) return initial;
+    const frames: CopyFrame[] = [initial.frame];
+    while (frames.length > 0) {
+        const frame = frames[frames.length - 1];
+        if (frame.next === frame.keys.length) {
+            active.delete(frame.source);
+            frames.length -= 1;
+            continue;
+        }
+        const key = frame.keys[frame.next];
+        frame.next += 1;
+        budget.strings += key.length;
+        if (budget.strings > 65536) return null;
+        const descriptor = Object.getOwnPropertyDescriptor(frame.source, key);
+        if (descriptor === undefined || !Object.prototype.hasOwnProperty.call(descriptor, "value")) return null;
+        const marker = (frame.context === "row" || frame.context === "spec") &&
+            (key === "indexBuildInfo" || key === "buildUUID");
+        if (marker) {
+            // Marker presence is enough: never inspect or retain its raw value.
+            if (!takeNode(true, budget)) return null;
+            writeCopy(frame.target, key, true);
+            continue;
+        }
+        const child: unknown = descriptor.value;
+        const copied = initializeCopy(child, budget, active, nextContext(frame.context, key));
+        if (copied === null) return null;
+        writeCopy(frame.target, key, copied.value);
+        if (copied.frame !== null) frames.push(copied.frame);
+    }
+    return { value: initial.value, frame: null };
+}
+
+function boundedName(value: Data): value is string {
+    return typeof value === "string" && value.length >= 1 && value.length <= 256 &&
+        value.trim() === value && !value.includes("\0") &&
+        !value.split(".").some((part) => part === "__proto__" || part === "prototype" || part === "constructor");
+}
+
+function validateKey(value: Data): Key | null {
+    if (!Array.isArray(value) || value.length === 0 || value.length > 16) return null;
+    const fields = new Set<string>();
+    const key: Key = [];
+    for (const entry of value) {
+        if (!Array.isArray(entry) || entry.length !== 2 || !boundedName(entry[0]) ||
+            !/^[A-Za-z_][A-Za-z0-9_.]*$/.test(entry[0]) ||
+            (entry[1] !== 1 && entry[1] !== -1) || fields.has(entry[0])) return null;
+        fields.add(entry[0]);
+        key.push([entry[0], entry[1]]);
+    }
+    return key;
+}
+
+function sameKey(left: Key, right: Key): boolean {
+    return left.length === right.length && right.every((entry, index) =>
+        left[index][0] === entry[0] && left[index][1] === entry[1]);
+}
+
+function isIdKey(key: Key): boolean {
+    return key.length === 1 && key[0][0] === "_id" && key[0][1] === 1;
+}
+
+function validTtl(value: Data): value is number {
+    return typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 2147483647;
+}
+
+function validatePartial(value: Data, depth: number): boolean {
+    if (depth > 6) return false;
+    if (Array.isArray(value)) return value.every((entry) => validatePartial(entry, depth + 1));
+    if (isObject(value)) return Object.keys(value).every((key) => validatePartial(value[key], depth + 1));
+    return true;
+}
+
+function simpleCollation(value: Data): boolean {
+    return isObject(value) && exactFields(value, ["locale"], ["locale"]) && value.locale === "simple";
+}
+
+function validateOptions(value: DataObject, implicitUnique: boolean): Options | null {
+    for (const key of ["unique", "sparse", "hidden"]) {
+        if (has(value, key) && typeof value[key] !== "boolean") return null;
+    }
+    if (has(value, "expireAfterSeconds") && !validTtl(value.expireAfterSeconds)) return null;
+    const partialPresent = has(value, "partialFilterExpression");
+    if (partialPresent && (!isObject(value.partialFilterExpression) || !validatePartial(value.partialFilterExpression, 0))) return null;
+    if (has(value, "collation") && !isObject(value.collation)) return null;
+    return {
+        unique: has(value, "unique") ? value.unique === true : implicitUnique,
+        sparse: value.sparse === true,
+        hidden: value.hidden === true,
+        ttl: has(value, "expireAfterSeconds") ? value.expireAfterSeconds as number : null,
+        partialPresent,
+        partial: partialPresent ? value.partialFilterExpression : null,
+    };
+}
+
+function parseManifest(data: Data): Requirements[] | null {
+    if (!Array.isArray(data) || data.length === 0 || data.length > 13) return null;
+    const collections = new Set<string>();
+    const result: Requirements[] = [];
+    let total = 0;
+    for (const entry of data) {
+        if (!isObject(entry) || !exactFields(entry, ["collection", "indexes"], ["collection", "indexes"]) ||
+            !boundedName(entry.collection) || collections.has(entry.collection) ||
+            !Array.isArray(entry.indexes) || entry.indexes.length > 8) return null;
+        collections.add(entry.collection);
+        total += entry.indexes.length;
+        if (total > 104) return null;
+        const indexes: IndexDefinition[] = [];
+        const keys: Key[] = [];
+        for (const definition of entry.indexes) {
+            if (!isObject(definition) || !exactFields(definition, ["key", "options"], ["key", "options"]) ||
+                !isObject(definition.options) || !exactFields(definition.options,
+                    ["unique", "sparse", "expireAfterSeconds", "partialFilterExpression", "collation"], [])) return null;
+            const key = validateKey(definition.key);
+            if (key === null || isIdKey(key) || key.some((field) => field[0] === "_id") ||
+                keys.some((previous) => sameKey(previous, key))) return null;
+            const options = validateOptions(definition.options, false);
+            if (options === null || (has(definition.options, "collation") && !simpleCollation(definition.options.collation))) return null;
+            keys.push(key);
+            indexes.push({ ...options, key, name: null });
+        }
+        result.push({ collection: entry.collection, indexes });
+    }
+    return result;
+}
+
+function parseSpec(spec: DataObject): IndexDefinition | null {
+    if (!has(spec, "name") || !has(spec, "key") || !boundedName(spec.name)) return null;
+    const key = validateKey(spec.key);
+    if (key === null) return null;
+    const options = validateOptions(spec, spec.name === "_id_" && isIdKey(key));
+    if (options === null || (has(spec, "v") && spec.v !== 1 && spec.v !== 2) ||
+        (has(spec, "ns") && !boundedName(spec.ns)) ||
+        (has(spec, "background") && typeof spec.background !== "boolean")) return null;
+    return { ...options, key, name: spec.name };
+}
+
+function supportedSpec(spec: DataObject): boolean {
+    return exactFields(spec, ["name", "key", "unique", "sparse", "expireAfterSeconds",
+        "partialFilterExpression", "collation", "hidden", "v", "ns", "background",
+        "indexBuildInfo", "buildUUID"], ["name", "key"]) &&
+        (!has(spec, "collation") || simpleCollation(spec.collation));
+}
+
+function parseObservations(data: Data, manifest: Requirements[]): Listing[] | null {
+    if (!Array.isArray(data) || data.length !== manifest.length) return null;
+    const collections = new Set<string>();
+    const result: Listing[] = [];
+    let total = 0;
+    for (const listing of data) {
+        if (!isObject(listing) || !exactFields(listing, ["collection", "status", "mode", "indexes"],
+            ["collection", "status", "mode", "indexes"]) || !boundedName(listing.collection) ||
+            collections.has(listing.collection) || !manifest.some((entry) => entry.collection === listing.collection) ||
+            (listing.status !== "COMPLETE" && listing.status !== "INCOMPLETE" && listing.status !== "FAILED") ||
+            typeof listing.mode !== "string" ||
+            !Array.isArray(listing.indexes) || listing.indexes.length > 64) return null;
+        if (listing.status !== "COMPLETE" && listing.indexes.length !== 0) return null;
+        collections.add(listing.collection);
+        total += listing.indexes.length;
+        if (total > 256) return null;
+        const names = new Set<string>();
+        const keys: Key[] = [];
+        const indexes: IndexDefinition[] = [];
+        let unsupported = false;
+        let building = false;
+        for (const row of listing.indexes) {
+            if (!isObject(row)) return null;
+            if (!exactFields(row, ["spec", "indexBuildInfo", "buildUUID"], ["spec"])) unsupported = true;
+            if (has(row, "indexBuildInfo") || has(row, "buildUUID")) building = true;
+            let spec: DataObject | null = null;
+            if (has(row, "spec")) {
+                if (!isObject(row.spec)) return null;
+                spec = row.spec;
+            } else if (has(row, "name") || has(row, "key")) {
+                // Bare specs are never completed evidence; still inspect their
+                // available supported fields for global structural/duplicate errors.
+                spec = row;
+            }
+            if (spec === null) continue;
+            const parsed = parseSpec(spec);
+            if (parsed === null || parsed.name === null || !boundedName(spec.name)) return null;
+            if (names.has(spec.name) || keys.some((previous) => sameKey(previous, parsed.key))) return null;
+            names.add(parsed.name);
+            keys.push(parsed.key);
+            indexes.push(parsed);
+            if (!supportedSpec(spec)) unsupported = true;
+            if (has(spec, "indexBuildInfo") || has(spec, "buildUUID")) building = true;
+        }
+        result.push({ collection: listing.collection, status: listing.status, mode: listing.mode,
+            indexes, unsupported, building });
+    }
+    return result;
+}
+
+function equalJson(left: Data, right: Data): boolean {
+    if (left === right) return true;
+    if (Array.isArray(left)) {
+        return Array.isArray(right) && left.length === right.length && left.every((entry, index) => equalJson(entry, right[index]));
+    }
+    if (!isObject(left) || !isObject(right)) return false;
+    const keys = Object.keys(left);
+    return keys.length === Object.keys(right).length && keys.every((key) => has(right, key) && equalJson(left[key], right[key]));
+}
+
+function matchesIndex(requirement: IndexDefinition, observed: IndexDefinition, implicitId: boolean): boolean {
+    if (!sameKey(requirement.key, observed.key) || (implicitId && observed.name !== "_id_") ||
+        observed.hidden || requirement.unique !== observed.unique || requirement.sparse !== observed.sparse ||
+        requirement.ttl !== observed.ttl || requirement.partialPresent !== observed.partialPresent) return false;
+    return !requirement.partialPresent || equalJson(requirement.partial, observed.partial);
+}
+
+/** Compare admitted supplied data only. Acquisition and enforcement are separate. */
+export function evaluateIndexReadiness(manifest: unknown, observations: unknown): IndexReadinessResult {
+    try {
+        const budget: Budget = { nodes: 0, strings: 0 };
+        const manifestCopy = copyData(manifest, budget, "data");
+        if (manifestCopy === null) return makeResult("MANIFEST_INVALID");
+        const requirements = parseManifest(manifestCopy.value);
+        if (requirements === null) return makeResult("MANIFEST_INVALID");
+        const observationsCopy = copyData(observations, budget, "observations");
+        if (observationsCopy === null) return makeResult("OBSERVATIONS_INVALID");
+        const listings = parseObservations(observationsCopy.value, requirements);
+        if (listings === null) return makeResult("OBSERVATIONS_INVALID");
+        for (let collectionOrdinal = 0; collectionOrdinal < requirements.length; collectionOrdinal += 1) {
+            const requirementsForCollection = requirements[collectionOrdinal];
+            const listing = listings.find((entry) => entry.collection === requirementsForCollection.collection);
+            if (listing === undefined) return makeResult("OBSERVATIONS_INVALID");
+            if (listing.status === "FAILED") return makeResult("OBSERVATION_FAILED", collectionOrdinal);
+            if (listing.status === "INCOMPLETE") return makeResult("OBSERVATION_INCOMPLETE", collectionOrdinal);
+            if (listing.mode !== "MONGODB_8_INCLUDE_INDEX_BUILD_INFO" || listing.unsupported) {
+                return makeResult("OBSERVATION_UNSUPPORTED", collectionOrdinal);
+            }
+            if (listing.building) return makeResult("OBSERVATION_UNREADY", collectionOrdinal);
+            for (let indexOrdinal = 0; indexOrdinal <= requirementsForCollection.indexes.length; indexOrdinal += 1) {
+                const implicitId = indexOrdinal === 0;
+                const requirement: IndexDefinition = implicitId ? {
+                    name: "_id_", key: [["_id", 1]], unique: true, sparse: false, hidden: false,
+                    ttl: null, partialPresent: false, partial: null,
+                } : requirementsForCollection.indexes[indexOrdinal - 1];
+                if (!listing.indexes.some((entry) => matchesIndex(requirement, entry, implicitId))) {
+                    return makeResult("REQUIRED_INDEX_UNSATISFIED", collectionOrdinal, indexOrdinal);
+                }
+            }
+        }
+        return makeResult("READY");
+    } catch {
+        return makeResult("INPUT_INVALID");
+    }
+}

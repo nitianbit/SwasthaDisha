@@ -1,0 +1,361 @@
+{
+  "schema": "SD-INDEX-READINESS-SOURCE-DATA-1",
+  "scope": "TEXT_AND_BYTE_INTEGRITY_ONLY",
+  "sourceSha256": "6597c1a03c54702d89042a29263da81399934e68e8fb6c46f91c638cbe954400",
+  "verifierSha256": "d3e7b8ae23bf451121a256ea10174c0ee23d8b72e06c38b673288eb400df3e08",
+  "checks": {
+    "parameterized_unknown_api": true,
+    "fresh_frozen_result": true,
+    "descriptor_inspection": true,
+    "plain_object_prototypes": true,
+    "ordinary_array_prototype": true,
+    "own_keys_inspection": true,
+    "accessor_denial": true,
+    "active_cycle_denial": true,
+    "node_bound": true,
+    "string_bound": true,
+    "collection_bound": true,
+    "explicit_bound": true,
+    "explicit_total_bound": true,
+    "observed_collection_bound": true,
+    "observed_total_bound": true,
+    "key_bounds": true,
+    "key_direction": true,
+    "field_pattern": true,
+    "partial_depth": true,
+    "ttl_range": true,
+    "explicit_id_denial": true,
+    "duplicate_key_denial": true,
+    "duplicate_name_denial": true,
+    "ordered_key_matching": true,
+    "opaque_marker_context": true,
+    "opaque_marker_presence": true,
+    "simple_collation_only": true,
+    "partial_presence_equality": true,
+    "partial_structural_equality": true,
+    "ttl_presence_equality": true,
+    "unique_equality": true,
+    "sparse_equality": true,
+    "required_visibility": true,
+    "id_name_exception": true,
+    "failed_status_refusal": true,
+    "incomplete_status_refusal": true,
+    "exact_build_mode": true,
+    "unsupported_refusal": true,
+    "building_refusal": true,
+    "implicit_id_first": true,
+    "fixed_exception_mapping": true,
+    "imports_or_dynamic_code": true,
+    "host_effect_globals": true,
+    "time_or_random": true,
+    "unsafe_types_or_suppressions": true,
+    "input_mutation_sorting": true,
+    "serialization_before_admission": true,
+    "top_level_mutable_state": true,
+    "closed_result_codes": true,
+    "only_function_runtime_export": true,
+    "no_default_export": true,
+    "fixed_result_fields": true,
+    "source_present_regular": true,
+    "all_existing_tracked_bytes_preserved": true,
+    "original_handover_and_staged_files_preserved": true,
+    "original_staged_patch_preserved": true
+  },
+  "sourceControls": [
+    {
+      "name": "parameterized_unknown_api",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "fresh_frozen_result",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "descriptor_inspection",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "plain_object_prototypes",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "ordinary_array_prototype",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "own_keys_inspection",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "accessor_denial",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "active_cycle_denial",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "node_bound",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "string_bound",
+      "anchorOccurrences": 2,
+      "rejectedBySamePredicate": false,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "collection_bound",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "explicit_bound",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "explicit_total_bound",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "observed_collection_bound",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "observed_total_bound",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "key_bounds",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "key_direction",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "field_pattern",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "partial_depth",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "ttl_range",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "explicit_id_denial",
+      "anchorOccurrences": 2,
+      "rejectedBySamePredicate": false,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "duplicate_key_denial",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "duplicate_name_denial",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "ordered_key_matching",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "opaque_marker_context",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "opaque_marker_presence",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "simple_collation_only",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "partial_presence_equality",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "partial_structural_equality",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "ttl_presence_equality",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "unique_equality",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "sparse_equality",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "required_visibility",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "id_name_exception",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "failed_status_refusal",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "incomplete_status_refusal",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "exact_build_mode",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "unsupported_refusal",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "building_refusal",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "implicit_id_first",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "fixed_exception_mapping",
+      "anchorOccurrences": 1,
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "imports_or_dynamic_code",
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "host_effect_globals",
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "time_or_random",
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "unsafe_types_or_suppressions",
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "input_mutation_sorting",
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "serialization_before_admission",
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "top_level_mutable_state",
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    },
+    {
+      "name": "always_ready_stub",
+      "rejectedBySamePredicate": true,
+      "scope": "IN_MEMORY_TEXT_ONLY_NOT_TS_EXECUTION"
+    }
+  ],
+  "passed": false,
+  "applicationBehavior": "NOT_RUN",
+  "typeCheck": "NOT_RUN",
+  "applicationImports": 0,
+  "compilerExecutions": 0,
+  "databaseCommands": 0,
+  "DockerCalls": 0,
+  "providerCalls": 0,
+  "limits": "Source anchors are necessary textual evidence, not a parser, proof of control flow, functional behavior, type correctness, acquisition completeness or activation."
+}
