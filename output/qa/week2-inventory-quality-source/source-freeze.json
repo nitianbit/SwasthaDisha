@@ -1,0 +1,21 @@
+{
+  "schema": "SD-BOUNDED-CATALOGUE-QUALITY-SOURCE-FREEZE-1",
+  "baseline": "1db3da7bf90106e1b2f3ef03eec2c9999161286c",
+  "author": "/root",
+  "sourceScope": [
+    "src1/modules/pharmacyInventory/repository/index.ts"
+  ],
+  "files": {
+    "src1/modules/pharmacyInventory/repository/index.ts": "2cc825908777950cbfcf1cf4dea6cc12f0e6e97a41660fb413565db3fdd6e659",
+    "output/qa/week2-catalogue-quality-contract/INVENTORY_CONTRACT.md": "3abe1c31fa12c614002df4726818b1ff281230dd94d4ca55286c06de48f1479a",
+    "output/qa/week2-catalogue-quality-contract/PRE_REVIEW.md": "e736b5a46cc69dca3395bb1e48c8b02fc0888aceee7f894f45a40c2f240e2408",
+    "output/qa/week2-catalogue-quality-contract/contract-freeze.json": "740247c510e49b71afacce6c93d6540ad7e9022ac9d3c6f81637d399265c7a78",
+    "output/qa/week2-inventory-quality-source/AUTHOR_NOTES.md": "75332313a5bdd12d98e22b9965a396d023177173559e1835043ad4d08dcabe7e",
+    "output/qa/week2-inventory-quality-source/audit_source.py": "43c161d504d5a3a74b91ed65883af9e8b9e6bbd77258919cbd3a04db8da2c55a",
+    "output/qa/week2-inventory-quality-source/baseline-rejection.json": "9b9a912206b0b66803537dd7a978b12ff23ee3f92e21ed67997aa82e9d05cbac",
+    "output/qa/week2-inventory-quality-source/candidate.diff": "d5a31540edc8c52086fe35dbd0d2c485c3454e4df01cdf94c1eff2e43133e65d",
+    "output/qa/week2-inventory-quality-source/literal-transform.json": "54fe4d78df2558d1e316c2f4b8efea46ae9c8b8e998342e5c606592848235056",
+    "output/qa/week2-inventory-quality-source/source-audit.json": "50172907cf288ea9020e5868435b96bc55f5c6dec076c30bc7da629f35b7e976"
+  },
+  "status": "SOURCE_CANDIDATE_REQUIRES_TWO_NONAUTHOR_REVIEWS_RUNTIME_NOT_RUN"
+}
