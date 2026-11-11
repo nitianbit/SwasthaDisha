@@ -1,0 +1,90 @@
+diff --git a/test/api-runtime/scenario/README.md b/test/api-runtime/scenario/README.md
+index 868ea2392e893f2238d9809c98ddd785367f1fa0..9117773ab9f464c6985c7f9eea7dbcfc1da353d5 100644
+--- a/test/api-runtime/scenario/README.md
++++ b/test/api-runtime/scenario/README.md
+@@ -22 +22,3 @@ The next specialist-profile extension proposes90 groups/33 actual-source
+-variants; its new HTTP/Joi/ODM behavior remains NOT_RUN until all exact C3 gates.
++variants. Its first admitted attempt failed (execution9); no90/33 acceptance
++was obtained. The warning-accounting candidate below remains NOT_RUN under fresh
++exact C3 gates; run9 does not authorize a retry.
+@@ -256 +258 @@ for this diagnostic-metadata correction, and no runtime receipt is reopened.
+-## Specialist self-profile extension (new actual behavior NOT_RUN)
++## Specialist self-profile extension (run9 failed;90/33 unaccepted)
+@@ -312,0 +315,39 @@ authorizes a retry, extra package, grant, resource or limit.
++
++
++## Exact private warning accounting (source candidate, not a retry approval)
++
++The separately approved [warning contract](../../../output/qa/week2-profile-warning-contract/CONTRACT.md)
++preserves the failed [execution9 result and independent reviews](../../../output/qa/week2-api-runtime/execution-9/REVIEW.md).
++That exact attempt failed at API_SCENARIOS/SPECIALIST_PROFILE_EXCLUDED_EFFECTS,
++with separately verified exact cleanup. Pinned public Mongoose9 source emits a
++new/after deprecation warning when the unchanged BaseRepository new:true update
++path runs; the old predicate demanded consoleDelta0. This strongly supports the
++cause, but run9 persisted neither numeric console delta nor trial ID. It is an
++inference, not a measured warning attribution or successful profile test.
++
++The proposed fixture amendment keeps the existing total console counter for EVERY
++console-method/warning event. Bootstrap additionally recognizes only the exact
++public primitive message, exactly two arguments, and ordinary one-own-DATA-key
++options code:MONGOOSE, without getters/coercion/raw retention/native delegation.
++Every other signature or console method remains unknown. The extra private
++mongooseNewAfterWarnings counter is monotonic across phases; no new ctx getter,
++public provider/result key, production default, dependency or permission is added.
++
++The actual HTTP effects predicate calls the SAME exported pure fixture
++assertProfileWarningBudget function tested by builtins-only hardfakes. Expected
++specialist writes must be exactly0or1, actual/expected specialist and dbWrites
++counts must agree, known-warning delta must be a finite nonnegative safeinteger
++equal to BOTH actual and frozen expected specialist writes, and totalconsole
++must be safe/nonnegative with total-known exactly0. Missing/extra/multiple known
++warnings, unknown/log residuals, counter resets or additional writes fail closed.
++Capability, invalid declared-provider plan, known-count and unknown-console
++failures have separate fixed safe codes. All prior status/actionread/write/JWT/
++provider checks precede this budget, preserving six variant mismatch semantics.
++
++No actor/field/Joi/error/response/all13state/ownership-three-ID-proof/OTP180s/index
++343/150/300 expectation changes. The source predicts6nominal,10unsafe-reference
++and11restoration known warnings; none is a retained run9 measurement. Actual90/33
++and the new per-request warning proof remain NOT_RUN pending two exact source/
++one-emission decisions, fresh clean locked preparation/artifact reviews, two
++separate exact one-run decisions, a fresh receipt/claim, one run and postreviews.
++Consumed run9 approval cannot be reused; no automatic retry or wider gate follows.
+diff --git a/test/api-runtime/scenario/scenario.cjs b/test/api-runtime/scenario/scenario.cjs
+index 2566f0c8cfd33fe6d098fc96120d3ddbf9b1455c..8ca3433cc3b163c03318eab1d641fd658d86059c 100644
+--- a/test/api-runtime/scenario/scenario.cjs
++++ b/test/api-runtime/scenario/scenario.cjs
+@@ -66,0 +67,22 @@ function requireIndexEvidence(evidence, need) {
++// Pure fixture accounting; no application/dependency/console operation occurs.
++// The actual HTTP predicate and builtins-only units call this same function.
++function assertProfileWarningBudget(observed, expected, need) {
++  if (typeof need !== 'function') throw new Error('SPECIALIST_PROFILE_WARNING_CHECKER_REQUIRED');
++  const actualWrites = observed?.writes?.specialists;
++  const expectedWrites = expected?.writeOpsDelta?.specialists;
++  const actualDbWrites = observed?.effects?.dbWrites;
++  const expectedDbWrites = expected?.dbWritesDelta;
++  const known = observed?.effects?.mongooseNewAfterWarnings;
++  const totalConsole = observed?.effects?.console;
++  need(Number.isSafeInteger(expectedWrites) && (expectedWrites === 0 || expectedWrites === 1)
++    && Number.isSafeInteger(actualWrites) && actualWrites >= 0
++    && Number.isSafeInteger(actualDbWrites) && actualDbWrites >= 0
++    && Number.isSafeInteger(expectedDbWrites) && expectedDbWrites >= 0
++    && actualDbWrites === actualWrites && expectedDbWrites === expectedWrites
++    && actualDbWrites === expectedDbWrites, 'SPECIALIST_PROFILE_WARNING_COUNT');
++  need(Number.isSafeInteger(known) && known >= 0
++    && known === actualWrites && known === expectedWrites, 'SPECIALIST_PROFILE_WARNING_COUNT');
++  need(Number.isSafeInteger(totalConsole) && totalConsole >= 0
++    && totalConsole - known === 0, 'SPECIALIST_PROFILE_UNKNOWN_CONSOLE');
++}
++
+@@ -977,3 +999,4 @@ async function runScenario(ctx) {
+-    need(observed.effects.excluded === expected.providerDelta.deniedCapabilities && observed.effects.console === 0
+-      && ['payments', 'storage', 'queue'].every(key => expected.providerDelta[key] === 0)
+-      && observed.effects.unexpected === 0 && observed.effects.excluded === 0, 'SPECIALIST_PROFILE_EXCLUDED_EFFECTS');
++    need(observed.effects.excluded === expected.providerDelta.deniedCapabilities
++      && observed.effects.unexpected === 0 && observed.effects.excluded === 0, 'SPECIALIST_PROFILE_CAPABILITY_EFFECTS');
++    need(['payments', 'storage', 'queue'].every(key => expected.providerDelta[key] === 0), 'SPECIALIST_PROFILE_DECLARED_PROVIDER_PLAN');
++    assertProfileWarningBudget(observed, expected, need);
+@@ -1291 +1314 @@ async function runScenario(ctx) {
+-module.exports = { runScenario, requireConfigurationEvidence, requireIndexEvidence };
++module.exports = { runScenario, requireConfigurationEvidence, requireIndexEvidence, assertProfileWarningBudget };

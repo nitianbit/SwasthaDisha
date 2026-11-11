@@ -64,6 +64,28 @@ function requireIndexEvidence(evidence, need) {
   return evidence;
 }
 
+// Pure fixture accounting; no application/dependency/console operation occurs.
+// The actual HTTP predicate and builtins-only units call this same function.
+function assertProfileWarningBudget(observed, expected, need) {
+  if (typeof need !== 'function') throw new Error('SPECIALIST_PROFILE_WARNING_CHECKER_REQUIRED');
+  const actualWrites = observed?.writes?.specialists;
+  const expectedWrites = expected?.writeOpsDelta?.specialists;
+  const actualDbWrites = observed?.effects?.dbWrites;
+  const expectedDbWrites = expected?.dbWritesDelta;
+  const known = observed?.effects?.mongooseNewAfterWarnings;
+  const totalConsole = observed?.effects?.console;
+  need(Number.isSafeInteger(expectedWrites) && (expectedWrites === 0 || expectedWrites === 1)
+    && Number.isSafeInteger(actualWrites) && actualWrites >= 0
+    && Number.isSafeInteger(actualDbWrites) && actualDbWrites >= 0
+    && Number.isSafeInteger(expectedDbWrites) && expectedDbWrites >= 0
+    && actualDbWrites === actualWrites && expectedDbWrites === expectedWrites
+    && actualDbWrites === expectedDbWrites, 'SPECIALIST_PROFILE_WARNING_COUNT');
+  need(Number.isSafeInteger(known) && known >= 0
+    && known === actualWrites && known === expectedWrites, 'SPECIALIST_PROFILE_WARNING_COUNT');
+  need(Number.isSafeInteger(totalConsole) && totalConsole >= 0
+    && totalConsole - known === 0, 'SPECIALIST_PROFILE_UNKNOWN_CONSOLE');
+}
+
 async function runScenario(ctx) {
   const { mongoose, need } = ctx;
   const model = name => mongoose.model(name);
@@ -974,9 +996,10 @@ async function runScenario(ctx) {
       'SPECIALIST_PROFILE_WRITE_JWT_EFFECTS');
     for (const key of ['email', 'sms', 'push', 'logger', 'calendar', 'unexpected'])
       need(observed.effects[key] === expected.providerDelta[key], 'SPECIALIST_PROFILE_PROVIDER_EFFECTS');
-    need(observed.effects.excluded === expected.providerDelta.deniedCapabilities && observed.effects.console === 0
-      && ['payments', 'storage', 'queue'].every(key => expected.providerDelta[key] === 0)
-      && observed.effects.unexpected === 0 && observed.effects.excluded === 0, 'SPECIALIST_PROFILE_EXCLUDED_EFFECTS');
+    need(observed.effects.excluded === expected.providerDelta.deniedCapabilities
+      && observed.effects.unexpected === 0 && observed.effects.excluded === 0, 'SPECIALIST_PROFILE_CAPABILITY_EFFECTS');
+    need(['payments', 'storage', 'queue'].every(key => expected.providerDelta[key] === 0), 'SPECIALIST_PROFILE_DECLARED_PROVIDER_PLAN');
+    assertProfileWarningBudget(observed, expected, need);
     need(profileAttemptKeys.every(key => observed.attempts[key] === expected.privatePortalAttemptDelta[key]
       && observed.attempts[key] === 0), 'SPECIALIST_PROFILE_PRIVATE_EFFECTS');
   }
@@ -1288,4 +1311,4 @@ async function runScenario(ctx) {
   } };
 }
 
-module.exports = { runScenario, requireConfigurationEvidence, requireIndexEvidence };
+module.exports = { runScenario, requireConfigurationEvidence, requireIndexEvidence, assertProfileWarningBudget };
