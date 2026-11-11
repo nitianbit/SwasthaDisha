@@ -1,0 +1,16 @@
+{
+  "scope": "READ_ONLY_ENGINE_AND_CACHED_IMAGE_METADATA; NO_CREATE_START_EXEC_APP_DB",
+  "endpoint": "unix:///Users/shubham/.docker/run/docker.sock",
+  "engineId": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+  "cachedImages": {
+    "nodeImage": [
+      "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d"
+    ],
+    "mongoImage": [
+      "mongo@sha256:b9924c330a8bbc5800fe9c69f04a84e221eca7b28fd049a0354147d9908fa142"
+    ]
+  },
+  "purposeIds": [],
+  "status": "READ_ONLY_READY_EXPECTED_ENGINE_AND_TWO_CACHED_DIGESTS",
+  "ownedConfigRemoved": true
+}

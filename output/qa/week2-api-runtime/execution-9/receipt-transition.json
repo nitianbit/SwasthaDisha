@@ -1,0 +1,27 @@
+{
+  "schema": "SD-RUNTIME-RECEIPT-PRESERVATION-1",
+  "archive": "/private/tmp/sd-auth-api-runtime-approval-ea2a39c.consumed.json",
+  "archiveSha256": "8d7a7c4bd175e6d3189fd8afdd6d73d15a76b6e32a1cd4554fcf4a30ba4bd9ee",
+  "exclusiveHardlinkSameInodeNlink2Verified": true,
+  "archiveFinalNlink": 1,
+  "oldDevInode": [
+    16777231,
+    53070506
+  ],
+  "freshPath": "/private/tmp/sd-auth-api-runtime-approval.json",
+  "freshSha256": "1faa3907d1d53f7a7d07ff57fc0f1a339358271e9f7ddb404cd5fa2dbece48ab",
+  "freshMode": "0600",
+  "freshUid": 501,
+  "freshNlink": 1,
+  "freshDevInode": [
+    16777231,
+    53412177
+  ],
+  "source": "0f0d36bf4f1df92ad5492991c27524b8e5a25a8f",
+  "descriptorSha256": "9c7b9ed771f2309ac7ab21c2ea0093cf31872a59c8a0e9f1b13eb4601430d761",
+  "actualReviewers": [
+    "/root/index_standards_fresh",
+    "/root/index_spec_fresh"
+  ],
+  "status": "FRESH_APPROVED_RECEIPT_CREATED_INVOCATION_NOT_STARTED"
+}

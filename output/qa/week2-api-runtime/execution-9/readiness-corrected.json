@@ -1,0 +1,16 @@
+{
+  "schema": "SD-SPECIALIST-RUNTIME-READINESS-2",
+  "status": "READ_ONLY_EXPECTED_ENGINE_AND_EXACT_PURPOSE_ABSENCE",
+  "UTC": "2026-11-11T06:42:47.291107+00:00",
+  "endpoint": "unix:///Users/shubham/.docker/run/docker.sock",
+  "engineBefore": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+  "engineAfter": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+  "exactPurposeFilter": "label=swasthadisha.test.purpose=auth-api-runtime",
+  "purposeIds": [],
+  "ownedEmptyConfigRemoved": true,
+  "priorMetadataFile": "/private/tmp/swasthadisha-parallel-p1qom53w/profile-runtime-9-readiness.json",
+  "priorSha256": "8dc15a0402696ac899d5019044710c719c000dd4f8b3bf07ab2965590eae1298",
+  "correction": "Prior cached-image/engine hashes are valid; prior empty purposeIds used com.swasthadisha.purpose instead of actual swasthadisha.test.purpose and supplies NO purpose-absence proof. Exact source platform predicate used for this fresh proof; old file retained unchanged.",
+  "applicationExecutions": 0,
+  "DockerMutations": 0
+}
