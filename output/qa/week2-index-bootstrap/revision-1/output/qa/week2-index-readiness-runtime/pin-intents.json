@@ -1,0 +1,2445 @@
+{
+  "schema": "SD-INDEX-RUNTIME-DRAFT-INPUTS-1",
+  "status": "ROOT_FINAL_CONTRACT_REVIEW_INPUTS_NOT_EXECUTED",
+  "baseline": "fd1c855b7405dd020cc7e7db1efa0f47d624af39",
+  "files": {
+    "output/qa/week2-index-readiness/CONTRACT.md": "d626f54222ab4f60f32bf9c94c97f3815ec8f71e35bebd5f604d58fb0ac01459",
+    "output/qa/week2-index-readiness/contract-freeze.json": "c61f2234affbec93b4a3d0ce8a141572db6e4165b652a2be62bc8606193d2f92",
+    "output/qa/week2-index-readiness/PRE_REVIEW.md": "694116447ee37ef7d347e60d95edac46d94709235db71b6f7e580037f7a02f97",
+    "output/qa/week2-index-readiness/draft-inputs.json": "c8ae5989506dbf0b34b0e562319ffd3d6b2d3d257574903cc463b2a4ac5b585a",
+    "output/qa/week2-api-runtime/execution-7/REVIEW.md": "3a1cca2ced03f1a02aee0d90478505bb53dde81a937352713d77a24a23661665",
+    "output/qa/week2-api-preparation/emission-9/runtime-template.json": "185fb708ef0af3b4bbf106b836baee69d20b922a6089b418e42ed739f6e801e7",
+    "documentation/planning/implementation/M0_A_PROGRESS.md": "52415a4b5b90627bf86cdeb85299539cbd3d4e062b68cf99db211dee9e31dfa2",
+    "documentation/planning/implementation/PARALLEL_DEVELOPMENT_WORKFLOW.md": "c4f99a171df17ae98405a1fdd1c6aad0f9ab2dedfdb4aafabff60cb292d6148a",
+    "documentation/planning/M0_START_APPROVAL_STATUS.md": "67eea927661cf1a94d8644ede28eaa7315d4774866958ff346b37aac5a559be3",
+    "documentation/planning/implementation/C2_COMPATIBILITY_REVIEW.md": "e703e7bc43495868edd2ab535cb38b0f5f2ac54b5d572c2c38467b59e2ae67d4",
+    "documentation/planning/implementation/C3_MONGO_FIXTURE_CONTRACT.md": "208d702c9a1f7bc2826bda720603fa8fb382bfed9599739e1c8f4605b81368ce",
+    "test/api-runtime/scenario/bootstrap.cjs": "ff7ecad69b71145ba1dad5ad76ca68e836437d2e02077ade8ffa3748c40b6efc",
+    "test/api-runtime/scenario/bootstrap-unit.cjs": "d5079df3aca5023f021a1fa1a3e665d015c9a13de503ff480cec8c5560a5a56b",
+    "test/api-runtime/scenario/compile.cjs": "ecf823aba516c9c1bba8ce7ae62c2db32a7d648721239c363bb1f6aad84584df",
+    "test/api-runtime/scenario/scenario.cjs": "4ceca6c30921a3718b1b81912bebf6b8c735adbab6f82293c502e281d1f4f668",
+    "test/api-runtime/scenario/ports-manifest.json": "86d6b909c06387c52c8d62e3b99a10784d9612fb6fc63581faf6d3e96ee13a12",
+    "test/api-runtime/scenario/package-plan.json": "d7830a9ce688235bb64f3f9f7ac3d5dd604bb63641cdae97b8b7250bfd957227",
+    "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+    "test/api-runtime/platform.mjs": "b5117065c90c4698cb9604a8da0cb673a38249d8eee07a8ac39e11040a56e29f"
+  },
+  "partASource": {
+    "path": "src1/modules/common/utils/indexReadiness.ts",
+    "sha": "050ecc993c862638cf4912bb854e04baa5d80241cb124e7831fc3c95a78db5bd",
+    "sourceCommit": "e58650a",
+    "status": "TWO_ACTUAL_SOURCE_APPROVALS_BEHAVIOR_AND_TYPECHECK_NOT_RUN",
+    "candidateFreezeSha": "2d8420a5b18b1eb5f931f9d49b1bd6f3650ba1dd1c7b134992245a84b4a0882a",
+    "reviewers": [
+      "/root/index_standards_fresh",
+      "/root/index_spec_fresh"
+    ],
+    "decisions": [
+      "AMENDMENT_CONFIRMED/APPROVE_SOURCE_ONLY",
+      "AMENDMENT_CONFIRMED/APPROVE_SOURCE_ONLY"
+    ]
+  },
+  "acceptedRuntime": {
+    "source": "c2dbac3e44b0bbf30e4574640cd940e2f0075975",
+    "groups": 76,
+    "sensitivity": 21,
+    "execution": 7,
+    "templateSha": "185fb708ef0af3b4bbf106b836baee69d20b922a6089b418e42ed739f6e801e7",
+    "newRuntimeAuthority": false
+  },
+  "pinnedDriverTextEvidence": {
+    "runtimeDirectory": "/private/tmp/sd-auth-api-build-a9f64d75-9506-4c72-a420-f273f42b886c/runtime",
+    "sourceTemplateCommit": "c2dbac3e44b0bbf30e4574640cd940e2f0075975",
+    "lockSha": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+    "files": {
+      "node_modules/mongoose/node_modules/mongodb/src/db.ts": "15730681d44e8a43d0d9cad3ab84f2256b5e8f22f2ce1d66b8b403c4e4103b32",
+      "node_modules/mongoose/node_modules/mongodb/src/operations/run_command.ts": "ec4a810c98d16521eb5fba57cf0b135f07bd2f6d05288e4b07c3c33203500e59",
+      "node_modules/mongoose/node_modules/mongodb/src/operations/get_more.ts": "866ceb6ff3146c6bb8f563022bbeff2c84d589be600ddbcb3af1d900b65b930c",
+      "node_modules/mongoose/node_modules/mongodb/src/bson.ts": "6765d9ec3c61343226a38f75981f3920947beb3e170dfaa5a38be2cd1eaf448b",
+      "node_modules/mongoose/node_modules/mongodb/src/sessions.ts": "618811a34100f9139c8fadd4da0cd7977d478968cfbd127c239ff10f058e03d5",
+      "node_modules/mongoose/node_modules/mongodb/package.json": "c66238ee7172351c0bcfdbe5c5e52068c80cd0e904e8ca0e789a6ed0f5f892d2",
+      "node_modules/bson/src/long.ts": "fc4f30e8b1776c10a4ff75aab061e3d2b6d26b2a3180476e253c5578b13c4ae8",
+      "node_modules/bson/package.json": "6fd7e1928c2176b55c460a6cfe83a8f0b79fa7b8830e1f403f66e32e0f6c8379"
+    },
+    "versions": {
+      "mongodb": "7.8.0",
+      "bson": "7.3.4"
+    },
+    "evaluation": "NONE_TEXT_ONLY"
+  },
+  "selectedCollections": [
+    "users",
+    "admins",
+    "hrs",
+    "corporates",
+    "specialists",
+    "pharmacies",
+    "OTP",
+    "wallets",
+    "wallettransactions",
+    "notifications",
+    "fcmtokens",
+    "wellnesspackages",
+    "dependents"
+  ],
+  "selectedExplicitIndexes": 8,
+  "selectedImplicitIdIndexes": 13,
+  "selectedManifestCanonicalSha": "9160db1c3e937f49f6a68cb87d5c55b2c9e0f662310b560f874a4d4a7f61e3c7",
+  "proposedGroups": 83,
+  "proposedSensitivity": 27,
+  "openLeadChoices": [
+    "Root final contract/interface/baseline freeze and both preimplementation reviews only; no implementation or execution authorization"
+  ],
+  "appEvaluations": 0,
+  "compilerExecutions": 0,
+  "databaseCommands": 0,
+  "dockerCalls": 0,
+  "gitWrites": 0,
+  "leadEngineeringChoices": {
+    "sameOwnedMetadataSession": "ACCEPTED_PROPOSAL_NOT_EXECUTION",
+    "knownLongScalarProjection": "TTL high0 low0..2147483647; v high0 low1/2; direction(high0,low1)/(high-1,low-1); exact-own-driver-Long, no conversion/coercion; cursors never demoted",
+    "partialNormalization": "NONE"
+  },
+  "acceptedIntegration": "0f3ceb6aa6f22dd3a65040beed44707e7f138307",
+  "sourceMutations": [
+    {
+      "id": "INDEX_MISSING_REQUIREMENT_ACCEPTED",
+      "before": "return makeResult(\"REQUIRED_INDEX_UNSATISFIED\", collectionOrdinal, indexOrdinal);",
+      "after": "return makeResult(\"READY\");",
+      "occurrences": 1,
+      "predictedTransformedSourceSha": "38840d330b825e2feb7240b73845ca11728cf516f4853d89e6e5e6d3ce6438f6",
+      "trialIds": [
+        "REMOVE_ID_00",
+        "REMOVE_ID_01",
+        "REMOVE_ID_02",
+        "REMOVE_ID_03",
+        "REMOVE_ID_04",
+        "REMOVE_ID_05",
+        "REMOVE_ID_06",
+        "REMOVE_ID_07",
+        "REMOVE_ID_08",
+        "REMOVE_ID_09",
+        "REMOVE_ID_10",
+        "REMOVE_ID_11",
+        "REMOVE_ID_12",
+        "REMOVE_EXPLICIT_00",
+        "REMOVE_EXPLICIT_02",
+        "REMOVE_EXPLICIT_05",
+        "REMOVE_EXPLICIT_06",
+        "REMOVE_EXPLICIT_07",
+        "REMOVE_EXPLICIT_08",
+        "REMOVE_EXPLICIT_09",
+        "REMOVE_EXPLICIT_10"
+      ],
+      "expectedUnsafeResult": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "requiredAfterEachProbe": "fresh actual nominal helper repeats SAME trial with exact expected denial AND REAL_COMPLETE_SELECTED positive"
+    },
+    {
+      "id": "INDEX_KEY_ORDER_IGNORED",
+      "before": "return left.length === right.length && right.every((entry, index) =>\n        left[index][0] === entry[0] && left[index][1] === entry[1]);",
+      "after": "return left.length === right.length && right.every((entry) =>\n        left.some((candidate) => candidate[0] === entry[0] && candidate[1] === entry[1]));",
+      "occurrences": 1,
+      "predictedTransformedSourceSha": "03cedbf95c229c2bcacb4aa5913bc6b723b6dcaab10cab24d9dfd68278cca2d9",
+      "trialIds": [
+        "KEY_COMPOUND_REVERSED"
+      ],
+      "expectedUnsafeResult": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "requiredAfterEachProbe": "fresh actual nominal helper repeats SAME trial with exact expected denial AND REAL_COMPLETE_SELECTED positive"
+    },
+    {
+      "id": "INDEX_OPTIONS_IGNORED",
+      "before": "        observed.hidden || requirement.unique !== observed.unique || requirement.sparse !== observed.sparse ||\n        requirement.ttl !== observed.ttl || requirement.partialPresent !== observed.partialPresent) return false;",
+      "after": "        requirement.partialPresent !== observed.partialPresent) return false;",
+      "occurrences": 1,
+      "predictedTransformedSourceSha": "cba386c2e53905dc8ef137d33a03c9ddc6841456addcf18d4539854664b1ad9c",
+      "trialIds": [
+        "ID_EXPLICIT_NONUNIQUE",
+        "UNIQUE_FALSE_00",
+        "UNIQUE_ABSENT_00",
+        "UNIQUE_FALSE_02",
+        "UNIQUE_ABSENT_02",
+        "UNIQUE_FALSE_05",
+        "UNIQUE_ABSENT_05",
+        "UNIQUE_FALSE_07",
+        "UNIQUE_ABSENT_07",
+        "UNIQUE_FALSE_08",
+        "UNIQUE_ABSENT_08",
+        "UNIQUE_FALSE_09",
+        "UNIQUE_ABSENT_09",
+        "UNIQUE_FALSE_10",
+        "UNIQUE_ABSENT_10",
+        "SPARSE_FALSE",
+        "SPARSE_ABSENT",
+        "TTL_ABSENT",
+        "TTL_ONE",
+        "TTL_UNEXPECTED",
+        "ID_TTL_UNEXPECTED",
+        "HIDDEN_REQUIRED"
+      ],
+      "expectedUnsafeResult": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "requiredAfterEachProbe": "fresh actual nominal helper repeats SAME trial with exact expected denial AND REAL_COMPLETE_SELECTED positive"
+    },
+    {
+      "id": "INDEX_PARTIAL_FILTER_IGNORED",
+      "before": "return !requirement.partialPresent || equalJson(requirement.partial, observed.partial);",
+      "after": "return true;",
+      "occurrences": 1,
+      "predictedTransformedSourceSha": "37cc8f34866d598d7c2474627992c35eaf0e2fb3949386fc0bc0c22bd9bddb40",
+      "trialIds": [
+        "PARTIAL_EMPTY",
+        "PARTIAL_REFUND_VALUE",
+        "PARTIAL_REFERENCE_VALUE",
+        "PARTIAL_EXISTS",
+        "PARTIAL_TYPE_ALIAS",
+        "PARTIAL_EQ_FORM",
+        "PARTIAL_ARRAY_ORDER",
+        "PARTIAL_SCALAR_TYPE"
+      ],
+      "expectedUnsafeResult": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "requiredAfterEachProbe": "fresh actual nominal helper repeats SAME trial with exact expected denial AND REAL_COMPLETE_SELECTED positive"
+    },
+    {
+      "id": "INDEX_INCOMPLETE_ACCEPTED",
+      "before": "if (listing.status === \"INCOMPLETE\") return makeResult(\"OBSERVATION_INCOMPLETE\", collectionOrdinal);",
+      "after": "if (listing.status === \"INCOMPLETE\") return makeResult(\"READY\");",
+      "occurrences": 1,
+      "predictedTransformedSourceSha": "be8b32e10a16334d68b8df8cfa0b55d5ffbaf161d826261366f6adbc8a8ab150",
+      "trialIds": [
+        "STATUS_INCOMPLETE"
+      ],
+      "expectedUnsafeResult": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "requiredAfterEachProbe": "fresh actual nominal helper repeats SAME trial with exact expected denial AND REAL_COMPLETE_SELECTED positive"
+    },
+    {
+      "id": "INDEX_BUILD_STATUS_IGNORED",
+      "before": "if (listing.building) return makeResult(\"OBSERVATION_UNREADY\", collectionOrdinal);",
+      "after": "if (listing.building) return makeResult(\"READY\");",
+      "occurrences": 1,
+      "predictedTransformedSourceSha": "a72e944ce170bbc8d6b68ce19ec2628bbfc4d86ba19be24e0aa19e219710104c",
+      "trialIds": [
+        "MARKER_WRAPPER_indexBuildInfo_NULL",
+        "MARKER_WRAPPER_indexBuildInfo_FALSE",
+        "MARKER_WRAPPER_indexBuildInfo_EMPTY",
+        "MARKER_WRAPPER_indexBuildInfo_CYCLE",
+        "MARKER_WRAPPER_indexBuildInfo_DRIVER_UUID",
+        "MARKER_WRAPPER_buildUUID_NULL",
+        "MARKER_WRAPPER_buildUUID_FALSE",
+        "MARKER_WRAPPER_buildUUID_EMPTY",
+        "MARKER_WRAPPER_buildUUID_CYCLE",
+        "MARKER_WRAPPER_buildUUID_DRIVER_UUID",
+        "MARKER_SPEC_indexBuildInfo_NULL",
+        "MARKER_SPEC_indexBuildInfo_FALSE",
+        "MARKER_SPEC_indexBuildInfo_EMPTY",
+        "MARKER_SPEC_indexBuildInfo_CYCLE",
+        "MARKER_SPEC_indexBuildInfo_DRIVER_UUID",
+        "MARKER_SPEC_buildUUID_NULL",
+        "MARKER_SPEC_buildUUID_FALSE",
+        "MARKER_SPEC_buildUUID_EMPTY",
+        "MARKER_SPEC_buildUUID_CYCLE",
+        "MARKER_SPEC_buildUUID_DRIVER_UUID",
+        "BUILDING_EXTRA",
+        "BUILDING_BEFORE_REQUIREMENT"
+      ],
+      "expectedUnsafeResult": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "requiredAfterEachProbe": "fresh actual nominal helper repeats SAME trial with exact expected denial AND REAL_COMPLETE_SELECTED positive"
+    }
+  ],
+  "trials": [
+    {
+      "id": "REAL_COMPLETE_SELECTED",
+      "group": "INDEX_SELECTED_READBACK",
+      "construction": "Use exact M0/O0 acquired after all13 cursor exhaustions; no derived changes.",
+      "expected": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_ID_00",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed _id_ spec in collection ordinal0.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": 0
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_ID_01",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed _id_ spec in collection ordinal1.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 1,
+        "indexOrdinal": 0
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_ID_02",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed _id_ spec in collection ordinal2.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 2,
+        "indexOrdinal": 0
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_ID_03",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed _id_ spec in collection ordinal3.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 3,
+        "indexOrdinal": 0
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_ID_04",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed _id_ spec in collection ordinal4.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 4,
+        "indexOrdinal": 0
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_ID_05",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed _id_ spec in collection ordinal5.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 5,
+        "indexOrdinal": 0
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_ID_06",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed _id_ spec in collection ordinal6.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 6,
+        "indexOrdinal": 0
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_ID_07",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed _id_ spec in collection ordinal7.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 7,
+        "indexOrdinal": 0
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_ID_08",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed _id_ spec in collection ordinal8.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 0
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_ID_09",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed _id_ spec in collection ordinal9.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 9,
+        "indexOrdinal": 0
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_ID_10",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed _id_ spec in collection ordinal10.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 10,
+        "indexOrdinal": 0
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_ID_11",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed _id_ spec in collection ordinal11.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 11,
+        "indexOrdinal": 0
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_ID_12",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed _id_ spec in collection ordinal12.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 12,
+        "indexOrdinal": 0
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_EXPLICIT_00",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed explicit selected spec in collection ordinal0.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_EXPLICIT_02",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed explicit selected spec in collection ordinal2.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 2,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_EXPLICIT_05",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed explicit selected spec in collection ordinal5.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 5,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_EXPLICIT_06",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed explicit selected spec in collection ordinal6.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 6,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_EXPLICIT_07",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed explicit selected spec in collection ordinal7.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 7,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_EXPLICIT_08",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed explicit selected spec in collection ordinal8.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_EXPLICIT_09",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed explicit selected spec in collection ordinal9.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 9,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REMOVE_EXPLICIT_10",
+      "group": "INDEX_REQUIRED_REMOVAL_DENIALS",
+      "construction": "Remove only observed explicit selected spec in collection ordinal10.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 10,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "KEY_COMPOUND_REVERSED",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Reverse only wallettransactions explicit four-entry key vector.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "KEY_NAME_0",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Change wallettransactions key field ordinal0 to fixtureDifferent0, preserving direction/order.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "KEY_DIRECTION_0",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Change wallettransactions key direction ordinal0 from1 to-1.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "KEY_DROP_0",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Remove wallettransactions key entry ordinal0.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "KEY_NAME_1",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Change wallettransactions key field ordinal1 to fixtureDifferent1, preserving direction/order.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "KEY_DIRECTION_1",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Change wallettransactions key direction ordinal1 from1 to-1.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "KEY_DROP_1",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Remove wallettransactions key entry ordinal1.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "KEY_NAME_2",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Change wallettransactions key field ordinal2 to fixtureDifferent2, preserving direction/order.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "KEY_DIRECTION_2",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Change wallettransactions key direction ordinal2 from1 to-1.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "KEY_DROP_2",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Remove wallettransactions key entry ordinal2.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "KEY_NAME_3",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Change wallettransactions key field ordinal3 to fixtureDifferent3, preserving direction/order.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "KEY_DIRECTION_3",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Change wallettransactions key direction ordinal3 from1 to-1.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "KEY_DROP_3",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Remove wallettransactions key entry ordinal3.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "KEY_EXTRA",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Append [fixtureExtra,1] to wallettransactions explicit key.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "KEY_DUPLICATE_FIELD",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Append second userId to wallettransactions key.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "KEY_ZERO_DIRECTION",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Set users explicit direction to numeric0.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "KEY_STRING_DIRECTION",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Set users explicit direction to string1.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "KEY_BOOLEAN_DIRECTION",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Set users explicit direction to true.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "ID_WRONG_NAME",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Rename users _id_ spec to fixture-renamed-id; same key.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": 0
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "ID_WRONG_KEY",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Change users _id_ key to [[fixtureOther,1]], same name.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": 0
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "ID_EXPLICIT_NONUNIQUE",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Set users _id_ unique:false.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": 0
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "NONID_ABSENT_UNIQUE",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Delete users explicit unique option; retain sparse:true.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "COLLECTION_CASE",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Change OTP listing collection to otp.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "COLLECTION_MISSING",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Remove users listing.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "COLLECTION_FOREIGN",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Replace users listing collection with fixtureForeign.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "LISTING_DUPLICATE",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Replace admins listing with a fresh duplicate users listing.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "INDEX_NAME_DUPLICATE",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Rename users explicit spec to _id_.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "INDEX_KEY_DUPLICATE",
+      "group": "INDEX_KEY_AND_IDENTITY_DENIALS",
+      "construction": "Add a complete users spec with same explicit key/options but a new name.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "UNIQUE_FALSE_00",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set to false unique on collection0 explicit selected spec.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "UNIQUE_ABSENT_00",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Delete unique on collection0 explicit selected spec.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "UNIQUE_FALSE_02",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set to false unique on collection2 explicit selected spec.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 2,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "UNIQUE_ABSENT_02",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Delete unique on collection2 explicit selected spec.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 2,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "UNIQUE_FALSE_05",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set to false unique on collection5 explicit selected spec.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 5,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "UNIQUE_ABSENT_05",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Delete unique on collection5 explicit selected spec.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 5,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "UNIQUE_FALSE_07",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set to false unique on collection7 explicit selected spec.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 7,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "UNIQUE_ABSENT_07",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Delete unique on collection7 explicit selected spec.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 7,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "UNIQUE_FALSE_08",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set to false unique on collection8 explicit selected spec.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "UNIQUE_ABSENT_08",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Delete unique on collection8 explicit selected spec.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "UNIQUE_FALSE_09",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set to false unique on collection9 explicit selected spec.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 9,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "UNIQUE_ABSENT_09",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Delete unique on collection9 explicit selected spec.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 9,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "UNIQUE_FALSE_10",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set to false unique on collection10 explicit selected spec.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 10,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "UNIQUE_ABSENT_10",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Delete unique on collection10 explicit selected spec.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 10,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "SPARSE_FALSE",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set to false sparse on users explicit spec.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "SPARSE_ABSENT",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Delete sparse on users explicit spec.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "TTL_ABSENT",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Delete OTP expireAfterSeconds:0.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 6,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "TTL_ONE",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set OTP expireAfterSeconds:1.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 6,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "TTL_UNEXPECTED",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Add expireAfterSeconds:0 to wallets explicit spec.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 7,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "ID_TTL_UNEXPECTED",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Add expireAfterSeconds:0 to users _id_ spec.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": 0
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "TTL_INVALID_NEGATIVE",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set OTP expireAfterSeconds to -1.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "TTL_INVALID_FRACTION",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set OTP expireAfterSeconds to 0.5.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "TTL_INVALID_STRING",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set OTP expireAfterSeconds to string0.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "TTL_INVALID_NAN",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set OTP expireAfterSeconds to NaN.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "TTL_INVALID_INFINITY",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set OTP expireAfterSeconds to Infinity.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "TTL_INVALID_TOO_LARGE",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set OTP expireAfterSeconds to 2147483648.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "HIDDEN_REQUIRED",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set wallets explicit hidden:true.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 7,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "PARTIAL_ABSENT_8",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Delete collection8 explicit partialFilterExpression.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "PARTIAL_ABSENT_9",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Delete collection9 explicit partialFilterExpression.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 9,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "PARTIAL_EMPTY",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Replace wallettransactions partial with {}.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "PARTIAL_REFUND_VALUE",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Change transactionType refund to debit.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "PARTIAL_REFERENCE_VALUE",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Change referenceType pharmacy_order to consultation.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "PARTIAL_EXISTS",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set referenceId.$exists:false.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "PARTIAL_TYPE_ALIAS",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set referenceId.$type:2 instead of string.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "PARTIAL_EQ_FORM",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Replace transactionType refund with {$eq:refund}.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 8,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "PARTIAL_ARRAY_ORDER",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Use G({tag:{$in:[a,b]}}); reverse only observed array to[b,a].",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "PARTIAL_SCALAR_TYPE",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Use G({tag:string1}); change only observed tag to numeric1.",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": 1
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "COLLATION_NON_SIMPLE",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set wallets explicit collation:{locale:en}.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNSUPPORTED",
+        "collectionOrdinal": 7,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "COLLATION_EXTRA",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set wallets explicit collation:{locale:simple,strength:3}.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNSUPPORTED",
+        "collectionOrdinal": 7,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "COLLATION_NOT_OBJECT",
+      "group": "INDEX_OPTIONS_DENIALS",
+      "construction": "Set wallets explicit collation to string simple.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "STATUS_FAILED",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Set users listing status:FAILED and indexes:[].",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_FAILED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "STATUS_INCOMPLETE",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Set users listing status:INCOMPLETE and indexes:[].",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_INCOMPLETE",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "STATUS_PARTIAL_NONEMPTY",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Set users status INCOMPLETE but retain nonempty indexes.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MODE_WRONG",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Set users mode to fixtureWrongMode.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNSUPPORTED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MODE_NOT_STRING",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Set users mode:false.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "BARE_SPEC",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Replace users _id wrapper with its bare valid spec.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNSUPPORTED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "WRAPPER_UNKNOWN",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add wrapper futureField:true on users _id row.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNSUPPORTED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "SPEC_UNKNOWN",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add spec prepareUnique:false on users _id row.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNSUPPORTED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "EXTRA_UNKNOWN",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add otherwise-valid unrelated users spec with storageEngine:{}.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNSUPPORTED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_WRAPPER_indexBuildInfo_NULL",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data indexBuildInfo on users _id wrapper; value null.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_WRAPPER_indexBuildInfo_FALSE",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data indexBuildInfo on users _id wrapper; value false.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_WRAPPER_indexBuildInfo_EMPTY",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data indexBuildInfo on users _id wrapper; value {}.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_WRAPPER_indexBuildInfo_CYCLE",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data indexBuildInfo on users _id wrapper; value self-cyclic object.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_WRAPPER_indexBuildInfo_DRIVER_UUID",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data indexBuildInfo on users _id wrapper; value genuine already-admitted BSON UUID with fixed synthetic bits.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_WRAPPER_buildUUID_NULL",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data buildUUID on users _id wrapper; value null.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_WRAPPER_buildUUID_FALSE",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data buildUUID on users _id wrapper; value false.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_WRAPPER_buildUUID_EMPTY",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data buildUUID on users _id wrapper; value {}.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_WRAPPER_buildUUID_CYCLE",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data buildUUID on users _id wrapper; value self-cyclic object.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_WRAPPER_buildUUID_DRIVER_UUID",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data buildUUID on users _id wrapper; value genuine already-admitted BSON UUID with fixed synthetic bits.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_SPEC_indexBuildInfo_NULL",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data indexBuildInfo on users _id spec; value null.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_SPEC_indexBuildInfo_FALSE",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data indexBuildInfo on users _id spec; value false.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_SPEC_indexBuildInfo_EMPTY",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data indexBuildInfo on users _id spec; value {}.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_SPEC_indexBuildInfo_CYCLE",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data indexBuildInfo on users _id spec; value self-cyclic object.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_SPEC_indexBuildInfo_DRIVER_UUID",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data indexBuildInfo on users _id spec; value genuine already-admitted BSON UUID with fixed synthetic bits.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_SPEC_buildUUID_NULL",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data buildUUID on users _id spec; value null.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_SPEC_buildUUID_FALSE",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data buildUUID on users _id spec; value false.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_SPEC_buildUUID_EMPTY",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data buildUUID on users _id spec; value {}.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_SPEC_buildUUID_CYCLE",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data buildUUID on users _id spec; value self-cyclic object.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_SPEC_buildUUID_DRIVER_UUID",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add own data buildUUID on users _id spec; value genuine already-admitted BSON UUID with fixed synthetic bits.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "BUILDING_EXTRA",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Add a supported unrelated complete users spec with own wrapper buildUUID:null.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "UNSUPPORTED_BEFORE_BUILDING",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "users _id spec has prepareUnique:false and wrapper buildUUID:null.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNSUPPORTED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MARKER_GETTER",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Own buildUUID getter on users _id wrapper; getter counter must0.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "SPEC_GETTER",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Own unknown spec property getter on users _id; getter counter must0.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "GLOBAL_SHAPE_BEFORE_FAILED",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "users FAILED/indexes[] plus dependents listing missing indexes field.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "FAILED_BEFORE_LATER_UNSUPPORTED",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "users FAILED/indexes[] plus admins wrong mode.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_FAILED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "EARLIER_REQUIREMENT_BEFORE_LATER_FAILED",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "Remove users _id_ and set admins FAILED/indexes[].",
+      "expected": {
+        "ready": false,
+        "code": "REQUIRED_INDEX_UNSATISFIED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": 0
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MODE_BEFORE_BUILDING",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "users wrong mode plus wrapper buildUUID:null.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNSUPPORTED",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "BUILDING_BEFORE_REQUIREMENT",
+      "group": "INDEX_OBSERVATION_DENIALS",
+      "construction": "users explicit wrapper buildUUID:null and remove users _id_.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATION_UNREADY",
+        "collectionOrdinal": 0,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MANIFEST_EMPTY",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "M=[]; retain O0.",
+      "expected": {
+        "ready": false,
+        "code": "MANIFEST_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MANIFEST_UNKNOWN",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Add unknown:true to users manifest entry.",
+      "expected": {
+        "ready": false,
+        "code": "MANIFEST_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MANIFEST_DUPLICATE_COLLECTION",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Replace admins manifest entry with a fresh duplicate users entry.",
+      "expected": {
+        "ready": false,
+        "code": "MANIFEST_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MANIFEST_DUPLICATE_KEY",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Duplicate users explicit key/options definition.",
+      "expected": {
+        "ready": false,
+        "code": "MANIFEST_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MANIFEST_EXPLICIT_ID",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Add [[_id,1]] explicit manifest requirement.",
+      "expected": {
+        "ready": false,
+        "code": "MANIFEST_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MANIFEST_ID_COMPOUND",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Add explicit [[_id,1],[fixtureExtra,1]] manifest key.",
+      "expected": {
+        "ready": false,
+        "code": "MANIFEST_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MANIFEST_COLLECTION_LIMIT",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "M has14 distinct empty-index collections; O0 unchanged.",
+      "expected": {
+        "ready": false,
+        "code": "MANIFEST_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MANIFEST_INDEX_LIMIT",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "M users has9 distinct explicit key/options definitions.",
+      "expected": {
+        "ready": false,
+        "code": "MANIFEST_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MANIFEST_COLLATION",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "M wallets explicit collation:{locale:en}.",
+      "expected": {
+        "ready": false,
+        "code": "MANIFEST_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MANIFEST_GETTER",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "M users own collection getter; getter0.",
+      "expected": {
+        "ready": false,
+        "code": "MANIFEST_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "BOTH_INPUTS_INVALID",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "M=[] and O=null.",
+      "expected": {
+        "ready": false,
+        "code": "MANIFEST_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "MANIFEST_BUDGET",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "M users indexes data includes string of65537 code units.",
+      "expected": {
+        "ready": false,
+        "code": "MANIFEST_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "OBS_NULL",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "O=null.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "OBS_HOLE",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Delete O0 array index0 without changing length.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "OBS_ARRAY_EXTRA",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Set O0.extra=true.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "OBS_SYMBOL",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Add a symbol key to users listing.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "OBS_GETTER",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Replace users collection with own getter; getter0.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "OBS_FUNCTION",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Set users _id spec futureField to a private inert function.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "OBS_UNDEFINED",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Set users _id spec futureField:undefined.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "OBS_NAN",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Set users _id spec futureField:NaN.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "OBS_NATIVE_LONG",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Set users _id spec futureField to genuine driver Long0, not a marker.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "OBS_CYCLE",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Set users _id spec futureField to a self-cyclic ordinary object.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "PARTIAL_DEPTH_7",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Use G(D(6)); replace observed partial with D(7).",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "KEY_LIMIT",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Set users explicit key to17 unique valid field/direction pairs.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "NAME_LIMIT",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Set users explicit name to257 x characters.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "OBS_STRING_BUDGET",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Set users mode to65537 x characters.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "OBS_NODE_BUDGET",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Set users spec futureField to array of8192 nulls.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "OBS_COLLECTION_SPEC_LIMIT",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Add supported unrelated specs until users indexes has65 rows.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "OBS_TOTAL_SPEC_LIMIT",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "Add supported unrelated specs until each13 collection has20 rows (260 total), all names/keys unique per collection.",
+      "expected": {
+        "ready": false,
+        "code": "OBSERVATIONS_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REFLECTION_THROW",
+      "group": "INDEX_INPUT_ADMISSION_DENIALS",
+      "construction": "M is a private Proxy whose getPrototypeOf trap throws a private canary; snapshot owned plain target, expect exactly1 trap/no value leakage.",
+      "expected": {
+        "ready": false,
+        "code": "INPUT_INVALID",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "ONE"
+    },
+    {
+      "id": "NONID_RENAMED",
+      "group": "INDEX_IMMUTABILITY_AND_SAFE_RESULT",
+      "construction": "Rename users explicit index only to fixture-new-name.",
+      "expected": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "HARMLESS_EXTRA",
+      "group": "INDEX_IMMUTABILITY_AND_SAFE_RESULT",
+      "construction": "Add completed users {name:fixture-extra,key:[[fixtureExtra,1]]}.",
+      "expected": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "HIDDEN_EXTRA",
+      "group": "INDEX_IMMUTABILITY_AND_SAFE_RESULT",
+      "construction": "Same supported unrelated extra with hidden:true.",
+      "expected": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "ID_UNIQUE_ABSENT",
+      "group": "INDEX_IMMUTABILITY_AND_SAFE_RESULT",
+      "construction": "Delete unique from all _id_ specs; retain exact name/key.",
+      "expected": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "EXPLICIT_FALSE_DEFAULTS",
+      "group": "INDEX_IMMUTABILITY_AND_SAFE_RESULT",
+      "construction": "Set sparse:false/hidden:false on all _id specs; set unique:false/sparse:false/hidden:false on OTP explicit spec.",
+      "expected": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "SIMPLE_COLLATION",
+      "group": "INDEX_IMMUTABILITY_AND_SAFE_RESULT",
+      "construction": "Set collation:{locale:simple} on every observed spec.",
+      "expected": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "OBSERVATION_ORDER",
+      "group": "INDEX_IMMUTABILITY_AND_SAFE_RESULT",
+      "construction": "Reverse only listing array order, not keys.",
+      "expected": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "PARTIAL_KEY_ORDER",
+      "group": "INDEX_IMMUTABILITY_AND_SAFE_RESULT",
+      "construction": "Reverse object property enumeration of wallettransactions partial and referenceId object; same values.",
+      "expected": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "REPEATED_ALIAS",
+      "group": "INDEX_IMMUTABILITY_AND_SAFE_RESULT",
+      "construction": "Use same private valid wallettransactions partial object reference in M and O; no active cycle.",
+      "expected": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "PARTIAL_QUERY_DATA_NAMES",
+      "group": "INDEX_IMMUTABILITY_AND_SAFE_RESULT",
+      "construction": "Use G({constructor:query,indexBuildInfo:literal,buildUUID:literal}); these are nested query keys, no marker semantics.",
+      "expected": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "PARTIAL_DEPTH_6",
+      "group": "INDEX_IMMUTABILITY_AND_SAFE_RESULT",
+      "construction": "Use G(D(6)) unchanged.",
+      "expected": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "PROJECT_LONG_TTL",
+      "group": "INDEX_IMMUTABILITY_AND_SAFE_RESULT",
+      "construction": "On a derived raw OTP spec, project genuine signed Long high0/low0 for TTL with actual bounded projector; feed exact0 into helper O.",
+      "expected": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "PROJECT_LONG_VERSION",
+      "group": "INDEX_IMMUTABILITY_AND_SAFE_RESULT",
+      "construction": "Project genuine signed Long high0/low2 into users spec v with actual bounded projector.",
+      "expected": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    },
+    {
+      "id": "PROJECT_LONG_DIRECTION",
+      "group": "INDEX_IMMUTABILITY_AND_SAFE_RESULT",
+      "construction": "Project genuine signed Long high0/low1 in users raw key; feed exact1 tuple direction into helper.",
+      "expected": {
+        "ready": true,
+        "code": "READY",
+        "collectionOrdinal": null,
+        "indexOrdinal": null
+      },
+      "repetitions": "BOTH"
+    }
+  ],
+  "requiredTrialCount": 172,
+  "requiredOrdinaryComparisons": 172,
+  "requiredFrozenComparisons": 171,
+  "requiredNominalMatrixComparisons": 343,
+  "requiredGroupTrialCounts": {
+    "INDEX_SELECTED_READBACK": 1,
+    "INDEX_REQUIRED_REMOVAL_DENIALS": 21,
+    "INDEX_KEY_AND_IDENTITY_DENIALS": 28,
+    "INDEX_OPTIONS_DENIALS": 40,
+    "INDEX_OBSERVATION_DENIALS": 38,
+    "INDEX_INPUT_ADMISSION_DENIALS": 30,
+    "INDEX_IMMUTABILITY_AND_SAFE_RESULT": 14
+  },
+  "sensitivityTrialReferences": 75,
+  "archive1ManifestSha": "ccec4794137c2c2a8032a00c1c85f3d97f7245cb0454e088c7947e31b6df6d03",
+  "helperTypecheck": {
+    "status": "NOT_RUN",
+    "sourceSha": "050ecc993c862638cf4912bb854e04baa5d80241cb124e7831fc3c95a78db5bd",
+    "compiler": "typescript5.9.3",
+    "options": {
+      "target": "ES2020",
+      "module": "CommonJS",
+      "moduleResolution": "Node10",
+      "noEmit": true,
+      "lib": [
+        "lib.es2020.d.ts"
+      ],
+      "types": [],
+      "typeRoots": [],
+      "strict": true,
+      "noImplicitAny": true,
+      "noImplicitThis": true,
+      "noImplicitReturns": true,
+      "noUnusedLocals": true,
+      "noUnusedParameters": true,
+      "noFallthroughCasesInSwitch": true,
+      "skipLibCheck": false
+    },
+    "nominalRequiredDiagnostics": 0,
+    "virtualTDZSha": "6597c1a03c54702d89042a29263da81399934e68e8fb6c46f91c638cbe954400",
+    "virtualTDZRequiredCode": 2448,
+    "virtualTDZRequiredReference": "requirements in const requirementsForCollection = requirements[collectionOrdinal]",
+    "inverseOperations": [
+      {
+        "before": "            for (let indexOrdinal = 0; indexOrdinal <= requirementsForCollection.indexes.length; indexOrdinal += 1) {",
+        "after": "            const requirements = requirementsForCollection;\n            for (let indexOrdinal = 0; indexOrdinal <= requirements.indexes.length; indexOrdinal += 1) {"
+      },
+      {
+        "before": "                } : requirementsForCollection.indexes[indexOrdinal - 1];",
+        "after": "                } : requirements.indexes[indexOrdinal - 1];"
+      }
+    ],
+    "overallFocusedClosure": "TRANSPILE_ONLY_NOT_TYPECHECKED/fullBuild:false;1084prior+newdiagretained",
+    "frozenStandardLibraryFiles": {
+      "lib.decorators.d.ts": "8e7f8264d0fb4c5339605a15daadb037bf238c10b654bb3eee14208f860a32ea",
+      "lib.decorators.legacy.d.ts": "782dec38049b92d4e85c1585fbea5474a219c6984a35b004963b00beb1aab538",
+      "lib.es2015.collection.d.ts": "dc2df20b1bcdc8c2d34af4926e2c3ab15ffe1160a63e58b7e09833f616efff44",
+      "lib.es2015.core.d.ts": "c57796738e7f83dbc4b8e65132f11a377649c00dd3eee333f672b8f0a6bea671",
+      "lib.es2015.d.ts": "45b7ab580deca34ae9729e97c13cfd999df04416a79116c3bfb483804f85ded4",
+      "lib.es2015.generator.d.ts": "515d0b7b9bea2e31ea4ec968e9edd2c39d3eebf4a2d5cbd04e88639819ae3b71",
+      "lib.es2015.iterable.d.ts": "0559b1f683ac7505ae451f9a96ce4c3c92bdc71411651ca6ddb0e88baaaad6a3",
+      "lib.es2015.promise.d.ts": "0dc1e7ceda9b8b9b455c3a2d67b0412feab00bd2f66656cd8850e8831b08b537",
+      "lib.es2015.proxy.d.ts": "ce691fb9e5c64efb9547083e4a34091bcbe5bdb41027e310ebba8f7d96a98671",
+      "lib.es2015.reflect.d.ts": "8d697a2a929a5fcb38b7a65594020fcef05ec1630804a33748829c5ff53640d0",
+      "lib.es2015.symbol.d.ts": "4ff2a353abf8a80ee399af572debb8faab2d33ad38c4b4474cff7f26e7653b8d",
+      "lib.es2015.symbol.wellknown.d.ts": "fb0f136d372979348d59b3f5020b4cdb81b5504192b1cacff5d1fbba29378aa1",
+      "lib.es2016.array.include.d.ts": "d15bea3d62cbbdb9797079416b8ac375ae99162a7fba5de2c6c505446486ac0a",
+      "lib.es2016.d.ts": "3facaf05f0c5fc569c5649dd359892c98a85557e3e0c847964caeb67076f4d75",
+      "lib.es2016.intl.d.ts": "68d18b664c9d32a7336a70235958b8997ebc1c3b8505f4f1ae2b7e7753b87618",
+      "lib.es2017.arraybuffer.d.ts": "eb3d66c8327153d8fa7dd03f9c58d351107fe824c79e9b56b462935176cdf12a",
+      "lib.es2017.d.ts": "e44bb8bbac7f10ecc786703fe0a6a4b952189f908707980ba8f3c8975a760962",
+      "lib.es2017.date.d.ts": "38f0219c9e23c915ef9790ab1d680440d95419ad264816fa15009a8851e79119",
+      "lib.es2017.intl.d.ts": "4de680d5bb41c17f7f68e0419412ca23c98d5749dcaaea1896172f06435891fc",
+      "lib.es2017.object.d.ts": "69ab18c3b76cd9b1be3d188eaf8bba06112ebbe2f47f6c322b5105a6fbc45a2e",
+      "lib.es2017.sharedmemory.d.ts": "a680117f487a4d2f30ea46f1b4b7f58bef1480456e18ba53ee85c2746eeca012",
+      "lib.es2017.string.d.ts": "2f11ff796926e0832f9ae148008138ad583bd181899ab7dd768a2666700b1893",
+      "lib.es2017.typedarrays.d.ts": "954296b30da6d508a104a3a0b5d96b76495c709785c1d11610908e63481ee667",
+      "lib.es2018.asyncgenerator.d.ts": "ac9538681b19688c8eae65811b329d3744af679e0bdfa5d842d0e32524c73e1c",
+      "lib.es2018.asynciterable.d.ts": "0a969edff4bd52585473d24995c5ef223f6652d6ef46193309b3921d65dd4376",
+      "lib.es2018.d.ts": "5e1c4c362065a6b95ff952c0eab010f04dcd2c3494e813b493ecfd4fcb9fc0d8",
+      "lib.es2018.intl.d.ts": "9e9fbd7030c440b33d021da145d3232984c8bb7916f277e8ffd3dc2e3eae2bdb",
+      "lib.es2018.promise.d.ts": "811ec78f7fefcabbda4bfa93b3eb67d9ae166ef95f9bff989d964061cbf81a0c",
+      "lib.es2018.regexp.d.ts": "717937616a17072082152a2ef351cb51f98802fb4b2fdabd32399843875974ca",
+      "lib.es2019.array.d.ts": "d7e7d9b7b50e5f22c915b525acc5a49a7a6584cf8f62d0569e557c5cfc4b2ac2",
+      "lib.es2019.d.ts": "68d73b4a11549f9c0b7d352d10e91e5dca8faa3322bfb77b661839c42b1ddec7",
+      "lib.es2019.intl.d.ts": "74f7fa2d027d5b33eb0471c8e82a6c87216223181ec31247c357a3e8e2fddc5b",
+      "lib.es2019.object.d.ts": "71c37f4c9543f31dfced6c7840e068c5a5aacb7b89111a4364b1d5276b852557",
+      "lib.es2019.string.d.ts": "576711e016cf4f1804676043e6a0a5414252560eb57de9faceee34d79798c850",
+      "lib.es2019.symbol.d.ts": "89c1b1281ba7b8a96efc676b11b264de7a8374c5ea1e6617f11880a13fc56dc6",
+      "lib.es2020.bigint.d.ts": "d6d7ae4d1f1f3772e2a3cde568ed08991a8ae34a080ff1151af28b7f798e22ca",
+      "lib.es2020.d.ts": "5efce4fc3c29ea84e8928f97adec086e3dc876365e0982cc8479a07954a3efd4",
+      "lib.es2020.date.d.ts": "063600664504610fe3e99b717a1223f8b1900087fab0b4cad1496a114744f8df",
+      "lib.es2020.intl.d.ts": "639e512c0dfc3fad96a84caad71b8834d66329a1f28dc95e3946c9b58176c73a",
+      "lib.es2020.number.d.ts": "368af93f74c9c932edd84c58883e736c9e3d53cec1fe24c0b0ff451f529ceab1",
+      "lib.es2020.promise.d.ts": "934019d7e3c81950f9a8426d093458b65d5aff2c7c1511233c0fd5b941e608ab",
+      "lib.es2020.sharedmemory.d.ts": "52ada8e0b6e0482b728070b7639ee42e83a9b1c22d205992756fe020fd9f4a47",
+      "lib.es2020.string.d.ts": "3bdefe1bfd4d6dee0e26f928f93ccc128f1b64d5d501ff4a8cf3c6371200e5e6",
+      "lib.es2020.symbol.wellknown.d.ts": "59fb2c069260b4ba00b5643b907ef5d5341b167e7d1dbf58dfd895658bda2867",
+      "lib.es5.d.ts": "c430d44666289dae81f30fa7b2edebf186ecc91a2d4c71266ea6ae76388792e1"
+    },
+    "libraryClosureMethod": "Read-only textual public lib reference closure from exact accepted emission9 TypeScript5.9.3; future compiler host restricts reads to this map and exact source/virtual TDZ."
+  },
+  "finalBaseline": "3d68775a7329d1db95b05dea4e2c898bd8b27274"
+}

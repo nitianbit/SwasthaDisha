@@ -1,0 +1,29 @@
+{
+  "schema": "SD-INDEX-DEADLINE-AMENDMENT-1",
+  "finding": "A command started at30s with5000ms abort could remain active beyond total30s. Root and independent Standards identified this before source freeze.",
+  "disposition": "Reserve full5000ms before each command; refuse new starts after25000ms; retain post-await<=30000ms and no retry/newgrant.",
+  "provenance": "Reconstructible prior source via exact inverse edits, not a contemporaneous raw archive. Prior414-case observed output retained separately.",
+  "operations": [
+    {
+      "path": "test/api-runtime/scenario/bootstrap.cjs",
+      "before": "        need(Number.isFinite(now()) && now() - started <= 30000, 'INDEX_DEADLINE');",
+      "after": "        const beforeCommand = now();\n        // Reserve the entire fixed five-second abort allowance inside30s.\n        need(Number.isFinite(beforeCommand) && beforeCommand - started <= 25000, 'INDEX_DEADLINE');",
+      "preSha256": "a3b4df43632bfd38c990ad79e989dc11f56ef960dc71cffbd2a6c6d133790c81",
+      "postSha256": "f62173f290c43a12cb6cb786b35208d8b6b67c2aacd7b4a30a854733a91211b6"
+    },
+    {
+      "path": "test/api-runtime/scenario/bootstrap-unit.cjs",
+      "insertedStrings": [
+        "    ['RESERVE_FIXED_5S_WITHIN_TOTAL_30S', f => { f.state.change = reply => { f.state.clock = 25001; return reply; }; }, 'INDEX_DEADLINE'],\n",
+        "  {\n    const f = fakeIndexCollector(); f.state.change = reply => { f.state.clock = 25000; return reply; };\n    await collectIndexObservations(f.port);\n    need(f.state.commands.length === 21 && f.state.ends === 1, 'INDEX_FIXED_DEADLINE_BOUNDARY');\n    indexRows.push('INDEX_COLLECTOR_EXACT_25S_START_BOUNDARY');\n  }\n"
+      ],
+      "preSha256": "54f8150ed7d02ffcc6b5d3875a87b3a93bbbbbca63afea2ec3de1c7ad42c048c",
+      "postSha256": "5748e1279be44e2ef117c5e8f9d6870e3237739d9a99f45171a2482410bb447f"
+    }
+  ],
+  "priorUnitCases": 414,
+  "correctedUnitCases": 416,
+  "applicationEvaluations": 0,
+  "compilerExecutions": 0,
+  "databaseCommands": 0
+}

@@ -1,0 +1,362 @@
+// Inert source contribution; integrated only into the admitted bootstrap.
+// The fixture constructs data and assertions. It never implements readiness.
+function runIndexMatrix(runtime) {
+  'use strict';
+  const { manifest: baseManifest, observations: baseObservations, Long, UUID, loadHelper, runDenied } = runtime;
+  need(typeof Long === 'function' && typeof UUID === 'function'
+    && typeof loadHelper === 'function' && typeof runDenied === 'function', 'INDEX_MATRIX_PORTS');
+  const fields = ['ready', 'code', 'collectionOrdinal', 'indexOrdinal'];
+  const codes = new Set(['READY', 'MANIFEST_INVALID', 'OBSERVATIONS_INVALID', 'OBSERVATION_FAILED',
+    'OBSERVATION_INCOMPLETE', 'OBSERVATION_UNSUPPORTED', 'OBSERVATION_UNREADY',
+    'REQUIRED_INDEX_UNSATISFIED', 'INPUT_INVALID']);
+  const ready = Object.freeze({ ready: true, code: 'READY', collectionOrdinal: null, indexOrdinal: null });
+  const expectedCounts = [1, 21, 28, 40, 38, 30, 14];
+  const trialRows = new Map(); const groupCounts = new Map(INDEX_CASE_IDS.map(id => [id, 0]));
+  for (const row of INDEX_TRIALS) {
+    need(Array.isArray(row) && row.length === 4 && typeof row[0] === 'string' && !trialRows.has(row[0])
+      && groupCounts.has(row[1]) && (row[3] === 'BOTH' || row[3] === 'ONE'), 'INDEX_TRIAL_SET');
+    trialRows.set(row[0], row); groupCounts.set(row[1], groupCounts.get(row[1]) + 1);
+  }
+  need(INDEX_TRIALS.length === 172 && trialRows.size === 172 && INDEX_CASE_IDS.length === 7
+    && INDEX_CASE_IDS.every((id, i) => groupCounts.get(id) === expectedCounts[i])
+    && INDEX_TRIALS.filter(row => row[3] === 'ONE').length === 1
+    && trialRows.get('REFLECTION_THROW')?.[3] === 'ONE', 'INDEX_TRIAL_COUNTS');
+  need(INDEX_MUTANT_IDS.length === 6 && Object.keys(INDEX_MUTANTS).length === 6
+    && Object.keys(INDEX_MUTANTS).every((id, i) => id === INDEX_MUTANT_IDS[i]), 'INDEX_MUTANT_SET');
+  let declaredReferences = 0;
+  for (const id of INDEX_MUTANT_IDS) {
+    const ids = INDEX_MUTANTS[id].trials;
+    need(Array.isArray(ids) && ids.length > 0 && new Set(ids).size === ids.length
+      && ids.every(name => trialRows.has(name) && trialRows.get(name)[3] === 'BOTH'
+        && trialRows.get(name)[2].ready === false), 'INDEX_MUTANT_TRIAL_SET');
+    declaredReferences += ids.length;
+  }
+  need(declaredReferences === 75, 'INDEX_MUTANT_TRIAL_COUNTS');
+
+  // Clone only descriptor-admitted base data. Build-marker values are opaque,
+  // including native values and cycles; their references are retained verbatim.
+  function cloneData(input, context = 'data', opaque = new Set(), seen = new Map()) {
+    if (input === null || typeof input !== 'object') return input;
+    if (opaque.has(input)) return input;
+    if (seen.has(input)) return seen.get(input);
+    const prototype = Object.getPrototypeOf(input);
+    need(Array.isArray(input) ? prototype === Array.prototype
+      : prototype === Object.prototype || prototype === null, 'INDEX_FIXTURE_BASE_DATA');
+    const out = Array.isArray(input) ? [] : Object.create(prototype); seen.set(input, out);
+    for (const key of Reflect.ownKeys(input)) {
+      if (Array.isArray(input) && key === 'length') continue;
+      const descriptor = Object.getOwnPropertyDescriptor(input, key);
+      need(descriptor && Object.hasOwn(descriptor, 'value'), 'INDEX_FIXTURE_BASE_DATA');
+      const marker = (context === 'row' || context === 'spec') && (key === 'indexBuildInfo' || key === 'buildUUID');
+      let value;
+      if (marker) { value = descriptor.value; if (value && (typeof value === 'object' || typeof value === 'function')) opaque.add(value); }
+      else {
+        const next = context === 'observations' ? 'listing' : context === 'listing' && key === 'indexes' ? 'rows'
+          : context === 'rows' ? 'row' : context === 'row' && key === 'spec' ? 'spec' : 'data';
+        value = cloneData(descriptor.value, next, opaque, seen);
+      }
+      Object.defineProperty(out, key, { value, writable: true, enumerable: descriptor.enumerable, configurable: true });
+    }
+    if (Array.isArray(input)) out.length = Object.getOwnPropertyDescriptor(input, 'length').value;
+    return out;
+  }
+  function capture(roots, opaque, extraReferences = []) {
+    const references = new Set(extraReferences); const nodes = []; let budgetNodes = 0; let budgetStrings = 0;
+    function visit(value) {
+      need(++budgetNodes <= 32768, 'INDEX_FIXTURE_CONSTRUCTION_LIMIT');
+      if (typeof value === 'string') { budgetStrings += value.length; need(budgetStrings <= 131072, 'INDEX_FIXTURE_CONSTRUCTION_LIMIT'); }
+      if (value === null || !['object', 'function'].includes(typeof value) || references.has(value)) return;
+      references.add(value);
+      if (opaque.has(value) || typeof value === 'function') return;
+      const prototype = Object.getPrototypeOf(value);
+      need(Array.isArray(value) ? prototype === Array.prototype
+        : prototype === Object.prototype || prototype === null, 'INDEX_FIXTURE_SNAPSHOT_DATA');
+      const keys = Reflect.ownKeys(value); const descriptors = [];
+      const node = { value, prototype, keys, descriptors, extensible: Object.isExtensible(value) }; nodes.push(node);
+      for (const key of keys) {
+        if (typeof key === 'string') { budgetStrings += key.length; need(budgetStrings <= 131072, 'INDEX_FIXTURE_CONSTRUCTION_LIMIT'); }
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        need(descriptor, 'INDEX_FIXTURE_SNAPSHOT_DATA'); descriptors.push(descriptor);
+        if (Object.hasOwn(descriptor, 'value')) visit(descriptor.value);
+        else { if (descriptor.get) references.add(descriptor.get); if (descriptor.set) references.add(descriptor.set); }
+      }
+    }
+    roots.forEach(visit); return { references, nodes };
+  }
+  function verifySnapshot(snapshot) {
+    for (const node of snapshot.nodes) {
+      const keys = Reflect.ownKeys(node.value);
+      need(Object.getPrototypeOf(node.value) === node.prototype && Object.isExtensible(node.value) === node.extensible
+        && keys.length === node.keys.length && keys.every((key, i) => key === node.keys[i]), 'INDEX_INPUT_MUTATION');
+      keys.forEach((key, i) => {
+        const before = node.descriptors[i]; const after = Object.getOwnPropertyDescriptor(node.value, key);
+        need(after && Object.hasOwn(after, 'value') === Object.hasOwn(before, 'value')
+          && after.enumerable === before.enumerable && after.configurable === before.configurable
+          && (Object.hasOwn(before, 'value') ? Object.is(after.value, before.value) && after.writable === before.writable
+            : after.get === before.get && after.set === before.set), 'INDEX_INPUT_MUTATION');
+      });
+    }
+  }
+  function freezeFixture(input) {
+    const snapshot = capture(input.inspectRoots, input.opaque, input.extraReferences);
+    for (let i = snapshot.nodes.length - 1; i >= 0; i--) Object.freeze(snapshot.nodes[i].value);
+  }
+  const sameKeyLiteral = (left, right) => Array.isArray(left) && left.length === right.length
+    && left.every((entry, i) => Array.isArray(entry) && entry.length === 2
+      && entry[0] === right[i][0] && entry[1] === right[i][1]);
+  const nested = n => { let value = true; for (let i = 0; i < n; i++) value = { a: value }; return value; };
+
+  function makeTrial(id) {
+    const opaque = new Set(); const counts = { getters: 0, coercions: 0, functions: 0, reflections: 0 };
+    let M = cloneData(baseManifest, 'data', opaque); let O = cloneData(baseObservations, 'observations', opaque);
+    const extraReferences = []; let proxyTarget;
+    const copy = value => cloneData(value, 'data', opaque);
+    const listing = c => {
+      const rows = O.filter(row => row.collection === M[c].collection);
+      need(rows.length === 1, 'INDEX_FIXTURE_SELECTION'); return rows[0];
+    };
+    const row = (c, explicit = false) => {
+      const key = explicit ? M[c].indexes[0].key : [['_id', 1]];
+      const rows = listing(c).indexes.filter(item => item && item.spec && sameKeyLiteral(item.spec.key, key)
+        && (explicit || item.spec.name === '_id_'));
+      need(rows.length === 1, 'INDEX_FIXTURE_SELECTION'); return rows[0];
+    };
+    const spec = (c, explicit = false) => row(c, explicit).spec;
+    const remove = (c, explicit) => { const selected = row(c, explicit); const rows = listing(c).indexes; rows.splice(rows.indexOf(selected), 1); };
+    const extra = (c, n = '') => ({ spec: { name: 'fixture-extra' + n, key: [['fixtureExtra' + n, 1]] } });
+    const getter = (target, key) => Object.defineProperty(target, key, { enumerable: true, configurable: true,
+      get() { counts.getters++; return 'fixture-getter-canary'; } });
+    const synthetic = partial => {
+      M = [{ collection: 'fixture', indexes: [{ key: [['value', 1]], options: { partialFilterExpression: copy(partial) } }] }];
+      O = [{ collection: 'fixture', status: 'COMPLETE', mode: 'MONGODB_8_INCLUDE_INDEX_BUILD_INFO', indexes: [
+        { spec: { name: '_id_', key: [['_id', 1]] } },
+        { spec: { name: 'value_1', key: [['value', 1]], partialFilterExpression: copy(partial) } },
+      ] }];
+    };
+    const markOpaque = value => { opaque.add(value); return value; };
+    const nativeCanaries = value => {
+      for (const name of ['toJSON', 'toString', 'valueOf']) Object.defineProperty(value, name, {
+        configurable: true, enumerable: false, writable: true,
+        value() { counts.coercions++; throw 'fixture-native-coercion-canary'; },
+      });
+      return markOpaque(value);
+    };
+    const marker = suffix => {
+      if (suffix === 'NULL') return null;
+      if (suffix === 'FALSE') return false;
+      if (suffix === 'EMPTY') return markOpaque({});
+      if (suffix === 'CYCLE') { const value = {}; value.self = value; return markOpaque(value); }
+      need(suffix === 'DRIVER_UUID', 'INDEX_FIXTURE_TRIAL_ID');
+      return nativeCanaries(new UUID('00000000-0000-4000-8000-000000000001'));
+    };
+    let matched = true; let match;
+    if ((match = /^REMOVE_(ID|EXPLICIT)_(\d{2})$/.exec(id))) remove(Number(match[2]), match[1] === 'EXPLICIT');
+    else if ((match = /^KEY_(NAME|DIRECTION|DROP)_([0-3])$/.exec(id))) {
+      const key = spec(8, true).key; const ordinal = Number(match[2]);
+      if (match[1] === 'NAME') key[ordinal][0] = 'fixtureDifferent' + ordinal;
+      else if (match[1] === 'DIRECTION') key[ordinal][1] = -1;
+      else key.splice(ordinal, 1);
+    } else if ((match = /^UNIQUE_(FALSE|ABSENT)_(\d{2})$/.exec(id))) {
+      const selected = spec(Number(match[2]), true);
+      if (match[1] === 'FALSE') selected.unique = false; else delete selected.unique;
+    } else if ((match = /^MARKER_(WRAPPER|SPEC)_(indexBuildInfo|buildUUID)_(NULL|FALSE|EMPTY|CYCLE|DRIVER_UUID)$/.exec(id))) {
+      (match[1] === 'WRAPPER' ? row(0) : spec(0))[match[2]] = marker(match[3]);
+    } else switch (id) {
+      case 'REAL_COMPLETE_SELECTED': break;
+      case 'KEY_COMPOUND_REVERSED': spec(8, true).key.reverse(); break;
+      case 'KEY_EXTRA': spec(8, true).key.push(['fixtureExtra', 1]); break;
+      case 'KEY_DUPLICATE_FIELD': spec(8, true).key.push(['userId', 1]); break;
+      case 'KEY_ZERO_DIRECTION': spec(0, true).key[0][1] = 0; break;
+      case 'KEY_STRING_DIRECTION': spec(0, true).key[0][1] = '1'; break;
+      case 'KEY_BOOLEAN_DIRECTION': spec(0, true).key[0][1] = true; break;
+      case 'ID_WRONG_NAME': spec(0).name = 'fixture-renamed-id'; break;
+      case 'ID_WRONG_KEY': spec(0).key = [['fixtureOther', 1]]; break;
+      case 'ID_EXPLICIT_NONUNIQUE': spec(0).unique = false; break;
+      case 'NONID_ABSENT_UNIQUE': delete spec(0, true).unique; break;
+      case 'COLLECTION_CASE': listing(6).collection = 'otp'; break;
+      case 'COLLECTION_MISSING': { const selected = listing(0); O.splice(O.indexOf(selected), 1); break; }
+      case 'COLLECTION_FOREIGN': listing(0).collection = 'fixtureForeign'; break;
+      case 'LISTING_DUPLICATE': { const selected = listing(1); O[O.indexOf(selected)] = copy(listing(0)); break; }
+      case 'INDEX_NAME_DUPLICATE': spec(0, true).name = '_id_'; break;
+      case 'INDEX_KEY_DUPLICATE': { const selected = copy(row(0, true)); selected.spec.name = 'fixture-duplicate-key'; listing(0).indexes.push(selected); break; }
+      case 'SPARSE_FALSE': spec(0, true).sparse = false; break;
+      case 'SPARSE_ABSENT': delete spec(0, true).sparse; break;
+      case 'TTL_ABSENT': delete spec(6, true).expireAfterSeconds; break;
+      case 'TTL_ONE': spec(6, true).expireAfterSeconds = 1; break;
+      case 'TTL_UNEXPECTED': spec(7, true).expireAfterSeconds = 0; break;
+      case 'ID_TTL_UNEXPECTED': spec(0).expireAfterSeconds = 0; break;
+      case 'TTL_INVALID_NEGATIVE': spec(6, true).expireAfterSeconds = -1; break;
+      case 'TTL_INVALID_FRACTION': spec(6, true).expireAfterSeconds = 0.5; break;
+      case 'TTL_INVALID_STRING': spec(6, true).expireAfterSeconds = '0'; break;
+      case 'TTL_INVALID_NAN': spec(6, true).expireAfterSeconds = NaN; break;
+      case 'TTL_INVALID_INFINITY': spec(6, true).expireAfterSeconds = Infinity; break;
+      case 'TTL_INVALID_TOO_LARGE': spec(6, true).expireAfterSeconds = 2147483648; break;
+      case 'HIDDEN_REQUIRED': spec(7, true).hidden = true; break;
+      case 'PARTIAL_ABSENT_8': delete spec(8, true).partialFilterExpression; break;
+      case 'PARTIAL_ABSENT_9': delete spec(9, true).partialFilterExpression; break;
+      case 'PARTIAL_EMPTY': spec(8, true).partialFilterExpression = {}; break;
+      case 'PARTIAL_REFUND_VALUE': spec(8, true).partialFilterExpression.transactionType = 'debit'; break;
+      case 'PARTIAL_REFERENCE_VALUE': spec(8, true).partialFilterExpression.referenceType = 'consultation'; break;
+      case 'PARTIAL_EXISTS': spec(8, true).partialFilterExpression.referenceId.$exists = false; break;
+      case 'PARTIAL_TYPE_ALIAS': spec(8, true).partialFilterExpression.referenceId.$type = 2; break;
+      case 'PARTIAL_EQ_FORM': spec(8, true).partialFilterExpression.transactionType = { $eq: 'refund' }; break;
+      case 'PARTIAL_ARRAY_ORDER': synthetic({ tag: { $in: ['a', 'b'] } }); O[0].indexes[1].spec.partialFilterExpression.tag.$in.reverse(); break;
+      case 'PARTIAL_SCALAR_TYPE': synthetic({ tag: '1' }); O[0].indexes[1].spec.partialFilterExpression.tag = 1; break;
+      case 'COLLATION_NON_SIMPLE': spec(7, true).collation = { locale: 'en' }; break;
+      case 'COLLATION_EXTRA': spec(7, true).collation = { locale: 'simple', strength: 3 }; break;
+      case 'COLLATION_NOT_OBJECT': spec(7, true).collation = 'simple'; break;
+      case 'STATUS_FAILED': listing(0).status = 'FAILED'; listing(0).indexes = []; break;
+      case 'STATUS_INCOMPLETE': listing(0).status = 'INCOMPLETE'; listing(0).indexes = []; break;
+      case 'STATUS_PARTIAL_NONEMPTY': listing(0).status = 'INCOMPLETE'; break;
+      case 'MODE_WRONG': listing(0).mode = 'fixtureWrongMode'; break;
+      case 'MODE_NOT_STRING': listing(0).mode = false; break;
+      case 'BARE_SPEC': { const selected = row(0); const rows = listing(0).indexes; rows[rows.indexOf(selected)] = selected.spec; break; }
+      case 'WRAPPER_UNKNOWN': row(0).futureField = true; break;
+      case 'SPEC_UNKNOWN': spec(0).prepareUnique = false; break;
+      case 'EXTRA_UNKNOWN': { const value = extra(0); value.spec.storageEngine = {}; listing(0).indexes.push(value); break; }
+      case 'BUILDING_EXTRA': { const value = extra(0); value.buildUUID = null; listing(0).indexes.push(value); break; }
+      case 'UNSUPPORTED_BEFORE_BUILDING': spec(0).prepareUnique = false; row(0).buildUUID = null; break;
+      case 'MARKER_GETTER': getter(row(0), 'buildUUID'); break;
+      case 'SPEC_GETTER': getter(spec(0), 'futureField'); break;
+      case 'GLOBAL_SHAPE_BEFORE_FAILED': listing(0).status = 'FAILED'; listing(0).indexes = []; delete listing(12).indexes; break;
+      case 'FAILED_BEFORE_LATER_UNSUPPORTED': listing(0).status = 'FAILED'; listing(0).indexes = []; listing(1).mode = 'fixtureWrongMode'; break;
+      case 'EARLIER_REQUIREMENT_BEFORE_LATER_FAILED': remove(0, false); listing(1).status = 'FAILED'; listing(1).indexes = []; break;
+      case 'MODE_BEFORE_BUILDING': listing(0).mode = 'fixtureWrongMode'; row(0).buildUUID = null; break;
+      case 'BUILDING_BEFORE_REQUIREMENT': row(0, true).buildUUID = null; remove(0, false); break;
+      case 'MANIFEST_EMPTY': M = []; break;
+      case 'MANIFEST_UNKNOWN': M[0].unknown = true; break;
+      case 'MANIFEST_DUPLICATE_COLLECTION': M[1] = copy(M[0]); break;
+      case 'MANIFEST_DUPLICATE_KEY': M[0].indexes.push(copy(M[0].indexes[0])); break;
+      case 'MANIFEST_EXPLICIT_ID': M[0].indexes.push({ key: [['_id', 1]], options: {} }); break;
+      case 'MANIFEST_ID_COMPOUND': M[0].indexes.push({ key: [['_id', 1], ['fixtureExtra', 1]], options: {} }); break;
+      case 'MANIFEST_COLLECTION_LIMIT': M = Array.from({ length: 14 }, (_, i) => ({ collection: 'fixture' + i, indexes: [] })); break;
+      case 'MANIFEST_INDEX_LIMIT': while (M[0].indexes.length < 9) M[0].indexes.push({ key: [['fixtureManifest' + M[0].indexes.length, 1]], options: {} }); break;
+      case 'MANIFEST_COLLATION': M[7].indexes[0].options.collation = { locale: 'en' }; break;
+      case 'MANIFEST_GETTER': getter(M[0], 'collection'); break;
+      case 'BOTH_INPUTS_INVALID': M = []; O = null; break;
+      case 'MANIFEST_BUDGET': M[0].indexes.push('x'.repeat(65537)); break;
+      case 'OBS_NULL': O = null; break;
+      case 'OBS_HOLE': delete O[0]; break;
+      case 'OBS_ARRAY_EXTRA': O.extra = true; break;
+      case 'OBS_SYMBOL': listing(0)[Symbol('fixture-symbol')] = true; break;
+      case 'OBS_GETTER': getter(listing(0), 'collection'); break;
+      case 'OBS_FUNCTION': spec(0).futureField = function fixtureInert() { counts.functions++; return 'fixture-function-canary'; }; break;
+      case 'OBS_UNDEFINED': spec(0).futureField = undefined; break;
+      case 'OBS_NAN': spec(0).futureField = NaN; break;
+      case 'OBS_NATIVE_LONG': spec(0).futureField = nativeCanaries(new Long(0, 0, false)); break;
+      case 'OBS_CYCLE': { const value = {}; value.self = value; spec(0).futureField = value; break; }
+      case 'PARTIAL_DEPTH_7': synthetic(nested(6)); O[0].indexes[1].spec.partialFilterExpression = nested(7); break;
+      case 'KEY_LIMIT': spec(0, true).key = Array.from({ length: 17 }, (_, i) => ['fixtureField' + i, 1]); break;
+      case 'NAME_LIMIT': spec(0, true).name = 'x'.repeat(257); break;
+      case 'OBS_STRING_BUDGET': listing(0).mode = 'x'.repeat(65537); break;
+      case 'OBS_NODE_BUDGET': spec(0).futureField = Array(8192).fill(null); break;
+      case 'OBS_COLLECTION_SPEC_LIMIT': while (listing(0).indexes.length < 65) listing(0).indexes.push(extra(0, listing(0).indexes.length)); break;
+      case 'OBS_TOTAL_SPEC_LIMIT': for (let c = 0; c < 13; c++) while (listing(c).indexes.length < 20) listing(c).indexes.push(extra(c, listing(c).indexes.length)); break;
+      case 'REFLECTION_THROW': proxyTarget = M; M = new Proxy(proxyTarget, { getPrototypeOf() { counts.reflections++; throw 'fixture-reflection-canary'; } }); extraReferences.push(M); break;
+      case 'NONID_RENAMED': spec(0, true).name = 'fixture-new-name'; break;
+      case 'HARMLESS_EXTRA': listing(0).indexes.push(extra(0)); break;
+      case 'HIDDEN_EXTRA': { const value = extra(0); value.spec.hidden = true; listing(0).indexes.push(value); break; }
+      case 'ID_UNIQUE_ABSENT': for (let c = 0; c < 13; c++) delete spec(c).unique; break;
+      case 'EXPLICIT_FALSE_DEFAULTS': for (let c = 0; c < 13; c++) { spec(c).sparse = false; spec(c).hidden = false; } spec(6, true).unique = false; spec(6, true).sparse = false; spec(6, true).hidden = false; break;
+      case 'SIMPLE_COLLATION': for (const item of O) for (const value of item.indexes) value.spec.collation = { locale: 'simple' }; break;
+      case 'OBSERVATION_ORDER': O.reverse(); break;
+      case 'PARTIAL_KEY_ORDER': { const selected = spec(8, true); const value = selected.partialFilterExpression;
+        value.referenceId = Object.fromEntries(Object.entries(value.referenceId).reverse());
+        selected.partialFilterExpression = Object.fromEntries(Object.entries(value).reverse()); break; }
+      case 'REPEATED_ALIAS': { const value = copy(M[8].indexes[0].options.partialFilterExpression);
+        M[8].indexes[0].options.partialFilterExpression = value; spec(8, true).partialFilterExpression = value; break; }
+      case 'PARTIAL_QUERY_DATA_NAMES': synthetic({ constructor: 'query', indexBuildInfo: 'literal', buildUUID: 'literal' }); break;
+      case 'PARTIAL_DEPTH_6': synthetic(nested(6)); break;
+      case 'PROJECT_LONG_TTL': case 'PROJECT_LONG_VERSION': case 'PROJECT_LONG_DIRECTION': {
+        const c = id === 'PROJECT_LONG_TTL' ? 6 : 0; const explicit = id !== 'PROJECT_LONG_VERSION';
+        const original = row(c, explicit); const raw = copy(original);
+        raw.spec.key = Object.fromEntries(raw.spec.key);
+        if (id === 'PROJECT_LONG_TTL') raw.spec.expireAfterSeconds = new Long(0, 0, false);
+        else if (id === 'PROJECT_LONG_VERSION') raw.spec.v = new Long(2, 0, false);
+        else raw.spec.key[Object.keys(raw.spec.key)[0]] = new Long(1, 0, false);
+        const rows = listing(c).indexes; rows[rows.indexOf(original)] = projectIndexRow(raw, Long); break;
+      }
+      default: matched = false;
+    }
+    need(matched && trialRows.has(id), 'INDEX_FIXTURE_TRIAL_ID');
+    return { M, O, opaque, counts, extraReferences, inspectRoots: proxyTarget ? [proxyTarget, O] : [M, O] };
+  }
+
+  const resultReferences = new WeakSet();
+  function assertResult(result, inputReferences) {
+    need(result !== null && typeof result === 'object' && Object.getPrototypeOf(result) === Object.prototype
+      && Object.isFrozen(result) && !resultReferences.has(result) && !inputReferences.has(result), 'INDEX_RESULT_SHAPE');
+    const keys = Reflect.ownKeys(result);
+    need(keys.length === 4 && keys.every((key, i) => key === fields[i]), 'INDEX_RESULT_SHAPE');
+    const values = {};
+    for (const key of fields) {
+      const d = Object.getOwnPropertyDescriptor(result, key);
+      need(d && Object.hasOwn(d, 'value') && d.enumerable === true && d.writable === false
+        && d.configurable === false && !inputReferences.has(d.value), 'INDEX_RESULT_SHAPE'); values[key] = d.value;
+    }
+    need(typeof values.ready === 'boolean' && codes.has(values.code) && values.ready === (values.code === 'READY')
+      && (values.collectionOrdinal === null || Number.isInteger(values.collectionOrdinal)
+        && values.collectionOrdinal >= 0 && values.collectionOrdinal < 13)
+      && (values.indexOrdinal === null || Number.isInteger(values.indexOrdinal)
+        && values.indexOrdinal >= 0 && values.indexOrdinal <= 8), 'INDEX_RESULT_SHAPE');
+    let mutationRefused = false;
+    try { result.ready = !values.ready; } catch (error) { mutationRefused = error instanceof TypeError; }
+    need(mutationRefused && fields.every(key => Object.is(Object.getOwnPropertyDescriptor(result, key).value, values[key]))
+      && Object.isFrozen(result), 'INDEX_RESULT_MUTATION');
+    resultReferences.add(result);
+  }
+  function expected(result, wanted) {
+    need(fields.every(key => Object.is(result[key], wanted[key])), 'INDEX_RESULT_MISMATCH');
+  }
+  function checkpoint(evaluate, id, frozen) {
+    const input = makeTrial(id);
+    if (frozen) freezeFixture(input);
+    const snapshot = capture(input.inspectRoots, input.opaque, input.extraReferences);
+    let result; let first; let failed = false;
+    try { result = runDenied(() => evaluate(input.M, input.O)); } catch (error) { first = error; failed = true; }
+    try {
+      verifySnapshot(snapshot);
+      need(input.counts.getters === 0 && input.counts.coercions === 0 && input.counts.functions === 0
+        && input.counts.reflections === (id === 'REFLECTION_THROW' ? 1 : 0), 'INDEX_INPUT_EXECUTION');
+    } catch (error) { if (!failed) { first = error; failed = true; } }
+    if (failed) throw first;
+    assertResult(result, snapshot.references); return result;
+  }
+  const nominal = loadHelper(null); need(typeof nominal === 'function', 'INDEX_HELPER_EXPORT');
+  const seen = new Set(); const passedByGroup = new Map(INDEX_CASE_IDS.map(id => [id, 0])); let nominalComparisons = 0;
+  for (const row of INDEX_TRIALS) {
+    const modes = row[3] === 'BOTH' ? [false, true] : [false];
+    for (const frozen of modes) {
+      const key = row[0] + (frozen ? ':FROZEN' : ':ORDINARY'); need(!seen.has(key), 'INDEX_TRIAL_DUPLICATE');
+      expected(checkpoint(nominal, row[0], frozen), row[2]); seen.add(key); nominalComparisons++;
+    }
+    passedByGroup.set(row[1], passedByGroup.get(row[1]) + 1);
+  }
+  need(nominalComparisons === 343 && seen.size === 343
+    && INDEX_CASE_IDS.every((id, i) => passedByGroup.get(id) === expectedCounts[i]), 'INDEX_MATRIX_INCOMPLETE');
+  const sensitivity = []; let probeComparisons = 0; let restorationComparisons = 0;
+  for (const id of INDEX_MUTANT_IDS) {
+    let variantProbes = 0;
+    for (const trialId of INDEX_MUTANTS[id].trials) for (const frozen of [false, true]) {
+      const evaluate = loadHelper(id); need(typeof evaluate === 'function', 'INDEX_HELPER_EXPORT');
+      const result = checkpoint(evaluate, trialId, frozen); let detected = false;
+      try { expected(result, trialRows.get(trialId)[2]); }
+      catch (error) {
+        need(error?.fixtureCode === 'INDEX_RESULT_MISMATCH' && error.message === 'INDEX_RESULT_MISMATCH', 'INDEX_MUTANT_UNRELATED_FAILURE');
+        detected = true;
+      }
+      need(detected, 'INDEX_MUTANT_NOT_DETECTED'); expected(result, ready); probeComparisons++; variantProbes++;
+      const restored = loadHelper(null); need(typeof restored === 'function', 'INDEX_HELPER_EXPORT');
+      expected(checkpoint(restored, trialId, frozen), trialRows.get(trialId)[2]); restorationComparisons++;
+      expected(checkpoint(restored, 'REAL_COMPLETE_SELECTED', frozen), ready); restorationComparisons++;
+    }
+    need(variantProbes === INDEX_MUTANTS[id].trials.length * 2, 'INDEX_MUTANT_INCOMPLETE');
+    sensitivity.push(Object.freeze({ id, detected: true }));
+  }
+  need(probeComparisons === 150 && restorationComparisons === 300 && sensitivity.length === 6,
+    'INDEX_SENSITIVITY_INCOMPLETE');
+  return Object.freeze({
+    cases: Object.freeze(INDEX_CASE_IDS.map(id => Object.freeze({ id, status: 'PASS' }))),
+    sensitivity: Object.freeze(sensitivity),
+  });
+}

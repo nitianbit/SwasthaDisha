@@ -1,0 +1,19 @@
+{
+  "schema": "SD-INDEX-COMMAND-PORT-AMENDMENT-1",
+  "reviewers": [
+    "/root/index_standards_fresh",
+    "/root/index_spec_fresh"
+  ],
+  "decisionOnInitial": "REQUEST_CORRECTION",
+  "initialFreezeSha": "167789b6eede57880fb093d5e6853756864979c424f5a486003810d0d077ad8c",
+  "initialBootstrapSha": "f62173f290c43a12cb6cb786b35208d8b6b67c2aacd7b4a30a854733a91211b6",
+  "initialUnitSha": "5748e1279be44e2ef117c5e8f9d6870e3237739d9a99f45171a2482410bb447f",
+  "finding": "Real command port trusted collector-supplied cursor bits and lacked independent held cursor/collection post-response continuity checks. This is a source finding, not demonstrated unsafe helper behavior.",
+  "correction": "Private fixed ordinal/current collection/origin words/last actual reply Long reference/session plus pre/post descriptor admission, handles, namespace and continuity; terminal latch/no retries.",
+  "newPureFakeControls": 17,
+  "unitCases": 433,
+  "sourceReviewConfirmation": "PENDING",
+  "applicationEvaluations": 0,
+  "compilerExecutions": 0,
+  "databaseCommands": 0
+}

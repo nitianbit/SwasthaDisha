@@ -10,7 +10,8 @@
     "@/modules/dependents/routes",
     "@/modules/notification/routes",
     "@/modules/fcm/routes",
-    "@/modules/meet/routes"
+    "@/modules/meet/routes",
+    "@/modules/common/utils/indexReadiness"
   ],
   "excludedCapabilities": {
     "@/modules/payment/services": [
@@ -104,7 +105,14 @@
     "MEET_CALLBACK_VALID_CODE_PUBLIC",
     "MEET_CALLBACK_PROVIDER_ERROR_PUBLIC",
     "MEET_CALLBACK_MISSING_CODE_PUBLIC",
-    "MEET_CALLBACK_INVALID_QUERY_PUBLIC"
+    "MEET_CALLBACK_INVALID_QUERY_PUBLIC",
+    "INDEX_SELECTED_READBACK",
+    "INDEX_REQUIRED_REMOVAL_DENIALS",
+    "INDEX_KEY_AND_IDENTITY_DENIALS",
+    "INDEX_OPTIONS_DENIALS",
+    "INDEX_OBSERVATION_DENIALS",
+    "INDEX_INPUT_ADMISSION_DENIALS",
+    "INDEX_IMMUTABILITY_AND_SAFE_RESULT"
   ],
   "requiredSensitivityIds": [
     "OTP_UNCONDITIONAL_CONSUME",
@@ -127,7 +135,13 @@
     "MEET_AUTHENTICATION_REMOVED",
     "MEET_ADMIN_GUARD_REMOVED",
     "MEET_GUARDS_AFTER_VALIDATION",
-    "MEET_CALLBACK_GATED"
+    "MEET_CALLBACK_GATED",
+    "INDEX_MISSING_REQUIREMENT_ACCEPTED",
+    "INDEX_KEY_ORDER_IGNORED",
+    "INDEX_OPTIONS_IGNORED",
+    "INDEX_PARTIAL_FILTER_IGNORED",
+    "INDEX_INCOMPLETE_ACCEPTED",
+    "INDEX_BUILD_STATUS_IGNORED"
   ],
   "optionalAbsentPackages": [
     "kerberos",

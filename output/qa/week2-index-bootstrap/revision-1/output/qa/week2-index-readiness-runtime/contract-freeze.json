@@ -1,0 +1,31 @@
+{
+  "schema": "SD-INDEX-RUNTIME-CONTRACT-FREEZE-1",
+  "baseline": "3d68775a7329d1db95b05dea4e2c898bd8b27274",
+  "status": "TWO_INDEPENDENT_PREIMPLEMENTATION_REVIEWS_PENDING",
+  "author": "/root",
+  "files": {
+    "output/qa/week2-index-readiness-runtime/CONTRACT.md": "8d43ee0a67d10a5b627a66cf9dc49d0b30d8a16e8c38c62da2936330e0d5ce99",
+    "output/qa/week2-index-readiness-runtime/CONTRACT_DRAFT.md": "9030315c510e0bbfd2ae6461e79474ab1ce375f59750fa4e17b92f2e123e4b45",
+    "output/qa/week2-index-readiness-runtime/pin-intents.json": "d41c56e2d019117c612c7cae93580daa5d84a69ccf87b9eb8264093a9ddc7bf7",
+    "src1/modules/common/utils/indexReadiness.ts": "050ecc993c862638cf4912bb854e04baa5d80241cb124e7831fc3c95a78db5bd",
+    "output/qa/week2-index-readiness/CONTRACT.md": "d626f54222ab4f60f32bf9c94c97f3815ec8f71e35bebd5f604d58fb0ac01459",
+    "output/qa/week2-index-readiness/contract-freeze.json": "c61f2234affbec93b4a3d0ce8a141572db6e4165b652a2be62bc8606193d2f92",
+    "output/qa/week2-index-readiness-source/SOURCE_DECISIONS.md": "7e6b28f1c90bafdf6c59c2eee1b29b9a61f5046140ef35a6fd99d00ffbeee288",
+    "output/qa/week2-index-readiness-source/candidate-freeze.json": "2d8420a5b18b1eb5f931f9d49b1bd6f3650ba1dd1c7b134992245a84b4a0882a",
+    "test/api-runtime/scenario/bootstrap.cjs": "ff7ecad69b71145ba1dad5ad76ca68e836437d2e02077ade8ffa3748c40b6efc",
+    "test/api-runtime/scenario/bootstrap-unit.cjs": "d5079df3aca5023f021a1fa1a3e665d015c9a13de503ff480cec8c5560a5a56b",
+    "test/api-runtime/scenario/scenario.cjs": "4ceca6c30921a3718b1b81912bebf6b8c735adbab6f82293c502e281d1f4f668",
+    "test/api-runtime/scenario/compile.cjs": "ecf823aba516c9c1bba8ce7ae62c2db32a7d648721239c363bb1f6aad84584df",
+    "test/api-runtime/scenario/ports-manifest.json": "86d6b909c06387c52c8d62e3b99a10784d9612fb6fc63581faf6d3e96ee13a12",
+    "test/api-runtime/scenario/README.md": "1456a82024105ccdc23c1bc6a2aa7b4c52402d4deef8c6aea6a2c71826b44b20",
+    "test/api-runtime/scenario/package-plan.json": "d7830a9ce688235bb64f3f9f7ac3d5dd604bb63641cdae97b8b7250bfd957227",
+    "test/api-runtime/scenario/prepare.py": "39b4085370a09a34069b9f1c4f45cfd8fa38a3a1f0e380abcef9c469a5add598",
+    "test/api-runtime/platform.mjs": "b5117065c90c4698cb9604a8da0cb673a38249d8eee07a8ac39e11040a56e29f",
+    "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+    "test/api-runtime/launch.mjs": "9c6d1c805de4c50542667b90532219c54666b8a764ee5672055f641938b099ed",
+    "output/qa/week2-api-runtime/execution-7/REVIEW.md": "3a1cca2ced03f1a02aee0d90478505bb53dde81a937352713d77a24a23661665",
+    "output/qa/week2-api-preparation/emission-9/runtime-template.json": "185fb708ef0af3b4bbf106b836baee69d20b922a6089b418e42ed739f6e801e7",
+    "documentation/planning/implementation/M0_A_PROGRESS.md": "40486f7d86f1a4b2761bdf1def41eaca852b440536edfdc0bfa04eab9eaa8bcf",
+    "documentation/planning/implementation/PARALLEL_DEVELOPMENT_WORKFLOW.md": "c4f99a171df17ae98405a1fdd1c6aad0f9ab2dedfdb4aafabff60cb292d6148a"
+  }
+}
