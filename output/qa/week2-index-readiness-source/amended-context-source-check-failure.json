@@ -1,0 +1,10 @@
+{
+  "observer": "/root",
+  "script": "verify_controls_companion.py",
+  "sourceSha256": "050ecc993c862638cf4912bb854e04baa5d80241cb124e7831fc3c95a78db5bd",
+  "exit": 1,
+  "observation": "Actual earlier post-TDZ-fix call failed its all-positive assertion because the original implicit_id_first text named the removed shadow alias",
+  "applicationEvaluations": 0,
+  "compilerExecutions": 0,
+  "rawFailureRetained": "Earlier tool observation; fixed code/known local path only"
+}

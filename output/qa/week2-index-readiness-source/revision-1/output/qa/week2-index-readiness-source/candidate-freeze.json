@@ -1,0 +1,31 @@
+{
+  "schema": "SD-INDEX-READINESS-PART-A-CANDIDATE-1",
+  "baseline": "fd1c855b7405dd020cc7e7db1efa0f47d624af39",
+  "contractSha256": "d626f54222ab4f60f32bf9c94c97f3815ec8f71e35bebd5f604d58fb0ac01459",
+  "files": {
+    "src1/modules/common/utils/indexReadiness.ts": "6597c1a03c54702d89042a29263da81399934e68e8fb6c46f91c638cbe954400",
+    "output/qa/week2-index-readiness-source/CLARIFICATIONS.md": "980c60c97e244fdd07614131f978d6ab17ed70603e6550ce2e1f7333a7c08c5b",
+    "output/qa/week2-index-readiness-source/REVIEW_PACKET.md": "11ec14ad193e7f5750662b4bc754873328135ef6964fc9b83d602ff84e03da7e",
+    "output/qa/week2-index-readiness-source/TEST_PLAN.md": "64339895706f0a6fce220d98b7df52d1065f509c9727eb1182c8c971bc59449f",
+    "output/qa/week2-index-readiness-source/absent-baseline.json": "a845eca1dffdb27eb69974dde8ceacf9e427bd5bb9b2732dd323e354ff1baede",
+    "output/qa/week2-index-readiness-source/explicit_id_denial-original-single-occurrence.txt": "287fa70455442600f60a670ea8f48971e49b3b87fe61059fe6733efe5ebe7cf1",
+    "output/qa/week2-index-readiness-source/first-source-data-control-failure.json": "0525c10965a1b3d7829541c29da1ec68a9ac5cdbe4a7eb65a367fa407b4d6f61",
+    "output/qa/week2-index-readiness-source/scope-baseline.json": "275b1f71bb16d465c133e64b3b185f71b97e8a0f16d50312757ac28f90c535be",
+    "output/qa/week2-index-readiness-source/source-data-verification.json": "e9895398550462be861d8f58cd4128d1acf0a3c22c6897945e659c929307c6c3",
+    "output/qa/week2-index-readiness-source/source.diff": "451d209090ff988466c7110a0a3ea8c67ba8668853fedc5b6d2096db38b98b00",
+    "output/qa/week2-index-readiness-source/string_bound-original-single-occurrence.txt": "4a6a41f103bb47e12cb381fe6853c01eaecad35a0215ab6a87a10f321c2eea70",
+    "output/qa/week2-index-readiness-source/verifier-freeze.json": "4c83d42b8e4ec3ec8f5dbafb9d3fe377ae8ef157bdee5cc4913a962c897f3213",
+    "output/qa/week2-index-readiness-source/verify_controls_companion.py": "c5ed9adbe1c902a8249426dd3b6848050feda861cf13a19179ddb6a97ea68754",
+    "output/qa/week2-index-readiness-source/verify_controls_companion_draft.py": "ad4dc1da606a4e5a00c1682bf14e68f90ad37dc62400f2a288ea4ed43df626bd",
+    "output/qa/week2-index-readiness-source/verify_source.py": "d3e7b8ae23bf451121a256ea10174c0ee23d8b72e06c38b673288eb400df3e08"
+  },
+  "status": "AWAITING_TWO_INDEPENDENT_SOURCE_REVIEWS",
+  "applicationBehavior": "NOT_RUN",
+  "typeCheck": "NOT_RUN",
+  "rootAdoption": "NONE",
+  "appExecutions": 0,
+  "compilerExecutions": 0,
+  "databaseCommands": 0,
+  "DockerCalls": 0,
+  "providerCalls": 0
+}

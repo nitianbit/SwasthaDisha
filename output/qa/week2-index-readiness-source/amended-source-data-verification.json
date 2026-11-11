@@ -1,0 +1,290 @@
+{
+  "schema": "SD-INDEX-AMENDED-SOURCE-TEXT-1",
+  "stage": "POST_REVIEW_NOT_PREIMPLEMENTATION_FROZEN",
+  "sourceSha256": "050ecc993c862638cf4912bb854e04baa5d80241cb124e7831fc3c95a78db5bd",
+  "checks": {
+    "parameterized_unknown_api": true,
+    "fresh_frozen_result": true,
+    "descriptor_inspection": true,
+    "plain_object_prototypes": true,
+    "ordinary_array_prototype": true,
+    "own_keys_inspection": true,
+    "accessor_denial": true,
+    "active_cycle_denial": true,
+    "node_bound": true,
+    "string_bound": true,
+    "collection_bound": true,
+    "explicit_bound": true,
+    "explicit_total_bound": true,
+    "observed_collection_bound": true,
+    "observed_total_bound": true,
+    "key_bounds": true,
+    "key_direction": true,
+    "field_pattern": true,
+    "partial_depth": true,
+    "ttl_range": true,
+    "explicit_id_denial": true,
+    "duplicate_key_denial": true,
+    "duplicate_name_denial": true,
+    "ordered_key_matching": true,
+    "opaque_marker_context": true,
+    "opaque_marker_presence": true,
+    "simple_collation_only": true,
+    "partial_presence_equality": true,
+    "partial_structural_equality": true,
+    "ttl_presence_equality": true,
+    "unique_equality": true,
+    "sparse_equality": true,
+    "required_visibility": true,
+    "id_name_exception": true,
+    "failed_status_refusal": true,
+    "incomplete_status_refusal": true,
+    "exact_build_mode": true,
+    "unsupported_refusal": true,
+    "building_refusal": true,
+    "implicit_id_first": true,
+    "fixed_exception_mapping": true,
+    "imports_or_dynamic_code": true,
+    "host_effect_globals": true,
+    "time_or_random": true,
+    "unsafe_types_or_suppressions": true,
+    "input_mutation_sorting": true,
+    "serialization_before_admission": true,
+    "top_level_mutable_state": true,
+    "closed_result_codes": true,
+    "only_function_runtime_export": true,
+    "no_default_export": true,
+    "fixed_result_fields": true,
+    "collection_binding_unshadowed": true,
+    "source_present_regular": true,
+    "all_existing_tracked_bytes_preserved": true,
+    "original_handover_and_staged_files_preserved": true,
+    "original_staged_patch_preserved": true
+  },
+  "sourceControls": [
+    {
+      "name": "parameterized_unknown_api",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "fresh_frozen_result",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "descriptor_inspection",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "plain_object_prototypes",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "ordinary_array_prototype",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "own_keys_inspection",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "accessor_denial",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "active_cycle_denial",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "node_bound",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "string_bound",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "collection_bound",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "explicit_bound",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "explicit_total_bound",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "observed_collection_bound",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "observed_total_bound",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "key_bounds",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "key_direction",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "field_pattern",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "partial_depth",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "ttl_range",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "explicit_id_denial",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "duplicate_key_denial",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "duplicate_name_denial",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "ordered_key_matching",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "opaque_marker_context",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "opaque_marker_presence",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "simple_collation_only",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "partial_presence_equality",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "partial_structural_equality",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "ttl_presence_equality",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "unique_equality",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "sparse_equality",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "required_visibility",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "id_name_exception",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "failed_status_refusal",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "incomplete_status_refusal",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "exact_build_mode",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "unsupported_refusal",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "building_refusal",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "implicit_id_first",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "fixed_exception_mapping",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "imports_or_dynamic_code",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "host_effect_globals",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "time_or_random",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "unsafe_types_or_suppressions",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "input_mutation_sorting",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "serialization_before_admission",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "top_level_mutable_state",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "always_ready_stub",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "reserved_id_field_denial",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "id_name_and_key_exception",
+      "rejectedBySamePredicate": true
+    },
+    {
+      "name": "collection_binding_unshadowed",
+      "rejectedBySamePredicate": true
+    }
+  ],
+  "sourceControlsRejected": 52,
+  "preservedOriginalVerifierExit": 1,
+  "preservedOriginalCurrentAnchorMismatch": [
+    "implicit_id_first"
+  ],
+  "preservedInitialSourceControls": "47/49; both original source6597 variants remain exact",
+  "currentLoopAnchorExplicitlyUpdated": true,
+  "passed": true,
+  "scope": "TEXT_AND_BYTE_INTEGRITY_ONLY; redundant_id control is structural",
+  "applicationBehavior": "NOT_RUN",
+  "typeCheck": "NOT_RUN",
+  "applicationImports": 0,
+  "compilerExecutions": 0,
+  "databaseCommands": 0,
+  "DockerCalls": 0,
+  "providerCalls": 0
+}

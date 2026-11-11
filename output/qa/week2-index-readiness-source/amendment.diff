@@ -1,0 +1,18 @@
+--- a/src1/modules/common/utils/indexReadiness.ts
++++ b/src1/modules/common/utils/indexReadiness.ts
+@@ -357,13 +357,12 @@
+                 return makeResult("OBSERVATION_UNSUPPORTED", collectionOrdinal);
+             }
+             if (listing.building) return makeResult("OBSERVATION_UNREADY", collectionOrdinal);
+-            const requirements = requirementsForCollection;
+-            for (let indexOrdinal = 0; indexOrdinal <= requirements.indexes.length; indexOrdinal += 1) {
++            for (let indexOrdinal = 0; indexOrdinal <= requirementsForCollection.indexes.length; indexOrdinal += 1) {
+                 const implicitId = indexOrdinal === 0;
+                 const requirement: IndexDefinition = implicitId ? {
+                     name: "_id_", key: [["_id", 1]], unique: true, sparse: false, hidden: false,
+                     ttl: null, partialPresent: false, partial: null,
+-                } : requirements.indexes[indexOrdinal - 1];
++                } : requirementsForCollection.indexes[indexOrdinal - 1];
+                 if (!listing.indexes.some((entry) => matchesIndex(requirement, entry, implicitId))) {
+                     return makeResult("REQUIRED_INDEX_UNSATISFIED", collectionOrdinal, indexOrdinal);
+                 }
