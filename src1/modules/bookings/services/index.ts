@@ -1372,13 +1372,77 @@ export class BookingService {
   }
 
   async getAll(
-    queryParams: BookingQueryParams = {}
+    queryParams: BookingQueryParams = {},
+    requiredCorporateId?: string
   ): Promise<{
     data: IBooking[];
     total?: number;
     page?: number;
     totalPages?: number;
   }> {
+    if (requiredCorporateId !== undefined) {
+      if (
+        typeof requiredCorporateId !== 'string' ||
+        !/^[0-9a-fA-F]{24}$/.test(requiredCorporateId)
+      ) {
+        throw new AppError({
+          status: 403,
+          code: 'HR_CORPORATE_REQUIRED',
+          message: 'HR account must be linked to a corporate',
+        });
+      }
+
+      const scopedQuery: BookingQueryParams = {
+        ...queryParams,
+        corporateId: requiredCorporateId,
+        forUser: false,
+      };
+      if (scopedQuery.page && scopedQuery.limit) {
+        return this.bookingRepository.findWithPagination(
+          scopedQuery,
+          scopedQuery.page,
+          scopedQuery.limit
+        );
+      }
+
+      const filter: any = { corporateId: requiredCorporateId };
+      let sort: any = { bookingDate: -1, createdAt: -1 };
+      if (scopedQuery.userId) {
+        filter.userId = scopedQuery.userId;
+      } else if (scopedQuery.dependentId) {
+        filter.dependentId = scopedQuery.dependentId;
+      } else if (scopedQuery.wellnessPackageId) {
+        filter.wellnessPackageId = scopedQuery.wellnessPackageId;
+        filter.bookingType = 'package';
+        sort = { bookingDate: -1 };
+      } else if (scopedQuery.specialistId) {
+        filter.specialistId = scopedQuery.specialistId;
+        filter.bookingType = 'consultation';
+        sort = { bookingDate: -1 };
+      } else {
+        if (scopedQuery.pharmacyId) {
+          filter.pharmacyId = scopedQuery.pharmacyId;
+        }
+        if (scopedQuery.bookingType) {
+          filter.bookingType = scopedQuery.bookingType;
+        }
+        if (scopedQuery.status) {
+          filter.status = scopedQuery.status;
+        }
+        if (scopedQuery.paymentStatus) {
+          filter.paymentStatus = scopedQuery.paymentStatus;
+        }
+        if (scopedQuery.sortBy) {
+          sort = {
+            [scopedQuery.sortBy]: scopedQuery.sortOrder === 'desc' ? -1 : 1,
+          };
+        }
+      }
+
+      const data = await this.bookingRepository.findAll(filter, { sort });
+      return { data };
+    }
+
     if (queryParams.page && queryParams.limit) {
       return this.bookingRepository.findWithPagination(
         queryParams,

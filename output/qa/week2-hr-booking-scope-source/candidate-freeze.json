@@ -1,0 +1,63 @@
+{
+  "schema": "SD-HR-READ-SOURCE-CANDIDATE-FREEZE-1",
+  "baseline": "a3f3b922c29da03b8244246dd9e271f90d8b9ee3",
+  "authority": {
+    "contract": "09136c8f661435e36897f80949dfc4e1f88e2665737b228c843b14affb398edd",
+    "inputs": "7f491685d222feecaeafdaeeb30a2c95e853bcc232b2277259efa4431975e7b9",
+    "freeze": "fb1bb37b0e95c8ec4d6f06d7b6fabf7b329a1b94f65f211343044858dd8d48de",
+    "preReview": "8e2c6375566545833d4b4c2ee537bdfc332fb1eb13816626a362005d779413bd"
+  },
+  "files": {
+    "src1/modules/bookings/controller/index.ts": {
+      "sha256": "aec2b074981bfee5361b29b5f86ebed4e20c1837deadc75a9cc0766360be0f44",
+      "mode": "100644"
+    },
+    "src1/modules/bookings/services/index.ts": {
+      "sha256": "d32c2a8a7e0af52d6e062e29c82e7fee87dcb6dcdfe4488e89e7d09c4cc2c8cf",
+      "mode": "100644"
+    },
+    "output/qa/week2-hr-booking-scope-source/README.md": {
+      "sha256": "0f91945deb18dc712764fda4dbeee41649bec82fc1e463a4f20a73d8d814b806"
+    },
+    "output/qa/week2-hr-booking-scope-source/amendment.json": {
+      "sha256": "78e0cd52ab67e06c018fc23350d03b24261f8357815b9ed927ea6f9d19115011"
+    },
+    "output/qa/week2-hr-booking-scope-source/baseline-rejection.json": {
+      "sha256": "9a00b53bddaa90861c137c02e0449f9ff12a42b60ebfb3cd56b235b97d88f7ad"
+    },
+    "output/qa/week2-hr-booking-scope-source/candidate.diff": {
+      "sha256": "f32ea456794fad55b2a3389b8a9933d3cc0c7f054de1cc79c60940b2a590245e"
+    },
+    "output/qa/week2-hr-booking-scope-source/commands.json": {
+      "sha256": "c2a78f7be0af13b8f597a3888faa16a7ab127513d24c29c16ac8996dca711f18"
+    },
+    "output/qa/week2-hr-booking-scope-source/declarations.json": {
+      "sha256": "ea8d35248f2e574398b54d755387ca9d0d81bae36e66e5bcfe138e0b95a1235a"
+    },
+    "output/qa/week2-hr-booking-scope-source/source-controls.json": {
+      "sha256": "3a856c1aef4b7e2b4fb91b73cdbbc0b9e14a802bc67cdf02d37be9b62dfeb21b"
+    },
+    "output/qa/week2-hr-booking-scope-source/source-verification.json": {
+      "sha256": "57bf2821a65f8cfdd5b18b40086bb7d041a7e5ce6d4c4581d9c8b7d5d8730ea4"
+    },
+    "output/qa/week2-hr-booking-scope-source/verify-source.py": {
+      "sha256": "3ac116a11bd52a9ce3bce3d22a774764ec4290f5ff0d5ab50171521c843c5275"
+    }
+  },
+  "productionScope": {
+    "files": 2,
+    "insertions": 106,
+    "deletions": 4,
+    "hunks": 9
+  },
+  "sourceOnlyResults": {
+    "baselineRejectedBeforeEdit": true,
+    "declarations": 32,
+    "inertSourceControlsRejected": 36,
+    "fullFileInverse": true,
+    "whitespaceCheck": true
+  },
+  "runtime": "NOT_RUN_NOT_ADMITTED",
+  "review": "AWAITING_TWO_NONAUTHOR_SOURCE_ONLY_DECISIONS",
+  "integration": "HELD_FOR_SPECIALIST90_AND_ROOT_EXCLUDED_SOURCE_PROVENANCE_REVIEW"
+}

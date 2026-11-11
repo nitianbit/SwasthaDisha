@@ -1,0 +1,489 @@
+{
+  "status": "SOURCE_ONLY_PASS",
+  "baseline": "a3f3b922c29da03b8244246dd9e271f90d8b9ee3",
+  "sourceHashes": {
+    "src1/modules/bookings/controller/index.ts": "aec2b074981bfee5361b29b5f86ebed4e20c1837deadc75a9cc0766360be0f44",
+    "src1/modules/bookings/services/index.ts": "d32c2a8a7e0af52d6e062e29c82e7fee87dcb6dcdfe4488e89e7d09c4cc2c8cf"
+  },
+  "errors": [],
+  "declarations": 32,
+  "hunks": 9,
+  "gitVisibleChanges": [
+    "output/qa/week2-hr-booking-scope-source/amendment.json",
+    "output/qa/week2-hr-booking-scope-source/baseline-rejection.json",
+    "output/qa/week2-hr-booking-scope-source/declarations.json",
+    "output/qa/week2-hr-booking-scope-source/source-controls.json",
+    "output/qa/week2-hr-booking-scope-source/source-verification.json",
+    "output/qa/week2-hr-booking-scope-source/verify-source.py",
+    "src1/modules/bookings/controller/index.ts",
+    "src1/modules/bookings/services/index.ts"
+  ],
+  "executedTypeScript": false,
+  "applicationEffects": "NOT_EXECUTED_OR_MEASURED",
+  "futureHTTPTrials": "103_NOT_ADMITTED",
+  "futureRuntimeVariants": "8_NOT_ADMITTED",
+  "integration": "HELD_FOR_SPECIALIST90_AND_ROOT_EXCLUDED_SOURCE_PROVENANCE_REVIEW",
+  "sourceControls": [
+    {
+      "id": "DECLARE_C_HR_ONLY",
+      "requiredFailure": "DECL:C_HR_ONLY",
+      "rejected": true,
+      "mutatedSourceSha256": "d84108a43107492d8c2f7be4bf5b8f36760bfeb1e708ac097b40d80033ec8ac0",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/controller/index.ts",
+        "INVERSE_ANCHOR:dedicated-read-resolver",
+        "FULL_FILE_INVERSE:src1/modules/bookings/controller/index.ts",
+        "DECL:C_HR_ONLY"
+      ]
+    },
+    {
+      "id": "DECLARE_C_PRIMITIVE",
+      "requiredFailure": "DECL:C_PRIMITIVE",
+      "rejected": true,
+      "mutatedSourceSha256": "309287d41f33f8dddb0998d5bb6d8479a7603e8f7b9618e475a831cd7cbacf2e",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/controller/index.ts",
+        "INVERSE_ANCHOR:dedicated-read-resolver",
+        "FULL_FILE_INVERSE:src1/modules/bookings/controller/index.ts",
+        "DECL:C_PRIMITIVE"
+      ]
+    },
+    {
+      "id": "DECLARE_C_EXACT_HEX",
+      "requiredFailure": "DECL:C_EXACT_HEX",
+      "rejected": true,
+      "mutatedSourceSha256": "c8c9542c17289704f8f98cda7fc75ec48d8336d3eb619d69fbc5ee33ae2a65b0",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/controller/index.ts",
+        "INVERSE_ANCHOR:dedicated-read-resolver",
+        "FULL_FILE_INVERSE:src1/modules/bookings/controller/index.ts",
+        "DECL:C_EXACT_HEX"
+      ]
+    },
+    {
+      "id": "DECLARE_C_SCOPE_ERROR",
+      "requiredFailure": "DECL:C_SCOPE_ERROR",
+      "rejected": true,
+      "mutatedSourceSha256": "8dfa521060472189360dfda0a2d2c5cc6a1d363d5b6a6fe9cfccc0b2bc78b86e",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/controller/index.ts",
+        "INVERSE_ANCHOR:dedicated-read-resolver",
+        "FULL_FILE_INVERSE:src1/modules/bookings/controller/index.ts",
+        "DECL:C_SCOPE_ERROR"
+      ]
+    },
+    {
+      "id": "DECLARE_C_CORPORATE_SELECTOR",
+      "requiredFailure": "DECL:C_CORPORATE_SELECTOR",
+      "rejected": true,
+      "mutatedSourceSha256": "b1e6d349ed4b1bba8b55d15a3d6f42ce125e78ace5fa39df5831303602bc6cf8",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/controller/index.ts",
+        "INVERSE_ANCHOR:dedicated-read-resolver",
+        "FULL_FILE_INVERSE:src1/modules/bookings/controller/index.ts",
+        "DECL:C_CORPORATE_SELECTOR"
+      ]
+    },
+    {
+      "id": "DECLARE_C_FALSE_ONLY_SELECTOR",
+      "requiredFailure": "DECL:C_FALSE_ONLY_SELECTOR",
+      "rejected": true,
+      "mutatedSourceSha256": "d9e7f7249dd06445fda0aaca4e568a4b998c145903992d677fb8ceda08ef9193",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/controller/index.ts",
+        "INVERSE_ANCHOR:dedicated-read-resolver",
+        "FULL_FILE_INVERSE:src1/modules/bookings/controller/index.ts",
+        "DECL:C_FALSE_ONLY_SELECTOR"
+      ]
+    },
+    {
+      "id": "DECLARE_C_UNKNOWN_SELECTOR_TYPE",
+      "requiredFailure": "DECL:C_UNKNOWN_SELECTOR_TYPE",
+      "rejected": true,
+      "mutatedSourceSha256": "2c7bc2f91b9aa45a71329cfc633f5be372fdc90f70ad0942d243c859b0705e28",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/controller/index.ts",
+        "INVERSE_ANCHOR:dedicated-read-resolver",
+        "FULL_FILE_INVERSE:src1/modules/bookings/controller/index.ts",
+        "DECL:C_UNKNOWN_SELECTOR_TYPE"
+      ]
+    },
+    {
+      "id": "DECLARE_C_SELECTOR_ERROR",
+      "requiredFailure": "DECL:C_SELECTOR_ERROR",
+      "rejected": true,
+      "mutatedSourceSha256": "18e5df081935c94858a85f40e9a17da56727d85ff03de8aa4d027e7e9a2376df",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/controller/index.ts",
+        "INVERSE_ANCHOR:dedicated-read-resolver",
+        "FULL_FILE_INVERSE:src1/modules/bookings/controller/index.ts",
+        "DECL:C_SELECTOR_ERROR"
+      ]
+    },
+    {
+      "id": "DECLARE_C_FIRST_LIST",
+      "requiredFailure": "DECL:C_FIRST_LIST",
+      "rejected": true,
+      "mutatedSourceSha256": "5e17a6c14cf5aa52828932437b8cc0f6ce9ae2ba69ff20e49a641141c6c2e489",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/controller/index.ts",
+        "INVERSE_ANCHOR:list-first-resolver",
+        "FULL_FILE_INVERSE:src1/modules/bookings/controller/index.ts",
+        "DECL:C_FIRST_LIST"
+      ]
+    },
+    {
+      "id": "DECLARE_C_FIRST_USER",
+      "requiredFailure": "DECL:C_FIRST_USER",
+      "rejected": true,
+      "mutatedSourceSha256": "7a4c65140cd0646568cae8dd0cd3e563f4ad31b67c44c843580eb2134f87df73",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/controller/index.ts",
+        "INVERSE_ANCHOR:user-first-resolver",
+        "FULL_FILE_INVERSE:src1/modules/bookings/controller/index.ts",
+        "DECL:C_FIRST_USER"
+      ]
+    },
+    {
+      "id": "DECLARE_C_FIRST_UPCOMING",
+      "requiredFailure": "DECL:C_FIRST_UPCOMING",
+      "rejected": true,
+      "mutatedSourceSha256": "a53e4ae6c5c0663ec739a675a3fb079a2ec3ae74a7a7378e18a050dcc255031a",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/controller/index.ts",
+        "INVERSE_ANCHOR:upcoming-first-resolver",
+        "FULL_FILE_INVERSE:src1/modules/bookings/controller/index.ts",
+        "DECL:C_FIRST_UPCOMING"
+      ]
+    },
+    {
+      "id": "DECLARE_C_SCALAR_LIST",
+      "requiredFailure": "DECL:C_SCALAR_LIST",
+      "rejected": true,
+      "mutatedSourceSha256": "acd9e5375f63a1b28287e0f59bf8896c63925df51bb53335f70e0ccda70b63a9",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/controller/index.ts",
+        "INVERSE_ANCHOR:list-scoped-or-original-call",
+        "FULL_FILE_INVERSE:src1/modules/bookings/controller/index.ts",
+        "DECL:C_SCALAR_LIST"
+      ]
+    },
+    {
+      "id": "DECLARE_C_SCALAR_USER",
+      "requiredFailure": "DECL:C_SCALAR_USER",
+      "rejected": true,
+      "mutatedSourceSha256": "03e3621e198c57bfcf784dacdb4384e75cbca262bcb8de87973ddad88a6f37d1",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/controller/index.ts",
+        "INVERSE_ANCHOR:user-trusted-scalar",
+        "DECL:C_SCALAR_USER"
+      ]
+    },
+    {
+      "id": "DECLARE_C_SCALAR_UPCOMING",
+      "requiredFailure": "DECL:C_SCALAR_UPCOMING",
+      "rejected": true,
+      "mutatedSourceSha256": "8b387af202236d5bb2d69c98f624cf00dc140a20d8595cadd3c944f895344aa5",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/controller/index.ts",
+        "INVERSE_ANCHOR:upcoming-trusted-scalar",
+        "DECL:C_SCALAR_UPCOMING"
+      ]
+    },
+    {
+      "id": "DECLARE_S_OPTIONAL_SCALAR",
+      "requiredFailure": "DECL:S_OPTIONAL_SCALAR",
+      "rejected": true,
+      "mutatedSourceSha256": "4875666ccd846a7c09aab70b108340eb3db50b1ec8e3a9180069602b1d922961",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "INVERSE_ANCHOR:validated-trusted-read-branch",
+        "INVERSE_ANCHOR:optional-trusted-scalar",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_OPTIONAL_SCALAR"
+      ]
+    },
+    {
+      "id": "DECLARE_S_SCOPE_PRESENCE",
+      "requiredFailure": "DECL:S_SCOPE_PRESENCE",
+      "rejected": true,
+      "mutatedSourceSha256": "9085076c5eae1fa8effc6fa0caffea4af03d1ac6ef8d75b22a230a0855bd4054",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "INVERSE_ANCHOR:validated-trusted-read-branch",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_SCOPE_PRESENCE",
+        "DECL:S_PRIMITIVE",
+        "DECL:S_EXACT_HEX",
+        "DECL:S_SCOPE_ERROR",
+        "DECL:S_FRESH_QUERY",
+        "DECL:S_PAGINATION",
+        "DECL:S_CORPORATE_FILTER",
+        "DECL:S_USER_PRIORITY",
+        "DECL:S_DEFAULT_SORT",
+        "DECL:S_WELLNESS_SHORTCUT",
+        "DECL:S_SPECIALIST_SHORTCUT",
+        "DECL:S_GENERAL_PHARMACYID",
+        "DECL:S_GENERAL_BOOKINGTYPE",
+        "DECL:S_GENERAL_STATUS",
+        "DECL:S_GENERAL_PAYMENTSTATUS",
+        "DECL:S_GENERAL_SORT",
+        "DECL:S_ACTUAL_ONE_READ"
+      ]
+    },
+    {
+      "id": "DECLARE_S_PRIMITIVE",
+      "requiredFailure": "DECL:S_PRIMITIVE",
+      "rejected": true,
+      "mutatedSourceSha256": "d73aaa6accd04a15aca8f5a3c3b865f9e2cfa38a4eee623d906d66fff0256503",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "INVERSE_ANCHOR:validated-trusted-read-branch",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_PRIMITIVE"
+      ]
+    },
+    {
+      "id": "DECLARE_S_EXACT_HEX",
+      "requiredFailure": "DECL:S_EXACT_HEX",
+      "rejected": true,
+      "mutatedSourceSha256": "046ef7afbd6438985c6a887c517e3df647716f5df960b6e34d98f486c8ede8f5",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "INVERSE_ANCHOR:validated-trusted-read-branch",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_EXACT_HEX"
+      ]
+    },
+    {
+      "id": "DECLARE_S_SCOPE_ERROR",
+      "requiredFailure": "DECL:S_SCOPE_ERROR",
+      "rejected": true,
+      "mutatedSourceSha256": "b4cccdf1b0f5fb099d358e8200febe8e551985975b35b65f1f9f13f6b4f3497f",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "INVERSE_ANCHOR:validated-trusted-read-branch",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_SCOPE_ERROR"
+      ]
+    },
+    {
+      "id": "DECLARE_S_FRESH_QUERY",
+      "requiredFailure": "DECL:S_FRESH_QUERY",
+      "rejected": true,
+      "mutatedSourceSha256": "d64cb49b9db4cadce905e354593b56984f74fbbc493190ba6ac510393f26b379",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "INVERSE_ANCHOR:validated-trusted-read-branch",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_FRESH_QUERY"
+      ]
+    },
+    {
+      "id": "DECLARE_S_PAGINATION",
+      "requiredFailure": "DECL:S_PAGINATION",
+      "rejected": true,
+      "mutatedSourceSha256": "8d83f3486be9cd0def1d0b9d348ea3bc54f86d64826af882c2b846fd64ecfa3c",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "INVERSE_ANCHOR:validated-trusted-read-branch",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_PAGINATION"
+      ]
+    },
+    {
+      "id": "DECLARE_S_CORPORATE_FILTER",
+      "requiredFailure": "DECL:S_CORPORATE_FILTER",
+      "rejected": true,
+      "mutatedSourceSha256": "960f16bd98b58acdb1f2ae98266215a5c54c1a62c4289844a9a5549940bd8867",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "INVERSE_ANCHOR:validated-trusted-read-branch",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_CORPORATE_FILTER"
+      ]
+    },
+    {
+      "id": "DECLARE_S_USER_PRIORITY",
+      "requiredFailure": "DECL:S_USER_PRIORITY",
+      "rejected": true,
+      "mutatedSourceSha256": "fb006f8bac7d308dc1e01b989a58bca32e610059ca6f476922d4764b8ff85f6e",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "INVERSE_ANCHOR:validated-trusted-read-branch",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_USER_PRIORITY"
+      ]
+    },
+    {
+      "id": "DECLARE_S_DEFAULT_SORT",
+      "requiredFailure": "DECL:S_DEFAULT_SORT",
+      "rejected": true,
+      "mutatedSourceSha256": "cb3e07987629c677481ccf28176ab2887ccdc8b7489215155f802ad189083f8b",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "INVERSE_ANCHOR:validated-trusted-read-branch",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_DEFAULT_SORT"
+      ]
+    },
+    {
+      "id": "DECLARE_S_WELLNESS_SHORTCUT",
+      "requiredFailure": "DECL:S_WELLNESS_SHORTCUT",
+      "rejected": true,
+      "mutatedSourceSha256": "3d6f3a83407f502cc0a0dcf39df3bc2fe928892f3f85022d3f66392c2c448d48",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "INVERSE_ANCHOR:validated-trusted-read-branch",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_WELLNESS_SHORTCUT"
+      ]
+    },
+    {
+      "id": "DECLARE_S_SPECIALIST_SHORTCUT",
+      "requiredFailure": "DECL:S_SPECIALIST_SHORTCUT",
+      "rejected": true,
+      "mutatedSourceSha256": "12bd8ee85119db2bc9dad8d038589c914f008caea9c8608d0284912d6540c573",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "INVERSE_ANCHOR:validated-trusted-read-branch",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_SPECIALIST_SHORTCUT"
+      ]
+    },
+    {
+      "id": "DECLARE_S_GENERAL_PHARMACYID",
+      "requiredFailure": "DECL:S_GENERAL_PHARMACYID",
+      "rejected": true,
+      "mutatedSourceSha256": "5526a6a0c10d7b1d95e0fa7b175de3bedefe00461d6f5c4f666e2f8e353210c5",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "INVERSE_ANCHOR:validated-trusted-read-branch",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_GENERAL_PHARMACYID"
+      ]
+    },
+    {
+      "id": "DECLARE_S_GENERAL_BOOKINGTYPE",
+      "requiredFailure": "DECL:S_GENERAL_BOOKINGTYPE",
+      "rejected": true,
+      "mutatedSourceSha256": "42fc8b589ab6b3bfc269102c9ce20b8abce699ed1075ffcab044aa34c8703135",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "INVERSE_ANCHOR:validated-trusted-read-branch",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_GENERAL_BOOKINGTYPE"
+      ]
+    },
+    {
+      "id": "DECLARE_S_GENERAL_STATUS",
+      "requiredFailure": "DECL:S_GENERAL_STATUS",
+      "rejected": true,
+      "mutatedSourceSha256": "029660041d35cb62d7536f6d447f53aa97e82d06ae085f4537875ac3f580077b",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "INVERSE_ANCHOR:validated-trusted-read-branch",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_GENERAL_STATUS"
+      ]
+    },
+    {
+      "id": "DECLARE_S_GENERAL_PAYMENTSTATUS",
+      "requiredFailure": "DECL:S_GENERAL_PAYMENTSTATUS",
+      "rejected": true,
+      "mutatedSourceSha256": "1e9ce9f8c6055b76d696dda58a7cefeff1fc650466636a938c9e277f465b2a5d",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "INVERSE_ANCHOR:validated-trusted-read-branch",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_GENERAL_PAYMENTSTATUS"
+      ]
+    },
+    {
+      "id": "DECLARE_S_GENERAL_SORT",
+      "requiredFailure": "DECL:S_GENERAL_SORT",
+      "rejected": true,
+      "mutatedSourceSha256": "13b1ab79bb82b04e1341bd4f4db4a8c21b0c4eb6a66b46adfd9c6489cd1d6a2e",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "INVERSE_ANCHOR:validated-trusted-read-branch",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_GENERAL_SORT"
+      ]
+    },
+    {
+      "id": "DECLARE_S_ACTUAL_ONE_READ",
+      "requiredFailure": "DECL:S_ACTUAL_ONE_READ",
+      "rejected": true,
+      "mutatedSourceSha256": "f39d99e9883973b84b6ff02de62222461b3debd8ce4eb7878263176c2e85638e",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "INVERSE_ANCHOR:validated-trusted-read-branch",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_ACTUAL_ONE_READ"
+      ]
+    },
+    {
+      "id": "DECLARE_S_FORUSER_OVERRIDE",
+      "requiredFailure": "DECL:S_FRESH_QUERY",
+      "rejected": true,
+      "mutatedSourceSha256": "130166925e213eb48847c77d1a9c689b736741a433259f9b8fbf55f47e145fca",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "INVERSE_ANCHOR:validated-trusted-read-branch",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_FRESH_QUERY"
+      ]
+    },
+    {
+      "id": "DECLARE_UPCOMING_BOTH_SCOPE_SINKS",
+      "requiredFailure": "DECL:C_SCALAR_UPCOMING",
+      "rejected": true,
+      "mutatedSourceSha256": "e62d29517de310f4bcf01220b511bfc14da8ef14cfdce0f3dbfa61ff7ad1f1ba",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/controller/index.ts",
+        "INVERSE_ANCHOR:upcoming-trusted-scalar",
+        "FULL_FILE_INVERSE:src1/modules/bookings/controller/index.ts",
+        "DECL:C_SCALAR_UPCOMING"
+      ]
+    },
+    {
+      "id": "INVERSE_SHARED_HELPER_MUST_STAY",
+      "requiredFailure": "EXACT_SOURCE:src1/modules/bookings/controller/index.ts",
+      "rejected": true,
+      "mutatedSourceSha256": "b3a5b45f3c743a88dc67806264172a80cde39c8ea70d9d53a1a182583adbb349",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/controller/index.ts",
+        "FULL_FILE_INVERSE:src1/modules/bookings/controller/index.ts"
+      ]
+    },
+    {
+      "id": "INVERSE_LEGACY_BODY_MUST_STAY",
+      "requiredFailure": "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+      "rejected": true,
+      "mutatedSourceSha256": "e2751f71dda40cd73b21d35e48d96ab784c0b58a516213eca0d7328746bb7cde",
+      "errors": [
+        "EXACT_SOURCE:src1/modules/bookings/services/index.ts",
+        "FULL_FILE_INVERSE:src1/modules/bookings/services/index.ts",
+        "DECL:S_SCOPE_PRESENCE",
+        "DECL:S_PRIMITIVE",
+        "DECL:S_EXACT_HEX",
+        "DECL:S_SCOPE_ERROR",
+        "DECL:S_FRESH_QUERY",
+        "DECL:S_PAGINATION",
+        "DECL:S_CORPORATE_FILTER",
+        "DECL:S_USER_PRIORITY",
+        "DECL:S_DEFAULT_SORT",
+        "DECL:S_WELLNESS_SHORTCUT",
+        "DECL:S_SPECIALIST_SHORTCUT",
+        "DECL:S_GENERAL_PHARMACYID",
+        "DECL:S_GENERAL_BOOKINGTYPE",
+        "DECL:S_GENERAL_STATUS",
+        "DECL:S_GENERAL_PAYMENTSTATUS",
+        "DECL:S_GENERAL_SORT",
+        "DECL:S_ACTUAL_ONE_READ"
+      ]
+    }
+  ],
+  "sourceControlsRejected": 36
+}

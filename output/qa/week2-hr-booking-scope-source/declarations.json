@@ -1,0 +1,197 @@
+{
+  "schema": "SD-HR-READ-SOURCE-DECLARATIONS-1",
+  "checks": [
+    {
+      "id": "C_HR_ONLY",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "resolver",
+      "contains": "if (req.user?.userType !== 'hr') {\n      return undefined;"
+    },
+    {
+      "id": "C_PRIMITIVE",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "resolver",
+      "contains": "typeof corporateId !== 'string' ||"
+    },
+    {
+      "id": "C_EXACT_HEX",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "resolver",
+      "contains": "!/^[0-9a-fA-F]{24}$/.test(corporateId)"
+    },
+    {
+      "id": "C_SCOPE_ERROR",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "resolver",
+      "contains": "status: 403,\n        code: 'HR_CORPORATE_REQUIRED',\n        message: 'HR account must be linked to a corporate'"
+    },
+    {
+      "id": "C_CORPORATE_SELECTOR",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "resolver",
+      "contains": "(requestedCorporateId !== undefined && requestedCorporateId !== corporateId) ||"
+    },
+    {
+      "id": "C_FALSE_ONLY_SELECTOR",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "resolver",
+      "contains": "(forUser !== undefined && forUser !== false && forUser !== 'false')"
+    },
+    {
+      "id": "C_UNKNOWN_SELECTOR_TYPE",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "resolver",
+      "contains": "const forUser: unknown = req.query.forUser;"
+    },
+    {
+      "id": "C_SELECTOR_ERROR",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "resolver",
+      "contains": "status: 403,\n        code: 'FORBIDDEN',\n        message: 'HR can only access bookings from their own corporate'"
+    },
+    {
+      "id": "C_FIRST_LIST",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "file",
+      "contains": "  getAll = async (req: AuthRequest, res: Response, _next: NextFunction) => {\n    const requiredCorporateId = this.resolveHRBookingReadScope(req);\n"
+    },
+    {
+      "id": "C_FIRST_USER",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "file",
+      "contains": "  getByUserId = async (req: AuthRequest, res: Response, _next: NextFunction) => {\n    const requiredCorporateId = this.resolveHRBookingReadScope(req);\n"
+    },
+    {
+      "id": "C_FIRST_UPCOMING",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "file",
+      "contains": "  getUpcomingBookings = async (\n    req: AuthRequest,\n    res: Response,\n    _next: NextFunction\n  ) => {\n    const requiredCorporateId = this.resolveHRBookingReadScope(req);\n"
+    },
+    {
+      "id": "C_SCALAR_LIST",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "file",
+      "contains": "    const result = requiredCorporateId === undefined\n      ? await this.bookingService.getAll(queryParams)\n      : await this.bookingService.getAll(queryParams, requiredCorporateId);"
+    },
+    {
+      "id": "C_SCALAR_USER",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "file",
+      "contains": "            await this.bookingService.getAll({\n              userId,\n              corporateId: this.getHRCorporateId(req),\n            }, requiredCorporateId)"
+    },
+    {
+      "id": "C_SCALAR_UPCOMING",
+      "file": "src1/modules/bookings/controller/index.ts",
+      "region": "file",
+      "contains": "      const result = await this.bookingService.getAll({\n        corporateId: this.getHRCorporateId(req),\n        bookingDateFrom: getTodayYyyymmdd(),\n      }, requiredCorporateId);"
+    },
+    {
+      "id": "S_OPTIONAL_SCALAR",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "getAll",
+      "contains": "queryParams: BookingQueryParams = {},\n    requiredCorporateId?: string"
+    },
+    {
+      "id": "S_SCOPE_PRESENCE",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "contains": "if (requiredCorporateId !== undefined) {"
+    },
+    {
+      "id": "S_PRIMITIVE",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "contains": "typeof requiredCorporateId !== 'string' ||"
+    },
+    {
+      "id": "S_EXACT_HEX",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "contains": "!/^[0-9a-fA-F]{24}$/.test(requiredCorporateId)"
+    },
+    {
+      "id": "S_SCOPE_ERROR",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "contains": "status: 403,\n          code: 'HR_CORPORATE_REQUIRED',\n          message: 'HR account must be linked to a corporate'"
+    },
+    {
+      "id": "S_FRESH_QUERY",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "contains": "const scopedQuery: BookingQueryParams = {\n        ...queryParams,\n        corporateId: requiredCorporateId,\n        forUser: false,\n      };"
+    },
+    {
+      "id": "S_PAGINATION",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "contains": "if (scopedQuery.page && scopedQuery.limit) {\n        return this.bookingRepository.findWithPagination(\n          scopedQuery,\n          scopedQuery.page,\n          scopedQuery.limit\n        );\n      }"
+    },
+    {
+      "id": "S_CORPORATE_FILTER",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "contains": "const filter: any = { corporateId: requiredCorporateId };"
+    },
+    {
+      "id": "S_USER_PRIORITY",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "contains": "if (scopedQuery.userId) {\n        filter.userId = scopedQuery.userId;\n      } else if (scopedQuery.dependentId) {\n        filter.dependentId = scopedQuery.dependentId;"
+    },
+    {
+      "id": "S_DEFAULT_SORT",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "contains": "let sort: any = { bookingDate: -1, createdAt: -1 };"
+    },
+    {
+      "id": "S_WELLNESS_SHORTCUT",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "contains": "} else if (scopedQuery.wellnessPackageId) {\n        filter.wellnessPackageId = scopedQuery.wellnessPackageId;\n        filter.bookingType = 'package';\n        sort = { bookingDate: -1 };"
+    },
+    {
+      "id": "S_SPECIALIST_SHORTCUT",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "contains": "} else if (scopedQuery.specialistId) {\n        filter.specialistId = scopedQuery.specialistId;\n        filter.bookingType = 'consultation';\n        sort = { bookingDate: -1 };"
+    },
+    {
+      "id": "S_GENERAL_PHARMACYID",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "contains": "if (scopedQuery.pharmacyId) {\n          filter.pharmacyId = scopedQuery.pharmacyId;\n        }"
+    },
+    {
+      "id": "S_GENERAL_BOOKINGTYPE",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "contains": "if (scopedQuery.bookingType) {\n          filter.bookingType = scopedQuery.bookingType;\n        }"
+    },
+    {
+      "id": "S_GENERAL_STATUS",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "contains": "if (scopedQuery.status) {\n          filter.status = scopedQuery.status;\n        }"
+    },
+    {
+      "id": "S_GENERAL_PAYMENTSTATUS",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "contains": "if (scopedQuery.paymentStatus) {\n          filter.paymentStatus = scopedQuery.paymentStatus;\n        }"
+    },
+    {
+      "id": "S_GENERAL_SORT",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "contains": "if (scopedQuery.sortBy) {\n          sort = {\n            [scopedQuery.sortBy]: scopedQuery.sortOrder === 'desc' ? -1 : 1,\n          };\n        }"
+    },
+    {
+      "id": "S_ACTUAL_ONE_READ",
+      "file": "src1/modules/bookings/services/index.ts",
+      "region": "scoped",
+      "contains": "const data = await this.bookingRepository.findAll(filter, { sort });\n      return { data };"
+    }
+  ]
+}

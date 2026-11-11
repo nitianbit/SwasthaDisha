@@ -1,0 +1,25 @@
+{
+  "schema": "SD-HR-READ-SOURCE-COMMANDS-1",
+  "baselineRejection": {
+    "command": "python3 output/qa/week2-hr-booking-scope-source/verify-source.py",
+    "stdout": "baseline-rejection.json",
+    "exitCode": 1,
+    "beforeProductionEdit": true,
+    "expectedStatus": "SOURCE_ONLY_FAIL"
+  },
+  "candidate": {
+    "command": "python3 output/qa/week2-hr-booking-scope-source/verify-source.py --controls",
+    "stdout": "source-verification.json",
+    "exitCode": 0,
+    "expectedStatus": "SOURCE_ONLY_PASS"
+  },
+  "whitespace": {
+    "command": "git diff --check",
+    "exitCode": 0,
+    "stdoutEmpty": true
+  },
+  "typescriptExecution": false,
+  "runtime": "NOT_RUN_NOT_ADMITTED",
+  "implementationReview": "AWAITING_TWO_NONAUTHOR_SOURCE_ONLY_DECISIONS",
+  "integration": "HELD"
+}

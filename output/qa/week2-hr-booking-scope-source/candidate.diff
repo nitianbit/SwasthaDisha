@@ -1,0 +1,177 @@
+diff --git a/src1/modules/bookings/controller/index.ts b/src1/modules/bookings/controller/index.ts
+index bca0e897d7023a70f85375908d8f2f77399d1abf..616993bd1007c7873d54ce96f8ccdf43bb6c858a 100644
+--- a/src1/modules/bookings/controller/index.ts
++++ b/src1/modules/bookings/controller/index.ts
+@@ -23,6 +23,39 @@ export class BookingController {
+     this.bookingService = Container.get(BookingService);
+   }
+ 
++  private resolveHRBookingReadScope(req: AuthRequest): string | undefined {
++    if (req.user?.userType !== 'hr') {
++      return undefined;
++    }
++
++    const corporateId = req.user.corporateId;
++    if (
++      typeof corporateId !== 'string' ||
++      !/^[0-9a-fA-F]{24}$/.test(corporateId)
++    ) {
++      throw new AppError({
++        status: 403,
++        code: 'HR_CORPORATE_REQUIRED',
++        message: 'HR account must be linked to a corporate',
++      });
++    }
++
++    const requestedCorporateId = req.query.corporateId;
++    const forUser: unknown = req.query.forUser;
++    if (
++      (requestedCorporateId !== undefined && requestedCorporateId !== corporateId) ||
++      (forUser !== undefined && forUser !== false && forUser !== 'false')
++    ) {
++      throw new AppError({
++        status: 403,
++        code: 'FORBIDDEN',
++        message: 'HR can only access bookings from their own corporate',
++      });
++    }
++
++    return corporateId;
++  }
++
+   private getHRCorporateId(req: AuthRequest): string | undefined {
+     return req.user?.userType === 'hr' ? req.user.corporateId : undefined;
+   }
+@@ -228,6 +261,7 @@ export class BookingController {
+   };
+ 
+   getAll = async (req: AuthRequest, res: Response, _next: NextFunction) => {
++    const requiredCorporateId = this.resolveHRBookingReadScope(req);
+     const effectiveUserId =
+       req.user?.userType === 'admin'
+         ? (req.query.userId as string | undefined)
+@@ -266,7 +300,9 @@ export class BookingController {
+       forUser: req.query.forUser === 'true',
+     };
+ 
+-    const result = await this.bookingService.getAll(queryParams);
++    const result = requiredCorporateId === undefined
++      ? await this.bookingService.getAll(queryParams)
++      : await this.bookingService.getAll(queryParams, requiredCorporateId);
+ 
+     if (result.total !== undefined) {
+       // Paginated response
+@@ -316,6 +352,7 @@ export class BookingController {
+   };
+ 
+   getByUserId = async (req: AuthRequest, res: Response, _next: NextFunction) => {
++    const requiredCorporateId = this.resolveHRBookingReadScope(req);
+     const { userId } = req.params;
+     const result =
+       req.user?.userType === 'hr'
+@@ -323,7 +360,7 @@ export class BookingController {
+             await this.bookingService.getAll({
+               userId,
+               corporateId: this.getHRCorporateId(req),
+-            })
++            }, requiredCorporateId)
+           ).data
+         : await this.bookingService.getByUserId(userId);
+ 
+@@ -338,11 +375,12 @@ export class BookingController {
+     res: Response,
+     _next: NextFunction
+   ) => {
++    const requiredCorporateId = this.resolveHRBookingReadScope(req);
+     if (req.user?.userType === 'hr') {
+       const result = await this.bookingService.getAll({
+         corporateId: this.getHRCorporateId(req),
+         bookingDateFrom: getTodayYyyymmdd(),
+-      });
++      }, requiredCorporateId);
+ 
+       res.status(200).json({
+         success: true,
+diff --git a/src1/modules/bookings/services/index.ts b/src1/modules/bookings/services/index.ts
+index 698eed644f3257e4ededbedb1fc17688799232dd..1496432159087bb18a55b83b2f16b6585ce431b6 100644
+--- a/src1/modules/bookings/services/index.ts
++++ b/src1/modules/bookings/services/index.ts
+@@ -1372,13 +1372,77 @@ export class BookingService {
+   }
+ 
+   async getAll(
+-    queryParams: BookingQueryParams = {}
++    queryParams: BookingQueryParams = {},
++    requiredCorporateId?: string
+   ): Promise<{
+     data: IBooking[];
+     total?: number;
+     page?: number;
+     totalPages?: number;
+   }> {
++    if (requiredCorporateId !== undefined) {
++      if (
++        typeof requiredCorporateId !== 'string' ||
++        !/^[0-9a-fA-F]{24}$/.test(requiredCorporateId)
++      ) {
++        throw new AppError({
++          status: 403,
++          code: 'HR_CORPORATE_REQUIRED',
++          message: 'HR account must be linked to a corporate',
++        });
++      }
++
++      const scopedQuery: BookingQueryParams = {
++        ...queryParams,
++        corporateId: requiredCorporateId,
++        forUser: false,
++      };
++      if (scopedQuery.page && scopedQuery.limit) {
++        return this.bookingRepository.findWithPagination(
++          scopedQuery,
++          scopedQuery.page,
++          scopedQuery.limit
++        );
++      }
++
++      const filter: any = { corporateId: requiredCorporateId };
++      let sort: any = { bookingDate: -1, createdAt: -1 };
++      if (scopedQuery.userId) {
++        filter.userId = scopedQuery.userId;
++      } else if (scopedQuery.dependentId) {
++        filter.dependentId = scopedQuery.dependentId;
++      } else if (scopedQuery.wellnessPackageId) {
++        filter.wellnessPackageId = scopedQuery.wellnessPackageId;
++        filter.bookingType = 'package';
++        sort = { bookingDate: -1 };
++      } else if (scopedQuery.specialistId) {
++        filter.specialistId = scopedQuery.specialistId;
++        filter.bookingType = 'consultation';
++        sort = { bookingDate: -1 };
++      } else {
++        if (scopedQuery.pharmacyId) {
++          filter.pharmacyId = scopedQuery.pharmacyId;
++        }
++        if (scopedQuery.bookingType) {
++          filter.bookingType = scopedQuery.bookingType;
++        }
++        if (scopedQuery.status) {
++          filter.status = scopedQuery.status;
++        }
++        if (scopedQuery.paymentStatus) {
++          filter.paymentStatus = scopedQuery.paymentStatus;
++        }
++        if (scopedQuery.sortBy) {
++          sort = {
++            [scopedQuery.sortBy]: scopedQuery.sortOrder === 'desc' ? -1 : 1,
++          };
++        }
++      }
++
++      const data = await this.bookingRepository.findAll(filter, { sort });
++      return { data };
++    }
++
+     if (queryParams.page && queryParams.limit) {
+       return this.bookingRepository.findWithPagination(
+         queryParams,

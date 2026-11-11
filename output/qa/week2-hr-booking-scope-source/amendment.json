@@ -1,0 +1,79 @@
+{
+  "schema": "SD-HR-READ-SOURCE-AMENDMENT-1",
+  "baseline": "a3f3b922c29da03b8244246dd9e271f90d8b9ee3",
+  "authority": {
+    "contract": "09136c8f661435e36897f80949dfc4e1f88e2665737b228c843b14affb398edd",
+    "inputs": "7f491685d222feecaeafdaeeb30a2c95e853bcc232b2277259efa4431975e7b9",
+    "freeze": "fb1bb37b0e95c8ec4d6f06d7b6fabf7b329a1b94f65f211343044858dd8d48de",
+    "preReview": "8e2c6375566545833d4b4c2ee537bdfc332fb1eb13816626a362005d779413bd"
+  },
+  "files": {
+    "src1/modules/bookings/controller/index.ts": {
+      "baselineSha256": "c6a0aeae7f86d2bef6777bde2c07025cb439e5b76254f974bf27f04648bb2080",
+      "candidateSha256": "aec2b074981bfee5361b29b5f86ebed4e20c1837deadc75a9cc0766360be0f44",
+      "mode": "100644"
+    },
+    "src1/modules/bookings/services/index.ts": {
+      "baselineSha256": "f239aa5a35b56c96b483a7ed009ef0e2a9e8b5ec2cd43d796fc72c6d853c6508",
+      "candidateSha256": "d32c2a8a7e0af52d6e062e29c82e7fee87dcb6dcdfe4488e89e7d09c4cc2c8cf",
+      "mode": "100644"
+    }
+  },
+  "hunks": [
+    {
+      "file": "src1/modules/bookings/controller/index.ts",
+      "id": "dedicated-read-resolver",
+      "old": "  private getHRCorporateId(req: AuthRequest): string | undefined {",
+      "new": "  private resolveHRBookingReadScope(req: AuthRequest): string | undefined {\n    if (req.user?.userType !== 'hr') {\n      return undefined;\n    }\n\n    const corporateId = req.user.corporateId;\n    if (\n      typeof corporateId !== 'string' ||\n      !/^[0-9a-fA-F]{24}$/.test(corporateId)\n    ) {\n      throw new AppError({\n        status: 403,\n        code: 'HR_CORPORATE_REQUIRED',\n        message: 'HR account must be linked to a corporate',\n      });\n    }\n\n    const requestedCorporateId = req.query.corporateId;\n    const forUser: unknown = req.query.forUser;\n    if (\n      (requestedCorporateId !== undefined && requestedCorporateId !== corporateId) ||\n      (forUser !== undefined && forUser !== false && forUser !== 'false')\n    ) {\n      throw new AppError({\n        status: 403,\n        code: 'FORBIDDEN',\n        message: 'HR can only access bookings from their own corporate',\n      });\n    }\n\n    return corporateId;\n  }\n\n  private getHRCorporateId(req: AuthRequest): string | undefined {"
+    },
+    {
+      "file": "src1/modules/bookings/controller/index.ts",
+      "id": "list-first-resolver",
+      "old": "  getAll = async (req: AuthRequest, res: Response, _next: NextFunction) => {\n",
+      "new": "  getAll = async (req: AuthRequest, res: Response, _next: NextFunction) => {\n    const requiredCorporateId = this.resolveHRBookingReadScope(req);\n"
+    },
+    {
+      "file": "src1/modules/bookings/controller/index.ts",
+      "id": "list-scoped-or-original-call",
+      "old": "    const result = await this.bookingService.getAll(queryParams);",
+      "new": "    const result = requiredCorporateId === undefined\n      ? await this.bookingService.getAll(queryParams)\n      : await this.bookingService.getAll(queryParams, requiredCorporateId);"
+    },
+    {
+      "file": "src1/modules/bookings/controller/index.ts",
+      "id": "user-first-resolver",
+      "old": "  getByUserId = async (req: AuthRequest, res: Response, _next: NextFunction) => {\n",
+      "new": "  getByUserId = async (req: AuthRequest, res: Response, _next: NextFunction) => {\n    const requiredCorporateId = this.resolveHRBookingReadScope(req);\n"
+    },
+    {
+      "file": "src1/modules/bookings/controller/index.ts",
+      "id": "user-trusted-scalar",
+      "old": "            await this.bookingService.getAll({\n              userId,\n              corporateId: this.getHRCorporateId(req),\n            })",
+      "new": "            await this.bookingService.getAll({\n              userId,\n              corporateId: this.getHRCorporateId(req),\n            }, requiredCorporateId)"
+    },
+    {
+      "file": "src1/modules/bookings/controller/index.ts",
+      "id": "upcoming-first-resolver",
+      "old": "  getUpcomingBookings = async (\n    req: AuthRequest,\n    res: Response,\n    _next: NextFunction\n  ) => {\n",
+      "new": "  getUpcomingBookings = async (\n    req: AuthRequest,\n    res: Response,\n    _next: NextFunction\n  ) => {\n    const requiredCorporateId = this.resolveHRBookingReadScope(req);\n"
+    },
+    {
+      "file": "src1/modules/bookings/controller/index.ts",
+      "id": "upcoming-trusted-scalar",
+      "old": "      const result = await this.bookingService.getAll({\n        corporateId: this.getHRCorporateId(req),\n        bookingDateFrom: getTodayYyyymmdd(),\n      });",
+      "new": "      const result = await this.bookingService.getAll({\n        corporateId: this.getHRCorporateId(req),\n        bookingDateFrom: getTodayYyyymmdd(),\n      }, requiredCorporateId);"
+    },
+    {
+      "file": "src1/modules/bookings/services/index.ts",
+      "id": "optional-trusted-scalar",
+      "old": "  async getAll(\n    queryParams: BookingQueryParams = {}\n",
+      "new": "  async getAll(\n    queryParams: BookingQueryParams = {},\n    requiredCorporateId?: string\n"
+    },
+    {
+      "file": "src1/modules/bookings/services/index.ts",
+      "id": "validated-trusted-read-branch",
+      "old": "  async getAll(\n    queryParams: BookingQueryParams = {},\n    requiredCorporateId?: string\n  ): Promise<{\n    data: IBooking[];\n    total?: number;\n    page?: number;\n    totalPages?: number;\n  }> {\n",
+      "new": "  async getAll(\n    queryParams: BookingQueryParams = {},\n    requiredCorporateId?: string\n  ): Promise<{\n    data: IBooking[];\n    total?: number;\n    page?: number;\n    totalPages?: number;\n  }> {\n    if (requiredCorporateId !== undefined) {\n      if (\n        typeof requiredCorporateId !== 'string' ||\n        !/^[0-9a-fA-F]{24}$/.test(requiredCorporateId)\n      ) {\n        throw new AppError({\n          status: 403,\n          code: 'HR_CORPORATE_REQUIRED',\n          message: 'HR account must be linked to a corporate',\n        });\n      }\n\n      const scopedQuery: BookingQueryParams = {\n        ...queryParams,\n        corporateId: requiredCorporateId,\n        forUser: false,\n      };\n      if (scopedQuery.page && scopedQuery.limit) {\n        return this.bookingRepository.findWithPagination(\n          scopedQuery,\n          scopedQuery.page,\n          scopedQuery.limit\n        );\n      }\n\n      const filter: any = { corporateId: requiredCorporateId };\n      let sort: any = { bookingDate: -1, createdAt: -1 };\n      if (scopedQuery.userId) {\n        filter.userId = scopedQuery.userId;\n      } else if (scopedQuery.dependentId) {\n        filter.dependentId = scopedQuery.dependentId;\n      } else if (scopedQuery.wellnessPackageId) {\n        filter.wellnessPackageId = scopedQuery.wellnessPackageId;\n        filter.bookingType = 'package';\n        sort = { bookingDate: -1 };\n      } else if (scopedQuery.specialistId) {\n        filter.specialistId = scopedQuery.specialistId;\n        filter.bookingType = 'consultation';\n        sort = { bookingDate: -1 };\n      } else {\n        if (scopedQuery.pharmacyId) {\n          filter.pharmacyId = scopedQuery.pharmacyId;\n        }\n        if (scopedQuery.bookingType) {\n          filter.bookingType = scopedQuery.bookingType;\n        }\n        if (scopedQuery.status) {\n          filter.status = scopedQuery.status;\n        }\n        if (scopedQuery.paymentStatus) {\n          filter.paymentStatus = scopedQuery.paymentStatus;\n        }\n        if (scopedQuery.sortBy) {\n          sort = {\n            [scopedQuery.sortBy]: scopedQuery.sortOrder === 'desc' ? -1 : 1,\n          };\n        }\n      }\n\n      const data = await this.bookingRepository.findAll(filter, { sort });\n      return { data };\n    }\n\n"
+    }
+  ],
+  "limits": "Literal source declarations only; never parse/transpile/import/evaluate TypeScript or execute domain behavior."
+}
