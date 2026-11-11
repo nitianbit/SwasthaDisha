@@ -1,0 +1,8 @@
+{
+  "schema": "SD-WARNING-CONTROL-RECIPE-FAILURE-1",
+  "control": "CODE_EQUALITY_REMOVED",
+  "initialExpectedMarker": "WARNING_UNKNOWN_WRONG_CODE",
+  "actualEarlierMarker": "WARNING_UNKNOWN_CODE_COERCION_OBJECT",
+  "disposition": "Unit correctly rejected loss of code equality at an earlier exact-code test. Initial harness marker was too late; corrected only expected failure marker, no fixture/predicate change. Initial script, patch/stdout/stderr and exclusively created inert files retained in controls-1. No application/compiler/runtime invocation.",
+  "initialScriptSha256": "1b57cee26b92a24c00ebe58b99f619ee475a8eba1324a87e4f4c5bbe7c592c87"
+}

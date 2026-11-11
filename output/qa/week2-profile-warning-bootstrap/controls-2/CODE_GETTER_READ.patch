@@ -1,0 +1,11 @@
+--- nominal/bootstrap.cjs
++++ CODE_GETTER_READ/bootstrap.cjs
+@@ -422,7 +422,7 @@
+     if (options === null || typeof options !== 'object' || Object.getPrototypeOf(options) !== Object.prototype) return;
+     const keys = Reflect.ownKeys(options);
+     if (keys.length !== 1 || keys[0] !== 'code') return;
+-    const code = Object.getOwnPropertyDescriptor(options, 'code');
++    const code = { value: options.code };
+     if (!code || !Object.hasOwn(code, 'value') || code.value !== 'MONGOOSE') return;
+     effects.mongooseNewAfterWarnings++;
+   } catch { /* Every reflection failure stays unknown after total increment. */ }

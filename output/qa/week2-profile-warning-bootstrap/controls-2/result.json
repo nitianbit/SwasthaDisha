@@ -1,0 +1,186 @@
+{
+  "schema": "SD-WARNING-BOOTSTRAP-WEAKENED-CONTROLS-1",
+  "nominalSourceSha256": "874025665f5f93454303f3823ed7ba9f606ce36c9119c7f58fe0759cd3214a78",
+  "actualOtherFixture": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-scenario/test/api-runtime/scenario/scenario.cjs",
+  "actualOtherFixtureSha256": "cbb1260c887a7a5dc664fec9a6b47c680e1d180f78b102716122596baaae6500",
+  "count": 10,
+  "results": [
+    {
+      "id": "MESSAGE_EQUALITY_REMOVED",
+      "rejected": true,
+      "returncode": 1,
+      "syntaxStatus": "PASS",
+      "expectedFailureMarker": "WARNING_UNKNOWN_BEFORE",
+      "transformations": [
+        [
+          "message.value !== \"mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.\"",
+          "typeof message.value !== 'string'"
+        ]
+      ],
+      "sourceSha256": "e97a0b5cc773f3677142c90ee0d9c6b0889dc1a3b4f0db13762c5c741228b82a",
+      "unitSha256": "cafb8d2940e258f6fcf685d072b3693be091f36f009bb49880034b0599d1a8e7",
+      "actualScenarioSha256": "cbb1260c887a7a5dc664fec9a6b47c680e1d180f78b102716122596baaae6500",
+      "seamSha256": "6fd1d0abdbb864e8da9d9c39b4994d30c83f3c3a0d40f1283556a827f3db420d"
+    },
+    {
+      "id": "CODE_EQUALITY_REMOVED",
+      "rejected": true,
+      "returncode": 1,
+      "syntaxStatus": "PASS",
+      "expectedFailureMarker": "WARNING_UNKNOWN_CODE_COERCION_OBJECT",
+      "transformations": [
+        [
+          "code.value !== 'MONGOOSE'",
+          "false"
+        ]
+      ],
+      "sourceSha256": "97794b08c2421e5f3abd2445a7fb5ad2d1c632601b64ac81c21925f42e783c89",
+      "unitSha256": "cafb8d2940e258f6fcf685d072b3693be091f36f009bb49880034b0599d1a8e7",
+      "actualScenarioSha256": "cbb1260c887a7a5dc664fec9a6b47c680e1d180f78b102716122596baaae6500",
+      "seamSha256": "76b6a256fa88acb615117860363ee7da22b9edb8258aff70fa968e4c7a68e0d8"
+    },
+    {
+      "id": "EXTRA_OPTION_GUARD_REMOVED",
+      "rejected": true,
+      "returncode": 1,
+      "syntaxStatus": "PASS",
+      "expectedFailureMarker": "WARNING_UNKNOWN_EXTRA_OPTION",
+      "transformations": [
+        [
+          "keys.length !== 1 || keys[0] !== 'code'",
+          "false"
+        ]
+      ],
+      "sourceSha256": "fdda55daa10c4d0f985a5101ef36d71e8828375b62889ef439f75d8f64106233",
+      "unitSha256": "cafb8d2940e258f6fcf685d072b3693be091f36f009bb49880034b0599d1a8e7",
+      "actualScenarioSha256": "cbb1260c887a7a5dc664fec9a6b47c680e1d180f78b102716122596baaae6500",
+      "seamSha256": "6b679c8b6fe1e3ccdf1c4502138e411aff4f428f8e7268bf5f0ededf5c352d47"
+    },
+    {
+      "id": "CODE_GETTER_READ",
+      "rejected": true,
+      "returncode": 1,
+      "syntaxStatus": "PASS",
+      "expectedFailureMarker": "WARNING_UNKNOWN_OWN_ACCESSOR",
+      "transformations": [
+        [
+          "const code = Object.getOwnPropertyDescriptor(options, 'code');",
+          "const code = { value: options.code };"
+        ]
+      ],
+      "sourceSha256": "0dd753c21f342a434d461c1751589667cd0a8bd12b95486197944e4479d7f89b",
+      "unitSha256": "cafb8d2940e258f6fcf685d072b3693be091f36f009bb49880034b0599d1a8e7",
+      "actualScenarioSha256": "cbb1260c887a7a5dc664fec9a6b47c680e1d180f78b102716122596baaae6500",
+      "seamSha256": "d6c5a3206e4140e9a6697406487dcf9ef345653641dc776a4d3d5f78674ac361"
+    },
+    {
+      "id": "REFLECTION_FAILURE_PROMOTED",
+      "rejected": true,
+      "returncode": 1,
+      "syntaxStatus": "PASS",
+      "expectedFailureMarker": "WARNING_REFLECTION_FAILURE_getPrototypeOf",
+      "transformations": [
+        [
+          "} catch { /* Every reflection failure stays unknown after total increment. */ }",
+          "} catch { effects.mongooseNewAfterWarnings++; }"
+        ]
+      ],
+      "sourceSha256": "72770f2f80e8db1459cab063065d0d03eab2f8240caa77757633c74e87201e38",
+      "unitSha256": "cafb8d2940e258f6fcf685d072b3693be091f36f009bb49880034b0599d1a8e7",
+      "actualScenarioSha256": "cbb1260c887a7a5dc664fec9a6b47c680e1d180f78b102716122596baaae6500",
+      "seamSha256": "fa54a48e0cfae59e117b1b605f92a80cacb4836133180b3f205626d5c8256db4"
+    },
+    {
+      "id": "TOTAL_CONSOLE_INCREMENT_REMOVED",
+      "rejected": true,
+      "returncode": 1,
+      "syntaxStatus": "PASS",
+      "expectedFailureMarker": "WARNING_EXACT_CAPTURE_RETURN_UNDEFINED_AND_ONE_WRITE_BUDGET",
+      "transformations": [
+        [
+          "  effects.console++;",
+          "  /* weakened: total event omitted */"
+        ]
+      ],
+      "sourceSha256": "a3e7e9388c228399a3ba5393658d0869c36ce799fcb6d898171dc1d286e6743b",
+      "unitSha256": "cafb8d2940e258f6fcf685d072b3693be091f36f009bb49880034b0599d1a8e7",
+      "actualScenarioSha256": "cbb1260c887a7a5dc664fec9a6b47c680e1d180f78b102716122596baaae6500",
+      "seamSha256": "47e226ca673056a963520986ed8a7f5ef2f65b22e92c88bba84c192895eb3a68"
+    },
+    {
+      "id": "PRIVATE_CONFIG_EFFECT_EXEMPTED",
+      "rejected": true,
+      "returncode": 1,
+      "syntaxStatus": "PASS",
+      "expectedFailureMarker": "CONFIG_EXPECTED_FIXED_UNIT_FAILURE",
+      "transformations": [
+        [
+          "const CONFIG_EFFECT_KEYS = Object.freeze(Object.keys(counters));",
+          "const CONFIG_EFFECT_KEYS = Object.freeze(Object.keys(counters).filter(key => key !== 'mongooseNewAfterWarnings'));"
+        ]
+      ],
+      "sourceSha256": "18f7b0d1980a6d2ea8310af1c5524ffa3b6ff7dbfe8c68e83eaa58abb3681f5d",
+      "unitSha256": "cafb8d2940e258f6fcf685d072b3693be091f36f009bb49880034b0599d1a8e7",
+      "actualScenarioSha256": "cbb1260c887a7a5dc664fec9a6b47c680e1d180f78b102716122596baaae6500",
+      "seamSha256": "22842ca15122574f5f8a1a410079e3d5fbd724b443617c125d40861daad4f751"
+    },
+    {
+      "id": "ACTUAL_EMIT_CLASSIFIER_BYPASSED",
+      "rejected": true,
+      "returncode": 1,
+      "syntaxStatus": "PASS",
+      "expectedFailureMarker": "WARNING_ACTUAL_EMIT_WRAPPER_NO_NATIVE_DELEGATE",
+      "transformations": [
+        [
+          "process.emitWarning = (...args) => recordCapturedWarning(args, counters);",
+          "process.emitWarning = () => { counters.console++; };"
+        ]
+      ],
+      "sourceSha256": "fc69fcc210192dd462f2ec7fe0ceb1ee664e3fcbb2081923f94c3ae1e4d2af63",
+      "unitSha256": "cafb8d2940e258f6fcf685d072b3693be091f36f009bb49880034b0599d1a8e7",
+      "actualScenarioSha256": "cbb1260c887a7a5dc664fec9a6b47c680e1d180f78b102716122596baaae6500",
+      "seamSha256": "05fb5e5da0ab1efdc50a7ff904bffe62ad7d4b50d6ca2f25413e480107d307d3"
+    },
+    {
+      "id": "CONSOLE_METHOD_CLASSIFIED_AS_WARNING",
+      "rejected": true,
+      "returncode": 1,
+      "syntaxStatus": "PASS",
+      "expectedFailureMarker": "WARNING_CONSOLE_METHOD_IS_UNKNOWN_log",
+      "transformations": [
+        [
+          "for (const name of ['log', 'info', 'debug', 'warn', 'error']) console[name] = () => { counters.console++; };",
+          "for (const name of ['log', 'info', 'debug', 'warn', 'error']) console[name] = (...args) => recordCapturedWarning(args, counters);"
+        ]
+      ],
+      "sourceSha256": "8f486b69830a806f76e1a049574457ca3f9b85ba0117ef3fe6547acec14f4f27",
+      "unitSha256": "cafb8d2940e258f6fcf685d072b3693be091f36f009bb49880034b0599d1a8e7",
+      "actualScenarioSha256": "cbb1260c887a7a5dc664fec9a6b47c680e1d180f78b102716122596baaae6500",
+      "seamSha256": "0b1df9e7c83cad5408fd65159c01d94101d6d84c86a70ec22e93d7db702ba19d"
+    },
+    {
+      "id": "ARGUMENT_COUNT_GUARDS_REMOVED",
+      "rejected": true,
+      "returncode": 1,
+      "syntaxStatus": "PASS",
+      "expectedFailureMarker": "WARNING_UNKNOWN_EXTRA_ARG",
+      "transformations": [
+        [
+          "argumentKeys.length !== 3 || ",
+          ""
+        ],
+        [
+          "length.value !== 2",
+          "false"
+        ]
+      ],
+      "sourceSha256": "062e300b76f5162a0ecc2a72b54d39964c92b1860636ceaa0e2707254ee2378f",
+      "unitSha256": "cafb8d2940e258f6fcf685d072b3693be091f36f009bb49880034b0599d1a8e7",
+      "actualScenarioSha256": "cbb1260c887a7a5dc664fec9a6b47c680e1d180f78b102716122596baaae6500",
+      "seamSha256": "49d9ea4609baeda3b5dd1de8dc72cb6cc218502ca04f0c69f762fcef4e7156a5"
+    }
+  ],
+  "applicationEvaluations": 0,
+  "compilerExecutions": 0,
+  "authority": "BUILTINS_ONLY_FIXTURE_UNITS_NO_RUNTIME"
+}

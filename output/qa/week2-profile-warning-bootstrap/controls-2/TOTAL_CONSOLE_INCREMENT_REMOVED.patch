@@ -1,0 +1,11 @@
+--- nominal/bootstrap.cjs
++++ TOTAL_CONSOLE_INCREMENT_REMOVED/bootstrap.cjs
+@@ -405,7 +405,7 @@
+ // Classify only this exact pinned public warning signature. Total console events
+ // remain counted; unknown/reflection failures never become known warnings.
+ function recordCapturedWarning(args, effects) {
+-  effects.console++;
++  /* weakened: total event omitted */
+   try {
+     if (!Array.isArray(args) || Object.getPrototypeOf(args) !== Array.prototype) return;
+     const argumentKeys = Reflect.ownKeys(args);

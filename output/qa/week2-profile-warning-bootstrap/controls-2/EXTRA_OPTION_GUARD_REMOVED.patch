@@ -1,0 +1,11 @@
+--- nominal/bootstrap.cjs
++++ EXTRA_OPTION_GUARD_REMOVED/bootstrap.cjs
+@@ -421,7 +421,7 @@
+     const options = suppliedOptions.value;
+     if (options === null || typeof options !== 'object' || Object.getPrototypeOf(options) !== Object.prototype) return;
+     const keys = Reflect.ownKeys(options);
+-    if (keys.length !== 1 || keys[0] !== 'code') return;
++    if (false) return;
+     const code = Object.getOwnPropertyDescriptor(options, 'code');
+     if (!code || !Object.hasOwn(code, 'value') || code.value !== 'MONGOOSE') return;
+     effects.mongooseNewAfterWarnings++;

@@ -1,0 +1,17 @@
+--- nominal/bootstrap.cjs
++++ ARGUMENT_COUNT_GUARDS_REMOVED/bootstrap.cjs
+@@ -409,12 +409,12 @@
+   try {
+     if (!Array.isArray(args) || Object.getPrototypeOf(args) !== Array.prototype) return;
+     const argumentKeys = Reflect.ownKeys(args);
+-    if (argumentKeys.length !== 3 || !argumentKeys.includes('0') || !argumentKeys.includes('1')
++    if (!argumentKeys.includes('0') || !argumentKeys.includes('1')
+       || !argumentKeys.includes('length')) return;
+     const length = Object.getOwnPropertyDescriptor(args, 'length');
+     const message = Object.getOwnPropertyDescriptor(args, '0');
+     const suppliedOptions = Object.getOwnPropertyDescriptor(args, '1');
+-    if (!length || !Object.hasOwn(length, 'value') || length.value !== 2
++    if (!length || !Object.hasOwn(length, 'value') || false
+       || !message || !Object.hasOwn(message, 'value')
+       || message.value !== "mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead."
+       || !suppliedOptions || !Object.hasOwn(suppliedOptions, 'value')) return;

@@ -1,0 +1,14 @@
+{
+  "schema": "SD-PROFILE-WARNING-BASELINE-REJECTION-1",
+  "baseline": "ed7e1e4a455114784cbb836156fffc85c276f0d6",
+  "checks": {
+    "classifier_missing": true,
+    "monotonic_private_missing": true,
+    "emitWarning_unclassified": true,
+    "coupled_unit_missing": true
+  },
+  "bootstrapSha256": "6b682e5c43e1ea03c71e8ae94e6ac551774110ac92b979e991d6e122838137b8",
+  "unitSha256": "04b7703affafab0d8213458706702eefeed9ab2857ba5d252fa3d18fc0f22bd0",
+  "rejected": true,
+  "execution": "source-data only"
+}

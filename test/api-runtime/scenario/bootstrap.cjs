@@ -398,9 +398,40 @@ const need = (ok, code) => { if (!ok) fail(code); };
 const plain = value => value && typeof value === 'object' && !Array.isArray(value);
 const stdout = process.stdout.write.bind(process.stdout);
 let stage = 'ADMISSION';
-const counters = { email: 0, sms: 0, push: 0, logger: 0, console: 0, unexpected: 0, excluded: 0, jwtIssued: 0, dbWrites: 0, calendar: 0 };
+const counters = { email: 0, sms: 0, push: 0, logger: 0, console: 0, unexpected: 0, excluded: 0, jwtIssued: 0, dbWrites: 0, calendar: 0, mongooseNewAfterWarnings: 0 };
 for (const name of ['log', 'info', 'debug', 'warn', 'error']) console[name] = () => { counters.console++; };
-process.emitWarning = () => { counters.console++; };
+process.emitWarning = (...args) => recordCapturedWarning(args, counters);
+
+// Classify only this exact pinned public warning signature. Total console events
+// remain counted; unknown/reflection failures never become known warnings.
+function recordCapturedWarning(args, effects) {
+  effects.console++;
+  try {
+    if (!Array.isArray(args) || Object.getPrototypeOf(args) !== Array.prototype) return;
+    const argumentKeys = Reflect.ownKeys(args);
+    if (argumentKeys.length !== 3 || !argumentKeys.includes('0') || !argumentKeys.includes('1')
+      || !argumentKeys.includes('length')) return;
+    const length = Object.getOwnPropertyDescriptor(args, 'length');
+    const message = Object.getOwnPropertyDescriptor(args, '0');
+    const suppliedOptions = Object.getOwnPropertyDescriptor(args, '1');
+    if (!length || !Object.hasOwn(length, 'value') || length.value !== 2
+      || !message || !Object.hasOwn(message, 'value')
+      || message.value !== "mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead."
+      || !suppliedOptions || !Object.hasOwn(suppliedOptions, 'value')) return;
+    const options = suppliedOptions.value;
+    if (options === null || typeof options !== 'object' || Object.getPrototypeOf(options) !== Object.prototype) return;
+    const keys = Reflect.ownKeys(options);
+    if (keys.length !== 1 || keys[0] !== 'code') return;
+    const code = Object.getOwnPropertyDescriptor(options, 'code');
+    if (!code || !Object.hasOwn(code, 'value') || code.value !== 'MONGOOSE') return;
+    effects.mongooseNewAfterWarnings++;
+  } catch { /* Every reflection failure stays unknown after total increment. */ }
+}
+
+// Read-only fixture-unit seam; no raw warning arguments or runtime ctx addition.
+function capturedWarningCounts() {
+  return Object.freeze({ console: counters.console, mongooseNewAfterWarnings: counters.mongooseNewAfterWarnings });
+}
 
 // Public literals only: no driver message, URI, path, row or validation fields.
 const SETUP_FAILURE_CODES = Object.freeze({
@@ -2407,4 +2438,4 @@ module.exports = { validateAdmissionData, inspectManifest, closeNetwork, install
   configurationEnvironment, withConfigurationTaps, configurationSampleEvidence, collectConfigurationEvidence,
   meetData, meetSame, createMeetRecorder, meetFetchLifecycle, withMeetFetchCleanup,
   indexLongWords, indexScalar, projectIndexRow, indexManifest, collectIndexObservations, withIndexTaps, validateIndexTypeReport, createIndexCommandPort,
-  INDEX_SOURCE_SHA, INDEX_MUTANTS, INDEX_CASE_IDS, INDEX_MUTANT_IDS, profilePolicy, profileAdmission, createProfileBoundary, PROFILE_POLICY_SHA, PROFILE_SOURCE_PINS, PROFILE_VARIANTS, PROFILE_STATIC_INPUTS };
+  recordCapturedWarning, capturedWarningCounts, INDEX_SOURCE_SHA, INDEX_MUTANTS, INDEX_CASE_IDS, INDEX_MUTANT_IDS, profilePolicy, profileAdmission, createProfileBoundary, PROFILE_POLICY_SHA, PROFILE_SOURCE_PINS, PROFILE_VARIANTS, PROFILE_STATIC_INPUTS };

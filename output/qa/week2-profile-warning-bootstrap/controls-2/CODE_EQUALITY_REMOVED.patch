@@ -1,0 +1,11 @@
+--- nominal/bootstrap.cjs
++++ CODE_EQUALITY_REMOVED/bootstrap.cjs
+@@ -423,7 +423,7 @@
+     const keys = Reflect.ownKeys(options);
+     if (keys.length !== 1 || keys[0] !== 'code') return;
+     const code = Object.getOwnPropertyDescriptor(options, 'code');
+-    if (!code || !Object.hasOwn(code, 'value') || code.value !== 'MONGOOSE') return;
++    if (!code || !Object.hasOwn(code, 'value') || false) return;
+     effects.mongooseNewAfterWarnings++;
+   } catch { /* Every reflection failure stays unknown after total increment. */ }
+ }

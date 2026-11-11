@@ -1,0 +1,11 @@
+--- nominal/bootstrap.cjs
++++ PRIVATE_CONFIG_EFFECT_EXEMPTED/bootstrap.cjs
+@@ -1239,7 +1239,7 @@
+ const CONFIG_ENVIRONMENTS = Object.freeze(['test', 'development', 'production']);
+ const CONFIG_REJECTION = 'JWT_SECRET_KEY must be set to a non-placeholder value';
+ const CONFIG_ENV_KEYS = Object.freeze(['NODE_ENV', 'JWT_SECRET_KEY', 'MONGODB_URL']);
+-const CONFIG_EFFECT_KEYS = Object.freeze(Object.keys(counters));
++const CONFIG_EFFECT_KEYS = Object.freeze(Object.keys(counters).filter(key => key !== 'mongooseNewAfterWarnings'));
+ const CONFIG_WRITE_OPS = new Set(['updateOne', 'updateMany', 'replaceOne', 'deleteOne', 'deleteMany',
+   'findOneAndUpdate', 'findOneAndReplace', 'findOneAndDelete']);
+ const CONFIG_TRIM_POINTS = Object.freeze([0x0009, 0x000a, 0x000b, 0x000c, 0x000d, 0x0020,

@@ -1,0 +1,97 @@
+{
+  "unit-node22": {
+    "command": [
+      "/private/tmp/m0-node22/node",
+      "--permission",
+      "--allow-fs-read=/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-bootstrap/test/api-runtime/scenario",
+      "--allow-fs-read=/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-bootstrap/output/qa/week2-profile-warning-bootstrap",
+      "--allow-fs-read=/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-scenario/test/api-runtime/scenario/scenario.cjs",
+      "--require",
+      "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-bootstrap/output/qa/week2-profile-warning-bootstrap/author-fixture-seam.cjs",
+      "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-bootstrap/test/api-runtime/scenario/bootstrap-unit.cjs"
+    ],
+    "returncode": 0,
+    "result": {
+      "schema": "SD-AUTH-API-OFFLINE-1",
+      "cases": 645,
+      "recordingCases": 31,
+      "warningCases": 57,
+      "nativeWarningDelegates": 0,
+      "profileBoundaryCases": 110,
+      "nativeChildLoads": 0,
+      "indexCollectorCases": 67,
+      "meetRecorderCases": 79,
+      "configurationControllerCases": 76,
+      "admissionCases": 96,
+      "setupDiagnosticCases": 117,
+      "ownedCleanupCases": 12,
+      "failed": 0,
+      "applicationImports": 0,
+      "connections": 0,
+      "domainWrites": 0,
+      "processGrants": "DENIED"
+    },
+    "actualWarningBudgetFixtureSha256": "cbb1260c887a7a5dc664fec9a6b47c680e1d180f78b102716122596baaae6500",
+    "parserFixtureScope": null
+  },
+  "unit-node24": {
+    "command": [
+      "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+      "--permission",
+      "--allow-fs-read=/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-bootstrap/test/api-runtime/scenario",
+      "--allow-fs-read=/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-bootstrap/output/qa/week2-profile-warning-bootstrap",
+      "--allow-fs-read=/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-scenario/test/api-runtime/scenario/scenario.cjs",
+      "--require",
+      "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-bootstrap/output/qa/week2-profile-warning-bootstrap/author-fixture-seam.cjs",
+      "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-bootstrap/test/api-runtime/scenario/bootstrap-unit.cjs"
+    ],
+    "returncode": 0,
+    "result": {
+      "schema": "SD-AUTH-API-OFFLINE-1",
+      "cases": 645,
+      "recordingCases": 31,
+      "warningCases": 57,
+      "nativeWarningDelegates": 0,
+      "profileBoundaryCases": 110,
+      "nativeChildLoads": 0,
+      "indexCollectorCases": 67,
+      "meetRecorderCases": 79,
+      "configurationControllerCases": 76,
+      "admissionCases": 96,
+      "setupDiagnosticCases": 117,
+      "ownedCleanupCases": 12,
+      "failed": 0,
+      "applicationImports": 0,
+      "connections": 0,
+      "domainWrites": 0,
+      "processGrants": "DENIED"
+    },
+    "actualWarningBudgetFixtureSha256": "cbb1260c887a7a5dc664fec9a6b47c680e1d180f78b102716122596baaae6500",
+    "parserFixtureScope": null
+  },
+  "index-parser": {
+    "command": [
+      "/private/tmp/m0-node22/node",
+      "--permission",
+      "--allow-fs-read=/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-bootstrap/test/api-runtime/scenario",
+      "--allow-fs-read=/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-bootstrap/output/qa/week2-index-scenario",
+      "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-bootstrap/output/qa/week2-index-scenario/evidence-unit.cjs"
+    ],
+    "returncode": 0,
+    "result": {
+      "schema": "SD-INDEX-EVIDENCE-PURE-1",
+      "cases": 49,
+      "failed": 0,
+      "gettersInvoked": 0,
+      "applicationImports": 0,
+      "connections": 0,
+      "writes": 0,
+      "processGrants": "DENIED",
+      "compilerExecutions": 0,
+      "applicationHelperEvaluations": 0,
+      "runtime": "NOT_RUN"
+    },
+    "actualWarningBudgetFixtureSha256": null,
+    "parserFixtureScope": "same-directory historical fd68 parser, unchanged parser bytes; Root composed rerun still required"
+  }
+}

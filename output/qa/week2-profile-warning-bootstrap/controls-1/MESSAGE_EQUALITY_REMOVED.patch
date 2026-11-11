@@ -1,0 +1,11 @@
+--- nominal/bootstrap.cjs
++++ MESSAGE_EQUALITY_REMOVED/bootstrap.cjs
+@@ -416,7 +416,7 @@
+     const suppliedOptions = Object.getOwnPropertyDescriptor(args, '1');
+     if (!length || !Object.hasOwn(length, 'value') || length.value !== 2
+       || !message || !Object.hasOwn(message, 'value')
+-      || message.value !== "mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead."
++      || typeof message.value !== 'string'
+       || !suppliedOptions || !Object.hasOwn(suppliedOptions, 'value')) return;
+     const options = suppliedOptions.value;
+     if (options === null || typeof options !== 'object' || Object.getPrototypeOf(options) !== Object.prototype) return;

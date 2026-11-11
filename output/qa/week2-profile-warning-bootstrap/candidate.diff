@@ -1,0 +1,269 @@
+diff --git a/test/api-runtime/scenario/bootstrap-unit.cjs b/test/api-runtime/scenario/bootstrap-unit.cjs
+index 3218ada775a5bb5f84341774ff6ec73638a5b168..7e9c1aa3314044c6f273c32e66fc13835c4eb056 100644
+--- a/test/api-runtime/scenario/bootstrap-unit.cjs
++++ b/test/api-runtime/scenario/bootstrap-unit.cjs
+@@ -18,7 +18,8 @@ if (portsOriginal.models.length !== 13 || !portsOriginal.models.some(row => row.
+   || !portsOriginal.models.some(row => row.name === 'Dependent' && row.collection === 'dependents'
+     && row.source === 'src1/modules/dependents/model/index.ts' && row.indexes.length === 0)) throw new Error('OFFLINE_WELLNESS_MAP');
+ const bootstrap = path.join(__dirname, 'bootstrap.cjs');
+-let applicationImports = 0; let connections = 0; let domainWrites = 0; let nativeChildLoads = 0;
++let applicationImports = 0; let connections = 0; let domainWrites = 0; let nativeChildLoads = 0; let nativeWarningDelegates = 0;
++process.emitWarning = () => { nativeWarningDelegates++; throw new Error('OFFLINE_NATIVE_WARNING_FORBIDDEN'); };
+ const blockedWrite = () => { domainWrites++; throw new Error('OFFLINE_WRITE_DENIED'); };
+ for (const name of ['writeFile', 'writeFileSync', 'appendFile', 'appendFileSync', 'createWriteStream',
+   'mkdir', 'mkdirSync', 'rm', 'rmSync', 'unlink', 'unlinkSync', 'rename', 'renameSync', 'copyFile', 'copyFileSync']) fs[name] = blockedWrite;
+@@ -31,16 +32,18 @@ globalThis.fetch = blockedNetwork;
+ const originalLoad = Module._load;
+ Module._load = function (request, parent, isMain) {
+   if (request.replace(/^node:/, '') === 'child_process') { nativeChildLoads++; throw new Error('OFFLINE_NATIVE_CHILD_FORBIDDEN'); }
+-  if (request !== bootstrap && !Module.isBuiltin(request)) { applicationImports++; throw new Error('OFFLINE_DOMAIN_IMPORT_DENIED'); }
++  if (request !== bootstrap && !(request === './scenario.cjs' && parent === module) && !Module.isBuiltin(request)) { applicationImports++; throw new Error('OFFLINE_DOMAIN_IMPORT_DENIED'); }
+   return originalLoad.call(this, request, parent, isMain);
+ };
+-const { validateAdmissionData, installLoader, runSetupStep, SETUP_FAILURE_CODES, withOwnedCleanup, recordReadOperation, recordPush,
++const { recordCapturedWarning, capturedWarningCounts, validateAdmissionData, installLoader, runSetupStep, SETUP_FAILURE_CODES, withOwnedCleanup, recordReadOperation, recordPush,
+   configurationSamples, configurationFinally, configurationEnvironment, withConfigurationTaps,
+   configurationSampleEvidence, collectConfigurationEvidence, meetData, meetSame, createMeetRecorder,
+   meetFetchLifecycle, withMeetFetchCleanup, indexLongWords, indexScalar, projectIndexRow,
+   indexManifest, collectIndexObservations, withIndexTaps, validateIndexTypeReport, createIndexCommandPort, INDEX_SOURCE_SHA, INDEX_MUTANTS, INDEX_CASE_IDS, INDEX_MUTANT_IDS, profilePolicy, profileAdmission, createProfileBoundary,
+   PROFILE_POLICY_SHA, PROFILE_SOURCE_PINS, PROFILE_VARIANTS, PROFILE_STATIC_INPUTS } = require(bootstrap);
++const { assertProfileWarningBudget } = require('./scenario.cjs');
+ const need = (condition, label) => { if (!condition) throw new Error(label); };
++need(typeof recordCapturedWarning === 'function' && typeof assertProfileWarningBudget === 'function', 'WARNING_ACTUAL_FUNCTIONS_REQUIRED');
+ need(process.permission && !process.permission.has('child') && !process.permission.has('worker')
+   && !process.permission.has('addon') && !process.permission.has('fs.write'), 'OFFLINE_PROCESS_GRANTS');
+ 
+@@ -199,7 +202,9 @@ const configurationRows = [];
+ const meetRows = [];
+ const indexRows = [];
+ const profileRows = [];
++const warningRows = [];
+ let activeProfileCase = null;
++let activeWarningCase = null;
+ function configurationCheck(id, action) { action(); configurationRows.push(id); }
+ function configurationFailure(action, code) {
+   let caught; try { action(); } catch (error) { caught = error; }
+@@ -210,7 +215,7 @@ function configurationFailure(action, code) {
+ function fakeConfigurationRuntime() {
+   const key = 'synthetic-private-config-key'; const uri = 'synthetic-owned-uri';
+   const env = { NODE_ENV: 'test', JWT_SECRET_KEY: key, MONGODB_URL: uri };
+-  const effects = Object.fromEntries(['email', 'sms', 'push', 'logger', 'console', 'unexpected', 'excluded', 'jwtIssued', 'dbWrites', 'calendar'].map(name => [name, 0]));
++  const effects = Object.fromEntries(['email', 'sms', 'push', 'logger', 'console', 'unexpected', 'excluded', 'jwtIssued', 'dbWrites', 'calendar', 'mongooseNewAfterWarnings'].map(name => [name, 0]));
+   const state = { cache: new Set(), loads: [], delegated: 0, signatures: 0, overrides: {}, models: [], hook: undefined };
+   const delegated = function () { state.delegated++; return 'fake-read'; };
+   const mongoose = { connect: delegated, createConnection: delegated, Connection: function () {},
+@@ -333,7 +338,7 @@ function configurationUnits() {
+       && fake.runtime.env.MONGODB_URL === fake.runtime.uri && fake.runtime.mongoose.connect === original
+       && Object.keys(fake.state.overrides).length === 0 && fake.state.delegated === 0, 'CONFIG_FAILURE_RESTORES_BOUNDARY');
+   });
+-  for (const name of ['sms', 'push', 'console', 'unexpected', 'excluded', 'dbWrites'])
++  for (const name of ['sms', 'push', 'console', 'unexpected', 'excluded', 'dbWrites', 'mongooseNewAfterWarnings'])
+     configurationCheck('CONFIG_REJECTS_EFFECT_' + name, () => {
+       const fake = fakeConfigurationRuntime(); fake.state.hook = () => { fake.runtime.effects[name]++; };
+       configurationFailure(() => collectConfigurationEvidence(fake.runtime), 'CONFIG_LOAD_EFFECT');
+@@ -1014,6 +1019,132 @@ async function indexUnits() {
+   }
+ }
+ 
++// Actual fixture classifier and budget seam only. Scripted write counts below
++// exercise accounting predicates, not Mongoose, HTTP or database behavior.
++async function warningUnits() {
++  const message = "mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead.";
++  const fresh = () => ({ console: 0, mongooseNewAfterWarnings: 0 });
++  let getters = 0; let coercions = 0;
++  async function test(id, action) { activeWarningCase = id; await action(); warningRows.push(id); activeWarningCase = null; }
++  function observe(effects, writes = 1, dbWrites = writes) { return { writes: { specialists: writes }, effects: { ...effects, dbWrites } }; }
++  const expected = writes => ({ writeOpsDelta: { specialists: writes }, dbWritesDelta: writes });
++  function budgetNeed(ok, code) { if (!ok) { const error = new Error(code); error.fixtureCode = code; throw error; } }
++  function budgetFailure(observed, target, code) {
++    let caught; try { assertProfileWarningBudget(observed, target, budgetNeed); } catch (error) { caught = error; }
++    need(caught?.fixtureCode === code && caught.message === code, 'WARNING_EXPECTED_BUDGET_FAILURE');
++  }
++  await test('WARNING_EXACT_CAPTURE_RETURN_UNDEFINED_AND_ONE_WRITE_BUDGET', () => {
++    const effects = fresh(); const returned = recordCapturedWarning([message, { code: 'MONGOOSE' }], effects);
++    need(returned === undefined && effects.console === 1 && effects.mongooseNewAfterWarnings === 1, 'WARNING_EXACT_CLASSIFICATION');
++    need(assertProfileWarningBudget(observe(effects), expected(1), budgetNeed) === undefined, 'WARNING_ACTUAL_ONE_WRITE_BUDGET');
++    need(Object.keys(effects).join(',') === 'console,mongooseNewAfterWarnings' && Object.values(effects).every(Number.isSafeInteger), 'WARNING_NO_RAW_RETENTION');
++  });
++  for (const options of [Object.freeze({ code: 'MONGOOSE' }), Object.defineProperty({}, 'code', { value: 'MONGOOSE' })])
++    await test('WARNING_OWN_DATA_FLAGS_' + Number(Object.getOwnPropertyDescriptor(options, 'code').enumerable), () => {
++      const effects = fresh(); recordCapturedWarning([message, options], effects);
++      need(effects.console === 1 && effects.mongooseNewAfterWarnings === 1, 'WARNING_OWN_DATA_NOT_ENUMERABILITY');
++    });
++  const unknown = [
++    ['BEFORE', () => [message.replace("'after'", "'before'"), { code: 'MONGOOSE' }]],
++    ['RETURN_ORIGINAL', () => [message.replace('`new`', '`returnOriginal`'), { code: 'MONGOOSE' }]],
++    ['PREFIX', () => ['prefix ' + message, { code: 'MONGOOSE' }]],
++    ['SUFFIX', () => [message + ' ', { code: 'MONGOOSE' }]],
++    ['CASE', () => [message.replace('mongoose:', 'Mongoose:'), { code: 'MONGOOSE' }]],
++    ['MESSAGE_STRING_OBJECT', () => [new String(message), { code: 'MONGOOSE' }]],
++    ['MESSAGE_COERCION_OBJECT', () => [{ [Symbol.toPrimitive]() { coercions++; return message; } }, { code: 'MONGOOSE' }]],
++    ['CODE_COERCION_OBJECT', () => [message, { code: { [Symbol.toPrimitive]() { coercions++; return 'MONGOOSE'; } } }]],
++    ['WRONG_CODE', () => [message, { code: 'OTHER' }]],
++    ['LOWER_CODE', () => [message, { code: 'mongoose' }]],
++    ['CODE_MISSING', () => [message, {}]],
++    ['NULL_OPTIONS', () => [message, null]],
++    ['ARRAY_OPTIONS', () => [message, ['MONGOOSE']]],
++    ['NULL_PROTOTYPE_OPTIONS', () => [message, Object.assign(Object.create(null), { code: 'MONGOOSE' })]],
++    ['INHERITED_CODE', () => [message, Object.create({ code: 'MONGOOSE' })]],
++    ['INHERITED_ACCESSOR', () => [message, Object.create({ get code() { getters++; return 'MONGOOSE'; } })]],
++    ['OWN_ACCESSOR', () => [message, Object.defineProperty({}, 'code', { get() { getters++; return 'MONGOOSE'; } })]],
++    ['EXTRA_OPTION', () => [message, { code: 'MONGOOSE', extra: true }]],
++    ['HIDDEN_EXTRA_OPTION', () => [message, Object.defineProperty({ code: 'MONGOOSE' }, 'extra', { value: true })]],
++    ['SYMBOL_OPTION', () => [message, { code: 'MONGOOSE', [Symbol('extra')]: true }]],
++    ['EXTRA_ARG', () => [message, { code: 'MONGOOSE' }, undefined]],
++    ['MISSING_OPTIONS', () => [message]],
++    ['NO_ARGS', () => []],
++    ['NOT_ARRAY', () => ({ 0: message, 1: { code: 'MONGOOSE' }, length: 2 })],
++    ['ARG_MESSAGE_ACCESSOR', () => Object.defineProperty([message, { code: 'MONGOOSE' }], '0', { get() { getters++; return message; } })],
++    ['ARG_OPTIONS_ACCESSOR', () => Object.defineProperty([message, { code: 'MONGOOSE' }], '1', { get() { getters++; return { code: 'MONGOOSE' }; } })],
++    ['ARG_EXTRA_KEY', () => Object.assign([message, { code: 'MONGOOSE' }], { extra: true })],
++    ['ARG_SYMBOL', () => Object.assign([message, { code: 'MONGOOSE' }], { [Symbol('extra')]: true })],
++    ['ARG_INHERITED_VALUE', () => { const args = [message, { code: 'MONGOOSE' }]; delete args[0]; return args; }],
++  ];
++  for (const [id, build] of unknown) await test('WARNING_UNKNOWN_' + id, () => {
++    const effects = fresh(); need(recordCapturedWarning(build(), effects) === undefined
++      && effects.console === 1 && effects.mongooseNewAfterWarnings === 0 && getters === 0 && coercions === 0, 'WARNING_UNKNOWN_NOT_CLASSIFIED');
++    budgetFailure(observe(effects, 0), expected(0), 'SPECIALIST_PROFILE_UNKNOWN_CONSOLE');
++  });
++  for (const reflection of ['getPrototypeOf', 'ownKeys', 'getOwnPropertyDescriptor']) await test('WARNING_REFLECTION_FAILURE_' + reflection, () => {
++    const options = new Proxy({ code: 'MONGOOSE' }, { [reflection]() { throw new Error('synthetic-private-reflection'); } });
++    const effects = fresh(); need(recordCapturedWarning([message, options], effects) === undefined
++      && effects.console === 1 && effects.mongooseNewAfterWarnings === 0, 'WARNING_REFLECTION_STAYS_UNKNOWN');
++  });
++  await test('WARNING_REVOKED_ARGUMENT_REFLECTION_FAILURE', () => {
++    const revoked = Proxy.revocable([message, { code: 'MONGOOSE' }], {}); revoked.revoke();
++    const effects = fresh(); need(recordCapturedWarning(revoked.proxy, effects) === undefined
++      && effects.console === 1 && effects.mongooseNewAfterWarnings === 0, 'WARNING_REVOKED_STAYS_UNKNOWN');
++  });
++  await test('WARNING_ACTUAL_EMIT_WRAPPER_NO_NATIVE_DELEGATE', () => {
++    const before = capturedWarningCounts(); const returned = process.emitWarning(message, { code: 'MONGOOSE' }); const after = capturedWarningCounts();
++    need(Object.isFrozen(before) && Object.isFrozen(after) && returned === undefined
++      && after.console - before.console === 1 && after.mongooseNewAfterWarnings - before.mongooseNewAfterWarnings === 1
++      && nativeWarningDelegates === 0, 'WARNING_ACTUAL_WRAPPER_COUNTS');
++  });
++  for (const method of ['log', 'info', 'debug', 'warn', 'error']) await test('WARNING_CONSOLE_METHOD_IS_UNKNOWN_' + method, () => {
++    const before = capturedWarningCounts(); console[method](message, { code: 'MONGOOSE' }); const after = capturedWarningCounts();
++    const effects = { console: after.console - before.console, mongooseNewAfterWarnings: after.mongooseNewAfterWarnings - before.mongooseNewAfterWarnings };
++    need(effects.console === 1 && effects.mongooseNewAfterWarnings === 0, 'WARNING_CONSOLE_METHOD_DISTINCTION');
++    budgetFailure(observe(effects, 0), expected(0), 'SPECIALIST_PROFILE_UNKNOWN_CONSOLE');
++  });
++  await test('WARNING_ZERO_WRITE_NO_EVENTS_BUDGET', () => {
++    need(assertProfileWarningBudget(observe(fresh(), 0), expected(0), budgetNeed) === undefined, 'WARNING_ZERO_WRITE_BUDGET');
++  });
++  await test('WARNING_MIXED_KNOWN_UNKNOWN_REJECTED', () => {
++    const effects = fresh(); recordCapturedWarning([message, { code: 'MONGOOSE' }], effects); recordCapturedWarning(['unknown', { code: 'MONGOOSE' }], effects);
++    need(effects.console === 2 && effects.mongooseNewAfterWarnings === 1, 'WARNING_MIXED_COUNTERS');
++    budgetFailure(observe(effects), expected(1), 'SPECIALIST_PROFILE_UNKNOWN_CONSOLE');
++  });
++  for (const [id, writes, known, total, expectedWrites, dbWrites] of [
++    ['MISSING_KNOWN', 1, 0, 0, 1, 1], ['EXTRA_KNOWN', 0, 1, 1, 0, 0],
++    ['DUPLICATE_KNOWN', 1, 2, 2, 1, 1], ['TWO_WRITES', 2, 2, 2, 2, 2],
++    ['UNEXPECTED_WRITE', 1, 1, 1, 0, 1], ['DB_WRITE_DISAGREES', 1, 1, 1, 1, 2],
++    ['NEGATIVE_KNOWN', 0, -1, 0, 0, 0], ['NONINTEGER_KNOWN', 1, 0.5, 1, 1, 1],
++    ['NAN_KNOWN', 0, NaN, 0, 0, 0], ['UNSAFE_KNOWN', 1, Number.MAX_SAFE_INTEGER + 1, 1, 1, 1],
++  ]) await test('WARNING_BUDGET_REJECTS_' + id, () => budgetFailure(observe({ console: total, mongooseNewAfterWarnings: known }, writes, dbWrites), expected(expectedWrites), 'SPECIALIST_PROFILE_WARNING_COUNT'));
++  await test('WARNING_COUNTER_MONOTONIC_THROUGH_ACTUAL_LOADER_PHASE_AND_CLEANUP', async () => {
++    const heldLoad = Module._load; const heldResolve = Module._resolveFilename; let delegates = 0;
++    const before = capturedWarningCounts(); const packet = fixture(); const primary = new Error('synthetic-warning-primary'); let caught;
++    Module._load = () => { delegates++; throw new Error('WARNING_UNIT_NATIVE_FORBIDDEN'); };
++    Module._resolveFilename = () => { delegates++; throw new Error('WARNING_UNIT_RESOLVE_FORBIDDEN'); };
++    try {
++      const loader = installLoader(packet.manifest, packet.plan, packet.ports);
++      for (let phase = 0; phase < 2; phase++) {
++        loader.phase(loader.profileClasses({ Service: () => () => {} })); loader.resetCompiled(); loader.assertProfileClean();
++        process.emitWarning(message, { code: 'MONGOOSE' });
++        const current = capturedWarningCounts(); need(current.mongooseNewAfterWarnings === before.mongooseNewAfterWarnings + phase + 1, 'WARNING_PHASE_NEVER_RESETS');
++      }
++      try { await withOwnedCleanup(() => { process.emitWarning(message, { code: 'MONGOOSE' }); throw primary; },
++        () => loader.assertProfileClean(), () => loader.assertProfileClean()); } catch (error) { caught = error; }
++      const after = capturedWarningCounts(); need(caught === primary && delegates === 0
++        && after.console - before.console === 3 && after.mongooseNewAfterWarnings - before.mongooseNewAfterWarnings === 3, 'WARNING_RESTORATION_NEVER_RESETS');
++    } finally { Module._load = heldLoad; Module._resolveFilename = heldResolve; }
++    need(Module._load === heldLoad && Module._resolveFilename === heldResolve, 'WARNING_UNIT_LOADER_RESTORED');
++  });
++  for (const value of [1, undefined]) await test('WARNING_CONFIG_NEW_COUNTER_STAYS_STRICT_ZERO_' + String(value), () => {
++    const fake = fakeConfigurationRuntime(); fake.runtime.effects.mongooseNewAfterWarnings = value;
++    let caught; try { collectConfigurationEvidence(fake.runtime); } catch (error) { caught = error; }
++    need(caught?.fixtureCode === 'CONFIG_PREEXISTING_EFFECT' && fake.state.loads.length === 0, 'WARNING_CONFIG_PRIVATE_COUNTER_NOT_EXEMPT');
++  });
++  need(getters === 0 && coercions === 0 && nativeWarningDelegates === 0 && applicationImports === 0 && connections === 0
++    && domainWrites === 0 && nativeChildLoads === 0, 'WARNING_PURE_FIXTURE_ZERO_EFFECTS');
++}
++
+ // The loader and sentinels below run only against inert public metadata and hard
+ // fake native ports. No fixture business source or native child module is loaded.
+ async function profileUnits() {
+@@ -1328,7 +1459,8 @@ async function setupUnits() {
+     cases.push('CLEANUP_MISSING_PORT_' + missing);
+   }
+   need(applicationImports === 0 && connections === 0 && domainWrites === 0 && nativeChildLoads === 0, 'OFFLINE_EFFECTS');
+-  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', cases: rows.length + cases.length + recordingRows.length + configurationRows.length + meetRows.length + indexRows.length + profileRows.length, recordingCases: recordingRows.length,
++  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', cases: rows.length + cases.length + recordingRows.length + configurationRows.length + meetRows.length + indexRows.length + profileRows.length + warningRows.length, recordingCases: recordingRows.length,
++    warningCases: warningRows.length, nativeWarningDelegates,
+     profileBoundaryCases: profileRows.length, nativeChildLoads,
+     indexCollectorCases: indexRows.length,
+     meetRecorderCases: meetRows.length,
+@@ -1338,7 +1470,7 @@ async function setupUnits() {
+ }
+ recordingUnits();
+ configurationUnits();
+-profileUnits().then(meetUnits).then(indexUnits).then(setupUnits).catch(() => {
+-  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', failed: 1, code: 'OFFLINE_SETUP_UNIT_FAILED', profileCase: activeProfileCase }) + '\n');
++warningUnits().then(profileUnits).then(meetUnits).then(indexUnits).then(setupUnits).catch(() => {
++  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', failed: 1, code: 'OFFLINE_SETUP_UNIT_FAILED', profileCase: activeProfileCase, warningCase: activeWarningCase }) + '\n');
+   process.exitCode = 1;
+ });
+diff --git a/test/api-runtime/scenario/bootstrap.cjs b/test/api-runtime/scenario/bootstrap.cjs
+index 076f8854a82558ecce2230e6858969df06cbfe8d..f9c730eacfa49a0070dcfd8a27f0cc219b01c58e 100644
+--- a/test/api-runtime/scenario/bootstrap.cjs
++++ b/test/api-runtime/scenario/bootstrap.cjs
+@@ -398,9 +398,40 @@ const need = (ok, code) => { if (!ok) fail(code); };
+ const plain = value => value && typeof value === 'object' && !Array.isArray(value);
+ const stdout = process.stdout.write.bind(process.stdout);
+ let stage = 'ADMISSION';
+-const counters = { email: 0, sms: 0, push: 0, logger: 0, console: 0, unexpected: 0, excluded: 0, jwtIssued: 0, dbWrites: 0, calendar: 0 };
++const counters = { email: 0, sms: 0, push: 0, logger: 0, console: 0, unexpected: 0, excluded: 0, jwtIssued: 0, dbWrites: 0, calendar: 0, mongooseNewAfterWarnings: 0 };
+ for (const name of ['log', 'info', 'debug', 'warn', 'error']) console[name] = () => { counters.console++; };
+-process.emitWarning = () => { counters.console++; };
++process.emitWarning = (...args) => recordCapturedWarning(args, counters);
++
++// Classify only this exact pinned public warning signature. Total console events
++// remain counted; unknown/reflection failures never become known warnings.
++function recordCapturedWarning(args, effects) {
++  effects.console++;
++  try {
++    if (!Array.isArray(args) || Object.getPrototypeOf(args) !== Array.prototype) return;
++    const argumentKeys = Reflect.ownKeys(args);
++    if (argumentKeys.length !== 3 || !argumentKeys.includes('0') || !argumentKeys.includes('1')
++      || !argumentKeys.includes('length')) return;
++    const length = Object.getOwnPropertyDescriptor(args, 'length');
++    const message = Object.getOwnPropertyDescriptor(args, '0');
++    const suppliedOptions = Object.getOwnPropertyDescriptor(args, '1');
++    if (!length || !Object.hasOwn(length, 'value') || length.value !== 2
++      || !message || !Object.hasOwn(message, 'value')
++      || message.value !== "mongoose: the `new` option for `findOneAndUpdate()` and `findOneAndReplace()` is deprecated. Use `returnDocument: 'after'` instead."
++      || !suppliedOptions || !Object.hasOwn(suppliedOptions, 'value')) return;
++    const options = suppliedOptions.value;
++    if (options === null || typeof options !== 'object' || Object.getPrototypeOf(options) !== Object.prototype) return;
++    const keys = Reflect.ownKeys(options);
++    if (keys.length !== 1 || keys[0] !== 'code') return;
++    const code = Object.getOwnPropertyDescriptor(options, 'code');
++    if (!code || !Object.hasOwn(code, 'value') || code.value !== 'MONGOOSE') return;
++    effects.mongooseNewAfterWarnings++;
++  } catch { /* Every reflection failure stays unknown after total increment. */ }
++}
++
++// Read-only fixture-unit seam; no raw warning arguments or runtime ctx addition.
++function capturedWarningCounts() {
++  return Object.freeze({ console: counters.console, mongooseNewAfterWarnings: counters.mongooseNewAfterWarnings });
++}
+ 
+ // Public literals only: no driver message, URI, path, row or validation fields.
+ const SETUP_FAILURE_CODES = Object.freeze({
+@@ -2407,4 +2438,4 @@ module.exports = { validateAdmissionData, inspectManifest, closeNetwork, install
+   configurationEnvironment, withConfigurationTaps, configurationSampleEvidence, collectConfigurationEvidence,
+   meetData, meetSame, createMeetRecorder, meetFetchLifecycle, withMeetFetchCleanup,
+   indexLongWords, indexScalar, projectIndexRow, indexManifest, collectIndexObservations, withIndexTaps, validateIndexTypeReport, createIndexCommandPort,
+-  INDEX_SOURCE_SHA, INDEX_MUTANTS, INDEX_CASE_IDS, INDEX_MUTANT_IDS, profilePolicy, profileAdmission, createProfileBoundary, PROFILE_POLICY_SHA, PROFILE_SOURCE_PINS, PROFILE_VARIANTS, PROFILE_STATIC_INPUTS };
++  recordCapturedWarning, capturedWarningCounts, INDEX_SOURCE_SHA, INDEX_MUTANTS, INDEX_CASE_IDS, INDEX_MUTANT_IDS, profilePolicy, profileAdmission, createProfileBoundary, PROFILE_POLICY_SHA, PROFILE_SOURCE_PINS, PROFILE_VARIANTS, PROFILE_STATIC_INPUTS };

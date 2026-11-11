@@ -1,0 +1,11 @@
+--- nominal/bootstrap.cjs
++++ REFLECTION_FAILURE_PROMOTED/bootstrap.cjs
+@@ -425,7 +425,7 @@
+     const code = Object.getOwnPropertyDescriptor(options, 'code');
+     if (!code || !Object.hasOwn(code, 'value') || code.value !== 'MONGOOSE') return;
+     effects.mongooseNewAfterWarnings++;
+-  } catch { /* Every reflection failure stays unknown after total increment. */ }
++  } catch { effects.mongooseNewAfterWarnings++; }
+ }
+ 
+ // Read-only fixture-unit seam; no raw warning arguments or runtime ctx addition.

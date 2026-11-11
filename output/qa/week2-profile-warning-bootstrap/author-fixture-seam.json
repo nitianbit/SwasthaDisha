@@ -1,0 +1,14 @@
+{
+  "schema": "SD-WARNING-AUTHOR-UNIT-SEAM-1",
+  "unitParent": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-bootstrap/test/api-runtime/scenario/bootstrap-unit.cjs",
+  "request": "./scenario.cjs",
+  "actualOtherFixture": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-scenario/test/api-runtime/scenario/scenario.cjs",
+  "actualOtherFixtureSha256": "cbb1260c887a7a5dc664fec9a6b47c680e1d180f78b102716122596baaae6500",
+  "normalIntegratedUnit": "unconditional same-directory fixture require; no fallback or skip",
+  "readScope": [
+    "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-bootstrap/test/api-runtime/scenario",
+    "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-bootstrap/output/qa/week2-profile-warning-bootstrap",
+    "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-scenario/test/api-runtime/scenario/scenario.cjs"
+  ],
+  "authority": "BUILTINS_ONLY_AUTHOR_UNIT_CHECK_NO_APP_OR_RUNTIME"
+}
