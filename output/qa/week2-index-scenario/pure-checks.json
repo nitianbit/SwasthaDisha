@@ -1,0 +1,25 @@
+{
+  "schema": "SD-INDEX-SCENARIO-PURE-1",
+  "actualFixtureParser": {
+    "schema": "SD-INDEX-EVIDENCE-PURE-1",
+    "cases": 49,
+    "failed": 0,
+    "gettersInvoked": 0,
+    "applicationImports": 0,
+    "connections": 0,
+    "writes": 0,
+    "processGrants": "DENIED",
+    "compilerExecutions": 0,
+    "applicationHelperEvaluations": 0,
+    "runtime": "NOT_RUN"
+  },
+  "syntax": {
+    "compile.cjs": "PASS",
+    "scenario.cjs": "PASS"
+  },
+  "sourceWhitespace": "PASS",
+  "actualTypeScriptCompilerCalls": 0,
+  "helperTypecheck": "NOT_RUN",
+  "helperBehavior": "NOT_RUN",
+  "runtime83_27": "NOT_RUN"
+}

@@ -8,18 +8,19 @@ JWT signing. Email/SMS methods use a recording Axios adapter; logger/FCM transpo
 ports are recording only. Payment and coupon services are explicit throwing
 exclusions. No application entry point or production provider is admitted.
 
-The accepted authority run passed53 nominal groups/14 actual-source sensitivity
-checks under test-only profile2; see
-[execution5](../../../output/qa/week2-api-runtime/execution-5/REVIEW.md).
-Its77 TypeScript sources/13 models and five emitted-model controls were verified;
-816 semantic diagnostics remain retained, with no clean root typecheck claim.
-The accepted JWT configuration run passed60 nominal groups/17 actual-source
-variants, including108 fresh CONFIG loads,18 mutation/restoration loads and the
-two published-key HTTP denials; see
-[execution6](../../../output/qa/week2-api-runtime/execution-6/REVIEW.md).
-The Meet extension appends16 groups/four router variants, for76 nominal IDs/21
-sensitivity IDs. These additions remain NOT_RUN in this source candidate. They
-introduce no model/package/grant/profile change. A recording fetch port admits
+The accepted Meet run passed76 nominal groups/21 actual-source sensitivity checks
+under test-only profile2; see
+[execution7](../../../output/qa/week2-api-runtime/execution-7/REVIEW.md).
+Its88 TypeScript sources,67 emitted reachable modules,13 models and five model
+controls were verified.1084 semantic diagnostics remain retained, with no clean
+root typecheck claim. Earlier53/14 and60/17 evidence, including108 nominal and18
+mutation/restoration CONFIG loads, remains preserved in execution5/execution6.
+The index-readiness extension appends seven groups/six actual-source variants,
+for83 nominal IDs/27 sensitivity IDs. These additions remain NOT_RUN. Its
+expected emission deltas are one import-free helper source/root and six compiled
+helper variants:89 TS sources/68 reachable modules, the same13 models and no
+dependency/grant/profile/index change; genuine emission must verify these facts.
+A recording fetch port admits
 only exact synthetic OAuth token and calendar-event intents; native outbound
 fetch stays unreachable and is never delegated to by the recording port.
 `ports-manifest.json` fixes the exact IDs/models/correctness indexes/package roots,
@@ -32,6 +33,34 @@ additional actual Dependent registration. Its five metadata rejection controls
 syntactic and focused semantic diagnostics, including missing/excluded types,
 and reports `TRANSPILE_ONLY_NOT_TYPECHECKED` with `fullBuild:false`. This is not a
 root build/type-check or a production compatibility claim.
+
+The selected index helper source050ecc99 is accepted SOURCE_ONLY following the
+reviewed TDZ amendment. Its functional behavior and typecheck remain NOT_RUN.
+During a later separately approved preparation, a genuine isolated TypeScript
+5.9.3 noEmit program must require zero diagnostics for ONLY that helper under
+ES2020/CommonJS, strict/noImplicit/noUnused flags and the exact45 public stdlib
+files, with no ambient Node/application types. A second virtual-file program
+reconstructs exact archived6597 TDZ bytes through the three-line inverse edit
+and must observe actual TS2448 at the earlier requirements reference. Neither
+program evaluates application code. The successful selectedHelperTypecheck
+report is retained under compilation; a failure records only public diagnostic
+source ID/code/category/start/length in existing private compiler stdout before
+a fixed failure. This isolated guarantee does not replace the overall focused
+TRANSPILE_ONLY_NOT_TYPECHECKED/fullBuild:false status or1084+new diagnostics.
+
+The runtime producer, after full pre-import admission and unchanged owned
+collection/index setup, must acquire all13 actual complete build-info index
+listings and test the actual emitted helper before fixture writers. Metadata
+getMore stays bound to the same private session/cursor/namespace with exact Long
+identity and fixed bounds; no create/drop/repair is added. The private matrix has
+172 unique trials/343 nominal comparison checkpoints and75 exact sensitivity
+references over six actual helper variants, each followed by fresh nominal
+same-predicate/complete-positive restoration. Derived missing-index negatives
+are in-memory copies, not actual index deletion. Unknown/building metadata and
+unsupported partial/collation semantics refuse; no guessed query normalization.
+The fixture consumer validates exact deeply frozen closed seven/six evidence
+arrays before HTTP, then appends them only after the retained76/21 predicates.
+The public result schema and actual nominal provider counters remain unchanged.
 
 `bootstrap.cjs` checks the complete run/file/env/port/network/permission admission
 before any domain import or DB connection. The JWT controller then exercises real
@@ -181,9 +210,9 @@ exclusive. The parent copies it as immutable input into a separate owned runtime
 bundle; preparation does not create/start Docker containers or evaluate a driver.
 Exact later Docker execution requires its own two direct reviews/admission.
 
-New Meet16/four groups remain **NOT_RUN**
+New selected-index seven/six groups, helper typing and actual metadata readback remain **NOT_RUN**
 until fresh preparation/artifact/two exact single-run decisions and actual
-execution succeed. Accepted60/17 PASS is historical evidence, not approval for
+execution succeed. Accepted76/21 PASS is historical evidence, not approval for
 this new run or completion of whole-process startup fixtures. Full application startup,
 root dependency adoption, retained-server C2 facts, broader OTP/money policy,
 owner acceptance, deployment and release gates remain open.

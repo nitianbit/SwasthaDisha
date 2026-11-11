@@ -32,6 +32,37 @@ function requireConfigurationEvidence(evidence, need) {
   return evidence;
 }
 
+// Parses fixture-produced evidence only; it never calls the application helper.
+function requireIndexEvidence(evidence, need) {
+  if (typeof need !== 'function') throw new Error('INDEX_EVIDENCE_CHECKER_REQUIRED');
+  const caseIds = ['INDEX_SELECTED_READBACK', 'INDEX_REQUIRED_REMOVAL_DENIALS', 'INDEX_KEY_AND_IDENTITY_DENIALS',
+    'INDEX_OPTIONS_DENIALS', 'INDEX_OBSERVATION_DENIALS', 'INDEX_INPUT_ADMISSION_DENIALS', 'INDEX_IMMUTABILITY_AND_SAFE_RESULT'];
+  const sensitivityIds = ['INDEX_MISSING_REQUIREMENT_ACCEPTED', 'INDEX_KEY_ORDER_IGNORED', 'INDEX_OPTIONS_IGNORED',
+    'INDEX_PARTIAL_FILTER_IGNORED', 'INDEX_INCOMPLETE_ACCEPTED', 'INDEX_BUILD_STATUS_IGNORED'];
+  function dataProperties(value, names) {
+    if (!value || Object.getPrototypeOf(value) !== Object.prototype || !Object.isFrozen(value)
+      || Object.getOwnPropertySymbols(value).length !== 0
+      || JSON.stringify(Object.getOwnPropertyNames(value).sort()) !== JSON.stringify(names.slice().sort())) return null;
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    return Object.values(descriptors).every(row => Object.hasOwn(row, 'value')) ? descriptors : null;
+  }
+  function rows(value, ids, field, expected) {
+    return Array.isArray(value) && Object.getPrototypeOf(value) === Array.prototype && Object.isFrozen(value)
+      && Object.getOwnPropertySymbols(value).length === 0 && value.length === ids.length
+      && JSON.stringify(Object.getOwnPropertyNames(value).sort()) === JSON.stringify([...ids.map((_, i) => String(i)), 'length'].sort())
+      && ids.every((id, index) => {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        if (!descriptor || !Object.hasOwn(descriptor, 'value')) return false;
+        const fields = dataProperties(descriptor.value, ['id', field]);
+        return fields?.id.value === id && fields[field].value === expected;
+      });
+  }
+  const fields = dataProperties(evidence, ['cases', 'sensitivity']);
+  need(fields && rows(fields.cases.value, caseIds, 'status', 'PASS')
+    && rows(fields.sensitivity.value, sensitivityIds, 'detected', true), 'INDEX_EVIDENCE');
+  return evidence;
+}
+
 async function runScenario(ctx) {
   const { mongoose, need } = ctx;
   const model = name => mongoose.model(name);
@@ -41,6 +72,7 @@ async function runScenario(ctx) {
   const completedProofs = new Map();
   const record = name => { need(!cases.some(row => row.id === name), 'DUPLICATE_CASE'); cases.push({ id: name, status: 'PASS' }); };
   const configuration = requireConfigurationEvidence(ctx.configurationEvidence, need);
+  const indexEvidence = requireIndexEvidence(ctx.indexEvidence, need);
   const request = (method, route, token, body) => new Promise((resolve, reject) => {
     const payload = body === undefined ? undefined : JSON.stringify(body);
     const req = http.request({ hostname: '127.0.0.1', port: ctx.port, path: '/api/v1' + route,
@@ -967,6 +999,9 @@ async function runScenario(ctx) {
   need(cases.length === 60 && same(cases.map(row => row.id), ctx.ports.requiredCaseIds.slice(0, 60)), 'MEET_PRIOR_CASE_SET');
   await runMeetNominal(admin.token, alpha.token);
 
+  need(cases.length === 76 && same(cases.map(row => row.id), ctx.ports.requiredCaseIds.slice(0, 76)), 'INDEX_PRIOR_CASE_SET');
+  for (const row of indexEvidence.cases) record(row.id);
+
   // Separate negative phases use emitted variants of the actual frozen source.
   // Fresh production classes, TypeDI registrations and HTTP server each phase.
   const nominalCounters = { ...ctx.counters };
@@ -993,6 +1028,8 @@ async function runScenario(ctx) {
   for (const row of configuration.sensitivity) sensitivity.push({ id: row.id, detected: true });
   need(sensitivity.length === 17 && same(sensitivity.map(row => row.id), ctx.ports.requiredSensitivityIds.slice(0, 17)), 'MEET_PRIOR_SENSITIVITY_SET');
   await runMeetSensitivity(alpha.token);
+  need(sensitivity.length === 21 && same(sensitivity.map(row => row.id), ctx.ports.requiredSensitivityIds.slice(0, 21)), 'INDEX_PRIOR_SENSITIVITY_SET');
+  for (const row of indexEvidence.sensitivity) sensitivity.push({ id: row.id, detected: true });
   // Prove fresh nominal classes restore the two owner boundaries after mutants.
   await deny('GET', '/users/' + id(b), alpha.token, undefined, [403], 'RESTORED_USER_OWNER');
   await deny('GET', '/wallet/' + id(bw), alpha.token, undefined, [403], 'RESTORED_WALLET_OWNER');
@@ -1003,4 +1040,4 @@ async function runScenario(ctx) {
   } };
 }
 
-module.exports = { runScenario, requireConfigurationEvidence };
+module.exports = { runScenario, requireConfigurationEvidence, requireIndexEvidence };
