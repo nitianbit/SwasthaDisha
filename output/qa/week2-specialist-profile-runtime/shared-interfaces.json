@@ -1,0 +1,32 @@
+{
+  "schema": "SD-SPECIALIST-PROFILE-SHARED-INTERFACE-1",
+  "contractSha256": "06477b433fee77df5baf5509bc20fc5d1eb4c51b712a9798056cf4c91dbd30de",
+  "portsSha256": "59c410ffc991fdcb4b1ee384f55ba896363011a207573c6f7abc7aa8763f948b",
+  "sectionCompactJsonStringifySha256": "887792c1e2851fe3dfd37d93b3a1870da3adaed7fe41a4fd5e50bb62ea5c7212",
+  "sectionFieldOrder": [
+    "schema",
+    "sourceGuard",
+    "requiredGroupIds",
+    "requiredGroupTrialCounts",
+    "requiredProfileVariantIds",
+    "identityActors",
+    "fixture",
+    "trials",
+    "sourceMutations",
+    "throwingClasses",
+    "parentScopedBuiltinCuts",
+    "staticAuditInputs"
+  ],
+  "contextGetter": "profileAttempts",
+  "contextSnapshotKeys": [
+    "BookingRepository",
+    "BookingService",
+    "SlotRepository",
+    "SlotService",
+    "execFile",
+    "mkdirSync",
+    "writeFileSync",
+    "unlinkSync"
+  ],
+  "implementationOnly": true
+}
