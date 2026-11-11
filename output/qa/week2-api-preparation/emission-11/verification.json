@@ -1,0 +1,41 @@
+{
+  "schema": "SD-COMPILER-LIBRARY-PREPARATION-1",
+  "status": "PREPARED_NOT_EXECUTED_PENDING_TWO_ARTIFACT_REVIEWS",
+  "sourceCommit": "b26012c2001aa562fa40b4e08e855ade421d7f78",
+  "descriptorSha": "5d7840436d6d566914e85809de9d0f212a485a2a886090a42825dda763045ebc",
+  "directory": "/private/tmp/sd-auth-api-build-f1a23f62-370e-4ff5-988f-9dc4864ddf20/runtime",
+  "fileCount": 2877,
+  "bytes": 45105246,
+  "sourceInputs": 97,
+  "typeScriptSources": 89,
+  "added": [],
+  "removed": [],
+  "modified": [
+    "runtime-plan.json"
+  ],
+  "allRuntimeCodeAndDependencyBytesUnchanged": true,
+  "models": 13,
+  "reachableModules": 68,
+  "all27MutantsUnchanged": true,
+  "selectedStrictAndTDZReportUnchanged": true,
+  "libraryAdmission": "PASS",
+  "probeDefaultLibraries": 51,
+  "positiveDiagnostics": 0,
+  "negativeCode": 2322,
+  "negativeSpan": [
+    13,
+    12
+  ],
+  "oldHostMissingGlobalArray": true,
+  "restoredPositiveDiagnostics": 0,
+  "semanticDiagnostics": 169,
+  "removedDiagnosticOccurrences": 1005,
+  "addedDiagnosticOccurrences": 5,
+  "transpileDiagnostics": 0,
+  "fullBuild": false,
+  "applicationEvaluations": 0,
+  "DockerCalls": 0,
+  "specialistSourceStillNotRuntimeAdmitted": true,
+  "API_Rerun": "NOT_ASSIGNED_NOT_RUN",
+  "actual83_27Evidence": "Historical exact sourceea2a39c/descriptorc1618428 only"
+}

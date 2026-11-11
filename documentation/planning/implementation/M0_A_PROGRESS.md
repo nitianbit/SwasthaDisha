@@ -562,3 +562,37 @@ delivery, account or deployment action occurred; the library is not activated
 in production startup, health or writers. FullF13/M0/Week2, rootC2 and existing
 owner/original115/client/100RPS/release gates remain open. Claude sign-in is
 deferred without polling; ready backend work continues through the next slice.
+
+## Twenty-fifth increment, 11 November: profile containment and diagnostic repair
+
+Two separately contracted parallel branches are composed atb26012c. Both
+independent internal Codex reviewers approved the specialist one-file source
+guard: own isVerified/isActive/rating presence calls existing getById once,
+preserves404, then returns fixed422; ordinary delegation/admin paths and Joi's
+existing malformed400 remain unchanged. Valid false/0 values are not ignored.
+[Actual source decisions](../../../output/qa/week2-specialist-profile-source/SOURCE_DECISIONS.md).
+This is SOURCE_ONLY: no portal/Joi/HTTP behavior or doctor-client compatibility
+has run. The original prepatch verifier's postcommit tracked-tree scope check
+fails after QA/composition additions; both reviewers retained that failure and
+independently verified the exact15-line transform/21text controls plus composed
+scope. No frozen checker was altered or misreported as passing.
+
+The test-only diagnostic host now resolves default libraries in its already
+admitted runtime package. One exact separately approved preparation at cleanb260
+produced descriptor5d784043. Both reviewers accepted
+[the actual compiler evidence](../../../output/qa/week2-api-preparation/emission-11/REVIEW.md).
+Positive/restored programs have51libraries/52inputs/0diagnostics; a fixed bad
+assignment produces exactTS2322, while restoring the old host demonstrates
+concrete missing-global failure. Strict helper/TDZ results remain unchanged.
+The broader collector now observes169 diagnostics instead of1169:1005removed,
+5new observations, all retained/reconciled. This fixes diagnostic collection,
+not1000application defects; fullBuild:false and rootC2 gates remain unchanged.
+
+All2877 emitted files retain the prior set; only runtime-plan.json differs.
+All89 nominal compiled outputs/27variants/2755dependencies/bootstrap/scenario/
+ports and13-model/68-reachable maps are exact. No repeated API/database run or
+runtime receipt reuse occurred. Accepted actual API evidence stays83/27 at its
+historical exact source. Portal source is outside that fixture's97inputs and
+still needs its separate complete-C3 extension. Original6staged/working files,
+patch and11handover files remain exact. Ready work continues on that portal
+fixture contract; no fullM0/Week2, production, client/owner or release acceptance.

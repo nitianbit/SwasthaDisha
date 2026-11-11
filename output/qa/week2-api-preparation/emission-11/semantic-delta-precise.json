@@ -1,0 +1,2380 @@
+{
+  "schema": "SD-LIBRARY-SEMANTIC-DELTA-PRECISE-1",
+  "baselineCount": 1169,
+  "currentCount": 169,
+  "removedCount": 1005,
+  "addedCount": 5,
+  "normalization": "Only private build UUID substrings in string file IDs; raw null file IDs are preserved as null.",
+  "removed": [
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2318,
+        "file": null,
+        "message": "Cannot find global type 'Array'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2318,
+        "file": null,
+        "message": "Cannot find global type 'Boolean'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2318,
+        "file": null,
+        "message": "Cannot find global type 'Function'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2318,
+        "file": null,
+        "message": "Cannot find global type 'IArguments'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2318,
+        "file": null,
+        "message": "Cannot find global type 'Number'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2318,
+        "file": null,
+        "message": "Cannot find global type 'Object'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2318,
+        "file": null,
+        "message": "Cannot find global type 'Promise'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2318,
+        "file": null,
+        "message": "Cannot find global type 'PromiseLike'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2318,
+        "file": null,
+        "message": "Cannot find global type 'RegExp'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2318,
+        "file": null,
+        "message": "Cannot find global type 'String'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/config/config.ts",
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/config/config.ts",
+        "message": "Property 'includes' does not exist on type '{}'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/config/config.ts",
+        "message": "Cannot find name 'Error'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/config/config.ts",
+        "message": "Cannot find name 'parseInt'."
+      },
+      "count": 4
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/config/config.ts",
+        "message": "Cannot find name 'Number'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/config/config.ts",
+        "message": "Property 'forEach' does not exist on type '{}'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2584,
+        "file": "src1/config/config.ts",
+        "message": "Cannot find name 'console'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'dom'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/admin/model/index.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 13
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/admin/model/index.ts",
+        "message": "Cannot find name 'Boolean'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/admin/repository/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/admin/types/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2697,
+        "file": "src1/modules/auth/controller/index.ts",
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/auth/services/index.ts",
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      "count": 10
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/auth/services/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 8
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2584,
+        "file": "src1/modules/auth/services/index.ts",
+        "message": "Cannot find name 'console'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'dom'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/auth/services/index.ts",
+        "message": "Property 'split' does not exist on type 'string'."
+      },
+      "count": 4
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/auth/services/index.ts",
+        "message": "Cannot find name 'Partial'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/bookings/model/index.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 59
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/bookings/model/index.ts",
+        "message": "Cannot find name 'Boolean'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/bookings/model/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/bookings/model/index.ts",
+        "message": "Cannot find name 'Number'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/bookings/repository/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 13
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/bookings/repository/index.ts",
+        "message": "Cannot find name 'Record'."
+      },
+      "count": 6
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2488,
+        "file": "src1/modules/bookings/repository/index.ts",
+        "message": "Type 'Aggregate<Array<R>>' must have a '[Symbol.iterator]()' method that returns an iterator."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/bookings/repository/index.ts",
+        "message": "Property 'totalAppointments' does not exist on type 'string | (() => AsyncIterableIterator<Unpacked<ResultType>>)'.\n  Property 'totalAppointments' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/bookings/repository/index.ts",
+        "message": "Property 'totalPatients' does not exist on type 'string | (() => AsyncIterableIterator<Unpacked<ResultType>>)'.\n  Property 'totalPatients' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/bookings/repository/index.ts",
+        "message": "Property 'totalUniquePatients' does not exist on type 'string | (() => AsyncIterableIterator<Unpacked<ResultType>>)'.\n  Property 'totalUniquePatients' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/bookings/repository/index.ts",
+        "message": "Property 'totalFollowUpAppointments' does not exist on type 'string | (() => AsyncIterableIterator<Unpacked<ResultType>>)'.\n  Property 'totalFollowUpAppointments' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/bookings/repository/index.ts",
+        "message": "Cannot find name 'RegExp'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/bookings/repository/index.ts",
+        "message": "Cannot find name 'Math'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/bookings/repository/index.ts",
+        "message": "Property 'length' does not exist on type '{}'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/bookings/repository/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/bookings/types/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 11
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/bookings/types/index.ts",
+        "message": "Cannot find name 'Array'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/middleware/validation.ts",
+        "message": "Property 'map' does not exist on type '{}'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 9
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "message": "Cannot find name 'Partial'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/common/types/error.ts",
+        "message": "Cannot find name 'Error'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/types/error.ts",
+        "message": "Property 'name' does not exist on type 'AppError'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/types/error.ts",
+        "message": "Property 'constructor' does not exist on type 'AppError'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/common/utils/asyncHandler.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 4
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "message": "Property 'test' does not exist on type '{}'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "message": "Cannot find name 'Error'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "message": "Cannot find name 'parseInt'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "message": "Property 'substring' does not exist on type 'string'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/utils/dateUtils.ts",
+        "message": "Property 'localeCompare' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Cannot find name 'Array'."
+      },
+      "count": 14
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Cannot find name 'Object'."
+      },
+      "count": 13
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Property 'includes' does not exist on type '{}'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Property 'every' does not exist on type '{}'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Property 'length' does not exist on type 'string'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Cannot find name 'Set'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 6
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Cannot find name 'Number'."
+      },
+      "count": 4
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2550,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Property 'ownKeys' does not exist on type 'typeof Reflect'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Property 'length' does not exist on type '{}'."
+      },
+      "count": 8
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Property 'filter' does not exist on type '{}'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Property 'some' does not exist on type '{}'."
+      },
+      "count": 4
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Property 'push' does not exist on type '{}'."
+      },
+      "count": 7
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Property 'includes' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Property 'split' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Property 'length' does not exist on type 'Data'.\n  Property 'length' does not exist on type 'string'."
+      },
+      "count": 12
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2488,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Type 'Data' must have a '[Symbol.iterator]()' method that returns an iterator."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Property 'test' does not exist on type '{}'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Property 'every' does not exist on type 'Data'.\n  Property 'every' does not exist on type 'string'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2488,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Type '{}' must have a '[Symbol.iterator]()' method that returns an iterator."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Property 'find' does not exist on type '{}'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/common/utils/mongoErrors.ts",
+        "message": "Cannot find name 'Array'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/utils/queryUtils.ts",
+        "message": "Property 'replace' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/corporates/model/index.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 17
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/corporates/model/index.ts",
+        "message": "Cannot find name 'Number'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/corporates/model/index.ts",
+        "message": "Cannot find name 'Boolean'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/corporates/repository/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 14
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/corporates/repository/index.ts",
+        "message": "Cannot find name 'Math'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/corporates/types/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/dependents/controller/index.ts",
+        "message": "Cannot find name 'NonNullable'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/dependents/controller/index.ts",
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/dependents/controller/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/dependents/controller/index.ts",
+        "message": "Cannot find name 'Object'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2697,
+        "file": "src1/modules/dependents/controller/index.ts",
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      "count": 7
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/dependents/controller/index.ts",
+        "message": "Cannot find name 'parseInt'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/dependents/model/index.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 9
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/dependents/model/index.ts",
+        "message": "Cannot find name 'Number'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/dependents/model/index.ts",
+        "message": "Cannot find name 'Boolean'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/dependents/repository/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 6
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/dependents/repository/index.ts",
+        "message": "Cannot find name 'Math'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/dependents/services/index.ts",
+        "message": "Property 'replace' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/dependents/services/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 8
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/dependents/services/index.ts",
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/dependents/types/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/email/services/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2697,
+        "file": "src1/modules/fcm/controller/index.ts",
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/fcm/model/index.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 5
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/fcm/model/index.ts",
+        "message": "Cannot find name 'Boolean'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/fcm/model/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/fcm/repository/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/fcm/repository/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2352,
+        "file": "src1/modules/fcm/repository/index.ts",
+        "message": "Conversion of type 'Query<any, any, {}, any, \"findOneAndUpdate\", {}, any>' to type 'IFcmToken' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.\n  Type 'Query<any, any, {}, any, \"findOneAndUpdate\", {}, any>' is missing the following properties from type 'IFcmToken': userId, userType, token, isActive"
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/fcm/repository/index.ts",
+        "message": "Property 'length' does not exist on type '{}'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/fcm/services/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/fcm/services/index.ts",
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/fcm/services/index.ts",
+        "message": "Cannot find name 'Record'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/fcm/services/index.ts",
+        "message": "Cannot find name 'Boolean'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/fcm/services/index.ts",
+        "message": "Property 'length' does not exist on type '{}'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/fcm/types/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/hr/model/index.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 31
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/hr/model/index.ts",
+        "message": "Cannot find name 'Boolean'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/hr/repository/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 10
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/hr/repository/index.ts",
+        "message": "Property 'toUpperCase' does not exist on type 'string'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/hr/repository/index.ts",
+        "message": "Cannot find name 'Record'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/hr/repository/index.ts",
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      "count": 4
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/hr/repository/index.ts",
+        "message": "Cannot find name 'Math'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/hr/types/index.ts",
+        "message": "Cannot find name 'Array'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/hr/types/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/hr/types/index.ts",
+        "message": "Cannot find name 'Record'."
+      },
+      "count": 11
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2697,
+        "file": "src1/modules/meet/controller/index.ts",
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      "count": 5
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/meet/controller/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/meet/controller/index.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 8
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/meet/controller/index.ts",
+        "message": "Property 'slice' does not exist on type 'string'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/meet/controller/index.ts",
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/meet/controller/index.ts",
+        "message": "Cannot find name 'Number'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Cannot find name 'Error'."
+      },
+      "count": 13
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Cannot find name 'URL'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 10
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Cannot find name 'Record'."
+      },
+      "count": 5
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Cannot find name 'fetch'."
+      },
+      "count": 6
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Cannot find name 'URLSearchParams'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Cannot find name 'JSON'."
+      },
+      "count": 9
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Cannot find name 'Math'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 11
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Property 'replace' does not exist on type 'string'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Property 'length' does not exist on type '{}'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Cannot find name 'Array'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Cannot find name 'encodeURIComponent'."
+      },
+      "count": 5
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Property 'split' does not exist on type 'string'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Cannot find name 'Boolean'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Cannot find name 'Number'."
+      },
+      "count": 5
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 5
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Property 'slice' does not exist on type 'string'."
+      },
+      "count": 6
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Property 'filter' does not exist on type '{}'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/meet/service/index.ts",
+        "message": "Cannot find name 'Set'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/middleware/auth.ts",
+        "message": "Property 'startsWith' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/middleware/auth.ts",
+        "message": "Property 'substring' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/middleware/auth.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/middleware/auth.ts",
+        "message": "Property 'archivedAt' does not exist on type 'Query<any, any, {}, any, \"findOne\", {}, any>'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/middleware/auth.ts",
+        "message": "Property 'isActive' does not exist on type 'Query<any, any, {}, any, \"findOne\", {}, any>'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/middleware/auth.ts",
+        "message": "Property 'isVerified' does not exist on type 'Query<any, any, {}, any, \"findOne\", {}, any>'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/middleware/auth.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/middleware/auth.ts",
+        "message": "Property '_id' does not exist on type 'Query<any, any, {}, any, \"findOne\", {}, any>'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/middleware/errorHandler.ts",
+        "message": "Property 'message' does not exist on type 'CustomError'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/notification/controller/index.ts",
+        "message": "Cannot find name 'NonNullable'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/notification/controller/index.ts",
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2697,
+        "file": "src1/modules/notification/controller/index.ts",
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      "count": 16
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/notification/controller/index.ts",
+        "message": "Cannot find name 'parseInt'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/notification/model/index.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 7
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/notification/model/index.ts",
+        "message": "Cannot find name 'Boolean'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/notification/model/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/notification/repository/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 10
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/notification/repository/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/notification/repository/index.ts",
+        "message": "Cannot find name 'Partial'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/notification/repository/index.ts",
+        "message": "Property 'length' does not exist on type '{}'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/notification/repository/index.ts",
+        "message": "Cannot find name 'Math'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/notification/services/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 26
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/notification/services/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 4
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/notification/services/index.ts",
+        "message": "Cannot find name 'Record'."
+      },
+      "count": 7
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/notification/services/index.ts",
+        "message": "Property 'length' does not exist on type '{}'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/notification/services/index.ts",
+        "message": "Cannot find name 'Boolean'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/notification/services/index.ts",
+        "message": "Property 'map' does not exist on type '{}'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/notification/services/index.ts",
+        "message": "Cannot find name 'Object'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2488,
+        "file": "src1/modules/notification/services/index.ts",
+        "message": "Type '[any, any]' must have a '[Symbol.iterator]()' method that returns an iterator."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/notification/services/index.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/notification/types/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 4
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/notification/types/index.ts",
+        "message": "Cannot find name 'Record'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/otp/model/index.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/otp/model/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/otp/model/index.ts",
+        "message": "Cannot find name 'Boolean'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/otp/repository/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 4
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/otp/repository/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/otp/services/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/otp/services/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 8
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/otp/services/index.ts",
+        "message": "Cannot find name 'Number'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/otp/types/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 19
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "message": "Cannot find name 'Boolean'."
+      },
+      "count": 6
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "message": "Cannot find name 'Number'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/pharmacies/model/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 5
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "message": "Cannot find name 'Math'."
+      },
+      "count": 5
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2488,
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "message": "Type 'Aggregate<Array<R>>' must have a '[Symbol.iterator]()' method that returns an iterator."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "message": "Property 'data' does not exist on type 'string | (() => AsyncIterableIterator<Unpacked<ResultType>>)'.\n  Property 'data' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "message": "Property 'metadata' does not exist on type 'string | (() => AsyncIterableIterator<Unpacked<ResultType>>)'.\n  Property 'metadata' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/pharmacies/repository/index.ts",
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/pharmacies/types/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 5
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/slots/model/index.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 7
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/slots/model/index.ts",
+        "message": "Cannot find name 'Number'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/slots/model/index.ts",
+        "message": "Cannot find name 'Boolean'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/slots/repository/index.ts",
+        "message": "Cannot find name 'Partial'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/slots/repository/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 10
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/slots/repository/index.ts",
+        "message": "Property 'length' does not exist on type '{}'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/slots/repository/index.ts",
+        "message": "Cannot find name 'Record'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/slots/repository/index.ts",
+        "message": "Cannot find name 'Math'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/slots/types/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/sms/services/index.ts",
+        "message": "Property 'replace' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/sms/services/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/specialists/model/index.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 24
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/specialists/model/index.ts",
+        "message": "Cannot find name 'Number'."
+      },
+      "count": 4
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/specialists/model/index.ts",
+        "message": "Cannot find name 'Boolean'."
+      },
+      "count": 5
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/specialists/repository/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 8
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/specialists/repository/index.ts",
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      "count": 4
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/specialists/repository/index.ts",
+        "message": "Cannot find name 'Record'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/specialists/repository/index.ts",
+        "message": "Cannot find name 'Math'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/specialists/types/index.ts",
+        "message": "Cannot find name 'Array'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/specialists/types/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2697,
+        "file": "src1/modules/user/controller/index.ts",
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      "count": 6
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2488,
+        "file": "src1/modules/user/controller/index.ts",
+        "message": "Type 'readonly [\"isActive\", \"isVerified\", \"isCorporateEmailVerified\", \"corporateId\", \"isCorporateUser\"]' must have a '[Symbol.iterator]()' method that returns an iterator."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/user/controller/index.ts",
+        "message": "Cannot find name 'Object'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/user/controller/index.ts",
+        "message": "Cannot find name 'parseInt'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/user/model/index.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 24
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/user/model/index.ts",
+        "message": "Cannot find name 'Number'."
+      },
+      "count": 5
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/user/model/index.ts",
+        "message": "Cannot find name 'Boolean'."
+      },
+      "count": 4
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/user/repository/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 6
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/user/repository/index.ts",
+        "message": "Property 'toUpperCase' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/user/services/index.ts",
+        "message": "Property 'trim' does not exist on type 'string'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/user/services/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 7
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/user/services/index.ts",
+        "message": "Property 'split' does not exist on type 'string'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/user/types/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2697,
+        "file": "src1/modules/wallet/controller/index.ts",
+        "message": "An async function or method must return a 'Promise'. Make sure you have a declaration for 'Promise' or include 'ES2015' in your '--lib' option."
+      },
+      "count": 9
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/wallet/controller/index.ts",
+        "message": "Property 'length' does not exist on type 'string'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/wallet/controller/index.ts",
+        "message": "Cannot find name 'parseInt'."
+      },
+      "count": 4
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/wallet/model/index.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 10
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/wallet/model/index.ts",
+        "message": "Cannot find name 'Number'."
+      },
+      "count": 4
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/wallet/model/index.ts",
+        "message": "Cannot find name 'Boolean'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/wallet/repository/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 14
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/wallet/repository/index.ts",
+        "message": "Cannot find name 'Math'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2488,
+        "file": "src1/modules/wallet/repository/index.ts",
+        "message": "Type 'Aggregate<Array<R>>' must have a '[Symbol.iterator]()' method that returns an iterator."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/wallet/repository/index.ts",
+        "message": "Property 'totalEarned' does not exist on type 'string | (() => AsyncIterableIterator<Unpacked<ResultType>>)'.\n  Property 'totalEarned' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/wallet/repository/index.ts",
+        "message": "Property 'totalTransactions' does not exist on type 'string | (() => AsyncIterableIterator<Unpacked<ResultType>>)'.\n  Property 'totalTransactions' does not exist on type 'string'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2583,
+        "file": "src1/modules/wallet/services/index.ts",
+        "message": "Cannot find name 'Promise'. Do you need to change your target library? Try changing the 'lib' compiler option to 'es2015' or later."
+      },
+      "count": 9
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2584,
+        "file": "src1/modules/wallet/services/index.ts",
+        "message": "Cannot find name 'console'. Do you need to change your target library? Try changing the 'lib' compiler option to include 'dom'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/wallet/services/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/wallet/types/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 4
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/wellnessPackages/model/index.ts",
+        "message": "Cannot find name 'String'."
+      },
+      "count": 7
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/wellnessPackages/model/index.ts",
+        "message": "Cannot find name 'Number'."
+      },
+      "count": 5
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/wellnessPackages/model/index.ts",
+        "message": "Cannot find name 'Boolean'."
+      },
+      "count": 3
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2304,
+        "file": "src1/modules/wellnessPackages/types/index.ts",
+        "message": "Cannot find name 'Date'."
+      },
+      "count": 2
+    }
+  ],
+  "added": [
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2769,
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "message": "No overload matches this call.\n  Overload 1 of 2, '(filter?: QueryFilter<T>, options?: DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { ...; }): Query<...>', gave the following error.\n    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { [other: string]: any; }'.\n      Type 'QueryOptions<unknown>' is not assignable to type 'DeleteOptions'.\n        Types of property 'readPreference' are incompatible.\n          Type 'string' is not assignable to type 'ReadPreferenceLike'.\n  Overload 2 of 2, '(filter?: Query<any, any, {}, unknown, \"find\", Record<string, never>, unknown>, options?: DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { ...; }): Query<...>', gave the following error.\n    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'DeleteOptions & Pick<QueryOptions<T>, \"timestamps\" | MongooseBaseQueryOptionKeys | \"lean\"> & { [other: string]: any; }'.\n      Type 'QueryOptions<unknown>' is not assignable to type 'DeleteOptions'.\n        Types of property 'readPreference' are incompatible.\n          Type 'string' is not assignable to type 'ReadPreferenceLike'."
+      },
+      "count": 2
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2769,
+        "file": "src1/modules/common/repository/BaseRepository.ts",
+        "message": "No overload matches this call.\n  Overload 1 of 2, '(filter: QueryFilter<T>, update: UpdateWithAggregationPipeline | UpdateQuery<T>, options?: UpdateOptions & MongooseUpdateQueryOptions<...>): Query<...>', gave the following error.\n    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'UpdateOptions & MongooseUpdateQueryOptions<T>'.\n      Type 'QueryOptions<unknown>' is not assignable to type 'UpdateOptions'.\n        Types of property 'readPreference' are incompatible.\n          Type 'string' is not assignable to type 'ReadPreferenceLike'.\n  Overload 2 of 2, '(filter: Query<any, any, {}, unknown, \"find\", Record<string, never>, unknown>, update: UpdateWithAggregationPipeline | UpdateQuery<T>, options?: UpdateOptions & MongooseUpdateQueryOptions<...>): Query<...>', gave the following error.\n    Argument of type 'QueryOptions<unknown>' is not assignable to parameter of type 'UpdateOptions & MongooseUpdateQueryOptions<T>'.\n      Type 'QueryOptions<unknown>' is not assignable to type 'UpdateOptions'.\n        Types of property 'readPreference' are incompatible.\n          Type 'string' is not assignable to type 'ReadPreferenceLike'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2339,
+        "file": "src1/modules/common/types/error.ts",
+        "message": "Property 'captureStackTrace' does not exist on type 'ErrorConstructor'."
+      },
+      "count": 1
+    },
+    {
+      "diagnostic": {
+        "category": 1,
+        "code": 2322,
+        "file": "src1/modules/common/utils/indexReadiness.ts",
+        "message": "Type 'unknown' is not assignable to type 'Data'."
+      },
+      "count": 1
+    }
+  ],
+  "initialDeltaNote": "Initial semantic-delta.json also represented null file IDs as empty strings. Raw reports and that initial record remain unchanged; this derived companion preserves exact null representation. Multiplicity/counts are identical."
+}

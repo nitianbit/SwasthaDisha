@@ -1,0 +1,17 @@
+{
+  "schema": "SD-COMPILER-LIBRARY-INITIAL-ARCHIVE-1",
+  "files": {
+    "approval.json": "9fadd0ae8bb4c44bc6cb48e5b1bf52d30fca819165345642e837261d673f7e94",
+    "compiler.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "compiler.stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "npm.stderr.txt": "799f544422ef20e84949c8feabb844390db9306ac5cf97419981d0291eb45156",
+    "npm.stdout.txt": "0f1e2ef3b41d020cd43330e99f05a65647e95d4c643535c0c0db139b48d5353a",
+    "package-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+    "ports-manifest.json": "08583e74231bb02151ae2c89537233b198e1241ac769d65c874ee5aa8f06b33b",
+    "result.json": "59e876977f6b797f4faf8a01a1805b091100576b9bb7cfa67c6111354d3fa351",
+    "runtime-plan.json": "832a02534cde0dc5d1267e6235cbbf3c384466fb9a61a782a523639a28ef598a",
+    "runtime-template.json": "5d7840436d6d566914e85809de9d0f212a485a2a886090a42825dda763045ebc",
+    "semantic-delta.json": "ecc2f40a83d926fadb0554788fb58184b78c8c4f5785ea1d39f6cb72e3b5f7b4",
+    "verification.json": "dd08072935adeb8d93ed0e1f9fd779e4ab2f3649b81008376b6196b99fdbd341"
+  }
+}
