@@ -1,0 +1,11 @@
+--- nominal/bootstrap.cjs
++++ NATIVE_NODE_PREFIX_DENIAL_REMOVED/bootstrap.cjs
+@@ -811,7 +811,7 @@
+     const cut = profile.builtin(request, parent); if (cut !== undefined) return cut;
+     const builtin = request.replace(/^node:/, '');
+     // Node's node: builtin fast path may bypass _resolveFilename entirely.
+-    need(!builtins.has(builtin) || !deniedBuiltins.has(builtin), 'DENIED_BUILTIN');
++    need(true, 'DENIED_BUILTIN');
+     if (Object.hasOwn(substitutes, request)) return substitutes[request];
+     if (request.startsWith('@/')) {
+       need(!profile.staticAlias(request), 'SPECIALIST_PROFILE_STATIC_ONLY');

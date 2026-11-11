@@ -8,6 +8,7 @@ const Module = require('node:module');
 const net = require('node:net');
 const tls = require('node:tls');
 const dns = require('node:dns');
+const { promisify } = require('node:util');
 const output = process.stdout.write.bind(process.stdout);
 const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const portsOriginal = JSON.parse(fs.readFileSync(path.join(__dirname, 'ports-manifest.json'), 'utf8'));
@@ -17,7 +18,7 @@ if (portsOriginal.models.length !== 13 || !portsOriginal.models.some(row => row.
   || !portsOriginal.models.some(row => row.name === 'Dependent' && row.collection === 'dependents'
     && row.source === 'src1/modules/dependents/model/index.ts' && row.indexes.length === 0)) throw new Error('OFFLINE_WELLNESS_MAP');
 const bootstrap = path.join(__dirname, 'bootstrap.cjs');
-let applicationImports = 0; let connections = 0; let domainWrites = 0;
+let applicationImports = 0; let connections = 0; let domainWrites = 0; let nativeChildLoads = 0;
 const blockedWrite = () => { domainWrites++; throw new Error('OFFLINE_WRITE_DENIED'); };
 for (const name of ['writeFile', 'writeFileSync', 'appendFile', 'appendFileSync', 'createWriteStream',
   'mkdir', 'mkdirSync', 'rm', 'rmSync', 'unlink', 'unlinkSync', 'rename', 'renameSync', 'copyFile', 'copyFileSync']) fs[name] = blockedWrite;
@@ -29,6 +30,7 @@ net.createConnection = blockedNetwork; tls.connect = blockedNetwork; dns.lookup 
 globalThis.fetch = blockedNetwork;
 const originalLoad = Module._load;
 Module._load = function (request, parent, isMain) {
+  if (request.replace(/^node:/, '') === 'child_process') { nativeChildLoads++; throw new Error('OFFLINE_NATIVE_CHILD_FORBIDDEN'); }
   if (request !== bootstrap && !Module.isBuiltin(request)) { applicationImports++; throw new Error('OFFLINE_DOMAIN_IMPORT_DENIED'); }
   return originalLoad.call(this, request, parent, isMain);
 };
@@ -36,7 +38,8 @@ const { validateAdmissionData, installLoader, runSetupStep, SETUP_FAILURE_CODES,
   configurationSamples, configurationFinally, configurationEnvironment, withConfigurationTaps,
   configurationSampleEvidence, collectConfigurationEvidence, meetData, meetSame, createMeetRecorder,
   meetFetchLifecycle, withMeetFetchCleanup, indexLongWords, indexScalar, projectIndexRow,
-  indexManifest, collectIndexObservations, withIndexTaps, validateIndexTypeReport, createIndexCommandPort, INDEX_SOURCE_SHA, INDEX_MUTANTS } = require(bootstrap);
+  indexManifest, collectIndexObservations, withIndexTaps, validateIndexTypeReport, createIndexCommandPort, INDEX_SOURCE_SHA, INDEX_MUTANTS, INDEX_CASE_IDS, INDEX_MUTANT_IDS, profilePolicy, profileAdmission, createProfileBoundary,
+  PROFILE_POLICY_SHA, PROFILE_SOURCE_PINS, PROFILE_VARIANTS, PROFILE_STATIC_INPUTS } = require(bootstrap);
 const need = (condition, label) => { if (!condition) throw new Error(label); };
 need(process.permission && !process.permission.has('child') && !process.permission.has('worker')
   && !process.permission.has('addon') && !process.permission.has('fs.write'), 'OFFLINE_PROCESS_GRANTS');
@@ -52,12 +55,15 @@ function fixture() {
   sources['src1/config/config.ts'] = 'a'.repeat(64);
   sources['src1/modules/common/utils/indexReadiness.ts'] = INDEX_SOURCE_SHA;
   for (const name of ['routes', 'controller', 'validation', 'service', 'types']) sources['src1/modules/meet/' + name + '/index.ts'] = 'a'.repeat(64);
+  Object.assign(sources, PROFILE_SOURCE_PINS);
+  for (const row of PROFILE_STATIC_INPUTS) { sources[row.source] = row.sourceSha256; files[row.compiled] = Buffer.from('inert'); }
   const mutants = Object.fromEntries(ports.requiredSensitivityIds.map(name => {
     const file = 'compiled/mutants/' + name + '.js'; files[file] = Buffer.from('inert');
-    return [name, { source: name.startsWith('JWT_CONFIG_') ? 'src1/config/config.ts' : name.startsWith('MEET_') ? 'src1/modules/meet/routes/index.ts'
+    return [name, { source: name.startsWith('SPECIALIST_PROFILE_') ? 'src1/modules/specialistPortal/services/index.ts' : name.startsWith('JWT_CONFIG_') ? 'src1/config/config.ts' : name.startsWith('MEET_') ? 'src1/modules/meet/routes/index.ts'
       : name.startsWith('INDEX_') ? 'src1/modules/common/utils/indexReadiness.ts' : 'src1/modules/otp/repository/index.ts',
-      originalSha256: name.startsWith('INDEX_') ? INDEX_SOURCE_SHA : 'a'.repeat(64),
-      ...(name.startsWith('INDEX_') ? { mutantSha256: INDEX_MUTANTS[name].sourceSha } : {}), file }];
+      originalSha256: name.startsWith('SPECIALIST_PROFILE_') ? ports.specialistProfile.sourceGuard.sha256 : name.startsWith('INDEX_') ? INDEX_SOURCE_SHA : 'a'.repeat(64),
+      ...(name.startsWith('INDEX_') ? { mutantSha256: INDEX_MUTANTS[name].sourceSha }
+        : name.startsWith('SPECIALIST_PROFILE_') ? { mutantSha256: PROFILE_VARIANTS[name] } : {}), file }];
   }));
   const plan = { schema: 'SD-AUTH-API-PLAN-1', role: ports.role, sourceCommit, sourceFiles: sources,
     compilation: { compiler: '5.9.3', status: 'TRANSPILE_ONLY_NOT_TYPECHECKED', selectedHelperTypecheck: fakeIndexTypeReport() },
@@ -68,6 +74,14 @@ function fixture() {
   plan.modules['@/modules/meet/routes'] = 'compiled/modules/meet/routes/index.js'; files['compiled/modules/meet/routes/index.js'] = Buffer.from('inert');
   plan.modules['@/modules/common/utils/indexReadiness'] = 'compiled/modules/common/utils/indexReadiness.js';
   files['compiled/modules/common/utils/indexReadiness.js'] = Buffer.from('inert');
+  plan.modules['@/modules/specialists/routes'] = 'compiled/modules/specialists/routes/index.js';
+  files['compiled/modules/specialists/routes/index.js'] = Buffer.from('inert');
+  plan.modules['@/modules/specialistPortal/services'] = 'compiled/modules/specialistPortal/services/index.js';
+  files['compiled/modules/specialistPortal/services/index.js'] = Buffer.from('inert');
+  for (const row of PROFILE_STATIC_INPUTS) {
+    const alias = '@/' + row.source.slice(5, -3).replace(/\/index$/, '');
+    plan.modules[alias] = row.compiled; plan.modules[alias + '/index'] = row.compiled;
+  }
   const manifest = { schema: 'SD-AUTH-API-RUN-1', role: ports.role, runId, sourceCommit,
     database: 'sd_api_' + runId.replaceAll('-', ''), replicaSet: 'sd_rs_' + runId.replaceAll('-', ''),
     mongoId: 'c'.repeat(64), templateSha: 'd'.repeat(64) };
@@ -158,10 +172,34 @@ for (const [id, mutate] of [
   ['TDZ_NOT_REJECTED', p => { p.plan.compilation.selectedHelperTypecheck.tdzControl.status = 'PASS'; }],
   ['TDZ_WRONG_REFERENCE', p => { p.plan.compilation.selectedHelperTypecheck.tdzControl.referenceOffset++; }],
 ]) check('INDEX_ADMISSION_' + id, mutate, true);
+for (const [id, mutate] of [
+  ['POLICY_MISSING', p => { delete p.ports.specialistProfile; }],
+  ['POLICY_TRIAL_CHANGED', p => { p.ports.specialistProfile.trials[0].expected.status = 201; }],
+  ['POLICY_EXTRA_KEY', p => { p.ports.specialistProfile.relaxed = true; }],
+  ['PORTAL_ALIAS', p => { p.plan.modules['@/modules/specialistPortal/services'] = 'compiled/entry.js'; }],
+  ['ROUTER_ALIAS', p => { p.plan.modules['@/modules/specialists/routes'] = 'compiled/entry.js'; }],
+  ['PARENT_MISSING', p => { delete p.observed.files['compiled/modules/specialistPortal/services/index.js']; }],
+  ['EXCLUSION_REMOVED', p => { delete p.ports.excludedCapabilities['@/modules/bookings/services']; }],
+  ['EXCLUSION_WIDENED', p => { p.ports.excludedCapabilities['@/modules/specialists/services'] = ['SpecialistService']; }],
+]) check('PROFILE_ADMISSION_' + id, mutate, true);
+for (const source of Object.keys(PROFILE_SOURCE_PINS)) check('PROFILE_ADMISSION_SOURCE_' + source,
+  p => { p.plan.sourceFiles[source] = 'e'.repeat(64); }, true);
+for (const id of Object.keys(PROFILE_VARIANTS)) {
+  check('PROFILE_ADMISSION_MUTANT_HASH_' + id, p => { p.plan.mutants[id].mutantSha256 = 'e'.repeat(64); }, true);
+  check('PROFILE_ADMISSION_MUTANT_PATH_' + id, p => { p.plan.mutants[id].file = 'compiled/entry.js'; }, true);
+}
+for (const row of PROFILE_STATIC_INPUTS) {
+  check('PROFILE_ADMISSION_STATIC_SOURCE_' + row.source, p => { p.plan.sourceFiles[row.source] = 'e'.repeat(64); }, true);
+  check('PROFILE_ADMISSION_STATIC_PATH_' + row.compiled, p => { delete p.observed.files[row.compiled]; }, true);
+  const alias = '@/' + row.source.slice(5, -3).replace(/\/index$/, '');
+  for (const key of [alias, alias + '/index']) check('PROFILE_ADMISSION_STATIC_ALIAS_' + key, p => { p.plan.modules[key] = 'compiled/entry.js'; }, true);
+}
 const recordingRows = [];
 const configurationRows = [];
 const meetRows = [];
 const indexRows = [];
+const profileRows = [];
+let activeProfileCase = null;
 function configurationCheck(id, action) { action(); configurationRows.push(id); }
 function configurationFailure(action, code) {
   let caught; try { action(); } catch (error) { caught = error; }
@@ -976,6 +1014,190 @@ async function indexUnits() {
   }
 }
 
+// The loader and sentinels below run only against inert public metadata and hard
+// fake native ports. No fixture business source or native child module is loaded.
+async function profileUnits() {
+  async function record(id, action) { activeProfileCase = id; await action(); profileRows.push(id); activeProfileCase = null; }
+  function fixedFailure(action, code) {
+    let caught; try { action(); } catch (error) { caught = error; }
+    need(caught?.fixtureCode === code && caught.message === code, 'PROFILE_EXPECTED_FAILURE'); return caught;
+  }
+  function freshBoundary() {
+    const packet = fixture(); const effects = { excluded: 0, unexpected: 0, logger: 0 };
+    const admission = profileAdmission(packet.manifest, packet.plan, packet.ports);
+    return { packet, effects, admission, boundary: createProfileBoundary(admission, effects) };
+  }
+  await record('PROFILE_BOUNDED_INDEX_CASE_AND_VARIANT_PREFIX', () => {
+    need(INDEX_CASE_IDS.length === 7 && INDEX_MUTANT_IDS.length === 6 && Object.isFrozen(INDEX_CASE_IDS) && Object.isFrozen(INDEX_MUTANT_IDS)
+      && JSON.stringify(INDEX_CASE_IDS) === JSON.stringify(portsOriginal.requiredCaseIds.slice(76, 83))
+      && JSON.stringify(INDEX_MUTANT_IDS) === JSON.stringify(portsOriginal.requiredSensitivityIds.slice(21, 27)), 'PROFILE_INDEX_PREFIX');
+  });
+  await record('PROFILE_CLOSED_DEEP_FROZEN_INDEPENDENT_POLICY', () => {
+    const p = fixture(); const policy = profilePolicy(p.ports);
+    need(sha(Buffer.from(JSON.stringify(policy))) === PROFILE_POLICY_SHA
+      && Object.isFrozen(policy) && Object.isFrozen(policy.trials) && Object.isFrozen(policy.trials[0].expected.readOpsDelta), 'PROFILE_POLICY_FROZEN');
+    p.ports.specialistProfile.trials[0].expected.status = 201;
+    need(policy.trials[0].expected.status === 200, 'PROFILE_POLICY_INDEPENDENT');
+  });
+  for (const row of PROFILE_STATIC_INPUTS) await record('PROFILE_STATIC_INVALID_DIGEST_' + row.compiled, () => {
+    const p = fixture(); p.manifest.files[row.compiled] = 'not-a-digest';
+    fixedFailure(() => profileAdmission(p.manifest, p.plan, p.ports), 'SPECIALIST_PROFILE_STATIC_BINDING');
+  });
+  for (const name of ['BookingRepository', 'BookingService', 'SlotRepository', 'SlotService']) {
+    const methods = Object.values(portsOriginal.specialistProfile.throwingClasses).find(row => row.export === name).methods;
+    for (const method of methods) await record('PROFILE_CLASS_THROW_' + name + '_' + method, () => {
+      const f = freshBoundary(); const registrations = [];
+      const classes = f.boundary.classes({ Service: () => constructor => registrations.push(constructor) });
+      need(registrations.length === 4 && registrations.every(constructor => constructor.name.length > 0), 'PROFILE_CLASS_REGISTRATIONS');
+      const alias = Object.keys(classes).find(key => classes[key][name]); const instance = new classes[alias][name]();
+      need(instance.constructor === classes[alias][name] && f.effects.excluded === 0 && f.effects.unexpected === 0, 'PROFILE_CONSTRUCTORS_INERT');
+      fixedFailure(() => instance[method](), 'SPECIALIST_PROFILE_CAPABILITY_EXCLUDED');
+      need(f.boundary.attempts[name] === 1 && f.effects.excluded === 1 && f.effects.unexpected === 1, 'PROFILE_METHOD_LATCH');
+    });
+    for (const unknown of ['unknownBusinessMethod', 'toString', 'then']) await record('PROFILE_CLASS_UNKNOWN_' + name + '_' + unknown, () => {
+      const f = freshBoundary(); const classes = f.boundary.classes({ Service: () => () => {} });
+      const alias = Object.keys(classes).find(key => classes[key][name]); const instance = new classes[alias][name]();
+      fixedFailure(() => instance[unknown], 'SPECIALIST_PROFILE_CAPABILITY_EXCLUDED');
+      need(f.boundary.attempts[name] === 1 && f.effects.excluded === 1 && f.effects.unexpected === 1, 'PROFILE_UNKNOWN_LATCH');
+    });
+    await record('PROFILE_CAUGHT_REGISTRATION_CONSTRUCTOR_EFFECT_' + name, () => {
+      const f = freshBoundary();
+      fixedFailure(() => f.boundary.classes({ Service: () => constructor => {
+        if (constructor.name === name) try { new constructor()[methods[0]](); } catch {}
+      } }), 'SPECIALIST_PROFILE_REGISTRATION_EFFECT');
+      need(f.boundary.attempts[name] === 1 && f.effects.excluded === 1 && f.effects.unexpected === 1, 'PROFILE_CAUGHT_CONSTRUCTOR_EFFECT_LATCH');
+    });
+  }
+  for (const extra of ['logger', 'unexpected']) await record('PROFILE_REGISTRATION_OTHER_EFFECT_' + extra, () => {
+    const f = freshBoundary();
+    fixedFailure(() => f.boundary.classes({ Service: () => () => { f.effects[extra]++; } }), 'SPECIALIST_PROFILE_REGISTRATION_EFFECT');
+  });
+  // These fake natives cannot resolve or execute any domain/native capability.
+  function withLoader(action) {
+    const f = freshBoundary(); const heldLoad = Module._load; const heldResolve = Module._resolveFilename;
+    const state = { loads: 0, resolves: 0, relativeTarget: '/workspace/compiled/entry.js' };
+    const native = Object.freeze({ inertNative: true });
+    Module._load = function () { state.loads++; return native; };
+    Module._resolveFilename = function (request) { state.resolves++; return path.isAbsolute(request) ? request : state.relativeTarget; };
+    try {
+      const loader = installLoader(f.packet.manifest, f.packet.plan, f.packet.ports, f.effects);
+      return action({ ...f, loader, state, native });
+    } finally { Module._load = heldLoad; Module._resolveFilename = heldResolve; }
+  }
+  for (const parent of portsOriginal.specialistProfile.parentScopedBuiltinCuts.mutantParents
+    .concat(portsOriginal.specialistProfile.parentScopedBuiltinCuts.nominalParent)) {
+    for (const alias of ['fs', 'node:fs', 'child_process', 'node:child_process']) await record('PROFILE_PARENT_CUT_' + parent + '_' + alias, () => withLoader(f => {
+      const owner = { filename: '/workspace/' + parent };
+      const exported = Module._load(alias, owner, false);
+      const resolved = Module._resolveFilename(alias, owner, false);
+      const expectedKeys = alias.endsWith('fs') ? ['mkdirSync', 'writeFileSync', 'unlinkSync'] : ['execFile'];
+      need(JSON.stringify(Object.keys(exported)) === JSON.stringify(expectedKeys)
+        && resolved === 'fixture:profile:' + alias.replace(/^node:/, '')
+        && f.state.loads === 0 && f.state.resolves === 0
+        && Object.values(f.loader.profileAttempts).every(value => value === 0), 'PROFILE_INTERCEPT_BEFORE_NATIVE');
+    }));
+  }
+  for (const sibling of [undefined, { filename: '/workspace/compiled/modules/specialists/services/index.js' },
+    { filename: '/workspace/compiled/modules/specialistPortal/services/index.js.other' }]) {
+    for (const alias of ['child_process', 'node:child_process']) await record('PROFILE_CHILD_OUTSIDE_DENIED_' + String(sibling?.filename) + alias, () => withLoader(f => {
+      fixedFailure(() => Module._load(alias, sibling, false), 'DENIED_BUILTIN');
+      fixedFailure(() => Module._resolveFilename(alias, sibling, false), 'DENIED_BUILTIN');
+      need(f.state.loads === 0 && f.state.resolves === 0, 'PROFILE_OUTSIDE_CHILD_NEVER_NATIVE');
+    }));
+    for (const alias of ['fs', 'node:fs']) await record('PROFILE_FS_OUTSIDE_UNCHANGED_' + String(sibling?.filename) + alias, () => withLoader(f => {
+      need(Module._load(alias, sibling, false) === f.native && f.state.loads === 1, 'PROFILE_FS_ONLY_PARENT_SCOPED');
+    }));
+  }
+  for (const alias of ['child_process', 'node:child_process']) await record('PROFILE_PROMISIFY_CONSTRUCTION_AND_CAUGHT_CALL_' + alias, async () => {
+    const f = freshBoundary(); const owner = { filename: '/workspace/' + f.admission.parents[0] };
+    const exec = f.boundary.builtin(alias, owner).execFile; const asyncExec = promisify(exec);
+    need(Object.values(f.boundary.attempts).every(value => value === 0), 'PROFILE_PROMISIFY_CONSTRUCTION_INERT');
+    let caught; try { await asyncExec('unadmitted', []); } catch (error) { caught = error; }
+    need(caught?.fixtureCode === 'SPECIALIST_PROFILE_CAPABILITY_EXCLUDED'
+      && f.boundary.attempts.execFile === 1 && f.effects.excluded === 1 && f.effects.unexpected === 1, 'PROFILE_PROMISIFY_CALL_LATCH');
+  });
+  for (const method of ['mkdirSync', 'writeFileSync', 'unlinkSync']) await record('PROFILE_FS_THROW_' + method, () => {
+    const f = freshBoundary(); const stub = f.boundary.builtin('node:fs', { filename: '/workspace/' + f.admission.parents[0] });
+    need(stub.__esModule === undefined, 'PROFILE_FS_DEFAULT_IMPORT_SHAPE');
+    const wrapped = stub.__esModule ? stub : { default: stub };
+    fixedFailure(() => wrapped.default[method]('unadmitted'), 'SPECIALIST_PROFILE_CAPABILITY_EXCLUDED');
+    need(f.boundary.attempts[method] === 1 && f.effects.excluded === 1 && f.effects.unexpected === 1, 'PROFILE_FS_METHOD_LATCH');
+  });
+  for (const [alias, unknown] of [['fs', 'readFileSync'], ['child_process', 'spawn']]) await record('PROFILE_BUILTIN_UNKNOWN_' + unknown, () => {
+    const f = freshBoundary(); const stub = f.boundary.builtin(alias, { filename: '/workspace/' + f.admission.parents[0] });
+    fixedFailure(() => stub[unknown], 'SPECIALIST_PROFILE_CAPABILITY_EXCLUDED');
+    need(f.effects.excluded === 1 && f.effects.unexpected === 1, 'PROFILE_BUILTIN_UNKNOWN_LATCH');
+  });
+  for (const row of PROFILE_STATIC_INPUTS) {
+    const alias = '@/' + row.source.slice(5, -3).replace(/\/index$/, '');
+    for (const request of [alias, alias + '/index', '/workspace/' + row.compiled, './unadmitted-static'])
+      await record('PROFILE_STATIC_DENIED_' + row.compiled + request, () => withLoader(f => {
+        f.state.relativeTarget = '/workspace/' + row.compiled;
+        fixedFailure(() => Module._load(request, { filename: '/workspace/bootstrap.cjs' }, false), 'SPECIALIST_PROFILE_STATIC_ONLY');
+        fixedFailure(() => Module._resolveFilename(request, { filename: '/workspace/bootstrap.cjs' }, false), 'SPECIALIST_PROFILE_STATIC_ONLY');
+        need(f.state.loads === 0, 'PROFILE_STATIC_NEVER_EVALUATED');
+      }));
+  }
+  await record('PROFILE_PHASE_FRESH_CLASSES_AND_LIFETIME_ATTEMPT_SNAPSHOT', () => withLoader(f => {
+    const first = f.loader.profileClasses({ Service: () => () => {} }); f.loader.phase(first);
+    const alias = '@/modules/bookings/repository'; const Constructor = first[alias].BookingRepository;
+    need(Module._load(alias, { filename: '/workspace/compiled/domain.js' }, false) === first[alias], 'PROFILE_EXCLUDED_CLASS_SUBSTITUTE');
+    fixedFailure(() => new Constructor().findById('synthetic'), 'SPECIALIST_PROFILE_CAPABILITY_EXCLUDED');
+    const before = f.loader.profileAttempts;
+    const second = f.loader.profileClasses({ Service: () => () => {} }); f.loader.phase(second, {});
+    const after = f.loader.profileAttempts;
+    need(second[alias].BookingRepository !== Constructor && before !== after && Object.isFrozen(before) && Object.isFrozen(after)
+      && before.BookingRepository === 1 && after.BookingRepository === 1
+      && Object.keys(after).length === 8 && f.effects.excluded === 1 && f.effects.unexpected === 1, 'PROFILE_LIFETIME_NOT_RESET');
+  }));
+  for (const changed of ['fs', 'node:child_process', '@/modules/bookings/model', '@/modules/bookings/repository/index'])
+    await record('PROFILE_PHASE_REJECTS_UNDECLARED_SUBSTITUTE_' + changed, () => withLoader(f => {
+      const classes = f.loader.profileClasses({ Service: () => () => {} });
+      fixedFailure(() => f.loader.phase({ ...classes, [changed]: {} }), 'SPECIALIST_PROFILE_PHASE_BINDING');
+      need(f.state.loads === 0 && f.state.resolves === 0, 'PROFILE_PHASE_EARLY_DENIAL');
+    }));
+  for (const alias of ['@/modules/bookings/model', '@/modules/bookings/repository', '@/modules/slots/model', '@/modules/slots/repository/index'])
+    await record('PROFILE_PHASE_REJECTS_STATIC_OVERRIDE_' + alias, () => withLoader(f => {
+      const classes = f.loader.profileClasses({ Service: () => () => {} });
+      fixedFailure(() => f.loader.phase(classes, { [alias]: 'compiled/entry.js' }), 'SPECIALIST_PROFILE_PHASE_BINDING');
+    }));
+  await record('PROFILE_PHASE_HOLDS_INDEPENDENT_SUBSTITUTE_AND_OVERRIDE_MAPS', () => withLoader(f => {
+    const classes = f.loader.profileClasses({ Service: () => () => {} }); const supplied = { ...classes }; const overrides = {};
+    f.loader.phase(supplied, overrides); supplied['@/modules/bookings/repository'] = {}; overrides['@/modules/bookings/model'] = 'compiled/entry.js';
+    need(Module._load('@/modules/bookings/repository', {}, false) === classes['@/modules/bookings/repository'], 'PROFILE_SUBSTITUTE_SNAPSHOT');
+    fixedFailure(() => Module._load('@/modules/bookings/model', {}, false), 'SPECIALIST_PROFILE_STATIC_ONLY');
+  }));
+  await record('PROFILE_NO_LISTEN_AFTER_CAUGHT_CONSTRUCTOR_CAPABILITY', () => {
+    for (const capability of ['class', 'execFile', 'filesystem']) withLoader(f => {
+      f.loader.assertProfileClean(); let wouldListen = 0;
+      fixedFailure(() => {
+        try {
+          if (capability === 'class') {
+            const classes = f.loader.profileClasses({ Service: () => () => {} });
+            new classes['@/modules/bookings/repository'].BookingRepository().findById();
+          } else {
+            const parent = { filename: '/workspace/' + f.admission.parents[0] };
+            if (capability === 'execFile') Module._load('node:child_process', parent, false).execFile();
+            else Module._load('node:fs', parent, false).writeFileSync();
+          }
+        } catch {}
+        f.loader.assertProfileClean(); wouldListen++;
+      }, 'SPECIALIST_PROFILE_CAUGHT_EFFECT');
+      need(wouldListen === 0 && f.effects.excluded === 1 && f.effects.unexpected === 1, 'PROFILE_CAUGHT_CONSTRUCTOR_STOPS_BEFORE_LISTEN');
+    });
+  });
+  await record('PROFILE_RESET_COMPILED_CACHE_PRESERVES_MODELS_AND_NON_DOMAIN', () => withLoader(f => {
+    const fakeModule = '/workspace/compiled/profile-fake.js'; const fakeModel = '/workspace/compiled/modules/fake/model/index.js';
+    const moduleEntry = {}; const modelEntry = {}; const held = new Map(Object.entries(require.cache));
+    try {
+      require.cache[fakeModule] = moduleEntry; require.cache[fakeModel] = modelEntry; f.loader.resetCompiled();
+      need(!Object.hasOwn(require.cache, fakeModule) && require.cache[fakeModel] === modelEntry
+        && [...held].every(([filename, entry]) => require.cache[filename] === entry), 'PROFILE_CACHE_SCOPE');
+    } finally { delete require.cache[fakeModule]; delete require.cache[fakeModel]; }
+  }));
+  need(applicationImports === 0 && connections === 0 && domainWrites === 0 && nativeChildLoads === 0, 'PROFILE_OFFLINE_EFFECTS');
+}
+
 async function setupUnits() {
   const cases = [];
   const named = name => Object.assign(new Error('synthetic-private-sentinel'), { name });
@@ -1105,8 +1327,9 @@ async function setupUnits() {
     need(effects === 0 && caught.fixtureCode === 'INVALID_OWNED_CLEANUP_PORTS', 'CLEANUP_MANDATORY_PORTS');
     cases.push('CLEANUP_MISSING_PORT_' + missing);
   }
-  need(applicationImports === 0 && connections === 0 && domainWrites === 0, 'OFFLINE_EFFECTS');
-  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', cases: rows.length + cases.length + recordingRows.length + configurationRows.length + meetRows.length + indexRows.length, recordingCases: recordingRows.length,
+  need(applicationImports === 0 && connections === 0 && domainWrites === 0 && nativeChildLoads === 0, 'OFFLINE_EFFECTS');
+  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', cases: rows.length + cases.length + recordingRows.length + configurationRows.length + meetRows.length + indexRows.length + profileRows.length, recordingCases: recordingRows.length,
+    profileBoundaryCases: profileRows.length, nativeChildLoads,
     indexCollectorCases: indexRows.length,
     meetRecorderCases: meetRows.length,
     configurationControllerCases: configurationRows.length,
@@ -1115,7 +1338,7 @@ async function setupUnits() {
 }
 recordingUnits();
 configurationUnits();
-meetUnits().then(indexUnits).then(setupUnits).catch(() => {
-  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', failed: 1, code: 'OFFLINE_SETUP_UNIT_FAILED' }) + '\n');
+profileUnits().then(meetUnits).then(indexUnits).then(setupUnits).catch(() => {
+  output(JSON.stringify({ schema: 'SD-AUTH-API-OFFLINE-1', failed: 1, code: 'OFFLINE_SETUP_UNIT_FAILED', profileCase: activeProfileCase }) + '\n');
   process.exitCode = 1;
 });

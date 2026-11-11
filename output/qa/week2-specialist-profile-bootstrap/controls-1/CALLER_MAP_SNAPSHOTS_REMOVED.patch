@@ -1,0 +1,11 @@
+--- nominal/bootstrap.cjs
++++ CALLER_MAP_SNAPSHOTS_REMOVED/bootstrap.cjs
+@@ -824,7 +824,7 @@
+     get profileAttempts() { return profile.attempts; },
+     phase(nextSubstitutes, nextOverrides = {}) {
+       profile.validatePhase(nextSubstitutes, nextOverrides);
+-      substitutes = Object.freeze({ ...nextSubstitutes }); overrides = Object.freeze({ ...nextOverrides });
++      substitutes = nextSubstitutes; overrides = nextOverrides;
+     },
+     resetCompiled() {
+       for (const filename of Object.keys(require.cache)) {

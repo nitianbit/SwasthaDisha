@@ -1,0 +1,1 @@
+Preserved586-case pre-listen-assertion candidate and actual Node22/24+49parser results. Nine initial weakened controls under ../controls-1 bind these exact fixture bytes. No application/compiler/runtime evidence or execution permission. Root requested immediate pre-listen caught-attempt assertion before final freeze.

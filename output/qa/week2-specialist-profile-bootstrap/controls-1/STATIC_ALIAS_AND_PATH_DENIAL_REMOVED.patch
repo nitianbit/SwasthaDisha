@@ -1,0 +1,13 @@
+--- nominal/bootstrap.cjs
++++ STATIC_ALIAS_AND_PATH_DENIAL_REMOVED/bootstrap.cjs
+@@ -623,8 +623,8 @@
+         || !parent || !parents.has(parent.filename)) return undefined;
+       return request.replace(/^node:/, '') === 'fs' ? filesystem : child;
+     },
+-    staticPath(filename) { return staticPaths.has(filename); },
+-    staticAlias(alias) { return staticAliases.has(alias); },
++    staticPath(filename) { return false; },
++    staticAlias(alias) { return false; },
+     validatePhase(substitutes, overrides) {
+       need(plain(substitutes) && plain(overrides) && registered
+         && Object.keys(substitutes).every(alias => substituteAliases.has(alias))

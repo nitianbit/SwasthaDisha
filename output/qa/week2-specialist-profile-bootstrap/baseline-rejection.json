@@ -1,0 +1,16 @@
+{
+  "schema": "SD-PROFILE-BOOTSTRAP-BASELINE-REJECTION-1",
+  "baseline": "1355bd9af2c9d8d5170527c8c0fc565de997b6fe",
+  "sourceSha256": "5b93c565b57c77f46be234165af4077e4d854da383b2bba9a96b757cfdad8e96",
+  "checks": {
+    "closed_policy_hash": false,
+    "profile_admission": false,
+    "parent_before_native": false,
+    "bounded_index_cases": false,
+    "bounded_index_variants": false,
+    "real_router_mount": false,
+    "attempt_getter": false
+  },
+  "rejected": true,
+  "execution": "source text only; no domain/compiler/runtime"
+}

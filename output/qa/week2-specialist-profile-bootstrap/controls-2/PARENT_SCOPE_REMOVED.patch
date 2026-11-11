@@ -1,0 +1,11 @@
+--- nominal/bootstrap.cjs
++++ PARENT_SCOPE_REMOVED/bootstrap.cjs
+@@ -620,7 +620,7 @@
+   return Object.freeze({
+     builtin(request, parent) {
+       if (!['child_process', 'node:child_process', 'fs', 'node:fs'].includes(request)
+-        || !parent || !parents.has(parent.filename)) return undefined;
++        || !parent) return undefined;
+       return request.replace(/^node:/, '') === 'fs' ? filesystem : child;
+     },
+     staticPath(filename) { return staticPaths.has(filename); },

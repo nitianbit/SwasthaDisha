@@ -1,0 +1,79 @@
+{
+  "unit-node22-v2": {
+    "command": [
+      "/private/tmp/m0-node22/node",
+      "--permission",
+      "--allow-fs-read=/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-bootstrap/test/api-runtime/scenario",
+      "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-bootstrap/test/api-runtime/scenario/bootstrap-unit.cjs"
+    ],
+    "returncode": 0,
+    "result": {
+      "schema": "SD-AUTH-API-OFFLINE-1",
+      "cases": 587,
+      "recordingCases": 31,
+      "profileBoundaryCases": 110,
+      "nativeChildLoads": 0,
+      "indexCollectorCases": 67,
+      "meetRecorderCases": 79,
+      "configurationControllerCases": 75,
+      "admissionCases": 96,
+      "setupDiagnosticCases": 117,
+      "ownedCleanupCases": 12,
+      "failed": 0,
+      "applicationImports": 0,
+      "connections": 0,
+      "domainWrites": 0,
+      "processGrants": "DENIED"
+    }
+  },
+  "unit-node24-v2": {
+    "command": [
+      "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+      "--permission",
+      "--allow-fs-read=/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-bootstrap/test/api-runtime/scenario",
+      "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-bootstrap/test/api-runtime/scenario/bootstrap-unit.cjs"
+    ],
+    "returncode": 0,
+    "result": {
+      "schema": "SD-AUTH-API-OFFLINE-1",
+      "cases": 587,
+      "recordingCases": 31,
+      "profileBoundaryCases": 110,
+      "nativeChildLoads": 0,
+      "indexCollectorCases": 67,
+      "meetRecorderCases": 79,
+      "configurationControllerCases": 75,
+      "admissionCases": 96,
+      "setupDiagnosticCases": 117,
+      "ownedCleanupCases": 12,
+      "failed": 0,
+      "applicationImports": 0,
+      "connections": 0,
+      "domainWrites": 0,
+      "processGrants": "DENIED"
+    }
+  },
+  "index-parser-v2": {
+    "command": [
+      "/private/tmp/m0-node22/node",
+      "--permission",
+      "--allow-fs-read=/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-bootstrap/test/api-runtime/scenario",
+      "--allow-fs-read=/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-bootstrap/output/qa/week2-index-scenario",
+      "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-bootstrap/output/qa/week2-index-scenario/evidence-unit.cjs"
+    ],
+    "returncode": 0,
+    "result": {
+      "schema": "SD-INDEX-EVIDENCE-PURE-1",
+      "cases": 49,
+      "failed": 0,
+      "gettersInvoked": 0,
+      "applicationImports": 0,
+      "connections": 0,
+      "writes": 0,
+      "processGrants": "DENIED",
+      "compilerExecutions": 0,
+      "applicationHelperEvaluations": 0,
+      "runtime": "NOT_RUN"
+    }
+  }
+}

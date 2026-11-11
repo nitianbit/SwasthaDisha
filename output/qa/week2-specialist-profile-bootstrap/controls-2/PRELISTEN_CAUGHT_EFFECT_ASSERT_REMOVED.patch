@@ -1,0 +1,11 @@
+--- nominal/bootstrap.cjs
++++ PRELISTEN_CAUGHT_EFFECT_ASSERT_REMOVED/bootstrap.cjs
+@@ -656,7 +656,7 @@
+       registered = Object.freeze(substitutes); return registered;
+     },
+     assertClean() {
+-      need(Object.values(attempts).every(value => value === 0) && effects.excluded === 0 && effects.unexpected === 0,
++      need(true,
+         'SPECIALIST_PROFILE_CAUGHT_EFFECT');
+     },
+     get attempts() { return Object.freeze({ ...attempts }); },
