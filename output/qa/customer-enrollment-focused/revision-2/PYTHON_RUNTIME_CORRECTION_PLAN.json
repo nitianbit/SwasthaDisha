@@ -1,0 +1,76 @@
+{
+  "schema": "SD-ENROLLMENT-PYTHON-CORRECTION-PLAN-1",
+  "status": "PREIMPLEMENTATION_PROPOSAL_NO_EXECUTION_APPROVAL",
+  "author": "/root/milestone_composition_r9",
+  "failedSourceCandidate": "10600a268acd42aaca4397279941e22217e7caa5",
+  "trigger": "Root's actual approved public-lock attempt exited at the clean-environment guard before receipt/nonce/workspace/npm handling. The Xcode /usr/bin/python3 trampoline added SDK/build environment fields. Preserve that actual failure and old approval; it does not authorize a retry.",
+  "scope": "Replace only the test preparation interpreter identity and narrowly recognize its public CoreFoundation marker. No SDK variable, compiler compatibility, package, role, vector, source module, control or resource change.",
+  "pythonTool": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+  "pythonToolSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "pythonVersion": "3.14.7",
+  "pythonImplementation": "cpython",
+  "runtimeIdentity": [
+    "Before receipt or allocation: require the profile's fixed interpreter path to be a regular nonsymlink file, hash its bytes against the fixed profile pin, and require os.path.samefile(sys.executable, pinned interpreter). This accepts the observed Homebrew opt alias only when it resolves to the same actual file, never a different interpreter/version.",
+    "Require sys.implementation.name == 'cpython', sys.version_info[:3] == (3, 14, 7), sys.flags.isolated == 1, sys.flags.dont_write_bytecode == 1 and sys.dont_write_bytecode is True. Require sys.flags.no_site == 1; fixed -S suppresses global site/.pth startup. Do not claim an interpreter hash binds an otherwise unreviewed startup closure.",
+    "The fixed invocation uses env -i, the pinned direct Cellar framework executable, -I, -B and -S. No Xcode trampoline, interpreter discovery, download, fallback, environment-sourced path or command override. This is a local preparation tool, not application runtime adoption."
+  ],
+  "environment": {
+    "existingAllowedKeysUnchanged": [
+      "PATH",
+      "TMPDIR",
+      "LANG",
+      "LC_CTYPE"
+    ],
+    "existingRequiredPath": "/usr/bin:/bin",
+    "onlyAdditionalKey": "__CF_USER_TEXT_ENCODING",
+    "additionalKeyRule": "If present, require exact equality to '0x' + uppercase hexadecimal os.getuid() + ':0x0:0x0'. For current uid501 this is exactly 0x1F5:0x0:0x0. No other marker form/value is accepted. Absence remains harmless; do not forward the marker to npm/Node's separately constructed environment.",
+    "rejectedAsBefore": [
+      "CPATH",
+      "LIBRARY_PATH",
+      "MANPATH",
+      "SDKROOT",
+      "NODE_OPTIONS",
+      "NODE_PATH",
+      "PYTHONPATH",
+      "PYTHONHOME",
+      "provider variables",
+      "credential variables",
+      "proxy variables",
+      "all other unlisted variables"
+    ],
+    "rootObservedDirectProbe": "Root reported only LC_CTYPE/PATH/TMPDIR/__CF_USER_TEXT_ENCODING under env -i -I -B, version3.14.7; author independently read/hash-checked the named regular nonsymlink binary only. No new probe or preparation was run by this author. The new -S mode is a bounded source proposal and remains NOT_RUN; do not relabel the earlier -I/-B probe as this invocation."
+  },
+  "ownedAmendmentPathsAfterTwoActualPlanVotes": [
+    "test/customer-enrollment-runtime/prepare.py",
+    "test/customer-enrollment-runtime/profile.json",
+    "test/customer-enrollment-runtime/README.md",
+    "output/qa/customer-enrollment-focused/revision-2/NEXT_LOCK_RESOLUTION.json",
+    "output/qa/customer-enrollment-focused/revision-2/source-only manifest, exact patch and review evidence"
+  ],
+  "proposalCommand": [
+    "/usr/bin/env",
+    "-i",
+    "PATH=/usr/bin:/bin",
+    "TMPDIR=/private/tmp",
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+    "-I",
+    "-B",
+    "-S",
+    "test/customer-enrollment-runtime/prepare.py",
+    "--resolve-lock"
+  ],
+  "preserved": [
+    "All old source candidates/reviews/failure artifacts/proposals/receipts retained; Root owns old receipt archival and actual failure provenance.",
+    "The other eight harness sources, exact82vector IDs, OLD+NC1-NC4, six actual production TS modules, four runtime roots, Node/npm1939file pins, lock integrity/closure rules, clean npm HOME/cache/config,900second bound, C2/C3 and nonce-before-allocation semantics remain unchanged.",
+    "No widening of the emit diagnostic gate. Potential Error.captureStackTrace type diagnostics remain for actual post-lock emission review, not silently admitted here.",
+    "No changes to production, root dependencies/start, application/controller/role/scenario/compiler source, original staged six, handover archive or R10 selected bytes."
+  ],
+  "gates": [
+    "Two actual independent nonauthor preimplementation decisions bind this exact plan SHA; author cannot approve.",
+    "After those decisions, amend only the named paths and freeze a new source candidate/patch/proposal; obtain two fresh actual source and exact PUBLIC_LOCK_RESOLUTION_ONLY decisions.",
+    "Root alone prepares a new candidate-bound private receipt and fresh nonce, checks prior failure disposition, and performs any exact approved invocation. This plan author performs no retry, Python/runtime probe, npm, compiler, application, Docker, database or provider execution.",
+    "A successful public-lock result still requires actual lock review before separately approved install/emit and later isolated service invocation. No current stage is claimed successful."
+  ],
+  "actualFailureRecord": "output/qa/customer-enrollment-focused/revision-1/LOCK_PREFLIGHT_FAILURE.json",
+  "actualFailureCommit": "c200e4bb134f694fb613db508621d7ec8751a008"
+}
