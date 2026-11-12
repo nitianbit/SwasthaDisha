@@ -1,0 +1,99 @@
+diff --git a/src1/modules/pharmacyOrders/services/index.ts b/src1/modules/pharmacyOrders/services/index.ts
+index 77a16747a1cb0444aad8ffabd02ce3b2607f1949..93bea4c241f3f38e35bd29dd194091d6ee3772e2 100644
+--- a/src1/modules/pharmacyOrders/services/index.ts
++++ b/src1/modules/pharmacyOrders/services/index.ts
+@@ -1,5 +1,5 @@
+ import { Service } from 'typedi';
+-import { ClientSession, startSession } from 'mongoose';
++import { ClientSession, startSession, Types } from 'mongoose';
+ import { PharmacyOrderRepository } from '@/modules/pharmacyOrders/repository';
+ import { PharmacyCustomerService } from '@/modules/pharmacyCustomers/services';
+ import { InventoryService } from '@/modules/pharmacyInventory/services';
+@@ -867,17 +867,33 @@ export class PharmacyOrderService {
+   }
+ 
+   async update(id: string, pharmacyId: string, data: UpdateOrderRequest): Promise<IPharmacyOrder> {
++    if (typeof id !== 'string' || !/^[0-9a-fA-F]{24}$/.test(id)) {
++      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid pharmacy order ID' });
++    }
+     const order = await this.orderRepo.findById(id);
+     if (!order) {
+       throw new AppError({ status: 404, code: 'ORDER_NOT_FOUND', message: 'Order not found' });
+     }
+-    if (String(order.pharmacyId) !== pharmacyId) {
++    if (
++      typeof pharmacyId !== 'string' || !/^[0-9a-fA-F]{24}$/.test(pharmacyId) ||
++      String(order.pharmacyId) !== pharmacyId
++    ) {
+       throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
+     }
+     if (TERMINAL_STATUSES.includes(order.status)) {
+       throw new AppError({ status: 400, code: 'ORDER_TERMINAL', message: 'Cannot update a completed/cancelled order' });
+     }
+ 
++    const partyFields = ['customerId', 'buyerPharmacyId', 'orderType'] as const;
++    const changesOrderParty = partyFields.some((field) => Object.prototype.hasOwnProperty.call(data, field));
++    if (changesOrderParty && Object.prototype.hasOwnProperty.call(order, 'recoveryRequest')) {
++      throw new AppError({
++        status: 409,
++        code: 'ORDER_RECOVERY_PARTY_LOCKED',
++        message: 'Order party details are locked after a recovery request',
++      });
++    }
++
+     const financialFields: Array<keyof UpdateOrderRequest> = [
+       'orderType',
+       'customerId',
+@@ -984,9 +1000,9 @@ export class PharmacyOrderService {
+ 
+     let updatePayload: Record<string, unknown> = {
+       ...data,
+-      customerId: nextCustomerId,
+-      buyerPharmacyId: nextBuyerPharmacyId,
+-      orderType: nextOrderType,
++      ...(Object.prototype.hasOwnProperty.call(data, 'customerId') ? { customerId: nextCustomerId } : {}),
++      ...(Object.prototype.hasOwnProperty.call(data, 'buyerPharmacyId') ? { buyerPharmacyId: nextBuyerPharmacyId } : {}),
++      ...(Object.prototype.hasOwnProperty.call(data, 'orderType') ? { orderType: nextOrderType } : {}),
+     };
+ 
+     const shouldRepriceItems = Boolean(data.items);
+@@ -1043,6 +1059,16 @@ export class PharmacyOrderService {
+       ? this.buildInventoryDelta(order.items, nextItemsForInventory)
+       : { toConsume: [], toReturn: [] };
+ 
++    const updateFilter = {
++      _id: new Types.ObjectId(id),
++      pharmacyId: { $eq: new Types.ObjectId(pharmacyId) },
++      $expr: { $and: [
++        { $eq: [{ $type: '$_id' }, 'objectId'] },
++        { $eq: [{ $type: '$pharmacyId' }, 'objectId'] },
++      ] },
++      ...(changesOrderParty ? { recoveryRequest: { $exists: false } } : {}),
++    };
++
+     try {
+       const updated = await this.runOrderInventoryTransaction(async (session) => {
+         if (shouldRepriceItems && usesBatchReservations) {
+@@ -1062,13 +1088,17 @@ export class PharmacyOrderService {
+           await this.applyInventoryDelta(pharmacyId, inventoryDelta, session);
+         }
+ 
+-        return this.orderRepo.update({ _id: id }, updatePayload, { new: true, session });
++        const updatedOrder = await this.orderRepo.update(updateFilter, updatePayload, { new: true, session });
++        if (!updatedOrder) {
++          throw new AppError({
++            status: 409,
++            code: 'ORDER_UPDATE_CONFLICT',
++            message: 'Order changed before the update could be completed',
++          });
++        }
++        return updatedOrder;
+       });
+ 
+-      if (!updated) {
+-        throw new AppError({ status: 500, code: 'UPDATE_FAILED', message: 'Failed to update order' });
+-      }
+-
+       if ((hasExistingRecurring || hasRequestedRecurring) && nextCustomerId) {
+         await this.queueSubscriptionSyncSafely(id, 'order_updated');
+       }
