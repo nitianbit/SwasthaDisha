@@ -1,0 +1,36 @@
+{
+  "schema": "SD-PRIVATE-R11-ACTUAL-AMENDED-SOURCE-DECISIONS-1",
+  "candidate": "5607cdf7070d418115efbd5150afcec1e81f6890",
+  "manifestSha256": "998d23b574c99facf25f7d781372f7fca9b452fa8d6016d1cf4d3fb77fc1f2f7",
+  "decision": "APPROVE_SOURCE_ONLY",
+  "reviewers": [
+    {
+      "agent": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "record": "STANDARDS_REVIEW.json"
+    },
+    {
+      "agent": "/root/milestone_composition_r9",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "provenance": "Actual direct independent nonauthor message; entire2amendedsources/service+validation+documentcontext, exactpatch/2hashes/45unchangedinputs and6nativeFormidablecachemembers rehashed. Allfourchanges matchplan, no materialfinding."
+    }
+  ],
+  "authorExcluded": "/root/customer_remaining_audit",
+  "resolvedInSource": [
+    "R11-F2-1 legacyPOSTheaders",
+    "R11-F2-2 pinnednative input/count/size statuses",
+    "R11-F2-3 actor-first clinicalkind",
+    "R11-F2-4 reservedinode aliasguard conditionalfilesystem"
+  ],
+  "limits": [
+    "All compiler/parser/app/Express/Formidable/fsadapter/Mongo/Docker/provider NOT_RUN",
+    "Nativecasefold condition unobserved, not runtime closure",
+    "Separatefixture29two-pin/regressions source reviews andexactstage/run admission required",
+    "Accepted112lockmetadata notinstallgrant",
+    "GenuineClaudeamended-source follow-up pending",
+    "FullS1/clinical/scanner/qualifiedrelease/client/owner/C2/release remainopen"
+  ],
+  "preservation": "AlloriginalR11review/privatecaptures/sourcefindings/receipts retained, no deployedprotectionclaimed"
+}
