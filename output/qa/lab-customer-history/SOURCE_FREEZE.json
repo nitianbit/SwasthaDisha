@@ -1,0 +1,110 @@
+{
+  "schema": "SD-LAB-CUSTOMER-HISTORY-SOURCE-1",
+  "author": "/root/payment_ctor_contract",
+  "baseline": "2c986ac74261c279d2a340e05d730de7258ed309",
+  "branch": "m0/lab-customer-history",
+  "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/lab-customer-history",
+  "contractSha256": "f552a3cd42474e81ca9b80a5c74f10ca3486f2cb64898923da96afa6f17c407e",
+  "preimplementationSha256": "93779ab05868165e893c4963125ce6a99678e55eb229b09ca177a18a7e4345cc",
+  "files": [
+    {
+      "path": "src1/modules/externalBookings/controller/index.ts",
+      "beforeSha256": "360836e0d5e98223de26c5faf1777f420d1991afdce7b3f7b5bfe2eada05b041",
+      "beforeBytes": 24887,
+      "afterSha256": "ec4f8f2ec93ddae43c818907efcc4f732229d749afd2ae5130e92d1e0eb65364",
+      "afterBytes": 25855
+    },
+    {
+      "path": "src1/modules/externalBookings/repository/index.ts",
+      "beforeSha256": "b34199b2e0c767e309c28c6d147b6de1d5ae59bbcef363aca3668371b13d582c",
+      "beforeBytes": 7521,
+      "afterSha256": "c21359e9617f5299783d6244b890e25449e9a446d82243a6a9ad03b37a639e1c",
+      "afterBytes": 11898
+    },
+    {
+      "path": "src1/modules/externalBookings/routes/index.ts",
+      "beforeSha256": "fe3d4181c3424638cad98b2cc61bbcad5b72f48258ae1c02f76f5b3fdcbba146",
+      "beforeBytes": 6734,
+      "afterSha256": "1cd7076065163f605483925d16f607fdff8c3e01f6825d48bcdd5d612c23d1e2",
+      "afterBytes": 6963
+    },
+    {
+      "path": "src1/modules/externalBookings/services/index.ts",
+      "beforeSha256": "aa1ac1b90f91dab278bad594d5a3a82f931cf6443fb24af819faf707c89a9a66",
+      "beforeBytes": 144938,
+      "afterSha256": "fe4bcb1ca46ec5462ec63dfcba5a5babb43ec0ff5c87369ccaafeff4873da426",
+      "afterBytes": 145351
+    },
+    {
+      "path": "src1/modules/externalBookings/types/index.ts",
+      "beforeSha256": "878f539e702ee998176acbfc4c6a38b7b711d2447e4608fe14a5647b40d7e862",
+      "beforeBytes": 11259,
+      "afterSha256": "12897bc8923393793a7a8526a5bf4a0a696edc90fefe187a64698306bee4130f",
+      "afterBytes": 11512
+    },
+    {
+      "path": "src1/modules/externalBookings/validation/index.ts",
+      "beforeSha256": "49c3aa3449e61655d9a34b6a201de9874e83003df8737b5aa5dfdab09bd6dcc6",
+      "beforeBytes": 14734,
+      "afterSha256": "69af22ccd2be50053838288d183fb3219b171efb4fcc856304f8407f41df78f1",
+      "afterBytes": 14951
+    }
+  ],
+  "unchangedContractPins": [
+    {
+      "path": "src1/modules/externalBookings/model/index.ts",
+      "sha256": "873239e9ebd6201cf632deafac86d76ab6a6a84b729e23332e29658a898291f1"
+    },
+    {
+      "path": "src1/modules/common/repository/BaseRepository.ts",
+      "sha256": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a"
+    },
+    {
+      "path": "src1/modules/common/middleware/validation.ts",
+      "sha256": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef"
+    },
+    {
+      "path": "src1/modules/middleware/auth.ts",
+      "sha256": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2"
+    },
+    {
+      "path": "src1/routes/index.ts",
+      "sha256": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056"
+    },
+    {
+      "path": "documentation/planning/implementation/LAB_CUSTOMER_BOOKING_PROGRESS_CONTRACT.md",
+      "sha256": "f606545cd262de4b3429165024a2b8545f50f74b7be4fae66b0da6e3dd2d0de9"
+    },
+    {
+      "path": "documentation/labstack/FRONTEND_REPORT_FLOW.md",
+      "sha256": "ed137adefba27701b0d407f7ea2bcaff278da20fac3e3b59ac0e1abc37d81f75"
+    },
+    {
+      "path": "documentation/planning/SYSTEM_DESIGN.md",
+      "sha256": "cbd899f6fb442b13db28c389143b529b90da364165dc17291cc829814810bc84"
+    }
+  ],
+  "patchSha256": "ebd82b5843859e85fdc0b61678f0aa4231aef445771d57d762e07a21a678b114",
+  "patchBytes": 15563,
+  "extractions": {
+    "actorChecks": "Identical existing actor-class predicates/errors, moved to one synchronous private resolver shared by progress/history. Repository still validates owner before ID.",
+    "rowMapper": "Exact old required-row validation and 11-field mapping moved to one fixed function; only indentation removed. Progress passes its validated requested ID unchanged.",
+    "oldMappingBlockSha256": "add301f4ad18d0f89f8a78d570ae99e56bced3a46f8f8566a055304affda97bf",
+    "oldActorMethodSha256": "b24a9dff526bcb61fa17bd5b314339b98b094db4c6f1c8e2b409932886333c27"
+  },
+  "sourceChecks": [
+    "All14pins matched before edits; eight protected pins remain unchanged",
+    "Full six-file inverse of only reviewed additions/import edits/extractions recovers every baseline byte",
+    "Progress owner-before-ID guard/query/projection/notfound block unchanged; mapper retains requested-ID equality/errors/null/unknown encodings",
+    "History mandatory owner/scalar kind, one aggregate/facet/count-before-page, no integration filter or joins",
+    "Compact JSON string measured below256KiB then sent unchanged; no new status/provider/report truth",
+    "src1 git diff --check passed; exact six production file scope"
+  ],
+  "execution": "NOT_RUN: no Node/compiler/application/SDK/Docker/database/provider/tests/integration execution",
+  "limits": [
+    "Two independent nonauthor source decisions pending; no type/runtime/HTTP/ODM/DB proof",
+    "No legacy ordinary-customer owner override asserted; legacy mixed list/report residuals remain",
+    "No callback/sample/report-release/funding/clinical/owner/module/deployment acceptance",
+    "Isolated next-batch source only; focus/R8 live source pins not changed"
+  ]
+}

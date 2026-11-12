@@ -15,6 +15,7 @@ import { CONFIG } from '@/config/config';
 import logger from '@/services/logger';
 import {
   CancelExternalBookingRequest,
+  CustomerDiagnosticsHistoryQuery,
   CreateExternalDiagnosticsBookingRequest,
   CreateExternalBookingRequest,
   ExternalIntegration,
@@ -581,6 +582,24 @@ export class ExternalBookingController {
           : 'External diagnostics payment completed successfully',
       data: result,
     });
+  };
+
+  getCustomerDiagnosticsHistory = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const query: CustomerDiagnosticsHistoryQuery = {
+      page: req.query.page === undefined ? 1 : Number(req.query.page),
+      limit: req.query.limit === undefined ? 20 : Number(req.query.limit),
+    };
+    const result = await this.externalBookingService.getCustomerDiagnosticsHistory(req.user, query);
+    const body = JSON.stringify({
+      success: true,
+      data: result.data,
+      pagination: { page: result.page, limit: result.limit, total: result.total, totalPages: result.totalPages },
+    });
+    if (Buffer.byteLength(body, 'utf8') >= 256 * 1024) {
+      throw new AppError({ status: 503, code: 'DIAGNOSTICS_PROGRESS_UNAVAILABLE', message: 'Diagnostics booking progress is unavailable' });
+    }
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(200).type('application/json').send(body);
   };
 
   getCustomerDiagnosticsProgress = async (req: AuthRequest, res: Response, _next: NextFunction) => {

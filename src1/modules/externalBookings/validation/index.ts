@@ -362,6 +362,12 @@ export const createExternalBookingSchema = Joi.object({
   useWalletBalance: Joi.boolean().optional(),
 });
 
+export const customerDiagnosticsHistoryQuerySchema = Joi.object({
+  page: Joi.number().integer().min(1).max(1000).optional(),
+  limit: Joi.number().integer().min(1).max(50).optional(),
+  userId: Joi.forbidden(),
+});
+
 export const externalBookingListQuerySchema = Joi.object({
   userId: Joi.string().trim().optional(),
   corporateId: Joi.string().trim().optional(),

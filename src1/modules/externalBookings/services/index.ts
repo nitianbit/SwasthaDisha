@@ -34,6 +34,7 @@ import {
 } from '@/modules/externalCatalogItems/types';
 import {
   CustomerDiagnosticsProgress,
+  CustomerDiagnosticsHistoryPage,
   CancelExternalBookingRequest,
   CreateExternalDiagnosticsBookingRequest,
   CreateExternalBookingRequest,
@@ -2463,7 +2464,7 @@ export class ExternalBookingService {
     return updated;
   }
 
-  async getCustomerDiagnosticsProgress(actor: unknown, id: unknown): Promise<CustomerDiagnosticsProgress> {
+  private diagnosticsCustomerId(actor: unknown): unknown {
     if (!actor || typeof actor !== 'object' || Array.isArray(actor)) {
       throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Authentication is required' });
     }
@@ -2471,7 +2472,16 @@ export class ExternalBookingService {
     if (principal.userType !== 'user') {
       throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Individual customer access is required' });
     }
-    return this.externalBookingRepository.findCustomerDiagnosticsProgress(id, principal._id);
+    return principal._id;
+  }
+
+  async getCustomerDiagnosticsProgress(actor: unknown, id: unknown): Promise<CustomerDiagnosticsProgress> {
+    const customerId = this.diagnosticsCustomerId(actor);
+    return this.externalBookingRepository.findCustomerDiagnosticsProgress(id, customerId);
+  }
+
+  async getCustomerDiagnosticsHistory(actor: unknown, query: unknown): Promise<CustomerDiagnosticsHistoryPage> {
+    return this.externalBookingRepository.findCustomerDiagnosticsHistory(this.diagnosticsCustomerId(actor), query);
   }
 
   async listBookings(query: ExternalBookingListQuery): Promise<{

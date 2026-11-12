@@ -10,6 +10,7 @@ import {
   createExternalBookingSchema,
   externalBookingIdParamSchema,
   externalBookingListQuerySchema,
+  customerDiagnosticsHistoryQuerySchema,
   externalDiagnosticsReportQuerySchema,
   externalReportDocumentQuerySchema,
   externalPackageQuerySchema,
@@ -101,6 +102,12 @@ externalBookingRouter.post(
   '/bookings',
   validate(createExternalBookingSchema, 'body'),
   catchAsync(externalBookingController.createBooking)
+);
+
+externalBookingRouter.get(
+  '/diagnostics/bookings',
+  validate(customerDiagnosticsHistoryQuerySchema, 'query'),
+  catchAsync(externalBookingController.getCustomerDiagnosticsHistory)
 );
 
 externalBookingRouter.post(
