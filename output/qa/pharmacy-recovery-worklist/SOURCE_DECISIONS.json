@@ -1,0 +1,33 @@
+{
+  "schema": "SD-INTERNAL-SOURCE-DECISIONS-1",
+  "baseline": "95b7508fbbae9216bc5e539adf355460c137a826",
+  "candidate": "fb9b7d2c50de278fdd206a5754133bd0be38949e",
+  "author": "/root/payment_ctor_contract",
+  "contractSha256": "0d5e215e4376987e7b5d33114d243685cb5c1ee3302e69ceef4dc167cd7b8b86",
+  "patchSha256": "1bab33a3737192d970d699d9857a11baa0dd64aef207cde5c0d7bfc7851b10bf",
+  "sourceFreezeSha256": "bc46520d3c94366a05e46fa17090f1abd03093c0b63326620379d01c68ec978f",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex source review of complete six-file delta/current guard and receipt; exact six before/after and nine preserved pins matched."
+    },
+    {
+      "reviewer": "/root/booking_write_contract",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex source review of complete six-file delta/current guard and receipt; exact six before/after and nine preserved pins matched."
+    }
+  ],
+  "execution": "Source/Git/data only; no compiler/app/Joi/HTTP/ODM/DB/provider check.",
+  "limits": [
+    "Read visibility for existing pharmacy business account only; no staff clinical/finance grant or settlement truth.",
+    "Marker-bearing count can include malformed records; malformed included page fails whole503.",
+    "No financial/clinical/stock writer or assignment/resolution workflow.",
+    "Existing authorization freshness/index/scan/performance/client and actual focused runtime evidence remain open.",
+    "No F1/F5-1/module/M0/owner/production/release acceptance; final integration deferred."
+  ]
+}

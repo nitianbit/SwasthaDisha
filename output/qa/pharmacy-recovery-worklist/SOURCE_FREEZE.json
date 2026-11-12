@@ -1,0 +1,108 @@
+{
+  "schema": "SD-PHARMACY-RECOVERY-WORKLIST-SOURCE-1",
+  "author": "/root/payment_ctor_contract",
+  "baseline": "95b7508fbbae9216bc5e539adf355460c137a826",
+  "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-recovery-worklist",
+  "branch": "m0/pharmacy-recovery-worklist",
+  "contractSha256": "0d5e215e4376987e7b5d33114d243685cb5c1ee3302e69ceef4dc167cd7b8b86",
+  "preimplementationSha256": "945ae538ec51bb05567cd37bd2fdc90475e0c9892f9a521894caeeeca4874c11",
+  "files": [
+    {
+      "path": "src1/modules/pharmacyOrders/controller/index.ts",
+      "beforeSha256": "4b597ec56652d8d2972cd3c0fb0756772f6c2322bdf0c69b608b302bdc33c14d",
+      "beforeBytes": 4411,
+      "afterSha256": "e1cca25dc7c45fd2048f014c6b47191cda1044eca8b8f4cf5c9f061c3d2a3446",
+      "afterBytes": 5386
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/repository/index.ts",
+      "beforeSha256": "e22c4957a6ffecc82bd6a81a46f7c7c1de358bfb674bc4355b55fbf840fb52e6",
+      "beforeBytes": 12745,
+      "afterSha256": "df77e35abeb00913d6353e0bf76a3651b3a1b78b6e669548439472347c4b084f",
+      "afterBytes": 16516
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/routes/index.ts",
+      "beforeSha256": "7ea281b035ecffa82efdc6d530d3a7f06ddb8e8b0772e6f3a1cc1f5d3f18739a",
+      "beforeBytes": 2035,
+      "afterSha256": "cfb13044228699be2fa37ce9635dcaf9f5874e3fe2ce02eeb846407be0e088fe",
+      "afterBytes": 2244
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/services/index.ts",
+      "beforeSha256": "66265f3912d8ebb76aa6c565f3dc9dc0389a4e9fad1bed38b17be0d3578df8bc",
+      "beforeBytes": 46103,
+      "afterSha256": "83ca486a250403a777f0548ec57c98bd1e99e154b6f2034754ddc9aedbc3f35e",
+      "afterBytes": 46313
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/types/index.ts",
+      "beforeSha256": "f453c8665c6c646b3b17c90dfa0be50cffb0775d74b9a95b70c92be51623d5d2",
+      "beforeBytes": 6254,
+      "afterSha256": "6f3c1171b5ab154bc566ec7dcedaf3da4cd614d1bb7402fa5534b7a5e575e423",
+      "afterBytes": 6604
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/validation/index.ts",
+      "beforeSha256": "6c4d01ebcb9db52c88bc8b0883dc679816f6b232a2c53ee5819d8f9e6f5afd64",
+      "beforeBytes": 4872,
+      "afterSha256": "70381b52ca88dc35782850f662423ee423dbaebe67122641c1219fdee8f84402",
+      "afterBytes": 5083
+    }
+  ],
+  "unchangedContractPins": [
+    {
+      "path": "documentation/planning/SYSTEM_DESIGN.md",
+      "sha256": "cbd899f6fb442b13db28c389143b529b90da364165dc17291cc829814810bc84"
+    },
+    {
+      "path": "documentation/planning/implementation/PHARMACY_CANCELLATION_RECOVERY_CONTRACT_DRAFT.md",
+      "sha256": "e43bb8170b644cdc93ceeae9d8f66e8abb739f1cb35079e1076147aa88b4e910"
+    },
+    {
+      "path": "documentation/planning/implementation/PHARMACY_QUALITY_WORKLIST_CONTRACT.md",
+      "sha256": "710f300d1d335540599a912fcec1582ce6c7d636cc9a5f20a386615bbb9c12ee"
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/model/index.ts",
+      "sha256": "f054a220020c66a83c49ea8658bd0d002cb3a9fd28c9b7771b0584c53471ac14"
+    },
+    {
+      "path": "src1/modules/pharmacyInventory/repository/index.ts",
+      "sha256": "cee64fd2464b5d5ac6081531a63f9a176e5fc481f33c3a4d6def99a26d97b261"
+    },
+    {
+      "path": "src1/modules/pharmacyInventory/validation/index.ts",
+      "sha256": "f1679413efcd27621a362eda7277a3d0db3edceb8d30fc2c542c075bef8dec53"
+    },
+    {
+      "path": "src1/modules/middleware/auth.ts",
+      "sha256": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2"
+    },
+    {
+      "path": "src1/modules/common/middleware/validation.ts",
+      "sha256": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef"
+    },
+    {
+      "path": "src1/routes/index.ts",
+      "sha256": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056"
+    }
+  ],
+  "patchSha256": "1bab33a3737192d970d699d9857a11baa0dd64aef207cde5c0d7bfc7851b10bf",
+  "patchBytes": 10725,
+  "execution": "NOT_RUN: no Node/compiler/app/SDK/Docker/database/provider/test/integration execution",
+  "sourceChecks": [
+    "All15contractpins matched before edit",
+    "Exact six-file additive diff; complete inverse of additions/import edits recovers every original byte",
+    "Existing recoveryReceipt/helpers/digests/customer intake/session/transactions/writers/routes preserved by full-file inverse",
+    "One mandatory own/scalar aggregate, same-stream facet count before page, no lookup or writes",
+    "Explicit eight-field DTO from unchanged recoveryReceipt; compact JSON string and strict below64KiB send",
+    "Nine other selected pins unchanged; production git diff --check passed"
+  ],
+  "limits": [
+    "SOURCE_ONLY; two independent nonauthor source decisions pending",
+    "No TypeScript/Joi/HTTP/ODM/DB/pagination/concurrency/provider/clinical/finance/runtime proof",
+    "No recovery resolution/funding/collection/capture/stock/clinical authority inferred; current source labels remain unverified",
+    "C2/fullC3/finalDEFERRED_BY_OWNERintegration/module/owner/release gates retained"
+  ]
+}

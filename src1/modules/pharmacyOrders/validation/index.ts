@@ -99,6 +99,12 @@ export const orderQuerySchema = Joi.object({
   limit: Joi.number().integer().min(1).max(100).optional(),
 });
 
+export const recoveryWorklistQuerySchema = Joi.object({
+  page: Joi.number().integer().min(1).max(1000).optional(),
+  limit: Joi.number().integer().min(1).max(50).optional(),
+  pharmacyId: Joi.forbidden(),
+});
+
 export const idParamSchema = Joi.object({
   id: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required().messages({
     'string.pattern.base': 'Invalid ID format',

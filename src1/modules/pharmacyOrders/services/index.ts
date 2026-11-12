@@ -11,6 +11,7 @@ import { MedicineRepository } from '@/modules/pharmacyMedicines/repository';
 import {
   IPharmacyOrder,
   PharmacyRecoveryReceipt,
+  PharmacyRecoveryWorklistPage,
   IOrderItem,
   CreateOrderRequest,
   MarkOrderPaidRequest,
@@ -818,6 +819,10 @@ export class PharmacyOrderService {
 
   async getCustomerRecovery(actor: unknown, id: unknown): Promise<PharmacyRecoveryReceipt | null> {
     return this.customerRecovery(actor, id, false);
+  }
+
+  async getRecoveryRequests(pharmacyId: unknown, query: unknown): Promise<PharmacyRecoveryWorklistPage> {
+    return this.orderRepo.findRecoveryRequests(pharmacyId, query);
   }
 
   async getById(id: string, requesterId: string, requesterRole: string): Promise<IPharmacyOrder> {

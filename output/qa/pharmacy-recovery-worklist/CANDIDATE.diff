@@ -1,0 +1,227 @@
+diff --git a/src1/modules/pharmacyOrders/controller/index.ts b/src1/modules/pharmacyOrders/controller/index.ts
+index 8bc49eac2e8e95b42fcef4a706a73ebc52241e5c..7bf929f224221505b4e935db1dafd1d21ed6b6e6 100644
+--- a/src1/modules/pharmacyOrders/controller/index.ts
++++ b/src1/modules/pharmacyOrders/controller/index.ts
+@@ -3,7 +3,8 @@ import { Response, NextFunction } from 'express';
+ import { Container } from 'typedi';
+ import { PharmacyOrderService } from '@/modules/pharmacyOrders/services';
+ import { AuthRequest } from '@/modules/middleware/auth';
+-import { MarkOrderPaidRequest, OrderQueryParams } from '@/modules/pharmacyOrders/types';
++import { MarkOrderPaidRequest, OrderQueryParams, PharmacyRecoveryWorklistQuery } from '@/modules/pharmacyOrders/types';
++import { AppError } from '@/modules/common/types';
+ 
+ export class PharmacyOrderController {
+   private service: PharmacyOrderService;
+@@ -35,6 +36,24 @@ export class PharmacyOrderController {
+     res.status(200).json({ success: true, data });
+   };
+ 
++  getRecoveryRequests = async (req: AuthRequest, res: Response, _next: NextFunction) => {
++    const query: PharmacyRecoveryWorklistQuery = {
++      page: req.query.page === undefined ? 1 : Number(req.query.page),
++      limit: req.query.limit === undefined ? 20 : Number(req.query.limit),
++    };
++    const result = await this.service.getRecoveryRequests(req.user?.pharmacyId, query);
++    const body = JSON.stringify({
++      success: true,
++      data: result.data,
++      pagination: { page: result.page, limit: result.limit, total: result.total, totalPages: result.totalPages },
++    });
++    if (Buffer.byteLength(body, 'utf8') >= 64 * 1024) {
++      throw new AppError({ status: 503, code: 'PHARMACY_RECOVERY_UNAVAILABLE', message: 'Pharmacy recovery is unavailable' });
++    }
++    res.setHeader('Cache-Control', 'private, no-store');
++    res.status(200).type('application/json').send(body);
++  };
++
+   getById = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+     const result = await this.service.getById(
+       req.params.id,
+diff --git a/src1/modules/pharmacyOrders/repository/index.ts b/src1/modules/pharmacyOrders/repository/index.ts
+index 9fed2bba8773059b6ebbef0997a96380dcd082eb..4af9d49ee0b03584216b9e0892249c293bd96f18 100644
+--- a/src1/modules/pharmacyOrders/repository/index.ts
++++ b/src1/modules/pharmacyOrders/repository/index.ts
+@@ -1,9 +1,10 @@
+ import { Service } from 'typedi';
+-import { ClientSession, Model, Types, mongo } from 'mongoose';
++import { ClientSession, Model, PipelineStage, Types, mongo } from 'mongoose';
+ import { createHash } from 'crypto';
+ import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
+ import {
+   IPharmacyOrder, OrderQueryParams, PharmacyRecoveryReceipt, PharmacyRecoveryRequest,
++  PharmacyRecoveryWorklistPage, PharmacyRecoveryWorklistRow,
+   PHARMACY_RECOVERY_ORDER_LABELS, PHARMACY_RECOVERY_PAYMENT_LABELS,
+ } from '@/modules/pharmacyOrders/types';
+ import { AppError } from '@/modules/common/types';
+@@ -134,6 +135,77 @@ export class PharmacyOrderRepository extends BaseRepository<IPharmacyOrder> {
+     return recoveryReceipt(current.recoveryRequest, id, customerId);
+   }
+ 
++  async findRecoveryRequests(pharmacyId: unknown, query: unknown): Promise<PharmacyRecoveryWorklistPage> {
++    if (!recoveryId(pharmacyId)) {
++      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
++    }
++    const invalidQuery = () => new AppError({
++      status: 400, code: 'VALIDATION_ERROR', message: 'Invalid recovery worklist query',
++    });
++    if (!query || typeof query !== 'object' || Array.isArray(query) ||
++      ![Object.prototype, null].includes(Object.getPrototypeOf(query))) throw invalidQuery();
++    for (const key of Reflect.ownKeys(query)) {
++      const descriptor = Object.getOwnPropertyDescriptor(query, key)!;
++      if (typeof key !== 'string' || !['page', 'limit'].includes(key) ||
++        !descriptor.enumerable || !('value' in descriptor)) throw invalidQuery();
++    }
++    const requestedPage = Object.getOwnPropertyDescriptor(query, 'page')?.value;
++    const requestedLimit = Object.getOwnPropertyDescriptor(query, 'limit')?.value;
++    const page = requestedPage === undefined ? 1 : requestedPage;
++    const limit = requestedLimit === undefined ? 20 : requestedLimit;
++    if (typeof page !== 'number' || !Number.isSafeInteger(page) || page < 1 || page > 1000 ||
++      typeof limit !== 'number' || !Number.isSafeInteger(limit) || limit < 1 || limit > 50) throw invalidQuery();
++    const skip = (page - 1) * limit;
++    const pipeline: PipelineStage[] = [
++      {
++        $match: {
++          pharmacyId: new Types.ObjectId(pharmacyId),
++          recoveryRequest: { $exists: true },
++          $expr: { $eq: [{ $type: '$pharmacyId' }, 'objectId'] },
++        },
++      },
++      { $project: { _id: 1, pharmacyId: 1, customerId: 1, recoveryRequest: 1 } },
++      {
++        $facet: {
++          metadata: [{ $count: 'total' }],
++          data: [{ $sort: { _id: 1 } }, { $skip: skip }, { $limit: limit }],
++        },
++      },
++    ];
++    const result = await PharmacyOrderModel.aggregate<unknown>(pipeline)
++      .option({ maxTimeMS: 2000, allowDiskUse: false }).exec();
++    if (!Array.isArray(result) || result.length !== 1) return recoveryUnavailable();
++    const facet = recoveryShape(result[0], ['metadata', 'data']);
++    const metadata = facet.metadata;
++    const rows = facet.data;
++    if (!Array.isArray(metadata) || metadata.length > 1 || !Array.isArray(rows) || rows.length > limit) return recoveryUnavailable();
++    let total = 0;
++    if (metadata.length) {
++      const count = recoveryShape(metadata[0], ['total']);
++      if (typeof count.total !== 'number' || !Number.isSafeInteger(count.total) || count.total < 0) return recoveryUnavailable();
++      total = count.total;
++    }
++    if (rows.length !== Math.min(limit, Math.max(0, total - skip))) return recoveryUnavailable();
++    const data = rows.map((value: unknown): PharmacyRecoveryWorklistRow => {
++      const row = recoveryShape(value, ['_id', 'pharmacyId', 'customerId', 'recoveryRequest']);
++      if (!(row._id instanceof Types.ObjectId) || !(row.customerId instanceof Types.ObjectId) ||
++        !(row.pharmacyId instanceof Types.ObjectId) || row.pharmacyId.toHexString() !== pharmacyId) return recoveryUnavailable();
++      const orderId = row._id.toHexString();
++      const receipt = recoveryReceipt(row.recoveryRequest, orderId, row.customerId.toHexString());
++      return {
++        orderId,
++        operationId: receipt.operationId,
++        status: receipt.status,
++        requestedAt: receipt.requestedAt,
++        amountMinor: receipt.amountMinor,
++        currency: receipt.currency,
++        instrument: receipt.instrument,
++        destinationPolicy: receipt.destinationPolicy,
++      };
++    });
++    return { data, page, limit, total, totalPages: Math.ceil(total / limit) };
++  }
++
+   private applyCommonFilters(query: Record<string, unknown>, filter: OrderQueryParams): Record<string, unknown> {
+     const effectiveCustomerId = filter.userId || filter.customerId;
+     if (effectiveCustomerId) {
+diff --git a/src1/modules/pharmacyOrders/routes/index.ts b/src1/modules/pharmacyOrders/routes/index.ts
+index 717d27c1549416014ddb7b23131520fddf383196..db7895d9549cf4584898edf2a298ecaa01f7fb41 100644
+--- a/src1/modules/pharmacyOrders/routes/index.ts
++++ b/src1/modules/pharmacyOrders/routes/index.ts
+@@ -14,6 +14,7 @@ import {
+   cancelOrderSchema,
+   markOrderPaidSchema,
+   orderQuerySchema,
++  recoveryWorklistQuerySchema,
+   idParamSchema,
+ } from '@/modules/pharmacyOrders/validation';
+ 
+@@ -43,6 +44,13 @@ pharmacyOrderRouter.get(
+   catchAsync(controller.getCustomerRecovery)
+ );
+ 
++pharmacyOrderRouter.get(
++  '/recovery-requests',
++  requireOperationalPharmacy,
++  validate(recoveryWorklistQuerySchema, 'query'),
++  catchAsync(controller.getRecoveryRequests)
++);
++
+ pharmacyOrderRouter.get(
+   '/:id',
+   validate(idParamSchema, 'params'),
+diff --git a/src1/modules/pharmacyOrders/services/index.ts b/src1/modules/pharmacyOrders/services/index.ts
+index f877d2c37f21fef0c440d4e70e58802bb1a72c59..77a16747a1cb0444aad8ffabd02ce3b2607f1949 100644
+--- a/src1/modules/pharmacyOrders/services/index.ts
++++ b/src1/modules/pharmacyOrders/services/index.ts
+@@ -11,6 +11,7 @@ import { MedicineRepository } from '@/modules/pharmacyMedicines/repository';
+ import {
+   IPharmacyOrder,
+   PharmacyRecoveryReceipt,
++  PharmacyRecoveryWorklistPage,
+   IOrderItem,
+   CreateOrderRequest,
+   MarkOrderPaidRequest,
+@@ -820,6 +821,10 @@ export class PharmacyOrderService {
+     return this.customerRecovery(actor, id, false);
+   }
+ 
++  async getRecoveryRequests(pharmacyId: unknown, query: unknown): Promise<PharmacyRecoveryWorklistPage> {
++    return this.orderRepo.findRecoveryRequests(pharmacyId, query);
++  }
++
+   async getById(id: string, requesterId: string, requesterRole: string): Promise<IPharmacyOrder> {
+     const order = await this.orderRepo.findById(id);
+     if (!order) {
+diff --git a/src1/modules/pharmacyOrders/types/index.ts b/src1/modules/pharmacyOrders/types/index.ts
+index 3039e9196c81756fe881d2156a64dae4d1cb7426..ae6a13a118d9e479a1a78c260a1e1902a01f4164 100644
+--- a/src1/modules/pharmacyOrders/types/index.ts
++++ b/src1/modules/pharmacyOrders/types/index.ts
+@@ -116,6 +116,23 @@ export interface PharmacyRecoveryReceipt {
+   destinationPolicy: 'original_instrument';
+ }
+ 
++export interface PharmacyRecoveryWorklistQuery {
++  page?: number;
++  limit?: number;
++}
++
++export interface PharmacyRecoveryWorklistRow extends PharmacyRecoveryReceipt {
++  orderId: string;
++}
++
++export interface PharmacyRecoveryWorklistPage {
++  data: PharmacyRecoveryWorklistRow[];
++  page: number;
++  limit: number;
++  total: number;
++  totalPages: number;
++}
++
+ export interface IPharmacyOrder {
+   _id?: string;
+   orderNumber?: string;
+diff --git a/src1/modules/pharmacyOrders/validation/index.ts b/src1/modules/pharmacyOrders/validation/index.ts
+index f6555e3cbdfe3843c5998744be943d8ba00a8754..e403150098590247ae04936a27009efdbf5f74a5 100644
+--- a/src1/modules/pharmacyOrders/validation/index.ts
++++ b/src1/modules/pharmacyOrders/validation/index.ts
+@@ -99,6 +99,12 @@ export const orderQuerySchema = Joi.object({
+   limit: Joi.number().integer().min(1).max(100).optional(),
+ });
+ 
++export const recoveryWorklistQuerySchema = Joi.object({
++  page: Joi.number().integer().min(1).max(1000).optional(),
++  limit: Joi.number().integer().min(1).max(50).optional(),
++  pharmacyId: Joi.forbidden(),
++});
++
+ export const idParamSchema = Joi.object({
+   id: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required().messages({
+     'string.pattern.base': 'Invalid ID format',

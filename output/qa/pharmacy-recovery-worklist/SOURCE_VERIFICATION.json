@@ -1,0 +1,18 @@
+{
+  "schema": "SD-PHARMACY-RECOVERY-WORKLIST-VERIFICATION-1",
+  "author": "/root/payment_ctor_contract",
+  "baseline": "95b7508fbbae9216bc5e539adf355460c137a826",
+  "status": "SOURCE_ONLY_TWO_NONAUTHOR_SOURCE_REVIEWS_PENDING",
+  "sourceFreezeSha256": "bc46520d3c94366a05e46fa17090f1abd03093c0b63326620379d01c68ec978f",
+  "patchSha256": "1bab33a3737192d970d699d9857a11baa0dd64aef207cde5c0d7bfc7851b10bf",
+  "checks": {
+    "preimplementationActualVoteCount": 2,
+    "baselinePinsMatched": 15,
+    "changedSourceFiles": 6,
+    "inverseByteIdentity": true,
+    "unchangedPins": 9,
+    "productionWhitespaceCheckExit": 0
+  },
+  "serialization": "Controller serializes once with JSON.stringify, measures UTF8 length, rejects >=65536, then sends the exact string as application/json; this is source inspection, not observed Express behavior.",
+  "execution": "No executable application/test/type/compiler/DB/provider check or redundant test was written or run."
+}
