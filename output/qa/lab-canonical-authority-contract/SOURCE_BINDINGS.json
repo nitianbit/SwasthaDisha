@@ -1,0 +1,43 @@
+{
+  "schema": "SD-LAB-CANONICAL-AUTHORITY-CONTRACT-INPUTS-1",
+  "author": "/root/milestone_composition_r9",
+  "sourceCommit": "fd0413ca35eda6f004ce1e65e7eb505c44aa2da1",
+  "contractPath": "documentation/planning/implementation/LAB_CANONICAL_AUTHORITY_AND_WORKLIST_CONTRACT_DRAFT.md",
+  "contractSha256": "1121a1657474948e1dec78941fd1d64d1514564de58a6c2476da28ca0dd863b9",
+  "status": "DRAFT_PENDING_TWO_ACTUAL_NONAUTHOR_REVIEWS_NO_IMPLEMENTATION",
+  "sourceBindings": {
+    "GLOSSARY.md": "88b19e2eab9aaeb19a0bb889e4f54b6dcf80953b90d65f31b87c4ef8b3bb671f",
+    "documentation/planning/SYSTEM_DESIGN.md": "cbd899f6fb442b13db28c389143b529b90da364165dc17291cc829814810bc84",
+    "documentation/planning/ROADMAP.md": "6a5b2e5bfdb42d16021cb28f83531389977d535d9743ae8908ab75ceeabd37cf",
+    "documentation/planning/CAPABILITY_MATRIX.md": "05ab06d569b8dad2a690ac434922738bd20ce15d9484b60e4bf55e62e14e7fea",
+    "documentation/planning/implementation/BUSINESS_STAFF_AUTHORITY_CONTRACT.md": "69dba46528295f55e184b95e1fb6ea451ee2371254d76eb7ac9fd6573068f9fd",
+    "documentation/planning/implementation/CUSTOMER_PHARMACY_LAB_EXECUTION.md": "3bfc2bedca676a641b1def8f8538042eedfd1a5cacc99d9ea23bf8d2532f42ef",
+    "documentation/planning/implementation/CUSTOMER_PHARMACY_LAB_DELIVERY_BOARD.md": "dd947a43cd9ad3ed6216ba4c38f4ffdbb05575cd6486e657294ee7328667b7cf",
+    "documentation/planning/M0_START_APPROVAL_STATUS.md": "67eea927661cf1a94d8644ede28eaa7315d4774866958ff346b37aac5a559be3",
+    "src1/modules/organizations/model/index.ts": "fb0e49483802ffe7eb64f2194804a2c15ef7e4cbd5a73fd6136af65ebc039ce0",
+    "src1/modules/organizations/types/index.ts": "e873884e69db46d7de70d3120a5ac30809fe8dc526d118a4640463233c9633ff",
+    "src1/modules/organizations/rules.ts": "b404c00381b5bf642aa648105cefb353a97c7ea7283c680059c426b5e4307942",
+    "src1/modules/organizations/repository/index.ts": "14532bf2d667e37d4ded33bb3767f744cd524bf385d88341d31f7954ece61d3b",
+    "src1/modules/organizations/services/index.ts": "ccac5254a6e61c8cce4f14c58005cb39349689e3d0cbafc8ab551ca339397c73",
+    "src1/modules/common/utils/indexReadiness.ts": "050ecc993c862638cf4912bb854e04baa5d80241cb124e7831fc3c95a78db5bd",
+    "src1/modules/middleware/auth.ts": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+    "src1/modules/user/model/index.ts": "8ab08c867008d9788fd2105b6ac840794fcd5d8b2c518de500119aa2536cf5c4",
+    "src1/modules/partners/model/index.ts": "496f89a43e2c349ff97c57026e73059892c09c0cf6b498bc1a0fa4b823d36d48",
+    "src1/modules/partners/types/index.ts": "518f1199b2432e1f637dde8547f6cae4ccb70c1482acdb85564b17d5e2c7e503",
+    "src1/modules/externalBookings/model/index.ts": "873239e9ebd6201cf632deafac86d76ab6a6a84b729e23332e29658a898291f1",
+    "src1/modules/externalBookings/types/index.ts": "12897bc8923393793a7a8526a5bf4a0a696edc90fefe187a64698306bee4130f",
+    "src1/modules/externalBookings/repository/index.ts": "c21359e9617f5299783d6244b890e25449e9a446d82243a6a9ad03b37a639e1c",
+    "src1/modules/externalBookings/services/index.ts": "fe4bcb1ca46ec5462ec63dfcba5a5babb43ec0ff5c87369ccaafeff4873da426",
+    "src1/routes/index.ts": "9be841178931003004cc53a0285b5c849d82a82dbc798a4a0d38bf69396de6ea"
+  },
+  "execution": "NOT_RUN; only text/hash/Git reads, no source implementation/import/parser/Node/compiler/DB/Docker/provider/model operation",
+  "intentionalNewTechnicalProposals": [
+    "one canonical labs business source separate from directory/provider IDs",
+    "reuse four authority collections; one new operational assignments domain collection",
+    "external protected two-key signed local provisioning proposal, no existing issuer fact claimed",
+    "single new technician lab.worklist.read capability; signatory release remains unavailable",
+    "actual assigned existing diagnostics references and labelled schedule snapshots, no clinical/provider/money write"
+  ],
+  "activationFacts": "Real source/issuer/evidence/custody/MFA/installed index/deployment exclusion/client facts unobserved and required before real activation; no production grant invented",
+  "preservation": "Only draft plus this small QA input record are owned. No R12 selected file or another lane source changed."
+}
