@@ -1,0 +1,28 @@
+{
+  "schema": "SD-PHARMACY-RECOVERY-COMPOSITION-1",
+  "baseline": "72361527824cd6e3cd61c7853b718ca7fc35ce57",
+  "integration": "9debdd25ae4079fa73f5052afe3a0fd62d4feb0f",
+  "changedSource": {
+    "src1/modules/pharmacyOrders/services/index.ts": "d8e69bb1d7afed4c2d45c8c1aa3e328f9ae355be00e2132a9936c5c34f7a5d55",
+    "test/pharmacy.integration.test.ts": "40a5e341214044da49a1e4849b2bde6d2ec0972215e54a612029c4c4caf1f02c"
+  },
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/milestone_composition_r9",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    }
+  ],
+  "intentionalPinSupersession": "Legacy test slice production invariance describes its isolated7236152 baseline. Integrated service deliberately uses the independently reviewed party fence; all other source unchanged.",
+  "runtime": "NOT_RUN",
+  "limits": "No type, HTTP, Mongoose, transaction/race/rollback, clinical/financial, client or release acceptance. Genuine Claude R9 pending."
+}
