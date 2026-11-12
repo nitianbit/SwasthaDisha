@@ -1,0 +1,25 @@
+{
+  "contractSha256": "e43bb8170b644cdc93ceeae9d8f66e8abb739f1cb35079e1076147aa88b4e910",
+  "author": "/root/pharmacy_refund_primitives",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/pharmacist_identity_fields",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    }
+  ],
+  "actualReview": "Concretecustomer POST/GET durable embedded receipt, requiredscalarObjectIdowner query, same-session no-overwrite CAS, unknown financialfacts/firstobservation/deterministicoperation, boundedclosedDTO andno automaticcancel/stock/payment effects inspected.21pinsmatch. Protectedoperator/reconciliation/funding/custodyfacts remain futureactivation gates.",
+  "implementationCheck": "PinnedMongo4.17.2 withTransaction resolves finalcommit response orundefined, not callback DTO. Preserve result through successfulcommit/retries explicitly, do not treat abort/uncertaincommit as success. API evidence only; no runtimeproof.",
+  "primaryApiSources": [
+    "https://raw.githubusercontent.com/mongodb/node-mongodb-native/v4.17.2/src/sessions.ts",
+    "https://raw.githubusercontent.com/Automattic/mongoose/6.13.8/lib/connection.js"
+  ],
+  "scope": "Sixfile sourceimplementation only on isolatedbranch; no execution or financial/clinical/module/release acceptance. F1open; existingcancel/timeout writersunfixed."
+}
