@@ -1,0 +1,40 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-ROOT-INVOCATION-9",
+  "candidate": "9eeb4c4e0a904a9711147a9cda0310d601a39a3e",
+  "sourceCommit": "9debdd25ae4079fa73f5052afe3a0fd62d4feb0f",
+  "sourceFreezeSha256": "473dd2e2f5f11cd20c6c86a2940bf93281a7253d957fea1a86ac218a8f3cf551",
+  "python": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+  "pythonSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "reviewers": [
+    {
+      "agent": "/root/customer_remaining_audit",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    },
+    {
+      "agent": "/root/lab_remaining_audit",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    }
+  ],
+  "teamActive": true,
+  "membersVerified": [
+    "codex-lead",
+    "claude-reviewer"
+  ],
+  "challengeEnqueue": {
+    "messageId": "msg_1794512072372_prdsat7m",
+    "timestamp": "2026-11-12T19:34:32.372Z",
+    "acknowledged": true,
+    "challengeSha256": "05f96632e8704dea23e3e6053d1a705c290d2973c894df6e5aafeca25657c53f"
+  },
+  "privateExclusionsVerified": true,
+  "approvalSha256": "db6040895ab76785bdc4820e2e55bc85fb72914fa5b897faec87178ac2ccde6e",
+  "sessionId": "159654a8-3514-4195-bf73-487de95fcaa9",
+  "requestedModel": "claude-opus-5-5",
+  "requestedEffort": "max",
+  "effectiveEffort": "UNPROVEN",
+  "nativeExtensionACK": false,
+  "invocationState": "TERMINAL_INTERRUPTED_BY_OWNER_EFFORT_CHANGE",
+  "nativeExecSession": 64960,
+  "terminalExit": 1,
+  "reviewAccepted": false
+}

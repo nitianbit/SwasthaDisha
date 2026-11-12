@@ -1,0 +1,33 @@
+{
+  "schema": "SD-CLAUDE-PREEXECUTION-DECISIONS-9",
+  "candidate": "9eeb4c4e0a904a9711147a9cda0310d601a39a3e",
+  "sourceCommit": "9debdd25ae4079fa73f5052afe3a0fd62d4feb0f",
+  "sourceFreezeSha256": "473dd2e2f5f11cd20c6c86a2940bf93281a7253d957fea1a86ac218a8f3cf551",
+  "sessionId": "159654a8-3514-4195-bf73-487de95fcaa9",
+  "bindings": {
+    "planSha256": "84346d6ea87176b020d5a9626b39414dc2aa4521de7094106129527e4a7406d8",
+    "preparedFreezeSha256": "b63b2d94f31022b219d8aa410f077ee022598af279d7788265e3ec42a8b1b838",
+    "supervisorSha256": "7e51c2141f53ba91076566edc5f90d29006336994403a37d17bd8569a82631af",
+    "testsSha256": "d292f84fe04022b3fdb8f55a7d384707f92eb1f6c9c07a38327d314778cc8b61",
+    "packetSha256": "8ba3f9a1715affa06ccd5098c65aae3fe3e2e582edd4e5e7af4b379a47a220b7",
+    "manifestSha256": "f9683a3810c1b9be5351879324529fe103a5727385687f8f7884a688fba759bf"
+  },
+  "decisions": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW",
+      "findings": [],
+      "provenance": "Actual INTERNAL_CODEX_NATIVE_NONAUTHOR packet/operator/one-invocation review; not selfapproval of application source."
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW",
+      "findings": [],
+      "provenance": "Actual INTERNAL_CODEX_NATIVE_NONAUTHOR packet/operator/one-invocation review; not selfapproval of application source."
+    }
+  ],
+  "consumption": "CONSUMED_ONCE; intentionally interrupted after owner changed effort to xhigh; no retry authorization",
+  "limits": "Requested Opus5.5/max; effective effort UNPROVEN, native webview ACK false. Capture requires independent acceptance; no application/type/DB/provider/owner/module/release acceptance."
+}

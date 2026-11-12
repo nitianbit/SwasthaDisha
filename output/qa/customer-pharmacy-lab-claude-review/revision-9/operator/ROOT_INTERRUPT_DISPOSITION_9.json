@@ -1,0 +1,47 @@
+{
+  "schema": "SD-CLAUDE-R9-USER-EFFORT-CHANGE-1",
+  "sessionId": "159654a8-3514-4195-bf73-487de95fcaa9",
+  "sourceCommit": "9debdd25ae4079fa73f5052afe3a0fd62d4feb0f",
+  "requestedEffortAtLaunch": "max",
+  "newOwnerInstruction": "extra high (xhigh), explicitly not max",
+  "status": "INTENTIONALLY_INTERRUPTED_NOT_REVIEW_ACCEPTED",
+  "nativeExecSession": 64960,
+  "terminalExecExit": 1,
+  "captureExitCode": 143,
+  "firstFailure": "INTERRUPTED",
+  "elapsedSeconds": 341.383,
+  "actualModelsObserved": [
+    "claude-opus-5-5"
+  ],
+  "completeStreamFrames": 278,
+  "toolUseNames": {
+    "mcp__ruflo__team_inbox": 1
+  },
+  "captureCleanupErrors": [
+    "IDENTITY_CHANGED"
+  ],
+  "captureAbsence": {
+    "adapter": true,
+    "cli": true,
+    "ruflo": true
+  },
+  "captureGroupEmpty": true,
+  "freshIndependentRootReadback": {
+    "exactPids": [
+      36791,
+      36793,
+      36811,
+      36816
+    ],
+    "group": 36793,
+    "allAbsent": true,
+    "pgrepExit": 1
+  },
+  "stateSha256": "e7c28d07acac100a22347179104cadb5d4a9e33eb86df9d4587617b56c5513a7",
+  "streamSha256": "2d416e4f373507d324260d72006b974aa3fe65a28b1745b197fb27328af2303f",
+  "onceClaimSha256": "002121a79d5f001221333df2ce36083ef3f96a72e34a20170c494f108ae52c5e",
+  "reviewAccepted": false,
+  "effectiveEffort": "UNPROVEN",
+  "rawThinkingPublished": false,
+  "limits": "One R9 invocation consumed. Cleanup IDENTITY_CHANGED retained, not rewritten as zero; fresh exact-ID/group absence independently established. New xhigh review needs a fresh binding/nonce/session and actual independent approvals. No same-claim retry."
+}

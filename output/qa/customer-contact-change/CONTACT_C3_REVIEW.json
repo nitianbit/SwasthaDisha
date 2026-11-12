@@ -1,0 +1,20 @@
+{
+  "schema": "SD-CONTACT-ENROLLMENT-CONTRACT-FINDING-1",
+  "reviewer": "/root",
+  "role": "Standards",
+  "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+  "contractSha256": "90b7113c0dc8660573f507a0f0675e53a0a341fe46e31d28e870e7ac47cb3a0d",
+  "decision": "REQUEST_CHANGES",
+  "finding": {
+    "id": "CONTACT-C3",
+    "boundary": "Public customer enrollment must not add an unproved secondary login destination outside the new contact-proof commands.",
+    "sourceFacts": [
+      "auth/validation sendOTP and verifyOTP accept both phone and email using .or, not exclusive choice",
+      "AuthService.sendOTP new individual-user payload stores both supplied fields",
+      "Only the selected phone-or-email target receives the login OTP",
+      "UserRepository login lookups subsequently treat stored personal contacts as credentials"
+    ],
+    "requiredRepair": "Freeze customer-only single admitted destination on login send/verify, before query/create/send, and save only that destination on new-customer enrollment. Secondary addition uses the proof-bound contact flow. Preserve other-role request contracts; legacy unproven pairs need explicit migration disposition.",
+    "evidence": "Read current source as text only; no application, provider, database or exploit execution. Independent confirmation requested."
+  }
+}
