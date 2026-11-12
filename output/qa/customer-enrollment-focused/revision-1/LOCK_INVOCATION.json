@@ -1,0 +1,31 @@
+{
+  "schema": "SD-ENROLLMENT-LOCK-ROOT-INVOCATION-1",
+  "candidate": "10600a268acd42aaca4397279941e22217e7caa5",
+  "reviewDecisions": "revision-1/REVIEW_DECISIONS.json",
+  "receiptSha256": "e356af29c3e10dccd309a6981cdb901b1cb74fb85a1fc6abc072f1b6b0fe4654",
+  "nonce": "f3f6904a-a1e8-449e-8f58-cc90d2e19603",
+  "mode": "resolve-lock",
+  "selectedCommittedInputsClean": true,
+  "wholeWorktreeClean": false,
+  "reason": "Own public review/invocation records untracked; no selected source edits",
+  "command": [
+    "/usr/bin/env",
+    "-i",
+    "PATH=/usr/bin:/bin",
+    "TMPDIR=/private/tmp",
+    "/usr/bin/python3",
+    "-I",
+    "test/customer-enrollment-runtime/prepare.py",
+    "--resolve-lock"
+  ],
+  "state": "TERMINAL_PREFLIGHT_FAILED",
+  "timeoutSeconds": 900,
+  "noAutomaticRetry": true,
+  "exitCode": 1,
+  "firstFailure": "Clean preparation environment",
+  "failureSource": "prepare.py main line78 before profile/receipt/once/owned workspace/npm",
+  "onceCreated": false,
+  "resolvedLockCreated": false,
+  "buildDescriptorCreated": false,
+  "npmStarted": false
+}
