@@ -1,0 +1,27 @@
+{
+  "schema": "SD-INTERNAL-SOURCE-DECISIONS-1",
+  "baseline": "37fea6b23991d4cdd98e3d68300a5191122fc868",
+  "candidate": "33fa7b5775bb73d03fd94522655fc88c11617dcf",
+  "author": "/root/payment_ctor_contract",
+  "contractSha256": "afe1861ef7f256a495304e39c5f2a768abd66c3ce80ade2663b9004ba5d7242f",
+  "patchSha256": "526a716c36bf8d35b4bf13fee0185540463dbec2e8cd689c38625456cdb5b694",
+  "testSha256": "e123eab6f5bde08475605f8ed47a1f3830cd97ecdd9c8fe2dd0f2aa49507d35e",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex source review; exact forward/inverse full test bytes, real19th argument and unchanged production pins personally inspected."
+    },
+    {
+      "reviewer": "/root/booking_write_contract",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex source review; exact forward/inverse full test bytes, real19th argument and unchanged production pins personally inspected."
+    }
+  ],
+  "execution": "NOT_RUN; source/data/Git only. Legacy integration suite expressly not admitted.",
+  "limits": "Call-shape repair only; no TypeScript/TypeDI/pharmacy-order gate or503/runtime proof; owner/release gates unchanged."
+}
