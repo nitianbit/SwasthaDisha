@@ -1,0 +1,20 @@
+{
+  "contract_sha256": "b7a82e761ebeacd808dfe11fbb66d7e467631c2aa062f91a8a34deaa8f2d94ea",
+  "author": "/root/booking_read_spec",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/policy_standards",
+      "role": "Standards",
+      "decision": "APPROVE_PREIMPLEMENTATION_SOURCE_ONLY",
+      "findings": []
+    }
+  ],
+  "superseded": "Old d45ca5c0 draft and Root preliminary approval were superseded before source edits; AR-26 field-denial ordering finding fixed and both exact amended decisions are fresh.",
+  "scope": "Three existing booking files only. Signed scope/plain shape, owned lookup404, forbidden422, noteformat400, eligible status409 and final owner/status predicate. No generic side effects or changed noncustomer/Joi behavior. Runtime NOT_RUN; no application import/typecheck/DB/provider admission."
+}

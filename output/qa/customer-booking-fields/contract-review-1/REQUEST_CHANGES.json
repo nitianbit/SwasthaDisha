@@ -1,0 +1,21 @@
+{
+  "schema": "SD-CUSTOMER-BOOKING-FIELDS-CONTRACT-AMENDMENT-1",
+  "date": "2026-11-12",
+  "author": "/root/booking_read_spec",
+  "rejectedDraftSha256": "d45ca5c085c3ed8048805cd8589df35c99d4d5fc15050b0b022a2cf34fcab11b",
+  "rejectedDraftInertCopy": "output/qa/customer-booking-fields/contract-review-1/CUSTOMER_BOOKING_FIELDS_CONTRACT.d45ca5c0.md.txt",
+  "decision": "REQUEST_CHANGES",
+  "reviewProvenance": {
+    "reportedBy": "/root",
+    "independentReviewer": "/root/policy_standards",
+    "record": "Actual Root handoff of independent Standards finding and Root concurrence; author acknowledges and amends, not an independent approval."
+  },
+  "finding": "Rejected draft used forbidden-field403 before owned-object lookup, contrary to SYSTEM_DESIGN AR-26 line445 and existing USER_ROUTE_AUTHORITY_CONTRACT.",
+  "rootPreliminaryApproval": "SUPERSEDED_NO_IMPLEMENTATION_ADMISSION",
+  "amendment": "Signed scope/plain-object shape check, existing combined owned getById, then surviving-field422 FORBIDDEN_FIELD, note-format400, state409 and scoped final write. Upstream Joi400/query-owner403/foreign404 preserved. Postlookup denials have one scoped read and zero writes/business effects.",
+  "activeDraftSha256": "b7a82e761ebeacd808dfe11fbb66d7e467631c2aa062f91a8a34deaa8f2d94ea",
+  "freshReviews": "PENDING_TWO_ACTUAL_NONAUTHOR_CONTRACT_DECISIONS",
+  "applicationSourceEdits": 0,
+  "applicationExecution": "NOT_RUN",
+  "gitMutation": false
+}
