@@ -1,0 +1,287 @@
+{
+  "kind": "SOURCE_DATA_ONLY",
+  "argv": [
+    "output/qa/lab-individual-association/source/source-check.py"
+  ],
+  "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab",
+  "checks": [
+    {
+      "name": "EXACT_BASELINE_SHA",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "EXACT_TWO_FALLBACK_REMOVALS",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "AFTER_ARCHIVE_EXACT",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "CANDIDATE_NAMED_SOURCE_ASSERTIONS",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "ONLY_OWNED_CONTROLLER_CHANGED_IN_PINNED_FILES",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_baseline",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_baseline",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_createBooking:restored_fallback",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_createBooking:restored_fallback",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_createBooking:association_before_spread",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_createBooking:association_before_spread",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_createBooking:foreign_body_owner",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_createBooking:foreign_body_owner",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_createBooking:admin_body_association_lost",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_createBooking:admin_body_association_lost",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_createBooking:trusted_actor_association_lost",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_createBooking:trusted_actor_association_lost",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_createBooking:owner_before_spread",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_createBooking:owner_before_spread",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_createDiagnosticsBooking:restored_fallback",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_createDiagnosticsBooking:restored_fallback",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_createDiagnosticsBooking:association_before_spread",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_createDiagnosticsBooking:association_before_spread",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_createDiagnosticsBooking:foreign_body_owner",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_createDiagnosticsBooking:foreign_body_owner",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_createDiagnosticsBooking:admin_body_association_lost",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_createDiagnosticsBooking:admin_body_association_lost",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_createDiagnosticsBooking:trusted_actor_association_lost",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_createDiagnosticsBooking:trusted_actor_association_lost",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_createDiagnosticsBooking:owner_before_spread",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_createDiagnosticsBooking:owner_before_spread",
+      "sourceAssertion": "ACCEPTED"
+    }
+  ],
+  "negativeControls": [
+    {
+      "name": "baseline",
+      "intended": "createBooking:NO_BODY_ASSOCIATION_FALLBACK",
+      "rejectedByNamedSourceAssertions": [
+        "createBooking:NO_BODY_ASSOCIATION_FALLBACK",
+        "createBooking:TRUSTED_ACTOR_ASSOCIATION_RETAINED",
+        "createBooking:EXPLICIT_ASSOCIATION_AFTER_SPREAD",
+        "createDiagnosticsBooking:NO_BODY_ASSOCIATION_FALLBACK",
+        "createDiagnosticsBooking:TRUSTED_ACTOR_ASSOCIATION_RETAINED",
+        "createDiagnosticsBooking:EXPLICIT_ASSOCIATION_AFTER_SPREAD"
+      ],
+      "variantSha256": "67ebcef4ec0b7f21c9bf2c9c274a6d6066499ef34f0637fa3fa0ee36fde2acd3",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "createBooking:restored_fallback",
+      "intended": "createBooking:NO_BODY_ASSOCIATION_FALLBACK",
+      "rejectedByNamedSourceAssertions": [
+        "createBooking:NO_BODY_ASSOCIATION_FALLBACK",
+        "createBooking:TRUSTED_ACTOR_ASSOCIATION_RETAINED",
+        "createBooking:EXPLICIT_ASSOCIATION_AFTER_SPREAD"
+      ],
+      "variantSha256": "6b8b796aa8d69e03a736ce4ade4f02d9c9a752a02ea66532adf790f45ea8a967",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "createBooking:association_before_spread",
+      "intended": "createBooking:EXPLICIT_ASSOCIATION_AFTER_SPREAD",
+      "rejectedByNamedSourceAssertions": [
+        "createBooking:EXPLICIT_ASSOCIATION_AFTER_SPREAD"
+      ],
+      "variantSha256": "ed7bab82095b847fee32cfa63b76fe58e83b9b26980687e879247f9f69b5240b",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "createBooking:foreign_body_owner",
+      "intended": "createBooking:SIGNED_OWNER_RESOLVER_RETAINED",
+      "rejectedByNamedSourceAssertions": [
+        "createBooking:SIGNED_OWNER_RESOLVER_RETAINED"
+      ],
+      "variantSha256": "53c0a420a3d3c8fc0b8c53c535112cd6922d31f53372bf8d0386ad76688b8afb",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "createBooking:admin_body_association_lost",
+      "intended": "createBooking:ADMIN_BODY_ASSOCIATION_RETAINED",
+      "rejectedByNamedSourceAssertions": [
+        "createBooking:ADMIN_BODY_ASSOCIATION_RETAINED",
+        "createBooking:EXPLICIT_ASSOCIATION_AFTER_SPREAD"
+      ],
+      "variantSha256": "246bb9eb7fb1f3195cb7d348e523b80660d732bf3797b7bac4997931ec0fc219",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "createBooking:trusted_actor_association_lost",
+      "intended": "createBooking:TRUSTED_ACTOR_ASSOCIATION_RETAINED",
+      "rejectedByNamedSourceAssertions": [
+        "createBooking:NO_BODY_ASSOCIATION_FALLBACK",
+        "createBooking:TRUSTED_ACTOR_ASSOCIATION_RETAINED",
+        "createBooking:EXPLICIT_ASSOCIATION_AFTER_SPREAD"
+      ],
+      "variantSha256": "18dd70ccc76b4ee6af5b1df7a09e65107af3ce2be953c9ad9883dbea7d2d84ad",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "createBooking:owner_before_spread",
+      "intended": "createBooking:EXPLICIT_OWNER_AFTER_SPREAD",
+      "rejectedByNamedSourceAssertions": [
+        "createBooking:EXPLICIT_OWNER_AFTER_SPREAD"
+      ],
+      "variantSha256": "8deefb8c2f839d86f0a409f0912df5f9ddf2e18d1bcf9b6754bd6c5b4ac8ad9f",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "createDiagnosticsBooking:restored_fallback",
+      "intended": "createDiagnosticsBooking:NO_BODY_ASSOCIATION_FALLBACK",
+      "rejectedByNamedSourceAssertions": [
+        "createDiagnosticsBooking:NO_BODY_ASSOCIATION_FALLBACK",
+        "createDiagnosticsBooking:TRUSTED_ACTOR_ASSOCIATION_RETAINED",
+        "createDiagnosticsBooking:EXPLICIT_ASSOCIATION_AFTER_SPREAD"
+      ],
+      "variantSha256": "5c01ba2bf9c83f900c26d135652f7522f2f505fb767890c4e6c03fcbf22faaa2",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "createDiagnosticsBooking:association_before_spread",
+      "intended": "createDiagnosticsBooking:EXPLICIT_ASSOCIATION_AFTER_SPREAD",
+      "rejectedByNamedSourceAssertions": [
+        "createDiagnosticsBooking:EXPLICIT_ASSOCIATION_AFTER_SPREAD"
+      ],
+      "variantSha256": "0658dc8976609864ca59f6a1d488589127eddc3ce02fa9f7b15c51ac7ca0db17",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "createDiagnosticsBooking:foreign_body_owner",
+      "intended": "createDiagnosticsBooking:SIGNED_OWNER_RESOLVER_RETAINED",
+      "rejectedByNamedSourceAssertions": [
+        "createDiagnosticsBooking:SIGNED_OWNER_RESOLVER_RETAINED"
+      ],
+      "variantSha256": "55c7765112466a4d9ebc02c8293ef4f2175beb1a8cb8c1b9c9830fd2aa6c04dd",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "createDiagnosticsBooking:admin_body_association_lost",
+      "intended": "createDiagnosticsBooking:ADMIN_BODY_ASSOCIATION_RETAINED",
+      "rejectedByNamedSourceAssertions": [
+        "createDiagnosticsBooking:ADMIN_BODY_ASSOCIATION_RETAINED",
+        "createDiagnosticsBooking:EXPLICIT_ASSOCIATION_AFTER_SPREAD"
+      ],
+      "variantSha256": "2234f3f0391c783e9ef556c7173db02610f41c04cf3f9ed981f85b998de94c62",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "createDiagnosticsBooking:trusted_actor_association_lost",
+      "intended": "createDiagnosticsBooking:TRUSTED_ACTOR_ASSOCIATION_RETAINED",
+      "rejectedByNamedSourceAssertions": [
+        "createDiagnosticsBooking:NO_BODY_ASSOCIATION_FALLBACK",
+        "createDiagnosticsBooking:TRUSTED_ACTOR_ASSOCIATION_RETAINED",
+        "createDiagnosticsBooking:EXPLICIT_ASSOCIATION_AFTER_SPREAD"
+      ],
+      "variantSha256": "4b17723cab0fec3c9e94ef58b6bc742537db43b756e64640ce24baf85f22d91a",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "createDiagnosticsBooking:owner_before_spread",
+      "intended": "createDiagnosticsBooking:EXPLICIT_OWNER_AFTER_SPREAD",
+      "rejectedByNamedSourceAssertions": [
+        "createDiagnosticsBooking:EXPLICIT_OWNER_AFTER_SPREAD"
+      ],
+      "variantSha256": "4ed6ed2a1c9b197cfd087e01d0745203b84b3141f379125401800691940eed4f",
+      "scope": "in-memory source text only"
+    }
+  ],
+  "runtimeBehavior": "NOT_RUN",
+  "candidateSourceFailures": [],
+  "changedProtectedFiles": [
+    "src1/modules/externalBookings/controller/index.ts"
+  ],
+  "sourceVerdict": "ACCEPTED",
+  "candidateSha256": "b036cc91db6abf4cecfc2963fa02ab04b12bd8c8048c7c979468080a778942ce",
+  "baselineSha256": "67ebcef4ec0b7f21c9bf2c9c274a6d6066499ef34f0637fa3fa0ee36fde2acd3",
+  "protectedFileCount": 385,
+  "negativeControlCount": 13,
+  "restoredSourceControlCount": 13,
+  "scriptSha256": "4edf611ebc208f88ba64d8a229644a0cbdfb7f2151acba3540c0e3fab6e4432b",
+  "gitMutation": false,
+  "limitations": [
+    "Lexical source assertions and hashes only; no TypeScript/parser/compiler/application execution.",
+    "Restored controls recheck original candidate text only; no executed positive behavior is established.",
+    "Auth/Joi/DTO/persistence/coupon/payment/provider behavior remains NOT_RUN pending complete C3 admission.",
+    "Existing save/pricing/conditional slot-freeze before coupon denial is preserved; no zero-effects or rollback claim.",
+    "Final cross-module integration campaign remains DEFERRED_BY_OWNER."
+  ]
+}

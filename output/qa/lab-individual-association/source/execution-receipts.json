@@ -1,0 +1,45 @@
+{
+  "kind": "OBSERVED_SOURCE_ONLY_COMMAND_RECEIPTS",
+  "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab",
+  "commands": [
+    {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/usr/sbin:/sbin",
+        "/usr/bin/python3",
+        "-I",
+        "/private/tmp/lab-association-source-write.py"
+      ],
+      "exitCode": 0,
+      "observed": "Verified exact contract, baseline, two decisions and nine source pins; wrote two-expression amendment and initial evidence."
+    },
+    {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/usr/sbin:/sbin",
+        "/usr/bin/python3",
+        "-I",
+        "output/qa/lab-individual-association/source/source-check.py"
+      ],
+      "exitCode": 0,
+      "stdout": "{\"sourceVerdict\": \"ACCEPTED\", \"candidateSha256\": \"b036cc91db6abf4cecfc2963fa02ab04b12bd8c8048c7c979468080a778942ce\", \"protectedFileCount\": 385, \"negativeControlCount\": 13, \"restoredSourceControlCount\": 13, \"runtimeBehavior\": \"NOT_RUN\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "src1/modules/externalBookings/controller/index.ts"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "runtimeBehavior": "NOT_RUN",
+  "gitMutation": false
+}

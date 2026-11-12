@@ -1,0 +1,21 @@
+{
+  "kind": "FROZEN_SOURCE_CANDIDATE",
+  "candidateSha256": "b036cc91db6abf4cecfc2963fa02ab04b12bd8c8048c7c979468080a778942ce",
+  "files": {
+    "output/qa/lab-individual-association/source/README.md": "92b2e55fb9a615ebce12039db8de7d335066264d25e07f924c8fc0bcb5a84c4a",
+    "output/qa/lab-individual-association/source/controller.after.ts.txt": "b036cc91db6abf4cecfc2963fa02ab04b12bd8c8048c7c979468080a778942ce",
+    "output/qa/lab-individual-association/source/controller.before.ts.txt": "67ebcef4ec0b7f21c9bf2c9c274a6d6066499ef34f0637fa3fa0ee36fde2acd3",
+    "output/qa/lab-individual-association/source/controller.diff": "7178caca12794d91379267633035c3a4a681828cc429390a5d62084a10969b33",
+    "output/qa/lab-individual-association/source/controller.expected.ts.txt": "b036cc91db6abf4cecfc2963fa02ab04b12bd8c8048c7c979468080a778942ce",
+    "output/qa/lab-individual-association/source/execution-receipts.json": "89c07fe89b77c38637fbfdc53e5c9e367be7fe464b71a1298e9d173695d68c70",
+    "output/qa/lab-individual-association/source/preimplementation.snapshot.json": "146bba4bd64e3f5470d2ee6d9620c6ab91471cf2b8d19f94026f433ce87cd28e",
+    "output/qa/lab-individual-association/source/protected-files.after.json": "332c11c228f311216dd407c1431735ac50c836fe29447da0408c1216b57572ce",
+    "output/qa/lab-individual-association/source/protected-files.before.json": "20e65a2c198386d41491f7f8b91c8cc475fc840399f1c3683956e32da1156b59",
+    "output/qa/lab-individual-association/source/source-check.py": "4edf611ebc208f88ba64d8a229644a0cbdfb7f2151acba3540c0e3fab6e4432b",
+    "output/qa/lab-individual-association/source/source-verification.json": "0d0258f281d2069cb7053d8264e802e74465554f8e40255beb8064a8c089d23f",
+    "output/qa/lab-individual-association/source/source-write.py": "5a3b25f15dbfad3f01bc89e100b5c5ea3efcd1c0e236727570ca50a0b1817362",
+    "output/qa/lab-individual-association/source/write-receipt.json": "5876cbccfbe28a2184247ba3021ae5c31788f056301951ebb9e123262622a138"
+  },
+  "writesStoppedForIndependentReviews": true,
+  "runtimeBehavior": "NOT_RUN"
+}

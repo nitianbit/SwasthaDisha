@@ -376,7 +376,7 @@ export class ExternalBookingController {
       corporateId:
         req.user?.userType === 'admin'
           ? (req.body.corporateId as string | undefined)
-          : req.user?.corporateId || (req.body.corporateId as string | undefined),
+          : req.user?.corporateId,
       patientName: (req.body.patientName as string | undefined) || user?.name || 'Patient',
       patientEmail: (req.body.patientEmail as string | undefined) || user?.email,
       patientPhone: (req.body.patientPhone as string | undefined) || user?.phone,
@@ -448,7 +448,7 @@ export class ExternalBookingController {
       corporateId:
         req.user?.userType === 'admin'
           ? (req.body.corporateId as string | undefined)
-          : req.user?.corporateId || (req.body.corporateId as string | undefined),
+          : req.user?.corporateId,
       integration: this.resolveIntegration(req.body.integration),
       addressLine:
         (req.body.addressLine as string | undefined) || user?.address,

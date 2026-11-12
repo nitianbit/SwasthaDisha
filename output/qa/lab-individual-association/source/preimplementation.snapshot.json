@@ -1,0 +1,30 @@
+{
+  "schema": "SD-LAB-ASSOCIATION-PREIMPLEMENTATION-1",
+  "contractSha256": "79e5ec32ea34a30b3859676f1297b8553e81add2f314ea214d9bbe0e3cfd7a05",
+  "controllerBaselineSha256": "67ebcef4ec0b7f21c9bf2c9c274a6d6066499ef34f0637fa3fa0ee36fde2acd3",
+  "decisions": [
+    {
+      "reviewer": "/root/booking_read_spec",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY"
+    },
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "verification": "Read complete contract; rehashed all9 current source pins; directly inspected both post-spread controller mappings and downstream coupon actor/eligibility/400 handling. Only two fallback deletions admitted, surrounding effects/errors/admin/token-claim behavior preserved."
+    }
+  ],
+  "rootAction": "AUTHORIZE_EXACT_TWO_EXPRESSION_REMOVAL_ONLY",
+  "limitations": [
+    "JWT-claim containment does not prove current membership.",
+    "Save/pricing/conditional Healthians freeze can precede coupon denial; no zero-effects or rollback claim.",
+    "No helper/schema/service/payment/auth/runtime changes.",
+    "All focused runtime and type checks NOT_RUN until admitted."
+  ],
+  "runtimeApproved": false,
+  "claudeReviewed": false,
+  "moduleComplete": false
+}

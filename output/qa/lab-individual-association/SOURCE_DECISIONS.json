@@ -1,0 +1,33 @@
+{
+  "schema": "SD-LAB-ASSOCIATION-SOURCE-DECISIONS-1",
+  "contractSha256": "79e5ec32ea34a30b3859676f1297b8553e81add2f314ea214d9bbe0e3cfd7a05",
+  "controllerSha256": "b036cc91db6abf4cecfc2963fa02ab04b12bd8c8048c7c979468080a778942ce",
+  "freezeSha256": "256da84b34e226e9ce956da00a5732feea0e08aa18d9601582d1cf0546804080",
+  "decisions": [
+    {
+      "reviewer": "/root/booking_read_spec",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SOURCE_ONLY"
+    },
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "verification": "Directly reviewed complete contract, actual handlers/coupon mapping, all13 artifact pins, checker source and recorded lexical results; exact before.replace(twoOldFallbacks,newTrustedClaim) equals current entire controller; prior customer controller unchanged."
+    }
+  ],
+  "limitations": [
+    "13 lexical negative variants/13 restored source-text controls are source shape evidence only.",
+    "Type validity and all focused HTTP/Joi/service/provider/DB behavior NOT_RUN.",
+    "Existing draft saves/pricing/conditional Healthians freeze precede coupon denial; no zero-effects or rollback claim.",
+    "Token association is not verified current membership.",
+    "Genuine Claude source review pending.",
+    "Final cross-module integration DEFERRED_BY_OWNER."
+  ],
+  "moduleComplete": false,
+  "runtimeAccepted": false,
+  "claudeReviewed": false,
+  "releaseAccepted": false
+}
