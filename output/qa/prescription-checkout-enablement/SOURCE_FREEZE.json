@@ -1,0 +1,41 @@
+{
+  "schema": "SD-PRESCRIPTION-CHECKOUT-SOURCE-FREEZE-1",
+  "baseline": "18b9b5865a115e0e411353e95780f6df89a82e81",
+  "author": "/root/policy_standards",
+  "files": {
+    "documentation/planning/implementation/PRESCRIPTION_CHECKOUT_ENABLEMENT_CONTRACT.md": "e3deb08a9002e4b11bf0d168dbce369312727841e5c96fa5c3a25503ea1781a7",
+    "output/qa/prescription-checkout-enablement/PREIMPLEMENTATION_DECISIONS.json": "aca0aeb768cd2e1dbd4bf65f2780e22524405a2ef49cf79e1986fb963a80372b",
+    "src1/modules/pharmacyOrders/prescriptionCommerce.ts": "8e6db5fc64d5a5b2fec6437660fb0d308c24d3e1c0aec2ae95efdc2f73fe0058",
+    "src1/modules/pharmacyOrders/services/index.ts": "aa68cce2580c440f86a65c3c2a26ce78303a69602b6c730b76bbf6e53d1400ae",
+    "src1/modules/payment/services/index.ts": "9c1086e3aa9239855ed3d73a02f941015d869bdb36a689a5294dea367ee7457d",
+    "output/qa/prescription-checkout-enablement/candidate.diff": "155870d842121d284175c280b9425a848432c1eef2c1f0e5c2fea73084a67c78",
+    "output/qa/prescription-checkout-enablement/SOURCE_VERIFICATION.json": "ea146fb9e7acb7d551b580c8c390246ec3f5e311a5120825a31701fc2e2f292b"
+  },
+  "unchanged_selected_inputs": {
+    "documentation/planning/implementation/PRESCRIPTION_CHECKOUT_ENABLEMENT_DECISION.md": "ae3596a7d55978dbde43f6e69c99da8704a7eb34fc020301480ed3562c734e7b",
+    "documentation/planning/implementation/PHARMACY_DELEGATED_POLICY_DECISIONS.md": "3882d1dc976342376ed6729fc877fa80e15b79f225a37b10933c1d3681333f6f",
+    "documentation/planning/SYSTEM_DESIGN.md": "cbd899f6fb442b13db28c389143b529b90da364165dc17291cc829814810bc84",
+    "output/qa/customer-pharmacy-lab-claude-review/operator/CLAUDE_REVIEW_6.md": "83b0f6bfbe66e9a172d358bfc1b4de479f5168b4a797ba47640ca81ce76a5222",
+    "src1/modules/pharmacyOrders/controller/index.ts": "e168f02e3ed0afce7587b2f4f0d40982c9c0fdfa5bd4062309c7c27a5601ef28",
+    "src1/modules/pharmacyOrders/routes/index.ts": "057900f3675521cbfaa7c31e003d38a036ba46c6e2fa7fab4d7ee7b6a48ec815",
+    "src1/modules/pharmacyOrders/types/index.ts": "d9721c2b901acd559c224e88cf529aa1d4eb9617dd10f58d31073301575118a7",
+    "src1/modules/pharmacyOrders/validation/index.ts": "6c4d01ebcb9db52c88bc8b0883dc679816f6b232a2c53ee5819d8f9e6f5afd64",
+    "src1/modules/pharmacyOrders/model/index.ts": "86b2bb62e2e2191aff1f624f8dc344e97f519add9bd9ba02cfd2fffb37c7a2b8",
+    "src1/modules/pharmacyOrders/repository/index.ts": "3b2c068fe8bcb9679811e6d44ccb265d162df4b3158d66ee051d1c83ceea9d44",
+    "src1/modules/pharmacyCart/services/index.ts": "6c6f50cecfd60e7e404d6138329d5573b8075efe027ed1b4930a99db46c3f0e5",
+    "src1/modules/pharmacyCart/controller/index.ts": "963a7dab2c4ecb6aca75dc9fe40c9f9a42958d491706b817db085f81c7c94798",
+    "src1/modules/pharmacyCart/routes/index.ts": "45d128c4d4fd220d97e7a9dd20d202877adff92d361dfa478be688f92a4d78a9",
+    "src1/modules/pharmacyCart/validation/index.ts": "15c4155c8989d15be12d31ac45207d1d2b4777734dce00745c3c0fc7993c2f18",
+    "src1/modules/pharmacyMedicines/repository/index.ts": "2d3f1cc7e21804546bbdaa68d8316c9f3f4ae176f6cebc26626960908a02c2f3",
+    "src1/modules/pharmacyMedicines/model/index.ts": "2dd98cd59a4e9a3aaa156d917f7cc131d7e30c7546ad7296b8a0ca4920c70725",
+    "src1/modules/pharmacyMedicines/types/index.ts": "527e6987a95bae02c27bcd2d7547624c26251547efbc235a30fa2e52912fdf8d",
+    "src1/modules/pharmacyWallet/services/index.ts": "59513bb95f74e7b8e48911c2d48f400604d7d1d82cdfe3cdcb5bed0d2d168b61",
+    "src1/modules/common/repository/BaseRepository.ts": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a"
+  },
+  "production_delta": [
+    "src1/modules/payment/services/index.ts",
+    "src1/modules/pharmacyOrders/prescriptionCommerce.ts",
+    "src1/modules/pharmacyOrders/services/index.ts"
+  ],
+  "scope": "Source-only candidate, runtime/type/HTTP/DB/provider NOT_RUN. Two actual nonauthor source reviews before integration."
+}

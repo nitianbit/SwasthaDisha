@@ -19,6 +19,7 @@ import {
   OrderStatus,
 } from '@/modules/pharmacyOrders/types';
 import { AppError } from '@/modules/common/types';
+import { assertPrescriptionCommerceAvailable } from '@/modules/pharmacyOrders/prescriptionCommerce';
 import logger from '@/services/logger';
 
 const TERMINAL_STATUSES: OrderStatus[] = ['completed', 'abandoned', 'cancelled', 'rejected'];
@@ -46,10 +47,11 @@ type PricedOrderItem = CreateOrderRequest['items'][number] & {
   medicineName: string;
   hsnCode?: string;
   gstPercent: number;
-  prescriptionRequired: boolean;
+  prescriptionRequired: boolean | undefined;
 };
+type NonPrescriptionOrderItem = PricedOrderItem & { prescriptionRequired: false };
 
-function computeTotals(items: PricedOrderItem[]) {
+function computeTotals(items: NonPrescriptionOrderItem[]) {
   let subtotalPaise = 0;
   let discountTotalPaise = 0;
   let taxTotalPaise = 0;
@@ -443,11 +445,23 @@ export class PharmacyOrderService {
         unitPrice,
         hsnCode: medicine.hsnCode,
         gstPercent: medicine.gstPercent ?? 0,
-        prescriptionRequired: medicine.prescriptionRequired ?? false,
+        prescriptionRequired: medicine.prescriptionRequired,
       });
     }
 
     return pricedItems;
+  }
+
+  private assertNewCommerceForOrder(order: IPharmacyOrder, expectedOrderId: string): Promise<void> {
+    return assertPrescriptionCommerceAvailable({
+      kind: 'stored_order',
+      order,
+      expectedOrderId,
+      readMedicines: ids => this.medicineRepository.findAll(
+        { _id: { $in: ids } },
+        { select: '_id prescriptionRequired isActive archivedAt' }
+      ),
+    });
   }
 
   private assertUniqueMedicines(items: CreateOrderRequest['items']): void {
@@ -546,15 +560,6 @@ export class PharmacyOrderService {
     this.validateOrderParty(data);
     this.assertUniqueMedicines(data.items);
 
-    if (data.customerId) {
-      await this.customerService.ensureLinked(
-        pharmacyId,
-        data.customerId,
-        createdById,
-        createdByRole
-      );
-    }
-
     const recurringItems = data.items.filter((item) => item.recurring);
     if (recurringItems.length && !data.customerId) {
       throw new AppError({
@@ -573,12 +578,28 @@ export class PharmacyOrderService {
       data.items,
       options.allowPriceOverride ?? true
     );
+    await assertPrescriptionCommerceAvailable({
+      kind: 'new_items',
+      items: pricedItems,
+      prescriptionUrls: data.prescriptionUrls,
+    });
+    // Only explicit canonical false values survive the shared guard.
+    const admittedItems = pricedItems as NonPrescriptionOrderItem[];
+    if (data.customerId) {
+      await this.customerService.ensureLinked(
+        pharmacyId,
+        data.customerId,
+        createdById,
+        createdByRole
+      );
+    }
+
     const { payerUserId, payerPharmacyId } = this.resolvePaymentPayer({
       customerId: data.customerId,
       buyerPharmacyId: data.buyerPharmacyId,
       createdById,
     });
-    const prescriptionStatus = this.assertPrescriptionProvided(pricedItems, data.prescriptionUrls);
+    const prescriptionStatus = this.assertPrescriptionProvided(admittedItems, data.prescriptionUrls);
     const {
       items,
       subtotal,
@@ -589,7 +610,7 @@ export class PharmacyOrderService {
       discountTotalPaise,
       taxTotalPaise,
       grandTotalPaise,
-    } = computeTotals(pricedItems);
+    } = computeTotals(admittedItems);
     const inventoryItems = this.buildInventoryItems(items);
 
     // Create the order and consume stock as one unit: either both are
@@ -825,6 +846,18 @@ export class PharmacyOrderService {
       });
     }
 
+    const enrichesCommerce = Reflect.ownKeys(data).some(key => key !== 'notes');
+    if (enrichesCommerce) {
+      await this.assertNewCommerceForOrder(order, id);
+      if (!data.items) {
+        await assertPrescriptionCommerceAvailable({
+          kind: 'new_items',
+          items: order.items,
+          prescriptionUrls: data.prescriptionUrls !== undefined ? data.prescriptionUrls : order.prescriptionUrls,
+        });
+      }
+    }
+
     const nextCustomerId =
       data.customerId !== undefined
         ? data.customerId
@@ -891,9 +924,6 @@ export class PharmacyOrderService {
       linkedConsultationId: nextLinkedConsultationId,
       linkedDiagnosticOrderId: nextLinkedDiagnosticOrderId,
     });
-    if (nextCustomerId && String(order.customerId || '') !== nextCustomerId) {
-      await this.customerService.ensureLinked(pharmacyId, nextCustomerId, pharmacyId, 'pharmacy');
-    }
 
     let updatePayload: Record<string, unknown> = {
       ...data,
@@ -912,9 +942,15 @@ export class PharmacyOrderService {
         nextBuyerPharmacyId,
         incomingItems
       );
-      const totals = computeTotals(pricedItems);
-      const nextPrescriptionUrls = data.prescriptionUrls ?? order.prescriptionUrls;
-      const prescriptionStatus = this.assertPrescriptionProvided(pricedItems, nextPrescriptionUrls);
+      const nextPrescriptionUrls = data.prescriptionUrls !== undefined ? data.prescriptionUrls : order.prescriptionUrls;
+      await assertPrescriptionCommerceAvailable({
+        kind: 'new_items',
+        items: pricedItems,
+        prescriptionUrls: nextPrescriptionUrls,
+      });
+      const admittedItems = pricedItems as NonPrescriptionOrderItem[];
+      const totals = computeTotals(admittedItems);
+      const prescriptionStatus = this.assertPrescriptionProvided(admittedItems, nextPrescriptionUrls);
       updatePayload = {
         ...updatePayload,
         items: totals.items,
@@ -938,6 +974,10 @@ export class PharmacyOrderService {
         code: 'PRESCRIPTION_REQUIRED',
         message: 'Prescription is required for one or more medicines',
       });
+    }
+
+    if (nextCustomerId && String(order.customerId || '') !== nextCustomerId) {
+      await this.customerService.ensureLinked(pharmacyId, nextCustomerId, pharmacyId, 'pharmacy');
     }
 
     const nextItemsForInventory = (updatePayload.items as IPharmacyOrder['items'] | undefined) || order.items;
@@ -1136,6 +1176,8 @@ export class PharmacyOrderService {
         message: `A ${order.status} order cannot be marked as paid`,
       });
     }
+
+    await this.assertNewCommerceForOrder(order, id);
 
     const paidAt =
       payload.data.paidDate && payload.data.paidTime

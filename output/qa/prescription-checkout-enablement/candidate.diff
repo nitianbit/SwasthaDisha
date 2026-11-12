@@ -1,0 +1,324 @@
+diff --git a/src1/modules/payment/services/index.ts b/src1/modules/payment/services/index.ts
+index d79e591527e5af2a75c3cf702b44a5586488e6e5..79ba47c4effc4338d621aa5d77492b09ae5f3ca5 100644
+--- a/src1/modules/payment/services/index.ts
++++ b/src1/modules/payment/services/index.ts
+@@ -28,6 +28,8 @@ import { IBooking } from '@/modules/bookings/types';
+ import { IExternalBooking } from '@/modules/externalBookings/types';
+ import { PharmacyOrderRepository } from '@/modules/pharmacyOrders/repository';
+ import { IPharmacyOrder } from '@/modules/pharmacyOrders/types';
++import { assertPrescriptionCommerceAvailable } from '@/modules/pharmacyOrders/prescriptionCommerce';
++import { MedicineRepository } from '@/modules/pharmacyMedicines/repository';
+ import { InventoryService } from '@/modules/pharmacyInventory/services';
+ import { PharmacyOrderSideEffectService } from '@/modules/pharmacyOrders/services/sideEffects';
+ import { SpecialistRepository } from '@/modules/specialists/repository';
+@@ -92,7 +94,8 @@ export class PaymentService {
+     private userRepository: UserRepository,
+     private emailService: EmailService,
+     private pharmacyWalletRepository: PharmacyWalletRepository,
+-    private pharmacyWalletTransactionRepository: PharmacyWalletTransactionRepository
++    private pharmacyWalletTransactionRepository: PharmacyWalletTransactionRepository,
++    private medicineRepository: MedicineRepository
+   ) {}
+ 
+   private async runPharmacyPaymentCoreTransaction<T>(
+@@ -414,6 +417,24 @@ export class PaymentService {
+     return data.payerUserId || data.userId;
+   }
+ 
++  private async assertNewPharmacyPaymentAllowed(
++    data: Pick<CreatePaymentOrderRequest, 'context' | 'contextId'>
++  ): Promise<void> {
++    if (data.context !== 'pharmacy_order') return;
++    const order = typeof data.contextId === 'string' && /^[0-9a-fA-F]{24}$/.test(data.contextId)
++      ? await this.pharmacyOrderRepository.findById(data.contextId)
++      : null;
++    await assertPrescriptionCommerceAvailable({
++      kind: 'stored_order',
++      order,
++      expectedOrderId: data.contextId,
++      readMedicines: ids => this.medicineRepository.findAll(
++        { _id: { $in: ids } },
++        { select: '_id prescriptionRequired isActive archivedAt' }
++      ),
++    });
++  }
++
+   async createOrder(data: CreatePaymentOrderRequest): Promise<{
+     paymentRecord: IPaymentRecord;
+     razorpayOrder: {
+@@ -443,6 +464,8 @@ export class PaymentService {
+       });
+     }
+ 
++    await this.assertNewPharmacyPaymentAllowed(data);
++
+     const { keyId } = this.getRazorpayCredentials();
+     const razorpayClient = this.getRazorpayClient();
+ 
+@@ -513,6 +536,7 @@ export class PaymentService {
+   async createDirectPaidTransaction(
+     data: CreateDirectPaidTransactionRequest
+   ): Promise<IPaymentRecord> {
++    await this.assertNewPharmacyPaymentAllowed(data);
+     const currency = (data.currency || 'INR').toUpperCase();
+     const baseAmountPaise = Math.round(data.baseAmount * 100);
+     const discountAmountPaise = Math.round((data.discountAmount || 0) * 100);
+diff --git a/src1/modules/pharmacyOrders/prescriptionCommerce.ts b/src1/modules/pharmacyOrders/prescriptionCommerce.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..5ffafa226af4e3b323f89e4b28df44220aefd9a3
+--- /dev/null
++++ b/src1/modules/pharmacyOrders/prescriptionCommerce.ts
+@@ -0,0 +1,77 @@
++import { AppError } from '@/modules/common/types';
++
++type PrescriptionCommerceInput =
++  | { kind: 'new_items'; items: unknown; prescriptionUrls?: unknown }
++  | {
++      kind: 'stored_order';
++      order: unknown;
++      expectedOrderId: string;
++      readMedicines: (ids: string[]) => Promise<readonly unknown[]>;
++    };
++
++function unavailable(): never {
++  throw new AppError({
++    status: 503,
++    code: 'PRESCRIPTION_CHECKOUT_UNAVAILABLE',
++    message: 'Prescription checkout is currently unavailable.',
++  });
++}
++
++function isRecord(value: unknown): value is Record<string, unknown> {
++  return typeof value === 'object' && value !== null && !Array.isArray(value);
++}
++
++function canonicalId(value: unknown): string {
++  const id = typeof value === 'string'
++    ? value
++    : isRecord(value) && (value._bsontype === 'ObjectID' || value._bsontype === 'ObjectId') &&
++        typeof value.toHexString === 'function'
++      ? value.toHexString()
++      : undefined;
++  if (typeof id !== 'string' || !/^[0-9a-fA-F]{24}$/.test(id)) unavailable();
++  return id.toLowerCase();
++}
++
++function requireNonPrescriptionItems(items: unknown): asserts items is Record<string, unknown>[] {
++  if (!Array.isArray(items) || !items.length) unavailable();
++  for (const item of items) {
++    if (!isRecord(item) ||
++        !Object.prototype.hasOwnProperty.call(item, 'prescriptionRequired') ||
++        item.prescriptionRequired !== false) unavailable();
++  }
++}
++
++function requireNoPrescriptionDocuments(value: unknown): void {
++  if (value !== undefined && (!Array.isArray(value) || value.length !== 0)) unavailable();
++}
++
++/** Prospective commerce only. Existing capture recording must not call this gate. */
++export async function assertPrescriptionCommerceAvailable(input: PrescriptionCommerceInput): Promise<void> {
++  if (input.kind === 'new_items') {
++    requireNonPrescriptionItems(input.items);
++    requireNoPrescriptionDocuments(input.prescriptionUrls);
++    return;
++  }
++  if (input.kind !== 'stored_order' || !isRecord(input.order)) unavailable();
++  const order = input.order;
++  if (canonicalId(order._id) !== canonicalId(input.expectedOrderId) ||
++      !Object.prototype.hasOwnProperty.call(order, 'prescriptionStatus') ||
++      order.prescriptionStatus !== 'not_required' ||
++      !Object.prototype.hasOwnProperty.call(order, 'prescriptionUrls') ||
++      !Array.isArray(order.prescriptionUrls) || order.prescriptionUrls.length !== 0) unavailable();
++  const items = order.items;
++  requireNonPrescriptionItems(items);
++  if (items.some(item => item.itemStatus !== 'active')) unavailable();
++  const ids = items.map(item => canonicalId(item.medicineId));
++  const remaining = new Set(ids);
++  if (remaining.size !== ids.length) unavailable();
++
++  const medicines = await input.readMedicines([...ids]);
++  requireNonPrescriptionItems(medicines);
++  if (medicines.length !== ids.length) unavailable();
++  for (const medicine of medicines) {
++    const id = canonicalId(medicine._id);
++    if (!remaining.delete(id) || medicine.isActive === false || medicine.archivedAt) unavailable();
++  }
++  if (remaining.size) unavailable();
++}
+diff --git a/src1/modules/pharmacyOrders/services/index.ts b/src1/modules/pharmacyOrders/services/index.ts
+index f8c7e30749b43b3e378cb34b51059be96709893f..de8c55ba53386bb75f794b99be16244e35a029fa 100644
+--- a/src1/modules/pharmacyOrders/services/index.ts
++++ b/src1/modules/pharmacyOrders/services/index.ts
+@@ -19,6 +19,7 @@ import {
+   OrderStatus,
+ } from '@/modules/pharmacyOrders/types';
+ import { AppError } from '@/modules/common/types';
++import { assertPrescriptionCommerceAvailable } from '@/modules/pharmacyOrders/prescriptionCommerce';
+ import logger from '@/services/logger';
+ 
+ const TERMINAL_STATUSES: OrderStatus[] = ['completed', 'abandoned', 'cancelled', 'rejected'];
+@@ -46,10 +47,11 @@ type PricedOrderItem = CreateOrderRequest['items'][number] & {
+   medicineName: string;
+   hsnCode?: string;
+   gstPercent: number;
+-  prescriptionRequired: boolean;
++  prescriptionRequired: boolean | undefined;
+ };
++type NonPrescriptionOrderItem = PricedOrderItem & { prescriptionRequired: false };
+ 
+-function computeTotals(items: PricedOrderItem[]) {
++function computeTotals(items: NonPrescriptionOrderItem[]) {
+   let subtotalPaise = 0;
+   let discountTotalPaise = 0;
+   let taxTotalPaise = 0;
+@@ -443,13 +445,25 @@ export class PharmacyOrderService {
+         unitPrice,
+         hsnCode: medicine.hsnCode,
+         gstPercent: medicine.gstPercent ?? 0,
+-        prescriptionRequired: medicine.prescriptionRequired ?? false,
++        prescriptionRequired: medicine.prescriptionRequired,
+       });
+     }
+ 
+     return pricedItems;
+   }
+ 
++  private assertNewCommerceForOrder(order: IPharmacyOrder, expectedOrderId: string): Promise<void> {
++    return assertPrescriptionCommerceAvailable({
++      kind: 'stored_order',
++      order,
++      expectedOrderId,
++      readMedicines: ids => this.medicineRepository.findAll(
++        { _id: { $in: ids } },
++        { select: '_id prescriptionRequired isActive archivedAt' }
++      ),
++    });
++  }
++
+   private assertUniqueMedicines(items: CreateOrderRequest['items']): void {
+     const seen = new Set<string>();
+     for (const item of items) {
+@@ -546,15 +560,6 @@ export class PharmacyOrderService {
+     this.validateOrderParty(data);
+     this.assertUniqueMedicines(data.items);
+ 
+-    if (data.customerId) {
+-      await this.customerService.ensureLinked(
+-        pharmacyId,
+-        data.customerId,
+-        createdById,
+-        createdByRole
+-      );
+-    }
+-
+     const recurringItems = data.items.filter((item) => item.recurring);
+     if (recurringItems.length && !data.customerId) {
+       throw new AppError({
+@@ -573,12 +578,28 @@ export class PharmacyOrderService {
+       data.items,
+       options.allowPriceOverride ?? true
+     );
++    await assertPrescriptionCommerceAvailable({
++      kind: 'new_items',
++      items: pricedItems,
++      prescriptionUrls: data.prescriptionUrls,
++    });
++    // Only explicit canonical false values survive the shared guard.
++    const admittedItems = pricedItems as NonPrescriptionOrderItem[];
++    if (data.customerId) {
++      await this.customerService.ensureLinked(
++        pharmacyId,
++        data.customerId,
++        createdById,
++        createdByRole
++      );
++    }
++
+     const { payerUserId, payerPharmacyId } = this.resolvePaymentPayer({
+       customerId: data.customerId,
+       buyerPharmacyId: data.buyerPharmacyId,
+       createdById,
+     });
+-    const prescriptionStatus = this.assertPrescriptionProvided(pricedItems, data.prescriptionUrls);
++    const prescriptionStatus = this.assertPrescriptionProvided(admittedItems, data.prescriptionUrls);
+     const {
+       items,
+       subtotal,
+@@ -589,7 +610,7 @@ export class PharmacyOrderService {
+       discountTotalPaise,
+       taxTotalPaise,
+       grandTotalPaise,
+-    } = computeTotals(pricedItems);
++    } = computeTotals(admittedItems);
+     const inventoryItems = this.buildInventoryItems(items);
+ 
+     // Create the order and consume stock as one unit: either both are
+@@ -825,6 +846,18 @@ export class PharmacyOrderService {
+       });
+     }
+ 
++    const enrichesCommerce = Reflect.ownKeys(data).some(key => key !== 'notes');
++    if (enrichesCommerce) {
++      await this.assertNewCommerceForOrder(order, id);
++      if (!data.items) {
++        await assertPrescriptionCommerceAvailable({
++          kind: 'new_items',
++          items: order.items,
++          prescriptionUrls: data.prescriptionUrls !== undefined ? data.prescriptionUrls : order.prescriptionUrls,
++        });
++      }
++    }
++
+     const nextCustomerId =
+       data.customerId !== undefined
+         ? data.customerId
+@@ -891,9 +924,6 @@ export class PharmacyOrderService {
+       linkedConsultationId: nextLinkedConsultationId,
+       linkedDiagnosticOrderId: nextLinkedDiagnosticOrderId,
+     });
+-    if (nextCustomerId && String(order.customerId || '') !== nextCustomerId) {
+-      await this.customerService.ensureLinked(pharmacyId, nextCustomerId, pharmacyId, 'pharmacy');
+-    }
+ 
+     let updatePayload: Record<string, unknown> = {
+       ...data,
+@@ -912,9 +942,15 @@ export class PharmacyOrderService {
+         nextBuyerPharmacyId,
+         incomingItems
+       );
+-      const totals = computeTotals(pricedItems);
+-      const nextPrescriptionUrls = data.prescriptionUrls ?? order.prescriptionUrls;
+-      const prescriptionStatus = this.assertPrescriptionProvided(pricedItems, nextPrescriptionUrls);
++      const nextPrescriptionUrls = data.prescriptionUrls !== undefined ? data.prescriptionUrls : order.prescriptionUrls;
++      await assertPrescriptionCommerceAvailable({
++        kind: 'new_items',
++        items: pricedItems,
++        prescriptionUrls: nextPrescriptionUrls,
++      });
++      const admittedItems = pricedItems as NonPrescriptionOrderItem[];
++      const totals = computeTotals(admittedItems);
++      const prescriptionStatus = this.assertPrescriptionProvided(admittedItems, nextPrescriptionUrls);
+       updatePayload = {
+         ...updatePayload,
+         items: totals.items,
+@@ -940,6 +976,10 @@ export class PharmacyOrderService {
+       });
+     }
+ 
++    if (nextCustomerId && String(order.customerId || '') !== nextCustomerId) {
++      await this.customerService.ensureLinked(pharmacyId, nextCustomerId, pharmacyId, 'pharmacy');
++    }
++
+     const nextItemsForInventory = (updatePayload.items as IPharmacyOrder['items'] | undefined) || order.items;
+     const usesBatchReservations = order.items.some((item) => item.batchAllocations?.length);
+     const inventoryDelta = shouldRepriceItems && !usesBatchReservations
+@@ -1137,6 +1177,8 @@ export class PharmacyOrderService {
+       });
+     }
+ 
++    await this.assertNewCommerceForOrder(order, id);
++
+     const paidAt =
+       payload.data.paidDate && payload.data.paidTime
+         ? new Date(
