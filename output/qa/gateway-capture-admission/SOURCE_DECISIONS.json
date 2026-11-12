@@ -1,0 +1,21 @@
+{
+  "candidate_commit": "22643f113789d5d9d0202992e7aeeffb5156f562",
+  "author": "/root/refund_error_writer",
+  "source_freeze_sha256": "f563ad1740f214880e58a74ee629a662f4be95119f4abb1039dc8718c8bb4e7f",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/pharmacy_refund_primitives",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    }
+  ],
+  "evidence": "Both actual nonauthor code/data inspections verify unique one-line inverse, original refund-error repair/terminal branches/cached shortcut/callers/messages unchanged; authorized newly fetched response rejects before ordinary paid/fulfillment continuation. All frozen pins match.",
+  "scope": "Source only. Runtime/type/DB/provider NOT_RUN; initial logs/read/fetch and prior signature/terminal writes remain. No all-paid capture proof, cached/manual/internal repair, race safety, F1 resolution or release acceptance."
+}
