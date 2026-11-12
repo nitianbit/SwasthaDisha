@@ -1,0 +1,138 @@
+{
+  "schema": "SD-PHARMACY-SUPPLIER-MASTER-SOURCE-1",
+  "author": "/root/payment_ctor_contract",
+  "baseline": "11d11d202c3ec75f706f46b38997c261b464421f",
+  "branch": "m0/pharmacy-supplier-master",
+  "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-supplier-master",
+  "contractSha256": "c47d541e60747f262e6828b912b2016c61c1e2b2f5a4dfcffc1f4bee8b4157b7",
+  "preimplementationSha256": "4781a23dbb90c87658524df9647afb7fe9baf6066311bb6933f28fd77b846ea4",
+  "sourceFiles": [
+    {
+      "path": "src1/modules/pharmacySuppliers/controller/index.ts",
+      "beforeSha256": null,
+      "afterSha256": "818de45cc850843328bb2cf6c0ca7c3361fe3510a540d34c6c8573a72ed9aff4",
+      "bytes": 2035,
+      "new": true
+    },
+    {
+      "path": "src1/modules/pharmacySuppliers/model/index.ts",
+      "beforeSha256": null,
+      "afterSha256": "2f04e027aa296a09c5b6c04318caf2601a8974726126f30eecdad420bdff31b7",
+      "bytes": 1470,
+      "new": true
+    },
+    {
+      "path": "src1/modules/pharmacySuppliers/repository/index.ts",
+      "beforeSha256": null,
+      "afterSha256": "8834a635fcc5835a26c6f423e4a2deffc433435ea11549f51c9368de7f7537c8",
+      "bytes": 9209,
+      "new": true
+    },
+    {
+      "path": "src1/modules/pharmacySuppliers/routes/index.ts",
+      "beforeSha256": null,
+      "afterSha256": "e226c5efa260117950cc47762500577e580b26cbc18f78b14009a285368467c0",
+      "bytes": 1022,
+      "new": true
+    },
+    {
+      "path": "src1/modules/pharmacySuppliers/services/index.ts",
+      "beforeSha256": null,
+      "afterSha256": "f50a9993eb05132a546a8b73397da1f4c773fe0e41361d5323584097e44096d8",
+      "bytes": 812,
+      "new": true
+    },
+    {
+      "path": "src1/modules/pharmacySuppliers/types/index.ts",
+      "beforeSha256": null,
+      "afterSha256": "d7688797cbbc8e1bba9395ded10447991e07d671d6405fcf9686074bda98c427",
+      "bytes": 1439,
+      "new": true
+    },
+    {
+      "path": "src1/modules/pharmacySuppliers/validation/index.ts",
+      "beforeSha256": null,
+      "afterSha256": "1e52df9798f92780907eaa622633ebe934d9858f34a668bdf07f5bec451e0c42",
+      "bytes": 6197,
+      "new": true
+    },
+    {
+      "path": "src1/routes/index.ts",
+      "beforeSha256": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056",
+      "afterSha256": "17308ce9d78ed135e9e1aba4e1a0c692b4204932fc0c863981b3137b4afcb002",
+      "bytes": 6776,
+      "new": false
+    }
+  ],
+  "unchangedContractPins": [
+    {
+      "path": "documentation/planning/SYSTEM_DESIGN.md",
+      "sha256": "cbd899f6fb442b13db28c389143b529b90da364165dc17291cc829814810bc84"
+    },
+    {
+      "path": "documentation/planning/CAPABILITY_MATRIX.md",
+      "sha256": "05ab06d569b8dad2a690ac434922738bd20ce15d9484b60e4bf55e62e14e7fea"
+    },
+    {
+      "path": "documentation/planning/ROADMAP.md",
+      "sha256": "6a5b2e5bfdb42d16021cb28f83531389977d535d9743ae8908ab75ceeabd37cf"
+    },
+    {
+      "path": "documentation/planning/BUSINESS_OPERATIONS.md",
+      "sha256": "154371613be782bf5b31b7d0ae43a360a51b5f972dd66391041d8bc996cd6e5e"
+    },
+    {
+      "path": "src1/modules/middleware/auth.ts",
+      "sha256": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2"
+    },
+    {
+      "path": "src1/modules/pharmacies/model/index.ts",
+      "sha256": "beda95d89a9773a8d5851dd923c363c83123a573f7391836dec69b13e5cfa177"
+    },
+    {
+      "path": "src1/modules/pharmacyInventory/model/index.ts",
+      "sha256": "098fc86bc14e553b60a81fdb7bf33ebacb8c44f799a2cb665420ea5debe52313"
+    },
+    {
+      "path": "src1/modules/pharmacyInventory/validation/index.ts",
+      "sha256": "f1679413efcd27621a362eda7277a3d0db3edceb8d30fc2c542c075bef8dec53"
+    },
+    {
+      "path": "src1/modules/pharmacyCustomers/model/index.ts",
+      "sha256": "ffccd5f52425e71fa92ec1677bd91c0d300f7e1ac653950a9b595969d87c3fbd"
+    },
+    {
+      "path": "src1/modules/pharmacyCustomers/repository/index.ts",
+      "sha256": "459e70335eddb24607336b1659d769e17b7d639518b6560b34236f4c8f450322"
+    },
+    {
+      "path": "src1/modules/common/repository/BaseRepository.ts",
+      "sha256": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a"
+    },
+    {
+      "path": "src1/modules/common/middleware/validation.ts",
+      "sha256": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef"
+    }
+  ],
+  "patchSha256": "17397ff5324a43f3b18b04685a32d88fc4b9c66222e6e0370774157266a63208",
+  "patchBytes": 26192,
+  "sourceChecks": [
+    "Actual two nonauthor amended-contract votes present; all13pins matched before implementation",
+    "Seven new bounded adapter files plus exactly import/authenticated mount in central routes; inverse central edit recovers original bytes",
+    "12 protected source/design pins unchanged; existing pharmacy/patient/stock/payment/provider code unchanged",
+    "Thin service delegates to single ordered repository flow; normalizer once after owned/stored validation; all keys before descriptors/value reads",
+    "Archive replay only after valid complete body/revision; no write/clock/actor change on replay",
+    "Single shared fields vocabulary and stored-record/explicit12fieldDTO validator; required scopes/canonical IDs/scalar owner and CAS fences",
+    "Exactly one bounded owner/state list facet; compact fixed envelopes measured/sent below512KiB",
+    "Schema autoCreate/autoIndex false; no custom index/manual DDL; future implicit namespace/default_id insert effect remains unproved",
+    "Production staged git diff --check passed"
+  ],
+  "placementAuthorization": "Root explicitly accepted thin service delegation to one authoritative repository command/normalizer flow; no duplicate parsing/re-normalization or contract amendment required.",
+  "execution": "NOT_RUN: no Node/compiler/application/SDK/Docker/database/provider/model/test/integration execution",
+  "limits": [
+    "Two independent nonauthor exact source decisions pending",
+    "No TypeScript/Joi/HTTP/Mongoose/ODM/DB/first-insert/namespace/index/concurrency/DI/runtime proof",
+    "Local signed-pharmacy contact metadata only; no verified counterparty/KYC/credit/payable/PO/GRN/stock/provider/clinical/financial truth",
+    "R8 focus unchanged: branch isolated, no merge; C2/fullC3/owner/module/release/finalDEFERRED_BY_OWNERintegration retained"
+  ]
+}
