@@ -1,0 +1,27 @@
+{
+  "schema": "SD-ENROLLMENT-ACTUAL-SERVICE-PREEXECUTION-DECISIONS-1",
+  "proposalSha256": "8ba6515651085618cf3902f61f3a575aa89a9cde91e14033c79dc677222f032a",
+  "descriptorSha256": "fc3169eea4de94d035cd7b39d1a7ed1254a529f54efae7997e0000df7612e9aa",
+  "reviewers": [
+    {
+      "agent": "/root/customer_remaining_audit",
+      "decision": "APPROVE_ONE_ENROLLMENT_SERVICE_RUN_ONLY"
+    },
+    {
+      "agent": "/root/lab_remaining_audit",
+      "decision": "APPROVE_ONE_ENROLLMENT_SERVICE_RUN_ONLY"
+    }
+  ],
+  "provenance": "Actual direct internal Codex nonauthor Standards and Spec decisions; Root and harness author excluded. Both personally inspected actual prepared graph/scenario/control/ports/admission/bounds.",
+  "rootDecision": "APPROVE_ONE_ENROLLMENT_SERVICE_RUN_ONLY",
+  "command": [
+    "/usr/bin/env",
+    "-i",
+    "PATH=/usr/bin:/bin",
+    "TMPDIR=/private/tmp",
+    "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+    "test/customer-enrollment-runtime/run.mjs"
+  ],
+  "scope": "One exact approved focused service run; no DB/HTTP/provider; preserve any failed result and cleanup without retry.",
+  "laterHEAD": "Evidence-only commit with unchanged23 selected source bytes"
+}
