@@ -1,0 +1,27 @@
+{
+  "schema": "SD-CONTACT-INDEX-CONTRACT-DECISIONS-1",
+  "contract": "documentation/planning/implementation/CUSTOMER_CONTACT_INDEX_ADMISSION_CONTRACT.md",
+  "contractSha256": "0a3a4628d1ad01fa5603f590d1e0a8062e0b241cd0a3b293e1f0e0dd460ee384",
+  "author": "/root/milestone_composition_r9",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "scope": "Three named new source modules only; full draft/currentUser/genericreadiness inspected and12pinsverified; no execution or activation."
+    },
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "scope": "Full draft/12pins independently verified; complete text/numeric metadata, exact namedpartial/index, sameUser/Db/client/session/UUID/Long/namespace/cleanup and honest budgets. No model/reader/evaluator/fixture/command/migration/activation admitted."
+    }
+  ],
+  "runtime": "NOT_RUN",
+  "fullContactFeatureComplete": false,
+  "ownerReleaseApproval": false
+}
