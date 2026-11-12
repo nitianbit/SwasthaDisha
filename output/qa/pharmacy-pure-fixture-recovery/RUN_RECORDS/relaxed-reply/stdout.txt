@@ -1,0 +1,1 @@
+{"schema":"SD-CURSOR-CREATION-PURE-1","status":"FAIL","sourceMode":"relaxed-reply","test":"wire-db-only-reply-denied","completed":21,"failed":1,"error":"Missing expected exception."}

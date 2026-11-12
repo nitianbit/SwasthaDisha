@@ -1,0 +1,1 @@
+{"schema":"SD-CURSOR-CREATION-PURE-1","status":"FAIL","sourceMode":"ignored-session","test":"creation-foreign-session-denied","completed":6,"failed":1,"error":"Missing expected exception."}

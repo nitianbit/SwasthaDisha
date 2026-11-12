@@ -1,0 +1,48 @@
+{
+  "id": "changed-lease",
+  "lease": "/private/tmp/sd-pharmacy-pure-dc2e8198bc7a79f97e2710a9b4833d77",
+  "leaseIdentity": [
+    16777233,
+    54355406,
+    501
+  ],
+  "recordDirectory": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery/output/qa/pharmacy-pure-fixture-recovery/RUN_RECORDS/changed-lease",
+  "started": true,
+  "cleanup": "VERIFIED_FRESH_ABSENCE",
+  "cleanupErrors": [],
+  "unresolvedPaths": [],
+  "argv": [
+    "/private/tmp/m0-node22/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/sd-pharmacy-pure-dc2e8198bc7a79f97e2710a9b4833d77",
+    "/private/tmp/sd-pharmacy-pure-dc2e8198bc7a79f97e2710a9b4833d77/cursor-creation-pure.test.cjs"
+  ],
+  "pid": 41964,
+  "exitCode": 1,
+  "attemptMonotonic": 9382.335527583,
+  "startMonotonic": 9382.743254041,
+  "failure": null,
+  "stdoutSha256": "53a3232720fdeaae5db1bedfae69c2aab0c781cb56dcdbfb695bef5d18cac2a7",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "sourceHashes": {
+    "bootstrap.cjs": "b5c0df6e6d7ad42ce6a025c104150a4ce1824b19813c0cd76723c2cb5602bed0",
+    "bootstrap-unit.cjs": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+    "apm-cursor.test.cjs": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+    "ports-manifest.json": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+    "cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+    "public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+    "cursor-creation-pure.test.cjs": "1f9f9cc71620621af13550865bb75ebc3f7954f66de138feb08934120bb4b6f1",
+    "baseline-bootstrap.cjs": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690"
+  },
+  "summary": {
+    "schema": "SD-CURSOR-CREATION-PURE-1",
+    "status": "FAIL",
+    "sourceMode": "changed-lease",
+    "test": "creation-db-only-and-special-lease",
+    "completed": 1,
+    "failed": 1,
+    "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'inventoryitems'\n- '$cmd.listCollections'\n"
+  },
+  "status": "EXPECTED_CONTROL_REJECTED",
+  "recordPersisted": true
+}

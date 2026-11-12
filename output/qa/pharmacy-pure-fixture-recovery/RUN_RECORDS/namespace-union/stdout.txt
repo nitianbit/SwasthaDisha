@@ -1,0 +1,1 @@
+{"schema":"SD-CURSOR-CREATION-PURE-1","status":"FAIL","sourceMode":"namespace-union","test":"creation-special-namespace-denied","completed":2,"failed":1,"error":"Missing expected exception."}

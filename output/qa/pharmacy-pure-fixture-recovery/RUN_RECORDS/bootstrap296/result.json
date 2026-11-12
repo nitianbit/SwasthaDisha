@@ -1,0 +1,48 @@
+{
+  "id": "bootstrap296",
+  "lease": "/private/tmp/sd-pharmacy-pure-52bd7a675836f187158442723dd3cba7",
+  "leaseIdentity": [
+    16777233,
+    54355184,
+    501
+  ],
+  "recordDirectory": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery/output/qa/pharmacy-pure-fixture-recovery/RUN_RECORDS/bootstrap296",
+  "started": true,
+  "cleanup": "VERIFIED_FRESH_ABSENCE",
+  "cleanupErrors": [],
+  "unresolvedPaths": [],
+  "argv": [
+    "/private/tmp/m0-node22/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/sd-pharmacy-pure-52bd7a675836f187158442723dd3cba7",
+    "/private/tmp/sd-pharmacy-pure-52bd7a675836f187158442723dd3cba7/bootstrap-unit.cjs"
+  ],
+  "pid": 41855,
+  "exitCode": 0,
+  "attemptMonotonic": 9373.279882958,
+  "startMonotonic": 9373.634244625,
+  "failure": null,
+  "stdoutSha256": "6ce49ee6c91f8767c8e95aafa1078d3a8ba29cd8b6d0065d6ea627ce7d349f7a",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "sourceHashes": {
+    "bootstrap.cjs": "6470766a88a09763ffc1047daa5d072611ea8783459c2ac76cc668349f5b1968",
+    "bootstrap-unit.cjs": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+    "apm-cursor.test.cjs": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+    "ports-manifest.json": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+    "cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+    "public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+    "cursor-creation-pure.test.cjs": "1f9f9cc71620621af13550865bb75ebc3f7954f66de138feb08934120bb4b6f1",
+    "baseline-bootstrap.cjs": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690"
+  },
+  "summary": {
+    "schema": "SD-INVENTORY-BOOTSTRAP-UNIT-1",
+    "status": "PASS",
+    "checks": 296,
+    "failed": 0,
+    "applicationEvaluations": 0,
+    "packageEvaluations": 0,
+    "DockerCalls": 0
+  },
+  "status": "PURE_ENTRY_COMPLETE",
+  "recordPersisted": true
+}

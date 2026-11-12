@@ -1,0 +1,637 @@
+{
+  "status": "PURE_CAMPAIGN_COMPLETE",
+  "results": [
+    {
+      "id": "bootstrap296",
+      "lease": "/private/tmp/sd-pharmacy-pure-52bd7a675836f187158442723dd3cba7",
+      "leaseIdentity": [
+        16777233,
+        54355184,
+        501
+      ],
+      "recordDirectory": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery/output/qa/pharmacy-pure-fixture-recovery/RUN_RECORDS/bootstrap296",
+      "started": true,
+      "cleanup": "VERIFIED_FRESH_ABSENCE",
+      "cleanupErrors": [],
+      "unresolvedPaths": [],
+      "argv": [
+        "/private/tmp/m0-node22/node",
+        "--permission",
+        "--allow-fs-read=/private/tmp/sd-pharmacy-pure-52bd7a675836f187158442723dd3cba7",
+        "/private/tmp/sd-pharmacy-pure-52bd7a675836f187158442723dd3cba7/bootstrap-unit.cjs"
+      ],
+      "pid": 41855,
+      "exitCode": 0,
+      "attemptMonotonic": 9373.279882958,
+      "startMonotonic": 9373.634244625,
+      "failure": null,
+      "stdoutSha256": "6ce49ee6c91f8767c8e95aafa1078d3a8ba29cd8b6d0065d6ea627ce7d349f7a",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceHashes": {
+        "bootstrap.cjs": "6470766a88a09763ffc1047daa5d072611ea8783459c2ac76cc668349f5b1968",
+        "bootstrap-unit.cjs": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+        "apm-cursor.test.cjs": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+        "ports-manifest.json": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+        "cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+        "public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+        "cursor-creation-pure.test.cjs": "1f9f9cc71620621af13550865bb75ebc3f7954f66de138feb08934120bb4b6f1",
+        "baseline-bootstrap.cjs": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690"
+      },
+      "summary": {
+        "schema": "SD-INVENTORY-BOOTSTRAP-UNIT-1",
+        "status": "PASS",
+        "checks": 296,
+        "failed": 0,
+        "applicationEvaluations": 0,
+        "packageEvaluations": 0,
+        "DockerCalls": 0
+      },
+      "status": "PURE_ENTRY_COMPLETE",
+      "recordPersisted": true
+    },
+    {
+      "id": "apm95",
+      "lease": "/private/tmp/sd-pharmacy-pure-7c58c8ce631490e4e8e057cfabd4c65a",
+      "leaseIdentity": [
+        16777233,
+        54355224,
+        501
+      ],
+      "recordDirectory": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery/output/qa/pharmacy-pure-fixture-recovery/RUN_RECORDS/apm95",
+      "started": true,
+      "cleanup": "VERIFIED_FRESH_ABSENCE",
+      "cleanupErrors": [],
+      "unresolvedPaths": [],
+      "argv": [
+        "/private/tmp/m0-node22/node",
+        "--permission",
+        "--allow-fs-read=/private/tmp/sd-pharmacy-pure-7c58c8ce631490e4e8e057cfabd4c65a",
+        "/private/tmp/sd-pharmacy-pure-7c58c8ce631490e4e8e057cfabd4c65a/apm-cursor.test.cjs"
+      ],
+      "pid": 41915,
+      "exitCode": 0,
+      "attemptMonotonic": 9377.179242666,
+      "startMonotonic": 9377.613669333,
+      "failure": null,
+      "stdoutSha256": "88c332a6df4b8f61b46faf1761b9934309862976dfa337fe9002f8d1b0bf2508",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceHashes": {
+        "bootstrap.cjs": "6470766a88a09763ffc1047daa5d072611ea8783459c2ac76cc668349f5b1968",
+        "bootstrap-unit.cjs": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+        "apm-cursor.test.cjs": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+        "ports-manifest.json": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+        "cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+        "public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+        "cursor-creation-pure.test.cjs": "1f9f9cc71620621af13550865bb75ebc3f7954f66de138feb08934120bb4b6f1",
+        "baseline-bootstrap.cjs": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690"
+      },
+      "summary": {
+        "schema": "SD-INVENTORY-APM-CURSOR-UNIT-1",
+        "status": "PASS",
+        "checks": 95,
+        "failed": 0,
+        "applicationEvaluations": 0,
+        "packageEvaluations": 0,
+        "DockerCalls": 0
+      },
+      "status": "PURE_ENTRY_COMPLETE",
+      "recordPersisted": true
+    },
+    {
+      "id": "cursor-creation",
+      "lease": "/private/tmp/sd-pharmacy-pure-e7ebb15b327125c159d224bd933fe919",
+      "leaseIdentity": [
+        16777233,
+        54355245,
+        501
+      ],
+      "recordDirectory": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery/output/qa/pharmacy-pure-fixture-recovery/RUN_RECORDS/cursor-creation",
+      "started": true,
+      "cleanup": "VERIFIED_FRESH_ABSENCE",
+      "cleanupErrors": [],
+      "unresolvedPaths": [],
+      "argv": [
+        "/private/tmp/m0-node22/node",
+        "--permission",
+        "--allow-fs-read=/private/tmp/sd-pharmacy-pure-e7ebb15b327125c159d224bd933fe919",
+        "/private/tmp/sd-pharmacy-pure-e7ebb15b327125c159d224bd933fe919/cursor-creation-pure.test.cjs"
+      ],
+      "pid": 41916,
+      "exitCode": 0,
+      "attemptMonotonic": 9377.718573041,
+      "startMonotonic": 9378.201162791,
+      "failure": null,
+      "stdoutSha256": "672d67d2b558644f03fbd4fdb627778dd516c312375cab5e155c276a0b70000f",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceHashes": {
+        "bootstrap.cjs": "6470766a88a09763ffc1047daa5d072611ea8783459c2ac76cc668349f5b1968",
+        "bootstrap-unit.cjs": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+        "apm-cursor.test.cjs": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+        "ports-manifest.json": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+        "cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+        "public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+        "cursor-creation-pure.test.cjs": "1f9f9cc71620621af13550865bb75ebc3f7954f66de138feb08934120bb4b6f1",
+        "baseline-bootstrap.cjs": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690"
+      },
+      "summary": {
+        "schema": "SD-CURSOR-CREATION-PURE-1",
+        "status": "PASS",
+        "sourceMode": "normal",
+        "checks": 47,
+        "failed": 0,
+        "caseIds": [
+          "baseline-db-only-rejected",
+          "creation-db-only-and-special-lease",
+          "creation-special-namespace-denied",
+          "creation-foreign-namespace-denied",
+          "creation-missing-namespace-denied",
+          "creation-foreign-client-denied",
+          "creation-foreign-session-denied",
+          "creation-duplicate-lease-denied",
+          "wrapper-phase-denied",
+          "wrapper-filter-denied",
+          "wrapper-options-denied",
+          "wrapper-control-denied",
+          "find-full-namespace",
+          "find-db-only-denied",
+          "find-foreign-denied",
+          "listIndexes-full-namespace",
+          "listIndexes-db-only-denied",
+          "listIndexes-foreign-denied",
+          "lazy-special-reply-empty",
+          "lazy-special-reply-buffered",
+          "close-before-init-keeps-db-only",
+          "wire-db-only-reply-denied",
+          "wire-foreign-reply-denied",
+          "wire-nonzero-reply-denied",
+          "wire-negative-zero-reply-denied",
+          "wire-Long-reply-denied",
+          "wire-Timestamp-reply-denied",
+          "wire-shape-reply-denied",
+          "wire-request-reply-denied",
+          "wire-command-reply-denied",
+          "wire-wrong-session-denied",
+          "wire-no-continuation-owner",
+          "failure-before-undefined",
+          "failure-before-null",
+          "failure-before-false",
+          "failure-before-zero",
+          "failure-before-empty",
+          "failure-before-Error",
+          "failure-after-undefined",
+          "failure-after-null",
+          "failure-after-false",
+          "failure-after-zero",
+          "failure-after-empty",
+          "failure-after-Error",
+          "budget-deadline-latches",
+          "budget-rows-latches",
+          "budget-bytes-latches"
+        ],
+        "applicationEvaluations": 0,
+        "packageEvaluations": 0,
+        "DockerCalls": 0
+      },
+      "status": "PURE_ENTRY_COMPLETE",
+      "recordPersisted": true
+    },
+    {
+      "id": "premature-full",
+      "lease": "/private/tmp/sd-pharmacy-pure-14b2681d095932de83c7078eea5e0689",
+      "leaseIdentity": [
+        16777233,
+        54355267,
+        501
+      ],
+      "recordDirectory": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery/output/qa/pharmacy-pure-fixture-recovery/RUN_RECORDS/premature-full",
+      "started": true,
+      "cleanup": "VERIFIED_FRESH_ABSENCE",
+      "cleanupErrors": [],
+      "unresolvedPaths": [],
+      "argv": [
+        "/private/tmp/m0-node22/node",
+        "--permission",
+        "--allow-fs-read=/private/tmp/sd-pharmacy-pure-14b2681d095932de83c7078eea5e0689",
+        "/private/tmp/sd-pharmacy-pure-14b2681d095932de83c7078eea5e0689/cursor-creation-pure.test.cjs"
+      ],
+      "pid": 41918,
+      "exitCode": 1,
+      "attemptMonotonic": 9378.359886291,
+      "startMonotonic": 9378.816922375,
+      "failure": null,
+      "stdoutSha256": "0e35876acd8dd9bc222b4d743bc2240800074aa50674e7238f5d94f334f192fb",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceHashes": {
+        "bootstrap.cjs": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690",
+        "bootstrap-unit.cjs": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+        "apm-cursor.test.cjs": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+        "ports-manifest.json": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+        "cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+        "public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+        "cursor-creation-pure.test.cjs": "1f9f9cc71620621af13550865bb75ebc3f7954f66de138feb08934120bb4b6f1",
+        "baseline-bootstrap.cjs": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690"
+      },
+      "summary": {
+        "schema": "SD-CURSOR-CREATION-PURE-1",
+        "status": "FAIL",
+        "sourceMode": "premature-full",
+        "test": "creation-db-only-and-special-lease",
+        "completed": 1,
+        "failed": 1,
+        "error": "INVENTORY_CURSOR"
+      },
+      "status": "EXPECTED_CONTROL_REJECTED",
+      "recordPersisted": true
+    },
+    {
+      "id": "namespace-union",
+      "lease": "/private/tmp/sd-pharmacy-pure-70540c3fade24523e650dbcf25f921cc",
+      "leaseIdentity": [
+        16777233,
+        54355289,
+        501
+      ],
+      "recordDirectory": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery/output/qa/pharmacy-pure-fixture-recovery/RUN_RECORDS/namespace-union",
+      "started": true,
+      "cleanup": "VERIFIED_FRESH_ABSENCE",
+      "cleanupErrors": [],
+      "unresolvedPaths": [],
+      "argv": [
+        "/private/tmp/m0-node22/node",
+        "--permission",
+        "--allow-fs-read=/private/tmp/sd-pharmacy-pure-70540c3fade24523e650dbcf25f921cc",
+        "/private/tmp/sd-pharmacy-pure-70540c3fade24523e650dbcf25f921cc/cursor-creation-pure.test.cjs"
+      ],
+      "pid": 41919,
+      "exitCode": 1,
+      "attemptMonotonic": 9378.888884166,
+      "startMonotonic": 9379.382588541,
+      "failure": null,
+      "stdoutSha256": "cd867186a3024948f45675d6c6a4774470afbd7cf4f0af1144f56ca199cf75b0",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceHashes": {
+        "bootstrap.cjs": "c2fd4d268c5b126fe8f5cc3ea03ecc7dbdc9432fd3663c2fc30832be4c555552",
+        "bootstrap-unit.cjs": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+        "apm-cursor.test.cjs": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+        "ports-manifest.json": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+        "cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+        "public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+        "cursor-creation-pure.test.cjs": "1f9f9cc71620621af13550865bb75ebc3f7954f66de138feb08934120bb4b6f1",
+        "baseline-bootstrap.cjs": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690"
+      },
+      "summary": {
+        "schema": "SD-CURSOR-CREATION-PURE-1",
+        "status": "FAIL",
+        "sourceMode": "namespace-union",
+        "test": "creation-special-namespace-denied",
+        "completed": 2,
+        "failed": 1,
+        "error": "Missing expected exception."
+      },
+      "status": "EXPECTED_CONTROL_REJECTED",
+      "recordPersisted": true
+    },
+    {
+      "id": "all-db",
+      "lease": "/private/tmp/sd-pharmacy-pure-7e1f3ad6d63a3f75ee82caa74f552c64",
+      "leaseIdentity": [
+        16777233,
+        54355310,
+        501
+      ],
+      "recordDirectory": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery/output/qa/pharmacy-pure-fixture-recovery/RUN_RECORDS/all-db",
+      "started": true,
+      "cleanup": "VERIFIED_FRESH_ABSENCE",
+      "cleanupErrors": [],
+      "unresolvedPaths": [],
+      "argv": [
+        "/private/tmp/m0-node22/node",
+        "--permission",
+        "--allow-fs-read=/private/tmp/sd-pharmacy-pure-7e1f3ad6d63a3f75ee82caa74f552c64",
+        "/private/tmp/sd-pharmacy-pure-7e1f3ad6d63a3f75ee82caa74f552c64/cursor-creation-pure.test.cjs"
+      ],
+      "pid": 41923,
+      "exitCode": 1,
+      "attemptMonotonic": 9379.456480125,
+      "startMonotonic": 9379.961321416,
+      "failure": null,
+      "stdoutSha256": "cbcb35eb62515d9b662766bb840fbc0828bfdff8fff4500768d4fe5cd2a20be3",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceHashes": {
+        "bootstrap.cjs": "d9fe004b28a77da51d52dbeb7fabdf79317a045e59c5a5141e4add96949fb72d",
+        "bootstrap-unit.cjs": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+        "apm-cursor.test.cjs": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+        "ports-manifest.json": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+        "cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+        "public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+        "cursor-creation-pure.test.cjs": "1f9f9cc71620621af13550865bb75ebc3f7954f66de138feb08934120bb4b6f1",
+        "baseline-bootstrap.cjs": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690"
+      },
+      "summary": {
+        "schema": "SD-CURSOR-CREATION-PURE-1",
+        "status": "FAIL",
+        "sourceMode": "all-db",
+        "test": "find-full-namespace",
+        "completed": 12,
+        "failed": 1,
+        "error": "INVENTORY_CURSOR"
+      },
+      "status": "EXPECTED_CONTROL_REJECTED",
+      "recordPersisted": true
+    },
+    {
+      "id": "ignored-namespace",
+      "lease": "/private/tmp/sd-pharmacy-pure-32c86a04af4e89a4a68d474d60d03851",
+      "leaseIdentity": [
+        16777233,
+        54355331,
+        501
+      ],
+      "recordDirectory": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery/output/qa/pharmacy-pure-fixture-recovery/RUN_RECORDS/ignored-namespace",
+      "started": true,
+      "cleanup": "VERIFIED_FRESH_ABSENCE",
+      "cleanupErrors": [],
+      "unresolvedPaths": [],
+      "argv": [
+        "/private/tmp/m0-node22/node",
+        "--permission",
+        "--allow-fs-read=/private/tmp/sd-pharmacy-pure-32c86a04af4e89a4a68d474d60d03851",
+        "/private/tmp/sd-pharmacy-pure-32c86a04af4e89a4a68d474d60d03851/cursor-creation-pure.test.cjs"
+      ],
+      "pid": 41925,
+      "exitCode": 1,
+      "attemptMonotonic": 9380.073068958,
+      "startMonotonic": 9380.487026291,
+      "failure": null,
+      "stdoutSha256": "e8664386784826e6b1b725938f31a770a50c053f6a57314bdc4a1d59da3eb9d3",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceHashes": {
+        "bootstrap.cjs": "5ab2a3a99e0e71a916b8ad3b7455ae3325a21a99ed55544d3164beea98f6308a",
+        "bootstrap-unit.cjs": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+        "apm-cursor.test.cjs": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+        "ports-manifest.json": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+        "cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+        "public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+        "cursor-creation-pure.test.cjs": "1f9f9cc71620621af13550865bb75ebc3f7954f66de138feb08934120bb4b6f1",
+        "baseline-bootstrap.cjs": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690"
+      },
+      "summary": {
+        "schema": "SD-CURSOR-CREATION-PURE-1",
+        "status": "FAIL",
+        "sourceMode": "ignored-namespace",
+        "test": "creation-special-namespace-denied",
+        "completed": 2,
+        "failed": 1,
+        "error": "Missing expected exception."
+      },
+      "status": "EXPECTED_CONTROL_REJECTED",
+      "recordPersisted": true
+    },
+    {
+      "id": "ignored-client",
+      "lease": "/private/tmp/sd-pharmacy-pure-b70b34111336152c3c321529048bbaf2",
+      "leaseIdentity": [
+        16777233,
+        54355352,
+        501
+      ],
+      "recordDirectory": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery/output/qa/pharmacy-pure-fixture-recovery/RUN_RECORDS/ignored-client",
+      "started": true,
+      "cleanup": "VERIFIED_FRESH_ABSENCE",
+      "cleanupErrors": [],
+      "unresolvedPaths": [],
+      "argv": [
+        "/private/tmp/m0-node22/node",
+        "--permission",
+        "--allow-fs-read=/private/tmp/sd-pharmacy-pure-b70b34111336152c3c321529048bbaf2",
+        "/private/tmp/sd-pharmacy-pure-b70b34111336152c3c321529048bbaf2/cursor-creation-pure.test.cjs"
+      ],
+      "pid": 41931,
+      "exitCode": 1,
+      "attemptMonotonic": 9380.626939291,
+      "startMonotonic": 9381.349940458,
+      "failure": null,
+      "stdoutSha256": "f9d7a4d92d5c1b1c16b820894087aaccab38db2e820a9d3e0d431a93a7d04e4b",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceHashes": {
+        "bootstrap.cjs": "6997c02904a44ab57adf5106f6cc127323df9d20bb98ee91ec2d0c87b0b60231",
+        "bootstrap-unit.cjs": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+        "apm-cursor.test.cjs": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+        "ports-manifest.json": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+        "cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+        "public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+        "cursor-creation-pure.test.cjs": "1f9f9cc71620621af13550865bb75ebc3f7954f66de138feb08934120bb4b6f1",
+        "baseline-bootstrap.cjs": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690"
+      },
+      "summary": {
+        "schema": "SD-CURSOR-CREATION-PURE-1",
+        "status": "FAIL",
+        "sourceMode": "ignored-client",
+        "test": "creation-foreign-client-denied",
+        "completed": 5,
+        "failed": 1,
+        "error": "Missing expected exception."
+      },
+      "status": "EXPECTED_CONTROL_REJECTED",
+      "recordPersisted": true
+    },
+    {
+      "id": "ignored-session",
+      "lease": "/private/tmp/sd-pharmacy-pure-9acec832289967c768dba00c6ed1b9cd",
+      "leaseIdentity": [
+        16777233,
+        54355378,
+        501
+      ],
+      "recordDirectory": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery/output/qa/pharmacy-pure-fixture-recovery/RUN_RECORDS/ignored-session",
+      "started": true,
+      "cleanup": "VERIFIED_FRESH_ABSENCE",
+      "cleanupErrors": [],
+      "unresolvedPaths": [],
+      "argv": [
+        "/private/tmp/m0-node22/node",
+        "--permission",
+        "--allow-fs-read=/private/tmp/sd-pharmacy-pure-9acec832289967c768dba00c6ed1b9cd",
+        "/private/tmp/sd-pharmacy-pure-9acec832289967c768dba00c6ed1b9cd/cursor-creation-pure.test.cjs"
+      ],
+      "pid": 41956,
+      "exitCode": 1,
+      "attemptMonotonic": 9381.643932541,
+      "startMonotonic": 9382.170960541,
+      "failure": null,
+      "stdoutSha256": "f5a5feeb0944cb60bb03031281092253fa014862d974cfc8221f1705b135ae83",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceHashes": {
+        "bootstrap.cjs": "cde18d1e03bf11060734d829295266e1f6c03252319d9a1b10c4fccad59266a9",
+        "bootstrap-unit.cjs": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+        "apm-cursor.test.cjs": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+        "ports-manifest.json": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+        "cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+        "public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+        "cursor-creation-pure.test.cjs": "1f9f9cc71620621af13550865bb75ebc3f7954f66de138feb08934120bb4b6f1",
+        "baseline-bootstrap.cjs": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690"
+      },
+      "summary": {
+        "schema": "SD-CURSOR-CREATION-PURE-1",
+        "status": "FAIL",
+        "sourceMode": "ignored-session",
+        "test": "creation-foreign-session-denied",
+        "completed": 6,
+        "failed": 1,
+        "error": "Missing expected exception."
+      },
+      "status": "EXPECTED_CONTROL_REJECTED",
+      "recordPersisted": true
+    },
+    {
+      "id": "changed-lease",
+      "lease": "/private/tmp/sd-pharmacy-pure-dc2e8198bc7a79f97e2710a9b4833d77",
+      "leaseIdentity": [
+        16777233,
+        54355406,
+        501
+      ],
+      "recordDirectory": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery/output/qa/pharmacy-pure-fixture-recovery/RUN_RECORDS/changed-lease",
+      "started": true,
+      "cleanup": "VERIFIED_FRESH_ABSENCE",
+      "cleanupErrors": [],
+      "unresolvedPaths": [],
+      "argv": [
+        "/private/tmp/m0-node22/node",
+        "--permission",
+        "--allow-fs-read=/private/tmp/sd-pharmacy-pure-dc2e8198bc7a79f97e2710a9b4833d77",
+        "/private/tmp/sd-pharmacy-pure-dc2e8198bc7a79f97e2710a9b4833d77/cursor-creation-pure.test.cjs"
+      ],
+      "pid": 41964,
+      "exitCode": 1,
+      "attemptMonotonic": 9382.335527583,
+      "startMonotonic": 9382.743254041,
+      "failure": null,
+      "stdoutSha256": "53a3232720fdeaae5db1bedfae69c2aab0c781cb56dcdbfb695bef5d18cac2a7",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceHashes": {
+        "bootstrap.cjs": "b5c0df6e6d7ad42ce6a025c104150a4ce1824b19813c0cd76723c2cb5602bed0",
+        "bootstrap-unit.cjs": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+        "apm-cursor.test.cjs": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+        "ports-manifest.json": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+        "cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+        "public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+        "cursor-creation-pure.test.cjs": "1f9f9cc71620621af13550865bb75ebc3f7954f66de138feb08934120bb4b6f1",
+        "baseline-bootstrap.cjs": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690"
+      },
+      "summary": {
+        "schema": "SD-CURSOR-CREATION-PURE-1",
+        "status": "FAIL",
+        "sourceMode": "changed-lease",
+        "test": "creation-db-only-and-special-lease",
+        "completed": 1,
+        "failed": 1,
+        "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'inventoryitems'\n- '$cmd.listCollections'\n"
+      },
+      "status": "EXPECTED_CONTROL_REJECTED",
+      "recordPersisted": true
+    },
+    {
+      "id": "relaxed-reply",
+      "lease": "/private/tmp/sd-pharmacy-pure-378b77533da42ed77fdcad184232ddc2",
+      "leaseIdentity": [
+        16777233,
+        54355427,
+        501
+      ],
+      "recordDirectory": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery/output/qa/pharmacy-pure-fixture-recovery/RUN_RECORDS/relaxed-reply",
+      "started": true,
+      "cleanup": "VERIFIED_FRESH_ABSENCE",
+      "cleanupErrors": [],
+      "unresolvedPaths": [],
+      "argv": [
+        "/private/tmp/m0-node22/node",
+        "--permission",
+        "--allow-fs-read=/private/tmp/sd-pharmacy-pure-378b77533da42ed77fdcad184232ddc2",
+        "/private/tmp/sd-pharmacy-pure-378b77533da42ed77fdcad184232ddc2/cursor-creation-pure.test.cjs"
+      ],
+      "pid": 41965,
+      "exitCode": 1,
+      "attemptMonotonic": 9382.846238583,
+      "startMonotonic": 9383.259115125,
+      "failure": null,
+      "stdoutSha256": "b49da5ad49f8e4680844b81a0d8512044882379ab65f42ef2fe137538ecbdc72",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceHashes": {
+        "bootstrap.cjs": "dc13fb37f3c03930249188d8a8dff2eece486b6d02777d8782f6a535805a9bbb",
+        "bootstrap-unit.cjs": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+        "apm-cursor.test.cjs": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+        "ports-manifest.json": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+        "cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+        "public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+        "cursor-creation-pure.test.cjs": "1f9f9cc71620621af13550865bb75ebc3f7954f66de138feb08934120bb4b6f1",
+        "baseline-bootstrap.cjs": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690"
+      },
+      "summary": {
+        "schema": "SD-CURSOR-CREATION-PURE-1",
+        "status": "FAIL",
+        "sourceMode": "relaxed-reply",
+        "test": "wire-db-only-reply-denied",
+        "completed": 21,
+        "failed": 1,
+        "error": "Missing expected exception."
+      },
+      "status": "EXPECTED_CONTROL_REJECTED",
+      "recordPersisted": true
+    },
+    {
+      "id": "swallowed-failure",
+      "lease": "/private/tmp/sd-pharmacy-pure-4e9e1fda2ff0f262b11a2dcaa83bed1e",
+      "leaseIdentity": [
+        16777233,
+        54355448,
+        501
+      ],
+      "recordDirectory": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery/output/qa/pharmacy-pure-fixture-recovery/RUN_RECORDS/swallowed-failure",
+      "started": true,
+      "cleanup": "VERIFIED_FRESH_ABSENCE",
+      "cleanupErrors": [],
+      "unresolvedPaths": [],
+      "argv": [
+        "/private/tmp/m0-node22/node",
+        "--permission",
+        "--allow-fs-read=/private/tmp/sd-pharmacy-pure-4e9e1fda2ff0f262b11a2dcaa83bed1e",
+        "/private/tmp/sd-pharmacy-pure-4e9e1fda2ff0f262b11a2dcaa83bed1e/cursor-creation-pure.test.cjs"
+      ],
+      "pid": 41966,
+      "exitCode": 1,
+      "attemptMonotonic": 9383.351323583,
+      "startMonotonic": 9383.795917541,
+      "failure": null,
+      "stdoutSha256": "02b06aab61f4c1c297fe24d6cc5dafabec7fadeacf11079e7af10556e0e329c0",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceHashes": {
+        "bootstrap.cjs": "70963c3c5e95f0cf9ae8be40050460cfaaee8c3f506c3d1c39c99b8226c35cb0",
+        "bootstrap-unit.cjs": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+        "apm-cursor.test.cjs": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+        "ports-manifest.json": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+        "cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+        "public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+        "cursor-creation-pure.test.cjs": "1f9f9cc71620621af13550865bb75ebc3f7954f66de138feb08934120bb4b6f1",
+        "baseline-bootstrap.cjs": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690"
+      },
+      "summary": {
+        "schema": "SD-CURSOR-CREATION-PURE-1",
+        "status": "FAIL",
+        "sourceMode": "swallowed-failure",
+        "test": "failure-before-undefined",
+        "completed": 32,
+        "failed": 1,
+        "error": "first failure swallowed"
+      },
+      "status": "EXPECTED_CONTROL_REJECTED",
+      "recordPersisted": true
+    }
+  ],
+  "firstCampaignFailure": null,
+  "NodeEntriesStarted": 12,
+  "applicationAcceptance": false,
+  "driverOrDBAcceptance": false,
+  "lostHistoricalQARemainsMissing": true,
+  "writesStopped": true
+}

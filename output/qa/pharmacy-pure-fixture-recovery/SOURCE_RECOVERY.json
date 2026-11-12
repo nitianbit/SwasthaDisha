@@ -1,0 +1,64 @@
+{
+  "schema": "SD-PHARMACY-PURE-SOURCE-RECOVERY-1",
+  "status": "SOURCE_PREPARED_NOT_EXECUTED",
+  "baselines": {
+    "bootstrap.cjs": {
+      "baselineSha256": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690",
+      "archivePath": "blobs/f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690.txt",
+      "candidateSha256": "6470766a88a09763ffc1047daa5d072611ea8783459c2ac76cc668349f5b1968"
+    },
+    "bootstrap-unit.cjs": {
+      "baselineSha256": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+      "archivePath": "blobs/1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5.txt",
+      "candidateSha256": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5"
+    },
+    "apm-cursor.test.cjs": {
+      "baselineSha256": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+      "archivePath": "blobs/6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f.txt",
+      "candidateSha256": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f"
+    },
+    "ports-manifest.json": {
+      "baselineSha256": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+      "archivePath": "blobs/12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a.txt",
+      "candidateSha256": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a"
+    },
+    "cases.json": {
+      "baselineSha256": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+      "archivePath": "blobs/807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4.txt",
+      "candidateSha256": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4"
+    },
+    "public-lock.json": {
+      "baselineSha256": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+      "archivePath": "blobs/2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5.txt",
+      "candidateSha256": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5"
+    }
+  },
+  "exactInverseBootstrapSha256": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690",
+  "oneRuntimeExpressionChanged": true,
+  "otherFiveRecoveredFilesByteIdentical": true,
+  "nodePath": "/private/tmp/m0-node22/node",
+  "nodeSha256": "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0",
+  "nodeBytes": 113002944,
+  "nodeMode": "0500",
+  "nodeIdentity": [
+    16777233,
+    54314947,
+    501
+  ],
+  "pythonSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "dataOnlyChecks": [
+    "six current input digests",
+    "candidate exact inverse",
+    "new require-literal closure",
+    "fixed47 planned case identifiers",
+    "Python launcher AST parse only",
+    "current Node regular-file hash/identity/mode read",
+    "application/package/config/draft Git diff against base"
+  ],
+  "JavaScriptSyntaxParsed": false,
+  "NodeExecutions": 0,
+  "packageOrAppEvaluations": 0,
+  "networkCalls": 0,
+  "newAcceptance": false,
+  "lostConstructor296And57RawQARemainsMissing": true
+}

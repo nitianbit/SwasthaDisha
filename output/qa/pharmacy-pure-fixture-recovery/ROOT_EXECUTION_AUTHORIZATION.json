@@ -1,0 +1,39 @@
+{
+  "schema": "SD-PHARMACY-PURE-ROOT-EXECUTION-1",
+  "decision": "AUTHORIZE_ONE_EXACT_PURE_CAMPAIGN",
+  "freezeFile": "SOURCE_FREEZE_2.json",
+  "freezeSha256": "1473c3b852e9e65e4447c85f7aa02154501a5dfb4da48ad1f615ae9c16e079ae",
+  "launcherSha256": "2b106d3f51b8c3ba8d51ffc53340b719840f59c76c5ebdba31b20b8608cd94a2",
+  "nodeSha256": "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0",
+  "reviews": [
+    {
+      "role": "Spec",
+      "reviewer": "/root/booking_read_spec",
+      "decision": "APPROVE_ONE_PURE_CAMPAIGN_ONLY"
+    },
+    {
+      "role": "Standards",
+      "reviewer": "/root/claude_review_recipe_standards",
+      "decision": "APPROVE_ONE_PURE_CAMPAIGN_ONLY"
+    }
+  ],
+  "python": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+  "pythonSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "argv": [
+    "/usr/bin/env",
+    "-i",
+    "PATH=/usr/bin:/bin",
+    "LC_ALL=C",
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "-I",
+    "-S",
+    "-B",
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery/output/qa/pharmacy-pure-fixture-recovery/run-pure.py",
+    "--run-once"
+  ],
+  "all23InputsAndNodePinVerified": true,
+  "scope": "Three nominal pure entries (expected296/95/47) plus nine named weakening controls; first unexpected failure stops; no retry or extra Node command.",
+  "historicalLauncherProse": "LIVE_LAUNCHER.txt retains prior freeze1 wording; actual repaired preflight and both fresh decisions explicitly require SOURCE_FREEZE_2. This admission binds freeze2 only.",
+  "actualApplicationDriverDBProviderAdmission": false,
+  "moduleAcceptance": false
+}

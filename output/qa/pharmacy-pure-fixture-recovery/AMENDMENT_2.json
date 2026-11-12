@@ -1,0 +1,40 @@
+{
+  "schema": "SD-PHARMACY-PURE-LAUNCHER-REPAIRS-2",
+  "priorCommit": "5a9885594187020cd8ceae0d8df09cbb7c465d47",
+  "actualReviewFindingsSha256": "7b7e9edbe3c6ac03d73764a77c0f5183f4e57a1076cd2b4953d3ec1871a3cdc0",
+  "implementationAuthority": "Root direct instruction authorizes PURE-R1/PURE-R2/PURE-R3 repairs and focused Python fakes only",
+  "reviewDecisionStill": "AWAITING_TWO_FRESH_EXACT_SOURCE_EXECUTION_REVIEWS",
+  "repairs": {
+    "PURE-R1": "Guard from lease allocation; retain immediate directory/file ownership; close held descriptors; persist exact unresolved lease/evidence paths and first allocation failure.",
+    "PURE-R2": "Return bounded child argv/acknowledged start/pid/exit/raw stdout/stderr even on selector/read/wait/deadline error; separate at-most8 child cleanup errors; derive NodeEntriesStarted from acknowledged starts.",
+    "PURE-R3": "Capture all hash-verified freeze/plan/source bytes once; stage and derive controls only from that snapshot; revalidate canonical Node hash/identity/mode before every Popen."
+  },
+  "python": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+  "pythonSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "actualArgv": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+    "-I",
+    "-S",
+    "-B",
+    "/private/tmp/pharmacy-pure-launcher-repair/test_run_pure.py"
+  ],
+  "fakeRunExitCode": 0,
+  "fakeChecks": {
+    "schema": "SD-PURE-LAUNCHER-FAKE-CHECKS-1",
+    "tests": 6,
+    "failures": 0,
+    "errors": 0,
+    "skips": 0,
+    "realPopenTripwireAttempts": 0,
+    "NodeExecutions": 0
+  },
+  "sourceSha256": "2b106d3f51b8c3ba8d51ffc53340b719840f59c76c5ebdba31b20b8608cd94a2",
+  "fakeTestSha256": "e1f6e61008b2c46b4dbf765cd325a916d477f9ee40b66278a79e4563702d4378",
+  "allBootstrapAndJSBytesUnchanged": true,
+  "PythonASTParsed": true,
+  "JavaScriptParsed": false,
+  "NodeExecutions": 0,
+  "networkCalls": 0,
+  "executionAuthorized": false,
+  "newAcceptance": false
+}

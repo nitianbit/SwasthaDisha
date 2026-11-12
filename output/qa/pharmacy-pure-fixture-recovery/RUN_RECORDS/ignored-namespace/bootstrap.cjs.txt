@@ -1,0 +1,1933 @@
+'use strict';
+// This fixture imports no package or domain source until complete admission.
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const os = require('node:os');
+const net = require('node:net');
+const tls = require('node:tls');
+const dns = require('node:dns');
+const http = require('node:http');
+const https = require('node:https');
+const timers = require('node:timers');
+const Module = require('node:module');
+const v8 = require('node:v8');
+const diagnostics = require('node:diagnostics_channel');
+const { pathToFileURL, fileURLToPath } = require('node:url');
+const ROOT = '/workspace';
+const ROLE = 'inventory-quality-repository';
+const CASES_SHA = '807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4';
+const PORTS_SHA = '12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a';
+const LOCK_SHA = '2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5';
+const stdout = process.stdout.write.bind(process.stdout);
+const readClock = process.hrtime.bigint.bind(process.hrtime);
+const REPOSITORY_SOURCE = 'src1/modules/pharmacyInventory/repository/index.ts';
+const REPOSITORY_ALIAS = '@/modules/pharmacyInventory/repository';
+const MODEL_ALIAS = '@/modules/pharmacyInventory/model';
+const MODEL_NAMES = Object.freeze(['InventoryItem', 'InventoryAdjustment', 'InventoryReservation']);
+const COLLECTIONS = Object.freeze(['inventoryitems', 'inventoryadjustments', 'inventoryreservations']);
+const PROVIDERS = Object.freeze(['email', 'sms', 'push', 'logger', 'payments', 'calendar', 'storage', 'queue', 'deniedCapabilities', 'unexpected']);
+const DOMAIN_FILES = Object.freeze([
+  'compiled/modules/pharmacyInventory/repository/index.js',
+  'compiled/modules/pharmacyInventory/model/index.js',
+  'compiled/modules/common/repository/index.js',
+  'compiled/modules/common/repository/BaseRepository.js',
+  'compiled/modules/common/utils/queryUtils.js'
+]);
+const FAILURE_CODES = Object.freeze([
+  "RUNTIME_FIXTURE_FAILED",
+  "INVENTORY_DATA_BINDING",
+  "INVENTORY_CONTEXT",
+  "INVENTORY_CASE_SET",
+  "INVENTORY_INDEX_PROOF",
+  "INVENTORY_TYPED_VALUE",
+  "INVENTORY_OWNERSHIP_PROOF",
+  "INVENTORY_SEED_STATE",
+  "INVENTORY_CLEANUP",
+  "INVENTORY_EFFECTS",
+  "INVENTORY_COMMANDS",
+  "INVENTORY_SESSION",
+  "INVENTORY_TRANSACTION",
+  "INVENTORY_RETURN",
+  "INVENTORY_ERROR",
+  "INVENTORY_FULL_STATE",
+  "INVENTORY_GENERATED_FIELD",
+  "INVENTORY_QUALITY_STATUS",
+  "INVENTORY_DEPLETED_AT_PRESERVATION",
+  "INVENTORY_REPOSITORY_FRESHNESS",
+  "INVENTORY_SENSITIVITY",
+  "INVENTORY_UNEXPECTED_FAILURE",
+  "INVENTORY_ADMISSION",
+  "INVENTORY_ENVIRONMENT",
+  "INVENTORY_FILE_MANIFEST",
+  "INVENTORY_FILE_HASH",
+  "INVENTORY_SOURCE_MANIFEST",
+  "INVENTORY_PLAN",
+  "INVENTORY_NETWORK_ADMISSION",
+  "INVENTORY_EGRESS_CANARY",
+  "INVENTORY_FILESYSTEM_CANARY",
+  "INVENTORY_NATIVE_OPERATION",
+  "INVENTORY_NATIVE_IMPORT",
+  "INVENTORY_PUBLIC_INITIALIZATION",
+  "INVENTORY_LOADER",
+  "INVENTORY_DOMAIN_AUDIT",
+  "INVENTORY_MODEL",
+  "INVENTORY_DATABASE",
+  "INVENTORY_OS_ADAPTER",
+  "INVENTORY_CURSOR",
+  "INVENTORY_COMMAND_ENVELOPE",
+  "INVENTORY_COMMAND_LIMIT",
+  "INVENTORY_COMMAND_FAILURE",
+  "INVENTORY_PHASE",
+  "INVENTORY_TERMINAL",
+  "INVENTORY_RESULT",
+  "INVENTORY_CLOSE",
+  "INVENTORY_DIAGNOSTIC",
+  "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_WARNING",
+  "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_CONSOLE",
+  "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_OUTPUT",
+  "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_NATIVE",
+  "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_LOADER",
+  "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_PUBLIC_INIT",
+  "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_DOMAIN_AUDIT",
+  "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_MODEL",
+  "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_DATABASE",
+  "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_GUARD",
+  "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_UNBRANDED",
+  "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_WARNING",
+  "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_CONSOLE",
+  "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_OUTPUT",
+  "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_NATIVE",
+  "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_LOADER",
+  "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_PUBLIC_INIT",
+  "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_DOMAIN_AUDIT",
+  "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_MODEL",
+  "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_DATABASE",
+  "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_GUARD",
+  "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_UNBRANDED",
+  "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_WARNING",
+  "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_CONSOLE",
+  "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_OUTPUT",
+  "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_NATIVE",
+  "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_LOADER",
+  "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_PUBLIC_INIT",
+  "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_DOMAIN_AUDIT",
+  "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_MODEL",
+  "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_DATABASE",
+  "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_GUARD",
+  "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_UNBRANDED",
+  "INVENTORY_IMPORT_DATABASE_BOUNDARY_WARNING",
+  "INVENTORY_IMPORT_DATABASE_BOUNDARY_CONSOLE",
+  "INVENTORY_IMPORT_DATABASE_BOUNDARY_OUTPUT",
+  "INVENTORY_IMPORT_DATABASE_BOUNDARY_NATIVE",
+  "INVENTORY_IMPORT_DATABASE_BOUNDARY_LOADER",
+  "INVENTORY_IMPORT_DATABASE_BOUNDARY_PUBLIC_INIT",
+  "INVENTORY_IMPORT_DATABASE_BOUNDARY_DOMAIN_AUDIT",
+  "INVENTORY_IMPORT_DATABASE_BOUNDARY_MODEL",
+  "INVENTORY_IMPORT_DATABASE_BOUNDARY_DATABASE",
+  "INVENTORY_IMPORT_DATABASE_BOUNDARY_GUARD",
+  "INVENTORY_IMPORT_DATABASE_BOUNDARY_UNBRANDED",
+  "INVENTORY_IMPORT_SCENARIO_MODULE_WARNING",
+  "INVENTORY_IMPORT_SCENARIO_MODULE_CONSOLE",
+  "INVENTORY_IMPORT_SCENARIO_MODULE_OUTPUT",
+  "INVENTORY_IMPORT_SCENARIO_MODULE_NATIVE",
+  "INVENTORY_IMPORT_SCENARIO_MODULE_LOADER",
+  "INVENTORY_IMPORT_SCENARIO_MODULE_PUBLIC_INIT",
+  "INVENTORY_IMPORT_SCENARIO_MODULE_DOMAIN_AUDIT",
+  "INVENTORY_IMPORT_SCENARIO_MODULE_MODEL",
+  "INVENTORY_IMPORT_SCENARIO_MODULE_DATABASE",
+  "INVENTORY_IMPORT_SCENARIO_MODULE_GUARD",
+  "INVENTORY_IMPORT_SCENARIO_MODULE_UNBRANDED",
+  "INVENTORY_IMPORT_MODEL_IMPORT_WARNING",
+  "INVENTORY_IMPORT_MODEL_IMPORT_CONSOLE",
+  "INVENTORY_IMPORT_MODEL_IMPORT_OUTPUT",
+  "INVENTORY_IMPORT_MODEL_IMPORT_NATIVE",
+  "INVENTORY_IMPORT_MODEL_IMPORT_LOADER",
+  "INVENTORY_IMPORT_MODEL_IMPORT_PUBLIC_INIT",
+  "INVENTORY_IMPORT_MODEL_IMPORT_DOMAIN_AUDIT",
+  "INVENTORY_IMPORT_MODEL_IMPORT_MODEL",
+  "INVENTORY_IMPORT_MODEL_IMPORT_DATABASE",
+  "INVENTORY_IMPORT_MODEL_IMPORT_GUARD",
+  "INVENTORY_IMPORT_MODEL_IMPORT_UNBRANDED",
+  "INVENTORY_IMPORT_COMMON_IMPORT_WARNING",
+  "INVENTORY_IMPORT_COMMON_IMPORT_CONSOLE",
+  "INVENTORY_IMPORT_COMMON_IMPORT_OUTPUT",
+  "INVENTORY_IMPORT_COMMON_IMPORT_NATIVE",
+  "INVENTORY_IMPORT_COMMON_IMPORT_LOADER",
+  "INVENTORY_IMPORT_COMMON_IMPORT_PUBLIC_INIT",
+  "INVENTORY_IMPORT_COMMON_IMPORT_DOMAIN_AUDIT",
+  "INVENTORY_IMPORT_COMMON_IMPORT_MODEL",
+  "INVENTORY_IMPORT_COMMON_IMPORT_DATABASE",
+  "INVENTORY_IMPORT_COMMON_IMPORT_GUARD",
+  "INVENTORY_IMPORT_COMMON_IMPORT_UNBRANDED",
+  "INVENTORY_IMPORT_REPOSITORY_OBSERVER_WARNING",
+  "INVENTORY_IMPORT_REPOSITORY_OBSERVER_CONSOLE",
+  "INVENTORY_IMPORT_REPOSITORY_OBSERVER_OUTPUT",
+  "INVENTORY_IMPORT_REPOSITORY_OBSERVER_NATIVE",
+  "INVENTORY_IMPORT_REPOSITORY_OBSERVER_LOADER",
+  "INVENTORY_IMPORT_REPOSITORY_OBSERVER_PUBLIC_INIT",
+  "INVENTORY_IMPORT_REPOSITORY_OBSERVER_DOMAIN_AUDIT",
+  "INVENTORY_IMPORT_REPOSITORY_OBSERVER_MODEL",
+  "INVENTORY_IMPORT_REPOSITORY_OBSERVER_DATABASE",
+  "INVENTORY_IMPORT_REPOSITORY_OBSERVER_GUARD",
+  "INVENTORY_IMPORT_REPOSITORY_OBSERVER_UNBRANDED",
+  "INVENTORY_PUBLIC_INIT_RETRIEVE_CLOSED",
+  "INVENTORY_PUBLIC_INIT_RETRIEVE_UNKNOWN",
+  "INVENTORY_PUBLIC_INIT_RETRIEVE_V8_REPEAT",
+  "INVENTORY_PUBLIC_INIT_RETRIEVE_DC_REPEAT",
+  "INVENTORY_PUBLIC_INIT_V8_MODULE_READ_CLOSED",
+  "INVENTORY_PUBLIC_INIT_V8_MODULE_PROPERTY",
+  "INVENTORY_PUBLIC_INIT_V8_MODULE_WRITE",
+  "INVENTORY_PUBLIC_INIT_SNAPSHOT_OBJECT_READ_CLOSED",
+  "INVENTORY_PUBLIC_INIT_SNAPSHOT_OBJECT_PROPERTY",
+  "INVENTORY_PUBLIC_INIT_SNAPSHOT_OBJECT_WRITE",
+  "INVENTORY_PUBLIC_INIT_DC_MODULE_READ_CLOSED",
+  "INVENTORY_PUBLIC_INIT_DC_MODULE_PROPERTY",
+  "INVENTORY_PUBLIC_INIT_DC_MODULE_WRITE",
+  "INVENTORY_PUBLIC_INIT_SNAPSHOT_CLOSED",
+  "INVENTORY_PUBLIC_INIT_SNAPSHOT_REPEAT",
+  "INVENTORY_PUBLIC_INIT_SNAPSHOT_ARGUMENTS",
+  "INVENTORY_PUBLIC_INIT_SNAPSHOT_RESULT",
+  "INVENTORY_PUBLIC_INIT_TRACE_CLOSED",
+  "INVENTORY_PUBLIC_INIT_TRACE_ARGUMENTS",
+  "INVENTORY_PUBLIC_INIT_TRACE_UNKNOWN_NAME",
+  "INVENTORY_PUBLIC_INIT_TRACE_REPEAT_CURSOR_NEXT",
+  "INVENTORY_PUBLIC_INIT_TRACE_REPEAT_AGGREGATE",
+  "INVENTORY_PUBLIC_INIT_TRACE_REPEAT_QUERY",
+  "INVENTORY_PUBLIC_INIT_TRACE_REPEAT_MODEL_SAVE",
+  "INVENTORY_PUBLIC_INIT_TRACE_REPEAT_INSERT_MANY",
+  "INVENTORY_PUBLIC_INIT_TRACE_REPEAT_BULK_WRITE",
+  "INVENTORY_PUBLIC_INIT_RUN_ADMISSION",
+  "INVENTORY_PUBLIC_INIT_COMPLETE"
+]);
+const LIBRARY_NAMES = Object.freeze(["lib.decorators.d.ts","lib.decorators.legacy.d.ts","lib.dom.asynciterable.d.ts","lib.dom.d.ts","lib.dom.iterable.d.ts","lib.es2015.collection.d.ts","lib.es2015.core.d.ts","lib.es2015.d.ts","lib.es2015.generator.d.ts","lib.es2015.iterable.d.ts","lib.es2015.promise.d.ts","lib.es2015.proxy.d.ts","lib.es2015.reflect.d.ts","lib.es2015.symbol.d.ts","lib.es2015.symbol.wellknown.d.ts","lib.es2016.array.include.d.ts","lib.es2016.d.ts","lib.es2016.intl.d.ts","lib.es2017.arraybuffer.d.ts","lib.es2017.d.ts","lib.es2017.date.d.ts","lib.es2017.intl.d.ts","lib.es2017.object.d.ts","lib.es2017.sharedmemory.d.ts","lib.es2017.string.d.ts","lib.es2017.typedarrays.d.ts","lib.es2018.asyncgenerator.d.ts","lib.es2018.asynciterable.d.ts","lib.es2018.d.ts","lib.es2018.intl.d.ts","lib.es2018.promise.d.ts","lib.es2018.regexp.d.ts","lib.es2019.array.d.ts","lib.es2019.d.ts","lib.es2019.intl.d.ts","lib.es2019.object.d.ts","lib.es2019.string.d.ts","lib.es2019.symbol.d.ts","lib.es2020.bigint.d.ts","lib.es2020.d.ts","lib.es2020.date.d.ts","lib.es2020.full.d.ts","lib.es2020.intl.d.ts","lib.es2020.number.d.ts","lib.es2020.promise.d.ts","lib.es2020.sharedmemory.d.ts","lib.es2020.string.d.ts","lib.es2020.symbol.wellknown.d.ts","lib.es5.d.ts","lib.scripthost.d.ts","lib.webworker.importscripts.d.ts"]);
+
+// Fixed code data, never derived from error fields, operands or package names.
+const IMPORT_CHECKPOINTS = Object.freeze([
+  "PUBLIC_INITIALIZATION",
+  "PUBLIC_ASSERTIONS",
+  "TYPE_DI_BOUNDARY",
+  "DATABASE_BOUNDARY",
+  "SCENARIO_MODULE",
+  "MODEL_IMPORT",
+  "COMMON_IMPORT",
+  "REPOSITORY_OBSERVER"
+]);
+const IMPORT_CATEGORIES = Object.freeze([
+  "WARNING",
+  "CONSOLE",
+  "OUTPUT",
+  "NATIVE",
+  "LOADER",
+  "PUBLIC_INIT",
+  "DOMAIN_AUDIT",
+  "MODEL",
+  "DATABASE",
+  "GUARD",
+  "UNBRANDED"
+]);
+const IMPORT_GUARD_CODES = Object.freeze([
+  "RUNTIME_FIXTURE_FAILED",
+  "INVENTORY_DATA_BINDING",
+  "INVENTORY_CONTEXT",
+  "INVENTORY_CASE_SET",
+  "INVENTORY_INDEX_PROOF",
+  "INVENTORY_TYPED_VALUE",
+  "INVENTORY_OWNERSHIP_PROOF",
+  "INVENTORY_SEED_STATE",
+  "INVENTORY_CLEANUP",
+  "INVENTORY_EFFECTS",
+  "INVENTORY_COMMANDS",
+  "INVENTORY_SESSION",
+  "INVENTORY_TRANSACTION",
+  "INVENTORY_RETURN",
+  "INVENTORY_ERROR",
+  "INVENTORY_FULL_STATE",
+  "INVENTORY_GENERATED_FIELD",
+  "INVENTORY_QUALITY_STATUS",
+  "INVENTORY_DEPLETED_AT_PRESERVATION",
+  "INVENTORY_REPOSITORY_FRESHNESS",
+  "INVENTORY_SENSITIVITY",
+  "INVENTORY_UNEXPECTED_FAILURE",
+  "INVENTORY_ADMISSION",
+  "INVENTORY_ENVIRONMENT",
+  "INVENTORY_FILE_MANIFEST",
+  "INVENTORY_FILE_HASH",
+  "INVENTORY_SOURCE_MANIFEST",
+  "INVENTORY_PLAN",
+  "INVENTORY_NETWORK_ADMISSION",
+  "INVENTORY_EGRESS_CANARY",
+  "INVENTORY_FILESYSTEM_CANARY",
+  "INVENTORY_NATIVE_OPERATION",
+  "INVENTORY_NATIVE_IMPORT",
+  "INVENTORY_PUBLIC_INITIALIZATION",
+  "INVENTORY_LOADER",
+  "INVENTORY_DOMAIN_AUDIT",
+  "INVENTORY_MODEL",
+  "INVENTORY_DATABASE",
+  "INVENTORY_OS_ADAPTER",
+  "INVENTORY_CURSOR",
+  "INVENTORY_COMMAND_ENVELOPE",
+  "INVENTORY_COMMAND_LIMIT",
+  "INVENTORY_COMMAND_FAILURE",
+  "INVENTORY_PHASE",
+  "INVENTORY_TERMINAL",
+  "INVENTORY_RESULT",
+  "INVENTORY_CLOSE",
+  "INVENTORY_DIAGNOSTIC"
+]);
+const IMPORT_GUARD_CATEGORIES = Object.freeze({
+  "INVENTORY_NATIVE_OPERATION": "NATIVE",
+  "INVENTORY_NATIVE_IMPORT": "LOADER",
+  "INVENTORY_LOADER": "LOADER",
+  "INVENTORY_PUBLIC_INITIALIZATION": "PUBLIC_INIT",
+  "INVENTORY_DOMAIN_AUDIT": "DOMAIN_AUDIT",
+  "INVENTORY_MODEL": "MODEL",
+  "INVENTORY_DATABASE": "DATABASE",
+  "INVENTORY_OS_ADAPTER": "DATABASE"
+});
+const IMPORT_LOOKUP = Object.freeze({
+  "PUBLIC_INITIALIZATION": {
+    "WARNING": "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_WARNING",
+    "CONSOLE": "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_CONSOLE",
+    "OUTPUT": "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_OUTPUT",
+    "NATIVE": "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_NATIVE",
+    "LOADER": "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_LOADER",
+    "PUBLIC_INIT": "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_PUBLIC_INIT",
+    "DOMAIN_AUDIT": "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_DOMAIN_AUDIT",
+    "MODEL": "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_MODEL",
+    "DATABASE": "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_DATABASE",
+    "GUARD": "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_GUARD",
+    "UNBRANDED": "INVENTORY_IMPORT_PUBLIC_INITIALIZATION_UNBRANDED"
+  },
+  "PUBLIC_ASSERTIONS": {
+    "WARNING": "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_WARNING",
+    "CONSOLE": "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_CONSOLE",
+    "OUTPUT": "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_OUTPUT",
+    "NATIVE": "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_NATIVE",
+    "LOADER": "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_LOADER",
+    "PUBLIC_INIT": "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_PUBLIC_INIT",
+    "DOMAIN_AUDIT": "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_DOMAIN_AUDIT",
+    "MODEL": "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_MODEL",
+    "DATABASE": "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_DATABASE",
+    "GUARD": "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_GUARD",
+    "UNBRANDED": "INVENTORY_IMPORT_PUBLIC_ASSERTIONS_UNBRANDED"
+  },
+  "TYPE_DI_BOUNDARY": {
+    "WARNING": "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_WARNING",
+    "CONSOLE": "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_CONSOLE",
+    "OUTPUT": "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_OUTPUT",
+    "NATIVE": "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_NATIVE",
+    "LOADER": "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_LOADER",
+    "PUBLIC_INIT": "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_PUBLIC_INIT",
+    "DOMAIN_AUDIT": "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_DOMAIN_AUDIT",
+    "MODEL": "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_MODEL",
+    "DATABASE": "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_DATABASE",
+    "GUARD": "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_GUARD",
+    "UNBRANDED": "INVENTORY_IMPORT_TYPE_DI_BOUNDARY_UNBRANDED"
+  },
+  "DATABASE_BOUNDARY": {
+    "WARNING": "INVENTORY_IMPORT_DATABASE_BOUNDARY_WARNING",
+    "CONSOLE": "INVENTORY_IMPORT_DATABASE_BOUNDARY_CONSOLE",
+    "OUTPUT": "INVENTORY_IMPORT_DATABASE_BOUNDARY_OUTPUT",
+    "NATIVE": "INVENTORY_IMPORT_DATABASE_BOUNDARY_NATIVE",
+    "LOADER": "INVENTORY_IMPORT_DATABASE_BOUNDARY_LOADER",
+    "PUBLIC_INIT": "INVENTORY_IMPORT_DATABASE_BOUNDARY_PUBLIC_INIT",
+    "DOMAIN_AUDIT": "INVENTORY_IMPORT_DATABASE_BOUNDARY_DOMAIN_AUDIT",
+    "MODEL": "INVENTORY_IMPORT_DATABASE_BOUNDARY_MODEL",
+    "DATABASE": "INVENTORY_IMPORT_DATABASE_BOUNDARY_DATABASE",
+    "GUARD": "INVENTORY_IMPORT_DATABASE_BOUNDARY_GUARD",
+    "UNBRANDED": "INVENTORY_IMPORT_DATABASE_BOUNDARY_UNBRANDED"
+  },
+  "SCENARIO_MODULE": {
+    "WARNING": "INVENTORY_IMPORT_SCENARIO_MODULE_WARNING",
+    "CONSOLE": "INVENTORY_IMPORT_SCENARIO_MODULE_CONSOLE",
+    "OUTPUT": "INVENTORY_IMPORT_SCENARIO_MODULE_OUTPUT",
+    "NATIVE": "INVENTORY_IMPORT_SCENARIO_MODULE_NATIVE",
+    "LOADER": "INVENTORY_IMPORT_SCENARIO_MODULE_LOADER",
+    "PUBLIC_INIT": "INVENTORY_IMPORT_SCENARIO_MODULE_PUBLIC_INIT",
+    "DOMAIN_AUDIT": "INVENTORY_IMPORT_SCENARIO_MODULE_DOMAIN_AUDIT",
+    "MODEL": "INVENTORY_IMPORT_SCENARIO_MODULE_MODEL",
+    "DATABASE": "INVENTORY_IMPORT_SCENARIO_MODULE_DATABASE",
+    "GUARD": "INVENTORY_IMPORT_SCENARIO_MODULE_GUARD",
+    "UNBRANDED": "INVENTORY_IMPORT_SCENARIO_MODULE_UNBRANDED"
+  },
+  "MODEL_IMPORT": {
+    "WARNING": "INVENTORY_IMPORT_MODEL_IMPORT_WARNING",
+    "CONSOLE": "INVENTORY_IMPORT_MODEL_IMPORT_CONSOLE",
+    "OUTPUT": "INVENTORY_IMPORT_MODEL_IMPORT_OUTPUT",
+    "NATIVE": "INVENTORY_IMPORT_MODEL_IMPORT_NATIVE",
+    "LOADER": "INVENTORY_IMPORT_MODEL_IMPORT_LOADER",
+    "PUBLIC_INIT": "INVENTORY_IMPORT_MODEL_IMPORT_PUBLIC_INIT",
+    "DOMAIN_AUDIT": "INVENTORY_IMPORT_MODEL_IMPORT_DOMAIN_AUDIT",
+    "MODEL": "INVENTORY_IMPORT_MODEL_IMPORT_MODEL",
+    "DATABASE": "INVENTORY_IMPORT_MODEL_IMPORT_DATABASE",
+    "GUARD": "INVENTORY_IMPORT_MODEL_IMPORT_GUARD",
+    "UNBRANDED": "INVENTORY_IMPORT_MODEL_IMPORT_UNBRANDED"
+  },
+  "COMMON_IMPORT": {
+    "WARNING": "INVENTORY_IMPORT_COMMON_IMPORT_WARNING",
+    "CONSOLE": "INVENTORY_IMPORT_COMMON_IMPORT_CONSOLE",
+    "OUTPUT": "INVENTORY_IMPORT_COMMON_IMPORT_OUTPUT",
+    "NATIVE": "INVENTORY_IMPORT_COMMON_IMPORT_NATIVE",
+    "LOADER": "INVENTORY_IMPORT_COMMON_IMPORT_LOADER",
+    "PUBLIC_INIT": "INVENTORY_IMPORT_COMMON_IMPORT_PUBLIC_INIT",
+    "DOMAIN_AUDIT": "INVENTORY_IMPORT_COMMON_IMPORT_DOMAIN_AUDIT",
+    "MODEL": "INVENTORY_IMPORT_COMMON_IMPORT_MODEL",
+    "DATABASE": "INVENTORY_IMPORT_COMMON_IMPORT_DATABASE",
+    "GUARD": "INVENTORY_IMPORT_COMMON_IMPORT_GUARD",
+    "UNBRANDED": "INVENTORY_IMPORT_COMMON_IMPORT_UNBRANDED"
+  },
+  "REPOSITORY_OBSERVER": {
+    "WARNING": "INVENTORY_IMPORT_REPOSITORY_OBSERVER_WARNING",
+    "CONSOLE": "INVENTORY_IMPORT_REPOSITORY_OBSERVER_CONSOLE",
+    "OUTPUT": "INVENTORY_IMPORT_REPOSITORY_OBSERVER_OUTPUT",
+    "NATIVE": "INVENTORY_IMPORT_REPOSITORY_OBSERVER_NATIVE",
+    "LOADER": "INVENTORY_IMPORT_REPOSITORY_OBSERVER_LOADER",
+    "PUBLIC_INIT": "INVENTORY_IMPORT_REPOSITORY_OBSERVER_PUBLIC_INIT",
+    "DOMAIN_AUDIT": "INVENTORY_IMPORT_REPOSITORY_OBSERVER_DOMAIN_AUDIT",
+    "MODEL": "INVENTORY_IMPORT_REPOSITORY_OBSERVER_MODEL",
+    "DATABASE": "INVENTORY_IMPORT_REPOSITORY_OBSERVER_DATABASE",
+    "GUARD": "INVENTORY_IMPORT_REPOSITORY_OBSERVER_GUARD",
+    "UNBRANDED": "INVENTORY_IMPORT_REPOSITORY_OBSERVER_UNBRANDED"
+  }
+});
+for (const row of Object.values(IMPORT_LOOKUP)) Object.freeze(row);
+const PUBLIC_INIT_DECISIONS = Object.freeze({
+  "RETRIEVE_CLOSED": "INVENTORY_PUBLIC_INIT_RETRIEVE_CLOSED",
+  "RETRIEVE_UNKNOWN": "INVENTORY_PUBLIC_INIT_RETRIEVE_UNKNOWN",
+  "RETRIEVE_V8_REPEAT": "INVENTORY_PUBLIC_INIT_RETRIEVE_V8_REPEAT",
+  "RETRIEVE_DC_REPEAT": "INVENTORY_PUBLIC_INIT_RETRIEVE_DC_REPEAT",
+  "V8_MODULE_READ_CLOSED": "INVENTORY_PUBLIC_INIT_V8_MODULE_READ_CLOSED",
+  "V8_MODULE_PROPERTY": "INVENTORY_PUBLIC_INIT_V8_MODULE_PROPERTY",
+  "V8_MODULE_WRITE": "INVENTORY_PUBLIC_INIT_V8_MODULE_WRITE",
+  "SNAPSHOT_OBJECT_READ_CLOSED": "INVENTORY_PUBLIC_INIT_SNAPSHOT_OBJECT_READ_CLOSED",
+  "SNAPSHOT_OBJECT_PROPERTY": "INVENTORY_PUBLIC_INIT_SNAPSHOT_OBJECT_PROPERTY",
+  "SNAPSHOT_OBJECT_WRITE": "INVENTORY_PUBLIC_INIT_SNAPSHOT_OBJECT_WRITE",
+  "DC_MODULE_READ_CLOSED": "INVENTORY_PUBLIC_INIT_DC_MODULE_READ_CLOSED",
+  "DC_MODULE_PROPERTY": "INVENTORY_PUBLIC_INIT_DC_MODULE_PROPERTY",
+  "DC_MODULE_WRITE": "INVENTORY_PUBLIC_INIT_DC_MODULE_WRITE",
+  "SNAPSHOT_CLOSED": "INVENTORY_PUBLIC_INIT_SNAPSHOT_CLOSED",
+  "SNAPSHOT_REPEAT": "INVENTORY_PUBLIC_INIT_SNAPSHOT_REPEAT",
+  "SNAPSHOT_ARGUMENTS": "INVENTORY_PUBLIC_INIT_SNAPSHOT_ARGUMENTS",
+  "SNAPSHOT_RESULT": "INVENTORY_PUBLIC_INIT_SNAPSHOT_RESULT",
+  "TRACE_CLOSED": "INVENTORY_PUBLIC_INIT_TRACE_CLOSED",
+  "TRACE_ARGUMENTS": "INVENTORY_PUBLIC_INIT_TRACE_ARGUMENTS",
+  "TRACE_UNKNOWN_NAME": "INVENTORY_PUBLIC_INIT_TRACE_UNKNOWN_NAME",
+  "TRACE_REPEAT_CURSOR_NEXT": "INVENTORY_PUBLIC_INIT_TRACE_REPEAT_CURSOR_NEXT",
+  "TRACE_REPEAT_AGGREGATE": "INVENTORY_PUBLIC_INIT_TRACE_REPEAT_AGGREGATE",
+  "TRACE_REPEAT_QUERY": "INVENTORY_PUBLIC_INIT_TRACE_REPEAT_QUERY",
+  "TRACE_REPEAT_MODEL_SAVE": "INVENTORY_PUBLIC_INIT_TRACE_REPEAT_MODEL_SAVE",
+  "TRACE_REPEAT_INSERT_MANY": "INVENTORY_PUBLIC_INIT_TRACE_REPEAT_INSERT_MANY",
+  "TRACE_REPEAT_BULK_WRITE": "INVENTORY_PUBLIC_INIT_TRACE_REPEAT_BULK_WRITE",
+  "RUN_ADMISSION": "INVENTORY_PUBLIC_INIT_RUN_ADMISSION",
+  "COMPLETE": "INVENTORY_PUBLIC_INIT_COMPLETE"
+});
+const PUBLIC_INIT_RETRIEVE_REPEAT = Object.freeze({
+  "v8": "RETRIEVE_V8_REPEAT",
+  "node:diagnostics_channel": "RETRIEVE_DC_REPEAT"
+});
+const PUBLIC_INIT_TRACE_REPEAT = Object.freeze({
+  "mongoose:cursor:next": "TRACE_REPEAT_CURSOR_NEXT",
+  "mongoose:aggregate": "TRACE_REPEAT_AGGREGATE",
+  "mongoose:query": "TRACE_REPEAT_QUERY",
+  "mongoose:model:save": "TRACE_REPEAT_MODEL_SAVE",
+  "mongoose:model:insertMany": "TRACE_REPEAT_INSERT_MANY",
+  "mongoose:model:bulkWrite": "TRACE_REPEAT_BULK_WRITE"
+});
+let importDiagnostics = null;
+function createImportDiagnostics() {
+  let current = null; let first = null; let closed = false;
+  const invalid = () => { throw new Error('INVENTORY_DIAGNOSTIC'); };
+  function record(category, decision) {
+    if (current === null || closed || first !== null) return false;
+    first = Object.freeze(decision === undefined ? { point: current, category } : { point: current, category, decision }); return true;
+  }
+  return Object.freeze({
+    enter(point) {
+      if (closed || !IMPORT_CHECKPOINTS.includes(point)) return invalid();
+      current = point;
+    },
+    effect(category) {
+      if (category === 'UNBRANDED' || !IMPORT_CATEGORIES.includes(category)) return invalid();
+      return record(category);
+    },
+    guard(code) {
+      if (!IMPORT_GUARD_CODES.includes(code)) return invalid();
+      return record(Object.prototype.hasOwnProperty.call(IMPORT_GUARD_CATEGORIES, code) ? IMPORT_GUARD_CATEGORIES[code] : 'GUARD');
+    },
+    decision(reason) {
+      if (typeof reason !== 'string' || !Object.prototype.hasOwnProperty.call(PUBLIC_INIT_DECISIONS, reason)) return invalid();
+      return record('PUBLIC_INIT', PUBLIC_INIT_DECISIONS[reason]);
+    },
+    close() { closed = true; },
+    select(finalStage, fallback) {
+      if (!IMPORT_GUARD_CODES.includes(fallback)) return invalid();
+      if (finalStage !== 'REPOSITORY_IMPORT') return fallback;
+      if (first) return first.decision === undefined ? IMPORT_LOOKUP[first.point][first.category] : first.decision;
+      return current === null ? fallback : IMPORT_LOOKUP[current].UNBRANDED;
+    }
+  });
+}
+
+const failures = new WeakMap();
+let lifetimeFailures = 0;
+const own = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
+const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+function fail(code) {
+  lifetimeFailures++;
+  const safeCode = IMPORT_GUARD_CODES.includes(code) ? code : 'RUNTIME_FIXTURE_FAILED';
+  importDiagnostics?.guard(safeCode);
+  const error = new Error(safeCode);
+  failures.set(error, safeCode); throw error;
+}
+const need = (ok, code) => { if (!ok) fail(code); };
+const plain = value => value !== null && typeof value === 'object' && !Array.isArray(value)
+  && [Object.prototype, null].includes(Object.getPrototypeOf(value));
+function keys(value, required, optional = []) {
+  if (!plain(value) || Object.getOwnPropertySymbols(value).length) return false;
+  const observed = Object.getOwnPropertyNames(value);
+  return required.every(key => own(value, key)) && observed.every(key => required.includes(key) || optional.includes(key))
+    && observed.every(key => own(Object.getOwnPropertyDescriptor(value, key), 'value'));
+}
+function freeze(value) {
+  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+    for (const key of Object.keys(value)) freeze(value[key]); Object.freeze(value);
+  }
+  return value;
+}
+function freezeRecord(value) {
+  if (Array.isArray(value) || plain(value)) { for (const item of Object.values(value)) freezeRecord(item); Object.freeze(value); }
+  return value;
+}
+function clone(value, bson) {
+  if (value === null || typeof value !== 'object') return value;
+  if (value instanceof Date) return new Date(value.getTime());
+  if (Buffer.isBuffer(value)) return Buffer.from(value);
+  if (bson && value instanceof bson.ObjectId) return new bson.ObjectId(value.toHexString());
+  if (bson && value instanceof bson.Timestamp) return new bson.Timestamp({ t: value.getHighBitsUnsigned(), i: value.getLowBitsUnsigned() });
+  if (bson && value instanceof bson.Long) return bson.Long.fromBits(value.low, value.high, value.unsigned);
+  if (bson && value instanceof bson.Binary) return new bson.Binary(binaryBytes(value), value.sub_type);
+  if (value instanceof Map) return new Map([...value].map(([key, item]) => [key, clone(item, bson)]));
+  if (Array.isArray(value)) return value.map(item => clone(item, bson));
+  need(plain(value), 'INVENTORY_TYPED_VALUE');
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, clone(item, bson)]));
+}
+function same(left, right, bson) {
+  if (Object.is(left, right)) return true;
+  if (left === null || right === null || typeof left !== typeof right || typeof left !== 'object') return false;
+  if (left instanceof Date || right instanceof Date) return left instanceof Date && right instanceof Date && left.getTime() === right.getTime();
+  if (Buffer.isBuffer(left) || Buffer.isBuffer(right)) return Buffer.isBuffer(left) && Buffer.isBuffer(right) && left.equals(right);
+  if (bson) {
+    for (const Type of [bson.ObjectId, bson.Timestamp, bson.Long, bson.Binary]) if (left instanceof Type || right instanceof Type) {
+      return left instanceof Type && right instanceof Type && (Type === bson.Binary
+        ? left.sub_type === right.sub_type && binaryBytes(left).equals(binaryBytes(right))
+        : Type === bson.ObjectId ? left.toHexString() === right.toHexString()
+          : left.low === right.low && left.high === right.high && left.unsigned === right.unsigned);
+    }
+  }
+  if (left instanceof Map || right instanceof Map) return left instanceof Map && right instanceof Map
+    && same([...left], [...right], bson);
+  if (Array.isArray(left) || Array.isArray(right)) return Array.isArray(left) && Array.isArray(right)
+    && left.length === right.length && left.every((value, i) => same(value, right[i], bson));
+  if (!plain(left) || !plain(right)) return false;
+  const a = Object.keys(left).sort(); const b = Object.keys(right).sort();
+  return same(a, b, bson) && a.every(key => same(left[key], right[key], bson));
+}
+function binaryBytes(value) {
+  need((Buffer.isBuffer(value.buffer) || value.buffer instanceof Uint8Array) && Number.isSafeInteger(value.position)
+    && value.position >= 0 && value.position <= value.buffer.length, 'INVENTORY_TYPED_VALUE');
+  return Buffer.from(value.buffer).subarray(0, value.position);
+}
+function effectsState() {
+  return { providers: Object.fromEntries(PROVIDERS.map(name => [name, 0])), consoleCalls: 0, warnings: 0,
+    operationDenials: 0, loaderDenials: 0, unexpectedCommands: 0, commandFailures: 0 };
+}
+function assertEffects(effects) {
+  need(keys(effects, ['providers', 'consoleCalls', 'warnings', 'operationDenials', 'loaderDenials', 'unexpectedCommands', 'commandFailures'])
+    && keys(effects.providers, PROVIDERS) && Object.values(effects.providers).every(value => value === 0)
+    && Object.entries(effects).filter(([key]) => key !== 'providers').every(([, value]) => value === 0), 'INVENTORY_EFFECTS');
+}
+function makeFailureContext(ports) {
+  let current = { caseId: null, variantId: null, phase: null };
+  let entered = false;
+  return Object.freeze({
+    set(value) {
+      need(keys(value, ['caseId', 'variantId', 'phase'])
+        && (value.caseId === null || ports.failureContext.safeCaseIds.includes(value.caseId))
+        && (value.variantId === null || ports.failureContext.safeVariantIds.includes(value.variantId))
+        && (value.phase === null || ports.failureContext.phases.includes(value.phase))
+        && (value.caseId === null ? !entered && value.variantId === null && value.phase === null
+          : value.phase !== null && (value.phase === 'NOMINAL' ? value.variantId === null : value.variantId !== null)), 'INVENTORY_DIAGNOSTIC');
+      if (value.caseId !== null) entered = true;
+      current = { ...value };
+    },
+    get: () => ({ ...current })
+  });
+}
+function bytes(relative, root = ROOT) {
+  need(typeof relative === 'string' && relative.length > 0 && !path.isAbsolute(relative)
+    && relative.split('/').every(part => part && part !== '.' && part !== '..'), 'INVENTORY_FILE_MANIFEST');
+  const filename = path.join(root, relative); const metadata = fs.lstatSync(filename);
+  need(metadata.isFile() && !metadata.isSymbolicLink() && metadata.nlink === 1, 'INVENTORY_FILE_MANIFEST');
+  return fs.readFileSync(filename);
+}
+function validateAdmissionData(manifest, plan, ports, cases, observed) {
+  need(keys(manifest, ['schema', 'runId', 'role', 'database', 'replicaSet', 'mongoId', 'templateSha', 'files', 'lockSha', 'portsSha', 'casesSha', 'sourceCommit'])
+    && manifest.schema === 'SD-INVENTORY-QUALITY-RUN-1' && manifest.role === ROLE, 'INVENTORY_ADMISSION');
+  need(/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(manifest.runId)
+    && manifest.runId === observed.runId, 'INVENTORY_ADMISSION');
+  const nonce = manifest.runId.replaceAll('-', '');
+  need(manifest.database === 'sd_iq_' + nonce && manifest.replicaSet === 'sd_iq_rs_' + nonce
+    && /^[a-f0-9]{64}$/.test(manifest.mongoId) && /^[a-f0-9]{64}$/.test(manifest.templateSha)
+    && /^[a-f0-9]{40}$/.test(manifest.sourceCommit), 'INVENTORY_ADMISSION');
+  need(plain(manifest.files) && plain(observed.files) && Object.keys(manifest.files).length === 2777
+    && same(Object.keys(observed.files).sort(), Object.keys(manifest.files).sort()), 'INVENTORY_FILE_MANIFEST');
+  let total = 0;
+  for (const [name, content] of Object.entries(observed.files)) {
+    need(typeof name === 'string' && !path.isAbsolute(name) && name.split('/').every(part => part && !['.', '..'].includes(part))
+      && !name.endsWith('.node') && !path.basename(name).startsWith('.env') && Buffer.isBuffer(content)
+      && /^[a-f0-9]{64}$/.test(manifest.files[name]) && sha(content) === manifest.files[name], 'INVENTORY_FILE_HASH');
+    total += content.length;
+  }
+  need(total <= 256 * 1024 * 1024 && Object.keys(manifest.files).filter(name => name.startsWith('node_modules/')).length === 2755
+    && ['bootstrap.cjs', 'scenario.cjs', 'network-admission.mjs', 'runtime-plan.json', 'ports-manifest.json', 'cases.json', 'package-lock.json']
+      .every(name => Buffer.isBuffer(observed.files[name])), 'INVENTORY_FILE_MANIFEST');
+  need(manifest.lockSha === LOCK_SHA && sha(observed.files['package-lock.json']) === LOCK_SHA
+    && manifest.portsSha === PORTS_SHA && sha(observed.files['ports-manifest.json']) === PORTS_SHA
+    && manifest.casesSha === CASES_SHA && sha(observed.files['cases.json']) === CASES_SHA, 'INVENTORY_DATA_BINDING');
+  need(keys(plan, ['schema', 'role', 'sourceCommit', 'sourceFiles', 'modules', 'mutants', 'models', 'modelDeclarations', 'modelMapAudit',
+    'packageVersions', 'lockSha', 'portsSha', 'casesSha', 'requiredCaseIds', 'requiredGroupMethodCounts', 'requiredSensitivityIds',
+    'providerCounterKeys', 'providerCounterScope', 'nominalMethodCalls', 'unsafeMethodCalls', 'restorationMethodCalls', 'compilation'])
+    && plan.schema === 'SD-INVENTORY-QUALITY-PLAN-1' && plan.role === ROLE && plan.sourceCommit === manifest.sourceCommit
+    && plan.lockSha === LOCK_SHA && plan.portsSha === PORTS_SHA && plan.casesSha === CASES_SHA, 'INVENTORY_PLAN');
+  const publicLock = JSON.parse(observed.files['package-lock.json']);
+  need(publicLock.name === 'sd-owned-auth-api-fixture' && Object.keys(publicLock.packages).length === 123
+    && Object.keys(publicLock.packages[''].dependencies).length === 10 && same(plan.packageVersions, publicLock.packages[''].dependencies), 'INVENTORY_PLAN');
+  need(ports.schema === 'SD-INVENTORY-QUALITY-PORTS-1' && ports.role === ROLE && ports.casesSha === CASES_SHA
+    && ports.domainScope === 'DIRECT_INVENTORY_REPOSITORY_ONLY' && cases.schema === 'SD-INVENTORY-QUALITY-CASES-1'
+    && same(plan.models, ports.models) && same(plan.requiredCaseIds, ports.requiredCaseIds)
+    && same(plan.requiredGroupMethodCounts, ports.requiredGroupMethodCounts)
+    && same(plan.requiredSensitivityIds, ports.requiredSensitivityIds) && same(plan.providerCounterKeys, PROVIDERS)
+    && same(ports.providerCounterKeys, PROVIDERS) && plan.providerCounterScope === 'ALL_PHASES_INCLUDING_SENSITIVITY_ZERO'
+    && plan.nominalMethodCalls === 139 && plan.unsafeMethodCalls === 8 && plan.restorationMethodCalls === 16
+    && cases.cases.length === 139 && Object.keys(cases.groups).length === 20 && cases.sourceMutations.length === 8
+    && same(Object.keys(cases.groups), ports.requiredCaseIds)
+    && same(cases.sourceMutations.map(row => row.id), ports.requiredSensitivityIds), 'INVENTORY_PLAN');
+  need(plain(plan.sourceFiles) && Object.keys(plan.sourceFiles).length === 17
+    && Object.values(plan.sourceFiles).every(value => /^[a-f0-9]{64}$/.test(value)), 'INVENTORY_SOURCE_MANIFEST');
+  const fixtureNames = ['bootstrap.cjs', 'scenario.cjs', 'ports-manifest.json', 'cases.json', 'prepare.py', 'compile.cjs', 'package-plan.json', 'npm-config-shield.cjs'];
+  need(same(Object.keys(plan.sourceFiles).sort(), [...Object.keys(ports.sourceFiles), ...fixtureNames.map(name => 'test/inventory-runtime/scenario/' + name),
+    'test/application/app-bundle.mjs', 'package-lock.json'].sort()), 'INVENTORY_SOURCE_MANIFEST');
+  for (const [source, digest] of Object.entries(ports.sourceFiles)) need(plan.sourceFiles[source] === digest, 'INVENTORY_SOURCE_MANIFEST');
+  for (const name of ['bootstrap.cjs', 'scenario.cjs', 'ports-manifest.json', 'cases.json']) {
+    need(plan.sourceFiles['test/inventory-runtime/scenario/' + name] === manifest.files[name], 'INVENTORY_SOURCE_MANIFEST');
+  }
+  need(plain(plan.modules) && plain(plan.mutants) && same(Object.keys(plan.mutants), ports.requiredSensitivityIds), 'INVENTORY_PLAN');
+  const modules = new Set(Object.values(plan.modules));
+  need(modules.size === 7 && [...modules].every(name => own(manifest.files, name)), 'INVENTORY_PLAN');
+  const aliases = {};
+  for (const source of Object.keys(ports.sourceFiles)) {
+    const stem = source.slice(5, -3); aliases['@/' + stem] = 'compiled/' + stem + '.js';
+    aliases['@/' + stem.replace(/\/index$/, '')] = 'compiled/' + stem + '.js';
+  }
+  need(same(plan.modules, aliases), 'INVENTORY_PLAN');
+  for (const variant of cases.sourceMutations) {
+    const row = plan.mutants[variant.id];
+    need(keys(row, ['source', 'originalSha256', 'mutantSha256', 'file']) && row.source === REPOSITORY_SOURCE
+      && row.originalSha256 === ports.sourceFiles[REPOSITORY_SOURCE] && row.mutantSha256 === variant.predictedSourceSha256
+      && row.file === 'compiled/mutants/' + variant.id + '.js' && own(manifest.files, row.file), 'INVENTORY_PLAN');
+  }
+  need(keys(plan.compilation, ['status', 'compiler', 'diagnostics', 'semanticDiagnostics', 'semanticScope', 'fullBuild', 'libraryAdmission'])
+    && plan.compilation.status === 'TRANSPILE_ONLY_NOT_TYPECHECKED' && plan.compilation.compiler === '5.9.3'
+    && plan.compilation.fullBuild === false && Array.isArray(plan.compilation.diagnostics) && plan.compilation.diagnostics.length === 0
+    && Array.isArray(plan.compilation.semanticDiagnostics)
+    && plan.compilation.semanticScope === 'DECLARED_SEVEN_SOURCE_CLOSURE_AND_PUBLIC_TYPES', 'INVENTORY_PLAN');
+  need(keys(plan.modelMapAudit, ['status', 'reachableModules', 'modelCount', 'controls', 'applicationEvaluations'])
+    && plan.modelMapAudit.status === 'STATIC_EMITTED_MODEL_MAP_VERIFIED' && plan.modelMapAudit.reachableModules === 5
+    && plan.modelMapAudit.modelCount === 3 && plan.modelMapAudit.applicationEvaluations === 0
+    && same(plan.modelMapAudit.controls, ['OMITTED_ADJUSTMENT_MODEL', 'EXTRA_UNREACHABLE_MODEL', 'DUPLICATE_MODEL', 'WRONG_MODEL_SOURCE', 'OMITTED_RESERVATION_MODEL'].map(id => ({ id, rejected: true })))
+    && same(plan.modelDeclarations, MODEL_NAMES.slice().sort().map(name => ({ name, source: 'src1/modules/pharmacyInventory/model/index.ts', compiled: 'compiled/modules/pharmacyInventory/model/index.js' }))), 'INVENTORY_MODEL');
+  validateLibraryReport(plan.compilation.libraryAdmission, manifest);
+  const programFiles = plan.compilation.libraryAdmission.semanticProgram.programFiles;
+  need(Object.keys(ports.sourceFiles).every(source => programFiles.includes(source))
+    && programFiles.every(name => own(ports.sourceFiles, name) || (name.startsWith('node_modules/') && own(manifest.files, name))), 'INVENTORY_PLAN');
+  return manifest;
+}
+function validateLibraryReport(report, manifest) {
+  need(keys(report, ['schema', 'status', 'compiler', 'compilerSha256', 'options', 'semanticProgram', 'positive', 'negative', 'oldHostControl', 'restoredPositive'])
+    && report.schema === 'SD-COMPILER-LIBRARY-ADMISSION-1' && report.status === 'PASS' && report.compiler === '5.9.3'
+    && report.compilerSha256 === '3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675'
+    && same(report.options, { target: 7, module: 1, moduleResolution: 2, experimentalDecorators: true,
+      emitDecoratorMetadata: true, esModuleInterop: true, noEmit: true, skipLibCheck: true, types: [] }), 'INVENTORY_PLAN');
+  const libraries = Object.fromEntries(LIBRARY_NAMES.map(name => [name, manifest.files['node_modules/typescript/lib/' + name]]));
+  need(Object.values(libraries).every(value => /^[a-f0-9]{64}$/.test(value)), 'INVENTORY_PLAN');
+  need(keys(report.semanticProgram, ['programFiles', 'libraryFiles']) && same(report.semanticProgram.libraryFiles, libraries)
+    && Array.isArray(report.semanticProgram.programFiles) && report.semanticProgram.programFiles.length <= 512
+    && new Set(report.semanticProgram.programFiles).size === report.semanticProgram.programFiles.length, 'INVENTORY_PLAN');
+  const libraryIds = LIBRARY_NAMES.map(name => 'node_modules/typescript/lib/' + name);
+  function probe(row, positive) {
+    const sourceId = positive ? 'VIRTUAL_BROAD_LIBRARY_POSITIVE.ts' : 'VIRTUAL_BROAD_LIBRARY_NEGATIVE.ts';
+    need(keys(row, ['sourceId', 'sourceSha256', 'status', 'programFiles', 'libraryFiles', 'diagnostics'])
+      && row.sourceId === sourceId && row.sourceSha256 === (positive ? 'a87b8ce179592546ff13030df86086acbc248858e865ca6f7bc47d9e57aa9c6d' : 'b9c73432db9319697fc34612cbc2188123e6f29fb4b2716a9b388499bdc31bce')
+      && row.status === 'COMPLETE' && same(row.libraryFiles, libraries)
+      && same(row.programFiles, [sourceId, ...libraryIds].sort()), 'INVENTORY_PLAN');
+  }
+  probe(report.positive, true); probe(report.negative, false); probe(report.restoredPositive, true);
+  need(same(report.positive.diagnostics, []) && same(report.restoredPositive.diagnostics, [])
+    && same(report.negative.diagnostics, [{ sourceId: 'VIRTUAL_BROAD_LIBRARY_NEGATIVE.ts', code: 2322, category: 1, start: 13, length: 12,
+      message: "Type 'string' is not assignable to type 'number'." }]), 'INVENTORY_PLAN');
+  const old = report.oldHostControl;
+  need(keys(old, ['sourceId', 'sourceSha256', 'status', 'programFiles', 'libraryFiles', 'diagnostics'])
+    && old.sourceId === report.positive.sourceId && old.sourceSha256 === report.positive.sourceSha256 && old.status === 'COMPLETE'
+    && Array.isArray(old.diagnostics) && old.diagnostics.some(row => row.code === 2318 && row.message === "Cannot find global type 'Array'.")
+    && !same(old.libraryFiles, libraries), 'INVENTORY_PLAN');
+}
+
+function createPublicInitialization(surface, ports, effects, diagnostic = importDiagnostics) {
+  let open = false; let finished = false;
+  const retrieved = { v8: 0, 'node:diagnostics_channel': 0 };
+  const traced = Object.fromEntries(ports.publicInitialization.tracingNames.map(name => [name, 0]));
+  let snapshotCalls = 0;
+  const deny = reason => {
+    if (reason !== undefined) diagnostic?.decision(reason);
+    diagnostic?.guard('INVENTORY_PUBLIC_INITIALIZATION'); effects.operationDenials++; fail('INVENTORY_PUBLIC_INITIALIZATION');
+  };
+  const project = (value, allowed, readClosed, property, write) => new Proxy(Object.freeze(value), {
+    get(target, key) { if (!open) return deny(readClosed); if (!allowed.includes(key)) return deny(property); return target[key]; },
+    set: () => deny(write), defineProperty: () => deny(write), deleteProperty: () => deny(write), setPrototypeOf: () => deny(write)
+  });
+  const snapshot = function () {
+    if (!open) return deny('SNAPSHOT_CLOSED');
+    if (++snapshotCalls !== 1) return deny('SNAPSHOT_REPEAT');
+    if (arguments.length) return deny('SNAPSHOT_ARGUMENTS');
+    const result = surface.isBuildingSnapshot(); if (!Object.is(result, 0)) return deny('SNAPSHOT_RESULT'); return result;
+  };
+  const tracing = function (name) {
+    if (!open) return deny('TRACE_CLOSED');
+    if (arguments.length !== 1) return deny('TRACE_ARGUMENTS');
+    if (!own(traced, name)) return deny(typeof name === 'string' ? 'TRACE_UNKNOWN_NAME' : undefined);
+    if (++traced[name] !== 1) return deny(typeof name === 'string' && own(PUBLIC_INIT_TRACE_REPEAT, name) ? PUBLIC_INIT_TRACE_REPEAT[name] : undefined);
+    return surface.tracingChannel(name);
+  };
+  const projections = {
+    v8: project({ startupSnapshot: project({ isBuildingSnapshot: snapshot }, ['isBuildingSnapshot'],
+      'SNAPSHOT_OBJECT_READ_CLOSED', 'SNAPSHOT_OBJECT_PROPERTY', 'SNAPSHOT_OBJECT_WRITE') }, ['startupSnapshot'],
+    'V8_MODULE_READ_CLOSED', 'V8_MODULE_PROPERTY', 'V8_MODULE_WRITE'),
+    'node:diagnostics_channel': project({ tracingChannel: tracing }, ['tracingChannel'],
+      'DC_MODULE_READ_CLOSED', 'DC_MODULE_PROPERTY', 'DC_MODULE_WRITE')
+  };
+  return Object.freeze({
+    retrieve(name) {
+      if (!open) return deny('RETRIEVE_CLOSED');
+      if (!own(retrieved, name)) return deny(typeof name === 'string' ? 'RETRIEVE_UNKNOWN' : undefined);
+      if (++retrieved[name] !== 1) return deny(typeof name === 'string' && own(PUBLIC_INIT_RETRIEVE_REPEAT, name) ? PUBLIC_INIT_RETRIEVE_REPEAT[name] : undefined);
+      return projections[name];
+    },
+    run(action) {
+      const admitted = !open && !finished && typeof action === 'function';
+      if (!admitted) diagnostic?.decision('RUN_ADMISSION');
+      need(admitted, 'INVENTORY_PUBLIC_INITIALIZATION'); open = true;
+      try { return action(); } finally { open = false; finished = true; }
+    },
+    assertComplete() {
+      const complete = finished && !open && Object.values(retrieved).every(value => value === 1)
+        && snapshotCalls === 1 && Object.values(traced).every(value => value === 1);
+      if (!complete) diagnostic?.decision('COMPLETE');
+      need(complete, 'INVENTORY_PUBLIC_INITIALIZATION');
+    }
+  });
+}
+
+function firstExternalFrame(stack) {
+  // Source audit closes domain timer access; this additionally distinguishes
+  // the immediate public caller, rather than denying its inherited domain stack.
+  return String(stack).split('\n').slice(1).find(line => !line.includes(__filename)) || '';
+}
+function nativeSurface() {
+  return { fs, net, tls, dns, http, https, timers, process, globals: globalThis, console,
+    caller: () => firstExternalFrame(new Error().stack) };
+}
+// Internal pure-unit surface injection cannot be supplied by the launcher or
+// scenario. The production main always passes the captured real native surface.
+function installNativeBoundary(manifest, ports, effects, initialization, surface, diagnostic = importDiagnostics) {
+  const { fs, net, tls, dns, http, https, timers, process, globals: globalThis, console } = surface;
+  const original = { readFileSync: fs.readFileSync.bind(fs), lstatSync: fs.lstatSync.bind(fs), realpathSync: fs.realpathSync.bind(fs),
+    write: process.stdout.write.bind(process.stdout), nextTick: process.nextTick.bind(process) };
+  const readNames = new Set([...Object.keys(manifest.files), '.admission.json']);
+  const descriptors = new Set(); let mongoActive = false; let socketDepth = 0;
+  const deny = () => { diagnostic?.guard('INVENTORY_NATIVE_OPERATION'); effects.operationDenials++; fail('INVENTORY_NATIVE_OPERATION'); };
+  function readPath(value) {
+    if (Number.isInteger(value)) { if (!descriptors.has(value)) return deny(); return value; }
+    const filename = value instanceof URL ? fileURLToPath(value) : Buffer.isBuffer(value) ? value.toString('utf8') : value;
+    if (typeof filename !== 'string' || !path.isAbsolute(filename) || path.normalize(filename) !== filename) return deny();
+    const relative = path.relative(ROOT, filename).split(path.sep).join('/');
+    if (!readNames.has(relative)) return deny();
+    let meta; try { meta = original.lstatSync(filename); } catch { return deny(); }
+    if (!meta.isFile() || meta.isSymbolicLink() || meta.nlink !== 1) return deny();
+    return value;
+  }
+  function metadataPath(value) {
+    const filename = value instanceof URL ? fileURLToPath(value) : Buffer.isBuffer(value) ? value.toString('utf8') : value;
+    if (typeof filename !== 'string' || !path.isAbsolute(filename) || path.normalize(filename) !== filename
+      || (filename !== ROOT && !filename.startsWith(ROOT + '/'))) return deny();
+    return value;
+  }
+  const writes = ['appendFile', 'appendFileSync', 'writeFile', 'writeFileSync', 'write', 'writeSync', 'writev', 'writevSync',
+    'truncate', 'truncateSync', 'ftruncate', 'ftruncateSync', 'mkdir', 'mkdirSync', 'mkdtemp', 'mkdtempSync',
+    'rm', 'rmSync', 'rmdir', 'rmdirSync', 'unlink', 'unlinkSync', 'rename', 'renameSync', 'copyFile', 'copyFileSync',
+    'cp', 'cpSync', 'link', 'linkSync', 'symlink', 'symlinkSync', 'chmod', 'chmodSync', 'fchmod', 'fchmodSync',
+    'chown', 'chownSync', 'fchown', 'fchownSync', 'lchown', 'lchownSync', 'utimes', 'utimesSync', 'futimes', 'futimesSync',
+    'lutimes', 'lutimesSync', 'createWriteStream', 'watch', 'watchFile', 'unwatchFile', 'fsync', 'fsyncSync', 'fdatasync', 'fdatasyncSync',
+    'statfs', 'statfsSync', 'glob', 'globSync'];
+  for (const name of writes) if (typeof fs[name] === 'function') fs[name] = deny;
+  for (const name of ['appendFile', 'writeFile', 'truncate', 'mkdir', 'mkdtemp', 'rm', 'rmdir', 'unlink', 'rename', 'copyFile', 'cp',
+    'link', 'symlink', 'chmod', 'chown', 'lchown', 'utimes', 'lutimes', 'watch', 'statfs', 'glob']) if (typeof fs.promises[name] === 'function') fs.promises[name] = deny;
+  for (const name of ['readFile', 'readFileSync', 'createReadStream']) {
+    const held = fs[name]; fs[name] = function (value, ...args) {
+      readPath(value);
+      if (plain(args[0])) {
+        if (own(args[0], 'flag')) readFlags(args[0].flag);
+        if (own(args[0], 'flags')) readFlags(args[0].flags);
+        if (own(args[0], 'fd') && !descriptors.has(args[0].fd)) return deny();
+        if (own(args[0], 'fs')) return deny();
+      }
+      return held.call(this, value, ...args);
+    };
+  }
+  for (const name of ['stat', 'statSync', 'lstat', 'lstatSync', 'realpath', 'realpathSync', 'readdir', 'readdirSync', 'opendir', 'opendirSync', 'access', 'accessSync', 'existsSync', 'readlink', 'readlinkSync']) {
+    const held = fs[name]; if (typeof held === 'function') fs[name] = function (value, ...args) { metadataPath(value); return held.call(this, value, ...args); };
+  }
+  for (const name of ['readFile', 'stat', 'lstat', 'realpath', 'readdir', 'opendir', 'access', 'readlink']) {
+    const held = fs.promises[name]; if (typeof held === 'function') fs.promises[name] = function (value, ...args) {
+      (name === 'readFile' ? readPath : metadataPath)(value);
+      if (name === 'readFile' && plain(args[0]) && own(args[0], 'flag')) readFlags(args[0].flag);
+      return held.call(this, value, ...args);
+    };
+  }
+  if (typeof fs.openAsBlob === 'function') { const held = fs.openAsBlob; fs.openAsBlob = function (value, ...args) { readPath(value); return held.call(this, value, ...args); }; }
+  function readFlags(flags) {
+    if (['r', 'rs', 'sr'].includes(flags)) return;
+    const mask = fs.constants.O_WRONLY | fs.constants.O_RDWR | fs.constants.O_CREAT | fs.constants.O_TRUNC | fs.constants.O_APPEND;
+    if (!Number.isInteger(flags) || (flags & mask) !== 0) deny();
+  }
+  const openSync = fs.openSync; fs.openSync = function (filename, flags, ...args) {
+    readPath(filename); readFlags(flags); const fd = openSync.call(this, filename, flags, ...args); descriptors.add(fd); return fd;
+  };
+  const open = fs.open; fs.open = function (filename, flags, ...args) {
+    readPath(filename); readFlags(flags); const callback = args.pop(); need(typeof callback === 'function', 'INVENTORY_NATIVE_OPERATION');
+    return open.call(this, filename, flags, ...args, (error, fd) => { if (!error) descriptors.add(fd); callback(error, fd); });
+  };
+  for (const name of ['read', 'readSync', 'readv', 'readvSync', 'fstat', 'fstatSync', 'close', 'closeSync']) {
+    const held = fs[name]; if (typeof held === 'function') fs[name] = function (fd, ...args) {
+      if (!descriptors.has(fd)) return deny();
+      if (name === 'close' || name === 'closeSync') descriptors.delete(fd);
+      return held.call(this, fd, ...args);
+    };
+  }
+  const promiseOpen = fs.promises.open;
+  fs.promises.open = async function (filename, flags, ...args) {
+    readPath(filename); readFlags(flags); const handle = await promiseOpen.call(this, filename, flags, ...args);
+    for (const name of ['appendFile', 'writeFile', 'write', 'writev', 'truncate', 'chmod', 'chown', 'utimes', 'createWriteStream']) {
+      if (typeof handle[name] === 'function') Object.defineProperty(handle, name, { value: deny });
+    }
+    return handle;
+  };
+  function mongoSocket(args) {
+    let value = args[0]; if (Array.isArray(value)) value = value[0];
+    const options = plain(value) ? value : { port: value, host: typeof args[1] === 'string' ? args[1] : 'localhost' };
+    if (!mongoActive || options.path || !['127.0.0.1', 'localhost', '::1'].includes(options.host || 'localhost')
+      || options.port !== 27017 || (socketDepth === 0 && !surface.caller().includes('/node_modules/mongoose/node_modules/mongodb/'))) return deny();
+  }
+  const connect = net.Socket.prototype.connect; net.Socket.prototype.connect = function (...args) { mongoSocket(args); return connect.apply(this, args); };
+  for (const name of ['connect', 'createConnection']) { const held = net[name]; net[name] = function (...args) {
+    mongoSocket(args); socketDepth++; try { return held.apply(this, args); } finally { socketDepth--; }
+  }; }
+  net.createServer = deny; net.Server.prototype.listen = deny;
+  for (const owner of [http, https]) for (const name of ['request', 'get', 'createServer']) owner[name] = deny;
+  for (const name of ['connect', 'createServer', 'createSecureContext']) tls[name] = deny;
+  for (const name of ['lookup', 'lookupService', 'resolve', 'resolve4', 'resolve6', 'resolveAny', 'resolveCaa', 'resolveCname',
+    'resolveMx', 'resolveNaptr', 'resolveNs', 'resolvePtr', 'resolveSoa', 'resolveSrv', 'resolveTxt', 'reverse', 'setServers']) {
+    if (typeof dns[name] === 'function') dns[name] = deny;
+    if (typeof dns.promises[name] === 'function') dns.promises[name] = deny;
+    if (typeof dns.Resolver.prototype[name] === 'function') dns.Resolver.prototype[name] = deny;
+    if (typeof dns.promises.Resolver.prototype[name] === 'function') dns.promises.Resolver.prototype[name] = deny;
+  }
+  globalThis.fetch = deny; globalThis.WebSocket = deny; globalThis.EventSource = deny;
+  for (const name of ['binding', '_linkedBinding', 'dlopen', 'chdir', 'kill', 'setuid', 'seteuid', 'setgid', 'setegid', 'setgroups', 'initgroups']) {
+    if (typeof process[name] === 'function') process[name] = deny;
+  }
+  process.getBuiltinModule = name => initialization.retrieve(name);
+  process.emitWarning = () => { diagnostic?.effect('WARNING'); effects.warnings++; fail('INVENTORY_EFFECTS'); };
+  for (const name of Object.keys(console)) if (typeof console[name] === 'function') console[name] = () => { diagnostic?.effect('CONSOLE'); effects.consoleCalls++; fail('INVENTORY_EFFECTS'); };
+  process.stdout.write = process.stderr.write = () => { diagnostic?.effect('OUTPUT'); effects.consoleCalls++; fail('INVENTORY_EFFECTS'); };
+  for (const name of ['setTimeout', 'setImmediate', 'setInterval']) {
+    const held = timers[name];
+    const guarded = function (...args) {
+      const caller = surface.caller();
+      if (!mongoActive || name === 'setInterval' || (!caller.includes('/node_modules/mongoose/node_modules/mongodb/') && !caller.includes('node:'))) return deny();
+      return held.apply(this, args);
+    };
+    timers[name] = guarded; globalThis[name] = guarded;
+  }
+  return Object.freeze({ mongoStarted() { need(!mongoActive, 'INVENTORY_DATABASE'); mongoActive = true; },
+    mongoClosed() { mongoActive = false; }, assertClean: () => assertEffects(effects), output: original.write });
+}
+
+async function withCleanup(action, cleanup) {
+  let result; let first; let failed = false;
+  try { result = await action(); } catch (error) { failed = true; first = error; }
+  try { await cleanup(); } catch (error) { if (!failed) { failed = true; first = error; } }
+  if (failed) throw first; return result;
+}
+function validateResult(result, ports) {
+  need(keys(result, ['cases', 'sensitivity', 'providerSummary']) && Array.isArray(result.cases) && Array.isArray(result.sensitivity)
+    && result.cases.length === 20 && result.sensitivity.length === 8
+    && result.cases.every((row, i) => keys(row, ['id', 'status']) && row.id === ports.requiredCaseIds[i] && row.status === 'PASS')
+    && result.sensitivity.every((row, i) => keys(row, ['id', 'detected']) && row.id === ports.requiredSensitivityIds[i] && row.detected === true)
+    && keys(result.providerSummary, PROVIDERS) && PROVIDERS.every(key => result.providerSummary[key] === 0), 'INVENTORY_RESULT');
+  return result;
+}
+let stage = 'ADMISSION';
+let diagnosticContext = null;
+let scenarioCode = null;
+async function main() {
+  const allowed = new Set(['PATH', 'NODE_VERSION', 'YARN_VERSION', 'HOME', 'HOSTNAME', 'NODE_ENV', 'APP_RUN_ID', 'APP_ROLE', 'APP_MANIFEST_SHA']);
+  need(Object.keys(process.env).every(key => allowed.has(key)) && process.env.NODE_ENV === 'test'
+    && process.env.APP_ROLE === ROLE && process.cwd() === ROOT && process.version === 'v22.23.4'
+    && process.platform === 'linux' && process.permission, 'INVENTORY_ENVIRONMENT');
+  need(!fs.existsSync(ROOT + '/.env'), 'INVENTORY_ENVIRONMENT');
+  const admission = bytes('.admission.json'); need(sha(admission) === process.env.APP_MANIFEST_SHA, 'INVENTORY_ADMISSION');
+  const portBytes = bytes('ports-manifest.json'); const caseBytes = bytes('cases.json');
+  need(sha(portBytes) === PORTS_SHA && sha(caseBytes) === CASES_SHA, 'INVENTORY_DATA_BINDING');
+  const ports = freeze(JSON.parse(portBytes)); const cases = freeze(JSON.parse(caseBytes)); const plan = freeze(JSON.parse(bytes('runtime-plan.json')));
+  const manifest = freeze(inspectManifest(JSON.parse(admission), plan, ports, cases));
+  diagnosticContext = makeFailureContext(ports);
+  const { admitNetwork, entryKind, egressCanaryBlocked } = await import(pathToFileURL(ROOT + '/network-admission.mjs').href);
+  const networkAdmission = admitNetwork({ list: () => fs.readdirSync('/sys/class/net'),
+    entryType: value => entryKind(fs.lstatSync(value)), readText: value => fs.readFileSync(value, 'utf8'),
+    addresses: os.networkInterfaces, report: () => fail('INVENTORY_NETWORK_ADMISSION') }, manifest.runId);
+  for (const action of [() => fs.readFileSync('/etc/passwd'), () => fs.writeFileSync(ROOT + '/unexpected', 'fixture')]) {
+    let denied = false; try { action(); } catch (error) { denied = error?.code === 'ERR_ACCESS_DENIED'; }
+    need(denied, 'INVENTORY_FILESYSTEM_CANARY');
+  }
+  need(!process.permission.has('child') && !process.permission.has('worker') && !process.permission.has('addon'), 'INVENTORY_FILESYSTEM_CANARY');
+  fs.writeFileSync('/tmp/inventory-quality-permission-canary', 'synthetic');
+  const [canary] = await Promise.allSettled([fetch('http://192.0.2.1:8080/', { signal: AbortSignal.timeout(1500) })]);
+  need(egressCanaryBlocked(canary), 'INVENTORY_EGRESS_CANARY');
+  const effects = effectsState();
+  importDiagnostics = createImportDiagnostics();
+  const projection = Object.freeze(Object.fromEntries(['platform', 'arch', 'release', 'type'].map(name => [name, os[name].bind(os)])));
+  const initialization = createPublicInitialization({ isBuildingSnapshot: v8.startupSnapshot.isBuildingSnapshot.bind(v8.startupSnapshot),
+    tracingChannel: diagnostics.tracingChannel.bind(diagnostics) }, ports, effects);
+  const nativeBoundary = installNativeBoundary(manifest, ports, effects, initialization, nativeSurface());
+  const loader = installLoader(manifest, plan, ports, effects);
+  stage = 'REPOSITORY_IMPORT';
+  importDiagnostics.enter('PUBLIC_INITIALIZATION');
+  const packages = initialization.run(() => {
+    require('reflect-metadata'); return { typedi: require('typedi'), mongoose: require('mongoose') };
+  });
+  importDiagnostics.enter('PUBLIC_ASSERTIONS');
+  initialization.assertComplete(); assertEffects(effects);
+  importDiagnostics.enter('TYPE_DI_BOUNDARY');
+  loader.installTypeDi(packages.typedi);
+  importDiagnostics.enter('DATABASE_BOUNDARY');
+  const database = createDatabaseBoundary(packages.mongoose, manifest, ports, cases, effects, loader, nativeBoundary, projection);
+  importDiagnostics.enter('SCENARIO_MODULE');
+  const scenario = require('./scenario.cjs'); scenarioCode = scenario.fixtureCode;
+  const completed = await withCleanup(async () => {
+    importDiagnostics.enter('MODEL_IMPORT');
+    await database.importModels();
+    // These three actual common modules are shared across every repository eval.
+    importDiagnostics.enter('COMMON_IMPORT');
+    loader.load('@/modules/common/repository'); loader.load('@/modules/common/utils/queryUtils');
+    importDiagnostics.enter('REPOSITORY_OBSERVER');
+    loader.observeRepositories(database.observeRepository);
+    importDiagnostics.close();
+    stage = 'OWNED_DATABASE_CONNECT'; await database.connect();
+    scenario.assertIndexProof(await database.indexes(), ports, manifest.database, database.bson);
+    loader.prepareRepositories();
+    stage = 'REPOSITORY_SCENARIOS';
+    const context = Object.freeze({
+      models: database.models, bson: database.bson, controlSession: database.controlSession,
+      database: manifest.database, runStartMillis: Date.now(), indexProof: () => clone(database.indexProof, database.bson),
+      repository: loader.repository, restoreRepository: loader.restoreRepository, repositoryAudit: loader.audit,
+      startSession: database.startSession, snapshot: database.snapshot, phase: database.phase,
+      commands: database.wire.events, effects: () => clone(effects), failureContext: diagnosticContext.set,
+      assertHealthy() { database.assertHealthy(); loader.assertHealthy(); initialization.assertComplete(); nativeBoundary.assertClean(); }
+    });
+    const result = validateResult(await scenario.runInventoryQualityScenario(context), ports);
+    context.assertHealthy(); database.assertCompleted();
+    need(loader.audit().evaluations === 17 && loader.audit().registrations === 51 && loader.audit().restored === true, 'INVENTORY_REPOSITORY_FRESHNESS');
+    return { schema: 'SD-INVENTORY-QUALITY-RESULT-1', runId: manifest.runId, role: ROLE,
+      database: manifest.database, replicaSet: manifest.replicaSet, sourceCommit: manifest.sourceCommit,
+      domainScope: 'DIRECT_INVENTORY_REPOSITORY_ONLY', admissionPassed: true, egressBlocked: true,
+      filesystemCanariesPassed: true, networkAdmission, failed: 0, skipped: 0,
+      cases: result.cases, sensitivity: result.sensitivity, providerSummary: result.providerSummary };
+  }, async () => {
+    await withCleanup(() => loader.restoreRepository(), () => database.close());
+  });
+  need(lifetimeFailures === 0, 'INVENTORY_EFFECTS'); assertEffects(effects); stdout(JSON.stringify(completed) + '\n');
+}
+function failureResult(error) {
+  let code = failures.has(error) ? failures.get(error) : typeof scenarioCode === 'function' ? scenarioCode(error) : 'RUNTIME_FIXTURE_FAILED';
+  if (!IMPORT_GUARD_CODES.includes(code)) code = 'RUNTIME_FIXTURE_FAILED';
+  if (importDiagnostics) code = importDiagnostics.select(stage, code);
+  const context = diagnosticContext ? diagnosticContext.get() : { caseId: null, variantId: null, phase: null };
+  return { schema: 'SD-INVENTORY-QUALITY-FAILURE-1', stage, code, ...context, failed: 1, skipped: 0 };
+}
+if (require.main === module) main().catch(error => { stdout(JSON.stringify(failureResult(error)) + '\n'); process.exitCode = 1; });
+module.exports = { FAILURE_CODES, CASES_SHA, PORTS_SHA, LOCK_SHA, MODEL_NAMES, COLLECTIONS, PROVIDERS, LIBRARY_NAMES,
+  createImportDiagnostics, installLoader, keys, plain, same, clone, binaryBytes, effectsState, assertEffects, validateAdmissionData, validateLibraryReport, makeFailureContext,
+  createPublicInitialization, firstExternalFrame, auditDomainSource, createWireBoundary, proveOSAdapter, installNativeBoundary,
+  withCleanup, validateResult, failureResult, validateCleanupIds, createSeedBulkLease, denseArray, guardOwnedClientConstructor, returnedNewItemId,
+  installModelRegistrationBoundary, installTypeDiSetBoundary, createReadBudget, collectReadCursor, apmCursorZero };
+
+function apmCursorZero(value) {
+  need(Object.is(value, 0), 'INVENTORY_CURSOR'); return '0';
+}
+
+function createReadBudget(kind, clock) {
+  need(['SNAPSHOT', 'METADATA'].includes(kind) && typeof clock === 'function', 'INVENTORY_CURSOR');
+  const maxRows = kind === 'SNAPSHOT' ? 64 : 100; const maxNanos = 5000000000n;
+  let previous = clock(); let elapsed = 0n; let paused = false; let failed = false; let rows = 0; let bytes = 0;
+  need(typeof previous === 'bigint' && previous >= 0n, 'INVENTORY_CURSOR');
+  function recordFailure() { if (!failed) { failed = true; lifetimeFailures++; } }
+  function sample() {
+    const value = clock(); need(typeof value === 'bigint' && value >= previous, 'INVENTORY_CURSOR');
+    if (!paused) elapsed += value - previous; previous = value;
+  }
+  function check() {
+    try { need(!failed && !paused, 'INVENTORY_CURSOR'); sample(); need(elapsed <= maxNanos, 'INVENTORY_CURSOR'); }
+    catch (error) { recordFailure(); throw error; }
+  }
+  function account(rowCount, byteCount) {
+    check(); rows += rowCount; bytes += byteCount;
+    try { need(rows <= maxRows && bytes <= 128 * 1024, 'INVENTORY_CURSOR'); }
+    catch (error) { recordFailure(); throw error; }
+  }
+  return Object.freeze({
+    check, recordFailure,
+    beginCursor() { account(0, 2); },
+    addRow(row, comma) { account(1, Buffer.byteLength(JSON.stringify(row)) + (comma ? 1 : 0)); },
+    async creation(action) {
+      check(); need(kind === 'METADATA' && typeof action === 'function', 'INVENTORY_CURSOR'); paused = true;
+      try {
+        return await withCleanup(action, () => { sample(); paused = false; check(); });
+      } catch (error) { recordFailure(); throw error; }
+    }
+  });
+}
+
+async function collectReadCursor(makeCursor, limit, budget, leases) {
+  const rows = []; let cursor; let first; let failed = false;
+  const retain = error => { budget.recordFailure(); if (!failed) { failed = true; first = error; } };
+  try {
+    budget.check(); cursor = makeCursor(); budget.check();
+    need(leases.has(cursor), 'INVENTORY_CURSOR'); budget.beginCursor();
+    while (true) {
+      budget.check(); const hasNext = await cursor.hasNext(); budget.check(); if (!hasNext) break;
+      need(rows.length < limit, 'INVENTORY_CURSOR');
+      budget.check(); const row = await cursor.next(); budget.check();
+      need(plain(row), 'INVENTORY_CURSOR'); budget.addRow(row, rows.length > 0); rows.push(row);
+    }
+    need(!cursor.id || cursor.id.isZero(), 'INVENTORY_CURSOR'); budget.check();
+  } catch (error) { retain(error); }
+  try { budget.check(); } catch (error) { retain(error); }
+  try { if (cursor && leases.has(cursor)) await cursor.close(); } catch (error) { retain(error); }
+  try { budget.check(); } catch (error) { retain(error); }
+  if (cursor) leases.delete(cursor);
+  if (failed) throw first; return rows;
+}
+
+function installModelRegistrationBoundary(mongoose, ports, models, modelImport) {
+  const nativeModel = mongoose.model;
+  function singletonModel(name, schema, collection, ...extra) {
+    const spec = ports.models.find(row => row.name === name);
+    need(spec && extra.length === 0 && (!collection || collection === spec.collection), 'INVENTORY_MODEL');
+    if (schema) need(modelImport() && !own(models, name) && name === MODEL_NAMES[Object.keys(models).length], 'INVENTORY_MODEL');
+    else need(own(models, name), 'INVENTORY_MODEL');
+    // The public CJS named import can be invoked with undefined this. Its
+    // receiver never supplies authority: always use the captured singleton.
+    const value = nativeModel.call(mongoose, name, schema, collection);
+    if (schema) { need(value.collection.collectionName === spec.collection, 'INVENTORY_MODEL'); models[name] = value; }
+    return value;
+  }
+  mongoose.model = singletonModel;
+  mongoose.Mongoose.prototype.model = function (...args) {
+    need(this === mongoose, 'INVENTORY_MODEL'); return singletonModel(...args);
+  };
+}
+
+function installTypeDiSetBoundary(typedi, decoratingTarget, emptyValue) {
+  need(typeof emptyValue === 'symbol', 'INVENTORY_REPOSITORY_FRESHNESS');
+  const container = typedi.Container; const globalInstance = container.globalInstance;
+  const containerSet = typedi.Container.set;
+  const instanceSet = typedi.ContainerInstance.prototype.set;
+  let forwarding = null;
+  function admittedMetadata(metadata) {
+    const target = decoratingTarget();
+    need(target && keys(metadata, ['id', 'type', 'factory', 'multiple', 'global', 'eager', 'transient', 'value'])
+      && metadata.id === target && metadata.type === target && metadata.factory === undefined
+      && metadata.eager === false && metadata.global === false && metadata.transient === false && metadata.multiple === false
+      && metadata.value === emptyValue, 'INVENTORY_REPOSITORY_FRESHNESS');
+    return target;
+  }
+  typedi.Container.set = function (metadata, ...rest) {
+    const target = admittedMetadata(metadata);
+    need(this === container && container.globalInstance === globalInstance && rest.length === 0 && forwarding === null,
+      'INVENTORY_REPOSITORY_FRESHNESS');
+    const lease = { metadata, target, used: false }; forwarding = lease;
+    try {
+      const result = containerSet.call(container, metadata);
+      need(lease.used && container.globalInstance === globalInstance, 'INVENTORY_REPOSITORY_FRESHNESS'); return result;
+    } finally { forwarding = null; }
+  };
+  typedi.ContainerInstance.prototype.set = function (metadata, ...rest) {
+    const target = admittedMetadata(metadata);
+    need(this === globalInstance && container.globalInstance === globalInstance && forwarding && !forwarding.used
+      && forwarding.metadata === metadata && forwarding.target === target && rest.length === 1 && rest[0] === undefined,
+    'INVENTORY_REPOSITORY_FRESHNESS');
+    forwarding.used = true; return instanceSet.call(globalInstance, metadata, undefined);
+  };
+  return Object.freeze({ admittedMetadata });
+}
+
+function auditDomainSource(content) {
+  const source = content.toString('utf8');
+  need(!/\b(?:eval|Function|AsyncFunction|GeneratorFunction|WebAssembly|process|globalThis|global|fetch|setTimeout|setInterval|setImmediate|queueMicrotask)\b/.test(source)
+    && !/\bimport\s*\(|\bmodule\s*(?:\.|\[)|\.\s*(?:constructor|_compile|createRequire|binding|getBuiltinModule)\b/.test(source), 'INVENTORY_DOMAIN_AUDIT');
+  for (const match of source.matchAll(/\brequire\s*\(([^)]*)\)/g)) need(/^\s*(['"])[^'"\r\n]+\1\s*$/.test(match[1]), 'INVENTORY_DOMAIN_AUDIT');
+}
+function installLoader(manifest, plan, ports, effects, diagnostic = importDiagnostics) {
+  const originalLoad = Module._load; const originalResolve = Module._resolveFilename;
+  const builtin = new Set(Module.builtinModules.map(name => name.replace(/^node:/, '')));
+  const denied = new Set(ports.publicBuiltinCandidates.permanentlyDenied);
+  const candidate = ports.publicBuiltinCandidates.parents;
+  const reached = new Set(); let registrations = 0; let evaluations = 0; let restored = false;
+  let types; let models; let originalRepository; let heldCache; let heldChildren; let children; let finalChildren; let observer;
+  let metadataBase; let metadataArray; let decoratingTarget = null; const registeredClasses = [];
+  const targets = [plan.modules[REPOSITORY_ALIAS], ...ports.requiredSensitivityIds.map(id => plan.mutants[id].file)].map(name => path.join(ROOT, name));
+  const methods = []; const classes = new Set(); let nextVariant = 0; let pendingRestore = null;
+  const loadDeny = () => { diagnostic?.guard('INVENTORY_LOADER'); effects.loaderDenials++; fail('INVENTORY_LOADER'); };
+  function relative(filename) { return path.relative(ROOT, filename || '').split(path.sep).join('/'); }
+  function admitted(request, parent) {
+    if (typeof request !== 'string') return loadDeny();
+    const parentFile = relative(parent?.filename); const isPublic = parentFile.startsWith('node_modules/');
+    const isDomain = DOMAIN_FILES.includes(parentFile) || parentFile.startsWith('compiled/mutants/');
+    const isFixture = parent === module || parentFile === 'scenario.cjs';
+    if (builtin.has(request.replace(/^node:/, ''))) {
+      if (isDomain || denied.has(request.replace(/^node:/, ''))) return loadDeny();
+      if (isPublic && !(candidate[parentFile] || []).includes(request)) return loadDeny();
+      if (parentFile === 'scenario.cjs' && !['node:fs', 'node:path', 'node:crypto'].includes(request)) return loadDeny();
+      if (!isPublic && !isFixture) return loadDeny();
+      return { builtin: true };
+    }
+    if (ports.absentOptionalPackages.includes(request)) return loadDeny();
+    let filename;
+    if (request.startsWith('@/')) {
+      const value = plan.modules[request]; if (!value || !DOMAIN_FILES.includes(value)) return loadDeny();
+      filename = path.join(ROOT, value);
+    } else {
+      if (isDomain && !ports.publicRuntimeRoots.includes(request) && !request.startsWith('.')) return loadDeny();
+      if (parent === module && !ports.publicRuntimeRoots.includes(request) && request !== './scenario.cjs'
+        && !targets.includes(request) && request !== MODEL_ALIAS && request !== REPOSITORY_ALIAS) return loadDeny();
+      try { filename = originalResolve.call(Module, request, parent, false); } catch { return loadDeny(); }
+    }
+    const name = relative(filename);
+    if (!own(manifest.files, name)) return loadDeny();
+    if (name.startsWith('compiled/')) {
+      if (!DOMAIN_FILES.includes(name) && !targets.includes(filename)) return loadDeny();
+      auditDomainSource(bytes(name)); reached.add(DOMAIN_FILES.includes(name) ? name : plan.modules[REPOSITORY_ALIAS]);
+    } else if (!name.startsWith('node_modules/') && !(parent === module && name === 'scenario.cjs')) return loadDeny();
+    return { filename };
+  }
+  const resolve = function (request, parent, isMain, options) {
+    const allowed = admitted(request, parent);
+    return allowed.builtin ? originalResolve.call(this, request, parent, isMain, options) : allowed.filename;
+  };
+  const load = function (request, parent, isMain) { admitted(request, parent); return originalLoad.call(this, request, parent, isMain); };
+  Module._resolveFilename = resolve; Module._load = load;
+  function stableCache() {
+    need(Module._load === load && Module._resolveFilename === resolve, 'INVENTORY_REPOSITORY_FRESHNESS');
+    for (const [filename, value] of heldCache) if (!targets.includes(filename)) need(require.cache[filename] === value, 'INVENTORY_REPOSITORY_FRESHNESS');
+    for (const filename of Object.keys(require.cache)) need(heldCache.has(filename) || targets.includes(filename), 'INVENTORY_REPOSITORY_FRESHNESS');
+    need(module.children === children, 'INVENTORY_REPOSITORY_FRESHNESS');
+  }
+  function clearRepository() {
+    for (const filename of targets) delete require.cache[filename];
+    for (let i = children.length - 1; i >= 0; i--) if (targets.includes(children[i].filename)) children.splice(i, 1);
+    need(same(children, heldChildren), 'INVENTORY_REPOSITORY_FRESHNESS');
+  }
+  function exportsOf(value) {
+    need(keys(value, ['__esModule', 'InventoryItemRepository', 'InventoryAdjustmentRepository', 'InventoryReservationRepository'])
+      && value.__esModule === true, 'INVENTORY_REPOSITORY_FRESHNESS');
+    const exported = [value.InventoryItemRepository, value.InventoryAdjustmentRepository, value.InventoryReservationRepository];
+    for (let i = 0; i < exported.length; i++) need(typeof exported[i] === 'function' && exported[i].name === ports.serviceRegistrations[i]
+      && !classes.has(exported[i]), 'INVENTORY_REPOSITORY_FRESHNESS');
+    exported.forEach(value => classes.add(value));
+    return exported;
+  }
+  return Object.freeze({
+    load: request => require(request),
+    installTypeDi(typedi) {
+      need(!types, 'INVENTORY_REPOSITORY_FRESHNESS'); types = typedi;
+      const service = typedi.Service;
+      metadataArray = typedi.Container.globalInstance.services;
+      need(Array.isArray(metadataArray) && metadataArray.length === 0, 'INVENTORY_REPOSITORY_FRESHNESS'); metadataBase = metadataArray.length;
+      // Service imports this exact cached sentinel; an arbitrary same-named
+      // Symbol must never stand in for its uninstantiated metadata value.
+      const emptyModule = require.cache[path.join(ROOT, 'node_modules/typedi/cjs/empty.const.js')];
+      const emptyDescriptor = Object.getOwnPropertyDescriptor(emptyModule?.exports || {}, 'EMPTY_VALUE');
+      need(emptyDescriptor && own(emptyDescriptor, 'value') && typeof emptyDescriptor.value === 'symbol', 'INVENTORY_REPOSITORY_FRESHNESS');
+      const emptyValue = emptyDescriptor.value;
+      installTypeDiSetBoundary(typedi, () => decoratingTarget, emptyValue);
+      // The public export is a getter. Instrument its actual cached writable
+      // decorator export, rather than replacing TypeDI with a fake root object.
+      const serviceFilename = path.join(ROOT, 'node_modules/typedi/cjs/decorators/service.decorator.js');
+      const serviceModule = require.cache[serviceFilename];
+      const descriptor = Object.getOwnPropertyDescriptor(serviceModule?.exports || {}, 'Service');
+      need(descriptor && own(descriptor, 'value') && descriptor.value === service && descriptor.writable, 'INVENTORY_REPOSITORY_FRESHNESS');
+      serviceModule.exports.Service = function (...args) {
+        need(args.length === 0, 'INVENTORY_REPOSITORY_FRESHNESS'); const decorate = service.apply(this, args);
+        return target => {
+          need(typeof target === 'function' && ports.serviceRegistrations.includes(target.name) && registrations < 51
+            && !registeredClasses.includes(target), 'INVENTORY_REPOSITORY_FRESHNESS');
+          registrations++; let result; decoratingTarget = target;
+          try { result = decorate(target); } finally { decoratingTarget = null; }
+          registeredClasses.push(target);
+          const actual = metadataArray[metadataArray.length - 1];
+          need(metadataArray.length === metadataBase + registrations && actual?.id === target && actual.type === target
+            && actual.eager === false && actual.global === false && actual.transient === false && actual.multiple === false
+            && actual.factory === undefined && actual.value === emptyValue, 'INVENTORY_REPOSITORY_FRESHNESS'); return result;
+        };
+      };
+      methods.push(() => Object.defineProperty(serviceModule.exports, 'Service', descriptor));
+      for (const name of ['get', 'getMany', 'reset', 'remove', 'of', 'import', 'initialize', 'registerHandler']) {
+        if (typeof typedi.Container[name] === 'function') typedi.Container[name] = () => loadDeny();
+        if (typeof typedi.ContainerInstance.prototype[name] === 'function') typedi.ContainerInstance.prototype[name] = () => loadDeny();
+      }
+    },
+    observeRepositories(action) { need(!observer && typeof action === 'function', 'INVENTORY_CONTEXT'); observer = action; },
+    bindModels(actual) { need(!models && keys(actual, MODEL_NAMES), 'INVENTORY_MODEL'); models = actual; },
+    prepareRepositories() {
+      need(!heldCache && models && types && targets.every(filename => !own(require.cache, filename)), 'INVENTORY_REPOSITORY_FRESHNESS');
+      heldCache = new Map(Object.entries(require.cache)); children = module.children; heldChildren = children.slice();
+    },
+    repository(kind, variantId) {
+      need(heldCache && !restored, 'INVENTORY_REPOSITORY_FRESHNESS');
+      if (kind === 'UNSAFE' && nextVariant === 0) {
+        // The initial 139 nominal cases may exercise already admitted lazy
+        // public modules. Preserve all prior identities, then freeze this set
+        // before actual-source mutation/restoration trials.
+        for (const [filename, value] of heldCache) if (!targets.includes(filename)) need(require.cache[filename] === value, 'INVENTORY_REPOSITORY_FRESHNESS');
+        for (const [filename, value] of Object.entries(require.cache)) if (!heldCache.has(filename) && !targets.includes(filename)) {
+          need(relative(filename).startsWith('node_modules/') && own(manifest.files, relative(filename)), 'INVENTORY_REPOSITORY_FRESHNESS');
+          heldCache.set(filename, value);
+        }
+      }
+      stableCache(); clearRepository();
+      let filename; let digest;
+      if (kind === 'NOMINAL_INITIAL') {
+        need(evaluations === 0 && variantId === null, 'INVENTORY_REPOSITORY_FRESHNESS'); filename = targets[0]; digest = ports.sourceFiles[REPOSITORY_SOURCE];
+      } else if (kind === 'UNSAFE') {
+        need(evaluations === 1 + nextVariant * 2 && pendingRestore === null && variantId === ports.requiredSensitivityIds[nextVariant], 'INVENTORY_REPOSITORY_FRESHNESS');
+        pendingRestore = variantId; filename = path.join(ROOT, plan.mutants[variantId].file); digest = plan.mutants[variantId].mutantSha256;
+      } else {
+        need(kind === 'RESTORE' && pendingRestore === variantId && evaluations === 2 + nextVariant * 2, 'INVENTORY_REPOSITORY_FRESHNESS');
+        pendingRestore = null; nextVariant++; filename = targets[0]; digest = ports.sourceFiles[REPOSITORY_SOURCE];
+      }
+      const before = registrations; const value = require(filename); const exported = exportsOf(value); evaluations++;
+      need(registrations === before + 3 && registrations === evaluations * 3, 'INVENTORY_REPOSITORY_FRESHNESS');
+      if (evaluations === 1) { originalRepository = require.cache[filename]; finalChildren = children.slice(); }
+      need(observer, 'INVENTORY_CONTEXT'); observer(exported[0]);
+      stableCache();
+      return Object.freeze({ Item: exported[0], Adjustment: exported[1], Reservation: exported[2], evaluation: evaluations, sourceSha256: digest, models });
+    },
+    restoreRepository() {
+      if (restored) return;
+      let first; let failed = false;
+      try { stableCache(); } catch (error) { failed = true; first = error; }
+      try {
+        clearRepository();
+        for (const [filename, value] of heldCache) if (targets.includes(filename)) require.cache[filename] = value;
+        if (originalRepository) require.cache[targets[0]] = originalRepository;
+        children.splice(0, children.length, ...(finalChildren || heldChildren));
+        stableCache();
+        need(targets.slice(1).every(filename => !own(require.cache, filename))
+          && (!originalRepository || require.cache[targets[0]] === originalRepository), 'INVENTORY_REPOSITORY_FRESHNESS');
+        for (const restore of methods.reverse()) restore();
+        restored = true;
+      } catch (error) { if (!failed) { failed = true; first = error; } }
+      if (failed) throw first;
+    },
+    audit: () => ({ evaluations, registrations, restored }),
+    assertHealthy() {
+      need(Module._load === load && Module._resolveFilename === resolve && effects.loaderDenials === 0, 'INVENTORY_LOADER');
+      need(reached.size === 5 && DOMAIN_FILES.every(filename => reached.has(filename)), 'INVENTORY_MODEL');
+    },
+    recordMethodRestore: action => methods.push(action)
+  });
+}
+
+function createWireBoundary(manifest, ports, cases, bson, effects) {
+  const events = []; const pending = new Map(); const ownedSessionIds = new Set(); const cursors = new Map(); const leases = [];
+  let phase = 'CONNECT'; let scope = null; let controlId; let eventBytes = 0; let endSessions = 0;
+  const totals = { hello: 0, buildinfo: 0, create: 0, createIndexes: 0, listIndexes: 0, listCollections: 0 };
+  const actionCounts = new Map(); const createdCollections = new Set(); const builtIndexes = new Set();
+  const oid = value => { need(value instanceof bson.ObjectId && /^[a-f0-9]{24}$/.test(value.toHexString()), 'INVENTORY_OWNERSHIP_PROOF'); return value.toHexString(); };
+  function sid(value) {
+    need(keys(value, ['id']) && value.id instanceof bson.Binary && value.id.sub_type === 4
+      && binaryBytes(value.id).length === 16, 'INVENTORY_SESSION'); return binaryBytes(value.id).toString('hex');
+  }
+  const isLong = value => value instanceof bson.Long && !(value instanceof bson.Timestamp)
+    && Number.isInteger(value.low) && Number.isInteger(value.high);
+  function long(value) { need(isLong(value), 'INVENTORY_CURSOR'); return value.toString(); }
+  function reject(code = 'INVENTORY_COMMANDS') { effects.unexpectedCommands++; fail(code); }
+  function metadata(command) {
+    if (own(command, '$readPreference')) need(same(command.$readPreference, { mode: 'primaryPreferred' }), 'INVENTORY_COMMAND_ENVELOPE');
+    if (own(command, '$clusterTime')) {
+      const value = command.$clusterTime;
+      need(keys(value, ['clusterTime', 'signature']) && value.clusterTime instanceof bson.Timestamp
+        && keys(value.signature, ['hash', 'keyId']) && value.signature.hash instanceof bson.Binary
+        && value.signature.hash.sub_type === 0 && binaryBytes(value.signature.hash).length === 20
+        && (value.signature.keyId === 0 || (isLong(value.signature.keyId) && value.signature.keyId.isZero())), 'INVENTORY_COMMAND_ENVELOPE');
+    }
+  }
+  const common = ['$db', 'lsid', '$clusterTime', '$readPreference', 'txnNumber', 'autocommit', 'startTransaction', 'readConcern'];
+  const commandKeys = {
+    hello: ['hello'], buildinfo: ['buildinfo'], create: ['create'],
+    createIndexes: ['createIndexes', 'indexes'], listIndexes: ['listIndexes', 'cursor', 'maxTimeMS'],
+    listCollections: ['listCollections', 'filter', 'cursor', 'nameOnly', 'authorizedCollections', 'maxTimeMS'],
+    find: ['find', 'filter', 'limit', 'singleBatch', 'batchSize', 'maxTimeMS'],
+    update: ['update', 'updates', 'ordered'], insert: ['insert', 'documents', 'ordered'], delete: ['delete', 'deletes', 'ordered'],
+    commitTransaction: ['commitTransaction', 'writeConcern', 'maxTimeMS'], abortTransaction: ['abortTransaction', 'writeConcern'],
+    getMore: ['getMore', 'collection', 'batchSize', 'maxTimeMS'], killCursors: ['killCursors', 'cursors'],
+    endSessions: ['endSessions', 'writeConcern']
+  };
+  function boundedEvent(value) {
+    const item = clone(value, bson); eventBytes += Buffer.byteLength(JSON.stringify(item));
+    need(events.length < 16000 && eventBytes <= 64 * 1024 * 1024, 'INVENTORY_COMMAND_LIMIT'); events.push(freezeRecord(item)); return item;
+  }
+  function cursorOwner(command, name, sessionId) {
+    const id = long(name === 'getMore' ? command.getMore : command.cursors?.[0]); const held = cursors.get(id);
+    need(held && held.database === manifest.database && held.session === sessionId && held.collection === (name === 'getMore' ? command.collection : command.killCursors), 'INVENTORY_CURSOR');
+    return held;
+  }
+  function actionCounter() {
+    need(scope && scope.row && scope.sessionId, 'INVENTORY_PHASE');
+    let count = actionCounts.get(scope.token);
+    if (!count) { count = { find: 0, write: 0, terminal: 0, failureAbort: 0 }; actionCounts.set(scope.token, count); }
+    return count;
+  }
+  function checkStarted(event) {
+    const { commandName: name, command, databaseName } = event;
+    need(own(commandKeys, name) && plain(command) && command.$db === databaseName
+      && Object.keys(command).every(key => commandKeys[name].includes(key) || common.includes(key)), 'INVENTORY_COMMAND_ENVELOPE'); metadata(command);
+    const collection = command[name];
+    if (name === 'endSessions') {
+      need(phase === 'CLOSE' && databaseName === 'admin' && ++endSessions === 1
+        && Array.isArray(collection) && collection.length > 0 && collection.length <= 256
+        && collection.every(value => ownedSessionIds.has(sid(value)))
+        && (!own(command, 'writeConcern') || same(command.writeConcern, { w: 0 }))
+        && !own(command, 'txnNumber') && !own(command, 'autocommit'), 'INVENTORY_CLOSE');
+      return;
+    }
+    const sessionId = sid(command.lsid); need(ownedSessionIds.has(sessionId), 'INVENTORY_SESSION');
+    if (['commitTransaction', 'abortTransaction'].includes(name)) {
+      need(scope && databaseName === 'admin' && sessionId === scope.sessionId && command[name] === 1
+        && command.autocommit === false && isLong(command.txnNumber) && scope.transaction === true
+        && same(command.txnNumber, scope.txnNumber, bson)
+        && !own(command, 'startTransaction') && !own(command, 'readConcern')
+        && same(command.writeConcern, { w: 'majority', wtimeout: 5000 }), 'INVENTORY_TERMINAL');
+      const count = actionCounter();
+      if (phase === 'CONTROL') need(scope.terminal === (name === 'commitTransaction' ? 'COMMIT' : 'ABORT')
+        && ++count.terminal === 1 && (name !== 'commitTransaction' || command.maxTimeMS === 5000), 'INVENTORY_TERMINAL');
+      else need(phase === 'CASE_CLEANUP' && scope.terminal === 'FAILURE_ABORT' && name === 'abortTransaction'
+        && ++count.failureAbort <= 2, 'INVENTORY_TERMINAL');
+      return;
+    }
+    need(databaseName === manifest.database || (phase === 'CONNECT' && databaseName === 'admin' && ['hello', 'buildinfo'].includes(name)), 'INVENTORY_DATABASE');
+    if (['getMore', 'killCursors'].includes(name)) {
+      if (name === 'killCursors') need(Array.isArray(command.cursors) && command.cursors.length === 1, 'INVENTORY_CURSOR');
+      cursorOwner(command, name, sessionId); return;
+    }
+    if (phase === 'CONNECT') {
+      need(['hello', 'buildinfo'].includes(name) && command[name] === 1 && sessionId === controlId && ++totals[name] === 1, 'INVENTORY_DATABASE'); return;
+    }
+    if (phase === 'INDEX_SETUP') {
+      need(sessionId === controlId && !own(command, 'txnNumber') && !own(command, 'autocommit'), 'INVENTORY_SESSION');
+      if (name === 'listCollections') {
+        need(command.listCollections === 1 && same(command.filter, {}) && same(command.cursor, { batchSize: 100 })
+          && command.nameOnly === true && command.authorizedCollections === false && command.maxTimeMS === 5000
+          && ++totals.listCollections <= 2, 'INVENTORY_INDEX_PROOF'); return;
+      }
+      need(COLLECTIONS.includes(collection), 'INVENTORY_INDEX_PROOF');
+      if (name === 'create') {
+        need(!createdCollections.has(collection) && totals.listCollections === 1, 'INVENTORY_INDEX_PROOF');
+        createdCollections.add(collection); totals.create++; return;
+      }
+      if (name === 'createIndexes') {
+        need(createdCollections.has(collection) && Array.isArray(command.indexes) && command.indexes.length === 1, 'INVENTORY_INDEX_PROOF');
+        const actual = command.indexes[0]; const expected = ports.models.find(row => row.collection === collection).indexes.find(row => row.options.name === actual.name);
+        need(expected && !builtIndexes.has(collection + '/' + actual.name) && keys(actual, ['key', ...Object.keys(expected.options)])
+          && same(actual.key instanceof Map ? [...actual.key] : Object.entries(actual.key), Object.entries(expected.key), bson)
+          && Object.entries(expected.options).every(([key, value]) => same(actual[key], value, bson)), 'INVENTORY_INDEX_PROOF');
+        builtIndexes.add(collection + '/' + actual.name); totals.createIndexes++; return;
+      }
+      need(name === 'listIndexes' && same(command.cursor, { batchSize: 100 }) && command.maxTimeMS === 5000
+        && ++totals.listIndexes <= 3, 'INVENTORY_INDEX_PROOF'); return;
+    }
+    need(scope && scope.row, 'INVENTORY_PHASE');
+    if (phase === 'ACTION') {
+      need(collection === 'inventoryitems' && sessionId === scope.sessionId && ['find', 'insert', 'update'].includes(name), 'INVENTORY_COMMANDS');
+      const count = actionCounter(); const expected = scope.row.expected.actionCommands;
+      if (name === 'find') {
+        need(++count.find <= expected.find.inventoryitems && same(command.filter, { pharmacyId: scope.fixture.ids.pharmacy, medicineId: scope.fixture.ids.medicine }, bson)
+          && command.limit === 1 && command.singleBatch === true && !own(command, 'batchSize'), 'INVENTORY_COMMANDS');
+      } else {
+        need(++count.write <= expected.write.inventoryitems && command.ordered === true, 'INVENTORY_COMMANDS');
+        if (name === 'update') {
+          need(Array.isArray(command.updates) && command.updates.length === 1, 'INVENTORY_COMMANDS'); const item = command.updates[0];
+          need(keys(item, ['q', 'u'], ['multi', 'upsert']) && (!own(item, 'multi') || item.multi === false)
+            && (!own(item, 'upsert') || item.upsert === false) && same(item.q, { _id: scope.fixture.ids.targetItem, __v: 0 }, bson)
+            && keys(item.u, ['$set', '$inc']) && same(item.u.$inc, { __v: 1 }) && plain(item.u.$set)
+            && Array.isArray(item.u.$set.batches) && item.u.$set.batches.length >= 1 && item.u.$set.batches.length <= 3
+            && Object.keys(item.u.$set).every(key => ['batches', 'availableQty', 'reservedQty', 'isActive', 'purchasePrice',
+              'retailPrice', 'wholesalePrice', 'reorderThreshold', 'rackLocation', 'updatedAt'].includes(key)), 'INVENTORY_COMMANDS');
+        } else {
+          need(scope.fixture.newItem && cases.metadataCaseIds.NEW_ITEM_INSERT_V0.includes(scope.row.id)
+            && Array.isArray(command.documents) && command.documents.length === 1, 'INVENTORY_COMMANDS');
+          const item = command.documents[0]; const id = oid(item._id);
+          need(!scope.fixture.generated.has(id) && same(item.pharmacyId, scope.fixture.ids.pharmacy, bson)
+            && same(item.medicineId, scope.fixture.ids.medicine, bson), 'INVENTORY_OWNERSHIP_PROOF'); scope.inserted = clone(item, bson);
+        }
+      }
+      if (scope.transaction) {
+        need(command.autocommit === false && isLong(command.txnNumber), 'INVENTORY_TRANSACTION');
+        if (!scope.txnNumber) { need(name === 'find' && command.startTransaction === true && same(command.readConcern, { level: 'snapshot' }), 'INVENTORY_TRANSACTION'); scope.txnNumber = clone(command.txnNumber, bson); }
+        else need(same(scope.txnNumber, command.txnNumber, bson) && !own(command, 'startTransaction') && !own(command, 'writeConcern'), 'INVENTORY_TRANSACTION');
+      } else need(!own(command, 'txnNumber') && !own(command, 'autocommit') && !own(command, 'startTransaction') && !own(command, 'readConcern'), 'INVENTORY_TRANSACTION');
+      return;
+    }
+    if (name === 'find') {
+      need(COLLECTIONS.includes(collection) && same(command.filter, {}) && command.batchSize === 100 && command.maxTimeMS === 5000
+        && !own(command, 'limit') && !own(command, 'singleBatch') && (sessionId === controlId || (phase === 'CONTROL' && scope.transaction && sessionId === scope.sessionId)), 'INVENTORY_COMMANDS'); return;
+    }
+    if (phase === 'CASE_SETUP') {
+      need(name === 'insert' && COLLECTIONS.includes(collection) && sessionId === controlId && command.ordered === true
+        && Array.isArray(command.documents) && command.documents.length === scope.fixture.seed[collection].length
+        && command.documents.every(item => scope.seedIds[collection].has(oid(item._id))), 'INVENTORY_OWNERSHIP_PROOF'); return;
+    }
+    need(phase === 'CASE_CLEANUP' && name === 'delete' && COLLECTIONS.includes(collection) && sessionId === controlId
+      && command.ordered === true && Array.isArray(command.deletes) && command.deletes.length === 1
+      && keys(command.deletes[0], ['q', 'limit']) && command.deletes[0].limit === 0
+      && same(command.deletes[0].q, { _id: { $in: scope.allowedCleanup[collection] } }, bson), 'INVENTORY_CLEANUP');
+  }
+  return Object.freeze({
+    ownSession(value, control = false) { const id = sid(value); ownedSessionIds.add(id); if (control) { need(!controlId, 'INVENTORY_SESSION'); controlId = id; } return id; },
+    phase(next, nextScope) { need(['CONNECT', 'INDEX_SETUP', 'CASE_SETUP', 'ACTION', 'CONTROL', 'CASE_CLEANUP', 'CLOSE'].includes(next), 'INVENTORY_PHASE'); phase = next; scope = nextScope; },
+    started(event) {
+      try {
+        need(Number.isSafeInteger(event.requestId) && !pending.has(event.requestId), 'INVENTORY_COMMANDS'); checkStarted(event);
+        const item = { kind: 'started', requestId: event.requestId, commandName: event.commandName, databaseName: event.databaseName, command: event.command };
+        const lease = ['find', 'listIndexes', 'listCollections'].includes(event.commandName)
+          ? leases.find(value => !value.started && value.command === event.commandName && value.database === event.databaseName
+            && value.session === sid(event.command.lsid) && value.collection === (event.commandName === 'listCollections' ? '$cmd.listCollections' : event.command[event.commandName])) : undefined;
+        if (['find', 'listIndexes', 'listCollections'].includes(event.commandName)) need(lease, 'INVENTORY_CURSOR');
+        if (lease) lease.started = true;
+        const captured = boundedEvent(item); pending.set(event.requestId, { ...captured, lease });
+      } catch (error) { effects.unexpectedCommands++; throw error; }
+    },
+    succeeded(event) {
+      try {
+        const start = pending.get(event.requestId); need(start && start.commandName === event.commandName && plain(event.reply)
+          && event.reply.ok === 1 && !own(event.reply, 'writeConcernError') && !own(event.reply, 'writeErrors'), 'INVENTORY_COMMAND_FAILURE');
+        pending.delete(event.requestId);
+        if (event.reply.cursor) {
+          const cursor = event.reply.cursor; need(keys(cursor, ['id', 'ns', 'firstBatch'], ['nextBatch'])
+            || keys(cursor, ['id', 'ns', 'nextBatch']), 'INVENTORY_CURSOR');
+          const id = apmCursorZero(cursor.id); const command = start.command;
+          const continuation = start.commandName === 'getMore' ? cursorOwner(command, 'getMore', sid(command.lsid)) : null;
+          const owner = continuation || start.lease;
+          const collection = start.commandName === 'listCollections' ? '$cmd.listCollections' : continuation ? continuation.collection : command[start.commandName];
+          const ns = start.databaseName + '.' + collection;
+          need(owner && cursor.ns === ns && Array.isArray(cursor.firstBatch || cursor.nextBatch), 'INVENTORY_CURSOR');
+          const batch = cursor.firstBatch || cursor.nextBatch; owner.rows += batch.length; owner.bytes += Buffer.byteLength(JSON.stringify(batch));
+          need(owner.rows <= owner.rowLimit && owner.bytes <= 128 * 1024, 'INVENTORY_CURSOR');
+          if (continuation) cursors.delete(long(command.getMore));
+          if (id !== '0') {
+            need(!cursors.has(id), 'INVENTORY_CURSOR'); cursors.set(id, owner);
+          }
+        }
+        boundedEvent({ kind: 'succeeded', requestId: event.requestId, commandName: event.commandName, reply: event.reply });
+      } catch (error) { effects.commandFailures++; throw error; }
+    },
+    failed(event) {
+      const start = pending.get(event.requestId); effects.commandFailures++;
+      if (start) { pending.delete(event.requestId); boundedEvent({ kind: 'failed', requestId: event.requestId, commandName: event.commandName }); }
+      fail('INVENTORY_COMMAND_FAILURE');
+    },
+    events: () => events.slice(),
+    totals: () => ({ ...totals }),
+    expectCursor(owner) { need(owner && owner.cursor && !leases.some(value => value.cursor === owner.cursor), 'INVENTORY_CURSOR'); leases.push({ ...owner, started: false, rows: 0, bytes: 0 }); },
+    closeCursor(id) { cursors.delete(long(id)); },
+    assertHealthy() { need(effects.unexpectedCommands === 0 && effects.commandFailures === 0 && pending.size === 0, 'INVENTORY_COMMAND_FAILURE'); },
+    assertClosed() { need(cursors.size === 0 && pending.size === 0, 'INVENTORY_CLOSE'); },
+    reject, sid, oid
+  });
+}
+
+async function proveOSAdapter(client, projection) {
+  const adapters = client.options?.runtimeAdapters; const actual = adapters?.os;
+  need(keys(adapters, ['os']) && keys(actual, ['platform', 'arch', 'release', 'type'])
+    && Object.keys(actual).every(key => actual[key] === projection[key]), 'INVENTORY_OS_ADAPTER');
+  const runtime = await client.options.runtime;
+  need(keys(runtime, ['os']) && runtime.os === actual, 'INVENTORY_OS_ADAPTER');
+  Object.freeze(actual); Object.freeze(adapters); Object.freeze(runtime);
+  need(Object.isFrozen(actual) && Object.isFrozen(adapters), 'INVENTORY_OS_ADAPTER');
+}
+
+function createDatabaseBoundary(mongoose, manifest, ports, cases, effects, loader, nativeBoundary, projection) {
+  const bson = Object.freeze(Object.fromEntries(['ObjectId', 'Long', 'Timestamp', 'Binary'].map(name => [name, mongoose.mongo[name]])));
+  need(Object.values(bson).every(value => typeof value === 'function'), 'INVENTORY_TYPED_VALUE');
+  const wire = createWireBoundary(manifest, ports, cases, bson, effects);
+  const uri = 'mongodb://127.0.0.1:27017/' + manifest.database + '?replicaSet=' + manifest.replicaSet + '&directConnection=true';
+  const driver = mongoose.mongo; const models = {}; const sessions = new Map(); const usedSessions = new Set();
+  const allIds = new Set(); const leases = new Set(); let client; let control; let actionSession; let sessionRequest = null;
+  let phase = 'CONNECT'; let scope; let connected = false; let connectCount = 0; let actionSessions = 0; let implicitSessions = 0;
+  let modelImport = false; let indexProof; let methodCalls = 0; let closeStarted = false; let transactions = 0;
+  let connectLease = false; let constructedClient = null;
+  const seedBulk = createSeedBulkLease();
+  const failOperation = code => { effects.operationDenials++; fail(code); };
+  const allowedCounts = { create: 0, createIndexes: 0, listIndexes: 0, listCollections: 0 };
+  function optionsSession(options, expected) {
+    need(options && options.session === expected && sessions.has(expected) && !expected.hasEnded, 'INVENTORY_SESSION');
+  }
+  function sessionIdentity(session) { need(sessions.has(session), 'INVENTORY_SESSION'); return sessions.get(session).id; }
+  function ownCollection(collection) {
+    need(client && collection.client === client && collection.dbName === manifest.database && COLLECTIONS.includes(collection.collectionName), 'INVENTORY_DATABASE');
+    return collection.collectionName;
+  }
+  function trackCursor(cursor, command, collection, session, rowLimit) {
+    need(cursor && cursor.client === client && cursor.session === session && sessions.has(session)
+      && true && !leases.has(cursor), 'INVENTORY_CURSOR');
+    leases.add(cursor); wire.expectCursor({ cursor, command, collection, database: manifest.database, session: sessionIdentity(session), rowLimit });
+    const close = cursor.close.bind(cursor);
+    cursor.close = async function (...args) {
+      need(this === cursor && leases.has(cursor) && cursor.client === client && cursor.session === session, 'INVENTORY_CURSOR');
+      const id = cursor.id; const result = await close(...args);
+      if (id && !id.isZero()) wire.closeCursor(id); leases.delete(cursor); return result;
+    };
+    return cursor;
+  }
+  const array = (makeCursor, limit, budget) => collectReadCursor(makeCursor, limit, budget, leases);
+  function currentRow(value) { return cases.cases.find(row => row.id === value); }
+  function validateScope(value) {
+    need(keys(value, ['caseId', 'variantId', 'phase', 'fixture', 'eligible', 'session', 'transaction'], ['terminal'])
+      && currentRow(value.caseId) && (value.variantId === null || ports.requiredSensitivityIds.includes(value.variantId))
+      && ports.failureContext.phases.includes(value.phase) && keys(value.eligible, COLLECTIONS)
+      && typeof value.transaction === 'boolean' && keys(value.fixture.seed, COLLECTIONS), 'INVENTORY_PHASE');
+    if (own(value, 'terminal')) need(['COMMIT', 'ABORT', 'FAILURE_ABORT'].includes(value.terminal), 'INVENTORY_TERMINAL');
+    return currentRow(value.caseId);
+  }
+  function qualifiedCleanup(value) {
+    need(scope && value.fixture === scope.fixture && value.caseId === scope.row.id, 'INVENTORY_OWNERSHIP_PROOF');
+    return validateCleanupIds(value.eligible, scope, wire.oid);
+  }
+  function switchPhase(name, value) {
+    const row = validateScope(value);
+    need(['CASE_SETUP', 'ACTION', 'CONTROL', 'CASE_CLEANUP'].includes(name), 'INVENTORY_PHASE');
+    if (name === 'CASE_SETUP') {
+      need(indexProof && (!scope || (phase === 'CASE_CLEANUP' && scope.finalEmptyProved)) && !leases.size, 'INVENTORY_PHASE');
+      const fixture = value.fixture; const idNames = ['pharmacy', 'medicine', 'otherPharmacy', 'targetItem', 'otherItem', 'targetBatch',
+        'secondBatch', 'siblingBatch', 'otherBatch', 'absentBatch', 'absentItem', 'adjustment', 'reservation', 'user', 'order'];
+      need(keys(fixture.ids, idNames) && fixture.generated instanceof Set && fixture.generated.size === idNames.length
+        && same([...fixture.generated].sort(), idNames.map(key => wire.oid(fixture.ids[key])).sort()), 'INVENTORY_OWNERSHIP_PROOF');
+      for (const key of fixture.generated) { need(!allIds.has(key), 'INVENTORY_OWNERSHIP_PROOF'); allIds.add(key); }
+      const seedIds = {};
+      for (let i = 0; i < COLLECTIONS.length; i++) {
+        const collection = COLLECTIONS[i]; const rows = fixture.seed[collection];
+        need(Array.isArray(rows) && rows.length === (i === 0 ? ['NEW_ITEM', 'ABSENT_ITEM'].includes(row.seed.kind) ? 1 : 2 : 1)
+          && value.eligible[collection].length === 0, 'INVENTORY_OWNERSHIP_PROOF');
+        seedIds[collection] = new Set(rows.map(item => wire.oid(item._id)));
+      }
+      need(same(fixture.seed.inventoryitems.map(item => item._id), fixture.missing ? [fixture.ids.otherItem] : [fixture.ids.otherItem, fixture.ids.targetItem], bson)
+        && same(fixture.seed.inventoryadjustments.map(item => item._id), [fixture.ids.adjustment], bson)
+        && same(fixture.seed.inventoryreservations.map(item => item._id), [fixture.ids.reservation], bson), 'INVENTORY_OWNERSHIP_PROOF');
+      scope = { row, fixture, seedIds, token: {}, diagnosticPhase: value.phase, variantId: value.variantId,
+        emptyProved: false, finalEmptyProved: false, setupCollections: new Set(), cleanupCollections: new Set(),
+        sessionId: null, transaction: false, allowedCleanup: Object.fromEntries(COLLECTIONS.map(name => [name, []])) };
+    } else {
+      need(scope && scope.row === row && scope.fixture === value.fixture && scope.variantId === value.variantId
+        && scope.diagnosticPhase === value.phase, 'INVENTORY_PHASE');
+      scope.allowedCleanup = qualifiedCleanup(value);
+      if (value.session) { need(value.session === actionSession && sessions.has(value.session), 'INVENTORY_SESSION'); scope.sessionId = sessionIdentity(value.session); }
+      scope.transaction = value.transaction; scope.terminal = value.terminal;
+      if (name === 'ACTION') need(scope.emptyProved && scope.setupCollections.size === 3 && value.session === actionSession
+        && value.transaction === (row.sessionMode !== 'NONTRANSACTIONAL_OWNED_SESSION')
+        && actionSession.inTransaction() === value.transaction, 'INVENTORY_PHASE');
+      if (value.terminal && value.terminal !== 'FAILURE_ABORT') need(value.terminal === row.expected.transactionTerminal, 'INVENTORY_TERMINAL');
+    }
+    phase = name; wire.phase(name, scope);
+  }
+  installModelRegistrationBoundary(mongoose, ports, models, () => modelImport);
+  const modelCompile = mongoose.Model.compile;
+  mongoose.Model.compile = function (name, schema, collection, connection, base) {
+    need(modelImport && name === MODEL_NAMES[Object.keys(models).length] && connection === mongoose.connection && base === mongoose
+      && collection === ports.models.find(row => row.name === name)?.collection, 'INVENTORY_MODEL');
+    return modelCompile.call(this, name, schema, collection, connection, base);
+  };
+  mongoose.Connection.prototype.model = () => failOperation('INVENTORY_MODEL');
+  for (const owner of [mongoose, mongoose.Mongoose.prototype, mongoose.Connection.prototype]) {
+    if (typeof owner.deleteModel === 'function') owner.deleteModel = () => failOperation('INVENTORY_MODEL');
+  }
+  mongoose.set('autoIndex', false); mongoose.set('autoCreate', false); mongoose.set('bufferCommands', false);
+  need(mongoose.modelNames().length === 0 && mongoose.connections.length === 1 && mongoose.connection.readyState === 0, 'INVENTORY_MODEL');
+  mongoose.createConnection = () => failOperation('INVENTORY_DATABASE');
+  mongoose.Mongoose.prototype.createConnection = mongoose.createConnection;
+  for (const name of ['useDb', 'removeDb', 'dropDatabase', 'syncIndexes', 'transaction', 'startSession']) mongoose.Connection.prototype[name] = () => failOperation('INVENTORY_DATABASE');
+  const connect = mongoose.connect;
+  mongoose.connect = async function (candidate, options) {
+    need(this === mongoose && candidate === uri && ++connectCount === 1 && same(Object.keys(options).sort(), [...Object.keys(ports.ownedConnection.options), 'runtimeAdapters'].sort())
+      && Object.entries(ports.ownedConnection.options).every(([key, value]) => same(options[key], value))
+      && options.runtimeAdapters?.os === projection, 'INVENTORY_DATABASE');
+    connectLease = true; try { return await connect.call(this, candidate, options); } finally { connectLease = false; }
+  };
+  mongoose.Mongoose.prototype.connect = mongoose.connect;
+  const openUri = mongoose.Connection.prototype.openUri;
+  mongoose.Connection.prototype.openUri = function (candidate, options) {
+    need(this === mongoose.connection && candidate === uri && !options?.dbName && connectCount === 1, 'INVENTORY_DATABASE'); return openUri.call(this, candidate, options);
+  };
+  const clientConnect = driver.MongoClient.prototype.connect;
+  const clientModule = require.cache[path.join(ROOT, 'node_modules/mongoose/node_modules/mongodb/lib/mongo_client.js')];
+  const clientDescriptor = Object.getOwnPropertyDescriptor(clientModule?.exports || {}, 'MongoClient');
+  need(clientDescriptor && own(clientDescriptor, 'value') && clientDescriptor.value === driver.MongoClient && clientDescriptor.writable, 'INVENTORY_DATABASE');
+  clientModule.exports.MongoClient = guardOwnedClientConstructor(driver.MongoClient, () => connectLease, uri, ports.ownedConnection.options, projection,
+    instance => { need(!constructedClient, 'INVENTORY_DATABASE'); constructedClient = instance; });
+  driver.MongoClient.prototype.connect = async function (...args) {
+    need(!client && this === constructedClient && this.s?.url === uri && args.length === 0 && phase === 'CONNECT', 'INVENTORY_DATABASE'); client = this;
+    for (const [key, value] of Object.entries(ports.ownedConnection.options)) if (!['autoCreate', 'autoIndex'].includes(key)) {
+      need(same(client.options[key], value), 'INVENTORY_DATABASE');
+    }
+    await proveOSAdapter(client, projection);
+    client.on('commandStarted', wire.started); client.on('commandSucceeded', wire.succeeded); client.on('commandFailed', wire.failed);
+    nativeBoundary.mongoStarted(); const result = await clientConnect.apply(this, args); connected = true;
+    await proveOSAdapter(client, projection); return result;
+  };
+  const clientDb = driver.MongoClient.prototype.db;
+  driver.MongoClient.prototype.db = function (name, options) {
+    need(this === client && (name || this.options.dbName) === manifest.database && (options === undefined || keys(options, [])), 'INVENTORY_DATABASE'); return clientDb.call(this, name, options);
+  };
+  const startSession = driver.MongoClient.prototype.startSession;
+  driver.MongoClient.prototype.startSession = function (options = {}) {
+    need(this === client && connected, 'INVENTORY_SESSION');
+    const request = sessionRequest;
+    if (request) need(same(options, { causalConsistency: false }), 'INVENTORY_SESSION');
+    else need(keys(options, ['owner', 'explicit']) && typeof options.owner === 'symbol' && options.explicit === false && ++implicitSessions <= 2, 'INVENTORY_SESSION');
+    const session = startSession.call(this, options);
+    need(session.client === client && !usedSessions.has(session) && session.hasEnded === false, 'INVENTORY_SESSION'); usedSessions.add(session);
+    const id = wire.ownSession(session.id, request === 'CONTROL'); sessions.set(session, { id, kind: request || 'IMPLICIT', ended: false, terminalCalls: 0, abortCalls: 0, transactions: 0 });
+    const transaction = session.startTransaction.bind(session); const commit = session.commitTransaction.bind(session);
+    const abort = session.abortTransaction.bind(session); const end = session.endSession.bind(session);
+    session.startTransaction = function (options) {
+      const record = sessions.get(this); need(record && this === actionSession && record.kind === 'ACTION' && ++record.transactions === 1
+        && scope && scope.row.sessionMode !== 'NONTRANSACTIONAL_OWNED_SESSION'
+        && same(options, ports.sessions.transactionOptions) && ++transactions <= 5, 'INVENTORY_TRANSACTION'); return transaction(options);
+    };
+    session.commitTransaction = async function (...args) {
+      const record = sessions.get(this); need(record && args.length === 0 && this === actionSession && phase === 'CONTROL'
+        && scope?.terminal === 'COMMIT' && ++record.terminalCalls === 1 && this.inTransaction(), 'INVENTORY_TERMINAL'); return commit();
+    };
+    session.abortTransaction = async function (...args) {
+      const record = sessions.get(this); need(record && args.length === 0 && this === actionSession && this.inTransaction() && ++record.abortCalls === 1
+        && ((phase === 'CONTROL' && scope?.terminal === 'ABORT' && ++record.terminalCalls === 1)
+          || (phase === 'CASE_CLEANUP' && scope?.terminal === 'FAILURE_ABORT')), 'INVENTORY_TERMINAL'); return abort();
+    };
+    session.withTransaction = () => failOperation('INVENTORY_TRANSACTION');
+    session.endSession = async function (...args) {
+      const record = sessions.get(this); need(record && args.length === 0 && !record.ended && !this.inTransaction()
+        && (record.kind === 'IMPLICIT' || (record.kind === 'ACTION' && ['CONTROL', 'CASE_CLEANUP', 'CLOSE'].includes(phase)) || (record.kind === 'CONTROL' && phase === 'CLOSE')), 'INVENTORY_SESSION');
+      record.ended = true; const result = await end(); need(this.hasEnded === true, 'INVENTORY_SESSION'); return result;
+    };
+    return session;
+  };
+  const collection = driver.Db.prototype.collection;
+  driver.Db.prototype.collection = function (name, options) {
+    need(this.client === client && this.databaseName === manifest.database && COLLECTIONS.includes(name), 'INVENTORY_MODEL'); return collection.call(this, name, options);
+  };
+  const createCollection = driver.Db.prototype.createCollection;
+  driver.Db.prototype.createCollection = function (name, options) {
+    need(phase === 'INDEX_SETUP' && this.client === client && this.databaseName === manifest.database
+      && COLLECTIONS.includes(name) && keys(options, ['session']) && options.session === control, 'INVENTORY_INDEX_PROOF');
+    return createCollection.call(this, name, options);
+  };
+  const dbCommand = driver.Db.prototype.command; driver.Db.prototype.command = () => failOperation('INVENTORY_DATABASE');
+  const adminCommand = driver.Admin.prototype.command;
+  driver.Admin.prototype.command = function (command, options) {
+    need(phase === 'CONNECT' && (same(command, { hello: 1 }) || same(command, { buildinfo: 1 }))
+      && keys(options, ['session']) && options.session === control, 'INVENTORY_DATABASE'); return adminCommand.call(this, command, options);
+  };
+  for (const name of ['aggregate', 'watch', 'dropCollection', 'dropDatabase', 'renameCollection', 'executeDbAdminCommand', 'runCursorCommand']) {
+    if (typeof driver.Db.prototype[name] === 'function') driver.Db.prototype[name] = () => failOperation('INVENTORY_DATABASE');
+  }
+  const listCollections = driver.Db.prototype.listCollections;
+  driver.Db.prototype.listCollections = function (filter, options) {
+    need(phase === 'INDEX_SETUP' && this.client === client && this.databaseName === manifest.database && same(filter, {})
+      && keys(options, ['session', 'nameOnly', 'batchSize', 'maxTimeMS']) && options.session === control && options.nameOnly === true
+      && options.batchSize === 100 && options.maxTimeMS === 5000, 'INVENTORY_INDEX_PROOF');
+    return trackCursor(listCollections.call(this, filter, options), 'listCollections', '$cmd.listCollections', control, 3);
+  };
+  const bulkWrite = driver.Collection.prototype.bulkWrite;
+  const orderedBulk = driver.Collection.prototype.initializeOrderedBulkOp;
+  driver.Collection.prototype.bulkWrite = function (operations, options) {
+    need(phase === 'CASE_SETUP', 'INVENTORY_COMMANDS'); seedBulk.assertBulk(this, operations, options, control);
+    return bulkWrite.call(this, operations, options);
+  };
+  driver.Collection.prototype.initializeOrderedBulkOp = function (options) {
+    need(phase === 'CASE_SETUP', 'INVENTORY_COMMANDS'); seedBulk.assertOrdered(this, options, control);
+    return orderedBulk.call(this, options);
+  };
+  for (const name of ['aggregate', 'watch', 'replaceOne', 'updateMany', 'deleteOne', 'findOneAndDelete', 'findOneAndReplace',
+    'findOneAndUpdate', 'createIndexes', 'drop', 'dropIndex', 'dropIndexes', 'rename', 'count', 'countDocuments', 'estimatedDocumentCount',
+    'distinct', 'mapReduce', 'initializeUnorderedBulkOp']) {
+    if (typeof driver.Collection.prototype[name] === 'function') driver.Collection.prototype[name] = () => failOperation('INVENTORY_DATABASE');
+  }
+  const createIndex = driver.Collection.prototype.createIndex;
+  driver.Collection.prototype.createIndex = function (key, indexOptions, commandOptions) {
+    const name = ownCollection(this); need(phase === 'INDEX_SETUP' && keys(commandOptions, ['session']) && commandOptions.session === control
+      && ports.models.find(row => row.collection === name).indexes.some(row => same(Object.entries(key), Object.entries(row.key)) && same(indexOptions, row.options)), 'INVENTORY_INDEX_PROOF');
+    return createIndex.call(this, key, indexOptions, commandOptions);
+  };
+  const listIndexes = driver.Collection.prototype.listIndexes;
+  driver.Collection.prototype.listIndexes = function (options) {
+    const name = ownCollection(this); need(phase === 'INDEX_SETUP' && keys(options, ['session', 'batchSize', 'maxTimeMS'])
+      && options.session === control && options.batchSize === 100 && options.maxTimeMS === 5000, 'INVENTORY_INDEX_PROOF');
+    return trackCursor(listIndexes.call(this, options), 'listIndexes', name, control, 32);
+  };
+  const find = driver.Collection.prototype.find;
+  driver.Collection.prototype.find = function (filter, options) {
+    const name = ownCollection(this); let session;
+    if (phase === 'ACTION') {
+      session = actionSession; need(name === 'inventoryitems' && same(filter, { pharmacyId: scope.fixture.ids.pharmacy, medicineId: scope.fixture.ids.medicine }, bson), 'INVENTORY_COMMANDS');
+    } else {
+      need(['CASE_SETUP', 'CONTROL', 'CASE_CLEANUP'].includes(phase) && same(filter, {})
+        && options.batchSize === 100 && options.maxTimeMS === 5000, 'INVENTORY_COMMANDS'); session = options.session;
+      need(session === control || (phase === 'CONTROL' && scope.transaction && session === actionSession), 'INVENTORY_SESSION');
+    }
+    optionsSession(options, session);
+    need(Object.keys(options).every(key => ['session', 'batchSize', 'maxTimeMS', ...(phase === 'ACTION' ? ['singleBatch'] : [])].includes(key))
+      && (phase !== 'ACTION' || options.singleBatch === true), 'INVENTORY_COMMANDS');
+    return trackCursor(find.call(this, filter, options), 'find', name, session, phase === 'ACTION' ? 1 : 16);
+  };
+  for (const name of ['insertOne', 'insertMany', 'updateOne', 'deleteMany']) {
+    const held = driver.Collection.prototype[name];
+    driver.Collection.prototype[name] = async function (...args) {
+      const collectionName = ownCollection(this); const options = args[name === 'updateOne' ? 2 : 1] || {};
+      if (phase === 'CASE_SETUP') {
+        need(name === 'insertMany' && scope.emptyProved && !scope.setupCollections.has(collectionName)
+          && args[0].length === scope.fixture.seed[collectionName].length, 'INVENTORY_OWNERSHIP_PROOF');
+        for (const row of args[0]) need(scope.seedIds[collectionName].has(wire.oid(row._id)), 'INVENTORY_OWNERSHIP_PROOF');
+        optionsSession(options, control); scope.setupCollections.add(collectionName);
+      } else if (phase === 'ACTION') {
+        need(collectionName === 'inventoryitems' && ((name === 'insertOne' && scope.fixture.newItem) || name === 'updateOne'), 'INVENTORY_COMMANDS');
+        optionsSession(options, actionSession);
+      } else {
+        need(phase === 'CASE_CLEANUP' && name === 'deleteMany' && !scope.cleanupCollections.has(collectionName)
+          && scope.allowedCleanup[collectionName].length > 0 && same(args[0], { _id: { $in: scope.allowedCleanup[collectionName] } }, bson), 'INVENTORY_CLEANUP');
+        optionsSession(options, control); scope.cleanupCollections.add(collectionName);
+      }
+      need(Object.keys(options).every(key => ['session', 'ordered'].includes(key)) && (!own(options, 'ordered') || options.ordered === true), 'INVENTORY_COMMANDS');
+      if (name === 'insertMany') {
+        return seedBulk.run(this, args[0], () => held.apply(this, args));
+      }
+      return held.apply(this, args);
+    };
+  }
+  for (const name of ['aggregate', 'populate']) mongoose.Model[name] = mongoose.Query.prototype[name] = () => failOperation('INVENTORY_DATABASE');
+  return Object.freeze({
+    bson, wire,
+    async importModels() {
+      modelImport = true;
+      try { loader.load(MODEL_ALIAS); } finally { modelImport = false; }
+      need(keys(models, MODEL_NAMES) && same(mongoose.modelNames().sort(), MODEL_NAMES.slice().sort()), 'INVENTORY_MODEL');
+      Object.freeze(models); loader.bindModels(models); return models;
+    },
+    async connect() {
+      await mongoose.connect(uri, { ...ports.ownedConnection.options, runtimeAdapters: { os: projection } });
+      need(client && mongoose.connection.name === manifest.database && mongoose.connection.getClient() === client, 'INVENTORY_DATABASE');
+      sessionRequest = 'CONTROL'; try { control = client.startSession({ causalConsistency: false }); } finally { sessionRequest = null; }
+      const hello = await mongoose.connection.db.admin().command({ hello: 1 }, { session: control });
+      need(hello.setName === manifest.replicaSet && hello.isWritablePrimary === true, 'INVENTORY_DATABASE');
+      const info = await mongoose.connection.db.admin().serverInfo({ session: control });
+      need(info.version === '8.0.34', 'INVENTORY_DATABASE');
+      await proveOSAdapter(client, projection); wire.assertHealthy();
+    },
+    async indexes() {
+      const budget = createReadBudget('METADATA', readClock);
+      phase = 'INDEX_SETUP'; wire.phase(phase, null);
+      const db = mongoose.connection.db;
+      const beforeCollections = (await array(() => db.listCollections({}, { nameOnly: true, session: control, batchSize: 100, maxTimeMS: 5000 }), 3, budget)).map(row => row.name);
+      need(beforeCollections.length === 0, 'INVENTORY_INDEX_PROOF');
+      const schemaIndexes = {}; const serverIndexes = {};
+      for (const spec of ports.models) {
+        schemaIndexes[spec.name] = clone(models[spec.name].schema.indexes(), bson);
+        await budget.creation(() => db.createCollection(spec.collection, { session: control }));
+        for (const index of spec.indexes) await budget.creation(() => db.collection(spec.collection).createIndex(index.key, index.options, { session: control }));
+        serverIndexes[spec.collection] = await array(() => db.collection(spec.collection).listIndexes({ session: control, batchSize: 100, maxTimeMS: 5000 }), 32, budget);
+      }
+      const afterCollections = (await array(() => db.listCollections({}, { nameOnly: true, session: control, batchSize: 100, maxTimeMS: 5000 }), 3, budget)).map(row => row.name);
+      const actual = wire.totals();
+      need(same(afterCollections.slice().sort(), COLLECTIONS.slice().sort()) && actual.create === 3 && actual.createIndexes === 22
+        && actual.listIndexes === 3 && actual.listCollections === 2, 'INVENTORY_INDEX_PROOF');
+      indexProof = { beforeCollections, afterCollections, schemaIndexes, serverIndexes,
+        commands: { create: actual.create, createIndexes: actual.createIndexes, listIndexes: actual.listIndexes, listCollections: actual.listCollections } };
+      wire.assertHealthy(); budget.check(); return indexProof;
+    },
+    observeRepository(Repository) {
+      for (const name of ['adjustBatchStock', 'releaseBatchAllocations']) {
+        const original = Object.getOwnPropertyDescriptor(Repository.prototype, name); need(original && typeof original.value === 'function', 'INVENTORY_REPOSITORY_FRESHNESS');
+        Object.defineProperty(Repository.prototype, name, { ...original, value: async function (...args) {
+          need(phase === 'ACTION' && scope && scope.row.method === name && this.constructor === Repository && ++methodCalls <= 163
+            && args.length === 4 && args[3] === actionSession, 'INVENTORY_REPOSITORY_FRESHNESS');
+          const result = await original.value.apply(this, args);
+          if (result && scope.fixture.newItem) {
+            scope.returnedNewId = returnedNewItemId(result, name, scope.fixture, bson);
+          }
+          return result;
+        } });
+        loader.recordMethodRestore(() => Object.defineProperty(Repository.prototype, name, original));
+      }
+    },
+    phase: switchPhase,
+    async startSession() {
+      need(phase === 'CONTROL' && scope && scope.setupCollections.size === 3 && (!actionSession || actionSession.hasEnded)
+        && ++actionSessions <= 163, 'INVENTORY_SESSION');
+      sessionRequest = 'ACTION'; try { actionSession = client.startSession({ causalConsistency: false }); } finally { sessionRequest = null; }
+      need(actionSession !== control && sessionIdentity(actionSession) !== sessionIdentity(control), 'INVENTORY_SESSION'); return actionSession;
+    },
+    async snapshot(session) {
+      const budget = createReadBudget('SNAPSHOT', readClock);
+      need(['CASE_SETUP', 'CONTROL', 'CASE_CLEANUP'].includes(phase) && scope && (session === control || (phase === 'CONTROL' && scope.transaction && session === actionSession)), 'INVENTORY_SESSION');
+      const result = {}; let count = 0; let bytesSeen = 0;
+      for (const collection of COLLECTIONS) {
+        result[collection] = await array(() => mongoose.connection.db.collection(collection).find({}, { session, batchSize: 100, maxTimeMS: 5000 }), 16, budget);
+        count += result[collection].length; bytesSeen += Buffer.byteLength(JSON.stringify(result[collection]));
+      }
+      need(count <= 64 && bytesSeen <= 128 * 1024, 'INVENTORY_CURSOR'); wire.assertHealthy();
+      if (phase === 'CASE_SETUP' && !scope.emptyProved) { need(count === 0, 'INVENTORY_OWNERSHIP_PROOF'); scope.emptyProved = true; }
+      if (phase === 'CASE_CLEANUP') { need(count === 0, 'INVENTORY_CLEANUP'); scope.finalEmptyProved = true; }
+      if (phase === 'CONTROL' && scope.returnedNewId && scope.inserted) {
+        const item = result.inventoryitems.find(row => wire.oid(row._id) === scope.returnedNewId);
+        if (item) {
+          need(wire.oid(scope.inserted._id) === scope.returnedNewId && same(item.pharmacyId, scope.fixture.ids.pharmacy, bson)
+            && same(item.medicineId, scope.fixture.ids.medicine, bson), 'INVENTORY_OWNERSHIP_PROOF'); scope.observedNewId = scope.returnedNewId;
+        }
+      }
+      budget.check(); return result;
+    },
+    get models() { return models; }, get controlSession() { return control; }, get indexProof() { return indexProof; },
+    assertHealthy() {
+      assertEffects(effects); wire.assertHealthy(); seedBulk.assertIdle();
+      need(mongoose.connections.length === 1 && same(mongoose.modelNames().sort(), MODEL_NAMES.slice().sort())
+        && MODEL_NAMES.every(name => mongoose.models[name] === models[name]), 'INVENTORY_MODEL');
+      need(leases.size === 0 && lifetimeFailures === 0, 'INVENTORY_CURSOR');
+    },
+    assertCompleted() { seedBulk.assertIdle(); need(methodCalls === 163 && actionSessions === 163 && transactions === 5 && scope?.finalEmptyProved && actionSession.hasEnded, 'INVENTORY_RESULT'); },
+    async close() {
+      need(!closeStarted, 'INVENTORY_CLOSE'); closeStarted = true; phase = 'CLOSE'; wire.phase(phase, scope);
+      let first; let failed = false;
+      const attempt = async action => { try { await action(); } catch (error) { if (!failed) { failed = true; first = error; } } };
+      for (const cursor of leases) await attempt(async () => { await cursor.close(); leases.delete(cursor); });
+      for (const [session, record] of sessions) if (!record.ended && record.kind !== 'IMPLICIT') await attempt(async () => {
+        need(!session.inTransaction(), 'INVENTORY_CLOSE'); await session.endSession();
+      });
+      if (client) await attempt(() => mongoose.disconnect());
+      nativeBoundary.mongoClosed();
+      await attempt(() => { wire.assertClosed(); assertEffects(effects); need(leases.size === 0 && [...sessions].every(([session]) => session.hasEnded), 'INVENTORY_CLOSE'); });
+      if (failed) throw first;
+    }
+  });
+}
+
+function denseArray(value, maximum) {
+  return Array.isArray(value) && value.length <= maximum && Reflect.ownKeys(value).length === value.length + 1
+    && Object.keys(value).length === value.length && Object.keys(value).every((key, i) => key === String(i)
+      && own(Object.getOwnPropertyDescriptor(value, key), 'value'));
+}
+function validateCleanupIds(eligible, proof, oid) {
+  need(keys(eligible, COLLECTIONS), 'INVENTORY_CLEANUP'); const allowed = {};
+  for (const collection of COLLECTIONS) {
+    const values = eligible[collection]; need(denseArray(values, 3), 'INVENTORY_CLEANUP'); const ids = new Set();
+    for (const id of values) {
+      const key = oid(id); need(!ids.has(key), 'INVENTORY_CLEANUP'); ids.add(key);
+      need(proof.emptyProved && (proof.seedIds[collection].has(key)
+        || (collection === 'inventoryitems' && proof.returnedNewId === key && proof.observedNewId === key && proof.inserted
+          && oid(proof.inserted._id) === key)), 'INVENTORY_OWNERSHIP_PROOF');
+    }
+    allowed[collection] = values.slice();
+  }
+  return allowed;
+}
+function createSeedBulkLease() {
+  let active = null;
+  function scope(collection, options, control) {
+    need(active && collection === active.collection && options?.session === control && options.ordered !== false, 'INVENTORY_COMMANDS');
+  }
+  return Object.freeze({
+    async run(collection, documents, action) {
+      need(!active && collection && denseArray(documents, 2) && documents.length > 0 && typeof action === 'function', 'INVENTORY_COMMANDS');
+      active = { collection, documents: documents.slice() };
+      try { return await action(); } finally { active = null; }
+    },
+    assertBulk(collection, operations, options, control) {
+      scope(collection, options, control);
+      need(denseArray(operations, 2) && operations.length === active.documents.length
+        && operations.every((operation, i) => keys(operation, ['insertOne']) && keys(operation.insertOne, ['document'])
+          && operation.insertOne.document === active.documents[i]), 'INVENTORY_COMMANDS');
+    },
+    assertOrdered: scope,
+    assertIdle() { need(active === null, 'INVENTORY_COMMANDS'); }
+  });
+}
+function guardOwnedClientConstructor(Constructor, admitted, uri, options, projection, capture) {
+  let calls = 0; let guarded;
+  guarded = new Proxy(Constructor, {
+    construct(target, args, newTarget) {
+      need(admitted() === true && ++calls === 1 && newTarget === guarded && args.length === 2 && args[0] === uri, 'INVENTORY_DATABASE');
+      const supplied = args[1];
+      need(plain(supplied) && keys(supplied.runtimeAdapters, ['os'])
+        && keys(supplied.runtimeAdapters.os, ['platform', 'arch', 'release', 'type'])
+        && Object.keys(projection).every(name => supplied.runtimeAdapters.os[name] === projection[name])
+        && Object.entries(options).filter(([name]) => !['autoCreate', 'autoIndex'].includes(name)).every(([name, value]) => same(supplied[name], value)), 'INVENTORY_OS_ADAPTER');
+      const instance = Reflect.construct(target, args, target); capture(instance); return instance;
+    },
+    apply() { fail('INVENTORY_DATABASE'); }
+  });
+  return guarded;
+}
+function returnedNewItemId(result, method, fixture, bson) {
+  const item = method === 'adjustBatchStock' ? result?.item : result;
+  need(plain(item) && item._id instanceof bson.ObjectId && /^[a-f0-9]{24}$/.test(item._id.toHexString())
+    && !fixture.generated.has(item._id.toHexString()) && same(item.pharmacyId, fixture.ids.pharmacy, bson)
+    && same(item.medicineId, fixture.ids.medicine, bson), 'INVENTORY_OWNERSHIP_PROOF');
+  // Actual repository methods return saved.toObject(), never a hydrated Doc.
+  return item._id.toHexString();
+}
+function inspectManifest(manifest, plan, ports, cases) {
+  const observed = {}; let total = 0;
+  function walk(directory, prefix = '') {
+    for (const name of fs.readdirSync(directory)) {
+      const relative = prefix + name; const filename = path.join(directory, name); const metadata = fs.lstatSync(filename);
+      need(!metadata.isSymbolicLink(), 'INVENTORY_FILE_MANIFEST');
+      if (metadata.isDirectory()) walk(filename, relative + '/');
+      else {
+        need(metadata.isFile() && metadata.nlink === 1, 'INVENTORY_FILE_MANIFEST');
+        if (relative === '.admission.json') continue;
+        total += metadata.size; need(total <= 256 * 1024 * 1024 && Object.keys(observed).length < 2777, 'INVENTORY_FILE_MANIFEST');
+        observed[relative] = fs.readFileSync(filename);
+      }
+    }
+  }
+  walk(ROOT); return validateAdmissionData(manifest, plan, ports, cases, { runId: process.env.APP_RUN_ID, files: observed });
+}

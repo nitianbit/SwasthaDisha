@@ -1,0 +1,5 @@
+REVIEW TARGET ONLY. No execution admission is supplied. Default run-pure.py starts no child.
+
+/usr/bin/env -i PATH=/usr/bin:/bin LC_ALL=C /opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14 -I -S -B /Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery/output/qa/pharmacy-pure-fixture-recovery/run-pure.py --run-once
+
+Future exact EXECUTION_ADMISSION.json must bind SOURCE_FREEZE.json, run-pure.py and the Node digest, with two distinct nonauthor Spec/Standards APPROVE_ONE_PURE_CAMPAIGN_ONLY decisions. One campaign: three nominal entries plus nine named copied-source controls, each30s/1MiB. First unexpected failure stops; no retry/fallback. No main/driver/app/packages/DB/provider activation.

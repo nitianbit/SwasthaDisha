@@ -1,0 +1,1464 @@
+{
+  "schema": "SD-INVENTORY-QUALITY-PORTS-1",
+  "role": "inventory-quality-repository",
+  "domainScope": "DIRECT_INVENTORY_REPOSITORY_ONLY",
+  "sourceFiles": {
+    "src1/modules/pharmacyInventory/repository/index.ts": "2cc825908777950cbfcf1cf4dea6cc12f0e6e97a41660fb413565db3fdd6e659",
+    "src1/modules/pharmacyInventory/model/index.ts": "098fc86bc14e553b60a81fdb7bf33ebacb8c44f799a2cb665420ea5debe52313",
+    "src1/modules/pharmacyInventory/types/index.ts": "83aba7263dd3a97315b63d36ed24f39b9932a6ae578219b35c0b082f20e744c4",
+    "src1/modules/pharmacies/types/index.ts": "e43d4c6e5af5ebc9a21e3a35d41e475e92ab7509961cdafe6bfc3043af0b24f0",
+    "src1/modules/common/repository/index.ts": "6e13d4d0ced3ad40772c5b2c35034544fe49f0d7b715cf0309f954be7ab5cb77",
+    "src1/modules/common/repository/BaseRepository.ts": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+    "src1/modules/common/utils/queryUtils.ts": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d"
+  },
+  "runtimeRoot": "@/modules/pharmacyInventory/repository",
+  "expectedConservativeSources": 7,
+  "expectedNominalEmittedFiles": 7,
+  "expectedReachableBusinessModules": 5,
+  "typeOnlyInputs": [
+    "src1/modules/pharmacyInventory/types/index.ts",
+    "src1/modules/pharmacies/types/index.ts"
+  ],
+  "publicRuntimeRoots": [
+    "mongoose",
+    "typedi",
+    "reflect-metadata"
+  ],
+  "models": [
+    {
+      "name": "InventoryItem",
+      "collection": "inventoryitems",
+      "source": "src1/modules/pharmacyInventory/model/index.ts",
+      "indexes": [
+        {
+          "key": {
+            "pharmacyId": 1
+          },
+          "options": {
+            "name": "pharmacyId_1"
+          }
+        },
+        {
+          "key": {
+            "medicineId": 1
+          },
+          "options": {
+            "name": "medicineId_1"
+          }
+        },
+        {
+          "key": {
+            "batches.expiryDate": 1
+          },
+          "options": {
+            "name": "batches.expiryDate_1"
+          }
+        },
+        {
+          "key": {
+            "batches.status": 1
+          },
+          "options": {
+            "name": "batches.status_1"
+          }
+        },
+        {
+          "key": {
+            "isActive": 1
+          },
+          "options": {
+            "name": "isActive_1"
+          }
+        },
+        {
+          "key": {
+            "pharmacyId": 1,
+            "medicineId": 1
+          },
+          "options": {
+            "unique": true,
+            "name": "pharmacyId_1_medicineId_1"
+          }
+        },
+        {
+          "key": {
+            "pharmacyId": 1,
+            "isActive": 1
+          },
+          "options": {
+            "name": "pharmacyId_1_isActive_1"
+          }
+        },
+        {
+          "key": {
+            "pharmacyId": 1,
+            "availableQty": 1
+          },
+          "options": {
+            "name": "pharmacyId_1_availableQty_1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "InventoryAdjustment",
+      "collection": "inventoryadjustments",
+      "source": "src1/modules/pharmacyInventory/model/index.ts",
+      "indexes": [
+        {
+          "key": {
+            "pharmacyId": 1
+          },
+          "options": {
+            "name": "pharmacyId_1"
+          }
+        },
+        {
+          "key": {
+            "inventoryItemId": 1
+          },
+          "options": {
+            "name": "inventoryItemId_1"
+          }
+        },
+        {
+          "key": {
+            "sourceType": 1
+          },
+          "options": {
+            "name": "sourceType_1"
+          }
+        },
+        {
+          "key": {
+            "sourceId": 1
+          },
+          "options": {
+            "name": "sourceId_1"
+          }
+        },
+        {
+          "key": {
+            "pharmacyId": 1,
+            "createdAt": -1
+          },
+          "options": {
+            "name": "pharmacyId_1_createdAt_-1"
+          }
+        },
+        {
+          "key": {
+            "pharmacyId": 1,
+            "sourceType": 1,
+            "sourceId": 1,
+            "sourceRowIndex": 1
+          },
+          "options": {
+            "unique": true,
+            "partialFilterExpression": {
+              "sourceId": {
+                "$exists": true,
+                "$type": "string"
+              },
+              "sourceRowIndex": {
+                "$exists": true,
+                "$type": "number"
+              }
+            },
+            "name": "pharmacyId_1_sourceType_1_sourceId_1_sourceRowIndex_1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "InventoryReservation",
+      "collection": "inventoryreservations",
+      "source": "src1/modules/pharmacyInventory/model/index.ts",
+      "indexes": [
+        {
+          "key": {
+            "pharmacyId": 1
+          },
+          "options": {
+            "name": "pharmacyId_1"
+          }
+        },
+        {
+          "key": {
+            "medicineId": 1
+          },
+          "options": {
+            "name": "medicineId_1"
+          }
+        },
+        {
+          "key": {
+            "orderId": 1
+          },
+          "options": {
+            "name": "orderId_1"
+          }
+        },
+        {
+          "key": {
+            "reservationType": 1
+          },
+          "options": {
+            "name": "reservationType_1"
+          }
+        },
+        {
+          "key": {
+            "status": 1
+          },
+          "options": {
+            "name": "status_1"
+          }
+        },
+        {
+          "key": {
+            "pharmacyId": 1,
+            "reservationType": 1,
+            "status": 1,
+            "createdAt": 1
+          },
+          "options": {
+            "name": "pharmacyId_1_reservationType_1_status_1_createdAt_1"
+          }
+        },
+        {
+          "key": {
+            "orderId": 1,
+            "status": 1,
+            "createdAt": 1
+          },
+          "options": {
+            "name": "orderId_1_status_1_createdAt_1"
+          }
+        },
+        {
+          "key": {
+            "pharmacyId": 1,
+            "medicineId": 1,
+            "status": 1,
+            "createdAt": 1
+          },
+          "options": {
+            "name": "pharmacyId_1_medicineId_1_status_1_createdAt_1"
+          }
+        }
+      ]
+    }
+  ],
+  "secondaryIndexes": [
+    {
+      "model": "InventoryItem",
+      "key": {
+        "pharmacyId": 1
+      },
+      "predictedName": "pharmacyId_1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "pharmacyId_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryItem",
+      "key": {
+        "medicineId": 1
+      },
+      "predictedName": "medicineId_1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "medicineId_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryItem",
+      "key": {
+        "batches.expiryDate": 1
+      },
+      "predictedName": "batches.expiryDate_1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "batches.expiryDate_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryItem",
+      "key": {
+        "batches.status": 1
+      },
+      "predictedName": "batches.status_1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "batches.status_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryItem",
+      "key": {
+        "isActive": 1
+      },
+      "predictedName": "isActive_1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "isActive_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryItem",
+      "key": {
+        "pharmacyId": 1,
+        "medicineId": 1
+      },
+      "predictedName": "pharmacyId_1_medicineId_1",
+      "sourceOptions": {
+        "unique": true
+      },
+      "creationOptions": {
+        "unique": true,
+        "name": "pharmacyId_1_medicineId_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryItem",
+      "key": {
+        "pharmacyId": 1,
+        "isActive": 1
+      },
+      "predictedName": "pharmacyId_1_isActive_1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "pharmacyId_1_isActive_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryItem",
+      "key": {
+        "pharmacyId": 1,
+        "availableQty": 1
+      },
+      "predictedName": "pharmacyId_1_availableQty_1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "pharmacyId_1_availableQty_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryAdjustment",
+      "key": {
+        "pharmacyId": 1
+      },
+      "predictedName": "pharmacyId_1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "pharmacyId_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryAdjustment",
+      "key": {
+        "inventoryItemId": 1
+      },
+      "predictedName": "inventoryItemId_1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "inventoryItemId_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryAdjustment",
+      "key": {
+        "sourceType": 1
+      },
+      "predictedName": "sourceType_1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "sourceType_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryAdjustment",
+      "key": {
+        "sourceId": 1
+      },
+      "predictedName": "sourceId_1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "sourceId_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryAdjustment",
+      "key": {
+        "pharmacyId": 1,
+        "createdAt": -1
+      },
+      "predictedName": "pharmacyId_1_createdAt_-1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "pharmacyId_1_createdAt_-1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryAdjustment",
+      "key": {
+        "pharmacyId": 1,
+        "sourceType": 1,
+        "sourceId": 1,
+        "sourceRowIndex": 1
+      },
+      "predictedName": "pharmacyId_1_sourceType_1_sourceId_1_sourceRowIndex_1",
+      "sourceOptions": {
+        "unique": true,
+        "partialFilterExpression": {
+          "sourceId": {
+            "$exists": true,
+            "$type": "string"
+          },
+          "sourceRowIndex": {
+            "$exists": true,
+            "$type": "number"
+          }
+        }
+      },
+      "creationOptions": {
+        "unique": true,
+        "partialFilterExpression": {
+          "sourceId": {
+            "$exists": true,
+            "$type": "string"
+          },
+          "sourceRowIndex": {
+            "$exists": true,
+            "$type": "number"
+          }
+        },
+        "name": "pharmacyId_1_sourceType_1_sourceId_1_sourceRowIndex_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryReservation",
+      "key": {
+        "pharmacyId": 1
+      },
+      "predictedName": "pharmacyId_1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "pharmacyId_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryReservation",
+      "key": {
+        "medicineId": 1
+      },
+      "predictedName": "medicineId_1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "medicineId_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryReservation",
+      "key": {
+        "orderId": 1
+      },
+      "predictedName": "orderId_1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "orderId_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryReservation",
+      "key": {
+        "reservationType": 1
+      },
+      "predictedName": "reservationType_1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "reservationType_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryReservation",
+      "key": {
+        "status": 1
+      },
+      "predictedName": "status_1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "status_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryReservation",
+      "key": {
+        "pharmacyId": 1,
+        "reservationType": 1,
+        "status": 1,
+        "createdAt": 1
+      },
+      "predictedName": "pharmacyId_1_reservationType_1_status_1_createdAt_1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "pharmacyId_1_reservationType_1_status_1_createdAt_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryReservation",
+      "key": {
+        "orderId": 1,
+        "status": 1,
+        "createdAt": 1
+      },
+      "predictedName": "orderId_1_status_1_createdAt_1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "orderId_1_status_1_createdAt_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    },
+    {
+      "model": "InventoryReservation",
+      "key": {
+        "pharmacyId": 1,
+        "medicineId": 1,
+        "status": 1,
+        "createdAt": 1
+      },
+      "predictedName": "pharmacyId_1_medicineId_1_status_1_createdAt_1",
+      "sourceOptions": {},
+      "creationOptions": {
+        "name": "pharmacyId_1_medicineId_1_status_1_createdAt_1"
+      },
+      "status": "SOURCE_DERIVED_NOT_SCHEMA_OR_DB_OBSERVED"
+    }
+  ],
+  "indexCounts": {
+    "InventoryItem": 8,
+    "InventoryAdjustment": 6,
+    "InventoryReservation": 8,
+    "secondary": 22,
+    "implicitId": 3
+  },
+  "serviceRegistrations": [
+    "InventoryItemRepository",
+    "InventoryAdjustmentRepository",
+    "InventoryReservationRepository"
+  ],
+  "requiredCaseIds": [
+    "INV_ADJUST_RECALLED",
+    "INV_ADJUST_QUARANTINED",
+    "INV_ADJUST_EXPIRED",
+    "INV_RELEASE_RECALLED",
+    "INV_RELEASE_QUARANTINED",
+    "INV_RELEASE_EXPIRED",
+    "INV_ADJUST_NORMAL_TRANSITIONS",
+    "INV_RELEASE_NORMAL_TRANSITIONS",
+    "INV_ADJUST_NEW_ITEM_OR_BATCH",
+    "INV_ADJUST_PRICING_AND_PARENT_FIELDS",
+    "INV_ADJUST_NULL_BOUNDARIES",
+    "INV_RELEASE_NULL_BOUNDARIES",
+    "INV_RELEASE_EMPTY_AND_MULTI",
+    "INV_ADJUST_ERRORS_PERSIST_UNCHANGED",
+    "INV_RELEASE_ERRORS_PERSIST_UNCHANGED",
+    "INV_SESSION_ADJUST_COMMIT",
+    "INV_SESSION_ADJUST_ABORT",
+    "INV_SESSION_RELEASE_COMMIT",
+    "INV_SESSION_RELEASE_ABORT",
+    "INV_SESSION_NEW_ITEM_ABORT"
+  ],
+  "requiredGroupMethodCounts": {
+    "INV_ADJUST_RECALLED": 24,
+    "INV_ADJUST_QUARANTINED": 24,
+    "INV_ADJUST_EXPIRED": 24,
+    "INV_RELEASE_RECALLED": 8,
+    "INV_RELEASE_QUARANTINED": 8,
+    "INV_RELEASE_EXPIRED": 8,
+    "INV_ADJUST_NORMAL_TRANSITIONS": 8,
+    "INV_RELEASE_NORMAL_TRANSITIONS": 8,
+    "INV_ADJUST_NEW_ITEM_OR_BATCH": 4,
+    "INV_ADJUST_PRICING_AND_PARENT_FIELDS": 2,
+    "INV_ADJUST_NULL_BOUNDARIES": 4,
+    "INV_RELEASE_NULL_BOUNDARIES": 6,
+    "INV_RELEASE_EMPTY_AND_MULTI": 3,
+    "INV_ADJUST_ERRORS_PERSIST_UNCHANGED": 2,
+    "INV_RELEASE_ERRORS_PERSIST_UNCHANGED": 1,
+    "INV_SESSION_ADJUST_COMMIT": 1,
+    "INV_SESSION_ADJUST_ABORT": 1,
+    "INV_SESSION_RELEASE_COMMIT": 1,
+    "INV_SESSION_RELEASE_ABORT": 1,
+    "INV_SESSION_NEW_ITEM_ABORT": 1
+  },
+  "requiredSensitivityIds": [
+    "INV_ADJUST_RECALLED_GUARD_REMOVED",
+    "INV_ADJUST_QUARANTINED_GUARD_REMOVED",
+    "INV_ADJUST_EXPIRED_GUARD_REMOVED",
+    "INV_ADJUST_MARKER_GUARD_REMOVED",
+    "INV_RELEASE_RECALLED_GUARD_REMOVED",
+    "INV_RELEASE_QUARANTINED_GUARD_REMOVED",
+    "INV_RELEASE_EXPIRED_GUARD_REMOVED",
+    "INV_RELEASE_MARKER_GUARD_REMOVED"
+  ],
+  "nominalMethodCalls": 139,
+  "unsafeMethodCalls": 8,
+  "restorationMethodCalls": 16,
+  "casesSha": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+  "providerCounterKeys": [
+    "email",
+    "sms",
+    "push",
+    "logger",
+    "payments",
+    "calendar",
+    "storage",
+    "queue",
+    "deniedCapabilities",
+    "unexpected"
+  ],
+  "expectedProviderCounters": {
+    "email": 0,
+    "sms": 0,
+    "push": 0,
+    "logger": 0,
+    "payments": 0,
+    "calendar": 0,
+    "storage": 0,
+    "queue": 0,
+    "deniedCapabilities": 0,
+    "unexpected": 0
+  },
+  "noHttpListener": true,
+  "noDomainSubstitutes": true,
+  "rootEntryConfigServicesProvidersDenied": true,
+  "status": "ROOT_SHARED_INTERFACE_CANDIDATE_NOT_IMPLEMENTATION_AUTHORITY",
+  "publicBuiltinCandidates": {
+    "provenance": "Conservative plain-source literal require candidates (may include comments); not observed import edges. Exact manifest parent/specifier pairs only, filtered by actual Node builtin set and permanent denials. Native operation traps remain mandatory.",
+    "referenceDescriptor": "0753c30bcf7a1a46eff1abad69009b070d848e5090aab6435270897010c5ed50",
+    "parents": {
+      "node_modules/@mongodb-js/saslprep/dist/code-points-data.js": [
+        "zlib"
+      ],
+      "node_modules/@mongodb-js/saslprep/dist/generate-code-points.js": [
+        "fs",
+        "zlib"
+      ],
+      "node_modules/@sideway/address/lib/domain.js": [
+        "url"
+      ],
+      "node_modules/@sideway/address/lib/email.js": [
+        "util"
+      ],
+      "node_modules/asynckit/bench.js": [
+        "assert"
+      ],
+      "node_modules/asynckit/stream.js": [
+        "stream",
+        "util"
+      ],
+      "node_modules/axios/dist/node/axios.cjs": [
+        "crypto",
+        "events",
+        "http",
+        "https",
+        "stream",
+        "url",
+        "util",
+        "zlib"
+      ],
+      "node_modules/axios/node_modules/form-data/lib/form_data.js": [
+        "fs",
+        "http",
+        "https",
+        "path",
+        "stream",
+        "url",
+        "util"
+      ],
+      "node_modules/body-parser/lib/read.js": [
+        "zlib"
+      ],
+      "node_modules/body-parser/lib/types/urlencoded.js": [
+        "querystring"
+      ],
+      "node_modules/bson/etc/prepare.js": [
+        "child_process",
+        "fs"
+      ],
+      "node_modules/buffer-equal-constant-time/index.js": [
+        "buffer"
+      ],
+      "node_modules/buffer-equal-constant-time/test.js": [
+        "assert",
+        "buffer"
+      ],
+      "node_modules/combined-stream/lib/combined_stream.js": [
+        "stream",
+        "util"
+      ],
+      "node_modules/content-disposition/index.js": [
+        "path"
+      ],
+      "node_modules/cookie-signature/index.js": [
+        "crypto"
+      ],
+      "node_modules/debug/src/inspector-log.js": [
+        "stream"
+      ],
+      "node_modules/debug/src/node.js": [
+        "fs",
+        "net",
+        "tty",
+        "util"
+      ],
+      "node_modules/delayed-stream/lib/delayed_stream.js": [
+        "stream",
+        "util"
+      ],
+      "node_modules/depd/index.js": [
+        "path"
+      ],
+      "node_modules/destroy/index.js": [
+        "events",
+        "fs",
+        "stream",
+        "zlib"
+      ],
+      "node_modules/dotenv/lib/main.js": [
+        "crypto",
+        "fs",
+        "os",
+        "path"
+      ],
+      "node_modules/etag/index.js": [
+        "crypto",
+        "fs"
+      ],
+      "node_modules/express/lib/application.js": [
+        "http",
+        "https",
+        "path"
+      ],
+      "node_modules/express/lib/express.js": [
+        "events"
+      ],
+      "node_modules/express/lib/request.js": [
+        "http",
+        "net"
+      ],
+      "node_modules/express/lib/response.js": [
+        "http",
+        "path"
+      ],
+      "node_modules/express/lib/utils.js": [
+        "querystring"
+      ],
+      "node_modules/express/lib/view.js": [
+        "fs",
+        "path"
+      ],
+      "node_modules/follow-redirects/index.js": [
+        "assert",
+        "http",
+        "https",
+        "stream",
+        "url"
+      ],
+      "node_modules/iconv-lite/encodings/internal.js": [
+        "string_decoder"
+      ],
+      "node_modules/iconv-lite/lib/extend-node.js": [
+        "buffer",
+        "stream"
+      ],
+      "node_modules/iconv-lite/lib/streams.js": [
+        "buffer",
+        "stream"
+      ],
+      "node_modules/inherits/inherits.js": [
+        "util"
+      ],
+      "node_modules/jsonwebtoken/sign.js": [
+        "crypto"
+      ],
+      "node_modules/jsonwebtoken/verify.js": [
+        "crypto"
+      ],
+      "node_modules/jwa/index.js": [
+        "crypto",
+        "util"
+      ],
+      "node_modules/jws/lib/data-stream.js": [
+        "stream",
+        "util"
+      ],
+      "node_modules/jws/lib/sign-stream.js": [
+        "stream",
+        "util"
+      ],
+      "node_modules/jws/lib/tostring.js": [
+        "buffer"
+      ],
+      "node_modules/jws/lib/verify-stream.js": [
+        "stream",
+        "util"
+      ],
+      "node_modules/methods/index.js": [
+        "http"
+      ],
+      "node_modules/mime/mime.js": [
+        "fs",
+        "path"
+      ],
+      "node_modules/mime/src/build.js": [
+        "fs",
+        "path"
+      ],
+      "node_modules/mime/src/test.js": [
+        "assert",
+        "path"
+      ],
+      "node_modules/mime-types/index.js": [
+        "path"
+      ],
+      "node_modules/mongoose/lib/cast/date.js": [
+        "assert"
+      ],
+      "node_modules/mongoose/lib/cast/decimal128.js": [
+        "assert"
+      ],
+      "node_modules/mongoose/lib/cast/double.js": [
+        "assert"
+      ],
+      "node_modules/mongoose/lib/cast/int32.js": [
+        "assert"
+      ],
+      "node_modules/mongoose/lib/cast.js": [
+        "util"
+      ],
+      "node_modules/mongoose/lib/collection.js": [
+        "events"
+      ],
+      "node_modules/mongoose/lib/connection.js": [
+        "events"
+      ],
+      "node_modules/mongoose/lib/cursor/aggregationCursor.js": [
+        "stream",
+        "util"
+      ],
+      "node_modules/mongoose/lib/cursor/changeStream.js": [
+        "events"
+      ],
+      "node_modules/mongoose/lib/cursor/queryCursor.js": [
+        "events",
+        "stream",
+        "util"
+      ],
+      "node_modules/mongoose/lib/document.js": [
+        "events",
+        "util"
+      ],
+      "node_modules/mongoose/lib/drivers/node-mongodb-native/collection.js": [
+        "stream",
+        "util"
+      ],
+      "node_modules/mongoose/lib/error/cast.js": [
+        "util"
+      ],
+      "node_modules/mongoose/lib/error/notFound.js": [
+        "util"
+      ],
+      "node_modules/mongoose/lib/error/setOptionError.js": [
+        "util"
+      ],
+      "node_modules/mongoose/lib/error/validation.js": [
+        "util"
+      ],
+      "node_modules/mongoose/lib/error/validator.js": [
+        "util"
+      ],
+      "node_modules/mongoose/lib/helpers/common.js": [
+        "util"
+      ],
+      "node_modules/mongoose/lib/helpers/model/castBulkWrite.js": [
+        "util"
+      ],
+      "node_modules/mongoose/lib/helpers/populate/modelNamesFromRefPath.js": [
+        "util"
+      ],
+      "node_modules/mongoose/lib/helpers/populate/validateRef.js": [
+        "util"
+      ],
+      "node_modules/mongoose/lib/model.js": [
+        "events",
+        "util"
+      ],
+      "node_modules/mongoose/lib/mongoose.js": [
+        "async_hooks",
+        "events"
+      ],
+      "node_modules/mongoose/lib/query.js": [
+        "util"
+      ],
+      "node_modules/mongoose/lib/schema/array.js": [
+        "util"
+      ],
+      "node_modules/mongoose/lib/schema/date.js": [
+        "util"
+      ],
+      "node_modules/mongoose/lib/schema/decimal128.js": [
+        "util"
+      ],
+      "node_modules/mongoose/lib/schema/documentArray.js": [
+        "events"
+      ],
+      "node_modules/mongoose/lib/schema/number.js": [
+        "util"
+      ],
+      "node_modules/mongoose/lib/schema/objectId.js": [
+        "util"
+      ],
+      "node_modules/mongoose/lib/schema/string.js": [
+        "util"
+      ],
+      "node_modules/mongoose/lib/schema/subdocument.js": [
+        "events"
+      ],
+      "node_modules/mongoose/lib/schema.js": [
+        "events"
+      ],
+      "node_modules/mongoose/lib/tracing.js": [
+        "node:diagnostics_channel"
+      ],
+      "node_modules/mongoose/lib/types/arraySubdocument.js": [
+        "events"
+      ],
+      "node_modules/mongoose/lib/types/map.js": [
+        "util"
+      ],
+      "node_modules/mongoose/lib/types/subdocument.js": [
+        "util"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/etc/prepare.js": [
+        "child_process",
+        "fs",
+        "os"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/client-side-encryption/auto_encrypter.js": [
+        "net"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/client-side-encryption/mongocryptd_manager.js": [
+        "child_process"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/client-side-encryption/state_machine.js": [
+        "fs/promises",
+        "net",
+        "process",
+        "tls"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/aws_temporary_credentials.js": [
+        "process"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/gssapi.js": [
+        "dns"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/mongodb_oidc/callback_workflow.js": [
+        "timers/promises"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/mongodb_oidc/k8s_machine_workflow.js": [
+        "fs/promises",
+        "process"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/mongodb_oidc/token_machine_workflow.js": [
+        "fs",
+        "process"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/cmap/auth/scram.js": [
+        "crypto"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/cmap/connect.js": [
+        "net",
+        "tls"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/cmap/connection.js": [
+        "stream",
+        "timers"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/cmap/connection_pool.js": [
+        "timers"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/cmap/handshake/client_metadata.js": [
+        "process"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/cmap/wire_protocol/compression.js": [
+        "zlib"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/connection_string.js": [
+        "dns",
+        "process",
+        "url"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/cursor/abstract_cursor.js": [
+        "stream"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/deps.js": [
+        "zlib"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/gridfs/download.js": [
+        "stream"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/gridfs/upload.js": [
+        "stream"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/mongo_client.js": [
+        "fs"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/mongo_logger.js": [
+        "process",
+        "util"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/mongo_types.js": [
+        "events"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/operations/execute_operation.js": [
+        "timers/promises"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/sdam/monitor.js": [
+        "timers"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/sdam/srv_polling.js": [
+        "dns",
+        "timers"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/sessions.js": [
+        "timers/promises"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/timeout.js": [
+        "timers"
+      ],
+      "node_modules/mongoose/node_modules/mongodb/lib/utils.js": [
+        "fs",
+        "http",
+        "process",
+        "timers",
+        "url"
+      ],
+      "node_modules/mpath/test/index.js": [
+        "assert",
+        "util"
+      ],
+      "node_modules/mpath/test/stringToParts.js": [
+        "assert"
+      ],
+      "node_modules/mquery/lib/mquery.js": [
+        "assert",
+        "util"
+      ],
+      "node_modules/object-inspect/util.inspect.js": [
+        "util"
+      ],
+      "node_modules/on-finished/index.js": [
+        "async_hooks"
+      ],
+      "node_modules/parseurl/index.js": [
+        "url"
+      ],
+      "node_modules/proxy-from-env/index.js": [
+        "url"
+      ],
+      "node_modules/proxy-from-env/test.js": [
+        "assert",
+        "url"
+      ],
+      "node_modules/raw-body/index.js": [
+        "async_hooks"
+      ],
+      "node_modules/safe-buffer/index.js": [
+        "buffer"
+      ],
+      "node_modules/safer-buffer/dangerous.js": [
+        "buffer"
+      ],
+      "node_modules/safer-buffer/safer.js": [
+        "buffer"
+      ],
+      "node_modules/safer-buffer/tests.js": [
+        "buffer"
+      ],
+      "node_modules/send/index.js": [
+        "fs",
+        "path",
+        "stream",
+        "util"
+      ],
+      "node_modules/serve-static/index.js": [
+        "path",
+        "url"
+      ],
+      "node_modules/setprototypeof/test/index.js": [
+        "assert"
+      ],
+      "node_modules/typescript/lib/_tsc.js": [
+        "crypto",
+        "fs",
+        "inspector",
+        "os",
+        "path",
+        "perf_hooks"
+      ],
+      "node_modules/typescript/lib/_tsserver.js": [
+        "child_process",
+        "fs",
+        "net",
+        "os",
+        "readline"
+      ],
+      "node_modules/typescript/lib/_typingsInstaller.js": [
+        "child_process",
+        "fs",
+        "path"
+      ],
+      "node_modules/typescript/lib/tsc.js": [
+        "node:module"
+      ],
+      "node_modules/typescript/lib/tsserver.js": [
+        "node:module"
+      ],
+      "node_modules/typescript/lib/typescript.js": [
+        "crypto",
+        "fs",
+        "inspector",
+        "os",
+        "path",
+        "perf_hooks"
+      ],
+      "node_modules/typescript/lib/typingsInstaller.js": [
+        "node:module"
+      ],
+      "node_modules/typescript/lib/watchGuard.js": [
+        "fs"
+      ]
+    },
+    "permanentlyDenied": [
+      "child_process",
+      "worker_threads",
+      "vm",
+      "inspector",
+      "inspector/promises",
+      "repl",
+      "module",
+      "cluster",
+      "dgram",
+      "http2",
+      "v8",
+      "wasi",
+      "sqlite",
+      "sea",
+      "test",
+      "test/reporters",
+      "trace_events"
+    ]
+  },
+  "absentOptionalPackages": [
+    "kerberos",
+    "@mongodb-js/zstd",
+    "mongodb-client-encryption",
+    "snappy",
+    "socks",
+    "@aws-sdk/credential-providers",
+    "gcp-metadata"
+  ],
+  "publicInitialization": {
+    "retrievals": {
+      "v8": 1,
+      "node:diagnostics_channel": 1
+    },
+    "tracingNames": [
+      "mongoose:cursor:next",
+      "mongoose:aggregate",
+      "mongoose:query",
+      "mongoose:model:save",
+      "mongoose:model:insertMany",
+      "mongoose:model:bulkWrite"
+    ],
+    "eachTracingNameCalls": 1,
+    "v8": "Only startupSnapshot.isBuildingSnapshot bound to real native; require exact primitive positive zero via Object.is(result, 0) and return native result unchanged; no coercion, Boolean false union, callback or other property authority",
+    "diagnostics": "Only real tracingChannel projected with exact six names, once each, only within synchronous init window",
+    "window": "reflect-metadata -> typedi -> mongoose require, closes in finally before domain import; retained projected methods check same window; all unknown/later calls latch even if caught",
+    "trapsBeforePublicImports": true
+  },
+  "ownedConnection": {
+    "uri": "mongodb://127.0.0.1:27017/sd_iq_<nonce>?replicaSet=sd_iq_rs_<nonce>&directConnection=true",
+    "options": {
+      "autoIndex": false,
+      "autoCreate": false,
+      "serverSelectionTimeoutMS": 5000,
+      "connectTimeoutMS": 5000,
+      "socketTimeoutMS": 10000,
+      "maxPoolSize": 4,
+      "minPoolSize": 0,
+      "monitorCommands": true,
+      "retryReads": false,
+      "retryWrites": false,
+      "maxAdaptiveRetries": 0
+    },
+    "bufferCommands": false,
+    "runtimeAdaptersOS": [
+      "platform",
+      "arch",
+      "release",
+      "type"
+    ],
+    "adapterProof": "Actual client.options.runtimeAdapters.os exact four own data keys with same captured native function refs; await client.options.runtime exact {os} and resolved.os===actual adapter; freeze ACTUAL cloned adapter and runtimeAdapters record, not just original. Validate before native connect in owned prototype wrapper and recheck after mongoose.connect. No original-object-identity requirement.",
+    "dynamicImportPolicy": "Fixed native OS projection prevents pinned resolver default import(os) branch; CJS hooks are not claimed as generic ESM enforcement. All domain source/emitted code rejects dynamic loading/codegen/builtin retrieval."
+  },
+  "sessions": {
+    "options": {
+      "causalConsistency": false
+    },
+    "transactionOptions": {
+      "readPreference": "primary",
+      "readConcern": {
+        "level": "snapshot"
+      },
+      "writeConcern": {
+        "w": "majority",
+        "wtimeoutMS": 5000
+      },
+      "maxCommitTimeMS": 5000
+    },
+    "actionSessions": 163,
+    "controlSession": "one explicit held own-client session, distinct from active action session; all snapshots/setup/cleanup controls use it",
+    "firstTxnAction": "find has held lsid+BSON Long txnNumber/autocommit:false/startTransaction:true/readConcern snapshot; subsequent save same lsid/txnNumber, no startTransaction or per-operation writeConcern",
+    "directConnectionEnvelope": "Driver may add exact $readPreference:{mode:primaryPreferred}, $db and typed $clusterTime gossip; do not equate APM with all handshakes.",
+    "nominalTerminal": "five selected terminal commands, each one started+matching succeeded ok1, zero failed/writeConcernError/extra attempts; after abort compare return to pre-abort own-session state and persisted final to baseline",
+    "failureCleanup": "no further cases/retries; at most one explicit abort API per still-active owned transaction, bounded driver-internal retry may add at most two wire abort attempts; record and never pass; preserve first failure; unresolved cleanup is terminal",
+    "endSessions": "client close may emit at most one admin endSessions with only held/observed own-client session IDs; all transactions terminal/cursors exhausted first; do not claim wire endSession or endSessions acknowledgement absent evidence"
+  },
+  "commandPhases": {
+    "CONNECT": [
+      "one fixed hello:1 owned setName/isWritablePrimary proof",
+      "one typed admin.serverInfo -> buildinfo:1 version8.0.34"
+    ],
+    "INDEX_SETUP": [
+      "listCollections empty before creation",
+      "three create",
+      "22 single-index createIndexes",
+      "three complete listIndexes, exact25 rows incl implicit_id",
+      "listCollections exactthree afterwards"
+    ],
+    "CASE_SETUP": [
+      "three complete empty snapshots BEFORE eligibility",
+      "three explicit non-lean Model.insertMany calls, normally four documents (twoitems+adjustment+reservation), fewer only when target intentionally absent",
+      "baseline snapshot/metadata assertion outside action"
+    ],
+    "ACTION": [
+      "exact find/write counts in cases.json, Item only; exact pharmacy/medicine filter; update one nonmulti/nonupsert statement with _id/__v0 and increment1; insert only three explicit new-item cases; no aggregate/populate/other collection/admin command"
+    ],
+    "CONTROL": [
+      "bounded complete find snapshots on three collections, exact held client/session/cursor; optional getMore ONLY if independently bound owned cursor; normally cursorid0 with batchSize100",
+      "manual transaction inside/outside reads and exact selected terminal commands counted separately"
+    ],
+    "CASE_CLEANUP": [
+      "only exact eligible IDs, three bounded delete commands; absent negative IDs never eligible; newly source-created IDs require exact owned-tuple/returned/store proof first",
+      "three complete empty snapshots before next case"
+    ],
+    "CLOSE": [
+      "all sessions terminal/ended and cursors exhausted, then mongoose disconnect/driver endSessions at mostonce with ownIDs; no hidden success after failed command"
+    ]
+  },
+  "failureContext": {
+    "safeCaseIds": [
+      "IQA_RECALLED_PAST_PRESENT_FIXED_DATE_POSITIVE",
+      "IQA_RECALLED_PAST_PRESENT_FIXED_DATE_ZERO_NONZERO",
+      "IQA_RECALLED_PAST_PRESENT_FIXED_DATE_NEGATIVE_NONZERO",
+      "IQA_RECALLED_PAST_PRESENT_FIXED_DATE_ZERO_BOTH",
+      "IQA_RECALLED_PAST_PRESENT_FIXED_DATE_TO_ZERO_BOTH",
+      "IQA_RECALLED_PAST_PRESENT_FIXED_DATE_TO_ZERO_RESERVED",
+      "IQA_RECALLED_PAST_ABSENT_POSITIVE",
+      "IQA_RECALLED_PAST_ABSENT_ZERO_NONZERO",
+      "IQA_RECALLED_PAST_ABSENT_NEGATIVE_NONZERO",
+      "IQA_RECALLED_PAST_ABSENT_ZERO_BOTH",
+      "IQA_RECALLED_PAST_ABSENT_TO_ZERO_BOTH",
+      "IQA_RECALLED_PAST_ABSENT_TO_ZERO_RESERVED",
+      "IQA_RECALLED_FUTURE_PRESENT_FIXED_DATE_POSITIVE",
+      "IQA_RECALLED_FUTURE_PRESENT_FIXED_DATE_ZERO_NONZERO",
+      "IQA_RECALLED_FUTURE_PRESENT_FIXED_DATE_NEGATIVE_NONZERO",
+      "IQA_RECALLED_FUTURE_PRESENT_FIXED_DATE_ZERO_BOTH",
+      "IQA_RECALLED_FUTURE_PRESENT_FIXED_DATE_TO_ZERO_BOTH",
+      "IQA_RECALLED_FUTURE_PRESENT_FIXED_DATE_TO_ZERO_RESERVED",
+      "IQA_RECALLED_FUTURE_ABSENT_POSITIVE",
+      "IQA_RECALLED_FUTURE_ABSENT_ZERO_NONZERO",
+      "IQA_RECALLED_FUTURE_ABSENT_NEGATIVE_NONZERO",
+      "IQA_RECALLED_FUTURE_ABSENT_ZERO_BOTH",
+      "IQA_RECALLED_FUTURE_ABSENT_TO_ZERO_BOTH",
+      "IQA_RECALLED_FUTURE_ABSENT_TO_ZERO_RESERVED",
+      "IQA_QUARANTINED_PAST_PRESENT_FIXED_DATE_POSITIVE",
+      "IQA_QUARANTINED_PAST_PRESENT_FIXED_DATE_ZERO_NONZERO",
+      "IQA_QUARANTINED_PAST_PRESENT_FIXED_DATE_NEGATIVE_NONZERO",
+      "IQA_QUARANTINED_PAST_PRESENT_FIXED_DATE_ZERO_BOTH",
+      "IQA_QUARANTINED_PAST_PRESENT_FIXED_DATE_TO_ZERO_BOTH",
+      "IQA_QUARANTINED_PAST_PRESENT_FIXED_DATE_TO_ZERO_RESERVED",
+      "IQA_QUARANTINED_PAST_ABSENT_POSITIVE",
+      "IQA_QUARANTINED_PAST_ABSENT_ZERO_NONZERO",
+      "IQA_QUARANTINED_PAST_ABSENT_NEGATIVE_NONZERO",
+      "IQA_QUARANTINED_PAST_ABSENT_ZERO_BOTH",
+      "IQA_QUARANTINED_PAST_ABSENT_TO_ZERO_BOTH",
+      "IQA_QUARANTINED_PAST_ABSENT_TO_ZERO_RESERVED",
+      "IQA_QUARANTINED_FUTURE_PRESENT_FIXED_DATE_POSITIVE",
+      "IQA_QUARANTINED_FUTURE_PRESENT_FIXED_DATE_ZERO_NONZERO",
+      "IQA_QUARANTINED_FUTURE_PRESENT_FIXED_DATE_NEGATIVE_NONZERO",
+      "IQA_QUARANTINED_FUTURE_PRESENT_FIXED_DATE_ZERO_BOTH",
+      "IQA_QUARANTINED_FUTURE_PRESENT_FIXED_DATE_TO_ZERO_BOTH",
+      "IQA_QUARANTINED_FUTURE_PRESENT_FIXED_DATE_TO_ZERO_RESERVED",
+      "IQA_QUARANTINED_FUTURE_ABSENT_POSITIVE",
+      "IQA_QUARANTINED_FUTURE_ABSENT_ZERO_NONZERO",
+      "IQA_QUARANTINED_FUTURE_ABSENT_NEGATIVE_NONZERO",
+      "IQA_QUARANTINED_FUTURE_ABSENT_ZERO_BOTH",
+      "IQA_QUARANTINED_FUTURE_ABSENT_TO_ZERO_BOTH",
+      "IQA_QUARANTINED_FUTURE_ABSENT_TO_ZERO_RESERVED",
+      "IQA_EXPIRED_PAST_PRESENT_FIXED_DATE_POSITIVE",
+      "IQA_EXPIRED_PAST_PRESENT_FIXED_DATE_ZERO_NONZERO",
+      "IQA_EXPIRED_PAST_PRESENT_FIXED_DATE_NEGATIVE_NONZERO",
+      "IQA_EXPIRED_PAST_PRESENT_FIXED_DATE_ZERO_BOTH",
+      "IQA_EXPIRED_PAST_PRESENT_FIXED_DATE_TO_ZERO_BOTH",
+      "IQA_EXPIRED_PAST_PRESENT_FIXED_DATE_TO_ZERO_RESERVED",
+      "IQA_EXPIRED_PAST_ABSENT_POSITIVE",
+      "IQA_EXPIRED_PAST_ABSENT_ZERO_NONZERO",
+      "IQA_EXPIRED_PAST_ABSENT_NEGATIVE_NONZERO",
+      "IQA_EXPIRED_PAST_ABSENT_ZERO_BOTH",
+      "IQA_EXPIRED_PAST_ABSENT_TO_ZERO_BOTH",
+      "IQA_EXPIRED_PAST_ABSENT_TO_ZERO_RESERVED",
+      "IQA_EXPIRED_FUTURE_PRESENT_FIXED_DATE_POSITIVE",
+      "IQA_EXPIRED_FUTURE_PRESENT_FIXED_DATE_ZERO_NONZERO",
+      "IQA_EXPIRED_FUTURE_PRESENT_FIXED_DATE_NEGATIVE_NONZERO",
+      "IQA_EXPIRED_FUTURE_PRESENT_FIXED_DATE_ZERO_BOTH",
+      "IQA_EXPIRED_FUTURE_PRESENT_FIXED_DATE_TO_ZERO_BOTH",
+      "IQA_EXPIRED_FUTURE_PRESENT_FIXED_DATE_TO_ZERO_RESERVED",
+      "IQA_EXPIRED_FUTURE_ABSENT_POSITIVE",
+      "IQA_EXPIRED_FUTURE_ABSENT_ZERO_NONZERO",
+      "IQA_EXPIRED_FUTURE_ABSENT_NEGATIVE_NONZERO",
+      "IQA_EXPIRED_FUTURE_ABSENT_ZERO_BOTH",
+      "IQA_EXPIRED_FUTURE_ABSENT_TO_ZERO_BOTH",
+      "IQA_EXPIRED_FUTURE_ABSENT_TO_ZERO_RESERVED",
+      "IQR_RECALLED_PAST_PRESENT_FIXED_DATE_Q1",
+      "IQR_RECALLED_PAST_PRESENT_FIXED_DATE_Q3",
+      "IQR_RECALLED_PAST_ABSENT_Q1",
+      "IQR_RECALLED_PAST_ABSENT_Q3",
+      "IQR_RECALLED_FUTURE_PRESENT_FIXED_DATE_Q1",
+      "IQR_RECALLED_FUTURE_PRESENT_FIXED_DATE_Q3",
+      "IQR_RECALLED_FUTURE_ABSENT_Q1",
+      "IQR_RECALLED_FUTURE_ABSENT_Q3",
+      "IQR_QUARANTINED_PAST_PRESENT_FIXED_DATE_Q1",
+      "IQR_QUARANTINED_PAST_PRESENT_FIXED_DATE_Q3",
+      "IQR_QUARANTINED_PAST_ABSENT_Q1",
+      "IQR_QUARANTINED_PAST_ABSENT_Q3",
+      "IQR_QUARANTINED_FUTURE_PRESENT_FIXED_DATE_Q1",
+      "IQR_QUARANTINED_FUTURE_PRESENT_FIXED_DATE_Q3",
+      "IQR_QUARANTINED_FUTURE_ABSENT_Q1",
+      "IQR_QUARANTINED_FUTURE_ABSENT_Q3",
+      "IQR_EXPIRED_PAST_PRESENT_FIXED_DATE_Q1",
+      "IQR_EXPIRED_PAST_PRESENT_FIXED_DATE_Q3",
+      "IQR_EXPIRED_PAST_ABSENT_Q1",
+      "IQR_EXPIRED_PAST_ABSENT_Q3",
+      "IQR_EXPIRED_FUTURE_PRESENT_FIXED_DATE_Q1",
+      "IQR_EXPIRED_FUTURE_PRESENT_FIXED_DATE_Q3",
+      "IQR_EXPIRED_FUTURE_ABSENT_Q1",
+      "IQR_EXPIRED_FUTURE_ABSENT_Q3",
+      "IQA_NORMAL_ACTIVE_POSITIVE_CLEAR",
+      "IQA_NORMAL_DEPLETED_POSITIVE",
+      "IQA_NORMAL_ACTIVE_TO_ZERO",
+      "IQA_NORMAL_DEPLETED_ZERO_REFRESH",
+      "IQA_NORMAL_ACTIVE_RESERVED_REMAINS",
+      "IQA_NORMAL_DEPLETED_RESERVED_CANARY",
+      "IQA_NORMAL_PAST_EXPIRY_ADJUST_CANARY",
+      "IQA_NORMAL_DEPLETED_NONZERO_CANARY",
+      "IQR_NORMAL_ACTIVE_PAST_366_DAYS_PRESENT_FIXED_DATE",
+      "IQR_NORMAL_ACTIVE_PAST_366_DAYS_ABSENT",
+      "IQR_NORMAL_ACTIVE_FUTURE_366_DAYS_PRESENT_FIXED_DATE",
+      "IQR_NORMAL_ACTIVE_FUTURE_366_DAYS_ABSENT",
+      "IQR_NORMAL_DEPLETED_PAST_366_DAYS_PRESENT_FIXED_DATE",
+      "IQR_NORMAL_DEPLETED_PAST_366_DAYS_ABSENT",
+      "IQR_NORMAL_DEPLETED_FUTURE_366_DAYS_PRESENT_FIXED_DATE",
+      "IQR_NORMAL_DEPLETED_FUTURE_366_DAYS_ABSENT",
+      "IQA_CREATE_NEW_ITEM_Q3",
+      "IQA_CREATE_NEW_ITEM_Q0",
+      "IQA_CREATE_EXISTING_ITEM_NEW_BATCH_Q3",
+      "IQA_CREATE_EXISTING_ITEM_NEW_BATCH_Q0",
+      "IQA_PRICES_ZERO",
+      "IQA_PRICES_SUPPLIED",
+      "IQA_NULL_MISSING_ITEM",
+      "IQA_NULL_MISSING_BATCH_PAIR",
+      "IQA_NULL_BATCH_UNDERFLOW",
+      "IQA_NULL_HEADER_UNDERFLOW",
+      "IQR_NULL_MISSING_ITEM",
+      "IQR_NULL_MISSING_BATCH_FIRST",
+      "IQR_NULL_INSUFFICIENT_BATCH_FIRST",
+      "IQR_NULL_VALID_THEN_MISSING",
+      "IQR_NULL_VALID_THEN_INSUFFICIENT",
+      "IQR_NULL_LATE_HEADER_TOTAL",
+      "IQR_MULTI_EMPTY",
+      "IQR_MULTI_TWO_BATCHES",
+      "IQR_MULTI_SAME_BATCH_TWICE",
+      "IQA_ERROR_CAST",
+      "IQA_ERROR_VALIDATION",
+      "IQR_ERROR_CAST",
+      "IQS_ADJUST_COMMIT",
+      "IQS_ADJUST_ABORT",
+      "IQS_RELEASE_COMMIT",
+      "IQS_RELEASE_ABORT",
+      "IQS_NEW_ITEM_ABORT"
+    ],
+    "safeVariantIds": [
+      "INV_ADJUST_RECALLED_GUARD_REMOVED",
+      "INV_ADJUST_QUARANTINED_GUARD_REMOVED",
+      "INV_ADJUST_EXPIRED_GUARD_REMOVED",
+      "INV_ADJUST_MARKER_GUARD_REMOVED",
+      "INV_RELEASE_RECALLED_GUARD_REMOVED",
+      "INV_RELEASE_QUARANTINED_GUARD_REMOVED",
+      "INV_RELEASE_EXPIRED_GUARD_REMOVED",
+      "INV_RELEASE_MARKER_GUARD_REMOVED"
+    ],
+    "phases": [
+      "NOMINAL",
+      "UNSAFE",
+      "RESTORE_TRIAL",
+      "RESTORE_POSITIVE"
+    ],
+    "fields": [
+      "schema",
+      "stage",
+      "code",
+      "caseId",
+      "variantId",
+      "phase",
+      "failed",
+      "skipped"
+    ],
+    "nullBeforeCase": true,
+    "noRawErrorsValuesOrOperands": true
+  }
+}

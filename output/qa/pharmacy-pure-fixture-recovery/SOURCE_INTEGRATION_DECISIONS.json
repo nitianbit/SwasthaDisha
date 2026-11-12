@@ -1,0 +1,26 @@
+{
+  "schema": "SD-PHARMACY-PURE-SOURCE-INTEGRATION-DECISIONS-1",
+  "reviewedSourceCommit": "05527f2821783214c750fb19db8e53637566da54",
+  "reviewedTargetCommit": "5913d0e50eb15abe2c8e019e21e2d48748d7500d",
+  "reviewers": [
+    {
+      "agent": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "APPROVE_LOCAL_FIXTURE_SOURCE_INTEGRATION_ONLY"
+    },
+    {
+      "agent": "/root/claude_review_recipe_standards",
+      "role": "Standards",
+      "decision": "APPROVE_LOCAL_FIXTURE_SOURCE_INTEGRATION_ONLY"
+    }
+  ],
+  "basis": "OnlysevenstandalonefixturefilesandQA,nooverlappingtargetchanges/rootpackage/lock/build/start/CI/discoverychanges; guardedmainboundaryretained; existingtest/foundationentrypointsdonotselectnewfixture.",
+  "preserveTargetAppHashes": {
+    "bookings": "c3b500d9343150d5edff79980f10825ce6592d02f1a1c7ea652f8c852c0ca76c",
+    "externalBookings": "3a45d9694b50da0e1cebf90ffd94e8b2921130c784530bde844d49e16b4418b3",
+    "pharmacyOrders": "75df8dffb4ead5043ab5f7c131302063068ea6b7c79e9b55fb582bd0481c71f5"
+  },
+  "consumedLauncherReceiptDoesNotAuthorizeFocusRerun": true,
+  "pureEvidence": "438nominal/9namedcontrols only; no realdriver/app/DB/provider/runtime3/C2C3/moduleacceptance.",
+  "F1AndOwners": "OPEN"
+}

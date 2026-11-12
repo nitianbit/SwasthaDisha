@@ -1,0 +1,1 @@
+{"schema":"SD-CURSOR-CREATION-PURE-1","status":"FAIL","sourceMode":"swallowed-failure","test":"failure-before-undefined","completed":32,"failed":1,"error":"first failure swallowed"}
