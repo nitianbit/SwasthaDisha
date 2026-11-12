@@ -1,0 +1,85 @@
+{
+  "author": "/root/refund_error_writer",
+  "baseline": "18b9b5865a115e0e411353e95780f6df89a82e81",
+  "contract_sha256": "710f300d1d335540599a912fcec1582ce6c7d636cc9a5f20a386615bbb9c12ee",
+  "source_hashes": {
+    "src1/modules/pharmacyInventory/controller/index.ts": {
+      "baseline": "370d8b81d4b50e41bfe1d063faec9dadb5c11a1220b2fb0f8fbfaa8aab8a4864",
+      "candidate": "0234b96e739c6e4d13ac92ce4813ce9440f60ae8b6008c03db3598d063cccbc8"
+    },
+    "src1/modules/pharmacyInventory/repository/index.ts": {
+      "baseline": "2cc825908777950cbfcf1cf4dea6cc12f0e6e97a41660fb413565db3fdd6e659",
+      "candidate": "cee64fd2464b5d5ac6081531a63f9a176e5fc481f33c3a4d6def99a26d97b261"
+    },
+    "src1/modules/pharmacyInventory/routes/index.ts": {
+      "baseline": "3bd5e0572b21557a7ae26fbbfba44d2130d1870bb864608f73f7ff1db08fd55e",
+      "candidate": "cea26e2014545a8a9428e6fb20aa632cb7e80d9de37403f6519b819c0d5536c0"
+    },
+    "src1/modules/pharmacyInventory/services/index.ts": {
+      "baseline": "bb02c3bf808ad4101a156be755bb39d26e6585ee1fcfaa5d12cb0000f5efee06",
+      "candidate": "98fa27296ef0fdd1066dff2d548de7d3db025504e724432770fe2e49d2907894"
+    },
+    "src1/modules/pharmacyInventory/types/index.ts": {
+      "baseline": "83aba7263dd3a97315b63d36ed24f39b9932a6ae578219b35c0b082f20e744c4",
+      "candidate": "6edf4cc6b84fde6e93a0310ac401ad71ef6bcee8bebc1fef992836b615891eae"
+    },
+    "src1/modules/pharmacyInventory/validation/index.ts": {
+      "baseline": "2d7df1818275403597684003fdca3f4edb54efeb3dd4b362a4baa45b2f237fd6",
+      "candidate": "f1679413efcd27621a362eda7277a3d0db3edceb8d30fc2c542c075bef8dec53"
+    }
+  },
+  "patch_sha256": "ae26ff1307fb099467485a5c89b8dc1a509596ca96b72cba882f846a2f4a3194",
+  "data_only_composition": {
+    "exact_six_file_scope": [
+      "src1/modules/pharmacyInventory/controller/index.ts",
+      "src1/modules/pharmacyInventory/repository/index.ts",
+      "src1/modules/pharmacyInventory/routes/index.ts",
+      "src1/modules/pharmacyInventory/services/index.ts",
+      "src1/modules/pharmacyInventory/types/index.ts",
+      "src1/modules/pharmacyInventory/validation/index.ts"
+    ],
+    "all_original_file_bytes_restored_after_removing_only_assigned_additions_imports": true,
+    "existing_routes_controllers_services_stock_writers_and_algorithms_byte_preserved": true,
+    "all_16_contract_pins_match_baseline": true,
+    "unmodified_selected_inputs_match_current": true
+  },
+  "source_inspection": {
+    "authority": "Existing authenticate mount and operational-pharmacy guard precede dedicated query validation; only guard-resolved pharmacyId is forwarded. Required canonical scope and closed plain/data query validation precede aggregate. No admin/query/body fallback.",
+    "query": "One scoped first match with array/scalar-owner predicates, position-preserving narrow batch map, unwind and exact scalar status re-match; common facet counts occurrences before page/lookup; page sort by original item/position; name-only bounded lookup preserves missing reference rows.",
+    "projection": "One newly constructed row with only contracted scalar fields; actual ObjectId conversion only for three ID fields; stored text and quantities retain bounded exact values or null, never inferred zero/truncated IDs. Required ID/position/count/result shape errors use fixed503.",
+    "effects": "No new clock/date logic, database writer, quality/stock/release/clinical command, logger, provider, background task or index operation. New service only delegates.",
+    "pagination": "Positive totals survive beyond-end empty data; zero total only when count is zero. Exactly bounded response rows and count shape are checked."
+  },
+  "response_bound": {
+    "reference_data_path": "output/qa/pharmacy-quality-worklist/contract-review-1/BOUNDS_DATA.json",
+    "reference_sha256": "908ac5ec440e1610769e5998700880dce526c854b3b4026333b846aed2d6a091",
+    "max_rows": 50,
+    "exact_variable_string_limits_utf16": {
+      "medicineName": 200,
+      "rackLocation": 100,
+      "batchNumberRaw": 100,
+      "expiryDateRaw": 32
+    },
+    "fixed_fields": "Three24-hex ID fields, exact13-key row, nonnegative safe-number counters/position, boolean/null and closed status. Fixed signed scope/expiryEvaluation/pagination envelope.",
+    "conservative_bytes": 205824,
+    "limit_bytes": 262144,
+    "observed_reference_only_bytes": 148993,
+    "runtime_claim": "NONE: Python reference-data arithmetic only; emitted JSON/Joi/Mongoose/pipeline behavior NOT_RUN."
+  },
+  "execution": {
+    "typescript_evaluations": 0,
+    "node_invocations": 0,
+    "compiler_or_build": 0,
+    "application_or_SDK_imports": 0,
+    "database_docker_provider_or_model_calls": 0,
+    "runtime_status": "NOT_RUN"
+  },
+  "limitations": [
+    "Stored quality status only; no expiry policy/clinical approval or quality release.",
+    "Read-only feature does not repair existing inventory writers, UTC public listing, AR-31 growth/query budgets, data corruption or F1.",
+    "Offset pages are not a transaction snapshot/export; array changes can move rows across requests.",
+    "Known query validation and existing actor/guard behavior need actual focused tests; raw unknown queries retain common stripping.",
+    "Type, real aggregate shape/count/projection, UTF-8 emitted-byte and no-write/provider evidence require separate complete C3 admission."
+  ],
+  "source_reviews": "PENDING two independent nonauthor decisions before integration; no module/runtime/release acceptance."
+}

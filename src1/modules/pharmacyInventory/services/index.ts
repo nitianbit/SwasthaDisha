@@ -13,6 +13,8 @@ import {
   CreateInventoryItemRequest,
   CreateInventoryItemsRequest,
   InventoryQueryParams,
+  InventoryQualityWorklistQuery,
+  InventoryQualityWorklistPage,
   PublicInventoryItemDto,
   PublicInventoryQueryParams,
   ManualInventoryReservationRequest,
@@ -701,6 +703,10 @@ export class InventoryService {
       }
       throw error;
     }
+  }
+
+  async getQualityHolds(pharmacyId: unknown, query: InventoryQualityWorklistQuery): Promise<InventoryQualityWorklistPage> {
+    return this.inventoryItemRepo.findQualityHolds(pharmacyId, query);
   }
 
   async getLowStock(pharmacyId: string, page: number = 1, limit: number = 20) {

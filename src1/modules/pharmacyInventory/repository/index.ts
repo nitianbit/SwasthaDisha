@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { ClientSession, Model, Types } from 'mongoose';
+import { ClientSession, Model, PipelineStage, Types } from 'mongoose';
 import {
   InventoryItemModel,
   InventoryAdjustmentModel,
@@ -11,12 +11,17 @@ import {
   IInventoryReservation,
   IInventoryBatchAllocation,
   InventoryQueryParams,
+  INVENTORY_QUALITY_HOLD_STATUSES,
+  InventoryQualityHoldStatus,
+  InventoryQualityWorklistPage,
+  InventoryQualityWorklistRow,
   PublicInventoryItemDto,
   PublicInventoryQueryParams,
 } from '@/modules/pharmacyInventory/types';
 import { PharmacyMedicineAvailabilityDto } from '@/modules/pharmacies/types';
 import { BaseRepository } from '@/modules/common/repository';
 import { buildContainsRegex } from '@/modules/common/utils/queryUtils';
+import { AppError } from '@/modules/common/types';
 
 @Service()
 export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
@@ -304,6 +309,134 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
     ).lean();
 
     return item as IInventoryItem;
+  }
+
+  async findQualityHolds(pharmacyId: unknown, query: unknown): Promise<InventoryQualityWorklistPage> {
+    if (typeof pharmacyId !== 'string' || !/^[0-9a-f]{24}$/.test(pharmacyId)) {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
+    }
+    const invalidQuery = () => new AppError({
+      status: 400, code: 'VALIDATION_ERROR', message: 'Invalid quality worklist query',
+    });
+    const isRecord = (value: unknown): value is Record<string, unknown> =>
+      !!value && typeof value === 'object' && !Array.isArray(value) &&
+      [Object.prototype, null].includes(Object.getPrototypeOf(value)) &&
+      Reflect.ownKeys(value).every(key => typeof key === 'string' && 'value' in Object.getOwnPropertyDescriptor(value, key)!);
+    if (!isRecord(query)) throw invalidQuery();
+    for (const key of Reflect.ownKeys(query)) {
+      if (
+        typeof key !== 'string' || !['qualityStatus', 'page', 'limit'].includes(key) ||
+        !('value' in Object.getOwnPropertyDescriptor(query, key)!)
+      ) throw invalidQuery();
+    }
+    const qualityStatus = Object.getOwnPropertyDescriptor(query, 'qualityStatus')?.value;
+    const requestedPage = Object.getOwnPropertyDescriptor(query, 'page')?.value;
+    const requestedLimit = Object.getOwnPropertyDescriptor(query, 'limit')?.value;
+    const page = requestedPage === undefined ? 1 : requestedPage;
+    const limit = requestedLimit === undefined ? 20 : requestedLimit;
+    if (
+      (qualityStatus !== undefined && !INVENTORY_QUALITY_HOLD_STATUSES.some(status => status === qualityStatus)) ||
+      typeof page !== 'number' || !Number.isSafeInteger(page) || page < 1 || page > 1000 ||
+      typeof limit !== 'number' || !Number.isSafeInteger(limit) || limit < 1 || limit > 50
+    ) throw invalidQuery();
+    const statuses = qualityStatus === undefined
+      ? [...INVENTORY_QUALITY_HOLD_STATUSES]
+      : [qualityStatus as InventoryQualityHoldStatus];
+    const skip = (page - 1) * limit;
+    const pipeline: PipelineStage[] = [
+      {
+        $match: {
+          pharmacyId: new Types.ObjectId(pharmacyId),
+          batches: { $elemMatch: { status: { $in: statuses } } },
+          $expr: { $and: [{ $isArray: '$batches' }, { $eq: [{ $type: '$pharmacyId' }, 'objectId'] }] },
+        },
+      },
+      {
+        $project: {
+          _id: 1, medicineId: 1, isActive: 1, rackLocation: 1,
+          batches: {
+            $map: {
+              input: '$batches', as: 'batch',
+              in: {
+                _id: '$$batch._id', batchNumber: '$$batch.batchNumber', expiryDate: '$$batch.expiryDate',
+                status: '$$batch.status', availableQty: '$$batch.availableQty',
+                reservedQty: '$$batch.reservedQty', freeQty: '$$batch.freeQty',
+              },
+            },
+          },
+        },
+      },
+      { $unwind: { path: '$batches', includeArrayIndex: 'batchPosition' } },
+      { $match: { 'batches.status': { $in: statuses }, $expr: { $eq: [{ $type: '$batches.status' }, 'string'] } } },
+      {
+        $facet: {
+          metadata: [{ $count: 'total' }],
+          data: [
+            { $sort: { _id: 1, batchPosition: 1 } },
+            { $skip: skip },
+            { $limit: limit },
+            {
+              $lookup: {
+                from: 'medicines', let: { medicineId: '$medicineId' },
+                pipeline: [
+                  { $match: { $expr: { $eq: ['$_id', '$$medicineId'] } } },
+                  { $project: { _id: 0, name: 1 } },
+                  { $limit: 1 },
+                ],
+                as: 'medicine',
+              },
+            },
+            {
+              $project: {
+                _id: 0, inventoryItemId: '$_id', medicineId: 1,
+                medicineName: { $arrayElemAt: ['$medicine.name', 0] },
+                inventoryIsActive: '$isActive', rackLocation: 1,
+                batchId: '$batches._id', batchPosition: 1,
+                batchNumberRaw: '$batches.batchNumber', expiryDateRaw: '$batches.expiryDate',
+                storedQualityStatus: '$batches.status', availableQty: '$batches.availableQty',
+                reservedQty: '$batches.reservedQty', freeQty: '$batches.freeQty',
+              },
+            },
+          ],
+        },
+      },
+    ];
+    const result = await InventoryItemModel.aggregate<unknown>(pipeline)
+      .option({ maxTimeMS: 2000, allowDiskUse: false }).exec();
+    const unavailable = () => new AppError({
+      status: 503, code: 'QUALITY_WORKLIST_UNAVAILABLE', message: 'Quality worklist is unavailable',
+    });
+    if (!Array.isArray(result) || result.length !== 1) throw unavailable();
+    const facet = result[0];
+    if (
+      !isRecord(facet) || Reflect.ownKeys(facet).length !== 2 ||
+      !Array.isArray(facet.data) || !Array.isArray(facet.metadata) ||
+      facet.metadata.length > 1 || facet.data.length > limit
+    ) throw unavailable();
+    let total = 0;
+    if (facet.metadata.length) {
+      const count = facet.metadata[0];
+      if (!isRecord(count) || Reflect.ownKeys(count).length !== 1 || typeof count.total !== 'number' || !Number.isSafeInteger(count.total) || count.total < 0) throw unavailable();
+      total = count.total;
+    }
+    if (facet.data.length !== Math.min(limit, Math.max(0, total - skip))) throw unavailable();
+    const objectId = (value: unknown): string | null => value instanceof Types.ObjectId ? value.toHexString() : null;
+    const text = (value: unknown, max: number): string | null => typeof value === 'string' && value.length <= max ? value : null;
+    const quantity = (value: unknown): number | null => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
+    const data: InventoryQualityWorklistRow[] = facet.data.map((row: unknown) => {
+      if (!isRecord(row)) throw unavailable();
+      const inventoryItemId = objectId(row.inventoryItemId);
+      const storedQualityStatus = statuses.find(status => status === row.storedQualityStatus);
+      if (!inventoryItemId || storedQualityStatus === undefined || typeof row.batchPosition !== 'number' || !Number.isSafeInteger(row.batchPosition) || row.batchPosition < 0) throw unavailable();
+      return {
+        inventoryItemId, medicineId: objectId(row.medicineId), medicineName: text(row.medicineName, 200),
+        inventoryIsActive: typeof row.inventoryIsActive === 'boolean' ? row.inventoryIsActive : null,
+        rackLocation: text(row.rackLocation, 100), batchId: objectId(row.batchId), batchPosition: row.batchPosition,
+        batchNumberRaw: text(row.batchNumberRaw, 100), expiryDateRaw: text(row.expiryDateRaw, 32),
+        storedQualityStatus, availableQty: quantity(row.availableQty), reservedQty: quantity(row.reservedQty), freeQty: quantity(row.freeQty),
+      };
+    });
+    return { data, page, limit, total, totalPages: Math.ceil(total / limit) };
   }
 
   async findWithPagination(

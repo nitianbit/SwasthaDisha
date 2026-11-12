@@ -14,6 +14,39 @@ export type InventoryBatchStatus =
   | 'recalled'
   | 'quarantined';
 
+export const INVENTORY_QUALITY_HOLD_STATUSES = ['recalled', 'quarantined', 'expired'] as const;
+export type InventoryQualityHoldStatus = Extract<InventoryBatchStatus, typeof INVENTORY_QUALITY_HOLD_STATUSES[number]>;
+
+export interface InventoryQualityWorklistQuery {
+  qualityStatus?: InventoryQualityHoldStatus;
+  page?: number;
+  limit?: number;
+}
+
+export interface InventoryQualityWorklistRow {
+  inventoryItemId: string;
+  medicineId: string | null;
+  medicineName: string | null;
+  inventoryIsActive: boolean | null;
+  rackLocation: string | null;
+  batchId: string | null;
+  batchPosition: number;
+  batchNumberRaw: string | null;
+  expiryDateRaw: string | null;
+  storedQualityStatus: InventoryQualityHoldStatus;
+  availableQty: number | null;
+  reservedQty: number | null;
+  freeQty: number | null;
+}
+
+export interface InventoryQualityWorklistPage {
+  data: InventoryQualityWorklistRow[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 export interface IInventoryBatch {
   _id?: string;
   batchNumber: string;

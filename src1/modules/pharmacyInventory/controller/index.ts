@@ -7,6 +7,8 @@ import { AuthRequest } from '@/modules/middleware/auth';
 import {
   CreateInventoryItemsRequest,
   InventoryQueryParams,
+  InventoryQualityHoldStatus,
+  InventoryQualityWorklistQuery,
   ManualInventoryReservationRequest,
 } from '@/modules/pharmacyInventory/types';
 import { AppError } from '@/modules/common/types';
@@ -196,6 +198,23 @@ export class InventoryController {
       success: true,
       message: 'Stock released',
       data: result.map((item) => this.sanitizeInventoryItem(req, item)),
+    });
+  };
+
+  getQualityHolds = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const pharmacyId = req.user?.pharmacyId;
+    const query: InventoryQualityWorklistQuery = {
+      qualityStatus: req.query.qualityStatus as InventoryQualityHoldStatus | undefined,
+      page: req.query.page === undefined ? 1 : Number(req.query.page),
+      limit: req.query.limit === undefined ? 20 : Number(req.query.limit),
+    };
+    const result = await this.inventoryService.getQualityHolds(pharmacyId, query);
+    res.status(200).json({
+      success: true,
+      pharmacyId,
+      expiryEvaluation: 'not_evaluated',
+      data: result.data,
+      pagination: { page: result.page, limit: result.limit, total: result.total, totalPages: result.totalPages },
     });
   };
 

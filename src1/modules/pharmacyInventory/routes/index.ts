@@ -11,6 +11,7 @@ import {
   createInventoryItemSchema,
   manualReserveReleaseSchema,
   inventoryQuerySchema,
+  qualityWorklistQuerySchema,
   idParamSchema,
 } from '@/modules/pharmacyInventory/validation';
 
@@ -62,6 +63,14 @@ pharmacyInventoryRouter.post(
   requireOperationalPharmacy,
   validate(manualReserveReleaseSchema, 'body'),
   catchAsync(inventoryController.manualReleaseStock)
+);
+
+// Stored quality holds for the signed operational pharmacy
+pharmacyInventoryRouter.get(
+  '/quality-holds',
+  requireOperationalPharmacy,
+  validate(qualityWorklistQuerySchema, 'query'),
+  catchAsync(inventoryController.getQualityHolds)
 );
 
 // Get inventory item by ID

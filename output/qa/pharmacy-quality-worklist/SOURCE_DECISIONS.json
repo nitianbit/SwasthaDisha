@@ -1,0 +1,22 @@
+{
+  "candidate_commit": "b474c74fe327314b66eb07d0237ac4c5ac85f8d6",
+  "author": "/root/refund_error_writer",
+  "source_freeze_sha256": "0cc78f4fd396daeafd37b58e27b7b4055742ea4581b994b6deb5b22338e82a83",
+  "patch_sha256": "ae26ff1307fb099467485a5c89b8dc1a509596ca96b72cba882f846a2f4a3194",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/pharmacist_identity_fields",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    }
+  ],
+  "review": "Actual operational guard/route order, mandatory signed scope, scalar owner/array/status filters, common batch facet/count/beyond-end totals, post-page medicines-name lookup, exact13field/null mapping and50row bounds inspected. Existing writers/routes preserved; no date/quantity/quality/clinical effects introduced. Actual query/DTO/byte behavior and capacities remain unproved.",
+  "limits": "Source/data-only acceptance from two actual nonauthor internal Codex reviews. No TS/compiler/Node/app/DB/provider/HTTP/runtime/clinical/release acceptance; complete C3 still required."
+}
