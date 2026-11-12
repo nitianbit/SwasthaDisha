@@ -1,0 +1,33 @@
+{
+  "baseline": "f89bec38be91a2ec63b15b2262a632aa32554f22",
+  "author": "/root/refund_error_writer",
+  "contract_sha256": "69dba46528295f55e184b95e1fb6ea451ee2371254d76eb7ac9fd6573068f9fd",
+  "files": {
+    "documentation/planning/implementation/BUSINESS_STAFF_AUTHORITY_CONTRACT.md": "69dba46528295f55e184b95e1fb6ea451ee2371254d76eb7ac9fd6573068f9fd",
+    "output/qa/business-staff-authority/PREIMPLEMENTATION_DECISIONS.json": "0c95109b58f9fb38eca19b6d3e901e9d3ebd5ea168336d7eab11627e9400418e",
+    "src1/modules/organizations/types/index.ts": "e873884e69db46d7de70d3120a5ac30809fe8dc526d118a4640463233c9633ff",
+    "src1/modules/organizations/rules.ts": "b404c00381b5bf642aa648105cefb353a97c7ea7283c680059c426b5e4307942",
+    "src1/modules/organizations/model/index.ts": "fb0e49483802ffe7eb64f2194804a2c15ef7e4cbd5a73fd6136af65ebc039ce0",
+    "src1/modules/organizations/repository/index.ts": "4d2894dadd3b2d0f241708c51c4e494684d59fe6f7c95fda7ee7e0cf2be976cf",
+    "src1/modules/organizations/services/index.ts": "ccac5254a6e61c8cce4f14c58005cb39349689e3d0cbafc8ab551ca339397c73",
+    "output/qa/business-staff-authority/IMPLEMENTATION_NOTES.md": "716e63854d3797f52c204a4b5d493688d649207d8f7f638d74fc0729462464e9",
+    "output/qa/business-staff-authority/SERIALIZATION_VECTORS.json": "9f2ab5e192c9eb4a1332680a77f0ed5d94eb28502af3fc9a426f68be350ea382",
+    "output/qa/business-staff-authority/candidate.diff": "d0d241ea4a2cd38592b94833b9b32aefe96326fb351db9ade41e732a932b80d3"
+  },
+  "verification": {
+    "existing_tracked_source_changes": 0,
+    "only_new_production_files": [
+      "src1/modules/organizations/types/index.ts",
+      "src1/modules/organizations/rules.ts",
+      "src1/modules/organizations/model/index.ts",
+      "src1/modules/organizations/repository/index.ts",
+      "src1/modules/organizations/services/index.ts"
+    ],
+    "source_whitespace": "PASS",
+    "exact_scope": "Five new organizations files; no existing imports, dependencies, routes, startup or root configuration changed.",
+    "serialization": "Declared Python reference-data hashes only; TypeScript behavior NOT_RUN.",
+    "runtime_type_index_application": "NOT_RUN",
+    "driver_session_api": "UNVERIFIED against exact installed source/types because absent; no fallback if unsupported."
+  },
+  "source_decisions": "PENDING two independent nonauthor reviews before integration; no runtime/release authority."
+}
