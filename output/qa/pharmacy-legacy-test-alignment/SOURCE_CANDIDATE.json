@@ -8,7 +8,7 @@
   "candidatePath": "test/pharmacy.integration.test.ts",
   "candidateSha256": "40a5e341214044da49a1e4849b2bde6d2ec0972215e54a612029c4c4caf1f02c",
   "patchPath": "output/qa/pharmacy-legacy-test-alignment/SOURCE.patch",
-  "patchSha256": "2e43f77ee592d85bef52232942f86084afc538db8f2edf82f9656c3a77cc7dcd",
+  "patchSha256": "430f4507dc50439b392e49152053ccc163c89e963cdc2ba1a2e9db2ff83c4388",
   "pins": [
     {
       "path": "test/pharmacy.integration.test.ts",
@@ -87,7 +87,7 @@
     "exactTwoCaseBodiesOnly": "PASS",
     "allOtherTrackedFilesUnchanged": "PASS",
     "allProductionAndProvenancePinsUnchanged": "PASS",
-    "gitDiffCheck": "PASS",
+    "gitDiffCheck": "PASS_FOR_SOURCE",
     "paymentServiceConstructorOutsideOwnedBodiesUnchanged": "PASS"
   },
   "execution": {
@@ -99,5 +99,7 @@
     "provider": "NOT_RUN"
   },
   "reviewStatus": "PENDING_TWO_NONAUTHOR_SOURCE_DECISIONS",
-  "scope": "Source alignment only; no runtime/race/clinical/financial/client/module/release claim."
+  "scope": "Source alignment only; no runtime/race/clinical/financial/client/module/release claim.",
+  "patchContextLines": 0,
+  "artifactNote": "Initial full-context patch produced three whitespace diagnostics on literal unified-diff context markers, not test-source whitespace; replaced with exact zero-context full-index patch. git apply requires --unidiff-zero if used for reconstruction; no application or reconstruction ran."
 }

@@ -2,44 +2,19 @@ diff --git a/test/pharmacy.integration.test.ts b/test/pharmacy.integration.test.
 index 46e3e3bb24977bd01fade13eb8b624ee0fb03316..24cd3e283eede3ab50f3cd6e8c919fdb8456c746 100644
 --- a/test/pharmacy.integration.test.ts
 +++ b/test/pharmacy.integration.test.ts
-@@ -213,13 +213,16 @@ integrationTest('cancellation releases the exact reserved batch quantity', async
- 
- integrationTest('only one concurrent manual payment claim succeeds', async () => {
-   const pharmacy = await createPharmacy();
+@@ -215,0 +216 @@ integrationTest('only one concurrent manual payment claim succeeds', async () =>
 +  const medicine = await createMedicine('Manual payment');
-   const order = await PharmacyOrderModel.create({
-     pharmacyId: pharmacy._id,
-     orderType: 'in_store',
-     status: 'placed',
-     createdById: new Types.ObjectId(),
-     createdByRole: 'pharmacy',
+@@ -222 +223,3 @@ integrationTest('only one concurrent manual payment claim succeeds', async () =>
 -    items: [],
 +    items: [{ medicineId: medicine._id, orderedQty: 1, unitPrice: 10, lineTotal: 10, prescriptionRequired: false, itemStatus: 'active' }],
 +    prescriptionStatus: 'not_required',
 +    prescriptionUrls: [],
-     paymentMode: 'in_store_payment',
-     paymentStatus: 'pending',
-   });
-@@ -324,6 +327,8 @@ integrationTest('prescription medicines cannot be ordered without a prescription
-     }],
-   });
- 
+@@ -326,0 +330,2 @@ integrationTest('prescription medicines cannot be ordered without a prescription
 +  const inventoryBefore = await InventoryItemModel.findOne({ pharmacyId: seller._id, medicineId: medicine._id }).lean();
 +
-   await assert.rejects(
-     () => createOrderService().create(
-       String(seller._id),
-@@ -336,10 +341,12 @@ integrationTest('prescription medicines cannot be ordered without a prescription
-       String(buyer._id),
-       'pharmacy'
-     ),
+@@ -339 +344,2 @@ integrationTest('prescription medicines cannot be ordered without a prescription
 -    (error: unknown) => (error as { code?: string }).code === 'PRESCRIPTION_REQUIRED'
 +    (error: unknown) => (error as { status?: number }).status === 503 &&
 +      (error as { code?: string }).code === 'PRESCRIPTION_CHECKOUT_UNAVAILABLE'
-   );
- 
-   const inventory = await InventoryItemModel.findOne({ pharmacyId: seller._id, medicineId: medicine._id }).lean();
+@@ -342,0 +349 @@ integrationTest('prescription medicines cannot be ordered without a prescription
 +  assert.deepEqual(inventory, inventoryBefore);
-   assert.equal(inventory?.availableQty, 3);
-   assert.equal(inventory?.reservedQty, 0);
- });
