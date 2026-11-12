@@ -1,0 +1,143 @@
+{
+  "schema": "SD-CONTACT-INDEX-SOURCE-CANDIDATE-1",
+  "baselineCommit": "6df08cc5bfabeea2a0243a921ebb0ff2bfda919f",
+  "author": "/root/lab_remaining_audit",
+  "contract": {
+    "path": "documentation/planning/implementation/CUSTOMER_CONTACT_INDEX_ADMISSION_CONTRACT.md",
+    "sha256": "0a3a4628d1ad01fa5603f590d1e0a8062e0b241cd0a3b293e1f0e0dd460ee384",
+    "decisions": "output/qa/customer-contact-index/CONTRACT_DECISIONS.json"
+  },
+  "files": [
+    {
+      "path": "src1/modules/user/contactIndexManifest.ts",
+      "sha256": "5fbaff2e98b38b47cf5645dbb95e322b1d33b988552730f2f4cce4f2a5294b7e",
+      "bytes": 662
+    },
+    {
+      "path": "src1/modules/user/contactIndexReadiness.ts",
+      "sha256": "b0f4300441dc4280220cfbe38a3fa1f2c829a058df0371a900a90136d8284749",
+      "bytes": 16009
+    },
+    {
+      "path": "src1/modules/user/contactIndexReader.ts",
+      "sha256": "86c61f2daa544b2c1a5e2ef237019fd76e122644aa182240fd116cd63444d411",
+      "bytes": 23171
+    }
+  ],
+  "patch": {
+    "path": "output/qa/customer-contact-index/source-candidate/SOURCE.patch",
+    "sha256": "af81d43fb5411937946d48f4126bf8fb4c6f356a1b5059fb7afbae12e58b40fb",
+    "bytes": 41279,
+    "format": "git cached binary full-index unified=0; exactly the three new source files"
+  },
+  "unchangedInputPins": [
+    {
+      "path": "src1/modules/user/model/index.ts",
+      "sha256": "8ab08c867008d9788fd2105b6ac840794fcd5d8b2c518de500119aa2536cf5c4",
+      "observedSha256": "8ab08c867008d9788fd2105b6ac840794fcd5d8b2c518de500119aa2536cf5c4",
+      "match": true
+    },
+    {
+      "path": "src1/modules/user/types/index.ts",
+      "sha256": "91d4b48e4749d113733f471d64093c7269dffcf13bf48577c8dbc2edce7d5b71",
+      "observedSha256": "91d4b48e4749d113733f471d64093c7269dffcf13bf48577c8dbc2edce7d5b71",
+      "match": true
+    },
+    {
+      "path": "src1/modules/user/repository/index.ts",
+      "sha256": "e730c52b26fbc773bcf92673190b68fe00c91162cb97f37eac1570cbbb85c4e1",
+      "observedSha256": "e730c52b26fbc773bcf92673190b68fe00c91162cb97f37eac1570cbbb85c4e1",
+      "match": true
+    },
+    {
+      "path": "src1/modules/common/utils/indexReadiness.ts",
+      "sha256": "050ecc993c862638cf4912bb854e04baa5d80241cb124e7831fc3c95a78db5bd",
+      "observedSha256": "050ecc993c862638cf4912bb854e04baa5d80241cb124e7831fc3c95a78db5bd",
+      "match": true
+    },
+    {
+      "path": "src1/modules/common/repository/BaseRepository.ts",
+      "sha256": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+      "observedSha256": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+      "match": true
+    },
+    {
+      "path": "package.json",
+      "sha256": "65b171e77e8cd3bfd37eb691cf9ce310d9108cedbf571232bd4859c4b16895ab",
+      "observedSha256": "65b171e77e8cd3bfd37eb691cf9ce310d9108cedbf571232bd4859c4b16895ab",
+      "match": true
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080",
+      "observedSha256": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080",
+      "match": true
+    },
+    {
+      "path": "tsconfig.json",
+      "sha256": "5555c293a75c85c3f89a539bd2b1be6db1953ffa746b43836929cdc20b9355c3",
+      "observedSha256": "5555c293a75c85c3f89a539bd2b1be6db1953ffa746b43836929cdc20b9355c3",
+      "match": true
+    },
+    {
+      "path": "documentation/planning/M0_START_APPROVAL_STATUS.md",
+      "sha256": "67eea927661cf1a94d8644ede28eaa7315d4774866958ff346b37aac5a559be3",
+      "observedSha256": "67eea927661cf1a94d8644ede28eaa7315d4774866958ff346b37aac5a559be3",
+      "match": true
+    },
+    {
+      "path": "documentation/planning/implementation/C2_COMPATIBILITY_REVIEW.md",
+      "sha256": "e703e7bc43495868edd2ab535cb38b0f5f2ac54b5d572c2c38467b59e2ae67d4",
+      "observedSha256": "e703e7bc43495868edd2ab535cb38b0f5f2ac54b5d572c2c38467b59e2ae67d4",
+      "match": true
+    },
+    {
+      "path": "documentation/planning/implementation/C3_MONGO_FIXTURE_CONTRACT.md",
+      "sha256": "208d702c9a1f7bc2826bda720603fa8fb382bfed9599739e1c8f4605b81368ce",
+      "observedSha256": "208d702c9a1f7bc2826bda720603fa8fb382bfed9599739e1c8f4605b81368ce",
+      "match": true
+    },
+    {
+      "path": "test/foundation/README.md",
+      "sha256": "c3daefc9cc058e22c3e6cc60b0cc874d4ded45088baa4e545265857746cd8182",
+      "observedSha256": "c3daefc9cc058e22c3e6cc60b0cc874d4ded45088baa4e545265857746cd8182",
+      "match": true
+    }
+  ],
+  "authorStaticChecks": {
+    "exactContractSha": "PASS",
+    "all12InputPinsUnchanged": "PASS",
+    "productionOwnershipExactlyThreeNewFiles": "PASS",
+    "newlineAndTrailingWhitespace": "PASS",
+    "gitDiffCheck": "PASS",
+    "relativeImportTargetsExist": "PASS",
+    "sourceInspection": "PERFORMED_AUTHOR_ONLY"
+  },
+  "execution": {
+    "compiler": "NOT_RUN",
+    "pureEvaluator": "NOT_RUN",
+    "wholeReaderSubstitutedPorts": "NOT_RUN",
+    "nativeDriverAndBsonShapes": "NOT_RUN",
+    "mongo8MetadataCommands": "NOT_RUN",
+    "uuidLongCursorAndCleanup": "NOT_RUN",
+    "deadlineAndHungCommandFixture": "NOT_RUN",
+    "mutationControls": "NOT_RUN",
+    "application": "NOT_RUN",
+    "provider": "NOT_RUN"
+  },
+  "independentSourceReview": "PENDING",
+  "metadataRuntimeReady": false,
+  "contactFeatureComplete": false,
+  "productionInvocationAdmitted": false,
+  "c2Adoption": "PENDING_EXISTING_GATE",
+  "c3ActualFixture": "PENDING_SEPARATE_ADMISSION",
+  "activationFacts": [
+    "all-account canonical-key coverage",
+    "duplicate disposition without automatic merges",
+    "old-writer shutdown and every identity writer composition",
+    "legacy contact ownership provenance",
+    "client rollout and protected notices",
+    "actual native diagnostic and cleanup evidence",
+    "owner and release decisions"
+  ]
+}

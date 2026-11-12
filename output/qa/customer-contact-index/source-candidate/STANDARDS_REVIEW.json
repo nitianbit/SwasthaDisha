@@ -1,0 +1,60 @@
+{
+  "schema": "SD-CONTACT-INDEX-STANDARDS-SOURCE-1",
+  "reviewer": "/root",
+  "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+  "author": "/root/lab_remaining_audit",
+  "candidate": "d694d8903b14820ed03f2c9c1abd77a96cc97482",
+  "baseline": "6df08cc5bfabeea2a0243a921ebb0ff2bfda919f",
+  "contractSha256": "0a3a4628d1ad01fa5603f590d1e0a8062e0b241cd0a3b293e1f0e0dd460ee384",
+  "sourceFiles": [
+    {
+      "path": "src1/modules/user/contactIndexManifest.ts",
+      "sha256": "5fbaff2e98b38b47cf5645dbb95e322b1d33b988552730f2f4cce4f2a5294b7e",
+      "bytes": 662
+    },
+    {
+      "path": "src1/modules/user/contactIndexReadiness.ts",
+      "sha256": "b0f4300441dc4280220cfbe38a3fa1f2c829a058df0371a900a90136d8284749",
+      "bytes": 16009
+    },
+    {
+      "path": "src1/modules/user/contactIndexReader.ts",
+      "sha256": "86c61f2daa544b2c1a5e2ef237019fd76e122644aa182240fd116cd63444d411",
+      "bytes": 23171
+    }
+  ],
+  "patchSha256": "af81d43fb5411937946d48f4126bf8fb4c6f356a1b5059fb7afbae12e58b40fb",
+  "decision": "APPROVE_SOURCE_ONLY",
+  "materialFindings": [],
+  "inspection": [
+    "Read all three complete modules and verified exact3file hashes,12unchanged inputs and actual Git patch/scope/whitespace",
+    "Closed owned-data copying and exact frozen manifest; numeric plus retained text/ID profiles, exact named partial/unique contact constraint and effective collation",
+    "Zero-argument User-bound native Db/client/profile/session identity; fixed UUID metadata commands and signed64 cursor/namespace continuation",
+    "BSON positions and descriptor-validated copies, exact logical-size accounting, complete listing budgets, explicit known cursor/session cleanup and late-command failure",
+    "Independently read inert pinned BSON timestamp archive; Long/Binary shape references checked against versioned upstream source"
+  ],
+  "runtime": {
+    "compiler": "NOT_RUN",
+    "pureEvaluator": "NOT_RUN",
+    "wholeReaderSubstitutedPorts": "NOT_RUN",
+    "nativeDriverAndBsonShapes": "NOT_RUN",
+    "mongo8MetadataCommands": "NOT_RUN",
+    "uuidLongCursorAndCleanup": "NOT_RUN",
+    "deadlineAndHungCommandFixture": "NOT_RUN",
+    "mutationControls": "NOT_RUN",
+    "application": "NOT_RUN",
+    "provider": "NOT_RUN"
+  },
+  "limitations": [
+    "No compiler or actual native metadata/evaluator/fixture evidence; source is not runtimeReady",
+    "Diagnostic-only pinned driver/client/server profile; no production compatibility adoption",
+    "No index installation, contact-key coverage/backfill, all-writer/client/cutover or legacy ownership proof",
+    "No cancellable hard deadline or pre-decoder heap bound; unknown cleanup cannot become COMPLETE",
+    "Second actual nonauthor source decision still required before merge"
+  ],
+  "referenceSources": [
+    "https://raw.githubusercontent.com/mongodb/js-bson/v4.7.2/src/long.ts",
+    "https://raw.githubusercontent.com/mongodb/js-bson/v4.7.2/src/binary.ts"
+  ],
+  "sourceDataOnly": true
+}

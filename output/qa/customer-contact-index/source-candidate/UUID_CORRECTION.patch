@@ -1,0 +1,17 @@
+diff --git a/src1/modules/user/contactIndexReader.ts b/src1/modules/user/contactIndexReader.ts
+index ff75bd258fb25f3eb5bb96a95c59e4ba67f77b46..56523a72f3568614eac7a130c5281acb30f4e59a 100644
+--- a/src1/modules/user/contactIndexReader.ts
++++ b/src1/modules/user/contactIndexReader.ts
+@@ -74 +74,4 @@ function binary(v: unknown, uuid = false): NativeBinary {
+-  native(v, mongo.Binary.prototype);
++  const proto = Object.getPrototypeOf(object(v));
++  const nativeUuid = uuid && proto === mongo.BSON.UUID.prototype;
++  if (proto !== mongo.Binary.prototype && !nativeUuid) fail('UNSUPPORTED_PROFILE');
++  const allowed = ['buffer', 'sub_type', 'position', ...(nativeUuid ? ['__id'] : [])];
+@@ -76 +79,2 @@ function binary(v: unknown, uuid = false): NativeBinary {
+-  if (keys.length !== 3 || !keys.every(k => ['buffer', 'sub_type', 'position'].includes(k as string))) fail('UNSUPPORTED_PROFILE');
++  if (keys.length !== allowed.length || !keys.every(k => typeof k === 'string' && allowed.includes(k)) ||
++    (nativeUuid && own(v, '__id') !== undefined)) fail('UNSUPPORTED_PROFILE');
+@@ -153 +157 @@ function replyCopy(raw: unknown, remaining: number, deadline: number, kind: 'col
+-    if (proto === mongo.Binary.prototype) {
++    if (proto === mongo.Binary.prototype || proto === mongo.BSON.UUID.prototype) {
