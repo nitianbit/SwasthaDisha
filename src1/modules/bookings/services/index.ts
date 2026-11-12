@@ -1522,6 +1522,59 @@ export class BookingService {
     return { data };
   }
 
+  async updateCustomerNotes(
+    id: string,
+    data: unknown,
+    signedOwner: unknown
+  ): Promise<IBooking> {
+    if (typeof signedOwner !== 'string' || !signedOwner.trim()) {
+      throw new AppError({
+        status: 401,
+        code: 'UNAUTHORIZED',
+        message: 'Authentication is required',
+      });
+    }
+    const invalidNotes = () => new AppError({
+      status: 400,
+      code: 'VALIDATION_ERROR',
+      message: 'Customer booking updates require notes containing 1 to 2000 characters',
+    });
+    if (
+      !data || typeof data !== 'object' || Array.isArray(data) ||
+      ![Object.prototype, null].includes(Object.getPrototypeOf(data))
+    ) {
+      throw invalidNotes();
+    }
+
+    const booking = await this.getById(id, signedOwner);
+    if (Reflect.ownKeys(data).some(key => key !== 'notes')) {
+      throw new AppError({
+        status: 422,
+        code: 'FORBIDDEN_FIELD',
+        message: 'One or more fields cannot be changed through this endpoint',
+      });
+    }
+    const notes = Object.getOwnPropertyDescriptor(data, 'notes')?.value;
+    if (typeof notes !== 'string') throw invalidNotes();
+    const normalizedNotes = notes.trim();
+    if (!normalizedNotes.length || normalizedNotes.length > 2000) throw invalidNotes();
+
+    const eligibleStatuses: IBooking['status'][] = ['pending', 'confirmed'];
+    const notEditable = () => new AppError({
+      status: 409,
+      code: 'CUSTOMER_BOOKING_NOT_EDITABLE',
+      message: 'Booking notes cannot be changed in the current state',
+    });
+    if (!eligibleStatuses.includes(booking.status)) throw notEditable();
+    const updated = await this.bookingRepository.update(
+      { _id: id, userId: signedOwner, status: { $in: eligibleStatuses } },
+      { $set: { notes: normalizedNotes } },
+      { new: true, upsert: false }
+    );
+    if (!updated) throw notEditable();
+    return updated;
+  }
+
   async update(
     id: string,
     data: UpdateBookingRequest,
