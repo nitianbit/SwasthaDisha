@@ -1,0 +1,7 @@
+# Revision 5: four bounded milestone review
+
+Prepare one genuine Claude review through the existing local bundled CLI and pinned Ruflo adapter. Reuse successful R4 supervisor functionality. New source/profile/session/hash/author/receipt/output bindings only. Preserve R4 evidence. Snapshot df8fd4ef00cb9d45d081ce760d15cef84a880c4e; lab dependent/logging, earlier Rx progress with F1 HIGH/OPEN, one-expression fixture fix and recorded438 pure passes/nine controls. No real driver/app/DB/provider or final integration acceptance. Mutable progress/policy/next-contract inputs excluded.
+
+Existing seven environment keys/values, claude-opus-5-5/xhigh,3600seconds/eight turns, stdout8MiB/stderr64KiB/frame2MiB/review48KiB unchanged. Empty builtins/strict pinned MCP/ordinary restricted managed permissions/no prompts/chrome/session persistence/slash commands. Effective effort UNPROVEN; native webview ACK false. No model/auth/native probe during preparation.
+
+Root obtains two actual independent source/exact invocation decisions, verifies existing members, enqueues fresh challenge, installs exact Git exclusions, creates private0600 closed-schema LIVE_APPROVAL_5.json and records pinned Python launch. Only then invoke supervisor once. No claim/private output allocated in preparation; no retry or old receipt reuse. Model one inbox peek then ACK send then substantive review send/final-identical text. No independent model hash assertion; Root validates actual bytes and model/tool/cleanup before provenance acceptance. Capture is never automatic acceptance.

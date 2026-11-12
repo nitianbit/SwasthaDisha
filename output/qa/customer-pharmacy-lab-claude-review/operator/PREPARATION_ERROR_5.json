@@ -1,0 +1,8 @@
+{
+  "schema": "SD-CLAUDE-R5-PREPARATION-ERROR-1",
+  "phase": "PREWRITE_EXCERPT_BOUNDS",
+  "observed": "bootstrap-unit planned end900 exceeds842 lines",
+  "writesBeforeFailure": 0,
+  "liveCalls": 0,
+  "resolution": "Narrowed excerpt780..842; exact pinned source unchanged."
+}

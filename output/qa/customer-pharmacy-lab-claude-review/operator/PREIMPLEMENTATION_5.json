@@ -1,0 +1,11 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-OPERATOR-PREPARATION-5",
+  "planSha256": "91aceef3c7399ca069adf797ee634849b3cb7e81207e653e386e3f44ac17f4de",
+  "preparedFreezeSha256": "9e30edb224df884ee3c55fa178040fbff026e7532f54cacf5257d683e791feda",
+  "rootAction": "AUTHORIZE_COMPACT_SUPERVISOR_AND_OFFLINE_FAKE_CHECKS_ONLY",
+  "rootMandate": "Prepare four bounded milestone packet/profile bindings only; no live invocation before two independent exact decisions and Root prerequisites.",
+  "functionalSupervisorChanges": false,
+  "finalSourceExactInvocationReviews": "PENDING_TWO_ACTUAL_NONAUTHOR_DECISIONS",
+  "liveInvocationApproved": false,
+  "modelRequests": 0
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-FINAL-SOURCE-FREEZE-5",
+  "filesRelativeToQa": {
+    "revision-5/packet.json": "f61c1d3022a8fbd1d94a68da912d9c8a676b25b8e16775a7583480b0e61a78e3",
+    "revision-5/recipe.json": "0b8184dc47915b0fd7ff2d73372e929c898c8bd3708d4e558aa8517cab038385",
+    "revision-5/challenge.json": "ded75cdc1235ad0109b45c3e5b55c3cf57c855725e4fc66fa5b04cadcb971644",
+    "revision-5/README.md": "50f31f01d2d8ac0e294a40f1ec3e2ccdf0810c9fe5fc3746bed37b7178242789",
+    "revision-5/prepared-freeze.json": "9e30edb224df884ee3c55fa178040fbff026e7532f54cacf5257d683e791feda",
+    "revision-5/OPERATOR_PLAN.md": "91aceef3c7399ca069adf797ee634849b3cb7e81207e653e386e3f44ac17f4de",
+    "revision-5/manifest.json": "3f6f5447bb3ff028cf70733d50cf59c15be4f97f90672bd25198c6fd9375821e",
+    "revision-5/mcp-config.json": "a612d678b74998efe9b9d91c029d7f66731ff4fb8e5e096e41f07243369743b0",
+    "revision-5/prior-seven.sha256.json": "6d490c04b63fd059f0d8cf49b277a48b3407a0f82d667b7837f7777d503e3b11",
+    "operator/supervisor.py": "53b9f75c5f8be840bfb8d67857bb62152eeacb99054b240ed1d23243888207da",
+    "operator/test_supervisor.py": "49887b78e24e687d66fefed02dba56b7c89f4b0fd9b249426ea3cef474d9417b",
+    "operator/PREIMPLEMENTATION_5.json": "66ad7c773709e98ef9164f0015cc8141a0caadbd5f080c0594f971200f963a5c",
+    "operator/approval-template-5.json": "81c2bb0dfcdfba4aa75dee746d027b87f8f46a801c1098eff8e255c384036c59",
+    "operator/BINDING_DELTA_5.json": "35a39e1bf08980d397805b2f0a81c8ee45442b615cbde4552d4dfc243cf5a268",
+    "operator/PREPARATION_ERROR_5.json": "35135d18170f0c3e3c0870ed0b2e61d35bbf15a4c9baf69b2209d808a7bbdfc5",
+    "operator/README_5.md": "fa73636438144ea48d0647401c0fc99cc1ae61b676b422022e8f67efa76b4824",
+    "operator/historical-r4/test_supervisor.py.txt": "e7f14fd6d5a18147490a3584f92f35def0426aa5fb0594cdd23e9c8c7e79f9d5",
+    "operator/historical-r4/identity.json": "01b4cca11f132e156552d2f9588a2472bee8980c6f2ec9a7b7ca36db2e106b4a",
+    "operator/historical-r4/supervisor.py.txt": "6eda08207e78d1119804595c56192bcae0f0b840560bb80996f0204a7b23acdf"
+  },
+  "sourceCommit": "df8fd4ef00cb9d45d081ce760d15cef84a880c4e",
+  "sessionId": "4a76a65e-0e00-4dbb-8bab-bea8fabbca9d",
+  "finalReviews": "PENDING_TWO_ACTUAL_INDEPENDENT_SOURCE_EXACT_INVOCATION_DECISIONS",
+  "writesStopped": true,
+  "liveInvocationApproved": false
+}
