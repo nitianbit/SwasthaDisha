@@ -5,8 +5,8 @@ import childProcess from 'node:child_process';
 import { syncBuiltinESMExports } from 'node:module';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { createApplicationFixture } from './app-container.mjs';
-import { evaluateNetworkAdmission, SOURCE_NAMES } from './app-bundle.mjs';
+import { createApplicationFixture, createAuthorityFixture } from './app-container.mjs';
+import { AUTHORITY_CASE_IDS, AUTHORITY_CONTROLS, AUTHORITY_EMIT_OPTIONS, AUTHORITY_INPUTS, AUTHORITY_ROLE, AUTHORITY_SOURCE_NAMES, evaluateNetworkAdmission, sha256, SOURCE_NAMES } from './app-bundle.mjs';
 
 const endpoint = 'unix:///synthetic/docker.sock';
 const pinnedImage = 'node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d';
@@ -458,3 +458,90 @@ test('the creation reporter is snapshotted once on a successful simulated lifecy
 test('a reporter override without a callable executor cannot reach real transport', () => {
   rejectBeforeEffects(() => createApplicationFixture({ endpoint }, { reportCreated() { throw new Error('Must not be called'); } }));
 });
+
+
+// Explicit simulated evidence only. No compiler or domain module is evaluated.
+function syntheticAuthority(expected) {
+  return { schema: 'SD-AUTHORITY-PURE-1', sourceHashes: { ...expected.sourceHashes },
+    compiler: { version: '5.9.3', sha256: expected.compilerSha256, loads: 1, requireAttempts: 0, sysAbsent: true },
+    emit: { optionsSha256: sha256(JSON.stringify(AUTHORITY_EMIT_OPTIONS)),
+      nominalHashes: Object.fromEntries(Object.keys(AUTHORITY_INPUTS).map((id) => [id, 'a'.repeat(64)])),
+      mutantHashes: Object.fromEntries(AUTHORITY_CONTROLS.map(([id]) => [id, 'b'.repeat(64)])), nominalCount: 3, mutantCount: 5 },
+    nominal: { caseIds: [...AUTHORITY_CASE_IDS], passed: AUTHORITY_CASE_IDS.length, failed: 0, skipped: 0 },
+    controls: AUTHORITY_CONTROLS.map(([id, target]) => ({ id, target, mutantDetected: true, restored: true })),
+    evaluations: { graphs: 11, types: 11, rules: 11, service: 11, total: 33 },
+    effects: { database: 0, provider: 0, sourceWrites: 0, domainNativeImports: 0, boundaryProbeRejections: 2 } };
+}
+function authorityTransport() {
+  const transport = fakeDocker();
+  transport.bundle = Object.freeze(Object.fromEntries(AUTHORITY_SOURCE_NAMES.map((name) => [name, '// explicit simulated role text'])));
+  transport.authorityExpectation = { sourceHashes: Object.fromEntries(Object.entries(AUTHORITY_INPUTS).map(([id, name]) => [id, sha256(transport.bundle[name])])),
+    compilerSha256: sha256(transport.bundle['typescript.cjs']) };
+  transport.state.editResult = (result) => {
+    const { calls, scenario, ...base } = result;
+    return { ...base, role: AUTHORITY_ROLE, authority: syntheticAuthority(transport.authorityExpectation) };
+  };
+  return transport;
+}
+
+test('fixed authority role reuses owned lifecycle without default provider evidence', (t) => {
+  const transport = authorityTransport(); const instance = createAuthorityFixture({ endpoint }, transport);
+  t.after(() => instance.dispose());
+  assert.equal(transport.state.item.Config.Env.includes('APP_ROLE=' + AUTHORITY_ROLE), true);
+  assert.equal(transport.state.item.HostConfig.NetworkMode, 'none');
+  const result = instance.run(); assert.equal(result.authority.nominal.passed, 84);
+  assert.equal(Object.hasOwn(result, 'calls'), false); assert.equal(Object.hasOwn(result, 'scenario'), false);
+  instance.dispose(); assert.equal(existsSync(instance.directory), false);
+});
+
+for (const [name, change] of [
+  ['source hash', (x) => { x.sourceHashes[Object.keys(AUTHORITY_INPUTS)[0]] = 'e'.repeat(64); }],
+  ['compiler imports', (x) => { x.compiler.requireAttempts = 1; }],
+  ['compiler system', (x) => { x.compiler.sysAbsent = false; }],
+  ['compiler hash', (x) => { x.compiler.sha256 = 'e'.repeat(64); }],
+  ['missing leaf', (x) => { x.nominal.caseIds.pop(); x.nominal.passed--; }],
+  ['restoration missing', (x) => { x.controls[0].restored = false; }],
+  ['duplicate control', (x) => { x.controls[1] = { ...x.controls[0] }; }],
+  ['wrong module evaluations', (x) => { x.evaluations.types = 10; }],
+  ['missing mutant emit', (x) => { x.emit.mutantCount = 4; }],
+  ['unchanged mutant', (x) => { x.emit.mutantHashes.M1 = 'a'.repeat(64); }],
+  ['provider effect', (x) => { x.effects.provider = 1; }],
+  ['extra field', (x) => { x.extra = true; }],
+]) {
+  test('authority rejects simulated ' + name + ' evidence', (t) => {
+    const transport = authorityTransport(); const edit = transport.state.editResult;
+    transport.state.editResult = (base) => { const result = edit(base); change(result.authority); return result; };
+    const instance = createAuthorityFixture({ endpoint }, transport); t.after(() => instance.dispose());
+    assert.throws(() => instance.run(), /Authority scenario evidence mismatched/);
+  });
+}
+
+test('authority simulated setup cannot fall back to real sources or transport', () => {
+  let calls = 0;
+  assert.throws(() => createAuthorityFixture({ endpoint }, { executor() { calls++; }, profile: { endpoint, engineId: 'synthetic' } }), /explicit synthetic/);
+  assert.equal(calls, 0);
+  assert.throws(() => createAuthorityFixture({ endpoint, role: AUTHORITY_ROLE }, authorityTransport()), /Only an explicit/);
+  assert.throws(() => createAuthorityFixture({ endpoint }, { bundle: {}, authorityExpectation: {} }), /explicit callable/);
+  const transport = authorityTransport(); transport.authorityExpectation.compilerSha256 = 'e'.repeat(64);
+  assert.throws(() => createAuthorityFixture({ endpoint }, transport), /differs from staged sources/);
+  assert.equal(transport.state.calls.length, 0);
+});
+
+for (const [name, change, message] of [
+  ['null bundle', (x) => { x.bundle = null; }, /explicit synthetic/],
+  ['undefined bundle', (x) => { x.bundle = undefined; }, /explicit synthetic/],
+  ['array bundle', (x) => { x.bundle = []; }, /explicit synthetic/],
+  ['null expectation', (x) => { x.authorityExpectation = null; }, /explicit synthetic/],
+  ['undefined expectation', (x) => { x.authorityExpectation = undefined; }, /explicit synthetic/],
+  ['array expectation', (x) => { x.authorityExpectation = []; }, /explicit synthetic/],
+  ['missing hashes', (x) => { delete x.authorityExpectation.sourceHashes; }, /exact source and compiler hashes/],
+  ['null hashes', (x) => { x.authorityExpectation.sourceHashes = null; }, /exact source and compiler hashes/],
+  ['undefined compiler', (x) => { x.authorityExpectation.compilerSha256 = undefined; }, /exact source and compiler hashes/],
+  ['extra expectation', (x) => { x.authorityExpectation.extra = true; }, /exact source and compiler hashes/],
+]) {
+  test('authority refuses ' + name + ' before allocation or transport', () => {
+    const transport = authorityTransport(); change(transport);
+    assert.throws(() => createAuthorityFixture({ endpoint }, transport), message);
+    assert.equal(transport.state.calls.length, 0);
+  });
+}

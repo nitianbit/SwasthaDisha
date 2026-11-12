@@ -16,40 +16,154 @@ export function requireThat(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-export function makeManifest(runId, sources) {
+export const AUTHORITY_ROLE = 'business-staff-authority-pure';
+export const AUTHORITY_SOURCE_NAMES = Object.freeze([
+  'app-bundle.mjs', 'authority-rules.ts', 'authority-scenario.mjs', 'authority-service.ts',
+  'authority-types.ts', 'authority-vectors.json', 'bootstrap.mjs', 'package.json', 'typescript.cjs',
+]);
+export const AUTHORITY_COMPILER_SHA = '3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675';
+export const AUTHORITY_INPUTS = Object.freeze({
+  'src1/modules/organizations/types/index.ts': 'authority-types.ts',
+  'src1/modules/organizations/rules.ts': 'authority-rules.ts',
+  'src1/modules/organizations/services/index.ts': 'authority-service.ts',
+});
+export const AUTHORITY_SOURCE_HASHES = Object.freeze({
+  'src1/modules/organizations/types/index.ts': 'e873884e69db46d7de70d3120a5ac30809fe8dc526d118a4640463233c9633ff',
+  'src1/modules/organizations/rules.ts': 'b404c00381b5bf642aa648105cefb353a97c7ea7283c680059c426b5e4307942',
+  'src1/modules/organizations/services/index.ts': 'ccac5254a6e61c8cce4f14c58005cb39349689e3d0cbafc8ab551ca339397c73',
+});
+export const AUTHORITY_VECTORS_SHA = '9f2ab5e192c9eb4a1332680a77f0ed5d94eb28502af3fc9a426f68be350ea382';
+export const AUTHORITY_EMIT_OPTIONS = Object.freeze({
+  target: 7, module: 1, esModuleInterop: true, verbatimModuleSyntax: false,
+  importHelpers: false, declaration: false, sourceMap: false,
+});
+export const AUTHORITY_CASE_GROUPS = Object.freeze(Object.fromEntries(
+  Object.entries({
+    "A01": ["only"],
+    "A02": ["only"],
+    "A03": ["bad-id", "business-login", "missing-purpose", "extra-key", "accessor"],
+    "A04": ["bad-org-id", "unknown-capability", "extra-key"],
+    "A05": ["null", "number", "string"],
+    "A06": ["nan", "infinity", "negative", "unsafe", "out-of-range"],
+    "A07": ["error", "undefined", "false"],
+    "A08": ["false", "missing-flag", "false-flag", "bad-generation"],
+    "A09": ["error", "undefined", "false"],
+    "A10": ["error", "undefined", "false"],
+    "A11": ["only"],
+    "A12": ["inactive", "foreign-id"],
+    "A13": ["membership-tenant", "eligibility-actor", "organization-id"],
+    "A14": ["organization-suspended", "branch-revoked"],
+    "A15": ["license-number", "license-document", "unverified"],
+    "A16": ["only"],
+    "A17": ["missing-member", "duplicate-member", "missing-proof"],
+    "A18": ["schema", "zero-revision", "unsafe-revision"],
+    "A19": ["validfrom-equal", "validfrom-future", "expiry-equal", "created-after-updated"],
+    "A20": ["only"],
+    "A21": ["fingerprint", "mapping", "grant", "verification"],
+    "A22": ["object-keys", "array-order"],
+    "A23": ["metadata-operation", "payload-fingerprint", "evidence"],
+    "A24": ["only"],
+    "A25": ["organization-revision", "membership-revision", "eligibility-revision"],
+    "A26": ["self-grant", "self-verification", "evidence-version"],
+    "A27": ["decision-id", "operation-id"],
+    "A28": ["spread-clone", "json-clone", "prototype-clone", "raw-evaluator"],
+    "A29": ["only"],
+    "A30": ["only"],
+    "A31": ["domain-fs", "compiler-fs"],
+    "A32": ["facts-extra-key", "nested-accessor", "empty-branches", "over100-branches"],
+  }).map(([key, values]) => [key, Object.freeze(values)]),
+));
+export const AUTHORITY_CASE_IDS = Object.freeze(Object.entries(AUTHORITY_CASE_GROUPS)
+  .flatMap(([key, values]) => values.map((value) => key + '.' + value)));
+export const AUTHORITY_CONTROLS = Object.freeze([
+  ['M1', 'A19.expiry-equal'], ['M2', 'A23.metadata-operation'], ['M3', 'A13.membership-tenant'],
+  ['M4', 'A25.membership-revision'], ['M5', 'A28.spread-clone'],
+].map((row) => Object.freeze(row)));
+
+export function sourceNames(role) {
+  requireThat(role === ROLE || role === AUTHORITY_ROLE, 'Unknown fixed application role');
+  return role === ROLE ? SOURCE_NAMES : AUTHORITY_SOURCE_NAMES;
+}
+export function makeManifest(runId, sources, role = ROLE) {
+  const names = sourceNames(role);
   requireThat(/^[a-f0-9-]{36}$/.test(runId), 'Invalid harness run identity');
-  requireThat(Object.keys(sources).sort().join(',') === SOURCE_NAMES.join(','), 'Unexpected source bundle');
-  const files = {};
-  for (const name of SOURCE_NAMES) {
-    requireThat(typeof sources[name] === 'string' && Buffer.byteLength(sources[name]) < 128 * 1024,
+  requireThat(Object.keys(sources).sort().join(',') === names.join(','), 'Unexpected source bundle');
+  const files = {}; let total = 0;
+  for (const name of names) {
+    const limit = role === AUTHORITY_ROLE && name === 'typescript.cjs' ? 10 * 1024 * 1024 : 128 * 1024;
+    requireThat(typeof sources[name] === 'string' && Buffer.byteLength(sources[name]) < limit,
       'Bundle source must be bounded text');
-    files[name] = sha256(sources[name]);
+    total += Buffer.byteLength(sources[name]); files[name] = sha256(sources[name]);
   }
-  return Object.freeze({ runId, role: ROLE, files: Object.freeze(files) });
+  requireThat(role !== AUTHORITY_ROLE || total < 12 * 1024 * 1024, 'Authority bundle size exceeded');
+  return Object.freeze({ runId, role, files: Object.freeze(files) });
 }
 
 export function assertBundle(directory, expectation) {
   const expected = Object.freeze({ ...expectation });
-  requireThat(Object.keys(expected).sort().join(',') === 'manifestSha,runId'
+  const role = Object.hasOwn(expected, 'role') ? expected.role : ROLE; const names = sourceNames(role);
+  requireThat(['manifestSha,runId', 'manifestSha,role,runId'].includes(Object.keys(expected).sort().join(','))
     && /^[a-f0-9]{64}$/.test(expected.manifestSha), 'Invalid bundle expectation');
   const directoryStat = lstatSync(directory);
   requireThat(directoryStat.isDirectory() && !directoryStat.isSymbolicLink(), 'Bundle directory changed');
-  requireThat(readdirSync(directory).sort().join(',') === ['.admission.json', ...SOURCE_NAMES].join(','),
+  requireThat(readdirSync(directory).sort().join(',') === ['.admission.json', ...names].join(','),
     'Bundle contains an unapproved file');
-  for (const name of ['.admission.json', ...SOURCE_NAMES]) {
+  for (const name of ['.admission.json', ...names]) {
     const stat = lstatSync(join(directory, name));
     requireThat(stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1, 'Bundle file identity changed');
+    const limit = name === '.admission.json' ? 65536
+      : role === AUTHORITY_ROLE && name === 'typescript.cjs' ? 10 * 1024 * 1024 : 128 * 1024;
+    requireThat(stat.size < limit, 'Bundle file size changed');
   }
   const bytes = readFileSync(join(directory, '.admission.json'));
   requireThat(sha256(bytes) === expected.manifestSha, 'Bundle admission hash changed');
   const manifest = JSON.parse(bytes);
   requireThat(Object.keys(manifest).sort().join(',') === 'files,role,runId'
-    && manifest.runId === expected.runId && manifest.role === ROLE
-    && Object.keys(manifest.files).sort().join(',') === SOURCE_NAMES.join(','), 'Bundle admission identity changed');
-  for (const name of SOURCE_NAMES) {
-    requireThat(sha256(readFileSync(join(directory, name))) === manifest.files[name], 'Bundle source hash changed');
+    && manifest.runId === expected.runId && manifest.role === role
+    && Object.keys(manifest.files).sort().join(',') === names.join(','), 'Bundle admission identity changed');
+  let total = 0;
+  for (const name of names) {
+    const data = readFileSync(join(directory, name)); total += data.length;
+    requireThat(sha256(data) === manifest.files[name], 'Bundle source hash changed');
   }
+  requireThat(role !== AUTHORITY_ROLE || total < 12 * 1024 * 1024, 'Authority bundle size changed');
   return Object.freeze({ ...manifest, files: Object.freeze(manifest.files) });
+}
+
+const authorityKeys = (value, keys) => value !== null && typeof value === 'object' && !Array.isArray(value)
+  && Object.keys(value).sort().join(',') === [...keys].sort().join(',');
+const hash = (value) => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
+export function verifyAuthorityResult(value, expected = { sourceHashes: AUTHORITY_SOURCE_HASHES, compilerSha256: AUTHORITY_COMPILER_SHA }) {
+  try {
+    const ids = Object.keys(AUTHORITY_INPUTS);
+    requireThat(authorityKeys(value, ['schema', 'sourceHashes', 'compiler', 'emit', 'nominal', 'controls', 'evaluations', 'effects'])
+      && value.schema === 'SD-AUTHORITY-PURE-1', 'Authority result schema');
+    requireThat(authorityKeys(value.sourceHashes, ids) && ids.every((id) => hash(value.sourceHashes[id]) && value.sourceHashes[id] === expected.sourceHashes[id]), 'Authority source proof');
+    requireThat(authorityKeys(value.compiler, ['version', 'sha256', 'loads', 'requireAttempts', 'sysAbsent'])
+      && value.compiler.version === '5.9.3' && hash(value.compiler.sha256) && value.compiler.sha256 === expected.compilerSha256
+      && value.compiler.loads === 1 && value.compiler.requireAttempts === 0 && value.compiler.sysAbsent === true, 'Authority compiler proof');
+    const emit = value.emit;
+    requireThat(authorityKeys(emit, ['optionsSha256', 'nominalHashes', 'mutantHashes', 'nominalCount', 'mutantCount'])
+      && emit.optionsSha256 === sha256(JSON.stringify(AUTHORITY_EMIT_OPTIONS)) && emit.nominalCount === 3 && emit.mutantCount === 5
+      && authorityKeys(emit.nominalHashes, ids) && ids.every((id) => hash(emit.nominalHashes[id]))
+      && authorityKeys(emit.mutantHashes, AUTHORITY_CONTROLS.map(([id]) => id))
+      && AUTHORITY_CONTROLS.every(([id]) => hash(emit.mutantHashes[id]) && emit.mutantHashes[id] !== emit.nominalHashes[id === 'M5' ? 'src1/modules/organizations/services/index.ts' : 'src1/modules/organizations/rules.ts']), 'Authority emit proof');
+    const nominal = value.nominal;
+    requireThat(authorityKeys(nominal, ['caseIds', 'passed', 'failed', 'skipped'])
+      && JSON.stringify(nominal.caseIds) === JSON.stringify(AUTHORITY_CASE_IDS)
+      && nominal.passed === AUTHORITY_CASE_IDS.length && nominal.failed === 0 && nominal.skipped === 0, 'Authority nominal proof');
+    requireThat(Array.isArray(value.controls) && value.controls.length === AUTHORITY_CONTROLS.length
+      && value.controls.every((row, index) => authorityKeys(row, ['id', 'target', 'mutantDetected', 'restored'])
+        && row.id === AUTHORITY_CONTROLS[index][0] && row.target === AUTHORITY_CONTROLS[index][1]
+        && row.mutantDetected === true && row.restored === true), 'Authority sensitivity proof');
+    requireThat(authorityKeys(value.evaluations, ['graphs', 'types', 'rules', 'service', 'total'])
+      && value.evaluations.graphs === 11 && value.evaluations.types === 11 && value.evaluations.rules === 11
+      && value.evaluations.service === 11 && value.evaluations.total === 33, 'Authority evaluation proof');
+    requireThat(authorityKeys(value.effects, ['database', 'provider', 'sourceWrites', 'domainNativeImports', 'boundaryProbeRejections'])
+      && ['database', 'provider', 'sourceWrites', 'domainNativeImports'].every((key) => value.effects[key] === 0)
+      && value.effects.boundaryProbeRejections === 2, 'Authority effect proof');
+    return true;
+  } catch { return false; }
 }
 
 

@@ -1,0 +1,22 @@
+{
+  "sourceFreezeSha256": "7df6a0ba88c5cf1e19cb79fdbcfe3cf1e4ec67175d6f4b0102b817c868d554dc",
+  "baseline": "63b976b4119c27492593c6d39c1d0535d02dce2d",
+  "patchSha256": "797ea841f4c461d6ed12cb0160c38672a6121101cb8737159f7536b94b23859a",
+  "author": "/root/claude_review_5_packet",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/pharmacist_identity_fields",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    }
+  ],
+  "actualReview": "Bothnon-authors inspected full8filechangedsource and correctedprefreezeissues. Closedno-sysrealcompiler/3wholemodules, coherent84case/5controloracles, observed-count enforcement for planned8emits/11graphs/33evaluations, explicitfalsyfailures and phasedleaftraces, authority-onlystderr forwarding, fixedrole/caps/strictfakeinputs/default6file and unchangednetwork/grants inspected. All8source/14protected/5QA/installedcompilerbindingsmatch.",
+  "limits": "Source-only. No JavaScript parser/Node/compiler/test/app/container/DB/provider execution proof; actual350fakechecks and84realpurecases stillNOT_RUN. Separateexactofflineadmissionrequired; realauthorityoutercaptureunprepared/unadmitted. No clinical/financial/release/F1acceptance."
+}

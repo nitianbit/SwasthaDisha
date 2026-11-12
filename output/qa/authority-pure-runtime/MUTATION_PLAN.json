@@ -1,0 +1,62 @@
+[
+  {
+    "id": "M1",
+    "module": "src1/modules/organizations/rules.ts",
+    "originalSha256": "b404c00381b5bf642aa648105cefb353a97c7ea7283c680059c426b5e4307942",
+    "old": "now < d.expiresAt",
+    "replacement": "true",
+    "uniqueOccurrences": 1,
+    "mutatedSourceSha256": "72124bc8802626918015b1851ebdc5bd2fbda3714ab7d01e3f9f5313c32ddccd",
+    "target": "A19.expiry-equal",
+    "requiredMarker": "EXPECTED_AUTHORITY_DENIAL_MISSING",
+    "status": "SOURCE_BYTES_ONLY_NOT_EMITTED_OR_EVALUATED"
+  },
+  {
+    "id": "M2",
+    "module": "src1/modules/organizations/rules.ts",
+    "originalSha256": "b404c00381b5bf642aa648105cefb353a97c7ea7283c680059c426b5e4307942",
+    "old": "check(decisionDigest(decision) === decision.payloadSha256);",
+    "replacement": "check(true);",
+    "uniqueOccurrences": 1,
+    "mutatedSourceSha256": "2840fad8cdfe18d795cb80a09b43897d6af501977397f7191731067a9ab0935b",
+    "target": "A23.metadata-operation",
+    "requiredMarker": "EXPECTED_AUTHORITY_DENIAL_MISSING",
+    "status": "SOURCE_BYTES_ONLY_NOT_EMITTED_OR_EVALUATED"
+  },
+  {
+    "id": "M3",
+    "module": "src1/modules/organizations/rules.ts",
+    "originalSha256": "b404c00381b5bf642aa648105cefb353a97c7ea7283c680059c426b5e4307942",
+    "old": "check(d.organizationId === lookup.organizationId && d.actorId === lookup.actorId && d.state === 'active');",
+    "replacement": "check(true && d.actorId === lookup.actorId && d.state === 'active');",
+    "uniqueOccurrences": 1,
+    "mutatedSourceSha256": "098d65acb0e208c0ea44c48743890b10a6142ebd32feec1034fde797ab02be2a",
+    "target": "A13.membership-tenant",
+    "requiredMarker": "EXPECTED_AUTHORITY_DENIAL_MISSING",
+    "status": "SOURCE_BYTES_ONLY_NOT_EMITTED_OR_EVALUATED"
+  },
+  {
+    "id": "M4",
+    "module": "src1/modules/organizations/rules.ts",
+    "originalSha256": "b404c00381b5bf642aa648105cefb353a97c7ea7283c680059c426b5e4307942",
+    "old": "gp.membershipRevision === member.revision",
+    "replacement": "true",
+    "uniqueOccurrences": 1,
+    "mutatedSourceSha256": "557f268f6dda8015877dbd5771ff668a23869cdca8738a93c1d434ab90397393",
+    "target": "A25.membership-revision",
+    "requiredMarker": "EXPECTED_AUTHORITY_DENIAL_MISSING",
+    "status": "SOURCE_BYTES_ONLY_NOT_EMITTED_OR_EVALUATED"
+  },
+  {
+    "id": "M5",
+    "module": "src1/modules/organizations/services/index.ts",
+    "originalSha256": "ccac5254a6e61c8cce4f14c58005cb39349689e3d0cbafc8ab551ca339397c73",
+    "old": "issuedScopes.has(value)",
+    "replacement": "true",
+    "uniqueOccurrences": 1,
+    "mutatedSourceSha256": "5f0467ce0ca607d4ed9c10122db03d97635b59a48b7164ca6020cb2ba591f676",
+    "target": "A28.spread-clone",
+    "requiredMarker": "FORGED_SCOPE_ACCEPTED",
+    "status": "SOURCE_BYTES_ONLY_NOT_EMITTED_OR_EVALUATED"
+  }
+]

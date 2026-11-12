@@ -1,0 +1,161 @@
+{
+  "status": "SOURCE_CANDIDATE_NOT_RUN",
+  "writesStopped": true,
+  "author": "/root/claude_review_5_packet",
+  "baseline": "63b976b4119c27492593c6d39c1d0535d02dce2d",
+  "contractSha256": "3b433b9f203b1c66b6a30c17e51c084e8d06e88f1e8a761b4d605ee6c7f0712a",
+  "source": {
+    "test/application/app-bundle.mjs": {
+      "sha256": "993634db7d05213208ddda434d8d4c21f679ae342f46a1836dda115c7d3b5817",
+      "bytes": 21325,
+      "baselineSha256": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2"
+    },
+    "test/application/app-container.mjs": {
+      "sha256": "4c2a061a45a30478d4fc04d6cd28bb88aa2fd679e4346136b7714f29142948aa",
+      "bytes": 21188,
+      "baselineSha256": "e0833fa33da450eb39c76a826d54c02deffdef4ec374a1ea7fcc8fac1cbbacfa"
+    },
+    "test/application/bootstrap.mjs": {
+      "sha256": "b9016bbddd345ed562e7820ae391f96180397a6ae84c20fc92c1d36a74467b4c",
+      "bytes": 3551,
+      "baselineSha256": "23851a078af2b2311f17289378556a8871bea3e3cbcd67dede448b525f974c8c"
+    },
+    "test/application/app-bundle.test.mjs": {
+      "sha256": "dd2bc927c1f0f4d1932929aa4294a6df3c74a1db6536a7bb56902d259d163e75",
+      "bytes": 30965,
+      "baselineSha256": "4aeb825dec2b768b0964a74a2d04a4931fd640c153f3606d5cd12ec981e510df"
+    },
+    "test/application/app-container.test.mjs": {
+      "sha256": "79c6b65b39c7336718ad563b175e48f5fda76035b77b5028fb83bbcaa6a7dd14",
+      "bytes": 32441,
+      "baselineSha256": "584e60d4b25895669c8d119a229ac181cfd7c9bd602e17481a0999bf2c67101b"
+    },
+    "test/application/README.md": {
+      "sha256": "dbe1014862ce0e192eaf6d2992c7e42efdc3d7f690e2008f9c6cafcf150be8e7",
+      "bytes": 8530,
+      "baselineSha256": "f7ead1d3e281f5d0b4a7de0967bc19e8c2f33976fb0406bb9ec57427f2d96a64"
+    },
+    "test/application/authority-scenario.mjs": {
+      "sha256": "806d39428cc6512c527581a46d00f49b4c15d348efa9457e5cbab3369b91d3ee",
+      "bytes": 28461,
+      "baselineSha256": null
+    },
+    "test/application/run-authority.mjs": {
+      "sha256": "a4b7c9e31f0ecc92f57d7d324dd3f36896d188ffe5e06e5cc159577549e31af9",
+      "bytes": 1201,
+      "baselineSha256": null
+    }
+  },
+  "protectedUnchanged": {
+    "src1/modules/organizations/types/index.ts": {
+      "sha256": "e873884e69db46d7de70d3120a5ac30809fe8dc526d118a4640463233c9633ff",
+      "bytes": 5660,
+      "unchangedFromBaseline": true
+    },
+    "src1/modules/organizations/rules.ts": {
+      "sha256": "b404c00381b5bf642aa648105cefb353a97c7ea7283c680059c426b5e4307942",
+      "bytes": 17283,
+      "unchangedFromBaseline": true
+    },
+    "src1/modules/organizations/services/index.ts": {
+      "sha256": "ccac5254a6e61c8cce4f14c58005cb39349689e3d0cbafc8ab551ca339397c73",
+      "bytes": 1390,
+      "unchangedFromBaseline": true
+    },
+    "test/foundation/run.mjs": {
+      "sha256": "f14c1830b0fbe23c1be454cb97003c6c6fb58fdb11bee0ac8bc91134d63ca0c9",
+      "bytes": 3608,
+      "unchangedFromBaseline": true
+    },
+    "test/foundation/preflight.mjs": {
+      "sha256": "2cdfa366dad210fe5483a52ae4c8c4b6488a4429bc8e0e8dff1f2b7f4f5487da",
+      "bytes": 3723,
+      "unchangedFromBaseline": true
+    },
+    "test/application/run.mjs": {
+      "sha256": "95e1be85da06a121780afe39c17aea1f2bf4fb736a579fb154216ff86135f924",
+      "bytes": 1163,
+      "unchangedFromBaseline": true
+    },
+    "test/application/app-ports.mjs": {
+      "sha256": "f7efb3ee12eee3f0ff427b360d9c65776c20f34c80432ac0b5a626df55408cf1",
+      "bytes": 841,
+      "unchangedFromBaseline": true
+    },
+    "test/application/scenario.mjs": {
+      "sha256": "b0a9fbc2a990cf344487d9f88a49d927fbb4fa806a794353fb3adcea9059e031",
+      "bytes": 848,
+      "unchangedFromBaseline": true
+    },
+    "test/application/app-image.json": {
+      "sha256": "4f1390608939a823788010499cc810801d01fd8ee44248da5424776c816a8611",
+      "bytes": 484,
+      "unchangedFromBaseline": true
+    },
+    "test/application/app-runtime.json": {
+      "sha256": "e4e0b67677e084dce5d65d958763057c5ca1b257232b5f007545a327fb40f0b3",
+      "bytes": 314,
+      "unchangedFromBaseline": true
+    },
+    "package.json": {
+      "sha256": "65b171e77e8cd3bfd37eb691cf9ce310d9108cedbf571232bd4859c4b16895ab",
+      "bytes": 1898,
+      "unchangedFromBaseline": true
+    },
+    "package-lock.json": {
+      "sha256": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080",
+      "bytes": 233000,
+      "unchangedFromBaseline": true
+    },
+    "output/qa/business-staff-authority/SERIALIZATION_VECTORS.json": {
+      "sha256": "9f2ab5e192c9eb4a1332680a77f0ed5d94eb28502af3fc9a426f68be350ea382",
+      "bytes": 8807,
+      "unchangedFromBaseline": true
+    },
+    "documentation/planning/implementation/AUTHORITY_PURE_RUNTIME_CONTRACT.md": {
+      "sha256": "3b433b9f203b1c66b6a30c17e51c084e8d06e88f1e8a761b4d605ee6c7f0712a",
+      "bytes": 18579,
+      "unchangedFromBaseline": true
+    }
+  },
+  "compiler": {
+    "path": "/Users/shubham/.codex/runtimes/ruflo/3.75.0/node_modules/typescript/lib/typescript.js",
+    "sha256": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+    "bytes": 9112572,
+    "uid": 501,
+    "mode": "0o644",
+    "nlink": 1
+  },
+  "dataOnlyChecks": {
+    "nominalCaseIDs": 84,
+    "groups": 32,
+    "mutationUniqueCounts": [
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "payloadTuplePathsChecked": 4,
+    "networkDecisionSuffixByteIdentical": true,
+    "gitDiffCheck": "PASS_SOURCE_WHITESPACE_ONLY"
+  },
+  "qaSha256": {
+    "CANDIDATE.diff": "797ea841f4c461d6ed12cb0160c38672a6121101cb8737159f7536b94b23859a",
+    "CASE_PLAN.json": "c4110c5d60794073f6f57576845c686ca783c4f2687cda7b8fdfc6bec00c1627",
+    "MUTATION_PLAN.json": "62e2c509a553fd31212351e54c119e2cd9993b90de77cef02a0e6b8a37b544d4",
+    "SOURCE_REVIEW.md": "362b5a6469be3f2ac6e9ecf30504e1a1b6ca0f88ab08279eededa1abc5185da5",
+    "PREIMPLEMENTATION_DECISIONS.json": "9a206bbe00cb1e85f984404ecb2a1b643e71861a865d022062f584e30937b795"
+  },
+  "execution": {
+    "offlineFakeChecks": "NOT_RUN_NOT_YET_ADMITTED",
+    "compilerOrDomain": "NOT_RUN",
+    "Docker": "NOT_RUN",
+    "model": "NOT_RUN"
+  },
+  "limitations": [
+    "No entry/real-adapter behavior or syntax execution proof",
+    "Outer bounded capture and two exact nonauthor invocation decisions still required",
+    "No real Mongo/session/HTTP/qualification/clinical/release claim"
+  ]
+}
