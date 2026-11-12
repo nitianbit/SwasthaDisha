@@ -1,0 +1,67 @@
+{
+  "schema": "SD-ENROLLMENT-ACTUAL-SERVICE-INVOCATION-1",
+  "sourceCommit": "31253678a9f41135ba41968c4f6e02a7be061c31",
+  "proposalSha256": "8ba6515651085618cf3902f61f3a575aa89a9cde91e14033c79dc677222f032a",
+  "descriptorSha256": "fc3169eea4de94d035cd7b39d1a7ed1254a529f54efae7997e0000df7612e9aa",
+  "nonce": "6a631306-20a7-4712-9482-696ea543935b",
+  "receiptSha256": "7a2073a066af1679a2ffd37e6752317be3b0358eae584a07e0aa79b1ec55ab51",
+  "privateDirectory": "/private/tmp/sd-enrollment-execution-b725e51b-a7ab-4d98-9977-0bcde7c8cdde",
+  "command": [
+    "/usr/bin/env",
+    "-i",
+    "PATH=/usr/bin:/bin",
+    "TMPDIR=/private/tmp",
+    "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+    "test/customer-enrollment-runtime/run.mjs"
+  ],
+  "terminalExit": 0,
+  "elapsedSeconds": 0.978,
+  "logs": {
+    "stdout.txt": {
+      "bytes": 6380,
+      "sha256": "6b2eee196420610dec9878ccec64a15ef806c5c6488516b47f6cf524e8382340"
+    },
+    "stderr.txt": {
+      "bytes": 190,
+      "sha256": "26ae93951b55485d53d2a6910c488136e6931feef82bc2f7a1b86742328c1aaf"
+    }
+  },
+  "outcome": "PENDING_ACTUAL_OUTPUT_AND_INDEPENDENT_CLEANUP_REVIEW",
+  "noRetry": true,
+  "execSession": 23381,
+  "terminalToolChunk": "c1dbae",
+  "sourceCurrentInputsUnchanged": true,
+  "actualNominalCases": 82,
+  "actualRestoredCases": 82,
+  "actualDetectedRestoredControls": 5,
+  "actualBaselineTwoAliasDataflowObserved": true,
+  "containerId": "cfa147214da66ac0a50db7f9562f0a8b5d2830b873405bc41df9b331534c4146",
+  "directory": "/private/tmp/sd-app-isolation-ZNJ1Rd",
+  "status": "FOCUSED_SERVICE_RESULT_PENDING_TWO_ACTUAL_INDEPENDENT_OUTCOME_REVIEWS",
+  "applicationScope": "Real whole AuthService and Joi/JWT with11 recording dependencies; not HTTP/DB/realOTP/provider/fullC1",
+  "cleanup": {
+    "schema": "SD-ENROLLMENT-INDEPENDENT-CLEANUP-READBACK-1",
+    "engineId": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+    "containerId": "cfa147214da66ac0a50db7f9562f0a8b5d2830b873405bc41df9b331534c4146",
+    "exactInspectExit": 1,
+    "exactInspectStdout": "[]\n",
+    "exactInspectStderr": "error: no such object: cfa147214da66ac0a50db7f9562f0a8b5d2830b873405bc41df9b331534c4146\n",
+    "directory": "/private/tmp/sd-app-isolation-ZNJ1Rd",
+    "directoryAbsent": true,
+    "purposeContainerCount": 0,
+    "controllerCleanupAcknowledged": true,
+    "observation": "Fresh same-engine exact inspect/purpose ps and filesystem absence; no removal/prune/pull/retry",
+    "rawInspectBeforeCleanup": "Not independently persisted; controller validates state/config before removal",
+    "priorRootReadbackPredicateStop": {
+      "toolChunk": "971f36",
+      "reason": "Case-sensitive expected No such object rejected actual lowercase error: no such object; first readback stopped before evidence files, no application retry or cleanup mutation",
+      "diagnosticReadback": "556e11 confirmed exact absence response, empty purpose list and absent exact directory"
+    }
+  },
+  "privateLogHashes": {
+    "stdout.txt": "6b2eee196420610dec9878ccec64a15ef806c5c6488516b47f6cf524e8382340",
+    "stderr.txt": "26ae93951b55485d53d2a6910c488136e6931feef82bc2f7a1b86742328c1aaf",
+    "invocation.json": "c671711d823cde55eee09bcae42eb4bd3a6efa316ae66f69b58144de11bbaa0c",
+    "terminal.json": "d2fc55d6033a376d6f0d226b7544728b82c15ae7c17ff6c92ebfce768ee6db32"
+  }
+}
