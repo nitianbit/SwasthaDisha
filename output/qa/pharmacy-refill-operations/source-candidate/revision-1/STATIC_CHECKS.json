@@ -1,0 +1,25 @@
+{
+  "schema": "SD-REFILL-RAW-REPLY-AMENDMENT-STATIC-1",
+  "initialCandidate": "8644d4ec9426d9b17dec10f1764a6a014adc5339",
+  "initialSourceSha256": "199712c4e624aa47055dab00b245564aaf91ca7056e6d7c064d7383712ff46d6",
+  "amendedSourceSha256": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+  "onlyRepoChangedSinceInitialSource": true,
+  "twoReplacementRegions": [
+    "refillObjectId plus private symbol cache",
+    "returned rows dense-array validation/loop"
+  ],
+  "exactInverseTwoRegionsRestoresEveryInitialRepoByte": true,
+  "otherSixSourceApiBytesUnchanged": true,
+  "allNonownedInputsAndContractUnchanged": true,
+  "originalInitialQaPreservation": {
+    "SOURCE_CANDIDATE.json": "b46e9ad3a040001242247017856d869d3d58848d6199b37a6638a09ab6636891",
+    "SOURCE.patch": "337ebb9df534b4f80d2f1f062c6904b67405aa580026e05b6f5ffc218d159d4d",
+    "STATIC_CHECKS.json": "ada5735a59c6cf9700cbdb98ec52b39e29a63e73a17533c314646efef690ec23",
+    "FOCUSED_VERIFICATION_PLAN.json": "93983d4ece1dba0b283a5100ac5783a60eb02b626f96f0c9edda841c3cfcdb11",
+    "INITIAL_SOURCE_DECISIONS.json": "a7959ea87466dfaf29b113db6ffcfc888aafac10ab56fd31ad5a9a7d8533bc5f",
+    "REVIEW.md": "091d910d27f1dc2e45a1b74cc267514f5dc405438e7114dddbccab74d8c94003"
+  },
+  "initialCandidateApproved": false,
+  "initialDisposition": "TWO_ACTUAL_REQUEST_CHANGES; author does not supply approval",
+  "execution": "NO_NODE_PARSER_COMPILER_BSON_APP_DB_DOCKER_PROVIDER_OR_SOURCE_CONTROL_EVALUATION"
+}

@@ -1,0 +1,17 @@
+{
+  "schema": "SD-REFILL-BSON4-SOURCE-PROVENANCE-1",
+  "rootLockPackage": "bson4.7.2",
+  "publicSource": "https://raw.githubusercontent.com/mongodb/js-bson/v4.7.2/src/objectid.ts",
+  "rootLockIntegrityVerifiedByInertCacheRead": true,
+  "tarSha256": "e876bd80d0754fad52329f022bbd7b8d332317ba4ee472dbcc7d1e31c3864852",
+  "member": "package/src/objectid.ts",
+  "memberSha256": "1174d86e51e3219e55143e5287da0a78751aa864e9738ae6bccb99dc46a44d28",
+  "sourceFacts": [
+    "line24 module-private Symbol(id), not Symbol.for or a public field",
+    "constructor49\u201399 stores native12byteBuffer under that Symbol and optional matching __id cache",
+    "id getter105\u2013107 reads Symbol; native.toHexString129\u2013139 calls supplied id.toString and optional cache",
+    "line354 _bsontype is prototype-only"
+  ],
+  "correction": "Lazily derive exact Symbol identity from fixed-string native constructor; validate all actual own descriptor keys and nativeBuffer bytes; use fresh ownedBuffer for intrinsic conversion; valid cache must equal owned bytes. Unknown shape fails affected read rather than guessing another profile.",
+  "actualNativeExecution": "NOT_RUN"
+}

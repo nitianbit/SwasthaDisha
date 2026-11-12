@@ -10,6 +10,7 @@ import {
   SubscriptionQueryParams,
 } from '@/modules/pharmacySubscriptions/types';
 import { AppError } from '@/modules/common/types';
+import { parseDueRefillQuery, requireRefillPharmacyScope } from '../validation';
 
 @Service()
 export class PharmacySubscriptionService {
@@ -165,6 +166,11 @@ export class PharmacySubscriptionService {
     });
   }
 
+  async getDueRefills(pharmacyId: unknown, rawQuery: unknown) {
+    const scope = requireRefillPharmacyScope(pharmacyId);
+    return this.repo.findDueRefills(scope, parseDueRefillQuery(scope, rawQuery));
+  }
+
   async getAll(filter: SubscriptionQueryParams) {
     return this.repo.findWithPagination(filter, filter.page ?? 1, filter.limit ?? 20);
   }
@@ -184,10 +190,12 @@ export class PharmacySubscriptionService {
 
     const nextPayload: UpdateSubscriptionRequest = { ...data };
     if (data.isActive === true) {
-      nextPayload.pausedUntil = undefined;
+      delete nextPayload.pausedUntil;
     }
 
-    const updated = await this.repo.update({ _id: id }, nextPayload);
+    const updated = await this.repo.update({ _id: id }, data.isActive === true
+      ? { $set: nextPayload, $unset: { pausedUntil: '' } }
+      : nextPayload);
     if (!updated) {
       throw new AppError({ status: 500, code: 'UPDATE_FAILED', message: 'Failed to update subscription' });
     }

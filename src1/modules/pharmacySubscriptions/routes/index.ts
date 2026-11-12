@@ -21,6 +21,10 @@ pharmacySubscriptionRouter.post(
   catchAsync(controller.create)
 );
 
+pharmacySubscriptionRouter.get('/due', (_req, res, next) => {
+  res.setHeader('Cache-Control', 'private, no-store'); next();
+}, requireOperationalPharmacy, catchAsync(controller.due));
+
 pharmacySubscriptionRouter.get('/', requireOperationalPharmacy, catchAsync(controller.list));
 
 pharmacySubscriptionRouter.put(

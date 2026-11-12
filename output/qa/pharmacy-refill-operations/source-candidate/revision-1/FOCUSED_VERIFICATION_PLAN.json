@@ -1,0 +1,191 @@
+{
+  "schema": "SD-PHARMACY-REFILL-FOCUSED-VERIFICATION-PLAN-1",
+  "status": "DATA_ONLY_SEVEN_PLANNED_SOURCE_CONTROLS_ZERO_EXECUTED",
+  "contractSha256": "8e25a0a350f6a441256f22a0fb8fabe64bcdd72ca3fcaf47ddf800f1ddb6dad1",
+  "sourcePins": {
+    "API_SCHEMAS.md": "948f1ef2c319d1206438f283f6e7116d0f83f9d02b66495074f9a535891e8951",
+    "src1/modules/pharmacySubscriptions/controller/index.ts": "7bb21a7ec9aaf8693fb2438a5800f7308d2978353c5ed1c95c0f46e60278a9de",
+    "src1/modules/pharmacySubscriptions/repository/index.ts": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+    "src1/modules/pharmacySubscriptions/routes/index.ts": "08dcc367a86f6ffc1e675e8a010fcc87ffb5ff5329fda4c29fc0c04cca0c834c",
+    "src1/modules/pharmacySubscriptions/services/index.ts": "3b22b92d88790c521616302d7827023e4ffa16eb25989a6b443152d0af0f9171",
+    "src1/modules/pharmacySubscriptions/types/index.ts": "aec8ae4c8d1728f7539e68543e6e97a178b21b8cccc426ed9e4d43f85860fc6e",
+    "src1/modules/pharmacySubscriptions/validation/index.ts": "1e4dcc64b270c9c8ee242d78af13f3736f2c063de6f8c223822aca7e87de91e4"
+  },
+  "sourceControls": [
+    {
+      "id": "OWNER_AND_SCALAR_FENCES_REMOVED",
+      "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+      "edits": [
+        {
+          "before": "pharmacyId: { $eq: new Types.ObjectId(scope) }, ",
+          "after": ""
+        },
+        {
+          "before": "{ $eq: [{ $type: '$pharmacyId' }, 'objectId'] },",
+          "after": "{ $eq: [1, 1] },"
+        },
+        {
+          "before": "refillObjectId(row.pharmacyId) !== pharmacyId || ",
+          "after": ""
+        }
+      ],
+      "assertion": "Returned subscription IDs are exactly the current pharmacy candidate subset; actual foreign canonical ID is forbidden.",
+      "counterexample": "Two operational pharmacies with interleaved valid due rows; own token/first page. Record actual foreign ID in HTTP response privately.",
+      "nominalSha256": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+      "plannedVariantSha256": "aeeb0252a7391596810388eb99b2835b13cf689838fa54e56311f753bf799209",
+      "sourceRecipeUniqueTargets": true,
+      "runtimeStatus": "NOT_RUN"
+    },
+    {
+      "id": "QUERY_ROW_BOUND_REMOVED",
+      "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+      "edits": [
+        {
+          "before": ".limit(query.limit + 1)",
+          "after": ".limit(0)"
+        }
+      ],
+      "assertion": "The completed actual DB read returns at most limit+1; a subsequent503 is not proof the query was bounded.",
+      "counterexample": "Owned fixture80 valid due rows, limit50. Record completed native/model result count before row guard; variant must read>51, not merely throw.",
+      "nominalSha256": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+      "plannedVariantSha256": "c6d57c5c990aeaed2da30e9b18508e5e2861c94714cd476e8dedc281b7417e57",
+      "sourceRecipeUniqueTargets": true,
+      "runtimeStatus": "NOT_RUN"
+    },
+    {
+      "id": "RAW_QUERY_ALLOWLIST_WEAKENED",
+      "path": "src1/modules/pharmacySubscriptions/validation/index.ts",
+      "edits": [
+        {
+          "before": "refillData(raw, ['through', 'limit', 'after'])",
+          "after": "refillData(raw, ['through', 'limit', 'after', 'pharmacyId'])"
+        }
+      ],
+      "assertion": "Extra owner key returns400 before repository dispatch; accepted ignored field with a real DB query is forbidden.",
+      "counterexample": "Valid own request plus foreign pharmacyId query. Nominal400/no dispatch; variant accepts and returns200 own data, exposing validation loss, not a foreign-scope claim.",
+      "nominalSha256": "1e4dcc64b270c9c8ee242d78af13f3736f2c063de6f8c223822aca7e87de91e4",
+      "plannedVariantSha256": "c6f5cd55a8a78b07172c96445c72c78060ae2dceb1951d2361cb8237be132507",
+      "sourceRecipeUniqueTargets": true,
+      "runtimeStatus": "NOT_RUN"
+    },
+    {
+      "id": "PATIENT_FIELD_LEAKED",
+      "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+      "edits": [
+        {
+          "before": "reminderChannel: 1, pausedUntil: 1 };",
+          "after": "reminderChannel: 1, pausedUntil: 1, userId: 1 };"
+        },
+        {
+          "before": "return { subscriptionId, nextRefillDate:",
+          "after": "return { ...{ userId: String(row.userId) }, subscriptionId, nextRefillDate:"
+        }
+      ],
+      "assertion": "Closed HTTP DTO keys exclude patient identity; actual synthetic userId in response is forbidden.",
+      "counterexample": "Owned valid subscription has actual userId; independently compare received field to seeded fixture user ID, not only schema/hash.",
+      "nominalSha256": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+      "plannedVariantSha256": "7578453bc943085e26e5fbe013be5c189e1db02f0d756e78e2d652deb35c618e",
+      "sourceRecipeUniqueTargets": true,
+      "runtimeStatus": "NOT_RUN"
+    },
+    {
+      "id": "UNDEFINED_RESUME_RESTORED",
+      "path": "src1/modules/pharmacySubscriptions/services/index.ts",
+      "edits": [
+        {
+          "before": "delete nextPayload.pausedUntil;",
+          "after": "nextPayload.pausedUntil = undefined;"
+        },
+        {
+          "before": "data.isActive === true\n      ? { $set: nextPayload, $unset: { pausedUntil: '' } }\n      : nextPayload",
+          "after": "nextPayload"
+        }
+      ],
+      "assertion": "Explicit resume really removes pausedUntil from persisted BSON and returned row; retained old pause is forbidden.",
+      "counterexample": "Seed paused false/future date, resume through real service+Mongoose then fresh native read; nominal missing field, variant retains it.",
+      "nominalSha256": "3b22b92d88790c521616302d7827023e4ffa16eb25989a6b443152d0af0f9171",
+      "plannedVariantSha256": "8917875bebcc0718330173f368c919a5077c7ae1ebe7797a62f8828299faac23",
+      "sourceRecipeUniqueTargets": true,
+      "runtimeStatus": "NOT_RUN"
+    },
+    {
+      "id": "SYMBOL_GETTER_GUARD_REGRESSED",
+      "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+      "edits": [
+        {
+          "before": "let refillObjectIdKey: symbol | undefined;\nfunction refillObjectId(value: unknown): string {\n  if (!value || typeof value !== 'object' || types.isProxy(value) || Object.getPrototypeOf(value) !== Types.ObjectId.prototype) throw refillUnavailable();\n  if (refillObjectIdKey === undefined) {\n    // BSON4.7.2 keeps its bytes under one module-private Symbol; do not identify it by its description.\n    const probe = new Types.ObjectId('000000000000000000000000');\n    const symbols = Object.getOwnPropertySymbols(probe);\n    if (symbols.length !== 1 || Reflect.ownKeys(probe).some(key => key !== symbols[0] && key !== '__id')) throw refillUnavailable();\n    refillObjectIdKey = symbols[0];\n  }\n  const keys = Reflect.ownKeys(value);\n  if (!keys.includes(refillObjectIdKey) || keys.some(key => key !== refillObjectIdKey && key !== '__id')) throw refillUnavailable();\n  for (const key of keys) {\n    const descriptor = Object.getOwnPropertyDescriptor(value, key);\n    if (!descriptor || !('value' in descriptor)) throw refillUnavailable();\n  }\n  const bytes = Object.getOwnPropertyDescriptor(value, refillObjectIdKey)!.value;\n  if (!bytes || typeof bytes !== 'object' || types.isProxy(bytes) || !Buffer.isBuffer(bytes) || Object.getPrototypeOf(bytes) !== Buffer.prototype) throw refillUnavailable();\n  const byteLength = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(Uint8Array.prototype), 'byteLength')!.get!;\n  if (Reflect.apply(byteLength, bytes, []) !== 12 || Reflect.ownKeys(bytes).length !== 12) throw refillUnavailable();\n  const owned = Buffer.alloc(12);\n  for (let i = 0; i < 12; i++) {\n    const descriptor = Object.getOwnPropertyDescriptor(bytes, String(i));\n    if (!descriptor || !('value' in descriptor) || !descriptor.enumerable || !Number.isInteger(descriptor.value) || descriptor.value < 0 || descriptor.value > 255) throw refillUnavailable();\n    owned[i] = descriptor.value;\n  }\n  const id = Reflect.apply(Buffer.prototype.toString, owned, ['hex']);\n  const cache = Object.getOwnPropertyDescriptor(value, '__id');\n  if (cache && cache.value !== id) throw refillUnavailable();\n  return id;\n}\n",
+          "after": "function refillObjectId(value: unknown): string {\n  if (!value || typeof value !== 'object' || types.isProxy(value) || Object.getPrototypeOf(value) !== Types.ObjectId.prototype ||\n    Object.values(Object.getOwnPropertyDescriptors(value)).some(d => !('value' in d))) throw refillUnavailable();\n  const id = Types.ObjectId.prototype.toHexString.call(value);\n  if (!/^[0-9a-f]{24}$/.test(id)) throw refillUnavailable();\n  return id;\n}\n"
+        }
+      ],
+      "assertion": "Descriptor-safe raw reply validation fails closed before supplied code/partial output.",
+      "counterexample": "A native Symbol getter is ACTUALLY invoked (>0) on hostile actual-source reply even if a later safe503 occurs; arbitrary exception alone is not detection.",
+      "nominalSha256": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+      "plannedVariantSha256": "afc37ee0d19da68fc106c0750b373a35f0e14043508ab7dd8a71f27711478174",
+      "sourceRecipeUniqueTargets": true,
+      "runtimeStatus": "NOT_RUN"
+    },
+    {
+      "id": "DENSE_ARRAY_GUARD_REGRESSED",
+      "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+      "edits": [
+        {
+          "before": "      if (!Array.isArray(rows) || types.isProxy(rows) || Object.getPrototypeOf(rows) !== Array.prototype) throw refillUnavailable();\n      const length = Object.getOwnPropertyDescriptor(rows, 'length');\n      if (!length || !('value' in length) || !Number.isSafeInteger(length.value) || length.value < 0 || length.value > query.limit + 1) throw refillUnavailable();\n      const keys = Reflect.ownKeys(rows);\n      if (keys.length !== length.value + 1 || keys[length.value] !== 'length') throw refillUnavailable();\n      let previous: Pick<DueRefillRow, 'nextRefillDate' | 'subscriptionId'> | undefined = query.after;\n      const mapped: DueRefillRow[] = [];\n      for (let index = 0; index < length.value; index++) {\n        const entry = Object.getOwnPropertyDescriptor(rows, String(index));\n        if (keys[index] !== String(index) || !entry || !('value' in entry) || !entry.enumerable) throw refillUnavailable();\n        const result = dueRefillRow(entry.value, scope, query.through);\n        if (previous && (result.nextRefillDate < previous.nextRefillDate || (result.nextRefillDate === previous.nextRefillDate &&\n          result.subscriptionId <= previous.subscriptionId))) throw refillUnavailable();\n        previous = result;\n        mapped.push(result);\n      }\n",
+          "after": "      if (!Array.isArray(rows) || rows.length > query.limit + 1) throw refillUnavailable();\n      let previous: Pick<DueRefillRow, 'nextRefillDate' | 'subscriptionId'> | undefined = query.after;\n      const mapped = rows.map(row => {\n        const result = dueRefillRow(row, scope, query.through);\n        if (previous && (result.nextRefillDate < previous.nextRefillDate || (result.nextRefillDate === previous.nextRefillDate &&\n          result.subscriptionId <= previous.subscriptionId))) throw refillUnavailable();\n        previous = result;\n        return result;\n      });\n"
+        }
+      ],
+      "assertion": "Descriptor-safe raw reply validation fails closed before supplied code/partial output.",
+      "counterexample": "Sparse returned array yields actual HTTP200 items containing null, or supplied map is ACTUALLY invoked; nominal503/no method call uses same source assertion.",
+      "nominalSha256": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+      "plannedVariantSha256": "4a4be14863aecad2eba00df21ff3261fe23d9c8f40e92d817d1bac953f50aaf8",
+      "sourceRecipeUniqueTargets": true,
+      "runtimeStatus": "NOT_RUN"
+    }
+  ],
+  "requiredGroups": [
+    "operational-role-and-scope-precedence",
+    "closed-query-calendar-cursor-and-no-dispatch",
+    "real-owner-date-id-page-lookahead-and-empty",
+    "closed-DTO-no-patient-fields-and-private-headers",
+    "malformed-projected-state-and-driver-safe503",
+    "real-resume-persisted-unset-repeat-and-nonresume-compatibility",
+    "actual-query-row-budget-and-index-capacity-limit-record",
+    "five-forbidden-effects-and-nominal-restorations",
+    "nativeBSON4-symbol-buffer-cache-and-plain-dense-array-regressions"
+  ],
+  "fixtureRequirement": "Freeze minimal reused admitted HTTP/real repository/Mongoose/Mongo fixture source, exact imports/models/provider cuts/receipts and observed diagnostics under separate source+run review. Do not evaluate root app or run historical suites. No fixture source or invocation authorized now.",
+  "limits": [
+    "Source text matches are not behavior proof",
+    "Query timeout does not prove cancellation or indexed capacity",
+    "Old list/security/writer behavior outside exact increment unchanged and not newly certified",
+    "Due list is not dispatch/clinical approval; patient/staff/client/owner/release remain separate"
+  ],
+  "execution": {
+    "compiler": "NOT_RUN",
+    "JoiHttp": "NOT_RUN",
+    "MongooseMongo": "NOT_RUN",
+    "provider": "NOT_RUN",
+    "sourceVariants": "NOT_RUN"
+  },
+  "previousPlanSha256": "93983d4ece1dba0b283a5100ac5783a60eb02b626f96f0c9edda841c3cfcdb11",
+  "rawReplyRegressionVectors": {
+    "positive": [
+      "Actual BSON4.7.2 ObjectId from owned Mongoose result with native private Symbol/12byteBuffer",
+      "Same actual native ObjectId with valid matching own __id cache",
+      "Dense ordinary native row arrays: empty, one, limit, limit+1 with valid lookahead"
+    ],
+    "objectIdDeniedBeforeInputCode": [
+      "Actual native Symbol accessor increments a fixture getter counter:503 with counter0",
+      "Extra string/symbol key, own id/toHexString/toString, custom prototype/proxy, missing/wrong native Symbol:503",
+      "Native Symbol data holds nonBuffer, Bufferproxy/subclass, wrong length, extra property or malformed indexed descriptor:503 without supplied byte conversion method",
+      "Present invalid/undefined/stale/uppercase/nonmatching __id cache:503; valid same bytes/cache remains positive"
+    ],
+    "arrayDeniedBeforeInputCode": [
+      "Sparse [hole] or hole only at lookahead:503, never200null/partial DTO",
+      "Own enumerable/nonenumerable map or Symbol.iterator/getter:503 with method/getter counter0",
+      "Index accessor/nonenumerable entry, extra string/symbol fields, proxy/subclass/non-native prototype or overbound length:503",
+      "All actual dense rows and lookahead remain validated and ordered; no input map/iterator method used"
+    ],
+    "evidenceBoundary": "Pure hostile-reply tests are separately labelled actual-source data-port controls, not stored BSON getter facts. Native positive profile/persistence/HTTP checks require the later admitted owned fixture. No vector executed now."
+  },
+  "originalFiveSourceControlsPreservedWithFreshPins": true
+}

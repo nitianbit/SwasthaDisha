@@ -1,0 +1,43 @@
+{
+  "schema": "SD-PHARMACY-REFILL-INITIAL-ACTUAL-SOURCE-DECISIONS-1",
+  "candidate": "8644d4ec9426d9b17dec10f1764a6a014adc5339",
+  "manifestSha256": "b46e9ad3a040001242247017856d869d3d58848d6199b37a6638a09ab6636891",
+  "patchSha256": "337ebb9df534b4f80d2f1f062c6904b67405aa580026e05b6f5ffc218d159d4d",
+  "decision": "REQUEST_CHANGES",
+  "reviewers": [
+    {
+      "agent": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "decision": "REQUEST_CHANGES",
+      "provenance": "Actual direct independent nonauthor message; complete7changed source/API files+contract/guard/model/BaseRepository,7sourcepins/exactpatch and5unique text controlrecipes/inverses inspected."
+    },
+    {
+      "agent": "/root",
+      "role": "Spec",
+      "decision": "REQUEST_CHANGES",
+      "inspection": "Complete exact7file production/API delta and actualunchanged service/authority/model/parser/repository context against fullcontract; independently identified symbol descriptor omission and confirmed primary BSON4implementation; independently confirms Array.map skips sparse entries and invokes input method."
+    }
+  ],
+  "findings": [
+    {
+      "id": "REFILL-SOURCE-R1",
+      "severity": "MEDIUM",
+      "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+      "line": 13,
+      "issue": "Object.values(Object.getOwnPropertyDescriptors(value)) omits Symbol-keyed descriptors, but BSON4 ObjectId owns Symbol(id) and native toHexString reads it and invokes its buffer toString. Malformed native-prototype slots/accessors can execute supplied code before safe503.",
+      "required": "Inspect all native own slots including symbols without getters; validate supported native12byte nonproxy byte representation and optional valid cache, reject extra/accessor/malformed data, use safe intrinsic conversion with no supplied methods. Preserve actual supported BSON4 scalar.",
+      "primarySource": "https://raw.githubusercontent.com/mongodb/js-bson/v4.7.2/src/objectid.ts"
+    },
+    {
+      "id": "REFILL-SOURCE-R2",
+      "severity": "MEDIUM",
+      "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+      "line": 60,
+      "issue": "Array.isArray/length then rows.map allows sparse holes to skip validation and return hole/null items with200; an own map method can execute supplied code.",
+      "required": "Bounded descriptor-safe dense native array traversal; every index own enumerable data, no input method/getter invocation. Reject malformedvector503 and retain allrow/lookahead/order checks."
+    }
+  ],
+  "otherwiseAligned": "Calendar/cursor/mandatoryscalarowner/simplecollation/keyset/rowbound/maxTimeMS/noPHI/no-store and sameupdateunset mechanism align. No unrelated legacywriter redesign requested.",
+  "execution": "All parser/compiler/Joi/HTTP/ODM/persistence/nativebuffer/sourcecontrol runtime NOT_RUN; no publicexploit or runtime success claimed, no invocation grant",
+  "originalContract": "8e25a0a350f6a441256f22a0fb8fabe64bcdd72ca3fcaf47ddf800f1ddb6dad1 unchanged"
+}

@@ -1,0 +1,25 @@
+{
+  "schema": "SD-PHARMACY-REFILL-ACTUAL-CONTRACT-DECISIONS-1",
+  "candidate": "9676009f9b30e6c5051e6bf76189bd97943c54cd",
+  "contractSha256": "8e25a0a350f6a441256f22a0fb8fabe64bcdd72ca3fcaf47ddf800f1ddb6dad1",
+  "decision": "APPROVE_IMPLEMENTATION_ONLY",
+  "reviewers": [
+    {
+      "agent": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "provenance": "Actual direct independent Codex message; full contract6modules/model/guard/centralmount/BaseRepository/sharedvalidation and24pins personally inspected."
+    },
+    {
+      "agent": "/root",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "inspection": "Complete contract and actual6modules/model/operational guard/central scope/update receiver;24current+baseline pins rehashed. Exact duequery/calendar/cursor/mandatoryscalarowner/projection/lookahead/closedDTO/maxTimeMS/no-store/error precedence and sameupdate$set/$unset resume match bounded design. No material finding."
+    }
+  ],
+  "authorExcluded": "/root/milestone_composition_r9",
+  "nonblockingNote": "One prose mention SOURCE_BINDINGS.json means actual CONTRACT_INPUTS.json named explicitly by frozen-input section; actual hashed map is unambiguous. Preserve reviewed contract bytes during source implementation.",
+  "scope": "Only6named subscription files+API_SCHEMAS, no model/DDL/auth/deps/start/providers/dispatch/money/stock; no functional module/fullP7 acceptance.",
+  "futureGates": "Two actual source reviews then separately reviewed focused fixture with real HTTP/ODM persistence and actual outcome/cleanup; index/capacity/staff/client/privacy/owner/C2/C3/release remain pending.",
+  "execution": "NOT_RUN; no command grant"
+}

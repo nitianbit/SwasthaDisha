@@ -1,0 +1,22 @@
+{
+  "schema": "SD-PHARMACY-REFILL-ROOT-INTEGRATION-BYTES-1",
+  "integrationParent": "eb28bffe428e3905dfdfbc279c4b11c0e67ead90",
+  "reviewedSourceCandidate": "7b72154506caa037101f490963ca4bbdca594018",
+  "peerEvidenceHead": "3a97784",
+  "reviewers": "ActualCustomerStandards+RootSpec APPROVE_SOURCE_ONLY in SOURCE_DECISIONS.json, not new review votes invented here",
+  "exactReviewedSourceAPIPaths": [
+    "API_SCHEMAS.md",
+    "src1/modules/pharmacySubscriptions/controller/index.ts",
+    "src1/modules/pharmacySubscriptions/repository/index.ts",
+    "src1/modules/pharmacySubscriptions/routes/index.ts",
+    "src1/modules/pharmacySubscriptions/services/index.ts",
+    "src1/modules/pharmacySubscriptions/types/index.ts",
+    "src1/modules/pharmacySubscriptions/validation/index.ts"
+  ],
+  "all7HashesMatchReviewedCandidate": true,
+  "everyMergedPathByteEqualsPeer": true,
+  "extraProductionPackageStartupChanges": false,
+  "R11": "Genuine review already captured/independently accepted atf200 snapshot; this newP7code/API change is separatelysource-reviewed and notclaimedcoveredbyR11.",
+  "execution": "No app/parser/ODM/HTTP/DB/provider here; requiredfocusedverification/indexcapacity/client/owner/C2/C3/release pending",
+  "scope": "Localsourceintegrationonly, not fullP7 dispatch or module acceptance"
+}

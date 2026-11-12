@@ -1,0 +1,136 @@
+{
+  "schema": "SD-PHARMACY-REFILL-FOCUSED-VERIFICATION-PLAN-1",
+  "status": "DATA_ONLY_NOT_EXECUTION_AUTHORITY",
+  "contractSha256": "8e25a0a350f6a441256f22a0fb8fabe64bcdd72ca3fcaf47ddf800f1ddb6dad1",
+  "sourcePins": {
+    "API_SCHEMAS.md": "948f1ef2c319d1206438f283f6e7116d0f83f9d02b66495074f9a535891e8951",
+    "src1/modules/pharmacySubscriptions/controller/index.ts": "7bb21a7ec9aaf8693fb2438a5800f7308d2978353c5ed1c95c0f46e60278a9de",
+    "src1/modules/pharmacySubscriptions/repository/index.ts": "199712c4e624aa47055dab00b245564aaf91ca7056e6d7c064d7383712ff46d6",
+    "src1/modules/pharmacySubscriptions/routes/index.ts": "08dcc367a86f6ffc1e675e8a010fcc87ffb5ff5329fda4c29fc0c04cca0c834c",
+    "src1/modules/pharmacySubscriptions/services/index.ts": "3b22b92d88790c521616302d7827023e4ffa16eb25989a6b443152d0af0f9171",
+    "src1/modules/pharmacySubscriptions/types/index.ts": "aec8ae4c8d1728f7539e68543e6e97a178b21b8cccc426ed9e4d43f85860fc6e",
+    "src1/modules/pharmacySubscriptions/validation/index.ts": "1e4dcc64b270c9c8ee242d78af13f3736f2c063de6f8c223822aca7e87de91e4"
+  },
+  "sourceControls": [
+    {
+      "id": "OWNER_AND_SCALAR_FENCES_REMOVED",
+      "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+      "edits": [
+        {
+          "before": "pharmacyId: { $eq: new Types.ObjectId(scope) }, ",
+          "after": ""
+        },
+        {
+          "before": "{ $eq: [{ $type: '$pharmacyId' }, 'objectId'] },",
+          "after": "{ $eq: [1, 1] },"
+        },
+        {
+          "before": "refillObjectId(row.pharmacyId) !== pharmacyId || ",
+          "after": ""
+        }
+      ],
+      "assertion": "Returned subscription IDs are exactly the current pharmacy candidate subset; actual foreign canonical ID is forbidden.",
+      "counterexample": "Two operational pharmacies with interleaved valid due rows; own token/first page. Record actual foreign ID in HTTP response privately.",
+      "nominalSha256": "199712c4e624aa47055dab00b245564aaf91ca7056e6d7c064d7383712ff46d6",
+      "plannedVariantSha256": "1a152357ffc3d1b543114190020c04b2f240ffa61bef5b0d98a402e584c31e84",
+      "sourceRecipeUniqueTargets": true,
+      "runtimeStatus": "NOT_RUN"
+    },
+    {
+      "id": "QUERY_ROW_BOUND_REMOVED",
+      "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+      "edits": [
+        {
+          "before": ".limit(query.limit + 1)",
+          "after": ".limit(0)"
+        }
+      ],
+      "assertion": "The completed actual DB read returns at most limit+1; a subsequent503 is not proof the query was bounded.",
+      "counterexample": "Owned fixture80 valid due rows, limit50. Record completed native/model result count before row guard; variant must read>51, not merely throw.",
+      "nominalSha256": "199712c4e624aa47055dab00b245564aaf91ca7056e6d7c064d7383712ff46d6",
+      "plannedVariantSha256": "be28d3dbc8d86e432ed113d71ce49164c2d5f0121c81d294cc30f4bcb6df79a7",
+      "sourceRecipeUniqueTargets": true,
+      "runtimeStatus": "NOT_RUN"
+    },
+    {
+      "id": "RAW_QUERY_ALLOWLIST_WEAKENED",
+      "path": "src1/modules/pharmacySubscriptions/validation/index.ts",
+      "edits": [
+        {
+          "before": "refillData(raw, ['through', 'limit', 'after'])",
+          "after": "refillData(raw, ['through', 'limit', 'after', 'pharmacyId'])"
+        }
+      ],
+      "assertion": "Extra owner key returns400 before repository dispatch; accepted ignored field with a real DB query is forbidden.",
+      "counterexample": "Valid own request plus foreign pharmacyId query. Nominal400/no dispatch; variant accepts and returns200 own data, exposing validation loss, not a foreign-scope claim.",
+      "nominalSha256": "1e4dcc64b270c9c8ee242d78af13f3736f2c063de6f8c223822aca7e87de91e4",
+      "plannedVariantSha256": "c6f5cd55a8a78b07172c96445c72c78060ae2dceb1951d2361cb8237be132507",
+      "sourceRecipeUniqueTargets": true,
+      "runtimeStatus": "NOT_RUN"
+    },
+    {
+      "id": "PATIENT_FIELD_LEAKED",
+      "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+      "edits": [
+        {
+          "before": "reminderChannel: 1, pausedUntil: 1 };",
+          "after": "reminderChannel: 1, pausedUntil: 1, userId: 1 };"
+        },
+        {
+          "before": "return { subscriptionId, nextRefillDate:",
+          "after": "return { ...{ userId: String(row.userId) }, subscriptionId, nextRefillDate:"
+        }
+      ],
+      "assertion": "Closed HTTP DTO keys exclude patient identity; actual synthetic userId in response is forbidden.",
+      "counterexample": "Owned valid subscription has actual userId; independently compare received field to seeded fixture user ID, not only schema/hash.",
+      "nominalSha256": "199712c4e624aa47055dab00b245564aaf91ca7056e6d7c064d7383712ff46d6",
+      "plannedVariantSha256": "19949411d1fc3ddbef8c436907d03a3a3dc5b921d91e056fd64bada0a208e3a8",
+      "sourceRecipeUniqueTargets": true,
+      "runtimeStatus": "NOT_RUN"
+    },
+    {
+      "id": "UNDEFINED_RESUME_RESTORED",
+      "path": "src1/modules/pharmacySubscriptions/services/index.ts",
+      "edits": [
+        {
+          "before": "delete nextPayload.pausedUntil;",
+          "after": "nextPayload.pausedUntil = undefined;"
+        },
+        {
+          "before": "data.isActive === true\n      ? { $set: nextPayload, $unset: { pausedUntil: '' } }\n      : nextPayload",
+          "after": "nextPayload"
+        }
+      ],
+      "assertion": "Explicit resume really removes pausedUntil from persisted BSON and returned row; retained old pause is forbidden.",
+      "counterexample": "Seed paused false/future date, resume through real service+Mongoose then fresh native read; nominal missing field, variant retains it.",
+      "nominalSha256": "3b22b92d88790c521616302d7827023e4ffa16eb25989a6b443152d0af0f9171",
+      "plannedVariantSha256": "8917875bebcc0718330173f368c919a5077c7ae1ebe7797a62f8828299faac23",
+      "sourceRecipeUniqueTargets": true,
+      "runtimeStatus": "NOT_RUN"
+    }
+  ],
+  "requiredGroups": [
+    "operational-role-and-scope-precedence",
+    "closed-query-calendar-cursor-and-no-dispatch",
+    "real-owner-date-id-page-lookahead-and-empty",
+    "closed-DTO-no-patient-fields-and-private-headers",
+    "malformed-projected-state-and-driver-safe503",
+    "real-resume-persisted-unset-repeat-and-nonresume-compatibility",
+    "actual-query-row-budget-and-index-capacity-limit-record",
+    "five-forbidden-effects-and-nominal-restorations"
+  ],
+  "fixtureRequirement": "Freeze minimal reused admitted HTTP/real repository/Mongoose/Mongo fixture source, exact imports/models/provider cuts/receipts and observed diagnostics under separate source+run review. Do not evaluate root app or run historical suites. No fixture source or invocation authorized now.",
+  "limits": [
+    "Source text matches are not behavior proof",
+    "Query timeout does not prove cancellation or indexed capacity",
+    "Old list/security/writer behavior outside exact increment unchanged and not newly certified",
+    "Due list is not dispatch/clinical approval; patient/staff/client/owner/release remain separate"
+  ],
+  "execution": {
+    "compiler": "NOT_RUN",
+    "JoiHttp": "NOT_RUN",
+    "MongooseMongo": "NOT_RUN",
+    "provider": "NOT_RUN",
+    "sourceVariants": "NOT_RUN"
+  }
+}
