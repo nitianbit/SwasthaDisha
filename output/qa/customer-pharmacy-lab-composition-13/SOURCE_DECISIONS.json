@@ -1,0 +1,45 @@
+{
+  "schema": "SD-CPL-ENROLLMENT-PRIVATE-COMPOSITION-1",
+  "integration": "9d60eb9a03ab6ffe819834c918ad2d1ca771ce95",
+  "merge": "b0d4e6cba3df734ee1593868b65fcd296af579d2",
+  "customerSourceCandidate": "e6334e8767ab4384e2e85e5540d5952024c8bee5",
+  "privateSourceCandidate": "26128ff90128a03a87bd811e814cc05234b13775",
+  "sourceFiles": {
+    "src1/modules/file/controller/index.ts": "4c19319089f0a5a141fc1473d54956dbdd4127c4b87b1dcca7bde011120ec57f",
+    "src1/modules/file/documentTypes.ts": "89c7f2f262367de830b7925a200ae2d0e6c08a6966305ccb96f344fcf0c7d070",
+    "src1/modules/file/documents.ts": "ad8a6bba2042dd6222d516dcd93c1473983a46ee9048742abf46674082b01276",
+    "src1/modules/file/model/index.ts": "44d8003d6324f44b4adba62428bbbb2661e988f60baf267e546ecb8a1923aa91",
+    "src1/modules/file/repository/index.ts": "c06a2c06d8451d6f8eb622b2e149315c5499df1287682a40068296bb02f76208",
+    "src1/modules/file/routes/index.ts": "2934b9f85bcadcfb9c29dfba3d37adbbcd641bac1e004e15b1fe3ffc4a9cd76f",
+    "src1/modules/file/services/index.ts": "37a1090fa9389a3120e7371f32c9180d34ec9dc3e38a9ce34b186611f7ac8e96",
+    "src1/modules/file/storage.ts": "09315a3816094d291655f9f64e55bce49b0387385c8aef0c863542faf53d46cb",
+    "src1/modules/file/validation/index.ts": "1d93adca55ef7665c8ee3dee95c9c38924f2e0b40d52e9df0a4402e96396b85b",
+    "src1/routes/index.ts": "9be841178931003004cc53a0285b5c849d82a82dbc798a4a0d38bf69396de6ea",
+    "src1/modules/auth/services/index.ts": "c522444ef80133c136a50d276ae64cdbaca8333049cca9723ff36d9f20bf3c48",
+    "src1/modules/auth/validation/index.ts": "752f049481df9de2587c386f8c44e5dc1548073295f36149a3974a3a9513af4c",
+    "API_SCHEMAS.md": "68ba65584b18ebbb3c02f7c7f3c114123fb18ffa53d94c2fb57f67ca95d197a2"
+  },
+  "decisions": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SOURCE_COMPOSITION_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/milestone_composition_r9",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SOURCE_COMPOSITION_ONLY",
+      "findings": []
+    }
+  ],
+  "evidence": "Both personally confirmed all13 reviewed hashes, disjoint source ownership and only approved central mount changes; no extra production/test/API changes.",
+  "runtime": "NOT_RUN; no runtime composition or final cross-module campaign",
+  "R10CoversTheseCandidates": false,
+  "S1Complete": false,
+  "customerContactComplete": false,
+  "moduleComplete": false,
+  "releaseApproved": false
+}
