@@ -1,9 +1,10 @@
 import { Service } from 'typedi';
-import { ClientSession, Model, Types, mongo } from 'mongoose';
+import { ClientSession, Model, PipelineStage, Types, mongo } from 'mongoose';
 import { createHash } from 'crypto';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
 import {
   IPharmacyOrder, OrderQueryParams, PharmacyRecoveryReceipt, PharmacyRecoveryRequest,
+  PharmacyRecoveryWorklistPage, PharmacyRecoveryWorklistRow,
   PHARMACY_RECOVERY_ORDER_LABELS, PHARMACY_RECOVERY_PAYMENT_LABELS,
 } from '@/modules/pharmacyOrders/types';
 import { AppError } from '@/modules/common/types';
@@ -132,6 +133,77 @@ export class PharmacyOrderRepository extends BaseRepository<IPharmacyOrder> {
     this.assertRecoverySession(session, transaction);
     if (!Object.prototype.hasOwnProperty.call(current, 'recoveryRequest')) return recoveryUnavailable();
     return recoveryReceipt(current.recoveryRequest, id, customerId);
+  }
+
+  async findRecoveryRequests(pharmacyId: unknown, query: unknown): Promise<PharmacyRecoveryWorklistPage> {
+    if (!recoveryId(pharmacyId)) {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
+    }
+    const invalidQuery = () => new AppError({
+      status: 400, code: 'VALIDATION_ERROR', message: 'Invalid recovery worklist query',
+    });
+    if (!query || typeof query !== 'object' || Array.isArray(query) ||
+      ![Object.prototype, null].includes(Object.getPrototypeOf(query))) throw invalidQuery();
+    for (const key of Reflect.ownKeys(query)) {
+      const descriptor = Object.getOwnPropertyDescriptor(query, key)!;
+      if (typeof key !== 'string' || !['page', 'limit'].includes(key) ||
+        !descriptor.enumerable || !('value' in descriptor)) throw invalidQuery();
+    }
+    const requestedPage = Object.getOwnPropertyDescriptor(query, 'page')?.value;
+    const requestedLimit = Object.getOwnPropertyDescriptor(query, 'limit')?.value;
+    const page = requestedPage === undefined ? 1 : requestedPage;
+    const limit = requestedLimit === undefined ? 20 : requestedLimit;
+    if (typeof page !== 'number' || !Number.isSafeInteger(page) || page < 1 || page > 1000 ||
+      typeof limit !== 'number' || !Number.isSafeInteger(limit) || limit < 1 || limit > 50) throw invalidQuery();
+    const skip = (page - 1) * limit;
+    const pipeline: PipelineStage[] = [
+      {
+        $match: {
+          pharmacyId: new Types.ObjectId(pharmacyId),
+          recoveryRequest: { $exists: true },
+          $expr: { $eq: [{ $type: '$pharmacyId' }, 'objectId'] },
+        },
+      },
+      { $project: { _id: 1, pharmacyId: 1, customerId: 1, recoveryRequest: 1 } },
+      {
+        $facet: {
+          metadata: [{ $count: 'total' }],
+          data: [{ $sort: { _id: 1 } }, { $skip: skip }, { $limit: limit }],
+        },
+      },
+    ];
+    const result = await PharmacyOrderModel.aggregate<unknown>(pipeline)
+      .option({ maxTimeMS: 2000, allowDiskUse: false }).exec();
+    if (!Array.isArray(result) || result.length !== 1) return recoveryUnavailable();
+    const facet = recoveryShape(result[0], ['metadata', 'data']);
+    const metadata = facet.metadata;
+    const rows = facet.data;
+    if (!Array.isArray(metadata) || metadata.length > 1 || !Array.isArray(rows) || rows.length > limit) return recoveryUnavailable();
+    let total = 0;
+    if (metadata.length) {
+      const count = recoveryShape(metadata[0], ['total']);
+      if (typeof count.total !== 'number' || !Number.isSafeInteger(count.total) || count.total < 0) return recoveryUnavailable();
+      total = count.total;
+    }
+    if (rows.length !== Math.min(limit, Math.max(0, total - skip))) return recoveryUnavailable();
+    const data = rows.map((value: unknown): PharmacyRecoveryWorklistRow => {
+      const row = recoveryShape(value, ['_id', 'pharmacyId', 'customerId', 'recoveryRequest']);
+      if (!(row._id instanceof Types.ObjectId) || !(row.customerId instanceof Types.ObjectId) ||
+        !(row.pharmacyId instanceof Types.ObjectId) || row.pharmacyId.toHexString() !== pharmacyId) return recoveryUnavailable();
+      const orderId = row._id.toHexString();
+      const receipt = recoveryReceipt(row.recoveryRequest, orderId, row.customerId.toHexString());
+      return {
+        orderId,
+        operationId: receipt.operationId,
+        status: receipt.status,
+        requestedAt: receipt.requestedAt,
+        amountMinor: receipt.amountMinor,
+        currency: receipt.currency,
+        instrument: receipt.instrument,
+        destinationPolicy: receipt.destinationPolicy,
+      };
+    });
+    return { data, page, limit, total, totalPages: Math.ceil(total / limit) };
   }
 
   private applyCommonFilters(query: Record<string, unknown>, filter: OrderQueryParams): Record<string, unknown> {

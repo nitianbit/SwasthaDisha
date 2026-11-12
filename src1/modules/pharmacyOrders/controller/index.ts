@@ -3,7 +3,8 @@ import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { PharmacyOrderService } from '@/modules/pharmacyOrders/services';
 import { AuthRequest } from '@/modules/middleware/auth';
-import { MarkOrderPaidRequest, OrderQueryParams } from '@/modules/pharmacyOrders/types';
+import { MarkOrderPaidRequest, OrderQueryParams, PharmacyRecoveryWorklistQuery } from '@/modules/pharmacyOrders/types';
+import { AppError } from '@/modules/common/types';
 
 export class PharmacyOrderController {
   private service: PharmacyOrderService;
@@ -33,6 +34,24 @@ export class PharmacyOrderController {
     const data = await this.service.getCustomerRecovery(req.user, req.params.id);
     res.setHeader('Cache-Control', 'private, no-store');
     res.status(200).json({ success: true, data });
+  };
+
+  getRecoveryRequests = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const query: PharmacyRecoveryWorklistQuery = {
+      page: req.query.page === undefined ? 1 : Number(req.query.page),
+      limit: req.query.limit === undefined ? 20 : Number(req.query.limit),
+    };
+    const result = await this.service.getRecoveryRequests(req.user?.pharmacyId, query);
+    const body = JSON.stringify({
+      success: true,
+      data: result.data,
+      pagination: { page: result.page, limit: result.limit, total: result.total, totalPages: result.totalPages },
+    });
+    if (Buffer.byteLength(body, 'utf8') >= 64 * 1024) {
+      throw new AppError({ status: 503, code: 'PHARMACY_RECOVERY_UNAVAILABLE', message: 'Pharmacy recovery is unavailable' });
+    }
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(200).type('application/json').send(body);
   };
 
   getById = async (req: AuthRequest, res: Response, _next: NextFunction) => {

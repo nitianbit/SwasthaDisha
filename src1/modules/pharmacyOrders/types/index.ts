@@ -116,6 +116,23 @@ export interface PharmacyRecoveryReceipt {
   destinationPolicy: 'original_instrument';
 }
 
+export interface PharmacyRecoveryWorklistQuery {
+  page?: number;
+  limit?: number;
+}
+
+export interface PharmacyRecoveryWorklistRow extends PharmacyRecoveryReceipt {
+  orderId: string;
+}
+
+export interface PharmacyRecoveryWorklistPage {
+  data: PharmacyRecoveryWorklistRow[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 export interface IPharmacyOrder {
   _id?: string;
   orderNumber?: string;

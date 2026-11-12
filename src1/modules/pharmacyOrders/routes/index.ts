@@ -14,6 +14,7 @@ import {
   cancelOrderSchema,
   markOrderPaidSchema,
   orderQuerySchema,
+  recoveryWorklistQuerySchema,
   idParamSchema,
 } from '@/modules/pharmacyOrders/validation';
 
@@ -41,6 +42,13 @@ pharmacyOrderRouter.post(
 pharmacyOrderRouter.get(
   '/:id/recovery-request',
   catchAsync(controller.getCustomerRecovery)
+);
+
+pharmacyOrderRouter.get(
+  '/recovery-requests',
+  requireOperationalPharmacy,
+  validate(recoveryWorklistQuerySchema, 'query'),
+  catchAsync(controller.getRecoveryRequests)
 );
 
 pharmacyOrderRouter.get(
