@@ -20,14 +20,14 @@
     },
     {
       "path": "src1/modules/user/contactIndexReader.ts",
-      "sha256": "86c61f2daa544b2c1a5e2ef237019fd76e122644aa182240fd116cd63444d411",
-      "bytes": 23171
+      "sha256": "e3e91b712e04e4d3fd9806c8fc44f3c2331033bcf95b98a118f123a546ecfef6",
+      "bytes": 23513
     }
   ],
   "patch": {
     "path": "output/qa/customer-contact-index/source-candidate/SOURCE.patch",
-    "sha256": "af81d43fb5411937946d48f4126bf8fb4c6f356a1b5059fb7afbae12e58b40fb",
-    "bytes": 41279,
+    "sha256": "67224e271c6dedbd4e6cdcc2f562c7eefeacb2e5927f9505c6dd1f1d98de87c2",
+    "bytes": 41625,
     "format": "git cached binary full-index unified=0; exactly the three new source files"
   },
   "unchangedInputPins": [
@@ -125,7 +125,7 @@
     "application": "NOT_RUN",
     "provider": "NOT_RUN"
   },
-  "independentSourceReview": "PENDING",
+  "independentSourceReview": "PENDING_TWO_FRESH_NONAUTHOR_DECISIONS_AFTER_CONTACT_INDEX_S1_CORRECTION",
   "metadataRuntimeReady": false,
   "contactFeatureComplete": false,
   "productionInvocationAdmitted": false,
@@ -139,5 +139,21 @@
     "client rollout and protected notices",
     "actual native diagnostic and cleanup evidence",
     "owner and release decisions"
-  ]
+  ],
+  "previousCandidate": {
+    "commit": "d694d8903b14820ed03f2c9c1abd77a96cc97482",
+    "archivedEvidence": "output/qa/customer-contact-index/source-candidate/initial-d694d890",
+    "sourceDisposition": "REQUEST_CHANGES",
+    "finding": "CONTACT-INDEX-S1: BSON4.7.2 deserializes subtype4 UUID to exact BSON.UUID.prototype with four own fields; initial reader admitted only Binary.prototype",
+    "reviewProvenance": "Actual nonauthor /root/milestone_composition_r9 Spec finding delivered to author and Root; Root independently confirmed and withdrew earlier source approval pending strict correction. Formal reviewer decision artifacts are Root-owned."
+  },
+  "amendment": {
+    "scope": "Reader only: exact BSON.UUID.prototype+four datafields (__id undefined) permitted only for declared collection info.uuid; copied to fresh Binary subtype4/16 bytes. No arbitrary subclasses/other paths/subtypes admitted.",
+    "details": "output/qa/customer-contact-index/source-candidate/AMENDMENT.md",
+    "patch": {
+      "path": "output/qa/customer-contact-index/source-candidate/UUID_CORRECTION.patch",
+      "sha256": "6bd5966a838d421c4a2e2fc53e4b9581e9472f0ee9a3d0c581165f4475701e2a",
+      "bytes": 1306
+    }
+  }
 }

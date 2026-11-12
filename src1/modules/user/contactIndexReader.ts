@@ -71,9 +71,13 @@ function buffer(v: unknown, max: number): Buffer {
   return copy;
 }
 function binary(v: unknown, uuid = false): NativeBinary {
-  native(v, mongo.Binary.prototype);
+  const proto = Object.getPrototypeOf(object(v));
+  const nativeUuid = uuid && proto === mongo.BSON.UUID.prototype;
+  if (proto !== mongo.Binary.prototype && !nativeUuid) fail('UNSUPPORTED_PROFILE');
+  const allowed = ['buffer', 'sub_type', 'position', ...(nativeUuid ? ['__id'] : [])];
   const keys = Reflect.ownKeys(v as object);
-  if (keys.length !== 3 || !keys.every(k => ['buffer', 'sub_type', 'position'].includes(k as string))) fail('UNSUPPORTED_PROFILE');
+  if (keys.length !== allowed.length || !keys.every(k => typeof k === 'string' && allowed.includes(k)) ||
+    (nativeUuid && own(v, '__id') !== undefined)) fail('UNSUPPORTED_PROFILE');
   const subtype = own(v, 'sub_type'); const position = own(v, 'position');
   if (typeof subtype !== 'number' || !Number.isInteger(subtype) || subtype < 0 || subtype > 255 ||
     typeof position !== 'number' || !Number.isSafeInteger(position) || position < 0 || position > 256 ||
@@ -150,7 +154,7 @@ function replyCopy(raw: unknown, remaining: number, deadline: number, kind: 'col
     if (proto === mongo.Timestamp.prototype) {
       if (p !== 'operationTime' && p !== '$clusterTime/clusterTime') fail('UNSUPPORTED_PROFILE'); take(8); return long(o, true);
     }
-    if (proto === mongo.Binary.prototype) {
+    if (proto === mongo.Binary.prototype || proto === mongo.BSON.UUID.prototype) {
       const isUuid = kind === 'collections' && /^cursor\/firstBatch\/[0-9]+\/info\/uuid$/.test(p);
       if (!isUuid && p !== '$clusterTime/signature/hash') fail('UNSUPPORTED_PROFILE');
       const b = binary(o, isUuid); take(5 + b.position); return b;
