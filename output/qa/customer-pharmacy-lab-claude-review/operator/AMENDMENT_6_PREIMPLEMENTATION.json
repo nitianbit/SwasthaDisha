@@ -1,0 +1,24 @@
+{
+  "contractSha256": "9f817d1a34fa73903adc755a236cb95fa305fe1f1c4947b477e484e786803689",
+  "author": "/root",
+  "decisions": [
+    {
+      "reviewer": "/root/policy_standards",
+      "role": "Standards",
+      "decision": "APPROVE_PREIMPLEMENTATION_OFFLINE_REPAIR_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/claude_review_5_packet",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    }
+  ],
+  "rootAction": "AUTHORIZE_BOUNDED_SUPERVISOR_REPAIR_AND_PINNED_PYTHON_OFFLINE_FAKE_CHECKS_ONLY",
+  "sourceBaselineSha256": "53b9f75c5f8be840bfb8d67857bb62152eeacb99054b240ed1d23243888207da",
+  "testBaselineSha256": "49887b78e24e687d66fefed02dba56b7c89f4b0fd9b249426ea3cef474d9417b",
+  "python": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+  "pythonSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "allowedChecks": "Existing offline fake suite plus contract focused regressions, zero real Popen/Node/model/app/DB/provider. Preserve exact R5 source/tests inertly. No live authorization or receipt."
+}
