@@ -1,0 +1,21 @@
+{
+  "recipeSha256": "9207133a18b2dd122f1f9c6e324a89fed03afdd7a494f7b2ae150c6e787405c5",
+  "inlineBodySha256": "616a503ca737ed5e75a7e06fb85cd56b00228464f3547de1c8bf5d6762f11a03",
+  "author": "/root/claude_review_5_packet",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "ONE_READ_ONLY_LOCAL_DOCKER_PREFLIGHT",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "ONE_READ_ONLY_LOCAL_DOCKER_PREFLIGHT",
+      "findings": []
+    }
+  ],
+  "scope": "Exactly one reviewed heredoc invocation: at most fixed local info and exact cached-image inspection. No container/daemon/pull/context mutation or unrelated resources. Fresh private blank config and per-command25second/64KiBstreamcaps. Both reviewers independently inspected actual code, recipe/code/pins, current socket metadata and historical cached image metadata. No retry; result metadata only, no C2/C3/SDK/app admission.",
+  "status": "TWO_ACTUAL_REVIEWS_APPROVE_ONE_INVOCATION_PENDING_ROOT_FINAL_HASH_CHECK"
+}

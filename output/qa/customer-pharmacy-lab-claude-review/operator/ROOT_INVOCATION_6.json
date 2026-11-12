@@ -1,0 +1,47 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-ROOT-INVOCATION-6",
+  "python": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+  "pythonSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "argv": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+    "-I",
+    "-B",
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/customer-pharmacy-lab-claude-review/operator/supervisor.py",
+    "--live"
+  ],
+  "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab",
+  "reviewers": [
+    {
+      "agent": "/root/policy_standards",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    },
+    {
+      "agent": "/root/booking_read_spec",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    }
+  ],
+  "sourceFreezeSha256": "8454eadf80efbf3d4983a8371e0db14ca5a2a0b3abed0e101caa91c91035a99e",
+  "membersVerified": [
+    "codex-lead",
+    "claude-reviewer"
+  ],
+  "teamActive": true,
+  "challengeEnqueue": {
+    "messageId": "msg_1794471051061_l8ihbhic",
+    "timestamp": "2026-11-12T08:10:51.063Z",
+    "acknowledged": true,
+    "challengeSha256": "d70690104e3459d88c5178579b0eb645ae91a3f3a9e335a2bf95023fcbba2e0f"
+  },
+  "privateExclusionsVerified": true,
+  "privateLocalGitPatterns": [
+    "/output/qa/customer-pharmacy-lab-claude-review/revision-6/private-203d42e1-6703-4755-93f9-78e269e55948/",
+    "/output/qa/customer-pharmacy-lab-claude-review/revision-6/once-203d42e1-6703-4755-93f9-78e269e55948.json",
+    "/output/qa/customer-pharmacy-lab-claude-review/operator/LIVE_APPROVAL_6.json"
+  ],
+  "approvalSha256": "446415a26e05861661e873c3e40e6fce4117cb1fcc83dac5a11af2c4035c523b",
+  "requestedModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "nativeExtensionACK": false,
+  "actualReviewAccepted": false
+}
