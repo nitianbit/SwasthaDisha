@@ -1,0 +1,349 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-PACKET-MANIFEST-2",
+  "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+  "contextHead": "7387a99c709c5b63f0e600c84ab5a88c2be2f5ba",
+  "controllerSha256": "bbe2d226d0192b91389675dd5e66f2b385dc157bba0010715bbe4b29b0e2848b",
+  "contractSha256": "52a6f33e76db70a2a7ae8d29d2f45714107d750911fc2d4b2cdcef27840cdf4c",
+  "packetSha256": "4c00d95ffb4a7ab4b277e02ffd6aadfc02cf35b3f06fe4f24ab3f74ba8bf0020",
+  "packetBytes": 98837,
+  "fileCount": 20,
+  "files": [
+    {
+      "path": "documentation/planning/implementation/CUSTOMER_BOOKING_READ_CONTRACT_DRAFT.md",
+      "origin": "git",
+      "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+      "wholeFileSha256": "52a6f33e76db70a2a7ae8d29d2f45714107d750911fc2d4b2cdcef27840cdf4c",
+      "wholeFileBytes": 7069,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 47,
+          "sha256": "52a6f33e76db70a2a7ae8d29d2f45714107d750911fc2d4b2cdcef27840cdf4c"
+        }
+      ]
+    },
+    {
+      "path": "documentation/planning/implementation/CUSTOMER_PHARMACY_LAB_EXECUTION.md",
+      "origin": "git",
+      "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+      "wholeFileSha256": "3bfc2bedca676a641b1def8f8538042eedfd1a5cacc99d9ea23bf8d2532f42ef",
+      "wholeFileBytes": 4858,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 27,
+          "sha256": "3bfc2bedca676a641b1def8f8538042eedfd1a5cacc99d9ea23bf8d2532f42ef"
+        }
+      ]
+    },
+    {
+      "path": "documentation/planning/SYSTEM_DESIGN.md",
+      "origin": "git",
+      "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+      "wholeFileSha256": "cbd899f6fb442b13db28c389143b529b90da364165dc17291cc829814810bc84",
+      "wholeFileBytes": 112050,
+      "complete": false,
+      "excerpts": [
+        {
+          "startLine": 25,
+          "endLine": 40,
+          "sha256": "9783a038e3d835c0684cf9230bb1e3044ca3c023f7ed3063fa9574c81f5875ad"
+        },
+        {
+          "startLine": 111,
+          "endLine": 140,
+          "sha256": "bfb9446593e038e52c18648e349f59072965b8540f441c794e4043ba283a0343"
+        }
+      ]
+    },
+    {
+      "path": "documentation/planning/implementation/USER_ROUTE_AUTHORITY_CONTRACT.md",
+      "origin": "git",
+      "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+      "wholeFileSha256": "9f68e4abb5c08e5795a0216341939a4d87a7682662be990058cbae366281ea99",
+      "wholeFileBytes": 12462,
+      "complete": false,
+      "excerpts": [
+        {
+          "startLine": 23,
+          "endLine": 53,
+          "sha256": "812409c6e8b0d648a54f0f2299a1c5eb840bbaf6c6fcef265b17bcd822195880"
+        }
+      ]
+    },
+    {
+      "path": "src1/modules/bookings/controller/index.ts",
+      "origin": "git",
+      "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+      "wholeFileSha256": "bbe2d226d0192b91389675dd5e66f2b385dc157bba0010715bbe4b29b0e2848b",
+      "wholeFileBytes": 15212,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 520,
+          "sha256": "bbe2d226d0192b91389675dd5e66f2b385dc157bba0010715bbe4b29b0e2848b"
+        }
+      ]
+    },
+    {
+      "path": "src1/modules/bookings/routes/index.ts",
+      "origin": "git",
+      "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+      "wholeFileSha256": "b2ed40c971e35ceb28eeccb8b491bcf7c4b2dcaf35a7267c783a8345760e3cfb",
+      "wholeFileBytes": 3171,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 120,
+          "sha256": "b2ed40c971e35ceb28eeccb8b491bcf7c4b2dcaf35a7267c783a8345760e3cfb"
+        }
+      ]
+    },
+    {
+      "path": "src1/modules/bookings/services/index.ts",
+      "origin": "git",
+      "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+      "wholeFileSha256": "d32c2a8a7e0af52d6e062e29c82e7fee87dcb6dcdfe4488e89e7d09c4cc2c8cf",
+      "wholeFileBytes": 64313,
+      "complete": false,
+      "excerpts": [
+        {
+          "startLine": 1233,
+          "endLine": 1252,
+          "sha256": "50e8a9920f737c57ab72fc645b3a1623a38af4048f465a5273b55442912bd59b"
+        },
+        {
+          "startLine": 1669,
+          "endLine": 1671,
+          "sha256": "fdf68dda8d1eeaf10691ac663b9dd302680a07e56e8796339ad295669bedbc83"
+        }
+      ]
+    },
+    {
+      "path": "src1/modules/bookings/repository/index.ts",
+      "origin": "git",
+      "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+      "wholeFileSha256": "d54ebba522cd290589296918eb2dcb4f7609e42d836ef3f23dfb89114b375713",
+      "wholeFileBytes": 7555,
+      "complete": false,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 26,
+          "sha256": "6104f79c81f675e90dd71bb924480c51f98e78515f8da414ca86c2274a50280c"
+        },
+        {
+          "startLine": 99,
+          "endLine": 105,
+          "sha256": "89b1e6e87d8233df9792539026818f268676acaaf5ecf92a0e7cf9e65e5da2d6"
+        }
+      ]
+    },
+    {
+      "path": "src1/modules/bookings/validation/index.ts",
+      "origin": "git",
+      "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+      "wholeFileSha256": "ce9743b4cc50af6b230089c0ff0523f490f8685c6fbb48cc475f4b8e52e6f728",
+      "wholeFileBytes": 17214,
+      "complete": false,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 10,
+          "sha256": "7830dbebe72f0cdce196b550f09eef1513a76921a5a48fab54dfacb30b326690"
+        },
+        {
+          "startLine": 431,
+          "endLine": 543,
+          "sha256": "556cfa34e815a70a16d51fccbc243d5b360d30501f9832bb4adfe02913f7ab71"
+        }
+      ]
+    },
+    {
+      "path": "src1/modules/middleware/auth.ts",
+      "origin": "git",
+      "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+      "wholeFileSha256": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+      "wholeFileBytes": 8706,
+      "complete": false,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 68,
+          "sha256": "567500dab40da364957f1a9d8f7c243da051d744e0d99c1b97b06b99fe78ff83"
+        }
+      ]
+    },
+    {
+      "path": "src1/modules/common/repository/BaseRepository.ts",
+      "origin": "git",
+      "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+      "wholeFileSha256": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+      "wholeFileBytes": 2494,
+      "complete": false,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 60,
+          "sha256": "73e32e021d496283a35f187eb3e442bb821b908a3eebe7866fd50aa820174ab8"
+        }
+      ]
+    },
+    {
+      "path": "src1/routes/index.ts",
+      "origin": "git",
+      "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+      "wholeFileSha256": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056",
+      "wholeFileBytes": 6624,
+      "complete": false,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 16,
+          "sha256": "3b4cd6449739d3e1729c25c5481046b961e83a3f9bac587e29cda0c69c468e78"
+        },
+        {
+          "startLine": 60,
+          "endLine": 68,
+          "sha256": "e3cb576d69ffd1e3d9aba0f7d017ea77528aa6b037ed6e7c4d77c051edfeb5a7"
+        }
+      ]
+    },
+    {
+      "path": "output/qa/customer-booking-read/SOURCE_DECISIONS.json",
+      "origin": "git",
+      "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+      "wholeFileSha256": "cbc95ebd41abf9ae00a659b5116abaac46d52bacfd4e991ebd2df92a484d36e2",
+      "wholeFileBytes": 1264,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 30,
+          "sha256": "cbc95ebd41abf9ae00a659b5116abaac46d52bacfd4e991ebd2df92a484d36e2"
+        }
+      ]
+    },
+    {
+      "path": "output/qa/customer-booking-read/source/FREEZE.json",
+      "origin": "git",
+      "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+      "wholeFileSha256": "edf28b4ae36a3eb8bae7322c325a3837d2c9b7d241eae588f0091e8de8b09746",
+      "wholeFileBytes": 1995,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 21,
+          "sha256": "edf28b4ae36a3eb8bae7322c325a3837d2c9b7d241eae588f0091e8de8b09746"
+        }
+      ]
+    },
+    {
+      "path": "output/qa/customer-booking-read/source/controller.diff",
+      "origin": "git",
+      "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+      "wholeFileSha256": "2265e8b055645f34492f0ecc9ab99061d70b40c45cd478badf08741c73d30101",
+      "wholeFileBytes": 2837,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 90,
+          "sha256": "2265e8b055645f34492f0ecc9ab99061d70b40c45cd478badf08741c73d30101"
+        }
+      ]
+    },
+    {
+      "path": "output/qa/customer-booking-read/source/source-verification.json",
+      "origin": "git",
+      "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+      "wholeFileSha256": "d03ebb9c8d0f3f68f43d3c6078026b1e8f97cf573c08078b621ef3bb0c216313",
+      "wholeFileBytes": 7592,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 232,
+          "sha256": "d03ebb9c8d0f3f68f43d3c6078026b1e8f97cf573c08078b621ef3bb0c216313"
+        }
+      ]
+    },
+    {
+      "path": "output/qa/customer-booking-read/source/source-check.py",
+      "origin": "git",
+      "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+      "wholeFileSha256": "534861ba978fa8284bbb43a4628a656c716c976587e2511d157fc432ae72dc35",
+      "wholeFileBytes": 10351,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 117,
+          "sha256": "534861ba978fa8284bbb43a4628a656c716c976587e2511d157fc432ae72dc35"
+        }
+      ]
+    },
+    {
+      "path": "output/qa/customer-booking-read/source/README.md",
+      "origin": "git",
+      "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+      "wholeFileSha256": "c4e35dd3299b5cfd945b2e3f6695708b99dec152a7726f8242bdaeb5d4749a5a",
+      "wholeFileBytes": 4224,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 21,
+          "sha256": "c4e35dd3299b5cfd945b2e3f6695708b99dec152a7726f8242bdaeb5d4749a5a"
+        }
+      ]
+    },
+    {
+      "path": "output/qa/customer-booking-read/source/execution-receipts.json",
+      "origin": "git",
+      "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+      "wholeFileSha256": "0b0af6004829e98196b6ac2c46e49a7fdb7081bde5eff1a72c85e29516e43aae",
+      "wholeFileBytes": 1467,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 46,
+          "sha256": "0b0af6004829e98196b6ac2c46e49a7fdb7081bde5eff1a72c85e29516e43aae"
+        }
+      ]
+    },
+    {
+      "path": "owner-direction.md",
+      "origin": "current-session-owner-direction-forwarded-by-root",
+      "sourceCommit": "CURRENT_SESSION_NOT_GIT",
+      "wholeFileSha256": "ca5ddbe14c8f67f7c8001e6d04fbf1983c8cce67b6a8988d6596bcbf06f2de95",
+      "wholeFileBytes": 657,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 1,
+          "sha256": "ca5ddbe14c8f67f7c8001e6d04fbf1983c8cce67b6a8988d6596bcbf06f2de95"
+        }
+      ]
+    }
+  ],
+  "modelRequests": 0,
+  "authStatusRequests": 0,
+  "applicationImports": 0,
+  "priorSevenSha256": {
+    "installed-metadata.json": "4d87296b15aba30a8d72c782d503eee0ea5058ea462eaded711b41f7464495c8",
+    "packet.json": "30e6732d0aa661ac85751ee6e2d6232cbcec8bef0d08e203e9aad5973c67b77f",
+    "recipe.json": "28381061f61e90adc291921a1a120efe62ee66dae46089abe94a8918c99a9e44",
+    "README.md": "3484de52104d2ed9f7b1fab82bdac2a5246c1340237c795295f11b6ac52c66b5",
+    "manifest.json": "9603603dd976cba94a858d43d72a3bbb683dbb5e0d8aa87c408086ee9d1d7e10",
+    "verification.json": "f5a53ef8b32330d1583ca2140b65bccd2b82bf419aaf2f4db0452068bdd23ad2",
+    "mcp-config.json": "a612d678b74998efe9b9d91c029d7f66731ff4fb8e5e096e41f07243369743b0"
+  }
+}

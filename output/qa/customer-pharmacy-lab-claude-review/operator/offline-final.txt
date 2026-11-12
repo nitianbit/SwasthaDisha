@@ -1,0 +1,36 @@
+test_native_identity_change_withholds_signal (offline_final.NativeHelperTests.test_native_identity_change_withholds_signal) ... ok
+test_native_rejects_ambiguous_child_before_argument_read (offline_final.NativeHelperTests.test_native_rejects_ambiguous_child_before_argument_read) ... ok
+test_native_rejects_child_older_than_parent (offline_final.NativeHelperTests.test_native_rejects_child_older_than_parent) ... ok
+test_native_rejects_detached_child_before_argument_read (offline_final.NativeHelperTests.test_native_rejects_detached_child_before_argument_read) ... ok
+test_native_rejects_unowned_child_arguments (offline_final.NativeHelperTests.test_native_rejects_unowned_child_arguments) ... ok
+test_native_selects_only_exact_owned_chain (offline_final.NativeHelperTests.test_native_selects_only_exact_owned_chain) ... ok
+test_native_start_has_exact_vector_env_and_private_group (offline_final.NativeHelperTests.test_native_start_has_exact_vector_env_and_private_group) ... ok
+test_approval_requires_exact_binding_and_two_nonauthors (offline_final.SupervisorTests.test_approval_requires_exact_binding_and_two_nonauthors) ... ok
+test_blocking_io_is_retried (offline_final.SupervisorTests.test_blocking_io_is_retried) ... ok
+test_cleanup_signal_identity_recheck_failure_withholds_signal (offline_final.SupervisorTests.test_cleanup_signal_identity_recheck_failure_withholds_signal) ... ok
+test_default_has_no_native_effect (offline_final.SupervisorTests.test_default_has_no_native_effect) ... ok
+test_exclusive_claim_and_private_file_modes (offline_final.SupervisorTests.test_exclusive_claim_and_private_file_modes) ... ok
+test_first_failure_survives_cleanup_identity_error (offline_final.SupervisorTests.test_first_failure_survives_cleanup_identity_error) ... ok
+test_first_failure_survives_finalization_error (offline_final.SupervisorTests.test_first_failure_survives_finalization_error) ... ok
+test_frame_bound_and_original_failure_preserved (offline_final.SupervisorTests.test_frame_bound_and_original_failure_preserved) ... ok
+test_identity_change_does_not_signal_changed_pids (offline_final.SupervisorTests.test_identity_change_does_not_signal_changed_pids) ... ok
+test_ignored_term_requires_exact_kill (offline_final.SupervisorTests.test_ignored_term_requires_exact_kill) ... ok
+test_live_requires_receipt_before_any_native_effect (offline_final.SupervisorTests.test_live_requires_receipt_before_any_native_effect) ... ok
+test_observation_failure_hung_child_held_handle_escalates (offline_final.SupervisorTests.test_observation_failure_hung_child_held_handle_escalates) ... ok
+test_observation_failure_retains_handle_and_closes_it (offline_final.SupervisorTests.test_observation_failure_retains_handle_and_closes_it) ... ok
+test_output_failure_still_escalates_hung_owned_child (offline_final.SupervisorTests.test_output_failure_still_escalates_hung_owned_child) ... ok
+test_output_finalization_error_cannot_mark_capture (offline_final.SupervisorTests.test_output_finalization_error_cannot_mark_capture) ... ok
+test_partial_frame_rejected (offline_final.SupervisorTests.test_partial_frame_rejected) ... ok
+test_partial_writes_and_simultaneous_output_draining (offline_final.SupervisorTests.test_partial_writes_and_simultaneous_output_draining) ... ok
+test_regular_rejects_symlink_and_private_wrong_mode (offline_final.SupervisorTests.test_regular_rejects_symlink_and_private_wrong_mode) ... ok
+test_replaced_output_inode_rejected_and_claim_kept (offline_final.SupervisorTests.test_replaced_output_inode_rejected_and_claim_kept) ... ok
+test_selector_setup_failure_still_cleans_owned_process (offline_final.SupervisorTests.test_selector_setup_failure_still_cleans_owned_process) ... ok
+test_source_drift_prevents_start (offline_final.SupervisorTests.test_source_drift_prevents_start) ... ok
+test_stderr_bound_caps_private_capture (offline_final.SupervisorTests.test_stderr_bound_caps_private_capture) ... ok
+test_stdout_bound_caps_private_capture (offline_final.SupervisorTests.test_stdout_bound_caps_private_capture) ... ok
+test_timeout_escalation_bounded_and_not_success (offline_final.SupervisorTests.test_timeout_escalation_bounded_and_not_success) ... ok
+
+----------------------------------------------------------------------
+Ran 31 tests in 0.014s
+
+OK

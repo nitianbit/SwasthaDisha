@@ -1,0 +1,36 @@
+{
+  "schema": "SD-CLAUDE-REVISION2-OFFLINE-VERIFICATION-1",
+  "result": "PREPARED_ONLY_OFFLINE_CHECKS_PASS",
+  "command": [
+    "python3",
+    "-I",
+    "-B",
+    "output/qa/customer-pharmacy-lab-claude-review/revision-2/verify-preparation.py"
+  ],
+  "observedExitCode": 0,
+  "checks": 34,
+  "syntheticNegativeCount": 20,
+  "checkerSha256": "29e01ec4ac6675cfc9726724e2f64670015ccd69fcf9676a95a2c8eba6c25659",
+  "packetSha256": "4c00d95ffb4a7ab4b277e02ffd6aadfc02cf35b3f06fe4f24ab3f74ba8bf0020",
+  "packetBytes": 98837,
+  "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+  "controllerSha256": "bbe2d226d0192b91389675dd5e66f2b385dc157bba0010715bbe4b29b0e2848b",
+  "requestedModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "initialAttempt": {
+    "exitCode": 1,
+    "cause": "Offline checker looked for revision1 sessionId key; revision1 stores it only as final argv element. Corrected only revision2 checker and reran."
+  },
+  "actualModelCalls": 0,
+  "authStatusChecks": 0,
+  "mailboxCalls": 0,
+  "appImports": 0,
+  "clientProcessChecks": 0,
+  "limitations": [
+    "No live supervisor supplied; OPERATOR_PLAN.md is a concrete plan requiring implementation and independent exact invocation review.",
+    "Synthetic normalized evidence is not a supported-native-schema or actual ACK/effort/process-cleanup proof.",
+    "Effective model unobserved; effective effort UNPROVEN.",
+    "Fresh challenge not enqueued; exclusive claim/output paths not allocated."
+  ],
+  "priorSevenPreserved": true
+}

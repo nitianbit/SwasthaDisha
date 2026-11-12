@@ -1,0 +1,30 @@
+{
+  "schema": "SD-CURRENT-SUPERVISOR-FIRST-FAKE-FAILURE-1",
+  "originalCommand": [
+    "python3",
+    "-I",
+    "-B",
+    "output/qa/customer-pharmacy-lab-claude-review/operator/test_supervisor.py"
+  ],
+  "exitCode": 1,
+  "tests": 24,
+  "passes": 22,
+  "errors": 2,
+  "failingTests": [
+    "test_exclusive_claim_and_private_file_modes",
+    "test_replaced_output_inode_rejected_and_claim_kept"
+  ],
+  "errorCode": "OUTPUT_IDENTITY",
+  "cause": "APFS directory link count changed when regular children were created; initial directory identity included st_nlink.",
+  "sourceSha256": "ed78d0dc19a3ac9f9521f688cff11e6b2dba273a2264c0fbdacb9c09664e1651",
+  "testsSha256": "b18f9dd7f5beafec79185140857394f3a68b053fe6b705257c8a3875b6991b67",
+  "originalOwnedFixtureCleanup": {
+    "contextManagersReturnedDuringUnwind": true,
+    "cleanupExceptionObserved": false,
+    "exactPathsRetained": false,
+    "independentExactAbsenceProof": "NOT_CAPTURED_ON_ORIGINAL_RUN"
+  },
+  "modelRequests": 0,
+  "authStatusChecks": 0,
+  "nativeClientProcesses": 0
+}

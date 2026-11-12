@@ -1,0 +1,35 @@
+{
+  "schema": "SD-CURRENT-SUPERVISOR-OFFLINE-RUN-1",
+  "label": "final",
+  "exitCode": 0,
+  "tests": 31,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "fixtures": [
+    {
+      "path": "/var/folders/d4/cg1dnqfx7gq6y21yr0tz_mp80000gn/T/tmpzox5sfdl",
+      "absent": true
+    },
+    {
+      "path": "/var/folders/d4/cg1dnqfx7gq6y21yr0tz_mp80000gn/T/tmphemzhfoa",
+      "absent": true
+    },
+    {
+      "path": "/var/folders/d4/cg1dnqfx7gq6y21yr0tz_mp80000gn/T/tmpsi2afkhf",
+      "absent": true
+    },
+    {
+      "path": "/var/folders/d4/cg1dnqfx7gq6y21yr0tz_mp80000gn/T/tmpiavpya7a",
+      "absent": true
+    }
+  ],
+  "exactOwnedFixtureAbsence": true,
+  "transcriptSha256": "e2e46ab079c5eeda726b84cba81357dfab9c5c54e6a320cd4fbbeeff25d606e7",
+  "modelCalls": 0,
+  "authChecks": 0,
+  "clientProcesses": 0,
+  "nativeMetadataCommands": 0,
+  "networkCalls": 0,
+  "applicationImports": 0
+}

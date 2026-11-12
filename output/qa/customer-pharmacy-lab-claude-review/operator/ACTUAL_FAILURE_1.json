@@ -1,0 +1,110 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-ACTUAL-FAILURE-1",
+  "sessionId": "5acf037f-d9f2-4156-9fbc-0ecfd045ea65",
+  "packetSha256": "4c00d95ffb4a7ab4b277e02ffd6aadfc02cf35b3f06fe4f24ab3f74ba8bf0020",
+  "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+  "requestedModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "clientKind": "local-bundled-CLI",
+  "nativeExtensionACK": false,
+  "actualModelReview": false,
+  "actualInferenceTokens": 0,
+  "actualToolCalls": 0,
+  "actualCostUsd": 0,
+  "observedAssistantModel": "<synthetic>",
+  "observedAssistantError": "authentication_failed",
+  "safeErrorText": "Not logged in \u00b7 Please run /login",
+  "resultSubtype": "success",
+  "resultIsError": true,
+  "supervisorStatus": "FAILED_OR_UNRESOLVED",
+  "firstFailure": "CHILD_EXIT",
+  "exitCode": 1,
+  "elapsedSeconds": 4.361,
+  "inputBytesWritten": 98837,
+  "outputBytes": {
+    "stderr": 0,
+    "stdout": 3940
+  },
+  "effectiveEffort": "UNPROVEN",
+  "claim": "CONSUMED_RETAINED",
+  "rawOutputs": "PRIVATE_AND_GIT_EXCLUDED",
+  "rawTranscriptSha256": "8128186f09a746f7c39cf49943ca749ef59df46b38c883a54d66ec80179c9049",
+  "privateStateSha256": "901050210352b11638e37ea181a7248a11abe900d203efefc577e9a2f1603955",
+  "cleanup": {
+    "capturedIdentities": {
+      "adapter": {
+        "executable": "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+        "group": 64404,
+        "parent": 64404,
+        "pid": 64425,
+        "started": "Thu Nov 12 10:57:47 2026"
+      },
+      "cli": {
+        "executable": "/Users/shubham/.vscode/extensions/anthropic.claude-code-2.1.322-darwin-arm64/resources/native-binary/claude",
+        "group": 64404,
+        "parent": 64386,
+        "pid": 64404,
+        "started": "Thu Nov 12 10:57:46 2026"
+      },
+      "ruflo": {
+        "executable": "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+        "group": 64404,
+        "parent": 64425,
+        "pid": 64430,
+        "started": "Thu Nov 12 10:57:47 2026"
+      }
+    },
+    "recordedAbsent": {
+      "adapter": true,
+      "cli": true,
+      "ruflo": true
+    },
+    "groupEmpty": true,
+    "signals": [],
+    "errors": [],
+    "rootFreshExactPidReadback": {
+      "pids": [
+        64404,
+        64425,
+        64430
+      ],
+      "psExit": 1,
+      "empty": true
+    },
+    "rootFreshGroupReadback": {
+      "group": 64404,
+      "pgrepExit": 1,
+      "empty": true
+    }
+  },
+  "postreviews": [
+    {
+      "reviewer": "/root/booking_read_spec",
+      "decision": "FAILURE_REVIEWED",
+      "limitation": "Additional reviewer OS observation blocked by sandbox; does not claim own successful absence check."
+    },
+    {
+      "reviewer": "/root/claude_review_recipe_standards",
+      "decision": "FAILURE_REVIEWED"
+    }
+  ],
+  "metadataDiagnosis": {
+    "inheritedOriginalAndDurableAuth": true,
+    "cleanAuthWithAndWithoutRestricted": false,
+    "secureStorageAndCustomOAuthSelectorsPresent": false,
+    "keychainAccountSelectorEquality": true,
+    "securityHelperExecutableEquality": true,
+    "cleanPlusPublicMacIdentityGroupAuth": true,
+    "cleanPlusOrdinaryPathsOnlyAuth": false,
+    "publicIdentityGroupNames": [
+      "USER",
+      "LOGNAME",
+      "SECURITYSESSIONID",
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "individualCulpritEstablished": false,
+    "credentialsRead": false,
+    "loginOrAccountChanged": false,
+    "modelRetryApproved": false
+  }
+}

@@ -1,0 +1,67 @@
+test_approval_requires_exact_binding_and_two_nonauthors (offline_initial-failure-replay.SupervisorTests.test_approval_requires_exact_binding_and_two_nonauthors) ... ok
+test_blocking_io_is_retried (offline_initial-failure-replay.SupervisorTests.test_blocking_io_is_retried) ... ok
+test_cleanup_signal_identity_recheck_failure_withholds_signal (offline_initial-failure-replay.SupervisorTests.test_cleanup_signal_identity_recheck_failure_withholds_signal) ... ok
+test_default_has_no_native_effect (offline_initial-failure-replay.SupervisorTests.test_default_has_no_native_effect) ... ok
+test_exclusive_claim_and_private_file_modes (offline_initial-failure-replay.SupervisorTests.test_exclusive_claim_and_private_file_modes) ... ERROR
+test_first_failure_survives_cleanup_identity_error (offline_initial-failure-replay.SupervisorTests.test_first_failure_survives_cleanup_identity_error) ... ok
+test_first_failure_survives_finalization_error (offline_initial-failure-replay.SupervisorTests.test_first_failure_survives_finalization_error) ... ok
+test_frame_bound_and_original_failure_preserved (offline_initial-failure-replay.SupervisorTests.test_frame_bound_and_original_failure_preserved) ... ok
+test_identity_change_does_not_signal_changed_pids (offline_initial-failure-replay.SupervisorTests.test_identity_change_does_not_signal_changed_pids) ... ok
+test_ignored_term_requires_exact_kill (offline_initial-failure-replay.SupervisorTests.test_ignored_term_requires_exact_kill) ... ok
+test_live_requires_receipt_before_any_native_effect (offline_initial-failure-replay.SupervisorTests.test_live_requires_receipt_before_any_native_effect) ... ok
+test_observation_failure_hung_child_held_handle_escalates (offline_initial-failure-replay.SupervisorTests.test_observation_failure_hung_child_held_handle_escalates) ... ok
+test_observation_failure_retains_handle_and_closes_it (offline_initial-failure-replay.SupervisorTests.test_observation_failure_retains_handle_and_closes_it) ... ok
+test_output_failure_still_escalates_hung_owned_child (offline_initial-failure-replay.SupervisorTests.test_output_failure_still_escalates_hung_owned_child) ... ok
+test_output_finalization_error_cannot_mark_capture (offline_initial-failure-replay.SupervisorTests.test_output_finalization_error_cannot_mark_capture) ... ok
+test_partial_frame_rejected (offline_initial-failure-replay.SupervisorTests.test_partial_frame_rejected) ... ok
+test_partial_writes_and_simultaneous_output_draining (offline_initial-failure-replay.SupervisorTests.test_partial_writes_and_simultaneous_output_draining) ... ok
+test_regular_rejects_symlink_and_private_wrong_mode (offline_initial-failure-replay.SupervisorTests.test_regular_rejects_symlink_and_private_wrong_mode) ... ok
+test_replaced_output_inode_rejected_and_claim_kept (offline_initial-failure-replay.SupervisorTests.test_replaced_output_inode_rejected_and_claim_kept) ... ERROR
+test_selector_setup_failure_still_cleans_owned_process (offline_initial-failure-replay.SupervisorTests.test_selector_setup_failure_still_cleans_owned_process) ... ok
+test_source_drift_prevents_start (offline_initial-failure-replay.SupervisorTests.test_source_drift_prevents_start) ... ok
+test_stderr_bound_caps_private_capture (offline_initial-failure-replay.SupervisorTests.test_stderr_bound_caps_private_capture) ... ok
+test_stdout_bound_caps_private_capture (offline_initial-failure-replay.SupervisorTests.test_stdout_bound_caps_private_capture) ... ok
+test_timeout_escalation_bounded_and_not_success (offline_initial-failure-replay.SupervisorTests.test_timeout_escalation_bounded_and_not_success) ... ok
+
+======================================================================
+ERROR: test_exclusive_claim_and_private_file_modes (offline_initial-failure-replay.SupervisorTests.test_exclusive_claim_and_private_file_modes)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/customer-pharmacy-lab-claude-review/operator/initial-failure/test_supervisor.py", line 269, in test_exclusive_claim_and_private_file_modes
+    store=s.PrivateFiles(r);store.reserve()
+                            ~~~~~~~~~~~~~^^
+  File "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/customer-pharmacy-lab-claude-review/operator/initial-failure/supervisor.py", line 177, in reserve
+    self.check()
+    ~~~~~~~~~~^^
+  File "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/customer-pharmacy-lab-claude-review/operator/initial-failure/supervisor.py", line 181, in check
+    need(self.directory is not None and self.identity(os.fstat(self.directory)) == self.directory_identity,
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+         'OUTPUT_IDENTITY')
+         ^^^^^^^^^^^^^^^^^^
+  File "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/customer-pharmacy-lab-claude-review/operator/initial-failure/supervisor.py", line 37, in need
+    raise Stop(code)
+current_supervisor.Stop: OUTPUT_IDENTITY
+
+======================================================================
+ERROR: test_replaced_output_inode_rejected_and_claim_kept (offline_initial-failure-replay.SupervisorTests.test_replaced_output_inode_rejected_and_claim_kept)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/customer-pharmacy-lab-claude-review/operator/initial-failure/test_supervisor.py", line 279, in test_replaced_output_inode_rejected_and_claim_kept
+    store=s.PrivateFiles(r);store.reserve()
+                            ~~~~~~~~~~~~~^^
+  File "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/customer-pharmacy-lab-claude-review/operator/initial-failure/supervisor.py", line 177, in reserve
+    self.check()
+    ~~~~~~~~~~^^
+  File "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/customer-pharmacy-lab-claude-review/operator/initial-failure/supervisor.py", line 181, in check
+    need(self.directory is not None and self.identity(os.fstat(self.directory)) == self.directory_identity,
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+         'OUTPUT_IDENTITY')
+         ^^^^^^^^^^^^^^^^^^
+  File "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/customer-pharmacy-lab-claude-review/operator/initial-failure/supervisor.py", line 37, in need
+    raise Stop(code)
+current_supervisor.Stop: OUTPUT_IDENTITY
+
+----------------------------------------------------------------------
+Ran 24 tests in 0.011s
+
+FAILED (errors=2)

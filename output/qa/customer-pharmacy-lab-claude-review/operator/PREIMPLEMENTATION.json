@@ -1,0 +1,24 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-OPERATOR-PREIMPLEMENTATION-1",
+  "planSha256": "504d541eaeb23a53ce556e57fd15fef6636b12cbd0f3ddb95715f8f117610822",
+  "preparedFreezeSha256": "467e0503bdf2c166fa9886d18c53536a623c461f53a015f5161ff4032e251495",
+  "decisions": [
+    {
+      "reviewer": "/root/claude_review_recipe_standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_OPERATOR_IMPLEMENTATION_ONLY"
+    },
+    {
+      "reviewer": "/root/booking_read_spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_OPERATOR_IMPLEMENTATION_ONLY"
+    }
+  ],
+  "rootAction": "AUTHORIZE_COMPACT_SUPERVISOR_AND_OFFLINE_FAKE_CHECKS_ONLY",
+  "liveInvocationApproved": false,
+  "modelRequests": 0,
+  "requestedModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "nativeExtensionACK": false
+}

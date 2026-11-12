@@ -1,0 +1,11 @@
+{
+  "stage": "ROOT_METADATA_RECEIPT_PREPARATION",
+  "error": "FileNotFoundError for absent .git/info/exclude before any helper write",
+  "helperWritesBeforeFailure": 0,
+  "clientStarts": 0,
+  "modelRequests": 0,
+  "receiptCreated": false,
+  "onceClaimAllocated": false,
+  "challengeAlreadyEnqueued": true,
+  "correction": "Create the standard optional local Git info/exclude file before adding the exact approved private-output patterns."
+}

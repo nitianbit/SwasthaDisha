@@ -1,0 +1,18 @@
+{
+  "schema": "SD-CLAUDE-REVISION2-PREPARED-FREEZE-1",
+  "files": {
+    "packet.json": "4c00d95ffb4a7ab4b277e02ffd6aadfc02cf35b3f06fe4f24ab3f74ba8bf0020",
+    "recipe.json": "427aca8a58fa169b3e8279fa59f6b4b069b8921efdf16f556eda3e8fe8ed9ce1",
+    "challenge.json": "ff78b2a567def147ad80d0ccd87acc142ad85a03c933515d7d5e622a47396a3b",
+    "README.md": "f2dc6f9cd1ce628f0b6d38dec1988cc4fe20f29eadc0adc08c2eb70fa729eaeb",
+    "OPERATOR_PLAN.md": "504d541eaeb23a53ce556e57fd15fef6636b12cbd0f3ddb95715f8f117610822",
+    "manifest.json": "2a939e4491540eea685073db09d36b5dd83ffc4c1510a688d4afa6da57678d21",
+    "verification.json": "ded653f2562cb7e83a7bbcb0af563f4d4894e5b47c4b02e97fc88a7420d225d5",
+    "verify-preparation.py": "29e01ec4ac6675cfc9726724e2f64670015ccd69fcf9676a95a2c8eba6c25659",
+    "owner-direction.md": "ca5ddbe14c8f67f7c8001e6d04fbf1983c8cce67b6a8988d6596bcbf06f2de95",
+    "mcp-config.json": "a612d678b74998efe9b9d91c029d7f66731ff4fb8e5e096e41f07243369743b0",
+    "prior-seven.sha256.json": "6d490c04b63fd059f0d8cf49b277a48b3407a0f82d667b7837f7777d503e3b11"
+  },
+  "writesStopped": true,
+  "liveInvocationAuthorizedByThisFreeze": false
+}

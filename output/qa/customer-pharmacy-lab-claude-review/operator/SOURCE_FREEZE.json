@@ -1,0 +1,22 @@
+{
+  "schema": "SD-CURRENT-SUPERVISOR-SOURCE-FREEZE-1",
+  "author": "/root/claude_current_review_packet",
+  "files": {
+    "supervisor.py": "0612fcb5603c64f1fbaaf14d65ad309d4ba2fd55d98cacb22ae768b952f3be40",
+    "PREIMPLEMENTATION.json": "07c55b4ac75f5ad1196eb13e5b37a1a896116e01c638f92df0ad21c56b4ccb78",
+    "README.md": "ad3788bc2a5a1ed17f591c92e280644652b839ae363301dc1d066b8a439dab13",
+    "test_supervisor.py": "6ff2d823370645583f9c6aad1d58bb8daf3e8d6575e0c4492547a16645bc4dfb",
+    "offline-final.txt": "e2e46ab079c5eeda726b84cba81357dfab9c5c54e6a320cd4fbbeeff25d606e7",
+    "verification.json": "183de4692f022da0735eda27a3e9e6717c68e58077e2ef031148f90c3ee77073",
+    "record_offline.py": "a4d3c1175771c45f9a184ad6b8e77a3d27be40c9fa0bca42bae485a6d8ecb01d",
+    "approval-template.json": "4ed79f387313cb089b7b030987cd643aaad9ed8b126fc46bf00602738edf8c75",
+    "offline-final.json": "7042afd99d825c1d2820647a47dbef4191ac875ce2b3dc38a44473573289367f",
+    "initial-failure/observation.json": "081868941eda092f5335fb3c99414f0b16dbbffd14ad98587685074229c846cc",
+    "initial-failure/supervisor.py": "ed78d0dc19a3ac9f9521f688cff11e6b2dba273a2264c0fbdacb9c09664e1651",
+    "initial-failure/test_supervisor.py": "b18f9dd7f5beafec79185140857394f3a68b053fe6b705257c8a3875b6991b67",
+    "initial-failure/offline-initial-failure-replay.json": "28532a1bb54e89cc7270ddef0f09555c47d712bc94021c391a1b26d045127efc",
+    "initial-failure/offline-initial-failure-replay.txt": "0163428b36023e656bd2e9fd3d00f53e28bbb6799a69c786f0499315b4d4cac6"
+  },
+  "writesStopped": true,
+  "liveInvocationApproved": false
+}

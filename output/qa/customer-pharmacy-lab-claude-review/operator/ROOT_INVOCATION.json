@@ -1,0 +1,50 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-ROOT-INVOCATION-1",
+  "python": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+  "pythonSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "argv": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+    "-I",
+    "-B",
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/customer-pharmacy-lab-claude-review/operator/supervisor.py",
+    "--live"
+  ],
+  "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab",
+  "reviewers": [
+    {
+      "agent": "/root/claude_review_recipe_standards",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    },
+    {
+      "agent": "/root/booking_read_spec",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    }
+  ],
+  "membersVerified": [
+    "codex-lead",
+    "claude-reviewer"
+  ],
+  "teamActive": true,
+  "challengeEnqueue": {
+    "messageId": "msg_1794461150814_in7ljrxb",
+    "timestamp": "2026-11-12T05:25:50.814Z",
+    "team": "swasthadisha-local",
+    "from": "codex-lead",
+    "to": "claude-reviewer",
+    "acknowledged": true,
+    "challengeSha256": "ff78b2a567def147ad80d0ccd87acc142ad85a03c933515d7d5e622a47396a3b"
+  },
+  "privateExclusionsVerified": true,
+  "privateLocalGitPatterns": [
+    "/output/qa/customer-pharmacy-lab-claude-review/revision-2/private-5acf037f-d9f2-4156-9fbc-0ecfd045ea65/",
+    "/output/qa/customer-pharmacy-lab-claude-review/revision-2/once-5acf037f-d9f2-4156-9fbc-0ecfd045ea65.json",
+    "/output/qa/customer-pharmacy-lab-claude-review/operator/LIVE_APPROVAL.json"
+  ],
+  "approvalSha256": "5dd377ca453940a114bdea025ff63ea7f537229949c89f4ed4bac904b0514011",
+  "modelRequestsBeforeInvocation": 0,
+  "nativeExtensionACK": false,
+  "actualReviewAccepted": false,
+  "requestedModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN"
+}

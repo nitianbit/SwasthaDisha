@@ -1,0 +1,24 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-PREPARATION-VERIFICATION-1",
+  "result": "PREPARED_ONLY",
+  "packetSha256": "30e6732d0aa661ac85751ee6e2d6232cbcec8bef0d08e203e9aad5973c67b77f",
+  "packetBytes": 51628,
+  "fileCount": 12,
+  "contractSha256": "52a6f33e76db70a2a7ae8d29d2f45714107d750911fc2d4b2cdcef27840cdf4c",
+  "sourceCommit": "2a26c6b5dfaca710ab3377ef78730c7ce9d1e9c1",
+  "modelRequests": 0,
+  "authStatusRequests": 0,
+  "nativeHelpProbes": 1,
+  "helpProbeBeforeInterruption": true,
+  "postInterruptionNativeProbes": 0,
+  "mailboxCalls": 0,
+  "appImports": 0,
+  "limitations": [
+    "No launching operator supplied",
+    "Startup/managed policy admission unproven",
+    "Applicable native stream schema unadmitted",
+    "Effective model/effort unobserved",
+    "No valid current IDE session established",
+    "Live challenge/exact invocation/output ownership pending"
+  ]
+}

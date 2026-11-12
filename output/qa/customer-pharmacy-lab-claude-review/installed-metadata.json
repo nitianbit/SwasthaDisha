@@ -1,0 +1,56 @@
+{
+  "schema": "SD-INSTALLED-CLAUDE-STATIC-METADATA-1",
+  "clientSha256": "a9d237949db816a0b7afd88a9a8e1df36b3a597a30f5a41d1c0539eb180a3450",
+  "observedHelp": {
+    "exitCode": 0,
+    "stdoutBytes": 22344,
+    "stderrBytes": 0,
+    "description": "Earlier single metadata-only --help call in this task; raw output not persisted; no repeat after interruption",
+    "ideFlagSupported": true
+  },
+  "fragments": [
+    {
+      "needle": "vi=[\"low\",\"medium\",\"high\",\"xhigh\",\"max\"]",
+      "offset": 261429307,
+      "found": true,
+      "excerpt": "vi=[\"low\",\"medium\",\"high\",\"xhigh\",\"max\"];function trt(e,n){return vi.indexOf(e)>vi.indexOf(n)}var H6=\"May use excessive tokens resulting in long response times or overthinking. Use sparingly for the hardest tasks.\";var FM=/^(?:Read|Edit)\\((?:\\.\\/)?!/;function wWt(e){return e===void 0||e===!1?e:!0}var WJ=p(()=>[{path:[\"allowManagedPermissi"
+    },
+    {
+      "needle": "new Ps(\"--effort <level>\"",
+      "offset": 282094254,
+      "found": true,
+      "excerpt": "new Ps(\"--effort <level>\",`Effort level for the current session (${vi.join(\", \")})`).argParser((y)=>{let{level:E,warning:H}=C$t(y);if(H!==void 0)U3(H,{stderrPrefix:\"Warning: \"});return E})).addOption(new Ps(\"--fast-mode <on|off>\").argParser((y)=>y===\"on\"||y===\"off\"?y:void 0).hideHelp()).option(\"--agent <agent>\",\"Agent for t"
+    },
+    {
+      "needle": "function C$t(e)",
+      "offset": 265660970,
+      "found": true,
+      "excerpt": "function C$t(e){let n=CF(e);if(n!==void 0)return{level:n,warning:void 0};let r=bRe(e);if(r!==void 0)return{level:r,warning:void 0};return{level:void 0,warning:`Unknown --effort value '${e}' \\u2014 ignoring it and using the default effort. Valid values: ${vi.join(\", \")}.`}}function Zq(e){if(e===void 0||e===null||e="
+    },
+    {
+      "needle": "--max-turns <turns>",
+      "offset": 130218184,
+      "found": true,
+      "excerpt": "--max-turns <turns>\u0000�\u0000\u0000�eUw\u0000Maximum number of agentic turns in non-interactive mode. This will early exit the conversation after the specified number of turns. (only works with --print)\u0000\u0000\u0000\u0019\u0000\u0000�\\�h\u0000--max-budget-usd <amount>\u0000\u0000\u0000E\u0000\u0000�Y��\u0000Maximum dollar amount to spend on API calls (only works with --print)\u0000\u0000\u0000\u0016\u0000\u0000�^x�\u0000--task-"
+    },
+    {
+      "needle": "--permission-prompts <target>",
+      "offset": 130220224,
+      "found": true,
+      "excerpt": "--permission-prompts <target>\u0000\u0000\u0000�\u0000\u0000��]\u0007\u0000Who answers permission prompts with --print: \"host\" (the SDK host or --permission-prompt-tool) or \"none\" (nobody: anything that would prompt is denied automatically; the permission mode still decides everything else)\u0018\u0000\u0000��X\u0003\u0000--system-prompt <prompt>$\u0000\u0000�m+�\u0000System prompt to use for the sess"
+    },
+    {
+      "needle": "--restricted",
+      "offset": 127819796,
+      "found": true,
+      "excerpt": "--restricted\u0001\u0000\u0000��\u0007l\u0000=\u0000\u0000\u0000\u0006\u0000\u0000�)��\u0000addDir\u0000\u0000\t\u0000\u0000�j\u001a\u001b\u0000mcpConfig\u0000\u0000\u0000\u000f\u0000\u0000���\u0000strictMcpConfig\u0000\u0005\u0000\u0000�N\u001b�\u0000--cwd\u0000\u0000\u0000\u0011\u0000\u0000��R^\u0000--setting-sources\u0000\u0000\u0000\t\u0000\u0000��5>\u0000--add-dir\u0000\u0000\u0000\f\u0000\u0000�s��\u0000--mcp-config\u0011\u0000\u0000��\u0010\u0019\u0000--permission-mode\u0000\u0000\u0000\u0019\u0000\u0000�d�4\u0000--inherit-permission-mode\u0000\u0000\u0000\u0007\u0000\u0000�9��\u0000--model\u0000\b\u0000\u0000�\u0014@)\u0000--effort\u0007\u0000\u0000��\u0011\u0002\u0000--agent\u0000\u0017\u0000\u0000��VJ\u0000permissionModeInherited\u0000"
+    }
+  ],
+  "effortSpelling": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "effectiveModel": "UNOBSERVED",
+  "managedPolicyAdmission": "UNPROVEN",
+  "modelAvailability": "UNPROVEN",
+  "modelRequests": 0,
+  "authStatusRequests": 0
+}
