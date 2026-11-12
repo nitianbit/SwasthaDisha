@@ -9,7 +9,7 @@ Use at most two implementation workers concurrently, rotating independent review
 | Lane | Current concrete work | Ownership | Done signal |
 | --- | --- | --- | --- |
 | Pharmacy recovery | Party fence and legacy-case alignment merged, two independent source reviews each plus composition | Root integration; source authorscustomer_remaining_audit andlab_remaining_audit | Source milestone only: hashes and decisions in output/qa/pharmacy-recovery-party-fence and pharmacy-legacy-test-alignment; real transaction/HTTP checks outstanding |
-| Independent model review | R9 preparation: history, supplier, recovery fence, test alignment | milestone_composition_r9 owns revision-9 only | Genuine Opus5.5 requestedmax; actual model/tool/mailbox/process evidence and independent acceptance; no unsupported effective-effort claim |
+| Independent model review | R10 xhigh live review: history, supplier, recovery fence, test alignment; R9max interrupted after owner correction | milestone_composition_r9 owns revision-9 only | Genuine Opus5.5 requestedxhigh (extra high), explicitly notmax; actual model/tool/mailbox/process evidence and independent acceptance; no unsupported effective-effort claim |
 | Customer identity | Destination-proven signed customer contact-change contract | customer_remaining_audit owns draft only until two contract votes | Complete reusable actor/target/purpose/expiry/single-use/unique-contact/session contract and focused tests before completion |
 | Shared verification | Existing core semantic candidate and supplier DB readiness remain separately pending | Root assigns exact review/admission when required | Actual evidence under existing C2/C3; no root runtime adoption |
 

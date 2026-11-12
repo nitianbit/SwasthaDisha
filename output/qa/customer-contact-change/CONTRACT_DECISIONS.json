@@ -1,0 +1,24 @@
+{
+  "schema": "SD-INDEPENDENT-CONTRACT-DECISIONS-1",
+  "contract": "documentation/planning/implementation/CUSTOMER_CONTACT_CHANGE_CONTRACT_DRAFT.md",
+  "contractSha256": "8826f45a11651dc117ccb3119b6b9093405889324545a1679cf2efe8630e387a",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    }
+  ],
+  "currentSelectedSourcePinsVerified": 24,
+  "scope": "Contracted phases except evaluator/reader and metadata commands await separately frozen contact-index admission; actual coverage/client/notice/C2/C3 gates remain. No full contact milestone or module acceptance.",
+  "execution": "NOT_ADMITTED_BY_THIS_RECEIPT; no app/Node/compiler/DB/Docker/provider/model execution. Independent source/composition review and actual focused evidence remain required."
+}
