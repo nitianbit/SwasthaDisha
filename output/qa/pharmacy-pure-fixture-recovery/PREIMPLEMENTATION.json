@@ -1,0 +1,23 @@
+{
+  "schema": "SD-PHARMACY-PURE-FIXTURE-RECOVERY-PREIMPLEMENTATION-1",
+  "contractSha256": "d5262defa2dc94e76772b18dcc54e0fbd9b294c9a937653d022efd49ac966b01",
+  "author": "/root/pharmacy_recovery_readiness",
+  "reviewers": [
+    {
+      "agent": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "basis": "Sixarchivedbaselines/index/fouruniqueslices/hashdelimitersverified; singleexpression/inverse/pureclosure/callers; explicitlyapprovedboundedactualsourceVMtechnique."
+    },
+    {
+      "agent": "/root/claude_review_recipe_standards",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "basis": "Sixbaselines/guard/threewrappers/imports/main/driverinitializationtextreviewed; meaningfulnamespace/lease/session/budget/failurecontrols; boundedtest-onlyVMtechniqueapproved."
+    }
+  ],
+  "executionAuthorized": false,
+  "nextGate": "Exactrestoredsources/VMtests/fixedboundedlauncher needtwofreshsource/executiondecisions beforeNode invocation.",
+  "actualApplicationDriverOrDBProof": false,
+  "lostHistoricalQARemainsMissing": true
+}
