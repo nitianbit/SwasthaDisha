@@ -1,0 +1,326 @@
+{
+  "kind": "SOURCE_DATA_ONLY",
+  "argv": [
+    "output/qa/lab-dependent-ownership/source/source-check.py"
+  ],
+  "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/lab-dependent-ownership",
+  "checks": [
+    {
+      "name": "BASELINE_PIN",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "EXACT_CANDIDATE_ARCHIVES",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "CANDIDATE_NAMED_LEXICAL_ASSERTIONS",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "ONLY_IMPORT_FIELD_CONSTRUCTOR_GUARD_AND_TWO_AWAITS_CHANGED",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "ONLY_ISOLATED_CONTROLLER_CHANGED",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "ACTIVE_FOCUS_SOURCE_UNCHANGED",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_baseline",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_baseline",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_role_scope_expanded",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_role_scope_expanded",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_blank_owner_allowed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_blank_owner_allowed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_omitted_id_falls_through",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_omitted_id_falls_through",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_malformed_id_not_checked",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_malformed_id_not_checked",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_lookup_owner_from_body",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_lookup_owner_from_body",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_lookup_unscoped",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_lookup_unscoped",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_lookup_unawaited",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_lookup_unawaited",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_lookup_failure_swallowed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_lookup_failure_swallowed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_createBooking:guard_removed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_createBooking:guard_removed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_createBooking:guard_unawaited",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_createBooking:guard_unawaited",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_createBooking:guard_after_account_read",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_createBooking:guard_after_account_read",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_createDiagnosticsBooking:guard_removed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_createDiagnosticsBooking:guard_removed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_createDiagnosticsBooking:guard_unawaited",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_createDiagnosticsBooking:guard_unawaited",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_createDiagnosticsBooking:guard_after_account_read",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_createDiagnosticsBooking:guard_after_account_read",
+      "sourceAssertion": "ACCEPTED"
+    }
+  ],
+  "negativeControls": [
+    {
+      "name": "baseline",
+      "intended": "GUARD_PRESENT",
+      "rejectedByNamedSourceAssertions": [
+        "DEPENDENT_SERVICE_CONSTRUCTION",
+        "GUARD_PRESENT",
+        "EXACT_USER_ONLY",
+        "SIGNED_OWNER_REQUIRED",
+        "FIXED_ACTOR_401",
+        "OMITTED_DEPENDENT_NO_LOOKUP",
+        "DEPENDENT_LOCAL_SHAPE",
+        "FIXED_DEPENDENT_404",
+        "ONE_AWAITED_SIGNED_LOOKUP",
+        "GUARD_ORDER",
+        "createBooking:FIRST_AWAIT",
+        "createDiagnosticsBooking:FIRST_AWAIT",
+        "GUARD_ONLY_TWO_CREATE_CALLERS"
+      ],
+      "variantSha256": "b036cc91db6abf4cecfc2963fa02ab04b12bd8c8048c7c979468080a778942ce",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "role_scope_expanded",
+      "intended": "EXACT_USER_ONLY",
+      "rejectedByNamedSourceAssertions": [
+        "EXACT_USER_ONLY"
+      ],
+      "variantSha256": "2a10fa303a1c8f364ff5cbd5349fe6daf65d1f5c7e946f5695c0218b81433f2d",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "blank_owner_allowed",
+      "intended": "SIGNED_OWNER_REQUIRED",
+      "rejectedByNamedSourceAssertions": [
+        "SIGNED_OWNER_REQUIRED"
+      ],
+      "variantSha256": "00cfd5d3047adeda49083bd7fc93051e2f52d6510d4822245610996ebacd91d0",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "omitted_id_falls_through",
+      "intended": "OMITTED_DEPENDENT_NO_LOOKUP",
+      "rejectedByNamedSourceAssertions": [
+        "OMITTED_DEPENDENT_NO_LOOKUP"
+      ],
+      "variantSha256": "44afd27535c677bdc02467020fc8793a1548b0b18ad167a7df23d7362cd21c8d",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "malformed_id_not_checked",
+      "intended": "DEPENDENT_LOCAL_SHAPE",
+      "rejectedByNamedSourceAssertions": [
+        "DEPENDENT_LOCAL_SHAPE"
+      ],
+      "variantSha256": "c4f92643277e06663e075895706be1c4e296a1d4a117e6ec0c0b395ff588556e",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "lookup_owner_from_body",
+      "intended": "ONE_AWAITED_SIGNED_LOOKUP",
+      "rejectedByNamedSourceAssertions": [
+        "ONE_AWAITED_SIGNED_LOOKUP",
+        "NO_FALLBACK_OR_NEW_POLICY"
+      ],
+      "variantSha256": "884f9b34ee3ebf5359204ab2f66c05caaacc19a37f05378c6a265638559a9e9e",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "lookup_unscoped",
+      "intended": "ONE_AWAITED_SIGNED_LOOKUP",
+      "rejectedByNamedSourceAssertions": [
+        "ONE_AWAITED_SIGNED_LOOKUP"
+      ],
+      "variantSha256": "c072a43697f088edde393934ff10147a11ee7becc72157e8ad2d4108d39d6fc3",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "lookup_unawaited",
+      "intended": "ONE_AWAITED_SIGNED_LOOKUP",
+      "rejectedByNamedSourceAssertions": [
+        "ONE_AWAITED_SIGNED_LOOKUP",
+        "GUARD_ORDER"
+      ],
+      "variantSha256": "0796b0c79d73f6676896adc3a3638171ad66c9e37ef10c051308d3d2e744f543",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "lookup_failure_swallowed",
+      "intended": "NO_FALLBACK_OR_NEW_POLICY",
+      "rejectedByNamedSourceAssertions": [
+        "ONE_AWAITED_SIGNED_LOOKUP",
+        "NO_FALLBACK_OR_NEW_POLICY"
+      ],
+      "variantSha256": "a54570d74fb3f2566f1efa490ebe67c3eba15c05cf19971a0ec49b9fe80f7f1a",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "createBooking:guard_removed",
+      "intended": "createBooking:FIRST_AWAIT",
+      "rejectedByNamedSourceAssertions": [
+        "createBooking:FIRST_AWAIT",
+        "GUARD_ONLY_TWO_CREATE_CALLERS"
+      ],
+      "variantSha256": "3e853d0a74b61f293e203d7d4b64e5714c2d7471ec32af19b16841dce1570e4c",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "createBooking:guard_unawaited",
+      "intended": "createBooking:FIRST_AWAIT",
+      "rejectedByNamedSourceAssertions": [
+        "createBooking:FIRST_AWAIT"
+      ],
+      "variantSha256": "91cbe23ef7adcee83c6e7cb7adea57a6d2a558120c98bc0fc38f77182a29bad8",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "createBooking:guard_after_account_read",
+      "intended": "createBooking:FIRST_AWAIT",
+      "rejectedByNamedSourceAssertions": [
+        "createBooking:FIRST_AWAIT"
+      ],
+      "variantSha256": "c556becdea4dec3ef97b6f399030eac330097c964b5a8aa1394d3d40d9d1c4bb",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "createDiagnosticsBooking:guard_removed",
+      "intended": "createDiagnosticsBooking:FIRST_AWAIT",
+      "rejectedByNamedSourceAssertions": [
+        "createDiagnosticsBooking:FIRST_AWAIT",
+        "GUARD_ONLY_TWO_CREATE_CALLERS"
+      ],
+      "variantSha256": "e6d41262b296d6b642c66067873f91896a52b860caa4fa8a43db6a08787fca58",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "createDiagnosticsBooking:guard_unawaited",
+      "intended": "createDiagnosticsBooking:FIRST_AWAIT",
+      "rejectedByNamedSourceAssertions": [
+        "createDiagnosticsBooking:FIRST_AWAIT"
+      ],
+      "variantSha256": "b97dc477aa7aaedc40af91cf490def07e8e1cdf9df23653af2559cea962783d1",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "createDiagnosticsBooking:guard_after_account_read",
+      "intended": "createDiagnosticsBooking:FIRST_AWAIT",
+      "rejectedByNamedSourceAssertions": [
+        "createDiagnosticsBooking:FIRST_AWAIT"
+      ],
+      "variantSha256": "944ef1195fb3b1821e9348dfba50f1a21c1aa34a8320921b6912b8c529c3acba",
+      "scope": "in-memory source text only"
+    }
+  ],
+  "runtimeBehavior": "NOT_RUN",
+  "candidateSourceFailures": [],
+  "changedProtectedFiles": [
+    "src1/modules/externalBookings/controller/index.ts"
+  ],
+  "sourceVerdict": "ACCEPTED",
+  "candidateSha256": "3a45d9694b50da0e1cebf90ffd94e8b2921130c784530bde844d49e16b4418b3",
+  "protectedFileCount": 431,
+  "activeFocusSourceFileCount": 358,
+  "negativeControlCount": 15,
+  "restoredSourceControlCount": 15,
+  "scriptSha256": "49ad97b86045e919811ea6ff4417c78afb95a8e95c6c793412c2d835d1ef20c6",
+  "gitMutation": false,
+  "limitations": [
+    "Lexical assertions and byte comparisons only; no TypeScript/parser/compiler/application execution.",
+    "Negative/restored controls manipulate text; they do not prove runtime Joi/HTTP/query/effect behavior.",
+    "Expanded constructor closure and focused actual behavior require separate complete C3 admission.",
+    "No consent/guardian/activity/demographic/TOCTOU or module acceptance; final integration DEFERRED_BY_OWNER."
+  ]
+}

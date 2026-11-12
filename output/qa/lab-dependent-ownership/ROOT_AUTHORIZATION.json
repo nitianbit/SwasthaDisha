@@ -1,0 +1,18 @@
+{
+  "schema": "SD-LAB-DEPENDENT-ISOLATED-ROOT-AUTHORIZATION-1",
+  "recordedBy": "/root/customer_booking_writer",
+  "authorizingAgent": "/root",
+  "provenance": "ACTUAL_NATIVE_NEW_TASK_MESSAGE",
+  "actualMessage": "Authorize labdependent implementation NOW ONLY in NEW isolatedworktree /Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/lab-dependent-ownership branchm0/lab-dependent-ownership base7438f449351bd8cb435142b017406cf05d23b3b2. Rootcreated/checkouted; ALLapp/design/contractbytes matchreviewedfocusbaseline. OriginalfocusworktreeACTIVE R4 muststayunchanged. Twoactualnonauthorpredecisions RootStandards+booking_read_specSpec recordedQA/lab-dependent-ownership/PREIMPLEMENTATION.json (oldfalseauthhistoricalpreserve). SnapshotdependencyRESOLVEDBYISOLATEDWORKTREE; don'teditfocus, don'tmerge/commit yourself. Own ONLY newworktree src1/modules/externalBookings/controller/index.ts and output/qa/lab-dependent-ownership/ROOT_AUTHORIZATION.json+source evidence. Exactcontract8bfccbdd4baaf64a59e0c2d6a6d019b03cba38c18aa7d23a4845ba9ad3aa3d97 /ctrlbaselineb036cc91db6abf4cecfc2963fa02ab04b12bd8c8048c7c979468080a778942ce. OneDependentServicefield/import/Container.get +oneawaitedguardfirstineachcreate, reusedgetById(id,signedowner), actor401/localmalformed/fixed404, noownedinactive/consentpolicy/demographics/servicechanges, preserveallothercontrollerbytes andsharedsource. Record actualRootauthorizationinclnewpath/base/snapshotisolation. Source-data checks/diff/hash/meaningfulnegativelexicalcontrols only; no applicationimports/TS/Nodeexec/runtime/DB/providers. Stopfrozenfor2freshindependentsourcereviews; RootcommitsandmergesAFTERR4completion. Youarenotalone preserveotheragents/originalsixstaged/archive. Escalatedsiblingwritesauthorized. Keepminimal andproportionate, noframework.",
+  "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/lab-dependent-ownership",
+  "branch": "m0/lab-dependent-ownership",
+  "base": "7438f449351bd8cb435142b017406cf05d23b3b2",
+  "protectedActiveFocusWorktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab",
+  "snapshotDependency": "RESOLVED_BY_ISOLATED_WORKTREE; focus R4 remains active and unchanged. Root commits/merges only after R4 completion.",
+  "contractSha256": "8bfccbdd4baaf64a59e0c2d6a6d019b03cba38c18aa7d23a4845ba9ad3aa3d97",
+  "controllerBaselineSha256": "b036cc91db6abf4cecfc2963fa02ab04b12bd8c8048c7c979468080a778942ce",
+  "applicationEditAuthorizedNow": true,
+  "priorFalseAuthorizationPreserved": true,
+  "runtimeAdmission": false,
+  "moduleAcceptance": false
+}

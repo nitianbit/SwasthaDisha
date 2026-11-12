@@ -1,0 +1,27 @@
+{
+  "kind": "FROZEN_ISOLATED_SOURCE_CANDIDATE",
+  "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/lab-dependent-ownership",
+  "base": "7438f449351bd8cb435142b017406cf05d23b3b2",
+  "candidateSha256": "3a45d9694b50da0e1cebf90ffd94e8b2921130c784530bde844d49e16b4418b3",
+  "files": {
+    "output/qa/lab-dependent-ownership/source/README.md": "cfb8c9c7600790000d1bbd75929ff630d1cdaf4b3de76c0bd53d6cb0909fd3a6",
+    "output/qa/lab-dependent-ownership/source/controller.after.ts.txt": "3a45d9694b50da0e1cebf90ffd94e8b2921130c784530bde844d49e16b4418b3",
+    "output/qa/lab-dependent-ownership/source/controller.before.ts.txt": "b036cc91db6abf4cecfc2963fa02ab04b12bd8c8048c7c979468080a778942ce",
+    "output/qa/lab-dependent-ownership/source/controller.diff": "ef3ce787efae4d3c339df9f49843901c8f2e1d990f6c0cc7249198e6629c0cbe",
+    "output/qa/lab-dependent-ownership/source/controller.expected.ts.txt": "3a45d9694b50da0e1cebf90ffd94e8b2921130c784530bde844d49e16b4418b3",
+    "output/qa/lab-dependent-ownership/source/execution-receipts.json": "cdc6b2de382fe74c96b3ffdb569a83e3b73723b1fc9e2bb00ac93ed1d0f9123c",
+    "output/qa/lab-dependent-ownership/source/focus-source.after.json": "0c141533c415d535b7583d85a3740c95eb1d1932661a10b1c84109a92783b4e8",
+    "output/qa/lab-dependent-ownership/source/focus-source.before.json": "0c141533c415d535b7583d85a3740c95eb1d1932661a10b1c84109a92783b4e8",
+    "output/qa/lab-dependent-ownership/source/preimplementation.snapshot.json": "73bbea0e26f691c1c915f1d25038209c9de191439619e84d595ae6149f645ac9",
+    "output/qa/lab-dependent-ownership/source/protected-files.after.json": "a0898fde3ae2cba97a38dfea4096c623e23f1a1ae42d606969b052210f9cce8a",
+    "output/qa/lab-dependent-ownership/source/protected-files.before.json": "c167f988b8930239b8e81a617890727a6d020da56b144f09eb2eb291252d05c2",
+    "output/qa/lab-dependent-ownership/source/source-check.py": "49ad97b86045e919811ea6ff4417c78afb95a8e95c6c793412c2d835d1ef20c6",
+    "output/qa/lab-dependent-ownership/source/source-verification.json": "7de3921a13c43cd83d7f823405d5e98c1a45c8d5e7f6e82fc6233306ac11496d",
+    "output/qa/lab-dependent-ownership/source/source-write.py": "d6075da81dc57e9df298ba8c432a99eeb496bf519b346313d551fad5c4df9eb7",
+    "output/qa/lab-dependent-ownership/source/write-receipt.json": "bf1e5cae245ec3f3a2c88a633540051b61d28c8aa39c1b87508adc01a942405d",
+    "output/qa/lab-dependent-ownership/ROOT_AUTHORIZATION.json": "f407d3524097043d957cea836fef0db45439bf8804ef3101e11a75e2afc9ce21"
+  },
+  "writesStoppedForIndependentReviews": true,
+  "runtimeBehavior": "NOT_RUN",
+  "mergeAuthority": "Root only after R4 completion"
+}

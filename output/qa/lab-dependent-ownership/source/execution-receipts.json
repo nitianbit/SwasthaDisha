@@ -1,0 +1,66 @@
+{
+  "kind": "OBSERVED_SOURCE_ONLY_COMMAND_RECEIPTS",
+  "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/lab-dependent-ownership",
+  "commands": [
+    {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/usr/sbin:/sbin",
+        "/usr/bin/python3",
+        "-I",
+        "/private/tmp/lab-dependent-source-write.py"
+      ],
+      "exitCode": 0,
+      "observed": "Verified isolated baseline, all28 contract pins and two actual decisions; wrote only owned isolated controller, new authorization and evidence."
+    },
+    {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/usr/sbin:/sbin",
+        "/usr/bin/python3",
+        "-I",
+        "output/qa/lab-dependent-ownership/source/source-check.py"
+      ],
+      "exitCode": 0,
+      "stdout": "{\"sourceVerdict\": \"ACCEPTED\", \"candidateSha256\": \"3a45d9694b50da0e1cebf90ffd94e8b2921130c784530bde844d49e16b4418b3\", \"protectedFileCount\": 431, \"activeFocusSourceFileCount\": 358, \"negativeControlCount\": 15, \"restoredSourceControlCount\": 15, \"runtimeBehavior\": \"NOT_RUN\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "src1/modules/externalBookings/controller/index.ts"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "cmp",
+        "output/qa/lab-dependent-ownership/PREIMPLEMENTATION.json",
+        "output/qa/lab-dependent-ownership/source/preimplementation.snapshot.json"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "shasum",
+        "-a",
+        "256",
+        "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/src1/modules/externalBookings/controller/index.ts"
+      ],
+      "exitCode": 0,
+      "stdout": "b036cc91db6abf4cecfc2963fa02ab04b12bd8c8048c7c979468080a778942ce  /Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/src1/modules/externalBookings/controller/index.ts\n",
+      "stderr": ""
+    }
+  ],
+  "runtimeBehavior": "NOT_RUN",
+  "gitMutation": false
+}
