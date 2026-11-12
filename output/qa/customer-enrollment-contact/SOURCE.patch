@@ -1,0 +1,103 @@
+diff --git a/API_SCHEMAS.md b/API_SCHEMAS.md
+index 8b610c33d287c8e552f86bd9d6ebd9347000321f..913bbf499b39f30270e71bab8c38a3ec8654d9f9 100644
+--- a/API_SCHEMAS.md
++++ b/API_SCHEMAS.md
+@@ -6,0 +7,4 @@ This document contains JSON Schema definitions for all API endpoints, converted
++For `/api/v1/auth/user/send` and `/api/v1/auth/user/verify`, provide exactly one of `phone` or `email`. For these customer paths, use `oneOf` instead of the generic `anyOf` below. Supplying both contacts returns HTTP400 `VALIDATION_ERROR` before an identity lookup or send. New customer enrollment stores only the selected destination; these login endpoints do not add a secondary contact. Other authentication roles retain the generic request shapes below.
++
++Customer service calls treat an undefined alternate field as absent, validate without scalar coercion, and canonicalize the selected email to trimmed lowercase. VERIFY also validates the six-digit code before lookup. Existing HTTP parameter/body validation retains its earlier error precedence.
++
+diff --git a/src1/modules/auth/services/index.ts b/src1/modules/auth/services/index.ts
+index 3cafab15605fd4c8adbc3499882cff5f2efe16f9..ba05f3efb06ef6ee8bfaeb82d096fc82a92354ae 100644
+--- a/src1/modules/auth/services/index.ts
++++ b/src1/modules/auth/services/index.ts
+@@ -12,0 +13 @@ import { AppError } from '@/modules/common/types';
++import { selectCustomerLoginContact } from '@/modules/auth/validation';
+@@ -99,0 +101,6 @@ export class AuthService {
++    const customerContact = data.userType === 'user'
++      ? selectCustomerLoginContact(data, false)
++      : undefined;
++    const customerIdentity: { phone?: string; email?: string } | undefined = customerContact
++      ? { [customerContact.target]: customerContact.targetValue }
++      : undefined;
+@@ -126 +133 @@ export class AuthService {
+-        { phone: data.phone, email: data.email },
++        customerIdentity ?? { phone: data.phone, email: data.email },
+@@ -160,2 +167 @@ export class AuthService {
+-          phone: data.phone,
+-          email: data.email,
++          ...(customerIdentity ?? { phone: data.phone, email: data.email }),
+@@ -204,2 +210,2 @@ export class AuthService {
+-    const target = data.phone ? 'phone' : 'email';
+-    const targetValue = data.phone?.trim() || data.email?.trim().toLowerCase();
++    const target = customerContact?.target ?? (data.phone ? 'phone' : 'email');
++    const targetValue = customerContact?.targetValue ?? (data.phone?.trim() || data.email?.trim().toLowerCase());
+@@ -220 +226 @@ export class AuthService {
+-        to: data.phone,
++        to: customerContact?.target === 'phone' ? customerContact.targetValue : data.phone,
+@@ -225 +231,3 @@ export class AuthService {
+-      const normalizedEmail = data.email.trim().toLowerCase();
++      const normalizedEmail = customerContact?.target === 'email'
++        ? customerContact.targetValue
++        : data.email.trim().toLowerCase();
+@@ -248,0 +257,6 @@ export class AuthService {
++    const customerContact = data.userType === 'user'
++      ? selectCustomerLoginContact(data, true)
++      : undefined;
++    const customerIdentity: { phone?: string; email?: string } | undefined = customerContact
++      ? { [customerContact.target]: customerContact.targetValue }
++      : undefined;
+@@ -272 +286 @@ export class AuthService {
+-        { phone: data.phone, email: data.email },
++        customerIdentity ?? { phone: data.phone, email: data.email },
+@@ -323 +337 @@ export class AuthService {
+-    const target = data.phone ? 'phone' : 'email';
++    const target = customerContact?.target ?? (data.phone ? 'phone' : 'email');
+diff --git a/src1/modules/auth/validation/index.ts b/src1/modules/auth/validation/index.ts
+index 8d04a282e8634121bbd90d115d44fec0469e7950..c35d417f830acb999420ca1ac34953bc1f5a38ce 100644
+--- a/src1/modules/auth/validation/index.ts
++++ b/src1/modules/auth/validation/index.ts
+@@ -1,0 +2 @@ import Joi from 'joi';
++import { AppError } from '@/modules/common/types';
+@@ -48,0 +50,41 @@ export const verifyOTPSchema = Joi.object({
++// Individual accounts enroll and authenticate one proved destination at a time.
++// The legacy role schemas above keep their existing request contracts.
++export const customerSendOTPSchema = Joi.object({
++  phone: phoneSchema.optional(),
++  email: emailSchema.optional(),
++}).xor('phone', 'email');
++
++export const customerVerifyOTPSchema = customerSendOTPSchema.append({
++  otp: verifyOTPSchema.extract('otp'),
++});
++
++export function selectCustomerLoginContact(
++  data: { phone?: unknown; email?: unknown; otp?: unknown },
++  verify = false
++): { target: 'phone' | 'email'; targetValue: string } {
++  const invalid = (): never => {
++    throw new AppError({
++      status: 400,
++      code: 'VALIDATION_ERROR',
++      message: 'Provide exactly one valid phone or email',
++    });
++  };
++  if (!data || typeof data !== 'object' || Array.isArray(data)) invalid();
++  const { phone, email, otp } = data;
++  if (phone !== undefined && typeof phone !== 'string') invalid();
++  if (email !== undefined && typeof email !== 'string') invalid();
++  if (verify && typeof otp !== 'string') invalid();
++
++  const candidate = {
++    ...(phone !== undefined ? { phone } : {}),
++    ...(email !== undefined ? { email: typeof email === 'string' ? email.trim().toLowerCase() : email } : {}),
++    ...(verify ? { otp } : {}),
++  };
++  const schema = verify ? customerVerifyOTPSchema : customerSendOTPSchema;
++  const { error, value } = schema.validate(candidate, { convert: false, stripUnknown: false });
++  if (error) invalid();
++  return value.phone !== undefined
++    ? { target: 'phone', targetValue: value.phone }
++    : { target: 'email', targetValue: value.email };
++}
++
