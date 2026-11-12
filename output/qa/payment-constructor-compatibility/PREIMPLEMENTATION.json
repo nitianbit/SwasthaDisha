@@ -1,0 +1,26 @@
+{
+  "schema": "SD-INTERNAL-CONTRACT-DECISIONS-1",
+  "baseline": "5c66d43de645e8beaa6105fde9bb7a6f58431f0b",
+  "contract": "output/qa/payment-constructor-compatibility/CONTRACT.md",
+  "contractSha256": "afe1861ef7f256a495304e39c5f2a768abd66c3ce80ade2663b9004ba5d7242f",
+  "author": "/root/payment_ctor_contract",
+  "recordedBy": "/root",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex review; recorded from direct review and reviewer messages."
+    },
+    {
+      "reviewer": "/root/booking_write_contract",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex review; recorded from direct review and reviewer messages."
+    }
+  ],
+  "scope": "Only exact contract source change. No executable application/compiler/SDK/Docker/database/provider/integration admission. Two nonauthor source reviews still required.",
+  "limits": "Source preparation only; preserve prior staged/archive files and existing C2/C3/application/owner/release gates."
+}

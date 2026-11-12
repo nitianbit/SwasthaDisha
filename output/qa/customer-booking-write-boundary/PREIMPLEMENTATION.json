@@ -1,0 +1,26 @@
+{
+  "schema": "SD-INTERNAL-CONTRACT-DECISIONS-1",
+  "baseline": "5c66d43de645e8beaa6105fde9bb7a6f58431f0b",
+  "contract": "documentation/planning/implementation/CUSTOMER_BOOKING_WRITE_BOUNDARY_CONTRACT_DRAFT.md",
+  "contractSha256": "f3d100d7981d65e92c9ba144523534b54d309b7cfb400ba387497c25113bcf22",
+  "author": "/root/booking_write_contract",
+  "recordedBy": "/root",
+  "decisions": [
+    {
+      "reviewer": "/root/payment_ctor_contract",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex review; recorded from direct review and reviewer messages."
+    },
+    {
+      "reviewer": "/root",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex review; recorded from direct review and reviewer messages."
+    }
+  ],
+  "scope": "Only exact contract source change. No executable application/compiler/SDK/Docker/database/provider/integration admission. Two nonauthor source reviews still required.",
+  "limits": "Source preparation only; preserve prior staged/archive files and existing C2/C3/application/owner/release gates."
+}
