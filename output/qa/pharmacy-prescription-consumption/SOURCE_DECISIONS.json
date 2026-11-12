@@ -1,0 +1,26 @@
+{
+  "schema": "SD-PHARMACY-PRESCRIPTION-CONSUMPTION-SOURCE-DECISIONS-1",
+  "candidateSha256": "54bbff59b46586120f107472265d116a6754782aea6d632295ecea88983f5ddc",
+  "contractSha256": "60b0f2e140857b68936d629ca5ce37bca10f9e114a0f9b3c99154e8cdc0d56f3",
+  "freezeSha256": "685d908570afc14161c3adb43a191ff2018bff82ad9955a9dcc8fb390579fc7d",
+  "author": "/root",
+  "reviewers": [
+    {
+      "agent": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY"
+    },
+    {
+      "agent": "/root/customer_booking_writer",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "independence": "Contractauthorbutnotimplementationauthoranddidnotapproveowncontract."
+    }
+  ],
+  "basis": "Exactguardafterpayment/preinventory+transaction; completiononlyexactobservedRxCAS/status/session; CASmissbeforeconsume, releaseandallothermethodbytesunchanged; reversechangesrecoverexactbaseline.20othercontractpinsmatch; customerdeltaexpected.",
+  "focusedBehavior": "NOT_RUN",
+  "typeValidity": "NOT_RUN",
+  "clinicalAuthorityAcceptance": false,
+  "moduleAcceptance": false,
+  "claudeReviewAccepted": false
+}

@@ -1,0 +1,20 @@
+{
+  "schema": "SD-PHARMACY-PRESCRIPTION-CONSUMPTION-SOURCE-1",
+  "author": "/root",
+  "contractSha256": "60b0f2e140857b68936d629ca5ce37bca10f9e114a0f9b3c99154e8cdc0d56f3",
+  "path": "src1/modules/pharmacyOrders/services/index.ts",
+  "baselineSha256": "a03cf441e9638edfd6ee48d6a8c407096c257348e37e157904d9f42642940b94",
+  "candidateSha256": "54bbff59b46586120f107472265d116a6754782aea6d632295ecea88983f5ddc",
+  "diffSha256": "7b50974ed752b0556389a95c0d487ee39496c62660075b1700e9e03065823eec",
+  "exactReverseTransformVerified": true,
+  "outsideUpdateStatusBytesUnchanged": true,
+  "productionScope": [
+    "src1/modules/pharmacyOrders/services/index.ts"
+  ],
+  "sourceChecks": "Exactbaseline/pins/oneguard/oneCASdelta/reversetransformonly; no runtime behavior proof",
+  "focusedRuntime": "NOT_RUN",
+  "typeValidity": "NOT_RUN",
+  "moduleAcceptance": false,
+  "clinicalAuthorityAcceptance": false,
+  "sourceReviews": "PENDING_TWO_INDEPENDENT_NONAUTHOR_REVIEWS"
+}

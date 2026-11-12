@@ -1,0 +1,36 @@
+--- a/src1/modules/pharmacyOrders/services/index.ts
++++ b/src1/modules/pharmacyOrders/services/index.ts
+@@ -1019,6 +1019,18 @@
+       });
+     }
+ 
++    if (
++      payload.status === 'completed' &&
++      order.prescriptionStatus !== 'approved' &&
++      order.prescriptionStatus !== 'not_required'
++    ) {
++      throw new AppError({
++        status: 409,
++        code: 'ORDER_PRESCRIPTION_APPROVAL_REQUIRED',
++        message: 'Prescription approval is required before the order can be completed',
++      });
++    }
++
+     const inventoryItems = this.buildInventoryItems(
+       order.items.filter((item) => item.itemStatus === 'active')
+     );
+@@ -1026,7 +1038,13 @@
+ 
+     const updated = await this.runOrderInventoryTransaction(async (session) => {
+       const nextOrder = await this.orderRepo.update(
+-        { _id: id, status: order.status },
++        {
++          _id: id,
++          status: order.status,
++          ...(payload.status === 'completed'
++            ? { prescriptionStatus: order.prescriptionStatus }
++            : {}),
++        },
+         { status: payload.status, ...(payload.notes ? { notes: payload.notes } : {}) },
+         { new: true, session }
+       );

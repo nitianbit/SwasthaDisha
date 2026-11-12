@@ -1,0 +1,21 @@
+{
+  "schema": "SD-PHARMACY-PRESCRIPTION-CONSUMPTION-PREIMPLEMENTATION-1",
+  "contractSha256": "60b0f2e140857b68936d629ca5ce37bca10f9e114a0f9b3c99154e8cdc0d56f3",
+  "reviewers": [
+    {
+      "agent": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "basis": "Exact21pins; designnecessaryprescriptionstate; completiononlyguardafterpayment/exactobservedCASbeforesamesessionconsume; remainingclinicalandothergapsexplicit."
+    },
+    {
+      "agent": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "basis": "Readcompletecontract, actualupdateStatus/serviceflow/designROADMAPU1/SYSTEM_DESIGN8.1, verifiedall21pins. Oneguard+completiononlyfilterreuse, noextrahelper."
+    }
+  ],
+  "implementationAuthorized": true,
+  "runtimeAdmission": false,
+  "clinicalAuthorityAcceptance": false
+}
