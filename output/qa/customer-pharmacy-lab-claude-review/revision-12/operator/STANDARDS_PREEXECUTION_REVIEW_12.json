@@ -1,0 +1,70 @@
+{
+  "schema": "SD-R12-INDEPENDENT-STANDARDS-PREEXECUTION-REVIEW-1",
+  "reviewer": "/root/customer_remaining_audit",
+  "role": "Standards",
+  "preparerExcluded": "/root",
+  "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW",
+  "reviewedCandidateCommit": "349786cbebcf175abfc570a13cbdd56c2e4f3a46",
+  "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+  "sessionId": "175c0268-3367-4483-9616-f5e7abc99428",
+  "scope": "INDEPENDENT_OPERATOR_BINDINGS_AND_ONE_EXACT_SOURCE_REVIEW_INVOCATION_ONLY_NOT_PRODUCTION_SOURCE_SELF_APPROVAL",
+  "bindings": {
+    "sourceFreezeSha256": "8d635fe814cc65813425f8d73a83dddfb1871834741f046df44f0ce753127620",
+    "preparedFreezeSha256": "beed0d865aa6bd61b46d7a767943f3812701a0be7d337d99c9f3b51982f40aa8",
+    "planSha256": "00d23d929f35091f323329e91ba862f24360a6469b66c1c772a0e37b1c40285c",
+    "packetSha256": "4d3ef5122fd91c03006be37308b04f61ac88b2ff8ca56e07cb24d76ee3d80747",
+    "packetBytes": 670033,
+    "manifestSha256": "8d78570258f79e5f8d13c9678ce4fbf1d617b780ea7deb76003505f822e98097",
+    "recipeSha256": "4fb1097544d159a816f14d8a6a2782073490c52e82882922d4b9b6369f613493",
+    "challengeSha256": "466e0ec3e925ea186017ac0acdbf436ed94bdd55295a8d640e364f42e5164887",
+    "supervisorSha256": "ad8487748dce7624328e2e0afa9b516340aac4f29a86bf1922c7f4f9401db2b0",
+    "testsSha256": "fadd86a14e5b44f1cfba6de5449e761e5790ed2bccbe32d6c6938f9cd7fe1a11",
+    "contractBundleSha256": "9afd04e7205cdbe666ff1cec13a29844c9897531b1b76df0299ebe8fba047708",
+    "sourceHashes": {
+      "src1/modules/file/controller/index.ts": "fc4e9fbb27f1637a2587082ed4dbceef29a2efb0ad839ca6c89bf2e786da2525",
+      "src1/modules/file/storage.ts": "17e3a9c713e5869fbf9739e698887ea222f4f8d2e0c2a3435a0d8b51a48bd558"
+    },
+    "contractHashes": {
+      "documentation/planning/implementation/PRIVATE_CLINICAL_DOCUMENTS_CONTRACT_DRAFT.md": "2c016e285101c8a5852ad85974cd41a343ea59f31661ee8360e12eee192895f1",
+      "documentation/planning/implementation/PRIVATE_DOCUMENT_AUTH_HEADERS_ADDENDUM.md": "fe9479b80f66693de2e7f592bc9ab3335dc921595e36639fdb417a9547710b7b",
+      "documentation/planning/implementation/PRIVATE_DOCUMENT_REVIEW_REMEDIATION.md": "8afbcad14c7c500a803beed589398093aabac2108ba19769814205ae6562147a",
+      "documentation/planning/implementation/PRIVATE_DOCUMENT_R11_SOURCE_CORRECTION_PLAN.json": "98bb854464e8665f926c8dff065fb7e2de646367865ebd15f4434482e09524e4"
+    }
+  },
+  "findings": [],
+  "actualIndependentChecks": [
+    "Read actual plan, selection, recipe, manifest, challenge, environment, MCP configuration, packet instructions, supervisor admission/process/EOF/cleanup paths and exact binding diffs. Reused previously inspected unchanged R11 runtime logic only after independently proving byte-exact forward and reverse enumerated literal transformations for supervisor and tests.",
+    "Personally recomputed all prepared-freeze and operator SOURCE_FREEZE own-file pins. Packet670033B SHA4d3ef5122fd91c03006be37308b04f61ac88b2ff8ca56e07cb24d76ee3d80747 contains53 unique whole entries:45 current Git files,2 complete BEFORE files,6 native Formidable3.5.4 members. Every excerpt full line envelope/length/hash equals full file bytes. Manifest precisely matches packet metadata and selection plan.",
+    "All45 current selected entries equal current physical files and exact3eab68bb Git objects. Historical files equal exact f200491e objects. Six native members equal actual cached tar335f6f180ef1601b67beaadb6dcba06c40c2c21d181ce14753ad34e795a6c097 and root-lock SHA512 integrity. Native bytes treated as inert source/data; no package evaluation.",
+    "Two subject production files, complete29 production contexts, three owning contracts plus correction plan, original genuine R11 findings and actual independent source-decision records are present. Packet explicitly excludes mutable fixture namespace, retains unresolved clinical/provenance/cutover/runtime issues, requires INCOMPLETE for insufficient context/time and makes no executable-closure or token-fit claim.",
+    "Independently recomputed contract bundle9afd04e7205cdbe666ff1cec13a29844c9897531b1b76df0299ebe8fba047708 from exact insertion-ordered UTF8 JSON contract map; packet/manifest/recipe/challenge maps and session agree. Challenge nonce absent from packet.",
+    "All5 runtime pins streamed in65536-byte chunks and match. Seven environment values equal accepted R11 recipe exactly; only the4 public inherited OS values were inspected and match current parent. No secret environment/auth files inspected.",
+    "Supervisor and tests exactly invert to R11; only explicit revision/receipt/freeze/plan bindings changed. No functional process/permission/ownership/EOF/cleanup or bounds change, no fake campaign rerun. All30 recorded R11 artifacts including private capture/state/stderr retain exact pins; all34 R10 preservation members and prior7 pins retain exact bytes. R10 launcher/cleanup fault not reclassified.",
+    "Actual argv requests local bundled CLI claude-opus-5-5/xhigh (not max), restricted mode, empty built-in tools, strict single fixed Ruflo MCP config, inbox/send only, default permission mode with no prompts, no Chrome/session persistence/slash commands. Fixed protocol is one scoped peek then ACK then substantive review send,3 calls total, final review exact bytes under48KiB.",
+    "Limits remain3600s/eight turns, stdout8MiB/stderr64KiB/frame2MiB/review48KiB/EOF9s. Native process identity/child-chain/group checks and ownership-safe cleanup retained; capture status cannot approve substantive review.",
+    "Exact new once/private-output/live-approval paths absent when inspected. Challenge remains PREPARED_NOT_ENQUEUED. No application/package/runtime/build/start adoption delta between selected source and reviewed candidate. Other-lane untracked files untouched; no whole-tree-clean claim."
+  ],
+  "oneInvocationConditions": [
+    "Root must obtain both actual eligible nonauthor decisions; sole preparer Root is ineligible. This reviewer authored the two subject production repairs and therefore provides NO production source vote here; only Root-authored operator/packet binding and one invocation are reviewed.",
+    "Before sole launch, Root freshly revalidates selected source/runtime/seven environment fields and existing scoped Ruflo member names, enqueues exactly this fresh challenge once, installs exact private-output/once/approval Git exclusions, creates fresh0600 one-use LIVE_APPROVAL_12 bound to actual decisions. No source drift, old receipt reuse, model fallback, auth repair or automatic retry.",
+    "Use exact session175c0268-3367-4483-9616-f5e7abc99428, packet/recipe/supervisor/test/freeze/challenge bindings and immutable selected source. Polling timeout never authorizes restart.",
+    "Actual model,3 successful correlated tool calls, exact nonce/session/source/packet ACK, actual mailbox/final byte equality, complete stream/EOF/input/exit and fresh exact owned process/group absence require independent outcome review. Preserve every launcher/parser/cleanup/interruption/limit failure; model success never overrides launcher fault."
+  ],
+  "claims": {
+    "requestedModel": "claude-opus-5-5",
+    "requestedEffort": "xhigh",
+    "effectiveModel": "UNOBSERVED_BEFORE_INVOCATION",
+    "effectiveEffort": "UNPROVEN",
+    "nativeWebviewACK": false,
+    "modelCallsByReviewer": 0,
+    "authCallsByReviewer": 0,
+    "fakeChecksByReviewer": 0,
+    "challengeEnqueuedByReviewer": false,
+    "liveReceiptWrittenByReviewer": false
+  },
+  "limits": [
+    "Ordinary trusted local CLI/client policy boundary retained; restricted argv is not a claim of hard host filesystem/network sandbox or absence of all ambient managed policy. No account/configuration discovery or changes performed.",
+    "No application/Node/compiler/npm/DB/Docker/provider/model execution or new runtime grant by reviewer. No app source self-approval, fullS1/module completion, deployment/owner/client/C2/C3/clinical/security/finance/release acceptance.",
+    "Only this distinct reviewer-owned JSON written; all selected source, other-worker work and historical evidence preserved."
+  ]
+}
