@@ -1,0 +1,22 @@
+{
+  "schema": "SD-SUPPLIER-CAS-RETURN-SOURCE-1",
+  "author": "/root",
+  "baseline": "9d60eb9a03ab6ffe819834c918ad2d1ca771ce95",
+  "contractSha256": "63958f07c82437b51763eb09aa4559dd6aa248d43de59b09d130cda56f66c2bc",
+  "path": "src1/modules/pharmacySuppliers/repository/index.ts",
+  "originalSha256": "8834a635fcc5835a26c6f423e4a2deffc433435ea11549f51c9368de7f7537c8",
+  "candidateSha256": "3b4a1b515a60ef3a54ee6631ab8f0c2e340258a071fe6af446574779a01b8a57",
+  "patchSha256": "e0c934b5ff833597e70eee39179b651ed95c10fa97ba569a57fecd32af163962",
+  "staticChecks": {
+    "exactTwoOptionAdditions": true,
+    "inverseRestoresEveryOriginalByte": true,
+    "gitDiffCheck": "PASS"
+  },
+  "sourceReviews": "PENDING_TWO_ACTUAL_NONAUTHOR_DECISIONS",
+  "runtime": "NOT_RUN for type/ODM/DB/CAS/timeout/projection behavior",
+  "retainedOpen": [
+    "R10-F2-2 owner-index/capacity",
+    "Timeout/lost-response mutation ambiguity",
+    "Actual separately admitted focused fixture and owner/client/release gates"
+  ]
+}
