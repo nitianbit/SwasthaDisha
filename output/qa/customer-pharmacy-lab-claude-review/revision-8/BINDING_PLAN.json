@@ -1,0 +1,268 @@
+{
+  "schema": "SD-CLAUDE-R8-BINDING-PLAN-1",
+  "status": "INERT_PLAN_NO_SUPERVISOR_REBIND_YET",
+  "author": "/root/authority_operator",
+  "leadPlanAuthor": "/root",
+  "ineligibleFinalReviewers": [
+    "/root",
+    "/root/authority_operator"
+  ],
+  "baselineInputs": {
+    "output/qa/customer-pharmacy-lab-claude-review/operator/supervisor.py": {
+      "sha256": "188cf7a864500f38b3020316c90243502c7ce2a7f9e417140ba080f118de0d88",
+      "bytes": 31938,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o600",
+      "nlink": 1
+    },
+    "output/qa/customer-pharmacy-lab-claude-review/operator/test_supervisor.py": {
+      "sha256": "00c342c5da55827fcab2a13f420f9d01c09927c25974c8e8fcd520302302bd19",
+      "bytes": 31393,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o600",
+      "nlink": 1
+    },
+    "output/qa/customer-pharmacy-lab-claude-review/operator/BINDING_DELTA_7.json": {
+      "sha256": "33bafbc05583d3d8901fe8712e6562f91404141c58d91d21cc153984eb652653",
+      "bytes": 1765,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/customer-pharmacy-lab-claude-review/operator/SOURCE_FREEZE_7.json": {
+      "sha256": "912a2f4863e0859385864ffaf67fed0804e10c7cc2550f9b34ab8a952bf0e466",
+      "bytes": 3054,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/customer-pharmacy-lab-claude-review/operator/OFFLINE_6.json": {
+      "sha256": "d2235ccccf676ea66d7c9762831f8dee9a90d08a4aa9c2d33a64208d2089b78e",
+      "bytes": 1686,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o600",
+      "nlink": 1
+    },
+    "output/qa/customer-pharmacy-lab-claude-review/operator/OFFLINE_6.txt": {
+      "sha256": "64dbd3156fd4a34642f2c2ab033d7e8391ee3ba55b210014a82c5f4930d3e5a4",
+      "bytes": 6877,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o600",
+      "nlink": 1
+    },
+    "output/qa/customer-pharmacy-lab-claude-review/operator/ROOT_ACCEPTANCE_7.json": {
+      "sha256": "18282c75441445c2d598f0c4df9e5d6a08fd77fcf445969cb0acde09e79f4d3b",
+      "bytes": 1319,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/customer-pharmacy-lab-claude-review/operator/REVIEW_BATCH_7_PLAN.md": {
+      "sha256": "f67c05378e789886a0f0db75e6519c9cc7a42e872718679aba53a230eb5444c5",
+      "bytes": 4812,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/customer-pharmacy-lab-claude-review/operator/README_7.md": {
+      "sha256": "16ec098d60de433cdfc83794a3b92d1b6f4fdfbdb47d205fa056bdfc8dca2246",
+      "bytes": 2755,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/customer-pharmacy-lab-claude-review/revision-7/recipe.json": {
+      "sha256": "09e887f53707481b286d28797c811201865f2cf3f59c32ee3b53c6ca7f33d015",
+      "bytes": 8834,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/customer-pharmacy-lab-claude-review/revision-7/mcp-config.json": {
+      "sha256": "a612d678b74998efe9b9d91c029d7f66731ff4fb8e5e096e41f07243369743b0",
+      "bytes": 313,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/customer-pharmacy-lab-claude-review/revision-7/manifest.json": {
+      "sha256": "7b702938d5a58cfaedf4c0f6da31ca3edba7a193441c5a23b0ce25bc63c3c352",
+      "bytes": 44293,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/customer-pharmacy-lab-claude-review/revision-7/prepared-freeze.json": {
+      "sha256": "37db6d20ae109ec59ae962bac2f023d472165c28ce518c5c4c6ffcd6cf55a9e0",
+      "bytes": 849,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/customer-pharmacy-lab-claude-review/revision-7/OPERATOR_PLAN.md": {
+      "sha256": "762fe43794831a3f02b49b2b5ffd61f49796edaaa6f9f4957beea9a3c4c2c64b",
+      "bytes": 2502,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    }
+  },
+  "runtimeMetadataBytesCheckedWithoutExecution": {
+    "/Users/shubham/.vscode/extensions/anthropic.claude-code-2.1.322-darwin-arm64/resources/native-binary/claude": {
+      "sha256": "a9d237949db816a0b7afd88a9a8e1df36b3a597a30f5a41d1c0539eb180a3450",
+      "bytes": 323702464,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o755",
+      "nlink": 1
+    },
+    "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node": {
+      "sha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+      "bytes": 121306800,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o755",
+      "nlink": 1
+    },
+    "/Users/shubham/.codex/ruflo-state/swasthadisha/adapters/57c226be79e9b832e6ee2b7122d387102b878f0ecaa7862a6fd65c4b64268b4d/ruflo-local.mjs": {
+      "sha256": "57c226be79e9b832e6ee2b7122d387102b878f0ecaa7862a6fd65c4b64268b4d",
+      "bytes": 9525,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o600",
+      "nlink": 1
+    },
+    "/Users/shubham/.codex/runtimes/ruflo/3.75.0/node_modules/@claude-flow/cli/bin/cli.js": {
+      "sha256": "5b65e02510e0d94174a557ce77c5a62c5e19093ec4d1d9b39ddfdfa93932a1f7",
+      "bytes": 15442,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o755",
+      "nlink": 1
+    },
+    "/Users/shubham/.codex/runtimes/ruflo/3.75.0/package-lock.json": {
+      "sha256": "8ac77ad0a7a64b698abe9566f12fc2d7bd583741bcf9167e5cc5cb6c7d19f646",
+      "bytes": 367099,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    }
+  },
+  "newOperatorDirectory": "output/qa/customer-pharmacy-lab-claude-review/revision-8/operator",
+  "proposedBindingOnlyReplacements": [
+    {
+      "old": "REV = QA / 'revision-7'",
+      "new": "REV = QA / 'revision-8'"
+    },
+    {
+      "old": "OWN = QA / 'operator'",
+      "new": "OWN = REV / 'operator'",
+      "reason": "Keep existing successful R7 operator/test/receipt files immutable; new R8-owned fixed path only"
+    },
+    {
+      "old": "revision-7 doc/schema/receipt/test names",
+      "new": "revision-8 equivalents only"
+    },
+    {
+      "old": "FROZEN/PLAN hashes",
+      "new": "Exact future reviewed R8 prepared-freeze/OPERATOR_PLAN hashes, no placeholders accepted at invocation"
+    },
+    {
+      "old": "PREIMPLEMENTATION_7/LIVE_APPROVAL_7/approval-schema7",
+      "new": "PREIMPLEMENTATION_8/LIVE_APPROVAL_8/approval-schema8"
+    },
+    {
+      "old": "old-receipt fixture LIVE_APPROVAL_6 and revision_seven test label",
+      "new": "old-receipt fixture references prior R7 receipt and revision_eight label, with exact inert fixture/path binding if needed"
+    }
+  ],
+  "authorLiteral": "Preserve proven supervisor AUTHOR=/root; public final provenance additionally excludes actual R8 implementation author /root/authority_operator. No validator/permission change.",
+  "requiredProof": "Retain exact R7 supervisor/tests as inert .txt or committed references, exhaustive forward/inverse replacements recover current exact R7 supervisor188cf7... and tests00c342...; AST/code diff must show no functional mutation. No fake rerun for unchanged mechanism; reuse actual47case OFFLINE_6 evidence honestly.",
+  "unchangedProfile": {
+    "executable": "/Users/shubham/.vscode/extensions/anthropic.claude-code-2.1.322-darwin-arm64/resources/native-binary/claude",
+    "environmentCandidate": {
+      "HOME": "/Users/shubham",
+      "PATH": "/usr/bin:/bin",
+      "TMPDIR": "/private/tmp",
+      "USER": "shubham",
+      "LOGNAME": "shubham",
+      "SECURITYSESSIONID": "186b9",
+      "__CF_USER_TEXT_ENCODING": "0x1F5:0x0:0x0"
+    },
+    "runtimePins": {
+      "/Users/shubham/.vscode/extensions/anthropic.claude-code-2.1.322-darwin-arm64/resources/native-binary/claude": "a9d237949db816a0b7afd88a9a8e1df36b3a597a30f5a41d1c0539eb180a3450",
+      "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+      "/Users/shubham/.codex/ruflo-state/swasthadisha/adapters/57c226be79e9b832e6ee2b7122d387102b878f0ecaa7862a6fd65c4b64268b4d/ruflo-local.mjs": "57c226be79e9b832e6ee2b7122d387102b878f0ecaa7862a6fd65c4b64268b4d",
+      "/Users/shubham/.codex/runtimes/ruflo/3.75.0/node_modules/@claude-flow/cli/bin/cli.js": "5b65e02510e0d94174a557ce77c5a62c5e19093ec4d1d9b39ddfdfa93932a1f7",
+      "/Users/shubham/.codex/runtimes/ruflo/3.75.0/package-lock.json": "8ac77ad0a7a64b698abe9566f12fc2d7bd583741bcf9167e5cc5cb6c7d19f646"
+    },
+    "clientKind": "local-bundled-CLI",
+    "actualClaudeExtensionACK": false,
+    "ideFlagSelected": false,
+    "requestedModel": "claude-opus-5-5",
+    "requestedEffort": "xhigh",
+    "effectiveEffort": "UNPROVEN",
+    "timeoutSeconds": 3600,
+    "maxTurns": 8,
+    "bounds": {
+      "stdoutBytes": 8388608,
+      "stderrBytes": 65536,
+      "frameBytes": 2097152,
+      "reviewBytes": 49152,
+      "eofGraceSeconds": 9
+    },
+    "permissionMode": "default",
+    "unansweredPermissionPrompts": "deny",
+    "managedPolicy": "PRESERVE_ORDINARY_CLIENT_POLICY_NO_ABSENCE_CLAIM",
+    "startupAdmission": "UNCHANGED_ORDINARY_TRUSTED_CLIENT_BOUNDARY_AND_FROZEN_SEVEN_PUBLIC_OS_ENVIRONMENT_KEYS",
+    "toolSequence": [
+      "team_inbox peek=true",
+      "first team_send nonce ACK",
+      "second team_send substantive review; third tool call overall"
+    ],
+    "reviewOutcomes": [
+      "APPROVE_SOURCE_ONLY",
+      "REQUEST_CHANGES",
+      "INCOMPLETE"
+    ]
+  },
+  "processBounds": "Unchanged ps/pgrep10second budget,1second cadence, exact owned process/group checks, EOF9seconds,3600second model deadline. Extension only if actual need and separately reviewed; no proactive widening.",
+  "freshArtifactsAfterMerge": "Fresh random sessionId and nonce, challenge packet binding and exact never-existing private output/once paths; no allocation/enqueue now.",
+  "beforeInvocation": "Two actual independent nonauthor final source+one-exact-run decisions, Root clean committed candidate/source/runtime pin verification, same existing team/member validation, one fresh challenge enqueue, exact private Git exclusions then0600 LIVE_APPROVAL_8. No auth poll, download, new framework, hosted worker or implicit model launch.",
+  "afterInvocation": "Actual assistant/canonical model, exactly3correlated successful tools (inbox peek/nonceACK/reviewsend), sent/server/final equality, persisted mailbox readback and independent exact process/group absence. Effective effort claimed only if actually reported; native webviewACK false. Raw thinking remains private.",
+  "scope": "Packet source/evidence review only; no runtime/module/clinical/financial/release acceptance or automatic retry."
+}

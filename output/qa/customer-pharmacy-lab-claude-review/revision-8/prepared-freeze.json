@@ -1,0 +1,16 @@
+{
+  "schema": "SD-CLAUDE-FINAL-PREPARED-FREEZE-8",
+  "files": {
+    "ENV_BINDING_8.json": "6ee444d168b92aa32ca28a3757d2ad8a705ec053270bbc5ece917d7d4e8c5e1f",
+    "OPERATOR_PLAN.md": "30f99c56bfcd2358010f6d41f43a77d90d1f625d4845075e182c1b757c8b6a65",
+    "README.md": "49c052835007c11436d8a9b677718778ab2c2a86ebcf8c87e95786da6b3f62f0",
+    "challenge.json": "aa5bac513039d8d8e3e5c2ca1e47db5fd733afc75984bbed5dbc843247caa094",
+    "manifest.json": "7e77f1d8d74430e7023738f8d0de53ccf1573763a119fe28209c93a8e29d7bf7",
+    "mcp-config.json": "a612d678b74998efe9b9d91c029d7f66731ff4fb8e5e096e41f07243369743b0",
+    "packet.json": "15c50a61b36e42b59e95b48252c338ab96f6e421ba16237f8abfdfb9333a77d9",
+    "prior-seven.sha256.json": "6d490c04b63fd059f0d8cf49b277a48b3407a0f82d667b7837f7777d503e3b11",
+    "recipe.json": "c4a2dab4f261e3b32ff195abb934e4da722b6cf9606ca2388be229354ab8986f"
+  },
+  "writesStopped": true,
+  "liveInvocationApproved": false
+}

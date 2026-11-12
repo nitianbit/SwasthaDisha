@@ -1,0 +1,65 @@
+{
+  "schema": "SD-CLAUDE-BINDING-DELTA-8",
+  "baselineSupervisorSha256": "188cf7a864500f38b3020316c90243502c7ce2a7f9e417140ba080f118de0d88",
+  "baselineTestsSha256": "00c342c5da55827fcab2a13f420f9d01c09927c25974c8e8fcd520302302bd19",
+  "finalSupervisorSha256": "ec713b380f72eb5edd48b55da7efdf937b2591aa3b85c7c281e1744a027957a9",
+  "finalTestsSha256": "ddd2800dba2aab47eb4dba667c719531f9ed0910e3d7a59f504c9319f5f0d512",
+  "sourceReplacements": [
+    {
+      "old": "revision-7",
+      "new": "revision-8"
+    },
+    {
+      "old": "OWN = QA / 'operator'",
+      "new": "OWN = REV / 'operator'"
+    },
+    {
+      "old": "37db6d20ae109ec59ae962bac2f023d472165c28ce518c5c4c6ffcd6cf55a9e0",
+      "new": "9ccaa68231120a91f2d69a4afe1e00b4f29add81bb7710ad3401d4029007c44e"
+    },
+    {
+      "old": "762fe43794831a3f02b49b2b5ffd61f49796edaaa6f9f4957beea9a3c4c2c64b",
+      "new": "30f99c56bfcd2358010f6d41f43a77d90d1f625d4845075e182c1b757c8b6a65"
+    },
+    {
+      "old": "PREIMPLEMENTATION_7",
+      "new": "PREIMPLEMENTATION_8"
+    },
+    {
+      "old": "LIVE_APPROVAL_7",
+      "new": "LIVE_APPROVAL_8"
+    },
+    {
+      "old": "SD-CURRENT-CLAUDE-LIVE-APPROVAL-7",
+      "new": "SD-CURRENT-CLAUDE-LIVE-APPROVAL-8"
+    }
+  ],
+  "testReplacements": [
+    {
+      "old": "test_old_live_receipt_does_not_admit_revision_seven",
+      "new": "test_old_live_receipt_does_not_admit_revision_eight"
+    },
+    {
+      "old": "'LIVE_APPROVAL_6.json'",
+      "new": "'LIVE_APPROVAL_7.json'"
+    }
+  ],
+  "exactReverseSupervisorRecovery": true,
+  "exactReverseTestsRecovery": true,
+  "baselineCommittedPath": "output/qa/customer-pharmacy-lab-claude-review/operator/supervisor.py and test_supervisor.py preserved at source snapshot",
+  "functionalChanges": false,
+  "environmentUnchanged": false,
+  "environmentValidationAndSevenKeySetUnchanged": true,
+  "publicEnvironmentValueReplacements": [
+    {
+      "key": "SECURITYSESSIONID",
+      "old": "186b9",
+      "new": "186b8",
+      "provenance": "Root-authorized exact current public observation ENV_BINDING_8.json"
+    }
+  ],
+  "otherSixEnvironmentValuesUnchanged": true,
+  "runtimeMcpCapsTimeoutsUnchanged": true,
+  "fakeCampaign": "NOT_RUN_REUSE_EXACT_R6_47_CASE_EVIDENCE_AND_R7_SUCCESSFUL_CAPTURE",
+  "modelCalls": 0
+}

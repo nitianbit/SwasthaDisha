@@ -1,0 +1,18 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-OPERATOR-PREPARATION-8",
+  "planSha256": "30f99c56bfcd2358010f6d41f43a77d90d1f625d4845075e182c1b757c8b6a65",
+  "preparedFreezeSha256": "9ccaa68231120a91f2d69a4afe1e00b4f29add81bb7710ad3401d4029007c44e",
+  "rootAction": "AUTHORIZE_COMPACT_SUPERVISOR_AND_OFFLINE_FAKE_CHECKS_ONLY",
+  "scope": "Root direct native preparation authorization after reviewed worklist merge. Legacy rootAction enum preserved only for unchanged validator; no fake rerun/live authority.",
+  "rootAuthorizationProvenance": "Actual /root task to /root/authority_operator authorizes packet at67513f4 then doc-only updated snapshot with identical source, binding-only provenR7 mechanism and two fresh final reviews. No preparation reviewer votes invented.",
+  "leadPlanAuthor": "/root",
+  "bindingImplementationAuthor": "/root/authority_operator",
+  "ineligibleLiveReviewers": [
+    "/root",
+    "/root/authority_operator"
+  ],
+  "functionalChanges": false,
+  "finalSourceExactInvocationReviews": "PENDING_TWO_ACTUAL_NONAUTHOR_DECISIONS",
+  "liveInvocationApproved": false,
+  "modelRequests": 0
+}

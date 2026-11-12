@@ -1,0 +1,224 @@
+{
+  "schema": "SD-CLAUDE-R8-SELECTION-PLAN-1",
+  "author": "/root/authority_operator",
+  "lead": "/root",
+  "status": "PREPARATION_ONLY_NOT_A_FINAL_SOURCE_OR_INVOCATION_FREEZE",
+  "observedFocusHead": "4dd824ad2e6733828a779e0c78a7763315675b28",
+  "priorGenuineReviewSourceHead": "ea48a35cce0c010bbbe6a112795a090931d6fd8c",
+  "finalSourceCommit": null,
+  "pendingMerge": "m0/pharmacy-recovery-worklist; six-file candidate NOT_READY",
+  "groups": [
+    {
+      "id": "R8-1",
+      "topic": "customer lab booking progress",
+      "status": "INTEGRATED_SOURCE_ONLY",
+      "completeChangedFiles": [
+        "src1/modules/externalBookings/routes/index.ts",
+        "src1/modules/externalBookings/controller/index.ts",
+        "src1/modules/externalBookings/services/index.ts",
+        "src1/modules/externalBookings/repository/index.ts",
+        "src1/modules/externalBookings/types/index.ts"
+      ],
+      "contracts": [
+        "documentation/planning/implementation/LAB_CUSTOMER_BOOKING_PROGRESS_CONTRACT.md"
+      ],
+      "evidenceDirectories": [
+        "output/qa/lab-customer-booking-progress"
+      ],
+      "limits": "Local stored11field metadata only; no provider/sample/report release/HTTP/driver/runtime acceptance."
+    },
+    {
+      "id": "R8-2",
+      "topic": "customer pharmacy recovery intake",
+      "status": "INTEGRATED_SOURCE_ONLY",
+      "completeChangedFiles": [
+        "src1/modules/pharmacyOrders/routes/index.ts",
+        "src1/modules/pharmacyOrders/controller/index.ts",
+        "src1/modules/pharmacyOrders/services/index.ts",
+        "src1/modules/pharmacyOrders/repository/index.ts",
+        "src1/modules/pharmacyOrders/types/index.ts",
+        "src1/modules/pharmacyOrders/model/index.ts"
+      ],
+      "contracts": [
+        "documentation/planning/implementation/PHARMACY_CANCELLATION_RECOVERY_CONTRACT_DRAFT.md"
+      ],
+      "evidenceDirectories": [
+        "output/qa/pharmacy-cancellation-recovery"
+      ],
+      "limits": "Immutable replayable reconciliation-required request/receipt with unknown money facts; no collection, funding, stock/custody/refund resolution or F1/F5-1 closure."
+    },
+    {
+      "id": "R8-3",
+      "topic": "generic booking write ownership boundary",
+      "status": "INTEGRATED_SOURCE_ONLY",
+      "completeChangedFiles": [
+        "src1/modules/bookings/controller/index.ts",
+        "src1/modules/bookings/services/index.ts",
+        "src1/modules/bookings/repository/index.ts"
+      ],
+      "contracts": [
+        "documentation/planning/implementation/CUSTOMER_BOOKING_WRITE_BOUNDARY_CONTRACT_DRAFT.md",
+        "documentation/planning/implementation/CUSTOMER_BOOKING_WRITE_OWNER_CONTRACT_DRAFT.md",
+        "documentation/planning/implementation/CUSTOMER_BOOKING_FIELDS_CONTRACT.md"
+      ],
+      "evidenceDirectories": [
+        "output/qa/customer-booking-write-boundary",
+        "output/qa/customer-booking-write-owner"
+      ],
+      "limits": "Final scoped predicates do not roll back earlier effects or establish race/HTTP/clinical-retention/refund evidence; preserve dirty-array/legacy-ID/admin-unscoped residuals."
+    },
+    {
+      "id": "R8-4",
+      "topic": "PaymentService manual-constructor compatibility",
+      "status": "INTEGRATED_SOURCE_ONLY",
+      "completeChangedFiles": [
+        "test/pharmacy.integration.test.ts"
+      ],
+      "contracts": [
+        "output/qa/payment-constructor-compatibility/CONTRACT.md"
+      ],
+      "evidenceDirectories": [
+        "output/qa/payment-constructor-compatibility"
+      ],
+      "limits": "Genuine nineteenth MedicineRepository source argument only; legacy suite not run/admitted, no TypeDI or pharmacy-order branch/503 proof. F5-3 source repair is narrower than runtime closure."
+    },
+    {
+      "id": "R8-5",
+      "topic": "authority fixture and actual84-case pure proof",
+      "status": "INTEGRATED_BOUNDED_PURE_EVIDENCE_POSTACCEPTED",
+      "completeChangedFiles": [
+        "test/application/app-bundle.mjs",
+        "test/application/app-container.mjs",
+        "test/application/bootstrap.mjs",
+        "test/application/app-bundle.test.mjs",
+        "test/application/app-container.test.mjs",
+        "test/application/README.md",
+        "test/application/authority-scenario.mjs",
+        "test/application/run-authority.mjs"
+      ],
+      "contracts": [
+        "documentation/planning/implementation/AUTHORITY_PURE_RUNTIME_CONTRACT.md",
+        "documentation/planning/implementation/BUSINESS_STAFF_AUTHORITY_CONTRACT.md",
+        "documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md",
+        "documentation/planning/implementation/APP_NETWORK_ADMISSION_CONTRACT.md"
+      ],
+      "evidenceDirectories": [
+        "output/qa/authority-pure-runtime"
+      ],
+      "requiredRaw": [
+        "output/qa/authority-pure-runtime/real-actual/result.json",
+        "output/qa/authority-pure-runtime/real-actual/launcher.stdout",
+        "output/qa/authority-pure-runtime/real-actual/launcher.stderr",
+        "output/qa/authority-pure-runtime/real-actual/ARCHIVE_MANIFEST.json",
+        "output/qa/authority-pure-runtime/REAL_POST_DECISIONS.json"
+      ],
+      "limits": "84nominal +5mutant/restoration,8emits/11graphs/33evaluations under injected ports are distinct from700fakecases. No live adapter/session/index/provisioning/qualification/revocation/HTTP/JWT/Joi/clinical/funding/module/release proof."
+    },
+    {
+      "id": "R8-6",
+      "topic": "owning pharmacy recovery-request worklist",
+      "status": "NOT_READY_WAIT_ROOT_REVIEWED_SOURCE_MERGE",
+      "completeChangedFiles": [
+        "src1/modules/pharmacyOrders/routes/index.ts",
+        "src1/modules/pharmacyOrders/controller/index.ts",
+        "src1/modules/pharmacyOrders/services/index.ts",
+        "src1/modules/pharmacyOrders/repository/index.ts",
+        "src1/modules/pharmacyOrders/types/index.ts",
+        "src1/modules/pharmacyOrders/validation/index.ts"
+      ],
+      "contracts": [
+        "documentation/planning/implementation/PHARMACY_RECOVERY_WORKLIST_CONTRACT_DRAFT.md",
+        "documentation/planning/implementation/PHARMACY_QUALITY_WORKLIST_CONTRACT.md"
+      ],
+      "evidenceDirectories": [
+        "output/qa/pharmacy-recovery-worklist"
+      ],
+      "missingRequired": [
+        "Exact reviewed six-file source candidate and two actual nonauthor source decisions",
+        "Root merge/integrated clean commit",
+        "Final complete source/patch/freeze/verification bindings"
+      ],
+      "limits": "Current six same-name paths are PRE-worklist versions. Do not claim selected final worklist source until Root merge. Commercial findability is not assignment/collection/funding/clinical/custody/stock/refund resolution; F1/F5-1 remain open."
+    }
+  ],
+  "completeCurrentDependencySelection": [
+    "src1/routes/index.ts",
+    "src1/modules/middleware/auth.ts",
+    "src1/modules/common/middleware/validation.ts",
+    "src1/modules/middleware/errorHandler.ts",
+    "src1/modules/common/types/index.ts",
+    "src1/modules/common/repository/BaseRepository.ts",
+    "src1/modules/common/utils/asyncHandler.ts",
+    "src1/modules/common/utils/mongoErrors.ts",
+    "src1/modules/bookings/model/index.ts",
+    "src1/modules/bookings/types/index.ts",
+    "src1/modules/bookings/routes/index.ts",
+    "src1/modules/bookings/validation/index.ts",
+    "src1/modules/specialistPortal/services/index.ts",
+    "src1/modules/externalBookings/model/index.ts",
+    "src1/modules/externalBookings/validation/index.ts",
+    "src1/modules/pharmacyOrders/validation/index.ts",
+    "src1/modules/pharmacyOrders/prescriptionCommerce.ts",
+    "src1/modules/payment/services/index.ts",
+    "src1/modules/pharmacyMedicines/repository/index.ts",
+    "src1/modules/pharmacyMedicines/model/index.ts",
+    "src1/modules/pharmacyInventory/repository/index.ts",
+    "src1/modules/pharmacyInventory/validation/index.ts",
+    "src1/modules/organizations/types/index.ts",
+    "src1/modules/organizations/rules.ts",
+    "src1/modules/organizations/services/index.ts",
+    "src1/modules/organizations/model/index.ts",
+    "src1/modules/organizations/repository/index.ts",
+    "test/application/app-ports.mjs",
+    "test/application/app-image.json",
+    "test/application/app-runtime.json",
+    "output/qa/business-staff-authority/SERIALIZATION_VECTORS.json"
+  ],
+  "dependencyScope": "Closed relevant method/contract/linker/model/route/guard context, not a complete executable provider/application import closure. Add any concrete missing logical dependency before freezing or label review INCOMPLETE; no arbitrary traversal/private configs.",
+  "exactPriorReviewsAndDispositions": [
+    "output/qa/customer-pharmacy-lab-claude-review/operator/CLAUDE_REVIEW_4.md",
+    "output/qa/customer-pharmacy-lab-claude-review/operator/CLAUDE_REVIEW_6.md",
+    "output/qa/customer-pharmacy-lab-claude-review/operator/FINDING_DISPOSITIONS_6.md",
+    "output/qa/customer-pharmacy-lab-claude-review/operator/CLAUDE_REVIEW_7.md",
+    "output/qa/customer-pharmacy-lab-claude-review/operator/FINDING_DISPOSITIONS_7.md",
+    "output/qa/customer-pharmacy-lab-claude-review/operator/ROOT_ACCEPTANCE_7.json",
+    "output/qa/customer-pharmacy-lab-claude-review/operator/ROOT_STREAM_REVIEW_7.json",
+    "output/qa/customer-pharmacy-lab-claude-review/operator/POSTCAPTURE_DECISIONS_7.json"
+  ],
+  "f1": "HIGH_OPEN: professional qualification/provisioning, legacy/dispatched custody and original-instrument funded recovery remain activation/release blockers.",
+  "f5_1": "MEDIUM_OPEN: preserve commerce/clinical denial; ready/out COD or legacy catalogue/snapshot changes can block paid recording/completion. Intake/worklist visibility alone does not verify cash or resolve custody/funding/stock.",
+  "f5_3": "Only constructor call-shape source repair merged; TypeDI and runtime guard branch still unproved.",
+  "packetRules": [
+    "At final clean merged HEAD include ALL actual changed source/test/application files from prior R7 snapshot; deduplicate overlaps, do not substitute old staged snapshots",
+    "Complete contracts and relevant closed immediate dependencies; changed files must be whole, no silent truncation",
+    "Current whole-file SHA/bytes/original line numbers override historical source pins while preserving historical review text verbatim",
+    "Select exact source diffs/freezes/verification/real-outcome decisions as evidence; no source-only-to-runtime upgrade",
+    "Actual84 proof and700fakecases are separate, provenance/limits explicit",
+    "Compiler9MiB external artifact is hash/size pinned evidence; do not embed as if below2MiB packet/source cap or load it",
+    "No secrets/PHI/private thinking/raw R7transcript/private receipts/config traversal",
+    "Measure deduplicated packet bytes against existing2MiB admission; do not claim byte count proves tokenizer/context fit. If complete scope exceeds limit, stop for Root-reviewed reduction/split, not truncated packet/model substitution."
+  ],
+  "requiredFinalArtifacts": [
+    "packet.json",
+    "manifest.json",
+    "recipe.json",
+    "challenge.json",
+    "mcp-config.json",
+    "prior-seven.sha256.json",
+    "prepared-freeze.json",
+    "OPERATOR_PLAN.md",
+    "operator/supervisor.py",
+    "operator/test_supervisor.py",
+    "operator/PREIMPLEMENTATION_8.json",
+    "operator/approval-template-8.json",
+    "operator/BINDING_DELTA_8.json",
+    "operator/SOURCE_FREEZE_8.json"
+  ],
+  "notCreatedYet": [
+    "final packet/manifest/recipe/hash freeze",
+    "sessionId/nonce/challenge enqueue",
+    "live approval/once claim/private output",
+    "runtime model/Ruflo toolbus processes"
+  ],
+  "execution": "NONE_PREPARATION_ONLY"
+}

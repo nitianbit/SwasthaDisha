@@ -1,0 +1,32 @@
+{
+  "schema": "SD-CLAUDE-R8-DATA-READBACK-1",
+  "snapshot": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+  "sourceEquivalent675": true,
+  "files": 138,
+  "excerpts": 143,
+  "changedFilesComplete": 24,
+  "changedCodeFiles": 23,
+  "changedProductionFilesComplete": 15,
+  "contractsComplete": 15,
+  "packetBytes": 1879863,
+  "packetSha256": "15c50a61b36e42b59e95b48252c338ab96f6e421ba16237f8abfdfb9333a77d9",
+  "sessionId": "99c211d0-4e14-42fa-9649-6a785bd2df36",
+  "exactSourceAndTestInverse": true,
+  "functionalChanges": false,
+  "sevenKeySetAndEnvironmentValidationUnchanged": true,
+  "oneExplicitReviewedPublicSessionValueChange": true,
+  "otherSixEnvironmentValuesUnchanged": true,
+  "fiveRuntimeBytePinsMatch": true,
+  "freshReceiptClaimOutputUnallocated": true,
+  "challengeEnqueued": false,
+  "leadPlanAuthor": "/root",
+  "bindingImplementationAuthor": "/root/authority_operator",
+  "bothAuthorsExcludedFromLiveReviewVotes": true,
+  "liveCalls": 0,
+  "testsRerun": 0,
+  "ASTOnly": "PASS",
+  "excludedDrafts": [
+    "LAB_CUSTOMER_HISTORY_CONTRACT_DRAFT.md",
+    "DRIVER_NETWORK_DENIAL_PREFLIGHT_CONTRACT.md"
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-FINAL-SOURCE-FREEZE-8",
+  "filesRelativeToQa": {
+    "revision-8/ENV_BINDING_8.json": "6ee444d168b92aa32ca28a3757d2ad8a705ec053270bbc5ece917d7d4e8c5e1f",
+    "revision-8/OPERATOR_PLAN.md": "30f99c56bfcd2358010f6d41f43a77d90d1f625d4845075e182c1b757c8b6a65",
+    "revision-8/README.md": "49c052835007c11436d8a9b677718778ab2c2a86ebcf8c87e95786da6b3f62f0",
+    "revision-8/challenge.json": "aa5bac513039d8d8e3e5c2ca1e47db5fd733afc75984bbed5dbc843247caa094",
+    "revision-8/manifest.json": "7e77f1d8d74430e7023738f8d0de53ccf1573763a119fe28209c93a8e29d7bf7",
+    "revision-8/mcp-config.json": "a612d678b74998efe9b9d91c029d7f66731ff4fb8e5e096e41f07243369743b0",
+    "revision-8/packet.json": "15c50a61b36e42b59e95b48252c338ab96f6e421ba16237f8abfdfb9333a77d9",
+    "revision-8/prior-seven.sha256.json": "6d490c04b63fd059f0d8cf49b277a48b3407a0f82d667b7837f7777d503e3b11",
+    "revision-8/recipe.json": "c4a2dab4f261e3b32ff195abb934e4da722b6cf9606ca2388be229354ab8986f",
+    "revision-8/prepared-freeze.json": "9ccaa68231120a91f2d69a4afe1e00b4f29add81bb7710ad3401d4029007c44e",
+    "revision-8/operator/supervisor.py": "ec713b380f72eb5edd48b55da7efdf937b2591aa3b85c7c281e1744a027957a9",
+    "revision-8/operator/test_supervisor.py": "ddd2800dba2aab47eb4dba667c719531f9ed0910e3d7a59f504c9319f5f0d512",
+    "revision-8/operator/PREIMPLEMENTATION_8.json": "469e3c07b4feab4350331ba1e9269c2b99a78d8f3adb91fec3b0e1126ffec1a0",
+    "revision-8/operator/approval-template-8.json": "bd8fe583f26924f17dbbed52a1759ae056c8f89826ada819a26a746da403a4ee",
+    "revision-8/operator/BINDING_DELTA_8.json": "1b11be83f5a05b33894c46cd0216927c48656a2117c1a7c86bc272f9ec5a3b61",
+    "revision-8/operator/supervisor-binding.diff": "29097cd5dbeef647fd6d782da926905c202a67ab3d3e8fa5f78c900ad028d505",
+    "revision-8/operator/tests-binding.diff": "4717cf70604c05695000b85cffdfc5ff9d1216edaa166325ca0cc5b6ccd06e75",
+    "revision-8/operator/DATA_READBACK_8.json": "413d852538654205e515fff2f53e79399e921f6ef4bb95096ed29f9e687e500a",
+    "operator/supervisor.py": "188cf7a864500f38b3020316c90243502c7ce2a7f9e417140ba080f118de0d88",
+    "operator/test_supervisor.py": "00c342c5da55827fcab2a13f420f9d01c09927c25974c8e8fcd520302302bd19",
+    "operator/OFFLINE_6.json": "d2235ccccf676ea66d7c9762831f8dee9a90d08a4aa9c2d33a64208d2089b78e",
+    "operator/OFFLINE_6.txt": "64dbd3156fd4a34642f2c2ab033d7e8391ee3ba55b210014a82c5f4930d3e5a4",
+    "operator/ROOT_ACCEPTANCE_7.json": "18282c75441445c2d598f0c4df9e5d6a08fd77fcf445969cb0acde09e79f4d3b",
+    "operator/CLAUDE_REVIEW_7.md": "ae72d9142373441cae8f0ebf19594134aef703f129ae33e1ee55c7ba822b576a",
+    "operator/FINDING_DISPOSITIONS_7.md": "9aefa72f58eaa0b682cee481ca5afcae28c6f789c103af9297e417147142c6e3"
+  },
+  "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+  "sessionId": "99c211d0-4e14-42fa-9649-6a785bd2df36",
+  "leadPlanAuthor": "/root",
+  "bindingImplementationAuthor": "/root/authority_operator",
+  "ineligibleLiveReviewers": [
+    "/root",
+    "/root/authority_operator"
+  ],
+  "finalReviews": "PENDING_TWO_ACTUAL_NONAUTHOR_SUBAGENT_SOURCE_EXACT_INVOCATION_DECISIONS",
+  "writesStopped": true,
+  "liveInvocationApproved": false
+}

@@ -1,0 +1,2568 @@
+{
+  "schema": "SD-CLAUDE-PACKET-MANIFEST-8",
+  "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+  "sourceEquivalent675": "67513f4a569d2fe5de130fc9ed6bac3314dfb120",
+  "sourceHashes": {
+    "src1/modules/bookings/controller/index.ts": "1c330cdb65aed728defe615371f01e74556d2035ea01acb4f4a4e3f016df6e0a",
+    "src1/modules/bookings/repository/index.ts": "3083722a941065a5a87ddc222772305c0c58de57e2ce140bb38dfd4721713ee5",
+    "src1/modules/bookings/services/index.ts": "279020eb382d7566e737cee88eb8b7b670ebcf6aeb6e7b968010aabb9bc9f6cd",
+    "src1/modules/externalBookings/controller/index.ts": "360836e0d5e98223de26c5faf1777f420d1991afdce7b3f7b5bfe2eada05b041",
+    "src1/modules/externalBookings/repository/index.ts": "b34199b2e0c767e309c28c6d147b6de1d5ae59bbcef363aca3668371b13d582c",
+    "src1/modules/externalBookings/routes/index.ts": "fe3d4181c3424638cad98b2cc61bbcad5b72f48258ae1c02f76f5b3fdcbba146",
+    "src1/modules/externalBookings/services/index.ts": "aa1ac1b90f91dab278bad594d5a3a82f931cf6443fb24af819faf707c89a9a66",
+    "src1/modules/externalBookings/types/index.ts": "878f539e702ee998176acbfc4c6a38b7b711d2447e4608fe14a5647b40d7e862",
+    "src1/modules/pharmacyOrders/controller/index.ts": "e1cca25dc7c45fd2048f014c6b47191cda1044eca8b8f4cf5c9f061c3d2a3446",
+    "src1/modules/pharmacyOrders/model/index.ts": "f054a220020c66a83c49ea8658bd0d002cb3a9fd28c9b7771b0584c53471ac14",
+    "src1/modules/pharmacyOrders/repository/index.ts": "df77e35abeb00913d6353e0bf76a3651b3a1b78b6e669548439472347c4b084f",
+    "src1/modules/pharmacyOrders/routes/index.ts": "cfb13044228699be2fa37ce9635dcaf9f5874e3fe2ce02eeb846407be0e088fe",
+    "src1/modules/pharmacyOrders/services/index.ts": "83ca486a250403a777f0548ec57c98bd1e99e154b6f2034754ddc9aedbc3f35e",
+    "src1/modules/pharmacyOrders/types/index.ts": "6f3c1171b5ab154bc566ec7dcedaf3da4cd614d1bb7402fa5534b7a5e575e423",
+    "src1/modules/pharmacyOrders/validation/index.ts": "70381b52ca88dc35782850f662423ee423dbaebe67122641c1219fdee8f84402",
+    "test/application/README.md": "dbe1014862ce0e192eaf6d2992c7e42efdc3d7f690e2008f9c6cafcf150be8e7",
+    "test/application/app-bundle.mjs": "993634db7d05213208ddda434d8d4c21f679ae342f46a1836dda115c7d3b5817",
+    "test/application/app-bundle.test.mjs": "dd2bc927c1f0f4d1932929aa4294a6df3c74a1db6536a7bb56902d259d163e75",
+    "test/application/app-container.mjs": "4c2a061a45a30478d4fc04d6cd28bb88aa2fd679e4346136b7714f29142948aa",
+    "test/application/app-container.test.mjs": "79c6b65b39c7336718ad563b175e48f5fda76035b77b5028fb83bbcaa6a7dd14",
+    "test/application/authority-scenario.mjs": "806d39428cc6512c527581a46d00f49b4c15d348efa9457e5cbab3369b91d3ee",
+    "test/application/bootstrap.mjs": "b9016bbddd345ed562e7820ae391f96180397a6ae84c20fc92c1d36a74467b4c",
+    "test/application/run-authority.mjs": "a4b7c9e31f0ecc92f57d7d324dd3f36896d188ffe5e06e5cc159577549e31af9",
+    "test/pharmacy.integration.test.ts": "e123eab6f5bde08475605f8ed47a1f3830cd97ecdd9c8fe2dd0f2aa49507d35e"
+  },
+  "contractHashes": {
+    "documentation/planning/implementation/APP_NETWORK_ADMISSION_CONTRACT.md": "003156a5935912eca7794c4fe312e51a93991162a9bf438cacfc40a315abe291",
+    "documentation/planning/implementation/AUTHORITY_PURE_RUNTIME_CONTRACT.md": "3b433b9f203b1c66b6a30c17e51c084e8d06e88f1e8a761b4d605ee6c7f0712a",
+    "documentation/planning/implementation/BUSINESS_STAFF_AUTHORITY_CONTRACT.md": "69dba46528295f55e184b95e1fb6ea451ee2371254d76eb7ac9fd6573068f9fd",
+    "documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md": "0a93e0d16625bd43b983f037d2c75f70cc336b78bd6bc4ba1c19a4cf3fe3613e",
+    "documentation/planning/implementation/CUSTOMER_BOOKING_FIELDS_CONTRACT.md": "b7a82e761ebeacd808dfe11fbb66d7e467631c2aa062f91a8a34deaa8f2d94ea",
+    "documentation/planning/implementation/CUSTOMER_BOOKING_WRITE_BOUNDARY_CONTRACT_DRAFT.md": "f3d100d7981d65e92c9ba144523534b54d309b7cfb400ba387497c25113bcf22",
+    "documentation/planning/implementation/CUSTOMER_BOOKING_WRITE_OWNER_CONTRACT_DRAFT.md": "723af082952ee39d39342080d2ba72205687f94244458a5e5dabf0d9c7ee8698",
+    "documentation/planning/implementation/GATEWAY_CAPTURE_ADMISSION_CONTRACT.md": "e6956ec56ec5ce07d1208cf9cd0310a6fa4600212f2e02973828289c19ab633e",
+    "documentation/planning/implementation/LAB_CUSTOMER_BOOKING_PROGRESS_CONTRACT.md": "f606545cd262de4b3429165024a2b8545f50f74b7be4fae66b0da6e3dd2d0de9",
+    "documentation/planning/implementation/PHARMACY_CANCELLATION_RECOVERY_CONTRACT_DRAFT.md": "e43bb8170b644cdc93ceeae9d8f66e8abb739f1cb35079e1076147aa88b4e910",
+    "documentation/planning/implementation/PHARMACY_QUALITY_WORKLIST_CONTRACT.md": "710f300d1d335540599a912fcec1582ce6c7d636cc9a5f20a386615bbb9c12ee",
+    "documentation/planning/implementation/PHARMACY_RECOVERY_WORKLIST_CONTRACT_DRAFT.md": "0d5e215e4376987e7b5d33114d243685cb5c1ee3302e69ceef4dc167cd7b8b86",
+    "documentation/planning/implementation/PHARMACY_REFUND_ERROR_PROPAGATION_CONTRACT.md": "6e34cc83c22347b4ff6e13cbbb2a446de42696a787b1036010e20cef5d1854dd",
+    "documentation/planning/implementation/PRESCRIPTION_CHECKOUT_ENABLEMENT_CONTRACT.md": "e3deb08a9002e4b11bf0d168dbce369312727841e5c96fa5c3a25503ea1781a7",
+    "output/qa/payment-constructor-compatibility/CONTRACT.md": "afe1861ef7f256a495304e39c5f2a768abd66c3ce80ade2663b9004ba5d7242f"
+  },
+  "contractBundleSha256": "1eea72cdd7d883f16261fefedcc0ef9c74d40527476e873e4b13f5ddf50acebd",
+  "packetSha256": "15c50a61b36e42b59e95b48252c338ab96f6e421ba16237f8abfdfb9333a77d9",
+  "packetBytes": 1879863,
+  "fileCount": 138,
+  "completeChangedFiles": 24,
+  "completeChangedCodeFiles": 23,
+  "completeChangedProductionFiles": 15,
+  "completeContracts": 15,
+  "files": [
+    {
+      "path": "documentation/planning/SYSTEM_DESIGN.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "cbd899f6fb442b13db28c389143b529b90da364165dc17291cc829814810bc84",
+      "wholeFileBytes": 112050,
+      "complete": false,
+      "excerpts": [
+        {
+          "startLine": 25,
+          "endLine": 40,
+          "sha256": "9783a038e3d835c0684cf9230bb1e3044ca3c023f7ed3063fa9574c81f5875ad"
+        },
+        {
+          "startLine": 111,
+          "endLine": 135,
+          "sha256": "47b6d53f63e31360a1e01ef4d78367edee1f5b46fe2c566bf6b2237eebff4388"
+        },
+        {
+          "startLine": 193,
+          "endLine": 221,
+          "sha256": "4e762c355bc4d599ab3466e1206f62139a582ca242913422fb5dfd318292ea95"
+        },
+        {
+          "startLine": 228,
+          "endLine": 260,
+          "sha256": "4c451a444be235e612837f399d22e331d2f8738bb243ef205be6695ed4f46393"
+        },
+        {
+          "startLine": 269,
+          "endLine": 294,
+          "sha256": "08fe97807a57d30571382760b7d5c3d7774d59dfa208015ff445a8dadb286748"
+        },
+        {
+          "startLine": 556,
+          "endLine": 582,
+          "sha256": "065f60c6be33e8ca6dcb25e74947b60ab40cdd8d3523fdb8a2cda00b767ef5f4"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "documentation/planning/implementation/APP_NETWORK_ADMISSION_CONTRACT.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "003156a5935912eca7794c4fe312e51a93991162a9bf438cacfc40a315abe291",
+      "wholeFileBytes": 13185,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 219,
+          "sha256": "003156a5935912eca7794c4fe312e51a93991162a9bf438cacfc40a315abe291"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "documentation/planning/implementation/AUTHORITY_PURE_RUNTIME_CONTRACT.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "3b433b9f203b1c66b6a30c17e51c084e8d06e88f1e8a761b4d605ee6c7f0712a",
+      "wholeFileBytes": 18579,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 133,
+          "sha256": "3b433b9f203b1c66b6a30c17e51c084e8d06e88f1e8a761b4d605ee6c7f0712a"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "documentation/planning/implementation/AUTHORITY_PURE_RUNTIME_READINESS.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "a64e0fbf7a3b093b54d019089d5d98d366d2372191a24c9c3c3533f0ca8947ea",
+      "wholeFileBytes": 22357,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 109,
+          "sha256": "a64e0fbf7a3b093b54d019089d5d98d366d2372191a24c9c3c3533f0ca8947ea"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "documentation/planning/implementation/BUSINESS_STAFF_AUTHORITY_CONTRACT.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "69dba46528295f55e184b95e1fb6ea451ee2371254d76eb7ac9fd6573068f9fd",
+      "wholeFileBytes": 21973,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 119,
+          "sha256": "69dba46528295f55e184b95e1fb6ea451ee2371254d76eb7ac9fd6573068f9fd"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "0a93e0d16625bd43b983f037d2c75f70cc336b78bd6bc4ba1c19a4cf3fe3613e",
+      "wholeFileBytes": 11450,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 44,
+          "sha256": "0a93e0d16625bd43b983f037d2c75f70cc336b78bd6bc4ba1c19a4cf3fe3613e"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "documentation/planning/implementation/CUSTOMER_BOOKING_FIELDS_CONTRACT.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "b7a82e761ebeacd808dfe11fbb66d7e467631c2aa062f91a8a34deaa8f2d94ea",
+      "wholeFileBytes": 25283,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 122,
+          "sha256": "b7a82e761ebeacd808dfe11fbb66d7e467631c2aa062f91a8a34deaa8f2d94ea"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "documentation/planning/implementation/CUSTOMER_BOOKING_WRITE_BOUNDARY_CONTRACT_DRAFT.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "f3d100d7981d65e92c9ba144523534b54d309b7cfb400ba387497c25113bcf22",
+      "wholeFileBytes": 23388,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 107,
+          "sha256": "f3d100d7981d65e92c9ba144523534b54d309b7cfb400ba387497c25113bcf22"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "documentation/planning/implementation/CUSTOMER_BOOKING_WRITE_OWNER_CONTRACT_DRAFT.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "723af082952ee39d39342080d2ba72205687f94244458a5e5dabf0d9c7ee8698",
+      "wholeFileBytes": 18409,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 121,
+          "sha256": "723af082952ee39d39342080d2ba72205687f94244458a5e5dabf0d9c7ee8698"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "documentation/planning/implementation/CUSTOMER_PHARMACY_LAB_PROGRESS.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "e55c7bbacf4955c9ed0d133c6e5ef54bb220e4e37ee0cbc7dc8fe7d4b214786c",
+      "wholeFileBytes": 24018,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 66,
+          "sha256": "e55c7bbacf4955c9ed0d133c6e5ef54bb220e4e37ee0cbc7dc8fe7d4b214786c"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "documentation/planning/implementation/GATEWAY_CAPTURE_ADMISSION_CONTRACT.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "e6956ec56ec5ce07d1208cf9cd0310a6fa4600212f2e02973828289c19ab633e",
+      "wholeFileBytes": 16453,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 104,
+          "sha256": "e6956ec56ec5ce07d1208cf9cd0310a6fa4600212f2e02973828289c19ab633e"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "documentation/planning/implementation/LAB_CUSTOMER_BOOKING_PROGRESS_CONTRACT.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "f606545cd262de4b3429165024a2b8545f50f74b7be4fae66b0da6e3dd2d0de9",
+      "wholeFileBytes": 17648,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 101,
+          "sha256": "f606545cd262de4b3429165024a2b8545f50f74b7be4fae66b0da6e3dd2d0de9"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "documentation/planning/implementation/M0_A_PROGRESS.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "06864ab0aa1efe496a232ac9aa8cb864e0b3678ceaba97a3f60f3e303b4bc9bb",
+      "wholeFileBytes": 86157,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 740,
+          "sha256": "06864ab0aa1efe496a232ac9aa8cb864e0b3678ceaba97a3f60f3e303b4bc9bb"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "documentation/planning/implementation/PHARMACY_AUTHORITY_RECOVERY_BASELINE.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "fffc6ccc2e463febc34d1802addf212f96e856993cff961ffb8ad6606e9ed2d7",
+      "wholeFileBytes": 7357,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 64,
+          "sha256": "fffc6ccc2e463febc34d1802addf212f96e856993cff961ffb8ad6606e9ed2d7"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "documentation/planning/implementation/PHARMACY_CANCELLATION_RECOVERY_CONTRACT_DRAFT.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "e43bb8170b644cdc93ceeae9d8f66e8abb739f1cb35079e1076147aa88b4e910",
+      "wholeFileBytes": 21510,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 123,
+          "sha256": "e43bb8170b644cdc93ceeae9d8f66e8abb739f1cb35079e1076147aa88b4e910"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "documentation/planning/implementation/PHARMACY_DELEGATED_POLICY_DECISIONS.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "3882d1dc976342376ed6729fc877fa80e15b79f225a37b10933c1d3681333f6f",
+      "wholeFileBytes": 7677,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 39,
+          "sha256": "3882d1dc976342376ed6729fc877fa80e15b79f225a37b10933c1d3681333f6f"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "documentation/planning/implementation/PHARMACY_QUALITY_WORKLIST_CONTRACT.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "710f300d1d335540599a912fcec1582ce6c7d636cc9a5f20a386615bbb9c12ee",
+      "wholeFileBytes": 17953,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 114,
+          "sha256": "710f300d1d335540599a912fcec1582ce6c7d636cc9a5f20a386615bbb9c12ee"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "documentation/planning/implementation/PHARMACY_RECOVERY_WORKLIST_CONTRACT_DRAFT.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "0d5e215e4376987e7b5d33114d243685cb5c1ee3302e69ceef4dc167cd7b8b86",
+      "wholeFileBytes": 10581,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 60,
+          "sha256": "0d5e215e4376987e7b5d33114d243685cb5c1ee3302e69ceef4dc167cd7b8b86"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "documentation/planning/implementation/PHARMACY_REFUND_ERROR_PROPAGATION_CONTRACT.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "6e34cc83c22347b4ff6e13cbbb2a446de42696a787b1036010e20cef5d1854dd",
+      "wholeFileBytes": 4240,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 41,
+          "sha256": "6e34cc83c22347b4ff6e13cbbb2a446de42696a787b1036010e20cef5d1854dd"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "documentation/planning/implementation/PRESCRIPTION_CHECKOUT_ENABLEMENT_CONTRACT.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "e3deb08a9002e4b11bf0d168dbce369312727841e5c96fa5c3a25503ea1781a7",
+      "wholeFileBytes": 26836,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 135,
+          "sha256": "e3deb08a9002e4b11bf0d168dbce369312727841e5c96fa5c3a25503ea1781a7"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/CASE_PLAN.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "c4110c5d60794073f6f57576845c686ca783c4f2687cda7b8fdfc6bec00c1627",
+      "wholeFileBytes": 17544,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 539,
+          "sha256": "c4110c5d60794073f6f57576845c686ca783c4f2687cda7b8fdfc6bec00c1627"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/COMMITTED_PATCH_READBACK.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "4e2af0a848a6e12245f6440d15c7973a1135ee8537961194980edecc30578129",
+      "wholeFileBytes": 942,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 12,
+          "sha256": "4e2af0a848a6e12245f6440d15c7973a1135ee8537961194980edecc30578129"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/HOST_NODE24_BINDING_AMENDMENT.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "693a8f7d109699fd14a612b8430d82d81f68e4e262cbd2b1ebff20895407bc2d",
+      "wholeFileBytes": 3619,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 13,
+          "sha256": "693a8f7d109699fd14a612b8430d82d81f68e4e262cbd2b1ebff20895407bc2d"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/HOST_NODE24_PREIMPLEMENTATION.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "ae29d94ffff8f6f2a41c0512edbe0d9a59dee0963ea57925d0cb06ce3b7018a3",
+      "wholeFileBytes": 1204,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 27,
+          "sha256": "ae29d94ffff8f6f2a41c0512edbe0d9a59dee0963ea57925d0cb06ce3b7018a3"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/MUTATION_PLAN.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "62e2c509a553fd31212351e54c119e2cd9993b90de77cef02a0e6b8a37b544d4",
+      "wholeFileBytes": 2761,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 62,
+          "sha256": "62e2c509a553fd31212351e54c119e2cd9993b90de77cef02a0e6b8a37b544d4"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/OFFLINE_POSTEXECUTION_DECISIONS.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "9246b4f1b60e84ce340701e52d6332d20559de27bc10c467c7608551f6ea3418",
+      "wholeFileBytes": 871,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 19,
+          "sha256": "9246b4f1b60e84ce340701e52d6332d20559de27bc10c467c7608551f6ea3418"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/PYTHON_STARTUP_FAILURE.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "324456a9bed8d11bb0baef2575d147f3866210e8d9df39b41fcc602f0efa71be",
+      "wholeFileBytes": 3750,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 77,
+          "sha256": "324456a9bed8d11bb0baef2575d147f3866210e8d9df39b41fcc602f0efa71be"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/PYTHON_STARTUP_GUARD_PROOF.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "3632a68a602b9e1ff527f443603fd7feddfcb67d0bab05734123c46875e2a6fa",
+      "wholeFileBytes": 5408,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 101,
+          "sha256": "3632a68a602b9e1ff527f443603fd7feddfcb67d0bab05734123c46875e2a6fa"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/REAL_CAPTURE_PREIMPLEMENTATION.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "3c01bd628873fa408260f940aacf50dddd47c4a9bf4ce875a6d4afe0bbbfc6ab",
+      "wholeFileBytes": 1017,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 20,
+          "sha256": "3c01bd628873fa408260f940aacf50dddd47c4a9bf4ce875a6d4afe0bbbfc6ab"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/REAL_OPERATOR.py",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "1a589cc979b5ce6ca19b3b91c6eada13321dc1c46e2716b7b375f09f1ac69570",
+      "wholeFileBytes": 41666,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 681,
+          "sha256": "1a589cc979b5ce6ca19b3b91c6eada13321dc1c46e2716b7b375f09f1ac69570"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/REAL_POST_DECISIONS.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "19495f226cf239a037d56ad496602aef00d1cd8140d86d2e3871ba821e4dcb63",
+      "wholeFileBytes": 4750,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 90,
+          "sha256": "19495f226cf239a037d56ad496602aef00d1cd8140d86d2e3871ba821e4dcb63"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/REAL_RUN_CAPTURE_RECIPE.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "d5f53b4d53fabf238ed2721f2c9c4ee8749538a3a46a0d758ee3d61a3c4e14a7",
+      "wholeFileBytes": 9762,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 34,
+          "sha256": "d5f53b4d53fabf238ed2721f2c9c4ee8749538a3a46a0d758ee3d61a3c4e14a7"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/REAL_RUN_MANIFEST.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "0a19d8ff52d988587332c98bb7798277757789d9d2e88ff2a822c5f9ba09704b",
+      "wholeFileBytes": 47375,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 1861,
+          "sha256": "0a19d8ff52d988587332c98bb7798277757789d9d2e88ff2a822c5f9ba09704b"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/SOURCE_DECISIONS.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "cbeeec7cd9408530801d30826be3b994e558c2e3c0f090b64cc7bf497be5c22e",
+      "wholeFileBytes": 1339,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 22,
+          "sha256": "cbeeec7cd9408530801d30826be3b994e558c2e3c0f090b64cc7bf497be5c22e"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/SOURCE_FREEZE.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "7df6a0ba88c5cf1e19cb79fdbcfe3cf1e4ec67175d6f4b0102b817c868d554dc",
+      "wholeFileBytes": 6315,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 161,
+          "sha256": "7df6a0ba88c5cf1e19cb79fdbcfe3cf1e4ec67175d6f4b0102b817c868d554dc"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/SPEC_OP_1_CHANGE_PROOF.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "7f78e65e96ef69d7aaad21f4a4b39fd2e084a5a4ed8dba58527e9f036f742818",
+      "wholeFileBytes": 4940,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 70,
+          "sha256": "7f78e65e96ef69d7aaad21f4a4b39fd2e084a5a4ed8dba58527e9f036f742818"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/SPEC_OP_1_REVIEW.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "c3c23ee93491a35c46467f25557c0f88f8e25c418c265abe212f8ebf2308facc",
+      "wholeFileBytes": 1879,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 25,
+          "sha256": "c3c23ee93491a35c46467f25557c0f88f8e25c418c265abe212f8ebf2308facc"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/offline-actual/result.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "dfa34ddafc26100da6a82c07a0e48a1010d202e5d8c188cd49831d20a8e112cc",
+      "wholeFileBytes": 3308,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 112,
+          "sha256": "dfa34ddafc26100da6a82c07a0e48a1010d202e5d8c188cd49831d20a8e112cc"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/real-actual/ARCHIVE_MANIFEST.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "948d3abf5fe3b7f50b4ce300c5abb2e45d27724eeb0c4538319f4a92797c2df0",
+      "wholeFileBytes": 36937,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 1340,
+          "sha256": "948d3abf5fe3b7f50b4ce300c5abb2e45d27724eeb0c4538319f4a92797c2df0"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/real-actual/launcher.stderr",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "87c0e53736c968a680a5f0a17b6e9190559bdfdba074497dcba6c90853add918",
+      "wholeFileBytes": 18942,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 104,
+          "sha256": "87c0e53736c968a680a5f0a17b6e9190559bdfdba074497dcba6c90853add918"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/real-actual/launcher.stdout",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "719e4bbda904cc1df7dd5dff553cab157e019010713321ccacb11cbdb2541f69",
+      "wholeFileBytes": 8287,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 309,
+          "sha256": "719e4bbda904cc1df7dd5dff553cab157e019010713321ccacb11cbdb2541f69"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/authority-pure-runtime/real-actual/result.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "35a5417343182b1136575decc575dfe78ae1f6ba2c039340affa9196f57d2c00",
+      "wholeFileBytes": 32987,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 1141,
+          "sha256": "35a5417343182b1136575decc575dfe78ae1f6ba2c039340affa9196f57d2c00"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/business-staff-authority/SERIALIZATION_VECTORS.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "9f2ab5e192c9eb4a1332680a77f0ed5d94eb28502af3fc9a426f68be350ea382",
+      "wholeFileBytes": 8807,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 146,
+          "sha256": "9f2ab5e192c9eb4a1332680a77f0ed5d94eb28502af3fc9a426f68be350ea382"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "output/qa/customer-booking-write-boundary/CANDIDATE.diff",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "059dfd0513245d60a33036aa79447aa45c7eb6853592e6e21ac92589f90594ae",
+      "wholeFileBytes": 4645,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 123,
+          "sha256": "059dfd0513245d60a33036aa79447aa45c7eb6853592e6e21ac92589f90594ae"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/customer-booking-write-boundary/PREIMPLEMENTATION.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "e026bfd7903eab478c13ebd1318221430f04cb27d8156fd32808bcb563be6bf5",
+      "wholeFileBytes": 1244,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 26,
+          "sha256": "e026bfd7903eab478c13ebd1318221430f04cb27d8156fd32808bcb563be6bf5"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/customer-booking-write-boundary/SOURCE_DECISIONS.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "76a96d0cf50962b7168f79cc6b7ce482e129f2316e21eef5780ee8aa271c7948",
+      "wholeFileBytes": 1576,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 33,
+          "sha256": "76a96d0cf50962b7168f79cc6b7ce482e129f2316e21eef5780ee8aa271c7948"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/customer-booking-write-boundary/SOURCE_FREEZE.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "fcb5ecd2f1226874b56efd4ca8e00f3eb81175d92661182f70cb6be0039b3def",
+      "wholeFileBytes": 4697,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 112,
+          "sha256": "fcb5ecd2f1226874b56efd4ca8e00f3eb81175d92661182f70cb6be0039b3def"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/customer-pharmacy-lab-claude-review/operator/CLAUDE_REVIEW_4.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "4f75b41dd0342d91259764b678f488b4001e1127c29da1a699d2f086b8fd0170",
+      "wholeFileBytes": 19600,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 176,
+          "sha256": "4f75b41dd0342d91259764b678f488b4001e1127c29da1a699d2f086b8fd0170"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/customer-pharmacy-lab-claude-review/operator/CLAUDE_REVIEW_6.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "83b0f6bfbe66e9a172d358bfc1b4de479f5168b4a797ba47640ca81ce76a5222",
+      "wholeFileBytes": 27321,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 287,
+          "sha256": "83b0f6bfbe66e9a172d358bfc1b4de479f5168b4a797ba47640ca81ce76a5222"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/customer-pharmacy-lab-claude-review/operator/CLAUDE_REVIEW_7.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "ae72d9142373441cae8f0ebf19594134aef703f129ae33e1ee55c7ba822b576a",
+      "wholeFileBytes": 21545,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 205,
+          "sha256": "ae72d9142373441cae8f0ebf19594134aef703f129ae33e1ee55c7ba822b576a"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/customer-pharmacy-lab-claude-review/operator/FINDING_DISPOSITIONS_6.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "340c6803f756e9e0b400cd18f5ba8352aaf494f7c62840e557c8f2971cfd3efa",
+      "wholeFileBytes": 1970,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 9,
+          "sha256": "340c6803f756e9e0b400cd18f5ba8352aaf494f7c62840e557c8f2971cfd3efa"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/customer-pharmacy-lab-claude-review/operator/FINDING_DISPOSITIONS_7.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "9aefa72f58eaa0b682cee481ca5afcae28c6f789c103af9297e417147142c6e3",
+      "wholeFileBytes": 3460,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 21,
+          "sha256": "9aefa72f58eaa0b682cee481ca5afcae28c6f789c103af9297e417147142c6e3"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/customer-pharmacy-lab-claude-review/operator/POSTCAPTURE_DECISIONS_7.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "e7a1e7dfb5e57311cd5ea9561c272f810418f99d11554ade59bd4018c2999bb3",
+      "wholeFileBytes": 800,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 19,
+          "sha256": "e7a1e7dfb5e57311cd5ea9561c272f810418f99d11554ade59bd4018c2999bb3"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/customer-pharmacy-lab-claude-review/operator/ROOT_ACCEPTANCE_7.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "18282c75441445c2d598f0c4df9e5d6a08fd77fcf445969cb0acde09e79f4d3b",
+      "wholeFileBytes": 1319,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 23,
+          "sha256": "18282c75441445c2d598f0c4df9e5d6a08fd77fcf445969cb0acde09e79f4d3b"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/customer-pharmacy-lab-claude-review/operator/ROOT_STREAM_REVIEW_7.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "81c7946847dc19a75aa43a6213c1647dae524c8b255f4bb6b318e1f6808b4bf2",
+      "wholeFileBytes": 2299,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 75,
+          "sha256": "81c7946847dc19a75aa43a6213c1647dae524c8b255f4bb6b318e1f6808b4bf2"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/lab-customer-booking-progress/PRECOMMIT_CHECK_FAILURE.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "29f9c51c58d4d7a08b86ed815a50ab899f9f96d3b6137118bce4878cee820b20",
+      "wholeFileBytes": 1015,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 21,
+          "sha256": "29f9c51c58d4d7a08b86ed815a50ab899f9f96d3b6137118bce4878cee820b20"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/lab-customer-booking-progress/PREIMPLEMENTATION_DECISIONS.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "b70e07fc9d8ab55432b83359914af54237639b7a61bbb44a5196c895aebceafd",
+      "wholeFileBytes": 813,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 20,
+          "sha256": "b70e07fc9d8ab55432b83359914af54237639b7a61bbb44a5196c895aebceafd"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/lab-customer-booking-progress/SOURCE_DECISIONS.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "ae5e20a9c3fa28a86818e20a5a42eb8ca0db22eff6ec4673ad3b4bf9a69dd832",
+      "wholeFileBytes": 1192,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 22,
+          "sha256": "ae5e20a9c3fa28a86818e20a5a42eb8ca0db22eff6ec4673ad3b4bf9a69dd832"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/lab-customer-booking-progress/SOURCE_FREEZE.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "cc1b1366152a93a00a542eb543189bf6fb44eaf7466e8c9f03755e8cc87dab02",
+      "wholeFileBytes": 3784,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 40,
+          "sha256": "cc1b1366152a93a00a542eb543189bf6fb44eaf7466e8c9f03755e8cc87dab02"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/lab-customer-booking-progress/SOURCE_VERIFICATION.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "8bbb80953dfaca881bc6554151a5e816a1bc64dffdcecbae803961e24726b6ae",
+      "wholeFileBytes": 7685,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 114,
+          "sha256": "8bbb80953dfaca881bc6554151a5e816a1bc64dffdcecbae803961e24726b6ae"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/lab-customer-booking-progress/candidate.diff",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "df53cbe3d7bf79a0ba3f7b80e5d705d87dedfd4dcc86b24fb25fa1bc664060ab",
+      "wholeFileBytes": 8314,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 171,
+          "sha256": "df53cbe3d7bf79a0ba3f7b80e5d705d87dedfd4dcc86b24fb25fa1bc664060ab"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/payment-constructor-compatibility/CANDIDATE.diff",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "526a716c36bf8d35b4bf13fee0185540463dbec2e8cd689c38625456cdb5b694",
+      "wholeFileBytes": 670,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 14,
+          "sha256": "526a716c36bf8d35b4bf13fee0185540463dbec2e8cd689c38625456cdb5b694"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/payment-constructor-compatibility/CONTRACT.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "afe1861ef7f256a495304e39c5f2a768abd66c3ce80ade2663b9004ba5d7242f",
+      "wholeFileBytes": 5119,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 52,
+          "sha256": "afe1861ef7f256a495304e39c5f2a768abd66c3ce80ade2663b9004ba5d7242f"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/payment-constructor-compatibility/PREIMPLEMENTATION.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "f704ea1833a12a1a8ee882c8fa4c7cfe28dc14d0617dd73885fbd83824c7d293",
+      "wholeFileBytes": 1212,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 26,
+          "sha256": "f704ea1833a12a1a8ee882c8fa4c7cfe28dc14d0617dd73885fbd83824c7d293"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/payment-constructor-compatibility/SOURCE_DECISIONS.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "0b2d39ec083f0e1e324a03ae2f7f3161c99ed7a09178092a8e355e6b522652ac",
+      "wholeFileBytes": 1375,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 27,
+          "sha256": "0b2d39ec083f0e1e324a03ae2f7f3161c99ed7a09178092a8e355e6b522652ac"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/payment-constructor-compatibility/SOURCE_VERIFICATION.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "b527dc4d3657ae217a9d069579bf2c092fc553aa0b12b053ff860812d7c956f5",
+      "wholeFileBytes": 2403,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 43,
+          "sha256": "b527dc4d3657ae217a9d069579bf2c092fc553aa0b12b053ff860812d7c956f5"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/pharmacy-cancellation-recovery/PREIMPLEMENTATION_DECISIONS.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "e258b991da1e5131b7df60b49fbcc62fe1d529a37e63bb9c2384eb9a40144fa4",
+      "wholeFileBytes": 1479,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 25,
+          "sha256": "e258b991da1e5131b7df60b49fbcc62fe1d529a37e63bb9c2384eb9a40144fa4"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/pharmacy-cancellation-recovery/SERIALIZATION_VECTORS.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "051629a8068059c9f33cf64572936e2513c04b028b2b702e6a304eb62b13eefe",
+      "wholeFileBytes": 3027,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 65,
+          "sha256": "051629a8068059c9f33cf64572936e2513c04b028b2b702e6a304eb62b13eefe"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/pharmacy-cancellation-recovery/SOURCE_DECISIONS.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "4c37bf098889a72496a9203f732c9e185af9f97a94c10bfe82c8e966f836d0dc",
+      "wholeFileBytes": 1384,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 22,
+          "sha256": "4c37bf098889a72496a9203f732c9e185af9f97a94c10bfe82c8e966f836d0dc"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/pharmacy-cancellation-recovery/SOURCE_FREEZE.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "f65774409d65f9b066a0ef573e1135762b509342131a55d887b9279e924f6c9b",
+      "wholeFileBytes": 4016,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 44,
+          "sha256": "f65774409d65f9b066a0ef573e1135762b509342131a55d887b9279e924f6c9b"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/pharmacy-cancellation-recovery/SOURCE_VERIFICATION.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "adc8a48a3ea2a6a08f7c57291fd796fbe1af46805670c87f91765e74fbe4fa64",
+      "wholeFileBytes": 10241,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 123,
+          "sha256": "adc8a48a3ea2a6a08f7c57291fd796fbe1af46805670c87f91765e74fbe4fa64"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/pharmacy-cancellation-recovery/candidate.diff",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "d0d27b3e510aa760425842e1ef523b7670126b2e6835f9ce43f41102688e3c2a",
+      "wholeFileBytes": 21036,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 377,
+          "sha256": "d0d27b3e510aa760425842e1ef523b7670126b2e6835f9ce43f41102688e3c2a"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/pharmacy-recovery-worklist/CANDIDATE.diff",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "1bab33a3737192d970d699d9857a11baa0dd64aef207cde5c0d7bfc7851b10bf",
+      "wholeFileBytes": 10725,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 227,
+          "sha256": "1bab33a3737192d970d699d9857a11baa0dd64aef207cde5c0d7bfc7851b10bf"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/pharmacy-recovery-worklist/PREIMPLEMENTATION.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "945ae538ec51bb05567cd37bd2fdc90475e0c9892f9a521894caeeeca4874c11",
+      "wholeFileBytes": 1313,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 27,
+          "sha256": "945ae538ec51bb05567cd37bd2fdc90475e0c9892f9a521894caeeeca4874c11"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/pharmacy-recovery-worklist/SOURCE_DECISIONS.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "5822db674233e4eb390a41a4fa616ab49a4c88b0909ba3f24636b5280a142f6b",
+      "wholeFileBytes": 1768,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 33,
+          "sha256": "5822db674233e4eb390a41a4fa616ab49a4c88b0909ba3f24636b5280a142f6b"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/pharmacy-recovery-worklist/SOURCE_FREEZE.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "bc46520d3c94366a05e46fa17090f1abd03093c0b63326620379d01c68ec978f",
+      "wholeFileBytes": 5069,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 108,
+          "sha256": "bc46520d3c94366a05e46fa17090f1abd03093c0b63326620379d01c68ec978f"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "output/qa/pharmacy-recovery-worklist/SOURCE_VERIFICATION.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "fcae80b4701cce6af9ec126c0575c24bc82ea6d178581f2b158e946daec6fc54",
+      "wholeFileBytes": 958,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 18,
+          "sha256": "fcae80b4701cce6af9ec126c0575c24bc82ea6d178581f2b158e946daec6fc54"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": true
+    },
+    {
+      "path": "src1/modules/bookings/controller/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "1c330cdb65aed728defe615371f01e74556d2035ea01acb4f4a4e3f016df6e0a",
+      "wholeFileBytes": 15791,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 536,
+          "sha256": "1c330cdb65aed728defe615371f01e74556d2035ea01acb4f4a4e3f016df6e0a"
+        }
+      ],
+      "currentChangedProduction": true,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/bookings/model/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "219f8115e5eec4bebd7205c763638e8755bde57122866430a1b3bcd0f69ead72",
+      "wholeFileBytes": 8271,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 434,
+          "sha256": "219f8115e5eec4bebd7205c763638e8755bde57122866430a1b3bcd0f69ead72"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/bookings/repository/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "3083722a941065a5a87ddc222772305c0c58de57e2ce140bb38dfd4721713ee5",
+      "wholeFileBytes": 8330,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 330,
+          "sha256": "3083722a941065a5a87ddc222772305c0c58de57e2ce140bb38dfd4721713ee5"
+        }
+      ],
+      "currentChangedProduction": true,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/bookings/routes/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "b2ed40c971e35ceb28eeccb8b491bcf7c4b2dcaf35a7267c783a8345760e3cfb",
+      "wholeFileBytes": 3171,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 120,
+          "sha256": "b2ed40c971e35ceb28eeccb8b491bcf7c4b2dcaf35a7267c783a8345760e3cfb"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/bookings/services/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "279020eb382d7566e737cee88eb8b7b670ebcf6aeb6e7b968010aabb9bc9f6cd",
+      "wholeFileBytes": 66716,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 2205,
+          "sha256": "279020eb382d7566e737cee88eb8b7b670ebcf6aeb6e7b968010aabb9bc9f6cd"
+        }
+      ],
+      "currentChangedProduction": true,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/bookings/types/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "30d1a615c3f157ec9a73f9a13968c3afcec59f84bdfa0178413f22c906f42a79",
+      "wholeFileBytes": 9403,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 335,
+          "sha256": "30d1a615c3f157ec9a73f9a13968c3afcec59f84bdfa0178413f22c906f42a79"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/bookings/utils/lifecycle.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "8551c300b245d98ad730f1cd09912f4e83b58e56adceb0e8421eea574480df44",
+      "wholeFileBytes": 1059,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 39,
+          "sha256": "8551c300b245d98ad730f1cd09912f4e83b58e56adceb0e8421eea574480df44"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/bookings/validation/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "ce9743b4cc50af6b230089c0ff0523f490f8685c6fbb48cc475f4b8e52e6f728",
+      "wholeFileBytes": 17214,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 543,
+          "sha256": "ce9743b4cc50af6b230089c0ff0523f490f8685c6fbb48cc475f4b8e52e6f728"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/common/middleware/validation.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef",
+      "wholeFileBytes": 937,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 35,
+          "sha256": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/common/repository/BaseRepository.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+      "wholeFileBytes": 2494,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 93,
+          "sha256": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/common/types/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "63ad3821027150d368e993903e954b4a80b776ff223caf322c104008239d4cbd",
+      "wholeFileBytes": 53,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 2,
+          "sha256": "63ad3821027150d368e993903e954b4a80b776ff223caf322c104008239d4cbd"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/common/utils/asyncHandler.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "59fe49db58678ef81242a654f7457f74b067b2583a3f8dc70918b61f50228bd9",
+      "wholeFileBytes": 671,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 24,
+          "sha256": "59fe49db58678ef81242a654f7457f74b067b2583a3f8dc70918b61f50228bd9"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/common/utils/dateUtils.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "87bf2514e890fc3b03f75c68b1661376c13388b07fe5f4af134714013d41dcd1",
+      "wholeFileBytes": 1845,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 59,
+          "sha256": "87bf2514e890fc3b03f75c68b1661376c13388b07fe5f4af134714013d41dcd1"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/common/utils/mongoErrors.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "147a5687832d03c654acd97e0f9e0d9c6c0c7ab51a2841f0eb2260235229d43d",
+      "wholeFileBytes": 451,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 9,
+          "sha256": "147a5687832d03c654acd97e0f9e0d9c6c0c7ab51a2841f0eb2260235229d43d"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/common/utils/queryUtils.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d",
+      "wholeFileBytes": 168,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 4,
+          "sha256": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/externalBookings/controller/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "360836e0d5e98223de26c5faf1777f420d1991afdce7b3f7b5bfe2eada05b041",
+      "wholeFileBytes": 24887,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 864,
+          "sha256": "360836e0d5e98223de26c5faf1777f420d1991afdce7b3f7b5bfe2eada05b041"
+        }
+      ],
+      "currentChangedProduction": true,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/externalBookings/model/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "873239e9ebd6201cf632deafac86d76ab6a6a84b729e23332e29658a898291f1",
+      "wholeFileBytes": 2780,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 144,
+          "sha256": "873239e9ebd6201cf632deafac86d76ab6a6a84b729e23332e29658a898291f1"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/externalBookings/repository/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "b34199b2e0c767e309c28c6d147b6de1d5ae59bbcef363aca3668371b13d582c",
+      "wholeFileBytes": 7521,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 220,
+          "sha256": "b34199b2e0c767e309c28c6d147b6de1d5ae59bbcef363aca3668371b13d582c"
+        }
+      ],
+      "currentChangedProduction": true,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/externalBookings/routes/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "fe3d4181c3424638cad98b2cc61bbcad5b72f48258ae1c02f76f5b3fdcbba146",
+      "wholeFileBytes": 6734,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 212,
+          "sha256": "fe3d4181c3424638cad98b2cc61bbcad5b72f48258ae1c02f76f5b3fdcbba146"
+        }
+      ],
+      "currentChangedProduction": true,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/externalBookings/services/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "aa1ac1b90f91dab278bad594d5a3a82f931cf6443fb24af819faf707c89a9a66",
+      "wholeFileBytes": 144938,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 4808,
+          "sha256": "aa1ac1b90f91dab278bad594d5a3a82f931cf6443fb24af819faf707c89a9a66"
+        }
+      ],
+      "currentChangedProduction": true,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/externalBookings/types/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "878f539e702ee998176acbfc4c6a38b7b711d2447e4608fe14a5647b40d7e862",
+      "wholeFileBytes": 11259,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 465,
+          "sha256": "878f539e702ee998176acbfc4c6a38b7b711d2447e4608fe14a5647b40d7e862"
+        }
+      ],
+      "currentChangedProduction": true,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/externalBookings/validation/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "49c3aa3449e61655d9a34b6a201de9874e83003df8737b5aa5dfdab09bd6dcc6",
+      "wholeFileBytes": 14734,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 435,
+          "sha256": "49c3aa3449e61655d9a34b6a201de9874e83003df8737b5aa5dfdab09bd6dcc6"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/middleware/auth.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+      "wholeFileBytes": 8706,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 385,
+          "sha256": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/middleware/errorHandler.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51",
+      "wholeFileBytes": 944,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 33,
+          "sha256": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/organizations/model/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "fb0e49483802ffe7eb64f2194804a2c15ef7e4cbd5a73fd6136af65ebc039ce0",
+      "wholeFileBytes": 6371,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 92,
+          "sha256": "fb0e49483802ffe7eb64f2194804a2c15ef7e4cbd5a73fd6136af65ebc039ce0"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/organizations/repository/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "14532bf2d667e37d4ded33bb3767f744cd524bf385d88341d31f7954ece61d3b",
+      "wholeFileBytes": 8845,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 117,
+          "sha256": "14532bf2d667e37d4ded33bb3767f744cd524bf385d88341d31f7954ece61d3b"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/organizations/rules.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "b404c00381b5bf642aa648105cefb353a97c7ea7283c680059c426b5e4307942",
+      "wholeFileBytes": 17283,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 228,
+          "sha256": "b404c00381b5bf642aa648105cefb353a97c7ea7283c680059c426b5e4307942"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/organizations/services/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "ccac5254a6e61c8cce4f14c58005cb39349689e3d0cbafc8ab551ca339397c73",
+      "wholeFileBytes": 1390,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 26,
+          "sha256": "ccac5254a6e61c8cce4f14c58005cb39349689e3d0cbafc8ab551ca339397c73"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/organizations/types/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "e873884e69db46d7de70d3120a5ac30809fe8dc526d118a4640463233c9633ff",
+      "wholeFileBytes": 5660,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 164,
+          "sha256": "e873884e69db46d7de70d3120a5ac30809fe8dc526d118a4640463233c9633ff"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/payment/services/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "9c1086e3aa9239855ed3d73a02f941015d869bdb36a689a5294dea367ee7457d",
+      "wholeFileBytes": 57984,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 1788,
+          "sha256": "9c1086e3aa9239855ed3d73a02f941015d869bdb36a689a5294dea367ee7457d"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/pharmacyCustomers/services/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "ab1cc1893fc2c8e3c369120ae6f5d9393c30a0ecb1a7f59d0c6ca80165e8e386",
+      "wholeFileBytes": 5248,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 170,
+          "sha256": "ab1cc1893fc2c8e3c369120ae6f5d9393c30a0ecb1a7f59d0c6ca80165e8e386"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/pharmacyInventory/repository/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "cee64fd2464b5d5ac6081531a63f9a176e5fc481f33c3a4d6def99a26d97b261",
+      "wholeFileBytes": 33797,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 1038,
+          "sha256": "cee64fd2464b5d5ac6081531a63f9a176e5fc481f33c3a4d6def99a26d97b261"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/pharmacyInventory/services/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "98fa27296ef0fdd1066dff2d548de7d3db025504e724432770fe2e49d2907894",
+      "wholeFileBytes": 22959,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 723,
+          "sha256": "98fa27296ef0fdd1066dff2d548de7d3db025504e724432770fe2e49d2907894"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/pharmacyInventory/types/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "6edf4cc6b84fde6e93a0310ac401ad71ef6bcee8bebc1fef992836b615891eae",
+      "wholeFileBytes": 4851,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 213,
+          "sha256": "6edf4cc6b84fde6e93a0310ac401ad71ef6bcee8bebc1fef992836b615891eae"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/pharmacyInventory/validation/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "f1679413efcd27621a362eda7277a3d0db3edceb8d30fc2c542c075bef8dec53",
+      "wholeFileBytes": 3835,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 99,
+          "sha256": "f1679413efcd27621a362eda7277a3d0db3edceb8d30fc2c542c075bef8dec53"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/pharmacyMedicines/model/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "2dd98cd59a4e9a3aaa156d917f7cc131d7e30c7546ad7296b8a0ca4920c70725",
+      "wholeFileBytes": 2316,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 107,
+          "sha256": "2dd98cd59a4e9a3aaa156d917f7cc131d7e30c7546ad7296b8a0ca4920c70725"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/pharmacyMedicines/repository/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "2d3f1cc7e21804546bbdaa68d8316c9f3f4ae176f6cebc26626960908a02c2f3",
+      "wholeFileBytes": 8942,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 301,
+          "sha256": "2d3f1cc7e21804546bbdaa68d8316c9f3f4ae176f6cebc26626960908a02c2f3"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/pharmacyMedicines/types/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "527e6987a95bae02c27bcd2d7547624c26251547efbc235a30fa2e52912fdf8d",
+      "wholeFileBytes": 2245,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 111,
+          "sha256": "527e6987a95bae02c27bcd2d7547624c26251547efbc235a30fa2e52912fdf8d"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/controller/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "e1cca25dc7c45fd2048f014c6b47191cda1044eca8b8f4cf5c9f061c3d2a3446",
+      "wholeFileBytes": 5386,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 133,
+          "sha256": "e1cca25dc7c45fd2048f014c6b47191cda1044eca8b8f4cf5c9f061c3d2a3446"
+        }
+      ],
+      "currentChangedProduction": true,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/model/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "f054a220020c66a83c49ea8658bd0d002cb3a9fd28c9b7771b0584c53471ac14",
+      "wholeFileBytes": 7068,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 173,
+          "sha256": "f054a220020c66a83c49ea8658bd0d002cb3a9fd28c9b7771b0584c53471ac14"
+        }
+      ],
+      "currentChangedProduction": true,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/prescriptionCommerce.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "8e6db5fc64d5a5b2fec6437660fb0d308c24d3e1c0aec2ae95efdc2f73fe0058",
+      "wholeFileBytes": 3078,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 77,
+          "sha256": "8e6db5fc64d5a5b2fec6437660fb0d308c24d3e1c0aec2ae95efdc2f73fe0058"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/repository/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "df77e35abeb00913d6353e0bf76a3651b3a1b78b6e669548439472347c4b084f",
+      "wholeFileBytes": 16516,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 313,
+          "sha256": "df77e35abeb00913d6353e0bf76a3651b3a1b78b6e669548439472347c4b084f"
+        }
+      ],
+      "currentChangedProduction": true,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/routes/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "cfb13044228699be2fa37ce9635dcaf9f5874e3fe2ce02eeb846407be0e088fe",
+      "wholeFileBytes": 2244,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 92,
+          "sha256": "cfb13044228699be2fa37ce9635dcaf9f5874e3fe2ce02eeb846407be0e088fe"
+        }
+      ],
+      "currentChangedProduction": true,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/services/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "83ca486a250403a777f0548ec57c98bd1e99e154b6f2034754ddc9aedbc3f35e",
+      "wholeFileBytes": 46313,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 1338,
+          "sha256": "83ca486a250403a777f0548ec57c98bd1e99e154b6f2034754ddc9aedbc3f35e"
+        }
+      ],
+      "currentChangedProduction": true,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/services/sideEffects.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "db2a2527a2b31151973dee0fe9728bb386f6bfc1e0950f14c7b1c45088a79211",
+      "wholeFileBytes": 7961,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 266,
+          "sha256": "db2a2527a2b31151973dee0fe9728bb386f6bfc1e0950f14c7b1c45088a79211"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/types/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "6f3c1171b5ab154bc566ec7dcedaf3da4cd614d1bb7402fa5534b7a5e575e423",
+      "wholeFileBytes": 6604,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 259,
+          "sha256": "6f3c1171b5ab154bc566ec7dcedaf3da4cd614d1bb7402fa5534b7a5e575e423"
+        }
+      ],
+      "currentChangedProduction": true,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/validation/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "70381b52ca88dc35782850f662423ee423dbaebe67122641c1219fdee8f84402",
+      "wholeFileBytes": 5083,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 112,
+          "sha256": "70381b52ca88dc35782850f662423ee423dbaebe67122641c1219fdee8f84402"
+        }
+      ],
+      "currentChangedProduction": true,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/modules/specialistPortal/services/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "631a2bc6e92e522db35bad35eacd9f7d46aa8e4dcdb508acc16dc44891fef27c",
+      "wholeFileBytes": 21459,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 694,
+          "sha256": "631a2bc6e92e522db35bad35eacd9f7d46aa8e4dcdb508acc16dc44891fef27c"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "src1/routes/index.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056",
+      "wholeFileBytes": 6624,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 122,
+          "sha256": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "test/application/README.md",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "dbe1014862ce0e192eaf6d2992c7e42efdc3d7f690e2008f9c6cafcf150be8e7",
+      "wholeFileBytes": 8530,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 61,
+          "sha256": "dbe1014862ce0e192eaf6d2992c7e42efdc3d7f690e2008f9c6cafcf150be8e7"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "test/application/app-bundle.mjs",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "993634db7d05213208ddda434d8d4c21f679ae342f46a1836dda115c7d3b5817",
+      "wholeFileBytes": 21325,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 360,
+          "sha256": "993634db7d05213208ddda434d8d4c21f679ae342f46a1836dda115c7d3b5817"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "test/application/app-bundle.test.mjs",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "dd2bc927c1f0f4d1932929aa4294a6df3c74a1db6536a7bb56902d259d163e75",
+      "wholeFileBytes": 30965,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 500,
+          "sha256": "dd2bc927c1f0f4d1932929aa4294a6df3c74a1db6536a7bb56902d259d163e75"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "test/application/app-container.mjs",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "4c2a061a45a30478d4fc04d6cd28bb88aa2fd679e4346136b7714f29142948aa",
+      "wholeFileBytes": 21188,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 325,
+          "sha256": "4c2a061a45a30478d4fc04d6cd28bb88aa2fd679e4346136b7714f29142948aa"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "test/application/app-container.test.mjs",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "79c6b65b39c7336718ad563b175e48f5fda76035b77b5028fb83bbcaa6a7dd14",
+      "wholeFileBytes": 32441,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 547,
+          "sha256": "79c6b65b39c7336718ad563b175e48f5fda76035b77b5028fb83bbcaa6a7dd14"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "test/application/app-image.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "4f1390608939a823788010499cc810801d01fd8ee44248da5424776c816a8611",
+      "wholeFileBytes": 484,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 14,
+          "sha256": "4f1390608939a823788010499cc810801d01fd8ee44248da5424776c816a8611"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "test/application/app-ports.mjs",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "f7efb3ee12eee3f0ff427b360d9c65776c20f34c80432ac0b5a626df55408cf1",
+      "wholeFileBytes": 841,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 18,
+          "sha256": "f7efb3ee12eee3f0ff427b360d9c65776c20f34c80432ac0b5a626df55408cf1"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "test/application/app-runtime.json",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "e4e0b67677e084dce5d65d958763057c5ca1b257232b5f007545a327fb40f0b3",
+      "wholeFileBytes": 314,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 6,
+          "sha256": "e4e0b67677e084dce5d65d958763057c5ca1b257232b5f007545a327fb40f0b3"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": false,
+      "historicalEvidence": false
+    },
+    {
+      "path": "test/application/authority-scenario.mjs",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "806d39428cc6512c527581a46d00f49b4c15d348efa9457e5cbab3369b91d3ee",
+      "wholeFileBytes": 28461,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 370,
+          "sha256": "806d39428cc6512c527581a46d00f49b4c15d348efa9457e5cbab3369b91d3ee"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "test/application/bootstrap.mjs",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "b9016bbddd345ed562e7820ae391f96180397a6ae84c20fc92c1d36a74467b4c",
+      "wholeFileBytes": 3551,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 61,
+          "sha256": "b9016bbddd345ed562e7820ae391f96180397a6ae84c20fc92c1d36a74467b4c"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "test/application/run-authority.mjs",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "a4b7c9e31f0ecc92f57d7d324dd3f36896d188ffe5e06e5cc159577549e31af9",
+      "wholeFileBytes": 1201,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 21,
+          "sha256": "a4b7c9e31f0ecc92f57d7d324dd3f36896d188ffe5e06e5cc159577549e31af9"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    },
+    {
+      "path": "test/pharmacy.integration.test.ts",
+      "origin": "git",
+      "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+      "wholeFileSha256": "e123eab6f5bde08475605f8ed47a1f3830cd97ecdd9c8fe2dd0f2aa49507d35e",
+      "wholeFileBytes": 25925,
+      "complete": true,
+      "excerpts": [
+        {
+          "startLine": 1,
+          "endLine": 679,
+          "sha256": "e123eab6f5bde08475605f8ed47a1f3830cd97ecdd9c8fe2dd0f2aa49507d35e"
+        }
+      ],
+      "currentChangedProduction": false,
+      "currentChangedFile": true,
+      "historicalEvidence": false
+    }
+  ],
+  "limits": "All changed files and contracts whole. SYSTEM_DESIGN selected numbered clauses only. Not a complete executable provider/DI closure. No tokenizer/context guarantee, private thinking or future lab-history. Historical QA source pins are stage provenance."
+}
