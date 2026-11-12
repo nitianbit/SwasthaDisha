@@ -1,0 +1,68 @@
+{
+  "schema": "SD-PRIVATE-DOCUMENT-R11-SOURCE-CORRECTION-PLAN-1",
+  "author": "/root",
+  "status": "PENDING_TWO_ACTUAL_NONAUTHOR_IMPLEMENTATION_ONLY_REVIEWS_NO_SOURCE_EDITS",
+  "genuineReview": {
+    "sourceCommit": "f200491e08e497d1bda82af010d9854f34b16515",
+    "sessionId": "757133e3-cd65-4334-832f-0c217897311b",
+    "reviewSha256": "fe8743c9f7abccc07504ff8bd84440ea03e9e6f1b071ceeebd98ef1bdf5b21ba",
+    "acceptedOutcomeCommit": "eb28bff",
+    "reviewPath": "output/qa/customer-pharmacy-lab-claude-review/revision-11/CLAUDE_REVIEW.md in integrationbranch",
+    "verdict": "Privatecore REQUEST_CHANGES fourLOW; threeothers/composition APPROVE_SOURCE_ONLY. Actualmodel5.5/requestxhigh/effectiveUNPROVEN; capture independentlyaccepted. No runtime proof."
+  },
+  "parentContracts": {
+    "PRIVATE_CLINICAL_DOCUMENTS_CONTRACT_DRAFT.md": "2c016e285101c8a5852ad85974cd41a343ea59f31661ee8360e12eee192895f1",
+    "PRIVATE_DOCUMENT_AUTH_HEADERS_ADDENDUM.md": "fe9479b80f66693de2e7f592bc9ab3335dc921595e36639fdb417a9547710b7b",
+    "PRIVATE_DOCUMENT_REVIEW_REMEDIATION.md": "8afbcad14c7c500a803beed589398093aabac2108ba19769814205ae6562147a"
+  },
+  "productionOwnership": [
+    "src1/modules/file/controller/index.ts",
+    "src1/modules/file/storage.ts"
+  ],
+  "beforeHashes": {
+    "src1/modules/file/controller/index.ts": "4c19319089f0a5a141fc1473d54956dbdd4127c4b87b1dcca7bde011120ec57f",
+    "src1/modules/file/storage.ts": "09315a3816094d291655f9f64e55bce49b0387385c8aef0c863542faf53d46cb"
+  },
+  "corrections": [
+    {
+      "id": "R11-F2-1",
+      "observed": "Legacy uploadFiles unconditionally applies private headers before anypathguard; violates existing successfulordinaryimage compatibility.",
+      "change": "Remove unconditionalprivatehelper call fromlegacyupload. Catch only document-boundary AppErrors with DOCUMENT_ code around existingFileService.uploadFiles; apply privateheaders on those denials then rethrow. Preserve ordinarylegacy success/error headers/body/servicecall/params and all private-route/headerhelper behavior. No globalExpress setting."
+    },
+    {
+      "id": "R11-F2-2",
+      "observed": "Both capture.cancel and catch map knownnative400 inputerrors to503 and all413 to size, includingcount/fieldlimits. Rootchecked exactofficialFormidable3.5.4 source, notonlymodelmemory.",
+      "change": "One local captureerror normalization helper reused in cancel and catch. Preserve existingdomain AppErrors. Use pinnedFormidable exported named error constants (no rootdependencychange): malformedMultipart,missingMultipartBoundary,missingContentType,noEmptyFiles,smallerThanMinFileSize,unknownTransferEncoding,maxFilesExceeded,maxFieldsExceeded,maxFieldsSizeExceeded map400DOCUMENT_INPUT_INVALID; onlybiggerThanMaxFileSize/biggerThanTotalMaxFileSize map413DOCUMENT_TOO_LARGE. Unknownnative/error codes remain503; existingownHTTP/media/bytebound/AppErrors and failure/deadline/cleanup/orphan semantics unchanged. Do not expose rawmessages or acceptarbitraryHTTPstatus asauthority.",
+      "primarySources": [
+        "https://raw.githubusercontent.com/node-formidable/formidable/v3.5.4/src/FormidableError.js",
+        "https://raw.githubusercontent.com/node-formidable/formidable/v3.5.4/src/Formidable.js",
+        "https://raw.githubusercontent.com/node-formidable/formidable/v3.5.4/src/parsers/Multipart.js",
+        "https://raw.githubusercontent.com/node-formidable/formidable/v3.5.4/src/plugins/multipart.js",
+        "https://raw.githubusercontent.com/node-formidable/formidable/v3.5.4/src/index.js"
+      ]
+    },
+    {
+      "id": "R11-F2-3",
+      "observed": "Clinicalcontroller forwards unbound_upload which sharedserviceintentionallyalsoallowsforassetsroute.",
+      "change": "Clinicalroute handler reuses existingactor admission then input guard allowingonlybooking/external_booking BEFOREcallingdocuments.upload. Preserve wrongactor403 beforemalformedkind400, preauth401 andprivateheaders; no duplicateauthorityalgorithm, no change toassets unboundroute or directsharedservice semantics."
+    },
+    {
+      "id": "R11-F2-4",
+      "observed": "Conditionalreserved Unicodecasefold alias can evade lowercase stringcomparison on casefoldingFS; deployed filesystem support unknown. No confirmed liveexposure claimed.",
+      "change": "LegacyPath observes existing reservedroot lstat device+inode without creatinganything (ENOENT permits ordinarylegacy pathchecks; otherIOerrorsfailclosed). During existinglstat componentwalk, reject anycomponent with reserved device+inode, inadditionto unchangedprefix/path/symlinkguards. Detectobjectidentity ratherthanban allnonASCIIlegacy names. Preserve trustedroot/sameUID/TOCTOU limitations; no newraceproof, mount/privilege or filesystemmode adoption."
+    }
+  ],
+  "verificationImpacts": {
+    "source": "Twoactualnonauthor source reviews after minimal2filecandidate; no other production/API/auth/repo/model/dependency/start/contract edits. Preserve all originalsourcefindings/evidence and exactinverse of unrelatedbodies.",
+    "focusedFixture": "After productioncandidate sourceapproval, fixtureauthor may update only corresponding two of29sourcepins and append exact regression predicates within existing24groups: legacyPOSTnormalheaders+reservedenial, badboundary/truncated/empty/one+twofields/twofiles400, actualsize413/media415, badclinicalkind/unusedresource400with0storage/DB andwrongactorprecedence. Record additionalconditionalnativecasefold check onlyifactualFSsupports it; unsupportedcondition staysNOT_RUN, notmanufacturedPASS. Existing8sourcecontrols/180s/normalpositive/races/rollback remain mandatory; no skips hidingrequiredgroups. Freeze amendedfixture source andtwoactual reviews separatelybefore commands.",
+    "lockReuse": "Existingpublic112-package lock6b1a6e0e68fbf0d62e2d452f0ee54581d4f9c745948748cb0fbf3022fb82367f is metadataonly; exactpackageplanunchanged. Preserve originalownedarea/receipt/result. Its twoindependentoutcomes plus newsource/fixture exactstage review are required before install/emit; no needrerun unrelatedpublicresolution or manuallyrebindoldreceipt.",
+    "execution": "No parser/Node/npm/compiler/app/BSON/Express/Formidable/fsadapter/Mongo/Docker/provider invocation now."
+  },
+  "invariants": [
+    "Usefulpositiveprivate fixture stillrequired, defaultproductionreadiness/scanner/qualifiedrelease remainsclosed",
+    "No newstaff/clinicalsignatory/finance/ownerpermission orS1/client/publiclegacycutover claim",
+    "No operationalresources/provider/deployment/push or rootC2adoption",
+    "Original6stagedfiles/full-index patch andhandoverarchive preserved; CodebaseMCPdisabled"
+  ],
+  "proposedSourceAuthor": "/root/customer_remaining_audit aftertwoactualnonauthor planvotes; Rootowns integration/fixture sourcebinding review, authorcannotapprove owncode"
+}
