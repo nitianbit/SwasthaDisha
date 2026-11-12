@@ -1,0 +1,30 @@
+{
+  "schema": "SD-SUPPLIER-CAS-RETURN-CONTRACT-DECISIONS-1",
+  "contract": "documentation/planning/implementation/PHARMACY_SUPPLIER_CAS_RETURN_ADDENDUM.md",
+  "contractSha256": "63958f07c82437b51763eb09aa4559dd6aa248d43de59b09d130cda56f66c2bc",
+  "author": "/root",
+  "decisions": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    }
+  ],
+  "scope": "Only two existing CAS option additions; current source8834a635 independently verified by both reviewers; every other source byte unchanged.",
+  "executionAdmitted": false,
+  "runtime": "NOT_RUN; exact ODM/driver, stored extension, stale CAS/archive replay and timeout evidence remain separate",
+  "retainedOpen": [
+    "Timeout/lost-response commit ambiguity",
+    "R10-F2-2 index/capacity",
+    "Module/client/owner/release gates"
+  ]
+}
