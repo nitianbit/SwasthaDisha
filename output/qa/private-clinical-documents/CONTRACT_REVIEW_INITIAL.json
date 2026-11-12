@@ -1,0 +1,39 @@
+{
+  "schema": "SD-INDEPENDENT-CONTRACT-REVIEW-1",
+  "contract": "documentation/planning/implementation/PRIVATE_CLINICAL_DOCUMENTS_CONTRACT_DRAFT.md",
+  "contractSha256": "ac312cae1fd113ded3e3690ea1a08f3acc477037852aa76b2ac48a7474f57821",
+  "author": "/root/lab_remaining_audit",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "REQUEST_CHANGES",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR"
+    },
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Spec",
+      "decision": "REQUEST_CHANGES",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR"
+    }
+  ],
+  "findings": [
+    {
+      "id": "DOCUMENT-C1",
+      "issue": "Public resource/model/writer bindings are still future decisions despite being labelled implementation-ready. Freeze exact admitted bindings and preserve the full cutover milestone as pending until compatible."
+    },
+    {
+      "id": "DOCUMENT-C2",
+      "issue": "Freeze stable resource/integration/document asset identity before version dedupe, all index component normalization, immutable retry comparison and pointer/transaction conditions."
+    },
+    {
+      "id": "DOCUMENT-C3",
+      "issue": "Separate path lstat and terminal no-follow checks do not specify ancestor race protection. Freeze an implementable storage threat boundary and algorithm, including integrity verification before bytes are released; do not promise stronger guarantees than the actual runtime."
+    },
+    {
+      "id": "DOCUMENT-C4",
+      "issue": "Freeze purpose/state/actor readability, unbound-owner versus resource-bound reads, permitted legacy provenance, version-list/pagination/audit/detach behavior. Keep unfrozen provider destination, clinical release, scanner and actual legacy inventory as separate activation gates without declaring the entire document milestone complete."
+    }
+  ],
+  "scope": "Draft/source inspection only. No implementation admission or app/runtime/DB/provider execution. Preserve full module milestone scope; coherent prerequisites may be staged without redefining completion."
+}

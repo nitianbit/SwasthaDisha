@@ -1,0 +1,31 @@
+{
+  "schema": "SD-INDEPENDENT-CONTRACT-REVIEW-1",
+  "contract": "documentation/planning/implementation/CUSTOMER_CONTACT_CHANGE_CONTRACT_DRAFT.md",
+  "contractSha256": "b46afd44385467aefd6c6eaa32ec8818d96ceaa92a99e5c4c1155fbfa50b8f49",
+  "author": "/root/customer_remaining_audit",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "REQUEST_CHANGES",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR"
+    },
+    {
+      "reviewer": "/root/milestone_composition_r9",
+      "role": "Spec",
+      "decision": "REQUEST_CHANGES",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR"
+    }
+  ],
+  "findings": [
+    {
+      "id": "CONTACT-C1",
+      "issue": "The retained User text index cannot pass the unchanged numeric-key-only index readiness evaluator. The evaluator also does not establish the required named index or backfill/all-writer coverage. Freeze a compatible explicitly scoped reader/admission prerequisite; do not disguise a filtered listing as complete or silently adopt a production MongoDB version."
+    },
+    {
+      "id": "CONTACT-C2",
+      "issue": "Raw internal-field rejection cannot be enforced after existing stripUnknown. Freeze a narrow original-key capture plus post-object-authority rejection (and owned route surface), or truthfully describe the HTTP/internal distinction. The original design requires explicit forbidden-field handling at the authorized command boundary."
+    }
+  ],
+  "scope": "Draft/source inspection only. No implementation admission or app/runtime/DB/provider execution. Preserve full module milestone scope; coherent prerequisites may be staged without redefining completion."
+}
