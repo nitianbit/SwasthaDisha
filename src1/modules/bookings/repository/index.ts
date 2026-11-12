@@ -7,11 +7,36 @@ import {
   BookingType,
 } from '@/modules/bookings/types';
 import { BaseRepository } from '@/modules/common/repository';
+import { AppError } from '@/modules/common/types';
 
 @Service()
 export class BookingRepository extends BaseRepository<IBooking> {
   constructor() {
     super(BookingModel as Model<IBooking>);
+  }
+
+  async deleteByIdAndUserId(id: string, userId: string): Promise<boolean> {
+    if (typeof userId !== 'string' || userId.trim().length === 0) {
+      throw new AppError({
+        status: 401,
+        code: 'UNAUTHORIZED',
+        message: 'Authentication is required',
+      });
+    }
+    if (typeof id !== 'string' || !/^[0-9a-fA-F]{24}$/.test(id)) {
+      throw new AppError({
+        status: 400,
+        code: 'VALIDATION_ERROR',
+        message: 'Invalid ID format',
+      });
+    }
+
+    const result = await BookingModel.deleteOne({
+      _id: id,
+      userId: { $eq: userId },
+      $expr: { $eq: [{ $type: '$userId' }, 'string'] },
+    });
+    return result.acknowledged === true && result.deletedCount === 1;
   }
 
   async getConsultationStatsBySpecialistId(

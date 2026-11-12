@@ -1697,6 +1697,13 @@ export class BookingService {
   }
 
   async delete(id: string, userId?: string): Promise<void> {
+    if (userId !== undefined && (typeof userId !== 'string' || userId.trim().length === 0)) {
+      throw new AppError({
+        status: 401,
+        code: 'UNAUTHORIZED',
+        message: 'Authentication is required',
+      });
+    }
     const booking = await this.getById(id, userId);
     await this.bookingReminderScheduler.clearBookingReminders(booking._id!);
     await cancelBookingMeet({
@@ -1716,7 +1723,15 @@ export class BookingService {
       }
     }
 
-    await this.bookingRepository.delete({ _id: id });
+    if (userId === undefined) {
+      await this.bookingRepository.delete({ _id: id });
+    } else if (!(await this.bookingRepository.deleteByIdAndUserId(id, userId))) {
+      throw new AppError({
+        status: 409,
+        code: 'BOOKING_DELETE_CONFLICT',
+        message: 'Booking could not be deleted because it changed',
+      });
+    }
   }
 
   async getByUserId(userId: string): Promise<IBooking[]> {
