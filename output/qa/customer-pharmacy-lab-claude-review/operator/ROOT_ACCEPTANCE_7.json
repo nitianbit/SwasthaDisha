@@ -1,0 +1,23 @@
+{
+  "schema": "SD-ROOT-CLAUDE-R7-ACCEPTANCE-1",
+  "sessionId": "c5ebf347-27df-460f-9b2f-0c7ff48ff7bb",
+  "sourceCommit": "ea48a35cce0c010bbbe6a112795a090931d6fd8c",
+  "decision": "ACCEPT_GENUINE_SOURCE_ONLY_REVIEW_PROVENANCE",
+  "rootReviewer": "/root",
+  "independentReviewer": "/root/pharmacy_refund_primitives",
+  "reviewSha256": "ae72d9142373441cae8f0ebf19594134aef703f129ae33e1ee55c7ba822b576a",
+  "ackSha256": "2af539b9eeac6fb3d596eb080d7ff88b3049ecdd3e86e05125de99789d243b2a",
+  "streamSha256": "fa3b2fd79e3f66991518b9b0dc65338ea223f4784c1a205ddaf2a88110ee7dca",
+  "actualModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "nativeExtensionACK": false,
+  "exactThreeSuccessfulCorrelatedTools": true,
+  "persistedMailboxAndFinalEquality": true,
+  "freshIndependentProcessAndGroupAbsence": true,
+  "privateThinkingPublished": false,
+  "captureStateReviewAcceptedWasFalseAndRemainsImmutable": true,
+  "rootSeparateAcceptance": true,
+  "technicalOutcome": "Allsixincrements+composition APPROVE_SOURCE_ONLY; F1HIGHopen, F5-1MEDIUMnewactivationgate. Otherlatent/runtime/omitted-contextfindingsretained.",
+  "limits": "Not runtime/clinical/financial/module/release acceptance. Newerlabprogress+customerrecoveryintake outside R7. One-run authority consumed; no automaticretry."
+}

@@ -1,0 +1,75 @@
+{
+  "meta": {
+    "schema": "SD-ROOT-R7-STREAM-READBACK-1",
+    "sessionId": "c5ebf347-27df-460f-9b2f-0c7ff48ff7bb",
+    "sourceCommit": "ea48a35cce0c010bbbe6a112795a090931d6fd8c",
+    "packetSha256": "d73c2f97881dded32e3b7e794035603eb5ff6eaf5bf6c53b64d503d001584a92",
+    "streamSha256": "fa3b2fd79e3f66991518b9b0dc65338ea223f4784c1a205ddaf2a88110ee7dca",
+    "streamBytes": 605902,
+    "stateSha256": "c113a42049b891553ab122d6d76bcc7c7d7ae581750c95bb5457f60ce977cfa1",
+    "stderrBytes": 0,
+    "reviewSha256": "ae72d9142373441cae8f0ebf19594134aef703f129ae33e1ee55c7ba822b576a",
+    "reviewBytes": 21545,
+    "ackSha256": "2af539b9eeac6fb3d596eb080d7ff88b3049ecdd3e86e05125de99789d243b2a",
+    "ackBytes": 1845,
+    "observedAssistantModels": [
+      "claude-opus-5-5"
+    ],
+    "canonicalModel": "claude-opus-5-5",
+    "requestedEffort": "xhigh",
+    "effectiveEffort": "UNPROVEN",
+    "nativeExtensionACK": false,
+    "elapsedSeconds": 953.083,
+    "exitCode": 0,
+    "tools": [
+      {
+        "id": "toolu_011vBzLJZ4wJbceTgpixSUJ5",
+        "name": "mcp__ruflo__team_inbox"
+      },
+      {
+        "id": "toolu_01W67dqzAE2Ex9HNPjXd5MYC",
+        "name": "mcp__ruflo__team_send"
+      },
+      {
+        "id": "toolu_01TnsB43PfCsW3ihARRnnaot",
+        "name": "mcp__ruflo__team_send"
+      }
+    ],
+    "ackMessageId": "msg_1794477701261_jkw40mfv",
+    "ackTimestamp": "2026-11-12T10:01:41.261Z",
+    "reviewMessageId": "msg_1794477771742_t89eklgh",
+    "reviewTimestamp": "2026-11-12T10:02:51.742Z",
+    "sendServerAssistantCanonicalEquality": true,
+    "uniqueReceivedChallengeVerified": true,
+    "all70LivePinsStillMatch": true,
+    "privateThinkingPrinted": false,
+    "rootPersistedMailboxComparison": "BOTH_MESSAGES_EXACT_TEXT_AND_PARTIES_VERIFIED"
+  },
+  "rootFreshAbsence": {
+    "rootFreshExactAbsence": [
+      {
+        "command": [
+          "/bin/ps",
+          "-p",
+          "46790,46806,46808",
+          "-o",
+          "pid=,ppid=,pgid=,lstart=,args="
+        ],
+        "exitCode": 1,
+        "stdoutEmpty": true,
+        "stderrEmpty": true
+      },
+      {
+        "command": [
+          "/usr/bin/pgrep",
+          "-g",
+          "46790"
+        ],
+        "exitCode": 1,
+        "stdoutEmpty": true,
+        "stderrEmpty": true
+      }
+    ],
+    "signals": 0
+  }
+}

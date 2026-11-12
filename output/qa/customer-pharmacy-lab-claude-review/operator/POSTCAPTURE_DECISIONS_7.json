@@ -1,0 +1,19 @@
+{
+  "sessionId": "c5ebf347-27df-460f-9b2f-0c7ff48ff7bb",
+  "reviewSha256": "ae72d9142373441cae8f0ebf19594134aef703f129ae33e1ee55c7ba822b576a",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Root",
+      "decision": "ACCEPT_GENUINE_SOURCE_ONLY_REVIEW_PROVENANCE",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/pharmacy_refund_primitives",
+      "role": "Independent",
+      "decision": "ACCEPT_GENUINE_SOURCE_ONLY_REVIEW_PROVENANCE",
+      "findings": []
+    }
+  ],
+  "actualChecks": "AssistantandcanonicalOpus5.5metadata;3successfultools+freshnonce; inputmessage/servercontent/final exact; Rootfreshpersistedpeekmatchesparties/fulltext; bothreviewersfreshps+pgrepexactIDsabsent/groupempty; statefirstfailure/signals/cleanuperrorsempty. No private thinkingpublished."
+}
