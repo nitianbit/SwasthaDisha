@@ -1,5 +1,6 @@
 import { Service } from 'typedi';
 import { randomUUID } from 'crypto';
+import { performance } from 'perf_hooks';
 import { Request, Response } from 'express';
 import { Types } from 'mongoose';
 import { FileDocumentRepository, FileDocumentPolicy } from './repository';
@@ -55,23 +56,33 @@ export class FileDocumentService {
       stateRevision: 0, validation: { state: 'quarantined', evidenceRef: null }, publication: { state: 'unreleased', evidenceRef: null } };
     v.versionKey = versionKey(v);
     const operationId = randomUUID();
-    const capture = async (reconcile: boolean) => this.repository.transaction(async tx => {
-      await this.repository.ownedResource(scope, tx);
-      const existing = await this.repository.assetByIdentity(a, tx);
-      if (reconcile && !existing) throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
-      const current = existing ?? a;
-      const prior = existing ? await this.repository.duplicate(current, v.versionKey, tx) : null;
-      if (prior) {
-        if (!sameCapture(prior, v)) throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
-        return { created: false, data: dto(current, prior) };
-      }
-      if (reconcile) throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
-      if (!existing) await this.repository.insertAsset(a, tx);
-      await this.repository.insertVersion(v, tx);
-      const next = await this.repository.pointer(current, { currentCapturedVersionId: v._id }, tx);
-      await this.repository.audit(audit(next, principal._id, operationId, 'capture', 'captured', v._id), tx);
-      return { created: true, data: dto(next, v) };
-    });
+    const capture = async (reconcile: boolean) => {
+      this.storage.assertCaptureAdmission(captured, req);
+      return this.repository.transaction(async tx => {
+        this.storage.assertCaptureAdmission(captured, req);
+        await this.repository.ownedResource(scope, tx);
+        const existing = await this.repository.assetByIdentity(a, tx);
+        if (reconcile && !existing) throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
+        const current = existing ?? a;
+        const prior = existing ? await this.repository.duplicate(current, v.versionKey, tx) : null;
+        if (prior) {
+          if (!sameCapture(prior, v)) throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
+          this.storage.assertCaptureAdmission(captured, req);
+          return { created: false, data: dto(current, prior) };
+        }
+        if (reconcile) throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
+        this.storage.assertCaptureAdmission(captured, req);
+        if (!existing) await this.repository.insertAsset(a, tx);
+        this.storage.assertCaptureAdmission(captured, req);
+        await this.repository.insertVersion(v, tx);
+        this.storage.assertCaptureAdmission(captured, req);
+        const next = await this.repository.pointer(current, { currentCapturedVersionId: v._id }, tx);
+        this.storage.assertCaptureAdmission(captured, req);
+        await this.repository.audit(audit(next, principal._id, operationId, 'capture', 'captured', v._id), tx);
+        this.storage.assertCaptureAdmission(captured, req);
+        return { created: true, data: dto(next, v) };
+      });
+    };
     try { return await capture(false); } catch (error) {
       // A failed transaction is over before a single fresh bounded read/reconciliation transaction.
       if (!duplicateIdentity(error)) throw error;
@@ -182,7 +193,7 @@ export class FileDocumentService {
     });
     let bytes = 0; let outcome: 'completed' | 'failed' | 'disconnected' = 'failed';
     let verified: VerifiedObject | undefined;
-    const contentDeadline = Date.now() + 30000;
+    const contentDeadline = performance.now() + 30000;
     try {
       verified = await this.storage.verified(admitted.v, contentDeadline);
       res.setHeader('Content-Type', verified.mediaType); res.setHeader('Content-Length', String(verified.size));

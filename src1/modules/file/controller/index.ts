@@ -12,11 +12,23 @@ import { FileDocumentService } from '../documents';
 import { legacyPath } from '../storage';
 import { documentError } from '../validation';
 
+const privateResponses = new WeakSet<Response>();
+
 /** One header policy shared by pre-auth private routes, handlers and reserved-subtree denials. */
 export function applyPrivateDocumentHeaders(res: Response): void {
   res.setHeader('Cache-Control', 'private, no-store'); res.setHeader('Pragma', 'no-cache');
   res.vary('Authorization'); res.setHeader('X-Content-Type-Options', 'nosniff');
   res.removeHeader('ETag'); res.removeHeader('Last-Modified');
+  // Express computes freshness before end(), so suppress only private cache validators first.
+  delete res.req.headers['if-none-match']; delete res.req.headers['if-modified-since'];
+  if (!privateResponses.has(res)) {
+    privateResponses.add(res);
+    const end = res.end;
+    res.end = function (this: Response, ...args: Parameters<Response['end']>): Response {
+      if (!this.headersSent) { this.removeHeader('ETag'); this.removeHeader('Last-Modified'); }
+      return end.apply(this, args);
+    } as Response['end'];
+  }
 }
 
 export class FileController {
