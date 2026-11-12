@@ -1526,8 +1526,6 @@ export class PaymentService {
             { session }
           );
         });
-      } catch (error) {
-        if (!isDuplicateKeyError(error)) throw error;
       } finally {
         await session.endSession();
       }

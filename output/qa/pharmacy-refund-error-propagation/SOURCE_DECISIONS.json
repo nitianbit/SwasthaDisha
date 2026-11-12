@@ -1,0 +1,21 @@
+{
+  "candidate_commit": "b9bfc6dc2b66d4240b13c3bdae22cae06f1965c6",
+  "source_sha256": "6d56575a3dee2d08d1af5c6cc409e170b8ed5c193ccbc090f336f313b5e93b16",
+  "source_freeze_sha256": "35fb85176e3d44897bca876047b4e967619e55721a7a1eafcd7ad61cd33b4522",
+  "author": "/root/refund_error_writer",
+  "decisions": [
+    {
+      "reviewer": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    }
+  ],
+  "provenance": "Actual independent internal Codex nonauthor source reviews, exact baseline/transform/frozen evidence/callers inspected. Source data only, runtime NOT_RUN. No confirmed refund, zero-effects, complete idempotency, F1 closure or release approval."
+}

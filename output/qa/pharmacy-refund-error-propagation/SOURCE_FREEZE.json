@@ -1,0 +1,11 @@
+{
+  "baseline": "f2c8c7526641ba8f3145a61fd52632c5bc5ebc16",
+  "files": {
+    "src1/modules/payment/services/index.ts": "6d56575a3dee2d08d1af5c6cc409e170b8ed5c193ccbc090f336f313b5e93b16",
+    "documentation/planning/implementation/PHARMACY_REFUND_ERROR_PROPAGATION_CONTRACT.md": "6e34cc83c22347b4ff6e13cbbb2a446de42696a787b1036010e20cef5d1854dd",
+    "output/qa/pharmacy-refund-error-propagation/AUTHORIZATION.json": "aae89bdeac7d57ddfe31a0463df1a5e331e7908256f944896655482f5920eacf",
+    "output/qa/pharmacy-refund-error-propagation/SOURCE_VERIFICATION.json": "a7340f1f3933ebc41a4e6ae25e648ba761f038468b9695df3f67d5d1d9545e31",
+    "output/qa/pharmacy-refund-error-propagation/candidate.diff": "5065fd56d8bf275d403bab0d2ec1d85a1388ecb4b317a286019aaa8c1b5b9169"
+  },
+  "scope": "Frozen source-only candidate; two nonauthor source decisions required before integration."
+}

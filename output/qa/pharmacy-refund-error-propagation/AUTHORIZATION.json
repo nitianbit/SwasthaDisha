@@ -1,0 +1,20 @@
+{
+  "author": "/root/refund_error_writer",
+  "baseline": "f2c8c7526641ba8f3145a61fd52632c5bc5ebc16",
+  "contract_sha256": "6e34cc83c22347b4ff6e13cbbb2a446de42696a787b1036010e20cef5d1854dd",
+  "decisions": [
+    {
+      "reviewer": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "provenance": "Actual independent internal Codex preimplementation decision relayed by Root before edits."
+    },
+    {
+      "reviewer": "/root/policy_standards",
+      "role": "Standards",
+      "decision": "APPROVE_PREIMPLEMENTATION_SOURCE_ONLY",
+      "provenance": "Actual independent internal Codex preimplementation decision relayed by Root before edits."
+    }
+  ],
+  "scope": "Exact catch removal and data-only verification only; no runtime or live effects admitted."
+}
