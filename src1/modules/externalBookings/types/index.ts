@@ -9,6 +9,25 @@ export type ExternalBookingListStatus =
   | 'rescheduled'
   | 'report_delivered';
 
+export const CUSTOMER_DIAGNOSTICS_PROGRESS_STATUSES = [
+  'created', 'pending', 'pending_payment', 'confirmed', 'completed',
+  'cancelled', 'rescheduled', 'report_delivered', 'phlebo_assigned',
+] as const;
+
+export interface CustomerDiagnosticsProgress {
+  bookingId: string;
+  integration: ExternalIntegration | 'unknown';
+  bookingDateRaw: string | null;
+  bookingTimeRaw: string | null;
+  bookingStatus: ExternalBookingListStatus | 'phlebo_assigned' | 'unknown';
+  paymentStatus: NonNullable<IExternalBooking['paymentStatus']> | 'unknown';
+  providerReferenceRecorded: boolean | null;
+  sampleState: 'unknown';
+  reportReleaseState: 'unknown';
+  source: 'local_record';
+  lastRecordedAt: string | null;
+}
+
 export interface IExternalSpecialist {
   id: string;
   integration: ExternalIntegration;

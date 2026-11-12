@@ -33,6 +33,7 @@ import {
   IExternalCatalogItem,
 } from '@/modules/externalCatalogItems/types';
 import {
+  CustomerDiagnosticsProgress,
   CancelExternalBookingRequest,
   CreateExternalDiagnosticsBookingRequest,
   CreateExternalBookingRequest,
@@ -2460,6 +2461,17 @@ export class ExternalBookingService {
     });
 
     return updated;
+  }
+
+  async getCustomerDiagnosticsProgress(actor: unknown, id: unknown): Promise<CustomerDiagnosticsProgress> {
+    if (!actor || typeof actor !== 'object' || Array.isArray(actor)) {
+      throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Authentication is required' });
+    }
+    const principal = actor as Record<string, unknown>;
+    if (principal.userType !== 'user') {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Individual customer access is required' });
+    }
+    return this.externalBookingRepository.findCustomerDiagnosticsProgress(id, principal._id);
   }
 
   async listBookings(query: ExternalBookingListQuery): Promise<{

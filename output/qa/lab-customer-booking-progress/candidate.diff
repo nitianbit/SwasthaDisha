@@ -1,0 +1,171 @@
+diff --git a/src1/modules/externalBookings/controller/index.ts b/src1/modules/externalBookings/controller/index.ts
+index 587564f0feb885d8a6f2b0689cc4769f1c8dd141..290f2f53da4d51f7535cd68239b18915b172b558 100644
+--- a/src1/modules/externalBookings/controller/index.ts
++++ b/src1/modules/externalBookings/controller/index.ts
+@@ -583,6 +583,12 @@ export class ExternalBookingController {
+     });
+   };
+ 
++  getCustomerDiagnosticsProgress = async (req: AuthRequest, res: Response, _next: NextFunction) => {
++    const data = await this.externalBookingService.getCustomerDiagnosticsProgress(req.user, req.params.id);
++    res.setHeader('Cache-Control', 'private, no-store');
++    res.status(200).json({ success: true, data });
++  };
++
+   getBookingReport = async (
+     req: AuthRequest,
+     res: Response,
+diff --git a/src1/modules/externalBookings/repository/index.ts b/src1/modules/externalBookings/repository/index.ts
+index 8eb9f47e15ab9264d8e00854e60333b5dff3d527..943a73572b327c516bdf0e9e336101b6aa4ed56b 100644
+--- a/src1/modules/externalBookings/repository/index.ts
++++ b/src1/modules/externalBookings/repository/index.ts
+@@ -1,11 +1,14 @@
+ import { Service } from 'typedi';
+-import { Model } from 'mongoose';
++import { Model, Types } from 'mongoose';
+ import ExternalBookingModel from '@/modules/externalBookings/model';
+ import {
++  CUSTOMER_DIAGNOSTICS_PROGRESS_STATUSES,
++  CustomerDiagnosticsProgress,
+   ExternalBookingListQuery,
+   IExternalBooking,
+ } from '@/modules/externalBookings/types';
+ import { BaseRepository } from '@/modules/common/repository';
++import { AppError } from '@/modules/common/types';
+ 
+ function escapeRegex(input: string): string {
+   return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+@@ -17,6 +20,56 @@ export class ExternalBookingRepository extends BaseRepository<IExternalBooking>
+     super(ExternalBookingModel as Model<IExternalBooking>);
+   }
+ 
++  async findCustomerDiagnosticsProgress(id: unknown, customerId: unknown): Promise<CustomerDiagnosticsProgress> {
++    if (typeof customerId !== 'string' || !/^[0-9a-f]{24}$/.test(customerId)) {
++      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
++    }
++    if (typeof id !== 'string' || !/^[0-9a-f]{24}$/.test(id)) {
++      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid diagnostics booking ID' });
++    }
++    const booking = await ExternalBookingModel.findOne({
++      _id: new Types.ObjectId(id), userId: customerId, providerType: 'DIAGNOSTICS',
++      $expr: { $and: [
++        { $eq: [{ $type: '$userId' }, 'string'] },
++        { $eq: [{ $type: '$providerType' }, 'string'] },
++      ] },
++    }).select({
++      _id: 1, userId: 1, providerType: 1, integration: 1, bookingDate: 1, bookingTime: 1,
++      status: 1, paymentStatus: 1, externalBookingId: 1, updatedAt: 1,
++    }).maxTimeMS(2000).lean().exec();
++    if (!booking) {
++      throw new AppError({ status: 404, code: 'EXTERNAL_BOOKING_NOT_FOUND', message: 'External booking not found' });
++    }
++    const row = booking as unknown as Record<string, unknown>;
++    if (
++      !(row._id instanceof Types.ObjectId) || row._id.toHexString() !== id ||
++      row.userId !== customerId || row.providerType !== 'DIAGNOSTICS'
++    ) {
++      throw new AppError({ status: 503, code: 'DIAGNOSTICS_PROGRESS_UNAVAILABLE', message: 'Diagnostics booking progress is unavailable' });
++    }
++    const reference = row.externalBookingId;
++    const providerReferenceRecorded = reference === undefined || reference === null
++      ? false
++      : typeof reference === 'string' && reference.length <= 512
++        ? reference.trim().length > 0
++        : null;
++    const recordedAt = row.updatedAt;
++    const epoch = recordedAt instanceof Date ? recordedAt.getTime() : NaN;
++    return {
++      bookingId: row._id.toHexString(),
++      integration: row.integration === 'labstack' || row.integration === 'healthians' ? row.integration : 'unknown',
++      bookingDateRaw: typeof row.bookingDate === 'string' && /^[0-9]{8}$/.test(row.bookingDate) ? row.bookingDate : null,
++      bookingTimeRaw: typeof row.bookingTime === 'string' && row.bookingTime.length > 0 && row.bookingTime.length <= 32 ? row.bookingTime : null,
++      bookingStatus: CUSTOMER_DIAGNOSTICS_PROGRESS_STATUSES.find(status => status === row.status) ?? 'unknown',
++      paymentStatus: (['pending', 'paid', 'cancelled', 'refunded'] as const).find(status => status === row.paymentStatus) ?? 'unknown',
++      providerReferenceRecorded,
++      sampleState: 'unknown', reportReleaseState: 'unknown', source: 'local_record',
++      lastRecordedAt: recordedAt instanceof Date && Number.isSafeInteger(epoch) && epoch >= 0 && epoch <= 8640000000000000
++        ? recordedAt.toISOString()
++        : null,
++    };
++  }
++
+   async findWithPagination(
+     filter: ExternalBookingListQuery,
+     page: number,
+diff --git a/src1/modules/externalBookings/routes/index.ts b/src1/modules/externalBookings/routes/index.ts
+index b798201d083c3f90da0152f8c7b5dcecb3c4e19a..cb1955803d97c644a1ee2acde7d283a37494ebfd 100644
+--- a/src1/modules/externalBookings/routes/index.ts
++++ b/src1/modules/externalBookings/routes/index.ts
+@@ -135,6 +135,12 @@ externalBookingRouter.post(
+   catchAsync(externalBookingController.retryDiagnosticsBookingPayment)
+ );
+ 
++// Stored individual-customer progress; no provider/report refresh.
++externalBookingRouter.get(
++  '/diagnostics/bookings/:id/progress',
++  catchAsync(externalBookingController.getCustomerDiagnosticsProgress)
++);
++
+ // Diagnostics report metadata endpoint.
+ // Frontend calls this first to fetch report details and discover available diagnostics reports.
+ externalBookingRouter.get(
+diff --git a/src1/modules/externalBookings/services/index.ts b/src1/modules/externalBookings/services/index.ts
+index 875691f06233026569b25e608a4c4523ac77346f..3b1e6667bc119859431c24e06a14097cf9684a76 100644
+--- a/src1/modules/externalBookings/services/index.ts
++++ b/src1/modules/externalBookings/services/index.ts
+@@ -33,6 +33,7 @@ import {
+   IExternalCatalogItem,
+ } from '@/modules/externalCatalogItems/types';
+ import {
++  CustomerDiagnosticsProgress,
+   CancelExternalBookingRequest,
+   CreateExternalDiagnosticsBookingRequest,
+   CreateExternalBookingRequest,
+@@ -2462,6 +2463,17 @@ export class ExternalBookingService {
+     return updated;
+   }
+ 
++  async getCustomerDiagnosticsProgress(actor: unknown, id: unknown): Promise<CustomerDiagnosticsProgress> {
++    if (!actor || typeof actor !== 'object' || Array.isArray(actor)) {
++      throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Authentication is required' });
++    }
++    const principal = actor as Record<string, unknown>;
++    if (principal.userType !== 'user') {
++      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Individual customer access is required' });
++    }
++    return this.externalBookingRepository.findCustomerDiagnosticsProgress(id, principal._id);
++  }
++
+   async listBookings(query: ExternalBookingListQuery): Promise<{
+     data: IExternalBooking[];
+     total?: number;
+diff --git a/src1/modules/externalBookings/types/index.ts b/src1/modules/externalBookings/types/index.ts
+index 724af0cd2525116c68c4d37152d44b14cb20739a..5671678e854bb42b279e436cfc541ad797a27d99 100644
+--- a/src1/modules/externalBookings/types/index.ts
++++ b/src1/modules/externalBookings/types/index.ts
+@@ -9,6 +9,25 @@ export type ExternalBookingListStatus =
+   | 'rescheduled'
+   | 'report_delivered';
+ 
++export const CUSTOMER_DIAGNOSTICS_PROGRESS_STATUSES = [
++  'created', 'pending', 'pending_payment', 'confirmed', 'completed',
++  'cancelled', 'rescheduled', 'report_delivered', 'phlebo_assigned',
++] as const;
++
++export interface CustomerDiagnosticsProgress {
++  bookingId: string;
++  integration: ExternalIntegration | 'unknown';
++  bookingDateRaw: string | null;
++  bookingTimeRaw: string | null;
++  bookingStatus: ExternalBookingListStatus | 'phlebo_assigned' | 'unknown';
++  paymentStatus: NonNullable<IExternalBooking['paymentStatus']> | 'unknown';
++  providerReferenceRecorded: boolean | null;
++  sampleState: 'unknown';
++  reportReleaseState: 'unknown';
++  source: 'local_record';
++  lastRecordedAt: string | null;
++}
++
+ export interface IExternalSpecialist {
+   id: string;
+   integration: ExternalIntegration;

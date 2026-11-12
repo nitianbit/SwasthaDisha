@@ -135,6 +135,12 @@ externalBookingRouter.post(
   catchAsync(externalBookingController.retryDiagnosticsBookingPayment)
 );
 
+// Stored individual-customer progress; no provider/report refresh.
+externalBookingRouter.get(
+  '/diagnostics/bookings/:id/progress',
+  catchAsync(externalBookingController.getCustomerDiagnosticsProgress)
+);
+
 // Diagnostics report metadata endpoint.
 // Frontend calls this first to fetch report details and discover available diagnostics reports.
 externalBookingRouter.get(

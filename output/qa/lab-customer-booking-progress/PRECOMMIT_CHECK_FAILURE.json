@@ -1,0 +1,21 @@
+{
+  "phase": "LOCAL_PRECOMMIT_SOURCE_DATA_CHECK",
+  "command": "git diff --cached --check",
+  "exitCode": 2,
+  "commitReached": false,
+  "diagnostic": "candidate.diff literal unified-diff blank context lines are reported as trailing whitespace when the patch itself is staged as data.",
+  "reportedPatchLines": [
+    8,
+    35,
+    41,
+    102,
+    127,
+    149
+  ],
+  "candidatePatchSha256": "df53cbe3d7bf79a0ba3f7b80e5d705d87dedfd4dcc86b24fb25fa1bc664060ab",
+  "oldDraftFreezeSha256": "59c54d5bc720e15ac4064bf624317b11c00e2a98c80e8612d7cae7204661f18b",
+  "oldDraftVerificationSha256": "185cfe2862b13d4bbe917e87a61afcdebf4915e20ccbb04dba29144da134461d",
+  "resolution": "Keep the exact full-index patch unchanged; git diff --cached --check -- src1/modules/externalBookings passes. This is a scoped source whitespace check, not an all-artifact whitespace pass. JSON is parsed only as data; application/type/runtime behavior remains NOT_RUN.",
+  "sourceWhitespaceCheckExitCode": 0,
+  "applicationExecution": false
+}
