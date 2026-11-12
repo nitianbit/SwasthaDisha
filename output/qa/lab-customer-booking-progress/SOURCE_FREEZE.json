@@ -1,0 +1,40 @@
+{
+  "baseline": "d7a61adca1a60db59a4f5bc9b2412c91c07a077d",
+  "author": "/root/pharmacist_identity_fields",
+  "contract_sha256": "f606545cd262de4b3429165024a2b8545f50f74b7be4fae66b0da6e3dd2d0de9",
+  "files": {
+    "documentation/planning/ROADMAP.md": "6a5b2e5bfdb42d16021cb28f83531389977d535d9743ae8908ab75ceeabd37cf",
+    "documentation/planning/SYSTEM_DESIGN.md": "cbd899f6fb442b13db28c389143b529b90da364165dc17291cc829814810bc84",
+    "documentation/planning/CAPABILITY_MATRIX.md": "05ab06d569b8dad2a690ac434922738bd20ce15d9484b60e4bf55e62e14e7fea",
+    "documentation/planning/BUSINESS_OPERATIONS.md": "154371613be782bf5b31b7d0ae43a360a51b5f972dd66391041d8bc996cd6e5e",
+    "documentation/planning/implementation/CUSTOMER_PHARMACY_LAB_PLAN.md": "b3fe87439052e8b22975e736016e8739dd8948192899a7e26be150aa4c7a2978",
+    "documentation/labstack/FRONTEND_REPORT_FLOW.md": "ed137adefba27701b0d407f7ea2bcaff278da20fac3e3b59ac0e1abc37d81f75",
+    "documentation/pharmacy_api_reference.md": "46877a4a65b2a7763d53627f26a2217ef7a8759232ba26cd1ab66d503618d67b",
+    "src1/modules/externalBookings/routes/index.ts": "fe3d4181c3424638cad98b2cc61bbcad5b72f48258ae1c02f76f5b3fdcbba146",
+    "src1/modules/externalBookings/controller/index.ts": "360836e0d5e98223de26c5faf1777f420d1991afdce7b3f7b5bfe2eada05b041",
+    "src1/modules/externalBookings/services/index.ts": "aa1ac1b90f91dab278bad594d5a3a82f931cf6443fb24af819faf707c89a9a66",
+    "src1/modules/externalBookings/repository/index.ts": "b34199b2e0c767e309c28c6d147b6de1d5ae59bbcef363aca3668371b13d582c",
+    "src1/modules/externalBookings/types/index.ts": "878f539e702ee998176acbfc4c6a38b7b711d2447e4608fe14a5647b40d7e862",
+    "src1/modules/externalBookings/model/index.ts": "873239e9ebd6201cf632deafac86d76ab6a6a84b729e23332e29658a898291f1",
+    "src1/modules/externalBookings/validation/index.ts": "49c3aa3449e61655d9a34b6a201de9874e83003df8737b5aa5dfdab09bd6dcc6",
+    "src1/modules/middleware/auth.ts": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+    "src1/routes/index.ts": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056",
+    "src1/modules/bookings/routes/index.ts": "b2ed40c971e35ceb28eeccb8b491bcf7c4b2dcaf35a7267c783a8345760e3cfb",
+    "src1/modules/bookings/services/index.ts": "25645bc17bb535e2c3c5b6dcec14917ef5df905fe31838c980431dcf9e591051",
+    "src1/modules/bookings/repository/index.ts": "d54ebba522cd290589296918eb2dcb4f7609e42d836ef3f23dfb89114b375713",
+    "src1/modules/bookings/model/index.ts": "219f8115e5eec4bebd7205c763638e8755bde57122866430a1b3bcd0f69ead72",
+    "documentation/planning/implementation/LAB_CUSTOMER_BOOKING_PROGRESS_CONTRACT.md": "f606545cd262de4b3429165024a2b8545f50f74b7be4fae66b0da6e3dd2d0de9",
+    "output/qa/lab-customer-booking-progress/PREIMPLEMENTATION_DECISIONS.json": "b70e07fc9d8ab55432b83359914af54237639b7a61bbb44a5196c895aebceafd",
+    "output/qa/lab-customer-booking-progress/candidate.diff": "df53cbe3d7bf79a0ba3f7b80e5d705d87dedfd4dcc86b24fb25fa1bc664060ab",
+    "output/qa/lab-customer-booking-progress/SOURCE_VERIFICATION.json": "8bbb80953dfaca881bc6554151a5e816a1bc64dffdcecbae803961e24726b6ae",
+    "output/qa/lab-customer-booking-progress/PRECOMMIT_CHECK_FAILURE.json": "29f9c51c58d4d7a08b86ed815a50ab899f9f96d3b6137118bce4878cee820b20"
+  },
+  "production_delta": [
+    "src1/modules/externalBookings/controller/index.ts",
+    "src1/modules/externalBookings/repository/index.ts",
+    "src1/modules/externalBookings/routes/index.ts",
+    "src1/modules/externalBookings/services/index.ts",
+    "src1/modules/externalBookings/types/index.ts"
+  ],
+  "scope": "Five-file additive customer-owned provider-free local diagnostics progress source only; independent source reviews PENDING; actual runtime/type/HTTP/driver/effects NOT_RUN."
+}

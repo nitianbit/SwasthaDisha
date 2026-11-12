@@ -583,6 +583,12 @@ export class ExternalBookingController {
     });
   };
 
+  getCustomerDiagnosticsProgress = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const data = await this.externalBookingService.getCustomerDiagnosticsProgress(req.user, req.params.id);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(200).json({ success: true, data });
+  };
+
   getBookingReport = async (
     req: AuthRequest,
     res: Response,
