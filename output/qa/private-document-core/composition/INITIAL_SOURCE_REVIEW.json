@@ -1,0 +1,28 @@
+{
+  "schema": "SD-PRIVATE-DOCUMENT-INITIAL-REVIEW-1",
+  "candidate": "ebbe934cf1521143f41c8a97c034e7da0510baca",
+  "baseline": "99cc098ede0a3cb1124f294ef4c9b660b8d9f61d",
+  "sourcePatchSha256": "44b2a4265b2b170040167ea2c9f4d36f0c421a1a3b4afd2a24460297f36bbcec",
+  "reviewer": "/root/customer_remaining_audit",
+  "role": "Standards",
+  "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+  "decision": "REQUEST_CHANGES",
+  "findings": [
+    {
+      "id": "PRIVATE-R1",
+      "severity": "MATERIAL",
+      "path": "src1/modules/file/controller/index.ts",
+      "issue": "Clearing ETag before Express.send does not prevent regenerated validators or conditional304, including private JSON and shared errors."
+    },
+    {
+      "id": "PRIVATE-R2",
+      "severity": "MATERIAL",
+      "path": "src1/modules/file/storage.ts",
+      "issue": "Timeout/abort only rejects parsing; later sync/hash/copy/promotion can return capture and enter metadata after expiry. Initial handle stat is outside guaranteed finalization. One capture deadline/cancellation lease and callback checkpoint required, with owned cleanup."
+    }
+  ],
+  "otherInspection": "Identity/dedupe, owner/version checks, transactions/audit, DTO/pagination/revoke, unavailable ports and held-descriptor/private-subtree guards inspected; full S1 not claimed.",
+  "runtime": "NOT_RUN",
+  "amendmentPlan": "documentation/planning/implementation/PRIVATE_DOCUMENT_REVIEW_REMEDIATION.md",
+  "sourceChangedSinceReview": false
+}
