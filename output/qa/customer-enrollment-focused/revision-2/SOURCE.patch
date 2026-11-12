@@ -1,0 +1,1653 @@
+diff --git a/test/application/app-bundle.mjs b/test/application/app-bundle.mjs
+index b999c3898ebc83d0311ad7e129c25ccbab61985b..2601e45ed409f14ed2d3e4d9d5d3b2990fc34e66 100644
+--- a/test/application/app-bundle.mjs
++++ b/test/application/app-bundle.mjs
+@@ -82,0 +83,31 @@ export const AUTHORITY_CONTROLS = Object.freeze([
++
++export const ENROLLMENT_ROLE = 'customer-enrollment-service';
++export const ENROLLMENT_SOURCE_NAMES = Object.freeze([
++  'app-bundle.mjs', 'app-ports.mjs', 'bootstrap.mjs', 'emitted-modules.json', 'package.json',
++  'ports-plan.json', 'runtime-modules.json', 'scenario.mjs',
++]);
++const enrollmentMap = name => ['emitted-modules.json', 'runtime-modules.json'].includes(name);
++function sourceLimit(role, name) {
++  return role === ENROLLMENT_ROLE && enrollmentMap(name) ? 8 * 1024 * 1024
++    : role === AUTHORITY_ROLE && name === 'typescript.cjs' ? 10 * 1024 * 1024 : 128 * 1024;
++}
++export function verifyEnrollmentResult(value, expected) {
++  try {
++    requireThat(authorityKeys(value, ['schema', 'planSha256', 'emittedSha256', 'runtimeSha256', 'caseIds', 'restoredCaseIds',
++      'passed', 'failed', 'skipped', 'controls', 'baselineTwoAliasDataflowObserved', 'database', 'providers', 'http', 'typecheck'])
++      && value.schema === 'SD-ENROLLMENT-SERVICE-RESULT-1', 'Enrollment result schema');
++    requireThat(['planSha256', 'emittedSha256', 'runtimeSha256'].every(key => hash(value[key]) && value[key] === expected[key]), 'Enrollment artifact binding');
++    requireThat(JSON.stringify(value.caseIds) === JSON.stringify(expected.caseIds)
++      && JSON.stringify(value.restoredCaseIds) === JSON.stringify(expected.caseIds)
++      && value.passed === expected.caseIds.length && value.passed > 0 && value.failed === 0 && value.skipped === 0, 'Enrollment finite cases');
++    requireThat(Array.isArray(value.controls) && value.controls.length === expected.controls.length
++      && value.controls.every((row, i) => authorityKeys(row, ['id', 'target', 'predicate', 'detected', 'restored'])
++        && row.id === expected.controls[i].id && row.target === expected.controls[i].case
++        && row.predicate === (row.id === 'NC4' ? 'single-contact-save' : 'zero-effects')
++        && row.detected === true && row.restored === true), 'Enrollment controls');
++    requireThat(value.baselineTwoAliasDataflowObserved === true && value.database === 'NOT_ADMITTED'
++      && value.providers === 'RECORDING_ONLY' && value.http === 'NOT_RUN' && value.typecheck === 'NOT_CLAIMED', 'Enrollment evidence scope');
++    return true;
++  } catch { return false; }
++}
++
+@@ -84,2 +115,2 @@ export function sourceNames(role) {
+-  requireThat(role === ROLE || role === AUTHORITY_ROLE, 'Unknown fixed application role');
+-  return role === ROLE ? SOURCE_NAMES : AUTHORITY_SOURCE_NAMES;
++  requireThat(role === ROLE || role === AUTHORITY_ROLE || role === ENROLLMENT_ROLE, 'Unknown fixed application role');
++  return role === ENROLLMENT_ROLE ? ENROLLMENT_SOURCE_NAMES : role === ROLE ? SOURCE_NAMES : AUTHORITY_SOURCE_NAMES;
+@@ -93 +124 @@ export function makeManifest(runId, sources, role = ROLE) {
+-    const limit = role === AUTHORITY_ROLE && name === 'typescript.cjs' ? 10 * 1024 * 1024 : 128 * 1024;
++    const limit = sourceLimit(role, name);
+@@ -98 +129 @@ export function makeManifest(runId, sources, role = ROLE) {
+-  requireThat(role !== AUTHORITY_ROLE || total < 12 * 1024 * 1024, 'Authority bundle size exceeded');
++  requireThat(![AUTHORITY_ROLE, ENROLLMENT_ROLE].includes(role) || total < 12 * 1024 * 1024, 'Authority bundle size exceeded');
+@@ -114,2 +145 @@ export function assertBundle(directory, expectation) {
+-    const limit = name === '.admission.json' ? 65536
+-      : role === AUTHORITY_ROLE && name === 'typescript.cjs' ? 10 * 1024 * 1024 : 128 * 1024;
++    const limit = name === '.admission.json' ? 65536 : sourceLimit(role, name);
+@@ -129 +159 @@ export function assertBundle(directory, expectation) {
+-  requireThat(role !== AUTHORITY_ROLE || total < 12 * 1024 * 1024, 'Authority bundle size changed');
++  requireThat(![AUTHORITY_ROLE, ENROLLMENT_ROLE].includes(role) || total < 12 * 1024 * 1024, 'Authority bundle size changed');
+diff --git a/test/application/app-container.mjs b/test/application/app-container.mjs
+index aee5c836eea59cddd3004a9b5fa3640e5fb6e592..da63f6ef36b7410a80636902bee122317a3e211c 100644
+--- a/test/application/app-container.mjs
++++ b/test/application/app-container.mjs
+@@ -13 +13 @@ const localRuntime = Object.freeze({ ...runtimeSpecification });
+-import { assertBundle, AUTHORITY_COMPILER_SHA, AUTHORITY_INPUTS, AUTHORITY_ROLE, AUTHORITY_SOURCE_HASHES, AUTHORITY_VECTORS_SHA, makeManifest, NETWORK_ADMISSION_TAG, PORT_OPERATIONS, ROLE, requireThat, sha256, sourceNames, verifyAuthorityResult, verifyNetworkAdmission } from './app-bundle.mjs';
++import { assertBundle, ENROLLMENT_ROLE, verifyEnrollmentResult, AUTHORITY_COMPILER_SHA, AUTHORITY_INPUTS, AUTHORITY_ROLE, AUTHORITY_SOURCE_HASHES, AUTHORITY_VECTORS_SHA, makeManifest, NETWORK_ADMISSION_TAG, PORT_OPERATIONS, ROLE, requireThat, sha256, sourceNames, verifyAuthorityResult, verifyNetworkAdmission } from './app-bundle.mjs';
+@@ -19,0 +20,34 @@ const tmpfsOptions = 'rw,noexec,nosuid,size=67108864,mode=1777';
++function enrollmentSources() {
++  const root = fileURLToPath(new URL('../../', import.meta.url)).replace(/\/$/, '');
++  const regular = (location, limit = 16 * 1024 * 1024) => {
++    const stat = lstatSync(location);
++    requireThat(stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1 && stat.size < limit, 'Enrollment regular source');
++    return readFileSync(location, 'utf8');
++  };
++  const descriptorPath = '/private/tmp/sd-customer-enrollment-build.json';
++  const descriptorStat = lstatSync(descriptorPath);
++  requireThat(descriptorStat.uid === process.getuid() && (descriptorStat.mode & 0o777) === 0o600, 'Enrollment descriptor owner/mode');
++  const descriptor = JSON.parse(regular(descriptorPath));
++  requireThat(descriptor.schema === 'SD-ENROLLMENT-BUILD-1' && descriptor.sourceRoot === root && descriptor.mode === 'install-emit'
++    && /^\/private\/tmp\/sd-customer-enrollment-build-[a-f0-9-]{36}$/.test(descriptor.path), 'Enrollment owned artifact path');
++  const directory = lstatSync(descriptor.path);
++  requireThat(directory.isDirectory() && !directory.isSymbolicLink() && directory.uid === process.getuid()
++    && (directory.mode & 0o777) === 0o700 && directory.dev === descriptor.dev && directory.ino === descriptor.ino, 'Enrollment artifact ownership');
++  const marker = JSON.parse(regular(join(descriptor.path, '.owner.json')));
++  requireThat(marker.schema === 'SD-ENROLLMENT-OWNED-BUILD-1' && ['path', 'dev', 'ino', 'sourceRoot', 'sourceCommit', 'mode', 'inputs']
++    .every(key => JSON.stringify(marker[key]) === JSON.stringify(descriptor[key])), 'Enrollment build marker');
++  requireThat(descriptor.inputs && Object.keys(descriptor.inputs).length > 0 && Object.entries(descriptor.inputs).every(([name, digest]) =>
++    !name.startsWith('/') && !name.split('/').includes('..') && sha256(regular(join(root, name))) === digest), 'Enrollment source inputs changed');
++  const sources = {};
++  for (const name of sourceNames(ENROLLMENT_ROLE)) {
++    if (name === 'package.json') sources[name] = '{"type":"module"}\n';
++    else if (['emitted-modules.json', 'runtime-modules.json'].includes(name)) {
++      sources[name] = regular(join(descriptor.path, 'output', name), 8 * 1024 * 1024);
++      requireThat(sha256(sources[name]) === descriptor.artifacts[name], 'Enrollment emitted artifact drift');
++    } else if (['scenario.mjs', 'ports-plan.json'].includes(name)) sources[name] = regular(join(root, 'test/customer-enrollment-runtime', name));
++    else sources[name] = regular(join(root, 'test/application', name));
++  }
++  requireThat(sha256(regular(join(descriptor.path, 'output/emission-report.json'))) === descriptor.artifacts['emission-report.json'], 'Enrollment emission report drift');
++  return sources;
++}
++
+@@ -20,0 +55 @@ function reviewedSources(role) {
++  if (role === ENROLLMENT_ROLE) return enrollmentSources();
+@@ -83,0 +119 @@ export function createAuthorityFixture(input, seams = {}) { return createFixture
++export function createEnrollmentFixture(input, seams = {}) { return createFixture(input, seams, ENROLLMENT_ROLE); }
+@@ -120,0 +157,2 @@ function createFixture(input, seams, role) {
++  if (role === ENROLLMENT_ROLE && simulated) requireThat(Object.hasOwn(testSeams, 'bundle')
++    && testSeams.bundle !== null && typeof testSeams.bundle === 'object' && !Array.isArray(testSeams.bundle), 'Enrollment fake requires explicit bundle');
+@@ -124,0 +163,6 @@ function createFixture(input, seams, role) {
++  const enrollmentPlan = role === ENROLLMENT_ROLE ? JSON.parse(sources['ports-plan.json']) : undefined;
++  const enrollmentExpectation = role === ENROLLMENT_ROLE ? Object.freeze({
++    caseIds: enrollmentPlan.vectors.map(row => row.id), controls: enrollmentPlan.controls.concat(enrollmentPlan.oldControl),
++    planSha256: sha256(sources['ports-plan.json']), emittedSha256: sha256(sources['emitted-modules.json']), runtimeSha256: sha256(sources['runtime-modules.json']),
++  }) : undefined;
++
+@@ -180,0 +225 @@ function createFixture(input, seams, role) {
++      && (role !== ENROLLMENT_ROLE || images[0].Architecture === 'arm64')
+@@ -275,0 +321,6 @@ function createFixture(input, seams, role) {
++        if (role === ENROLLMENT_ROLE) {
++          requireThat(Object.keys(result).sort().join(',') === ['admissionPassed', 'enrollment', 'databaseMode', 'egressBlocked',
++            'filesystemCanariesPassed', 'manifestSha', 'networkAdmission', 'role', 'runId'].sort().join(',')
++            && Buffer.byteLength(output) < 16 * 1024 && verifyEnrollmentResult(result.enrollment, enrollmentExpectation), 'Enrollment evidence mismatched');
++          phase = 'finished'; return Object.freeze({ ...result, enrollment: Object.freeze(result.enrollment) });
++        }
+diff --git a/test/application/bootstrap.mjs b/test/application/bootstrap.mjs
+index 5921f219e647e90c30c2d9a5e07bff80c8f24c7f..4f9abde08632c7e794180492cc9f73a01e97957b 100644
+--- a/test/application/bootstrap.mjs
++++ b/test/application/bootstrap.mjs
+@@ -5 +5 @@ import {
+-  admitNetwork, assertBundle, AUTHORITY_ROLE, egressCanaryBlocked, entryKind, PORT_OPERATIONS, ROLE, requireThat,
++  admitNetwork, assertBundle, AUTHORITY_ROLE, ENROLLMENT_ROLE, egressCanaryBlocked, entryKind, PORT_OPERATIONS, ROLE, requireThat,
+@@ -13 +13 @@ requireThat(Object.keys(process.env).every((key) => allowedEnvironment.has(key))
+-  && process.env.NODE_ENV === 'test' && [ROLE, AUTHORITY_ROLE].includes(process.env.APP_ROLE),
++  && process.env.NODE_ENV === 'test' && [ROLE, AUTHORITY_ROLE, ENROLLMENT_ROLE].includes(process.env.APP_ROLE),
+@@ -16,0 +17 @@ requireThat(process.cwd() === '/workspace' && process.version === 'v22.23.4'
++requireThat(process.env.APP_ROLE !== ENROLLMENT_ROLE || process.arch === 'arm64', 'Enrollment runtime architecture');
+@@ -47,0 +49,14 @@ if (process.env.APP_ROLE === AUTHORITY_ROLE) {
++} else if (process.env.APP_ROLE === ENROLLMENT_ROLE) {
++  try {
++  const { runEnrollmentScenario } = await import('./scenario.mjs');
++  const enrollment = await runEnrollmentScenario();
++  const output = JSON.stringify({ runId: process.env.APP_RUN_ID, role: ENROLLMENT_ROLE,
++    manifestSha: process.env.APP_MANIFEST_SHA, admissionPassed: true, egressBlocked,
++    filesystemCanariesPassed: true, databaseMode: 'not-admitted', networkAdmission, enrollment });
++  requireThat(Buffer.byteLength(output) < 16 * 1024, 'Enrollment result output limit'); console.log(output);
++  } catch (error) {
++    // No assertion diff, token, code, address or row body escapes the private fixture.
++    const message = typeof error?.message === 'string' && /^(?:PREDICATE:[A-Za-z0-9_.:-]{1,80}|ENROLLMENT_CASE_FAILED:C3-[A-Za-z0-9_.-]{1,80})$/.test(error.message)
++      ? error.message : 'ENROLLMENT_SERVICE_FAILED';
++    throw new Error(message);
++  }
+diff --git a/test/customer-enrollment-runtime/README.md b/test/customer-enrollment-runtime/README.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..a97e404aab48c058fd76ee36111d63a7cdb49b55
+--- /dev/null
++++ b/test/customer-enrollment-runtime/README.md
+@@ -0,0 +1,49 @@
++# Focused customer enrollment service fixture
++
++SOURCE CANDIDATE — all preparation, compiler, loader, Joi, service, negative-control, Node and container execution NOT_RUN. This fixed `customer-enrollment-service` role tests the actual whole six selected TypeScript modules, actual Joi and JWT, eleven recording constructor dependencies and synthetic CONFIG. It has no database, HTTP listener, real OTP/provider or TypeDI resolution. It does not complete verified contact change or production adoption.
++
++Contract: `documentation/planning/implementation/CUSTOMER_ENROLLMENT_FOCUSED_VERIFICATION_CONTRACT.md`, SHA8479d7dcfbd75c0b859d7a39840f958921840ea93966c8d7c0e1f2198cad34a9. Actual contract reviews are recorded in the enrollment branch at ce2194c2984a4d695a2e8e05dbc1f5015f17b46b. An implementation-only decision does not admit these executable checks.
++
++`ports-plan.json` is the finite specification:82 nominal vector IDs, four mutated-source controls plus the actual OLD baseline. The same82 vectors run again in a fresh restored nominal module context; each control also restores its denial predicate and positive signup. Returned current row versus caller destination, zero-effect malformed/dual requests, own-key signup payload shape, role compatibility and real verified JWT claims are checked through actual service calls. OLD explicitly observes two defined aliases in the recording save map and claims after proof of only the first. This is payload/dataflow evidence, not stored Mongo or provider exploitation.
++
++`emit.cjs` uses locked TypeScript5.9.3 createProgram/whole-module emit, records compiler/library inputs and visible diagnostics, applies exact unique AST edits to copies, and audits literal emitted/runtime package requires. It never imports emitted application or runtime package code. Missing type-only declarations remain recorded; no clean typecheck is claimed. No real repository/model/SDK is admitted to silence diagnostics. Any unlisted builtin/dynamic import/package edge, changed original closure or preparation failure stops the dependent stage for review.
++
++`scenario.mjs` consumes inert closed maps only after existing application bootstrap admission. The VM CommonJS linker cuts repositories and providers, keeps real native crypto/Joi/JWT/TypeDI decorator registration, and has no ambient application config or host module loader. The VM is not a hostile-code security boundary. Network-none Linux isolation, exact image/engine/env, nonroot, read-only bind, permission canaries, egress ENETUNREACH, bounds and identity-owned cleanup remain the existing fixture controller's responsibility. Existing synthetic and staff-authority roles retain their behavior.
++
++## Preparation stages and exact next invocation proposal
++
++No runnable prepared closure exists yet. Root's recorded Docker readiness is read-only availability evidence, not approval. Four runtime package roots are Joi17.13.3, jsonwebtoken9.0.2, reflect-metadata0.2.2 and typedi0.10.0; TypeScript5.9.3 is preparation-only. The test-only versions match current root-lock entries; root package/lock/start are unchanged. The actual1939-file installed npm tool inventory is public source provenance at `output/qa/customer-enrollment-focused/TOOL_INPUTS.json`; it was hashed without executing npm. It does not prove new dependency artifacts exist.
++
++The first approved attempt at10600a2 stopped at its environment guard because the Xcode Python trampoline injected SDK/build variables; no receipt/nonce/workspace/npm handling occurred. Root's actual failure and independent disposition remain at `output/qa/customer-enrollment-focused/revision-1/LOCK_PREFLIGHT_FAILURE.json` / c200e4b. The exact correction plan054658bc has two actual implementation-only votes at8f43bbc; those votes do not authorize a retry. Old approvals/proposals remain historical.
++
++The corrected proposal pins direct Homebrew CPython3.14.7 and its actual binary hash in profile.json. Preparation checks the regular nonsymlink binary, same-file running interpreter (the observed opt alias must identify that same file), exact version/implementation and isolated/no-bytecode/no-site flags. Fixed `-I -B -S` suppresses global site/.pth startup; this candidate mode remains NOT_RUN. Only the optional public `__CF_USER_TEXT_ENCODING` marker is added to the existing environment key set, and must exactly equal `0x<uppercase-hex-current-uid>:0x0:0x0` (uid501: `0x1F5:0x0:0x0`). SDKROOT/CPATH/LIBRARY_PATH/MANPATH and all other unlisted keys remain forbidden. This marker is not forwarded to the independently constructed npm/Node environment. No application runtime adoption or complete interpreter-framework provenance is claimed from the binary hash.
++
++First obtain two actual nonauthor source and exact `APPROVE_PUBLIC_LOCK_RESOLUTION_ONLY` decisions. Root then writes a private0600 existing-receipt-style approval at `/private/tmp/sd-customer-enrollment-prepare-approval.json`, with exact keys:
++
++- `schema`: `SD-ENROLLMENT-PREP-APPROVAL-1`.
++- `decision`: `APPROVE_PUBLIC_LOCK_RESOLUTION_ONLY`.
++- `mode`: `resolve-lock`.
++- `sourceRoot`: the exact customer-enrollment-contact checkout absolute path.
++- `sourceCommit`: its exact current committed candidate.
++- `inputs`: exact path→SHA256 for all eight files here, six actual TS files, three extended controller/bootstrap files, existing app-ports/image/runtime, this contract, TOOL_INPUTS and root package-lock (the fixed list in prepare.py).
++- `nonce`: fresh UUIDv4; `reviewers`: exactly two distinct actual nonauthor `{agent,decision}` records. This author cannot vote.
++
++Proposed invocation, **NOT AUTHORIZED BY THIS README**:
++
++```sh
++env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14 -I -B -S test/customer-enrollment-runtime/prepare.py --resolve-lock
++```
++
++This consumes one nonce with atomic exclusive creation before allocation/process/network effects. It uses the pinned existing Node24.19.0 host tool and exact fully inventoried npm code, an owned empty0700 workspace with fresh HOME/cache/npmrc, public registry only, `npm install --package-lock-only --ignore-scripts --omit=optional --no-audit --no-fund`, no inherited configuration/proxy/token/preloads, and a900-second process bound. A minimal seed lock contains only the root-lock transitive closure of the five direct packages. Output must preserve every retained version/integrity/dependency edge, contain only that closure, and use public HTTPS SHA512 lock rows. No application/compiler/Docker executes in this first stage. Workspace/private diagnostics are retained; resolved lock is exclusively written0600 to `/private/tmp/sd-customer-enrollment-resolved-lock.json`. Existing outputs cause failure, not deletion or overwrite.
++
++After review of the actual result/lock, a **new** `APPROVE_LOCKED_INSTALL_AND_EMIT_ONLY` receipt uses mode `install-emit` and adds `resolvedLockSha256`. Its separately reviewed invocation runs the same script with `--install-emit`. This uses fresh owned directories and exact-lock `npm ci --ignore-scripts --omit=optional`; removes only owned .bin links, rejects symlink/native payloads, records installed files, and emits inert maps/report. No new runtime/application execution occurs. Root must review actual diagnostics, graph edges, source/control patches and package/file hashes before any service run. Failed/consumed receipts never retry automatically. No lock-install/runtime receipt is supplied by this source candidate.
++
++The fixed private build descriptor `/private/tmp/sd-customer-enrollment-build.json` binds originating0700 directory inode/owner marker, source snapshot/input hashes, lock and three artifact hashes. The controller rechecks ownership and current selected bytes before staging a new fixture. No arbitrary path/source/image/command/URI flag is admitted. Prepared private directories are retained for review; later removal needs their exact ownership disposition, not a broad temp cleanup.
++
++## Later one-run gate
++
++Only after exact prepared-artifact and test source review may Root write `/private/tmp/sd-customer-enrollment-run-approval.json`,0600. Exact schema `SD-ENROLLMENT-RUN-APPROVAL-1`, decision `APPROVE_ONE_ENROLLMENT_SERVICE_RUN_ONLY`; bind sourceRoot/current sourceCommit, descriptor.inputs, descriptorSha256, fixed endpoint/engine/image, fresh nonce and two actual nonauthor reviewers. `run.mjs` consumes that nonce before allocation/Docker, and the controller reads the fixed prepared descriptor itself.
++
++The future command is the pinned Node tool from profile.json, with no CLI options/arguments or NODE_OPTIONS/NODE_PATH, clean PATH=/usr/bin:/bin and TMPDIR=/private/tmp, running `test/customer-enrollment-runtime/run.mjs`. The container has the unchanged20-second executor limit,512MiB,CPU1,pids64,tmpfs64MiB and Node22.23.4 fixed digest. It never pulls an image or starts MongoDB. A failure or unresolved cleanup requires review before another run; receipt consumption is not a successful result. Output contains only case IDs, safe counters, hashes, role/admission and cleanup proofs; no addresses/rows/OTP/token/key/raw package exceptions are evidence payloads.
++
++Actual post-run reviewers must inspect nominal/restored82 IDs, five behavioral control detections with their intended concrete alternate effects, baseline dataflow observation and real owned cleanup. Skips/TODOs/empty/missing cases, wrong failure predicates, unhandled port access, unexpected import, timeout and errors fail. No source regex/hash mismatch is counted as a behavioral defect detection. Focused HTTP/controller, actual Joi HTTP middleware, Mongoose/BSON/uniqueness, actual OTP expiry/consume, provider/client/clinical/release gates remain separate and NOT_RUN. Corporate/HR/hospital expansion and the final integration campaign remain deferred.
+diff --git a/test/customer-enrollment-runtime/emit.cjs b/test/customer-enrollment-runtime/emit.cjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..4738c1dee47d3b2dcc506764af307003ecb4ee90
+--- /dev/null
++++ b/test/customer-enrollment-runtime/emit.cjs
+@@ -0,0 +1,163 @@
++'use strict';
++// Preparation only. Loads the locked compiler, never emitted application/package modules.
++const fs = require('node:fs');
++const path = require('node:path');
++const crypto = require('node:crypto');
++const ts = require('typescript');
++const [inputPath, outputDirectory] = process.argv.slice(2);
++const check = (ok, why) => { if (!ok) throw new Error(why); };
++const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
++check(process.argv.length === 4 && ts.version === '5.9.3', 'Fixed compiler invocation/version');
++const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
++const plan = input.plan;
++check(plan.schema === 'SD-ENROLLMENT-PORTS-1' && Object.keys(input.sources).length === 6, 'Exact emission input');
++for (const [id, expected] of Object.entries(plan.sourcePins)) check(sha(input.sources[id]) === expected, 'Source drift: ' + id);
++const serviceId = 'src1/modules/auth/services/index.ts';
++const validationId = 'src1/modules/auth/validation/index.ts';
++const diagnostics = {}; const reads = {}; const edits = {}; const phases = {};
++function ast(text, name) { return ts.createSourceFile(name, text, ts.ScriptTarget.ES2022, true); }
++function walk(node, predicate, found = []) { if (predicate(node)) found.push(node); ts.forEachChild(node, child => { walk(child, predicate, found); }); return found; }
++function edit(id, text, predicate, replacement) {
++  const source = ast(text, id); const matches = walk(source, predicate);
++  check(matches.length === 1, 'Control requires exactly one AST target: ' + id);
++  const node = matches[0]; const start = node.getStart(source); const end = node.end;
++  const output = text.slice(0, start) + replacement + text.slice(end);
++  edits[id] = { start, end, beforeSha256: sha(text), afterSha256: sha(output), removed: text.slice(start, end), inserted: replacement };
++  return output;
++}
++const sourcesByPhase = { nominal: input.sources, OLD: { ...input.sources, ...input.baseline } };
++const customerSelector = node => ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'selectCustomerLoginContact';
++for (const id of ['NC1', 'NC2', 'NC3', 'NC4']) {
++  const sources = { ...input.sources };
++  if (id === 'NC1') {
++    sources[validationId] = edit(id, sources[validationId], node => ts.isIdentifier(node) && node.text === 'xor'
++      && ts.isPropertyAccessExpression(node.parent) && node.parent.name === node, 'or');
++  } else if (id === 'NC2' || id === 'NC3') {
++    const tree = ast(sources[serviceId], serviceId);
++    const members = walk(tree, n => (ts.isMethodDeclaration(n) || ts.isPropertyDeclaration(n)) && n.name?.getText() === (id === 'NC2' ? 'sendOTP' : 'verifyOTP'));
++    check(members.length === 1, 'Exact service command target');
++    const calls = walk(members[0], customerSelector); check(calls.length === 1, 'Exact command selector call');
++    const start = calls[0].getStart(tree); const end = calls[0].end;
++    const before = sources[serviceId]; sources[serviceId] = before.slice(0, start) + 'undefined' + before.slice(end);
++    edits[id] = { start, end, beforeSha256: sha(before), afterSha256: sha(sources[serviceId]), removed: before.slice(start, end), inserted: 'undefined' };
++  } else {
++    sources[serviceId] = edit(id, sources[serviceId], node => ts.isSpreadAssignment(node) && node.expression.getText().includes('customerIdentity ??'), 'phone: data.phone, email: data.email');
++  }
++  sourcesByPhase[id] = sources;
++}
++const libRoot = path.dirname(require.resolve('typescript'));
++function compile(phase, sources) {
++  const prefix = '/closed/'; const libraryReads = {};
++  const read = filename => {
++    if (filename.startsWith(prefix)) return sources[filename.slice(prefix.length)];
++    if (path.dirname(filename) === libRoot && /^lib\.[A-Za-z0-9.]+\.d\.ts$/.test(path.basename(filename))) {
++      const stat = fs.lstatSync(filename); check(stat.isFile() && !stat.isSymbolicLink(), 'Compiler library shape');
++      const bytes = fs.readFileSync(filename, 'utf8'); libraryReads[path.basename(filename)] = sha(bytes); return bytes;
++    }
++    return undefined;
++  };
++  const emitted = {};
++  const host = {
++    getSourceFile: (name, language) => { const text = read(name); return text === undefined ? undefined : ts.createSourceFile(name, text, language, true); },
++    getDefaultLibFileName: () => path.join(libRoot, 'lib.es2022.full.d.ts'),
++    writeFile: (name, text) => { check(name.startsWith(prefix) && name.endsWith('.js'), 'Unexpected emit path'); emitted[name.slice(prefix.length).replace(/\.js$/, '.ts')] = text; },
++    getCurrentDirectory: () => '/closed', getDirectories: () => [], fileExists: name => read(name) !== undefined,
++    readFile: read, getCanonicalFileName: name => name, useCaseSensitiveFileNames: () => true, getNewLine: () => '\n',
++    directoryExists: name => name === '/closed' || name === libRoot,
++  };
++  const program = ts.createProgram(Object.keys(sources).map(id => prefix + id), plan.options, host);
++  const result = program.emit();
++  check(!result.emitSkipped && Object.keys(emitted).sort().join() === Object.keys(sources).sort().join(), 'Whole-module emission incomplete');
++  diagnostics[phase] = ts.getPreEmitDiagnostics(program).concat(result.diagnostics).map(d => ({
++    file: d.file?.fileName?.replace(prefix, ''), code: d.code, category: d.category, start: d.start, length: d.length,
++    message: ts.flattenDiagnosticMessageText(d.messageText, '\n'),
++  }));
++  const imports = new Set(Object.values(sources).flatMap(text => walk(ast(text, 'input.ts'), n => ts.isImportDeclaration(n)
++    || ts.isExportDeclaration(n)).map(n => n.moduleSpecifier?.text).filter(Boolean)));
++  check(diagnostics[phase].every(d => d.code === 2307 && [...imports].some(spec => d.message.includes("'" + spec + "'"))), 'Unexpected compiler diagnostic; exact preparation amendment/review required');
++  reads[phase] = libraryReads;
++  return emitted;
++}
++const cutIds = new Set(plan.cuts.map(row => row.specifier).concat('@/config/config'));
++const actualAlias = spec => spec.startsWith('@/') ? 'src1/' + spec.slice(2) + '/index.ts' : undefined;
++function actualResolution(from, spec) {
++  if (spec.startsWith('.')) return path.posix.normalize(path.posix.join(path.posix.dirname(from), spec + '.ts'));
++  return actualAlias(spec);
++}
++function requireEdges(code, id) {
++  const tree = ast(code, id); const edges = [];
++  walk(tree, node => {
++    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'require') {
++      check(node.arguments.length === 1 && ts.isStringLiteral(node.arguments[0]), 'Dynamic require: ' + id);
++      edges.push(node.arguments[0].text);
++    }
++    check(!(ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword), 'Dynamic import: ' + id);
++    return false;
++  });
++  return [...new Set(edges)].sort();
++}
++for (const [phase, sources] of Object.entries(sourcesByPhase)) {
++  const modules = compile(phase, sources); const edges = {};
++  for (const [id, code] of Object.entries(modules)) {
++    edges[id] = {};
++    for (const spec of requireEdges(code, id)) {
++      const target = actualResolution(id, spec);
++      check(cutIds.has(spec) || spec === 'node:crypto' || plan.runtimeRoots.includes(spec) || Object.hasOwn(modules, target), 'Unadmitted actual edge: ' + spec);
++      edges[id][spec] = cutIds.has(spec) || spec === 'node:crypto' || plan.runtimeRoots.includes(spec) ? spec : target;
++    }
++  }
++  phases[phase] = { modules, edges, sourceHashes: Object.fromEntries(Object.entries(sources).map(([id, text]) => [id, sha(text)])) };
++}
++// Resolve package files without require/evaluation. Only audited literal CommonJS edges enter runtime.
++const project = path.dirname(require.resolve('typescript/package.json')).replace(/\/node_modules\/typescript$/, '');
++const packageModules = {}; const packageEdges = {}; const builtins = new Set(); const roots = {};
++function safePackageFile(filename) {
++  const relative = path.relative(project, filename).split(path.sep).join('/');
++  check(relative.startsWith('node_modules/') && !relative.includes('../') && /\.(js|json)$/.test(relative), 'Package file escaped closure');
++  const st = fs.lstatSync(filename); check(st.isFile() && !st.isSymbolicLink() && st.nlink === 1 && st.size <= 1024 * 1024, 'Unsafe package file');
++  return relative;
++}
++function resolveFile(from, spec) {
++  check(!spec.startsWith('/') && !spec.includes('\\') && !spec.includes('\0'), 'Invalid require');
++  let candidates = [];
++  if (spec.startsWith('.')) candidates.push(path.resolve(path.dirname(from), spec));
++  else {
++    check(/^(?:@[A-Za-z0-9_-]+\/)?[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/.test(spec), 'Unadmitted package specifier');
++    let current = path.dirname(from);
++    while (current.startsWith(project)) { candidates.push(path.join(current, 'node_modules', spec)); const next = path.dirname(current); if (next === current) break; current = next; }
++  }
++  for (const base of candidates) {
++    for (const candidate of [base, base + '.js', base + '.json']) if (fs.existsSync(candidate) && fs.lstatSync(candidate).isFile()) { safePackageFile(candidate); return candidate; }
++    const metadata = path.join(base, 'package.json');
++    if (fs.existsSync(metadata)) {
++      safePackageFile(metadata); const pkg = JSON.parse(fs.readFileSync(metadata, 'utf8'));
++      const main = path.resolve(base, pkg.main || 'index.js');
++      for (const candidate of [main, main + '.js', path.join(main, 'index.js')]) if (fs.existsSync(candidate) && fs.lstatSync(candidate).isFile()) { safePackageFile(candidate); return candidate; }
++    }
++    const index = path.join(base, 'index.js'); if (fs.existsSync(index)) { safePackageFile(index); return index; }
++  }
++  throw new Error('Unresolved package edge: ' + spec);
++}
++function visit(filename) {
++  const id = safePackageFile(filename); if (Object.hasOwn(packageModules, id)) return id;
++  const code = fs.readFileSync(filename, 'utf8'); packageModules[id] = code; packageEdges[id] = {};
++  if (filename.endsWith('.json')) { JSON.parse(code); return id; }
++  for (const spec of requireEdges(code, id)) {
++    const builtin = spec.replace(/^node:/, '');
++    if (plan.builtinCandidates.includes(builtin)) { builtins.add(builtin); packageEdges[id][spec] = 'node:' + builtin; }
++    else packageEdges[id][spec] = visit(resolveFile(filename, spec));
++  }
++  return id;
++}
++for (const name of plan.runtimeRoots) roots[name] = visit(resolveFile(path.join(project, 'entry.js'), name));
++const runtime = { schema: 'SD-ENROLLMENT-RUNTIME-MAP-1', roots, modules: packageModules, edges: packageEdges, builtins: [...builtins].sort() };
++const emitted = { schema: 'SD-ENROLLMENT-EMITTED-MAP-1', phases, edits };
++function save(name, value) {
++  const bytes = JSON.stringify(value); check(Buffer.byteLength(bytes) < 8 * 1024 * 1024, 'Map overflow');
++  fs.writeFileSync(path.join(outputDirectory, name), bytes + '\n', { flag: 'wx', mode: 0o600 });
++}
++check(Object.keys(packageModules).length <= 512 && Object.keys(phases).length === 6, 'Map row bound');
++save('runtime-modules.json', runtime); save('emitted-modules.json', emitted);
++save('emission-report.json', { schema: 'SD-ENROLLMENT-EMISSION-1', status: 'EMIT_ONLY_NOT_TYPECHECKED_NOT_RUNTIME', compiler: ts.version,
++  compilerSha256: sha(fs.readFileSync(require.resolve('typescript'))), libraryReads: reads, diagnostics, edits,
++  sourcePins: plan.sourcePins, packageFiles: Object.fromEntries(Object.entries(packageModules).map(([id, code]) => [id, sha(code)])), builtins: runtime.builtins });
+diff --git a/test/customer-enrollment-runtime/package-plan.json b/test/customer-enrollment-runtime/package-plan.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..11f52e1756dc90d9eef3cb30c18dcb81d1a336c7
+--- /dev/null
++++ b/test/customer-enrollment-runtime/package-plan.json
+@@ -0,0 +1,17 @@
++{
++  "schema": "SD-ENROLLMENT-PACKAGES-1",
++  "packages": {
++    "joi": "17.13.3",
++    "jsonwebtoken": "9.0.2",
++    "reflect-metadata": "0.2.2",
++    "typedi": "0.10.0",
++    "typescript": "5.9.3"
++  },
++  "runtimeRoots": [
++    "joi",
++    "jsonwebtoken",
++    "reflect-metadata",
++    "typedi"
++  ],
++  "status": "TEST_ONLY_NOT_ROOT_ADOPTION"
++}
+diff --git a/test/customer-enrollment-runtime/ports-plan.json b/test/customer-enrollment-runtime/ports-plan.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..732e837839a4ef5cc3fb900fc195e12f02bbcf02
+--- /dev/null
++++ b/test/customer-enrollment-runtime/ports-plan.json
+@@ -0,0 +1,697 @@
++{
++  "schema": "SD-ENROLLMENT-PORTS-1",
++  "role": "customer-enrollment-service",
++  "sourceCandidate": "e6334e8767ab4384e2e85e5540d5952024c8bee5",
++  "baseline": "99cc098ede0a3cb1124f294ef4c9b660b8d9f61d",
++  "sourcePins": {
++    "src1/modules/auth/services/index.ts": "c522444ef80133c136a50d276ae64cdbaca8333049cca9723ff36d9f20bf3c48",
++    "src1/modules/auth/validation/index.ts": "752f049481df9de2587c386f8c44e5dc1548073295f36149a3974a3a9513af4c",
++    "src1/modules/auth/types/index.ts": "f6cbff24776d23b029244526d07d6a9af290aec66020d414469388c6f11118e9",
++    "src1/modules/common/types/index.ts": "63ad3821027150d368e993903e954b4a80b776ff223caf322c104008239d4cbd",
++    "src1/modules/common/types/error.ts": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
++    "src1/modules/common/types/response.ts": "44c5dbcf38ea117eaa13f3a715143ea147a7abf25c3491b61817e67b5f3d6f93"
++  },
++  "actualModules": [
++    "src1/modules/auth/services/index.ts",
++    "src1/modules/auth/validation/index.ts",
++    "src1/modules/auth/types/index.ts",
++    "src1/modules/common/types/index.ts",
++    "src1/modules/common/types/error.ts",
++    "src1/modules/common/types/response.ts"
++  ],
++  "cuts": [
++    {
++      "port": "user",
++      "specifier": "@/modules/user/repository",
++      "export": "UserRepository"
++    },
++    {
++      "port": "admin",
++      "specifier": "@/modules/admin/repository",
++      "export": "AdminRepository"
++    },
++    {
++      "port": "hr",
++      "specifier": "@/modules/hr/repository",
++      "export": "HRRepository"
++    },
++    {
++      "port": "specialist",
++      "specifier": "@/modules/specialists/repository",
++      "export": "SpecialistRepository"
++    },
++    {
++      "port": "pharmacy",
++      "specifier": "@/modules/pharmacies/repository",
++      "export": "PharmacyRepository"
++    },
++    {
++      "port": "corporate",
++      "specifier": "@/modules/corporates/repository",
++      "export": "CorporateRepository"
++    },
++    {
++      "port": "otp",
++      "specifier": "@/modules/otp/services",
++      "export": "OTPService"
++    },
++    {
++      "port": "wallet",
++      "specifier": "@/modules/wallet/services",
++      "export": "WalletService"
++    },
++    {
++      "port": "notification",
++      "specifier": "@/modules/notification/services",
++      "export": "NotificationService"
++    },
++    {
++      "port": "email",
++      "specifier": "@/modules/email/services",
++      "export": "EmailService"
++    },
++    {
++      "port": "sms",
++      "specifier": "@/modules/sms/services",
++      "export": "SMSService"
++    }
++  ],
++  "runtimeRoots": [
++    "joi",
++    "jsonwebtoken",
++    "reflect-metadata",
++    "typedi"
++  ],
++  "builtinCandidates": [
++    "buffer",
++    "crypto",
++    "events",
++    "stream",
++    "string_decoder",
++    "util"
++  ],
++  "vectors": [
++    {
++      "id": "C3-01",
++      "kind": "signup",
++      "field": "phone",
++      "value": "9123456789"
++    },
++    {
++      "id": "C3-03.phone.0",
++      "kind": "existing",
++      "field": "phone",
++      "secondary": false
++    },
++    {
++      "id": "C3-03.phone.1",
++      "kind": "existing",
++      "field": "phone",
++      "secondary": true
++    },
++    {
++      "id": "C3-04.phone.send",
++      "kind": "undefined",
++      "field": "phone",
++      "method": "send"
++    },
++    {
++      "id": "C3-04.phone.verify",
++      "kind": "undefined",
++      "field": "phone",
++      "method": "verify"
++    },
++    {
++      "id": "C3-02",
++      "kind": "signup",
++      "field": "email",
++      "value": " Customer@Example.COM "
++    },
++    {
++      "id": "C3-03.email.0",
++      "kind": "existing",
++      "field": "email",
++      "secondary": false
++    },
++    {
++      "id": "C3-03.email.1",
++      "kind": "existing",
++      "field": "email",
++      "secondary": true
++    },
++    {
++      "id": "C3-04.email.send",
++      "kind": "undefined",
++      "field": "email",
++      "method": "send"
++    },
++    {
++      "id": "C3-04.email.verify",
++      "kind": "undefined",
++      "field": "email",
++      "method": "verify"
++    },
++    {
++      "id": "C3-05.send",
++      "kind": "deny",
++      "method": "send",
++      "data": {
++        "phone": "9123456789",
++        "email": "customer@example.com"
++      }
++    },
++    {
++      "id": "C3-05.verify",
++      "kind": "deny",
++      "method": "verify",
++      "data": {
++        "phone": "9123456789",
++        "email": "customer@example.com"
++      }
++    },
++    {
++      "id": "C3-06.neither.send",
++      "kind": "deny",
++      "method": "send",
++      "data": {}
++    },
++    {
++      "id": "C3-06.neither.verify",
++      "kind": "deny",
++      "method": "verify",
++      "data": {}
++    },
++    {
++      "id": "C3-06.phone-null.send",
++      "kind": "deny",
++      "method": "send",
++      "data": {
++        "phone": null
++      }
++    },
++    {
++      "id": "C3-06.phone-null.verify",
++      "kind": "deny",
++      "method": "verify",
++      "data": {
++        "phone": null
++      }
++    },
++    {
++      "id": "C3-06.phone-number.send",
++      "kind": "deny",
++      "method": "send",
++      "data": {
++        "phone": 9123456789
++      }
++    },
++    {
++      "id": "C3-06.phone-number.verify",
++      "kind": "deny",
++      "method": "verify",
++      "data": {
++        "phone": 9123456789
++      }
++    },
++    {
++      "id": "C3-06.phone-object.send",
++      "kind": "deny",
++      "method": "send",
++      "data": {
++        "phone": {}
++      }
++    },
++    {
++      "id": "C3-06.phone-object.verify",
++      "kind": "deny",
++      "method": "verify",
++      "data": {
++        "phone": {}
++      }
++    },
++    {
++      "id": "C3-06.phone-array.send",
++      "kind": "deny",
++      "method": "send",
++      "data": {
++        "phone": []
++      }
++    },
++    {
++      "id": "C3-06.phone-array.verify",
++      "kind": "deny",
++      "method": "verify",
++      "data": {
++        "phone": []
++      }
++    },
++    {
++      "id": "C3-06.phone-empty.send",
++      "kind": "deny",
++      "method": "send",
++      "data": {
++        "phone": ""
++      }
++    },
++    {
++      "id": "C3-06.phone-empty.verify",
++      "kind": "deny",
++      "method": "verify",
++      "data": {
++        "phone": ""
++      }
++    },
++    {
++      "id": "C3-06.phone-short.send",
++      "kind": "deny",
++      "method": "send",
++      "data": {
++        "phone": "123"
++      }
++    },
++    {
++      "id": "C3-06.phone-short.verify",
++      "kind": "deny",
++      "method": "verify",
++      "data": {
++        "phone": "123"
++      }
++    },
++    {
++      "id": "C3-06.phone-unicode.send",
++      "kind": "deny",
++      "method": "send",
++      "data": {
++        "phone": "\u096f\u0967\u0968\u0969\u096a\u096b\u096c\u096d\u096e\u096f"
++      }
++    },
++    {
++      "id": "C3-06.phone-unicode.verify",
++      "kind": "deny",
++      "method": "verify",
++      "data": {
++        "phone": "\u096f\u0967\u0968\u0969\u096a\u096b\u096c\u096d\u096e\u096f"
++      }
++    },
++    {
++      "id": "C3-06.email-null.send",
++      "kind": "deny",
++      "method": "send",
++      "data": {
++        "email": null
++      }
++    },
++    {
++      "id": "C3-06.email-null.verify",
++      "kind": "deny",
++      "method": "verify",
++      "data": {
++        "email": null
++      }
++    },
++    {
++      "id": "C3-06.email-number.send",
++      "kind": "deny",
++      "method": "send",
++      "data": {
++        "email": 12
++      }
++    },
++    {
++      "id": "C3-06.email-number.verify",
++      "kind": "deny",
++      "method": "verify",
++      "data": {
++        "email": 12
++      }
++    },
++    {
++      "id": "C3-06.email-object.send",
++      "kind": "deny",
++      "method": "send",
++      "data": {
++        "email": {}
++      }
++    },
++    {
++      "id": "C3-06.email-object.verify",
++      "kind": "deny",
++      "method": "verify",
++      "data": {
++        "email": {}
++      }
++    },
++    {
++      "id": "C3-06.email-array.send",
++      "kind": "deny",
++      "method": "send",
++      "data": {
++        "email": []
++      }
++    },
++    {
++      "id": "C3-06.email-array.verify",
++      "kind": "deny",
++      "method": "verify",
++      "data": {
++        "email": []
++      }
++    },
++    {
++      "id": "C3-06.email-empty.send",
++      "kind": "deny",
++      "method": "send",
++      "data": {
++        "email": ""
++      }
++    },
++    {
++      "id": "C3-06.email-empty.verify",
++      "kind": "deny",
++      "method": "verify",
++      "data": {
++        "email": ""
++      }
++    },
++    {
++      "id": "C3-06.email-invalid.send",
++      "kind": "deny",
++      "method": "send",
++      "data": {
++        "email": "invalid"
++      }
++    },
++    {
++      "id": "C3-06.email-invalid.verify",
++      "kind": "deny",
++      "method": "verify",
++      "data": {
++        "email": "invalid"
++      }
++    },
++    {
++      "id": "C3-06.otp-missing",
++      "kind": "deny-otp",
++      "otp": null,
++      "omit": true
++    },
++    {
++      "id": "C3-06.otp-null",
++      "kind": "deny-otp",
++      "otp": null,
++      "omit": false
++    },
++    {
++      "id": "C3-06.otp-number",
++      "kind": "deny-otp",
++      "otp": 123456,
++      "omit": false
++    },
++    {
++      "id": "C3-06.otp-object",
++      "kind": "deny-otp",
++      "otp": {},
++      "omit": false
++    },
++    {
++      "id": "C3-06.otp-array",
++      "kind": "deny-otp",
++      "otp": [],
++      "omit": false
++    },
++    {
++      "id": "C3-06.otp-short",
++      "kind": "deny-otp",
++      "otp": "123",
++      "omit": false
++    },
++    {
++      "id": "C3-06.otp-letters",
++      "kind": "deny-otp",
++      "otp": "abcdef",
++      "omit": false
++    },
++    {
++      "id": "C3-07.phone.0",
++      "kind": "current",
++      "field": "phone",
++      "absent": false
++    },
++    {
++      "id": "C3-07.phone.1",
++      "kind": "current",
++      "field": "phone",
++      "absent": true
++    },
++    {
++      "id": "C3-07.email.0",
++      "kind": "current",
++      "field": "email",
++      "absent": false
++    },
++    {
++      "id": "C3-07.email.1",
++      "kind": "current",
++      "field": "email",
++      "absent": true
++    },
++    {
++      "id": "C3-08.not-found",
++      "kind": "failure",
++      "failure": "not-found"
++    },
++    {
++      "id": "C3-08.proof-error",
++      "kind": "failure",
++      "failure": "proof-error"
++    },
++    {
++      "id": "C3-09.admin.phone",
++      "kind": "staff",
++      "role": "admin",
++      "shape": "phone",
++      "state": "active"
++    },
++    {
++      "id": "C3-09.admin.email",
++      "kind": "staff",
++      "role": "admin",
++      "shape": "email",
++      "state": "active"
++    },
++    {
++      "id": "C3-09.admin.both",
++      "kind": "staff",
++      "role": "admin",
++      "shape": "both",
++      "state": "active"
++    },
++    {
++      "id": "C3-10.admin.missing",
++      "kind": "staff",
++      "role": "admin",
++      "shape": "both",
++      "state": "missing"
++    },
++    {
++      "id": "C3-10.admin.inactive",
++      "kind": "staff",
++      "role": "admin",
++      "shape": "both",
++      "state": "inactive"
++    },
++    {
++      "id": "C3-09.hr.phone",
++      "kind": "staff",
++      "role": "hr",
++      "shape": "phone",
++      "state": "active"
++    },
++    {
++      "id": "C3-09.hr.email",
++      "kind": "staff",
++      "role": "hr",
++      "shape": "email",
++      "state": "active"
++    },
++    {
++      "id": "C3-09.hr.both",
++      "kind": "staff",
++      "role": "hr",
++      "shape": "both",
++      "state": "active"
++    },
++    {
++      "id": "C3-10.hr.missing",
++      "kind": "staff",
++      "role": "hr",
++      "shape": "both",
++      "state": "missing"
++    },
++    {
++      "id": "C3-10.hr.inactive",
++      "kind": "staff",
++      "role": "hr",
++      "shape": "both",
++      "state": "inactive"
++    },
++    {
++      "id": "C3-09.specialist.phone",
++      "kind": "staff",
++      "role": "specialist",
++      "shape": "phone",
++      "state": "active"
++    },
++    {
++      "id": "C3-09.specialist.email",
++      "kind": "staff",
++      "role": "specialist",
++      "shape": "email",
++      "state": "active"
++    },
++    {
++      "id": "C3-09.specialist.both",
++      "kind": "staff",
++      "role": "specialist",
++      "shape": "both",
++      "state": "active"
++    },
++    {
++      "id": "C3-10.specialist.missing",
++      "kind": "staff",
++      "role": "specialist",
++      "shape": "both",
++      "state": "missing"
++    },
++    {
++      "id": "C3-10.specialist.inactive",
++      "kind": "staff",
++      "role": "specialist",
++      "shape": "both",
++      "state": "inactive"
++    },
++    {
++      "id": "C3-09.pharmacy.phone",
++      "kind": "staff",
++      "role": "pharmacy",
++      "shape": "phone",
++      "state": "active"
++    },
++    {
++      "id": "C3-09.pharmacy.email",
++      "kind": "staff",
++      "role": "pharmacy",
++      "shape": "email",
++      "state": "active"
++    },
++    {
++      "id": "C3-09.pharmacy.both",
++      "kind": "staff",
++      "role": "pharmacy",
++      "shape": "both",
++      "state": "active"
++    },
++    {
++      "id": "C3-10.pharmacy.missing",
++      "kind": "staff",
++      "role": "pharmacy",
++      "shape": "both",
++      "state": "missing"
++    },
++    {
++      "id": "C3-10.pharmacy.inactive",
++      "kind": "staff",
++      "role": "pharmacy",
++      "shape": "both",
++      "state": "inactive"
++    },
++    {
++      "id": "C3-11.phone",
++      "kind": "helper",
++      "variant": "phone"
++    },
++    {
++      "id": "C3-11.email",
++      "kind": "helper",
++      "variant": "email"
++    },
++    {
++      "id": "C3-11.undefined",
++      "kind": "helper",
++      "variant": "undefined"
++    },
++    {
++      "id": "C3-11.dual",
++      "kind": "helper",
++      "variant": "dual"
++    },
++    {
++      "id": "C3-11.neither",
++      "kind": "helper",
++      "variant": "neither"
++    },
++    {
++      "id": "C3-11.null",
++      "kind": "helper",
++      "variant": "null"
++    },
++    {
++      "id": "C3-11.array",
++      "kind": "helper",
++      "variant": "array"
++    },
++    {
++      "id": "C3-11.otp-bad",
++      "kind": "helper",
++      "variant": "otp-bad"
++    },
++    {
++      "id": "C3-11.unknown",
++      "kind": "helper",
++      "variant": "unknown"
++    }
++  ],
++  "controls": [
++    {
++      "id": "NC1",
++      "case": "C3-05.send"
++    },
++    {
++      "id": "NC2",
++      "case": "C3-05.send"
++    },
++    {
++      "id": "NC3",
++      "case": "C3-05.verify"
++    },
++    {
++      "id": "NC4",
++      "case": "C3-01"
++    }
++  ],
++  "oldControl": {
++    "id": "OLD",
++    "case": "C3-05.send"
++  },
++  "options": {
++    "target": 9,
++    "module": 1,
++    "esModuleInterop": true,
++    "experimentalDecorators": true,
++    "emitDecoratorMetadata": true,
++    "sourceMap": false,
++    "declaration": false,
++    "noEmitOnError": false,
++    "noResolve": true,
++    "skipLibCheck": true
++  },
++  "synthetic": {
++    "phone": "9123456789",
++    "email": "customer@example.com",
++    "otherPhone": "9987654321",
++    "otherEmail": "changed@example.com",
++    "otp": "123456",
++    "id": "111111111111111111111111",
++    "corporateId": "222222222222222222222222"
++  }
++}
+diff --git a/test/customer-enrollment-runtime/prepare.py b/test/customer-enrollment-runtime/prepare.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..eafad981efef2801ef59aafff4c906a5782cdc12
+--- /dev/null
++++ b/test/customer-enrollment-runtime/prepare.py
+@@ -0,0 +1,215 @@
++"""Receipt-gated public dependency preparation/emission. Never evaluate application modules."""
++import base64
++import hashlib
++import json
++import os
++from pathlib import Path
++import re
++import shutil
++import stat
++import subprocess
++import sys
++import uuid
++from urllib.parse import urlparse
++
++ROOT = Path(__file__).resolve().parents[2]
++HERE = ROOT / 'test/customer-enrollment-runtime'
++QA = ROOT / 'output/qa/customer-enrollment-focused'
++RECEIPT = Path('/private/tmp/sd-customer-enrollment-prepare-approval.json')
++LOCK = Path('/private/tmp/sd-customer-enrollment-resolved-lock.json')
++BUILD = Path('/private/tmp/sd-customer-enrollment-build.json')
++AUTHOR = '/root/milestone_composition_r9'
++OWN_FILES = ['README.md', 'profile.json', 'package-plan.json', 'prepare.py', 'emit.cjs', 'scenario.mjs', 'ports-plan.json', 'run.mjs']
++CONTEXT = ['test/application/app-bundle.mjs', 'test/application/app-container.mjs', 'test/application/bootstrap.mjs',
++           'test/application/app-ports.mjs', 'test/application/app-image.json', 'test/application/app-runtime.json',
++           'documentation/planning/implementation/CUSTOMER_ENROLLMENT_FOCUSED_VERIFICATION_CONTRACT.md',
++           'output/qa/customer-enrollment-focused/TOOL_INPUTS.json', 'package-lock.json']
++
++
++def require(ok, why):
++    if not ok:
++        raise RuntimeError(why)
++
++
++def sha(data):
++    return hashlib.sha256(data).hexdigest()
++
++
++def regular(path, limit=16 * 1024 * 1024):
++    meta = path.lstat()
++    require(stat.S_ISREG(meta.st_mode) and meta.st_nlink == 1 and meta.st_size <= limit, 'Nonregular/oversized input')
++    return path.read_bytes()
++
++
++def git(*args):
++    return subprocess.check_output(['/usr/bin/git', '--no-optional-locks', '-c', 'core.fsmonitor=false', *args],
++                                   cwd=ROOT, env={'PATH': '/usr/bin:/bin'})
++
++
++def dependency(lock, parent, name):
++    current = parent
++    while current:
++        candidate = current + '/node_modules/' + name
++        if candidate in lock['packages']:
++            return candidate
++        current = current.rsplit('/node_modules/', 1)[0] if '/node_modules/' in current else ''
++    candidate = 'node_modules/' + name
++    require(candidate in lock['packages'], 'Unresolved locked dependency')
++    return candidate
++
++
++def lock_rows(lock):
++    require(lock.get('lockfileVersion') == 3 and isinstance(lock.get('packages'), dict), 'Lock schema')
++    for name, row in lock['packages'].items():
++        if not name:
++            continue
++        require(re.fullmatch(r'node_modules/(?:[A-Za-z0-9_.@/-]+)', name) and '..' not in name.split('/'), 'Lock package path')
++        parsed = urlparse(row.get('resolved', ''))
++        require(parsed.scheme == 'https' and parsed.hostname == 'registry.npmjs.org' and not parsed.username
++                and not parsed.password and not parsed.query and not parsed.fragment, 'Nonpublic lock URL')
++        integrity = row.get('integrity', '')
++        require(re.fullmatch(r'sha512-[A-Za-z0-9+/]+=*', integrity) and len(base64.b64decode(integrity[7:], validate=True)) == 64,
++                'Missing SHA512 package integrity')
++        require(not row.get('link') and not row.get('inBundle') and not row.get('optional'), 'Unsupported linked/optional package')
++
++
++def main():
++    require(len(sys.argv) == 2 and sys.argv[1] in ['--resolve-lock', '--install-emit']
++            and sys.flags.isolated == 1 and sys.flags.dont_write_bytecode == 1
++            and sys.dont_write_bytecode is True and sys.flags.no_site == 1, 'Fixed isolated no-site/no-bytecode invocation')
++    require(set(os.environ) <= {'PATH', 'TMPDIR', 'LANG', 'LC_CTYPE', '__CF_USER_TEXT_ENCODING'}
++            and os.environ.get('PATH') == '/usr/bin:/bin', 'Clean preparation environment')
++    cf_marker = os.environ.get('__CF_USER_TEXT_ENCODING')
++    require(cf_marker is None or cf_marker == '0x' + format(os.getuid(), 'X') + ':0x0:0x0', 'Unexpected public CoreFoundation marker')
++    profile = json.loads(regular(HERE / 'profile.json'))
++    python = Path(profile['pythonTool'])
++    require(sha(regular(python, 128 * 1024 * 1024)) == profile['pythonToolSha256']
++            and os.path.samefile(sys.executable, python)
++            and sys.implementation.name == profile['pythonImplementation'] == 'cpython'
++            and '.'.join(str(n) for n in sys.version_info[:3]) == profile['pythonVersion'] == '3.14.7', 'Preparation Python tool drift')
++    mode = sys.argv[1][2:]
++    decision = 'APPROVE_PUBLIC_LOCK_RESOLUTION_ONLY' if mode == 'resolve-lock' else 'APPROVE_LOCKED_INSTALL_AND_EMIT_ONLY'
++    plan = json.loads(regular(HERE / 'ports-plan.json'))
++    package_plan = json.loads(regular(HERE / 'package-plan.json'))
++    packages = package_plan['packages']
++    selected = [str(HERE.relative_to(ROOT) / n) for n in OWN_FILES] + CONTEXT + list(plan['sourcePins'])
++    source_hashes = {n: sha(regular(ROOT / n)) for n in selected}
++    require(all(source_hashes[n] == h for n, h in plan['sourcePins'].items()), 'Actual source changed')
++    require(git('diff', '--name-only', 'HEAD', '--', *selected) == b'', 'Selected preparation inputs differ from committed candidate')
++    require(set(git('ls-files', '--', *selected).decode().splitlines()) == set(selected), 'Untracked preparation input')
++    commit = git('rev-parse', 'HEAD').decode().strip()
++    receipt_stat = RECEIPT.lstat()
++    require(receipt_stat.st_uid == os.getuid() and receipt_stat.st_mode & 0o777 == 0o600, 'Private approval mode/owner')
++    approval = json.loads(regular(RECEIPT, 65536))
++    expected = {'schema': 'SD-ENROLLMENT-PREP-APPROVAL-1', 'decision': decision, 'sourceRoot': str(ROOT), 'sourceCommit': commit,
++                'inputs': source_hashes, 'mode': mode}
++    if mode == 'install-emit':
++        require(LOCK.lstat().st_uid == os.getuid() and not LOCK.lstat().st_mode & 0o077, 'Resolved lock mode/owner')
++        expected['resolvedLockSha256'] = sha(regular(LOCK))
++    require(set(approval) == set(expected) | {'nonce', 'reviewers'} and all(approval.get(k) == v for k, v in expected.items()), 'Approval binding')
++    require(re.fullmatch(r'[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}', approval['nonce']), 'Approval nonce')
++    reviewers = approval['reviewers']
++    require(isinstance(reviewers, list) and len(reviewers) == 2 and len({r.get('agent') for r in reviewers}) == 2
++            and all(set(r) == {'agent', 'decision'} and r['decision'] == decision and r['agent'] != AUTHOR
++                    and re.fullmatch(r'/root(?:/[A-Za-z0-9_]+)*', r['agent']) for r in reviewers), 'Two actual nonauthor reviews')
++    node = Path(profile['nodeTool']); npm = Path(profile['npmTool'])
++    require(sha(regular(node, 128 * 1024 * 1024)) == profile['nodeToolSha256'], 'Preparation Node tool drift')
++    tool_bytes = regular(ROOT / profile['npmFiles'])
++    require(sha(tool_bytes) == profile['npmFilesSha256'], 'npm inventory drift')
++    tools = json.loads(tool_bytes); tool_root = Path(tools['root'])
++    found = {}
++    for p in sorted(tool_root.rglob('*')):
++        require(not p.is_symlink(), 'npm tool symlink')
++        if p.is_file():
++            found[str(p.relative_to(tool_root))] = sha(regular(p))
++    require(found == tools['files'] and tools['links'] == {} and npm == tool_root / 'bin/npm-cli.js', 'npm tool tree drift')
++    # Consume once before ANY allocation/process/network operation. Failure never authorizes a retry.
++    once = Path('/private/tmp/sd-customer-enrollment-' + mode + '-' + approval['nonce'] + '.once')
++    with once.open('xb') as handle:
++        os.chmod(once, 0o600); handle.write(json.dumps({'decision': decision, 'receiptSha256': sha(regular(RECEIPT))}).encode())
++    area = Path('/private/tmp/sd-customer-enrollment-build-' + str(uuid.uuid4()))
++    area.mkdir(mode=0o700); identity = area.stat()
++    marker = {'schema': 'SD-ENROLLMENT-OWNED-BUILD-1', 'path': str(area), 'dev': identity.st_dev, 'ino': identity.st_ino,
++              'sourceRoot': str(ROOT), 'sourceCommit': commit, 'inputs': source_hashes, 'mode': mode}
++    (area / '.owner.json').write_text(json.dumps(marker)); os.chmod(area / '.owner.json', 0o600)
++    project = area / 'public'; project.mkdir(mode=0o700)
++    for name in ['home', 'cache', 'output']:
++        (area / name).mkdir(mode=0o700)
++    for name in ['user.npmrc', 'global.npmrc']:
++        (area / name).write_text('registry=https://registry.npmjs.org/\nignore-scripts=true\naudit=false\nfund=false\n')
++    env = {'PATH': str(node.parent) + ':/usr/bin:/bin', 'HOME': str(area / 'home'), 'TMPDIR': str(area),
++           'NPM_CONFIG_USERCONFIG': str(area / 'user.npmrc'), 'NPM_CONFIG_GLOBALCONFIG': str(area / 'global.npmrc'),
++           'NPM_CONFIG_CACHE': str(area / 'cache'), 'NPM_CONFIG_IGNORE_SCRIPTS': 'true',
++           'NPM_CONFIG_REGISTRY': 'https://registry.npmjs.org/', 'NPM_CONFIG_AUDIT': 'false', 'NPM_CONFIG_FUND': 'false'}
++    manifest = {'name': 'sd-customer-enrollment-fixture', 'version': '1.0.0', 'private': True, 'dependencies': packages}
++    (project / 'package.json').write_text(json.dumps(manifest, indent=2) + '\n')
++    original = json.loads(regular(ROOT / 'package-lock.json'))
++    retained = {}
++    def retain(key):
++        if key in retained:
++            return
++        row = original['packages'][key]; retained[key] = row
++        for name in row.get('dependencies', {}):
++            retain(dependency(original, key, name))
++    for name in packages:
++        retain('node_modules/' + name)
++    seed = {'name': manifest['name'], 'version': manifest['version'], 'lockfileVersion': 3, 'requires': True,
++            'packages': {'': manifest, **retained}}
++    lock_rows(seed)
++    (project / 'package-lock.json').write_text(json.dumps(seed, indent=2) + '\n')
++    def owned():
++        current = area.lstat()
++        require(current.st_dev == identity.st_dev and current.st_ino == identity.st_ino and not area.is_symlink()
++                and json.loads(regular(area / '.owner.json')) == marker, 'Owned build identity changed')
++    def execute(label, args, cwd=project):
++        owned()
++        with (area / (label + '.stdout.txt')).open('wb') as out, (area / (label + '.stderr.txt')).open('wb') as err:
++            result = subprocess.run(args, cwd=cwd, env=env, stdout=out, stderr=err, timeout=900)
++        require(result.returncode == 0, 'Preparation failed; retain exact owned diagnostics at ' + str(area))
++    if mode == 'resolve-lock':
++        require(not LOCK.exists(), 'Previous lock retained; disposition required')
++        execute('resolve', [str(node), str(npm), 'install', '--package-lock-only', '--ignore-scripts', '--omit=optional', '--no-audit', '--no-fund'])
++        resolved_bytes = regular(project / 'package-lock.json')
++    else:
++        resolved_bytes = regular(LOCK); require(sha(resolved_bytes) == approval['resolvedLockSha256'], 'Resolved lock drift')
++        (project / 'package-lock.json').write_bytes(resolved_bytes)
++    resolved = json.loads(resolved_bytes); lock_rows(resolved)
++    require(resolved['packages']['']['dependencies'] == packages and set(resolved['packages']) == {''} | set(retained), 'Exact locked package closure')
++    for key, old in retained.items():
++        new = resolved['packages'][key]
++        require(all(new.get(field) == old.get(field) for field in ['version', 'integrity', 'dependencies']), 'Existing locked closure changed')
++    if mode == 'resolve-lock':
++        with LOCK.open('xb') as out:
++            os.chmod(LOCK, 0o600); out.write(resolved_bytes)
++        print(json.dumps({'schema': 'SD-ENROLLMENT-LOCK-RESULT-1', 'sourceCommit': commit, 'mode': mode,
++                          'workspace': str(area), 'lockSha256': sha(resolved_bytes), 'packages': len(retained), 'applicationEvaluated': False}))
++        return
++    require(not BUILD.exists(), 'Previous build descriptor retained; disposition required')
++    execute('install', [str(node), str(npm), 'ci', '--ignore-scripts', '--omit=optional', '--no-audit', '--no-fund'])
++    installed = {}
++    for p in sorted((project / 'node_modules').rglob('*')):
++        if '.bin' in p.relative_to(project).parts:
++            continue
++        require(not p.is_symlink() and (p.is_dir() or p.is_file()), 'Unsupported dependency file')
++        if p.is_file():
++            require(p.suffix != '.node', 'Native addon forbidden'); installed[str(p.relative_to(project))] = sha(regular(p))
++    for p in sorted((project / 'node_modules').rglob('.bin'), reverse=True):
++        require(p.is_dir() and not p.is_symlink(), 'Unexpected bin directory'); shutil.rmtree(p)
++    baseline = {name: git('show', plan['baseline'] + ':' + name).decode() for name in
++                ['src1/modules/auth/services/index.ts', 'src1/modules/auth/validation/index.ts']}
++    input_data = {'plan': plan, 'sources': {name: regular(ROOT / name).decode() for name in plan['sourcePins']}, 'baseline': baseline}
++    (project / 'emit-input.json').write_text(json.dumps(input_data))
++    (project / 'emit.cjs').write_bytes(regular(HERE / 'emit.cjs'))
++    execute('emit', [str(node), str(project / 'emit.cjs'), str(project / 'emit-input.json'), str(area / 'output')])
++    owned()
++    artifact_names = ['emitted-modules.json', 'runtime-modules.json', 'emission-report.json']
++    descriptor = {**marker, 'schema': 'SD-ENROLLMENT-BUILD-1', 'lockSha256': sha(resolved_bytes), 'installed': installed,
++                  'artifacts': {name: sha(regular(area / 'output' / name)) for name in artifact_names}}
++    with BUILD.open('xb') as out:
++        os.chmod(BUILD, 0o600); out.write((json.dumps(descriptor, indent=2) + '\n').encode())
++    print(json.dumps({'schema': 'SD-ENROLLMENT-EMIT-RESULT-1', 'sourceCommit': commit, 'workspace': str(area),
++                      'descriptorSha256': sha(regular(BUILD)), 'applicationEvaluated': False, 'diagnosticsRequireReview': True}))
++
++
++if __name__ == '__main__':
++    main()
+diff --git a/test/customer-enrollment-runtime/profile.json b/test/customer-enrollment-runtime/profile.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..b21fb65dadccd73c170270b470bd7bd063c4bf60
+--- /dev/null
++++ b/test/customer-enrollment-runtime/profile.json
+@@ -0,0 +1,19 @@
++{
++  "schema": "SD-ENROLLMENT-PROFILE-1",
++  "role": "customer-enrollment-service",
++  "endpoint": "unix:///Users/shubham/.docker/run/docker.sock",
++  "engineId": "16ab25f6-88c7-4687-a431-b119b6ab9319",
++  "nodeImage": "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
++  "nodeVersion": "22.23.4",
++  "nodeTool": "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
++  "nodeToolSha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
++  "npmTool": "/Users/shubham/.nvm/versions/node/v24.19.0/lib/node_modules/npm/bin/npm-cli.js",
++  "npmFiles": "output/qa/customer-enrollment-focused/TOOL_INPUTS.json",
++  "npmFilesSha256": "3729235cc997a657b533bd70daf6ce710e8c6b51b4452119f98be508173bf085",
++  "scope": "TEST_ONLY_DIRECT_SERVICE_NO_DB_NOT_PRODUCTION_OR_HTTP",
++  "status": "SOURCE_CANDIDATE_ALL_EXECUTION_NOT_RUN",
++  "pythonTool": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
++  "pythonToolSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
++  "pythonVersion": "3.14.7",
++  "pythonImplementation": "cpython"
++}
+diff --git a/test/customer-enrollment-runtime/run.mjs b/test/customer-enrollment-runtime/run.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..6a067ff6a63f2acf03243b038a59c4b38420404f
+--- /dev/null
++++ b/test/customer-enrollment-runtime/run.mjs
+@@ -0,0 +1,46 @@
++// No source/application import precedes exact approval; controller imports only inert public profiles.
++import { readFileSync, lstatSync, openSync, closeSync, writeSync } from 'node:fs';
++import { createHash } from 'node:crypto';
++import { spawnSync } from 'node:child_process';
++import { fileURLToPath } from 'node:url';
++import { createEnrollmentFixture } from '../application/app-container.mjs';
++
++const root = fileURLToPath(new URL('../../', import.meta.url)).replace(/\/$/, '');
++const check = (ok, why) => { if (!ok) throw new Error(why); };
++const sha = bytes => createHash('sha256').update(bytes).digest('hex');
++function regular(path) { const s = lstatSync(path); check(s.isFile() && !s.isSymbolicLink() && s.nlink === 1 && s.size < 16 * 1024 * 1024, 'Regular bounded input'); return readFileSync(path); }
++check(process.argv.length === 2 && process.execArgv.length === 0 && Object.keys(process.env).every(k => ['PATH', 'TMPDIR', 'LANG', 'LC_CTYPE'].includes(k))
++  && process.env.PATH === '/usr/bin:/bin', 'Fixed clean run invocation');
++const profile = JSON.parse(regular(new URL('profile.json', import.meta.url)));
++check(sha(readFileSync(profile.nodeTool)) === profile.nodeToolSha256 && process.execPath === profile.nodeTool, 'Reviewed host Node tool');
++const descriptorPath = '/private/tmp/sd-customer-enrollment-build.json';
++const receiptPath = '/private/tmp/sd-customer-enrollment-run-approval.json';
++const descriptorBytes = regular(descriptorPath); const descriptor = JSON.parse(descriptorBytes);
++const receiptStat = lstatSync(receiptPath); check(receiptStat.uid === process.getuid() && (receiptStat.mode & 0o777) === 0o600, 'Private run receipt');
++const receiptBytes = regular(receiptPath); const receipt = JSON.parse(receiptBytes);
++const git = spawnSync('/usr/bin/git', ['--no-optional-locks', '-c', 'core.fsmonitor=false', 'rev-parse', 'HEAD'], { cwd: root, env: { PATH: '/usr/bin:/bin' }, encoding: 'utf8' });
++check(git.status === 0 && !git.error && !git.signal, 'Source commit observation');
++const expected = { schema: 'SD-ENROLLMENT-RUN-APPROVAL-1', decision: 'APPROVE_ONE_ENROLLMENT_SERVICE_RUN_ONLY', sourceRoot: root,
++  sourceCommit: git.stdout.trim(), inputs: descriptor.inputs, descriptorSha256: sha(descriptorBytes), endpoint: profile.endpoint,
++  engineId: profile.engineId, image: profile.nodeImage };
++check(Object.keys(receipt).sort().join() === Object.keys({ ...expected, nonce: '', reviewers: [] }).sort().join()
++  && Object.entries(expected).every(([k, v]) => JSON.stringify(receipt[k]) === JSON.stringify(v)), 'Exact one-run receipt binding');
++check(/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(receipt.nonce), 'Run nonce');
++check(Array.isArray(receipt.reviewers) && receipt.reviewers.length === 2 && new Set(receipt.reviewers.map(r => r.agent)).size === 2
++  && receipt.reviewers.every(r => Object.keys(r).sort().join() === 'agent,decision' && /^\/root(?:\/[A-Za-z0-9_]+)*$/.test(r.agent)
++    && r.agent !== '/root/milestone_composition_r9' && r.decision === expected.decision), 'Two actual nonauthor run decisions');
++for (const [name, digest] of Object.entries(descriptor.inputs)) check(sha(regular(root + '/' + name)) === digest, 'Selected source drift');
++// Consume approval before controller allocation/Docker observation. No retry on failure.
++const once = openSync('/private/tmp/sd-customer-enrollment-run-' + receipt.nonce + '.once', 'wx', 0o600);
++try { writeSync(once, JSON.stringify({ receiptSha256: sha(receiptBytes), sourceCommit: expected.sourceCommit })); } finally { closeSync(once); }
++const fixture = createEnrollmentFixture({ endpoint: profile.endpoint });
++let result; let failure;
++try { result = fixture.run(); } catch (error) { failure = error; }
++try { fixture.dispose(); } catch (cleanupError) {
++  console.error(JSON.stringify({ id: fixture.id, runId: fixture.runId, directory: fixture.directory, cleanupAcknowledged: false }));
++  throw failure ? new AggregateError([failure, cleanupError], 'Enrollment run and cleanup failed') : cleanupError;
++}
++if (failure) {
++  console.error(JSON.stringify({ id: fixture.id, runId: fixture.runId, directory: fixture.directory, cleanupAcknowledged: true })); throw failure;
++}
++console.log(JSON.stringify({ ...result, containerId: fixture.id, directory: fixture.directory, image: fixture.image, cleanupAcknowledged: true }));
+diff --git a/test/customer-enrollment-runtime/scenario.mjs b/test/customer-enrollment-runtime/scenario.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..6b722ab799b9f04b94669b7474841fffbcf025eb
+--- /dev/null
++++ b/test/customer-enrollment-runtime/scenario.mjs
+@@ -0,0 +1,253 @@
++import assert from 'node:assert/strict';
++import { readFileSync } from 'node:fs';
++import vm from 'node:vm';
++import crypto from 'node:crypto';
++import buffer from 'node:buffer';
++import events from 'node:events';
++import stream from 'node:stream';
++import util from 'node:util';
++import stringDecoder from 'node:string_decoder';
++
++const read = name => JSON.parse(readFileSync(new URL(name, import.meta.url), 'utf8'));
++const plan = read('ports-plan.json');
++const emitted = read('emitted-modules.json');
++const runtime = read('runtime-modules.json');
++const hash = text => crypto.createHash('sha256').update(text).digest('hex');
++const check = (ok, predicate) => { if (!ok) { const error = new Error('PREDICATE:' + predicate); error.predicate = predicate; throw error; } };
++check(plan.schema === 'SD-ENROLLMENT-PORTS-1' && emitted.schema === 'SD-ENROLLMENT-EMITTED-MAP-1' && runtime.schema === 'SD-ENROLLMENT-RUNTIME-MAP-1', 'map-schema');
++check(Object.keys(emitted.phases).sort().join() === 'NC1,NC2,NC3,NC4,OLD,nominal', 'exact-phases');
++const allowedBuiltins = { 'node:crypto': crypto, 'node:buffer': buffer, 'node:events': events, 'node:stream': stream, 'node:util': util, 'node:string_decoder': stringDecoder };
++check(runtime.builtins.every(id => plan.builtinCandidates.includes(id)), 'builtin-closure');
++check(Object.keys(runtime.modules).length <= 512 && Object.keys(runtime.modules).every(id => id.startsWith('node_modules/') && !id.includes('../')), 'package-map-bound');
++for (const name of ['emitted-modules.json', 'runtime-modules.json']) check(Buffer.byteLength(JSON.stringify(read(name))) < 8 * 1024 * 1024, 'map-byte-bound');
++for (const [id, expected] of Object.entries(plan.sourcePins)) check(emitted.phases.nominal.sourceHashes[id] === expected, 'actual-source-pin');
++const S = plan.synthetic;
++const copy = value => structuredClone(value);
++const canonical = value => value === undefined ? '<undefined>' : Array.isArray(value) ? Array.from(value, canonical)
++  : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])])) : value;
++function phaseLoader(phase) {
++  const domain = emitted.phases[phase]; const cache = new Map();
++  const privateSecret = crypto.randomBytes(32).toString('hex');
++  let currentCounters;
++  const sandbox = { Buffer, console: Object.freeze({ error() { currentCounters.consoleErrors++; }, warn() { currentCounters.consoleErrors++; }, log() { throw new Error('DOMAIN_CONSOLE'); } }),
++    process: Object.freeze({ version: process.version, versions: Object.freeze({ node: process.versions.node }), env: Object.freeze({}) }) };
++  sandbox.global = sandbox;
++  const context = vm.createContext(sandbox, { name: 'customer-enrollment-' + phase, codeGeneration: { strings: false, wasm: false } });
++  new vm.Script('globalThis.global = globalThis').runInContext(context, { timeout: 1000 });
++  const classes = Object.fromEntries(plan.cuts.map(row => [row.specifier, Object.freeze({ [row.export]: class {} })]));
++  const config = Object.freeze({ CONFIG: Object.freeze({ JWT_SECRET_KEY: privateSecret, OTP_EXPIRY_MINUTES: 10 }) });
++  const nativeCrypto = Object.freeze({ ...crypto, randomInt(...args) { currentCounters.random++; return crypto.randomInt(...args); } });
++  function load(id) {
++    if (cache.has(id)) return cache.get(id).exports;
++    const domainCode = Object.hasOwn(domain.modules, id);
++    const modules = domainCode ? domain.modules : runtime.modules;
++    const edges = domainCode ? domain.edges : runtime.edges;
++    check(Object.hasOwn(modules, id), 'closed-module:' + id);
++    const module = { exports: {} }; cache.set(id, module);
++    if (id.endsWith('.json')) module.exports = JSON.parse(modules[id]);
++    else {
++      const require = spec => {
++        check(Object.hasOwn(edges[id], spec), 'unlisted-require'); const target = edges[id][spec];
++        if (target === '@/config/config') return config;
++        if (Object.hasOwn(classes, target)) return classes[target];
++        if (target === 'node:crypto') return nativeCrypto;
++        if (target.startsWith('node:')) { check(Object.hasOwn(allowedBuiltins, target), 'native-denied'); return allowedBuiltins[target]; }
++        if (Object.hasOwn(runtime.roots, target)) return load(runtime.roots[target]);
++        return load(target);
++      };
++      const fn = new vm.Script('(function(exports,require,module,__filename,__dirname){\n' + modules[id] + '\n})', { filename: id }).runInContext(context, { timeout: 1000 });
++      fn(module.exports, require, module, id, id.slice(0, id.lastIndexOf('/')));
++    }
++    return module.exports;
++  }
++  currentCounters = { random: 0, signs: 0, consoleErrors: 0 };
++  load(runtime.roots['reflect-metadata']);
++  const jwt = load(runtime.roots.jsonwebtoken); const sign = jwt.sign;
++  jwt.sign = (...args) => { currentCounters.signs++; return sign(...args); };
++  const Service = load('src1/modules/auth/services/index.ts').AuthService;
++  const validation = load('src1/modules/auth/validation/index.ts');
++  function verifyToken(token, expected, intendedRole) {
++    const claims = jwt.verify(token, privateSecret);
++    check(claims._id === S.id && claims.userType === intendedRole, 'token-trusted-fixture-identity');
++    check(claims._id === expected._id && claims.userType === expected.userType && claims.exp - claims.iat === 30 * 24 * 3600, 'token-identity-lifetime');
++    for (const key of ['phone', 'email', 'corporateId', 'specialistId', 'pharmacyId']) check(claims[key] === expected[key], 'token-field:' + key);
++  }
++  return { Service, validation, verifyToken, activate(counters) { currentCounters = counters; } };
++}
++function fixture(loader, options = {}) {
++  const counters = { random: 0, signs: 0, consoleErrors: 0 }; loader.activate(counters);
++  const calls = []; let row = options.row === undefined ? null : copy(options.row); let generated;
++  let unexpected = false;
++  const record = (name, args, result) => { calls.push({ name, args: copy(args) }); return result; };
++  const AppError = class extends Error { constructor(code, status) { super('Synthetic proof failure'); this.name = 'AppError'; this.code = code; this.status = status; } };
++  function port(name, methods) { return new Proxy(Object.freeze(methods), { get(target, key) {
++    if (Object.hasOwn(target, key)) return target[key];
++    unexpected = true; throw new Error('UNEXPECTED_PORT');
++  } }); }
++  const repository = name => {
++    const methods = {
++    async findByPhoneOrEmail(...args) { return record(name + '.lookup', args, row); },
++    async findByPhone(...args) { return record(name + '.lookupPhone', args, row); },
++    async findByEmail(...args) { return record(name + '.lookupEmail', args, row); },
++    async save(data) { record(name + '.save', [data]); row = { ...copy(data), _id: S.id, ...(name === 'user' ? { userType: 'user' } : {}) }; return row; },
++    async update(...args) { return record(name + '.update', args, row); },
++    };
++    const allowed = {
++      user: ['findByPhoneOrEmail', 'save', 'update'],
++      admin: ['findByPhoneOrEmail'], hr: ['findByPhoneOrEmail'],
++      specialist: ['findByPhoneOrEmail', 'save'], pharmacy: ['findByPhone', 'findByEmail', 'save'],
++    };
++    return port(name, Object.fromEntries(allowed[name].map(key => [key, methods[key]])));
++  };
++  const repositories = ['user', 'admin', 'hr', 'specialist', 'pharmacy'].map(repository);
++  const corporate = port('corporate', {});
++  const otp = port('otp', {
++    async createOTP(data) { generated = copy(data); check(/^\d{6}$/.test(data.otp), 'generated-six-digits'); return record('otp.create', [data], data); },
++    async verifyOTP(data) { record('otp.verify', [data]); if (options.proofError) throw new AppError('SYNTHETIC_PROOF_REJECTED', 400); return {}; },
++  });
++  const wallet = port('wallet', { async getByUserId(...args) { return record('wallet.get', args, {}); } });
++  const notification = port('notification', {
++    async createLoginNotification(...args) { return record('notification.customer', args, {}); },
++    async createSpecialistLoginNotification(...args) { return record('notification.specialist', args, {}); },
++  });
++  const email = port('email', { async sendEmail(data) { check(generated && data.textBody.includes(generated.otp), 'email-code-binding'); return record('email.send', [data], {}); } });
++  const sms = port('sms', {
++    buildSMSContent(template, data) { check(generated && data.otp === generated.otp && data.expiryMinutes === 10 && template === 'otp', 'sms-code-binding'); record('sms.build', [template, data]); return { text: data.otp, templateId: 'synthetic-template' }; },
++    async sendSMS(data) { check(generated && data.text === generated.otp, 'sms-dispatch-code'); return record('sms.send', [data], {}); },
++  });
++  const service = new loader.Service(...repositories, corporate, otp, wallet, notification, email, sms);
++  return { service, counters, calls, get row() { return row; }, get generated() { return generated; },
++    assertPlanned() { check(!unexpected && counters.consoleErrors === 0, 'unexpected-port-latch'); } };
++}
++function request(field = 'phone', value = field === 'phone' ? S.phone : S.email, role = 'user') { return { userType: role, [field]: value }; }
++function rowFor(role = 'user', overrides = {}) { return { _id: S.id, userType: role, phone: S.phone, email: S.email, isActive: true,
++  ...(role === 'hr' ? { corporateId: S.corporateId } : {}), ...overrides }; }
++function names(f) { return f.calls.map(c => c.name); }
++function exactly(f, expected) { check(JSON.stringify(names(f)) === JSON.stringify(expected), 'call-order'); }
++function noEffects(f) {
++  if (f.calls.length || f.counters.random || f.counters.signs || f.counters.consoleErrors) {
++    const error = new Error('PREDICATE:zero-effects'); error.predicate = 'zero-effects'; error.effectCalls = f.calls.length; throw error;
++  }
++}
++async function invoke(f, method, data) { try { return { result: await f.service[method === 'send' ? 'sendOTP' : 'verifyOTP'](data) }; } catch (error) { return { error }; } }
++async function denied(loader, v) {
++  const f = fixture(loader, { row: rowFor() }); const data = { userType: 'user', ...v.data, ...(v.method === 'verify' ? { otp: S.otp } : {}) };
++  if (v.kind === 'deny-otp') { data.phone = S.phone; data.otp = v.otp; if (v.omit) delete data.otp; }
++  const out = await invoke(f, v.kind === 'deny-otp' ? 'verify' : v.method, data);
++  noEffects(f); check(out.error?.status === 400 && out.error?.code === 'VALIDATION_ERROR', 'customer-validation-error'); f.assertPlanned(); return f;
++}
++async function positive(loader, v) {
++  const field = v.field || 'phone'; const value = v.value || (field === 'phone' ? S.phone : S.email);
++  const canonicalValue = field === 'email' ? value.trim().toLowerCase() : value;
++  const other = field === 'phone' ? 'email' : 'phone'; const existing = v.kind === 'existing' || v.kind === 'undefined' && v.method === 'verify';
++  const initial = existing ? rowFor('user', { [field]: canonicalValue, ...(v.secondary ? {} : { [other]: undefined }) }) : null;
++  const f = fixture(loader, { row: initial }); const data = request(field, value);
++  if (v.kind === 'undefined') data[other] = undefined;
++  if (v.method !== 'verify') {
++    const sent = await invoke(f, 'send', data); check(!sent.error && sent.result?.message === 'OTP sent successfully', 'send-success');
++    const expected = ['user.lookup', ...(!existing ? ['user.save'] : []), 'otp.create', ...(field === 'phone' ? ['sms.build', 'sms.send'] : ['email.send'])]; exactly(f, expected);
++    assert.deepEqual(canonical(f.calls[0].args), canonical([{ [field]: canonicalValue }, 'user']));
++    if (!existing) {
++      const saved = f.calls.find(c => c.name === 'user.save').args[0];
++      check(Object.hasOwn(saved, field) && saved[field] === canonicalValue && !Object.hasOwn(saved, other), 'single-contact-save');
++      assert.deepEqual(Object.keys(saved).sort(), [field, 'userType', 'createdSource', 'otpVerified'].sort());
++    }
++    check(f.generated.target === field && f.generated.targetValue === canonicalValue && f.generated.userId === S.id, 'otp-send-destination');
++    const sentCall = f.calls.at(-1); check(field === 'phone' ? sentCall.args[0].to === canonicalValue : JSON.stringify(sentCall.args[0].to) === JSON.stringify([canonicalValue]), 'provider-intent-destination');
++  }
++  const before = f.calls.length; const code = f.generated?.otp || S.otp;
++  const verified = await invoke(f, 'verify', { ...data, otp: code });
++  check(!verified.error && verified.result?.message === 'OTP verified successfully', 'verify-success');
++  const verifyCalls = f.calls.slice(before); check(verifyCalls.map(c => c.name).join() === 'user.lookup,otp.verify,user.update,wallet.get,notification.customer', 'verify-call-order');
++  assert.deepEqual(canonical(verifyCalls[0].args), canonical([{ [field]: canonicalValue }, 'user']));
++  assert.deepEqual(canonical(verifyCalls[1].args), canonical([{ userId: S.id, otp: code, target: field, targetValue: canonicalValue }]));
++  assert.deepEqual(canonical(verifyCalls[2].args), canonical([{ _id: S.id }, { otpVerified: true, isVerified: true }]));
++  check(verifyCalls[3].args[0] === S.id && verifyCalls[4].args[0] === S.id && f.counters.signs === 1, 'customer-post-proof-effects');
++  loader.verifyToken(verified.result.accessToken, verified.result.userData, 'user'); check(verified.result.userData[field] === canonicalValue, 'returned-contact'); f.assertPlanned(); return f;
++}
++async function current(loader, v) {
++  const f = fixture(loader, { row: rowFor('user', { [v.field]: v.absent ? undefined : v.field === 'phone' ? S.otherPhone : ' Changed@Example.COM ' }) });
++  const out = await invoke(f, 'verify', { ...request(v.field), otp: S.otp });
++  if (v.absent) { check(out.error?.code === 'OTP_UNAVAILABLE', 'missing-current-contact'); exactly(f, ['user.lookup']); check(f.counters.signs === 0, 'missing-current-no-sign'); }
++  else { check(!out.error, 'current-row-success'); const call = f.calls.find(c => c.name === 'otp.verify'); check(call.args[0].targetValue === (v.field === 'phone' ? S.otherPhone : S.otherEmail), 'current-row-not-caller'); loader.verifyToken(out.result.accessToken, out.result.userData, 'user'); }
++  f.assertPlanned();
++}
++async function failure(loader, v) {
++  const f = fixture(loader, { row: v.failure === 'not-found' ? null : rowFor(), proofError: true });
++  const out = await invoke(f, 'verify', { ...request(), otp: S.otp });
++  check(out.error?.code === (v.failure === 'not-found' ? 'USER_NOT_FOUND' : 'SYNTHETIC_PROOF_REJECTED'), 'proof-error-propagation');
++  exactly(f, v.failure === 'not-found' ? ['user.lookup'] : ['user.lookup', 'otp.verify']); check(f.counters.signs === 0, 'proof-failure-no-sign'); f.assertPlanned();
++}
++async function staffTrace(loader, v) {
++  const traces = [];
++  for (const method of ['send', 'verify']) {
++    const f = fixture(loader, { row: v.state === 'missing' ? null : rowFor(v.role, { isActive: v.state !== 'inactive' }) });
++    const data = { userType: v.role, ...(v.shape !== 'email' ? { phone: S.phone } : {}), ...(v.shape !== 'phone' ? { email: S.email } : {}), ...(method === 'verify' ? { otp: S.otp } : {}) };
++    const out = await invoke(f, method, data);
++    if (out.result?.accessToken) loader.verifyToken(out.result.accessToken, out.result.userData, v.role);
++    if (v.state === 'active') check(!out.error, 'staff-positive');
++    if (v.state === 'inactive') check(out.error?.code === v.role.toUpperCase() + '_INACTIVE' && f.counters.signs === 0, 'staff-inactive');
++    if (v.state === 'missing') check(method === 'verify' ? out.error?.code === 'USER_NOT_FOUND' : ['specialist', 'pharmacy'].includes(v.role) ? !out.error && names(f).includes(v.role + '.save') : out.error?.code === v.role.toUpperCase() + '_NOT_FOUND', 'staff-missing-signup');
++    // Validate generated code/template/token before replacing nondeterministic fields for comparison.
++    const normalize = value => typeof value === 'string' && f.generated?.otp ? value.split(f.generated.otp).join('<otp>') : value;
++    function safe(value) { if (Array.isArray(value)) return value.map(safe); if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, x]) => [k, safe(x)])); return normalize(value); }
++    traces.push(canonical({ calls: safe(f.calls), counters: f.counters, error: out.error ? { code: out.error.code, status: out.error.status } : null,
++      response: out.result ? { message: out.result.message, ...(out.result.userData ? { userData: out.result.userData } : {}) } : null })); f.assertPlanned();
++  }
++  return traces;
++}
++function helper(loader, v) {
++  const select = loader.validation.selectCustomerLoginContact; let data = request(); let verify = false; let invalid = false;
++  if (v.variant === 'email') data = request('email', ' Customer@Example.COM ');
++  if (v.variant === 'undefined') data.email = undefined;
++  if (v.variant === 'dual') { data.email = S.email; invalid = true; }
++  if (v.variant === 'neither') { data = {}; invalid = true; }
++  if (v.variant === 'null') { data = null; invalid = true; }
++  if (v.variant === 'array') { data = []; invalid = true; }
++  if (v.variant === 'otp-bad') { data.otp = 123456; verify = true; invalid = true; }
++  if (v.variant === 'unknown') data.ignored = 'harmless';
++  if (invalid) assert.throws(() => select(data, verify), e => e.status === 400 && e.code === 'VALIDATION_ERROR');
++  else { const selected = select(data, verify); check(selected.target === (v.variant === 'email' ? 'email' : 'phone') && selected.targetValue === (v.variant === 'email' ? S.email : S.phone), 'helper-positive'); }
++  check(!loader.validation.sendOTPSchema.validate({ phone: S.phone, email: S.email }).error && !loader.validation.verifyOTPSchema.validate({ phone: S.phone, email: S.email, otp: S.otp }).error, 'legacy-schema-unchanged');
++}
++async function caseRun(loader, v, old) {
++  if (['signup', 'existing', 'undefined'].includes(v.kind)) return positive(loader, v);
++  if (v.kind === 'deny' || v.kind === 'deny-otp') return denied(loader, v);
++  if (v.kind === 'current') return current(loader, v);
++  if (v.kind === 'failure') return failure(loader, v);
++  if (v.kind === 'helper') return helper(loader, v);
++  if (v.kind === 'staff') assert.deepEqual(await staffTrace(loader, v), await staffTrace(old, v));
++}
++export async function runEnrollmentScenario() {
++  const nominal = phaseLoader('nominal'); const old = phaseLoader('OLD'); const passed = [];
++  for (const vector of plan.vectors) {
++    try { await caseRun(nominal, vector, old); } catch { throw new Error('ENROLLMENT_CASE_FAILED:' + vector.id); }
++    passed.push(vector.id);
++  }
++  const controls = [];
++  for (const control of plan.controls.concat(plan.oldControl)) {
++    const loader = phaseLoader(control.id); const vector = plan.vectors.find(v => v.id === control.case);
++    let error; try { await caseRun(loader, vector, old); } catch (e) { error = e; }
++    check(error?.predicate === (control.id === 'NC4' ? 'single-contact-save' : 'zero-effects'), 'behavioral-control:' + control.id);
++    if (control.id !== 'NC4') check(error.effectCalls > 0, 'control-reached-concrete-effects');
++    const restored = phaseLoader('nominal');
++    await caseRun(restored, vector, old); await caseRun(restored, plan.vectors[0], old); controls.push({ id: control.id, target: control.case, predicate: error.predicate, detected: true, restored: true });
++  }
++  // Baseline counterfactual uses genuinely defined A+B, rather than inferring BSON persistence from undefined.
++  const counterfactual = fixture(old); const dual = { userType: 'user', phone: S.phone, email: S.email };
++  const send = await invoke(counterfactual, 'send', dual); check(!send.error && counterfactual.row.phone === S.phone && counterfactual.row.email === S.email, 'old-two-valued-save');
++  check(counterfactual.generated.target === 'phone' && counterfactual.generated.targetValue === S.phone, 'old-one-destination');
++  const verified = await invoke(counterfactual, 'verify', { userType: 'user', phone: S.phone, otp: counterfactual.generated.otp });
++  check(!verified.error && verified.result.userData.email === S.email, 'old-unproved-alias-claims'); old.verifyToken(verified.result.accessToken, verified.result.userData, 'user'); counterfactual.assertPlanned();
++  const restoredLoader = phaseLoader('nominal'); const restoredCaseIds = [];
++  for (const vector of plan.vectors) {
++    try { await caseRun(restoredLoader, vector, old); } catch { throw new Error('ENROLLMENT_CASE_FAILED:' + vector.id + '.restored'); }
++    restoredCaseIds.push(vector.id);
++  }
++  // Reject forbidden linker edges independently of source behavior. No real fs/network import occurs.
++  check(!Object.values(emitted.phases.nominal.edges).some(edges => Object.values(edges).some(id => ['fs','net','http','mongoose'].includes(id))), 'closed-domain-graph');
++  return { schema: 'SD-ENROLLMENT-SERVICE-RESULT-1', planSha256: hash(readFileSync(new URL('ports-plan.json', import.meta.url))),
++    emittedSha256: hash(readFileSync(new URL('emitted-modules.json', import.meta.url))), runtimeSha256: hash(readFileSync(new URL('runtime-modules.json', import.meta.url))),
++    caseIds: passed, restoredCaseIds, passed: passed.length, failed: 0, skipped: 0, controls, baselineTwoAliasDataflowObserved: true,
++    database: 'NOT_ADMITTED', providers: 'RECORDING_ONLY', http: 'NOT_RUN', typecheck: 'NOT_CLAIMED' };
++}

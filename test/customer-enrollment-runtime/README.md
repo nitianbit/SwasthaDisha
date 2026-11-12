@@ -14,6 +14,10 @@ Contract: `documentation/planning/implementation/CUSTOMER_ENROLLMENT_FOCUSED_VER
 
 No runnable prepared closure exists yet. Root's recorded Docker readiness is read-only availability evidence, not approval. Four runtime package roots are Joi17.13.3, jsonwebtoken9.0.2, reflect-metadata0.2.2 and typedi0.10.0; TypeScript5.9.3 is preparation-only. The test-only versions match current root-lock entries; root package/lock/start are unchanged. The actual1939-file installed npm tool inventory is public source provenance at `output/qa/customer-enrollment-focused/TOOL_INPUTS.json`; it was hashed without executing npm. It does not prove new dependency artifacts exist.
 
+The first approved attempt at10600a2 stopped at its environment guard because the Xcode Python trampoline injected SDK/build variables; no receipt/nonce/workspace/npm handling occurred. Root's actual failure and independent disposition remain at `output/qa/customer-enrollment-focused/revision-1/LOCK_PREFLIGHT_FAILURE.json` / c200e4b. The exact correction plan054658bc has two actual implementation-only votes at8f43bbc; those votes do not authorize a retry. Old approvals/proposals remain historical.
+
+The corrected proposal pins direct Homebrew CPython3.14.7 and its actual binary hash in profile.json. Preparation checks the regular nonsymlink binary, same-file running interpreter (the observed opt alias must identify that same file), exact version/implementation and isolated/no-bytecode/no-site flags. Fixed `-I -B -S` suppresses global site/.pth startup; this candidate mode remains NOT_RUN. Only the optional public `__CF_USER_TEXT_ENCODING` marker is added to the existing environment key set, and must exactly equal `0x<uppercase-hex-current-uid>:0x0:0x0` (uid501: `0x1F5:0x0:0x0`). SDKROOT/CPATH/LIBRARY_PATH/MANPATH and all other unlisted keys remain forbidden. This marker is not forwarded to the independently constructed npm/Node environment. No application runtime adoption or complete interpreter-framework provenance is claimed from the binary hash.
+
 First obtain two actual nonauthor source and exact `APPROVE_PUBLIC_LOCK_RESOLUTION_ONLY` decisions. Root then writes a private0600 existing-receipt-style approval at `/private/tmp/sd-customer-enrollment-prepare-approval.json`, with exact keys:
 
 - `schema`: `SD-ENROLLMENT-PREP-APPROVAL-1`.
@@ -27,7 +31,7 @@ First obtain two actual nonauthor source and exact `APPROVE_PUBLIC_LOCK_RESOLUTI
 Proposed invocation, **NOT AUTHORIZED BY THIS README**:
 
 ```sh
-env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /usr/bin/python3 -I test/customer-enrollment-runtime/prepare.py --resolve-lock
+env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14 -I -B -S test/customer-enrollment-runtime/prepare.py --resolve-lock
 ```
 
 This consumes one nonce with atomic exclusive creation before allocation/process/network effects. It uses the pinned existing Node24.19.0 host tool and exact fully inventoried npm code, an owned empty0700 workspace with fresh HOME/cache/npmrc, public registry only, `npm install --package-lock-only --ignore-scripts --omit=optional --no-audit --no-fund`, no inherited configuration/proxy/token/preloads, and a900-second process bound. A minimal seed lock contains only the root-lock transitive closure of the five direct packages. Output must preserve every retained version/integrity/dependency edge, contain only that closure, and use public HTTPS SHA512 lock rows. No application/compiler/Docker executes in this first stage. Workspace/private diagnostics are retained; resolved lock is exclusively written0600 to `/private/tmp/sd-customer-enrollment-resolved-lock.json`. Existing outputs cause failure, not deletion or overwrite.

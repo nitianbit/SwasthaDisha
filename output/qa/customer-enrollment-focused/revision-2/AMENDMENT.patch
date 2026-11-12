@@ -1,0 +1,45 @@
+diff --git a/test/customer-enrollment-runtime/README.md b/test/customer-enrollment-runtime/README.md
+index 476d3fe8b236588a3acd812880be39465cf5cda2..a97e404aab48c058fd76ee36111d63a7cdb49b55 100644
+--- a/test/customer-enrollment-runtime/README.md
++++ b/test/customer-enrollment-runtime/README.md
+@@ -16,0 +17,4 @@ No runnable prepared closure exists yet. Root's recorded Docker readiness is rea
++The first approved attempt at10600a2 stopped at its environment guard because the Xcode Python trampoline injected SDK/build variables; no receipt/nonce/workspace/npm handling occurred. Root's actual failure and independent disposition remain at `output/qa/customer-enrollment-focused/revision-1/LOCK_PREFLIGHT_FAILURE.json` / c200e4b. The exact correction plan054658bc has two actual implementation-only votes at8f43bbc; those votes do not authorize a retry. Old approvals/proposals remain historical.
++
++The corrected proposal pins direct Homebrew CPython3.14.7 and its actual binary hash in profile.json. Preparation checks the regular nonsymlink binary, same-file running interpreter (the observed opt alias must identify that same file), exact version/implementation and isolated/no-bytecode/no-site flags. Fixed `-I -B -S` suppresses global site/.pth startup; this candidate mode remains NOT_RUN. Only the optional public `__CF_USER_TEXT_ENCODING` marker is added to the existing environment key set, and must exactly equal `0x<uppercase-hex-current-uid>:0x0:0x0` (uid501: `0x1F5:0x0:0x0`). SDKROOT/CPATH/LIBRARY_PATH/MANPATH and all other unlisted keys remain forbidden. This marker is not forwarded to the independently constructed npm/Node environment. No application runtime adoption or complete interpreter-framework provenance is claimed from the binary hash.
++
+@@ -30 +34 @@ Proposed invocation, **NOT AUTHORIZED BY THIS README**:
+-env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /usr/bin/python3 -I test/customer-enrollment-runtime/prepare.py --resolve-lock
++env -i PATH=/usr/bin:/bin TMPDIR=/private/tmp /opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14 -I -B -S test/customer-enrollment-runtime/prepare.py --resolve-lock
+diff --git a/test/customer-enrollment-runtime/prepare.py b/test/customer-enrollment-runtime/prepare.py
+index 7d3d2dd263f7c8b0e161cc07a0e02a4f83e6c16b..eafad981efef2801ef59aafff4c906a5782cdc12 100644
+--- a/test/customer-enrollment-runtime/prepare.py
++++ b/test/customer-enrollment-runtime/prepare.py
+@@ -77,2 +77,13 @@ def main():
+-    require(len(sys.argv) == 2 and sys.argv[1] in ['--resolve-lock', '--install-emit'] and sys.flags.isolated, 'Fixed isolated invocation')
+-    require(set(os.environ) <= {'PATH', 'TMPDIR', 'LANG', 'LC_CTYPE'} and os.environ.get('PATH') == '/usr/bin:/bin', 'Clean preparation environment')
++    require(len(sys.argv) == 2 and sys.argv[1] in ['--resolve-lock', '--install-emit']
++            and sys.flags.isolated == 1 and sys.flags.dont_write_bytecode == 1
++            and sys.dont_write_bytecode is True and sys.flags.no_site == 1, 'Fixed isolated no-site/no-bytecode invocation')
++    require(set(os.environ) <= {'PATH', 'TMPDIR', 'LANG', 'LC_CTYPE', '__CF_USER_TEXT_ENCODING'}
++            and os.environ.get('PATH') == '/usr/bin:/bin', 'Clean preparation environment')
++    cf_marker = os.environ.get('__CF_USER_TEXT_ENCODING')
++    require(cf_marker is None or cf_marker == '0x' + format(os.getuid(), 'X') + ':0x0:0x0', 'Unexpected public CoreFoundation marker')
++    profile = json.loads(regular(HERE / 'profile.json'))
++    python = Path(profile['pythonTool'])
++    require(sha(regular(python, 128 * 1024 * 1024)) == profile['pythonToolSha256']
++            and os.path.samefile(sys.executable, python)
++            and sys.implementation.name == profile['pythonImplementation'] == 'cpython'
++            and '.'.join(str(n) for n in sys.version_info[:3]) == profile['pythonVersion'] == '3.14.7', 'Preparation Python tool drift')
+@@ -81 +91,0 @@ def main():
+-    profile = json.loads(regular(HERE / 'profile.json'))
+diff --git a/test/customer-enrollment-runtime/profile.json b/test/customer-enrollment-runtime/profile.json
+index 521a225e8e96812966e39a5685e54e4db1dc917f..b21fb65dadccd73c170270b470bd7bd063c4bf60 100644
+--- a/test/customer-enrollment-runtime/profile.json
++++ b/test/customer-enrollment-runtime/profile.json
+@@ -14 +14,5 @@
+-  "status": "SOURCE_CANDIDATE_ALL_EXECUTION_NOT_RUN"
++  "status": "SOURCE_CANDIDATE_ALL_EXECUTION_NOT_RUN",
++  "pythonTool": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
++  "pythonToolSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
++  "pythonVersion": "3.14.7",
++  "pythonImplementation": "cpython"

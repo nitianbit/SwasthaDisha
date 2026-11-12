@@ -11,5 +11,9 @@
   "npmFiles": "output/qa/customer-enrollment-focused/TOOL_INPUTS.json",
   "npmFilesSha256": "3729235cc997a657b533bd70daf6ce710e8c6b51b4452119f98be508173bf085",
   "scope": "TEST_ONLY_DIRECT_SERVICE_NO_DB_NOT_PRODUCTION_OR_HTTP",
-  "status": "SOURCE_CANDIDATE_ALL_EXECUTION_NOT_RUN"
+  "status": "SOURCE_CANDIDATE_ALL_EXECUTION_NOT_RUN",
+  "pythonTool": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+  "pythonToolSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "pythonVersion": "3.14.7",
+  "pythonImplementation": "cpython"
 }

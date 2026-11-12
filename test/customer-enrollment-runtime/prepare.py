@@ -74,11 +74,21 @@ def lock_rows(lock):
 
 
 def main():
-    require(len(sys.argv) == 2 and sys.argv[1] in ['--resolve-lock', '--install-emit'] and sys.flags.isolated, 'Fixed isolated invocation')
-    require(set(os.environ) <= {'PATH', 'TMPDIR', 'LANG', 'LC_CTYPE'} and os.environ.get('PATH') == '/usr/bin:/bin', 'Clean preparation environment')
+    require(len(sys.argv) == 2 and sys.argv[1] in ['--resolve-lock', '--install-emit']
+            and sys.flags.isolated == 1 and sys.flags.dont_write_bytecode == 1
+            and sys.dont_write_bytecode is True and sys.flags.no_site == 1, 'Fixed isolated no-site/no-bytecode invocation')
+    require(set(os.environ) <= {'PATH', 'TMPDIR', 'LANG', 'LC_CTYPE', '__CF_USER_TEXT_ENCODING'}
+            and os.environ.get('PATH') == '/usr/bin:/bin', 'Clean preparation environment')
+    cf_marker = os.environ.get('__CF_USER_TEXT_ENCODING')
+    require(cf_marker is None or cf_marker == '0x' + format(os.getuid(), 'X') + ':0x0:0x0', 'Unexpected public CoreFoundation marker')
+    profile = json.loads(regular(HERE / 'profile.json'))
+    python = Path(profile['pythonTool'])
+    require(sha(regular(python, 128 * 1024 * 1024)) == profile['pythonToolSha256']
+            and os.path.samefile(sys.executable, python)
+            and sys.implementation.name == profile['pythonImplementation'] == 'cpython'
+            and '.'.join(str(n) for n in sys.version_info[:3]) == profile['pythonVersion'] == '3.14.7', 'Preparation Python tool drift')
     mode = sys.argv[1][2:]
     decision = 'APPROVE_PUBLIC_LOCK_RESOLUTION_ONLY' if mode == 'resolve-lock' else 'APPROVE_LOCKED_INSTALL_AND_EMIT_ONLY'
-    profile = json.loads(regular(HERE / 'profile.json'))
     plan = json.loads(regular(HERE / 'ports-plan.json'))
     package_plan = json.loads(regular(HERE / 'package-plan.json'))
     packages = package_plan['packages']
