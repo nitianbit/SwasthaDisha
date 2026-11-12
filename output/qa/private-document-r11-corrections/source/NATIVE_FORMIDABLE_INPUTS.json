@@ -1,0 +1,37 @@
+{
+  "version": "3.5.4",
+  "rootLockIntegrity": "sha512-YikH+7CUTOtP44ZTnUhR7Ic2UASBPOqmaRkRKxRbywPTe5VxF7RRCck4af9wutiZ/QKM5nME9Bie2fFaPz5Gug==",
+  "tarSha256": "335f6f180ef1601b67beaadb6dcba06c40c2c21d181ce14753ad34e795a6c097",
+  "files": {
+    "package/src/FormidableError.js": {
+      "sha256": "62adce3013f4d542585e6c64f33a702c68798b7c05c260744c75a4099bea65fb",
+      "bytes": 1242
+    },
+    "package/src/index.js": {
+      "sha256": "b2e0cd1575b80baee4a8a0fa0ff4e57655a3e9651abeca88d493efd3c36fbca4",
+      "bytes": 754
+    },
+    "package/src/Formidable.js": {
+      "sha256": "f5b2a5e6c1586231d91629d63248be177303061b13a23012e9f91a6367d5bba0",
+      "bytes": 18026
+    },
+    "package/src/parsers/Multipart.js": {
+      "sha256": "b75e938b96b0dd5ccc2a8b2cdb8d5c9006364e320f8df845ec569a5bc2158931",
+      "bytes": 9824
+    },
+    "package/src/plugins/multipart.js": {
+      "sha256": "da2301f7e69260fe290d7a655da84174ab583d49ac7ae0c15eb0909120f2001a",
+      "bytes": 6083
+    },
+    "package/dist/index.cjs": {
+      "sha256": "8d8459005e76aec65a56aec12a1ea3d7b3bdde6bb53fb2767f42b0f39d5a88ba",
+      "bytes": 45595
+    }
+  },
+  "method": "Inert cache/tar member byte inspection only; no package evaluation",
+  "observations": [
+    "errors namespace export includes finite constants; CJS errors exported",
+    "count/field/native input codes separate from file-byte limit codes",
+    "unknown native errors do not derive authority from httpCode"
+  ]
+}

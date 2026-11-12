@@ -10,7 +10,7 @@ import { AppError } from '@/modules/common/types';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { FileDocumentService } from '../documents';
 import { legacyPath } from '../storage';
-import { documentError } from '../validation';
+import { actor, documentError, input } from '../validation';
 
 const privateResponses = new WeakSet<Response>();
 
@@ -64,6 +64,8 @@ export class FileController {
 
   uploadClinicalAsset = async (req: AuthRequest, res: Response, _next: NextFunction): Promise<void> => {
     await this.privateRequest(res, async () => {
+      actor(req.user);
+      input(req.params.resourceKind === 'booking' || req.params.resourceKind === 'external_booking');
       const result = await this.documents.upload(req.user, req.query, req.params.resourceKind, req.params.resourceId, req);
       this.privateJson(res, result.created ? 201 : 200, result.data);
     });
@@ -90,12 +92,16 @@ export class FileController {
   }
 
   uploadFiles = async (req: Request, res: Response, _next: NextFunction) => {
-    applyPrivateDocumentHeaders(res);
     // Get module from params or form data
     const module = (req.params.module as string) || req.body?.module || 'general';
     const recordId = req.body?.recordId as string | undefined;
 
-    const files = await this.fileService.uploadFiles(req, module, recordId);
+    const files = await this.fileService.uploadFiles(req, module, recordId).catch(error => {
+      if (error instanceof AppError && typeof error.code === 'string' && error.code.startsWith('DOCUMENT_')) {
+        applyPrivateDocumentHeaders(res);
+      }
+      throw error;
+    });
 
     res.status(200).json({
       success: true,

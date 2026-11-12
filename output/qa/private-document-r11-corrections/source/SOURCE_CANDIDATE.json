@@ -1,0 +1,33 @@
+{
+  "schema": "SD-PRIVATE-R11-CORRECTIONS-SOURCE-CANDIDATE-1",
+  "author": "/root/customer_remaining_audit",
+  "baseline": "cfdc6091e3e10a087f9878d18beabcb3c9337316",
+  "planSha256": "98bb854464e8665f926c8dff065fb7e2de646367865ebd15f4434482e09524e4",
+  "actualPlanDecisions": "output/qa/private-document-r11-corrections/PLAN_DECISIONS.json",
+  "sourceFiles": {
+    "src1/modules/file/controller/index.ts": {
+      "beforeSha256": "4c19319089f0a5a141fc1473d54956dbdd4127c4b87b1dcca7bde011120ec57f",
+      "afterSha256": "fc4e9fbb27f1637a2587082ed4dbceef29a2efb0ad839ca6c89bf2e786da2525",
+      "bytes": 10294
+    },
+    "src1/modules/file/storage.ts": {
+      "beforeSha256": "09315a3816094d291655f9f64e55bce49b0387385c8aef0c863542faf53d46cb",
+      "afterSha256": "17e3a9c713e5869fbf9739e698887ea222f4f8d2e0c2a3435a0d8b51a48bd558",
+      "bytes": 18688
+    }
+  },
+  "patchSha256": "fc204e9e69bb6394a9c3f79f7609fd5408e95e729a8385124b014e2a39dc465b",
+  "nativeInputsSha256": "7e38e2a534cd97099a71c06cccf2b2b272dd0ee1414a4c5f9abac063cc45fce0",
+  "unchangedInputsSha256": "e76de10756e922472c07218363f89304a9b3bfa382b572bdd13f6b97d5593424",
+  "findingsAddressed": [
+    "R11-F2-1",
+    "R11-F2-2",
+    "R11-F2-3",
+    "R11-F2-4 conditional object-identity guard"
+  ],
+  "scope": "Only two production files; fixture29pins/scenarios unchanged until two source decisions",
+  "sourceReviews": "PENDING_TWO_ACTUAL_NONAUTHOR_DECISIONS_ROOT_AND_MILESTONE",
+  "execution": "NOT_RUN: no parser/Node/compiler/npm/app/Express/Formidable/fsadapter/Mongo/Docker/provider execution",
+  "gates": "Useful positive focused fixture, fresh exact source/stage/run/outcome/cleanup and C2/C3/client/privacy/owner/release gates retained;112lockmetadata is not install/emit admission",
+  "conditionalFilesystem": "Device/inode check source only; actual casefold condition unobserved, NOT_RUN; no new TOCTOU/sameUID guarantee"
+}

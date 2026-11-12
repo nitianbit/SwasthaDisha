@@ -5,11 +5,35 @@ import path from 'path';
 import { randomBytes, createHash } from 'crypto';
 import { Writable } from 'stream';
 import { performance } from 'perf_hooks';
-import formidable from 'formidable';
+import formidable, { errors as formidableErrors } from 'formidable';
 import { Request, Response } from 'express';
 import { CONFIG } from '@/config/config';
+import { AppError } from '@/modules/common/types';
 import { CapturedObject, DOCUMENT_BYTES, FileVersion, PRIVATE_SUBTREE, VerifiedObject } from './documentTypes';
 import { documentError, input, media } from './validation';
+
+/** Preserve domain errors and classify only pinned native input/file-byte codes. */
+function captureError(error: unknown): AppError {
+  if (error instanceof AppError) return error;
+  const code = error instanceof Error ? Object.getOwnPropertyDescriptor(error, 'code')?.value : undefined;
+  switch (code) {
+    case formidableErrors.malformedMultipart:
+    case formidableErrors.missingMultipartBoundary:
+    case formidableErrors.missingContentType:
+    case formidableErrors.noEmptyFiles:
+    case formidableErrors.smallerThanMinFileSize:
+    case formidableErrors.unknownTransferEncoding:
+    case formidableErrors.maxFilesExceeded:
+    case formidableErrors.maxFieldsExceeded:
+    case formidableErrors.maxFieldsSizeExceeded:
+      return documentError(400, 'DOCUMENT_INPUT_INVALID');
+    case formidableErrors.biggerThanMaxFileSize:
+    case formidableErrors.biggerThanTotalMaxFileSize:
+      return documentError(413, 'DOCUMENT_TOO_LARGE');
+    default:
+      return documentError();
+  }
+}
 
 function identity(st: Stats): string { return [st.dev, st.ino, st.uid, st.mode & 0o777, st.nlink, st.size, st.mtimeMs, st.ctimeMs].join(':'); }
 function directory(st: Stats): string {
@@ -34,12 +58,20 @@ export function legacyPath(raw: unknown, root: string): string {
   const base = path.resolve(root);
   const full = path.resolve(base, ...parts);
   if (!full.startsWith(base + path.sep)) throw documentError(404, 'DOCUMENT_NOT_FOUND');
+  // Object identity also catches filesystem case-fold aliases without excluding ordinary Unicode names.
+  let reserved: Stats | undefined;
+  try { reserved = fs.lstatSync(path.join(base, PRIVATE_SUBTREE)); } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw documentError();
+  }
   // Reject existing symlink components, including a symlink to a private object under a public name.
   let current = base;
   for (const part of ['', ...parts]) {
     if (part) current = path.join(current, part);
     try {
-      if (fs.lstatSync(current).isSymbolicLink()) throw documentError(404, 'DOCUMENT_NOT_FOUND');
+      const observed = fs.lstatSync(current);
+      if (observed.isSymbolicLink() || (reserved !== undefined && observed.dev === reserved.dev && observed.ino === reserved.ino)) {
+        throw documentError(404, 'DOCUMENT_NOT_FOUND');
+      }
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') break;
       throw error;
@@ -149,8 +181,7 @@ export class FileDocumentStorage {
     let pending = Promise.resolve(); let captured: CapturedObject | undefined;
     let rejectParsing: ((error: Error) => void) | undefined;
     const cancel = (error?: unknown) => {
-      lease.failure ??= error instanceof Error && error.name === 'AppError' ? error :
-        (error as { httpCode?: number } | undefined)?.httpCode === 413 ? documentError(413, 'DOCUMENT_TOO_LARGE') : documentError();
+      lease.failure ??= captureError(error);
       rejectParsing?.(lease.failure);
     };
     const timeout = setTimeout(() => { cancel(); req.destroy(); }, 30000);
@@ -247,9 +278,7 @@ export class FileDocumentStorage {
         check(); captured = Object.freeze(object);
       } finally { await reader.close(); }
     } catch (error) {
-      if ((error as { name?: string }).name === 'AppError') throw error;
-      const status = (error as { httpCode?: number }).httpCode;
-      throw status === 413 ? documentError(413, 'DOCUMENT_TOO_LARGE') : documentError();
+      throw captureError(error);
     } finally {
       try {
         writer?.destroy(); await pending.catch(() => undefined);

@@ -1,0 +1,74 @@
+diff --git a/src1/modules/file/controller/index.ts b/src1/modules/file/controller/index.ts
+index 9c1286dfed7eab8324707774ef475be827b79507..702fd84dc7b5b137f49b409bdcbd74a40febc846 100644
+--- a/src1/modules/file/controller/index.ts
++++ b/src1/modules/file/controller/index.ts
+@@ -13 +13 @@ import { legacyPath } from '../storage';
+-import { documentError } from '../validation';
++import { actor, documentError, input } from '../validation';
+@@ -66,0 +67,2 @@ export class FileController {
++      actor(req.user);
++      input(req.params.resourceKind === 'booking' || req.params.resourceKind === 'external_booking');
+@@ -93 +94,0 @@ export class FileController {
+-    applyPrivateDocumentHeaders(res);
+@@ -98 +99,6 @@ export class FileController {
+-    const files = await this.fileService.uploadFiles(req, module, recordId);
++    const files = await this.fileService.uploadFiles(req, module, recordId).catch(error => {
++      if (error instanceof AppError && typeof error.code === 'string' && error.code.startsWith('DOCUMENT_')) {
++        applyPrivateDocumentHeaders(res);
++      }
++      throw error;
++    });
+diff --git a/src1/modules/file/storage.ts b/src1/modules/file/storage.ts
+index 9c5ee3aec4a35b2d24e411c9a494df98afd0a8d2..0937f98ce1a433a059a224d081d4fdffb2afab0a 100644
+--- a/src1/modules/file/storage.ts
++++ b/src1/modules/file/storage.ts
+@@ -8 +8 @@ import { performance } from 'perf_hooks';
+-import formidable from 'formidable';
++import formidable, { errors as formidableErrors } from 'formidable';
+@@ -10,0 +11 @@ import { CONFIG } from '@/config/config';
++import { AppError } from '@/modules/common/types';
+@@ -13,0 +15,23 @@ import { documentError, input, media } from './validation';
++/** Preserve domain errors and classify only pinned native input/file-byte codes. */
++function captureError(error: unknown): AppError {
++  if (error instanceof AppError) return error;
++  const code = error instanceof Error ? Object.getOwnPropertyDescriptor(error, 'code')?.value : undefined;
++  switch (code) {
++    case formidableErrors.malformedMultipart:
++    case formidableErrors.missingMultipartBoundary:
++    case formidableErrors.missingContentType:
++    case formidableErrors.noEmptyFiles:
++    case formidableErrors.smallerThanMinFileSize:
++    case formidableErrors.unknownTransferEncoding:
++    case formidableErrors.maxFilesExceeded:
++    case formidableErrors.maxFieldsExceeded:
++    case formidableErrors.maxFieldsSizeExceeded:
++      return documentError(400, 'DOCUMENT_INPUT_INVALID');
++    case formidableErrors.biggerThanMaxFileSize:
++    case formidableErrors.biggerThanTotalMaxFileSize:
++      return documentError(413, 'DOCUMENT_TOO_LARGE');
++    default:
++      return documentError();
++  }
++}
++
+@@ -36,0 +61,5 @@ export function legacyPath(raw: unknown, root: string): string {
++  // Object identity also catches filesystem case-fold aliases without excluding ordinary Unicode names.
++  let reserved: Stats | undefined;
++  try { reserved = fs.lstatSync(path.join(base, PRIVATE_SUBTREE)); } catch (error) {
++    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw documentError();
++  }
+@@ -42 +71,4 @@ export function legacyPath(raw: unknown, root: string): string {
+-      if (fs.lstatSync(current).isSymbolicLink()) throw documentError(404, 'DOCUMENT_NOT_FOUND');
++      const observed = fs.lstatSync(current);
++      if (observed.isSymbolicLink() || (reserved !== undefined && observed.dev === reserved.dev && observed.ino === reserved.ino)) {
++        throw documentError(404, 'DOCUMENT_NOT_FOUND');
++      }
+@@ -152,2 +184 @@ export class FileDocumentStorage {
+-      lease.failure ??= error instanceof Error && error.name === 'AppError' ? error :
+-        (error as { httpCode?: number } | undefined)?.httpCode === 413 ? documentError(413, 'DOCUMENT_TOO_LARGE') : documentError();
++      lease.failure ??= captureError(error);
+@@ -250,3 +281 @@ export class FileDocumentStorage {
+-      if ((error as { name?: string }).name === 'AppError') throw error;
+-      const status = (error as { httpCode?: number }).httpCode;
+-      throw status === 413 ? documentError(413, 'DOCUMENT_TOO_LARGE') : documentError();
++      throw captureError(error);
