@@ -1,0 +1,23 @@
+{
+  "schema": "SD-LAB-LOG-ROOT-AUTHORIZATION-1",
+  "recordedBy": "/root/customer_booking_writer",
+  "authorizingAgent": "/root",
+  "provenance": "ACTUAL_NATIVE_NEW_TASK_MESSAGE",
+  "actualMessage": "Authorize FOUR-property log omission now in NEW isolated worktree /Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/lab-booking-log-minimization, branch m0/lab-booking-log-minimization, base3f8de1a11a7856b30663ea3879fc0785a5ececba. Exact draft177ae43228ea4e75457f7e3d3eeb2d41a14139973d30eef618dd6eafc2b2529a and controller3a45d969. Both independent Spec/Standards APPROVE_IMPLEMENTATION_ONLY are recorded in QA/lab-booking-log-minimization/PREIMPLEMENTATION.json; they confirm existing design supports these omissions without a new privacy-policy decision. Own only externalBookings/controller/index.ts and a SMALL QA record set. Delete frontendPayload:req.body and normalizedPayload:data in both events; preserve all other bytes, messages, metadata, guards and behavior. Do not create bespoke tests/mutants that merely mirror four deletions, or full duplicate controller archives: Git at this base already preserves baseline. Exact diff/inverse, 19 pins, one-file Git scope and compact source freeze are sufficient source evidence; runtime confidentiality remains NOT_RUN. Record actual Root authorization and limits; no application/TS/Node/runtime/log access/deletion, DB/provider/network/model or Git mutation. Stop for two fresh nonauthor source reviews; no global logs-safe/TCOPS007/module/release claim. You are not alone; do not edit focus/other branches, original staged changes or handover archive.",
+  "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/lab-booking-log-minimization",
+  "branch": "m0/lab-booking-log-minimization",
+  "base": "3f8de1a11a7856b30663ea3879fc0785a5ececba",
+  "contractSha256": "177ae43228ea4e75457f7e3d3eeb2d41a14139973d30eef618dd6eafc2b2529a",
+  "preimplementationSha256": "9b0c5a182d8c907a7f384a8e035e2b3a0fbfa9e906269c1646ca5ef50b7c7e2d",
+  "sourceDataEvidence": {
+    "baselineSha256": "3a45d9694b50da0e1cebf90ffd94e8b2921130c784530bde844d49e16b4418b3",
+    "candidateSha256": "6f2fca9b92a680d7612207c6b1d572f7551a1a6780684198f8997fc5f816ea8d",
+    "contractPinsVerifiedBeforeEdit": 19,
+    "deletedProperties": 4,
+    "exactInverseBaselineSha256": "3a45d9694b50da0e1cebf90ffd94e8b2921130c784530bde844d49e16b4418b3",
+    "allOtherControllerBytesPreserved": true
+  },
+  "runtimeConfidentiality": "NOT_RUN",
+  "privacyPolicyOrTCOPS007ModuleReleaseAcceptance": false,
+  "protectedScope": "Only this isolated controller and compact QA; no focus/other-branch/original/staged/archive writes; Root handles Git."
+}

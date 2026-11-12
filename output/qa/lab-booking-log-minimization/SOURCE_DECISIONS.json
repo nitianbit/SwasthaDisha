@@ -1,0 +1,23 @@
+{
+  "schema": "SD-LAB-LOG-SOURCE-DECISIONS-1",
+  "candidateSha256": "6f2fca9b92a680d7612207c6b1d572f7551a1a6780684198f8997fc5f816ea8d",
+  "contractSha256": "177ae43228ea4e75457f7e3d3eeb2d41a14139973d30eef618dd6eafc2b2529a",
+  "freezeSha256": "0cb506a4fe46da3d9a8f10a3c0605830079a8945e3bbc4687d3b13f6cfd1defd",
+  "reviewers": [
+    {
+      "agent": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY"
+    },
+    {
+      "agent": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY"
+    }
+  ],
+  "basis": "ExactGitbaseline/inverseproveonlyfourpropertydeletions; calls/messages/retainedmetadata/guards/DTO/servicebytesunchanged; all18otherpinsmatch. No bespoke mirroring tests required.",
+  "runtimeConfidentiality": "NOT_RUN",
+  "remainingPrivacyScope": "Identifiers/purpose/retention, downstream/error/providerlogs, historicalexposure and protectedaudit remain separate.",
+  "globalLogsSafeOrTCOPS007ModuleReleaseAcceptance": false,
+  "newClaudeReview": "PENDING"
+}

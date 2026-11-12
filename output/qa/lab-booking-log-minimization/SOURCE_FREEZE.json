@@ -1,0 +1,76 @@
+{
+  "schema": "SD-LAB-LOG-SOURCE-FREEZE-1",
+  "author": "/root/customer_booking_writer",
+  "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/lab-booking-log-minimization",
+  "branch": "m0/lab-booking-log-minimization",
+  "base": "3f8de1a11a7856b30663ea3879fc0785a5ececba",
+  "path": "src1/modules/externalBookings/controller/index.ts",
+  "baselineSha256": "3a45d9694b50da0e1cebf90ffd94e8b2921130c784530bde844d49e16b4418b3",
+  "candidateSha256": "6f2fca9b92a680d7612207c6b1d572f7551a1a6780684198f8997fc5f816ea8d",
+  "contractSha256": "177ae43228ea4e75457f7e3d3eeb2d41a14139973d30eef618dd6eafc2b2529a",
+  "diffSha256": "7532f60c1c5d9f0e1ee5baf5f984fa681fe67e7312065665d30880742b1e2eee",
+  "rootAuthorizationSha256": "525705f71d6c0014479095b4f78b25ee0ec14f94be6c7824ce4dc3df8302348b",
+  "preimplementationSha256": "9b0c5a182d8c907a7f384a8e035e2b3a0fbfa9e906269c1646ca5ef50b7c7e2d",
+  "baselinePins": {
+    "src1/modules/externalBookings/controller/index.ts": "3a45d9694b50da0e1cebf90ffd94e8b2921130c784530bde844d49e16b4418b3",
+    "src1/modules/externalBookings/services/index.ts": "4a13a02cca31c0d4833937643e362b78096f4135933a59ed3372577635a24f83",
+    "src1/modules/externalBookings/routes/index.ts": "c85d540083d25d7c00bf1fc969e20bccbea09b33d915fb9cac9b19e73ae67b06",
+    "src1/modules/externalBookings/validation/index.ts": "49c3aa3449e61655d9a34b6a201de9874e83003df8737b5aa5dfdab09bd6dcc6",
+    "src1/modules/externalBookings/types/index.ts": "a9306564c5ce3572d15eaaa589831df12db483ce56a181af2a3c484f2d3656cf",
+    "src1/services/logger/index.ts": "21bffce52030c060eef9dab156ced8225686001d2f6cd7d6655177b69025ac35",
+    "src1/modules/common/utils/asyncHandler.ts": "59fe49db58678ef81242a654f7457f74b067b2583a3f8dc70918b61f50228bd9",
+    "src1/modules/middleware/errorHandler.ts": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51",
+    "src1/modules/common/middleware/validation.ts": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef",
+    "src1/modules/middleware/auth.ts": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+    "src1/routes/index.ts": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056",
+    "src1/modules/dependents/services/index.ts": "adc2f3cf156bfa807bf125904ecd83c8f84dee38a072c7b78d1e90c8822cc044",
+    "src1/modules/bookings/services/labstack/index.ts": "2d9a55e9692d15a0a15253754d1234738bbe24b41adc1762a6727350f41f379a",
+    "src1/modules/bookings/services/healthians/index.ts": "ee685f9ec37185a0bfcf5ce1f21614734b9ece8d55f982cf893922c9765bd8da",
+    "src1/modules/externalBookings/services/externalBookingPaymentFinalize.ts": "1480f9885624363e842c4b3b38ad0e136756bd1a39e81b75138c972222a1416a",
+    "documentation/planning/implementation/LAB_DEPENDENT_OWNERSHIP_CONTRACT_DRAFT.md": "8bfccbdd4baaf64a59e0c2d6a6d019b03cba38c18aa7d23a4845ba9ad3aa3d97",
+    "documentation/planning/SYSTEM_DESIGN.md": "cbd899f6fb442b13db28c389143b529b90da364165dc17291cc829814810bc84",
+    "documentation/planning/qa/TEST_SCENARIOS.md": "bd8c6e8952a8c1cc2f2c2063a4d7a79000dc5566b966a6650d49d60ff841f09e",
+    "output/qa/customer-pharmacy-lab-claude-review/operator/CLAUDE_REVIEW_4.md": "4f75b41dd0342d91259764b678f488b4001e1127c29da1a699d2f086b8fd0170"
+  },
+  "sourceDataChecks": {
+    "exactFourPropertyDeletions": true,
+    "inverseReconstructedBaselineSha256": "3a45d9694b50da0e1cebf90ffd94e8b2921130c784530bde844d49e16b4418b3",
+    "allOtherControllerBytesPreserved": true,
+    "sharedPinsUnchanged": 18
+  },
+  "observedGitChecks": [
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--name-only",
+        "HEAD"
+      ],
+      "exitCode": 0,
+      "stdout": "src1/modules/externalBookings/controller/index.ts\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "src1/modules/externalBookings/controller/index.ts"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "noDuplicateControllerArchivesOrBespokeTests": true,
+  "typeValidity": "NOT_RUN",
+  "runtimeConfidentiality": "NOT_RUN",
+  "remainingLimits": [
+    "Retained identifiers, purpose, sink access/retention and protected audit policy remain separate privacy work.",
+    "Downstream/provider/error logs and historical exposure/handling are unchanged and not certified.",
+    "No global logs-safe, TC-OPS-007, module, M0, deployment or release acceptance.",
+    "No app/log access or deletion, Node/TS/runtime/DB/provider/network/model or Git mutation; no other worktree writes."
+  ],
+  "writesStoppedForTwoFreshIndependentSourceReviews": true
+}
