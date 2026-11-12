@@ -1,0 +1,11 @@
+# Enrollment verification amendment — source only
+
+Author: internal Codex `/root/milestone_composition_r9`. Initial5f3fb2f source/patch/proposal remain unchanged in their original QA paths and Git. Actual Root Standards REQUEST_CHANGES and original customer Spec/lock-only decisions are preserved at1f8e4e888e12992e5bed962dcc9cdb1868a837dd / ../INITIAL_REVIEW_DECISIONS.json. A source finding, rather than absent runtime evidence, required this amendment. The author has no vote.
+
+The shared real-JWT verifier previously compared token subject/role only with the same returned service payload. A service defect changing both could pass that comparison. It now independently requires fixture S.id and an explicit intended role from each call: literal user for normal customer/current-row/OLD cases; fixed vector role for staff. Existing actual signature verification, 30-day lifetime and every returned identity/contact-field comparison remain. No source mutation/control result is claimed from this static correction.
+
+The existing repository factory now exposes only User lookup/save/update, admin/HR lookup, specialist lookup/save and pharmacy phone/email lookup/save. Unplanned methods reach the existing latched rejection instead of finding a generic extra recorder. No new fixture abstraction or runtime dependency.
+
+Only scenario.mjs changes. The other ten harness source files, exact82vectors,82fresh-restored IDs, OLD+NC1–NC4, actual6TS inputs, four runtime roots, resource/admission/receipt bounds and public lock-resolution proposal are byte-preserved. The full source patch and separate one-file amendment are frozen here. Two fresh actual nonauthor source decisions and an exact current-candidate lock-only decision are required before dependent preparation. The old proposal path/command remain; the actual private receipt must bind the amended current commit and hashes. No receipt/nonce/artifact/approval is created here.
+
+ALL executable Node/compiler/npm/loader/Joi/JWT/service/control/fake/container/DB/HTTP/provider checks remain NOT_RUN. Read-only source/hash/finite-ID/Git-whitespace checks only. Original staged six/archive preserved; no production change or root runtime adoption. This is not full contact, module, clinical/owner/release acceptance.

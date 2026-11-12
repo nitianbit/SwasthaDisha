@@ -66,8 +66,9 @@ function phaseLoader(phase) {
   jwt.sign = (...args) => { currentCounters.signs++; return sign(...args); };
   const Service = load('src1/modules/auth/services/index.ts').AuthService;
   const validation = load('src1/modules/auth/validation/index.ts');
-  function verifyToken(token, expected) {
+  function verifyToken(token, expected, intendedRole) {
     const claims = jwt.verify(token, privateSecret);
+    check(claims._id === S.id && claims.userType === intendedRole, 'token-trusted-fixture-identity');
     check(claims._id === expected._id && claims.userType === expected.userType && claims.exp - claims.iat === 30 * 24 * 3600, 'token-identity-lifetime');
     for (const key of ['phone', 'email', 'corporateId', 'specialistId', 'pharmacyId']) check(claims[key] === expected[key], 'token-field:' + key);
   }
@@ -83,13 +84,21 @@ function fixture(loader, options = {}) {
     if (Object.hasOwn(target, key)) return target[key];
     unexpected = true; throw new Error('UNEXPECTED_PORT');
   } }); }
-  const repository = name => port(name, {
+  const repository = name => {
+    const methods = {
     async findByPhoneOrEmail(...args) { return record(name + '.lookup', args, row); },
     async findByPhone(...args) { return record(name + '.lookupPhone', args, row); },
     async findByEmail(...args) { return record(name + '.lookupEmail', args, row); },
     async save(data) { record(name + '.save', [data]); row = { ...copy(data), _id: S.id, ...(name === 'user' ? { userType: 'user' } : {}) }; return row; },
     async update(...args) { return record(name + '.update', args, row); },
-  });
+    };
+    const allowed = {
+      user: ['findByPhoneOrEmail', 'save', 'update'],
+      admin: ['findByPhoneOrEmail'], hr: ['findByPhoneOrEmail'],
+      specialist: ['findByPhoneOrEmail', 'save'], pharmacy: ['findByPhone', 'findByEmail', 'save'],
+    };
+    return port(name, Object.fromEntries(allowed[name].map(key => [key, methods[key]])));
+  };
   const repositories = ['user', 'admin', 'hr', 'specialist', 'pharmacy'].map(repository);
   const corporate = port('corporate', {});
   const otp = port('otp', {
@@ -154,13 +163,13 @@ async function positive(loader, v) {
   assert.deepEqual(canonical(verifyCalls[1].args), canonical([{ userId: S.id, otp: code, target: field, targetValue: canonicalValue }]));
   assert.deepEqual(canonical(verifyCalls[2].args), canonical([{ _id: S.id }, { otpVerified: true, isVerified: true }]));
   check(verifyCalls[3].args[0] === S.id && verifyCalls[4].args[0] === S.id && f.counters.signs === 1, 'customer-post-proof-effects');
-  loader.verifyToken(verified.result.accessToken, verified.result.userData); check(verified.result.userData[field] === canonicalValue, 'returned-contact'); f.assertPlanned(); return f;
+  loader.verifyToken(verified.result.accessToken, verified.result.userData, 'user'); check(verified.result.userData[field] === canonicalValue, 'returned-contact'); f.assertPlanned(); return f;
 }
 async function current(loader, v) {
   const f = fixture(loader, { row: rowFor('user', { [v.field]: v.absent ? undefined : v.field === 'phone' ? S.otherPhone : ' Changed@Example.COM ' }) });
   const out = await invoke(f, 'verify', { ...request(v.field), otp: S.otp });
   if (v.absent) { check(out.error?.code === 'OTP_UNAVAILABLE', 'missing-current-contact'); exactly(f, ['user.lookup']); check(f.counters.signs === 0, 'missing-current-no-sign'); }
-  else { check(!out.error, 'current-row-success'); const call = f.calls.find(c => c.name === 'otp.verify'); check(call.args[0].targetValue === (v.field === 'phone' ? S.otherPhone : S.otherEmail), 'current-row-not-caller'); loader.verifyToken(out.result.accessToken, out.result.userData); }
+  else { check(!out.error, 'current-row-success'); const call = f.calls.find(c => c.name === 'otp.verify'); check(call.args[0].targetValue === (v.field === 'phone' ? S.otherPhone : S.otherEmail), 'current-row-not-caller'); loader.verifyToken(out.result.accessToken, out.result.userData, 'user'); }
   f.assertPlanned();
 }
 async function failure(loader, v) {
@@ -175,7 +184,7 @@ async function staffTrace(loader, v) {
     const f = fixture(loader, { row: v.state === 'missing' ? null : rowFor(v.role, { isActive: v.state !== 'inactive' }) });
     const data = { userType: v.role, ...(v.shape !== 'email' ? { phone: S.phone } : {}), ...(v.shape !== 'phone' ? { email: S.email } : {}), ...(method === 'verify' ? { otp: S.otp } : {}) };
     const out = await invoke(f, method, data);
-    if (out.result?.accessToken) loader.verifyToken(out.result.accessToken, out.result.userData);
+    if (out.result?.accessToken) loader.verifyToken(out.result.accessToken, out.result.userData, v.role);
     if (v.state === 'active') check(!out.error, 'staff-positive');
     if (v.state === 'inactive') check(out.error?.code === v.role.toUpperCase() + '_INACTIVE' && f.counters.signs === 0, 'staff-inactive');
     if (v.state === 'missing') check(method === 'verify' ? out.error?.code === 'USER_NOT_FOUND' : ['specialist', 'pharmacy'].includes(v.role) ? !out.error && names(f).includes(v.role + '.save') : out.error?.code === v.role.toUpperCase() + '_NOT_FOUND', 'staff-missing-signup');
@@ -229,7 +238,7 @@ export async function runEnrollmentScenario() {
   const send = await invoke(counterfactual, 'send', dual); check(!send.error && counterfactual.row.phone === S.phone && counterfactual.row.email === S.email, 'old-two-valued-save');
   check(counterfactual.generated.target === 'phone' && counterfactual.generated.targetValue === S.phone, 'old-one-destination');
   const verified = await invoke(counterfactual, 'verify', { userType: 'user', phone: S.phone, otp: counterfactual.generated.otp });
-  check(!verified.error && verified.result.userData.email === S.email, 'old-unproved-alias-claims'); old.verifyToken(verified.result.accessToken, verified.result.userData); counterfactual.assertPlanned();
+  check(!verified.error && verified.result.userData.email === S.email, 'old-unproved-alias-claims'); old.verifyToken(verified.result.accessToken, verified.result.userData, 'user'); counterfactual.assertPlanned();
   const restoredLoader = phaseLoader('nominal'); const restoredCaseIds = [];
   for (const vector of plan.vectors) {
     try { await caseRun(restoredLoader, vector, old); } catch { throw new Error('ENROLLMENT_CASE_FAILED:' + vector.id + '.restored'); }
