@@ -1,0 +1,22 @@
+{
+  "candidateCommit": "b14b99feec0a5ed2a18dce746c10eea4505f8d7f",
+  "author": "/root/pharmacy_refund_primitives",
+  "sourceFreezeSha256": "f65774409d65f9b066a0ef573e1135762b509342131a55d887b9279e924f6c9b",
+  "patchSha256": "d0d27b3e510aa760425842e1ef523b7670126b2e6835f9ce43f41102688e3c2a",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/pharmacist_identity_fields",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    }
+  ],
+  "actualReview": "Both nonauthors inspected complete6fileactualdiff. Signedcustomer/scalarowner query, closedembeddedrecord/digests/7fieldDTO, sameclient/heldactive-snapshot session, absentmarkerCAS/replay and captured-resetDTO plus normalwithTxnreturn ANDsameCOMMITTEDstate conform. GETnull isnotmalformed-record success. No newcancel/stock/refund/provider/clinical effects or edits toexistingwriters.11freeze/15unchangedpins and exactinverse match;4declareddatahashes+274B witness verified.",
+  "limits": "Source/data-only, actualcompiler/types/HTTP/driver/DB/commit/retry/race/effect NOT_RUN. Qualifiedreconciliation/operator visibility/funding/custody/F1remainopen; no financial/module/release approval. Integrationdeferred untilactiveR7capture stops tokeepits70liveinputsunchanged."
+}
