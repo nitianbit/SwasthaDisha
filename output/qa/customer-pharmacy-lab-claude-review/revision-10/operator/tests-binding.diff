@@ -1,0 +1,8 @@
+--- revision-9/operator/test_supervisor.py
++++ revision-10/operator/test_supervisor.py
+@@ -386 +386 @@
+-    def test_old_live_receipt_does_not_admit_revision_nine(self):
++    def test_old_live_receipt_does_not_admit_revision_ten(self):
+@@ -388 +388 @@
+-            (Path(directory)/'LIVE_APPROVAL_8.json').write_text('{}')
++            (Path(directory)/'LIVE_APPROVAL_9.json').write_text('{}')

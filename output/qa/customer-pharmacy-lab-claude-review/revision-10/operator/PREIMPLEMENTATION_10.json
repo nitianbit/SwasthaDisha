@@ -1,0 +1,21 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-OPERATOR-PREPARATION-10",
+  "planSha256": "4f3be7043b492f0563e1a2d39429422128e2da27457c03f048739f7eb21c2482",
+  "preparedFreezeSha256": "a163cfb4e5c0a8d1946f9d29b38acfa07003a65099e426481e9ce0e406df723e",
+  "rootAction": "AUTHORIZE_COMPACT_SUPERVISOR_AND_OFFLINE_FAKE_CHECKS_ONLY",
+  "scope": "Legacy validator enum retained; actual PREPARATION_ONLY_NO_FAKE_RERUN_NO_LIVE under explicit owner xhigh correction.",
+  "rootAuthorizationProvenance": "Actual Root task names exact plan4f3be7043b492f0563e1a2d39429422128e2da27457c03f048739f7eb21c2482 and authorizes preparation only, no invented peer votes.",
+  "leadPlanAuthor": "/root",
+  "bindingImplementationAuthor": "/root/milestone_composition_r9",
+  "ineligibleLiveReviewers": [
+    "/root",
+    "/root/milestone_composition_r9"
+  ],
+  "decisions": [],
+  "preparationPeerVotes": "NONE_CLAIMED_ROOT_EXPLICIT_PREPARATION_AUTHORITY",
+  "functionalChanges": false,
+  "requestedEffortBindingChanged": "max_to_xhigh_owner_explicit_correction",
+  "finalSourceExactInvocationReviews": "PENDING_TWO_ACTUAL_NONAUTHOR_DECISIONS",
+  "liveInvocationApproved": false,
+  "modelRequests": 0
+}

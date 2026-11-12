@@ -1,0 +1,59 @@
+{
+  "schema": "SD-CLAUDE-BINDING-DELTA-10",
+  "baselineSupervisorSha256": "7e51c2141f53ba91076566edc5f90d29006336994403a37d17bd8569a82631af",
+  "baselineTestsSha256": "d292f84fe04022b3fdb8f55a7d384707f92eb1f6c9c07a38327d314778cc8b61",
+  "finalSupervisorSha256": "451f75b0b2bf83dff7a54248119e27a7620e802243bd73d7e448158790883807",
+  "finalTestsSha256": "a39de369b9392942db1f6c20fe0077e2cfe86d884e4b5109ce5f5b3bfd2361da",
+  "sourceReplacements": [
+    {
+      "old": "revision-9",
+      "new": "revision-10"
+    },
+    {
+      "old": "b63b2d94f31022b219d8aa410f077ee022598af279d7788265e3ec42a8b1b838",
+      "new": "a163cfb4e5c0a8d1946f9d29b38acfa07003a65099e426481e9ce0e406df723e"
+    },
+    {
+      "old": "84346d6ea87176b020d5a9626b39414dc2aa4521de7094106129527e4a7406d8",
+      "new": "4f3be7043b492f0563e1a2d39429422128e2da27457c03f048739f7eb21c2482"
+    },
+    {
+      "old": "PREIMPLEMENTATION_9",
+      "new": "PREIMPLEMENTATION_10"
+    },
+    {
+      "old": "LIVE_APPROVAL_9",
+      "new": "LIVE_APPROVAL_10"
+    },
+    {
+      "old": "SD-CURRENT-CLAUDE-LIVE-APPROVAL-9",
+      "new": "SD-CURRENT-CLAUDE-LIVE-APPROVAL-10"
+    },
+    {
+      "old": "'max'",
+      "new": "'xhigh'"
+    }
+  ],
+  "testReplacements": [
+    {
+      "old": "test_old_live_receipt_does_not_admit_revision_nine",
+      "new": "test_old_live_receipt_does_not_admit_revision_ten"
+    },
+    {
+      "old": "'LIVE_APPROVAL_8.json'",
+      "new": "'LIVE_APPROVAL_9.json'"
+    }
+  ],
+  "exactReverseSupervisorRecovery": true,
+  "exactReverseTestsRecovery": true,
+  "functionalChanges": false,
+  "requestedEffortBindingChanged": "max_to_xhigh_two_literals_owner_correction",
+  "environmentValidationAndAllSevenValuesUnchanged": true,
+  "runtimeMcpCapsTimeoutsUnchanged": true,
+  "selected116SourceFilesUnchanged": true,
+  "fakeCampaign": "NOT_RUN_REUSE_EXISTING_47_FAKE_HISTORY_AND_ACTUAL_PRIOR_SOURCE_REVIEWS",
+  "R9InterruptedCaptureAccepted": false,
+  "modelCalls": 0,
+  "authCalls": 0,
+  "ASTParse": "PASS_SOURCE_ONLY_NO_MODULE_EXECUTION"
+}
