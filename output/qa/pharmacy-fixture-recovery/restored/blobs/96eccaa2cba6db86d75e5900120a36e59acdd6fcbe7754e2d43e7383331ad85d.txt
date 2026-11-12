@@ -1,0 +1,536 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { PROFILE, createInventoryQualityFixture, sha256, assertPathAbsent, decodeDockerResult, fixtureFailureCodes, validateInventoryPlan } from './platform.mjs';
+import { evaluateNetworkAdmission } from '../application/app-bundle.mjs';
+import ports from './scenario/ports-manifest.json' with { type: 'json' };
+
+const CASES = [...ports.requiredCaseIds];
+const SENSITIVITY = [...ports.requiredSensitivityIds];
+const PROVIDERS = ['email', 'sms', 'push', 'logger', 'payments', 'calendar', 'storage', 'queue', 'deniedCapabilities', 'unexpected'];
+const CASES_SHA = '807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4';
+const CASE_BYTES = readFileSync(new URL('./scenario/cases.json', import.meta.url));
+const PORTS_SHA = '12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a';
+const PORT_BYTES = readFileSync(new URL('./scenario/ports-manifest.json', import.meta.url));
+// Fake metadata is structural only; it never claims emitted files or models.
+const fixedPlan = () => ({ schema: 'SD-INVENTORY-QUALITY-PLAN-1', role: PROFILE.role,
+  sourceCommit: 'b'.repeat(40), sourceFiles: {}, modules: [], mutants: [], models: [], modelDeclarations: [],
+  modelMapAudit: { status: 'PURE_FAKE', reachableModules: 5, modelCount: 3, controls: [], applicationEvaluations: 0 },
+  packageVersions: {}, lockSha: sha256('{}'), portsSha: PORTS_SHA,
+  providerCounterScope: 'PURE_FAKE_NO_DELIVERY',
+  compilation: { status: 'PURE_FAKE', compiler: 'PURE_FAKE', diagnostics: [], semanticDiagnostics: [],
+    semanticScope: 'PURE_FAKE', fullBuild: false, libraryAdmission: {} },
+  casesSha: CASES_SHA, requiredCaseIds: [...CASES], requiredSensitivityIds: [...SENSITIVITY],
+  requiredGroupMethodCounts: { ...ports.requiredGroupMethodCounts }, nominalMethodCalls: 139,
+  unsafeMethodCalls: 8, restorationMethodCalls: 16, providerCounterKeys: [...PROVIDERS] });
+const fixedCodes = ['RUNTIME_FIXTURE_FAILED', 'INVENTORY_FULL_STATE'];
+const codeDeclaration = (codes = fixedCodes) => 'const FAILURE_CODES = Object.freeze(' + JSON.stringify(codes) + ');';
+const net = evaluateNetworkAdmission({ tag: 'APP-NET-DIAG-1',
+  entries: [{ name: 'lo', kind: 'symlink', flags: '0x9', type: '772', operstate: 'unknown' }],
+  addressedInterfaces: [{ name: 'lo', addresses: [{ address: '127.0.0.1', family: 'IPv4', internal: true }] }] });
+const template = () => ({ templateSha: 'a'.repeat(64), meta: {
+  sourceCommit: 'b'.repeat(40), lockSha: sha256('{}'), portsSha: PORTS_SHA, casesSha: CASES_SHA,
+}, files: { 'bootstrap.cjs': Buffer.from('// synthetic bootstrap, never executed\n' + codeDeclaration()),
+  'runtime-plan.json': Buffer.from(JSON.stringify(fixedPlan())), 'cases.json': Buffer.from(CASE_BYTES),
+  'package-lock.json': Buffer.from('{}'), 'ports-manifest.json': Buffer.from(PORT_BYTES) } });
+
+function transport() {
+  const calls = []; const rows = new Map(); const receipts = [];
+  const state = { calls, rows, receipts, drift: null, resultMutation: null, failNodeCreate: false, beforeNode: null,
+    engineId: PROFILE.engineId, beforeInfo: null, afterMongoStart: null, afterNodeExit: null,
+    leaveRemoved: false, afterRemove: null, failAbsence: false, extraPurposeId: null, rawOutput: null, failAttach: false,
+    ordinaryProbeFailures: 0, terminalProbe: null };
+  const images = new Map([
+    [PROFILE.nodeImage, { Id: 'sha256:' + '1'.repeat(64), Os: 'linux', Architecture: 'arm64', RepoDigests: [PROFILE.nodeImage],
+      Config: { Env: ['PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'NODE_VERSION=22.23.4'] } }],
+    [PROFILE.mongoImage, { Id: 'sha256:' + '2'.repeat(64), Os: 'linux', Architecture: 'arm64', RepoDigests: [PROFILE.mongoImage],
+      Config: { Env: ['PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'MONGO_VERSION=8.0.34'], Volumes: { '/data/db': {}, '/data/configdb': {} } } }],
+  ]);
+  const executor = (args) => {
+    calls.push([...args]);
+    if (args[0] === 'info') { state.beforeInfo?.(); return JSON.stringify([state.engineId, 'linux']); }
+    if (args[0] === 'ps') {
+      const filter = args[args.indexOf('--filter') + 1];
+      if (filter.startsWith('id=')) {
+        if (state.failAbsence) throw Error('Synthetic unavailable absence proof');
+        const id = filter.slice(3); return rows.has(id) ? id : '';
+      }
+      assert.equal(filter, 'label=swasthadisha.test.purpose=inventory-quality-runtime');
+      return [...rows.keys(), ...(state.extraPurposeId ? [state.extraPurposeId] : [])].join('\n');
+    }
+    if (args[0] === 'image') return JSON.stringify([images.get(args[2])]);
+    if (args[0] === 'create') {
+      const imageAt = args.findIndex((v) => /^(node|mongo)@sha256:/.test(v));
+      const image = args[imageAt]; const kind = image.startsWith('node@') ? 'node' : 'mongo';
+      if (kind === 'node') { state.beforeNode?.(); if (state.failNodeCreate) throw Error('Synthetic unknown create'); }
+      const options = {}; const env = []; const labels = {}; const tmpfs = {}; let mount;
+      for (let i = 1; i < imageAt; i++) {
+        const key = args[i];
+        if (['--read-only', '--no-healthcheck'].includes(key) || key.startsWith('--pull=')) continue;
+        const value = args[++i];
+        if (key === '--env') env.push(value);
+        else if (key === '--label') { const n = value.indexOf('='); labels[value.slice(0, n)] = value.slice(n + 1); }
+        else if (key === '--tmpfs') { const n = value.indexOf(':'); tmpfs[value.slice(0, n)] = value.slice(n + 1); }
+        else if (key === '--mount') mount = Object.fromEntries(value.split(',').map((v) => { const n = v.indexOf('='); return n < 0 ? [v, true] : [v.slice(0, n), v.slice(n + 1)]; }));
+        else options[key] = value;
+      }
+      const id = createHash('sha256').update(options['--name']).digest('hex');
+      rows.set(id, { Id: id, Name: '/' + options['--name'], Image: images.get(image).Id,
+        Config: { Image: image, User: options['--user'], WorkingDir: options['--workdir'], Entrypoint: [options['--entrypoint']],
+          Cmd: args.slice(imageAt + 1), Env: env, Labels: labels, Healthcheck: { Test: ['NONE'] } },
+        HostConfig: { NetworkMode: options['--network'], PublishAllPorts: false, Privileged: false, ReadonlyRootfs: true,
+          PidMode: '', UTSMode: '', UsernsMode: '', IpcMode: 'private', CgroupnsMode: 'private', Runtime: 'runc',
+          GroupAdd: [], Sysctls: {}, CapAdd: [], Devices: [], DeviceRequests: [], Binds: [], VolumesFrom: [], Links: [], PortBindings: {},
+          Memory: Number(options['--memory']), NanoCpus: 1_000_000_000, PidsLimit: Number(options['--pids-limit']),
+          CapDrop: ['ALL'], SecurityOpt: ['no-new-privileges'], LogConfig: { Type: 'none' }, Tmpfs: tmpfs,
+          Mounts: mount ? [{ Type: 'bind', Source: mount.source, Target: mount.target, ReadOnly: true, BindOptions: { Propagation: 'rprivate' } }] : [] },
+        NetworkSettings: { Networks: kind === 'mongo' ? { none: {} } : {}, Ports: kind === 'mongo' ? { '27017/tcp': null } : {} },
+        Mounts: mount ? [{ Type: 'bind', Source: mount.source, Destination: mount.target, RW: false, Propagation: 'rprivate' }]
+          : Object.keys(tmpfs).map((Destination) => ({ Type: 'tmpfs', Destination })),
+        State: { Status: 'created', ExitCode: 0, OOMKilled: false } });
+      return id;
+    }
+    if (args[0] === 'inspect') {
+      const row = JSON.parse(JSON.stringify(rows.get(args[1])));
+      state.drift?.(row); return JSON.stringify([row]);
+    }
+    if (args[0] === 'exec') {
+      if (state.terminalProbe) return decodeDockerResult({ status: null, stdout: '',
+        ...(state.terminalProbe === 'TIMEOUT' ? { error: { code: 'ETIMEDOUT' } } : { signal: 'SIGTERM' }) }, args, new Set());
+      if (state.ordinaryProbeFailures > 0) {
+        state.ordinaryProbeFailures--;
+        return decodeDockerResult({ status: 1, stdout: 'synthetic not ready' }, args, new Set());
+      }
+      const row = rows.get(args[1]); const rs = row.Config.Cmd[row.Config.Cmd.indexOf('--replSet') + 1];
+      return args.at(-1).includes('db.hello') ? JSON.stringify({ isWritablePrimary: true, setName: rs }) : '';
+    }
+    if (args[0] === 'start') {
+      const row = rows.get(args.at(-1));
+      if (!args.includes('--attach')) { row.State.Status = 'running'; state.afterMongoStart?.(row); return args.at(-1); }
+      row.State.Status = 'exited';
+      if (state.failAttach) return decodeDockerResult({ status: 1, stdout: JSON.stringify({ schema: 'SD-INVENTORY-QUALITY-FAILURE-1',
+        stage: 'REPOSITORY_IMPORT', code: 'RUNTIME_FIXTURE_FAILED', caseId: null, variantId: null, phase: null, failed: 1, skipped: 0 }) }, args,
+      new Set(['RUNTIME_FIXTURE_FAILED']));
+      state.afterNodeExit?.([...rows.values()].find((r) => r.Config.Labels['swasthadisha.test.role'] === 'mongo'));
+      const bundle = row.HostConfig.Mounts[0].Source;
+      const admission = JSON.parse(readFileSync(join(bundle, '.admission.json')));
+      const result = { schema: 'SD-INVENTORY-QUALITY-RESULT-1', runId: admission.runId, role: PROFILE.role,
+        database: admission.database, replicaSet: admission.replicaSet, sourceCommit: admission.sourceCommit,
+        domainScope: 'DIRECT_INVENTORY_REPOSITORY_ONLY', admissionPassed: true, egressBlocked: true,
+        filesystemCanariesPassed: true, networkAdmission: net, failed: 0, skipped: 0,
+        cases: CASES.map((id) => ({ id, status: 'PASS' })),
+        sensitivity: SENSITIVITY.map((id) => ({ id, detected: true })), providerSummary: Object.fromEntries(PROVIDERS.map(key => [key, 0])) };
+      state.resultMutation?.(result); return state.rawOutput ?? JSON.stringify(result);
+    }
+    if (args[0] === 'rm') { if (!state.leaveRemoved) assert.equal(rows.delete(args.at(-1)), true); state.afterRemove?.(); return args.at(-1); }
+    throw Error('Unexpected synthetic transport operation');
+  };
+  return { state, executor, images, seams: { executor, template: template(), reportCreated: (receipt) => receipts.push(receipt) } };
+}
+
+function fixture(t, alter) {
+  const parent = mkdtempSync(join(process.env.TMPDIR || '/private/tmp', 'inventory-platform-unit-'));
+  const previous = process.env.TMPDIR; process.env.TMPDIR = parent;
+  t.after(() => { process.env.TMPDIR = previous; rmSync(parent, { recursive: true, force: true }); });
+  const fake = transport(); alter?.(fake);
+  const handle = createInventoryQualityFixture({ endpoint: PROFILE.endpoint }, fake.seams);
+  return { ...fake, handle, parent };
+}
+
+test('reject invalid request, operational configuration and incomplete fake seams before transport', () => {
+  const fake = transport();
+  for (const input of [{}, { endpoint: 'unix:///tmp/other.sock' }, { endpoint: PROFILE.endpoint, uri: 'mongodb://latest' }])
+    assert.throws(() => createInventoryQualityFixture(input, fake.seams), /fixed endpoint/);
+  for (const seams of [{ template: template() }, { executor: undefined, template: template() }, { executor: fake.executor }])
+    assert.throws(() => createInventoryQualityFixture({ endpoint: PROFILE.endpoint }, seams), /explicit fake executor/);
+  process.env.MONGODB_URL = 'mongodb://latest';
+  try { assert.throws(() => createInventoryQualityFixture({ endpoint: PROFILE.endpoint }, fake.seams), /configuration is forbidden/); }
+  finally { delete process.env.MONGODB_URL; }
+  assert.equal(fake.state.calls.length, 0);
+});
+
+test('construction and pre-resource disposal make no Docker calls', (t) => {
+  const f = fixture(t); const path = f.handle.directory;
+  assert.equal(f.state.calls.length, 0); f.handle.dispose(); f.handle.dispose();
+  assert.equal(f.state.calls.length, 0); assert.equal(existsSync(path), false);
+});
+
+test('positive two-resource lifecycle joins only owned Mongo namespace and removes Node first once', async (t) => {
+  const f = fixture(t); const result = await f.handle.run();
+  assert.equal(result.cases.length, 20); assert.equal(f.state.receipts.length, 2);
+  const [mongo, node] = f.state.receipts;
+  assert.equal(f.state.rows.get(node.id).HostConfig.NetworkMode, 'container:' + mongo.id);
+  assert.equal(f.state.rows.get(mongo.id).HostConfig.NetworkMode, 'none');
+  assert.equal(PROFILE.schema, 'SD-INVENTORY-QUALITY-PROFILE-1');
+  assert.equal(PROFILE.indexBuildMinAvailableDiskSpaceMB, 64);
+  assert.deepEqual(f.state.rows.get(mongo.id).Config.Cmd, ['--replSet', f.handle.replicaSet,
+    '--bind_ip', 'localhost', '--port', '27017', '--wiredTigerCacheSizeGB', '0.25',
+    '--setParameter', 'diagnosticDataCollectionEnabled=false',
+    '--setParameter', 'indexBuildMinAvailableDiskSpaceMB=64']);
+  await assert.rejects(f.handle.run(), /already attempted/);
+  const receipt = f.handle.dispose(); assert.equal(f.handle.dispose(), receipt);
+  assert.deepEqual(receipt.exactIdsAbsent, [mongo.id, node.id]); assert.equal(receipt.workspaceAbsent, true);
+  assert.equal(receipt.zeroPurposeLabels, true); assert.equal(receipt.engineId, PROFILE.engineId);
+  assert.deepEqual(f.state.calls.filter((a) => a[0] === 'rm').map((a) => a.at(-1)), [node.id, mongo.id]);
+  assert.equal(f.state.rows.size, 0); assert.equal(existsSync(f.handle.directory), false);
+});
+
+for (const [label, kind, mutate] of [
+  ['index-space-omitted', 'mongo', (r) => {
+    const at = r.Config.Cmd.indexOf('indexBuildMinAvailableDiskSpaceMB=64');
+    if (at > 0) r.Config.Cmd.splice(at - 1, 2);
+  }],
+  ['index-space-zero', 'mongo', (r) => { r.Config.Cmd = r.Config.Cmd.map(v => v === 'indexBuildMinAvailableDiskSpaceMB=64' ? 'indexBuildMinAvailableDiskSpaceMB=0' : v); }],
+  ['index-space-changed', 'mongo', (r) => { r.Config.Cmd = r.Config.Cmd.map(v => v === 'indexBuildMinAvailableDiskSpaceMB=64' ? 'indexBuildMinAvailableDiskSpaceMB=65' : v); }],
+  ['index-space-malformed', 'mongo', (r) => { r.Config.Cmd = r.Config.Cmd.map(v => v === 'indexBuildMinAvailableDiskSpaceMB=64' ? 'indexBuildMinAvailableDiskSpaceMB=64.0' : v); }],
+  ['index-space-extra', 'mongo', (r) => { r.Config.Cmd.push('--setParameter', 'syntheticUnapprovedParameter=1'); }],
+  ['index-space-duplicate', 'mongo', (r) => { r.Config.Cmd.push('--setParameter', 'indexBuildMinAvailableDiskSpaceMB=64'); }],
+  ['mongo-network', 'mongo', (r) => { r.HostConfig.NetworkMode = 'bridge'; }],
+  ['node-network', 'node', (r) => { r.HostConfig.NetworkMode = 'container:' + 'f'.repeat(64); }],
+  ['node-root', 'node', (r) => { r.Config.User = '0:0'; }],
+  ['mongo-image', 'mongo', (r) => { r.Image = 'sha256:' + 'f'.repeat(64); }],
+  ['command', 'node', (r) => { r.Config.Cmd = ['-e', 'unsafe']; }],
+  ['environment', 'node', (r) => { r.Config.Env.push('JWT_SECRET_KEY=unexpected'); }],
+  ['privileged', 'mongo', (r) => { r.HostConfig.Privileged = true; }],
+  ['host-namespace', 'node', (r) => { r.HostConfig.PidMode = 'host'; }],
+  ['runtime', 'node', (r) => { r.HostConfig.Runtime = 'unreviewed'; }],
+  ['group', 'node', (r) => { r.HostConfig.GroupAdd = ['0']; }],
+  ['sysctl', 'mongo', (r) => { r.HostConfig.Sysctls = { unsafe: '1' }; }],
+  ['capability', 'node', (r) => { r.HostConfig.CapAdd = ['NET_ADMIN']; }],
+  ['published-port', 'mongo', (r) => { r.HostConfig.PortBindings = { '27017/tcp': [{}] }; }],
+  ['memory', 'node', (r) => { r.HostConfig.Memory = 0; }],
+  ['writable-bind', 'node', (r) => { r.Mounts[0].RW = true; }],
+  ['mongo-host-mount', 'mongo', (r) => { r.HostConfig.Mounts.push({ Type: 'bind', Source: '/host' }); }],
+  ['tmpfs', 'node', (r) => { r.HostConfig.Tmpfs = {}; }],
+]) test('reject drift before affected start/cleanup: ' + label, async (t) => {
+  const f = fixture(t); f.state.drift = (row) => { if (row.Config.Labels['swasthadisha.test.role'] === kind) mutate(row); };
+  await assert.rejects(f.handle.run(), /changed/);
+  assert.equal(f.state.calls.some((a) => a[0] === 'start' && (kind === 'mongo' || a.includes('--attach'))), false);
+  assert.throws(() => f.handle.dispose(), /changed/);
+  assert.equal(f.state.calls.filter((a) => a[0] === 'rm').length, 0);
+});
+
+test('unknown Node create acknowledgement preserves known resources and withholds cleanup', async (t) => {
+  const f = fixture(t); f.state.failNodeCreate = true;
+  await assert.rejects(f.handle.run(), /Synthetic unknown create/);
+  assert.equal(f.handle.describe().uncertainCreate.kind, 'node');
+  assert.throws(() => f.handle.dispose(), /Create outcome unresolved/);
+  assert.equal(f.state.calls.filter((a) => a[0] === 'rm').length, 0);
+});
+
+for (const [label, mutate] of [
+  ['skip', (r) => { r.skipped = 1; }], ['failure', (r) => { r.failed = 1; }],
+  ['empty', (r) => { r.cases = []; }], ['duplicate', (r) => { r.cases[1] = r.cases[0]; }],
+  ['forged-network', (r) => { r.networkAdmission = { tag: 'APP-NET-ADMIT-1' }; }],
+  ['wrong-database', (r) => { r.database = 'latest'; }], ['wrong-source', (r) => { r.sourceCommit = 'f'.repeat(40); }],
+  ['raw-token', (r) => { r.token = 'synthetic-secret'; }], ['case-otp', (r) => { r.cases[0].otp = 'synthetic-secret'; }],
+]) test('reject false inventory evidence: ' + label, async (t) => {
+  const f = fixture(t); f.state.resultMutation = mutate;
+  await assert.rejects(f.handle.run(), /evidence mismatch/);
+  await assert.rejects(f.handle.run(), /already attempted/);
+  f.handle.dispose(); assert.equal(f.state.rows.size, 0);
+});
+
+test('unmanifested bundle source is rejected before any resource creation', async (t) => {
+  const f = fixture(t); writeFileSync(join(f.handle.directory, 'bundle', 'unexpected.cjs'), '// not admitted');
+  await assert.rejects(f.handle.run(), /Unmanifested/);
+  assert.equal(f.state.calls.length, 0); f.handle.dispose();
+});
+
+test('replaced workspace with copied marker grants no ownership', async (t) => {
+  const f = fixture(t); const path = f.handle.directory;
+  const marker = readFileSync(join(path, '.owner.json'));
+  renameSync(path, path + '-original'); mkdirSync(path); writeFileSync(join(path, '.owner.json'), marker);
+  await assert.rejects(f.handle.run(), /identity changed/);
+  assert.equal(f.state.calls.length, 0); assert.throws(() => f.handle.dispose(), /identity changed/);
+});
+
+test('missing mutation sensitivity cannot count as runtime acceptance', async (t) => {
+  const f = fixture(t); f.state.resultMutation = (r) => { r.sensitivity = []; };
+  await assert.rejects(f.handle.run(), /Sensitivity evidence mismatch/); f.handle.dispose();
+});
+
+test('raw or unexpected provider data cannot count as runtime acceptance', async (t) => {
+  const f = fixture(t); f.state.resultMutation = (r) => { r.providerSummary = { unexpected: 0, payload: 'not permitted' }; };
+  await assert.rejects(f.handle.run(), /provider evidence/); f.handle.dispose();
+});
+
+test('nested sensitivity payload is rejected with fixed safe error', async (t) => {
+  const f = fixture(t); f.state.resultMutation = (r) => { r.sensitivity[0].token = 'synthetic-secret'; };
+  await assert.rejects(f.handle.run(), { message: 'Sensitivity evidence mismatch' }); f.handle.dispose();
+});
+
+test('unknown numeric provider counters are rejected', async (t) => {
+  const f = fixture(t); f.state.resultMutation = (r) => { r.providerSummary.token123 = 1; };
+  await assert.rejects(f.handle.run(), /provider evidence/); f.handle.dispose();
+});
+
+test('invalid result JSON never echoes raw output', async (t) => {
+  const f = fixture(t); f.state.rawOutput = '{"token":"synthetic-secret" invalid';
+  await assert.rejects(f.handle.run(), { message: 'Invalid Inventory result JSON' }); f.handle.dispose();
+});
+
+for (const keys of [['unexpected', 'token123'], ['unexpected', 'unexpected'], [], ['logger']]) {
+  test('provider plan rejects unreviewed or incomplete keys: ' + JSON.stringify(keys), (t) => {
+    const fake = transport(); const plan = JSON.parse(fake.seams.template.files['runtime-plan.json']); plan.providerCounterKeys = keys;
+    fake.seams.template.files['runtime-plan.json'] = Buffer.from(JSON.stringify(plan));
+    assert.throws(() => createInventoryQualityFixture({ endpoint: PROFILE.endpoint }, fake.seams), /provider counter plan/);
+    assert.equal(fake.state.calls.length, 0);
+  });
+}
+
+for (const stage of ['afterMongoStart', 'afterNodeExit']) for (const failure of ['stopped', 'OOM']) {
+  test('Mongo liveness denial: ' + stage + '/' + failure, async (t) => {
+    const f = fixture(t); f.state[stage] = (row) => {
+      if (failure === 'stopped') row.State.Status = 'exited'; else row.State.OOMKilled = true;
+    };
+    await assert.rejects(f.handle.run(), /Mongo is not running without OOM/);
+    if (stage === 'afterMongoStart') assert.equal(f.state.calls.filter((a) => a[0] === 'create').length, 1);
+    // Cleanup needs ownership proof, not a healthy process.
+    f.handle.dispose(); assert.equal(f.state.rows.size, 0);
+  });
+}
+
+test('pre-existing purpose labels stop before create without adoption', async (t) => {
+  const f = fixture(t); f.state.extraPurposeId = 'f'.repeat(64);
+  await assert.rejects(f.handle.run(), /already exist/);
+  assert.equal(f.state.calls.filter((a) => a[0] === 'create').length, 0);
+  f.handle.dispose(); assert.equal(f.state.calls.filter((a) => a[0] === 'rm').length, 0);
+});
+
+for (const [name, arm, expected] of [
+  ['stale-remove-ack', (s) => { s.leaveRemoved = true; }, /Exact owned ID absence/],
+  ['unavailable-absence', (s) => { s.failAbsence = true; }, /unavailable absence proof/],
+  ['engine-drift', (s) => { s.afterRemove = () => { s.engineId = 'different'; }; }, /engine identity changed/],
+  ['remaining-purpose-label', (s) => { s.afterRemove = () => { s.extraPurposeId = 'f'.repeat(64); }; }, /resources remain/],
+]) test('cleanup refuses incomplete readback: ' + name, async (t) => {
+  const f = fixture(t); await f.handle.run(); arm(f.state);
+  assert.throws(() => f.handle.dispose(), expected);
+  assert.equal(f.handle.describe().cleanupUnresolved, true);
+  assert.equal(existsSync(f.handle.directory), true);
+  const removals = f.state.calls.filter((a) => a[0] === 'rm').length;
+  assert.equal(removals, name === 'remaining-purpose-label' ? 2 : 1);
+  assert.throws(() => f.handle.dispose(), /UNRESOLVED/);
+  assert.equal(f.state.calls.filter((a) => a[0] === 'rm').length, removals);
+});
+
+test('workspace absence requires ENOENT rather than an unreadable path', () => {
+  const error = (code) => { throw Object.assign(new Error('synthetic'), { code }); };
+  assert.doesNotThrow(() => assertPathAbsent('/synthetic', () => error('ENOENT')));
+  assert.throws(() => assertPathAbsent('/synthetic', () => error('EACCES')), /proof unavailable/);
+  assert.throws(() => assertPathAbsent('/synthetic', () => ({})), /remains present/);
+});
+
+const childFailure = () => ({ schema: 'SD-INVENTORY-QUALITY-FAILURE-1', stage: 'REPOSITORY_SCENARIOS', code: 'INVENTORY_FULL_STATE',
+  caseId: ports.failureContext.safeCaseIds[0], variantId: null, phase: 'NOMINAL', failed: 1, skipped: 0 });
+const safeCodes = new Set(fixedCodes);
+function decodedFailure(result, args = ['start', '--attach', 'a'.repeat(64)]) {
+  try { decodeDockerResult(result, args, safeCodes); } catch (error) { return error; }
+  throw Error('Expected owned Docker failure');
+}
+test('fixed decoder returns successful stdout for subsequent existing result admission', () => {
+  assert.equal(decodeDockerResult({ status: 0, stdout: ' synthetic ' }, ['info'], safeCodes), 'synthetic');
+});
+test('closed child failure projects only known stage and frozen fixture code', () => {
+  const failure = childFailure();
+  const error = decodedFailure({ status: 1, stdout: JSON.stringify(failure), stderr: 'synthetic-secret' });
+  assert.deepEqual(error.diagnostic, { operation: 'start', outcome: 'FAILED', child: { stage: 'REPOSITORY_SCENARIOS', code: 'INVENTORY_FULL_STATE', caseId: ports.failureContext.safeCaseIds[0], variantId: null, phase: 'NOMINAL' } });
+  assert.equal(JSON.stringify(error.diagnostic).includes('synthetic-secret'), false);
+  assert.equal(error.message, 'Owned Docker operation failed: start');
+});
+for (const [name, mutate] of [
+  ['extra-token', f => { f.token = 'synthetic-secret'; }], ['unknown-code', f => { f.code = 'OTP_123456'; }],
+  ['unknown-stage', f => { f.stage = 'synthetic-secret'; }], ['false-failure', f => { f.failed = 0; }],
+  ['skip', f => { f.skipped = 1; }], ['missing-field', f => { delete f.phase; }],
+]) test('untrusted failure payload is not retained: ' + name, () => {
+  const failure = childFailure(); mutate(failure);
+  assert.equal(decodedFailure({ status: 1, stdout: JSON.stringify(failure) }).diagnostic.child, null);
+});
+test('invalid JSON has no raw parse snippet or error text in failure evidence', () => {
+  const error = decodedFailure({ status: 1, stdout: '{"token":"synthetic-secret" invalid', error: new Error('synthetic-secret') });
+  assert.equal(error.diagnostic.child, null); assert.equal(JSON.stringify(error.diagnostic).includes('synthetic-secret'), false);
+});
+test('timeout records a closed unresolved outcome without system error text', () => {
+  const error = decodedFailure({ error: { code: 'ETIMEDOUT', message: 'synthetic-secret' }, signal: 'SIGTERM', status: null, stdout: '' });
+  assert.equal(error.diagnostic.outcome, 'TIMEOUT'); assert.equal(JSON.stringify(error.diagnostic).includes('synthetic-secret'), false);
+});
+test('signal records interrupted outcome without raw signal/output evidence', () => {
+  const error = decodedFailure({ signal: 'SIGKILL', status: null, stdout: 'synthetic-secret' });
+  assert.deepEqual(error.diagnostic, { operation: 'start', outcome: 'INTERRUPTED', child: null });
+});
+test('other Docker operations cannot masquerade as an attached inventory failure', () => {
+  assert.equal(decodedFailure({ status: 1, stdout: JSON.stringify(childFailure()) }, ['inspect']).diagnostic.child, null);
+});
+test('finite failure codes come only from one explicit frozen JSON list, never inferred literals or suffixes', () => {
+  const codes = fixtureFailureCodes({ 'bootstrap.cjs': Buffer.from(codeDeclaration() + "\nneed(false, 'EXCLUDED_ADMISSION');"),
+    'scenario.cjs': Buffer.from("deny('EXCLUDED_ASSERTION')") });
+  assert.deepEqual([...codes], fixedCodes); assert.equal(codes.has('EXCLUDED_ASSERTION_STATUS'), false);
+  assert.equal(codes.has('EXCLUDED_ADMISSION'), false);
+});
+test('failed attach retains a closed diagnostic through exact owned cleanup', async (t) => {
+  const f = fixture(t); f.state.failAttach = true;
+  await assert.rejects(f.handle.run(), /Owned Docker operation failed: start/);
+  const diagnostic = f.handle.describe().failure;
+  assert.deepEqual(diagnostic, { operation: 'start', outcome: 'FAILED', child: { stage: 'REPOSITORY_IMPORT', code: 'RUNTIME_FIXTURE_FAILED', caseId: null, variantId: null, phase: null } });
+  f.handle.dispose(); assert.equal(f.state.rows.size, 0); assert.equal(f.handle.describe().failure, diagnostic);
+});
+
+test('ordinary failed readiness probe cannot taint an otherwise successful run', async (t) => {
+  const f = fixture(t); f.state.ordinaryProbeFailures = 1;
+  const result = await f.handle.run(); assert.equal(result.failed, 0);
+  assert.equal(f.handle.describe().failure, undefined);
+  assert.equal(f.state.calls.filter(a => a[0] === 'exec').length, 3);
+  f.handle.dispose(); assert.equal(f.state.rows.size, 0);
+});
+test('tolerated readiness probe cannot mask a later genuine attached-child failure', async (t) => {
+  const f = fixture(t); f.state.ordinaryProbeFailures = 1; f.state.failAttach = true;
+  await assert.rejects(f.handle.run(), /Owned Docker operation failed: start/);
+  assert.deepEqual(f.handle.describe().failure, { operation: 'start', outcome: 'FAILED', child: { stage: 'REPOSITORY_IMPORT', code: 'RUNTIME_FIXTURE_FAILED', caseId: null, variantId: null, phase: null } });
+  f.handle.dispose(); assert.equal(f.state.rows.size, 0);
+});
+for (const outcome of ['TIMEOUT', 'INTERRUPTED']) test('terminal readiness ' + outcome + ' is never retried', async (t) => {
+  const f = fixture(t); f.state.terminalProbe = outcome;
+  await assert.rejects(f.handle.run(), /Owned Docker operation failed: exec/);
+  assert.equal(f.handle.describe().failure.outcome, outcome);
+  assert.equal(f.state.calls.filter(a => a[0] === 'exec').length, 1);
+  assert.equal(f.state.calls.filter(a => a[0] === 'create').length, 1);
+  f.handle.dispose(); assert.equal(f.state.rows.size, 0);
+});
+
+// These pure controls test the fixed acceptance boundary. The transport never
+// launches a child, contacts Docker or evaluates its synthetic bootstrap.
+test('fixed inventory plan carries all groups, variants, method counts and zero-counter names', () => {
+  assert.equal(sha256(CASE_BYTES), CASES_SHA);
+  assert.equal(CASES.length, 20); assert.equal(SENSITIVITY.length, 8);
+  assert.equal(Object.values(ports.requiredGroupMethodCounts).reduce((a, b) => a + b, 0), 139);
+  assert.doesNotThrow(() => validateInventoryPlan(fixedPlan()));
+});
+for (const [name, mutate] of [
+  ['schema', p => { p.schema = 'SD-AUTH-API-PLAN-1'; }],
+  ['role', p => { p.role = 'auth-api'; }],
+  ['cases-hash', p => { p.casesSha = 'f'.repeat(64); }],
+  ['group-order', p => { p.requiredCaseIds.reverse(); }],
+  ['group-missing', p => { p.requiredCaseIds.pop(); }],
+  ['group-extra', p => { p.requiredCaseIds.push('UNREVIEWED'); }],
+  ['group-duplicate', p => { p.requiredCaseIds[1] = p.requiredCaseIds[0]; }],
+  ['group-method-count', p => { p.requiredGroupMethodCounts[CASES[0]]++; }],
+  ['group-method-missing', p => { delete p.requiredGroupMethodCounts[CASES[0]]; }],
+  ['group-method-extra', p => { p.requiredGroupMethodCounts.UNREVIEWED = 0; }],
+  ['nominal-count', p => { p.nominalMethodCalls = 138; }],
+  ['unsafe-count', p => { p.unsafeMethodCalls = 7; }],
+  ['restoration-count', p => { p.restorationMethodCalls = 8; }],
+  ['variant-order', p => { p.requiredSensitivityIds.reverse(); }],
+  ['variant-missing', p => { p.requiredSensitivityIds.pop(); }],
+  ['variant-extra', p => { p.requiredSensitivityIds.push('UNREVIEWED'); }],
+  ['variant-duplicate', p => { p.requiredSensitivityIds[1] = p.requiredSensitivityIds[0]; }],
+  ['provider-order', p => { p.providerCounterKeys.reverse(); }],
+]) test('changed fixed plan is refused before any resource operation: ' + name, () => {
+  const fake = transport(); const plan = fixedPlan(); mutate(plan);
+  fake.seams.template.files['runtime-plan.json'] = Buffer.from(JSON.stringify(plan));
+  assert.throws(() => createInventoryQualityFixture({ endpoint: PROFILE.endpoint }, fake.seams));
+  assert.equal(fake.state.calls.length, 0); assert.equal(fake.state.receipts.length, 0);
+});
+for (const [name, mutate] of [
+  ['missing-case-file', t => { delete t.files['cases.json']; }],
+  ['changed-case-file', t => { t.files['cases.json'] = Buffer.from('{}'); }],
+  ['changed-case-binding', t => { t.meta.casesSha = 'f'.repeat(64); }],
+]) test('case data cannot be substituted through a pure-test seam: ' + name, () => {
+  const fake = transport(); mutate(fake.seams.template);
+  assert.throws(() => createInventoryQualityFixture({ endpoint: PROFILE.endpoint }, fake.seams), /inventory cases differ/);
+  assert.equal(fake.state.calls.length, 0);
+});
+for (const [name, mutate] of [
+  ['group-order', r => { r.cases.reverse(); }],
+  ['extra-group', r => { r.cases.push({ id: 'UNREVIEWED', status: 'PASS' }); }],
+  ['missing-group', r => { r.cases.pop(); }],
+  ['unknown-group', r => { r.cases[0].id = 'UNREVIEWED'; }],
+  ['non-pass-group', r => { r.cases[0].status = 'SKIP'; }],
+  ['wrong-domain', r => { r.domainScope = 'HTTP_APPLICATION'; }],
+  ['wrong-role', r => { r.role = 'auth-api'; }],
+  ['missing-admission', r => { r.admissionPassed = false; }],
+]) test('ordered complete inventory result is mandatory: ' + name, async t => {
+  const f = fixture(t); f.state.resultMutation = mutate;
+  await assert.rejects(f.handle.run(), /evidence mismatch/); f.handle.dispose();
+  assert.equal(f.state.rows.size, 0);
+});
+for (const [name, mutate] of [
+  ['variant-order', r => { r.sensitivity.reverse(); }],
+  ['extra-variant', r => { r.sensitivity.push({ id: 'UNREVIEWED', detected: true }); }],
+  ['missing-variant', r => { r.sensitivity.pop(); }],
+  ['duplicate-variant', r => { r.sensitivity[1] = r.sensitivity[0]; }],
+  ['undetected-variant', r => { r.sensitivity[0].detected = false; }],
+]) test('all eight ordered source sensitivities are mandatory: ' + name, async t => {
+  const f = fixture(t); f.state.resultMutation = mutate;
+  await assert.rejects(f.handle.run(), /Sensitivity evidence mismatch/); f.handle.dispose();
+});
+for (const key of PROVIDERS) for (const mode of ['missing', 'nonzero'])
+  test('every provider counter must be present and exactly zero: ' + key + '/' + mode, async t => {
+    const f = fixture(t); f.state.resultMutation = r => {
+      if (mode === 'missing') delete r.providerSummary[key]; else r.providerSummary[key] = 1;
+    };
+    await assert.rejects(f.handle.run(), /provider evidence/); f.handle.dispose();
+  });
+for (const value of [-1, 0.25, '0', null, true, Number.MAX_SAFE_INTEGER + 1])
+  test('invalid zero-counter representation is rejected: ' + JSON.stringify(value), async t => {
+    const f = fixture(t); f.state.resultMutation = r => { r.providerSummary.logger = value; };
+    await assert.rejects(f.handle.run(), /provider evidence/); f.handle.dispose();
+  });
+for (const [name, source] of [
+  ['missing', '// no declaration'],
+  ['empty', codeDeclaration([])],
+  ['duplicate-list', codeDeclaration() + '\n' + codeDeclaration()],
+  ['duplicate-code', codeDeclaration(['RUNTIME_FIXTURE_FAILED', 'RUNTIME_FIXTURE_FAILED'])],
+  ['missing-safe-fallback', codeDeclaration(['INVENTORY_FULL_STATE'])],
+  ['nonstring', codeDeclaration(['RUNTIME_FIXTURE_FAILED', 12])],
+  ['nonliteral', 'const FAILURE_CODES = Object.freeze(["RUNTIME_FIXTURE_FAILED", process.env.UNREVIEWED]);'],
+  ['too-many', codeDeclaration(['RUNTIME_FIXTURE_FAILED', ...Array.from({length: 512}, (_, i) => 'CODE_' + i)])],
+]) test('failure-code admission rejects inferred or unsafe declarations: ' + name, () => {
+  assert.throws(() => fixtureFailureCodes({ 'bootstrap.cjs': Buffer.from(source) }));
+});
+for (const [name, mutate] of [
+  ['case', f => { f.caseId = 'UNREVIEWED_CASE'; }],
+  ['variant', f => { f.variantId = 'UNREVIEWED_VARIANT'; }],
+  ['phase', f => { f.phase = 'UNREVIEWED_PHASE'; }],
+  ['raw-error-type', f => { f.errorType = 'synthetic-secret'; }],
+  ['raw-error-fields', f => { f.fieldNames = ['synthetic-secret']; }],
+  ['missing-case', f => { delete f.caseId; }],
+  ['missing-variant', f => { delete f.variantId; }],
+]) test('failure context retains only frozen public memberships: ' + name, () => {
+  const failure = childFailure(); mutate(failure);
+  const error = decodedFailure({ status: 1, stdout: JSON.stringify(failure) });
+  assert.equal(error.diagnostic.child, null);
+  assert.equal(JSON.stringify(error.diagnostic).includes('synthetic-secret'), false);
+});
+for (const phase of ports.failureContext.phases) test('known safe diagnostic phase is retained: ' + phase, () => {
+  const failure = childFailure(); failure.variantId = SENSITIVITY[0]; failure.phase = phase;
+  const error = decodedFailure({ status: 1, stdout: JSON.stringify(failure) });
+  assert.deepEqual(error.diagnostic.child, { stage: failure.stage, code: failure.code,
+    caseId: failure.caseId, variantId: failure.variantId, phase });
+});
+
+for (const key of Object.keys(fixedPlan())) test('every exact top-level plan field is required: ' + key, () => {
+  const plan = fixedPlan(); delete plan[key]; assert.throws(() => validateInventoryPlan(plan));
+});
+for (const field of ['compilation', 'modelMapAudit']) {
+  for (const key of Object.keys(fixedPlan()[field])) test('every exact nested plan field is required: ' + field + '/' + key, () => {
+    const plan = fixedPlan(); delete plan[field][key]; assert.throws(() => validateInventoryPlan(plan));
+  });
+  test('unknown nested plan field is refused: ' + field, () => {
+    const plan = fixedPlan(); plan[field].UNREVIEWED = true; assert.throws(() => validateInventoryPlan(plan));
+  });
+}
+test('unknown top-level plan field is refused', () => {
+  const plan = fixedPlan(); plan.UNREVIEWED = true; assert.throws(() => validateInventoryPlan(plan));
+});
+
+for (const [name, mutate] of [
+  ['missing-port-file', t => { delete t.files['ports-manifest.json']; }],
+  ['changed-port-file', t => { t.files['ports-manifest.json'] = Buffer.from('{}'); }],
+  ['changed-port-binding', t => { t.meta.portsSha = 'f'.repeat(64); }],
+]) test('fixed port policy cannot be substituted through a pure-test seam: ' + name, () => {
+  const fake = transport(); mutate(fake.seams.template);
+  assert.throws(() => createInventoryQualityFixture({ endpoint: PROFILE.endpoint }, fake.seams));
+  assert.equal(fake.state.calls.length, 0);
+});

@@ -1,0 +1,50 @@
+{
+  "schema": "SD-INVENTORY-QUALITY-INVOCATION-1",
+  "sourceCommit": "3a962c90f0e33ca162baa3bbe4284e8a9b51f758",
+  "operatorSha": "61959695fefae9ba35f73dcc60a274bd62bb2e409c96887d643e03a29245fe1f",
+  "approvalSha": "508fc5c1e2ef137faadb52bc2232aa7f739802b5276f71b1c0ff49b6bb93e9db",
+  "templateSha": "0f69288f334aa23446faf3a84e8614b22984705c1dc64beee879ac1884fb8e74",
+  "status": "FAILED_REVIEW_REQUIRED",
+  "fixtureHandleReturned": true,
+  "runRequested": true,
+  "runEntered": true,
+  "cleanup": "VERIFIED",
+  "created": [
+    {
+      "kind": "mongo",
+      "id": "cf0b1d81741b85d5d284cf03b6a42b5b6d8d8a393b7e01b850ef5ad57ee4dcd9",
+      "name": "sd-iq-mongo-139df810-6511-4cd2-a780-b16e7ca8fff0",
+      "removed": false
+    },
+    {
+      "kind": "node",
+      "id": "b951e969a6bb500ac6d9a099398b0d2a961b2649d15ac858ce793849ae773400",
+      "name": "sd-iq-node-139df810-6511-4cd2-a780-b16e7ca8fff0",
+      "removed": false
+    }
+  ],
+  "runId": "139df810-6511-4cd2-a780-b16e7ca8fff0",
+  "workspace": "/private/tmp/sd-inventory-quality-run-NyX9sF",
+  "failure": {
+    "operation": "start",
+    "outcome": "FAILED",
+    "child": {
+      "stage": "OWNED_DATABASE_CONNECT",
+      "code": "INVENTORY_CURSOR",
+      "caseId": null,
+      "variantId": null,
+      "phase": null
+    }
+  },
+  "cleanupReceipt": {
+    "runId": "139df810-6511-4cd2-a780-b16e7ca8fff0",
+    "directory": "/private/tmp/sd-inventory-quality-run-NyX9sF",
+    "exactIdsAbsent": [
+      "cf0b1d81741b85d5d284cf03b6a42b5b6d8d8a393b7e01b850ef5ad57ee4dcd9",
+      "b951e969a6bb500ac6d9a099398b0d2a961b2649d15ac858ce793849ae773400"
+    ],
+    "engineId": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+    "zeroPurposeLabels": true,
+    "workspaceAbsent": true
+  }
+}

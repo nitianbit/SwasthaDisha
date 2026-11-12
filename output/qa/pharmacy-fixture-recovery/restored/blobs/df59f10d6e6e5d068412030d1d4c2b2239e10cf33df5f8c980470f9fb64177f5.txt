@@ -1,0 +1,280 @@
+# Cursor namespace lifecycle proposal
+
+Status: **source analysis and proposal only**. No fixture implementation, test,
+package import, native probe, preparation, database invocation or Git mutation was
+performed. Root must freeze the final contract and obtain two actual independent
+preimplementation decisions. The two fixture authors and all later source,
+artifact, single-invocation and post-execution gates remain separate.
+
+The smallest supported correction is one creation-time namespace expression in
+each isolated fixture. A newly constructed `listCollections` cursor must have
+**only the exact owned database name**. Its existing command lease continues to
+name `$cmd.listCollections`, and the existing reply guard continues to require
+**only `<ownedDb>.$cmd.listCollections`**. No predicate accepts either namespace
+indiscriminately. `find` and `listIndexes` creation predicates remain exact full
+collection namespaces.
+
+## Baselines and observed evidence
+
+| Subject | Exact SHA-256 | Affected lines |
+| --- | --- | --- |
+| Inventory bootstrap | `f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690` | `trackCursor`, 1512–1523; listCollections caller, 1674–1680 |
+| Medicine bootstrap | `37e9d95b441779f3b5a7ca139783b43574c1606fffad32f8fa0990e8b8bdf81b` | `cursor`, 1030–1040; listCollections caller, 1127–1128 |
+| Actual inventory artifact descriptor | `0f69288f334aa23446faf3a84e8614b22984705c1dc64beee879ac1884fb8e74` | 2777-file manifest; source commit `3a962c90f0e33ca162baa3bbe4284e8a9b51f758` |
+| Third inventory failure freeze | `70f805b670b7d7e6b4141ee7a7395dcafbc55e2327d65e23a93e08c5793f8a69` | Preserved third invocation |
+| Third inventory operator report | `df3e0410d2cef8172419853c24e766c752a261df2d0a6d8156bd5a9c13f92438` | `OWNED_DATABASE_CONNECT / INVENTORY_CURSOR`, null case/variant/phase |
+
+The artifact's actual `runtime/bootstrap.cjs` equals inventory `f4a49…`.
+Fourteen selected public driver/package files are byte-identical to both that
+descriptor's entries and the preparation's public copy. Their complete copied
+texts, individual hashes and original paths are in [INPUTS.json](INPUTS.json).
+This is selected-source binding, not a fresh verification of all 2777 files.
+Both fixtures pin the same public lock `2b0eecf4…`, Mongoose 9.12.0 and nested
+MongoDB driver 7.8.0. Medicine `37e9…` inherits the same source incompatibility;
+no medicine runtime failure or runtime success is established by this analysis.
+
+Both `/root/index_spec_fresh` and `/root/index_standards_fresh` returned
+`FAILURE_REVIEWED` for invocation three and personally verified exact cleanup;
+Root recorded these decisions at commit `5e9b830`. This author read that record
+and did **not** query Docker or independently repeat cleanup. The safe report
+does not identify the exact predicate, raw namespace, cursor type or call site.
+The source mismatch below is **not a confirmed cause of the recorded run**.
+The receipt `508fc5c1…` and once claim remain consumed; no retry follows.
+
+## Exact pinned lifecycle
+
+The primary references below are the copied `primary-source/` files, with
+original line numbers. [SNIPPETS.md](SNIPPETS.md) includes the relevant exact
+source excerpts; [INPUTS.json](INPUTS.json) binds their complete bytes.
+
+1. `lib/db.js:89–113` constructs `s.namespace = new MongoDBNamespace(databaseName)`
+   with no collection. `lib/utils.js:239–245` stores its collection as undefined
+   and returns the database string alone from `toString()`.
+2. `Db.listCollections`, `lib/db.js:238–240`, synchronously constructs a new
+   `ListCollectionsCursor` with resolved options. Its constructor,
+   `lib/cursor/list_collections_cursor.js:9–14`, calls
+   `super(db.client, db.s.namespace, { ...options })`. It does not issue a command
+   or initialize the cursor before returning it.
+3. `AbstractCursor`, `lib/cursor/abstract_cursor.js:42–98`, captures that client,
+   namespace and provided control session, sets `cursorId = null` and
+   `initialized = false`, and tracks the cursor. Its `client`, `namespace` and
+   `session` getters return those held fields (`114–135`). The `id` getter
+   returns undefined for the null initial ID (`105–107`).
+4. The fixture immediately applies its creation guard. The current full
+   `db.$cmd.listCollections` predicate fails this source-derived state before
+   the fixture registers its own cursor lease or invokes `hasNext()`.
+5. On the admitted read path, `hasNext` (`230–251`) calls `fetchBatch`
+   (`588–607`), which awaits `cursorInit` for a null cursor ID. `cursorInit`
+   (`557–575`) retains the provided session rather than allocating an implicit
+   one, then awaits `ListCollectionsCursor._initialize(session)`.
+6. `_initialize`, `list_collections_cursor.js:22–30`, constructs the exact
+   `ListCollectionsOperation` and awaits `executeOperation`. That operation
+   builds `listCollections:1`, the held filter, batch size, `nameOnly` and
+   `authorizedCollections` (`operations/list_collections.js:9–39`). The operation
+   command namespace is a separate `$cmd` namespace
+   (`operations/command.js:12–29`); it does not mutate the cursor's namespace.
+7. The real command's started and succeeded events occur before the cursor
+   `_initialize` await returns. `cmap/connection.js:284–332` emits succeeded
+   using the BSON-deserialized APM reply, then yields the native response.
+   Consequently, the **cursor object is still database-only at the APM
+   succeeded callback**, even when that callback is validating a full special
+   reply namespace. A post-init cursor-object predicate must not run there.
+8. Only after `_initialize` resolves does `cursorInit` set `selectedServer`,
+   `cursorId = response.id`, then
+   `cursorNamespace = response.ns ?? this.namespace`, and `initialized = true`
+   (`abstract_cursor.js:566–575`). `CursorResponse.id` constructs a BSON Long;
+   `CursorResponse.ns` parses the response string into a namespace
+   (`cmap/wire_protocol/responses.js:181–194`). Under the existing accepted APM
+   shape, `ns` must be the exact special string, so the nullable fallback is
+   not an additional admitted success representation.
+9. With native Long zero, `cursorInit` awaits native cleanup before fulfilling
+   (`581–585`). The cursor is marked closed, buffered documents can still be
+   read, and its namespace is unchanged by cleanup (`633–695`). The explicit
+   control session is not cursor-owned, so it is not ended as a cursor-owned
+   implicit session. Empty and nonempty initial batches both follow this
+   namespace adoption before `hasNext()` fulfills.
+
+`listIndexes` differs at construction: its constructor passes the collection's
+full namespace (`list_indexes_cursor.js:9–13`). `Collection.find` similarly
+passes the collection namespace (`collection.js:319`; `find_cursor.js:24–25`).
+Those two creation expectations need no namespace correction.
+
+| Boundary | Required object namespace for listCollections | Reply namespace |
+| --- | --- | --- |
+| Newly constructed, before fixture registration | Exact owned DB only | No reply yet |
+| Command started / APM succeeded callback | Still exact owned DB only for this pinned sequence | Succeeded reply must be exact `db.$cmd.listCollections` |
+| Original native `cursorInit()` successfully fulfills | Exact `db.$cmd.listCollections` | Already accepted by existing bound reply guard |
+| Read/close after successful initialization | Same exact special namespace | No continuation admitted by this proposal |
+| Close before initialization | Retains exact owned DB only | No reply or adoption |
+| Rejected native initialization | The state at its actual failure prefix; never convert failure into success | Rejection remains terminal |
+
+Failure is not a third permissive namespace mode. A rejection before assignment
+leaves the database-only namespace; a rejection after adoption can retain the
+special namespace. `cursorInit` sets `initialized = true` in its catch as well
+as on success (`576–580`). Further, ID assignment precedes namespace assignment.
+Neither `initialized`, a non-null ID, an APM success event, nor entry to cleanup
+is a sound substitute for successful initialization fulfillment. A finally-time
+full-namespace assertion could mask a failed native value, including falsy ones.
+The pinned driver's own catch awaits cleanup before rethrow; this proposal does
+not change or make a stronger first-failure claim about that internal code.
+Fixture accumulators must continue preserving the first value they observe.
+
+## Existing guards and exact call paths retained
+
+Inventory's creation guard also requires held client identity, exact provided
+session, session membership and absence of a prior fixture lease. It then binds
+the **special** logical collection, database, held session ID, command and row
+limit in `wire.expectCursor` (`1512–1516`). Keep all of these terms unchanged.
+Its `Db.listCollections` wrapper first proves `INDEX_SETUP`, owned Db/client,
+empty filter and exact own option keys with held control, nameOnly true,
+batchSize 100 and maxTimeMS 5000 (`1674–1680`). `indexes()` makes exactly two
+such reads: before creation and after all three collection/index readbacks
+(`1766–1785`). The other three metadata reads are `listIndexes`. All five share
+the existing 5-second/100-row/128-KiB metadata budget, paused only around the
+three actual createCollection and 22 createIndex calls.
+
+The wire started guard retains exact command envelope, control lsid, no
+transaction fields and at most two listCollections commands (`1348–1380`). It
+selects the one unused lease by command, database, session and **special**
+collection (`1433–1441`). Succeeded checks the paired request/command, ok1,
+no write errors, exact cursor key shape, **primitive numeric positive zero**,
+exact `start.databaseName + '.$cmd.listCollections'`, batch type and row/byte
+caps (`1445–1465`). No database-only reply is admitted. The outgoing native
+Long/Timestamp separation remains untouched. Existing inventory continuation
+bookkeeping is not expanded: strict APM zero cannot mint a nonzero owner, so
+this correction grants no getMore or killCursors path. This is not a claim that
+inventory installs medicine's additional prototype denial.
+
+Medicine's `cursor()` has the same premature full namespace term (`1030–1032`).
+Retain its client/uniqueness checks, ordinal/command/collection/kind record,
+lease registration, zero-argument close guard and native Long-zero excluding
+Timestamp check (`1032–1040`). The caller already proves the exact owned Db,
+`INDEX_SETUP`, filter, options and held explicit control session, and enforces
+two metadata entries (`1127–1128`). Its two listCollections plus five listIndexes
+reads use one unchanged metadata budget (`1162–1176`). The native command
+preparer binds the held cursor and actual session (`1102–1120`); succeeded
+requires exact special namespace, own cursor keys, numeric positive zero and
+the complete expected phase batch (`985–992`). The existing prototype
+getMore/killCursors denial, failure/session cleanup and all money/business/
+HTTP/provider behavior stay untouched.
+
+Keep both fixtures' existing read deadlines, row/byte caps, zero effects,
+lifelong latches, cleanup eligibility, native Long0/APM number0 distinction,
+first-falsy preservation and separate namespace/client/session/command binding.
+No session substitution, new cursor method, new namespace, DB command, URI,
+environment field, generic operator option or cursor adoption is authorized.
+
+## Smallest proposed source and test scope
+
+For inventory, replace only this existing creation expression in `trackCursor`:
+
+```js
+cursor.namespace?.toString() === manifest.database + '.' + collection
+```
+
+with:
+
+```js
+cursor.namespace?.toString() === (command === 'listCollections'
+  ? manifest.database : manifest.database + '.' + collection)
+```
+
+For medicine, make the corresponding exact expression change in `cursor`,
+preserving its existing direct `value.namespace.toString()` access:
+
+```js
+value.namespace.toString() === (command === 'listCollections'
+  ? manifest.database : manifest.database + '.' + name)
+```
+
+There are only the closed private call sites described above, with literal
+`listCollections` and literal `$cmd.listCollections`; keep the lease collection
+argument unchanged. Unknown commands, foreign collections or namespace choices
+must not be added. Do not use `.startsWith`, suffix matching, string coercion,
+`db || special`, a caller-provided lifecycle flag or `cursor.initialized`.
+
+No extra post-init object assertion is necessary to correct this creation
+incompatibility: the existing mandatory wire reply guard runs before the exact
+pinned driver adopts that same reply namespace. This recommendation makes no
+claim of a new independent object-state guard after adoption. If Root elects to
+require that stronger assertion in the contract, the sound insertion point is
+**only the successful fulfillment of the original native `cursorInit()` for
+the already held cursor**, before returning to its read caller. Call the captured
+method once with unchanged receiver/arguments, return its exact fulfilled value,
+and on rejection propagate the exact observed value without an assertion in
+catch/finally. Then assert held client/session/lease and the exact final command
+namespace on success only. Do not wrap `_initialize` fulfillment (adoption has
+not happened yet), APM, cleanup, or the initialized flag. Such an extra wrapper
+is beyond the one-expression minimum and requires explicit contract scope and
+its own actual fakes/review; it is not implemented or silently assumed here.
+
+Use separate inventory and medicine authors/worktrees. Each should add a
+bounded builtins/fakes-only lifecycle corpus that exercises the **actual used
+creation predicate/boundary**, not a reimplemented expected predicate. Root can
+authorize extracting that private creation check into a small actual-used
+helper for fake access, if necessary; retain every existing condition and the
+exact operations on the successful path. Do not import public packages simply
+to test their constructor. Their source lifecycle is bound above.
+
+Required proposed fake observations (all **NOT_RUN** in this proposal):
+
+- Baseline RED: exact newly constructed database-only listCollections cursor
+  with held client/control rejects against each unchanged baseline; amended
+  actual boundary accepts it and registers exactly one special command lease.
+- Reject the special namespace **at creation**, foreign/missing DB namespace,
+  foreign client, foreign session where the existing guard checks it, duplicate
+  lease, and wrong phase/options/filter/control at the existing wrapper.
+- Keep full-namespace find/listIndexes positives; database-only and foreign full
+  namespace variants still reject for those commands.
+- A fake initialization retains DB-only object namespace during started and
+  succeeded callbacks; the **actual existing wire validator** accepts only the
+  special reply namespace. Reject a database-only reply, foreign/sibling ns,
+  wrong request/command/session/lease, nonzero/-0/Long/Timestamp APM ID and extra
+  cursor shape. Verify original raw reply is unnormalized.
+- On native fulfillment, model assignment order ID then namespace then
+  initialized, both empty and buffered initial batches, native Long0 separately
+  from APM numeric0, exactly bounded reads and close without continuation.
+  A close before initialization retains DB-only and needs no invented reply.
+- For throws of undefined/null/false/0/empty string/Error before adoption and
+  after adoption, preserve exact observed rejection identity, independently
+  attempt eligible cleanup, retain its original first value if cleanup also
+  throws, and never report a lifecycle success or grant getMore/killCursors.
+- Reuse the existing budget collectors so aggregate deadline/size failures,
+  caught latches and close attempts retain their actual current checks. Do not
+  reset the budget or fake the runtime/business clock.
+
+Meaningful proposed executable byte-bound weakening controls: inverse back to
+the premature full creation expectation; unconditional DB-or-special union;
+database-only for every command; ignored namespace; ignored client/session;
+rewritten special lease name; weakened special APM reply to database-only/union;
+and success after a caught cursor failure. Each must exercise the actual changed
+helper or existing wire path and fail a named required control, preserve complete
+copied inputs/argv/stdout/stderr/exit and fresh owned-lease ENOENT. Do not claim
+these planned controls have run. Existing old failed runs and pure failures,
+counts and immutable archives must not be rewritten; all affected existing
+corpora require their separately authorized bounded checks before acceptance.
+
+## Shared data decision for Root
+
+Inventory ports `12384285…` describe held cursors and complete metadata reads at
+`commandPhases.INDEX_SETUP/CONTROL` (1262–1284), but do not prescribe a creation
+namespace or a namespace union. The minimum expression correction requires no
+inventory shared JSON change.
+
+Medicine ports `3079134f…` place `cursorNamespaceRules` at
+`native.metadata.cursorNamespaceRules` (4592–4597), alongside `replyCursor` and
+`rawReplyScope.cursor` (4574,4585). The listCollections literal is the **reply**
+special namespace; its generic `rule` says actual namespace/client/session/lease
+must match the predicted command but does not explicitly say before-init. Keep
+that special reply literal unchanged. Root's new shared technical contract
+should state that these metadata namespace rules govern the reply and completed
+native initialization, while the exact constructor begins database-only. This
+is a source-supported phase clarification, not alternate reply adoption.
+
+If either reviewer interprets the generic medicine rule as explicitly requiring
+the special namespace at creation too, Root must resolve that interpretation
+**before implementation**, with a precise amendment to that one rule and its
+declared bindings. No author may silently modify ports, refresh hashes or infer
+a relaxed union. No other metadata values/command counts/payload oracles need
+change. Each lane retains its own source/emission/artifact/run gates; the consumed
+inventory invocation is not reused, and no medicine runtime grant is inferred.

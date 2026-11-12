@@ -1,0 +1,52 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { assertModelDeclarations, assertDomainPolicyFact, domainAuditFailureCode } = require('./compile.cjs');
+const models = ['InventoryItem', 'InventoryAdjustment', 'InventoryReservation'].map(name => ({ name, source: 'src1/modules/pharmacyInventory/model/index.ts' }));
+const declarations = models.map(row => ({ ...row, compiled: 'compiled/modules/pharmacyInventory/model/index.js' }));
+test('pure model-map comparison admits exact3 names/source rows without loading TypeScript/application', () => {
+  assert.doesNotThrow(() => assertModelDeclarations(declarations, models));
+  assert.equal(Object.keys(require.cache).some(name => name.endsWith('/typescript/lib/typescript.js')), false);
+});
+for (const [id, changed] of [
+  ['OMITTED_ADJUSTMENT_MODEL', models.filter(row => row.name !== 'InventoryAdjustment')],
+  ['EXTRA_UNREACHABLE_MODEL', [...models, { name: 'Unreachable', source: 'src1/unreachable.ts' }]],
+  ['DUPLICATE_MODEL', [...models, models[0]]],
+  ['WRONG_MODEL_SOURCE', models.map((row, i) => i === 0 ? { ...row, source: 'src1/wrong.ts' } : row)],
+  ['OMITTED_RESERVATION_MODEL', models.filter(row => row.name !== 'InventoryReservation')],
+]) test('actual pure manifest guard rejects ' + id, () => assert.throws(() => assertModelDeclarations(declarations, changed)));
+test('duplicate emitted declaration is rejected by actual guard', () => {
+  assert.throws(() => assertModelDeclarations([...declarations, declarations[0]], models));
+});
+
+
+// These exercise the same pure policy called by auditDomain; no AST/parser runs here.
+const policyFact = (name, emitted, directLiteralCall = false) => ({ kind: 'IDENTIFIER', name, emitted, directLiteralCall });
+function rejectedFact(fact, code) {
+  assert.throws(() => assertDomainPolicyFact(fact), error => domainAuditFailureCode(error) === code);
+}
+for (const emitted of [false, true]) test('safe ordinary identifier remains admitted in phase ' + emitted, () => {
+  assert.doesNotThrow(() => assertDomainPolicyFact(policyFact('batch', emitted)));
+});
+test('only direct literal emitted require callee is admitted', () => assert.doesNotThrow(() => assertDomainPolicyFact(policyFact('require', true, true))));
+test('literal require stays denied in TypeScript source policy', () => rejectedFact(policyFact('require', false, true), 'DYNAMIC_DOMAIN_REQUIRE'));
+test('require identifier outside exact literal call callee is rejected', () => rejectedFact(policyFact('require', true, false), 'DYNAMIC_DOMAIN_REQUIRE'));
+for (const [id, fact] of [
+  ['numeric-phase', policyFact('require', 1, true)], ['string-phase', policyFact('require', 'true', true)],
+  ['numeric-callee', policyFact('require', true, 1)], ['string-callee', policyFact('require', true, 'true')],
+  ['null-callee', policyFact('require', true, null)], ['undefined-callee', { ...policyFact('require', true), directLiteralCall: undefined }],
+]) test('nonboolean source policy facts cannot forge direct-callee authority: ' + id, () => rejectedFact(fact, 'DOMAIN_NATIVE_OR_CODEGEN'));
+for (const emitted of [false, true]) for (const name of ['eval', 'Function', 'process', 'global', 'globalThis', '__non_webpack_require__'])
+  test('known native/codegen identifier is denied: ' + emitted + '/' + name, () => rejectedFact(policyFact(name, emitted), 'DOMAIN_NATIVE_OR_CODEGEN'));
+for (const kind of ['PROPERTY', 'ELEMENT_LITERAL']) for (const name of ['getBuiltinModule', 'createRequire', 'mainModule', 'binding', 'dlopen', '_load', '_resolveFilename', 'constructor'])
+  test('native/codegen access is denied by actual shared policy: ' + kind + '/' + name, () => rejectedFact({ kind, name }, 'DOMAIN_NATIVE_OR_CODEGEN'));
+for (const kind of ['PROPERTY', 'ELEMENT_LITERAL']) for (const name of ['batches', 'map', 'toObject'])
+  test('ordinary business property remains admitted: ' + kind + '/' + name, () => assert.doesNotThrow(() => assertDomainPolicyFact({ kind, name })));
+test('dynamic import fact is denied by the shared loading policy', () => rejectedFact({ kind: 'IMPORT' }, 'DYNAMIC_DOMAIN_REQUIRE'));
+test('unrelated and primitive errors never count as known domain audit failures', () => {
+  for (const value of [undefined, null, false, 0, '', new Error('DYNAMIC_DOMAIN_REQUIRE'), { code: 'DOMAIN_NATIVE_OR_CODEGEN' }])
+    assert.equal(domainAuditFailureCode(value), null);
+});
+for (const [id, fact] of [['unknown-kind', { kind: 'UNREVIEWED', name: 'constructor' }],
+  ['extra-fact-field', { kind: 'PROPERTY', name: 'constructor', extra: true }]])
+  test('unknown policy fact shape fails closed: ' + id, () => rejectedFact(fact, 'DOMAIN_NATIVE_OR_CODEGEN'));

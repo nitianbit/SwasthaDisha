@@ -1,0 +1,599 @@
+'use strict';
+// Fixed child fixture. Importing this file loads only builtins; it never imports domain code.
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const CASES_SHA = '807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4';
+const PORTS_SHA = '12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a';
+const COLLECTIONS = Object.freeze(['inventoryitems', 'inventoryadjustments', 'inventoryreservations']);
+const MODEL_NAMES = Object.freeze(['InventoryItem', 'InventoryAdjustment', 'InventoryReservation']);
+const PROVIDERS = Object.freeze(['email', 'sms', 'push', 'logger', 'payments', 'calendar', 'storage', 'queue', 'deniedCapabilities', 'unexpected']);
+const EFFECT_KEYS = Object.freeze(['providers', 'consoleCalls', 'warnings', 'operationDenials', 'loaderDenials', 'unexpectedCommands', 'commandFailures']);
+const CODES = Object.freeze(['INVENTORY_DATA_BINDING', 'INVENTORY_CONTEXT', 'INVENTORY_CASE_SET', 'INVENTORY_INDEX_PROOF',
+  'INVENTORY_TYPED_VALUE', 'INVENTORY_OWNERSHIP_PROOF', 'INVENTORY_SEED_STATE', 'INVENTORY_CLEANUP',
+  'INVENTORY_EFFECTS', 'INVENTORY_COMMANDS', 'INVENTORY_SESSION', 'INVENTORY_TRANSACTION', 'INVENTORY_RETURN',
+  'INVENTORY_ERROR', 'INVENTORY_FULL_STATE', 'INVENTORY_GENERATED_FIELD', 'INVENTORY_QUALITY_STATUS',
+  'INVENTORY_DEPLETED_AT_PRESERVATION', 'INVENTORY_REPOSITORY_FRESHNESS', 'INVENTORY_SENSITIVITY',
+  'INVENTORY_UNEXPECTED_FAILURE']);
+const failures = new WeakSet();
+function need(ok, code) {
+  if (!ok) {
+    const error = new Error(CODES.includes(code) ? code : 'INVENTORY_UNEXPECTED_FAILURE');
+    Object.defineProperty(error, 'code', { value: error.message }); failures.add(error); throw error;
+  }
+}
+const fixtureCode = error => failures.has(error) ? error.code : 'INVENTORY_UNEXPECTED_FAILURE';
+const plain = value => value !== null && typeof value === 'object' && [Object.prototype, null].includes(Object.getPrototypeOf(value));
+const own = (value, key) => Object.hasOwn(value, key);
+function keys(value, expected) {
+  return plain(value) && JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...expected].sort())
+    && Reflect.ownKeys(value).length === Object.keys(value).length
+    && Object.keys(value).every(key => own(Object.getOwnPropertyDescriptor(value, key), 'value'));
+}
+function frozen(value) {
+  if (value && typeof value === 'object') { for (const item of Object.values(value)) frozen(item); Object.freeze(value); }
+  return value;
+}
+function loadFixtureData() {
+  const read = (name, expected) => {
+    const file = path.join(__dirname, name); const stat = fs.lstatSync(file);
+    need(stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1, 'INVENTORY_DATA_BINDING');
+    const bytes = fs.readFileSync(file);
+    need(crypto.createHash('sha256').update(bytes).digest('hex') === expected, 'INVENTORY_DATA_BINDING');
+    return JSON.parse(bytes);
+  };
+  const cases = read('cases.json', CASES_SHA); const ports = read('ports-manifest.json', PORTS_SHA);
+  need(cases.schema === 'SD-INVENTORY-QUALITY-CASES-1' && ports.schema === 'SD-INVENTORY-QUALITY-PORTS-1'
+    && ports.casesSha === CASES_SHA && cases.cases.length === 139 && cases.sourceMutations.length === 8
+    && JSON.stringify(Object.keys(cases.groups)) === JSON.stringify(ports.requiredCaseIds)
+    && JSON.stringify(cases.groups) === JSON.stringify(ports.requiredGroupMethodCounts)
+    && JSON.stringify(cases.sourceMutations.map(row => row.id)) === JSON.stringify(ports.requiredSensitivityIds), 'INVENTORY_DATA_BINDING');
+  return frozen({ cases, ports });
+}
+// This is BSON comparison, not business logic. Actual constructors are captured by admitted bootstrap.
+function canonical(value, bson) {
+  if (value === null) return ['null'];
+  if (['string', 'boolean'].includes(typeof value)) return [typeof value, value];
+  if (typeof value === 'number') { need(Number.isFinite(value), 'INVENTORY_TYPED_VALUE'); return ['number', Object.is(value, -0) ? '-0' : value]; }
+  if (value instanceof Date) { need(Number.isFinite(value.getTime()), 'INVENTORY_TYPED_VALUE'); return ['Date', value.getTime()]; }
+  for (const name of ['ObjectId', 'Timestamp', 'Long', 'Binary']) {
+    if (bson[name] && value instanceof bson[name]) {
+      if (name === 'ObjectId') { const hex = value.toHexString(); need(/^[a-f0-9]{24}$/.test(hex), 'INVENTORY_TYPED_VALUE'); return ['ObjectId', hex]; }
+      if (name === 'Binary') {
+        need(value.buffer instanceof Uint8Array && Number.isSafeInteger(value.position) && value.position >= 0 && value.position <= value.buffer.byteLength
+          && Number.isInteger(value.sub_type) && value.sub_type >= 0 && value.sub_type <= 255, 'INVENTORY_TYPED_VALUE');
+        return ['Binary', Buffer.from(value.buffer.subarray(0, value.position)).toString('hex'), value.sub_type];
+      }
+      return [name, value.toString()];
+    }
+  }
+  if (Array.isArray(value)) {
+    need(Object.keys(value).length === value.length && Reflect.ownKeys(value).length === value.length + 1, 'INVENTORY_TYPED_VALUE');
+    const result = [];
+    for (let index = 0; index < value.length; index++) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      need(descriptor && own(descriptor, 'value'), 'INVENTORY_TYPED_VALUE'); result.push(canonical(descriptor.value, bson));
+    }
+    return ['Array', result];
+  }
+  need(plain(value), 'INVENTORY_TYPED_VALUE');
+  const result = [];
+  for (const key of Object.keys(value).sort()) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    need(descriptor && own(descriptor, 'value') && descriptor.value !== undefined, 'INVENTORY_TYPED_VALUE');
+    result.push([key, canonical(descriptor.value, bson)]);
+  }
+  need(Reflect.ownKeys(value).length === Object.keys(value).length, 'INVENTORY_TYPED_VALUE');
+  return ['Object', result];
+}
+const equal = (left, right, bson) => JSON.stringify(canonical(left, bson)) === JSON.stringify(canonical(right, bson));
+function copy(value, bson) {
+  if (value instanceof Date) return new Date(value.getTime());
+  if (Array.isArray(value)) return value.map(item => copy(item, bson));
+  if (plain(value)) return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, copy(item, bson)]));
+  return value; // Immutable identity value; never change BSON instances.
+}
+function snapshotShape(snapshot, bson) {
+  need(keys(snapshot, COLLECTIONS), 'INVENTORY_FULL_STATE');
+  for (const name of COLLECTIONS) {
+    need(Array.isArray(snapshot[name]) && snapshot[name].length <= 16, 'INVENTORY_FULL_STATE');
+    const ids = snapshot[name].map(row => oid(row._id, bson));
+    need(new Set(ids).size === ids.length, 'INVENTORY_FULL_STATE');
+  }
+  canonical(snapshot, bson);
+}
+function orderedSnapshot(snapshot, bson) {
+  snapshotShape(snapshot, bson);
+  return Object.fromEntries(COLLECTIONS.map(name => [name, [...snapshot[name]].sort((a, b) => oid(a._id, bson).localeCompare(oid(b._id, bson)))]));
+}
+function sameSnapshot(left, right, bson) { return equal(orderedSnapshot(left, bson), orderedSnapshot(right, bson), bson); }
+function oid(value, bson) { need(value instanceof bson.ObjectId, 'INVENTORY_TYPED_VALUE'); const hex = value.toHexString(); need(/^[a-f0-9]{24}$/.test(hex), 'INVENTORY_TYPED_VALUE'); return hex; }
+function boundedDate(value, observation) {
+  need(value instanceof Date && Number.isFinite(value.getTime()) && Number.isFinite(observation.startedAt)
+    && Number.isFinite(observation.endedAt) && observation.endedAt >= observation.startedAt
+    && value.getTime() >= observation.startedAt && value.getTime() <= observation.endedAt, 'INVENTORY_GENERATED_FIELD');
+  return new Date(value.getTime());
+}
+function assertZeroEffects(value) {
+  need(keys(value, EFFECT_KEYS) && keys(value.providers, PROVIDERS), 'INVENTORY_EFFECTS');
+  for (const number of [...Object.values(value.providers), ...EFFECT_KEYS.filter(key => key !== 'providers').map(key => value[key])])
+    need(Number.isSafeInteger(number) && number === 0, 'INVENTORY_EFFECTS');
+}
+function dateCode(symbol, runStart) {
+  need(['FUTURE_366_DAYS', 'PAST_366_DAYS'].includes(symbol), 'INVENTORY_DATA_BINDING');
+  return new Date(runStart + (symbol === 'FUTURE_366_DAYS' ? 366 : -366) * 86400000).toISOString().slice(0, 10).replaceAll('-', '');
+}
+function hydrateFixture(row, data, bson, runStart) {
+  need(data.cases.cases.includes(row) && Number.isFinite(runStart), 'INVENTORY_CASE_SET');
+  const ids = {}; const generated = new Set();
+  for (const name of ['pharmacy', 'medicine', 'otherPharmacy', 'targetItem', 'otherItem', 'targetBatch', 'secondBatch', 'siblingBatch', 'otherBatch', 'absentBatch', 'absentItem', 'adjustment', 'reservation', 'user', 'order']) {
+    ids[name] = new bson.ObjectId(); const id = oid(ids[name], bson); need(!generated.has(id), 'INVENTORY_OWNERSHIP_PROOF'); generated.add(id);
+  }
+  const date = symbol => dateCode(symbol, runStart);
+  const batch = (template, id, overrides = {}) => {
+    const value = { ...template, _id: id, ...overrides };
+    value.expiryDate = date(value.expiry); delete value.expiry;
+    value.receivedAt = new Date(value.receivedAt);
+    if (value.depletedAt === 'ABSENT') delete value.depletedAt;
+    else value.depletedAt = new Date(value.depletedAt === 'PRESENT_FIXED_DATE' ? '2001-02-03T04:05:06.789Z' : value.depletedAt);
+    return value;
+  };
+  const target = batch(data.cases.fixtureDefaults.targetBatch, ids.targetBatch);
+  for (const key of ['status', 'batchNumber', 'availableQty', 'reservedQty', 'freeQty']) if (own(row.seed, key)) target[key] = row.seed[key];
+  if (own(row.seed, 'expiry')) target.expiryDate = date(row.seed.expiry);
+  if (own(row.seed, 'depletedAt')) {
+    if (row.seed.depletedAt === 'ABSENT') delete target.depletedAt;
+    else target.depletedAt = new Date('2001-02-03T04:05:06.789Z');
+  }
+  const sibling = batch(data.cases.fixtureDefaults.unallocatedSiblingBatch, ids.siblingBatch);
+  if (own(row.seed, 'secondReservedQty')) sibling.reservedQty = row.seed.secondReservedQty;
+  const batches = [target, sibling];
+  if (row.id === 'IQR_MULTI_TWO_BATCHES') {
+    const special = data.cases.literalSpecialCases[row.id];
+    Object.assign(target, { status: special.first.status, expiryDate: date(special.first.expiry) });
+    batches.splice(1, 0, batch(data.cases.fixtureDefaults.targetBatch, ids.secondBatch, { batchNumber: special.second.number, status: special.second.statusBefore, expiry: special.second.expiry }));
+  }
+  const metadata = () => ({ __v: 0, createdAt: new Date(data.cases.seedMetadata.createdAt), updatedAt: new Date(data.cases.seedMetadata.updatedAt) });
+  const item = (id, pharmacyId, itemBatches) => ({ ...data.cases.fixtureDefaults.header, ...metadata(), _id: id, pharmacyId, medicineId: ids.medicine,
+    batches: itemBatches, availableQty: itemBatches.reduce((sum, entry) => sum + entry.availableQty, 0),
+    reservedQty: itemBatches.reduce((sum, entry) => sum + entry.reservedQty, 0), freeQty: itemBatches.reduce((sum, entry) => sum + entry.freeQty, 0) });
+  const targetItem = item(ids.targetItem, ids.pharmacy, batches);
+  if (own(row.seed, 'documentAvailableQty')) targetItem.availableQty = row.seed.documentAvailableQty;
+  if (own(row.seed, 'documentReservedQty')) targetItem.reservedQty = row.seed.documentReservedQty;
+  if (own(row.seed, 'documentIsActive')) targetItem.isActive = row.seed.documentIsActive;
+  const unrelatedBatch = batch(data.cases.fixtureDefaults.unallocatedSiblingBatch, ids.otherBatch, { batchNumber: 'IQ-UNRELATED' });
+  const unrelated = item(ids.otherItem, ids.otherPharmacy, [unrelatedBatch]);
+  const adjustment = { ...data.cases.sentinelLiterals.adjustment, ...metadata(), _id: ids.adjustment, pharmacyId: ids.otherPharmacy,
+    medicineId: ids.medicine, inventoryItemId: ids.otherItem, batchId: ids.otherBatch, batchNumber: unrelatedBatch.batchNumber,
+    expiryDate: unrelatedBatch.expiryDate, adjustedBy: ids.user }; delete adjustment.references;
+  const reservation = { ...data.cases.sentinelLiterals.reservation, ...metadata(), _id: ids.reservation,
+    pharmacyId: ids.otherPharmacy, medicineId: ids.medicine, orderId: ids.order, createdBy: ids.user }; delete reservation.references;
+  const missing = ['NEW_ITEM', 'ABSENT_ITEM'].includes(row.seed.kind);
+  const seed = { inventoryitems: missing ? [unrelated] : [unrelated, targetItem], inventoryadjustments: [adjustment], inventoryreservations: [reservation] };
+  const input = {};
+  if (row.method === 'adjustBatchStock') {
+    Object.assign(input, { quantityDelta: row.input.quantityDelta, batchNumber: row.input.batchNumber ?? (row.input.batch === 'NEW_BATCH_NUMBER_FUTURE_EXPIRY' ? 'IQ-NEW' : target.batchNumber),
+      expiryDate: own(row.input, 'expiry') ? date(row.input.expiry) : row.input.batch === 'NEW_BATCH_NUMBER_FUTURE_EXPIRY' ? date('FUTURE_366_DAYS') : target.expiryDate });
+    for (const key of ['purchasePrice', 'mrp', 'retailPrice', 'wholesalePrice', 'reorderThreshold', 'rackLocation']) if (own(row.input, key)) input[key] = row.input[key];
+  } else {
+    need(row.method === 'releaseBatchAllocations', 'INVENTORY_CASE_SET');
+    input.allocations = row.input.allocations.map(allocation => {
+      const id = { TARGET_ID: ids.targetBatch, SECOND_ID: row.id === 'IQR_MULTI_TWO_BATCHES' ? ids.secondBatch : ids.siblingBatch, ABSENT_ID: ids.absentBatch }[allocation.batch];
+      need(id, 'INVENTORY_DATA_BINDING'); return { batchId: oid(id, bson), batchNumber: allocation.batch === 'SECOND_ID' ? (row.id === 'IQR_MULTI_TWO_BATCHES' ? 'IQ-SECOND' : sibling.batchNumber) : target.batchNumber,
+        expiryDate: allocation.batch === 'SECOND_ID' && row.id === 'IQR_MULTI_TWO_BATCHES' ? date('PAST_366_DAYS') : target.expiryDate, quantity: allocation.quantity };
+    });
+  }
+  return { ids, generated, seed, input, targetItem, targetBatch: target, missing, newItem: row.seed.kind === 'NEW_ITEM',
+    newBatch: row.seed.kind === 'NEW_ITEM' || row.seed.kind === 'EXISTING_ITEM_NEW_BATCH',
+    pharmacy: row.input.pharmacyId ?? oid(ids.pharmacy, bson), medicine: oid(ids.medicine, bson), runStart };
+}
+function assertExpectedError(row, error, data) {
+  const expected = data.cases.errorCases.find(entry => entry.id === row.id); need(expected && error instanceof Error, 'INVENTORY_ERROR');
+  need(error.name === expected.name, 'INVENTORY_ERROR');
+  if (expected.name === 'CastError') {
+    for (const key of ['path', 'kind', 'value', 'valueType', 'message']) need(error[key] === expected[key], 'INVENTORY_ERROR');
+  } else {
+    need(keys(error.errors, expected.sortedErrorKeys), 'INVENTORY_ERROR');
+    for (const key of expected.sortedErrorKeys) {
+      const leaf = error.errors[key]; const want = expected.errors[key];
+      need(leaf instanceof Error && leaf.name === want.name && leaf.kind === want.kind && leaf.path === want.path
+        && leaf.value === want.value && leaf.message === want.message && leaf.properties?.min === want.min, 'INVENTORY_ERROR');
+    }
+  }
+}
+function actionExpected(row, fixture, observation, data, bson) {
+  const e = row.expected; const before = copy(observation.before, bson);
+  const candidates = observation.after.inventoryitems.filter(item => equal(item.pharmacyId, fixture.ids.pharmacy, bson) && equal(item.medicineId, fixture.ids.medicine, bson));
+  need(candidates.length === 1, 'INVENTORY_FULL_STATE'); const actual = candidates[0];
+  const targetId = fixture.newItem ? actual._id : fixture.ids.targetItem;
+  need(equal(actual._id, targetId, bson), 'INVENTORY_FULL_STATE');
+  let expected;
+  if (fixture.newItem) {
+    oid(actual._id, bson); need(!fixture.generated.has(oid(actual._id, bson)), 'INVENTORY_GENERATED_FIELD');
+    expected = { _id: actual._id, pharmacyId: fixture.ids.pharmacy, medicineId: fixture.ids.medicine,
+      availableQty: row.id === 'IQS_NEW_ITEM_ABORT' ? 1 : e.newBatchAvailableQty, reservedQty: 0, freeQty: 0, reorderThreshold: 0,
+      isActive: true, batches: [], __v: 0, createdAt: boundedDate(actual.createdAt, observation), updatedAt: boundedDate(actual.updatedAt, observation) };
+    need(expected.createdAt.getTime() === expected.updatedAt.getTime(), 'INVENTORY_GENERATED_FIELD');
+    for (const key of ['purchasePrice', 'retailPrice', 'wholesalePrice']) if (own(row.input, key)) expected[key] = row.input[key];
+    before.inventoryitems.push(expected);
+  } else {
+    expected = before.inventoryitems.find(item => equal(item._id, fixture.ids.targetItem, bson));
+    need(expected, 'INVENTORY_FULL_STATE'); expected.__v = 1;
+    expected.updatedAt = boundedDate(actual.updatedAt, observation);
+  }
+  let batchIndex = 0; let wantedStatus; let markerRule;
+  if (fixture.newBatch) {
+    batchIndex = expected.batches.length; const generated = actual.batches?.[batchIndex];
+    need(generated, 'INVENTORY_GENERATED_FIELD'); const hex = oid(generated._id, bson);
+    need(!fixture.generated.has(hex) && hex !== oid(actual._id, bson), 'INVENTORY_GENERATED_FIELD');
+    const fresh = { _id: generated._id, batchNumber: fixture.input.batchNumber, expiryDate: fixture.input.expiryDate,
+      receivedAt: boundedDate(generated.receivedAt, observation), availableQty: row.id === 'IQS_NEW_ITEM_ABORT' ? 1 : e.newBatchAvailableQty,
+      reservedQty: 0, freeQty: 0, status: row.id === 'IQS_NEW_ITEM_ABORT' ? 'active' : e.qualityStatus };
+    for (const key of ['purchasePrice', 'mrp', 'retailPrice', 'wholesalePrice']) if (own(row.input, key)) fresh[key] = row.input[key];
+    expected.batches.push(fresh); wantedStatus = fresh.status; markerRule = row.id === 'IQS_NEW_ITEM_ABORT' ? 'ABSENT' : e.depletedAt;
+    if (!fixture.newItem) {
+      expected.availableQty += e.newBatchAvailableQty; expected.isActive = true;
+      for (const key of ['purchasePrice', 'retailPrice', 'wholesalePrice']) expected[key] = row.input[key];
+    }
+  } else if (row.id === 'IQR_MULTI_EMPTY') {
+    wantedStatus = fixture.targetBatch.status; markerRule = 'EXACT_ORIGINAL_PRESENCE_AND_MILLISECONDS';
+  } else if (row.id === 'IQR_MULTI_TWO_BATCHES') {
+    const s = data.cases.literalSpecialCases[row.id];
+    Object.assign(expected, s.parentAfter);
+    Object.assign(expected.batches[0], { availableQty: s.first.availableAfter, reservedQty: s.first.reservedAfter });
+    Object.assign(expected.batches[1], { availableQty: s.second.availableAfter, reservedQty: s.second.reservedAfter, status: s.second.statusAfter });
+    delete expected.batches[1].depletedAt; wantedStatus = s.first.status; markerRule = 'EXACT_ORIGINAL_PRESENCE_AND_MILLISECONDS';
+  } else if (row.id === 'IQR_MULTI_SAME_BATCH_TWICE') {
+    const s = data.cases.literalSpecialCases[row.id];
+    Object.assign(expected, { availableQty: s.parentAvailableAfter, reservedQty: s.parentReservedAfter, isActive: s.isActive });
+    Object.assign(expected.batches[0], { availableQty: s.targetAvailableAfter, reservedQty: s.targetReservedAfter });
+    wantedStatus = s.status; markerRule = 'EXACT_ORIGINAL_PRESENCE_AND_MILLISECONDS';
+  } else if (row.id.startsWith('IQS_')) {
+    const s = data.cases.literalSpecialCases[row.method === 'adjustBatchStock' ? 'IQS_ADJUST_COMMIT' : 'IQS_RELEASE_COMMIT'];
+    Object.assign(expected, { availableQty: s.parentAvailableAfter, reservedQty: s.parentReserved ?? s.parentReservedAfter, isActive: s.isActive });
+    Object.assign(expected.batches[0], { availableQty: s.targetAvailableAfter, reservedQty: s.targetReserved ?? s.targetReservedAfter });
+    wantedStatus = fixture.targetBatch.status; markerRule = 'EXACT_ORIGINAL_PRESENCE_AND_MILLISECONDS';
+  } else {
+    need(Number.isFinite(e.targetAvailableQty) && Number.isFinite(e.targetReservedQty), 'INVENTORY_DATA_BINDING');
+    Object.assign(expected.batches[0], { availableQty: e.targetAvailableQty, reservedQty: e.targetReservedQty });
+    const availableDelta = own(e, 'documentAvailableDelta') ? e.documentAvailableDelta : (row.id === 'IQA_PRICES_ZERO' || row.id === 'IQA_PRICES_SUPPLIED') ? 1 : 0;
+    expected.availableQty += availableDelta; expected.reservedQty += e.documentReservedDelta ?? 0;
+    if (row.method === 'adjustBatchStock') expected.isActive = true;
+    if (own(e, 'documentIsActive')) expected.isActive = e.documentIsActive;
+    if (e.expectedBatchPrices) Object.assign(expected.batches[0], e.expectedBatchPrices);
+    if (e.expectedParentFields) Object.assign(expected, e.expectedParentFields);
+    wantedStatus = e.qualityStatus; markerRule = e.depletedAt;
+  }
+  const selected = expected.batches[batchIndex]; const observedBatch = actual.batches?.[batchIndex];
+  need(observedBatch && typeof wantedStatus === 'string', 'INVENTORY_FULL_STATE');
+  selected.status = wantedStatus;
+  if (markerRule === 'ABSENT') delete selected.depletedAt;
+  else if (markerRule === 'NEW_REAL_DATE') selected.depletedAt = boundedDate(observedBatch.depletedAt, observation);
+  else need(markerRule === 'EXACT_ORIGINAL_PRESENCE_AND_MILLISECONDS', 'INVENTORY_DATA_BINDING');
+  return { snapshot: before, actual, expected, batchIndex, selected, observedBatch };
+}
+function sameWithoutQuality(left, right, targetId, batchIndex, bson) {
+  const stripped = snapshot => {
+    const result = copy(snapshot, bson); const item = result.inventoryitems.find(entry => equal(entry._id, targetId, bson));
+    need(item?.batches?.[batchIndex], 'INVENTORY_FULL_STATE'); delete item.batches[batchIndex].status; delete item.batches[batchIndex].depletedAt; return result;
+  };
+  return sameSnapshot(stripped(left), stripped(right), bson);
+}
+function assertState(row, fixture, observation, data, bson, unsafe) {
+  snapshotShape(observation.before, bson); snapshotShape(observation.after, bson);
+  need(sameSnapshot(observation.before, fixture.seed, bson), 'INVENTORY_SEED_STATE');
+  if (row.expected.returnKind !== 'OBJECT') {
+    need(sameSnapshot(observation.after, observation.before, bson), 'INVENTORY_FULL_STATE');
+    if (row.expected.returnKind === 'NULL') need(observation.error === null && observation.result === null, 'INVENTORY_RETURN');
+    else { need(observation.result === undefined, 'INVENTORY_RETURN'); assertExpectedError(row, observation.error, data); }
+    return;
+  }
+  need(observation.error === null, 'INVENTORY_RETURN');
+  const state = actionExpected(row, fixture, observation, data, bson);
+  const item = row.method === 'adjustBatchStock' ? observation.result?.item : observation.result;
+  if (row.method === 'adjustBatchStock') {
+    need(keys(observation.result, ['item', 'batchId', 'availableQtyBefore', 'availableQtyAfter']), 'INVENTORY_RETURN');
+    const beforeQty = fixture.newBatch ? 0 : fixture.targetBatch.availableQty;
+    const afterQty = state.selected.availableQty;
+    need(observation.result.availableQtyBefore === beforeQty && observation.result.availableQtyAfter === afterQty
+      && observation.result.batchId === oid(state.observedBatch._id, bson), 'INVENTORY_RETURN');
+  }
+  need(equal(item, state.actual, bson), 'INVENTORY_RETURN');
+  // Compare every other field first. A quantity/price/sibling/provider defect is never an expected quality mismatch.
+  need(sameWithoutQuality(observation.after, state.snapshot, state.actual._id, state.batchIndex, bson), 'INVENTORY_FULL_STATE');
+  if (unsafe) {
+    need(data.cases.sourceMutations.includes(unsafe) && unsafe.referenceTrial === row.id, 'INVENTORY_SENSITIVITY');
+    need(state.observedBatch.status === unsafe.unsafeExpected.persistedStatus && !own(state.observedBatch, 'depletedAt'), 'INVENTORY_SENSITIVITY');
+  } else {
+    need(state.observedBatch.status === state.selected.status, 'INVENTORY_QUALITY_STATUS');
+    need(own(state.observedBatch, 'depletedAt') === own(state.selected, 'depletedAt')
+      && (!own(state.selected, 'depletedAt') || equal(state.observedBatch.depletedAt, state.selected.depletedAt, bson)), 'INVENTORY_DEPLETED_AT_PRESERVATION');
+  }
+}
+function pairedCommands(events) {
+  need(Array.isArray(events) && events.length <= 12, 'INVENTORY_COMMANDS'); const pending = new Map(); const pairs = [];
+  for (const event of events) {
+    need(plain(event) && Number.isSafeInteger(event.requestId), 'INVENTORY_COMMANDS');
+    if (event.kind === 'started') {
+      need(keys(event, ['kind', 'requestId', 'commandName', 'databaseName', 'command']) && !pending.has(event.requestId), 'INVENTORY_COMMANDS'); pending.set(event.requestId, event);
+    } else {
+      need(event.kind === 'succeeded' && keys(event, ['kind', 'requestId', 'commandName', 'reply']), 'INVENTORY_COMMANDS');
+      const start = pending.get(event.requestId); need(start && start.commandName === event.commandName && plain(event.reply)
+        && event.reply.ok === 1 && !own(event.reply, 'writeConcernError') && !own(event.reply, 'writeErrors'), 'INVENTORY_COMMANDS');
+      pending.delete(event.requestId); pairs.push({ ...start, reply: event.reply });
+    }
+  }
+  need(pending.size === 0, 'INVENTORY_COMMANDS'); return pairs;
+}
+function assertActionEvidence(row, fixture, observation, bson) {
+  assertZeroEffects(observation.effectsBefore); assertZeroEffects(observation.effectsAfter);
+  const commands = pairedCommands(observation.events); const e = row.expected.actionCommands;
+  const reads = commands.filter(event => event.commandName === 'find');
+  const writes = commands.filter(event => ['insert', 'update'].includes(event.commandName));
+  need(reads.length === e.find.inventoryitems && writes.length === e.write.inventoryitems && commands.length === reads.length + writes.length,
+    'INVENTORY_COMMANDS');
+  for (const event of commands) {
+    const command = event.command;
+    need(event.databaseName === observation.database && command.$db === observation.database && equal(command.lsid, observation.sessionId, bson), 'INVENTORY_SESSION');
+    need(command[event.commandName] === 'inventoryitems', 'INVENTORY_COMMANDS');
+    if (observation.transaction) {
+      need(command.autocommit === false && command.txnNumber instanceof bson.Long, 'INVENTORY_TRANSACTION');
+      need(equal(command.txnNumber, commands[0].command.txnNumber, bson), 'INVENTORY_TRANSACTION');
+      if (event === commands[0]) need(command.startTransaction === true && equal(command.readConcern, { level: 'snapshot' }, bson), 'INVENTORY_TRANSACTION');
+      else need(!own(command, 'startTransaction') && !own(command, 'writeConcern'), 'INVENTORY_TRANSACTION');
+    } else need(!own(command, 'startTransaction') && !own(command, 'autocommit'), 'INVENTORY_TRANSACTION');
+    if (event.commandName === 'find') need(equal(command.filter, { pharmacyId: fixture.ids.pharmacy, medicineId: fixture.ids.medicine }, bson), 'INVENTORY_COMMANDS');
+    if (event.commandName === 'update') {
+      need(Array.isArray(command.updates) && command.updates.length === 1, 'INVENTORY_COMMANDS'); const update = command.updates[0];
+      need(equal(update.q, { _id: fixture.ids.targetItem, __v: 0 }, bson) && (!own(update, 'multi') || update.multi === false) && (!own(update, 'upsert') || update.upsert === false)
+        && keys(update.u.$inc, ['__v']) && update.u.$inc.__v === 1 && Array.isArray(update.u.$set?.batches), 'INVENTORY_COMMANDS');
+    }
+    if (event.commandName === 'insert') need(fixture.newItem && Array.isArray(command.documents) && command.documents.length === 1
+      && equal(command.documents[0], observation.after.inventoryitems.find(item => equal(item.pharmacyId, fixture.ids.pharmacy, bson)), bson), 'INVENTORY_COMMANDS');
+  }
+}
+function assertTransaction(row, observation, bson) {
+  if (!observation.transaction) {
+    need(observation.terminalEvents.length === 0 && observation.outsideBeforeTerminal === null
+      && sameSnapshot(observation.final, observation.after, bson), 'INVENTORY_TRANSACTION'); return;
+  }
+  need(sameSnapshot(observation.outsideBeforeTerminal, observation.before, bson), 'INVENTORY_TRANSACTION');
+  const command = row.expected.transactionTerminal === 'COMMIT' ? 'commitTransaction' : 'abortTransaction';
+  const terminal = pairedCommands(observation.terminalEvents); need(terminal.length === 1 && terminal[0].commandName === command, 'INVENTORY_TRANSACTION');
+  const wire = terminal[0].command; const first = pairedCommands(observation.events)[0].command;
+  need(wire[command] === 1 && terminal[0].databaseName === 'admin' && wire.autocommit === false
+    && equal(wire.lsid, observation.sessionId, bson) && equal(wire.txnNumber, first.txnNumber, bson)
+    && observation.transactionEnded === true, 'INVENTORY_TRANSACTION');
+  need(sameSnapshot(observation.final, command === 'commitTransaction' ? observation.after : observation.before, bson), 'INVENTORY_TRANSACTION');
+}
+function assertInventoryObservation(row, fixture, observation, data, bson) {
+  need(data.cases.cases.includes(row), 'INVENTORY_CASE_SET');
+  assertActionEvidence(row, fixture, observation, bson); assertState(row, fixture, observation, data, bson);
+  assertTransaction(row, observation, bson);
+}
+function assertUnsafeInventoryObservation(row, fixture, observation, data, bson, variant) {
+  need(!observation.transaction, 'INVENTORY_SENSITIVITY');
+  assertActionEvidence(row, fixture, observation, bson); assertState(row, fixture, observation, data, bson, variant);
+  assertTransaction(row, observation, bson);
+}
+function assertIndexProof(proof, ports, database, bson) {
+  need(keys(proof, ['beforeCollections', 'afterCollections', 'schemaIndexes', 'serverIndexes', 'commands'])
+    && equal(proof.beforeCollections, [], bson) && equal([...proof.afterCollections].sort(), [...COLLECTIONS].sort(), bson)
+    && keys(proof.schemaIndexes, MODEL_NAMES) && keys(proof.serverIndexes, COLLECTIONS)
+    && equal(proof.commands, { create: 3, createIndexes: 22, listIndexes: 3, listCollections: 2 }, bson), 'INVENTORY_INDEX_PROOF');
+  for (const model of ports.models) {
+    const actualSchema = proof.schemaIndexes[model.name]; const expectedSchema = ports.secondaryIndexes.filter(row => row.model === model.name);
+    need(Array.isArray(actualSchema) && actualSchema.length === expectedSchema.length, 'INVENTORY_INDEX_PROOF');
+    // Schema listing order is not meaningful; index compound-key order is.
+    const schemaRows = actualSchema.map(pair => {
+      need(Array.isArray(pair) && pair.length === 2 && plain(pair[0]) && plain(pair[1]), 'INVENTORY_INDEX_PROOF');
+      const options = { ...pair[1] }; if (own(options, '_autoIndex')) { need(options._autoIndex === false, 'INVENTORY_INDEX_PROOF'); delete options._autoIndex; }
+      return { key: JSON.stringify(Object.entries(pair[0])), options };
+    });
+    const unmatched = new Set(schemaRows);
+    for (const expected of expectedSchema) {
+      const hit = [...unmatched].find(item => item.key === JSON.stringify(Object.entries(expected.key)) && equal(item.options, expected.sourceOptions, bson));
+      need(hit, 'INVENTORY_INDEX_PROOF'); unmatched.delete(hit);
+    }
+    need(unmatched.size === 0, 'INVENTORY_INDEX_PROOF');
+    const serverRows = proof.serverIndexes[model.collection]; need(Array.isArray(serverRows) && serverRows.length === model.indexes.length + 1, 'INVENTORY_INDEX_PROOF');
+    const expectedServer = [{ key: { _id: 1 }, options: { name: '_id_' } }, ...model.indexes];
+    const names = new Set();
+    for (const row of serverRows) {
+      need(plain(row) && Object.keys(row).every(key => ['v', 'key', 'name', 'unique', 'sparse', 'hidden', 'ns', 'partialFilterExpression'].includes(key))
+        && row.v === 2 && typeof row.name === 'string' && !names.has(row.name), 'INVENTORY_INDEX_PROOF'); names.add(row.name);
+      const expected = expectedServer.find(item => item.options.name === row.name);
+      need(expected && JSON.stringify(Object.entries(row.key)) === JSON.stringify(Object.entries(expected.key)), 'INVENTORY_INDEX_PROOF');
+      if (own(row, 'ns')) need(row.ns === database + '.' + model.collection, 'INVENTORY_INDEX_PROOF');
+      for (const flag of ['unique', 'sparse', 'hidden']) {
+        need(!own(row, flag) || typeof row[flag] === 'boolean', 'INVENTORY_INDEX_PROOF');
+        need((row[flag] ?? false) === (expected.options[flag] ?? false), 'INVENTORY_INDEX_PROOF');
+      }
+      need(own(row, 'partialFilterExpression') === own(expected.options, 'partialFilterExpression')
+        && (!own(row, 'partialFilterExpression') || equal(row.partialFilterExpression, expected.options.partialFilterExpression, bson)), 'INVENTORY_INDEX_PROOF');
+    }
+  }
+}
+const CONTEXT_KEYS = Object.freeze(['models', 'bson', 'controlSession', 'database', 'runStartMillis', 'indexProof',
+  'repository', 'restoreRepository', 'repositoryAudit', 'startSession', 'snapshot', 'phase', 'commands', 'effects', 'failureContext', 'assertHealthy']);
+function assertContext(ctx) {
+  need(keys(ctx, CONTEXT_KEYS) && keys(ctx.models, MODEL_NAMES) && keys(ctx.bson, ['ObjectId', 'Long', 'Timestamp', 'Binary'])
+    && /^sd_iq_[a-f0-9]{32}$/.test(ctx.database) && Number.isFinite(ctx.runStartMillis), 'INVENTORY_CONTEXT');
+  for (const key of CONTEXT_KEYS.filter(name => !['models', 'bson', 'controlSession', 'database', 'runStartMillis'].includes(name))) need(typeof ctx[key] === 'function', 'INVENTORY_CONTEXT');
+  for (const name of MODEL_NAMES) need(typeof ctx.models[name]?.insertMany === 'function' && typeof ctx.models[name]?.deleteMany === 'function', 'INVENTORY_CONTEXT');
+}
+async function preserveFirst(action, cleanup) {
+  let result; let first; let hasFailure = false;
+  try { result = await action(); } catch (error) { first = error; hasFailure = true; }
+  try { await cleanup(); } catch (error) { if (!hasFailure) { first = error; hasFailure = true; } }
+  if (hasFailure) throw first;
+  return result;
+}
+function createCleanupAttempts() {
+  let cleanupFailure; let hasCleanupFailure = false;
+  return Object.freeze({
+    async attempt(operation) {
+      try { return await operation(); }
+      catch (error) { if (!hasCleanupFailure) { cleanupFailure = error; hasCleanupFailure = true; } }
+    },
+    finish() { if (hasCleanupFailure) throw cleanupFailure; },
+  });
+}
+function reserveIds(values, seen, bson) {
+  const ids = values.map(value => oid(value, bson));
+  need(new Set(ids).size === ids.length && ids.every(id => !seen.has(id)) && seen.size + ids.length <= 5000, 'INVENTORY_OWNERSHIP_PROOF');
+  for (const id of ids) seen.add(id);
+}
+async function runTrial(ctx, data, row, Repository, phase, variantId, unsafe, seenIds) {
+  const bson = ctx.bson; const fixture = hydrateFixture(row, data, bson, ctx.runStartMillis);
+  reserveIds(Object.values(fixture.ids), seenIds, bson);
+  const eligible = Object.fromEntries(COLLECTIONS.map(name => [name, []]));
+  let session; let abortAttempted = false; let transaction = false;
+  const scope = () => ({ caseId: row.id, variantId, phase, fixture, eligible, session, transaction });
+  ctx.failureContext({ caseId: row.id, variantId, phase });
+  return preserveFirst(async () => {
+    ctx.phase('CASE_SETUP', scope());
+    const empty = await ctx.snapshot(ctx.controlSession);
+    snapshotShape(empty, bson);
+    need(COLLECTIONS.every(name => empty[name].length === 0), 'INVENTORY_OWNERSHIP_PROOF');
+    // Only proven-empty planned row IDs become eligible, BEFORE inserts that may partially fail.
+    for (const name of COLLECTIONS) eligible[name].push(...fixture.seed[name].map(item => item._id));
+    for (let i = 0; i < MODEL_NAMES.length; i++) await ctx.models[MODEL_NAMES[i]].insertMany(fixture.seed[COLLECTIONS[i]], { session: ctx.controlSession });
+    ctx.phase('CONTROL', scope()); const before = await ctx.snapshot(ctx.controlSession);
+    need(sameSnapshot(before, fixture.seed, bson), 'INVENTORY_SEED_STATE');
+    session = await ctx.startSession(); need(session && session !== ctx.controlSession && session.hasEnded === false, 'INVENTORY_SESSION');
+    transaction = row.sessionMode !== 'NONTRANSACTIONAL_OWNED_SESSION';
+    if (transaction) {
+      need(['EXPLICIT_MANUAL_TRANSACTION_COMMIT', 'EXPLICIT_MANUAL_TRANSACTION_ABORT'].includes(row.sessionMode), 'INVENTORY_TRANSACTION');
+      session.startTransaction(copy(data.ports.sessions.transactionOptions, bson));
+    }
+    const repository = new Repository(); need(repository instanceof Repository && repository.constructor === Repository, 'INVENTORY_REPOSITORY_FRESHNESS');
+    const effectsBefore = ctx.effects(); const eventStart = ctx.commands().length;
+    ctx.phase('ACTION', scope());
+    const startedAt = Date.now(); let result; let error = null;
+    try {
+      if (row.method === 'adjustBatchStock') result = await repository.adjustBatchStock(fixture.pharmacy, fixture.medicine, fixture.input, session);
+      else result = await repository.releaseBatchAllocations(fixture.pharmacy, fixture.medicine, fixture.input.allocations, session);
+    } catch (caught) { error = caught; }
+    const endedAt = Date.now(); const events = ctx.commands().slice(eventStart); const effectsAfter = ctx.effects();
+    ctx.phase('CONTROL', scope()); const after = await ctx.snapshot(transaction ? session : ctx.controlSession);
+    if (fixture.newItem && result && error === null) {
+      const created = after.inventoryitems.filter(item => equal(item.pharmacyId, fixture.ids.pharmacy, bson) && equal(item.medicineId, fixture.ids.medicine, bson));
+      need(created.length === 1 && after.inventoryitems.length === before.inventoryitems.length + 1
+        && equal(result.item?._id, created[0]._id, bson) && !fixture.generated.has(oid(created[0]._id, bson)), 'INVENTORY_OWNERSHIP_PROOF');
+      need(created[0].batches?.length === 1 && result.batchId === oid(created[0].batches[0]._id, bson)
+        && !fixture.generated.has(oid(created[0].batches[0]._id, bson)), 'INVENTORY_OWNERSHIP_PROOF');
+      eligible.inventoryitems.push(created[0]._id);
+    }
+    if (fixture.newBatch && result && error === null) {
+      const item = after.inventoryitems.find(value => equal(value.pharmacyId, fixture.ids.pharmacy, bson));
+      const batch = item?.batches?.[fixture.newItem ? 0 : 2];
+      need(batch && result.batchId === oid(batch._id, bson), 'INVENTORY_OWNERSHIP_PROOF');
+      reserveIds(fixture.newItem ? [item._id, batch._id] : [batch._id], seenIds, bson);
+    }
+    const outsideBeforeTerminal = transaction ? await ctx.snapshot(ctx.controlSession) : null;
+    const terminalStart = ctx.commands().length;
+    if (transaction) {
+      ctx.phase('CONTROL', { ...scope(), terminal: row.expected.transactionTerminal });
+      if (row.expected.transactionTerminal === 'COMMIT') await session.commitTransaction();
+      else { abortAttempted = true; await session.abortTransaction(); }
+    }
+    const terminalEvents = ctx.commands().slice(terminalStart);
+    const final = transaction ? await ctx.snapshot(ctx.controlSession) : after;
+    const observation = { before, after, final, result, error, startedAt, endedAt, effectsBefore, effectsAfter, events,
+      database: ctx.database, sessionId: session.id, transaction, outsideBeforeTerminal, terminalEvents,
+      transactionEnded: !session.inTransaction() };
+    ctx.assertHealthy();
+    if (unsafe) {
+      // Complete concrete unsafe row/effects first; ONLY then demand the exact SAME nominal predicate failure.
+      assertUnsafeInventoryObservation(row, fixture, observation, data, bson, unsafe);
+      let mismatch = null;
+      try { assertInventoryObservation(row, fixture, observation, data, bson); } catch (caught) { mismatch = caught; }
+      need(mismatch && failures.has(mismatch) && fixtureCode(mismatch) === unsafe.unsafeExpected.fixedNominalMismatch, 'INVENTORY_SENSITIVITY');
+    } else assertInventoryObservation(row, fixture, observation, data, bson);
+    assertZeroEffects(ctx.effects()); return true;
+  }, async () => {
+    const cleanup = createCleanupAttempts(); const attempt = cleanup.attempt;
+    if (session) {
+      let active = false; await attempt(() => { active = session.inTransaction(); });
+      if (active && !abortAttempted) {
+        abortAttempted = true; await attempt(async () => { ctx.phase('CASE_CLEANUP', { ...scope(), terminal: 'FAILURE_ABORT' }); await session.abortTransaction(); });
+      }
+      await attempt(() => session.endSession());
+      await attempt(() => need(!session.inTransaction() && session.hasEnded === true, 'INVENTORY_CLEANUP'));
+    }
+    let cleanupAdmitted = false;
+    await attempt(() => { ctx.phase('CASE_CLEANUP', scope()); cleanupAdmitted = true; });
+    // Attempt every eligible collection cleanup, even if an earlier one fails. Never delete absent probes.
+    for (let i = 0; i < COLLECTIONS.length; i++) if (cleanupAdmitted && eligible[COLLECTIONS[i]].length) {
+      await attempt(async () => {
+        const result = await ctx.models[MODEL_NAMES[i]].deleteMany({ _id: { $in: eligible[COLLECTIONS[i]] } }, { session: ctx.controlSession });
+        need(result.acknowledged === true && Number.isSafeInteger(result.deletedCount) && result.deletedCount <= eligible[COLLECTIONS[i]].length, 'INVENTORY_CLEANUP');
+      });
+    }
+    await attempt(async () => { const remaining = await ctx.snapshot(ctx.controlSession); snapshotShape(remaining, bson); need(COLLECTIONS.every(name => remaining[name].length === 0), 'INVENTORY_CLEANUP'); });
+    await attempt(() => ctx.assertHealthy()); cleanup.finish();
+  });
+}
+function repositoryForPhase(ctx, data, kind, variant, load) {
+  need(typeof ctx.failureContext === 'function' && typeof load === 'function', 'INVENTORY_CONTEXT');
+  let diagnostic;
+  if (kind === 'NOMINAL_INITIAL') {
+    need(variant === null, 'INVENTORY_CASE_SET'); diagnostic = Object.freeze({ caseId: null, variantId: null, phase: null });
+  } else {
+    need(kind === 'UNSAFE' || kind === 'RESTORE', 'INVENTORY_CASE_SET');
+    const selected = data.cases.sourceMutations.find(row => row.id === variant); need(selected, 'INVENTORY_CASE_SET');
+    diagnostic = Object.freeze({ caseId: selected.referenceTrial, variantId: selected.id, phase: kind === 'UNSAFE' ? 'UNSAFE' : 'RESTORE_TRIAL' });
+  }
+  ctx.failureContext(diagnostic);
+  return load(kind, variant);
+}
+async function runInventoryQualityScenario(ctx) {
+  assertContext(ctx); const data = loadFixtureData(); const bson = ctx.bson;
+  assertIndexProof(ctx.indexProof(), data.ports, ctx.database, bson); assertZeroEffects(ctx.effects()); ctx.assertHealthy();
+  const evaluations = new Set(); const classes = new Set(); const seenIds = new Set(); let count = 0;
+  const repository = (kind, variant = null) => {
+    const loaded = ctx.repository(kind, variant);
+    need(keys(loaded, ['Item', 'Adjustment', 'Reservation', 'evaluation', 'sourceSha256', 'models'])
+      && loaded.models === ctx.models && Number.isSafeInteger(loaded.evaluation) && !evaluations.has(loaded.evaluation), 'INVENTORY_REPOSITORY_FRESHNESS');
+    evaluations.add(loaded.evaluation);
+    const wanted = kind === 'UNSAFE' ? data.cases.sourceMutations.find(row => row.id === variant)?.predictedSourceSha256
+      : data.ports.sourceFiles['src1/modules/pharmacyInventory/repository/index.ts'];
+    need(loaded.sourceSha256 === wanted, 'INVENTORY_REPOSITORY_FRESHNESS');
+    for (const key of ['Item', 'Adjustment', 'Reservation']) {
+      need(typeof loaded[key] === 'function' && !classes.has(loaded[key]), 'INVENTORY_REPOSITORY_FRESHNESS'); classes.add(loaded[key]);
+    }
+    return loaded.Item;
+  };
+  return preserveFirst(async () => {
+    const nominal = repositoryForPhase(ctx, data, 'NOMINAL_INITIAL', null, repository); const groupCounts = Object.fromEntries(Object.keys(data.cases.groups).map(id => [id, 0]));
+    for (const row of data.cases.cases) { await runTrial(ctx, data, row, nominal, 'NOMINAL', null, null, seenIds); groupCounts[row.group]++; count++; }
+    need(equal(groupCounts, data.cases.groups, bson) && count === 139, 'INVENTORY_CASE_SET');
+    const sensitivity = [];
+    for (const variant of data.cases.sourceMutations) {
+      const reference = data.cases.cases.find(row => row.id === variant.referenceTrial);
+      const unsafe = repositoryForPhase(ctx, data, 'UNSAFE', variant.id, repository);
+      await runTrial(ctx, data, reference, unsafe, 'UNSAFE', variant.id, variant, seenIds); count++;
+      const restored = repositoryForPhase(ctx, data, 'RESTORE', variant.id, repository);
+      await runTrial(ctx, data, reference, restored, 'RESTORE_TRIAL', variant.id, null, seenIds); count++;
+      await runTrial(ctx, data, data.cases.cases.find(row => row.id === variant.positiveRestorationTrial), restored, 'RESTORE_POSITIVE', variant.id, null, seenIds); count++;
+      sensitivity.push({ id: variant.id, detected: true });
+    }
+    need(count === 163 && evaluations.size === 17 && classes.size === 51, 'INVENTORY_REPOSITORY_FRESHNESS');
+    return { cases: Object.keys(data.cases.groups).map(id => ({ id, status: 'PASS' })), sensitivity,
+      providerSummary: Object.fromEntries(PROVIDERS.map(key => [key, 0])) };
+  }, async () => {
+    const cleanup = createCleanupAttempts();
+    await cleanup.attempt(() => ctx.restoreRepository());
+    await cleanup.attempt(() => {
+      const audit = ctx.repositoryAudit();
+      need(keys(audit, ['evaluations', 'registrations', 'restored']) && audit.evaluations === evaluations.size
+        && audit.registrations === classes.size && audit.restored === true, 'INVENTORY_REPOSITORY_FRESHNESS');
+    });
+    await cleanup.attempt(() => ctx.assertHealthy());
+    await cleanup.attempt(() => assertZeroEffects(ctx.effects())); cleanup.finish();
+  });
+}
+module.exports = { runInventoryQualityScenario, loadFixtureData, hydrateFixture, assertInventoryObservation,
+  assertUnsafeInventoryObservation, assertIndexProof, assertZeroEffects, assertExpectedError, preserveFirst, createCleanupAttempts,
+  canonical, equal, sameSnapshot, fixtureCode, reserveIds, repositoryForPhase, FAILURE_CODES: CODES, CONTEXT_KEYS };

@@ -1,0 +1,5 @@
+# Third failure independently reviewed
+
+Both direct independent nonauthor internal Codex reviewers returned FAILURE_REVIEWED, each personally querying the sameengine/both exactfullIDs absent/purposeempty/workspaceENOENT and removing its own freshconfig. Root had separately verified the samefacts. All14 evidencepins, consumed receipt/claim, preservedarchives/builds and original6+11/API105 remain exact.
+
+Actual observation remains database-admission-stage INVENTORY_CURSOR/nullcontext, no scenarioacceptance. Both found a concrete source mismatch between creation-time database-only ListCollectionsCursor namespace and the fixture's premature full-reply namespace. That finding warrants a separate exact contract; it is not raw runtime attribution or a fix/retry grant. Earlier results and historical removed:false fields remain untouched. No new execution, oracle/warning/capability relaxation or release follows.

@@ -1,0 +1,801 @@
+# Exact source excerpts
+
+Read-only copies; no excerpt is executed. Numbers are original file lines. Full file hashes are bound in INPUTS.json.
+
+## primary-source/lib/db.js
+
+```text
+89:     constructor(client, databaseName, options) {
+90:         options = options ?? {};
+91:         // Filter the options
+92:         options = (0, utils_1.filterOptions)(options, DB_OPTIONS_ALLOW_LIST);
+93:         // Ensure there are no dots in database name
+94:         if (typeof databaseName === 'string' && databaseName.includes('.')) {
+95:             throw new error_1.MongoInvalidArgumentError(`Database names cannot contain the character '.'`);
+96:         }
+97:         // Internal state of the db object
+98:         this.s = {
+99:             // Options
+100:             options,
+101:             // Unpack read preference
+102:             readPreference: read_preference_1.ReadPreference.fromOptions(options),
+103:             // Merge bson options
+104:             bsonOptions: (0, bson_1.resolveBSONOptions)(options, client),
+105:             // Set up the primary key factory or fallback to ObjectId
+106:             pkFactory: options?.pkFactory ?? utils_1.DEFAULT_PK_FACTORY,
+107:             // ReadConcern
+108:             readConcern: read_concern_1.ReadConcern.fromOptions(options),
+109:             writeConcern: write_concern_1.WriteConcern.fromOptions(options),
+110:             // Namespace
+111:             namespace: new utils_1.MongoDBNamespace(databaseName)
+112:         };
+113:         this.client = client;
+```
+
+```text
+238:     listCollections(filter = {}, options = {}) {
+239:         return new list_collections_cursor_1.ListCollectionsCursor(this, filter, (0, utils_1.resolveOptions)(this, options));
+240:     }
+```
+
+## primary-source/lib/utils.js
+
+```text
+239:     constructor(db, collection) {
+240:         this.db = db;
+241:         this.collection = collection === '' ? undefined : collection;
+242:     }
+243:     toString() {
+244:         return this.collection ? `${this.db}.${this.collection}` : this.db;
+245:     }
+```
+
+## primary-source/lib/cursor/list_collections_cursor.js
+
+```text
+8: class ListCollectionsCursor extends abstract_cursor_1.AbstractCursor {
+9:     constructor(db, filter, options) {
+10:         super(db.client, db.s.namespace, { ...options });
+11:         this.parent = db;
+12:         this.filter = filter;
+13:         this.options = options;
+14:     }
+15:     clone() {
+16:         return new ListCollectionsCursor(this.parent, this.filter, {
+17:             ...this.options,
+18:             ...this.cursorOptions
+19:         });
+20:     }
+21:     /** @internal */
+22:     async _initialize(session) {
+23:         const operation = new list_collections_1.ListCollectionsOperation(this.parent, this.filter, {
+24:             ...this.cursorOptions,
+25:             ...this.options,
+26:             session,
+27:             signal: this.signal
+28:         });
+29:         const response = await (0, execute_operation_1.executeOperation)(this.parent.client, operation, this.timeoutContext);
+30:         return { server: operation.server, session, response };
+31:     }
+```
+
+## primary-source/lib/cursor/list_indexes_cursor.js
+
+```text
+8: class ListIndexesCursor extends abstract_cursor_1.AbstractCursor {
+9:     constructor(collection, options) {
+10:         super(collection.client, collection.s.namespace, { ...options });
+11:         this.parent = collection;
+12:         this.options = options;
+13:     }
+14:     clone() {
+15:         return new ListIndexesCursor(this.parent, {
+16:             ...this.options,
+17:             ...this.cursorOptions
+18:         });
+19:     }
+20:     /** @internal */
+21:     async _initialize(session) {
+22:         const operation = new indexes_1.ListIndexesOperation(this.parent, {
+23:             ...this.cursorOptions,
+24:             ...this.options,
+25:             session
+26:         });
+27:         const response = await (0, execute_operation_1.executeOperation)(this.parent.client, operation, this.timeoutContext);
+28:         return { server: operation.server, session, response };
+```
+
+## primary-source/lib/collection.js
+
+```text
+318:     find(filter = {}, options = {}) {
+319:         return new find_cursor_1.FindCursor(this.client, this.s.namespace, filter, (0, utils_1.resolveOptions)(this, options));
+320:     }
+```
+
+```text
+397:     listIndexes(options) {
+398:         return new list_indexes_cursor_1.ListIndexesCursor(this, (0, utils_1.resolveOptions)(this, options));
+399:     }
+```
+
+## primary-source/lib/cursor/find_cursor.js
+
+```text
+24:     constructor(client, namespace, filter = {}, options = {}) {
+25:         super(client, namespace, options);
+26:         /** @internal */
+27:         this.numReturned = 0;
+28:         this.cursorFilter = filter;
+29:         this.findOptions = options;
+30:         if (options.sort != null) {
+31:             this.findOptions.sort = (0, sort_1.formatSort)(options.sort);
+```
+
+```text
+44:     /** @internal */
+45:     async _initialize(session) {
+46:         const options = {
+47:             ...this.findOptions, // NOTE: order matters here, we may need to refine this
+48:             ...this.cursorOptions,
+49:             session,
+50:             signal: this.signal
+51:         };
+52:         const findOperation = new find_1.FindOperation(this.namespace, this.cursorFilter, options);
+53:         const response = await (0, execute_operation_1.executeOperation)(this.client, findOperation, this.timeoutContext);
+54:         // the response is not a cursor when `explain` is enabled
+55:         this.numReturned = response.batchSize;
+56:         return { server: findOperation.server, session, response };
+57:     }
+```
+
+## primary-source/lib/cursor/abstract_cursor.js
+
+```text
+42:     constructor(client, namespace, options = {}) {
+43:         super();
+44:         /** @internal */
+45:         this.documents = null;
+46:         /** @internal */
+47:         this.hasEmittedClose = false;
+48:         this.on('error', utils_1.noop);
+49:         // timeoutMS and timeoutMode are no-ops, so they must never reach the operations built from these options
+50:         options.timeoutMS = undefined;
+51:         options.timeoutMode = undefined;
+52:         if (!client.s.isMongoClient) {
+53:             throw new error_1.MongoRuntimeError('Cursor must be constructed with MongoClient');
+54:         }
+55:         this.cursorClient = client;
+56:         this.cursorNamespace = namespace;
+57:         this.cursorId = null;
+58:         this.initialized = false;
+59:         this.isClosed = false;
+60:         this.isKilled = false;
+```
+
+```text
+87:         this.cursorSession = options.session ?? null;
+88:         this.deserializationOptions = {
+89:             ...this.cursorOptions,
+90:             validation: {
+91:                 utf8: options?.enableUtf8Validation === false ? false : true
+92:             }
+93:         };
+94:         this.timeoutContext = options.timeoutContext;
+95:         this.signal = options.signal;
+96:         this.abortListener = (0, utils_1.addAbortListener)(this.signal, () => void this.close().then(undefined, utils_1.squashError));
+97:         this.trackCursor();
+98:     }
+```
+
+```text
+105:      */
+106:     get id() {
+107:         return this.cursorId ?? undefined;
+```
+
+```text
+114:     get client() {
+115:         return this.cursorClient;
+116:     }
+117:     /** @internal */
+118:     get server() {
+119:         return this.selectedServer;
+120:     }
+121:     get namespace() {
+122:         return this.cursorNamespace;
+123:     }
+124:     get readPreference() {
+125:         return this.cursorOptions.readPreference;
+126:     }
+127:     get readConcern() {
+128:         return this.cursorOptions.readConcern;
+129:     }
+130:     /** @internal */
+131:     get session() {
+132:         return this.cursorSession;
+133:     }
+134:     set session(clientSession) {
+135:         this.cursorSession = clientSession;
+```
+
+```text
+230:     async hasNext() {
+231:         this.signal?.throwIfAborted();
+232:         if (this.cursorId === bson_1.Long.ZERO) {
+233:             return false;
+234:         }
+235:         if (this.cursorOptions.timeoutMode === exports.CursorTimeoutMode.ITERATION && this.cursorId != null) {
+236:             this.timeoutContext?.refresh();
+237:         }
+238:         try {
+239:             do {
+240:                 if ((this.documents?.length ?? 0) !== 0) {
+241:                     return true;
+242:                 }
+243:                 await this.fetchBatch();
+244:             } while (!this.isDead || (this.documents?.length ?? 0) !== 0);
+245:         }
+246:         finally {
+247:             if (this.cursorOptions.timeoutMode === exports.CursorTimeoutMode.ITERATION) {
+248:                 this.timeoutContext?.clear();
+249:             }
+250:         }
+251:         return false;
+```
+
+```text
+557:     async cursorInit() {
+558:         if (this.cursorOptions.timeoutMS != null) {
+559:             this.timeoutContext ??= new CursorTimeoutContext(timeout_1.TimeoutContext.create({
+560:                 serverSelectionTimeoutMS: this.client.s.options.serverSelectionTimeoutMS,
+561:                 timeoutMS: this.cursorOptions.timeoutMS
+562:             }), this);
+563:         }
+564:         try {
+565:             this.cursorSession ??= this.cursorClient.startSession({ owner: this, explicit: false });
+566:             const state = await this._initialize(this.cursorSession);
+567:             // Set omitMaxTimeMS to the value needed for subsequent getMore calls
+568:             this.cursorOptions.omitMaxTimeMS = this.cursorOptions.timeoutMS != null;
+569:             const response = state.response;
+570:             this.selectedServer = state.server;
+571:             this.cursorId = response.id;
+572:             this.cursorNamespace = response.ns ?? this.namespace;
+573:             this.documents = response;
+574:             this.initialized = true; // the cursor is now initialized, even if it is dead
+575:         }
+576:         catch (error) {
+577:             // the cursor is now initialized, even if an error occurred
+578:             this.initialized = true;
+579:             await this.cleanup(undefined, error);
+580:             throw error;
+581:         }
+582:         if (this.isDead) {
+583:             await this.cleanup();
+584:         }
+585:         return;
+586:     }
+587:     /** @internal Attempt to obtain more documents */
+588:     async fetchBatch() {
+589:         if (this.isClosed) {
+590:             return;
+591:         }
+592:         if (this.isDead) {
+593:             // if the cursor is dead, we clean it up
+594:             // cleanupCursor should never throw, but if it does it indicates a bug in the driver
+595:             // and we should surface the error
+596:             await this.cleanup();
+597:             return;
+598:         }
+599:         if (this.cursorId == null) {
+600:             await this.cursorInit();
+601:             // If the cursor died or returned documents, return
+602:             if ((this.documents?.length ?? 0) !== 0 || this.isDead)
+603:                 return;
+604:         }
+605:         // Otherwise, run a getMore
+606:         try {
+607:             const response = await this.getMore();
+```
+
+```text
+633:     async cleanup(timeoutMS, error) {
+634:         this.abortListener?.[utils_1.kDispose]();
+635:         this.isClosed = true;
+636:         const timeoutContextForKillCursors = () => {
+637:             if (timeoutMS != null) {
+638:                 this.timeoutContext?.clear();
+639:                 return new CursorTimeoutContext(timeout_1.TimeoutContext.create({
+640:                     serverSelectionTimeoutMS: this.client.s.options.serverSelectionTimeoutMS,
+641:                     timeoutMS
+642:                 }), this);
+643:             }
+644:             else {
+645:                 return this.timeoutContext?.refreshed();
+646:             }
+647:         };
+648:         const withEmitClose = async (fn) => {
+649:             try {
+650:                 await fn();
+651:             }
+652:             finally {
+653:                 this.emitClose();
+654:             }
+655:         };
+656:         const close = async () => {
+657:             // if no session has been defined on the cursor, the cursor was never initialized
+658:             // or the cursor was re-wound and never re-iterated.  In either case, we
+659:             //   1. do not need to end the session (there is no session after all)
+660:             //   2. do not need to kill the cursor server-side
+661:             const session = this.cursorSession;
+662:             if (!session)
+663:                 return;
+664:             try {
+665:                 if (!this.isKilled &&
+666:                     this.cursorId &&
+667:                     !this.cursorId.isZero() &&
+668:                     this.cursorNamespace &&
+669:                     this.selectedServer &&
+670:                     !session.hasEnded) {
+671:                     this.isKilled = true;
+672:                     const cursorId = this.cursorId;
+673:                     this.cursorId = bson_1.Long.ZERO;
+674:                     await (0, execute_operation_1.executeOperation)(this.cursorClient, new kill_cursors_1.KillCursorsOperation(cursorId, this.cursorNamespace, this.selectedServer, {
+675:                         session
+676:                     }), timeoutContextForKillCursors());
+677:                 }
+678:             }
+679:             catch (error) {
+680:                 (0, utils_1.squashError)(error);
+681:             }
+682:             finally {
+683:                 if (session.owner === this) {
+684:                     await session.endSession({ error });
+685:                 }
+686:                 if (!session.inTransaction()) {
+687:                     (0, sessions_1.maybeClearPinnedConnection)(session, { error });
+688:                 }
+689:             }
+690:         };
+691:         await withEmitClose(close);
+692:     }
+693:     /** @internal */
+694:     emitClose() {
+695:         try {
+```
+
+## primary-source/lib/operations/list_collections.js
+
+```text
+8: class ListCollectionsOperation extends command_1.CommandOperation {
+9:     constructor(db, filter, options) {
+10:         super(db, options);
+11:         this.SERVER_COMMAND_RESPONSE_TYPE = responses_1.CursorResponse;
+12:         this.options = { ...options };
+13:         delete this.options.writeConcern;
+14:         this.db = db;
+15:         this.filter = filter;
+16:         this.nameOnly = !!this.options.nameOnly;
+17:         this.authorizedCollections = !!this.options.authorizedCollections;
+18:         if (typeof this.options.batchSize === 'number') {
+19:             this.batchSize = this.options.batchSize;
+20:         }
+21:         this.SERVER_COMMAND_RESPONSE_TYPE = this.explain ? responses_1.ExplainedCursorResponse : responses_1.CursorResponse;
+22:     }
+23:     get commandName() {
+24:         return 'listCollections';
+25:     }
+26:     buildCommandDocument(_connection) {
+27:         const command = {
+28:             listCollections: 1,
+29:             filter: this.filter,
+30:             cursor: this.batchSize ? { batchSize: this.batchSize } : {},
+31:             nameOnly: this.nameOnly,
+32:             authorizedCollections: this.authorizedCollections
+33:         };
+34:         // we check for undefined specifically here to allow falsy values
+35:         // eslint-disable-next-line no-restricted-syntax
+36:         if (this.options.comment !== undefined) {
+37:             command.comment = this.options.comment;
+38:         }
+39:         return command;
+40:     }
+41:     handleOk(response) {
+```
+
+## primary-source/lib/operations/command.js
+
+```text
+12: class CommandOperation extends operation_1.AbstractOperation {
+13:     constructor(parent, options) {
+14:         super(options);
+15:         this.options = options ?? {};
+16:         // NOTE: this was explicitly added for the add/remove user operations, it's likely
+17:         //       something we'd want to reconsider. Perhaps those commands can use `Admin`
+18:         //       as a parent?
+19:         const dbNameOverride = options?.dbName || options?.authdb;
+20:         if (dbNameOverride) {
+21:             this.ns = new utils_1.MongoDBNamespace(dbNameOverride, '$cmd');
+22:         }
+23:         else {
+24:             this.ns = parent
+25:                 ? parent.s.namespace.withCollection('$cmd')
+26:                 : new utils_1.MongoDBNamespace('admin', '$cmd');
+27:         }
+28:         this.readConcern = read_concern_1.ReadConcern.fromOptions(options);
+29:         this.writeConcern = write_concern_1.WriteConcern.fromOptions(options);
+```
+
+```text
+68:         }
+69:         if (this.options.rawData != null &&
+70:             this.hasAspect(operation_1.Aspect.SUPPORTS_RAW_DATA) &&
+```
+
+## primary-source/lib/cmap/connection.js
+
+```text
+284:     async *sendCommand(ns, command, options, responseType) {
+285:         options?.signal?.throwIfAborted();
+286:         const message = this.prepareCommand(ns.db, command, options);
+287:         let started = 0;
+288:         if (this.shouldEmitAndLogCommand) {
+289:             started = (0, utils_1.processTimeMS)();
+290:             this.emitAndLogCommand(this.monitorCommands, Connection.COMMAND_STARTED, message.databaseName, this.established, new command_monitoring_events_1.CommandStartedEvent(this, message, this.description.serverConnectionId));
+291:         }
+292:         // If `documentsReturnedIn` not set or raw is not enabled, use input bson options
+293:         // Otherwise, support raw flag. Raw only works for cursors that hardcode firstBatch/nextBatch fields
+294:         const bsonOptions = options.documentsReturnedIn == null || !options.raw
+295:             ? options
+296:             : {
+297:                 ...options,
+298:                 raw: false,
+299:                 fieldsAsRaw: { [options.documentsReturnedIn]: true }
+300:             };
+301:         /** MongoDBResponse instance or subclass */
+302:         let document = undefined;
+303:         /** Cached result of a toObject call */
+304:         let object = undefined;
+305:         try {
+306:             this.throwIfAborted();
+307:             for await (document of this.sendWire(message, options, responseType)) {
+308:                 object = undefined;
+309:                 if (options.session != null) {
+310:                     (0, sessions_1.updateSessionFromResponse)(options.session, document);
+311:                 }
+312:                 if (document.$clusterTime) {
+313:                     this.clusterTime = document.$clusterTime;
+314:                     this.emit(Connection.CLUSTER_TIME_RECEIVED, document.$clusterTime);
+315:                 }
+316:                 if (document.ok === 0) {
+317:                     if (options.timeoutContext?.csotEnabled() && document.isMaxTimeExpiredError) {
+318:                         throw new error_1.MongoOperationTimeoutError('Server reported a timeout error', {
+319:                             cause: new error_1.MongoServerError((object ??= document.toObject(bsonOptions)))
+320:                         });
+321:                     }
+322:                     throw new error_1.MongoServerError((object ??= document.toObject(bsonOptions)));
+323:                 }
+324:                 if (this.shouldEmitAndLogCommand) {
+325:                     this.emitAndLogCommand(this.monitorCommands, Connection.COMMAND_SUCCEEDED, message.databaseName, this.established, new command_monitoring_events_1.CommandSucceededEvent(this, message, message.moreToCome ? { ok: 1 } : (object ??= document.toObject(bsonOptions)), started, this.description.serverConnectionId));
+326:                 }
+327:                 if (responseType == null) {
+328:                     yield (object ??= document.toObject(bsonOptions));
+329:                 }
+330:                 else {
+331:                     yield document;
+332:                 }
+```
+
+## primary-source/lib/cmap/wire_protocol/responses.js
+
+```text
+181:     get id() {
+182:         try {
+183:             return bson_1.Long.fromBigInt(this.cursor.get('id', bson_1.BSONType.long, true));
+184:         }
+185:         catch (cause) {
+186:             throw new error_1.MongoUnexpectedServerResponseError(cause.message, { cause });
+187:         }
+188:     }
+189:     get ns() {
+190:         const namespace = this.cursor.get('ns', bson_1.BSONType.string);
+191:         if (namespace != null)
+192:             return (0, utils_1.ns)(namespace);
+193:         return null;
+194:     }
+```
+
+## fixture-baselines/inventory-bootstrap.cjs
+
+```text
+1021: 
+1022: async function collectReadCursor(makeCursor, limit, budget, leases) {
+1023:   const rows = []; let cursor; let first; let failed = false;
+1024:   const retain = error => { budget.recordFailure(); if (!failed) { failed = true; first = error; } };
+1025:   try {
+1026:     budget.check(); cursor = makeCursor(); budget.check();
+1027:     need(leases.has(cursor), 'INVENTORY_CURSOR'); budget.beginCursor();
+1028:     while (true) {
+1029:       budget.check(); const hasNext = await cursor.hasNext(); budget.check(); if (!hasNext) break;
+1030:       need(rows.length < limit, 'INVENTORY_CURSOR');
+1031:       budget.check(); const row = await cursor.next(); budget.check();
+1032:       need(plain(row), 'INVENTORY_CURSOR'); budget.addRow(row, rows.length > 0); rows.push(row);
+1033:     }
+1034:     need(!cursor.id || cursor.id.isZero(), 'INVENTORY_CURSOR'); budget.check();
+1035:   } catch (error) { retain(error); }
+1036:   try { budget.check(); } catch (error) { retain(error); }
+1037:   try { if (cursor && leases.has(cursor)) await cursor.close(); } catch (error) { retain(error); }
+1038:   try { budget.check(); } catch (error) { retain(error); }
+1039:   if (cursor) leases.delete(cursor);
+1040:   if (failed) throw first; return rows;
+1041: }
+1042: 
+1043: function installModelRegistrationBoundary(mongoose, ports, models, modelImport) {
+```
+
+```text
+1430:     started(event) {
+1431:       try {
+1432:         need(Number.isSafeInteger(event.requestId) && !pending.has(event.requestId), 'INVENTORY_COMMANDS'); checkStarted(event);
+1433:         const item = { kind: 'started', requestId: event.requestId, commandName: event.commandName, databaseName: event.databaseName, command: event.command };
+1434:         const lease = ['find', 'listIndexes', 'listCollections'].includes(event.commandName)
+1435:           ? leases.find(value => !value.started && value.command === event.commandName && value.database === event.databaseName
+1436:             && value.session === sid(event.command.lsid) && value.collection === (event.commandName === 'listCollections' ? '$cmd.listCollections' : event.command[event.commandName])) : undefined;
+1437:         if (['find', 'listIndexes', 'listCollections'].includes(event.commandName)) need(lease, 'INVENTORY_CURSOR');
+1438:         if (lease) lease.started = true;
+1439:         const captured = boundedEvent(item); pending.set(event.requestId, { ...captured, lease });
+1440:       } catch (error) { effects.unexpectedCommands++; throw error; }
+1441:     },
+1442:     succeeded(event) {
+1443:       try {
+1444:         const start = pending.get(event.requestId); need(start && start.commandName === event.commandName && plain(event.reply)
+1445:           && event.reply.ok === 1 && !own(event.reply, 'writeConcernError') && !own(event.reply, 'writeErrors'), 'INVENTORY_COMMAND_FAILURE');
+1446:         pending.delete(event.requestId);
+1447:         if (event.reply.cursor) {
+1448:           const cursor = event.reply.cursor; need(keys(cursor, ['id', 'ns', 'firstBatch'], ['nextBatch'])
+1449:             || keys(cursor, ['id', 'ns', 'nextBatch']), 'INVENTORY_CURSOR');
+1450:           const id = apmCursorZero(cursor.id); const command = start.command;
+1451:           const continuation = start.commandName === 'getMore' ? cursorOwner(command, 'getMore', sid(command.lsid)) : null;
+1452:           const owner = continuation || start.lease;
+1453:           const collection = start.commandName === 'listCollections' ? '$cmd.listCollections' : continuation ? continuation.collection : command[start.commandName];
+1454:           const ns = start.databaseName + '.' + collection;
+1455:           need(owner && cursor.ns === ns && Array.isArray(cursor.firstBatch || cursor.nextBatch), 'INVENTORY_CURSOR');
+1456:           const batch = cursor.firstBatch || cursor.nextBatch; owner.rows += batch.length; owner.bytes += Buffer.byteLength(JSON.stringify(batch));
+1457:           need(owner.rows <= owner.rowLimit && owner.bytes <= 128 * 1024, 'INVENTORY_CURSOR');
+1458:           if (continuation) cursors.delete(long(command.getMore));
+1459:           if (id !== '0') {
+1460:             need(!cursors.has(id), 'INVENTORY_CURSOR'); cursors.set(id, owner);
+1461:           }
+1462:         }
+1463:         boundedEvent({ kind: 'succeeded', requestId: event.requestId, commandName: event.commandName, reply: event.reply });
+1464:       } catch (error) { effects.commandFailures++; throw error; }
+1465:     },
+```
+
+```text
+1504:   function optionsSession(options, expected) {
+1505:     need(options && options.session === expected && sessions.has(expected) && !expected.hasEnded, 'INVENTORY_SESSION');
+1506:   }
+1507:   function sessionIdentity(session) { need(sessions.has(session), 'INVENTORY_SESSION'); return sessions.get(session).id; }
+1508:   function ownCollection(collection) {
+1509:     need(client && collection.client === client && collection.dbName === manifest.database && COLLECTIONS.includes(collection.collectionName), 'INVENTORY_DATABASE');
+1510:     return collection.collectionName;
+1511:   }
+1512:   function trackCursor(cursor, command, collection, session, rowLimit) {
+1513:     need(cursor && cursor.client === client && cursor.session === session && sessions.has(session)
+1514:       && cursor.namespace?.toString() === manifest.database + '.' + collection && !leases.has(cursor), 'INVENTORY_CURSOR');
+1515:     leases.add(cursor); wire.expectCursor({ cursor, command, collection, database: manifest.database, session: sessionIdentity(session), rowLimit });
+1516:     const close = cursor.close.bind(cursor);
+1517:     cursor.close = async function (...args) {
+1518:       need(this === cursor && leases.has(cursor) && cursor.client === client && cursor.session === session, 'INVENTORY_CURSOR');
+1519:       const id = cursor.id; const result = await close(...args);
+1520:       if (id && !id.isZero()) wire.closeCursor(id); leases.delete(cursor); return result;
+1521:     };
+1522:     return cursor;
+1523:   }
+1524:   const array = (makeCursor, limit, budget) => collectReadCursor(makeCursor, limit, budget, leases);
+1525:   function currentRow(value) { return cases.cases.find(row => row.id === value); }
+1526:   function validateScope(value) {
+```
+
+```text
+1674:   const listCollections = driver.Db.prototype.listCollections;
+1675:   driver.Db.prototype.listCollections = function (filter, options) {
+1676:     need(phase === 'INDEX_SETUP' && this.client === client && this.databaseName === manifest.database && same(filter, {})
+1677:       && keys(options, ['session', 'nameOnly', 'batchSize', 'maxTimeMS']) && options.session === control && options.nameOnly === true
+1678:       && options.batchSize === 100 && options.maxTimeMS === 5000, 'INVENTORY_INDEX_PROOF');
+1679:     return trackCursor(listCollections.call(this, filter, options), 'listCollections', '$cmd.listCollections', control, 3);
+1680:   };
+```
+
+```text
+1702:   const listIndexes = driver.Collection.prototype.listIndexes;
+1703:   driver.Collection.prototype.listIndexes = function (options) {
+1704:     const name = ownCollection(this); need(phase === 'INDEX_SETUP' && keys(options, ['session', 'batchSize', 'maxTimeMS'])
+1705:       && options.session === control && options.batchSize === 100 && options.maxTimeMS === 5000, 'INVENTORY_INDEX_PROOF');
+1706:     return trackCursor(listIndexes.call(this, options), 'listIndexes', name, control, 32);
+1707:   };
+1708:   const find = driver.Collection.prototype.find;
+1709:   driver.Collection.prototype.find = function (filter, options) {
+1710:     const name = ownCollection(this); let session;
+1711:     if (phase === 'ACTION') {
+1712:       session = actionSession; need(name === 'inventoryitems' && same(filter, { pharmacyId: scope.fixture.ids.pharmacy, medicineId: scope.fixture.ids.medicine }, bson), 'INVENTORY_COMMANDS');
+1713:     } else {
+1714:       need(['CASE_SETUP', 'CONTROL', 'CASE_CLEANUP'].includes(phase) && same(filter, {})
+1715:         && options.batchSize === 100 && options.maxTimeMS === 5000, 'INVENTORY_COMMANDS'); session = options.session;
+1716:       need(session === control || (phase === 'CONTROL' && scope.transaction && session === actionSession), 'INVENTORY_SESSION');
+1717:     }
+1718:     optionsSession(options, session);
+1719:     need(Object.keys(options).every(key => ['session', 'batchSize', 'maxTimeMS', ...(phase === 'ACTION' ? ['singleBatch'] : [])].includes(key))
+1720:       && (phase !== 'ACTION' || options.singleBatch === true), 'INVENTORY_COMMANDS');
+1721:     return trackCursor(find.call(this, filter, options), 'find', name, session, phase === 'ACTION' ? 1 : 16);
+1722:   };
+```
+
+```text
+1766:     async indexes() {
+1767:       const budget = createReadBudget('METADATA', readClock);
+1768:       phase = 'INDEX_SETUP'; wire.phase(phase, null);
+1769:       const db = mongoose.connection.db;
+1770:       const beforeCollections = (await array(() => db.listCollections({}, { nameOnly: true, session: control, batchSize: 100, maxTimeMS: 5000 }), 3, budget)).map(row => row.name);
+1771:       need(beforeCollections.length === 0, 'INVENTORY_INDEX_PROOF');
+1772:       const schemaIndexes = {}; const serverIndexes = {};
+1773:       for (const spec of ports.models) {
+1774:         schemaIndexes[spec.name] = clone(models[spec.name].schema.indexes(), bson);
+1775:         await budget.creation(() => db.createCollection(spec.collection, { session: control }));
+1776:         for (const index of spec.indexes) await budget.creation(() => db.collection(spec.collection).createIndex(index.key, index.options, { session: control }));
+1777:         serverIndexes[spec.collection] = await array(() => db.collection(spec.collection).listIndexes({ session: control, batchSize: 100, maxTimeMS: 5000 }), 32, budget);
+1778:       }
+1779:       const afterCollections = (await array(() => db.listCollections({}, { nameOnly: true, session: control, batchSize: 100, maxTimeMS: 5000 }), 3, budget)).map(row => row.name);
+1780:       const actual = wire.totals();
+1781:       need(same(afterCollections.slice().sort(), COLLECTIONS.slice().sort()) && actual.create === 3 && actual.createIndexes === 22
+1782:         && actual.listIndexes === 3 && actual.listCollections === 2, 'INVENTORY_INDEX_PROOF');
+1783:       indexProof = { beforeCollections, afterCollections, schemaIndexes, serverIndexes,
+1784:         commands: { create: actual.create, createIndexes: actual.createIndexes, listIndexes: actual.listIndexes, listCollections: actual.listCollections } };
+1785:       wire.assertHealthy(); budget.check(); return indexProof;
+```
+
+## fixture-baselines/medicine-bootstrap.cjs
+
+```text
+984:     &&entry.row.databaseName===event.databaseName&&plain(event.reply)&&event.reply.ok===1&&!own(event.reply,'writeErrors')&&!own(event.reply,'writeConcernError')&&!own(event.reply,'writeConcernErrors'),'MEDICINE_COMMAND_FAILURE');
+985:     const {row,lease}=entry;validateRawMaps(event.reply,null);
+986:     if(['find','listIndexes','listCollections'].includes(row.commandName)){
+987:      const cursor=event.reply.cursor;need(lease.cursor&&keys(cursor,['id','ns','firstBatch'])&&Object.is(cursor.id,0)
+988:       &&cursor.ns===manifest.database+'.'+lease.cursor.collection&&denseArray(cursor.firstBatch,100),'MEDICINE_CURSOR');
+989:      const expected=expectedBatch(row,lease);
+990:      if(expected){const sort=values=>values.slice().sort((a,b)=>String(a._id?.toHexString()||a.name).localeCompare(String(b._id?.toHexString()||b.name)));
+991:       need(same(sort(cursor.firstBatch),sort(expected),bson),'MEDICINE_COMMANDS');}
+992:     }
+993:     if(row.commandName==='findAndModify'){
+```
+
+```text
+1030:  function cursor(value,command,name,kind){
+1031:   need(value&&value.client===client&&value.namespace.toString()===manifest.database+'.'+name&&!cursors.has(value),'MEDICINE_CURSOR');
+1032:   const record={object:value,ordinal:ordinal(value),command,collection:name,kind,session:null,closed:false};cursors.set(value,record);leases.add(value);
+1033:   const originalClose=value.close;
+1034:   value.close=function(...args){need(this===value&&args.length===0&&cursors.has(value),'MEDICINE_CURSOR');
+1035:    const id=value.id;if(id!==undefined&&id!==null)need(id instanceof bson.Long&&!(id instanceof bson.Timestamp)&&id.isZero(),'MEDICINE_CURSOR');
+1036:    return track(Promise.resolve(Reflect.apply(originalClose,this,args)).then(result=>{record.closed=true;leases.delete(value);return result;}));
+1037:   };
+1038:   return value;
+1039:  }
+1040:  installModelRegistrationBoundary(mongoose,ports,models,()=>modelImport);
+```
+
+```text
+1091:  const abstractModule=require.cache[path.join(ROOT,'node_modules/mongoose/node_modules/mongodb/lib/cursor/abstract_cursor.js')];
+1092:  const AbstractCursor=abstractModule.exports.AbstractCursor,cleanup=AbstractCursor.prototype.cleanup;
+1093:  AbstractCursor.prototype.cleanup=function(...args){
+1094:   const record=cursors.get(this);need(record&&args.length<=2&&(args.length<1||args[0]===undefined),'MEDICINE_CURSOR');
+1095:   const previous=cleanupLease;cleanupLease={cursor:this,error:args[1]};
+1096:   let value;try{value=Reflect.apply(cleanup,this,args);}catch(error){cleanupLease=previous;throw error;}
+1097:   return track(Promise.resolve(value).finally(()=>{cleanupLease=previous;}));
+1098:  };
+1099:  for(const name of ['getMore','killCursors'])if(typeof AbstractCursor.prototype[name]==='function')AbstractCursor.prototype[name]=()=>deny('MEDICINE_CURSOR');
+1100:  const connectionModule=require.cache[path.join(ROOT,'node_modules/mongoose/node_modules/mongodb/lib/cmap/connection.js')];
+1101:  const Connection=connectionModule.exports.Connection,prepareCommand=Connection.prototype.prepareCommand;
+1102:  Connection.prototype.prepareCommand=function(db,command,options){
+1103:   const nativeSession=options?.session,record=sessions.get(nativeSession),name=Object.keys(command)[0];
+1104:   if(!record&&!(phase==='CLOSE'&&name==='endSessions'))return Reflect.apply(prepareCommand,this,arguments);
+1105:   need(this.description.type==='RSPrimary'&&this.description.loadBalanced===false&&this.supportsOpMsg&&options.directConnection===true,'MEDICINE_COMMAND_ENVELOPE');
+1106:   let selected=this.clusterTime;
+1107:   if(nativeSession?.clusterTime&&selected&&nativeSession.clusterTime.clusterTime.greaterThan(selected.clusterTime))selected=nativeSession.clusterTime;
+1108:   const message=Reflect.apply(prepareCommand,this,arguments);
+1109:   need(message.moreToCome===(name==='endSessions')&&options.noResponse!==true,'MEDICINE_COMMAND_ENVELOPE');
+1110:   let actualCursor=null;if(record){
+1111:    const serverSession=Object.getOwnPropertyDescriptor(nativeSession,'_serverSession');need(serverSession&&own(serverSession,'value')&&serverSession.value,'MEDICINE_SESSION');
+1112:    const id=Object.getOwnPropertyDescriptor(serverSession.value,'id');need(id&&own(id,'value'),'MEDICINE_SESSION');record.id=id.value;wire.sid(record.id);
+1113:    if(record.kind==='CURSOR')actualCursor=cursors.get(record.owner);
+1114:    else if(['find','listIndexes','listCollections'].includes(name)){
+1115:     actualCursor=[...cursors.values()].find(c=>!c.closed&&c.command===name&&c.object.session===nativeSession&&c.collection===(name==='listCollections'?'$cmd.listCollections':command[name]));
+1116:    }
+1117:   }
+1118:   wire.prepare(message,this,record||null,actualCursor,selected);return message;
+1119:  };
+1120:  const dbCollection=driver.Db.prototype.collection;
+```
+
+```text
+1127:  const listCollections=driver.Db.prototype.listCollections;
+1128:  driver.Db.prototype.listCollections=function(filter,options){need(phase==='INDEX_SETUP'&&this.client===client&&this.databaseName===manifest.database&&same(filter,{})&&options.nameOnly===true&&options.batchSize===100&&options.maxTimeMS===5000,'MEDICINE_INDEX_PROOF');controlOptions(options,['nameOnly','batchSize','maxTimeMS']);need(++metadataCounts.listCollections<=2,'MEDICINE_INDEX_PROOF');return cursor(Reflect.apply(listCollections,this,arguments),'listCollections','$cmd.listCollections','CONTROL');};
+1129:  const createIndex=driver.Collection.prototype.createIndex,listIndexes=driver.Collection.prototype.listIndexes;
+1130:  driver.Collection.prototype.createIndex=function(key,indexOptions,commandOptions){const name=collection(this);controlOptions(commandOptions);need(phase==='INDEX_SETUP'&&ports.models.find(r=>r.collection===name).indexes.some(r=>same(Object.entries(key),Object.entries(r.key),bson)&&same(indexOptions,r.options,bson))&&!indexNames.has(name+'/'+indexOptions.name),'MEDICINE_INDEX_PROOF');indexNames.add(name+'/'+indexOptions.name);return Reflect.apply(createIndex,this,arguments);};
+1131:  driver.Collection.prototype.listIndexes=function(options){const name=collection(this);need(phase==='INDEX_SETUP'&&options.batchSize===100&&options.maxTimeMS===5000,'MEDICINE_INDEX_PROOF');controlOptions(options,['batchSize','maxTimeMS']);need(++metadataCounts.listIndexes<=5,'MEDICINE_INDEX_PROOF');return cursor(Reflect.apply(listIndexes,this,arguments),'listIndexes',name,'CONTROL');};
+```
+
+```text
+1162:   async indexes(){phase='INDEX_SETUP';const budget=createReadBudget('METADATA',readClock),schemaIndexes=[],serverIndexes=[];const db=mongoose.connection.db;
+1163:    need((await collectReadCursor(()=>db.listCollections({},{nameOnly:true,session:control,batchSize:100,maxTimeMS:5000}),5,budget,leases)).length===0,'MEDICINE_INDEX_PROOF');
+1164:    for(const spec of ports.models){
+1165:     const actual=models[spec.name].schema.indexes(),expected=ports.secondaryIndexes.filter(r=>r.model===spec.name);need(actual.length===expected.length,'MEDICINE_INDEX_PROOF');
+1166:     for(let i=0;i<actual.length;i++){need(same(Object.entries(actual[i][0]),expected[i].sourceKey,bson)&&same(actual[i][1],expected[i].schemaOptions,bson),'MEDICINE_INDEX_PROOF');schemaIndexes.push({model:spec.name,collection:spec.collection,key:clone(actual[i][0],bson),options:clone(actual[i][1],bson)});}
+1167:     await budget.creation(()=>db.createCollection(spec.collection,{session:control}));
+1168:     for(const index of spec.indexes)await budget.creation(()=>db.collection(spec.collection).createIndex(index.key,index.options,{session:control}));
+1169:     const rows=await collectReadCursor(()=>db.collection(spec.collection).listIndexes({session:control,batchSize:100,maxTimeMS:5000}),32,budget,leases);
+1170:     const expectedRows=ports.serverIndexRows.filter(r=>r.collection===spec.collection);
+1171:     need(rows.length===expectedRows.length,'MEDICINE_INDEX_PROOF');for(const r of rows){const original=expectedRows.find(v=>v.spec.name===r.name);need(original&&same(r,original.spec,bson)&&same(Object.entries(r.key),Object.entries(original.spec.key),bson)
+1172:      &&(!r.weights||same(Object.entries(r.weights),Object.entries(original.spec.weights),bson)),'MEDICINE_INDEX_PROOF');serverIndexes.push({model:spec.name,collection:spec.collection,spec:clone(r,bson)});}
+1173:    }
+1174:    const after=await collectReadCursor(()=>db.listCollections({},{nameOnly:true,session:control,batchSize:100,maxTimeMS:5000}),5,budget,leases);
+1175:    need(same(after.map(r=>r.name).sort(),COLLECTIONS.slice().sort())&&created.size===5&&indexNames.size===51,'MEDICINE_INDEX_PROOF');budget.check();
+1176:    indexProof=freezeRecord({schemaIndexes,serverIndexes,counts:{create:created.size,createIndexes:indexNames.size,listCollections:metadataCounts.listCollections,listIndexes:metadataCounts.listIndexes},readMillis:budget.stats().millis,readRows:budget.stats().rows,readBytes:budget.stats().bytes});return indexProof;},
+```
+
+## fixture-baselines/inventory-ports.json
+
+```text
+1262:     "CONNECT": [
+1263:       "one fixed hello:1 owned setName/isWritablePrimary proof",
+1264:       "one typed admin.serverInfo -> buildinfo:1 version8.0.34"
+1265:     ],
+1266:     "INDEX_SETUP": [
+1267:       "listCollections empty before creation",
+1268:       "three create",
+1269:       "22 single-index createIndexes",
+1270:       "three complete listIndexes, exact25 rows incl implicit_id",
+1271:       "listCollections exactthree afterwards"
+1272:     ],
+1273:     "CASE_SETUP": [
+1274:       "three complete empty snapshots BEFORE eligibility",
+1275:       "three explicit non-lean Model.insertMany calls, normally four documents (twoitems+adjustment+reservation), fewer only when target intentionally absent",
+1276:       "baseline snapshot/metadata assertion outside action"
+1277:     ],
+1278:     "ACTION": [
+1279:       "exact find/write counts in cases.json, Item only; exact pharmacy/medicine filter; update one nonmulti/nonupsert statement with _id/__v0 and increment1; insert only three explicit new-item cases; no aggregate/populate/other collection/admin command"
+1280:     ],
+1281:     "CONTROL": [
+1282:       "bounded complete find snapshots on three collections, exact held client/session/cursor; optional getMore ONLY if independently bound owned cursor; normally cursorid0 with batchSize100",
+1283:       "manual transaction inside/outside reads and exact selected terminal commands counted separately"
+1284:     ],
+```
+
+## fixture-baselines/medicine-ports.json
+
+```text
+4574:       "replyCursor": "APM exactownDATA cursor{id:number0,ns:exactownednamespace,firstBatch:fulltypedrows}; native getter Long0. No alternate representation or continuation in any phase. Sourcepredictions await actual admission/observation.",
+4575:       "replies": "Retain every actual bounded raw reply in private paired event history; require paired command identity/requestId/nativeconnection/database, numeric ok1 and no writeErrors or writeConcernError(s). Exact cursor payload/namespace/lease/session/bounds and findAndModify.value+lastErrorObject/full typed state are compared. Whole dynamic DDL/admin reply key equality is explicitly outside this claim; never strip fields then call reply comparison complete.",
+4576:       "eventBounds": {
+4577:         "maximumEvents": 16000,
+4578:         "maximumEventBytes": 67108864,
+4579:         "cursorBytesCap": 131072,
+4580:         "cursorRowsDefaultCap": 64
+4581:       },
+4582:       "failureCleanup": "NO getMore or killCursors in success OR failure. Any nonzero APM cursor is terminal. Native cleanup attempt may hit guard and remain unresolved; preserve actual first failure and independently attempt owned client/server close. No adoption, cursor-map bypass, command grant or resumed trial. Parent exact owned-container disposal remains mandatory.",
+4583:       "rawReplyScope": {
+4584:         "allCommands": "Store complete actualbounded paired reply; numericok1 and no writeErrors/writeConcernError/writeConcernErrors. Entire stored event-byte bound applies without projection/stripping. No claim of whole dynamic DDL/admin reply-key equality. Unknown command/envelope/phase still fails.",
+4585:         "cursor": "Exact ownDATA cursor{id:number0,ns:exactownednamespace,firstBatch:exact complete typedphasepayload}; no nextBatch/extra cursor keys/nonzeroID/unknown namespace. Native Long0 separately checked under actual cursor lease.",
+4586:         "findAndModify": "Require complete raw value exactly same targetafter document and exact ownDATA lastErrorObject {n:1,updatedExisting:true} for these extant-target nonupsert writes, plus exact percase full5state. Extra/missing lastErrorObject/value fields fail. Server reply top-level metadata remains fullstored but not claimed whole-key equality. This expectedexistingupdate response is not a measured run.",
+4587:         "insertDelete": "Retainfullreply, pairedok1/noWriteErrors or wcError; exact sourcefrozen documentcount/writeops+full baseline/finalstate supply mutation proof. No invented DDL/admin acknowledgedkey matrix or serverack for w0close."
+4588:       },
+4589:       "nonzeroCursorTerminal": true,
+4590:       "getMoreAllowed": false,
+4591:       "killCursorsAllowed": false,
+4592:       "cursorNamespaceRules": {
+4593:         "find": "<exactownedDb>.<exactonecollection>",
+4594:         "listIndexes": "<exactownedDb>.<exactlistedcollection>",
+4595:         "listCollections": "<exactownedDb>.$cmd.listCollections",
+4596:         "rule": "No arbitrary server ns adoption. Actualnamespace/client/session/lease must match predicted command/captured nativecursor. Complete batch payload equals phase literals/snapshot projection; APMnumber0/nativeLong0 at distinct boundaries."
+4597:       },
+```

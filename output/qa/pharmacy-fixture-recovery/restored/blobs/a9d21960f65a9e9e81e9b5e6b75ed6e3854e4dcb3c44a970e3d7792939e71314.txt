@@ -1,0 +1,153 @@
+'use strict';
+// Builtins/fake ports only, copied with bootstrap and frozen ABI into an owned lease.
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const Module = require('node:module');
+const fixture = require('./bootstrap.cjs');
+const abi = JSON.parse(fs.readFileSync(path.join(__dirname, 'import-diagnostic-abi.json'), 'utf8'));
+const output = process.stdout.write.bind(process.stdout);
+assert(process.permission && !process.permission.has('child') && !process.permission.has('worker') && !process.permission.has('addon'));
+const tests = []; const test = (name, action) => tests.push({ name, action });
+const expected = (point, category) => abi.diagnosticCodes[abi.checkpoints.indexOf(point) * abi.categories.length + abi.categories.indexOf(category)];
+const create = () => fixture.createImportDiagnostics();
+const rejects = action => assert.throws(action);
+for (const point of abi.checkpoints) for (const category of abi.categories.filter(v => v !== 'UNBRANDED')) {
+  test('literal lookup ' + point + '/' + category, () => {
+    const d = create(); d.enter(point); d.effect(category);
+    assert.equal(d.select('REPOSITORY_IMPORT', 'INVENTORY_EFFECTS'), expected(point, category));
+    assert(Object.isFrozen(d)); assert.deepEqual(Object.keys(d), ['enter', 'effect', 'guard', 'decision', 'close', 'select']);
+  });
+}
+for (const point of abi.checkpoints) test('unbranded fallback ' + point, () => {
+  const d = create(); d.enter(point);
+  assert.equal(d.select('REPOSITORY_IMPORT', 'RUNTIME_FIXTURE_FAILED'), expected(point, 'UNBRANDED'));
+});
+for (const [guard, category] of Object.entries(abi.guardCategoryMap)) test('actual guard classifier ' + guard, () => {
+  const d = create(); d.enter('DATABASE_BOUNDARY'); d.guard(guard);
+  assert.equal(d.select('REPOSITORY_IMPORT', guard), expected('DATABASE_BOUNDARY', category));
+});
+for (const guard of abi.originalCodes.filter(v => !Object.hasOwn(abi.guardCategoryMap, v))) test('other original guard classifier ' + guard, () => {
+  const d = create(); d.enter('MODEL_IMPORT'); d.guard(guard);
+  assert.equal(d.select('REPOSITORY_IMPORT', guard), expected('MODEL_IMPORT', 'GUARD'));
+});
+test('exact original48 plus88 closed safe declarations', () => {
+  assert.deepEqual(fixture.FAILURE_CODES, abi.allCodes);
+  assert.equal(new Set(fixture.FAILURE_CODES).size, 164);
+  assert(fixture.FAILURE_CODES.every(v => /^[A-Z][A-Z0-9_]{1,100}$/.test(v)));
+});
+test('FIRST event survives later checkpoint and caught failure', () => {
+  const d = create(); d.enter('PUBLIC_INITIALIZATION'); d.guard('INVENTORY_NATIVE_OPERATION');
+  try { throw undefined; } catch {}
+  d.enter('MODEL_IMPORT'); d.effect('WARNING'); d.guard('INVENTORY_EFFECTS');
+  assert.equal(d.select('REPOSITORY_IMPORT', 'INVENTORY_EFFECTS'), expected('PUBLIC_INITIALIZATION', 'NATIVE'));
+});
+test('closed window cannot reactivate or reset first event', () => {
+  const d = create(); d.enter('MODEL_IMPORT'); d.effect('CONSOLE'); d.close();
+  rejects(() => d.enter('COMMON_IMPORT')); assert.equal(d.effect('OUTPUT'),false); assert.equal(d.guard('INVENTORY_MODEL'),false);
+  assert.equal(d.select('REPOSITORY_IMPORT', 'INVENTORY_EFFECTS'), expected('MODEL_IMPORT', 'CONSOLE'));
+});
+test('inactive window has no import attribution and success side effects', () => {
+  const d = create(); assert.equal(d.select('REPOSITORY_IMPORT', 'RUNTIME_FIXTURE_FAILED'), 'RUNTIME_FIXTURE_FAILED');
+  d.close(); assert.equal(d.select('OWNED_DATABASE_CONNECT', 'INVENTORY_DATABASE'), 'INVENTORY_DATABASE');
+});
+for (const stage of ['ADMISSION', 'OWNED_DATABASE_CONNECT', 'REPOSITORY_SCENARIOS', 'OTHER', '', null, undefined]) test('nonimport unchanged ' + String(stage), () => {
+  const d = create(); d.enter('PUBLIC_INITIALIZATION'); d.effect('OUTPUT');
+  assert.equal(d.select(stage, 'INVENTORY_EFFECTS'), 'INVENTORY_EFFECTS');
+});
+for (const [i,value] of ['UNKNOWN', '', null, undefined, 0, false, {}, [], Symbol('unknown')].entries()) test('unknown checkpoint rejected ' + i, () => {
+  const d = create(); rejects(() => d.enter(value));
+  assert.equal(d.select('REPOSITORY_IMPORT', 'RUNTIME_FIXTURE_FAILED'), 'RUNTIME_FIXTURE_FAILED');
+});
+for (const [i,value] of ['UNKNOWN', '', null, undefined, 0, false, {}, [], Symbol('unknown')].entries()) test('unknown effect rejected ' + i, () => {
+  const d = create(); d.enter('MODEL_IMPORT'); rejects(() => d.effect(value));
+  assert.equal(d.select('REPOSITORY_IMPORT', 'RUNTIME_FIXTURE_FAILED'), expected('MODEL_IMPORT', 'UNBRANDED'));
+});
+for (const [i,value] of [0, null, undefined, false, '', new Error('private-value'), Object.freeze({code:'INVENTORY_NATIVE_OPERATION'}), Object.defineProperties({}, {code:{get(){throw Error('getter');}},message:{get(){throw Error('getter');}},name:{get(){throw Error('getter');}}})].entries()) test('foreign thrown value has no guard provenance ' + i, () => {
+  const d = create(); d.enter('MODEL_IMPORT'); rejects(() => d.guard(value));
+  assert.equal(d.select('REPOSITORY_IMPORT', 'RUNTIME_FIXTURE_FAILED'), expected('MODEL_IMPORT', 'UNBRANDED'));
+  const result = fixture.failureResult(value);
+  assert.deepEqual(Object.keys(result), abi.failureKeysUnchanged); assert.equal(result.code, 'RUNTIME_FIXTURE_FAILED');
+  assert(!JSON.stringify(result).includes('private-value'));
+});
+function fakeSurface() {
+  class Socket {} Socket.prototype.connect = () => {};
+  class Server {} Server.prototype.listen = () => {};
+  class Resolver {}
+  return { fs:{constants:fs.constants,writeFileSync(){},promises:{open:async()=>({})},readFileSync:()=>Buffer.alloc(0),lstatSync:()=>({isFile:()=>true,isSymbolicLink:()=>false,nlink:1}),realpathSync:v=>v},
+    net:{Socket,Server,connect(){},createConnection(){}}, tls:{},dns:{Resolver,promises:{Resolver:class{}}},http:{},https:{},
+    timers:{setTimeout(){},setImmediate(){},setInterval(){}},process:{stdout:{write(){}},stderr:{write(){}},nextTick(){},emitWarning(){}},globals:{},console:{log(){}},caller:()=>''};
+}
+for (const [category, invoke, key] of [
+  ['WARNING',s=>s.process.emitWarning(Object.defineProperty({},'message',{get(){throw Error('must not inspect');}})),'warnings'],
+  ['CONSOLE',s=>s.console.log(Symbol('private')),'consoleCalls'],
+  ['OUTPUT',s=>s.process.stdout.write({private:true}),'consoleCalls'],
+  ['OUTPUT',s=>s.process.stderr.write({private:true}),'consoleCalls'],
+  ['NATIVE',s=>s.fs.writeFileSync('/private/value','private'),'operationDenials'],
+]) test('actual trap retains increment throw and first latch ' + category + '/' + key + '/' + String(invoke).includes('stderr'), () => {
+  const d = create(); d.enter('PUBLIC_INITIALIZATION'); const effects=fixture.effectsState(); const s=fakeSurface();
+  fixture.installNativeBoundary({files:{}},{},effects,{retrieve(){throw Error('unused');}},s,d);
+  rejects(() => invoke(s)); assert.equal(effects[key],1);
+  d.enter('PUBLIC_ASSERTIONS'); rejects(() => fixture.assertEffects(effects));
+  assert.equal(d.select('REPOSITORY_IMPORT','INVENTORY_EFFECTS'),expected('PUBLIC_INITIALIZATION',category));
+  rejects(() => invoke(s)); assert.equal(effects[key],2);
+});
+test('actual public init denial remains caught and permanently attributed', () => {
+  const d=create();d.enter('PUBLIC_INITIALIZATION');const effects=fixture.effectsState();
+  const p=fixture.createPublicInitialization({isBuildingSnapshot:()=>0,tracingChannel:()=>({})},{publicInitialization:{tracingNames:[]}},effects,d);
+  rejects(()=>p.retrieve('private-unknown'));assert.equal(effects.operationDenials,1);
+  rejects(()=>fixture.assertEffects(effects));
+  assert.equal(d.select('REPOSITORY_IMPORT','INVENTORY_EFFECTS'),'INVENTORY_PUBLIC_INIT_RETRIEVE_CLOSED');
+});
+test('actual caught loader denial retains original guards and first latch', () => {
+  const d=create();d.enter('COMMON_IMPORT');const effects=fixture.effectsState();const heldLoad=Module._load;const heldResolve=Module._resolveFilename;
+  try {
+    const plan={modules:{'@/modules/pharmacyInventory/repository':'compiled/modules/pharmacyInventory/repository/index.js'},mutants:{}};
+    const ports={publicBuiltinCandidates:{permanentlyDenied:[],parents:{}},requiredSensitivityIds:[],absentOptionalPackages:[]};
+    const loader=fixture.installLoader({files:{}},plan,ports,effects,d);
+    rejects(()=>loader.load('@/private-unknown'));assert.equal(effects.loaderDenials,1);
+    rejects(()=>fixture.assertEffects(effects));
+    assert.equal(d.select('REPOSITORY_IMPORT','INVENTORY_EFFECTS'),expected('COMMON_IMPORT','LOADER'));
+  } finally {Module._load=heldLoad;Module._resolveFilename=heldResolve;}
+  assert.equal(Module._load,heldLoad);assert.equal(Module._resolveFilename,heldResolve);
+});
+test('first falsy thrown value remains identity through actual cleanup', async () => {
+  for(const value of [0,null,undefined,false,'']){
+    let caught=false;let observed;let cleanup=false;
+    try{await fixture.withCleanup(()=>{throw value;},()=>{cleanup=true;throw Error('later');});}catch(error){caught=true;observed=error;}
+    assert(caught&&cleanup);assert.strictEqual(observed,value);
+  }
+});
+// Actual caught guard Errors must retain their original private code despite mutation.
+function actualGuardError() {
+  const e=fixture.effectsState();e.warnings=1;
+  try{fixture.assertEffects(e);}catch(error){return error;}
+  throw Error('Guard unexpectedly passed');
+}
+for(const code of abi.diagnosticCodes) test('new import code is never a raw fallback '+code,()=>{
+  for(const stage of ['ADMISSION','OWNED_DATABASE_CONNECT','REPOSITORY_SCENARIOS','REPOSITORY_IMPORT']){
+    const d=create();rejects(()=>d.select(stage,code));
+  }
+});
+test('actual branded guard mutated import message cannot choose diagnostic',()=>{
+  const e=actualGuardError();e.message=abi.diagnosticCodes[0];
+  const result=fixture.failureResult(e);assert.equal(result.stage,'ADMISSION');assert.equal(result.code,'INVENTORY_EFFECTS');
+  assert.deepEqual(Object.keys(result),abi.failureKeysUnchanged);assert.equal(e.message,abi.diagnosticCodes[0]);
+});
+test('actual branded guard mutated original message cannot change provenance',()=>{
+  const e=actualGuardError();e.message='INVENTORY_MODEL';
+  assert.equal(fixture.failureResult(e).code,'INVENTORY_EFFECTS');assert.equal(e.message,'INVENTORY_MODEL');
+});
+test('actual branded guard message getter is never inspected',()=>{
+  const e=actualGuardError();let reads=0;const getter=()=>{reads++;throw Error('Getter forbidden');};
+  Object.defineProperty(e,'message',{get:getter,configurable:true});
+  assert.equal(fixture.failureResult(e).code,'INVENTORY_EFFECTS');assert.equal(reads,0);
+  assert.strictEqual(Object.getOwnPropertyDescriptor(e,'message').get,getter);
+});
+(async()=>{
+ const rows=[];
+ for(const row of tests){try{await row.action();rows.push({name:row.name,status:'PASS'});}catch{rows.push({name:row.name,status:'FAIL'});}}
+ const failed=rows.filter(v=>v.status==='FAIL').length;
+ output(JSON.stringify({schema:'SD-INVENTORY-IMPORT-DIAGNOSTIC-PURE-1',cases:rows.length,passed:rows.length-failed,failed,skipped:0,rows})+'\n');
+ if(failed)process.exitCode=1;
+})();

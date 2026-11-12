@@ -1,0 +1,318 @@
+'use strict';
+// Builtins and the actual fixture only. Fake BSON observations are data, never fake domain methods.
+const assert = require('node:assert/strict');
+const fixture = require('./scenario.cjs');
+const data = fixture.loadFixtureData();
+let sequence = 0;
+class ObjectId { constructor(hex) { this.hex = hex ?? (++sequence).toString(16).padStart(24, '0'); } toHexString() { return this.hex; } }
+class Long { constructor(number) { this.number = number; } toString() { return String(this.number); } }
+class Timestamp extends Long {}
+class Binary { constructor(bytes, subtype = 4) { this.buffer = Buffer.from(bytes); this.sub_type = subtype; this.position = this.buffer.byteLength; } }
+const bson = { ObjectId, Long, Timestamp, Binary };
+const runStart = Date.parse('2026-11-11T12:00:00.000Z'); const operation = runStart + 100;
+const clone = value => {
+  if (value instanceof Date) return new Date(value.getTime());
+  if (Array.isArray(value)) return value.map(clone);
+  if (value && Object.getPrototypeOf(value) === Object.prototype) return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, clone(item)]));
+  return value;
+};
+const effects = () => ({ providers: Object.fromEntries(data.ports.providerCounterKeys.map(key => [key, 0])), consoleCalls: 0, warnings: 0,
+  operationDenials: 0, loaderDenials: 0, unexpectedCommands: 0, commandFailures: 0 });
+const database = 'sd_iq_' + 'a'.repeat(32);
+const sessionId = { id: new Binary(Buffer.alloc(16, 7)) };
+function eventPair(commandName, command, id, db = database, reply = { ok: 1 }) {
+  return [{ kind: 'started', requestId: id, commandName, databaseName: db, command: { ...command, lsid: sessionId, $db: db } },
+    { kind: 'succeeded', requestId: id, commandName, reply }];
+}
+function nominal(id = 'IQA_RECALLED_FUTURE_PRESENT_FIXED_DATE_POSITIVE') {
+  const row = data.cases.cases.find(item => item.id === id); const hydrated = fixture.hydrateFixture(row, data, bson, runStart);
+  const before = clone(hydrated.seed); const after = clone(before);
+  const target = after.inventoryitems.find(item => item._id === hydrated.ids.targetItem);
+  // Explicit frozen observations for these two cases; no repository algorithm is implemented here.
+  target.availableQty = id.startsWith('IQS_') ? 10 : 12;
+  target.batches[0].availableQty = id.startsWith('IQS_') ? 3 : 5;
+  target.isActive = true; target.__v = 1; target.updatedAt = new Date(operation);
+  const transaction = id === 'IQS_ADJUST_COMMIT'; const transactionBits = transaction ? { txnNumber: new Long(1), autocommit: false } : {};
+  const events = [...eventPair('find', { find: 'inventoryitems', filter: { pharmacyId: hydrated.ids.pharmacy, medicineId: hydrated.ids.medicine },
+    ...transactionBits, ...(transaction ? { startTransaction: true, readConcern: { level: 'snapshot' } } : {}) }, 1),
+  ...eventPair('update', { update: 'inventoryitems', updates: [{ q: { _id: hydrated.ids.targetItem, __v: 0 },
+    u: { $set: { batches: clone(target.batches), updatedAt: target.updatedAt }, $inc: { __v: 1 } }, multi: false, upsert: false }], ...transactionBits }, 2)];
+  const observation = { before, after, final: clone(after), result: { item: clone(target), batchId: hydrated.ids.targetBatch.toHexString(),
+    availableQtyBefore: 2, availableQtyAfter: id.startsWith('IQS_') ? 3 : 5 }, error: null,
+  startedAt: operation - 1, endedAt: operation + 1, effectsBefore: effects(), effectsAfter: effects(), events,
+  database, sessionId, transaction, outsideBeforeTerminal: transaction ? clone(before) : null,
+  terminalEvents: transaction ? eventPair('commitTransaction', { commitTransaction: 1, txnNumber: new Long(1), autocommit: false }, 3, 'admin') : [], transactionEnded: true };
+  return { row, hydrated, observation };
+}
+let passed = 0; const names = [];
+function check(name, action) {
+  try { action(); } catch (error) { process.stderr.write(JSON.stringify({ schema: 'SD-INVENTORY-PURE-FAILED-CHECK-1', failedCheck: name }) + '\n'); throw error; }
+  passed++; names.push(name);
+}
+function reject(name, mutate, code, base = nominal) {
+  check(name, () => { const example = base(); mutate(example); assert.throws(() => fixture.assertInventoryObservation(example.row, example.hydrated, example.observation, data, bson), error => fixture.fixtureCode(error) === code); });
+}
+check('frozen actual data139/20/8', () => { assert.equal(data.cases.cases.length, 139); assert.equal(Object.keys(data.cases.groups).length, 20); assert.equal(data.cases.sourceMutations.length, 8); assert(Object.isFrozen(data.cases.cases[0])); });
+for (const row of data.cases.cases) check('hydrate:' + row.id, () => {
+  const value = fixture.hydrateFixture(row, data, bson, runStart);
+  assert.equal(value.generated.size, 15);
+  assert.equal(value.seed.inventoryadjustments.length, 1); assert.equal(value.seed.inventoryreservations.length, 1);
+  assert.equal(value.seed.inventoryitems.length, ['NEW_ITEM', 'ABSENT_ITEM'].includes(row.seed.kind) ? 1 : 2);
+  for (const item of value.seed.inventoryitems) {
+    assert.equal(item.__v, 0); assert.equal(item.createdAt.toISOString(), '2004-05-06T07:08:09.000Z');
+    for (const batch of item.batches) { assert.equal(batch._id instanceof ObjectId, true); assert.equal(Object.hasOwn(batch, '__v'), false); }
+  }
+});
+check('actual nominal full predicate', () => { const e = nominal(); fixture.assertInventoryObservation(e.row, e.hydrated, e.observation, data, bson); });
+check('actual manual commit predicate', () => { const e = nominal('IQS_ADJUST_COMMIT'); fixture.assertInventoryObservation(e.row, e.hydrated, e.observation, data, bson); });
+for (const key of data.ports.providerCounterKeys) reject('provider:' + key, e => { e.observation.effectsAfter.providers[key] = 1; }, 'INVENTORY_EFFECTS');
+for (const key of ['consoleCalls', 'warnings', 'operationDenials', 'loaderDenials', 'unexpectedCommands', 'commandFailures']) reject('private effect:' + key, e => { e.observation.effectsBefore[key] = 1; }, 'INVENTORY_EFFECTS');
+check('counter getter rejected without invocation', () => { let getters = 0; const e = effects(); Object.defineProperty(e, 'warnings', { enumerable: true, get() { getters++; return 0; } }); assert.throws(() => fixture.assertZeroEffects(e)); assert.equal(getters, 0); });
+reject('negative counter', e => { e.observation.effectsAfter.warnings = -1; }, 'INVENTORY_EFFECTS');
+reject('extra counter', e => { e.observation.effectsAfter.extra = 0; }, 'INVENTORY_EFFECTS');
+reject('unpaired action', e => { e.observation.events.pop(); }, 'INVENTORY_COMMANDS');
+reject('failed action is never ok', e => { e.observation.events[1] = { kind: 'failed', requestId: 1, commandName: 'find' }; }, 'INVENTORY_COMMANDS');
+reject('duplicate action reply', e => { e.observation.events.push(e.observation.events[1]); }, 'INVENTORY_COMMANDS');
+reject('write concern error', e => { e.observation.events[3].reply.writeConcernError = {}; }, 'INVENTORY_COMMANDS');
+reject('unknown action command', e => { e.observation.events.push(...eventPair('aggregate', { aggregate: 'inventoryitems' }, 4)); }, 'INVENTORY_COMMANDS');
+reject('foreign session', e => { e.observation.events[0].command.lsid = { id: new Binary(Buffer.alloc(16, 9)) }; }, 'INVENTORY_SESSION');
+reject('foreign namespace', e => { e.observation.events[0].databaseName = 'operational'; }, 'INVENTORY_SESSION');
+reject('wrong find filter', e => { e.observation.events[0].command.filter.pharmacyId = new ObjectId(); }, 'INVENTORY_COMMANDS');
+reject('wrong update owner', e => { e.observation.events[2].command.updates[0].q._id = new ObjectId(); }, 'INVENTORY_COMMANDS');
+reject('wrong version filter', e => { e.observation.events[2].command.updates[0].q.__v = 1; }, 'INVENTORY_COMMANDS');
+reject('wrong increment', e => { e.observation.events[2].command.updates[0].u.$inc.__v = 2; }, 'INVENTORY_COMMANDS');
+reject('multi write', e => { e.observation.events[2].command.updates[0].multi = true; }, 'INVENTORY_COMMANDS');
+reject('upsert write', e => { e.observation.events[2].command.updates[0].upsert = true; }, 'INVENTORY_COMMANDS');
+reject('lost array set', e => { delete e.observation.events[2].command.updates[0].u.$set.batches; }, 'INVENTORY_COMMANDS');
+reject('unexpected transaction bit', e => { e.observation.events[0].command.autocommit = false; }, 'INVENTORY_TRANSACTION');
+reject('wrong return batch id', e => { e.observation.result.batchId = new ObjectId().toHexString(); }, 'INVENTORY_RETURN');
+reject('wrong before quantity', e => { e.observation.result.availableQtyBefore = 0; }, 'INVENTORY_RETURN');
+reject('extra return field', e => { e.observation.result.extra = true; }, 'INVENTORY_RETURN');
+reject('wrong stored quantity', e => { e.observation.after.inventoryitems[1].availableQty++; e.observation.result.item.availableQty++; e.observation.final.inventoryitems[1].availableQty++; }, 'INVENTORY_FULL_STATE');
+reject('wrong stored free qty', e => { e.observation.after.inventoryitems[1].freeQty++; e.observation.result.item.freeQty++; }, 'INVENTORY_FULL_STATE');
+reject('sibling price changed', e => { e.observation.after.inventoryitems[1].batches[1].mrp++; e.observation.result.item.batches[1].mrp++; }, 'INVENTORY_FULL_STATE');
+reject('companion altered', e => { e.observation.after.inventoryadjustments[0].notes = 'changed'; }, 'INVENTORY_FULL_STATE');
+reject('companion extra row', e => { e.observation.after.inventoryreservations.push({ ...e.observation.after.inventoryreservations[0], _id: new ObjectId() }); }, 'INVENTORY_FULL_STATE');
+reject('version reset', e => { e.observation.after.inventoryitems[1].__v = 0; e.observation.result.item.__v = 0; }, 'INVENTORY_FULL_STATE');
+reject('createdAt changed', e => { e.observation.after.inventoryitems[1].createdAt = new Date(operation); e.observation.result.item.createdAt = new Date(operation); }, 'INVENTORY_FULL_STATE');
+reject('updatedAt outside operation', e => { e.observation.after.inventoryitems[1].updatedAt = new Date(operation + 10); }, 'INVENTORY_GENERATED_FIELD');
+reject('clock reversal', e => { e.observation.endedAt = e.observation.startedAt - 1; }, 'INVENTORY_GENERATED_FIELD');
+reject('quality mismatch exact code', e => { e.observation.after.inventoryitems[1].batches[0].status = 'active'; e.observation.result.item.batches[0].status = 'active'; }, 'INVENTORY_QUALITY_STATUS');
+reject('marker mismatch exact code', e => { delete e.observation.after.inventoryitems[1].batches[0].depletedAt; delete e.observation.result.item.batches[0].depletedAt; }, 'INVENTORY_DEPLETED_AT_PRESERVATION');
+reject('marker null differs from absence/date', e => { e.observation.after.inventoryitems[1].batches[0].depletedAt = null; e.observation.result.item.batches[0].depletedAt = null; }, 'INVENTORY_DEPLETED_AT_PRESERVATION');
+check('actual unsafe full row before fixed predicate', () => {
+  const e = nominal(); const variant = data.cases.sourceMutations[0]; const item = e.observation.after.inventoryitems[1];
+  item.batches[0].status = 'active'; delete item.batches[0].depletedAt; e.observation.result.item = clone(item); e.observation.final = clone(e.observation.after);
+  fixture.assertUnsafeInventoryObservation(e.row, e.hydrated, e.observation, data, bson, variant);
+  assert.throws(() => fixture.assertInventoryObservation(e.row, e.hydrated, e.observation, data, bson), error => fixture.fixtureCode(error) === variant.unsafeExpected.fixedNominalMismatch);
+  item.availableQty++; e.observation.result.item.availableQty++;
+  assert.throws(() => fixture.assertUnsafeInventoryObservation(e.row, e.hydrated, e.observation, data, bson, variant), error => fixture.fixtureCode(error) === 'INVENTORY_FULL_STATE');
+});
+reject('transaction lsid/number typed', e => { e.observation.events[0].command.txnNumber = 1; }, 'INVENTORY_TRANSACTION', () => nominal('IQS_ADJUST_COMMIT'));
+reject('transaction missing start bit', e => { delete e.observation.events[0].command.startTransaction; }, 'INVENTORY_TRANSACTION', () => nominal('IQS_ADJUST_COMMIT'));
+reject('transaction outside visibility', e => { e.observation.outsideBeforeTerminal = clone(e.observation.after); }, 'INVENTORY_TRANSACTION', () => nominal('IQS_ADJUST_COMMIT'));
+reject('transaction terminal extra attempt', e => { e.observation.terminalEvents.push(...eventPair('commitTransaction', { commitTransaction: 1 }, 8, 'admin')); }, 'INVENTORY_TRANSACTION', () => nominal('IQS_ADJUST_COMMIT'));
+reject('transaction still active', e => { e.observation.transactionEnded = false; }, 'INVENTORY_TRANSACTION', () => nominal('IQS_ADJUST_COMMIT'));
+reject('commit lost state', e => { e.observation.final = clone(e.observation.before); }, 'INVENTORY_TRANSACTION', () => nominal('IQS_ADJUST_COMMIT'));
+function errorExamples() {
+  return data.cases.errorCases.map(row => {
+    const error = new Error(row.message); error.name = row.name;
+    if (row.name === 'CastError') Object.assign(error, Object.fromEntries(['path', 'kind', 'value', 'valueType', 'message'].map(key => [key, row[key]])));
+    else error.errors = Object.fromEntries(Object.entries(row.errors).map(([key, leaf]) => [key, Object.assign(new Error(leaf.message), leaf, { properties: { min: 0 } })]));
+    return { row: data.cases.cases.find(item => item.id === row.id), error };
+  });
+}
+for (const example of errorExamples()) check('exact error:' + example.row.id, () => fixture.assertExpectedError(example.row, example.error, data));
+for (const field of ['name', 'path', 'kind', 'value', 'valueType', 'message']) check('cast field:' + field, () => {
+  const e = errorExamples()[0]; e.error[field] = 'wrong'; assert.throws(() => fixture.assertExpectedError(e.row, e.error, data));
+});
+check('validation sorted paths complete', () => { const e = errorExamples()[2]; delete e.error.errors.purchasePrice; assert.throws(() => fixture.assertExpectedError(e.row, e.error, data)); });
+check('validation minimum property real shape', () => { const e = errorExamples()[2]; e.error.errors.purchasePrice.properties.min = 1; assert.throws(() => fixture.assertExpectedError(e.row, e.error, data)); });
+function indexProof() {
+  return { beforeCollections: [], afterCollections: ['inventoryitems', 'inventoryadjustments', 'inventoryreservations'],
+    schemaIndexes: Object.fromEntries(data.ports.models.map(model => [model.name, data.ports.secondaryIndexes.filter(row => row.model === model.name).map(row => [clone(row.key), clone(row.sourceOptions)])])),
+    serverIndexes: Object.fromEntries(data.ports.models.map(model => [model.collection, [{ v: 2, key: { _id: 1 }, name: '_id_' }, ...model.indexes.map(row => ({ v: 2, key: clone(row.key), ...clone(row.options) }))]])),
+    commands: { create: 3, createIndexes: 22, listIndexes: 3, listCollections: 2 } };
+}
+check('exact22schema/25server indexes', () => fixture.assertIndexProof(indexProof(), data.ports, database, bson));
+for (const [name, mutate] of [
+  ['missing index', p => p.serverIndexes.inventoryitems.pop()], ['changed uniqueness', p => { p.serverIndexes.inventoryitems[6].unique = false; }],
+  ['key order', p => { p.serverIndexes.inventoryitems[6].key = { medicineId: 1, pharmacyId: 1 }; }],
+  ['hidden index', p => { p.serverIndexes.inventoryitems[1].hidden = true; }], ['unexpected TTL', p => { p.serverIndexes.inventoryitems[1].expireAfterSeconds = 1; }],
+  ['partial filter', p => { p.serverIndexes.inventoryadjustments[6].partialFilterExpression.sourceId.$type = 'number'; }],
+  ['foreign namespace', p => { p.serverIndexes.inventoryitems[0].ns = 'other.inventoryitems'; }], ['version1', p => { p.serverIndexes.inventoryitems[0].v = 1; }],
+  ['schema extra option', p => { p.schemaIndexes.InventoryItem[0][1].background = true; }], ['schema extra index', p => { p.schemaIndexes.InventoryItem.push([{ extra: 1 }, {}]); }],
+  ['preexisting collection', p => { p.beforeCollections.push('inventoryitems'); }], ['wrong setup counts', p => { p.commands.createIndexes = 21; }],
+]) check('index rejection:' + name, () => { const proof = indexProof(); mutate(proof); assert.throws(() => fixture.assertIndexProof(proof, data.ports, database, bson), error => fixture.fixtureCode(error) === 'INVENTORY_INDEX_PROOF'); });
+check('object key order irrelevant', () => assert.equal(fixture.equal({ a: 1, b: 2 }, { b: 2, a: 1 }, bson), true));
+check('array order exact', () => assert.equal(fixture.equal([1, 2], [2, 1], bson), false));
+check('date is not string', () => assert.equal(fixture.equal(new Date(operation), new Date(operation).toISOString(), bson), false));
+check('long is not number', () => assert.equal(fixture.equal(new Long(1), 1, bson), false));
+check('Date differs from plain marker', () => assert.equal(fixture.equal(new Date(operation), { $date: operation }, bson), false));
+check('ObjectId differs from plain marker', () => { const id = new ObjectId(); assert.equal(fixture.equal(id, { $oid: id.toHexString() }, bson), false); });
+check('Long differs from plain marker', () => assert.equal(fixture.equal(new Long(1), { $Long: '1' }, bson), false));
+check('Binary differs from plain marker', () => assert.equal(fixture.equal(new Binary([1, 2]), { $binary: '0102', subtype: 4 }, bson), false));
+check('Long and Timestamp are distinct', () => assert.equal(fixture.equal(new Long(1), new Timestamp(1), bson), false));
+check('array cannot impersonate typed tag', () => assert.equal(fixture.equal(['Date', operation], new Date(operation), bson), false));
+check('negative zero is distinct', () => assert.equal(fixture.equal(-0, 0, bson), false));
+check('Binary effective bytes exclude unused backing capacity', () => { const a = new Binary([1, 2, 9]); a.position = 2; assert.equal(fixture.equal(a, new Binary([1, 2]), bson), true); });
+check('Binary effective lengths differ', () => assert.equal(fixture.equal(new Binary([1, 2]), new Binary([1, 2, 0]), bson), false));
+check('Binary subtype differs', () => assert.equal(fixture.equal(new Binary([1, 2], 0), new Binary([1, 2], 4), bson), false));
+check('Binary invalid effective length denied', () => { const a = new Binary([1]); a.position = 2; assert.throws(() => fixture.canonical(a, bson)); });
+check('array extra key denied', () => { const a = [1]; a.extra = 2; assert.throws(() => fixture.canonical(a, bson)); });
+check('sparse array denied', () => assert.throws(() => fixture.canonical(new Array(1), bson)));
+check('ordinary proto key remains significant', () => { const a = {}; Object.defineProperty(a, '__proto__', { enumerable: true, value: 1 }); assert.equal(fixture.equal(a, {}, bson), false); });
+check('canonical accessor never invoked', () => { let called = 0; const value = {}; Object.defineProperty(value, 'a', { enumerable: true, get() { called++; return 1; } }); assert.throws(() => fixture.canonical(value, bson)); assert.equal(called, 0); });
+check('canonical symbol denied', () => { const value = { a: 1, [Symbol('x')]: 2 }; assert.throws(() => fixture.canonical(value, bson)); });
+check('arbitrary exception.code never forwarded', () => assert.equal(fixture.fixtureCode(Object.assign(new Error('private'), { code: 'INVENTORY_QUALITY_STATUS' })), 'INVENTORY_UNEXPECTED_FAILURE'));
+reject('string multi flag', e => { e.observation.events[2].command.updates[0].multi = 'false'; }, 'INVENTORY_COMMANDS');
+reject('string upsert flag', e => { e.observation.events[2].command.updates[0].upsert = 'false'; }, 'INVENTORY_COMMANDS');
+check('whole-child ID collision denied', () => { const id = new ObjectId(); const seen = new Set(); fixture.reserveIds([id], seen, bson); assert.throws(() => fixture.reserveIds([id], seen, bson)); });
+check('same-batch probe duplicate denied before reservation', () => { const id = new ObjectId(); const seen = new Set(); assert.throws(() => fixture.reserveIds([id, id], seen, bson)); assert.equal(seen.size, 0); });
+function specialObservation(id) {
+  const row = data.cases.cases.find(item => item.id === id); const hydrated = fixture.hydrateFixture(row, data, bson, runStart);
+  const before = clone(hydrated.seed); const after = clone(before); const transaction = id.startsWith('IQS_');
+  let target = after.inventoryitems.find(item => item._id === hydrated.ids.targetItem);
+  const date = () => new Date(operation);
+  if (id === 'IQA_CREATE_NEW_ITEM_Q3' || id === 'IQS_NEW_ITEM_ABORT') {
+    const isAbort = id === 'IQS_NEW_ITEM_ABORT';
+    target = { _id: new ObjectId(), pharmacyId: hydrated.ids.pharmacy, medicineId: hydrated.ids.medicine,
+      availableQty: isAbort ? 1 : 3, reservedQty: 0, freeQty: 0, reorderThreshold: 0, isActive: true, __v: 0,
+      createdAt: date(), updatedAt: date(), batches: [{ _id: new ObjectId(), batchNumber: isAbort ? 'IQ-TARGET' : 'IQ-NEW',
+        expiryDate: hydrated.input.expiryDate, receivedAt: date(), availableQty: isAbort ? 1 : 3, reservedQty: 0, freeQty: 0, status: 'active' }] };
+    if (!isAbort) { Object.assign(target, { purchasePrice: 11, retailPrice: 17, wholesalePrice: 14 }); Object.assign(target.batches[0], { purchasePrice: 11, mrp: 19, retailPrice: 17, wholesalePrice: 14 }); }
+    after.inventoryitems.push(target);
+  } else if (row.expected.returnKind === 'OBJECT') {
+    target.__v = 1; target.updatedAt = date();
+    const explicit = {
+      IQA_NORMAL_ACTIVE_TO_ZERO: { availableQty: 7, reservedQty: 2, isActive: true, target: { availableQty: 0, reservedQty: 0, status: 'depleted', depletedAt: date() } },
+      IQR_NORMAL_ACTIVE_PAST_366_DAYS_PRESENT_FIXED_DATE: { availableQty: 10, reservedQty: 4, isActive: false, target: { availableQty: 3, reservedQty: 2, status: 'expired' }, clear: true },
+      IQR_MULTI_TWO_BATCHES: { availableQty: 14, reservedQty: 5, isActive: false, target: { availableQty: 3, reservedQty: 2, status: 'recalled' } },
+      IQR_MULTI_SAME_BATCH_TWICE: { availableQty: 12, reservedQty: 2, isActive: false, target: { availableQty: 5, reservedQty: 0, status: 'expired' } },
+      IQS_ADJUST_ABORT: { availableQty: 10, reservedQty: 5, isActive: true, target: { availableQty: 3, reservedQty: 3, status: 'quarantined' } },
+    }[id];
+    if (explicit) { Object.assign(target, { availableQty: explicit.availableQty, reservedQty: explicit.reservedQty, isActive: explicit.isActive }); Object.assign(target.batches[0], explicit.target); if (explicit.clear) delete target.batches[0].depletedAt; }
+    if (id === 'IQR_MULTI_TWO_BATCHES') { Object.assign(target.batches[1], { availableQty: 4, reservedQty: 1, status: 'expired' }); delete target.batches[1].depletedAt; }
+    if (id === 'IQA_CREATE_EXISTING_ITEM_NEW_BATCH_Q0') {
+      Object.assign(target, { isActive: true, purchasePrice: 11, retailPrice: 17, wholesalePrice: 14 });
+      target.batches.push({ _id: new ObjectId(), batchNumber: 'IQ-NEW', expiryDate: hydrated.input.expiryDate, receivedAt: date(),
+        availableQty: 0, reservedQty: 0, freeQty: 0, purchasePrice: 11, mrp: 19, retailPrice: 17, wholesalePrice: 14, status: 'depleted', depletedAt: date() });
+    }
+  }
+  const result = row.expected.returnKind === 'NULL' ? null : row.expected.returnKind === 'ERROR' ? undefined : row.method === 'releaseBatchAllocations' ? clone(target)
+    : { item: clone(target), batchId: target.batches[hydrated.newBatch ? target.batches.length - 1 : 0]._id.toHexString(),
+      availableQtyBefore: hydrated.newBatch ? 0 : 2, availableQtyAfter: target.batches[hydrated.newBatch ? target.batches.length - 1 : 0].availableQty };
+  const error = row.expected.returnKind === 'ERROR' ? errorExamples().find(example => example.row.id === id).error : null;
+  const bits = transaction ? { txnNumber: new Long(1), autocommit: false } : {};
+  const events = row.expected.actionCommands.find.inventoryitems ? eventPair('find', { find: 'inventoryitems', filter: { pharmacyId: hydrated.ids.pharmacy, medicineId: hydrated.ids.medicine },
+    ...bits, ...(transaction ? { startTransaction: true, readConcern: { level: 'snapshot' } } : {}) }, 1) : [];
+  if (row.expected.actionCommands.write.inventoryitems) events.push(...eventPair(hydrated.newItem ? 'insert' : 'update', hydrated.newItem
+    ? { insert: 'inventoryitems', documents: [clone(target)], ...bits }
+    : { update: 'inventoryitems', updates: [{ q: { _id: hydrated.ids.targetItem, __v: 0 }, u: { $set: { batches: clone(target.batches) }, $inc: { __v: 1 } }, multi: false, upsert: false }], ...bits }, 2));
+  const abort = id === 'IQS_ADJUST_ABORT' || id === 'IQS_NEW_ITEM_ABORT';
+  const terminal = abort ? 'abortTransaction' : 'commitTransaction';
+  return { row, hydrated, observation: { before, after, final: clone(abort ? before : after), result, error, startedAt: operation - 1, endedAt: operation + 1,
+    effectsBefore: effects(), effectsAfter: effects(), events, database, sessionId, transaction, transactionEnded: true,
+    outsideBeforeTerminal: transaction ? clone(before) : null, terminalEvents: transaction ? eventPair(terminal, { [terminal]: 1, txnNumber: new Long(1), autocommit: false }, 3, 'admin') : [] } };
+}
+for (const id of ['IQA_CREATE_NEW_ITEM_Q3', 'IQA_CREATE_EXISTING_ITEM_NEW_BATCH_Q0', 'IQA_NORMAL_ACTIVE_TO_ZERO', 'IQR_NORMAL_ACTIVE_PAST_366_DAYS_PRESENT_FIXED_DATE',
+  'IQR_MULTI_EMPTY', 'IQR_MULTI_TWO_BATCHES', 'IQR_MULTI_SAME_BATCH_TWICE', 'IQA_NULL_HEADER_UNDERFLOW', 'IQR_NULL_VALID_THEN_MISSING',
+  'IQR_NULL_LATE_HEADER_TOTAL', 'IQA_ERROR_CAST', 'IQA_ERROR_VALIDATION', 'IQR_ERROR_CAST', 'IQS_ADJUST_ABORT', 'IQS_NEW_ITEM_ABORT']) {
+  check('literal observation:' + id, () => { const e = specialObservation(id); fixture.assertInventoryObservation(e.row, e.hydrated, e.observation, data, bson); });
+}
+reject('new item version must0', e => { e.observation.after.inventoryitems[1].__v = 1; e.observation.result.item.__v = 1; e.observation.events[2].command.documents[0].__v = 1; }, 'INVENTORY_FULL_STATE', () => specialObservation('IQA_CREATE_NEW_ITEM_Q3'));
+reject('new item optional rack absent', e => { e.observation.after.inventoryitems[1].rackLocation = ''; e.observation.result.item.rackLocation = ''; e.observation.events[2].command.documents[0].rackLocation = ''; }, 'INVENTORY_FULL_STATE', () => specialObservation('IQA_CREATE_NEW_ITEM_Q3'));
+reject('new item timestamps identical', e => { e.observation.after.inventoryitems[1].updatedAt = new Date(operation + 1); e.observation.events[2].command.documents[0].updatedAt = new Date(operation + 1); }, 'INVENTORY_GENERATED_FIELD', () => specialObservation('IQA_CREATE_NEW_ITEM_Q3'));
+reject('new batch ID mustdistinct', e => { e.observation.after.inventoryitems[1].batches[2]._id = e.hydrated.ids.siblingBatch; }, 'INVENTORY_GENERATED_FIELD', () => specialObservation('IQA_CREATE_EXISTING_ITEM_NEW_BATCH_Q0'));
+reject('new batch receivedAt bounded', e => { e.observation.after.inventoryitems[1].batches[2].receivedAt = new Date(0); }, 'INVENTORY_GENERATED_FIELD', () => specialObservation('IQA_CREATE_EXISTING_ITEM_NEW_BATCH_Q0'));
+reject('late null cannot hide persisted mutation', e => { e.observation.after.inventoryitems[1].batches[0].reservedQty--; }, 'INVENTORY_FULL_STATE', () => specialObservation('IQR_NULL_LATE_HEADER_TOTAL'));
+reject('null cannot swallow error', e => { e.observation.error = new Error('private'); }, 'INVENTORY_RETURN', () => specialObservation('IQA_NULL_HEADER_UNDERFLOW'));
+reject('abort must restore persisted baseline', e => { e.observation.final = clone(e.observation.after); }, 'INVENTORY_TRANSACTION', () => specialObservation('IQS_ADJUST_ABORT'));
+(async () => {
+  const first = new Error('first'); let cleanup = 0;
+  await assert.rejects(fixture.preserveFirst(async () => { throw first; }, async () => { cleanup++; throw new Error('second'); }), error => error === first);
+  assert.equal(cleanup, 1); passed++; names.push('first failure preserved through cleanup');
+  const asyncCheck = async (name, action) => {
+    try { await action(); } catch (error) { process.stderr.write(JSON.stringify({ schema: 'SD-INVENTORY-PURE-FAILED-CHECK-1', failedCheck: name }) + '\n'); throw error; }
+    passed++; names.push(name);
+  };
+  const rejectsExactValue = async (action, expected) => {
+    let rejected = false;
+    try { await action(); } catch (value) { rejected = true; assert.equal(Object.is(value, expected), true); }
+    assert.equal(rejected, true);
+  };
+  const falsy = [['undefined', undefined], ['null', null], ['false', false], ['zero', 0], ['empty-string', '']];
+  for (const [label, value] of falsy) {
+    await asyncCheck('falsy first survives successful cleanup:' + label, () => rejectsExactValue(
+      () => fixture.preserveFirst(async () => { throw value; }, async () => {}), value));
+    await asyncCheck('falsy first survives later Error:' + label, () => rejectsExactValue(
+      () => fixture.preserveFirst(async () => { throw value; }, async () => { throw new Error('later'); }), value));
+    await asyncCheck('synchronous falsy first survives cleanup:' + label, () => rejectsExactValue(
+      () => fixture.preserveFirst(() => { throw value; }, () => { throw new Error('later-sync'); }), value));
+    for (const [laterLabel, later] of falsy) await asyncCheck('falsy rejection pair:' + label + '/' + laterLabel, () => rejectsExactValue(
+      () => fixture.preserveFirst(async () => { throw value; }, async () => { throw later; }), value));
+    await asyncCheck('successful action rejects falsy cleanup:' + label, () => rejectsExactValue(
+      () => fixture.preserveFirst(async () => 42, async () => { throw value; }), value));
+    await asyncCheck('cleanup accumulator retains first and attempts all:' + label, async () => {
+      const accumulator = fixture.createCleanupAttempts(); const attempted = [];
+      for (const step of ['endSession', 'delete-items', 'delete-adjustments', 'delete-reservations', 'snapshot', 'healthy', 'restoreRepository']) {
+        await accumulator.attempt(async () => { attempted.push(step); if (step === 'endSession') throw value; throw new Error('later ' + step); });
+      }
+      assert.deepEqual(attempted, ['endSession', 'delete-items', 'delete-adjustments', 'delete-reservations', 'snapshot', 'healthy', 'restoreRepository']);
+      await rejectsExactValue(async () => accumulator.finish(), value);
+      await rejectsExactValue(async () => accumulator.finish(), value);
+    });
+    await asyncCheck('synchronous cleanup rejection remains first:' + label, async () => {
+      const accumulator = fixture.createCleanupAttempts(); let laterAttempted = false;
+      await accumulator.attempt(() => { throw value; });
+      await accumulator.attempt(() => { laterAttempted = true; throw new Error('later-sync'); });
+      assert.equal(laterAttempted, true); await rejectsExactValue(async () => accumulator.finish(), value);
+    });
+    await asyncCheck('outer restore preserves falsy trial rejection:' + label, () => rejectsExactValue(
+      () => fixture.preserveFirst(() => fixture.preserveFirst(async () => { throw value; }, async () => {}), async () => { throw new Error('restore'); }), value));
+    await asyncCheck('outer restore falsy failure is not success:' + label, () => rejectsExactValue(
+      () => fixture.preserveFirst(async () => 'trial-ok', async () => { throw value; }), value));
+    await asyncCheck('outer restore falsy failure cannot replace first Error:' + label, () => rejectsExactValue(
+      () => fixture.preserveFirst(async () => { throw first; }, async () => { throw value; }), first));
+  }
+  await asyncCheck('cleanup accumulator successful operations preserve values', async () => {
+    const accumulator = fixture.createCleanupAttempts(); assert.equal(await accumulator.attempt(async () => 0), 0);
+    assert.equal(await accumulator.attempt(async () => false), false); assert.equal(accumulator.finish(), undefined);
+  });
+  const attributionVariant = data.cases.sourceMutations[0];
+  for (const kind of ['UNSAFE', 'RESTORE']) for (const [label, failure] of [['zero', 0], ['null', null], ['Error', new Error('fixture-only-loader-or-freshness')]]) {
+    await asyncCheck('repository failing loader has next context:' + kind + '/' + label, async () => {
+      const prior = Object.freeze({ caseId: data.cases.cases[0].id, variantId: null, phase: 'NOMINAL' });
+      let active = prior; let atLoad; const order = [];
+      const next = { caseId: attributionVariant.referenceTrial, variantId: attributionVariant.id, phase: kind === 'UNSAFE' ? 'UNSAFE' : 'RESTORE_TRIAL' };
+      const ctx = { failureContext(value) { assert.equal(Object.isFrozen(value), true); active = value; order.push('context'); } };
+      await rejectsExactValue(() => fixture.repositoryForPhase(ctx, data, kind, attributionVariant.id, (selectedKind, selectedVariant) => {
+        assert.equal(selectedKind, kind); assert.equal(selectedVariant, attributionVariant.id); atLoad = active; order.push('load'); throw failure;
+      }), failure);
+      assert.deepEqual(atLoad, next); assert.deepEqual(active, next); assert.deepEqual(order, ['context', 'load']);
+    });
+  }
+  for (const selection of [{ kind: 'NOMINAL_INITIAL', variant: null, expected: { caseId: null, variantId: null, phase: null } },
+    ...data.cases.sourceMutations.flatMap(variant => ['UNSAFE', 'RESTORE'].map(kind => ({ kind, variant: variant.id,
+      expected: { caseId: variant.referenceTrial, variantId: variant.id, phase: kind === 'UNSAFE' ? 'UNSAFE' : 'RESTORE_TRIAL' } })))]) {
+    await asyncCheck('repository context before selection:' + selection.kind + '/' + selection.variant, async () => {
+      const order = []; let active; const result = Object.freeze({ fixtureOnly: true });
+      const selected = fixture.repositoryForPhase({ failureContext(value) { active = value; order.push('context'); assert.equal(Object.isFrozen(value), true); } },
+        data, selection.kind, selection.variant, (kind, variant) => {
+          order.push('load'); assert.equal(kind, selection.kind); assert.equal(variant, selection.variant); assert.deepEqual(active, selection.expected); return result;
+        });
+      assert.equal(selected, result); assert.deepEqual(Object.keys(active), ['caseId', 'variantId', 'phase']); assert.deepEqual(order, ['context', 'load']);
+    });
+  }
+  for (const [label, failure] of [['zero', 0], ['null', null], ['Error', new Error('fixture-only-context')]]) await asyncCheck('context rejection prevents repository selection:' + label, async () => {
+    let loads = 0;
+    await rejectsExactValue(() => fixture.repositoryForPhase({ failureContext() { throw failure; } }, data, 'UNSAFE', attributionVariant.id, () => { loads++; }), failure);
+    assert.equal(loads, 0);
+  });
+  for (const [kind, variant] of [['OTHER', attributionVariant.id], ['UNSAFE', 'UNKNOWN'], ['NOMINAL_INITIAL', attributionVariant.id]]) await asyncCheck('closed repository context selection:' + kind + '/' + variant, async () => {
+    let calls = 0; assert.throws(() => fixture.repositoryForPhase({ failureContext() { calls++; } }, data, kind, variant, () => { calls++; }),
+      error => fixture.fixtureCode(error) === 'INVENTORY_CASE_SET'); assert.equal(calls, 0);
+  });
+  process.stdout.write(JSON.stringify({ schema: 'SD-INVENTORY-SCENARIO-PURE-1', status: 'PASS', passed, failed: 0,
+    domainOrPackageEvaluations: 0, names }) + '\n');
+})().catch(() => { process.stderr.write('INVENTORY_PURE_UNIT_FAILED\n'); process.exitCode = 1; });

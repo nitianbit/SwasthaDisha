@@ -1,0 +1,23 @@
+# Source ready for independent review
+
+Exact Object.is(result,0), unchanged numeric return and seven declared ports SHA
+bindings; positive fake/assertion changes only, plus the separately approved first
+296-test closed164 metadata correction. Source inverse and guard-order/code audit
+are in source-inverse-final.json/source-checks.json. Old failed archives are intact.
+
+Actual final nominal1686 PASS: parent454 +bootstrap296 +scenario371 +import272
++APM95 +sites154 +newtype44. Parent alone retains its confirmed exact ownlease
+write grant; all other subjects are read-only. Nine type and twelve site weakened
+copies fail targeted named tests; unknown/missing/reordered vector controls fail
+at completed0. All raw sources, argv, output, exit, lease identity and fresh ENOENT
+are retained. Initial44 strictfalse RED39/5 and initial296 metadata failure remain.
+
+The ONE newly granted native-replay-2 passed with exact original output fields:
+{"status":"PASS","initializationPassed":1,"nativePassed":1,"zeroEffects":1}
+The captured Object.is return assertion is internal. Only the executed entry and
+result in native-replay-2/ are evidence; the extra-output draft was never executed.
+Its source is f4a49fcb, entry7f749592, stdout56b6389b, stderr empty, ownlease absent.
+This is host builtin compatibility only, not Linux/public-package/run2 cause/app
+admission. Earlier native denial and consumed claims remain preserved. No further
+replay, package/app/parser/compiler/npm/Docker/database/provider/Git action ran.
+Two nonauthor source reviews/composition and all later gates remain required.

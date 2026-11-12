@@ -1,0 +1,88 @@
+{
+  "schema": "SD-INVENTORY-ROOT-RUN3-CLEANUP-1",
+  "observedAtUTC": "2026-11-11T15:32:38.594845+00:00",
+  "reportPath": "/private/tmp/sd-inventory-quality-invocation-G3ukMX/operator-result.json",
+  "reportSha256": "df3e0410d2cef8172419853c24e766c752a261df2d0a6d8156bd5a9c13f92438",
+  "runId": "139df810-6511-4cd2-a780-b16e7ca8fff0",
+  "exactCapturedIds": [
+    "cf0b1d81741b85d5d284cf03b6a42b5b6d8d8a393b7e01b850ef5ad57ee4dcd9",
+    "b951e969a6bb500ac6d9a099398b0d2a961b2649d15ac858ce793849ae773400"
+  ],
+  "engineId": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+  "queries": [
+    {
+      "argv": [
+        "info",
+        "--format",
+        "{{.ID}}"
+      ],
+      "exitCode": 0,
+      "stdout": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+      "stderrEmpty": true
+    },
+    {
+      "argv": [
+        "ps",
+        "--all",
+        "--filter",
+        "id=cf0b1d81741b85d5d284cf03b6a42b5b6d8d8a393b7e01b850ef5ad57ee4dcd9",
+        "--no-trunc",
+        "--format",
+        "{{.ID}}"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderrEmpty": true
+    },
+    {
+      "argv": [
+        "ps",
+        "--all",
+        "--filter",
+        "id=b951e969a6bb500ac6d9a099398b0d2a961b2649d15ac858ce793849ae773400",
+        "--no-trunc",
+        "--format",
+        "{{.ID}}"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderrEmpty": true
+    },
+    {
+      "argv": [
+        "ps",
+        "--all",
+        "--filter",
+        "label=swasthadisha.test.purpose=inventory-quality-runtime",
+        "--no-trunc",
+        "--format",
+        "{{.ID}}"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderrEmpty": true
+    },
+    {
+      "argv": [
+        "info",
+        "--format",
+        "{{.ID}}"
+      ],
+      "exitCode": 0,
+      "stdout": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+      "stderrEmpty": true
+    }
+  ],
+  "exactIdsAbsent": true,
+  "purposeEmpty": true,
+  "workspaceAbsent": true,
+  "workspace": "/private/tmp/sd-inventory-quality-run-NyX9sF",
+  "ownConfig": "/private/tmp/sd-iq-runtime3-root-post-5ucjck11",
+  "ownConfigIdentity": {
+    "device": 16777231,
+    "inode": 54167001
+  },
+  "ownConfigFreshENOENT": true,
+  "resourceMutations": 0,
+  "failure": null
+}

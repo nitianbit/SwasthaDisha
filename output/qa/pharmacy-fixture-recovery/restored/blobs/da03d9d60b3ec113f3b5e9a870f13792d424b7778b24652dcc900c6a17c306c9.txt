@@ -1,0 +1,131 @@
+import { mkdtempSync, mkdirSync, lstatSync, readFileSync, writeFileSync, rmSync, realpathSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { randomUUID, createHash } from 'node:crypto';
+
+if (process.argv.length !== 2) throw Error('This fixed unit gate accepts no positional input');
+if (process.execArgv.length || Object.hasOwn(process.env, 'NODE_OPTIONS') || Object.hasOwn(process.env, 'NODE_PATH')) {
+  throw Error('Start this fixed unit gate without preload flags or overrides');
+}
+if (process.execPath !== '/private/tmp/m0-node22/node' || process.version !== 'v22.23.4'
+  || createHash('sha256').update(readFileSync(process.execPath)).digest('hex') !== '2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0')
+  throw Error('Use the exact pinned Node22 pure unit orchestrator');
+const SOURCE_COUNTS_FINAL = true; // Exact final pure subject counts are frozen in the lane evidence.
+const COUNTS = Object.freeze({ parent: 454, bootstrap: 296, scenario: 371 });
+const LOCK = '/private/tmp/sd-auth-api-resolved-lock.json';
+const LOCK_SHA = '2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5';
+const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+const need = (ok, message) => { if (!ok) throw Error(message); };
+const exact = (value, keys) => value !== null && typeof value === 'object' && !Array.isArray(value)
+  && JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort());
+need(Object.keys(process.env).every(key => ['PATH', 'TMPDIR', '__CF_USER_TEXT_ENCODING'].includes(key))
+  && process.env.PATH === '/usr/bin:/bin' && process.env.TMPDIR === '/private/tmp'
+  && realpathSync(tmpdir()) === '/private/tmp', 'Use the fixed clean pure environment');
+need(SOURCE_COUNTS_FINAL, 'Combined unit gate is a draft: final author counts are not frozen');
+const lockInfo = lstatSync(LOCK);
+need(lockInfo.isFile() && !lockInfo.isSymbolicLink() && lockInfo.nlink === 1
+  && lockInfo.uid === process.getuid() && (lockInfo.mode & 0o022) === 0
+  && sha(readFileSync(LOCK)) === LOCK_SHA, 'Fixed public lock data differs');
+const files = new Map([
+  ['test/inventory-runtime/platform.mjs', new URL('./platform.mjs', import.meta.url)],
+  ['test/inventory-runtime/platform.test.mjs', new URL('./platform.test.mjs', import.meta.url)],
+  ['test/inventory-runtime/profile.json', new URL('./profile.json', import.meta.url)],
+  ['test/inventory-runtime/launch.mjs', new URL('./launch.mjs', import.meta.url)],
+  ['test/inventory-runtime/launch.test.mjs', new URL('./launch.test.mjs', import.meta.url)],
+  ['test/inventory-runtime/scenario/ports-manifest.json', new URL('./scenario/ports-manifest.json', import.meta.url)],
+  ['test/inventory-runtime/scenario/cases.json', new URL('./scenario/cases.json', import.meta.url)],
+  ['test/inventory-runtime/scenario/npm-config-shield.cjs', new URL('./scenario/npm-config-shield.cjs', import.meta.url)],
+  ['test/inventory-runtime/scenario/npm-config-shield.test.cjs', new URL('./scenario/npm-config-shield.test.cjs', import.meta.url)],
+  ['test/inventory-runtime/scenario/compile.cjs', new URL('./scenario/compile.cjs', import.meta.url)],
+  ['test/inventory-runtime/scenario/compiler-pure.test.cjs', new URL('./scenario/compiler-pure.test.cjs', import.meta.url)],
+  ['test/application/app-bundle.mjs', new URL('../application/app-bundle.mjs', import.meta.url)],
+  ['test/inventory-runtime/scenario/bootstrap.cjs', new URL('./scenario/bootstrap.cjs', import.meta.url)],
+  ['test/inventory-runtime/scenario/bootstrap-unit.cjs', new URL('./scenario/bootstrap-unit.cjs', import.meta.url)],
+  ['test/inventory-runtime/scenario/scenario.cjs', new URL('./scenario/scenario.cjs', import.meta.url)],
+  ['test/inventory-runtime/scenario/scenario-unit.cjs', new URL('./scenario/scenario-unit.cjs', import.meta.url)],
+  ['test/inventory-runtime/scenario/public-lock.json', LOCK],
+]);
+need(files.size === 17, 'Unexpected fixed pure copy closure');
+const directory = realpathSync(mkdtempSync(join(tmpdir(), 'sd-iq-combined-units-')));
+const identity = lstatSync(directory); const runId = randomUUID();
+const marker = join(directory, '.owner.json');
+writeFileSync(marker, JSON.stringify({ runId }), { flag: 'wx', mode: 0o600 });
+let first; let hasFailure = false; let cleanupVerified = false; let cleanupUnresolved = false; let currentStage = null;
+const hashes = {}; const results = [];
+const regular = path => {
+  const info = lstatSync(path);
+  need(info.isFile() && !info.isSymbolicLink() && info.nlink === 1, 'Unit source must be one regular file');
+  return readFileSync(path);
+};
+function owned() {
+  const current = lstatSync(directory);
+  const tag = JSON.parse(regular(marker));
+  need(current.isDirectory() && !current.isSymbolicLink() && current.dev === identity.dev && current.ino === identity.ino
+    && current.uid === process.getuid() && exact(tag, ['runId']) && tag.runId === runId, 'Unit lease ownership lost; cleanup withheld');
+}
+const flush = (port, value) => new Promise((resolve, reject) => {
+  if (!value) { resolve(); return; }
+  port.write(value, error => error ? reject(Error('Pure fixture output flush unavailable')) : resolve());
+});
+try {
+  for (const [name, source] of files) {
+    const st = lstatSync(source);
+    if (!st.isFile() || st.isSymbolicLink() || st.nlink !== 1) throw Error('Unit source must be regular');
+    const bytes = readFileSync(source);
+    hashes[name] = createHash('sha256').update(bytes).digest('hex');
+    const parts = name.split('/'); parts.pop(); mkdirSync(join(directory, ...parts), { recursive: true });
+    writeFileSync(join(directory, name), bytes, { flag: 'wx', mode: 0o444 });
+  }
+  const stages = [
+    { id: 'parent', write: true, args: ['--experimental-test-isolation=none', '--test', '--test-reporter=tap',
+      'test/inventory-runtime/platform.test.mjs', 'test/inventory-runtime/launch.test.mjs',
+      'test/inventory-runtime/scenario/npm-config-shield.test.cjs', 'test/inventory-runtime/scenario/compiler-pure.test.cjs'] },
+    { id: 'bootstrap', write: false, args: ['test/inventory-runtime/scenario/bootstrap-unit.cjs'] },
+    { id: 'scenario', write: false, args: ['test/inventory-runtime/scenario/scenario-unit.cjs'] },
+  ];
+  for (const stage of stages) {
+    currentStage = stage.id; owned();
+    for (const name of files.keys()) need(sha(regular(join(directory, name))) === hashes[name], 'Copied pure source changed');
+    const permissions = ['--permission', '--allow-fs-read=' + directory,
+      ...(stage.write ? ['--allow-fs-write=' + directory] : [])];
+    const result = spawnSync(process.execPath, [...permissions, ...stage.args], { cwd: directory,
+      env: { PATH: '/usr/bin:/bin', TMPDIR: directory }, encoding: 'utf8', timeout: 30_000, maxBuffer: 1024 * 1024 });
+    await flush(process.stdout, result.stdout || ''); await flush(process.stderr, result.stderr || '');
+    need(!result.error && !result.signal && result.status === 0, 'Pure subject failed: ' + stage.id);
+    if (stage.id === 'parent') {
+      const summary = name => [...result.stdout.matchAll(new RegExp('^# ' + name + ' ([0-9]+)$', 'gm'))].at(-1)?.[1];
+      need(Number(summary('tests')) === COUNTS.parent && Number(summary('pass')) === COUNTS.parent
+        && ['fail', 'cancelled', 'skipped', 'todo'].every(name => summary(name) === '0'), 'Parent pure cases incomplete');
+    } else {
+      let value; try { value = JSON.parse(result.stdout); } catch { throw Error('Invalid pure subject result: ' + stage.id); }
+      need(result.stderr === '', 'Unexpected pure subject stderr: ' + stage.id);
+      if (stage.id === 'bootstrap') need(exact(value, ['schema', 'status', 'checks', 'failed', 'applicationEvaluations', 'packageEvaluations', 'DockerCalls'])
+        && value.schema === 'SD-INVENTORY-BOOTSTRAP-UNIT-1' && value.status === 'PASS' && value.checks === COUNTS.bootstrap
+        && value.failed === 0 && value.applicationEvaluations === 0 && value.packageEvaluations === 0 && value.DockerCalls === 0,
+      'Bootstrap pure cases incomplete');
+      else need(exact(value, ['schema', 'status', 'passed', 'failed', 'domainOrPackageEvaluations', 'names'])
+        && value.schema === 'SD-INVENTORY-SCENARIO-PURE-1' && value.status === 'PASS' && value.passed === COUNTS.scenario
+        && value.failed === 0 && value.domainOrPackageEvaluations === 0 && Array.isArray(value.names)
+        && value.names.length === COUNTS.scenario && new Set(value.names).size === COUNTS.scenario
+        && value.names.every(name => typeof name === 'string' && name.length > 0 && name.length <= 512), 'Scenario pure cases incomplete');
+    }
+    for (const [name, source] of files) need(sha(regular(source)) === hashes[name]
+      && sha(regular(join(directory, name))) === hashes[name], 'Pure source changed during check');
+    results.push(Object.freeze({ id: stage.id, checks: COUNTS[stage.id], status: 'PASS',
+      stdoutSha256: sha(result.stdout), stderrSha256: sha(result.stderr || '') }));
+  }
+} catch (error) { hasFailure = true; first = error; }
+try {
+  owned(); rmSync(directory, { recursive: true });
+  let missing = false;
+  try { lstatSync(directory); } catch (error) { if (error.code === 'ENOENT') missing = true; else throw Error('Unit lease absence unavailable'); }
+  need(missing, 'Unit lease remains'); cleanupVerified = true;
+} catch (error) { cleanupUnresolved = true; if (!hasFailure) { hasFailure = true; first = error; } }
+try {
+  await flush(process.stderr, JSON.stringify({ schema: 'SD-INVENTORY-COMBINED-PURE-1', status: hasFailure ? 'FAILED' : 'PASS', results,
+    failedStage: hasFailure ? currentStage : null, copiedInputs: 17, sourceSha256: hashes,
+    lease: directory, exactLeaseAbsent: cleanupVerified, cleanup: cleanupUnresolved ? 'UNRESOLVED' : 'VERIFIED', applicationImports: 0,
+    installedPackageEvaluations: 0, TypeScriptCompilerExecutions: 0, npmExecutions: 0, DockerCalls: 0, databaseConnections: 0 }) + String.fromCharCode(10));
+} catch (error) { if (!hasFailure) { hasFailure = true; first = error; } }
+if (hasFailure) throw first;

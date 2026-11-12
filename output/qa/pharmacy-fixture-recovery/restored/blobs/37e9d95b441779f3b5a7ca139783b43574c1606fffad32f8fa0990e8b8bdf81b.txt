@@ -1,0 +1,1485 @@
+'use strict';
+// This fixture imports no package or domain source until complete admission.
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const os = require('node:os');
+const net = require('node:net');
+const tls = require('node:tls');
+const dns = require('node:dns');
+const http = require('node:http');
+const https = require('node:https');
+const timers = require('node:timers');
+const Module = require('node:module');
+const v8 = require('node:v8');
+const diagnostics = require('node:diagnostics_channel');
+const util = require('node:util');
+const nativeMapEntries = Map.prototype.entries;
+const { pathToFileURL, fileURLToPath } = require('node:url');
+const ROOT = '/workspace';
+const ROLE = 'medicine-prescription-http';
+const CASES_SHA = '988ecd33e4003906eaa39cbe4d8f1d5b5ccf704df9330b34956c98f0121fe95f';
+const PORTS_SHA = '3079134fca2a88a4dea321a7bf11895079f0d44460d81e6576874761560c27f9';
+const LOCK_SHA = '2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5';
+const stdout = process.stdout.write.bind(process.stdout);
+const readClock = process.hrtime.bigint.bind(process.hrtime);
+const PROVIDERS = Object.freeze(['email', 'sms', 'push', 'logger', 'payments', 'calendar', 'storage', 'queue', 'deniedCapabilities', 'unexpected']);
+const FAILURE_CODES = Object.freeze(["RUNTIME_FIXTURE_FAILED", "MEDICINE_ADMISSION", "MEDICINE_ENVIRONMENT", "MEDICINE_FILE_MANIFEST", "MEDICINE_FILE_HASH", "MEDICINE_SOURCE_MANIFEST", "MEDICINE_PLAN", "MEDICINE_DATA_BINDING", "MEDICINE_CONTEXT", "MEDICINE_CASE_SET", "MEDICINE_NETWORK_ADMISSION", "MEDICINE_EGRESS_CANARY", "MEDICINE_FILESYSTEM_CANARY", "MEDICINE_NATIVE_OPERATION", "MEDICINE_NATIVE_IMPORT", "MEDICINE_PUBLIC_INITIALIZATION", "MEDICINE_LOADER", "MEDICINE_DOMAIN_AUDIT", "MEDICINE_MODEL", "MEDICINE_DATABASE", "MEDICINE_OS_ADAPTER", "MEDICINE_INDEX_PROOF", "MEDICINE_TYPED_VALUE", "MEDICINE_OWNERSHIP_PROOF", "MEDICINE_SEED_STATE", "MEDICINE_CLEANUP", "MEDICINE_CURSOR", "MEDICINE_COMMAND_ENVELOPE", "MEDICINE_COMMAND_LIMIT", "MEDICINE_COMMAND_FAILURE", "MEDICINE_COMMANDS", "MEDICINE_SESSION", "MEDICINE_PHASE", "MEDICINE_COHORT", "MEDICINE_TYPEDI", "MEDICINE_NORMALIZATION", "MEDICINE_WRAPPER_RESTORATION", "MEDICINE_HTTP", "MEDICINE_STATUS", "MEDICINE_RESPONSE", "MEDICINE_RETURN", "MEDICINE_ERROR", "MEDICINE_ACTION_READS", "MEDICINE_ACTION_WRITES", "MEDICINE_JWT", "MEDICINE_PROVIDER", "MEDICINE_WARNING_KNOWN_COUNT", "MEDICINE_UNKNOWN_CONSOLE", "MEDICINE_EFFECTS", "MEDICINE_FULL_STATE", "MEDICINE_GENERATED_FIELD", "MEDICINE_SENSITIVITY", "MEDICINE_UNEXPECTED_FAILURE", "MEDICINE_RESULT", "MEDICINE_CLOSE", "MEDICINE_DIAGNOSTIC"]);
+const MODEL_NAMES = Object.freeze(["Medicine", "InventoryItem", "InventoryAdjustment", "InventoryReservation", "Pharmacy"]);
+const COLLECTIONS = Object.freeze(["medicines", "pharmacies", "inventoryitems", "inventoryadjustments", "inventoryreservations"]);
+const DOMAIN_FILES = Object.freeze(["compiled/modules/pharmacyMedicines/routes/index.js", "compiled/modules/pharmacyMedicines/controller/index.js", "compiled/modules/pharmacyMedicines/services/index.js", "compiled/modules/pharmacyMedicines/repository/index.js", "compiled/modules/pharmacyMedicines/model/index.js", "compiled/modules/pharmacyMedicines/services/nameKeyMigration.js", "compiled/modules/pharmacyMedicines/validation/index.js", "compiled/modules/middleware/auth.js", "compiled/modules/middleware/errorHandler.js", "compiled/modules/common/middleware/validation.js", "compiled/modules/common/utils/asyncHandler.js", "compiled/modules/common/utils/mongoErrors.js", "compiled/modules/common/utils/queryUtils.js", "compiled/modules/common/types/index.js", "compiled/modules/common/types/error.js", "compiled/modules/common/types/response.js", "compiled/modules/common/repository/index.js", "compiled/modules/common/repository/BaseRepository.js", "compiled/modules/pharmacyInventory/model/index.js", "compiled/modules/pharmacies/model/index.js"]);
+const LIBRARY_NAMES = Object.freeze(["lib.decorators.d.ts","lib.decorators.legacy.d.ts","lib.dom.asynciterable.d.ts","lib.dom.d.ts","lib.dom.iterable.d.ts","lib.es2015.collection.d.ts","lib.es2015.core.d.ts","lib.es2015.d.ts","lib.es2015.generator.d.ts","lib.es2015.iterable.d.ts","lib.es2015.promise.d.ts","lib.es2015.proxy.d.ts","lib.es2015.reflect.d.ts","lib.es2015.symbol.d.ts","lib.es2015.symbol.wellknown.d.ts","lib.es2016.array.include.d.ts","lib.es2016.d.ts","lib.es2016.intl.d.ts","lib.es2017.arraybuffer.d.ts","lib.es2017.d.ts","lib.es2017.date.d.ts","lib.es2017.intl.d.ts","lib.es2017.object.d.ts","lib.es2017.sharedmemory.d.ts","lib.es2017.string.d.ts","lib.es2017.typedarrays.d.ts","lib.es2018.asyncgenerator.d.ts","lib.es2018.asynciterable.d.ts","lib.es2018.d.ts","lib.es2018.intl.d.ts","lib.es2018.promise.d.ts","lib.es2018.regexp.d.ts","lib.es2019.array.d.ts","lib.es2019.d.ts","lib.es2019.intl.d.ts","lib.es2019.object.d.ts","lib.es2019.string.d.ts","lib.es2019.symbol.d.ts","lib.es2020.bigint.d.ts","lib.es2020.d.ts","lib.es2020.date.d.ts","lib.es2020.full.d.ts","lib.es2020.intl.d.ts","lib.es2020.number.d.ts","lib.es2020.promise.d.ts","lib.es2020.sharedmemory.d.ts","lib.es2020.string.d.ts","lib.es2020.symbol.wellknown.d.ts","lib.es5.d.ts","lib.scripthost.d.ts","lib.webworker.importscripts.d.ts"]);
+const failureCodes = new WeakMap();
+let lifetimeFailures = 0;
+const own = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
+const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+function fail(code) {
+  lifetimeFailures++;
+  const error = new Error(FAILURE_CODES.includes(code) ? code : 'RUNTIME_FIXTURE_FAILED');
+  failureCodes.set(error, FAILURE_CODES.includes(code) ? code : 'RUNTIME_FIXTURE_FAILED'); throw error;
+}
+const need = (ok, code) => { if (!ok) fail(code); };
+const plain = value => value !== null && typeof value === 'object' && !Array.isArray(value)
+  && [Object.prototype, null].includes(Object.getPrototypeOf(value));
+function keys(value, required, optional = []) {
+  if (!plain(value) || Object.getOwnPropertySymbols(value).length) return false;
+  const observed = Object.getOwnPropertyNames(value);
+  return required.every(key => own(value, key)) && observed.every(key => required.includes(key) || optional.includes(key))
+    && observed.every(key => own(Object.getOwnPropertyDescriptor(value, key), 'value'));
+}
+function freeze(value) {
+  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
+    for (const key of Object.keys(value)) freeze(value[key]); Object.freeze(value);
+  }
+  return value;
+}
+function freezeRecord(value) {
+  if (Array.isArray(value) || plain(value)) { for (const item of Object.values(value)) freezeRecord(item); Object.freeze(value); }
+  return value;
+}
+function clone(value, bson) {
+  if (value === null || typeof value !== 'object') return value;
+  if (value instanceof Date) return new Date(value.getTime());
+  if (value instanceof RegExp) { need(Object.getPrototypeOf(value) === RegExp.prototype && value.lastIndex === 0, 'MEDICINE_TYPED_VALUE'); return new RegExp(value.source, value.flags); }
+  if (Buffer.isBuffer(value)) return Buffer.from(value);
+  if (bson && value instanceof bson.ObjectId) return new bson.ObjectId(value.toHexString());
+  if (bson && value instanceof bson.Timestamp) return new bson.Timestamp({ t: value.getHighBitsUnsigned(), i: value.getLowBitsUnsigned() });
+  if (bson && value instanceof bson.Long) return bson.Long.fromBits(value.low, value.high, value.unsigned);
+  if (bson && value instanceof bson.Binary) return new bson.Binary(binaryBytes(value), value.sub_type);
+  if (value instanceof Map) { need(Object.getPrototypeOf(value) === Map.prototype && Reflect.ownKeys(value).length === 0, 'MEDICINE_TYPED_VALUE'); return new Map([...Map.prototype.entries.call(value)].map(([key,item])=>[key,clone(item,bson)])); }
+  if (Array.isArray(value)) { need(denseArray(value, 16000), 'MEDICINE_TYPED_VALUE'); return value.map(item => clone(item, bson)); }
+  need(plain(value) && keys(value, Object.getOwnPropertyNames(value)), 'MEDICINE_TYPED_VALUE');
+  return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, clone(item, bson)]));
+}
+function same(left, right, bson) {
+  if (Object.is(left, right)) return true;
+  if (left === null || right === null || typeof left !== typeof right || typeof left !== 'object') return false;
+  if (left instanceof RegExp || right instanceof RegExp) return left instanceof RegExp && right instanceof RegExp && Object.getPrototypeOf(left) === RegExp.prototype && Object.getPrototypeOf(right) === RegExp.prototype && left.source === right.source && left.flags === right.flags && left.lastIndex === 0 && right.lastIndex === 0;
+  if (left instanceof Date || right instanceof Date) return left instanceof Date && right instanceof Date && left.getTime() === right.getTime();
+  if (Buffer.isBuffer(left) || Buffer.isBuffer(right)) return Buffer.isBuffer(left) && Buffer.isBuffer(right) && left.equals(right);
+  if (bson) {
+    if ((left instanceof bson.Timestamp) !== (right instanceof bson.Timestamp)) return false;
+    for (const Type of [bson.ObjectId, bson.Timestamp, bson.Long, bson.Binary]) if (left instanceof Type || right instanceof Type) {
+      return left instanceof Type && right instanceof Type && (Type === bson.Binary
+        ? left.sub_type === right.sub_type && binaryBytes(left).equals(binaryBytes(right))
+        : Type === bson.ObjectId ? left.toHexString() === right.toHexString()
+          : left.low === right.low && left.high === right.high && left.unsigned === right.unsigned);
+    }
+  }
+  if (left instanceof Map || right instanceof Map) return left instanceof Map && right instanceof Map
+    && same([...left], [...right], bson);
+  if (Array.isArray(left) || Array.isArray(right)) return Array.isArray(left) && Array.isArray(right)
+    && denseArray(left,16000) && denseArray(right,16000) && left.length === right.length && left.every((value, i) => same(value, right[i], bson));
+  if (!plain(left) || !plain(right) || !keys(left, Object.getOwnPropertyNames(left)) || !keys(right, Object.getOwnPropertyNames(right))) return false;
+  const a = Object.keys(left).sort(); const b = Object.keys(right).sort();
+  return same(a, b, bson) && a.every(key => same(left[key], right[key], bson));
+}
+function binaryBytes(value) {
+  need((Buffer.isBuffer(value.buffer) || value.buffer instanceof Uint8Array) && Number.isSafeInteger(value.position)
+    && value.position >= 0 && value.position <= value.buffer.length, 'MEDICINE_TYPED_VALUE');
+  return Buffer.from(value.buffer).subarray(0, value.position);
+}
+function makeFailureContext(ports) {
+  let current = { caseId: null, variantId: null, phase: null };
+  let entered = false;
+  return Object.freeze({
+    set(value) {
+      need(Object.isFrozen(value) && keys(value, ['caseId', 'variantId', 'phase'])
+        && (value.caseId === null || ports.failureContext.safeCaseIds.includes(value.caseId))
+        && (value.variantId === null || ports.failureContext.safeVariantIds.includes(value.variantId))
+        && (value.phase === null || ports.failureContext.phases.includes(value.phase))
+        && (value.caseId === null ? !entered && value.variantId === null && value.phase === null
+          : value.phase !== null && (value.phase === 'NOMINAL' ? value.variantId === null : value.variantId !== null)), 'MEDICINE_DIAGNOSTIC');
+      if (value.caseId !== null) entered = true;
+      current = { ...value };
+    },
+    get: () => ({ ...current })
+  });
+}
+function bytes(relative, root = ROOT) {
+  need(typeof relative === 'string' && relative.length > 0 && !path.isAbsolute(relative)
+    && relative.split('/').every(part => part && part !== '.' && part !== '..'), 'MEDICINE_FILE_MANIFEST');
+  const filename = path.join(root, relative); const metadata = fs.lstatSync(filename);
+  need(metadata.isFile() && !metadata.isSymbolicLink() && metadata.nlink === 1, 'MEDICINE_FILE_MANIFEST');
+  return fs.readFileSync(filename);
+}
+
+function validateLibraryReport(report, manifest) {
+  need(keys(report, ['schema', 'status', 'compiler', 'compilerSha256', 'options', 'semanticProgram', 'positive', 'negative', 'oldHostControl', 'restoredPositive'])
+    && report.schema === 'SD-COMPILER-LIBRARY-ADMISSION-1' && report.status === 'PASS' && report.compiler === '5.9.3'
+    && report.compilerSha256 === '3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675'
+    && same(report.options, { target: 7, module: 1, moduleResolution: 2, experimentalDecorators: true,
+      emitDecoratorMetadata: true, esModuleInterop: true, noEmit: true, skipLibCheck: true, types: [] }), 'MEDICINE_PLAN');
+  const libraries = Object.fromEntries(LIBRARY_NAMES.map(name => [name, manifest.files['node_modules/typescript/lib/' + name]]));
+  need(Object.values(libraries).every(value => /^[a-f0-9]{64}$/.test(value)), 'MEDICINE_PLAN');
+  need(keys(report.semanticProgram, ['programFiles', 'libraryFiles']) && same(report.semanticProgram.libraryFiles, libraries)
+    && Array.isArray(report.semanticProgram.programFiles) && report.semanticProgram.programFiles.length <= 512
+    && new Set(report.semanticProgram.programFiles).size === report.semanticProgram.programFiles.length, 'MEDICINE_PLAN');
+  const libraryIds = LIBRARY_NAMES.map(name => 'node_modules/typescript/lib/' + name);
+  function probe(row, positive) {
+    const sourceId = positive ? 'VIRTUAL_BROAD_LIBRARY_POSITIVE.ts' : 'VIRTUAL_BROAD_LIBRARY_NEGATIVE.ts';
+    need(keys(row, ['sourceId', 'sourceSha256', 'status', 'programFiles', 'libraryFiles', 'diagnostics'])
+      && row.sourceId === sourceId && row.sourceSha256 === (positive ? 'a87b8ce179592546ff13030df86086acbc248858e865ca6f7bc47d9e57aa9c6d' : 'b9c73432db9319697fc34612cbc2188123e6f29fb4b2716a9b388499bdc31bce')
+      && row.status === 'COMPLETE' && same(row.libraryFiles, libraries)
+      && same(row.programFiles, [sourceId, ...libraryIds].sort()), 'MEDICINE_PLAN');
+  }
+  probe(report.positive, true); probe(report.negative, false); probe(report.restoredPositive, true);
+  need(same(report.positive.diagnostics, []) && same(report.restoredPositive.diagnostics, [])
+    && same(report.negative.diagnostics, [{ sourceId: 'VIRTUAL_BROAD_LIBRARY_NEGATIVE.ts', code: 2322, category: 1, start: 13, length: 12,
+      message: "Type 'string' is not assignable to type 'number'." }]), 'MEDICINE_PLAN');
+  const old = report.oldHostControl;
+  need(keys(old, ['sourceId', 'sourceSha256', 'status', 'programFiles', 'libraryFiles', 'diagnostics'])
+    && old.sourceId === report.positive.sourceId && old.sourceSha256 === report.positive.sourceSha256 && old.status === 'COMPLETE'
+    && Array.isArray(old.diagnostics) && old.diagnostics.some(row => row.code === 2318 && row.message === "Cannot find global type 'Array'.")
+    && !same(old.libraryFiles, libraries), 'MEDICINE_PLAN');
+}
+
+
+function createPublicInitialization(surface, ports, effects) {
+  let open = false; let finished = false;
+  const retrieved = { v8: 0, 'node:diagnostics_channel': 0 };
+  const traced = Object.fromEntries(ports.publicInitialization.tracingNames.map(name => [name, 0]));
+  let snapshotCalls = 0;
+  const deny = () => { effects.latches.operationDenials++; fail('MEDICINE_PUBLIC_INITIALIZATION'); };
+  const project = (value, allowed) => new Proxy(Object.freeze(value), {
+    get(target, key) { if (!open || !allowed.includes(key)) return deny(); return target[key]; },
+    set: deny, defineProperty: deny, deleteProperty: deny, setPrototypeOf: deny
+  });
+  const snapshot = function () {
+    if (!open || ++snapshotCalls !== 1 || arguments.length) return deny();
+    const result = surface.isBuildingSnapshot(); if (!Object.is(result, 0)) return deny(); return result;
+  };
+  const tracing = function (name) {
+    if (!open || arguments.length !== 1 || !own(traced, name) || ++traced[name] !== 1) return deny();
+    return surface.tracingChannel(name);
+  };
+  const projections = {
+    v8: project({ startupSnapshot: project({ isBuildingSnapshot: snapshot }, ['isBuildingSnapshot']) }, ['startupSnapshot']),
+    'node:diagnostics_channel': project({ tracingChannel: tracing }, ['tracingChannel'])
+  };
+  return Object.freeze({
+    retrieve(name) {
+      if (!open || !own(retrieved, name) || ++retrieved[name] !== 1) return deny();
+      return projections[name];
+    },
+    run(action) {
+      need(!open && !finished && typeof action === 'function', 'MEDICINE_PUBLIC_INITIALIZATION'); open = true;
+      try { return action(); } finally { open = false; finished = true; }
+    },
+    assertComplete() {
+      need(finished && !open && Object.values(retrieved).every(value => value === 1)
+        && snapshotCalls === 1 && Object.values(traced).every(value => value === 1), 'MEDICINE_PUBLIC_INITIALIZATION');
+    }
+  });
+}
+
+function firstExternalFrame(stack) {
+  // Source audit closes domain timer access; this additionally distinguishes
+  // the immediate public caller, rather than denying its inherited domain stack.
+  return String(stack).split('\n').slice(1).find(line => !line.includes(__filename)) || '';
+}
+function nativeSurface() {
+  return { fs, net, tls, dns, http, https, timers, process, globals: globalThis, console,
+    caller: () => firstExternalFrame(new Error().stack) };
+}
+// Internal pure-unit surface injection cannot be supplied by the launcher or
+// scenario. The production main always passes the captured real native surface.
+function installNativeBoundary(manifest, ports, effects, initialization, surface, getCurrent = () => null) {
+  const { fs, net, tls, dns, http, https, timers, process, globals: globalThis, console } = surface;
+  const original = { readFileSync: fs.readFileSync.bind(fs), lstatSync: fs.lstatSync.bind(fs), realpathSync: fs.realpathSync.bind(fs),
+    write: process.stdout.write.bind(process.stdout), nextTick: process.nextTick.bind(process),
+    setTimeout: timers.setTimeout.bind(timers), clearTimeout: typeof timers.clearTimeout === 'function' ? timers.clearTimeout.bind(timers) : () => {} };
+  const readNames = new Set([...Object.keys(manifest.files), '.admission.json']);
+  const descriptors = new Set(); let mongoActive = false; let socketDepth = 0;
+  const httpState = {server:null,port:null,creating:false,listening:false,requestOpen:false,sockets:new Map()};
+  const deny = () => { effects.latches.operationDenials++; fail('MEDICINE_NATIVE_OPERATION'); };
+  function readPath(value) {
+    if (Number.isInteger(value)) { if (!descriptors.has(value)) return deny(); return value; }
+    const filename = value instanceof URL ? fileURLToPath(value) : Buffer.isBuffer(value) ? value.toString('utf8') : value;
+    if (typeof filename !== 'string' || !path.isAbsolute(filename) || path.normalize(filename) !== filename) return deny();
+    const relative = path.relative(ROOT, filename).split(path.sep).join('/');
+    if (!readNames.has(relative)) return deny();
+    let meta; try { meta = original.lstatSync(filename); } catch { return deny(); }
+    if (!meta.isFile() || meta.isSymbolicLink() || meta.nlink !== 1) return deny();
+    return value;
+  }
+  function metadataPath(value) {
+    const filename = value instanceof URL ? fileURLToPath(value) : Buffer.isBuffer(value) ? value.toString('utf8') : value;
+    if (typeof filename !== 'string' || !path.isAbsolute(filename) || path.normalize(filename) !== filename
+      || (filename !== ROOT && !filename.startsWith(ROOT + '/'))) return deny();
+    return value;
+  }
+  const writes = ['appendFile', 'appendFileSync', 'writeFile', 'writeFileSync', 'write', 'writeSync', 'writev', 'writevSync',
+    'truncate', 'truncateSync', 'ftruncate', 'ftruncateSync', 'mkdir', 'mkdirSync', 'mkdtemp', 'mkdtempSync',
+    'rm', 'rmSync', 'rmdir', 'rmdirSync', 'unlink', 'unlinkSync', 'rename', 'renameSync', 'copyFile', 'copyFileSync',
+    'cp', 'cpSync', 'link', 'linkSync', 'symlink', 'symlinkSync', 'chmod', 'chmodSync', 'fchmod', 'fchmodSync',
+    'chown', 'chownSync', 'fchown', 'fchownSync', 'lchown', 'lchownSync', 'utimes', 'utimesSync', 'futimes', 'futimesSync',
+    'lutimes', 'lutimesSync', 'createWriteStream', 'watch', 'watchFile', 'unwatchFile', 'fsync', 'fsyncSync', 'fdatasync', 'fdatasyncSync',
+    'statfs', 'statfsSync', 'glob', 'globSync'];
+  for (const name of writes) if (typeof fs[name] === 'function') fs[name] = deny;
+  for (const name of ['appendFile', 'writeFile', 'truncate', 'mkdir', 'mkdtemp', 'rm', 'rmdir', 'unlink', 'rename', 'copyFile', 'cp',
+    'link', 'symlink', 'chmod', 'chown', 'lchown', 'utimes', 'lutimes', 'watch', 'statfs', 'glob']) if (typeof fs.promises[name] === 'function') fs.promises[name] = deny;
+  for (const name of ['readFile', 'readFileSync', 'createReadStream']) {
+    const held = fs[name]; fs[name] = function (value, ...args) {
+      readPath(value);
+      if (plain(args[0])) {
+        if (own(args[0], 'flag')) readFlags(args[0].flag);
+        if (own(args[0], 'flags')) readFlags(args[0].flags);
+        if (own(args[0], 'fd') && !descriptors.has(args[0].fd)) return deny();
+        if (own(args[0], 'fs')) return deny();
+      }
+      return held.call(this, value, ...args);
+    };
+  }
+  for (const name of ['stat', 'statSync', 'lstat', 'lstatSync', 'realpath', 'realpathSync', 'readdir', 'readdirSync', 'opendir', 'opendirSync', 'access', 'accessSync', 'existsSync', 'readlink', 'readlinkSync']) {
+    const held = fs[name]; if (typeof held === 'function') fs[name] = function (value, ...args) { metadataPath(value); return held.call(this, value, ...args); };
+  }
+  for (const name of ['readFile', 'stat', 'lstat', 'realpath', 'readdir', 'opendir', 'access', 'readlink']) {
+    const held = fs.promises[name]; if (typeof held === 'function') fs.promises[name] = function (value, ...args) {
+      (name === 'readFile' ? readPath : metadataPath)(value);
+      if (name === 'readFile' && plain(args[0]) && own(args[0], 'flag')) readFlags(args[0].flag);
+      return held.call(this, value, ...args);
+    };
+  }
+  if (typeof fs.openAsBlob === 'function') { const held = fs.openAsBlob; fs.openAsBlob = function (value, ...args) { readPath(value); return held.call(this, value, ...args); }; }
+  function readFlags(flags) {
+    if (['r', 'rs', 'sr'].includes(flags)) return;
+    const mask = fs.constants.O_WRONLY | fs.constants.O_RDWR | fs.constants.O_CREAT | fs.constants.O_TRUNC | fs.constants.O_APPEND;
+    if (!Number.isInteger(flags) || (flags & mask) !== 0) deny();
+  }
+  const openSync = fs.openSync; fs.openSync = function (filename, flags, ...args) {
+    readPath(filename); readFlags(flags); const fd = openSync.call(this, filename, flags, ...args); descriptors.add(fd); return fd;
+  };
+  const open = fs.open; fs.open = function (filename, flags, ...args) {
+    readPath(filename); readFlags(flags); const callback = args.pop(); need(typeof callback === 'function', 'MEDICINE_NATIVE_OPERATION');
+    return open.call(this, filename, flags, ...args, (error, fd) => { if (!error) descriptors.add(fd); callback(error, fd); });
+  };
+  for (const name of ['read', 'readSync', 'readv', 'readvSync', 'fstat', 'fstatSync', 'close', 'closeSync']) {
+    const held = fs[name]; if (typeof held === 'function') fs[name] = function (fd, ...args) {
+      if (!descriptors.has(fd)) return deny();
+      if (name === 'close' || name === 'closeSync') descriptors.delete(fd);
+      return held.call(this, fd, ...args);
+    };
+  }
+  const promiseOpen = fs.promises.open;
+  fs.promises.open = async function (filename, flags, ...args) {
+    readPath(filename); readFlags(flags); const handle = await promiseOpen.call(this, filename, flags, ...args);
+    for (const name of ['appendFile', 'writeFile', 'write', 'writev', 'truncate', 'chmod', 'chown', 'utimes', 'createWriteStream']) {
+      if (typeof handle[name] === 'function') Object.defineProperty(handle, name, { value: deny });
+    }
+    return handle;
+  };
+  function mongoSocket(args) {
+    let value = args[0]; if (Array.isArray(value)) value = value[0];
+    const options = plain(value) ? value : { port: value, host: typeof args[1] === 'string' ? args[1] : 'localhost' };
+    if (httpState.requestOpen && options.host === '127.0.0.1' && options.port === httpState.port && !options.path) {
+      if (socketDepth === 0 && !surface.caller().includes('node:_http_agent') && !surface.caller().includes('node:net')) return deny();
+      return;
+    }
+    if (!mongoActive || options.path || !['127.0.0.1', 'localhost', '::1'].includes(options.host || 'localhost')
+      || options.port !== 27017 || (socketDepth === 0 && !surface.caller().includes('/node_modules/mongoose/node_modules/mongodb/'))) return deny();
+  }
+  const connect = net.Socket.prototype.connect; net.Socket.prototype.connect = function (...args) { mongoSocket(args); return connect.apply(this, args); };
+  for (const name of ['connect', 'createConnection']) { const held = net[name]; net[name] = function (...args) {
+    mongoSocket(args); socketDepth++; try { return held.apply(this, args); } finally { socketDepth--; }
+  }; }
+  net.createServer = deny;
+  const listen = net.Server.prototype.listen;
+  net.Server.prototype.listen = function(...args) {
+    if (this !== httpState.server || !httpState.listening || args.length !== 3 || args[0] !== 0 || args[1] !== '127.0.0.1' || typeof args[2] !== 'function') return deny();
+    return Reflect.apply(listen,this,args);
+  };
+  const createHTTP = http.createServer, requestHTTP = http.request;
+  http.createServer = function(...args) {
+    if (!httpState.creating || httpState.server || args.length !== 1 || typeof args[0] !== 'function') return deny();
+    httpState.server = Reflect.apply(createHTTP,this,args); return httpState.server;
+  };
+  http.request = function(options, callback) {
+    if (!httpState.requestOpen || !keys(options,['host','port','method','path','headers','agent']) || options.host !== '127.0.0.1'
+      || options.port !== httpState.port || options.method !== 'PUT' || options.agent !== false || typeof callback !== 'function'
+      || !/^\/api\/v1\/pharmacy-medicines\/[^/?]+(?:\?[^#]*)?$/.test(options.path)) return deny();
+    return Reflect.apply(requestHTTP,this,[options,callback]);
+  };
+  http.get = deny;
+  for (const name of ['request','get','createServer']) https[name] = deny;
+  for (const name of ['connect', 'createServer', 'createSecureContext']) tls[name] = deny;
+  for (const name of ['lookup', 'lookupService', 'resolve', 'resolve4', 'resolve6', 'resolveAny', 'resolveCaa', 'resolveCname',
+    'resolveMx', 'resolveNaptr', 'resolveNs', 'resolvePtr', 'resolveSoa', 'resolveSrv', 'resolveTxt', 'reverse', 'setServers']) {
+    if (typeof dns[name] === 'function') dns[name] = deny;
+    if (typeof dns.promises[name] === 'function') dns.promises[name] = deny;
+    if (typeof dns.Resolver.prototype[name] === 'function') dns.Resolver.prototype[name] = deny;
+    if (typeof dns.promises.Resolver.prototype[name] === 'function') dns.promises.Resolver.prototype[name] = deny;
+  }
+  globalThis.fetch = deny; globalThis.WebSocket = deny; globalThis.EventSource = deny;
+  for (const name of ['binding', '_linkedBinding', 'dlopen', 'chdir', 'kill', 'setuid', 'seteuid', 'setgid', 'setegid', 'setgroups', 'initgroups']) {
+    if (typeof process[name] === 'function') process[name] = deny;
+  }
+  process.getBuiltinModule = name => initialization.retrieve(name);
+  process.emitWarning = function(message, options) {
+    effects.warnings.total++;
+    const current = getCurrent();
+    if (!current || current.phase !== 'ACTION' || arguments.length !== 2 || typeof message !== 'string'
+      || message !== ports.effectPolicy.warning.message || !keys(options,['code']) || options.code !== 'MONGOOSE'
+      || ++current.knownWarnings !== 1) { effects.latches.unknownConsole++; fail('MEDICINE_UNKNOWN_CONSOLE'); }
+    effects.warnings.known++;
+  };
+  for (const name of Object.keys(console)) if (typeof console[name] === 'function') console[name] = () => { effects.warnings.total++; effects.latches.unknownConsole++; fail('MEDICINE_UNKNOWN_CONSOLE'); };
+  process.stdout.write = process.stderr.write = () => { effects.warnings.total++; effects.latches.unknownConsole++; fail('MEDICINE_UNKNOWN_CONSOLE'); };
+  for (const name of ['setTimeout', 'setImmediate', 'setInterval']) {
+    const held = timers[name];
+    const guarded = function (...args) {
+      const caller = surface.caller();
+      if (!mongoActive || name === 'setInterval' || (!caller.includes('/node_modules/mongoose/node_modules/mongodb/') && !caller.includes('node:'))) return deny();
+      return held.apply(this, args);
+    };
+    timers[name] = guarded; globalThis[name] = guarded;
+  }
+  return Object.freeze({
+    async openHTTP(app) {
+      need(!httpState.server, 'MEDICINE_HTTP'); httpState.creating = true;
+      try { http.createServer(app); } finally { httpState.creating = false; }
+      httpState.server.on('connection', socket => {
+        const ended = new Promise(resolve => socket.once('close', () => { httpState.sockets.delete(socket); resolve(); }));
+        httpState.sockets.set(socket, ended);
+      });
+      httpState.listening = true;
+      try { await new Promise((resolve,reject) => { httpState.server.once('error',reject); httpState.server.listen(0,'127.0.0.1',resolve); }); }
+      finally { httpState.listening = false; }
+      const address = httpState.server.address();
+      need(address && address.address === '127.0.0.1' && Number.isInteger(address.port) && address.port > 0, 'MEDICINE_HTTP');
+      httpState.port = address.port; return httpState.server;
+    },
+    requestHTTP(pathname, headers, data) {
+      need(httpState.server && !httpState.requestOpen && typeof pathname === 'string' && Buffer.isBuffer(data) && data.length <= 65536, 'MEDICINE_HTTP');
+      httpState.requestOpen = true; let timeout, timeoutFailure, hasTimedOut=false, deadlineResolve;
+      const deadline=new Promise(resolve=>{deadlineResolve=resolve;});
+      return withCleanup(() => new Promise((resolve,reject) => {
+        let received=0, requestClosed=false, responseEnded=false, hasFailure=false, firstFailure, settlement;
+        const chunks=[];
+        const retain = error => { if(!hasFailure) { hasFailure=true; firstFailure=error; } };
+        const finalize = () => { if(requestClosed && (responseEnded || hasFailure)) { if(hasFailure)reject(firstFailure);else resolve(settlement); } };
+        const fixedFailure = () => { try { fail('MEDICINE_HTTP'); } catch(error) { retain(error); return error; } };
+        const request = http.request({host:'127.0.0.1',port:httpState.port,method:'PUT',path:pathname,headers:{host:'127.0.0.1:'+httpState.port,...headers},agent:false}, response => {
+          response.on('data', chunk => { received+=chunk.length; if(received>65536)request.destroy(fixedFailure());else chunks.push(chunk); });
+          response.once('error',error=>{retain(error);request.destroy();finalize();});
+          response.once('aborted',()=>{request.destroy(fixedFailure());finalize();});
+          response.once('end',()=>{responseEnded=true;try {
+            need(response.complete && response.rawTrailers.length===0, 'MEDICINE_HTTP');
+            validateHTTPHeaders(response.rawHeaders,received);
+            const raw=Buffer.concat(chunks),text=raw.toString('utf8');
+            need(Buffer.byteLength(text)===received, 'MEDICINE_HTTP');
+            settlement=freezeRecord({kind:'HTTP',status:response.statusCode,body:JSON.parse(text),rawHeaders:response.rawHeaders.slice(),bodyBytes:received});
+          } catch(error) { retain(error); } finalize(); });
+        });
+        request.once('error',error=>{retain(error);finalize();});
+        request.once('close',()=>{requestClosed=true;if(!responseEnded&&!hasFailure)fixedFailure();finalize();});
+        timeout=original.setTimeout(()=>{hasTimedOut=true;timeoutFailure=fixedFailure();request.destroy(timeoutFailure);for(const socket of httpState.sockets.keys())socket.destroy();deadlineResolve();},5000);
+        request.setTimeout(5000,()=>request.destroy(fixedFailure()));request.end(data);
+      }), async () => { try{await Promise.race([Promise.all([...httpState.sockets.values()]),deadline]);if(hasTimedOut)throw timeoutFailure;}finally{original.clearTimeout(timeout);httpState.requestOpen=false;} });
+    },
+    closeHTTP() { return httpState.server ? new Promise((resolve,reject) => httpState.server.close(error => error ? reject(error) : resolve())) : undefined; },
+    mongoStarted() { need(!mongoActive, 'MEDICINE_DATABASE'); mongoActive = true; },
+    mongoClosed() { mongoActive = false; }, assertClean: () => assertEffects(effects), output: original.write });
+}
+
+async function withCleanup(action, cleanup) {
+  let result; let first; let failed = false;
+  try { result = await action(); } catch (error) { failed = true; first = error; }
+  try { await cleanup(); } catch (error) { if (!failed) { failed = true; first = error; } }
+  if (failed) throw first; return result;
+}
+
+function createReadBudget(kind, clock) {
+  need(['SNAPSHOT', 'METADATA'].includes(kind) && typeof clock === 'function', 'MEDICINE_CURSOR');
+  const maxRows = kind === 'SNAPSHOT' ? 64 : 100; const maxNanos = 5000000000n;
+  let previous = clock(); let elapsed = 0n; let paused = false; let failed = false; let rows = 0; let bytes = 0;
+  need(typeof previous === 'bigint' && previous >= 0n, 'MEDICINE_CURSOR');
+  function recordFailure() { if (!failed) { failed = true; lifetimeFailures++; } }
+  function sample() {
+    const value = clock(); need(typeof value === 'bigint' && value >= previous, 'MEDICINE_CURSOR');
+    if (!paused) elapsed += value - previous; previous = value;
+  }
+  function check() {
+    try { need(!failed && !paused, 'MEDICINE_CURSOR'); sample(); need(elapsed <= maxNanos, 'MEDICINE_CURSOR'); }
+    catch (error) { recordFailure(); throw error; }
+  }
+  function account(rowCount, byteCount) {
+    check(); rows += rowCount; bytes += byteCount;
+    try { need(rows <= maxRows && bytes <= 128 * 1024, 'MEDICINE_CURSOR'); }
+    catch (error) { recordFailure(); throw error; }
+  }
+  return Object.freeze({
+    check, recordFailure,
+    stats() { check(); return { millis: Number(elapsed) / 1000000, rows, bytes }; },
+    beginCursor() { account(0, 2); },
+    addRow(row, comma) { account(1, Buffer.byteLength(JSON.stringify(row)) + (comma ? 1 : 0)); },
+    async creation(action) {
+      check(); need(kind === 'METADATA' && typeof action === 'function', 'MEDICINE_CURSOR'); paused = true;
+      try {
+        return await withCleanup(action, () => { sample(); paused = false; check(); });
+      } catch (error) { recordFailure(); throw error; }
+    }
+  });
+}
+
+async function collectReadCursor(makeCursor, limit, budget, leases) {
+  const rows = []; let cursor; let first; let failed = false;
+  const retain = error => { budget.recordFailure(); if (!failed) { failed = true; first = error; } };
+  try {
+    budget.check(); cursor = makeCursor(); budget.check();
+    need(leases.has(cursor), 'MEDICINE_CURSOR'); budget.beginCursor();
+    while (true) {
+      budget.check(); const hasNext = await cursor.hasNext(); budget.check(); if (!hasNext) break;
+      need(rows.length < limit, 'MEDICINE_CURSOR');
+      budget.check(); const row = await cursor.next(); budget.check();
+      need(plain(row), 'MEDICINE_CURSOR'); budget.addRow(row, rows.length > 0); rows.push(row);
+    }
+    need(cursor.id && typeof cursor.id.isZero === 'function' && cursor.id.isZero(), 'MEDICINE_CURSOR'); budget.check();
+  } catch (error) { retain(error); }
+  try { budget.check(); } catch (error) { retain(error); }
+  try { if (cursor && leases.has(cursor)) await cursor.close(); } catch (error) { retain(error); }
+  try { budget.check(); } catch (error) { retain(error); }
+  if (cursor) leases.delete(cursor);
+  if (failed) throw first; return rows;
+}
+
+
+function installModelRegistrationBoundary(mongoose, ports, models, modelImport) {
+  const nativeModel = mongoose.model;
+  function singletonModel(name, schema, collection, ...extra) {
+    const spec = ports.models.find(row => row.name === name);
+    need(spec && extra.length === 0 && (!collection || collection === spec.collection), 'MEDICINE_MODEL');
+    if (schema) need(modelImport() && !own(models, name) && name === MODEL_NAMES[Object.keys(models).length], 'MEDICINE_MODEL');
+    else need(own(models, name), 'MEDICINE_MODEL');
+    // The public CJS named import can be invoked with undefined this. Its
+    // receiver never supplies authority: always use the captured singleton.
+    const value = nativeModel.call(mongoose, name, schema, collection);
+    if (schema) { need(value.collection.collectionName === spec.collection, 'MEDICINE_MODEL'); models[name] = value; }
+    return value;
+  }
+  mongoose.model = singletonModel;
+  mongoose.Mongoose.prototype.model = function (...args) {
+    need(this === mongoose, 'MEDICINE_MODEL'); return singletonModel(...args);
+  };
+}
+
+
+function auditDomainSource(content) {
+  const source = content.toString('utf8');
+  need(!/\b(?:eval|Function|AsyncFunction|GeneratorFunction|WebAssembly|process|globalThis|global|fetch|setTimeout|setInterval|setImmediate|queueMicrotask)\b/.test(source)
+    && !/\bimport\s*\(|\bmodule\s*(?:\.|\[)|\.\s*(?:constructor|_compile|createRequire|binding|getBuiltinModule)\b/.test(source), 'MEDICINE_DOMAIN_AUDIT');
+  for (const match of source.matchAll(/\brequire\s*\(([^)]*)\)/g)) need(/^\s*(['"])[^'"\r\n]+\1\s*$/.test(match[1]), 'MEDICINE_DOMAIN_AUDIT');
+}
+
+async function proveOSAdapter(client, projection) {
+  const adapters = client.options?.runtimeAdapters; const actual = adapters?.os;
+  need(keys(adapters, ['os']) && keys(actual, ['platform', 'arch', 'release', 'type'])
+    && Object.keys(actual).every(key => actual[key] === projection[key]), 'MEDICINE_OS_ADAPTER');
+  const runtime = await client.options.runtime;
+  need(keys(runtime, ['os']) && runtime.os === actual, 'MEDICINE_OS_ADAPTER');
+  Object.freeze(actual); Object.freeze(adapters); Object.freeze(runtime);
+  need(Object.isFrozen(actual) && Object.isFrozen(adapters), 'MEDICINE_OS_ADAPTER');
+}
+
+
+function denseArray(value, maximum) {
+  return Array.isArray(value) && value.length <= maximum && Reflect.ownKeys(value).length === value.length + 1
+    && Object.keys(value).length === value.length && Object.keys(value).every((key, i) => key === String(i)
+      && own(Object.getOwnPropertyDescriptor(value, key), 'value'));
+}
+
+function createSeedBulkLease() {
+  let active = null;
+  function scope(collection, options, control) {
+    need(active && collection === active.collection && options?.session === control && options.ordered !== false, 'MEDICINE_COMMANDS');
+  }
+  return Object.freeze({
+    async run(collection, documents, action) {
+      need(!active && collection && denseArray(documents, 4) && documents.length > 0 && typeof action === 'function', 'MEDICINE_COMMANDS');
+      active = { collection, documents: documents.slice() };
+      try { return await action(); } finally { active = null; }
+    },
+    assertBulk(collection, operations, options, control) {
+      scope(collection, options, control);
+      need(denseArray(operations, 4) && operations.length === active.documents.length
+        && operations.every((operation, i) => keys(operation, ['insertOne']) && keys(operation.insertOne, ['document'])
+          && operation.insertOne.document === active.documents[i]), 'MEDICINE_COMMANDS');
+    },
+    assertOrdered: scope,
+    assertIdle() { need(active === null, 'MEDICINE_COMMANDS'); }
+  });
+}
+
+function guardOwnedClientConstructor(Constructor, admitted, uri, options, projection, capture) {
+  let calls = 0; let guarded;
+  guarded = new Proxy(Constructor, {
+    construct(target, args, newTarget) {
+      need(admitted() === true && ++calls === 1 && newTarget === guarded && args.length === 2 && args[0] === uri, 'MEDICINE_DATABASE');
+      const supplied = args[1];
+      need(plain(supplied) && keys(supplied.runtimeAdapters, ['os'])
+        && keys(supplied.runtimeAdapters.os, ['platform', 'arch', 'release', 'type'])
+        && Object.keys(projection).every(name => supplied.runtimeAdapters.os[name] === projection[name])
+        && Object.entries(options).filter(([name]) => !['autoCreate', 'autoIndex'].includes(name)).every(([name, value]) => same(supplied[name], value)), 'MEDICINE_OS_ADAPTER');
+      const instance = Reflect.construct(target, args, target); capture(instance); return instance;
+    },
+    apply() { fail('MEDICINE_DATABASE'); }
+  });
+  return guarded;
+}
+
+async function cleanupAll(actions) {
+ let first; let failed = false;
+ for (const action of actions) { try { await action(); } catch (error) { if (!failed) { failed = true; first = error; } } }
+ if (failed) throw first;
+}
+let stage = 'ADMISSION'; let diagnosticContext = null; let scenarioCode = null;
+function failureResult(error) {
+ let code = error && (typeof error === 'object' || typeof error === 'function') ? failureCodes.get(error) : undefined;
+ if (!code && typeof scenarioCode === 'function') code = scenarioCode(error);
+ if (!FAILURE_CODES.includes(code)) code = 'MEDICINE_UNEXPECTED_FAILURE';
+ const context = diagnosticContext ? diagnosticContext.get() : { caseId:null, variantId:null, phase:null };
+ return { schema:'SD-MEDICINE-PUT-FAILURE-1', stage, code, ...context, failed:1, skipped:0 };
+}
+module.exports = { FAILURE_CODES, CASES_SHA, PORTS_SHA, LOCK_SHA, MODEL_NAMES, COLLECTIONS, PROVIDERS, LIBRARY_NAMES,
+ need, keys, plain, same, clone, binaryBytes, makeFailureContext, withCleanup, cleanupAll, failureResult,
+ createPublicInitialization, firstExternalFrame, installNativeBoundary, auditDomainSource,
+ createReadBudget, collectReadCursor, denseArray, guardOwnedClientConstructor, proveOSAdapter,
+ installModelRegistrationBoundary, createSeedBulkLease, validateLibraryReport };
+
+function effectsState() {
+ return { providers:Object.fromEntries(PROVIDERS.map(k=>[k,0])), jwt:{setupSign:0,actionSign:0,verify:0},
+ normalization:{normalizeName:0,buildNameKey:0}, warnings:{known:0,total:0},
+ reads:{pharmacyFind:0,medicineFindById:0,medicineDuplicateFind:0}, writes:{medicineFindAndModify:0},
+ httpCalls:0,directCalls:0,latches:{operationDenials:0,loaderDenials:0,unexpectedCommands:0,commandFailures:0,
+ unknownConsole:0,normalizationDenials:0,jwtDenials:0,cohortDenials:0} };
+}
+function assertEffects(value) {
+ const shape=effectsState();
+ need(keys(value,Object.keys(shape)),'MEDICINE_EFFECTS');
+ for(const key of Object.keys(shape)) {
+  if(plain(shape[key])) need(keys(value[key],Object.keys(shape[key])) && Object.values(value[key]).every(n=>Number.isSafeInteger(n)&&n>=0),'MEDICINE_EFFECTS');
+  else need(Number.isSafeInteger(value[key])&&value[key]>=0,'MEDICINE_EFFECTS');
+ }
+ need(Object.values(value.latches).every(n=>n===0) && PROVIDERS.filter(k=>k!=='logger').every(k=>value.providers[k]===0),'MEDICINE_EFFECTS');
+}
+function effectDelta(before,after) {
+ const result={}; for(const key of Object.keys(after)) result[key]=plain(after[key])?effectDelta(before[key],after[key]):after[key]-before[key]; return result;
+}
+function rowEffects(value) {
+ return {jwtSetupSign:value.jwt.setupSign,jwtVerify:value.jwt.verify,pharmacyFind:value.reads.pharmacyFind,
+ medicineFindById:value.reads.medicineFindById,medicineDuplicateFind:value.reads.medicineDuplicateFind,
+ medicineFindAndModify:value.writes.medicineFindAndModify,normalizationCalls:value.normalization.normalizeName,
+ serviceBuildNameKeyCalls:value.normalization.buildNameKey,loggerError:value.providers.logger,
+ knownNewAfterWarning:value.warnings.known,totalCapturedConsole:value.warnings.total,
+ otherProviders:PROVIDERS.filter(k=>k!=='logger').reduce((n,k)=>n+value.providers[k],0),commandFailures:value.latches.commandFailures};
+}
+function validateAdmissionData(manifest,plan,ports,cases,observed) {
+ need(keys(manifest,['schema','runId','role','database','replicaSet','mongoId','templateSha','files','lockSha','portsSha','casesSha','sourceCommit'])
+ &&manifest.schema==='SD-MEDICINE-PUT-RUN-1'&&manifest.role===ROLE,'MEDICINE_ADMISSION');
+ need(/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(manifest.runId)&&manifest.runId===observed.runId,'MEDICINE_ADMISSION');
+ const nonce=manifest.runId.replaceAll('-','');
+ need(manifest.database==='sd_mp_'+nonce&&manifest.replicaSet==='sd_mp_rs_'+nonce&&/^[a-f0-9]{64}$/.test(manifest.mongoId)
+ &&/^[a-f0-9]{64}$/.test(manifest.templateSha)&&/^[a-f0-9]{40}$/.test(manifest.sourceCommit),'MEDICINE_ADMISSION');
+ need(plain(manifest.files)&&keys(manifest.files,Object.keys(manifest.files))&&Object.keys(manifest.files).length===2796
+ &&same(Object.keys(observed.files).sort(),Object.keys(manifest.files).sort()),'MEDICINE_FILE_MANIFEST');
+ let total=0; for(const [name,content]of Object.entries(observed.files)) {
+  need(typeof name==='string'&&!path.isAbsolute(name)&&name.split('/').every(x=>x&&!['.','..'].includes(x))
+  &&!name.endsWith('.node')&&!path.basename(name).startsWith('.env')&&Buffer.isBuffer(content)
+  &&/^[a-f0-9]{64}$/.test(manifest.files[name])&&sha(content)===manifest.files[name],'MEDICINE_FILE_HASH');total+=content.length;
+ }
+ need(total<=256*1024*1024&&Object.keys(manifest.files).filter(n=>n.startsWith('node_modules/')).length===2755,'MEDICINE_FILE_MANIFEST');
+ for(const [name,digest]of [['package-lock.json',LOCK_SHA],['ports-manifest.json',PORTS_SHA],['cases.json',CASES_SHA]])
+ need(own(observed.files,name)&&sha(observed.files[name])===digest,'MEDICINE_DATA_BINDING');
+ need(manifest.lockSha===LOCK_SHA&&manifest.portsSha===PORTS_SHA&&manifest.casesSha===CASES_SHA,'MEDICINE_DATA_BINDING');
+ const planKeys=['schema','role','sourceCommit','sourceFiles','modules','staticAudit','mutants','models','modelDeclarations','modelMapAudit','packageVersions','lockSha','portsSha','casesSha','requiredCaseIds','requiredGroupMethodCounts','requiredSensitivityIds','providerCounterKeys','providerCounterScope','nominalCalls','unsafeCalls','restorationCalls','compilation'];
+ need(keys(plan,planKeys)&&plan.schema==='SD-MEDICINE-PUT-PLAN-1'&&plan.role===ROLE&&plan.sourceCommit===manifest.sourceCommit
+ &&plan.lockSha===LOCK_SHA&&plan.portsSha===PORTS_SHA&&plan.casesSha===CASES_SHA,'MEDICINE_PLAN');
+ const lock=JSON.parse(observed.files['package-lock.json']);
+ need(lock.name==='sd-owned-auth-api-fixture'&&Object.keys(lock.packages).length===123&&Object.keys(lock.packages[''].dependencies).length===10
+ &&same(plan.packageVersions,lock.packages[''].dependencies),'MEDICINE_PLAN');
+ need(ports.schema==='SD-MEDICINE-PUT-PORTS-1'&&ports.role===ROLE&&ports.domainScope==='REAL_MEDICINE_PUT_ONLY'
+ &&cases.schema==='SD-MEDICINE-PUT-CASES-1'&&ports.casesSha===CASES_SHA&&cases.cases.length===98&&cases.cohortPlan.length===17,'MEDICINE_PLAN');
+ for(const key of ['models','requiredCaseIds','requiredGroupMethodCounts','requiredSensitivityIds','providerCounterKeys'])need(same(plan[key],ports[key]),'MEDICINE_PLAN');
+ need(same(plan.providerCounterKeys,PROVIDERS)&&plan.providerCounterScope==='NOMINAL_98_LOGGER_66_OTHER_NINE_ZERO_LIFETIME_122_SEPARATE'
+ &&plan.nominalCalls===98&&plan.unsafeCalls===8&&plan.restorationCalls===16,'MEDICINE_PLAN');
+ const fixtureNames=['bootstrap.cjs','scenario.cjs','ports-manifest.json','cases.json','prepare.py','compile.cjs','package-plan.json','npm-config-shield.cjs'];
+ need(keys(plan.sourceFiles,[...Object.keys(ports.sourceFiles),...fixtureNames.map(n=>'test/medicine-runtime/scenario/'+n),'test/application/app-bundle.mjs','package-lock.json'])
+ &&Object.keys(plan.sourceFiles).length===36&&Object.values(plan.sourceFiles).every(d=>/^[a-f0-9]{64}$/.test(d)),'MEDICINE_SOURCE_MANIFEST');
+ for(const [name,digest]of Object.entries(ports.sourceFiles))need(plan.sourceFiles[name]===digest,'MEDICINE_SOURCE_MANIFEST');
+ for(const name of ['bootstrap.cjs','scenario.cjs','ports-manifest.json','cases.json'])need(plan.sourceFiles['test/medicine-runtime/scenario/'+name]===manifest.files[name],'MEDICINE_SOURCE_MANIFEST');
+ const aliases={};for(const row of ports.conservativeSources)for(const alias of row.aliases)aliases[alias]=row.predictedOutput;
+ need(same(plan.modules,aliases)&&new Set(Object.values(plan.modules)).size===23,'MEDICINE_PLAN');
+ need(denseArray(plan.staticAudit,3)&&plan.staticAudit.length===3,'MEDICINE_PLAN');
+ for(let i=0;i<3;i++){
+  const row=plan.staticAudit[i],original=ports.staticAudit[i],compiled='compiled/'+original.path.slice(5,-3)+'.js';
+  const stem='@/'+original.path.slice(5,-3);const aliases=[...new Set([stem,stem.replace(/\/index$/,'')])].sort();
+  need(keys(row,['source','sourceSha256','compiled','compiledSha256','aliases'])&&row.source===original.path&&row.sourceSha256===original.sha256
+  &&row.compiled===compiled&&row.compiledSha256===manifest.files[compiled]&&same(row.aliases.slice().sort(),aliases),'MEDICINE_PLAN');
+ }
+ need(keys(plan.mutants,ports.requiredSensitivityIds),'MEDICINE_PLAN');
+ for(const variant of cases.sensitivity.variants){
+  const row=plan.mutants[variant.id];need(keys(row,['source','originalSha256','mutantSha256','file'])&&row.source===variant.path
+  &&row.originalSha256===ports.sourceFiles[row.source]&&row.mutantSha256===variant.wholeVariantTsSha256&&row.file==='compiled/mutants/'+variant.id+'.js'
+  &&own(manifest.files,row.file),'MEDICINE_PLAN');
+ }
+ need(keys(plan.compilation,['status','compiler','diagnostics','semanticDiagnostics','semanticScope','fullBuild','libraryAdmission'])
+ &&plan.compilation.status==='TRANSPILE_ONLY_NOT_TYPECHECKED'&&plan.compilation.compiler==='5.9.3'&&plan.compilation.fullBuild===false
+ &&plan.compilation.semanticScope==='DECLARED_26_SOURCE_CLOSURE_AND_PUBLIC_TYPES_STATIC_IMPORTS_NOT_TRAVERSED'&&Array.isArray(plan.compilation.diagnostics)&&plan.compilation.diagnostics.length===0&&Array.isArray(plan.compilation.semanticDiagnostics),'MEDICINE_PLAN');
+ validateLibraryReport(plan.compilation.libraryAdmission,manifest);
+ const programFiles=plan.compilation.libraryAdmission.semanticProgram.programFiles;
+ need(Object.keys(ports.sourceFiles).every(name=>programFiles.includes(name))&&programFiles.every(name=>own(ports.sourceFiles,name)||(name.startsWith('node_modules/')&&own(manifest.files,name))),'MEDICINE_PLAN');
+ need(plan.modelMapAudit.status==='STATIC_EMITTED_MODEL_MAP_VERIFIED'&&plan.modelMapAudit.reachableModules===20&&plan.modelMapAudit.modelCount===5
+ &&plan.modelMapAudit.applicationEvaluations===0&&same(plan.modelMapAudit.controls,ports.compilerRequirements.modelMapControls.map(id=>({id,rejected:true}))),'MEDICINE_MODEL');
+ const declarations=ports.models.map(row=>({name:row.name,source:row.source,compiled:'compiled/'+row.source.slice(5,-3)+'.js'})).sort((a,b)=>a.name.localeCompare(b.name));
+ need(same(plan.modelDeclarations,declarations),'MEDICINE_MODEL');return manifest;
+}
+function inspectManifest(manifest,plan,ports,cases){
+ const files={};let total=0;
+ function walk(dir,prefix=''){for(const name of fs.readdirSync(dir)){const rel=prefix+name,file=path.join(dir,name),s=fs.lstatSync(file);
+ need(!s.isSymbolicLink(),'MEDICINE_FILE_MANIFEST');if(s.isDirectory())walk(file,rel+'/');else{need(s.isFile()&&s.nlink===1,'MEDICINE_FILE_MANIFEST');
+ if(rel==='.admission.json')continue;total+=s.size;need(total<=256*1024*1024&&Object.keys(files).length<2796,'MEDICINE_FILE_MANIFEST');files[rel]=fs.readFileSync(file);}}}
+ walk(ROOT);return validateAdmissionData(manifest,plan,ports,cases,{runId:process.env.APP_RUN_ID,files});
+}
+
+function hydrateSeed(cases,row,ids,bson){
+ const reserved=cases.hydration.identities.reservedNames;
+ need(keys(ids,reserved)&&reserved.every(k=>ids[k] instanceof bson.ObjectId),'MEDICINE_OWNERSHIP_PROOF');
+ function value(input){
+  if(Array.isArray(input))return input.map(value);
+  if(plain(input)){
+   if(keys(input,['$oidRef'])){need(reserved.includes(input.$oidRef),'MEDICINE_SEED_STATE');return ids[input.$oidRef];}
+   if(keys(input,['$date'])){const d=new Date(input.$date);need(Number.isFinite(d.getTime())&&d.toISOString()===input.$date,'MEDICINE_SEED_STATE');return d;}
+   need(keys(input,Object.keys(input)),'MEDICINE_SEED_STATE');return Object.fromEntries(Object.entries(input).map(([k,v])=>[k,value(v)]));
+  }
+  return input;
+ }
+ const seed=value(cases.seeds.collections),modifier=cases.seeds.perCaseSeedModifiers[row.seed];
+ need(plain(modifier)&&keys(seed,COLLECTIONS),'MEDICINE_SEED_STATE');
+ for(const [key,entry]of Object.entries(modifier)){
+  if(key==='omit')for(const ref of entry){const [collection,name]=ref.split('.');need(COLLECTIONS.includes(collection)&&reserved.includes(name),'MEDICINE_SEED_STATE');seed[collection]=seed[collection].filter(v=>!same(v._id,ids[name],bson));}
+  else if(key==='append')for(const [collection,rows]of Object.entries(entry)){need(COLLECTIONS.includes(collection),'MEDICINE_SEED_STATE');seed[collection].push(...value(rows));}
+  else {const parts=key.split('.');need(parts.length===3&&COLLECTIONS.includes(parts[0])&&reserved.includes(parts[1])&&!['__proto__','prototype','constructor'].includes(parts[2]),'MEDICINE_SEED_STATE');
+   const target=seed[parts[0]].find(v=>same(v._id,ids[parts[1]],bson));need(target,'MEDICINE_SEED_STATE');target[parts[2]]=value(entry);}
+ }
+ return seed;
+}
+function directArguments(row,ids){
+ need(row.boundary==='DIRECT_REAL_SERVICE'&&keys(row.input.serviceArguments,['id','data','actorUserType']),'MEDICINE_CONTEXT');
+ const spec=row.input.serviceArguments;need(spec.id==='$TARGET'||spec.id==='$ABSENT','MEDICINE_CONTEXT');
+ const data={};for(const [key,value]of Object.entries(spec.data)){
+  need(!['__proto__','prototype','constructor'].includes(key),'MEDICINE_CONTEXT');
+  if(keys(value,['$ownUndefined'])){need(key==='prescriptionRequired'&&value.$ownUndefined===true,'MEDICINE_CONTEXT');Object.defineProperty(data,key,{value:undefined,enumerable:true,writable:true,configurable:true});}
+  else data[key]=clone(value);
+ }
+ const args=[ids[spec.id.slice(1)].toHexString(),data];
+ if(keys(spec.actorUserType,['$omittedThirdArgument']))need(spec.actorUserType.$omittedThirdArgument===true,'MEDICINE_CONTEXT');
+ else args.push(keys(spec.actorUserType,['$undefined'])&&spec.actorUserType.$undefined===true?undefined:spec.actorUserType);
+ return args;
+}
+function installMethodObservers(Service,getCurrent,effects,bson,ordinal){
+ const names=['normalizeName','buildNameKey','update'];const saved=[];
+ for(const name of names){
+  const descriptor=Object.getOwnPropertyDescriptor(Service.prototype,name);
+  need(descriptor&&own(descriptor,'value')&&typeof descriptor.value==='function'&&descriptor.configurable,'MEDICINE_NORMALIZATION');
+  const original=descriptor.value;
+  const wrapper=function(...args){
+   const current=getCurrent();
+   if(!current||current.phase!=='ACTION'||this!==current.service){effects.latches.normalizationDenials++;fail('MEDICINE_NORMALIZATION');}
+   if(name==='update'){
+    need((args.length===2||args.length===3)&&typeof args[0]==='string'&&keys(args[1],Object.keys(args[1]))
+    &&(args.length===2||typeof args[2]==='string'||args[2]===undefined)&&current.forwarding.length===0,'MEDICINE_NORMALIZATION');
+    const entry={argumentCount:args.length,id:args[0],data:clone(args[1],bson),actorUserType:args[2],receiverOrdinal:ordinal(this)};current.forwarding.push(freezeRecord(entry));
+    const expected=current.expectedEntry;need(expected&&args.length===expected.argumentCount&&args[0]===expected.id&&same(entry.data,expected.data,bson)&&Object.is(args[2],expected.actorUserType),'MEDICINE_NORMALIZATION');
+   }else{
+    if(args.length!==1||typeof args[0]!=='string'){effects.latches.normalizationDenials++;fail('MEDICINE_NORMALIZATION');}
+    effects.normalization[name]++;current.normalization[name].push(Object.freeze(args.slice()));
+   }
+   return Reflect.apply(original,this,args);
+  };
+  Object.defineProperty(Service.prototype,name,{...descriptor,value:wrapper});saved.push({name,descriptor,wrapper});
+ }
+ return Object.freeze({assert(){for(const row of saved)need(sameDescriptor(Object.getOwnPropertyDescriptor(Service.prototype,row.name),{...row.descriptor,value:row.wrapper}),'MEDICINE_WRAPPER_RESTORATION');},
+ async restore(){await cleanupAll(saved.map(row=>()=>withCleanup(()=>need(sameDescriptor(Object.getOwnPropertyDescriptor(Service.prototype,row.name),{...row.descriptor,value:row.wrapper}),'MEDICINE_WRAPPER_RESTORATION'),()=>Object.defineProperty(Service.prototype,row.name,row.descriptor))));}});
+}
+function sameDescriptor(a,b){return a&&b&&Reflect.ownKeys(a).length===Reflect.ownKeys(b).length&&Reflect.ownKeys(b).every(k=>Object.is(a[k],b[k]));}
+function validateHTTPHeaders(raw,bodyBytes){
+ need(denseArray(raw,32)&&raw.length%2===0&&Number.isSafeInteger(bodyBytes)&&bodyBytes>=0&&bodyBytes<=65536,'MEDICINE_HTTP');
+ const map={};for(let i=0;i<raw.length;i+=2){need(typeof raw[i]==='string'&&typeof raw[i+1]==='string','MEDICINE_HTTP');const key=raw[i].toLowerCase();
+ need(!own(map,key)&&['content-type','content-length','connection','date','etag','x-powered-by'].includes(key),'MEDICINE_HTTP');map[key]=raw[i+1];}
+ need(map['content-type']==='application/json; charset=utf-8'&&map['content-length']===String(bodyBytes)&&map.connection==='close','MEDICINE_HTTP');
+ if(own(map,'date'))need(/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), [0-9]{2} (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) [0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2} GMT$/.test(map.date)&&Number.isFinite(Date.parse(map.date))&&new Date(map.date).toUTCString()===map.date,'MEDICINE_HTTP');
+ if(own(map,'etag'))need(/^W\/"[0-9a-f]+-[A-Za-z0-9+/]{27}"$/.test(map.etag),'MEDICINE_HTTP');
+ if(own(map,'x-powered-by'))need(map['x-powered-by']==='Express','MEDICINE_HTTP');return raw.slice();
+}
+function makeLogger(getCurrent,effects,cases){
+ const deny=()=>{effects.providers.unexpected++;fail('MEDICINE_PROVIDER');};
+ const error=function(...args){const c=getCurrent();
+  const expected=c&&c.row.expected.body?.message;
+  const unsafe=c&&c.mode==='UNSAFE'&&c.variantId==='SERVICE_GUARD_AFTER_RENAME'?'Multiple medicines already exist with this normalized name. Resolve duplicates before renaming.':expected;
+  need(firstExternalFrame(new Error().stack).includes('/compiled/modules/middleware/errorHandler.js')&&c&&c.phase==='ACTION'&&c.row.boundary==='HTTP_PUT'&&args.length===2&&typeof args[0]==='string'
+  &&args[0]===unsafe&&keys(args[1],[])&&++c.loggerEntries===1,'MEDICINE_PROVIDER');effects.providers.logger++;
+ };
+ return new Proxy(Object.freeze({error}),{get(target,key){if(key==='error')return error;return deny();},set:deny,defineProperty:deny,deleteProperty:deny,setPrototypeOf:deny});
+}
+
+function installLoader(manifest,plan,ports,cases,effects,getCurrent,ordinal){
+ const originalLoad=Module._load,originalResolve=Module._resolveFilename;
+ const builtins=new Set(Module.builtinModules.map(n=>n.replace(/^node:/,'')));
+ const denied=new Set(ports.publicBuiltinCandidates.permanentlyDenied);
+ const reached=new Set(),allClasses=new Set(),restorations=[];
+ const reload=ports.cohorts.reloadOutputs.map(n=>path.join(ROOT,n));
+ const staticPaths=new Set(plan.staticAudit.flatMap(r=>[path.join(ROOT,r.source),path.join(ROOT,r.compiled)]));
+ const staticAliases=new Set(plan.staticAudit.flatMap(r=>r.aliases));
+ const config=Object.freeze({CONFIG:Object.freeze({JWT_SECRET_KEY:ports.jwtMaterialization.primaryKey})});
+ const logger=makeLogger(getCurrent,effects,cases);const loggerExport=Object.freeze({__esModule:true,default:logger});
+ let types,models,cacheBase,childrenBase,current,loading=false,retiring=false,decorating=null,setLease=null,getLease=null,removeLease=null;
+ let decorations=0,cohortCount=0,retiredCount=0,ofCalls=0;
+ const publicCounts={get:0,set:0,remove:0,reset:0,has:0,getMany:0,registerHandler:0};
+ const instanceCounts={get:0,set:0,remove:0,reset:0,destroyServiceInstance:0};
+ const deny=()=>{effects.latches.loaderDenials++;fail('MEDICINE_LOADER');};
+ const rel=file=>path.relative(ROOT,file||'').split(path.sep).join('/');
+ function cut(request){if(request==='@/config/config')return config;if(request==='@/services/logger'||request==='@/services/logger/index')return loggerExport;return null;}
+ function resolve(request,parent,isMain,options){
+  if(typeof request!=='string'||staticPaths.has(request)||staticAliases.has(request))return deny();
+  const parentFile=rel(parent?.filename),isPublic=parentFile.startsWith('node_modules/'),isDomain=parentFile.startsWith('compiled/');
+  if(cut(request))return deny(); // _load handles the exact cuts before resolution.
+  if(builtins.has(request.replace(/^node:/,''))){
+   if(isDomain||denied.has(request.replace(/^node:/,''))||(isPublic&&!(ports.publicBuiltinCandidates.parents[parentFile]||[]).includes(request)))return deny();
+   if(!isPublic&&parent!==module&&!(parentFile==='scenario.cjs'&&['node:fs','node:path','node:crypto','node:util'].includes(request)))return deny();
+   return originalResolve.call(Module,request,parent,isMain,options);
+  }
+  if(ports.absentOptionalPackages.includes(request))return deny();
+  let filename;
+  if(request.startsWith('@/')){
+   const canonical=plan.modules[request];if(!DOMAIN_FILES.includes(canonical))return deny();
+   filename=path.join(ROOT,canonical);
+   if(loading&&current?.mode==='UNSAFE'&&current?.variantId){const mutation=plan.mutants[current.variantId];if(canonical==='compiled/'+mutation.source.slice(5,-3)+'.js')filename=path.join(ROOT,mutation.file);}
+  }else{
+   if(isDomain&&!request.startsWith('.')&&!ports.publicRuntimeRoots.includes(request))return deny();
+   if(parent===module&&!ports.publicRuntimeRoots.includes(request)&&request!=='./scenario.cjs')return deny();
+   try{filename=originalResolve.call(Module,request,parent,isMain,options);}catch{return deny();}
+  }
+  const name=rel(filename);if(staticPaths.has(filename)||!own(manifest.files,name))return deny();
+  if(name.startsWith('compiled/')){
+   let nominal=name;if(name.startsWith('compiled/mutants/')){const mutation=plan.mutants[current?.variantId];if(!loading||!mutation||mutation.file!==name)return deny();nominal='compiled/'+mutation.source.slice(5,-3)+'.js';}
+   if(!DOMAIN_FILES.includes(nominal))return deny();auditDomainSource(bytes(name));reached.add(nominal);
+  }else if(!isPublic&&!name.startsWith('node_modules/')&&!(parent===module&&name==='scenario.cjs'))return deny();
+  return filename;
+ }
+ const load=function(request,parent,isMain){const value=cut(request);if(value){const p=rel(parent?.filename);if(!p.startsWith('compiled/'))return deny();return value;}
+  resolve(request,parent,isMain);return originalLoad.call(this,request,parent,isMain);};
+ Module._resolveFilename=resolve;Module._load=load;
+ function replace(owner,name,make){const descriptor=Object.getOwnPropertyDescriptor(owner,name);need(descriptor&&own(descriptor,'value')&&typeof descriptor.value==='function'&&descriptor.writable,'MEDICINE_TYPEDI');
+ const wrapped=make(descriptor.value);Object.defineProperty(owner,name,{...descriptor,value:wrapped});restorations.push(()=>Object.defineProperty(owner,name,descriptor));return wrapped;}
+ function stable(){
+  need(Module._load===load&&Module._resolveFilename===resolve,'MEDICINE_LOADER');
+  if(cacheBase)for(const [file,value]of cacheBase)need(require.cache[file]===value,'MEDICINE_COHORT');
+  need(!types||types.Container.globalInstance===types.global&&types.Container.instances.length===0&&types.Container.handlers.length===0,'MEDICINE_TYPEDI');
+  if(models)for(const [name,model]of Object.entries(models))need(model===models[name]&&model.schema===modelSchemas[name],'MEDICINE_MODEL');
+ }
+ const modelSchemas={};
+ function coldEvict(){
+  const targets=new Set([...reload,...Object.values(plan.mutants).map(r=>path.join(ROOT,r.file))]);
+  for(const file of targets)delete require.cache[file];
+  for(const mod of Object.values(require.cache))if(Array.isArray(mod.children))for(let i=mod.children.length-1;i>=0;i--)if(targets.has(mod.children[i].filename))mod.children.splice(i,1);
+  for(const [mod,children]of childrenBase||[])need(same(mod.children,children),'MEDICINE_COHORT');
+ }
+ async function retire(){
+  if(!current||current.retired)return;
+  retiring=true;
+  await cleanupAll([
+   ()=>current.wrappers?.restore(),
+   ()=>{if(current.Service||current.Repository){const ids=Object.freeze([current.Service,current.Repository].filter(type=>type&&types.global.services.some(metadata=>metadata.id===type)));removeLease={ids,index:0};try{types.Container.remove(ids);}finally{removeLease=null;}}},
+   ()=>coldEvict(),
+   ()=>{need(types.global.services.length===0,'MEDICINE_TYPEDI');current.retired=true;retiredCount++;}
+  ]).finally(()=>{retiring=false;});
+ }
+ function proof(){
+  need(current,'MEDICINE_COHORT');stable();if(!current.retired)current.wrappers.assert();
+  return freezeRecord({ordinal:cohortCount,mode:current.mode,variantId:current.variantId,
+   identities:{controller:ordinal(current.Controller),service:ordinal(current.service),repository:ordinal(current.repository)},
+   classCount:allClasses.size,decorations,public:{...publicCounts},instance:{...instanceCounts},
+   modelsStable:true,cachesValid:true,wrappersValid:true,retired:current.retired});
+ }
+ return Object.freeze({
+  load:request=>require(request),
+  installTypeDi(typedi){
+   need(!types&&typedi.Container.globalInstance.services.length===0&&typedi.Container.handlers.length===0&&typedi.Container.instances.length===0,'MEDICINE_TYPEDI');
+   types={...typedi,global:typedi.Container.globalInstance};
+   const empty=require.cache[path.join(ROOT,'node_modules/typedi/cjs/empty.const.js')]?.exports.EMPTY_VALUE;
+   need(typeof empty==='symbol','MEDICINE_TYPEDI');types.empty=empty;
+   const serviceModule=require.cache[path.join(ROOT,'node_modules/typedi/cjs/decorators/service.decorator.js')];
+   replace(serviceModule.exports,'Service',original=>function(...args){need(loading&&args.length===0,'MEDICINE_TYPEDI');const decorate=Reflect.apply(original,this,args);return target=>{
+    need(loading&&typeof target==='function'&&['MedicineRepository','MedicineService'].includes(target.name)&&!allClasses.has(target),'MEDICINE_TYPEDI');
+    if(target.name==='MedicineService')current.Service=target;else current.Repository=target;decorating=target;try{const result=decorate(target);decorations++;return result;}finally{decorating=null;}
+   };});
+   replace(types.Container,'set',original=>function(...args){
+    const m=args[0];need(this===types.Container&&loading&&args.length===1&&decorating&&keys(m,['id','type','factory','multiple','global','eager','transient','value'])
+    &&m.id===decorating&&m.type===decorating&&m.value===empty&&m.factory===undefined&&[m.multiple,m.global,m.eager,m.transient].every(v=>v===false)&&!setLease,'MEDICINE_TYPEDI');
+    publicCounts.set++;setLease=m;try{return Reflect.apply(original,this,args);}finally{setLease=null;}
+   });
+   replace(types.ContainerInstance.prototype,'set',original=>function(...args){need(this===types.global&&setLease&&args.length===2&&args[0]===setLease&&args[1]===undefined,'MEDICINE_TYPEDI');instanceCounts.set++;return Reflect.apply(original,this,args);});
+   replace(types.Container,'get',original=>function(...args){need(this===types.Container&&loading&&args.length===1&&args[0].name==='MedicineService'&&!getLease,'MEDICINE_TYPEDI');
+    need(firstExternalFrame(new Error().stack).includes(current.mode==='UNSAFE'&&current.variantId==='CONTROLLER_QUERY_ROLE'?'/compiled/mutants/CONTROLLER_QUERY_ROLE.js':'/compiled/modules/pharmacyMedicines/controller/index.js'),'MEDICINE_TYPEDI');publicCounts.get++;getLease={Service:args[0],index:0};try{const service=Reflect.apply(original,this,args);need(service instanceof args[0]&&getLease.index===2,'MEDICINE_TYPEDI');current.service=service;return service;}finally{getLease=null;}
+   });
+   replace(types.ContainerInstance.prototype,'get',original=>function(...args){need(this===types.global&&getLease&&args.length===1&&args[0].name===(getLease.index++===0?'MedicineService':'MedicineRepository')&&getLease.index<=2,'MEDICINE_TYPEDI');instanceCounts.get++;const result=Reflect.apply(original,this,args);if(args[0].name==='MedicineRepository')current.repositoryFromGet=result;return result;});
+   replace(types.Container,'of',original=>function(...args){need(this===types.Container&&getLease&&args.length===1&&args[0]===undefined&&++ofCalls<=34,'MEDICINE_TYPEDI');return Reflect.apply(original,this,args);});
+   replace(types.Container,'remove',original=>function(...args){need(this===types.Container&&retiring&&removeLease&&args.length===1&&args[0]===removeLease.ids,'MEDICINE_TYPEDI');publicCounts.remove++;return Reflect.apply(original,this,args);});
+   replace(types.ContainerInstance.prototype,'remove',original=>function(...args){need(this===types.global&&retiring&&removeLease&&args.length===1&&args[0]===[removeLease.ids,...removeLease.ids][removeLease.index++],'MEDICINE_TYPEDI');instanceCounts.remove++;return Reflect.apply(original,this,args);});
+   replace(types.ContainerInstance.prototype,'destroyServiceInstance',original=>function(...args){const m=args[0];need(this===types.global&&retiring&&removeLease&&args.length===1&&types.global.services.includes(m)&&removeLease.ids.includes(m.id)
+    &&(m.value===current.service||m.value===current.repository||m.value===current.repositoryFromGet||m.value===types.empty),'MEDICINE_TYPEDI');
+    let proto=m.value===types.empty?null:m.value;while(proto){need(!Object.getOwnPropertyDescriptor(proto,'destroy'),'MEDICINE_TYPEDI');proto=Object.getPrototypeOf(proto);}
+    instanceCounts.destroyServiceInstance++;return Reflect.apply(original,this,args);
+   });
+   for(const name of ['reset','has','getMany','registerHandler','import','initialize'])if(typeof types.Container[name]==='function')replace(types.Container,name,()=>()=>{if(own(publicCounts,name))publicCounts[name]++;effects.latches.cohortDenials++;fail('MEDICINE_TYPEDI');});
+   for(const name of ['reset','getMany'])if(typeof types.ContainerInstance.prototype[name]==='function')replace(types.ContainerInstance.prototype,name,()=>()=>{if(own(instanceCounts,name))instanceCounts[name]++;effects.latches.cohortDenials++;fail('MEDICINE_TYPEDI');});
+  },
+  bindModels(actual){need(!models&&keys(actual,MODEL_NAMES),'MEDICINE_MODEL');models=actual;for(const [name,model]of Object.entries(models))modelSchemas[name]=model.schema;},
+  prepare(){need(types&&models&&!cacheBase&&reload.every(file=>!own(require.cache,file)),'MEDICINE_COHORT');cacheBase=new Map(Object.entries(require.cache));childrenBase=[...cacheBase.values()].map(mod=>[mod,mod.children.slice()]);},
+  async select(mode,variantId){
+   need(cacheBase&&cohortCount<17,'MEDICINE_COHORT');const planned=cases.cohortPlan[cohortCount];need(mode===planned.kind&&variantId===planned.variantId&&same(diagnosticContext.get(),planned.beforeLoadContext),'MEDICINE_COHORT');
+   if(current&&cohortCount===1){const targets=new Set([...reload,...Object.values(plan.mutants).map(r=>path.join(ROOT,r.file))]);for(const [file,value]of Object.entries(require.cache))if(!cacheBase.has(file)&&!targets.has(file)){need(rel(file).startsWith('node_modules/')&&own(manifest.files,rel(file)),'MEDICINE_COHORT');cacheBase.set(file,value);}childrenBase=[...cacheBase.values()].map(mod=>[mod,mod.children.filter(child=>!targets.has(child.filename))]);}
+   if(current)await retire();stable();
+   current={mode,variantId,retired:false};loading=true;
+   try{
+    const router=require(ports.runtimeRoot);const getClass=(alias,name)=>require.cache[path.join(ROOT,plan.modules[alias])]?.exports[name];
+    current.Controller=getClass('@/modules/pharmacyMedicines/controller','MedicineController');
+    const mutation=mode==='UNSAFE'?plan.mutants[variantId]:null;
+    const classFor=(alias,name)=>mutation&&'compiled/'+mutation.source.slice(5,-3)+'.js'===plan.modules[alias]
+      ?require.cache[path.join(ROOT,mutation.file)]?.exports[name]:getClass(alias,name);
+    current.Controller=classFor('@/modules/pharmacyMedicines/controller','MedicineController');
+    current.Service=classFor('@/modules/pharmacyMedicines/services','MedicineService');current.Repository=classFor('@/modules/pharmacyMedicines/repository','MedicineRepository');
+    for(const ctor of [current.Controller,current.Service,current.Repository]){need(typeof ctor==='function'&&!allClasses.has(ctor),'MEDICINE_COHORT');allClasses.add(ctor);}
+    need(current.service instanceof current.Service&&Reflect.getMetadata('design:paramtypes',current.Service)[0]===current.Repository,'MEDICINE_COHORT');
+    const repositoryDescriptor=Object.getOwnPropertyDescriptor(current.service,'medicineRepository');need(repositoryDescriptor&&own(repositoryDescriptor,'value'),'MEDICINE_COHORT');current.repository=repositoryDescriptor.value;need(current.repository===current.repositoryFromGet&&Object.getPrototypeOf(current.repository)===current.Repository.prototype&&current.repository instanceof current.Repository&&current.repository.model===models.Medicine,'MEDICINE_COHORT');
+    current.router=router.default;need(typeof current.router==='function','MEDICINE_COHORT');
+    current.wrappers=installMethodObservers(current.Service,()=>{const action=getCurrent();return action?{...action,service:current.service}:null;},effects,null,ordinal);
+    cohortCount++;need(decorations===cohortCount*2&&publicCounts.get===cohortCount&&instanceCounts.get===cohortCount*2&&ofCalls===instanceCounts.get,'MEDICINE_TYPEDI');return proof();
+   }finally{loading=false;}
+  },
+  service(){need(current&&!current.retired,'MEDICINE_COHORT');return current.service;},
+  dispatch(req,res,next){need(current&&!current.retired,'MEDICINE_COHORT');return current.router(req,res,next);},
+  proof,
+  async restore(){await retire();stable();need(retiredCount===cohortCount&&types.global.services.length===0,'MEDICINE_COHORT');return proof();},
+  async releaseTypeDi(){await cleanupAll(restorations.slice().reverse());},
+  assertHealthy(){stable();need(effects.latches.loaderDenials===0&&effects.latches.cohortDenials===0,'MEDICINE_COHORT');if(retiredCount===17)need(reached.size===20&&DOMAIN_FILES.every(n=>reached.has(n)),'MEDICINE_MODEL');},
+  modelProof(){stable();need(DOMAIN_FILES.length===20&&DOMAIN_FILES.every(n=>own(manifest.files,n)),'MEDICINE_MODEL');return freezeRecord({
+   models:ports.models.map(r=>({name:r.name,collection:r.collection,source:r.source,sourceSha256:ports.sourceFiles[r.source]})),
+   reachableModules:DOMAIN_FILES.map(p=>({path:p,sha256:manifest.files[p]})),registrations:Object.keys(models).length,stable:true});},
+  counts:()=>({cohorts:cohortCount,classes:allClasses.size,decorations,retired:retiredCount===cohortCount})
+ });
+}
+
+function createWireBoundary(manifest,ports,cases,bson,effects,getState){
+ const pairs=[],pending=new Map(),prepared=new Map();let started=0,succeeded=0,failed=0,eventBytes=0,livePendingBytes=0,hasFirstFailure=false,firstFailure;
+ const counts={connect:0,index:0,snapshotFind:0,insert:0,delete:0,action:0};
+ function bound(value){return clone(value,bson);}
+ function checkBytes(){need(started+succeeded+failed<=16000&&eventBytes+livePendingBytes<=64*1024*1024,'MEDICINE_COMMAND_LIMIT');}
+ const sid=value=>{need(keys(value,['id'])&&value.id instanceof bson.Binary&&value.id.sub_type===4&&binaryBytes(value.id).length===16,'MEDICINE_SESSION');return binaryBytes(value.id).toString('hex');};
+ const oid=value=>{need(value instanceof bson.ObjectId&&/^[a-f0-9]{24}$/.test(value.toHexString()),'MEDICINE_OWNERSHIP_PROOF');return value.toHexString();};
+ function payloadRows(rows){return rows.slice().sort((a,b)=>oid(a._id).localeCompare(oid(b._id)));}
+ function contractKey(event,lease){
+  const name=event.commandName,state=getState();
+  if(name==='find'){if(state.phase!=='ACTION')return'findControl';return lease.cursor.kind==='PHARMACY'?'findPharmacy':lease.cursor.kind==='BY_ID'?'findMedicineById':'findMedicineDuplicate';}
+  return name;
+ }
+ function check(event,lease){
+  validateRawMaps(event.command,event.commandName);
+  const state=getState(),c=event.command,name=event.commandName,key=contractKey(event,lease),contract=ports.native.commandContracts[key];
+  need(contract&&keys(c,contract.required,contract.optional)&&c.$db===event.databaseName&&same(c.$readPreference,{mode:'primaryPreferred'}),'MEDICINE_COMMAND_ENVELOPE');
+  need(lease&&lease.databaseName===event.databaseName&&lease.connectionId===event.connectionId&&same(c,lease.command,bson),'MEDICINE_COMMAND_ENVELOPE');
+  if(own(c,'$clusterTime')){const time=c.$clusterTime;need(keys(time,['clusterTime','signature'])&&time.clusterTime instanceof bson.Timestamp
+   &&keys(time.signature,['hash','keyId'])&&time.signature.hash instanceof bson.Binary&&time.signature.hash.sub_type===0&&binaryBytes(time.signature.hash).length===20
+   &&Object.is(time.signature.keyId,0)&&same(time,lease.clusterTime,bson),'MEDICINE_COMMAND_ENVELOPE');}else need(lease.clusterTime===undefined,'MEDICINE_COMMAND_ENVELOPE');
+  if(name==='endSessions'){
+   need(state.phase==='CLOSE'&&event.databaseName==='admin'&&same(c.writeConcern,{w:0})&&!own(c,'lsid')&&denseArray(c.endSessions,256)
+    &&c.endSessions.length>0&&same(c.endSessions,state.closePool,bson)&&lease.session===null,'MEDICINE_CLOSE');return;
+  }
+  need(lease.session&&sid(c.lsid)===sid(lease.session.id),'MEDICINE_SESSION');
+  if(state.phase==='CONNECT'){need(['hello','buildinfo'].includes(name)&&event.databaseName==='admin'&&c[name]===1&&lease.session.kind==='CONTROL','MEDICINE_DATABASE');counts.connect++;need(counts.connect<=2,'MEDICINE_DATABASE');return;}
+  need(event.databaseName===manifest.database,'MEDICINE_DATABASE');
+  if(state.phase==='INDEX_SETUP'){
+   need(lease.session.kind==='CONTROL','MEDICINE_SESSION');counts.index++;
+   if(name==='listCollections')need(c.listCollections===1&&same(c.filter,{})&&same(c.cursor,{batchSize:100})&&c.nameOnly===true&&c.authorizedCollections===false&&c.maxTimeMS===5000,'MEDICINE_INDEX_PROOF');
+   else if(name==='create')need(COLLECTIONS.includes(c.create),'MEDICINE_INDEX_PROOF');
+   else if(name==='createIndexes')need(COLLECTIONS.includes(c.createIndexes)&&denseArray(c.indexes,1)&&c.indexes.length===1&&ports.models.find(r=>r.collection===c.createIndexes).indexes.some(r=>c.indexes[0].key instanceof Map&&Object.getPrototypeOf(c.indexes[0].key)===Map.prototype&&Reflect.ownKeys(c.indexes[0].key).length===0&&same([...Map.prototype.entries.call(c.indexes[0].key)],Object.entries(r.key),bson)&&keys(c.indexes[0],['key',...Object.keys(r.options)])&&Object.entries(r.options).every(([key,value])=>same(c.indexes[0][key],value,bson))),'MEDICINE_INDEX_PROOF');
+   else need(name==='listIndexes'&&COLLECTIONS.includes(c.listIndexes)&&same(c.cursor,{batchSize:100})&&c.maxTimeMS===5000,'MEDICINE_INDEX_PROOF');return;
+  }
+  const trial=state.trial;need(trial,'MEDICINE_PHASE');
+  if(state.phase==='ACTION'){
+   need(lease.session.kind==='CURSOR'||lease.session.kind==='OPERATION','MEDICINE_SESSION');counts.action++;
+   if(name==='find'){
+    if(key==='findPharmacy'){need(c.find==='pharmacies'&&same(c.filter,{_id:trial.ids.PHARMACY},bson)&&same(c.projection,{_id:1,isActive:1,isVerified:1,archivedAt:1})&&c.limit===1&&c.singleBatch===true,'MEDICINE_COMMANDS');effects.reads.pharmacyFind++;}
+    else if(key==='findMedicineById'){need(c.find==='medicines'&&same(c.filter,{_id:trial.targetId},bson)&&c.limit===1&&c.singleBatch===true,'MEDICINE_COMMANDS');effects.reads.medicineFindById++;}
+    else {const normalized=trial.normalization.normalizeName.at(-1)?.[0];const literal=cases.observations.commands.duplicateFind.caseFilters[normalized];
+     need(c.find==='medicines'&&literal&&same(c.filter,{$or:[{nameKey:literal.nameKey},{name:new RegExp(literal.regexPattern,literal.regexOptions)}]},bson),'MEDICINE_COMMANDS');effects.reads.medicineDuplicateFind++;}
+   }else{
+    need(name==='findAndModify'&&c.findAndModify==='medicines'&&same(c.query,{_id:trial.targetId},bson)&&c.remove===false&&c.new===true&&c.upsert===false
+     &&keys(c.update,['$set'])&&plain(c.update.$set),'MEDICINE_COMMANDS');
+    const fields=clone(trial.row.state.targetSet,bson);
+    if(trial.mode==='UNSAFE'&&cases.sensitivity.variants.find(v=>v.id===trial.variantId).concreteUnsafePrediction.medicineWrites===1){
+     const body=trial.row.boundary==='HTTP_PUT'?trial.row.expectedValidatedBody:directArguments(trial.row,trial.ids)[1];Object.assign(fields,body);
+    }
+    const actual=c.update.$set;need(keys(actual,[...Object.keys(fields),'updatedAt'])&&actual.updatedAt instanceof Date&&Number.isFinite(actual.updatedAt.getTime())
+     &&actual.updatedAt.getTime()>=trial.startedMillis&&Object.entries(fields).every(([k,v])=>same(actual[k],v,bson)),'MEDICINE_COMMANDS');
+    trial.wireUpdated=clone(actual,bson);effects.writes.medicineFindAndModify++;
+   }
+   return;
+  }
+  need(lease.session.kind==='CONTROL','MEDICINE_SESSION');
+  if(name==='find'){need(['CASE_SETUP','AFTER_SNAPSHOT','CASE_CLEANUP'].includes(state.phase)&&COLLECTIONS.includes(c.find)&&same(c.filter,{})&&c.batchSize===100&&c.maxTimeMS===5000,'MEDICINE_COMMANDS');counts.snapshotFind++;return;}
+  if(name==='insert'){need(state.phase==='CASE_SETUP'&&trial.emptyProved&&COLLECTIONS.includes(c.insert)&&c.ordered===true&&same(c.documents,trial.seed[c.insert],bson),'MEDICINE_SEED_STATE');counts.insert++;return;}
+  need(name==='delete'&&state.phase==='CASE_CLEANUP'&&trial.emptyProved&&COLLECTIONS.includes(c.delete)&&c.ordered===true
+   &&same(c.deletes,[{q:{_id:{$in:trial.eligible[c.delete]}},limit:0}],bson),'MEDICINE_CLEANUP');counts.delete++;
+ }
+ function expectedBatch(start,lease){
+  const state=getState(),command=start.command;
+  if(start.commandName==='listCollections')return state.created.size===0?[]:COLLECTIONS.map(name=>({name,type:'collection'}));
+  if(start.commandName==='listIndexes')return ports.serverIndexRows.filter(r=>r.collection===command.listIndexes).map(r=>r.spec);
+  if(state.phase!=='ACTION')return null;
+  const trial=state.trial;
+  if(lease.cursor.kind==='PHARMACY')return trial.seed.pharmacies.filter(row=>same(row._id,trial.ids.PHARMACY,bson)).map(row=>Object.fromEntries(['_id','isActive','isVerified','archivedAt'].filter(k=>own(row,k)).map(k=>[k,row[k]])));
+  if(lease.cursor.kind==='BY_ID')return trial.seed.medicines.filter(row=>same(row._id,trial.targetId,bson));
+  const literal=cases.observations.commands.duplicateFind.caseFilters[trial.normalization.normalizeName.at(-1)?.[0]];
+  const names=literal.nameKey==='renamed medicine'?[]:literal.nameKey==='alpha medicine'?['TARGET']:['DUP1','DUP2'];
+  return trial.seed.medicines.filter(row=>names.some(k=>same(row._id,trial.ids[k],bson)));
+ }
+ return Object.freeze({sid,oid,
+  prepare(message,connection,session,cursor,clusterTime){
+   need(message&&Number.isSafeInteger(message.requestId)&&!prepared.has(message.requestId),'MEDICINE_COMMAND_ENVELOPE');
+   const state=getState(),name=Object.keys(message.command)[0];validateRawMaps(message.command,name);
+   const raw={commandName:name,command:message.command,reply:null,requestId:message.requestId,connectionId:connection.id,databaseName:message.databaseName,
+    phase:state.phase,caseId:state.trial?.row.id||null,sessionOrdinal:session?.ordinal||null,cursorOrdinal:cursor?.ordinal||null};
+   const reserved=commandPairBytes(raw,bson);livePendingBytes+=reserved;checkBytes();
+   prepared.set(message.requestId,{command:message.command,connectionId:connection.id,databaseName:message.databaseName,session,cursor,clusterTime,reserved});
+  },
+  started(event){
+   try{const lease=prepared.get(event.requestId);need(lease&&!pending.has(event.requestId),'MEDICINE_COMMANDS');prepared.delete(event.requestId);check(event,lease);started++;
+    const state=getState();const row=bound({commandName:event.commandName,command:event.command,requestId:event.requestId,connectionId:event.connectionId,databaseName:event.databaseName,
+     phase:state.phase,caseId:state.trial?.row.id||null,sessionOrdinal:lease.session?.ordinal||null,cursorOrdinal:lease.cursor?.ordinal||null});pending.set(event.requestId,{row,lease});checkBytes();
+   }catch(error){effects.latches.unexpectedCommands++;throw error;}
+  },
+  succeeded(event){
+   try{const entry=pending.get(event.requestId);need(entry&&entry.row.commandName===event.commandName&&entry.row.connectionId===event.connectionId
+    &&entry.row.databaseName===event.databaseName&&plain(event.reply)&&event.reply.ok===1&&!own(event.reply,'writeErrors')&&!own(event.reply,'writeConcernError')&&!own(event.reply,'writeConcernErrors'),'MEDICINE_COMMAND_FAILURE');
+    const {row,lease}=entry;validateRawMaps(event.reply,null);
+    if(['find','listIndexes','listCollections'].includes(row.commandName)){
+     const cursor=event.reply.cursor;need(lease.cursor&&keys(cursor,['id','ns','firstBatch'])&&Object.is(cursor.id,0)
+      &&cursor.ns===manifest.database+'.'+lease.cursor.collection&&denseArray(cursor.firstBatch,100),'MEDICINE_CURSOR');
+     const expected=expectedBatch(row,lease);
+     if(expected){const sort=values=>values.slice().sort((a,b)=>String(a._id?.toHexString()||a.name).localeCompare(String(b._id?.toHexString()||b.name)));
+      need(same(sort(cursor.firstBatch),sort(expected),bson),'MEDICINE_COMMANDS');}
+    }
+    if(row.commandName==='findAndModify'){
+     const trial=getState().trial,base=trial.seed.medicines.find(r=>same(r._id,trial.targetId,bson));
+     need(keys(event.reply.lastErrorObject,['n','updatedExisting'])&&same(event.reply.lastErrorObject,{n:1,updatedExisting:true})&&same(event.reply.value,{...base,...trial.wireUpdated},bson),'MEDICINE_COMMANDS');
+    }
+    const pair=freezeRecord({...row,reply:bound(event.reply)}),bytes=commandPairBytes(pair,bson);
+    livePendingBytes-=lease.reserved;need(eventBytes+bytes+livePendingBytes<=64*1024*1024,'MEDICINE_COMMAND_LIMIT');eventBytes+=bytes;
+    succeeded++;pending.delete(event.requestId);pairs.push(pair);checkBytes();
+   }catch(error){effects.latches.commandFailures++;throw error;}
+  },
+  failed(event){
+   const entry=pending.get(event.requestId);need(entry&&entry.row.commandName===event.commandName&&entry.row.connectionId===event.connectionId&&entry.row.databaseName===event.databaseName,'MEDICINE_COMMAND_FAILURE');
+   failed++;effects.latches.commandFailures++;livePendingBytes-=entry.lease.reserved;pending.delete(event.requestId);
+   if(!hasFirstFailure){hasFirstFailure=true;firstFailure=event.failure;}checkBytes();
+  },
+  firstFailure:()=>({present:hasFirstFailure,value:firstFailure}),
+  history(){return freezeRecord({pairs:clone(pairs,bson),started,succeeded,failed,eventBytes});},
+  offset:()=>pairs.length,
+  slice:offset=>freezeRecord(clone(pairs.slice(offset),bson)),
+  counts:()=>({...counts}),
+  assertHealthy(){need(pending.size===0&&prepared.size===0&&failed===0&&started===succeeded&&effects.latches.unexpectedCommands===0&&effects.latches.commandFailures===0,'MEDICINE_COMMAND_FAILURE');}
+ });
+}
+
+function createDatabaseBoundary(mongoose,manifest,ports,cases,effects,loader,nativeBoundary,projection,getTrial,ordinal){
+ const driver=mongoose.mongo,bson=Object.freeze(Object.fromEntries(['ObjectId','Long','Timestamp','Binary'].map(k=>[k,driver[k]])));
+ const models={},sessions=new Map(),cursors=new Map(),leases=new Set(),pending=new Set(),created=new Set(),indexNames=new Set();
+ let client,control,connected=false,modelImport=false,connectLease=false,constructed,explicitRequest=false,writeLease=null,findOneLease=null,cleanupLease=null;
+ let phase='CONNECT',closePool=null,closeStarted=false,indexProof=null,connectCount=0,totalStarts=0,totalEnds=0,actionStarts=0,actionEnds=0,fullCompletion=false,hasNativeFailure=false,firstNativeFailure;
+ const state=()=>({phase,trial:getTrial(),created,closePool});const wire=createWireBoundary(manifest,ports,cases,bson,effects,state);
+ const uri='mongodb://127.0.0.1:27017/'+manifest.database+'?replicaSet='+manifest.replicaSet+'&directConnection=true';
+ const seedBulk=createSeedBulkLease();const metadataCounts={listCollections:0,listIndexes:0};
+ const deny=code=>{effects.latches.operationDenials++;fail(code);};
+ function callsite(fragment){return firstExternalFrame(new Error().stack).includes('/node_modules/mongoose/node_modules/mongodb/'+fragment);}
+ function track(promise){const p=Promise.resolve(promise);pending.add(p);p.then(()=>pending.delete(p),error=>{pending.delete(p);if(!hasNativeFailure){hasNativeFailure=true;firstNativeFailure=error;}});return promise;}
+ function collection(value){need(client&&value.client===client&&value.dbName===manifest.database&&COLLECTIONS.includes(value.collectionName),'MEDICINE_DATABASE');return value.collectionName;}
+ function ownOptions(options,required,optional=[]){need(keys(options,required,optional),'MEDICINE_NATIVE_OPERATION');}
+ function controlOptions(options,extra=[]){ownOptions(options,['session',...extra]);need(options.session===control&&!control.hasEnded,'MEDICINE_SESSION');}
+ function cursor(value,command,name,kind){
+  need(value&&value.client===client&&value.namespace.toString()===manifest.database+'.'+name&&!cursors.has(value),'MEDICINE_CURSOR');
+  const record={object:value,ordinal:ordinal(value),command,collection:name,kind,session:null,closed:false};cursors.set(value,record);leases.add(value);
+  const originalClose=value.close;
+  value.close=function(...args){need(this===value&&args.length===0&&cursors.has(value),'MEDICINE_CURSOR');
+   const id=value.id;if(id!==undefined&&id!==null)need(id instanceof bson.Long&&!(id instanceof bson.Timestamp)&&id.isZero(),'MEDICINE_CURSOR');
+   return track(Promise.resolve(Reflect.apply(originalClose,this,args)).then(result=>{record.closed=true;leases.delete(value);return result;}));
+  };
+  return value;
+ }
+ installModelRegistrationBoundary(mongoose,ports,models,()=>modelImport);
+ const modelCompile=mongoose.Model.compile;
+ mongoose.Model.compile=function(name,schema,coll,connection,base){need(modelImport&&name===MODEL_NAMES[Object.keys(models).length]&&connection===mongoose.connection&&base===mongoose&&coll===ports.models.find(r=>r.name===name)?.collection,'MEDICINE_MODEL');return Reflect.apply(modelCompile,this,arguments);};
+ mongoose.Connection.prototype.model=()=>deny('MEDICINE_MODEL');
+ for(const owner of [mongoose,mongoose.Mongoose.prototype,mongoose.Connection.prototype])if(typeof owner.deleteModel==='function')owner.deleteModel=()=>deny('MEDICINE_MODEL');
+ mongoose.set('autoIndex',false);mongoose.set('autoCreate',false);mongoose.set('bufferCommands',false);
+ need(mongoose.modelNames().length===0&&mongoose.connections.length===1&&mongoose.connection.readyState===0,'MEDICINE_MODEL');
+ mongoose.createConnection=mongoose.Mongoose.prototype.createConnection=()=>deny('MEDICINE_DATABASE');
+ for(const name of ['useDb','removeDb','dropDatabase','syncIndexes','transaction','startSession'])mongoose.Connection.prototype[name]=()=>deny('MEDICINE_DATABASE');
+ const connect=mongoose.connect;
+ mongoose.connect=async function(candidate,options){need(this===mongoose&&candidate===uri&&++connectCount===1&&keys(options,[...Object.keys(ports.ownedConnection.options),'runtimeAdapters'])
+ &&Object.entries(ports.ownedConnection.options).every(([k,v])=>same(options[k],v))&&options.runtimeAdapters.os===projection,'MEDICINE_DATABASE');connectLease=true;
+ try{return await Reflect.apply(connect,this,arguments);}finally{connectLease=false;}};
+ mongoose.Mongoose.prototype.connect=mongoose.connect;
+ const openUri=mongoose.Connection.prototype.openUri;
+ mongoose.Connection.prototype.openUri=function(candidate,options){need(this===mongoose.connection&&candidate===uri&&!options?.dbName&&connectCount===1,'MEDICINE_DATABASE');return Reflect.apply(openUri,this,arguments);};
+ const clientModule=require.cache[path.join(ROOT,'node_modules/mongoose/node_modules/mongodb/lib/mongo_client.js')];
+ const clientDescriptor=Object.getOwnPropertyDescriptor(clientModule.exports,'MongoClient');need(clientDescriptor.value===driver.MongoClient&&clientDescriptor.writable,'MEDICINE_DATABASE');
+ clientModule.exports.MongoClient=guardOwnedClientConstructor(driver.MongoClient,()=>connectLease,uri,ports.ownedConnection.options,projection,value=>{need(!constructed,'MEDICINE_DATABASE');constructed=value;});
+ const clientConnect=driver.MongoClient.prototype.connect;
+ driver.MongoClient.prototype.connect=async function(...args){need(!client&&this===constructed&&this.s.url===uri&&args.length===0&&phase==='CONNECT','MEDICINE_DATABASE');client=this;
+  for(const [k,v]of Object.entries(ports.ownedConnection.options))if(!['autoIndex','autoCreate'].includes(k))need(same(client.options[k],v),'MEDICINE_DATABASE');
+  await proveOSAdapter(client,projection);need(same(client.bsonOptions,ports.ownedConnection.effectiveBsonDefaultProposal),'MEDICINE_TYPED_VALUE');client.on('commandStarted',wire.started);client.on('commandSucceeded',wire.succeeded);client.on('commandFailed',wire.failed);
+  nativeBoundary.mongoStarted();const result=await Reflect.apply(clientConnect,this,args);connected=true;await proveOSAdapter(client,projection);return result;
+ };
+ const clientDb=driver.MongoClient.prototype.db;
+ driver.MongoClient.prototype.db=function(name,options){need(this===client&&(name||this.options.dbName)===manifest.database&&(options===undefined||keys(options,[])),'MEDICINE_DATABASE');return Reflect.apply(clientDb,this,arguments);};
+ const startSession=driver.MongoClient.prototype.startSession;
+ driver.MongoClient.prototype.startSession=function(...args){
+  need(this===client&&connected&&args.length===1,'MEDICINE_SESSION');const options=args[0];let kind,owner;
+  if(explicitRequest){need(same(options,{causalConsistency:false})&&!control,'MEDICINE_SESSION');kind='CONTROL';}
+  else{
+   need(keys(options,['owner','explicit'])&&options.explicit===false,'MEDICINE_SESSION');owner=options.owner;
+   if(cursors.has(owner)){need(phase==='ACTION'&&callsite('lib/cursor/abstract_cursor.js')&&!cursors.get(owner).session,'MEDICINE_SESSION');kind='CURSOR';}
+   else{need(typeof owner==='symbol'&&callsite('lib/operations/execute_operation.js')&&((phase==='ACTION'&&writeLease)||(phase==='CLOSE'&&closeStarted)),'MEDICINE_SESSION');kind=phase==='CLOSE'?'CLOSE':'OPERATION';}
+  }
+  const session=Reflect.apply(startSession,this,args);need(session.client===client&&!sessions.has(session)&&session.hasEnded===false,'MEDICINE_SESSION');
+  const record={object:session,ordinal:ordinal(session),kind,owner,id:undefined,endEntries:0};sessions.set(session,record);totalStarts++;if(['CURSOR','OPERATION'].includes(kind))actionStarts++;
+  if(kind==='CURSOR')cursors.get(owner).session=record;
+  const end=session.endSession;
+  session.endSession=function(...endArgs){
+   need(this===session&&sessions.get(this)===record,'MEDICINE_SESSION');
+   validateSessionEndEntry(record,endArgs,{phase,cleanupOwner:cleanupLease?.cursor,cleanupError:cleanupLease?.error,
+    findOneCursor:findOneLease?.cursor,cursorKind:kind==='CURSOR'?cursors.get(owner).kind:null,
+    nativeCaller:firstExternalFrame(new Error().stack),writeActive:writeLease!==null,closeStarted});
+   record.endEntries++;totalEnds++;if(['CURSOR','OPERATION'].includes(kind))actionEnds++;
+   return track(Reflect.apply(end,this,endArgs));
+  };
+  for(const name of ['startTransaction','commitTransaction','abortTransaction','withTransaction'])session[name]=()=>deny('MEDICINE_SESSION');
+  return session;
+ };
+ const abstractModule=require.cache[path.join(ROOT,'node_modules/mongoose/node_modules/mongodb/lib/cursor/abstract_cursor.js')];
+ const AbstractCursor=abstractModule.exports.AbstractCursor,cleanup=AbstractCursor.prototype.cleanup;
+ AbstractCursor.prototype.cleanup=function(...args){
+  const record=cursors.get(this);need(record&&args.length<=2&&(args.length<1||args[0]===undefined),'MEDICINE_CURSOR');
+  const previous=cleanupLease;cleanupLease={cursor:this,error:args[1]};
+  let value;try{value=Reflect.apply(cleanup,this,args);}catch(error){cleanupLease=previous;throw error;}
+  return track(Promise.resolve(value).finally(()=>{cleanupLease=previous;}));
+ };
+ for(const name of ['getMore','killCursors'])if(typeof AbstractCursor.prototype[name]==='function')AbstractCursor.prototype[name]=()=>deny('MEDICINE_CURSOR');
+ const connectionModule=require.cache[path.join(ROOT,'node_modules/mongoose/node_modules/mongodb/lib/cmap/connection.js')];
+ const Connection=connectionModule.exports.Connection,prepareCommand=Connection.prototype.prepareCommand;
+ Connection.prototype.prepareCommand=function(db,command,options){
+  const nativeSession=options?.session,record=sessions.get(nativeSession),name=Object.keys(command)[0];
+  if(!record&&!(phase==='CLOSE'&&name==='endSessions'))return Reflect.apply(prepareCommand,this,arguments);
+  need(this.description.type==='RSPrimary'&&this.description.loadBalanced===false&&this.supportsOpMsg&&options.directConnection===true,'MEDICINE_COMMAND_ENVELOPE');
+  let selected=this.clusterTime;
+  if(nativeSession?.clusterTime&&selected&&nativeSession.clusterTime.clusterTime.greaterThan(selected.clusterTime))selected=nativeSession.clusterTime;
+  const message=Reflect.apply(prepareCommand,this,arguments);
+  need(message.moreToCome===(name==='endSessions')&&options.noResponse!==true,'MEDICINE_COMMAND_ENVELOPE');
+  let actualCursor=null;if(record){
+   const serverSession=Object.getOwnPropertyDescriptor(nativeSession,'_serverSession');need(serverSession&&own(serverSession,'value')&&serverSession.value,'MEDICINE_SESSION');
+   const id=Object.getOwnPropertyDescriptor(serverSession.value,'id');need(id&&own(id,'value'),'MEDICINE_SESSION');record.id=id.value;wire.sid(record.id);
+   if(record.kind==='CURSOR')actualCursor=cursors.get(record.owner);
+   else if(['find','listIndexes','listCollections'].includes(name)){
+    actualCursor=[...cursors.values()].find(c=>!c.closed&&c.command===name&&c.object.session===nativeSession&&c.collection===(name==='listCollections'?'$cmd.listCollections':command[name]));
+   }
+  }
+  wire.prepare(message,this,record||null,actualCursor,selected);return message;
+ };
+ const dbCollection=driver.Db.prototype.collection;
+ driver.Db.prototype.collection=function(name,options){need(this.client===client&&this.databaseName===manifest.database&&COLLECTIONS.includes(name),'MEDICINE_MODEL');return Reflect.apply(dbCollection,this,arguments);};
+ const createCollection=driver.Db.prototype.createCollection;
+ driver.Db.prototype.createCollection=function(name,options){need(phase==='INDEX_SETUP'&&this.client===client&&this.databaseName===manifest.database&&COLLECTIONS.includes(name)&&!created.has(name),'MEDICINE_INDEX_PROOF');controlOptions(options);created.add(name);return Reflect.apply(createCollection,this,arguments);};
+ const adminCommand=driver.Admin.prototype.command;
+ driver.Admin.prototype.command=function(command,options){need(phase==='CONNECT'&&(same(command,{hello:1})||same(command,{buildinfo:1})),'MEDICINE_DATABASE');controlOptions(options);return Reflect.apply(adminCommand,this,arguments);};
+ for(const name of ['command','aggregate','watch','dropCollection','dropDatabase','renameCollection','executeDbAdminCommand','runCursorCommand'])if(typeof driver.Db.prototype[name]==='function')driver.Db.prototype[name]=()=>deny('MEDICINE_DATABASE');
+ const listCollections=driver.Db.prototype.listCollections;
+ driver.Db.prototype.listCollections=function(filter,options){need(phase==='INDEX_SETUP'&&this.client===client&&this.databaseName===manifest.database&&same(filter,{})&&options.nameOnly===true&&options.batchSize===100&&options.maxTimeMS===5000,'MEDICINE_INDEX_PROOF');controlOptions(options,['nameOnly','batchSize','maxTimeMS']);need(++metadataCounts.listCollections<=2,'MEDICINE_INDEX_PROOF');return cursor(Reflect.apply(listCollections,this,arguments),'listCollections','$cmd.listCollections','CONTROL');};
+ const createIndex=driver.Collection.prototype.createIndex,listIndexes=driver.Collection.prototype.listIndexes;
+ driver.Collection.prototype.createIndex=function(key,indexOptions,commandOptions){const name=collection(this);controlOptions(commandOptions);need(phase==='INDEX_SETUP'&&ports.models.find(r=>r.collection===name).indexes.some(r=>same(Object.entries(key),Object.entries(r.key),bson)&&same(indexOptions,r.options,bson))&&!indexNames.has(name+'/'+indexOptions.name),'MEDICINE_INDEX_PROOF');indexNames.add(name+'/'+indexOptions.name);return Reflect.apply(createIndex,this,arguments);};
+ driver.Collection.prototype.listIndexes=function(options){const name=collection(this);need(phase==='INDEX_SETUP'&&options.batchSize===100&&options.maxTimeMS===5000,'MEDICINE_INDEX_PROOF');controlOptions(options,['batchSize','maxTimeMS']);need(++metadataCounts.listIndexes<=5,'MEDICINE_INDEX_PROOF');return cursor(Reflect.apply(listIndexes,this,arguments),'listIndexes',name,'CONTROL');};
+ const findOne=driver.Collection.prototype.findOne,find=driver.Collection.prototype.find,findOneAndUpdate=driver.Collection.prototype.findOneAndUpdate;
+ driver.Collection.prototype.findOne=function(filter,options){const name=collection(this);need(phase==='ACTION'&&['medicines','pharmacies'].includes(name)&&!findOneLease,'MEDICINE_COMMANDS');
+  ownOptions(options,name==='pharmacies'?['projection']:[]);findOneLease={collection:this,cursor:null};
+  return track(Promise.resolve(Reflect.apply(findOne,this,arguments)).finally(()=>{findOneLease=null;}));
+ };
+ driver.Collection.prototype.find=function(filter,options){const name=collection(this);let kind='CONTROL';
+  if(phase==='ACTION'){
+   need(['medicines','pharmacies'].includes(name)&&!own(options,'session'),'MEDICINE_COMMANDS');
+   if(findOneLease){need(findOneLease.collection===this&&options.singleBatch===true,'MEDICINE_COMMANDS');ownOptions(options,name==='pharmacies'?['projection','singleBatch']:['singleBatch']);kind=name==='pharmacies'?'PHARMACY':'BY_ID';}
+   else {need(name==='medicines','MEDICINE_COMMANDS');ownOptions(options,[]);kind='DUPLICATE';}
+  }else{need(['CASE_SETUP','AFTER_SNAPSHOT','CASE_CLEANUP'].includes(phase)&&same(filter,{})&&options.batchSize===100&&options.maxTimeMS===5000,'MEDICINE_COMMANDS');controlOptions(options,['batchSize','maxTimeMS']);}
+  const result=cursor(Reflect.apply(find,this,arguments),'find',name,kind);if(findOneLease)findOneLease.cursor=result;return result;
+ };
+ driver.Collection.prototype.findOneAndUpdate=function(filter,update,options){need(phase==='ACTION'&&collection(this)==='medicines'&&!writeLease&&same(options,{returnDocument:'after',returnOriginal:false}),'MEDICINE_COMMANDS');writeLease={collection:this};
+  return track(Promise.resolve(Reflect.apply(findOneAndUpdate,this,arguments)).finally(()=>{writeLease=null;}));
+ };
+ const insertMany=driver.Collection.prototype.insertMany,deleteMany=driver.Collection.prototype.deleteMany,bulkWrite=driver.Collection.prototype.bulkWrite,orderedBulk=driver.Collection.prototype.initializeOrderedBulkOp;
+ driver.Collection.prototype.insertMany=function(documents,options){const name=collection(this),trial=getTrial();need(phase==='CASE_SETUP'&&trial?.emptyProved&&!trial.inserted.has(name)&&same(documents,trial.seed[name],bson),'MEDICINE_SEED_STATE');controlOptions(options);trial.inserted.add(name);return seedBulk.run(this,documents,()=>Reflect.apply(insertMany,this,arguments));};
+ driver.Collection.prototype.bulkWrite=function(operations,options){need(phase==='CASE_SETUP','MEDICINE_SEED_STATE');seedBulk.assertBulk(this,operations,options,control);return Reflect.apply(bulkWrite,this,arguments);};
+ driver.Collection.prototype.initializeOrderedBulkOp=function(options){need(phase==='CASE_SETUP','MEDICINE_SEED_STATE');seedBulk.assertOrdered(this,options,control);return Reflect.apply(orderedBulk,this,arguments);};
+ driver.Collection.prototype.deleteMany=function(filter,options){const name=collection(this),trial=getTrial();need(phase==='CASE_CLEANUP'&&trial?.emptyProved&&!trial.deleted.has(name)&&trial.eligible[name].length>0&&same(filter,{_id:{$in:trial.eligible[name]}},bson),'MEDICINE_CLEANUP');controlOptions(options);trial.deleted.add(name);return Reflect.apply(deleteMany,this,arguments);};
+ for(const name of ['aggregate','watch','replaceOne','updateOne','updateMany','insertOne','deleteOne','findOneAndDelete','findOneAndReplace','createIndexes','drop','dropIndex','dropIndexes','rename','count','countDocuments','estimatedDocumentCount','distinct','mapReduce','initializeUnorderedBulkOp'])if(typeof driver.Collection.prototype[name]==='function')driver.Collection.prototype[name]=()=>deny('MEDICINE_DATABASE');
+ for(const name of ['aggregate','populate'])mongoose.Model[name]=mongoose.Query.prototype[name]=()=>deny('MEDICINE_DATABASE');
+ return Object.freeze({bson,wire,models,
+  async importModels(){modelImport=true;try{loader.load('@/modules/pharmacyMedicines/model');loader.load('@/modules/pharmacyInventory/model');loader.load('@/modules/pharmacies/model');}finally{modelImport=false;}
+   need(keys(models,MODEL_NAMES)&&same(mongoose.modelNames().sort(),MODEL_NAMES.slice().sort()),'MEDICINE_MODEL');Object.freeze(models);loader.bindModels(models);},
+  async connect(){await mongoose.connect(uri,{...ports.ownedConnection.options,runtimeAdapters:{os:projection}});need(client&&mongoose.connection.name===manifest.database&&mongoose.connection.getClient()===client,'MEDICINE_DATABASE');
+   explicitRequest=true;try{control=client.startSession({causalConsistency:false});}finally{explicitRequest=false;}
+   const hello=await mongoose.connection.db.admin().command({hello:1},{session:control});need(hello.setName===manifest.replicaSet&&hello.isWritablePrimary===true,'MEDICINE_DATABASE');
+   const info=await mongoose.connection.db.admin().serverInfo({session:control});need(info.version==='8.0.34','MEDICINE_DATABASE');wire.assertHealthy();},
+  async indexes(){phase='INDEX_SETUP';const budget=createReadBudget('METADATA',readClock),schemaIndexes=[],serverIndexes=[];const db=mongoose.connection.db;
+   need((await collectReadCursor(()=>db.listCollections({},{nameOnly:true,session:control,batchSize:100,maxTimeMS:5000}),5,budget,leases)).length===0,'MEDICINE_INDEX_PROOF');
+   for(const spec of ports.models){
+    const actual=models[spec.name].schema.indexes(),expected=ports.secondaryIndexes.filter(r=>r.model===spec.name);need(actual.length===expected.length,'MEDICINE_INDEX_PROOF');
+    for(let i=0;i<actual.length;i++){need(same(Object.entries(actual[i][0]),expected[i].sourceKey,bson)&&same(actual[i][1],expected[i].schemaOptions,bson),'MEDICINE_INDEX_PROOF');schemaIndexes.push({model:spec.name,collection:spec.collection,key:clone(actual[i][0],bson),options:clone(actual[i][1],bson)});}
+    await budget.creation(()=>db.createCollection(spec.collection,{session:control}));
+    for(const index of spec.indexes)await budget.creation(()=>db.collection(spec.collection).createIndex(index.key,index.options,{session:control}));
+    const rows=await collectReadCursor(()=>db.collection(spec.collection).listIndexes({session:control,batchSize:100,maxTimeMS:5000}),32,budget,leases);
+    const expectedRows=ports.serverIndexRows.filter(r=>r.collection===spec.collection);
+    need(rows.length===expectedRows.length,'MEDICINE_INDEX_PROOF');for(const r of rows){const original=expectedRows.find(v=>v.spec.name===r.name);need(original&&same(r,original.spec,bson)&&same(Object.entries(r.key),Object.entries(original.spec.key),bson)
+     &&(!r.weights||same(Object.entries(r.weights),Object.entries(original.spec.weights),bson)),'MEDICINE_INDEX_PROOF');serverIndexes.push({model:spec.name,collection:spec.collection,spec:clone(r,bson)});}
+   }
+   const after=await collectReadCursor(()=>db.listCollections({},{nameOnly:true,session:control,batchSize:100,maxTimeMS:5000}),5,budget,leases);
+   need(same(after.map(r=>r.name).sort(),COLLECTIONS.slice().sort())&&created.size===5&&indexNames.size===51,'MEDICINE_INDEX_PROOF');budget.check();
+   indexProof=freezeRecord({schemaIndexes,serverIndexes,counts:{create:created.size,createIndexes:indexNames.size,listCollections:metadataCounts.listCollections,listIndexes:metadataCounts.listIndexes},readMillis:budget.stats().millis,readRows:budget.stats().rows,readBytes:budget.stats().bytes});return indexProof;},
+  setPhase(value){need(['CASE_SETUP','ACTION','AFTER_SNAPSHOT','CASE_CLEANUP'].includes(value),'MEDICINE_PHASE');phase=value;},
+  async snapshot(){const budget=createReadBudget('SNAPSHOT',readClock),startedMillis=Date.now(),collections={};
+   let first,failed=false;const retain=error=>{if(!failed){failed=true;first=error;}};
+   for(const name of COLLECTIONS)try{collections[name]=await collectReadCursor(()=>mongoose.connection.db.collection(name).find({},{session:control,batchSize:100,maxTimeMS:5000}),16,budget,leases);}catch(error){retain(error);}
+   try{budget.check();}catch(error){retain(error);}try{wire.assertHealthy();}catch(error){retain(error);}if(failed)throw first;
+   return freezeRecord({collections,startedMillis,endedMillis:Date.now(),rowCount:budget.stats().rows,byteCount:budget.stats().bytes});},
+  insertSeed:async trial=>{for(const name of COLLECTIONS){const result=await mongoose.connection.db.collection(name).insertMany(trial.seed[name],{session:control});need(result.acknowledged===true&&result.insertedCount===trial.seed[name].length,'MEDICINE_SEED_STATE');}},
+  async deleteEligible(trial){const deleted=[];let first,failed=false;phase='CASE_CLEANUP';
+   for(const name of COLLECTIONS)if(trial.emptyProved&&trial.eligible[name].length){try{const result=await mongoose.connection.db.collection(name).deleteMany({_id:{$in:trial.eligible[name]}},{session:control});need(result.acknowledged===true&&Number.isSafeInteger(result.deletedCount)&&result.deletedCount>=0&&result.deletedCount<=trial.eligible[name].length,'MEDICINE_CLEANUP');deleted.push({collection:name,ids:trial.eligible[name].slice(),deletedCount:result.deletedCount});}catch(error){if(!failed){failed=true;first=error;}}}
+   if(failed)throw first;return deleted;},
+  async drain(){while(pending.size)await Promise.allSettled([...pending]);const failure=wire.firstFailure();if(failure.present)throw failure.value;if(hasNativeFailure)throw firstNativeFailure;wire.assertHealthy();
+   for(const [object,record]of cursors)if(record.kind!=='CONTROL'){need(object.id instanceof bson.Long&&!(object.id instanceof bson.Timestamp)&&object.id.isZero()&&record.session?.object.hasEnded,'MEDICINE_CURSOR');record.closed=true;leases.delete(object);}
+  },
+  indexProof:()=>indexProof,
+  markCompleted(){need(actionStarts===189&&actionEnds===328&&pending.size===0,'MEDICINE_SESSION');fullCompletion=true;},
+  native:()=>({actionStarts,actionEndEntries:actionEnds,pending:pending.size}),
+  assertHealthy(){wire.assertHealthy();seedBulk.assertIdle();assertEffects(effects);need(pending.size===0&&leases.size===0&&mongoose.connections.length===1&&MODEL_NAMES.every(n=>mongoose.models[n]===models[n]),'MEDICINE_DATABASE');},
+  async close(){need(!closeStarted,'MEDICINE_CLOSE');closeStarted=true;phase='CLOSE';let first,failed=false;const attempt=async f=>{try{await f();}catch(error){if(!failed){failed=true;first=error;}}};
+   for(const object of leases)await attempt(()=>object.close());
+   if(control&&!control.hasEnded)await attempt(()=>control.endSession());
+   if(client){await attempt(()=>{need(client.s.activeCursors.size===0&&client.s.activeSessions.size===0,'MEDICINE_CLOSE');closePool=Array.from(client.s.sessionPool.sessions,server=>{const d=Object.getOwnPropertyDescriptor(server,'id');need(d&&own(d,'value'),'MEDICINE_SESSION');return clone(d.value,bson);});need(closePool.length>0&&closePool.length<=256,'MEDICINE_CLOSE');});await attempt(()=>mongoose.disconnect());}
+   nativeBoundary.mongoClosed();await attempt(()=>{if(hasNativeFailure)throw firstNativeFailure;const observed=wire.firstFailure();if(observed.present)throw observed.value;wire.assertHealthy();need(leases.size===0&&pending.size===0&&[...sessions.values()].every(r=>r.object.hasEnded),'MEDICINE_CLOSE');
+    if(fullCompletion)need(totalStarts===191&&totalEnds===330&&actionStarts===189&&actionEnds===328,'MEDICINE_SESSION');});if(failed)throw first;
+  }
+ });
+}
+
+function createPrivateContext(manifest,plan,ports,cases,effects,loader,database,nativeBoundary,jwt,ordinal,runStartMillis){
+ let trial=null,cohortIndex=-1,trialIndex=0,trials=0,httpCalls=0,directCalls=0,completed=null,restored=false,signLease=null;
+ const allIds=new Set(),signDescriptor=Object.getOwnPropertyDescriptor(jwt,'sign'),verifyDescriptor=Object.getOwnPropertyDescriptor(jwt,'verify');
+ need(signDescriptor&&verifyDescriptor&&typeof signDescriptor.value==='function'&&typeof verifyDescriptor.value==='function','MEDICINE_JWT');
+ const AppError=loader.load('@/modules/common/types').AppError;
+ jwt.sign=function(...args){
+  if(!signLease||args.length!==3||args[0]!==signLease.payload||args[1]!==signLease.key||!same(args[2],{algorithm:'HS256'})){effects.latches.jwtDenials++;fail('MEDICINE_JWT');}
+  effects.jwt.setupSign++;return Reflect.apply(signDescriptor.value,this,args);
+ };
+ jwt.verify=function(...args){
+  if(!trial||trial.phase!=='ACTION'||trial.row.boundary!=='HTTP_PUT'||args.length!==2||args[0]!==trial.tokenBytes||args[1]!==ports.jwtMaterialization.primaryKey){effects.latches.jwtDenials++;fail('MEDICINE_JWT');}
+  effects.jwt.verify++;return Reflect.apply(verifyDescriptor.value,this,args);
+ };
+ const next=caseId=>{need(trial&&trial.row.id===caseId,'MEDICINE_CONTEXT');return trial;};
+ function tokenSetup(){
+  if(trial.row.boundary!=='HTTP_PUT')return;
+  const actor=cases.actors[trial.row.actor];need(actor,'MEDICINE_JWT');
+  if(actor.sign===1){
+   const payload=materializeActorClaims(trial.row.actor,cases.actors,trial.ids,runStartMillis);
+   const key=trial.row.actor==='WRONG_SECRET'?ports.jwtMaterialization.wrongKey:ports.jwtMaterialization.primaryKey;
+   signLease={payload,key};let token;try{token=jwt.sign(payload,key,{algorithm:'HS256'});}finally{signLease=null;}
+   need(typeof token==='string'&&token.length>0&&token.length<=8192,'MEDICINE_JWT');trial.tokenBytes=token;trial.authorization='Bearer '+token;
+  }else{trial.authorization=actor.header;if(actor.header?.startsWith('Bearer '))trial.tokenBytes=actor.header.slice(7);}
+ }
+ function currentEffects(){return freezeRecord(clone(effects,database.bson));}
+ const context={
+  runStartMillis,bson:database.bson,modelProof:loader.modelProof(),indexProof:database.indexProof(),
+  async selectCohort(mode,variantId){
+   need(!trial||trial.state==='EMPTY_FINAL','MEDICINE_COHORT');stage='COHORT_LOAD';
+   const planned=cases.cohortPlan[cohortIndex+1];need(planned&&mode===planned.kind&&variantId===planned.variantId,'MEDICINE_COHORT');
+   const proof=await loader.select(mode,variantId);cohortIndex++;trialIndex=0;trial=null;stage='MEDICINE_SCENARIOS';return proof;
+  },
+  cohortProof(){return loader.proof();},
+  async restoreCohort(){need(!restored,'MEDICINE_COHORT');stage='COHORT_RESTORE';restored=true;return loader.restore();},
+  async seedCase(caseId){
+   need(cohortIndex>=0&&(!trial||trial.state==='EMPTY_FINAL')&&cases.cohortPlan[cohortIndex].trials[trialIndex]===caseId,'MEDICINE_CASE_SET');
+   const row=cases.cases.find(r=>r.id===caseId),cohort=cases.cohortPlan[cohortIndex],diagnostic=diagnosticContext.get();
+   need(row&&diagnostic.caseId===caseId&&diagnostic.variantId===cohort.variantId&&diagnostic.phase===(cohort.kind==='NOMINAL_INITIAL'?'NOMINAL':cohort.kind==='UNSAFE'?'UNSAFE':trialIndex===0?'RESTORE_TRIAL':'RESTORE_POSITIVE'),'MEDICINE_DIAGNOSTIC');
+   trial={row,mode:cohort.kind,variantId:cohort.variantId,phase:'CASE_SETUP',state:'EMPTY_PROOF',ids:null,seed:null,
+    eligible:Object.fromEntries(COLLECTIONS.map(n=>[n,[]])),emptyProved:false,inserted:new Set(),deleted:new Set(),
+    effectsBefore:clone(effects,database.bson),normalization:{normalizeName:[],buildNameKey:[]},forwarding:[],knownWarnings:0,loggerEntries:0,dispatched:false,settled:false};
+   database.setPhase('CASE_SETUP');
+   trial.emptySnapshot=await database.snapshot();need(trial.emptySnapshot.rowCount===0&&COLLECTIONS.every(n=>trial.emptySnapshot.collections[n].length===0),'MEDICINE_OWNERSHIP_PROOF');trial.emptyProved=true;
+   const ids={};for(const name of cases.hydration.identities.reservedNames){let id;do{const bytes=crypto.randomBytes(12);if(name==='TARGET')bytes[0]=0xa1;id=new database.bson.ObjectId(bytes);}while(allIds.has(id.toHexString()));allIds.add(id.toHexString());ids[name]=id;}
+   trial.ids=ids;trial.targetId=row.target==='ABSENT'?ids.ABSENT:ids.TARGET;
+   if(row.boundary==='DIRECT_REAL_SERVICE'){const args=directArguments(row,ids);trial.expectedEntry={argumentCount:args.length,id:args[0],data:clone(args[1],database.bson),actorUserType:args[2]};}
+   else if(row.expectedValidatedBody!==null){trial.expectedEntry={argumentCount:3,id:row.target==='TARGET_UPPERCASE'?ids.TARGET.toHexString().toUpperCase():trial.targetId.toHexString(),data:clone(row.expectedValidatedBody,database.bson),actorUserType:cohort.kind==='UNSAFE'&&cohort.variantId==='CONTROLLER_QUERY_ROLE'?row.input.query.userType:cases.actors[row.actor].claims?.userType};}
+   else trial.expectedEntry=null;
+   trial.seed=hydrateSeed(cases,row,ids,database.bson);
+   for(const name of COLLECTIONS)trial.eligible[name]=trial.seed[name].map(r=>r._id);
+   trial.state='SEEDING';await database.insertSeed(trial);trial.baselineSnapshot=await database.snapshot();
+   const sort=rows=>rows.slice().sort((a,b)=>a._id.toHexString().localeCompare(b._id.toHexString()));
+   need(COLLECTIONS.every(n=>same(sort(trial.seed[n]),sort(trial.baselineSnapshot.collections[n]),database.bson)),'MEDICINE_SEED_STATE');tokenSetup();trial.state='ACTION_READY';
+   return freezeRecord({caseId,ids:clone(ids,database.bson),seed:clone(trial.seed,database.bson),emptySnapshot:trial.emptySnapshot,baselineSnapshot:trial.baselineSnapshot,
+    eligiblePairs:COLLECTIONS.flatMap(collection=>trial.eligible[collection].map(id=>({collection,id:clone(id,database.bson)})))});
+  },
+  beginAction(caseId){const c=next(caseId);need(c.state==='ACTION_READY','MEDICINE_PHASE');c.state='ACTION_RUNNING';c.phase='ACTION';c.startedMillis=Date.now();c.commandOffset=database.wire.offset();database.setPhase('ACTION');},
+  async requestCase(caseId){const c=next(caseId);need(c.state==='ACTION_RUNNING'&&c.row.boundary==='HTTP_PUT'&&!c.dispatched,'MEDICINE_HTTP');c.dispatched=true;effects.httpCalls++;httpCalls++;
+   const target=c.row.target==='INVALID_ID'?'not-an-object-id':c.row.target==='TARGET_UPPERCASE'?c.ids.TARGET.toHexString().toUpperCase():c.row.target==='ABSENT'?c.ids.ABSENT.toHexString():c.ids.TARGET.toHexString();
+   const query=Object.entries(c.row.input.query).map(([k,v])=>encodeURIComponent(k)+'='+encodeURIComponent(v)).join('&');
+   const pathname='/api/v1/pharmacy-medicines/'+target+(query?'?'+query:'');const body=Buffer.from(JSON.stringify(c.row.input.body));
+   const headers={'content-type':'application/json','content-length':String(body.length),connection:'close',...c.row.input.extraHeaders};if(c.authorization!==null&&c.authorization!==undefined)headers.authorization=c.authorization;
+   c.settlement=await nativeBoundary.requestHTTP(pathname,headers,body);c.settled=true;
+  },
+  async invokeServiceCase(caseId){const c=next(caseId);need(c.state==='ACTION_RUNNING'&&c.row.boundary==='DIRECT_REAL_SERVICE'&&!c.dispatched,'MEDICINE_CONTEXT');c.dispatched=true;effects.directCalls++;directCalls++;
+   const service=loader.service(),args=directArguments(c.row,c.ids);
+   try{const value=await Reflect.apply(service.update,service,args);c.settlement={kind:'RESOLVE',value};}
+   catch(error){c.settlement={kind:'REJECT',error};c.settled=true;if(!(error instanceof AppError&&Object.getPrototypeOf(error)===AppError.prototype)){try{need(false,'MEDICINE_ERROR');}catch(_diagnostic){}throw error;}}
+   c.settled=true;
+  },
+  async finishAction(caseId){const c=next(caseId);need(c.state==='ACTION_RUNNING'&&c.dispatched,'MEDICINE_PHASE');await database.drain();need(c.settled,'MEDICINE_HTTP');c.endedMillis=Date.now();c.state='ACTION_DRAIN';
+   const measured=effectDelta(c.effectsBefore,effects);need(measured.warnings.known===measured.writes.medicineFindAndModify&&measured.warnings.total===measured.warnings.known,'MEDICINE_WARNING_KNOWN_COUNT');
+   c.actionResult=freezeRecord({caseId,boundary:c.row.boundary,startedMillis:c.startedMillis,endedMillis:c.endedMillis,settlement:c.settlement,
+    effects:rowEffects(effectDelta(c.effectsBefore,effects)),normalization:{normalizeName:c.normalization.normalizeName.slice(),buildNameKey:c.normalization.buildNameKey.slice()},
+    forwarding:c.forwarding.slice(),commands:database.wire.slice(c.commandOffset)});return c.actionResult;
+  },
+  async snapshot(){need(trial&&trial.state==='ACTION_DRAIN','MEDICINE_PHASE');trial.phase='AFTER_SNAPSHOT';database.setPhase('AFTER_SNAPSHOT');const value=await database.snapshot();trial.state='AFTER_SNAPSHOT';return value;},
+  async cleanupCase(caseId){const c=next(caseId);need(c.state!=='EMPTY_FINAL','MEDICINE_CLEANUP');c.phase='CASE_CLEANUP';database.setPhase('CASE_CLEANUP');
+   let deleted,finalSnapshot,first,failed=false;
+   try{deleted=await database.deleteEligible(c);}catch(error){failed=true;first=error;}
+   try{finalSnapshot=await database.snapshot();need(finalSnapshot.rowCount===0&&COLLECTIONS.every(n=>finalSnapshot.collections[n].length===0),'MEDICINE_CLEANUP');}catch(error){if(!failed){failed=true;first=error;}}
+   if(failed)throw first;need(c.emptyProved&&deleted.length===5&&c.actionResult,'MEDICINE_CLEANUP');c.state='EMPTY_FINAL';trialIndex++;trials++;
+   return freezeRecord({caseId,deleted,finalSnapshot});
+  },
+  commands(){return database.wire.history();},effects:currentEffects,failureContext:value=>diagnosticContext.set(value),
+  assertHealthy(){need(lifetimeFailures===0,'MEDICINE_EFFECTS');database.assertHealthy();loader.assertHealthy();assertEffects(effects);},
+  complete(){
+   need(!completed&&restored&&trials===122&&httpCalls===109&&directCalls===13&&cohortIndex===16&&trial.state==='EMPTY_FINAL','MEDICINE_RESULT');
+   context.assertHealthy();const counts=loader.counts(),native=database.native(),commands=database.wire.counts();
+   need(counts.cohorts===17&&counts.classes===51&&counts.decorations===34&&counts.retired&&native.actionStarts===189&&native.actionEndEntries===328&&native.pending===0
+    &&same(commands,{connect:2,index:63,snapshotFind:2440,insert:610,delete:610,action:189}),'MEDICINE_RESULT');
+   need(same(effects.jwt,{setupSign:105,actionSign:0,verify:106})&&same(effects.reads,{pharmacyFind:60,medicineFindById:79,medicineDuplicateFind:12})
+    &&same(effects.writes,{medicineFindAndModify:38})&&same(effects.normalization,{normalizeName:26,buildNameKey:12})&&same(effects.warnings,{known:38,total:38})
+    &&effects.providers.logger===76&&effects.httpCalls===109&&effects.directCalls===13,'MEDICINE_EFFECTS');
+   database.markCompleted();completed=freezeRecord({trials,httpCalls,directCalls,cohorts:counts.cohorts,classes:counts.classes,decorations:counts.decorations,restored:true,modelsStable:true,indexesStable:true,
+    effects:currentEffects(),native,commands});return completed;
+  }
+ };
+ need(keys(context,ports.privateContext.keys)&&Object.keys(context).length===19,'MEDICINE_CONTEXT');
+ return Object.freeze({context:Object.freeze(context),getTrial:()=>trial,completed:()=>completed,
+  async restoreJWT(){await cleanupAll([()=>Object.defineProperty(jwt,'sign',signDescriptor),()=>Object.defineProperty(jwt,'verify',verifyDescriptor)]);}});
+}
+function validateResult(result,ports){
+ need(keys(result,['cases','sensitivity','providerSummary'])&&denseArray(result.cases,11)&&result.cases.length===11&&denseArray(result.sensitivity,8)&&result.sensitivity.length===8
+  &&result.cases.every((r,i)=>keys(r,['id','status'])&&r.id===ports.requiredCaseIds[i]&&r.status==='PASS')
+  &&result.sensitivity.every((r,i)=>keys(r,['id','detected'])&&r.id===ports.requiredSensitivityIds[i]&&r.detected===true)
+  &&keys(result.providerSummary,PROVIDERS)&&PROVIDERS.every(k=>result.providerSummary[k]===(k==='logger'?66:0)),'MEDICINE_RESULT');return result;
+}
+async function main(){
+ const allowed=new Set(['PATH','NODE_VERSION','YARN_VERSION','HOME','HOSTNAME','NODE_ENV','APP_RUN_ID','APP_ROLE','APP_MANIFEST_SHA']);
+ need(Object.keys(process.env).every(k=>allowed.has(k))&&process.env.NODE_ENV==='test'&&process.env.APP_ROLE===ROLE&&process.cwd()===ROOT&&process.version==='v22.23.4'
+  &&process.platform==='linux'&&process.permission&&!fs.existsSync(ROOT+'/.env'),'MEDICINE_ENVIRONMENT');
+ const admission=bytes('.admission.json'),portBytes=bytes('ports-manifest.json'),caseBytes=bytes('cases.json');
+ need(sha(admission)===process.env.APP_MANIFEST_SHA&&sha(portBytes)===PORTS_SHA&&sha(caseBytes)===CASES_SHA,'MEDICINE_DATA_BINDING');
+ const ports=freeze(JSON.parse(portBytes)),cases=freeze(JSON.parse(caseBytes)),plan=freeze(JSON.parse(bytes('runtime-plan.json')));
+ const manifest=freeze(inspectManifest(JSON.parse(admission),plan,ports,cases));diagnosticContext=makeFailureContext(ports);
+ const {admitNetwork,entryKind,egressCanaryBlocked}=await import(pathToFileURL(ROOT+'/network-admission.mjs').href);
+ const networkAdmission=admitNetwork({list:()=>fs.readdirSync('/sys/class/net'),entryType:value=>entryKind(fs.lstatSync(value)),readText:value=>fs.readFileSync(value,'utf8'),addresses:os.networkInterfaces,report:()=>fail('MEDICINE_NETWORK_ADMISSION')},manifest.runId);
+ for(const action of [()=>fs.readFileSync('/etc/passwd'),()=>fs.writeFileSync(ROOT+'/unexpected','fixture')]){let denied=false;try{action();}catch(error){denied=error?.code==='ERR_ACCESS_DENIED';}need(denied,'MEDICINE_FILESYSTEM_CANARY');}
+ need(!process.permission.has('child')&&!process.permission.has('worker')&&!process.permission.has('addon'),'MEDICINE_FILESYSTEM_CANARY');fs.writeFileSync('/tmp/medicine-put-permission-canary','synthetic');
+ const [canary]=await Promise.allSettled([fetch('http://192.0.2.1:8080/',{signal:AbortSignal.timeout(1500)})]);need(egressCanaryBlocked(canary),'MEDICINE_EGRESS_CANARY');
+ const effects=effectsState(),ordinals=new WeakMap();let nextOrdinal=0,privateFixture=null;
+ const ordinal=value=>{need(value!==null&&['object','function'].includes(typeof value),'MEDICINE_CONTEXT');if(!ordinals.has(value))ordinals.set(value,++nextOrdinal);return ordinals.get(value);};
+ const getTrial=()=>privateFixture?.getTrial()||null;
+ const projection=Object.freeze(Object.fromEntries(['platform','arch','release','type'].map(n=>[n,os[n].bind(os)])));
+ const initialization=createPublicInitialization({isBuildingSnapshot:v8.startupSnapshot.isBuildingSnapshot.bind(v8.startupSnapshot),tracingChannel:diagnostics.tracingChannel.bind(diagnostics)},ports,effects);
+ const nativeBoundary=installNativeBoundary(manifest,ports,effects,initialization,nativeSurface(),getTrial);
+ const loader=installLoader(manifest,plan,ports,cases,effects,getTrial,ordinal);stage='MODEL_IMPORT';
+ const packages=initialization.run(()=>{require('reflect-metadata');return{typedi:require('typedi'),mongoose:require('mongoose')};});initialization.assertComplete();assertEffects(effects);loader.installTypeDi(packages.typedi);
+ const database=createDatabaseBoundary(packages.mongoose,manifest,ports,cases,effects,loader,nativeBoundary,projection,getTrial,ordinal);
+ let result,first,failed=false,firstStage;
+ try{
+  await database.importModels();const express=require('express');require('joi');const jwt=require('jsonwebtoken');
+  for(const row of ports.conservativeSources)if(row.runtimePrediction!=='TYPE_ONLY_IMPORTS_ERASED'&&!ports.cohorts.reloadOutputs.includes(row.predictedOutput))loader.load(row.aliases[0]);
+  const auth=loader.load('@/modules/middleware/auth'),error=loader.load('@/modules/middleware/errorHandler');
+  stage='OWNED_DATABASE_CONNECT';await database.connect();stage='INDEX_SETUP';await database.indexes();const scenario=require('./scenario.cjs');scenarioCode=scenario.fixtureCode;loader.prepare();
+  const app=express();app.use((req,res,next)=>{need(getTrial()?.phase==='ACTION'&&req.method==='PUT'&&/^\/api\/v1\/pharmacy-medicines\/[^/?]+(?:\?[^#]*)?$/.test(req.originalUrl),'MEDICINE_HTTP');next();});
+  app.use(express.json({strict:true,limit:65536}));app.use('/api/v1/pharmacy-medicines',auth.authenticate,(req,res,next)=>loader.dispatch(req,res,next));app.use(error.errorHandler);
+  await nativeBoundary.openHTTP(app);
+  privateFixture=createPrivateContext(manifest,plan,ports,cases,effects,loader,database,nativeBoundary,jwt,ordinal,Date.now());
+  stage='MEDICINE_SCENARIOS';
+  const actual=validateResult(await scenario.runMedicinePrescriptionScenario(privateFixture.context),ports);need(privateFixture.completed(),'MEDICINE_RESULT');initialization.assertComplete();nativeBoundary.assertClean();
+  result={schema:'SD-MEDICINE-PUT-RESULT-1',runId:manifest.runId,role:ROLE,database:manifest.database,replicaSet:manifest.replicaSet,sourceCommit:manifest.sourceCommit,
+   domainScope:'REAL_MEDICINE_PUT_ONLY',admissionPassed:true,egressBlocked:true,filesystemCanariesPassed:true,networkAdmission,failed:0,skipped:0,cases:actual.cases,sensitivity:actual.sensitivity,providerSummary:actual.providerSummary};
+ }catch(error){failed=true;first=error;firstStage=stage;}
+ try{await cleanupAll([()=>loader.restore(),()=>privateFixture?.restoreJWT(),()=>{stage='CLOSE';return database.close();},()=>nativeBoundary.closeHTTP(),()=>loader.releaseTypeDi()]);}
+ catch(error){if(!failed){failed=true;first=error;firstStage=stage;}}
+ if(failed){stage=firstStage;throw first;}need(lifetimeFailures===0,'MEDICINE_EFFECTS');stdout(JSON.stringify(result)+'\n');
+}
+Object.assign(module.exports,{effectsState,assertEffects,effectDelta,rowEffects,validateAdmissionData,inspectManifest,hydrateSeed,directArguments,
+ installMethodObservers,sameDescriptor,validateHTTPHeaders,makeLogger,installLoader,createWireBoundary,createDatabaseBoundary,createPrivateContext,validateResult});
+if(require.main===module)main().catch(error=>{stdout(JSON.stringify(failureResult(error))+'\n');process.exitCode=1;});
+
+function validateRawMaps(value,commandName,parts=[]){
+ if(value instanceof Map){need(commandName==='createIndexes'&&parts.join('/')==='indexes/0/key'&&Object.getPrototypeOf(value)===Map.prototype&&Reflect.ownKeys(value).length===0,'MEDICINE_COMMAND_ENVELOPE');
+  need([...Map.prototype.entries.call(value)].every(([key,direction])=>typeof key==='string'&&(direction===1||direction===-1||direction==='text')),'MEDICINE_COMMAND_ENVELOPE');return;}
+ if(Array.isArray(value)){need(denseArray(value,16000),'MEDICINE_COMMAND_ENVELOPE');for(let i=0;i<value.length;i++)validateRawMaps(value[i],commandName,[...parts,String(i)]);}
+ else if(plain(value)){need(keys(value,Object.keys(value)),'MEDICINE_COMMAND_ENVELOPE');for(const [key,entry]of Object.entries(value))validateRawMaps(entry,commandName,[...parts,key]);}
+}
+function materializeActorClaims(actorName,actors,ids,runStartMillis){
+ need(own(actors,actorName)&&actors[actorName].sign===1&&plain(actors[actorName].claims)&&Number.isSafeInteger(runStartMillis)&&runStartMillis>=0,'MEDICINE_JWT');
+ const payload={};for(const [key,value]of Object.entries(actors[actorName].claims)){
+  if(key==='exp'){need(actorName==='EXPIRED'&&value==='RUN_START_SECONDS_MINUS_3600','MEDICINE_JWT');continue;}
+  if(typeof value==='string'&&value.startsWith('$')){need(['$USER','$ADMIN','$PHARMACY'].includes(value)&&ids[value.slice(1)],'MEDICINE_JWT');payload[key]=ids[value.slice(1)].toHexString();}
+  else payload[key]=value;
+ }
+ const seconds=Math.floor(runStartMillis/1000);payload.iat=seconds;payload.exp=seconds+(actorName==='EXPIRED'?-3600:3600);return payload;
+}
+Object.assign(module.exports,{validateRawMaps,materializeActorClaims});
+
+const PAIR_KEYS=Object.freeze(["commandName","command","reply","requestId","connectionId","databaseName","phase","caseId","sessionOrdinal","cursorOrdinal"]);
+const integer=value=>Number.isSafeInteger(value)&&value>=0;
+const exactKeys=(value,names)=>keys(value,names)&&names.every(k=>Object.getOwnPropertyDescriptor(value,k).enumerable);
+function canonicalDataEntries(value){need(plain(value)&&Reflect.ownKeys(value).every(key=>typeof key==='string'),'MEDICINE_TYPED_VALUE');return Object.keys(value).map(key=>{const d=Object.getOwnPropertyDescriptor(value,key);need(d&&own(d,'value')&&d.enumerable,'MEDICINE_TYPED_VALUE');return[key,d.value];});}
+function canonical(value, bson, seen = new Set()) {
+  if (value === null) return ['null'];
+  if (value === undefined) return ['undefined'];
+  if (typeof value === 'string') return ['string', value];
+  if (typeof value === 'boolean') return ['boolean', value];
+  if (typeof value === 'number') return ['number', Object.is(value, -0) ? '-0' : Number.isNaN(value) ? 'NaN' : value === Infinity ? '+Infinity' : value === -Infinity ? '-Infinity' : value];
+  need(typeof value === 'object' && !seen.has(value), 'MEDICINE_TYPED_VALUE');
+  if (value instanceof Date) {
+    need(Object.getPrototypeOf(value) === Date.prototype && Number.isFinite(Date.prototype.getTime.call(value)) && Reflect.ownKeys(value).length === 0, 'MEDICINE_TYPED_VALUE');
+    return ['Date', Date.prototype.getTime.call(value)];
+  }
+  if (value instanceof RegExp) {
+    need(Object.getPrototypeOf(value) === RegExp.prototype && Reflect.ownKeys(value).length === 1
+      && Object.getOwnPropertyDescriptor(value, 'lastIndex')?.value === 0, 'MEDICINE_TYPED_VALUE');
+    return ['RegExp', Reflect.apply(Object.getOwnPropertyDescriptor(RegExp.prototype, 'source').get, value, []),
+      Reflect.apply(Object.getOwnPropertyDescriptor(RegExp.prototype, 'flags').get, value, [])];
+  }
+  if (bson && value instanceof bson.ObjectId) {
+    const hex = Reflect.apply(bson.ObjectId.prototype.toHexString, value, []);
+    need(typeof hex === 'string' && /^[0-9a-f]{24}$/.test(hex), 'MEDICINE_TYPED_VALUE');
+    return ['ObjectId', hex];
+  }
+  if (bson && (value instanceof bson.Timestamp || value instanceof bson.Long)) {
+    const values = ['low', 'high', 'unsigned'].map(key => {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      need(descriptor && own(descriptor, 'value'), 'MEDICINE_TYPED_VALUE'); return descriptor.value;
+    });
+    need(Number.isInteger(values[0]) && values[0] >= -2147483648 && values[0] <= 2147483647
+      && Number.isInteger(values[1]) && values[1] >= -2147483648 && values[1] <= 2147483647
+      && typeof values[2] === 'boolean', 'MEDICINE_TYPED_VALUE');
+    return [value instanceof bson.Timestamp ? 'Timestamp' : 'Long', ...values];
+  }
+  if (bson && value instanceof bson.Binary) {
+    const descriptors = ['buffer', 'position', 'sub_type'].map(key => Object.getOwnPropertyDescriptor(value, key));
+    need(descriptors.every(item => item && own(item, 'value')), 'MEDICINE_TYPED_VALUE');
+    const [buffer, position, subtype] = descriptors.map(item => item.value);
+    need(buffer instanceof Uint8Array && integer(position) && position <= buffer.byteLength
+      && integer(subtype) && subtype <= 255, 'MEDICINE_TYPED_VALUE');
+    return ['Binary', subtype, position, Buffer.from(buffer.subarray(0, position)).toString('hex')];
+  }
+  seen.add(value);
+  let result;
+  if (Array.isArray(value)) {
+    need(Object.getPrototypeOf(value) === Array.prototype && Reflect.ownKeys(value).length === value.length + 1
+      && Array.from({ length: value.length }, (_, index) => Object.getOwnPropertyDescriptor(value, String(index)))
+        .every(item => item && own(item, 'value') && item.enumerable), 'MEDICINE_TYPED_VALUE');
+    result = ['array', value.map(item => canonical(item, bson, seen))];
+  } else {
+    const entries = canonicalDataEntries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+    need(entries.length === Reflect.ownKeys(value).length, 'MEDICINE_TYPED_VALUE');
+    result = ['object', entries.map(([key, child]) => [key, canonical(child, bson, seen)])];
+  }
+  seen.delete(value); return result;
+}
+
+function indexKeyEntries(value) {
+  need(util.types.isMap(value) && Object.getPrototypeOf(value) === Map.prototype && Reflect.ownKeys(value).length === 0, 'MEDICINE_COMMAND_ENVELOPE');
+  const entries = Array.from(Reflect.apply(nativeMapEntries, value, []));
+  need(entries.length > 0 && entries.every(([key, direction]) => typeof key === 'string'
+    && (direction === 1 || direction === -1 || direction === 'text')), 'MEDICINE_COMMAND_ENVELOPE');
+  return entries;
+}
+function canonicalRawCommand(command, bson) {
+  const seen = new Set();
+  function visit(value, location) {
+    if (value instanceof Map) {
+      need(command.createIndexes !== undefined && location === 'indexes.0.key', 'MEDICINE_COMMAND_ENVELOPE');
+      return ['Map', indexKeyEntries(value).map(([key, item]) => [canonical(key, bson), canonical(item, bson)])];
+    }
+    if (Array.isArray(value)) {
+      need(!seen.has(value) && Object.getPrototypeOf(value) === Array.prototype && Reflect.ownKeys(value).length === value.length + 1,
+        'MEDICINE_TYPED_VALUE'); seen.add(value);
+      const result = ['array', Array.from({ length: value.length }, (_, index) => {
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+        need(descriptor && own(descriptor, 'value') && descriptor.enumerable, 'MEDICINE_TYPED_VALUE');
+        return visit(descriptor.value, location ? `${location}.${index}` : String(index));
+      })]; seen.delete(value); return result;
+    }
+    if (plain(value)) {
+      need(!seen.has(value), 'MEDICINE_TYPED_VALUE'); seen.add(value);
+      const entries = canonicalDataEntries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
+      need(entries.length === Reflect.ownKeys(value).length, 'MEDICINE_TYPED_VALUE');
+      const result = ['object', entries.map(([key, child]) => [key, visit(child, location ? `${location}.${key}` : key)])];
+      seen.delete(value); return result;
+    }
+    return canonical(value, bson);
+  }
+  return visit(command, '');
+}
+function canonicalCommandPair(pair, bson) {
+  need(exactKeys(pair, PAIR_KEYS), 'MEDICINE_COMMAND_ENVELOPE');
+  return ['object', [...PAIR_KEYS].sort().map(key => [key, key === 'command' ? canonicalRawCommand(pair.command, bson) : canonical(pair[key], bson)])];
+}
+function commandPairBytes(pair, bson) { return Buffer.byteLength(JSON.stringify(canonicalCommandPair(pair, bson)), 'utf8'); }
+Object.assign(module.exports,{canonical,canonicalRawCommand,indexKeyEntries,canonicalCommandPair,commandPairBytes});
+
+function validateSessionEndEntry(record,args,observation){
+ need(record&&record.object&&Number.isSafeInteger(record.endEntries)&&record.endEntries>=0&&denseArray(args,1),'MEDICINE_SESSION');
+ if(record.kind==='CURSOR'){
+  need(observation.cleanupOwner===record.owner&&args.length===1&&keys(args[0],['error'])&&Object.is(args[0].error,observation.cleanupError)
+   &&observation.nativeCaller.includes('/lib/cursor/abstract_cursor.js')&&record.endEntries<(observation.cursorKind==='DUPLICATE'?1:2),'MEDICINE_SESSION');
+  if(record.endEntries===1)need(record.object.hasEnded===true&&observation.cursorKind!=='DUPLICATE'&&observation.findOneCursor===record.owner,'MEDICINE_SESSION');
+  else need(record.object.hasEnded===false,'MEDICINE_SESSION');
+ }else if(record.kind==='CONTROL')need(observation.phase==='CLOSE'&&args.length===0&&record.endEntries===0,'MEDICINE_SESSION');
+ else need(['OPERATION','CLOSE'].includes(record.kind)&&args.length===0&&record.endEntries===0&&observation.nativeCaller.includes('/lib/operations/execute_operation.js')
+  &&(record.kind==='CLOSE'?observation.phase==='CLOSE'&&observation.closeStarted:observation.phase==='ACTION'&&observation.writeActive),'MEDICINE_SESSION');
+}
+Object.assign(module.exports,{validateSessionEndEntry});

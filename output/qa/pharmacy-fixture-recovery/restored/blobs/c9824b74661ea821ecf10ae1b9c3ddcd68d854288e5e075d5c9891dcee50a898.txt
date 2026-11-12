@@ -1,0 +1,24 @@
+# Third isolated inventory invocation failed — STOP
+
+The ONE approved invocation source3a962/descriptor0f692/receipt508f exited1.
+Safe operator status FAILED_REVIEW_REQUIRED; factoryhandle returned/runrequested/
+runentered true, twofull resourceIDs acknowledged, parentcleanup VERIFIED. Child
+observation stage OWNED_DATABASE_CONNECT/code INVENTORY_CURSOR, allcase/variant/
+phase null. No scenario or139/163 acceptance. This stage spans connection AND
+index admission; precise predicate/rawreturn/type/causal library remains unknown.
+Public initialization was passed in this prefix; no retroactive run2cause claim.
+
+Root personally queried sameengine before/after, BOTH exact captured fullIDs
+absent, correctpurposeempty, workspace freshENOENT, own emptyconfig removed.
+root-cleanup.json records actualqueries and zero resourcecleanup mutations. The
+safe report historical created.removed:false flags remain untouched; its separate
+cleanupReceipt and freshqueries prove currentabsence. No containerlogs/rawchild
+operands/BSON/errors/warnings/stack were requested or retained.
+
+The508f receipt and source3a/descriptor0f69 onceclaim are CONSUMED. Prior51a remains
+at its sameinode archive, old63bclaim and all earlierclaims/builds/failures retained.
+Both directfailure/postreviews must precede dependent source changes/execution.
+No autoretry or guard/oracle/warning/permission relaxation. Read-only source work
+may continue. The first Root cleanup metadata helper had a Python SyntaxError
+before any body ran; corrected helper produced these freshqueries, without any
+extra fixture attempt. No production/rootC2/fullWeek2/M0 acceptance.

@@ -1,0 +1,34 @@
+{
+  "exitCode": 0,
+  "argv": [
+    "/private/tmp/m0-node22/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/sd-snapshot-zero-pure-o8vx838d",
+    "/private/tmp/sd-snapshot-zero-pure-o8vx838d/bootstrap-unit.cjs"
+  ],
+  "entry": "bootstrap-unit.cjs",
+  "sourcePins": {
+    "bootstrap.cjs": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690",
+    "bootstrap-unit.cjs": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+    "import-diagnostic.test.cjs": "a9d21960f65a9e9e81e9b5e6b75ed6e3854e4dcb3c44a970e3d7792939e71314",
+    "public-init-sites.test.cjs": "d4cd80c5102e9e7f95bb21edadc474e0ddb34e549221ca416b96f390be6c5dc7",
+    "snapshot-native-zero.test.cjs": "d689022c739437b65fc0add39fc15bf5080ddda31b3087e10eefcafb7cc65a2b",
+    "apm-cursor.test.cjs": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+    "scenario.cjs": "915ced15b9cc74fc14b24de2be1adc7e8474343009c089c50fe1fdba93a9c044",
+    "scenario-unit.cjs": "734e59161d288fd8fbb2071169726a5af96d6ac3b9be4c773131d45a6fae1733",
+    "ports-manifest.json": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+    "cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+    "public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+    "import-diagnostic-abi.json": "b64ad94e60b670682932b2352d52135c3e8b451471f474621f67478972b55cde",
+    "public-init-sites-abi.json": "fa28c031dfe5a304e070d3b4a527ab3ef90da1061dc16e8c7dcb9cebfd785154"
+  },
+  "leaseIdentity": {
+    "device": 16777231,
+    "inode": 54093133
+  },
+  "ownedLeaseRemoved": true,
+  "freshLstatErrno": 2,
+  "applicationEvaluations": 0,
+  "publicPackageEvaluations": 0,
+  "DockerCalls": 0
+}

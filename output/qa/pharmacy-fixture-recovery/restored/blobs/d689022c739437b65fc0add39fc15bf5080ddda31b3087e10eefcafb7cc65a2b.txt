@@ -1,0 +1,96 @@
+'use strict';
+// Pure fake native observations; never imports V8, driver, app or compiler code.
+const assert = require('node:assert/strict');
+const fixture = require('./bootstrap.cjs');
+const output = process.stdout.write.bind(process.stdout);
+assert(process.permission && !process.permission.has('child') && !process.permission.has('worker') && !process.permission.has('addon'));
+assert(!process.env.NODE_OPTIONS);
+const names = ['mongoose:cursor:next', 'mongoose:aggregate', 'mongoose:query', 'mongoose:model:save', 'mongoose:model:insertMany', 'mongoose:model:bulkWrite'];
+const tests = []; const test = (name, action) => tests.push({ name, action });
+function caught(action) { let failed = false; let value; try { action(); } catch (error) { failed = true; value = error; } assert(failed); return value; }
+function harness(value, callback) {
+  if (arguments.length === 0) value = 0;
+  const d = fixture.createImportDiagnostics(); d.enter('PUBLIC_INITIALIZATION'); const effects = fixture.effectsState();
+  let calls = 0; let argumentCount; let receiver; let traces = 0;
+  const surface = { isBuildingSnapshot() { calls++; argumentCount = arguments.length; receiver = this; return callback ? callback() : value; }, tracingChannel() { traces++; return {}; } };
+  const p = fixture.createPublicInitialization(surface, { publicInitialization: { tracingNames: names } }, effects, d);
+  return { d, effects, p, surface, calls: () => calls, argumentCount: () => argumentCount, receiver: () => receiver, traces: () => traces };
+}
+function select(h) { return h.d.select('REPOSITORY_IMPORT', 'INVENTORY_EFFECTS'); }
+test('primitive positive zero reaches actual snapshot callback unchanged', () => {
+  const h = harness(); let returned;
+  h.p.run(() => { returned = h.p.retrieve('v8').startupSnapshot.isBuildingSnapshot(); const dc = h.p.retrieve('node:diagnostics_channel'); for (const name of names) dc.tracingChannel(name); });
+  assert(Object.is(returned, 0)); assert.equal(typeof returned, 'number'); assert.equal(h.calls(), 1); assert.equal(h.argumentCount(), 0); assert.equal(h.receiver(), h.surface);
+  h.p.assertComplete(); fixture.assertEffects(h.effects); assert.equal(h.traces(), 6); assert.equal(select(h), 'INVENTORY_IMPORT_PUBLIC_INITIALIZATION_UNBRANDED');
+});
+const invalid = [
+  ['false', () => false], ['negative zero', () => -0], ['true', () => true], ['one', () => 1], ['negative one', () => -1],
+  ['NaN', () => NaN], ['infinity', () => Infinity], ['negative infinity', () => -Infinity], ['small positive', () => Number.MIN_VALUE],
+  ['largest integer', () => Number.MAX_SAFE_INTEGER], ['empty string', () => ''], ['string zero', () => '0'], ['BigInt zero', () => 0n],
+  ['null', () => null], ['undefined', () => undefined], ['boxed zero', () => new Number(0)], ['boxed false', () => new Boolean(false)],
+  ['object', () => ({})], ['marker', () => ({ value: 0 })], ['array', () => []], ['typed array', () => new Uint8Array([0])],
+  ['Date', () => new Date(0)], ['function', () => () => 0], ['Promise', () => Promise.resolve(0)], ['symbol', () => Symbol('0')]
+];
+for (const [name, make] of invalid) test('actual result rejects ' + name + ' with unchanged first site and one callback', () => {
+  const h = harness(make()); const error = caught(() => h.p.run(() => h.p.retrieve('v8').startupSnapshot.isBuildingSnapshot()));
+  assert.equal(fixture.failureResult(error).code, 'INVENTORY_PUBLIC_INITIALIZATION'); assert.equal(h.effects.operationDenials, 1);
+  assert.equal(h.calls(), 1); assert.equal(h.argumentCount(), 0); assert.equal(h.receiver(), h.surface); assert.equal(select(h), 'INVENTORY_PUBLIC_INIT_SNAPSHOT_RESULT');
+  h.d.enter('MODEL_IMPORT'); h.d.effect('WARNING'); assert.equal(select(h), 'INVENTORY_PUBLIC_INIT_SNAPSHOT_RESULT');
+});
+for (const property of ['valueOf', 'toString', 'then', Symbol.toPrimitive]) test('result object getter never inspected ' + String(property), () => {
+  let reads = 0; const value = {}; Object.defineProperty(value, property, { get() { reads++; throw Error('must not inspect result'); } });
+  const h = harness(value); caught(() => h.p.run(() => h.p.retrieve('v8').startupSnapshot.isBuildingSnapshot()));
+  assert.equal(reads, 0); assert.equal(h.calls(), 1); assert.equal(h.effects.operationDenials, 1); assert.equal(select(h), 'INVENTORY_PUBLIC_INIT_SNAPSHOT_RESULT');
+});
+test('result Proxy never inspected or coerced', () => {
+  let reads = 0; const value = new Proxy({}, { get() { reads++; throw Error('get'); }, getPrototypeOf() { reads++; throw Error('prototype'); }, ownKeys() { reads++; throw Error('keys'); } });
+  const h = harness(value); caught(() => h.p.run(() => h.p.retrieve('v8').startupSnapshot.isBuildingSnapshot()));
+  assert.equal(reads, 0); assert.equal(h.calls(), 1); assert.equal(select(h), 'INVENTORY_PUBLIC_INIT_SNAPSHOT_RESULT');
+});
+test('revoked result Proxy remains a type rejection without inspection', () => {
+  const { proxy, revoke } = Proxy.revocable({}, {}); revoke(); const h = harness(proxy);
+  caught(() => h.p.run(() => h.p.retrieve('v8').startupSnapshot.isBuildingSnapshot())); assert.equal(select(h), 'INVENTORY_PUBLIC_INIT_SNAPSHOT_RESULT');
+});
+test('positive zero still cannot bypass repeated callback limit', () => {
+  const h = harness(); h.p.run(() => { const fn = h.p.retrieve('v8').startupSnapshot.isBuildingSnapshot; assert(Object.is(fn(), 0)); caught(() => fn()); });
+  assert.equal(h.calls(), 1); assert.equal(h.effects.operationDenials, 1); assert.equal(select(h), 'INVENTORY_PUBLIC_INIT_SNAPSHOT_REPEAT');
+});
+test('invalid result remains first when later repeat also fails', () => {
+  const h = harness(false); h.p.run(() => { const fn = h.p.retrieve('v8').startupSnapshot.isBuildingSnapshot; caught(() => fn()); caught(() => fn()); });
+  assert.equal(h.calls(), 1); assert.equal(h.effects.operationDenials, 2); assert.equal(select(h), 'INVENTORY_PUBLIC_INIT_SNAPSHOT_RESULT');
+});
+test('arguments still fail before callback and consume the single invocation counter', () => {
+  const h = harness(); h.p.run(() => { const fn = h.p.retrieve('v8').startupSnapshot.isBuildingSnapshot; caught(() => fn(0)); caught(() => fn()); });
+  assert.equal(h.calls(), 0); assert.equal(h.effects.operationDenials, 2); assert.equal(select(h), 'INVENTORY_PUBLIC_INIT_SNAPSHOT_ARGUMENTS');
+});
+test('closed retained predicate never invokes native callback', () => {
+  const h = harness(); let fn; h.p.run(() => { fn = h.p.retrieve('v8').startupSnapshot.isBuildingSnapshot; }); caught(() => fn());
+  assert.equal(h.calls(), 0); assert.equal(h.effects.operationDenials, 1); assert.equal(select(h), 'INVENTORY_PUBLIC_INIT_SNAPSHOT_CLOSED');
+});
+for (const value of [undefined, null, false, 0, '']) test('falsy callback throw remains exact unbranded ' + String(value), () => {
+  const h = harness(0, () => { throw value; }); const error = caught(() => h.p.run(() => h.p.retrieve('v8').startupSnapshot.isBuildingSnapshot()));
+  assert.strictEqual(error, value); assert.equal(h.calls(), 1); assert.equal(h.effects.operationDenials, 0); assert.equal(select(h), 'INVENTORY_IMPORT_PUBLIC_INITIALIZATION_UNBRANDED');
+});
+test('callback exception fields are never used for provenance', () => {
+  let reads = 0; const error = Object.defineProperties({}, { code: { get() { reads++; throw Error('code'); } }, message: { get() { reads++; throw Error('message'); } } });
+  const h = harness(0, () => { throw error; }); assert.strictEqual(caught(() => h.p.run(() => h.p.retrieve('v8').startupSnapshot.isBuildingSnapshot())), error);
+  assert.equal(fixture.failureResult(error).code, 'RUNTIME_FIXTURE_FAILED'); assert.equal(reads, 0); assert.equal(select(h), 'INVENTORY_IMPORT_PUBLIC_INITIALIZATION_UNBRANDED');
+});
+test('callback getter and held receiver are evaluated exactly once', () => {
+  const d = fixture.createImportDiagnostics(); d.enter('PUBLIC_INITIALIZATION'); const effects = fixture.effectsState(); let gets = 0; let calls = 0;
+  const surface = { get isBuildingSnapshot() { gets++; return function () { assert.strictEqual(this, surface); calls++; return 0; }; }, tracingChannel() { return {}; } };
+  const p = fixture.createPublicInitialization(surface, { publicInitialization: { tracingNames: names } }, effects, d);
+  p.run(() => assert(Object.is(p.retrieve('v8').startupSnapshot.isBuildingSnapshot(), 0))); assert.equal(gets, 1); assert.equal(calls, 1); fixture.assertEffects(effects);
+});
+test('all164 codes and closed48 fallback remain unchanged by compatibility rule', () => {
+  assert.equal(fixture.FAILURE_CODES.length, 164); assert.equal(new Set(fixture.FAILURE_CODES).size, 164);
+  const h = harness(); for (const code of fixture.FAILURE_CODES.slice(48)) assert.throws(() => h.d.select('REPOSITORY_IMPORT', code));
+  assert.deepEqual(Object.keys(h.d), ['enter', 'effect', 'guard', 'decision', 'close', 'select']);
+});
+(async () => {
+  const rows = [];
+  for (const row of tests) { try { await row.action(); rows.push({ name: row.name, status: 'PASS' }); } catch { rows.push({ name: row.name, status: 'FAIL' }); } }
+  const failed = rows.filter(row => row.status === 'FAIL').length;
+  output(JSON.stringify({ schema: 'SD-SNAPSHOT-NATIVE-ZERO-PURE-1', cases: rows.length, passed: rows.length - failed, failed, skipped: 0, rows }) + '\n');
+  if (failed) process.exitCode = 1;
+})();

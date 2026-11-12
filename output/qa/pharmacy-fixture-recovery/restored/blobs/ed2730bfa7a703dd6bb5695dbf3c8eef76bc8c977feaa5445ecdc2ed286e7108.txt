@@ -1,0 +1,236 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { URL } = require('node:url');
+const { createConfigReadGuard, createInitialEnvironmentGuard, assertConfigMetadata, CONFIG_TEXT } = require('./npm-config-shield.cjs');
+const root = '/synthetic/owned';
+const configPaths = { user: root + '/user.npmrc', global: root + '/global.npmrc', project: root + '/public/.npmrc' };
+const builtinPath = '/synthetic/npm/npmrc';
+function fixture(alter) {
+  const observations = { inspected: [], passed: [], terminalFailures: 0, drift: false };
+  const guard = createConfigReadGuard({ builtinPath, configPaths,
+    inspect(label, file) { observations.inspected.push({ label, file }); if (observations.drift) throw Error('synthetic identity drift'); return Buffer.from(CONFIG_TEXT); },
+    fail() { observations.terminalFailures++; },
+  });
+  const sync = guard.wrapSync((...args) => { observations.passed.push(args); return 'ordinary'; });
+  const promise = guard.wrapPromise(async (...args) => { observations.passed.push(args); return 'ordinary'; });
+  const callback = guard.wrapCallback((file, options, cb) => { observations.passed.push([file, options]); (typeof options === 'function' ? options : cb)(null, 'ordinary'); });
+  return { guard, sync, promise, callback, observations };
+}
+const callbackRead = (f, file, options) => new Promise((resolve, reject) => {
+  const cb = (error, data) => error ? reject(error) : resolve(data);
+  if (options === undefined) f.callback(file, cb); else f.callback(file, options, cb);
+});
+function initialize(f) { f.sync(builtinPath, 'utf8'); for (const p of Object.values(configPaths)) f.sync(p, 'utf8'); }
+
+test('pure importing shield performs no npm preloader or package execution', () => {
+  const f = fixture(); assert.equal(f.observations.inspected.length, 0); assert.equal(f.observations.passed.length, 0);
+});
+for (const api of ['sync', 'promise', 'callback']) for (const options of [undefined, 'utf8', { encoding: 'utf8' }]) {
+  test('builtin suppressed without filesystem content read: ' + api + '/' + JSON.stringify(options), async () => {
+    const f = fixture(); const value = api === 'callback' ? await callbackRead(f, builtinPath, options) : await f[api](builtinPath, options);
+    assert.deepEqual(value, options === undefined ? Buffer.alloc(0) : '');
+    assert.equal(f.observations.passed.length, 0); assert.equal(f.observations.inspected.length, 0);
+    assert.equal(f.guard.snapshot().reads.builtin, 1);
+  });
+}
+for (const api of ['sync', 'promise', 'callback']) for (const label of Object.keys(configPaths)) {
+  test('exact private config uses independently owned inspection: ' + api + '/' + label, async () => {
+    const f = fixture(); const value = api === 'callback' ? await callbackRead(f, configPaths[label], 'utf8') : await f[api](configPaths[label], 'utf8');
+    assert.equal(value, CONFIG_TEXT); assert.deepEqual(f.observations.inspected, [{ label, file: configPaths[label] }]);
+    assert.equal(f.observations.passed.length, 0); assert.equal(f.guard.snapshot().reads[label], 1);
+  });
+}
+test('complete exact counts produce immutable closed proof observation', () => {
+  const f = fixture(); initialize(f); const observed = f.guard.seal();
+  assert.deepEqual(observed, { reads: { builtin: 1, user: 1, global: 1, project: 1 }, unexpected: 0, builtinSuppressed: true });
+  assert.equal(Object.isFrozen(observed), true); assert.equal(Object.isFrozen(observed.reads), true);
+});
+for (const selected of [builtinPath, ...Object.values(configPaths)]) test('duplicate expected read permanently fails: ' + selected, () => {
+  const f = fixture(); f.sync(selected, 'utf8'); assert.throws(() => f.sync(selected, 'utf8'), /NPM_CONFIG_READ_DENIED/);
+  assert.equal(f.guard.snapshot().denied, true); assert.equal(f.observations.terminalFailures, 1); assert.throws(() => f.guard.seal());
+});
+for (const selected of ['/real-user/.npmrc', '/real-global/npmrc', root + '/public/../user.npmrc', root + '/public/../.npmrc',
+  root + '/public/.npmrc/../.npmrc', './.npmrc', '../.npmrc', root + '/other.npmrc', new URL('file://' + configPaths.user), Buffer.from(configPaths.user), 42]) {
+  test('unknown/config alias/descriptor rejected before original read: ' + String(selected), () => {
+    const f = fixture(); assert.throws(() => f.sync(selected, 'utf8'), /NPM_CONFIG_READ_DENIED/);
+    assert.equal(f.observations.passed.length, 0); assert.equal(f.observations.inspected.length, 0);
+    assert.equal(f.guard.snapshot().unexpected, 1); assert.throws(() => f.guard.seal());
+  });
+}
+for (const api of ['sync', 'promise', 'callback']) test('caught denied ' + api + ' read cannot clear terminal latch', async () => {
+  const f = fixture();
+  if (api === 'sync') assert.throws(() => f.sync('/unowned/.npmrc', 'utf8'));
+  else if (api === 'promise') await assert.rejects(f.promise('/unowned/.npmrc', 'utf8'));
+  else await assert.rejects(callbackRead(f, '/unowned/.npmrc', 'utf8'));
+  assert.throws(() => f.sync(configPaths.user, 'utf8')); assert.equal(f.guard.snapshot().denied, true);
+  assert.equal(f.observations.terminalFailures, 2); assert.throws(() => f.guard.seal());
+});
+for (const api of ['sync', 'promise', 'callback']) test('late expected read after proof seal forces failure: ' + api, async () => {
+  const f = fixture(); initialize(f); f.guard.seal();
+  if (api === 'sync') assert.throws(() => f.sync(configPaths.user, 'utf8'));
+  else if (api === 'promise') await assert.rejects(f.promise(configPaths.user, 'utf8'));
+  else await assert.rejects(callbackRead(f, configPaths.user, 'utf8'));
+  assert.equal(f.observations.terminalFailures, 1); assert.equal(f.guard.snapshot().denied, true);
+});
+for (const label of ['builtin', 'user', 'global', 'project']) test('omitted expected read cannot produce proof: ' + label, () => {
+  const f = fixture(); if (label !== 'builtin') f.sync(builtinPath, 'utf8');
+  for (const [k, file] of Object.entries(configPaths)) if (k !== label) f.sync(file, 'utf8');
+  assert.throws(() => f.guard.seal());
+});
+const identity = { device: 7, inode: 11, mode: 0o100600,
+  sha256: require('node:crypto').createHash('sha256').update(CONFIG_TEXT).digest('hex') };
+const metadata = () => ({ isFile: () => true, isSymbolicLink: () => false, nlink: 1, uid: 17, dev: 7, ino: 11, mode: 0o100600 });
+test('actual private metadata gate accepts exact held regular identity', () => assert.doesNotThrow(() => assertConfigMetadata(metadata(), identity, 17)));
+for (const [drift, change] of [
+  ['inode', m => { m.ino++; }], ['device', m => { m.dev++; }], ['link', m => { m.nlink++; }],
+  ['symlink', m => { m.isSymbolicLink = () => true; }], ['owner', m => { m.uid++; }],
+  ['mode', m => { m.mode = 0o100644; }], ['nonregular', m => { m.isFile = () => false; }],
+]) test('actual private metadata guard rejects ' + drift + ' before content authority', () => {
+  const meta = metadata(); change(meta); assert.throws(() => assertConfigMetadata(meta, identity, 17));
+});
+test('wrong fixed config bytes/hash cannot become an approved identity', () => {
+  assert.throws(() => assertConfigMetadata(metadata(), { ...identity, sha256: 'a'.repeat(64) }, 17));
+});
+test('private inspection exception permanently fails before pass-through', () => {
+  const f = fixture(); f.observations.drift = true; assert.throws(() => f.sync(configPaths.user, 'utf8'));
+  assert.equal(f.guard.snapshot().denied, true); assert.equal(f.observations.passed.length, 0);
+  assert.equal(f.observations.terminalFailures, 1);
+});
+for (const api of ['sync', 'promise', 'callback']) test('nonconfig package read retains original behavior: ' + api, async () => {
+  const f = fixture(); const filename = root + '/public/node_modules/example/package.json';
+  const value = api === 'callback' ? await callbackRead(f, filename, 'utf8') : await f[api](filename, 'utf8');
+  assert.equal(value, 'ordinary'); assert.equal(f.observations.passed.length, 1); assert.equal(f.guard.snapshot().unexpected, 0);
+});
+for (const options of ['hex', { flag: 'r' }, { encoding: 'utf8', flag: 'r' }, true]) test('non-reviewed config read options fail closed: ' + JSON.stringify(options), () => {
+  const f = fixture(); assert.throws(() => f.sync(configPaths.user, options)); assert.equal(f.observations.terminalFailures, 1);
+});
+test('config callbacks must be callable and cannot become a silent successful read', () => {
+  const f = fixture(); assert.throws(() => f.callback(configPaths.user, 'utf8')); assert.equal(f.observations.terminalFailures, 1);
+});
+
+test('a copied loose mode in marker cannot authorize public config permissions', () => {
+  const meta = metadata(); meta.mode = 0o100644;
+  assert.throws(() => assertConfigMetadata(meta, { ...identity, mode: 0o100644 }, 17));
+});
+
+
+// These are fake reader probes: no configuration pathname is opened.
+const encodedConfigURLs = [
+  ['ENCODED_DOT', new URL('file:///real-user/%2Enpmrc')],
+  ['ENCODED_BUILTIN_NAME', new URL('file:///synthetic/npm/%6Epmrc')],
+  ['ENCODED_USER_SUFFIX', new URL('file:///synthetic/owned/user.%6Epmrc')],
+  ['FULLY_ENCODED_PROJECT_NAME', new URL('file:///synthetic/owned/public/%2e%6e%70%6d%72%63')],
+  ['ENCODED_GLOBAL_SUFFIX', new URL('file:///synthetic/owned/global.npm%72c')],
+];
+const configCaseAliases = [
+  ['PROJECT_DOT_UPPERCASE', '/synthetic/owned/public/.NPMRC'],
+  ['BUILTIN_UPPERCASE', '/synthetic/npm/NPMRC'],
+  ['USER_SUFFIX_UPPERCASE', '/synthetic/owned/user.NPMRC'],
+];
+const malformedURLs = [
+  ['NONFILE_PROTOCOL', new URL('https://example.invalid/package.json')],
+  ['MALFORMED_PERCENT', new URL('file:///synthetic/owned/%ZZnpmrc')],
+  ['ENCODED_SLASH', new URL('file:///synthetic/owned/%2Fnpmrc')],
+  ['ENCODED_NUL', new URL('file:///synthetic/owned/user.npmrc%00')],
+];
+async function rejectedBeforeNativeRead(api, file) {
+  const f = fixture();
+  if (api === 'sync') assert.throws(() => f.sync(file, 'utf8'), /NPM_CONFIG_READ_DENIED/);
+  else if (api === 'promise') await assert.rejects(f.promise(file, 'utf8'), /NPM_CONFIG_READ_DENIED/);
+  else await assert.rejects(callbackRead(f, file, 'utf8'), /NPM_CONFIG_READ_DENIED/);
+  assert.equal(f.observations.passed.length, 0); assert.equal(f.observations.inspected.length, 0);
+  assert.equal(f.observations.terminalFailures, 1); assert.equal(f.guard.snapshot().unexpected, 1);
+  assert.equal(f.guard.snapshot().denied, true); assert.throws(() => f.guard.seal());
+}
+for (const api of ['sync', 'promise', 'callback']) for (const [id, file] of encodedConfigURLs)
+  test('encoded config URL is denied before any native read: ' + api + '/' + id, () => rejectedBeforeNativeRead(api, file));
+for (const api of ['sync', 'promise', 'callback']) for (const [id, file] of configCaseAliases)
+  test('case-insensitive config basename never authorizes a spelling alias: ' + api + '/' + id, () => rejectedBeforeNativeRead(api, file));
+for (const api of ['sync', 'promise', 'callback']) for (const [id, file] of malformedURLs)
+  test('malformed or unsupported file URL fails closed: ' + api + '/' + id, () => rejectedBeforeNativeRead(api, file));
+for (const api of ['sync', 'promise', 'callback']) for (const [id, file] of [
+  ['ORDINARY', new URL('file:///synthetic/owned/public/node_modules/example/package.json')],
+  ['ENCODED_NONCONFIG', new URL('file:///synthetic/owned/public/node_modules/ex%61mple/package.json')],
+]) test('ordinary nonconfig file URL keeps original forwarding identity: ' + api + '/' + id, async () => {
+  const f = fixture(); const value = api === 'callback' ? await callbackRead(f, file, 'utf8') : await f[api](file, 'utf8');
+  assert.equal(value, 'ordinary'); assert.equal(f.observations.passed.length, 1);
+  assert.equal(f.observations.passed[0][0], file); assert.equal(f.observations.inspected.length, 0);
+  assert.equal(f.guard.snapshot().unexpected, 0); assert.equal(f.guard.snapshot().denied, false);
+});
+
+
+// Approved locale admission uses fake objects only; never changes this process.env.
+const initialExpected = Object.freeze({ PATH: '/synthetic/node:/usr/bin:/bin', TMPDIR: '/synthetic/build',
+  NPM_CONFIG_USERCONFIG: '/synthetic/build/user.npmrc', NPM_CONFIG_GLOBALCONFIG: '/synthetic/build/global.npmrc',
+  NPM_CONFIG_CACHE: '/synthetic/build/cache', NPM_CONFIG_IGNORE_SCRIPTS: 'true',
+  NPM_CONFIG_REGISTRY: 'https://registry.npmjs.org/', NPM_CONFIG_AUDIT: 'false', NPM_CONFIG_FUND: 'false' });
+const localeKey = '__CF_USER_TEXT_ENCODING';
+function initialFixture(expected = { ...initialExpected }) {
+  let failures = 0; const guard = createInitialEnvironmentGuard(expected, () => { failures++; });
+  return { guard, failures: () => failures };
+}
+function initialDenied(environment) {
+  const f = initialFixture(); assert.throws(() => f.guard.admit(environment), /NPM_INITIAL_ENVIRONMENT_DENIED/);
+  assert.equal(f.failures(), 1); assert.equal(f.guard.snapshot().denied, true); assert.equal(f.guard.snapshot().admitted, false);
+}
+test('exact nine initial keys without locale are admitted unchanged', () => {
+  const f = initialFixture(); const env = { ...initialExpected }; f.guard.admit(env);
+  assert.deepEqual(env, initialExpected); assert.equal(f.guard.snapshot().admitted, true);
+  assert.equal(f.guard.snapshot().localeRemoved, false); assert.equal(f.failures(), 0);
+});
+for (const [id, value] of [['LOWERCASE', '0x1:0x2:0x3'], ['UPPERCASE', '0XAB:0XCD:0XEF'],
+  ['MAX128', '0x' + 'a'.repeat(118) + ':0x2:0x3']]) test('sole valid automatic locale is removed before npm admission: ' + id, () => {
+  const f = initialFixture(); const env = { ...initialExpected, [localeKey]: value }; f.guard.admit(env);
+  assert.deepEqual(env, initialExpected); assert.equal(Object.hasOwn(env, localeKey), false);
+  assert.equal(f.guard.snapshot().admitted, true); assert.equal(f.guard.snapshot().localeRemoved, true);
+  if (id === 'MAX128') assert.equal(value.length, 128);
+});
+for (const key of Object.keys(initialExpected)) test('every missing initial required key fails permanently: ' + key, () => {
+  const env = { ...initialExpected }; delete env[key]; initialDenied(env);
+});
+for (const key of Object.keys(initialExpected)) test('every changed initial required value fails permanently: ' + key, () => {
+  initialDenied({ ...initialExpected, [key]: initialExpected[key] + '/changed' });
+});
+for (const key of ['HOME', 'NODE_OPTIONS', '__cf_user_text_encoding', '__CF_OTHER', 'UNREVIEWED'])
+  test('no other initial environment exemption is admitted: ' + key, () => initialDenied({ ...initialExpected, [key]: 'synthetic' }));
+for (const [id, value] of [['UNDEFINED', undefined], ['NULL', null], ['NUMBER', 0], ['BOOLEAN', true], ['EMPTY', ''],
+  ['TWO_PARTS', '0x1:0x2'], ['FOUR_PARTS', '0x1:0x2:0x3:0x4'], ['BAD_HEX', '0xG:0x2:0x3'],
+  ['NEWLINE', '0x1:0x2:0x3\n'], ['CARRIAGE_RETURN', '0x1:0x2:0x3\r'], ['NUL', '0x1:0x2:0x3\0'],
+  ['OVER128', '0x' + 'a'.repeat(119) + ':0x2:0x3']])
+  test('malformed automatic locale cannot reach npm: ' + id, () => initialDenied({ ...initialExpected, [localeKey]: value }));
+test('nonstring required initial value is rejected', () => initialDenied({ ...initialExpected, NPM_CONFIG_AUDIT: false }));
+test('locale accessor is denied without invoking its getter', () => {
+  const env = { ...initialExpected }; let calls = 0;
+  Object.defineProperty(env, localeKey, { enumerable: true, configurable: true, get() { calls++; return '0x1:0x2:0x3'; } });
+  initialDenied(env); assert.equal(calls, 0);
+});
+test('undeletable locale cannot be forwarded to npm', () => {
+  const env = { ...initialExpected }; Object.defineProperty(env, localeKey, { enumerable: true, configurable: false, value: '0x1:0x2:0x3' });
+  initialDenied(env); assert.equal(Object.hasOwn(env, localeKey), true);
+});
+test('unknown symbol environment key is denied', () => initialDenied({ ...initialExpected, [Symbol('unreviewed')]: 'synthetic' }));
+test('required initial accessor is denied without invoking its getter', () => {
+  const env = { ...initialExpected }; let calls = 0;
+  Object.defineProperty(env, 'PATH', { enumerable: true, configurable: true, get() { calls++; return initialExpected.PATH; } });
+  initialDenied(env); assert.equal(calls, 0);
+});
+test('caught initial-environment denial cannot be cleared by repairing values', () => {
+  const f = initialFixture(); assert.throws(() => f.guard.admit({ ...initialExpected, [localeKey]: 'invalid' }));
+  assert.throws(() => f.guard.admit({ ...initialExpected })); assert.equal(f.failures(), 2);
+  assert.equal(f.guard.snapshot().denied, true); assert.equal(f.guard.snapshot().admitted, false);
+});
+test('initial environment admission cannot be reused as a later npm exemption', () => {
+  const f = initialFixture(); f.guard.admit({ ...initialExpected });
+  assert.throws(() => f.guard.admit({ ...initialExpected })); assert.equal(f.failures(), 1);
+});
+test('mutating supplied expected object cannot broaden initial value authority', () => {
+  const expected = { ...initialExpected }; const f = initialFixture(expected); expected.PATH = '/changed';
+  assert.throws(() => f.guard.admit({ ...expected })); assert.equal(f.failures(), 1);
+});
+test('initial guard errors and snapshots contain no supplied environment values', () => {
+  const f = initialFixture(); let caught;
+  try { f.guard.admit({ ...initialExpected, PATH: 'synthetic-DO-NOT-RETAIN' }); } catch (error) { caught = error; }
+  assert.equal(caught.message, 'NPM_INITIAL_ENVIRONMENT_DENIED');
+  assert.equal(JSON.stringify({ message: caught.message, snapshot: f.guard.snapshot() }).includes('synthetic-DO-NOT-RETAIN'), false);
+});

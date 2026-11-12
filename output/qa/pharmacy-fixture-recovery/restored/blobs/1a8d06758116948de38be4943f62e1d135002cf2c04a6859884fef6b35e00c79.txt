@@ -1,0 +1,123 @@
+{
+  "schema": "SD-INVENTORY-AMENDMENT-COMBINED-1",
+  "status": "PASS",
+  "totalChecks": 1488,
+  "recordedAtUTC": "2026-11-11T13:22:46.419622+00:00",
+  "records": [
+    {
+      "entry": "originalCombined",
+      "checks": 1121,
+      "exitCode": 0,
+      "ownLeaseFreshENOENT": true,
+      "result": {
+        "schema": "SD-INVENTORY-COMBINED-PURE-1",
+        "status": "PASS",
+        "results": [
+          {
+            "id": "parent",
+            "checks": 454,
+            "status": "PASS",
+            "stdoutSha256": "2a1776ce664c6631baf1f31803a9f8e2dc6774bc8697292992c49cf732b3a7bb",
+            "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "id": "bootstrap",
+            "checks": 296,
+            "status": "PASS",
+            "stdoutSha256": "6ce49ee6c91f8767c8e95aafa1078d3a8ba29cd8b6d0065d6ea627ce7d349f7a",
+            "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "id": "scenario",
+            "checks": 371,
+            "status": "PASS",
+            "stdoutSha256": "e86ed463553fbd015a30148a3699971c6985ad57da3f1fd646f03d8fa954b4aa",
+            "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ],
+        "failedStage": null,
+        "copiedInputs": 17,
+        "sourceSha256": {
+          "test/inventory-runtime/platform.mjs": "2526dbee74a2677ebd4960716c1dccd23bb5f17cc252d6288518e2e849246904",
+          "test/inventory-runtime/platform.test.mjs": "6821c1b0737c4f5e65298009d0f89f62c46ddefba178f8b0200003f8bdd94026",
+          "test/inventory-runtime/profile.json": "5d3d589b02c3d50aeb5a173eefbedbea4ae094257c2304e458da47bac769c1d7",
+          "test/inventory-runtime/launch.mjs": "61959695fefae9ba35f73dcc60a274bd62bb2e409c96887d643e03a29245fe1f",
+          "test/inventory-runtime/launch.test.mjs": "a4c649c38bcf17f1c62a8f8f46d8516f56ea9e855665e74331c3a48df09fc5b6",
+          "test/inventory-runtime/scenario/ports-manifest.json": "e857e276ea8296ae3f6fe817804f368a81579fe8015985fa5db9c7e689f1dfc1",
+          "test/inventory-runtime/scenario/cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+          "test/inventory-runtime/scenario/npm-config-shield.cjs": "d16144ccca7853627b0712c18d731afc38b41dc09cdd64e33ce0365b69332476",
+          "test/inventory-runtime/scenario/npm-config-shield.test.cjs": "ed2730bfa7a703dd6bb5695dbf3c8eef76bc8c977feaa5445ecdc2ed286e7108",
+          "test/inventory-runtime/scenario/compile.cjs": "58c8299187cb088f68987ad4ff6d888aa09afa8dcc8c367aea193d68c7066bfb",
+          "test/inventory-runtime/scenario/compiler-pure.test.cjs": "7c1fa90e984c19fadf8f8406ee15dd2e918beee495831d7d88c2e7dd4da77d0e",
+          "test/application/app-bundle.mjs": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2",
+          "test/inventory-runtime/scenario/bootstrap.cjs": "c0bea24d2a1deae2e34eb07bad401acd8300c5cd98ce0884ad655b6d6a2a6b71",
+          "test/inventory-runtime/scenario/bootstrap-unit.cjs": "59583eebab5f3d789280e5d218b89559f3ac8a454c180707790063fecd413dc6",
+          "test/inventory-runtime/scenario/scenario.cjs": "53fdac4a9ebea051ee890cccd36fffefab41e54b0b39f4f9a5dcaad9d3d7b781",
+          "test/inventory-runtime/scenario/scenario-unit.cjs": "734e59161d288fd8fbb2071169726a5af96d6ac3b9be4c773131d45a6fae1733",
+          "test/inventory-runtime/scenario/public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5"
+        },
+        "lease": "/private/tmp/sd-iq-combined-units-wVxoiW",
+        "exactLeaseAbsent": true,
+        "cleanup": "VERIFIED",
+        "applicationImports": 0,
+        "installedPackageEvaluations": 0,
+        "TypeScriptCompilerExecutions": 0,
+        "npmExecutions": 0,
+        "DockerCalls": 0,
+        "databaseConnections": 0
+      }
+    },
+    {
+      "entry": "diagnostic",
+      "checks": 272,
+      "exitCode": 0,
+      "argv": [
+        "/private/tmp/m0-node22/node",
+        "--permission",
+        "--allow-fs-read=/private/tmp/sd-inventory-composed-pure-z_1afusz",
+        "--allow-fs-write=/private/tmp/sd-inventory-composed-pure-z_1afusz",
+        "/private/tmp/sd-inventory-composed-pure-z_1afusz/import-diagnostic.test.cjs"
+      ],
+      "sourceHashes": {
+        "bootstrap.cjs": "c0bea24d2a1deae2e34eb07bad401acd8300c5cd98ce0884ad655b6d6a2a6b71",
+        "import-diagnostic.test.cjs": "4b71a055c7a728a138945a8ef314b89da52127f65c7244e6d8f2884a9c9afb63",
+        "import-diagnostic-abi.json": "41e8892e131b479c8012b777a0bc7bc74eafb57030a38102cac2d549dc4398b6"
+      },
+      "lease": "/private/tmp/sd-inventory-composed-pure-z_1afusz",
+      "identity": {
+        "device": 16777231,
+        "inode": 53987229,
+        "uid": 501
+      },
+      "ownLeaseFreshENOENT": true
+    },
+    {
+      "entry": "apm",
+      "checks": 95,
+      "exitCode": 0,
+      "argv": [
+        "/private/tmp/m0-node22/node",
+        "--permission",
+        "--allow-fs-read=/private/tmp/sd-inventory-composed-pure-6s8z9oms",
+        "/private/tmp/sd-inventory-composed-pure-6s8z9oms/apm-cursor.test.cjs"
+      ],
+      "sourceHashes": {
+        "bootstrap.cjs": "c0bea24d2a1deae2e34eb07bad401acd8300c5cd98ce0884ad655b6d6a2a6b71",
+        "apm-cursor.test.cjs": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+        "ports-manifest.json": "e857e276ea8296ae3f6fe817804f368a81579fe8015985fa5db9c7e689f1dfc1",
+        "cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+        "public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5"
+      },
+      "lease": "/private/tmp/sd-inventory-composed-pure-6s8z9oms",
+      "identity": {
+        "device": 16777231,
+        "inode": 53987241,
+        "uid": 501
+      },
+      "ownLeaseFreshENOENT": true
+    }
+  ],
+  "applicationEvaluations": 0,
+  "packageEvaluations": 0,
+  "compilerNpmDockerDBCalls": 0
+}

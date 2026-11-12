@@ -1,0 +1,612 @@
+{
+  "schema": "SD-PHARMACY-INERT-SOURCE-ARCHIVE-1",
+  "status": "ARCHIVED_DATA_ONLY",
+  "inventorySha256": "4b194c8124d14c89c19a2664c7c3f8f60a9aef002885317541457e09e08815b0",
+  "entryCount": 74,
+  "mappedSourceBytes": 2357268,
+  "uniqueBlobCount": 62,
+  "uniqueBlobBytes": 1573917,
+  "entries": [
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "output/qa/week2-inventory-snapshot-native-zero-source/bootstrap296-positive-final/bootstrap.cjs",
+      "bytes": 130243,
+      "sha256": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690",
+      "purpose": "surviving bound pure source/data; historical f4a49 baseline",
+      "archivePath": "blobs/f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "output/qa/week2-inventory-snapshot-native-zero-source/bootstrap296-positive-final/bootstrap-unit.cjs",
+      "bytes": 72529,
+      "sha256": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+      "purpose": "surviving bound pure source/data; historical f4a49 baseline",
+      "archivePath": "blobs/1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "output/qa/week2-inventory-snapshot-native-zero-source/bootstrap296-positive-final/import-diagnostic.test.cjs",
+      "bytes": 11076,
+      "sha256": "a9d21960f65a9e9e81e9b5e6b75ed6e3854e4dcb3c44a970e3d7792939e71314",
+      "purpose": "surviving bound pure source/data; historical f4a49 baseline",
+      "archivePath": "blobs/a9d21960f65a9e9e81e9b5e6b75ed6e3854e4dcb3c44a970e3d7792939e71314.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "output/qa/week2-inventory-snapshot-native-zero-source/bootstrap296-positive-final/public-init-sites.test.cjs",
+      "bytes": 13985,
+      "sha256": "d4cd80c5102e9e7f95bb21edadc474e0ddb34e549221ca416b96f390be6c5dc7",
+      "purpose": "surviving bound pure source/data; historical f4a49 baseline",
+      "archivePath": "blobs/d4cd80c5102e9e7f95bb21edadc474e0ddb34e549221ca416b96f390be6c5dc7.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "output/qa/week2-inventory-snapshot-native-zero-source/bootstrap296-positive-final/snapshot-native-zero.test.cjs",
+      "bytes": 9280,
+      "sha256": "d689022c739437b65fc0add39fc15bf5080ddda31b3087e10eefcafb7cc65a2b",
+      "purpose": "surviving bound pure source/data; historical f4a49 baseline",
+      "archivePath": "blobs/d689022c739437b65fc0add39fc15bf5080ddda31b3087e10eefcafb7cc65a2b.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "output/qa/week2-inventory-snapshot-native-zero-source/bootstrap296-positive-final/apm-cursor.test.cjs",
+      "bytes": 14598,
+      "sha256": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+      "purpose": "surviving bound pure source/data; historical f4a49 baseline",
+      "archivePath": "blobs/6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "output/qa/week2-inventory-snapshot-native-zero-source/bootstrap296-positive-final/scenario.cjs",
+      "bytes": 45427,
+      "sha256": "915ced15b9cc74fc14b24de2be1adc7e8474343009c089c50fe1fdba93a9c044",
+      "purpose": "surviving bound pure source/data; historical f4a49 baseline",
+      "archivePath": "blobs/915ced15b9cc74fc14b24de2be1adc7e8474343009c089c50fe1fdba93a9c044.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "output/qa/week2-inventory-snapshot-native-zero-source/bootstrap296-positive-final/scenario-unit.cjs",
+      "bytes": 34997,
+      "sha256": "734e59161d288fd8fbb2071169726a5af96d6ac3b9be4c773131d45a6fae1733",
+      "purpose": "surviving bound pure source/data; historical f4a49 baseline",
+      "archivePath": "blobs/734e59161d288fd8fbb2071169726a5af96d6ac3b9be4c773131d45a6fae1733.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "output/qa/week2-inventory-snapshot-native-zero-source/bootstrap296-positive-final/ports-manifest.json",
+      "bytes": 43889,
+      "sha256": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+      "purpose": "surviving bound pure source/data; historical f4a49 baseline",
+      "archivePath": "blobs/12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "output/qa/week2-inventory-snapshot-native-zero-source/bootstrap296-positive-final/cases.json",
+      "bytes": 233195,
+      "sha256": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+      "purpose": "surviving bound pure source/data; historical f4a49 baseline",
+      "archivePath": "blobs/807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "output/qa/week2-inventory-snapshot-native-zero-source/bootstrap296-positive-final/public-lock.json",
+      "bytes": 47881,
+      "sha256": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+      "purpose": "surviving bound pure source/data; historical f4a49 baseline",
+      "archivePath": "blobs/2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "output/qa/week2-inventory-snapshot-native-zero-source/bootstrap296-positive-final/import-diagnostic-abi.json",
+      "bytes": 14316,
+      "sha256": "b64ad94e60b670682932b2352d52135c3e8b451471f474621f67478972b55cde",
+      "purpose": "surviving bound pure source/data; historical f4a49 baseline",
+      "archivePath": "blobs/b64ad94e60b670682932b2352d52135c3e8b451471f474621f67478972b55cde.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "output/qa/week2-inventory-snapshot-native-zero-source/bootstrap296-positive-final/public-init-sites-abi.json",
+      "bytes": 17019,
+      "sha256": "fa28c031dfe5a304e070d3b4a527ab3ef90da1061dc16e8c7dcb9cebfd785154",
+      "purpose": "surviving bound pure source/data; historical f4a49 baseline",
+      "archivePath": "blobs/fa28c031dfe5a304e070d3b4a527ab3ef90da1061dc16e8c7dcb9cebfd785154.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/launch.mjs",
+      "bytes": 8179,
+      "sha256": "61959695fefae9ba35f73dcc60a274bd62bb2e409c96887d643e03a29245fe1f",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/61959695fefae9ba35f73dcc60a274bd62bb2e409c96887d643e03a29245fe1f.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/launch.test.mjs",
+      "bytes": 4955,
+      "sha256": "a4c649c38bcf17f1c62a8f8f46d8516f56ea9e855665e74331c3a48df09fc5b6",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/a4c649c38bcf17f1c62a8f8f46d8516f56ea9e855665e74331c3a48df09fc5b6.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/platform.mjs",
+      "bytes": 32990,
+      "sha256": "d0b4294305cd2451836a55fc2da5b3511ad7a638eece001694412bcde5e6d2a3",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/d0b4294305cd2451836a55fc2da5b3511ad7a638eece001694412bcde5e6d2a3.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/platform.test.mjs",
+      "bytes": 36657,
+      "sha256": "96eccaa2cba6db86d75e5900120a36e59acdd6fcbe7754e2d43e7383331ad85d",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/96eccaa2cba6db86d75e5900120a36e59acdd6fcbe7754e2d43e7383331ad85d.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/profile.json",
+      "bytes": 630,
+      "sha256": "5d3d589b02c3d50aeb5a173eefbedbea4ae094257c2304e458da47bac769c1d7",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/5d3d589b02c3d50aeb5a173eefbedbea4ae094257c2304e458da47bac769c1d7.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/scenario/.gitignore",
+      "bytes": 22,
+      "sha256": "7987fd3dee925cf21c8b558704a243a79be5be11c382c383eff13f8999664162",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/7987fd3dee925cf21c8b558704a243a79be5be11c382c383eff13f8999664162.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/scenario/apm-cursor.test.cjs",
+      "bytes": 14598,
+      "sha256": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/scenario/bootstrap-unit.cjs",
+      "bytes": 72529,
+      "sha256": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/scenario/bootstrap.cjs",
+      "bytes": 130243,
+      "sha256": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/scenario/cases.json",
+      "bytes": 233195,
+      "sha256": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/scenario/compile.cjs",
+      "bytes": 45618,
+      "sha256": "f69583e8527da45204961890701c21fa39d13240a3502432acf3d5ccbb3814f8",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/f69583e8527da45204961890701c21fa39d13240a3502432acf3d5ccbb3814f8.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/scenario/compiler-pure.test.cjs",
+      "bytes": 4675,
+      "sha256": "7c1fa90e984c19fadf8f8406ee15dd2e918beee495831d7d88c2e7dd4da77d0e",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/7c1fa90e984c19fadf8f8406ee15dd2e918beee495831d7d88c2e7dd4da77d0e.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/scenario/import-diagnostic.test.cjs",
+      "bytes": 11076,
+      "sha256": "a9d21960f65a9e9e81e9b5e6b75ed6e3854e4dcb3c44a970e3d7792939e71314",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/a9d21960f65a9e9e81e9b5e6b75ed6e3854e4dcb3c44a970e3d7792939e71314.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/scenario/npm-config-shield.cjs",
+      "bytes": 15939,
+      "sha256": "ac4b26cf3317d004e6f938a1667302d89d0ef0455b3186cf37ae8ded48c381cc",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/ac4b26cf3317d004e6f938a1667302d89d0ef0455b3186cf37ae8ded48c381cc.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/scenario/npm-config-shield.test.cjs",
+      "bytes": 17468,
+      "sha256": "ed2730bfa7a703dd6bb5695dbf3c8eef76bc8c977feaa5445ecdc2ed286e7108",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/ed2730bfa7a703dd6bb5695dbf3c8eef76bc8c977feaa5445ecdc2ed286e7108.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/scenario/package-plan.json",
+      "bytes": 447,
+      "sha256": "82fbe718f079b134bab648ac146d3d55dce5cbb213d1fd282e7c71f31a7bd0a6",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/82fbe718f079b134bab648ac146d3d55dce5cbb213d1fd282e7c71f31a7bd0a6.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/scenario/ports-manifest.json",
+      "bytes": 43889,
+      "sha256": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/scenario/prepare.py",
+      "bytes": 21568,
+      "sha256": "13f67d28784fd523f4b23c91f7996444860a12a3635e3f38f9f0cc7f0fc494fc",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/13f67d28784fd523f4b23c91f7996444860a12a3635e3f38f9f0cc7f0fc494fc.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/scenario/public-init-sites.test.cjs",
+      "bytes": 13985,
+      "sha256": "d4cd80c5102e9e7f95bb21edadc474e0ddb34e549221ca416b96f390be6c5dc7",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/d4cd80c5102e9e7f95bb21edadc474e0ddb34e549221ca416b96f390be6c5dc7.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/scenario/scenario-unit.cjs",
+      "bytes": 34997,
+      "sha256": "734e59161d288fd8fbb2071169726a5af96d6ac3b9be4c773131d45a6fae1733",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/734e59161d288fd8fbb2071169726a5af96d6ac3b9be4c773131d45a6fae1733.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/scenario/scenario.cjs",
+      "bytes": 45427,
+      "sha256": "915ced15b9cc74fc14b24de2be1adc7e8474343009c089c50fe1fdba93a9c044",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/915ced15b9cc74fc14b24de2be1adc7e8474343009c089c50fe1fdba93a9c044.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/scenario/snapshot-native-zero.test.cjs",
+      "bytes": 9280,
+      "sha256": "d689022c739437b65fc0add39fc15bf5080ddda31b3087e10eefcafb7cc65a2b",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/d689022c739437b65fc0add39fc15bf5080ddda31b3087e10eefcafb7cc65a2b.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "test/inventory-runtime/unit.mjs",
+      "bytes": 10092,
+      "sha256": "da03d9d60b3ec113f3b5e9a870f13792d424b7778b24652dcc900c6a17c306c9",
+      "purpose": "surviving complete inventory fixture source; no restoration performed",
+      "archivePath": "blobs/da03d9d60b3ec113f3b5e9a870f13792d424b7778b24652dcc900c6a17c306c9.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/DECISIONS.json",
+      "bytes": 1277,
+      "sha256": "cff50c1ba2564cd0cd091b72228276b41ee4089856603d88c06aa5d8b41fe421",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/cff50c1ba2564cd0cd091b72228276b41ee4089856603d88c06aa5d8b41fe421.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/INPUTS.json",
+      "bytes": 14631,
+      "sha256": "3db50b8b06a77f87e5ccb413b8fe5605ca8cf7305c33c34bf06967c98ff43fda",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/3db50b8b06a77f87e5ccb413b8fe5605ca8cf7305c33c34bf06967c98ff43fda.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/PROPOSAL.md",
+      "bytes": 18387,
+      "sha256": "df59f10d6e6e5d068412030d1d4c2b2239e10cf33df5f8c980470f9fb64177f5",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/df59f10d6e6e5d068412030d1d4c2b2239e10cf33df5f8c980470f9fb64177f5.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/REVIEW.md",
+      "bytes": 661,
+      "sha256": "7a040632bc9e87f35ce75b8fde2c2375a3fd0e3e284fda8245bfbdcfc8200f1c",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/7a040632bc9e87f35ce75b8fde2c2375a3fd0e3e284fda8245bfbdcfc8200f1c.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/ROOT_ADOPTION.md",
+      "bytes": 3093,
+      "sha256": "d73d852bd08a2bf151cc288c5810860e9c514583cd1d4f85bcb95844abe66063",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/d73d852bd08a2bf151cc288c5810860e9c514583cd1d4f85bcb95844abe66063.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/SNIPPETS.md",
+      "bytes": 44844,
+      "sha256": "2cc366dfae7a73b4001a1086d1a096a415897721ca6940986aa2cce422f5d42d",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/2cc366dfae7a73b4001a1086d1a096a415897721ca6940986aa2cce422f5d42d.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/fixture-baselines/inventory-bootstrap.cjs",
+      "bytes": 130243,
+      "sha256": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/fixture-baselines/inventory-ports.json",
+      "bytes": 43889,
+      "sha256": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/fixture-baselines/medicine-bootstrap.cjs",
+      "bytes": 138892,
+      "sha256": "37e9d95b441779f3b5a7ca139783b43574c1606fffad32f8fa0990e8b8bdf81b",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/37e9d95b441779f3b5a7ca139783b43574c1606fffad32f8fa0990e8b8bdf81b.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/fixture-baselines/medicine-ports.json",
+      "bytes": 206950,
+      "sha256": "3079134fca2a88a4dea321a7bf11895079f0d44460d81e6576874761560c27f9",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/3079134fca2a88a4dea321a7bf11895079f0d44460d81e6576874761560c27f9.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/freeze.json",
+      "bytes": 3493,
+      "sha256": "516b4ca4da13d0c143c52b7fc1e4926204fb1ffcb0f0cbe596b25121986935a4",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/516b4ca4da13d0c143c52b7fc1e4926204fb1ffcb0f0cbe596b25121986935a4.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/historical-run-3/DECISIONS.json",
+      "bytes": 2272,
+      "sha256": "ac336eb3a05c8166f9e63f725b4a61f551514f6b29e1ca1c08e5fc6832d3f2df",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/ac336eb3a05c8166f9e63f725b4a61f551514f6b29e1ca1c08e5fc6832d3f2df.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/historical-run-3/FAILURE.md",
+      "bytes": 1638,
+      "sha256": "c9824b74661ea821ecf10ae1b9c3ddcd68d854288e5e075d5c9891dcee50a898",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/c9824b74661ea821ecf10ae1b9c3ddcd68d854288e5e075d5c9891dcee50a898.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/historical-run-3/REVIEW.md",
+      "bytes": 917,
+      "sha256": "f2e71ef7f2fcb0175b2464ef262499e8d1379f4aeb4c93a74595f1fe66dac91a",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/f2e71ef7f2fcb0175b2464ef262499e8d1379f4aeb4c93a74595f1fe66dac91a.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/historical-run-3/freeze.json",
+      "bytes": 2821,
+      "sha256": "70f805b670b7d7e6b4141ee7a7395dcafbc55e2327d65e23a93e08c5793f8a69",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/70f805b670b7d7e6b4141ee7a7395dcafbc55e2327d65e23a93e08c5793f8a69.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/historical-run-3/operator-result.json",
+      "bytes": 1724,
+      "sha256": "df3e0410d2cef8172419853c24e766c752a261df2d0a6d8156bd5a9c13f92438",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/df3e0410d2cef8172419853c24e766c752a261df2d0a6d8156bd5a9c13f92438.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/primary-source/lib/cmap/connection.js",
+      "bytes": 26596,
+      "sha256": "ae17e6a321f2824ee1e8ba60b347d2da7842926325446271ad75c12720d90340",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/ae17e6a321f2824ee1e8ba60b347d2da7842926325446271ad75c12720d90340.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/primary-source/lib/cmap/wire_protocol/responses.js",
+      "bytes": 11973,
+      "sha256": "a53ebd842260e5ce2ddd720adc8a3cda9620ca5e4e969fb0710fac4e33d3e1ab",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/a53ebd842260e5ce2ddd720adc8a3cda9620ca5e4e969fb0710fac4e33d3e1ab.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/primary-source/lib/collection.js",
+      "bytes": 30124,
+      "sha256": "a3ddbf8ec78f389b3c7c5d3ec513c400102c9c5f48b555d22289e72fa23e4857",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/a3ddbf8ec78f389b3c7c5d3ec513c400102c9c5f48b555d22289e72fa23e4857.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/primary-source/lib/cursor/abstract_cursor.js",
+      "bytes": 33650,
+      "sha256": "cd68b318e4bf256f440d0d54a36d823009ac488af66d3916410269d79b462eb0",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/cd68b318e4bf256f440d0d54a36d823009ac488af66d3916410269d79b462eb0.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/primary-source/lib/cursor/find_cursor.js",
+      "bytes": 15380,
+      "sha256": "2bd3a1470fcbacf3f4ad3ebd94b86db6a84a14ff7db5cf07b2dc7b9749a9459b",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/2bd3a1470fcbacf3f4ad3ebd94b86db6a84a14ff7db5cf07b2dc7b9749a9459b.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/primary-source/lib/cursor/list_collections_cursor.js",
+      "bytes": 1345,
+      "sha256": "bd2fa53f57fa71d34125593c85de5feb98e31c40eb702e2c38b72aaf10749b72",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/bd2fa53f57fa71d34125593c85de5feb98e31c40eb702e2c38b72aaf10749b72.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/primary-source/lib/cursor/list_indexes_cursor.js",
+      "bytes": 1225,
+      "sha256": "bac1e8e0d36aa8a5d0d0f47d9c018c65b37e0d953f6f77b75504d8af547ef687",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/bac1e8e0d36aa8a5d0d0f47d9c018c65b37e0d953f6f77b75504d8af547ef687.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/primary-source/lib/db.js",
+      "bytes": 15466,
+      "sha256": "3f23ef445fbb356d571e9a9fe1835d6c26b199659c6d0c6407b8b2415882d5ea",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/3f23ef445fbb356d571e9a9fe1835d6c26b199659c6d0c6407b8b2415882d5ea.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/primary-source/lib/operations/command.js",
+      "bytes": 3569,
+      "sha256": "fdd0b39461893a836f8c72ea14e9225949d5b16cb5b907155bf9424d8c670ef1",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/fdd0b39461893a836f8c72ea14e9225949d5b16cb5b907155bf9424d8c670ef1.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/primary-source/lib/operations/execute_operation.js",
+      "bytes": 16685,
+      "sha256": "166252af07aa09b5fc3906c57dbe5e814393c4102fe326aeff2334e4ed0a9187",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/166252af07aa09b5fc3906c57dbe5e814393c4102fe326aeff2334e4ed0a9187.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/primary-source/lib/operations/indexes.js",
+      "bytes": 8848,
+      "sha256": "05637377303bbbb71113edde9f49a49907fcc35988c50c7f16648f904cfd3f5b",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/05637377303bbbb71113edde9f49a49907fcc35988c50c7f16648f904cfd3f5b.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/primary-source/lib/operations/list_collections.js",
+      "bytes": 2032,
+      "sha256": "09d68e5e1495d065ce3a7655c6171aeeb1bdf1ae10a8927380379064767a6e59",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/09d68e5e1495d065ce3a7655c6171aeeb1bdf1ae10a8927380379064767a6e59.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/primary-source/lib/utils.js",
+      "bytes": 43555,
+      "sha256": "0226029e0f294265d1098279368db0269b19b0972b84f0b71fb6b87d6e9d6a0f",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/0226029e0f294265d1098279368db0269b19b0972b84f0b71fb6b87d6e9d6a0f.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/primary-source/package.json",
+      "bytes": 8063,
+      "sha256": "c66238ee7172351c0bcfdbe5c5e52068c80cd0e904e8ca0e789a6ed0f5f892d2",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/c66238ee7172351c0bcfdbe5c5e52068c80cd0e904e8ca0e789a6ed0f5f892d2.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-cursor-creation-contract/proposal-freeze.json",
+      "bytes": 9615,
+      "sha256": "5b3630903b2b22b46de2fe02afdd1e2416c74fe9c64a7f3fda81c1f6d384d407",
+      "purpose": "historical contract, primary text or historical failure record",
+      "archivePath": "blobs/5b3630903b2b22b46de2fe02afdd1e2416c74fe9c64a7f3fda81c1f6d384d407.txt"
+    },
+    {
+      "ref": "b1a0bd38eca046debef19937f2e8b0de4dee3244",
+      "path": "output/qa/week2-inventory-amendment-composition/combined-unit-1/result.json",
+      "bytes": 5978,
+      "sha256": "1a8d06758116948de38be4943f62e1d135002cf2c04a6859884fef6b35e00c79",
+      "purpose": "historical evidence or tool metadata; never new execution/admission",
+      "archivePath": "blobs/1a8d06758116948de38be4943f62e1d135002cf2c04a6859884fef6b35e00c79.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "output/qa/week2-inventory-snapshot-native-zero-source/bootstrap296-positive-final/result.json",
+      "bytes": 1737,
+      "sha256": "bbdee5a32e283588c1f91b9e92266fda5f1e910a3e7b1e92396952d61eb937ee",
+      "purpose": "historical evidence or tool metadata; never new execution/admission",
+      "archivePath": "blobs/bbdee5a32e283588c1f91b9e92266fda5f1e910a3e7b1e92396952d61eb937ee.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "output/qa/week2-inventory-snapshot-native-zero-source/bootstrap296-positive-final/stdout.txt",
+      "bytes": 149,
+      "sha256": "6ce49ee6c91f8767c8e95aafa1078d3a8ba29cd8b6d0065d6ea627ce7d349f7a",
+      "purpose": "historical evidence or tool metadata; never new execution/admission",
+      "archivePath": "blobs/6ce49ee6c91f8767c8e95aafa1078d3a8ba29cd8b6d0065d6ea627ce7d349f7a.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "output/qa/week2-inventory-snapshot-native-zero-source/bootstrap296-positive-final/stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "purpose": "historical evidence or tool metadata; never new execution/admission",
+      "archivePath": "blobs/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-inventory-runtime/execution-3/root-cleanup.json",
+      "bytes": 2203,
+      "sha256": "d548ea7eb98662365e5b6b0e2d44bf475427f74e035e7b8d23e76aba403919bd",
+      "purpose": "historical evidence or tool metadata; never new execution/admission",
+      "archivePath": "blobs/d548ea7eb98662365e5b6b0e2d44bf475427f74e035e7b8d23e76aba403919bd.txt"
+    },
+    {
+      "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "path": "output/qa/week2-inventory-preparation/recipe-3/readiness.json",
+      "bytes": 4859,
+      "sha256": "2b9ddd2fd07881e036ea63a10deecb2e6e6ad85504c6f3ea9f4fc718afc9c907",
+      "purpose": "historical evidence or tool metadata; never new execution/admission",
+      "archivePath": "blobs/2b9ddd2fd07881e036ea63a10deecb2e6e6ad85504c6f3ea9f4fc718afc9c907.txt"
+    },
+    {
+      "ref": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "path": "output/qa/week2-inventory-snapshot-native-zero-source/README.md",
+      "bytes": 1590,
+      "sha256": "1c74eed602a5f328e3fd7df2aafbad864dfc5b006cc4fd5e4e9079540a0b9dc4",
+      "purpose": "historical evidence or tool metadata; never new execution/admission",
+      "archivePath": "blobs/1c74eed602a5f328e3fd7df2aafbad864dfc5b006cc4fd5e4e9079540a0b9dc4.txt"
+    }
+  ],
+  "missingReportedArtifacts": [
+    "uncommitted constructor candidate df37a3a8 prefix; raw bytes/full digest unavailable",
+    "uncommitted final constructor normal296/lifecycle57 QA and raw logs",
+    "original temporary worktrees",
+    "canonical /private/tmp/m0-node22/node and external publiclock file; archived publiclock bytes survive"
+  ],
+  "activeTestFilesWritten": false,
+  "subjectExecutionAuthorized": false,
+  "newAcceptance": false
+}

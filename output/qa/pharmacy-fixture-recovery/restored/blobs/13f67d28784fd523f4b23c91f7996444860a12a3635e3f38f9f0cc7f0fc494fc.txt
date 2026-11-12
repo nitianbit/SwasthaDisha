@@ -1,0 +1,330 @@
+"""Fixed locked public preparation and TypeScript emit only; no application evaluation.
+
+Only --install-emit is supported. A fresh exact receipt/claim precedes allocation.
+"""
+import base64
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import stat
+import subprocess
+import sys
+import uuid
+from urllib.parse import urlparse
+
+ROOT = Path(__file__).resolve().parents[3]
+HERE = ROOT / 'test/inventory-runtime/scenario'
+NODE = Path('/private/tmp/m0-node22/node')
+NODE_SHA = '2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0'
+NPM = Path('/Users/shubham/.nvm/versions/node/v24.19.0/lib/node_modules/npm/bin/npm-cli.js')
+NPM_SHA = '8e5f6f3429f8cdbe693cdc29904e9d5a7b127a494bd15c804bd54c7403bfcbe7'
+TOOL_PINS = {
+    NPM.parents[1] / 'node_modules/@npmcli/config/lib/index.js': '938b85a17fde9f2355497fd4befc9bac45d406fb4afacd8af63322796697ff06',
+    NPM.parents[1] / 'node_modules/@npmcli/config/lib/definitions/definitions.js': '175bdd91097f3c04273b0492455d62b1bd8bce705ddd3cc46e41c2c929a537e3',
+    NPM.parents[1] / 'node_modules/@npmcli/config/lib/set-envs.js': 'c44cbecae83242cb8e422fb0915c15489764647829f8008bbd2ea89bb0c94975',
+    NPM.parents[1] / 'node_modules/@npmcli/config/lib/parse-field.js': 'e80d5fa3875f1317ed4ab070d2e6644c741ba22e64e3abc20ec74c421f0be7aa',
+}
+EMIT_APPROVAL = Path('/private/tmp/sd-inventory-quality-emission-approval.json')
+RESOLVED_LOCK = Path('/private/tmp/sd-auth-api-resolved-lock.json')
+LOCK_SHA = '2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5'
+CASES_SHA = '807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4'
+PORTS_SHA = '12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a'
+CONFIG_TEXT = 'registry=https://registry.npmjs.org/\nignore-scripts=true\naudit=false\nfund=false\n'
+AUTHORS = {'/root/inventory_parent_source', '/root/inventory_bootstrap_source', '/root/profile_scenario'}
+PREPARATION_NAMES = ['bootstrap.cjs', 'scenario.cjs', 'ports-manifest.json', 'cases.json', 'prepare.py', 'compile.cjs', 'package-plan.json', 'npm-config-shield.cjs']
+
+
+def require(ok, code):
+    if not ok:
+        raise RuntimeError(code)
+
+
+def sha(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def regular(path, private=False, capture=False):
+    before = path.lstat()
+    require(stat.S_ISREG(before.st_mode) and before.st_nlink == 1 and path.resolve() == path, 'NONREGULAR_PREPARATION_INPUT')
+    if private:
+        require(before.st_uid == os.getuid() and stat.S_IMODE(before.st_mode) == 0o600, 'UNSAFE_PRIVATE_INPUT')
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    with os.fdopen(fd, 'rb') as source:
+        held = os.fstat(source.fileno())
+        require((held.st_dev, held.st_ino, held.st_nlink) == (before.st_dev, before.st_ino, 1), 'INPUT_IDENTITY_CHANGED')
+        if private:
+            require(held.st_uid == os.getuid() and stat.S_IMODE(held.st_mode) == 0o600, 'UNSAFE_HELD_PRIVATE_INPUT')
+        limit = 256 * 1024 * 1024 if path == NODE else 32 * 1024 * 1024
+        data = source.read(limit + 1)
+        after = os.fstat(source.fileno())
+        require(len(data) <= limit and after.st_size == held.st_size == len(data)
+                and after.st_nlink == 1 and (after.st_dev, after.st_ino) == (held.st_dev, held.st_ino)
+                and (after.st_mtime_ns, after.st_ctime_ns) == (held.st_mtime_ns, held.st_ctime_ns), 'INPUT_READ_CHANGED')
+        if private:
+            require(after.st_uid == os.getuid() and stat.S_IMODE(after.st_mode) == 0o600, 'UNSAFE_AFTER_PRIVATE_INPUT')
+        return (data, held) if capture else data
+
+
+def write_new(path, data, mode=0o600):
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, mode)
+    with os.fdopen(fd, 'wb') as output:
+        output.write(data)
+
+
+def json_bytes(value):
+    return (json.dumps(value, indent=2) + '\n').encode()
+
+
+def absent(path):
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return
+    raise RuntimeError('SOURCE_SCOPED_DESCRIPTOR_ALREADY_PRESENT')
+
+
+def git(*args):
+    return subprocess.check_output(['/usr/bin/git', '--no-optional-locks', '-c', 'core.fsmonitor=false', *args], cwd=ROOT,
+                                   env={'PATH': '/usr/bin:/bin'}, timeout=25)
+
+
+def lock_rows(lock):
+    for name, row in lock['packages'].items():
+        if not name:
+            continue
+        parsed = urlparse(row.get('resolved', ''))
+        require(parsed.scheme == 'https' and parsed.hostname == 'registry.npmjs.org'
+                and not parsed.username and not parsed.password and not parsed.query and not parsed.fragment,
+                'Nonpublic registry lock entry: ' + name)
+        integrity = row.get('integrity', '')
+        require(re.fullmatch(r'sha512-[A-Za-z0-9+/]+=*', integrity), 'Missing integrity: ' + name)
+        require(len(base64.b64decode(integrity[7:], validate=True)) == 64, 'Invalid SHA-512 integrity: ' + name)
+        require(not row.get('link') and not row.get('inBundle'), 'Unsupported linked/bundled dependency')
+
+
+def resolved_dependency(lock, parent, name):
+    current = parent
+    while current:
+        candidate = current + '/node_modules/' + name
+        if candidate in lock['packages']:
+            return candidate
+        current = current.rsplit('/node_modules/', 1)[0] if '/node_modules/' in current else ''
+    candidate = 'node_modules/' + name
+    require(candidate in lock['packages'], 'Unresolved locked dependency: ' + name)
+    return candidate
+
+
+def preserve_root_closures(original, candidate, roots):
+    seen = set()
+    def compare(old_path, new_path):
+        if (old_path, new_path) in seen:
+            return
+        seen.add((old_path, new_path))
+        old = original['packages'][old_path]; new = candidate['packages'][new_path]
+        require(old.get('version') == new.get('version') and old.get('integrity') == new.get('integrity'),
+                'Existing dependency closure drift: ' + old_path)
+        require(old.get('dependencies', {}) == new.get('dependencies', {}), 'Existing dependency metadata drift')
+        for name in old.get('dependencies', {}):
+            compare(resolved_dependency(original, old_path, name), resolved_dependency(candidate, new_path, name))
+    for name in roots:
+        compare('node_modules/' + name, 'node_modules/' + name)
+
+
+
+def main():
+    require(len(sys.argv) == 2 and sys.argv[1] == '--install-emit' and sys.flags.isolated
+            and not os.environ.get('NODE_OPTIONS') and not os.environ.get('NODE_PATH'), 'FIXED_ISOLATED_INVOCATION_REQUIRED')
+    destination = HERE / 'runtime-template.json'
+    absent(destination)
+    source_commit = git('rev-parse', 'HEAD').decode().strip()
+    require(re.fullmatch(r'[a-f0-9]{40}', source_commit) and git('status', '--porcelain', '--untracked-files=all') == b'', 'SOURCE_NOT_FROZEN')
+    ports_bytes = regular(HERE / 'ports-manifest.json'); cases_bytes = regular(HERE / 'cases.json')
+    require(sha(ports_bytes) == PORTS_SHA and sha(cases_bytes) == CASES_SHA, 'FROZEN_ROOT_DATA_CHANGED')
+    ports = json.loads(ports_bytes)
+    source_files = {name: sha(regular(ROOT / name)) for name in ports['sourceFiles']}
+    require(source_files == ports['sourceFiles'] and len(source_files) == 7, 'CONSERVATIVE_SOURCE_DRIFT')
+    for name in PREPARATION_NAMES:
+        source_files['test/inventory-runtime/scenario/' + name] = sha(regular(HERE / name))
+    for name in ['test/application/app-bundle.mjs', 'package-lock.json']:
+        source_files[name] = sha(regular(ROOT / name))
+    require(len(source_files) == 17, 'PREPARATION_SOURCE_COUNT')
+    plan_bytes = regular(HERE / 'package-plan.json'); packages = json.loads(plan_bytes)['packages']
+    require(len(packages) == 10, 'PUBLIC_PACKAGE_ROOT_COUNT')
+    approval_bytes, approval_identity = regular(EMIT_APPROVAL, private=True, capture=True)
+    approval = json.loads(approval_bytes)
+    resolved_bytes = regular(RESOLVED_LOCK, private=True)
+    require(sha(resolved_bytes) == LOCK_SHA, 'FIXED_SHARED_PUBLIC_LOCK_CHANGED')
+    shield_sha = source_files['test/inventory-runtime/scenario/npm-config-shield.cjs']
+    decision = 'APPROVE_LOCKED_INSTALL_AND_EMIT_ONLY'
+    expected = {'schema': 'SD-INVENTORY-QUALITY-PREP-APPROVAL-1', 'decision': decision,
+                'sourceRoot': str(ROOT), 'sourceCommit': source_commit,
+                'prepareSha': source_files['test/inventory-runtime/scenario/prepare.py'],
+                'compilerSha': source_files['test/inventory-runtime/scenario/compile.cjs'],
+                'configShieldSha': shield_sha, 'packagePlanSha': sha(plan_bytes), 'casesSha': CASES_SHA, 'resolvedLockSha': LOCK_SHA}
+    require(set(approval) == set(expected) | {'reviewers'} and all(approval[k] == v for k, v in expected.items()), 'EXACT_PREPARATION_RECEIPT_REQUIRED')
+    reviewers = approval['reviewers']
+    require(isinstance(reviewers, list) and len(reviewers) == 2 and all(isinstance(r, dict) for r in reviewers)
+            and len({r.get('agent') for r in reviewers}) == 2
+            and all(set(r) == {'agent', 'decision'} and r['decision'] == decision and r['agent'] not in AUTHORS
+                    and isinstance(r['agent'], str) and re.fullmatch(r'/root/[A-Za-z0-9_/]+', r['agent']) for r in reviewers), 'ACTUAL_NONAUTHOR_DECISIONS_REQUIRED')
+    require(sha(regular(NODE)) == NODE_SHA and sha(regular(NPM)) == NPM_SHA, 'PUBLIC_PREPARATION_TOOL_CHANGED')
+    for tool, digest in TOOL_PINS.items():
+        require(sha(regular(tool)) == digest, 'NPM_CONFIG_TOOL_CHANGED')
+    resolved = json.loads(resolved_bytes); original_lock = json.loads(regular(ROOT / 'package-lock.json'))
+    lock_rows(resolved); lock_rows(original_lock)
+    require(len(resolved['packages']) == 123 and len(resolved['packages']) - 1 == 122
+            and resolved['packages']['']['dependencies'] == packages, 'PUBLIC_LOCK_CLOSURE_CHANGED')
+    for name, version in packages.items():
+        require(resolved['packages']['node_modules/' + name]['version'] == version, 'DIRECT_DEPENDENCY_CHANGED')
+        if name not in ['mongoose', 'typescript']:
+            old = original_lock['packages']['node_modules/' + name]; new = resolved['packages']['node_modules/' + name]
+            require(old['version'] == new['version'] and old['integrity'] == new['integrity'], 'ROOT_LOCK_PIN_CHANGED')
+    preserve_root_closures(original_lock, resolved, [name for name in packages if name not in ['mongoose', 'typescript']])
+    # Irreversible one-use admission precedes build allocation, npm and compiler.
+    claim_value = {**expected,
+                   'schema': 'SD-INVENTORY-QUALITY-EMISSION-CLAIM-1', 'portsSha': PORTS_SHA,
+                   'receiptSha': sha(approval_bytes), 'receiptIdentity': {'device': approval_identity.st_dev, 'inode': approval_identity.st_ino}}
+    current_approval, current_identity = regular(EMIT_APPROVAL, private=True, capture=True)
+    require(current_approval == approval_bytes and (current_identity.st_dev, current_identity.st_ino)
+            == (approval_identity.st_dev, approval_identity.st_ino), 'RECEIPT_CHANGED_BEFORE_CLAIM')
+    claim_bytes = json_bytes(claim_value)
+    claim_key = sha(json_bytes({**expected, 'receiptSha': sha(approval_bytes)}))
+    # Copying the same receipt to a new inode cannot reset its one-use key.
+    claim_path = Path('/private/tmp/sd-inventory-quality-emission-once-' + claim_key + '.claim.json')
+    write_new(claim_path, claim_bytes)
+    area = Path('/private/tmp/sd-inventory-quality-build-' + str(uuid.uuid4())); area.mkdir(mode=0o700)
+    identity = area.lstat()
+    project = area / 'public'; project.mkdir(mode=0o700)
+    project_identity = project.lstat()
+    runtime = area / 'runtime'; runtime.mkdir(mode=0o755)
+    cache = area / 'cache'; cache.mkdir(mode=0o700)
+    configs = {'user': area / 'user.npmrc', 'global': area / 'global.npmrc', 'project': project / '.npmrc'}
+    config_identities = {}
+    for label, filename in configs.items():
+        write_new(filename, CONFIG_TEXT.encode())
+        meta = filename.lstat()
+        config_identities[label] = {'device': meta.st_dev, 'inode': meta.st_ino, 'mode': meta.st_mode, 'sha256': sha(CONFIG_TEXT.encode())}
+    marker = {'schema': 'SD-INVENTORY-QUALITY-BUILD-1', 'sourceRoot': str(ROOT), 'sourceCommit': source_commit,
+              'root': str(area), 'device': identity.st_dev, 'inode': identity.st_ino, 'ownerUid': os.getuid(),
+              'projectDevice': project_identity.st_dev, 'projectInode': project_identity.st_ino,
+              'configShieldSha': shield_sha, 'casesSha': CASES_SHA, 'portsSha': PORTS_SHA,
+              'emissionClaimSha': sha(claim_bytes), 'configs': config_identities}
+    marker_bytes = json_bytes(marker); write_new(area / '.owner.json', marker_bytes)
+    env = {'PATH': str(NODE.parent) + ':/usr/bin:/bin', 'TMPDIR': str(area),
+           'NPM_CONFIG_USERCONFIG': str(configs['user']), 'NPM_CONFIG_GLOBALCONFIG': str(configs['global']),
+           'NPM_CONFIG_CACHE': str(cache), 'NPM_CONFIG_IGNORE_SCRIPTS': 'true',
+           'NPM_CONFIG_REGISTRY': 'https://registry.npmjs.org/', 'NPM_CONFIG_AUDIT': 'false', 'NPM_CONFIG_FUND': 'false'}
+    manifest = {'name': 'sd-owned-auth-api-fixture', 'version': '1.0.0', 'private': True, 'dependencies': packages}
+    write_new(project / 'package.json', json_bytes(manifest)); write_new(project / 'package-lock.json', resolved_bytes)
+    write_new(area / 'resolved-lock.json', resolved_bytes)
+
+    def owned():
+        now = area.lstat(); public_now = project.lstat()
+        require(stat.S_ISDIR(now.st_mode) and not stat.S_ISLNK(now.st_mode) and now.st_uid == os.getuid()
+                and (now.st_dev, now.st_ino) == (identity.st_dev, identity.st_ino)
+                and stat.S_ISDIR(public_now.st_mode) and not stat.S_ISLNK(public_now.st_mode)
+                and (public_now.st_dev, public_now.st_ino) == (project_identity.st_dev, project_identity.st_ino)
+                and regular(area / '.owner.json', private=True) == marker_bytes, 'BUILD_IDENTITY_CHANGED')
+
+    owned()
+    proof_path = area / 'npm-config-proof.json'; absent(proof_path)
+    npm_args = [str(NODE), '--require', str(HERE / 'npm-config-shield.cjs'), str(NPM), '--prefix', str(project),
+                '--workspaces=false', 'ci', '--ignore-scripts', '--omit=optional', '--no-audit', '--no-fund']
+    with (area / 'install.stdout.txt').open('xb') as out, (area / 'install.stderr.txt').open('xb') as err:
+        child = subprocess.Popen(npm_args, cwd=project, env=env, stdout=out, stderr=err)
+        npm_pid = child.pid  # Hold the acknowledged exact child before later fallible reporting.
+        try:
+            write_new(area / 'npm-child.json', json_bytes({'schema': 'SD-INVENTORY-NPM-CHILD-1',
+                      'childPID': npm_pid, 'sourceCommit': source_commit, 'emissionClaimSha': sha(claim_bytes)}))
+            npm_status = child.wait(timeout=900)
+        except BaseException as first_failure:
+            unresolved = False
+            try:
+                if child.poll() is None:
+                    child.kill()
+                child.wait(timeout=25)
+            except BaseException:
+                unresolved = True
+            if isinstance(first_failure, subprocess.TimeoutExpired):
+                raise RuntimeError('NPM_PREPARATION_UNRESOLVED' if unresolved else 'NPM_PREPARATION_TIMEOUT') from None
+            # Never let cleanup replace the first reporting/interruption failure.
+            raise
+    require(npm_status == 0, 'NPM_PREPARATION_FAILED')
+    owned()
+    proof = json.loads(regular(proof_path, private=True))
+    expected_proof = {'schema': 'SD-INVENTORY-NPM-CONFIG-PROOF-1', 'status': 'PASS', 'childPID': npm_pid,
+                      'sourceCommit': source_commit, 'sourceRootSha': sha(str(ROOT).encode()),
+                      'buildIdentity': {'device': identity.st_dev, 'inode': identity.st_ino}, 'configShieldSha': shield_sha,
+                      'casesSha': CASES_SHA, 'portsSha': PORTS_SHA, 'emissionClaimSha': sha(claim_bytes),
+                      'configSha': sha(CONFIG_TEXT.encode()), 'reads': {'builtin': 1, 'user': 1, 'global': 1, 'project': 1},
+                      'unexpected': 0, 'builtinSuppressed': True}
+    require(proof == expected_proof and type(proof['childPID']) is int
+            and all(type(v) is int for v in proof['reads'].values()) and type(proof['unexpected']) is int
+            and proof['builtinSuppressed'] is True, 'NPM_CONFIG_PROOF_MISMATCH')
+    require(sha(regular(project / 'package-lock.json')) == LOCK_SHA, 'INSTALL_CHANGED_APPROVED_LOCK')
+    shutil.copytree(project / 'node_modules', runtime / 'node_modules', symlinks=True)
+    for links in list((runtime / 'node_modules').rglob('.bin')):
+        require(links.is_dir() and not links.is_symlink(), 'UNEXPECTED_BIN_DIRECTORY')
+        shutil.rmtree(links)
+    for filename in list((runtime / 'node_modules').rglob('*')):
+        require(not filename.is_symlink(), 'PUBLIC_PACKAGE_SYMLINK')
+        if filename.is_file() and (filename.name.endswith('.node') or filename.name.startswith('.env')):
+            require(not filename.name.endswith('.node'), 'NATIVE_ADDON_IN_CLOSURE')
+            filename.unlink()
+    for name in ['bootstrap.cjs', 'scenario.cjs', 'ports-manifest.json', 'cases.json']:
+        write_new(runtime / name, regular(HERE / name), 0o444)
+    write_new(runtime / 'network-admission.mjs', regular(ROOT / 'test/application/app-bundle.mjs'), 0o444)
+    write_new(runtime / 'package-lock.json', resolved_bytes, 0o444)
+    compiler = project / 'compile.cjs'; write_new(compiler, regular(HERE / 'compile.cjs'))
+    input_plan = {'sourceCommit': source_commit, 'packageVersions': packages, 'lockSha': LOCK_SHA,
+                  'portsSha': PORTS_SHA, 'casesSha': CASES_SHA, 'trackedSources': git('ls-files', 'src1').decode().splitlines()}
+    write_new(area / 'compiler-input.json', json_bytes(input_plan))
+    owned()
+    compile_env = {'PATH': '/usr/bin:/bin', 'TMPDIR': str(area)}
+    with (area / 'compiler.stdout.txt').open('xb') as out, (area / 'compiler.stderr.txt').open('xb') as err:
+        result = subprocess.run([str(NODE), '--permission', '--allow-fs-read=' + str(area),
+                                 '--allow-fs-read=' + str(ROOT / 'src1'), '--allow-fs-write=' + str(runtime),
+                                 str(compiler), str(ROOT), str(runtime), str(area / 'compiler-input.json')],
+                                cwd=project, env=compile_env, stdout=out, stderr=err, timeout=120)
+    require(result.returncode == 0, 'REVIEWED_SOURCE_COMPILATION_FAILED')
+    runtime_plan = json.loads(regular(runtime / 'runtime-plan.json'))
+    require(runtime_plan['sourceFiles'] == ports['sourceFiles'], 'COMPILER_SOURCE_CLOSURE_CHANGED')
+    runtime_plan['sourceFiles'] = source_files
+    (runtime / 'runtime-plan.json').write_bytes(json_bytes(runtime_plan))
+    files = {}; total = 0; dependency_count = 0; nominal_count = 0; variant_count = 0
+    for filename in sorted(runtime.rglob('*')):
+        require(not filename.is_symlink(), 'RUNTIME_SYMLINK')
+        if filename.is_file():
+            data = regular(filename); relative = filename.relative_to(runtime).as_posix()
+            require(not filename.name.endswith('.node') and not filename.name.startswith('.env'), 'FORBIDDEN_RUNTIME_INPUT')
+            files[relative] = sha(data); total += len(data)
+            dependency_count += relative.startswith('node_modules/')
+            variant_count += relative.startswith('compiled/mutants/')
+            nominal_count += relative.startswith('compiled/') and not relative.startswith('compiled/mutants/')
+    require(len(files) == 2777 and dependency_count == 2755 and nominal_count == 7 and variant_count == 8
+            and len(files) - dependency_count - nominal_count - variant_count == 7 and total <= 256 * 1024 * 1024, 'RUNTIME_CLOSURE_PREDICTION_MISMATCH')
+    require(git('rev-parse', 'HEAD').decode().strip() == source_commit
+            and git('status', '--porcelain', '--untracked-files=all') == b'', 'SOURCE_CHANGED_DURING_PREPARATION')
+    require(all(sha(regular(ROOT / name)) == digest for name, digest in source_files.items()), 'INPUT_CHANGED_DURING_PREPARATION')
+    require(sha(regular(RESOLVED_LOCK, private=True)) == LOCK_SHA, 'SHARED_PUBLIC_LOCK_CHANGED')
+    current_approval, current_identity = regular(EMIT_APPROVAL, private=True, capture=True)
+    require(current_approval == approval_bytes and (current_identity.st_dev, current_identity.st_ino)
+            == (approval_identity.st_dev, approval_identity.st_ino), 'RECEIPT_CHANGED_DURING_PREPARATION')
+    descriptor = {'schema': 'SD-INVENTORY-QUALITY-TEMPLATE-1', 'directory': str(runtime), 'files': files,
+                  'sourceFiles': source_files, 'sourceCommit': source_commit, 'packageVersions': packages,
+                  'lockSha': LOCK_SHA, 'portsSha': PORTS_SHA, 'casesSha': CASES_SHA}
+    owned(); absent(destination)
+    descriptor_bytes = json_bytes(descriptor)
+    write_new(area / 'runtime-template.json', descriptor_bytes)
+    write_new(destination, descriptor_bytes)
+    write_new(area / 'preparation-result.json', json_bytes({'status': 'PREPARED_NOT_EXECUTED', 'sourceCommit': source_commit,
+              'templateSha': sha(descriptor_bytes), 'fileCount': len(files), 'bytes': total, 'emissionClaimSha': sha(claim_bytes),
+              'npmConfigProof': proof, 'compilation': runtime_plan['compilation'], 'applicationEvaluations': 0, 'DockerCalls': 0}))
+    print(json.dumps({'status': 'PREPARED_NOT_EXECUTED', 'directory': str(area), 'files': len(files), 'bytes': total}))
+
+
+if __name__ == '__main__':
+    main()

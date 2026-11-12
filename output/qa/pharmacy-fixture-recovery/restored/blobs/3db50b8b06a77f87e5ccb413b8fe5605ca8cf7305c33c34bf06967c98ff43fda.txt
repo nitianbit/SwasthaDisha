@@ -1,0 +1,213 @@
+{
+  "schema": "SD-CURSOR-NAMESPACE-SOURCE-ANALYSIS-1",
+  "status": "PROPOSAL_ONLY_NO_IMPLEMENTATION_OR_EXECUTABLE_CHECKS",
+  "author": "/root/inventory_bootstrap_source",
+  "inputs": [
+    {
+      "kind": "PINNED_PUBLIC_SOURCE_TEXT_ONLY",
+      "original": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/runtime/node_modules/mongoose/node_modules/mongodb/package.json",
+      "publicPreparationCopy": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/public/node_modules/mongoose/node_modules/mongodb/package.json",
+      "copy": "primary-source/package.json",
+      "sha256": "c66238ee7172351c0bcfdbe5c5e52068c80cd0e904e8ca0e789a6ed0f5f892d2",
+      "descriptorSha256": "c66238ee7172351c0bcfdbe5c5e52068c80cd0e904e8ca0e789a6ed0f5f892d2",
+      "publicCopySha256": "c66238ee7172351c0bcfdbe5c5e52068c80cd0e904e8ca0e789a6ed0f5f892d2",
+      "lines": 184
+    },
+    {
+      "kind": "PINNED_PUBLIC_SOURCE_TEXT_ONLY",
+      "original": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/runtime/node_modules/mongoose/node_modules/mongodb/lib/db.js",
+      "publicPreparationCopy": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/public/node_modules/mongoose/node_modules/mongodb/lib/db.js",
+      "copy": "primary-source/lib/db.js",
+      "sha256": "3f23ef445fbb356d571e9a9fe1835d6c26b199659c6d0c6407b8b2415882d5ea",
+      "descriptorSha256": "3f23ef445fbb356d571e9a9fe1835d6c26b199659c6d0c6407b8b2415882d5ea",
+      "publicCopySha256": "3f23ef445fbb356d571e9a9fe1835d6c26b199659c6d0c6407b8b2415882d5ea",
+      "lines": 366
+    },
+    {
+      "kind": "PINNED_PUBLIC_SOURCE_TEXT_ONLY",
+      "original": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/runtime/node_modules/mongoose/node_modules/mongodb/lib/collection.js",
+      "publicPreparationCopy": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/public/node_modules/mongoose/node_modules/mongodb/lib/collection.js",
+      "copy": "primary-source/lib/collection.js",
+      "sha256": "a3ddbf8ec78f389b3c7c5d3ec513c400102c9c5f48b555d22289e72fa23e4857",
+      "descriptorSha256": "a3ddbf8ec78f389b3c7c5d3ec513c400102c9c5f48b555d22289e72fa23e4857",
+      "publicCopySha256": "a3ddbf8ec78f389b3c7c5d3ec513c400102c9c5f48b555d22289e72fa23e4857",
+      "lines": 650
+    },
+    {
+      "kind": "PINNED_PUBLIC_SOURCE_TEXT_ONLY",
+      "original": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/runtime/node_modules/mongoose/node_modules/mongodb/lib/utils.js",
+      "publicPreparationCopy": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/public/node_modules/mongoose/node_modules/mongodb/lib/utils.js",
+      "copy": "primary-source/lib/utils.js",
+      "sha256": "0226029e0f294265d1098279368db0269b19b0972b84f0b71fb6b87d6e9d6a0f",
+      "descriptorSha256": "0226029e0f294265d1098279368db0269b19b0972b84f0b71fb6b87d6e9d6a0f",
+      "publicCopySha256": "0226029e0f294265d1098279368db0269b19b0972b84f0b71fb6b87d6e9d6a0f",
+      "lines": 1238
+    },
+    {
+      "kind": "PINNED_PUBLIC_SOURCE_TEXT_ONLY",
+      "original": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/runtime/node_modules/mongoose/node_modules/mongodb/lib/cursor/abstract_cursor.js",
+      "publicPreparationCopy": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/public/node_modules/mongoose/node_modules/mongodb/lib/cursor/abstract_cursor.js",
+      "copy": "primary-source/lib/cursor/abstract_cursor.js",
+      "sha256": "cd68b318e4bf256f440d0d54a36d823009ac488af66d3916410269d79b462eb0",
+      "descriptorSha256": "cd68b318e4bf256f440d0d54a36d823009ac488af66d3916410269d79b462eb0",
+      "publicCopySha256": "cd68b318e4bf256f440d0d54a36d823009ac488af66d3916410269d79b462eb0",
+      "lines": 870
+    },
+    {
+      "kind": "PINNED_PUBLIC_SOURCE_TEXT_ONLY",
+      "original": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/runtime/node_modules/mongoose/node_modules/mongodb/lib/cursor/list_collections_cursor.js",
+      "publicPreparationCopy": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/public/node_modules/mongoose/node_modules/mongodb/lib/cursor/list_collections_cursor.js",
+      "copy": "primary-source/lib/cursor/list_collections_cursor.js",
+      "sha256": "bd2fa53f57fa71d34125593c85de5feb98e31c40eb702e2c38b72aaf10749b72",
+      "descriptorSha256": "bd2fa53f57fa71d34125593c85de5feb98e31c40eb702e2c38b72aaf10749b72",
+      "publicCopySha256": "bd2fa53f57fa71d34125593c85de5feb98e31c40eb702e2c38b72aaf10749b72",
+      "lines": 34
+    },
+    {
+      "kind": "PINNED_PUBLIC_SOURCE_TEXT_ONLY",
+      "original": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/runtime/node_modules/mongoose/node_modules/mongodb/lib/cursor/list_indexes_cursor.js",
+      "publicPreparationCopy": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/public/node_modules/mongoose/node_modules/mongodb/lib/cursor/list_indexes_cursor.js",
+      "copy": "primary-source/lib/cursor/list_indexes_cursor.js",
+      "sha256": "bac1e8e0d36aa8a5d0d0f47d9c018c65b37e0d953f6f77b75504d8af547ef687",
+      "descriptorSha256": "bac1e8e0d36aa8a5d0d0f47d9c018c65b37e0d953f6f77b75504d8af547ef687",
+      "publicCopySha256": "bac1e8e0d36aa8a5d0d0f47d9c018c65b37e0d953f6f77b75504d8af547ef687",
+      "lines": 32
+    },
+    {
+      "kind": "PINNED_PUBLIC_SOURCE_TEXT_ONLY",
+      "original": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/runtime/node_modules/mongoose/node_modules/mongodb/lib/cursor/find_cursor.js",
+      "publicPreparationCopy": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/public/node_modules/mongoose/node_modules/mongodb/lib/cursor/find_cursor.js",
+      "copy": "primary-source/lib/cursor/find_cursor.js",
+      "sha256": "2bd3a1470fcbacf3f4ad3ebd94b86db6a84a14ff7db5cf07b2dc7b9749a9459b",
+      "descriptorSha256": "2bd3a1470fcbacf3f4ad3ebd94b86db6a84a14ff7db5cf07b2dc7b9749a9459b",
+      "publicCopySha256": "2bd3a1470fcbacf3f4ad3ebd94b86db6a84a14ff7db5cf07b2dc7b9749a9459b",
+      "lines": 390
+    },
+    {
+      "kind": "PINNED_PUBLIC_SOURCE_TEXT_ONLY",
+      "original": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/runtime/node_modules/mongoose/node_modules/mongodb/lib/operations/list_collections.js",
+      "publicPreparationCopy": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/public/node_modules/mongoose/node_modules/mongodb/lib/operations/list_collections.js",
+      "copy": "primary-source/lib/operations/list_collections.js",
+      "sha256": "09d68e5e1495d065ce3a7655c6171aeeb1bdf1ae10a8927380379064767a6e59",
+      "descriptorSha256": "09d68e5e1495d065ce3a7655c6171aeeb1bdf1ae10a8927380379064767a6e59",
+      "publicCopySha256": "09d68e5e1495d065ce3a7655c6171aeeb1bdf1ae10a8927380379064767a6e59",
+      "lines": 52
+    },
+    {
+      "kind": "PINNED_PUBLIC_SOURCE_TEXT_ONLY",
+      "original": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/runtime/node_modules/mongoose/node_modules/mongodb/lib/operations/indexes.js",
+      "publicPreparationCopy": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/public/node_modules/mongoose/node_modules/mongodb/lib/operations/indexes.js",
+      "copy": "primary-source/lib/operations/indexes.js",
+      "sha256": "05637377303bbbb71113edde9f49a49907fcc35988c50c7f16648f904cfd3f5b",
+      "descriptorSha256": "05637377303bbbb71113edde9f49a49907fcc35988c50c7f16648f904cfd3f5b",
+      "publicCopySha256": "05637377303bbbb71113edde9f49a49907fcc35988c50c7f16648f904cfd3f5b",
+      "lines": 209
+    },
+    {
+      "kind": "PINNED_PUBLIC_SOURCE_TEXT_ONLY",
+      "original": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/runtime/node_modules/mongoose/node_modules/mongodb/lib/operations/command.js",
+      "publicPreparationCopy": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/public/node_modules/mongoose/node_modules/mongodb/lib/operations/command.js",
+      "copy": "primary-source/lib/operations/command.js",
+      "sha256": "fdd0b39461893a836f8c72ea14e9225949d5b16cb5b907155bf9424d8c670ef1",
+      "descriptorSha256": "fdd0b39461893a836f8c72ea14e9225949d5b16cb5b907155bf9424d8c670ef1",
+      "publicCopySha256": "fdd0b39461893a836f8c72ea14e9225949d5b16cb5b907155bf9424d8c670ef1",
+      "lines": 81
+    },
+    {
+      "kind": "PINNED_PUBLIC_SOURCE_TEXT_ONLY",
+      "original": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/runtime/node_modules/mongoose/node_modules/mongodb/lib/operations/execute_operation.js",
+      "publicPreparationCopy": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/public/node_modules/mongoose/node_modules/mongodb/lib/operations/execute_operation.js",
+      "copy": "primary-source/lib/operations/execute_operation.js",
+      "sha256": "166252af07aa09b5fc3906c57dbe5e814393c4102fe326aeff2334e4ed0a9187",
+      "descriptorSha256": "166252af07aa09b5fc3906c57dbe5e814393c4102fe326aeff2334e4ed0a9187",
+      "publicCopySha256": "166252af07aa09b5fc3906c57dbe5e814393c4102fe326aeff2334e4ed0a9187",
+      "lines": 339
+    },
+    {
+      "kind": "PINNED_PUBLIC_SOURCE_TEXT_ONLY",
+      "original": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/runtime/node_modules/mongoose/node_modules/mongodb/lib/cmap/wire_protocol/responses.js",
+      "publicPreparationCopy": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/public/node_modules/mongoose/node_modules/mongodb/lib/cmap/wire_protocol/responses.js",
+      "copy": "primary-source/lib/cmap/wire_protocol/responses.js",
+      "sha256": "a53ebd842260e5ce2ddd720adc8a3cda9620ca5e4e969fb0710fac4e33d3e1ab",
+      "descriptorSha256": "a53ebd842260e5ce2ddd720adc8a3cda9620ca5e4e969fb0710fac4e33d3e1ab",
+      "publicCopySha256": "a53ebd842260e5ce2ddd720adc8a3cda9620ca5e4e969fb0710fac4e33d3e1ab",
+      "lines": 315
+    },
+    {
+      "kind": "PINNED_PUBLIC_SOURCE_TEXT_ONLY",
+      "original": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/runtime/node_modules/mongoose/node_modules/mongodb/lib/cmap/connection.js",
+      "publicPreparationCopy": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/public/node_modules/mongoose/node_modules/mongodb/lib/cmap/connection.js",
+      "copy": "primary-source/lib/cmap/connection.js",
+      "sha256": "ae17e6a321f2824ee1e8ba60b347d2da7842926325446271ad75c12720d90340",
+      "descriptorSha256": "ae17e6a321f2824ee1e8ba60b347d2da7842926325446271ad75c12720d90340",
+      "publicCopySha256": "ae17e6a321f2824ee1e8ba60b347d2da7842926325446271ad75c12720d90340",
+      "lines": 576
+    },
+    {
+      "kind": "READ_ONLY_FIXTURE_BASELINE",
+      "original": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-public-init-sites/test/inventory-runtime/scenario/bootstrap.cjs",
+      "copy": "fixture-baselines/inventory-bootstrap.cjs",
+      "sha256": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690",
+      "lines": 1933
+    },
+    {
+      "kind": "READ_ONLY_FIXTURE_BASELINE",
+      "original": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-public-init-sites/test/inventory-runtime/scenario/ports-manifest.json",
+      "copy": "fixture-baselines/inventory-ports.json",
+      "sha256": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+      "lines": 1464
+    },
+    {
+      "kind": "READ_ONLY_FIXTURE_BASELINE",
+      "original": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-medicine-bootstrap-source/test/medicine-runtime/scenario/bootstrap.cjs",
+      "copy": "fixture-baselines/medicine-bootstrap.cjs",
+      "sha256": "37e9d95b441779f3b5a7ca139783b43574c1606fffad32f8fa0990e8b8bdf81b",
+      "lines": 1485
+    },
+    {
+      "kind": "READ_ONLY_FIXTURE_BASELINE",
+      "original": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-medicine-bootstrap-source/test/medicine-runtime/scenario/ports-manifest.json",
+      "copy": "fixture-baselines/medicine-ports.json",
+      "sha256": "3079134fca2a88a4dea321a7bf11895079f0d44460d81e6576874761560c27f9",
+      "lines": 6336
+    },
+    {
+      "kind": "PRESERVED_HISTORICAL_RUN_EVIDENCE_NO_REPLAY",
+      "original": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-runtime-contract/output/qa/week2-inventory-runtime/execution-3/FAILURE.md",
+      "copy": "historical-run-3/FAILURE.md",
+      "sha256": "c9824b74661ea821ecf10ae1b9c3ddcd68d854288e5e075d5c9891dcee50a898"
+    },
+    {
+      "kind": "PRESERVED_HISTORICAL_RUN_EVIDENCE_NO_REPLAY",
+      "original": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-runtime-contract/output/qa/week2-inventory-runtime/execution-3/operator-result.json",
+      "copy": "historical-run-3/operator-result.json",
+      "sha256": "df3e0410d2cef8172419853c24e766c752a261df2d0a6d8156bd5a9c13f92438"
+    },
+    {
+      "kind": "PRESERVED_HISTORICAL_RUN_EVIDENCE_NO_REPLAY",
+      "original": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-runtime-contract/output/qa/week2-inventory-runtime/execution-3/freeze.json",
+      "copy": "historical-run-3/freeze.json",
+      "sha256": "70f805b670b7d7e6b4141ee7a7395dcafbc55e2327d65e23a93e08c5793f8a69"
+    },
+    {
+      "kind": "ACTUAL_ARTIFACT_DESCRIPTOR_READ_ONLY",
+      "original": "/private/tmp/sd-inventory-quality-build-d353d819-8aad-4062-9082-417d992a5d5f/runtime-template.json",
+      "sha256": "0f69288f334aa23446faf3a84e8614b22984705c1dc64beee879ac1884fb8e74",
+      "sourceCommit": "3a962c90f0e33ca162baa3bbe4284e8a9b51f758",
+      "files": 2777,
+      "driverVersion": "7.8.0"
+    },
+    {
+      "kind": "READ_ONLY_FAILURE_REVIEW_RECORD",
+      "original": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-runtime-contract/output/qa/week2-inventory-runtime/execution-3/DECISIONS.json",
+      "copy": "historical-run-3/DECISIONS.json",
+      "sha256": "ac336eb3a05c8166f9e63f725b4a61f551514f6b29e1ca1c08e5fc6832d3f2df"
+    },
+    {
+      "kind": "READ_ONLY_FAILURE_REVIEW_RECORD",
+      "original": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-runtime-contract/output/qa/week2-inventory-runtime/execution-3/REVIEW.md",
+      "copy": "historical-run-3/REVIEW.md",
+      "sha256": "f2e71ef7f2fcb0175b2464ef262499e8d1379f4aeb4c93a74595f1fe66dac91a"
+    }
+  ]
+}

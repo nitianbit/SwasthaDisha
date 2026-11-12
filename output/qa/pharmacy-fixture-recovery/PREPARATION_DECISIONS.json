@@ -1,0 +1,25 @@
+{
+  "schema": "SD-PHARMACY-RECOVERY-PREPARATION-1",
+  "planSha256": "7b4f866aa51d05bce4a93bbfcb5093df98d3827c3f266f02c1abb5dc138a50ed",
+  "inventorySha256": "4b194c8124d14c89c19a2664c7c3f8f60a9aef002885317541457e09e08815b0",
+  "decisions": [
+    {
+      "reviewer": "/root/booking_read_standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_RECOVERY_PREPARATION_ONLY",
+      "limitation": "Reviewed document/readiness only; Git blob bytes not independently reread by this reviewer."
+    },
+    {
+      "reviewer": "/root",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_RECOVERY_PREPARATION_ONLY",
+      "verification": "Read complete recovery plan; independently read and verified all74 exact Git blob sizes/SHA256,2357268 bytes, including archived public lock; no subjects executed."
+    }
+  ],
+  "rootAction": "RECOVER_EXACT_SOURCE_DATA_TO_ARCHIVE_ONLY",
+  "correctionImplementationApproved": false,
+  "subjectExecutionApproved": false,
+  "toolAcquisitionApproved": false,
+  "runtimeApproved": false,
+  "newAcceptance": false
+}

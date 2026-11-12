@@ -1,0 +1,35 @@
+{
+  "schema": "SD-INVENTORY-ACTUAL-FAILED-RUN-FREEZE-3",
+  "status": "FAILED_REVIEW_REQUIRED_NO_RETRY",
+  "sourceCommit": "3a962c90f0e33ca162baa3bbe4284e8a9b51f758",
+  "descriptorSha256": "0f69288f334aa23446faf3a84e8614b22984705c1dc64beee879ac1884fb8e74",
+  "recipeSha256": "20d7f0a671aeec7d92835ef502f8535e70565043d73bef9fe940b3d8fdf483ad",
+  "receiptSha256": "508fc5c1e2ef137faadb52bc2232aa7f739802b5276f71b1c0ff49b6bb93e9db",
+  "operatorReportSha256": "df3e0410d2cef8172419853c24e766c752a261df2d0a6d8156bd5a9c13f92438",
+  "consumedClaimSha256": "f98d5f0e3aacb4516140551477b4dd8a3d81669fd2be5f43c575171808697cab",
+  "files": {
+    "output/qa/week2-inventory-runtime/execution-3/stdout.txt": "3c8465143bdc62a20e4ec1f23f6e09558cdb14ae31600cb391f0a14540aef0e0",
+    "output/qa/week2-inventory-runtime/execution-3/actual-approval.json": "508fc5c1e2ef137faadb52bc2232aa7f739802b5276f71b1c0ff49b6bb93e9db",
+    "output/qa/week2-inventory-runtime/execution-3/result.json": "2320c970cb3faf945b66e3e669b428a2dd5751d1bccccf922b9a6259915a2293",
+    "output/qa/week2-inventory-runtime/execution-3/FAILURE.md": "c9824b74661ea821ecf10ae1b9c3ddcd68d854288e5e075d5c9891dcee50a898",
+    "output/qa/week2-inventory-runtime/execution-3/operator-result.json": "df3e0410d2cef8172419853c24e766c752a261df2d0a6d8156bd5a9c13f92438",
+    "output/qa/week2-inventory-runtime/execution-3/root-cleanup.json": "d548ea7eb98662365e5b6b0e2d44bf475427f74e035e7b8d23e76aba403919bd",
+    "output/qa/week2-inventory-runtime/execution-3/receipt-preservation.json": "1674b3c7d26961c8ab2a16ef7e9b51f94ea7f605ff0cf6ca7fee90b39d2046a5",
+    "output/qa/week2-inventory-runtime/execution-3/started.json": "06f80fbc0b7f03b5a85c2fbf12c81be017ab825ff88defa0d0005bac11e02702",
+    "output/qa/week2-inventory-runtime/execution-3/stderr.txt": "864d619a97e08ef31a882589041b164b866680e4504e6fda432f6b7f9edaad38",
+    "output/qa/week2-inventory-runtime/execution-3/root-fresh-preflight.json": "8ef91e779240c5656ff52f2946934a97a10474a9ee8c345f4092671a7a7843ae",
+    "output/qa/week2-inventory-runtime/execution-3/invoke.py": "41f83ed9bd97dd0119c4a12e1878697582cf5251812ec62dd549daaa1ff78023",
+    "output/qa/week2-inventory-runtime/execution-3/consumed-claim.json": "f98d5f0e3aacb4516140551477b4dd8a3d81669fd2be5f43c575171808697cab",
+    "output/qa/week2-inventory-runtime/execution-3/root-cleanup-first-syntax-error.txt": "510517cdaaecf723b6f9646aafcf556b26774385757454f5b9be84ab91a269e3",
+    "output/qa/week2-inventory-runtime/execution-3/invocation.json": "b140fa9e5689ea97448a1c000bb440f4e263763833f9667d9f37122c86bd6e93"
+  },
+  "rootFreshCleanupVerified": true,
+  "failureObservation": {
+    "stage": "OWNED_DATABASE_CONNECT",
+    "code": "INVENTORY_CURSOR",
+    "caseId": null,
+    "variantId": null,
+    "phase": null
+  },
+  "applicationScenarioAcceptance": false
+}

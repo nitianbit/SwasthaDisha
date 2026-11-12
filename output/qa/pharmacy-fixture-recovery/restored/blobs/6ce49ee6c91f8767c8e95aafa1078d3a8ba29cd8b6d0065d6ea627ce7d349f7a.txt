@@ -1,0 +1,1 @@
+{"schema":"SD-INVENTORY-BOOTSTRAP-UNIT-1","status":"PASS","checks":296,"failed":0,"applicationEvaluations":0,"packageEvaluations":0,"DockerCalls":0}

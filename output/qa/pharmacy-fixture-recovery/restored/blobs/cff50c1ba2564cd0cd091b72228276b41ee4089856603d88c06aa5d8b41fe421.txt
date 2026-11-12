@@ -1,0 +1,33 @@
+{
+  "schema": "SD-TWO-ACTUAL-CURSOR-CONTRACT-DECISIONS-1",
+  "contractFreezeSha256": "516b4ca4da13d0c143c52b7fc1e4926204fb1ffcb0f0cbe596b25121986935a4",
+  "scope": "BOTH_FIXTURES_MINIMUM_CREATION_NAMESPACE_ONLY",
+  "decisions": [
+    {
+      "reviewer": "/root/cursor_spec_contract",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "auditedUtc": "2026-11-11T15:52:44Z",
+      "pinsVerified": 28,
+      "medicineReplyRuleClarificationAccepted": true
+    },
+    {
+      "reviewer": "/root/index_standards_fresh",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "auditedUtc": "2026-11-11T15:52:38.583868Z",
+      "pinsVerified": 28,
+      "medicineReplyRuleClarificationAccepted": true,
+      "reviewOnlyHelperFailure": "Assumed copy on descriptor row; stopped before subject execution; corrected conditional audit passed."
+    }
+  ],
+  "rootAction": "AUTHORIZE_ONLY_EXACT_CONTRACT_IMPLEMENTATION_AND_BOUNDED_PURE_CONTROLS",
+  "sourceAccepted": false,
+  "preparationAuthorized": false,
+  "runtimeAuthorized": false,
+  "retryAuthorized": false,
+  "claudeReviewed": false,
+  "ownerOrReleaseAccepted": false
+}

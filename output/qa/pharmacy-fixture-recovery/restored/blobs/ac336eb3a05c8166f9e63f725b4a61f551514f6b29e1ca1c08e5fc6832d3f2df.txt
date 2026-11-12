@@ -1,0 +1,46 @@
+{
+  "schema": "SD-INVENTORY-THIRD-FAILURE-DECISIONS-1",
+  "failedFreezeSha256": "70f805b670b7d7e6b4141ee7a7395dcafbc55e2327d65e23a93e08c5793f8a69",
+  "reportSha256": "df3e0410d2cef8172419853c24e766c752a261df2d0a6d8156bd5a9c13f92438",
+  "sourceCommit": "3a962c90f0e33ca162baa3bbe4284e8a9b51f758",
+  "descriptorSha256": "0f69288f334aa23446faf3a84e8614b22984705c1dc64beee879ac1884fb8e74",
+  "receiptSha256": "508fc5c1e2ef137faadb52bc2232aa7f739802b5276f71b1c0ff49b6bb93e9db",
+  "consumedClaimSha256": "f98d5f0e3aacb4516140551477b4dd8a3d81669fd2be5f43c575171808697cab",
+  "reviewers": [
+    {
+      "identity": "/root/index_spec_fresh",
+      "decision": "FAILURE_REVIEWED",
+      "cleanup": "VERIFIED_PERSONALLY_FRESH",
+      "ownDockerQueriesAt": "2026-11-11T15:33:45.279105Z"
+    },
+    {
+      "identity": "/root/index_standards_fresh",
+      "decision": "FAILURE_REVIEWED",
+      "cleanup": "VERIFIED_PERSONALLY_FRESH",
+      "ownDockerQueriesAt": "2026-11-11T15:34:46.102510Z",
+      "finalReadbackAt": "2026-11-11T15:36:43.920678Z",
+      "ownConfigRemovedFreshENOENT": true
+    }
+  ],
+  "actualObservation": {
+    "stage": "OWNED_DATABASE_CONNECT",
+    "code": "INVENTORY_CURSOR",
+    "caseId": null,
+    "variantId": null,
+    "phase": null
+  },
+  "bothVerified": {
+    "evidencePins": 14,
+    "sameEngineBothFullIdsAbsent": true,
+    "purposeEmpty": true,
+    "workspaceFreshENOENT": true,
+    "ownEmptyConfigsFreshENOENT": true,
+    "resourceMutations": 0,
+    "source17Runtime2777Unchanged": true,
+    "historicalAPI105AndOriginalSixElevenExact": true,
+    "receiptsClaimsArchivesRetained": true
+  },
+  "sourceDerivedCompatibilityFinding": "Both independently traced fixture pre-init listCollections namespace expectation db.$cmd.listCollections versus driver7.8 constructor db.s.namespace/database-only and later AbstractCursor response.ns adoption. This is a concrete source mismatch but not observed precise runtime guard attribution.",
+  "authority": "FAILURE_REVIEWED_ONLY_NO_FIX_PROBE_RETRY_SOURCE_RUNTIME_WEEK2_C2_OWNER_PRODUCTION_RELEASE_APPROVAL",
+  "next": "Root freezes a separate narrow lifecycle correction contract for both affected fixtures, two actual implementation decisions before edits; all subsequent source/artifact/onerun gates retained."
+}

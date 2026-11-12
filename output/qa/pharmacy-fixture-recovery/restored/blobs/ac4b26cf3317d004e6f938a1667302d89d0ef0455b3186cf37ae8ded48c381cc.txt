@@ -1,0 +1,221 @@
+'use strict';
+// Fixed npm preparation preloader. Never copied into the inventory runtime.
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const { URL, fileURLToPath } = require('node:url');
+const NODE = '/private/tmp/m0-node22/node';
+const NODE_SHA = '2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0';
+const NPM_ROOT = '/Users/shubham/.nvm/versions/node/v24.19.0/lib/node_modules/npm';
+const NPM = NPM_ROOT + '/bin/npm-cli.js';
+const NPM_SHA = '8e5f6f3429f8cdbe693cdc29904e9d5a7b127a494bd15c804bd54c7403bfcbe7';
+const TOOL_PINS = Object.freeze({
+  'node_modules/@npmcli/config/lib/index.js': '938b85a17fde9f2355497fd4befc9bac45d406fb4afacd8af63322796697ff06',
+  'node_modules/@npmcli/config/lib/definitions/definitions.js': '175bdd91097f3c04273b0492455d62b1bd8bce705ddd3cc46e41c2c929a537e3',
+  'node_modules/@npmcli/config/lib/set-envs.js': 'c44cbecae83242cb8e422fb0915c15489764647829f8008bbd2ea89bb0c94975',
+  'node_modules/@npmcli/config/lib/parse-field.js': 'e80d5fa3875f1317ed4ab070d2e6644c741ba22e64e3abc20ec74c421f0be7aa',
+});
+const CONFIG_TEXT = 'registry=https://registry.npmjs.org/\nignore-scripts=true\naudit=false\nfund=false\n';
+const CASES_SHA = '807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4';
+const PORTS_SHA = '12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a';
+const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const exact = (v, keys) => v !== null && typeof v === 'object' && !Array.isArray(v)
+  && same(Object.keys(v).sort(), [...keys].sort());
+const need = ok => { if (!ok) throw new Error('NPM_CONFIG_SHIELD_ADMISSION'); };
+const digest = v => typeof v === 'string' && /^[a-f0-9]{64}$/.test(v);
+const native = Object.freeze({ lstatSync: fs.lstatSync.bind(fs), fstatSync: fs.fstatSync.bind(fs),
+  realpathSync: fs.realpathSync.bind(fs), openSync: fs.openSync.bind(fs), closeSync: fs.closeSync.bind(fs),
+  readFileSync: fs.readFileSync.bind(fs), readFile: fs.readFile.bind(fs), promiseReadFile: fs.promises.readFile.bind(fs.promises),
+  writeFileSync: fs.writeFileSync.bind(fs) });
+
+const INITIAL_ENV_KEYS = Object.freeze(['PATH', 'TMPDIR', 'NPM_CONFIG_USERCONFIG', 'NPM_CONFIG_GLOBALCONFIG',
+  'NPM_CONFIG_CACHE', 'NPM_CONFIG_IGNORE_SCRIPTS', 'NPM_CONFIG_REGISTRY', 'NPM_CONFIG_AUDIT', 'NPM_CONFIG_FUND']);
+const LOCALE_KEY = '__CF_USER_TEXT_ENCODING';
+
+/** Initial admission only: the real preparer still supplies exactly nine keys. */
+function createInitialEnvironmentGuard(expected, fail) {
+  need(exact(expected, INITIAL_ENV_KEYS) && INITIAL_ENV_KEYS.every(key => typeof expected[key] === 'string') && typeof fail === 'function');
+  const fixed = Object.freeze({ ...expected }); let attempted = false; let denied = false; let admitted = false; let localeRemoved = false;
+  function deny() { denied = true; fail(); throw new Error('NPM_INITIAL_ENVIRONMENT_DENIED'); }
+  function requiredValues(environment) {
+    return INITIAL_ENV_KEYS.every(key => {
+      const descriptor = Object.getOwnPropertyDescriptor(environment, key);
+      return descriptor && Object.hasOwn(descriptor, 'value') && typeof descriptor.value === 'string' && descriptor.value === fixed[key];
+    });
+  }
+  return Object.freeze({
+    admit(environment) {
+      if (denied || attempted) return deny(); attempted = true;
+      try {
+        if (environment === null || typeof environment !== 'object' || Array.isArray(environment)) return deny();
+        const keys = Reflect.ownKeys(environment);
+        if (!keys.every(key => typeof key === 'string' && (INITIAL_ENV_KEYS.includes(key) || key === LOCALE_KEY))
+          || !requiredValues(environment)) return deny();
+        if (Object.hasOwn(environment, LOCALE_KEY)) {
+          const descriptor = Object.getOwnPropertyDescriptor(environment, LOCALE_KEY);
+          if (!descriptor || !Object.hasOwn(descriptor, 'value')) return deny();
+          const locale = descriptor.value;
+          if (!(typeof locale === 'string' && locale.length > 0 && locale.length <= 128
+            && !/[\0\r\n]/.test(locale) && /^0x[0-9a-f]+:0x[0-9a-f]+:0x[0-9a-f]+$/i.test(locale))) return deny();
+          if (!delete environment[LOCALE_KEY] || Object.hasOwn(environment, LOCALE_KEY)) return deny();
+          localeRemoved = true;
+        }
+        const remaining = Reflect.ownKeys(environment);
+        if (remaining.length !== 9 || !remaining.every(key => typeof key === 'string' && INITIAL_ENV_KEYS.includes(key))
+          || !requiredValues(environment)) return deny();
+        admitted = true;
+      } catch (error) {
+        if (denied) throw error; // A terminal port may throw any value; retain that first value.
+        return deny();
+      }
+    },
+    snapshot() { return Object.freeze({ attempted, denied, admitted: admitted && !denied, localeRemoved }); },
+  });
+}
+
+/** Independently testable metadata gate, also used before any private content read. */
+function assertConfigMetadata(metadata, expected, uid) {
+  need(metadata && expected && metadata.isFile() && !metadata.isSymbolicLink() && metadata.nlink === 1
+    && metadata.uid === uid && metadata.dev === expected.device && metadata.ino === expected.inode
+    && metadata.mode === expected.mode && (metadata.mode & 0o777) === 0o600 && expected.sha256 === sha(Buffer.from(CONFIG_TEXT)));
+}
+
+/** Pure closed reader policy; tests supply fake reads and a fake terminal fail port. */
+function createConfigReadGuard({ builtinPath, configPaths, inspect, fail }) {
+  need(typeof builtinPath === 'string' && exact(configPaths, ['user', 'global', 'project'])
+    && Object.values(configPaths).every(v => typeof v === 'string')
+    && new Set(Object.values(configPaths)).size === 3 && typeof inspect === 'function' && typeof fail === 'function');
+  const counts = { builtin: 0, user: 0, global: 0, project: 0 }; let unexpected = 0; let denied = false; let sealed = false;
+  function deny() { denied = true; unexpected++; fail(); throw new Error('NPM_CONFIG_READ_DENIED'); }
+  function classify(value) {
+    if (typeof value === 'string') return { text: value, exactString: true };
+    if (Buffer.isBuffer(value)) { if (value.length > 4096) return deny(); return { text: value.toString('utf8'), exactString: false }; }
+    if (value instanceof URL) {
+      let decoded;
+      try {
+        if (value.protocol !== 'file:') throw new Error('NPM_CONFIG_URL_INVALID');
+        decoded = fileURLToPath(value);
+        if (decoded.includes('\0')) throw new Error('NPM_CONFIG_URL_INVALID');
+      } catch { return deny(); }
+      // Decoding classifies the native target, never authorizes a URL alias.
+      return { text: decoded, exactString: false };
+    }
+    // Descriptor reads cannot prove the configuration's independently owned path.
+    if (typeof value === 'number' || value === null || typeof value !== 'object') return deny();
+    return deny();
+  }
+  function data(value, options) {
+    const selected = classify(value); const name = path.posix.basename(selected.text).toLowerCase();
+    const looksConfig = name === 'npmrc' || name === '.npmrc' || name.endsWith('.npmrc');
+    if (!looksConfig) return null;
+    if (denied || sealed || !selected.exactString) return deny();
+    let label = value === builtinPath ? 'builtin' : Object.keys(configPaths).find(k => configPaths[k] === value);
+    if (!label || ++counts[label] !== 1) return deny();
+    let encoding = null;
+    if (typeof options === 'string') encoding = options;
+    else if (options !== undefined && options !== null) {
+      if (!exact(options, ['encoding'])) return deny(); encoding = options.encoding;
+    }
+    if (![null, undefined, 'utf8', 'utf-8'].includes(encoding)) return deny();
+    let bytes;
+    if (label === 'builtin') bytes = Buffer.alloc(0); // No underlying read of the installed npmrc.
+    else {
+      try { bytes = inspect(label, value); } catch { return deny(); }
+      if (!Buffer.isBuffer(bytes) || !bytes.equals(Buffer.from(CONFIG_TEXT))) return deny();
+    }
+    return { value: encoding === 'utf8' || encoding === 'utf-8' ? bytes.toString('utf8') : Buffer.from(bytes) };
+  }
+  return Object.freeze({
+    wrapSync(original) { return function (file, options) { const selected = data(file, options); return selected === null ? original.apply(this, arguments) : selected.value; }; },
+    wrapPromise(original) { return async function (file, options) { const selected = data(file, options); return selected === null ? original.apply(this, arguments) : selected.value; }; },
+    wrapCallback(original) { return function (file, options, callback) {
+      const cb = typeof options === 'function' ? options : callback; const opts = typeof options === 'function' ? undefined : options;
+      const selected = data(file, opts);
+      if (selected === null) return original.apply(this, arguments);
+      if (typeof cb !== 'function') return deny(); queueMicrotask(() => cb(null, selected.value));
+    }; },
+    seal() { sealed = true; need(!denied && unexpected === 0 && Object.values(counts).every(n => n === 1)); return Object.freeze({ reads: Object.freeze({ ...counts }), unexpected: 0, builtinSuppressed: true }); },
+    snapshot() { return Object.freeze({ reads: Object.freeze({ ...counts }), unexpected, denied, sealed }); },
+  });
+}
+
+function activate() {
+  const nativeExit = process.exit.bind(process);
+  const terminate = () => { process.exitCode = 1; nativeExit(1); };
+  let guard;
+  try {
+    const uid = process.getuid();
+    function regular(file, identity) {
+      const before = native.lstatSync(file);
+      need(before.isFile() && !before.isSymbolicLink() && before.nlink === 1 && native.realpathSync(file) === file);
+      if (identity) assertConfigMetadata(before, identity, uid);
+      const fd = native.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+      try {
+        const held = native.fstatSync(fd); if (identity) assertConfigMetadata(held, identity, uid); need(held.isFile() && held.nlink === 1 && held.dev === before.dev && held.ino === before.ino);
+        const data = native.readFileSync(fd); const after = native.fstatSync(fd); if (identity) assertConfigMetadata(after, identity, uid);
+        need(after.dev === held.dev && after.ino === held.ino && after.size === data.length && after.size === held.size
+          && after.mtimeMs === held.mtimeMs && after.ctimeMs === held.ctimeMs);
+        if (identity) need(sha(data) === identity.sha256); return data;
+      } finally { native.closeSync(fd); }
+    }
+    const project = process.cwd(); const area = path.dirname(project); const areaIdentity = native.lstatSync(area);
+    need(/^\/private\/tmp\/sd-inventory-quality-build-[a-f0-9-]{36}$/.test(area)
+      && path.basename(project) === 'public' && native.realpathSync(project) === project
+      && areaIdentity.isDirectory() && !areaIdentity.isSymbolicLink() && areaIdentity.uid === uid && (areaIdentity.mode & 0o077) === 0);
+    const markerPath = path.join(area, '.owner.json'); const markerMeta = native.lstatSync(markerPath);
+    need(markerMeta.uid === uid && (markerMeta.mode & 0o777) === 0o600);
+    const marker = JSON.parse(regular(markerPath));
+    need(exact(marker, ['schema', 'sourceRoot', 'sourceCommit', 'root', 'device', 'inode', 'ownerUid', 'projectDevice', 'projectInode',
+      'configShieldSha', 'casesSha', 'portsSha', 'emissionClaimSha', 'configs'])
+      && marker.schema === 'SD-INVENTORY-QUALITY-BUILD-1' && marker.root === area && marker.device === areaIdentity.dev
+      && marker.inode === areaIdentity.ino && marker.ownerUid === uid && marker.sourceRoot === path.resolve(__dirname, '../../..')
+      && native.realpathSync(marker.sourceRoot) === marker.sourceRoot && /^[a-f0-9]{40}$/.test(marker.sourceCommit)
+      && digest(marker.configShieldSha) && digest(marker.emissionClaimSha) && marker.casesSha === CASES_SHA && marker.portsSha === PORTS_SHA
+      && exact(marker.configs, ['user', 'global', 'project']));
+    const projectMeta = native.lstatSync(project); need(projectMeta.isDirectory() && !projectMeta.isSymbolicLink()
+      && projectMeta.uid === uid && projectMeta.dev === marker.projectDevice && projectMeta.ino === marker.projectInode);
+    need(process.execPath === NODE && sha(regular(NODE)) === NODE_SHA && sha(regular(NPM)) === NPM_SHA
+      && sha(regular(__filename)) === marker.configShieldSha
+      && same(process.execArgv, ['--require', __filename])
+      && same(process.argv, [NODE, NPM, '--prefix', project, '--workspaces=false', 'ci', '--ignore-scripts', '--omit=optional', '--no-audit', '--no-fund']));
+    const expectedEnvironment = { PATH: path.dirname(NODE) + ':/usr/bin:/bin', TMPDIR: area,
+      NPM_CONFIG_USERCONFIG: path.join(area, 'user.npmrc'), NPM_CONFIG_GLOBALCONFIG: path.join(area, 'global.npmrc'),
+      NPM_CONFIG_CACHE: path.join(area, 'cache'), NPM_CONFIG_IGNORE_SCRIPTS: 'true',
+      NPM_CONFIG_REGISTRY: 'https://registry.npmjs.org/', NPM_CONFIG_AUDIT: 'false', NPM_CONFIG_FUND: 'false' };
+    const initialEnvironment = createInitialEnvironmentGuard(expectedEnvironment, terminate);
+    initialEnvironment.admit(process.env); // Removes only the approved automatic locale key before npm loads.
+    for (const [name, expected] of Object.entries(TOOL_PINS)) need(sha(regular(path.join(NPM_ROOT, name))) === expected);
+    const configPaths = { user: expectedEnvironment.NPM_CONFIG_USERCONFIG, global: expectedEnvironment.NPM_CONFIG_GLOBALCONFIG, project: path.join(project, '.npmrc') };
+    for (const label of Object.keys(configPaths)) need(exact(marker.configs[label], ['device', 'inode', 'mode', 'sha256'])
+      && regular(configPaths[label], marker.configs[label]).equals(Buffer.from(CONFIG_TEXT)));
+    const proofPath = path.join(area, 'npm-config-proof.json');
+    try { native.lstatSync(proofPath); throw Error('NPM_PROOF_EXISTS'); } catch (error) { need(error.code === 'ENOENT'); }
+    const owned = () => {
+      const now = native.lstatSync(area); need(now.isDirectory() && !now.isSymbolicLink() && now.dev === areaIdentity.dev
+        && now.ino === areaIdentity.ino && now.uid === uid && regular(markerPath).equals(Buffer.from(JSON.stringify(marker, null, 2) + '\n')));
+    };
+    guard = createConfigReadGuard({ builtinPath: path.join(NPM_ROOT, 'npmrc'), configPaths,
+      inspect: (label, file) => { owned(); return regular(file, marker.configs[label]); }, fail: terminate });
+    fs.readFileSync = guard.wrapSync(native.readFileSync); fs.readFile = guard.wrapCallback(native.readFile);
+    fs.promises.readFile = guard.wrapPromise(native.promiseReadFile);
+    process.once('exit', code => {
+      if (code !== 0) return;
+      try {
+        owned(); const observation = guard.seal();
+        const proof = { schema: 'SD-INVENTORY-NPM-CONFIG-PROOF-1', status: 'PASS', childPID: process.pid,
+          sourceCommit: marker.sourceCommit, sourceRootSha: sha(Buffer.from(marker.sourceRoot)),
+          buildIdentity: { device: marker.device, inode: marker.inode }, configShieldSha: marker.configShieldSha,
+          casesSha: CASES_SHA, portsSha: PORTS_SHA, emissionClaimSha: marker.emissionClaimSha,
+          configSha: sha(Buffer.from(CONFIG_TEXT)), ...observation };
+        const fd = native.openSync(proofPath, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL | fs.constants.O_NOFOLLOW, 0o600);
+        try { native.writeFileSync(fd, JSON.stringify(proof, null, 2) + '\n'); } finally { native.closeSync(fd); }
+      } catch { terminate(); }
+    });
+  } catch { terminate(); }
+}
+
+// The pure test importer has no preload flag. Every preloader spelling activates
+// closed admission; only the exact fixed --require invocation can pass it.
+if (process.execArgv.some(arg => arg === '--require' || arg === '-r' || arg.startsWith('--require=') || /^-r./.test(arg))) activate();
+module.exports = { createConfigReadGuard, createInitialEnvironmentGuard, assertConfigMetadata, CONFIG_TEXT };

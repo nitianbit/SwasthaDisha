@@ -1,0 +1,60 @@
+{
+  "schema": "SD-INVENTORY-EMISSION-READINESS-3",
+  "observedAtUTC": "2026-11-11T14:59:43.479963+00:00",
+  "sourceRoot": "/private/tmp/swasthadisha-parallel-p1qom53w/inventory-runtime-preparation-3",
+  "sourceCommit": "3a962c90f0e33ca162baa3bbe4284e8a9b51f758",
+  "sourceInputs": {
+    "src1/modules/pharmacyInventory/repository/index.ts": "2cc825908777950cbfcf1cf4dea6cc12f0e6e97a41660fb413565db3fdd6e659",
+    "src1/modules/pharmacyInventory/model/index.ts": "098fc86bc14e553b60a81fdb7bf33ebacb8c44f799a2cb665420ea5debe52313",
+    "src1/modules/pharmacyInventory/types/index.ts": "83aba7263dd3a97315b63d36ed24f39b9932a6ae578219b35c0b082f20e744c4",
+    "src1/modules/pharmacies/types/index.ts": "e43d4c6e5af5ebc9a21e3a35d41e475e92ab7509961cdafe6bfc3043af0b24f0",
+    "src1/modules/common/repository/index.ts": "6e13d4d0ced3ad40772c5b2c35034544fe49f0d7b715cf0309f954be7ab5cb77",
+    "src1/modules/common/repository/BaseRepository.ts": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+    "src1/modules/common/utils/queryUtils.ts": "fb65a0b563b5035d87c8d41e80dfe5f91a5382de02c83d0b6ceac630c89f018d",
+    "test/inventory-runtime/scenario/bootstrap.cjs": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690",
+    "test/inventory-runtime/scenario/scenario.cjs": "915ced15b9cc74fc14b24de2be1adc7e8474343009c089c50fe1fdba93a9c044",
+    "test/inventory-runtime/scenario/ports-manifest.json": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+    "test/inventory-runtime/scenario/cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+    "test/inventory-runtime/scenario/prepare.py": "13f67d28784fd523f4b23c91f7996444860a12a3635e3f38f9f0cc7f0fc494fc",
+    "test/inventory-runtime/scenario/compile.cjs": "f69583e8527da45204961890701c21fa39d13240a3502432acf3d5ccbb3814f8",
+    "test/inventory-runtime/scenario/package-plan.json": "82fbe718f079b134bab648ac146d3d55dce5cbb213d1fd282e7c71f31a7bd0a6",
+    "test/inventory-runtime/scenario/npm-config-shield.cjs": "ac4b26cf3317d004e6f938a1667302d89d0ef0455b3186cf37ae8ded48c381cc",
+    "test/application/app-bundle.mjs": "47f5ca1beec0f81a3715628c9c968df882198bfa9cc1a22f17f1eb2c619e72c2",
+    "package-lock.json": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080"
+  },
+  "tools": {
+    "/private/tmp/m0-node22/node": "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0",
+    "/Users/shubham/.nvm/versions/node/v24.19.0/lib/node_modules/npm/bin/npm-cli.js": "8e5f6f3429f8cdbe693cdc29904e9d5a7b127a494bd15c804bd54c7403bfcbe7",
+    "/Users/shubham/.nvm/versions/node/v24.19.0/lib/node_modules/npm/node_modules/@npmcli/config/lib/index.js": "938b85a17fde9f2355497fd4befc9bac45d406fb4afacd8af63322796697ff06",
+    "/Users/shubham/.nvm/versions/node/v24.19.0/lib/node_modules/npm/node_modules/@npmcli/config/lib/definitions/definitions.js": "175bdd91097f3c04273b0492455d62b1bd8bce705ddd3cc46e41c2c929a537e3",
+    "/Users/shubham/.nvm/versions/node/v24.19.0/lib/node_modules/npm/node_modules/@npmcli/config/lib/set-envs.js": "c44cbecae83242cb8e422fb0915c15489764647829f8008bbd2ea89bb0c94975",
+    "/Users/shubham/.nvm/versions/node/v24.19.0/lib/node_modules/npm/node_modules/@npmcli/config/lib/parse-field.js": "e80d5fa3875f1317ed4ab070d2e6644c741ba22e64e3abc20ec74c421f0be7aa"
+  },
+  "pythonExecutable": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+  "cleanSource": true,
+  "descriptorAbsent": true,
+  "candidateDerivedClaim": "/private/tmp/sd-inventory-quality-emission-once-a5f881ca66ce0da13ad758a24386bc18d0172babc9ad6fd8575d467a4015ed92.claim.json",
+  "claimAbsent": true,
+  "candidateReceiptSha": "1a36af3e62eee636b7e3aef27c60fda5569d33ec4089e9a5fa85d6ab44a11237",
+  "oldReceipt": {
+    "fixedPath": "/private/tmp/sd-inventory-quality-emission-approval.json",
+    "sha": "f3e9c8717eb5d1b946f562bd1e5d7cdb81716a986991e09f8e1caeff232f583c",
+    "identity": {
+      "device": 16777231,
+      "inode": 54003016,
+      "uid": 501,
+      "mode": 384,
+      "links": 1
+    },
+    "exclusiveArchivePath": "/private/tmp/sd-inventory-quality-emission-approval-consumed-f3e9c8717eb5d1b946f562bd1e5d7cdb81716a986991e09f8e1caeff232f583c.json",
+    "archiveAbsent": true,
+    "consumedClaim": "/private/tmp/sd-inventory-quality-emission-once-ba8fd8ae29e65bb0172db8f7161c30b4270721758e31f1922ed897bcdadcc0df.claim.json",
+    "consumedClaimSha": "820c1b488d9eb74349c15ab1a33062d3ad449f64c6a95d960f15481cff6cb5a9"
+  },
+  "publicLockSha": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+  "sourceFreezeSha": "08f635a0a9970246a2873c4a4f5f5112e5382a98784200c556a4069f4ea35c99",
+  "sourceApprovalsRecordedInCommit": "3a962c90f0e33ca162baa3bbe4284e8a9b51f758",
+  "preparationNotExecuted": true,
+  "oldReceiptNotYetArchived": true,
+  "runtimeNotAdmitted": true
+}

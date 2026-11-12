@@ -1,0 +1,149 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const fixture = require('./bootstrap.cjs');
+const abi = JSON.parse(fs.readFileSync(path.join(__dirname, 'public-init-sites-abi.json'), 'utf8'));
+const output = process.stdout.write.bind(process.stdout);
+assert(process.permission && !process.permission.has('child') && !process.permission.has('worker') && !process.permission.has('addon'));
+assert(!process.env.NODE_OPTIONS);
+const names = Object.freeze(['mongoose:cursor:next', 'mongoose:aggregate', 'mongoose:query', 'mongoose:model:save', 'mongoose:model:insertMany', 'mongoose:model:bulkWrite']);
+const tests = []; const test = (name, action) => tests.push({ name, action });
+const capture = action => { let failed = false; let value; try { action(); } catch (error) { failed = true; value = error; } assert(failed); return value; };
+const generic = 'INVENTORY_IMPORT_PUBLIC_INITIALIZATION_PUBLIC_INIT';
+const unbranded = 'INVENTORY_IMPORT_PUBLIC_INITIALIZATION_UNBRANDED';
+function harness(snapshot = () => 0) {
+  const d = fixture.createImportDiagnostics(); d.enter('PUBLIC_INITIALIZATION');
+  const effects = fixture.effectsState(); const calls = [];
+  const p = fixture.createPublicInitialization({ isBuildingSnapshot: snapshot, tracingChannel: name => { calls.push(name); return {}; } }, { publicInitialization: { tracingNames: names } }, effects, d);
+  return { d, p, effects, calls };
+}
+function selected(h) { return h.d.select('REPOSITORY_IMPORT', 'INVENTORY_EFFECTS'); }
+function site(reason, action, operationDenials = 1, make = harness) {
+  test('actual failed decision ' + reason, () => {
+    const h = make(); const error = capture(() => action(h));
+    assert.equal(h.effects.operationDenials, operationDenials);
+    assert.equal(fixture.failureResult(error).code, 'INVENTORY_PUBLIC_INITIALIZATION');
+    assert.equal(selected(h), abi.decisionCodes[reason]);
+    h.d.enter('MODEL_IMPORT'); h.d.effect('WARNING'); assert.equal(selected(h), abi.decisionCodes[reason]);
+  });
+}
+site('RETRIEVE_CLOSED', h => h.p.retrieve('v8'));
+site('RETRIEVE_UNKNOWN', h => h.p.run(() => h.p.retrieve('fixed-unknown')));
+site('RETRIEVE_V8_REPEAT', h => h.p.run(() => { h.p.retrieve('v8'); h.p.retrieve('v8'); }));
+site('RETRIEVE_DC_REPEAT', h => h.p.run(() => { h.p.retrieve('node:diagnostics_channel'); h.p.retrieve('node:diagnostics_channel'); }));
+function projection(h, kind) { return kind === 'V8_MODULE' ? h.p.retrieve('v8') : kind === 'SNAPSHOT_OBJECT' ? h.p.retrieve('v8').startupSnapshot : h.p.retrieve('node:diagnostics_channel'); }
+for (const [kind, property] of [['V8_MODULE', 'startupSnapshot'], ['SNAPSHOT_OBJECT', 'isBuildingSnapshot'], ['DC_MODULE', 'tracingChannel']]) {
+  site(kind + '_READ_CLOSED', h => { let value; h.p.run(() => { value = projection(h, kind); }); return value[property]; });
+  site(kind + '_PROPERTY', h => h.p.run(() => projection(h, kind).fixedUnknown));
+  site(kind + '_WRITE', h => h.p.run(() => Reflect.set(projection(h, kind), 'fixedUnknown', {})));
+}
+site('SNAPSHOT_CLOSED', h => { let fn; h.p.run(() => { fn = h.p.retrieve('v8').startupSnapshot.isBuildingSnapshot; }); fn(); });
+site('SNAPSHOT_REPEAT', h => h.p.run(() => { const fn = h.p.retrieve('v8').startupSnapshot.isBuildingSnapshot; fn(); fn(); }));
+site('SNAPSHOT_ARGUMENTS', h => h.p.run(() => h.p.retrieve('v8').startupSnapshot.isBuildingSnapshot(1)));
+site('SNAPSHOT_RESULT', h => h.p.run(() => h.p.retrieve('v8').startupSnapshot.isBuildingSnapshot()), 1, () => harness(() => true));
+site('TRACE_CLOSED', h => { let fn; h.p.run(() => { fn = h.p.retrieve('node:diagnostics_channel').tracingChannel; }); fn(names[0]); });
+site('TRACE_ARGUMENTS', h => h.p.run(() => h.p.retrieve('node:diagnostics_channel').tracingChannel(names[0], 1)));
+site('TRACE_UNKNOWN_NAME', h => h.p.run(() => h.p.retrieve('node:diagnostics_channel').tracingChannel('fixed-unknown')));
+for (const [i, reason] of ['TRACE_REPEAT_CURSOR_NEXT', 'TRACE_REPEAT_AGGREGATE', 'TRACE_REPEAT_QUERY', 'TRACE_REPEAT_MODEL_SAVE', 'TRACE_REPEAT_INSERT_MANY', 'TRACE_REPEAT_BULK_WRITE'].entries())
+  site(reason, h => h.p.run(() => { const fn = h.p.retrieve('node:diagnostics_channel').tracingChannel; fn(names[i]); fn(names[i]); }));
+site('RUN_ADMISSION', h => h.p.run(null), 0);
+site('COMPLETE', h => h.p.assertComplete(), 0);
+
+test('original136 order plus exactly28 literal codes and six private collector keys', () => {
+  assert.deepEqual(fixture.FAILURE_CODES, abi.combinedCodes); assert.equal(new Set(fixture.FAILURE_CODES).size, 164);
+  assert.deepEqual(fixture.FAILURE_CODES.slice(0, 136), abi.original136);
+  assert.deepEqual(Object.keys(fixture.createImportDiagnostics()), abi.privateCollectorKeys);
+});
+test('successful required probes record no decision or effect', () => {
+  const h = harness(); h.p.run(() => { assert.equal(h.p.retrieve('v8').startupSnapshot.isBuildingSnapshot(), 0); const dc = h.p.retrieve('node:diagnostics_channel'); for (const name of names) dc.tracingChannel(name); });
+  h.p.assertComplete(); fixture.assertEffects(h.effects); assert.equal(selected(h), unbranded);
+  h.d.effect('WARNING'); assert.equal(selected(h), 'INVENTORY_IMPORT_PUBLIC_INITIALIZATION_WARNING'); assert.equal(h.calls.length, 6);
+});
+test('snapshot increments before rejecting arguments and before a later repeat', () => {
+  let calls = 0; const h = harness(() => { calls++; return 0; });
+  h.p.run(() => { const fn = h.p.retrieve('v8').startupSnapshot.isBuildingSnapshot; capture(() => fn(1)); capture(() => fn()); });
+  assert.equal(calls, 0); assert.equal(h.effects.operationDenials, 2); assert.equal(selected(h), abi.decisionCodes.SNAPSHOT_ARGUMENTS);
+});
+test('trace argument failure does not coerce the supplied name or increment channel', () => {
+  const h = harness(); let coercions = 0; const name = { [Symbol.toPrimitive]() { coercions++; throw Error('must not coerce'); } };
+  h.p.run(() => { const fn = h.p.retrieve('node:diagnostics_channel').tracingChannel; capture(() => fn(name, 1)); fn(names[0]); });
+  assert.equal(coercions, 0); assert.equal(h.calls.length, 1); assert.equal(selected(h), abi.decisionCodes.TRACE_ARGUMENTS);
+});
+for (const kind of ['V8_MODULE', 'SNAPSHOT_OBJECT', 'DC_MODULE']) for (const operation of ['set', 'defineProperty', 'deleteProperty', 'setPrototypeOf']) test('projection write ignores raw operands ' + kind + '/' + operation, () => {
+  const h = harness(); let reads = 0; const poison = new Proxy({}, { get() { reads++; throw Error('must not inspect'); }, ownKeys() { reads++; throw Error('must not inspect'); }, getPrototypeOf() { reads++; throw Error('must not inspect'); } });
+  h.p.run(() => { const value = projection(h, kind); capture(() => operation === 'set' ? Reflect.set(value, Symbol(), poison)
+    : operation === 'defineProperty' ? Reflect.defineProperty(value, Symbol(), { value: poison }) : operation === 'deleteProperty' ? Reflect.deleteProperty(value, Symbol()) : Reflect.setPrototypeOf(value, poison)); });
+  assert.equal(reads, 0); assert.equal(h.effects.operationDenials, 1); assert.equal(selected(h), abi.decisionCodes[kind + '_WRITE']);
+});
+for (const reason of Object.keys(abi.decisionCodes)) test('decision first latch and nonimport creation-bound fallback ' + reason, () => {
+  const d = fixture.createImportDiagnostics(); d.enter('PUBLIC_INITIALIZATION'); assert.equal(d.decision(reason), true);
+  d.enter('MODEL_IMPORT'); assert.equal(d.decision('COMPLETE'), false); d.effect('WARNING');
+  assert.equal(d.select('REPOSITORY_IMPORT', 'INVENTORY_EFFECTS'), abi.decisionCodes[reason]);
+  for (const stage of ['ADMISSION', 'OWNED_DATABASE_CONNECT', 'REPOSITORY_SCENARIOS', null]) assert.equal(d.select(stage, 'INVENTORY_EFFECTS'), 'INVENTORY_EFFECTS');
+  d.close(); assert.equal(d.decision('COMPLETE'), false); assert.equal(d.select('REPOSITORY_IMPORT', 'INVENTORY_EFFECTS'), abi.decisionCodes[reason]);
+});
+for (const code of Object.values(abi.decisionCodes)) test('new code cannot enter raw fallback or forged provenance ' + code, () => {
+  const d = fixture.createImportDiagnostics(); d.enter('PUBLIC_INITIALIZATION');
+  for (const stage of ['ADMISSION', 'OWNED_DATABASE_CONNECT', 'REPOSITORY_SCENARIOS', 'REPOSITORY_IMPORT']) assert.throws(() => d.select(stage, code));
+  assert.throws(() => d.guard(code)); assert.throws(() => d.decision(code));
+  const error = new Error(code); error.code = code; assert.equal(fixture.failureResult(error).code, 'RUNTIME_FIXTURE_FAILED');
+});
+for (const [i, value] of ['UNKNOWN', '', null, undefined, false, 0, Symbol(), {}, []].entries()) test('unknown decision has no attribution or coercion ' + i, () => {
+  const h = harness(); assert.equal(typeof h.d.decision, 'function'); assert.throws(() => h.d.decision(value)); assert.equal(selected(h), unbranded);
+});
+test('unknown proxy decision never reads fields or coercion', () => {
+  const h = harness(); let reads = 0; const value = new Proxy({}, { get() { reads++; throw Error('get'); }, getPrototypeOf() { reads++; throw Error('prototype'); }, ownKeys() { reads++; throw Error('keys'); } });
+  assert.equal(typeof h.d.decision, 'function'); assert.throws(() => h.d.decision(value)); assert.equal(reads, 0); assert.equal(selected(h), unbranded);
+});
+test('collector close does not suppress later actual guard increments or throws', () => {
+  const h = harness(); h.d.close(); capture(() => h.p.retrieve('v8')); assert.equal(h.effects.operationDenials, 1); assert.equal(selected(h), unbranded);
+});
+function coercible(keys, thrown) {
+  const hints = []; let index = 0;
+  return { hints, value: { [Symbol.toPrimitive](hint) { hints.push(hint); if (thrown) throw thrown.value; assert(index < keys.length); return keys[index++]; } } };
+}
+test('retrieve preserves four stateful key coercions and different returned projection key', () => {
+  const h = harness(); const key = coercible(['v8', 'node:diagnostics_channel', 'node:diagnostics_channel', 'v8']);
+  h.p.run(() => { const v8 = h.p.retrieve(key.value); assert.equal(v8.startupSnapshot.isBuildingSnapshot(), 0); h.p.retrieve('v8'); capture(() => h.p.retrieve('node:diagnostics_channel')); });
+  assert.deepEqual(key.hints, ['string', 'string', 'string', 'string']); assert.equal(selected(h), abi.decisionCodes.RETRIEVE_DC_REPEAT);
+});
+test('trace preserves three stateful key coercions and passes original object to native callback', () => {
+  const h = harness(); const key = coercible([names[0], names[1], names[1]]);
+  h.p.run(() => { const fn = h.p.retrieve('node:diagnostics_channel').tracingChannel; fn(key.value); fn(names[0]); capture(() => fn(names[1])); });
+  assert.deepEqual(key.hints, ['string', 'string', 'string']); assert.equal(h.calls[0], key.value); assert.equal(selected(h), abi.decisionCodes.TRACE_REPEAT_AGGREGATE);
+});
+for (const mode of ['retrieve', 'trace']) test('passing stateful coercion has original Get/Put count without a decision ' + mode, () => {
+  const h = harness(); const keys = mode === 'retrieve' ? ['v8', 'node:diagnostics_channel', 'node:diagnostics_channel', 'v8'] : [names[0], names[1], names[1]];
+  const key = coercible(keys);
+  h.p.run(() => { if (mode === 'retrieve') assert.equal(h.p.retrieve(key.value).startupSnapshot.isBuildingSnapshot(), 0);
+    else h.p.retrieve('node:diagnostics_channel').tracingChannel(key.value); });
+  assert.deepEqual(key.hints, Array(keys.length).fill('string')); assert.equal(selected(h), unbranded);
+  if (mode === 'trace') assert.equal(h.calls[0], key.value);
+});
+for (const mode of ['retrieve unknown', 'retrieve repeated', 'trace unknown', 'trace repeated different key']) test('nonprimitive coercive failure keeps generic attribution ' + mode, () => {
+  const h = harness(); const keys = mode.includes('unknown') ? ['fixed-unknown'] : mode.startsWith('retrieve') ? ['v8', 'v8', 'v8'] : [names[0], names[1], names[1]];
+  const key = coercible(keys);
+  h.p.run(() => {
+    if (mode.startsWith('retrieve')) { if (mode.includes('repeated')) h.p.retrieve('v8'); capture(() => h.p.retrieve(key.value)); }
+    else { const fn = h.p.retrieve('node:diagnostics_channel').tracingChannel; if (mode.includes('repeated')) fn(names[1]); capture(() => fn(key.value)); }
+  });
+  assert.deepEqual(key.hints, Array(keys.length).fill('string')); assert.equal(selected(h), generic); assert.equal(h.effects.operationDenials, 1);
+});
+for (const value of [undefined, null, false, 0, '']) for (const mode of ['retrieve own', 'retrieve increment', 'retrieve assignment', 'trace own', 'trace increment', 'trace assignment', 'snapshot callback']) test('falsy original throw has no premature decision ' + mode + '/' + String(value), () => {
+  const h = mode === 'snapshot callback' ? harness(() => { throw value; }) : harness(); let calls = 0; let observed; let caught = false;
+  const beforeThrow = mode.includes('assignment') ? 2 : mode.includes('increment') ? 1 : 0;
+  const key = { [Symbol.toPrimitive]() { calls++; if (calls <= beforeThrow) return mode.startsWith('retrieve') ? 'v8' : names[0]; throw value; } };
+  try { h.p.run(() => mode === 'snapshot callback' ? h.p.retrieve('v8').startupSnapshot.isBuildingSnapshot()
+    : mode.startsWith('retrieve') ? h.p.retrieve(key) : h.p.retrieve('node:diagnostics_channel').tracingChannel(key)); }
+  catch (error) { caught = true; observed = error; }
+  assert(caught); assert.strictEqual(observed, value); assert.equal(h.effects.operationDenials, 0); assert.equal(selected(h), unbranded);
+  if (mode !== 'snapshot callback') assert.equal(calls, beforeThrow + 1);
+});
+(async () => {
+  const rows = [];
+  for (const row of tests) { try { await row.action(); rows.push({ name: row.name, status: 'PASS' }); } catch { rows.push({ name: row.name, status: 'FAIL' }); } }
+  const failed = rows.filter(row => row.status === 'FAIL').length;
+  output(JSON.stringify({ schema: 'SD-PUBLIC-INIT-SITES-PURE-1', cases: rows.length, passed: rows.length - failed, failed, skipped: 0, rows }) + '\n');
+  if (failed) process.exitCode = 1;
+})();
