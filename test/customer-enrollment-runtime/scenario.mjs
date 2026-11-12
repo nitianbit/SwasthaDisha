@@ -7,6 +7,7 @@ import events from 'node:events';
 import stream from 'node:stream';
 import util from 'node:util';
 import stringDecoder from 'node:string_decoder';
+import { URL as NativeURL } from 'node:url';
 
 const read = name => JSON.parse(readFileSync(new URL(name, import.meta.url), 'utf8'));
 const plan = read('ports-plan.json');
@@ -16,7 +17,22 @@ const hash = text => crypto.createHash('sha256').update(text).digest('hex');
 const check = (ok, predicate) => { if (!ok) { const error = new Error('PREDICATE:' + predicate); error.predicate = predicate; throw error; } };
 check(plan.schema === 'SD-ENROLLMENT-PORTS-1' && emitted.schema === 'SD-ENROLLMENT-EMITTED-MAP-1' && runtime.schema === 'SD-ENROLLMENT-RUNTIME-MAP-1', 'map-schema');
 check(Object.keys(emitted.phases).sort().join() === 'NC1,NC2,NC3,NC4,OLD,nominal', 'exact-phases');
-const allowedBuiltins = { 'node:crypto': crypto, 'node:buffer': buffer, 'node:events': events, 'node:stream': stream, 'node:util': util, 'node:string_decoder': stringDecoder };
+const urlFacade = Object.freeze({ URL: NativeURL });
+const allowedBuiltins = { 'node:crypto': crypto, 'node:buffer': buffer, 'node:events': events, 'node:stream': stream, 'node:util': util, 'node:string_decoder': stringDecoder, 'node:url': urlFacade };
+function nativeBinding(target) {
+  check(Object.hasOwn(allowedBuiltins, target), 'native-denied');
+  return allowedBuiltins[target];
+}
+// Fixed fixture invariants before package evaluation; no additional domain IDs or result fields.
+check(Object.isFrozen(urlFacade) && Reflect.ownKeys(urlFacade).length === 1
+  && Object.hasOwn(urlFacade, 'URL') && urlFacade.URL === NativeURL, 'url-facade-only-constructor');
+check(new urlFacade.URL('http://münich.example').host === 'xn--mnich-kva.example', 'url-local-domain-parse');
+for (const key of ['parse', 'format', 'resolve', 'fileURLToPath', 'pathToFileURL', 'urlToHttpOptions', 'URLSearchParams'])
+  check(!Object.hasOwn(urlFacade, key), 'url-namespace-export-denied');
+assert.throws(() => urlFacade.parse('http://example.com'), TypeError);
+check(Reflect.set(urlFacade, 'parse', () => {}) === false, 'url-facade-mutation-denied');
+for (const target of ['node:fs', 'node:net', 'node:http', 'node:https'])
+  assert.throws(() => nativeBinding(target), error => error.predicate === 'native-denied');
 check(runtime.builtins.every(id => plan.builtinCandidates.includes(id)), 'builtin-closure');
 check(Object.keys(runtime.modules).length <= 512 && Object.keys(runtime.modules).every(id => id.startsWith('node_modules/') && !id.includes('../')), 'package-map-bound');
 for (const name of ['emitted-modules.json', 'runtime-modules.json']) check(Buffer.byteLength(JSON.stringify(read(name))) < 8 * 1024 * 1024, 'map-byte-bound');
@@ -51,7 +67,7 @@ function phaseLoader(phase) {
         if (target === '@/config/config') return config;
         if (Object.hasOwn(classes, target)) return classes[target];
         if (target === 'node:crypto') return nativeCrypto;
-        if (target.startsWith('node:')) { check(Object.hasOwn(allowedBuiltins, target), 'native-denied'); return allowedBuiltins[target]; }
+        if (target.startsWith('node:')) return nativeBinding(target);
         if (Object.hasOwn(runtime.roots, target)) return load(runtime.roots[target]);
         return load(target);
       };
