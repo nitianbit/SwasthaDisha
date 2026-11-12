@@ -1,0 +1,21 @@
+{
+  "recipeSha256": "c05a2c21b3866cf61c6aa6b4f946af3ef8b0d820b23e6fb3dd5c49c3b677b972",
+  "planSha256": "31db9f7ed0687aa5126d83fee468979fd70f0b58862d61fecc1b6efb9a98576d",
+  "decision": "REQUEST_CHANGES",
+  "reviewers": [
+    {
+      "identity": "/root",
+      "role": "Standards",
+      "provenance": "Actual decision directly received from Root"
+    },
+    {
+      "identity": "/root/pharmacist_identity_fields",
+      "role": "Spec",
+      "provenance": "Root reports actual independent lab Spec decision with same finding; direct detailed response remains in Root mailbox"
+    }
+  ],
+  "finding": "Timeout/overflow followed by drain/wait/cleanup exception skips per-runtime row, losing attempted runtime capture paths, observed byte counts, truncation and problem fields; finally cleanup may replace first cause.",
+  "noCampaignRun": true,
+  "noApprovalConsumed": true,
+  "scope": "Only inert operator repair; frozen eight sources and QA unchanged; fresh exact votes required."
+}

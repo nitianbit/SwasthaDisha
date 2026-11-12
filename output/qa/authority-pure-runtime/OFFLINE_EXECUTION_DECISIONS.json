@@ -1,0 +1,24 @@
+{
+  "recipeSha256": "7299c07563799901328bf5b08077faf29b39dbad41b6a728fe48017252a72c83",
+  "planSha256": "31db9f7ed0687aa5126d83fee468979fd70f0b58862d61fecc1b6efb9a98576d",
+  "sourceFreezeSha256": "7df6a0ba88c5cf1e19cb79fdbcfe3cf1e4ec67175d6f4b0102b817c868d554dc",
+  "author": "/root/claude_review_5_packet",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_ONE_OFFLINE_FAKE_CAMPAIGN",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/pharmacist_identity_fields",
+      "role": "Spec",
+      "decision": "APPROVE_ONE_OFFLINE_FAKE_CAMPAIGN",
+      "findings": []
+    }
+  ],
+  "priorFailure": "Actualtwo REQUEST_CHANGES on missingfailed-attempt/firstcause evidence; exactoldrecipe+plan preserved; no campaignran. Revision2earlyrows/latch/separatecleanup/ownershipsafe failure-finalization inspected.",
+  "scope": "Onefixedcampaign onceeachpinnedNode22/24,12filefakeonlyclosure, cleanTMPDIRonly,350casesperruntimeprospective,1MiB/64KiBcapture and45sexecution+finite5scleanup. No compiler/authorityscenario/production/SDK/Docker/provider/network/testintegration evaluation. Nodepermission alone isnotnetworkisolation; reviewedclosure/fakeexecutors supply effectexclusion.",
+  "deadlineInterpretation": "45s process/capture phase; separatefinite5s drain/wait/cleanup; notallpre/postmetadatawalltime.",
+  "retry": "NONE; failurestops campaign andneedsreviewbeforeanotherattempt."
+}
