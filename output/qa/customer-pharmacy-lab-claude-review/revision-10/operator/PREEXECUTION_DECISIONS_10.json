@@ -1,0 +1,35 @@
+{
+  "schema": "SD-CLAUDE-PREEXECUTION-DECISIONS-10",
+  "candidate": "97a73624bce6ddb49073b31ac563ba8aa552e0c1",
+  "sourceCommit": "9debdd25ae4079fa73f5052afe3a0fd62d4feb0f",
+  "sourceFreezeSha256": "53d6203dc393d266304b384f88d85bed7115776bd724a94050e62c568ae5a10a",
+  "sessionId": "6565807e-21b1-4553-8901-524e92a97fee",
+  "bindings": {
+    "planSha256": "4f3be7043b492f0563e1a2d39429422128e2da27457c03f048739f7eb21c2482",
+    "preparedFreezeSha256": "a163cfb4e5c0a8d1946f9d29b38acfa07003a65099e426481e9ce0e406df723e",
+    "supervisorSha256": "451f75b0b2bf83dff7a54248119e27a7620e802243bd73d7e448158790883807",
+    "testsSha256": "a39de369b9392942db1f6c20fe0077e2cfe86d884e4b5109ce5f5b3bfd2361da",
+    "packetSha256": "d64722233875b6a64f86f273ef9da5f6be4f62e2102a88bf6071a7037ee1c957",
+    "manifestSha256": "b90b5b5eca01f1bd86aeb723f98fd63278bc14daab96798965a9ba67ed85fce8"
+  },
+  "decisions": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW",
+      "findings": [],
+      "provenance": "Actual independent nonauthor R10 binding/one-invocation review; unchanged prior source inspection explicitly reused and current hashes revalidated."
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW",
+      "findings": [],
+      "provenance": "Actual independent nonauthor R10 binding/one-invocation review; unchanged prior source inspection explicitly reused and current hashes revalidated."
+    }
+  ],
+  "requestedEffort": "xhigh",
+  "maxFallback": false,
+  "consumption": "ONE_FRESH_EXACT_REVIEW_PENDING_LAUNCH; no R9 claim reuse or automatic retry",
+  "limits": "Actual effective effort UNPROVEN; native webview ACK false. Capture needs independent acceptance, not app/DB/provider/clinical/owner/module/release proof."
+}

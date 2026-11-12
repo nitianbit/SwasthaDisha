@@ -1,0 +1,77 @@
+{
+  "models": [
+    "claude-opus-5-5"
+  ],
+  "result": {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "stop_reason": "end_turn",
+    "session_id": "6565807e-21b1-4553-8901-524e92a97fee",
+    "num_turns": 4
+  },
+  "toolUses": [
+    {
+      "id": "toolu_0123djjXYDNvViGyXdHkDzyQ",
+      "name": "mcp__ruflo__team_inbox",
+      "inputKeys": [
+        "team",
+        "agent",
+        "peek"
+      ]
+    },
+    {
+      "id": "toolu_01NXjX6Q8RJb4navckfdrdcG",
+      "name": "mcp__ruflo__team_send",
+      "inputKeys": [
+        "team",
+        "to",
+        "from",
+        "type",
+        "priority",
+        "summary",
+        "message"
+      ]
+    },
+    {
+      "id": "toolu_017LYGvgJLZteg4dPbigtWrE",
+      "name": "mcp__ruflo__team_send",
+      "inputKeys": [
+        "team",
+        "to",
+        "from",
+        "type",
+        "priority",
+        "summary",
+        "message"
+      ]
+    }
+  ],
+  "toolResults": [
+    {
+      "toolUseId": "toolu_0123djjXYDNvViGyXdHkDzyQ",
+      "isError": false,
+      "contentKind": "list"
+    },
+    {
+      "toolUseId": "toolu_01NXjX6Q8RJb4navckfdrdcG",
+      "isError": false,
+      "contentKind": "list"
+    },
+    {
+      "toolUseId": "toolu_017LYGvgJLZteg4dPbigtWrE",
+      "isError": false,
+      "contentKind": "list"
+    }
+  ],
+  "reviewBytes": 25663,
+  "reviewSha256": "591e4a362a9d530ee2a969ea6a8da96e2184c4214b8b130e41338aeffa7137cb",
+  "reviewAccepted": true,
+  "launcherFailurePreserved": "IDENTITY_UNKNOWN / cleanup IDENTITY_CHANGED; wrapper FAILED_OR_UNRESOLVED retained; independent genuine-review acceptance is separate",
+  "genuineReviewAccepted": true,
+  "independentOutcome": "OUTCOME_DECISIONS_10.json",
+  "rawReviewBytes": 25663,
+  "rawReviewSha256": "ccdb0a4294c3cc9e767b4c2dae39aafceec67b1f63aed67840e05248e1475f21",
+  "exportedMarkdownBytes": 25664,
+  "exportedMarkdownSha256": "591e4a362a9d530ee2a969ea6a8da96e2184c4214b8b130e41338aeffa7137cb"
+}

@@ -1,0 +1,70 @@
+{
+  "schema": "SD-CLAUDE-R10-INDEPENDENT-OUTCOME-1",
+  "sourceCommit": "9debdd25ae4079fa73f5052afe3a0fd62d4feb0f",
+  "sessionId": "6565807e-21b1-4553-8901-524e92a97fee",
+  "decision": "ACCEPT_GENUINE_SOURCE_REVIEW_WITH_PRESERVED_LAUNCHER_FAILURE",
+  "decisions": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "ACCEPT_GENUINE_SOURCE_REVIEW_WITH_PRESERVED_LAUNCHER_FAILURE"
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_GENUINE_SOURCE_REVIEW_WITH_PRESERVED_LAUNCHER_FAULT"
+    }
+  ],
+  "independentlyVerifiedByBoth": [
+    "501 complete frames, actual Opus5.5 and exact session",
+    "Exactly3 successful correlated Ruflo calls and unique current challenge/nonce ACK",
+    "Captured model/send/server/final content equality and persisted mailbox receipt hashes",
+    "Full1478707-byte input and bounded stdout560632/stderr0",
+    "Fresh own exact PID45470/45471/45486/45492 and PGID45471 absence"
+  ],
+  "actualModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "nativeWebviewACK": false,
+  "rawReview": {
+    "bytes": 25663,
+    "sha256": "ccdb0a4294c3cc9e767b4c2dae39aafceec67b1f63aed67840e05248e1475f21"
+  },
+  "exportedMarkdown": {
+    "path": "operator/CLAUDE_REVIEW_10.md",
+    "bytes": 25664,
+    "sha256": "591e4a362a9d530ee2a969ea6a8da96e2184c4214b8b130e41338aeffa7137cb",
+    "transformation": "Exactly one trailing LF added; no text edits"
+  },
+  "rawStreamSha256": "67621e638504da08931689321dd73feda25886fa9b29b3a34de7f99f84fbdddc",
+  "rawCaptureStateSha256": "e206283eabb8f24f6a01e8c223e2a726965211da878482b4e6718770470e6fa6",
+  "rawCaptureStatus": "FAILED_OR_UNRESOLVED",
+  "firstFailure": "IDENTITY_UNKNOWN",
+  "cleanupErrors": [
+    "IDENTITY_CHANGED"
+  ],
+  "childExit": 0,
+  "launcherExit": 1,
+  "cause": "UNPROVEN; no clean capture PASS or automatic retry",
+  "sourceReview": {
+    "history": "APPROVE_SOURCE_ONLY",
+    "supplier": "APPROVE_SOURCE_ONLY",
+    "recoveryPartyFence": "APPROVE_SOURCE_ONLY",
+    "legacyTestAlignment": "APPROVE_SOURCE_ONLY",
+    "composition": "APPROVE_SOURCE_ONLY",
+    "newLowFindings": [
+      "R10-F2-1 supplier CAS return projection/time budget",
+      "R10-F2-2 supplier list owner-index/capacity admission"
+    ],
+    "retainedOpen": [
+      "F1 HIGH",
+      "F5-1 MEDIUM",
+      "Focused runtime and activation/clinical/finance/client/owner/release gates"
+    ]
+  },
+  "postSourceFreeze": "operator/POST_SOURCE_FREEZE_10.json",
+  "newEnrollmentOrPrivateCoreReviewedByR10": false,
+  "retryAuthorized": false
+}

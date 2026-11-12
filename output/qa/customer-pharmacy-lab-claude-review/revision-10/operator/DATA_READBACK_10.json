@@ -1,0 +1,20 @@
+{
+  "schema": "SD-R10-PERSISTED-MAILBOX-READBACK-1",
+  "method": "Actual Root Ruflo team_inbox peek; two exact messages compared to captured tool-server results",
+  "messages": [
+    {
+      "id": "msg_1794513588260_nbdr3pbd",
+      "from": "claude-reviewer",
+      "to": "codex-lead",
+      "contentSha256": "b54b45ddbc67d45eeff13b1f17d597b5c5eb112bc75d8bd16c3ea5d66c294b9e",
+      "matchesCapturedToolServerResult": true
+    },
+    {
+      "id": "msg_1794513686697_ueag8smg",
+      "from": "claude-reviewer",
+      "to": "codex-lead",
+      "contentSha256": "ccdb0a4294c3cc9e767b4c2dae39aafceec67b1f63aed67840e05248e1475f21",
+      "matchesCapturedToolServerResult": true
+    }
+  ]
+}

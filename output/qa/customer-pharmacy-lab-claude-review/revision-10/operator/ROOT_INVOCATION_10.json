@@ -1,0 +1,49 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-ROOT-INVOCATION-10",
+  "candidate": "97a73624bce6ddb49073b31ac563ba8aa552e0c1",
+  "sourceCommit": "9debdd25ae4079fa73f5052afe3a0fd62d4feb0f",
+  "sourceFreezeSha256": "53d6203dc393d266304b384f88d85bed7115776bd724a94050e62c568ae5a10a",
+  "python": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+  "pythonSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "reviewers": [
+    {
+      "agent": "/root/customer_remaining_audit",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    },
+    {
+      "agent": "/root/lab_remaining_audit",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    }
+  ],
+  "teamActive": true,
+  "membersVerified": [
+    "codex-lead",
+    "claude-reviewer"
+  ],
+  "challengeEnqueue": {
+    "messageId": "msg_1794512953778_ezfy07g5",
+    "timestamp": "2026-11-12T19:49:13.778Z",
+    "acknowledged": true,
+    "challengeSha256": "26d43dbb03abbdf5612d969661408db70a474e625bb304050db516ea0cb0b0c7"
+  },
+  "privateExclusionsVerified": true,
+  "approvalSha256": "3b16c796d2c799cfe0c962822ad4b34d5fb715b121880dbecf7bba17fcc22587",
+  "sessionId": "6565807e-21b1-4553-8901-524e92a97fee",
+  "requestedModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "maxFallback": false,
+  "effectiveEffort": "UNPROVEN",
+  "nativeExtensionACK": false,
+  "invocationState": "TERMINAL_LAUNCHER_EXIT_1_GENUINE_SOURCE_REVIEW_SEPARATELY_ACCEPTED",
+  "supervisorExecSession": 3914,
+  "launcherExit": 1,
+  "childExit": 0,
+  "elapsedSeconds": 780.695,
+  "captureStatus": "FAILED_OR_UNRESOLVED",
+  "captureFirstFailure": "IDENTITY_UNKNOWN",
+  "cleanupErrors": [
+    "IDENTITY_CHANGED"
+  ],
+  "outcomeDecisions": "OUTCOME_DECISIONS_10.json",
+  "noAutomaticRetry": true
+}
