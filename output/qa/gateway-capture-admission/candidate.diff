@@ -1,0 +1,13 @@
+diff --git a/src1/modules/payment/services/index.ts b/src1/modules/payment/services/index.ts
+index a4b442549f033ccf68946def308ed30901b45435..d79e591527e5af2a75c3cf702b44a5586488e6e5 100644
+--- a/src1/modules/payment/services/index.ts
++++ b/src1/modules/payment/services/index.ts
+@@ -750,7 +750,7 @@ export class PaymentService {
+       });
+     }
+ 
+-    if (!['authorized', 'captured'].includes(razorpayPayment.status)) {
++    if (razorpayPayment.status !== 'captured') {
+       throw new AppError({
+         status: 400,
+         code: 'PAYMENT_NOT_COMPLETED',

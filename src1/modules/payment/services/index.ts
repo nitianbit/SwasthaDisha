@@ -750,7 +750,7 @@ export class PaymentService {
       });
     }
 
-    if (!['authorized', 'captured'].includes(razorpayPayment.status)) {
+    if (razorpayPayment.status !== 'captured') {
       throw new AppError({
         status: 400,
         code: 'PAYMENT_NOT_COMPLETED',
