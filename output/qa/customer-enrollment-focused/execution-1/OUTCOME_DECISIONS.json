@@ -1,0 +1,39 @@
+{
+  "schema": "SD-ENROLLMENT-ACTUAL-SERVICE-OUTCOMES-1",
+  "runCommit": "31253678a9f41135ba41968c4f6e02a7be061c31",
+  "resultCommit": "8f9f8d88d1d7724e4bc367a52e11b9817b80f11e",
+  "resultSha256": "d8ed3ad9baa6bff3deb7f8c3a818e842cbe3be1c606885d5a41ed5f0580aec10",
+  "cleanupSha256": "8eb51d483e5fffad6d5bd65dde322081b58d5eeac169be9b83a71f6bac58f592",
+  "decision": "ACCEPT_FOCUSED_ENROLLMENT_SERVICE_RESULT_ONLY",
+  "reviewers": [
+    {
+      "agent": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "decision": "ACCEPT_FOCUSED_ENROLLMENT_SERVICE_RESULT_ONLY",
+      "inspection": "Actual public/private stdout/stderr/terminal/invocation; all23 current+run-origin pins, exact receipt/once and private ownership,82+82exact IDs,OLD+four actual behavioral control predicates/restorations and signing semantics; Root fresh readback plus direct exact filesystem absence."
+    },
+    {
+      "agent": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "decision": "ACCEPT_FOCUSED_ENROLLMENT_SERVICE_RESULT_ONLY",
+      "inspection": "Actual logs and23pins/receipt/once, rebuilt8-file stagedmanifest, actualnetworkstate,82+82IDs/five intended control predicates/restorations; personally fresh read-only same-engine exactcontainer inspect no-such-object, zero purpose labels and exactworkspaceENOENT."
+    }
+  ],
+  "provenance": "Actual direct independent internal Codex reviewer messages; neither authored harness or Root host guard. Root transcribes actual votes, not owner/release approval.",
+  "measured": {
+    "nominalCases": 82,
+    "freshRestoredCases": 82,
+    "detectedRestoredBehaviorControls": 5,
+    "baselineTwoAliasDataflowObserved": true,
+    "nodeLauncherExit": 0,
+    "exactOwnedContainerAndWorkspaceAbsent": true
+  },
+  "limitations": [
+    "Real service/Joi/JWT with11 recording constructor dependencies only",
+    "No HTTP/Mongoose/real OTP expiry-consumption/provider/client/cutover proof",
+    "No clean typecheck or full C1/module/production/release acceptance",
+    "Precleanup raw inspect not independently persisted; actual controller validation path only",
+    "Root initial absence-wording predicate stop preserved; no application retry"
+  ],
+  "status": "FOCUSED_ENROLLMENT_SERVICE_MILESTONE_ACCEPTED"
+}
