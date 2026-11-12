@@ -1,0 +1,557 @@
+"""Meaningful fake process/IO/lifecycle tests; all native launch effects denied."""
+import copy
+import importlib.util
+import json
+import os
+from pathlib import Path
+import signal
+import sys
+import tempfile
+import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
+
+spec = importlib.util.spec_from_file_location('current_supervisor', Path(__file__).with_name('supervisor.py'))
+s = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = s
+spec.loader.exec_module(s)
+
+class Stream:
+    closed = False
+    def close(self):
+        self.closed = True
+
+class Process:
+    pid = 101
+    def __init__(self, forever=False):
+        self.stdin, self.stdout, self.stderr = Stream(), Stream(), Stream()
+        self.forever, self.dead = forever, False
+    def poll(self):
+        return 0 if self.dead or (self.stdin.closed and not self.forever) else None
+
+class Selector:
+    closed = False
+    def close(self):
+        self.closed = True
+
+class Sink:
+    def __init__(self):
+        self.data = {'stdout': bytearray(), 'stderr': bytearray()}
+        self.closed, self.reserved, self.finish_error = False, False, False
+    def reserve(self):
+        self.reserved = True
+    def check(self):
+        pass
+    def append(self, name, data):
+        self.data[name].extend(data)
+    def finish(self, receipt):
+        self.receipt = receipt
+        if self.finish_error:
+            raise s.Stop('OUTPUT_IDENTITY')
+    def close(self):
+        self.closed = True
+
+class Ports:
+    def __init__(self):
+        self.time, self.starts = 0., 0
+        self.process, self.selector = Process(), Selector()
+        self.stdout, self.stderr = [b'{"ok":true}\n', b''], [b'diagnostic', b'']
+        self.registered, self.log = {'stdin','stdout','stderr'}, []
+        self.written = bytearray()
+        self.observe_error, self.setup_error, self.preflight_error = False, False, False
+        self.change_identity, self.signal_error, self.ignore_term = False, False, False
+        self.signal_log, self.observe_count = [], 0
+        self.pause_count = 0
+    def now(self):
+        return self.time
+    def pause(self, amount):
+        self.pause_count += 1
+        self.time += amount
+    def revalidate(self, bundle):
+        if self.preflight_error:
+            raise s.Stop('SOURCE_DRIFT')
+    def start(self, bundle):
+        self.starts += 1
+        return self.process
+    def observe(self, process, recipe, captured, deadline):
+        self.observe_count += 1
+        if self.observe_error:
+            raise s.Stop('IDENTITY_UNKNOWN')
+        for offset,name in enumerate(('cli','adapter','ruflo')):
+            captured[name] = s.Identity(101+offset, 100+offset, 101, 'Thu Nov 12 10:00:00 2026', name)
+    def setup(self, process):
+        if self.setup_error:
+            raise s.Stop('PIPE_FAILURE')
+        return self.selector
+    def events(self, selector, timeout):
+        self.time += max(timeout, .05)
+        return [n for n in ('stdin','stdout','stderr') if n in self.registered]
+    def remove(self, selector, process, name):
+        self.registered.discard(name)
+        getattr(process, name).close()
+    def close_input(self, process):
+        process.stdin.close()
+    def write(self, process, data):
+        self.log.append('write')
+        chunk = data[:2]
+        self.written.extend(chunk)
+        return len(chunk)
+    def read(self, process, name, size):
+        self.log.append('read-'+name)
+        queue = getattr(self,name)
+        if queue:
+            return queue.pop(0)
+        if process.poll() is not None:
+            return b''
+        raise BlockingIOError()
+    def absent(self, identity, deadline):
+        if self.change_identity:
+            raise s.Stop('IDENTITY_CHANGED')
+        return self.process.poll() is not None
+    def group_empty(self, process, deadline):
+        return process.poll() is not None
+    def signal_owned(self, process, kind, identity, sig, deadline):
+        if self.signal_error:
+            raise s.Stop('IDENTITY_CHANGED')
+        self.signal_log.append((kind,int(sig)))
+        if sig == signal.SIGKILL or not self.ignore_term:
+            self.process.dead = True
+
+
+def bundle():
+    return {'packet': b'abcdef', 'recipe': {'timeoutSeconds': 3, 'sessionId':'fake-session',
+            'packetSha256':'f'*64, 'bounds': {'stdoutBytes':200,'stderrBytes':200,'frameBytes':100,'reviewBytes':48,'eofGraceSeconds':.3}}}
+
+class SupervisorTests(unittest.TestCase):
+    def setUp(self):
+        self.denials = []
+        for obj,name in ((s.subprocess,'Popen'),(s.subprocess,'run'),(s.os,'kill'),
+                         (s.selectors,'DefaultSelector'),(s.time,'sleep')):
+            mock = patch.object(obj,name,side_effect=AssertionError('REAL_EFFECT_DENIED'))
+            self.denials.append(mock)
+            mock.start()
+        self.addCleanup(lambda: [m.stop() for m in reversed(self.denials)])
+    def execute(self, ports=None, data=None, sink=None):
+        ports, sink = ports or Ports(), sink or Sink()
+        result = s.run(data or bundle(), ports, sink)
+        self.assertTrue(sink.closed)
+        if ports.starts:
+            self.assertTrue(ports.process.stdin.closed)
+            self.assertTrue(ports.process.stdout.closed)
+            self.assertTrue(ports.process.stderr.closed)
+        return result, ports, sink
+    def test_default_has_no_native_effect(self):
+        self.assertEqual(s.main([])['status'],'NO_LIVE_START')
+        self.assertEqual(s.main(['--unexpected'])['status'],'NO_LIVE_START')
+    def test_live_requires_receipt_before_any_native_effect(self):
+        with tempfile.TemporaryDirectory() as d, patch.object(s,'OWN',Path(d)):
+            self.assertEqual(s.main(['--live'])['firstFailure'],'APPROVAL_REQUIRED')
+    def test_partial_writes_and_simultaneous_output_draining(self):
+        result,p,sink = self.execute()
+        self.assertEqual(result['status'],'CAPTURED_PENDING_ROOT_STREAM_REVIEW')
+        self.assertEqual(bytes(p.written), b'abcdef')
+        self.assertLess(p.log.index('read-stdout'), len(p.log)-1)
+        self.assertEqual(p.log[:3],['write','read-stdout','read-stderr'])
+        self.assertEqual(bytes(sink.data['stdout']), b'{"ok":true}\n')
+        self.assertEqual(bytes(sink.data['stderr']), b'diagnostic')
+        self.assertEqual(result['effectiveEffort'],'UNPROVEN')
+        self.assertFalse(result['reviewAccepted'])
+        self.assertFalse(result['actualClaudeExtensionACK'])
+        self.assertEqual(result['signals'],[])
+        self.assertTrue(all(result['absent'].values()))
+    def test_observation_failure_retains_handle_and_closes_it(self):
+        p=Ports();p.observe_error=True
+        result,p,_=self.execute(p)
+        self.assertEqual(p.starts,1)
+        self.assertEqual(result['firstFailure'],'IDENTITY_UNKNOWN')
+        self.assertTrue(p.process.stdin.closed)
+        self.assertFalse(any(result['absent'].values()))
+    def test_observation_failure_hung_child_held_handle_escalates(self):
+        p=Ports();p.observe_error=True;p.process.forever=True
+        result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'IDENTITY_UNKNOWN')
+        self.assertEqual(p.signal_log,[('cli',int(signal.SIGTERM))])
+        self.assertEqual(result['status'],'FAILED_OR_UNRESOLVED')
+    def test_selector_setup_failure_still_cleans_owned_process(self):
+        p=Ports();p.setup_error=True
+        result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'PIPE_FAILURE')
+        self.assertTrue(p.process.stdin.closed)
+    def test_timeout_escalation_bounded_and_not_success(self):
+        p=Ports();p.process.forever=True;p.stdout=[];p.stderr=[]
+        result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'TIMEOUT')
+        self.assertEqual(p.signal_log,[('cli',int(signal.SIGTERM))])
+        self.assertLess(p.time,4)
+        self.assertEqual(result['status'],'FAILED_OR_UNRESOLVED')
+    def test_ignored_term_requires_exact_kill(self):
+        p=Ports();p.process.forever=True;p.ignore_term=True;p.stdout=[];p.stderr=[]
+        result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'TIMEOUT')
+        self.assertEqual(p.signal_log,[('cli',int(signal.SIGTERM)),('cli',int(signal.SIGKILL))])
+        self.assertLess(p.time,7)
+    def test_stdout_bound_caps_private_capture(self):
+        p=Ports();p.stdout=[b'x'*250,b'']
+        result,p,sink=self.execute(p)
+        self.assertEqual(result['firstFailure'],'STDOUT_LIMIT')
+        self.assertEqual(len(sink.data['stdout']),200)
+        self.assertEqual(result['status'],'FAILED_OR_UNRESOLVED')
+    def test_stderr_bound_caps_private_capture(self):
+        p=Ports();p.stderr=[b'x'*250,b'']
+        result,p,sink=self.execute(p)
+        self.assertEqual(result['firstFailure'],'STDERR_LIMIT')
+        self.assertEqual(len(sink.data['stderr']),200)
+    def test_frame_bound_and_original_failure_preserved(self):
+        p=Ports();p.stdout=[b'x'*101,b'']
+        result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'FRAME_LIMIT')
+        self.assertIn('PARTIAL_FRAME',result['cleanupErrors'])
+    def test_partial_frame_rejected(self):
+        p=Ports();p.stdout=[b'{"incomplete":true}',b'']
+        result,_,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'PARTIAL_FRAME')
+    def test_identity_change_does_not_signal_changed_pids(self):
+        p=Ports();p.change_identity=True
+        result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'IDENTITY_CHANGED')
+        self.assertEqual(p.signal_log,[])
+        self.assertFalse(any(result['absent'].values()))
+    def test_first_failure_survives_cleanup_identity_error(self):
+        p=Ports();p.stdout=[b'x'*250,b''];p.change_identity=True
+        result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'STDOUT_LIMIT')
+        self.assertIn('IDENTITY_CHANGED',result['cleanupErrors'])
+        self.assertEqual(p.signal_log,[])
+    def test_cleanup_signal_identity_recheck_failure_withholds_signal(self):
+        p=Ports();p.process.forever=True;p.signal_error=True;p.stdout=[];p.stderr=[]
+        result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'TIMEOUT')
+        self.assertEqual(p.signal_log,[])
+        self.assertIn('IDENTITY_CHANGED',result['cleanupErrors'])
+    def test_source_drift_prevents_start(self):
+        p=Ports();p.preflight_error=True
+        result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'SOURCE_DRIFT')
+        self.assertEqual(p.starts,0)
+    def test_output_finalization_error_cannot_mark_capture(self):
+        sink=Sink();sink.finish_error=True
+        result,_,_=self.execute(sink=sink)
+        self.assertEqual(result['firstFailure'],'OUTPUT_IDENTITY')
+        self.assertEqual(result['status'],'FAILED_OR_UNRESOLVED')
+    def test_first_failure_survives_finalization_error(self):
+        p=Ports();p.observe_error=True;sink=Sink();sink.finish_error=True
+        result,_,_=self.execute(p,sink=sink)
+        self.assertEqual(result['firstFailure'],'IDENTITY_UNKNOWN')
+    def test_blocking_io_is_retried(self):
+        p=Ports();original=p.write;seen=[]
+        def write(process,data):
+            if not seen:
+                seen.append(True);raise BlockingIOError()
+            return original(process,data)
+        p.write=write
+        result,p,_=self.execute(p)
+        self.assertIsNone(result['firstFailure'])
+        self.assertEqual(bytes(p.written),b'abcdef')
+    def test_output_failure_still_escalates_hung_owned_child(self):
+        p=Ports();p.process.forever=True;p.stdout=[b'x'*250,b''];p.stderr=[]
+        result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'STDOUT_LIMIT')
+        self.assertEqual(p.signal_log,[('cli',int(signal.SIGTERM))])
+    def test_approval_requires_exact_binding_and_two_nonauthors(self):
+        expected={'schema':'fake','packetSha256':'f'*64}
+        good=dict(expected,reviewers=[{'agent':'/root/spec','decision':'APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW'},{'agent':'/root/standards','decision':'APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW'}])
+        s.approval_check(good,expected)
+        for mutate in (lambda r:r.update(packetSha256='bad'),lambda r:r['reviewers'].pop(),lambda r:r['reviewers'][1].update(agent='/root/spec'),lambda r:r['reviewers'][0].update(agent=s.AUTHOR),lambda r:r.update(extra=True)):
+            r=copy.deepcopy(good);mutate(r)
+            with self.assertRaises(s.Stop):s.approval_check(r,expected)
+    def test_exclusive_claim_and_private_file_modes(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);r={'onceClaim':str(root/'once.json'),'privateOutputDirectory':str(root/'private'),'sessionId':'fixture','packetSha256':'f'*64}
+            store=s.PrivateFiles(r);self.addCleanup(store.close);store.reserve()
+            store.append('stdout',b'public fixture\n');store.finish({'fake':True})
+            store.close()
+            self.assertEqual((root/'private'/'transcript.stream-json').read_bytes(),b'public fixture\n')
+            self.assertEqual((root/'private').stat().st_mode & 0o777,0o700)
+            self.assertEqual((root/'once.json').stat().st_mode & 0o777,0o600)
+            with self.assertRaises(s.Stop):s.PrivateFiles(r).reserve()
+    def test_replaced_output_inode_rejected_and_claim_kept(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);r={'onceClaim':str(root/'once.json'),'privateOutputDirectory':str(root/'private'),'sessionId':'fixture','packetSha256':'f'*64}
+            store=s.PrivateFiles(r);self.addCleanup(store.close);store.reserve()
+            (root/'private'/'stderr.txt').rename(root/'private'/'old-stderr')
+            (root/'private'/'stderr.txt').write_bytes(b'')
+            with self.assertRaises(s.Stop):store.append('stdout',b'no')
+            store.close();self.assertTrue((root/'once.json').exists())
+    def test_regular_rejects_symlink_and_private_wrong_mode(self):
+        with tempfile.TemporaryDirectory() as d:
+            root=Path(d);(root/'data').write_bytes(b'fixture');(root/'link').symlink_to(root/'data')
+            with self.assertRaises(OSError):s.regular(root/'link')
+            (root/'data').chmod(0o644)
+            with self.assertRaises(s.Stop):s.regular(root/'data',private=True)
+            (root/'data').chmod(0o600)
+            self.assertEqual(s.regular(root/'data',private=True),b'fixture')
+
+class NativeHelperTests(unittest.TestCase):
+    setUp = SupervisorTests.setUp
+    # Inherit the same global real-effect denials; direct helper tests below
+    # execute production selection logic through only closed fake metadata.
+    def observer(self):
+        recipe={'executable':'/fixture/claude','runtimePins':{'/fixture/claude':'c','/fixture/node':'n','/fixture/adapter.mjs':'a','/fixture/ruflo.js':'r'}}
+        class Observer(s.Native):
+            def __init__(self):
+                self.cli=s.Identity(101,os.getpid(),101,'Thu Nov 12 10:00:00 2026','/fixture/claude')
+                self.adapter=s.Identity(102,101,101,'Thu Nov 12 10:00:01 2026','/fixture/node')
+                self.ruflo=s.Identity(103,102,101,'Thu Nov 12 10:00:02 2026','/fixture/node')
+                self.extra=False;self.wrong_args=False;self.log=[]
+            def identity(self,pid,deadline):
+                self.log.append(('identity',pid))
+                return {101:self.cli,102:self.adapter,103:self.ruflo}[pid]
+            def children(self,pid,deadline):
+                self.log.append(('children',pid))
+                return {101:[102,*range(104,112)] if self.extra else [102],102:[103],103:[]}[pid]
+            def command(self,argv,deadline):
+                self.log.append(('argv',argv))
+                value=('/fixture/node /fixture/adapter.mjs' if argv[3]=='102' else '/fixture/node /fixture/ruflo.js mcp start --transport stdio')
+                return SimpleNamespace(returncode=0,stdout=(value if not self.wrong_args else 'unknown').encode())
+        return Observer(),recipe
+    def test_native_selects_only_exact_owned_chain(self):
+        o,r=self.observer();captured=dict(cli=None,adapter=None,ruflo=None)
+        o.observe(Process(),r,captured,100)
+        self.assertEqual([captured[k].pid for k in captured],[101,102,103])
+        args=[row[1] for row in o.log if row[0]=='argv']
+        self.assertEqual([a[3] for a in args],['102','103'])
+    def test_native_rejects_exceeded_child_bound_before_argument_read(self):
+        o,r=self.observer();o.extra=True
+        with self.assertRaises(s.Stop):o.observe(Process(),r,dict(cli=None,adapter=None,ruflo=None),100)
+        self.assertFalse(any(row[0]=='argv' for row in o.log))
+    def test_native_rejects_unowned_child_arguments(self):
+        o,r=self.observer();o.wrong_args=True
+        captured=dict(cli=None,adapter=None,ruflo=None)
+        o.observe(Process(),r,captured,100)
+        self.assertIsNone(captured['adapter'])
+        self.assertEqual(o.observer_diagnostic['matchCount'],0)
+    def test_native_rejects_detached_child_before_argument_read(self):
+        o,r=self.observer();o.adapter=s.Identity(102,999,101,'Thu Nov 12 10:00:01 2026','/fixture/node')
+        captured=dict(cli=None,adapter=None,ruflo=None)
+        o.observe(Process(),r,captured,100)
+        self.assertIsNone(captured['adapter'])
+        self.assertFalse(any(row[0]=='argv' for row in o.log))
+    def test_native_rejects_child_older_than_parent(self):
+        o,r=self.observer();o.adapter=s.Identity(102,101,101,'Thu Nov 12 09:59:59 2026','/fixture/node')
+        captured=dict(cli=None,adapter=None,ruflo=None)
+        o.observe(Process(),r,captured,100)
+        self.assertIsNone(captured['adapter'])
+        self.assertEqual(o.observer_diagnostic['children'][0]['classification'],'STALE_START')
+    def test_native_identity_change_withholds_signal(self):
+        o,_=self.observer();previous=o.cli
+        o.cli=s.Identity(101,999,101,'Thu Nov 12 10:00:00 2026','/fixture/claude')
+        with self.assertRaises(s.Stop):o.signal_owned(Process(),'cli',previous,signal.SIGTERM,100)
+    def test_native_start_has_exact_vector_env_and_private_group(self):
+        r={'executable':'/fixture/claude','argvCandidate':['--tools',''],'cwd':'/fixture','environmentCandidate':{'HOME':'/fixture'}}
+        process=Process()
+        with patch.object(s.subprocess,'Popen',return_value=process) as launch:
+            self.assertIs(s.Native.start({'recipe':r}),process)
+        self.assertEqual(launch.call_args.args,(['/fixture/claude','--tools',''],))
+        self.assertFalse(launch.call_args.kwargs['shell'])
+        self.assertTrue(launch.call_args.kwargs['close_fds'])
+        self.assertTrue(launch.call_args.kwargs['start_new_session'])
+        self.assertEqual(launch.call_args.kwargs['env'],{'HOME':'/fixture'})
+
+class ProfileThreeTests(unittest.TestCase):
+    setUp = SupervisorTests.setUp
+    def environment(self):
+        parent = {k: 'public-fixture-'+str(n) for n,k in enumerate(s.PUBLIC_OS_KEYS)}
+        env = {'HOME':'/Users/shubham','PATH':'/usr/bin:/bin','TMPDIR':'/private/tmp',**parent}
+        return env,parent
+    def test_exact_seven_public_keys_guard_accepts_and_passes_unchanged(self):
+        env,parent=self.environment();parent['UNRELATED_FIXTURE']='must-not-inherit'
+        s.environment_check(env,parent)
+        recipe={'executable':'/fixture/claude','argvCandidate':['--restricted','--tools',''], 'cwd':'/fixture','environmentCandidate':env}
+        with patch.object(s.subprocess,'Popen',return_value=Process()) as launch:
+            s.Native.start({'recipe':recipe})
+        self.assertEqual(launch.call_args.kwargs['env'],env)
+        self.assertEqual(set(launch.call_args.kwargs['env']), {'HOME','PATH','TMPDIR',*s.PUBLIC_OS_KEYS})
+        self.assertNotIn('UNRELATED_FIXTURE',launch.call_args.kwargs['env'])
+    def test_missing_changed_extra_or_stale_environment_rejected(self):
+        env,parent=self.environment()
+        for name in env:
+            missing=dict(env);del missing[name]
+            with self.assertRaises(s.Stop):s.environment_check(missing,parent)
+            changed=dict(env);changed[name]='changed'
+            with self.assertRaises(s.Stop):s.environment_check(changed,parent)
+        extra=dict(env,UNRELATED_FIXTURE='not-permitted')
+        with self.assertRaises(s.Stop):s.environment_check(extra,parent)
+        empty=dict(env);empty[s.PUBLIC_OS_KEYS[0]]=''
+        with self.assertRaises(s.Stop):s.environment_check(empty,parent)
+    def test_old_live_receipt_does_not_admit_revision_nine(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(s,'OWN',Path(directory)):
+            (Path(directory)/'LIVE_APPROVAL_8.json').write_text('{}')
+            self.assertEqual(s.main(['--live'])['firstFailure'],'APPROVAL_REQUIRED')
+    def test_receipt_environment_binding_rejects_three_key_profile(self):
+        env,parent=self.environment()
+        expected={'schema':'fixture-3','environment':env}
+        receipt=dict(expected,reviewers=[{'agent':'/root/spec','decision':'APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW'},{'agent':'/root/standards','decision':'APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW'}])
+        s.approval_check(receipt,expected)
+        receipt['environment']={k:env[k] for k in ('HOME','PATH','TMPDIR')}
+        with self.assertRaises(s.Stop):s.approval_check(receipt,expected)
+
+class AmendmentFourTests(unittest.TestCase):
+    setUp = SupervisorTests.setUp
+    execute = SupervisorTests.execute
+    observer = NativeHelperTests.observer
+    def failing_observation_ports(self):
+        class Failing(Ports):
+            def observe(self, process, recipe, captured, deadline):
+                super().observe(process,recipe,captured,deadline)
+                if self.observe_count == 2:
+                    raise s.Stop('UNKNOWN_CHILD')
+        p=Failing();p.process.forever=True;p.stdout=[];p.stderr=[]
+        return p
+    def test_grace_drain_crosses_deadline_then_fresh_cleanup_signals(self):
+        p=self.failing_observation_ports();original_events=p.events;observed=[]
+        def events(selector,timeout):
+            result=original_events(selector,timeout)
+            p.time += .4
+            return result
+        p.events=events;original_absent=p.absent
+        def absent(identity,deadline):
+            observed.append((p.time,deadline))
+            if p.time >= deadline:
+                raise s.Stop('TIMEOUT')
+            return original_absent(identity,deadline)
+        p.absent=absent
+        result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'UNKNOWN_CHILD')
+        self.assertEqual(p.signal_log,[('cli',int(signal.SIGTERM))])
+        self.assertTrue(all(now < end for now,end in observed))
+        self.assertTrue(all(result['absent'].values()))
+        self.assertEqual(result['status'],'FAILED_OR_UNRESOLVED')
+    def test_transient_metadata_timeout_does_not_poison_fresh_phase(self):
+        p=self.failing_observation_ports();original=p.absent;raised=[]
+        def absent(identity,deadline):
+            if identity.pid == 101 and not raised:
+                raised.append(True);raise s.Stop('TIMEOUT')
+            return original(identity,deadline)
+        p.absent=absent
+        result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'UNKNOWN_CHILD')
+        self.assertIn('TIMEOUT',result['cleanupErrors'])
+        self.assertEqual(p.signal_log,[('cli',int(signal.SIGTERM))])
+        self.assertLess(p.time,4)
+    def test_actual_identity_change_stays_unsafe_and_preserves_first_failure(self):
+        p=self.failing_observation_ports();p.change_identity=True
+        result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'UNKNOWN_CHILD')
+        self.assertEqual(p.signal_log,[])
+        self.assertIn('IDENTITY_CHANGED',result['cleanupErrors'])
+        self.assertFalse(any(result['absent'].values()))
+    def test_pinned_adapter_among_unrelated_sibling_without_exploration(self):
+        o,r=self.observer();identity=o.identity;children=o.children
+        def identity_with_sibling(pid,deadline):
+            if pid == 104:
+                return s.Identity(104,101,101,'Thu Nov 12 10:00:01 2026','/fixture/unrelated-helper')
+            return identity(pid,deadline)
+        o.identity=identity_with_sibling
+        o.children=lambda pid,deadline: [102,104] if pid == 101 else children(pid,deadline)
+        captured=dict(cli=None,adapter=None,ruflo=None)
+        o.observe(Process(),r,captured,100)
+        self.assertEqual([captured[k].pid for k in captured],[101,102,103])
+        self.assertFalse(any(row[0]=='argv' and row[1][3]=='104' for row in o.log))
+        self.assertFalse(any(row==('children',104) for row in o.log))
+        self.assertNotIn('/fixture',json.dumps(o.observer_diagnostic))
+    def test_multiple_pinned_matches_fail_without_arbitrary_adoption(self):
+        o,r=self.observer();identity=o.identity;children=o.children;command=o.command
+        def identity_with_duplicate(pid,deadline):
+            if pid == 104:
+                return s.Identity(104,101,101,'Thu Nov 12 10:00:01 2026','/fixture/node')
+            return identity(pid,deadline)
+        o.identity=identity_with_duplicate
+        o.children=lambda pid,deadline: [102,104] if pid == 101 else children(pid,deadline)
+        o.command=lambda argv,deadline: SimpleNamespace(returncode=0,stdout=b'/fixture/node /fixture/adapter.mjs') if argv[3]=='104' else command(argv,deadline)
+        captured=dict(cli=None,adapter=None,ruflo=None)
+        with self.assertRaises(s.Stop):o.observe(Process(),r,captured,100)
+        self.assertIsNone(captured['adapter'])
+        self.assertEqual(o.observer_diagnostic['stage'],'adapter')
+        self.assertEqual(o.observer_diagnostic['candidateCount'],2)
+        self.assertEqual(o.observer_diagnostic['matchCount'],2)
+
+
+class ObservationSixTests(unittest.TestCase):
+    setUp = SupervisorTests.setUp
+    execute = SupervisorTests.execute
+    def test_six_second_observation_succeeds_under_ten_second_cap(self):
+        clock=[100.]; native=s.Native()
+        def fake(argv,**kwargs):
+            self.assertEqual(kwargs['timeout'],10)
+            clock[0]+=6
+            return SimpleNamespace(returncode=0,stdout=b'fixed fixture',stderr=b'')
+        with patch.object(s.time,'monotonic',side_effect=lambda:clock[0]), patch.object(s.subprocess,'run',side_effect=fake):
+            result=native.command(['/bin/ps','-p','101','-o','fixed'],120.)
+        self.assertEqual(clock[0],106.)
+        self.assertEqual(result.stdout,b'fixed fixture')
+        self.assertFalse(hasattr(native,'first_observation_failure'))
+    def test_short_phase_remainder_is_actual_subprocess_cap(self):
+        native=s.Native()
+        with patch.object(s.time,'monotonic',return_value=100.), patch.object(s.subprocess,'run',return_value=SimpleNamespace(returncode=1,stdout=b'',stderr=b'')) as command:
+            native.command(['/usr/bin/pgrep','-g','101'],102.5)
+        self.assertEqual(command.call_args.kwargs['timeout'],2.5)
+    def test_expired_phase_invokes_no_native_command_and_retains_safe_diagnostic(self):
+        native=s.Native()
+        with patch.object(s.time,'monotonic',return_value=100.), patch.object(s.subprocess,'run') as command:
+            with self.assertRaises(s.Stop) as caught:native.command(['/usr/bin/pgrep','-P','101'],99.)
+        self.assertEqual(caught.exception.code,'TIMEOUT');command.assert_not_called()
+        self.assertEqual(native.first_observation_failure,{'operation':'DIRECT_CHILDREN','timeoutSeconds':0,'deadlineClassification':'EXPIRED'})
+    def test_observation_timeout_has_distinct_code_and_closed_operation_diagnostic(self):
+        vectors=[(['/bin/ps','-p','101'],'IDENTITY'),(['/bin/ps','-ww','-p','101'],'FIXED_ARGUMENTS'),(['/usr/bin/pgrep','-P','101'],'DIRECT_CHILDREN'),(['/usr/bin/pgrep','-g','101'],'EXACT_GROUP')]
+        for argv,operation in vectors:
+            with self.subTest(operation=operation):
+                native=s.Native();error=s.subprocess.TimeoutExpired(['PRIVATE_ARGV'],3,output=b'PRIVATE_STDOUT',stderr=b'PRIVATE_STDERR')
+                with patch.object(s.time,'monotonic',return_value=100.),patch.object(s.subprocess,'run',side_effect=error):
+                    with self.assertRaises(s.Stop) as caught:native.command(argv,103.)
+                self.assertEqual(caught.exception.code,'PROCESS_OBSERVATION_TIMEOUT')
+                self.assertEqual(native.first_observation_failure,{'operation':operation,'timeoutSeconds':3.,'deadlineClassification':'PHASE_REMAINDER'})
+                self.assertNotIn('PRIVATE',json.dumps(native.first_observation_failure))
+    def timeout_ports(self,identity_change=False):
+        class Timed(Ports):
+            def observe(self,process,recipe,captured,deadline):
+                super().observe(process,recipe,captured,deadline)
+                s.Native.command(self,['/bin/ps','-p','101'],deadline)
+            def absent(self,identity,deadline):
+                if not hasattr(self,'cleanup_attempted'):
+                    self.cleanup_attempted=True
+                    s.Native.command(self,['/usr/bin/pgrep','-g','101'],deadline)
+                return super().absent(identity,deadline)
+        p=Timed();p.process.forever=True;p.stdout=[];p.stderr=[];p.change_identity=identity_change
+        return p
+    def test_cleanup_timeout_cannot_replace_first_observation_diagnostic_or_failure(self):
+        p=self.timeout_ports()
+        with patch.object(s.time,'monotonic',side_effect=lambda:p.time),patch.object(s.subprocess,'run',side_effect=s.subprocess.TimeoutExpired(['PRIVATE'],3)):
+            result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'PROCESS_OBSERVATION_TIMEOUT')
+        self.assertIn('PROCESS_OBSERVATION_TIMEOUT',result['cleanupErrors'])
+        self.assertEqual(result['firstObservationFailure'],{'operation':'IDENTITY','timeoutSeconds':3.,'deadlineClassification':'PHASE_REMAINDER'})
+        self.assertEqual(p.signal_log,[('cli',int(signal.SIGTERM))])
+        self.assertEqual(result['status'],'FAILED_OR_UNRESOLVED')
+        self.assertTrue(all(result['absent'].values()))
+    def test_identity_change_after_timeout_still_withholds_every_signal(self):
+        p=self.timeout_ports(identity_change=True)
+        with patch.object(s.time,'monotonic',side_effect=lambda:p.time),patch.object(s.subprocess,'run',side_effect=s.subprocess.TimeoutExpired(['PRIVATE'],3)):
+            result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'PROCESS_OBSERVATION_TIMEOUT')
+        self.assertIn('IDENTITY_CHANGED',result['cleanupErrors'])
+        self.assertEqual(p.signal_log,[])
+        self.assertEqual(result['firstObservationFailure']['operation'],'IDENTITY')
+        self.assertFalse(any(result['absent'].values()))
+    def test_normal_cadence_is_one_second_with_immediate_initial_observation(self):
+        p=Ports();seen=[];observe=p.observe
+        p.observe=lambda *args:(seen.append(p.time),observe(*args))[1]
+        p.write=lambda process,data:len(data)
+        p.process.poll=lambda:0 if p.time>=2.8 else None
+        result,p,_=self.execute(p)
+        self.assertIsNone(result['firstFailure'])
+        self.assertEqual(seen[:2],[0.,0.])
+        self.assertEqual(len(seen),4)
+        self.assertTrue(all(b-a>=1 for a,b in zip(seen[1:],seen[2:])))
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)

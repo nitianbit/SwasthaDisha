@@ -1,0 +1,33 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-OPERATOR-PREPARATION-9",
+  "planSha256": "84346d6ea87176b020d5a9626b39414dc2aa4521de7094106129527e4a7406d8",
+  "preparedFreezeSha256": "b63b2d94f31022b219d8aa410f077ee022598af279d7788265e3ec42a8b1b838",
+  "rootAction": "AUTHORIZE_COMPACT_SUPERVISOR_AND_OFFLINE_FAKE_CHECKS_ONLY",
+  "scope": "Legacy validator enum retained; actual PREPARATION_ONLY_NO_FAKE_RERUN_NO_LIVE.",
+  "rootAuthorizationProvenance": "Actual Root native message after both actual exact-plan preparation votes; no final votes inferred.",
+  "leadPlanAuthor": "/root",
+  "bindingImplementationAuthor": "/root/milestone_composition_r9",
+  "ineligibleLiveReviewers": [
+    "/root",
+    "/root/milestone_composition_r9"
+  ],
+  "decisions": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "decision": "APPROVE_PREPARATION_ONLY",
+      "planSha256": "84346d6ea87176b020d5a9626b39414dc2aa4521de7094106129527e4a7406d8"
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "decision": "APPROVE_PREPARATION_ONLY",
+      "planSha256": "84346d6ea87176b020d5a9626b39414dc2aa4521de7094106129527e4a7406d8"
+    }
+  ],
+  "functionalChanges": false,
+  "requestedEffortBindingChanged": "xhigh_to_max",
+  "finalSourceExactInvocationReviews": "PENDING_TWO_ACTUAL_NONAUTHOR_DECISIONS",
+  "liveInvocationApproved": false,
+  "modelRequests": 0
+}

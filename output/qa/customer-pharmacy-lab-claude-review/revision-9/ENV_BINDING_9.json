@@ -1,0 +1,14 @@
+{
+  "schema": "SD-CLAUDE-R9-PUBLIC-ENV-BINDING-1",
+  "status": "PREPARATION_ONLY_FINAL_REVIEWS_REQUIRED",
+  "author": "/root/milestone_composition_r9",
+  "historicalR8SecuritySessionId": "186b8",
+  "currentObservedSecuritySessionId": "186b9",
+  "otherSixValuesUnchanged": true,
+  "sevenKeySetAndValidationUnchanged": true,
+  "observation": "Read only four specified public OS fields; all five existing runtime pins independently streamed as bytes and unchanged. No executable/client/auth/MCP/model use.",
+  "rootAuthorization": "Actual Root exact-plan authorization after Standards customer_remaining_audit and Spec lab_remaining_audit APPROVE_PREPARATION_ONLY.",
+  "requestedEffort": "max",
+  "effectiveEffort": "UNPROVEN",
+  "codebaseMemory": "OWNER_DISABLED_NOT_INVOKED"
+}

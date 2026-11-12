@@ -1,0 +1,39 @@
+--- revision-8/operator/supervisor.py
++++ revision-9/operator/supervisor.py
+@@ -1 +1 @@
+-"""Exact revision-8 Claude review supervisor; default mode has no effects.
++"""Exact revision-9 Claude review supervisor; default mode has no effects.
+@@ -22 +22 @@
+-REV = QA / 'revision-8'
++REV = QA / 'revision-9'
+@@ -25,2 +25,2 @@
+-FROZEN = '9ccaa68231120a91f2d69a4afe1e00b4f29add81bb7710ad3401d4029007c44e'
+-PLAN = '30f99c56bfcd2358010f6d41f43a77d90d1f625d4845075e182c1b757c8b6a65'
++FROZEN = 'b63b2d94f31022b219d8aa410f077ee022598af279d7788265e3ec42a8b1b838'
++PLAN = '84346d6ea87176b020d5a9626b39414dc2aa4521de7094106129527e4a7406d8'
+@@ -90 +90 @@
+-    need((OWN / 'LIVE_APPROVAL_8.json').exists(), 'APPROVAL_REQUIRED')
++    need((OWN / 'LIVE_APPROVAL_9.json').exists(), 'APPROVAL_REQUIRED')
+@@ -100 +100 @@
+-    pre = json.loads(regular(OWN / 'PREIMPLEMENTATION_8.json'))
++    pre = json.loads(regular(OWN / 'PREIMPLEMENTATION_9.json'))
+@@ -110 +110 @@
+-    need(recipe['requestedModel'] == 'claude-opus-5-5' and recipe['requestedEffort'] == 'xhigh' and
++    need(recipe['requestedModel'] == 'claude-opus-5-5' and recipe['requestedEffort'] == 'max' and
+@@ -125 +125 @@
+-    expected = {'schema': 'SD-CURRENT-CLAUDE-LIVE-APPROVAL-8',
++    expected = {'schema': 'SD-CURRENT-CLAUDE-LIVE-APPROVAL-9',
+@@ -129 +129 @@
+-                'preimplementationSha256': sha(regular(OWN / 'PREIMPLEMENTATION_8.json')),
++                'preimplementationSha256': sha(regular(OWN / 'PREIMPLEMENTATION_9.json')),
+@@ -140 +140 @@
+-    approval_bytes = regular(OWN / 'LIVE_APPROVAL_8.json', private=True)
++    approval_bytes = regular(OWN / 'LIVE_APPROVAL_9.json', private=True)
+@@ -147,2 +147,2 @@
+-                            str(OWN / 'PREIMPLEMENTATION_8.json'): expected['preimplementationSha256'],
+-                            str(OWN / 'LIVE_APPROVAL_8.json'): sha(approval_bytes)} |
++                            str(OWN / 'PREIMPLEMENTATION_9.json'): expected['preimplementationSha256'],
++                            str(OWN / 'LIVE_APPROVAL_9.json'): sha(approval_bytes)} |
+@@ -606 +606 @@
+-               'requestedModel': 'claude-opus-5-5', 'requestedEffort': 'xhigh',
++               'requestedModel': 'claude-opus-5-5', 'requestedEffort': 'max',

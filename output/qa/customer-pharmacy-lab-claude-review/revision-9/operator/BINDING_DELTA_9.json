@@ -1,0 +1,66 @@
+{
+  "schema": "SD-CLAUDE-BINDING-DELTA-9",
+  "baselineSupervisorSha256": "ec713b380f72eb5edd48b55da7efdf937b2591aa3b85c7c281e1744a027957a9",
+  "baselineTestsSha256": "ddd2800dba2aab47eb4dba667c719531f9ed0910e3d7a59f504c9319f5f0d512",
+  "finalSupervisorSha256": "7e51c2141f53ba91076566edc5f90d29006336994403a37d17bd8569a82631af",
+  "finalTestsSha256": "d292f84fe04022b3fdb8f55a7d384707f92eb1f6c9c07a38327d314778cc8b61",
+  "sourceReplacements": [
+    {
+      "old": "revision-8",
+      "new": "revision-9"
+    },
+    {
+      "old": "9ccaa68231120a91f2d69a4afe1e00b4f29add81bb7710ad3401d4029007c44e",
+      "new": "b63b2d94f31022b219d8aa410f077ee022598af279d7788265e3ec42a8b1b838"
+    },
+    {
+      "old": "30f99c56bfcd2358010f6d41f43a77d90d1f625d4845075e182c1b757c8b6a65",
+      "new": "84346d6ea87176b020d5a9626b39414dc2aa4521de7094106129527e4a7406d8"
+    },
+    {
+      "old": "PREIMPLEMENTATION_8",
+      "new": "PREIMPLEMENTATION_9"
+    },
+    {
+      "old": "LIVE_APPROVAL_8",
+      "new": "LIVE_APPROVAL_9"
+    },
+    {
+      "old": "SD-CURRENT-CLAUDE-LIVE-APPROVAL-8",
+      "new": "SD-CURRENT-CLAUDE-LIVE-APPROVAL-9"
+    },
+    {
+      "old": "'xhigh'",
+      "new": "'max'"
+    }
+  ],
+  "testReplacements": [
+    {
+      "old": "test_old_live_receipt_does_not_admit_revision_eight",
+      "new": "test_old_live_receipt_does_not_admit_revision_nine"
+    },
+    {
+      "old": "'LIVE_APPROVAL_7.json'",
+      "new": "'LIVE_APPROVAL_8.json'"
+    }
+  ],
+  "exactReverseSupervisorRecovery": true,
+  "exactReverseTestsRecovery": true,
+  "functionalChanges": false,
+  "requestedEffortBindingChanged": "xhigh_to_max_two_literals",
+  "environmentValidationAndSevenKeySetUnchanged": true,
+  "publicEnvironmentValueReplacements": [
+    {
+      "key": "SECURITYSESSIONID",
+      "old": "186b8",
+      "new": "186b9",
+      "provenance": "Root exact-plan authorization and four public OS fields observation"
+    }
+  ],
+  "otherSixEnvironmentValuesUnchanged": true,
+  "runtimeMcpCapsTimeoutsUnchanged": true,
+  "fakeCampaign": "NOT_RUN_REUSE_EXISTING_47_FAKE_EVIDENCE_AND_R8_GENUINE_CAPTURE",
+  "modelCalls": 0,
+  "authCalls": 0,
+  "ASTParse": "PASS_SOURCE_ONLY_NO_MODULE_EXECUTION"
+}

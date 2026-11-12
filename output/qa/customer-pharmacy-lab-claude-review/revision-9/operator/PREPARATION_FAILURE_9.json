@@ -1,0 +1,7 @@
+{
+  "schema": "SD-R9-PREPARATION-FAILURE-1",
+  "status": "SOURCE_SELECTION_FIXED_BEFORE_PACKET_OUTPUT",
+  "cause": "Initial QA filesystem walk included concurrent untracked COMPOSITION_REVIEW.json outside fixed9debdd2.",
+  "effects": "Only empty owned operator directory allocated; no packet/recipe/supervisor or model/auth/executable output existed.",
+  "correction": "Select QA evidence exclusively from fixed source Git tree. Preserve concurrent files and fixed snapshot; no silent source rebind."
+}

@@ -1,0 +1,17 @@
+{
+  "schema": "SD-CLAUDE-FINAL-PREPARED-FREEZE-9",
+  "files": {
+    "ENV_BINDING_9.json": "dd2d210925573eff7283cbd6b900001682b5c4a314ee34db916d562d231d90f4",
+    "OPERATOR_PLAN.md": "84346d6ea87176b020d5a9626b39414dc2aa4521de7094106129527e4a7406d8",
+    "README.md": "9505019f130816a88be04f9bb805bb62a541bd69d2474f208c784449b579cde3",
+    "SELECTION_PLAN.json": "2449185ef1f85832053d0e3289bcef606dad555f532700fca0ae9121e1051b7d",
+    "challenge.json": "05f96632e8704dea23e3e6053d1a705c290d2973c894df6e5aafeca25657c53f",
+    "manifest.json": "f9683a3810c1b9be5351879324529fe103a5727385687f8f7884a688fba759bf",
+    "mcp-config.json": "a612d678b74998efe9b9d91c029d7f66731ff4fb8e5e096e41f07243369743b0",
+    "packet.json": "8ba3f9a1715affa06ccd5098c65aae3fe3e2e582edd4e5e7af4b379a47a220b7",
+    "prior-seven.sha256.json": "6d490c04b63fd059f0d8cf49b277a48b3407a0f82d667b7837f7777d503e3b11",
+    "recipe.json": "acbb570f3df23fd9e3df32205a663cc6c73c9844f08b4dcf20f8e81a20c42026"
+  },
+  "writesStopped": true,
+  "liveInvocationApproved": false
+}
