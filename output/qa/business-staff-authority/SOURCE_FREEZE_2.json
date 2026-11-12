@@ -1,0 +1,27 @@
+{
+  "baseline": "f89bec38be91a2ec63b15b2262a632aa32554f22",
+  "previous_candidate": "a722bc1c11bb47355b59db744eadfd8231188e58",
+  "previous_freeze_sha256": "7d3be5747bbb62854e226163506b9acdca06e52a93e7d96d8de4c44f60f2e45e",
+  "author": "/root/refund_error_writer",
+  "files": {
+    "documentation/planning/implementation/BUSINESS_STAFF_AUTHORITY_CONTRACT.md": "69dba46528295f55e184b95e1fb6ea451ee2371254d76eb7ac9fd6573068f9fd",
+    "output/qa/business-staff-authority/PREIMPLEMENTATION_DECISIONS.json": "0c95109b58f9fb38eca19b6d3e901e9d3ebd5ea168336d7eab11627e9400418e",
+    "src1/modules/organizations/types/index.ts": "e873884e69db46d7de70d3120a5ac30809fe8dc526d118a4640463233c9633ff",
+    "src1/modules/organizations/rules.ts": "b404c00381b5bf642aa648105cefb353a97c7ea7283c680059c426b5e4307942",
+    "src1/modules/organizations/model/index.ts": "fb0e49483802ffe7eb64f2194804a2c15ef7e4cbd5a73fd6136af65ebc039ce0",
+    "src1/modules/organizations/repository/index.ts": "14532bf2d667e37d4ded33bb3767f744cd524bf385d88341d31f7954ece61d3b",
+    "src1/modules/organizations/services/index.ts": "ccac5254a6e61c8cce4f14c58005cb39349689e3d0cbafc8ab551ca339397c73",
+    "output/qa/business-staff-authority/IMPLEMENTATION_NOTES.md": "716e63854d3797f52c204a4b5d493688d649207d8f7f638d74fc0729462464e9",
+    "output/qa/business-staff-authority/SERIALIZATION_VECTORS.json": "9f2ab5e192c9eb4a1332680a77f0ed5d94eb28502af3fc9a426f68be350ea382",
+    "output/qa/business-staff-authority/candidate.diff": "d0d241ea4a2cd38592b94833b9b32aefe96326fb351db9ade41e732a932b80d3",
+    "output/qa/business-staff-authority/SOURCE_FREEZE.json": "7d3be5747bbb62854e226163506b9acdca06e52a93e7d96d8de4c44f60f2e45e",
+    "output/qa/business-staff-authority/REQUEST_CHANGES_1.json": "501456710d003af95e37f0c4ca3c0ac6f7793221406f352622098fe034f3961f",
+    "output/qa/business-staff-authority/AMENDMENT_1.md": "c036820292deae3e6d379cd01dda5bf4cea0aefdace61d7ec6d04311b4f3d9b0",
+    "output/qa/business-staff-authority/candidate-2.diff": "94e1b96c31580cfdfb59530bcf38ee61ee9c3ad421beada2de33481b87eedf20"
+  },
+  "production_delta_from_previous": [
+    "src1/modules/organizations/repository/index.ts"
+  ],
+  "execution": "No TypeScript/compiler/Node/Mongoose/DB/provider/application/index execution. API evidence is exact-version primary source reviewed by Root and Spec; runtime/installed bytes/type compatibility NOT_RUN.",
+  "source_decisions": "PENDING fresh independent nonauthor Spec and Standards decisions."
+}

@@ -1,4 +1,4 @@
-import { ClientSession, Connection, Model, Types } from 'mongoose';
+import { ClientSession, Connection, Model, Types, mongo } from 'mongoose';
 import { createAuthorityModels } from '../model';
 import { AuthorityError, AuthorityFacts, AuthorityLookup, AuthorityReadiness, AuthorityReadPort } from '../types';
 import { pharmacyFingerprint, validateEligibility, validateLookup, validateMembership, validateOrganization, validateReadiness, validateUser } from '../rules';
@@ -12,20 +12,37 @@ const closed = async (): Promise<AuthorityReadiness> => Object.freeze({ ready: f
 const denied = (): never => { throw new AuthorityError('AUTHORITY_DENIED'); };
 const single = (rows: readonly unknown[]): unknown => rows.length === 1 ? rows[0] : denied();
 
-// Normalize only projected DB values, never caller IDs; no fallback to arbitrary toString().
-function immutableProjection(value: unknown, depth = 0): unknown {
+type ProjectionKind = 'legacyUser' | 'legacyPharmacy' | 'organization' | 'membership' | 'eligibility' | 'decision';
+const timestampPath = (kind: ProjectionKind, path: string): boolean => {
+  if (kind === 'legacyUser' || kind === 'legacyPharmacy') return false;
+  if (path === 'createdAt' || path === 'updatedAt') return true;
+  if ((kind === 'membership' || kind === 'eligibility') && (path === 'validFrom' || path === 'expiresAt')) return true;
+  return kind === 'decision' && (path === 'decidedAt' || path === 'payload.validFrom' || path === 'payload.expiresAt');
+};
+
+// Closed projection paths only: never repair an authority ID/revision with BSON coercion.
+function immutableProjection(value: unknown, kind: ProjectionKind, path = '', depth = 0): unknown {
   if (depth > 10) return denied();
-  if (value instanceof Date) return value.getTime();
-  if (value instanceof Types.ObjectId) return value.toHexString();
+  if (timestampPath(kind, path)) {
+    if (!(value instanceof Date)) return denied();
+    const epoch = value.getTime();
+    if (!Number.isSafeInteger(epoch) || epoch < 0) return denied();
+    return epoch;
+  }
+  if ((kind === 'legacyUser' || kind === 'legacyPharmacy') && path === '_id') {
+    if (!(value instanceof Types.ObjectId)) return denied();
+    return value.toHexString();
+  }
+  if (value instanceof Date || value instanceof Types.ObjectId) return denied();
   if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
   if (Array.isArray(value)) {
     if (value.length > 100) return denied();
-    return Object.freeze(value.map(v => immutableProjection(v, depth + 1)));
+    return Object.freeze(value.map(v => immutableProjection(v, kind, `${path}[]`, depth + 1)));
   }
   if (!value || typeof value !== 'object' || ![Object.prototype, null].includes(Object.getPrototypeOf(value))) return denied();
   const entries = Object.entries(value);
   if (entries.length > 32) return denied();
-  return Object.freeze(Object.fromEntries(entries.map(([k, v]) => [k, immutableProjection(v, depth + 1)])));
+  return Object.freeze(Object.fromEntries(entries.map(([k, v]) => [k, immutableProjection(v, kind, path ? `${path}.${k}` : k, depth + 1)])));
 }
 
 export class MongoBusinessAuthorityReadPort implements AuthorityReadPort {
@@ -35,7 +52,7 @@ export class MongoBusinessAuthorityReadPort implements AuthorityReadPort {
 
   private snapshotSession(value: unknown): ClientSession {
     // Structural lookalikes never qualify. The instance must belong to this exact connection's driver/client.
-    const DriverSession = this.connection.base.mongo.ClientSession;
+    const DriverSession = mongo.ClientSession;
     if (typeof DriverSession !== 'function' || !(value instanceof DriverSession)) throw new AuthorityError('INVALID_TRANSACTION');
     const session = value as ClientSession;
     const internals = session as unknown as { client?: unknown; transaction?: { options?: { readConcern?: { level?: unknown } } } };
@@ -56,41 +73,42 @@ export class MongoBusinessAuthorityReadPort implements AuthorityReadPort {
     const acceptedGeneration = validateReadiness(await this.readiness());
     if (acceptedGeneration !== lookup.authorityGeneration) throw new AuthorityError('AUTHORITY_NOT_READY');
     const models = createAuthorityModels(this.connection);
-    const read = async (model: Model<unknown>, filter: Record<string, unknown>, projection: Record<string, number>): Promise<readonly unknown[]> => {
+    const read = async (model: Model<unknown>, filter: Record<string, unknown>, projection: Record<string, number>, kind: ProjectionKind): Promise<readonly unknown[]> => {
       this.snapshotSession(session);
       if ((session as unknown as { transaction: unknown }).transaction !== heldTransaction) throw new AuthorityError('INVALID_TRANSACTION');
       const rows = await model.find(filter).select(projection).session(session).limit(2).lean().exec();
       this.snapshotSession(session);
       if ((session as unknown as { transaction: unknown }).transaction !== heldTransaction) throw new AuthorityError('INVALID_TRANSACTION');
-      return immutableProjection(rows) as readonly unknown[];
+      if (!Array.isArray(rows) || rows.length > 2) return denied();
+      return Object.freeze(rows.map(row => immutableProjection(row, kind)));
     };
-    const user = single(await read(this.existingModel('User', 'users'), { _id: lookup.actorId, userType: 'user', isActive: true }, { _id: 1, userType: 1, isActive: 1 }));
+    const user = single(await read(this.existingModel('User', 'users'), { _id: lookup.actorId, userType: 'user', isActive: true }, { _id: 1, userType: 1, isActive: 1 }, 'legacyUser'));
     validateUser(user, lookup);
     const organization = single(await read(models.organization, {
       _id: lookup.organizationId, state: 'active', branches: { $elemMatch: { branchId: lookup.branchId, state: 'active' } },
-    }, organizationProjection));
+    }, organizationProjection, 'organization'));
     const org = validateOrganization(organization, lookup, now);
     if (org.kind !== 'pharmacy') throw new AuthorityError('AUTHORITY_MAPPING_UNAVAILABLE');
     const pharmacy = single(await read(this.existingModel('Pharmacy', 'pharmacies'), {
       _id: org.sourceBusinessId, isActive: true, isVerified: true, archivedAt: { $exists: false },
-    }, { _id: 1, isActive: 1, isVerified: 1, archivedAt: 1, drugLicenseNumber: 1, drugLicenseDocumentUrl: 1 }));
+    }, { _id: 1, isActive: 1, isVerified: 1, archivedAt: 1, drugLicenseNumber: 1, drugLicenseDocumentUrl: 1 }, 'legacyPharmacy'));
     if (pharmacyFingerprint(pharmacy) !== org.sourceFingerprint) return denied();
     const memberships = await read(models.membership, {
       organizationId: lookup.organizationId, actorId: lookup.actorId, state: 'active', validFrom: { $lte: new Date(now) }, expiresAt: { $gt: new Date(now) },
       grants: { $elemMatch: { branchId: lookup.branchId, capability: lookup.capability } },
-    }, membershipProjection);
+    }, membershipProjection, 'membership');
     const member = validateMembership(single(memberships), lookup, org, now);
     const selected = member.grants.filter(g => g.branchId === lookup.branchId && g.capability === lookup.capability);
     if (selected.length !== 1) return denied();
     const eligibility = await read(models.eligibility, {
       organizationId: lookup.organizationId, actorId: lookup.actorId, profession: 'pharmacist', state: 'verified',
       validFrom: { $lte: new Date(now) }, expiresAt: { $gt: new Date(now) },
-    }, eligibilityProjection);
+    }, eligibilityProjection, 'eligibility');
     const eligible = validateEligibility(single(eligibility), lookup, now);
     const decision = (decisionId: string, decisionKind: string, subject = false) => read(models.decision, {
       _id: decisionId, organizationId: lookup.organizationId, decisionKind, authorityGeneration: acceptedGeneration,
       ...(subject ? { subjectActorId: lookup.actorId } : {}),
-    }, decisionProjection);
+    }, decisionProjection, 'decision');
     const mappingDecisions = await decision(org.mappingDecisionId, 'business_mapped');
     const grantDecisions = await decision(selected[0].grantDecisionId, 'membership_granted', true);
     const verificationDecisions = await decision(eligible.verificationDecisionId, 'professional_verified', true);
