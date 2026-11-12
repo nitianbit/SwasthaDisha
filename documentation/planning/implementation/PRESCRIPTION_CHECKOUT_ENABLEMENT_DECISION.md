@@ -1,0 +1,13 @@
+# Interim prescription checkout enablement decision
+
+12 November 2026. Root selects this product/technical default under the owner's explicit delegation. It is consistent with the delegated pharmacy policy: new orders may await verified review only when controlled recovery exists. That precondition is not implemented today.
+
+Genuine Claude R6 approved four bounded source milestones and retained F1 HIGH/open. The earlier progress guard prevents new packing/dispatch but there is still no qualified review command; new prescription orders can collect funds without a fulfilment or paid-cancellation recovery path. This is not acceptable feature enablement.
+
+Until qualified version-bound review and controlled paid cancellation/recovery are implemented and focused evidence accepted, refuse new prescription-bearing order creation and enrichment, and refuse new funding opportunities for canonical prescription/unknown-review pharmacy orders. Apply the same closed rule to existing app, counter/direct and wholesale entry paths; no admin, business-login, uploaded-URL, environment or test bypass. Do not silently label a prescription unnecessary, treat a stored approved value as qualified evidence, or take more money to unblock a workflow. Preserve supported non-prescription checkout behavior.
+
+The exact contract must enumerate canonical server-computed line/classification, order and payment-intent entry points before source changes. Choose a single shared domain rule and fixed honest unavailable response, not duplicated conditions or a new policy framework. Unknown/mismatched legacy prescription facts must fail closed for new commerce; reconciliation is separate from pretending that they are non-prescription.
+
+This prospective admission rule must not erase or conceal funds already captured. Do not blanket-reject recording a real existing capture, manufacture a refund, mutate all legacy orders or delete history. Already issued gateway payment orders and captured/authorized amounts require accountable operational reconciliation and durable recovery. Source changes cannot revoke external payment opportunities or repair deployed state. F1 and live impact remain open/unknown.
+
+Prepare the exact actor/state/field/effect/compatibility contract and obtain two independent nonauthor decisions before code, then two source reviews and focused verification under existing gates. No source block is implemented or deployed by this decision alone. It supplies no clinical case judgment, new operational/payment action or release approval. The completed workflow's later enablement needs its own reviewed current readiness proof; no permissive toggle is approved. Corporate/HR/hospital expansion and final cross-module integration campaign remain deferred.

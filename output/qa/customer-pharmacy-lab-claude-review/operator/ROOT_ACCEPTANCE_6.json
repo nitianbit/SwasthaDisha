@@ -1,0 +1,44 @@
+{
+  "schema": "SD-ROOT-CLAUDE-ACCEPTANCE-6",
+  "decision": "ACCEPT_GENUINE_SOURCE_ONLY_REVIEW_PROVENANCE",
+  "rootReviewer": "/root",
+  "independentReviewer": "/root/policy_standards",
+  "sessionId": "203d42e1-6703-4755-93f9-78e269e55948",
+  "reviewSha256": "83b0f6bfbe66e9a172d358bfc1b4de479f5168b4a797ba47640ca81ce76a5222",
+  "requestedModel": "claude-opus-5-5",
+  "observedModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "clientRoute": "existing VS Code bundled CLI through pinned local Ruflo adapter",
+  "nativeExtensionACK": false,
+  "capture": {
+    "elapsedSeconds": 801.212,
+    "exitCode": 0,
+    "firstFailure": null,
+    "firstObservationFailure": null,
+    "signals": [],
+    "cleanupErrors": []
+  },
+  "independentCleanup": {
+    "rootAndStandardsFreshExactPsExit": 1,
+    "rootAndStandardsFreshExactPsStdoutBytes": 0,
+    "exactPids": [
+      16960,
+      16977,
+      16980
+    ],
+    "rootAndStandardsFreshGroupProbeExit": 1,
+    "rootAndStandardsFreshGroupProbeStdoutBytes": 0,
+    "exactGroup": 16960,
+    "allAbsent": true,
+    "groupEmpty": true
+  },
+  "mailboxVerifiedByRoot": true,
+  "claudeDecisions": {
+    "labDependentOwnership": "APPROVE_SOURCE_ONLY",
+    "labPayloadLogDeletion": "APPROVE_SOURCE_ONLY",
+    "pharmacyEarlierRxProgress": "APPROVE_SOURCE_ONLY",
+    "pureCursorFixtureRecovery": "APPROVE_SOURCE_ONLY"
+  },
+  "scope": "Four bounded df8fd4e milestones and recorded pure evidence only. F1 HIGH/open. No newer authority/customer-fields/refund-error/capture-guard source or runtime/type/clinical/security/finance/release acceptance. Preserve failed R5 and all previous records; consumed R6 authority cannot be reused."
+}

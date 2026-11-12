@@ -1,0 +1,38 @@
+{
+  "schema": "SD-ROOT-CLAUDE-STREAM-REVIEW-6",
+  "sessionId": "203d42e1-6703-4755-93f9-78e269e55948",
+  "sourceCommit": "df8fd4ef00cb9d45d081ce760d15cef84a880c4e",
+  "packetSha256": "7c9159422d112f00fe7a44d44c0f152d4c569e5a876de11215034d34a183f18b",
+  "sourceFreezeSha256": "8454eadf80efbf3d4983a8371e0db14ca5a2a0b3abed0e101caa91c91035a99e",
+  "actualAssistantModels": [
+    "claude-opus-5-5"
+  ],
+  "canonicalResultModel": "claude-opus-5-5",
+  "canonicalSubtype": "success",
+  "turns": 4,
+  "toolUseIds": [
+    "toolu_01FAEdZZV5RvpNiKvQFMg1JU",
+    "toolu_01Ws7g2yz6wbLLJPwVU34ihP",
+    "toolu_01Q7HmF2oggXkNRHTBFCE6Ee"
+  ],
+  "toolResultCorrelation": "All three IDs independently parsed to successful matching results by Root and nonauthor Standards; exact team/agent/peek/from/to verified.",
+  "ackMessageId": "msg_1794471736873_xrpwfq81",
+  "ackSha256": "718d8bee22ab471fe74167ecdb7308fbdb3ce1e218f909bc84e06e87ef09a05f",
+  "reviewMessageId": "msg_1794471818613_o9w5e3gv",
+  "reviewSha256": "83b0f6bfbe66e9a172d358bfc1b4de479f5168b4a797ba47640ca81ce76a5222",
+  "reviewBytes": 27321,
+  "reviewSendServerAssistantFinalCanonicalResultEqual": true,
+  "persistedMailbox": "Root performed fresh codex-lead peek, matched both exact message IDs/team/sender/recipient and full ACK/review strings to canonical transcript. No drain.",
+  "sourceInputsStillMatch": 54,
+  "runtimePinsStillMatch": 5,
+  "sourceFreezeInputsMatch": 26,
+  "privateHashes": {
+    "stream": "e38b122c8f7f0486e78e56cdd286ca1c4c840685c3bc73c2d4b28b4010c4aa8d",
+    "state": "538f588b2ab2ca205c981e7aeedf12f5bf4e46daf5b0ffca593b874744575e22",
+    "stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "nativeExtensionACK": false,
+  "rawThinkingPublished": false
+}

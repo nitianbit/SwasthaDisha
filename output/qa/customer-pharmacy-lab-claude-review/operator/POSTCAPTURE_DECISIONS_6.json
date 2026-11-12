@@ -1,0 +1,17 @@
+{
+  "schema": "SD-CLAUDE-POSTCAPTURE-DECISIONS-6",
+  "reviewSha256": "83b0f6bfbe66e9a172d358bfc1b4de479f5168b4a797ba47640ca81ce76a5222",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "decision": "ACCEPT_GENUINE_SOURCE_ONLY_REVIEW_PROVENANCE",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/policy_standards",
+      "decision": "ACCEPT_GENUINE_SOURCE_ONLY_REVIEW_PROVENANCE",
+      "findings": []
+    }
+  ],
+  "provenance": "Actual separate Root and nonauthor Standards stream/tool/hash/source/process checks; Root additionally verified persisted Ruflo mailbox. Neither inspected/published private thinking. This does not supply owner/clinical/runtime/release approvals."
+}
