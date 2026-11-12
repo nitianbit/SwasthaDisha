@@ -1,0 +1,19 @@
+{
+  "schema": "SD-ENROLLMENT-PROFILE-1",
+  "role": "customer-enrollment-service",
+  "endpoint": "unix:///Users/shubham/.docker/run/docker.sock",
+  "engineId": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+  "nodeImage": "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
+  "nodeVersion": "22.23.4",
+  "nodeTool": "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+  "nodeToolSha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+  "npmTool": "/Users/shubham/.nvm/versions/node/v24.19.0/lib/node_modules/npm/bin/npm-cli.js",
+  "npmFiles": "output/qa/customer-enrollment-focused/TOOL_INPUTS.json",
+  "npmFilesSha256": "3729235cc997a657b533bd70daf6ce710e8c6b51b4452119f98be508173bf085",
+  "scope": "TEST_ONLY_DIRECT_SERVICE_NO_DB_NOT_PRODUCTION_OR_HTTP",
+  "status": "SOURCE_CANDIDATE_ALL_EXECUTION_NOT_RUN",
+  "pythonTool": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+  "pythonToolSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "pythonVersion": "3.14.7",
+  "pythonImplementation": "cpython"
+}

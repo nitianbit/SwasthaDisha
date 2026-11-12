@@ -10,14 +10,49 @@ import imageSpecification from './app-image.json' with { type: 'json' };
 const image = Object.freeze({ ...imageSpecification });
 import runtimeSpecification from './app-runtime.json' with { type: 'json' };
 const localRuntime = Object.freeze({ ...runtimeSpecification });
-import { assertBundle, AUTHORITY_COMPILER_SHA, AUTHORITY_INPUTS, AUTHORITY_ROLE, AUTHORITY_SOURCE_HASHES, AUTHORITY_VECTORS_SHA, makeManifest, NETWORK_ADMISSION_TAG, PORT_OPERATIONS, ROLE, requireThat, sha256, sourceNames, verifyAuthorityResult, verifyNetworkAdmission } from './app-bundle.mjs';
+import { assertBundle, ENROLLMENT_ROLE, verifyEnrollmentResult, AUTHORITY_COMPILER_SHA, AUTHORITY_INPUTS, AUTHORITY_ROLE, AUTHORITY_SOURCE_HASHES, AUTHORITY_VECTORS_SHA, makeManifest, NETWORK_ADMISSION_TAG, PORT_OPERATIONS, ROLE, requireThat, sha256, sourceNames, verifyAuthorityResult, verifyNetworkAdmission } from './app-bundle.mjs';
 
 const overrides = ['DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_CONFIG', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH',
   'MONGODB_URL', 'PHARMACY_TEST_MONGODB_URI', 'DATABASE_URL', 'PAYMENT_SECRET', 'NODE_OPTIONS', 'NODE_PATH'];
 const nodeArgs = ['--permission', '--allow-fs-read=/workspace', '--allow-fs-read=/sys/class/net', '--allow-fs-write=/tmp', '/workspace/bootstrap.mjs'];
 const tmpfsOptions = 'rw,noexec,nosuid,size=67108864,mode=1777';
 
+function enrollmentSources() {
+  const root = fileURLToPath(new URL('../../', import.meta.url)).replace(/\/$/, '');
+  const regular = (location, limit = 16 * 1024 * 1024) => {
+    const stat = lstatSync(location);
+    requireThat(stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1 && stat.size < limit, 'Enrollment regular source');
+    return readFileSync(location, 'utf8');
+  };
+  const descriptorPath = '/private/tmp/sd-customer-enrollment-build.json';
+  const descriptorStat = lstatSync(descriptorPath);
+  requireThat(descriptorStat.uid === process.getuid() && (descriptorStat.mode & 0o777) === 0o600, 'Enrollment descriptor owner/mode');
+  const descriptor = JSON.parse(regular(descriptorPath));
+  requireThat(descriptor.schema === 'SD-ENROLLMENT-BUILD-1' && descriptor.sourceRoot === root && descriptor.mode === 'install-emit'
+    && /^\/private\/tmp\/sd-customer-enrollment-build-[a-f0-9-]{36}$/.test(descriptor.path), 'Enrollment owned artifact path');
+  const directory = lstatSync(descriptor.path);
+  requireThat(directory.isDirectory() && !directory.isSymbolicLink() && directory.uid === process.getuid()
+    && (directory.mode & 0o777) === 0o700 && directory.dev === descriptor.dev && directory.ino === descriptor.ino, 'Enrollment artifact ownership');
+  const marker = JSON.parse(regular(join(descriptor.path, '.owner.json')));
+  requireThat(marker.schema === 'SD-ENROLLMENT-OWNED-BUILD-1' && ['path', 'dev', 'ino', 'sourceRoot', 'sourceCommit', 'mode', 'inputs']
+    .every(key => JSON.stringify(marker[key]) === JSON.stringify(descriptor[key])), 'Enrollment build marker');
+  requireThat(descriptor.inputs && Object.keys(descriptor.inputs).length > 0 && Object.entries(descriptor.inputs).every(([name, digest]) =>
+    !name.startsWith('/') && !name.split('/').includes('..') && sha256(regular(join(root, name))) === digest), 'Enrollment source inputs changed');
+  const sources = {};
+  for (const name of sourceNames(ENROLLMENT_ROLE)) {
+    if (name === 'package.json') sources[name] = '{"type":"module"}\n';
+    else if (['emitted-modules.json', 'runtime-modules.json'].includes(name)) {
+      sources[name] = regular(join(descriptor.path, 'output', name), 8 * 1024 * 1024);
+      requireThat(sha256(sources[name]) === descriptor.artifacts[name], 'Enrollment emitted artifact drift');
+    } else if (['scenario.mjs', 'ports-plan.json'].includes(name)) sources[name] = regular(join(root, 'test/customer-enrollment-runtime', name));
+    else sources[name] = regular(join(root, 'test/application', name));
+  }
+  requireThat(sha256(regular(join(descriptor.path, 'output/emission-report.json'))) === descriptor.artifacts['emission-report.json'], 'Enrollment emission report drift');
+  return sources;
+}
+
 function reviewedSources(role) {
+  if (role === ENROLLMENT_ROLE) return enrollmentSources();
   const sources = {};
   for (const name of sourceNames(role)) {
     if (name === 'package.json') { sources[name] = '{"type":"module"}\n'; continue; }
@@ -81,6 +116,7 @@ function realDocker(endpoint, configuration, role) {
 /** Test seams are trusted transports/text fixtures, not resource-ownership claims. */
 export function createApplicationFixture(input, seams = {}) { return createFixture(input, seams, ROLE); }
 export function createAuthorityFixture(input, seams = {}) { return createFixture(input, seams, AUTHORITY_ROLE); }
+export function createEnrollmentFixture(input, seams = {}) { return createFixture(input, seams, ENROLLMENT_ROLE); }
 
 function createFixture(input, seams, role) {
   requireThat(seams !== null && typeof seams === 'object'
@@ -118,10 +154,18 @@ function createFixture(input, seams, role) {
     sourceHashes: Object.freeze({ ...(simulated ? testSeams.authorityExpectation.sourceHashes : AUTHORITY_SOURCE_HASHES) }),
     compilerSha256: simulated ? testSeams.authorityExpectation.compilerSha256 : AUTHORITY_COMPILER_SHA,
   }) : undefined;
+  if (role === ENROLLMENT_ROLE && simulated) requireThat(Object.hasOwn(testSeams, 'bundle')
+    && testSeams.bundle !== null && typeof testSeams.bundle === 'object' && !Array.isArray(testSeams.bundle), 'Enrollment fake requires explicit bundle');
   const selectedSources = role === AUTHORITY_ROLE
     ? (simulated ? testSeams.bundle : reviewedSources(role))
     : ((simulated ? testSeams.bundle : undefined) ?? reviewedSources(role));
   const sources = Object.freeze({ ...selectedSources });
+  const enrollmentPlan = role === ENROLLMENT_ROLE ? JSON.parse(sources['ports-plan.json']) : undefined;
+  const enrollmentExpectation = role === ENROLLMENT_ROLE ? Object.freeze({
+    caseIds: enrollmentPlan.vectors.map(row => row.id), controls: enrollmentPlan.controls.concat(enrollmentPlan.oldControl),
+    planSha256: sha256(sources['ports-plan.json']), emittedSha256: sha256(sources['emitted-modules.json']), runtimeSha256: sha256(sources['runtime-modules.json']),
+  }) : undefined;
+
   const runId = randomUUID();
   const manifest = makeManifest(runId, sources, role);
   if (role === AUTHORITY_ROLE) {
@@ -178,6 +222,7 @@ function createFixture(input, seams, role) {
     const images = JSON.parse(execute(['image', 'inspect', image.image]));
     requireThat(images.length === 1 && /^sha256:[a-f0-9]{64}$/.test(images[0].Id)
       && images[0].Os === 'linux' && ['amd64', 'arm64'].includes(images[0].Architecture)
+      && (role !== ENROLLMENT_ROLE || images[0].Architecture === 'arm64')
       && images[0].RepoDigests?.includes(image.image)
       && Object.keys(images[0].Config?.Volumes ?? {}).length === 0, 'Pinned Linux image is not cached or supported');
     const imageId = images[0].Id;
@@ -273,6 +318,12 @@ function createFixture(input, seams, role) {
           && result.networkAdmission?.tag === NETWORK_ADMISSION_TAG && result.networkAdmission.loopback === 'lo'
           && verifyNetworkAdmission(result.networkAdmission),
         'Application admission evidence mismatched');
+        if (role === ENROLLMENT_ROLE) {
+          requireThat(Object.keys(result).sort().join(',') === ['admissionPassed', 'enrollment', 'databaseMode', 'egressBlocked',
+            'filesystemCanariesPassed', 'manifestSha', 'networkAdmission', 'role', 'runId'].sort().join(',')
+            && Buffer.byteLength(output) < 16 * 1024 && verifyEnrollmentResult(result.enrollment, enrollmentExpectation), 'Enrollment evidence mismatched');
+          phase = 'finished'; return Object.freeze({ ...result, enrollment: Object.freeze(result.enrollment) });
+        }
         if (role === AUTHORITY_ROLE) {
           requireThat(Object.keys(result).sort().join(',') === ['admissionPassed', 'authority', 'databaseMode', 'egressBlocked',
             'filesystemCanariesPassed', 'manifestSha', 'networkAdmission', 'role', 'runId'].sort().join(',')

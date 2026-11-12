@@ -1,0 +1,9 @@
+{
+  "schema": "SD-ENROLLMENT-READONLY-PRESERVATION-1",
+  "originalCheckout": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha",
+  "sixWorktreeEqualFrozen": true,
+  "sixIndexEqualFrozen": true,
+  "archiveEightEqualFrozen": true,
+  "fullIndexPatchSha256": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+  "fullIndexPatchEqualFrozen": true
+}

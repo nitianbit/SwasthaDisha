@@ -1,0 +1,28 @@
+{
+  "schema": "SD-ENROLLMENT-R6-ACTUAL-PREPARATION-OUTCOMES-1",
+  "sourceCandidate": "6d2111db2a3a65cac9b328698357e26fb0e5ff87",
+  "actualResultSha256": "121c26d682fce3df125769dd7fe36d5da90c23c52ab26da9833bb3422c36f701",
+  "descriptorSha256": "fc3169eea4de94d035cd7b39d1a7ed1254a529f54efae7997e0000df7612e9aa",
+  "reviewers": [
+    {
+      "agent": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "decision": "ACCEPT_EMISSION_PREPARATION_ONLY"
+    },
+    {
+      "agent": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "decision": "ACCEPT_EMISSION_PREPARATION_ONLY"
+    }
+  ],
+  "provenance": "Actual direct independent internal Codex agent messages, both inspected actual new workspace/marker,23 current+origin inputs, consumed receipt/once,500 installed files,3 artifact and6 complete diagnostic bytes versus prior R5. Root transcribes; Root and harness author excluded as reviewers.",
+  "acceptedScope": "Genuine fresh locked install and inert whole-module emission only with known recorded diagnostics, matching previous accepted maps/report.",
+  "notAccepted": [
+    "Successful typecheck",
+    "Application/runtime82 cases or real Joi/AuthService evaluation",
+    "Container/HTTP/DB/provider",
+    "Full contact change/module/owner/release"
+  ],
+  "priorFailuresPreserved": true,
+  "nextRunApproval": "Separate fresh exact proposal and two actual one-service-run votes required"
+}

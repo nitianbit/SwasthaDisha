@@ -1,0 +1,19 @@
+{
+  "schema": "SD-ENROLLMENT-INDEPENDENT-CLEANUP-READBACK-1",
+  "engineId": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+  "containerId": "cfa147214da66ac0a50db7f9562f0a8b5d2830b873405bc41df9b331534c4146",
+  "exactInspectExit": 1,
+  "exactInspectStdout": "[]\n",
+  "exactInspectStderr": "error: no such object: cfa147214da66ac0a50db7f9562f0a8b5d2830b873405bc41df9b331534c4146\n",
+  "directory": "/private/tmp/sd-app-isolation-ZNJ1Rd",
+  "directoryAbsent": true,
+  "purposeContainerCount": 0,
+  "controllerCleanupAcknowledged": true,
+  "observation": "Fresh same-engine exact inspect/purpose ps and filesystem absence; no removal/prune/pull/retry",
+  "rawInspectBeforeCleanup": "Not independently persisted; controller validates state/config before removal",
+  "priorRootReadbackPredicateStop": {
+    "toolChunk": "971f36",
+    "reason": "Case-sensitive expected No such object rejected actual lowercase error: no such object; first readback stopped before evidence files, no application retry or cleanup mutation",
+    "diagnosticReadback": "556e11 confirmed exact absence response, empty purpose list and absent exact directory"
+  }
+}

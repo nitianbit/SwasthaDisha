@@ -1,0 +1,15 @@
+{
+  "schema": "SD-ENROLLMENT-DOCKER-READONLY-READINESS-1",
+  "UTC": "2026-11-12T20:23:33.365521+00:00",
+  "endpoint": "unix:///Users/shubham/.docker/run/docker.sock",
+  "provenance": "Root actual read-only query; no container/image/network mutation",
+  "expectedEngine": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+  "image": "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
+  "doesNotAuthorizeRun": true,
+  "infoExit": 0,
+  "engine": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+  "daemonReachable": true,
+  "imageInspectExit": 0,
+  "imageMetadata": "\"sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d\" \"arm64\" \"linux\"",
+  "ownedEmptyConfigRemoved": true
+}

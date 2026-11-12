@@ -1,0 +1,24 @@
+{
+  "schema": "SD-ENROLLMENT-RUN-ENVIRONMENT-PLAN-DECISIONS-1",
+  "planSha256": "887bd627fad26b0eb0735a33bc8d4ad701feadf88fce7b2a81328948f9150570",
+  "author": "/root",
+  "decisions": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "evidence": "Readactualplan/currentfullrunoperator/observedf550bbmetadata/prepareUIDmarkerpolicy. OptionalCFkey strictlyUIDderived, wrong/empty/unlisted denied beforeclaim; noforwarding/othergrants. AcceptedoldBUILDpreserved; freshactualprep/newnonce required for newruninputsha. Noapp/runtime invocation approved."
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "evidence": "Readactualplan/currentfullrunoperator/observedf550bbmetadata/prepareUIDmarkerpolicy. OptionalCFkey strictlyUIDderived, wrong/empty/unlisted denied beforeclaim; noforwarding/othergrants. AcceptedoldBUILDpreserved; freshactualprep/newnonce required for newruninputsha. Noapp/runtime invocation approved."
+    }
+  ],
+  "executionApproved": false
+}

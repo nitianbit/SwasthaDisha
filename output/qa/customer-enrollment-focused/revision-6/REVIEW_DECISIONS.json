@@ -1,0 +1,26 @@
+{
+  "schema": "SD-ENROLLMENT-RUN-ENVIRONMENT-SOURCE-PREP-DECISIONS-1",
+  "candidate": "6d2111db2a3a65cac9b328698357e26fb0e5ff87",
+  "proposalSha256": "60614cd8d897856f74f88bb68d662d33e0ae567555ef565e0a89c9c6121ae49a",
+  "sourceSha256": "37744025e13853b63900309282eb7c318dcc901c4df75bb53503a972e860683a",
+  "decisions": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "sourceDecision": "APPROVE_SOURCE_ONLY",
+      "preparationDecision": "APPROVE_LOCKED_INSTALL_AND_EMIT_ONLY",
+      "findings": [],
+      "evidence": "ReadexactonefileCFguardandapprovedplan; actual23source/Gitpins, currentlock/pinnedtools verified; oldBUILD60ff mustbe byte-preservedarchived beforefreshgenuineprep. No othercode/6source/500fileclosure/6phaseemitter/grants changed; no app/runtimepermission."
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "sourceDecision": "APPROVE_SOURCE_ONLY",
+      "preparationDecision": "APPROVE_LOCKED_INSTALL_AND_EMIT_ONLY",
+      "findings": [],
+      "evidence": "ReadexactonefileCFguardandapprovedplan; actual23source/Gitpins, currentlock/pinnedtools verified; oldBUILD60ff mustbe byte-preservedarchived beforefreshgenuineprep. No othercode/6source/500fileclosure/6phaseemitter/grants changed; no app/runtimepermission."
+    }
+  ]
+}

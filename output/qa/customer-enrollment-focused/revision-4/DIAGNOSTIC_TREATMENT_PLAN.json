@@ -1,0 +1,39 @@
+{
+  "schema": "SD-ENROLLMENT-EXACT-DIAGNOSTIC-TREATMENT-PLAN-1",
+  "status": "PLAN_ONLY_TWO_NONAUTHOR_DECISIONS_REQUIRED",
+  "author": "/root/milestone_composition_r9",
+  "baseline": "eed80333e2e32d1dc43068e555c1d8db6a8eb9e1",
+  "actualEvidence": {
+    "failure": "../revision-3/INSTALL_EMIT_FAILURE.json",
+    "capture": "../revision-3/diagnostics-nominal.json",
+    "captureSha256": "056170525ac48df51e8189999e8032610118f79124c814477c7462ae2ed07f6a",
+    "returned": "31 complete nominal diagnostics:30 code2307 and exactly one code2339. Author independently read/hash-checked all31 and the exact source range. OLD/NC1-NC4 and runtime remain NOT_RUN.",
+    "outcome": "Root's locked npm ci succeeded; compiler emitted nominal source but the unchanged diagnostic gate rejected2339 after preserving its complete data. No runtime maps/BUILD/application acceptance. Consumed nonce and retained failed workspace are not retry authorization."
+  },
+  "choice": "Admit only the single observed missing Node declaration tuple for the pinned actual AppError source during this emit-only fixture preparation. Adding Node types/a shim changes the closed compiler inputs; editing production AppError changes application code. Neither is needed to state this narrow source-bound exception. No generic2339 admission or clean/full typecheck claim.",
+  "futureSourceOwnership": ["test/customer-enrollment-runtime/emit.cjs"],
+  "exactException": {
+    "file": "src1/modules/common/types/error.ts",
+    "sourceSha256": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+    "category": 1,
+    "code": 2339,
+    "start": 573,
+    "length": 17,
+    "message": "Property 'captureStackTrace' does not exist on type 'ErrorConstructor'."
+  },
+  "policy": [
+    "Keep complete raw returned-diagnostic capture before all acceptance checks, with its existing exact phase/file/private bounds and overflow failure. Do not rewrite, suppress or erase this2339 row from diagnostics or emission-report.",
+    "Require the exact exception source bytes/hash in each phase's sources. Require exactly one matching exception row and exactly one non2307 row in every complete actual phase: nominal, OLD, NC1, NC2, NC3, NC4. Missing, duplicate, extra, differently positioned, differently worded/category/code/file/source or otherwise unsupported diagnostics fail closed. Never require an invented equal2307 count across changed phases.",
+    "All remaining rows use the existing2307 predicate unchanged: actual declared import specifier matching. No new2307 exception, package/type shim/root source/module, compiler flag, source extraction or graph edge. Whole six-module emit, compiler/library/source hashes, all six phases and emitted/package require-map audits remain mandatory.",
+    "Freeze the exact policy function and negative data vectors in the amended source candidate. In the separately admitted Node/compiler preparation, run that actual predicate on the returned array and on copies with the exact tuple removed, duplicated, any one tuple field/source hash changed, or an additional unsupported diagnostic. Expected rejection must be behavioral, not a hash-only check or copied predicate. Record this as preparation-policy data proof, separately from the unchanged82service cases and OLD+four source controls; no success is claimed now."
+  ],
+  "runtimeObligation": "The exception acknowledges a missing declaration, not a missing runtime API. The later separately admitted real Node22.23.4 actual-service fixture must still pass its existing C3-01/02 positive signup/verify and C3-05/06 negative AppError paths using the actual emitted AppError constructor. Its required status/code cannot be replaced by an arbitrary thrown TypeError. These existing cases exercise the real Error.captureStackTrace call; no API shim, swallowed exception, mocked Error or additional domain/control count is introduced. Actual runtime proof remains NOT_RUN until that separate stage.",
+  "nextGates": [
+    "Root and another actual independent nonauthor review this exact plan before source changes; author cannot approve.",
+    "After approval, amend only emit.cjs and own new source/proposal evidence; preserve all old captures/failures/source/receipts. Obtain two fresh exact source and LOCKED_INSTALL_AND_EMIT_ONLY decisions bound to the new commit, all eleven source hashes, same8595byte24-package lock SHAb9cef1cc8d5a284f5526704c77e05a32d588680d3b01a2efccaec28e4026ecb6 and fixed Python-I-B-S/Node/npm profile.",
+    "Root owns failure disposition, a new one-use mode-specific receipt/nonce and any separately approved fresh-owned-workspace invocation. No reuse/adoption of the failed workspace or old consumed receipt, no automatic retry or dependency/type expansion.",
+    "Review actual complete diagnostics for each reached phase, policy positive/negative evidence and actual full emitted/runtime-map artifacts before accepting preparation. An additional diagnostic, incomplete phase, graph/closure failure or missing proof stops the dependent stage for review. Emission acceptance remains emit-only, never clean typecheck or application/runtime/owner/release acceptance."
+  ],
+  "unchanged": "Ten other harness sources; six actual production modules; profile/dependency/root lock/start; existing private capture and completeness checks;82nominal/82restored cases and OLD+NC1-NC4; all C2/C3, owner/clinical/client/release gates; original staged six/handover/R10 and other workers.",
+  "authorExecution": "NONE: data/source/hash/Git reads only; no Node/npm/compiler/application/DB/Docker/provider/model command, receipt manipulation or new diagnostic result."
+}

@@ -1,0 +1,35 @@
+diff --git a/test/customer-enrollment-runtime/scenario.mjs b/test/customer-enrollment-runtime/scenario.mjs
+index 0549de0b521605c4d451dc57adb40417190cfb46..6b722ab799b9f04b94669b7474841fffbcf025eb 100644
+--- a/test/customer-enrollment-runtime/scenario.mjs
++++ b/test/customer-enrollment-runtime/scenario.mjs
+@@ -69 +69 @@ function phaseLoader(phase) {
+-  function verifyToken(token, expected) {
++  function verifyToken(token, expected, intendedRole) {
+@@ -70,0 +71 @@ function phaseLoader(phase) {
++    check(claims._id === S.id && claims.userType === intendedRole, 'token-trusted-fixture-identity');
+@@ -86 +87,2 @@ function fixture(loader, options = {}) {
+-  const repository = name => port(name, {
++  const repository = name => {
++    const methods = {
+@@ -92 +94,8 @@ function fixture(loader, options = {}) {
+-  });
++    };
++    const allowed = {
++      user: ['findByPhoneOrEmail', 'save', 'update'],
++      admin: ['findByPhoneOrEmail'], hr: ['findByPhoneOrEmail'],
++      specialist: ['findByPhoneOrEmail', 'save'], pharmacy: ['findByPhone', 'findByEmail', 'save'],
++    };
++    return port(name, Object.fromEntries(allowed[name].map(key => [key, methods[key]])));
++  };
+@@ -157 +166 @@ async function positive(loader, v) {
+-  loader.verifyToken(verified.result.accessToken, verified.result.userData); check(verified.result.userData[field] === canonicalValue, 'returned-contact'); f.assertPlanned(); return f;
++  loader.verifyToken(verified.result.accessToken, verified.result.userData, 'user'); check(verified.result.userData[field] === canonicalValue, 'returned-contact'); f.assertPlanned(); return f;
+@@ -163 +172 @@ async function current(loader, v) {
+-  else { check(!out.error, 'current-row-success'); const call = f.calls.find(c => c.name === 'otp.verify'); check(call.args[0].targetValue === (v.field === 'phone' ? S.otherPhone : S.otherEmail), 'current-row-not-caller'); loader.verifyToken(out.result.accessToken, out.result.userData); }
++  else { check(!out.error, 'current-row-success'); const call = f.calls.find(c => c.name === 'otp.verify'); check(call.args[0].targetValue === (v.field === 'phone' ? S.otherPhone : S.otherEmail), 'current-row-not-caller'); loader.verifyToken(out.result.accessToken, out.result.userData, 'user'); }
+@@ -178 +187 @@ async function staffTrace(loader, v) {
+-    if (out.result?.accessToken) loader.verifyToken(out.result.accessToken, out.result.userData);
++    if (out.result?.accessToken) loader.verifyToken(out.result.accessToken, out.result.userData, v.role);
+@@ -232 +241 @@ export async function runEnrollmentScenario() {
+-  check(!verified.error && verified.result.userData.email === S.email, 'old-unproved-alias-claims'); old.verifyToken(verified.result.accessToken, verified.result.userData); counterfactual.assertPlanned();
++  check(!verified.error && verified.result.userData.email === S.email, 'old-unproved-alias-claims'); old.verifyToken(verified.result.accessToken, verified.result.userData, 'user'); counterfactual.assertPlanned();

@@ -1,0 +1,29 @@
+{
+  "schema": "SD-ENROLLMENT-PACKAGE-EDGE-FAILURE-OUTCOME-1",
+  "resultCommit": "a97ec6478ff0178c426761476f467f97dd6a6d71",
+  "sourceCandidate": "8160df169b35463967f9da71abd067e3a460da84",
+  "failureSha256": "48c2299f7e9df63afe40ed83b76b10384cb8c27105c054db1a281c487b13b64a",
+  "terminalExecSession": 93270,
+  "terminalExit": 1,
+  "decisions": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "ACCEPT_FAILURE_RECORD_ONLY",
+      "findings": [],
+      "evidence": "Directly checked actualowned0700workspace/dev/ino/marker/23pins/originatingGitbytes, consumedreceipt/once, all4actual loghashes and six private/public diagnostic exactbytes/counts. Mandatorysixfullcompile/diagnosticchecks precede actual package traversal failure in pinned@sideway/address/lib/domain.js requireurl. Outputonly6diagnostics, no maps/emissionreport/BUILD/app/runtime82cases/container/DB/provider. Terminalexit1 and originalfailure preserved; no retry/cleanup grant."
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "ACCEPT_FAILURE_RECORD_ONLY",
+      "findings": [],
+      "evidence": "Directly checked actualowned0700workspace/dev/ino/marker/23pins/originatingGitbytes, consumedreceipt/once, all4actual loghashes and six private/public diagnostic exactbytes/counts. Mandatorysixfullcompile/diagnosticchecks precede actual package traversal failure in pinned@sideway/address/lib/domain.js requireurl. Outputonly6diagnostics, no maps/emissionreport/BUILD/app/runtime82cases/container/DB/provider. Terminalexit1 and originalfailure preserved; no retry/cleanup grant."
+    }
+  ],
+  "nextInvocationApproved": false,
+  "applicationRuntime": "NOT_RUN",
+  "policy66ProofObjects": "Reached only by source flow, not published; no independent persisted66-control result claimed"
+}

@@ -1,0 +1,698 @@
+{
+  "schema": "SD-ENROLLMENT-PORTS-1",
+  "role": "customer-enrollment-service",
+  "sourceCandidate": "e6334e8767ab4384e2e85e5540d5952024c8bee5",
+  "baseline": "99cc098ede0a3cb1124f294ef4c9b660b8d9f61d",
+  "sourcePins": {
+    "src1/modules/auth/services/index.ts": "c522444ef80133c136a50d276ae64cdbaca8333049cca9723ff36d9f20bf3c48",
+    "src1/modules/auth/validation/index.ts": "752f049481df9de2587c386f8c44e5dc1548073295f36149a3974a3a9513af4c",
+    "src1/modules/auth/types/index.ts": "f6cbff24776d23b029244526d07d6a9af290aec66020d414469388c6f11118e9",
+    "src1/modules/common/types/index.ts": "63ad3821027150d368e993903e954b4a80b776ff223caf322c104008239d4cbd",
+    "src1/modules/common/types/error.ts": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+    "src1/modules/common/types/response.ts": "44c5dbcf38ea117eaa13f3a715143ea147a7abf25c3491b61817e67b5f3d6f93"
+  },
+  "actualModules": [
+    "src1/modules/auth/services/index.ts",
+    "src1/modules/auth/validation/index.ts",
+    "src1/modules/auth/types/index.ts",
+    "src1/modules/common/types/index.ts",
+    "src1/modules/common/types/error.ts",
+    "src1/modules/common/types/response.ts"
+  ],
+  "cuts": [
+    {
+      "port": "user",
+      "specifier": "@/modules/user/repository",
+      "export": "UserRepository"
+    },
+    {
+      "port": "admin",
+      "specifier": "@/modules/admin/repository",
+      "export": "AdminRepository"
+    },
+    {
+      "port": "hr",
+      "specifier": "@/modules/hr/repository",
+      "export": "HRRepository"
+    },
+    {
+      "port": "specialist",
+      "specifier": "@/modules/specialists/repository",
+      "export": "SpecialistRepository"
+    },
+    {
+      "port": "pharmacy",
+      "specifier": "@/modules/pharmacies/repository",
+      "export": "PharmacyRepository"
+    },
+    {
+      "port": "corporate",
+      "specifier": "@/modules/corporates/repository",
+      "export": "CorporateRepository"
+    },
+    {
+      "port": "otp",
+      "specifier": "@/modules/otp/services",
+      "export": "OTPService"
+    },
+    {
+      "port": "wallet",
+      "specifier": "@/modules/wallet/services",
+      "export": "WalletService"
+    },
+    {
+      "port": "notification",
+      "specifier": "@/modules/notification/services",
+      "export": "NotificationService"
+    },
+    {
+      "port": "email",
+      "specifier": "@/modules/email/services",
+      "export": "EmailService"
+    },
+    {
+      "port": "sms",
+      "specifier": "@/modules/sms/services",
+      "export": "SMSService"
+    }
+  ],
+  "runtimeRoots": [
+    "joi",
+    "jsonwebtoken",
+    "reflect-metadata",
+    "typedi"
+  ],
+  "builtinCandidates": [
+    "buffer",
+    "crypto",
+    "events",
+    "stream",
+    "string_decoder",
+    "util",
+    "url"
+  ],
+  "vectors": [
+    {
+      "id": "C3-01",
+      "kind": "signup",
+      "field": "phone",
+      "value": "9123456789"
+    },
+    {
+      "id": "C3-03.phone.0",
+      "kind": "existing",
+      "field": "phone",
+      "secondary": false
+    },
+    {
+      "id": "C3-03.phone.1",
+      "kind": "existing",
+      "field": "phone",
+      "secondary": true
+    },
+    {
+      "id": "C3-04.phone.send",
+      "kind": "undefined",
+      "field": "phone",
+      "method": "send"
+    },
+    {
+      "id": "C3-04.phone.verify",
+      "kind": "undefined",
+      "field": "phone",
+      "method": "verify"
+    },
+    {
+      "id": "C3-02",
+      "kind": "signup",
+      "field": "email",
+      "value": " Customer@Example.COM "
+    },
+    {
+      "id": "C3-03.email.0",
+      "kind": "existing",
+      "field": "email",
+      "secondary": false
+    },
+    {
+      "id": "C3-03.email.1",
+      "kind": "existing",
+      "field": "email",
+      "secondary": true
+    },
+    {
+      "id": "C3-04.email.send",
+      "kind": "undefined",
+      "field": "email",
+      "method": "send"
+    },
+    {
+      "id": "C3-04.email.verify",
+      "kind": "undefined",
+      "field": "email",
+      "method": "verify"
+    },
+    {
+      "id": "C3-05.send",
+      "kind": "deny",
+      "method": "send",
+      "data": {
+        "phone": "9123456789",
+        "email": "customer@example.com"
+      }
+    },
+    {
+      "id": "C3-05.verify",
+      "kind": "deny",
+      "method": "verify",
+      "data": {
+        "phone": "9123456789",
+        "email": "customer@example.com"
+      }
+    },
+    {
+      "id": "C3-06.neither.send",
+      "kind": "deny",
+      "method": "send",
+      "data": {}
+    },
+    {
+      "id": "C3-06.neither.verify",
+      "kind": "deny",
+      "method": "verify",
+      "data": {}
+    },
+    {
+      "id": "C3-06.phone-null.send",
+      "kind": "deny",
+      "method": "send",
+      "data": {
+        "phone": null
+      }
+    },
+    {
+      "id": "C3-06.phone-null.verify",
+      "kind": "deny",
+      "method": "verify",
+      "data": {
+        "phone": null
+      }
+    },
+    {
+      "id": "C3-06.phone-number.send",
+      "kind": "deny",
+      "method": "send",
+      "data": {
+        "phone": 9123456789
+      }
+    },
+    {
+      "id": "C3-06.phone-number.verify",
+      "kind": "deny",
+      "method": "verify",
+      "data": {
+        "phone": 9123456789
+      }
+    },
+    {
+      "id": "C3-06.phone-object.send",
+      "kind": "deny",
+      "method": "send",
+      "data": {
+        "phone": {}
+      }
+    },
+    {
+      "id": "C3-06.phone-object.verify",
+      "kind": "deny",
+      "method": "verify",
+      "data": {
+        "phone": {}
+      }
+    },
+    {
+      "id": "C3-06.phone-array.send",
+      "kind": "deny",
+      "method": "send",
+      "data": {
+        "phone": []
+      }
+    },
+    {
+      "id": "C3-06.phone-array.verify",
+      "kind": "deny",
+      "method": "verify",
+      "data": {
+        "phone": []
+      }
+    },
+    {
+      "id": "C3-06.phone-empty.send",
+      "kind": "deny",
+      "method": "send",
+      "data": {
+        "phone": ""
+      }
+    },
+    {
+      "id": "C3-06.phone-empty.verify",
+      "kind": "deny",
+      "method": "verify",
+      "data": {
+        "phone": ""
+      }
+    },
+    {
+      "id": "C3-06.phone-short.send",
+      "kind": "deny",
+      "method": "send",
+      "data": {
+        "phone": "123"
+      }
+    },
+    {
+      "id": "C3-06.phone-short.verify",
+      "kind": "deny",
+      "method": "verify",
+      "data": {
+        "phone": "123"
+      }
+    },
+    {
+      "id": "C3-06.phone-unicode.send",
+      "kind": "deny",
+      "method": "send",
+      "data": {
+        "phone": "\u096f\u0967\u0968\u0969\u096a\u096b\u096c\u096d\u096e\u096f"
+      }
+    },
+    {
+      "id": "C3-06.phone-unicode.verify",
+      "kind": "deny",
+      "method": "verify",
+      "data": {
+        "phone": "\u096f\u0967\u0968\u0969\u096a\u096b\u096c\u096d\u096e\u096f"
+      }
+    },
+    {
+      "id": "C3-06.email-null.send",
+      "kind": "deny",
+      "method": "send",
+      "data": {
+        "email": null
+      }
+    },
+    {
+      "id": "C3-06.email-null.verify",
+      "kind": "deny",
+      "method": "verify",
+      "data": {
+        "email": null
+      }
+    },
+    {
+      "id": "C3-06.email-number.send",
+      "kind": "deny",
+      "method": "send",
+      "data": {
+        "email": 12
+      }
+    },
+    {
+      "id": "C3-06.email-number.verify",
+      "kind": "deny",
+      "method": "verify",
+      "data": {
+        "email": 12
+      }
+    },
+    {
+      "id": "C3-06.email-object.send",
+      "kind": "deny",
+      "method": "send",
+      "data": {
+        "email": {}
+      }
+    },
+    {
+      "id": "C3-06.email-object.verify",
+      "kind": "deny",
+      "method": "verify",
+      "data": {
+        "email": {}
+      }
+    },
+    {
+      "id": "C3-06.email-array.send",
+      "kind": "deny",
+      "method": "send",
+      "data": {
+        "email": []
+      }
+    },
+    {
+      "id": "C3-06.email-array.verify",
+      "kind": "deny",
+      "method": "verify",
+      "data": {
+        "email": []
+      }
+    },
+    {
+      "id": "C3-06.email-empty.send",
+      "kind": "deny",
+      "method": "send",
+      "data": {
+        "email": ""
+      }
+    },
+    {
+      "id": "C3-06.email-empty.verify",
+      "kind": "deny",
+      "method": "verify",
+      "data": {
+        "email": ""
+      }
+    },
+    {
+      "id": "C3-06.email-invalid.send",
+      "kind": "deny",
+      "method": "send",
+      "data": {
+        "email": "invalid"
+      }
+    },
+    {
+      "id": "C3-06.email-invalid.verify",
+      "kind": "deny",
+      "method": "verify",
+      "data": {
+        "email": "invalid"
+      }
+    },
+    {
+      "id": "C3-06.otp-missing",
+      "kind": "deny-otp",
+      "otp": null,
+      "omit": true
+    },
+    {
+      "id": "C3-06.otp-null",
+      "kind": "deny-otp",
+      "otp": null,
+      "omit": false
+    },
+    {
+      "id": "C3-06.otp-number",
+      "kind": "deny-otp",
+      "otp": 123456,
+      "omit": false
+    },
+    {
+      "id": "C3-06.otp-object",
+      "kind": "deny-otp",
+      "otp": {},
+      "omit": false
+    },
+    {
+      "id": "C3-06.otp-array",
+      "kind": "deny-otp",
+      "otp": [],
+      "omit": false
+    },
+    {
+      "id": "C3-06.otp-short",
+      "kind": "deny-otp",
+      "otp": "123",
+      "omit": false
+    },
+    {
+      "id": "C3-06.otp-letters",
+      "kind": "deny-otp",
+      "otp": "abcdef",
+      "omit": false
+    },
+    {
+      "id": "C3-07.phone.0",
+      "kind": "current",
+      "field": "phone",
+      "absent": false
+    },
+    {
+      "id": "C3-07.phone.1",
+      "kind": "current",
+      "field": "phone",
+      "absent": true
+    },
+    {
+      "id": "C3-07.email.0",
+      "kind": "current",
+      "field": "email",
+      "absent": false
+    },
+    {
+      "id": "C3-07.email.1",
+      "kind": "current",
+      "field": "email",
+      "absent": true
+    },
+    {
+      "id": "C3-08.not-found",
+      "kind": "failure",
+      "failure": "not-found"
+    },
+    {
+      "id": "C3-08.proof-error",
+      "kind": "failure",
+      "failure": "proof-error"
+    },
+    {
+      "id": "C3-09.admin.phone",
+      "kind": "staff",
+      "role": "admin",
+      "shape": "phone",
+      "state": "active"
+    },
+    {
+      "id": "C3-09.admin.email",
+      "kind": "staff",
+      "role": "admin",
+      "shape": "email",
+      "state": "active"
+    },
+    {
+      "id": "C3-09.admin.both",
+      "kind": "staff",
+      "role": "admin",
+      "shape": "both",
+      "state": "active"
+    },
+    {
+      "id": "C3-10.admin.missing",
+      "kind": "staff",
+      "role": "admin",
+      "shape": "both",
+      "state": "missing"
+    },
+    {
+      "id": "C3-10.admin.inactive",
+      "kind": "staff",
+      "role": "admin",
+      "shape": "both",
+      "state": "inactive"
+    },
+    {
+      "id": "C3-09.hr.phone",
+      "kind": "staff",
+      "role": "hr",
+      "shape": "phone",
+      "state": "active"
+    },
+    {
+      "id": "C3-09.hr.email",
+      "kind": "staff",
+      "role": "hr",
+      "shape": "email",
+      "state": "active"
+    },
+    {
+      "id": "C3-09.hr.both",
+      "kind": "staff",
+      "role": "hr",
+      "shape": "both",
+      "state": "active"
+    },
+    {
+      "id": "C3-10.hr.missing",
+      "kind": "staff",
+      "role": "hr",
+      "shape": "both",
+      "state": "missing"
+    },
+    {
+      "id": "C3-10.hr.inactive",
+      "kind": "staff",
+      "role": "hr",
+      "shape": "both",
+      "state": "inactive"
+    },
+    {
+      "id": "C3-09.specialist.phone",
+      "kind": "staff",
+      "role": "specialist",
+      "shape": "phone",
+      "state": "active"
+    },
+    {
+      "id": "C3-09.specialist.email",
+      "kind": "staff",
+      "role": "specialist",
+      "shape": "email",
+      "state": "active"
+    },
+    {
+      "id": "C3-09.specialist.both",
+      "kind": "staff",
+      "role": "specialist",
+      "shape": "both",
+      "state": "active"
+    },
+    {
+      "id": "C3-10.specialist.missing",
+      "kind": "staff",
+      "role": "specialist",
+      "shape": "both",
+      "state": "missing"
+    },
+    {
+      "id": "C3-10.specialist.inactive",
+      "kind": "staff",
+      "role": "specialist",
+      "shape": "both",
+      "state": "inactive"
+    },
+    {
+      "id": "C3-09.pharmacy.phone",
+      "kind": "staff",
+      "role": "pharmacy",
+      "shape": "phone",
+      "state": "active"
+    },
+    {
+      "id": "C3-09.pharmacy.email",
+      "kind": "staff",
+      "role": "pharmacy",
+      "shape": "email",
+      "state": "active"
+    },
+    {
+      "id": "C3-09.pharmacy.both",
+      "kind": "staff",
+      "role": "pharmacy",
+      "shape": "both",
+      "state": "active"
+    },
+    {
+      "id": "C3-10.pharmacy.missing",
+      "kind": "staff",
+      "role": "pharmacy",
+      "shape": "both",
+      "state": "missing"
+    },
+    {
+      "id": "C3-10.pharmacy.inactive",
+      "kind": "staff",
+      "role": "pharmacy",
+      "shape": "both",
+      "state": "inactive"
+    },
+    {
+      "id": "C3-11.phone",
+      "kind": "helper",
+      "variant": "phone"
+    },
+    {
+      "id": "C3-11.email",
+      "kind": "helper",
+      "variant": "email"
+    },
+    {
+      "id": "C3-11.undefined",
+      "kind": "helper",
+      "variant": "undefined"
+    },
+    {
+      "id": "C3-11.dual",
+      "kind": "helper",
+      "variant": "dual"
+    },
+    {
+      "id": "C3-11.neither",
+      "kind": "helper",
+      "variant": "neither"
+    },
+    {
+      "id": "C3-11.null",
+      "kind": "helper",
+      "variant": "null"
+    },
+    {
+      "id": "C3-11.array",
+      "kind": "helper",
+      "variant": "array"
+    },
+    {
+      "id": "C3-11.otp-bad",
+      "kind": "helper",
+      "variant": "otp-bad"
+    },
+    {
+      "id": "C3-11.unknown",
+      "kind": "helper",
+      "variant": "unknown"
+    }
+  ],
+  "controls": [
+    {
+      "id": "NC1",
+      "case": "C3-05.send"
+    },
+    {
+      "id": "NC2",
+      "case": "C3-05.send"
+    },
+    {
+      "id": "NC3",
+      "case": "C3-05.verify"
+    },
+    {
+      "id": "NC4",
+      "case": "C3-01"
+    }
+  ],
+  "oldControl": {
+    "id": "OLD",
+    "case": "C3-05.send"
+  },
+  "options": {
+    "target": 9,
+    "module": 1,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "sourceMap": false,
+    "declaration": false,
+    "noEmitOnError": false,
+    "noResolve": true,
+    "skipLibCheck": true
+  },
+  "synthetic": {
+    "phone": "9123456789",
+    "email": "customer@example.com",
+    "otherPhone": "9987654321",
+    "otherEmail": "changed@example.com",
+    "otp": "123456",
+    "id": "111111111111111111111111",
+    "corporateId": "222222222222222222222222"
+  }
+}

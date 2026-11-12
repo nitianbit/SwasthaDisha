@@ -1,0 +1,27 @@
+{
+  "schema": "SD-ENROLLMENT-EMISSION-INDEPENDENT-OUTCOME-1",
+  "resultCommit": "a50fa5bb888d25ae70bb35c31528fe06bc18008b",
+  "sourceCandidate": "9e4fa8a7892426129fb8e678890b15d23184996e",
+  "resultSha256": "01b3736ebc2834c6179553d46404737117ac9246b30686d31f7dcb0e79d2bb87",
+  "descriptorSha256": "60ff3d341cee7115fa0edbda839b3fc86aede7d987e2c96fd3de3ebc090c431d",
+  "decisions": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "ACCEPT_EMISSION_PREPARATION_ONLY",
+      "findings": [],
+      "evidence": "Personally read/hash-verified actualowned0700workspace/marker/BUILD/private0600receipt+once/23current+originGitinputs, exact500installedfiletree, all142actualmoduletexts/394edges/4roots/5natives andactualTypeScript-ASTproducer against independentinertaudit. Sixwhole6modulephases/sixcompletecaptures and persisted6positive60negative actualpredicateproofs inspected;3artifact and4loghashes match. Priorfailures retained; no application/package evaluation or typecheck/runtime/owner/release/runpermission."
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "ACCEPT_EMISSION_PREPARATION_ONLY",
+      "findings": [],
+      "evidence": "Personally read/hash-verified actualowned0700workspace/marker/BUILD/private0600receipt+once/23current+originGitinputs, exact500installedfiletree, all142actualmoduletexts/394edges/4roots/5natives andactualTypeScript-ASTproducer against independentinertaudit. Sixwhole6modulephases/sixcompletecaptures and persisted6positive60negative actualpredicateproofs inspected;3artifact and4loghashes match. Priorfailures retained; no application/package evaluation or typecheck/runtime/owner/release/runpermission."
+    }
+  ],
+  "applicationService82Cases": "NOT_RUN",
+  "nextRuntimeInvocationApproved": false
+}

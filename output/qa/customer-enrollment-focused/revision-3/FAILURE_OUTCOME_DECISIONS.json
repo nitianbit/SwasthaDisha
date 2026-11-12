@@ -1,0 +1,29 @@
+{
+  "schema": "SD-ENROLLMENT-INSTALL-EMIT-FAILURE-OUTCOME-1",
+  "resultCommit": "eed80333e2e32d1dc43068e555c1d8db6a8eb9e1",
+  "sourceCandidate": "a7208698ce6109d107bb1f6934b9671a71eb9423",
+  "terminalExecSession": 43441,
+  "terminalExit": 1,
+  "diagnosticSha256": "056170525ac48df51e8189999e8032610118f79124c814477c7462ae2ed07f6a",
+  "decisions": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "ACCEPT_FAILURE_RECORD_ONLY",
+      "findings": [],
+      "evidence": "Personally checked actual private owned workspace identity/marker, all23 selected current/originating input hashes, consumed receipt/nonce and prior receipt archive, exact6867-byte diagnostic capture and all4 actual log hashes. Successful24-package npm install precedes emitter by mandatory exit0 predicate; 31 returned diagnostics comprise30code2307 plus exact2339 Error.captureStackTrace at error.ts573/17. Nominal in-memory completeness passed, then unchanged diagnostic policy failed; only diagnostics-nominal published, no maps/BUILD/later compiled phases/application evaluation. Terminal43441 exit1 retained."
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "ACCEPT_FAILURE_RECORD_ONLY",
+      "findings": [],
+      "evidence": "Personally checked actual private owned workspace identity/marker, all23 selected current/originating input hashes, consumed receipt/nonce and prior receipt archive, exact6867-byte diagnostic capture and all4 actual log hashes. Successful24-package npm install precedes emitter by mandatory exit0 predicate; 31 returned diagnostics comprise30code2307 plus exact2339 Error.captureStackTrace at error.ts573/17. Nominal in-memory completeness passed, then unchanged diagnostic policy failed; only diagnostics-nominal published, no maps/BUILD/later compiled phases/application evaluation. Terminal43441 exit1 retained."
+    }
+  ],
+  "nextInvocationApproved": false,
+  "runtime": "NOT_RUN",
+  "limitations": "Acceptance of the failure record only; no compiler/typecheck/application or module acceptance."
+}

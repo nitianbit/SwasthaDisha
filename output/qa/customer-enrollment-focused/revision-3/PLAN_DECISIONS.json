@@ -1,0 +1,27 @@
+{
+  "schema": "SD-ENROLLMENT-DIAGNOSTIC-CAPTURE-PLAN-DECISIONS-1",
+  "planSha256": "0645ac3200c0478381f512ed95e7c027bd804f7742286c3725f36e0ea616af59",
+  "proposalSha256": "1abb276dd45cd4506a8ab955bf6b5935de1d4fca3c0ff72904d555aad3089d2c",
+  "author": "/root/milestone_composition_r9",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    }
+  ],
+  "scope": "Onlyemit.cjs records bounded exact returned diagnostics before unchanged completeness/2307gate; fixed6phase filenames/wx0600 inexistingownedoutput, explicitincompleteoverflow thenfailure. No typeshim/diagnostic exception/newappcode/role/permission.",
+  "executionAdmitted": false,
+  "futureInstallEmitGrant": false,
+  "actualPublicLockAcceptedByTwoNonAuthors": true,
+  "next": "One-file author amendment and fresh source plus exact install/emit invocation decisions; current consumed public-lock approval cannot authorize this stage."
+}

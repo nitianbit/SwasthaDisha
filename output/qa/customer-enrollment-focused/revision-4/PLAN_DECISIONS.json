@@ -1,0 +1,24 @@
+{
+  "schema": "SD-ENROLLMENT-EXACT-DIAGNOSTIC-PLAN-DECISIONS-1",
+  "planSha256": "1a718f7604ef97606fb24c4ff591045d73ba55b3ab78fa1bc3a575a8dc73cb59",
+  "failureOutcome": "../revision-3/FAILURE_OUTCOME_DECISIONS.json",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "evidence": "Personally read exactplan/currentemit/actualAppError and real31-row capture. One source-bound observed2339 tuple exactly once eachsixphases, unchanged2307predicate/rawcapture, realpredicate negative data controls; no shim/dependency/source/phase/runtime expansion. Fresh source and exact invocation decisions still required; no fulltypecheck claim."
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "evidence": "Personally read exactplan/currentemit/actualAppError and real31-row capture. One source-bound observed2339 tuple exactly once eachsixphases, unchanged2307predicate/rawcapture, realpredicate negative data controls; no shim/dependency/source/phase/runtime expansion. Fresh source and exact invocation decisions still required; no fulltypecheck claim."
+    }
+  ],
+  "executionApproved": false
+}

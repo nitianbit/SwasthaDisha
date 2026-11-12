@@ -1,0 +1,25 @@
+{
+  "schema": "SD-ENROLLMENT-URL-FACADE-PLAN-DECISIONS-1",
+  "planSha256": "e2648273a59fa1ad5c21bcb9830156eff0d55659dc219f621a47b7fef0c750bb",
+  "auditSha256": "49707ef0c2a240d08229caa6d8b6d2ffc66be5999d66c250238316d740f3b15e",
+  "actualFailureDispositionCommit": "cf11041",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "evidence": "Fullplan/currentloader+ports and actualsoleurlcaller inspected. Fixedurlallowlist plus frozenURL-onlynativeclass facade and localIDNA/frozen/absent/mutation/native-denial invariants; existing82cases+controls/mapaudit unchanged. Lexical142file/394edge context not AST/runtimeproof. Twofiles only; freshsource/preparation/nonce/execution gates retained."
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "evidence": "Fullplan/currentloader+ports and actualsoleurlcaller inspected. Fixedurlallowlist plus frozenURL-onlynativeclass facade and localIDNA/frozen/absent/mutation/native-denial invariants; existing82cases+controls/mapaudit unchanged. Lexical142file/394edge context not AST/runtimeproof. Twofiles only; freshsource/preparation/nonce/execution gates retained."
+    }
+  ],
+  "executionApproved": false
+}

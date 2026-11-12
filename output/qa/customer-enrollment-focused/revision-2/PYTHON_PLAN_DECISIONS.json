@@ -1,0 +1,28 @@
+{
+  "schema": "SD-ENROLLMENT-PYTHON-PLAN-DECISIONS-1",
+  "planSha256": "054658bcc00a2fd4fa716e7abffa5f3371b94de924283874fea47ef98f30a4b3",
+  "author": "/root/milestone_composition_r9",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "evidence": "Full exactplan read, pinnedregularPythonbytes/samefile/observedCPython3.14.7 verified; -I-B-S/noSite,noBytecode/strictUIDCF/noSDK/noforwarding keepstartupclosed; same public-only dependency scope."
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "evidence": "Actualfailure/preallocationstate and plan/hash/Pythonbytes independently checked; new source+exact proposal still need fresh two decisions."
+    }
+  ],
+  "postFailureDisposition": "Independent Spec confirmed exact106receipt nonce/LOCK/BUILD absent and zero owned build dirs; source guard before receipt/git/once/npm corroborates preallocation stop.",
+  "executionAdmitted": false,
+  "newSMode": "NOT_RUN",
+  "oldReceiptRetryAllowed": false,
+  "next": "Author scoped source/profile/docs/proposal amendment only; fresh exact source/preparation decisions before Root new receipt/nonce/invocation."
+}

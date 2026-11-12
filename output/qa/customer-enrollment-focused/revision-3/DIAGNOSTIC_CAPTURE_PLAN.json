@@ -1,0 +1,66 @@
+{
+  "schema": "SD-ENROLLMENT-DIAGNOSTIC-CAPTURE-PLAN-1",
+  "status": "PREIMPLEMENTATION_PROPOSAL_NO_EXECUTION_APPROVAL",
+  "author": "/root/milestone_composition_r9",
+  "sourceBaseline": "f5aa8e5d7d37d044cf8aec50902ba1993e792c18",
+  "actualPublicLock": {
+    "sourceCandidate": "c22c48cf9b776ef7c813f9d1d13f822408fb69fa",
+    "result": "output/qa/customer-enrollment-focused/revision-2/LOCK_RESULT.json",
+    "path": "/private/tmp/sd-customer-enrollment-resolved-lock.json",
+    "sha256": "b9cef1cc8d5a284f5526704c77e05a32d588680d3b01a2efccaec28e4026ecb6",
+    "bytes": 8595,
+    "packages": 24,
+    "scope": "Root actual public lock only; independent outcome review remains Root-owned. No install, compiler, BUILD descriptor or application result is implied."
+  },
+  "problem": "emit.cjs currently obtains diagnostics, then throws on the unchanged code2307-only policy before its final emission-report write. Actual unexpected diagnostics would be unavailable as structured evidence. AppError's Error.captureStackTrace may return2339 without Node declarations, but this is an unexecuted source prediction, not an observed diagnostic or approval to admit it.",
+  "sourceOwnershipAfterTwoActualPlanVotes": [
+    "test/customer-enrollment-runtime/emit.cjs"
+  ],
+  "sourceChange": "Immediately after each fixed phase's complete TypeScript diagnostic mapping, before the existing emission-completeness and allowlist checks (retaining both predicates unchanged), persist one bounded private diagnostic data file. Preserve compiler options, createProgram/whole-module emission, source/control edits, emitted graph checks and the exact existing allowlist predicate. No new declaration, type shim, package, app source, transpiler, role or diagnostic exception.",
+  "fixedPhasesAndFiles": {
+    "nominal": "diagnostics-nominal.json",
+    "OLD": "diagnostics-OLD.json",
+    "NC1": "diagnostics-NC1.json",
+    "NC2": "diagnostics-NC2.json",
+    "NC3": "diagnostics-NC3.json",
+    "NC4": "diagnostics-NC4.json"
+  },
+  "artifact": {
+    "schema": "SD-ENROLLMENT-RETURNED-DIAGNOSTICS-1",
+    "exactFields": [
+      "schema",
+      "phase",
+      "compiler",
+      "sourceHashes",
+      "optionsSha256",
+      "returnedCount",
+      "captureStatus",
+      "complete",
+      "diagnostics"
+    ],
+    "compiler": "Exact {version,sha256} of the loaded locked TypeScript5.9.3 module.",
+    "sourceHashes": "Exact six whole source module hashes for that actual nominal/baseline/control phase; optionsSha256 binds JSON of unchanged plan.options.",
+    "rowFields": [
+      "file",
+      "code",
+      "category",
+      "start",
+      "length",
+      "message"
+    ],
+    "rowSemantics": "Private copy of every returned mapped diagnostic in original order; absent file/start/length become null in the artifact only. Preserve full returned message, no source snippets, coercion or rewritten diagnostic. Original diagnostics array and existing policy predicate remain unchanged.",
+    "bounds": "At most256rows,8192UTF8bytes per message and262144UTF8bytes for the complete serialized artifact including newline. No artifact claims completeness if any bound is exceeded.",
+    "completeCapture": "captureStatus COMPLETE, complete true, returnedCount equal rows.length; this means diagnostic capture only, never compile/typecheck/runtime acceptance.",
+    "overflowCapture": "Write the same closed envelope with captureStatus LIMIT_EXCEEDED, complete false, actual returnedCount and diagnostics []; then fail closed before the existing diagnostic gate. No prefix is presented as complete. If even the bounded fixed envelope or filesystem write fails, propagate failure; no success descriptor.",
+    "write": "Use only the fixed phase-to-filename map joined to prepare.py's existing owned outputDirectory; exclusive wx and0600, no overwrite, mkdir, arbitrary filename, public stdout message dump or new cleanup capability. The output directory is the existing fresh0700 child of the inode/marker-owned preparation area; prepare.py owned() checks before and after its exact emitter command remain unchanged.",
+    "failureSemantics": "Unexpected diagnostics still fail the unchanged allowlist after their file is captured, stopping later phases/package graph/publication and producing no BUILD descriptor. Missing later phase files are NOT_RUN, never fabricated. Root preserves actual private files/hashes and privately reviews actual messages before any acceptance or separately readmitted stage. Existing emission-report already records all accepted returned diagnostics on success; these extra private records do not add runtime authority. If emit returns a skipped/incomplete result with diagnostics, capture those returned diagnostics before its unchanged completeness rejection. A compiler exception with no returned diagnostic is not fabricated as a completed diagnostic capture."
+  },
+  "nextStage": "Freeze a new one-file source amendment/manifest and exact LOCKED_INSTALL_AND_EMIT proposal bound to the actual8595byte/24package lock hash and current fixed Python/Node/npm/source profiles. Two fresh actual nonauthor source and one-invocation preparation decisions precede any Root-owned new receipt/nonce and command. Existing consumed public-lock receipt cannot authorize install/emit.",
+  "retained": [
+    "prepare/profile/README/application controllers/scenario/ports-plan/source modules unchanged;82nominal/82restored cases and OLD+NC1-NC4 unchanged",
+    "No diagnostic allowlist widening or clean-typecheck claim; actual2339/other outputs require later exact review",
+    "Fixed Python3.14.7 env-i -I -B -S and narrow public uid CF guard; pinned Node24/npm1939-file tool closure; scripts-disabled24-package install and unchanged900second per-child bound",
+    "No application/Joi/AuthService/runtime package/model/provider/DB/Docker/HTTP execution, no root dependencies/start changes, no automatic retry/receipt creation, original staged six/handover/R10 preserved",
+    "Plan author cannot approve; actual Root/Lab independent decisions required before source amendment. This author executes no install/compiler/program probe."
+  ]
+}

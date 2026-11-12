@@ -1,0 +1,64 @@
+{
+  "schema": "SD-ENROLLMENT-LOCK-PREFLIGHT-FAILURE-1",
+  "sourceCandidate": "10600a268acd42aaca4397279941e22217e7caa5",
+  "invocation": "LOCK_INVOCATION.json",
+  "actualCommandExit": 1,
+  "actualToolChunk": "c4f325",
+  "failure": "RuntimeError: Clean preparation environment",
+  "stage": "prepare.py line78; first runtime environment guard",
+  "sourceScriptSha256": "b57b4a19d5d5efc2d77ca1e20f7e5e17aa03d154c8a3cdafd09a880fc404bc64",
+  "targetEffects": {
+    "onceCreated": false,
+    "ownedBuildAllocationReached": false,
+    "npmStarted": false,
+    "lockCreated": false,
+    "applicationImported": false,
+    "compilerRun": false,
+    "containerCreated": false,
+    "DBOrProviderRun": false
+  },
+  "oldReceipt": {
+    "sha256": "e356af29c3e10dccd309a6981cdb901b1cb74fb85a1fc6abc072f1b6b0fe4654",
+    "nonce": "f3f6904a-a1e8-449e-8f58-cc90d2e19603",
+    "consumed": false,
+    "reusePermitted": false
+  },
+  "readOnlyEnvironmentProbes": [
+    {
+      "interpreter": "/usr/bin/python3",
+      "observedExecutable": "/Applications/Xcode.app/Contents/Developer/usr/bin/python3",
+      "keys": [
+        "CPATH",
+        "LC_CTYPE",
+        "LIBRARY_PATH",
+        "MANPATH",
+        "PATH",
+        "SDKROOT",
+        "TMPDIR",
+        "__CF_USER_TEXT_ENCODING"
+      ],
+      "nativeSideObservation": "Xcode trampoline also launched xcodebuild and emitted two DVT cache/event warnings; no claim of zero OS-side effects."
+    },
+    {
+      "interpreter": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "sha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+      "observedExecutable": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "samePhysicalFile": true,
+      "regularNonSymlink": true,
+      "keys": [
+        "LC_CTYPE",
+        "PATH",
+        "TMPDIR",
+        "__CF_USER_TEXT_ENCODING"
+      ],
+      "LC_CTYPE": "C.UTF-8",
+      "CFUserTextEncoding": "0x1F5:0x0:0x0",
+      "uid": 501,
+      "flags": [
+        "-I",
+        "-B"
+      ]
+    }
+  ],
+  "next": "Two independent exact correction-plan/source/preparation decisions; archive old receipt, allocate fresh approval only after current binding. No automatic replay, SDK-variable acceptance or operator/runtime/root adoption."
+}

@@ -80,9 +80,40 @@ export const AUTHORITY_CONTROLS = Object.freeze([
   ['M4', 'A25.membership-revision'], ['M5', 'A28.spread-clone'],
 ].map((row) => Object.freeze(row)));
 
+
+export const ENROLLMENT_ROLE = 'customer-enrollment-service';
+export const ENROLLMENT_SOURCE_NAMES = Object.freeze([
+  'app-bundle.mjs', 'app-ports.mjs', 'bootstrap.mjs', 'emitted-modules.json', 'package.json',
+  'ports-plan.json', 'runtime-modules.json', 'scenario.mjs',
+]);
+const enrollmentMap = name => ['emitted-modules.json', 'runtime-modules.json'].includes(name);
+function sourceLimit(role, name) {
+  return role === ENROLLMENT_ROLE && enrollmentMap(name) ? 8 * 1024 * 1024
+    : role === AUTHORITY_ROLE && name === 'typescript.cjs' ? 10 * 1024 * 1024 : 128 * 1024;
+}
+export function verifyEnrollmentResult(value, expected) {
+  try {
+    requireThat(authorityKeys(value, ['schema', 'planSha256', 'emittedSha256', 'runtimeSha256', 'caseIds', 'restoredCaseIds',
+      'passed', 'failed', 'skipped', 'controls', 'baselineTwoAliasDataflowObserved', 'database', 'providers', 'http', 'typecheck'])
+      && value.schema === 'SD-ENROLLMENT-SERVICE-RESULT-1', 'Enrollment result schema');
+    requireThat(['planSha256', 'emittedSha256', 'runtimeSha256'].every(key => hash(value[key]) && value[key] === expected[key]), 'Enrollment artifact binding');
+    requireThat(JSON.stringify(value.caseIds) === JSON.stringify(expected.caseIds)
+      && JSON.stringify(value.restoredCaseIds) === JSON.stringify(expected.caseIds)
+      && value.passed === expected.caseIds.length && value.passed > 0 && value.failed === 0 && value.skipped === 0, 'Enrollment finite cases');
+    requireThat(Array.isArray(value.controls) && value.controls.length === expected.controls.length
+      && value.controls.every((row, i) => authorityKeys(row, ['id', 'target', 'predicate', 'detected', 'restored'])
+        && row.id === expected.controls[i].id && row.target === expected.controls[i].case
+        && row.predicate === (row.id === 'NC4' ? 'single-contact-save' : 'zero-effects')
+        && row.detected === true && row.restored === true), 'Enrollment controls');
+    requireThat(value.baselineTwoAliasDataflowObserved === true && value.database === 'NOT_ADMITTED'
+      && value.providers === 'RECORDING_ONLY' && value.http === 'NOT_RUN' && value.typecheck === 'NOT_CLAIMED', 'Enrollment evidence scope');
+    return true;
+  } catch { return false; }
+}
+
 export function sourceNames(role) {
-  requireThat(role === ROLE || role === AUTHORITY_ROLE, 'Unknown fixed application role');
-  return role === ROLE ? SOURCE_NAMES : AUTHORITY_SOURCE_NAMES;
+  requireThat(role === ROLE || role === AUTHORITY_ROLE || role === ENROLLMENT_ROLE, 'Unknown fixed application role');
+  return role === ENROLLMENT_ROLE ? ENROLLMENT_SOURCE_NAMES : role === ROLE ? SOURCE_NAMES : AUTHORITY_SOURCE_NAMES;
 }
 export function makeManifest(runId, sources, role = ROLE) {
   const names = sourceNames(role);
@@ -90,12 +121,12 @@ export function makeManifest(runId, sources, role = ROLE) {
   requireThat(Object.keys(sources).sort().join(',') === names.join(','), 'Unexpected source bundle');
   const files = {}; let total = 0;
   for (const name of names) {
-    const limit = role === AUTHORITY_ROLE && name === 'typescript.cjs' ? 10 * 1024 * 1024 : 128 * 1024;
+    const limit = sourceLimit(role, name);
     requireThat(typeof sources[name] === 'string' && Buffer.byteLength(sources[name]) < limit,
       'Bundle source must be bounded text');
     total += Buffer.byteLength(sources[name]); files[name] = sha256(sources[name]);
   }
-  requireThat(role !== AUTHORITY_ROLE || total < 12 * 1024 * 1024, 'Authority bundle size exceeded');
+  requireThat(![AUTHORITY_ROLE, ENROLLMENT_ROLE].includes(role) || total < 12 * 1024 * 1024, 'Authority bundle size exceeded');
   return Object.freeze({ runId, role, files: Object.freeze(files) });
 }
 
@@ -111,8 +142,7 @@ export function assertBundle(directory, expectation) {
   for (const name of ['.admission.json', ...names]) {
     const stat = lstatSync(join(directory, name));
     requireThat(stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1, 'Bundle file identity changed');
-    const limit = name === '.admission.json' ? 65536
-      : role === AUTHORITY_ROLE && name === 'typescript.cjs' ? 10 * 1024 * 1024 : 128 * 1024;
+    const limit = name === '.admission.json' ? 65536 : sourceLimit(role, name);
     requireThat(stat.size < limit, 'Bundle file size changed');
   }
   const bytes = readFileSync(join(directory, '.admission.json'));
@@ -126,7 +156,7 @@ export function assertBundle(directory, expectation) {
     const data = readFileSync(join(directory, name)); total += data.length;
     requireThat(sha256(data) === manifest.files[name], 'Bundle source hash changed');
   }
-  requireThat(role !== AUTHORITY_ROLE || total < 12 * 1024 * 1024, 'Authority bundle size changed');
+  requireThat(![AUTHORITY_ROLE, ENROLLMENT_ROLE].includes(role) || total < 12 * 1024 * 1024, 'Authority bundle size changed');
   return Object.freeze({ ...manifest, files: Object.freeze(manifest.files) });
 }
 
