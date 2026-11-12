@@ -1,0 +1,2110 @@
+TAP version 13
+# Subtest: the exact staged bundle admits the expected identity and hashes
+ok 1 - the exact staged bundle admits the expected identity and hashes
+  ---
+  duration_ms: 109.093333
+  type: 'test'
+  ...
+# Subtest: .env is rejected before a scenario import
+ok 2 - .env is rejected before a scenario import
+  ---
+  duration_ms: 20.643875
+  type: 'test'
+  ...
+# Subtest: .env.production is rejected before a scenario import
+ok 3 - .env.production is rejected before a scenario import
+  ---
+  duration_ms: 3.327125
+  type: 'test'
+  ...
+# Subtest: credentials.json is rejected before a scenario import
+ok 4 - credentials.json is rejected before a scenario import
+  ---
+  duration_ms: 3.124041
+  type: 'test'
+  ...
+# Subtest: extra.mjs is rejected before a scenario import
+ok 5 - extra.mjs is rejected before a scenario import
+  ---
+  duration_ms: 6.123542
+  type: 'test'
+  ...
+# Subtest: changed source bytes are rejected before a scenario import
+ok 6 - changed source bytes are rejected before a scenario import
+  ---
+  duration_ms: 14.64925
+  type: 'test'
+  ...
+# Subtest: a copied manifest cannot change the expected run identity
+ok 7 - a copied manifest cannot change the expected run identity
+  ---
+  duration_ms: 13.669334
+  type: 'test'
+  ...
+# Subtest: changed manifest bytes cannot supply their own expected hash
+ok 8 - changed manifest bytes cannot supply their own expected hash
+  ---
+  duration_ms: 8.948834
+  type: 'test'
+  ...
+# Subtest: source construction rejects unknown filenames and non-text values
+ok 9 - source construction rejects unknown filenames and non-text values
+  ---
+  duration_ms: 1.110208
+  type: 'test'
+  ...
+# Subtest: provider ports record each configured request without a transport or success authority
+ok 10 - provider ports record each configured request without a transport or success authority
+  ---
+  duration_ms: 0.586
+  type: 'test'
+  ...
+# Subtest: unknown provider operations cannot create a recorded effect
+ok 11 - unknown provider operations cannot create a recorded effect
+  ---
+  duration_ms: 0.137875
+  type: 'test'
+  ...
+# Subtest: realistic or extra payload fields are rejected without recording a call
+ok 12 - realistic or extra payload fields are rejected without recording a call
+  ---
+  duration_ms: 0.109292
+  type: 'test'
+  ...
+# Subtest: network diagnostics capture raw state and addressed interfaces without admission authority
+ok 13 - network diagnostics capture raw state and addressed interfaces without admission authority
+  ---
+  duration_ms: 0.976
+  type: 'test'
+  ...
+# Subtest: network diagnostic ERR_ACCESS_DENIED stays unavailable without fallback
+ok 14 - network diagnostic ERR_ACCESS_DENIED stays unavailable without fallback
+  ---
+  duration_ms: 0.309458
+  type: 'test'
+  ...
+# Subtest: network diagnostic ENOENT stays unavailable without fallback
+ok 15 - network diagnostic ENOENT stays unavailable without fallback
+  ---
+  duration_ms: 0.15675
+  type: 'test'
+  ...
+# Subtest: network diagnostic ENOTDIR stays unavailable without fallback
+ok 16 - network diagnostic ENOTDIR stays unavailable without fallback
+  ---
+  duration_ms: 0.198125
+  type: 'test'
+  ...
+# Subtest: invalid or oversized network entry names fail before reading metadata
+ok 17 - invalid or oversized network entry names fail before reading metadata
+  ---
+  duration_ms: 0.105083
+  type: 'test'
+  ...
+# Subtest: invalid or oversized network entry names fail before reading metadata
+ok 18 - invalid or oversized network entry names fail before reading metadata
+  ---
+  duration_ms: 0.054875
+  type: 'test'
+  ...
+# Subtest: invalid or oversized network entry names fail before reading metadata
+ok 19 - invalid or oversized network entry names fail before reading metadata
+  ---
+  duration_ms: 0.053792
+  type: 'test'
+  ...
+# Subtest: invalid or oversized network entry names fail before reading metadata
+ok 20 - invalid or oversized network entry names fail before reading metadata
+  ---
+  duration_ms: 51.591833
+  type: 'test'
+  ...
+# Subtest: invalid or oversized network entry names fail before reading metadata
+ok 21 - invalid or oversized network entry names fail before reading metadata
+  ---
+  duration_ms: 0.143917
+  type: 'test'
+  ...
+# Subtest: invalid or oversized network entry names fail before reading metadata
+ok 22 - invalid or oversized network entry names fail before reading metadata
+  ---
+  duration_ms: 0.067917
+  type: 'test'
+  ...
+# Subtest: oversized text and malformed address snapshots are explicitly unavailable
+ok 23 - oversized text and malformed address snapshots are explicitly unavailable
+  ---
+  duration_ms: 0.44825
+  type: 'test'
+  ...
+# Subtest: network diagnostic output has an explicit byte limit
+ok 24 - network diagnostic output has an explicit byte limit
+  ---
+  duration_ms: 0.609166
+  type: 'test'
+  ...
+# Subtest: network diagnostic readers have no live defaults
+ok 25 - network diagnostic readers have no live defaults
+  ---
+  duration_ms: 0.091333
+  type: 'test'
+  ...
+# Subtest: network diagnostic error codes cannot leak raw exception text
+ok 26 - network diagnostic error codes cannot leak raw exception text
+  ---
+  duration_ms: 0.147542
+  type: 'test'
+  ...
+# Subtest: P1 the exact measured record is admitted by semantics and summarized
+ok 27 - P1 the exact measured record is admitted by semantics and summarized
+  ---
+  duration_ms: 30.175416
+  type: 'test'
+  ...
+# Subtest: P2 a loopback-only namespace is admitted
+ok 28 - P2 a loopback-only namespace is admitted
+  ---
+  duration_ms: 2.948875
+  type: 'test'
+  ...
+# Subtest: P3 an operational-up loopback with IPv4 only and a zero-flag down device is admitted
+ok 29 - P3 an operational-up loopback with IPv4 only and a zero-flag down device is admitted
+  ---
+  duration_ms: 0.21525
+  type: 'test'
+  ...
+# Subtest: N1 active eth0 is rejected for non-loopback device flags
+ok 30 - N1 active eth0 is rejected for non-loopback device flags
+  ---
+  duration_ms: 0.281917
+  type: 'test'
+  ...
+# Subtest: N2 loopback missing is rejected for loopback missing
+ok 31 - N2 loopback missing is rejected for loopback missing
+  ---
+  duration_ms: 0.087834
+  type: 'test'
+  ...
+# Subtest: N3 loopback down is rejected for loopback flags
+ok 32 - N3 loopback down is rejected for loopback flags
+  ---
+  duration_ms: 0.139167
+  type: 'test'
+  ...
+# Subtest: N4 loopback without IFF_LOOPBACK is rejected for loopback flags
+ok 33 - N4 loopback without IFF_LOOPBACK is rejected for loopback flags
+  ---
+  duration_ms: 0.104833
+  type: 'test'
+  ...
+# Subtest: N4 loopback with Ethernet type is rejected for loopback type
+ok 34 - N4 loopback with Ethernet type is rejected for loopback type
+  ---
+  duration_ms: 30.00625
+  type: 'test'
+  ...
+# Subtest: N4 loopback as a control file is rejected for loopback is not a device link
+ok 35 - N4 loopback as a control file is rejected for loopback is not a device link
+  ---
+  duration_ms: 0.570917
+  type: 'test'
+  ...
+# Subtest: N4 loopback as a directory is rejected for loopback is not a device link
+ok 36 - N4 loopback as a directory is rejected for loopback is not a device link
+  ---
+  duration_ms: 0.201834
+  type: 'test'
+  ...
+# Subtest: N5 second loopback by type is rejected for non-loopback device type
+ok 37 - N5 second loopback by type is rejected for non-loopback device type
+  ---
+  duration_ms: 0.120291
+  type: 'test'
+  ...
+# Subtest: N5 second loopback by flag is rejected for non-loopback device flags
+ok 38 - N5 second loopback by flag is rejected for non-loopback device flags
+  ---
+  duration_ms: 11.286625
+  type: 'test'
+  ...
+# Subtest: N6 lo flags "9" is rejected for loopback flags
+ok 39 - N6 lo flags "9" is rejected for loopback flags
+  ---
+  duration_ms: 8.699458
+  type: 'test'
+  ...
+# Subtest: N6 lo flags "0x" is rejected for loopback flags
+ok 40 - N6 lo flags "0x" is rejected for loopback flags
+  ---
+  duration_ms: 0.109959
+  type: 'test'
+  ...
+# Subtest: N6 lo flags "0xg1" is rejected for loopback flags
+ok 41 - N6 lo flags "0xg1" is rejected for loopback flags
+  ---
+  duration_ms: 0.082083
+  type: 'test'
+  ...
+# Subtest: N6 lo flags "0X9" is rejected for loopback flags
+ok 42 - N6 lo flags "0X9" is rejected for loopback flags
+  ---
+  duration_ms: 0.082458
+  type: 'test'
+  ...
+# Subtest: N6 lo flags "0xA" is rejected for loopback flags
+ok 43 - N6 lo flags "0xA" is rejected for loopback flags
+  ---
+  duration_ms: 0.079833
+  type: 'test'
+  ...
+# Subtest: N6 lo flags "0x09" is rejected for loopback flags
+ok 44 - N6 lo flags "0x09" is rejected for loopback flags
+  ---
+  duration_ms: 0.073708
+  type: 'test'
+  ...
+# Subtest: N6 lo flags "0x123456789" is rejected for loopback flags
+ok 45 - N6 lo flags "0x123456789" is rejected for loopback flags
+  ---
+  duration_ms: 0.077209
+  type: 'test'
+  ...
+# Subtest: N6 lo flags {"unavailable":"ERR_ACCESS_DENIED"} is rejected for loopback flags
+ok 46 - N6 lo flags {"unavailable":"ERR_ACCESS_DENIED"} is rejected for loopback flags
+  ---
+  duration_ms: 0.079166
+  type: 'test'
+  ...
+# Subtest: N6 tunl0 flags "9" is rejected for non-loopback device flags
+ok 47 - N6 tunl0 flags "9" is rejected for non-loopback device flags
+  ---
+  duration_ms: 0.078625
+  type: 'test'
+  ...
+# Subtest: N6 tunl0 flags "0x" is rejected for non-loopback device flags
+ok 48 - N6 tunl0 flags "0x" is rejected for non-loopback device flags
+  ---
+  duration_ms: 0.078541
+  type: 'test'
+  ...
+# Subtest: N6 tunl0 flags "0xg1" is rejected for non-loopback device flags
+ok 49 - N6 tunl0 flags "0xg1" is rejected for non-loopback device flags
+  ---
+  duration_ms: 0.07375
+  type: 'test'
+  ...
+# Subtest: N6 tunl0 flags "0X9" is rejected for non-loopback device flags
+ok 50 - N6 tunl0 flags "0X9" is rejected for non-loopback device flags
+  ---
+  duration_ms: 0.08025
+  type: 'test'
+  ...
+# Subtest: N6 tunl0 flags "0xA" is rejected for non-loopback device flags
+ok 51 - N6 tunl0 flags "0xA" is rejected for non-loopback device flags
+  ---
+  duration_ms: 0.073833
+  type: 'test'
+  ...
+# Subtest: N6 tunl0 flags "0x09" is rejected for non-loopback device flags
+ok 52 - N6 tunl0 flags "0x09" is rejected for non-loopback device flags
+  ---
+  duration_ms: 0.073667
+  type: 'test'
+  ...
+# Subtest: N6 tunl0 flags "0x123456789" is rejected for non-loopback device flags
+ok 53 - N6 tunl0 flags "0x123456789" is rejected for non-loopback device flags
+  ---
+  duration_ms: 0.081334
+  type: 'test'
+  ...
+# Subtest: N6 tunl0 flags {"unavailable":"ERR_ACCESS_DENIED"} is rejected for non-loopback device flags
+ok 54 - N6 tunl0 flags {"unavailable":"ERR_ACCESS_DENIED"} is rejected for non-loopback device flags
+  ---
+  duration_ms: 0.075167
+  type: 'test'
+  ...
+# Subtest: N6 tunl0 non-canonical flags 0X80 is rejected for non-loopback device flags
+ok 55 - N6 tunl0 non-canonical flags 0X80 is rejected for non-loopback device flags
+  ---
+  duration_ms: 0.122625
+  type: 'test'
+  ...
+# Subtest: N6 tunl0 non-canonical flags 0xA0 is rejected for non-loopback device flags
+ok 56 - N6 tunl0 non-canonical flags 0xA0 is rejected for non-loopback device flags
+  ---
+  duration_ms: 0.075
+  type: 'test'
+  ...
+# Subtest: N6 tunl0 non-canonical flags 0x080 is rejected for non-loopback device flags
+ok 57 - N6 tunl0 non-canonical flags 0x080 is rejected for non-loopback device flags
+  ---
+  duration_ms: 0.075333
+  type: 'test'
+  ...
+# Subtest: N7 non-loopback operstate unknown is rejected for non-loopback device operstate
+ok 58 - N7 non-loopback operstate unknown is rejected for non-loopback device operstate
+  ---
+  duration_ms: 0.110042
+  type: 'test'
+  ...
+# Subtest: N7 non-loopback operstate dormant is rejected for non-loopback device operstate
+ok 59 - N7 non-loopback operstate dormant is rejected for non-loopback device operstate
+  ---
+  duration_ms: 0.080333
+  type: 'test'
+  ...
+# Subtest: N7 non-loopback operstate up is rejected for non-loopback device operstate
+ok 60 - N7 non-loopback operstate up is rejected for non-loopback device operstate
+  ---
+  duration_ms: 0.073791
+  type: 'test'
+  ...
+# Subtest: N7 non-loopback operstate lowerlayerdown is rejected for non-loopback device operstate
+ok 61 - N7 non-loopback operstate lowerlayerdown is rejected for non-loopback device operstate
+  ---
+  duration_ms: 0.073833
+  type: 'test'
+  ...
+# Subtest: N7 non-loopback operstate notpresent is rejected for non-loopback device operstate
+ok 62 - N7 non-loopback operstate notpresent is rejected for non-loopback device operstate
+  ---
+  duration_ms: 0.074167
+  type: 'test'
+  ...
+# Subtest: N7 non-loopback operstate testing is rejected for non-loopback device operstate
+ok 63 - N7 non-loopback operstate testing is rejected for non-loopback device operstate
+  ---
+  duration_ms: 0.114
+  type: 'test'
+  ...
+# Subtest: N7 non-loopback operstate DOWN is rejected for non-loopback device operstate
+ok 64 - N7 non-loopback operstate DOWN is rejected for non-loopback device operstate
+  ---
+  duration_ms: 0.0745
+  type: 'test'
+  ...
+# Subtest: N8 loopback operstate dormant is rejected for loopback operstate
+ok 65 - N8 loopback operstate dormant is rejected for loopback operstate
+  ---
+  duration_ms: 0.102708
+  type: 'test'
+  ...
+# Subtest: N8 loopback operstate testing is rejected for loopback operstate
+ok 66 - N8 loopback operstate testing is rejected for loopback operstate
+  ---
+  duration_ms: 0.077625
+  type: 'test'
+  ...
+# Subtest: N8 loopback operstate lowerlayerdown is rejected for loopback operstate
+ok 67 - N8 loopback operstate lowerlayerdown is rejected for loopback operstate
+  ---
+  duration_ms: 0.086208
+  type: 'test'
+  ...
+# Subtest: N8 loopback operstate down is rejected for loopback operstate
+ok 68 - N8 loopback operstate down is rejected for loopback operstate
+  ---
+  duration_ms: 0.086125
+  type: 'test'
+  ...
+# Subtest: N8 loopback operstate notpresent is rejected for loopback operstate
+ok 69 - N8 loopback operstate notpresent is rejected for loopback operstate
+  ---
+  duration_ms: 0.080333
+  type: 'test'
+  ...
+# Subtest: N9 IFF_UP with operstate down is rejected for non-loopback device flags
+ok 70 - N9 IFF_UP with operstate down is rejected for non-loopback device flags
+  ---
+  duration_ms: 0.164917
+  type: 'test'
+  ...
+# Subtest: N9 up unaddressed eth0 is rejected for non-loopback device flags
+ok 71 - N9 up unaddressed eth0 is rejected for non-loopback device flags
+  ---
+  duration_ms: 0.114
+  type: 'test'
+  ...
+# Subtest: N10 tunl0 volatile flags 0xc0 is rejected for non-loopback device flags
+ok 72 - N10 tunl0 volatile flags 0xc0 is rejected for non-loopback device flags
+  ---
+  duration_ms: 0.18525
+  type: 'test'
+  ...
+# Subtest: N10 tunl0 volatile flags 0x10080 is rejected for non-loopback device flags
+ok 73 - N10 tunl0 volatile flags 0x10080 is rejected for non-loopback device flags
+  ---
+  duration_ms: 0.084709
+  type: 'test'
+  ...
+# Subtest: N10 tunl0 volatile flags 0x20080 is rejected for non-loopback device flags
+ok 74 - N10 tunl0 volatile flags 0x20080 is rejected for non-loopback device flags
+  ---
+  duration_ms: 0.083292
+  type: 'test'
+  ...
+# Subtest: N10 lo volatile flags 0x49 is rejected for loopback flags
+ok 75 - N10 lo volatile flags 0x49 is rejected for loopback flags
+  ---
+  duration_ms: 0.084833
+  type: 'test'
+  ...
+# Subtest: N11 device kind "directory" is rejected for entry kind
+ok 76 - N11 device kind "directory" is rejected for entry kind
+  ---
+  duration_ms: 0.101583
+  type: 'test'
+  ...
+# Subtest: N11 device kind "other" is rejected for entry kind
+ok 77 - N11 device kind "other" is rejected for entry kind
+  ---
+  duration_ms: 0.079333
+  type: 'test'
+  ...
+# Subtest: N11 device kind {"unavailable":"EACCES"} is rejected for entry kind
+ok 78 - N11 device kind {"unavailable":"EACCES"} is rejected for entry kind
+  ---
+  duration_ms: 0.08075
+  type: 'test'
+  ...
+# Subtest: N12 control file with readable flags is rejected for control file attributes
+ok 79 - N12 control file with readable flags is rejected for control file attributes
+  ---
+  duration_ms: 0.104042
+  type: 'test'
+  ...
+# Subtest: N12 control file with access denial is rejected for control file attributes
+ok 80 - N12 control file with access denial is rejected for control file attributes
+  ---
+  duration_ms: 0.101916
+  type: 'test'
+  ...
+# Subtest: N12 control file with missing attributes is rejected for control file attributes
+ok 81 - N12 control file with missing attributes is rejected for control file attributes
+  ---
+  duration_ms: 0.093792
+  type: 'test'
+  ...
+# Subtest: N13 device link with all ENOTDIR is rejected for non-loopback device flags
+ok 82 - N13 device link with all ENOTDIR is rejected for non-loopback device flags
+  ---
+  duration_ms: 0.117792
+  type: 'test'
+  ...
+# Subtest: N13 device link with all ENOENT is rejected for non-loopback device flags
+ok 83 - N13 device link with all ENOENT is rejected for non-loopback device flags
+  ---
+  duration_ms: 0.109334
+  type: 'test'
+  ...
+# Subtest: N14 device type "772x" is rejected for non-loopback device type
+ok 84 - N14 device type "772x" is rejected for non-loopback device type
+  ---
+  duration_ms: 0.115083
+  type: 'test'
+  ...
+# Subtest: N14 device type "-1" is rejected for non-loopback device type
+ok 85 - N14 device type "-1" is rejected for non-loopback device type
+  ---
+  duration_ms: 0.079875
+  type: 'test'
+  ...
+# Subtest: N14 device type "70000" is rejected for non-loopback device type
+ok 86 - N14 device type "70000" is rejected for non-loopback device type
+  ---
+  duration_ms: 0.079958
+  type: 'test'
+  ...
+# Subtest: N14 device type "0772" is rejected for non-loopback device type
+ok 87 - N14 device type "0772" is rejected for non-loopback device type
+  ---
+  duration_ms: 0.083
+  type: 'test'
+  ...
+# Subtest: N14 device type {"unavailable":"ENOENT"} is rejected for non-loopback device type
+ok 88 - N14 device type {"unavailable":"ENOENT"} is rejected for non-loopback device type
+  ---
+  duration_ms: 0.08325
+  type: 'test'
+  ...
+# Subtest: N14 loopback type 0772 is rejected for loopback type
+ok 89 - N14 loopback type 0772 is rejected for loopback type
+  ---
+  duration_ms: 0.103375
+  type: 'test'
+  ...
+# Subtest: N15 addressed down device is rejected for addressed interfaces
+ok 90 - N15 addressed down device is rejected for addressed interfaces
+  ---
+  duration_ms: 0.122042
+  type: 'test'
+  ...
+# Subtest: N16 non-internal loopback address is rejected for loopback addresses
+ok 91 - N16 non-internal loopback address is rejected for loopback addresses
+  ---
+  duration_ms: 0.123083
+  type: 'test'
+  ...
+# Subtest: N16 other IPv4 loopback address is rejected for loopback addresses
+ok 92 - N16 other IPv4 loopback address is rejected for loopback addresses
+  ---
+  duration_ms: 0.112791
+  type: 'test'
+  ...
+# Subtest: N16 link-local loopback address is rejected for loopback addresses
+ok 93 - N16 link-local loopback address is rejected for loopback addresses
+  ---
+  duration_ms: 0.105792
+  type: 'test'
+  ...
+# Subtest: N16 mapped loopback address is rejected for loopback addresses
+ok 94 - N16 mapped loopback address is rejected for loopback addresses
+  ---
+  duration_ms: 0.102584
+  type: 'test'
+  ...
+# Subtest: N16 swapped loopback families is rejected for loopback addresses
+ok 95 - N16 swapped loopback families is rejected for loopback addresses
+  ---
+  duration_ms: 0.116708
+  type: 'test'
+  ...
+# Subtest: N16 duplicate IPv6 loopback is rejected for loopback addresses
+ok 96 - N16 duplicate IPv6 loopback is rejected for loopback addresses
+  ---
+  duration_ms: 0.146625
+  type: 'test'
+  ...
+# Subtest: N16 IPv6 loopback only is rejected for loopback addresses
+ok 97 - N16 IPv6 loopback only is rejected for loopback addresses
+  ---
+  duration_ms: 0.106833
+  type: 'test'
+  ...
+# Subtest: N16 non-internal 127.0.0.1 is rejected for loopback addresses
+ok 98 - N16 non-internal 127.0.0.1 is rejected for loopback addresses
+  ---
+  duration_ms: 0.10475
+  type: 'test'
+  ...
+# Subtest: N16 unavailable addresses is rejected for addressed interfaces
+ok 99 - N16 unavailable addresses is rejected for addressed interfaces
+  ---
+  duration_ms: 0.107292
+  type: 'test'
+  ...
+# Subtest: N16 no addressed loopback is rejected for addressed interfaces
+ok 100 - N16 no addressed loopback is rejected for addressed interfaces
+  ---
+  duration_ms: 0.105541
+  type: 'test'
+  ...
+# Subtest: N16 empty loopback address list is rejected for malformed observation
+ok 101 - N16 empty loopback address list is rejected for malformed observation
+  ---
+  duration_ms: 0.088708
+  type: 'test'
+  ...
+# Subtest: N16 second addressed interface is rejected for addressed interfaces
+ok 102 - N16 second addressed interface is rejected for addressed interfaces
+  ---
+  duration_ms: 0.110167
+  type: 'test'
+  ...
+# Subtest: N16 loopback address on a non-loopback name is rejected for addressed interfaces
+ok 103 - N16 loopback address on a non-loopback name is rejected for addressed interfaces
+  ---
+  duration_ms: 0.092917
+  type: 'test'
+  ...
+# Subtest: N17 seventeen entries is rejected for malformed observation
+ok 104 - N17 seventeen entries is rejected for malformed observation
+  ---
+  duration_ms: 0.101458
+  type: 'test'
+  ...
+# Subtest: N18 wrong tag is rejected for malformed observation
+ok 105 - N18 wrong tag is rejected for malformed observation
+  ---
+  duration_ms: 0.067917
+  type: 'test'
+  ...
+# Subtest: N18 unknown key is rejected for malformed observation
+ok 106 - N18 unknown key is rejected for malformed observation
+  ---
+  duration_ms: 0.116334
+  type: 'test'
+  ...
+# Subtest: N18 missing key is rejected for malformed observation
+ok 107 - N18 missing key is rejected for malformed observation
+  ---
+  duration_ms: 0.071292
+  type: 'test'
+  ...
+# Subtest: N18 extra entry key is rejected for malformed observation
+ok 108 - N18 extra entry key is rejected for malformed observation
+  ---
+  duration_ms: 0.095042
+  type: 'test'
+  ...
+# Subtest: N18 unsorted names is rejected for malformed observation
+ok 109 - N18 unsorted names is rejected for malformed observation
+  ---
+  duration_ms: 0.071958
+  type: 'test'
+  ...
+# Subtest: N18 duplicate names is rejected for malformed observation
+ok 110 - N18 duplicate names is rejected for malformed observation
+  ---
+  duration_ms: 0.084333
+  type: 'test'
+  ...
+# Subtest: N18 null record is rejected for malformed observation
+ok 111 - N18 null record is rejected for malformed observation
+  ---
+  duration_ms: 0.066209
+  type: 'test'
+  ...
+# Subtest: N18 empty entries is rejected for malformed observation
+ok 112 - N18 empty entries is rejected for malformed observation
+  ---
+  duration_ms: 0.071
+  type: 'test'
+  ...
+# Subtest: N18 numeric field is rejected for malformed observation
+ok 113 - N18 numeric field is rejected for malformed observation
+  ---
+  duration_ms: 0.097
+  type: 'test'
+  ...
+# Subtest: N18 unavailable object with extra key is rejected for malformed observation
+ok 114 - N18 unavailable object with extra key is rejected for malformed observation
+  ---
+  duration_ms: 0.079667
+  type: 'test'
+  ...
+# Subtest: N18 lowercase unavailable code is rejected for malformed observation
+ok 115 - N18 lowercase unavailable code is rejected for malformed observation
+  ---
+  duration_ms: 0.069708
+  type: 'test'
+  ...
+# Subtest: A1 the measured listing is admitted through explicit readers without a report
+ok 116 - A1 the measured listing is admitted through explicit readers without a report
+  ---
+  duration_ms: 14.3285
+  type: 'test'
+  ...
+# Subtest: A2 a rejected observation is reported once with its run identity before the throw
+ok 117 - A2 a rejected observation is reported once with its run identity before the throw
+  ---
+  duration_ms: 0.462208
+  type: 'test'
+  ...
+# Subtest: A3 a failed listing reports nothing and reads no metadata
+ok 118 - A3 a failed listing reports nothing and reads no metadata
+  ---
+  duration_ms: 0.227625
+  type: 'test'
+  ...
+# Subtest: A4 more than sixteen entries are refused before metadata reads
+ok 119 - A4 more than sixteen entries are refused before metadata reads
+  ---
+  duration_ms: 0.207875
+  type: 'test'
+  ...
+# Subtest: A5 a throwing entryType reader is reported as unavailable and rejected
+ok 120 - A5 a throwing entryType reader is reported as unavailable and rejected
+  ---
+  duration_ms: 0.336042
+  type: 'test'
+  ...
+# Subtest: A5 a throwing readText reader is reported as unavailable and rejected
+ok 121 - A5 a throwing readText reader is reported as unavailable and rejected
+  ---
+  duration_ms: 8.477041
+  type: 'test'
+  ...
+# Subtest: A5 a throwing addresses reader is reported as unavailable and rejected
+ok 122 - A5 a throwing addresses reader is reported as unavailable and rejected
+  ---
+  duration_ms: 0.292458
+  type: 'test'
+  ...
+# Subtest: A6 missing report port is refused before listing
+ok 123 - A6 missing report port is refused before listing
+  ---
+  duration_ms: 0.162959
+  type: 'test'
+  ...
+# Subtest: A6 missing list port is refused before listing
+ok 124 - A6 missing list port is refused before listing
+  ---
+  duration_ms: 0.071792
+  type: 'test'
+  ...
+# Subtest: A6 missing entryType port is refused before listing
+ok 125 - A6 missing entryType port is refused before listing
+  ---
+  duration_ms: 0.075125
+  type: 'test'
+  ...
+# Subtest: A6 missing readText port is refused before listing
+ok 126 - A6 missing readText port is refused before listing
+  ---
+  duration_ms: 0.063708
+  type: 'test'
+  ...
+# Subtest: A6 missing addresses port is refused before listing
+ok 127 - A6 missing addresses port is refused before listing
+  ---
+  duration_ms: 0.064042
+  type: 'test'
+  ...
+# Subtest: A6 invalid run identity is refused before listing
+ok 128 - A6 invalid run identity is refused before listing
+  ---
+  duration_ms: 0.056625
+  type: 'test'
+  ...
+# Subtest: A6 a non-array listing is refused before metadata reads
+ok 129 - A6 a non-array listing is refused before metadata reads
+  ---
+  duration_ms: 0.092
+  type: 'test'
+  ...
+# Subtest: A7 a loopback-only listing is admitted and listings are sorted before capture
+ok 130 - A7 a loopback-only listing is admitted and listings are sorted before capture
+  ---
+  duration_ms: 9.119625
+  type: 'test'
+  ...
+# Subtest: entryKind maps lstat results with symbolic links taking precedence
+ok 131 - entryKind maps lstat results with symbolic links taking precedence
+  ---
+  duration_ms: 0.461833
+  type: 'test'
+  ...
+# Subtest: E1 a fetch failure caused by ENETUNREACH is measured blocking
+ok 132 - E1 a fetch failure caused by ENETUNREACH is measured blocking
+  ---
+  duration_ms: 0.5125
+  type: 'test'
+  ...
+# Subtest: E2 a direct ENETUNREACH error is measured blocking
+ok 133 - E2 a direct ENETUNREACH error is measured blocking
+  ---
+  duration_ms: 0.061084
+  type: 'test'
+  ...
+# Subtest: E3 successful fetch is not measured egress blocking
+ok 134 - E3 successful fetch is not measured egress blocking
+  ---
+  duration_ms: 0.038125
+  type: 'test'
+  ...
+# Subtest: E4 timeout is not measured egress blocking
+ok 135 - E4 timeout is not measured egress blocking
+  ---
+  duration_ms: 0.030792
+  type: 'test'
+  ...
+# Subtest: E5 abort is not measured egress blocking
+ok 136 - E5 abort is not measured egress blocking
+  ---
+  duration_ms: 0.028291
+  type: 'test'
+  ...
+# Subtest: E6 ECONNREFUSED is not measured egress blocking
+ok 137 - E6 ECONNREFUSED is not measured egress blocking
+  ---
+  duration_ms: 0.026083
+  type: 'test'
+  ...
+# Subtest: E6 EHOSTUNREACH is not measured egress blocking
+ok 138 - E6 EHOSTUNREACH is not measured egress blocking
+  ---
+  duration_ms: 0.0305
+  type: 'test'
+  ...
+# Subtest: E6 ENETDOWN is not measured egress blocking
+ok 139 - E6 ENETDOWN is not measured egress blocking
+  ---
+  duration_ms: 0.024666
+  type: 'test'
+  ...
+# Subtest: E6 ETIMEDOUT is not measured egress blocking
+ok 140 - E6 ETIMEDOUT is not measured egress blocking
+  ---
+  duration_ms: 0.028917
+  type: 'test'
+  ...
+# Subtest: E7 reason null is not measured egress blocking
+ok 141 - E7 reason null is not measured egress blocking
+  ---
+  duration_ms: 0.02625
+  type: 'test'
+  ...
+# Subtest: E7 reason undefined is not measured egress blocking
+ok 142 - E7 reason undefined is not measured egress blocking
+  ---
+  duration_ms: 0.023875
+  type: 'test'
+  ...
+# Subtest: E7 reason ENETUNREACH is not measured egress blocking
+ok 143 - E7 reason ENETUNREACH is not measured egress blocking
+  ---
+  duration_ms: 0.03075
+  type: 'test'
+  ...
+# Subtest: E7 reason 0 is not measured egress blocking
+ok 144 - E7 reason 0 is not measured egress blocking
+  ---
+  duration_ms: 0.023333
+  type: 'test'
+  ...
+# Subtest: E7 absent reason is not measured egress blocking
+ok 145 - E7 absent reason is not measured egress blocking
+  ---
+  duration_ms: 0.664042
+  type: 'test'
+  ...
+# Subtest: E8 settled undefined is not measured egress blocking
+ok 146 - E8 settled undefined is not measured egress blocking
+  ---
+  duration_ms: 0.025959
+  type: 'test'
+  ...
+# Subtest: E8 settled null is not measured egress blocking
+ok 147 - E8 settled null is not measured egress blocking
+  ---
+  duration_ms: 0.023583
+  type: 'test'
+  ...
+# Subtest: E8 settled {} is not measured egress blocking
+ok 148 - E8 settled {} is not measured egress blocking
+  ---
+  duration_ms: 0.025625
+  type: 'test'
+  ...
+# Subtest: E8 settled "rejected" is not measured egress blocking
+ok 149 - E8 settled "rejected" is not measured egress blocking
+  ---
+  duration_ms: 0.021834
+  type: 'test'
+  ...
+# Subtest: E8 settled {"status":"pending"} is not measured egress blocking
+ok 150 - E8 settled {"status":"pending"} is not measured egress blocking
+  ---
+  duration_ms: 0.022458
+  type: 'test'
+  ...
+# Subtest: E8 settled {"status":"REJECTED","reason":{"code":"ENETUNREACH"}} is not measured egress blocking
+ok 151 - E8 settled {"status":"REJECTED","reason":{"code":"ENETUNREACH"}} is not measured egress blocking
+  ---
+  duration_ms: 0.024708
+  type: 'test'
+  ...
+# Subtest: E9 lowercase code is not measured egress blocking
+ok 152 - E9 lowercase code is not measured egress blocking
+  ---
+  duration_ms: 0.162791
+  type: 'test'
+  ...
+# Subtest: E10 ENETUNREACH only in message text is not measured egress blocking
+ok 153 - E10 ENETUNREACH only in message text is not measured egress blocking
+  ---
+  duration_ms: 0.04925
+  type: 'test'
+  ...
+# Subtest: E11 nested cause code is not measured egress blocking
+ok 154 - E11 nested cause code is not measured egress blocking
+  ---
+  duration_ms: 0.050834
+  type: 'test'
+  ...
+# Subtest: authority profile is a fixed disjoint bundle while default size/list remain unchanged
+ok 155 - authority profile is a fixed disjoint bundle while default size/list remain unchanged
+  ---
+  duration_ms: 6.069791
+  type: 'test'
+  ...
+# Subtest: authority manifest drift and added files deny before any evaluation
+ok 156 - authority manifest drift and added files deny before any evaluation
+  ---
+  duration_ms: 8.540208
+  type: 'test'
+  ...
+# Subtest: the owned application fixture runs once and removes only its own resources
+ok 157 - the owned application fixture runs once and removes only its own resources
+  ---
+  duration_ms: 24.83675
+  type: 'test'
+  ...
+# Subtest: remote endpoint is refused before Docker
+ok 158 - remote endpoint is refused before Docker
+  ---
+  duration_ms: 0.173291
+  type: 'test'
+  ...
+# Subtest: supplied image is refused before Docker
+ok 159 - supplied image is refused before Docker
+  ---
+  duration_ms: 0.069208
+  type: 'test'
+  ...
+# Subtest: supplied DB URI is refused before Docker
+ok 160 - supplied DB URI is refused before Docker
+  ---
+  duration_ms: 0.057958
+  type: 'test'
+  ...
+# Subtest: supplied directory is refused before Docker
+ok 161 - supplied directory is refused before Docker
+  ---
+  duration_ms: 0.041333
+  type: 'test'
+  ...
+# Subtest: supplied container ID is refused before Docker
+ok 162 - supplied container ID is refused before Docker
+  ---
+  duration_ms: 0.242375
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_HOST is refused before Docker
+ok 163 - ambient DOCKER_HOST is refused before Docker
+  ---
+  duration_ms: 0.106125
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONTEXT is refused before Docker
+ok 164 - ambient DOCKER_CONTEXT is refused before Docker
+  ---
+  duration_ms: 0.049542
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONFIG is refused before Docker
+ok 165 - ambient DOCKER_CONFIG is refused before Docker
+  ---
+  duration_ms: 0.044084
+  type: 'test'
+  ...
+# Subtest: ambient MONGODB_URL is refused before Docker
+ok 166 - ambient MONGODB_URL is refused before Docker
+  ---
+  duration_ms: 0.0535
+  type: 'test'
+  ...
+# Subtest: ambient PHARMACY_TEST_MONGODB_URI is refused before Docker
+ok 167 - ambient PHARMACY_TEST_MONGODB_URI is refused before Docker
+  ---
+  duration_ms: 0.041667
+  type: 'test'
+  ...
+# Subtest: ambient PAYMENT_SECRET is refused before Docker
+ok 168 - ambient PAYMENT_SECRET is refused before Docker
+  ---
+  duration_ms: 0.037875
+  type: 'test'
+  ...
+# Subtest: ambient NODE_OPTIONS is refused before Docker
+ok 169 - ambient NODE_OPTIONS is refused before Docker
+  ---
+  duration_ms: 0.037542
+  type: 'test'
+  ...
+# Subtest: container ID drift refuses start and destructive cleanup
+ok 170 - container ID drift refuses start and destructive cleanup
+  ---
+  duration_ms: 33.363458
+  type: 'test'
+  ...
+# Subtest: engine image ID drift refuses start and destructive cleanup
+ok 171 - engine image ID drift refuses start and destructive cleanup
+  ---
+  duration_ms: 84.418833
+  type: 'test'
+  ...
+# Subtest: run label drift refuses start and destructive cleanup
+ok 172 - run label drift refuses start and destructive cleanup
+  ---
+  duration_ms: 7.049833
+  type: 'test'
+  ...
+# Subtest: image reference drift refuses start and destructive cleanup
+ok 173 - image reference drift refuses start and destructive cleanup
+  ---
+  duration_ms: 6.058417
+  type: 'test'
+  ...
+# Subtest: environment drift refuses start and destructive cleanup
+ok 174 - environment drift refuses start and destructive cleanup
+  ---
+  duration_ms: 17.579833
+  type: 'test'
+  ...
+# Subtest: command drift refuses start and destructive cleanup
+ok 175 - command drift refuses start and destructive cleanup
+  ---
+  duration_ms: 56.19
+  type: 'test'
+  ...
+# Subtest: root user drift refuses start and destructive cleanup
+ok 176 - root user drift refuses start and destructive cleanup
+  ---
+  duration_ms: 13.147
+  type: 'test'
+  ...
+# Subtest: working directory drift refuses start and destructive cleanup
+ok 177 - working directory drift refuses start and destructive cleanup
+  ---
+  duration_ms: 8.232792
+  type: 'test'
+  ...
+# Subtest: healthcheck drift refuses start and destructive cleanup
+ok 178 - healthcheck drift refuses start and destructive cleanup
+  ---
+  duration_ms: 6.101375
+  type: 'test'
+  ...
+# Subtest: network mode drift refuses start and destructive cleanup
+ok 179 - network mode drift refuses start and destructive cleanup
+  ---
+  duration_ms: 85.688084
+  type: 'test'
+  ...
+# Subtest: extra network drift refuses start and destructive cleanup
+ok 180 - extra network drift refuses start and destructive cleanup
+  ---
+  duration_ms: 13.914416
+  type: 'test'
+  ...
+# Subtest: published port drift refuses start and destructive cleanup
+ok 181 - published port drift refuses start and destructive cleanup
+  ---
+  duration_ms: 50.5385
+  type: 'test'
+  ...
+# Subtest: writable root drift refuses start and destructive cleanup
+ok 182 - writable root drift refuses start and destructive cleanup
+  ---
+  duration_ms: 7.166125
+  type: 'test'
+  ...
+# Subtest: privilege drift refuses start and destructive cleanup
+ok 183 - privilege drift refuses start and destructive cleanup
+  ---
+  duration_ms: 16.914042
+  type: 'test'
+  ...
+# Subtest: added capability drift refuses start and destructive cleanup
+ok 184 - added capability drift refuses start and destructive cleanup
+  ---
+  duration_ms: 5.795917
+  type: 'test'
+  ...
+# Subtest: host IPC drift refuses start and destructive cleanup
+ok 185 - host IPC drift refuses start and destructive cleanup
+  ---
+  duration_ms: 32.584541
+  type: 'test'
+  ...
+# Subtest: weakened security profile drift refuses start and destructive cleanup
+ok 186 - weakened security profile drift refuses start and destructive cleanup
+  ---
+  duration_ms: 60.115125
+  type: 'test'
+  ...
+# Subtest: memory bound drift refuses start and destructive cleanup
+ok 187 - memory bound drift refuses start and destructive cleanup
+  ---
+  duration_ms: 7.50025
+  type: 'test'
+  ...
+# Subtest: tmpfs drift refuses start and destructive cleanup
+ok 188 - tmpfs drift refuses start and destructive cleanup
+  ---
+  duration_ms: 47.408125
+  type: 'test'
+  ...
+# Subtest: logging drift refuses start and destructive cleanup
+ok 189 - logging drift refuses start and destructive cleanup
+  ---
+  duration_ms: 8.111708
+  type: 'test'
+  ...
+# Subtest: declared mount drift refuses start and destructive cleanup
+ok 190 - declared mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 56.494334
+  type: 'test'
+  ...
+# Subtest: effective mount drift refuses start and destructive cleanup
+ok 191 - effective mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 17.733625
+  type: 'test'
+  ...
+# Subtest: host bind syntax drift refuses start and destructive cleanup
+ok 192 - host bind syntax drift refuses start and destructive cleanup
+  ---
+  duration_ms: 5.701584
+  type: 'test'
+  ...
+# Subtest: declared writable mount drift refuses start and destructive cleanup
+ok 193 - declared writable mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 12.360417
+  type: 'test'
+  ...
+# Subtest: writable mount drift refuses start and destructive cleanup
+ok 194 - writable mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 7.068417
+  type: 'test'
+  ...
+# Subtest: extra mount drift refuses start and destructive cleanup
+ok 195 - extra mount drift refuses start and destructive cleanup
+  ---
+  duration_ms: 36.938167
+  type: 'test'
+  ...
+# Subtest: daemon drift cannot redirect execution or cleanup
+ok 196 - daemon drift cannot redirect execution or cleanup
+  ---
+  duration_ms: 13.471125
+  type: 'test'
+  ...
+# Subtest: changed bundle bytes are denied before any container start
+ok 197 - changed bundle bytes are denied before any container start
+  ---
+  duration_ms: 74.683417
+  type: 'test'
+  ...
+# Subtest: K1 the measured network admission is accepted only as recomputed evidence
+ok 198 - K1 the measured network admission is accepted only as recomputed evidence
+  ---
+  duration_ms: 10.865917
+  type: 'test'
+  ...
+# Subtest: wrong identity cannot produce passing application evidence
+ok 199 - wrong identity cannot produce passing application evidence
+  ---
+  duration_ms: 8.488125
+  type: 'test'
+  ...
+# Subtest: missing admission cannot produce passing application evidence
+ok 200 - missing admission cannot produce passing application evidence
+  ---
+  duration_ms: 6.778375
+  type: 'test'
+  ...
+# Subtest: network success cannot produce passing application evidence
+ok 201 - network success cannot produce passing application evidence
+  ---
+  duration_ms: 23.89325
+  type: 'test'
+  ...
+# Subtest: K2 missing network admission cannot produce passing application evidence
+ok 202 - K2 missing network admission cannot produce passing application evidence
+  ---
+  duration_ms: 21.301833
+  type: 'test'
+  ...
+# Subtest: K2 legacy interface list only cannot produce passing application evidence
+ok 203 - K2 legacy interface list only cannot produce passing application evidence
+  ---
+  duration_ms: 113.501666
+  type: 'test'
+  ...
+# Subtest: K3 dropped down device cannot produce passing application evidence
+ok 204 - K3 dropped down device cannot produce passing application evidence
+  ---
+  duration_ms: 13.409458
+  type: 'test'
+  ...
+# Subtest: K3 added control file cannot produce passing application evidence
+ok 205 - K3 added control file cannot produce passing application evidence
+  ---
+  duration_ms: 27.7265
+  type: 'test'
+  ...
+# Subtest: K3 changed loopback addresses cannot produce passing application evidence
+ok 206 - K3 changed loopback addresses cannot produce passing application evidence
+  ---
+  duration_ms: 88.389458
+  type: 'test'
+  ...
+# Subtest: K3 extra summary key cannot produce passing application evidence
+ok 207 - K3 extra summary key cannot produce passing application evidence
+  ---
+  duration_ms: 32.685375
+  type: 'test'
+  ...
+# Subtest: K4 forged summary over an active interface cannot produce passing application evidence
+ok 208 - K4 forged summary over an active interface cannot produce passing application evidence
+  ---
+  duration_ms: 10.033959
+  type: 'test'
+  ...
+# Subtest: K5 consistent summary over a rejected observation cannot produce passing application evidence
+ok 209 - K5 consistent summary over a rejected observation cannot produce passing application evidence
+  ---
+  duration_ms: 9.853125
+  type: 'test'
+  ...
+# Subtest: K6 legacy and new network evidence together cannot produce passing application evidence
+ok 210 - K6 legacy and new network evidence together cannot produce passing application evidence
+  ---
+  duration_ms: 31.039709
+  type: 'test'
+  ...
+# Subtest: K7 wrong admission tag cannot produce passing application evidence
+ok 211 - K7 wrong admission tag cannot produce passing application evidence
+  ---
+  duration_ms: 34.855833
+  type: 'test'
+  ...
+# Subtest: K7 wrong loopback cannot produce passing application evidence
+ok 212 - K7 wrong loopback cannot produce passing application evidence
+  ---
+  duration_ms: 6.550875
+  type: 'test'
+  ...
+# Subtest: database mode cannot produce passing application evidence
+ok 213 - database mode cannot produce passing application evidence
+  ---
+  duration_ms: 15.590125
+  type: 'test'
+  ...
+# Subtest: missing port cannot produce passing application evidence
+ok 214 - missing port cannot produce passing application evidence
+  ---
+  duration_ms: 9.583917
+  type: 'test'
+  ...
+# Subtest: duplicate port cannot produce passing application evidence
+ok 215 - duplicate port cannot produce passing application evidence
+  ---
+  duration_ms: 6.906875
+  type: 'test'
+  ...
+# Subtest: reported effect cannot produce passing application evidence
+ok 216 - reported effect cannot produce passing application evidence
+  ---
+  duration_ms: 6.466291
+  type: 'test'
+  ...
+# Subtest: wrong operation cannot produce passing application evidence
+ok 217 - wrong operation cannot produce passing application evidence
+  ---
+  duration_ms: 12.788833
+  type: 'test'
+  ...
+# Subtest: missing scenario assertion cannot produce passing application evidence
+ok 218 - missing scenario assertion cannot produce passing application evidence
+  ---
+  duration_ms: 150.252917
+  type: 'test'
+  ...
+# Subtest: an image lookup failure cleans only its fresh filesystem workspace
+ok 219 - an image lookup failure cleans only its fresh filesystem workspace
+  ---
+  duration_ms: 41.760875
+  type: 'test'
+  ...
+# Subtest: an unacknowledged create never adopts or removes a container
+ok 220 - an unacknowledged create never adopts or removes a container
+  ---
+  duration_ms: 2.828584
+  type: 'test'
+  ...
+# Subtest: a getter is read once and cannot change the admitted endpoint
+ok 221 - a getter is read once and cannot change the admitted endpoint
+  ---
+  duration_ms: 6.189
+  type: 'test'
+  ...
+# Subtest: nonzero exit rejects an otherwise successful payload
+ok 222 - nonzero exit rejects an otherwise successful payload
+  ---
+  duration_ms: 8.170958
+  type: 'test'
+  ...
+# Subtest: OOM kill rejects an otherwise successful payload
+ok 223 - OOM kill rejects an otherwise successful payload
+  ---
+  duration_ms: 7.355541
+  type: 'test'
+  ...
+# Subtest: still-running container rejects an otherwise successful payload
+ok 224 - still-running container rejects an otherwise successful payload
+  ---
+  duration_ms: 6.49775
+  type: 'test'
+  ...
+# Subtest: an invalid create ID never authorizes inspection or cleanup
+ok 225 - an invalid create ID never authorizes inspection or cleanup
+  ---
+  duration_ms: 76.468667
+  type: 'test'
+  ...
+# Subtest: an unreviewed engine cannot create an application container
+ok 226 - an unreviewed engine cannot create an application container
+  ---
+  duration_ms: 4.711792
+  type: 'test'
+  ...
+# Subtest: profile-only overrides with omitted executor are rejected before allocation or Docker
+ok 227 - profile-only overrides with omitted executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.665167
+  type: 'test'
+  ...
+# Subtest: profile-only overrides with undefined executor are rejected before allocation or Docker
+ok 228 - profile-only overrides with undefined executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.355083
+  type: 'test'
+  ...
+# Subtest: profile-only overrides with null executor are rejected before allocation or Docker
+ok 229 - profile-only overrides with null executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.353917
+  type: 'test'
+  ...
+# Subtest: profile-only overrides with object executor are rejected before allocation or Docker
+ok 230 - profile-only overrides with object executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.441708
+  type: 'test'
+  ...
+# Subtest: profile-only overrides with string executor are rejected before allocation or Docker
+ok 231 - profile-only overrides with string executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.328417
+  type: 'test'
+  ...
+# Subtest: profile-only overrides with boolean executor are rejected before allocation or Docker
+ok 232 - profile-only overrides with boolean executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.257375
+  type: 'test'
+  ...
+# Subtest: bundle-only overrides with omitted executor are rejected before allocation or Docker
+ok 233 - bundle-only overrides with omitted executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.25
+  type: 'test'
+  ...
+# Subtest: bundle-only overrides with undefined executor are rejected before allocation or Docker
+ok 234 - bundle-only overrides with undefined executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.230958
+  type: 'test'
+  ...
+# Subtest: bundle-only overrides with null executor are rejected before allocation or Docker
+ok 235 - bundle-only overrides with null executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.218875
+  type: 'test'
+  ...
+# Subtest: bundle-only overrides with object executor are rejected before allocation or Docker
+ok 236 - bundle-only overrides with object executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.287042
+  type: 'test'
+  ...
+# Subtest: bundle-only overrides with string executor are rejected before allocation or Docker
+ok 237 - bundle-only overrides with string executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.202291
+  type: 'test'
+  ...
+# Subtest: bundle-only overrides with boolean executor are rejected before allocation or Docker
+ok 238 - bundle-only overrides with boolean executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.17
+  type: 'test'
+  ...
+# Subtest: combined overrides with omitted executor are rejected before allocation or Docker
+ok 239 - combined overrides with omitted executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.16925
+  type: 'test'
+  ...
+# Subtest: combined overrides with undefined executor are rejected before allocation or Docker
+ok 240 - combined overrides with undefined executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.173208
+  type: 'test'
+  ...
+# Subtest: combined overrides with null executor are rejected before allocation or Docker
+ok 241 - combined overrides with null executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.1765
+  type: 'test'
+  ...
+# Subtest: combined overrides with object executor are rejected before allocation or Docker
+ok 242 - combined overrides with object executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.260583
+  type: 'test'
+  ...
+# Subtest: combined overrides with string executor are rejected before allocation or Docker
+ok 243 - combined overrides with string executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.189791
+  type: 'test'
+  ...
+# Subtest: combined overrides with boolean executor are rejected before allocation or Docker
+ok 244 - combined overrides with boolean executor are rejected before allocation or Docker
+  ---
+  duration_ms: 0.167042
+  type: 'test'
+  ...
+# Subtest: present profile override cannot hide behind a nullish value
+ok 245 - present profile override cannot hide behind a nullish value
+  ---
+  duration_ms: 0.232583
+  type: 'test'
+  ...
+# Subtest: present profile override cannot hide behind a nullish value
+ok 246 - present profile override cannot hide behind a nullish value
+  ---
+  duration_ms: 38.933917
+  type: 'test'
+  ...
+# Subtest: present bundle override cannot hide behind a nullish value
+ok 247 - present bundle override cannot hide behind a nullish value
+  ---
+  duration_ms: 0.181709
+  type: 'test'
+  ...
+# Subtest: present bundle override cannot hide behind a nullish value
+ok 248 - present bundle override cannot hide behind a nullish value
+  ---
+  duration_ms: 0.135
+  type: 'test'
+  ...
+# Subtest: a callable executor is snapshotted once and never falls back to real transport
+ok 249 - a callable executor is snapshotted once and never falls back to real transport
+  ---
+  duration_ms: 12.026584
+  type: 'test'
+  ...
+# Subtest: NODE_OPTIONS is denied by image admission before create
+ok 250 - NODE_OPTIONS is denied by image admission before create
+  ---
+  duration_ms: 5.95225
+  type: 'test'
+  ...
+# Subtest: extra environment key is denied by image admission before create
+ok 251 - extra environment key is denied by image admission before create
+  ---
+  duration_ms: 3.863166
+  type: 'test'
+  ...
+# Subtest: PATH equals suffix is denied by image admission before create
+ok 252 - PATH equals suffix is denied by image admission before create
+  ---
+  duration_ms: 3.538042
+  type: 'test'
+  ...
+# Subtest: duplicate environment key is denied by image admission before create
+ok 253 - duplicate environment key is denied by image admission before create
+  ---
+  duration_ms: 3.871667
+  type: 'test'
+  ...
+# Subtest: RepoDigest mismatch is denied by image admission before create
+ok 254 - RepoDigest mismatch is denied by image admission before create
+  ---
+  duration_ms: 5.470417
+  type: 'test'
+  ...
+# Subtest: image volumes is denied by image admission before create
+ok 255 - image volumes is denied by image admission before create
+  ---
+  duration_ms: 3.781333
+  type: 'test'
+  ...
+# Subtest: a different well-formed Unix endpoint is not the recorded profile
+ok 256 - a different well-formed Unix endpoint is not the recorded profile
+  ---
+  duration_ms: 0.2005
+  type: 'test'
+  ...
+# Subtest: replaced ownership marker prevents execution and cleanup
+ok 257 - replaced ownership marker prevents execution and cleanup
+  ---
+  duration_ms: 6.443833
+  type: 'test'
+  ...
+# Subtest: a replacement directory with a copied marker does not acquire ownership
+ok 258 - a replacement directory with a copied marker does not acquire ownership
+  ---
+  duration_ms: 14.866458
+  type: 'test'
+  ...
+# Subtest: acknowledged container removal is not repeated after workspace-cleanup failure
+ok 259 - acknowledged container removal is not repeated after workspace-cleanup failure
+  ---
+  duration_ms: 7.792916
+  type: 'test'
+  ...
+# Subtest: a disappeared pre-create workspace does not replace the original failure
+ok 260 - a disappeared pre-create workspace does not replace the original failure
+  ---
+  duration_ms: 8.432
+  type: 'test'
+  ...
+# Subtest: create acknowledgement is reported before failing post-create engine checks
+ok 261 - create acknowledgement is reported before failing post-create engine checks
+  ---
+  duration_ms: 6.873833
+  type: 'test'
+  ...
+# Subtest: a failed creation reporter withholds start and removal
+ok 262 - a failed creation reporter withholds start and removal
+  ---
+  duration_ms: 3.711
+  type: 'test'
+  ...
+# Subtest: an invalid creation reporter is rejected before fixture allocation
+ok 263 - an invalid creation reporter is rejected before fixture allocation
+  ---
+  duration_ms: 0.3255
+  type: 'test'
+  ...
+# Subtest: an invalid creation reporter is rejected before fixture allocation
+ok 264 - an invalid creation reporter is rejected before fixture allocation
+  ---
+  duration_ms: 0.145375
+  type: 'test'
+  ...
+# Subtest: an invalid creation reporter is rejected before fixture allocation
+ok 265 - an invalid creation reporter is rejected before fixture allocation
+  ---
+  duration_ms: 0.101167
+  type: 'test'
+  ...
+# Subtest: an invalid creation reporter is rejected before fixture allocation
+ok 266 - an invalid creation reporter is rejected before fixture allocation
+  ---
+  duration_ms: 0.089417
+  type: 'test'
+  ...
+# Subtest: an invalid creation reporter is rejected before fixture allocation
+ok 267 - an invalid creation reporter is rejected before fixture allocation
+  ---
+  duration_ms: 0.087625
+  type: 'test'
+  ...
+# Subtest: an unknown create ID emits no resource acknowledgement
+ok 268 - an unknown create ID emits no resource acknowledgement
+  ---
+  duration_ms: 4.027042
+  type: 'test'
+  ...
+# Subtest: the creation reporter is snapshotted once on a successful simulated lifecycle
+ok 269 - the creation reporter is snapshotted once on a successful simulated lifecycle
+  ---
+  duration_ms: 12.823792
+  type: 'test'
+  ...
+# Subtest: a reporter override without a callable executor cannot reach real transport
+ok 270 - a reporter override without a callable executor cannot reach real transport
+  ---
+  duration_ms: 0.314875
+  type: 'test'
+  ...
+# Subtest: fixed authority role reuses owned lifecycle without default provider evidence
+ok 271 - fixed authority role reuses owned lifecycle without default provider evidence
+  ---
+  duration_ms: 26.64325
+  type: 'test'
+  ...
+# Subtest: authority rejects simulated source hash evidence
+ok 272 - authority rejects simulated source hash evidence
+  ---
+  duration_ms: 9.762625
+  type: 'test'
+  ...
+# Subtest: authority rejects simulated compiler imports evidence
+ok 273 - authority rejects simulated compiler imports evidence
+  ---
+  duration_ms: 12.533
+  type: 'test'
+  ...
+# Subtest: authority rejects simulated compiler system evidence
+ok 274 - authority rejects simulated compiler system evidence
+  ---
+  duration_ms: 17.720208
+  type: 'test'
+  ...
+# Subtest: authority rejects simulated compiler hash evidence
+ok 275 - authority rejects simulated compiler hash evidence
+  ---
+  duration_ms: 114.149958
+  type: 'test'
+  ...
+# Subtest: authority rejects simulated missing leaf evidence
+ok 276 - authority rejects simulated missing leaf evidence
+  ---
+  duration_ms: 11.114375
+  type: 'test'
+  ...
+# Subtest: authority rejects simulated restoration missing evidence
+ok 277 - authority rejects simulated restoration missing evidence
+  ---
+  duration_ms: 9.578125
+  type: 'test'
+  ...
+# Subtest: authority rejects simulated duplicate control evidence
+ok 278 - authority rejects simulated duplicate control evidence
+  ---
+  duration_ms: 12.078542
+  type: 'test'
+  ...
+# Subtest: authority rejects simulated wrong module evaluations evidence
+ok 279 - authority rejects simulated wrong module evaluations evidence
+  ---
+  duration_ms: 8.979084
+  type: 'test'
+  ...
+# Subtest: authority rejects simulated missing mutant emit evidence
+ok 280 - authority rejects simulated missing mutant emit evidence
+  ---
+  duration_ms: 12.686625
+  type: 'test'
+  ...
+# Subtest: authority rejects simulated unchanged mutant evidence
+ok 281 - authority rejects simulated unchanged mutant evidence
+  ---
+  duration_ms: 11.278083
+  type: 'test'
+  ...
+# Subtest: authority rejects simulated provider effect evidence
+ok 282 - authority rejects simulated provider effect evidence
+  ---
+  duration_ms: 111.327959
+  type: 'test'
+  ...
+# Subtest: authority rejects simulated extra field evidence
+ok 283 - authority rejects simulated extra field evidence
+  ---
+  duration_ms: 89.51825
+  type: 'test'
+  ...
+# Subtest: authority simulated setup cannot fall back to real sources or transport
+ok 284 - authority simulated setup cannot fall back to real sources or transport
+  ---
+  duration_ms: 0.620292
+  type: 'test'
+  ...
+# Subtest: authority refuses null bundle before allocation or transport
+ok 285 - authority refuses null bundle before allocation or transport
+  ---
+  duration_ms: 0.736709
+  type: 'test'
+  ...
+# Subtest: authority refuses undefined bundle before allocation or transport
+ok 286 - authority refuses undefined bundle before allocation or transport
+  ---
+  duration_ms: 0.099542
+  type: 'test'
+  ...
+# Subtest: authority refuses array bundle before allocation or transport
+ok 287 - authority refuses array bundle before allocation or transport
+  ---
+  duration_ms: 0.079792
+  type: 'test'
+  ...
+# Subtest: authority refuses null expectation before allocation or transport
+ok 288 - authority refuses null expectation before allocation or transport
+  ---
+  duration_ms: 0.071833
+  type: 'test'
+  ...
+# Subtest: authority refuses undefined expectation before allocation or transport
+ok 289 - authority refuses undefined expectation before allocation or transport
+  ---
+  duration_ms: 0.065583
+  type: 'test'
+  ...
+# Subtest: authority refuses array expectation before allocation or transport
+ok 290 - authority refuses array expectation before allocation or transport
+  ---
+  duration_ms: 0.063084
+  type: 'test'
+  ...
+# Subtest: authority refuses missing hashes before allocation or transport
+ok 291 - authority refuses missing hashes before allocation or transport
+  ---
+  duration_ms: 1.108458
+  type: 'test'
+  ...
+# Subtest: authority refuses null hashes before allocation or transport
+ok 292 - authority refuses null hashes before allocation or transport
+  ---
+  duration_ms: 0.263167
+  type: 'test'
+  ...
+# Subtest: authority refuses undefined compiler before allocation or transport
+ok 293 - authority refuses undefined compiler before allocation or transport
+  ---
+  duration_ms: 0.232083
+  type: 'test'
+  ...
+# Subtest: authority refuses extra expectation before allocation or transport
+ok 294 - authority refuses extra expectation before allocation or transport
+  ---
+  duration_ms: 0.186875
+  type: 'test'
+  ...
+# Subtest: the owned fixture lifecycle mutates only its acknowledged container ID
+ok 295 - the owned fixture lifecycle mutates only its acknowledged container ID
+  ---
+  duration_ms: 2.99525
+  type: 'test'
+  ...
+# Subtest: TCP endpoint is rejected before any Docker call
+ok 296 - TCP endpoint is rejected before any Docker call
+  ---
+  duration_ms: 0.1215
+  type: 'test'
+  ...
+# Subtest: SSH endpoint is rejected before any Docker call
+ok 297 - SSH endpoint is rejected before any Docker call
+  ---
+  duration_ms: 0.051041
+  type: 'test'
+  ...
+# Subtest: unpinned image is rejected before any Docker call
+ok 298 - unpinned image is rejected before any Docker call
+  ---
+  duration_ms: 0.0955
+  type: 'test'
+  ...
+# Subtest: another registry is rejected before any Docker call
+ok 299 - another registry is rejected before any Docker call
+  ---
+  duration_ms: 0.046709
+  type: 'test'
+  ...
+# Subtest: supplied database URI is rejected before any Docker call
+ok 300 - supplied database URI is rejected before any Docker call
+  ---
+  duration_ms: 0.044583
+  type: 'test'
+  ...
+# Subtest: supplied container ID is rejected before any Docker call
+ok 301 - supplied container ID is rejected before any Docker call
+  ---
+  duration_ms: 0.048416
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_HOST cannot select a different Docker resource
+ok 302 - ambient DOCKER_HOST cannot select a different Docker resource
+  ---
+  duration_ms: 0.103042
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONTEXT cannot select a different Docker resource
+ok 303 - ambient DOCKER_CONTEXT cannot select a different Docker resource
+  ---
+  duration_ms: 0.049792
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CONFIG cannot select a different Docker resource
+ok 304 - ambient DOCKER_CONFIG cannot select a different Docker resource
+  ---
+  duration_ms: 0.153458
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_TLS_VERIFY cannot select a different Docker resource
+ok 305 - ambient DOCKER_TLS_VERIFY cannot select a different Docker resource
+  ---
+  duration_ms: 0.053958
+  type: 'test'
+  ...
+# Subtest: ambient DOCKER_CERT_PATH cannot select a different Docker resource
+ok 306 - ambient DOCKER_CERT_PATH cannot select a different Docker resource
+  ---
+  duration_ms: 0.047958
+  type: 'test'
+  ...
+# Subtest: container ID drift prevents start and cleanup
+ok 307 - container ID drift prevents start and cleanup
+  ---
+  duration_ms: 0.368459
+  type: 'test'
+  ...
+# Subtest: run label drift prevents start and cleanup
+ok 308 - run label drift prevents start and cleanup
+  ---
+  duration_ms: 0.26725
+  type: 'test'
+  ...
+# Subtest: image drift prevents start and cleanup
+ok 309 - image drift prevents start and cleanup
+  ---
+  duration_ms: 0.321708
+  type: 'test'
+  ...
+# Subtest: root user drift prevents start and cleanup
+ok 310 - root user drift prevents start and cleanup
+  ---
+  duration_ms: 0.301875
+  type: 'test'
+  ...
+# Subtest: host network drift prevents start and cleanup
+ok 311 - host network drift prevents start and cleanup
+  ---
+  duration_ms: 0.160042
+  type: 'test'
+  ...
+# Subtest: published port drift prevents start and cleanup
+ok 312 - published port drift prevents start and cleanup
+  ---
+  duration_ms: 0.151542
+  type: 'test'
+  ...
+# Subtest: host mount drift prevents start and cleanup
+ok 313 - host mount drift prevents start and cleanup
+  ---
+  duration_ms: 0.139417
+  type: 'test'
+  ...
+# Subtest: persistent volume drift prevents start and cleanup
+ok 314 - persistent volume drift prevents start and cleanup
+  ---
+  duration_ms: 0.288584
+  type: 'test'
+  ...
+# Subtest: writeable root drift prevents start and cleanup
+ok 315 - writeable root drift prevents start and cleanup
+  ---
+  duration_ms: 0.228875
+  type: 'test'
+  ...
+# Subtest: added capability drift prevents start and cleanup
+ok 316 - added capability drift prevents start and cleanup
+  ---
+  duration_ms: 0.16975
+  type: 'test'
+  ...
+# Subtest: host IPC drift prevents start and cleanup
+ok 317 - host IPC drift prevents start and cleanup
+  ---
+  duration_ms: 0.139667
+  type: 'test'
+  ...
+# Subtest: host device drift prevents start and cleanup
+ok 318 - host device drift prevents start and cleanup
+  ---
+  duration_ms: 0.139625
+  type: 'test'
+  ...
+# Subtest: missing memory limit drift prevents start and cleanup
+ok 319 - missing memory limit drift prevents start and cleanup
+  ---
+  duration_ms: 0.127291
+  type: 'test'
+  ...
+# Subtest: changed tmpfs drift prevents start and cleanup
+ok 320 - changed tmpfs drift prevents start and cleanup
+  ---
+  duration_ms: 0.125625
+  type: 'test'
+  ...
+# Subtest: daemon changes cannot redirect start or cleanup
+ok 321 - daemon changes cannot redirect start or cleanup
+  ---
+  duration_ms: 0.1755
+  type: 'test'
+  ...
+# Subtest: no external or unknown container is adopted after an unacknowledged create
+ok 322 - no external or unknown container is adopted after an unacknowledged create
+  ---
+  duration_ms: 0.13275
+  type: 'test'
+  ...
+# Subtest: an invalid returned container ID cannot authorize inspection or cleanup
+ok 323 - an invalid returned container ID cannot authorize inspection or cleanup
+  ---
+  duration_ms: 0.110375
+  type: 'test'
+  ...
+# Subtest: database effects require readiness and revalidate ownership after start
+ok 324 - database effects require readiness and revalidate ownership after start
+  ---
+  duration_ms: 0.254416
+  type: 'test'
+  ...
+# Subtest: a caller cannot change the captured image after creation
+ok 325 - a caller cannot change the captured image after creation
+  ---
+  duration_ms: 0.146875
+  type: 'test'
+  ...
+# Subtest: image admission validates the same single snapshot used for creation
+ok 326 - image admission validates the same single snapshot used for creation
+  ---
+  duration_ms: 0.159584
+  type: 'test'
+  ...
+# Subtest: an initially unpinned getter is rejected before Docker is invoked
+ok 327 - an initially unpinned getter is rejected before Docker is invoked
+  ---
+  duration_ms: 0.097667
+  type: 'test'
+  ...
+# Subtest: a second start cannot issue another start command
+ok 328 - a second start cannot issue another start command
+  ---
+  duration_ms: 5.626208
+  type: 'test'
+  ...
+# Subtest: missing commit cannot produce passing transaction evidence
+ok 329 - missing commit cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.394333
+  type: 'test'
+  ...
+# Subtest: failed rollback cannot produce passing transaction evidence
+ok 330 - failed rollback cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.164083
+  type: 'test'
+  ...
+# Subtest: wrong namespace cannot produce passing transaction evidence
+ok 331 - wrong namespace cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.139917
+  type: 'test'
+  ...
+# Subtest: wrong replica set cannot produce passing transaction evidence
+ok 332 - wrong replica set cannot produce passing transaction evidence
+  ---
+  duration_ms: 0.131625
+  type: 'test'
+  ...
+# Subtest: a runner-created workspace admits the exact clean unit-test launch
+ok 333 - a runner-created workspace admits the exact clean unit-test launch
+  ---
+  duration_ms: 7.222708
+  type: 'test'
+  ...
+# Subtest: a copied marker and matching directory do not confer ownership
+ok 334 - a copied marker and matching directory do not confer ownership
+  ---
+  duration_ms: 4.522
+  type: 'test'
+  ...
+# Subtest: unknown resource identity cannot authorize a launch
+ok 335 - unknown resource identity cannot authorize a launch
+  ---
+  duration_ms: 0.133916
+  type: 'test'
+  ...
+# Subtest: inherited NODE_OPTIONS is refused before imports or connectors
+ok 336 - inherited NODE_OPTIONS is refused before imports or connectors
+  ---
+  duration_ms: 4.192875
+  type: 'test'
+  ...
+# Subtest: inherited NODE_PATH is refused before imports or connectors
+ok 337 - inherited NODE_PATH is refused before imports or connectors
+  ---
+  duration_ms: 7.340417
+  type: 'test'
+  ...
+# Subtest: inherited MONGODB_URL is refused before imports or connectors
+ok 338 - inherited MONGODB_URL is refused before imports or connectors
+  ---
+  duration_ms: 2.700833
+  type: 'test'
+  ...
+# Subtest: inherited PHARMACY_TEST_MONGODB_URI is refused before imports or connectors
+ok 339 - inherited PHARMACY_TEST_MONGODB_URI is refused before imports or connectors
+  ---
+  duration_ms: 2.232416
+  type: 'test'
+  ...
+# Subtest: inherited PAYMENT_SECRET is refused before imports or connectors
+ok 340 - inherited PAYMENT_SECRET is refused before imports or connectors
+  ---
+  duration_ms: 5.600917
+  type: 'test'
+  ...
+# Subtest: a database named latest is not admitted as a disposable resource
+ok 341 - a database named latest is not admitted as a disposable resource
+  ---
+  duration_ms: 6.031375
+  type: 'test'
+  ...
+# Subtest: incorrect working directory or test identity is refused
+ok 342 - incorrect working directory or test identity is refused
+  ---
+  duration_ms: 3.80625
+  type: 'test'
+  ...
+# Subtest: missing environment fields are refused
+ok 343 - missing environment fields are refused
+  ---
+  duration_ms: 2.397291
+  type: 'test'
+  ...
+# Subtest: an operational .env file is refused, including nested files
+ok 344 - an operational .env file is refused, including nested files
+  ---
+  duration_ms: 6.557667
+  type: 'test'
+  ...
+# Subtest: unexpected staged application files are refused
+ok 345 - unexpected staged application files are refused
+  ---
+  duration_ms: 3.15075
+  type: 'test'
+  ...
+# Subtest: the test child cannot create symlinks to escape its filesystem permissions
+ok 346 - the test child cannot create symlinks to escape its filesystem permissions
+  ---
+  duration_ms: 1.918958
+  type: 'test'
+  ...
+# Subtest: changed ownership refuses both execution and cleanup
+ok 347 - changed ownership refuses both execution and cleanup
+  ---
+  duration_ms: 5.095125
+  type: 'test'
+  ...
+# Subtest: a replacement directory with a copied marker is not the owned resource
+ok 348 - a replacement directory with a copied marker is not the owned resource
+  ---
+  duration_ms: 2.464542
+  type: 'test'
+  ...
+# Subtest: cleanup affects only the owned workspace and is idempotent
+ok 349 - cleanup affects only the owned workspace and is idempotent
+  ---
+  duration_ms: 6.256291
+  type: 'test'
+  ...
+# Subtest: the test child cannot read parent files or spawn another process
+ok 350 - the test child cannot read parent files or spawn another process
+  ---
+  duration_ms: 1.282792
+  type: 'test'
+  ...
+1..350
+# tests 350
+# suites 0
+# pass 350
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3404.805833

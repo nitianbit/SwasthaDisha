@@ -1,0 +1,44 @@
+{
+  "resultSha256": "dfa34ddafc26100da6a82c07a0e48a1010d202e5d8c188cd49831d20a8e112cc",
+  "sourceArea": "/private/tmp/sd-authority-offline-2vzpsrjp",
+  "byteIdenticalRawFiles": {
+    "result.json": {
+      "bytes": 3308,
+      "sha256": "dfa34ddafc26100da6a82c07a0e48a1010d202e5d8c188cd49831d20a8e112cc"
+    },
+    "node22.tap": {
+      "bytes": 68617,
+      "sha256": "b457a39e8956350f84619cd25457759bc533bac9e1f4aaada449fdbcf75db89e"
+    },
+    "node22.stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "node24.tap": {
+      "bytes": 68629,
+      "sha256": "bed96d076ac3e054052eb764c7ca31f342301b14731f6dd83c119c8eb7ef464f"
+    },
+    "node24.stderr.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "sourceAreaPreserved": true,
+  "rootFreshScratchReadbacks": [
+    {
+      "runtime": "node22",
+      "scratch": "/private/tmp/sd-authority-offline-2vzpsrjp/node22-scratch",
+      "freshEmpty": true,
+      "dev": 16777233,
+      "ino": 54552607
+    },
+    {
+      "runtime": "node24",
+      "scratch": "/private/tmp/sd-authority-offline-2vzpsrjp/node24-scratch",
+      "freshEmpty": true,
+      "dev": 16777233,
+      "ino": 54553955
+    }
+  ],
+  "rawEvidence": "Two350casefakeharnessgates, no domain/compiler/bootstrap/app/DB/Docker/provider execution"
+}

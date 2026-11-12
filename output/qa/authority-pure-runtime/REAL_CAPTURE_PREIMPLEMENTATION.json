@@ -1,0 +1,20 @@
+{
+  "specificationSha256": "d5f53b4d53fabf238ed2721f2c9c4ee8749538a3a46a0d758ee3d61a3c4e14a7",
+  "author": "/root/claude_review_5_packet",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/pharmacy_refund_primitives",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    }
+  ],
+  "scope": "Only minimalfixedrealoperatorpreparation usingcurrentrepairedownedcapturepatternandexistingC3. HistoricaldraftNOT_RUNwording mustbereconciledwithactualofflineproofinfuturemanifest; no rerunoldoperators. Fixedargv/tools/engine/cache/caps/firstfailure/earlyexactidentityandexplicitabsencecheck scope accepted.",
+  "nextGate": "Exactoperatorbytes/cleancommit/source+toolmanifest/actualofflineresult thenTWOactualnonauthorsourceplusONE_FIXED_AUTHORITY_PURE_RUN votes before anyrealNode/compiler/container invocation. No execution authorization here."
+}
