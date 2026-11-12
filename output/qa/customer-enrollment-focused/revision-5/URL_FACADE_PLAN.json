@@ -1,0 +1,51 @@
+{
+  "schema": "SD-ENROLLMENT-URL-FACADE-AMENDMENT-PLAN-1",
+  "status": "PLAN_ONLY_TWO_NONAUTHOR_DECISIONS_REQUIRED",
+  "author": "/root/milestone_composition_r9",
+  "baseline": "a97ec6478ff0178c426761476f467f97dd6a6d71",
+  "actualFailure": {
+    "path": "../revision-4/INSTALL_EMIT_FAILURE.json",
+    "sourceCandidate": "8160df169b35463967f9da71abd067e3a460da84",
+    "scope": "All six whole emits/diagnostic-policy gates reached package traversal by mandatory source flow; six complete raw captures persisted. The in-memory66-policy result was not published. Package edge url then failed; no maps/BUILD/82service/runtime result. Retain the consumed receipt and failed workspace; no automatic retry/adoption."
+  },
+  "actualCaller": {
+    "file": "node_modules/@sideway/address/lib/domain.js",
+    "package": "@sideway/address4.1.5, exact existing24-package lock",
+    "sha256": "1f10b307d3b48fe151fa59b4d4551c43023d4f92a800f29dca39b966a22dd34b",
+    "import": "const Url = require('url');",
+    "member": "Url.URL",
+    "operation": "internals.punycode(domain) constructs new internals.URL(`http://${domain}`).host for local IDNA/domain parsing. Source does not request a socket, fetch, file, child or provider operation. URL is needed even for ASCII email-domain paths."
+  },
+  "capabilityAmendment": {
+    "ownedSourceFilesAfterPlanApproval": ["test/customer-enrollment-runtime/ports-plan.json", "test/customer-enrollment-runtime/scenario.mjs"],
+    "portsPlan": "Append only url to the literal builtinCandidates list. Keep all82vectors/OLD+NC1-NC4/source pins/roots/options/cuts unchanged. No computed/default builtin allowlist.",
+    "scenario": "Add exactly import { URL as NativeURL } from 'node:url'; create Object.freeze({ URL: NativeURL }); bind only that frozen facade to node:url in the existing allowedBuiltins table. The unchanged closed require map then supplies it to the literal url edge. Never expose the full node:url namespace or ambient require/global URL fallback.",
+    "notAdmitted": "No parse/format/resolve/fileURLToPath/pathToFileURL/urlToHttpOptions/URLSearchParams module exports, http/https/net/tls/fs/dns/module/child capability, package/type/root/start edit, new URI or permission. NativeURL retains its intrinsic constructor/class behavior; the facade is not a copied full module. Existing VM-not-hostile-code and OS network-isolation boundaries remain honest."
+  },
+  "inertClosureAudit": {
+    "path": "RUNTIME_IMPORT_AUDIT.json",
+    "sha256": "49707ef0c2a240d08229caa6d8b6d2ffc66be5999d66c250238316d740f3b15e",
+    "scope": "Read-only lexical recursive import walk and direct inspection of every flagged candidate in the actual retained public package tree. No package/JS/Node/compiler execution or workspace adoption. This is not authoritative TypeScript-AST or runtime acceptance.",
+    "roots": ["joi", "jsonwebtoken", "reflect-metadata", "typedi"],
+    "expectedSourceFiles": 142,
+    "expectedUniqueEdges": 394,
+    "sourceBytes": 630737,
+    "maximumFileBytes": 64202,
+    "allObservedBuiltinNames": ["buffer", "crypto", "stream", "url", "util"],
+    "newRequiredBuiltin": "url only; its sole observed caller is the source above. Other names are already admitted. No require.resolve/cache/extensions/main candidates.",
+    "candidateDisposition": "The one lexical import(services) candidate is TypeDI Container's static method declaration at container.class.js line73, not a dynamic import expression. No unresolved dynamic/member import candidate remained after source inspection. Mandatory real compiler AST/dynamic-edge/map audit remains unchanged and must stop on disagreement."
+  },
+  "futureProof": [
+    "Within the existing scenario, before package evaluation, use ordinary trusted fixture assertions to require the facade frozen, its only own key URL and identity equal to NativeURL. Local parsing of http://münich.example must yield host xn--mnich-kva.example. No request/listener is created by this check.",
+    "Assert the other node:url exports absent, a parse-member call cannot succeed, mutation via Reflect.set cannot add a capability, and existing denied native keys such as node:fs/node:net/node:http/node:https stay absent. Use the existing closed-loader rejection path/table; do not add a new generic loader/test platform or permissive fallback.",
+    "These facade assertions are fixture invariants, not extra domain cases/controls or a changed public result schema. Existing actual-Joi email positives/invalid-email denials and restored phases must still pass through the genuine dependency URL path in the separately admitted Node22 run. Source-flow completion is evidence only after that real run; no runtime result is claimed now.",
+    "The separately approved install/emit must still produce all six complete raw captures, exact-tuple policy proof, six whole-source phases and complete emitted/runtime maps. The expected142-file lexical snapshot is review context, not permission to filter a failed actual graph or fabricate completion."
+  ],
+  "nextGates": [
+    "Two actual independent nonauthor decisions bind this exact capability plan before either source edit; author cannot approve.",
+    "After approval, freeze only the two source changes and own candidate/proposal evidence; fresh source and exact LOCKED_INSTALL_AND_EMIT_ONLY decisions bind the new commit/hashes, same8595byte24-package lock SHAb9cef1cc8d5a284f5526704c77e05a32d588680d3b01a2efccaec28e4026ecb6 and fixed tools/environment/bounds.",
+    "Root owns actual failure disposition, new one-use receipt/nonce and any separately approved fresh-owned-workspace invocation. Preserve all old outputs and failures; no old-workspace reuse, implicit install/compiler/package execution or automatic retry by this author.",
+    "Review actual full maps/diagnostics/policy evidence before later service-run admission. Any further unknown builtin/dynamic edge fails for exact review; do not broaden permissions automatically.82nominal/82restored cases and OLD+four actual-source controls, application/owner/C2/C3/release gates remain unchanged."
+  ],
+  "authorExecution": "NONE: source/data/hash reads only. No Node/npm/compiler/application/DB/Docker/provider/model command or receipt/workspace-lifecycle operation. Original staged six, handover, old records/R10 and other workers preserved."
+}
