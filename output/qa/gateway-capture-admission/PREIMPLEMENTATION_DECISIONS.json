@@ -1,0 +1,21 @@
+{
+  "contract_sha256": "e6956ec56ec5ce07d1208cf9cd0310a6fa4600212f2e02973828289c19ab633e",
+  "source_baseline_sha256": "6d56575a3dee2d08d1af5c6cc409e170b8ed5c193ccbc090f336f313b5e93b16",
+  "author": "/root/policy_standards",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/pharmacy_refund_primitives",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    }
+  ],
+  "scope": "Exact one unique captured-only predicate replacement; all11 pins/call ordering and explicit residual gaps inspected. No zero-I/O/all-paid-proof claim; cached/internal/manual/concurrent legacy paths unchanged. New fetched authorized denies before ordinary paid/fulfillment from that attempt. Data-only verification; no application/runtime/provider admission. Two actual source reviews before integration.",
+  "rootAction": "AUTHORIZE_EXACT_SOURCE_REPLACEMENT_ON_ISOLATED_BRANCH_ONLY"
+}
