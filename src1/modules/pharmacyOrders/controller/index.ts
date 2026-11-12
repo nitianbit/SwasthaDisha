@@ -23,6 +23,18 @@ export class PharmacyOrderController {
     res.status(201).json({ success: true, message: 'Order created', data: result });
   };
 
+  requestCustomerRecovery = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const data = await this.service.requestCustomerRecovery(req.user, req.params.id);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(200).json({ success: true, data });
+  };
+
+  getCustomerRecovery = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const data = await this.service.getCustomerRecovery(req.user, req.params.id);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(200).json({ success: true, data });
+  };
+
   getById = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const result = await this.service.getById(
       req.params.id,

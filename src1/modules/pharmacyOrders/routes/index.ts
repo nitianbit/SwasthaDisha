@@ -33,6 +33,16 @@ pharmacyOrderRouter.get(
   catchAsync(controller.getAll)
 );
 
+pharmacyOrderRouter.post(
+  '/:id/recovery-request',
+  catchAsync(controller.requestCustomerRecovery)
+);
+
+pharmacyOrderRouter.get(
+  '/:id/recovery-request',
+  catchAsync(controller.getCustomerRecovery)
+);
+
 pharmacyOrderRouter.get(
   '/:id',
   validate(idParamSchema, 'params'),

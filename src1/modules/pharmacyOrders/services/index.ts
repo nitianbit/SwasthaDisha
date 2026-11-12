@@ -10,6 +10,7 @@ import { PharmacyOrderSideEffectService } from '@/modules/pharmacyOrders/service
 import { MedicineRepository } from '@/modules/pharmacyMedicines/repository';
 import {
   IPharmacyOrder,
+  PharmacyRecoveryReceipt,
   IOrderItem,
   CreateOrderRequest,
   MarkOrderPaidRequest,
@@ -766,6 +767,57 @@ export class PharmacyOrderService {
       order,
       paymentRequired: false,
     };
+  }
+
+  private async customerRecovery(actor: unknown, id: unknown, create: boolean): Promise<PharmacyRecoveryReceipt | null> {
+    if (!actor || typeof actor !== 'object' || Array.isArray(actor)) {
+      throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Authentication is required' });
+    }
+    const principal = actor as Record<string, unknown>;
+    if (principal.userType !== 'user') {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Individual customer access is required' });
+    }
+    const customerId = principal._id;
+    if (typeof customerId !== 'string' || !/^[0-9a-f]{24}$/.test(customerId)) {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
+    }
+    if (typeof id !== 'string' || !/^[0-9a-f]{24}$/.test(id)) {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid pharmacy order ID' });
+    }
+    const session = await startSession();
+    const attempt: { candidate: PharmacyRecoveryReceipt | null | undefined; completed: boolean; transaction: unknown } = {
+      candidate: undefined, completed: false, transaction: undefined,
+    };
+    try {
+      // Driver4 withTransaction returns the commit response, never this callback's DTO.
+      await session.withTransaction(async () => {
+        attempt.candidate = undefined;
+        attempt.completed = false;
+        attempt.transaction = undefined;
+        attempt.candidate = create
+          ? await this.orderRepo.requestCustomerRecovery(id, customerId, session)
+          : await this.orderRepo.getCustomerRecovery(id, customerId, session);
+        attempt.transaction = (session as unknown as { transaction?: unknown }).transaction;
+        attempt.completed = true;
+      }, { readConcern: { level: 'snapshot' } });
+      const transaction = (session as unknown as { transaction?: { state?: unknown } }).transaction;
+      if (!attempt.completed || attempt.candidate === undefined || transaction !== attempt.transaction || transaction?.state !== 'TRANSACTION_COMMITTED') {
+        throw new AppError({ status: 503, code: 'PHARMACY_RECOVERY_UNAVAILABLE', message: 'Pharmacy recovery is unavailable' });
+      }
+      return attempt.candidate;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  async requestCustomerRecovery(actor: unknown, id: unknown): Promise<PharmacyRecoveryReceipt> {
+    const receipt = await this.customerRecovery(actor, id, true);
+    if (!receipt) throw new AppError({ status: 503, code: 'PHARMACY_RECOVERY_UNAVAILABLE', message: 'Pharmacy recovery is unavailable' });
+    return receipt;
+  }
+
+  async getCustomerRecovery(actor: unknown, id: unknown): Promise<PharmacyRecoveryReceipt | null> {
+    return this.customerRecovery(actor, id, false);
   }
 
   async getById(id: string, requesterId: string, requesterRole: string): Promise<IPharmacyOrder> {

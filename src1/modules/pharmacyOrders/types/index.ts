@@ -74,6 +74,48 @@ export interface IOrderItem {
   subscriptionReminderChannel?: 'sms' | 'push' | 'both' | 'none';
 }
 
+export const PHARMACY_RECOVERY_ORDER_LABELS = Object.freeze([
+  'placed', 'accepted', 'packed', 'ready_for_pickup', 'out_for_delivery',
+  'completed', 'abandoned', 'cancelled', 'rejected', 'unknown',
+] as const);
+export const PHARMACY_RECOVERY_PAYMENT_LABELS = Object.freeze([
+  'pending', 'authorized', 'paid', 'failed', 'refunded', 'partially_paid', 'unknown',
+] as const);
+
+export interface PharmacyRecoveryObservation {
+  orderStatusLabel: OrderStatus | 'unknown';
+  paymentStatusLabel: PaymentStatus | 'unknown';
+  paymentRecordId: string | null;
+  paymentRecordReferenceState: 'recorded' | 'missing' | 'malformed';
+}
+
+export interface PharmacyRecoveryRequest {
+  schemaVersion: 1;
+  operationKind: 'customer_recovery_request';
+  operationId: string;
+  requestingCustomerId: string;
+  orderId: string;
+  status: 'reconciliation_required';
+  requestedAt: Date;
+  observation: PharmacyRecoveryObservation;
+  amountMinor: null;
+  currency: null;
+  instrument: 'unknown';
+  destinationPolicy: 'original_instrument';
+  payloadSha256: string;
+  observationSha256: string;
+}
+
+export interface PharmacyRecoveryReceipt {
+  operationId: string;
+  status: 'reconciliation_required';
+  requestedAt: string;
+  amountMinor: null;
+  currency: null;
+  instrument: 'unknown';
+  destinationPolicy: 'original_instrument';
+}
+
 export interface IPharmacyOrder {
   _id?: string;
   orderNumber?: string;
@@ -102,6 +144,7 @@ export interface IPharmacyOrder {
   paymentTransactionId?: string;
   paidAt?: Date;
   sideEffects?: IPharmacyOrderSideEffects;
+  recoveryRequest?: PharmacyRecoveryRequest;
   // delivery
   deliveryMode?: 'pickup' | 'delivery';
   deliveryAddress?: string;

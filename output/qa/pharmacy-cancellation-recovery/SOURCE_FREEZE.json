@@ -1,0 +1,44 @@
+{
+  "schema": "SD-PHARMACY-CUSTOMER-RECOVERY-FREEZE-1",
+  "baseline": "523b67ebea6eb5cb8feebed44de292ae793f5be3",
+  "author": "/root/pharmacy_refund_primitives",
+  "files": {
+    "documentation/planning/implementation/PHARMACY_CANCELLATION_RECOVERY_CONTRACT_DRAFT.md": "e43bb8170b644cdc93ceeae9d8f66e8abb739f1cb35079e1076147aa88b4e910",
+    "output/qa/pharmacy-cancellation-recovery/PREIMPLEMENTATION_DECISIONS.json": "e258b991da1e5131b7df60b49fbcc62fe1d529a37e63bb9c2384eb9a40144fa4",
+    "src1/modules/pharmacyOrders/controller/index.ts": "4b597ec56652d8d2972cd3c0fb0756772f6c2322bdf0c69b608b302bdc33c14d",
+    "src1/modules/pharmacyOrders/model/index.ts": "f054a220020c66a83c49ea8658bd0d002cb3a9fd28c9b7771b0584c53471ac14",
+    "src1/modules/pharmacyOrders/repository/index.ts": "e22c4957a6ffecc82bd6a81a46f7c7c1de358bfb674bc4355b55fbf840fb52e6",
+    "src1/modules/pharmacyOrders/routes/index.ts": "7ea281b035ecffa82efdc6d530d3a7f06ddb8e8b0772e6f3a1cc1f5d3f18739a",
+    "src1/modules/pharmacyOrders/services/index.ts": "66265f3912d8ebb76aa6c565f3dc9dc0389a4e9fad1bed38b17be0d3578df8bc",
+    "src1/modules/pharmacyOrders/types/index.ts": "f453c8665c6c646b3b17c90dfa0be50cffb0775d74b9a95b70c92be51623d5d2",
+    "output/qa/pharmacy-cancellation-recovery/SERIALIZATION_VECTORS.json": "051629a8068059c9f33cf64572936e2513c04b028b2b702e6a304eb62b13eefe",
+    "output/qa/pharmacy-cancellation-recovery/candidate.diff": "d0d27b3e510aa760425842e1ef523b7670126b2e6835f9ce43f41102688e3c2a",
+    "output/qa/pharmacy-cancellation-recovery/SOURCE_VERIFICATION.json": "adc8a48a3ea2a6a08f7c57291fd796fbe1af46805670c87f91765e74fbe4fa64"
+  },
+  "unchangedSelectedInputs": {
+    "documentation/planning/implementation/PHARMACY_DELEGATED_POLICY_DECISIONS.md": "3882d1dc976342376ed6729fc877fa80e15b79f225a37b10933c1d3681333f6f",
+    "documentation/planning/implementation/PHARMACY_AUTHORITY_RECOVERY_BASELINE.md": "fffc6ccc2e463febc34d1802addf212f96e856993cff961ffb8ad6606e9ed2d7",
+    "documentation/planning/implementation/PRESCRIPTION_CHECKOUT_ENABLEMENT_CONTRACT.md": "e3deb08a9002e4b11bf0d168dbce369312727841e5c96fa5c3a25503ea1781a7",
+    "src1/modules/payment/services/index.ts": "9c1086e3aa9239855ed3d73a02f941015d869bdb36a689a5294dea367ee7457d",
+    "src1/modules/payment/types/index.ts": "6f150e89fe0e7f6fa80188c88621cdfc9254f33b6edcded9c5a70f7c577beff8",
+    "src1/modules/payment/model/index.ts": "0824a3efc2f3056ca4817e16359881769bf4728563b2eb2bed0fb04dbc3ec1fb",
+    "src1/modules/pharmacyInventory/services/index.ts": "98fa27296ef0fdd1066dff2d548de7d3db025504e724432770fe2e49d2907894",
+    "src1/modules/pharmacyInventory/repository/index.ts": "cee64fd2464b5d5ac6081531a63f9a176e5fc481f33c3a4d6def99a26d97b261",
+    "src1/modules/wallet/model/index.ts": "18757f38145a2ebab378cd1d00c423170a00fd3b136b1229105244fb1a540538",
+    "src1/modules/wallet/repository/index.ts": "4db66107afa4ecb7db99a91c3d9216488a514145187e56bc0d589677e344b726",
+    "src1/modules/organizations/types/index.ts": "e873884e69db46d7de70d3120a5ac30809fe8dc526d118a4640463233c9633ff",
+    "src1/modules/organizations/repository/index.ts": "14532bf2d667e37d4ded33bb3767f744cd524bf385d88341d31f7954ece61d3b",
+    "src1/modules/common/repository/BaseRepository.ts": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+    "src1/modules/middleware/auth.ts": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+    "src1/routes/index.ts": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056"
+  },
+  "productionDelta": [
+    "src1/modules/pharmacyOrders/controller/index.ts",
+    "src1/modules/pharmacyOrders/model/index.ts",
+    "src1/modules/pharmacyOrders/repository/index.ts",
+    "src1/modules/pharmacyOrders/routes/index.ts",
+    "src1/modules/pharmacyOrders/services/index.ts",
+    "src1/modules/pharmacyOrders/types/index.ts"
+  ],
+  "scope": "Source-only candidate; two actual nonauthor source reviews required before integration. Runtime/type/HTTP/driver/DB/provider/financial/stock effects NOT_RUN."
+}
