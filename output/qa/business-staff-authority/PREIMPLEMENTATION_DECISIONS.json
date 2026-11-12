@@ -1,0 +1,26 @@
+{
+  "contract_sha256": "69dba46528295f55e184b95e1fb6ea451ee2371254d76eb7ac9fd6573068f9fd",
+  "author": "/root/policy_standards",
+  "baseline": "df8fd4ef00cb9d45d081ce760d15cef84a880c4e",
+  "decisions": [
+    {
+      "reviewer": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    }
+  ],
+  "mandatory_conditions": [
+    "Explicit autoIndex:false and autoCreate:false on every new top-level model schema; declarations are not index installation.",
+    "Framework-free types/ports/rules; actual ClientSession identity, active snapshot transaction and Mongo reads belong only to adapter.",
+    "Exact canonical serialization/fingerprint vectors, restrictive predicates/projections, ambiguity rejection and immutable scope identity are implementation review requirements.",
+    "Readiness defaults denied; no clinical/data/money/stock route activation and no durable mutation grant. Future sensitive commands require shared revocation/disable fences."
+  ],
+  "scope": "Actual two independent nonauthor internal Codex contract decisions. Five new organizations files only, no runtime/dependency/index/provisioning or live effects. Pure/port behavior and actual replica-set constraints NOT_RUN; C2/C3 and release gates retained. F1 HIGH/open."
+}
