@@ -1,0 +1,35 @@
+{
+  "schema": "SD-DOCKER-DIRECTORY-IDENTITY-REGRESSION-1",
+  "oldRecipeSha256": "9207133a18b2dd122f1f9c6e324a89fed03afdd7a494f7b2ae150c6e787405c5",
+  "newRecipeSha256": "16fd3ad90c73203621a8907f1f4913f96f0cca0df495eaec241c3f23ac5eabc5",
+  "oldInlineSha256": "616a503ca737ed5e75a7e06fb85cd56b00228464f3547de1c8bf5d6762f11a03",
+  "newInlineSha256": "eb7d9f36872c6c0a5524400087e40802018f61cc88b2b31e5799e3c8aeff3a23",
+  "executedFunctionsOnly": [
+    "identity",
+    "owned"
+  ],
+  "caseIds": [
+    "old-parent-link-count-changes-after-owned-subdirectories",
+    "old-owned-guard-rejects-only-owned-directory-creation",
+    "new-parent-identity-stable-through-owned-subdirectories",
+    "new-owned-guard-admits-owned-directory-creation",
+    "directory-marker-distinct-regular-link-count-retained",
+    "new-owned-guard-rejects-regular-hard-link-drift",
+    "restored-owned-regular-link-count-admits",
+    "new-owned-guard-rejects-directory-replacement"
+  ],
+  "passed": 8,
+  "required": 8,
+  "unexpectedFailure": null,
+  "cleanupErrors": [],
+  "ownedFixture": "/private/tmp/sd-docker-identity-only-0zt2z63b",
+  "ownedFixtureAbsent": true,
+  "remainingOwnedEntries": 0,
+  "deniedNativeAttempts": [],
+  "DockerQueries": 0,
+  "subprocesses": 0,
+  "NodeCalls": 0,
+  "appImports": 0,
+  "networkCalls": 0,
+  "originalFailedAreaTouched": false
+}

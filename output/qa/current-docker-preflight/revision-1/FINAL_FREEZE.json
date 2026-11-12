@@ -1,0 +1,21 @@
+{
+  "schema": "SD-CURRENT-DOCKER-IDENTITY-FINAL-FREEZE-1",
+  "filesRelativeToFocus": {
+    "output/qa/current-docker-preflight/failure-1/recipe.md.txt": "9207133a18b2dd122f1f9c6e324a89fed03afdd7a494f7b2ae150c6e787405c5",
+    "output/qa/current-docker-preflight/failure-1/README.md": "cc4456dfbf85e50e9b4ec13943cc175e66b493a3906522b4444fb915333afe83",
+    "output/qa/current-docker-preflight/failure-1/inline.py.txt": "616a503ca737ed5e75a7e06fb85cd56b00228464f3547de1c8bf5d6762f11a03",
+    "output/qa/current-docker-preflight/failure-1/ROOT_REPORTED_FAILURE.json": "c2af9876f67034f9586596b18278fed68e217c3f592c6719c5ee64d1543b77de",
+    "output/qa/current-docker-preflight/revision-1/identity-regression.py.txt": "724b3b1dfba7a8b1dd711b0e841df0e22e86429766cc20383bd8b6f6fc5f1520",
+    "output/qa/current-docker-preflight/revision-1/SOURCE_CHANGE.json": "752f4db83555c6b1c70c8065f2d6d86cc3087954dfef958e03d1c25710b9291c",
+    "output/qa/current-docker-preflight/revision-1/README.md": "abafb71a00a300d1809d23025b8ae24b0a912bd1be38d8b215432781e9cdd0e5",
+    "output/qa/current-docker-preflight/revision-1/identity-regression.json": "010778cdc0cc4b8e954906f789e3b7d8b8a4bb6de7bac39f552cc79fb87c141f",
+    "documentation/planning/implementation/CURRENT_DOCKER_PREFLIGHT_RECIPE.md": "4cee25450e4ce174084e6f70722cf51517525914ba98e60755e369ee53e3e57f"
+  },
+  "recipeSha256": "4cee25450e4ce174084e6f70722cf51517525914ba98e60755e369ee53e3e57f",
+  "inlineSha256": "eb7d9f36872c6c0a5524400087e40802018f61cc88b2b31e5799e3c8aeff3a23",
+  "testResultSha256": "010778cdc0cc4b8e954906f789e3b7d8b8a4bb6de7bac39f552cc79fb87c141f",
+  "freshReviews": "PENDING_TWO_ACTUAL_NONAUTHOR_FAILURE_SOURCE_EXACT_INVOCATION_DECISIONS",
+  "writesStopped": true,
+  "anyDockerRetryAuthorized": false,
+  "daemonAvailability": "UNKNOWN"
+}

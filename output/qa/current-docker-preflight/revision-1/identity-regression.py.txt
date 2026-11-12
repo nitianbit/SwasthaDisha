@@ -1,0 +1,86 @@
+from pathlib import Path
+import ast,hashlib,json,os,stat,sys,tempfile
+R=Path('/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab');Q=R/'output/qa/current-docker-preflight';V=Q/'revision-1';P=R/'documentation/planning/implementation/CURRENT_DOCKER_PREFLIGHT_RECIPE.md'
+sha=lambda b:hashlib.sha256(b).hexdigest()
+def need(ok):
+ if not ok:raise RuntimeError('FIXED_PREFLIGHT_REJECTED')
+need(sys.flags.isolated and sys.flags.no_site and sys.dont_write_bytecode)
+need(sha(Path('/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14').read_bytes())=='87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634')
+events=[]
+def audit(event,args):
+ if event in {'subprocess.Popen','os.system','os.exec','os.posix_spawn','os.fork','os.kill','socket.__new__','socket.connect'}:
+  events.append(event);raise AssertionError('NATIVE_EFFECT_DENIED')
+sys.addaudithook(audit)
+oldrecipe=(Q/'failure-1/recipe.md.txt').read_bytes();newrecipe=P.read_bytes()
+need(sha(oldrecipe)=='9207133a18b2dd122f1f9c6e324a89fed03afdd7a494f7b2ae150c6e787405c5')
+need(sha(newrecipe)=='16fd3ad90c73203621a8907f1f4913f96f0cca0df495eaec241c3f23ac5eabc5')
+def extract(data):return data.decode().split("<<'PY'\n",1)[1].split('\nPY\n```',1)[0]
+oldcode,newcode=extract(oldrecipe),extract(newrecipe)
+need(sha(oldcode.encode())=='616a503ca737ed5e75a7e06fb85cd56b00228464f3547de1c8bf5d6762f11a03')
+need(sha(newcode.encode())=='eb7d9f36872c6c0a5524400087e40802018f61cc88b2b31e5799e3c8aeff3a23')
+def functions(code):
+ tree=ast.parse(code);parts=[n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name in {'identity','owned'}]
+ need(len(parts)==2);namespace={'stat':stat,'need':need}
+ exec(compile(ast.Module(body=parts,type_ignores=[]),'exact-identity-owned-only','exec'),namespace)
+ return namespace
+old,new=functions(oldcode),functions(newcode);case_ids=[];failure=None;cleanup_errors=[];records={};root=None;held_fd=None
+def check(name,ok):
+ if not ok:raise AssertionError(name)
+ case_ids.append(name)
+def rejects(name,action):
+ try:action()
+ except RuntimeError:case_ids.append(name)
+ else:raise AssertionError(name)
+def snapshot(p):
+ s=p.lstat();return (s.st_dev,s.st_ino,s.st_uid,stat.S_IMODE(s.st_mode),stat.S_IFMT(s.st_mode))
+def record(p):records[p]=snapshot(p)
+def unlink_owned(p):
+ need(snapshot(root)==records[root] and snapshot(p)==records[p])
+ s=p.lstat();known=sum(1 for value in records.values() if value[:2]==records[p][:2] and value[4]==stat.S_IFREG)
+ need(stat.S_ISREG(s.st_mode) and s.st_nlink==known)
+ p.unlink();del records[p]
+try:
+ root=Path(tempfile.mkdtemp(prefix='sd-docker-identity-only-',dir='/private/tmp'));root.chmod(0o700);record(root)
+ held_fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW)
+ old_parent=old['identity'](root);new_parent=new['identity'](root)
+ old['held']={root:old_parent};new['held']={root:new_parent}
+ for name in ['docker','home','tmp']:
+  p=root/name;p.mkdir(mode=0o700);record(p);old['held'][p]=old['identity'](p);new['held'][p]=new['identity'](p)
+ config=root/'docker/config.json'
+ with config.open('xb') as stream:os.fchmod(stream.fileno(),0o600);stream.write(b'{"auths":{}}\n')
+ record(config);old['config']=new['config']=config
+ old['held'][config]=old['identity'](config);new['held'][config]=new['identity'](config)
+ check('old-parent-link-count-changes-after-owned-subdirectories',old['identity'](root)!=old_parent)
+ rejects('old-owned-guard-rejects-only-owned-directory-creation',old['owned'])
+ check('new-parent-identity-stable-through-owned-subdirectories',new['identity'](root)==new_parent)
+ new['owned']();check('new-owned-guard-admits-owned-directory-creation',True)
+ regular=root/'regular'
+ with regular.open('xb') as stream:os.fchmod(stream.fileno(),0o600);stream.write(b'fixture')
+ record(regular);new['held'][regular]=new['identity'](regular)
+ check('directory-marker-distinct-regular-link-count-retained',new['identity'](root)[-1]=='directory' and new['identity'](regular)[-1]==1)
+ alias=root/'regular-link';os.link(regular,alias);record(alias)
+ rejects('new-owned-guard-rejects-regular-hard-link-drift',new['owned'])
+ unlink_owned(alias);new['owned']();check('restored-owned-regular-link-count-admits',True)
+ guarded=root/'guarded';guarded.mkdir(mode=0o700);record(guarded);new['held'][guarded]=new['identity'](guarded)
+ retained=root/'guarded-retained';guarded.rename(retained);records[retained]=records.pop(guarded)
+ guarded.mkdir(mode=0o700);record(guarded)
+ rejects('new-owned-guard-rejects-directory-replacement',new['owned'])
+except BaseException as error:
+ failure={'type':type(error).__name__,'message':str(error)}
+finally:
+ if root is not None:
+  try:
+   need(snapshot(root)==records[root]);held=os.fstat(held_fd);need((held.st_dev,held.st_ino)==records[root][:2])
+   for p in [p for p,v in records.copy().items() if v[4]==stat.S_IFREG]:unlink_owned(p)
+   for p in sorted([p for p in records if p!=root],key=lambda p:len(p.parts),reverse=True):
+    need(snapshot(p)==records[p] and records[p][4]==stat.S_IFDIR and not list(p.iterdir()));p.rmdir();del records[p]
+   need(snapshot(root)==records[root] and not list(root.iterdir()));root.rmdir();del records[root]
+  except BaseException as error:cleanup_errors.append({'type':type(error).__name__,'message':str(error)})
+ if held_fd is not None:os.close(held_fd)
+report={'schema':'SD-DOCKER-DIRECTORY-IDENTITY-REGRESSION-1','oldRecipeSha256':sha(oldrecipe),'newRecipeSha256':sha(newrecipe),'oldInlineSha256':sha(oldcode.encode()),'newInlineSha256':sha(newcode.encode()),'executedFunctionsOnly':['identity','owned'],'caseIds':case_ids,'passed':len(case_ids),'required':8,'unexpectedFailure':failure,'cleanupErrors':cleanup_errors,'ownedFixture':str(root) if root else None,'ownedFixtureAbsent':root is not None and not root.exists(),'remainingOwnedEntries':len(records),'deniedNativeAttempts':events,'DockerQueries':0,'subprocesses':0,'NodeCalls':0,'appImports':0,'networkCalls':0,'originalFailedAreaTouched':False}
+for name,data in [('identity-regression.json',(json.dumps(report,indent=2)+'\n').encode()),('identity-regression.py.txt',Path(__file__).read_bytes())]:
+ p=V/name
+ with p.open('xb') as stream:stream.write(data)
+ p.chmod(0o600)
+print(json.dumps(report))
+sys.exit(0 if failure is None and not cleanup_errors and len(case_ids)==8 and report['ownedFixtureAbsent'] and not records and not events else 1)

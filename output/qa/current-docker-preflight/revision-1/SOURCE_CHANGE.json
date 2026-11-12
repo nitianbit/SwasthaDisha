@@ -1,0 +1,17 @@
+{
+  "schema": "SD-DOCKER-DIRECTORY-IDENTITY-AMENDMENT-1",
+  "oldRecipeSha256": "9207133a18b2dd122f1f9c6e324a89fed03afdd7a494f7b2ae150c6e787405c5",
+  "oldInlineSha256": "616a503ca737ed5e75a7e06fb85cd56b00228464f3547de1c8bf5d6762f11a03",
+  "newRecipeSha256": "16fd3ad90c73203621a8907f1f4913f96f0cca0df495eaec241c3f23ac5eabc5",
+  "newInlineSha256": "eb7d9f36872c6c0a5524400087e40802018f61cc88b2b31e5799e3c8aeff3a23",
+  "oldExpression": "s=path.lstat(); return (s.st_dev,s.st_ino,s.st_uid,stat.S_IMODE(s.st_mode),s.st_nlink)",
+  "newExpression": "s=path.lstat(); return (s.st_dev,s.st_ino,s.st_uid,stat.S_IMODE(s.st_mode),'directory' if stat.S_ISDIR(s.st_mode) else s.st_nlink)",
+  "exactReverseInlineRecovery": true,
+  "inlineFunctionalChanges": "ONE_DIRECTORY_LINK_COUNT_FIELD_ONLY",
+  "rootAdmission": "Root task explicitly authorizes this bounded identity repair and pinnedPython -I -S -B temporary-filesystem-only regressions; no Docker retry.",
+  "freshIndependentReviews": "PENDING_TWO_ACTUAL_NONAUTHOR_EXACT_FAILURE_SOURCE_INVOCATION_DECISIONS",
+  "DockerCalls": 0,
+  "testedRecipeSha256": "16fd3ad90c73203621a8907f1f4913f96f0cca0df495eaec241c3f23ac5eabc5",
+  "finalRecipeSha256": "4cee25450e4ce174084e6f70722cf51517525914ba98e60755e369ee53e3e57f",
+  "postTestDocumentationOnlyClarification": "Initial preparation statements explicitly marked historical; inline code unchanged. No repeat required."
+}

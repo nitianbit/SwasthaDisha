@@ -1,0 +1,31 @@
+{
+  "schema": "SD-DOCKER-PREFLIGHT-ROOT-REPORTED-FAILURE-1",
+  "recipeSha256": "9207133a18b2dd122f1f9c6e324a89fed03afdd7a494f7b2ae150c6e787405c5",
+  "inlineSha256": "616a503ca737ed5e75a7e06fb85cd56b00228464f3547de1c8bf5d6762f11a03",
+  "reportingActor": "/root",
+  "evidenceDirectory": "/private/tmp/sd-docker-metadata-8p9__tlp",
+  "status": "METADATA_PREFLIGHT_UNRESOLVED",
+  "exitCode": 1,
+  "commands": [],
+  "failureType": "RuntimeError",
+  "recordingFailureType": "RuntimeError",
+  "RootReportedDockerProcesses": 0,
+  "RootReportedDockerQueries": 0,
+  "sourceCause": "held[area] snapshots directory st_nlink before creating three owned subdirectories; first owned() rejects; final owned() prevents result write.",
+  "independentReadOnlyObservations": {
+    "areaPresent": true,
+    "knownSubdirectories": {
+      "docker": true,
+      "home": true,
+      "tmp": true
+    },
+    "blankConfigPresent": true,
+    "infoStdoutPresent": false,
+    "infoStderrPresent": false,
+    "resultPresent": false
+  },
+  "rawCaptureAvailableToThisWorker": false,
+  "metadataNotRawCapture": true,
+  "failureAreaModifiedOrRemoved": false,
+  "daemonAvailability": "UNKNOWN"
+}

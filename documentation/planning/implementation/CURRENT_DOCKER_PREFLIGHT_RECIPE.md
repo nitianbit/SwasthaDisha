@@ -1,6 +1,6 @@
 # Current local Docker metadata preflight — review candidate
 
-12 November 2026. Author: internal Codex `/root/claude_review_5_packet`. **PREPARATION ONLY. No Docker command has run; current daemon reachability and cache state are unknown.** Root selected the existing Docker C3 boundary for the next focused SDK/application investigation. This recipe permits at most two read-only Docker CLI commands after two actual independent nonauthor exact-recipe decisions. It does not launch a container, pull an image, start Docker Desktop/the daemon, import JavaScript/application/SDK code, inspect unrelated resources or change the target. No new general operator or host network-denial framework is introduced.
+12 November 2026. Author: internal Codex `/root/claude_review_5_packet`. **AMENDED AFTER FIRST PREFLIGHT FAILURE; FRESH REVIEWS REQUIRED. The first attempt stopped before any Docker process/query; current daemon reachability and cache state remain unknown.** Root selected the existing Docker C3 boundary for the next focused SDK/application investigation. This recipe permits at most two read-only Docker CLI commands after two actual independent nonauthor exact-recipe decisions. It does not launch a container, pull an image, start Docker Desktop/the daemon, import JavaScript/application/SDK code, inspect unrelated resources or change the target. No new general operator or host network-denial framework is introduced.
 
 ## Evidence retained and the next boundary
 
@@ -30,7 +30,7 @@ Revalidate these pins immediately before either command. Missing or changed exec
 
 ## Exact prospective invocation — NOT RUN
 
-Root first records two actual independent nonauthor decisions approving **ONE_READ_ONLY_LOCAL_DOCKER_PREFLIGHT**, binding this complete file's SHA-256, fixed inputs, the code below and its limits. Root rechecks that exact recipe hash before invocation and records the exact Python executable hash. A preparation/source approval is not that execution decision. No receipt, attempt directory or Docker process is created by preparing this document. The owner has already authorized bounded local development; no new general start approval or prompt relay is requested.
+Root first records TWO FRESH actual independent nonauthor failure/source/invocation decisions approving **ONE_READ_ONLY_LOCAL_DOCKER_PREFLIGHT** on this amended candidate; the first attempt's decisions are historical and cannot authorize a retry. Those fresh decisions approve, binding this complete file's SHA-256, fixed inputs, the code below and its limits. Root rechecks that exact recipe hash before invocation and records the exact Python executable hash. A preparation/source approval is not that execution decision. No receipt, attempt directory or Docker process is created by preparing this document. The owner has already authorized bounded local development; no new general start approval or prompt relay is requested.
 
 The only prospective command is the following fixed heredoc. It accepts no target/command arguments. The inline Python is part of the reviewed recipe, not a reusable operator. It allocates a new private evidence area, owns an empty HOME/tmp/blank Docker auth config, and runs only `info --format` then `image inspect` for the one digest. `info` emits only ID, server version and OS. Image inspection emits only ID, digests, platform, declared volumes and image environment. No `ps`, container/volume/network/context listing, login, daemon start or launch operation is included.
 
@@ -51,7 +51,7 @@ def need(ok):
     if not ok: raise RuntimeError('FIXED_PREFLIGHT_REJECTED')
 def digest(data): return hashlib.sha256(data).hexdigest()
 def identity(path):
-    s=path.lstat(); return (s.st_dev,s.st_ino,s.st_uid,stat.S_IMODE(s.st_mode),s.st_nlink)
+    s=path.lstat(); return (s.st_dev,s.st_ino,s.st_uid,stat.S_IMODE(s.st_mode),'directory' if stat.S_ISDIR(s.st_mode) else s.st_nlink)
 def pins():
     for path,expected,size in [(PYTHON,'87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634',34640),(DOCKER,'31201b50f14101c2a2bd8a1fdc49055f985d5007d5ba86c177ad2dedfa309b9b',41392016)]:
         s=path.lstat(); need(stat.S_ISREG(s.st_mode) and s.st_nlink==1 and s.st_uid==os.getuid() and stat.S_IMODE(s.st_mode)==0o755 and s.st_size==size)
@@ -114,7 +114,13 @@ PY
 
 ## Preparation verification
 
-The exact inline Python was parsed as data with Python AST only; it was not executed. Historical cached-image JSON confirms the chosen arm64 ID and exact PATH/NODE_VERSION/YARN_VERSION values. The current Docker binary/socket pins above came only from targeted filesystem metadata/byte reads. No Docker/Node, socket connection, network request, user-config access, new evidence area or model request occurred. Code SHA-256 (UTF-8 body between the quoted heredoc delimiters, excluding the final delimiter/newline): `616a503ca737ed5e75a7e06fb85cd56b00228464f3547de1c8bf5d6762f11a03`. Root binds the complete final recipe hash separately; it cannot contain its own SHA-256.
+During initial preparation, the exact inline Python was parsed as data with Python AST only; it was not executed then. Historical cached-image JSON confirmed the chosen arm64 ID and exact PATH/NODE_VERSION/YARN_VERSION values. The Docker binary/socket pins above came only from targeted filesystem metadata/byte reads. No Docker/Node, socket connection, network request, user-config access, new evidence area or model request occurred during that initial preparation. The subsequent first attempt and filesystem-only amendment regression are recorded separately below; they are not erased by this historical preparation statement. Code SHA-256 (UTF-8 body between the quoted heredoc delimiters, excluding the final delimiter/newline): `eb7d9f36872c6c0a5524400087e40802018f61cc88b2b31e5799e3c8aeff3a23`. Root binds the complete final recipe hash separately; it cannot contain its own SHA-256.
+
+## Directory identity amendment after first failure
+
+Root reported one exact attempt at the original recipe9207133a18b2dd122f1f9c6e324a89fed03afdd7a494f7b2ae150c6e787405c5. It allocated `/private/tmp/sd-docker-metadata-8p9__tlp`, then stopped with `METADATA_PREFLIGHT_UNRESOLVED`, `commands:[]`, both failure types RuntimeError and exit1. No Docker process/query started and no result file was written. Source cause: `held[area]` captured directory `st_nlink` before creating three subdirectories; that expected filesystem change made the first `owned()` reject, and the same check prevented final result recording. Exact failed recipe/code and attributed failure metadata are retained in [failure-1](../../../output/qa/current-docker-preflight/failure-1/README.md). The failed area remains unchanged; no deletion or daemon operation follows.
+
+The inline program changes exactly ONE expression in `identity`: its final tuple field is the literal `directory` marker only when `stat.S_ISDIR` is true; every other kind retains its actual link count. Device, inode, owner and permission mode remain bound. Directory replacement/kind changes still reject; regular-file hard-link drift still rejects. Docker/socket/executable pins, commands, environment, config bytes, caps, accounting and failure handling are unchanged. The admitted filesystem-only regression in [revision-1](../../../output/qa/current-docker-preflight/revision-1/README.md) executes only the exact extracted identity/owned functions with owned toy fixtures, never the inline program or Docker code. Its measured result must be read before review; synthetic filesystem checks are not Docker reachability or network evidence.
 
 ## Interpretation and stop conditions
 
