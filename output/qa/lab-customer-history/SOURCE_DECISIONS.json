@@ -1,0 +1,35 @@
+{
+  "schema": "SD-INTERNAL-SOURCE-DECISIONS-1",
+  "baseline": "2c986ac74261c279d2a340e05d730de7258ed309",
+  "candidate": "3537ca4f7cb26844263c735c1679d916b06ac585",
+  "author": "/root/payment_ctor_contract",
+  "contractSha256": "f552a3cd42474e81ca9b80a5c74f10ca3486f2cb64898923da96afa6f17c407e",
+  "patchSha256": "ebd82b5843859e85fdc0b61678f0aa4231aef445771d57d762e07a21a678b114",
+  "sourceFreezeSha256": "f9a3fbca68631b0c4de88b1768f2bc7053bd25d27db4f6f989e643f318fbf16e",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex source review. Full six-file diff, preserved pins, exact legacy mapper extraction and progress owner-before-ID/query/error contract personally inspected."
+    },
+    {
+      "reviewer": "/root/booking_write_contract",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex source review. Full six-file diff, preserved pins, exact legacy mapper extraction and progress owner-before-ID/query/error contract personally inspected."
+    }
+  ],
+  "scope": "Additive bounded individual diagnostics history across stored adapters with the shared11-field local progress DTO; no new report/provider/clinical facts.",
+  "sourceChecks": "Six before/after plus eight preserved pins and exact frozen Git diff matched; mapper is the old body with dedent only.",
+  "execution": "NOT_RUN: no compiler/Joi/HTTP/ODM/DB/application/provider test.",
+  "integration": "KEEP_ISOLATED_WHILE_R8_SELECTED_LIVE_PINS_ARE_IN_USE; later exact source composition needed.",
+  "limits": [
+    "No normal-customer legacy owner-filter bypass was established.",
+    "Legacy mixed unbounded list/privacy/default-adapter/report-client gaps remain open.",
+    "No DB/provider/files/financial/clinical effect or supported-client migration proved.",
+    "No module/owner/release acceptance; final integration remains deferred."
+  ]
+}
