@@ -1,0 +1,31 @@
+{
+  "schema": "SD-PRIVATE-DOCUMENT-HEADER-CONTRACT-DECISIONS-1",
+  "contract": "documentation/planning/implementation/PRIVATE_DOCUMENT_AUTH_HEADERS_ADDENDUM.md",
+  "contractSha256": "fe9479b80f66693de2e7f592bc9ab3335dc921595e36639fdb417a9547710b7b",
+  "initialCandidate": "d38dccbc (full original hash retained in prior committed decision record)",
+  "initialDecision": "REQUEST_CHANGES: case-sensitive matching missed Express case-insensitive private paths",
+  "decisions": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findingResolution": "Case-insensitive bounded-prefix predicate covers mixed-case paths, excludes assetsx/clinicalx; res.vary preserves tokens; mount/downstream scope and pre-mount parser exclusions explicit."
+    },
+    {
+      "reviewer": "/root/milestone_composition_r9",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findingResolution": "Case-variant gap resolved; bounded-prefix exclusions, Vary preservation and mount/downstream claim confirmed."
+    }
+  ],
+  "sourceOwnership": {
+    "/root": "src1/routes/index.ts named import and file mount only",
+    "/root/lab_remaining_audit": "existing file-module shared header definition and named middleware"
+  },
+  "sourceAndCompositionReviews": "PENDING_TWO_NONAUTHOR_DECISIONS",
+  "executionAdmitted": false,
+  "S1Complete": false,
+  "releaseApproved": false
+}
