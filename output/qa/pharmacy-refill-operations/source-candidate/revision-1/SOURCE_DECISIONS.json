@@ -1,0 +1,28 @@
+{
+  "schema": "SD-PHARMACY-REFILL-AMENDED-ACTUAL-SOURCE-DECISIONS-1",
+  "candidate": "7b72154506caa037101f490963ca4bbdca594018",
+  "manifestSha256": "fe8c2a7d3ef013c444d1574fbe5bba7c6d370a073d8594127f5047f36210276d",
+  "decision": "APPROVE_SOURCE_ONLY",
+  "reviewers": [
+    {
+      "agent": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "provenance": "Actual direct nonauthor message; wholeamendedrepo/2regioninverse/all7source17contextpins+initialpreservation+7controlrecipes; independently read actual root-integrity-matching distributedBSON4ObjectIdCJSsource, no ownundefinedcache emitted."
+    },
+    {
+      "agent": "/root",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "inspection": "Complete owningcontract and7source/API changes plus fullminimalamendment; all7current+Gitpins rehashed; nativeSymbol data, exact12byte nonproxybuffer/indexdata copy intoownedintrinsic hex and matchingcache avoid input getters/conversions; denseboundedown-descriptor arrayloop validates everyrow/lookahead withoutinputmethods. R1/R2resolved; no materialremainingfinding."
+    }
+  ],
+  "sourceOnly": "Both independent actual votes, authorMilestoneexcluded. Real BSON4positives/hostiledata/HTTP/Joi/ODM/query/index/explain/persistedunset/five+two sourcecontrols remainNOT_RUN.",
+  "preservation": "Original rejected8644/source/patch/5QA and twoactualREQUEST records retained;6other source/API files byteunchanged; no unrelatedwriter/model/auth/deps/start edits.",
+  "remainingGates": [
+    "Focused exact fixture and stage/run/outcome",
+    "Actual installed ownerindex/capacity",
+    "Existing staff/client/privacy/owner/C2/C3/release",
+    "P7dispatch/clinicaleligibility/stock/money notimplemented"
+  ]
+}
