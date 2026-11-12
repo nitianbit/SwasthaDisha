@@ -1,0 +1,33 @@
+{
+  "schema": "SD-SUPPLIER-CAS-RETURN-SOURCE-DECISIONS-1",
+  "candidate": "9a339b265c4bc9f6a23b6330620865794b098612",
+  "baseline": "9d60eb9a03ab6ffe819834c918ad2d1ca771ce95",
+  "contractSha256": "63958f07c82437b51763eb09aa4559dd6aa248d43de59b09d130cda56f66c2bc",
+  "sourceSha256": "3b4a1b515a60ef3a54ee6631ab8f0c2e340258a071fe6af446574779a01b8a57",
+  "patchSha256": "e0c934b5ff833597e70eee39179b651ed95c10fa97ba569a57fecd32af163962",
+  "decisions": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    }
+  ],
+  "bothIndependentlyVerified": "Exact2 option additions; inverse restores every original8834a635 byte; no other production change.",
+  "runtime": "NOT_RUN for type/ODM/DB/CAS/timeout/projection behavior",
+  "retainedOpen": [
+    "R10-F2-2 owner-index/capacity",
+    "Timeout/lost-response mutation ambiguity",
+    "Actual separately admitted focused fixture and owner/client/release gates"
+  ],
+  "moduleComplete": false,
+  "releaseApproved": false
+}
