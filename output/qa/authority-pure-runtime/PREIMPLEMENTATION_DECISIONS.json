@@ -1,0 +1,26 @@
+{
+  "contractSha256": "3b433b9f203b1c66b6a30c17e51c084e8d06e88f1e8a761b4d605ee6c7f0712a",
+  "author": "/root/claude_review_5_packet",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/pharmacy_refund_primitives",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    }
+  ],
+  "actualReview": "Exact complete3module/tool/vector bindings,84leaves,5guard controls,8emits/11graphs/33evals, no-sys compiler initialization, default6file preservation, fixed9file role and same C3grants inspected.",
+  "implementationChecks": [
+    "Sticky actual compiler import denials remain distinct from2deliberate A31policy probes",
+    "Coherent relation/time fixtures with independently declared proof digests",
+    "Observed counts/falsey failures, no fabricated success",
+    "Measured10second phase duration is distinct from external20second Docker/300outer bounds"
+  ],
+  "scope": "Harness edits only; no offline check, Node/compiler/app/Docker/provider/DB execution admitted. Two later exact-source plus one invocation decisions required."
+}
