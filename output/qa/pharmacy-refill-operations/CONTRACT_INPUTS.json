@@ -1,0 +1,76 @@
+{
+  "schema": "SD-PHARMACY-REFILL-OPERATIONS-CONTRACT-INPUTS-1",
+  "author": "/root/milestone_composition_r9",
+  "baseline": "52052e25cdba4e6a658d176471d4e66164a53bbd",
+  "contractPath": "documentation/planning/implementation/PHARMACY_REFILL_OPERATIONS_CONTRACT.md",
+  "contractSha256": "8e25a0a350f6a441256f22a0fb8fabe64bcdd72ca3fcaf47ddf800f1ddb6dad1",
+  "status": "DRAFT_PENDING_TWO_ACTUAL_NONAUTHOR_IMPLEMENTATION_ONLY_DECISIONS",
+  "inputPins": {
+    "src1/modules/pharmacySubscriptions/routes/index.ts": "6afed846eb0502de57ead62d59e54fe2143c2d3afb6d8a367bb844cdd1c5f526",
+    "src1/modules/pharmacySubscriptions/controller/index.ts": "556f198b294e6c2a93b0cdb690eb9d029a85efa01812c7f810784a7226677410",
+    "src1/modules/pharmacySubscriptions/services/index.ts": "b83273acf9faf568bd91c39d2678a87be2b468ea99a0236c5908f8074de20dfe",
+    "src1/modules/pharmacySubscriptions/repository/index.ts": "10c18973414095984bc4d53a8ad2b112eb647152215b906db5921168affed871",
+    "src1/modules/pharmacySubscriptions/validation/index.ts": "b590b65721dd25c5eb33e20e15e5e78f61c99ad0cccd6bb3ddaeb539a13fb087",
+    "src1/modules/pharmacySubscriptions/types/index.ts": "f845d7974d1db9ad4dcb1f567e2809abce7dfacdf7c28bc1ec3bfe3fa2541025",
+    "src1/modules/pharmacySubscriptions/model/index.ts": "568196be447d9f99cbfbb2fb81169abedbc93f777b7fc3dbf6302a19e925fcc8",
+    "API_SCHEMAS.md": "68ba65584b18ebbb3c02f7c7f3c114123fb18ffa53d94c2fb57f67ca95d197a2",
+    "src1/routes/index.ts": "9be841178931003004cc53a0285b5c849d82a82dbc798a4a0d38bf69396de6ea",
+    "src1/modules/middleware/auth.ts": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+    "src1/modules/common/repository/BaseRepository.ts": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+    "src1/modules/common/types/error.ts": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+    "src1/modules/common/middleware/validation.ts": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef",
+    "src1/modules/common/utils/dateUtils.ts": "87bf2514e890fc3b03f75c68b1661376c13388b07fe5f4af134714013d41dcd1",
+    "package.json": "65b171e77e8cd3bfd37eb691cf9ce310d9108cedbf571232bd4859c4b16895ab",
+    "package-lock.json": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080",
+    "documentation/planning/implementation/CUSTOMER_PHARMACY_LAB_DELIVERY_BOARD.md": "3e60af2ee33a5b390be0a1a3bc0aeaae991817964466c970fd97e2ead924184b",
+    "documentation/planning/CAPABILITY_MATRIX.md": "05ab06d569b8dad2a690ac434922738bd20ce15d9484b60e4bf55e62e14e7fea",
+    "documentation/planning/ROADMAP.md": "6a5b2e5bfdb42d16021cb28f83531389977d535d9743ae8908ab75ceeabd37cf",
+    "documentation/planning/SYSTEM_DESIGN.md": "cbd899f6fb442b13db28c389143b529b90da364165dc17291cc829814810bc84",
+    "documentation/planning/BUSINESS_OPERATIONS.md": "154371613be782bf5b31b7d0ae43a360a51b5f972dd66391041d8bc996cd6e5e",
+    "documentation/planning/M0_START_APPROVAL_STATUS.md": "67eea927661cf1a94d8644ede28eaa7315d4774866958ff346b37aac5a559be3",
+    "documentation/planning/implementation/C2_COMPATIBILITY_REVIEW.md": "e703e7bc43495868edd2ab535cb38b0f5f2ac54b5d572c2c38467b59e2ae67d4",
+    "documentation/planning/implementation/C3_MONGO_FIXTURE_CONTRACT.md": "208d702c9a1f7bc2826bda720603fa8fb382bfed9599739e1c8f4605b81368ce"
+  },
+  "productionOwnership": [
+    "src1/modules/pharmacySubscriptions/routes/index.ts",
+    "src1/modules/pharmacySubscriptions/controller/index.ts",
+    "src1/modules/pharmacySubscriptions/services/index.ts",
+    "src1/modules/pharmacySubscriptions/repository/index.ts",
+    "src1/modules/pharmacySubscriptions/validation/index.ts",
+    "src1/modules/pharmacySubscriptions/types/index.ts"
+  ],
+  "documentationOwnership": [
+    "API_SCHEMAS.md"
+  ],
+  "publicNativeSourceEvidence": {
+    "package": "mongoose",
+    "version": "6.13.8",
+    "rootLockIntegrity": "sha512-JHKco/533CyVrqCbyQsnqMpLn8ZCiKrPDTd2mvo2W7ygIvhygWjX2wj+RPjn6upZZgw0jC6U51RD7kUsyK8NBg==",
+    "cacheTarSha256": "02191bdbe7d8969de79e1414b32c3ca0c703b4fd0e9c7ff640ffeaca27e264be",
+    "member": "package/lib/helpers/query/castUpdate.js",
+    "memberSha256": "c74ace241c7f09a3d4c41028161e8e327349085c7c9252b39311af6ed651f429",
+    "undefinedRemovalLines": [
+      267,
+      282,
+      383
+    ],
+    "sourceMeaning": "Pinned castUpdate removes undefined update entries; existing service resume intent needs explicit unset. No Mongoose evaluated."
+  },
+  "originalPreservation": {
+    "physicalSixMatch": true,
+    "indexSixMatch": true,
+    "archiveEightMatch": true,
+    "fullIndexPatchMatchesArchive": true,
+    "patchSha256": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a"
+  },
+  "rootCapacityAndIndexes": "No observed index/explain/load or production compatibility evidence claimed; model declarations only",
+  "execution": {
+    "application": "NOT_RUN",
+    "NodeCompilerNpm": "NOT_RUN",
+    "MongoDockerHTTP": "NOT_RUN",
+    "provider": "NOT_RUN"
+  },
+  "codebaseMemory": "OWNER_DISABLED_NOT_INVOKED",
+  "sourceEdits": 0,
+  "independentContractReviews": "PENDING_AUTHOR_INELIGIBLE"
+}
