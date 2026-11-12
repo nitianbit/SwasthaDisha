@@ -1,0 +1,29 @@
+{
+  "schema": "SD-ENROLLMENT-PUBLIC-LOCK-OUTCOME-DECISIONS-1",
+  "sourceCandidate": "c22c48cf9b776ef7c813f9d1d13f822408fb69fa",
+  "resultCommit": "f5aa8e5d7d37d044cf8aec50902ba1993e792c18",
+  "lockSha256": "b9cef1cc8d5a284f5526704c77e05a32d588680d3b01a2efccaec28e4026ecb6",
+  "lockBytes": 8595,
+  "packages": 24,
+  "decisions": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "ACCEPT_PUBLIC_LOCK_RESULT_ONLY",
+      "findings": [],
+      "evidence": "Actualjq/Git/stat/shasum readback; exact5root closure inclnestedms, allversions/integrities/deps/publicHTTPS SHA512, source23inputs/c22Gitbytes/receipt+consumednonce+0700inode/0600lock and archived106receipt verified."
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "ACCEPT_PUBLIC_LOCK_RESULT_ONLY",
+      "findings": [],
+      "evidence": "Independently recomputed24package closure/integrities/edges, exactsource/owner/receipt/nonce/archivedfailure state; actual project/publicLOCKbyteequality, no node_modules/BUILD."
+    }
+  ],
+  "scope": "Npm public lock metadata preparation only; no install, TypeScript/app compilation, service/82case/container/DB/provider test acceptance. Normal Npm/V8 cache inside owned directory is not application emission.",
+  "workspaceDisposition": "RETAINED_FOR_REVIEW; no cleanup or retry grant",
+  "next": "Exact source/preparation review before fresh locked install/emission invocation"
+}
