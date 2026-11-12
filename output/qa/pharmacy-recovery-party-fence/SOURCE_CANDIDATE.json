@@ -1,0 +1,182 @@
+{
+  "schema": "SD-PHARMACY-RECOVERY-PARTY-FENCE-SOURCE-CANDIDATE-1",
+  "author": "/root/customer_remaining_audit",
+  "provenance": "INTERNAL_CODEX_NATIVE_AUTHOR",
+  "baseline": "72361527824cd6e3cd61c7853b718ca7fc35ce57",
+  "contract": "documentation/planning/implementation/PHARMACY_RECOVERY_PARTY_FENCE_CONTRACT_DRAFT.md",
+  "contractSha256": "2dd63dc7c01d87083bd490d1adadcbb8c1f6619d24463a2456376f3eb84fda93",
+  "source": "src1/modules/pharmacyOrders/services/index.ts",
+  "sourceSha256": "d8e69bb1d7afed4c2d45c8c1aa3e328f9ae355be00e2132a9936c5c34f7a5d55",
+  "patch": "output/qa/pharmacy-recovery-party-fence/SOURCE.patch",
+  "patchSha256": "877e26365e0f0e029942d3d15282b239f98dab183a3ad29716eaa8ff4af7acde",
+  "checks": {
+    "gitDiffCheck": "PASS",
+    "trackedChangedFiles": [
+      "src1/modules/pharmacyOrders/services/index.ts"
+    ],
+    "outsideUpdateAndNecessaryImportByteIdentical": true,
+    "outsideUpdateNormalizedSha256": "04589b31a4783a76ee67725295a012bcddeabf1deafe00b1a2394ab373d668fc",
+    "otherSelectedPinsUnchanged": 16,
+    "kind": "STATIC_SOURCE_DATA_ONLY"
+  },
+  "selectedInputs": [
+    {
+      "path": "src1/modules/pharmacyOrders/services/index.ts",
+      "baselineBytes": 46313,
+      "baselineSha256": "83ca486a250403a777f0548ec57c98bd1e99e154b6f2034754ddc9aedbc3f35e",
+      "candidateBytes": 47778,
+      "candidateSha256": "d8e69bb1d7afed4c2d45c8c1aa3e328f9ae355be00e2132a9936c5c34f7a5d55",
+      "unchanged": false
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/repository/index.ts",
+      "baselineBytes": 16516,
+      "baselineSha256": "df77e35abeb00913d6353e0bf76a3651b3a1b78b6e669548439472347c4b084f",
+      "candidateBytes": 16516,
+      "candidateSha256": "df77e35abeb00913d6353e0bf76a3651b3a1b78b6e669548439472347c4b084f",
+      "unchanged": true
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/model/index.ts",
+      "baselineBytes": 7068,
+      "baselineSha256": "f054a220020c66a83c49ea8658bd0d002cb3a9fd28c9b7771b0584c53471ac14",
+      "candidateBytes": 7068,
+      "candidateSha256": "f054a220020c66a83c49ea8658bd0d002cb3a9fd28c9b7771b0584c53471ac14",
+      "unchanged": true
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/types/index.ts",
+      "baselineBytes": 6604,
+      "baselineSha256": "6f3c1171b5ab154bc566ec7dcedaf3da4cd614d1bb7402fa5534b7a5e575e423",
+      "candidateBytes": 6604,
+      "candidateSha256": "6f3c1171b5ab154bc566ec7dcedaf3da4cd614d1bb7402fa5534b7a5e575e423",
+      "unchanged": true
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/routes/index.ts",
+      "baselineBytes": 2244,
+      "baselineSha256": "cfb13044228699be2fa37ce9635dcaf9f5874e3fe2ce02eeb846407be0e088fe",
+      "candidateBytes": 2244,
+      "candidateSha256": "cfb13044228699be2fa37ce9635dcaf9f5874e3fe2ce02eeb846407be0e088fe",
+      "unchanged": true
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/controller/index.ts",
+      "baselineBytes": 5386,
+      "baselineSha256": "e1cca25dc7c45fd2048f014c6b47191cda1044eca8b8f4cf5c9f061c3d2a3446",
+      "candidateBytes": 5386,
+      "candidateSha256": "e1cca25dc7c45fd2048f014c6b47191cda1044eca8b8f4cf5c9f061c3d2a3446",
+      "unchanged": true
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/validation/index.ts",
+      "baselineBytes": 5083,
+      "baselineSha256": "70381b52ca88dc35782850f662423ee423dbaebe67122641c1219fdee8f84402",
+      "candidateBytes": 5083,
+      "candidateSha256": "70381b52ca88dc35782850f662423ee423dbaebe67122641c1219fdee8f84402",
+      "unchanged": true
+    },
+    {
+      "path": "src1/modules/common/repository/BaseRepository.ts",
+      "baselineBytes": 2494,
+      "baselineSha256": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+      "candidateBytes": 2494,
+      "candidateSha256": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+      "unchanged": true
+    },
+    {
+      "path": "src1/modules/pharmacyCustomers/services/index.ts",
+      "baselineBytes": 5248,
+      "baselineSha256": "ab1cc1893fc2c8e3c369120ae6f5d9393c30a0ecb1a7f59d0c6ca80165e8e386",
+      "candidateBytes": 5248,
+      "candidateSha256": "ab1cc1893fc2c8e3c369120ae6f5d9393c30a0ecb1a7f59d0c6ca80165e8e386",
+      "unchanged": true
+    },
+    {
+      "path": "src1/modules/pharmacyInventory/services/index.ts",
+      "baselineBytes": 22959,
+      "baselineSha256": "98fa27296ef0fdd1066dff2d548de7d3db025504e724432770fe2e49d2907894",
+      "candidateBytes": 22959,
+      "candidateSha256": "98fa27296ef0fdd1066dff2d548de7d3db025504e724432770fe2e49d2907894",
+      "unchanged": true
+    },
+    {
+      "path": "src1/modules/pharmacyInventory/repository/index.ts",
+      "baselineBytes": 33797,
+      "baselineSha256": "cee64fd2464b5d5ac6081531a63f9a176e5fc481f33c3a4d6def99a26d97b261",
+      "candidateBytes": 33797,
+      "candidateSha256": "cee64fd2464b5d5ac6081531a63f9a176e5fc481f33c3a4d6def99a26d97b261",
+      "unchanged": true
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/prescriptionCommerce.ts",
+      "baselineBytes": 3078,
+      "baselineSha256": "8e6db5fc64d5a5b2fec6437660fb0d308c24d3e1c0aec2ae95efdc2f73fe0058",
+      "candidateBytes": 3078,
+      "candidateSha256": "8e6db5fc64d5a5b2fec6437660fb0d308c24d3e1c0aec2ae95efdc2f73fe0058",
+      "unchanged": true
+    },
+    {
+      "path": "src1/modules/middleware/auth.ts",
+      "baselineBytes": 8706,
+      "baselineSha256": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+      "candidateBytes": 8706,
+      "candidateSha256": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+      "unchanged": true
+    },
+    {
+      "path": "documentation/planning/implementation/PHARMACY_CANCELLATION_RECOVERY_CONTRACT_DRAFT.md",
+      "baselineBytes": 21510,
+      "baselineSha256": "e43bb8170b644cdc93ceeae9d8f66e8abb739f1cb35079e1076147aa88b4e910",
+      "candidateBytes": 21510,
+      "candidateSha256": "e43bb8170b644cdc93ceeae9d8f66e8abb739f1cb35079e1076147aa88b4e910",
+      "unchanged": true
+    },
+    {
+      "path": "documentation/planning/implementation/PHARMACY_RECOVERY_WORKLIST_CONTRACT_DRAFT.md",
+      "baselineBytes": 10581,
+      "baselineSha256": "0d5e215e4376987e7b5d33114d243685cb5c1ee3302e69ceef4dc167cd7b8b86",
+      "candidateBytes": 10581,
+      "candidateSha256": "0d5e215e4376987e7b5d33114d243685cb5c1ee3302e69ceef4dc167cd7b8b86",
+      "unchanged": true
+    },
+    {
+      "path": "output/qa/customer-pharmacy-lab-claude-review/revision-8/operator/CLAUDE_REVIEW_8.md",
+      "baselineBytes": 34333,
+      "baselineSha256": "5eaf50279e150016781dde05c27c1ee2520f8a724f65360febbce2a0b1c44188",
+      "candidateBytes": 34333,
+      "candidateSha256": "5eaf50279e150016781dde05c27c1ee2520f8a724f65360febbce2a0b1c44188",
+      "unchanged": true
+    },
+    {
+      "path": "output/qa/customer-pharmacy-lab-claude-review/revision-8/operator/FINDING_DISPOSITIONS_8.md",
+      "baselineBytes": 3447,
+      "baselineSha256": "ff88b0e0eaae87909f8b143687456041a7415b687869dcf64e85a983c2074f8d",
+      "candidateBytes": 3447,
+      "candidateSha256": "ff88b0e0eaae87909f8b143687456041a7415b687869dcf64e85a983c2074f8d",
+      "unchanged": true
+    }
+  ],
+  "runtime": {
+    "typecheck": "NOT_RUN",
+    "application": "NOT_RUN",
+    "HTTP": "NOT_RUN",
+    "Joi": "NOT_RUN",
+    "Mongoose": "NOT_RUN",
+    "transaction": "NOT_RUN",
+    "race": "NOT_RUN",
+    "rollback": "NOT_RUN",
+    "provider": "NOT_RUN"
+  },
+  "independentSourceReviews": "PENDING",
+  "moduleComplete": false,
+  "releaseApproved": false,
+  "retainedLimits": [
+    "ensureLinked remains outside the inventory transaction; a late write conflict may leave a new customer link",
+    "No general order version/CAS fence; other fields and party-versus-party races remain outside scope",
+    "Malformed existing recovery markers are not deleted, repaired or rebound",
+    "Actual Mongoose scalar query, transaction rollback and intake/write race behavior remain unproved",
+    "Clinical/finance/privacy/security owner, C2/C3, supported-client and release gates remain open",
+    "Corporate/HR/hospital expansion and final cross-module integration remain deferred"
+  ]
+}
