@@ -1,0 +1,22 @@
+{
+  "candidate_commit": "90beac7bbe10980558a243113054e47e1ea09982",
+  "author": "/root/pharmacist_identity_fields",
+  "source_freeze_sha256": "cc1b1366152a93a00a542eb543189bf6fb44eaf7466e8c9f03755e8cc87dab02",
+  "patch_sha256": "df53cbe3d7bf79a0ba3f7b80e5d705d87dedfd4dcc86b24fb25fa1bc664060ab",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/pharmacy_refund_primitives",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    }
+  ],
+  "actualReview": "Both nonauthors inspected complete actual5file diff/source and finalbindings. Required owner/kind/scalar read, exactprojection/Date/ObjectId/null rules, actor/errororder, fixed11fields/header and no new provider/report/money/file effects conform. Existingmethods/routesbytepreserved.25freezeentries and20baselinepins match.",
+  "limits": "Source/data-only. No TS/compiler/Node/app/HTTP/driver/DB/provider execution proof, clinical/client/module/release acceptance. Genuine reviewpending. SourcewhitespacePASS not patchartifactwhitespace; earlier precommitfailure retained."
+}
