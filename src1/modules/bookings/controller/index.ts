@@ -59,6 +59,20 @@ export class BookingController {
     return userId;
   }
 
+  private resolveGenericBookingWriteScope(req: AuthRequest): string | undefined {
+    const userId = this.resolveBookingOwnerScope(req);
+    this.ensureHRReadOnly(req);
+    if (req.user?.userType !== 'user' && req.user?.userType !== 'admin') {
+      throw new AppError({
+        status: 403,
+        code: 'FORBIDDEN',
+        message: 'Access to this booking resource is not permitted',
+      });
+    }
+
+    return userId;
+  }
+
   private resolveHRBookingReadScope(req: AuthRequest): string | undefined {
     if (req.user?.userType !== 'hr') {
       return undefined;
@@ -362,8 +376,7 @@ export class BookingController {
   };
 
   update = async (req: AuthRequest, res: Response, _next: NextFunction) => {
-    const userId = this.resolveBookingOwnerScope(req);
-    this.ensureHRReadOnly(req);
+    const userId = this.resolveGenericBookingWriteScope(req);
     const { id } = req.params;
     const data: UpdateBookingRequest = req.body;
     const result = req.user?.userType === 'user'
@@ -378,8 +391,7 @@ export class BookingController {
   };
 
   delete = async (req: AuthRequest, res: Response, _next: NextFunction) => {
-    const userId = this.resolveBookingOwnerScope(req);
-    this.ensureHRReadOnly(req);
+    const userId = this.resolveGenericBookingWriteScope(req);
     const { id } = req.params;
     await this.bookingService.delete(id, userId);
 

@@ -1,0 +1,112 @@
+{
+  "schema": "SD-SOURCE-FREEZE-1",
+  "author": "/root",
+  "baseline": "37fea6b23991d4cdd98e3d68300a5191122fc868",
+  "contractSha256": "f3d100d7981d65e92c9ba144523534b54d309b7cfb400ba387497c25113bcf22",
+  "files": [
+    {
+      "path": "src1/modules/bookings/controller/index.ts",
+      "beforeSha256": "b46f119eb8fbd509f6c29033bbb9546e8e19da84b6a0ba6b2f360510defeaf85",
+      "afterSha256": "1c330cdb65aed728defe615371f01e74556d2035ea01acb4f4a4e3f016df6e0a"
+    },
+    {
+      "path": "src1/modules/bookings/repository/index.ts",
+      "beforeSha256": "d54ebba522cd290589296918eb2dcb4f7609e42d836ef3f23dfb89114b375713",
+      "afterSha256": "3083722a941065a5a87ddc222772305c0c58de57e2ce140bb38dfd4721713ee5"
+    },
+    {
+      "path": "src1/modules/bookings/services/index.ts",
+      "beforeSha256": "25645bc17bb535e2c3c5b6dcec14917ef5df905fe31838c980431dcf9e591051",
+      "afterSha256": "279020eb382d7566e737cee88eb8b7b670ebcf6aeb6e7b968010aabb9bc9f6cd"
+    }
+  ],
+  "unchangedContractPins": [
+    {
+      "path": "src1/modules/common/repository/BaseRepository.ts",
+      "sha256": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a"
+    },
+    {
+      "path": "src1/modules/bookings/model/index.ts",
+      "sha256": "219f8115e5eec4bebd7205c763638e8755bde57122866430a1b3bcd0f69ead72"
+    },
+    {
+      "path": "src1/modules/bookings/types/index.ts",
+      "sha256": "30d1a615c3f157ec9a73f9a13968c3afcec59f84bdfa0178413f22c906f42a79"
+    },
+    {
+      "path": "src1/modules/bookings/validation/index.ts",
+      "sha256": "ce9743b4cc50af6b230089c0ff0523f490f8685c6fbb48cc475f4b8e52e6f728"
+    },
+    {
+      "path": "src1/modules/bookings/routes/index.ts",
+      "sha256": "b2ed40c971e35ceb28eeccb8b491bcf7c4b2dcaf35a7267c783a8345760e3cfb"
+    },
+    {
+      "path": "src1/modules/specialistPortal/services/index.ts",
+      "sha256": "631a2bc6e92e522db35bad35eacd9f7d46aa8e4dcdb508acc16dc44891fef27c"
+    },
+    {
+      "path": "src1/modules/specialists/routes/index.ts",
+      "sha256": "307a9ad75371bd34c6dc34f70d10d0f482007890c98e107fb6b1a4b5bb25c8cc"
+    },
+    {
+      "path": "src1/modules/specialists/controller/index.ts",
+      "sha256": "d5e4d4f20d1422d994ea4fc07017793ccb6bfca3d77c8d886af8e63bdf95d827"
+    },
+    {
+      "path": "src1/modules/middleware/auth.ts",
+      "sha256": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2"
+    },
+    {
+      "path": "src1/routes/index.ts",
+      "sha256": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056"
+    },
+    {
+      "path": "src1/modules/common/middleware/validation.ts",
+      "sha256": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef"
+    },
+    {
+      "path": "src1/modules/middleware/errorHandler.ts",
+      "sha256": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51"
+    },
+    {
+      "path": "package.json",
+      "sha256": "65b171e77e8cd3bfd37eb691cf9ce310d9108cedbf571232bd4859c4b16895ab"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080"
+    },
+    {
+      "path": "documentation/planning/SYSTEM_DESIGN.md",
+      "sha256": "cbd899f6fb442b13db28c389143b529b90da364165dc17291cc829814810bc84"
+    },
+    {
+      "path": "documentation/planning/implementation/USER_ROUTE_AUTHORITY_CONTRACT.md",
+      "sha256": "9f68e4abb5c08e5795a0216341939a4d87a7682662be990058cbae366281ea99"
+    },
+    {
+      "path": "documentation/planning/implementation/CUSTOMER_BOOKING_FIELDS_CONTRACT.md",
+      "sha256": "b7a82e761ebeacd808dfe11fbb66d7e467631c2aa062f91a8a34deaa8f2d94ea"
+    },
+    {
+      "path": "documentation/planning/implementation/CUSTOMER_PHARMACY_LAB_EXECUTION.md",
+      "sha256": "3bfc2bedca676a641b1def8f8538042eedfd1a5cacc99d9ea23bf8d2532f42ef"
+    }
+  ],
+  "patchSha256": "059dfd0513245d60a33036aa79447aa45c7eb6853592e6e21ac92589f90594ae",
+  "sourceChecks": [
+    "21 baseline contract pins matched before edit",
+    "Controller helper and only two dispatches changed; inverse recovers original",
+    "Repository import/new method only; inverse recovers original",
+    "Service delete only; pre-read/reminder/Meet/slot sequence byte-identical",
+    "18 other selected source/design pins unchanged"
+  ],
+  "execution": "NOT_RUN: no Node/compiler/app/SDK/Docker/DB/provider/legacy suite",
+  "limits": [
+    "Final owner predicate does not make preceding reminder/Meet/slot effects atomic or roll them back.",
+    "Dirty stored owner arrays can match retained pre-read before final scalar guard denies.",
+    "Admin omitted scope retains legacy unscoped deletion.",
+    "No clinical retention/cancel/refund eligibility change or release acceptance."
+  ]
+}

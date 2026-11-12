@@ -1,0 +1,123 @@
+diff --git a/src1/modules/bookings/controller/index.ts b/src1/modules/bookings/controller/index.ts
+index edcf1985900d79a63d2dfa9299d86527ad284895..fa7ba9e03eb806f887fa5b57e7faf35cf146f8d4 100644
+--- a/src1/modules/bookings/controller/index.ts
++++ b/src1/modules/bookings/controller/index.ts
+@@ -59,6 +59,20 @@ export class BookingController {
+     return userId;
+   }
+ 
++  private resolveGenericBookingWriteScope(req: AuthRequest): string | undefined {
++    const userId = this.resolveBookingOwnerScope(req);
++    this.ensureHRReadOnly(req);
++    if (req.user?.userType !== 'user' && req.user?.userType !== 'admin') {
++      throw new AppError({
++        status: 403,
++        code: 'FORBIDDEN',
++        message: 'Access to this booking resource is not permitted',
++      });
++    }
++
++    return userId;
++  }
++
+   private resolveHRBookingReadScope(req: AuthRequest): string | undefined {
+     if (req.user?.userType !== 'hr') {
+       return undefined;
+@@ -362,8 +376,7 @@ export class BookingController {
+   };
+ 
+   update = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+-    const userId = this.resolveBookingOwnerScope(req);
+-    this.ensureHRReadOnly(req);
++    const userId = this.resolveGenericBookingWriteScope(req);
+     const { id } = req.params;
+     const data: UpdateBookingRequest = req.body;
+     const result = req.user?.userType === 'user'
+@@ -378,8 +391,7 @@ export class BookingController {
+   };
+ 
+   delete = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+-    const userId = this.resolveBookingOwnerScope(req);
+-    this.ensureHRReadOnly(req);
++    const userId = this.resolveGenericBookingWriteScope(req);
+     const { id } = req.params;
+     await this.bookingService.delete(id, userId);
+ 
+diff --git a/src1/modules/bookings/repository/index.ts b/src1/modules/bookings/repository/index.ts
+index 465fe6f154b2d7d3ac13886e6cde966d456fc505..c17a7813136ed33b5c4a6b42f0546a34dd6bc8a2 100644
+--- a/src1/modules/bookings/repository/index.ts
++++ b/src1/modules/bookings/repository/index.ts
+@@ -7,6 +7,7 @@ import {
+   BookingType,
+ } from '@/modules/bookings/types';
+ import { BaseRepository } from '@/modules/common/repository';
++import { AppError } from '@/modules/common/types';
+ 
+ @Service()
+ export class BookingRepository extends BaseRepository<IBooking> {
+@@ -14,6 +15,30 @@ export class BookingRepository extends BaseRepository<IBooking> {
+     super(BookingModel as Model<IBooking>);
+   }
+ 
++  async deleteByIdAndUserId(id: string, userId: string): Promise<boolean> {
++    if (typeof userId !== 'string' || userId.trim().length === 0) {
++      throw new AppError({
++        status: 401,
++        code: 'UNAUTHORIZED',
++        message: 'Authentication is required',
++      });
++    }
++    if (typeof id !== 'string' || !/^[0-9a-fA-F]{24}$/.test(id)) {
++      throw new AppError({
++        status: 400,
++        code: 'VALIDATION_ERROR',
++        message: 'Invalid ID format',
++      });
++    }
++
++    const result = await BookingModel.deleteOne({
++      _id: id,
++      userId: { $eq: userId },
++      $expr: { $eq: [{ $type: '$userId' }, 'string'] },
++    });
++    return result.acknowledged === true && result.deletedCount === 1;
++  }
++
+   async getConsultationStatsBySpecialistId(
+     specialistId: string,
+     options: {
+diff --git a/src1/modules/bookings/services/index.ts b/src1/modules/bookings/services/index.ts
+index 4e67d202987e57fac63452816c0641cbd81d1d11..299e41ea38e9830e685d3a4bce6cb71e53b49d28 100644
+--- a/src1/modules/bookings/services/index.ts
++++ b/src1/modules/bookings/services/index.ts
+@@ -1697,6 +1697,13 @@ export class BookingService {
+   }
+ 
+   async delete(id: string, userId?: string): Promise<void> {
++    if (userId !== undefined && (typeof userId !== 'string' || userId.trim().length === 0)) {
++      throw new AppError({
++        status: 401,
++        code: 'UNAUTHORIZED',
++        message: 'Authentication is required',
++      });
++    }
+     const booking = await this.getById(id, userId);
+     await this.bookingReminderScheduler.clearBookingReminders(booking._id!);
+     await cancelBookingMeet({
+@@ -1716,7 +1723,15 @@ export class BookingService {
+       }
+     }
+ 
+-    await this.bookingRepository.delete({ _id: id });
++    if (userId === undefined) {
++      await this.bookingRepository.delete({ _id: id });
++    } else if (!(await this.bookingRepository.deleteByIdAndUserId(id, userId))) {
++      throw new AppError({
++        status: 409,
++        code: 'BOOKING_DELETE_CONFLICT',
++        message: 'Booking could not be deleted because it changed',
++      });
++    }
+   }
+ 
+   async getByUserId(userId: string): Promise<IBooking[]> {
