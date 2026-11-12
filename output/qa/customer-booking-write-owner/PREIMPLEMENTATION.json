@@ -1,0 +1,34 @@
+{
+  "schema": "SD-CUSTOMER-BOOKING-WRITE-OWNER-PREIMPLEMENTATION-1",
+  "contract": "documentation/planning/implementation/CUSTOMER_BOOKING_WRITE_OWNER_CONTRACT_DRAFT.md",
+  "contractSha256": "723af082952ee39d39342080d2ba72205687f94244458a5e5dabf0d9c7ee8698",
+  "controllerBaselineSha256": "bbe2d226d0192b91389675dd5e66f2b385dc157bba0010715bbe4b29b0e2848b",
+  "author": "/root/customer_booking_writer",
+  "reviewers": [
+    {
+      "agent": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "basis": "Complete contract, all17sourcepins, exactactor/owner/validation/HR/servicecompatibility and initial-read race/effect limits reviewed."
+    },
+    {
+      "agent": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "basis": "Complete contract read, all17pins verified; actual controller/readhelper/routes and serviceupdate/delete effects compared. One privateactor and ownerscope helper, distinctbyuser preserved, no servicechange."
+    }
+  ],
+  "readReviewSnapshotDependency": "R3_CAPTURE_STOPPED_FAILED_UNKNOWN_CHILD; exactownedprocessescleanedallabsent/groupempty; consumedclaimpreserved. AnyfutureClaude packetmustbindfreshsource.",
+  "productionScope": [
+    "src1/modules/bookings/controller/index.ts"
+  ],
+  "sourceCandidateAuthorized": false,
+  "focusedExecution": "NOT_RUN",
+  "remainingP0": [
+    "ownerless final mutation/read-write race",
+    "own privileged payment/clinical/lifecycle/corporate writes",
+    "own delete retention/refund/provider effects"
+  ],
+  "moduleAcceptance": false,
+  "releaseAcceptance": false
+}

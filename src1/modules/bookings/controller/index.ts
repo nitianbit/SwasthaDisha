@@ -23,7 +23,7 @@ export class BookingController {
     this.bookingService = Container.get(BookingService);
   }
 
-  private requireBookingReadActor(req: AuthRequest) {
+  private requireBookingActor(req: AuthRequest) {
     const actor = req.user;
     if (
       !actor ||
@@ -40,6 +40,23 @@ export class BookingController {
     }
 
     return actor;
+  }
+
+  private resolveBookingOwnerScope(req: AuthRequest): string | undefined {
+    const actor = this.requireBookingActor(req);
+    const userId = req.query.userId as string | undefined;
+    if (actor.userType === 'user') {
+      if (userId !== undefined && userId !== actor._id) {
+        throw new AppError({
+          status: 403,
+          code: 'FORBIDDEN',
+          message: 'Access to bookings owned by another user is not permitted',
+        });
+      }
+      return actor._id;
+    }
+
+    return userId;
   }
 
   private resolveHRBookingReadScope(req: AuthRequest): string | undefined {
@@ -248,24 +265,9 @@ export class BookingController {
   };
 
   getById = async (req: AuthRequest, res: Response, _next: NextFunction) => {
-    const actor = this.requireBookingReadActor(req);
+    const userId = this.resolveBookingOwnerScope(req);
     const { id } = req.params;
-    if (
-      actor.userType === 'user' &&
-      req.query.userId !== undefined &&
-      req.query.userId !== actor._id
-    ) {
-      throw new AppError({
-        status: 403,
-        code: 'FORBIDDEN',
-        message: 'Access to bookings owned by another user is not permitted',
-      });
-    }
-
     await this.ensureHRCanAccessBooking(req, id);
-    const userId = actor.userType === 'user'
-      ? actor._id
-      : req.query.userId as string | undefined;
     const result = await this.bookingService.getById(id, userId);
 
     res.status(200).json({
@@ -360,10 +362,10 @@ export class BookingController {
   };
 
   update = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const userId = this.resolveBookingOwnerScope(req);
     this.ensureHRReadOnly(req);
     const { id } = req.params;
     const data: UpdateBookingRequest = req.body;
-    const userId = req.query.userId as string | undefined;
     const result = await this.bookingService.update(id, data, userId);
 
     res.status(200).json({
@@ -374,9 +376,9 @@ export class BookingController {
   };
 
   delete = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const userId = this.resolveBookingOwnerScope(req);
     this.ensureHRReadOnly(req);
     const { id } = req.params;
-    const userId = req.query.userId as string | undefined;
     await this.bookingService.delete(id, userId);
 
     res.status(200).json({
@@ -386,7 +388,7 @@ export class BookingController {
   };
 
   getByUserId = async (req: AuthRequest, res: Response, _next: NextFunction) => {
-    const actor = this.requireBookingReadActor(req);
+    const actor = this.requireBookingActor(req);
     const requestedUserId = req.query.userId;
     if (
       actor.userType === 'user' &&

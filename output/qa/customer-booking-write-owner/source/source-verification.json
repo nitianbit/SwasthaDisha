@@ -1,0 +1,439 @@
+{
+  "kind": "SOURCE_DATA_ONLY",
+  "argv": [
+    "output/qa/customer-booking-write-owner/source/source-check.py"
+  ],
+  "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab",
+  "checks": [
+    {
+      "name": "BASELINE_PIN",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "AFTER_EXPECTED_ARCHIVES_EXACT",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NAMED_CANDIDATE_SOURCE_ASSERTIONS",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "ONLY_REVIEWED_HELPER_AND_HANDLERS_CHANGED",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "ONLY_CONTROLLER_CHANGED_IN_PROTECTED_FILES",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_baseline",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_baseline",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_missing_actor_check_removed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_missing_actor_check_removed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_blank_actor_id_allowed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_blank_actor_id_allowed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_foreign_hint_allowed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_foreign_hint_allowed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_query_owner_forwarded",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_query_owner_forwarded",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_noncustomer_restricted",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_noncustomer_restricted",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_async_owner_resolver",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_async_owner_resolver",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_wrong_foreign_error",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_wrong_foreign_error",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_getById:late_guard",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_getById:late_guard",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_getById:query_override",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_getById:query_override",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_getById:hr_guard_removed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_getById:hr_guard_removed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_getById:unscoped_extra_read",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_getById:unscoped_extra_read",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_update:late_guard",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_update:late_guard",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_update:query_override",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_update:query_override",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_update:hr_guard_removed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_update:hr_guard_removed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_update:unscoped_extra_read",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_update:unscoped_extra_read",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_delete:late_guard",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_delete:late_guard",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_delete:query_override",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_delete:query_override",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_delete:hr_guard_removed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_delete:hr_guard_removed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_delete:unscoped_extra_read",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_delete:unscoped_extra_read",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_byuser_path_weakened",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_byuser_path_weakened",
+      "sourceAssertion": "ACCEPTED"
+    }
+  ],
+  "negativeControls": [
+    {
+      "name": "baseline",
+      "intended": "OWNER_RESOLVER_PRESENT",
+      "rejectedByNamedSourceAssertions": [
+        "ACTOR_REQUIRED_FIELDS",
+        "ACTOR_FIXED_401",
+        "ACTOR_SYNC",
+        "OWNER_RESOLVER_PRESENT",
+        "OWNER_ACTOR_FIRST",
+        "OWNER_QUERY_SOURCE",
+        "OWNER_STRICT_FOREIGN_HINT",
+        "OWNER_FIXED_403",
+        "OWNER_SIGNED_OWNER",
+        "OWNER_NONCUSTOMER_FORWARD",
+        "getById:OWNER_FIRST",
+        "getById:NO_QUERY_OVERRIDE",
+        "update:OWNER_FIRST",
+        "update:NO_QUERY_OVERRIDE",
+        "delete:OWNER_FIRST",
+        "delete:NO_QUERY_OVERRIDE",
+        "BYUSER_ONLY_ACTOR_NAME_CHANGED",
+        "HELPER_CALL_SCOPE"
+      ],
+      "variantSha256": "bbe2d226d0192b91389675dd5e66f2b385dc157bba0010715bbe4b29b0e2848b",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "missing_actor_check_removed",
+      "intended": "ACTOR_REQUIRED_FIELDS",
+      "rejectedByNamedSourceAssertions": [
+        "ACTOR_REQUIRED_FIELDS"
+      ],
+      "variantSha256": "2bfe8a208312909ae9b45c433e0404b7ac1617e9d045a6e49fd9b578688c92d2",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "blank_actor_id_allowed",
+      "intended": "ACTOR_REQUIRED_FIELDS",
+      "rejectedByNamedSourceAssertions": [
+        "ACTOR_REQUIRED_FIELDS"
+      ],
+      "variantSha256": "e213231dc460f3eb996dbb5eff5f4ccd6f62d7ca201502bb767ba2eb991bec6e",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "foreign_hint_allowed",
+      "intended": "OWNER_STRICT_FOREIGN_HINT",
+      "rejectedByNamedSourceAssertions": [
+        "OWNER_STRICT_FOREIGN_HINT"
+      ],
+      "variantSha256": "2a7b0a1d90986cec39594fe515f71d362ef782e6a5b629404ac18fdbb7361f57",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "query_owner_forwarded",
+      "intended": "OWNER_SIGNED_OWNER",
+      "rejectedByNamedSourceAssertions": [
+        "OWNER_SIGNED_OWNER"
+      ],
+      "variantSha256": "0ba8d70ba74af118d0929a0a2a56998712a248df74d08c42b1a03b0d178ae39b",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "noncustomer_restricted",
+      "intended": "OWNER_NONCUSTOMER_FORWARD",
+      "rejectedByNamedSourceAssertions": [
+        "OWNER_NONCUSTOMER_FORWARD"
+      ],
+      "variantSha256": "3c5e17f575c906c84baec23e09dc12b3c6a461f2a34362978d6d6fa92ebe194e",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "async_owner_resolver",
+      "intended": "OWNER_RESOLVER_PRESENT",
+      "rejectedByNamedSourceAssertions": [
+        "ACTOR_REQUIRED_FIELDS",
+        "ACTOR_FIXED_401",
+        "ACTOR_SYNC",
+        "OWNER_RESOLVER_PRESENT",
+        "OWNER_ACTOR_FIRST",
+        "OWNER_QUERY_SOURCE",
+        "OWNER_STRICT_FOREIGN_HINT",
+        "OWNER_FIXED_403",
+        "OWNER_SIGNED_OWNER",
+        "OWNER_NONCUSTOMER_FORWARD"
+      ],
+      "variantSha256": "8fac16b9a65444a055de0999720063d2c63e652317c22453218a29dd39ead3eb",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "wrong_foreign_error",
+      "intended": "OWNER_FIXED_403",
+      "rejectedByNamedSourceAssertions": [
+        "OWNER_FIXED_403"
+      ],
+      "variantSha256": "c0984db1902360d44ec98c9fc6abf029b24ba97e586c4502cca8bf9ab0f40a06",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "getById:late_guard",
+      "intended": "getById:OWNER_FIRST",
+      "rejectedByNamedSourceAssertions": [
+        "getById:OWNER_FIRST"
+      ],
+      "variantSha256": "213ff488643f5c3b5a7e2e7987d078c676f946fc0adc42a89b505853680528d0",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "getById:query_override",
+      "intended": "getById:NO_QUERY_OVERRIDE",
+      "rejectedByNamedSourceAssertions": [
+        "getById:OWNER_FIRST",
+        "getById:NO_QUERY_OVERRIDE",
+        "HELPER_CALL_SCOPE"
+      ],
+      "variantSha256": "2436bbaa04624cb769d8ad579cf107614a1a0bcdb36d0b065e2ff06fdf1dbb32",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "getById:hr_guard_removed",
+      "intended": "getById:HR_BEFORE_SERVICE",
+      "rejectedByNamedSourceAssertions": [
+        "getById:HR_BEFORE_SERVICE"
+      ],
+      "variantSha256": "f90407d6b8397a6026864e61465877798fc0dba345abdcdabf5d885c3a069051",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "getById:unscoped_extra_read",
+      "intended": "getById:ONE_SCOPED_SERVICE_CALL",
+      "rejectedByNamedSourceAssertions": [
+        "getById:ONE_SCOPED_SERVICE_CALL"
+      ],
+      "variantSha256": "5700d0da058f5da81fdb79ca4516a29fb3f1c71e562bc2209bca3b47d2e064a7",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "update:late_guard",
+      "intended": "update:OWNER_FIRST",
+      "rejectedByNamedSourceAssertions": [
+        "update:OWNER_FIRST"
+      ],
+      "variantSha256": "4294d6caf0718b7fec6ff7ee4db563da2dd11972cd4ad59679fde191353954de",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "update:query_override",
+      "intended": "update:NO_QUERY_OVERRIDE",
+      "rejectedByNamedSourceAssertions": [
+        "update:OWNER_FIRST",
+        "update:NO_QUERY_OVERRIDE",
+        "HELPER_CALL_SCOPE"
+      ],
+      "variantSha256": "35e010e8f3cb47fa0eea7d9dd834f86a0b993d3b7c92d435fc076cd2859e1a76",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "update:hr_guard_removed",
+      "intended": "update:HR_BEFORE_SERVICE",
+      "rejectedByNamedSourceAssertions": [
+        "update:HR_BEFORE_SERVICE"
+      ],
+      "variantSha256": "443fadf6a2a538fd6a4a9999e584fbbea3eb1d8915b6841efe695eeb4b691999",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "update:unscoped_extra_read",
+      "intended": "update:ONE_SCOPED_SERVICE_CALL",
+      "rejectedByNamedSourceAssertions": [
+        "update:ONE_SCOPED_SERVICE_CALL"
+      ],
+      "variantSha256": "9b80e565e8a9ef6bff00fceda6aa0f92867eb7a1570e34f039f775be6387f613",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "delete:late_guard",
+      "intended": "delete:OWNER_FIRST",
+      "rejectedByNamedSourceAssertions": [
+        "delete:OWNER_FIRST"
+      ],
+      "variantSha256": "9a81b96588472cf49cbc1bd61f5722b1b172a326b83f1d3d0cb016d0b02fa1ac",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "delete:query_override",
+      "intended": "delete:NO_QUERY_OVERRIDE",
+      "rejectedByNamedSourceAssertions": [
+        "delete:OWNER_FIRST",
+        "delete:NO_QUERY_OVERRIDE",
+        "HELPER_CALL_SCOPE"
+      ],
+      "variantSha256": "c6997885c984dfbbc301f54b5f07b1363702566f23d74e773d80a5d0cd770d6c",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "delete:hr_guard_removed",
+      "intended": "delete:HR_BEFORE_SERVICE",
+      "rejectedByNamedSourceAssertions": [
+        "delete:HR_BEFORE_SERVICE"
+      ],
+      "variantSha256": "e6eee477d448df05103cffe0c38236779c4bfea8597bf501a54e728a88e3a59e",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "delete:unscoped_extra_read",
+      "intended": "delete:ONE_SCOPED_SERVICE_CALL",
+      "rejectedByNamedSourceAssertions": [
+        "delete:ONE_SCOPED_SERVICE_CALL"
+      ],
+      "variantSha256": "152def7a09cc4c8e285c104c238d90d1756d771f8e1b341048fd26f3fb531f93",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "byuser_path_weakened",
+      "intended": "BYUSER_ONLY_ACTOR_NAME_CHANGED",
+      "rejectedByNamedSourceAssertions": [
+        "BYUSER_ONLY_ACTOR_NAME_CHANGED"
+      ],
+      "variantSha256": "1c9c5fd63725c3a5840aba3958a8e81fe21a5fa30119d69136be94de956eaab0",
+      "scope": "in-memory TypeScript text only"
+    }
+  ],
+  "runtimeBehavior": "NOT_RUN",
+  "candidateSourceFailures": [],
+  "changedProtectedFiles": [
+    "src1/modules/bookings/controller/index.ts"
+  ],
+  "sourceVerdict": "ACCEPTED",
+  "baselineSha256": "bbe2d226d0192b91389675dd5e66f2b385dc157bba0010715bbe4b29b0e2848b",
+  "candidateSha256": "c3b500d9343150d5edff79980f10825ce6592d02f1a1c7ea652f8c852c0ca76c",
+  "protectedFileCount": 406,
+  "negativeControlCount": 21,
+  "restoredSourceControlCount": 21,
+  "scriptSha256": "f83ee70724e29729b7e63fb731408200d4a7f38fcac250c01a02f9d240a5f5e2",
+  "gitMutation": false,
+  "limitations": [
+    "Lexical text assertions and exact byte comparisons only; no TypeScript parser/compiler or application behavior tested.",
+    "Negative and restored controls operate on text in memory, not executed handlers, services, Joi or database predicates.",
+    "Focused execution remains NOT_RUN pending complete C3; final cross-module integration is DEFERRED_BY_OWNER.",
+    "Ownerless final mutation races, own privileged fields and deletion/refund/provider policies remain P0 and are not approved by this owner-prefetch slice."
+  ]
+}

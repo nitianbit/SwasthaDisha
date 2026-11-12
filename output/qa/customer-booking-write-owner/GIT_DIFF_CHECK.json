@@ -1,0 +1,18 @@
+{
+  "schema": "SD-FOCUSED-GIT-DIFF-CHECK-1",
+  "initialCommand": [
+    "git",
+    "diff",
+    "--cached",
+    "--check"
+  ],
+  "initialExit": 2,
+  "initialFinding": "Ten stored unified-diff empty context lines in frozen customer controller.diff are single spaces; these are patch syntax, not production whitespace. No frozen artifact modified.",
+  "finalCheck": "Strict staged whitespace check excluding only the two exact frozen unified-diff artifacts; every trailing-whitespace line in those artifacts independently verified equals one empty context marker.",
+  "excludedDataArtifacts": [
+    "output/qa/customer-booking-write-owner/source/controller.diff",
+    "output/qa/pharmacy-prescription-consumption/candidate.diff"
+  ],
+  "applicationAndDocsStrictCheck": true,
+  "noApplicationExecution": true
+}

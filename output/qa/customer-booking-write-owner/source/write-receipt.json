@@ -1,0 +1,12 @@
+{
+  "kind": "SOURCE_DATA_ONLY",
+  "baselineSha256": "bbe2d226d0192b91389675dd5e66f2b385dc157bba0010715bbe4b29b0e2848b",
+  "candidateSha256": "c3b500d9343150d5edff79980f10825ce6592d02f1a1c7ea652f8c852c0ca76c",
+  "contractSha256": "723af082952ee39d39342080d2ba72205687f94244458a5e5dabf0d9c7ee8698",
+  "boundSourcePinsRechecked": 17,
+  "protectedFileCount": 406,
+  "appSourcePins": 358,
+  "rootAuthorizationSha256": "09bb1754e179e572ae7622c6220fdd9d29d9660af46324ac404d365c1cad5157",
+  "runtimeBehavior": "NOT_RUN",
+  "gitMutation": false
+}

@@ -1,0 +1,45 @@
+{
+  "kind": "OBSERVED_SOURCE_ONLY_COMMAND_RECEIPTS",
+  "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab",
+  "commands": [
+    {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/usr/sbin:/sbin",
+        "/usr/bin/python3",
+        "-I",
+        "/private/tmp/customer-write-owner-source-write.py"
+      ],
+      "exitCode": 0,
+      "observed": "Exact contract/baseline/all17sourcepins and both recorded decisions verified; owned controller amendment, new ROOT_AUTHORIZATION and initial evidence written."
+    },
+    {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/usr/sbin:/sbin",
+        "/usr/bin/python3",
+        "-I",
+        "output/qa/customer-booking-write-owner/source/source-check.py"
+      ],
+      "exitCode": 0,
+      "stdout": "{\"sourceVerdict\": \"ACCEPTED\", \"candidateSha256\": \"c3b500d9343150d5edff79980f10825ce6592d02f1a1c7ea652f8c852c0ca76c\", \"protectedFileCount\": 406, \"negativeControlCount\": 21, \"restoredSourceControlCount\": 21, \"runtimeBehavior\": \"NOT_RUN\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "src1/modules/bookings/controller/index.ts"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "runtimeBehavior": "NOT_RUN",
+  "gitMutation": false
+}

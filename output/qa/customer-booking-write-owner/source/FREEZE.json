@@ -1,0 +1,22 @@
+{
+  "kind": "FROZEN_SOURCE_CANDIDATE",
+  "candidateSha256": "c3b500d9343150d5edff79980f10825ce6592d02f1a1c7ea652f8c852c0ca76c",
+  "files": {
+    "output/qa/customer-booking-write-owner/source/README.md": "157a930fb27f2b75a69bcdbc82841d970771b8796fb879dcb1b3bae4e169d91f",
+    "output/qa/customer-booking-write-owner/source/controller.after.ts.txt": "c3b500d9343150d5edff79980f10825ce6592d02f1a1c7ea652f8c852c0ca76c",
+    "output/qa/customer-booking-write-owner/source/controller.before.ts.txt": "bbe2d226d0192b91389675dd5e66f2b385dc157bba0010715bbe4b29b0e2848b",
+    "output/qa/customer-booking-write-owner/source/controller.diff": "e04bb02023547e94902c3a7cc80f73b1b83543be8238880e8833dcd9583ae3af",
+    "output/qa/customer-booking-write-owner/source/controller.expected.ts.txt": "c3b500d9343150d5edff79980f10825ce6592d02f1a1c7ea652f8c852c0ca76c",
+    "output/qa/customer-booking-write-owner/source/execution-receipts.json": "dbe33ef2a4d5e06ee9e7d77750d55a743f2f2a9f32f7a82a17f5304d818b0a47",
+    "output/qa/customer-booking-write-owner/source/preimplementation.snapshot.json": "dc4e55ad348c2a4fd3339ae36fccb57cdcf2171c1b1847ed88a845a77f8a9be9",
+    "output/qa/customer-booking-write-owner/source/protected-files.after.json": "44dc1e4cd8f2405679c21bf31aff1b3f96644ce0d56998718e0cc51c529f506b",
+    "output/qa/customer-booking-write-owner/source/protected-files.before.json": "786ac4dfd0a326e4ab9778b84a1b2e72f19a098fa0a13375400e5c11ca639f04",
+    "output/qa/customer-booking-write-owner/source/source-check.py": "f83ee70724e29729b7e63fb731408200d4a7f38fcac250c01a02f9d240a5f5e2",
+    "output/qa/customer-booking-write-owner/source/source-verification.json": "86776d2112e35947c0f07b8e0aa0af0e835c2ae82484d25f9d31c271597dc837",
+    "output/qa/customer-booking-write-owner/source/source-write.py": "80e4ecb354fffe548c2b845d2ef814d9bbd57df4adb2f59fed114d0b0e7e75ab",
+    "output/qa/customer-booking-write-owner/source/write-receipt.json": "a9bfdf045d3b57b06ab6effd49a4c32bc46574503dd0edfb48ae611a0eab2bcc",
+    "output/qa/customer-booking-write-owner/ROOT_AUTHORIZATION.json": "09bb1754e179e572ae7622c6220fdd9d29d9660af46324ac404d365c1cad5157"
+  },
+  "writesStoppedForIndependentReviews": true,
+  "runtimeBehavior": "NOT_RUN"
+}

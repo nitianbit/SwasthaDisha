@@ -1,0 +1,28 @@
+{
+  "schema": "SD-CUSTOMER-BOOKING-WRITE-OWNER-SOURCE-DECISIONS-1",
+  "candidateSha256": "c3b500d9343150d5edff79980f10825ce6592d02f1a1c7ea652f8c852c0ca76c",
+  "contractSha256": "723af082952ee39d39342080d2ba72205687f94244458a5e5dabf0d9c7ee8698",
+  "freezeSha256": "6d4aa9e28a5e6ad476b79945ceee2cf24c1d1ea50833a9a6a5ea4d7dc2ddf651",
+  "reviewers": [
+    {
+      "agent": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY"
+    },
+    {
+      "agent": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY"
+    }
+  ],
+  "basis": "Actualsource/diff/17bindings/14frozenartifacts reviewed; reverseenumeratedchangesrecoversbaseline; malformedactorandforeignhintchecks precedeHR/service, ownersigned, byuserdistinct. Rootcomposition406pinsfindsonlycustomerandexpectedseparatepharmacychanges.",
+  "focusedBehavior": "NOT_RUN",
+  "typeValidity": "NOT_RUN",
+  "remainingP0": [
+    "finalownerlessread-write-race",
+    "ownprivilegedfieldauthority",
+    "deletionretention/provider/refundpolicies"
+  ],
+  "moduleAcceptance": false,
+  "claudeReviewAccepted": false
+}

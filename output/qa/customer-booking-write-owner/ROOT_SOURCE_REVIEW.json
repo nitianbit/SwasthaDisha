@@ -1,0 +1,22 @@
+{
+  "schema": "SD-CUSTOMER-PHARMACY-COMPOSITION-SOURCE-1",
+  "protectedFiles": 406,
+  "changed": {
+    "src1/modules/bookings/controller/index.ts": "c3b500d9343150d5edff79980f10825ce6592d02f1a1c7ea652f8c852c0ca76c",
+    "src1/modules/pharmacyOrders/services/index.ts": "54bbff59b46586120f107472265d116a6754782aea6d632295ecea88983f5ddc"
+  },
+  "allOtherProtectedFilesMatch": true,
+  "customerHistoricalSourceFreezeRetained": true,
+  "pharmacyChangeAfterCustomerFreeze": true,
+  "customerStandardsReview": {
+    "reviewer": "/root",
+    "decision": "APPROVE_SOURCE_ONLY",
+    "contractSha256": "723af082952ee39d39342080d2ba72205687f94244458a5e5dabf0d9c7ee8698",
+    "candidateSha256": "c3b500d9343150d5edff79980f10825ce6592d02f1a1c7ea652f8c852c0ca76c",
+    "basis": "Actualdiff/unchangedactorvalidation/onesharedownerresolver/detail+update+deletecallorder/exactbyusersemantics/servicecompatibility/sourcefreeze14filesandcomposition406pinsreviewed."
+  },
+  "behavior": "NOT_RUN",
+  "typeValidity": "NOT_RUN",
+  "moduleAcceptance": false,
+  "finalOwnerRacePolicyClosure": false
+}
