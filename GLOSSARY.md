@@ -16,6 +16,8 @@ _Avoid_: Treating patient and login user as interchangeable.
 
 **Customer**: A person or business buying a product or service. A clinical service identifies the patient separately from the payer or buyer.
 
+**Individual customer**: A person buying care, tests or medicines outside an employer-sponsored corporate arrangement. The buyer may differ from the patient receiving care.
+
 **Caregiver**: A person authorized to act for a patient within a recorded scope.
 
 **Encounter**: A particular clinical interaction, with its responsible practitioner and clinical record.

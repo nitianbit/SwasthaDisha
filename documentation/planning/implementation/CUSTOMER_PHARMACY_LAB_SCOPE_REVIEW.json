@@ -1,0 +1,48 @@
+{
+  "schema": "SD-FOCUSED-MODULE-SCOPE-REVIEW-1",
+  "date": "2026-11-12",
+  "baseline": "7df9121440813dec14cd4c57d347ee20982c3ec7",
+  "files": {
+    "GLOSSARY.md": "88b19e2eab9aaeb19a0bb889e4f54b6dcf80953b90d65f31b87c4ef8b3bb671f",
+    "documentation/planning/implementation/M0_A_PROGRESS.md": "3fd16eee190d235e33fbdeced7c6d536a0f7e085eec5866dedb859c7c2e1a61c",
+    "documentation/planning/implementation/CUSTOMER_PHARMACY_LAB_PLAN.md": "b3fe87439052e8b22975e736016e8739dd8948192899a7e26be150aa4c7a2978",
+    "documentation/planning/implementation/CUSTOMER_PHARMACY_LAB_REVIEW_PROMPT.md": "7006062368629189f1ff40b1efa2129a2e71de087c4499ce9c47f16bdf202afe",
+    "documentation/planning/implementation/CUSTOMER_PHARMACY_LAB_GAPS.md": "b0256ab95f00be60b1a3a4c1fca1cc2581b95f039889a5304d278a90425e833c"
+  },
+  "decisions": [
+    {
+      "reviewer": "/root/focus_scope_spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SCOPE_ONLY",
+      "finalPlanSha256": "b3fe87439052e8b22975e736016e8739dd8948192899a7e26be150aa4c7a2978"
+    },
+    {
+      "reviewer": "/root/focus_scope_standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SCOPE_ONLY",
+      "finalPlanSha256": "b3fe87439052e8b22975e736016e8739dd8948192899a7e26be150aa4c7a2978"
+    }
+  ],
+  "clarification": "Explicit critical-result escalation/acknowledgment added and confirmed by both; no clinical policy selected.",
+  "preservation": {
+    "sixStagedAndWorkingExact": true,
+    "elevenHandoverExact": true,
+    "authoritativePatchRecipe": "git diff --cached --binary --full-index",
+    "authoritativePatchSha256": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+    "alternateNoFullIndexRecipeSha256": "edada5dfdd2f6af55494b6e767374b7b0860023cb0effd61982213ae344502fd"
+  },
+  "validation": {
+    "applicationPackageStartTestDiff": 0,
+    "whitespace": "PASS",
+    "progressAppendOnly": true,
+    "applicationExecutions": 0
+  },
+  "moduleComplete": false,
+  "sourceImplementationApproved": false,
+  "runtimeApproved": false,
+  "releaseApproved": false,
+  "claudeReviewed": false,
+  "excludedFromReview": [
+    "CUSTOMER_BOOKING_READ_CONTRACT_DRAFT.md"
+  ]
+}

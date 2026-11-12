@@ -706,3 +706,10 @@ review follows. The3600-second localreviewdeadline doesnotchange vendorlimits or
 proveeffectivemax. Allcommits remainlocal; no push/deployment/protectedlogs/keys/
 provider/account action. RootC2, fullWeek2/M0, original115, supportedclients,
 namedowners and release remainopen. Ready work continues through those gates.
+
+
+## Priority change, 12 November: individual customer, pharmacy and labs
+
+The owner deferred new corporate/HR and hospital work and prioritized completion of individual customer, pharmacy and lab modules. The [current scoped execution plan](CUSTOMER_PHARMACY_LAB_PLAN.md) preserves private/direct pharmacy and lab operations, both API/panel labs, and all shared identity, money, stock and clinical-document safeguards needed by these journeys. Existing merged corporate/HR protections remain. The [review prompt](CUSTOMER_PHARMACY_LAB_REVIEW_PROMPT.md) is a readiness prompt until concrete module completion evidence exists.
+
+Committed integration7df9121 is restored on durable local branchm0/customer-pharmacy-lab-focus. Earlier temporary worktrees are missing; uncommitted fixture edits/evidence are not assumed recovered. Historical accepted90/33 remains source-bound; inventory runtime and medicine timeout gaps remain open. Three read-only native domain audits begin from the restored baseline; no new application checks, source changes, owner acceptance, Claude review, push or deployment follows from this scope update. Original six staged files and eleven handover files stay preserved.
