@@ -1,0 +1,10 @@
+diff --git a/src1/modules/pharmacySuppliers/repository/index.ts b/src1/modules/pharmacySuppliers/repository/index.ts
+index 8896a8e894dbebc7fe8c727d4ee6f53fcc13fa60..c7412444a4ef25abed45539417ddd92a19898725 100644
+--- a/src1/modules/pharmacySuppliers/repository/index.ts
++++ b/src1/modules/pharmacySuppliers/repository/index.ts
+@@ -97 +97 @@ export class PharmacySupplierRepository {
+-    }, { $set: set, $inc: { revision: 1 } }, { new: true, upsert: false, runValidators: true }).lean().exec();
++    }, { $set: set, $inc: { revision: 1 } }, { new: true, upsert: false, runValidators: true, projection: supplierProjection, maxTimeMS: 2000 }).lean().exec();
+@@ -116 +116 @@ export class PharmacySupplierRepository {
+-    { new: true, upsert: false, runValidators: true }).lean().exec();
++    { new: true, upsert: false, runValidators: true, projection: supplierProjection, maxTimeMS: 2000 }).lean().exec();

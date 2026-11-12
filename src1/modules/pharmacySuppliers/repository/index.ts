@@ -94,7 +94,7 @@ export class PharmacySupplierRepository {
     const row = await PharmacySupplierModel.findOneAndUpdate({
       ...this.owned(pharmacyId, id), state: 'active', revision: command.expectedRevision,
       $and: [{ $expr: { $eq: [{ $type: '$state' }, 'string'] } }],
-    }, { $set: set, $inc: { revision: 1 } }, { new: true, upsert: false, runValidators: true }).lean().exec();
+    }, { $set: set, $inc: { revision: 1 } }, { new: true, upsert: false, runValidators: true, projection: supplierProjection, maxTimeMS: 2000 }).lean().exec();
     if (!row) throw supplierConflict();
     return supplierDto(row, pharmacyId, id);
   }
@@ -113,7 +113,7 @@ export class PharmacySupplierRepository {
       ...this.owned(pharmacyId, id), state: 'active', revision: command.expectedRevision,
       $and: [{ $expr: { $eq: [{ $type: '$state' }, 'string'] } }],
     }, { $set: { state: 'archived', archivedAt: now, updatedAt: now, updatedByActorId: actorId }, $inc: { revision: 1 } },
-    { new: true, upsert: false, runValidators: true }).lean().exec();
+    { new: true, upsert: false, runValidators: true, projection: supplierProjection, maxTimeMS: 2000 }).lean().exec();
     if (!row) throw supplierConflict();
     return supplierDto(row, pharmacyId, id);
   }
