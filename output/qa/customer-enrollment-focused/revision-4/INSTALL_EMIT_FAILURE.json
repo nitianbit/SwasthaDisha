@@ -1,0 +1,108 @@
+{
+  "schema": "SD-ENROLLMENT-INSTALL-EMIT-FAILURE-2",
+  "sourceCandidate": "8160df169b35463967f9da71abd067e3a460da84",
+  "actualExecSession": 93270,
+  "terminalExit": 1,
+  "terminalToolChunk": "916bc2",
+  "workspace": "/private/tmp/sd-customer-enrollment-build-258caf50-ed41-496b-8e69-a5da85187109",
+  "identity": {
+    "dev": 16777230,
+    "ino": 54868286,
+    "uid": 501,
+    "mode": "0o700"
+  },
+  "stage": "Closed runtime-package graph traversal after six full source emits/diagnostic-policy checks",
+  "install": "Mandatory successful npmci precedes emitter;24locked packages, scriptsdisabled",
+  "diagnosticCaptures": {
+    "diagnostics-NC1.json": {
+      "bytes": 6863,
+      "sha256": "150bb956238bcc9a7cbd7f43923075c9d43e53cb1274b76fbd104bd37324eeb4",
+      "returnedCount": 31,
+      "codeCounts": {
+        "2307": 30,
+        "2339": 1
+      }
+    },
+    "diagnostics-NC2.json": {
+      "bytes": 6863,
+      "sha256": "662471148a1d4d24607cd1fd88407e7bc78c12b2f6765613e0809a6425f0a180",
+      "returnedCount": 31,
+      "codeCounts": {
+        "2307": 30,
+        "2339": 1
+      }
+    },
+    "diagnostics-NC3.json": {
+      "bytes": 6863,
+      "sha256": "d02f1004f3a8c6d1e828157a9319f7250716962ac07725f03fc97b8d9214e965",
+      "returnedCount": 31,
+      "codeCounts": {
+        "2307": 30,
+        "2339": 1
+      }
+    },
+    "diagnostics-NC4.json": {
+      "bytes": 6863,
+      "sha256": "4e239f9d85944d03c06b31d0bad54a09c91ea8a19033c21c7f792c00fae81605",
+      "returnedCount": 31,
+      "codeCounts": {
+        "2307": 30,
+        "2339": 1
+      }
+    },
+    "diagnostics-OLD.json": {
+      "bytes": 6474,
+      "sha256": "a9abe25e18b0def4661b904d081c39df1dcd2d86563295629ba65f3a8d5be291",
+      "returnedCount": 29,
+      "codeCounts": {
+        "2307": 28,
+        "2339": 1
+      }
+    },
+    "diagnostics-nominal.json": {
+      "bytes": 6867,
+      "sha256": "056170525ac48df51e8189999e8032610118f79124c814477c7462ae2ed07f6a",
+      "returnedCount": 31,
+      "codeCounts": {
+        "2307": 30,
+        "2339": 1
+      }
+    }
+  },
+  "policyProof": "Six positives and60negative data controls reached by mandatory source flow before package traversal; proof objects remained in memory and were NOT published, so no independently persisted66-control result claimed",
+  "emittedPhases": "Six whole module completeness and literal emitted-app edge checks reached/passed before packagegraph stop; no maps published",
+  "failure": {
+    "message": "Unresolved package edge: url",
+    "packageSource": "node_modules/@sideway/address/lib/domain.js",
+    "sourceSha256": "1f10b307d3b48fe151fa59b4d4551c43023d4f92a800f29dca39b966a22dd34b",
+    "requiredMember": "URL",
+    "use": "Local domain parsing/punycode by actual Joi dependency; not a network request"
+  },
+  "privateLogs": {
+    "install.stdout.txt": {
+      "bytes": 25,
+      "sha256": "1d41eb5f721bb9d5710254973769ef57dc59f277b97c8647bf6ffaff5426b4ba"
+    },
+    "install.stderr.txt": {
+      "bytes": 209,
+      "sha256": "799f544422ef20e84949c8feabb844390db9306ac5cf97419981d0291eb45156"
+    },
+    "emit.stdout.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "emit.stderr.txt": {
+      "bytes": 1132,
+      "sha256": "bcf7c6d300276ee4bf0d047dd043e7ec3f987510bfda2d9a3a0cf4358ad662df"
+    }
+  },
+  "nonce": "2b20e0b3-cefb-4f2d-bb0f-6503b98653cd",
+  "onceSha256": "006eda8b947196acf2e8177c86691a03b50512d6e10a8a46e1b13b3b940e3106",
+  "receiptSha256": "e2502a30d7e0c31e93ae763cf77066413613b0a220af7fc64607497290bf8ecb",
+  "mapsPublished": false,
+  "buildDescriptorCreated": false,
+  "applicationRuntimeOr82CasesRun": false,
+  "containerDBProviderRun": false,
+  "workspaceDisposition": "RETAINED; no cleanup/retry/adoption",
+  "independentOutcome": "PENDING_TWO_NONAUTHOR_DECISIONS"
+}
