@@ -1,0 +1,46 @@
+{
+  "schema": "SD-PRIVATE-DOCUMENT-COMPOSITION-CANDIDATE-1",
+  "baseline": "99cc098ede0a3cb1124f294ef4c9b660b8d9f61d",
+  "fileAuthorCandidate": "8bed8da3bbfc7dd50a78400a679965b9ab14ee95",
+  "authors": [
+    "/root/lab_remaining_audit",
+    "/root"
+  ],
+  "ownership": {
+    "/root/lab_remaining_audit": "Nine file-module production files",
+    "/root": "Central named import and header/auth/fileRouter mount; composition evidence"
+  },
+  "contract": "documentation/planning/implementation/PRIVATE_CLINICAL_DOCUMENTS_CONTRACT_DRAFT.md",
+  "contractSha256": "2c016e285101c8a5852ad85974cd41a343ea59f31661ee8360e12eee192895f1",
+  "headerAddendum": "documentation/planning/implementation/PRIVATE_DOCUMENT_AUTH_HEADERS_ADDENDUM.md",
+  "headerAddendumSha256": "fe9479b80f66693de2e7f592bc9ab3335dc921595e36639fdb417a9547710b7b",
+  "sourceFiles": {
+    "src1/modules/file/controller/index.ts": "620e3cbdd56a9600bbf618d389cf2e473b3a795810337b1a606598fb45aa920a",
+    "src1/modules/file/documentTypes.ts": "89c7f2f262367de830b7925a200ae2d0e6c08a6966305ccb96f344fcf0c7d070",
+    "src1/modules/file/documents.ts": "f726f71c2550baa132f3ea4e8abcac12f5ef7e86321cfd7390825ec862a9a951",
+    "src1/modules/file/model/index.ts": "44d8003d6324f44b4adba62428bbbb2661e988f60baf267e546ecb8a1923aa91",
+    "src1/modules/file/repository/index.ts": "c06a2c06d8451d6f8eb622b2e149315c5499df1287682a40068296bb02f76208",
+    "src1/modules/file/routes/index.ts": "2934b9f85bcadcfb9c29dfba3d37adbbcd641bac1e004e15b1fe3ffc4a9cd76f",
+    "src1/modules/file/services/index.ts": "37a1090fa9389a3120e7371f32c9180d34ec9dc3e38a9ce34b186611f7ac8e96",
+    "src1/modules/file/storage.ts": "efdd0047c24ccb73c43c3968b4c084af7ba7b5f673f8fbfd6c10ca38fd1f23f6",
+    "src1/modules/file/validation/index.ts": "1d93adca55ef7665c8ee3dee95c9c38924f2e0b40d52e9df0a4402e96396b85b",
+    "src1/routes/index.ts": "9be841178931003004cc53a0285b5c849d82a82dbc798a4a0d38bf69396de6ea"
+  },
+  "sourcePatchSha256": "44b2a4265b2b170040167ea2c9f4d36f0c421a1a3b4afd2a24460297f36bbcec",
+  "staticChecks": {
+    "centralExactlyTwoApprovedLineReplacements": true,
+    "onlyTenOwnedProductionPaths": true,
+    "gitDiffCheck": "PASS"
+  },
+  "runtime": "NOT_RUN for type/Joi/HTTP/Formidable/fs/Mongoose/DB/transaction/index/scanner/release/provider",
+  "sourceReviews": "PENDING_TWO_ACTUAL_NONAUTHOR_DECISIONS",
+  "S1Complete": false,
+  "moduleComplete": false,
+  "retainedLimits": [
+    "Default readiness/scanner/qualified-release ports closed; concrete observed-index, scanner and qualified clinical policy adapters and positive focused evidence still required",
+    "Legacy public clinical paths, public-image/provider adapters, supported-client/cutover phases remain open",
+    "Trusted exclusive0700 service-UID root and same-UID filesystem threat assumptions retained",
+    "Global parser failures before file mount outside header addendum",
+    "C2/C3/clinical/privacy/finance/client/owner/release gates retained; no push/deploy"
+  ]
+}
