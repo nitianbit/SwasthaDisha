@@ -1,0 +1,20 @@
+{
+  "schema": "SD-DOCKER-METADATA-POSTDECISIONS-1",
+  "resultSha256": "3cfbcaeebac6e25f062911c6e328d5b40a7b183b5c58833840a5c63dc6d19bd4",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "ACCEPT_READ_ONLY_METADATA_EVIDENCE_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "ACCEPT_READ_ONLY_METADATA_EVIDENCE_ONLY",
+      "findings": []
+    }
+  ],
+  "observed": "Two exact read-only commands exited0; raw result/engine29.6.2/cache image/environment agree. Five stable bounded owned0600regular nlink1 files independently inspected. No extra query during postreview.",
+  "limits": "Point-in-time metadata only; no container, compiler, app, SDK, DB, provider, C3 execution or release admission. One-invocation authority consumed; earlier failures preserved."
+}

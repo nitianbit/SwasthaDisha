@@ -1,0 +1,45 @@
+{
+  "schema": "SD-DOCKER-METADATA-SUCCESS3-ARCHIVE-1",
+  "actualOperator": "/root",
+  "sourceDirectory": "/private/tmp/sd-docker-metadata-eh5n3ebi",
+  "recipeSha256": "0937f9f21a70f2e57b358dbd61539d1e03726335f313c198b76e1df3cdbdfd0b",
+  "files": {
+    "result.json": {
+      "source": "/private/tmp/sd-docker-metadata-eh5n3ebi/result.json",
+      "bytes": 1260,
+      "sha256": "3cfbcaeebac6e25f062911c6e328d5b40a7b183b5c58833840a5c63dc6d19bd4",
+      "byteIdenticalRegularCopy": true
+    },
+    "info.stdout.txt": {
+      "source": "/private/tmp/sd-docker-metadata-eh5n3ebi/info.stdout.txt",
+      "bytes": 58,
+      "sha256": "37052522eede42c4bf2b83fa5805a65d572cfe822bfff03c8bbcb6c44e5e8b66",
+      "byteIdenticalRegularCopy": true
+    },
+    "image.stdout.txt": {
+      "source": "/private/tmp/sd-docker-metadata-eh5n3ebi/image.stdout.txt",
+      "bytes": 294,
+      "sha256": "5b9580049f8139eeced0bb2fb342eecc1a89a0f4b57e9dadef607a9530d57d43",
+      "byteIdenticalRegularCopy": true
+    },
+    "info.stderr.txt": {
+      "source": "/private/tmp/sd-docker-metadata-eh5n3ebi/info.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "byteIdenticalRegularCopy": true
+    },
+    "image.stderr.txt": {
+      "source": "/private/tmp/sd-docker-metadata-eh5n3ebi/image.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "byteIdenticalRegularCopy": true
+    }
+  },
+  "excluded": [
+    "blank Docker config",
+    "HOME",
+    "tmp",
+    "unrelated configuration or resources"
+  ],
+  "sourceDirectoryChangedOrRemoved": false
+}

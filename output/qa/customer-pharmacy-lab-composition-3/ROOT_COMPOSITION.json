@@ -1,0 +1,17 @@
+{
+  "candidate": "91f56dde2e917f662b33b6bf91274133737cdd31",
+  "reviewer": "/root",
+  "decision": "ACCEPT_DISJOINT_SOURCE_INTEGRATION_ONLY",
+  "source_freezes": [
+    "74e4b272a5b0c092747ad72e04950bbfb79dcdf674663df9d616b9474439a498",
+    "0cc78f4fd396daeafd37b58e27b7b4055742ea4581b994b6deb5b22338e82a83"
+  ],
+  "observed": "Both complete source-freeze file sets independently match integrated bytes; three prescription/payment files and six inventory files are disjoint. Both actual nonauthor source-review records retained. No merge resolution or shared import/interface edit.",
+  "original": {
+    "head": "bfb608ea1a89551f6cd72ec5ee1349a3ee7abef7",
+    "stagedPatchSha256": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+    "stagedAndWorkingFilesUnchanged": 6,
+    "handoverFilesUnchanged": 11
+  },
+  "limits": "Source/data-only; runtime/types/HTTP/DB/provider NOT_RUN; new genuine review pending; no module/release completion."
+}

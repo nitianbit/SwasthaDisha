@@ -1,0 +1,39 @@
+{
+  "schema": "SD-CURRENT-DOCKER-METADATA-1",
+  "recipeSha256": "0937f9f21a70f2e57b358dbd61539d1e03726335f313c198b76e1df3cdbdfd0b",
+  "status": "METADATA_PREFLIGHT_PASS_ONLY",
+  "commands": [
+    {
+      "step": "info",
+      "attempted": true,
+      "processStarted": true,
+      "exitCode": 0,
+      "stdoutSha256": "37052522eede42c4bf2b83fa5805a65d572cfe822bfff03c8bbcb6c44e5e8b66",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "step": "image",
+      "attempted": true,
+      "processStarted": true,
+      "exitCode": 0,
+      "stdoutSha256": "5b9580049f8139eeced0bb2fb342eecc1a89a0f4b57e9dadef607a9530d57d43",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "DockerLaunches": 0,
+  "imagePulls": 0,
+  "appImports": 0,
+  "engine": {
+    "id": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+    "serverVersion": "29.6.2",
+    "os": "linux"
+  },
+  "image": {
+    "id": "sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
+    "digest": "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
+    "os": "linux",
+    "architecture": "arm64",
+    "volumesAbsent": true,
+    "environmentMatched": true
+  }
+}
