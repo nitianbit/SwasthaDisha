@@ -383,9 +383,9 @@ class ProfileThreeTests(unittest.TestCase):
         with self.assertRaises(s.Stop):s.environment_check(extra,parent)
         empty=dict(env);empty[s.PUBLIC_OS_KEYS[0]]=''
         with self.assertRaises(s.Stop):s.environment_check(empty,parent)
-    def test_old_live_receipt_does_not_admit_revision_five(self):
+    def test_old_live_receipt_does_not_admit_revision_six(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(s,'OWN',Path(directory)):
-            (Path(directory)/'LIVE_APPROVAL_4.json').write_text('{}')
+            (Path(directory)/'LIVE_APPROVAL_5.json').write_text('{}')
             self.assertEqual(s.main(['--live'])['firstFailure'],'APPROVAL_REQUIRED')
     def test_receipt_environment_binding_rejects_three_key_profile(self):
         env,parent=self.environment()
@@ -474,6 +474,84 @@ class AmendmentFourTests(unittest.TestCase):
         self.assertEqual(o.observer_diagnostic['stage'],'adapter')
         self.assertEqual(o.observer_diagnostic['candidateCount'],2)
         self.assertEqual(o.observer_diagnostic['matchCount'],2)
+
+
+class ObservationSixTests(unittest.TestCase):
+    setUp = SupervisorTests.setUp
+    execute = SupervisorTests.execute
+    def test_six_second_observation_succeeds_under_ten_second_cap(self):
+        clock=[100.]; native=s.Native()
+        def fake(argv,**kwargs):
+            self.assertEqual(kwargs['timeout'],10)
+            clock[0]+=6
+            return SimpleNamespace(returncode=0,stdout=b'fixed fixture',stderr=b'')
+        with patch.object(s.time,'monotonic',side_effect=lambda:clock[0]), patch.object(s.subprocess,'run',side_effect=fake):
+            result=native.command(['/bin/ps','-p','101','-o','fixed'],120.)
+        self.assertEqual(clock[0],106.)
+        self.assertEqual(result.stdout,b'fixed fixture')
+        self.assertFalse(hasattr(native,'first_observation_failure'))
+    def test_short_phase_remainder_is_actual_subprocess_cap(self):
+        native=s.Native()
+        with patch.object(s.time,'monotonic',return_value=100.), patch.object(s.subprocess,'run',return_value=SimpleNamespace(returncode=1,stdout=b'',stderr=b'')) as command:
+            native.command(['/usr/bin/pgrep','-g','101'],102.5)
+        self.assertEqual(command.call_args.kwargs['timeout'],2.5)
+    def test_expired_phase_invokes_no_native_command_and_retains_safe_diagnostic(self):
+        native=s.Native()
+        with patch.object(s.time,'monotonic',return_value=100.), patch.object(s.subprocess,'run') as command:
+            with self.assertRaises(s.Stop) as caught:native.command(['/usr/bin/pgrep','-P','101'],99.)
+        self.assertEqual(caught.exception.code,'TIMEOUT');command.assert_not_called()
+        self.assertEqual(native.first_observation_failure,{'operation':'DIRECT_CHILDREN','timeoutSeconds':0,'deadlineClassification':'EXPIRED'})
+    def test_observation_timeout_has_distinct_code_and_closed_operation_diagnostic(self):
+        vectors=[(['/bin/ps','-p','101'],'IDENTITY'),(['/bin/ps','-ww','-p','101'],'FIXED_ARGUMENTS'),(['/usr/bin/pgrep','-P','101'],'DIRECT_CHILDREN'),(['/usr/bin/pgrep','-g','101'],'EXACT_GROUP')]
+        for argv,operation in vectors:
+            with self.subTest(operation=operation):
+                native=s.Native();error=s.subprocess.TimeoutExpired(['PRIVATE_ARGV'],3,output=b'PRIVATE_STDOUT',stderr=b'PRIVATE_STDERR')
+                with patch.object(s.time,'monotonic',return_value=100.),patch.object(s.subprocess,'run',side_effect=error):
+                    with self.assertRaises(s.Stop) as caught:native.command(argv,103.)
+                self.assertEqual(caught.exception.code,'PROCESS_OBSERVATION_TIMEOUT')
+                self.assertEqual(native.first_observation_failure,{'operation':operation,'timeoutSeconds':3.,'deadlineClassification':'PHASE_REMAINDER'})
+                self.assertNotIn('PRIVATE',json.dumps(native.first_observation_failure))
+    def timeout_ports(self,identity_change=False):
+        class Timed(Ports):
+            def observe(self,process,recipe,captured,deadline):
+                super().observe(process,recipe,captured,deadline)
+                s.Native.command(self,['/bin/ps','-p','101'],deadline)
+            def absent(self,identity,deadline):
+                if not hasattr(self,'cleanup_attempted'):
+                    self.cleanup_attempted=True
+                    s.Native.command(self,['/usr/bin/pgrep','-g','101'],deadline)
+                return super().absent(identity,deadline)
+        p=Timed();p.process.forever=True;p.stdout=[];p.stderr=[];p.change_identity=identity_change
+        return p
+    def test_cleanup_timeout_cannot_replace_first_observation_diagnostic_or_failure(self):
+        p=self.timeout_ports()
+        with patch.object(s.time,'monotonic',side_effect=lambda:p.time),patch.object(s.subprocess,'run',side_effect=s.subprocess.TimeoutExpired(['PRIVATE'],3)):
+            result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'PROCESS_OBSERVATION_TIMEOUT')
+        self.assertIn('PROCESS_OBSERVATION_TIMEOUT',result['cleanupErrors'])
+        self.assertEqual(result['firstObservationFailure'],{'operation':'IDENTITY','timeoutSeconds':3.,'deadlineClassification':'PHASE_REMAINDER'})
+        self.assertEqual(p.signal_log,[('cli',int(signal.SIGTERM))])
+        self.assertEqual(result['status'],'FAILED_OR_UNRESOLVED')
+        self.assertTrue(all(result['absent'].values()))
+    def test_identity_change_after_timeout_still_withholds_every_signal(self):
+        p=self.timeout_ports(identity_change=True)
+        with patch.object(s.time,'monotonic',side_effect=lambda:p.time),patch.object(s.subprocess,'run',side_effect=s.subprocess.TimeoutExpired(['PRIVATE'],3)):
+            result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'PROCESS_OBSERVATION_TIMEOUT')
+        self.assertIn('IDENTITY_CHANGED',result['cleanupErrors'])
+        self.assertEqual(p.signal_log,[])
+        self.assertEqual(result['firstObservationFailure']['operation'],'IDENTITY')
+        self.assertFalse(any(result['absent'].values()))
+    def test_normal_cadence_is_one_second_with_immediate_initial_observation(self):
+        p=Ports();seen=[];observe=p.observe
+        p.observe=lambda *args:(seen.append(p.time),observe(*args))[1]
+        p.write=lambda process,data:len(data)
+        p.process.poll=lambda:0 if p.time>=2.8 else None
+        result,p,_=self.execute(p)
+        self.assertIsNone(result['firstFailure'])
+        self.assertEqual(seen[:2],[0.,0.])
+        self.assertEqual(len(seen),4)
+        self.assertTrue(all(b-a>=1 for a,b in zip(seen[1:],seen[2:])))
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

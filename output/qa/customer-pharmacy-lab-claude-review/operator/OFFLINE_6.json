@@ -1,0 +1,49 @@
+{
+  "schema": "SD-CLAUDE-AMENDMENT6-OFFLINE-1",
+  "python": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+  "pythonSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "sourceBefore": {
+    "supervisor.py": "f834b299e37fa79543ba4ae47e82136d0ee6420f56ec9447ae213684d9c828c0",
+    "test_supervisor.py": "3dea8fa95fdf25e2aac621312d0cf485581636eb94a2c772aaaa50f1b7471b29"
+  },
+  "sourceAfter": {
+    "supervisor.py": "f834b299e37fa79543ba4ae47e82136d0ee6420f56ec9447ae213684d9c828c0",
+    "test_supervisor.py": "3dea8fa95fdf25e2aac621312d0cf485581636eb94a2c772aaaa50f1b7471b29"
+  },
+  "tests": 47,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "exitCode": 0,
+  "transcriptSha256": "64dbd3156fd4a34642f2c2ab033d7e8391ee3ba55b210014a82c5f4930d3e5a4",
+  "fixtures": [
+    {
+      "path": "/var/folders/d4/cg1dnqfx7gq6y21yr0tz_mp80000gn/T/tmpq134oyjc",
+      "absent": true
+    },
+    {
+      "path": "/var/folders/d4/cg1dnqfx7gq6y21yr0tz_mp80000gn/T/tmpwoq8u5__",
+      "absent": true
+    },
+    {
+      "path": "/var/folders/d4/cg1dnqfx7gq6y21yr0tz_mp80000gn/T/tmpgdkh0g2q",
+      "absent": true
+    },
+    {
+      "path": "/var/folders/d4/cg1dnqfx7gq6y21yr0tz_mp80000gn/T/tmpe7e0o5fz",
+      "absent": true
+    },
+    {
+      "path": "/var/folders/d4/cg1dnqfx7gq6y21yr0tz_mp80000gn/T/tmpr2hwahvf",
+      "absent": true
+    }
+  ],
+  "exactOwnedFixtureAbsence": true,
+  "nativeAuditDenials": [],
+  "actualNativeSubprocesses": 0,
+  "modelCalls": 0,
+  "NodeCalls": 0,
+  "networkCalls": 0,
+  "appImports": 0,
+  "simulationScope": "Synthetic time/closed fake subprocesses only; not real OS stall reproduction."
+}

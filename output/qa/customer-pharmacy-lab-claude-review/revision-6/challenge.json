@@ -1,0 +1,28 @@
+{
+  "schema": "SD-CLAUDE-FOUR-MILESTONE-CHALLENGE-6",
+  "team": "swasthadisha-local",
+  "fromAgent": "codex-lead",
+  "toAgent": "claude-reviewer",
+  "sessionId": "203d42e1-6703-4755-93f9-78e269e55948",
+  "sourceCommit": "df8fd4ef00cb9d45d081ce760d15cef84a880c4e",
+  "controllerSha256": "6f2fca9b92a680d7612207c6b1d572f7551a1a6780684198f8997fc5f816ea8d",
+  "contractSha256": "e6ab2e3461450e627e0b78168e40d3c9cdc5d3165dbe7c164b3d4c37974b9c97",
+  "packetSha256": "7c9159422d112f00fe7a44d44c0f152d4c569e5a876de11215034d34a183f18b",
+  "nonce": "4bb52ffc-5d7c-43ed-ba62-a08eed714df8",
+  "clientKind": "local-bundled-CLI",
+  "requestedModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "freshness": "REVISION6_FOUR_BOUNDED_MILESTONES_ONLY",
+  "state": "PREPARED_NOT_ENQUEUED",
+  "sourceHashes": {
+    "src1/modules/externalBookings/controller/index.ts": "6f2fca9b92a680d7612207c6b1d572f7551a1a6780684198f8997fc5f816ea8d",
+    "src1/modules/pharmacyOrders/services/index.ts": "75df8dffb4ead5043ab5f7c131302063068ea6b7c79e9b55fb582bd0481c71f5",
+    "test/inventory-runtime/scenario/bootstrap.cjs": "6470766a88a09763ffc1047daa5d072611ea8783459c2ac76cc668349f5b1968"
+  },
+  "contractHashes": {
+    "documentation/planning/implementation/LAB_DEPENDENT_OWNERSHIP_CONTRACT_DRAFT.md": "8bfccbdd4baaf64a59e0c2d6a6d019b03cba38c18aa7d23a4845ba9ad3aa3d97",
+    "documentation/planning/implementation/LAB_BOOKING_LOG_MINIMIZATION_CONTRACT_DRAFT.md": "177ae43228ea4e75457f7e3d3eeb2d41a14139973d30eef618dd6eafc2b2529a",
+    "documentation/planning/implementation/PHARMACY_PRESCRIPTION_PROGRESS_CONTRACT_DRAFT.md": "136041731cdc1a10c3263842d2c12dedcdeeedd850249a0770581746fe7fd53a",
+    "documentation/planning/implementation/PHARMACY_PURE_FIXTURE_RECOVERY_CONTRACT_DRAFT.md": "d5262defa2dc94e76772b18dcc54e0fbd9b294c9a937653d022efd49ac966b01"
+  }
+}

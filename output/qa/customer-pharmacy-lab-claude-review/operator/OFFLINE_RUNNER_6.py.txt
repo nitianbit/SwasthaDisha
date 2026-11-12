@@ -1,0 +1,29 @@
+from pathlib import Path
+import hashlib,importlib.util,io,json,sys,tempfile,unittest
+O=Path('/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/customer-pharmacy-lab-claude-review/operator')
+sha=lambda b:hashlib.sha256(b).hexdigest()
+pin='/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14'
+assert sha(Path(pin).read_bytes())=='87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634'
+before={n:sha((O/n).read_bytes()) for n in ['supervisor.py','test_supervisor.py']}
+assert before=={'supervisor.py':'f834b299e37fa79543ba4ae47e82136d0ee6420f56ec9447ae213684d9c828c0','test_supervisor.py':'3dea8fa95fdf25e2aac621312d0cf485581636eb94a2c772aaaa50f1b7471b29'}
+denied=[]
+def audit(event,args):
+ if event in {'subprocess.Popen','os.system','os.exec','os.posix_spawn','os.fork','os.kill','socket.__new__','socket.connect'}:
+  denied.append(event);raise AssertionError('REAL_NATIVE_EFFECT_DENIED')
+sys.addaudithook(audit)
+spec=importlib.util.spec_from_file_location('offline_six',O/'test_supervisor.py');m=importlib.util.module_from_spec(spec);sys.modules[spec.name]=m;spec.loader.exec_module(m)
+original=tempfile.TemporaryDirectory;fixtures=[]
+class Tracked(original):
+ def __init__(self,*a,**kw):
+  super().__init__(*a,**kw);fixtures.append(self.name)
+tempfile.TemporaryDirectory=Tracked;stream=io.StringIO()
+try:result=unittest.TextTestRunner(stream=stream,verbosity=2).run(unittest.defaultTestLoader.loadTestsFromModule(m))
+finally:tempfile.TemporaryDirectory=original
+after={n:sha((O/n).read_bytes()) for n in before};absence=[{'path':p,'absent':not Path(p).exists()} for p in fixtures];assert before==after
+text=stream.getvalue();report={'schema':'SD-CLAUDE-AMENDMENT6-OFFLINE-1','python':pin,'pythonSha256':'87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634','sourceBefore':before,'sourceAfter':after,'tests':result.testsRun,'failures':len(result.failures),'errors':len(result.errors),'skipped':len(result.skipped),'exitCode':0 if result.wasSuccessful() else 1,'transcriptSha256':sha(text.encode()),'fixtures':absence,'exactOwnedFixtureAbsence':all(x['absent'] for x in absence),'nativeAuditDenials':denied,'actualNativeSubprocesses':0,'modelCalls':0,'NodeCalls':0,'networkCalls':0,'appImports':0,'simulationScope':'Synthetic time/closed fake subprocesses only; not real OS stall reproduction.'}
+for name,data in [('OFFLINE_6.txt',text.encode()),('OFFLINE_6.json',(json.dumps(report,indent=2)+'\n').encode())]:
+ p=O/name
+ with p.open('xb') as f:f.write(data)
+ p.chmod(0o600)
+print(json.dumps({k:v for k,v in report.items() if k!='fixtures'}))
+sys.exit(0 if result.wasSuccessful() and report['exactOwnedFixtureAbsence'] and not denied and result.testsRun==47 else 1)

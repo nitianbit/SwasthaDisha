@@ -1,0 +1,39 @@
+{
+  "schema": "SD-CLAUDE-BINDING-DELTA-6",
+  "functionalPrebindingSourceSha256": "15a2f26e019f2f7ab812a4102c364aa55f9f06982cb0c2762aae7645bee724b7",
+  "functionalPrebindingTestsSha256": "18c90ceda36469f6dec4307b258e1680deb99fb1ac3488f7debedf33bfde197a",
+  "finalSupervisorSha256": "f834b299e37fa79543ba4ae47e82136d0ee6420f56ec9447ae213684d9c828c0",
+  "finalTestsSha256": "3dea8fa95fdf25e2aac621312d0cf485581636eb94a2c772aaaa50f1b7471b29",
+  "bindingReplacements": [
+    {
+      "old": "revision-5",
+      "new": "revision-6"
+    },
+    {
+      "old": "9e30edb224df884ee3c55fa178040fbff026e7532f54cacf5257d683e791feda",
+      "new": "16bc4e2c6495e63d773b89401c9e622cb1b4ec8905e4cafbf4c827fb0a201b8b"
+    },
+    {
+      "old": "PLAN = '91aceef3c7399ca069adf797ee634849b3cb7e81207e653e386e3f44ac17f4de'",
+      "new": "PLAN = '5d2aefca2e5f589799016331fbe3dac39029ce7431a4b182440509e88c32b2ad'"
+    },
+    {
+      "old": "PREIMPLEMENTATION_5",
+      "new": "PREIMPLEMENTATION_6"
+    },
+    {
+      "old": "LIVE_APPROVAL_5",
+      "new": "LIVE_APPROVAL_6"
+    },
+    {
+      "old": "SD-CURRENT-CLAUDE-LIVE-APPROVAL-5",
+      "new": "SD-CURRENT-CLAUDE-LIVE-APPROVAL-6"
+    }
+  ],
+  "exactReverseSourceBindingRecovery": true,
+  "exactReverseTestsBindingRecovery": true,
+  "selectedPacketFilesByteEquivalentToR5": true,
+  "environmentByteEquivalentToR5": true,
+  "runtimePinsMcpCapsArgvControlsUnchanged": true,
+  "liveCalls": 0
+}

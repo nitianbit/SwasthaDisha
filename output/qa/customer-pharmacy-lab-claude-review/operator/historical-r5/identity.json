@@ -1,0 +1,6 @@
+{
+  "supervisorSha256": "53b9f75c5f8be840bfb8d67857bb62152eeacb99054b240ed1d23243888207da",
+  "testsSha256": "49887b78e24e687d66fefed02dba56b7c89f4b0fd9b249426ea3cef474d9417b",
+  "actualFailure": "ACTUAL_FAILURE_5.json",
+  "inert": true
+}

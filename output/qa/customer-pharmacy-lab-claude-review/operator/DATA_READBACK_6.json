@@ -1,0 +1,21 @@
+{
+  "schema": "SD-CLAUDE-R6-DATA-READBACK-1",
+  "wholeSelectedFiles": 54,
+  "excerpts": 68,
+  "allSelectedBytesExactlyR5": true,
+  "sourceSnapshot": "df8fd4ef00cb9d45d081ce760d15cef84a880c4e",
+  "packetSha256": "7c9159422d112f00fe7a44d44c0f152d4c569e5a876de11215034d34a183f18b",
+  "sessionId": "203d42e1-6703-4755-93f9-78e269e55948",
+  "profileBindingsMatch": true,
+  "exactReverseBindingsMatch": true,
+  "R5SourceTestsPreserved": true,
+  "offlineTests": 47,
+  "failures": 0,
+  "errors": 0,
+  "skips": 0,
+  "freshOwnedFixtureAbsence": true,
+  "fixtureCount": 5,
+  "claimReceiptOutputUnallocated": true,
+  "liveCalls": 0,
+  "appImports": 0
+}

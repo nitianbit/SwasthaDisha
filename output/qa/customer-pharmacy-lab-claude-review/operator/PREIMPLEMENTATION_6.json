@@ -1,0 +1,12 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-OPERATOR-PREPARATION-6",
+  "planSha256": "5d2aefca2e5f589799016331fbe3dac39029ce7431a4b182440509e88c32b2ad",
+  "preparedFreezeSha256": "16bc4e2c6495e63d773b89401c9e622cb1b4ec8905e4cafbf4c827fb0a201b8b",
+  "rootAction": "AUTHORIZE_COMPACT_SUPERVISOR_AND_OFFLINE_FAKE_CHECKS_ONLY",
+  "rootMandate": "Apply only independently reviewed observation amendment6 and fresh four-milestone profile bindings; fake-only checks; stop before source/invocation reviews and Root live prerequisites.",
+  "amendmentContractSha256": "9f817d1a34fa73903adc755a236cb95fa305fe1f1c4947b477e484e786803689",
+  "preimplementationDecisionsSha256": "65be6c73b696ddf19cdcd66e340b060456521f0702bf5a6c3472f63fbe58fbcf",
+  "finalSourceExactInvocationReviews": "PENDING_TWO_ACTUAL_NONAUTHOR_DECISIONS",
+  "liveInvocationApproved": false,
+  "modelRequests": 0
+}
