@@ -1,0 +1,23 @@
+{
+  "schema": "SD-PRIVATE-REMEDIATION-PLAN-DECISIONS-1",
+  "planSha256": "8afbcad14c7c500a803beed589398093aabac2108ba19769814205ae6562147a",
+  "sourceCandidateBeforeAmendment": "ebbe934cf1521143f41c8a97c034e7da0510baca",
+  "decisions": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "conditions": "Scope end hook/current actual response paths, actual socket closure not normal IncomingMessage completion; monotonic capture lease/checkpoints and owned finalization; no pending-syscall/commit cancellation claim."
+    },
+    {
+      "reviewer": "/root/milestone_composition_r9",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "conditions": "Preserve original end this/arguments/overloads/result/status/body/Vary; lease checks survive parser listener cleanup and apply retries; uncertain ownership retains orphan."
+    }
+  ],
+  "executionAdmitted": false,
+  "sourceApproval": "PENDING_TWO_AMENDED_NONAUTHOR_DECISIONS"
+}

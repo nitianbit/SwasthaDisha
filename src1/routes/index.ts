@@ -11,7 +11,7 @@ import bookingRouter from '@/modules/bookings/routes';
 import partnerRouter from '@/modules/partners/routes';
 import slotRouter from '@/modules/slots/routes';
 import corporateRouter from '@/modules/corporates/routes';
-import fileRouter from '@/modules/file/routes';
+import fileRouter, { privateDocumentHeaders } from '@/modules/file/routes';
 import bannerRouter from '@/modules/banners/routes';
 import walletRouter from '@/modules/wallet/routes';
 import couponRouter from '@/modules/coupon/routes';
@@ -68,7 +68,7 @@ export const configureRoutes = (app: Express): void => {
   app.use('/api/v1/partners', authenticate, partnerRouter);
   app.use('/api/v1/slots', authenticate, slotRouter);
   app.use('/api/v1/corporates', authenticate, corporateRouter);
-  app.use('/api/v1/file', authenticate, fileRouter);
+  app.use('/api/v1/file', privateDocumentHeaders, authenticate, fileRouter);
   app.use('/api/v1/banners', authenticate, bannerRouter);
   app.use('/api/v1/wallet', authenticate, walletRouter);
   app.use('/api/v1/coupons', authenticate, couponRouter);

@@ -1,0 +1,51 @@
+{
+  "schema": "SD-PRIVATE-DOCUMENT-AMENDED-SOURCE-DECISIONS-1",
+  "candidate": "26128ff90128a03a87bd811e814cc05234b13775",
+  "baseline": "99cc098ede0a3cb1124f294ef4c9b660b8d9f61d",
+  "previousCandidate": "ebbe934cf1521143f41c8a97c034e7da0510baca",
+  "sourceFiles": {
+    "src1/modules/file/controller/index.ts": "4c19319089f0a5a141fc1473d54956dbdd4127c4b87b1dcca7bde011120ec57f",
+    "src1/modules/file/documentTypes.ts": "89c7f2f262367de830b7925a200ae2d0e6c08a6966305ccb96f344fcf0c7d070",
+    "src1/modules/file/documents.ts": "ad8a6bba2042dd6222d516dcd93c1473983a46ee9048742abf46674082b01276",
+    "src1/modules/file/model/index.ts": "44d8003d6324f44b4adba62428bbbb2661e988f60baf267e546ecb8a1923aa91",
+    "src1/modules/file/repository/index.ts": "c06a2c06d8451d6f8eb622b2e149315c5499df1287682a40068296bb02f76208",
+    "src1/modules/file/routes/index.ts": "2934b9f85bcadcfb9c29dfba3d37adbbcd641bac1e004e15b1fe3ffc4a9cd76f",
+    "src1/modules/file/services/index.ts": "37a1090fa9389a3120e7371f32c9180d34ec9dc3e38a9ce34b186611f7ac8e96",
+    "src1/modules/file/storage.ts": "09315a3816094d291655f9f64e55bce49b0387385c8aef0c863542faf53d46cb",
+    "src1/modules/file/validation/index.ts": "1d93adca55ef7665c8ee3dee95c9c38924f2e0b40d52e9df0a4402e96396b85b",
+    "src1/routes/index.ts": "9be841178931003004cc53a0285b5c849d82a82dbc798a4a0d38bf69396de6ea"
+  },
+  "sourcePatchSha256": "fd399e17955358eb783358059659120f3505f302e40f27a2a63200676cdf7c8b",
+  "remediationPatchSha256": "ee8702604654331a50e2fa00b0ea38a4d1fd3b6b80a2c01db74d794bb4907c0b",
+  "decisions": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Standards/composition",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": [],
+      "evidence": "All10hashes/threecontracts/exactpatches/3-file scope inspected. Conditional validators/end hook, one monotonic deadline/socket latch, earliest held-fd finalization and exact object/request lease checkpoints resolve initial findings."
+    },
+    {
+      "reviewer": "/root/milestone_composition_r9",
+      "role": "Spec/composition",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": [],
+      "evidence": "All10actualhashes/Gitpatches and7unchangedfiles independently verified; complete current response/capture/metadata retry/cleanup paths traced; no further material issue."
+    }
+  ],
+  "runtime": "NOT_RUN: type/Express/Joi/HTTP/Formidable/fs/deadline/lease/transaction/index/scanner/release/provider",
+  "limits": [
+    "Default readiness/scanner/qualified-release ports closed; concrete observed-index, scanner and qualified clinical policy adapters and positive focused evidence still required",
+    "Legacy public clinical paths, public-image/provider adapters, supported-client/cutover phases remain open",
+    "Trusted exclusive0700 service-UID root and same-UID filesystem threat assumptions retained",
+    "Global parser failures before file mount outside header addendum",
+    "C2/C3/clinical/privacy/finance/client/owner/release gates retained; no push/deploy",
+    "Monotonic capture checkpoints cannot cancel an already pending filesystem call or admitted database commit; metadata callback checkpoint is not hard commit cancellation",
+    "Unverifiable owned temporary identity remains a private orphan; exact descriptor/path cleanup behavior needs actual focused evidence"
+  ],
+  "S1Complete": false,
+  "moduleComplete": false,
+  "releaseApproved": false
+}

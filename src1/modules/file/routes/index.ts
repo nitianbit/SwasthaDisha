@@ -1,11 +1,24 @@
 import 'reflect-metadata';
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
-import { FileController } from '../controller';
+import { FileController, applyPrivateDocumentHeaders } from '../controller';
+
+/** Called at the existing file mount before authentication; other prefixes retain their policy. */
+export function privateDocumentHeaders(req: Request, res: Response, next: NextFunction): void {
+  if (/^\/(?:assets(?:\/|$)|clinical(?:\/|$))/i.test(req.path)) applyPrivateDocumentHeaders(res);
+  next();
+}
 
 const fileRouter = Router();
 
 const fileController = new FileController();
+
+// New private document commands; the existing central mount authenticates first.
+fileRouter.post('/assets/uploads', catchAsync(fileController.uploadPrivateAsset));
+fileRouter.post('/clinical/:resourceKind/:resourceId/uploads', catchAsync(fileController.uploadClinicalAsset));
+fileRouter.get('/assets/:assetId/versions', catchAsync(fileController.listAssetVersions));
+fileRouter.get('/assets/:assetId/versions/:versionId/content', catchAsync(fileController.readAssetContent));
+fileRouter.post('/assets/:assetId/revoke', catchAsync(fileController.revokePrivateAsset));
 
 // Simple file fetch API - pass URL as query parameter
 // GET /api/v1/file/fetch?url=/api/v1/file/static/bookings/12345/document.pdf
