@@ -1,0 +1,21 @@
+{
+  "sourceFreezeSha256": "912a2f4863e0859385864ffaf67fed0804e10c7cc2550f9b34ab8a952bf0e466",
+  "sessionId": "c5ebf347-27df-460f-9b2f-0c7ff48ff7bb",
+  "packetSha256": "d73c2f97881dded32e3b7e794035603eb5ff6eaf5bf6c53b64d503d001584a92",
+  "decisions": [
+    {
+      "agent": "/root/pharmacist_identity_fields",
+      "role": "Standards",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW",
+      "findings": []
+    },
+    {
+      "agent": "/root/pharmacy_refund_primitives",
+      "role": "Spec",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW",
+      "findings": []
+    }
+  ],
+  "scope": "Two actual independent nonauthor subagent exact-source/one-invocation votes; neither Root nor bindingworker reviews. One exact invocation after fresh Root prerequisites. No retry; actual provenance/cleanup acceptance separate.",
+  "rootFinalDataReadback": "All24freeze/70liveinputs, runtime/Python pins, environment and freshpaths match; no tests repeated."
+}

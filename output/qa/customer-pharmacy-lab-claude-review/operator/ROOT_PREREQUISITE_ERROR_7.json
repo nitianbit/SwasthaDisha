@@ -1,0 +1,7 @@
+{
+  "stage": "BEFORE_RECEIPT_AND_MODEL",
+  "issue": "Root checked a nonexistent directory ignore pattern as a file path after removing trailing slash; check returned nonmatch. No receipt, claim, private output or model allocated.",
+  "correction": "Verify an exact private state.json descendant against the same narrow existing directory exclusion; both direct file exclusions also match. No source/profile or invocation changes.",
+  "modelCalls": 0,
+  "runAuthorityConsumed": false
+}
