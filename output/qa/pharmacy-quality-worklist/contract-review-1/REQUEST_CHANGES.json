@@ -1,0 +1,35 @@
+{
+  "candidate_sha256": "c0725016bc942258882532f77c479323ffdd6ccc1a818ac8043d4f1ec59d01dd",
+  "author": "/root/refund_error_writer",
+  "decisions": [
+    {
+      "reviewer": "/root/pharmacist_identity_fields",
+      "role": "Spec",
+      "decision": "REQUEST_CHANGES"
+    },
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "REQUEST_CHANGES"
+    }
+  ],
+  "provenance": "Actual independent NONAUTHOR contract decisions relayed directly by Root before implementation.",
+  "findings": [
+    {
+      "id": "QW-C1",
+      "finding": "The 100-row limit with permitted escaped control strings can exceed the stated 256KiB response budget.",
+      "selected_amendment": "Root selected maximum limit50, default20 unchanged, with a conservative verified data construction bound <=4096 bytes per row plus1024 bytes header =205824 bytes."
+    },
+    {
+      "id": "QW-C2",
+      "finding": "Require explicit $isArray exclusion before unwind so scalar batches never become rows.",
+      "selected_amendment": "Add $expr:$isArray to the first scoped match; retain post-unwind selected-status match."
+    },
+    {
+      "id": "QW-C3",
+      "finding": "A beyond-end page on a nonempty matching data set must not reset total/totalPages to zero.",
+      "selected_amendment": "Empty pages retain actual positive total/totalPages; only genuinely zero matched batches have zero totals."
+    }
+  ],
+  "scope": "No source edit or executable verification admitted. Old draft preserved byte-exact. Two fresh nonauthor reviews required on amended contract."
+}

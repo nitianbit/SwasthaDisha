@@ -1,0 +1,22 @@
+{
+  "contract_sha256": "710f300d1d335540599a912fcec1582ce6c7d636cc9a5f20a386615bbb9c12ee",
+  "author": "/root/refund_error_writer",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/pharmacist_identity_fields",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    }
+  ],
+  "source_pins_verified": 16,
+  "scope": "QW-C1 old draft and REQUEST_CHANGES preserved; max50/default20 conservative205824B bound, explicit array exclusion, truthful beyond-end totals. Existing signed business read guard, no clinical/quality/quantity write or derived expiry. Pipeline/byte/effect behavior NOT_RUN.",
+  "rootAction": "AUTHORIZE_ONLY_CONTRACTED_SOURCE_IMPLEMENTATION_ON_SEPARATE_BRANCH",
+  "execution": "No app/TS/Node/compiler/DB/provider or other runtime admission; two actual nonauthor source reviews before integration."
+}

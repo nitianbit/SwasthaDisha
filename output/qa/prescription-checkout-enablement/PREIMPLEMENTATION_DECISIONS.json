@@ -1,0 +1,22 @@
+{
+  "contract_sha256": "e3deb08a9002e4b11bf0d168dbce369312727841e5c96fa5c3a25503ea1781a7",
+  "author": "/root/policy_standards",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/pharmacy_refund_primitives",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    }
+  ],
+  "source_pins_verified": 21,
+  "scope": "Interim source admission for prospective commerce only; no concealment of existing captures. Raw catalogue false facts must survive defaults, canonical ID correspondence, all funding/enrichment insertion order and safe post-guard type narrowing need source review. Preserve captured-only/refund-error source. Existing issued orders/races/reconciliation/F1 remain open.",
+  "rootAction": "AUTHORIZE_ONLY_CONTRACTED_SOURCE_IMPLEMENTATION_ON_SEPARATE_BRANCH",
+  "execution": "No app/TS/Node/compiler/DB/provider or other runtime admission; two actual nonauthor source reviews before integration."
+}

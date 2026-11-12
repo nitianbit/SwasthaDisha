@@ -1,0 +1,46 @@
+{
+  "status": "DATA_ONLY_REFERENCE_ENCODING_NOT_HTTP_OR_TYPESCRIPT_EXECUTION",
+  "encoding": "Compact JSON UTF-8. ASCII control U+0000 uses six ASCII bytes per UTF-16 unit, matching JSON.stringify escaping. All fixed keys/scalars are ASCII. No whitespace/replacer or extra fields are admitted by the response contract.",
+  "variable_string_limits_utf16": {
+    "medicineName": 200,
+    "rackLocation": 100,
+    "batchNumberRaw": 100,
+    "expiryDateRaw": 32
+  },
+  "utf16_encoding_bound": "At most6 bytes per UTF-16 code unit: controls and lone surrogates escape as6; quotes/backslashes use2; other BMP encodes <=3 UTF-8 bytes; a valid surrogate pair uses4 bytes for2 units. HTML escaping also fits6.",
+  "fixed_scalar_bounds": {
+    "object_id_hex_bytes_each": 24,
+    "object_id_fields": 3,
+    "nonnegative_safe_integer_decimal_digits": 16,
+    "longest_status": "quarantined",
+    "longest_nullable_boolean": "false"
+  },
+  "witness_row": {
+    "inventoryItemId": "aaaaaaaaaaaaaaaaaaaaaaaa",
+    "medicineId": "bbbbbbbbbbbbbbbbbbbbbbbb",
+    "medicineName": "\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000",
+    "inventoryIsActive": false,
+    "rackLocation": "\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000",
+    "batchId": "cccccccccccccccccccccccc",
+    "batchPosition": 9007199254740991,
+    "batchNumberRaw": "\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000",
+    "expiryDateRaw": "\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000",
+    "storedQualityStatus": "quarantined",
+    "availableQty": 9007199254740991,
+    "reservedQty": 9007199254740991,
+    "freeQty": 9007199254740991
+  },
+  "witness_row_bytes": 2975,
+  "witness_row_with_comma_bytes": 2976,
+  "header_with_empty_data_bytes": 194,
+  "old_100_row_response_bytes": 297794,
+  "new_50_row_response_bytes": 148993,
+  "conservative_bound": {
+    "max_rows": 50,
+    "per_row_bytes_including_separator": 4096,
+    "header_bytes": 1024,
+    "total_bytes": 205824,
+    "limit_bytes": 262144
+  },
+  "limitations": "Python computed declared compact JSON data lengths only. No TypeScript/Express/Joi/HTTP response has run. Focused verification must compare actual emitted exact fields/lengths and encoding settings. Adding fields, indentation or a custom replacer requires a fresh bound/review."
+}
