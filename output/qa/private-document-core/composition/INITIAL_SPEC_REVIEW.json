@@ -1,0 +1,16 @@
+{
+  "schema": "SD-PRIVATE-INITIAL-SPEC-REVIEW-1",
+  "reviewer": "/root/milestone_composition_r9",
+  "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+  "candidate": "ebbe934cf1521143f41c8a97c034e7da0510baca",
+  "patchSha256": "44b2a4265b2b170040167ea2c9f4d36f0c421a1a3b4afd2a24460297f36bbcec",
+  "decision": "REQUEST_CHANGES",
+  "findings": [
+    "Express generates validators after helper, allowing conditional304 for private JSON/auth/errors",
+    "Capture timeout does not latch past parsing or govern verification/promotion/metadata; verification windows reset",
+    "Staging/open/initial fstat are outside finalization"
+  ],
+  "allTenHashesAndContractsVerified": true,
+  "otherCorePathsInspected": true,
+  "runtime": "NOT_RUN"
+}
