@@ -1,0 +1,39 @@
+{
+  "schema": "SD-CUSTOMER-ENROLLMENT-CONTACT-SOURCE-DECISIONS-1",
+  "candidate": "e6334e8767ab4384e2e85e5540d5952024c8bee5",
+  "baseline": "99cc098ede0a3cb1124f294ef4c9b660b8d9f61d",
+  "contractSha256": "8826f45a11651dc117ccb3119b6b9093405889324545a1679cf2efe8630e387a",
+  "sourceFiles": {
+    "src1/modules/auth/services/index.ts": "c522444ef80133c136a50d276ae64cdbaca8333049cca9723ff36d9f20bf3c48",
+    "src1/modules/auth/validation/index.ts": "752f049481df9de2587c386f8c44e5dc1548073295f36149a3974a3a9513af4c",
+    "API_SCHEMAS.md": "68ba65584b18ebbb3c02f7c7f3c114123fb18ffa53d94c2fb57f67ca95d197a2"
+  },
+  "patchSha256": "c544c85d5402006aa4ac455fb9d48573cc4439823841fbfe4bc0ac3480f0f311",
+  "decisions": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": [],
+      "evidence": "Exact3hashes/patch/contract, call graph, guard before effects, selected-only persistence, undefined alternate compatibility, unchanged other roles inspected."
+    },
+    {
+      "reviewer": "/root/milestone_composition_r9",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": [],
+      "evidence": "Actual public Joi/controller/service path traced; XOR/primitive/code admission precedes identity and OTP operations; only canonical selected alias saved; baseline branches compared."
+    }
+  ],
+  "runtime": {
+    "typecheck": "NOT_RUN",
+    "HTTP": "NOT_RUN",
+    "JoiRuntime": "NOT_RUN",
+    "database": "NOT_RUN",
+    "provider": "NOT_RUN"
+  },
+  "fullContactFeatureComplete": false,
+  "applicationOwnerReleaseApproval": false
+}

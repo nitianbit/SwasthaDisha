@@ -1,0 +1,34 @@
+{
+  "schema": "SD-CUSTOMER-ENROLLMENT-CONTACT-SOURCE-1",
+  "author": "/root",
+  "baseline": "99cc098ede0a3cb1124f294ef4c9b660b8d9f61d",
+  "parentContract": "documentation/planning/implementation/CUSTOMER_CONTACT_CHANGE_CONTRACT_DRAFT.md",
+  "parentContractSha256": "8826f45a11651dc117ccb3119b6b9093405889324545a1679cf2efe8630e387a",
+  "scope": "CONTACT-C3 customer-only single-destination login/enrollment increment; full contact-change/purpose/generation/index/recovery work is not implemented by this change.",
+  "files": {
+    "src1/modules/auth/services/index.ts": "c522444ef80133c136a50d276ae64cdbaca8333049cca9723ff36d9f20bf3c48",
+    "src1/modules/auth/validation/index.ts": "752f049481df9de2587c386f8c44e5dc1548073295f36149a3974a3a9513af4c",
+    "API_SCHEMAS.md": "68ba65584b18ebbb3c02f7c7f3c114123fb18ffa53d94c2fb57f67ca95d197a2"
+  },
+  "patchSha256": "c544c85d5402006aa4ac455fb9d48573cc4439823841fbfe4bc0ac3480f0f311",
+  "staticChecks": {
+    "onlyDeclaredThreePaths": true,
+    "serviceOutsideSendVerifyAndNecessaryImportUnchanged": true,
+    "allLegacySchemasBytePreserved": true,
+    "gitDiffCheck": "PASS"
+  },
+  "independentSourceReviews": "PENDING_TWO_NONAUTHOR_DECISIONS",
+  "execution": {
+    "typecheck": "NOT_RUN",
+    "HTTP": "NOT_RUN",
+    "JoiRuntime": "NOT_RUN",
+    "database": "NOT_RUN",
+    "provider": "NOT_RUN"
+  },
+  "retainedGates": [
+    "Existing unproven legacy pairs and profile contact writers are not repaired here",
+    "Other authentication-role request contracts remain unchanged, not newly security-certified",
+    "Full customer contact feature and actual focused C3 evidence remain required",
+    "Root dependency/runtime/build/start and release gates remain unchanged"
+  ]
+}

@@ -10,6 +10,7 @@ import {
 } from '@/modules/auth/types';
 import { CorporateRepository } from '@/modules/corporates/repository';
 import { AppError } from '@/modules/common/types';
+import { selectCustomerLoginContact } from '@/modules/auth/validation';
 import { OTPService } from '@/modules/otp/services';
 import { AdminRepository } from '@/modules/admin/repository';
 import { IAdmin } from '@/modules/admin/types';
@@ -97,6 +98,12 @@ export class AuthService {
   }
 
   async sendOTP(data: SendOTPRequest): Promise<{ message: string }> {
+    const customerContact = data.userType === 'user'
+      ? selectCustomerLoginContact(data, false)
+      : undefined;
+    const customerIdentity: { phone?: string; email?: string } | undefined = customerContact
+      ? { [customerContact.target]: customerContact.targetValue }
+      : undefined;
     // Generate OTP (example - implement your OTP generation logic)
     const otp = randomInt(100000, 1000000).toString();
 
@@ -123,7 +130,7 @@ export class AuthService {
         : await this.pharmacyRepository.findByEmail(data.email!);
     } else {
       userRecord = await this.userRepository.findByPhoneOrEmail(
-        { phone: data.phone, email: data.email },
+        customerIdentity ?? { phone: data.phone, email: data.email },
         'user'
       );
     }
@@ -157,8 +164,7 @@ export class AuthService {
       }
       else {
         const newUser = await this.userRepository.save({
-          phone: data.phone,
-          email: data.email,
+          ...(customerIdentity ?? { phone: data.phone, email: data.email }),
           userType: 'user',
           createdSource: 'self_signup',
           otpVerified: false,
@@ -201,8 +207,8 @@ export class AuthService {
     }
 
     // Create OTP record using OTP service
-    const target = data.phone ? 'phone' : 'email';
-    const targetValue = data.phone?.trim() || data.email?.trim().toLowerCase();
+    const target = customerContact?.target ?? (data.phone ? 'phone' : 'email');
+    const targetValue = customerContact?.targetValue ?? (data.phone?.trim() || data.email?.trim().toLowerCase());
     await this.otpService.createOTP({
       userId,
       otp,
@@ -217,12 +223,14 @@ export class AuthService {
         expiryMinutes,
       });
       await this.smsService.sendSMS({
-        to: data.phone,
+        to: customerContact?.target === 'phone' ? customerContact.targetValue : data.phone,
         text: smsContent.text,
         templateId: smsContent.templateId,
       });
     } else if (target === 'email' && data.email) {
-      const normalizedEmail = data.email.trim().toLowerCase();
+      const normalizedEmail = customerContact?.target === 'email'
+        ? customerContact.targetValue
+        : data.email.trim().toLowerCase();
       await this.emailService.sendEmail({
         to: [normalizedEmail],
         subject: 'MyEwaCare OTP Verification',
@@ -246,6 +254,12 @@ export class AuthService {
       userType: string;
     }
   }> => {
+    const customerContact = data.userType === 'user'
+      ? selectCustomerLoginContact(data, true)
+      : undefined;
+    const customerIdentity: { phone?: string; email?: string } | undefined = customerContact
+      ? { [customerContact.target]: customerContact.targetValue }
+      : undefined;
     // Find identity record based on userType
     let userRecord: IUser | IAdmin | ISpecialist | IHR | IPharmacy | null;
     if (data.userType === 'admin') {
@@ -269,7 +283,7 @@ export class AuthService {
         : await this.pharmacyRepository.findByEmail(data.email!);
     } else {
       userRecord = await this.userRepository.findByPhoneOrEmail(
-        { phone: data.phone, email: data.email },
+        customerIdentity ?? { phone: data.phone, email: data.email },
         'user'
       );
     }
@@ -320,7 +334,7 @@ export class AuthService {
     }
 
     // Verify OTP against the selected identity's current destination.
-    const target = data.phone ? 'phone' : 'email';
+    const target = customerContact?.target ?? (data.phone ? 'phone' : 'email');
     const targetValue = target === 'phone'
       ? userRecord.phone?.trim()
       : userRecord.email?.trim().toLowerCase();

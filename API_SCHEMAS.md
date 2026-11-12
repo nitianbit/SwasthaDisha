@@ -4,6 +4,10 @@ This document contains JSON Schema definitions for all API endpoints, converted 
 
 ## Authentication
 
+For `/api/v1/auth/user/send` and `/api/v1/auth/user/verify`, provide exactly one of `phone` or `email`. For these customer paths, use `oneOf` instead of the generic `anyOf` below. Supplying both contacts returns HTTP400 `VALIDATION_ERROR` before an identity lookup or send. New customer enrollment stores only the selected destination; these login endpoints do not add a secondary contact. Other authentication roles retain the generic request shapes below.
+
+Customer service calls treat an undefined alternate field as absent, validate without scalar coercion, and canonicalize the selected email to trimmed lowercase. VERIFY also validates the six-digit code before lookup. Existing HTTP parameter/body validation retains its earlier error precedence.
+
 ### Send OTP Request Schema
 ```json
 {

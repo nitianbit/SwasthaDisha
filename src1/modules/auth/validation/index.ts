@@ -1,4 +1,5 @@
 import Joi from 'joi';
+import { AppError } from '@/modules/common/types';
 
 // Common validation schemas
 const phoneSchema = Joi.string()
@@ -45,6 +46,47 @@ export const verifyOTPSchema = Joi.object({
   .messages({
     'object.missing': 'Either phone or email must be provided',
   });
+
+// Individual accounts enroll and authenticate one proved destination at a time.
+// The legacy role schemas above keep their existing request contracts.
+export const customerSendOTPSchema = Joi.object({
+  phone: phoneSchema.optional(),
+  email: emailSchema.optional(),
+}).xor('phone', 'email');
+
+export const customerVerifyOTPSchema = customerSendOTPSchema.append({
+  otp: verifyOTPSchema.extract('otp'),
+});
+
+export function selectCustomerLoginContact(
+  data: { phone?: unknown; email?: unknown; otp?: unknown },
+  verify = false
+): { target: 'phone' | 'email'; targetValue: string } {
+  const invalid = (): never => {
+    throw new AppError({
+      status: 400,
+      code: 'VALIDATION_ERROR',
+      message: 'Provide exactly one valid phone or email',
+    });
+  };
+  if (!data || typeof data !== 'object' || Array.isArray(data)) invalid();
+  const { phone, email, otp } = data;
+  if (phone !== undefined && typeof phone !== 'string') invalid();
+  if (email !== undefined && typeof email !== 'string') invalid();
+  if (verify && typeof otp !== 'string') invalid();
+
+  const candidate = {
+    ...(phone !== undefined ? { phone } : {}),
+    ...(email !== undefined ? { email: typeof email === 'string' ? email.trim().toLowerCase() : email } : {}),
+    ...(verify ? { otp } : {}),
+  };
+  const schema = verify ? customerVerifyOTPSchema : customerSendOTPSchema;
+  const { error, value } = schema.validate(candidate, { convert: false, stripUnknown: false });
+  if (error) invalid();
+  return value.phone !== undefined
+    ? { target: 'phone', targetValue: value.phone }
+    : { target: 'email', targetValue: value.email };
+}
 
 export const sendEmailVerificationOTPSchema = Joi.object({
   email: emailSchema.required().messages({

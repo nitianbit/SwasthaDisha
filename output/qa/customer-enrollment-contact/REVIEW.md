@@ -1,0 +1,9 @@
+# Customer enrollment single-contact source candidate
+
+Root authored this narrow CONTACT-C3 increment after actual Root Standards and independent Spec approval of parent contract8826f45. Only customer SEND/VERIFY obtain one validated non-undefined destination before query/effects; public enrollment stores only that admitted field. One shared Joi-backed selector serves both commands, reusing existing phone/email/code rules. Other roles use their existing branches and generic schemas. API documentation distinguishes the customer shape.
+
+Static exact-scope/byte/hash/whitespace checks passed. These are not executable tests. Independent nonauthor Standards/Spec source decisions remain required. Full proof-bound contact change, account uniqueness/coverage, generation revocation, legacy provenance and privacy/owner/client/release acceptance remain separate. No Node/compiler/app/provider/database/Docker execution. No deployment or push.
+
+Focused verification still required: customer two-contact SEND and VERIFY reject before every lookup/write/send; single-phone/single-email enrollment persists only that destination; malformed scalars/code reject and an undefined alternate direct-call field stays useful; normal current-target verification still works; all other-role paths keep their current behavior. Reintroduced two-field save or missing service admission must fail actual behavior under a separately admitted fixed API/recording-port profile. Do not use legacy suites or ambient resources.
+
+Two actual independent nonauthor source reviews now APPROVE_SOURCE_ONLY for e6334e8767ab4384e2e85e5540d5952024c8bee5; see SOURCE_DECISIONS.json. Runtime limitations above remain. No executable acceptance follows.
