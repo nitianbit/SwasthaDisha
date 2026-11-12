@@ -1,0 +1,146 @@
+{
+  "status": "EXPECTED_DATA_ONLY_NOT_EXECUTED_AGAINST_TYPESCRIPT",
+  "encoding": "JSON.stringify-style compact JSON UTF-8, ordered field arrays, no whitespace; ID and capability ordering uses explicit UTF-16 code-unit comparison, not localeCompare.",
+  "fingerprint": {
+    "input": {
+      "_id": "444444444444444444444444",
+      "isActive": true,
+      "isVerified": true,
+      "drugLicenseNumber": "TEST-LICENCE-001",
+      "drugLicenseDocumentUrl": "urn:fixture:license:version-1"
+    },
+    "expected_serialization_utf8": "[\"business-source\",1,\"pharmacy\",[\"sourceBusinessId\",\"444444444444444444444444\"],[\"drugLicenseNumber\",\"TEST-LICENCE-001\"],[\"drugLicenseDocumentUrl\",\"urn:fixture:license:version-1\"]]",
+    "expected_sha256": "0b36b8a74970daae0b37e158cc99b4ca505f0c3d7cdad0dfbb8c23e36c5c40d7"
+  },
+  "decisions": [
+    {
+      "kind": "business_mapped",
+      "record": {
+        "_id": "888888888888888888888888",
+        "schemaVersion": 1,
+        "organizationId": "222222222222222222222222",
+        "operationId": "eeeeeeeeeeeeeeeeeeeeeeee",
+        "decisionKind": "business_mapped",
+        "decidingActorId": "777777777777777777777777",
+        "decidedAt": 100,
+        "authorityGeneration": "1111111111111111111111111111111111111111111111111111111111111111",
+        "evidence": [
+          {
+            "evidenceVersionId": "cccccccccccccccccccccccc",
+            "evidenceSha256": "3333333333333333333333333333333333333333333333333333333333333333"
+          }
+        ],
+        "createdAt": 100,
+        "updatedAt": 100,
+        "payload": {
+          "organizationId": "222222222222222222222222",
+          "organizationRevision": 1,
+          "kind": "pharmacy",
+          "sourceBusinessId": "444444444444444444444444",
+          "sourceFingerprint": "0b36b8a74970daae0b37e158cc99b4ca505f0c3d7cdad0dfbb8c23e36c5c40d7",
+          "branches": [
+            {
+              "branchId": "333333333333333333333333",
+              "state": "active",
+              "revision": 1
+            }
+          ]
+        },
+        "payloadSha256": "062e03c481ce28c4fe7f4840a27a02e1d57d4fe12a8dc6200e8a5d496f8518ab"
+      },
+      "expected_serialization_utf8": "[\"business-authority-decision\",1,\"business_mapped\",[\"_id\",\"888888888888888888888888\"],[\"organizationId\",\"222222222222222222222222\"],[\"operationId\",\"eeeeeeeeeeeeeeeeeeeeeeee\"],[\"decidingActorId\",\"777777777777777777777777\"],[\"decidedAt\",100],[\"authorityGeneration\",\"1111111111111111111111111111111111111111111111111111111111111111\"],[\"evidence\",[[\"cccccccccccccccccccccccc\",\"3333333333333333333333333333333333333333333333333333333333333333\"]]],[\"payload\",[\"organizationId\",\"222222222222222222222222\"],[\"organizationRevision\",1],[\"kind\",\"pharmacy\"],[\"sourceBusinessId\",\"444444444444444444444444\"],[\"sourceFingerprint\",\"0b36b8a74970daae0b37e158cc99b4ca505f0c3d7cdad0dfbb8c23e36c5c40d7\"],[\"branches\",[[\"333333333333333333333333\",\"active\",1]]]]]",
+      "expected_sha256": "062e03c481ce28c4fe7f4840a27a02e1d57d4fe12a8dc6200e8a5d496f8518ab"
+    },
+    {
+      "kind": "membership_granted",
+      "record": {
+        "_id": "999999999999999999999999",
+        "schemaVersion": 1,
+        "organizationId": "222222222222222222222222",
+        "operationId": "ffffffffffffffffffffffff",
+        "decisionKind": "membership_granted",
+        "decidingActorId": "777777777777777777777777",
+        "decidedAt": 100,
+        "authorityGeneration": "1111111111111111111111111111111111111111111111111111111111111111",
+        "evidence": [
+          {
+            "evidenceVersionId": "dddddddddddddddddddddddd",
+            "evidenceSha256": "4444444444444444444444444444444444444444444444444444444444444444"
+          }
+        ],
+        "createdAt": 100,
+        "updatedAt": 100,
+        "subjectActorId": "111111111111111111111111",
+        "payload": {
+          "organizationId": "222222222222222222222222",
+          "actorId": "111111111111111111111111",
+          "membershipId": "555555555555555555555555",
+          "membershipRevision": 1,
+          "validFrom": 100,
+          "expiresAt": 2000,
+          "grants": [
+            {
+              "branchId": "333333333333333333333333",
+              "capability": "pharmacy.prescription.review",
+              "grantDecisionId": "999999999999999999999999"
+            }
+          ],
+          "branchId": "333333333333333333333333",
+          "capability": "pharmacy.prescription.review"
+        },
+        "payloadSha256": "b4593f7ce5be5148bad64d17d58cb0d003631c9d201aa40a2ca71f973eee8eb8"
+      },
+      "expected_serialization_utf8": "[\"business-authority-decision\",1,\"membership_granted\",[\"_id\",\"999999999999999999999999\"],[\"organizationId\",\"222222222222222222222222\"],[\"operationId\",\"ffffffffffffffffffffffff\"],[\"decidingActorId\",\"777777777777777777777777\"],[\"decidedAt\",100],[\"authorityGeneration\",\"1111111111111111111111111111111111111111111111111111111111111111\"],[\"evidence\",[[\"dddddddddddddddddddddddd\",\"4444444444444444444444444444444444444444444444444444444444444444\"]]],[\"subjectActorId\",\"111111111111111111111111\"],[\"payload\",[\"organizationId\",\"222222222222222222222222\"],[\"actorId\",\"111111111111111111111111\"],[\"membershipId\",\"555555555555555555555555\"],[\"membershipRevision\",1],[\"validFrom\",100],[\"expiresAt\",2000],[\"grants\",[[\"333333333333333333333333\",\"pharmacy.prescription.review\",\"999999999999999999999999\"]]],[\"branchId\",\"333333333333333333333333\"],[\"capability\",\"pharmacy.prescription.review\"]]]",
+      "expected_sha256": "b4593f7ce5be5148bad64d17d58cb0d003631c9d201aa40a2ca71f973eee8eb8"
+    },
+    {
+      "kind": "professional_verified",
+      "record": {
+        "_id": "aaaaaaaaaaaaaaaaaaaaaaaa",
+        "schemaVersion": 1,
+        "organizationId": "222222222222222222222222",
+        "operationId": "000000000000000000000001",
+        "decisionKind": "professional_verified",
+        "decidingActorId": "777777777777777777777777",
+        "decidedAt": 100,
+        "authorityGeneration": "1111111111111111111111111111111111111111111111111111111111111111",
+        "evidence": [
+          {
+            "evidenceVersionId": "bbbbbbbbbbbbbbbbbbbbbbbb",
+            "evidenceSha256": "2222222222222222222222222222222222222222222222222222222222222222"
+          }
+        ],
+        "createdAt": 100,
+        "updatedAt": 100,
+        "subjectActorId": "111111111111111111111111",
+        "payload": {
+          "organizationId": "222222222222222222222222",
+          "actorId": "111111111111111111111111",
+          "eligibilityId": "666666666666666666666666",
+          "eligibilityRevision": 1,
+          "profession": "pharmacist",
+          "validFrom": 100,
+          "expiresAt": 2000,
+          "evidenceVersionId": "bbbbbbbbbbbbbbbbbbbbbbbb",
+          "evidenceSha256": "2222222222222222222222222222222222222222222222222222222222222222",
+          "grants": [
+            {
+              "branchId": "333333333333333333333333",
+              "capability": "pharmacy.prescription.review"
+            }
+          ]
+        },
+        "payloadSha256": "e29a9d34e4c4a5ece970ecbd2f6dc527198848a44bfebaea3b74cc47b9e1fa45"
+      },
+      "expected_serialization_utf8": "[\"business-authority-decision\",1,\"professional_verified\",[\"_id\",\"aaaaaaaaaaaaaaaaaaaaaaaa\"],[\"organizationId\",\"222222222222222222222222\"],[\"operationId\",\"000000000000000000000001\"],[\"decidingActorId\",\"777777777777777777777777\"],[\"decidedAt\",100],[\"authorityGeneration\",\"1111111111111111111111111111111111111111111111111111111111111111\"],[\"evidence\",[[\"bbbbbbbbbbbbbbbbbbbbbbbb\",\"2222222222222222222222222222222222222222222222222222222222222222\"]]],[\"subjectActorId\",\"111111111111111111111111\"],[\"payload\",[\"organizationId\",\"222222222222222222222222\"],[\"actorId\",\"111111111111111111111111\"],[\"eligibilityId\",\"666666666666666666666666\"],[\"eligibilityRevision\",1],[\"profession\",\"pharmacist\"],[\"validFrom\",100],[\"expiresAt\",2000],[\"evidenceVersionId\",\"bbbbbbbbbbbbbbbbbbbbbbbb\"],[\"evidenceSha256\",\"2222222222222222222222222222222222222222222222222222222222222222\"],[\"grants\",[[\"333333333333333333333333\",\"pharmacy.prescription.review\"]]]]]",
+      "expected_sha256": "e29a9d34e4c4a5ece970ecbd2f6dc527198848a44bfebaea3b74cc47b9e1fa45"
+    }
+  ],
+  "scope_example": {
+    "checkedAt": 1000,
+    "expiresAt": 2000,
+    "branchId": "333333333333333333333333",
+    "capability": "pharmacy.prescription.review"
+  },
+  "limitations": "Python computed these declared reference-data hashes only. No TypeScript, resolver, Mongoose or driver behavior has executed. Focused admission must compare the actual exported functions and reorder/mismatch/denial vectors later."
+}

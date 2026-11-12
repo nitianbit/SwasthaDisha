@@ -1,0 +1,639 @@
+diff --git a/src1/modules/organizations/model/index.ts b/src1/modules/organizations/model/index.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..4cae8428e9473eb0c60d106be7be4e1457b50833
+--- /dev/null
++++ b/src1/modules/organizations/model/index.ts
+@@ -0,0 +1,92 @@
++import { Connection, Model, Schema } from 'mongoose';
++import { AuthorityError } from '../types';
++
++// Only the approved read adapter consumes this factory; importing it registers no model.
++const canonicalId = { type: String, required: true, match: /^[0-9a-f]{24}$/, immutable: true };
++const digest = { type: String, required: true, match: /^[0-9a-f]{64}$/ };
++const positive = { type: Number, required: true, min: 1, validate: Number.isSafeInteger };
++const date = { type: Date, required: true };
++const capability = { type: String, required: true, enum: ['pharmacy.prescription.review', 'lab.report.release'] };
++const state = { type: String, required: true, enum: ['active', 'suspended', 'revoked'] };
++const embedded = { _id: false, strict: 'throw' as const };
++const options = { timestamps: true, strict: 'throw' as const, versionKey: false as const, autoIndex: false, autoCreate: false };
++const bounded = (values: unknown[]) => Array.isArray(values) && values.length >= 1 && values.length <= 100;
++const base = { _id: canonicalId, schemaVersion: { type: Number, required: true, enum: [1], immutable: true }, revision: positive };
++
++export interface AuthorityModels {
++  readonly organization: Model<Record<string, unknown>>;
++  readonly membership: Model<Record<string, unknown>>;
++  readonly eligibility: Model<Record<string, unknown>>;
++  readonly decision: Model<Record<string, unknown>>;
++}
++const registered = new WeakMap<Connection, AuthorityModels>();
++export function createAuthorityModels(connection: Connection): AuthorityModels {
++  const previous = registered.get(connection);
++  if (previous) return previous;
++  const names = ['BusinessAuthorityOrganization', 'BusinessStaffMembership', 'BusinessProfessionalEligibility', 'BusinessAuthorityDecision'];
++  if (names.some(name => connection.models[name])) throw new AuthorityError('AUTHORITY_NOT_READY');
++  const branch = new Schema({ branchId: canonicalId, state, revision: positive }, embedded);
++  const grant = new Schema({ branchId: canonicalId, capability, grantDecisionId: canonicalId }, embedded);
++  const evidence = new Schema({ evidenceVersionId: canonicalId, evidenceSha256: digest }, embedded);
++  const organization = new Schema<Record<string, unknown>>({
++    ...base, kind: { type: String, required: true, enum: ['pharmacy', 'lab'] },
++    sourceBusinessId: canonicalId, state, sourceFingerprint: digest, mappingDecisionId: canonicalId,
++    branches: { type: [branch], required: true, validate: bounded },
++  }, options);
++  organization.index({ kind: 1, sourceBusinessId: 1 }, { unique: true });
++  const membership = new Schema<Record<string, unknown>>({
++    ...base, organizationId: canonicalId, actorId: canonicalId, state, validFrom: date, expiresAt: date,
++    grants: { type: [grant], required: true, validate: bounded },
++  }, options);
++  membership.index({ organizationId: 1, actorId: 1 }, { unique: true });
++  const eligibility = new Schema<Record<string, unknown>>({
++    ...base, organizationId: canonicalId, actorId: canonicalId,
++    profession: { type: String, required: true, enum: ['pharmacist', 'lab_signatory'] },
++    state: { type: String, required: true, enum: ['verified', 'suspended', 'revoked'] },
++    validFrom: date, expiresAt: date, verificationDecisionId: canonicalId,
++    evidenceVersionId: canonicalId, evidenceSha256: digest,
++  }, options);
++  eligibility.index({ organizationId: 1, actorId: 1, profession: 1 }, { unique: true });
++  // Explicit optional union fields, with exact decision-kind validation in the sole rule evaluator.
++  const payload = new Schema({
++    organizationId: canonicalId,
++    organizationRevision: { type: Number, min: 1, validate: Number.isSafeInteger },
++    kind: { type: String, enum: ['pharmacy', 'lab'] },
++    sourceBusinessId: { type: String, match: /^[0-9a-f]{24}$/ },
++    sourceFingerprint: { type: String, match: /^[0-9a-f]{64}$/ },
++    branches: { type: [branch], default: undefined, validate: bounded },
++    actorId: { type: String, match: /^[0-9a-f]{24}$/ },
++    membershipId: { type: String, match: /^[0-9a-f]{24}$/ },
++    membershipRevision: { type: Number, min: 1, validate: Number.isSafeInteger },
++    eligibilityId: { type: String, match: /^[0-9a-f]{24}$/ },
++    eligibilityRevision: { type: Number, min: 1, validate: Number.isSafeInteger },
++    validFrom: { type: Date }, expiresAt: { type: Date },
++    // Grant entries have an optional decision ID for the professional scope payload.
++    grants: { type: [new Schema({ branchId: canonicalId, capability, grantDecisionId: { type: String, match: /^[0-9a-f]{24}$/ } }, embedded)], default: undefined, validate: bounded },
++    branchId: { type: String, match: /^[0-9a-f]{24}$/ },
++    capability: { type: String, enum: ['pharmacy.prescription.review', 'lab.report.release'] },
++    profession: { type: String, enum: ['pharmacist', 'lab_signatory'] },
++    evidenceVersionId: { type: String, match: /^[0-9a-f]{24}$/ },
++    evidenceSha256: { type: String, match: /^[0-9a-f]{64}$/ },
++  }, embedded);
++  // No mutation API is exposed. Immutability is defense in depth, not grant authenticity.
++  const decision = new Schema<Record<string, unknown>>({
++    _id: canonicalId, schemaVersion: { type: Number, required: true, enum: [1], immutable: true },
++    organizationId: canonicalId, operationId: canonicalId,
++    decisionKind: { type: String, required: true, enum: ['business_mapped', 'membership_granted', 'professional_verified'], immutable: true },
++    subjectActorId: { type: String, match: /^[0-9a-f]{24}$/, immutable: true },
++    decidingActorId: canonicalId, decidedAt: { ...date, immutable: true },
++    authorityGeneration: { ...digest, immutable: true }, payloadSha256: { ...digest, immutable: true },
++    payload: { type: payload, required: true, immutable: true },
++    evidence: { type: [evidence], required: true, validate: bounded, immutable: true },
++  }, options);
++  decision.index({ organizationId: 1, operationId: 1 }, { unique: true });
++  const models = Object.freeze({
++    organization: connection.model(names[0], organization, 'business_authority_organizations'),
++    membership: connection.model(names[1], membership, 'business_staff_memberships'),
++    eligibility: connection.model(names[2], eligibility, 'business_professional_eligibility'),
++    decision: connection.model(names[3], decision, 'business_authority_decisions'),
++  });
++  registered.set(connection, models);
++  return models;
++}
+diff --git a/src1/modules/organizations/repository/index.ts b/src1/modules/organizations/repository/index.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..30de150c657ff47b8429bc55fc2b0ae257152e62
+--- /dev/null
++++ b/src1/modules/organizations/repository/index.ts
+@@ -0,0 +1,99 @@
++import { ClientSession, Connection, Model, Types } from 'mongoose';
++import { createAuthorityModels } from '../model';
++import { AuthorityError, AuthorityFacts, AuthorityLookup, AuthorityReadiness, AuthorityReadPort } from '../types';
++import { pharmacyFingerprint, validateEligibility, validateLookup, validateMembership, validateOrganization, validateReadiness, validateUser } from '../rules';
++
++const version = { _id: 1, schemaVersion: 1, revision: 1, createdAt: 1, updatedAt: 1 };
++const organizationProjection = { ...version, kind: 1, sourceBusinessId: 1, state: 1, sourceFingerprint: 1, mappingDecisionId: 1, branches: 1 };
++const membershipProjection = { ...version, organizationId: 1, actorId: 1, state: 1, validFrom: 1, expiresAt: 1, grants: 1 };
++const eligibilityProjection = { ...version, organizationId: 1, actorId: 1, profession: 1, state: 1, validFrom: 1, expiresAt: 1, verificationDecisionId: 1, evidenceVersionId: 1, evidenceSha256: 1 };
++const decisionProjection = { _id: 1, schemaVersion: 1, organizationId: 1, operationId: 1, decisionKind: 1, subjectActorId: 1, decidingActorId: 1, decidedAt: 1, authorityGeneration: 1, payloadSha256: 1, payload: 1, evidence: 1, createdAt: 1, updatedAt: 1 };
++const closed = async (): Promise<AuthorityReadiness> => Object.freeze({ ready: false });
++const denied = (): never => { throw new AuthorityError('AUTHORITY_DENIED'); };
++const single = (rows: readonly unknown[]): unknown => rows.length === 1 ? rows[0] : denied();
++
++// Normalize only projected DB values, never caller IDs; no fallback to arbitrary toString().
++function immutableProjection(value: unknown, depth = 0): unknown {
++  if (depth > 10) return denied();
++  if (value instanceof Date) return value.getTime();
++  if (value instanceof Types.ObjectId) return value.toHexString();
++  if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
++  if (Array.isArray(value)) {
++    if (value.length > 100) return denied();
++    return Object.freeze(value.map(v => immutableProjection(v, depth + 1)));
++  }
++  if (!value || typeof value !== 'object' || ![Object.prototype, null].includes(Object.getPrototypeOf(value))) return denied();
++  const entries = Object.entries(value);
++  if (entries.length > 32) return denied();
++  return Object.freeze(Object.fromEntries(entries.map(([k, v]) => [k, immutableProjection(v, depth + 1)])));
++}
++
++export class MongoBusinessAuthorityReadPort implements AuthorityReadPort {
++  constructor(private readonly connection: Connection, private readonly readinessProvider: () => Promise<AuthorityReadiness> = closed) {}
++
++  readiness(): Promise<AuthorityReadiness> { return this.readinessProvider(); }
++
++  private snapshotSession(value: unknown): ClientSession {
++    // Structural lookalikes never qualify. The instance must belong to this exact connection's driver/client.
++    const DriverSession = this.connection.base.mongo.ClientSession;
++    if (typeof DriverSession !== 'function' || !(value instanceof DriverSession)) throw new AuthorityError('INVALID_TRANSACTION');
++    const session = value as ClientSession;
++    const internals = session as unknown as { client?: unknown; transaction?: { options?: { readConcern?: { level?: unknown } } } };
++    if (internals.client !== this.connection.getClient() || !session.inTransaction() || internals.transaction?.options?.readConcern?.level !== 'snapshot') throw new AuthorityError('INVALID_TRANSACTION');
++    return session;
++  }
++
++  private existingModel(name: 'User' | 'Pharmacy', collection: 'users' | 'pharmacies'): Model<unknown> {
++    const result = this.connection.models[name];
++    if (!result || result.db !== this.connection || result.collection.name !== collection) throw new AuthorityError('AUTHORITY_NOT_READY');
++    return result as Model<unknown>;
++  }
++
++  async loadFacts(lookup: AuthorityLookup, transaction: unknown, now: number): Promise<AuthorityFacts> {
++    validateLookup(lookup, now);
++    const session = this.snapshotSession(transaction);
++    const heldTransaction = (session as unknown as { transaction: unknown }).transaction;
++    const acceptedGeneration = validateReadiness(await this.readiness());
++    if (acceptedGeneration !== lookup.authorityGeneration) throw new AuthorityError('AUTHORITY_NOT_READY');
++    const models = createAuthorityModels(this.connection);
++    const read = async (model: Model<unknown>, filter: Record<string, unknown>, projection: Record<string, number>): Promise<readonly unknown[]> => {
++      this.snapshotSession(session);
++      if ((session as unknown as { transaction: unknown }).transaction !== heldTransaction) throw new AuthorityError('INVALID_TRANSACTION');
++      const rows = await model.find(filter).select(projection).session(session).limit(2).lean().exec();
++      this.snapshotSession(session);
++      if ((session as unknown as { transaction: unknown }).transaction !== heldTransaction) throw new AuthorityError('INVALID_TRANSACTION');
++      return immutableProjection(rows) as readonly unknown[];
++    };
++    const user = single(await read(this.existingModel('User', 'users'), { _id: lookup.actorId, userType: 'user', isActive: true }, { _id: 1, userType: 1, isActive: 1 }));
++    validateUser(user, lookup);
++    const organization = single(await read(models.organization, {
++      _id: lookup.organizationId, state: 'active', branches: { $elemMatch: { branchId: lookup.branchId, state: 'active' } },
++    }, organizationProjection));
++    const org = validateOrganization(organization, lookup, now);
++    if (org.kind !== 'pharmacy') throw new AuthorityError('AUTHORITY_MAPPING_UNAVAILABLE');
++    const pharmacy = single(await read(this.existingModel('Pharmacy', 'pharmacies'), {
++      _id: org.sourceBusinessId, isActive: true, isVerified: true, archivedAt: { $exists: false },
++    }, { _id: 1, isActive: 1, isVerified: 1, archivedAt: 1, drugLicenseNumber: 1, drugLicenseDocumentUrl: 1 }));
++    if (pharmacyFingerprint(pharmacy) !== org.sourceFingerprint) return denied();
++    const memberships = await read(models.membership, {
++      organizationId: lookup.organizationId, actorId: lookup.actorId, state: 'active', validFrom: { $lte: new Date(now) }, expiresAt: { $gt: new Date(now) },
++      grants: { $elemMatch: { branchId: lookup.branchId, capability: lookup.capability } },
++    }, membershipProjection);
++    const member = validateMembership(single(memberships), lookup, org, now);
++    const selected = member.grants.filter(g => g.branchId === lookup.branchId && g.capability === lookup.capability);
++    if (selected.length !== 1) return denied();
++    const eligibility = await read(models.eligibility, {
++      organizationId: lookup.organizationId, actorId: lookup.actorId, profession: 'pharmacist', state: 'verified',
++      validFrom: { $lte: new Date(now) }, expiresAt: { $gt: new Date(now) },
++    }, eligibilityProjection);
++    const eligible = validateEligibility(single(eligibility), lookup, now);
++    const decision = (decisionId: string, decisionKind: string, subject = false) => read(models.decision, {
++      _id: decisionId, organizationId: lookup.organizationId, decisionKind, authorityGeneration: acceptedGeneration,
++      ...(subject ? { subjectActorId: lookup.actorId } : {}),
++    }, decisionProjection);
++    const mappingDecisions = await decision(org.mappingDecisionId, 'business_mapped');
++    const grantDecisions = await decision(selected[0].grantDecisionId, 'membership_granted', true);
++    const verificationDecisions = await decision(eligible.verificationDecisionId, 'professional_verified', true);
++    return Object.freeze({ user, organization, pharmacy, memberships, eligibility, mappingDecisions, grantDecisions, verificationDecisions });
++  }
++}
+diff --git a/src1/modules/organizations/rules.ts b/src1/modules/organizations/rules.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..c8bb52e980b4fd4314a0868be7f6c609a3329566
+--- /dev/null
++++ b/src1/modules/organizations/rules.ts
+@@ -0,0 +1,228 @@
++import { createHash } from 'crypto';
++import {
++  AuthorityDecision, AuthorityError, AuthorityFacts, AuthorityLookup,
++  AuthorityRequest, AuthenticatedPerson, Branch, BusinessScope, Capability, Eligibility,
++  EvidenceReference, GrantPayload, MappingPayload, Membership, Organization,
++  StaffGrant, VerificationPayload,
++} from './types';
++
++type Data = Record<string, unknown>;
++const id = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{24}$/.test(v);
++const digest = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{64}$/.test(v);
++const integer = (v: unknown): v is number => Number.isSafeInteger(v) && (v as number) > 0;
++const time = (v: unknown): v is number => Number.isSafeInteger(v) && (v as number) >= 0 && (v as number) <= 8640000000000000;
++const capability = (v: unknown): v is Capability => v === 'pharmacy.prescription.review' || v === 'lab.report.release';
++const state = (v: unknown) => v === 'active' || v === 'suspended' || v === 'revoked';
++const deny = (): never => { throw new AuthorityError('AUTHORITY_DENIED'); };
++const check = (ok: unknown): void => { if (!ok) deny(); };
++const data = (v: unknown): Data => {
++  if (!v || typeof v !== 'object' || Array.isArray(v) || ![Object.prototype, null].includes(Object.getPrototypeOf(v))) return deny();
++  check(Reflect.ownKeys(v).every(k => typeof k === 'string' && Object.getOwnPropertyDescriptor(v, k)?.enumerable === true && 'value' in Object.getOwnPropertyDescriptor(v, k)!));
++  return v as Data;
++};
++const shape = (v: unknown, keys: readonly string[]): Data => {
++  const d = data(v);
++  check(Object.keys(d).length === keys.length && keys.every(k => Object.prototype.hasOwnProperty.call(d, k)));
++  return d;
++};
++const list = (v: unknown): readonly unknown[] => {
++  if (!Array.isArray(v) || v.length < 1 || v.length > 100) return deny();
++  return v;
++};
++const unique = (values: readonly string[]) => check(new Set(values).size === values.length);
++const professionFor = (c: Capability) => c === 'pharmacy.prescription.review' ? 'pharmacist' : 'lab_signatory';
++const capabilityFor = (kind: Organization['kind']) => kind === 'pharmacy' ? 'pharmacy.prescription.review' : 'lab.report.release';
++const versionKeys = ['_id', 'schemaVersion', 'revision', 'createdAt', 'updatedAt'];
++const version = (d: Data, now: number) => {
++  check(id(d._id) && d.schemaVersion === 1 && integer(d.revision));
++  check(time(d.createdAt) && time(d.updatedAt) && d.createdAt <= d.updatedAt && d.updatedAt <= now);
++};
++const interval = (d: Data, now: number) => check(time(d.validFrom) && time(d.expiresAt) && d.validFrom <= now && now < d.expiresAt);
++const branches = (v: unknown): readonly Branch[] => {
++  const entries = list(v).map(raw => {
++    const d = shape(raw, ['branchId', 'state', 'revision']);
++    check(id(d.branchId) && state(d.state) && integer(d.revision));
++    return d as unknown as Branch;
++  });
++  unique(entries.map(x => x.branchId));
++  return entries;
++};
++const grants = (v: unknown, org: Organization, includeDecision: boolean): readonly Data[] => {
++  const entries = list(v).map(raw => {
++    const d = shape(raw, includeDecision ? ['branchId', 'capability', 'grantDecisionId'] : ['branchId', 'capability']);
++    check(id(d.branchId) && capability(d.capability) && d.capability === capabilityFor(org.kind));
++    check(org.branches.some(b => b.branchId === d.branchId));
++    if (includeDecision) check(id(d.grantDecisionId));
++    return d;
++  });
++  unique(entries.map(x => `${x.branchId}:${x.capability}`));
++  return entries;
++};
++const evidence = (v: unknown): readonly EvidenceReference[] => {
++  const entries = list(v).map(raw => {
++    const d = shape(raw, ['evidenceVersionId', 'evidenceSha256']);
++    check(id(d.evidenceVersionId) && digest(d.evidenceSha256));
++    return d as unknown as EvidenceReference;
++  });
++  unique(entries.map(x => x.evidenceVersionId));
++  return entries;
++};
++const compare = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
++const sortedBranches = (v: readonly Branch[]) => [...v].sort((a, b) => compare(a.branchId, b.branchId)).map(x => [x.branchId, x.state, x.revision]);
++const sortedGrants = (v: readonly Readonly<{ branchId: string; capability: Capability; grantDecisionId?: string }>[]) => [...v]
++  .sort((a, b) => compare(`${a.branchId}:${a.capability}`, `${b.branchId}:${b.capability}`))
++  .map(x => x.grantDecisionId === undefined ? [x.branchId, x.capability] : [x.branchId, x.capability, x.grantDecisionId]);
++const sha256 = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex');
++
++export function validateContext(principal: unknown, request: unknown): { person: AuthenticatedPerson; request: AuthorityRequest } {
++  try {
++    const p = shape(principal, ['actorId', 'userType', 'purpose']);
++    const r = shape(request, ['organizationId', 'branchId', 'capability']);
++    check(id(p.actorId) && p.userType === 'user' && p.purpose === 'staff');
++    check(id(r.organizationId) && id(r.branchId) && capability(r.capability));
++    return {
++      person: Object.freeze({ actorId: p.actorId as string, userType: 'user', purpose: 'staff' }),
++      request: Object.freeze({ organizationId: r.organizationId as string, branchId: r.branchId as string, capability: r.capability as Capability }),
++    };
++  } catch (error) {
++    if (error instanceof AuthorityError) throw new AuthorityError('INVALID_CONTEXT');
++    throw error;
++  }
++}
++export function validateTime(now: number): void { check(time(now)); }
++export function validateReadiness(value: unknown): string {
++  try {
++    const r = shape(value, ['ready', 'authorityGeneration', 'indexesVerified', 'provenanceVerified', 'snapshotTransactionsVerified']);
++    check(r.ready === true && digest(r.authorityGeneration) && r.indexesVerified === true && r.provenanceVerified === true && r.snapshotTransactionsVerified === true);
++    return r.authorityGeneration as string;
++  } catch (error) {
++    if (error instanceof AuthorityError) throw new AuthorityError('AUTHORITY_NOT_READY');
++    throw error;
++  }
++}
++export function validateLookup(value: AuthorityLookup, now: number): void {
++  shape(value, ['actorId', 'organizationId', 'branchId', 'capability', 'authorityGeneration']);
++  check(id(value.actorId) && id(value.organizationId) && id(value.branchId) && capability(value.capability) && digest(value.authorityGeneration));
++  validateTime(now);
++}
++export function validateUser(value: unknown, lookup: AuthorityLookup): void {
++  const u = shape(value, ['_id', 'userType', 'isActive']);
++  check(u._id === lookup.actorId && u.userType === 'user' && u.isActive === true);
++}
++export function validateOrganization(value: unknown, lookup: AuthorityLookup, now: number): Organization {
++  const d = shape(value, [...versionKeys, 'kind', 'sourceBusinessId', 'state', 'sourceFingerprint', 'mappingDecisionId', 'branches']);
++  version(d, now);
++  check(d._id === lookup.organizationId && (d.kind === 'pharmacy' || d.kind === 'lab') && id(d.sourceBusinessId));
++  check(d.state === 'active' && digest(d.sourceFingerprint) && id(d.mappingDecisionId));
++  const bs = branches(d.branches);
++  check(bs.filter(b => b.branchId === lookup.branchId && b.state === 'active').length === 1);
++  check(lookup.capability === capabilityFor(d.kind as Organization['kind']));
++  return d as unknown as Organization;
++}
++export function pharmacyFingerprint(value: unknown): string {
++  const p = shape(value, ['_id', 'isActive', 'isVerified', 'drugLicenseNumber', 'drugLicenseDocumentUrl']);
++  check(id(p._id) && p.isActive === true && p.isVerified === true);
++  check(typeof p.drugLicenseNumber === 'string' && p.drugLicenseNumber.length > 0 && p.drugLicenseNumber.length <= 512);
++  check(typeof p.drugLicenseDocumentUrl === 'string' && p.drugLicenseDocumentUrl.length > 0 && p.drugLicenseDocumentUrl.length <= 2048);
++  return sha256(JSON.stringify(['business-source', 1, 'pharmacy', ['sourceBusinessId', p._id], ['drugLicenseNumber', p.drugLicenseNumber], ['drugLicenseDocumentUrl', p.drugLicenseDocumentUrl]]));
++}
++
++// Ordered schema-versioned arrays, not object insertion order. Metadata and evidence are bound too.
++export function serializeDecision(decision: AuthorityDecision): string {
++  const common: unknown[] = ['business-authority-decision', 1, decision.decisionKind,
++    ['_id', decision._id], ['organizationId', decision.organizationId], ['operationId', decision.operationId],
++    ['decidingActorId', decision.decidingActorId], ['decidedAt', decision.decidedAt], ['authorityGeneration', decision.authorityGeneration],
++    ['evidence', [...decision.evidence].sort((a, b) => compare(a.evidenceVersionId, b.evidenceVersionId)).map(e => [e.evidenceVersionId, e.evidenceSha256])]];
++  if (decision.decisionKind === 'business_mapped') {
++    const p = decision.payload;
++    common.push(['payload', ['organizationId', p.organizationId], ['organizationRevision', p.organizationRevision], ['kind', p.kind], ['sourceBusinessId', p.sourceBusinessId], ['sourceFingerprint', p.sourceFingerprint], ['branches', sortedBranches(p.branches)]]);
++  } else if (decision.decisionKind === 'membership_granted') {
++    const p = decision.payload;
++    common.push(['subjectActorId', decision.subjectActorId], ['payload', ['organizationId', p.organizationId], ['actorId', p.actorId], ['membershipId', p.membershipId], ['membershipRevision', p.membershipRevision], ['validFrom', p.validFrom], ['expiresAt', p.expiresAt], ['grants', sortedGrants(p.grants)], ['branchId', p.branchId], ['capability', p.capability]]);
++  } else {
++    const p = decision.payload;
++    common.push(['subjectActorId', decision.subjectActorId], ['payload', ['organizationId', p.organizationId], ['actorId', p.actorId], ['eligibilityId', p.eligibilityId], ['eligibilityRevision', p.eligibilityRevision], ['profession', p.profession], ['validFrom', p.validFrom], ['expiresAt', p.expiresAt], ['evidenceVersionId', p.evidenceVersionId], ['evidenceSha256', p.evidenceSha256], ['grants', sortedGrants(p.grants)]]);
++  }
++  return JSON.stringify(common);
++}
++export function decisionDigest(decision: AuthorityDecision): string { return sha256(serializeDecision(decision)); }
++const one = <T>(v: readonly unknown[]): T => { check(Array.isArray(v) && v.length === 1); return v[0] as T; };
++export const validateMembership = (v: unknown, lookup: AuthorityLookup, org: Organization, now: number): Membership => {
++  const d = shape(v, [...versionKeys, 'organizationId', 'actorId', 'state', 'validFrom', 'expiresAt', 'grants']);
++  version(d, now); interval(d, now);
++  check(d.organizationId === lookup.organizationId && d.actorId === lookup.actorId && d.state === 'active');
++  grants(d.grants, org, true);
++  return d as unknown as Membership;
++};
++export const validateEligibility = (v: unknown, lookup: AuthorityLookup, now: number): Eligibility => {
++  const d = shape(v, [...versionKeys, 'organizationId', 'actorId', 'profession', 'state', 'validFrom', 'expiresAt', 'verificationDecisionId', 'evidenceVersionId', 'evidenceSha256']);
++  version(d, now); interval(d, now);
++  check(d.organizationId === lookup.organizationId && d.actorId === lookup.actorId && d.state === 'verified' && d.profession === professionFor(lookup.capability));
++  check(id(d.verificationDecisionId) && id(d.evidenceVersionId) && digest(d.evidenceSha256));
++  return d as unknown as Eligibility;
++};
++const currentDecision = (v: unknown, kind: AuthorityDecision['decisionKind'], lookup: AuthorityLookup, org: Organization, now: number): AuthorityDecision => {
++  const keys = ['_id', 'schemaVersion', 'organizationId', 'operationId', 'decisionKind', 'decidingActorId', 'decidedAt', 'authorityGeneration', 'payloadSha256', 'payload', 'evidence', 'createdAt', 'updatedAt'];
++  if (kind !== 'business_mapped') keys.push('subjectActorId');
++  const d = shape(v, keys);
++  check(id(d._id) && d.schemaVersion === 1 && d.organizationId === lookup.organizationId && id(d.operationId) && d.decisionKind === kind && id(d.decidingActorId));
++  check(time(d.decidedAt) && d.decidedAt <= now && time(d.createdAt) && time(d.updatedAt) && d.createdAt <= d.updatedAt && d.updatedAt <= now);
++  check(d.authorityGeneration === lookup.authorityGeneration && digest(d.payloadSha256));
++  evidence(d.evidence);
++  if (kind !== 'business_mapped') check(d.subjectActorId === lookup.actorId && d.decidingActorId !== d.subjectActorId);
++  if (kind === 'business_mapped') {
++    const p = shape(d.payload, ['organizationId', 'organizationRevision', 'kind', 'sourceBusinessId', 'sourceFingerprint', 'branches']);
++    check(id(p.organizationId) && integer(p.organizationRevision) && (p.kind === 'pharmacy' || p.kind === 'lab') && id(p.sourceBusinessId) && digest(p.sourceFingerprint));
++    branches(p.branches);
++  } else if (kind === 'membership_granted') {
++    const p = shape(d.payload, ['organizationId', 'actorId', 'membershipId', 'membershipRevision', 'validFrom', 'expiresAt', 'grants', 'branchId', 'capability']);
++    check(id(p.organizationId) && id(p.actorId) && id(p.membershipId) && integer(p.membershipRevision));
++    interval(p, now); grants(p.grants, org, true);
++    check(id(p.branchId) && capability(p.capability));
++  } else {
++    const p = shape(d.payload, ['organizationId', 'actorId', 'eligibilityId', 'eligibilityRevision', 'profession', 'validFrom', 'expiresAt', 'evidenceVersionId', 'evidenceSha256', 'grants']);
++    check(id(p.organizationId) && id(p.actorId) && id(p.eligibilityId) && integer(p.eligibilityRevision) && p.profession === professionFor(lookup.capability));
++    interval(p, now); grants(p.grants, org, false);
++    check(id(p.evidenceVersionId) && digest(p.evidenceSha256));
++  }
++  const decision = d as unknown as AuthorityDecision;
++  check(decisionDigest(decision) === decision.payloadSha256);
++  return decision;
++};
++
++export function evaluateAuthority(lookup: AuthorityLookup, facts: AuthorityFacts, now: number): BusinessScope {
++  validateLookup(lookup, now);
++  shape(facts, ['user', 'organization', 'pharmacy', 'memberships', 'eligibility', 'mappingDecisions', 'grantDecisions', 'verificationDecisions']);
++  validateUser(facts.user, lookup);
++  const org = validateOrganization(facts.organization, lookup, now);
++  if (org.kind !== 'pharmacy') throw new AuthorityError('AUTHORITY_MAPPING_UNAVAILABLE');
++  const pharmacy = data(facts.pharmacy);
++  check(pharmacy._id === org.sourceBusinessId && pharmacyFingerprint(pharmacy) === org.sourceFingerprint);
++  const member = validateMembership(one(facts.memberships), lookup, org, now);
++  const eligible = validateEligibility(one(facts.eligibility), lookup, now);
++  const grant = one<StaffGrant>(member.grants.filter(g => g.branchId === lookup.branchId && g.capability === lookup.capability));
++  const mapping = currentDecision(one(facts.mappingDecisions), 'business_mapped', lookup, org, now);
++  const granted = currentDecision(one(facts.grantDecisions), 'membership_granted', lookup, org, now);
++  const verified = currentDecision(one(facts.verificationDecisions), 'professional_verified', lookup, org, now);
++  unique([mapping._id, granted._id, verified._id]);
++  unique([mapping.operationId, granted.operationId, verified.operationId]);
++  check(mapping._id === org.mappingDecisionId && granted._id === grant.grantDecisionId && verified._id === eligible.verificationDecisionId);
++  const mp = mapping.payload as MappingPayload;
++  check(mp.organizationId === org._id && mp.organizationRevision === org.revision && mp.kind === org.kind && mp.sourceBusinessId === org.sourceBusinessId && mp.sourceFingerprint === org.sourceFingerprint);
++  check(JSON.stringify(sortedBranches(mp.branches)) === JSON.stringify(sortedBranches(org.branches)));
++  const gp = granted.payload as GrantPayload;
++  check(gp.organizationId === org._id && gp.actorId === lookup.actorId && gp.membershipId === member._id && gp.membershipRevision === member.revision && gp.validFrom === member.validFrom && gp.expiresAt === member.expiresAt && gp.branchId === lookup.branchId && gp.capability === lookup.capability);
++  check(JSON.stringify(sortedGrants(gp.grants)) === JSON.stringify(sortedGrants(member.grants)));
++  const vp = verified.payload as VerificationPayload;
++  check(vp.organizationId === org._id && vp.actorId === lookup.actorId && vp.eligibilityId === eligible._id && vp.eligibilityRevision === eligible.revision && vp.profession === eligible.profession && vp.validFrom === eligible.validFrom && vp.expiresAt === eligible.expiresAt && vp.evidenceVersionId === eligible.evidenceVersionId && vp.evidenceSha256 === eligible.evidenceSha256);
++  check(vp.grants.filter(g => g.branchId === lookup.branchId && g.capability === lookup.capability).length === 1);
++  check(verified.evidence.some(e => e.evidenceVersionId === eligible.evidenceVersionId && e.evidenceSha256 === eligible.evidenceSha256));
++  return {
++    ...lookup, purpose: 'staff', kind: 'pharmacy', sourceBusinessId: org.sourceBusinessId,
++    organizationRevision: org.revision, branchRevision: org.branches.find(b => b.branchId === lookup.branchId)!.revision,
++    membershipId: member._id, membershipRevision: member.revision, eligibilityId: eligible._id, eligibilityRevision: eligible.revision,
++    mappingDecisionId: mapping._id, grantDecisionId: granted._id, verificationDecisionId: verified._id,
++    evidenceVersionId: eligible.evidenceVersionId, evidenceSha256: eligible.evidenceSha256,
++    checkedAt: now, expiresAt: Math.min(member.expiresAt, eligible.expiresAt),
++  };
++}
+diff --git a/src1/modules/organizations/services/index.ts b/src1/modules/organizations/services/index.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..f59e102ee431c6dda7e154a46a21de89397ddff1
+--- /dev/null
++++ b/src1/modules/organizations/services/index.ts
+@@ -0,0 +1,26 @@
++import { AuthorityError, AuthorityReadPort, BusinessScope } from '../types';
++import { evaluateAuthority, validateContext, validateReadiness, validateTime } from '../rules';
++
++const issuedScopes = new WeakSet<object>();
++export function isBusinessScope(value: unknown): value is BusinessScope {
++  return !!value && typeof value === 'object' && issuedScopes.has(value);
++}
++
++// This constructor is internal composition. A caller-shaped object is never a grant.
++export class BusinessStaffAuthorityService {
++  constructor(private readonly port: AuthorityReadPort, private readonly clock: () => number) {}
++
++  async resolve(principal: unknown, request: unknown, transaction: unknown): Promise<BusinessScope> {
++    const context = validateContext(principal, request);
++    if (!transaction || typeof transaction !== 'object') throw new AuthorityError('INVALID_TRANSACTION');
++    const now = this.clock();
++    validateTime(now);
++    const authorityGeneration = validateReadiness(await this.port.readiness());
++    const lookup = Object.freeze({ ...context.request, actorId: context.person.actorId, authorityGeneration });
++    const facts = await this.port.loadFacts(lookup, transaction, now);
++    const scope = Object.freeze(evaluateAuthority(lookup, facts, now));
++    // Scope fields are all immutable scalars: freezing this object is a deep freeze.
++    issuedScopes.add(scope);
++    return scope;
++  }
++}
+diff --git a/src1/modules/organizations/types/index.ts b/src1/modules/organizations/types/index.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..23b72c77c929e2c017c6ae73f763b2f5b1433d0c
+--- /dev/null
++++ b/src1/modules/organizations/types/index.ts
+@@ -0,0 +1,164 @@
++export type BusinessKind = 'pharmacy' | 'lab';
++export type Capability = 'pharmacy.prescription.review' | 'lab.report.release';
++export type Profession = 'pharmacist' | 'lab_signatory';
++export type AuthorityState = 'active' | 'suspended' | 'revoked';
++export type DecisionKind = 'business_mapped' | 'membership_granted' | 'professional_verified';
++export type DenialCategory = 'INVALID_CONTEXT' | 'AUTHORITY_DENIED' | 'AUTHORITY_NOT_READY' | 'AUTHORITY_MAPPING_UNAVAILABLE' | 'INVALID_TRANSACTION';
++
++export class AuthorityError extends Error {
++  constructor(readonly category: DenialCategory) {
++    super(category);
++    this.name = 'AuthorityError';
++  }
++}
++
++export interface AuthenticatedPerson {
++  readonly actorId: string;
++  readonly userType: 'user';
++  readonly purpose: 'staff';
++}
++export interface AuthorityRequest {
++  readonly organizationId: string;
++  readonly branchId: string;
++  readonly capability: Capability;
++}
++export interface AuthorityLookup extends AuthorityRequest {
++  readonly actorId: string;
++  readonly authorityGeneration: string;
++}
++export type AuthorityReadiness = Readonly<{ ready: false }> | Readonly<{
++  ready: true;
++  authorityGeneration: string;
++  indexesVerified: true;
++  provenanceVerified: true;
++  snapshotTransactionsVerified: true;
++}>;
++export interface RecordVersion {
++  readonly _id: string;
++  readonly schemaVersion: 1;
++  readonly revision: number;
++  readonly createdAt: number;
++  readonly updatedAt: number;
++}
++export interface Branch {
++  readonly branchId: string;
++  readonly state: AuthorityState;
++  readonly revision: number;
++}
++export interface Organization extends RecordVersion {
++  readonly kind: BusinessKind;
++  readonly sourceBusinessId: string;
++  readonly state: AuthorityState;
++  readonly sourceFingerprint: string;
++  readonly mappingDecisionId: string;
++  readonly branches: readonly Branch[];
++}
++export interface StaffGrant {
++  readonly branchId: string;
++  readonly capability: Capability;
++  readonly grantDecisionId: string;
++}
++export interface Membership extends RecordVersion {
++  readonly organizationId: string;
++  readonly actorId: string;
++  readonly state: AuthorityState;
++  readonly validFrom: number;
++  readonly expiresAt: number;
++  readonly grants: readonly StaffGrant[];
++}
++export interface Eligibility extends RecordVersion {
++  readonly organizationId: string;
++  readonly actorId: string;
++  readonly profession: Profession;
++  readonly state: 'verified' | 'suspended' | 'revoked';
++  readonly validFrom: number;
++  readonly expiresAt: number;
++  readonly verificationDecisionId: string;
++  readonly evidenceVersionId: string;
++  readonly evidenceSha256: string;
++}
++export interface EvidenceReference {
++  readonly evidenceVersionId: string;
++  readonly evidenceSha256: string;
++}
++export interface DecisionMetadata {
++  readonly _id: string;
++  readonly schemaVersion: 1;
++  readonly organizationId: string;
++  readonly operationId: string;
++  readonly decidingActorId: string;
++  readonly decidedAt: number;
++  readonly authorityGeneration: string;
++  readonly payloadSha256: string;
++  readonly evidence: readonly EvidenceReference[];
++  readonly createdAt: number;
++  readonly updatedAt: number;
++}
++export interface MappingPayload {
++  readonly organizationId: string;
++  readonly organizationRevision: number;
++  readonly kind: BusinessKind;
++  readonly sourceBusinessId: string;
++  readonly sourceFingerprint: string;
++  readonly branches: readonly Branch[];
++}
++export interface GrantPayload {
++  readonly organizationId: string;
++  readonly actorId: string;
++  readonly membershipId: string;
++  readonly membershipRevision: number;
++  readonly validFrom: number;
++  readonly expiresAt: number;
++  readonly grants: readonly StaffGrant[];
++  readonly branchId: string;
++  readonly capability: Capability;
++}
++export interface VerificationPayload {
++  readonly organizationId: string;
++  readonly actorId: string;
++  readonly eligibilityId: string;
++  readonly eligibilityRevision: number;
++  readonly profession: Profession;
++  readonly validFrom: number;
++  readonly expiresAt: number;
++  readonly evidenceVersionId: string;
++  readonly evidenceSha256: string;
++  readonly grants: readonly Readonly<{ branchId: string; capability: Capability }>[];
++}
++export type AuthorityDecision = DecisionMetadata & (
++  | Readonly<{ decisionKind: 'business_mapped'; payload: MappingPayload }>
++  | Readonly<{ decisionKind: 'membership_granted'; subjectActorId: string; payload: GrantPayload }>
++  | Readonly<{ decisionKind: 'professional_verified'; subjectActorId: string; payload: VerificationPayload }>
++);
++export interface AuthorityFacts {
++  readonly user: unknown;
++  readonly organization: unknown;
++  readonly pharmacy: unknown;
++  readonly memberships: readonly unknown[];
++  readonly eligibility: readonly unknown[];
++  readonly mappingDecisions: readonly unknown[];
++  readonly grantDecisions: readonly unknown[];
++  readonly verificationDecisions: readonly unknown[];
++}
++export interface AuthorityReadPort {
++  readiness(): Promise<AuthorityReadiness>;
++  loadFacts(lookup: AuthorityLookup, transaction: unknown, now: number): Promise<AuthorityFacts>;
++}
++export interface BusinessScope extends AuthorityLookup {
++  readonly purpose: 'staff';
++  readonly kind: 'pharmacy';
++  readonly sourceBusinessId: string;
++  readonly organizationRevision: number;
++  readonly branchRevision: number;
++  readonly membershipId: string;
++  readonly membershipRevision: number;
++  readonly eligibilityId: string;
++  readonly eligibilityRevision: number;
++  readonly mappingDecisionId: string;
++  readonly grantDecisionId: string;
++  readonly verificationDecisionId: string;
++  readonly evidenceVersionId: string;
++  readonly evidenceSha256: string;
++  readonly checkedAt: number;
++  readonly expiresAt: number;
++}

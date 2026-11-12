@@ -1,0 +1,31 @@
+{
+  "baseline_candidate": "a722bc1c11bb47355b59db744eadfd8231188e58",
+  "baseline_freeze_sha256": "7d3be5747bbb62854e226163506b9acdca06e52a93e7d96d8de4c44f60f2e45e",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "REQUEST_CHANGES",
+      "provenance": "Actual independent nonauthor decision relayed directly by Root."
+    },
+    {
+      "reviewer": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "REQUEST_CHANGES",
+      "provenance": "Actual independent nonauthor decision relayed directly by Root."
+    }
+  ],
+  "findings": [
+    {
+      "id": "AUTH-SRC-1",
+      "finding": "connection.base is not declared on exact Mongoose 6.13.8 Connection types.",
+      "disposition": "Use the public Mongoose mongo.ClientSession export. Preserve real instance, same client/connection, active snapshot transaction and held transaction identity checks."
+    },
+    {
+      "id": "AUTH-SRC-2",
+      "finding": "Recursive global ObjectId/Date conversion can repair malformed new authority IDs and revisions into accepted canonical facts.",
+      "disposition": "Use closed projection contexts and exact paths. Only legacy User/Pharmacy _id accepts ObjectId conversion. Only declared timestamp fields accept real Date-to-epoch conversion. Unexpected ObjectId/Date and wrong timestamp types reject."
+    }
+  ],
+  "amendment_scope": "Repository only plus compact new QA. Original freeze, notes, serialization vectors and patch retained unchanged. Fresh two source decisions required; runtime NOT_RUN."
+}

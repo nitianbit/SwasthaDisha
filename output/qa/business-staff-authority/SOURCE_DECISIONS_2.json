@@ -1,0 +1,22 @@
+{
+  "candidate_commit": "990cd0eb4c988d83081d2b5d78f2bb78e604d2b0",
+  "author": "/root/refund_error_writer",
+  "source_freeze_sha256": "83457a90daeacf56291a1f5a6264cbcccee7a6f39e86bae0bcefce34b9789f95",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "materialFindings": []
+    },
+    {
+      "reviewer": "/root/pharmacist_identity_fields",
+      "role": "Independent technical Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "materialFindings": []
+    }
+  ],
+  "priorFindings": "Original REQUEST_CHANGES_1 and exact original source/QA remain retained. Both fixes independently inspected against actual source and exact-version primary APIs.",
+  "inspected": "All five files/contract/provenance, scoped predicates/same-session/active snapshot, framework-free rules, closed BSON conversion, deterministic data vectors, frozen scope, models with no autoIndex/autoCreate. All14 current freeze entries match; no existing app wiring/source modified.",
+  "limits": "Data-only source acceptance. No compiler/TypeScript/Node/pure/port/Mongoose/app/DB/index/race execution; installed package/runtime/provisioning/activation/revocation-fence evidence pending. No clinical approval, F1 resolution or release acceptance."
+}
