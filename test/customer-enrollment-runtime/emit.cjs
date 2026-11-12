@@ -45,6 +45,32 @@ for (const id of ['NC1', 'NC2', 'NC3', 'NC4']) {
   }
   sourcesByPhase[id] = sources;
 }
+const diagnosticFiles = Object.freeze({
+  nominal: 'diagnostics-nominal.json', OLD: 'diagnostics-OLD.json', NC1: 'diagnostics-NC1.json',
+  NC2: 'diagnostics-NC2.json', NC3: 'diagnostics-NC3.json', NC4: 'diagnostics-NC4.json',
+});
+function captureDiagnostics(phase, sources, returned) {
+  check(Object.hasOwn(diagnosticFiles, phase), 'Unknown fixed diagnostic phase');
+  let complete = returned.length <= 256 && returned.every(row => Buffer.byteLength(row.message, 'utf8') <= 8192);
+  const evidence = {
+    schema: 'SD-ENROLLMENT-RETURNED-DIAGNOSTICS-1', phase,
+    compiler: { version: ts.version, sha256: sha(fs.readFileSync(require.resolve('typescript'))) },
+    sourceHashes: Object.fromEntries(Object.entries(sources).map(([id, text]) => [id, sha(text)])),
+    optionsSha256: sha(JSON.stringify(plan.options)), returnedCount: returned.length,
+    captureStatus: complete ? 'COMPLETE' : 'LIMIT_EXCEEDED', complete,
+    diagnostics: complete ? returned.map(row => ({ file: row.file ?? null, code: row.code, category: row.category,
+      start: row.start ?? null, length: row.length ?? null, message: row.message })) : [],
+  };
+  let bytes = JSON.stringify(evidence) + '\n';
+  if (Buffer.byteLength(bytes, 'utf8') > 262144) {
+    complete = false; evidence.captureStatus = 'LIMIT_EXCEEDED'; evidence.complete = false; evidence.diagnostics = [];
+    bytes = JSON.stringify(evidence) + '\n';
+  }
+  check(Buffer.byteLength(bytes, 'utf8') <= 262144, 'Diagnostic envelope exceeds fixed bound');
+  // Fresh0700 output belongs to prepare.py's inode/marker-owned area; never overwrite a prior phase record.
+  fs.writeFileSync(path.join(outputDirectory, diagnosticFiles[phase]), bytes, { flag: 'wx', mode: 0o600 });
+  check(complete, 'Returned diagnostics exceed fixed capture limits; review private phase evidence');
+}
 const libRoot = path.dirname(require.resolve('typescript'));
 function compile(phase, sources) {
   const prefix = '/closed/'; const libraryReads = {};
@@ -67,11 +93,12 @@ function compile(phase, sources) {
   };
   const program = ts.createProgram(Object.keys(sources).map(id => prefix + id), plan.options, host);
   const result = program.emit();
-  check(!result.emitSkipped && Object.keys(emitted).sort().join() === Object.keys(sources).sort().join(), 'Whole-module emission incomplete');
   diagnostics[phase] = ts.getPreEmitDiagnostics(program).concat(result.diagnostics).map(d => ({
     file: d.file?.fileName?.replace(prefix, ''), code: d.code, category: d.category, start: d.start, length: d.length,
     message: ts.flattenDiagnosticMessageText(d.messageText, '\n'),
   }));
+  captureDiagnostics(phase, sources, diagnostics[phase]);
+  check(!result.emitSkipped && Object.keys(emitted).sort().join() === Object.keys(sources).sort().join(), 'Whole-module emission incomplete');
   const imports = new Set(Object.values(sources).flatMap(text => walk(ast(text, 'input.ts'), n => ts.isImportDeclaration(n)
     || ts.isExportDeclaration(n)).map(n => n.moduleSpecifier?.text).filter(Boolean)));
   check(diagnostics[phase].every(d => d.code === 2307 && [...imports].some(spec => d.message.includes("'" + spec + "'"))), 'Unexpected compiler diagnostic; exact preparation amendment/review required');

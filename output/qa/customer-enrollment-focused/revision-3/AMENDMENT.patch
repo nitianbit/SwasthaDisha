@@ -1,0 +1,36 @@
+diff --git a/test/customer-enrollment-runtime/emit.cjs b/test/customer-enrollment-runtime/emit.cjs
+index 4738c1dee47d3b2dcc506764af307003ecb4ee90..3bc7baf99d187ee44ee0a389e75a410640358c8b 100644
+--- a/test/customer-enrollment-runtime/emit.cjs
++++ b/test/customer-enrollment-runtime/emit.cjs
+@@ -47,0 +48,26 @@ for (const id of ['NC1', 'NC2', 'NC3', 'NC4']) {
++const diagnosticFiles = Object.freeze({
++  nominal: 'diagnostics-nominal.json', OLD: 'diagnostics-OLD.json', NC1: 'diagnostics-NC1.json',
++  NC2: 'diagnostics-NC2.json', NC3: 'diagnostics-NC3.json', NC4: 'diagnostics-NC4.json',
++});
++function captureDiagnostics(phase, sources, returned) {
++  check(Object.hasOwn(diagnosticFiles, phase), 'Unknown fixed diagnostic phase');
++  let complete = returned.length <= 256 && returned.every(row => Buffer.byteLength(row.message, 'utf8') <= 8192);
++  const evidence = {
++    schema: 'SD-ENROLLMENT-RETURNED-DIAGNOSTICS-1', phase,
++    compiler: { version: ts.version, sha256: sha(fs.readFileSync(require.resolve('typescript'))) },
++    sourceHashes: Object.fromEntries(Object.entries(sources).map(([id, text]) => [id, sha(text)])),
++    optionsSha256: sha(JSON.stringify(plan.options)), returnedCount: returned.length,
++    captureStatus: complete ? 'COMPLETE' : 'LIMIT_EXCEEDED', complete,
++    diagnostics: complete ? returned.map(row => ({ file: row.file ?? null, code: row.code, category: row.category,
++      start: row.start ?? null, length: row.length ?? null, message: row.message })) : [],
++  };
++  let bytes = JSON.stringify(evidence) + '\n';
++  if (Buffer.byteLength(bytes, 'utf8') > 262144) {
++    complete = false; evidence.captureStatus = 'LIMIT_EXCEEDED'; evidence.complete = false; evidence.diagnostics = [];
++    bytes = JSON.stringify(evidence) + '\n';
++  }
++  check(Buffer.byteLength(bytes, 'utf8') <= 262144, 'Diagnostic envelope exceeds fixed bound');
++  // Fresh0700 output belongs to prepare.py's inode/marker-owned area; never overwrite a prior phase record.
++  fs.writeFileSync(path.join(outputDirectory, diagnosticFiles[phase]), bytes, { flag: 'wx', mode: 0o600 });
++  check(complete, 'Returned diagnostics exceed fixed capture limits; review private phase evidence');
++}
+@@ -70 +95,0 @@ function compile(phase, sources) {
+-  check(!result.emitSkipped && Object.keys(emitted).sort().join() === Object.keys(sources).sort().join(), 'Whole-module emission incomplete');
+@@ -74,0 +100,2 @@ function compile(phase, sources) {
++  captureDiagnostics(phase, sources, diagnostics[phase]);
++  check(!result.emitSkipped && Object.keys(emitted).sort().join() === Object.keys(sources).sort().join(), 'Whole-module emission incomplete');
