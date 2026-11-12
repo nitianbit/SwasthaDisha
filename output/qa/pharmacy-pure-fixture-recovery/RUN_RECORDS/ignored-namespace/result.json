@@ -1,0 +1,48 @@
+{
+  "id": "ignored-namespace",
+  "lease": "/private/tmp/sd-pharmacy-pure-32c86a04af4e89a4a68d474d60d03851",
+  "leaseIdentity": [
+    16777233,
+    54355331,
+    501
+  ],
+  "recordDirectory": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery/output/qa/pharmacy-pure-fixture-recovery/RUN_RECORDS/ignored-namespace",
+  "started": true,
+  "cleanup": "VERIFIED_FRESH_ABSENCE",
+  "cleanupErrors": [],
+  "unresolvedPaths": [],
+  "argv": [
+    "/private/tmp/m0-node22/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/sd-pharmacy-pure-32c86a04af4e89a4a68d474d60d03851",
+    "/private/tmp/sd-pharmacy-pure-32c86a04af4e89a4a68d474d60d03851/cursor-creation-pure.test.cjs"
+  ],
+  "pid": 41925,
+  "exitCode": 1,
+  "attemptMonotonic": 9380.073068958,
+  "startMonotonic": 9380.487026291,
+  "failure": null,
+  "stdoutSha256": "e8664386784826e6b1b725938f31a770a50c053f6a57314bdc4a1d59da3eb9d3",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "sourceHashes": {
+    "bootstrap.cjs": "5ab2a3a99e0e71a916b8ad3b7455ae3325a21a99ed55544d3164beea98f6308a",
+    "bootstrap-unit.cjs": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+    "apm-cursor.test.cjs": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+    "ports-manifest.json": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+    "cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+    "public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+    "cursor-creation-pure.test.cjs": "1f9f9cc71620621af13550865bb75ebc3f7954f66de138feb08934120bb4b6f1",
+    "baseline-bootstrap.cjs": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690"
+  },
+  "summary": {
+    "schema": "SD-CURSOR-CREATION-PURE-1",
+    "status": "FAIL",
+    "sourceMode": "ignored-namespace",
+    "test": "creation-special-namespace-denied",
+    "completed": 2,
+    "failed": 1,
+    "error": "Missing expected exception."
+  },
+  "status": "EXPECTED_CONTROL_REJECTED",
+  "recordPersisted": true
+}

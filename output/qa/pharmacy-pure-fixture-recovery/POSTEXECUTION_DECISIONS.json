@@ -1,0 +1,29 @@
+{
+  "schema": "SD-PHARMACY-PURE-POSTEXECUTION-DECISIONS-1",
+  "freezeSha256": "1473c3b852e9e65e4447c85f7aa02154501a5dfb4da48ad1f615ae9c16e079ae",
+  "resultSha256": "4bb8b9755b5cc68c668b50b4ec0c71d4f2841e365dc8644433e5648eb95e4ae4",
+  "reviewers": [
+    {
+      "agent": "/root",
+      "decision": "ACCEPT_FRESH_PURE_EVIDENCE_ONLY",
+      "basis": "All12rawstreams/sourcecopies/hashmaps/summaryrecords/namedcontrols and exactleaseabsencereadbacks verified;438nominalpassed/9controlsdetected."
+    },
+    {
+      "agent": "/root/claude_review_recipe_standards",
+      "decision": "ACCEPT_FRESH_PURE_EVIDENCE_ONLY",
+      "basis": "Independentraw12records/argv/hashes/summaries/namedcontrols/frozeninputs/consumedadmission and freshexact12leaseabsence verified."
+    }
+  ],
+  "normalChecks": [
+    296,
+    95,
+    47
+  ],
+  "namedControlsDetected": 9,
+  "NodeEntriesStarted": 12,
+  "missingHistoricalQARemainsMissing": true,
+  "actualDriverAppDBProviderProof": false,
+  "runtime3RetryAuthorized": false,
+  "C2C3ModuleReleaseAcceptance": false,
+  "sourceIntegrationReview": "PENDING"
+}

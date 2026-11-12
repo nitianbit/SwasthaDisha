@@ -1,0 +1,11 @@
+test_allocation_open_failure_cleans_owned_empty_lease (__main__.FakeChecks.test_allocation_open_failure_cleans_owned_empty_lease) ... ok
+test_captured_sources_plan_and_controls_survive_disk_drift_without_reopen (__main__.FakeChecks.test_captured_sources_plan_and_controls_survive_disk_drift_without_reopen) ... ok
+test_child_failures_keep_output_start_exit_and_first_failure (__main__.FakeChecks.test_child_failures_keep_output_start_exit_and_first_failure) ... ok
+test_failed_cleanup_retains_exact_path_and_first_allocation_failure (__main__.FakeChecks.test_failed_cleanup_retains_exact_path_and_first_allocation_failure) ... ok
+test_node_recheck_refuses_before_any_child_start (__main__.FakeChecks.test_node_recheck_refuses_before_any_child_start) ... ok
+test_record_directory_failure_closes_lease_descriptor (__main__.FakeChecks.test_record_directory_failure_closes_lease_descriptor) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.010s
+
+OK

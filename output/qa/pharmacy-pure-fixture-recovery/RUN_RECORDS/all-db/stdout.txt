@@ -1,0 +1,1 @@
+{"schema":"SD-CURSOR-CREATION-PURE-1","status":"FAIL","sourceMode":"all-db","test":"find-full-namespace","completed":12,"failed":1,"error":"INVENTORY_CURSOR"}

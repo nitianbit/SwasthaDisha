@@ -1,0 +1,48 @@
+{
+  "id": "swallowed-failure",
+  "lease": "/private/tmp/sd-pharmacy-pure-4e9e1fda2ff0f262b11a2dcaa83bed1e",
+  "leaseIdentity": [
+    16777233,
+    54355448,
+    501
+  ],
+  "recordDirectory": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery/output/qa/pharmacy-pure-fixture-recovery/RUN_RECORDS/swallowed-failure",
+  "started": true,
+  "cleanup": "VERIFIED_FRESH_ABSENCE",
+  "cleanupErrors": [],
+  "unresolvedPaths": [],
+  "argv": [
+    "/private/tmp/m0-node22/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/sd-pharmacy-pure-4e9e1fda2ff0f262b11a2dcaa83bed1e",
+    "/private/tmp/sd-pharmacy-pure-4e9e1fda2ff0f262b11a2dcaa83bed1e/cursor-creation-pure.test.cjs"
+  ],
+  "pid": 41966,
+  "exitCode": 1,
+  "attemptMonotonic": 9383.351323583,
+  "startMonotonic": 9383.795917541,
+  "failure": null,
+  "stdoutSha256": "02b06aab61f4c1c297fe24d6cc5dafabec7fadeacf11079e7af10556e0e329c0",
+  "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "sourceHashes": {
+    "bootstrap.cjs": "70963c3c5e95f0cf9ae8be40050460cfaaee8c3f506c3d1c39c99b8226c35cb0",
+    "bootstrap-unit.cjs": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+    "apm-cursor.test.cjs": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+    "ports-manifest.json": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+    "cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+    "public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+    "cursor-creation-pure.test.cjs": "1f9f9cc71620621af13550865bb75ebc3f7954f66de138feb08934120bb4b6f1",
+    "baseline-bootstrap.cjs": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690"
+  },
+  "summary": {
+    "schema": "SD-CURSOR-CREATION-PURE-1",
+    "status": "FAIL",
+    "sourceMode": "swallowed-failure",
+    "test": "failure-before-undefined",
+    "completed": 32,
+    "failed": 1,
+    "error": "first failure swallowed"
+  },
+  "status": "EXPECTED_CONTROL_REJECTED",
+  "recordPersisted": true
+}

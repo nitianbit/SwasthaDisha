@@ -1,0 +1,118 @@
+{
+  "schema": "SD-PHARMACY-PURE-ROOT-READBACK-1",
+  "runResultSha256": "4bb8b9755b5cc68c668b50b4ec0c71d4f2841e365dc8644433e5648eb95e4ae4",
+  "status": "PURE_CAMPAIGN_COMPLETE",
+  "normalChecks": [
+    296,
+    95,
+    47
+  ],
+  "normalCheckTotal": 438,
+  "namedWeakeningControlsDetected": 9,
+  "actualNodeEntriesStarted": 12,
+  "all12RawStreamsAndSourceCopiesVerified": true,
+  "all12ExactLeasePathsFreshlyAbsent": true,
+  "cleanupExceptions": [],
+  "summary": [
+    {
+      "id": "bootstrap296",
+      "status": "PURE_ENTRY_COMPLETE",
+      "checks": 296,
+      "failingControl": null,
+      "pid": 41855,
+      "leaseAbsent": true
+    },
+    {
+      "id": "apm95",
+      "status": "PURE_ENTRY_COMPLETE",
+      "checks": 95,
+      "failingControl": null,
+      "pid": 41915,
+      "leaseAbsent": true
+    },
+    {
+      "id": "cursor-creation",
+      "status": "PURE_ENTRY_COMPLETE",
+      "checks": 47,
+      "failingControl": null,
+      "pid": 41916,
+      "leaseAbsent": true
+    },
+    {
+      "id": "premature-full",
+      "status": "EXPECTED_CONTROL_REJECTED",
+      "checks": null,
+      "failingControl": "creation-db-only-and-special-lease",
+      "pid": 41918,
+      "leaseAbsent": true
+    },
+    {
+      "id": "namespace-union",
+      "status": "EXPECTED_CONTROL_REJECTED",
+      "checks": null,
+      "failingControl": "creation-special-namespace-denied",
+      "pid": 41919,
+      "leaseAbsent": true
+    },
+    {
+      "id": "all-db",
+      "status": "EXPECTED_CONTROL_REJECTED",
+      "checks": null,
+      "failingControl": "find-full-namespace",
+      "pid": 41923,
+      "leaseAbsent": true
+    },
+    {
+      "id": "ignored-namespace",
+      "status": "EXPECTED_CONTROL_REJECTED",
+      "checks": null,
+      "failingControl": "creation-special-namespace-denied",
+      "pid": 41925,
+      "leaseAbsent": true
+    },
+    {
+      "id": "ignored-client",
+      "status": "EXPECTED_CONTROL_REJECTED",
+      "checks": null,
+      "failingControl": "creation-foreign-client-denied",
+      "pid": 41931,
+      "leaseAbsent": true
+    },
+    {
+      "id": "ignored-session",
+      "status": "EXPECTED_CONTROL_REJECTED",
+      "checks": null,
+      "failingControl": "creation-foreign-session-denied",
+      "pid": 41956,
+      "leaseAbsent": true
+    },
+    {
+      "id": "changed-lease",
+      "status": "EXPECTED_CONTROL_REJECTED",
+      "checks": null,
+      "failingControl": "creation-db-only-and-special-lease",
+      "pid": 41964,
+      "leaseAbsent": true
+    },
+    {
+      "id": "relaxed-reply",
+      "status": "EXPECTED_CONTROL_REJECTED",
+      "checks": null,
+      "failingControl": "wire-db-only-reply-denied",
+      "pid": 41965,
+      "leaseAbsent": true
+    },
+    {
+      "id": "swallowed-failure",
+      "status": "EXPECTED_CONTROL_REJECTED",
+      "checks": null,
+      "failingControl": "failure-before-undefined",
+      "pid": 41966,
+      "leaseAbsent": true
+    }
+  ],
+  "evidenceScope": "Fresh builtins-only fixture helper and exact-byte VM synthetic-closure checks. Not actual createDatabaseBoundary/driver initialization, application, DB, provider, clinical, money or supported-client behavior.",
+  "lostHistoricalQARemainsMissing": true,
+  "runtime3Retry": false,
+  "C2C3ModuleReleaseAcceptance": false
+}
