@@ -9,8 +9,10 @@ const root = fileURLToPath(new URL('../../', import.meta.url)).replace(/\/$/, ''
 const check = (ok, why) => { if (!ok) throw new Error(why); };
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 function regular(path) { const s = lstatSync(path); check(s.isFile() && !s.isSymbolicLink() && s.nlink === 1 && s.size < 16 * 1024 * 1024, 'Regular bounded input'); return readFileSync(path); }
-check(process.argv.length === 2 && process.execArgv.length === 0 && Object.keys(process.env).every(k => ['PATH', 'TMPDIR', 'LANG', 'LC_CTYPE'].includes(k))
+check(process.argv.length === 2 && process.execArgv.length === 0 && Object.keys(process.env).every(k => ['PATH', 'TMPDIR', 'LANG', 'LC_CTYPE', '__CF_USER_TEXT_ENCODING'].includes(k))
   && process.env.PATH === '/usr/bin:/bin', 'Fixed clean run invocation');
+check(process.env.__CF_USER_TEXT_ENCODING === undefined
+  || process.env.__CF_USER_TEXT_ENCODING === '0x' + process.getuid().toString(16).toUpperCase() + ':0x0:0x0', 'Unexpected public CoreFoundation marker');
 const profile = JSON.parse(regular(new URL('profile.json', import.meta.url)));
 check(sha(readFileSync(profile.nodeTool)) === profile.nodeToolSha256 && process.execPath === profile.nodeTool, 'Reviewed host Node tool');
 const descriptorPath = '/private/tmp/sd-customer-enrollment-build.json';

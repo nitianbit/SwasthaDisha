@@ -1,0 +1,10 @@
+diff --git a/test/customer-enrollment-runtime/run.mjs b/test/customer-enrollment-runtime/run.mjs
+index 6a067ff..c30c0f4 100644
+--- a/test/customer-enrollment-runtime/run.mjs
++++ b/test/customer-enrollment-runtime/run.mjs
+@@ -12 +12 @@ function regular(path) { const s = lstatSync(path); check(s.isFile() && !s.isSym
+-check(process.argv.length === 2 && process.execArgv.length === 0 && Object.keys(process.env).every(k => ['PATH', 'TMPDIR', 'LANG', 'LC_CTYPE'].includes(k))
++check(process.argv.length === 2 && process.execArgv.length === 0 && Object.keys(process.env).every(k => ['PATH', 'TMPDIR', 'LANG', 'LC_CTYPE', '__CF_USER_TEXT_ENCODING'].includes(k))
+@@ -13,0 +14,2 @@ check(process.argv.length === 2 && process.execArgv.length === 0 && Object.keys(
++check(process.env.__CF_USER_TEXT_ENCODING === undefined
++  || process.env.__CF_USER_TEXT_ENCODING === '0x' + process.getuid().toString(16).toUpperCase() + ':0x0:0x0', 'Unexpected public CoreFoundation marker');

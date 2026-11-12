@@ -1,0 +1,40 @@
+{
+  "schema": "SD-ENROLLMENT-RUN-ENVIRONMENT-SOURCE-CANDIDATE-1",
+  "author": "/root",
+  "baselineSource": "9e4fa8a7892426129fb8e678890b15d23184996e",
+  "sourcePath": "test/customer-enrollment-runtime/run.mjs",
+  "sourceSha256": "37744025e13853b63900309282eb7c318dcc901c4df75bb53503a972e860683a",
+  "patchSha256": "32955e5bfc9b285ea255ebc08ff7be417ad6f51108734bc5914c184451b64c54",
+  "planSha256": "887bd627fad26b0eb0735a33bc8d4ad701feadf88fce7b2a81328948f9150570",
+  "selectedInputs": {
+    "test/customer-enrollment-runtime/README.md": "716f6cdff5c433a6c178c65fe8b72d073c8e68948b89456d25b95b814d7b4ae8",
+    "test/customer-enrollment-runtime/profile.json": "61215c5ca7cf1afa5e5ff3850b858bde7213463dcec2b5acc6fcf43261234d50",
+    "test/customer-enrollment-runtime/package-plan.json": "2e6ed48219b3d28a798321f5de340ab29420b92079b9ee2b9e734df31da1aa25",
+    "test/customer-enrollment-runtime/prepare.py": "095792ab303c94a9bae72422728ce3a090a6af0a381694976a86569c223939cb",
+    "test/customer-enrollment-runtime/emit.cjs": "aab652b607d4f1acba3c2b68b158ac0719f082d3a7456412e876c3242b3bccab",
+    "test/customer-enrollment-runtime/scenario.mjs": "bad7256db44abedfc88bdd27ecc43da440ba13d727a6105862b34830f34ca618",
+    "test/customer-enrollment-runtime/ports-plan.json": "1c1ed0a36d4e07d7a5d6d849ced695c22080f148cc1cebca353878eb01a6565d",
+    "test/customer-enrollment-runtime/run.mjs": "37744025e13853b63900309282eb7c318dcc901c4df75bb53503a972e860683a",
+    "test/application/app-bundle.mjs": "63a5e15779fd942b9ff9e1c3ccaa45d4d347387f196555e2a1b8998477c7ecfc",
+    "test/application/app-container.mjs": "99259887ebe19a5737ba44f6c680d16eb6afe589b219a1c2cb465752ac1bcb17",
+    "test/application/bootstrap.mjs": "52ba13a76058f5374327d51d02065c40e37ebd3bc05dd77420af3ccb74a14d86",
+    "test/application/app-ports.mjs": "f7efb3ee12eee3f0ff427b360d9c65776c20f34c80432ac0b5a626df55408cf1",
+    "test/application/app-image.json": "4f1390608939a823788010499cc810801d01fd8ee44248da5424776c816a8611",
+    "test/application/app-runtime.json": "e4e0b67677e084dce5d65d958763057c5ca1b257232b5f007545a327fb40f0b3",
+    "documentation/planning/implementation/CUSTOMER_ENROLLMENT_FOCUSED_VERIFICATION_CONTRACT.md": "8479d7dcfbd75c0b859d7a39840f958921840ea93966c8d7c0e1f2198cad34a9",
+    "output/qa/customer-enrollment-focused/TOOL_INPUTS.json": "3729235cc997a657b533bd70daf6ce710e8c6b51b4452119f98be508173bf085",
+    "package-lock.json": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080",
+    "src1/modules/auth/services/index.ts": "c522444ef80133c136a50d276ae64cdbaca8333049cca9723ff36d9f20bf3c48",
+    "src1/modules/auth/validation/index.ts": "752f049481df9de2587c386f8c44e5dc1548073295f36149a3974a3a9513af4c",
+    "src1/modules/auth/types/index.ts": "f6cbff24776d23b029244526d07d6a9af290aec66020d414469388c6f11118e9",
+    "src1/modules/common/types/index.ts": "63ad3821027150d368e993903e954b4a80b776ff223caf322c104008239d4cbd",
+    "src1/modules/common/types/error.ts": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+    "src1/modules/common/types/response.ts": "44c5dbcf38ea117eaa13f3a715143ea147a7abf25c3491b61817e67b5f3d6f93"
+  },
+  "changedInputPaths": [
+    "test/customer-enrollment-runtime/run.mjs"
+  ],
+  "sourceAndExecutionReviews": "PENDING_TWO_NONAUTHOR_CUSTOMER_LAB",
+  "runtime": "NOT_RUN",
+  "oldAcceptedDescriptor": "60ff3d341cee7115fa0edbda839b3fc86aede7d987e2c96fd3de3ebc090c431d preserved, not rebound"
+}
