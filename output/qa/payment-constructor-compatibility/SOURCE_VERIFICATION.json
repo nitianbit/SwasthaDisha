@@ -1,0 +1,43 @@
+{
+  "schema": "SD-PAYMENT-CONSTRUCTOR-SOURCE-1",
+  "author": "/root/payment_ctor_contract",
+  "status": "SOURCE_ONLY_CANDIDATE_TWO_NONAUTHOR_SOURCE_DECISIONS_PENDING",
+  "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/payment-constructor-compatibility",
+  "branch": "m0/payment-constructor-compatibility",
+  "baseline": "37fea6b23991d4cdd98e3d68300a5191122fc868",
+  "contractSha256": "afe1861ef7f256a495304e39c5f2a768abd66c3ce80ade2663b9004ba5d7242f",
+  "preimplementationSha256": "f704ea1833a12a1a8ee882c8fa4c7cfe28dc14d0617dd73885fbd83824c7d293",
+  "assignment": "Root explicitly assigned the isolated exact call-site edit, source/hash/diff verification and local candidate commit; no runtime admission.",
+  "test": {
+    "path": "test/pharmacy.integration.test.ts",
+    "baselineSha256": "49f97bb67d22423e58412b291d8019c0eb52ab0232a49e0909dd55b1b52565c3",
+    "candidateSha256": "e123eab6f5bde08475605f8ed47a1f3830cd97ecdd9c8fe2dd0f2aa49507d35e",
+    "baselineBytes": 25895,
+    "candidateBytes": 25925
+  },
+  "diff": {
+    "path": "output/qa/payment-constructor-compatibility/CANDIDATE.diff",
+    "sha256": "526a716c36bf8d35b4bf13fee0185540463dbec2e8cd689c38625456cdb5b694",
+    "bytes": 670
+  },
+  "checks": {
+    "initialWorktreeClean": true,
+    "exactPinnedContract": true,
+    "twoActualNonauthorPreimplementationDecisionsPresent": true,
+    "oneExactReplacement": true,
+    "inverseByteIdentical": true,
+    "existingImportReused": true,
+    "arguments1Through18Preserved": true,
+    "realMedicineRepositoryArgument19": true,
+    "productionPinsUnchanged": {
+      "src1/modules/payment/services/index.ts": "9c1086e3aa9239855ed3d73a02f941015d869bdb36a689a5294dea367ee7457d",
+      "src1/modules/pharmacyMedicines/repository/index.ts": "2d3f1cc7e21804546bbdaa68d8316c9f3f4ae176f6cebc26626960908a02c2f3"
+    },
+    "trackedDiffOnlyTestBeforeQACreation": [
+      "test/pharmacy.integration.test.ts"
+    ],
+    "gitDiffCheckExit": 0
+  },
+  "execution": "Source/byte reads and Git metadata/diff only. No Node/compiler/application/SDK/Docker/database/provider/test/integration execution.",
+  "limits": "Call-shape compatibility only; no complete TypeScript validity, TypeDI resolution or pharmacy-order gate behavior proven. Existing wallet_recharge case does not invoke that gate. C2/C3 and final DEFERRED_BY_OWNER integration remain; no module/owner/release acceptance."
+}

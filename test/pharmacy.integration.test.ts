@@ -543,7 +543,8 @@ integrationTest('pharmacy self top-up initiates payment and credits only after v
     {} as never,
     {} as never,
     new PharmacyWalletRepository(),
-    new PharmacyWalletTransactionRepository()
+    new PharmacyWalletTransactionRepository(),
+    new MedicineRepository()
   );
   (paymentService as unknown as { verifyAndMarkPaid: () => Promise<unknown> }).verifyAndMarkPaid =
     async () => paymentRepository.findById(String(paymentRecord._id));
