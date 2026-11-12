@@ -1,0 +1,14 @@
+{
+  "schema": "SD-CONTACT-INDEX-STANDARDS-RECONSIDERATION-1",
+  "reviewer": "/root",
+  "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+  "candidate": "d694d8903b14820ed03f2c9c1abd77a96cc97482",
+  "previousDecision": "APPROVE_SOURCE_ONLY; preserved in STANDARDS_REVIEW.json/commitd1264d8",
+  "currentDecision": "REQUEST_CHANGES",
+  "reason": "Independent Spec reviewer identified a native UUID subclass conversion missed by initial Standards review. Pinned BSON4.7.2 deserializer converts subtype4 Binary to UUID; reader only accepts exact Binary.prototype, so genuine catalog UUID is rejected before useful metadata readiness.",
+  "findingSource": "/root/milestone_composition_r9 independent actual cached deserializer inspection; full Spec report pending",
+  "requiredFix": "Strictly support the actual pinned UUID prototype/own-field representation only at declared catalog UUID positions; no arbitrary prototype/subtype broadening. Preserve unsupported/unsafe denial.",
+  "runtime": "NOT_RUN; source analysis only",
+  "mergeAdmitted": false,
+  "next": "Complete Spec findings, author amendment, two fresh exact-source reviews and separately admitted focused native evidence."
+}
