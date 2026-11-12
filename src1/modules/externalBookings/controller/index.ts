@@ -441,8 +441,6 @@ export class ExternalBookingController {
     logger.info('[ExternalBooking] frontend consultation booking payload received', {
       userId,
       integration: data.integration,
-      frontendPayload: req.body,
-      normalizedPayload: data,
     });
 
     const created = await this.externalBookingService.createBooking(data);
@@ -520,8 +518,6 @@ export class ExternalBookingController {
     logger.info('[ExternalBooking] frontend diagnostics booking payload received', {
       userId,
       integration: data.integration,
-      frontendPayload: req.body,
-      normalizedPayload: data,
     });
 
     const created = await this.externalBookingService.createDiagnosticsBooking(data);
