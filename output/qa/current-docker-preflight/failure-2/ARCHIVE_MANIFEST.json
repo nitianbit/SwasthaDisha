@@ -1,0 +1,52 @@
+{
+  "schema": "SD-DOCKER-PREFLIGHT-METADATA-FAILURE2-ARCHIVE-1",
+  "actualOperator": "/root",
+  "recipeSha256": "4cee25450e4ce174084e6f70722cf51517525914ba98e60755e369ee53e3e57f",
+  "inlineSha256": "eb7d9f36872c6c0a5524400087e40802018f61cc88b2b31e5799e3c8aeff3a23",
+  "sourceDirectory": "/private/tmp/sd-docker-metadata-jo56fyus",
+  "files": {
+    "result.json": {
+      "source": "/private/tmp/sd-docker-metadata-jo56fyus/result.json",
+      "bytes": 808,
+      "sha256": "c0591e1eeb9c77e640c64515099194b5d0a934dcd7c3ff06b5b67a56e71cc681",
+      "byteIdenticalRegularCopy": true
+    },
+    "info.stdout.txt": {
+      "source": "/private/tmp/sd-docker-metadata-jo56fyus/info.stdout.txt",
+      "bytes": 58,
+      "sha256": "37052522eede42c4bf2b83fa5805a65d572cfe822bfff03c8bbcb6c44e5e8b66",
+      "byteIdenticalRegularCopy": true
+    },
+    "info.stderr.txt": {
+      "source": "/private/tmp/sd-docker-metadata-jo56fyus/info.stderr.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "byteIdenticalRegularCopy": true
+    },
+    "image.stdout.txt": {
+      "source": "/private/tmp/sd-docker-metadata-jo56fyus/image.stdout.txt",
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "byteIdenticalRegularCopy": true
+    },
+    "image.stderr.txt": {
+      "source": "/private/tmp/sd-docker-metadata-jo56fyus/image.stderr.txt",
+      "bytes": 111,
+      "sha256": "44804125ecb1be99cc210841e3df4a9cae79dfef27975b89608f626e263f050e",
+      "byteIdenticalRegularCopy": true
+    }
+  },
+  "excluded": [
+    "blank Docker config",
+    "HOME",
+    "tmp",
+    "any unrelated resource/configuration"
+  ],
+  "sourceDirectoryChangedOrRemoved": false,
+  "actualDockerMetadataProcesses": 2,
+  "containerLaunches": 0,
+  "imagePulls": 0,
+  "appImports": 0,
+  "independentObservation": "Exact retained raw files match reported engine/versions/exits/format error; worker performed no Docker query.",
+  "disposition": "FORMAT_FAILURE_OPTIONAL_MAP_KEY; NOT_DAEMON_OR_MISSING_IMAGE_FAILURE; full cached-image validation incomplete."
+}

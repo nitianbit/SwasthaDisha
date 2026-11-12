@@ -1,0 +1,30 @@
+{
+  "schema": "SD-CURRENT-DOCKER-METADATA-1",
+  "recipeSha256": "4cee25450e4ce174084e6f70722cf51517525914ba98e60755e369ee53e3e57f",
+  "status": "METADATA_PREFLIGHT_BLOCKED",
+  "commands": [
+    {
+      "step": "info",
+      "attempted": true,
+      "processStarted": true,
+      "exitCode": 0,
+      "stdoutSha256": "37052522eede42c4bf2b83fa5805a65d572cfe822bfff03c8bbcb6c44e5e8b66",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "step": "image",
+      "attempted": true,
+      "processStarted": true,
+      "exitCode": 1
+    }
+  ],
+  "DockerLaunches": 0,
+  "imagePulls": 0,
+  "appImports": 0,
+  "engine": {
+    "id": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+    "serverVersion": "29.6.2",
+    "os": "linux"
+  },
+  "failureType": "RuntimeError"
+}

@@ -1,0 +1,71 @@
+from pathlib import Path
+import hashlib, json, os, resource, stat, subprocess, tempfile
+RECIPE = Path('/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/documentation/planning/implementation/CURRENT_DOCKER_PREFLIGHT_RECIPE.md')
+PYTHON = Path('/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14')
+DOCKER = Path('/Applications/Docker.app/Contents/Resources/bin/docker')
+SOCKET = Path('/Users/shubham/.docker/run/docker.sock')
+ENDPOINT = 'unix:///Users/shubham/.docker/run/docker.sock'
+ENGINE = '16ab25f6-88c7-4687-a431-b119b6ab9319'
+IMAGE = 'node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d'
+def need(ok):
+    if not ok: raise RuntimeError('FIXED_PREFLIGHT_REJECTED')
+def digest(data): return hashlib.sha256(data).hexdigest()
+def identity(path):
+    s=path.lstat(); return (s.st_dev,s.st_ino,s.st_uid,stat.S_IMODE(s.st_mode),'directory' if stat.S_ISDIR(s.st_mode) else s.st_nlink)
+def pins():
+    for path,expected,size in [(PYTHON,'87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634',34640),(DOCKER,'31201b50f14101c2a2bd8a1fdc49055f985d5007d5ba86c177ad2dedfa309b9b',41392016)]:
+        s=path.lstat(); need(stat.S_ISREG(s.st_mode) and s.st_nlink==1 and s.st_uid==os.getuid() and stat.S_IMODE(s.st_mode)==0o755 and s.st_size==size)
+        need(path.resolve(strict=True)==path and digest(path.read_bytes())==expected)
+    need(identity(DOCKER)==(16777233,1908573,501,0o755,1))
+    need(stat.S_ISSOCK(SOCKET.lstat().st_mode) and SOCKET.resolve(strict=True)==SOCKET)
+    need(identity(SOCKET)[:4]==(16777233,54259605,501,0o755))
+pins()
+area=Path(tempfile.mkdtemp(prefix='sd-docker-metadata-',dir='/private/tmp')); os.chmod(area,0o700)
+print(json.dumps({'evidenceDirectory':str(area),'phase':'ALLOCATED_NO_DOCKER_YET'}),flush=True)
+held={area:identity(area)}
+for name in ['docker','home','tmp']:
+    p=area/name; p.mkdir(mode=0o700); held[p]=identity(p)
+config=area/'docker'/'config.json'; config.write_bytes(b'{"auths":{}}\n'); config.chmod(0o600); held[config]=identity(config)
+report={'schema':'SD-CURRENT-DOCKER-METADATA-1','recipeSha256':digest(RECIPE.read_bytes()),'status':'IN_PROGRESS','commands':[],'DockerLaunches':0,'imagePulls':0,'appImports':0}
+def owned():
+    need(all(identity(p)==value for p,value in held.items()))
+    need(config.read_bytes()==b'{"auths":{}}\n')
+def limit_output(): resource.setrlimit(resource.RLIMIT_FSIZE,(65536,65536))
+steps=[('info',['info','--format','[{{json .ID}},{{json .ServerVersion}},{{json .OSType}}]']),('image',['image','inspect','--format','[{{json .Id}},{{json .RepoDigests}},{{json .Os}},{{json .Architecture}},{{json .Config.Volumes}},{{json .Config.Env}}]',IMAGE])]
+try:
+    for label,args in steps:
+        owned(); pins(); row={'step':label,'attempted':True,'processStarted':'UNKNOWN'}; report['commands'].append(row)
+        out=area/(label+'.stdout.txt'); err=area/(label+'.stderr.txt')
+        with out.open('xb') as stdout,err.open('xb') as stderr:
+            os.fchmod(stdout.fileno(),0o600); os.fchmod(stderr.fileno(),0o600)
+            try:
+                result=subprocess.run([str(DOCKER),'--config',str(area/'docker'),'--host',ENDPOINT,*args],cwd=area,env={'PATH':'/usr/bin:/bin','HOME':str(area/'home'),'TMPDIR':str(area/'tmp'),'LC_ALL':'C'},stdin=subprocess.DEVNULL,stdout=stdout,stderr=stderr,timeout=25,preexec_fn=limit_output,check=False)
+            except subprocess.TimeoutExpired:
+                row.update(processStarted=True,timedOut=True); raise
+            row.update(processStarted=True,exitCode=result.returncode)
+        owned(); pins(); need(out.stat().st_size<65536 and err.stat().st_size<65536 and result.returncode==0)
+        data=out.read_bytes(); need(len(data)<65536); value=json.loads(data)
+        row.update(stdoutSha256=digest(data),stderrSha256=digest(err.read_bytes()))
+        if label=='info':
+            need(isinstance(value,list) and len(value)==3 and value[0]==ENGINE and value[2]=='linux' and isinstance(value[1],str) and 0<len(value[1])<=128)
+            report['engine']={'id':value[0],'serverVersion':value[1],'os':value[2]}
+        else:
+            need(isinstance(value,list) and len(value)==6)
+            image_id,digests,os_name,arch,volumes,environment=value
+            need(image_id=='sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d' and isinstance(digests,list) and IMAGE in digests and os_name=='linux' and arch=='arm64' and volumes in [None,{}])
+            need(isinstance(environment,list) and all(isinstance(x,str) and '=' in x for x in environment))
+            entries=[x.split('=',1) for x in environment]; need(len({k for k,v in entries})==len(entries))
+            values=dict(entries); need(set(values)=={'PATH','NODE_VERSION','YARN_VERSION'} and values['PATH']=='/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin' and values['NODE_VERSION']=='22.23.4' and values['YARN_VERSION']=='1.22.22')
+            report['image']={'id':image_id,'digest':IMAGE,'os':os_name,'architecture':arch,'volumesAbsent':True,'environmentMatched':True}
+    report['status']='METADATA_PREFLIGHT_PASS_ONLY'
+except BaseException as error:
+    report.update(status='METADATA_PREFLIGHT_BLOCKED',failureType=type(error).__name__)
+finally:
+    try:
+        owned()
+        with (area/'result.json').open('xb') as output:
+            os.fchmod(output.fileno(),0o600); output.write((json.dumps(report,indent=2)+'\n').encode())
+    except BaseException as error:
+        report.update(status='METADATA_PREFLIGHT_UNRESOLVED',recordingFailureType=type(error).__name__)
+    print(json.dumps({'evidenceDirectory':str(area),'status':report['status'],'commands':report['commands'],'failureType':report.get('failureType'),'recordingFailureType':report.get('recordingFailureType')}),flush=True)
+raise SystemExit(0 if report['status']=='METADATA_PREFLIGHT_PASS_ONLY' else 1)

@@ -1,0 +1,3 @@
+# Second metadata attempt: optional-field template failure
+
+Exact recipe/code and five bounded public metadata streams/results are retained byte-for-byte, with source hashes in ARCHIVE_MANIFEST.json. Root ran the reviewed attempt once. Info succeeded for the known Linux engine/server29.6.2; image inspection exited1 at the missing optional Config.Volumes template key. This is not a daemon-unreachable or missing-image diagnosis; the complete image checks did not finish. The original private area remains unchanged; blank config/HOME are excluded. No launch/pull/application effect occurred. Previous review decisions remain consumed; a new exact candidate needs fresh reviews.

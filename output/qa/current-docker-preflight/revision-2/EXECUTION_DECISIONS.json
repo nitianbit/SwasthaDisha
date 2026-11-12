@@ -1,0 +1,23 @@
+{
+  "recipeSha256": "0937f9f21a70f2e57b358dbd61539d1e03726335f313c198b76e1df3cdbdfd0b",
+  "inlineSha256": "76a85e7d4ad1448d3fd290d632a022da24a4fb2d06a03f2e52d9865069dc5823",
+  "sourceFreezeSha256": "5c61cf418757adc8a20fe8e1c87da0defa622ec323fa0ae983a5cd9bf9c89809",
+  "author": "/root/claude_review_5_packet",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "ONE_READ_ONLY_LOCAL_DOCKER_PREFLIGHT",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "ONE_READ_ONLY_LOCAL_DOCKER_PREFLIGHT",
+      "findings": []
+    }
+  ],
+  "failureReviewed": "Expected engine responded; image template could not read absent optional Volumes. Original recipe/code and five raw public metadata outputs retained unchanged. Exact one lookup change uses primary Go index/Docker json semantics; compatibility is measured only by next attempt.",
+  "scope": "One fresh exact heredoc after Root final recipe/code/pin checks. Same fixed2read-onlyqueries/environment/pins/output+timebounds and unchanged Python volume rejection. No repeated8FS/fakeGo tests, no automatic retry or app/SDK/DB/container/pull/daemon/C3 grant.",
+  "status": "ACTUAL_TWO_FRESH_NONAUTHOR_FAILURE_SOURCE_INVOCATION_APPROVALS"
+}
