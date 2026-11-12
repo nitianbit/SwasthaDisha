@@ -1,0 +1,37 @@
+{
+  "schema": "SD-R12-ACTUAL-INDEPENDENT-OUTCOME-DECISIONS-1",
+  "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+  "sessionId": "175c0268-3367-4483-9616-f5e7abc99428",
+  "execSession": 47365,
+  "reviewSha256": "c75b1a94771fab2cd684d41d54114a5eaaee06c6c5e8dd1135107f1682e7d5e1",
+  "reviewBytes": 20683,
+  "reviewers": [
+    {
+      "agent": "/root/lab_remaining_audit",
+      "actualDecision": "ACCEPT_GENUINE_R12_SOURCE_REVIEW_AND_CAPTURE_ONLY",
+      "record": "STANDARDS_OUTCOME_REVIEW_12.json",
+      "sha256": "7eb032873dc9779e7448eb3da03aad82ea3caf7d29d3874d4efde52103132bb5"
+    },
+    {
+      "agent": "/root/milestone_composition_r9",
+      "actualDecision": "ACCEPT_GENUINE_R12_SOURCE_REVIEW_AND_CAPTURE_ONLY",
+      "record": "SPEC_OUTCOME_REVIEW_12.json",
+      "sha256": "99144bcd72ae708f6ec25fe88bf39352322557693bd19ef52abd9eceef15a685"
+    }
+  ],
+  "provenance": "Two actual independent internal Codex nonauthor actual stream/model/tool/mailbox/owner/EOF/exit/fresh process absence reviews. Root prepares/operates and is excluded. Source subject authorship is not selfapproved.",
+  "actualEvidence": "459completeframes; actualOpus5.5init+all6assistantmessages;3successfulcorrelatedRuflo calls; exactchallenge/ACK/review/final/mailboxbytes; CLI/launcher0 and freshPIDs/groupabsent; all53source/operator/runtime/priorR11pins verified",
+  "acceptedScope": "Genuine source-only review and cleancapture; four corrections+composition SOURCE_APPROVE with4INFO andcasefoldNOT_RUN. Not actualapplication/type/runtime/module/owner/release acceptance.",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "actualClaudeExtensionACK": false,
+  "privateThinkingExported": false,
+  "retainedNotes": [
+    "R12-I1 nativepluginselection boundaryjson503 followup",
+    "R12-I2 finiteconstant/type/nativechecks pending",
+    "R12-I3 reservedinodeprecision andcasefoldlimits",
+    "R12-I4 legacyupload/delete rawnativeerror pathmessage",
+    "Rootxlsxlock mismatch remainsC2/rootadoption gate; no rootnpmci authorized",
+    "EarlierF1HIGH/F5-1MEDIUM/R10-F2-2 remainopen; R10launcherfaultpreserved"
+  ]
+}

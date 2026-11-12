@@ -1,0 +1,48 @@
+{
+  "schema": "SD-R12-ACTUAL-NONAUTHOR-SPEC-OUTCOME-1",
+  "reviewer": "/root/milestone_composition_r9",
+  "role": "Spec",
+  "nonauthorR12Preparer": true,
+  "decision": "ACCEPT_GENUINE_R12_SOURCE_REVIEW_AND_CAPTURE_ONLY",
+  "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+  "sessionId": "175c0268-3367-4483-9616-f5e7abc99428",
+  "execSession": 47365,
+  "packetSha256": "4d3ef5122fd91c03006be37308b04f61ac88b2ff8ca56e07cb24d76ee3d80747",
+  "packetBytes": 670033,
+  "reviewSha256": "c75b1a94771fab2cd684d41d54114a5eaaee06c6c5e8dd1135107f1682e7d5e1",
+  "reviewBytes": 20683,
+  "transcriptSha256": "64dcc9b18b32b4f8256e0ee8e6cfd274bf6ded6b3826326a612e83ff8bf5ccdd",
+  "stateSha256": "1d17fd6f0b15ed2d7831047612f9dadce7a13e92a4ce8ee7c8adb45a0d7a9099",
+  "actualMailboxReadbackSha256": "6cddf0af1fbe0905e600552021459c66b25f53b24ce25ba5f2cf7ab071c7e168",
+  "liveApprovalSha256": "6a860e92daa48271e27f00f8e6d0e7309971934bd99204881527b27eebbe9b25",
+  "onceSha256": "95670c12e75e004dea4982ffca2eaa8177fddb2cc4ad85006ac4a055ae77df90",
+  "materialFindings": [],
+  "actualChecks": [
+    "Read entire public ACK and complete substantive review, complete current raw state and all459 newline-terminated JSON frames as inert data without exporting private thinking blocks. Type counts445system/6assistant/4rate/3user/1result; no partial frame. Exact539979stdout/0stderr, input670033, wrapper800.838s/final798331ms. Resultsuccess/end_turn/completed/is_errorfalse/4turns, no delegation, safety stop or terminal error.",
+    "Init and every six assistant message explicitly report claude-opus-5-5. Actual frozen argv requests effort xhigh, not max; effective effort remains UNPROVEN. Existing extension-bundled CLI plus actual Ruflo transport is proven; native VSCode webview/extension ACK remains false.",
+    "Exactly3actual tool_use records and correlated successful results: scoped team_inbox peek then ACK team_send then substantive-review team_send, no extra tool. Exactly one inbox challenge contains this session; complete JSON equals frozen challenge, exactID msg_1794526336232_bfaq6a9m. Persisted ACK msg_1794527032976_ldp8isng and review msg_1794527098911_awrnh4io in fresh actual mailbox peek equal successful tool input/result content. Final assistant text and result equal exact20683-byte review file; no ACK substituted as review.",
+    "Recomputed packet670033B/hash and all53 whole file bytes:45current Git-origin entries match actual3eabGit/currentfiles,2historical f200491e files match actual Git,6native members match root-integrity-bound Formidable3.5.4 tar335f6f18 bytes. All18own frozen operator/packet files and5runtime pins rehashed. Exact insertion-ordered indent2 ensure_asciiFalse contract-map serialization plus newline equals9afd04e7 bundle.",
+    "All30R11preservation files and original7packet files rehashed unchanged. Original handover8files, staged6physical+index file hashes and full-index staged patch00b2ad0d revalidated exact in original checkout. No preserved files modified.",
+    "Actual live approval binds two actual nonauthor preexecution reviewers, frozen supervisor/tests/preimplementation/recipe/challenge/session/source/argv/environment/paths; consumed exactonce has CONSUMED_BEFORE_CLIENT_ALLOCATION. Approval/claim/rawfiles are regular0600uid501 and capture directory0700uid501. Captured CLI/adapter/Ruflo exact parent/group/executable/start identities and raw absences/clean group have no cleanup errors, firstFailure, firstObservationFailure or signals. Fresh escalated read-only ps confirms exact PIDs10306/10318/10334/10341 and PGID10318 absent. Sandbox denied initial ps probe; no absence inferred until successful fresh readback."
+  ],
+  "capturedVerdicts": {
+    "R12-1": "APPROVE_SOURCE_ONLY",
+    "R12-2": "APPROVE_SOURCE_ONLY",
+    "R12-3": "APPROVE_SOURCE_ONLY",
+    "R12-4": "APPROVE_SOURCE_ONLY_CONDITIONAL_CASEFOLD_NOT_RUN",
+    "composition": "APPROVE_SOURCE_ONLY"
+  },
+  "retainedNotes": [
+    "Four INFO notes retained verbatim in actual review: Formidable default-plugin boundary selection503; exact numeric-native constant/type runtime checks pending; inode numeric-precision false-denial and unobserved conditional casefold; legacy raw error-message absolute-path leakage on upload/delete. No scope expansion/source correction implied by capture acceptance.",
+    "Model reports30src1 context files; independently reconciled29 private focused production paths plus separately selected src1/index.ts source context. No executable closure/entrypoint import claim.",
+    "Model compared supplied hashes as text and did not compute them; independent operator/outcome data hashing supplies actual file binding, not model execution proof."
+  ],
+  "limits": [
+    "Acceptance proves genuine bounded source review/capture only. Does not independently reapprove production code, runtime/compiler/typecheck, HTTP/Formidable/filesystem/Mongo/clinical/provider/money/client/module/M0/capacity/deployment/owner/release readiness.",
+    "All author/owner/security/clinical/release and C2/C3/source-runtime gates remain in force. Final cross-module integration campaign and corporate/HR/hospital expansion remain deferred. Effective effort UNPROVEN; actualClaudeExtensionACK false; no hosted worker introduced.",
+    "Old R10 failed launcher and unresolved earlier findings remain preserved separately. Raw state reviewAccepted remains false pending Root disposition and is not rewritten by this independent record."
+  ],
+  "reviewerExecution": "INERT_FILES_JSON_HASH_GIT_TAR_AND_EXACT_PROCESS_READBACK_ONLY",
+  "privateThinkingExported": false,
+  "newInvocationPermission": false
+}
