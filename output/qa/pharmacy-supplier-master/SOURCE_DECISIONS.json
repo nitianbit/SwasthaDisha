@@ -1,0 +1,32 @@
+{
+  "schema": "SD-INTERNAL-SOURCE-DECISIONS-1",
+  "baseline": "11d11d202c3ec75f706f46b38997c261b464421f",
+  "candidate": "91e88dd91fb155f71b264479aa4605d81a43236e",
+  "author": "/root/payment_ctor_contract",
+  "contractSha256": "c47d541e60747f262e6828b912b2016c61c1e2b2f5a4dfcffc1f4bee8b4157b7",
+  "sourceFreezeSha256": "2e956fcd6cdf05f6071d79655167d47a66913423ecc5df1c244db59d0329fe31",
+  "patchSha256": "17397ff5324a43f3b18b04685a32d88fc4b9c66222e6e0370774157266a63208",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor full source/contract/diff review. Eight after and twelve protected pins matched; predecessor Spec review delivered directly before continuation, Root fresh readback confirms identical candidate."
+    },
+    {
+      "reviewer": "/root/booking_write_contract",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor full source/contract/diff review. Eight after and twelve protected pins matched; predecessor Spec review delivered directly before continuation, Root fresh readback confirms identical candidate."
+    }
+  ],
+  "scope": "Local pharmacy-owned supplier contact metadata CRUD/version/archive only; no KYC/credit/stock/financial/PO/GRN or B06 completion.",
+  "execution": "NOT_RUN; no compiler/Joi/HTTP/ODM/DB/provider/application tests.",
+  "limits": [
+    "Actual schema/DI/driver/CAS/query/first-insert namespace/default-index behavior remains unproved.",
+    "No module/owner/release acceptance; existing application/C2/C3 gates retained.",
+    "Prospective implicit insert namespace effects are distinct from no startup/manual DDL."
+  ]
+}
