@@ -1,0 +1,9 @@
+{
+  "kind": "SOURCE_DATA_ONLY",
+  "baselineSha256": "aec2b074981bfee5361b29b5f86ebed4e20c1837deadc75a9cc0766360be0f44",
+  "candidateSha256": "bbe2d226d0192b91389675dd5e66f2b385dc157bba0010715bbe4b29b0e2848b",
+  "contractSha256": "52a6f33e76db70a2a7ae8d29d2f45714107d750911fc2d4b2cdcef27840cdf4c",
+  "protectedFileCount": 368,
+  "applicationExecution": "NOT_RUN",
+  "gitMutation": false
+}

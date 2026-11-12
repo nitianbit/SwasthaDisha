@@ -23,6 +23,25 @@ export class BookingController {
     this.bookingService = Container.get(BookingService);
   }
 
+  private requireBookingReadActor(req: AuthRequest) {
+    const actor = req.user;
+    if (
+      !actor ||
+      typeof actor._id !== 'string' ||
+      actor._id.trim().length === 0 ||
+      typeof actor.userType !== 'string' ||
+      actor.userType.trim().length === 0
+    ) {
+      throw new AppError({
+        status: 401,
+        code: 'UNAUTHORIZED',
+        message: 'Authentication is required',
+      });
+    }
+
+    return actor;
+  }
+
   private resolveHRBookingReadScope(req: AuthRequest): string | undefined {
     if (req.user?.userType !== 'hr') {
       return undefined;
@@ -229,9 +248,24 @@ export class BookingController {
   };
 
   getById = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const actor = this.requireBookingReadActor(req);
     const { id } = req.params;
+    if (
+      actor.userType === 'user' &&
+      req.query.userId !== undefined &&
+      req.query.userId !== actor._id
+    ) {
+      throw new AppError({
+        status: 403,
+        code: 'FORBIDDEN',
+        message: 'Access to bookings owned by another user is not permitted',
+      });
+    }
+
     await this.ensureHRCanAccessBooking(req, id);
-    const userId = req.query.userId as string | undefined;
+    const userId = actor.userType === 'user'
+      ? actor._id
+      : req.query.userId as string | undefined;
     const result = await this.bookingService.getById(id, userId);
 
     res.status(200).json({
@@ -352,8 +386,25 @@ export class BookingController {
   };
 
   getByUserId = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const actor = this.requireBookingReadActor(req);
+    const requestedUserId = req.query.userId;
+    if (
+      actor.userType === 'user' &&
+      (req.params.userId !== actor._id ||
+        (requestedUserId !== undefined &&
+          (typeof requestedUserId !== 'string' ||
+            requestedUserId.trim() !== actor._id)))
+    ) {
+      throw new AppError({
+        status: 403,
+        code: 'FORBIDDEN',
+        message: 'Access to bookings owned by another user is not permitted',
+      });
+    }
+
     const requiredCorporateId = this.resolveHRBookingReadScope(req);
     const { userId } = req.params;
+    const effectiveUserId = actor.userType === 'user' ? actor._id : userId;
     const result =
       req.user?.userType === 'hr'
         ? (
@@ -362,7 +413,7 @@ export class BookingController {
               corporateId: this.getHRCorporateId(req),
             }, requiredCorporateId)
           ).data
-        : await this.bookingService.getByUserId(userId);
+        : await this.bookingService.getByUserId(effectiveUserId);
 
     res.status(200).json({
       success: true,

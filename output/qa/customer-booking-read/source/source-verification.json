@@ -1,0 +1,232 @@
+{
+  "kind": "SOURCE_DATA_ONLY",
+  "argv": [
+    "output/qa/customer-booking-read/source/source-check.py"
+  ],
+  "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab",
+  "runtimeBehavior": "NOT_RUN",
+  "checks": [
+    {
+      "name": "BASELINE_PIN",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "CONTRACT_PIN",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "CANDIDATE_ARCHIVES_EXACT",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "CANDIDATE_NAMED_SOURCE_ASSERTIONS",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "ONLY_TWO_HANDLERS_AND_PRIVATE_HELPER_CHANGED",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "PROTECTED_FILES_ONLY_CONTROLLER_CHANGED",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "EXISTING_SERVICE_COMBINED_SCOPE_AND_404_TEXT",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "EXISTING_LIST_ORDER_TEXT",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_baseline",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_missing_principal_field_check",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_blank_role_check_removed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_detail_actor_guard_removed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_detail_foreign_hint_admitted",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_detail_query_owner_forwarded",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_detail_unscoped_read",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_detail_unscoped_fallback",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_list_foreign_path_admitted",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_list_query_type_check_removed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_list_query_owner_check_removed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_list_path_forwarded",
+      "sourceAssertion": "ACCEPTED"
+    }
+  ],
+  "negativeControls": [
+    {
+      "name": "baseline",
+      "intended": "ACTOR_REQUIRED_FIELDS",
+      "rejectedByNamedSourceAssertions": [
+        "ACTOR_HELPER_SYNCHRONOUS",
+        "ACTOR_REQUIRED_FIELDS",
+        "ACTOR_FIXED_401",
+        "DETAIL_ACTOR_FIRST",
+        "DETAIL_FIXED_403",
+        "DETAIL_DENIAL_BEFORE_DISPATCH",
+        "LIST_ACTOR_FIRST",
+        "LIST_FIXED_403",
+        "LIST_DENIAL_BEFORE_DISPATCH",
+        "DETAIL_HINT_SCOPE",
+        "DETAIL_SIGNED_OWNER",
+        "LIST_PATH_SCOPE",
+        "LIST_QUERY_TYPE",
+        "LIST_QUERY_SCOPE",
+        "LIST_SIGNED_OWNER",
+        "HELPER_ONLY_TWO_READ_HANDLERS"
+      ],
+      "variantSha256": "aec2b074981bfee5361b29b5f86ebed4e20c1837deadc75a9cc0766360be0f44",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "missing_principal_field_check",
+      "intended": "ACTOR_REQUIRED_FIELDS",
+      "rejectedByNamedSourceAssertions": [
+        "ACTOR_REQUIRED_FIELDS"
+      ],
+      "variantSha256": "3bd775e844107f5b7a7c0858b29d8b5d088640229c8d9b398a661eea648bd690",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "blank_role_check_removed",
+      "intended": "ACTOR_REQUIRED_FIELDS",
+      "rejectedByNamedSourceAssertions": [
+        "ACTOR_REQUIRED_FIELDS"
+      ],
+      "variantSha256": "3af479bc44758c00b013bc3171feb01d0fecd49f0276be04fde25b41f770da9c",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "detail_actor_guard_removed",
+      "intended": "DETAIL_ACTOR_FIRST",
+      "rejectedByNamedSourceAssertions": [
+        "DETAIL_ACTOR_FIRST",
+        "HELPER_ONLY_TWO_READ_HANDLERS"
+      ],
+      "variantSha256": "eeca8f7b4245436fc9b547e4ac2a82f893f441893a23bf76b04a496c441fcc45",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "detail_foreign_hint_admitted",
+      "intended": "DETAIL_HINT_SCOPE",
+      "rejectedByNamedSourceAssertions": [
+        "DETAIL_HINT_SCOPE"
+      ],
+      "variantSha256": "ebffd8108979e865c3509e681d4008f838111152b68e72d283f2976aa4b86432",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "detail_query_owner_forwarded",
+      "intended": "DETAIL_SIGNED_OWNER",
+      "rejectedByNamedSourceAssertions": [
+        "DETAIL_SIGNED_OWNER"
+      ],
+      "variantSha256": "32a75123ec4fe7f583a7f4a62169c81bea4dce728bc6c6d0fe63311ba4c576a4",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "detail_unscoped_read",
+      "intended": "DETAIL_ONE_SCOPED_SERVICE_CALL",
+      "rejectedByNamedSourceAssertions": [
+        "DETAIL_ONE_SCOPED_SERVICE_CALL"
+      ],
+      "variantSha256": "84077fdf921bd0a42ab32c337209cf138c4ad66cd51b33dcc58c86a43db5d2d8",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "detail_unscoped_fallback",
+      "intended": "DETAIL_ONE_SCOPED_SERVICE_CALL",
+      "rejectedByNamedSourceAssertions": [
+        "DETAIL_ONE_SCOPED_SERVICE_CALL"
+      ],
+      "variantSha256": "aaf9b33237d18b0591060d2ba79b50b63b04649551735fccf0fa1a88fb64cad5",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "list_foreign_path_admitted",
+      "intended": "LIST_PATH_SCOPE",
+      "rejectedByNamedSourceAssertions": [
+        "LIST_PATH_SCOPE"
+      ],
+      "variantSha256": "96ef1b5a02eb8013f7f81e4f7e6aeb2e1c7eecb521192d23fcb2f0e79ad5b659",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "list_query_type_check_removed",
+      "intended": "LIST_QUERY_TYPE",
+      "rejectedByNamedSourceAssertions": [
+        "LIST_QUERY_TYPE"
+      ],
+      "variantSha256": "738c0409c599313bea9a6da1373a878094f0f4feabc766b000b1bfde628b4432",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "list_query_owner_check_removed",
+      "intended": "LIST_QUERY_SCOPE",
+      "rejectedByNamedSourceAssertions": [
+        "LIST_QUERY_SCOPE"
+      ],
+      "variantSha256": "02f01c61193f36a388d3f236f40f6faef55f86a70e80cb1469d41327e591865b",
+      "scope": "in-memory TypeScript text only"
+    },
+    {
+      "name": "list_path_forwarded",
+      "intended": "LIST_SIGNED_OWNER",
+      "rejectedByNamedSourceAssertions": [
+        "LIST_SIGNED_OWNER"
+      ],
+      "variantSha256": "3f592223f18169905a606cadc8896ca536f62ca508ef5e6fbd42821a37ba7cc9",
+      "scope": "in-memory TypeScript text only"
+    }
+  ],
+  "candidateSourceFailures": [],
+  "changedProtectedFiles": [
+    "src1/modules/bookings/controller/index.ts"
+  ],
+  "sourceVerdict": "ACCEPTED",
+  "candidateSha256": "bbe2d226d0192b91389675dd5e66f2b385dc157bba0010715bbe4b29b0e2848b",
+  "baselineSha256": "aec2b074981bfee5361b29b5f86ebed4e20c1837deadc75a9cc0766360be0f44",
+  "protectedFileCount": 368,
+  "negativeControlCount": 12,
+  "scriptSha256": "534861ba978fa8284bbb43a4628a656c716c976587e2511d157fc432ae72dc35",
+  "gitMutation": false,
+  "limitations": [
+    "Lexical assertions and byte comparisons only; no TypeScript parser/compiler or application execution.",
+    "Negative controls modify source text in memory; no behavior, counters, JWT, Joi, router, service, repository or database result is proven.",
+    "Focused runtime behavior needs separate complete C3 admission; the owner deferred the final cross-module integration campaign."
+  ]
+}

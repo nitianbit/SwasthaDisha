@@ -1,0 +1,30 @@
+{
+  "schema": "SD-CUSTOMER-BOOKING-READ-SOURCE-DECISIONS-1",
+  "contractSha256": "52a6f33e76db70a2a7ae8d29d2f45714107d750911fc2d4b2cdcef27840cdf4c",
+  "sourceSha256": "bbe2d226d0192b91389675dd5e66f2b385dc157bba0010715bbe4b29b0e2848b",
+  "freezeSha256": "edf28b4ae36a3eb8bae7322c325a3837d2c9b7d241eae588f0091e8de8b09746",
+  "decisions": [
+    {
+      "reviewer": "/root/booking_read_spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SOURCE_ONLY"
+    },
+    {
+      "reviewer": "/root/booking_read_standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SOURCE_ONLY"
+    }
+  ],
+  "findings": [],
+  "limitations": [
+    "Source assertions and12 lexical mutant rejections only; no behavioral equivalence claim.",
+    "By-user now reads query.userId for noncustomers without imposing a restriction or changing forwarded service arguments; property access sequence is not byte-identical.",
+    "Type validity and focused runtime behavior NOT_RUN pending admission.",
+    "Final cross-module integration deferred by owner.",
+    "Genuine Claude source review not yet executed."
+  ],
+  "moduleComplete": false,
+  "runtimeAccepted": false,
+  "claudeReviewed": false,
+  "releaseAccepted": false
+}

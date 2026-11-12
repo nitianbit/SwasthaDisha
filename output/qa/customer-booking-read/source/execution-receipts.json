@@ -1,0 +1,46 @@
+{
+  "kind": "OBSERVED_SOURCE_ONLY_COMMAND_RECEIPTS",
+  "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab",
+  "commands": [
+    {
+      "argv": [
+        "python3",
+        "-I",
+        "/private/tmp/customer-booking-read-write.py"
+      ],
+      "exitCode": 0,
+      "observed": "Owned controller and before/expected/after/diff/pin archive written after exact baseline and preimplementation checks."
+    },
+    {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/usr/sbin:/sbin",
+        "/usr/bin/python3",
+        "-I",
+        "output/qa/customer-booking-read/source/source-check.py"
+      ],
+      "exitCode": 0,
+      "stdout": "{\"sourceVerdict\": \"ACCEPTED\", \"candidateSha256\": \"bbe2d226d0192b91389675dd5e66f2b385dc157bba0010715bbe4b29b0e2848b\", \"protectedFileCount\": 368, \"negativeControlCount\": 12, \"runtimeBehavior\": \"NOT_RUN\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "src1/modules/bookings/controller/index.ts"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ],
+  "interruption": {
+    "sourceWrite": "Completed before interruption; existing artifacts inspected and retained on resume.",
+    "evidenceInstallAttempt": "Aborted before dispatch; no successful command or application result claimed."
+  },
+  "applicationExecution": "NOT_RUN",
+  "gitMutation": false
+}

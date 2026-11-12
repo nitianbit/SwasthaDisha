@@ -1,0 +1,21 @@
+{
+  "kind": "FROZEN_SOURCE_CANDIDATE",
+  "candidateSha256": "bbe2d226d0192b91389675dd5e66f2b385dc157bba0010715bbe4b29b0e2848b",
+  "files": {
+    "output/qa/customer-booking-read/source/README.md": "c4e35dd3299b5cfd945b2e3f6695708b99dec152a7726f8242bdaeb5d4749a5a",
+    "output/qa/customer-booking-read/source/controller.after.ts.txt": "bbe2d226d0192b91389675dd5e66f2b385dc157bba0010715bbe4b29b0e2848b",
+    "output/qa/customer-booking-read/source/controller.before.ts.txt": "aec2b074981bfee5361b29b5f86ebed4e20c1837deadc75a9cc0766360be0f44",
+    "output/qa/customer-booking-read/source/controller.diff": "2265e8b055645f34492f0ecc9ab99061d70b40c45cd478badf08741c73d30101",
+    "output/qa/customer-booking-read/source/controller.expected.ts.txt": "bbe2d226d0192b91389675dd5e66f2b385dc157bba0010715bbe4b29b0e2848b",
+    "output/qa/customer-booking-read/source/execution-receipts.json": "0b0af6004829e98196b6ac2c46e49a7fdb7081bde5eff1a72c85e29516e43aae",
+    "output/qa/customer-booking-read/source/preimplementation.snapshot.json": "b32535e9ae1598eaf935342447b4222a312a6ebbcd13e173caacf8ca82f69336",
+    "output/qa/customer-booking-read/source/protected-files.after.json": "e581d1a74eddb320952a759193ae57d0d9f073f4e14ca0d08b875bfaf7f2f4dd",
+    "output/qa/customer-booking-read/source/protected-files.before.json": "87a825d1353ff898c4f06de9141eaab135b90c288c59bcf8e7bd69c3ce52499d",
+    "output/qa/customer-booking-read/source/source-check.py": "534861ba978fa8284bbb43a4628a656c716c976587e2511d157fc432ae72dc35",
+    "output/qa/customer-booking-read/source/source-verification.json": "d03ebb9c8d0f3f68f43d3c6078026b1e8f97cf573c08078b621ef3bb0c216313",
+    "output/qa/customer-booking-read/source/source-write.py": "59ab7add87db0df0d4cbc8ad5cf0e2979cb59839fe2bc4ef20a403a9f3dd8c75",
+    "output/qa/customer-booking-read/source/write-receipt.json": "fe1719796f8c4c56cac0b12e7a9e6e6ca31056045454bccf68a6409f54b3b7d2"
+  },
+  "writesStoppedForIndependentReviews": true,
+  "runtimeBehavior": "NOT_RUN"
+}

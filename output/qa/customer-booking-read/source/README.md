@@ -1,0 +1,21 @@
+# Customer booking read source candidate
+
+Frozen for two independent internal Codex source reviews. This author does not approve the candidate. Production scope is one controller, two read handlers and a private synchronous actor guard used only by them. No Git mutations were performed by the author.
+
+Controller SHA-256: `bbe2d226d0192b91389675dd5e66f2b385dc157bba0010715bbe4b29b0e2848b`.
+Baseline SHA-256: `aec2b074981bfee5361b29b5f86ebed4e20c1837deadc75a9cc0766360be0f44`.
+Contract SHA-256: `52a6f33e76db70a2a7ae8d29d2f45714107d750911fc2d4b2cdcef27840cdf4c`.
+
+The actor helper removes repeated validation of missing/null actors and absent/nonstring/blank signed IDs or roles. The distinct detail and by-user owner predicates remain inline. Their identical fixed 403 error text is repeated deliberately: an additional error helper would save about one line without sharing a decision. No generic policy abstraction was added.
+
+`controller.before.ts.txt`, `controller.after.ts.txt` and `controller.diff` preserve the exact amendment. `controller.expected.ts.txt` preserves the write script's intended output before the controller write. `preimplementation.snapshot.json` records the two actual implementation-only decisions; the root-owned live PREIMPLEMENTATION.json was not amended by this author. The exact write script is archived as `source-write.py`; it refuses to overwrite an existing source archive. Do not replay it on this candidate.
+
+The sanitized stdlib Python invocation recorded in `execution-receipts.json` exited 0. Its source receipt accepted the candidate and 12 in-memory negative source controls, including the archived baseline, removed actor/blank-role checks, foreign detail hints, query-owner forwarding, unscoped read/fallback, foreign list paths, removed query type/owner checks and path forwarding. Each variant must be rejected by its intended named lexical assertion before any exact candidate comparison is relevant. These are source checks, not runtime tests. The baseline rejection was computed after implementation against the preserved before snapshot; no test-first run is claimed.
+
+The 368-file before/after inventories cover existing src1 files, foundation files and present root package/lock/TypeScript/start manifests. Only the owned controller differs; the other 367 recorded files retain their bytes. Removing the helper and restoring the two original handler bodies reconstructs the entire original controller exactly. Existing service/repository scope, 404 text and list order were inspected as text; existing route/validation bytes are pinned unchanged. `git diff --check -- src1/modules/bookings/controller/index.ts` exited 0 with empty output.
+
+The original conversation interruption occurred after the successful controller/archive write. On resume, the author inspected and retained all existing artifacts. A later evidence-install tool call was explicitly aborted before dispatch; it produced no observed receipt or file change, and the first subsequent successful install refused existing target filenames. This tooling event is not a failed application test or approval rejection. No source assertion failure occurred in the observed successful checker invocation.
+
+No TypeScript parser/compiler, Node/npm, app import, controller/service/router execution, HTTP, Docker, DB, provider, legacy suite or foundation suite was invoked. No runtime status, exact counter, JWT/Joi behavior, 200/401/403/404 result, resource ownership, database order or effect denial is established by these source assertions. Source preservation of well-shaped noncustomer branches does not approve their access policy. Original checkout staged/archive preservation remains the lead's separate check.
+
+Focused behavior remains NOT_RUN and needs separately reviewed complete C3 pre-import admission plus the actual positive/negative controls in the frozen contract. The final cross-module integration campaign is deferred by the owner; that deferral does not satisfy focused behavior admission or complete this module. No Claude review, named-owner approval, M0 acceptance, deployment or release claim is made. Writes stop after this evidence freeze for two independent nonauthor source reviews.

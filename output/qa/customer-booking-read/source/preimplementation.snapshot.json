@@ -1,0 +1,22 @@
+{
+  "schema": "SD-CUSTOMER-READ-PREIMPLEMENTATION-1",
+  "baseline": "2a26c6b5dfaca710ab3377ef78730c7ce9d1e9c1",
+  "contractSha256": "52a6f33e76db70a2a7ae8d29d2f45714107d750911fc2d4b2cdcef27840cdf4c",
+  "decisions": [
+    {
+      "reviewer": "/root/booking_read_spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY"
+    },
+    {
+      "reviewer": "/root/booking_read_standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY"
+    }
+  ],
+  "rootAction": "AUTHORIZE_EXACT_ONE_CONTROLLER_SOURCE_SLICE",
+  "runtimeApproved": false,
+  "moduleComplete": false,
+  "claudeReviewed": false,
+  "finalCrossModuleIntegrationCampaign": "DEFERRED_BY_OWNER"
+}
