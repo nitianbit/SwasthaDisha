@@ -1,0 +1,335 @@
+{
+  "nodeDiagnostic": {
+    "file": "src1/modules/common/types/error.ts",
+    "sourceSha256": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+    "category": 1,
+    "code": 2339,
+    "start": 573,
+    "length": 17,
+    "message": "Property 'captureStackTrace' does not exist on type 'ErrorConstructor'."
+  },
+  "diagnosticPolicyProofs": {
+    "nominal": {
+      "schema": "SD-ENROLLMENT-DIAGNOSTIC-POLICY-PROOF-1",
+      "phase": "nominal",
+      "returnedCount": 31,
+      "sourceSha256": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+      "positive": {
+        "id": "actual-returned-set",
+        "accepted": true
+      },
+      "negatives": [
+        {
+          "id": "missing-tuple",
+          "rejected": true
+        },
+        {
+          "id": "duplicate-tuple",
+          "rejected": true
+        },
+        {
+          "id": "wrong-file",
+          "rejected": true
+        },
+        {
+          "id": "wrong-category",
+          "rejected": true
+        },
+        {
+          "id": "wrong-code",
+          "rejected": true
+        },
+        {
+          "id": "wrong-start",
+          "rejected": true
+        },
+        {
+          "id": "wrong-length",
+          "rejected": true
+        },
+        {
+          "id": "wrong-message",
+          "rejected": true
+        },
+        {
+          "id": "source-hash-drift",
+          "rejected": true
+        },
+        {
+          "id": "extra-unsupported",
+          "rejected": true
+        }
+      ]
+    },
+    "OLD": {
+      "schema": "SD-ENROLLMENT-DIAGNOSTIC-POLICY-PROOF-1",
+      "phase": "OLD",
+      "returnedCount": 29,
+      "sourceSha256": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+      "positive": {
+        "id": "actual-returned-set",
+        "accepted": true
+      },
+      "negatives": [
+        {
+          "id": "missing-tuple",
+          "rejected": true
+        },
+        {
+          "id": "duplicate-tuple",
+          "rejected": true
+        },
+        {
+          "id": "wrong-file",
+          "rejected": true
+        },
+        {
+          "id": "wrong-category",
+          "rejected": true
+        },
+        {
+          "id": "wrong-code",
+          "rejected": true
+        },
+        {
+          "id": "wrong-start",
+          "rejected": true
+        },
+        {
+          "id": "wrong-length",
+          "rejected": true
+        },
+        {
+          "id": "wrong-message",
+          "rejected": true
+        },
+        {
+          "id": "source-hash-drift",
+          "rejected": true
+        },
+        {
+          "id": "extra-unsupported",
+          "rejected": true
+        }
+      ]
+    },
+    "NC1": {
+      "schema": "SD-ENROLLMENT-DIAGNOSTIC-POLICY-PROOF-1",
+      "phase": "NC1",
+      "returnedCount": 31,
+      "sourceSha256": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+      "positive": {
+        "id": "actual-returned-set",
+        "accepted": true
+      },
+      "negatives": [
+        {
+          "id": "missing-tuple",
+          "rejected": true
+        },
+        {
+          "id": "duplicate-tuple",
+          "rejected": true
+        },
+        {
+          "id": "wrong-file",
+          "rejected": true
+        },
+        {
+          "id": "wrong-category",
+          "rejected": true
+        },
+        {
+          "id": "wrong-code",
+          "rejected": true
+        },
+        {
+          "id": "wrong-start",
+          "rejected": true
+        },
+        {
+          "id": "wrong-length",
+          "rejected": true
+        },
+        {
+          "id": "wrong-message",
+          "rejected": true
+        },
+        {
+          "id": "source-hash-drift",
+          "rejected": true
+        },
+        {
+          "id": "extra-unsupported",
+          "rejected": true
+        }
+      ]
+    },
+    "NC2": {
+      "schema": "SD-ENROLLMENT-DIAGNOSTIC-POLICY-PROOF-1",
+      "phase": "NC2",
+      "returnedCount": 31,
+      "sourceSha256": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+      "positive": {
+        "id": "actual-returned-set",
+        "accepted": true
+      },
+      "negatives": [
+        {
+          "id": "missing-tuple",
+          "rejected": true
+        },
+        {
+          "id": "duplicate-tuple",
+          "rejected": true
+        },
+        {
+          "id": "wrong-file",
+          "rejected": true
+        },
+        {
+          "id": "wrong-category",
+          "rejected": true
+        },
+        {
+          "id": "wrong-code",
+          "rejected": true
+        },
+        {
+          "id": "wrong-start",
+          "rejected": true
+        },
+        {
+          "id": "wrong-length",
+          "rejected": true
+        },
+        {
+          "id": "wrong-message",
+          "rejected": true
+        },
+        {
+          "id": "source-hash-drift",
+          "rejected": true
+        },
+        {
+          "id": "extra-unsupported",
+          "rejected": true
+        }
+      ]
+    },
+    "NC3": {
+      "schema": "SD-ENROLLMENT-DIAGNOSTIC-POLICY-PROOF-1",
+      "phase": "NC3",
+      "returnedCount": 31,
+      "sourceSha256": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+      "positive": {
+        "id": "actual-returned-set",
+        "accepted": true
+      },
+      "negatives": [
+        {
+          "id": "missing-tuple",
+          "rejected": true
+        },
+        {
+          "id": "duplicate-tuple",
+          "rejected": true
+        },
+        {
+          "id": "wrong-file",
+          "rejected": true
+        },
+        {
+          "id": "wrong-category",
+          "rejected": true
+        },
+        {
+          "id": "wrong-code",
+          "rejected": true
+        },
+        {
+          "id": "wrong-start",
+          "rejected": true
+        },
+        {
+          "id": "wrong-length",
+          "rejected": true
+        },
+        {
+          "id": "wrong-message",
+          "rejected": true
+        },
+        {
+          "id": "source-hash-drift",
+          "rejected": true
+        },
+        {
+          "id": "extra-unsupported",
+          "rejected": true
+        }
+      ]
+    },
+    "NC4": {
+      "schema": "SD-ENROLLMENT-DIAGNOSTIC-POLICY-PROOF-1",
+      "phase": "NC4",
+      "returnedCount": 31,
+      "sourceSha256": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+      "positive": {
+        "id": "actual-returned-set",
+        "accepted": true
+      },
+      "negatives": [
+        {
+          "id": "missing-tuple",
+          "rejected": true
+        },
+        {
+          "id": "duplicate-tuple",
+          "rejected": true
+        },
+        {
+          "id": "wrong-file",
+          "rejected": true
+        },
+        {
+          "id": "wrong-category",
+          "rejected": true
+        },
+        {
+          "id": "wrong-code",
+          "rejected": true
+        },
+        {
+          "id": "wrong-start",
+          "rejected": true
+        },
+        {
+          "id": "wrong-length",
+          "rejected": true
+        },
+        {
+          "id": "wrong-message",
+          "rejected": true
+        },
+        {
+          "id": "source-hash-drift",
+          "rejected": true
+        },
+        {
+          "id": "extra-unsupported",
+          "rejected": true
+        }
+      ]
+    }
+  },
+  "sourcePins": {
+    "src1/modules/auth/services/index.ts": "c522444ef80133c136a50d276ae64cdbaca8333049cca9723ff36d9f20bf3c48",
+    "src1/modules/auth/validation/index.ts": "752f049481df9de2587c386f8c44e5dc1548073295f36149a3974a3a9513af4c",
+    "src1/modules/auth/types/index.ts": "f6cbff24776d23b029244526d07d6a9af290aec66020d414469388c6f11118e9",
+    "src1/modules/common/types/index.ts": "63ad3821027150d368e993903e954b4a80b776ff223caf322c104008239d4cbd",
+    "src1/modules/common/types/error.ts": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+    "src1/modules/common/types/response.ts": "44c5dbcf38ea117eaa13f3a715143ea147a7abf25c3491b61817e67b5f3d6f93"
+  },
+  "compilerSha256": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+  "emissionReportSha256": "1fa419dfd2e8ba252de9ce4f676f01d1a84e6aafea0e55dfbe35a576685494e0"
+}
