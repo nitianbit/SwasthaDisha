@@ -1,0 +1,17 @@
+{
+  "sourceFreezeSha256": "9929b002a9c569d56856f5738a86159afcf1ea78eeb5292bda768d62f541454d",
+  "sessionId": "4a76a65e-0e00-4dbb-8bab-bea8fabbca9d",
+  "decisions": [
+    {
+      "agent": "/root/policy_standards",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    },
+    {
+      "agent": "/root/booking_read_spec",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    }
+  ],
+  "actualProvenance": "Independent nonauthor Standards and Spec, both reviewed original failure and unchanged frozen bindings. Both approve one corrected invocation only.",
+  "failure": "APPROVAL_REJECTED before run/claim/output/Popen; original receipt and invocation preserved.",
+  "scope": "No retry after post-create failure; effective effort unproven/native UI ACK false. Capture remains unaccepted until actual stream/message/process review."
+}

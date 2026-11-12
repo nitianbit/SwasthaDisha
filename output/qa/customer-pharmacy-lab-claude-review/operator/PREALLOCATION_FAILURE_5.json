@@ -1,0 +1,21 @@
+{
+  "recordedAt": "2026-11-12T07:52:55.462001+00:00",
+  "invocationRecord": "operator/ROOT_INVOCATION_5.json",
+  "result": {
+    "firstFailure": "APPROVAL_REJECTED",
+    "reviewAccepted": false,
+    "status": "NO_SUCCESS"
+  },
+  "cause": "Root incorrectly included /root as second reviewer identity; exact closed receipt validation requires two actual /root/ subagent reviewers. No source or mechanism defect.",
+  "receiptSha256": "b5907835cd9ce2fc848abbbd45deee6e05402d5b1b6ba36c4882b53f8b4dcfaa",
+  "supervisorSha256": "53b9f75c5f8be840bfb8d67857bb62152eeacb99054b240ed1d23243888207da",
+  "inspection": "load/approval_check occurs before PrivateFiles.reserve and subprocess creation; supplied reviewer identity is rejected.",
+  "readback": {
+    "onceClaimAbsent": true,
+    "privateOutputDirectoryAbsent": true
+  },
+  "modelRequests": 0,
+  "processStarted": false,
+  "authority": "No automatic retry. Two actual independent subagents must review failure and approve one corrected exact invocation; preserve original private receipt and public invocation record.",
+  "applicationOrBusinessEffects": 0
+}

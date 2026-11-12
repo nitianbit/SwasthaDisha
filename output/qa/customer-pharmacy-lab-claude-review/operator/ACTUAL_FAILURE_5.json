@@ -1,0 +1,118 @@
+{
+  "sourceFreezeSha256": "9929b002a9c569d56856f5738a86159afcf1ea78eeb5292bda768d62f541454d",
+  "actualCapture": {
+    "absent": {
+      "adapter": true,
+      "cli": true,
+      "ruflo": true
+    },
+    "actualClaudeExtensionACK": false,
+    "cleanupErrors": [
+      "IDENTITY_CHANGED"
+    ],
+    "effectiveEffort": "UNPROVEN",
+    "effectiveModel": "UNOBSERVED_PENDING_ROOT_INSPECTION",
+    "elapsedSeconds": 33.452,
+    "exitCode": 143,
+    "firstFailure": "TIMEOUT",
+    "groupEmpty": true,
+    "identities": {
+      "adapter": {
+        "executable": "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+        "group": 97783,
+        "parent": 97783,
+        "pid": 97883,
+        "started": "Thu Nov 12 13:24:39 2026"
+      },
+      "cli": {
+        "executable": "/Users/shubham/.vscode/extensions/anthropic.claude-code-2.1.322-darwin-arm64/resources/native-binary/claude",
+        "group": 97783,
+        "parent": 97741,
+        "pid": 97783,
+        "started": "Thu Nov 12 13:24:37 2026"
+      },
+      "ruflo": {
+        "executable": "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+        "group": 97783,
+        "parent": 97883,
+        "pid": 97885,
+        "started": "Thu Nov 12 13:24:39 2026"
+      }
+    },
+    "inputBytesWritten": 523471,
+    "observerDiagnostic": {
+      "candidateCount": 1,
+      "children": [
+        {
+          "classification": "PINNED_NODE",
+          "group": 97783,
+          "parent": 97883,
+          "pid": 97885,
+          "started": "Thu Nov 12 13:24:39 2026"
+        }
+      ],
+      "matchCount": 0,
+      "stage": "ruflo"
+    },
+    "outputBytes": {
+      "stderr": 0,
+      "stdout": 27356
+    },
+    "packetSha256": "f61c1d3022a8fbd1d94a68da912d9c8a676b25b8e16775a7583480b0e61a78e3",
+    "processStarted": true,
+    "requestedEffort": "xhigh",
+    "requestedModel": "claude-opus-5-5",
+    "reviewAccepted": false,
+    "schema": "SD-CURRENT-CLAUDE-CAPTURE-1",
+    "sessionId": "4a76a65e-0e00-4dbb-8bab-bea8fabbca9d",
+    "signals": [
+      {
+        "kind": "cli",
+        "signal": 15
+      }
+    ],
+    "status": "FAILED_OR_UNRESOLVED"
+  },
+  "streamReview": {
+    "observedAssistantModels": [
+      "claude-opus-5-5"
+    ],
+    "toolCalls": [
+      {
+        "id": "toolu_016mC6bxgXRMt2hvXaJKwJ8Y",
+        "name": "mcp__ruflo__team_inbox"
+      }
+    ],
+    "substantiveReviewMessages": 0,
+    "resultFrames": 0,
+    "partialFrames": 0,
+    "privateThinkingNotPrintedOrPublished": true,
+    "rateLimitStatus": "allowed",
+    "fiveHourUtilization": 0.03,
+    "sevenDayUtilization": 0.49,
+    "effectiveEffort": "UNPROVEN"
+  },
+  "rawPrivateHashes": {
+    "transcript": "7f280daeb74d5df256b5a0ddbe510560ec0f0227bed70f452cea14e33049e118",
+    "state": "8e342d5f243ca563e13c809889225373685b90c01cd5955410a7283ae008d5f5",
+    "stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "independentRootCleanupReadback": {
+    "exactPids": [
+      97783,
+      97883,
+      97885
+    ],
+    "exactGroup": 97783,
+    "psExitCode": 1,
+    "psStdoutBytes": 0,
+    "groupProbeExitCode": 1,
+    "groupProbeStdoutBytes": 0,
+    "allAbsent": true,
+    "groupEmpty": true,
+    "extraSignals": [],
+    "observationPermission": "Initial sandboxed ps/pgrep could not inspect OS process table; subsequent explicit read-only escalated probes supplied the successful absence observation."
+  },
+  "diagnosis": "33.452 second capture is far below 3600-second review deadline. Source Native.command bounds each ps/pgrep observation subprocess to min(2,remaining); such a subprocess timeout is the only other TIMEOUT source. Exact failing ps variant was not captured. Do not claim model timeout or provider quota exhaustion. cleanup IDENTITY_CHANGED remains in immutable capture despite final absence.",
+  "next": "Independent failure review and minimal observation-budget/diagnostic repair, focused offline regressions and fresh source/invocation approvals before any new session. Never reuse consumed R5 claim. Backend development continues."
+}
