@@ -46,7 +46,7 @@ This document contains JSON Schema definitions for all API endpoints, converted 
     "otp": {
       "type": "string",
       "pattern": "^[0-9]{6}$",
-      "description": "OTP must be exactly 6 digits. Default OTP: 123456"
+      "description": "OTP must be exactly 6 digits. Use the generated code for the requested phone or email."
     }
   },
   "required": ["otp"],
@@ -621,7 +621,7 @@ This document contains JSON Schema definitions for all API endpoints, converted 
 
 - All date fields use `YYYYMMDD` format (e.g., `20260209`)
 - Phone numbers must be exactly 10 digits
-- OTP must be exactly 6 digits. Default OTP for testing: `123456`
+- The current [login source](src1/modules/auth/services/index.ts) generates random six-digit OTPs; there is no fixed testing code. Verification binds the code to the selected account and its current phone/email destination. The [OTP service](src1/modules/otp/services/index.ts) checks stored expiry and the [OTP repository](src1/modules/otp/repository/index.ts) conditionally consumes an unverified challenge through a single [database update](src1/modules/common/repository/BaseRepository.ts).
 - MongoDB ObjectId format: 24 hexadecimal characters
 - All endpoints except `/health` and `/api/v1/auth/*/send` and `/api/v1/auth/*/verify` require Bearer token authentication
 - Token is automatically saved from the "Verify OTP" response and used in subsequent requests
