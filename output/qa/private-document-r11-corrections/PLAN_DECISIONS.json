@@ -1,0 +1,22 @@
+{
+  "schema": "SD-PRIVATE-R11-ACTUAL-PLAN-DECISIONS-1",
+  "planCommit": "472fefedf237b3df50ca4e814505b5ab7c971399",
+  "planSha256": "98bb854464e8665f926c8dff065fb7e2de646367865ebd15f4434482e09524e4",
+  "decision": "APPROVE_IMPLEMENTATION_ONLY",
+  "reviewers": [
+    {
+      "agent": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY"
+    },
+    {
+      "agent": "/root/milestone_composition_r9",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY"
+    }
+  ],
+  "provenance": "Actual direct nonauthor messages; both read entire275linecontroller/308linestorage and fullplan/fouractualR11findings, verified2source+3parent hashes and pinnedFormidable3.5.4 constants/export/errorcallsites. Rootplan author excluded.",
+  "scope": "Two production files only;fourmodule-localLOWcorrections preserveexistingcapturelease/deadline/finalization/defaultclosedpolicies. SourceauthorCustomercannotapproveownimplementation.",
+  "sourceReviewers": "Root+Milestone after sourcecandidate, before fixture pins/regressions or commands",
+  "limits": "No app/parser/package/compiler/Node/fsadapter/Mongo/Docker/provider/grant/rootadoption. Actualcasefold remainsconditionalunsupportedNOT_RUN; no fakePASS. Separate fixture source and exactstage/outcome gates retain112metadata lock without oldreceiptreuse."
+}
