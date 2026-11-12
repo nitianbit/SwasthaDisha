@@ -1,0 +1,27 @@
+{
+  "schema": "SD-INTERNAL-CONTRACT-DECISIONS-1",
+  "baseline": "dbe1cc2d972876876c422cf7af1b194037542575",
+  "contract": "documentation/planning/implementation/PHARMACY_SUPPLIER_MASTER_CONTRACT_DRAFT.md",
+  "contractSha256": "c47d541e60747f262e6828b912b2016c61c1e2b2f5a4dfcffc1f4bee8b4157b7",
+  "author": "/root/payment_ctor_contract",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex review of full clarified contract/delta/13pins; earlier failures preserved."
+    },
+    {
+      "reviewer": "/root/booking_write_contract",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex review of full clarified contract/delta/13pins; earlier failures preserved."
+    }
+  ],
+  "scope": "Seven new pharmacySuppliers files plus authenticated central mount; contact metadata only, ordered scoped/versioned writes and archive replay.",
+  "retainedFindings": "contract-review-1 exact c305 draft plus actual Standards/Spec change requests",
+  "execution": "NONE; no source changes/admission to app, model, compiler, DB or providers. Two source reviews plus focused C3 still required.",
+  "integration": "Keep isolated while R8 selected live pins are in use; do not merge central routes then."
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "SD-INTERNAL-CONTRACT-REVIEW-1",
+  "reviewer": "/root",
+  "role": "Standards",
+  "author": "/root/payment_ctor_contract",
+  "contractSha256": "c30578477cd76858e18b214b025b8f4a375fdc8800dc488d39d02098086d86a1",
+  "decision": "CHANGES_REQUIRED",
+  "scope": "Preimplementation contract only; no source changes or execution.",
+  "findings": [
+    {
+      "id": "SUP-C-1",
+      "severity": "medium",
+      "finding": "Freeze exact edit/archive validation/state/revision order and already-archived replay semantics."
+    },
+    {
+      "id": "SUP-C-2",
+      "severity": "medium",
+      "finding": "Freeze exact success envelopes and direct repository list-query errors; allowed-name accessors/nonenumerable fields must reject without evaluation."
+    },
+    {
+      "id": "SUP-C-3",
+      "severity": "medium",
+      "finding": "Clarify that autoCreate/autoIndex false prevents startup DDL, while first insert may implicitly create the collection; current preparation performs no DB action."
+    }
+  ],
+  "rootTechnicalDefaults": "After valid scope/actor/ID/plain body and owned lookup, enforce descriptors/allowlist then content/revision. Already archived replay may return unchanged validated DTO despite stale-but-valid expectedRevision, without writing. Owned future admitted inserts may implicitly create a collection; no present DDL or capacity/provisioning acceptance."
+}

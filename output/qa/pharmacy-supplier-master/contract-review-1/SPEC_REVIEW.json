@@ -1,0 +1,24 @@
+{
+  "schema": "SD-INTERNAL-CONTRACT-REVIEW-1",
+  "reviewer": "/root/booking_write_contract",
+  "role": "Spec",
+  "author": "/root/payment_ctor_contract",
+  "contractSha256": "c30578477cd76858e18b214b025b8f4a375fdc8800dc488d39d02098086d86a1",
+  "decision": "REQUEST_CHANGES",
+  "provenance": "Actual direct independent nonauthor review, delivered to author and Root.",
+  "findings": [
+    {
+      "id": "SUP-1",
+      "finding": "Freeze shape/owned lookup/key-descriptor/content/state/revision order and archive replay. Allowed-key descriptors400 without getters, unknown/symbol keys422; archived replay only after valid body/revision returns unchanged despite staleness."
+    },
+    {
+      "id": "SUP-2",
+      "finding": "Freeze exact success envelopes/direct-list400/default/trim/own-undefined semantics and retain raw write keys rather than stripping before authoritative checks."
+    },
+    {
+      "id": "SUP-3",
+      "finding": "No startup/manual/current DDL does not imply no prospective first-insert namespace/default_id creation; activation needs owned namespace/index/provisioning evidence."
+    }
+  ],
+  "scope": "Contact metadata prerequisite justified,13pins match; no source/R8 changes or execution."
+}
