@@ -1,0 +1,14 @@
+{
+  "schema": "SD-PRIVATE-R11-ROOT-INTEGRATION-BYTES-1",
+  "integrationBefore": "dc70292cd58544d903b5e84a59bd36523903754a",
+  "approvedSourceCandidate": "/root/customer_remaining_audit:5607cdf7070d418115efbd5150afcec1e81f6890",
+  "exact2ReviewedProductionHashesMatch": true,
+  "other27ProductionContextHashesMatch": true,
+  "only2ProductionPathsChanged": [
+    "src1/modules/file/controller/index.ts",
+    "src1/modules/file/storage.ts"
+  ],
+  "sourceDecisions": "ActualRootStandards+MilestoneSpec, no new votes invented",
+  "contextLimit": "Original45unchangedpins record privatebranch context. Main has separatelyaccepted enrollmentharnesschanges and doesnotcontain privatefixture namespace; those are not falsely claimedcurrent-byte-equal here.",
+  "execution": "No app/parser/compiler/DB/provider run. Fixture2pin/regression update and genuineClaudefollowup pending; nativecasefold andallowner/release gates remain."
+}
