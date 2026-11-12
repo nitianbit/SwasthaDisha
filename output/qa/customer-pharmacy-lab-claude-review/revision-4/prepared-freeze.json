@@ -1,0 +1,15 @@
+{
+  "schema": "SD-CLAUDE-FINAL-PREPARED-FREEZE-4",
+  "files": {
+    "packet.json": "c1277a6d678d95261614b4726bd3a1aa946e68c7819ed5654323fdc5aea85732",
+    "recipe.json": "f67cd507601460001bf9be3bb3af29f7a262613209217172e290e091a2a2f397",
+    "challenge.json": "cb31bbfc1b3f00dc051258f08d35e28242723bcadd03449f39de072ddbfbfc15",
+    "README.md": "f6602dbf35a9c2ccb76d45676990da22b030ca343caf8d518b97c4b8f7633f03",
+    "OPERATOR_PLAN.md": "8dcac33310ab5d6dbc5c25f493b36d21db2ed8c630b7ca1e10e93539e64d8acd",
+    "manifest.json": "c41bbb1adf08ac22e12333ec2a52f5226a35a7d63ac94989a49020a82954c76a",
+    "mcp-config.json": "a612d678b74998efe9b9d91c029d7f66731ff4fb8e5e096e41f07243369743b0",
+    "prior-seven.sha256.json": "6d490c04b63fd059f0d8cf49b277a48b3407a0f82d667b7837f7777d503e3b11"
+  },
+  "writesStopped": true,
+  "liveInvocationApproved": false
+}

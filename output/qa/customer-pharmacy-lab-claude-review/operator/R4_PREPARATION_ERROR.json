@@ -1,0 +1,12 @@
+{
+  "schema": "SD-CLAUDE-R4-PREPARATION-GUARD-1",
+  "exitCode": 1,
+  "stage": "Exact-HEAD assertion before all writes",
+  "expectedSourceSnapshot": "abd1e90be9dfd7012dd20b9646ed4f494778726a",
+  "actualUnrelatedContextHead": "161537a34b9cfecf3499b39e2d8624d641009cf7",
+  "rootConfirmedContextCommitIsQaOnly": true,
+  "correction": "Keep abd1e90 source snapshot; record newer context and compare selected whole-file hashes.",
+  "failedScriptSha256": "2e36c157a226fd1518fdb24ec9b211adbf972af5a186f67c8945cda0af500350",
+  "writesBeforeFailure": 0,
+  "authModelCalls": 0
+}

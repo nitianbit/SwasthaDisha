@@ -1,0 +1,17 @@
+{
+  "schema": "SD-CLAUDE-CURRENT-SOURCE-CHALLENGE-3",
+  "team": "swasthadisha-local",
+  "fromAgent": "codex-lead",
+  "toAgent": "claude-reviewer",
+  "sessionId": "33d9c7c7-ef3d-49fc-af64-afee9a1c3ca2",
+  "sourceCommit": "11e9c8bf5f276aa520e1424cc84e17f08b151df2",
+  "controllerSha256": "bbe2d226d0192b91389675dd5e66f2b385dc157bba0010715bbe4b29b0e2848b",
+  "contractSha256": "52a6f33e76db70a2a7ae8d29d2f45714107d750911fc2d4b2cdcef27840cdf4c",
+  "packetSha256": "1ae43a537d5b56295b264950300a2646bf625449977f00ff606f46f9998f0117",
+  "nonce": "9641968e-d621-4afc-90ff-f7edd8bb6c54",
+  "clientKind": "local-bundled-CLI",
+  "requestedModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "freshness": "REVISION3_ONLY_AFTER_REVIEWED_ENVIRONMENT_AMENDMENT",
+  "state": "PREPARED_NOT_ENQUEUED"
+}

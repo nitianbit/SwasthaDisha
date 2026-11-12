@@ -1,0 +1,27 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-ENVIRONMENT-FAKE-CHECKS-3",
+  "command": [
+    "python3",
+    "-I",
+    "-B",
+    "output/qa/customer-pharmacy-lab-claude-review/operator/test_supervisor.py"
+  ],
+  "observedExitCode": 0,
+  "tests": 35,
+  "pass": 35,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "wallSecondsReportedByUnittest": 0.038,
+  "originalFakeChecks": 31,
+  "addedEnvironmentReceiptGuards": 4,
+  "fullUnittestOutput": "Returned directly in tool result; not rerun to obtain another transcript.",
+  "newImplementationFailures": 0,
+  "modelCalls": 0,
+  "authChecks": 0,
+  "nativeClientProcesses": 0,
+  "nativeMetadataCommands": 0,
+  "credentialReads": 0,
+  "wholeEnvironmentInherited": false,
+  "publicIdentityValuesPrinted": 0
+}

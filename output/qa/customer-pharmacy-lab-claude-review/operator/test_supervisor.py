@@ -308,7 +308,7 @@ class NativeHelperTests(unittest.TestCase):
                 return {101:self.cli,102:self.adapter,103:self.ruflo}[pid]
             def children(self,pid,deadline):
                 self.log.append(('children',pid))
-                return {101:[102,104] if self.extra else [102],102:[103],103:[]}[pid]
+                return {101:[102,*range(104,112)] if self.extra else [102],102:[103],103:[]}[pid]
             def command(self,argv,deadline):
                 self.log.append(('argv',argv))
                 value=('/fixture/node /fixture/adapter.mjs' if argv[3]=='102' else '/fixture/node /fixture/ruflo.js mcp start --transport stdio')
@@ -320,20 +320,28 @@ class NativeHelperTests(unittest.TestCase):
         self.assertEqual([captured[k].pid for k in captured],[101,102,103])
         args=[row[1] for row in o.log if row[0]=='argv']
         self.assertEqual([a[3] for a in args],['102','103'])
-    def test_native_rejects_ambiguous_child_before_argument_read(self):
+    def test_native_rejects_exceeded_child_bound_before_argument_read(self):
         o,r=self.observer();o.extra=True
         with self.assertRaises(s.Stop):o.observe(Process(),r,dict(cli=None,adapter=None,ruflo=None),100)
         self.assertFalse(any(row[0]=='argv' for row in o.log))
     def test_native_rejects_unowned_child_arguments(self):
         o,r=self.observer();o.wrong_args=True
-        with self.assertRaises(s.Stop):o.observe(Process(),r,dict(cli=None,adapter=None,ruflo=None),100)
+        captured=dict(cli=None,adapter=None,ruflo=None)
+        o.observe(Process(),r,captured,100)
+        self.assertIsNone(captured['adapter'])
+        self.assertEqual(o.observer_diagnostic['matchCount'],0)
     def test_native_rejects_detached_child_before_argument_read(self):
         o,r=self.observer();o.adapter=s.Identity(102,999,101,'Thu Nov 12 10:00:01 2026','/fixture/node')
-        with self.assertRaises(s.Stop):o.observe(Process(),r,dict(cli=None,adapter=None,ruflo=None),100)
+        captured=dict(cli=None,adapter=None,ruflo=None)
+        o.observe(Process(),r,captured,100)
+        self.assertIsNone(captured['adapter'])
         self.assertFalse(any(row[0]=='argv' for row in o.log))
     def test_native_rejects_child_older_than_parent(self):
         o,r=self.observer();o.adapter=s.Identity(102,101,101,'Thu Nov 12 09:59:59 2026','/fixture/node')
-        with self.assertRaises(s.Stop):o.observe(Process(),r,dict(cli=None,adapter=None,ruflo=None),100)
+        captured=dict(cli=None,adapter=None,ruflo=None)
+        o.observe(Process(),r,captured,100)
+        self.assertIsNone(captured['adapter'])
+        self.assertEqual(o.observer_diagnostic['children'][0]['classification'],'STALE_START')
     def test_native_identity_change_withholds_signal(self):
         o,_=self.observer();previous=o.cli
         o.cli=s.Identity(101,999,101,'Thu Nov 12 10:00:00 2026','/fixture/claude')
@@ -348,6 +356,124 @@ class NativeHelperTests(unittest.TestCase):
         self.assertTrue(launch.call_args.kwargs['close_fds'])
         self.assertTrue(launch.call_args.kwargs['start_new_session'])
         self.assertEqual(launch.call_args.kwargs['env'],{'HOME':'/fixture'})
+
+class ProfileThreeTests(unittest.TestCase):
+    setUp = SupervisorTests.setUp
+    def environment(self):
+        parent = {k: 'public-fixture-'+str(n) for n,k in enumerate(s.PUBLIC_OS_KEYS)}
+        env = {'HOME':'/Users/shubham','PATH':'/usr/bin:/bin','TMPDIR':'/private/tmp',**parent}
+        return env,parent
+    def test_exact_seven_public_keys_guard_accepts_and_passes_unchanged(self):
+        env,parent=self.environment();parent['UNRELATED_FIXTURE']='must-not-inherit'
+        s.environment_check(env,parent)
+        recipe={'executable':'/fixture/claude','argvCandidate':['--restricted','--tools',''], 'cwd':'/fixture','environmentCandidate':env}
+        with patch.object(s.subprocess,'Popen',return_value=Process()) as launch:
+            s.Native.start({'recipe':recipe})
+        self.assertEqual(launch.call_args.kwargs['env'],env)
+        self.assertEqual(set(launch.call_args.kwargs['env']), {'HOME','PATH','TMPDIR',*s.PUBLIC_OS_KEYS})
+        self.assertNotIn('UNRELATED_FIXTURE',launch.call_args.kwargs['env'])
+    def test_missing_changed_extra_or_stale_environment_rejected(self):
+        env,parent=self.environment()
+        for name in env:
+            missing=dict(env);del missing[name]
+            with self.assertRaises(s.Stop):s.environment_check(missing,parent)
+            changed=dict(env);changed[name]='changed'
+            with self.assertRaises(s.Stop):s.environment_check(changed,parent)
+        extra=dict(env,UNRELATED_FIXTURE='not-permitted')
+        with self.assertRaises(s.Stop):s.environment_check(extra,parent)
+        empty=dict(env);empty[s.PUBLIC_OS_KEYS[0]]=''
+        with self.assertRaises(s.Stop):s.environment_check(empty,parent)
+    def test_old_live_receipt_does_not_admit_revision_four(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(s,'OWN',Path(directory)):
+            (Path(directory)/'LIVE_APPROVAL_3.json').write_text('{}')
+            self.assertEqual(s.main(['--live'])['firstFailure'],'APPROVAL_REQUIRED')
+    def test_receipt_environment_binding_rejects_three_key_profile(self):
+        env,parent=self.environment()
+        expected={'schema':'fixture-3','environment':env}
+        receipt=dict(expected,reviewers=[{'agent':'/root/spec','decision':'APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW'},{'agent':'/root/standards','decision':'APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW'}])
+        s.approval_check(receipt,expected)
+        receipt['environment']={k:env[k] for k in ('HOME','PATH','TMPDIR')}
+        with self.assertRaises(s.Stop):s.approval_check(receipt,expected)
+
+class AmendmentFourTests(unittest.TestCase):
+    setUp = SupervisorTests.setUp
+    execute = SupervisorTests.execute
+    observer = NativeHelperTests.observer
+    def failing_observation_ports(self):
+        class Failing(Ports):
+            def observe(self, process, recipe, captured, deadline):
+                super().observe(process,recipe,captured,deadline)
+                if self.observe_count == 2:
+                    raise s.Stop('UNKNOWN_CHILD')
+        p=Failing();p.process.forever=True;p.stdout=[];p.stderr=[]
+        return p
+    def test_grace_drain_crosses_deadline_then_fresh_cleanup_signals(self):
+        p=self.failing_observation_ports();original_events=p.events;observed=[]
+        def events(selector,timeout):
+            result=original_events(selector,timeout)
+            p.time += .4
+            return result
+        p.events=events;original_absent=p.absent
+        def absent(identity,deadline):
+            observed.append((p.time,deadline))
+            if p.time >= deadline:
+                raise s.Stop('TIMEOUT')
+            return original_absent(identity,deadline)
+        p.absent=absent
+        result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'UNKNOWN_CHILD')
+        self.assertEqual(p.signal_log,[('cli',int(signal.SIGTERM))])
+        self.assertTrue(all(now < end for now,end in observed))
+        self.assertTrue(all(result['absent'].values()))
+        self.assertEqual(result['status'],'FAILED_OR_UNRESOLVED')
+    def test_transient_metadata_timeout_does_not_poison_fresh_phase(self):
+        p=self.failing_observation_ports();original=p.absent;raised=[]
+        def absent(identity,deadline):
+            if identity.pid == 101 and not raised:
+                raised.append(True);raise s.Stop('TIMEOUT')
+            return original(identity,deadline)
+        p.absent=absent
+        result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'UNKNOWN_CHILD')
+        self.assertIn('TIMEOUT',result['cleanupErrors'])
+        self.assertEqual(p.signal_log,[('cli',int(signal.SIGTERM))])
+        self.assertLess(p.time,4)
+    def test_actual_identity_change_stays_unsafe_and_preserves_first_failure(self):
+        p=self.failing_observation_ports();p.change_identity=True
+        result,p,_=self.execute(p)
+        self.assertEqual(result['firstFailure'],'UNKNOWN_CHILD')
+        self.assertEqual(p.signal_log,[])
+        self.assertIn('IDENTITY_CHANGED',result['cleanupErrors'])
+        self.assertFalse(any(result['absent'].values()))
+    def test_pinned_adapter_among_unrelated_sibling_without_exploration(self):
+        o,r=self.observer();identity=o.identity;children=o.children
+        def identity_with_sibling(pid,deadline):
+            if pid == 104:
+                return s.Identity(104,101,101,'Thu Nov 12 10:00:01 2026','/fixture/unrelated-helper')
+            return identity(pid,deadline)
+        o.identity=identity_with_sibling
+        o.children=lambda pid,deadline: [102,104] if pid == 101 else children(pid,deadline)
+        captured=dict(cli=None,adapter=None,ruflo=None)
+        o.observe(Process(),r,captured,100)
+        self.assertEqual([captured[k].pid for k in captured],[101,102,103])
+        self.assertFalse(any(row[0]=='argv' and row[1][3]=='104' for row in o.log))
+        self.assertFalse(any(row==('children',104) for row in o.log))
+        self.assertNotIn('/fixture',json.dumps(o.observer_diagnostic))
+    def test_multiple_pinned_matches_fail_without_arbitrary_adoption(self):
+        o,r=self.observer();identity=o.identity;children=o.children;command=o.command
+        def identity_with_duplicate(pid,deadline):
+            if pid == 104:
+                return s.Identity(104,101,101,'Thu Nov 12 10:00:01 2026','/fixture/node')
+            return identity(pid,deadline)
+        o.identity=identity_with_duplicate
+        o.children=lambda pid,deadline: [102,104] if pid == 101 else children(pid,deadline)
+        o.command=lambda argv,deadline: SimpleNamespace(returncode=0,stdout=b'/fixture/node /fixture/adapter.mjs') if argv[3]=='104' else command(argv,deadline)
+        captured=dict(cli=None,adapter=None,ruflo=None)
+        with self.assertRaises(s.Stop):o.observe(Process(),r,captured,100)
+        self.assertIsNone(captured['adapter'])
+        self.assertEqual(o.observer_diagnostic['stage'],'adapter')
+        self.assertEqual(o.observer_diagnostic['candidateCount'],2)
+        self.assertEqual(o.observer_diagnostic['matchCount'],2)
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

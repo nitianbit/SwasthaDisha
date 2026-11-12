@@ -1,0 +1,6 @@
+{
+  "supervisorSha256": "a54ac08751589d3813333416c18bd3cccada306aa90620f3872ec228d74c680b",
+  "testsSha256": "fd0e1d9cbb731f05176c434abbf3b8490e9d37096b64f05b04a871a6a29fcd78",
+  "inertCopies": true,
+  "stage": "AMENDMENT4_IMPLEMENTED_BEFORE_FINAL_R4_BINDINGS"
+}

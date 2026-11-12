@@ -1,4 +1,4 @@
-"""Exact revision-2 Claude review supervisor; default mode has no effects.
+"""Exact revision-4 Claude review supervisor; default mode has no effects.
 
 Owned-process identity/EOF patterns follow the historical claude-ruflo-review
 operator, without importing its main, globals, profiles, receipts or parser.
@@ -19,11 +19,12 @@ import time
 
 ROOT = Path('/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab')
 QA = ROOT / 'output/qa/customer-pharmacy-lab-claude-review'
-REV = QA / 'revision-2'
+REV = QA / 'revision-4'
 OWN = QA / 'operator'
 AUTHOR = '/root/claude_current_review_packet'
-FROZEN = '467e0503bdf2c166fa9886d18c53536a623c461f53a015f5161ff4032e251495'
-PLAN = '504d541eaeb23a53ce556e57fd15fef6636b12cbd0f3ddb95715f8f117610822'
+FROZEN = '795b0a2f0ec517b4c13f534fce5ae470b5c520838b718d78583d8aa79d39acc2'
+PLAN = '8dcac33310ab5d6dbc5c25f493b36d21db2ed8c630b7ca1e10e93539e64d8acd'
+PUBLIC_OS_KEYS = ('USER', 'LOGNAME', 'SECURITYSESSIONID', '__CF_USER_TEXT_ENCODING')
 MAX_STATE = 65536
 CODES = frozenset('INPUT_REJECTED APPROVAL_REQUIRED APPROVAL_REJECTED SOURCE_DRIFT CLAIM_EXISTS OUTPUT_IDENTITY START_FAILED IDENTITY_UNKNOWN IDENTITY_CHANGED UNKNOWN_CHILD PROCESS_OBSERVATION TIMEOUT STDOUT_LIMIT STDERR_LIMIT FRAME_LIMIT PARTIAL_FRAME PIPE_FAILURE INPUT_INCOMPLETE CHILD_EXIT CHILD_CHAIN_UNOBSERVED CLEANUP_UNRESOLVED INTERRUPTED INTERNAL_ERROR'.split())
 
@@ -76,9 +77,17 @@ def approval_check(receipt, expected):
              for r in reviewers), 'APPROVAL_REJECTED')
     need(len({r['agent'] for r in reviewers}) == 2, 'APPROVAL_REJECTED')
 
+def environment_check(environment, parent):
+    """Only the reviewed seven keys; inspect no other parent values."""
+    base = {'HOME': '/Users/shubham', 'PATH': '/usr/bin:/bin', 'TMPDIR': '/private/tmp'}
+    need(isinstance(environment, dict) and set(environment) == set(base) | set(PUBLIC_OS_KEYS))
+    need(all(environment[k] == v for k, v in base.items()))
+    need(all(isinstance(environment[k], str) and environment[k] and
+             environment[k] == parent.get(k) for k in PUBLIC_OS_KEYS))
+
 def load():
     """No native process or provider is used in admission; missing receipt stops."""
-    need((OWN / 'LIVE_APPROVAL.json').exists(), 'APPROVAL_REQUIRED')
+    need((OWN / 'LIVE_APPROVAL_4.json').exists(), 'APPROVAL_REQUIRED')
     frozen = regular(REV / 'prepared-freeze.json')
     need(sha(frozen) == FROZEN, 'SOURCE_DRIFT')
     inputs = json.loads(frozen)['files']
@@ -88,11 +97,12 @@ def load():
     prior = json.loads(regular(REV / 'prior-seven.sha256.json'))
     for name, digest in prior.items():
         need('/' not in name and sha(regular(QA / name)) == digest, 'SOURCE_DRIFT')
-    pre = json.loads(regular(OWN / 'PREIMPLEMENTATION.json'))
+    pre = json.loads(regular(OWN / 'PREIMPLEMENTATION_4.json'))
     need(pre['planSha256'] == PLAN and pre['preparedFreezeSha256'] == FROZEN and
          pre['rootAction'] == 'AUTHORIZE_COMPACT_SUPERVISOR_AND_OFFLINE_FAKE_CHECKS_ONLY')
     recipe_bytes = regular(REV / 'recipe.json')
     recipe = json.loads(recipe_bytes)
+    environment_check(recipe['environmentCandidate'], os.environ)
     packet = regular(REV / 'packet.json')
     snapshot = json.loads(packet)
     need(sha(packet) == recipe['packetSha256'] and
@@ -112,11 +122,11 @@ def load():
     challenge_bytes = regular(REV / 'challenge.json')
     challenge = json.loads(challenge_bytes)
     need(challenge['nonce'] not in packet.decode() and challenge['sessionId'] == recipe['sessionId'])
-    expected = {'schema': 'SD-CURRENT-CLAUDE-LIVE-APPROVAL-1',
+    expected = {'schema': 'SD-CURRENT-CLAUDE-LIVE-APPROVAL-4',
                 'rootDecision': 'APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW',
                 'supervisorSha256': sha(regular(OWN / 'supervisor.py')),
                 'testsSha256': sha(regular(OWN / 'test_supervisor.py')),
-                'preimplementationSha256': sha(regular(OWN / 'PREIMPLEMENTATION.json')),
+                'preimplementationSha256': sha(regular(OWN / 'PREIMPLEMENTATION_4.json')),
                 'preparedFreezeSha256': FROZEN, 'recipeSha256': sha(recipe_bytes),
                 'challengeSha256': sha(challenge_bytes), 'sessionId': recipe['sessionId'],
                 'packetSha256': recipe['packetSha256'],
@@ -127,15 +137,15 @@ def load():
                 'argv': recipe['argvCandidate'], 'environment': recipe['environmentCandidate'],
                 'cwd': recipe['cwd'], 'executable': recipe['executable'],
                 'onceClaim': recipe['onceClaim'], 'privateOutputDirectory': recipe['privateOutputDirectory']}
-    approval_bytes = regular(OWN / 'LIVE_APPROVAL.json', private=True)
+    approval_bytes = regular(OWN / 'LIVE_APPROVAL_4.json', private=True)
     approval_check(json.loads(approval_bytes), expected)
     return {'recipe': recipe, 'packet': packet, 'approvalExpected': expected,
             'inputHashes': {str(REV / n): h for n, h in inputs.items()} |
                            {str(REV / 'prepared-freeze.json'): FROZEN} |
                            {str(OWN / 'supervisor.py'): expected['supervisorSha256'],
                             str(OWN / 'test_supervisor.py'): expected['testsSha256'],
-                            str(OWN / 'PREIMPLEMENTATION.json'): expected['preimplementationSha256'],
-                            str(OWN / 'LIVE_APPROVAL.json'): sha(approval_bytes)} |
+                            str(OWN / 'PREIMPLEMENTATION_4.json'): expected['preimplementationSha256'],
+                            str(OWN / 'LIVE_APPROVAL_4.json'): sha(approval_bytes)} |
                            {str(ROOT / f['path']): f['wholeFileSha256']
                             for f in snapshot['files'] if f['origin'] == 'git'} |
                            {str(QA / name): digest for name, digest in prior.items()}}
@@ -229,8 +239,11 @@ class Native:
     def command(argv, deadline):
         remaining = deadline - time.monotonic()
         need(remaining > 0, 'TIMEOUT')
-        result = subprocess.run(argv, stdin=subprocess.DEVNULL, capture_output=True,
-                                env={'PATH': '/usr/bin:/bin'}, timeout=min(2, remaining), check=False)
+        try:
+            result = subprocess.run(argv, stdin=subprocess.DEVNULL, capture_output=True,
+                                    env={'PATH': '/usr/bin:/bin'}, timeout=min(2, remaining), check=False)
+        except subprocess.TimeoutExpired:
+            raise Stop('TIMEOUT') from None
         need(len(result.stdout) <= 16384 and len(result.stderr) <= 16384, 'PROCESS_OBSERVATION')
         return result
 
@@ -247,10 +260,13 @@ class Native:
         r = self.command(['/usr/bin/pgrep', '-P', str(pid)], deadline)
         need(r.returncode in (0, 1), 'PROCESS_OBSERVATION')
         rows = r.stdout.decode().split()
-        need(len(rows) <= 3 and all(v.isdecimal() for v in rows), 'UNKNOWN_CHILD')
+        if hasattr(self, 'observer_diagnostic'):
+            self.observer_diagnostic['candidateCount'] = len(rows)
+        need(len(rows) <= 8 and all(v.isdecimal() for v in rows), 'UNKNOWN_CHILD')
         return [int(v) for v in rows]
 
     def observe(self, process, recipe, captured, deadline):
+        self.observer_diagnostic = {'stage': 'cli', 'candidateCount': 0, 'matchCount': 0, 'children': []}
         cli = self.identity(process.pid, deadline)
         if cli is None:
             need(process.poll() is not None, 'IDENTITY_UNKNOWN')
@@ -261,26 +277,58 @@ class Native:
         captured['cli'] = cli
         node, adapter, ruflo = list(recipe['runtimePins'])[1:4]
         parent = cli
-        expected = [('adapter', [node, adapter]), ('ruflo', [node, ruflo, 'mcp', 'start', '--transport', 'stdio'])]
-        for kind, argv in expected:
+        for kind, argv in [('adapter', [node, adapter]),
+                           ('ruflo', [node, ruflo, 'mcp', 'start', '--transport', 'stdio'])]:
+            diagnostic = {'stage': kind, 'candidateCount': 0, 'matchCount': 0, 'children': []}
+            self.observer_diagnostic = diagnostic
+            previous = captured[kind]
+            if previous is not None:
+                current = self.identity(previous.pid, deadline)
+                need(current is None or current == previous, 'IDENTITY_CHANGED')
             pids = self.children(parent.pid, deadline)
-            need(len(pids) <= 1, 'UNKNOWN_CHILD')
-            if not pids:
-                return
-            child = self.identity(pids[0], deadline)
-            need(child is not None and child.parent == parent.pid and child.group == cli.group and
-                 child.executable in (node, Path(node).name) and
-                 datetime.strptime(child.started, '%a %b %d %H:%M:%S %Y') >=
-                 datetime.strptime(parent.started, '%a %b %d %H:%M:%S %Y'), 'UNKNOWN_CHILD')
-            # These fixed child vectors have no spaces or empty entries. Unlike
-            # CLI ps args, their joined display can be checked unambiguously.
-            r = self.command(['/bin/ps', '-ww', '-p', str(child.pid), '-o', 'args='], deadline)
-            need(r.returncode == 0 and r.stdout.decode().strip() == ' '.join(argv), 'UNKNOWN_CHILD')
-            need(self.identity(child.pid, deadline) == child, 'IDENTITY_CHANGED')
+            diagnostic['candidateCount'] = len(pids)
+            need(len(pids) <= 8, 'UNKNOWN_CHILD')
+            matches = []
+            for pid in pids:
+                child = self.identity(pid, deadline)
+                if child is None:
+                    diagnostic['children'].append({'pid': pid, 'classification': 'VANISHED'})
+                    continue
+                is_node = child.executable in (node, Path(node).name)
+                item = {'pid': child.pid, 'parent': child.parent, 'group': child.group,
+                        'started': child.started, 'classification': 'PINNED_NODE' if is_node else 'UNRELATED_EXECUTABLE'}
+                diagnostic['children'].append(item)
+                if not is_node or child.parent != parent.pid or child.group != cli.group:
+                    continue
+                if datetime.strptime(child.started, '%a %b %d %H:%M:%S %Y') < datetime.strptime(parent.started, '%a %b %d %H:%M:%S %Y'):
+                    item['classification'] = 'STALE_START'
+                    continue
+                # Only candidate pinned Node children get an in-memory fixed
+                # argv comparison. No unknown argv is retained or published.
+                before = self.identity(pid, deadline)
+                if before is None:
+                    item['classification'] = 'VANISHED'
+                    continue
+                need(before == child, 'IDENTITY_CHANGED')
+                result = self.command(['/bin/ps', '-ww', '-p', str(pid), '-o', 'args='], deadline)
+                after = self.identity(pid, deadline)
+                if after is None:
+                    item['classification'] = 'VANISHED'
+                    continue
+                need(after == child, 'IDENTITY_CHANGED')
+                if result.returncode != 0 or result.stdout.decode().strip() != ' '.join(argv):
+                    item['classification'] = 'OTHER_NODE_VECTOR'
+                    continue
+                item['classification'] = 'EXACT_MATCH'
+                matches.append(child)
+                diagnostic['matchCount'] = len(matches)
+            need(len(matches) <= 1, 'UNKNOWN_CHILD')
+            if not matches:
+                return  # Await the pinned chain; unrelated siblings are not adopted.
+            child = matches[0]
             need(captured[kind] in (None, child), 'IDENTITY_CHANGED')
             captured[kind] = child
             parent = child
-        need(not self.children(parent.pid, deadline), 'UNKNOWN_CHILD')
 
     @staticmethod
     def start(bundle):
@@ -468,9 +516,10 @@ def run(bundle, ports, sink):
                         return process.poll() is None
                     return identity is not None and not ports.absent(identity, deadline)
                 except Exception as error:
-                    unsafe.add(kind)
+                    if isinstance(error, Stop) and error.code == 'IDENTITY_CHANGED':
+                        unsafe.add(kind)
                     cleanup_error(error)
-                    return False
+                    return None
             try:
                 if pump:
                     pump.input_close()
@@ -481,6 +530,8 @@ def run(bundle, ports, sink):
             end = ports.now() + r['bounds']['eofGraceSeconds']
             while ports.now() < end:
                 drain()
+                if ports.now() >= end:
+                    break
                 live = [k for k, identity in captured.items() if alive(k, identity, end)]
                 if process.poll() is not None and not live:
                     break
@@ -490,17 +541,23 @@ def run(bundle, ports, sink):
                 identity = captured[kind]
                 for sig in (signal.SIGTERM, signal.SIGKILL):
                     end = ports.now() + 2
-                    if not alive(kind, identity, end):
+                    observed_alive = alive(kind, identity, end)
+                    if observed_alive is False:
                         break
+                    if observed_alive is None:
+                        continue  # Next existing phase has its own fresh budget.
                     try:
                         ports.signal_owned(process, kind, identity, sig, end)
                         signals.append({'kind': kind, 'signal': int(sig)})
                     except Exception as error:
-                        unsafe.add(kind)
+                        if isinstance(error, Stop) and error.code == 'IDENTITY_CHANGED':
+                            unsafe.add(kind)
                         cleanup_error(error)
-                        break
+                        continue
                     while ports.now() < end:
                         drain()
+                        if ports.now() >= end:
+                            break
                         if not alive(kind, identity, end):
                             break
                         if not pump:
@@ -541,6 +598,7 @@ def run(bundle, ports, sink):
                'inputBytesWritten': pump.offset if pump else 0,
                'outputBytes': pump.counts if pump else {'stdout': 0, 'stderr': 0},
                'identities': {k: asdict(v) if v else None for k, v in captured.items()},
+               'observerDiagnostic': getattr(ports, 'observer_diagnostic', {}),
                'absent': absent, 'groupEmpty': group_empty, 'signals': signals,
                'cleanupErrors': cleanup_errors, 'elapsedSeconds': round(ports.now() - started, 3)}
     try:

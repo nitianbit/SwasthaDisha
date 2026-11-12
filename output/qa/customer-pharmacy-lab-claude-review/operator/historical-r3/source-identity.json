@@ -1,0 +1,7 @@
+{
+  "schema": "SD-CLAUDE-R3-INERT-SOURCE-IDENTITY",
+  "supervisorSha256": "73489671bd2a2fe80f8f98b8f7a7f0f431c3179632d534ca3c95f3347d9e897a",
+  "testsSha256": "b18b84b203e9e33910276669d342dd252e3c6f92dfc2dac3ac95c16905837c46",
+  "ce27053Contains": "R2_SOURCE_NOT_R3",
+  "copiesAreInert": true
+}

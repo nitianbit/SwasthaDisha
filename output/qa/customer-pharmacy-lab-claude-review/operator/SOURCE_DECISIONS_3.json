@@ -1,0 +1,24 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-SOURCE-DECISIONS-3",
+  "supervisorSha256": "73489671bd2a2fe80f8f98b8f7a7f0f431c3179632d534ca3c95f3347d9e897a",
+  "testsSha256": "b18b84b203e9e33910276669d342dd252e3c6f92dfc2dac3ac95c16905837c46",
+  "sourceFreezeSha256": "0f6ddc1ded2704da248b3780bc5080437e74f9977e3b5b714c3dedff7b640dae",
+  "reviewers": [
+    {
+      "agent": "/root/claude_review_recipe_standards",
+      "role": "Standards",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    },
+    {
+      "agent": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    }
+  ],
+  "conditions": "Exact revision3 receipt, source/runtime/Python pins, member verification, acknowledged fresh challenge and private Git exclusions. Observed extra helper fails closed; no automatic retry. Capture is not review acceptance.",
+  "actualResult": "FAILED_UNKNOWN_CHILD_WITH_ROOT_EXACT_PROCESS_CLEANUP",
+  "actualResultRecord": "ACTUAL_FAILURE_3.json",
+  "claudeReviewAccepted": false,
+  "nativeExtensionACK": false,
+  "effectiveEffort": "UNPROVEN"
+}

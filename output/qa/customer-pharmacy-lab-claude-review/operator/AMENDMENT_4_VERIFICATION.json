@@ -1,0 +1,44 @@
+{
+  "schema": "SD-CLAUDE-AMENDMENT4-OFFLINE-VERIFICATION-1",
+  "amendmentSha256": "a6b417116dc824b85364999dd3a5732990775e930747c16dc94acb2ddf1a4582",
+  "supervisorSha256": "a54ac08751589d3813333416c18bd3cccada306aa90620f3872ec228d74c680b",
+  "testsSha256": "fd0e1d9cbb731f05176c434abbf3b8490e9d37096b64f05b04a871a6a29fcd78",
+  "originalR3SupervisorSha256": "73489671bd2a2fe80f8f98b8f7a7f0f431c3179632d534ca3c95f3347d9e897a",
+  "originalR3TestsSha256": "b18b84b203e9e33910276669d342dd252e3c6f92dfc2dac3ac95c16905837c46",
+  "originalR3PreservedAsInertCopiesNotClaimedCe27053": "historical-r3/*.txt",
+  "command": [
+    "python3",
+    "-I",
+    "-B",
+    "output/qa/customer-pharmacy-lab-claude-review/operator/test_supervisor.py"
+  ],
+  "observedExitCode": 0,
+  "tests": 40,
+  "pass": 40,
+  "errors": 0,
+  "failures": 0,
+  "skipped": 0,
+  "wallSecondsReportedByUnittest": 0.016,
+  "existingChecks": 35,
+  "focusedRegressions": 5,
+  "newImplementationTestFailures": 0,
+  "outputEvidence": "Complete actual unittest output returned directly in tool result; no repeated run after pass.",
+  "changedTopLevelDefinitions": [
+    "Native",
+    "run"
+  ],
+  "changedNativeMethods": [
+    "command",
+    "children",
+    "observe"
+  ],
+  "allOtherFunctionClassASTsUnchanged": true,
+  "allProfileConstantsBindingsUnchanged": true,
+  "firstSevenAndR2R3PublicProfilesPreserved": true,
+  "privateFailedResourcesTouched": false,
+  "newProfileCreated": false,
+  "modelCalls": 0,
+  "authChecks": 0,
+  "nativeMetadataProbes": 0,
+  "applicationImports": 0
+}

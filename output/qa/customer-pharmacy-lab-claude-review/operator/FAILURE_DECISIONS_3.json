@@ -1,0 +1,24 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-FAILURE-DECISIONS-3",
+  "actualFailure": "ACTUAL_FAILURE_3.json",
+  "consumedInvocation": true,
+  "reviewers": [
+    {
+      "agent": "/root/claude_review_recipe_standards",
+      "decision": "FAILURE_REVIEWED",
+      "basis": "Realmodel/inboxbutnocompletedreview; supervisorcleanupunresolveddistinctRootexactcleanup; minimumobserver+deadlinecorrection justified, no unseenimplementation/retryapproval."
+    },
+    {
+      "agent": "/root",
+      "decision": "FAILURE_REVIEWED",
+      "basis": "Readstate/actualstreammetadata+toolresultwithoutthinking; realOpus5.5inference/inboxconfirmed, nosubstantivereview; personally verifiedandcleanedexact3processes. Readobserver+cleanup, deadlineunsafe defectconfirmed; unknownchildcauseunproven."
+    }
+  ],
+  "requestedModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "observedAssistantModel": "claude-opus-5-5",
+  "effectiveEffort": "UNPROVEN",
+  "nativeExtensionACK": false,
+  "reviewAccepted": false,
+  "retryApproved": false
+}

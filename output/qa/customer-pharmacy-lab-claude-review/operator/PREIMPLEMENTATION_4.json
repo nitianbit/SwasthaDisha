@@ -1,0 +1,11 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-OPERATOR-PREPARATION-4",
+  "planSha256": "8dcac33310ab5d6dbc5c25f493b36d21db2ed8c630b7ca1e10e93539e64d8acd",
+  "preparedFreezeSha256": "795b0a2f0ec517b4c13f534fce5ae470b5c520838b718d78583d8aa79d39acc2",
+  "rootAction": "AUTHORIZE_COMPACT_SUPERVISOR_AND_OFFLINE_FAKE_CHECKS_ONLY",
+  "rootMandate": "Prepare final bindings and one current three-milestone packet for two actual independent final source/exact invocation reviews; no intermediate approval round or live call.",
+  "amendment4Predecisions": "Actual Root+Standards APPROVE_IMPLEMENTATION_ONLY recorded in AMENDMENT_4_PREIMPLEMENTATION.json",
+  "finalSourceExactInvocationReviews": "PENDING_TWO_ACTUAL_NONAUTHOR_DECISIONS",
+  "liveInvocationApproved": false,
+  "modelRequests": 0
+}

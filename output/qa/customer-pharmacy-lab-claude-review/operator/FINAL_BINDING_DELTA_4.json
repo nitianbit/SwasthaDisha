@@ -1,0 +1,15 @@
+{
+  "schema": "SD-CLAUDE-FINAL-BINDING-DELTA-4",
+  "prebindingSourceSha256": "a54ac08751589d3813333416c18bd3cccada306aa90620f3872ec228d74c680b",
+  "prebindingTestsSha256": "fd0e1d9cbb731f05176c434abbf3b8490e9d37096b64f05b04a871a6a29fcd78",
+  "finalSupervisorSha256": "6eda08207e78d1119804595c56192bcae0f0b840560bb80996f0204a7b23acdf",
+  "finalTestsSha256": "e7f14fd6d5a18147490a3584f92f35def0426aa5fb0594cdd23e9c8c7e79f9d5",
+  "exactReverseProfileBindingRecovery": true,
+  "exactReverseTestFixtureRecovery": true,
+  "functionalChanges": false,
+  "sevenKeyEnvironmentByteEquivalent": true,
+  "unchangedArgvExceptConfigPathSession": true,
+  "packetBytes": 279826,
+  "packetBelow2MiB": true,
+  "authModelCalls": 0
+}

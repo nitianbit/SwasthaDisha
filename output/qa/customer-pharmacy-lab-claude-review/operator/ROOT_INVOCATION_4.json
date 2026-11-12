@@ -1,0 +1,46 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-ROOT-INVOCATION-4",
+  "python": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+  "pythonSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "argv": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+    "-I",
+    "-B",
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/customer-pharmacy-lab-claude-review/operator/supervisor.py",
+    "--live"
+  ],
+  "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab",
+  "reviewers": [
+    {
+      "agent": "/root/claude_review_recipe_standards",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    },
+    {
+      "agent": "/root/booking_read_spec",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    }
+  ],
+  "membersVerified": [
+    "codex-lead",
+    "claude-reviewer"
+  ],
+  "teamActive": true,
+  "challengeEnqueue": {
+    "messageId": "msg_1794464372502_vmbvz2nz",
+    "timestamp": "2026-11-12T06:19:32.502Z",
+    "acknowledged": true,
+    "challengeSha256": "cb31bbfc1b3f00dc051258f08d35e28242723bcadd03449f39de072ddbfbfc15"
+  },
+  "privateExclusionsVerified": true,
+  "privateLocalGitPatterns": [
+    "/output/qa/customer-pharmacy-lab-claude-review/revision-4/private-be854944-2d46-4991-a27c-e2450eee3c15/",
+    "/output/qa/customer-pharmacy-lab-claude-review/revision-4/once-be854944-2d46-4991-a27c-e2450eee3c15.json",
+    "/output/qa/customer-pharmacy-lab-claude-review/operator/LIVE_APPROVAL_4.json"
+  ],
+  "approvalSha256": "dbf5b36a2ac105c6293914604da2a1aec72f022fba64e440f586f42d7752acf8",
+  "requestedModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "nativeExtensionACK": false,
+  "actualReviewAccepted": false
+}

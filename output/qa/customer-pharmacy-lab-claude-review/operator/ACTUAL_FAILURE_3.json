@@ -1,0 +1,115 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-ACTUAL-FAILURE-3",
+  "sessionId": "33d9c7c7-ef3d-49fc-af64-afee9a1c3ca2",
+  "firstFailure": "UNKNOWN_CHILD",
+  "supervisorCleanupErrors": [
+    "TIMEOUT"
+  ],
+  "supervisorReceipt": {
+    "absent": {
+      "adapter": false,
+      "cli": false,
+      "ruflo": false
+    },
+    "actualClaudeExtensionACK": false,
+    "cleanupErrors": [
+      "TIMEOUT"
+    ],
+    "effectiveEffort": "UNPROVEN",
+    "effectiveModel": "UNOBSERVED_PENDING_ROOT_INSPECTION",
+    "elapsedSeconds": 10.339,
+    "exitCode": null,
+    "firstFailure": "UNKNOWN_CHILD",
+    "groupEmpty": false,
+    "identities": {
+      "adapter": null,
+      "cli": {
+        "executable": "/Users/shubham/.vscode/extensions/anthropic.claude-code-2.1.322-darwin-arm64/resources/native-binary/claude",
+        "group": 80091,
+        "parent": 80072,
+        "pid": 80091,
+        "started": "Thu Nov 12 11:26:41 2026"
+      },
+      "ruflo": null
+    },
+    "inputBytesWritten": 99378,
+    "outputBytes": {
+      "stderr": 0,
+      "stdout": 14396
+    },
+    "packetSha256": "1ae43a537d5b56295b264950300a2646bf625449977f00ff606f46f9998f0117",
+    "processStarted": true,
+    "requestedEffort": "xhigh",
+    "requestedModel": "claude-opus-5-5",
+    "reviewAccepted": false,
+    "schema": "SD-CURRENT-CLAUDE-CAPTURE-1",
+    "sessionId": "33d9c7c7-ef3d-49fc-af64-afee9a1c3ca2",
+    "signals": [],
+    "status": "FAILED_OR_UNRESOLVED"
+  },
+  "rawHashes": {
+    "state.json": "39c097b1a807bf01706198ba9ee561fadbafb0a592bb606b7af74434adf550ec",
+    "transcript.stream-json": "db92f8090a3d1fc9aa25fe8a6a35d9b30308193620b4119ccd0112b5f77789b4",
+    "stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "observedActualAssistantModel": "claude-opus-5-5",
+  "actualInferenceObserved": true,
+  "actualToolCallsCaptured": [
+    "mcp__ruflo__team_inbox"
+  ],
+  "mailboxPeekSucceeded": true,
+  "completedReview": false,
+  "effectiveEffort": "UNPROVEN",
+  "actualClaudeExtensionACK": false,
+  "rootExactProcessReadback": {
+    "before": {
+      "80091": {
+        "pid": 80091,
+        "parent": 1,
+        "group": 80091,
+        "started": "Thu Nov 12 11:26:41 2026",
+        "executable": "/Users/shubham/.vscode/extensions/anthropic.claude-code-2.1.322-darwin-arm64/resources/native-binary/claude"
+      },
+      "80111": {
+        "pid": 80111,
+        "parent": 80091,
+        "group": 80091,
+        "started": "Thu Nov 12 11:26:42 2026",
+        "executable": "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node"
+      },
+      "80117": {
+        "pid": 80117,
+        "parent": 80111,
+        "group": 80091,
+        "started": "Thu Nov 12 11:26:42 2026",
+        "executable": "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node"
+      }
+    },
+    "signals": [
+      {
+        "pid": 80091,
+        "signal": "SIGTERM"
+      },
+      {
+        "pid": 80117,
+        "signal": "SIGTERM"
+      },
+      {
+        "pid": 80111,
+        "signal": "SIGTERM"
+      },
+      {
+        "pid": 80091,
+        "signal": "SIGKILL"
+      }
+    ],
+    "after": {
+      "80091": null,
+      "80111": null,
+      "80117": null
+    },
+    "groupEmpty": true
+  },
+  "retryApproved": false,
+  "consumedClaimPreserved": true
+}

@@ -1,0 +1,18 @@
+{
+  "schema": "SD-CLAUDE-ENV3-PREPARATION-METADATA-ERROR-1",
+  "command": [
+    "python3",
+    "-I",
+    "-B",
+    "/private/tmp/finalize-claude-env3.py"
+  ],
+  "exitCode": 1,
+  "error": "git show exit128: intentionally excluded LIVE_APPROVAL.json has no ce27053 Git object.",
+  "stage": "Post-test historical metadata readback; no client process allocated.",
+  "sourceTestsFailed": false,
+  "correctedClassification": "Compare committed public artifacts to ce27053; existing excluded live receipt/private failed resources are preserved in place, not claimed Git committed.",
+  "oldLiveReceiptTouched": false,
+  "privateFailureArtifactsTouched": false,
+  "authModelCalls": 0,
+  "failingFinalizerSha256": "85844fbf6ccdc914644c463fbad13ca392d20674c33fe4a52146515b76950298"
+}

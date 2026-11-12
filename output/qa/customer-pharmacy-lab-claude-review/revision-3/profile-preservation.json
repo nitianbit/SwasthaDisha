@@ -1,0 +1,33 @@
+{
+  "schema": "SD-CLAUDE-PROFILE-AMENDMENT-PRESERVATION-3",
+  "baselineCommit": "ce27053382d980a68c6444716c8f75882c01dd56",
+  "oldEnvironmentNames": [
+    "HOME",
+    "PATH",
+    "TMPDIR"
+  ],
+  "newEnvironmentNames": [
+    "HOME",
+    "PATH",
+    "TMPDIR",
+    "USER",
+    "LOGNAME",
+    "SECURITYSESSIONID",
+    "__CF_USER_TEXT_ENCODING"
+  ],
+  "addedPublicNames": [
+    "USER",
+    "LOGNAME",
+    "SECURITYSESSIONID",
+    "__CF_USER_TEXT_ENCODING"
+  ],
+  "publicValuesFromOrdinaryParent": true,
+  "valuesPrinted": 0,
+  "wholeEnvironmentInherited": false,
+  "oldPreparedFreezeSha256": "467e0503bdf2c166fa9886d18c53536a623c461f53a015f5161ff4032e251495",
+  "sameSnapshotFiles": true,
+  "retainedRestricted": true,
+  "newSession": true,
+  "actualModelCalls": 0,
+  "authChecks": 0
+}

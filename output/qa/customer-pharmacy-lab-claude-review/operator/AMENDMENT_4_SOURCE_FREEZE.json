@@ -1,0 +1,17 @@
+{
+  "schema": "SD-CLAUDE-AMENDMENT4-SOURCE-FREEZE-1",
+  "files": {
+    "supervisor.py": "a54ac08751589d3813333416c18bd3cccada306aa90620f3872ec228d74c680b",
+    "test_supervisor.py": "fd0e1d9cbb731f05176c434abbf3b8490e9d37096b64f05b04a871a6a29fcd78",
+    "AMENDMENT_4.md": "a6b417116dc824b85364999dd3a5732990775e930747c16dc94acb2ddf1a4582",
+    "AMENDMENT_4_PREIMPLEMENTATION.json": "9504ed1149834a86201e44173b75de1c22c75da871fcc5fa7efac431a0a3e321",
+    "AMENDMENT_4_VERIFICATION.json": "988262a52b0639b165367f636831e9f1414065f39cd8622bf83016d5f484979a",
+    "AMENDMENT_4_IMPLEMENTATION.md": "663ae4de37c61c0453dbc78241c992350936176e1f5104eb97243519d652af3e",
+    "historical-r3/supervisor.py.txt": "73489671bd2a2fe80f8f98b8f7a7f0f431c3179632d534ca3c95f3347d9e897a",
+    "historical-r3/test_supervisor.py.txt": "b18b84b203e9e33910276669d342dd252e3c6f92dfc2dac3ac95c16905837c46",
+    "historical-r3/source-identity.json": "7cba6e04c8c82c9cce9a35b4a74e5263dead355502b4bd3981f8c1448da01075"
+  },
+  "writesStopped": true,
+  "newProfileCreated": false,
+  "liveInvocationApproved": false
+}

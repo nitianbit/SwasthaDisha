@@ -1,0 +1,20 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-SOURCE-DECISIONS-4",
+  "reviewers": [
+    {
+      "agent": "/root/claude_review_recipe_standards",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    },
+    {
+      "agent": "/root/booking_read_spec",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    }
+  ],
+  "sourceFreezeSha256": "76cbae19a0d03e48ada079df7906f6e255eb54e75108c0a23338b29366594ddb",
+  "supervisorSha256": "6eda08207e78d1119804595c56192bcae0f0b840560bb80996f0204a7b23acdf",
+  "testsSha256": "e7f14fd6d5a18147490a3584f92f35def0426aa5fb0594cdd23e9c8c7e79f9d5",
+  "sessionId": "be854944-2d46-4991-a27c-e2450eee3c15",
+  "sourceSnapshot": "abd1e90be9dfd7012dd20b9646ed4f494778726a",
+  "packetSha256": "c1277a6d678d95261614b4726bd3a1aa946e68c7819ed5654323fdc5aea85732",
+  "basis": "Bothactualnonauthorsreviewedmatcher/cleanup/focusedregressions/packet45files/frozeninputs/runtimeandlauncher; APPROVEONEEXACTR4only; manualstream/model/tool/findings/cleanupinspectionrequired."
+}

@@ -1,0 +1,13 @@
+{
+  "schema": "SD-CLAUDE-NARROW-ENVIRONMENT-DELTA-PROOF-3",
+  "baselineCommit": "ce27053382d980a68c6444716c8f75882c01dd56",
+  "exactOriginalSourceRecoveredByReversingOnlyEnumeratedProfileEnvironmentPathChanges": true,
+  "allOriginalTestBytesRecoveredByRemovingOnlyNewProfileTestClass": true,
+  "unchangedLifecycleToolCaptureCleanupBusinessLogic": true,
+  "originalSupervisorSha256": "0612fcb5603c64f1fbaaf14d65ad309d4ba2fd55d98cacb22ae768b952f3be40",
+  "originalTestsSha256": "6ff2d823370645583f9c6aad1d58bb8daf3e8d6575e0c4492547a16645bc4dfb",
+  "currentSupervisorSha256": "73489671bd2a2fe80f8f98b8f7a7f0f431c3179632d534ca3c95f3347d9e897a",
+  "currentTestsSha256": "b18b84b203e9e33910276669d342dd252e3c6f92dfc2dac3ac95c16905837c46",
+  "newProfileTestMethods": 4,
+  "modelAuthCalls": 0
+}

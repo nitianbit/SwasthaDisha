@@ -1,0 +1,31 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-FINAL-SOURCE-FREEZE-4",
+  "filesRelativeToQa": {
+    "revision-4/packet.json": "c1277a6d678d95261614b4726bd3a1aa946e68c7819ed5654323fdc5aea85732",
+    "revision-4/recipe.json": "f67cd507601460001bf9be3bb3af29f7a262613209217172e290e091a2a2f397",
+    "revision-4/challenge.json": "cb31bbfc1b3f00dc051258f08d35e28242723bcadd03449f39de072ddbfbfc15",
+    "revision-4/README.md": "f6602dbf35a9c2ccb76d45676990da22b030ca343caf8d518b97c4b8f7633f03",
+    "revision-4/prepared-freeze.json": "795b0a2f0ec517b4c13f534fce5ae470b5c520838b718d78583d8aa79d39acc2",
+    "revision-4/OPERATOR_PLAN.md": "8dcac33310ab5d6dbc5c25f493b36d21db2ed8c630b7ca1e10e93539e64d8acd",
+    "revision-4/manifest.json": "c41bbb1adf08ac22e12333ec2a52f5226a35a7d63ac94989a49020a82954c76a",
+    "revision-4/mcp-config.json": "a612d678b74998efe9b9d91c029d7f66731ff4fb8e5e096e41f07243369743b0",
+    "revision-4/prior-seven.sha256.json": "6d490c04b63fd059f0d8cf49b277a48b3407a0f82d667b7837f7777d503e3b11",
+    "operator/supervisor.py": "6eda08207e78d1119804595c56192bcae0f0b840560bb80996f0204a7b23acdf",
+    "operator/test_supervisor.py": "e7f14fd6d5a18147490a3584f92f35def0426aa5fb0594cdd23e9c8c7e79f9d5",
+    "operator/PREIMPLEMENTATION_4.json": "5656b6722741ab690dabbc6bbb2458708d03b248be7ccdb9e3ca1c48de5a77a2",
+    "operator/FINAL_BINDING_DELTA_4.json": "90d0f62632c6902897692959d1140e3f241c15aeb744eefdb427d3982bd67641",
+    "operator/OFFLINE_BINDING_4.txt": "55bad326ad11ceb4e65f3961839dae1de1a3da18f73c937080234d4d83753af3",
+    "operator/OFFLINE_BINDING_4.json": "0791f48d28424a7c0f79ce23e7af0f266ffd2318b2837cf914061923f4dc0816",
+    "operator/approval-template-4.json": "df7a2e7323f712d6ca82145ba89c98cf23a282450bd58ae06f4f3f6025f8e0e3",
+    "operator/README_4.md": "033596648db25ec467b0777beeff1cb2d82a61f3035926176cd57635268882b2",
+    "operator/R4_PREPARATION_ERROR.json": "6fe044578e142dac7fd756fb96a5d0d99e0edb0c388c103f06ec25c34fb7da37",
+    "operator/historical-amendment4/supervisor.py.txt": "a54ac08751589d3813333416c18bd3cccada306aa90620f3872ec228d74c680b",
+    "operator/historical-amendment4/test_supervisor.py.txt": "fd0e1d9cbb731f05176c434abbf3b8490e9d37096b64f05b04a871a6a29fcd78",
+    "operator/historical-amendment4/identity.json": "ea6fb8bb31300aaf55beb1d92e2c59233259731508fe2d56b3ae932e6662329a"
+  },
+  "sourceCommit": "abd1e90be9dfd7012dd20b9646ed4f494778726a",
+  "contextHead": "161537a34b9cfecf3499b39e2d8624d641009cf7",
+  "finalReviews": "PENDING_TWO_ACTUAL_INDEPENDENT_SOURCE_EXACT_INVOCATION_DECISIONS",
+  "writesStopped": true,
+  "liveInvocationApproved": false
+}

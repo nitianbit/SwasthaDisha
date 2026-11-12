@@ -1,0 +1,17 @@
+{
+  "schema": "SD-CLAUDE-REVISION3-PREPARED-FREEZE-3",
+  "files": {
+    "packet.json": "1ae43a537d5b56295b264950300a2646bf625449977f00ff606f46f9998f0117",
+    "recipe.json": "5af1e8b21f1e7019f31a9ec57d04b844a08e7c665c7db9619373d02f1ca1b4c4",
+    "challenge.json": "8fe60a305d201a5c23e41b0abb8e040593779936d48eadaa7aa657d3bdecbfa6",
+    "prior-revision-2.sha256.json": "88c75862fc4e27d09f3888ac37bd3336610411e2aa0007aedf5fa2fda4bbd1ed",
+    "profile-preservation.json": "6ac34a34e856945cc2767b06b3b3ff10159e153a94f8ed51dea3e1db6a49f975",
+    "README.md": "10eda8c3567487ded95c47a9cc1d4f46d5a015e086e3edf15528b762b50a7a5c",
+    "OPERATOR_PLAN.md": "d39b9391fad3efa3b410d481499db3b6136d8838dafab4d2e418001fc2b7a2ba",
+    "manifest.json": "7b8bb4d403f9a00837f4d359f70b49338cb0a123c1eed1ce037a9964645c87c3",
+    "mcp-config.json": "a612d678b74998efe9b9d91c029d7f66731ff4fb8e5e096e41f07243369743b0",
+    "prior-seven.sha256.json": "6d490c04b63fd059f0d8cf49b277a48b3407a0f82d667b7837f7777d503e3b11"
+  },
+  "writesStopped": true,
+  "liveInvocationAuthorizedByThisFreeze": false
+}

@@ -1,0 +1,25 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-OPERATOR-PREIMPLEMENTATION-3",
+  "planSha256": "d39b9391fad3efa3b410d481499db3b6136d8838dafab4d2e418001fc2b7a2ba",
+  "preparedFreezeSha256": "880a2633511e47ff912c78592c3c76f642553677c0acc5e99883d4c7f1d1a00f",
+  "rootAction": "AUTHORIZE_COMPACT_SUPERVISOR_AND_OFFLINE_FAKE_CHECKS_ONLY",
+  "implementationMandate": "Current Root instruction authorizes only this narrow seven-key environment/profile amendment; no model call.",
+  "priorFailureReviews": [
+    {
+      "reviewer": "/root/booking_read_spec",
+      "decision": "FAILURE_REVIEWED",
+      "limitation": "Additional reviewer OS observation blocked by sandbox; does not claim own successful absence check."
+    },
+    {
+      "reviewer": "/root/claude_review_recipe_standards",
+      "decision": "FAILURE_REVIEWED"
+    }
+  ],
+  "freshSourceInvocationReviews": "PENDING_ROOT_RECORD",
+  "liveInvocationApproved": false,
+  "modelRequests": 0,
+  "requestedModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "nativeExtensionACK": false
+}

@@ -1,0 +1,40 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-SOURCE-FREEZE-3",
+  "baselineCommit": "ce27053382d980a68c6444716c8f75882c01dd56",
+  "filesRelativeToQa": {
+    "revision-3/packet.json": "1ae43a537d5b56295b264950300a2646bf625449977f00ff606f46f9998f0117",
+    "revision-3/recipe.json": "5af1e8b21f1e7019f31a9ec57d04b844a08e7c665c7db9619373d02f1ca1b4c4",
+    "revision-3/challenge.json": "8fe60a305d201a5c23e41b0abb8e040593779936d48eadaa7aa657d3bdecbfa6",
+    "revision-3/prior-revision-2.sha256.json": "88c75862fc4e27d09f3888ac37bd3336610411e2aa0007aedf5fa2fda4bbd1ed",
+    "revision-3/profile-preservation.json": "6ac34a34e856945cc2767b06b3b3ff10159e153a94f8ed51dea3e1db6a49f975",
+    "revision-3/README.md": "10eda8c3567487ded95c47a9cc1d4f46d5a015e086e3edf15528b762b50a7a5c",
+    "revision-3/prepared-freeze.json": "880a2633511e47ff912c78592c3c76f642553677c0acc5e99883d4c7f1d1a00f",
+    "revision-3/OPERATOR_PLAN.md": "d39b9391fad3efa3b410d481499db3b6136d8838dafab4d2e418001fc2b7a2ba",
+    "revision-3/manifest.json": "7b8bb4d403f9a00837f4d359f70b49338cb0a123c1eed1ce037a9964645c87c3",
+    "revision-3/mcp-config.json": "a612d678b74998efe9b9d91c029d7f66731ff4fb8e5e096e41f07243369743b0",
+    "revision-3/prior-seven.sha256.json": "6d490c04b63fd059f0d8cf49b277a48b3407a0f82d667b7837f7777d503e3b11",
+    "operator/supervisor.py": "73489671bd2a2fe80f8f98b8f7a7f0f431c3179632d534ca3c95f3347d9e897a",
+    "operator/test_supervisor.py": "b18b84b203e9e33910276669d342dd252e3c6f92dfc2dac3ac95c16905837c46",
+    "operator/PREIMPLEMENTATION_3.json": "c2f2b7927cc673e30b68566faa51c86e1e1e6d61a1f6e618322034f72662d7d6",
+    "operator/SOURCE_DELTA_3.json": "5dedaf41609a4e54584a7ee14dc3c18fdebf78e6c3c65e16d54c3b0d644b3f5a",
+    "operator/SOURCE_DELTA_3_PROOF.json": "88530e29ae463bfe1f19dec4e129403904f79f35793ac5bad7c28f67358a7bb7",
+    "operator/approval-template-3.json": "fcd2418086edc7bce6d57e5d508d892100a64b3adc5b4fa350dc1af3868bc705",
+    "operator/OFFLINE_ENV_3.json": "923f7eb4546e2d094660c05042d395395916af228f91675f840d488ddb470641",
+    "operator/README_3.md": "06844e4368f4ce257f57f42c41a1dcde82c67f12ea6b1c3e6ff88d951b98bf6b",
+    "operator/PREPARATION_ERROR_3.json": "549e18da5351c5144dd0221ffcc7ee61a1e711c41175572019f38d8c6bf5ae3b"
+  },
+  "historicalPublicReadbacksAtBaselinePreserved": [
+    "PREIMPLEMENTATION.json",
+    "approval-template.json",
+    "SOURCE_FREEZE.json",
+    "ACTUAL_FAILURE_1.json",
+    "ACTUAL_FAILURE_1.md",
+    "ROOT_INVOCATION.json",
+    "root-receipt-preparation-error.json"
+  ],
+  "existingExcludedLiveReceiptPreservedNotClaimedGitCommitted": true,
+  "firstSevenAndRevisionTwoPreserved": true,
+  "privateFailedClaimAndOutputTouched": false,
+  "writesStopped": true,
+  "liveInvocationApproved": false
+}
