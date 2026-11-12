@@ -1,0 +1,1000 @@
+diff --git a/src1/modules/file/controller/index.ts b/src1/modules/file/controller/index.ts
+index d5775620d30df63a18fe21d2ef0f0cd60c20ce87..e878644f7d45088ad2a7cb6d0a430631914033a2 100644
+--- a/src1/modules/file/controller/index.ts
++++ b/src1/modules/file/controller/index.ts
+@@ -8,0 +9,5 @@ import { CONFIG } from '@/config/config';
++import { AppError } from '@/modules/common/types';
++import { AuthRequest } from '@/modules/middleware/auth';
++import { FileDocumentService } from '../documents';
++import { legacyPath } from '../storage';
++import { documentError } from '../validation';
+@@ -11,0 +17 @@ export class FileController {
++  private documents: FileDocumentService;
+@@ -14,0 +21,56 @@ export class FileController {
++    this.documents = Container.get(FileDocumentService);
++  }
++
++  private privateHeaders(res: Response): void {
++    res.setHeader('Cache-Control', 'private, no-store'); res.setHeader('Pragma', 'no-cache');
++    res.vary('Authorization'); res.setHeader('X-Content-Type-Options', 'nosniff');
++    res.removeHeader('ETag'); res.removeHeader('Last-Modified');
++  }
++
++  private async privateRequest(res: Response, work: () => Promise<void>): Promise<void> {
++    this.privateHeaders(res);
++    try { await work(); } catch (error) {
++      if (res.headersSent && !res.destroyed) res.destroy();
++      if (error instanceof AppError && typeof error.code === 'string' && error.code.startsWith('DOCUMENT_')) throw error;
++      throw documentError();
++    }
++  }
++
++  private privateJson(res: Response, status: number, data: unknown): void {
++    const body = JSON.stringify({ success: true, data });
++    if (Buffer.byteLength(body, 'utf8') >= 65536) throw documentError();
++    res.status(status).type('application/json').send(body);
++  }
++
++  uploadPrivateAsset = async (req: AuthRequest, res: Response, _next: NextFunction): Promise<void> => {
++    await this.privateRequest(res, async () => {
++      const result = await this.documents.upload(req.user, req.query, 'unbound_upload', undefined, req);
++      this.privateJson(res, result.created ? 201 : 200, result.data);
++    });
++  };
++
++  uploadClinicalAsset = async (req: AuthRequest, res: Response, _next: NextFunction): Promise<void> => {
++    await this.privateRequest(res, async () => {
++      const result = await this.documents.upload(req.user, req.query, req.params.resourceKind, req.params.resourceId, req);
++      this.privateJson(res, result.created ? 201 : 200, result.data);
++    });
++  };
++
++  listAssetVersions = async (req: AuthRequest, res: Response, _next: NextFunction): Promise<void> => {
++    await this.privateRequest(res, async () => this.privateJson(res, 200, await this.documents.list(req.user, req.params.assetId, req.query)));
++  };
++
++  readAssetContent = async (req: AuthRequest, res: Response, _next: NextFunction): Promise<void> => {
++    await this.privateRequest(res, async () => this.documents.content(req.user, req.params.assetId, req.params.versionId, req.query, req, res));
++  };
++
++  revokePrivateAsset = async (req: AuthRequest, res: Response, _next: NextFunction): Promise<void> => {
++    await this.privateRequest(res, async () => this.privateJson(res, 200, await this.documents.revoke(req.user, req.params.assetId, req.body)));
++  };
++
++  private legacyFilePath(raw: unknown, root: string, res: Response): string {
++    try { return legacyPath(raw, root); } catch (error) {
++      this.privateHeaders(res);
++      if (error instanceof AppError) throw error;
++      throw documentError();
++    }
+@@ -17,0 +80 @@ export class FileController {
++    this.privateHeaders(res);
+@@ -19,2 +82,2 @@ export class FileController {
+-    const module = (req.params.module as string) || req.body.module || 'general';
+-    const recordId = req.body.recordId as string | undefined;
++    const module = (req.params.module as string) || req.body?.module || 'general';
++    const recordId = req.body?.recordId as string | undefined;
+@@ -39 +102 @@ export class FileController {
+-    if (!url) {
++    if (typeof url !== 'string' || url.length === 0 || url.length > 1024) {
+@@ -100 +163 @@ export class FileController {
+-    const fullPath = path.join(uploadDir, filePath);
++    const fullPath = this.legacyFilePath(filePath, uploadDir, res);
+@@ -140,0 +204,2 @@ export class FileController {
++      // Every alias reaches the same reserved-subtree guard before byte/stat access.
++      if (typeof filePath !== 'string') throw documentError(400, 'DOCUMENT_INPUT_INVALID');
+@@ -151 +216 @@ export class FileController {
+-      const fullPath = path.join(uploadDir, filePath);
++      const fullPath = this.legacyFilePath(filePath, uploadDir, res);
+@@ -185,0 +251,4 @@ export class FileController {
++      if (error instanceof AppError) {
++        this.privateHeaders(res);
++        throw error;
++      }
+diff --git a/src1/modules/file/documentTypes.ts b/src1/modules/file/documentTypes.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..bed42ebb96c953f96165a957288032f9bda9272b
+--- /dev/null
++++ b/src1/modules/file/documentTypes.ts
+@@ -0,0 +1,52 @@
++import { FileHandle } from 'fs/promises';
++import { Types } from 'mongoose';
++
++export const DOCUMENT_BYTES = 10 * 1024 * 1024;
++export const PRIVATE_SUBTREE = '__private_assets_v1';
++export type ResourceKind = 'unbound_upload' | 'booking' | 'external_booking';
++export type Purpose = 'private_attachment' | 'clinical_document' | 'public_image';
++export type MediaType = 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/webp';
++export type Source = 'owned_upload' | 'labstack' | 'healthians' | 'legacy_import';
++export type Label = { kind: 'unknown' } | { kind: 'recorded'; value: string };
++export interface DocumentActor { _id: string; userType: 'user' }
++export interface DocumentScope { resourceKind: ResourceKind; resourceId: string; ownerUserId: string }
++export interface AssetIdentity extends DocumentScope { sourceSystem: Source; sourceDocumentReference: string }
++export interface FileAsset extends AssetIdentity {
++  _id: Types.ObjectId; schemaVersion: 1; identityKey: string; purpose: Purpose;
++  createdByUserId: string; createdAt: Date; revision: number;
++  currentCapturedVersionId: Types.ObjectId | null; currentReadableVersionId: Types.ObjectId | null; revokedAt: Date | null;
++}
++export interface FileVersion {
++  _id: Types.ObjectId; assetId: Types.ObjectId; identityKey: string; versionKey: string;
++  storageKey: string; contentSha256: string; actualSize: number; mediaType: MediaType;
++  sourceSystem: Source; sourceDocumentReference: string; sourceVersionLabel: Label; sourceStageLabel: Label;
++  completeness: 'preliminary' | 'final' | 'unknown'; amendsVersionId: Types.ObjectId | null; amendmentReason: string | null;
++  capturedAt: Date; createdByUserId: string; stateRevision: number;
++  validation: { state: 'quarantined' | 'validated' | 'rejected'; evidenceRef: string | null };
++  publication: { state: 'unreleased' | 'released' | 'legacy_access_unknown'; evidenceRef: string | null };
++}
++export type AuditPhase = 'capture' | 'validation' | 'release' | 'read_admitted' | 'read_finished' | 'revoke';
++export type AuditOutcome = 'captured' | 'validated' | 'rejected' | 'released' | 'admitted' | 'completed' | 'disconnected' | 'failed' | 'revoked';
++export interface DocumentAudit {
++  resourceKind: ResourceKind; resourceId: string;
++  operationId: string; phase: AuditPhase; actorUserId: string; assetId: Types.ObjectId; versionId: Types.ObjectId | null;
++  outcome: AuditOutcome; createdAt: Date; correlationId: string; byteCount: number | null;
++}
++export interface VersionDTO {
++  assetId: string; versionId: string; resourceKind: ResourceKind; resourceId: string; purpose: Purpose;
++  mediaType: MediaType; byteLength: number; capturedAt: string; completeness: FileVersion['completeness'];
++  validationState: FileVersion['validation']['state']; publicationState: FileVersion['publication']['state'];
++  isCurrentReadable: boolean; contentUrl: string | null;
++}
++export interface CapturedObject { storageKey: string; contentSha256: string; actualSize: number; mediaType: MediaType }
++export interface VerifiedObject { handle: FileHandle; size: number; mediaType: MediaType; identity: string }
++export interface ValidationInput {
++  assetId: string; versionId: string; contentSha256: string; actualSize: number; mediaType: MediaType;
++  // Positioned, bounded reads of the verified held descriptor; no raw descriptor/path escape.
++  read: (position: number, length: number) => Promise<Buffer>;
++}
++export interface ReleaseInput extends DocumentScope {
++  assetId: string; versionId: string; contentSha256: string; expectedAssetRevision: number; expectedStateRevision: number;
++}
++export interface ValidationResult { decision: 'validated' | 'rejected' | 'unavailable'; evidenceRef: string | null }
++export interface ReleaseResult { decision: 'eligible' | 'denied' | 'unavailable'; evidenceRef: string | null }
+diff --git a/src1/modules/file/documents.ts b/src1/modules/file/documents.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..38d04fdd8c2d7be1bdba8eeb18d9caff4b26c62c
+--- /dev/null
++++ b/src1/modules/file/documents.ts
+@@ -0,0 +1,213 @@
++import { Service } from 'typedi';
++import { randomUUID } from 'crypto';
++import { Request, Response } from 'express';
++import { Types } from 'mongoose';
++import { FileDocumentRepository, FileDocumentPolicy } from './repository';
++import { FileDocumentStorage } from './storage';
++import { DocumentActor, DocumentAudit, DocumentScope, FileAsset, FileVersion, ValidationResult, VerifiedObject, VersionDTO } from './documentTypes';
++import { actor, assetKey, closed, documentError, dto, input, objectId, opaque, readable, revision, uuid, versionKey } from './validation';
++
++function duplicateIdentity(error: unknown): boolean {
++  const e = error as { code?: unknown; keyPattern?: unknown };
++  if (e?.code !== 11000) return false;
++  const pattern = JSON.stringify(e.keyPattern);
++  return ['{"_id":1}', '{"identityKey":1}', '{"assetId":1,"versionKey":1}'].includes(pattern);
++}
++function sameCapture(a: FileVersion, b: FileVersion): boolean {
++  return a.assetId.equals(b.assetId) && a.identityKey === b.identityKey && a.versionKey === b.versionKey &&
++    a.contentSha256 === b.contentSha256 && a.actualSize === b.actualSize && a.mediaType === b.mediaType &&
++    a.sourceSystem === b.sourceSystem && a.sourceDocumentReference === b.sourceDocumentReference && a.completeness === b.completeness &&
++    a.sourceVersionLabel.kind === b.sourceVersionLabel.kind &&
++    (a.sourceVersionLabel.kind !== 'recorded' || (b.sourceVersionLabel.kind === 'recorded' && a.sourceVersionLabel.value === b.sourceVersionLabel.value)) &&
++    a.sourceStageLabel.kind === b.sourceStageLabel.kind &&
++    (a.sourceStageLabel.kind !== 'recorded' || (b.sourceStageLabel.kind === 'recorded' && a.sourceStageLabel.value === b.sourceStageLabel.value)) &&
++    (a.amendsVersionId?.toHexString() ?? null) === (b.amendsVersionId?.toHexString() ?? null) && a.amendmentReason === b.amendmentReason;
++}
++function audit(a: FileAsset, actorId: string, operationId: string, phase: DocumentAudit['phase'], outcome: DocumentAudit['outcome'], versionId: Types.ObjectId | null, byteCount: number | null = null): DocumentAudit {
++  return { operationId, phase, actorUserId: actorId, resourceKind: a.resourceKind, resourceId: a.resourceId,
++    assetId: a._id, versionId, outcome, createdAt: new Date(), correlationId: operationId, byteCount };
++}
++
++@Service()
++export class FileDocumentService {
++  constructor(private repository: FileDocumentRepository, private storage: FileDocumentStorage, private policy: FileDocumentPolicy) {}
++
++  async upload(requestActor: unknown, rawQuery: unknown, kind: unknown, resourceId: unknown, req: Request): Promise<{ created: boolean; data: VersionDTO }> {
++    const principal = actor(requestActor);
++    const query = closed(rawQuery, ['documentKey']);
++    const documentKey = uuid(query.documentKey);
++    input(kind === 'unbound_upload' || kind === 'booking' || kind === 'external_booking');
++    const scope: DocumentScope = { resourceKind: kind, resourceId: kind === 'unbound_upload' ? principal._id : objectId(resourceId), ownerUserId: principal._id };
++    await this.repository.ownedResource(scope);
++    await this.repository.ready();
++    const identity = { ...scope, sourceSystem: 'owned_upload' as const, sourceDocumentReference: documentKey };
++    const key = assetKey(identity);
++    const a: FileAsset = { ...identity, _id: new Types.ObjectId(key.slice(0, 24)), schemaVersion: 1, identityKey: key,
++      purpose: kind === 'unbound_upload' ? 'private_attachment' : 'clinical_document', createdByUserId: principal._id,
++      createdAt: new Date(), revision: 0, currentCapturedVersionId: null, currentReadableVersionId: null, revokedAt: null };
++    const versionId = new Types.ObjectId();
++    input(typeof req.headers['content-type'] === 'string' && /^multipart\/form-data;/.test(req.headers['content-type']));
++    // One immutable file/ID outside retried transaction callbacks. Failed/duplicate files remain private orphans.
++    const captured = await this.storage.capture(req, a._id.toHexString(), versionId.toHexString());
++    const v: FileVersion = { _id: versionId, assetId: a._id, identityKey: key, versionKey: '', ...captured,
++      sourceSystem: identity.sourceSystem, sourceDocumentReference: documentKey, sourceVersionLabel: { kind: 'unknown' }, sourceStageLabel: { kind: 'unknown' },
++      completeness: 'unknown', amendsVersionId: null, amendmentReason: null, capturedAt: new Date(), createdByUserId: principal._id,
++      stateRevision: 0, validation: { state: 'quarantined', evidenceRef: null }, publication: { state: 'unreleased', evidenceRef: null } };
++    v.versionKey = versionKey(v);
++    const operationId = randomUUID();
++    const capture = async (reconcile: boolean) => this.repository.transaction(async tx => {
++      await this.repository.ownedResource(scope, tx);
++      const existing = await this.repository.assetByIdentity(a, tx);
++      if (reconcile && !existing) throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
++      const current = existing ?? a;
++      const prior = existing ? await this.repository.duplicate(current, v.versionKey, tx) : null;
++      if (prior) {
++        if (!sameCapture(prior, v)) throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
++        return { created: false, data: dto(current, prior) };
++      }
++      if (reconcile) throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
++      if (!existing) await this.repository.insertAsset(a, tx);
++      await this.repository.insertVersion(v, tx);
++      const next = await this.repository.pointer(current, { currentCapturedVersionId: v._id }, tx);
++      await this.repository.audit(audit(next, principal._id, operationId, 'capture', 'captured', v._id), tx);
++      return { created: true, data: dto(next, v) };
++    });
++    try { return await capture(false); } catch (error) {
++      // A failed transaction is over before a single fresh bounded read/reconciliation transaction.
++      if (!duplicateIdentity(error)) throw error;
++      return capture(true);
++    }
++  }
++
++  async list(requestActor: unknown, assetId: unknown, rawQuery: unknown): Promise<{ assetId: string; versions: VersionDTO[]; nextCursor: string | null }> {
++    const principal = actor(requestActor); const id = objectId(assetId); const query = closed(rawQuery, ['limit', 'after']);
++    input(query.limit === undefined || (typeof query.limit === 'string' && /^(?:[1-9]|[1-4][0-9]|50)$/.test(query.limit)));
++    const limit = query.limit === undefined ? 20 : Number(query.limit);
++    const after = query.after === undefined ? undefined : objectId(query.after);
++    input(query.after === undefined || query.after === after);
++    const a = await this.repository.ownedAsset(id, principal._id);
++    await this.repository.ready();
++    const rows = await this.repository.versions(a, limit, after);
++    const data = rows.slice(0, limit);
++    return { assetId: id, versions: data.map(v => dto(a, v)), nextCursor: rows.length > limit ? data[data.length - 1]._id.toHexString() : null };
++  }
++
++  async revoke(requestActor: unknown, assetId: unknown, rawBody: unknown): Promise<{ assetId: string; revoked: true; revision: number }> {
++    const principal = actor(requestActor); const id = objectId(assetId); const body = closed(rawBody, ['expectedRevision', 'operationId']);
++    const expected = revision(body.expectedRevision); const operationId = uuid(body.operationId);
++    const before = await this.repository.ownedAsset(id, principal._id, undefined, true);
++    if (before.purpose !== 'private_attachment' || before.resourceKind !== 'unbound_upload') throw documentError(503, 'DOCUMENT_POLICY_UNAVAILABLE');
++    await this.repository.ready();
++    return this.repository.transaction(async tx => {
++      const a = await this.repository.ownedAsset(id, principal._id, tx, true);
++      const receipt = await this.repository.revokeReceipt(operationId, tx);
++      if (receipt) {
++        if (!(receipt.assetId instanceof Types.ObjectId) || !receipt.assetId.equals(a._id) || receipt.actorUserId !== principal._id ||
++          receipt.resourceKind !== a.resourceKind || receipt.resourceId !== a.resourceId || receipt.versionId !== null ||
++          receipt.operationId !== operationId || receipt.phase !== 'revoke' || receipt.outcome !== 'revoked' || receipt.byteCount !== null || !(receipt.createdAt instanceof Date) ||
++          !Number.isFinite(receipt.createdAt.getTime()) || receipt.correlationId !== operationId || a.revokedAt === null || expected !== a.revision - 1) throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
++        return { assetId: id, revoked: true as const, revision: a.revision };
++      }
++      if (a.revokedAt !== null || a.revision !== expected) throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
++      const next = await this.repository.pointer(a, { revokedAt: new Date(), currentReadableVersionId: null }, tx);
++      await this.repository.audit(audit(next, principal._id, operationId, 'revoke', 'revoked', null), tx);
++      return { assetId: id, revoked: true as const, revision: next.revision };
++    });
++  }
++
++  /** Internal composition only; no HTTP validation/release endpoint or client evidence boolean. */
++  async validateVersion(requestActor: unknown, assetId: unknown, versionId: unknown, expectedAssetRevision: unknown, expectedStateRevision: unknown): Promise<VersionDTO> {
++    const principal = actor(requestActor); const id = objectId(assetId); const version = objectId(versionId);
++    const ar = revision(expectedAssetRevision); const vr = revision(expectedStateRevision);
++    const a = await this.repository.ownedAsset(id, principal._id); await this.repository.ready();
++    const v = await this.repository.version(a, version);
++    if (a.revision !== ar || v.stateRevision !== vr || v.validation.state !== 'quarantined') throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
++    const verified = await this.storage.verified(v); let active = true;
++    let result: ValidationResult;
++    try {
++      result = await this.policy.evaluateValidation({ assetId: id, versionId: version, contentSha256: v.contentSha256, actualSize: v.actualSize,
++        mediaType: v.mediaType, read: async (position, length) => { if (!active) throw documentError(); return this.storage.boundedRead(verified, position, length); } });
++    } finally { active = false; await verified.handle.close(); }
++    if (result.decision === 'unavailable') throw documentError(503, 'DOCUMENT_POLICY_UNAVAILABLE');
++    if (!['validated', 'rejected'].includes(result.decision) || !opaque(result.evidenceRef)) throw documentError();
++    const state = result.decision; const evidenceRef = result.evidenceRef; const operationId = randomUUID();
++    return this.repository.transaction(async tx => {
++      const current = await this.repository.ownedAsset(id, principal._id, tx); const previous = await this.repository.version(current, version, tx);
++      if (current.revision !== ar || previous.stateRevision !== vr || previous.contentSha256 !== v.contentSha256 || previous.validation.state !== 'quarantined') {
++        throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
++      }
++      const next = await this.repository.transition(current, previous, { validation: { state, evidenceRef } }, tx);
++      const updated = await this.repository.pointer(current, current.purpose === 'private_attachment' && state === 'validated' ? { currentReadableVersionId: next._id } : {}, tx);
++      await this.repository.audit(audit(updated, principal._id, operationId, 'validation', state, next._id), tx);
++      return dto(updated, next);
++    });
++  }
++
++  async releaseVersion(requestActor: unknown, assetId: unknown, versionId: unknown, expectedAssetRevision: unknown, expectedStateRevision: unknown): Promise<VersionDTO> {
++    const principal = actor(requestActor); const id = objectId(assetId); const version = objectId(versionId);
++    const ar = revision(expectedAssetRevision); const vr = revision(expectedStateRevision);
++    const a = await this.repository.ownedAsset(id, principal._id); await this.repository.ready(); const v = await this.repository.version(a, version);
++    if (a.revision !== ar || v.stateRevision !== vr) throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
++    if (a.purpose !== 'clinical_document' || v.validation.state !== 'validated' || v.publication.state !== 'unreleased') {
++      throw documentError(503, 'DOCUMENT_POLICY_UNAVAILABLE');
++    }
++    const result = await this.policy.evaluateRelease({ assetId: id, versionId: version, contentSha256: v.contentSha256, resourceKind: a.resourceKind,
++      resourceId: a.resourceId, ownerUserId: a.ownerUserId, expectedAssetRevision: ar, expectedStateRevision: vr });
++    if (result.decision !== 'eligible') throw documentError(503, 'DOCUMENT_POLICY_UNAVAILABLE');
++    if (!opaque(result.evidenceRef)) throw documentError();
++    const evidenceRef = result.evidenceRef; const operationId = randomUUID();
++    return this.repository.transaction(async tx => {
++      const current = await this.repository.ownedAsset(id, principal._id, tx); const previous = await this.repository.version(current, version, tx);
++      if (current.revision !== ar || previous.stateRevision !== vr || previous.contentSha256 !== v.contentSha256 ||
++        previous.validation.state !== 'validated' || previous.publication.state !== 'unreleased') throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
++      const next = await this.repository.transition(current, previous, { publication: { state: 'released', evidenceRef } }, tx);
++      const updated = await this.repository.pointer(current, { currentReadableVersionId: next._id }, tx);
++      await this.repository.audit(audit(updated, principal._id, operationId, 'release', 'released', next._id), tx);
++      return dto(updated, next);
++    });
++  }
++
++  async content(requestActor: unknown, assetId: unknown, versionId: unknown, rawQuery: unknown, req: Request, res: Response): Promise<void> {
++    const principal: DocumentActor = actor(requestActor); const id = objectId(assetId); const version = objectId(versionId); closed(rawQuery, []);
++    const before = await this.repository.ownedAsset(id, principal._id); await this.repository.ready();
++    const prior = await this.repository.version(before, version);
++    if (!readable(before, prior)) throw documentError(503, 'DOCUMENT_NOT_AVAILABLE');
++    if (req.headers.range !== undefined) throw documentError(416, 'DOCUMENT_INPUT_INVALID');
++    const operationId = randomUUID();
++    const admitted = await this.repository.transaction(async tx => {
++      const a = await this.repository.ownedAsset(id, principal._id, tx); const v = await this.repository.version(a, version, tx);
++      if (!readable(a, v)) throw documentError(503, 'DOCUMENT_NOT_AVAILABLE');
++      await this.repository.audit(audit(a, principal._id, operationId, 'read_admitted', 'admitted', v._id), tx);
++      return { a, v };
++    });
++    let bytes = 0; let outcome: 'completed' | 'failed' | 'disconnected' = 'failed';
++    let verified: VerifiedObject | undefined;
++    const contentDeadline = Date.now() + 30000;
++    try {
++      verified = await this.storage.verified(admitted.v, contentDeadline);
++      res.setHeader('Content-Type', verified.mediaType); res.setHeader('Content-Length', String(verified.size));
++      res.setHeader('Content-Disposition', `attachment; filename="document-${version}"`);
++      await this.storage.stream(verified, req, res, n => { bytes = n; }, contentDeadline); outcome = 'completed';
++    } catch (error) {
++      outcome = req.aborted || res.destroyed ? 'disconnected' : 'failed';
++      if (res.headersSent && !res.destroyed) res.destroy();
++      if (!res.headersSent) { res.removeHeader('Content-Length'); res.removeHeader('Content-Type'); res.removeHeader('Content-Disposition'); }
++      throw error;
++    } finally {
++      let closeFailed = false;
++      if (verified) { try { await verified.handle.close(); } catch { closeFailed = true; outcome = 'failed'; } }
++      // This runs even after disconnect/failure; already transmitted bytes are never represented as zero.
++      try {
++        await this.repository.transaction(async tx => {
++          await this.repository.audit(audit(admitted.a, principal._id, operationId, 'read_finished', outcome, admitted.v._id, bytes), tx);
++          return true;
++        });
++      } catch {
++        // The durable admitted event remains unresolved. No raw driver/patient details enter this diagnostic.
++        process.emitWarning('DOCUMENT_READ_AUDIT_UNRESOLVED');
++        throw documentError();
++      }
++      if (closeFailed) throw documentError();
++    }
++  }
++}
+diff --git a/src1/modules/file/model/index.ts b/src1/modules/file/model/index.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..0f9360a675f8c1920ded9f01350b296e5c9265ba
+--- /dev/null
++++ b/src1/modules/file/model/index.ts
+@@ -0,0 +1,42 @@
++import { model, Schema } from 'mongoose';
++import { DocumentAudit, FileAsset, FileVersion } from '../documentTypes';
++
++const options = { versionKey: false as const, strict: 'throw' as const, autoIndex: false, autoCreate: false };
++const id = Schema.Types.ObjectId;
++const assetSchema = new Schema<FileAsset>({
++  schemaVersion: { type: Number, required: true, enum: [1], immutable: true },
++  identityKey: { type: String, required: true, immutable: true },
++  resourceKind: { type: String, enum: ['unbound_upload', 'booking', 'external_booking'], required: true, immutable: true },
++  resourceId: { type: String, required: true, immutable: true }, ownerUserId: { type: String, required: true, immutable: true },
++  sourceSystem: { type: String, enum: ['owned_upload', 'labstack', 'healthians', 'legacy_import'], required: true, immutable: true }, sourceDocumentReference: { type: String, required: true, immutable: true },
++  purpose: { type: String, enum: ['private_attachment', 'clinical_document', 'public_image'], required: true, immutable: true }, createdByUserId: { type: String, required: true, immutable: true },
++  createdAt: { type: Date, required: true, immutable: true }, revision: { type: Number, required: true },
++  currentCapturedVersionId: { type: id, default: null }, currentReadableVersionId: { type: id, default: null }, revokedAt: { type: Date, default: null },
++}, options);
++const label = new Schema({ kind: { type: String, required: true, enum: ['unknown', 'recorded'] }, value: String }, { _id: false, strict: 'throw' });
++const versionSchema = new Schema<FileVersion>({
++  assetId: { type: id, required: true, immutable: true }, identityKey: { type: String, required: true, immutable: true },
++  versionKey: { type: String, required: true, immutable: true }, storageKey: { type: String, required: true, immutable: true },
++  contentSha256: { type: String, required: true, immutable: true }, actualSize: { type: Number, required: true, immutable: true },
++  mediaType: { type: String, enum: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'], required: true, immutable: true }, sourceSystem: { type: String, enum: ['owned_upload', 'labstack', 'healthians', 'legacy_import'], required: true, immutable: true },
++  sourceDocumentReference: { type: String, required: true, immutable: true },
++  sourceVersionLabel: { type: label, required: true, immutable: true }, sourceStageLabel: { type: label, required: true, immutable: true },
++  completeness: { type: String, enum: ['preliminary', 'final', 'unknown'], required: true, immutable: true }, amendsVersionId: { type: id, default: null, immutable: true },
++  amendmentReason: { type: String, default: null, immutable: true }, capturedAt: { type: Date, required: true, immutable: true },
++  createdByUserId: { type: String, required: true, immutable: true }, stateRevision: { type: Number, required: true },
++  validation: { state: { type: String, enum: ['quarantined', 'validated', 'rejected'], required: true }, evidenceRef: { type: String, default: null } },
++  publication: { state: { type: String, enum: ['unreleased', 'released', 'legacy_access_unknown'], required: true }, evidenceRef: { type: String, default: null } },
++}, options);
++const auditSchema = new Schema<DocumentAudit>({
++  operationId: { type: String, required: true }, phase: { type: String, required: true }, actorUserId: { type: String, required: true },
++  resourceKind: { type: String, required: true }, resourceId: { type: String, required: true },
++  assetId: { type: id, required: true }, versionId: { type: id, default: null }, outcome: { type: String, required: true },
++  createdAt: { type: Date, required: true }, correlationId: { type: String, required: true }, byteCount: { type: Number, default: null },
++}, options);
++assetSchema.index({ identityKey: 1 }, { unique: true });
++versionSchema.index({ assetId: 1, versionKey: 1 }, { unique: true });
++versionSchema.index({ assetId: 1, _id: -1 });
++auditSchema.index({ operationId: 1, phase: 1 }, { unique: true });
++export const FileAssetModel = model<FileAsset>('FileAsset', assetSchema);
++export const FileAssetVersionModel = model<FileVersion>('FileAssetVersion', versionSchema);
++export const FileDocumentAuditModel = model<DocumentAudit>('FileDocumentAudit', auditSchema);
+diff --git a/src1/modules/file/repository/index.ts b/src1/modules/file/repository/index.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..ec5cbb96c98571abda64e81419f530925c1d0ad8
+--- /dev/null
++++ b/src1/modules/file/repository/index.ts
+@@ -0,0 +1,163 @@
++import { Service } from 'typedi';
++import { ClientSession, Connection, FilterQuery, Types } from 'mongoose';
++import BookingModel from '@/modules/bookings/model';
++import ExternalBookingModel from '@/modules/externalBookings/model';
++import { BookingRepository } from '@/modules/bookings/repository';
++import { ExternalBookingRepository } from '@/modules/externalBookings/repository';
++import { FileAssetModel, FileAssetVersionModel, FileDocumentAuditModel } from '../model';
++import { DocumentAudit, DocumentScope, FileAsset, FileVersion, ReleaseInput, ReleaseResult, ValidationInput, ValidationResult } from '../documentTypes';
++import { assertAsset, assertVersion, documentError } from '../validation';
++
++/** Explicit composition port. No request/env boolean or schema declaration supplies index readiness.
++ * An independently admitted adapter must observe the exact three collections/indexes on THIS connection.
++ * No scanner, release policy or production index observer has been admitted by this source increment.
++ */
++@Service()
++export class FileDocumentPolicy {
++  async assertObservedIndexReadiness(_connection: Connection, _collections: readonly string[]): Promise<void> {
++    throw documentError();
++  }
++  async evaluateValidation(_input: ValidationInput): Promise<ValidationResult> {
++    return { decision: 'unavailable', evidenceRef: null };
++  }
++  async evaluateRelease(_input: ReleaseInput): Promise<ReleaseResult> {
++    return { decision: 'unavailable', evidenceRef: null };
++  }
++}
++
++interface Transaction { readonly session: ClientSession }
++function scalar(fields: Record<string, string>): Record<string, unknown> {
++  return { $and: Object.entries(fields).map(([field, type]) => ({ $eq: [{ $type: '$' + field }, type] })) };
++}
++function assetScope(a: FileAsset): FilterQuery<FileAsset> {
++  return { _id: a._id, ownerUserId: { $eq: a.ownerUserId }, resourceKind: a.resourceKind, resourceId: a.resourceId,
++    identityKey: a.identityKey, purpose: a.purpose, revision: a.revision, revokedAt: null,
++    $expr: { $and: [scalar({ _id: 'objectId', ownerUserId: 'string', resourceKind: 'string', resourceId: 'string', identityKey: 'string' }),
++      { $isNumber: '$revision' }] } };
++}
++
++@Service()
++export class FileDocumentRepository {
++  private readonly activeSessions = new WeakSet<ClientSession>();
++  constructor(private bookings: BookingRepository, private externalBookings: ExternalBookingRepository, private policy: FileDocumentPolicy) {}
++
++  private connection(): Connection {
++    const connection = FileAssetModel.db;
++    if (connection !== FileAssetVersionModel.db || connection !== FileDocumentAuditModel.db || connection !== BookingModel.db || connection !== ExternalBookingModel.db) throw documentError();
++    return connection;
++  }
++  async ready(): Promise<void> {
++    await this.policy.assertObservedIndexReadiness(this.connection(), Object.freeze([
++      FileAssetModel.collection.name, FileAssetVersionModel.collection.name, FileDocumentAuditModel.collection.name,
++    ]));
++  }
++  private session(tx: Transaction): ClientSession {
++    if (!tx || !this.activeSessions.has(tx.session) || !tx.session.inTransaction()) throw documentError();
++    return tx.session;
++  }
++  async transaction<T>(work: (tx: Transaction) => Promise<T>): Promise<T> {
++    const connection = this.connection();
++    const session = await connection.startSession();
++    this.activeSessions.add(session);
++    try {
++      let result: T | undefined;
++      await session.withTransaction(async () => { result = await work(Object.freeze({ session })); },
++        { readConcern: { level: 'snapshot' }, writeConcern: { w: 'majority' } });
++      if (result === undefined) throw documentError();
++      return result;
++    } finally {
++      this.activeSessions.delete(session);
++      await session.endSession();
++    }
++  }
++  async ownedResource(scope: DocumentScope, tx?: Transaction): Promise<void> {
++    if (scope.resourceKind === 'unbound_upload') {
++      if (scope.resourceId !== scope.ownerUserId) throw documentError();
++      return;
++    }
++    this.connection();
++    const query = { _id: new Types.ObjectId(scope.resourceId), userId: { $eq: scope.ownerUserId },
++      $expr: scalar({ _id: 'objectId', userId: 'string' }) };
++    const session = tx ? this.session(tx) : undefined;
++    const row = scope.resourceKind === 'booking'
++      ? await this.bookings.findOne(query, session)
++      : await this.externalBookings.findOne(query, session);
++    if (!row) throw documentError(404, 'DOCUMENT_NOT_FOUND');
++    if (!(row._id instanceof Types.ObjectId) || row._id.toHexString() !== scope.resourceId || row.userId !== scope.ownerUserId) throw documentError();
++  }
++  async currentScope(a: FileAsset, tx?: Transaction): Promise<void> {
++    try { await this.ownedResource(a, tx); } catch (error) {
++      if ((error as { code?: string }).code === 'DOCUMENT_NOT_FOUND') throw documentError(503, 'DOCUMENT_SCOPE_CHANGED');
++      throw error;
++    }
++  }
++  async ownedAsset(id: string, owner: string, tx?: Transaction, allowRevoked = false): Promise<FileAsset> {
++    const row = await FileAssetModel.findOne({ _id: new Types.ObjectId(id), ownerUserId: { $eq: owner },
++      ...(allowRevoked ? {} : { revokedAt: null }), $expr: scalar({ _id: 'objectId', ownerUserId: 'string' }) })
++      .session(tx ? this.session(tx) : null).maxTimeMS(2000).lean().exec();
++    if (!row) throw documentError(404, 'DOCUMENT_NOT_FOUND');
++    const a = row as unknown as FileAsset; assertAsset(a);
++    if (a.ownerUserId !== owner || a._id.toHexString() !== id) throw documentError();
++    await this.currentScope(a, tx);
++    return a;
++  }
++  async assetByIdentity(candidate: FileAsset, tx: Transaction): Promise<FileAsset | null> {
++    const row = await FileAssetModel.findById(candidate._id).session(this.session(tx)).maxTimeMS(2000).lean().exec();
++    if (!row) return null;
++    const a = row as unknown as FileAsset; assertAsset(a);
++    if (a.identityKey !== candidate.identityKey || a.ownerUserId !== candidate.ownerUserId || a.resourceKind !== candidate.resourceKind ||
++      a.resourceId !== candidate.resourceId || a.sourceSystem !== candidate.sourceSystem ||
++      a.sourceDocumentReference !== candidate.sourceDocumentReference || a.purpose !== candidate.purpose || a.revokedAt !== null) {
++      throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
++    }
++    await this.currentScope(a, tx);
++    return a;
++  }
++  async insertAsset(a: FileAsset, tx: Transaction): Promise<void> {
++    await FileAssetModel.create([a], { session: this.session(tx) });
++  }
++  async version(a: FileAsset, id: string, tx?: Transaction): Promise<FileVersion> {
++    const row = await FileAssetVersionModel.findOne({ _id: new Types.ObjectId(id), assetId: { $eq: a._id },
++      $expr: scalar({ _id: 'objectId', assetId: 'objectId' }) }).session(tx ? this.session(tx) : null).maxTimeMS(2000).lean().exec();
++    if (!row) throw documentError(404, 'DOCUMENT_NOT_FOUND');
++    const v = row as unknown as FileVersion; assertVersion(a, v); return v;
++  }
++  async duplicate(a: FileAsset, key: string, tx: Transaction): Promise<FileVersion | null> {
++    const row = await FileAssetVersionModel.findOne({ assetId: { $eq: a._id }, versionKey: key,
++      $expr: scalar({ _id: 'objectId', assetId: 'objectId', versionKey: 'string' }) })
++      .session(this.session(tx)).maxTimeMS(2000).lean().exec();
++    if (!row) return null;
++    const v = row as unknown as FileVersion; assertVersion(a, v); return v;
++  }
++  async versions(a: FileAsset, limit: number, after?: string): Promise<FileVersion[]> {
++    const rows = await FileAssetVersionModel.find({ assetId: { $eq: a._id }, ...(after ? { _id: { $lt: new Types.ObjectId(after) } } : {}),
++      $expr: scalar({ _id: 'objectId', assetId: 'objectId' }) }).sort({ _id: -1 }).limit(limit + 1).maxTimeMS(2000).lean().exec();
++    if (rows.length > limit + 1) throw documentError();
++    return rows.map(row => { const v = row as unknown as FileVersion; assertVersion(a, v); return v; });
++  }
++  async insertVersion(v: FileVersion, tx: Transaction): Promise<void> {
++    await FileAssetVersionModel.create([v], { session: this.session(tx) });
++  }
++  async pointer(a: FileAsset, changes: { currentCapturedVersionId?: Types.ObjectId; currentReadableVersionId?: Types.ObjectId | null; revokedAt?: Date }, tx: Transaction): Promise<FileAsset> {
++    if (a.revision >= Number.MAX_SAFE_INTEGER) throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
++    const row = await FileAssetModel.findOneAndUpdate(assetScope(a), { $set: changes, $inc: { revision: 1 } },
++      { session: this.session(tx), new: true, runValidators: true }).lean().exec();
++    if (!row) throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
++    const updated = row as unknown as FileAsset; assertAsset(updated); return updated;
++  }
++  async transition(a: FileAsset, v: FileVersion, changes: { validation?: FileVersion['validation']; publication?: FileVersion['publication'] }, tx: Transaction): Promise<FileVersion> {
++    if (v.stateRevision >= Number.MAX_SAFE_INTEGER) throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
++    const row = await FileAssetVersionModel.findOneAndUpdate({ _id: v._id, assetId: { $eq: a._id },
++      contentSha256: v.contentSha256, stateRevision: v.stateRevision, 'validation.state': v.validation.state, 'publication.state': v.publication.state,
++      $expr: { $and: [scalar({ _id: 'objectId', assetId: 'objectId', contentSha256: 'string', 'validation.state': 'string', 'publication.state': 'string' }), { $isNumber: '$stateRevision' }] } },
++      { $set: changes, $inc: { stateRevision: 1 } }, { session: this.session(tx), new: true, runValidators: true }).lean().exec();
++    if (!row) throw documentError(409, 'DOCUMENT_VERSION_CONFLICT');
++    const updated = row as unknown as FileVersion; assertVersion(a, updated); return updated;
++  }
++  async audit(row: DocumentAudit, tx: Transaction): Promise<void> {
++    await FileDocumentAuditModel.create([row], { session: this.session(tx) });
++  }
++  async revokeReceipt(operationId: string, tx: Transaction): Promise<DocumentAudit | null> {
++    return await FileDocumentAuditModel.findOne({ operationId, phase: 'revoke' }).session(this.session(tx)).maxTimeMS(2000).lean().exec() as unknown as DocumentAudit | null;
++  }
++}
+diff --git a/src1/modules/file/routes/index.ts b/src1/modules/file/routes/index.ts
+index 105f68e7631a4db353813e6167a91d447a285c57..33037bcb2677509dab4677e81bad6d3f304113ee 100644
+--- a/src1/modules/file/routes/index.ts
++++ b/src1/modules/file/routes/index.ts
+@@ -9,0 +10,7 @@ const fileController = new FileController();
++// New private document commands; the existing central mount authenticates first.
++fileRouter.post('/assets/uploads', catchAsync(fileController.uploadPrivateAsset));
++fileRouter.post('/clinical/:resourceKind/:resourceId/uploads', catchAsync(fileController.uploadClinicalAsset));
++fileRouter.get('/assets/:assetId/versions', catchAsync(fileController.listAssetVersions));
++fileRouter.get('/assets/:assetId/versions/:versionId/content', catchAsync(fileController.readAssetContent));
++fileRouter.post('/assets/:assetId/revoke', catchAsync(fileController.revokePrivateAsset));
++
+diff --git a/src1/modules/file/services/index.ts b/src1/modules/file/services/index.ts
+index 8e6140915f9041052fc4fce6cf07c2d502289092..7785c1b965966f0c847eeaa162f3be5a318970cc 100644
+--- a/src1/modules/file/services/index.ts
++++ b/src1/modules/file/services/index.ts
+@@ -7,0 +8,2 @@ import { AppError } from '@/modules/common/types';
++import { CONFIG } from '@/config/config';
++import { legacyPath, legacyUploadScope } from '../storage';
+@@ -25 +27 @@ export class FileService {
+-    this.uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'files');
++    this.uploadDir = CONFIG.UPLOAD_DIR || path.join(process.cwd(), 'files');
+@@ -65,0 +68,3 @@ export class FileService {
++      legacyUploadScope(module, recordId);
++      const relativeModule = recordId ? `${module}/${recordId}` : module;
++      legacyPath(relativeModule, this.uploadDir);
+@@ -119 +124 @@ export class FileService {
+-        const filePath = path.join(moduleDir, fileName);
++        const filePath = legacyPath(recordId ? `${module}/${recordId}/${fileName}` : `${module}/${fileName}`, this.uploadDir);
+@@ -171 +176 @@ export class FileService {
+-      const fullPath = path.join(this.uploadDir, relativePath);
++      const fullPath = legacyPath(relativePath, this.uploadDir);
+@@ -187,0 +193 @@ export class FileService {
++      if (error instanceof AppError) throw error;
+diff --git a/src1/modules/file/storage.ts b/src1/modules/file/storage.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..09044ce46a37b3fff9261cc8905e70abbf7d8929
+--- /dev/null
++++ b/src1/modules/file/storage.ts
+@@ -0,0 +1,257 @@
++import { Service } from 'typedi';
++import fs, { constants, Stats } from 'fs';
++import { FileHandle, mkdir, lstat, realpath, open, unlink, rmdir } from 'fs/promises';
++import path from 'path';
++import { randomBytes, createHash } from 'crypto';
++import { Writable } from 'stream';
++import formidable from 'formidable';
++import { Request, Response } from 'express';
++import { CONFIG } from '@/config/config';
++import { CapturedObject, DOCUMENT_BYTES, FileVersion, PRIVATE_SUBTREE, VerifiedObject } from './documentTypes';
++import { documentError, input, media } from './validation';
++
++function identity(st: Stats): string { return [st.dev, st.ino, st.uid, st.mode & 0o777, st.nlink, st.size, st.mtimeMs, st.ctimeMs].join(':'); }
++function directory(st: Stats): string {
++  if (!st.isDirectory() || st.isSymbolicLink() || st.uid !== process.getuid?.() || (st.mode & 0o777) !== 0o700) throw documentError();
++  return [st.dev, st.ino, st.uid, st.mode & 0o777].join(':');
++}
++function file(st: Stats): void {
++  if (!st.isFile() || st.uid !== process.getuid?.() || st.nlink !== 1 || (st.mode & 0o777) !== 0o600) throw documentError();
++}
++
++/** Used by EVERY legacy read/write/delete alias, before any legacy byte operation.
++ * Trusted-root/same-uid threat boundary is the same as the private storage adapter.
++ */
++export function legacyPath(raw: unknown, root: string): string {
++  if (typeof raw !== 'string' || raw.length < 1 || raw.length > 1024 || /[%\\\x00-\x1f\x7f?#~]/.test(raw) || path.isAbsolute(raw)) {
++    throw documentError(400, 'DOCUMENT_INPUT_INVALID');
++  }
++  const parts = raw.split('/');
++  if (parts.some(part => !part || part === '.' || part === '..' || part.toLowerCase() === PRIVATE_SUBTREE)) {
++    throw documentError(404, 'DOCUMENT_NOT_FOUND');
++  }
++  const base = path.resolve(root);
++  const full = path.resolve(base, ...parts);
++  if (!full.startsWith(base + path.sep)) throw documentError(404, 'DOCUMENT_NOT_FOUND');
++  // Reject existing symlink components, including a symlink to a private object under a public name.
++  let current = base;
++  for (const part of ['', ...parts]) {
++    if (part) current = path.join(current, part);
++    try {
++      if (fs.lstatSync(current).isSymbolicLink()) throw documentError(404, 'DOCUMENT_NOT_FOUND');
++    } catch (error) {
++      if ((error as NodeJS.ErrnoException).code === 'ENOENT') break;
++      throw error;
++    }
++  }
++  return full;
++}
++export function legacyUploadScope(module: unknown, recordId: unknown): void {
++  input(typeof module === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(module) && module.toLowerCase() !== PRIVATE_SUBTREE);
++  input(recordId === undefined || (typeof recordId === 'string' && /^[a-fA-F0-9]{24}$/.test(recordId)));
++}
++
++@Service()
++export class FileDocumentStorage {
++  private readonly root = path.resolve(CONFIG.UPLOAD_DIR || path.join(process.cwd(), 'files'));
++  private readonly privateRoot = path.join(this.root, PRIVATE_SUBTREE);
++  private rootIdentity?: string;
++  private privateIdentity?: string;
++
++  private async roots(): Promise<void> {
++    const root = await lstat(this.root);
++    const rootId = directory(root);
++    if (await realpath(this.root) !== this.root || (this.rootIdentity !== undefined && this.rootIdentity !== rootId)) throw documentError();
++    this.rootIdentity = rootId;
++    try { await mkdir(this.privateRoot, { mode: 0o700 }); } catch (error) {
++      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
++    }
++    const privateId = directory(await lstat(this.privateRoot));
++    if (await realpath(this.privateRoot) !== this.privateRoot || (this.privateIdentity !== undefined && this.privateIdentity !== privateId)) throw documentError();
++    this.privateIdentity = privateId;
++    if (directory(await lstat(this.root)) !== rootId) throw documentError();
++  }
++  private async child(parent: string, name: string): Promise<string> {
++    if (!/^[a-f0-9]{24}$/.test(name)) throw documentError();
++    const dir = path.join(parent, name);
++    try { await mkdir(dir, { mode: 0o700 }); } catch (error) {
++      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
++    }
++    directory(await lstat(dir));
++    if (await realpath(dir) !== dir) throw documentError();
++    return dir;
++  }
++  private key(key: string): string {
++    if (!/^[a-f0-9]{24}\/[a-f0-9]{24}\/[a-f0-9]{64}$/.test(key)) throw documentError();
++    return path.join(this.privateRoot, key);
++  }
++  private async verify(handle: FileHandle, expected: CapturedObject, deadline = Date.now() + 30000): Promise<VerifiedObject> {
++    const before = await handle.stat(); file(before);
++    if (before.size !== expected.actualSize || before.size < 1 || before.size > DOCUMENT_BYTES) throw documentError();
++    const hash = createHash('sha256'); let position = 0; let prefix = Buffer.alloc(0);
++    const buffer = Buffer.alloc(65536);
++    while (position < before.size) {
++      if (Date.now() >= deadline) throw documentError();
++      const result = await handle.read(buffer, 0, Math.min(buffer.length, before.size - position), position);
++      if (!result.bytesRead) throw documentError();
++      const chunk = buffer.subarray(0, result.bytesRead); hash.update(chunk);
++      if (prefix.length < 12) prefix = Buffer.concat([prefix, chunk.subarray(0, 12 - prefix.length)]);
++      position += result.bytesRead;
++    }
++    const after = await handle.stat();
++    if (Date.now() >= deadline || identity(before) !== identity(after) || hash.digest('hex') !== expected.contentSha256 || media(prefix) !== expected.mediaType) throw documentError();
++    return { handle, size: position, mediaType: expected.mediaType, identity: identity(after) };
++  }
++  async verified(v: Pick<FileVersion, 'storageKey' | 'actualSize' | 'contentSha256' | 'mediaType'>, deadline = Date.now() + 30000): Promise<VerifiedObject> {
++    await this.roots();
++    const [assetId, versionId] = v.storageKey.split('/');
++    const full = this.key(v.storageKey);
++    for (const dir of [path.join(this.privateRoot, assetId), path.join(this.privateRoot, assetId, versionId)]) {
++      directory(await lstat(dir)); if (await realpath(dir) !== dir) throw documentError();
++    }
++    const handle = await open(full, constants.O_RDONLY | constants.O_NOFOLLOW);
++    try { const verified = await this.verify(handle, v, deadline); await this.roots(); return verified; }
++    catch (error) { await handle.close(); throw error; }
++  }
++  async boundedRead(verified: VerifiedObject, position: number, length: number): Promise<Buffer> {
++    if (!Number.isSafeInteger(position) || position < 0 || !Number.isSafeInteger(length) || length < 0 || length > 65536 || position + length > verified.size) throw documentError();
++    if (identity(await verified.handle.stat()) !== verified.identity) throw documentError();
++    const buffer = Buffer.alloc(length);
++    const result = await verified.handle.read(buffer, 0, length, position);
++    return buffer.subarray(0, result.bytesRead);
++  }
++  async capture(req: Request, assetId: string, versionId: string): Promise<CapturedObject> {
++    await this.roots();
++    const staging = path.join(this.privateRoot, 'stage-' + randomBytes(32).toString('hex'));
++    await mkdir(staging, { mode: 0o700 });
++    const stageIdentity = directory(await lstat(staging));
++    const temporary = path.join(staging, randomBytes(32).toString('hex'));
++    const handle = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
++    const temporaryIdentity = identity(await handle.stat());
++    let size = 0; let pending = Promise.resolve(); let seen = 0; let declared: string | null = null;
++    let prefix = Buffer.alloc(0); const hash = createHash('sha256');
++    const writer = new Writable({
++      write: (chunk: Buffer, _encoding, callback) => {
++        pending = pending.then(async () => {
++          if (!Buffer.isBuffer(chunk) || size + chunk.length > DOCUMENT_BYTES) throw documentError(413, 'DOCUMENT_TOO_LARGE');
++          let offset = 0;
++          while (offset < chunk.length) {
++            const wrote = await handle.write(chunk, offset, chunk.length - offset, size + offset);
++            if (!wrote.bytesWritten) throw documentError(); offset += wrote.bytesWritten;
++          }
++          hash.update(chunk); if (prefix.length < 12) prefix = Buffer.concat([prefix, chunk.subarray(0, 12 - prefix.length)]);
++          size += chunk.length;
++        });
++        pending.then(() => callback(), error => callback(error));
++      },
++      final: callback => { pending.then(() => handle.sync()).then(() => callback(), error => callback(error)); },
++    });
++    // Formidable receives no default public/temp file writer; one owned fd handles its sole file.
++    const form = formidable({ maxFiles: 1, maxFileSize: DOCUMENT_BYTES, maxTotalFileSize: DOCUMENT_BYTES,
++      maxFields: 1, maxFieldsSize: 4096, allowEmptyFiles: false, minFileSize: 1,
++      fileWriteStreamHandler: () => writer });
++    let timeout: ReturnType<typeof setTimeout> | undefined;
++    let requestBytes = 0;
++    const boundRequest = (chunk: Buffer) => {
++      requestBytes += chunk.length;
++      if (requestBytes > DOCUMENT_BYTES + 16384) { form.emit('error', documentError(413, 'DOCUMENT_TOO_LARGE')); req.destroy(); }
++    };
++    const abort = () => form.emit('error', documentError());
++    req.once('aborted', abort);
++    req.on('data', boundRequest);
++    form.on('fileBegin', (name, upload) => {
++      seen += 1;
++      if (seen !== 1 || name !== 'file' || typeof upload.originalFilename !== 'string' || Buffer.byteLength(upload.originalFilename) > 128) {
++        form.emit('error', documentError(400, 'DOCUMENT_INPUT_INVALID')); return;
++      }
++      declared = upload.mimetype;
++    });
++    try {
++      await new Promise<void>((resolve, reject) => {
++        timeout = setTimeout(() => { form.emit('error', documentError()); req.destroy(); }, 30000);
++        form.parse(req, (error, fields, files) => {
++          if (error) { reject(error); return; }
++          if (seen !== 1 || Object.keys(fields).length !== 0 || Object.keys(files).length !== 1 || !files.file) {
++            reject(documentError(400, 'DOCUMENT_INPUT_INVALID')); return;
++          }
++          resolve();
++        });
++      });
++      await pending; await handle.sync();
++      const actualMedia = media(prefix);
++      if (declared !== actualMedia || size < 1 || size > DOCUMENT_BYTES) throw documentError(415, 'DOCUMENT_MEDIA_UNSUPPORTED');
++      file(await handle.stat());
++      await handle.close();
++      const reader = await open(temporary, constants.O_RDONLY | constants.O_NOFOLLOW);
++      try {
++        const captured = { storageKey: '', contentSha256: hash.digest('hex'), actualSize: size, mediaType: actualMedia };
++        const verified = await this.verify(reader, captured);
++        const assetDir = await this.child(this.privateRoot, assetId);
++        const versionDir = await this.child(assetDir, versionId);
++        captured.storageKey = assetId + '/' + versionId + '/' + randomBytes(32).toString('hex');
++        const target = await open(path.join(versionDir, captured.storageKey.split('/')[2]),
++          constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
++        try {
++          file(await target.stat());
++          let position = 0;
++          while (position < size) {
++            const chunk = await this.boundedRead(verified, position, Math.min(65536, size - position));
++            if (!chunk.length) throw documentError();
++            let offset = 0;
++            while (offset < chunk.length) {
++              const wrote = await target.write(chunk, offset, chunk.length - offset, position + offset);
++              if (!wrote.bytesWritten) throw documentError(); offset += wrote.bytesWritten;
++            }
++            position += chunk.length;
++          }
++          await target.sync();
++        } finally { await target.close(); }
++        const persisted = await this.verified(captured);
++        await persisted.handle.close();
++        return captured;
++      } finally { await reader.close(); }
++    } catch (error) {
++      if ((error as { name?: string }).name === 'AppError') throw error;
++      const status = (error as { httpCode?: number }).httpCode;
++      throw status === 413 ? documentError(413, 'DOCUMENT_TOO_LARGE') : documentError();
++    } finally {
++      if (timeout) clearTimeout(timeout); req.removeListener('aborted', abort); req.removeListener('data', boundRequest); writer.destroy();
++      await pending.catch(() => undefined);
++      // Only delete this admitted staging inode/directory; final private orphans are retained.
++      try { await handle.close(); } catch { /* Handle may already have been closed before promotion. */ }
++      const current = await lstat(temporary).catch(() => null);
++      if (current && [current.dev, current.ino, current.uid, current.mode & 0o777, current.nlink].join(':') === temporaryIdentity.split(':').slice(0, 5).join(':') &&
++        directory(await lstat(staging)) === stageIdentity) {
++        await unlink(temporary); await rmdir(staging);
++      }
++    }
++  }
++  async stream(v: VerifiedObject, req: Request, res: Response, count: (n: number) => void, end = Date.now() + 30000): Promise<void> {
++    let position = 0; let responseFailed = false;
++    const failed = () => { responseFailed = true; };
++    res.on('error', failed);
++    try {
++      while (position < v.size && req.method !== 'HEAD') {
++        if (Date.now() >= end || req.aborted || res.destroyed || responseFailed) throw documentError();
++        const chunk = await this.boundedRead(v, position, Math.min(65536, v.size - position));
++        if (!chunk.length || Date.now() >= end) throw documentError();
++        position += chunk.length;
++        const draining = res.write(chunk); count(position);
++        if (!draining) await new Promise<void>((resolve, reject) => {
++          const done = (error?: Error) => { clearTimeout(timer); res.removeListener('drain', drain); res.removeListener('close', close); error ? reject(error) : resolve(); };
++          const drain = () => done(); const close = () => done(documentError());
++          const timer = setTimeout(() => done(documentError()), Math.max(1, end - Date.now()));
++          res.once('drain', drain); res.once('close', close);
++        });
++      }
++      if (responseFailed || identity(await v.handle.stat()) !== v.identity) throw documentError();
++      await this.roots();
++      await new Promise<void>((resolve, reject) => {
++        const done = (error?: Error) => { clearTimeout(timer); res.removeListener('close', close); error ? reject(error) : resolve(); };
++        const close = () => { if (!res.writableFinished) done(documentError()); };
++        const timer = setTimeout(() => done(documentError()), Math.max(1, end - Date.now()));
++        res.once('close', close); res.end(() => done(responseFailed ? documentError() : undefined));
++      });
++    } finally { res.removeListener('error', failed); }
++  }
++}
+diff --git a/src1/modules/file/validation/index.ts b/src1/modules/file/validation/index.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..f284de294124e3adba853e9660fa33af70e81a93
+--- /dev/null
++++ b/src1/modules/file/validation/index.ts
+@@ -0,0 +1,110 @@
++import { createHash } from 'crypto';
++import { types } from 'util';
++import { Types } from 'mongoose';
++import { AppError } from '@/modules/common/types';
++import { AssetIdentity, DOCUMENT_BYTES, DocumentActor, FileAsset, FileVersion, Label, MediaType, VersionDTO } from '../documentTypes';
++
++export function documentError(status = 503, code = 'DOCUMENT_STORAGE_UNAVAILABLE'): AppError {
++  const message = status === 404 ? 'Document not found' : status === 400 ? 'Invalid document input' :
++    status === 403 ? 'Document access is not permitted' : status === 409 ? 'Document version changed' :
++    status === 413 ? 'Document exceeds the size limit' : status === 415 ? 'Unsupported document media' : 'Document is unavailable';
++  return new AppError({ status, code, message });
++}
++export function input(ok: unknown): asserts ok { if (!ok) throw documentError(400, 'DOCUMENT_INPUT_INVALID'); }
++export function closed(value: unknown, allowed: readonly string[]): Record<string, unknown> {
++  input(value !== null && typeof value === 'object' && !Array.isArray(value) && !types.isProxy(value));
++  const object = value as object;
++  input(Object.getPrototypeOf(object) === Object.prototype || Object.getPrototypeOf(object) === null);
++  const descriptors = Object.getOwnPropertyDescriptors(object);
++  input(Reflect.ownKeys(descriptors).every(key => typeof key === 'string' && allowed.includes(key) && 'value' in descriptors[key]));
++  return object as Record<string, unknown>;
++}
++export function objectId(value: unknown): string {
++  input(typeof value === 'string' && /^[a-fA-F0-9]{24}$/.test(value));
++  return (value as string).toLowerCase();
++}
++export function uuid(value: unknown): string {
++  input(typeof value === 'string' && /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(value));
++  return value as string;
++}
++export function actor(value: unknown): DocumentActor {
++  if (!value || typeof value !== 'object' || types.isProxy(value)) throw documentError(403, 'DOCUMENT_ACTOR_FORBIDDEN');
++  const d = Object.getOwnPropertyDescriptors(value);
++  if (!d._id || !('value' in d._id) || !d.userType || !('value' in d.userType) || d.userType.value !== 'user') {
++    throw documentError(403, 'DOCUMENT_ACTOR_FORBIDDEN');
++  }
++  return { _id: objectId(d._id.value), userType: 'user' };
++}
++export function revision(value: unknown): number {
++  input(typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= Number.MAX_SAFE_INTEGER);
++  return value as number;
++}
++export function opaque(value: unknown): value is string {
++  return typeof value === 'string' && Buffer.byteLength(value, 'utf8') >= 1 && Buffer.byteLength(value, 'utf8') <= 256 &&
++    !/[\x00-\x1f\x7f]/.test(value) && value.trim() === value;
++}
++function label(value: Label): Label {
++  if (value && value.kind === 'unknown' && Object.keys(value).length === 1) return { kind: 'unknown' };
++  if (value && value.kind === 'recorded' && opaque(value.value) && Object.keys(value).length === 2) return { kind: 'recorded', value: value.value };
++  throw documentError();
++}
++export function assetKey(identity: AssetIdentity): string {
++  return hash(JSON.stringify(['sd-file-asset:v1', identity.resourceKind, identity.resourceId, identity.ownerUserId,
++    identity.sourceSystem, identity.sourceDocumentReference]));
++}
++export function versionKey(v: Pick<FileVersion, 'assetId' | 'contentSha256' | 'completeness' | 'sourceVersionLabel' | 'sourceStageLabel' | 'amendsVersionId' | 'amendmentReason'>): string {
++  return hash(JSON.stringify(['sd-file-version:v1', v.assetId.toHexString(), v.contentSha256, v.completeness,
++    label(v.sourceVersionLabel), label(v.sourceStageLabel), v.amendsVersionId?.toHexString() ?? null, v.amendmentReason]));
++}
++export function hash(value: string | Buffer): string { return createHash('sha256').update(value).digest('hex'); }
++export function media(header: Buffer): MediaType {
++  if (header.subarray(0, 5).equals(Buffer.from('%PDF-'))) return 'application/pdf';
++  if (header.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return 'image/png';
++  if (header.length >= 3 && header[0] === 255 && header[1] === 216 && header[2] === 255) return 'image/jpeg';
++  if (header.length >= 12 && header.subarray(0, 4).toString() === 'RIFF' && header.subarray(8, 12).toString() === 'WEBP') return 'image/webp';
++  throw documentError(415, 'DOCUMENT_MEDIA_UNSUPPORTED');
++}
++export function assertAsset(a: FileAsset): void {
++  if (a?.purpose === 'public_image') throw documentError(503, 'DOCUMENT_POLICY_UNAVAILABLE');
++  if (!a || !(a._id instanceof Types.ObjectId) || a.schemaVersion !== 1 || !['unbound_upload', 'booking', 'external_booking'].includes(a.resourceKind) ||
++    typeof a.ownerUserId !== 'string' || !/^[a-f0-9]{24}$/.test(a.ownerUserId) ||
++    typeof a.resourceId !== 'string' || !/^[a-f0-9]{24}$/.test(a.resourceId) || typeof a.identityKey !== 'string' || !opaque(a.sourceDocumentReference) ||
++    !['owned_upload', 'labstack', 'healthians', 'legacy_import'].includes(a.sourceSystem) ||
++    !['private_attachment', 'clinical_document', 'public_image'].includes(a.purpose) || a.identityKey !== assetKey(a) ||
++    a._id.toHexString() !== a.identityKey.slice(0, 24) || !Number.isSafeInteger(a.revision) || a.revision < 0 ||
++    !(a.createdAt instanceof Date) || !Number.isFinite(a.createdAt.getTime()) || a.createdByUserId !== a.ownerUserId ||
++    (a.revokedAt !== null && (!(a.revokedAt instanceof Date) || !Number.isFinite(a.revokedAt.getTime()))) ||
++    ![a.currentCapturedVersionId, a.currentReadableVersionId].every(id => id === null || id instanceof Types.ObjectId) ||
++    (a.resourceKind === 'unbound_upload') !== (a.purpose === 'private_attachment') ||
++    (a.resourceKind === 'unbound_upload' && a.resourceId !== a.ownerUserId)) throw documentError();
++}
++export function assertVersion(a: FileAsset, v: FileVersion): void {
++  if (!v || !(v._id instanceof Types.ObjectId) || !(v.assetId instanceof Types.ObjectId) || !v.assetId.equals(a._id) ||
++    v.identityKey !== a.identityKey || typeof v.storageKey !== 'string' || typeof v.versionKey !== 'string' ||
++    typeof v.contentSha256 !== 'string' || !/^[a-f0-9]{64}$/.test(v.contentSha256) || !Number.isSafeInteger(v.actualSize) ||
++    v.actualSize < 1 || v.actualSize > DOCUMENT_BYTES || !['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(v.mediaType) ||
++    v.sourceSystem !== a.sourceSystem || v.sourceDocumentReference !== a.sourceDocumentReference || v.createdByUserId !== a.ownerUserId ||
++    !['preliminary', 'final', 'unknown'].includes(v.completeness) || !(v.capturedAt instanceof Date) || !Number.isFinite(v.capturedAt.getTime()) ||
++    !(v.amendsVersionId === null || v.amendsVersionId instanceof Types.ObjectId) || !(v.amendmentReason === null || opaque(v.amendmentReason)) ||
++    !Number.isSafeInteger(v.stateRevision) || v.stateRevision < 0 || v.versionKey !== versionKey(v) ||
++    !v.validation || !['quarantined', 'validated', 'rejected'].includes(v.validation.state) ||
++    (v.validation.state === 'quarantined' && v.validation.evidenceRef !== null) ||
++    !v.publication || !['unreleased', 'released', 'legacy_access_unknown'].includes(v.publication.state) ||
++    (v.publication.state === 'unreleased' && v.publication.evidenceRef !== null) ||
++    (v.validation.state !== 'quarantined' && !opaque(v.validation.evidenceRef)) ||
++    (v.publication.state !== 'unreleased' && !opaque(v.publication.evidenceRef)) ||
++    !new RegExp('^' + a._id.toHexString() + '/' + v._id.toHexString() + '/[a-f0-9]{64}$').test(v.storageKey)) throw documentError();
++}
++export function readable(a: FileAsset, v: FileVersion): boolean {
++  return a.revokedAt === null && v.validation.state === 'validated' &&
++    ((a.purpose === 'private_attachment' && a.resourceKind === 'unbound_upload' && v.publication.state === 'unreleased') ||
++     (a.purpose === 'clinical_document' && v.publication.state === 'released'));
++}
++export function dto(a: FileAsset, v: FileVersion): VersionDTO {
++  assertAsset(a); assertVersion(a, v);
++  return { assetId: a._id.toHexString(), versionId: v._id.toHexString(), resourceKind: a.resourceKind, resourceId: a.resourceId,
++    purpose: a.purpose, mediaType: v.mediaType, byteLength: v.actualSize, capturedAt: v.capturedAt.toISOString(),
++    completeness: v.completeness, validationState: v.validation.state, publicationState: v.publication.state,
++    isCurrentReadable: a.currentReadableVersionId?.equals(v._id) === true,
++    contentUrl: readable(a, v) ? `/api/v1/file/assets/${a._id.toHexString()}/versions/${v._id.toHexString()}/content` : null };
++}

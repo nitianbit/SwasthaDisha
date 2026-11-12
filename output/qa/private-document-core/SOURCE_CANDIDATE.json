@@ -1,0 +1,248 @@
+{
+  "schema": "SD-PRIVATE-DOCUMENT-CORE-CANDIDATE-1",
+  "baseline": "99cc098ede0a3cb1124f294ef4c9b660b8d9f61d",
+  "branch": "m0/private-document-core",
+  "author": "/root/lab_remaining_audit",
+  "contract": "documentation/planning/implementation/PRIVATE_CLINICAL_DOCUMENTS_CONTRACT_DRAFT.md",
+  "contractSha256": "2c016e285101c8a5852ad85974cd41a343ea59f31661ee8360e12eee192895f1",
+  "contractDecisions": "output/qa/private-clinical-documents/CONTRACT_DECISIONS.json",
+  "sourceFiles": [
+    {
+      "path": "src1/modules/file/controller/index.ts",
+      "bytes": 9269,
+      "sha256": "2cfa49c5c466967775558995151f2aa19280913e3c75b655a5e09cbd742ba850"
+    },
+    {
+      "path": "src1/modules/file/routes/index.ts",
+      "bytes": 1772,
+      "sha256": "c3642ea3d46a2bfbb2dcea540a53dde7befe6d8ac5b8b761075508fe60d61cae"
+    },
+    {
+      "path": "src1/modules/file/services/index.ts",
+      "bytes": 6231,
+      "sha256": "37a1090fa9389a3120e7371f32c9180d34ec9dc3e38a9ce34b186611f7ac8e96"
+    },
+    {
+      "path": "src1/modules/file/documentTypes.ts",
+      "bytes": 3798,
+      "sha256": "89c7f2f262367de830b7925a200ae2d0e6c08a6966305ccb96f344fcf0c7d070"
+    },
+    {
+      "path": "src1/modules/file/documents.ts",
+      "bytes": 16430,
+      "sha256": "f726f71c2550baa132f3ea4e8abcac12f5ef7e86321cfd7390825ec862a9a951"
+    },
+    {
+      "path": "src1/modules/file/model/index.ts",
+      "bytes": 4253,
+      "sha256": "44d8003d6324f44b4adba62428bbbb2661e988f60baf267e546ecb8a1923aa91"
+    },
+    {
+      "path": "src1/modules/file/repository/index.ts",
+      "bytes": 10195,
+      "sha256": "c06a2c06d8451d6f8eb622b2e149315c5499df1287682a40068296bb02f76208"
+    },
+    {
+      "path": "src1/modules/file/storage.ts",
+      "bytes": 14834,
+      "sha256": "efdd0047c24ccb73c43c3968b4c084af7ba7b5f673f8fbfd6c10ca38fd1f23f6"
+    },
+    {
+      "path": "src1/modules/file/validation/index.ts",
+      "bytes": 8565,
+      "sha256": "1d93adca55ef7665c8ee3dee95c9c38924f2e0b40d52e9df0a4402e96396b85b"
+    }
+  ],
+  "staticChecks": {
+    "kind": "STATIC_SOURCE_DATA_ONLY",
+    "gitDiffCheck": "PASS",
+    "trackedChangesWithinOwnedFileModule": "PASS",
+    "localImportPathsExist": "PASS_DATA_ONLY_NOT_TYPES",
+    "originalSixWorkingEqualStagedAndOriginalPatchUnchanged": "PASS",
+    "liveR10Selected116FocusFilesUnchanged": "PASS"
+  },
+  "imports": [
+    {
+      "importer": "src1/modules/file/controller/index.ts",
+      "specifier": "../services",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/controller/index.ts",
+      "specifier": "@/config/config",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/controller/index.ts",
+      "specifier": "@/modules/common/types",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/controller/index.ts",
+      "specifier": "@/modules/middleware/auth",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/controller/index.ts",
+      "specifier": "../documents",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/controller/index.ts",
+      "specifier": "../storage",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/controller/index.ts",
+      "specifier": "../validation",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/routes/index.ts",
+      "specifier": "@/modules/common/utils/asyncHandler",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/routes/index.ts",
+      "specifier": "../controller",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/services/index.ts",
+      "specifier": "../types",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/services/index.ts",
+      "specifier": "@/modules/common/types",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/services/index.ts",
+      "specifier": "@/config/config",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/services/index.ts",
+      "specifier": "../storage",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/documents.ts",
+      "specifier": "./repository",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/documents.ts",
+      "specifier": "./storage",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/documents.ts",
+      "specifier": "./documentTypes",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/documents.ts",
+      "specifier": "./validation",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/model/index.ts",
+      "specifier": "../documentTypes",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/repository/index.ts",
+      "specifier": "@/modules/bookings/model",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/repository/index.ts",
+      "specifier": "@/modules/externalBookings/model",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/repository/index.ts",
+      "specifier": "@/modules/bookings/repository",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/repository/index.ts",
+      "specifier": "@/modules/externalBookings/repository",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/repository/index.ts",
+      "specifier": "../model",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/repository/index.ts",
+      "specifier": "../documentTypes",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/repository/index.ts",
+      "specifier": "../validation",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/storage.ts",
+      "specifier": "@/config/config",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/storage.ts",
+      "specifier": "./documentTypes",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/storage.ts",
+      "specifier": "./validation",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/validation/index.ts",
+      "specifier": "@/modules/common/types",
+      "exists": true
+    },
+    {
+      "importer": "src1/modules/file/validation/index.ts",
+      "specifier": "../documentTypes",
+      "exists": true
+    }
+  ],
+  "runtime": {
+    "typecheck": "NOT_RUN",
+    "application": "NOT_RUN",
+    "HTTP": "NOT_RUN",
+    "formidable": "NOT_RUN",
+    "Mongoose": "NOT_RUN",
+    "index-readiness": "NOT_RUN",
+    "transactions": "NOT_RUN",
+    "filesystem": "NOT_RUN",
+    "byte-streaming": "NOT_RUN",
+    "concurrency": "NOT_RUN",
+    "rollback": "NOT_RUN",
+    "scanner": "NOT_RUN",
+    "release-policy": "NOT_RUN",
+    "provider": "NOT_RUN"
+  },
+  "sourceReviews": "PENDING_TWO_ACTUAL_NONAUTHOR_DECISIONS",
+  "firstIncrementSourceCandidateOnly": true,
+  "S1Complete": false,
+  "moduleComplete": false,
+  "releaseApproved": false,
+  "retainedLimits": [
+    "Default readiness/scanner/qualified-release composition ports are closed. No concrete observed-index/scanner/clinical policy adapter or positive runtime admission is claimed.",
+    "Old public report/static paths remain open outside the new reserved subtree until the full S1 compatibility/migration cutover.",
+    "New metadata models disable autoIndex/autoCreate; declarations do not establish installed correctness indexes.",
+    "Trusted exclusive service-uid root required; no defense claimed against malicious same-uid ancestor/in-place mutation or already delivered bytes.",
+    "Central mount authenticate executes before file router: generic unauthenticated401 header policy is outside this owned source surface.",
+    "Genuine public-image writer adapters, legacy inventory/client flows, provider/CDN guards/adapters and qualified clinical/retention adoption remain pending.",
+    "Final integration/corporate/HR/hospital expansion remain deferred; focused C2/C3 and all owner/release gates remain open."
+  ],
+  "sourcePatchSha256": "74420120c52330e0af4184cb55007c8054dcca516c3684196eb351576f46f43d",
+  "sourcePatch": "output/qa/private-document-core/SOURCE.patch"
+}

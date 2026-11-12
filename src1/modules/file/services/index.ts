@@ -5,6 +5,8 @@ import path from 'path';
 import mime from 'mime-types';
 import { IUploadedFile } from '../types';
 import { AppError } from '@/modules/common/types';
+import { CONFIG } from '@/config/config';
+import { legacyPath, legacyUploadScope } from '../storage';
 
 @Service()
 export class FileService {
@@ -22,7 +24,7 @@ export class FileService {
   constructor() {
     // Set upload directory (adjust based on your settings)
     // Default to files directory in project root
-    this.uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'files');
+    this.uploadDir = CONFIG.UPLOAD_DIR || path.join(process.cwd(), 'files');
     this.ensureDirectoryExists(this.uploadDir);
   }
 
@@ -63,6 +65,9 @@ export class FileService {
     recordId?: string
   ): Promise<IUploadedFile[]> {
     try {
+      legacyUploadScope(module, recordId);
+      const relativeModule = recordId ? `${module}/${recordId}` : module;
+      legacyPath(relativeModule, this.uploadDir);
       const { files } = await this.parseFormData(req);
 
       // Get files from request (formidable returns files as object)
@@ -116,7 +121,7 @@ export class FileService {
         const fileExt = path.extname(file.originalFilename || '');
         const baseName = path.basename(file.newFilename, path.extname(file.newFilename));
         const fileName = `${timestamp}-${baseName}${fileExt}`;
-        const filePath = path.join(moduleDir, fileName);
+        const filePath = legacyPath(recordId ? `${module}/${recordId}/${fileName}` : `${module}/${fileName}`, this.uploadDir);
         
 
         // Save file
@@ -168,7 +173,7 @@ export class FileService {
       } else if (filePath.includes('/api/v1/file/static/')) {
         relativePath = filePath.split('/api/v1/file/static/')[1];
       }
-      const fullPath = path.join(this.uploadDir, relativePath);
+      const fullPath = legacyPath(relativePath, this.uploadDir);
 
       if (fs.existsSync(fullPath)) {
         fs.unlinkSync(fullPath);
@@ -185,6 +190,7 @@ export class FileService {
         }
       }
     } catch (error: any) {
+      if (error instanceof AppError) throw error;
       throw new AppError({
         status: 500,
         code: 'DELETE_FAILED',
