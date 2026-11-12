@@ -1,0 +1,13 @@
+{
+  "schema": "SD-R12-ACTUAL-INVOCATION-1",
+  "sessionId": "175c0268-3367-4483-9616-f5e7abc99428",
+  "execSession": 47365,
+  "initialToolChunk": "c8359e",
+  "state": "RUNNING_HANDLE_OBSERVED",
+  "streamInitModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "actualClaudeExtensionACK": false,
+  "scope": "Existing VSCode extension bundled local CLI and actual Ruflo scoped mailbox; private thinking excluded",
+  "outcome": "PENDING; not review acceptance or terminal clean-wrapper proof"
+}
