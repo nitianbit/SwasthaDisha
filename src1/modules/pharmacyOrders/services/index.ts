@@ -22,6 +22,12 @@ import { AppError } from '@/modules/common/types';
 import logger from '@/services/logger';
 
 const TERMINAL_STATUSES: OrderStatus[] = ['completed', 'abandoned', 'cancelled', 'rejected'];
+const PRESCRIPTION_GATED_STATUSES: OrderStatus[] = [
+  'packed',
+  'ready_for_pickup',
+  'out_for_delivery',
+  'completed',
+];
 const UNPAID_ORDER_ABANDON_WINDOW_MS = 35 * 60 * 1000;
 const ALLOWED_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   placed: ['accepted', 'rejected', 'cancelled', 'abandoned'],
@@ -1019,8 +1025,9 @@ export class PharmacyOrderService {
       });
     }
 
+    const requiresPrescriptionCheck = PRESCRIPTION_GATED_STATUSES.includes(payload.status);
     if (
-      payload.status === 'completed' &&
+      requiresPrescriptionCheck &&
       order.prescriptionStatus !== 'approved' &&
       order.prescriptionStatus !== 'not_required'
     ) {
@@ -1041,7 +1048,7 @@ export class PharmacyOrderService {
         {
           _id: id,
           status: order.status,
-          ...(payload.status === 'completed'
+          ...(requiresPrescriptionCheck
             ? { prescriptionStatus: order.prescriptionStatus }
             : {}),
         },
