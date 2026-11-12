@@ -1,0 +1,58 @@
+diff --git a/src1/modules/pharmacySubscriptions/repository/index.ts b/src1/modules/pharmacySubscriptions/repository/index.ts
+index 7d856c170b50045747ab8dc7d338a616ab1b951a..161d46a062047caf79b8c03e3fd8262152466329 100644
+--- a/src1/modules/pharmacySubscriptions/repository/index.ts
++++ b/src1/modules/pharmacySubscriptions/repository/index.ts
+@@ -12,0 +13 @@ const dueProjection = { _id: 1, pharmacyId: 1, isActive: 1, nextRefillDate: 1, i
++let refillObjectIdKey: symbol | undefined;
+@@ -14,4 +15,27 @@ function refillObjectId(value: unknown): string {
+-  if (!value || typeof value !== 'object' || types.isProxy(value) || Object.getPrototypeOf(value) !== Types.ObjectId.prototype ||
+-    Object.values(Object.getOwnPropertyDescriptors(value)).some(d => !('value' in d))) throw refillUnavailable();
+-  const id = Types.ObjectId.prototype.toHexString.call(value);
+-  if (!/^[0-9a-f]{24}$/.test(id)) throw refillUnavailable();
++  if (!value || typeof value !== 'object' || types.isProxy(value) || Object.getPrototypeOf(value) !== Types.ObjectId.prototype) throw refillUnavailable();
++  if (refillObjectIdKey === undefined) {
++    // BSON4.7.2 keeps its bytes under one module-private Symbol; do not identify it by its description.
++    const probe = new Types.ObjectId('000000000000000000000000');
++    const symbols = Object.getOwnPropertySymbols(probe);
++    if (symbols.length !== 1 || Reflect.ownKeys(probe).some(key => key !== symbols[0] && key !== '__id')) throw refillUnavailable();
++    refillObjectIdKey = symbols[0];
++  }
++  const keys = Reflect.ownKeys(value);
++  if (!keys.includes(refillObjectIdKey) || keys.some(key => key !== refillObjectIdKey && key !== '__id')) throw refillUnavailable();
++  for (const key of keys) {
++    const descriptor = Object.getOwnPropertyDescriptor(value, key);
++    if (!descriptor || !('value' in descriptor)) throw refillUnavailable();
++  }
++  const bytes = Object.getOwnPropertyDescriptor(value, refillObjectIdKey)!.value;
++  if (!bytes || typeof bytes !== 'object' || types.isProxy(bytes) || !Buffer.isBuffer(bytes) || Object.getPrototypeOf(bytes) !== Buffer.prototype) throw refillUnavailable();
++  const byteLength = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(Uint8Array.prototype), 'byteLength')!.get!;
++  if (Reflect.apply(byteLength, bytes, []) !== 12 || Reflect.ownKeys(bytes).length !== 12) throw refillUnavailable();
++  const owned = Buffer.alloc(12);
++  for (let i = 0; i < 12; i++) {
++    const descriptor = Object.getOwnPropertyDescriptor(bytes, String(i));
++    if (!descriptor || !('value' in descriptor) || !descriptor.enumerable || !Number.isInteger(descriptor.value) || descriptor.value < 0 || descriptor.value > 255) throw refillUnavailable();
++    owned[i] = descriptor.value;
++  }
++  const id = Reflect.apply(Buffer.prototype.toString, owned, ['hex']);
++  const cache = Object.getOwnPropertyDescriptor(value, '__id');
++  if (cache && cache.value !== id) throw refillUnavailable();
+@@ -60 +84,5 @@ export class PharmacySubscriptionRepository extends BaseRepository<IPharmacySubs
+-      if (!Array.isArray(rows) || rows.length > query.limit + 1) throw refillUnavailable();
++      if (!Array.isArray(rows) || types.isProxy(rows) || Object.getPrototypeOf(rows) !== Array.prototype) throw refillUnavailable();
++      const length = Object.getOwnPropertyDescriptor(rows, 'length');
++      if (!length || !('value' in length) || !Number.isSafeInteger(length.value) || length.value < 0 || length.value > query.limit + 1) throw refillUnavailable();
++      const keys = Reflect.ownKeys(rows);
++      if (keys.length !== length.value + 1 || keys[length.value] !== 'length') throw refillUnavailable();
+@@ -62,2 +90,5 @@ export class PharmacySubscriptionRepository extends BaseRepository<IPharmacySubs
+-      const mapped = rows.map(row => {
+-        const result = dueRefillRow(row, scope, query.through);
++      const mapped: DueRefillRow[] = [];
++      for (let index = 0; index < length.value; index++) {
++        const entry = Object.getOwnPropertyDescriptor(rows, String(index));
++        if (keys[index] !== String(index) || !entry || !('value' in entry) || !entry.enumerable) throw refillUnavailable();
++        const result = dueRefillRow(entry.value, scope, query.through);
+@@ -67,2 +98,2 @@ export class PharmacySubscriptionRepository extends BaseRepository<IPharmacySubs
+-        return result;
+-      });
++        mapped.push(result);
++      }
