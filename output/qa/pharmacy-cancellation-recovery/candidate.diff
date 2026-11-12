@@ -1,0 +1,377 @@
+diff --git a/src1/modules/pharmacyOrders/controller/index.ts b/src1/modules/pharmacyOrders/controller/index.ts
+index d9dcc46d0ad79a8bc9a99ba645713eb72e333132..8bc49eac2e8e95b42fcef4a706a73ebc52241e5c 100644
+--- a/src1/modules/pharmacyOrders/controller/index.ts
++++ b/src1/modules/pharmacyOrders/controller/index.ts
+@@ -23,6 +23,18 @@ export class PharmacyOrderController {
+     res.status(201).json({ success: true, message: 'Order created', data: result });
+   };
+ 
++  requestCustomerRecovery = async (req: AuthRequest, res: Response, _next: NextFunction) => {
++    const data = await this.service.requestCustomerRecovery(req.user, req.params.id);
++    res.setHeader('Cache-Control', 'private, no-store');
++    res.status(200).json({ success: true, data });
++  };
++
++  getCustomerRecovery = async (req: AuthRequest, res: Response, _next: NextFunction) => {
++    const data = await this.service.getCustomerRecovery(req.user, req.params.id);
++    res.setHeader('Cache-Control', 'private, no-store');
++    res.status(200).json({ success: true, data });
++  };
++
+   getById = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+     const result = await this.service.getById(
+       req.params.id,
+diff --git a/src1/modules/pharmacyOrders/model/index.ts b/src1/modules/pharmacyOrders/model/index.ts
+index cd5eafa9c1b4898971f69ec2f294a14340adaa8b..42cd11c2bcbbca2783b7e0e67efbbed63c52756a 100644
+--- a/src1/modules/pharmacyOrders/model/index.ts
++++ b/src1/modules/pharmacyOrders/model/index.ts
+@@ -1,5 +1,5 @@
+ import { Schema, model, Model } from 'mongoose';
+-import { IPharmacyOrder } from '@/modules/pharmacyOrders/types';
++import { IPharmacyOrder, PHARMACY_RECOVERY_ORDER_LABELS, PHARMACY_RECOVERY_PAYMENT_LABELS } from '@/modules/pharmacyOrders/types';
+ 
+ const batchAllocationSchema = new Schema(
+   {
+@@ -61,6 +61,36 @@ const sideEffectStateSchema = new Schema(
+   { _id: false }
+ );
+ 
++const recoveryObservationSchema = new Schema(
++  {
++    orderStatusLabel: { type: String, required: true, enum: [...PHARMACY_RECOVERY_ORDER_LABELS] },
++    paymentStatusLabel: { type: String, required: true, enum: [...PHARMACY_RECOVERY_PAYMENT_LABELS] },
++    paymentRecordId: { type: String, default: null, validate: (value: unknown) => value === null || (typeof value === 'string' && /^[0-9a-f]{24}$/.test(value)) },
++    paymentRecordReferenceState: { type: String, required: true, enum: ['recorded', 'missing', 'malformed'] },
++  },
++  { _id: false, strict: 'throw' }
++);
++
++const recoveryRequestSchema = new Schema(
++  {
++    schemaVersion: { type: Number, required: true, enum: [1] },
++    operationKind: { type: String, required: true, enum: ['customer_recovery_request'] },
++    operationId: { type: String, required: true },
++    requestingCustomerId: { type: String, required: true, match: /^[0-9a-f]{24}$/ },
++    orderId: { type: String, required: true, match: /^[0-9a-f]{24}$/ },
++    status: { type: String, required: true, enum: ['reconciliation_required'] },
++    requestedAt: { type: Date, required: true },
++    observation: { type: recoveryObservationSchema, required: true },
++    amountMinor: { type: Number, default: null, validate: (value: unknown) => value === null },
++    currency: { type: String, default: null, validate: (value: unknown) => value === null },
++    instrument: { type: String, required: true, enum: ['unknown'] },
++    destinationPolicy: { type: String, required: true, enum: ['original_instrument'] },
++    payloadSha256: { type: String, required: true, match: /^[0-9a-f]{64}$/ },
++    observationSha256: { type: String, required: true, match: /^[0-9a-f]{64}$/ },
++  },
++  { _id: false, strict: 'throw' }
++);
++
+ const pharmacyOrderSchema = new Schema<IPharmacyOrder>(
+   {
+     orderNumber: { type: String, trim: true, sparse: true, index: true },
+@@ -104,6 +134,7 @@ const pharmacyOrderSchema = new Schema<IPharmacyOrder>(
+       default: 'pending',
+       index: true,
+     },
++    recoveryRequest: { type: recoveryRequestSchema, default: undefined },
+     paymentSource: { type: String, trim: true },
+     paymentTransactionId: { type: String, trim: true },
+     paidAt: { type: Date },
+diff --git a/src1/modules/pharmacyOrders/repository/index.ts b/src1/modules/pharmacyOrders/repository/index.ts
+index 82dc9c1c351542360288353265dca332590e9cce..9fed2bba8773059b6ebbef0997a96380dcd082eb 100644
+--- a/src1/modules/pharmacyOrders/repository/index.ts
++++ b/src1/modules/pharmacyOrders/repository/index.ts
+@@ -1,15 +1,139 @@
+ import { Service } from 'typedi';
+-import { Model } from 'mongoose';
++import { ClientSession, Model, Types, mongo } from 'mongoose';
++import { createHash } from 'crypto';
+ import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
+-import { IPharmacyOrder, OrderQueryParams } from '@/modules/pharmacyOrders/types';
++import {
++  IPharmacyOrder, OrderQueryParams, PharmacyRecoveryReceipt, PharmacyRecoveryRequest,
++  PHARMACY_RECOVERY_ORDER_LABELS, PHARMACY_RECOVERY_PAYMENT_LABELS,
++} from '@/modules/pharmacyOrders/types';
++import { AppError } from '@/modules/common/types';
+ import { BaseRepository } from '@/modules/common/repository';
+ 
++const recoveryProjection = {
++  _id: 1, customerId: 1, pharmacyId: 1, status: 1, paymentStatus: 1,
++  paymentTransactionId: 1, recoveryRequest: 1,
++};
++const recoveryId = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{24}$/.test(value);
++const recoveryUnavailable = (): never => {
++  throw new AppError({ status: 503, code: 'PHARMACY_RECOVERY_UNAVAILABLE', message: 'Pharmacy recovery is unavailable' });
++};
++const recoveryShape = (value: unknown, keys: string[]): Record<string, unknown> => {
++  if (!value || typeof value !== 'object' || ![Object.prototype, null].includes(Object.getPrototypeOf(value))) return recoveryUnavailable();
++  const own = Reflect.ownKeys(value);
++  if (own.length !== keys.length || !own.every(key => typeof key === 'string' && keys.includes(key) &&
++    Object.getOwnPropertyDescriptor(value, key)?.enumerable === true &&
++    'value' in Object.getOwnPropertyDescriptor(value, key)!)) return recoveryUnavailable();
++  return value as Record<string, unknown>;
++};
++const recoveryDigest = (value: unknown[]): string => createHash('sha256').update(JSON.stringify(value), 'utf8').digest('hex');
++const recoveryPayloadDigest = (id: string, customerId: string): string => recoveryDigest([
++  'pharmacy-customer-recovery', 1, 'customer_recovery_request', ['orderId', id], ['requestingCustomerId', customerId],
++]);
++const recoveryObservationDigest = (epoch: number, observation: Record<string, unknown>): string => recoveryDigest([
++  'pharmacy-recovery-observation', 1, ['requestedAt', epoch],
++  ['orderStatusLabel', observation.orderStatusLabel], ['paymentStatusLabel', observation.paymentStatusLabel],
++  ['paymentRecordId', observation.paymentRecordId], ['paymentRecordReferenceState', observation.paymentRecordReferenceState],
++]);
++
++function recoveryReceipt(value: unknown, id: string, customerId: string): PharmacyRecoveryReceipt {
++  const record = recoveryShape(value, ['schemaVersion', 'operationKind', 'operationId', 'requestingCustomerId', 'orderId',
++    'status', 'requestedAt', 'observation', 'amountMinor', 'currency', 'instrument', 'destinationPolicy', 'payloadSha256', 'observationSha256']);
++  const observation = recoveryShape(record.observation, ['orderStatusLabel', 'paymentStatusLabel', 'paymentRecordId', 'paymentRecordReferenceState']);
++  const date = record.requestedAt;
++  const epoch = date instanceof Date ? date.getTime() : NaN;
++  if (record.schemaVersion !== 1 || record.operationKind !== 'customer_recovery_request' ||
++    record.operationId !== 'pharmacy-recovery-request:v1:' + id || record.orderId !== id || record.requestingCustomerId !== customerId ||
++    record.status !== 'reconciliation_required' || record.amountMinor !== null || record.currency !== null ||
++    record.instrument !== 'unknown' || record.destinationPolicy !== 'original_instrument' ||
++    !Number.isSafeInteger(epoch) || epoch < 0 || epoch > 8640000000000000 ||
++    !PHARMACY_RECOVERY_ORDER_LABELS.some(label => label === observation.orderStatusLabel) ||
++    !PHARMACY_RECOVERY_PAYMENT_LABELS.some(label => label === observation.paymentStatusLabel) ||
++    (observation.paymentRecordReferenceState === 'recorded'
++      ? !recoveryId(observation.paymentRecordId)
++      : !['missing', 'malformed'].includes(observation.paymentRecordReferenceState as string) || observation.paymentRecordId !== null) ||
++    record.payloadSha256 !== recoveryPayloadDigest(id, customerId) ||
++    record.observationSha256 !== recoveryObservationDigest(epoch, observation)) return recoveryUnavailable();
++  return {
++    operationId: record.operationId as string, status: 'reconciliation_required', requestedAt: (date as Date).toISOString(),
++    amountMinor: null, currency: null, instrument: 'unknown', destinationPolicy: 'original_instrument',
++  };
++}
++
+ @Service()
+ export class PharmacyOrderRepository extends BaseRepository<IPharmacyOrder> {
+   constructor() {
+     super(PharmacyOrderModel as Model<IPharmacyOrder>);
+   }
+ 
++  private assertRecoverySession(session: ClientSession, expectedTransaction?: unknown): unknown {
++    const Session = mongo.ClientSession;
++    const held = session as unknown as { client?: unknown; transaction?: { options?: { readConcern?: { level?: unknown } } } };
++    if (typeof Session !== 'function' || !(session instanceof Session) || held.client !== PharmacyOrderModel.db.getClient() ||
++      !session.inTransaction() || held.transaction?.options?.readConcern?.level !== 'snapshot' ||
++      (expectedTransaction !== undefined && held.transaction !== expectedTransaction)) return recoveryUnavailable();
++    return held.transaction;
++  }
++
++  private async readCustomerRecoveryOrder(id: string, customerId: string, session: ClientSession): Promise<{ row: Record<string, unknown>; transaction: unknown }> {
++    if (!recoveryId(customerId)) throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
++    if (!recoveryId(id)) throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid pharmacy order ID' });
++    const transaction = this.assertRecoverySession(session);
++    const row = await PharmacyOrderModel.findOne({
++      _id: new Types.ObjectId(id), customerId: new Types.ObjectId(customerId),
++      $expr: { $and: [{ $eq: [{ $type: '$_id' }, 'objectId'] }, { $eq: [{ $type: '$customerId' }, 'objectId'] }] },
++    }).select(recoveryProjection).session(session).maxTimeMS(2000).lean().exec();
++    this.assertRecoverySession(session, transaction);
++    if (!row) throw new AppError({ status: 404, code: 'ORDER_NOT_FOUND', message: 'Order not found' });
++    const record = row as unknown as Record<string, unknown>;
++    if (!(record._id instanceof Types.ObjectId) || record._id.toHexString() !== id ||
++      !(record.customerId instanceof Types.ObjectId) || record.customerId.toHexString() !== customerId ||
++      !(record.pharmacyId instanceof Types.ObjectId)) return recoveryUnavailable();
++    return { row: record, transaction };
++  }
++
++  async getCustomerRecovery(id: string, customerId: string, session: ClientSession): Promise<PharmacyRecoveryReceipt | null> {
++    const { row } = await this.readCustomerRecoveryOrder(id, customerId, session);
++    return Object.prototype.hasOwnProperty.call(row, 'recoveryRequest') ? recoveryReceipt(row.recoveryRequest, id, customerId) : null;
++  }
++
++  async requestCustomerRecovery(id: string, customerId: string, session: ClientSession): Promise<PharmacyRecoveryReceipt> {
++    const { row, transaction } = await this.readCustomerRecoveryOrder(id, customerId, session);
++    this.assertRecoverySession(session, transaction);
++    if (Object.prototype.hasOwnProperty.call(row, 'recoveryRequest')) return recoveryReceipt(row.recoveryRequest, id, customerId);
++    const reference = row.paymentTransactionId;
++    const observation = {
++      orderStatusLabel: PHARMACY_RECOVERY_ORDER_LABELS.find(label => label === row.status) ?? 'unknown',
++      paymentStatusLabel: PHARMACY_RECOVERY_PAYMENT_LABELS.find(label => label === row.paymentStatus) ?? 'unknown',
++      paymentRecordId: recoveryId(reference) ? reference : null,
++      paymentRecordReferenceState: recoveryId(reference) ? 'recorded' as const : reference === undefined || reference === null ? 'missing' as const : 'malformed' as const,
++    };
++    const requestedAt = new Date();
++    const request: PharmacyRecoveryRequest = {
++      schemaVersion: 1, operationKind: 'customer_recovery_request', operationId: 'pharmacy-recovery-request:v1:' + id,
++      requestingCustomerId: customerId, orderId: id, status: 'reconciliation_required', requestedAt, observation,
++      amountMinor: null, currency: null, instrument: 'unknown', destinationPolicy: 'original_instrument',
++      payloadSha256: recoveryPayloadDigest(id, customerId),
++      observationSha256: recoveryObservationDigest(requestedAt.getTime(), observation),
++    };
++    recoveryReceipt(request, id, customerId);
++    this.assertRecoverySession(session, transaction);
++    const updated = await PharmacyOrderModel.findOneAndUpdate({
++      _id: new Types.ObjectId(id), customerId: new Types.ObjectId(customerId), recoveryRequest: { $exists: false },
++      $expr: { $and: [{ $eq: [{ $type: '$_id' }, 'objectId'] }, { $eq: [{ $type: '$customerId' }, 'objectId'] }] },
++    }, { $set: { recoveryRequest: request } }, { session, new: true, upsert: false, runValidators: true, projection: recoveryProjection, maxTimeMS: 2000 }).lean().exec();
++    this.assertRecoverySession(session, transaction);
++    if (updated) {
++      const current = updated as unknown as Record<string, unknown>;
++      if (!(current._id instanceof Types.ObjectId) || current._id.toHexString() !== id ||
++        !(current.customerId instanceof Types.ObjectId) || current.customerId.toHexString() !== customerId) return recoveryUnavailable();
++      return recoveryReceipt(current.recoveryRequest, id, customerId);
++    }
++    const { row: current } = await this.readCustomerRecoveryOrder(id, customerId, session);
++    this.assertRecoverySession(session, transaction);
++    if (!Object.prototype.hasOwnProperty.call(current, 'recoveryRequest')) return recoveryUnavailable();
++    return recoveryReceipt(current.recoveryRequest, id, customerId);
++  }
++
+   private applyCommonFilters(query: Record<string, unknown>, filter: OrderQueryParams): Record<string, unknown> {
+     const effectiveCustomerId = filter.userId || filter.customerId;
+     if (effectiveCustomerId) {
+diff --git a/src1/modules/pharmacyOrders/routes/index.ts b/src1/modules/pharmacyOrders/routes/index.ts
+index d349510c30e783f67772cafa95fcb27038206d48..717d27c1549416014ddb7b23131520fddf383196 100644
+--- a/src1/modules/pharmacyOrders/routes/index.ts
++++ b/src1/modules/pharmacyOrders/routes/index.ts
+@@ -33,6 +33,16 @@ pharmacyOrderRouter.get(
+   catchAsync(controller.getAll)
+ );
+ 
++pharmacyOrderRouter.post(
++  '/:id/recovery-request',
++  catchAsync(controller.requestCustomerRecovery)
++);
++
++pharmacyOrderRouter.get(
++  '/:id/recovery-request',
++  catchAsync(controller.getCustomerRecovery)
++);
++
+ pharmacyOrderRouter.get(
+   '/:id',
+   validate(idParamSchema, 'params'),
+diff --git a/src1/modules/pharmacyOrders/services/index.ts b/src1/modules/pharmacyOrders/services/index.ts
+index de8c55ba53386bb75f794b99be16244e35a029fa..f877d2c37f21fef0c440d4e70e58802bb1a72c59 100644
+--- a/src1/modules/pharmacyOrders/services/index.ts
++++ b/src1/modules/pharmacyOrders/services/index.ts
+@@ -10,6 +10,7 @@ import { PharmacyOrderSideEffectService } from '@/modules/pharmacyOrders/service
+ import { MedicineRepository } from '@/modules/pharmacyMedicines/repository';
+ import {
+   IPharmacyOrder,
++  PharmacyRecoveryReceipt,
+   IOrderItem,
+   CreateOrderRequest,
+   MarkOrderPaidRequest,
+@@ -768,6 +769,57 @@ export class PharmacyOrderService {
+     };
+   }
+ 
++  private async customerRecovery(actor: unknown, id: unknown, create: boolean): Promise<PharmacyRecoveryReceipt | null> {
++    if (!actor || typeof actor !== 'object' || Array.isArray(actor)) {
++      throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Authentication is required' });
++    }
++    const principal = actor as Record<string, unknown>;
++    if (principal.userType !== 'user') {
++      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Individual customer access is required' });
++    }
++    const customerId = principal._id;
++    if (typeof customerId !== 'string' || !/^[0-9a-f]{24}$/.test(customerId)) {
++      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
++    }
++    if (typeof id !== 'string' || !/^[0-9a-f]{24}$/.test(id)) {
++      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid pharmacy order ID' });
++    }
++    const session = await startSession();
++    const attempt: { candidate: PharmacyRecoveryReceipt | null | undefined; completed: boolean; transaction: unknown } = {
++      candidate: undefined, completed: false, transaction: undefined,
++    };
++    try {
++      // Driver4 withTransaction returns the commit response, never this callback's DTO.
++      await session.withTransaction(async () => {
++        attempt.candidate = undefined;
++        attempt.completed = false;
++        attempt.transaction = undefined;
++        attempt.candidate = create
++          ? await this.orderRepo.requestCustomerRecovery(id, customerId, session)
++          : await this.orderRepo.getCustomerRecovery(id, customerId, session);
++        attempt.transaction = (session as unknown as { transaction?: unknown }).transaction;
++        attempt.completed = true;
++      }, { readConcern: { level: 'snapshot' } });
++      const transaction = (session as unknown as { transaction?: { state?: unknown } }).transaction;
++      if (!attempt.completed || attempt.candidate === undefined || transaction !== attempt.transaction || transaction?.state !== 'TRANSACTION_COMMITTED') {
++        throw new AppError({ status: 503, code: 'PHARMACY_RECOVERY_UNAVAILABLE', message: 'Pharmacy recovery is unavailable' });
++      }
++      return attempt.candidate;
++    } finally {
++      await session.endSession();
++    }
++  }
++
++  async requestCustomerRecovery(actor: unknown, id: unknown): Promise<PharmacyRecoveryReceipt> {
++    const receipt = await this.customerRecovery(actor, id, true);
++    if (!receipt) throw new AppError({ status: 503, code: 'PHARMACY_RECOVERY_UNAVAILABLE', message: 'Pharmacy recovery is unavailable' });
++    return receipt;
++  }
++
++  async getCustomerRecovery(actor: unknown, id: unknown): Promise<PharmacyRecoveryReceipt | null> {
++    return this.customerRecovery(actor, id, false);
++  }
++
+   async getById(id: string, requesterId: string, requesterRole: string): Promise<IPharmacyOrder> {
+     const order = await this.orderRepo.findById(id);
+     if (!order) {
+diff --git a/src1/modules/pharmacyOrders/types/index.ts b/src1/modules/pharmacyOrders/types/index.ts
+index 8ae4c526f7308d76ee2681752f7733f730973433..3039e9196c81756fe881d2156a64dae4d1cb7426 100644
+--- a/src1/modules/pharmacyOrders/types/index.ts
++++ b/src1/modules/pharmacyOrders/types/index.ts
+@@ -74,6 +74,48 @@ export interface IOrderItem {
+   subscriptionReminderChannel?: 'sms' | 'push' | 'both' | 'none';
+ }
+ 
++export const PHARMACY_RECOVERY_ORDER_LABELS = Object.freeze([
++  'placed', 'accepted', 'packed', 'ready_for_pickup', 'out_for_delivery',
++  'completed', 'abandoned', 'cancelled', 'rejected', 'unknown',
++] as const);
++export const PHARMACY_RECOVERY_PAYMENT_LABELS = Object.freeze([
++  'pending', 'authorized', 'paid', 'failed', 'refunded', 'partially_paid', 'unknown',
++] as const);
++
++export interface PharmacyRecoveryObservation {
++  orderStatusLabel: OrderStatus | 'unknown';
++  paymentStatusLabel: PaymentStatus | 'unknown';
++  paymentRecordId: string | null;
++  paymentRecordReferenceState: 'recorded' | 'missing' | 'malformed';
++}
++
++export interface PharmacyRecoveryRequest {
++  schemaVersion: 1;
++  operationKind: 'customer_recovery_request';
++  operationId: string;
++  requestingCustomerId: string;
++  orderId: string;
++  status: 'reconciliation_required';
++  requestedAt: Date;
++  observation: PharmacyRecoveryObservation;
++  amountMinor: null;
++  currency: null;
++  instrument: 'unknown';
++  destinationPolicy: 'original_instrument';
++  payloadSha256: string;
++  observationSha256: string;
++}
++
++export interface PharmacyRecoveryReceipt {
++  operationId: string;
++  status: 'reconciliation_required';
++  requestedAt: string;
++  amountMinor: null;
++  currency: null;
++  instrument: 'unknown';
++  destinationPolicy: 'original_instrument';
++}
++
+ export interface IPharmacyOrder {
+   _id?: string;
+   orderNumber?: string;
+@@ -102,6 +144,7 @@ export interface IPharmacyOrder {
+   paymentTransactionId?: string;
+   paidAt?: Date;
+   sideEffects?: IPharmacyOrderSideEffects;
++  recoveryRequest?: PharmacyRecoveryRequest;
+   // delivery
+   deliveryMode?: 'pickup' | 'delivery';
+   deliveryAddress?: string;

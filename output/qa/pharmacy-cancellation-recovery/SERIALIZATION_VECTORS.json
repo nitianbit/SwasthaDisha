@@ -1,0 +1,65 @@
+{
+  "status": "DECLARED_DATA_ONLY_NOT_EXECUTED_AGAINST_TYPESCRIPT",
+  "encoding": "Compact JSON UTF-8 fixed ordered arrays; synthetic ASCII IDs/labels and integer epoch only.",
+  "payload": {
+    "orderId": "222222222222222222222222",
+    "requestingCustomerId": "111111111111111111111111",
+    "expectedSerializationUtf8": "[\"pharmacy-customer-recovery\",1,\"customer_recovery_request\",[\"orderId\",\"222222222222222222222222\"],[\"requestingCustomerId\",\"111111111111111111111111\"]]",
+    "expectedSha256": "4c1c18e177ae5b83336548aa40f1af0c4214e2f2506aa09fadd90c223d552457"
+  },
+  "observations": [
+    {
+      "id": "recorded",
+      "observation": {
+        "orderStatusLabel": "accepted",
+        "paymentStatusLabel": "paid",
+        "paymentRecordId": "333333333333333333333333",
+        "paymentRecordReferenceState": "recorded"
+      },
+      "requestedAtEpoch": 1000,
+      "expectedSerializationUtf8": "[\"pharmacy-recovery-observation\",1,[\"requestedAt\",1000],[\"orderStatusLabel\",\"accepted\"],[\"paymentStatusLabel\",\"paid\"],[\"paymentRecordId\",\"333333333333333333333333\"],[\"paymentRecordReferenceState\",\"recorded\"]]",
+      "expectedSha256": "7238f46054c400b3b991838940ce6449c891c4cb29aeaaf4a672384676bd8218"
+    },
+    {
+      "id": "missing",
+      "observation": {
+        "orderStatusLabel": "accepted",
+        "paymentStatusLabel": "paid",
+        "paymentRecordId": null,
+        "paymentRecordReferenceState": "missing"
+      },
+      "requestedAtEpoch": 1000,
+      "expectedSerializationUtf8": "[\"pharmacy-recovery-observation\",1,[\"requestedAt\",1000],[\"orderStatusLabel\",\"accepted\"],[\"paymentStatusLabel\",\"paid\"],[\"paymentRecordId\",null],[\"paymentRecordReferenceState\",\"missing\"]]",
+      "expectedSha256": "5d2c7463f833b0adfdd21ac4f11699fe3147771230444b4ae6822f8fef006450"
+    },
+    {
+      "id": "malformed",
+      "observation": {
+        "orderStatusLabel": "accepted",
+        "paymentStatusLabel": "paid",
+        "paymentRecordId": null,
+        "paymentRecordReferenceState": "malformed"
+      },
+      "requestedAtEpoch": 1000,
+      "expectedSerializationUtf8": "[\"pharmacy-recovery-observation\",1,[\"requestedAt\",1000],[\"orderStatusLabel\",\"accepted\"],[\"paymentStatusLabel\",\"paid\"],[\"paymentRecordId\",null],[\"paymentRecordReferenceState\",\"malformed\"]]",
+      "expectedSha256": "802a8e919bbac5f4f8a757b5a3080da9a8a3645c71491624f00afe65752c9d9b"
+    }
+  ],
+  "responseBound": {
+    "witness": {
+      "success": true,
+      "data": {
+        "operationId": "pharmacy-recovery-request:v1:222222222222222222222222",
+        "status": "reconciliation_required",
+        "requestedAt": "+275760-09-13T00:00:00.000Z",
+        "amountMinor": null,
+        "currency": null,
+        "instrument": "unknown",
+        "destinationPolicy": "original_instrument"
+      }
+    },
+    "compactUtf8Bytes": 274,
+    "declaredCap": 2048,
+    "meaning": "Arithmetic witness with longest valid ISO Date; not actual Express/TypeScript emission evidence."
+  }
+}

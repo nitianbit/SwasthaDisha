@@ -1,5 +1,5 @@
 import { Schema, model, Model } from 'mongoose';
-import { IPharmacyOrder } from '@/modules/pharmacyOrders/types';
+import { IPharmacyOrder, PHARMACY_RECOVERY_ORDER_LABELS, PHARMACY_RECOVERY_PAYMENT_LABELS } from '@/modules/pharmacyOrders/types';
 
 const batchAllocationSchema = new Schema(
   {
@@ -61,6 +61,36 @@ const sideEffectStateSchema = new Schema(
   { _id: false }
 );
 
+const recoveryObservationSchema = new Schema(
+  {
+    orderStatusLabel: { type: String, required: true, enum: [...PHARMACY_RECOVERY_ORDER_LABELS] },
+    paymentStatusLabel: { type: String, required: true, enum: [...PHARMACY_RECOVERY_PAYMENT_LABELS] },
+    paymentRecordId: { type: String, default: null, validate: (value: unknown) => value === null || (typeof value === 'string' && /^[0-9a-f]{24}$/.test(value)) },
+    paymentRecordReferenceState: { type: String, required: true, enum: ['recorded', 'missing', 'malformed'] },
+  },
+  { _id: false, strict: 'throw' }
+);
+
+const recoveryRequestSchema = new Schema(
+  {
+    schemaVersion: { type: Number, required: true, enum: [1] },
+    operationKind: { type: String, required: true, enum: ['customer_recovery_request'] },
+    operationId: { type: String, required: true },
+    requestingCustomerId: { type: String, required: true, match: /^[0-9a-f]{24}$/ },
+    orderId: { type: String, required: true, match: /^[0-9a-f]{24}$/ },
+    status: { type: String, required: true, enum: ['reconciliation_required'] },
+    requestedAt: { type: Date, required: true },
+    observation: { type: recoveryObservationSchema, required: true },
+    amountMinor: { type: Number, default: null, validate: (value: unknown) => value === null },
+    currency: { type: String, default: null, validate: (value: unknown) => value === null },
+    instrument: { type: String, required: true, enum: ['unknown'] },
+    destinationPolicy: { type: String, required: true, enum: ['original_instrument'] },
+    payloadSha256: { type: String, required: true, match: /^[0-9a-f]{64}$/ },
+    observationSha256: { type: String, required: true, match: /^[0-9a-f]{64}$/ },
+  },
+  { _id: false, strict: 'throw' }
+);
+
 const pharmacyOrderSchema = new Schema<IPharmacyOrder>(
   {
     orderNumber: { type: String, trim: true, sparse: true, index: true },
@@ -104,6 +134,7 @@ const pharmacyOrderSchema = new Schema<IPharmacyOrder>(
       default: 'pending',
       index: true,
     },
+    recoveryRequest: { type: recoveryRequestSchema, default: undefined },
     paymentSource: { type: String, trim: true },
     paymentTransactionId: { type: String, trim: true },
     paidAt: { type: Date },
