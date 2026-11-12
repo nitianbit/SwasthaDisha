@@ -1,0 +1,19 @@
+{
+  "schema": "SD-PRIVATE-DOCUMENT-HEADER-IMPLEMENTATION-1",
+  "author": "/root/lab_remaining_audit",
+  "contractSha256": "fe9479b80f66693de2e7f592bc9ab3335dc921595e36639fdb417a9547710b7b",
+  "sourceBaseline": "12b3e4ed884857cfaf4df1ec339bf16e7e494ff1",
+  "ownedSourceFiles": [
+    "src1/modules/file/controller/index.ts",
+    "src1/modules/file/routes/index.ts"
+  ],
+  "rootCentralCandidateSha256": "9be841178931003004cc53a0285b5c849d82a82dbc798a4a0d38bf69396de6ea",
+  "rootCentralBytesUntouched": true,
+  "headerDefinition": "src1/modules/file/controller/index.ts:applyPrivateDocumentHeaders",
+  "exportedMiddleware": "src1/modules/file/routes/index.ts:privateDocumentHeaders",
+  "predicate": "^\\/(?:assets(?:\\/|$)|clinical(?:\\/|$))/i",
+  "staticOnly": true,
+  "runtime": "NOT_RUN",
+  "independentCombinedSourceReviews": "PENDING",
+  "S1Complete": false
+}

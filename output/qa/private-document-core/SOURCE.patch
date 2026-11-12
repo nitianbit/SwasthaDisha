@@ -1,27 +1,28 @@
 diff --git a/src1/modules/file/controller/index.ts b/src1/modules/file/controller/index.ts
-index d5775620d30df63a18fe21d2ef0f0cd60c20ce87..e878644f7d45088ad2a7cb6d0a430631914033a2 100644
+index d5775620d30df63a18fe21d2ef0f0cd60c20ce87..0dabece38620935f176523f9fe29fe91dd88ab0e 100644
 --- a/src1/modules/file/controller/index.ts
 +++ b/src1/modules/file/controller/index.ts
-@@ -8,0 +9,5 @@ import { CONFIG } from '@/config/config';
+@@ -8,0 +9,12 @@ import { CONFIG } from '@/config/config';
 +import { AppError } from '@/modules/common/types';
 +import { AuthRequest } from '@/modules/middleware/auth';
 +import { FileDocumentService } from '../documents';
 +import { legacyPath } from '../storage';
 +import { documentError } from '../validation';
-@@ -11,0 +17 @@ export class FileController {
++
++/** One header policy shared by pre-auth private routes, handlers and reserved-subtree denials. */
++export function applyPrivateDocumentHeaders(res: Response): void {
++  res.setHeader('Cache-Control', 'private, no-store'); res.setHeader('Pragma', 'no-cache');
++  res.vary('Authorization'); res.setHeader('X-Content-Type-Options', 'nosniff');
++  res.removeHeader('ETag'); res.removeHeader('Last-Modified');
++}
+@@ -11,0 +24 @@ export class FileController {
 +  private documents: FileDocumentService;
-@@ -14,0 +21,56 @@ export class FileController {
+@@ -14,0 +28,50 @@ export class FileController {
 +    this.documents = Container.get(FileDocumentService);
 +  }
 +
-+  private privateHeaders(res: Response): void {
-+    res.setHeader('Cache-Control', 'private, no-store'); res.setHeader('Pragma', 'no-cache');
-+    res.vary('Authorization'); res.setHeader('X-Content-Type-Options', 'nosniff');
-+    res.removeHeader('ETag'); res.removeHeader('Last-Modified');
-+  }
-+
 +  private async privateRequest(res: Response, work: () => Promise<void>): Promise<void> {
-+    this.privateHeaders(res);
++    applyPrivateDocumentHeaders(res);
 +    try { await work(); } catch (error) {
 +      if (res.headersSent && !res.destroyed) res.destroy();
 +      if (error instanceof AppError && typeof error.code === 'string' && error.code.startsWith('DOCUMENT_')) throw error;
@@ -63,32 +64,32 @@ index d5775620d30df63a18fe21d2ef0f0cd60c20ce87..e878644f7d45088ad2a7cb6d0a430631
 +
 +  private legacyFilePath(raw: unknown, root: string, res: Response): string {
 +    try { return legacyPath(raw, root); } catch (error) {
-+      this.privateHeaders(res);
++      applyPrivateDocumentHeaders(res);
 +      if (error instanceof AppError) throw error;
 +      throw documentError();
 +    }
-@@ -17,0 +80 @@ export class FileController {
-+    this.privateHeaders(res);
-@@ -19,2 +82,2 @@ export class FileController {
+@@ -17,0 +81 @@ export class FileController {
++    applyPrivateDocumentHeaders(res);
+@@ -19,2 +83,2 @@ export class FileController {
 -    const module = (req.params.module as string) || req.body.module || 'general';
 -    const recordId = req.body.recordId as string | undefined;
 +    const module = (req.params.module as string) || req.body?.module || 'general';
 +    const recordId = req.body?.recordId as string | undefined;
-@@ -39 +102 @@ export class FileController {
+@@ -39 +103 @@ export class FileController {
 -    if (!url) {
 +    if (typeof url !== 'string' || url.length === 0 || url.length > 1024) {
-@@ -100 +163 @@ export class FileController {
+@@ -100 +164 @@ export class FileController {
 -    const fullPath = path.join(uploadDir, filePath);
 +    const fullPath = this.legacyFilePath(filePath, uploadDir, res);
-@@ -140,0 +204,2 @@ export class FileController {
+@@ -140,0 +205,2 @@ export class FileController {
 +      // Every alias reaches the same reserved-subtree guard before byte/stat access.
 +      if (typeof filePath !== 'string') throw documentError(400, 'DOCUMENT_INPUT_INVALID');
-@@ -151 +216 @@ export class FileController {
+@@ -151 +217 @@ export class FileController {
 -      const fullPath = path.join(uploadDir, filePath);
 +      const fullPath = this.legacyFilePath(filePath, uploadDir, res);
-@@ -185,0 +251,4 @@ export class FileController {
+@@ -185,0 +252,4 @@ export class FileController {
 +      if (error instanceof AppError) {
-+        this.privateHeaders(res);
++        applyPrivateDocumentHeaders(res);
 +        throw error;
 +      }
 diff --git a/src1/modules/file/documentTypes.ts b/src1/modules/file/documentTypes.ts
@@ -586,10 +587,22 @@ index 0000000000000000000000000000000000000000..ec5cbb96c98571abda64e81419f53092
 +  }
 +}
 diff --git a/src1/modules/file/routes/index.ts b/src1/modules/file/routes/index.ts
-index 105f68e7631a4db353813e6167a91d447a285c57..33037bcb2677509dab4677e81bad6d3f304113ee 100644
+index 105f68e7631a4db353813e6167a91d447a285c57..d153473a3bc92c395a1f99ee644333f9739676f9 100644
 --- a/src1/modules/file/routes/index.ts
 +++ b/src1/modules/file/routes/index.ts
-@@ -9,0 +10,7 @@ const fileController = new FileController();
+@@ -2 +2 @@ import 'reflect-metadata';
+-import { Router } from 'express';
++import { Router, Request, Response, NextFunction } from 'express';
+@@ -4 +4,7 @@ import { catchAsync } from '@/modules/common/utils/asyncHandler';
+-import { FileController } from '../controller';
++import { FileController, applyPrivateDocumentHeaders } from '../controller';
++
++/** Called at the existing file mount before authentication; other prefixes retain their policy. */
++export function privateDocumentHeaders(req: Request, res: Response, next: NextFunction): void {
++  if (/^\/(?:assets(?:\/|$)|clinical(?:\/|$))/i.test(req.path)) applyPrivateDocumentHeaders(res);
++  next();
++}
+@@ -9,0 +16,7 @@ const fileController = new FileController();
 +// New private document commands; the existing central mount authenticates first.
 +fileRouter.post('/assets/uploads', catchAsync(fileController.uploadPrivateAsset));
 +fileRouter.post('/clinical/:resourceKind/:resourceId/uploads', catchAsync(fileController.uploadClinicalAsset));

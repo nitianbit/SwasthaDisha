@@ -12,6 +12,13 @@ import { FileDocumentService } from '../documents';
 import { legacyPath } from '../storage';
 import { documentError } from '../validation';
 
+/** One header policy shared by pre-auth private routes, handlers and reserved-subtree denials. */
+export function applyPrivateDocumentHeaders(res: Response): void {
+  res.setHeader('Cache-Control', 'private, no-store'); res.setHeader('Pragma', 'no-cache');
+  res.vary('Authorization'); res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.removeHeader('ETag'); res.removeHeader('Last-Modified');
+}
+
 export class FileController {
   private fileService: FileService;
   private documents: FileDocumentService;
@@ -21,14 +28,8 @@ export class FileController {
     this.documents = Container.get(FileDocumentService);
   }
 
-  private privateHeaders(res: Response): void {
-    res.setHeader('Cache-Control', 'private, no-store'); res.setHeader('Pragma', 'no-cache');
-    res.vary('Authorization'); res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.removeHeader('ETag'); res.removeHeader('Last-Modified');
-  }
-
   private async privateRequest(res: Response, work: () => Promise<void>): Promise<void> {
-    this.privateHeaders(res);
+    applyPrivateDocumentHeaders(res);
     try { await work(); } catch (error) {
       if (res.headersSent && !res.destroyed) res.destroy();
       if (error instanceof AppError && typeof error.code === 'string' && error.code.startsWith('DOCUMENT_')) throw error;
@@ -70,14 +71,14 @@ export class FileController {
 
   private legacyFilePath(raw: unknown, root: string, res: Response): string {
     try { return legacyPath(raw, root); } catch (error) {
-      this.privateHeaders(res);
+      applyPrivateDocumentHeaders(res);
       if (error instanceof AppError) throw error;
       throw documentError();
     }
   }
 
   uploadFiles = async (req: Request, res: Response, _next: NextFunction) => {
-    this.privateHeaders(res);
+    applyPrivateDocumentHeaders(res);
     // Get module from params or form data
     const module = (req.params.module as string) || req.body?.module || 'general';
     const recordId = req.body?.recordId as string | undefined;
@@ -249,7 +250,7 @@ export class FileController {
       res.send(file);
     } catch (error: any) {
       if (error instanceof AppError) {
-        this.privateHeaders(res);
+        applyPrivateDocumentHeaders(res);
         throw error;
       }
       res.status(500).json({

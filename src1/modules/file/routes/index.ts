@@ -1,7 +1,13 @@
 import 'reflect-metadata';
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
-import { FileController } from '../controller';
+import { FileController, applyPrivateDocumentHeaders } from '../controller';
+
+/** Called at the existing file mount before authentication; other prefixes retain their policy. */
+export function privateDocumentHeaders(req: Request, res: Response, next: NextFunction): void {
+  if (/^\/(?:assets(?:\/|$)|clinical(?:\/|$))/i.test(req.path)) applyPrivateDocumentHeaders(res);
+  next();
+}
 
 const fileRouter = Router();
 

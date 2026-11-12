@@ -9,13 +9,13 @@
   "sourceFiles": [
     {
       "path": "src1/modules/file/controller/index.ts",
-      "bytes": 9269,
-      "sha256": "2cfa49c5c466967775558995151f2aa19280913e3c75b655a5e09cbd742ba850"
+      "bytes": 9411,
+      "sha256": "620e3cbdd56a9600bbf618d389cf2e473b3a795810337b1a606598fb45aa920a"
     },
     {
       "path": "src1/modules/file/routes/index.ts",
-      "bytes": 1772,
-      "sha256": "c3642ea3d46a2bfbb2dcea540a53dde7befe6d8ac5b8b761075508fe60d61cae"
+      "bytes": 2141,
+      "sha256": "2934b9f85bcadcfb9c29dfba3d37adbbcd641bac1e004e15b1fe3ffc4a9cd76f"
     },
     {
       "path": "src1/modules/file/services/index.ts",
@@ -59,7 +59,9 @@
     "trackedChangesWithinOwnedFileModule": "PASS",
     "localImportPathsExist": "PASS_DATA_ONLY_NOT_TYPES",
     "originalSixWorkingEqualStagedAndOriginalPatchUnchanged": "PASS",
-    "liveR10Selected116FocusFilesUnchanged": "PASS"
+    "liveR10Selected116FocusFilesUnchanged": "PASS",
+    "headerDefinitionSingleSharedSource": "PASS_SOURCE_DATA_ONLY",
+    "rootCentralOwnedBytesUntouched": "PASS"
   },
   "imports": [
     {
@@ -239,10 +241,20 @@
     "Old public report/static paths remain open outside the new reserved subtree until the full S1 compatibility/migration cutover.",
     "New metadata models disable autoIndex/autoCreate; declarations do not establish installed correctness indexes.",
     "Trusted exclusive service-uid root required; no defense claimed against malicious same-uid ancestor/in-place mutation or already delivered bytes.",
-    "Central mount authenticate executes before file router: generic unauthenticated401 header policy is outside this owned source surface.",
     "Genuine public-image writer adapters, legacy inventory/client flows, provider/CDN guards/adapters and qualified clinical/retention adoption remain pending.",
-    "Final integration/corporate/HR/hospital expansion remain deferred; focused C2/C3 and all owner/release gates remain open."
+    "Final integration/corporate/HR/hospital expansion remain deferred; focused C2/C3 and all owner/release gates remain open.",
+    "Pre-auth private-header integration requires Root-owned central import/mount plus independent combined review. Global parser errors before this mount remain separate."
   ],
-  "sourcePatchSha256": "74420120c52330e0af4184cb55007c8054dcca516c3684196eb351576f46f43d",
-  "sourcePatch": "output/qa/private-document-core/SOURCE.patch"
+  "sourcePatchSha256": "bde256883b3ce623eecbbc9723c8b5ec2d1405f9698affbf5e8d09db15c72304",
+  "sourcePatch": "output/qa/private-document-core/SOURCE.patch",
+  "headerAddendum": {
+    "path": "documentation/planning/implementation/PRIVATE_DOCUMENT_AUTH_HEADERS_ADDENDUM.md",
+    "sha256": "fe9479b80f66693de2e7f592bc9ab3335dc921595e36639fdb417a9547710b7b",
+    "decisions": "output/qa/private-clinical-documents/HEADER_CONTRACT_DECISIONS.json",
+    "fileModuleAuthor": "/root/lab_remaining_audit",
+    "sharedRootAuthor": "/root",
+    "rootCentralCandidateSha256": "9be841178931003004cc53a0285b5c849d82a82dbc798a4a0d38bf69396de6ea",
+    "rootCentralSourceCommittedByThisAuthor": false,
+    "scope": "Header policy for exact case-insensitive bounded private prefixes and downstream; pre-mount parser policy remains separate."
+  }
 }
