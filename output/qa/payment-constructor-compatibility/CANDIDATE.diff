@@ -1,0 +1,14 @@
+diff --git a/test/pharmacy.integration.test.ts b/test/pharmacy.integration.test.ts
+index d54a98f..46e3e3b 100644
+--- a/test/pharmacy.integration.test.ts
++++ b/test/pharmacy.integration.test.ts
+@@ -543,7 +543,8 @@ integrationTest('pharmacy self top-up initiates payment and credits only after v
+     {} as never,
+     {} as never,
+     new PharmacyWalletRepository(),
+-    new PharmacyWalletTransactionRepository()
++    new PharmacyWalletTransactionRepository(),
++    new MedicineRepository()
+   );
+   (paymentService as unknown as { verifyAndMarkPaid: () => Promise<unknown> }).verifyAndMarkPaid =
+     async () => paymentRepository.findById(String(paymentRecord._id));
