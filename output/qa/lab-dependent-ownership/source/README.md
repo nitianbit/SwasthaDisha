@@ -1,0 +1,22 @@
+# Isolated lab dependent-ownership source candidate
+
+Frozen for two fresh independent nonauthor internal Codex source reviews. Author `/root/customer_booking_writer` does not approve the candidate. All author writes stop after this archive. Root owns commits/merges and must wait for R4 completion before integration.
+
+Worktree: `/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/lab-dependent-ownership`; branch `m0/lab-dependent-ownership`; base `7438f449351bd8cb435142b017406cf05d23b3b2`.
+Candidate controller SHA-256: `3a45d9694b50da0e1cebf90ffd94e8b2921130c784530bde844d49e16b4418b3`.
+Baseline SHA-256: `b036cc91db6abf4cecfc2963fa02ab04b12bd8c8048c7c979468080a778942ce`.
+Contract SHA-256: `8bfccbdd4baaf64a59e0c2d6a6d019b03cba38c18aa7d23a4845ba9ad3aa3d97`.
+
+The amendment adds existing DependentService and AppError imports, one service field/Container resolution, one shared async customer guard and one first-statement awaited call in each create handler. It reuses getById(dependentId, signedOwner) for the scoped relationship lookup. It preserves all other controller bytes, including the previous association containment, request/DTO/patient normalization and noncustomer behavior. No service, schema, DTO, repository or activity/clinical policy changes.
+
+The original focus worktree remains `/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab`. No write targeted it. Read-only before/after snapshots here show all 358 focus src1 files retained their bytes during this isolated edit/check. A separate observed hash read confirmed its external controller still equals b036cc91… . Live operator/R4 files were not included in that source comparison or written by this author. This is preservation at the recorded check, not a promise about later authorized Root changes.
+
+The copied PREIMPLEMENTATION.json still records its earlier false authorization and live-snapshot dependency. It was preserved byte-for-byte, confirmed by cmp exit 0. The separate `../ROOT_AUTHORIZATION.json` records the actual subsequent native Root message, isolated path/base and RESOLVED_BY_ISOLATED_WORKTREE authorization; it does not claim R4 finished or permit this author to merge. All 28 reviewed source/design pins matched before editing.
+
+The exact before/expected/after controller, diff, write/check scripts, original decision snapshot, protection inventories and observed command receipts are archived. Only the owned isolated controller differs among 431 pinned files; the other 430 recorded files retain their bytes, including earlier customer/lab/pharmacy evidence and shared source. Removing only the approved additions reconstructs the exact baseline controller. Original-checkout staged/archive preservation remains Root's separate responsibility.
+
+The sanitized stdlib Python text/hash checker exited 0. Fifteen in-memory negative variants were rejected by their intended named lexical assertions: archived baseline; expanded role scope; blank signed owner; omitted-ID fallthrough; missing local ID-shape guard; body-derived or omitted lookup owner; unawaited lookup; swallowed failure; and separately for each create, removed/unawaited/late guard. Fifteen restored controls rechecked the unchanged candidate text. These are lexical checks, not unit tests, executed requests or artificial behavior models. Baseline rejection was calculated after editing against the preserved before snapshot; no test-first run is claimed. No observed source-check failure occurred. The whitespace check exited 0 with empty output.
+
+No TypeScript parser/compiler, app import or extracted-source execution, Node/npm, runtime suite, HTTP, DB, Docker, provider, network or Git mutation was invoked. No type validity, real constructor resolution, Joi/HTTP status, query/effect counter, owned-inactive behavior or Mongo result is proven by these text checks. The constructor/import closure expands through DependentService/Repository/Model and needs complete separately reviewed C3 admission before focused execution.
+
+Read-time ownership remains distinct from consent/guardian/activity policy, permanent patient identity, correct demographics, later retry/report authority and TOCTOU safety. The candidate introduces none of those policies. Focused behavior remains NOT_RUN; final cross-module integration is DEFERRED_BY_OWNER. No clinical/client/module/M0/deployment/release acceptance or Claude review is claimed. Writes stop for two fresh independent source reviews.

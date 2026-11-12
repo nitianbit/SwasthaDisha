@@ -1,0 +1,75 @@
+--- a/src1/modules/externalBookings/controller/index.ts
++++ b/src1/modules/externalBookings/controller/index.ts
+@@ -3,7 +3,9 @@
+ import { Container } from 'typedi';
+ 
+ import { AuthRequest } from '@/modules/middleware/auth';
++import { AppError } from '@/modules/common/types';
+ import { ExternalBookingService } from '@/modules/externalBookings/services';
++import { DependentService } from '@/modules/dependents/services';
+ import UserModel from '@/modules/user/model';
+ import {
+   calculateAgeFromDob,
+@@ -34,11 +36,46 @@
+ 
+ export class ExternalBookingController {
+   private externalBookingService: ExternalBookingService;
++  private dependentService: DependentService;
+   private readonly defaultIntegration: ExternalIntegration =
+     CONFIG.EXTERNAL_BOOKING_DEFAULT_INTEGRATION || 'labstack';
+ 
+   constructor() {
+     this.externalBookingService = Container.get(ExternalBookingService);
++    this.dependentService = Container.get(DependentService);
++  }
++
++  private async assertCustomerDependentOwner(req: AuthRequest): Promise<void> {
++    const actor = req.user;
++    if (actor?.userType !== 'user') {
++      return;
++    }
++
++    if (typeof actor._id !== 'string' || actor._id.trim().length === 0) {
++      throw new AppError({
++        status: 401,
++        code: 'UNAUTHORIZED',
++        message: 'Authentication is required',
++      });
++    }
++
++    const dependentId = req.body.dependentId;
++    if (dependentId === undefined) {
++      return;
++    }
++
++    if (
++      typeof dependentId !== 'string' ||
++      !/^[0-9a-fA-F]{24}$/.test(dependentId)
++    ) {
++      throw new AppError({
++        status: 404,
++        code: 'DEPENDENT_NOT_FOUND',
++        message: 'Dependent not found',
++      });
++    }
++
++    await this.dependentService.getById(dependentId, actor._id);
+   }
+ 
+   private resolveIntegration(value: unknown): ExternalIntegration {
+@@ -346,6 +383,7 @@
+     res: Response,
+     _next: NextFunction
+   ) => {
++    await this.assertCustomerDependentOwner(req);
+     const userId = req.user
+       ? req.user.userType === 'admin'
+         ? ((req.body.userId as string | undefined) || req.user._id)
+@@ -423,6 +461,7 @@
+     res: Response,
+     _next: NextFunction
+   ) => {
++    await this.assertCustomerDependentOwner(req);
+     const userId = req.user
+       ? req.user.userType === 'admin'
+         ? ((req.body.userId as string | undefined) || req.user._id)

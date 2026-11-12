@@ -1,0 +1,7 @@
+{
+  "schema": "SD-LAB-ROOT-PREPARATION-ERROR-1",
+  "error": "Rootfirstreaderassumedfocusmanifestwasflat; actualshapeisroot/files. FileNotFoundErroronfocus/root.",
+  "effectsBeforeStop": "Read/hashonly; noapplication/Git/QAwriteoccurred.",
+  "correction": "Inspectactualmanifestkeys, requireexactrootandreadfilesmap; all358focuspinsnowindependentlymatch.",
+  "sourceOrTestFailure": false
+}

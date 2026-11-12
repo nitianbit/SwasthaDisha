@@ -1,0 +1,14 @@
+{
+  "kind": "SOURCE_DATA_ONLY",
+  "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/lab-dependent-ownership",
+  "base": "7438f449351bd8cb435142b017406cf05d23b3b2",
+  "baselineSha256": "b036cc91db6abf4cecfc2963fa02ab04b12bd8c8048c7c979468080a778942ce",
+  "candidateSha256": "3a45d9694b50da0e1cebf90ffd94e8b2921130c784530bde844d49e16b4418b3",
+  "contractSha256": "8bfccbdd4baaf64a59e0c2d6a6d019b03cba38c18aa7d23a4845ba9ad3aa3d97",
+  "contractSourcePinsRechecked": 28,
+  "protectedFileCount": 431,
+  "activeFocusSourceFileCount": 358,
+  "rootAuthorizationSha256": "f407d3524097043d957cea836fef0db45439bf8804ef3101e11a75e2afc9ce21",
+  "runtimeBehavior": "NOT_RUN",
+  "gitMutation": false
+}

@@ -1,0 +1,34 @@
+{
+  "schema": "SD-LAB-DEPENDENT-OWNERSHIP-SOURCE-DECISIONS-1",
+  "contractSha256": "8bfccbdd4baaf64a59e0c2d6a6d019b03cba38c18aa7d23a4845ba9ad3aa3d97",
+  "candidateSha256": "3a45d9694b50da0e1cebf90ffd94e8b2921130c784530bde844d49e16b4418b3",
+  "sourceFreezeSha256": "939c5ec78e361de8a4de93ddc5363eaaf09e41286587447a175a8bd7d5b6b8cc",
+  "reviewers": [
+    {
+      "agent": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "basis": "Actualguard/firstawaitbothhandlers/signedowner/fixed401404/omitted/otherroles; exactreconstruction/all16frozenartifacts/431protectedand358focuspinsverified."
+    },
+    {
+      "agent": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "basis": "Readactualdiff/constructorclosure/sharedscopedDependentService; matchescontractwithouthelperduplication/newpolicy; all16artifacts/431protected/focus358pinsindependentlyverified."
+    }
+  ],
+  "focusedBehavior": "NOT_RUN",
+  "typeValidity": "NOT_RUN",
+  "remainingLimits": [
+    "constructorC3admission",
+    "TOCTOU",
+    "activity/consent/guardianpolicy",
+    "patientmapping",
+    "laterworkflowauthority"
+  ],
+  "moduleAcceptance": false,
+  "claudeReviewAccepted": false,
+  "R4CaptureFinished": true,
+  "R4DoesNotApproveThisNewCandidate": true,
+  "focusMergeHeldForIndependentR4PostReview": true
+}
