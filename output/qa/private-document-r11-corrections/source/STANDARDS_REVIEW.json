@@ -1,0 +1,26 @@
+{
+  "schema": "SD-PRIVATE-R11-AMENDED-STANDARDS-REVIEW-1",
+  "reviewer": "/root",
+  "role": "Standards",
+  "authorExcluded": "/root/customer_remaining_audit",
+  "candidate": "5607cdf7070d418115efbd5150afcec1e81f6890",
+  "manifestSha256": "998d23b574c99facf25f7d781372f7fca9b452fa8d6016d1cf4d3fb77fc1f2f7",
+  "decision": "APPROVE_SOURCE_ONLY",
+  "inspection": [
+    "Complete owningplan and acceptedR11report plus originalwholecontroller/storage and exact45add10del amendment composition",
+    "2current/source-before hashes and45unchangedcontextpins rehashed; all6actualFormidable cachetar source/CJS memberhashes independentlyverifiedagainstrootSHA512 integrity",
+    "LegacyuploadordinaryPOSTheaders preserved; catch onlyDOCUMENT_AppErrors appliesprivateheaders before rethrow; actualservice asyncmethod ensuresguarderrorsarecaught",
+    "Sharedactor then2clinicalkind inputguard preserves403precedence and preventsbadkindbeforeupload",
+    "OneactualAppError-preserving captureError uses ownnativecode data only; namederrorsnamespace exported; bothcancel/catch callit, knowninput/count400/filebytes413/unknown503, rawhttpCode notauthority",
+    "Legacyexistingreservedroot read-only device/inode check plus existingcomponentwalk/symlink guards handlesconditionalaliases without broadunicodeban, ENOENTonlyabsence/unknownIOfailsclosed",
+    "Alllease/deadline/finalizer/cleanup/stream/transaction/DTO/defaultpolicy code unchanged outsideexactnormalizer calls andguard/header sites"
+  ],
+  "findings": [],
+  "execution": "All parser/compiler/Node/npm/app/Formidable/fsadapter/Mongo/Docker/provider NOT_RUN; no fixture-pin update or stage permission",
+  "limits": [
+    "Fourfindings resolvedinsource only, nativeconditionalcasefold NOT_RUN",
+    "Rootnotown newcodeauthor; originalR11sourceandalloldsource/reviewevidence retained",
+    "Fixture29two-pin/regressionamendment requires2actualreviews andfresh exactinstall/emission/run admission;112metadata accepted only",
+    "FullS1/publiclegacy/client/clinical/scanner/qualifiedrelease/C2/owner/release notaccepted"
+  ]
+}
