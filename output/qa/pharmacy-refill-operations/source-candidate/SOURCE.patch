@@ -1,0 +1,243 @@
+diff --git a/API_SCHEMAS.md b/API_SCHEMAS.md
+index 913bbf499b39f30270e71bab8c38a3ec8654d9f9..38204e44a49e3ff4e2d5c905fefa14cd57c1f4ea 100644
+--- a/API_SCHEMAS.md
++++ b/API_SCHEMAS.md
+@@ -631,0 +632,11 @@ Customer service calls treat an undefined alternate field as absent, validate wi
++
++
++## Pharmacy refill due candidates (source milestone; runtime/activation pending)
++
++`GET /api/v1/pharmacy-subscriptions/due?through=YYYYMMDD&limit=20&after=<cursor>` requires the existing authenticated operational-pharmacy guard. Scope comes only from its signed resolved pharmacyId. `through` is a required Gregorian calendar date (years0001–9999), not a guessed local/UTC today. Limit is canonical1..50, default20; only through/limit/after keys are accepted. No patient/filter/owner query input is allowed. Continue with the returned canonical cursor, same cutoff and same limit; cursors bind this pharmacy/date/limit and the last returned date/ID tuple.
++
++Success200: `{success:true,data:{through,limit,items:[{subscriptionId,nextRefillDate,intervalDays,reminderChannel,pausedUntil,pauseEvaluation:"not_evaluated"}],nextCursor}}`. The nullable reminderChannel and pausedUntil preserve exact absence. Rows are stored-active candidates ordered by date then ID, not recipient/clinical/dispensing eligibility; pause dates are not automatically evaluated or resumed. No patient/medicine/contact/source-order data is returned. Every response reached by this route uses private,no-store; central authentication failures before the router remain outside its header middleware. Mutable dates can move rows between pages; the cursor is not a snapshot guarantee.
++
++Malformed/extra query or mismatched cursor:400 VALIDATION_ERROR. Missing/invalid internal scope:403 FORBIDDEN. Invalid returned stored state or query/timeout failure:503 REFILL_WORKLIST_UNAVAILABLE; no partial page/raw error disclosure. Existing operational guard denial codes/order remain. Reads fetch at most limit+1 (maximum51), use simple collation/maxTimeMS2000 and no count/populate. Declared indexes do not establish installation, efficiency or capacity; actual focused HTTP/ODM/index evidence and staff/client/owner/C2/C3/release acceptance remain pending.
++
++The existing `PUT /api/v1/pharmacy-subscriptions/:id` with `isActive:true` explicitly unsets the stored pausedUntil in that same update, including repeat resume and a simultaneous direct pause value. Other update/pause request shapes and existing404/403 behavior remain. No next-refill date, reminder dispatch, order, stock, payment or clinical authority is changed by resuming. Full reminder scheduling/dispatch remains separate.
+diff --git a/src1/modules/pharmacySubscriptions/controller/index.ts b/src1/modules/pharmacySubscriptions/controller/index.ts
+index cb9a31a1dabb5ab9135b760ba658eac4d9c88faf..5c9688db3604e9f0640f8efb188eb792ee01b595 100644
+--- a/src1/modules/pharmacySubscriptions/controller/index.ts
++++ b/src1/modules/pharmacySubscriptions/controller/index.ts
+@@ -19,0 +20,6 @@ export class PharmacySubscriptionController {
++  due = async (req: AuthRequest, res: Response, _next: NextFunction) => {
++    res.setHeader('Cache-Control', 'private, no-store');
++    const data = await this.service.getDueRefills(req.user?.pharmacyId, req.query);
++    res.status(200).json({ success: true, data });
++  };
++
+diff --git a/src1/modules/pharmacySubscriptions/repository/index.ts b/src1/modules/pharmacySubscriptions/repository/index.ts
+index 40b6eaa7658b441381bf978d7b0c6b72fd214536..7d856c170b50045747ab8dc7d338a616ab1b951a 100644
+--- a/src1/modules/pharmacySubscriptions/repository/index.ts
++++ b/src1/modules/pharmacySubscriptions/repository/index.ts
+@@ -2 +2,4 @@ import { Service } from 'typedi';
+-import { Model } from 'mongoose';
++import { Model, Types } from 'mongoose';
++import { types } from 'util';
++import { AppError } from '@/modules/common/types';
++import { encodeDueRefillCursor, isRefillCalendarDate, requireRefillPharmacyScope } from '../validation';
+@@ -4 +7 @@ import PharmacySubscriptionModel from '@/modules/pharmacySubscriptions/model';
+-import { IPharmacySubscription, SubscriptionQueryParams } from '@/modules/pharmacySubscriptions/types';
++import { IPharmacySubscription, SubscriptionQueryParams, DueRefillQuery, DueRefillRow, DueRefillPage, REFILL_REMINDER_CHANNELS, ReminderChannel } from '@/modules/pharmacySubscriptions/types';
+@@ -6,0 +10,32 @@ import { BaseRepository } from '@/modules/common/repository';
++const refillUnavailable = () => new AppError({ status: 503, code: 'REFILL_WORKLIST_UNAVAILABLE', message: 'Refill worklist is unavailable' });
++const dueProjection = { _id: 1, pharmacyId: 1, isActive: 1, nextRefillDate: 1, intervalDays: 1, reminderChannel: 1, pausedUntil: 1 };
++
++function refillObjectId(value: unknown): string {
++  if (!value || typeof value !== 'object' || types.isProxy(value) || Object.getPrototypeOf(value) !== Types.ObjectId.prototype ||
++    Object.values(Object.getOwnPropertyDescriptors(value)).some(d => !('value' in d))) throw refillUnavailable();
++  const id = Types.ObjectId.prototype.toHexString.call(value);
++  if (!/^[0-9a-f]{24}$/.test(id)) throw refillUnavailable();
++  return id;
++}
++
++function dueRefillRow(value: unknown, pharmacyId: string, through: string): DueRefillRow {
++  if (!value || typeof value !== 'object' || Array.isArray(value) || types.isProxy(value) ||
++    ![Object.prototype, null].includes(Object.getPrototypeOf(value))) throw refillUnavailable();
++  const allowed = Object.keys(dueProjection), row: Record<string, unknown> = {};
++  for (const key of Reflect.ownKeys(value)) {
++    if (typeof key !== 'string' || !allowed.includes(key)) throw refillUnavailable();
++    const d = Object.getOwnPropertyDescriptor(value, key);
++    if (!d || !('value' in d) || !d.enumerable) throw refillUnavailable();
++    row[key] = d.value;
++  }
++  const subscriptionId = refillObjectId(row._id);
++  if (refillObjectId(row.pharmacyId) !== pharmacyId || row.isActive !== true || !isRefillCalendarDate(row.nextRefillDate) ||
++    row.nextRefillDate > through || typeof row.intervalDays !== 'number' || !Number.isSafeInteger(row.intervalDays) || row.intervalDays < 1) throw refillUnavailable();
++  const has = (key: string) => Object.prototype.hasOwnProperty.call(row, key);
++  if ((has('reminderChannel') && (typeof row.reminderChannel !== 'string' || !(REFILL_REMINDER_CHANNELS as readonly string[]).includes(row.reminderChannel))) ||
++    (has('pausedUntil') && !isRefillCalendarDate(row.pausedUntil))) throw refillUnavailable();
++  return { subscriptionId, nextRefillDate: row.nextRefillDate, intervalDays: row.intervalDays,
++    reminderChannel: has('reminderChannel') ? row.reminderChannel as ReminderChannel : null,
++    pausedUntil: has('pausedUntil') ? row.pausedUntil as string : null, pauseEvaluation: 'not_evaluated' };
++}
++
+@@ -12,0 +48,27 @@ export class PharmacySubscriptionRepository extends BaseRepository<IPharmacySubs
++  /** Parsed immutable primitives only; one mandatory-owner read with no patient population. */
++  async findDueRefills(pharmacyId: string, query: DueRefillQuery): Promise<DueRefillPage> {
++    const scope = requireRefillPharmacyScope(pharmacyId);
++    try {
++      const filter = { pharmacyId: { $eq: new Types.ObjectId(scope) }, isActive: { $eq: true },
++        nextRefillDate: { $lte: query.through }, $expr: { $and: [
++          { $eq: [{ $type: '$_id' }, 'objectId'] }, { $eq: [{ $type: '$pharmacyId' }, 'objectId'] },
++          { $eq: [{ $type: '$isActive' }, 'bool'] }, { $eq: [{ $type: '$nextRefillDate' }, 'string'] },
++        ] }, ...(query.after ? { $or: [ { nextRefillDate: { $gt: query.after.nextRefillDate } },
++          { nextRefillDate: { $eq: query.after.nextRefillDate }, _id: { $gt: new Types.ObjectId(query.after.subscriptionId) } } ] } : {}) };
++      const rows = await PharmacySubscriptionModel.find(filter).select(dueProjection).collation({ locale: 'simple' })
++        .sort({ nextRefillDate: 1, _id: 1 }).limit(query.limit + 1).maxTimeMS(2000).lean().exec();
++      if (!Array.isArray(rows) || rows.length > query.limit + 1) throw refillUnavailable();
++      let previous: Pick<DueRefillRow, 'nextRefillDate' | 'subscriptionId'> | undefined = query.after;
++      const mapped = rows.map(row => {
++        const result = dueRefillRow(row, scope, query.through);
++        if (previous && (result.nextRefillDate < previous.nextRefillDate || (result.nextRefillDate === previous.nextRefillDate &&
++          result.subscriptionId <= previous.subscriptionId))) throw refillUnavailable();
++        previous = result;
++        return result;
++      });
++      const items = mapped.slice(0, query.limit);
++      return { through: query.through, limit: query.limit, items,
++        nextCursor: mapped.length > query.limit ? encodeDueRefillCursor(scope, query, items[items.length - 1]) : null };
++    } catch { throw refillUnavailable(); }
++  }
++
+diff --git a/src1/modules/pharmacySubscriptions/routes/index.ts b/src1/modules/pharmacySubscriptions/routes/index.ts
+index 48b5925615d704e5397bfe94d1fca765bbb68864..92e35091d5c623bf06c80d184072b1f2490a6bc6 100644
+--- a/src1/modules/pharmacySubscriptions/routes/index.ts
++++ b/src1/modules/pharmacySubscriptions/routes/index.ts
+@@ -23,0 +24,4 @@ pharmacySubscriptionRouter.post(
++pharmacySubscriptionRouter.get('/due', (_req, res, next) => {
++  res.setHeader('Cache-Control', 'private, no-store'); next();
++}, requireOperationalPharmacy, catchAsync(controller.due));
++
+diff --git a/src1/modules/pharmacySubscriptions/services/index.ts b/src1/modules/pharmacySubscriptions/services/index.ts
+index 17931f118aa5f58b3efbc25bb22791cc4e422fce..3f7b0f5882cce5cb424701c9765355a4b31db2d5 100644
+--- a/src1/modules/pharmacySubscriptions/services/index.ts
++++ b/src1/modules/pharmacySubscriptions/services/index.ts
+@@ -12,0 +13 @@ import { AppError } from '@/modules/common/types';
++import { parseDueRefillQuery, requireRefillPharmacyScope } from '../validation';
+@@ -167,0 +169,5 @@ export class PharmacySubscriptionService {
++  async getDueRefills(pharmacyId: unknown, rawQuery: unknown) {
++    const scope = requireRefillPharmacyScope(pharmacyId);
++    return this.repo.findDueRefills(scope, parseDueRefillQuery(scope, rawQuery));
++  }
++
+@@ -187 +193 @@ export class PharmacySubscriptionService {
+-      nextPayload.pausedUntil = undefined;
++      delete nextPayload.pausedUntil;
+@@ -190 +196,3 @@ export class PharmacySubscriptionService {
+-    const updated = await this.repo.update({ _id: id }, nextPayload);
++    const updated = await this.repo.update({ _id: id }, data.isActive === true
++      ? { $set: nextPayload, $unset: { pausedUntil: '' } }
++      : nextPayload);
+diff --git a/src1/modules/pharmacySubscriptions/types/index.ts b/src1/modules/pharmacySubscriptions/types/index.ts
+index 9f0b47601a27f1f9329effa12143abb7d6c4f2ff..064161d94c02e61fc67269d38be3d25915b6ee72 100644
+--- a/src1/modules/pharmacySubscriptions/types/index.ts
++++ b/src1/modules/pharmacySubscriptions/types/index.ts
+@@ -1 +1,2 @@
+-export type ReminderChannel = 'sms' | 'push' | 'both' | 'none';
++export const REFILL_REMINDER_CHANNELS = Object.freeze(['sms', 'push', 'both', 'none'] as const);
++export type ReminderChannel = typeof REFILL_REMINDER_CHANNELS[number];
+@@ -62,0 +64,29 @@ export interface SubscriptionQueryParams {
++
++/** Internal parsed primitives; only parseDueRefillQuery constructs this read input. */
++export interface DueRefillCursor {
++  readonly v: 1;
++  readonly pharmacyId: string;
++  readonly through: string;
++  readonly limit: number;
++  readonly nextRefillDate: string;
++  readonly subscriptionId: string;
++}
++export interface DueRefillQuery {
++  readonly through: string;
++  readonly limit: number;
++  readonly after?: DueRefillCursor;
++}
++export interface DueRefillRow {
++  subscriptionId: string;
++  nextRefillDate: string;
++  intervalDays: number;
++  reminderChannel: ReminderChannel | null;
++  pausedUntil: string | null;
++  pauseEvaluation: 'not_evaluated';
++}
++export interface DueRefillPage {
++  through: string;
++  limit: number;
++  items: DueRefillRow[];
++  nextCursor: string | null;
++}
+diff --git a/src1/modules/pharmacySubscriptions/validation/index.ts b/src1/modules/pharmacySubscriptions/validation/index.ts
+index 31b23fa3f0cb6ca97fd6d4ae8db264652094510c..b024df7877ca056143aae0246a360ab0b33a1c0b 100644
+--- a/src1/modules/pharmacySubscriptions/validation/index.ts
++++ b/src1/modules/pharmacySubscriptions/validation/index.ts
+@@ -1,0 +2,3 @@ import Joi from 'joi';
++import { types } from 'util';
++import { AppError } from '@/modules/common/types';
++import { DueRefillCursor, DueRefillQuery, DueRefillRow } from '../types';
+@@ -30,0 +34,66 @@ export const idParamSchema = Joi.object({
++
++const refillQueryError = () => new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid refill worklist query' });
++
++/** A calendar label, with no host-timezone/current-date interpretation. */
++export function isRefillCalendarDate(value: unknown): value is string {
++  if (typeof value !== 'string' || !/^[0-9]{8}$/.test(value)) return false;
++  const year = Number(value.slice(0, 4)), month = Number(value.slice(4, 6)), day = Number(value.slice(6, 8));
++  if (year === 0 || month < 1 || month > 12 || day < 1 || day > 31) return false;
++  const date = new Date(0);
++  date.setUTCFullYear(year, month - 1, day);
++  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
++}
++
++export function requireRefillPharmacyScope(value: unknown): string {
++  if (typeof value !== 'string' || !/^[0-9a-f]{24}$/.test(value)) {
++    throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
++  }
++  return value;
++}
++
++function refillData(value: unknown, keys: readonly string[]): Record<string, unknown> {
++  if (!value || typeof value !== 'object' || Array.isArray(value) || types.isProxy(value) ||
++    ![Object.prototype, null].includes(Object.getPrototypeOf(value))) throw refillQueryError();
++  const out: Record<string, unknown> = {};
++  for (const key of Reflect.ownKeys(value)) {
++    if (typeof key !== 'string' || !keys.includes(key)) throw refillQueryError();
++    const descriptor = Object.getOwnPropertyDescriptor(value, key);
++    if (!descriptor || !('value' in descriptor) || !descriptor.enumerable) throw refillQueryError();
++    out[key] = descriptor.value;
++  }
++  return out;
++}
++
++function refillCursorText(cursor: DueRefillCursor): string {
++  return Buffer.from(JSON.stringify({ v: cursor.v, pharmacyId: cursor.pharmacyId, through: cursor.through,
++    limit: cursor.limit, nextRefillDate: cursor.nextRefillDate, subscriptionId: cursor.subscriptionId }), 'utf8').toString('base64url');
++}
++
++export function parseDueRefillQuery(pharmacyId: string, raw: unknown): DueRefillQuery {
++  requireRefillPharmacyScope(pharmacyId);
++  const query = refillData(raw, ['through', 'limit', 'after']);
++  if (!isRefillCalendarDate(query.through) || (query.limit !== undefined &&
++    (typeof query.limit !== 'string' || !/^(?:[1-9]|[1-4][0-9]|50)$/.test(query.limit)))) throw refillQueryError();
++  const through = query.through, limit = query.limit === undefined ? 20 : Number(query.limit);
++  let after: DueRefillCursor | undefined;
++  if (query.after !== undefined) {
++    if (typeof query.after !== 'string' || !/^[A-Za-z0-9_-]{1,384}$/.test(query.after)) throw refillQueryError();
++    const bytes = Buffer.from(query.after, 'base64url');
++    if (bytes.length > 288 || bytes.toString('base64url') !== query.after || !Buffer.from(bytes.toString('utf8'), 'utf8').equals(bytes)) throw refillQueryError();
++    let decoded: unknown;
++    try { decoded = JSON.parse(bytes.toString('utf8')); } catch { throw refillQueryError(); }
++    const cursor = refillData(decoded, ['v', 'pharmacyId', 'through', 'limit', 'nextRefillDate', 'subscriptionId']);
++    if (Object.keys(cursor).length !== 6 || cursor.v !== 1 || cursor.pharmacyId !== pharmacyId || cursor.through !== through ||
++      cursor.limit !== limit || !isRefillCalendarDate(cursor.nextRefillDate) || cursor.nextRefillDate > through ||
++      typeof cursor.subscriptionId !== 'string' || !/^[0-9a-f]{24}$/.test(cursor.subscriptionId)) throw refillQueryError();
++    after = Object.freeze({ v: 1, pharmacyId, through, limit, nextRefillDate: cursor.nextRefillDate, subscriptionId: cursor.subscriptionId });
++    // Fixed-order serialization also rejects duplicate keys and alternate JSON spelling/order.
++    if (refillCursorText(after) !== query.after) throw refillQueryError();
++  }
++  return Object.freeze({ through, limit, ...(after ? { after } : {}) });
++}
++
++export function encodeDueRefillCursor(pharmacyId: string, query: DueRefillQuery, row: DueRefillRow): string {
++  return refillCursorText({ v: 1, pharmacyId, through: query.through, limit: query.limit,
++    nextRefillDate: row.nextRefillDate, subscriptionId: row.subscriptionId });
++}

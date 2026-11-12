@@ -629,3 +629,14 @@ Customer service calls treat an undefined alternate field as absent, validate wi
 - MongoDB ObjectId format: 24 hexadecimal characters
 - All endpoints except `/health` and `/api/v1/auth/*/send` and `/api/v1/auth/*/verify` require Bearer token authentication
 - Token is automatically saved from the "Verify OTP" response and used in subsequent requests
+
+
+## Pharmacy refill due candidates (source milestone; runtime/activation pending)
+
+`GET /api/v1/pharmacy-subscriptions/due?through=YYYYMMDD&limit=20&after=<cursor>` requires the existing authenticated operational-pharmacy guard. Scope comes only from its signed resolved pharmacyId. `through` is a required Gregorian calendar date (years0001–9999), not a guessed local/UTC today. Limit is canonical1..50, default20; only through/limit/after keys are accepted. No patient/filter/owner query input is allowed. Continue with the returned canonical cursor, same cutoff and same limit; cursors bind this pharmacy/date/limit and the last returned date/ID tuple.
+
+Success200: `{success:true,data:{through,limit,items:[{subscriptionId,nextRefillDate,intervalDays,reminderChannel,pausedUntil,pauseEvaluation:"not_evaluated"}],nextCursor}}`. The nullable reminderChannel and pausedUntil preserve exact absence. Rows are stored-active candidates ordered by date then ID, not recipient/clinical/dispensing eligibility; pause dates are not automatically evaluated or resumed. No patient/medicine/contact/source-order data is returned. Every response reached by this route uses private,no-store; central authentication failures before the router remain outside its header middleware. Mutable dates can move rows between pages; the cursor is not a snapshot guarantee.
+
+Malformed/extra query or mismatched cursor:400 VALIDATION_ERROR. Missing/invalid internal scope:403 FORBIDDEN. Invalid returned stored state or query/timeout failure:503 REFILL_WORKLIST_UNAVAILABLE; no partial page/raw error disclosure. Existing operational guard denial codes/order remain. Reads fetch at most limit+1 (maximum51), use simple collation/maxTimeMS2000 and no count/populate. Declared indexes do not establish installation, efficiency or capacity; actual focused HTTP/ODM/index evidence and staff/client/owner/C2/C3/release acceptance remain pending.
+
+The existing `PUT /api/v1/pharmacy-subscriptions/:id` with `isActive:true` explicitly unsets the stored pausedUntil in that same update, including repeat resume and a simultaneous direct pause value. Other update/pause request shapes and existing404/403 behavior remain. No next-refill date, reminder dispatch, order, stock, payment or clinical authority is changed by resuming. Full reminder scheduling/dispatch remains separate.

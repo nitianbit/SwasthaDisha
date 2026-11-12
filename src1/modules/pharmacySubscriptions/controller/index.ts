@@ -17,6 +17,12 @@ export class PharmacySubscriptionController {
     res.status(201).json({ success: true, message: 'Subscriptions created', data: result });
   };
 
+  due = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    res.setHeader('Cache-Control', 'private, no-store');
+    const data = await this.service.getDueRefills(req.user?.pharmacyId, req.query);
+    res.status(200).json({ success: true, data });
+  };
+
   list = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const q = req.query as Record<string, string | undefined>;
     const pharmacyId = req.user?.pharmacyId || q.pharmacyId || '';
