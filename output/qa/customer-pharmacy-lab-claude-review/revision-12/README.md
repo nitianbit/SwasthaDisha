@@ -1,0 +1,1 @@
+R12 preparation only. No model/auth/toolbus request, challenge enqueue, private output, once claim or live approval allocated. Two nonauthor exact source/invocation decisions required. See operator/SOURCE_FREEZE_12.json.

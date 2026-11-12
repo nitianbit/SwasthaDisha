@@ -1,0 +1,14 @@
+--- revision-11/test_supervisor.py
++++ revision-12/test_supervisor.py
+@@ -383,9 +383,9 @@
+         with self.assertRaises(s.Stop):s.environment_check(extra,parent)
+         empty=dict(env);empty[s.PUBLIC_OS_KEYS[0]]=''
+         with self.assertRaises(s.Stop):s.environment_check(empty,parent)
+-    def test_old_live_receipt_does_not_admit_revision_eleven(self):
++    def test_old_live_receipt_does_not_admit_revision_twelve(self):
+         with tempfile.TemporaryDirectory() as directory, patch.object(s,'OWN',Path(directory)):
+-            (Path(directory)/'LIVE_APPROVAL_10.json').write_text('{}')
++            (Path(directory)/'LIVE_APPROVAL_11.json').write_text('{}')
+             self.assertEqual(s.main(['--live'])['firstFailure'],'APPROVAL_REQUIRED')
+     def test_receipt_environment_binding_rejects_three_key_profile(self):
+         env,parent=self.environment()

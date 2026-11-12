@@ -1,0 +1,86 @@
+{
+  "schema": "SD-R12-SELECTION-1",
+  "author": "/root",
+  "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+  "scope": "R11-F2-1..4 exact two-source correction follow-up",
+  "currentGitPaths": [
+    "documentation/planning/implementation/PRIVATE_CLINICAL_DOCUMENTS_CONTRACT_DRAFT.md",
+    "documentation/planning/implementation/PRIVATE_DOCUMENT_AUTH_HEADERS_ADDENDUM.md",
+    "documentation/planning/implementation/PRIVATE_DOCUMENT_R11_SOURCE_CORRECTION_PLAN.json",
+    "documentation/planning/implementation/PRIVATE_DOCUMENT_REVIEW_REMEDIATION.md",
+    "output/qa/customer-pharmacy-lab-claude-review/revision-11/CLAUDE_REVIEW.md",
+    "output/qa/customer-pharmacy-lab-claude-review/revision-11/operator/OUTCOME_DECISIONS_11.json",
+    "output/qa/private-document-r11-corrections/PLAN_DECISIONS.json",
+    "output/qa/private-document-r11-corrections/source/INTEGRATION_BYTE_VERIFICATION.json",
+    "output/qa/private-document-r11-corrections/source/NATIVE_FORMIDABLE_INPUTS.json",
+    "output/qa/private-document-r11-corrections/source/SOURCE.patch",
+    "output/qa/private-document-r11-corrections/source/SOURCE_CANDIDATE.json",
+    "output/qa/private-document-r11-corrections/source/SOURCE_DECISIONS.json",
+    "output/qa/private-document-r11-corrections/source/STANDARDS_REVIEW.json",
+    "package-lock.json",
+    "package.json",
+    "src1/index.ts",
+    "src1/modules/bookings/model/index.ts",
+    "src1/modules/bookings/repository/index.ts",
+    "src1/modules/bookings/types/index.ts",
+    "src1/modules/common/repository/BaseRepository.ts",
+    "src1/modules/common/repository/index.ts",
+    "src1/modules/common/types/error.ts",
+    "src1/modules/common/types/index.ts",
+    "src1/modules/common/types/response.ts",
+    "src1/modules/common/utils/asyncHandler.ts",
+    "src1/modules/common/utils/mongoErrors.ts",
+    "src1/modules/externalBookings/model/index.ts",
+    "src1/modules/externalBookings/repository/index.ts",
+    "src1/modules/externalBookings/types/index.ts",
+    "src1/modules/file/controller/index.ts",
+    "src1/modules/file/documentTypes.ts",
+    "src1/modules/file/documents.ts",
+    "src1/modules/file/model/index.ts",
+    "src1/modules/file/repository/index.ts",
+    "src1/modules/file/routes/index.ts",
+    "src1/modules/file/services/index.ts",
+    "src1/modules/file/storage.ts",
+    "src1/modules/file/types/index.ts",
+    "src1/modules/file/validation/index.ts",
+    "src1/modules/middleware/auth.ts",
+    "src1/modules/middleware/errorHandler.ts",
+    "src1/modules/middleware/index.ts",
+    "src1/modules/pharmacies/model/index.ts",
+    "src1/modules/pharmacies/types/index.ts",
+    "src1/routes/index.ts"
+  ],
+  "historicalBeforePaths": [
+    "src1/modules/file/controller/index.ts",
+    "src1/modules/file/storage.ts"
+  ],
+  "nativeMembers": {
+    "package/src/FormidableError.js": {
+      "sha256": "62adce3013f4d542585e6c64f33a702c68798b7c05c260744c75a4099bea65fb",
+      "bytes": 1242
+    },
+    "package/src/index.js": {
+      "sha256": "b2e0cd1575b80baee4a8a0fa0ff4e57655a3e9651abeca88d493efd3c36fbca4",
+      "bytes": 754
+    },
+    "package/src/Formidable.js": {
+      "sha256": "f5b2a5e6c1586231d91629d63248be177303061b13a23012e9f91a6367d5bba0",
+      "bytes": 18026
+    },
+    "package/src/parsers/Multipart.js": {
+      "sha256": "b75e938b96b0dd5ccc2a8b2cdb8d5c9006364e320f8df845ec569a5bc2158931",
+      "bytes": 9824
+    },
+    "package/src/plugins/multipart.js": {
+      "sha256": "da2301f7e69260fe290d7a655da84174ab583d49ac7ae0c15eb0909120f2001a",
+      "bytes": 6083
+    },
+    "package/dist/index.cjs": {
+      "sha256": "8d8459005e76aec65a56aec12a1ea3d7b3bdde6bb53fb2767f42b0f39d5a88ba",
+      "bytes": 45595
+    }
+  },
+  "immutableContextOnly": true,
+  "mutableFixtureExcluded": true,
+  "executableClosureClaim": false
+}

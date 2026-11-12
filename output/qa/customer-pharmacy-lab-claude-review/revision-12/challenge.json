@@ -1,0 +1,26 @@
+{
+  "schema": "SD-CLAUDE-PRIVATE-CORRECTIONS-CHALLENGE-12",
+  "team": "swasthadisha-local",
+  "fromAgent": "codex-lead",
+  "toAgent": "claude-reviewer",
+  "sessionId": "175c0268-3367-4483-9616-f5e7abc99428",
+  "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+  "controllerSha256": "fc4e9fbb27f1637a2587082ed4dbceef29a2efb0ad839ca6c89bf2e786da2525",
+  "contractSha256": "9afd04e7205cdbe666ff1cec13a29844c9897531b1b76df0299ebe8fba047708",
+  "packetSha256": "4d3ef5122fd91c03006be37308b04f61ac88b2ff8ca56e07cb24d76ee3d80747",
+  "nonce": "f51c7582-23fb-4b75-a64d-dfb5f08fb17e",
+  "clientKind": "local-bundled-CLI",
+  "requestedModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "state": "PREPARED_NOT_ENQUEUED",
+  "sourceHashes": {
+    "src1/modules/file/controller/index.ts": "fc4e9fbb27f1637a2587082ed4dbceef29a2efb0ad839ca6c89bf2e786da2525",
+    "src1/modules/file/storage.ts": "17e3a9c713e5869fbf9739e698887ea222f4f8d2e0c2a3435a0d8b51a48bd558"
+  },
+  "contractHashes": {
+    "documentation/planning/implementation/PRIVATE_CLINICAL_DOCUMENTS_CONTRACT_DRAFT.md": "2c016e285101c8a5852ad85974cd41a343ea59f31661ee8360e12eee192895f1",
+    "documentation/planning/implementation/PRIVATE_DOCUMENT_AUTH_HEADERS_ADDENDUM.md": "fe9479b80f66693de2e7f592bc9ab3335dc921595e36639fdb417a9547710b7b",
+    "documentation/planning/implementation/PRIVATE_DOCUMENT_REVIEW_REMEDIATION.md": "8afbcad14c7c500a803beed589398093aabac2108ba19769814205ae6562147a",
+    "documentation/planning/implementation/PRIVATE_DOCUMENT_R11_SOURCE_CORRECTION_PLAN.json": "98bb854464e8665f926c8dff065fb7e2de646367865ebd15f4434482e09524e4"
+  }
+}

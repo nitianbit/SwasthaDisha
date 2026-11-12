@@ -1,0 +1,24 @@
+{
+  "schema": "SD-CLAUDE-R12-PUBLIC-ENV-BINDING-1",
+  "author": "/root",
+  "sevenKeyEnvironment": {
+    "HOME": "/Users/shubham",
+    "PATH": "/usr/bin:/bin",
+    "TMPDIR": "/private/tmp",
+    "USER": "shubham",
+    "LOGNAME": "shubham",
+    "SECURITYSESSIONID": "186b9",
+    "__CF_USER_TEXT_ENCODING": "0x1F5:0x0:0x0"
+  },
+  "fiveRuntimePins": {
+    "/Users/shubham/.vscode/extensions/anthropic.claude-code-2.1.322-darwin-arm64/resources/native-binary/claude": "a9d237949db816a0b7afd88a9a8e1df36b3a597a30f5a41d1c0539eb180a3450",
+    "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+    "/Users/shubham/.codex/ruflo-state/swasthadisha/adapters/57c226be79e9b832e6ee2b7122d387102b878f0ecaa7862a6fd65c4b64268b4d/ruflo-local.mjs": "57c226be79e9b832e6ee2b7122d387102b878f0ecaa7862a6fd65c4b64268b4d",
+    "/Users/shubham/.codex/runtimes/ruflo/3.75.0/node_modules/@claude-flow/cli/bin/cli.js": "5b65e02510e0d94174a557ce77c5a62c5e19093ec4d1d9b39ddfdfa93932a1f7",
+    "/Users/shubham/.codex/runtimes/ruflo/3.75.0/package-lock.json": "8ac77ad0a7a64b698abe9566f12fc2d7bd583741bcf9167e5cc5cb6c7d19f646"
+  },
+  "allSevenValuesUnchanged": true,
+  "runtimeExecution": false,
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN"
+}

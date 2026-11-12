@@ -1,0 +1,452 @@
+{
+  "schema": "SD-CLAUDE-PACKET-MANIFEST-12",
+  "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+  "sourceHashes": {
+    "src1/modules/file/controller/index.ts": "fc4e9fbb27f1637a2587082ed4dbceef29a2efb0ad839ca6c89bf2e786da2525",
+    "src1/modules/file/storage.ts": "17e3a9c713e5869fbf9739e698887ea222f4f8d2e0c2a3435a0d8b51a48bd558"
+  },
+  "contractHashes": {
+    "documentation/planning/implementation/PRIVATE_CLINICAL_DOCUMENTS_CONTRACT_DRAFT.md": "2c016e285101c8a5852ad85974cd41a343ea59f31661ee8360e12eee192895f1",
+    "documentation/planning/implementation/PRIVATE_DOCUMENT_AUTH_HEADERS_ADDENDUM.md": "fe9479b80f66693de2e7f592bc9ab3335dc921595e36639fdb417a9547710b7b",
+    "documentation/planning/implementation/PRIVATE_DOCUMENT_REVIEW_REMEDIATION.md": "8afbcad14c7c500a803beed589398093aabac2108ba19769814205ae6562147a",
+    "documentation/planning/implementation/PRIVATE_DOCUMENT_R11_SOURCE_CORRECTION_PLAN.json": "98bb854464e8665f926c8dff065fb7e2de646367865ebd15f4434482e09524e4"
+  },
+  "contractBundleSha256": "9afd04e7205cdbe666ff1cec13a29844c9897531b1b76df0299ebe8fba047708",
+  "packetSha256": "4d3ef5122fd91c03006be37308b04f61ac88b2ff8ca56e07cb24d76ee3d80747",
+  "packetBytes": 670033,
+  "fileCount": 53,
+  "completeChangedProductionFiles": 2,
+  "completeCurrentProductionContext": 29,
+  "completeContractsAndPlan": 4,
+  "nativeArtifact": {
+    "cachePath": "/Users/shubham/.npm/_cacache/content-v2/sha512/62/29/07fbb0944ceb4fe386539d4851ec87365004813ceaa66919112b145bcb03d37b957117b45109c93869ff70bad899fd028ce67304f4189ed9f15a3f3e46ba",
+    "tarSha256": "335f6f180ef1601b67beaadb6dcba06c40c2c21d181ce14753ad34e795a6c097",
+    "rootLockIntegrity": "sha512-YikH+7CUTOtP44ZTnUhR7Ic2UASBPOqmaRkRKxRbywPTe5VxF7RRCck4af9wutiZ/QKM5nME9Bie2fFaPz5Gug=="
+  },
+  "files": [
+    {
+      "path": "documentation/planning/implementation/PRIVATE_CLINICAL_DOCUMENTS_CONTRACT_DRAFT.md",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "2c016e285101c8a5852ad85974cd41a343ea59f31661ee8360e12eee192895f1",
+      "wholeFileBytes": 35556,
+      "complete": true
+    },
+    {
+      "path": "documentation/planning/implementation/PRIVATE_DOCUMENT_AUTH_HEADERS_ADDENDUM.md",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "fe9479b80f66693de2e7f592bc9ab3335dc921595e36639fdb417a9547710b7b",
+      "wholeFileBytes": 3237,
+      "complete": true
+    },
+    {
+      "path": "documentation/planning/implementation/PRIVATE_DOCUMENT_R11_SOURCE_CORRECTION_PLAN.json",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "98bb854464e8665f926c8dff065fb7e2de646367865ebd15f4434482e09524e4",
+      "wholeFileBytes": 6791,
+      "complete": true
+    },
+    {
+      "path": "documentation/planning/implementation/PRIVATE_DOCUMENT_REVIEW_REMEDIATION.md",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "8afbcad14c7c500a803beed589398093aabac2108ba19769814205ae6562147a",
+      "wholeFileBytes": 4046,
+      "complete": true
+    },
+    {
+      "path": "output/qa/customer-pharmacy-lab-claude-review/revision-11/CLAUDE_REVIEW.md",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "fe8743c9f7abccc07504ff8bd84440ea03e9e6f1b071ceeebd98ef1bdf5b21ba",
+      "wholeFileBytes": 28226,
+      "complete": true
+    },
+    {
+      "path": "output/qa/customer-pharmacy-lab-claude-review/revision-11/operator/OUTCOME_DECISIONS_11.json",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "fbf453a8716bed017a6e998fa6f8ad97386cd0981bf4f3ab6c6b4f4691fef457",
+      "wholeFileBytes": 2040,
+      "complete": true
+    },
+    {
+      "path": "output/qa/private-document-r11-corrections/PLAN_DECISIONS.json",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "c52b1d2a30807cc51f93301bb965cd3d58c4a7526e9ee6778065b257c44819be",
+      "wholeFileBytes": 1363,
+      "complete": true
+    },
+    {
+      "path": "output/qa/private-document-r11-corrections/source/INTEGRATION_BYTE_VERIFICATION.json",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "dd9e0d1c3b1187794f92af38c5ffb3b912ba7defaad5f9868d8bfd4ab03c3f8a",
+      "wholeFileBytes": 923,
+      "complete": true
+    },
+    {
+      "path": "output/qa/private-document-r11-corrections/source/NATIVE_FORMIDABLE_INPUTS.json",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "7e38e2a534cd97099a71c06cccf2b2b272dd0ee1414a4c5f9abac063cc45fce0",
+      "wholeFileBytes": 1460,
+      "complete": true
+    },
+    {
+      "path": "output/qa/private-document-r11-corrections/source/SOURCE.patch",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "fc204e9e69bb6394a9c3f79f7609fd5408e95e729a8385124b014e2a39dc465b",
+      "wholeFileBytes": 4184,
+      "complete": true
+    },
+    {
+      "path": "output/qa/private-document-r11-corrections/source/SOURCE_CANDIDATE.json",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "998d23b574c99facf25f7d781372f7fca9b452fa8d6016d1cf4d3fb77fc1f2f7",
+      "wholeFileBytes": 1899,
+      "complete": true
+    },
+    {
+      "path": "output/qa/private-document-r11-corrections/source/SOURCE_DECISIONS.json",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "deeb4479b52367e786750e460d579ed7b5887e7ab328a1ba97a77b66fe0b7a0d",
+      "wholeFileBytes": 1640,
+      "complete": true
+    },
+    {
+      "path": "output/qa/private-document-r11-corrections/source/STANDARDS_REVIEW.json",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "5abd763daed0e650d7f760b212172ab202b29ee1e35ced4fd2a3a9d7db98e4bc",
+      "wholeFileBytes": 2073,
+      "complete": true
+    },
+    {
+      "path": "package-lock.json",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080",
+      "wholeFileBytes": 233000,
+      "complete": true
+    },
+    {
+      "path": "package.json",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "65b171e77e8cd3bfd37eb691cf9ce310d9108cedbf571232bd4859c4b16895ab",
+      "wholeFileBytes": 1898,
+      "complete": true
+    },
+    {
+      "path": "src1/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "d4f7af96f4fcda85be1f8ba942c362fb8b4b809a7c0eebd0e861c36f7f7624df",
+      "wholeFileBytes": 3950,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/bookings/model/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "219f8115e5eec4bebd7205c763638e8755bde57122866430a1b3bcd0f69ead72",
+      "wholeFileBytes": 8271,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/bookings/repository/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "3083722a941065a5a87ddc222772305c0c58de57e2ce140bb38dfd4721713ee5",
+      "wholeFileBytes": 8330,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/bookings/types/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "30d1a615c3f157ec9a73f9a13968c3afcec59f84bdfa0178413f22c906f42a79",
+      "wholeFileBytes": 9403,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/common/repository/BaseRepository.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+      "wholeFileBytes": 2494,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/common/repository/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "6e13d4d0ced3ad40772c5b2c35034544fe49f0d7b715cf0309f954be7ab5cb77",
+      "wholeFileBytes": 62,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/common/types/error.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+      "wholeFileBytes": 622,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/common/types/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "63ad3821027150d368e993903e954b4a80b776ff223caf322c104008239d4cbd",
+      "wholeFileBytes": 53,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/common/types/response.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "44c5dbcf38ea117eaa13f3a715143ea147a7abf25c3491b61817e67b5f3d6f93",
+      "wholeFileBytes": 359,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/common/utils/asyncHandler.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "59fe49db58678ef81242a654f7457f74b067b2583a3f8dc70918b61f50228bd9",
+      "wholeFileBytes": 671,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/common/utils/mongoErrors.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "147a5687832d03c654acd97e0f9e0d9c6c0c7ab51a2841f0eb2260235229d43d",
+      "wholeFileBytes": 451,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/externalBookings/model/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "873239e9ebd6201cf632deafac86d76ab6a6a84b729e23332e29658a898291f1",
+      "wholeFileBytes": 2780,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/externalBookings/repository/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "c21359e9617f5299783d6244b890e25449e9a446d82243a6a9ad03b37a639e1c",
+      "wholeFileBytes": 11898,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/externalBookings/types/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "12897bc8923393793a7a8526a5bf4a0a696edc90fefe187a64698306bee4130f",
+      "wholeFileBytes": 11512,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/file/controller/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "fc4e9fbb27f1637a2587082ed4dbceef29a2efb0ad839ca6c89bf2e786da2525",
+      "wholeFileBytes": 10294,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/file/documentTypes.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "89c7f2f262367de830b7925a200ae2d0e6c08a6966305ccb96f344fcf0c7d070",
+      "wholeFileBytes": 3798,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/file/documents.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "ad8a6bba2042dd6222d516dcd93c1473983a46ee9048742abf46674082b01276",
+      "wholeFileBytes": 17013,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/file/model/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "44d8003d6324f44b4adba62428bbbb2661e988f60baf267e546ecb8a1923aa91",
+      "wholeFileBytes": 4253,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/file/repository/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "c06a2c06d8451d6f8eb622b2e149315c5499df1287682a40068296bb02f76208",
+      "wholeFileBytes": 10195,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/file/routes/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "2934b9f85bcadcfb9c29dfba3d37adbbcd641bac1e004e15b1fe3ffc4a9cd76f",
+      "wholeFileBytes": 2141,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/file/services/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "37a1090fa9389a3120e7371f32c9180d34ec9dc3e38a9ce34b186611f7ac8e96",
+      "wholeFileBytes": 6231,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/file/storage.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "17e3a9c713e5869fbf9739e698887ea222f4f8d2e0c2a3435a0d8b51a48bd558",
+      "wholeFileBytes": 18688,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/file/types/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "b633de00661a2dde4f54f5defa580049c93574dee2b2a03f9ea1e96ad1582f24",
+      "wholeFileBytes": 378,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/file/validation/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "1d93adca55ef7665c8ee3dee95c9c38924f2e0b40d52e9df0a4402e96396b85b",
+      "wholeFileBytes": 8565,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/middleware/auth.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+      "wholeFileBytes": 8706,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/middleware/errorHandler.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51",
+      "wholeFileBytes": 944,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/middleware/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "f98daa479b34ad8c3d7d4698d852b05d77004af3e200b69244c1eefecfac3b32",
+      "wholeFileBytes": 56,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/pharmacies/model/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "beda95d89a9773a8d5851dd923c363c83123a573f7391836dec69b13e5cfa177",
+      "wholeFileBytes": 3194,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/pharmacies/types/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "e43d4c6e5af5ebc9a21e3a35d41e475e92ab7509961cdafe6bfc3043af0b24f0",
+      "wholeFileBytes": 4043,
+      "complete": true
+    },
+    {
+      "path": "src1/routes/index.ts",
+      "origin": "git",
+      "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+      "wholeFileSha256": "9be841178931003004cc53a0285b5c849d82a82dbc798a4a0d38bf69396de6ea",
+      "wholeFileBytes": 6828,
+      "complete": true
+    },
+    {
+      "path": "git-history/f200491e08e497d1bda82af010d9854f34b16515/src1/modules/file/controller/index.ts",
+      "origin": "git-history",
+      "sourceCommit": "f200491e08e497d1bda82af010d9854f34b16515",
+      "wholeFileSha256": "4c19319089f0a5a141fc1473d54956dbdd4127c4b87b1dcca7bde011120ec57f",
+      "wholeFileBytes": 9989,
+      "complete": true
+    },
+    {
+      "path": "git-history/f200491e08e497d1bda82af010d9854f34b16515/src1/modules/file/storage.ts",
+      "origin": "git-history",
+      "sourceCommit": "f200491e08e497d1bda82af010d9854f34b16515",
+      "wholeFileSha256": "09315a3816094d291655f9f64e55bce49b0387385c8aef0c863542faf53d46cb",
+      "wholeFileBytes": 17518,
+      "complete": true
+    },
+    {
+      "path": "native/formidable@3.5.4/package/src/FormidableError.js",
+      "origin": "pinned-public-npm-tar",
+      "sourceCommit": "335f6f180ef1601b67beaadb6dcba06c40c2c21d181ce14753ad34e795a6c097",
+      "wholeFileSha256": "62adce3013f4d542585e6c64f33a702c68798b7c05c260744c75a4099bea65fb",
+      "wholeFileBytes": 1242,
+      "complete": true
+    },
+    {
+      "path": "native/formidable@3.5.4/package/src/index.js",
+      "origin": "pinned-public-npm-tar",
+      "sourceCommit": "335f6f180ef1601b67beaadb6dcba06c40c2c21d181ce14753ad34e795a6c097",
+      "wholeFileSha256": "b2e0cd1575b80baee4a8a0fa0ff4e57655a3e9651abeca88d493efd3c36fbca4",
+      "wholeFileBytes": 754,
+      "complete": true
+    },
+    {
+      "path": "native/formidable@3.5.4/package/src/Formidable.js",
+      "origin": "pinned-public-npm-tar",
+      "sourceCommit": "335f6f180ef1601b67beaadb6dcba06c40c2c21d181ce14753ad34e795a6c097",
+      "wholeFileSha256": "f5b2a5e6c1586231d91629d63248be177303061b13a23012e9f91a6367d5bba0",
+      "wholeFileBytes": 18026,
+      "complete": true
+    },
+    {
+      "path": "native/formidable@3.5.4/package/src/parsers/Multipart.js",
+      "origin": "pinned-public-npm-tar",
+      "sourceCommit": "335f6f180ef1601b67beaadb6dcba06c40c2c21d181ce14753ad34e795a6c097",
+      "wholeFileSha256": "b75e938b96b0dd5ccc2a8b2cdb8d5c9006364e320f8df845ec569a5bc2158931",
+      "wholeFileBytes": 9824,
+      "complete": true
+    },
+    {
+      "path": "native/formidable@3.5.4/package/src/plugins/multipart.js",
+      "origin": "pinned-public-npm-tar",
+      "sourceCommit": "335f6f180ef1601b67beaadb6dcba06c40c2c21d181ce14753ad34e795a6c097",
+      "wholeFileSha256": "da2301f7e69260fe290d7a655da84174ab583d49ac7ae0c15eb0909120f2001a",
+      "wholeFileBytes": 6083,
+      "complete": true
+    },
+    {
+      "path": "native/formidable@3.5.4/package/dist/index.cjs",
+      "origin": "pinned-public-npm-tar",
+      "sourceCommit": "335f6f180ef1601b67beaadb6dcba06c40c2c21d181ce14753ad34e795a6c097",
+      "wholeFileSha256": "8d8459005e76aec65a56aec12a1ea3d7b3bdde6bb53fb2767f42b0f39d5a88ba",
+      "wholeFileBytes": 45595,
+      "complete": true
+    }
+  ]
+}

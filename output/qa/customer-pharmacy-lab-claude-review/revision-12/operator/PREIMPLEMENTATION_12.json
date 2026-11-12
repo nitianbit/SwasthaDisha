@@ -1,0 +1,16 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-OPERATOR-PREPARATION-12",
+  "planSha256": "00d23d929f35091f323329e91ba862f24360a6469b66c1c772a0e37b1c40285c",
+  "preparedFreezeSha256": "beed0d865aa6bd61b46d7a767943f3812701a0be7d337d99c9f3b51982f40aa8",
+  "rootAction": "AUTHORIZE_COMPACT_SUPERVISOR_AND_OFFLINE_FAKE_CHECKS_ONLY",
+  "scope": "Legacy validator enum retained; actual PREPARATION_ONLY_NO_FAKE_RERUN_NO_LIVE",
+  "leadPlanAuthor": "/root",
+  "bindingImplementationAuthor": "/root",
+  "ineligibleLiveReviewers": [
+    "/root"
+  ],
+  "decisions": [],
+  "functionalChanges": false,
+  "liveInvocationApproved": false,
+  "modelRequests": 0
+}
