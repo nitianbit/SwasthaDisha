@@ -1,0 +1,31 @@
+{
+  "schema": "SD-LAB-DEPENDENT-OWNERSHIP-PREIMPLEMENTATION-1",
+  "contractSha256": "8bfccbdd4baaf64a59e0c2d6a6d019b03cba38c18aa7d23a4845ba9ad3aa3d97",
+  "controllerBaselineSha256": "b036cc91db6abf4cecfc2963fa02ab04b12bd8c8048c7c979468080a778942ce",
+  "author": "/root/customer_booking_writer",
+  "reviewers": [
+    {
+      "agent": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "basis": "Completecontract/all28pins/existingscopeddependentlookup/fixed404/guardbeforeeffects; limitsandconstructorclosureexplicit."
+    },
+    {
+      "agent": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "basis": "Readfullcontractandactualcontrollerconstruct/createpaths/DependentServicequeryandroutes; all28pinsverified. Oneexistingservicerule/sharedawaitedguard, no newrepo/DTO/clinicalpolicy."
+    }
+  ],
+  "applicationEditAuthorizedNow": false,
+  "snapshotDependency": "LiveR4combinedClaudesourcereviewisactive; waituntilRootresolvescapturebeforeeditingselectedcontroller.",
+  "runtimeAdmission": false,
+  "remainingLimits": [
+    "read-timeTOCTOU",
+    "clinical/guardian/consent/activitypolicy",
+    "patient-demographicsmapping",
+    "laterbooking/retry/reportauthority",
+    "expandedTypeDIimportclosureC3"
+  ],
+  "moduleAcceptance": false
+}
