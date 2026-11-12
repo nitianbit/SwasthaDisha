@@ -1,0 +1,66 @@
+{
+  "kind": "OBSERVED_SOURCE_ONLY_COMMAND_RECEIPTS",
+  "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-prescription-progress",
+  "commands": [
+    {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/usr/sbin:/sbin",
+        "/usr/bin/python3",
+        "-I",
+        "/private/tmp/pharmacy-progress-source-write.py"
+      ],
+      "exitCode": 0,
+      "observed": "Verified exact baseline/contract/all28pins and both actual decisions; amended only owned isolated service and wrote new authorization/evidence."
+    },
+    {
+      "argv": [
+        "env",
+        "-i",
+        "PATH=/usr/bin:/bin:/usr/sbin:/sbin",
+        "/usr/bin/python3",
+        "-I",
+        "output/qa/pharmacy-prescription-progress/source/source-check.py"
+      ],
+      "exitCode": 0,
+      "stdout": "{\"sourceVerdict\": \"ACCEPTED\", \"candidateSha256\": \"75df8dffb4ead5043ab5f7c131302063068ea6b7c79e9b55fb582bd0481c71f5\", \"protectedFileCount\": 456, \"negativeControlCount\": 16, \"restoredSourceControlCount\": 16, \"runtimeBehavior\": \"NOT_RUN\", \"F1\": \"HIGH_OPEN\"}\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        "src1/modules/pharmacyOrders/services/index.ts"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "cmp",
+        "output/qa/pharmacy-prescription-progress/PREIMPLEMENTATION.json",
+        "output/qa/pharmacy-prescription-progress/source/preimplementation.snapshot.json"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "git",
+        "branch",
+        "--show-current"
+      ],
+      "exitCode": 0,
+      "stdout": "m0/pharmacy-prescription-progress\n",
+      "stderr": ""
+    }
+  ],
+  "runtimeBehavior": "NOT_RUN",
+  "F1": "HIGH_OPEN",
+  "gitMutation": false
+}

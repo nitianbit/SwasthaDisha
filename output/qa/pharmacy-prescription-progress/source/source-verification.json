@@ -1,0 +1,334 @@
+{
+  "kind": "SOURCE_DATA_ONLY",
+  "argv": [
+    "output/qa/pharmacy-prescription-progress/source/source-check.py"
+  ],
+  "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-prescription-progress",
+  "checks": [
+    {
+      "name": "BASELINE_PIN",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "EXACT_ARCHIVES",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NAMED_CANDIDATE_LEXICAL_ASSERTIONS",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "ONLY_LIST_BOOLEAN_AND_TWO_REUSES_CHANGED",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "ONLY_OWNED_ISOLATED_SERVICE_CHANGED",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_baseline",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_baseline",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_missing_target_packed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_missing_target_packed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_missing_target_ready_for_pickup",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_missing_target_ready_for_pickup",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_missing_target_out_for_delivery",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_missing_target_out_for_delivery",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_missing_target_completed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_missing_target_completed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_accepted_added_to_gate",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_accepted_added_to_gate",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_completion_only_guard",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_completion_only_guard",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_completion_only_cas",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_completion_only_cas",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_gate_from_current_state",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_gate_from_current_state",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_unknown_state_admitted",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_unknown_state_admitted",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_broad_eligible_cas",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_broad_eligible_cas",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_all_gated_targets_consume",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_all_gated_targets_consume",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_error_api_changed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_error_api_changed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_session_removed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_session_removed",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_consume_before_cas",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_consume_before_cas",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "NEGATIVE_CONTROL_gate_before_payment",
+      "sourceAssertion": "ACCEPTED"
+    },
+    {
+      "name": "RESTORED_SOURCE_CONTROL_gate_before_payment",
+      "sourceAssertion": "ACCEPTED"
+    }
+  ],
+  "negativeControls": [
+    {
+      "name": "baseline",
+      "intended": "ONE_EXACT_PRIVATE_TARGET_LIST",
+      "rejectedByNamedSourceAssertions": [
+        "ONE_EXACT_PRIVATE_TARGET_LIST",
+        "ONE_TARGET_DERIVATION",
+        "SHARED_GUARD",
+        "SHARED_CAS",
+        "UNCHANGED_ERROR_API",
+        "PAYMENT_BEFORE_RX_BEFORE_EFFECTS"
+      ],
+      "variantSha256": "54bbff59b46586120f107472265d116a6754782aea6d632295ecea88983f5ddc",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "missing_target_packed",
+      "intended": "ONE_EXACT_PRIVATE_TARGET_LIST",
+      "rejectedByNamedSourceAssertions": [
+        "ONE_EXACT_PRIVATE_TARGET_LIST"
+      ],
+      "variantSha256": "12c181044fb8e4fca02867cee18ca77d0472729afc9bf25fc478846e712d3aac",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "missing_target_ready_for_pickup",
+      "intended": "ONE_EXACT_PRIVATE_TARGET_LIST",
+      "rejectedByNamedSourceAssertions": [
+        "ONE_EXACT_PRIVATE_TARGET_LIST"
+      ],
+      "variantSha256": "9c4938a0ad33a551a4ae175e9c562328bd7768d34e9f7003cdd8e5254c67f09d",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "missing_target_out_for_delivery",
+      "intended": "ONE_EXACT_PRIVATE_TARGET_LIST",
+      "rejectedByNamedSourceAssertions": [
+        "ONE_EXACT_PRIVATE_TARGET_LIST"
+      ],
+      "variantSha256": "25b76e88cdd8f180adb39be6b2c2252549c512325f7edc948d16f6202446b9e4",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "missing_target_completed",
+      "intended": "ONE_EXACT_PRIVATE_TARGET_LIST",
+      "rejectedByNamedSourceAssertions": [
+        "ONE_EXACT_PRIVATE_TARGET_LIST"
+      ],
+      "variantSha256": "119b5e6c64cf046f86281f226c537ffc236921a70ded9ec5c3784d3c791e9210",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "accepted_added_to_gate",
+      "intended": "ONE_EXACT_PRIVATE_TARGET_LIST",
+      "rejectedByNamedSourceAssertions": [
+        "ONE_EXACT_PRIVATE_TARGET_LIST"
+      ],
+      "variantSha256": "9a5ec59e1731bc67c5148c353fdd896145c42abf5721fe60ae24e96cda68776f",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "completion_only_guard",
+      "intended": "SHARED_GUARD",
+      "rejectedByNamedSourceAssertions": [
+        "ONE_TARGET_DERIVATION",
+        "SHARED_GUARD",
+        "UNCHANGED_ERROR_API"
+      ],
+      "variantSha256": "7d544e010e359fc0b8ea31b603902e64332d1fdc93d06fd356537f7f6f04fa96",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "completion_only_cas",
+      "intended": "SHARED_CAS",
+      "rejectedByNamedSourceAssertions": [
+        "ONE_TARGET_DERIVATION",
+        "SHARED_CAS"
+      ],
+      "variantSha256": "ac1c58590b38dff87d47a73803ee0208283013f5b3fadbc5148621b851ab8248",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "gate_from_current_state",
+      "intended": "ONE_TARGET_DERIVATION",
+      "rejectedByNamedSourceAssertions": [
+        "ONE_TARGET_DERIVATION",
+        "PAYMENT_BEFORE_RX_BEFORE_EFFECTS"
+      ],
+      "variantSha256": "f19ca6a840072f566a7d962fc369a841ced98689b0a272334e675dcf9239b727",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "unknown_state_admitted",
+      "intended": "CLOSED_RX_ALLOWLIST",
+      "rejectedByNamedSourceAssertions": [
+        "CLOSED_RX_ALLOWLIST",
+        "UNCHANGED_ERROR_API"
+      ],
+      "variantSha256": "00754c93b10039485d1992edc20502e7f7ea89cc6f912f076bf8cc73e458aaed",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "broad_eligible_cas",
+      "intended": "EXACT_OBSERVED_CAS",
+      "rejectedByNamedSourceAssertions": [
+        "SHARED_CAS",
+        "EXACT_OBSERVED_CAS"
+      ],
+      "variantSha256": "bd1b72c471e46db0b674df1d638b6feceb012654f24f73eb9cc8b749a601c9fe",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "all_gated_targets_consume",
+      "intended": "COMPLETION_ONLY_CONSUMPTION",
+      "rejectedByNamedSourceAssertions": [
+        "ONE_TARGET_DERIVATION",
+        "COMPLETION_ONLY_CONSUMPTION"
+      ],
+      "variantSha256": "2ff13e7b960aa0c2bb7a0720c4020ebf2feb2d6db0857ff3083176d7b5f73fe2",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "error_api_changed",
+      "intended": "UNCHANGED_ERROR_API",
+      "rejectedByNamedSourceAssertions": [
+        "UNCHANGED_ERROR_API"
+      ],
+      "variantSha256": "6b7d8eaa26e4ce8d741bcdae0c59d339a8318264e973325786f84c6677ab3c1c",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "session_removed",
+      "intended": "SESSION_OPTION",
+      "rejectedByNamedSourceAssertions": [
+        "SESSION_OPTION"
+      ],
+      "variantSha256": "e79ec0ca4b7f753b123ba4907d31411d711a7a00624856e9982f94f2bee6610e",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "consume_before_cas",
+      "intended": "CAS_AND_NO_MATCH_BEFORE_INVENTORY",
+      "rejectedByNamedSourceAssertions": [
+        "CAS_AND_NO_MATCH_BEFORE_INVENTORY"
+      ],
+      "variantSha256": "bcb13ea5d6b8dfb7c5fdf71d8a327f8d0e73ea7f4655a2c08c4f9a9f4a1f4d27",
+      "scope": "in-memory source text only"
+    },
+    {
+      "name": "gate_before_payment",
+      "intended": "PAYMENT_BEFORE_RX_BEFORE_EFFECTS",
+      "rejectedByNamedSourceAssertions": [
+        "PAYMENT_BEFORE_RX_BEFORE_EFFECTS"
+      ],
+      "variantSha256": "e4ce7ad08d59ac2ab2cb557bfece5c8da71d461518e1c35339834e51ea291c44",
+      "scope": "in-memory source text only"
+    }
+  ],
+  "runtimeBehavior": "NOT_RUN",
+  "F1": "HIGH_OPEN",
+  "candidateSourceFailures": [],
+  "changedProtectedFiles": [
+    "src1/modules/pharmacyOrders/services/index.ts"
+  ],
+  "sourceVerdict": "ACCEPTED",
+  "candidateSha256": "75df8dffb4ead5043ab5f7c131302063068ea6b7c79e9b55fb582bd0481c71f5",
+  "protectedFileCount": 456,
+  "negativeControlCount": 16,
+  "restoredSourceControlCount": 16,
+  "scriptSha256": "b15998df5698a26aa88929812160376c6daefdc32d4b7a9e09be1f0e360bead6",
+  "gitMutation": false,
+  "limitations": [
+    "Lexical assertions/hashes only; no TypeScript/parser/compiler or app execution.",
+    "Source variants/restorations are text controls, not executed status/payment/DB/stock cases.",
+    "Type validity/focused behavior remain NOT_RUN pending separate complete C3 admission.",
+    "F1 remains HIGH/open; named owner decisions required before additional policy and Rx enablement/release. No answer inferred to the pending names question."
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "schema": "SD-PHARMACY-PRESCRIPTION-PROGRESS-PREIMPLEMENTATION-1",
+  "contractSha256": "136041731cdc1a10c3263842d2c12dedcdeeedd850249a0770581746fe7fd53a",
+  "baselineSha256": "54bbff59b46586120f107472265d116a6754782aea6d632295ecea88983f5ddc",
+  "reviewers": [
+    {
+      "agent": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY"
+    },
+    {
+      "agent": "/root/claude_review_recipe_standards",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY"
+    }
+  ],
+  "ownerScopeReconciliation": "Both reviewers confirm existing ROADMAPU1/TC-PHA001/TC-REV007 already require the necessary earlier gate. No additional clinical/refund policy decision before this bounded source edit. Named owners and separate reviewed contracts required before approval/recovery/money/stock policy code; named decisions/evidence required before Rx enablement/release.",
+  "rootDecision": "AUTHORIZE_BOUNDED_SOURCE_IMPLEMENTATION_IN_ISOLATED_BRANCH",
+  "productionScope": [
+    "src1/modules/pharmacyOrders/services/index.ts"
+  ],
+  "F1": "HIGH_OPEN",
+  "pendingOwnerQuestion": "Names/roles requested asynchronously; no approval inferred from silence. Independent technical containment continues.",
+  "runtimeOrEnablementApproved": false
+}

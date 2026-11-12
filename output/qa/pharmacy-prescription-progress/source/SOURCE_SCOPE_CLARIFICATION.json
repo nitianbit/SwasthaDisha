@@ -1,0 +1,11 @@
+{
+  "schema": "SD-PHARMACY-PROGRESS-SCOPE-CLARIFICATION-1",
+  "recordedBy": "/root/customer_booking_writer",
+  "authorizingAgent": "/root",
+  "provenance": "ACTUAL_NATIVE_MESSAGE_BEFORE_SOURCE_FREEZE",
+  "actualMessage": "Agreed. The explicit four-status set is authoritative: completed is included; no additional terminal/release targets are included. Record that narrow wording interpretation in the new source evidence and keep the frozen draft unchanged. No new policy or scope is authorized.",
+  "contractSha256": "136041731cdc1a10c3263842d2c12dedcdeeedd850249a0770581746fe7fd53a",
+  "interpretation": "Exact four targets packed/ready_for_pickup/out_for_delivery/completed; no additional terminal or release targets.",
+  "contractBytesChanged": false,
+  "newPolicyAuthorized": false
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "SD-PHARMACY-PRESCRIPTION-PROGRESS-SOURCE-DECISIONS-1",
+  "contractSha256": "136041731cdc1a10c3263842d2c12dedcdeeedd850249a0770581746fe7fd53a",
+  "candidateSha256": "75df8dffb4ead5043ab5f7c131302063068ea6b7c79e9b55fb582bd0481c71f5",
+  "sourceFreezeSha256": "de13d8ec637ba93f0a0da4eae253f1e596a02de5dbb80bc11d2aece093a4d12b",
+  "reviewers": [
+    {
+      "agent": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "basis": "Actualone-list/boolean/guard/CASdelta, inverse, fifteenfrozenartifacts/456pins/16lexicalcontrolsreviewed; preservedpayment/COD/releases/consumption/session."
+    },
+    {
+      "agent": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "basis": "Readactualdiff/existingOrderStatustypereuse/guardafterpayment/sharedbooleaninexactCAS; all15artifacts/456pinsmatchandonlyservicechanged. Explicitfour-targetclarificationmatchesauthorization."
+    }
+  ],
+  "focusedRuntime": "NOT_RUN",
+  "typeValidity": "NOT_RUN",
+  "F1": "HIGH_OPEN",
+  "ownerNamesQuestion": "PENDING_NO_ANSWER_INFERRED",
+  "legacyRecoveryClinicalMoneyStockPolicies": "UNRESOLVED_NOT_IMPLEMENTED",
+  "RxEnablementModuleReleaseAcceptance": false,
+  "claudeReview": "PENDING_NEW_SNAPSHOT"
+}

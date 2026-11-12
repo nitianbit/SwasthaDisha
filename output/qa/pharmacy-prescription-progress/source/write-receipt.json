@@ -1,0 +1,15 @@
+{
+  "kind": "SOURCE_DATA_ONLY",
+  "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-prescription-progress",
+  "base": "2f27b59c183892b5418dfd8751d23890b9022c63",
+  "baselineSha256": "54bbff59b46586120f107472265d116a6754782aea6d632295ecea88983f5ddc",
+  "candidateSha256": "75df8dffb4ead5043ab5f7c131302063068ea6b7c79e9b55fb582bd0481c71f5",
+  "contractSha256": "136041731cdc1a10c3263842d2c12dedcdeeedd850249a0770581746fe7fd53a",
+  "contractSourcePinsRechecked": 28,
+  "protectedFileCount": 456,
+  "appSourceFileCount": 358,
+  "rootAuthorizationSha256": "98d647e2022186fa8c51b68265b8c04e8ae6a13b1ad2a4477085496026e315c9",
+  "runtimeBehavior": "NOT_RUN",
+  "F1": "HIGH_OPEN",
+  "gitMutation": false
+}
