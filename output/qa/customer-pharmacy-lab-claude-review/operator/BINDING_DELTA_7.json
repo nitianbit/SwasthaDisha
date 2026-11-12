@@ -1,0 +1,54 @@
+{
+  "schema": "SD-CLAUDE-BINDING-DELTA-7",
+  "baselineSupervisorSha256": "f834b299e37fa79543ba4ae47e82136d0ee6420f56ec9447ae213684d9c828c0",
+  "baselineTestsSha256": "3dea8fa95fdf25e2aac621312d0cf485581636eb94a2c772aaaa50f1b7471b29",
+  "finalSupervisorSha256": "188cf7a864500f38b3020316c90243502c7ce2a7f9e417140ba080f118de0d88",
+  "finalTestsSha256": "00c342c5da55827fcab2a13f420f9d01c09927c25974c8e8fcd520302302bd19",
+  "sourceReplacements": [
+    {
+      "old": "revision-6",
+      "new": "revision-7"
+    },
+    {
+      "old": "AUTHOR = '/root/claude_review_5_packet'",
+      "new": "AUTHOR = '/root'"
+    },
+    {
+      "old": "16bc4e2c6495e63d773b89401c9e622cb1b4ec8905e4cafbf4c827fb0a201b8b",
+      "new": "37db6d20ae109ec59ae962bac2f023d472165c28ce518c5c4c6ffcd6cf55a9e0"
+    },
+    {
+      "old": "5d2aefca2e5f589799016331fbe3dac39029ce7431a4b182440509e88c32b2ad",
+      "new": "762fe43794831a3f02b49b2b5ffd61f49796edaaa6f9f4957beea9a3c4c2c64b"
+    },
+    {
+      "old": "PREIMPLEMENTATION_6",
+      "new": "PREIMPLEMENTATION_7"
+    },
+    {
+      "old": "LIVE_APPROVAL_6",
+      "new": "LIVE_APPROVAL_7"
+    },
+    {
+      "old": "SD-CURRENT-CLAUDE-LIVE-APPROVAL-6",
+      "new": "SD-CURRENT-CLAUDE-LIVE-APPROVAL-7"
+    }
+  ],
+  "testReplacements": [
+    {
+      "old": "test_old_live_receipt_does_not_admit_revision_six",
+      "new": "test_old_live_receipt_does_not_admit_revision_seven"
+    },
+    {
+      "old": "'LIVE_APPROVAL_5.json'",
+      "new": "'LIVE_APPROVAL_6.json'"
+    }
+  ],
+  "exactReverseSupervisorRecovery": true,
+  "exactReverseTestsRecovery": true,
+  "functionalChanges": false,
+  "environmentUnchanged": true,
+  "runtimeMcpCapsTimeoutsUnchanged": true,
+  "fakeCampaign": "NOT_RUN_REUSE_EXACT_R6_47_CASE_EVIDENCE",
+  "modelCalls": 0
+}

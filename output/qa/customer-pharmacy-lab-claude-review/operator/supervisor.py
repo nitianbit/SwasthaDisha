@@ -1,4 +1,4 @@
-"""Exact revision-6 Claude review supervisor; default mode has no effects.
+"""Exact revision-7 Claude review supervisor; default mode has no effects.
 
 Owned-process identity/EOF patterns follow the historical claude-ruflo-review
 operator, without importing its main, globals, profiles, receipts or parser.
@@ -19,11 +19,11 @@ import time
 
 ROOT = Path('/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab')
 QA = ROOT / 'output/qa/customer-pharmacy-lab-claude-review'
-REV = QA / 'revision-6'
+REV = QA / 'revision-7'
 OWN = QA / 'operator'
-AUTHOR = '/root/claude_review_5_packet'
-FROZEN = '16bc4e2c6495e63d773b89401c9e622cb1b4ec8905e4cafbf4c827fb0a201b8b'
-PLAN = '5d2aefca2e5f589799016331fbe3dac39029ce7431a4b182440509e88c32b2ad'
+AUTHOR = '/root'
+FROZEN = '37db6d20ae109ec59ae962bac2f023d472165c28ce518c5c4c6ffcd6cf55a9e0'
+PLAN = '762fe43794831a3f02b49b2b5ffd61f49796edaaa6f9f4957beea9a3c4c2c64b'
 PUBLIC_OS_KEYS = ('USER', 'LOGNAME', 'SECURITYSESSIONID', '__CF_USER_TEXT_ENCODING')
 MAX_STATE = 65536
 CODES = frozenset('INPUT_REJECTED APPROVAL_REQUIRED APPROVAL_REJECTED SOURCE_DRIFT CLAIM_EXISTS OUTPUT_IDENTITY START_FAILED IDENTITY_UNKNOWN IDENTITY_CHANGED UNKNOWN_CHILD PROCESS_OBSERVATION PROCESS_OBSERVATION_TIMEOUT TIMEOUT STDOUT_LIMIT STDERR_LIMIT FRAME_LIMIT PARTIAL_FRAME PIPE_FAILURE INPUT_INCOMPLETE CHILD_EXIT CHILD_CHAIN_UNOBSERVED CLEANUP_UNRESOLVED INTERRUPTED INTERNAL_ERROR'.split())
@@ -87,7 +87,7 @@ def environment_check(environment, parent):
 
 def load():
     """No native process or provider is used in admission; missing receipt stops."""
-    need((OWN / 'LIVE_APPROVAL_6.json').exists(), 'APPROVAL_REQUIRED')
+    need((OWN / 'LIVE_APPROVAL_7.json').exists(), 'APPROVAL_REQUIRED')
     frozen = regular(REV / 'prepared-freeze.json')
     need(sha(frozen) == FROZEN, 'SOURCE_DRIFT')
     inputs = json.loads(frozen)['files']
@@ -97,7 +97,7 @@ def load():
     prior = json.loads(regular(REV / 'prior-seven.sha256.json'))
     for name, digest in prior.items():
         need('/' not in name and sha(regular(QA / name)) == digest, 'SOURCE_DRIFT')
-    pre = json.loads(regular(OWN / 'PREIMPLEMENTATION_6.json'))
+    pre = json.loads(regular(OWN / 'PREIMPLEMENTATION_7.json'))
     need(pre['planSha256'] == PLAN and pre['preparedFreezeSha256'] == FROZEN and
          pre['rootAction'] == 'AUTHORIZE_COMPACT_SUPERVISOR_AND_OFFLINE_FAKE_CHECKS_ONLY')
     recipe_bytes = regular(REV / 'recipe.json')
@@ -122,11 +122,11 @@ def load():
     challenge_bytes = regular(REV / 'challenge.json')
     challenge = json.loads(challenge_bytes)
     need(challenge['nonce'] not in packet.decode() and challenge['sessionId'] == recipe['sessionId'])
-    expected = {'schema': 'SD-CURRENT-CLAUDE-LIVE-APPROVAL-6',
+    expected = {'schema': 'SD-CURRENT-CLAUDE-LIVE-APPROVAL-7',
                 'rootDecision': 'APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW',
                 'supervisorSha256': sha(regular(OWN / 'supervisor.py')),
                 'testsSha256': sha(regular(OWN / 'test_supervisor.py')),
-                'preimplementationSha256': sha(regular(OWN / 'PREIMPLEMENTATION_6.json')),
+                'preimplementationSha256': sha(regular(OWN / 'PREIMPLEMENTATION_7.json')),
                 'preparedFreezeSha256': FROZEN, 'recipeSha256': sha(recipe_bytes),
                 'challengeSha256': sha(challenge_bytes), 'sessionId': recipe['sessionId'],
                 'packetSha256': recipe['packetSha256'],
@@ -137,15 +137,15 @@ def load():
                 'argv': recipe['argvCandidate'], 'environment': recipe['environmentCandidate'],
                 'cwd': recipe['cwd'], 'executable': recipe['executable'],
                 'onceClaim': recipe['onceClaim'], 'privateOutputDirectory': recipe['privateOutputDirectory']}
-    approval_bytes = regular(OWN / 'LIVE_APPROVAL_6.json', private=True)
+    approval_bytes = regular(OWN / 'LIVE_APPROVAL_7.json', private=True)
     approval_check(json.loads(approval_bytes), expected)
     return {'recipe': recipe, 'packet': packet, 'approvalExpected': expected,
             'inputHashes': {str(REV / n): h for n, h in inputs.items()} |
                            {str(REV / 'prepared-freeze.json'): FROZEN} |
                            {str(OWN / 'supervisor.py'): expected['supervisorSha256'],
                             str(OWN / 'test_supervisor.py'): expected['testsSha256'],
-                            str(OWN / 'PREIMPLEMENTATION_6.json'): expected['preimplementationSha256'],
-                            str(OWN / 'LIVE_APPROVAL_6.json'): sha(approval_bytes)} |
+                            str(OWN / 'PREIMPLEMENTATION_7.json'): expected['preimplementationSha256'],
+                            str(OWN / 'LIVE_APPROVAL_7.json'): sha(approval_bytes)} |
                            {str(ROOT / f['path']): f['wholeFileSha256']
                             for f in snapshot['files'] if f['origin'] == 'git'} |
                            {str(QA / name): digest for name, digest in prior.items()}}

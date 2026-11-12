@@ -1,0 +1,23 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-OPERATOR-PREPARATION-7",
+  "planSha256": "762fe43794831a3f02b49b2b5ffd61f49796edaaa6f9f4957beea9a3c4c2c64b",
+  "preparedFreezeSha256": "37db6d20ae109ec59ae962bac2f023d472165c28ce518c5c4c6ffcd6cf55a9e0",
+  "rootAction": "AUTHORIZE_COMPACT_SUPERVISOR_AND_OFFLINE_FAKE_CHECKS_ONLY",
+  "scope": "R7 preparation only; unchanged fake suite NOT rerun despite legacy rootAction enum. No live authority.",
+  "approvedRootPlanSha256": "f67c05378e789886a0f0db75e6519c9cc7a42e872718679aba53a230eb5444c5",
+  "actualPreparationVotesSha256": "7a572743044a751d89e79e797f9286dc82cd5464f6dc8cb702af391c8b57ddf5",
+  "leadPlanAuthor": "/root",
+  "bindingImplementationAuthor": "/root/claude_review_5_packet",
+  "ineligibleLiveReviewers": [
+    "/root",
+    "/root/claude_review_5_packet"
+  ],
+  "expectedIndependentSubagentReviewers": [
+    "/root/pharmacist_identity_fields",
+    "/root/pharmacy_refund_primitives"
+  ],
+  "functionalChanges": false,
+  "finalSourceExactInvocationReviews": "PENDING_TWO_ACTUAL_NONAUTHOR_DECISIONS",
+  "liveInvocationApproved": false,
+  "modelRequests": 0
+}

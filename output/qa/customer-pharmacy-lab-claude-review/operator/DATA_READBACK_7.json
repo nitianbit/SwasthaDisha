@@ -1,0 +1,22 @@
+{
+  "schema": "SD-CLAUDE-R7-DATA-READBACK-1",
+  "snapshot": "ea48a35cce0c010bbbe6a112795a090931d6fd8c",
+  "files": 71,
+  "liveWholeFilePins": 70,
+  "excerpts": 76,
+  "changedProductionFilesComplete": 16,
+  "contractsComplete": 6,
+  "externalBookingsLiveInputs": 0,
+  "packetBytes": 694493,
+  "packetSha256": "d73c2f97881dded32e3b7e794035603eb5ff6eaf5bf6c53b64d503d001584a92",
+  "sessionId": "c5ebf347-27df-460f-9b2f-0c7ff48ff7bb",
+  "exactSourceAndTestInverse": true,
+  "functionalChanges": false,
+  "sevenKeyEnvironmentUnchanged": true,
+  "freshReceiptClaimOutputUnallocated": true,
+  "leadPlanAuthor": "/root",
+  "bindingImplementationAuthor": "/root/claude_review_5_packet",
+  "bothAuthorsExcludedFromLiveReviewVotes": true,
+  "liveCalls": 0,
+  "testsRerun": 0
+}

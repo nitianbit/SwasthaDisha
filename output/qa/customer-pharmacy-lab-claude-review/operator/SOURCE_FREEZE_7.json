@@ -1,0 +1,40 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-FINAL-SOURCE-FREEZE-7",
+  "filesRelativeToQa": {
+    "revision-7/packet.json": "d73c2f97881dded32e3b7e794035603eb5ff6eaf5bf6c53b64d503d001584a92",
+    "revision-7/recipe.json": "09e887f53707481b286d28797c811201865f2cf3f59c32ee3b53c6ca7f33d015",
+    "revision-7/challenge.json": "52df1c31699143a0fc719f84ad62a48b734ba5afc1b92209bebf66898f437175",
+    "revision-7/README.md": "4a4b4d7dae267a084fda8057aae77284f02757086f093a9b3345b73f92f5e4c4",
+    "revision-7/prepared-freeze.json": "37db6d20ae109ec59ae962bac2f023d472165c28ce518c5c4c6ffcd6cf55a9e0",
+    "revision-7/OPERATOR_PLAN.md": "762fe43794831a3f02b49b2b5ffd61f49796edaaa6f9f4957beea9a3c4c2c64b",
+    "revision-7/manifest.json": "7b702938d5a58cfaedf4c0f6da31ca3edba7a193441c5a23b0ce25bc63c3c352",
+    "revision-7/mcp-config.json": "a612d678b74998efe9b9d91c029d7f66731ff4fb8e5e096e41f07243369743b0",
+    "revision-7/prior-seven.sha256.json": "6d490c04b63fd059f0d8cf49b277a48b3407a0f82d667b7837f7777d503e3b11",
+    "operator/supervisor.py": "188cf7a864500f38b3020316c90243502c7ce2a7f9e417140ba080f118de0d88",
+    "operator/test_supervisor.py": "00c342c5da55827fcab2a13f420f9d01c09927c25974c8e8fcd520302302bd19",
+    "operator/REVIEW_BATCH_7_PLAN.md": "f67c05378e789886a0f0db75e6519c9cc7a42e872718679aba53a230eb5444c5",
+    "operator/BATCH_7_PREPARATION_DECISIONS.json": "7a572743044a751d89e79e797f9286dc82cd5464f6dc8cb702af391c8b57ddf5",
+    "operator/PREIMPLEMENTATION_7.json": "75ab9fd0c5e0b2ec360028901121e229a66cf53f2e6e17620e52578c2d7dc7b8",
+    "operator/approval-template-7.json": "7b7e4e9bfa7957d420e54650c00c5360aa2ed493cbf181f22c0bb1dc00c9ebbc",
+    "operator/BINDING_DELTA_7.json": "33bafbc05583d3d8901fe8712e6562f91404141c58d91d21cc153984eb652653",
+    "operator/DATA_READBACK_7.json": "f3b746a6327c2016e5301e888823da831679e0d6d8d3fd3803d9f4d55f9c6294",
+    "operator/README_7.md": "16ec098d60de433cdfc83794a3b92d1b6f4fdfbdb47d205fa056bdfc8dca2246",
+    "operator/OFFLINE_6.json": "d2235ccccf676ea66d7c9762831f8dee9a90d08a4aa9c2d33a64208d2089b78e",
+    "operator/OFFLINE_6.txt": "64dbd3156fd4a34642f2c2ab033d7e8391ee3ba55b210014a82c5f4930d3e5a4",
+    "operator/ROOT_ACCEPTANCE_6.json": "36d81905096edd5f502246c09fa2bcb7efb2d1192948958db78e0c5e7886ef62",
+    "operator/historical-r6/test_supervisor.py.txt": "3dea8fa95fdf25e2aac621312d0cf485581636eb94a2c772aaaa50f1b7471b29",
+    "operator/historical-r6/identity.json": "4c4e42fa1e12f1fcf365f9d43dfa356edd3e0a933d803e7a9040c420b517c141",
+    "operator/historical-r6/supervisor.py.txt": "f834b299e37fa79543ba4ae47e82136d0ee6420f56ec9447ae213684d9c828c0"
+  },
+  "sourceCommit": "ea48a35cce0c010bbbe6a112795a090931d6fd8c",
+  "sessionId": "c5ebf347-27df-460f-9b2f-0c7ff48ff7bb",
+  "leadPlanAuthor": "/root",
+  "bindingImplementationAuthor": "/root/claude_review_5_packet",
+  "ineligibleLiveReviewers": [
+    "/root",
+    "/root/claude_review_5_packet"
+  ],
+  "finalReviews": "PENDING_TWO_ACTUAL_NONAUTHOR_SUBAGENT_SOURCE_EXACT_INVOCATION_DECISIONS",
+  "writesStopped": true,
+  "liveInvocationApproved": false
+}

@@ -1,0 +1,6 @@
+{
+  "supervisorSha256": "f834b299e37fa79543ba4ae47e82136d0ee6420f56ec9447ae213684d9c828c0",
+  "testsSha256": "3dea8fa95fdf25e2aac621312d0cf485581636eb94a2c772aaaa50f1b7471b29",
+  "acceptedReview": "ROOT_ACCEPTANCE_6.json",
+  "inert": true
+}

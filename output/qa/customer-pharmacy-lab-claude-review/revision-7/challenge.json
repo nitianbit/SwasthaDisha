@@ -1,0 +1,43 @@
+{
+  "schema": "SD-CLAUDE-SIX-INCREMENT-CHALLENGE-7",
+  "team": "swasthadisha-local",
+  "fromAgent": "codex-lead",
+  "toAgent": "claude-reviewer",
+  "sessionId": "c5ebf347-27df-460f-9b2f-0c7ff48ff7bb",
+  "sourceCommit": "ea48a35cce0c010bbbe6a112795a090931d6fd8c",
+  "controllerSha256": "b46f119eb8fbd509f6c29033bbb9546e8e19da84b6a0ba6b2f360510defeaf85",
+  "contractSha256": "fb293160078ca725f966bfb2841d417be5e0f9eb47235cafdb7507b3a86d3b68",
+  "packetSha256": "d73c2f97881dded32e3b7e794035603eb5ff6eaf5bf6c53b64d503d001584a92",
+  "nonce": "9352b0cd-185f-47cf-a7be-42718e15f8c2",
+  "clientKind": "local-bundled-CLI",
+  "requestedModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "freshness": "REVISION7_SIX_SOURCE_INCREMENTS_ONLY",
+  "state": "PREPARED_NOT_ENQUEUED",
+  "sourceHashes": {
+    "src1/modules/bookings/controller/index.ts": "b46f119eb8fbd509f6c29033bbb9546e8e19da84b6a0ba6b2f360510defeaf85",
+    "src1/modules/bookings/services/index.ts": "25645bc17bb535e2c3c5b6dcec14917ef5df905fe31838c980431dcf9e591051",
+    "src1/modules/organizations/model/index.ts": "fb0e49483802ffe7eb64f2194804a2c15ef7e4cbd5a73fd6136af65ebc039ce0",
+    "src1/modules/organizations/repository/index.ts": "14532bf2d667e37d4ded33bb3767f744cd524bf385d88341d31f7954ece61d3b",
+    "src1/modules/organizations/rules.ts": "b404c00381b5bf642aa648105cefb353a97c7ea7283c680059c426b5e4307942",
+    "src1/modules/organizations/services/index.ts": "ccac5254a6e61c8cce4f14c58005cb39349689e3d0cbafc8ab551ca339397c73",
+    "src1/modules/organizations/types/index.ts": "e873884e69db46d7de70d3120a5ac30809fe8dc526d118a4640463233c9633ff",
+    "src1/modules/payment/services/index.ts": "9c1086e3aa9239855ed3d73a02f941015d869bdb36a689a5294dea367ee7457d",
+    "src1/modules/pharmacyInventory/controller/index.ts": "0234b96e739c6e4d13ac92ce4813ce9440f60ae8b6008c03db3598d063cccbc8",
+    "src1/modules/pharmacyInventory/repository/index.ts": "cee64fd2464b5d5ac6081531a63f9a176e5fc481f33c3a4d6def99a26d97b261",
+    "src1/modules/pharmacyInventory/routes/index.ts": "cea26e2014545a8a9428e6fb20aa632cb7e80d9de37403f6519b819c0d5536c0",
+    "src1/modules/pharmacyInventory/services/index.ts": "98fa27296ef0fdd1066dff2d548de7d3db025504e724432770fe2e49d2907894",
+    "src1/modules/pharmacyInventory/types/index.ts": "6edf4cc6b84fde6e93a0310ac401ad71ef6bcee8bebc1fef992836b615891eae",
+    "src1/modules/pharmacyInventory/validation/index.ts": "f1679413efcd27621a362eda7277a3d0db3edceb8d30fc2c542c075bef8dec53",
+    "src1/modules/pharmacyOrders/prescriptionCommerce.ts": "8e6db5fc64d5a5b2fec6437660fb0d308c24d3e1c0aec2ae95efdc2f73fe0058",
+    "src1/modules/pharmacyOrders/services/index.ts": "aa68cce2580c440f86a65c3c2a26ce78303a69602b6c730b76bbf6e53d1400ae"
+  },
+  "contractHashes": {
+    "documentation/planning/implementation/BUSINESS_STAFF_AUTHORITY_CONTRACT.md": "69dba46528295f55e184b95e1fb6ea451ee2371254d76eb7ac9fd6573068f9fd",
+    "documentation/planning/implementation/CUSTOMER_BOOKING_FIELDS_CONTRACT.md": "b7a82e761ebeacd808dfe11fbb66d7e467631c2aa062f91a8a34deaa8f2d94ea",
+    "documentation/planning/implementation/PHARMACY_REFUND_ERROR_PROPAGATION_CONTRACT.md": "6e34cc83c22347b4ff6e13cbbb2a446de42696a787b1036010e20cef5d1854dd",
+    "documentation/planning/implementation/GATEWAY_CAPTURE_ADMISSION_CONTRACT.md": "e6956ec56ec5ce07d1208cf9cd0310a6fa4600212f2e02973828289c19ab633e",
+    "documentation/planning/implementation/PRESCRIPTION_CHECKOUT_ENABLEMENT_CONTRACT.md": "e3deb08a9002e4b11bf0d168dbce369312727841e5c96fa5c3a25503ea1781a7",
+    "documentation/planning/implementation/PHARMACY_QUALITY_WORKLIST_CONTRACT.md": "710f300d1d335540599a912fcec1582ce6c7d636cc9a5f20a386615bbb9c12ee"
+  }
+}
