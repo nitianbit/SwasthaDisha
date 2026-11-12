@@ -1,0 +1,25 @@
+{
+  "baseline": "df8fd4ef00cb9d45d081ce760d15cef84a880c4e",
+  "author": "/root",
+  "documents": {
+    "documentation/planning/implementation/PHARMACY_DELEGATED_POLICY_DECISIONS.md": "3882d1dc976342376ed6729fc877fa80e15b79f225a37b10933c1d3681333f6f",
+    "documentation/planning/implementation/PHARMACY_AUTHORITY_RECOVERY_BASELINE.md": "fffc6ccc2e463febc34d1802addf212f96e856993cff961ffb8ad6606e9ed2d7"
+  },
+  "decisions": [
+    {
+      "role": "Spec",
+      "reviewer": "/root/booking_read_spec",
+      "decision": "APPROVE_TECHNICAL_DIRECTION_ONLY",
+      "findings": [],
+      "baseline_source_pins_verified": 21
+    },
+    {
+      "role": "Standards",
+      "reviewer": "/root/policy_standards",
+      "decision": "APPROVE_TECHNICAL_DIRECTION_ONLY",
+      "findings": [],
+      "baseline_source_pins_verified": 21
+    }
+  ],
+  "scope": "Actual independent internal Codex reviews, not clinical/legal/runtime/release approvals. User delegated product and technical policy; no further owner naming prerequisite for implementation contracts. Qualified clinical case judgment, protected current authority provisioning and application/release gates retained. F1 HIGH/open."
+}
