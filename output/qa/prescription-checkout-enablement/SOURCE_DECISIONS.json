@@ -1,0 +1,22 @@
+{
+  "candidate_commit": "701e59c91f9dc0c54025976c5d26bb77621e8b30",
+  "author": "/root/policy_standards",
+  "source_freeze_sha256": "74e4b272a5b0c092747ad72e04950bbfb79dcdf674663df9d616b9474439a498",
+  "patch_sha256": "155870d842121d284175c280b9425a848432c1eef2c1f0e5c2fea73084a67c78",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/pharmacy_refund_primitives",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    }
+  ],
+  "review": "Actual shared rule and all pre-effect insertions inspected. Raw canonical false/classification absence, exact catalogue correspondence, prospective create/enrichment/manual/gateway/internal coverage and post-guard narrowing verified as source. Existing capture/processing/refund/progress/effect tails preserved; issued references/races/recovery remain open, F1 HIGH/open.",
+  "limits": "Source/data-only acceptance from two actual nonauthor internal Codex reviews. No TS/compiler/Node/app/DB/provider/HTTP/runtime/clinical/release acceptance; complete C3 still required."
+}

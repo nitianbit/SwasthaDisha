@@ -28,6 +28,8 @@ import { IBooking } from '@/modules/bookings/types';
 import { IExternalBooking } from '@/modules/externalBookings/types';
 import { PharmacyOrderRepository } from '@/modules/pharmacyOrders/repository';
 import { IPharmacyOrder } from '@/modules/pharmacyOrders/types';
+import { assertPrescriptionCommerceAvailable } from '@/modules/pharmacyOrders/prescriptionCommerce';
+import { MedicineRepository } from '@/modules/pharmacyMedicines/repository';
 import { InventoryService } from '@/modules/pharmacyInventory/services';
 import { PharmacyOrderSideEffectService } from '@/modules/pharmacyOrders/services/sideEffects';
 import { SpecialistRepository } from '@/modules/specialists/repository';
@@ -92,7 +94,8 @@ export class PaymentService {
     private userRepository: UserRepository,
     private emailService: EmailService,
     private pharmacyWalletRepository: PharmacyWalletRepository,
-    private pharmacyWalletTransactionRepository: PharmacyWalletTransactionRepository
+    private pharmacyWalletTransactionRepository: PharmacyWalletTransactionRepository,
+    private medicineRepository: MedicineRepository
   ) {}
 
   private async runPharmacyPaymentCoreTransaction<T>(
@@ -414,6 +417,24 @@ export class PaymentService {
     return data.payerUserId || data.userId;
   }
 
+  private async assertNewPharmacyPaymentAllowed(
+    data: Pick<CreatePaymentOrderRequest, 'context' | 'contextId'>
+  ): Promise<void> {
+    if (data.context !== 'pharmacy_order') return;
+    const order = typeof data.contextId === 'string' && /^[0-9a-fA-F]{24}$/.test(data.contextId)
+      ? await this.pharmacyOrderRepository.findById(data.contextId)
+      : null;
+    await assertPrescriptionCommerceAvailable({
+      kind: 'stored_order',
+      order,
+      expectedOrderId: data.contextId,
+      readMedicines: ids => this.medicineRepository.findAll(
+        { _id: { $in: ids } },
+        { select: '_id prescriptionRequired isActive archivedAt' }
+      ),
+    });
+  }
+
   async createOrder(data: CreatePaymentOrderRequest): Promise<{
     paymentRecord: IPaymentRecord;
     razorpayOrder: {
@@ -442,6 +463,8 @@ export class PaymentService {
         message: 'Payment amount must be greater than zero',
       });
     }
+
+    await this.assertNewPharmacyPaymentAllowed(data);
 
     const { keyId } = this.getRazorpayCredentials();
     const razorpayClient = this.getRazorpayClient();
@@ -513,6 +536,7 @@ export class PaymentService {
   async createDirectPaidTransaction(
     data: CreateDirectPaidTransactionRequest
   ): Promise<IPaymentRecord> {
+    await this.assertNewPharmacyPaymentAllowed(data);
     const currency = (data.currency || 'INR').toUpperCase();
     const baseAmountPaise = Math.round(data.baseAmount * 100);
     const discountAmountPaise = Math.round((data.discountAmount || 0) * 100);

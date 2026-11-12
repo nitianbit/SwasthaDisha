@@ -1,0 +1,66 @@
+{
+  "schema": "SD-PRESCRIPTION-CHECKOUT-SOURCE-1",
+  "author": "/root/policy_standards",
+  "baseline": "18b9b5865a115e0e411353e95780f6df89a82e81",
+  "contract_sha256": "e3deb08a9002e4b11bf0d168dbce369312727841e5c96fa5c3a25503ea1781a7",
+  "production_delta": [
+    "src1/modules/payment/services/index.ts",
+    "src1/modules/pharmacyOrders/prescriptionCommerce.ts",
+    "src1/modules/pharmacyOrders/services/index.ts"
+  ],
+  "source_hashes": {
+    "src1/modules/payment/services/index.ts": {
+      "baseline": "7571d95789a792ffb6a8582f129204b67b9159caceb3b320a3e48e809921024f",
+      "candidate": "9c1086e3aa9239855ed3d73a02f941015d869bdb36a689a5294dea367ee7457d"
+    },
+    "src1/modules/pharmacyOrders/prescriptionCommerce.ts": {
+      "baseline": null,
+      "candidate": "8e6db5fc64d5a5b2fec6437660fb0d308c24d3e1c0aec2ae95efdc2f73fe0058"
+    },
+    "src1/modules/pharmacyOrders/services/index.ts": {
+      "baseline": "75df8dffb4ead5043ab5f7c131302063068ea6b7c79e9b55fb582bd0481c71f5",
+      "candidate": "aa68cce2580c440f86a65c3c2a26ce78303a69602b6c730b76bbf6e53d1400ae"
+    }
+  },
+  "patch_sha256": "155870d842121d284175c280b9425a848432c1eef2c1f0e5c2fea73084a67c78",
+  "data_only_composition": {
+    "payment_verification_capture_processing_refund_tail_byte_identical": true,
+    "order_status_progress_and_stock_effect_body_byte_identical": true,
+    "create_stock_order_and_payment_effect_tail_byte_identical": true,
+    "update_inventory_effect_tail_byte_identical": true,
+    "manual_paid_write_and_queue_tail_byte_identical": true,
+    "root_build_package_start_and_routes_unchanged": true
+  },
+  "unchanged_selected_bindings": 19,
+  "source_inspection": {
+    "shared_rule": "One exported closed-mode domain operation; explicit own false requirements and no documents; stored own not_required/empty documents/active lines plus exact canonical order/medicine identity and one projected catalogue batch. Invalid facts fail503; database errors propagate.",
+    "type_boundary": "Raw boolean|undefined survives pricing; only after shared guard local NonPrescriptionOrderItem[] narrowing supplies false-only computeTotals/persisted flags. No public type/model widening or false default before gate.",
+    "effects": "Create admission before ensureLinked/reservation/save/funding; enrichment gates before linking/stock/write; both shared payment creators before client/provider/save; manual paid after existing guards and before timestamp/write/queues.",
+    "compatibility": "Notes-only maintenance and existing capture verification/processing unchanged; cart source untouched. New prescription documents are disabled, including non-Rx attachments. Unknown legacy facts deny new commerce. No role/test/environment bypass.",
+    "snapshot": "Canonical ID expectation set captured before await; read callback receives a copied ID list. This is not a database version fence."
+  },
+  "preservation": {
+    "original_head": "bfb608ea1a89551f6cd72ec5ee1349a3ee7abef7",
+    "original_staged_files": 6,
+    "original_working_equals_index": true,
+    "original_staged_patch_sha256": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+    "handover_files": 11,
+    "handover_hashes_match": true
+  },
+  "execution": {
+    "typescript_evaluations": 0,
+    "node_invocations": 0,
+    "compiler_or_build": 0,
+    "application_imports": 0,
+    "database_docker_provider_network_model_calls": 0,
+    "runtime_status": "NOT_RUN"
+  },
+  "limitations": [
+    "No behavior/type/Joi/TypeDI/Mongoose/index/transaction/race/provider evidence from source data checks.",
+    "MedicineRepository expands the PaymentService constructor closure; complete current pre-import C3 admission remains required.",
+    "Existing issued gateway orders/captures, cached-paid and manual/internal labels/recovery and known source-paid races remain open.",
+    "Admission is a read-time check, not a catalogue/order version fence; F1 stays HIGH/open and this does not enable clinical dispensing.",
+    "No final integration campaign, module/clinical/financial/security/release acceptance or live effects."
+  ],
+  "source_reviews": "PENDING_TWO_ACTUAL_INDEPENDENT_NONAUTHOR_REVIEWS; author does not approve source."
+}
