@@ -358,8 +358,8 @@
       "nlink": 1
     },
     "output/qa/authority-pure-runtime/REAL_OPERATOR.py": {
-      "sha256": "2b4e9909cc668b30763e17cc04f89b31033476b14a136a7b0c99499c32a94136",
-      "bytes": 41501,
+      "sha256": "1a589cc979b5ce6ca19b3b91c6eada13321dc1c46e2716b7b375f09f1ac69570",
+      "bytes": 41666,
       "kind": "regular",
       "uid": 501,
       "gid": 20,
@@ -367,8 +367,8 @@
       "nlink": 1
     },
     "output/qa/authority-pure-runtime/REAL_OPERATOR_PREPARATION.md": {
-      "sha256": "a2cadc6d5f1f93b10f91350b9ed2b9b8ed23bf48c1b70eb50658b1b6f63eafbf",
-      "bytes": 8712,
+      "sha256": "515b74a7f30afa36fdc162426f03aa993f8e47056301bbe74365a935627f67be",
+      "bytes": 10779,
       "kind": "regular",
       "uid": 501,
       "gid": 20,
@@ -376,8 +376,8 @@
       "nlink": 1
     },
     "output/qa/authority-pure-runtime/REAL_OPERATOR_REVIEW_REQUEST.md": {
-      "sha256": "66599924cbd70fa3a9370f177efdd1453f709b4ed76ffe5295bbce183fa19e9b",
-      "bytes": 2638,
+      "sha256": "665a2bd95098f9c9a6b734cd0dca74c863c8df03b80083ca546a78c387a98d08",
+      "bytes": 3313,
       "kind": "regular",
       "uid": 501,
       "gid": 20,
@@ -601,8 +601,8 @@
       "nlink": 1
     },
     "output/qa/authority-pure-runtime/HOST_BINDING_PROOF.json": {
-      "sha256": "421f2c104bb086be2c68f2cd5d62f2b448c62a9887a337035b2e10e1ad274a30",
-      "bytes": 1277,
+      "sha256": "61c86a5065c6cc06a00dabfe8422470f07f34997e842027d62112585fcde99b9",
+      "bytes": 1543,
       "kind": "regular",
       "uid": 501,
       "gid": 20,
@@ -693,6 +693,33 @@
     "output/qa/authority-pure-runtime/SPEC_OP_1_CHANGE_PROOF.json": {
       "sha256": "7f78e65e96ef69d7aaad21f4a4b39fd2e084a5a4ed8dba58527e9f036f742818",
       "bytes": 4940,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/PYTHON_STARTUP_FAILURE.json": {
+      "sha256": "324456a9bed8d11bb0baef2575d147f3866210e8d9df39b41fcc602f0efa71be",
+      "bytes": 3750,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/PYTHON_STARTUP_GUARD.diff": {
+      "sha256": "bc792490374b5ff0589d73a4c761137f0a02e123203e08efd73613b40384dbce",
+      "bytes": 696,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/PYTHON_STARTUP_GUARD_PROOF.json": {
+      "sha256": "3632a68a602b9e1ff527f443603fd7feddfcb67d0bab05734123c46875e2a6fa",
+      "bytes": 5408,
       "kind": "regular",
       "uid": 501,
       "gid": 20,

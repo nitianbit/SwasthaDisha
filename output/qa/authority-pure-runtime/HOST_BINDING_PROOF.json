@@ -11,9 +11,10 @@
     "hostOnlyInverseByteIdentical": true,
     "scope": "The archived pre-fix operator only. The current operator additionally changes cleanup classification after actual SPEC-OP-1 CHANGES_REQUIRED."
   },
-  "currentOperatorSha256": "2b4e9909cc668b30763e17cc04f89b31033476b14a136a7b0c99499c32a94136",
+  "currentOperatorSha256": "1a589cc979b5ce6ca19b3b91c6eada13321dc1c46e2716b7b375f09f1ac69570",
   "cleanupChangeProof": "SPEC_OP_1_CHANGE_PROOF.json",
   "cleanupSourceDiff": "SPEC_OP_1_OPERATOR.diff",
   "reviewProvenance": "SPEC_OP_1_REVIEW.json",
-  "limits": "No claim that current operator reverses to old Node22 by host substitution alone. Exact pre-fix files and original proof are preserved. No execution or self-approval."
+  "limits": "No claim that current operator reverses to old Node22 by host substitution alone. Exact pre-fix files and original proof are preserved. No execution or self-approval. Current operator additionally has the exact observed Python startup-map check/clear amendment; committed fc45 preserves the prior cleanup-amended candidate. See startup guard proof. No retry admission.",
+  "startupGuardChangeProof": "PYTHON_STARTUP_GUARD_PROOF.json"
 }

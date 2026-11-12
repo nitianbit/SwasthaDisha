@@ -130,6 +130,8 @@ def encoded(value):
 def validate_receipt():
     require(sys.argv == [str(OPERATOR)] and pathlib.Path(sys.executable).resolve() == pathlib.Path(PYTHON), 'Fixed Python invocation only')
     require(sys.flags.isolated and sys.flags.no_site and sys.dont_write_bytecode, 'Use env -i pinned Python -I -S -B')
+    require(dict(os.environ) == {'__CF_USER_TEXT_ENCODING': '0x1F5:0x0:0x0', 'LC_CTYPE': 'C.UTF-8'}, 'Unexpected Python startup environment')
+    os.environ.clear()
     require(not os.environ, 'Empty parent environment required')
     raw = read_regular(APPROVAL, private=True)
     approval = load(raw)
