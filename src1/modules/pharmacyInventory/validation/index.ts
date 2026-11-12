@@ -1,4 +1,5 @@
 import Joi from 'joi';
+import { INVENTORY_QUALITY_HOLD_STATUSES } from '@/modules/pharmacyInventory/types';
 
 const adjustmentReasons = ['purchase', 'return', 'damage', 'expiry', 'correction', 'transfer', 'other'];
 
@@ -81,6 +82,13 @@ export const inventoryQuerySchema = Joi.object({
   includeBatches: Joi.string().valid('true', 'false').optional(),
   page: Joi.number().integer().min(1).optional(),
   limit: Joi.number().integer().min(1).max(100).optional(),
+});
+
+export const qualityWorklistQuerySchema = Joi.object({
+  qualityStatus: Joi.string().valid(...INVENTORY_QUALITY_HOLD_STATUSES).optional(),
+  page: Joi.number().integer().min(1).max(1000).optional(),
+  limit: Joi.number().integer().min(1).max(50).optional(),
+  pharmacyId: Joi.forbidden(),
 });
 
 export const idParamSchema = Joi.object({

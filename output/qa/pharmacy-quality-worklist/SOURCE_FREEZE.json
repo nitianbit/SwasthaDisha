@@ -1,0 +1,31 @@
+{
+  "baseline": "18b9b5865a115e0e411353e95780f6df89a82e81",
+  "author": "/root/refund_error_writer",
+  "files": {
+    "documentation/planning/implementation/PHARMACY_QUALITY_WORKLIST_CONTRACT.md": "710f300d1d335540599a912fcec1582ce6c7d636cc9a5f20a386615bbb9c12ee",
+    "output/qa/pharmacy-quality-worklist/PREIMPLEMENTATION_DECISIONS.json": "876bdc60ccfbd77989c9d793f736e37436551c358ab82b26f4047836a3736a55",
+    "output/qa/pharmacy-quality-worklist/contract-review-1/BOUNDS_DATA.json": "908ac5ec440e1610769e5998700880dce526c854b3b4026333b846aed2d6a091",
+    "src1/modules/pharmacyInventory/controller/index.ts": "0234b96e739c6e4d13ac92ce4813ce9440f60ae8b6008c03db3598d063cccbc8",
+    "src1/modules/pharmacyInventory/repository/index.ts": "cee64fd2464b5d5ac6081531a63f9a176e5fc481f33c3a4d6def99a26d97b261",
+    "src1/modules/pharmacyInventory/routes/index.ts": "cea26e2014545a8a9428e6fb20aa632cb7e80d9de37403f6519b819c0d5536c0",
+    "src1/modules/pharmacyInventory/services/index.ts": "98fa27296ef0fdd1066dff2d548de7d3db025504e724432770fe2e49d2907894",
+    "src1/modules/pharmacyInventory/types/index.ts": "6edf4cc6b84fde6e93a0310ac401ad71ef6bcee8bebc1fef992836b615891eae",
+    "src1/modules/pharmacyInventory/validation/index.ts": "f1679413efcd27621a362eda7277a3d0db3edceb8d30fc2c542c075bef8dec53",
+    "src1/modules/pharmacyInventory/model/index.ts": "098fc86bc14e553b60a81fdb7bf33ebacb8c44f799a2cb665420ea5debe52313",
+    "src1/modules/middleware/auth.ts": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+    "src1/modules/common/middleware/validation.ts": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef",
+    "src1/modules/pharmacyMedicines/model/index.ts": "2dd98cd59a4e9a3aaa156d917f7cc131d7e30c7546ad7296b8a0ca4920c70725",
+    "src1/routes/index.ts": "50620efcc0d48d32fb573e2a1e3d0b74d01333a209ffea6c401550a576b63056",
+    "output/qa/pharmacy-quality-worklist/candidate.diff": "ae26ff1307fb099467485a5c89b8dc1a509596ca96b72cba882f846a2f4a3194",
+    "output/qa/pharmacy-quality-worklist/SOURCE_VERIFICATION.json": "80eeff9fb73968f16e11406214fb44df9af37869399f5afbd69cf2c6c88777ab"
+  },
+  "production_delta": [
+    "src1/modules/pharmacyInventory/controller/index.ts",
+    "src1/modules/pharmacyInventory/repository/index.ts",
+    "src1/modules/pharmacyInventory/routes/index.ts",
+    "src1/modules/pharmacyInventory/services/index.ts",
+    "src1/modules/pharmacyInventory/types/index.ts",
+    "src1/modules/pharmacyInventory/validation/index.ts"
+  ],
+  "scope": "New stored-quality read feature only; six-file source candidate, all prior stock writers/routes preserved. Two independent source reviews pending; runtime/type/pipeline/Joi checks NOT_RUN."
+}
