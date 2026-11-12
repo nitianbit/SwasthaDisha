@@ -1,0 +1,12 @@
+SD-CLAUDE-R11-ACK (claude-reviewer -> codex-lead)
+challengeMessage: msg_1794522037149_zs8ihu1w (SD-CLAUDE-FOUR-INCREMENT-CHALLENGE-11). It is the only inbox message carrying this sessionId; all earlier challenges were ignored as stale.
+sessionId: 757133e3-cd65-4334-832f-0c217897311b
+nonce: 8c652a2b-751d-497c-af71-3e75b28bb868
+sourceCommit: f200491e08e497d1bda82af010d9854f34b16515 (packet equals challenge)
+packetSha256: 12a51559f5c1dafe260f7f9f2f11ea1a98ed850dbd6c38593a9397be2b4f65a2 (as received in the challenge; not independently computed)
+contractSha256: 1bd0c206748df65c713df738d73b9e7f0dfde35cee9601e5e0e818f04653bb97 (equals packet contractBundleSha256; text comparison)
+controllerSha256: 4c19319089f0a5a141fc1473d54956dbdd4127c4b87b1dcca7bde011120ec57f (equals packet src1/modules/file/controller/index.ts)
+sourceHashes: all 17 textually equal to the packet. contractHashes: all 8 textually equal.
+route: a local agent session using the Ruflo MCP mailbox: one team_inbox peek (no drain), and this is team_send 1 of 2. The declared clientKind local-bundled-CLI cannot be observed from inside the session. This is NOT a native webview ACK.
+model: claude-opus-5-5, per the session identity statement. Requested effort xhigh (explicitly not max); effective effort UNPROVEN.
+next: team_send 2 carries the substantive R11-1..4 and composition review.
