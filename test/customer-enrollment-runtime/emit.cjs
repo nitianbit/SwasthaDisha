@@ -14,7 +14,7 @@ check(plan.schema === 'SD-ENROLLMENT-PORTS-1' && Object.keys(input.sources).leng
 for (const [id, expected] of Object.entries(plan.sourcePins)) check(sha(input.sources[id]) === expected, 'Source drift: ' + id);
 const serviceId = 'src1/modules/auth/services/index.ts';
 const validationId = 'src1/modules/auth/validation/index.ts';
-const diagnostics = {}; const reads = {}; const edits = {}; const phases = {};
+const diagnostics = {}; const reads = {}; const edits = {}; const phases = {}; const diagnosticPolicyProofs = {};
 function ast(text, name) { return ts.createSourceFile(name, text, ts.ScriptTarget.ES2022, true); }
 function walk(node, predicate, found = []) { if (predicate(node)) found.push(node); ts.forEachChild(node, child => { walk(child, predicate, found); }); return found; }
 function edit(id, text, predicate, replacement) {
@@ -71,6 +71,39 @@ function captureDiagnostics(phase, sources, returned) {
   fs.writeFileSync(path.join(outputDirectory, diagnosticFiles[phase]), bytes, { flag: 'wx', mode: 0o600 });
   check(complete, 'Returned diagnostics exceed fixed capture limits; review private phase evidence');
 }
+// One observed missing Node declaration in this pinned emit-only source, never a generic2339 exception.
+const nodeDiagnostic = Object.freeze({
+  file: 'src1/modules/common/types/error.ts', sourceSha256: '3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07',
+  category: 1, code: 2339, start: 573, length: 17,
+  message: "Property 'captureStackTrace' does not exist on type 'ErrorConstructor'.",
+});
+const nodeDiagnosticFields = Object.freeze(['file', 'category', 'code', 'start', 'length', 'message']);
+function exactNodeDiagnostic(row) { return nodeDiagnosticFields.every(key => row[key] === nodeDiagnostic[key]); }
+function admittedDiagnostics(returned, sources, imports) {
+  if (typeof sources[nodeDiagnostic.file] !== 'string' || sha(sources[nodeDiagnostic.file]) !== nodeDiagnostic.sourceSha256) return false;
+  return returned.filter(exactNodeDiagnostic).length === 1 && returned.filter(row => row.code !== 2307).length === 1
+    && returned.every(d => (d.code === 2307 && [...imports].some(spec => d.message.includes("'" + spec + "'"))) || exactNodeDiagnostic(d));
+}
+function proveDiagnosticPolicy(phase, returned, sources, imports) {
+  check(admittedDiagnostics(returned, sources, imports), 'Actual returned diagnostic policy positive failed');
+  const index = returned.findIndex(exactNodeDiagnostic); const exact = returned[index];
+  const negatives = [
+    { id: 'missing-tuple', rows: returned.filter((_, i) => i !== index), sources },
+    { id: 'duplicate-tuple', rows: [...returned, { ...exact }], sources },
+    ...Object.entries({ file: 'src1/modules/common/types/response.ts', category: 0, code: 2307, start: 574, length: 16,
+      message: nodeDiagnostic.message + ' ' }).map(([key, value]) => ({ id: 'wrong-' + key,
+        rows: returned.map((row, i) => i === index ? { ...row, [key]: value } : row), sources })),
+    { id: 'source-hash-drift', rows: returned, sources: { ...sources, [nodeDiagnostic.file]: sources[nodeDiagnostic.file] + '\n' } },
+    { id: 'extra-unsupported', rows: [...returned, { ...exact, code: 9999 }], sources },
+  ];
+  const rejected = [];
+  for (const item of negatives) {
+    check(!admittedDiagnostics(item.rows, item.sources, imports), 'Diagnostic policy negative accepted: ' + item.id);
+    rejected.push({ id: item.id, rejected: true });
+  }
+  return { schema: 'SD-ENROLLMENT-DIAGNOSTIC-POLICY-PROOF-1', phase, returnedCount: returned.length,
+    sourceSha256: sha(sources[nodeDiagnostic.file]), positive: { id: 'actual-returned-set', accepted: true }, negatives: rejected };
+}
 const libRoot = path.dirname(require.resolve('typescript'));
 function compile(phase, sources) {
   const prefix = '/closed/'; const libraryReads = {};
@@ -101,7 +134,8 @@ function compile(phase, sources) {
   check(!result.emitSkipped && Object.keys(emitted).sort().join() === Object.keys(sources).sort().join(), 'Whole-module emission incomplete');
   const imports = new Set(Object.values(sources).flatMap(text => walk(ast(text, 'input.ts'), n => ts.isImportDeclaration(n)
     || ts.isExportDeclaration(n)).map(n => n.moduleSpecifier?.text).filter(Boolean)));
-  check(diagnostics[phase].every(d => d.code === 2307 && [...imports].some(spec => d.message.includes("'" + spec + "'"))), 'Unexpected compiler diagnostic; exact preparation amendment/review required');
+  check(admittedDiagnostics(diagnostics[phase], sources, imports), 'Unexpected compiler diagnostic; exact preparation amendment/review required');
+  diagnosticPolicyProofs[phase] = proveDiagnosticPolicy(phase, diagnostics[phase], sources, imports);
   reads[phase] = libraryReads;
   return emitted;
 }
@@ -186,5 +220,5 @@ function save(name, value) {
 check(Object.keys(packageModules).length <= 512 && Object.keys(phases).length === 6, 'Map row bound');
 save('runtime-modules.json', runtime); save('emitted-modules.json', emitted);
 save('emission-report.json', { schema: 'SD-ENROLLMENT-EMISSION-1', status: 'EMIT_ONLY_NOT_TYPECHECKED_NOT_RUNTIME', compiler: ts.version,
-  compilerSha256: sha(fs.readFileSync(require.resolve('typescript'))), libraryReads: reads, diagnostics, edits,
+  compilerSha256: sha(fs.readFileSync(require.resolve('typescript'))), libraryReads: reads, diagnostics, diagnosticPolicyProofs, nodeDiagnostic, edits,
   sourcePins: plan.sourcePins, packageFiles: Object.fromEntries(Object.entries(packageModules).map(([id, code]) => [id, sha(code)])), builtins: runtime.builtins });
