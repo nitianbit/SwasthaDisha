@@ -1,0 +1,13 @@
+diff --git a/src1/modules/payment/services/index.ts b/src1/modules/payment/services/index.ts
+index fd5fd38d40cc10c3e63b72f0d91b7bee4d13bdc1..a4b442549f033ccf68946def308ed30901b45435 100644
+--- a/src1/modules/payment/services/index.ts
++++ b/src1/modules/payment/services/index.ts
+@@ -1526,8 +1526,6 @@ export class PaymentService {
+             { session }
+           );
+         });
+-      } catch (error) {
+-        if (!isDuplicateKeyError(error)) throw error;
+       } finally {
+         await session.endSession();
+       }
