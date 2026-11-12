@@ -1,0 +1,34 @@
+{
+  "schema": "SD-AUTHORITY-SPEC-OP-1-PREFIX-ARCHIVE-1",
+  "author": "/root/authority_operator",
+  "status": "UNEXECUTED_PRE_FIX_SOURCE_CANDIDATE_CHANGES_REQUIRED",
+  "baseline": "c41fc26dc61bfc401ae60ea73a6bd874ec996e81",
+  "finding": "SPEC-OP-1",
+  "files": {
+    "REAL_OPERATOR.py": {
+      "sha256": "3c43843467966b84998a9875704ad230a492bd66d5b096a639d964742fd533e8",
+      "bytes": 39800
+    },
+    "REAL_RUN_MANIFEST.json": {
+      "sha256": "fefe52ca5c01e8d0a4efc9e3b0a2d5bb2cd751ec94739fac1baa8c459c6aa09f",
+      "bytes": 43610
+    },
+    "real-approval-template.json": {
+      "sha256": "4c28e0011f41a485767eec95502c840554f33d8cad1e16c2612578d738c26574",
+      "bytes": 1946
+    },
+    "REAL_OPERATOR_PREPARATION.md": {
+      "sha256": "4e10f93842007095190d1bce7fc05ecea55742cab511adba978dfe855033f958",
+      "bytes": 7115
+    },
+    "REAL_OPERATOR_REVIEW_REQUEST.md": {
+      "sha256": "affa9a8651e2fe4a1bfa9ce78f2e1aac7d63008a6a7197c1bcad0f864df967bf",
+      "bytes": 2025
+    },
+    "HOST_BINDING_PROOF.json": {
+      "sha256": "0beb2cd1e051246d516f3bafb60798cfd125e3c1d54ec0c000face29a30c20e9",
+      "bytes": 13744
+    }
+  },
+  "limits": "Exact pre-fix candidate bytes. Host-only inverse proof applies to this archived operator, not to cleanup-amended current operator. No run approval/execution/claim/commit."
+}

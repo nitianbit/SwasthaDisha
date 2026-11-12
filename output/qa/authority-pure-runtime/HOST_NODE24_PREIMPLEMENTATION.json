@@ -1,0 +1,27 @@
+{
+  "amendmentSha256": "693a8f7d109699fd14a612b8430d82d81f68e4e262cbd2b1ebff20895407bc2d",
+  "author": "/root",
+  "decisions": [
+    {
+      "reviewer": "/root/booking_write_contract",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/payment_ctor_contract",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    }
+  ],
+  "actualReview": "Both independentnon-authors personallyverified installedNode24exactmetadata/hash, botholdtemporarypathsENOENT, allsourceandcommittedraw700fakeevidence unchanged. Host-onlybindingretainsLinuxchild22.23.4/C3/source8/3modules/compiler/grants androotC2gates.",
+  "mandatoryBeforeFinalReview": [
+    "Preserve5unexecutedNode22preparationfiles+hashes",
+    "Exhaustivebindingdelta/inverseoperatorcomparison",
+    "ActualarchivedevidenceinsteadgoneTMPpaths",
+    "Cleancommittedcandidate+privatepostcommitreceipt",
+    "Twofreshactualnonauthorfinalsourceplusonefixedrunvotes"
+  ],
+  "scope": "Operatorpreparationonly; no operator-owned process/Node/compiler/Docker/test/app/provider/model invocationauthorized. No download or silentfallback."
+}

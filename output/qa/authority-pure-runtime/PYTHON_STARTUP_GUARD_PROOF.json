@@ -1,0 +1,101 @@
+{
+  "schema": "SD-AUTHORITY-PYTHON-STARTUP-GUARD-PROOF-1",
+  "author": "/root/authority_operator",
+  "status": "SOURCE_DATA_AST_ONLY_FRESH_REVIEW_REQUIRED_NO_RETRY",
+  "priorCommittedBaseline": "fc45e205371cb812a390186cff3437f93ee2361b",
+  "priorCommittedFiles": {
+    "REAL_OPERATOR.py": {
+      "sha256": "2b4e9909cc668b30763e17cc04f89b31033476b14a136a7b0c99499c32a94136",
+      "bytes": 41501,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "REAL_RUN_MANIFEST.json": {
+      "sha256": "d0c31843926456aa5f6cdefc9307ecc50020ec8e688f3d3b90b8cc30f1c2d5fb",
+      "bytes": 46527
+    },
+    "REAL_OPERATOR_PREPARATION.md": {
+      "sha256": "a2cadc6d5f1f93b10f91350b9ed2b9b8ed23bf48c1b70eb50658b1b6f63eafbf",
+      "bytes": 8712,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "REAL_OPERATOR_REVIEW_REQUEST.md": {
+      "sha256": "66599924cbd70fa3a9370f177efdd1453f709b4ed76ffe5295bbce183fa19e9b",
+      "bytes": 2638,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "HOST_BINDING_PROOF.json": {
+      "sha256": "421f2c104bb086be2c68f2cd5d62f2b448c62a9887a337035b2e10e1ad274a30",
+      "bytes": 1277,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "real-approval-template.json": {
+      "sha256": "4c28e0011f41a485767eec95502c840554f33d8cad1e16c2612578d738c26574",
+      "bytes": 1946,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    }
+  },
+  "preservation": "Prior exact source/docs/proof/manifest remain in committed fc45. Existing private receipt preserved in place without copying/deleting/overwriting. No redundant 75-file closure archive.",
+  "actualFailureAndDiagnostic": {
+    "path": "PYTHON_STARTUP_FAILURE.json",
+    "sha256": "324456a9bed8d11bb0baef2575d147f3866210e8d9df39b41fcc602f0efa71be",
+    "provenance": "Root direct transcription of inline exec tool results, not original raw file hashes",
+    "failureBoundary": "validate_receipt guard line133, prior to Capture/claim/any operator Popen/Node/Docker",
+    "standaloneDiagnosticOnly": true
+  },
+  "operatorChange": {
+    "beforeUtf8": "    require(not os.environ, 'Empty parent environment required')",
+    "afterUtf8": "    require(dict(os.environ) == {'__CF_USER_TEXT_ENCODING': '0x1F5:0x0:0x0', 'LC_CTYPE': 'C.UTF-8'}, 'Unexpected Python startup environment')\n    os.environ.clear()\n    require(not os.environ, 'Empty parent environment required')",
+    "occurrences": 1,
+    "priorSha256": "2b4e9909cc668b30763e17cc04f89b31033476b14a136a7b0c99499c32a94136",
+    "candidateSha256": "1a589cc979b5ce6ca19b3b91c6eada13321dc1c46e2716b7b375f09f1ac69570",
+    "candidateBytes": 41666,
+    "inverseRecoveredSha256": "2b4e9909cc668b30763e17cc04f89b31033476b14a136a7b0c99499c32a94136",
+    "inverseByteIdenticalToCommittedBaseline": true,
+    "diffPath": "PYTHON_STARTUP_GUARD.diff",
+    "diffSha256": "bc792490374b5ff0589d73a4c761137f0a02e123203e08efd73613b40384dbce"
+  },
+  "exactChangedASTSymbols": [
+    "validate_receipt"
+  ],
+  "allOtherASTSymbolsAndTopLevelImportsConstantsGuardUnchanged": true,
+  "scope": "Require exact observed __CF_USER_TEXT_ENCODING and LC_CTYPE key/value mapping, clear os.environ, require empty. No generic key allowlist/empty fallback/host forwarding; all explicit child environments, commands, targets, grants, source/compiler, capture and cleanup logic unchanged.",
+  "manifestChangedJsonPointers": [
+    "/files/output~1qa~1authority-pure-runtime~1HOST_BINDING_PROOF.json/bytes",
+    "/files/output~1qa~1authority-pure-runtime~1HOST_BINDING_PROOF.json/sha256",
+    "/files/output~1qa~1authority-pure-runtime~1PYTHON_STARTUP_FAILURE.json",
+    "/files/output~1qa~1authority-pure-runtime~1PYTHON_STARTUP_GUARD.diff",
+    "/files/output~1qa~1authority-pure-runtime~1PYTHON_STARTUP_GUARD_PROOF.json",
+    "/files/output~1qa~1authority-pure-runtime~1REAL_OPERATOR.py/bytes",
+    "/files/output~1qa~1authority-pure-runtime~1REAL_OPERATOR.py/sha256",
+    "/files/output~1qa~1authority-pure-runtime~1REAL_OPERATOR_PREPARATION.md/bytes",
+    "/files/output~1qa~1authority-pure-runtime~1REAL_OPERATOR_PREPARATION.md/sha256",
+    "/files/output~1qa~1authority-pure-runtime~1REAL_OPERATOR_REVIEW_REQUEST.md/bytes",
+    "/files/output~1qa~1authority-pure-runtime~1REAL_OPERATOR_REVIEW_REQUEST.md/sha256"
+  ],
+  "manifestDeltaScope": "Only four operator/preparation/review/lineage-proof byte records plus failure transcription/diff/this proof. Every prior other manifest file, tools and all non-files fields unchanged. No manifest self hash/future commit.",
+  "oldPrivateReceiptSha256": "23867166e4e3d8f207049553f20b1e996fcf174eeb6a4883f6ad6fbaad2a6fd6",
+  "oldPrivateReceiptUnchanged": true,
+  "onceClaimAbsent": true,
+  "priorVotesScope": "Actual prior Standards /root/booking_write_contract and Spec /root/payment_ctor_contract approved only fc45; new exact source+one-run votes required after clean commit. No author self-approval.",
+  "validation": "AST parse/data/hash/metadata checks only. No amended operator import/evaluation, commands, Node/compiler/test/Docker/app/provider/model execution. Root alone performed the reported prior guard-failed invocation and standalone standard-library diagnostic."
+}

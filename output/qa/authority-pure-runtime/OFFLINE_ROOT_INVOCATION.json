@@ -1,0 +1,10 @@
+{
+  "recipeSha256": "7299c07563799901328bf5b08077faf29b39dbad41b6a728fe48017252a72c83",
+  "exactShellBlockSha256": "58868acfe9886400a91c3b03e3374d37abb8ea5c1f03704d607a0369bd9140e4",
+  "python": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+  "pythonSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/authority-pure-runtime",
+  "status": "TWO_ACTUAL_VOTES_RECORDED_NOT_YET_INVOKED",
+  "onceClaimPath": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/authority-pure-runtime/output/qa/authority-pure-runtime/OFFLINE_CAMPAIGN_CLAIM.json",
+  "actualRuntimeResult": "PENDING"
+}

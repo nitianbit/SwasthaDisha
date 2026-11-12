@@ -1,0 +1,77 @@
+{
+  "schema": "SD-AUTHORITY-PYTHON-STARTUP-FAILURE-1",
+  "recordAuthor": "/root/authority_operator",
+  "provenance": "Root /root direct native message transcription of actual exec-tool inline captures. No original stdout/stderr/diagnostic files were allocated; this JSON pins the transcription, not an original raw capture hash.",
+  "baseline": "fc45e205371cb812a390186cff3437f93ee2361b",
+  "priorOperatorSha256": "2b4e9909cc668b30763e17cc04f89b31033476b14a136a7b0c99499c32a94136",
+  "priorManifestSha256": "d0c31843926456aa5f6cdefc9307ecc50020ec8e688f3d3b90b8cc30f1c2d5fb",
+  "failedInvocation": {
+    "argv": [
+      "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "-I",
+      "-S",
+      "-B",
+      "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/authority-pure-runtime/output/qa/authority-pure-runtime/REAL_OPERATOR.py"
+    ],
+    "launchEnvironment": "env -i",
+    "exitCode": 1,
+    "stdout": "",
+    "reportedTraceFrames": [
+      {
+        "file": "REAL_OPERATOR.py",
+        "line": 679,
+        "call": "main"
+      },
+      {
+        "file": "REAL_OPERATOR.py",
+        "line": 556,
+        "call": "validate_receipt"
+      },
+      {
+        "file": "REAL_OPERATOR.py",
+        "line": 133,
+        "call": "require(not os.environ, 'Empty parent environment required')"
+      },
+      {
+        "file": "REAL_OPERATOR.py",
+        "line": 50,
+        "call": "raise RuntimeError(message)"
+      }
+    ],
+    "finalError": "RuntimeError: Empty parent environment required",
+    "traceFidelity": "Reported Root trace frames and final error, not reconstructed full raw stderr.",
+    "boundary": "validate_receipt guard; before receipt reading, Capture allocation, once claim, operator-owned Popen, host Node, Docker or application/compiler work."
+  },
+  "actualPinnedInterpreterDiagnostic": {
+    "scope": "Root standalone pinned interpreter standard-library-only under exact env -i/-I/-S/-B; not an operator attempt or Node/compiler/Docker probe.",
+    "exitCode": 0,
+    "stdoutExactTranscription": "{\"environ\": {\"__CF_USER_TEXT_ENCODING\": \"0x1F5:0x0:0x0\", \"LC_CTYPE\": \"C.UTF-8\"}, \"isolated\": 1, \"no_site\": 1, \"dont_write_bytecode\": true, \"executable\": \"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14\"}",
+    "observedEnvironment": {
+      "__CF_USER_TEXT_ENCODING": "0x1F5:0x0:0x0",
+      "LC_CTYPE": "C.UTF-8"
+    },
+    "origin": "Runtime/OS synthesis is inferred from exact empty external launch and observed startup map; precise attribution not established."
+  },
+  "priorPrivateApproval": {
+    "path": "output/qa/authority-pure-runtime/.REAL_APPROVAL.json",
+    "sha256": "23867166e4e3d8f207049553f20b1e996fcf174eeb6a4883f6ad6fbaad2a6fd6",
+    "preservedInPlace": true,
+    "copiedIntoGit": false,
+    "actualHistoricalVotes": [
+      {
+        "reviewer": "/root/booking_write_contract",
+        "role": "Standards",
+        "decision": "APPROVE_SOURCE_AND_ONE_FIXED_AUTHORITY_PURE_RUN"
+      },
+      {
+        "reviewer": "/root/payment_ctor_contract",
+        "role": "Spec",
+        "decision": "APPROVE_SOURCE_AND_ONE_FIXED_AUTHORITY_PURE_RUN"
+      }
+    ],
+    "scope": "Only prior fc45 candidate. Neither vote admits the new startup-guard amendment or an automatic retry."
+  },
+  "onceClaimAbsent": true,
+  "observationProvenance": "Root confirmed claim absent after failure; worker separately read unchanged private receipt SHA and observed claim path absent during preparation. No private file was copied/deleted/overwritten.",
+  "nextGate": "Fresh two actual independent nonauthor source+ONE_FIXED_AUTHORITY_PURE_RUN reviews on clean committed guard candidate; no auto-retry."
+}

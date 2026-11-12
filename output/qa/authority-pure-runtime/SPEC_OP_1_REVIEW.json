@@ -1,0 +1,25 @@
+{
+  "schema": "SD-AUTHORITY-SPEC-OP-1-ACTUAL-REVIEW-1",
+  "reviewer": "/root/payment_ctor_contract",
+  "reviewKind": "ACTUAL_INTERNAL_CODEX_NONAUTHOR_SPEC",
+  "decision": "CHANGES_REQUIRED",
+  "findingId": "SPEC-OP-1",
+  "severity": "MEDIUM",
+  "baseline": "c41fc26dc61bfc401ae60ea73a6bd874ec996e81",
+  "operatorSha256": "3c43843467966b84998a9875704ad230a492bd66d5b096a639d964742fd533e8",
+  "manifestSha256": "fefe52ca5c01e8d0a4efc9e3b0a2d5bb2cd751ec94739fac1baa8c459c6aa09f",
+  "finding": "terminate silently returns if leader poll()!=None while pipe descendants may remain, followed by finite cleanup exception. getpgid/killpg/proc.wait cleanup exceptions explicitly yield PROCESS_CLEANUP_FAILED. Overall status ignores this uncertainty and can give BLOCKED_BEFORE_LAUNCH or FAIL despite unresolved process/group cleanup.",
+  "required": "Latch process/group-state or ownership uncertainty. Preserve original timeout/overflow firstProblem and distinct cleanup/finalization diagnostics. Overall UNRESOLVED takes precedence even before launch and cannot be cleared by application-resource absence. No broad kill/adoption/retry or child/C3/grant widening.",
+  "reviewerEdgeCases": [
+    "Exited leader and pipe non-EOF beyond finite deadline",
+    "Ownership/getpgid mismatch or error",
+    "killpg failure",
+    "wait cannot establish exit",
+    "Ownership/finalization loss secondary after an existing timeout",
+    "Metadata-command uncertainty before launcher",
+    "Normal fully reaped/EOF/nonzero remains ordinary FAIL/BLOCKED",
+    "Process uncertainty cannot be cleared by container/workspace absence"
+  ],
+  "provenance": "Actual native agent message sent directly by /root/payment_ctor_contract to /root/authority_operator during assigned remediation; no execution or approval claimed.",
+  "remediationStatus": "CANDIDATE_PREPARED_RE_REVIEW_PENDING_NOT_SELF_APPROVED"
+}

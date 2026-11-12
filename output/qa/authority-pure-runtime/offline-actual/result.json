@@ -1,0 +1,112 @@
+{
+  "status": "OFFLINE_FAKE_PASS",
+  "results": [
+    {
+      "runtime": "node22",
+      "argv": [
+        "/private/tmp/m0-node22/node",
+        "test/foundation/run.mjs"
+      ],
+      "env": {
+        "TMPDIR": "/private/tmp/sd-authority-offline-2vzpsrjp/node22-scratch"
+      },
+      "attempted": true,
+      "processStarted": true,
+      "pid": 20284,
+      "returnCode": 0,
+      "firstProblem": null,
+      "cleanupErrors": [],
+      "observationErrors": [],
+      "secondaryProblems": [],
+      "truncated": false,
+      "counts": {
+        "tests": 350,
+        "pass": 350,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "ownedScratchEmpty": true,
+      "leftoverNames": [],
+      "captures": {
+        "stdout": {
+          "path": "/private/tmp/sd-authority-offline-2vzpsrjp/node22.tap",
+          "allocated": true,
+          "sha256": "b457a39e8956350f84619cd25457759bc533bac9e1f4aaada449fdbcf75db89e",
+          "retainedBytes": 68617,
+          "observedBytesAtLeast": 68617,
+          "complete": true,
+          "ownershipVerified": true
+        },
+        "stderr": {
+          "path": "/private/tmp/sd-authority-offline-2vzpsrjp/node22.stderr.txt",
+          "allocated": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "retainedBytes": 0,
+          "observedBytesAtLeast": 0,
+          "complete": true,
+          "ownershipVerified": true
+        }
+      },
+      "elapsedSeconds": 4.5876956669999345,
+      "passed": true
+    },
+    {
+      "runtime": "node24",
+      "argv": [
+        "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+        "test/foundation/run.mjs"
+      ],
+      "env": {
+        "TMPDIR": "/private/tmp/sd-authority-offline-2vzpsrjp/node24-scratch"
+      },
+      "attempted": true,
+      "processStarted": true,
+      "pid": 20477,
+      "returnCode": 0,
+      "firstProblem": null,
+      "cleanupErrors": [],
+      "observationErrors": [],
+      "secondaryProblems": [],
+      "truncated": false,
+      "counts": {
+        "tests": 350,
+        "pass": 350,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0
+      },
+      "ownedScratchEmpty": true,
+      "leftoverNames": [],
+      "captures": {
+        "stdout": {
+          "path": "/private/tmp/sd-authority-offline-2vzpsrjp/node24.tap",
+          "allocated": true,
+          "sha256": "bed96d076ac3e054052eb764c7ca31f342301b14731f6dd83c119c8eb7ef464f",
+          "retainedBytes": 68629,
+          "observedBytesAtLeast": 68629,
+          "complete": true,
+          "ownershipVerified": true
+        },
+        "stderr": {
+          "path": "/private/tmp/sd-authority-offline-2vzpsrjp/node24.stderr.txt",
+          "allocated": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "retainedBytes": 0,
+          "observedBytesAtLeast": 0,
+          "complete": true,
+          "ownershipVerified": true
+        }
+      },
+      "elapsedSeconds": 4.751074249998055,
+      "passed": true
+    }
+  ],
+  "failure": null,
+  "noAuthorityCompilerOrProductionEvaluation": true,
+  "noDockerDatabaseProviderOrNetworkCall": true,
+  "areaRetained": "/private/tmp/sd-authority-offline-2vzpsrjp",
+  "resultWritten": true
+}

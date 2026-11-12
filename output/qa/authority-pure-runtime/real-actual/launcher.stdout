@@ -1,0 +1,309 @@
+{
+  "runId": "64051851-b9ed-4c00-9ced-5bc1455b612c",
+  "role": "business-staff-authority-pure",
+  "manifestSha": "fcb709a58579265fd37a5ec3a219ab0f43754062f5dfa2d72ad623a51b027143",
+  "admissionPassed": true,
+  "egressBlocked": true,
+  "filesystemCanariesPassed": true,
+  "databaseMode": "not-admitted",
+  "networkAdmission": {
+    "tag": "APP-NET-ADMIT-1",
+    "observation": {
+      "tag": "APP-NET-DIAG-1",
+      "entries": [
+        {
+          "name": "bonding_masters",
+          "kind": "file",
+          "flags": {
+            "unavailable": "ENOTDIR"
+          },
+          "operstate": {
+            "unavailable": "ENOTDIR"
+          },
+          "type": {
+            "unavailable": "ENOTDIR"
+          }
+        },
+        {
+          "name": "erspan0",
+          "kind": "symlink",
+          "flags": "0x1002",
+          "operstate": "down",
+          "type": "1"
+        },
+        {
+          "name": "gre0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "778"
+        },
+        {
+          "name": "gretap0",
+          "kind": "symlink",
+          "flags": "0x1002",
+          "operstate": "down",
+          "type": "1"
+        },
+        {
+          "name": "ip6_vti0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "769"
+        },
+        {
+          "name": "ip6gre0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "823"
+        },
+        {
+          "name": "ip6tnl0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "769"
+        },
+        {
+          "name": "ip_vti0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "768"
+        },
+        {
+          "name": "lo",
+          "kind": "symlink",
+          "flags": "0x9",
+          "operstate": "unknown",
+          "type": "772"
+        },
+        {
+          "name": "sit0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "776"
+        },
+        {
+          "name": "tunl0",
+          "kind": "symlink",
+          "flags": "0x80",
+          "operstate": "down",
+          "type": "768"
+        }
+      ],
+      "addressedInterfaces": [
+        {
+          "name": "lo",
+          "addresses": [
+            {
+              "address": "127.0.0.1",
+              "family": "IPv4",
+              "internal": true
+            },
+            {
+              "address": "::1",
+              "family": "IPv6",
+              "internal": true
+            }
+          ]
+        }
+      ]
+    },
+    "loopback": "lo",
+    "controlFiles": [
+      "bonding_masters"
+    ],
+    "downDevices": [
+      "erspan0",
+      "gre0",
+      "gretap0",
+      "ip6_vti0",
+      "ip6gre0",
+      "ip6tnl0",
+      "ip_vti0",
+      "sit0",
+      "tunl0"
+    ],
+    "loopbackAddresses": [
+      "127.0.0.1",
+      "::1"
+    ]
+  },
+  "authority": {
+    "schema": "SD-AUTHORITY-PURE-1",
+    "sourceHashes": {
+      "src1/modules/organizations/types/index.ts": "e873884e69db46d7de70d3120a5ac30809fe8dc526d118a4640463233c9633ff",
+      "src1/modules/organizations/rules.ts": "b404c00381b5bf642aa648105cefb353a97c7ea7283c680059c426b5e4307942",
+      "src1/modules/organizations/services/index.ts": "ccac5254a6e61c8cce4f14c58005cb39349689e3d0cbafc8ab551ca339397c73"
+    },
+    "compiler": {
+      "version": "5.9.3",
+      "sha256": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+      "loads": 1,
+      "requireAttempts": 0,
+      "sysAbsent": true
+    },
+    "emit": {
+      "optionsSha256": "584e6182cb71531f3126834e6ffa4569d14351abf00c5e16f74a623df31adead",
+      "nominalHashes": {
+        "src1/modules/organizations/types/index.ts": "74f13ec01647586f57838b63de6f6fec55d914276586cd17c328174c83233f04",
+        "src1/modules/organizations/rules.ts": "5ed4c13ef9a59d2a3ef4dfd62f18b853ae8d63b7535e2099d7f4299c237c7891",
+        "src1/modules/organizations/services/index.ts": "a1ed7c402ca0f453718db6f9b8dc57db7f27acba1d47f44319a6894208b10ddf"
+      },
+      "mutantHashes": {
+        "M1": "835e68209b2be55521504b01327017660fea09ce4e0d62345a19e776df2d8656",
+        "M2": "cebfb6810626586545c974bcab336fb74c225a9da3be62491fa1e285586f62e0",
+        "M3": "66224ad56a779dbfb93340da7e64602e1ec3fe8e0e6c477547aa1618df7a579d",
+        "M4": "3290ff6995c1f3f56891c50a7469da1ccc940be29d7f22fd09b586e65eb72c15",
+        "M5": "930268f75cbbfe04e99a585a962304c5b67f588b317334038244b58e9d269932"
+      },
+      "nominalCount": 3,
+      "mutantCount": 5
+    },
+    "nominal": {
+      "caseIds": [
+        "A01.only",
+        "A02.only",
+        "A03.bad-id",
+        "A03.business-login",
+        "A03.missing-purpose",
+        "A03.extra-key",
+        "A03.accessor",
+        "A04.bad-org-id",
+        "A04.unknown-capability",
+        "A04.extra-key",
+        "A05.null",
+        "A05.number",
+        "A05.string",
+        "A06.nan",
+        "A06.infinity",
+        "A06.negative",
+        "A06.unsafe",
+        "A06.out-of-range",
+        "A07.error",
+        "A07.undefined",
+        "A07.false",
+        "A08.false",
+        "A08.missing-flag",
+        "A08.false-flag",
+        "A08.bad-generation",
+        "A09.error",
+        "A09.undefined",
+        "A09.false",
+        "A10.error",
+        "A10.undefined",
+        "A10.false",
+        "A11.only",
+        "A12.inactive",
+        "A12.foreign-id",
+        "A13.membership-tenant",
+        "A13.eligibility-actor",
+        "A13.organization-id",
+        "A14.organization-suspended",
+        "A14.branch-revoked",
+        "A15.license-number",
+        "A15.license-document",
+        "A15.unverified",
+        "A16.only",
+        "A17.missing-member",
+        "A17.duplicate-member",
+        "A17.missing-proof",
+        "A18.schema",
+        "A18.zero-revision",
+        "A18.unsafe-revision",
+        "A19.validfrom-equal",
+        "A19.validfrom-future",
+        "A19.expiry-equal",
+        "A19.created-after-updated",
+        "A20.only",
+        "A21.fingerprint",
+        "A21.mapping",
+        "A21.grant",
+        "A21.verification",
+        "A22.object-keys",
+        "A22.array-order",
+        "A23.metadata-operation",
+        "A23.payload-fingerprint",
+        "A23.evidence",
+        "A24.only",
+        "A25.organization-revision",
+        "A25.membership-revision",
+        "A25.eligibility-revision",
+        "A26.self-grant",
+        "A26.self-verification",
+        "A26.evidence-version",
+        "A27.decision-id",
+        "A27.operation-id",
+        "A28.spread-clone",
+        "A28.json-clone",
+        "A28.prototype-clone",
+        "A28.raw-evaluator",
+        "A29.only",
+        "A30.only",
+        "A31.domain-fs",
+        "A31.compiler-fs",
+        "A32.facts-extra-key",
+        "A32.nested-accessor",
+        "A32.empty-branches",
+        "A32.over100-branches"
+      ],
+      "passed": 84,
+      "failed": 0,
+      "skipped": 0
+    },
+    "controls": [
+      {
+        "id": "M1",
+        "target": "A19.expiry-equal",
+        "mutantDetected": true,
+        "restored": true
+      },
+      {
+        "id": "M2",
+        "target": "A23.metadata-operation",
+        "mutantDetected": true,
+        "restored": true
+      },
+      {
+        "id": "M3",
+        "target": "A13.membership-tenant",
+        "mutantDetected": true,
+        "restored": true
+      },
+      {
+        "id": "M4",
+        "target": "A25.membership-revision",
+        "mutantDetected": true,
+        "restored": true
+      },
+      {
+        "id": "M5",
+        "target": "A28.spread-clone",
+        "mutantDetected": true,
+        "restored": true
+      }
+    ],
+    "evaluations": {
+      "graphs": 11,
+      "types": 11,
+      "rules": 11,
+      "service": 11,
+      "total": 33
+    },
+    "effects": {
+      "database": 0,
+      "provider": 0,
+      "sourceWrites": 0,
+      "domainNativeImports": 0,
+      "boundaryProbeRejections": 2
+    }
+  },
+  "containerId": "7d2ff6c24bcb06e2722531beda60e5fbb0f0ab5cb3dcfa2ec7f83e1c13da0310",
+  "directory": "/private/tmp/sd-app-isolation-yQUUG4",
+  "image": "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
+  "cleanupAcknowledged": true
+}

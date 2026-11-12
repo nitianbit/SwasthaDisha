@@ -1,0 +1,20 @@
+{
+  "schema": "SD-AUTHORITY-HOST-BINDING-PROOF-HISTORY-2",
+  "author": "/root/authority_operator",
+  "status": "HISTORICAL_HOST_ONLY_PROOF_WITH_SEPARATE_CURRENT_CLEANUP_AMENDMENT",
+  "amendmentSha256": "693a8f7d109699fd14a612b8430d82d81f68e4e262cbd2b1ebff20895407bc2d",
+  "historicalHostOnlyProof": {
+    "path": "spec-op-1-pre-fix/HOST_BINDING_PROOF.json",
+    "sha256": "0beb2cd1e051246d516f3bafb60798cfd125e3c1d54ec0c000face29a30c20e9",
+    "node22OperatorSha256": "31d7e0d9a81a3ee065d1d92214dbba1c5f75efb29944f2857fc65d386c503a91",
+    "hostReboundPreFixOperatorSha256": "3c43843467966b84998a9875704ad230a492bd66d5b096a639d964742fd533e8",
+    "hostOnlyInverseByteIdentical": true,
+    "scope": "The archived pre-fix operator only. The current operator additionally changes cleanup classification after actual SPEC-OP-1 CHANGES_REQUIRED."
+  },
+  "currentOperatorSha256": "1a589cc979b5ce6ca19b3b91c6eada13321dc1c46e2716b7b375f09f1ac69570",
+  "cleanupChangeProof": "SPEC_OP_1_CHANGE_PROOF.json",
+  "cleanupSourceDiff": "SPEC_OP_1_OPERATOR.diff",
+  "reviewProvenance": "SPEC_OP_1_REVIEW.json",
+  "limits": "No claim that current operator reverses to old Node22 by host substitution alone. Exact pre-fix files and original proof are preserved. No execution or self-approval. Current operator additionally has the exact observed Python startup-map check/clear amendment; committed fc45 preserves the prior cleanup-amended candidate. See startup guard proof. No retry admission.",
+  "startupGuardChangeProof": "PYTHON_STARTUP_GUARD_PROOF.json"
+}

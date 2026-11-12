@@ -1,0 +1,29 @@
+{
+  "schema": "SD-AUTHORITY-NODE22-PREPARATION-ARCHIVE-1",
+  "status": "INERT_UNEXECUTED_PREPARATION_ONLY_NO_RUN_APPROVAL",
+  "author": "/root/authority_operator",
+  "sourceBaseline": "c41fc26dc61bfc401ae60ea73a6bd874ec996e81",
+  "files": {
+    "REAL_OPERATOR.py": {
+      "sha256": "31d7e0d9a81a3ee065d1d92214dbba1c5f75efb29944f2857fc65d386c503a91",
+      "bytes": 39776
+    },
+    "REAL_RUN_MANIFEST.json": {
+      "sha256": "5b322915f718a89f5147346efea399705947f6925821d94bd63b23bb84701a24",
+      "bytes": 40524
+    },
+    "real-approval-template.json": {
+      "sha256": "4c28e0011f41a485767eec95502c840554f33d8cad1e16c2612578d738c26574",
+      "bytes": 1946
+    },
+    "REAL_OPERATOR_PREPARATION.md": {
+      "sha256": "e9651f6a4bab11657a46641afbb459814482d5c0a3e60271ea43e6e561fd9231",
+      "bytes": 6316
+    },
+    "REAL_OPERATOR_REVIEW_REQUEST.md": {
+      "sha256": "2e70a652164d7ea8d8149ee55786ac64699c46240e2ecc6235063b270dded98f",
+      "bytes": 1819
+    }
+  },
+  "preservation": "Exact original five files, byte-for-byte; historical missing Node22 tool binding is inert and no longer a current read target. No operator/Node/compiler/Docker invocation or consumed real-run receipt existed."
+}

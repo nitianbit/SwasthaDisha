@@ -1,0 +1,969 @@
+--- a/test/application/app-bundle.mjs
++++ b/test/application/app-bundle.mjs
+@@ -16,40 +16,154 @@
+   if (!condition) throw new Error(message);
+ }
+ 
+-export function makeManifest(runId, sources) {
++export const AUTHORITY_ROLE = 'business-staff-authority-pure';
++export const AUTHORITY_SOURCE_NAMES = Object.freeze([
++  'app-bundle.mjs', 'authority-rules.ts', 'authority-scenario.mjs', 'authority-service.ts',
++  'authority-types.ts', 'authority-vectors.json', 'bootstrap.mjs', 'package.json', 'typescript.cjs',
++]);
++export const AUTHORITY_COMPILER_SHA = '3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675';
++export const AUTHORITY_INPUTS = Object.freeze({
++  'src1/modules/organizations/types/index.ts': 'authority-types.ts',
++  'src1/modules/organizations/rules.ts': 'authority-rules.ts',
++  'src1/modules/organizations/services/index.ts': 'authority-service.ts',
++});
++export const AUTHORITY_SOURCE_HASHES = Object.freeze({
++  'src1/modules/organizations/types/index.ts': 'e873884e69db46d7de70d3120a5ac30809fe8dc526d118a4640463233c9633ff',
++  'src1/modules/organizations/rules.ts': 'b404c00381b5bf642aa648105cefb353a97c7ea7283c680059c426b5e4307942',
++  'src1/modules/organizations/services/index.ts': 'ccac5254a6e61c8cce4f14c58005cb39349689e3d0cbafc8ab551ca339397c73',
++});
++export const AUTHORITY_VECTORS_SHA = '9f2ab5e192c9eb4a1332680a77f0ed5d94eb28502af3fc9a426f68be350ea382';
++export const AUTHORITY_EMIT_OPTIONS = Object.freeze({
++  target: 7, module: 1, esModuleInterop: true, verbatimModuleSyntax: false,
++  importHelpers: false, declaration: false, sourceMap: false,
++});
++export const AUTHORITY_CASE_GROUPS = Object.freeze(Object.fromEntries(
++  Object.entries({
++    "A01": ["only"],
++    "A02": ["only"],
++    "A03": ["bad-id", "business-login", "missing-purpose", "extra-key", "accessor"],
++    "A04": ["bad-org-id", "unknown-capability", "extra-key"],
++    "A05": ["null", "number", "string"],
++    "A06": ["nan", "infinity", "negative", "unsafe", "out-of-range"],
++    "A07": ["error", "undefined", "false"],
++    "A08": ["false", "missing-flag", "false-flag", "bad-generation"],
++    "A09": ["error", "undefined", "false"],
++    "A10": ["error", "undefined", "false"],
++    "A11": ["only"],
++    "A12": ["inactive", "foreign-id"],
++    "A13": ["membership-tenant", "eligibility-actor", "organization-id"],
++    "A14": ["organization-suspended", "branch-revoked"],
++    "A15": ["license-number", "license-document", "unverified"],
++    "A16": ["only"],
++    "A17": ["missing-member", "duplicate-member", "missing-proof"],
++    "A18": ["schema", "zero-revision", "unsafe-revision"],
++    "A19": ["validfrom-equal", "validfrom-future", "expiry-equal", "created-after-updated"],
++    "A20": ["only"],
++    "A21": ["fingerprint", "mapping", "grant", "verification"],
++    "A22": ["object-keys", "array-order"],
++    "A23": ["metadata-operation", "payload-fingerprint", "evidence"],
++    "A24": ["only"],
++    "A25": ["organization-revision", "membership-revision", "eligibility-revision"],
++    "A26": ["self-grant", "self-verification", "evidence-version"],
++    "A27": ["decision-id", "operation-id"],
++    "A28": ["spread-clone", "json-clone", "prototype-clone", "raw-evaluator"],
++    "A29": ["only"],
++    "A30": ["only"],
++    "A31": ["domain-fs", "compiler-fs"],
++    "A32": ["facts-extra-key", "nested-accessor", "empty-branches", "over100-branches"],
++  }).map(([key, values]) => [key, Object.freeze(values)]),
++));
++export const AUTHORITY_CASE_IDS = Object.freeze(Object.entries(AUTHORITY_CASE_GROUPS)
++  .flatMap(([key, values]) => values.map((value) => key + '.' + value)));
++export const AUTHORITY_CONTROLS = Object.freeze([
++  ['M1', 'A19.expiry-equal'], ['M2', 'A23.metadata-operation'], ['M3', 'A13.membership-tenant'],
++  ['M4', 'A25.membership-revision'], ['M5', 'A28.spread-clone'],
++].map((row) => Object.freeze(row)));
++
++export function sourceNames(role) {
++  requireThat(role === ROLE || role === AUTHORITY_ROLE, 'Unknown fixed application role');
++  return role === ROLE ? SOURCE_NAMES : AUTHORITY_SOURCE_NAMES;
++}
++export function makeManifest(runId, sources, role = ROLE) {
++  const names = sourceNames(role);
+   requireThat(/^[a-f0-9-]{36}$/.test(runId), 'Invalid harness run identity');
+-  requireThat(Object.keys(sources).sort().join(',') === SOURCE_NAMES.join(','), 'Unexpected source bundle');
+-  const files = {};
+-  for (const name of SOURCE_NAMES) {
+-    requireThat(typeof sources[name] === 'string' && Buffer.byteLength(sources[name]) < 128 * 1024,
++  requireThat(Object.keys(sources).sort().join(',') === names.join(','), 'Unexpected source bundle');
++  const files = {}; let total = 0;
++  for (const name of names) {
++    const limit = role === AUTHORITY_ROLE && name === 'typescript.cjs' ? 10 * 1024 * 1024 : 128 * 1024;
++    requireThat(typeof sources[name] === 'string' && Buffer.byteLength(sources[name]) < limit,
+       'Bundle source must be bounded text');
+-    files[name] = sha256(sources[name]);
+-  }
+-  return Object.freeze({ runId, role: ROLE, files: Object.freeze(files) });
++    total += Buffer.byteLength(sources[name]); files[name] = sha256(sources[name]);
++  }
++  requireThat(role !== AUTHORITY_ROLE || total < 12 * 1024 * 1024, 'Authority bundle size exceeded');
++  return Object.freeze({ runId, role, files: Object.freeze(files) });
+ }
+ 
+ export function assertBundle(directory, expectation) {
+   const expected = Object.freeze({ ...expectation });
+-  requireThat(Object.keys(expected).sort().join(',') === 'manifestSha,runId'
++  const role = Object.hasOwn(expected, 'role') ? expected.role : ROLE; const names = sourceNames(role);
++  requireThat(['manifestSha,runId', 'manifestSha,role,runId'].includes(Object.keys(expected).sort().join(','))
+     && /^[a-f0-9]{64}$/.test(expected.manifestSha), 'Invalid bundle expectation');
+   const directoryStat = lstatSync(directory);
+   requireThat(directoryStat.isDirectory() && !directoryStat.isSymbolicLink(), 'Bundle directory changed');
+-  requireThat(readdirSync(directory).sort().join(',') === ['.admission.json', ...SOURCE_NAMES].join(','),
++  requireThat(readdirSync(directory).sort().join(',') === ['.admission.json', ...names].join(','),
+     'Bundle contains an unapproved file');
+-  for (const name of ['.admission.json', ...SOURCE_NAMES]) {
++  for (const name of ['.admission.json', ...names]) {
+     const stat = lstatSync(join(directory, name));
+     requireThat(stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1, 'Bundle file identity changed');
++    const limit = name === '.admission.json' ? 65536
++      : role === AUTHORITY_ROLE && name === 'typescript.cjs' ? 10 * 1024 * 1024 : 128 * 1024;
++    requireThat(stat.size < limit, 'Bundle file size changed');
+   }
+   const bytes = readFileSync(join(directory, '.admission.json'));
+   requireThat(sha256(bytes) === expected.manifestSha, 'Bundle admission hash changed');
+   const manifest = JSON.parse(bytes);
+   requireThat(Object.keys(manifest).sort().join(',') === 'files,role,runId'
+-    && manifest.runId === expected.runId && manifest.role === ROLE
+-    && Object.keys(manifest.files).sort().join(',') === SOURCE_NAMES.join(','), 'Bundle admission identity changed');
+-  for (const name of SOURCE_NAMES) {
+-    requireThat(sha256(readFileSync(join(directory, name))) === manifest.files[name], 'Bundle source hash changed');
+-  }
++    && manifest.runId === expected.runId && manifest.role === role
++    && Object.keys(manifest.files).sort().join(',') === names.join(','), 'Bundle admission identity changed');
++  let total = 0;
++  for (const name of names) {
++    const data = readFileSync(join(directory, name)); total += data.length;
++    requireThat(sha256(data) === manifest.files[name], 'Bundle source hash changed');
++  }
++  requireThat(role !== AUTHORITY_ROLE || total < 12 * 1024 * 1024, 'Authority bundle size changed');
+   return Object.freeze({ ...manifest, files: Object.freeze(manifest.files) });
++}
++
++const authorityKeys = (value, keys) => value !== null && typeof value === 'object' && !Array.isArray(value)
++  && Object.keys(value).sort().join(',') === [...keys].sort().join(',');
++const hash = (value) => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value);
++export function verifyAuthorityResult(value, expected = { sourceHashes: AUTHORITY_SOURCE_HASHES, compilerSha256: AUTHORITY_COMPILER_SHA }) {
++  try {
++    const ids = Object.keys(AUTHORITY_INPUTS);
++    requireThat(authorityKeys(value, ['schema', 'sourceHashes', 'compiler', 'emit', 'nominal', 'controls', 'evaluations', 'effects'])
++      && value.schema === 'SD-AUTHORITY-PURE-1', 'Authority result schema');
++    requireThat(authorityKeys(value.sourceHashes, ids) && ids.every((id) => hash(value.sourceHashes[id]) && value.sourceHashes[id] === expected.sourceHashes[id]), 'Authority source proof');
++    requireThat(authorityKeys(value.compiler, ['version', 'sha256', 'loads', 'requireAttempts', 'sysAbsent'])
++      && value.compiler.version === '5.9.3' && hash(value.compiler.sha256) && value.compiler.sha256 === expected.compilerSha256
++      && value.compiler.loads === 1 && value.compiler.requireAttempts === 0 && value.compiler.sysAbsent === true, 'Authority compiler proof');
++    const emit = value.emit;
++    requireThat(authorityKeys(emit, ['optionsSha256', 'nominalHashes', 'mutantHashes', 'nominalCount', 'mutantCount'])
++      && emit.optionsSha256 === sha256(JSON.stringify(AUTHORITY_EMIT_OPTIONS)) && emit.nominalCount === 3 && emit.mutantCount === 5
++      && authorityKeys(emit.nominalHashes, ids) && ids.every((id) => hash(emit.nominalHashes[id]))
++      && authorityKeys(emit.mutantHashes, AUTHORITY_CONTROLS.map(([id]) => id))
++      && AUTHORITY_CONTROLS.every(([id]) => hash(emit.mutantHashes[id]) && emit.mutantHashes[id] !== emit.nominalHashes[id === 'M5' ? 'src1/modules/organizations/services/index.ts' : 'src1/modules/organizations/rules.ts']), 'Authority emit proof');
++    const nominal = value.nominal;
++    requireThat(authorityKeys(nominal, ['caseIds', 'passed', 'failed', 'skipped'])
++      && JSON.stringify(nominal.caseIds) === JSON.stringify(AUTHORITY_CASE_IDS)
++      && nominal.passed === AUTHORITY_CASE_IDS.length && nominal.failed === 0 && nominal.skipped === 0, 'Authority nominal proof');
++    requireThat(Array.isArray(value.controls) && value.controls.length === AUTHORITY_CONTROLS.length
++      && value.controls.every((row, index) => authorityKeys(row, ['id', 'target', 'mutantDetected', 'restored'])
++        && row.id === AUTHORITY_CONTROLS[index][0] && row.target === AUTHORITY_CONTROLS[index][1]
++        && row.mutantDetected === true && row.restored === true), 'Authority sensitivity proof');
++    requireThat(authorityKeys(value.evaluations, ['graphs', 'types', 'rules', 'service', 'total'])
++      && value.evaluations.graphs === 11 && value.evaluations.types === 11 && value.evaluations.rules === 11
++      && value.evaluations.service === 11 && value.evaluations.total === 33, 'Authority evaluation proof');
++    requireThat(authorityKeys(value.effects, ['database', 'provider', 'sourceWrites', 'domainNativeImports', 'boundaryProbeRejections'])
++      && ['database', 'provider', 'sourceWrites', 'domainNativeImports'].every((key) => value.effects[key] === 0)
++      && value.effects.boundaryProbeRejections === 2, 'Authority effect proof');
++    return true;
++  } catch { return false; }
+ }
+ 
+ 
+--- a/test/application/app-container.mjs
++++ b/test/application/app-container.mjs
+@@ -10,42 +10,79 @@
+ const image = Object.freeze({ ...imageSpecification });
+ import runtimeSpecification from './app-runtime.json' with { type: 'json' };
+ const localRuntime = Object.freeze({ ...runtimeSpecification });
+-import { assertBundle, makeManifest, NETWORK_ADMISSION_TAG, PORT_OPERATIONS, ROLE, requireThat, sha256, SOURCE_NAMES, verifyNetworkAdmission } from './app-bundle.mjs';
++import { assertBundle, AUTHORITY_COMPILER_SHA, AUTHORITY_INPUTS, AUTHORITY_ROLE, AUTHORITY_SOURCE_HASHES, AUTHORITY_VECTORS_SHA, makeManifest, NETWORK_ADMISSION_TAG, PORT_OPERATIONS, ROLE, requireThat, sha256, sourceNames, verifyAuthorityResult, verifyNetworkAdmission } from './app-bundle.mjs';
+ 
+ const overrides = ['DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_CONFIG', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH',
+   'MONGODB_URL', 'PHARMACY_TEST_MONGODB_URI', 'DATABASE_URL', 'PAYMENT_SECRET', 'NODE_OPTIONS', 'NODE_PATH'];
+ const nodeArgs = ['--permission', '--allow-fs-read=/workspace', '--allow-fs-read=/sys/class/net', '--allow-fs-write=/tmp', '/workspace/bootstrap.mjs'];
+ const tmpfsOptions = 'rw,noexec,nosuid,size=67108864,mode=1777';
+ 
+-function reviewedSources() {
++function reviewedSources(role) {
+   const sources = {};
+-  for (const name of SOURCE_NAMES) {
++  for (const name of sourceNames(role)) {
+     if (name === 'package.json') { sources[name] = '{"type":"module"}\n'; continue; }
+-    const location = name === 'queryUtils.ts'
+-      ? new URL('../../src1/modules/common/utils/queryUtils.ts', import.meta.url)
+-      : new URL(name, import.meta.url);
++    const authoritySource = Object.keys(AUTHORITY_INPUTS).find((id) => AUTHORITY_INPUTS[id] === name);
++    const location = name === 'typescript.cjs'
++      ? new URL('file:///Users/shubham/.codex/runtimes/ruflo/3.75.0/node_modules/typescript/lib/typescript.js')
++      : name === 'authority-vectors.json'
++        ? new URL('../../output/qa/business-staff-authority/SERIALIZATION_VECTORS.json', import.meta.url)
++        : authoritySource ? new URL('../../' + authoritySource, import.meta.url)
++          : name === 'queryUtils.ts' ? new URL('../../src1/modules/common/utils/queryUtils.ts', import.meta.url)
++            : new URL(name, import.meta.url);
+     const stat = lstatSync(location);
+-    requireThat(stat.isFile() && !stat.isSymbolicLink(), 'Harness source must be a regular file');
++    requireThat(stat.isFile() && !stat.isSymbolicLink() && (role !== AUTHORITY_ROLE || stat.nlink === 1), 'Harness source must be a regular file');
++    if (role === AUTHORITY_ROLE) {
++      requireThat(stat.size < (name === 'typescript.cjs' ? 10 * 1024 * 1024 : 128 * 1024), 'Authority source size changed');
++      if (name === 'typescript.cjs') requireThat(stat.uid === 501 && (stat.mode & 0o777) === 0o644 && stat.size === 9112572,
++        'Authority compiler metadata changed');
++    }
+     sources[name] = readFileSync(location, 'utf8');
++    if (role === AUTHORITY_ROLE) {
++      const expected = name === 'typescript.cjs' ? AUTHORITY_COMPILER_SHA
++        : name === 'authority-vectors.json' ? AUTHORITY_VECTORS_SHA : AUTHORITY_SOURCE_HASHES[authoritySource];
++      if (expected) requireThat(sha256(sources[name]) === expected, 'Authority source/tool pin changed');
++    }
+   }
+   return sources;
+ }
+ 
+-function realDocker(endpoint, configuration) {
++function realDocker(endpoint, configuration, role) {
+   const socket = fileURLToPath(new URL(endpoint.replace(/^unix:/, 'file:')));
+   requireThat(statSync(realpathSync(socket)).isSocket(), 'Docker endpoint is not a local Unix socket');
+   return (args) => {
+     const result = spawnSync('/usr/local/bin/docker', ['--config', configuration, '--host', endpoint, ...args], {
+       env: { PATH: '/usr/local/bin:/usr/bin:/bin' }, encoding: 'utf8', timeout: 20_000, maxBuffer: 512 * 1024,
+     });
+-    requireThat(!result.error && !result.signal && result.status === 0,
+-      `Docker ${args[0]} failed: ${(result.stderr || result.error?.message || result.stdout || result.signal || result.status).toString().slice(0, 16 * 1024)}`);
++    const commandSucceeded = !result.error && !result.signal && result.status === 0;
++    const message = `Docker ${args[0]} failed: ${(result.stderr || result.error?.message || result.stdout || result.signal || result.status).toString().slice(0, 16 * 1024)}`;
++    if (role === AUTHORITY_ROLE && args[0] === 'start') {
++      const commandFailure = commandSucceeded ? undefined : new Error(message);
++      try {
++        const diagnostics = Buffer.from(result.stderr ?? '', 'utf8');
++        if (diagnostics.length >= 32 * 1024) {
++          const prefix = diagnostics.subarray(0, 30 * 1024);
++          requireThat(writeSync(2, prefix) === prefix.length, 'Authority overflow prefix write was incomplete');
++          const detail = '\n' + JSON.stringify({ tag: 'AUTHORITY_STDERR_OVERFLOW', observedBytes: diagnostics.length,
++            retainedPrefixBytes: prefix.length, complete: false }) + '\n';
++          requireThat(writeSync(2, detail) === Buffer.byteLength(detail), 'Authority overflow diagnostic write was incomplete');
++          throw new Error('Authority child stderr exceeded limit: ' + diagnostics.length + ' observed bytes');
++        }
++        if (diagnostics.length) requireThat(writeSync(2, diagnostics) === diagnostics.length, 'Authority child stderr write was incomplete');
++      } catch (recordingError) {
++        if (commandFailure) throw new AggregateError([commandFailure, recordingError], 'Authority command and diagnostic recording failed');
++        throw recordingError;
++      }
++      if (commandFailure) throw commandFailure;
++    } else requireThat(commandSucceeded, message);
+     return result.stdout.trim();
+   };
+ }
+ 
+ /** Test seams are trusted transports/text fixtures, not resource-ownership claims. */
+-export function createApplicationFixture(input, seams = {}) {
++export function createApplicationFixture(input, seams = {}) { return createFixture(input, seams, ROLE); }
++export function createAuthorityFixture(input, seams = {}) { return createFixture(input, seams, AUTHORITY_ROLE); }
++
++function createFixture(input, seams, role) {
+   requireThat(seams !== null && typeof seams === 'object'
+     && [Object.prototype, null].includes(Object.getPrototypeOf(seams)), 'Test seams must be a plain object');
+   const simulated = Reflect.ownKeys(seams).length > 0;
+@@ -63,9 +100,35 @@
+   requireThat(request.endpoint === profile.endpoint && typeof profile.engineId === 'string' && profile.engineId,
+     'Docker target is outside the reviewed local runtime profile');
+   requireThat(/^node@sha256:[a-f0-9]{64}$/.test(image.image) && image.nodeVersion === '22.23.4', 'Invalid pinned runtime');
+-  const sources = Object.freeze({ ...((simulated ? testSeams.bundle : undefined) ?? reviewedSources()) });
++  if (simulated && role === AUTHORITY_ROLE) {
++    const plain = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
++      && [Object.prototype, null].includes(Object.getPrototypeOf(value));
++    requireThat(Object.hasOwn(testSeams, 'bundle') && plain(testSeams.bundle)
++      && Object.hasOwn(testSeams, 'authorityExpectation') && plain(testSeams.authorityExpectation),
++    'Authority test seams require explicit synthetic bundle and expectation');
++    const expected = testSeams.authorityExpectation;
++    requireThat(Object.keys(expected).sort().join(',') === 'compilerSha256,sourceHashes'
++      && plain(expected.sourceHashes)
++      && Object.keys(expected.sourceHashes).sort().join(',') === Object.keys(AUTHORITY_INPUTS).sort().join(',')
++      && Object.values(expected.sourceHashes).every((value) => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value))
++      && typeof expected.compilerSha256 === 'string' && /^[a-f0-9]{64}$/.test(expected.compilerSha256),
++    'Authority synthetic expectation must contain exact source and compiler hashes');
++  }
++  const authorityExpectation = role === AUTHORITY_ROLE ? Object.freeze({
++    sourceHashes: Object.freeze({ ...(simulated ? testSeams.authorityExpectation.sourceHashes : AUTHORITY_SOURCE_HASHES) }),
++    compilerSha256: simulated ? testSeams.authorityExpectation.compilerSha256 : AUTHORITY_COMPILER_SHA,
++  }) : undefined;
++  const selectedSources = role === AUTHORITY_ROLE
++    ? (simulated ? testSeams.bundle : reviewedSources(role))
++    : ((simulated ? testSeams.bundle : undefined) ?? reviewedSources(role));
++  const sources = Object.freeze({ ...selectedSources });
+   const runId = randomUUID();
+-  const manifest = makeManifest(runId, sources);
++  const manifest = makeManifest(runId, sources, role);
++  if (role === AUTHORITY_ROLE) {
++    requireThat(Object.keys(authorityExpectation.sourceHashes).sort().join(',') === Object.keys(AUTHORITY_INPUTS).sort().join(',')
++      && Object.entries(AUTHORITY_INPUTS).every(([id, name]) => authorityExpectation.sourceHashes[id] === manifest.files[name])
++      && authorityExpectation.compilerSha256 === manifest.files['typescript.cjs'], 'Authority expectation differs from staged sources');
++  }
+   const directory = realpathSync(mkdtempSync(join(tmpdir(), 'sd-app-isolation-')));
+   const rootIdentity = lstatSync(directory);
+   let bundleIdentity;
+@@ -104,7 +167,7 @@
+     const configDirectory = join(directory, 'docker');
+     mkdirSync(configDirectory, { mode: 0o700 });
+     writeFileSync(join(configDirectory, 'config.json'), '{"auths":{}}\n', { mode: 0o600, flag: 'wx' });
+-    const execute = simulated ? testSeams.executor : realDocker(request.endpoint, configDirectory);
++    const execute = simulated ? testSeams.executor : realDocker(request.endpoint, configDirectory, role);
+     const engine = () => {
+       const row = JSON.parse(execute(['info', '--format', '[{{json .ID}},{{json .OSType}}]']));
+       requireThat(Array.isArray(row) && typeof row[0] === 'string' && row[0] && row[1] === 'linux', 'Unknown Docker engine');
+@@ -133,9 +196,9 @@
+         || (key === 'YARN_VERSION' && /^[0-9.]+$/.test(value)))
+       && new Set(environmentKeys).size === baseEnvironment.length, 'Unexpected runtime image environment');
+     const environment = [...baseEnvironment, 'NODE_ENV=test', 'APP_RUN_ID=' + runId,
+-      'APP_ROLE=' + ROLE, 'APP_MANIFEST_SHA=' + manifestSha];
++      'APP_ROLE=' + role, 'APP_MANIFEST_SHA=' + manifestSha];
+     assertWorkspace();
+-    assertBundle(bundle, { runId, manifestSha });
++    assertBundle(bundle, { runId, manifestSha, role });
+     const args = ['create', '--pull=never', '--name', name, '--network', 'none', '--read-only',
+       '--user', '1000:1000', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
+       '--memory', '536870912', '--cpus', '1', '--pids-limit', '64', '--log-driver', 'none', '--no-healthcheck',
+@@ -153,7 +216,7 @@
+ 
+     function assertOwned(checkSources = true) {
+       assertWorkspace();
+-      if (checkSources) assertBundle(bundle, { runId, manifestSha });
++      if (checkSources) assertBundle(bundle, { runId, manifestSha, role });
+       requireThat(engine() === daemonId, 'Docker engine identity changed');
+       const rows = JSON.parse(execute(['inspect', id]));
+       requireThat(rows.length === 1, 'Ambiguous container inspection');
+@@ -203,13 +266,21 @@
+         requireThat(item.State?.Status === 'exited' && item.State.ExitCode === 0 && !item.State.OOMKilled,
+           'Application fixture did not exit successfully');
+         const result = JSON.parse(output);
+-        requireThat(result.runId === runId && result.role === ROLE && result.manifestSha === manifestSha
++        requireThat(result.runId === runId && result.role === role && result.manifestSha === manifestSha
+           && result.admissionPassed === true && result.egressBlocked === true
+           && result.filesystemCanariesPassed === true && result.databaseMode === 'not-admitted'
+           && !Object.hasOwn(result, 'networkInterfaces')
+           && result.networkAdmission?.tag === NETWORK_ADMISSION_TAG && result.networkAdmission.loopback === 'lo'
+           && verifyNetworkAdmission(result.networkAdmission),
+         'Application admission evidence mismatched');
++        if (role === AUTHORITY_ROLE) {
++          requireThat(Object.keys(result).sort().join(',') === ['admissionPassed', 'authority', 'databaseMode', 'egressBlocked',
++            'filesystemCanariesPassed', 'manifestSha', 'networkAdmission', 'role', 'runId'].sort().join(',')
++            && Buffer.byteLength(output) < 16 * 1024 && verifyAuthorityResult(result.authority, authorityExpectation),
++          'Authority scenario evidence mismatched');
++          phase = 'finished';
++          return Object.freeze({ ...result, authority: Object.freeze(result.authority) });
++        }
+         requireThat(Array.isArray(result.calls) && result.calls.length === Object.keys(PORT_OPERATIONS).length
+           && new Set(result.calls.map((call) => call.port)).size === result.calls.length
+           && result.calls.every((call) => Object.hasOwn(PORT_OPERATIONS, call.port)
+--- a/test/application/bootstrap.mjs
++++ b/test/application/bootstrap.mjs
+@@ -2,7 +2,7 @@
+ import { lstatSync, readFileSync, readdirSync, writeFileSync, writeSync } from 'node:fs';
+ import { networkInterfaces as addressedNetworkInterfaces } from 'node:os';
+ import {
+-  admitNetwork, assertBundle, egressCanaryBlocked, entryKind, PORT_OPERATIONS, ROLE, requireThat,
++  admitNetwork, assertBundle, AUTHORITY_ROLE, egressCanaryBlocked, entryKind, PORT_OPERATIONS, ROLE, requireThat,
+ } from './app-bundle.mjs';
+ 
+ const allowedEnvironment = new Set([
+@@ -10,11 +10,11 @@
+   'NODE_ENV', 'APP_RUN_ID', 'APP_ROLE', 'APP_MANIFEST_SHA',
+ ]);
+ requireThat(Object.keys(process.env).every((key) => allowedEnvironment.has(key))
+-  && process.env.NODE_ENV === 'test' && process.env.APP_ROLE === ROLE,
++  && process.env.NODE_ENV === 'test' && [ROLE, AUTHORITY_ROLE].includes(process.env.APP_ROLE),
+   'Unexpected application harness environment');
+ requireThat(process.cwd() === '/workspace' && process.version === 'v22.23.4'
+   && process.platform === 'linux' && process.permission, 'Unadmitted application runtime');
+-assertBundle('/workspace', { runId: process.env.APP_RUN_ID, manifestSha: process.env.APP_MANIFEST_SHA });
++assertBundle('/workspace', { runId: process.env.APP_RUN_ID, manifestSha: process.env.APP_MANIFEST_SHA, role: process.env.APP_ROLE });
+ // Decision logic is in app-bundle.mjs; this block only binds read-only ports and stderr.
+ const networkAdmission = admitNetwork({
+   list: () => readdirSync('/sys/class/net'),
+@@ -37,6 +37,15 @@
+ const egressBlocked = egressCanaryBlocked(egressCanary);
+ requireThat(egressBlocked, 'External network canary was not refused as unreachable');
+ 
++if (process.env.APP_ROLE === AUTHORITY_ROLE) {
++  const { runAuthorityScenario } = await import('./authority-scenario.mjs');
++  const authority = await runAuthorityScenario();
++  const output = JSON.stringify({ runId: process.env.APP_RUN_ID, role: AUTHORITY_ROLE,
++    manifestSha: process.env.APP_MANIFEST_SHA, admissionPassed: true, egressBlocked,
++    filesystemCanariesPassed: true, databaseMode: 'not-admitted', networkAdmission, authority });
++  requireThat(Buffer.byteLength(output) < 16 * 1024, 'Authority result output limit');
++  console.log(output);
++} else {
+ const { createRecordingPorts } = await import('./app-ports.mjs');
+ const ports = createRecordingPorts();
+ const { runScenario } = await import('./scenario.mjs');
+@@ -49,3 +58,4 @@
+   admissionPassed: true, egressBlocked, filesystemCanariesPassed: true,
+   databaseMode: 'not-admitted', networkAdmission, calls, scenario,
+ }));
++}
+--- a/test/application/app-bundle.test.mjs
++++ b/test/application/app-bundle.test.mjs
+@@ -4,7 +4,7 @@
+ import { tmpdir } from 'node:os';
+ import { join } from 'node:path';
+ import {
+-  admitNetwork, assertBundle, captureNetworkDiagnostics, egressCanaryBlocked, entryKind, evaluateNetworkAdmission,
++  AUTHORITY_ROLE, AUTHORITY_SOURCE_NAMES, admitNetwork, assertBundle, captureNetworkDiagnostics, egressCanaryBlocked, entryKind, evaluateNetworkAdmission,
+   makeManifest, NETWORK_ADMISSION_TAG, PORT_OPERATIONS, sha256, SOURCE_NAMES, verifyNetworkAdmission,
+ } from './app-bundle.mjs';
+ import { createRecordingPorts } from './app-ports.mjs';
+@@ -459,3 +459,42 @@
+     assert.equal(egressCanaryBlocked(settled), false);
+   });
+ }
++
++
++test('authority profile is a fixed disjoint bundle while default size/list remain unchanged', () => {
++  const authority = Object.fromEntries(AUTHORITY_SOURCE_NAMES.map((name) => [name, '// synthetic authority text']));
++  authority['typescript.cjs'] = 'x'.repeat(128 * 1024);
++  const manifest = makeManifest(runId, authority, AUTHORITY_ROLE);
++  assert.equal(manifest.role, AUTHORITY_ROLE);
++  assert.equal(Object.keys(manifest.files).length, 9);
++  assert.equal(SOURCE_NAMES.length, 6);
++  assert.throws(() => makeManifest(runId, { ...sources, 'scenario.mjs': 'x'.repeat(128 * 1024) }), /bounded text/);
++  assert.throws(() => makeManifest(runId, authority), /Unexpected source/);
++  assert.throws(() => makeManifest(runId, authority, 'arbitrary-role'), /Unknown fixed/);
++  assert.throws(() => makeManifest('invalid', sources), /Invalid harness run identity/);
++  assert.throws(() => makeManifest('invalid', authority, AUTHORITY_ROLE), /Invalid harness run identity/);
++  assert.throws(() => makeManifest(runId, { ...authority, 'authority-rules.ts': 'x'.repeat(128 * 1024) }, AUTHORITY_ROLE), /bounded text/);
++  assert.throws(() => makeManifest(runId, { ...authority, 'typescript.cjs': 'x'.repeat(10 * 1024 * 1024) }, AUTHORITY_ROLE), /bounded text/);
++});
++
++test('authority manifest drift and added files deny before any evaluation', (t) => {
++  const directory = mkdtempSync(join(tmpdir(), 'authority-bundle-unit-'));
++  t.after(() => rmSync(directory, { recursive: true, force: false }));
++  const text = Object.fromEntries(AUTHORITY_SOURCE_NAMES.map((name) => [name, '// synthetic metadata only']));
++  const manifest = makeManifest(runId, text, AUTHORITY_ROLE); const bytes = JSON.stringify(manifest);
++  for (const [name, body] of Object.entries(text)) writeFileSync(join(directory, name), body);
++  writeFileSync(join(directory, '.admission.json'), bytes);
++  const expected = { runId, manifestSha: sha256(bytes), role: AUTHORITY_ROLE };
++  assert.equal(assertBundle(directory, expected).role, AUTHORITY_ROLE);
++  for (const role of [null, undefined, 'arbitrary-role']) {
++    assert.throws(() => assertBundle(directory, { ...expected, role }), /Unknown fixed/);
++  }
++  let evaluated = 0;
++  writeFileSync(join(directory, 'authority-types.ts'), '// drifted');
++  assert.throws(() => { assertBundle(directory, expected); evaluated++; }, /source hash changed/);
++  assert.equal(evaluated, 0);
++  writeFileSync(join(directory, 'authority-types.ts'), text['authority-types.ts']);
++  writeFileSync(join(directory, 'unreviewed.cjs'), '// rejected');
++  assert.throws(() => { assertBundle(directory, expected); evaluated++; }, /unapproved/);
++  assert.equal(evaluated, 0);
++});
+--- a/test/application/app-container.test.mjs
++++ b/test/application/app-container.test.mjs
+@@ -5,8 +5,8 @@
+ import { syncBuiltinESMExports } from 'node:module';
+ import { join } from 'node:path';
+ import { tmpdir } from 'node:os';
+-import { createApplicationFixture } from './app-container.mjs';
+-import { evaluateNetworkAdmission, SOURCE_NAMES } from './app-bundle.mjs';
++import { createApplicationFixture, createAuthorityFixture } from './app-container.mjs';
++import { AUTHORITY_CASE_IDS, AUTHORITY_CONTROLS, AUTHORITY_EMIT_OPTIONS, AUTHORITY_INPUTS, AUTHORITY_ROLE, AUTHORITY_SOURCE_NAMES, evaluateNetworkAdmission, sha256, SOURCE_NAMES } from './app-bundle.mjs';
+ 
+ const endpoint = 'unix:///synthetic/docker.sock';
+ const pinnedImage = 'node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d';
+@@ -458,3 +458,90 @@
+ test('a reporter override without a callable executor cannot reach real transport', () => {
+   rejectBeforeEffects(() => createApplicationFixture({ endpoint }, { reportCreated() { throw new Error('Must not be called'); } }));
+ });
++
++
++// Explicit simulated evidence only. No compiler or domain module is evaluated.
++function syntheticAuthority(expected) {
++  return { schema: 'SD-AUTHORITY-PURE-1', sourceHashes: { ...expected.sourceHashes },
++    compiler: { version: '5.9.3', sha256: expected.compilerSha256, loads: 1, requireAttempts: 0, sysAbsent: true },
++    emit: { optionsSha256: sha256(JSON.stringify(AUTHORITY_EMIT_OPTIONS)),
++      nominalHashes: Object.fromEntries(Object.keys(AUTHORITY_INPUTS).map((id) => [id, 'a'.repeat(64)])),
++      mutantHashes: Object.fromEntries(AUTHORITY_CONTROLS.map(([id]) => [id, 'b'.repeat(64)])), nominalCount: 3, mutantCount: 5 },
++    nominal: { caseIds: [...AUTHORITY_CASE_IDS], passed: AUTHORITY_CASE_IDS.length, failed: 0, skipped: 0 },
++    controls: AUTHORITY_CONTROLS.map(([id, target]) => ({ id, target, mutantDetected: true, restored: true })),
++    evaluations: { graphs: 11, types: 11, rules: 11, service: 11, total: 33 },
++    effects: { database: 0, provider: 0, sourceWrites: 0, domainNativeImports: 0, boundaryProbeRejections: 2 } };
++}
++function authorityTransport() {
++  const transport = fakeDocker();
++  transport.bundle = Object.freeze(Object.fromEntries(AUTHORITY_SOURCE_NAMES.map((name) => [name, '// explicit simulated role text'])));
++  transport.authorityExpectation = { sourceHashes: Object.fromEntries(Object.entries(AUTHORITY_INPUTS).map(([id, name]) => [id, sha256(transport.bundle[name])])),
++    compilerSha256: sha256(transport.bundle['typescript.cjs']) };
++  transport.state.editResult = (result) => {
++    const { calls, scenario, ...base } = result;
++    return { ...base, role: AUTHORITY_ROLE, authority: syntheticAuthority(transport.authorityExpectation) };
++  };
++  return transport;
++}
++
++test('fixed authority role reuses owned lifecycle without default provider evidence', (t) => {
++  const transport = authorityTransport(); const instance = createAuthorityFixture({ endpoint }, transport);
++  t.after(() => instance.dispose());
++  assert.equal(transport.state.item.Config.Env.includes('APP_ROLE=' + AUTHORITY_ROLE), true);
++  assert.equal(transport.state.item.HostConfig.NetworkMode, 'none');
++  const result = instance.run(); assert.equal(result.authority.nominal.passed, 84);
++  assert.equal(Object.hasOwn(result, 'calls'), false); assert.equal(Object.hasOwn(result, 'scenario'), false);
++  instance.dispose(); assert.equal(existsSync(instance.directory), false);
++});
++
++for (const [name, change] of [
++  ['source hash', (x) => { x.sourceHashes[Object.keys(AUTHORITY_INPUTS)[0]] = 'e'.repeat(64); }],
++  ['compiler imports', (x) => { x.compiler.requireAttempts = 1; }],
++  ['compiler system', (x) => { x.compiler.sysAbsent = false; }],
++  ['compiler hash', (x) => { x.compiler.sha256 = 'e'.repeat(64); }],
++  ['missing leaf', (x) => { x.nominal.caseIds.pop(); x.nominal.passed--; }],
++  ['restoration missing', (x) => { x.controls[0].restored = false; }],
++  ['duplicate control', (x) => { x.controls[1] = { ...x.controls[0] }; }],
++  ['wrong module evaluations', (x) => { x.evaluations.types = 10; }],
++  ['missing mutant emit', (x) => { x.emit.mutantCount = 4; }],
++  ['unchanged mutant', (x) => { x.emit.mutantHashes.M1 = 'a'.repeat(64); }],
++  ['provider effect', (x) => { x.effects.provider = 1; }],
++  ['extra field', (x) => { x.extra = true; }],
++]) {
++  test('authority rejects simulated ' + name + ' evidence', (t) => {
++    const transport = authorityTransport(); const edit = transport.state.editResult;
++    transport.state.editResult = (base) => { const result = edit(base); change(result.authority); return result; };
++    const instance = createAuthorityFixture({ endpoint }, transport); t.after(() => instance.dispose());
++    assert.throws(() => instance.run(), /Authority scenario evidence mismatched/);
++  });
++}
++
++test('authority simulated setup cannot fall back to real sources or transport', () => {
++  let calls = 0;
++  assert.throws(() => createAuthorityFixture({ endpoint }, { executor() { calls++; }, profile: { endpoint, engineId: 'synthetic' } }), /explicit synthetic/);
++  assert.equal(calls, 0);
++  assert.throws(() => createAuthorityFixture({ endpoint, role: AUTHORITY_ROLE }, authorityTransport()), /Only an explicit/);
++  assert.throws(() => createAuthorityFixture({ endpoint }, { bundle: {}, authorityExpectation: {} }), /explicit callable/);
++  const transport = authorityTransport(); transport.authorityExpectation.compilerSha256 = 'e'.repeat(64);
++  assert.throws(() => createAuthorityFixture({ endpoint }, transport), /differs from staged sources/);
++  assert.equal(transport.state.calls.length, 0);
++});
++
++for (const [name, change, message] of [
++  ['null bundle', (x) => { x.bundle = null; }, /explicit synthetic/],
++  ['undefined bundle', (x) => { x.bundle = undefined; }, /explicit synthetic/],
++  ['array bundle', (x) => { x.bundle = []; }, /explicit synthetic/],
++  ['null expectation', (x) => { x.authorityExpectation = null; }, /explicit synthetic/],
++  ['undefined expectation', (x) => { x.authorityExpectation = undefined; }, /explicit synthetic/],
++  ['array expectation', (x) => { x.authorityExpectation = []; }, /explicit synthetic/],
++  ['missing hashes', (x) => { delete x.authorityExpectation.sourceHashes; }, /exact source and compiler hashes/],
++  ['null hashes', (x) => { x.authorityExpectation.sourceHashes = null; }, /exact source and compiler hashes/],
++  ['undefined compiler', (x) => { x.authorityExpectation.compilerSha256 = undefined; }, /exact source and compiler hashes/],
++  ['extra expectation', (x) => { x.authorityExpectation.extra = true; }, /exact source and compiler hashes/],
++]) {
++  test('authority refuses ' + name + ' before allocation or transport', () => {
++    const transport = authorityTransport(); change(transport);
++    assert.throws(() => createAuthorityFixture({ endpoint }, transport), message);
++    assert.equal(transport.state.calls.length, 0);
++  });
++}
+--- a/test/application/README.md
++++ b/test/application/README.md
+@@ -54,3 +54,8 @@
+ The launcher must report a successful exited container, all required assertions and recording receipts, then acknowledged cleanup. Independently verify the same engine, exact returned container ID absent, workspace absent and zero application-isolation labels. An interruption or unknown create acknowledgement is UNRESOLVED. The printed ID is not enough to authorize removal: revalidate engine, name, labels and the controller's full current ownership/configuration checks before any exact-ID recovery. An ownership/configuration loss preserves an explicit cleanup exception; do not adopt resources by label or prune broadly. Unit-only intentional exceptions are contained in the unit runner's owned temporary parent and involve no real Docker resources.
+ 
+ No root package/lock/start/source changes, full C3 acceptance, domain-scenario passes, production deployment or 100 RPS evidence are implied.
++
++
++## Fixed staff-authority role (source candidate, NOT RUN)
++
++`run-authority.mjs` selects only the fixed nine-file `business-staff-authority-pure` role through the same controller and pre-import bootstrap. Default endpoint-only six-file behavior is retained. The one pinned TypeScript5.9.3 artifact has its own10MiB cap; no general size/permission/network expansion occurs. Three complete organizations modules are emitted and exercised through injected read ports and a crypto-only fixed linker. Compiler initialization has no process/performance/system or filesystem-import access. No application startup, real session/DB/provider, qualification or clinical/release acceptance follows. The contract and future exact source/invocation reviews govern this entry; do not run it merely because it exists. Preparation includes no executable checks.
+--- /dev/null
++++ b/test/application/authority-scenario.mjs
+@@ -0,0 +1,370 @@
++import assert from 'node:assert/strict';
++import { AssertionError } from 'node:assert';
++import { readFileSync, writeSync } from 'node:fs';
++import { compileFunction } from 'node:vm';
++import { createHash } from 'node:crypto';
++import {
++  assertBundle, AUTHORITY_CASE_IDS, AUTHORITY_COMPILER_SHA, AUTHORITY_CONTROLS, AUTHORITY_EMIT_OPTIONS,
++  AUTHORITY_INPUTS, AUTHORITY_ROLE, AUTHORITY_SOURCE_HASHES, AUTHORITY_VECTORS_SHA, sha256,
++} from './app-bundle.mjs';
++
++const ids = Object.keys(AUTHORITY_INPUTS);
++const [TYPES, RULES, SERVICE] = ids;
++const copy = (value) => JSON.parse(JSON.stringify(value));
++const independentHash = (value) => createHash('sha256').update(value, 'utf8').digest('hex');
++const sameKeys = (value, keys) => assert.deepEqual(Object.keys(value).sort(), [...keys].sort());
++const controlMarker = (id) => id === 'M5' ? 'FORGED_SCOPE_ACCEPTED' : 'EXPECTED_AUTHORITY_DENIAL_MISSING';
++
++export async function runAuthorityScenario() {
++  let diagnosticBytes = 0;
++  const record = (value) => {
++    const line = JSON.stringify(value) + '\n'; diagnosticBytes += Buffer.byteLength(line);
++    assert.ok(diagnosticBytes < 32 * 1024, 'Authority diagnostics limit');
++    assert.equal(writeSync(2, line), Buffer.byteLength(line), 'Authority diagnostic write was incomplete');
++  };
++  const admitted = () => assertBundle('/workspace', {
++    runId: process.env.APP_RUN_ID, manifestSha: process.env.APP_MANIFEST_SHA, role: AUTHORITY_ROLE,
++  });
++  const manifest = admitted();
++  for (const id of ids) assert.equal(manifest.files[AUTHORITY_INPUTS[id]], AUTHORITY_SOURCE_HASHES[id]);
++  assert.equal(manifest.files['typescript.cjs'], AUTHORITY_COMPILER_SHA);
++  assert.equal(manifest.files['authority-vectors.json'], AUTHORITY_VECTORS_SHA);
++  const sources = Object.fromEntries(ids.map((id) => [id, readFileSync('/workspace/' + AUTHORITY_INPUTS[id], 'utf8')]));
++  const vectors = JSON.parse(readFileSync('/workspace/authority-vectors.json', 'utf8'));
++  const state = { compilerLoads: 0, compilerRequests: [], emits: { nominal: 0, mutant: 0 }, graphs: 0,
++    evaluations: Object.fromEntries(ids.map((id) => [id, 0])), probes: 0, nominalEdges: null,
++    effects: { database: 0, provider: 0, sourceWrites: 0, domainNativeImports: 0 } };
++  const denied = (kind) => { const error = new Error('AUTHORITY_LINKER_DENIED:' + kind); error.code = 'AUTHORITY_LINKER_DENIED'; throw error; };
++  const rejectCompilerImport = (request, attempts) => { attempts.push(request); return denied('compiler'); };
++  const compilerRequire = (request) => rejectCompilerImport(request, state.compilerRequests);
++  const compilerText = readFileSync('/workspace/typescript.cjs', 'utf8');
++  assert.equal(sha256(compilerText), AUTHORITY_COMPILER_SHA);
++  const tool = { exports: {} }; state.compilerLoads++;
++  // Full standard compiler bytes, but no Node-system discovery/import host.
++  compileFunction(compilerText, ['module', 'exports', 'require', 'process', 'performance'], {
++    filename: '/workspace/typescript.cjs',
++  })(tool, tool.exports, compilerRequire, undefined, undefined);
++  const ts = tool.exports;
++  assert.equal(ts.version, '5.9.3'); assert.equal(ts.sys, undefined); assert.equal(state.compilerRequests.length, 0);
++  assert.equal(ts.ScriptTarget.ES2020, AUTHORITY_EMIT_OPTIONS.target);
++  assert.equal(ts.ModuleKind.CommonJS, AUTHORITY_EMIT_OPTIONS.module);
++  function emit(id, source, phase) {
++    state.emits[phase]++;
++    const result = ts.transpileModule(source, { fileName: id, compilerOptions: { ...AUTHORITY_EMIT_OPTIONS }, reportDiagnostics: true });
++    assert.deepEqual(result.diagnostics ?? [], [], 'Compiler reported diagnostics');
++    assert.equal(ts.sys, undefined); assert.equal(state.compilerRequests.length, 0);
++    assert.equal(typeof result.outputText, 'string'); assert.ok(result.outputText.length > 0);
++    assert.ok(Buffer.byteLength(result.outputText) < 128 * 1024, 'Emitted module limit');
++    record({ tag: 'AUTHORITY_EMIT', phase, id, sha256: sha256(result.outputText) });
++    return result.outputText;
++  }
++  const nominalEmit = Object.fromEntries(ids.map((id) => [id, emit(id, sources[id], 'nominal')]));
++  assert.ok(Object.values(nominalEmit).reduce((n, text) => n + Buffer.byteLength(text), 0) < 384 * 1024);
++  function graph(code, phase) {
++    admitted(); for (const id of ids) assert.equal(sha256(readFileSync('/workspace/' + AUTHORITY_INPUTS[id])), AUTHORITY_SOURCE_HASHES[id]);
++    state.graphs++; const cache = new Map(); const edges = [];
++    function request(name, parent, probe = false) {
++      if (!probe) edges.push([parent, name]);
++      const target = parent === RULES && name === './types' ? TYPES
++        : parent === SERVICE && name === '../types' ? TYPES : parent === SERVICE && name === '../rules' ? RULES : undefined;
++      if (target) return load(target);
++      if (parent === RULES && name === 'crypto') return Object.freeze({ createHash });
++      if (probe) state.probes++;
++      return denied('domain');
++    }
++    function load(id) {
++      assert.ok(ids.includes(id), 'Unknown fixed module');
++      if (cache.has(id)) return cache.get(id).exports;
++      const module = { exports: {} }; cache.set(id, module); state.evaluations[id]++;
++      compileFunction(code[id], ['exports', 'require', 'module'], { filename: id })(module.exports, (name) => request(name, id), module);
++      return module.exports;
++    }
++    const types = load(TYPES); const rules = load(RULES); const service = load(SERVICE);
++    sameKeys(types, ['AuthorityError']); // __esModule is non-enumerable compiler metadata.
++    sameKeys(rules, ['validateContext', 'validateTime', 'validateReadiness', 'validateLookup', 'validateUser',
++      'validateOrganization', 'pharmacyFingerprint', 'serializeDecision', 'decisionDigest', 'validateMembership',
++      'validateEligibility', 'evaluateAuthority']);
++    sameKeys(service, ['isBusinessScope', 'BusinessStaffAuthorityService']);
++    assert.deepEqual(edges, [[RULES, 'crypto'], [RULES, './types'], [SERVICE, '../types'], [SERVICE, '../rules']]);
++    if (phase === 'nominal') state.nominalEdges = edges;
++    return { types, rules, service, probe: (name) => request(name, RULES, true) };
++  }
++  const principal = () => ({ actorId: '1'.repeat(24), userType: 'user', purpose: 'staff' });
++  const request = () => ({ organizationId: '2'.repeat(24), branchId: '3'.repeat(24), capability: 'pharmacy.prescription.review' });
++  function fixture() {
++    const rows = copy(vectors.decisions); const trees = Object.fromEntries(rows.map((row) => [row.kind, JSON.parse(row.expected_serialization_utf8)]));
++    const mapping = rows.find((r) => r.kind === 'business_mapped').record;
++    const grant = rows.find((r) => r.kind === 'membership_granted').record;
++    const verified = rows.find((r) => r.kind === 'professional_verified').record;
++    const facts = { user: { _id: '1'.repeat(24), userType: 'user', isActive: true },
++      organization: { _id: '2'.repeat(24), schemaVersion: 1, revision: 1, createdAt: 100, updatedAt: 100,
++        kind: 'pharmacy', sourceBusinessId: '4'.repeat(24), state: 'active', sourceFingerprint: vectors.fingerprint.expected_sha256,
++        mappingDecisionId: mapping._id, branches: copy(mapping.payload.branches) },
++      pharmacy: copy(vectors.fingerprint.input),
++      memberships: [{ _id: '5'.repeat(24), schemaVersion: 1, revision: 1, createdAt: 100, updatedAt: 100,
++        organizationId: '2'.repeat(24), actorId: '1'.repeat(24), state: 'active', validFrom: 100, expiresAt: 2000,
++        grants: copy(grant.payload.grants) }],
++      eligibility: [{ _id: '6'.repeat(24), schemaVersion: 1, revision: 1, createdAt: 100, updatedAt: 100,
++        organizationId: '2'.repeat(24), actorId: '1'.repeat(24), profession: 'pharmacist', state: 'verified', validFrom: 100,
++        expiresAt: 2000, verificationDecisionId: verified._id, evidenceVersionId: verified.payload.evidenceVersionId,
++        evidenceSha256: verified.payload.evidenceSha256 }],
++      mappingDecisions: [mapping], grantDecisions: [grant], verificationDecisions: [verified] };
++    // Modify declared canonical fixture arrays, not the production serializer.
++    const proof = (kind, path, value, serialized = value) => {
++      const record = kind === 'business_mapped' ? mapping : kind === 'membership_granted' ? grant : verified;
++      const tree = trees[kind]; const tuples = path.length === 1 ? tree : tree.find((x) => Array.isArray(x) && x[0] === 'payload').slice(1);
++      const field = tuples.find((x) => Array.isArray(x) && x[0] === path.at(-1)); assert.ok(field, 'Unknown declared fixture field');
++      if (path.length === 1) record[path[0]] = value; else record[path[0]][path[1]] = value;
++      field[1] = serialized; record.payloadSha256 = independentHash(JSON.stringify(tree));
++    };
++    return { facts, trees, mapping, grant, verified, proof, now: 1000, principal: principal(), request: request(), transaction: Object.freeze({ fixture: 'transaction' }),
++      ready: { ready: true, authorityGeneration: '1'.repeat(64), indexesVerified: true, provenanceVerified: true, snapshotTransactionsVerified: true } };
++  }
++  const traces = []; let activePhase;
++  const phaseStart = process.hrtime.bigint();
++  const withinPhase = () => assert.ok(Number(process.hrtime.bigint() - phaseStart) < 10_000_000_000, 'Authority case phase limit');
++  async function invoke(g, f, id, category, options = {}) {
++    const calls = []; let scope; let error; let thrown = false;
++    const ownValue = (object, key) => Object.getOwnPropertyDescriptor(object, key)?.value;
++    const expectedLookup = { organizationId: ownValue(f.request, 'organizationId'), branchId: ownValue(f.request, 'branchId'),
++      capability: ownValue(f.request, 'capability'), actorId: ownValue(f.principal, 'actorId'),
++      authorityGeneration: ownValue(f.ready, 'authorityGeneration') };
++    const clock = () => { calls.push('clock'); if (Object.hasOwn(options, 'clockThrow')) throw options.clockThrow; return f.now; };
++    const port = {
++      async readiness() {
++        calls.push('readiness'); if (Object.hasOwn(options, 'readyThrow')) throw options.readyThrow;
++        if (options.defer) return new Promise((resolve) => { options.defer(); resolve(f.ready); });
++        return f.ready;
++      },
++      async loadFacts(lookup, transaction, now) {
++        calls.push('facts');
++        assert.deepEqual(lookup, expectedLookup);
++        assert.equal(Object.isFrozen(lookup), true); assert.equal(transaction, f.transaction); assert.equal(now, f.now);
++        if (Object.hasOwn(options, 'factsThrow')) throw options.factsThrow;
++        return f.facts;
++      },
++    };
++    const service = new g.service.BusinessStaffAuthorityService(port, clock);
++    try { scope = await service.resolve(f.principal, f.request, Object.hasOwn(options, 'transaction') ? options.transaction : f.transaction); }
++    catch (value) { thrown = true; error = value; }
++    const expectedCalls = options.calls ?? ['clock', 'readiness', 'facts'];
++    const row = { phase: activePhase, id, calls, expected: category ?? 'SUCCESS', thrown };
++    traces.push(row); assert.deepEqual(calls, expectedCalls, id + ': PORT_CALLS');
++    if (category === 'PROPAGATED') {
++      assert.equal(thrown, true, id + ': EXPECTED_PROPAGATION_MISSING'); assert.equal(error, options.expectedError, id + ': ERROR_IDENTITY');
++    } else if (category) {
++      if (!thrown) assert.fail(id + ': EXPECTED_AUTHORITY_DENIAL_MISSING');
++      assert.equal(error instanceof g.types.AuthorityError, true, id + ': WRONG_ERROR_CLASS');
++      assert.equal(error.category, category, id + ': WRONG_ERROR_CATEGORY');
++    } else { if (thrown) throw error; assert.equal(g.service.isBusinessScope(scope), true); }
++    return scope;
++  }
++  async function leaf(id, g) {
++    withinPhase(); const [group, variant] = id.split('.'); const f = fixture();
++    const run = (category, options) => invoke(g, f, id, category, options);
++    const D = 'AUTHORITY_DENIED';
++    switch (group) {
++      case 'A01': {
++        const scope = await run(); assert.equal(Object.isFrozen(scope), true);
++        assert.deepEqual(scope, { ...request(), actorId: principal().actorId, authorityGeneration: '1'.repeat(64), purpose: 'staff', kind: 'pharmacy',
++          sourceBusinessId: '4'.repeat(24), organizationRevision: 1, branchRevision: 1, membershipId: '5'.repeat(24), membershipRevision: 1,
++          eligibilityId: '6'.repeat(24), eligibilityRevision: 1, mappingDecisionId: f.mapping._id, grantDecisionId: f.grant._id,
++          verificationDecisionId: f.verified._id, evidenceVersionId: f.facts.eligibility[0].evidenceVersionId,
++          evidenceSha256: f.facts.eligibility[0].evidenceSha256, checkedAt: 1000, expiresAt: 2000 }); break;
++      }
++      case 'A02': { const error = new g.types.AuthorityError(D); assert.equal(error.category, D); assert.equal(error.name, 'AuthorityError'); assert.ok(error instanceof Error); break; }
++      case 'A03': {
++        let getters = 0;
++        if (variant === 'bad-id') f.principal.actorId = 'A'.repeat(24);
++        if (variant === 'business-login') f.principal.userType = 'pharmacy';
++        if (variant === 'missing-purpose') delete f.principal.purpose;
++        if (variant === 'extra-key') f.principal.extra = true;
++        if (variant === 'accessor') Object.defineProperty(f.principal, 'actorId', { enumerable: true, get() { getters++; return '1'.repeat(24); } });
++        await run('INVALID_CONTEXT', { calls: [] }); assert.equal(getters, 0); break;
++      }
++      case 'A04': {
++        if (variant === 'bad-org-id') f.request.organizationId = 'invalid';
++        if (variant === 'unknown-capability') f.request.capability = 'admin';
++        if (variant === 'extra-key') f.request.extra = true;
++        await run('INVALID_CONTEXT', { calls: [] }); break;
++      }
++      case 'A05': await run('INVALID_TRANSACTION', { calls: [], transaction: variant === 'null' ? null : variant === 'number' ? 1 : 'transaction' }); break;
++      case 'A06': f.now = { nan: NaN, infinity: Infinity, negative: -1, unsafe: Number.MAX_SAFE_INTEGER + 1, 'out-of-range': 8640000000000001 }[variant]; await run(D, { calls: ['clock'] }); break;
++      case 'A07': { const value = variant === 'error' ? new Error('synthetic-clock') : variant === 'false' ? false : undefined; await run('PROPAGATED', { clockThrow: value, expectedError: value, calls: ['clock'] }); break; }
++      case 'A08': {
++        if (variant === 'false') f.ready = { ready: false };
++        if (variant === 'missing-flag') delete f.ready.indexesVerified;
++        if (variant === 'false-flag') f.ready.snapshotTransactionsVerified = false;
++        if (variant === 'bad-generation') f.ready.authorityGeneration = 'not-a-digest';
++        await run('AUTHORITY_NOT_READY', { calls: ['clock', 'readiness'] }); break;
++      }
++      case 'A09': case 'A10': {
++        const value = variant === 'error' ? new Error('synthetic-port') : variant === 'false' ? false : undefined;
++        await run('PROPAGATED', { [group === 'A09' ? 'readyThrow' : 'factsThrow']: value, expectedError: value,
++          calls: group === 'A09' ? ['clock', 'readiness'] : ['clock', 'readiness', 'facts'] }); break;
++      }
++      case 'A11': await run(undefined, { defer() { f.principal.actorId = 'e'.repeat(24); f.request.organizationId = 'f'.repeat(24); } }); break;
++      case 'A12': if (variant === 'inactive') f.facts.user.isActive = false; else f.facts.user._id = 'e'.repeat(24); await run(D); break;
++      case 'A13': {
++        if (variant === 'membership-tenant') f.facts.memberships[0].organizationId = 'e'.repeat(24);
++        if (variant === 'eligibility-actor') f.facts.eligibility[0].actorId = 'e'.repeat(24);
++        if (variant === 'organization-id') f.facts.organization._id = 'e'.repeat(24);
++        await run(D); break;
++      }
++      case 'A14': if (variant === 'organization-suspended') f.facts.organization.state = 'suspended'; else f.facts.organization.branches[0].state = 'revoked'; await run(D); break;
++      case 'A15': if (variant === 'license-number') f.facts.pharmacy.drugLicenseNumber += '-changed'; else if (variant === 'license-document') f.facts.pharmacy.drugLicenseDocumentUrl += ':changed'; else f.facts.pharmacy.isVerified = false; await run(D); break;
++      case 'A16': f.facts.organization.kind = 'lab'; f.request.capability = 'lab.report.release'; await run('AUTHORITY_MAPPING_UNAVAILABLE'); break;
++      case 'A17': if (variant === 'missing-member') f.facts.memberships = []; else if (variant === 'duplicate-member') f.facts.memberships.push(copy(f.facts.memberships[0])); else f.facts.mappingDecisions = []; await run(D); break;
++      case 'A18': if (variant === 'schema') f.facts.memberships[0].schemaVersion = 2; else f.facts.memberships[0].revision = variant === 'zero-revision' ? 0 : Number.MAX_SAFE_INTEGER + 1; await run(D); break;
++      case 'A19': {
++        if (variant === 'validfrom-equal') { f.now = 100; const scope = await run(); assert.equal(scope.checkedAt, 100); break; }
++        if (variant === 'validfrom-future') { f.facts.memberships[0].validFrom = 1001; f.proof('membership_granted', ['payload', 'validFrom'], 1001); }
++        if (variant === 'expiry-equal') f.now = 2000;
++        if (variant === 'created-after-updated') f.facts.memberships[0].updatedAt = 50;
++        await run(D); break;
++      }
++      case 'A20': f.facts.eligibility[0].expiresAt = 1500; f.proof('professional_verified', ['payload', 'expiresAt'], 1500); assert.equal((await run()).expiresAt, 1500); break;
++      case 'A21': {
++        if (variant === 'fingerprint') assert.equal(g.rules.pharmacyFingerprint(copy(vectors.fingerprint.input)), vectors.fingerprint.expected_sha256);
++        else {
++          const kind = { mapping: 'business_mapped', grant: 'membership_granted', verification: 'professional_verified' }[variant];
++          const row = vectors.decisions.find((x) => x.kind === kind);
++          assert.equal(g.rules.serializeDecision(copy(row.record)), row.expected_serialization_utf8);
++          assert.equal(g.rules.decisionDigest(copy(row.record)), row.expected_sha256);
++        } break;
++      }
++      case 'A22': {
++        for (const row of vectors.decisions) {
++          const value = copy(row.record); const expected = JSON.parse(row.expected_serialization_utf8);
++          if (variant === 'object-keys') {
++            const reordered = Object.fromEntries(Object.entries(value).reverse());
++            assert.equal(g.rules.serializeDecision(reordered), row.expected_serialization_utf8);
++          } else {
++            const extra = { evidenceVersionId: '0'.repeat(23) + '2', evidenceSha256: 'a'.repeat(64) };
++            value.evidence.push(extra);
++            expected.find((x) => Array.isArray(x) && x[0] === 'evidence')[1].unshift([extra.evidenceVersionId, extra.evidenceSha256]);
++            const payload = expected.find((x) => Array.isArray(x) && x[0] === 'payload').slice(1);
++            if (row.kind === 'business_mapped') {
++              const second = { branchId: '0'.repeat(23) + '3', state: 'active', revision: 1 };
++              value.payload.branches.push(second);
++              payload.find((x) => x[0] === 'branches')[1].unshift([second.branchId, second.state, second.revision]);
++            } else {
++              const second = { branchId: '0'.repeat(23) + '3', capability: 'pharmacy.prescription.review',
++                ...(row.kind === 'membership_granted' ? { grantDecisionId: '9'.repeat(24) } : {}) };
++              value.payload.grants.push(second);
++              payload.find((x) => x[0] === 'grants')[1].unshift(row.kind === 'membership_granted'
++                ? [second.branchId, second.capability, second.grantDecisionId] : [second.branchId, second.capability]);
++            }
++            assert.equal(g.rules.serializeDecision(value), JSON.stringify(expected));
++            value.evidence.reverse();
++            if (row.kind === 'business_mapped') value.payload.branches.reverse(); else value.payload.grants.reverse();
++            assert.equal(g.rules.serializeDecision(value), JSON.stringify(expected));
++            assert.equal(g.rules.decisionDigest(value), independentHash(JSON.stringify(expected)));
++          }
++        } break;
++      }
++      case 'A23': if (variant === 'metadata-operation') f.mapping.operationId = '0'.repeat(23) + '2'; else if (variant === 'payload-fingerprint') f.mapping.payload.sourceFingerprint = 'a'.repeat(64); else f.verified.evidence[0].evidenceSha256 = 'a'.repeat(64); await run(D); break;
++      case 'A24': f.ready.authorityGeneration = '2'.repeat(64); await run(D); break;
++      case 'A25': if (variant === 'organization-revision') f.facts.organization.revision = 2; else if (variant === 'membership-revision') f.facts.memberships[0].revision = 2; else f.facts.eligibility[0].revision = 2; await run(D); break;
++      case 'A26': {
++        if (variant === 'self-grant') f.proof('membership_granted', ['decidingActorId'], principal().actorId);
++        if (variant === 'self-verification') f.proof('professional_verified', ['decidingActorId'], principal().actorId);
++        if (variant === 'evidence-version') { f.proof('professional_verified', ['payload', 'evidenceVersionId'], 'e'.repeat(24)); f.facts.eligibility[0].evidenceVersionId = 'e'.repeat(24); }
++        await run(D); break;
++      }
++      case 'A27': {
++        if (variant === 'decision-id') { f.proof('membership_granted', ['_id'], f.mapping._id); f.facts.memberships[0].grants[0].grantDecisionId = f.mapping._id;
++          const grants = copy(f.facts.memberships[0].grants); f.proof('membership_granted', ['payload', 'grants'], grants, grants.map((x) => [x.branchId, x.capability, x.grantDecisionId]));
++        } else f.proof('membership_granted', ['operationId'], f.mapping.operationId);
++        await run(D); break;
++      }
++      case 'A28': {
++        let value;
++        if (variant === 'raw-evaluator') value = g.rules.evaluateAuthority({ ...request(), actorId: principal().actorId, authorityGeneration: '1'.repeat(64) }, f.facts, 1000);
++        else {
++          const scope = await run(); value = variant === 'spread-clone' ? Object.freeze({ ...scope })
++            : variant === 'json-clone' ? JSON.parse(JSON.stringify(scope)) : Object.create(scope);
++        }
++        assert.equal(g.service.isBusinessScope(value), false, id + ': FORGED_SCOPE_ACCEPTED'); break;
++      }
++      case 'A29': { const scope = await run(); const before = JSON.stringify(scope); f.facts.memberships[0].revision = 99; f.facts.organization.sourceBusinessId = 'e'.repeat(24); assert.equal(JSON.stringify(scope), before); assert.equal(Object.isFrozen(scope), true); break; }
++      case 'A30': { const scope = await run(); f.facts.memberships[0].state = 'revoked'; await run(D); assert.equal(g.service.isBusinessScope(scope), true); break; }
++      case 'A31': {
++        if (variant === 'domain-fs') assert.throws(() => g.probe('fs'), { code: 'AUTHORITY_LINKER_DENIED' });
++        else { const attempts = []; state.probes++; assert.throws(() => rejectCompilerImport('fs', attempts), { code: 'AUTHORITY_LINKER_DENIED' }); assert.deepEqual(attempts, ['fs']); }
++        break;
++      }
++      case 'A32': {
++        let getters = 0;
++        if (variant === 'facts-extra-key') f.facts.extra = true;
++        if (variant === 'nested-accessor') Object.defineProperty(f.facts.memberships[0], 'state', { enumerable: true, get() { getters++; return 'active'; } });
++        if (variant === 'empty-branches') f.facts.organization.branches = [];
++        if (variant === 'over100-branches') f.facts.organization.branches = [f.facts.organization.branches[0], ...Array.from({ length: 100 }, (_, i) => ({ branchId: (1000 + i).toString(16).padStart(24, '0'), state: 'active', revision: 1 }))];
++        await run(D); assert.equal(getters, 0); break;
++      }
++      default: assert.fail('Unregistered authority case');
++    }
++    withinPhase();
++  }
++  async function checkedLeaf(id, g, phase) {
++    activePhase = phase; const before = traces.length; let failed = false; let failure;
++    try { await leaf(id, g); } catch (value) { failed = true; failure = value; }
++    const observations = traces.slice(before);
++    const count = (name) => observations.reduce((total, row) => total + row.calls.filter((call) => call === name).length, 0);
++    try {
++      record({ tag: 'AUTHORITY_LEAF', phase, id, completed: !failed,
++        calls: { clock: count('clock'), readiness: count('readiness'), facts: count('facts') },
++        order: observations.map((row) => row.calls.join(',')).join('|'),
++        expected: observations.map((row) => row.expected) });
++    } catch (recordingError) {
++      if (failed) throw new AggregateError([failure, recordingError], 'Authority leaf and recording failed');
++      throw recordingError;
++    }
++    if (failed) throw failure;
++  }
++  const nominal = graph(nominalEmit, 'nominal'); const completed = [];
++  for (const id of AUTHORITY_CASE_IDS) { await checkedLeaf(id, nominal, 'nominal'); completed.push(id); }
++  assert.deepEqual(completed, AUTHORITY_CASE_IDS);
++  const mutations = [
++    { id: 'M1', module: RULES, old: 'now < d.expiresAt', replacement: 'true' },
++    { id: 'M2', module: RULES, old: 'check(decisionDigest(decision) === decision.payloadSha256);', replacement: 'check(true);' },
++    { id: 'M3', module: RULES, old: "check(d.organizationId === lookup.organizationId && d.actorId === lookup.actorId && d.state === 'active');", replacement: "check(true && d.actorId === lookup.actorId && d.state === 'active');" },
++    { id: 'M4', module: RULES, old: 'gp.membershipRevision === member.revision', replacement: 'true' },
++    { id: 'M5', module: SERVICE, old: 'issuedScopes.has(value)', replacement: 'true' },
++  ];
++  const controls = []; const mutantHashes = {};
++  for (const mutation of mutations) {
++    withinPhase(); const target = AUTHORITY_CONTROLS.find(([id]) => id === mutation.id)[1];
++    const source = sources[mutation.module]; assert.equal(source.split(mutation.old).length, 2, 'Mutation must affect one exact source occurrence');
++    const changed = source.replace(mutation.old, mutation.replacement);
++    const output = emit(mutation.module, changed, 'mutant'); mutantHashes[mutation.id] = sha256(output);
++    assert.notEqual(mutantHashes[mutation.id], sha256(nominalEmit[mutation.module]));
++    const altered = graph({ ...nominalEmit, [mutation.module]: output }, 'mutant'); let detected = false;
++    try { await checkedLeaf(target, altered, 'mutant'); }
++    catch (error) {
++      assert.ok(error instanceof AssertionError && error.message.includes(target + ': ' + controlMarker(mutation.id)), 'Wrong control failure');
++      detected = true;
++    }
++    assert.equal(detected, true, 'Weakened source was not detected');
++    await checkedLeaf(target, graph(nominalEmit, 'restoration'), 'restoration');
++    controls.push({ id: mutation.id, target, mutantDetected: detected, restored: true });
++  }
++  const phaseMs = Number(process.hrtime.bigint() - phaseStart) / 1e6; assert.ok(phaseMs < 10000);
++  assert.equal(state.compilerLoads, 1); assert.equal(state.compilerRequests.length, 0); assert.equal(ts.sys, undefined);
++  assert.equal(state.emits.nominal, 3); assert.equal(state.emits.mutant, 5); assert.equal(state.graphs, 11);
++  for (const id of ids) assert.equal(state.evaluations[id], 11); assert.equal(state.probes, 2);
++  admitted();
++  const observedSourceHashes = Object.fromEntries(ids.map((id) => [id, sha256(readFileSync('/workspace/' + AUTHORITY_INPUTS[id]))]));
++  assert.deepEqual(observedSourceHashes, AUTHORITY_SOURCE_HASHES);
++  record({ tag: 'AUTHORITY_PHASE', elapsedMs: phaseMs, nominalLeaves: completed.length, controls: controls.length,
++    compilerLoads: state.compilerLoads, emits: state.emits, graphs: state.graphs, moduleEvaluations: state.evaluations });
++  return {
++    schema: 'SD-AUTHORITY-PURE-1', sourceHashes: observedSourceHashes,
++    compiler: { version: ts.version, sha256: sha256(compilerText), loads: state.compilerLoads, requireAttempts: state.compilerRequests.length, sysAbsent: ts.sys === undefined },
++    emit: { optionsSha256: sha256(JSON.stringify(AUTHORITY_EMIT_OPTIONS)), nominalHashes: Object.fromEntries(ids.map((id) => [id, sha256(nominalEmit[id])])),
++      mutantHashes, nominalCount: state.emits.nominal, mutantCount: state.emits.mutant },
++    nominal: { caseIds: completed, passed: completed.length, failed: 0, skipped: 0 }, controls,
++    evaluations: { graphs: state.graphs, types: state.evaluations[TYPES], rules: state.evaluations[RULES], service: state.evaluations[SERVICE], total: Object.values(state.evaluations).reduce((a, b) => a + b, 0) },
++    effects: { ...state.effects, boundaryProbeRejections: state.probes },
++  };
++}
+--- /dev/null
++++ b/test/application/run-authority.mjs
+@@ -0,0 +1,21 @@
++import { createAuthorityFixture } from './app-container.mjs';
++
++if (process.env.NODE_OPTIONS || process.env.NODE_PATH || process.execArgv.length || process.argv.length !== 3) {
++  throw new Error('Use a clean Node invocation with only the explicit local Docker Unix endpoint');
++}
++// REVIEW GATE: this fixed authority role requires fresh exact source and one-invocation approval.
++const fixture = createAuthorityFixture({ endpoint: process.argv[2] });
++let result;
++let failure;
++let failed = false;
++try { result = fixture.run(); } catch (error) { failed = true; failure = error; }
++try { fixture.dispose(); } catch (cleanupError) {
++  console.error(JSON.stringify({ id: fixture.id, runId: fixture.runId, directory: fixture.directory, cleanupAcknowledged: false }));
++  throw failed ? new AggregateError([failure, cleanupError], 'Application probe and cleanup failed') : cleanupError;
++}
++if (failed) {
++  console.error(JSON.stringify({ id: fixture.id, runId: fixture.runId, directory: fixture.directory, cleanupAcknowledged: true }));
++  throw failure;
++}
++console.log(JSON.stringify({ ...result, containerId: fixture.id, directory: fixture.directory,
++  image: fixture.image, cleanupAcknowledged: true }, null, 2));

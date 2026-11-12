@@ -10,42 +10,79 @@ import imageSpecification from './app-image.json' with { type: 'json' };
 const image = Object.freeze({ ...imageSpecification });
 import runtimeSpecification from './app-runtime.json' with { type: 'json' };
 const localRuntime = Object.freeze({ ...runtimeSpecification });
-import { assertBundle, makeManifest, NETWORK_ADMISSION_TAG, PORT_OPERATIONS, ROLE, requireThat, sha256, SOURCE_NAMES, verifyNetworkAdmission } from './app-bundle.mjs';
+import { assertBundle, AUTHORITY_COMPILER_SHA, AUTHORITY_INPUTS, AUTHORITY_ROLE, AUTHORITY_SOURCE_HASHES, AUTHORITY_VECTORS_SHA, makeManifest, NETWORK_ADMISSION_TAG, PORT_OPERATIONS, ROLE, requireThat, sha256, sourceNames, verifyAuthorityResult, verifyNetworkAdmission } from './app-bundle.mjs';
 
 const overrides = ['DOCKER_HOST', 'DOCKER_CONTEXT', 'DOCKER_CONFIG', 'DOCKER_TLS_VERIFY', 'DOCKER_CERT_PATH',
   'MONGODB_URL', 'PHARMACY_TEST_MONGODB_URI', 'DATABASE_URL', 'PAYMENT_SECRET', 'NODE_OPTIONS', 'NODE_PATH'];
 const nodeArgs = ['--permission', '--allow-fs-read=/workspace', '--allow-fs-read=/sys/class/net', '--allow-fs-write=/tmp', '/workspace/bootstrap.mjs'];
 const tmpfsOptions = 'rw,noexec,nosuid,size=67108864,mode=1777';
 
-function reviewedSources() {
+function reviewedSources(role) {
   const sources = {};
-  for (const name of SOURCE_NAMES) {
+  for (const name of sourceNames(role)) {
     if (name === 'package.json') { sources[name] = '{"type":"module"}\n'; continue; }
-    const location = name === 'queryUtils.ts'
-      ? new URL('../../src1/modules/common/utils/queryUtils.ts', import.meta.url)
-      : new URL(name, import.meta.url);
+    const authoritySource = Object.keys(AUTHORITY_INPUTS).find((id) => AUTHORITY_INPUTS[id] === name);
+    const location = name === 'typescript.cjs'
+      ? new URL('file:///Users/shubham/.codex/runtimes/ruflo/3.75.0/node_modules/typescript/lib/typescript.js')
+      : name === 'authority-vectors.json'
+        ? new URL('../../output/qa/business-staff-authority/SERIALIZATION_VECTORS.json', import.meta.url)
+        : authoritySource ? new URL('../../' + authoritySource, import.meta.url)
+          : name === 'queryUtils.ts' ? new URL('../../src1/modules/common/utils/queryUtils.ts', import.meta.url)
+            : new URL(name, import.meta.url);
     const stat = lstatSync(location);
-    requireThat(stat.isFile() && !stat.isSymbolicLink(), 'Harness source must be a regular file');
+    requireThat(stat.isFile() && !stat.isSymbolicLink() && (role !== AUTHORITY_ROLE || stat.nlink === 1), 'Harness source must be a regular file');
+    if (role === AUTHORITY_ROLE) {
+      requireThat(stat.size < (name === 'typescript.cjs' ? 10 * 1024 * 1024 : 128 * 1024), 'Authority source size changed');
+      if (name === 'typescript.cjs') requireThat(stat.uid === 501 && (stat.mode & 0o777) === 0o644 && stat.size === 9112572,
+        'Authority compiler metadata changed');
+    }
     sources[name] = readFileSync(location, 'utf8');
+    if (role === AUTHORITY_ROLE) {
+      const expected = name === 'typescript.cjs' ? AUTHORITY_COMPILER_SHA
+        : name === 'authority-vectors.json' ? AUTHORITY_VECTORS_SHA : AUTHORITY_SOURCE_HASHES[authoritySource];
+      if (expected) requireThat(sha256(sources[name]) === expected, 'Authority source/tool pin changed');
+    }
   }
   return sources;
 }
 
-function realDocker(endpoint, configuration) {
+function realDocker(endpoint, configuration, role) {
   const socket = fileURLToPath(new URL(endpoint.replace(/^unix:/, 'file:')));
   requireThat(statSync(realpathSync(socket)).isSocket(), 'Docker endpoint is not a local Unix socket');
   return (args) => {
     const result = spawnSync('/usr/local/bin/docker', ['--config', configuration, '--host', endpoint, ...args], {
       env: { PATH: '/usr/local/bin:/usr/bin:/bin' }, encoding: 'utf8', timeout: 20_000, maxBuffer: 512 * 1024,
     });
-    requireThat(!result.error && !result.signal && result.status === 0,
-      `Docker ${args[0]} failed: ${(result.stderr || result.error?.message || result.stdout || result.signal || result.status).toString().slice(0, 16 * 1024)}`);
+    const commandSucceeded = !result.error && !result.signal && result.status === 0;
+    const message = `Docker ${args[0]} failed: ${(result.stderr || result.error?.message || result.stdout || result.signal || result.status).toString().slice(0, 16 * 1024)}`;
+    if (role === AUTHORITY_ROLE && args[0] === 'start') {
+      const commandFailure = commandSucceeded ? undefined : new Error(message);
+      try {
+        const diagnostics = Buffer.from(result.stderr ?? '', 'utf8');
+        if (diagnostics.length >= 32 * 1024) {
+          const prefix = diagnostics.subarray(0, 30 * 1024);
+          requireThat(writeSync(2, prefix) === prefix.length, 'Authority overflow prefix write was incomplete');
+          const detail = '\n' + JSON.stringify({ tag: 'AUTHORITY_STDERR_OVERFLOW', observedBytes: diagnostics.length,
+            retainedPrefixBytes: prefix.length, complete: false }) + '\n';
+          requireThat(writeSync(2, detail) === Buffer.byteLength(detail), 'Authority overflow diagnostic write was incomplete');
+          throw new Error('Authority child stderr exceeded limit: ' + diagnostics.length + ' observed bytes');
+        }
+        if (diagnostics.length) requireThat(writeSync(2, diagnostics) === diagnostics.length, 'Authority child stderr write was incomplete');
+      } catch (recordingError) {
+        if (commandFailure) throw new AggregateError([commandFailure, recordingError], 'Authority command and diagnostic recording failed');
+        throw recordingError;
+      }
+      if (commandFailure) throw commandFailure;
+    } else requireThat(commandSucceeded, message);
     return result.stdout.trim();
   };
 }
 
 /** Test seams are trusted transports/text fixtures, not resource-ownership claims. */
-export function createApplicationFixture(input, seams = {}) {
+export function createApplicationFixture(input, seams = {}) { return createFixture(input, seams, ROLE); }
+export function createAuthorityFixture(input, seams = {}) { return createFixture(input, seams, AUTHORITY_ROLE); }
+
+function createFixture(input, seams, role) {
   requireThat(seams !== null && typeof seams === 'object'
     && [Object.prototype, null].includes(Object.getPrototypeOf(seams)), 'Test seams must be a plain object');
   const simulated = Reflect.ownKeys(seams).length > 0;
@@ -63,9 +100,35 @@ export function createApplicationFixture(input, seams = {}) {
   requireThat(request.endpoint === profile.endpoint && typeof profile.engineId === 'string' && profile.engineId,
     'Docker target is outside the reviewed local runtime profile');
   requireThat(/^node@sha256:[a-f0-9]{64}$/.test(image.image) && image.nodeVersion === '22.23.4', 'Invalid pinned runtime');
-  const sources = Object.freeze({ ...((simulated ? testSeams.bundle : undefined) ?? reviewedSources()) });
+  if (simulated && role === AUTHORITY_ROLE) {
+    const plain = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
+      && [Object.prototype, null].includes(Object.getPrototypeOf(value));
+    requireThat(Object.hasOwn(testSeams, 'bundle') && plain(testSeams.bundle)
+      && Object.hasOwn(testSeams, 'authorityExpectation') && plain(testSeams.authorityExpectation),
+    'Authority test seams require explicit synthetic bundle and expectation');
+    const expected = testSeams.authorityExpectation;
+    requireThat(Object.keys(expected).sort().join(',') === 'compilerSha256,sourceHashes'
+      && plain(expected.sourceHashes)
+      && Object.keys(expected.sourceHashes).sort().join(',') === Object.keys(AUTHORITY_INPUTS).sort().join(',')
+      && Object.values(expected.sourceHashes).every((value) => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value))
+      && typeof expected.compilerSha256 === 'string' && /^[a-f0-9]{64}$/.test(expected.compilerSha256),
+    'Authority synthetic expectation must contain exact source and compiler hashes');
+  }
+  const authorityExpectation = role === AUTHORITY_ROLE ? Object.freeze({
+    sourceHashes: Object.freeze({ ...(simulated ? testSeams.authorityExpectation.sourceHashes : AUTHORITY_SOURCE_HASHES) }),
+    compilerSha256: simulated ? testSeams.authorityExpectation.compilerSha256 : AUTHORITY_COMPILER_SHA,
+  }) : undefined;
+  const selectedSources = role === AUTHORITY_ROLE
+    ? (simulated ? testSeams.bundle : reviewedSources(role))
+    : ((simulated ? testSeams.bundle : undefined) ?? reviewedSources(role));
+  const sources = Object.freeze({ ...selectedSources });
   const runId = randomUUID();
-  const manifest = makeManifest(runId, sources);
+  const manifest = makeManifest(runId, sources, role);
+  if (role === AUTHORITY_ROLE) {
+    requireThat(Object.keys(authorityExpectation.sourceHashes).sort().join(',') === Object.keys(AUTHORITY_INPUTS).sort().join(',')
+      && Object.entries(AUTHORITY_INPUTS).every(([id, name]) => authorityExpectation.sourceHashes[id] === manifest.files[name])
+      && authorityExpectation.compilerSha256 === manifest.files['typescript.cjs'], 'Authority expectation differs from staged sources');
+  }
   const directory = realpathSync(mkdtempSync(join(tmpdir(), 'sd-app-isolation-')));
   const rootIdentity = lstatSync(directory);
   let bundleIdentity;
@@ -104,7 +167,7 @@ export function createApplicationFixture(input, seams = {}) {
     const configDirectory = join(directory, 'docker');
     mkdirSync(configDirectory, { mode: 0o700 });
     writeFileSync(join(configDirectory, 'config.json'), '{"auths":{}}\n', { mode: 0o600, flag: 'wx' });
-    const execute = simulated ? testSeams.executor : realDocker(request.endpoint, configDirectory);
+    const execute = simulated ? testSeams.executor : realDocker(request.endpoint, configDirectory, role);
     const engine = () => {
       const row = JSON.parse(execute(['info', '--format', '[{{json .ID}},{{json .OSType}}]']));
       requireThat(Array.isArray(row) && typeof row[0] === 'string' && row[0] && row[1] === 'linux', 'Unknown Docker engine');
@@ -133,9 +196,9 @@ export function createApplicationFixture(input, seams = {}) {
         || (key === 'YARN_VERSION' && /^[0-9.]+$/.test(value)))
       && new Set(environmentKeys).size === baseEnvironment.length, 'Unexpected runtime image environment');
     const environment = [...baseEnvironment, 'NODE_ENV=test', 'APP_RUN_ID=' + runId,
-      'APP_ROLE=' + ROLE, 'APP_MANIFEST_SHA=' + manifestSha];
+      'APP_ROLE=' + role, 'APP_MANIFEST_SHA=' + manifestSha];
     assertWorkspace();
-    assertBundle(bundle, { runId, manifestSha });
+    assertBundle(bundle, { runId, manifestSha, role });
     const args = ['create', '--pull=never', '--name', name, '--network', 'none', '--read-only',
       '--user', '1000:1000', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
       '--memory', '536870912', '--cpus', '1', '--pids-limit', '64', '--log-driver', 'none', '--no-healthcheck',
@@ -153,7 +216,7 @@ export function createApplicationFixture(input, seams = {}) {
 
     function assertOwned(checkSources = true) {
       assertWorkspace();
-      if (checkSources) assertBundle(bundle, { runId, manifestSha });
+      if (checkSources) assertBundle(bundle, { runId, manifestSha, role });
       requireThat(engine() === daemonId, 'Docker engine identity changed');
       const rows = JSON.parse(execute(['inspect', id]));
       requireThat(rows.length === 1, 'Ambiguous container inspection');
@@ -203,13 +266,21 @@ export function createApplicationFixture(input, seams = {}) {
         requireThat(item.State?.Status === 'exited' && item.State.ExitCode === 0 && !item.State.OOMKilled,
           'Application fixture did not exit successfully');
         const result = JSON.parse(output);
-        requireThat(result.runId === runId && result.role === ROLE && result.manifestSha === manifestSha
+        requireThat(result.runId === runId && result.role === role && result.manifestSha === manifestSha
           && result.admissionPassed === true && result.egressBlocked === true
           && result.filesystemCanariesPassed === true && result.databaseMode === 'not-admitted'
           && !Object.hasOwn(result, 'networkInterfaces')
           && result.networkAdmission?.tag === NETWORK_ADMISSION_TAG && result.networkAdmission.loopback === 'lo'
           && verifyNetworkAdmission(result.networkAdmission),
         'Application admission evidence mismatched');
+        if (role === AUTHORITY_ROLE) {
+          requireThat(Object.keys(result).sort().join(',') === ['admissionPassed', 'authority', 'databaseMode', 'egressBlocked',
+            'filesystemCanariesPassed', 'manifestSha', 'networkAdmission', 'role', 'runId'].sort().join(',')
+            && Buffer.byteLength(output) < 16 * 1024 && verifyAuthorityResult(result.authority, authorityExpectation),
+          'Authority scenario evidence mismatched');
+          phase = 'finished';
+          return Object.freeze({ ...result, authority: Object.freeze(result.authority) });
+        }
         requireThat(Array.isArray(result.calls) && result.calls.length === Object.keys(PORT_OPERATIONS).length
           && new Set(result.calls.map((call) => call.port)).size === result.calls.length
           && result.calls.every((call) => Object.hasOwn(PORT_OPERATIONS, call.port)

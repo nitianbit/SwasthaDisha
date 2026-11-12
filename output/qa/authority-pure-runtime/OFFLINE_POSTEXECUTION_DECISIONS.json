@@ -1,0 +1,19 @@
+{
+  "resultSha256": "dfa34ddafc26100da6a82c07a0e48a1010d202e5d8c188cd49831d20a8e112cc",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Root",
+      "decision": "ACCEPT_OFFLINE_FAKE_EVIDENCE_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/pharmacist_identity_fields",
+      "role": "Independent",
+      "decision": "ACCEPT_OFFLINE_FAKE_EVIDENCE_ONLY",
+      "findings": []
+    }
+  ],
+  "actual": "350/350onNode22and24,700fakecases;bothTAPfullsequential1..350;noFailCancelSkipTODO;stderr0;no first/cleanup/secondary/observationerrors;completebytesandhashesandEOF;twofreshownedemptyScratchdirs;all12closure/8source/runtimepinsunchanged.",
+  "limits": "Source/controllerfakeevidenceonly;84realcompleteemitted-modulecases NOT_RUN. No actual compiler/production/bootstrap/scenario/Docker/DB/SDK/provider/financial/clinical/release proof."
+}

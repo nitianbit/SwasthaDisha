@@ -1,0 +1,1744 @@
+{
+  "schema": "SD-AUTHORITY-REAL-MANIFEST-1",
+  "status": "INERT_PREPARATION_NO_REAL_EXECUTION_APPROVAL",
+  "author": "/root/authority_operator",
+  "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/authority-pure-runtime",
+  "sourceFreezeSha256": "7df6a0ba88c5cf1e19cb79fdbcfe3cf1e4ec67175d6f4b0102b817c868d554dc",
+  "recipeSha256": "d5f53b4d53fabf238ed2721f2c9c4ee8749538a3a46a0d758ee3d61a3c4e14a7",
+  "offlineResultSha256": "dfa34ddafc26100da6a82c07a0e48a1010d202e5d8c188cd49831d20a8e112cc",
+  "offlineEvidence": "ACTUAL_700_FAKE_CASES_PASS_POSTACCEPTED_NO_REAL_AUTHORITY_EXECUTION",
+  "preparationToolObservations": [
+    {
+      "path": "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+      "status": "CURRENT_REGULAR_METADATA_AND_WHOLE_FILE_HASH_MATCH_NO_EXECUTION",
+      "metadata": {
+        "sha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+        "bytes": 121306800,
+        "kind": "regular",
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o755",
+        "nlink": 1
+      },
+      "supportingEvidence": "Same exact host tool already passed350fakecases in committed offline-actual/node24.tap; real-transport behavior NOT_RUN. Node22/original offline temporary paths are historical only, not current read targets."
+    }
+  ],
+  "files": {
+    "test/application/app-bundle.mjs": {
+      "sha256": "993634db7d05213208ddda434d8d4c21f679ae342f46a1836dda115c7d3b5817",
+      "bytes": 21325,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "test/application/app-container.mjs": {
+      "sha256": "4c2a061a45a30478d4fc04d6cd28bb88aa2fd679e4346136b7714f29142948aa",
+      "bytes": 21188,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "test/application/bootstrap.mjs": {
+      "sha256": "b9016bbddd345ed562e7820ae391f96180397a6ae84c20fc92c1d36a74467b4c",
+      "bytes": 3551,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "test/application/app-bundle.test.mjs": {
+      "sha256": "dd2bc927c1f0f4d1932929aa4294a6df3c74a1db6536a7bb56902d259d163e75",
+      "bytes": 30965,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "test/application/app-container.test.mjs": {
+      "sha256": "79c6b65b39c7336718ad563b175e48f5fda76035b77b5028fb83bbcaa6a7dd14",
+      "bytes": 32441,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "test/application/README.md": {
+      "sha256": "dbe1014862ce0e192eaf6d2992c7e42efdc3d7f690e2008f9c6cafcf150be8e7",
+      "bytes": 8530,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "test/application/authority-scenario.mjs": {
+      "sha256": "806d39428cc6512c527581a46d00f49b4c15d348efa9457e5cbab3369b91d3ee",
+      "bytes": 28461,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "test/application/run-authority.mjs": {
+      "sha256": "a4b7c9e31f0ecc92f57d7d324dd3f36896d188ffe5e06e5cc159577549e31af9",
+      "bytes": 1201,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "src1/modules/organizations/types/index.ts": {
+      "sha256": "e873884e69db46d7de70d3120a5ac30809fe8dc526d118a4640463233c9633ff",
+      "bytes": 5660,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "src1/modules/organizations/rules.ts": {
+      "sha256": "b404c00381b5bf642aa648105cefb353a97c7ea7283c680059c426b5e4307942",
+      "bytes": 17283,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "src1/modules/organizations/services/index.ts": {
+      "sha256": "ccac5254a6e61c8cce4f14c58005cb39349689e3d0cbafc8ab551ca339397c73",
+      "bytes": 1390,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "test/foundation/run.mjs": {
+      "sha256": "f14c1830b0fbe23c1be454cb97003c6c6fb58fdb11bee0ac8bc91134d63ca0c9",
+      "bytes": 3608,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "test/foundation/preflight.mjs": {
+      "sha256": "2cdfa366dad210fe5483a52ae4c8c4b6488a4429bc8e0e8dff1f2b7f4f5487da",
+      "bytes": 3723,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "test/application/run.mjs": {
+      "sha256": "95e1be85da06a121780afe39c17aea1f2bf4fb736a579fb154216ff86135f924",
+      "bytes": 1163,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "test/application/app-ports.mjs": {
+      "sha256": "f7efb3ee12eee3f0ff427b360d9c65776c20f34c80432ac0b5a626df55408cf1",
+      "bytes": 841,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "test/application/scenario.mjs": {
+      "sha256": "b0a9fbc2a990cf344487d9f88a49d927fbb4fa806a794353fb3adcea9059e031",
+      "bytes": 848,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "test/application/app-image.json": {
+      "sha256": "4f1390608939a823788010499cc810801d01fd8ee44248da5424776c816a8611",
+      "bytes": 484,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "test/application/app-runtime.json": {
+      "sha256": "e4e0b67677e084dce5d65d958763057c5ca1b257232b5f007545a327fb40f0b3",
+      "bytes": 314,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "package.json": {
+      "sha256": "65b171e77e8cd3bfd37eb691cf9ce310d9108cedbf571232bd4859c4b16895ab",
+      "bytes": 1898,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "package-lock.json": {
+      "sha256": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080",
+      "bytes": 233000,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/business-staff-authority/SERIALIZATION_VECTORS.json": {
+      "sha256": "9f2ab5e192c9eb4a1332680a77f0ed5d94eb28502af3fc9a426f68be350ea382",
+      "bytes": 8807,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "documentation/planning/implementation/AUTHORITY_PURE_RUNTIME_CONTRACT.md": {
+      "sha256": "3b433b9f203b1c66b6a30c17e51c084e8d06e88f1e8a761b4d605ee6c7f0712a",
+      "bytes": 18579,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "test/foundation/preflight.test.mjs": {
+      "sha256": "26a84d230fbb17d0952d6f53b7667983597e122580a7fc17a526f7458e49294d",
+      "bytes": 6614,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "test/foundation/mongo-fixture.mjs": {
+      "sha256": "a95eec22111a57f4a6e70efc242fe5e54d1a89ab4020975bbdb9fae3cab4afc2",
+      "bytes": 9097,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "test/foundation/mongo-fixture.test.mjs": {
+      "sha256": "d837b2496d115a1a9c596ccaa21cf4eb7c51b3863c94af6bc3f4899f07057342",
+      "bytes": 10488,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/CANDIDATE.diff": {
+      "sha256": "797ea841f4c461d6ed12cb0160c38672a6121101cb8737159f7536b94b23859a",
+      "bytes": 69426,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/CASE_PLAN.json": {
+      "sha256": "c4110c5d60794073f6f57576845c686ca783c4f2687cda7b8fdfc6bec00c1627",
+      "bytes": 17544,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/COMMITTED_PATCH_READBACK.json": {
+      "sha256": "4e2af0a848a6e12245f6440d15c7973a1135ee8537961194980edecc30578129",
+      "bytes": 942,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/MUTATION_PLAN.json": {
+      "sha256": "62e2c509a553fd31212351e54c119e2cd9993b90de77cef02a0e6b8a37b544d4",
+      "bytes": 2761,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/OFFLINE_CAMPAIGN_CLAIM.json": {
+      "sha256": "1749b327bf7f39a5bb745411ea82fae27754546aeaab1e143fa9adff277a3bde",
+      "bytes": 268,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o600",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/OFFLINE_CHECK_PLAN.json": {
+      "sha256": "31db9f7ed0687aa5126d83fee468979fd70f0b58862d61fecc1b6efb9a98576d",
+      "bytes": 2132,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/OFFLINE_CHECK_RECIPE.md": {
+      "sha256": "7299c07563799901328bf5b08077faf29b39dbad41b6a728fe48017252a72c83",
+      "bytes": 16164,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/OFFLINE_EXECUTION_DECISIONS.json": {
+      "sha256": "884ba49ffa08069eeb1346ca3420613fc7a7b991589f544018950de03adb872b",
+      "bytes": 1440,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/OFFLINE_POSTEXECUTION_DECISIONS.json": {
+      "sha256": "9246b4f1b60e84ce340701e52d6332d20559de27bc10c467c7608551f6ea3418",
+      "bytes": 871,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/OFFLINE_ROOT_INVOCATION.json": {
+      "sha256": "869a5653a30c3513c4216fd445cf74e458e273f6af53073bfd419bc36cf02883",
+      "bytes": 734,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/PREIMPLEMENTATION_DECISIONS.json": {
+      "sha256": "9a206bbe00cb1e85f984404ecb2a1b643e71861a865d022062f584e30937b795",
+      "bytes": 1207,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/REAL_CAPTURE_PREIMPLEMENTATION.json": {
+      "sha256": "3c01bd628873fa408260f940aacf50dddd47c4a9bf4ce875a6d4afe0bbbfc6ab",
+      "bytes": 1017,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/REAL_OPERATOR.py": {
+      "sha256": "3c43843467966b84998a9875704ad230a492bd66d5b096a639d964742fd533e8",
+      "bytes": 39800,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/REAL_OPERATOR_PREPARATION.md": {
+      "sha256": "4e10f93842007095190d1bce7fc05ecea55742cab511adba978dfe855033f958",
+      "bytes": 7115,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/REAL_OPERATOR_REVIEW_REQUEST.md": {
+      "sha256": "affa9a8651e2fe4a1bfa9ce78f2e1aac7d63008a6a7197c1bcad0f864df967bf",
+      "bytes": 2025,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/REAL_RUN_CAPTURE_RECIPE.md": {
+      "sha256": "d5f53b4d53fabf238ed2721f2c9c4ee8749538a3a46a0d758ee3d61a3c4e14a7",
+      "bytes": 9762,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/SOURCE_DECISIONS.json": {
+      "sha256": "cbeeec7cd9408530801d30826be3b994e558c2e3c0f090b64cc7bf497be5c22e",
+      "bytes": 1339,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/SOURCE_FREEZE.json": {
+      "sha256": "7df6a0ba88c5cf1e19cb79fdbcfe3cf1e4ec67175d6f4b0102b817c868d554dc",
+      "bytes": 6315,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/SOURCE_REVIEW.md": {
+      "sha256": "362b5a6469be3f2ac6e9ecf30504e1a1b6ca0f88ab08279eededa1abc5185da5",
+      "bytes": 3512,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/offline-actual/ARCHIVE_MANIFEST.json": {
+      "sha256": "826bef05f72250b1d6dd1ae1cf6db0e0dd7f3358275886dd9a87e6e3ebda29ee",
+      "bytes": 1406,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/offline-actual/node22.stderr.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/offline-actual/node22.tap": {
+      "sha256": "b457a39e8956350f84619cd25457759bc533bac9e1f4aaada449fdbcf75db89e",
+      "bytes": 68617,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/offline-actual/node24.stderr.txt": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/offline-actual/node24.tap": {
+      "sha256": "bed96d076ac3e054052eb764c7ca31f342301b14731f6dd83c119c8eb7ef464f",
+      "bytes": 68629,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/offline-actual/result.json": {
+      "sha256": "dfa34ddafc26100da6a82c07a0e48a1010d202e5d8c188cd49831d20a8e112cc",
+      "bytes": 3308,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/offline-review-1/OFFLINE_CHECK_PLAN.json": {
+      "sha256": "31db9f7ed0687aa5126d83fee468979fd70f0b58862d61fecc1b6efb9a98576d",
+      "bytes": 2132,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/offline-review-1/OFFLINE_CHECK_RECIPE.md": {
+      "sha256": "c05a2c21b3866cf61c6aa6b4f946af3ef8b0d820b23e6fb3dd5c49c3b677b972",
+      "bytes": 10413,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/offline-review-1/REQUEST_CHANGES.json": {
+      "sha256": "638346fed44c055a22b3a6277dd3c0eab4d5123c04f96c7559134949f538c5c1",
+      "bytes": 984,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/real-approval-template.json": {
+      "sha256": "4c28e0011f41a485767eec95502c840554f33d8cad1e16c2612578d738c26574",
+      "bytes": 1946,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "documentation/planning/implementation/C3_APP_ISOLATION_CONTRACT.md": {
+      "sha256": "0a93e0d16625bd43b983f037d2c75f70cc336b78bd6bc4ba1c19a4cf3fe3613e",
+      "bytes": 11450,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "documentation/planning/implementation/APP_NETWORK_ADMISSION_CONTRACT.md": {
+      "sha256": "003156a5935912eca7794c4fe312e51a93991162a9bf438cacfc40a315abe291",
+      "bytes": 13185,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/HOST_NODE24_BINDING_AMENDMENT.md": {
+      "sha256": "693a8f7d109699fd14a612b8430d82d81f68e4e262cbd2b1ebff20895407bc2d",
+      "bytes": 3619,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/HOST_NODE24_PREIMPLEMENTATION.json": {
+      "sha256": "ae29d94ffff8f6f2a41c0512edbe0d9a59dee0963ea57925d0cb06ce3b7018a3",
+      "bytes": 1204,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/node22-preparation/ARCHIVE_MANIFEST.json": {
+      "sha256": "ec67e43d7a4b015e617e2919af6cede37caf8ff2f009fa1e9c8424076390e208",
+      "bytes": 1207,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/node22-preparation/REAL_OPERATOR.py": {
+      "sha256": "31d7e0d9a81a3ee065d1d92214dbba1c5f75efb29944f2857fc65d386c503a91",
+      "bytes": 39776,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/node22-preparation/REAL_OPERATOR_PREPARATION.md": {
+      "sha256": "e9651f6a4bab11657a46641afbb459814482d5c0a3e60271ea43e6e561fd9231",
+      "bytes": 6316,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/node22-preparation/REAL_OPERATOR_REVIEW_REQUEST.md": {
+      "sha256": "2e70a652164d7ea8d8149ee55786ac64699c46240e2ecc6235063b270dded98f",
+      "bytes": 1819,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/node22-preparation/REAL_RUN_MANIFEST.json": {
+      "sha256": "5b322915f718a89f5147346efea399705947f6925821d94bd63b23bb84701a24",
+      "bytes": 40524,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/node22-preparation/real-approval-template.json": {
+      "sha256": "4c28e0011f41a485767eec95502c840554f33d8cad1e16c2612578d738c26574",
+      "bytes": 1946,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "output/qa/authority-pure-runtime/HOST_BINDING_PROOF.json": {
+      "sha256": "0beb2cd1e051246d516f3bafb60798cfd125e3c1d54ec0c000face29a30c20e9",
+      "bytes": 13744,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    }
+  },
+  "tools": {
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14": {
+      "sha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+      "bytes": 34640,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 80,
+      "mode": "0o755",
+      "nlink": 1
+    },
+    "/Applications/Docker.app/Contents/Resources/bin/docker": {
+      "sha256": "31201b50f14101c2a2bd8a1fdc49055f985d5007d5ba86c177ad2dedfa309b9b",
+      "bytes": 41392016,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 80,
+      "mode": "0o755",
+      "nlink": 1
+    },
+    "/Library/Developer/CommandLineTools/usr/bin/git": {
+      "sha256": "be4afb2b003904725826250de9fb76567bbacf82323457b5a1ec26706b66bcae",
+      "bytes": 7604272,
+      "kind": "regular",
+      "uid": 0,
+      "gid": 0,
+      "mode": "0o755",
+      "nlink": 1
+    },
+    "/Users/shubham/.codex/runtimes/ruflo/3.75.0/node_modules/typescript/lib/typescript.js": {
+      "sha256": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+      "bytes": 9112572,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o644",
+      "nlink": 1
+    },
+    "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node": {
+      "sha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+      "bytes": 121306800,
+      "kind": "regular",
+      "uid": 501,
+      "gid": 20,
+      "mode": "0o755",
+      "nlink": 1
+    }
+  },
+  "dockerAlias": {
+    "path": "/usr/local/bin/docker",
+    "target": "/Applications/Docker.app/Contents/Resources/bin/docker",
+    "identity": [
+      16777232,
+      1914533,
+      0,
+      0,
+      41453,
+      1
+    ]
+  },
+  "socket": {
+    "path": "/Users/shubham/.docker/run/docker.sock",
+    "identity": [
+      16777232,
+      54619773,
+      501,
+      20,
+      49645,
+      1
+    ]
+  },
+  "engineId": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+  "image": "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
+  "bundleHashes": {
+    "app-bundle.mjs": "993634db7d05213208ddda434d8d4c21f679ae342f46a1836dda115c7d3b5817",
+    "authority-rules.ts": "b404c00381b5bf642aa648105cefb353a97c7ea7283c680059c426b5e4307942",
+    "authority-scenario.mjs": "806d39428cc6512c527581a46d00f49b4c15d348efa9457e5cbab3369b91d3ee",
+    "authority-service.ts": "ccac5254a6e61c8cce4f14c58005cb39349689e3d0cbafc8ab551ca339397c73",
+    "authority-types.ts": "e873884e69db46d7de70d3120a5ac30809fe8dc526d118a4640463233c9633ff",
+    "authority-vectors.json": "9f2ab5e192c9eb4a1332680a77f0ed5d94eb28502af3fc9a426f68be350ea382",
+    "bootstrap.mjs": "b9016bbddd345ed562e7820ae391f96180397a6ae84c20fc92c1d36a74467b4c",
+    "package.json": "1239d4d885dcad42201a27ed9324f8f0f760b78700d8db9ced39a511cffe7eae",
+    "typescript.cjs": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675"
+  },
+  "authoritySourceHashes": {
+    "src1/modules/organizations/types/index.ts": "e873884e69db46d7de70d3120a5ac30809fe8dc526d118a4640463233c9633ff",
+    "src1/modules/organizations/rules.ts": "b404c00381b5bf642aa648105cefb353a97c7ea7283c680059c426b5e4307942",
+    "src1/modules/organizations/services/index.ts": "ccac5254a6e61c8cce4f14c58005cb39349689e3d0cbafc8ab551ca339397c73"
+  },
+  "compilerSha256": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+  "emitOptions": {
+    "target": 7,
+    "module": 1,
+    "esModuleInterop": true,
+    "verbatimModuleSyntax": false,
+    "importHelpers": false,
+    "declaration": false,
+    "sourceMap": false
+  },
+  "emitOptionsSha256": "584e6182cb71531f3126834e6ffa4569d14351abf00c5e16f74a623df31adead",
+  "caseIds": [
+    "A01.only",
+    "A02.only",
+    "A03.bad-id",
+    "A03.business-login",
+    "A03.missing-purpose",
+    "A03.extra-key",
+    "A03.accessor",
+    "A04.bad-org-id",
+    "A04.unknown-capability",
+    "A04.extra-key",
+    "A05.null",
+    "A05.number",
+    "A05.string",
+    "A06.nan",
+    "A06.infinity",
+    "A06.negative",
+    "A06.unsafe",
+    "A06.out-of-range",
+    "A07.error",
+    "A07.undefined",
+    "A07.false",
+    "A08.false",
+    "A08.missing-flag",
+    "A08.false-flag",
+    "A08.bad-generation",
+    "A09.error",
+    "A09.undefined",
+    "A09.false",
+    "A10.error",
+    "A10.undefined",
+    "A10.false",
+    "A11.only",
+    "A12.inactive",
+    "A12.foreign-id",
+    "A13.membership-tenant",
+    "A13.eligibility-actor",
+    "A13.organization-id",
+    "A14.organization-suspended",
+    "A14.branch-revoked",
+    "A15.license-number",
+    "A15.license-document",
+    "A15.unverified",
+    "A16.only",
+    "A17.missing-member",
+    "A17.duplicate-member",
+    "A17.missing-proof",
+    "A18.schema",
+    "A18.zero-revision",
+    "A18.unsafe-revision",
+    "A19.validfrom-equal",
+    "A19.validfrom-future",
+    "A19.expiry-equal",
+    "A19.created-after-updated",
+    "A20.only",
+    "A21.fingerprint",
+    "A21.mapping",
+    "A21.grant",
+    "A21.verification",
+    "A22.object-keys",
+    "A22.array-order",
+    "A23.metadata-operation",
+    "A23.payload-fingerprint",
+    "A23.evidence",
+    "A24.only",
+    "A25.organization-revision",
+    "A25.membership-revision",
+    "A25.eligibility-revision",
+    "A26.self-grant",
+    "A26.self-verification",
+    "A26.evidence-version",
+    "A27.decision-id",
+    "A27.operation-id",
+    "A28.spread-clone",
+    "A28.json-clone",
+    "A28.prototype-clone",
+    "A28.raw-evaluator",
+    "A29.only",
+    "A30.only",
+    "A31.domain-fs",
+    "A31.compiler-fs",
+    "A32.facts-extra-key",
+    "A32.nested-accessor",
+    "A32.empty-branches",
+    "A32.over100-branches"
+  ],
+  "leafProofs": {
+    "A01.only": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "SUCCESS"
+      ]
+    },
+    "A02.only": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": []
+    },
+    "A03.bad-id": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": [
+        "INVALID_CONTEXT"
+      ]
+    },
+    "A03.business-login": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": [
+        "INVALID_CONTEXT"
+      ]
+    },
+    "A03.missing-purpose": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": [
+        "INVALID_CONTEXT"
+      ]
+    },
+    "A03.extra-key": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": [
+        "INVALID_CONTEXT"
+      ]
+    },
+    "A03.accessor": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": [
+        "INVALID_CONTEXT"
+      ]
+    },
+    "A04.bad-org-id": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": [
+        "INVALID_CONTEXT"
+      ]
+    },
+    "A04.unknown-capability": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": [
+        "INVALID_CONTEXT"
+      ]
+    },
+    "A04.extra-key": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": [
+        "INVALID_CONTEXT"
+      ]
+    },
+    "A05.null": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": [
+        "INVALID_TRANSACTION"
+      ]
+    },
+    "A05.number": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": [
+        "INVALID_TRANSACTION"
+      ]
+    },
+    "A05.string": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": [
+        "INVALID_TRANSACTION"
+      ]
+    },
+    "A06.nan": {
+      "calls": {
+        "clock": 1,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "clock",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A06.infinity": {
+      "calls": {
+        "clock": 1,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "clock",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A06.negative": {
+      "calls": {
+        "clock": 1,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "clock",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A06.unsafe": {
+      "calls": {
+        "clock": 1,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "clock",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A06.out-of-range": {
+      "calls": {
+        "clock": 1,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "clock",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A07.error": {
+      "calls": {
+        "clock": 1,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "clock",
+      "expected": [
+        "PROPAGATED"
+      ]
+    },
+    "A07.undefined": {
+      "calls": {
+        "clock": 1,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "clock",
+      "expected": [
+        "PROPAGATED"
+      ]
+    },
+    "A07.false": {
+      "calls": {
+        "clock": 1,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "clock",
+      "expected": [
+        "PROPAGATED"
+      ]
+    },
+    "A08.false": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 0
+      },
+      "order": "clock,readiness",
+      "expected": [
+        "AUTHORITY_NOT_READY"
+      ]
+    },
+    "A08.missing-flag": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 0
+      },
+      "order": "clock,readiness",
+      "expected": [
+        "AUTHORITY_NOT_READY"
+      ]
+    },
+    "A08.false-flag": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 0
+      },
+      "order": "clock,readiness",
+      "expected": [
+        "AUTHORITY_NOT_READY"
+      ]
+    },
+    "A08.bad-generation": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 0
+      },
+      "order": "clock,readiness",
+      "expected": [
+        "AUTHORITY_NOT_READY"
+      ]
+    },
+    "A09.error": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 0
+      },
+      "order": "clock,readiness",
+      "expected": [
+        "PROPAGATED"
+      ]
+    },
+    "A09.undefined": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 0
+      },
+      "order": "clock,readiness",
+      "expected": [
+        "PROPAGATED"
+      ]
+    },
+    "A09.false": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 0
+      },
+      "order": "clock,readiness",
+      "expected": [
+        "PROPAGATED"
+      ]
+    },
+    "A10.error": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "PROPAGATED"
+      ]
+    },
+    "A10.undefined": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "PROPAGATED"
+      ]
+    },
+    "A10.false": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "PROPAGATED"
+      ]
+    },
+    "A11.only": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "SUCCESS"
+      ]
+    },
+    "A12.inactive": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A12.foreign-id": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A13.membership-tenant": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A13.eligibility-actor": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A13.organization-id": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A14.organization-suspended": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A14.branch-revoked": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A15.license-number": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A15.license-document": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A15.unverified": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A16.only": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_MAPPING_UNAVAILABLE"
+      ]
+    },
+    "A17.missing-member": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A17.duplicate-member": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A17.missing-proof": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A18.schema": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A18.zero-revision": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A18.unsafe-revision": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A19.validfrom-equal": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "SUCCESS"
+      ]
+    },
+    "A19.validfrom-future": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A19.expiry-equal": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A19.created-after-updated": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A20.only": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "SUCCESS"
+      ]
+    },
+    "A21.fingerprint": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": []
+    },
+    "A21.mapping": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": []
+    },
+    "A21.grant": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": []
+    },
+    "A21.verification": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": []
+    },
+    "A22.object-keys": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": []
+    },
+    "A22.array-order": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": []
+    },
+    "A23.metadata-operation": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A23.payload-fingerprint": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A23.evidence": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A24.only": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A25.organization-revision": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A25.membership-revision": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A25.eligibility-revision": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A26.self-grant": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A26.self-verification": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A26.evidence-version": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A27.decision-id": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A27.operation-id": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A28.spread-clone": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "SUCCESS"
+      ]
+    },
+    "A28.json-clone": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "SUCCESS"
+      ]
+    },
+    "A28.prototype-clone": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "SUCCESS"
+      ]
+    },
+    "A28.raw-evaluator": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": []
+    },
+    "A29.only": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "SUCCESS"
+      ]
+    },
+    "A30.only": {
+      "calls": {
+        "clock": 2,
+        "readiness": 2,
+        "facts": 2
+      },
+      "order": "clock,readiness,facts|clock,readiness,facts",
+      "expected": [
+        "SUCCESS",
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A31.domain-fs": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": []
+    },
+    "A31.compiler-fs": {
+      "calls": {
+        "clock": 0,
+        "readiness": 0,
+        "facts": 0
+      },
+      "order": "",
+      "expected": []
+    },
+    "A32.facts-extra-key": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A32.nested-accessor": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A32.empty-branches": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    },
+    "A32.over100-branches": {
+      "calls": {
+        "clock": 1,
+        "readiness": 1,
+        "facts": 1
+      },
+      "order": "clock,readiness,facts",
+      "expected": [
+        "AUTHORITY_DENIED"
+      ]
+    }
+  },
+  "controls": [
+    {
+      "id": "M1",
+      "module": "src1/modules/organizations/rules.ts",
+      "target": "A19.expiry-equal",
+      "mutatedSourceSha256": "72124bc8802626918015b1851ebdc5bd2fbda3714ab7d01e3f9f5313c32ddccd",
+      "requiredMarker": "EXPECTED_AUTHORITY_DENIAL_MISSING"
+    },
+    {
+      "id": "M2",
+      "module": "src1/modules/organizations/rules.ts",
+      "target": "A23.metadata-operation",
+      "mutatedSourceSha256": "2840fad8cdfe18d795cb80a09b43897d6af501977397f7191731067a9ab0935b",
+      "requiredMarker": "EXPECTED_AUTHORITY_DENIAL_MISSING"
+    },
+    {
+      "id": "M3",
+      "module": "src1/modules/organizations/rules.ts",
+      "target": "A13.membership-tenant",
+      "mutatedSourceSha256": "098d65acb0e208c0ea44c48743890b10a6142ebd32feec1034fde797ab02be2a",
+      "requiredMarker": "EXPECTED_AUTHORITY_DENIAL_MISSING"
+    },
+    {
+      "id": "M4",
+      "module": "src1/modules/organizations/rules.ts",
+      "target": "A25.membership-revision",
+      "mutatedSourceSha256": "557f268f6dda8015877dbd5771ff668a23869cdca8738a93c1d434ab90397393",
+      "requiredMarker": "EXPECTED_AUTHORITY_DENIAL_MISSING"
+    },
+    {
+      "id": "M5",
+      "module": "src1/modules/organizations/services/index.ts",
+      "target": "A28.spread-clone",
+      "mutatedSourceSha256": "5f0467ce0ca607d4ed9c10122db03d97635b59a48b7164ca6020cb2ba591f676",
+      "requiredMarker": "FORGED_SCOPE_ACCEPTED"
+    }
+  ],
+  "admission": "Two actual independent nonauthor source+ONE_FIXED_AUTHORITY_PURE_RUN votes on clean committed candidate/operator+manifest hashes, then Root exclusive private receipt. No self hash/future HEAD in manifest.",
+  "hostBindingAmendmentSha256": "693a8f7d109699fd14a612b8430d82d81f68e4e262cbd2b1ebff20895407bc2d"
+}

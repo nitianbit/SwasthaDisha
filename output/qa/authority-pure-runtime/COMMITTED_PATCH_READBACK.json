@@ -1,0 +1,12 @@
+{
+  "commit": "ced9d0da1f88ac25f1b7ddf26f3647d8e144a695",
+  "sourceFreezeSha256": "7df6a0ba88c5cf1e19cb79fdbcfe3cf1e4ec67175d6f4b0102b817c868d554dc",
+  "plainUnifiedArtifactSha256": "797ea841f4c461d6ed12cb0160c38672a6121101cb8737159f7536b94b23859a",
+  "canonicalGitFullIndexSha256": "7497e52e5d9a77b513d1fe7ccbf525f12007e4a457244d9d8f6d3a8740df769b",
+  "all8CommittedSourceAnd14ProtectedAnd5QaPinsMatch": true,
+  "readonlyReverseCheck": "PASS",
+  "error": "Root expected plain unified artifact bytes to equal canonical full-index Git bytes. Check failed; command sequencing then committed anyway. No execution followed.",
+  "disposition": "Formatting expectation error, no source drift; preserve originalartifact/freeze. Both Root and independent nonauthor pharmacy_refund_primitives confirmed allcommittedpins/semanticreverse.",
+  "independentDecision": "ACCEPT_ARTIFACT_FORMAT_AND_COMMITTED_PIN_EQUIVALENCE",
+  "executionApproval": false
+}

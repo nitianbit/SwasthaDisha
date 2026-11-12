@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
-  admitNetwork, assertBundle, captureNetworkDiagnostics, egressCanaryBlocked, entryKind, evaluateNetworkAdmission,
+  AUTHORITY_ROLE, AUTHORITY_SOURCE_NAMES, admitNetwork, assertBundle, captureNetworkDiagnostics, egressCanaryBlocked, entryKind, evaluateNetworkAdmission,
   makeManifest, NETWORK_ADMISSION_TAG, PORT_OPERATIONS, sha256, SOURCE_NAMES, verifyNetworkAdmission,
 } from './app-bundle.mjs';
 import { createRecordingPorts } from './app-ports.mjs';
@@ -459,3 +459,42 @@ for (const [label, settled] of notBlocked) {
     assert.equal(egressCanaryBlocked(settled), false);
   });
 }
+
+
+test('authority profile is a fixed disjoint bundle while default size/list remain unchanged', () => {
+  const authority = Object.fromEntries(AUTHORITY_SOURCE_NAMES.map((name) => [name, '// synthetic authority text']));
+  authority['typescript.cjs'] = 'x'.repeat(128 * 1024);
+  const manifest = makeManifest(runId, authority, AUTHORITY_ROLE);
+  assert.equal(manifest.role, AUTHORITY_ROLE);
+  assert.equal(Object.keys(manifest.files).length, 9);
+  assert.equal(SOURCE_NAMES.length, 6);
+  assert.throws(() => makeManifest(runId, { ...sources, 'scenario.mjs': 'x'.repeat(128 * 1024) }), /bounded text/);
+  assert.throws(() => makeManifest(runId, authority), /Unexpected source/);
+  assert.throws(() => makeManifest(runId, authority, 'arbitrary-role'), /Unknown fixed/);
+  assert.throws(() => makeManifest('invalid', sources), /Invalid harness run identity/);
+  assert.throws(() => makeManifest('invalid', authority, AUTHORITY_ROLE), /Invalid harness run identity/);
+  assert.throws(() => makeManifest(runId, { ...authority, 'authority-rules.ts': 'x'.repeat(128 * 1024) }, AUTHORITY_ROLE), /bounded text/);
+  assert.throws(() => makeManifest(runId, { ...authority, 'typescript.cjs': 'x'.repeat(10 * 1024 * 1024) }, AUTHORITY_ROLE), /bounded text/);
+});
+
+test('authority manifest drift and added files deny before any evaluation', (t) => {
+  const directory = mkdtempSync(join(tmpdir(), 'authority-bundle-unit-'));
+  t.after(() => rmSync(directory, { recursive: true, force: false }));
+  const text = Object.fromEntries(AUTHORITY_SOURCE_NAMES.map((name) => [name, '// synthetic metadata only']));
+  const manifest = makeManifest(runId, text, AUTHORITY_ROLE); const bytes = JSON.stringify(manifest);
+  for (const [name, body] of Object.entries(text)) writeFileSync(join(directory, name), body);
+  writeFileSync(join(directory, '.admission.json'), bytes);
+  const expected = { runId, manifestSha: sha256(bytes), role: AUTHORITY_ROLE };
+  assert.equal(assertBundle(directory, expected).role, AUTHORITY_ROLE);
+  for (const role of [null, undefined, 'arbitrary-role']) {
+    assert.throws(() => assertBundle(directory, { ...expected, role }), /Unknown fixed/);
+  }
+  let evaluated = 0;
+  writeFileSync(join(directory, 'authority-types.ts'), '// drifted');
+  assert.throws(() => { assertBundle(directory, expected); evaluated++; }, /source hash changed/);
+  assert.equal(evaluated, 0);
+  writeFileSync(join(directory, 'authority-types.ts'), text['authority-types.ts']);
+  writeFileSync(join(directory, 'unreviewed.cjs'), '// rejected');
+  assert.throws(() => { assertBundle(directory, expected); evaluated++; }, /unapproved/);
+  assert.equal(evaluated, 0);
+});

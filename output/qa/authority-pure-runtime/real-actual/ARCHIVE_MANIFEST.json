@@ -1,0 +1,1340 @@
+{
+  "schema": "SD-AUTHORITY-REAL-RAW-ARCHIVE-1",
+  "archiveAuthor": "/root/authority_operator",
+  "scope": "RAW_EVIDENCE_ARCHIVE_ONLY_NOT_AUTHOR_ACCEPTANCE_OR_REVIEW",
+  "actualCodeHead": "c04c1cd355c10e375874c4362c119e3e3d93848a",
+  "operatorSha256": "1a589cc979b5ce6ca19b3b91c6eada13321dc1c46e2716b7b375f09f1ac69570",
+  "runManifestSha256": "0a19d8ff52d988587332c98bb7798277757789d9d2e88ff2a822c5f9ba09704b",
+  "operatorReportedStatus": "PASS",
+  "resultSha256": "35a5417343182b1136575decc575dfe78ae1f6ba2c039340affa9196f57d2c00",
+  "sourceArea": "/private/tmp/sd-authority-real-9zj9uqav",
+  "sourceAreaIdentity": [
+    16777232,
+    54665983,
+    501,
+    0,
+    16832
+  ],
+  "sourceAreaPreserved": true,
+  "archiveDirectory": "output/qa/authority-pure-runtime/real-actual",
+  "rawFileCount": 33,
+  "commandCount": 16,
+  "captureFileCount": 32,
+  "files": {
+    "result.json": {
+      "bytes": 32987,
+      "sha256": "35a5417343182b1136575decc575dfe78ae1f6ba2c039340affa9196f57d2c00",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54665987,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 32987,
+        "mtimeNs": 1794491482346289111,
+        "ctimeNs": 1794491482346289111,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667035,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 32987,
+        "mtimeNs": 1794491641876232670,
+        "ctimeNs": 1794491641876232670,
+        "kind": "regular"
+      },
+      "byteIdentical": true
+    },
+    "before-metadata-git-0.stdout": {
+      "bytes": 41,
+      "sha256": "632f7e2b08f10d9968c056a04b8a5d31f1aeb95c7213ee30d828a7dd8282017b",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54665989,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 41,
+        "mtimeNs": 1794491479905295089,
+        "ctimeNs": 1794491479905295089,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667036,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 41,
+        "mtimeNs": 1794491641876403195,
+        "ctimeNs": 1794491641876403195,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "before-metadata-git-0",
+        "stream": "stdout",
+        "limit": 8192,
+        "retainedBytes": 41,
+        "observedBytesAtLeast": 41,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "before-metadata-git-0.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54665990,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491479878504049,
+        "ctimeNs": 1794491479878513549,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667037,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491641876477211,
+        "ctimeNs": 1794491641876498703,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "before-metadata-git-0",
+        "stream": "stderr",
+        "limit": 8192,
+        "retainedBytes": 0,
+        "observedBytesAtLeast": 0,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "before-metadata-git-1.stdout": {
+      "bytes": 26,
+      "sha256": "966276b82ee994e585dbf54279365555e4323295ac0c5166bf8f12baf3a4f059",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54665994,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 26,
+        "mtimeNs": 1794491479912407693,
+        "ctimeNs": 1794491479912407693,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667038,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 26,
+        "mtimeNs": 1794491641876573428,
+        "ctimeNs": 1794491641876573428,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "before-metadata-git-1",
+        "stream": "stdout",
+        "limit": 8192,
+        "retainedBytes": 26,
+        "observedBytesAtLeast": 26,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "before-metadata-git-1.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54665995,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491479906031924,
+        "ctimeNs": 1794491479906041424,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667039,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491641876638113,
+        "ctimeNs": 1794491641876656774,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "before-metadata-git-1",
+        "stream": "stderr",
+        "limit": 8192,
+        "retainedBytes": 0,
+        "observedBytesAtLeast": 0,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "before-metadata-git-2.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54665996,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491479913155446,
+        "ctimeNs": 1794491479913170071,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667040,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491641876698259,
+        "ctimeNs": 1794491641876719210,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "before-metadata-git-2",
+        "stream": "stdout",
+        "limit": 8192,
+        "retainedBytes": 0,
+        "observedBytesAtLeast": 0,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "before-metadata-git-2.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54665997,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491479913208071,
+        "ctimeNs": 1794491479913221946,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667041,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491641876762737,
+        "ctimeNs": 1794491641876781106,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "before-metadata-git-2",
+        "stream": "stderr",
+        "limit": 8192,
+        "retainedBytes": 0,
+        "observedBytesAtLeast": 0,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "engine-before.stdout": {
+      "bytes": 49,
+      "sha256": "0d3568ea64a9bb77b1002e1f6e02c96e82e5c2dde3878d347d757031b668cfa2",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54665998,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 49,
+        "mtimeNs": 1794491480068907706,
+        "ctimeNs": 1794491480068907706,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667042,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 49,
+        "mtimeNs": 1794491641876868200,
+        "ctimeNs": 1794491641876868200,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "engine-before",
+        "stream": "stdout",
+        "limit": 8192,
+        "retainedBytes": 49,
+        "observedBytesAtLeast": 49,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "engine-before.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54665999,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491480018971223,
+        "ctimeNs": 1794491480018985514,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667043,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491641876930512,
+        "ctimeNs": 1794491641876946007,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "engine-before",
+        "stream": "stderr",
+        "limit": 8192,
+        "retainedBytes": 0,
+        "observedBytesAtLeast": 0,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "labels-before.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666000,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491480155462051,
+        "ctimeNs": 1794491480155477509,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667044,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491641876991158,
+        "ctimeNs": 1794491641877014650,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "labels-before",
+        "stream": "stdout",
+        "limit": 8192,
+        "retainedBytes": 0,
+        "observedBytesAtLeast": 0,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "labels-before.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666001,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491480155516259,
+        "ctimeNs": 1794491480155526009,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667045,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491641877058885,
+        "ctimeNs": 1794491641877076170,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "labels-before",
+        "stream": "stderr",
+        "limit": 8192,
+        "retainedBytes": 0,
+        "observedBytesAtLeast": 0,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "cached-image.stdout": {
+      "bytes": 1966,
+      "sha256": "fcebf28f631210279339c68e72feae218b52289d0b842db17161dbcdb15a3675",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666002,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 1966,
+        "mtimeNs": 1794491480303853623,
+        "ctimeNs": 1794491480303853623,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667046,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 1966,
+        "mtimeNs": 1794491641877152519,
+        "ctimeNs": 1794491641877152519,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "cached-image",
+        "stream": "stdout",
+        "limit": 8192,
+        "retainedBytes": 1966,
+        "observedBytesAtLeast": 1966,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "cached-image.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666003,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491480259100446,
+        "ctimeNs": 1794491480259114655,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667047,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491641877223244,
+        "ctimeNs": 1794491641877242113,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "cached-image",
+        "stream": "stderr",
+        "limit": 8192,
+        "retainedBytes": 0,
+        "observedBytesAtLeast": 0,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "before-launch-git-0.stdout": {
+      "bytes": 41,
+      "sha256": "632f7e2b08f10d9968c056a04b8a5d31f1aeb95c7213ee30d828a7dd8282017b",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666004,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 41,
+        "mtimeNs": 1794491480313148818,
+        "ctimeNs": 1794491480313148818,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667048,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 41,
+        "mtimeNs": 1794491641877356740,
+        "ctimeNs": 1794491641877356740,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "before-launch-git-0",
+        "stream": "stdout",
+        "limit": 8192,
+        "retainedBytes": 41,
+        "observedBytesAtLeast": 41,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "before-launch-git-0.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666005,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491480305577420,
+        "ctimeNs": 1794491480305588336,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667049,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491641877476448,
+        "ctimeNs": 1794491641877510812,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "before-launch-git-0",
+        "stream": "stderr",
+        "limit": 8192,
+        "retainedBytes": 0,
+        "observedBytesAtLeast": 0,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "before-launch-git-1.stdout": {
+      "bytes": 26,
+      "sha256": "966276b82ee994e585dbf54279365555e4323295ac0c5166bf8f12baf3a4f059",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666006,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 26,
+        "mtimeNs": 1794491480319499670,
+        "ctimeNs": 1794491480319499670,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667050,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 26,
+        "mtimeNs": 1794491641877641308,
+        "ctimeNs": 1794491641877641308,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "before-launch-git-1",
+        "stream": "stdout",
+        "limit": 8192,
+        "retainedBytes": 26,
+        "observedBytesAtLeast": 26,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "before-launch-git-1.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666007,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491480313926903,
+        "ctimeNs": 1794491480313941153,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667051,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491641877792506,
+        "ctimeNs": 1794491641877816247,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "before-launch-git-1",
+        "stream": "stderr",
+        "limit": 8192,
+        "retainedBytes": 0,
+        "observedBytesAtLeast": 0,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "before-launch-git-2.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666008,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491480320179547,
+        "ctimeNs": 1794491480320198630,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667052,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491641877876768,
+        "ctimeNs": 1794491641877903426,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "before-launch-git-2",
+        "stream": "stdout",
+        "limit": 8192,
+        "retainedBytes": 0,
+        "observedBytesAtLeast": 0,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "before-launch-git-2.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666009,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491480320259297,
+        "ctimeNs": 1794491480320274172,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667053,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491641877955699,
+        "ctimeNs": 1794491641877985439,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "before-launch-git-2",
+        "stream": "stderr",
+        "limit": 8192,
+        "retainedBytes": 0,
+        "observedBytesAtLeast": 0,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "launcher.stdout": {
+      "bytes": 8287,
+      "sha256": "719e4bbda904cc1df7dd5dff553cab157e019010713321ccacb11cbdb2541f69",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666011,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 8287,
+        "mtimeNs": 1794491481877107155,
+        "ctimeNs": 1794491481877107155,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667054,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 8287,
+        "mtimeNs": 1794491641878115352,
+        "ctimeNs": 1794491641878115352,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "launcher",
+        "stream": "stdout",
+        "limit": 16384,
+        "retainedBytes": 8287,
+        "observedBytesAtLeast": 8287,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "launcher.stderr": {
+      "bytes": 18942,
+      "sha256": "87c0e53736c968a680a5f0a17b6e9190559bdfdba074497dcba6c90853add918",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666012,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 18942,
+        "mtimeNs": 1794491481760131636,
+        "ctimeNs": 1794491481760131636,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667055,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 18942,
+        "mtimeNs": 1794491641878238102,
+        "ctimeNs": 1794491641878238102,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "launcher",
+        "stream": "stderr",
+        "limit": 32768,
+        "retainedBytes": 18942,
+        "observedBytesAtLeast": 18942,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "engine-after.stdout": {
+      "bytes": 49,
+      "sha256": "0d3568ea64a9bb77b1002e1f6e02c96e82e5c2dde3878d347d757031b668cfa2",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666040,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 49,
+        "mtimeNs": 1794491482011283810,
+        "ctimeNs": 1794491482011283810,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667056,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 49,
+        "mtimeNs": 1794491641878350813,
+        "ctimeNs": 1794491641878350813,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "engine-after",
+        "stream": "stdout",
+        "limit": 8192,
+        "retainedBytes": 49,
+        "observedBytesAtLeast": 49,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "engine-after.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666041,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491481990313372,
+        "ctimeNs": 1794491481990324038,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667057,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491641878420830,
+        "ctimeNs": 1794491641878438574,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "engine-after",
+        "stream": "stderr",
+        "limit": 8192,
+        "retainedBytes": 0,
+        "observedBytesAtLeast": 0,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "labels-after.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666042,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491482100156703,
+        "ctimeNs": 1794491482100173744,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667058,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491641878485516,
+        "ctimeNs": 1794491641878506259,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "labels-after",
+        "stream": "stdout",
+        "limit": 8192,
+        "retainedBytes": 0,
+        "observedBytesAtLeast": 0,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "labels-after.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666043,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491482100214786,
+        "ctimeNs": 1794491482100224703,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667059,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491641878554201,
+        "ctimeNs": 1794491641878575318,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "labels-after",
+        "stream": "stderr",
+        "limit": 8192,
+        "retainedBytes": 0,
+        "observedBytesAtLeast": 0,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "exact-container-after.stdout": {
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666044,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 3,
+        "mtimeNs": 1794491482219754855,
+        "ctimeNs": 1794491482219754855,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667060,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 3,
+        "mtimeNs": 1794491641878656665,
+        "ctimeNs": 1794491641878656665,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "exact-container-after",
+        "stream": "stdout",
+        "limit": 8192,
+        "retainedBytes": 3,
+        "observedBytesAtLeast": 3,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "exact-container-after.stderr": {
+      "bytes": 112,
+      "sha256": "baf7bbc0cceaea1ce894ed6f556e456ee04bf689e8d4779f062578600cbe80c2",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666045,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 112,
+        "mtimeNs": 1794491482219810230,
+        "ctimeNs": 1794491482219810230,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667061,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 112,
+        "mtimeNs": 1794491641878743635,
+        "ctimeNs": 1794491641878743635,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "exact-container-after",
+        "stream": "stderr",
+        "limit": 8192,
+        "retainedBytes": 112,
+        "observedBytesAtLeast": 112,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "after-git-0.stdout": {
+      "bytes": 41,
+      "sha256": "632f7e2b08f10d9968c056a04b8a5d31f1aeb95c7213ee30d828a7dd8282017b",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666046,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 41,
+        "mtimeNs": 1794491482318056318,
+        "ctimeNs": 1794491482318056318,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667062,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 41,
+        "mtimeNs": 1794491641878834145,
+        "ctimeNs": 1794491641878834145,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "after-git-0",
+        "stream": "stdout",
+        "limit": 8192,
+        "retainedBytes": 41,
+        "observedBytesAtLeast": 41,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "after-git-0.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666047,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491482309257041,
+        "ctimeNs": 1794491482309267499,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667063,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491641878898956,
+        "ctimeNs": 1794491641878913826,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "after-git-0",
+        "stream": "stderr",
+        "limit": 8192,
+        "retainedBytes": 0,
+        "observedBytesAtLeast": 0,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "after-git-1.stdout": {
+      "bytes": 26,
+      "sha256": "966276b82ee994e585dbf54279365555e4323295ac0c5166bf8f12baf3a4f059",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666048,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 26,
+        "mtimeNs": 1794491482324150711,
+        "ctimeNs": 1794491482324150711,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667064,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 26,
+        "mtimeNs": 1794491641878976888,
+        "ctimeNs": 1794491641878976888,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "after-git-1",
+        "stream": "stdout",
+        "limit": 8192,
+        "retainedBytes": 26,
+        "observedBytesAtLeast": 26,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "after-git-1.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666049,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491482319149196,
+        "ctimeNs": 1794491482319158446,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667065,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491641879037450,
+        "ctimeNs": 1794491641879051987,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "after-git-1",
+        "stream": "stderr",
+        "limit": 8192,
+        "retainedBytes": 0,
+        "observedBytesAtLeast": 0,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "after-git-2.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666050,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491482324810671,
+        "ctimeNs": 1794491482324822546,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667066,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491641879089765,
+        "ctimeNs": 1794491641879105468,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "after-git-2",
+        "stream": "stdout",
+        "limit": 8192,
+        "retainedBytes": 0,
+        "observedBytesAtLeast": 0,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    },
+    "after-git-2.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourceMetadata": {
+        "dev": 16777232,
+        "ino": 54666051,
+        "uid": 501,
+        "gid": 0,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491482324860755,
+        "ctimeNs": 1794491482324874505,
+        "kind": "regular"
+      },
+      "archiveMetadata": {
+        "dev": 16777232,
+        "ino": 54667067,
+        "uid": 501,
+        "gid": 20,
+        "mode": "0o600",
+        "nlink": 1,
+        "bytes": 0,
+        "mtimeNs": 1794491641879142955,
+        "ctimeNs": 1794491641879157367,
+        "kind": "regular"
+      },
+      "byteIdentical": true,
+      "resultCaptureBinding": {
+        "label": "after-git-2",
+        "stream": "stderr",
+        "limit": 8192,
+        "retainedBytes": 0,
+        "observedBytesAtLeast": 0,
+        "eof": true,
+        "complete": true,
+        "ownershipVerifiedInResult": true
+      }
+    }
+  },
+  "privateBindingsDataOnly": {
+    ".REAL_APPROVAL.json": {
+      "path": "output/qa/authority-pure-runtime/.REAL_APPROVAL.json",
+      "sha256": "24119ef01f1b9cdd59633846dc1bbb0d85f2423c893f81b34182306cd98b9d4e",
+      "bytes": 2118,
+      "copied": false,
+      "mutated": false
+    },
+    ".REAL_ONCE.json": {
+      "path": "output/qa/authority-pure-runtime/.REAL_ONCE.json",
+      "sha256": "e3701871d42d494aea601f32700956815cc08f68d648a3dacb67349ea34097bd",
+      "bytes": 465,
+      "copied": false,
+      "mutated": false
+    }
+  },
+  "reportedPostchecks": {
+    "sameEngine": true,
+    "zeroPurposeLabels": true,
+    "exactContainerAbsent": true,
+    "workspaceENOENT": true
+  },
+  "reportedResources": {
+    "phase": "created",
+    "id": "7d2ff6c24bcb06e2722531beda60e5fbb0f0ab5cb3dcfa2ec7f83e1c13da0310",
+    "runId": "64051851-b9ed-4c00-9ced-5bc1455b612c",
+    "directory": "/private/tmp/sd-app-isolation-yQUUG4"
+  },
+  "archiveChecks": [
+    "Held O_NOFOLLOW regular/private/single-link source reads match stable source area and file metadata",
+    "All32capture identities exactly match result; hashes/bytes/counts/caps/EOF/completeness/ownership flags verified",
+    "Exactly33rawfiles exclusively archived byte-for-byte under new owned directory",
+    "All33original files read back unchanged after copying",
+    "Private approval/once recorded as hash/data only; no private receipt/config/owner file copied",
+    "No operator/Node/compiler/test/Docker/SDK/DB/provider/model execution or new resource probe; no deletion/cleanup/commit"
+  ],
+  "postExecutionReview": "Root coordinates two actual independent NONAUTHOR post-reviews. Archive author does not approve own operator; no review verdict invented.",
+  "limits": "Operator PASS and postchecks are reported historical evidence, not an archival author acceptance. Source operator area/config and private receipt/claim remain untouched. No retry/resource-adoption authority."
+}

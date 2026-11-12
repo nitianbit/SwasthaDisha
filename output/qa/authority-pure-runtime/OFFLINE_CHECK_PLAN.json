@@ -1,0 +1,35 @@
+{
+  "status": "PREPARATION_ONLY_NOT_RUN",
+  "author": "/root/claude_review_5_packet",
+  "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/authority-pure-runtime",
+  "sourceFreezeSha256": "7df6a0ba88c5cf1e19cb79fdbcfe3cf1e4ec67175d6f4b0102b817c868d554dc",
+  "closure": {
+    "test/foundation/run.mjs": "f14c1830b0fbe23c1be454cb97003c6c6fb58fdb11bee0ac8bc91134d63ca0c9",
+    "test/foundation/preflight.mjs": "2cdfa366dad210fe5483a52ae4c8c4b6488a4429bc8e0e8dff1f2b7f4f5487da",
+    "test/foundation/preflight.test.mjs": "26a84d230fbb17d0952d6f53b7667983597e122580a7fc17a526f7458e49294d",
+    "test/foundation/mongo-fixture.mjs": "a95eec22111a57f4a6e70efc242fe5e54d1a89ab4020975bbdb9fae3cab4afc2",
+    "test/foundation/mongo-fixture.test.mjs": "d837b2496d115a1a9c596ccaa21cf4eb7c51b3863c94af6bc3f4899f07057342",
+    "test/application/app-container.mjs": "4c2a061a45a30478d4fc04d6cd28bb88aa2fd679e4346136b7714f29142948aa",
+    "test/application/app-container.test.mjs": "79c6b65b39c7336718ad563b175e48f5fda76035b77b5028fb83bbcaa6a7dd14",
+    "test/application/app-bundle.mjs": "993634db7d05213208ddda434d8d4c21f679ae342f46a1836dda115c7d3b5817",
+    "test/application/app-bundle.test.mjs": "dd2bc927c1f0f4d1932929aa4294a6df3c74a1db6536a7bb56902d259d163e75",
+    "test/application/app-ports.mjs": "f7efb3ee12eee3f0ff427b360d9c65776c20f34c80432ac0b5a626df55408cf1",
+    "test/application/app-image.json": "4f1390608939a823788010499cc810801d01fd8ee44248da5424776c816a8611",
+    "test/application/app-runtime.json": "e4e0b67677e084dce5d65d958763057c5ca1b257232b5f007545a327fb40f0b3"
+  },
+  "runtimes": [
+    [
+      "node22",
+      "/private/tmp/m0-node22/node",
+      "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0"
+    ],
+    [
+      "node24",
+      "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+      "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1"
+    ]
+  ],
+  "expectedTests": 350,
+  "expectedNewTests": 26,
+  "admissionRequired": "Two actual exact offline source+recipe votes, Root Standards and lab Spec; once-only campaign. No tests authorized by this inert document."
+}

@@ -1,0 +1,539 @@
+{
+  "status": "NOT_RUN",
+  "origin": "Exact reviewed contract table; actual observations must come from admitted execution",
+  "nominal": [
+    {
+      "id": "A01.only",
+      "group": "A01 valid scope",
+      "variants": "only",
+      "expected": "Success, all exact scalar fields/generation/time/minimum expiry/frozen/brand;1,1,1"
+    },
+    {
+      "id": "A02.only",
+      "group": "A02 error constructor",
+      "variants": "only",
+      "expected": "Actual AuthorityError.category/name/instance behavior;0,0,0"
+    },
+    {
+      "id": "A03.bad-id",
+      "group": "A03 principal",
+      "variants": "bad-id,business-login,missing-purpose,extra-key,accessor",
+      "expected": "I;0,0,0; accessor getter count0"
+    },
+    {
+      "id": "A03.business-login",
+      "group": "A03 principal",
+      "variants": "bad-id,business-login,missing-purpose,extra-key,accessor",
+      "expected": "I;0,0,0; accessor getter count0"
+    },
+    {
+      "id": "A03.missing-purpose",
+      "group": "A03 principal",
+      "variants": "bad-id,business-login,missing-purpose,extra-key,accessor",
+      "expected": "I;0,0,0; accessor getter count0"
+    },
+    {
+      "id": "A03.extra-key",
+      "group": "A03 principal",
+      "variants": "bad-id,business-login,missing-purpose,extra-key,accessor",
+      "expected": "I;0,0,0; accessor getter count0"
+    },
+    {
+      "id": "A03.accessor",
+      "group": "A03 principal",
+      "variants": "bad-id,business-login,missing-purpose,extra-key,accessor",
+      "expected": "I;0,0,0; accessor getter count0"
+    },
+    {
+      "id": "A04.bad-org-id",
+      "group": "A04 request",
+      "variants": "bad-org-id,unknown-capability,extra-key",
+      "expected": "I;0,0,0"
+    },
+    {
+      "id": "A04.unknown-capability",
+      "group": "A04 request",
+      "variants": "bad-org-id,unknown-capability,extra-key",
+      "expected": "I;0,0,0"
+    },
+    {
+      "id": "A04.extra-key",
+      "group": "A04 request",
+      "variants": "bad-org-id,unknown-capability,extra-key",
+      "expected": "I;0,0,0"
+    },
+    {
+      "id": "A05.null",
+      "group": "A05 transaction",
+      "variants": "null,number,string",
+      "expected": "T;0,0,0; no claim that an object is a real session"
+    },
+    {
+      "id": "A05.number",
+      "group": "A05 transaction",
+      "variants": "null,number,string",
+      "expected": "T;0,0,0; no claim that an object is a real session"
+    },
+    {
+      "id": "A05.string",
+      "group": "A05 transaction",
+      "variants": "null,number,string",
+      "expected": "T;0,0,0; no claim that an object is a real session"
+    },
+    {
+      "id": "A06.nan",
+      "group": "A06 clock",
+      "variants": "nan,infinity,negative,unsafe,out-of-range",
+      "expected": "D;1,0,0"
+    },
+    {
+      "id": "A06.infinity",
+      "group": "A06 clock",
+      "variants": "nan,infinity,negative,unsafe,out-of-range",
+      "expected": "D;1,0,0"
+    },
+    {
+      "id": "A06.negative",
+      "group": "A06 clock",
+      "variants": "nan,infinity,negative,unsafe,out-of-range",
+      "expected": "D;1,0,0"
+    },
+    {
+      "id": "A06.unsafe",
+      "group": "A06 clock",
+      "variants": "nan,infinity,negative,unsafe,out-of-range",
+      "expected": "D;1,0,0"
+    },
+    {
+      "id": "A06.out-of-range",
+      "group": "A06 clock",
+      "variants": "nan,infinity,negative,unsafe,out-of-range",
+      "expected": "D;1,0,0"
+    },
+    {
+      "id": "A07.error",
+      "group": "A07 clock throw",
+      "variants": "error,undefined,false",
+      "expected": "P by identity/value;1,0,0"
+    },
+    {
+      "id": "A07.undefined",
+      "group": "A07 clock throw",
+      "variants": "error,undefined,false",
+      "expected": "P by identity/value;1,0,0"
+    },
+    {
+      "id": "A07.false",
+      "group": "A07 clock throw",
+      "variants": "error,undefined,false",
+      "expected": "P by identity/value;1,0,0"
+    },
+    {
+      "id": "A08.false",
+      "group": "A08 readiness",
+      "variants": "false,missing-flag,false-flag,bad-generation",
+      "expected": "N;1,1,0"
+    },
+    {
+      "id": "A08.missing-flag",
+      "group": "A08 readiness",
+      "variants": "false,missing-flag,false-flag,bad-generation",
+      "expected": "N;1,1,0"
+    },
+    {
+      "id": "A08.false-flag",
+      "group": "A08 readiness",
+      "variants": "false,missing-flag,false-flag,bad-generation",
+      "expected": "N;1,1,0"
+    },
+    {
+      "id": "A08.bad-generation",
+      "group": "A08 readiness",
+      "variants": "false,missing-flag,false-flag,bad-generation",
+      "expected": "N;1,1,0"
+    },
+    {
+      "id": "A09.error",
+      "group": "A09 readiness rejection",
+      "variants": "error,undefined,false",
+      "expected": "P;1,1,0"
+    },
+    {
+      "id": "A09.undefined",
+      "group": "A09 readiness rejection",
+      "variants": "error,undefined,false",
+      "expected": "P;1,1,0"
+    },
+    {
+      "id": "A09.false",
+      "group": "A09 readiness rejection",
+      "variants": "error,undefined,false",
+      "expected": "P;1,1,0"
+    },
+    {
+      "id": "A10.error",
+      "group": "A10 facts rejection",
+      "variants": "error,undefined,false",
+      "expected": "P;1,1,1"
+    },
+    {
+      "id": "A10.undefined",
+      "group": "A10 facts rejection",
+      "variants": "error,undefined,false",
+      "expected": "P;1,1,1"
+    },
+    {
+      "id": "A10.false",
+      "group": "A10 facts rejection",
+      "variants": "error,undefined,false",
+      "expected": "P;1,1,1"
+    },
+    {
+      "id": "A11.only",
+      "group": "A11 captured context",
+      "variants": "only",
+      "expected": "Success after deferred readiness/caller mutation; original frozen lookup/same opaque transaction/time forwarded;1,1,1"
+    },
+    {
+      "id": "A12.inactive",
+      "group": "A12 user",
+      "variants": "inactive,foreign-id",
+      "expected": "D;1,1,1"
+    },
+    {
+      "id": "A12.foreign-id",
+      "group": "A12 user",
+      "variants": "inactive,foreign-id",
+      "expected": "D;1,1,1"
+    },
+    {
+      "id": "A13.membership-tenant",
+      "group": "A13 tenancy",
+      "variants": "membership-tenant,eligibility-actor,organization-id",
+      "expected": "D;1,1,1"
+    },
+    {
+      "id": "A13.eligibility-actor",
+      "group": "A13 tenancy",
+      "variants": "membership-tenant,eligibility-actor,organization-id",
+      "expected": "D;1,1,1"
+    },
+    {
+      "id": "A13.organization-id",
+      "group": "A13 tenancy",
+      "variants": "membership-tenant,eligibility-actor,organization-id",
+      "expected": "D;1,1,1"
+    },
+    {
+      "id": "A14.organization-suspended",
+      "group": "A14 state",
+      "variants": "organization-suspended,branch-revoked",
+      "expected": "D;1,1,1"
+    },
+    {
+      "id": "A14.branch-revoked",
+      "group": "A14 state",
+      "variants": "organization-suspended,branch-revoked",
+      "expected": "D;1,1,1"
+    },
+    {
+      "id": "A15.license-number",
+      "group": "A15 fingerprint",
+      "variants": "license-number,license-document,unverified",
+      "expected": "D;1,1,1"
+    },
+    {
+      "id": "A15.license-document",
+      "group": "A15 fingerprint",
+      "variants": "license-number,license-document,unverified",
+      "expected": "D;1,1,1"
+    },
+    {
+      "id": "A15.unverified",
+      "group": "A15 fingerprint",
+      "variants": "license-number,license-document,unverified",
+      "expected": "D;1,1,1"
+    },
+    {
+      "id": "A16.only",
+      "group": "A16 lab mapping",
+      "variants": "only",
+      "expected": "M for consistent lab-kind/capability context;1,1,1; no lab activation"
+    },
+    {
+      "id": "A17.missing-member",
+      "group": "A17 cardinality",
+      "variants": "missing-member,duplicate-member,missing-proof",
+      "expected": "D;1,1,1"
+    },
+    {
+      "id": "A17.duplicate-member",
+      "group": "A17 cardinality",
+      "variants": "missing-member,duplicate-member,missing-proof",
+      "expected": "D;1,1,1"
+    },
+    {
+      "id": "A17.missing-proof",
+      "group": "A17 cardinality",
+      "variants": "missing-member,duplicate-member,missing-proof",
+      "expected": "D;1,1,1"
+    },
+    {
+      "id": "A18.schema",
+      "group": "A18 schema/revision",
+      "variants": "schema,zero-revision,unsafe-revision",
+      "expected": "D;1,1,1"
+    },
+    {
+      "id": "A18.zero-revision",
+      "group": "A18 schema/revision",
+      "variants": "schema,zero-revision,unsafe-revision",
+      "expected": "D;1,1,1"
+    },
+    {
+      "id": "A18.unsafe-revision",
+      "group": "A18 schema/revision",
+      "variants": "schema,zero-revision,unsafe-revision",
+      "expected": "D;1,1,1"
+    },
+    {
+      "id": "A19.validfrom-equal",
+      "group": "A19 time",
+      "variants": "validfrom-equal,validfrom-future,expiry-equal,created-after-updated",
+      "expected": "First succeeds, others D; each1,1,1"
+    },
+    {
+      "id": "A19.validfrom-future",
+      "group": "A19 time",
+      "variants": "validfrom-equal,validfrom-future,expiry-equal,created-after-updated",
+      "expected": "First succeeds, others D; each1,1,1"
+    },
+    {
+      "id": "A19.expiry-equal",
+      "group": "A19 time",
+      "variants": "validfrom-equal,validfrom-future,expiry-equal,created-after-updated",
+      "expected": "First succeeds, others D; each1,1,1"
+    },
+    {
+      "id": "A19.created-after-updated",
+      "group": "A19 time",
+      "variants": "validfrom-equal,validfrom-future,expiry-equal,created-after-updated",
+      "expected": "First succeeds, others D; each1,1,1"
+    },
+    {
+      "id": "A20.only",
+      "group": "A20 minimum expiry",
+      "variants": "only",
+      "expected": "Success with professional expiry1500/member2000/now1000 and exact expiresAt1500;1,1,1"
+    },
+    {
+      "id": "A21.fingerprint",
+      "group": "A21 declared vectors",
+      "variants": "fingerprint,mapping,grant,verification",
+      "expected": "Actual serializer/hash equals independent declared UTF-8/hash;0,0,0"
+    },
+    {
+      "id": "A21.mapping",
+      "group": "A21 declared vectors",
+      "variants": "fingerprint,mapping,grant,verification",
+      "expected": "Actual serializer/hash equals independent declared UTF-8/hash;0,0,0"
+    },
+    {
+      "id": "A21.grant",
+      "group": "A21 declared vectors",
+      "variants": "fingerprint,mapping,grant,verification",
+      "expected": "Actual serializer/hash equals independent declared UTF-8/hash;0,0,0"
+    },
+    {
+      "id": "A21.verification",
+      "group": "A21 declared vectors",
+      "variants": "fingerprint,mapping,grant,verification",
+      "expected": "Actual serializer/hash equals independent declared UTF-8/hash;0,0,0"
+    },
+    {
+      "id": "A22.object-keys",
+      "group": "A22 canonical order",
+      "variants": "object-keys,array-order",
+      "expected": "Same declared serialization/digest under reordering, arrays contain at least2 distinct items;0,0,0"
+    },
+    {
+      "id": "A22.array-order",
+      "group": "A22 canonical order",
+      "variants": "object-keys,array-order",
+      "expected": "Same declared serialization/digest under reordering, arrays contain at least2 distinct items;0,0,0"
+    },
+    {
+      "id": "A23.metadata-operation",
+      "group": "A23 digest",
+      "variants": "metadata-operation,payload-fingerprint,evidence",
+      "expected": "D for valid-shape corruption with unchanged checksum;1,1,1"
+    },
+    {
+      "id": "A23.payload-fingerprint",
+      "group": "A23 digest",
+      "variants": "metadata-operation,payload-fingerprint,evidence",
+      "expected": "D for valid-shape corruption with unchanged checksum;1,1,1"
+    },
+    {
+      "id": "A23.evidence",
+      "group": "A23 digest",
+      "variants": "metadata-operation,payload-fingerprint,evidence",
+      "expected": "D for valid-shape corruption with unchanged checksum;1,1,1"
+    },
+    {
+      "id": "A24.only",
+      "group": "A24 generation",
+      "variants": "only",
+      "expected": "D;1,1,1"
+    },
+    {
+      "id": "A25.organization-revision",
+      "group": "A25 versions",
+      "variants": "organization-revision,membership-revision,eligibility-revision",
+      "expected": "D with valid digests and mismatched current revisions;1,1,1"
+    },
+    {
+      "id": "A25.membership-revision",
+      "group": "A25 versions",
+      "variants": "organization-revision,membership-revision,eligibility-revision",
+      "expected": "D with valid digests and mismatched current revisions;1,1,1"
+    },
+    {
+      "id": "A25.eligibility-revision",
+      "group": "A25 versions",
+      "variants": "organization-revision,membership-revision,eligibility-revision",
+      "expected": "D with valid digests and mismatched current revisions;1,1,1"
+    },
+    {
+      "id": "A26.self-grant",
+      "group": "A26 proof authority",
+      "variants": "self-grant,self-verification,evidence-version",
+      "expected": "D with independently valid proof digest;1,1,1"
+    },
+    {
+      "id": "A26.self-verification",
+      "group": "A26 proof authority",
+      "variants": "self-grant,self-verification,evidence-version",
+      "expected": "D with independently valid proof digest;1,1,1"
+    },
+    {
+      "id": "A26.evidence-version",
+      "group": "A26 proof authority",
+      "variants": "self-grant,self-verification,evidence-version",
+      "expected": "D with independently valid proof digest;1,1,1"
+    },
+    {
+      "id": "A27.decision-id",
+      "group": "A27 duplicates",
+      "variants": "decision-id,operation-id",
+      "expected": "D with valid digest and otherwise consistent references;1,1,1"
+    },
+    {
+      "id": "A27.operation-id",
+      "group": "A27 duplicates",
+      "variants": "decision-id,operation-id",
+      "expected": "D with valid digest and otherwise consistent references;1,1,1"
+    },
+    {
+      "id": "A28.spread-clone",
+      "group": "A28 issued scope",
+      "variants": "spread-clone,json-clone,prototype-clone,raw-evaluator",
+      "expected": "Real issued object true; each lookalike false. First3:1,1,1; raw evaluateAuthority object unbranded:0,0,0"
+    },
+    {
+      "id": "A28.json-clone",
+      "group": "A28 issued scope",
+      "variants": "spread-clone,json-clone,prototype-clone,raw-evaluator",
+      "expected": "Real issued object true; each lookalike false. First3:1,1,1; raw evaluateAuthority object unbranded:0,0,0"
+    },
+    {
+      "id": "A28.prototype-clone",
+      "group": "A28 issued scope",
+      "variants": "spread-clone,json-clone,prototype-clone,raw-evaluator",
+      "expected": "Real issued object true; each lookalike false. First3:1,1,1; raw evaluateAuthority object unbranded:0,0,0"
+    },
+    {
+      "id": "A28.raw-evaluator",
+      "group": "A28 issued scope",
+      "variants": "spread-clone,json-clone,prototype-clone,raw-evaluator",
+      "expected": "Real issued object true; each lookalike false. First3:1,1,1; raw evaluateAuthority object unbranded:0,0,0"
+    },
+    {
+      "id": "A29.only",
+      "group": "A29 facts mutation",
+      "variants": "only",
+      "expected": "Issued scalar scope remains unchanged/frozen after source facts mutate;1,1,1"
+    },
+    {
+      "id": "A30.only",
+      "group": "A30 subsequent revocation",
+      "variants": "only",
+      "expected": "First resolve succeeds, second denies revoked facts; old scope remains WeakSet-branded;2,2,2. Predicate is not a revocation fence."
+    },
+    {
+      "id": "A31.domain-fs",
+      "group": "A31 import boundary",
+      "variants": "domain-fs,compiler-fs",
+      "expected": "LINKER_DENIED, no native load or added module evaluation;0,0,0. These two explicit probes are separate from nominal import trace."
+    },
+    {
+      "id": "A31.compiler-fs",
+      "group": "A31 import boundary",
+      "variants": "domain-fs,compiler-fs",
+      "expected": "LINKER_DENIED, no native load or added module evaluation;0,0,0. These two explicit probes are separate from nominal import trace."
+    },
+    {
+      "id": "A32.facts-extra-key",
+      "group": "A32 shape/bounds",
+      "variants": "facts-extra-key,nested-accessor,empty-branches,over100-branches",
+      "expected": "D;1,1,1; accessor getter0"
+    },
+    {
+      "id": "A32.nested-accessor",
+      "group": "A32 shape/bounds",
+      "variants": "facts-extra-key,nested-accessor,empty-branches,over100-branches",
+      "expected": "D;1,1,1; accessor getter0"
+    },
+    {
+      "id": "A32.empty-branches",
+      "group": "A32 shape/bounds",
+      "variants": "facts-extra-key,nested-accessor,empty-branches,over100-branches",
+      "expected": "D;1,1,1; accessor getter0"
+    },
+    {
+      "id": "A32.over100-branches",
+      "group": "A32 shape/bounds",
+      "variants": "facts-extra-key,nested-accessor,empty-branches,over100-branches",
+      "expected": "D;1,1,1; accessor getter0"
+    }
+  ],
+  "phases": [
+    "nominal: all84 once",
+    "mutant: each named target once on fresh full3 graph",
+    "restoration: same target once on fresh nominal graph"
+  ],
+  "traceSchema": {
+    "tag": "AUTHORITY_LEAF",
+    "phase": "nominal|mutant|restoration",
+    "id": "exact leaf",
+    "completed": "true only after all leaf assertions",
+    "calls": {
+      "clock": "actual count",
+      "readiness": "actual count",
+      "facts": "actual count"
+    },
+    "order": "actual per-resolve comma order joined by pipe",
+    "expected": "actual declared result category per resolve; empty for direct zero-port leaf"
+  },
+  "countPlan": {
+    "compilerLoads": 1,
+    "nominalEmits": 3,
+    "mutantEmits": 5,
+    "graphs": 11,
+    "eachModuleEvaluations": 11,
+    "totalModuleEvaluations": 33,
+    "nominalLeaves": 84,
+    "mutantTargets": 5,
+    "restoredTargets": 5
+  }
+}

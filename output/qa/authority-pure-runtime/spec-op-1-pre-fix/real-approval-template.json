@@ -1,0 +1,44 @@
+{
+  "schema": "SD-AUTHORITY-REAL-APPROVAL-1",
+  "scope": "ONE_FIXED_AUTHORITY_PURE_RUN",
+  "issuer": "/root",
+  "operatorAuthor": "/root/authority_operator",
+  "sourceAuthor": "/root/claude_review_5_packet",
+  "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/authority-pure-runtime",
+  "branch": "m0/authority-pure-runtime",
+  "approvedHead": "REQUIRES_ACTUAL_CLEAN_COMMITTED_HEAD",
+  "operatorSha256": "REQUIRES_FINAL_OPERATOR_SHA256",
+  "manifestSha256": "REQUIRES_FINAL_MANIFEST_SHA256",
+  "sourceFreezeSha256": "7df6a0ba88c5cf1e19cb79fdbcfe3cf1e4ec67175d6f4b0102b817c868d554dc",
+  "offlineResultSha256": "dfa34ddafc26100da6a82c07a0e48a1010d202e5d8c188cd49831d20a8e112cc",
+  "votes": [
+    {
+      "reviewer": "REQUIRES_ACTUAL_NONAUTHOR_STANDARDS",
+      "role": "Standards",
+      "decision": "NOT_APPROVED",
+      "scope": "ONE_FIXED_AUTHORITY_PURE_RUN",
+      "approvedHead": "REQUIRES_ACTUAL_CLEAN_COMMITTED_HEAD",
+      "operatorSha256": "REQUIRES_FINAL_OPERATOR_SHA256",
+      "manifestSha256": "REQUIRES_FINAL_MANIFEST_SHA256",
+      "sourceFreezeSha256": "7df6a0ba88c5cf1e19cb79fdbcfe3cf1e4ec67175d6f4b0102b817c868d554dc",
+      "offlineResultSha256": "dfa34ddafc26100da6a82c07a0e48a1010d202e5d8c188cd49831d20a8e112cc",
+      "findings": [
+        "Template only. This is not a vote."
+      ]
+    },
+    {
+      "reviewer": "REQUIRES_ACTUAL_NONAUTHOR_SPEC",
+      "role": "Spec",
+      "decision": "NOT_APPROVED",
+      "scope": "ONE_FIXED_AUTHORITY_PURE_RUN",
+      "approvedHead": "REQUIRES_ACTUAL_CLEAN_COMMITTED_HEAD",
+      "operatorSha256": "REQUIRES_FINAL_OPERATOR_SHA256",
+      "manifestSha256": "REQUIRES_FINAL_MANIFEST_SHA256",
+      "sourceFreezeSha256": "7df6a0ba88c5cf1e19cb79fdbcfe3cf1e4ec67175d6f4b0102b817c868d554dc",
+      "offlineResultSha256": "dfa34ddafc26100da6a82c07a0e48a1010d202e5d8c188cd49831d20a8e112cc",
+      "findings": [
+        "Template only. This is not a vote."
+      ]
+    }
+  ]
+}
