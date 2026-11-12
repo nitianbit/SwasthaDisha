@@ -1,0 +1,39 @@
+{
+  "schema": "SD-ENROLLMENT-INITIAL-REVIEW-DECISIONS-1",
+  "candidate": "5f3fb2f3578a6358818133e2afd203e957a4aa8e",
+  "baseline": "ce2194c2984a4d695a2e8e05dbc1f5015f17b46b",
+  "sourcePatchSha256": "45f8cbb64acb5a5b143ec057432e9445441cdda133a3d7f1120c005c8b33dc62",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "REQUEST_CHANGES",
+      "findings": [
+        {
+          "id": "ENROLLMENT-VERIFY-S1",
+          "issue": "Actual JWT expected subject and role come from the same returned service userData; matching two potentially wrong outputs does not bind to trusted fixture subject/intended role.",
+          "required": "Explicit S.id and literal intended user/staff role in every JWT verification; retain returned-field, signature and lifetime checks. Keep82vectors andOLD+NC1-NC4."
+        },
+        {
+          "id": "ENROLLMENT-VERIFY-S2",
+          "issue": "Repository factory exposes unused methods on each role; contract requires unexpected method access to latch.",
+          "required": "Narrow existing per-role method allowlists to only the fixed scenarios; preserve recorder implementation and counts."
+        }
+      ]
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": [],
+      "preparationDecision": "APPROVE_PUBLIC_LOCK_RESOLUTION_ONLY",
+      "preparationProposalSha256": "7fba6aedfde051349ad8f451f83c26618d606294c4984a00f0cde8302ad38e4b",
+      "evidence": "Independently read11files/82vectors/actualservice/wholeemit/closedloader/controls/oldrole diffs; all1939npmfiles andNode streamed+bound."
+    }
+  ],
+  "rootPreparationDecision": "PENDING_AMENDED_SOURCE_REVIEW",
+  "execution": "ALL_NOT_RUN; no receipt/once/newlock/workspace created",
+  "next": "Author amendment within existing contract; preserve initialcandidate, then two exact amended-source/preparation decisions."
+}
