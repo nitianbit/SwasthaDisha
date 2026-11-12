@@ -1,0 +1,63 @@
+{
+  "schema": "SD-R11-ACTUAL-PREEXECUTION-DECISIONS-1",
+  "root": "/root",
+  "sessionId": "757133e3-cd65-4334-832f-0c217897311b",
+  "packetSha256": "12a51559f5c1dafe260f7f9f2f11ea1a98ed850dbd6c38593a9397be2b4f65a2",
+  "supervisorSha256": "ec11d01fb7582b70b817cf1e926c8e4ff6e1915bcadc10a4cb6f2ae568060437",
+  "recipeSha256": "b94592393c16f64c3231bdba1406ce9979a7ecf51db150701596303d36361196",
+  "reviewers": [
+    {
+      "agent": "/root/customer_remaining_audit",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    },
+    {
+      "agent": "/root/lab_remaining_audit",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    }
+  ],
+  "provenance": "Actual independent internal Codex agent messages; neither reviewer authored or prepared the R11 binding. Root authorizes invocation, not independent approval.",
+  "challengeEnqueue": {
+    "id": "msg_1794522037149_zs8ihu1w",
+    "team": "swasthadisha-local",
+    "from": "codex-lead",
+    "to": "claude-reviewer",
+    "actualToolSuccess": true,
+    "duplicateEnqueue": false
+  },
+  "freshScopedTeamStatus": {
+    "success": true,
+    "status": "active",
+    "membersVerified": [
+      "codex-lead",
+      "claude-reviewer"
+    ]
+  },
+  "selectedGitAndPhysicalHashesVerified": 149,
+  "runtimePinsVerified": 5,
+  "publicOSEnvironmentMatched": true,
+  "privateOutputGitExclusionsVerified": true,
+  "historicalPlanQualifier": "Frozen last paragraph describes enrollment at earlier preparation snapshot; newer R5/R6 preparation and separate109 fake units are not R11 source or runtime proof.",
+  "limitations": [
+    "Known R10 wrapper fault retained; no functional repair or clean-wrapper claim",
+    "Effective effort UNPROVEN; requested xhigh, not max",
+    "Extension bundled local CLI, not native webview ACK",
+    "No fixture/runtime/module/release acceptance"
+  ],
+  "exactCommand": [
+    "/usr/bin/env",
+    "-i",
+    "HOME=/Users/shubham",
+    "PATH=/usr/bin:/bin",
+    "TMPDIR=/private/tmp",
+    "USER=shubham",
+    "LOGNAME=shubham",
+    "SECURITYSESSIONID=186b9",
+    "__CF_USER_TEXT_ENCODING=0x1F5:0x0:0x0",
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+    "-I",
+    "-B",
+    "-S",
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/customer-pharmacy-lab-claude-review/revision-11/operator/supervisor.py",
+    "--live"
+  ]
+}
