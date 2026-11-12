@@ -1,0 +1,54 @@
+{
+  "schema": "SD-CLAUDE-BINDING-DELTA-11",
+  "baselineSupervisorSha256": "451f75b0b2bf83dff7a54248119e27a7620e802243bd73d7e448158790883807",
+  "baselineTestsSha256": "a39de369b9392942db1f6c20fe0077e2cfe86d884e4b5109ce5f5b3bfd2361da",
+  "finalSupervisorSha256": "ec11d01fb7582b70b817cf1e926c8e4ff6e1915bcadc10a4cb6f2ae568060437",
+  "finalTestsSha256": "cfc216f8088ef34df68bb6480b04fb6fea50640b507f60429053818c70033262",
+  "sourceReplacements": [
+    {
+      "old": "revision-10",
+      "new": "revision-11"
+    },
+    {
+      "old": "a163cfb4e5c0a8d1946f9d29b38acfa07003a65099e426481e9ce0e406df723e",
+      "new": "2dbedd74f63190d77499ac7dd4d5abeacb91e0cfdbe2d8654ca7f86f97da7760"
+    },
+    {
+      "old": "4f3be7043b492f0563e1a2d39429422128e2da27457c03f048739f7eb21c2482",
+      "new": "d7aad2f22c55938408e3291624c4e30aba01102c54a7ac759bfe5eabde9ab8d1"
+    },
+    {
+      "old": "PREIMPLEMENTATION_10",
+      "new": "PREIMPLEMENTATION_11"
+    },
+    {
+      "old": "LIVE_APPROVAL_10",
+      "new": "LIVE_APPROVAL_11"
+    },
+    {
+      "old": "SD-CURRENT-CLAUDE-LIVE-APPROVAL-10",
+      "new": "SD-CURRENT-CLAUDE-LIVE-APPROVAL-11"
+    }
+  ],
+  "testReplacements": [
+    {
+      "old": "test_old_live_receipt_does_not_admit_revision_ten",
+      "new": "test_old_live_receipt_does_not_admit_revision_eleven"
+    },
+    {
+      "old": "'LIVE_APPROVAL_9.json'",
+      "new": "'LIVE_APPROVAL_10.json'"
+    }
+  ],
+  "exactReverseSupervisorRecovery": true,
+  "exactReverseTestsRecovery": true,
+  "functionalChanges": false,
+  "requestedEffortUnchanged": "xhigh",
+  "environmentValidationAndAllSevenValuesUnchanged": true,
+  "runtimeMcpCapsTimeoutsUnchanged": true,
+  "sourceSelectionChanged": "17files/16productionTS+API, four new milestones at f200491; all whole selected bytes match current paths and Git",
+  "fakeCampaign": "NOT_RUN_REUSE_EXISTING_47_FAKE_HISTORY_AND_ACTUAL_PRIOR_SOURCE_REVIEWS",
+  "modelCalls": 0,
+  "authCalls": 0,
+  "ASTParse": "PASS_SOURCE_ONLY_NO_MODULE_EXECUTION"
+}

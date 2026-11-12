@@ -1,0 +1,33 @@
+--- revision-10/operator/supervisor.py
++++ revision-11/operator/supervisor.py
+@@ -1 +1 @@
+-"""Exact revision-10 Claude review supervisor; default mode has no effects.
++"""Exact revision-11 Claude review supervisor; default mode has no effects.
+@@ -22 +22 @@
+-REV = QA / 'revision-10'
++REV = QA / 'revision-11'
+@@ -25,2 +25,2 @@
+-FROZEN = 'a163cfb4e5c0a8d1946f9d29b38acfa07003a65099e426481e9ce0e406df723e'
+-PLAN = '4f3be7043b492f0563e1a2d39429422128e2da27457c03f048739f7eb21c2482'
++FROZEN = '2dbedd74f63190d77499ac7dd4d5abeacb91e0cfdbe2d8654ca7f86f97da7760'
++PLAN = 'd7aad2f22c55938408e3291624c4e30aba01102c54a7ac759bfe5eabde9ab8d1'
+@@ -90 +90 @@
+-    need((OWN / 'LIVE_APPROVAL_10.json').exists(), 'APPROVAL_REQUIRED')
++    need((OWN / 'LIVE_APPROVAL_11.json').exists(), 'APPROVAL_REQUIRED')
+@@ -100 +100 @@
+-    pre = json.loads(regular(OWN / 'PREIMPLEMENTATION_10.json'))
++    pre = json.loads(regular(OWN / 'PREIMPLEMENTATION_11.json'))
+@@ -125 +125 @@
+-    expected = {'schema': 'SD-CURRENT-CLAUDE-LIVE-APPROVAL-10',
++    expected = {'schema': 'SD-CURRENT-CLAUDE-LIVE-APPROVAL-11',
+@@ -129 +129 @@
+-                'preimplementationSha256': sha(regular(OWN / 'PREIMPLEMENTATION_10.json')),
++                'preimplementationSha256': sha(regular(OWN / 'PREIMPLEMENTATION_11.json')),
+@@ -140 +140 @@
+-    approval_bytes = regular(OWN / 'LIVE_APPROVAL_10.json', private=True)
++    approval_bytes = regular(OWN / 'LIVE_APPROVAL_11.json', private=True)
+@@ -147,2 +147,2 @@
+-                            str(OWN / 'PREIMPLEMENTATION_10.json'): expected['preimplementationSha256'],
+-                            str(OWN / 'LIVE_APPROVAL_10.json'): sha(approval_bytes)} |
++                            str(OWN / 'PREIMPLEMENTATION_11.json'): expected['preimplementationSha256'],
++                            str(OWN / 'LIVE_APPROVAL_11.json'): sha(approval_bytes)} |
