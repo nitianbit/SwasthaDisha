@@ -1,0 +1,17 @@
+{
+  "schema": "SD-ENROLLMENT-PACKAGES-1",
+  "packages": {
+    "joi": "17.13.3",
+    "jsonwebtoken": "9.0.2",
+    "reflect-metadata": "0.2.2",
+    "typedi": "0.10.0",
+    "typescript": "5.9.3"
+  },
+  "runtimeRoots": [
+    "joi",
+    "jsonwebtoken",
+    "reflect-metadata",
+    "typedi"
+  ],
+  "status": "TEST_ONLY_NOT_ROOT_ADOPTION"
+}

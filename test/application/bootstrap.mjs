@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { lstatSync, readFileSync, readdirSync, writeFileSync, writeSync } from 'node:fs';
 import { networkInterfaces as addressedNetworkInterfaces } from 'node:os';
 import {
-  admitNetwork, assertBundle, AUTHORITY_ROLE, egressCanaryBlocked, entryKind, PORT_OPERATIONS, ROLE, requireThat,
+  admitNetwork, assertBundle, AUTHORITY_ROLE, ENROLLMENT_ROLE, egressCanaryBlocked, entryKind, PORT_OPERATIONS, ROLE, requireThat,
 } from './app-bundle.mjs';
 
 const allowedEnvironment = new Set([
@@ -10,10 +10,11 @@ const allowedEnvironment = new Set([
   'NODE_ENV', 'APP_RUN_ID', 'APP_ROLE', 'APP_MANIFEST_SHA',
 ]);
 requireThat(Object.keys(process.env).every((key) => allowedEnvironment.has(key))
-  && process.env.NODE_ENV === 'test' && [ROLE, AUTHORITY_ROLE].includes(process.env.APP_ROLE),
+  && process.env.NODE_ENV === 'test' && [ROLE, AUTHORITY_ROLE, ENROLLMENT_ROLE].includes(process.env.APP_ROLE),
   'Unexpected application harness environment');
 requireThat(process.cwd() === '/workspace' && process.version === 'v22.23.4'
   && process.platform === 'linux' && process.permission, 'Unadmitted application runtime');
+requireThat(process.env.APP_ROLE !== ENROLLMENT_ROLE || process.arch === 'arm64', 'Enrollment runtime architecture');
 assertBundle('/workspace', { runId: process.env.APP_RUN_ID, manifestSha: process.env.APP_MANIFEST_SHA, role: process.env.APP_ROLE });
 // Decision logic is in app-bundle.mjs; this block only binds read-only ports and stderr.
 const networkAdmission = admitNetwork({
@@ -45,6 +46,20 @@ if (process.env.APP_ROLE === AUTHORITY_ROLE) {
     filesystemCanariesPassed: true, databaseMode: 'not-admitted', networkAdmission, authority });
   requireThat(Buffer.byteLength(output) < 16 * 1024, 'Authority result output limit');
   console.log(output);
+} else if (process.env.APP_ROLE === ENROLLMENT_ROLE) {
+  try {
+  const { runEnrollmentScenario } = await import('./scenario.mjs');
+  const enrollment = await runEnrollmentScenario();
+  const output = JSON.stringify({ runId: process.env.APP_RUN_ID, role: ENROLLMENT_ROLE,
+    manifestSha: process.env.APP_MANIFEST_SHA, admissionPassed: true, egressBlocked,
+    filesystemCanariesPassed: true, databaseMode: 'not-admitted', networkAdmission, enrollment });
+  requireThat(Buffer.byteLength(output) < 16 * 1024, 'Enrollment result output limit'); console.log(output);
+  } catch (error) {
+    // No assertion diff, token, code, address or row body escapes the private fixture.
+    const message = typeof error?.message === 'string' && /^(?:PREDICATE:[A-Za-z0-9_.:-]{1,80}|ENROLLMENT_CASE_FAILED:C3-[A-Za-z0-9_.-]{1,80})$/.test(error.message)
+      ? error.message : 'ENROLLMENT_SERVICE_FAILED';
+    throw new Error(message);
+  }
 } else {
 const { createRecordingPorts } = await import('./app-ports.mjs');
 const ports = createRecordingPorts();
