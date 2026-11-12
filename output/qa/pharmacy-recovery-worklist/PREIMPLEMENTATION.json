@@ -1,0 +1,27 @@
+{
+  "schema": "SD-INTERNAL-CONTRACT-DECISIONS-1",
+  "baseline": "cc5be9a74badf74c6028d1e7e86b74978bf7641d",
+  "contract": "documentation/planning/implementation/PHARMACY_RECOVERY_WORKLIST_CONTRACT_DRAFT.md",
+  "contractSha256": "0d5e215e4376987e7b5d33114d243685cb5c1ee3302e69ceef4dc167cd7b8b86",
+  "author": "/root/payment_ctor_contract",
+  "recordedBy": "/root",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex review of concrete contract, existing sources/guard/receipt/pins and limits."
+    },
+    {
+      "reviewer": "/root/booking_write_contract",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex review of concrete contract, existing sources/guard/receipt/pins and limits."
+    }
+  ],
+  "sourcePins": 15,
+  "scope": "Only the six existing additive read surfaces specified in contract; source-only preparation. No financial/clinical/stock writer or settlement truth.",
+  "limits": "Source candidate still needs two independent reviews; focused runtime/Joi/HTTP/ODM/C3 and owner/release remain separate, final integration deferred."
+}
