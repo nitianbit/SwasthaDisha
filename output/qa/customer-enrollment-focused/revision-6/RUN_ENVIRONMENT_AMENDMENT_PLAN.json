@@ -1,0 +1,19 @@
+{
+  "schema": "SD-ENROLLMENT-RUN-ENVIRONMENT-AMENDMENT-PLAN-1",
+  "author": "/root",
+  "baseline": "9e4fa8a7892426129fb8e678890b15d23184996e",
+  "reason": "Actual clean pinnedNode24 process receives optionalmacOS __CF_USER_TEXT_ENCODING; unchangedrun.mjs allows only PATH/TMPDIR/LANG/LC_CTYPE and would reject beforeclaim. This is an observed incompatibility, not a fabricated failedservice/container invocation.",
+  "evidence": "HOST_ENVIRONMENT_OBSERVATION.json",
+  "ownedSource": [
+    "test/customer-enrollment-runtime/run.mjs"
+  ],
+  "changes": [
+    "Add only __CF_USER_TEXT_ENCODING to existingfinite parent key list. If present requireexact 0x<uppercasehexcurrentprocessuid>:0x0:0x0; absent remainscompatible, wrong/empty markers reject. Reuseexact preparation-script observedmarker policy.",
+    "No other parent keys/values accepted, no inheritedmarkerforwarding to existing separatelysanitized Docker/containerenv. SamepinnedNode/argv/receipt/oneuse/role/image/20s/resources/sourceclosure/provider cuts.",
+    "Keep alreadyaccepted descriptor/maps/diagnostics/sourcefailures bytepreserved. Since descriptor.inputs includes run.mjs, fresh exact lockedinstall/emission from amendedcommittedcandidate must bind new23inputset before realserviceinvocation; no manualdescriptor/markerrebinding or inventednewcompilerresult."
+  ],
+  "verification": "Source review of narrowexactguard, actual environmentobservations and allunaltered boundaries; affectedsourcefresh preparation requires two actualindependentnonauthor source+exactmode decisions/newRootnonce/newownedworkspace. Later realservice82cases+controls and C3 checks stillseparate.",
+  "sourceAdmission": "Two actualindependentnonauthor planvotes beforeimplementation; authorRootcannotvote.",
+  "executionApproved": false,
+  "applicationOrServiceRun": "NOT_RUN"
+}

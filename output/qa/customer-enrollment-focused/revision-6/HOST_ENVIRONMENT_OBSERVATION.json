@@ -1,0 +1,23 @@
+{
+  "schema": "SD-ENROLLMENT-HOST-ENVIRONMENT-OBSERVATION-1",
+  "toolChunk": "f550bb",
+  "command": [
+    "/usr/bin/env",
+    "-i",
+    "PATH=/usr/bin:/bin",
+    "TMPDIR=/private/tmp",
+    "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+    "-e",
+    "process.stdout.write(JSON.stringify({version:process.version,envKeys:Object.keys(process.env).sort()})+\"\\n\")"
+  ],
+  "terminalExit": 0,
+  "actualOutput": {
+    "version": "v24.19.0",
+    "envKeys": [
+      "PATH",
+      "TMPDIR",
+      "__CF_USER_TEXT_ENCODING"
+    ]
+  },
+  "scope": "One standard-library-free process metadata observation; no application/fixture/receipt/container/provider load or run."
+}
