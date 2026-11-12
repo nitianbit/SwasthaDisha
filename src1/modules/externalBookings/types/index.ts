@@ -28,6 +28,19 @@ export interface CustomerDiagnosticsProgress {
   lastRecordedAt: string | null;
 }
 
+export interface CustomerDiagnosticsHistoryQuery {
+  page?: number;
+  limit?: number;
+}
+
+export interface CustomerDiagnosticsHistoryPage {
+  data: CustomerDiagnosticsProgress[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 export interface IExternalSpecialist {
   id: string;
   integration: ExternalIntegration;

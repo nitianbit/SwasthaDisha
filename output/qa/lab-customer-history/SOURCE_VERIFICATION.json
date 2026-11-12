@@ -1,0 +1,19 @@
+{
+  "schema": "SD-LAB-CUSTOMER-HISTORY-VERIFICATION-1",
+  "author": "/root/payment_ctor_contract",
+  "baseline": "2c986ac74261c279d2a340e05d730de7258ed309",
+  "status": "SOURCE_ONLY_TWO_NONAUTHOR_SOURCE_REVIEWS_PENDING",
+  "sourceFreezeSha256": "f9a3fbca68631b0c4de88b1768f2bc7053bd25d27db4f6f989e643f318fbf16e",
+  "patchSha256": "ebd82b5843859e85fdc0b61678f0aa4231aef445771d57d762e07a21a678b114",
+  "checks": {
+    "actualPreimplementationVotes": 2,
+    "baselinePinsMatched": 14,
+    "changedProductionFiles": 6,
+    "unchangedPins": 8,
+    "fullInverseByteIdentity": true,
+    "productionWhitespaceExit": 0,
+    "actorPredicatesAndRowMappingMovedWithoutAlgorithmChange": true
+  },
+  "execution": "Source/hash/Git only; no executable application/type/compiler/provider/DB checks or redundant tests.",
+  "gates": "C2/fullC3/focused runtime and owner/release gates retained; final integration DEFERRED_BY_OWNER."
+}

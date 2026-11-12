@@ -1,0 +1,28 @@
+{
+  "schema": "SD-INTERNAL-CONTRACT-DECISIONS-1",
+  "contract": "documentation/planning/implementation/LAB_CUSTOMER_HISTORY_CONTRACT_DRAFT.md",
+  "contractSha256": "f552a3cd42474e81ca9b80a5c74f10ca3486f2cb64898923da96afa6f17c407e",
+  "author": "/root/payment_ctor_contract",
+  "contractBaseline": "67513f4a569d2fe5de130fc9ed6bac3314dfb120",
+  "branchBaseline": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+  "selected14PinsUnchanged": true,
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex contract/current-source review; normal customer bypass not asserted, bounded additive history and exact allowed progress extractions reviewed."
+    },
+    {
+      "reviewer": "/root/booking_write_contract",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex contract/current-source review; normal customer bypass not asserted, bounded additive history and exact allowed progress extractions reviewed."
+    }
+  ],
+  "scope": "Six existing externalBookings files only; authoritative progress DTO/actor reuse preserves existing progress, no legacy mixed-list/report/provider change. Source reviews and separate focused C3 still required.",
+  "execution": "NONE; source/data preparation only. No runtime/module/owner/release acceptance.",
+  "nextClaudeBatch": "Outside R8; keep isolated source branch until R8 live snapshot no longer in use."
+}
