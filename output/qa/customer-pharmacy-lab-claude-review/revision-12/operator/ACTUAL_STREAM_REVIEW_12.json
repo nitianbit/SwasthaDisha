@@ -1,0 +1,87 @@
+{
+  "schema": "SD-R12-ACTUAL-ROOT-STREAM-REVIEW-1",
+  "reviewer": "/root",
+  "sourceCommit": "3eab68bb3348b479254d21667caa93cadcea5bec",
+  "execSession": 47365,
+  "sessionId": "175c0268-3367-4483-9616-f5e7abc99428",
+  "frames": 459,
+  "frameTypes": {
+    "system": 445,
+    "assistant": 6,
+    "rate_limit_event": 4,
+    "user": 3,
+    "result": 1
+  },
+  "allFramesCompleteNewlineTerminated": true,
+  "inputBytes": 670033,
+  "stdoutBytes": 539979,
+  "stderrBytes": 0,
+  "actualModelInitAndAllSixAssistantMessages": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "actualClaudeExtensionACK": false,
+  "route": "Existing VSCodeextension-bundled CLI plus successful scopedRuflo peek/ACK/review; nohostedworkers/delegation",
+  "actualToolCalls": [
+    {
+      "id": "toolu_01Q5WZqAhwrv5WCmWWAcMvDM",
+      "name": "mcp__ruflo__team_inbox"
+    },
+    {
+      "id": "toolu_01A2TrYZ8Q76vLHZWxAQnw7u",
+      "name": "mcp__ruflo__team_send"
+    },
+    {
+      "id": "toolu_01PrxNGCjMRHvoen87QMzcmW",
+      "name": "mcp__ruflo__team_send"
+    }
+  ],
+  "threeSuccessfulCorrelatedResults": true,
+  "uniqueActualChallengeMessageId": "msg_1794526336232_bfaq6a9m",
+  "ackMessageId": "msg_1794527032976_ldp8isng",
+  "reviewMessageId": "msg_1794527098911_awrnh4io",
+  "freshActualMailboxBytesEqualSuccessfulToolArgumentsAndResults": true,
+  "finalAssistantAndResultTextByteIdenticalToReviewMessage": true,
+  "reviewBytes": 20683,
+  "reviewSha256": "c75b1a94771fab2cd684d41d54114a5eaaee06c6c5e8dd1135107f1682e7d5e1",
+  "ackSha256": "6366b780d70c22f92e3c058a0a1b65178ec93087234a5cd96d3f3dae534bd333",
+  "cliExitCode": 0,
+  "launcherExitCode": 0,
+  "durationMs": 798331,
+  "wrapperElapsedSeconds": 800.838,
+  "rawCaptureState": "CAPTURED_PENDING_ROOT_STREAM_REVIEW",
+  "rawReviewAcceptedFieldUnchanged": false,
+  "firstFailure": null,
+  "firstObservationFailure": null,
+  "cleanupErrors": [],
+  "signals": [],
+  "allCapturedProcessesAndGroupAbsentInRawState": true,
+  "freshExactPidAbsence": [
+    10306,
+    10318,
+    10334,
+    10341
+  ],
+  "freshExactProcessGroupAbsent": 10318,
+  "freshAbsenceMethod": "Actual ps PID/PPID/PGID readback; no process matched exactcapturedIDs/group",
+  "frozenSourceRuntimeAndAllR11PreservationPinsRehashed": true,
+  "genuineSourceVerdicts": {
+    "R12-1": "APPROVE_SOURCE_ONLY",
+    "R12-2": "APPROVE_SOURCE_ONLY",
+    "R12-3": "APPROVE_SOURCE_ONLY",
+    "R12-4": "APPROVE_SOURCE_ONLY_CONDITIONAL_CASEFOLD_NOT_RUN",
+    "composition": "APPROVE_SOURCE_ONLY"
+  },
+  "newNonblockingNotes": [
+    "R12-I1 residual Formidabledefaultpluginselection: legitimate/crafted boundary containingjson may cause503; separate future multipart-onlyplugin correction and focusedcases, no source change during frozenruntime",
+    "R12-I2 pinnedownnumericnativecode classification; constant/type nativechecks remainpending",
+    "R12-I3 reservedinode numericprecision canfalse-deny; actualcasefold trigger NOT_RUN",
+    "R12-I4 oldlegacywalkerrormessages mayincludeabsolutepath onupload/delete; separate minimal error-sanitization correction"
+  ],
+  "contextCountReconciled": "29privatefocusedproductionpaths plus separatelyselected src1/index.ts entrypoint as sourcecontext =30current src1files; no executableclosure/entrypointimport claim",
+  "otherModelNotes": [
+    "Rootpackage.json/xlsx lock mismatch remains existingC2/rootdependencygate, not authorizedrootnpmci",
+    "PriorF1HIGH/F5-1MEDIUM/R10-F2-2 remainopen; earlierR10launcherfault unchanged"
+  ],
+  "acceptance": "PENDING_TWO_ACTUAL_INDEPENDENT_NONAUTHOR_OUTCOME_REVIEWS; Rootinspection is not module/runtime/owner/release acceptance",
+  "privateThinkingExported": false
+}
