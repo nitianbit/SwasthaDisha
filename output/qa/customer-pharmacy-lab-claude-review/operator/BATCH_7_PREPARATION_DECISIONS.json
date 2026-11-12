@@ -1,0 +1,19 @@
+{
+  "planSha256": "f67c05378e789886a0f0db75e6519c9cc7a42e872718679aba53a230eb5444c5",
+  "author": "/root",
+  "decisions": [
+    {
+      "reviewer": "/root/pharmacist_identity_fields",
+      "role": "Standards",
+      "decision": "APPROVE_INERT_PREPARATION_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/pharmacy_refund_primitives",
+      "role": "Spec",
+      "decision": "APPROVE_PREPARATION_ONLY",
+      "findings": []
+    }
+  ],
+  "scope": "Actual two nonauthor votes for inert binding-only preparation; no model/run or repeated fake tests. Later exact-source/invocation votes and fresh Root prerequisites required."
+}

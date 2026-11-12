@@ -1,0 +1,20 @@
+{
+  "contractSha256": "f606545cd262de4b3429165024a2b8545f50f74b7be4fae66b0da6e3dd2d0de9",
+  "author": "/root/pharmacist_identity_fields",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/pharmacy_refund_primitives",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "findings": []
+    }
+  ],
+  "actualReview": "Both nonauthors inspected existing separate Booking/ExternalBooking collections, owner/kind/scalar/query projection, bounded DTO/error ordering and no provider/report reuse; all20pins match.",
+  "scope": "Only five additive source files on isolated branch; existing flows preserved. No execution, activation or module/release approval."
+}
