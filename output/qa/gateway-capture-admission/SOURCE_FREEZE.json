@@ -1,0 +1,15 @@
+{
+  "baseline": "12f4aa3c3cf3afc5e177a7927946352bb9e2bdc8",
+  "author": "/root/refund_error_writer",
+  "files": {
+    "documentation/planning/implementation/GATEWAY_CAPTURE_ADMISSION_CONTRACT.md": "e6956ec56ec5ce07d1208cf9cd0310a6fa4600212f2e02973828289c19ab633e",
+    "src1/modules/payment/services/index.ts": "7571d95789a792ffb6a8582f129204b67b9159caceb3b320a3e48e809921024f",
+    "output/qa/gateway-capture-admission/PREIMPLEMENTATION_DECISIONS.json": "6f8d1ae81465af762452bfec2cb6ff80fa9259fc43daece65e3da7448c87a2aa",
+    "output/qa/gateway-capture-admission/candidate.diff": "84d541c50f1c9140f1bb6b06a8317056fbaa3833d3850356aae722770ba5fc33",
+    "output/qa/gateway-capture-admission/SOURCE_VERIFICATION.json": "7314525bcf528ec6c99265635f2cf3a7803a706abe184a873df96cea09086f67"
+  },
+  "production_delta": [
+    "src1/modules/payment/services/index.ts"
+  ],
+  "scope": "Exact one-line fetched captured-only predicate; source-only candidate with fresh independent reviews pending. Runtime/type/HTTP/DB/provider effects NOT_RUN."
+}
