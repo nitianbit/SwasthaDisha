@@ -1,0 +1,95 @@
+{
+  "schema": "SD-AUTHORITY-HOST-BINDING-PROOF-1",
+  "status": "INERT_SOURCE_DATA_AST_ONLY_NO_EXECUTION",
+  "author": "/root/authority_operator",
+  "baseline": "c41fc26dc61bfc401ae60ea73a6bd874ec996e81",
+  "amendmentSha256": "693a8f7d109699fd14a612b8430d82d81f68e4e262cbd2b1ebff20895407bc2d",
+  "implementationDecisionsSha256": "ae29d94ffff8f6f2a41c0512edbe0d9a59dee0963ea57925d0cb06ce3b7018a3",
+  "oldFiveFiles": {
+    "REAL_OPERATOR.py": {
+      "sha256": "31d7e0d9a81a3ee065d1d92214dbba1c5f75efb29944f2857fc65d386c503a91",
+      "bytes": 39776
+    },
+    "REAL_RUN_MANIFEST.json": {
+      "sha256": "5b322915f718a89f5147346efea399705947f6925821d94bd63b23bb84701a24",
+      "bytes": 40524
+    },
+    "real-approval-template.json": {
+      "sha256": "4c28e0011f41a485767eec95502c840554f33d8cad1e16c2612578d738c26574",
+      "bytes": 1946
+    },
+    "REAL_OPERATOR_PREPARATION.md": {
+      "sha256": "e9651f6a4bab11657a46641afbb459814482d5c0a3e60271ea43e6e561fd9231",
+      "bytes": 6316
+    },
+    "REAL_OPERATOR_REVIEW_REQUEST.md": {
+      "sha256": "2e70a652164d7ea8d8149ee55786ac64699c46240e2ecc6235063b270dded98f",
+      "bytes": 1819
+    }
+  },
+  "operatorDelta": {
+    "onlyReplacement": {
+      "oldUtf8": "NODE = '/private/tmp/m0-node22/node'",
+      "newUtf8": "NODE = '/Users/shubham/.nvm/versions/node/v24.19.0/bin/node'",
+      "occurrences": 1
+    },
+    "oldBytes": 39776,
+    "newBytes": 39800,
+    "oldSha256": "31d7e0d9a81a3ee065d1d92214dbba1c5f75efb29944f2857fc65d386c503a91",
+    "newSha256": "3c43843467966b84998a9875704ad230a492bd66d5b096a639d964742fd533e8",
+    "inverseRecoveredOldSha256": "31d7e0d9a81a3ee065d1d92214dbba1c5f75efb29944f2857fc65d386c503a91",
+    "inverseByteIdentical": true,
+    "unifiedDiff": "--- node22-preparation/REAL_OPERATOR.py\n+++ REAL_OPERATOR.py\n@@ -27,7 +27,7 @@\n ONCE = QA / '.REAL_ONCE.json'\n AUTHOR = '/root/authority_operator'\n SCOPE = 'ONE_FIXED_AUTHORITY_PURE_RUN'\n-NODE = '/private/tmp/m0-node22/node'\n+NODE = '/Users/shubham/.nvm/versions/node/v24.19.0/bin/node'\n PYTHON = '/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14'\n DOCKER = '/Applications/Docker.app/Contents/Resources/bin/docker'\n ALIAS = pathlib.Path('/usr/local/bin/docker')\n"
+  },
+  "templateByteIdentical": true,
+  "manifestChangedJsonPointers": [
+    "/files/output~1qa~1authority-pure-runtime~1HOST_BINDING_PROOF.json",
+    "/files/output~1qa~1authority-pure-runtime~1HOST_NODE24_BINDING_AMENDMENT.md",
+    "/files/output~1qa~1authority-pure-runtime~1HOST_NODE24_PREIMPLEMENTATION.json",
+    "/files/output~1qa~1authority-pure-runtime~1REAL_OPERATOR.py/bytes",
+    "/files/output~1qa~1authority-pure-runtime~1REAL_OPERATOR.py/sha256",
+    "/files/output~1qa~1authority-pure-runtime~1REAL_OPERATOR_PREPARATION.md/bytes",
+    "/files/output~1qa~1authority-pure-runtime~1REAL_OPERATOR_PREPARATION.md/sha256",
+    "/files/output~1qa~1authority-pure-runtime~1REAL_OPERATOR_REVIEW_REQUEST.md/bytes",
+    "/files/output~1qa~1authority-pure-runtime~1REAL_OPERATOR_REVIEW_REQUEST.md/sha256",
+    "/files/output~1qa~1authority-pure-runtime~1node22-preparation~1ARCHIVE_MANIFEST.json",
+    "/files/output~1qa~1authority-pure-runtime~1node22-preparation~1REAL_OPERATOR.py",
+    "/files/output~1qa~1authority-pure-runtime~1node22-preparation~1REAL_OPERATOR_PREPARATION.md",
+    "/files/output~1qa~1authority-pure-runtime~1node22-preparation~1REAL_OPERATOR_REVIEW_REQUEST.md",
+    "/files/output~1qa~1authority-pure-runtime~1node22-preparation~1REAL_RUN_MANIFEST.json",
+    "/files/output~1qa~1authority-pure-runtime~1node22-preparation~1real-approval-template.json",
+    "/hostBindingAmendmentSha256",
+    "/preparationToolObservations",
+    "/tools/~1Users~1shubham~1.nvm~1versions~1node~1v24.19.0~1bin~1node",
+    "/tools/~1private~1tmp~1m0-node22~1node"
+  ],
+  "manifestDeltaScope": "Only host path/hash/size/mode/current metadata observations, operator/document byte records, exact old archive, reviewed amendment/votes and this proof added. Every unlisted source/tool/fixture/evidence/bundle/schema/leaf/grant/boundary field must remain byte/data identical. No self/future manifest hash.",
+  "documentDiffs": {
+    "REAL_OPERATOR_PREPARATION.md": "--- node22-preparation/REAL_OPERATOR_PREPARATION.md\n+++ REAL_OPERATOR_PREPARATION.md\n@@ -4,7 +4,7 @@\n \n The frozen eight-file source SHA is `7df6a0ba88c5cf1e19cb79fdbcfe3cf1e4ec67175d6f4b0102b817c868d554dc`. Historical `NOT_RUN` statements in the source/recipe are preparation history. The actual offline result `offline-actual/result.json`, SHA `dfa34ddafc26100da6a82c07a0e48a1010d202e5d8c188cd49831d20a8e112cc`, proves 350 passing fake checks on each of Node22 and Node24, accepted by two actual post-execution decisions. It supplies no real compiler, domain, bootstrap, Docker or provider proof.\n \n-`REAL_OPERATOR.py` admits no CLI selector, arbitrary target, environment forwarding or grants. The only host Node argv is `/private/tmp/m0-node22/node test/application/run-authority.mjs unix:///Users/shubham/.docker/run/docker.sock`, with exactly empty env and stdin DEVNULL. The selected metadata commands are three fixed Git queries per source checkpoint and read-only Docker engine/purpose-label/cached-image/exact-container queries. Git uses the pinned canonical CommandLineTools executable, no system/global Git config, no prompt, and disables fsmonitor/untracked cache. No hooks, model, compiler, test, SDK, database or application execution was used in preparing this operator.\n+`REAL_OPERATOR.py` admits no CLI selector, arbitrary target, environment forwarding or grants. The only host Node argv is `/Users/shubham/.nvm/versions/node/v24.19.0/bin/node test/application/run-authority.mjs unix:///Users/shubham/.docker/run/docker.sock`, with exactly empty env and stdin DEVNULL. The selected metadata commands are three fixed Git queries per source checkpoint and read-only Docker engine/purpose-label/cached-image/exact-container queries. Git uses the pinned canonical CommandLineTools executable, no system/global Git config, no prompt, and disables fsmonitor/untracked cache. No hooks, model, compiler, test, SDK, database or application execution was used in preparing this operator.\n \n Before any subprocess, validate all pinned files/tools, Docker alias and socket, private receipt and exclusive overall once claim. The Git clean HEAD/branch/status checks necessarily use the selected metadata subprocesses; they follow the overall claim and precede every Docker query. `launcherInvocations` stays zero through those queries, then becomes one immediately before the sole Node Popen. A metadata failure consumes the overall claim and grants no retry. This explicit sequencing implements the recipe together with Root's later instruction to consume the overall claim before metadata Popen.\n \n@@ -25,6 +25,6 @@\n \n 5. Preserve the allocated area, raw captures and result. Review the actual outcome and independent absence/source readbacks before accepting this bounded pure-module proof. Every failure requires review before another candidate. This is not full C3/M0/F01, financial/clinical, production or release acceptance.\n \n-A metadata-only preparation read found `/private/tmp/m0-node22/node` absent (ENOENT). The manifest preserves its exact recipe hash/size/owner/mode/single-link requirement; gid20 is an explicit same-owner-group admission requirement, not a current Node stat observation. No tool restoration or fallback was attempted. The operator must fail closed until that exact tool is separately restored and its metadata reverified. This preparation observation is not execution authority.\n+The approved host-binding amendment `HOST_NODE24_BINDING_AMENDMENT.md`, SHA `693a8f7d109699fd14a612b8430d82d81f68e4e262cbd2b1ebff20895407bc2d`, has two actual independent implementation-only decisions in `HOST_NODE24_PREIMPLEMENTATION.json`. It selects only the already installed host Node24.19.0, SHA `27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1`, regular/uid501/gid20/mode0755/nlink1/121306800bytes. Current bytes and metadata were reverified without execution. The Linux child remains pinned Node22.23.4 with the same source, compiler, bundle and grants. No download, Node22 restoration, default/runtime adoption or fallback occurred. Host real-transport behavior remains NOT_RUN. The exact five unexecuted old preparation files remain under `node22-preparation/`; `HOST_BINDING_PROOF.json` records the sole operator-byte replacement and exact inverse recovery. The old Node22 and original offline temporary paths are historical references; current verification uses the committed byte-identical `offline-actual/` archive and acceptance decisions, without requiring the vanished original scratch/capture paths. This amendment is preparation authority only; two fresh final nonauthor source-plus-one-run votes are still required.\n \n Preparation validation is AST/data-only. No real operator invocation, JavaScript parsing, Node version probe, compiler load, test campaign, Docker/socket connection or host-network probe is authorized by this document.\n",
+    "REAL_OPERATOR_REVIEW_REQUEST.md": "--- node22-preparation/REAL_OPERATOR_REVIEW_REQUEST.md\n+++ REAL_OPERATOR_REVIEW_REQUEST.md\n@@ -2,8 +2,8 @@\n \n Requested from TWO actual independent nonauthors, Standards and Spec, after Root's concrete source review and clean commit. Operator author `/root/authority_operator`; frozen source author `/root/claude_review_5_packet`. Neither may supply either vote. These are internal Codex technical decisions; no external/human/clinical/release approval is claimed.\n \n-Inspect the full `REAL_OPERATOR.py`, `REAL_RUN_MANIFEST.json`, `real-approval-template.json`, `REAL_OPERATOR_PREPARATION.md`, the unchanged8-file source freeze/source decisions, recipe/preimplementation decisions, actual700-fake-case result and post-execution decisions. Do not run the operator, Node/compiler, Docker or probes to review it.\n+Inspect the full `REAL_OPERATOR.py`, `REAL_RUN_MANIFEST.json`, `real-approval-template.json`, `REAL_OPERATOR_PREPARATION.md`, the unchanged8-file source freeze/source decisions, recipe/preimplementation decisions, actual700-fake-case committed archive and post-execution decisions, `HOST_NODE24_BINDING_AMENDMENT.md`, its two implementation-only decisions, exact old `node22-preparation/` archive and `HOST_BINDING_PROOF.json`. Do not run the operator, Node/compiler, Docker or probes to review it.\n \n-Review only `ONE_FIXED_AUTHORITY_PURE_RUN`: selected Node22 target/empty env, fixed canonical metadata commands/clean Git checkpoints, engine/socket/alias/cached image, closed post-commit private receipt and exclusive once claim, ownership-safe bounded captures, first-cause/cleanup separation, immediate early-ID retention, strict schema/raw observation reconciliation, unchanged C3 admission and independent exact absence. No retry, resource recovery/deletion, extra selectors/grants, image pull, DB/provider/model or root dependency/runtime adoption is included.\n+Review only `ONE_FIXED_AUTHORITY_PURE_RUN`: selected host Node24.19.0 target/empty env with unchanged Linux child Node22.23.4, fixed canonical metadata commands/clean Git checkpoints, engine/socket/alias/cached image, closed post-commit private receipt and exclusive once claim, ownership-safe bounded captures, first-cause/cleanup separation, immediate early-ID retention, strict schema/raw observation reconciliation, unchanged C3 admission and independent exact absence. No retry, resource recovery/deletion, extra selectors/grants, image pull, DB/provider/model or root dependency/runtime adoption is included.\n \n Report actual identity, role, exact clean commit, operator SHA, manifest SHA, source-freeze SHA, offline-result SHA, scope, material findings and decision. If no material findings remain and the exact invocation is approved, use `APPROVE_SOURCE_AND_ONE_FIXED_AUTHORITY_PURE_RUN` with `findings: []`. An implementation-only/source-only or stale vote cannot fill that role. Root records the real decisions in the private fixed receipt after commit; no admission exists until both exact decisions are supplied.\n"
+  },
+  "unchanged": {
+    "sourceFreezeSha256": "7df6a0ba88c5cf1e19cb79fdbcfe3cf1e4ec67175d6f4b0102b817c868d554dc",
+    "recipeSha256": "d5f53b4d53fabf238ed2721f2c9c4ee8749538a3a46a0d758ee3d61a3c4e14a7",
+    "offlineResultSha256": "dfa34ddafc26100da6a82c07a0e48a1010d202e5d8c188cd49831d20a8e112cc",
+    "childImage": "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
+    "childRuntime": "Linux Node22.23.4",
+    "compilerSha256": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+    "originalManifestFilesPreserved": 53,
+    "otherToolsPreserved": 4,
+    "dockerAliasAndSocketIdentityPreserved": true,
+    "caseIdsAndLeafProofsUnchanged": true,
+    "originalOfflineTempPaths": "Capture-time references only. Current read targets are committed offline-actual archive files; no original scratch/result read."
+  },
+  "checks": [
+    "Exact old five-file hashes/bytes preserved",
+    "One sole operator host-literal delta and exact inverse recovery",
+    "Unchanged receipt template bytes",
+    "Every prior manifest file unchanged except three binding document/operator records",
+    "Every prior tool unchanged except explicitly approved host executable",
+    "Current Node24 complete bytes+metadata match reviewed amendment",
+    "Existing Docker alias/socket identity unchanged without connection",
+    "Current committed offline raw result/TAP/acceptance hashes unchanged",
+    "AST parse only; no operator import/evaluation/process/Node/compiler/test/Docker/provider/model execution"
+  ]
+}

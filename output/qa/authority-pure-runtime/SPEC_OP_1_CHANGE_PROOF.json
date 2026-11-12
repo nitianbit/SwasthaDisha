@@ -1,0 +1,70 @@
+{
+  "schema": "SD-AUTHORITY-SPEC-OP-1-CHANGE-PROOF-1",
+  "author": "/root/authority_operator",
+  "status": "AMENDED_SOURCE_CANDIDATE_RE_REVIEW_PENDING_NO_EXECUTION",
+  "baseline": "c41fc26dc61bfc401ae60ea73a6bd874ec996e81",
+  "actualFinding": {
+    "path": "SPEC_OP_1_REVIEW.json",
+    "sha256": "c3c23ee93491a35c46467f25557c0f88f8e25c418c265abe212f8ebf2308facc",
+    "reviewer": "/root/payment_ctor_contract",
+    "decision": "CHANGES_REQUIRED",
+    "id": "SPEC-OP-1"
+  },
+  "preFixArchiveManifestSha256": "9ebb626ba6cdb1592e51f541cf9a22b5c1f10605e859bf0f7b4697a2af40124b",
+  "operatorBeforeSha256": "3c43843467966b84998a9875704ad230a492bd66d5b096a639d964742fd533e8",
+  "operatorAfterSha256": "2b4e9909cc668b30763e17cc04f89b31033476b14a136a7b0c99499c32a94136",
+  "sourceDiff": {
+    "path": "SPEC_OP_1_OPERATOR.diff",
+    "sha256": "38d2b2c99420b8a02d9ff156c138ebbacada1f57c1f4efd151f465a17d207ef6",
+    "bytes": 8879
+  },
+  "exactChangedASTSymbols": [
+    "Capture.__init__",
+    "Capture.command",
+    "Capture.complete",
+    "main"
+  ],
+  "allOtherASTSymbolsAndImportsConstantsGuardUnchanged": true,
+  "changes": [
+    "Add independent per-command unresolved/reasons/terminationRefused plus overall sticky processCleanupUnresolved",
+    "Append distinct cleanup diagnostics without replacing original firstProblem; retain original cause in overall report",
+    "Exited leader and non-EOF pipes latch unresolved without signaling stale group",
+    "Finite drain expiry, getpgid/killpg uncertainty, process wait/pipe/selector/capture close and ownership/finalization failure latch unresolved even as secondary errors",
+    "Group ownership/termination uncertainty permanently refuses further termination attempts",
+    "Command acceptance rejects unresolved rows; overall UNRESOLVED precedes BLOCKED/FAIL/PASS despite application-resource absence"
+  ],
+  "staticEdgeCaseDispositions": {
+    "leaderExitedPipeOpen": "No group adoption/kill; sticky unresolved before finite drain close",
+    "groupMismatchOrGetpgidError": "terminationRefused and unresolved remain sticky",
+    "killpgFailure": "No later termination attempt; original failure and cleanup diagnostic retained",
+    "waitUnestablished": "Final wait exception latches PROCESS_CLEANUP_FAILED unresolved",
+    "secondaryOwnershipLoss": "Unresolved independent of firstProblem code",
+    "metadataBeforeLauncher": "Overall unresolved branch precedes zero-launch BLOCKED",
+    "reapedEOFNonzero": "No uncertainty helper; ordinary nonzero failure remains",
+    "applicationAbsenceDespiteProcessUncertainty": "Overall unresolved cannot be cleared by application absence"
+  },
+  "templateByteIdentical": true,
+  "hostOnlyProofScope": "Archived spec-op-1-pre-fix operator/manifest/HOST_BINDING_PROOF preserve exact host-only inverse to node22-preparation. Current operator has this explicit additional cleanup delta.",
+  "manifestChangedJsonPointers": [
+    "/files/output~1qa~1authority-pure-runtime~1HOST_BINDING_PROOF.json/bytes",
+    "/files/output~1qa~1authority-pure-runtime~1HOST_BINDING_PROOF.json/sha256",
+    "/files/output~1qa~1authority-pure-runtime~1REAL_OPERATOR.py/bytes",
+    "/files/output~1qa~1authority-pure-runtime~1REAL_OPERATOR.py/sha256",
+    "/files/output~1qa~1authority-pure-runtime~1REAL_OPERATOR_PREPARATION.md/bytes",
+    "/files/output~1qa~1authority-pure-runtime~1REAL_OPERATOR_PREPARATION.md/sha256",
+    "/files/output~1qa~1authority-pure-runtime~1REAL_OPERATOR_REVIEW_REQUEST.md/bytes",
+    "/files/output~1qa~1authority-pure-runtime~1REAL_OPERATOR_REVIEW_REQUEST.md/sha256",
+    "/files/output~1qa~1authority-pure-runtime~1SPEC_OP_1_CHANGE_PROOF.json",
+    "/files/output~1qa~1authority-pure-runtime~1SPEC_OP_1_OPERATOR.diff",
+    "/files/output~1qa~1authority-pure-runtime~1SPEC_OP_1_REVIEW.json",
+    "/files/output~1qa~1authority-pure-runtime~1spec-op-1-pre-fix~1ARCHIVE_MANIFEST.json",
+    "/files/output~1qa~1authority-pure-runtime~1spec-op-1-pre-fix~1HOST_BINDING_PROOF.json",
+    "/files/output~1qa~1authority-pure-runtime~1spec-op-1-pre-fix~1REAL_OPERATOR.py",
+    "/files/output~1qa~1authority-pure-runtime~1spec-op-1-pre-fix~1REAL_OPERATOR_PREPARATION.md",
+    "/files/output~1qa~1authority-pure-runtime~1spec-op-1-pre-fix~1REAL_OPERATOR_REVIEW_REQUEST.md",
+    "/files/output~1qa~1authority-pure-runtime~1spec-op-1-pre-fix~1REAL_RUN_MANIFEST.json",
+    "/files/output~1qa~1authority-pure-runtime~1spec-op-1-pre-fix~1real-approval-template.json"
+  ],
+  "manifestDeltaScope": "Only four operator/preparation/review/history-proof file records updated; exact pre-fix archive, actual review provenance, source diff and this proof added. Every other manifest field/file/tool/source/bundle/leaf/receipt/grant unchanged. No manifest self hash/future HEAD.",
+  "validation": "AST/data/hash/metadata-only; no operator import or runtime/process tests. Static case dispositions are reasoning, not executed tests. Fresh independent review pending."
+}

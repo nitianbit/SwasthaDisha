@@ -1,0 +1,134 @@
+--- spec-op-1-pre-fix/REAL_OPERATOR.py
++++ REAL_OPERATOR.py
+@@ -181,7 +181,7 @@
+         self.report = {'status': 'IN_PROGRESS', 'approvedHead': approval['approvedHead'], 'operatorSha256': approval['operatorSha256'],
+                        'manifestSha256': approval['manifestSha256'], 'areaRetained': str(self.area), 'launcherInvocations': 0,
+                        'overallClaimConsumed': False, 'commands': [], 'firstProblem': None, 'secondaryProblems': [],
+-                       'cleanupErrors': [], 'resources': None, 'postchecks': {}, 'resultWritten': False}
++                       'cleanupErrors': [], 'processCleanupUnresolved': False, 'resources': None, 'postchecks': {}, 'resultWritten': False}
+         self.new('result.json', encoded(self.report))
+ 
+     def new(self, name, data):
+@@ -227,7 +227,7 @@
+         caps = {'stdout': 8192, 'stderr': 8192} if caps is None else caps
+         row = {'label': label, 'argv': argv, 'env': env, 'cwd': str(cwd), 'attempted': True, 'processStarted': False,
+                'pid': None, 'returnCode': None, 'executionLimitSeconds': seconds, 'cleanupLimitSeconds': 5,
+-               'firstProblem': None, 'secondaryProblems': [], 'cleanupErrors': [], 'captures': {
++               'firstProblem': None, 'secondaryProblems': [], 'cleanupErrors': [], 'unresolved': False, 'unresolvedReasons': [], 'terminationRefused': False, 'captures': {
+                    stream: {'path': str(self.area / (label + '.' + stream)), 'allocated': False, 'identity': None,
+                             'observedBytesAtLeast': 0, 'retainedBytes': 0, 'limit': cap, 'eof': False, 'complete': False,
+                             'ownershipVerified': False, 'sha256': None} for stream, cap in caps.items()}}
+@@ -243,12 +243,36 @@
+                 row['firstProblem'] = value
+             else:
+                 row['secondaryProblems'].append(value)
++        def unresolved(code, exc=None):
++            # Cleanup uncertainty never replaces the original timeout/overflow/error.
++            row['unresolved'] = True
++            self.report['processCleanupUnresolved'] = True
++            if code not in row['unresolvedReasons']:
++                row['unresolvedReasons'].append(code)
++                row['cleanupErrors'].append({'code': code, 'type': None if exc is None else type(exc).__name__,
++                                             'message': None if exc is None else str(exc)[:2048]})
++            if row['firstProblem'] is None:
++                problem(code, exc)
++            if self.report['firstProblem'] is None:
++                self.report['firstProblem'] = row['firstProblem']
+         def terminate():
+             nonlocal killed
+-            if proc is not None and proc.poll() is None and not killed:
++            if proc is None or killed or row['terminationRefused']:
++                return
++            try:
++                if proc.poll() is not None:
++                    if any(not c['eof'] for c in row['captures'].values()):
++                        # The exited leader cannot prove ownership of pipe holders.
++                        # Do not signal a stale/reused group or infer their absence.
++                        unresolved('EXITED_LEADER_OPEN_PIPES_UNRESOLVED')
++                    return
+                 require(os.getpgid(proc.pid) == proc.pid, 'Owned new process group lost')
+                 os.killpg(proc.pid, signal.SIGKILL)
+                 killed = True
++            except BaseException as exc:
++                row['terminationRefused'] = True
++                unresolved('PROCESS_GROUP_OWNERSHIP_OR_TERMINATION_UNKNOWN', exc)
++                raise
+         try:
+             self.save()
+             self.owned()
+@@ -282,7 +306,9 @@
+                     cleanup_deadline = time.monotonic() + 5
+                 if cleanup_deadline is not None:
+                     terminate()
+-                    require(time.monotonic() < cleanup_deadline, 'Finite pipe cleanup expired')
++                    if time.monotonic() >= cleanup_deadline:
++                        unresolved('PIPE_DRAIN_DEADLINE_UNRESOLVED')
++                        raise RuntimeError('Finite pipe cleanup expired')
+                 for key, _ in selector.select(0.05):
+                     block = os.read(key.fd, 4096)
+                     capture = row['captures'][key.data]
+@@ -340,22 +366,24 @@
+                     terminate()
+                     row['returnCode'] = proc.wait(timeout=max(0, cleanup_deadline - time.monotonic()))
+                 except BaseException as exc:
+-                    row['cleanupErrors'].append({'code': 'PROCESS_CLEANUP_FAILED', 'type': type(exc).__name__, 'message': str(exc)[:2048]})
++                    unresolved('PROCESS_CLEANUP_FAILED', exc)
++                if any(not c['eof'] for c in row['captures'].values()):
++                    unresolved('PIPE_EOF_UNRESOLVED_AT_FINALIZATION')
+                 for pipe in [proc.stdout, proc.stderr]:
+                     try:
+                         pipe.close()
+                     except BaseException as exc:
+-                        row['cleanupErrors'].append({'code': 'PIPE_CLOSE_FAILED', 'type': type(exc).__name__})
++                        unresolved('PIPE_CLOSE_FAILED', exc)
+             if selector is not None:
+                 try:
+                     selector.close()
+                 except BaseException as exc:
+-                    row['cleanupErrors'].append({'code': 'SELECTOR_CLOSE_FAILED', 'type': type(exc).__name__})
++                    unresolved('SELECTOR_CLOSE_FAILED', exc)
+             for fd in handles.values():
+                 try:
+                     os.close(fd)
+                 except BaseException as exc:
+-                    row['cleanupErrors'].append({'code': 'CAPTURE_CLOSE_FAILED', 'type': type(exc).__name__})
++                    unresolved('CAPTURE_CLOSE_FAILED', exc)
+             try:
+                 self.owned()
+                 for stream, capture in row['captures'].items():
+@@ -370,7 +398,7 @@
+                     capture['complete'] = capture['eof'] and capture['observedBytesAtLeast'] == len(data) and row['firstProblem'] is None and not row['cleanupErrors']
+                 self.save()
+             except BaseException as exc:
+-                problem('OWNERSHIP_OR_FINALIZATION_UNRESOLVED', exc)
++                unresolved('OWNERSHIP_OR_FINALIZATION_UNRESOLVED', exc)
+         return row
+ 
+     def text(self, row, stream, partial=False):
+@@ -382,7 +410,7 @@
+         return data.decode('utf-8', errors='replace' if partial else 'strict')
+ 
+     def complete(self, row):
+-        require(row['firstProblem'] is None and not row['cleanupErrors'] and all(c['complete'] for c in row['captures'].values()), 'Command evidence incomplete: ' + row['label'])
++        require(not row['unresolved'] and row['firstProblem'] is None and not row['cleanupErrors'] and all(c['complete'] for c in row['captures'].values()), 'Command evidence incomplete: ' + row['label'])
+ 
+     def git_clean(self, phase):
+         fixed = [([GIT, 'rev-parse', '--verify', 'HEAD'], self.approval['approvedHead'] + '\n'),
+@@ -622,11 +650,13 @@
+             if capture.report['firstProblem'] is None:
+                 capture.report['firstProblem'] = {'code': 'AUTHORITY_ACCEPTANCE_FAILED', 'type': type(exc).__name__, 'message': str(exc)[:2048]}
+         cleanup = capture.report['postchecks'] == {'sameEngine': True, 'zeroPurposeLabels': True, 'exactContainerAbsent': True, 'workspaceENOENT': True}
+-        all_rows = all(row['firstProblem'] is None and not row['cleanupErrors'] for row in capture.report['commands'])
+-        if capture.report['launcherInvocations'] == 0:
++        all_rows = all(not row['unresolved'] and row['firstProblem'] is None and not row['cleanupErrors'] for row in capture.report['commands'])
++        # Process/ownership uncertainty has precedence even when the launcher never
++        # started or independent application-resource absence was established.
++        if capture.report['processCleanupUnresolved'] or any(row['unresolved'] or row['cleanupErrors'] for row in capture.report['commands']):
++            capture.report['status'] = 'UNRESOLVED'
++        elif capture.report['launcherInvocations'] == 0:
+             capture.report['status'] = 'BLOCKED_BEFORE_LAUNCH'
+-            if any(r['firstProblem'] and r['firstProblem']['code'] == 'OWNERSHIP_OR_FINALIZATION_UNRESOLVED' for r in capture.report['commands']):
+-                capture.report['status'] = 'UNRESOLVED'
+         elif cleanup and capture.report['resources'] is not None and not capture.report.get('resourceIdentityUnresolved'):
+             capture.report['status'] = 'PASS' if capture.report.get('authorityEvidenceVerified') and all_rows and capture.report['firstProblem'] is None and not capture.report['cleanupErrors'] and not capture.report['secondaryProblems'] else 'FAIL'
+         else:
