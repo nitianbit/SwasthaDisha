@@ -43,6 +43,7 @@ import pharmacySubscriptionRouter from '@/modules/pharmacySubscriptions/routes';
 import patientTrackingRouter from '@/modules/patientTracking/routes';
 import pharmacyTrackingRouter from '@/modules/pharmacyTracking/routes';
 import pharmacyCartRouter from '@/modules/pharmacyCart/routes';
+import pharmacySupplierRouter from '@/modules/pharmacySuppliers/routes';
 import { FileController } from '@/modules/file/controller';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { authenticate, authenticateOptional } from '@/modules/middleware';
@@ -92,6 +93,7 @@ export const configureRoutes = (app: Express): void => {
   app.use('/api/v1/pharmacy-cart', authenticate, pharmacyCartRouter);
   app.use('/api/v1/pharmacy-customers', authenticate, pharmacyCustomerRouter);
   app.use('/api/v1/pharmacy-orders', authenticate, pharmacyOrderRouter);
+  app.use('/api/v1/pharmacy-suppliers', authenticate, pharmacySupplierRouter);
   app.use('/api/v1/pharmacy-orders/:orderId/health-check', authenticate, orderHealthCheckRouter);
   app.use('/api/v1/pharmacy-wallet', authenticate, pharmacyWalletRouter);
   app.use('/api/v1/pharmacy-inventory-imports', authenticate, pharmacyInventoryImportRouter);

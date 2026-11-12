@@ -1,0 +1,470 @@
+diff --git a/src1/modules/pharmacySuppliers/controller/index.ts b/src1/modules/pharmacySuppliers/controller/index.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..c816b5f76542b40764862e25951ca68e8f386ed0
+--- /dev/null
++++ b/src1/modules/pharmacySuppliers/controller/index.ts
+@@ -0,0 +1,45 @@
++import 'reflect-metadata';
++import { Response, NextFunction } from 'express';
++import { Container } from 'typedi';
++import { AuthRequest } from '@/modules/middleware/auth';
++import { PharmacySupplierService } from '@/modules/pharmacySuppliers/services';
++import { supplierUnavailable } from '@/modules/pharmacySuppliers/validation';
++
++export class PharmacySupplierController {
++  private service = Container.get(PharmacySupplierService);
++
++  private reply(res: Response, status: number, payload: unknown): void {
++    const body = JSON.stringify(payload);
++    if (typeof body !== 'string' || Buffer.byteLength(body, 'utf8') >= 512 * 1024) throw supplierUnavailable();
++    res.setHeader('Cache-Control', 'private, no-store');
++    res.status(status).type('application/json').send(body);
++  }
++
++  create = async (req: AuthRequest, res: Response, _next: NextFunction) => {
++    const data = await this.service.create(req.user?.pharmacyId, req.user?._id, req.body);
++    this.reply(res, 201, { success: true, data });
++  };
++
++  update = async (req: AuthRequest, res: Response, _next: NextFunction) => {
++    const data = await this.service.update(req.user?.pharmacyId, req.user?._id, req.params.id, req.body);
++    this.reply(res, 200, { success: true, data });
++  };
++
++  archive = async (req: AuthRequest, res: Response, _next: NextFunction) => {
++    const data = await this.service.archive(req.user?.pharmacyId, req.user?._id, req.params.id, req.body);
++    this.reply(res, 200, { success: true, data });
++  };
++
++  list = async (req: AuthRequest, res: Response, _next: NextFunction) => {
++    const query = {
++      state: req.query.state,
++      page: req.query.page === undefined ? 1 : Number(req.query.page),
++      limit: req.query.limit === undefined ? 20 : Number(req.query.limit),
++    };
++    const result = await this.service.list(req.user?.pharmacyId, query);
++    this.reply(res, 200, {
++      success: true, data: result.data,
++      pagination: { page: result.page, limit: result.limit, total: result.total, totalPages: result.totalPages },
++    });
++  };
++}
+diff --git a/src1/modules/pharmacySuppliers/model/index.ts b/src1/modules/pharmacySuppliers/model/index.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..92d67577a764a5987acda95443e9f98275123517
+--- /dev/null
++++ b/src1/modules/pharmacySuppliers/model/index.ts
+@@ -0,0 +1,20 @@
++import { Schema, model } from 'mongoose';
++import { IPharmacySupplier, SUPPLIER_TEXT_LIMITS } from '@/modules/pharmacySuppliers/types';
++
++const supplierSchema = new Schema<IPharmacySupplier>({
++  schemaVersion: { type: Number, required: true, enum: [1], immutable: true },
++  pharmacyId: { type: Schema.Types.ObjectId, required: true, immutable: true },
++  displayName: { type: String, required: true, maxlength: SUPPLIER_TEXT_LIMITS.displayName },
++  contactName: { type: String, default: null, maxlength: SUPPLIER_TEXT_LIMITS.contactName },
++  phone: { type: String, default: null, maxlength: SUPPLIER_TEXT_LIMITS.phone },
++  email: { type: String, default: null, maxlength: SUPPLIER_TEXT_LIMITS.email },
++  address: { type: String, default: null, maxlength: SUPPLIER_TEXT_LIMITS.address },
++  state: { type: String, required: true, enum: ['active', 'archived'] },
++  revision: { type: Number, required: true, min: 1, max: Number.MAX_SAFE_INTEGER, validate: Number.isSafeInteger },
++  createdByActorId: { type: String, required: true, immutable: true, match: /^[0-9a-f]{24}$/ },
++  updatedByActorId: { type: String, required: true, match: /^[0-9a-f]{24}$/ },
++  archivedAt: { type: Date, default: null },
++}, { strict: 'throw', timestamps: true, versionKey: false, autoCreate: false, autoIndex: false });
++
++// A future admitted first insert may create the namespace/default _id index.
++export default model<IPharmacySupplier>('PharmacySupplier', supplierSchema, 'pharmacy_suppliers');
+diff --git a/src1/modules/pharmacySuppliers/repository/index.ts b/src1/modules/pharmacySuppliers/repository/index.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..8896a8e894dbebc7fe8c727d4ee6f53fcc13fa60
+--- /dev/null
++++ b/src1/modules/pharmacySuppliers/repository/index.ts
+@@ -0,0 +1,163 @@
++import { Service } from 'typedi';
++import { PipelineStage, Types } from 'mongoose';
++import PharmacySupplierModel from '@/modules/pharmacySuppliers/model';
++import { AppError } from '@/modules/common/types';
++import { SUPPLIER_FIELDS, SupplierDto, SupplierPage } from '@/modules/pharmacySuppliers/types';
++import {
++  assertSupplierBody, assertSupplierId, assertSupplierScope, isSupplierId,
++  normalizeSupplierCommand, normalizeSupplierQuery, supplierConflict,
++  supplierUnavailable, validStoredSupplierFields,
++} from '@/modules/pharmacySuppliers/validation';
++
++const supplierProjection = {
++  _id: 1, schemaVersion: 1, pharmacyId: 1, displayName: 1, contactName: 1, phone: 1, email: 1, address: 1,
++  state: 1, revision: 1, createdByActorId: 1, updatedByActorId: 1, createdAt: 1, updatedAt: 1, archivedAt: 1,
++};
++const supplierKeys = Object.keys(supplierProjection);
++const validDate = (value: unknown): value is Date => value instanceof Date &&
++  Number.isSafeInteger(value.getTime()) && value.getTime() >= 0 && value.getTime() <= 8640000000000000;
++
++function supplierDto(value: unknown, pharmacyId: string, id?: string): SupplierDto {
++  if (!value || typeof value !== 'object' || Array.isArray(value) ||
++    ![Object.prototype, null].includes(Object.getPrototypeOf(value))) throw supplierUnavailable();
++  const row = value as Record<string, unknown>;
++  const keys = Reflect.ownKeys(row);
++  if (keys.length !== supplierKeys.length || !keys.every(key => typeof key === 'string' && supplierKeys.includes(key) &&
++    Object.getOwnPropertyDescriptor(row, key)?.enumerable === true &&
++    'value' in Object.getOwnPropertyDescriptor(row, key)!)) throw supplierUnavailable();
++  if (!(row._id instanceof Types.ObjectId) || !(row.pharmacyId instanceof Types.ObjectId) ||
++    row.pharmacyId.toHexString() !== pharmacyId || (id !== undefined && row._id.toHexString() !== id) ||
++    row.schemaVersion !== 1 || !isSupplierId(row.createdByActorId) || !isSupplierId(row.updatedByActorId) ||
++    typeof row.revision !== 'number' || !Number.isSafeInteger(row.revision) || row.revision < 1 ||
++    (row.state !== 'active' && row.state !== 'archived') || !validDate(row.createdAt) || !validDate(row.updatedAt)) throw supplierUnavailable();
++  const archivedAt = row.archivedAt;
++  if (archivedAt !== null && !validDate(archivedAt)) throw supplierUnavailable();
++  if ((row.state === 'active' && archivedAt !== null) || (row.state === 'archived' && archivedAt === null)) throw supplierUnavailable();
++  const fields = { displayName: row.displayName, contactName: row.contactName, phone: row.phone, email: row.email, address: row.address };
++  if (!validStoredSupplierFields(fields)) throw supplierUnavailable();
++  return {
++    supplierId: row._id.toHexString(), displayName: fields.displayName, contactName: fields.contactName,
++    phone: fields.phone, email: fields.email, address: fields.address, state: row.state, revision: row.revision,
++    createdAt: row.createdAt.toISOString(), updatedAt: row.updatedAt.toISOString(),
++    archivedAt: archivedAt === null ? null : archivedAt.toISOString(), verificationState: 'not_evaluated',
++  };
++}
++
++@Service()
++export class PharmacySupplierRepository {
++  private owned(pharmacyId: string, id: string) {
++    return {
++      _id: new Types.ObjectId(id), pharmacyId: new Types.ObjectId(pharmacyId),
++      $expr: { $and: [
++        { $eq: [{ $type: '$_id' }, 'objectId'] },
++        { $eq: [{ $type: '$pharmacyId' }, 'objectId'] },
++      ] },
++    };
++  }
++
++  private async getOwned(pharmacyId: string, id: string): Promise<SupplierDto> {
++    const row = await PharmacySupplierModel.findOne(this.owned(pharmacyId, id))
++      .select(supplierProjection).maxTimeMS(2000).lean().exec();
++    if (!row) throw new AppError({ status: 404, code: 'SUPPLIER_NOT_FOUND', message: 'Supplier not found' });
++    return supplierDto(row, pharmacyId, id);
++  }
++
++  async create(pharmacyId: unknown, actorId: unknown, body: unknown): Promise<SupplierDto> {
++    assertSupplierScope(pharmacyId);
++    assertSupplierScope(actorId);
++    assertSupplierBody(body);
++    const command = normalizeSupplierCommand('create', body);
++    const now = new Date();
++    const row = new PharmacySupplierModel({
++      schemaVersion: 1, pharmacyId: new Types.ObjectId(pharmacyId),
++      displayName: command.fields.displayName, contactName: command.fields.contactName,
++      phone: command.fields.phone, email: command.fields.email, address: command.fields.address,
++      state: 'active', revision: 1, createdByActorId: actorId, updatedByActorId: actorId,
++      createdAt: now, updatedAt: now, archivedAt: null,
++    });
++    await row.save();
++    return supplierDto(row.toObject(), pharmacyId);
++  }
++
++  async update(pharmacyId: unknown, actorId: unknown, id: unknown, body: unknown): Promise<SupplierDto> {
++    assertSupplierScope(pharmacyId);
++    assertSupplierScope(actorId);
++    assertSupplierId(id);
++    assertSupplierBody(body);
++    const current = await this.getOwned(pharmacyId, id);
++    const command = normalizeSupplierCommand('update', body);
++    if (current.state === 'archived' || current.revision !== command.expectedRevision) throw supplierConflict();
++    const set: Record<string, unknown> = { updatedByActorId: actorId, updatedAt: new Date() };
++    for (const field of SUPPLIER_FIELDS) {
++      if (Object.prototype.hasOwnProperty.call(command.fields, field)) set[field] = command.fields[field];
++    }
++    const row = await PharmacySupplierModel.findOneAndUpdate({
++      ...this.owned(pharmacyId, id), state: 'active', revision: command.expectedRevision,
++      $and: [{ $expr: { $eq: [{ $type: '$state' }, 'string'] } }],
++    }, { $set: set, $inc: { revision: 1 } }, { new: true, upsert: false, runValidators: true }).lean().exec();
++    if (!row) throw supplierConflict();
++    return supplierDto(row, pharmacyId, id);
++  }
++
++  async archive(pharmacyId: unknown, actorId: unknown, id: unknown, body: unknown): Promise<SupplierDto> {
++    assertSupplierScope(pharmacyId);
++    assertSupplierScope(actorId);
++    assertSupplierId(id);
++    assertSupplierBody(body);
++    const current = await this.getOwned(pharmacyId, id);
++    const command = normalizeSupplierCommand('archive', body);
++    if (current.state === 'archived') return current;
++    if (current.revision !== command.expectedRevision) throw supplierConflict();
++    const now = new Date();
++    const row = await PharmacySupplierModel.findOneAndUpdate({
++      ...this.owned(pharmacyId, id), state: 'active', revision: command.expectedRevision,
++      $and: [{ $expr: { $eq: [{ $type: '$state' }, 'string'] } }],
++    }, { $set: { state: 'archived', archivedAt: now, updatedAt: now, updatedByActorId: actorId }, $inc: { revision: 1 } },
++    { new: true, upsert: false, runValidators: true }).lean().exec();
++    if (!row) throw supplierConflict();
++    return supplierDto(row, pharmacyId, id);
++  }
++
++  async list(pharmacyId: unknown, input: unknown): Promise<SupplierPage> {
++    assertSupplierScope(pharmacyId);
++    const query = normalizeSupplierQuery(input);
++    const { state, page, limit } = query;
++    const states = state === 'all' ? ['active', 'archived'] : [state];
++    const skip = (page - 1) * limit;
++    const pipeline: PipelineStage[] = [
++      { $match: {
++        pharmacyId: new Types.ObjectId(pharmacyId), state: { $in: states },
++        $expr: { $and: [
++          { $eq: [{ $type: '$pharmacyId' }, 'objectId'] },
++          { $eq: [{ $type: '$state' }, 'string'] },
++        ] },
++      } },
++      { $project: supplierProjection },
++      { $facet: { metadata: [{ $count: 'total' }], data: [{ $sort: { _id: 1 } }, { $skip: skip }, { $limit: limit }] } },
++    ];
++    const result = await PharmacySupplierModel.aggregate<unknown>(pipeline).option({ maxTimeMS: 2000, allowDiskUse: false }).exec();
++    const record = (value: unknown, names: string[]): Record<string, unknown> => {
++      if (!value || typeof value !== 'object' || Array.isArray(value) ||
++        ![Object.prototype, null].includes(Object.getPrototypeOf(value))) throw supplierUnavailable();
++      const keys = Reflect.ownKeys(value);
++      if (keys.length !== names.length || !keys.every(key => typeof key === 'string' && names.includes(key) &&
++        Object.getOwnPropertyDescriptor(value, key)?.enumerable === true &&
++        'value' in Object.getOwnPropertyDescriptor(value, key)!)) throw supplierUnavailable();
++      return value as Record<string, unknown>;
++    };
++    if (!Array.isArray(result) || result.length !== 1) throw supplierUnavailable();
++    const facet = record(result[0], ['metadata', 'data']);
++    const metadata = facet.metadata;
++    const rows = facet.data;
++    if (!Array.isArray(metadata) || metadata.length > 1 || !Array.isArray(rows) || rows.length > limit) throw supplierUnavailable();
++    let total = 0;
++    if (metadata.length) {
++      const count = record(metadata[0], ['total']);
++      if (typeof count.total !== 'number' || !Number.isSafeInteger(count.total) || count.total < 0) throw supplierUnavailable();
++      total = count.total;
++    }
++    if (rows.length !== Math.min(limit, Math.max(0, total - skip))) throw supplierUnavailable();
++    const data = rows.map(row => supplierDto(row, pharmacyId));
++    return { data, state, page, limit, total, totalPages: Math.ceil(total / limit) };
++  }
++}
+diff --git a/src1/modules/pharmacySuppliers/routes/index.ts b/src1/modules/pharmacySuppliers/routes/index.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..0084aab5db0478ba5d80dfb516cc648bdcc42575
+--- /dev/null
++++ b/src1/modules/pharmacySuppliers/routes/index.ts
+@@ -0,0 +1,18 @@
++import 'reflect-metadata';
++import { Router } from 'express';
++import { requireOperationalPharmacy } from '@/modules/middleware/auth';
++import { validate } from '@/modules/common/middleware/validation';
++import { catchAsync } from '@/modules/common/utils/asyncHandler';
++import { PharmacySupplierController } from '@/modules/pharmacySuppliers/controller';
++import { supplierListQuerySchema } from '@/modules/pharmacySuppliers/validation';
++
++const supplierRouter = Router();
++const controller = new PharmacySupplierController();
++
++supplierRouter.get('/', requireOperationalPharmacy, validate(supplierListQuerySchema, 'query'), catchAsync(controller.list));
++// Raw write keys reach the authoritative owned command flow unchanged.
++supplierRouter.post('/', requireOperationalPharmacy, catchAsync(controller.create));
++supplierRouter.patch('/:id', requireOperationalPharmacy, catchAsync(controller.update));
++supplierRouter.post('/:id/archive', requireOperationalPharmacy, catchAsync(controller.archive));
++
++export default supplierRouter;
+diff --git a/src1/modules/pharmacySuppliers/services/index.ts b/src1/modules/pharmacySuppliers/services/index.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..c57d656b5e729987a0027619dce3c65c6289fb9c
+--- /dev/null
++++ b/src1/modules/pharmacySuppliers/services/index.ts
+@@ -0,0 +1,23 @@
++import { Service } from 'typedi';
++import { PharmacySupplierRepository } from '@/modules/pharmacySuppliers/repository';
++
++@Service()
++export class PharmacySupplierService {
++  constructor(private supplierRepository: PharmacySupplierRepository) {}
++
++  create(pharmacyId: unknown, actorId: unknown, body: unknown) {
++    return this.supplierRepository.create(pharmacyId, actorId, body);
++  }
++
++  update(pharmacyId: unknown, actorId: unknown, id: unknown, body: unknown) {
++    return this.supplierRepository.update(pharmacyId, actorId, id, body);
++  }
++
++  archive(pharmacyId: unknown, actorId: unknown, id: unknown, body: unknown) {
++    return this.supplierRepository.archive(pharmacyId, actorId, id, body);
++  }
++
++  list(pharmacyId: unknown, query: unknown) {
++    return this.supplierRepository.list(pharmacyId, query);
++  }
++}
+diff --git a/src1/modules/pharmacySuppliers/types/index.ts b/src1/modules/pharmacySuppliers/types/index.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..6694fb0aa70afe2e84aa486b28700a00f9cd004b
+--- /dev/null
++++ b/src1/modules/pharmacySuppliers/types/index.ts
+@@ -0,0 +1,47 @@
++import { Types } from 'mongoose';
++
++export const SUPPLIER_FIELDS = ['displayName', 'contactName', 'phone', 'email', 'address'] as const;
++export const SUPPLIER_TEXT_LIMITS = { displayName: 120, contactName: 120, phone: 32, email: 254, address: 500 } as const;
++export type SupplierState = 'active' | 'archived';
++export interface SupplierFields {
++  displayName: string;
++  contactName: string | null;
++  phone: string | null;
++  email: string | null;
++  address: string | null;
++}
++export interface IPharmacySupplier extends SupplierFields {
++  _id: Types.ObjectId;
++  schemaVersion: 1;
++  pharmacyId: Types.ObjectId;
++  state: SupplierState;
++  revision: number;
++  createdByActorId: string;
++  updatedByActorId: string;
++  createdAt: Date;
++  updatedAt: Date;
++  archivedAt: Date | null;
++}
++export interface SupplierDto extends SupplierFields {
++  supplierId: string;
++  state: SupplierState;
++  revision: number;
++  createdAt: string;
++  updatedAt: string;
++  archivedAt: string | null;
++  verificationState: 'not_evaluated';
++}
++export interface SupplierListQuery {
++  state: SupplierState | 'all';
++  page: number;
++  limit: number;
++}
++export interface SupplierPage extends SupplierListQuery {
++  data: SupplierDto[];
++  total: number;
++  totalPages: number;
++}
++export type SupplierCommand =
++  | { kind: 'create'; fields: SupplierFields }
++  | { kind: 'update'; fields: Partial<SupplierFields>; expectedRevision: number }
++  | { kind: 'archive'; expectedRevision: number };
+diff --git a/src1/modules/pharmacySuppliers/validation/index.ts b/src1/modules/pharmacySuppliers/validation/index.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..c6c3b3d24830aa9593db8b72719b5f42ecbf830f
+--- /dev/null
++++ b/src1/modules/pharmacySuppliers/validation/index.ts
+@@ -0,0 +1,92 @@
++import Joi from 'joi';
++import { AppError } from '@/modules/common/types';
++import { SUPPLIER_FIELDS, SUPPLIER_TEXT_LIMITS, SupplierCommand, SupplierFields, SupplierListQuery } from '@/modules/pharmacySuppliers/types';
++
++export const supplierUnavailable = () => new AppError({
++  status: 503, code: 'SUPPLIER_MASTER_UNAVAILABLE', message: 'Supplier master is unavailable',
++});
++export const supplierConflict = () => new AppError({ status: 409, code: 'SUPPLIER_CONFLICT', message: 'Supplier changed' });
++const invalidRequest = () => new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid supplier request' });
++const invalidQuery = () => new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid supplier query' });
++export const isSupplierId = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f]{24}$/.test(value);
++export function assertSupplierScope(value: unknown): asserts value is string {
++  if (!isSupplierId(value)) throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
++}
++export function assertSupplierId(value: unknown): asserts value is string {
++  if (!isSupplierId(value)) throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid supplier ID' });
++}
++export function assertSupplierBody(value: unknown): asserts value is Record<string, unknown> {
++  if (!value || typeof value !== 'object' || Array.isArray(value) ||
++    ![Object.prototype, null].includes(Object.getPrototypeOf(value))) throw invalidRequest();
++}
++const fieldsSchema = Joi.object({
++  displayName: Joi.string().trim().min(1).max(SUPPLIER_TEXT_LIMITS.displayName).required(),
++  contactName: Joi.string().trim().min(1).max(SUPPLIER_TEXT_LIMITS.contactName).allow(null).required(),
++  phone: Joi.string().trim().min(1).max(SUPPLIER_TEXT_LIMITS.phone).pattern(/^[+0-9(). -]+$/).allow(null).required(),
++  email: Joi.string().trim().email({ tlds: { allow: false } }).max(SUPPLIER_TEXT_LIMITS.email).allow(null).required(),
++  address: Joi.string().trim().min(1).max(SUPPLIER_TEXT_LIMITS.address).allow(null).required(),
++}).unknown(false);
++const patchSchema = fieldsSchema.fork([...SUPPLIER_FIELDS], field => field.optional()).min(1);
++const options = { convert: false, stripUnknown: false, abortEarly: false };
++export function validStoredSupplierFields(value: unknown): value is SupplierFields {
++  return !fieldsSchema.validate(value, options).error;
++}
++export function normalizeSupplierCommand(kind: 'create', body: Record<string, unknown>): Extract<SupplierCommand, { kind: 'create' }>;
++export function normalizeSupplierCommand(kind: 'update', body: Record<string, unknown>): Extract<SupplierCommand, { kind: 'update' }>;
++export function normalizeSupplierCommand(kind: 'archive', body: Record<string, unknown>): Extract<SupplierCommand, { kind: 'archive' }>;
++export function normalizeSupplierCommand(kind: SupplierCommand['kind'], body: Record<string, unknown>): SupplierCommand {
++  const allowed: readonly string[] = kind === 'create' ? SUPPLIER_FIELDS
++    : kind === 'update' ? [...SUPPLIER_FIELDS, 'expectedRevision'] : ['expectedRevision'];
++  const keys = Reflect.ownKeys(body);
++  if (keys.some(key => typeof key !== 'string' || !allowed.includes(key))) {
++    throw new AppError({ status: 422, code: 'FORBIDDEN_FIELD', message: 'One or more fields cannot be changed through this endpoint' });
++  }
++  for (const key of keys) {
++    const descriptor = Object.getOwnPropertyDescriptor(body, key)!;
++    if (!descriptor.enumerable || !('value' in descriptor)) throw invalidRequest();
++  }
++  for (const key of keys) {
++    if (Object.getOwnPropertyDescriptor(body, key)!.value === undefined) throw invalidRequest();
++  }
++  const fields: Record<string, unknown> = {};
++  if (kind !== 'archive') {
++    for (const key of SUPPLIER_FIELDS) {
++      const descriptor = Object.getOwnPropertyDescriptor(body, key);
++      if (!descriptor && kind === 'update') continue;
++      if (!descriptor) { fields[key] = key === 'displayName' ? undefined : null; continue; }
++      const value = descriptor.value;
++      if (value === null) fields[key] = null;
++      else if (typeof value === 'string') {
++        const normalized = value.trim();
++        fields[key] = key !== 'displayName' && normalized.length === 0 ? null : normalized;
++      } else throw invalidRequest();
++    }
++    if ((kind === 'create' ? fieldsSchema : patchSchema).validate(fields, options).error) throw invalidRequest();
++  }
++  if (kind === 'create') return { kind, fields: fields as unknown as SupplierFields };
++  const expectedRevision = Object.getOwnPropertyDescriptor(body, 'expectedRevision')?.value;
++  if (typeof expectedRevision !== 'number' || !Number.isSafeInteger(expectedRevision) ||
++    expectedRevision < 1 || expectedRevision >= Number.MAX_SAFE_INTEGER) throw invalidRequest();
++  return kind === 'archive' ? { kind, expectedRevision } : { kind, fields: fields as Partial<SupplierFields>, expectedRevision };
++}
++export const supplierListQuerySchema = Joi.object({
++  state: Joi.string().valid('active', 'archived', 'all').optional(),
++  page: Joi.number().integer().min(1).max(1000).optional(),
++  limit: Joi.number().integer().min(1).max(50).optional(),
++  pharmacyId: Joi.forbidden(),
++});
++export function normalizeSupplierQuery(value: unknown): SupplierListQuery {
++  if (!value || typeof value !== 'object' || Array.isArray(value) ||
++    ![Object.prototype, null].includes(Object.getPrototypeOf(value))) throw invalidQuery();
++  for (const key of Reflect.ownKeys(value)) {
++    const descriptor = Object.getOwnPropertyDescriptor(value, key)!;
++    if (typeof key !== 'string' || !['state', 'page', 'limit'].includes(key) ||
++      !descriptor.enumerable || !('value' in descriptor)) throw invalidQuery();
++  }
++  const state = Object.getOwnPropertyDescriptor(value, 'state')?.value;
++  const page = Object.getOwnPropertyDescriptor(value, 'page')?.value;
++  const limit = Object.getOwnPropertyDescriptor(value, 'limit')?.value;
++  const query = { state: state === undefined ? 'active' : state, page: page === undefined ? 1 : page, limit: limit === undefined ? 20 : limit };
++  if (supplierListQuerySchema.validate(query, options).error) throw invalidQuery();
++  return query as SupplierListQuery;
++}
+diff --git a/src1/routes/index.ts b/src1/routes/index.ts
+index 6775c8ea62a60c2f8e8e1ee53752a58cfea76ede..df4e488aa9c978cba007fee310aa641ea59f6520 100644
+--- a/src1/routes/index.ts
++++ b/src1/routes/index.ts
+@@ -43,6 +43,7 @@ import pharmacySubscriptionRouter from '@/modules/pharmacySubscriptions/routes';
+ import patientTrackingRouter from '@/modules/patientTracking/routes';
+ import pharmacyTrackingRouter from '@/modules/pharmacyTracking/routes';
+ import pharmacyCartRouter from '@/modules/pharmacyCart/routes';
++import pharmacySupplierRouter from '@/modules/pharmacySuppliers/routes';
+ import { FileController } from '@/modules/file/controller';
+ import { catchAsync } from '@/modules/common/utils/asyncHandler';
+ import { authenticate, authenticateOptional } from '@/modules/middleware';
+@@ -92,6 +93,7 @@ export const configureRoutes = (app: Express): void => {
+   app.use('/api/v1/pharmacy-cart', authenticate, pharmacyCartRouter);
+   app.use('/api/v1/pharmacy-customers', authenticate, pharmacyCustomerRouter);
+   app.use('/api/v1/pharmacy-orders', authenticate, pharmacyOrderRouter);
++  app.use('/api/v1/pharmacy-suppliers', authenticate, pharmacySupplierRouter);
+   app.use('/api/v1/pharmacy-orders/:orderId/health-check', authenticate, orderHealthCheckRouter);
+   app.use('/api/v1/pharmacy-wallet', authenticate, pharmacyWalletRouter);
+   app.use('/api/v1/pharmacy-inventory-imports', authenticate, pharmacyInventoryImportRouter);

@@ -1,0 +1,19 @@
+{
+  "schema": "SD-PHARMACY-SUPPLIER-MASTER-VERIFICATION-1",
+  "author": "/root/payment_ctor_contract",
+  "baseline": "11d11d202c3ec75f706f46b38997c261b464421f",
+  "status": "SOURCE_ONLY_TWO_NONAUTHOR_SOURCE_REVIEWS_PENDING",
+  "sourceFreezeSha256": "2e956fcd6cdf05f6071d79655167d47a66913423ecc5df1c244db59d0329fe31",
+  "patchSha256": "17397ff5324a43f3b18b04685a32d88fc4b9c66222e6e0370774157266a63208",
+  "checks": {
+    "baselineContractPins": 13,
+    "actualPreimplementationVotes": 2,
+    "newModuleFiles": 7,
+    "existingChangedFiles": 1,
+    "centralInverseByteIdentity": true,
+    "protectedPinsUnchanged": 12,
+    "sourceWhitespaceExit": 0
+  },
+  "execution": "Source/hash/Git inspection only; no executable checks or redundant tests.",
+  "serialization": "Source reply helper serializes once, checks UTF8 <524288, sends that string with private/no-store application/json. Actual HTTP behavior unproved."
+}
