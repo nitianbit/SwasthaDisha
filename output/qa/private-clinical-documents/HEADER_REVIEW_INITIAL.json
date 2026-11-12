@@ -1,0 +1,17 @@
+{
+  "schema": "SD-PRIVATE-HEADER-CONTRACT-REVIEW-1",
+  "contractSha256": "d38dccbc339aade6a843296f1c01b697ae3896126edfd9b5638f5a76ed849413",
+  "decisions": [
+    {
+      "reviewer": "/root/milestone_composition_r9",
+      "role": "Standards",
+      "decision": "REQUEST_CHANGES"
+    },
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Spec",
+      "decision": "REQUEST_CHANGES"
+    }
+  ],
+  "finding": "Current Express routing is case-insensitive; the private prefix guard must match case variants without admitting assetsx/clinicalx. Add i flag and mixed-case401/HEAD controls. Other scope accepted; no execution."
+}
