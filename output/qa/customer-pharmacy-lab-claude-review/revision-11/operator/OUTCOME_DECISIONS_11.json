@@ -1,0 +1,44 @@
+{
+  "schema": "SD-R11-ACTUAL-INDEPENDENT-OUTCOME-DECISIONS-1",
+  "sourceCommit": "f200491e08e497d1bda82af010d9854f34b16515",
+  "sessionId": "757133e3-cd65-4334-832f-0c217897311b",
+  "reviewSha256": "fe8743c9f7abccc07504ff8bd84440ea03e9e6f1b071ceeebd98ef1bdf5b21ba",
+  "reviewUTF8Bytes": 28226,
+  "decision": "ACCEPT_GENUINE_R11_SOURCE_REVIEW_AND_CAPTURE_ONLY",
+  "reviewers": [
+    {
+      "agent": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "decision": "ACCEPT_GENUINE_R11_SOURCE_REVIEW_AND_CAPTURE_ONLY"
+    },
+    {
+      "agent": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "decision": "ACCEPT_GENUINE_R11_SOURCE_REVIEW_AND_CAPTURE_ONLY"
+    }
+  ],
+  "provenance": "Actual direct independent nonauthor messages. Both personally parsed829completeframes without exporting thinking; exact3successfultool/result IDs, challenge+ACK+review+freshmailbox bytes/finaltext, actual5.5model,4turns/1206927ms, privateownership/once/receipt,149Git/current+5runtime+34priorR10pins and freshly absent exact4PIDs/group independently checked. Rootoperator andbindingpreparer excluded.",
+  "actualModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "nativeWebviewACK": false,
+  "launcherExit": 0,
+  "CLIExit": 0,
+  "captureErrors": [],
+  "signals": [],
+  "processesAndGroupAbsent": true,
+  "sourceVerdicts": {
+    "R11-1": "APPROVE_SOURCE_ONLY",
+    "R11-2": "REQUEST_CHANGES fourLOW inclconditionalcasefold",
+    "R11-3": "APPROVE_SOURCE_ONLY",
+    "R11-4": "APPROVE_SOURCE_ONLY",
+    "composition": "APPROVE_SOURCE_ONLY"
+  },
+  "R10": "All34historicalpinsunchanged; oldlauncherfault not repaired/reclassified bycleanR11capture.",
+  "notAccepted": [
+    "Ownprivate/indexproduction bycapture reviewers",
+    "Mutablecontact/private/enrollmentfixtures",
+    "Runtime/clinical/client/owner/module/deployed/release"
+  ],
+  "rawPrivateCapture": "Preserved unchanged; private thinking not exported. Existing supervisorreviewAccepted:false is capture-time state, not overwritten."
+}
