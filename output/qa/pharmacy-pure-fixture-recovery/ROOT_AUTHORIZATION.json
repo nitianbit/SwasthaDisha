@@ -1,0 +1,17 @@
+{
+  "schema": "SD-PHARMACY-PURE-WORKTREE-AUTHORIZATION-1",
+  "authority": "Root direct task authorization, implementation only",
+  "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery",
+  "branch": "m0/pharmacy-pure-recovery",
+  "base": "5722ab42a049eb924befc00570a5fe83a5d718a5",
+  "contractSha256": "d5262defa2dc94e76772b18dcc54e0fbd9b294c9a937653d022efd49ac966b01",
+  "preimplementationSha256": "ae9f326a928f52e1b2f0a79cc76e8cf1e6f8787ba3afb211e6d6cb55ef2dd08e",
+  "owner": "/root/pharmacy_recovery_readiness",
+  "scope": "Exact six restored files, one-expression correction, new bounded VM lifecycle test, fixed pure launcher and new source evidence only",
+  "sourceDataChecksAuthorized": true,
+  "NodeInvocationAuthorized": false,
+  "globalApplicationFilesUnchangedByGitDiffAgainstBase": true,
+  "focusAndLabWorktreesNotWritten": true,
+  "GitMutation": false,
+  "originalStagedArchivePreserved": true
+}

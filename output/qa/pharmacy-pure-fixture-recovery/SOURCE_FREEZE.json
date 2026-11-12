@@ -1,0 +1,44 @@
+{
+  "schema": "SD-PHARMACY-PURE-IMPLEMENTATION-FREEZE-1",
+  "status": "IMPLEMENTATION_ONLY_AWAITING_TWO_EXACT_SOURCE_EXECUTION_REVIEWS",
+  "baseCommit": "5722ab42a049eb924befc00570a5fe83a5d718a5",
+  "author": "/root/pharmacy_recovery_readiness",
+  "inputs": {
+    "test/inventory-runtime/scenario/bootstrap.cjs": "6470766a88a09763ffc1047daa5d072611ea8783459c2ac76cc668349f5b1968",
+    "test/inventory-runtime/scenario/bootstrap-unit.cjs": "1ff27be8e21ef9a6357f5cb51c59542cccc9ab3da018921f3bbd499117b1a6b5",
+    "test/inventory-runtime/scenario/apm-cursor.test.cjs": "6782511ca9d1db04c2957a9b40ea06c96e07caf99a57b64f11ed4040c236aa1f",
+    "test/inventory-runtime/scenario/ports-manifest.json": "12384285263ed68d76ce55fc201faf68222b59db3a415f0f3693ccb73b81503a",
+    "test/inventory-runtime/scenario/cases.json": "807c0c5e523788cad4731de7908722e99e969414ef74f3ae35eb1f61bf5023e4",
+    "test/inventory-runtime/scenario/public-lock.json": "2b0eecf4f94decd9fda01631b1cef0209a6131ccd226eece5c3265eaa6fde3c5",
+    "test/inventory-runtime/scenario/cursor-creation-pure.test.cjs": "1f9f9cc71620621af13550865bb75ebc3f7954f66de138feb08934120bb4b6f1",
+    "output/qa/pharmacy-pure-fixture-recovery/run-pure.py": "f0c988749a50352ca0122af10dd5e393e54cdcd73a2cc11a4dec60c1858f0041",
+    "output/qa/pharmacy-pure-fixture-recovery/PLAN.json": "628d4d04c1e33b947b51bfa18ec5cd5791564dba60849dfd9887e2aea8695730",
+    "output/qa/pharmacy-pure-fixture-recovery/LIVE_LAUNCHER.txt": "71bfcaa0da6dee319914c4151ddc60693dc4e6fcd48320354acfdf471f86fd33",
+    "output/qa/pharmacy-pure-fixture-recovery/ROOT_AUTHORIZATION.json": "2d1f63b8ab759f51ac7e245f919833d4bb40f834d4d5e5e80ca4dd81a18785cc",
+    "output/qa/pharmacy-pure-fixture-recovery/SOURCE_RECOVERY.json": "dda68d5fe8e4e07e95aad5961ed5da2ea9f206bf7a34d498b553d8e9e29f164b",
+    "output/qa/pharmacy-pure-fixture-recovery/READINESS.md": "1ec8ed444997c4993b57fc5c947956059ccf17510ec0896f8223ec1cacf0c427",
+    "output/qa/pharmacy-pure-fixture-recovery/PREIMPLEMENTATION.json": "ae9f326a928f52e1b2f0a79cc76e8cf1e6f8787ba3afb211e6d6cb55ef2dd08e",
+    "documentation/planning/implementation/PHARMACY_PURE_FIXTURE_RECOVERY_CONTRACT_DRAFT.md": "d5262defa2dc94e76772b18dcc54e0fbd9b294c9a937653d022efd49ac966b01",
+    "output/qa/pharmacy-fixture-recovery/restored/blobs/f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690.txt": "f4a49fcbe8be8063091a4a1b9b76ea9e300a96e7eef19d9ed5192a3297b28690"
+  },
+  "launcherSha256": "f0c988749a50352ca0122af10dd5e393e54cdcd73a2cc11a4dec60c1858f0041",
+  "nodeSha256": "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0",
+  "nodeIdentity": [
+    16777233,
+    54314947,
+    501
+  ],
+  "bootstrapSha256": "6470766a88a09763ffc1047daa5d072611ea8783459c2ac76cc668349f5b1968",
+  "newTestSha256": "1f9f9cc71620621af13550865bb75ebc3f7954f66de138feb08934120bb4b6f1",
+  "normalExpectedCounts": [
+    296,
+    95,
+    47
+  ],
+  "plannedWeakeningControls": 9,
+  "JavaScriptSyntaxChecked": false,
+  "NodeExecutions": 0,
+  "executionAuthorized": false,
+  "newAcceptance": false,
+  "writesStopAfterPublication": true
+}

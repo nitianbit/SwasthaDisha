@@ -1,0 +1,35 @@
+{
+  "schema": "SD-PHARMACY-PURE-SOURCE-REVIEW-CHANGES-1",
+  "freezeSha256": "c62d5882e585abe58f6d6298332491416b5efec840c1ede55aba7f74210fa7da",
+  "launcherSha256": "f0c988749a50352ca0122af10dd5e393e54cdcd73a2cc11a4dec60c1858f0041",
+  "reviewers": [
+    {
+      "agent": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "REQUEST_CHANGES"
+    },
+    {
+      "agent": "/root/claude_review_recipe_standards",
+      "role": "Standards",
+      "decision": "REQUEST_CHANGES"
+    }
+  ],
+  "consolidatedFindings": [
+    {
+      "id": "PURE-R1",
+      "finding": "subjectallocateslease/opensfd/createsrecord_dirbeforecleanuptry; allocationfailureleakslease/evidence."
+    },
+    {
+      "id": "PURE-R2",
+      "finding": "run_childexceptionlosesboundedstdout/stderr/argv/start/exitrecord; cleanupmayreplacefirstfailure; NodeEntriesStartedmustderiveactualstarts."
+    },
+    {
+      "id": "PURE-R3",
+      "finding": "mainreopensplan/sourcebytesafterpreflighthashwithoutbindingthenewbytes; retainverifiedsnapshotandstageonlyit. RevalidateNodehash/identity/modebeforeeachcommand."
+    }
+  ],
+  "fixtureTechnique": "Noadditionalmaterialfinding; baselineinverse/VMbounds/meaningfulninecontrolsverified.",
+  "NodeExecutionApproved": false,
+  "NodeExecutions": 0,
+  "next": "Minimalrepairthenfreshfrozenexactsource/executionreviews; no automaticexecution/retry."
+}
