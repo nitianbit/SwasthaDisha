@@ -5,6 +5,7 @@ import hashlib
 import http.client
 import json
 import os
+import re
 from pathlib import Path
 import secrets
 import signal
@@ -312,7 +313,10 @@ def admit():
     need(sys.argv == [str(QA/'recover-node22.py'), '--acquire-once'], 'fixed live invocation required')
     need(Path(sys.executable) == PYTHON and sys.flags.isolated and sys.flags.no_site and sys.flags.dont_write_bytecode, 'pinned isolated Python required')
     need(os.uname().sysname == 'Darwin' and os.uname().machine == 'arm64', 'darwin arm64 required')
-    need(set(os.environ) <= {'PATH','LC_ALL','LC_CTYPE'}, 'ambient override refused')
+    need(set(os.environ) <= {'PATH','LC_ALL','LC_CTYPE','__CF_USER_TEXT_ENCODING'}, 'ambient override refused')
+    if '__CF_USER_TEXT_ENCODING' in os.environ:
+        encoding = os.environ['__CF_USER_TEXT_ENCODING']
+        need(0 < len(encoding) <= 128 and encoding.isascii() and re.fullmatch(r'0x[0-9a-fA-F]+:0x[0-9a-fA-F]+:0x[0-9a-fA-F]+', encoding), 'invalid public encoding metadata')
     need(hashlib.sha256(read_regular(PYTHON, 134217728)).hexdigest() == PYTHON_SHA, 'Python bytes changed')
     source = hashlib.sha256(read_regular(QA/'recover-node22.py')).hexdigest()
     launcher = hashlib.sha256(read_regular(QA/'LIVE_LAUNCHER.txt')).hexdigest()
@@ -321,7 +325,7 @@ def admit():
     for name, digest in freeze['files'].items():
         need(name in ['RECIPE.md','SCRIPT_PLAN.md','PRIMARY_METADATA.json'], 'unexpected recipe input')
         need(hashlib.sha256(read_regular(QA/name)).hexdigest() == digest, 'recipe input drift')
-    data = json.loads(read_regular(QA/'LIVE_ADMISSION.json'))
+    data = json.loads(read_regular(QA/'LIVE_ADMISSION_2.json'))
     need(set(data) == {'schema','sourceSha256','launcherSha256','recipeFreezeSha256','pythonSha256','reviews'}, 'closed live admission required')
     need(data['schema'] == 'SD-NODE22-ONE-ACQUISITION-1' and data['sourceSha256'] == source and data['launcherSha256'] == launcher and data['recipeFreezeSha256'] == RECIPE_SHA and data['pythonSha256'] == PYTHON_SHA, 'exact source/launcher admission required')
     reviews = data['reviews']

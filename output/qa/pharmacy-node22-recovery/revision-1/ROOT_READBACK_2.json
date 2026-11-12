@@ -1,0 +1,24 @@
+{
+  "schema": "SD-NODE22-ROOT-ACQUISITION-READBACK-2",
+  "resultSha256": "0b21f467f6e9afca3dccfc6a6ee1ea3bd416a158a7d7516982db0cf42bbff0d1",
+  "status": "TOOL_BYTES_RECOVERED_NOT_EXECUTED",
+  "binarySha256": "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0",
+  "bytes": 113002944,
+  "mode": "0500",
+  "identity": [
+    16777233,
+    54314947,
+    501
+  ],
+  "independentCanonicalIdentityHashModeReadback": true,
+  "canonicalProvenanceMatches": true,
+  "operatorOwnedStageRemoval": true,
+  "independentTemporaryStagePrefixMatches": [],
+  "stageReadbackLimit": "Operatorresultdidnotpersisttheexactrandomstagepath; Rootread-onlyprefixenumerationfoundtheseentriesandmade no removal/adoption. This isdistinctfromanexactheld-stageidentityreadback.",
+  "cleanupExceptions": [],
+  "NodeExecutions": 0,
+  "rootRuntimeAdoption": false,
+  "C2C3Acceptance": false,
+  "focusedFixturePASS": false,
+  "retention": "Canonicaltoolintentionallyretained; laterexecutionandretirementseparatelyadmitted."
+}

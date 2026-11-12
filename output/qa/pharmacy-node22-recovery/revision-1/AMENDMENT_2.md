@@ -1,0 +1,11 @@
+# Encoding metadata amendment2 — stop for fresh source/launcher reviews
+
+The actual reviewed invocation at commit161537a34b9cfecf3499b39e2d8624d641009cf7 refused before allocation/network because macOS automatically added public `__CF_USER_TEXT_ENCODING` metadata to the cleared Python process. No metadata values were printed. Root and booking_read_spec both recorded FAILURE_REVIEWED and APPROVE_IMPLEMENTATION_ONLY; see PREIMPLEMENTATION_2.json. Neither decision authorizes acquisition.
+
+Only that key is added to PATH/LC_ALL/LC_CTYPE. If present, its value must be nonempty ASCII, at most128 characters, and fully match three literal0x hexadecimal fields separated by colons. Empty, malformed, Unicode, whitespace/suffix and oversized values reject. All other environment keys still reject. The operator now requires LIVE_ADMISSION_2.json, so the consumed old receipt cannot authorize it. No new receipt is supplied.
+
+The source/test files were amended in-place; original exact files, failure, receipt and evidence remain in Git161537a. OPERATOR_FREEZE.json is retained unchanged as historical evidence; use OPERATOR_FREEZE_2.json for this candidate. The existing launcher file, hash, script path and invocation are unchanged. ENVIRONMENT_DIFF_2.txt is the complete source/test diff. No new revision directory, copied archive or generic framework was created.
+
+One affected offline rerun under pinned Python3.14.7 -I-S-B exited0:47 checks, zero failures/errors/skips; all four existing weakened guards were detected. This includes the new positive/empty/malformed encoding guard checks and an actual-boundary old-receipt refusal check. Raw stdout/stderr and exact argv/pins are recorded. The process-wide socket tripwire observed zero real networking attempts; no Node execution. Real DNS/TLS interruption remains unexercised. These checks do not establish transfer, tool recovery or pharmacy runtime behavior.
+
+Read-only path observations after the run found no new admission2, once/result record or canonical tool directory. Stop for two fresh exact source/launcher reviews. No acquisition, network operation, Git mutation or module/runtime acceptance is authorized or performed by this amendment.

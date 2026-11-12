@@ -1,0 +1,76 @@
+--- 161537a/recover-node22.py
++++ working/recover-node22.py
+@@ -5,6 +5,7 @@
+ import http.client
+ import json
+ import os
++import re
+ from pathlib import Path
+ import secrets
+ import signal
+@@ -312,7 +313,10 @@
+     need(sys.argv == [str(QA/'recover-node22.py'), '--acquire-once'], 'fixed live invocation required')
+     need(Path(sys.executable) == PYTHON and sys.flags.isolated and sys.flags.no_site and sys.flags.dont_write_bytecode, 'pinned isolated Python required')
+     need(os.uname().sysname == 'Darwin' and os.uname().machine == 'arm64', 'darwin arm64 required')
+-    need(set(os.environ) <= {'PATH','LC_ALL','LC_CTYPE'}, 'ambient override refused')
++    need(set(os.environ) <= {'PATH','LC_ALL','LC_CTYPE','__CF_USER_TEXT_ENCODING'}, 'ambient override refused')
++    if '__CF_USER_TEXT_ENCODING' in os.environ:
++        encoding = os.environ['__CF_USER_TEXT_ENCODING']
++        need(0 < len(encoding) <= 128 and encoding.isascii() and re.fullmatch(r'0x[0-9a-fA-F]+:0x[0-9a-fA-F]+:0x[0-9a-fA-F]+', encoding), 'invalid public encoding metadata')
+     need(hashlib.sha256(read_regular(PYTHON, 134217728)).hexdigest() == PYTHON_SHA, 'Python bytes changed')
+     source = hashlib.sha256(read_regular(QA/'recover-node22.py')).hexdigest()
+     launcher = hashlib.sha256(read_regular(QA/'LIVE_LAUNCHER.txt')).hexdigest()
+@@ -321,7 +325,7 @@
+     for name, digest in freeze['files'].items():
+         need(name in ['RECIPE.md','SCRIPT_PLAN.md','PRIMARY_METADATA.json'], 'unexpected recipe input')
+         need(hashlib.sha256(read_regular(QA/name)).hexdigest() == digest, 'recipe input drift')
+-    data = json.loads(read_regular(QA/'LIVE_ADMISSION.json'))
++    data = json.loads(read_regular(QA/'LIVE_ADMISSION_2.json'))
+     need(set(data) == {'schema','sourceSha256','launcherSha256','recipeFreezeSha256','pythonSha256','reviews'}, 'closed live admission required')
+     need(data['schema'] == 'SD-NODE22-ONE-ACQUISITION-1' and data['sourceSha256'] == source and data['launcherSha256'] == launcher and data['recipeFreezeSha256'] == RECIPE_SHA and data['pythonSha256'] == PYTHON_SHA, 'exact source/launcher admission required')
+     reviews = data['reviews']
+--- 161537a/test-recover-node22.py
++++ working/test-recover-node22.py
+@@ -121,7 +121,7 @@
+         self.stack.enter_context(patch.dict(os.environ, {}, clear=True))
+         return data
+     def save_admission(self, data):
+-        (self.root/'LIVE_ADMISSION.json').write_text(json.dumps(data))
++        (self.root/'LIVE_ADMISSION_2.json').write_text(json.dumps(data))
+     def test_exact_fake_admission_validates_without_acquiring(self):
+         data = self.admission_fixture()
+         self.save_admission(data)
+@@ -161,6 +161,33 @@
+         self.save_admission(data)
+         with patch.dict(os.environ, {'HTTPS_PROXY':'http://invalid'}), self.assertRaises(op.Refusal):
+             op.admit()
++    def test_public_macos_encoding_metadata_accepted(self):
++        data = self.admission_fixture()
++        self.save_admission(data)
++        with patch.dict(os.environ, {'__CF_USER_TEXT_ENCODING':'0x1F5:0x0:0x0'}):
++            self.assertEqual(op.admit()['sourceSha256'], data['sourceSha256'])
++        self.assertFalse((self.root/'ACQUISITION_ONCE.json').exists())
++    def test_empty_public_encoding_metadata_refused(self):
++        data = self.admission_fixture()
++        self.save_admission(data)
++        with patch.dict(os.environ, {'__CF_USER_TEXT_ENCODING':''}), self.assertRaises(op.Refusal):
++            op.admit()
++    def test_malformed_public_encoding_metadata_refused(self):
++        data = self.admission_fixture()
++        self.save_admission(data)
++        cases = [('missing_field','0x0:0x0'), ('newline','0x0:0x0:0x0\n'),
++                 ('prefix','0X0:0x0:0x0'), ('empty_hex','0x:0x0:0x0'),
++                 ('space',' 0x0:0x0:0x0'), ('suffix','0x0:0x0:0x0extra'),
++                 ('oversized','0x'+'a'*128+':0x0:0x0'), ('non_ascii','0xé:0x0:0x0')]
++        for label, value in cases:
++            with self.subTest(case=label), patch.dict(os.environ, {'__CF_USER_TEXT_ENCODING':value}), self.assertRaises(op.Refusal):
++                op.admit()
++    def test_old_receipt_does_not_authorize_amended_source(self):
++        data = self.admission_fixture()
++        (self.root/'LIVE_ADMISSION.json').write_text(json.dumps(data))
++        with self.assertRaises(FileNotFoundError):
++            op.admit()
++        self.assertFalse((self.root/'ACQUISITION_ONCE.json').exists())
+     def test_main_consumed_claim_blocks_second_acquisition(self):
+         fake = {'status':'TOOL_BYTES_RECOVERED_NOT_EXECUTED','cleanupExceptions':[]}
+         with patch.object(op, 'QA', self.root), patch.object(op, 'admit', return_value={}), patch.object(op, 'recover', return_value=fake) as recover, patch.object(sys, 'argv', ['fake','--acquire-once']), contextlib.redirect_stdout(io.StringIO()):

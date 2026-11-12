@@ -1,0 +1,72 @@
+{
+  "status": "TOOL_BYTES_RECOVERED_NOT_EXECUTED",
+  "NodeExecutions": 0,
+  "packageExecutions": 0,
+  "attempts": 1,
+  "cleanupExceptions": [],
+  "sourceSha256": "6cddb7b343b65ed103d60c5a1f6c808e4fac5d40bf263e6d6aa1257547d5c8eb",
+  "launcherSha256": "dd2ff37e5e98992873a36775f201254f656858dd06e6c92374fe4c33736f61d6",
+  "recipeFreezeSha256": "48357c414d86b10f8aefc5419d6abcd429c92598c6dce59119c76c3a7d03c36a",
+  "pythonSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "officialUrls": {
+    "metadata": "https://nodejs.org/download/release/v22.23.4/SHASUMS256.txt",
+    "archive": "https://nodejs.org/download/release/v22.23.4/node-v22.23.4-darwin-arm64.tar.gz"
+  },
+  "metadata": {
+    "bytes": 3981,
+    "sha256": "c90c3f1478fda8308b22cc1a1b0dc536169196444e67ee8b5c582fd351d02bce"
+  },
+  "archive": {
+    "bytes": 49996369,
+    "sha256": "c9e1dbc748b33ed2d14f42445191ecaf14c56259c7a9a26d0042c49ec2b66428"
+  },
+  "binary": {
+    "bytes": 113002944,
+    "sha256": "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0",
+    "tarMembers": 5866,
+    "decompressedBytes": 188815872
+  },
+  "toolPath": "/private/tmp/m0-node22/node",
+  "toolIdentity": [
+    16777233,
+    54314947,
+    501
+  ],
+  "toolMode": "0500",
+  "retainedCanonical": {
+    "path": "/private/tmp/m0-node22",
+    "directoryIdentity": [
+      16777233,
+      54314941,
+      501
+    ],
+    "files": {
+      "node": {
+        "identity": [
+          16777233,
+          54314947,
+          501
+        ],
+        "bytes": 113002944
+      },
+      ".owner.json": {
+        "identity": [
+          16777233,
+          54314948,
+          501
+        ],
+        "bytes": 153
+      },
+      "acquisition.json": {
+        "identity": [
+          16777233,
+          54314949,
+          501
+        ],
+        "bytes": 1254
+      }
+    }
+  },
+  "stageRemoved": true,
+  "writesStopped": true
+}

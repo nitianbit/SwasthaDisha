@@ -1,0 +1,24 @@
+{
+  "schema": "SD-NODE22-ENVIRONMENT-FAILURE-AND-IMPLEMENTATION-2",
+  "priorCommit": "161537a34b9cfecf3499b39e2d8624d641009cf7",
+  "priorSourceSha256": "332bcd701f59f3482f56e99e50a7df09504caff41eea7eada90b284f0c1a9f17",
+  "actualRefusalSha256": "ce3003db365a99903f328c8601ab4624b9f5ceada1d254dd11050e732acebab3",
+  "actualRefusal": "ambient override refused before allocation/network; only public encoding metadata key observed; values not printed",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR_DIRECT_PARENT",
+      "failureDecision": "FAILURE_REVIEWED",
+      "implementationDecision": "APPROVE_IMPLEMENTATION_ONLY"
+    },
+    {
+      "reviewer": "/root/booking_read_spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR_RELAYED_BY_ROOT",
+      "failureDecision": "FAILURE_REVIEWED",
+      "implementationDecision": "APPROVE_IMPLEMENTATION_ONLY"
+    }
+  ],
+  "scope": "Allow only bounded nonempty full ASCII 0xhex:0xhex:0xhex encoding metadata and require new LIVE_ADMISSION_2.json; no acquisition authority",
+  "acquisitionApproved": false,
+  "NodeExecutionApproved": false
+}

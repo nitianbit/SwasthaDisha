@@ -1,0 +1,35 @@
+{
+  "schema": "SD-NODE22-ROOT-ACQUISITION-REVIEW-2",
+  "operatorFreezeSha256": "f5ec815a722c2ed813df138e1ed38ec0b70b066a34dec0a35e513d8b840e8360",
+  "sourceSha256": "6cddb7b343b65ed103d60c5a1f6c808e4fac5d40bf263e6d6aa1257547d5c8eb",
+  "testSha256": "94acc00b67eb592f4a2ffdbd901eaf86b2824ebf8b2f2ba69fe63c57206112ad",
+  "launcherSha256": "dd2ff37e5e98992873a36775f201254f656858dd06e6c92374fe4c33736f61d6",
+  "reviews": [
+    {
+      "role": "Spec",
+      "reviewer": "/root/booking_read_spec",
+      "decision": "APPROVE_ONE_ACQUISITION_ONLY"
+    },
+    {
+      "role": "Standards",
+      "reviewer": "/root",
+      "decision": "APPROVE_ONE_ACQUISITION_ONLY"
+    }
+  ],
+  "rootBasis": "Fullprioroperatorandminimalactualdiffreviewed; alltennewfrozenpinsverified. OnlypublicencodingkeyboundedfullASCIIguard+freshreceiptpathchanged; TLS/hash/caps/ownedcleanup unchanged.47fakechecksnotnativeproof.",
+  "acceptedAssuranceExceptions": {
+    "installedRuntime": "Executablebytepin87d4 plus ordinary trusted HomebrewPython3.14.7stdlib/native-supportprefix, -I-S-B/clearenv; notwhole-runtimebyteclosure.",
+    "deadline": "SIGALRM/socket/phase/totalbudgetsconfigured; realnativeDNS/TLShardinterruptionUNPROVEN,noexternalwatchdog. Explicitleadacceptedexceptiontorecipehard-assurancewordingforoneisolatedfixedpublicdownloadonly."
+  },
+  "runtimeProvenance": {
+    "executable": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "prefix": "/opt/homebrew/opt/python@3.14/Frameworks/Python.framework/Versions/3.14",
+    "basePrefix": "/opt/homebrew/opt/python@3.14/Frameworks/Python.framework/Versions/3.14",
+    "isolated": true
+  },
+  "acquisitionScope": "One monitored bytes-only acquisition, no retries/fallbacks; no Node/package/app/DB/provider execution.",
+  "rootAdoptionApproved": false,
+  "applicationC2C3Acceptance": false,
+  "originalStagedAndArchivePreserved": true,
+  "priorInvocation": "Pre-allocationenvironmentrefusalpreserved161537a; approvalsconsumed; freshactualRootandSpecdecisionsrecordedhere."
+}

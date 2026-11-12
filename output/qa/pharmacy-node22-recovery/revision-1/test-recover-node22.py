@@ -121,7 +121,7 @@ class OfflineChecks(unittest.TestCase):
         self.stack.enter_context(patch.dict(os.environ, {}, clear=True))
         return data
     def save_admission(self, data):
-        (self.root/'LIVE_ADMISSION.json').write_text(json.dumps(data))
+        (self.root/'LIVE_ADMISSION_2.json').write_text(json.dumps(data))
     def test_exact_fake_admission_validates_without_acquiring(self):
         data = self.admission_fixture()
         self.save_admission(data)
@@ -161,6 +161,33 @@ class OfflineChecks(unittest.TestCase):
         self.save_admission(data)
         with patch.dict(os.environ, {'HTTPS_PROXY':'http://invalid'}), self.assertRaises(op.Refusal):
             op.admit()
+    def test_public_macos_encoding_metadata_accepted(self):
+        data = self.admission_fixture()
+        self.save_admission(data)
+        with patch.dict(os.environ, {'__CF_USER_TEXT_ENCODING':'0x1F5:0x0:0x0'}):
+            self.assertEqual(op.admit()['sourceSha256'], data['sourceSha256'])
+        self.assertFalse((self.root/'ACQUISITION_ONCE.json').exists())
+    def test_empty_public_encoding_metadata_refused(self):
+        data = self.admission_fixture()
+        self.save_admission(data)
+        with patch.dict(os.environ, {'__CF_USER_TEXT_ENCODING':''}), self.assertRaises(op.Refusal):
+            op.admit()
+    def test_malformed_public_encoding_metadata_refused(self):
+        data = self.admission_fixture()
+        self.save_admission(data)
+        cases = [('missing_field','0x0:0x0'), ('newline','0x0:0x0:0x0\n'),
+                 ('prefix','0X0:0x0:0x0'), ('empty_hex','0x:0x0:0x0'),
+                 ('space',' 0x0:0x0:0x0'), ('suffix','0x0:0x0:0x0extra'),
+                 ('oversized','0x'+'a'*128+':0x0:0x0'), ('non_ascii','0xé:0x0:0x0')]
+        for label, value in cases:
+            with self.subTest(case=label), patch.dict(os.environ, {'__CF_USER_TEXT_ENCODING':value}), self.assertRaises(op.Refusal):
+                op.admit()
+    def test_old_receipt_does_not_authorize_amended_source(self):
+        data = self.admission_fixture()
+        (self.root/'LIVE_ADMISSION.json').write_text(json.dumps(data))
+        with self.assertRaises(FileNotFoundError):
+            op.admit()
+        self.assertFalse((self.root/'ACQUISITION_ONCE.json').exists())
     def test_main_consumed_claim_blocks_second_acquisition(self):
         fake = {'status':'TOOL_BYTES_RECOVERED_NOT_EXECUTED','cleanupExceptions':[]}
         with patch.object(op, 'QA', self.root), patch.object(op, 'admit', return_value={}), patch.object(op, 'recover', return_value=fake) as recover, patch.object(sys, 'argv', ['fake','--acquire-once']), contextlib.redirect_stdout(io.StringIO()):

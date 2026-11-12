@@ -1,0 +1,30 @@
+{
+  "schema": "SD-NODE22-ENVIRONMENT-AMENDMENT-FREEZE-2",
+  "status": "IMPLEMENTED_OFFLINE_ONLY_AWAITING_TWO_FRESH_EXACT_SOURCE_LAUNCHER_REVIEWS",
+  "priorCommit": "161537a34b9cfecf3499b39e2d8624d641009cf7",
+  "priorSourceSha256": "332bcd701f59f3482f56e99e50a7df09504caff41eea7eada90b284f0c1a9f17",
+  "historicalOperatorFreezeSha256": "2131f017f79d691e3315dfc5d4ee9f5515237699eb2878d1cba96a995b84f30a",
+  "files": {
+    "recover-node22.py": "6cddb7b343b65ed103d60c5a1f6c808e4fac5d40bf263e6d6aa1257547d5c8eb",
+    "test-recover-node22.py": "94acc00b67eb592f4a2ffdbd901eaf86b2824ebf8b2f2ba69fe63c57206112ad",
+    "LIVE_LAUNCHER.txt": "dd2ff37e5e98992873a36775f201254f656858dd06e6c92374fe4c33736f61d6",
+    "freeze.json": "48357c414d86b10f8aefc5419d6abcd429c92598c6dce59119c76c3a7d03c36a",
+    "PREIMPLEMENTATION_2.json": "3b8d494cec0b3b28af7487ad2ee5f05e903f0ebb5e0f587134cb41fa8ed4920c",
+    "ENVIRONMENT_DIFF_2.txt": "1a154042386056e6607bca28dbd784933aff2c9ee7819bf834c831ed2331cd9c",
+    "offline-2.stdout.json": "5da34fdfa5d54a08a361cc839b20d95cad6d5b5b88e0af0e3c12baa0123fd843",
+    "offline-2.stderr.txt": "c707a653a0a112aa48b96dad317bec6df1d08473301cbf4cc1ee48e0d80790c6",
+    "OFFLINE_CHECKS_2.json": "f8cafef68bee828cbdca5f6caa7592237d1edb3631c7342e072577dd17e53556",
+    "AMENDMENT_2.md": "ce81265269e83ddb22eeccf4a2f33de49ca59cc7185f62de050425bf78cfa5be"
+  },
+  "sourceSha256": "6cddb7b343b65ed103d60c5a1f6c808e4fac5d40bf263e6d6aa1257547d5c8eb",
+  "testSha256": "94acc00b67eb592f4a2ffdbd901eaf86b2824ebf8b2f2ba69fe63c57206112ad",
+  "launcherSha256": "dd2ff37e5e98992873a36775f201254f656858dd06e6c92374fe4c33736f61d6",
+  "checks": 47,
+  "detectedWeakeningControls": 4,
+  "requiredFreshReceipt": "LIVE_ADMISSION_2.json",
+  "receiptCreated": false,
+  "acquisitionApproved": false,
+  "NodeExecutionApproved": false,
+  "newAcceptance": false,
+  "writesStopped": true
+}

@@ -1,0 +1,60 @@
+{
+  "schema": "SD-NODE22-ENVIRONMENT-AMENDMENT-ACTUAL-CHECKS-2",
+  "priorSourceAndEvidenceCommit": "161537a34b9cfecf3499b39e2d8624d641009cf7",
+  "argv": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+    "-I",
+    "-S",
+    "-B",
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/pharmacy-node22-recovery/revision-1/test-recover-node22.py"
+  ],
+  "pythonSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "sourceSha256": "6cddb7b343b65ed103d60c5a1f6c808e4fac5d40bf263e6d6aa1257547d5c8eb",
+  "testSha256": "94acc00b67eb592f4a2ffdbd901eaf86b2824ebf8b2f2ba69fe63c57206112ad",
+  "launcherSha256": "dd2ff37e5e98992873a36775f201254f656858dd06e6c92374fe4c33736f61d6",
+  "exitCode": 0,
+  "checks": 47,
+  "failures": 0,
+  "errors": 0,
+  "skips": 0,
+  "encodingGuardChecks": "one valid synthetic value, empty refusal, eight named malformed/oversized/non-ASCII subcases; no actual environment values printed",
+  "oldReceiptRejectedByActualAdmissionGuard": true,
+  "weakeningControls": [
+    {
+      "mutation": "HTTP_STATUS_GUARD_REMOVED",
+      "case": "test_redirect_is_never_followed",
+      "detected": true,
+      "failures": 1,
+      "errors": 0
+    },
+    {
+      "mutation": "MEMBER_HASH_GUARD_REMOVED",
+      "case": "test_wrong_binary_digest_denied",
+      "detected": true,
+      "failures": 1,
+      "errors": 0
+    },
+    {
+      "mutation": "FILE_IDENTITY_GUARD_REMOVED",
+      "case": "test_regular_file_replacement_not_removed",
+      "detected": true,
+      "failures": 1,
+      "errors": 0
+    },
+    {
+      "mutation": "OUTER_DEADLINE_RESET",
+      "case": "test_nested_deadline_does_not_reset_outer_budget",
+      "detected": true,
+      "failures": 1,
+      "errors": 0
+    }
+  ],
+  "realNetworkAttempts": 0,
+  "NodeExecutions": 0,
+  "liveAdmission2Present": false,
+  "oncePresent": false,
+  "resultPresent": false,
+  "canonicalPresent": false,
+  "acquisitionApproved": false,
+  "newAcceptance": false
+}
