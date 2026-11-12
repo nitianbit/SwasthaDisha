@@ -1,0 +1,21 @@
+{
+  "schema": "SD-LAB-BOOKING-LOG-MINIMIZATION-PREIMPLEMENTATION-1",
+  "contractSha256": "177ae43228ea4e75457f7e3d3eeb2d41a14139973d30eef618dd6eafc2b2529a",
+  "controllerBaselineSha256": "3a45d9694b50da0e1cebf90ffd94e8b2921130c784530bde844d49e16b4418b3",
+  "reviewers": [
+    {
+      "agent": "/root/booking_read_spec",
+      "role": "Spec",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY"
+    },
+    {
+      "agent": "/root/claude_review_recipe_standards",
+      "role": "Standards",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY"
+    }
+  ],
+  "rootDecision": "AUTHORIZE_FOUR_PROPERTY_SOURCE_DELETIONS_IN_ISOLATED_BRANCH",
+  "ownerScope": "Existingdesignalreadyrequiresomittingmedical/rawpayloadsfromgenericdiagnostics. No additional ownerdecision beforethissourceedit. Privacy/security/operationsowners stillrequiredforidentifiernecessity,sinkaccess,retention,holds,historicalhandling,incidentandreleasepolicy.",
+  "sourceScope": "Onlytwometadataobjects; retaincalls/messages/userId/integrationandallothercontrollerbytes.",
+  "runtimeConfidentialityOrTCOPS007Acceptance": false
+}
