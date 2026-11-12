@@ -1,0 +1,27 @@
+{
+  "schema": "SD-CLAUDE-THREE-MILESTONE-ACK-4",
+  "kind": "RECEIVED_NONCE_CONNECTIVITY_ACK",
+  "receivedNonce": "1a6ef71f-9eae-400f-b17b-a90a03909c13",
+  "challengeMessageId": "msg_1794464372502_vmbvz2nz",
+  "challengeSchema": "SD-CLAUDE-THREE-MILESTONE-CHALLENGE-4",
+  "sessionId": "be854944-2d46-4991-a27c-e2450eee3c15",
+  "sourceCommit": "abd1e90be9dfd7012dd20b9646ed4f494778726a",
+  "packetSchema": "SD-CLAUDE-THREE-MILESTONE-SOURCE-PACKET-4",
+  "packetSha256AsReceived": "c1277a6d678d95261614b4726bd3a1aa946e68c7819ed5654323fdc5aea85732",
+  "packetSha256IndependentlyComputed": false,
+  "contractBundleSha256": "45af4215f5cbc901c54fe980e9828908e96ff9bfb82a33311c6b6c99af81cb61",
+  "sourceHashMapMatchesPacket": true,
+  "contractHashMapMatchesPacket": true,
+  "clientKindAsReceived": "local-bundled-CLI",
+  "vsCodeWebviewClaimed": false,
+  "requestedModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveModelAndEffort": "UNPROVEN",
+  "staleIgnored": [
+    "msg_1794461150814_in7ljrxb",
+    "msg_1794462964520_jc1ye2xg",
+    "msg_1794338990732_89plt10f"
+  ],
+  "toolUse": "one team_inbox peek; this ACK; one substantive review send follows",
+  "next": "SUBSTANTIVE_THREE_MILESTONE_REVIEW_FOLLOWS"
+}

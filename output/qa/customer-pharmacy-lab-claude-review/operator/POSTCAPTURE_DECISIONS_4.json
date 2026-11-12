@@ -1,0 +1,26 @@
+{
+  "schema": "SD-CLAUDE-POSTCAPTURE-INDEPENDENT-DECISIONS-4",
+  "sourceSnapshot": "abd1e90be9dfd7012dd20b9646ed4f494778726a",
+  "reviewSha256": "4f75b41dd0342d91259764b678f488b4001e1127c29da1a699d2f086b8fd0170",
+  "reviewers": [
+    {
+      "agent": "/root",
+      "decision": "ACCEPT_GENUINE_SOURCE_ONLY_REVIEW_PROVENANCE",
+      "basis": "Actualstream/model/noncetoolresults/finalbyteequality, persistedmailboxandfreshOSPID/groupreadbacksverified."
+    },
+    {
+      "agent": "/root/claude_review_recipe_standards",
+      "decision": "ACCEPT_GENUINE_SOURCE_ONLY_REVIEW_PROVENANCE",
+      "basis": "Independentlycorrelateduniquechallenge/3toolresults/nonce/session/sourcehashes/actualassistantresultmodel/19600byteequality; noselectedsourcedrift; freshindependentOS3PIDsabsent/groupempty."
+    }
+  ],
+  "actualModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "clientKind": "local-bundled-CLI",
+  "actualNativeVSCodeWebviewACK": false,
+  "overallReviewDecision": "APPROVE_SOURCE_ONLY",
+  "F1HighOperationalReleaseBlocker": "OPEN",
+  "typeRuntimeOwnerModuleReleaseAcceptance": false,
+  "thinkingAccessedByPostReviewer": false
+}

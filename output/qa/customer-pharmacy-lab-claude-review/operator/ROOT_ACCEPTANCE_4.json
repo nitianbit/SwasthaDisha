@@ -1,0 +1,45 @@
+{
+  "schema": "SD-GENUINE-CLAUDE-ROOT-ACCEPTANCE-4",
+  "decision": "ACCEPT_GENUINE_SOURCE_ONLY_REVIEW_PROVENANCE",
+  "overallSourceDecision": "APPROVE_SOURCE_ONLY",
+  "sourceSnapshot": "abd1e90be9dfd7012dd20b9646ed4f494778726a",
+  "sessionId": "be854944-2d46-4991-a27c-e2450eee3c15",
+  "packetSha256": "c1277a6d678d95261614b4726bd3a1aa946e68c7819ed5654323fdc5aea85732",
+  "reviewSha256": "4f75b41dd0342d91259764b678f488b4001e1127c29da1a699d2f086b8fd0170",
+  "reviewBytes": 19600,
+  "clientKind": "local-bundled-CLI",
+  "observedModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "actualNativeVSCodeWebviewACK": false,
+  "actualThreeToolCallsAndSuccessfulResultsVerified": true,
+  "actualPersistedRufloMailboxReadback": {
+    "peekOnly": true,
+    "ackMessageId": "msg_1794464953377_ar11dd2n",
+    "reviewMessageId": "msg_1794465007327_9axo5lkj",
+    "receivedNonceSessionMatch": true,
+    "substantiveTextExactlyEqualsPublishedReviewAndFinal": true
+  },
+  "rootIndependentCleanupReadback": {
+    "psExactPids": [
+      97569,
+      97601,
+      97604
+    ],
+    "psExit": 1,
+    "psStdoutEmpty": true,
+    "pgrepExactGroup": 97569,
+    "pgrepExit": 1,
+    "pgrepStdoutEmpty": true,
+    "signals": []
+  },
+  "thinkingContentPublished": false,
+  "blockingFollowup": {
+    "id": "F1",
+    "severity": "HIGH_OPERATIONAL_RELEASE_BLOCKER",
+    "scope": "Prescriptionorderscanenterready/outthencompletionblockedwithnocanceltransition/approvalcommand; reservedstock/capturedpaymentmayremain.",
+    "disposition": "OPEN; prepareearliergate/approval/recoverycontractandretainownerclinical/finance/releasegates.",
+    "liveImpact": "NOT_DETERMINED; no deployment orprotectedrecordcheck."
+  },
+  "acceptedAssuranceScope": "Genuineindependenttechnicalsource-reviewprovenanceonly; no newruntime,type,clinical,pharmacist,finance,privacy,security-owner,module,C2C3,deploymentorreleaseapproval."
+}

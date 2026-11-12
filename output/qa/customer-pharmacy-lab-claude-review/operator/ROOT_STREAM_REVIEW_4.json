@@ -1,0 +1,63 @@
+{
+  "schema": "SD-GENUINE-CLAUDE-ROOT-STREAM-REVIEW-4",
+  "decision": "GENUINE_SOURCE_REVIEW_CAPTURE_VALIDATED_PENDING_MAILBOX_READBACK",
+  "sourceSnapshot": "abd1e90be9dfd7012dd20b9646ed4f494778726a",
+  "sessionId": "be854944-2d46-4991-a27c-e2450eee3c15",
+  "packetSha256": "c1277a6d678d95261614b4726bd3a1aa946e68c7819ed5654323fdc5aea85732",
+  "requestedModel": "claude-opus-5-5",
+  "observedActualAssistantModels": [
+    "claude-opus-5-5"
+  ],
+  "observedCanonicalModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "applicableTopLevelEffortMetadata": [],
+  "clientKind": "local-bundled-CLI",
+  "actualNativeVSCodeWebviewACK": false,
+  "toolSequence": [
+    "mcp__ruflo__team_inbox",
+    "mcp__ruflo__team_send",
+    "mcp__ruflo__team_send"
+  ],
+  "toolResultsAllSucceeded": true,
+  "nonceSourceSessionPacketCorrelated": true,
+  "sends": [
+    {
+      "toolUseId": "toolu_01M1kHX6K7Q7rPCLk61pGjoT",
+      "messageId": "msg_1794464953377_ar11dd2n",
+      "timestamp": "2026-11-12T06:29:13.377Z",
+      "contentSha256": "01694ca9b3cac96d89faba75c5c3b02bd2252c25ba3a9ddaf4ed9548bc5e7b4f"
+    },
+    {
+      "toolUseId": "toolu_01PiGSogdp3spjp2kEHVVvsd",
+      "messageId": "msg_1794465007327_9axo5lkj",
+      "timestamp": "2026-11-12T06:30:07.327Z",
+      "contentSha256": "4f75b41dd0342d91259764b678f488b4001e1127c29da1a699d2f086b8fd0170"
+    }
+  ],
+  "finalTextExactlyEqualsSecondSend": true,
+  "reviewSha256": "4f75b41dd0342d91259764b678f488b4001e1127c29da1a699d2f086b8fd0170",
+  "reviewBytes": 19600,
+  "actualOverallDecision": "APPROVE_SOURCE_ONLY",
+  "materialFinding": "F1_HIGH operational Rxdeadendatreaddispatch; ownerclinical/recoverydecisionbeforeRxenablement/release; notcontractconformancedefect.",
+  "sourceMilestones": [
+    "customerread+writeownership",
+    "pharmacycompletionRxstateCAS",
+    "labindividualassociation"
+  ],
+  "sourceCaptureCleanup": {
+    "exitCode": 0,
+    "elapsedSeconds": 633.004,
+    "allThreeAbsent": true,
+    "groupEmpty": true,
+    "signals": [],
+    "cleanupErrors": []
+  },
+  "privateRawHashes": {
+    "state.json": "b8278807d108bad21fa9e637215ec4542346f4497123fc37b0671c50f333ca96",
+    "transcript.stream-json": "028db4fdfb46ccced7a6a87e24aa20c42c43e3dae394c34a19e58883b9a790c8",
+    "stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "thinkingContentPublished": false,
+  "runtimeModuleOrReleaseAcceptance": false
+}
