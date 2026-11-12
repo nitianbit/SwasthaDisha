@@ -1,0 +1,33 @@
+{
+  "schema": "SD-INTERNAL-SOURCE-DECISIONS-1",
+  "baseline": "37fea6b23991d4cdd98e3d68300a5191122fc868",
+  "candidate": "bfc17ccc64f59a8e63afaf9ca524ce0b4dba60a3",
+  "author": "/root",
+  "contractSha256": "f3d100d7981d65e92c9ba144523534b54d309b7cfb400ba387497c25113bcf22",
+  "patchSha256": "059dfd0513245d60a33036aa79447aa45c7eb6853592e6e21ac92589f90594ae",
+  "sourceFreezeSha256": "fcb5ecd2f1226874b56efd4ca8e00f3eb81175d92661182f70cb6be0039b3def",
+  "decisions": [
+    {
+      "reviewer": "/root/booking_write_contract",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex review; personally inspected source/diff/inverse/pins and unchanged effect/shared-specialist sequence."
+    },
+    {
+      "reviewer": "/root/payment_ctor_contract",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex review; personally inspected source/diff/inverse/pins and unchanged effect/shared-specialist sequence."
+    }
+  ],
+  "execution": "NOT_RUN; source/data/Git inspection only",
+  "limits": [
+    "Earlier effects are not atomic or rolled back on final409.",
+    "Dirty-array pre-read and direct12-byte-ID post-effect400 remain.",
+    "Omitted admin scope retains unscoped legacy delete.",
+    "No clinical retention/refund/status eligibility or module/release acceptance."
+  ],
+  "whitespace": "Production diff passes; archived diff context-marker spaces are historical patch data."
+}
