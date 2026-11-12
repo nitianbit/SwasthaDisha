@@ -11,3 +11,5 @@ Compiler/type checking, evaluator cases, substituted whole-reader checks, native
 This candidate supplies metadata mechanics only. It does not create an index, change clients, backfill or inspect patient records, install fixture resources, activate contact writers, prove all-account key coverage, resolve legacy ownership, admit production compatibility, or complete customer contact change. Full C2/C3, diagnostic ownership/cleanup, client/cutover, owner and release gates remain open.
 
 The initial candidate is superseded by the strict native UUID correction described in `AMENDMENT.md`; original evidence is retained in `initial-d694d890/`. Two fresh nonauthor source reviews are pending.
+
+Both actual amended-source nonauthor decisions now APPROVE_SOURCE_ONLY for3678ff7; see SOURCE_DECISIONS.json. Original REQUEST_CHANGES and withdrawn first Standards approval are preserved. Runtime and full contact gates remain.

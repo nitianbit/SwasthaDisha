@@ -1,0 +1,63 @@
+{
+  "schema": "SD-CONTACT-INDEX-AMENDED-SOURCE-DECISIONS-1",
+  "candidate": "3678ff7e7ea6dbca01280a1650159108190fc53e",
+  "baseline": "6df08cc5bfabeea2a0243a921ebb0ff2bfda919f",
+  "initialSourceCandidate": "d694d8903b14820ed03f2c9c1abd77a96cc97482",
+  "initialDisposition": "REQUEST_CHANGES; original Spec finding and Root withdrawn first approval preserved",
+  "sourceFiles": [
+    {
+      "path": "src1/modules/user/contactIndexManifest.ts",
+      "sha256": "5fbaff2e98b38b47cf5645dbb95e322b1d33b988552730f2f4cce4f2a5294b7e",
+      "bytes": 662
+    },
+    {
+      "path": "src1/modules/user/contactIndexReadiness.ts",
+      "sha256": "b0f4300441dc4280220cfbe38a3fa1f2c829a058df0371a900a90136d8284749",
+      "bytes": 16009
+    },
+    {
+      "path": "src1/modules/user/contactIndexReader.ts",
+      "sha256": "e3e91b712e04e4d3fd9806c8fc44f3c2331033bcf95b98a118f123a546ecfef6",
+      "bytes": 23513
+    }
+  ],
+  "sourcePatchSha256": "67224e271c6dedbd4e6cdcc2f562c7eefeacb2e5927f9505c6dd1f1d98de87c2",
+  "correctionPatchSha256": "6bd5966a838d421c4a2e2fc53e4b9581e9472f0ee9a3d0c581165f4475701e2a",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": [],
+      "evidence": "Original full3module review plus exact amended reader diff, all3hashes/12pins/fullpatch independently checked; cached pinned deserializer and UUID constructor now personally read; exact declared-position/nativeUUID4-field conversion verified."
+    },
+    {
+      "reviewer": "/root/milestone_composition_r9",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": [],
+      "evidence": "Full original trace and exact newpatches/hashes checked; nativeUUID accepted only at declared catalog position with exact4own fields/subtype4/16bytes, all other placements/subclasses remain rejected; initial artifact copies unchanged."
+    }
+  ],
+  "runtime": {
+    "compiler": "NOT_RUN",
+    "pureEvaluator": "NOT_RUN",
+    "wholeReaderSubstitutedPorts": "NOT_RUN",
+    "nativeDriverAndBsonShapes": "NOT_RUN",
+    "mongo8MetadataCommands": "NOT_RUN",
+    "uuidLongCursorAndCleanup": "NOT_RUN",
+    "deadlineAndHungCommandFixture": "NOT_RUN",
+    "mutationControls": "NOT_RUN",
+    "application": "NOT_RUN",
+    "provider": "NOT_RUN"
+  },
+  "metadataRuntimeReady": false,
+  "contactFeatureComplete": false,
+  "productionInvocationAdmitted": false,
+  "limits": [
+    "Pinned local diagnostic profile only; actual native/driver/BSON/commands/cursors/deadline/cleanup/compiled-evaluator evidence NOT_RUN",
+    "No index installation, all-account canonical-key coverage/backfill, old-writer cutover, legacy contact ownership, production compatibility or client/owner/release proof"
+  ]
+}
