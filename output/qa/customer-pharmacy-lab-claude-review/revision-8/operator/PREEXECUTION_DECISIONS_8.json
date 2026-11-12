@@ -1,0 +1,35 @@
+{
+  "schema": "SD-CLAUDE-PREEXECUTION-DECISIONS-8",
+  "candidate": "dbe1cc2d972876876c422cf7af1b194037542575",
+  "sourceFreezeSha256": "20e37b20fdd9709804195a521b4d0dcffd6afb3ed45f259fb4a8f6dbf0d90f5c",
+  "bindings": {
+    "supervisorSha256": "ec713b380f72eb5edd48b55da7efdf937b2591aa3b85c7c281e1744a027957a9",
+    "testsSha256": "ddd2800dba2aab47eb4dba667c719531f9ed0910e3d7a59f504c9319f5f0d512",
+    "preimplementationSha256": "469e3c07b4feab4350331ba1e9269c2b99a78d8f3adb91fec3b0e1126ffec1a0",
+    "preparedFreezeSha256": "9ccaa68231120a91f2d69a4afe1e00b4f29add81bb7710ad3401d4029007c44e",
+    "recipeSha256": "c4a2dab4f261e3b32ff195abb934e4da722b6cf9606ca2388be229354ab8986f",
+    "challengeSha256": "aa5bac513039d8d8e3e5c2ca1e47db5fd733afc75984bbed5dbc843247caa094",
+    "sessionId": "99c211d0-4e14-42fa-9649-6a785bd2df36",
+    "packetSha256": "15c50a61b36e42b59e95b48252c338ab96f6e421ba16237f8abfdfb9333a77d9"
+  },
+  "decisions": [
+    {
+      "reviewer": "/root/booking_write_contract",
+      "role": "Standards",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW",
+      "findings": [],
+      "ordinaryTrustedClientBoundaryAccepted": true,
+      "provenance": "Actual independent nonauthor exact source/packet/protocol/runtime/env/one-invocation review; Root and binding author excluded."
+    },
+    {
+      "reviewer": "/root/payment_ctor_contract",
+      "role": "Spec",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW",
+      "findings": [],
+      "ordinaryTrustedClientBoundaryAccepted": true,
+      "provenance": "Actual independent nonauthor exact source/packet/protocol/runtime/env/one-invocation review; Root and binding author excluded."
+    }
+  ],
+  "scope": "One fixed local CLI/Ruflo Opus5.5/xhigh request after Root prerequisites; selected live input admission only; no whole-tree clean or actual effort/webview claim.",
+  "consumption": "Actual invocation completed; no further run authorized."
+}

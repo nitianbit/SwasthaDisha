@@ -1,0 +1,25 @@
+{
+  "schema": "SD-CLAUDE-POSTCAPTURE-DECISIONS-8",
+  "candidate": "dbe1cc2d972876876c422cf7af1b194037542575",
+  "sessionId": "99c211d0-4e14-42fa-9649-6a785bd2df36",
+  "sourceFreezeSha256": "20e37b20fdd9709804195a521b4d0dcffd6afb3ed45f259fb4a8f6dbf0d90f5c",
+  "streamSha256": "1845a279ec87ebbbf95ef29e12977ccaf74b613e89f1cdf2189db6db34f8f61e",
+  "reviewSha256": "5eaf50279e150016781dde05c27c1ee2520f8a724f65360febbce2a0b1c44188",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Root actual provenance acceptance",
+      "decision": "ACCEPT_GENUINE_SOURCE_ONLY_REVIEW_PROVENANCE",
+      "findings": [],
+      "observations": "All source/capture/protocol/actual model/full persistent mailbox text and fresh exact process/group checks personally performed."
+    },
+    {
+      "reviewer": "/root/payment_ctor_contract",
+      "role": "Independent nonauthor provenance review",
+      "decision": "ACCEPT_GENUINE_SOURCE_ONLY_REVIEW_PROVENANCE",
+      "findings": [],
+      "observations": "Actual direct review verified complete522-frame capture/pins/protocol/model and personally fresh escalated exact process/group absence; Root mailbox peek explicitly attributed to Root."
+    }
+  ],
+  "limits": "Provenance only; actual six source verdicts remain SOURCE_ONLY and new/existing activation findings remain open. Effective effort unproven, no native webview ACK. No new run or release authority."
+}

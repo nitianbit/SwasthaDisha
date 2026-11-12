@@ -1,0 +1,33 @@
+{
+  "schema": "SD-CLAUDE-ROOT-ACCEPTANCE-8",
+  "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+  "candidate": "dbe1cc2d972876876c422cf7af1b194037542575",
+  "sessionId": "99c211d0-4e14-42fa-9649-6a785bd2df36",
+  "genuineReviewAccepted": true,
+  "actualModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "nativeWebviewACK": false,
+  "reviewSha256": "5eaf50279e150016781dde05c27c1ee2520f8a724f65360febbce2a0b1c44188",
+  "streamSha256": "1845a279ec87ebbbf95ef29e12977ccaf74b613e89f1cdf2189db6db34f8f61e",
+  "recordedVerdicts": {
+    "R8-1": "APPROVE_SOURCE_ONLY",
+    "R8-2": "APPROVE_SOURCE_ONLY",
+    "R8-3": "APPROVE_SOURCE_ONLY",
+    "R8-4": "APPROVE_SOURCE_ONLY",
+    "R8-5": "APPROVE_SOURCE_ONLY",
+    "R8-6": "APPROVE_SOURCE_ONLY",
+    "composition": "APPROVE_SOURCE_ONLY"
+  },
+  "openActivationFindings": [
+    "F1 HIGH",
+    "F5-1 MEDIUM",
+    "R8-F2-1 MEDIUM"
+  ],
+  "nextSourceWork": "R8-F2-1 contract must fence recovery-marker/party-update composition and late conflicts without claiming unrelated effects atomic; separate legacy-test alignment and README doc follow-ups.",
+  "limits": "No module/M0/clinical/financial/owner/client/HTTP/DB/provider/semantic/root-build/production/release acceptance; final integration deferred. Actual84 pure evidence retains its separate scope. One invocation consumed.",
+  "nativeExecSession": 31197,
+  "terminalExit": 0,
+  "approvalSha256": "bf938c8a6cd241846a431f8ac924aa3982bded03d2473806c69888b7cf6f309b",
+  "consumedOnceSha256": "2c4532c91dff97be279e9cd98040dc963688df4c5d2d2eaa5968dd1e7683ac43"
+}

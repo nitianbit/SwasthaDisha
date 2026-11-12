@@ -1,0 +1,17 @@
+# R8 finding decisions — Root
+
+Genuine Opus5.5 R8 provenance is accepted separately from application acceptance. All six increments and composition are APPROVE_SOURCE_ONLY; no module/owner/runtime/release approval follows. Source snapshot258ec457, exact public reviewSHA5eaf50279e150016781dde05c27c1ee2520f8a724f65360febbce2a0b1c44188. No live records, deployment or protected logs were inspected.
+
+| Finding | Root decision and next evidence |
+| --- | --- |
+| R8-F2-1 MEDIUM | OPEN activation gate; prioritize a separately reviewed source contract now. A present recovery marker locks generic party-write commands (customerId, buyerPharmacyId and orderType), including malformed/null markers. Final party writes must atomically require marker absence; customerId equality alone cannot fence a concurrent intake. Remove unconditional echo of omitted party fields so stale notes-only updates cannot rewrite ownership. Keep notes-only commands useful; no automatic cancellation/funding interpretation. Scope the final mutation and throw a lost-write conflict inside the existing inventory transaction callback before it can return normally. Preserve and explicitly account for outside-transaction customer-link effects and unproved driver/session/rollback semantics. Existing inconsistent records need separately authorized accountable recovery, never silent marker deletion/rebinding. |
+| R8-F4-1 LOW | Separate test-only alignment next: replace the pre-commerce-gate Rx expectation with the actual503/no-inventory-effect assertion and give the manual-payment race an active non-Rx catalogue/line fixture. Do not run the legacy suite without complete C3. Source repair cannot prove the race. |
+| R8-F5-2 INFO | Later docs-only README correction may cite actual84 evidence; record documentation pin supersession and preserve old run/source freezes. No identical runtime rerun or forged history. |
+| R8-F1-2 LOW | Retain the explicit lowercase-ID contract for these new reads; client compatibility remains unproved. Do not silently expand/canonicalize an already frozen protocol. |
+| R8-F6-1 LOW | Keep capacity/activation gate open; representative explain/time/byte evidence or a separately reviewed partial index is required. No index or production probe now. |
+| R8-F1-1 / F3-1 INFO | Actual Mongoose6/BSON/$expr behavior remains a focused runtime requirement; source guards and doubles are not sufficient. |
+| R8-F2-2 INFO | Actual snapshot retry/unknown-commit/replay evidence remains open; no exactly-once or fixed API-success promise. |
+| R8-F5-1 INFO | Zero-effect fields are capability assertions, not observed OS instrumentation. Direct rejector probe is narrower than actual compiler require/sys proof; only five relations have observed mutant sensitivity. Child emits are not a host re-emission. Preserve this scope in summaries and future schema revisions. |
+| F1 HIGH / F5-1 MEDIUM and prior findings | Remain OPEN as in R7. Source intake/discovery is not verified collection, funding, custody, stock/refund recovery, qualified Rx decision or provisioning. No clinical/financial fact is invented by Root. |
+
+These decisions use the owner's delegated product/technical authority. They do not replace real qualification, protected financial facts, supported clients, C2/C3 or release gates. Corporate/HR/hospital expansion and final cross-module integration remain deferred. Continue local reviewed backend work; no push or deployment.

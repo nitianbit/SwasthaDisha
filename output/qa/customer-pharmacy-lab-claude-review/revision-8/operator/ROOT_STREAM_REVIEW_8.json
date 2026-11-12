@@ -1,0 +1,77 @@
+{
+  "schema": "SD-CLAUDE-ROOT-STREAM-REVIEW-8",
+  "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+  "candidate": "dbe1cc2d972876876c422cf7af1b194037542575",
+  "sessionId": "99c211d0-4e14-42fa-9649-6a785bd2df36",
+  "streamSha256": "1845a279ec87ebbbf95ef29e12977ccaf74b613e89f1cdf2189db6db34f8f61e",
+  "streamBytes": 606634,
+  "frames": 522,
+  "stateSha256": "59cf8b7be80ade3fb13eb0ddbb8409de83f8d14076857a7206a1ae813d5862f1",
+  "elapsedSeconds": 900.542,
+  "exitCode": 0,
+  "inputBytesWritten": 1879863,
+  "all138SelectedLiveFilesStillMatch": true,
+  "models": [
+    "claude-opus-5-5"
+  ],
+  "canonicalProvider": "firstParty",
+  "canonicalTurns": 4,
+  "reportedContextWindow": 1000000,
+  "observedCompactionOrTruncationFrames": false,
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "nativeWebviewACK": false,
+  "toolSequence": [
+    {
+      "id": "toolu_011cZbAWeczRtXbdiK3Zuqk4",
+      "name": "mcp__ruflo__team_inbox",
+      "success": true
+    },
+    {
+      "id": "toolu_01YayMDYRRF4mCxuVzVC9Mkd",
+      "name": "mcp__ruflo__team_send",
+      "success": true
+    },
+    {
+      "id": "toolu_017nNFPVZe3kdRGR1GHeqvGs",
+      "name": "mcp__ruflo__team_send",
+      "success": true
+    }
+  ],
+  "challengeMessageId": "msg_1794492602497_rlwbsoly",
+  "uniqueReceivedChallenge": true,
+  "messages": [
+    {
+      "id": "msg_1794493376220_uljcd3po",
+      "from": "claude-reviewer",
+      "to": "codex-lead",
+      "timestamp": "2026-11-12T14:22:56.220Z",
+      "bytes": 1766,
+      "sha256": "c8e652c27277bbcddfd5e3c40146564a417039efa9d8a65d16470c95b8eb7a90",
+      "sendServerExact": true,
+      "rootFreshPersistentMailboxPeekExact": true
+    },
+    {
+      "id": "msg_1794493509864_ajllxy9q",
+      "from": "claude-reviewer",
+      "to": "codex-lead",
+      "timestamp": "2026-11-12T14:25:09.864Z",
+      "bytes": 34333,
+      "sha256": "5eaf50279e150016781dde05c27c1ee2520f8a724f65360febbce2a0b1c44188",
+      "sendServerExact": true,
+      "rootFreshPersistentMailboxPeekExact": true
+    }
+  ],
+  "assistantFinalCanonicalSendExact": true,
+  "noPermissionDenialsOrSubagents": true,
+  "rootFreshExactPidsAbsent": [
+    52784,
+    52810,
+    52814
+  ],
+  "rootFreshGroupEmpty": 52784,
+  "rootFreshPsResult": "exit1,empty",
+  "rootFreshPgrepResult": "exit1,empty",
+  "thinkingPublished": false,
+  "immutableCaptureStateReviewAccepted": false
+}

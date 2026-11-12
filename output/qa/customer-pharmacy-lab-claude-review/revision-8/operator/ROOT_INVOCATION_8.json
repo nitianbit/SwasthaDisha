@@ -1,0 +1,46 @@
+{
+  "schema": "SD-CURRENT-CLAUDE-ROOT-INVOCATION-8",
+  "candidate": "dbe1cc2d972876876c422cf7af1b194037542575",
+  "sourceCommit": "258ec457c3bda0b95eea9e8838507e09ae08ef30",
+  "python": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+  "pythonSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "argv": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+    "-I",
+    "-B",
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/customer-pharmacy-lab-claude-review/revision-8/operator/supervisor.py",
+    "--live"
+  ],
+  "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab",
+  "sourceFreezeSha256": "20e37b20fdd9709804195a521b4d0dcffd6afb3ed45f259fb4a8f6dbf0d90f5c",
+  "reviewers": [
+    {
+      "agent": "/root/booking_write_contract",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    },
+    {
+      "agent": "/root/payment_ctor_contract",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    }
+  ],
+  "membersVerified": [
+    "codex-lead",
+    "claude-reviewer"
+  ],
+  "teamActive": true,
+  "challengeEnqueue": {
+    "messageId": "msg_1794492602497_rlwbsoly",
+    "timestamp": "2026-11-12T14:10:02.497Z",
+    "acknowledged": true,
+    "challengeSha256": "aa5bac513039d8d8e3e5c2ca1e47db5fd733afc75984bbed5dbc843247caa094"
+  },
+  "privateExclusionsVerified": true,
+  "approvalSha256": "bf938c8a6cd241846a431f8ac924aa3982bded03d2473806c69888b7cf6f309b",
+  "requestedModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "nativeExtensionACK": false,
+  "actualReviewAccepted": false,
+  "invocationState": "PREREQUISITES_COMPLETE_NOT_LAUNCHED",
+  "sourceAdmission": "Selected live input closure; unselected preserved drafts do not imply whole-tree cleanliness."
+}
