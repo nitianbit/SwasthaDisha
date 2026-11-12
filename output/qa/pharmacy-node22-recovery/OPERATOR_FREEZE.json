@@ -1,0 +1,38 @@
+{
+  "schema": "SD-NODE22-OPERATOR-SOURCE-FREEZE-1",
+  "status": "IMPLEMENTED_OFFLINE_ONLY_AWAITING_TWO_EXACT_SOURCE_LAUNCHER_REVIEWS",
+  "recipe": {
+    "freezeSha256": "48357c414d86b10f8aefc5419d6abcd429c92598c6dce59119c76c3a7d03c36a",
+    "recipeSha256": "0e4f0b436aa0b0372acad1c09759419a885227d25bb93afc666b6d36af355626",
+    "scriptPlanSha256": "9584ca37b78368a3ab558d939a55f3640a6c74a93bb8a17c30c67517bd2a1ef7"
+  },
+  "files": {
+    "IMPLEMENTATION_DECISIONS.json": "3b49c581ae5d4b5484b7c96b1bb3d1b71572ea4ad1cf8a9ea73f733a4da064be",
+    "LIVE_LAUNCHER.txt": "57e2a9be72561dcb48af78204f47bdf9eedd546b1a4e6dc011bec6a1f1270e76",
+    "OFFLINE_CHECKS.json": "cfa2e1bbf51e02c1f1b62144c89e56dec93f4cb63e441d6690509b2310d41ef5",
+    "SOURCE_REVIEW.md": "02eb1eae98baede1d28f07492e9737562a1ea6d2372726e2f7011b9edac12765",
+    "offline-controls-initial.stderr.txt": "d9e08943f27009da5d94327f3980f6f4f1ed314a838da6b542818cba8c73ffe3",
+    "offline-controls-initial.stdout.json": "3b3775b1aea4ff2aca19b9e095bfc702cc1d7e9ee5a7cab5cdaa183c5098f781",
+    "offline-final.stderr.txt": "89a5398572c70d1ac7f0c169faccb8cd2db12129ca22c5951c882dd8b50702a6",
+    "offline-final.stdout.json": "cfdc407cf636f2d8666b9e6d393d15a9dc16abcdfdcadf21a3f349785e47447c",
+    "offline-initial.stderr.txt": "e256996f87154d1d09b33ee37eeeef8e9303ffd59081330141affd0401dee6ab",
+    "offline-initial.stdout.txt": "3b86b1001e78e3c10cdd7c8c22dadd59b0d4c42c465590fa56de4556bd22bc36",
+    "operator-before-env-amendment.py.txt": "1ae72e045bbd0b6f764db9f8003a16432b919bee9ac045e40d492db97caac8d2",
+    "recover-node22.py": "db2211217b0618e7d617e0eab40d30ee953479ff43c4218b527d0d9f79b3b590",
+    "test-before-control-correction.py.txt": "19b3d8f995c09d6d736aad01bf4c96199b9158a3d0aea3042f2f87b1f089b7ff",
+    "test-recover-node22.py": "cda5dccea507421a6339344aa263dd863fe542877b03d6a8eae5ff1f34c91415"
+  },
+  "sourceSha256": "db2211217b0618e7d617e0eab40d30ee953479ff43c4218b527d0d9f79b3b590",
+  "testSha256": "cda5dccea507421a6339344aa263dd863fe542877b03d6a8eae5ff1f34c91415",
+  "launcherSha256": "57e2a9be72561dcb48af78204f47bdf9eedd546b1a4e6dc011bec6a1f1270e76",
+  "finalOfflineChecks": 42,
+  "detectedWeakeningControls": 4,
+  "priorFailedControlsPreserved": true,
+  "acquisitionApproved": false,
+  "liveAdmissionIncluded": false,
+  "NodeExecutionApproved": false,
+  "applicationOrPackageChanges": false,
+  "GitMutation": false,
+  "newAcceptance": false,
+  "writesStopAfterPublication": true
+}

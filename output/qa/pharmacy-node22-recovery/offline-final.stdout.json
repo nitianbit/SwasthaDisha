@@ -1,0 +1,48 @@
+{
+  "status": "OFFLINE_CHECKS_COMPLETE",
+  "checks": 42,
+  "failures": 0,
+  "errors": 0,
+  "skips": 0,
+  "controls": [
+    {
+      "mutation": "HTTP_STATUS_GUARD_REMOVED",
+      "case": "test_redirect_is_never_followed",
+      "testsRun": 1,
+      "failures": 1,
+      "errors": 0,
+      "detected": true,
+      "rawOutput": "test_redirect_is_never_followed (__main__.OfflineChecks.test_redirect_is_never_followed) ... FAIL\n\n======================================================================\nFAIL: test_redirect_is_never_followed (__main__.OfflineChecks.test_redirect_is_never_followed)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/tmp/pharmacy-node22-operator-draft/test-recover-node22.py\", line 201, in test_redirect_is_never_followed\n    with self.assertRaises(op.Refusal):\n         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^\nAssertionError: Refusal not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+    },
+    {
+      "mutation": "MEMBER_HASH_GUARD_REMOVED",
+      "case": "test_wrong_binary_digest_denied",
+      "testsRun": 1,
+      "failures": 1,
+      "errors": 0,
+      "detected": true,
+      "rawOutput": "test_wrong_binary_digest_denied (__main__.OfflineChecks.test_wrong_binary_digest_denied) ... FAIL\n\n======================================================================\nFAIL: test_wrong_binary_digest_denied (__main__.OfflineChecks.test_wrong_binary_digest_denied)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/tmp/pharmacy-node22-operator-draft/test-recover-node22.py\", line 247, in test_wrong_binary_digest_denied\n    with self.assertRaises(op.Refusal):\n         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^\nAssertionError: Refusal not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+    },
+    {
+      "mutation": "FILE_IDENTITY_GUARD_REMOVED",
+      "case": "test_regular_file_replacement_not_removed",
+      "testsRun": 1,
+      "failures": 1,
+      "errors": 0,
+      "detected": true,
+      "rawOutput": "test_regular_file_replacement_not_removed (__main__.OfflineChecks.test_regular_file_replacement_not_removed) ... FAIL\n\n======================================================================\nFAIL: test_regular_file_replacement_not_removed (__main__.OfflineChecks.test_regular_file_replacement_not_removed)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/tmp/pharmacy-node22-operator-draft/test-recover-node22.py\", line 179, in test_regular_file_replacement_not_removed\n    with self.assertRaises(op.Refusal):\n         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^\nAssertionError: Refusal not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+    },
+    {
+      "mutation": "OUTER_DEADLINE_RESET",
+      "case": "test_nested_deadline_does_not_reset_outer_budget",
+      "testsRun": 1,
+      "failures": 1,
+      "errors": 0,
+      "detected": true,
+      "rawOutput": "test_nested_deadline_does_not_reset_outer_budget (__main__.OfflineChecks.test_nested_deadline_does_not_reset_outer_budget) ... FAIL\n\n======================================================================\nFAIL: test_nested_deadline_does_not_reset_outer_budget (__main__.OfflineChecks.test_nested_deadline_does_not_reset_outer_budget)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/tmp/pharmacy-node22-operator-draft/test-recover-node22.py\", line 276, in test_nested_deadline_does_not_reset_outer_budget\n    with self.assertRaisesRegex(op.Refusal, 'deadline'):\n         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: Refusal not raised\n\n----------------------------------------------------------------------\nRan 1 test in 2.011s\n\nFAILED (failures=1)\n"
+    }
+  ],
+  "realNetworkAttempts": 0,
+  "NodeExecutions": 0,
+  "packageExecutions": 0
+}

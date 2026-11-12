@@ -1,0 +1,19 @@
+{
+  "schema": "SD-NODE22-ONE-ACQUISITION-1",
+  "sourceSha256": "332bcd701f59f3482f56e99e50a7df09504caff41eea7eada90b284f0c1a9f17",
+  "launcherSha256": "dd2ff37e5e98992873a36775f201254f656858dd06e6c92374fe4c33736f61d6",
+  "recipeFreezeSha256": "48357c414d86b10f8aefc5419d6abcd429c92598c6dce59119c76c3a7d03c36a",
+  "pythonSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "reviews": [
+    {
+      "role": "Spec",
+      "reviewer": "/root/booking_read_spec",
+      "decision": "APPROVE_ONE_ACQUISITION_ONLY"
+    },
+    {
+      "role": "Standards",
+      "reviewer": "/root",
+      "decision": "APPROVE_ONE_ACQUISITION_ONLY"
+    }
+  ]
+}

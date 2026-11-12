@@ -1,0 +1,13 @@
+# Revision1 — retained acquisition provenance
+
+Status: **SOURCE AMENDMENT COMPLETE; STOP FOR TWO EXACT SOURCE/LAUNCHER REVIEWS.** No acquisition or Node execution. Author `/root/pharmacy_recovery_readiness` does not approve this revision.
+
+Root's nonauthor exact-source review of `db2211217b0618e7d617e0eab40d30ee953479ff43c4218b527d0d9f79b3b590` requested one narrow correction: canonical `acquisition.json` was written before the admitted script/recipe/interpreter pins were attached to the outer result, and lacked official URLs. The source now passes admitted pins into `recover(..., provenance=pins)` and initializes its record with those pins and the two fixed official URLs before any canonical record is persisted. Optional provenance keeps existing fake calls compatible. No other behavioral expansion is included.
+
+All original files and `../OPERATOR_FREEZE.json` remain unchanged. This new directory is a separate exact candidate. Its fixed QA path and launcher point here; four original recipe inputs are copied byte-for-byte solely as frozen admission input snapshots, preserving their hashes. See `source.diff.txt`. No new live admission/claim/result file is supplied; implementation-only decisions remain historical at the parent directory.
+
+Actual final pinned Python3.14.7 `-I -S -B` command in `OFFLINE_CHECKS.json` exited0: **43 checks, zero failures/errors/skips; all four prior weakening controls detected**. The one new focused assertion reads canonical `acquisition.json` from the actual fake recovery path and requires all admitted provenance hashes and both literal official URLs. Existing fake network/filesystem/cleanup/admission/deadline checks were rerun for the changed source. Raw final stdout/stderr and exact source/test hashes are frozen. Socket tripwire records zero real network attempts. Synthetic binary bytes remained inert.
+
+The first revised run exited1 with7 errors because admission fixtures tried to read the new durable revision recipe directory before it was published. The focused retained-metadata assertion passed in that run. Preserve `offline-staging-failure.*` and `test-before-staging-correction.py.txt`; changing the fixture to adjacent byte-identical recipe snapshots corrected that staging error, with no additional operator behavior change.
+
+SIGALRM interruption was exercised on a blocking fake check; real DNS/TLS/download interruption remains unexercised. Official archive transfer/layout, real binary bytes and Node behavior remain NOT_RUN. Root packages/build/start, C2/C3, pharmacy reconstruction and module/runtime acceptance are unchanged. No Git mutation. Stop here for the required two exact source/launcher reviews; no automatic acquisition or retry authority is inferred.

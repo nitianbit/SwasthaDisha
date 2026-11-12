@@ -1,0 +1,79 @@
+{
+  "schema": "SD-NODE22-ACTUAL-OFFLINE-CHECKS-1",
+  "interpreter": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+  "interpreterSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "argv": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+    "-I",
+    "-S",
+    "-B",
+    "/private/tmp/pharmacy-node22-operator-draft/test-recover-node22.py"
+  ],
+  "sourceSha256": "db2211217b0618e7d617e0eab40d30ee953479ff43c4218b527d0d9f79b3b590",
+  "testSourceSha256": "cda5dccea507421a6339344aa263dd863fe542877b03d6a8eae5ff1f34c91415",
+  "exitCode": 0,
+  "baselineChecks": 42,
+  "baselineFailures": 0,
+  "baselineErrors": 0,
+  "baselineSkips": 0,
+  "weakeningControls": [
+    {
+      "mutation": "HTTP_STATUS_GUARD_REMOVED",
+      "sourceSha256": "ed8ee5ad27a7fc21ba0eb20cde56f6a3aed9c97c7813fd729607d6e9f232df22",
+      "outcome": {
+        "mutation": "HTTP_STATUS_GUARD_REMOVED",
+        "case": "test_redirect_is_never_followed",
+        "testsRun": 1,
+        "failures": 1,
+        "errors": 0,
+        "detected": true,
+        "rawOutput": "test_redirect_is_never_followed (__main__.OfflineChecks.test_redirect_is_never_followed) ... FAIL\n\n======================================================================\nFAIL: test_redirect_is_never_followed (__main__.OfflineChecks.test_redirect_is_never_followed)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/tmp/pharmacy-node22-operator-draft/test-recover-node22.py\", line 201, in test_redirect_is_never_followed\n    with self.assertRaises(op.Refusal):\n         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^\nAssertionError: Refusal not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+      }
+    },
+    {
+      "mutation": "MEMBER_HASH_GUARD_REMOVED",
+      "sourceSha256": "4f1c6777511268d57a95e6aa6643ffa77a416923dd84cb9cc2abce06e46b36fa",
+      "outcome": {
+        "mutation": "MEMBER_HASH_GUARD_REMOVED",
+        "case": "test_wrong_binary_digest_denied",
+        "testsRun": 1,
+        "failures": 1,
+        "errors": 0,
+        "detected": true,
+        "rawOutput": "test_wrong_binary_digest_denied (__main__.OfflineChecks.test_wrong_binary_digest_denied) ... FAIL\n\n======================================================================\nFAIL: test_wrong_binary_digest_denied (__main__.OfflineChecks.test_wrong_binary_digest_denied)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/tmp/pharmacy-node22-operator-draft/test-recover-node22.py\", line 247, in test_wrong_binary_digest_denied\n    with self.assertRaises(op.Refusal):\n         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^\nAssertionError: Refusal not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+      }
+    },
+    {
+      "mutation": "FILE_IDENTITY_GUARD_REMOVED",
+      "sourceSha256": "b0da6ac159bcb3a65d7005f6a3d88e1b48b57d179fcdc181799b8bcf07b87173",
+      "outcome": {
+        "mutation": "FILE_IDENTITY_GUARD_REMOVED",
+        "case": "test_regular_file_replacement_not_removed",
+        "testsRun": 1,
+        "failures": 1,
+        "errors": 0,
+        "detected": true,
+        "rawOutput": "test_regular_file_replacement_not_removed (__main__.OfflineChecks.test_regular_file_replacement_not_removed) ... FAIL\n\n======================================================================\nFAIL: test_regular_file_replacement_not_removed (__main__.OfflineChecks.test_regular_file_replacement_not_removed)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/tmp/pharmacy-node22-operator-draft/test-recover-node22.py\", line 179, in test_regular_file_replacement_not_removed\n    with self.assertRaises(op.Refusal):\n         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^\nAssertionError: Refusal not raised\n\n----------------------------------------------------------------------\nRan 1 test in 0.001s\n\nFAILED (failures=1)\n"
+      }
+    },
+    {
+      "mutation": "OUTER_DEADLINE_RESET",
+      "sourceSha256": "78cda2c4667e3ad27ad08ad743f406038febe7717457bd8ae8bc67ec3c9802d6",
+      "outcome": {
+        "mutation": "OUTER_DEADLINE_RESET",
+        "case": "test_nested_deadline_does_not_reset_outer_budget",
+        "testsRun": 1,
+        "failures": 1,
+        "errors": 0,
+        "detected": true,
+        "rawOutput": "test_nested_deadline_does_not_reset_outer_budget (__main__.OfflineChecks.test_nested_deadline_does_not_reset_outer_budget) ... FAIL\n\n======================================================================\nFAIL: test_nested_deadline_does_not_reset_outer_budget (__main__.OfflineChecks.test_nested_deadline_does_not_reset_outer_budget)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/tmp/pharmacy-node22-operator-draft/test-recover-node22.py\", line 276, in test_nested_deadline_does_not_reset_outer_budget\n    with self.assertRaisesRegex(op.Refusal, 'deadline'):\n         ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: Refusal not raised\n\n----------------------------------------------------------------------\nRan 1 test in 2.011s\n\nFAILED (failures=1)\n"
+      }
+    }
+  ],
+  "priorControlRunExitCode": 1,
+  "priorControlRunHasTwoUndetectedVariants": true,
+  "first33CheckLogs": "preliminary logs only; exact earlier test-source bytes not retained; not acceptance evidence",
+  "realNetworkAttempts": 0,
+  "NodeExecutions": 0,
+  "newAcceptance": false
+}

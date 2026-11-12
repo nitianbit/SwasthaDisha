@@ -1,0 +1,44 @@
+{
+  "schema": "SD-PHARMACY-NODE22-PRIMARY-METADATA-1",
+  "status": "OFFICIAL_ARCHIVE_CHECKSUM_MATCHED_METADATA_ONLY",
+  "observedUtc": "2026-11-12T05:17:48Z",
+  "method": "web tool text metadata reads only; no binary URL fetched",
+  "officialSources": [
+    {
+      "url": "https://nodejs.org/download/release/v22.23.4/SHASUMS256.txt",
+      "observed": "one selected exact filename/checksum row at zero-based line2",
+      "selectedLine": "c9e1dbc748b33ed2d14f42445191ecaf14c56259c7a9a26d0042c49ec2b66428  node-v22.23.4-darwin-arm64.tar.gz",
+      "selectedLineUtf8NoNewlineSha256": "de86e1f7061ab9ccc898bd8c17f4c3963e544c237733e8f3bc0ae45b576767a8"
+    },
+    {
+      "url": "https://nodejs.org/en/blog/release/v22.23.4",
+      "observed": "official Apple Silicon binary link and selected archive checksum corroborate filename/platform; release heading 2026-10-21"
+    },
+    {
+      "url": "https://nodejs.org/download/release/v22.23.4/",
+      "observed": "selected tar.gz and different tar.xz filenames listed; rounded directory size is not used as an exact size"
+    }
+  ],
+  "failedMetadataReads": [
+    "https://nodejs.org/dist/v22.23.4/SHASUMS256.txt",
+    "https://nodejs.org/dist/v22.23.4/"
+  ],
+  "archiveFilename": "node-v22.23.4-darwin-arm64.tar.gz",
+  "archiveSha256": "c9e1dbc748b33ed2d14f42445191ecaf14c56259c7a9a26d0042c49ec2b66428",
+  "archiveExactBytes": null,
+  "soleMember": "node-v22.23.4-darwin-arm64/bin/node",
+  "memberSha256": "2cc28a1880d0774616959f2210ee739bffa6ac695c887e8988a496a21271f6c0",
+  "memberHashProvenance": {
+    "kind": "HISTORICAL_LOCAL_TOOL_BINARY_HASH_NOT_CURRENT_OFFICIAL_PER_MEMBER_HASH",
+    "ref": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+    "path": "output/qa/week2-inventory-preparation/recipe-3/readiness.json",
+    "key": "tools./private/tmp/m0-node22/node"
+  },
+  "memberExactBytes": null,
+  "rawHttpResponsesArchived": false,
+  "signatureVerified": false,
+  "binaryDownloaded": false,
+  "binaryHashFreshlyMeasured": false,
+  "binaryExecuted": false,
+  "runtimeOrModuleAcceptance": false
+}

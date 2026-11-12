@@ -1,0 +1,26 @@
+{
+  "schema": "SD-NODE22-OPERATOR-IMPLEMENTATION-DECISIONS-1",
+  "scope": "OPERATOR_IMPLEMENTATION_AND_MEANINGFUL_OFFLINE_FAKES_ONLY",
+  "recipe": {
+    "freezeSha256": "48357c414d86b10f8aefc5419d6abcd429c92598c6dce59119c76c3a7d03c36a",
+    "recipeSha256": "0e4f0b436aa0b0372acad1c09759419a885227d25bb93afc666b6d36af355626",
+    "scriptPlanSha256": "9584ca37b78368a3ab558d939a55f3640a6c74a93bb8a17c30c67517bd2a1ef7"
+  },
+  "decisions": [
+    {
+      "reviewer": "/root/booking_read_standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR_RELAYED_BY_ROOT",
+      "decision": "APPROVE_NODE_RECOVERY_OPERATOR_IMPLEMENTATION_ONLY",
+      "evidence": "Parent assignment states this existing decision alongside Root; no independent reread of reviewer message claimed by author."
+    },
+    {
+      "reviewer": "/root",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR_DIRECT_PARENT_INSTRUCTION",
+      "decision": "APPROVE_NODE_RECOVERY_OPERATOR_IMPLEMENTATION_ONLY",
+      "evidence": "Parent explicitly reports independently reading complete frozen recipe/script plan/freeze and supplies exact pins."
+    }
+  ],
+  "acquisitionApproved": false,
+  "NodeExecutionApproved": false,
+  "rootRuntimeAdoptionApproved": false
+}

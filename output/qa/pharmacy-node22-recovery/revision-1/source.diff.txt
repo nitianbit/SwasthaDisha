@@ -1,0 +1,37 @@
+--- original/recover-node22.py
++++ revision-1/recover-node22.py
+@@ -14,7 +14,7 @@
+ import tarfile
+ import time
+ 
+-QA = Path('/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/pharmacy-node22-recovery')
++QA = Path('/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/pharmacy-node22-recovery/revision-1')
+ PYTHON = Path('/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14')
+ PYTHON_SHA = '87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634'
+ RECIPE_SHA = '48357c414d86b10f8aefc5419d6abcd429c92598c6dce59119c76c3a7d03c36a'
+@@ -229,11 +229,13 @@
+     os.fsync(output_fd)
+     return {'bytes':size, 'sha256':expected_binary, 'tarMembers':count, 'decompressedBytes':expanded.count}
+ 
+-def recover(parent, factory):
++def recover(parent, factory, provenance=None):
+     """Live caller fixes parent/factory. Offline checks supply owned temp/fake HTTP."""
+     stage = canonical = None
+     first = None
+     record = {'status':'FAILED', 'NodeExecutions':0, 'packageExecutions':0, 'attempts':1, 'cleanupExceptions':[]}
++    record.update(provenance or {})
++    record['officialUrls'] = {'metadata':'https://nodejs.org'+RELEASE+'SHASUMS256.txt', 'archive':'https://nodejs.org'+RELEASE+ARCHIVE}
+     try:
+         # Refuse canonical before allocating a stage; lstat sees dangling symlinks too.
+         need(not os.path.lexists(parent/'m0-node22'), 'canonical destination exists')
+@@ -337,8 +339,8 @@
+         write_all(claim, json_bytes({'status':'CONSUMED_BEFORE_ATTEMPT', **pins}))
+         os.fsync(claim)
+     factory = lambda: http.client.HTTPSConnection('nodejs.org', 443, timeout=10, context=ssl.create_default_context())
+-    result = recover(Path('/private/tmp'), factory)
+-    result.update(pins, writesStopped=True)
++    result = recover(Path('/private/tmp'), factory, provenance=pins)
++    result['writesStopped'] = True
+     with new_record(QA/'ACQUISITION_RESULT.json') as output:
+         write_all(output, json_bytes(result))
+         os.fsync(output)

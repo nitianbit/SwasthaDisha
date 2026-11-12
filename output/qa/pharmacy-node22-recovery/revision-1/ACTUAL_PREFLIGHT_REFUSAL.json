@@ -1,0 +1,24 @@
+{
+  "schema": "SD-NODE22-ACTUAL-PREFLIGHT-REFUSAL-1",
+  "invocation": "Exactreviewedlauncher",
+  "exitCode": 1,
+  "status": "REFUSED",
+  "reason": "ambient override refused",
+  "networkCalls": 0,
+  "NodeExecutions": 0,
+  "onceExistsAfter": false,
+  "resultExistsAfter": false,
+  "canonicalExistsAfter": false,
+  "finiteDiagnostic": {
+    "sameClearedEnvAndIsolatedPythonImports": true,
+    "environmentKeyNames": [
+      "LC_ALL",
+      "PATH",
+      "__CF_USER_TEXT_ENCODING"
+    ],
+    "valuesPrinted": false,
+    "effect": "Metadataonly; macOS adds public text-encoding context even after env -i"
+  },
+  "approvalConsumedForInvocation": true,
+  "retryApproved": false
+}

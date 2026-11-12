@@ -1,0 +1,18 @@
+{
+  "schema": "SD-PHARMACY-NODE22-RECIPE-FREEZE-1",
+  "status": "RECIPE_ONLY_AWAITING_TWO_CURRENT_NONAUTHOR_DECISIONS",
+  "author": "/root/pharmacy_recovery_readiness",
+  "durableFocusObservedHead": "cc66925e59dbb5d209bdd66776e7d13b0337d7a4",
+  "files": {
+    "PRIMARY_METADATA.json": "1a7d52973aaab38b1b3ae3d3d0ee574e286b2fd161c64ff790fe527eb98d91ab",
+    "RECIPE.md": "0e4f0b436aa0b0372acad1c09759419a885227d25bb93afc666b6d36af355626",
+    "SCRIPT_PLAN.md": "9584ca37b78368a3ab558d939a55f3640a6c74a93bb8a17c30c67517bd2a1ef7"
+  },
+  "runnableOperatorIncluded": false,
+  "operatorImplementationAndExactSourceReviewRequired": true,
+  "acquisitionApproved": false,
+  "NodeExecutionApproved": false,
+  "packageOrRootAdoptionApproved": false,
+  "newAcceptance": false,
+  "writesStoppedAfterPublication": true
+}

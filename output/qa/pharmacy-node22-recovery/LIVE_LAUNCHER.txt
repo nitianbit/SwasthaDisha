@@ -1,0 +1,5 @@
+REVIEW TARGET ONLY. Do not invoke before two exact source/launcher acquisition decisions and an exact LIVE_ADMISSION.json. No admission file is supplied.
+
+/usr/bin/env -i PATH=/usr/bin:/bin LC_ALL=C /opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14 -I -S -B /Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/pharmacy-node22-recovery/recover-node22.py --acquire-once
+
+The single literal --acquire-once selects the fixed operation. There are no URL/path/platform/version options. With no arguments the operator prints NO_EFFECTS_DEFAULT. Unknown invocations refuse. This explicit selector clarifies the recipe's no-CLI-options statement; it is part of the current source/launcher review, not a previous execution grant.

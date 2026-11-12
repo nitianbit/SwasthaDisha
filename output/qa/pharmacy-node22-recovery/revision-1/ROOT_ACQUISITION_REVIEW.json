@@ -1,0 +1,34 @@
+{
+  "schema": "SD-NODE22-ROOT-ACQUISITION-REVIEW-1",
+  "operatorFreezeSha256": "2131f017f79d691e3315dfc5d4ee9f5515237699eb2878d1cba96a995b84f30a",
+  "sourceSha256": "332bcd701f59f3482f56e99e50a7df09504caff41eea7eada90b284f0c1a9f17",
+  "testSha256": "24df7fb86a0b462dae00999082f9ee1894e8dfa2c4cad996c0a04558e68d122c",
+  "launcherSha256": "dd2ff37e5e98992873a36775f201254f656858dd06e6c92374fe4c33736f61d6",
+  "reviews": [
+    {
+      "role": "Spec",
+      "reviewer": "/root/booking_read_spec",
+      "decision": "APPROVE_ONE_ACQUISITION_ONLY"
+    },
+    {
+      "role": "Standards",
+      "reviewer": "/root",
+      "decision": "APPROVE_ONE_ACQUISITION_ONLY"
+    }
+  ],
+  "rootBasis": "Readentireoriginaloperator370lines/frozenrecipe/launcherandactualminimalrevisiondiff; provenancefailurecorrectedbeforecanonicalpersistence; all15frozenartifactspinsverified. FixedpublicHTTPS/TLS/twohashes/caps/exclusiveownedpublication/identitycleanup/noNodeexecution.43offlinechecksarefakesevidencenotnativetransferproof.",
+  "acceptedAssuranceExceptions": {
+    "installedRuntime": "Executablebytepin87d4 plus ordinary trusted HomebrewPython3.14.7stdlib/native-supportprefix, -I-S-B/clearenv; notwhole-runtimebyteclosure.",
+    "deadline": "SIGALRM/socket/phase/totalbudgetsconfigured; realnativeDNS/TLShardinterruptionUNPROVEN,noexternalwatchdog. Explicitleadacceptedexceptiontorecipehard-assurancewordingforoneisolatedfixedpublicdownloadonly."
+  },
+  "runtimeProvenance": {
+    "executable": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "prefix": "/opt/homebrew/opt/python@3.14/Frameworks/Python.framework/Versions/3.14",
+    "basePrefix": "/opt/homebrew/opt/python@3.14/Frameworks/Python.framework/Versions/3.14",
+    "isolated": true
+  },
+  "acquisitionScope": "One monitored bytes-only acquisition, no retries/fallbacks; no Node/package/app/DB/provider execution.",
+  "rootAdoptionApproved": false,
+  "applicationC2C3Acceptance": false,
+  "originalStagedAndArchivePreserved": true
+}

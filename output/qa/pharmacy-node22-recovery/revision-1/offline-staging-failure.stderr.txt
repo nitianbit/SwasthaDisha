@@ -1,0 +1,168 @@
+test_archive_hash_gate_before_decompression (__main__.OfflineChecks.test_archive_hash_gate_before_decompression) ... ok
+test_author_cannot_self_approve (__main__.OfflineChecks.test_author_cannot_self_approve) ... ERROR
+test_body_limit_even_without_content_length (__main__.OfflineChecks.test_body_limit_even_without_content_length) ... ok
+test_changed_source_binding_denied (__main__.OfflineChecks.test_changed_source_binding_denied) ... ERROR
+test_cleanup_failure_does_not_replace_first_error (__main__.OfflineChecks.test_cleanup_failure_does_not_replace_first_error) ... ok
+test_complete_fake_recovery_and_stage_cleanup (__main__.OfflineChecks.test_complete_fake_recovery_and_stage_cleanup) ... ok
+test_corrupt_gzip_crc_denied (__main__.OfflineChecks.test_corrupt_gzip_crc_denied) ... ok
+test_dangling_canonical_symlink_refused (__main__.OfflineChecks.test_dangling_canonical_symlink_refused) ... ok
+test_deadline_interrupts_blocking_call (__main__.OfflineChecks.test_deadline_interrupts_blocking_call) ... ok
+test_declared_length_limit (__main__.OfflineChecks.test_declared_length_limit) ... ok
+test_decompression_cap (__main__.OfflineChecks.test_decompression_cap) ... ok
+test_default_has_zero_acquisition_effects (__main__.OfflineChecks.test_default_has_zero_acquisition_effects) ... ok
+test_directory_replacement_not_removed (__main__.OfflineChecks.test_directory_replacement_not_removed) ... ok
+test_duplicate_length (__main__.OfflineChecks.test_duplicate_length) ... ok
+test_duplicate_target_denied (__main__.OfflineChecks.test_duplicate_target_denied) ... ok
+test_exact_fake_admission_validates_without_acquiring (__main__.OfflineChecks.test_exact_fake_admission_validates_without_acquiring) ... ERROR
+test_exact_http_body (__main__.OfflineChecks.test_exact_http_body) ... ok
+test_exclusive_claim_prevents_second_attempt (__main__.OfflineChecks.test_exclusive_claim_prevents_second_attempt) ... ok
+test_existing_canonical_refused_without_network_or_stage (__main__.OfflineChecks.test_existing_canonical_refused_without_network_or_stage) ... ok
+test_failure_removes_only_owned_stage_and_partial_canonical (__main__.OfflineChecks.test_failure_removes_only_owned_stage_and_partial_canonical) ... ok
+test_file_symlink_replacement_not_unlinked (__main__.OfflineChecks.test_file_symlink_replacement_not_unlinked) ... ok
+test_http_compression_refused (__main__.OfflineChecks.test_http_compression_refused) ... ok
+test_implementation_approval_cannot_acquire (__main__.OfflineChecks.test_implementation_approval_cannot_acquire) ... ERROR
+test_main_consumed_claim_blocks_second_acquisition (__main__.OfflineChecks.test_main_consumed_claim_blocks_second_acquisition) ... ok
+test_member_size_cap (__main__.OfflineChecks.test_member_size_cap) ... ok
+test_metadata_exact_unique_row (__main__.OfflineChecks.test_metadata_exact_unique_row) ... ok
+test_missing_admission_denies_without_claim (__main__.OfflineChecks.test_missing_admission_denies_without_claim) ... ERROR
+test_missing_target_denied (__main__.OfflineChecks.test_missing_target_denied) ... ok
+test_nested_deadline_does_not_reset_outer_budget (__main__.OfflineChecks.test_nested_deadline_does_not_reset_outer_budget) ... ok
+test_proxy_environment_denied (__main__.OfflineChecks.test_proxy_environment_denied) ... ERROR
+test_redirect_is_never_followed (__main__.OfflineChecks.test_redirect_is_never_followed) ... ok
+test_regular_file_replacement_not_removed (__main__.OfflineChecks.test_regular_file_replacement_not_removed) ... ok
+test_regular_member_only_and_other_links_not_materialized (__main__.OfflineChecks.test_regular_member_only_and_other_links_not_materialized) ... ok
+test_retained_canonical_acquisition_records_provenance_and_official_urls (__main__.OfflineChecks.test_retained_canonical_acquisition_records_provenance_and_official_urls) ... ok
+test_selected_symlink_denied (__main__.OfflineChecks.test_selected_symlink_denied) ... ok
+test_single_reviewer_denied (__main__.OfflineChecks.test_single_reviewer_denied) ... ERROR
+test_transfer_length_conflict (__main__.OfflineChecks.test_transfer_length_conflict) ... ok
+test_truncated_body (__main__.OfflineChecks.test_truncated_body) ... ok
+test_unapproved_download_path (__main__.OfflineChecks.test_unapproved_download_path) ... ok
+test_unexpected_file_blocks_recursive_cleanup (__main__.OfflineChecks.test_unexpected_file_blocks_recursive_cleanup) ... ok
+test_unknown_invocation_denied_before_allocation (__main__.OfflineChecks.test_unknown_invocation_denied_before_allocation) ... ok
+test_unknown_length_is_stream_bounded (__main__.OfflineChecks.test_unknown_length_is_stream_bounded) ... ok
+test_wrong_binary_digest_denied (__main__.OfflineChecks.test_wrong_binary_digest_denied) ... ok
+
+======================================================================
+ERROR: test_author_cannot_self_approve (__main__.OfflineChecks.test_author_cannot_self_approve)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/pharmacy-node22-revision-1/test-recover-node22.py", line 154, in test_author_cannot_self_approve
+    data = self.admission_fixture()
+  File "/private/tmp/pharmacy-node22-revision-1/test-recover-node22.py", line 114, in admission_fixture
+    (self.root/name).write_bytes((original/name).read_bytes())
+                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 777, in read_bytes
+    with self.open(mode='rb', buffering=0) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/pharmacy-node22-recovery/revision-1/freeze.json'
+
+======================================================================
+ERROR: test_changed_source_binding_denied (__main__.OfflineChecks.test_changed_source_binding_denied)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/pharmacy-node22-revision-1/test-recover-node22.py", line 142, in test_changed_source_binding_denied
+    data = self.admission_fixture()
+  File "/private/tmp/pharmacy-node22-revision-1/test-recover-node22.py", line 114, in admission_fixture
+    (self.root/name).write_bytes((original/name).read_bytes())
+                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 777, in read_bytes
+    with self.open(mode='rb', buffering=0) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/pharmacy-node22-recovery/revision-1/freeze.json'
+
+======================================================================
+ERROR: test_exact_fake_admission_validates_without_acquiring (__main__.OfflineChecks.test_exact_fake_admission_validates_without_acquiring)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/pharmacy-node22-revision-1/test-recover-node22.py", line 126, in test_exact_fake_admission_validates_without_acquiring
+    data = self.admission_fixture()
+  File "/private/tmp/pharmacy-node22-revision-1/test-recover-node22.py", line 114, in admission_fixture
+    (self.root/name).write_bytes((original/name).read_bytes())
+                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 777, in read_bytes
+    with self.open(mode='rb', buffering=0) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/pharmacy-node22-recovery/revision-1/freeze.json'
+
+======================================================================
+ERROR: test_implementation_approval_cannot_acquire (__main__.OfflineChecks.test_implementation_approval_cannot_acquire)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/pharmacy-node22-revision-1/test-recover-node22.py", line 136, in test_implementation_approval_cannot_acquire
+    data = self.admission_fixture()
+  File "/private/tmp/pharmacy-node22-revision-1/test-recover-node22.py", line 114, in admission_fixture
+    (self.root/name).write_bytes((original/name).read_bytes())
+                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 777, in read_bytes
+    with self.open(mode='rb', buffering=0) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/pharmacy-node22-recovery/revision-1/freeze.json'
+
+======================================================================
+ERROR: test_missing_admission_denies_without_claim (__main__.OfflineChecks.test_missing_admission_denies_without_claim)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/pharmacy-node22-revision-1/test-recover-node22.py", line 131, in test_missing_admission_denies_without_claim
+    self.admission_fixture()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/private/tmp/pharmacy-node22-revision-1/test-recover-node22.py", line 114, in admission_fixture
+    (self.root/name).write_bytes((original/name).read_bytes())
+                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 777, in read_bytes
+    with self.open(mode='rb', buffering=0) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/pharmacy-node22-recovery/revision-1/freeze.json'
+
+======================================================================
+ERROR: test_proxy_environment_denied (__main__.OfflineChecks.test_proxy_environment_denied)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/pharmacy-node22-revision-1/test-recover-node22.py", line 160, in test_proxy_environment_denied
+    data = self.admission_fixture()
+  File "/private/tmp/pharmacy-node22-revision-1/test-recover-node22.py", line 114, in admission_fixture
+    (self.root/name).write_bytes((original/name).read_bytes())
+                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 777, in read_bytes
+    with self.open(mode='rb', buffering=0) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/pharmacy-node22-recovery/revision-1/freeze.json'
+
+======================================================================
+ERROR: test_single_reviewer_denied (__main__.OfflineChecks.test_single_reviewer_denied)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/pharmacy-node22-revision-1/test-recover-node22.py", line 148, in test_single_reviewer_denied
+    data = self.admission_fixture()
+  File "/private/tmp/pharmacy-node22-revision-1/test-recover-node22.py", line 114, in admission_fixture
+    (self.root/name).write_bytes((original/name).read_bytes())
+                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 777, in read_bytes
+    with self.open(mode='rb', buffering=0) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/pharmacy-node22-recovery/revision-1/freeze.json'
+
+----------------------------------------------------------------------
+Ran 43 tests in 0.118s
+
+FAILED (errors=7)

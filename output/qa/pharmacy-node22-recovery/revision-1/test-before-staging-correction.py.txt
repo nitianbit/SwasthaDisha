@@ -1,0 +1,391 @@
+"""Offline fakes only. A process-wide socket tripwire rejects real networking."""
+import contextlib
+import gzip
+import hashlib
+import io
+import json
+import os
+from pathlib import Path
+import signal
+import socket
+import sys
+import tarfile
+import tempfile
+import time
+import types
+import unittest
+from unittest.mock import patch
+
+SOURCE = Path(__file__).with_name('recover-node22.py').read_text()
+
+def load(source=SOURCE):
+    module = types.ModuleType('offline_node22_operator')
+    module.__file__ = str(Path(__file__).with_name('recover-node22.py'))
+    exec(compile(source, module.__file__, 'exec'), module.__dict__)
+    return module
+
+op = load()
+real_network_attempts = []
+def deny_network(*args, **kwargs):
+    real_network_attempts.append(True)
+    raise AssertionError('REAL_NETWORK_FORBIDDEN')
+
+class Response:
+    def __init__(self, data, headers=None, status=200):
+        self.status = status
+        self.data = io.BytesIO(data)
+        self.headers = [('Content-Length', str(len(data)))] if headers is None else headers
+    def getheaders(self):
+        return self.headers
+    def read(self, amount):
+        return self.data.read(amount)
+
+class Connection:
+    def __init__(self, response):
+        self.response, self.closed, self.requests, self.sock = response, False, [], self
+    def connect(self):
+        pass
+    def settimeout(self, value):
+        assert value == 5
+    def request(self, method, path, headers):
+        self.requests.append((method, path, headers))
+    def getresponse(self):
+        return self.response
+    def close(self):
+        self.closed = True
+
+def archive_bytes(kind='regular', duplicate=False, extra_link=False):
+    output = io.BytesIO()
+    with tarfile.open(fileobj=output, mode='w') as archive:
+        if extra_link:
+            link = tarfile.TarInfo('node-v22.23.4-darwin-arm64/bin/npm')
+            link.type, link.linkname = tarfile.SYMTYPE, '../../outside'
+            archive.addfile(link)
+        item = tarfile.TarInfo(op.MEMBER if kind != 'missing' else 'other/bin/node')
+        data = b'fixed fake binary; never executed'
+        if kind == 'symlink':
+            item.type, item.linkname = tarfile.SYMTYPE, '/outside'
+            archive.addfile(item)
+        else:
+            item.size = len(data)
+            archive.addfile(item, io.BytesIO(data))
+            if duplicate:
+                archive.addfile(item, io.BytesIO(data))
+    return gzip.compress(output.getvalue()), data
+
+class OfflineChecks(unittest.TestCase):
+    def setUp(self):
+        self.workspace = tempfile.TemporaryDirectory(prefix='sd-node22-offline-', dir='/private/tmp')
+        self.root = Path(self.workspace.name)
+        self.stack = contextlib.ExitStack()
+    def tearDown(self):
+        self.stack.close()
+        self.workspace.cleanup()
+    def fd(self, name):
+        fd = os.open(self.root/name, os.O_RDWR | os.O_CREAT | os.O_EXCL, 0o600)
+        self.stack.callback(os.close, fd)
+        return fd
+    def invoke_download(self, response, cap=1024):
+        connection = Connection(response)
+        result = op.download(op.RELEASE+op.ARCHIVE, cap, self.fd('download'), lambda:connection)
+        self.assertTrue(connection.closed)
+        self.assertEqual(connection.requests[0][0:2], ('GET', op.RELEASE+op.ARCHIVE))
+        return result
+    def invoke_unpack(self, data, binary, **options):
+        source, target = self.fd('archive'), self.fd('node')
+        os.write(source, data)
+        return op.unpack(source, target, expected_archive=hashlib.sha256(data).hexdigest(), expected_binary=hashlib.sha256(binary).hexdigest(), **options)
+    def core(self, fail=False, provenance=None):
+        archive, binary = archive_bytes(extra_link=True)
+        digest = hashlib.sha256(archive).hexdigest()
+        responses = [Response((digest+'  '+op.ARCHIVE+'\n').encode()), Response(archive)]
+        calls = []
+        def factory():
+            calls.append(True)
+            if fail:
+                raise op.Refusal('first download failure')
+            return Connection(responses.pop(0))
+        with patch.object(op, 'ARCHIVE_SHA', digest), patch.object(op, 'BINARY_SHA', hashlib.sha256(binary).hexdigest()):
+            result = op.recover(self.root, factory, provenance=provenance)
+        return result, calls, binary
+    def admission_fixture(self):
+        original = op.QA
+        for name in ['freeze.json','RECIPE.md','SCRIPT_PLAN.md','PRIMARY_METADATA.json']:
+            (self.root/name).write_bytes((original/name).read_bytes())
+        (self.root/'recover-node22.py').write_text(SOURCE)
+        (self.root/'LIVE_LAUNCHER.txt').write_text('fixed fake launcher data; not executed\n')
+        sha = lambda name: hashlib.sha256((self.root/name).read_bytes()).hexdigest()
+        data = {'schema':'SD-NODE22-ONE-ACQUISITION-1','sourceSha256':sha('recover-node22.py'),'launcherSha256':sha('LIVE_LAUNCHER.txt'),'recipeFreezeSha256':op.RECIPE_SHA,'pythonSha256':op.PYTHON_SHA,'reviews':[{'role':'Spec','reviewer':'/root/fake_spec','decision':'APPROVE_ONE_ACQUISITION_ONLY'},{'role':'Standards','reviewer':'/root/fake_standards','decision':'APPROVE_ONE_ACQUISITION_ONLY'}]}
+        self.stack.enter_context(patch.object(op, 'QA', self.root))
+        self.stack.enter_context(patch.object(sys, 'argv', [str(self.root/'recover-node22.py'),'--acquire-once']))
+        self.stack.enter_context(patch.dict(os.environ, {}, clear=True))
+        return data
+    def save_admission(self, data):
+        (self.root/'LIVE_ADMISSION.json').write_text(json.dumps(data))
+    def test_exact_fake_admission_validates_without_acquiring(self):
+        data = self.admission_fixture()
+        self.save_admission(data)
+        self.assertEqual(op.admit()['sourceSha256'], data['sourceSha256'])
+        self.assertFalse((self.root/'ACQUISITION_ONCE.json').exists())
+    def test_missing_admission_denies_without_claim(self):
+        self.admission_fixture()
+        with self.assertRaises(FileNotFoundError):
+            op.admit()
+        self.assertFalse((self.root/'ACQUISITION_ONCE.json').exists())
+    def test_implementation_approval_cannot_acquire(self):
+        data = self.admission_fixture()
+        data['reviews'][0]['decision'] = 'APPROVE_NODE_RECOVERY_OPERATOR_IMPLEMENTATION_ONLY'
+        self.save_admission(data)
+        with self.assertRaises(op.Refusal):
+            op.admit()
+    def test_changed_source_binding_denied(self):
+        data = self.admission_fixture()
+        data['sourceSha256'] = '0'*64
+        self.save_admission(data)
+        with self.assertRaises(op.Refusal):
+            op.admit()
+    def test_single_reviewer_denied(self):
+        data = self.admission_fixture()
+        data['reviews'] = data['reviews'][:1]
+        self.save_admission(data)
+        with self.assertRaises(op.Refusal):
+            op.admit()
+    def test_author_cannot_self_approve(self):
+        data = self.admission_fixture()
+        data['reviews'][0]['reviewer'] = '/root/pharmacy_recovery_readiness'
+        self.save_admission(data)
+        with self.assertRaises(op.Refusal):
+            op.admit()
+    def test_proxy_environment_denied(self):
+        data = self.admission_fixture()
+        self.save_admission(data)
+        with patch.dict(os.environ, {'HTTPS_PROXY':'http://invalid'}), self.assertRaises(op.Refusal):
+            op.admit()
+    def test_main_consumed_claim_blocks_second_acquisition(self):
+        fake = {'status':'TOOL_BYTES_RECOVERED_NOT_EXECUTED','cleanupExceptions':[]}
+        with patch.object(op, 'QA', self.root), patch.object(op, 'admit', return_value={}), patch.object(op, 'recover', return_value=fake) as recover, patch.object(sys, 'argv', ['fake','--acquire-once']), contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(op.main(), 0)
+            (self.root/'ACQUISITION_RESULT.json').unlink()
+            with self.assertRaises(FileExistsError):
+                op.main()
+            self.assertEqual(recover.call_count, 1)
+    def test_regular_file_replacement_not_removed(self):
+        owned = op.OwnedDirectory(self.root, 'owned', ['node'])
+        owned.allocate()
+        owned.create('node')
+        (owned.path/'node').rename(self.root/'original-private')
+        (owned.path/'node').write_bytes(b'foreign replacement')
+        try:
+            with self.assertRaises(op.Refusal):
+                owned.remove()
+            self.assertEqual((owned.path/'node').read_bytes(), b'foreign replacement')
+        finally:
+            owned.close()
+    def test_default_has_zero_acquisition_effects(self):
+        with patch.object(sys, 'argv', ['ignored']), patch.object(op, 'recover', side_effect=AssertionError('must not acquire')), contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(op.main(), 0)
+        self.assertIn('NO_EFFECTS_DEFAULT', output.getvalue())
+        self.assertEqual(list(self.root.iterdir()), [])
+    def test_unknown_invocation_denied_before_allocation(self):
+        with patch.object(sys, 'argv', ['ignored','--unknown']), self.assertRaises(op.Refusal):
+            op.admit()
+        self.assertEqual(list(self.root.iterdir()), [])
+    def test_exact_http_body(self):
+        self.assertEqual(self.invoke_download(Response(b'abc'))['sha256'], hashlib.sha256(b'abc').hexdigest())
+    def test_unknown_length_is_stream_bounded(self):
+        self.assertEqual(self.invoke_download(Response(b'abc', headers=[]))['bytes'], 3)
+    def test_body_limit_even_without_content_length(self):
+        with self.assertRaises(op.Refusal):
+            self.invoke_download(Response(b'abcd', headers=[]), cap=3)
+    def test_redirect_is_never_followed(self):
+        with self.assertRaises(op.Refusal):
+            self.invoke_download(Response(b'abc', [('Location','https://other.invalid')], 302))
+    def test_declared_length_limit(self):
+        with self.assertRaises(op.Refusal):
+            self.invoke_download(Response(b'abc', [('Content-Length','100')]), cap=3)
+    def test_truncated_body(self):
+        with self.assertRaises(op.Refusal):
+            self.invoke_download(Response(b'abc', [('Content-Length','4')]))
+    def test_duplicate_length(self):
+        with self.assertRaises(op.Refusal):
+            self.invoke_download(Response(b'abc', [('Content-Length','3'),('Content-Length','3')]))
+    def test_transfer_length_conflict(self):
+        with self.assertRaises(op.Refusal):
+            self.invoke_download(Response(b'abc', [('Content-Length','3'),('Transfer-Encoding','chunked')]))
+    def test_http_compression_refused(self):
+        with self.assertRaises(op.Refusal):
+            self.invoke_download(Response(b'abc', [('Content-Encoding','gzip')]))
+    def test_unapproved_download_path(self):
+        with self.assertRaises(op.Refusal):
+            op.download('/latest/node', 3, self.fd('download'), lambda:Connection(Response(b'abc')))
+    def test_metadata_exact_unique_row(self):
+        fd = self.fd('metadata')
+        os.write(fd, (op.ARCHIVE_SHA+'  '+op.ARCHIVE+'\n').encode())
+        op.validate_metadata(fd)
+        os.write(fd, (op.ARCHIVE_SHA+'  '+op.ARCHIVE+'\n').encode())
+        with self.assertRaises(op.Refusal):
+            op.validate_metadata(fd)
+    def test_regular_member_only_and_other_links_not_materialized(self):
+        data, binary = archive_bytes(extra_link=True)
+        result = self.invoke_unpack(data, binary)
+        self.assertEqual(result['bytes'], len(binary))
+        self.assertEqual({p.name for p in self.root.iterdir()}, {'archive','node'})
+    def test_selected_symlink_denied(self):
+        data, binary = archive_bytes(kind='symlink')
+        with self.assertRaises(op.Refusal):
+            self.invoke_unpack(data, binary)
+    def test_duplicate_target_denied(self):
+        data, binary = archive_bytes(duplicate=True)
+        with self.assertRaises(op.Refusal):
+            self.invoke_unpack(data, binary)
+    def test_missing_target_denied(self):
+        data, binary = archive_bytes(kind='missing')
+        with self.assertRaises(op.Refusal):
+            self.invoke_unpack(data, binary)
+    def test_wrong_binary_digest_denied(self):
+        data, binary = archive_bytes()
+        with self.assertRaises(op.Refusal):
+            self.invoke_unpack(data, binary+b'wrong')
+    def test_archive_hash_gate_before_decompression(self):
+        source, target = self.fd('archive'), self.fd('node')
+        os.write(source, b'not even gzip')
+        with self.assertRaisesRegex(op.Refusal, 'archive hash mismatch'):
+            op.unpack(source, target)
+        self.assertEqual(os.fstat(target).st_size, 0)
+    def test_decompression_cap(self):
+        data, binary = archive_bytes()
+        with self.assertRaises(op.Refusal):
+            self.invoke_unpack(data, binary, expanded_cap=512)
+    def test_member_size_cap(self):
+        data, binary = archive_bytes()
+        with patch.object(op, 'MEMBER_CAP', 1), self.assertRaises(op.Refusal):
+            self.invoke_unpack(data, binary)
+    def test_corrupt_gzip_crc_denied(self):
+        data, binary = archive_bytes()
+        data = data[:-8]+bytes([data[-8]^1])+data[-7:]
+        with self.assertRaises((op.Refusal, gzip.BadGzipFile, EOFError)):
+            self.invoke_unpack(data, binary)
+    def test_deadline_interrupts_blocking_call(self):
+        start = time.monotonic()
+        with self.assertRaisesRegex(op.Refusal, 'deadline'):
+            with op.deadline(0.03):
+                time.sleep(2)
+        self.assertLess(time.monotonic()-start, 1)
+    def test_nested_deadline_does_not_reset_outer_budget(self):
+        start = time.monotonic()
+        with self.assertRaisesRegex(op.Refusal, 'deadline'):
+            with op.deadline(0.04):
+                with op.deadline(10):
+                    time.sleep(2)
+        self.assertLess(time.monotonic()-start, 1)
+    def test_existing_canonical_refused_without_network_or_stage(self):
+        (self.root/'m0-node22').write_bytes(b'existing')
+        result, calls, _ = self.core()
+        self.assertEqual(result['status'], 'FAILED')
+        self.assertEqual(calls, [])
+        self.assertEqual((self.root/'m0-node22').read_bytes(), b'existing')
+        self.assertEqual(len(list(self.root.iterdir())), 1)
+    def test_dangling_canonical_symlink_refused(self):
+        (self.root/'m0-node22').symlink_to(self.root/'missing')
+        result, calls, _ = self.core()
+        self.assertEqual(result['status'], 'FAILED')
+        self.assertEqual(calls, [])
+        self.assertTrue((self.root/'m0-node22').is_symlink())
+    def test_complete_fake_recovery_and_stage_cleanup(self):
+        result, calls, binary = self.core()
+        self.assertEqual(result['status'], 'TOOL_BYTES_RECOVERED_NOT_EXECUTED', result)
+        self.assertEqual(len(calls), 2)
+        self.assertEqual((self.root/'m0-node22/node').read_bytes(), binary)
+        self.assertEqual((self.root/'m0-node22/node').stat().st_mode & 0o777, 0o500)
+        self.assertEqual({p.name for p in self.root.iterdir()}, {'m0-node22'})
+        self.assertTrue(result['stageRemoved'])
+        self.assertEqual(result['cleanupExceptions'], [])
+        self.assertEqual(result['NodeExecutions'], 0)
+    def test_retained_canonical_acquisition_records_provenance_and_official_urls(self):
+        pins = {'sourceSha256':'1'*64, 'launcherSha256':'2'*64, 'recipeFreezeSha256':op.RECIPE_SHA, 'pythonSha256':op.PYTHON_SHA}
+        result, _, _ = self.core(provenance=pins)
+        self.assertEqual(result['status'], 'TOOL_BYTES_RECOVERED_NOT_EXECUTED', result)
+        retained = json.loads((self.root/'m0-node22/acquisition.json').read_bytes())
+        for name, value in pins.items():
+            self.assertEqual(retained[name], value)
+        self.assertEqual(retained['officialUrls'], {
+            'metadata':'https://nodejs.org/download/release/v22.23.4/SHASUMS256.txt',
+            'archive':'https://nodejs.org/download/release/v22.23.4/node-v22.23.4-darwin-arm64.tar.gz'})
+    def test_failure_removes_only_owned_stage_and_partial_canonical(self):
+        sentinel = self.root/'sentinel'
+        sentinel.write_bytes(b'keep')
+        result, calls, _ = self.core(fail=True)
+        self.assertEqual(result['firstFailure']['message'], 'first download failure')
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(list(self.root.iterdir()), [sentinel])
+        self.assertTrue(result['stageRemoved'])
+    def test_cleanup_failure_does_not_replace_first_error(self):
+        with patch.object(op.OwnedDirectory, 'remove', side_effect=op.Refusal('later cleanup failure')):
+            result, _, _ = self.core(fail=True)
+        self.assertEqual(result['firstFailure']['message'], 'first download failure')
+        self.assertTrue(result['cleanupExceptions'])
+    def test_directory_replacement_not_removed(self):
+        owned = op.OwnedDirectory(self.root, 'owned', ['node'])
+        owned.allocate()
+        owned.create('node')
+        os.rename(owned.path, self.root/'quarantined')
+        owned.path.mkdir()
+        (owned.path/'sentinel').write_bytes(b'keep')
+        try:
+            with self.assertRaises(op.Refusal):
+                owned.remove()
+            self.assertEqual((owned.path/'sentinel').read_bytes(), b'keep')
+        finally:
+            owned.close()
+    def test_file_symlink_replacement_not_unlinked(self):
+        owned = op.OwnedDirectory(self.root, 'owned', ['node'])
+        owned.allocate()
+        owned.create('node')
+        (owned.path/'node').unlink()
+        (owned.path/'node').symlink_to(self.root/'outside')
+        try:
+            with self.assertRaises(op.Refusal):
+                owned.remove()
+            self.assertTrue((owned.path/'node').is_symlink())
+        finally:
+            owned.close()
+    def test_unexpected_file_blocks_recursive_cleanup(self):
+        owned = op.OwnedDirectory(self.root, 'owned', ['node'])
+        owned.allocate()
+        (owned.path/'unexpected').write_bytes(b'keep')
+        try:
+            with self.assertRaises(OSError):
+                owned.remove()
+            self.assertEqual((owned.path/'unexpected').read_bytes(), b'keep')
+        finally:
+            owned.close()
+    def test_exclusive_claim_prevents_second_attempt(self):
+        path = self.root/'once.json'
+        with op.new_record(path) as fd:
+            op.write_all(fd, b'consumed')
+        with self.assertRaises(FileExistsError):
+            with op.new_record(path):
+                self.fail('second claim accepted')
+        self.assertEqual(path.read_bytes(), b'consumed')
+
+if __name__ == '__main__':
+    controls = []
+    with patch.object(socket, 'socket', deny_network), patch.object(socket, 'create_connection', deny_network):
+        result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(OfflineChecks))
+        baseline = op
+        mutations = [
+            ('HTTP_STATUS_GUARD_REMOVED', "need(response.status == 200, 'HTTP status refused; no redirect/retry')", 'pass', 'test_redirect_is_never_followed'),
+            ('MEMBER_HASH_GUARD_REMOVED', "need(found and digest_fd(output_fd) == expected_binary, 'selected member missing/hash mismatch')", "need(found, 'selected member missing')", 'test_wrong_binary_digest_denied'),
+            ('FILE_IDENTITY_GUARD_REMOVED', "need(identity(held) == identity(actual) == expected, 'file ownership drift')", 'pass', 'test_regular_file_replacement_not_removed'),
+            ('OUTER_DEADLINE_RESET', 'min(seconds, old_remaining) if old_remaining else seconds', 'seconds', 'test_nested_deadline_does_not_reset_outer_budget'),
+        ]
+        for name, before, after, case in mutations:
+            assert SOURCE.count(before) == 1, name
+            op = load(SOURCE.replace(before, after))
+            output = io.StringIO()
+            outcome = unittest.TextTestRunner(stream=output, verbosity=2).run(OfflineChecks(case))
+            controls.append({'mutation':name,'case':case,'testsRun':outcome.testsRun,'failures':len(outcome.failures),'errors':len(outcome.errors),'detected':not outcome.wasSuccessful(),'rawOutput':output.getvalue()})
+        op = baseline
+    assert real_network_attempts == [], 'Real networking was attempted'
+    print(json.dumps({'status':'OFFLINE_CHECKS_COMPLETE','checks':result.testsRun,'failures':len(result.failures),'errors':len(result.errors),'skips':len(result.skipped),'controls':controls,'realNetworkAttempts':len(real_network_attempts),'NodeExecutions':0,'packageExecutions':0},indent=2))
+    raise SystemExit(not (result.wasSuccessful() and all(row['detected'] for row in controls)))

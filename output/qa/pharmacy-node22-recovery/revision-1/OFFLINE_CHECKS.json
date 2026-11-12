@@ -1,0 +1,63 @@
+{
+  "schema": "SD-NODE22-PROVENANCE-REVISION-ACTUAL-CHECKS-1",
+  "argv": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+    "-I",
+    "-S",
+    "-B",
+    "/private/tmp/pharmacy-node22-revision-1/test-recover-node22.py"
+  ],
+  "pythonSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "sourceSha256": "332bcd701f59f3482f56e99e50a7df09504caff41eea7eada90b284f0c1a9f17",
+  "testSourceSha256": "24df7fb86a0b462dae00999082f9ee1894e8dfa2c4cad996c0a04558e68d122c",
+  "exitCode": 0,
+  "checks": 43,
+  "failures": 0,
+  "errors": 0,
+  "skips": 0,
+  "weakeningControls": [
+    {
+      "mutation": "HTTP_STATUS_GUARD_REMOVED",
+      "mutantSourceSha256": "e9c48b11cf225a0b45e28a113e5c53e8050948039a0b6f9a1a55edd6aaca2d93",
+      "case": "test_redirect_is_never_followed",
+      "detected": true,
+      "failures": 1,
+      "errors": 0
+    },
+    {
+      "mutation": "MEMBER_HASH_GUARD_REMOVED",
+      "mutantSourceSha256": "3cdce5fad1b33bfb642f5ef9d01ee8bf53c8cdabae35aedfd0ea2183c01054c5",
+      "case": "test_wrong_binary_digest_denied",
+      "detected": true,
+      "failures": 1,
+      "errors": 0
+    },
+    {
+      "mutation": "FILE_IDENTITY_GUARD_REMOVED",
+      "mutantSourceSha256": "6a6e4468f4f88d4d6184acbdb44764834a80a5fecf2416081d68b15932cabb72",
+      "case": "test_regular_file_replacement_not_removed",
+      "detected": true,
+      "failures": 1,
+      "errors": 0
+    },
+    {
+      "mutation": "OUTER_DEADLINE_RESET",
+      "mutantSourceSha256": "a17d867f97c6c065fba2eb9aa7f3f006d58c2419295c1fd9d8b969004f8adab2",
+      "case": "test_nested_deadline_does_not_reset_outer_budget",
+      "detected": true,
+      "failures": 1,
+      "errors": 0
+    }
+  ],
+  "newFocusedAssertion": "test_retained_canonical_acquisition_records_provenance_and_official_urls",
+  "preservedFirstRevisedRun": {
+    "exitCode": 1,
+    "checks": 43,
+    "errors": 7,
+    "cause": "Admission fixtures referenced unpublished durable revision recipe paths; adjacent frozen input snapshots now used; no operator change for fixture correction."
+  },
+  "realNetworkAttempts": 0,
+  "NodeExecutions": 0,
+  "acquisitionApproved": false,
+  "newAcceptance": false
+}
