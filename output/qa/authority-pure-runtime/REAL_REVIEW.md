@@ -1,0 +1,9 @@
+# Authority pure-runtime milestone
+
+Accepted only for the fixed pure-module fixture at `c04c1cd355c10e375874c4362c119e3e3d93848a`. Root and two independent nonauthors personally verified the actual result and fresh exact resource absence; see [actual decisions](REAL_POST_DECISIONS.json).
+
+The single admitted invocation completed with terminal exit0: all84 ordered nominal cases passed; five intended whole-source mutations failed their specific assertions and passed after restoration; eight actual emits, eleven fresh graphs and33 module evaluations reconcile with103 raw records. All32 captures are complete and bounded. The three entire organization authority modules were emitted by the pinned compiler and evaluated through the closed graph with injected read ports. No database/provider/native domain imports were admitted. This is not a semantic TypeScript build or an HTTP/database/clinical/financial test.
+
+Root and both reviewers independently observed the approved Linux engine, empty purpose labels, explicit absence of the exact acknowledged container and workspace ENOENT. Root and Standards also checked the exact launcher PID/group absent. No cleanup mutation, adoption or rerun followed. The once claim remains consumed. All33 raw files are byte-identically preserved in [the archive](real-actual/ARCHIVE_MANIFEST.json); historical temporary paths describe their capture-time origin.
+
+The prior operator candidate failed the environment guard before allocation/claim/subprocesses. Its honest diagnostic and the exact two-line correction remain committed. Earlier cleanup uncertainty finding SPEC-OP-1 and its correction remain preserved. Nothing here adopts a root runtime/dependency, activates staff/public clinical authority or supplies module, owner, production, full integration or release acceptance.

@@ -1,0 +1,1141 @@
+{
+  "status": "PASS",
+  "approvedHead": "c04c1cd355c10e375874c4362c119e3e3d93848a",
+  "operatorSha256": "1a589cc979b5ce6ca19b3b91c6eada13321dc1c46e2716b7b375f09f1ac69570",
+  "manifestSha256": "0a19d8ff52d988587332c98bb7798277757789d9d2e88ff2a822c5f9ba09704b",
+  "areaRetained": "/private/tmp/sd-authority-real-9zj9uqav",
+  "launcherInvocations": 1,
+  "overallClaimConsumed": true,
+  "commands": [
+    {
+      "label": "before-metadata-git-0",
+      "argv": [
+        "/Library/Developer/CommandLineTools/usr/bin/git",
+        "rev-parse",
+        "--verify",
+        "HEAD"
+      ],
+      "env": {
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_TERMINAL_PROMPT": "0"
+      },
+      "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/authority-pure-runtime",
+      "attempted": true,
+      "processStarted": true,
+      "pid": 25279,
+      "returnCode": 0,
+      "executionLimitSeconds": 20,
+      "cleanupLimitSeconds": 5,
+      "firstProblem": null,
+      "secondaryProblems": [],
+      "cleanupErrors": [],
+      "unresolved": false,
+      "unresolvedReasons": [],
+      "terminationRefused": false,
+      "captures": {
+        "stdout": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/before-metadata-git-0.stdout",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54665989,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 41,
+          "retainedBytes": 41,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "632f7e2b08f10d9968c056a04b8a5d31f1aeb95c7213ee30d828a7dd8282017b"
+        },
+        "stderr": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/before-metadata-git-0.stderr",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54665990,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 0,
+          "retainedBytes": 0,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "label": "before-metadata-git-1",
+      "argv": [
+        "/Library/Developer/CommandLineTools/usr/bin/git",
+        "symbolic-ref",
+        "--short",
+        "HEAD"
+      ],
+      "env": {
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_TERMINAL_PROMPT": "0"
+      },
+      "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/authority-pure-runtime",
+      "attempted": true,
+      "processStarted": true,
+      "pid": 25280,
+      "returnCode": 0,
+      "executionLimitSeconds": 20,
+      "cleanupLimitSeconds": 5,
+      "firstProblem": null,
+      "secondaryProblems": [],
+      "cleanupErrors": [],
+      "unresolved": false,
+      "unresolvedReasons": [],
+      "terminationRefused": false,
+      "captures": {
+        "stdout": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/before-metadata-git-1.stdout",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54665994,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 26,
+          "retainedBytes": 26,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "966276b82ee994e585dbf54279365555e4323295ac0c5166bf8f12baf3a4f059"
+        },
+        "stderr": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/before-metadata-git-1.stderr",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54665995,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 0,
+          "retainedBytes": 0,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "label": "before-metadata-git-2",
+      "argv": [
+        "/Library/Developer/CommandLineTools/usr/bin/git",
+        "--no-optional-locks",
+        "-c",
+        "core.fsmonitor=false",
+        "-c",
+        "core.untrackedCache=false",
+        "status",
+        "--porcelain=v1",
+        "--untracked-files=all",
+        "--ignore-submodules=none"
+      ],
+      "env": {
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_TERMINAL_PROMPT": "0"
+      },
+      "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/authority-pure-runtime",
+      "attempted": true,
+      "processStarted": true,
+      "pid": 25281,
+      "returnCode": 0,
+      "executionLimitSeconds": 20,
+      "cleanupLimitSeconds": 5,
+      "firstProblem": null,
+      "secondaryProblems": [],
+      "cleanupErrors": [],
+      "unresolved": false,
+      "unresolvedReasons": [],
+      "terminationRefused": false,
+      "captures": {
+        "stdout": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/before-metadata-git-2.stdout",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54665996,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 0,
+          "retainedBytes": 0,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/before-metadata-git-2.stderr",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54665997,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 0,
+          "retainedBytes": 0,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "label": "engine-before",
+      "argv": [
+        "/Applications/Docker.app/Contents/Resources/bin/docker",
+        "--config",
+        "/private/tmp/sd-authority-real-9zj9uqav/docker",
+        "--host",
+        "unix:///Users/shubham/.docker/run/docker.sock",
+        "info",
+        "--format",
+        "[{{json .ID}},{{json .OSType}}]"
+      ],
+      "env": {
+        "PATH": "/usr/local/bin:/usr/bin:/bin"
+      },
+      "cwd": "/private/tmp/sd-authority-real-9zj9uqav",
+      "attempted": true,
+      "processStarted": true,
+      "pid": 25282,
+      "returnCode": 0,
+      "executionLimitSeconds": 20,
+      "cleanupLimitSeconds": 5,
+      "firstProblem": null,
+      "secondaryProblems": [],
+      "cleanupErrors": [],
+      "unresolved": false,
+      "unresolvedReasons": [],
+      "terminationRefused": false,
+      "captures": {
+        "stdout": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/engine-before.stdout",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54665998,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 49,
+          "retainedBytes": 49,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "0d3568ea64a9bb77b1002e1f6e02c96e82e5c2dde3878d347d757031b668cfa2"
+        },
+        "stderr": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/engine-before.stderr",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54665999,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 0,
+          "retainedBytes": 0,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "label": "labels-before",
+      "argv": [
+        "/Applications/Docker.app/Contents/Resources/bin/docker",
+        "--config",
+        "/private/tmp/sd-authority-real-9zj9uqav/docker",
+        "--host",
+        "unix:///Users/shubham/.docker/run/docker.sock",
+        "ps",
+        "--all",
+        "--filter",
+        "label=swasthadisha.test.purpose=app-isolation",
+        "--quiet",
+        "--no-trunc"
+      ],
+      "env": {
+        "PATH": "/usr/local/bin:/usr/bin:/bin"
+      },
+      "cwd": "/private/tmp/sd-authority-real-9zj9uqav",
+      "attempted": true,
+      "processStarted": true,
+      "pid": 25283,
+      "returnCode": 0,
+      "executionLimitSeconds": 20,
+      "cleanupLimitSeconds": 5,
+      "firstProblem": null,
+      "secondaryProblems": [],
+      "cleanupErrors": [],
+      "unresolved": false,
+      "unresolvedReasons": [],
+      "terminationRefused": false,
+      "captures": {
+        "stdout": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/labels-before.stdout",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666000,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 0,
+          "retainedBytes": 0,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/labels-before.stderr",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666001,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 0,
+          "retainedBytes": 0,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "label": "cached-image",
+      "argv": [
+        "/Applications/Docker.app/Contents/Resources/bin/docker",
+        "--config",
+        "/private/tmp/sd-authority-real-9zj9uqav/docker",
+        "--host",
+        "unix:///Users/shubham/.docker/run/docker.sock",
+        "image",
+        "inspect",
+        "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d"
+      ],
+      "env": {
+        "PATH": "/usr/local/bin:/usr/bin:/bin"
+      },
+      "cwd": "/private/tmp/sd-authority-real-9zj9uqav",
+      "attempted": true,
+      "processStarted": true,
+      "pid": 25284,
+      "returnCode": 0,
+      "executionLimitSeconds": 20,
+      "cleanupLimitSeconds": 5,
+      "firstProblem": null,
+      "secondaryProblems": [],
+      "cleanupErrors": [],
+      "unresolved": false,
+      "unresolvedReasons": [],
+      "terminationRefused": false,
+      "captures": {
+        "stdout": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/cached-image.stdout",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666002,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 1966,
+          "retainedBytes": 1966,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "fcebf28f631210279339c68e72feae218b52289d0b842db17161dbcdb15a3675"
+        },
+        "stderr": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/cached-image.stderr",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666003,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 0,
+          "retainedBytes": 0,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "label": "before-launch-git-0",
+      "argv": [
+        "/Library/Developer/CommandLineTools/usr/bin/git",
+        "rev-parse",
+        "--verify",
+        "HEAD"
+      ],
+      "env": {
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_TERMINAL_PROMPT": "0"
+      },
+      "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/authority-pure-runtime",
+      "attempted": true,
+      "processStarted": true,
+      "pid": 25285,
+      "returnCode": 0,
+      "executionLimitSeconds": 20,
+      "cleanupLimitSeconds": 5,
+      "firstProblem": null,
+      "secondaryProblems": [],
+      "cleanupErrors": [],
+      "unresolved": false,
+      "unresolvedReasons": [],
+      "terminationRefused": false,
+      "captures": {
+        "stdout": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/before-launch-git-0.stdout",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666004,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 41,
+          "retainedBytes": 41,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "632f7e2b08f10d9968c056a04b8a5d31f1aeb95c7213ee30d828a7dd8282017b"
+        },
+        "stderr": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/before-launch-git-0.stderr",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666005,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 0,
+          "retainedBytes": 0,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "label": "before-launch-git-1",
+      "argv": [
+        "/Library/Developer/CommandLineTools/usr/bin/git",
+        "symbolic-ref",
+        "--short",
+        "HEAD"
+      ],
+      "env": {
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_TERMINAL_PROMPT": "0"
+      },
+      "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/authority-pure-runtime",
+      "attempted": true,
+      "processStarted": true,
+      "pid": 25286,
+      "returnCode": 0,
+      "executionLimitSeconds": 20,
+      "cleanupLimitSeconds": 5,
+      "firstProblem": null,
+      "secondaryProblems": [],
+      "cleanupErrors": [],
+      "unresolved": false,
+      "unresolvedReasons": [],
+      "terminationRefused": false,
+      "captures": {
+        "stdout": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/before-launch-git-1.stdout",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666006,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 26,
+          "retainedBytes": 26,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "966276b82ee994e585dbf54279365555e4323295ac0c5166bf8f12baf3a4f059"
+        },
+        "stderr": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/before-launch-git-1.stderr",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666007,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 0,
+          "retainedBytes": 0,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "label": "before-launch-git-2",
+      "argv": [
+        "/Library/Developer/CommandLineTools/usr/bin/git",
+        "--no-optional-locks",
+        "-c",
+        "core.fsmonitor=false",
+        "-c",
+        "core.untrackedCache=false",
+        "status",
+        "--porcelain=v1",
+        "--untracked-files=all",
+        "--ignore-submodules=none"
+      ],
+      "env": {
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_TERMINAL_PROMPT": "0"
+      },
+      "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/authority-pure-runtime",
+      "attempted": true,
+      "processStarted": true,
+      "pid": 25287,
+      "returnCode": 0,
+      "executionLimitSeconds": 20,
+      "cleanupLimitSeconds": 5,
+      "firstProblem": null,
+      "secondaryProblems": [],
+      "cleanupErrors": [],
+      "unresolved": false,
+      "unresolvedReasons": [],
+      "terminationRefused": false,
+      "captures": {
+        "stdout": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/before-launch-git-2.stdout",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666008,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 0,
+          "retainedBytes": 0,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/before-launch-git-2.stderr",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666009,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 0,
+          "retainedBytes": 0,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "label": "launcher",
+      "argv": [
+        "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+        "test/application/run-authority.mjs",
+        "unix:///Users/shubham/.docker/run/docker.sock"
+      ],
+      "env": {},
+      "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/authority-pure-runtime",
+      "attempted": true,
+      "processStarted": true,
+      "pid": 25347,
+      "returnCode": 0,
+      "executionLimitSeconds": 300,
+      "cleanupLimitSeconds": 5,
+      "firstProblem": null,
+      "secondaryProblems": [],
+      "cleanupErrors": [],
+      "unresolved": false,
+      "unresolvedReasons": [],
+      "terminationRefused": false,
+      "captures": {
+        "stdout": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/launcher.stdout",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666011,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 8287,
+          "retainedBytes": 8287,
+          "limit": 16384,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "719e4bbda904cc1df7dd5dff553cab157e019010713321ccacb11cbdb2541f69"
+        },
+        "stderr": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/launcher.stderr",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666012,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 18942,
+          "retainedBytes": 18942,
+          "limit": 32768,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "87c0e53736c968a680a5f0a17b6e9190559bdfdba074497dcba6c90853add918"
+        }
+      }
+    },
+    {
+      "label": "engine-after",
+      "argv": [
+        "/Applications/Docker.app/Contents/Resources/bin/docker",
+        "--config",
+        "/private/tmp/sd-authority-real-9zj9uqav/docker",
+        "--host",
+        "unix:///Users/shubham/.docker/run/docker.sock",
+        "info",
+        "--format",
+        "[{{json .ID}},{{json .OSType}}]"
+      ],
+      "env": {
+        "PATH": "/usr/local/bin:/usr/bin:/bin"
+      },
+      "cwd": "/private/tmp/sd-authority-real-9zj9uqav",
+      "attempted": true,
+      "processStarted": true,
+      "pid": 25388,
+      "returnCode": 0,
+      "executionLimitSeconds": 20,
+      "cleanupLimitSeconds": 5,
+      "firstProblem": null,
+      "secondaryProblems": [],
+      "cleanupErrors": [],
+      "unresolved": false,
+      "unresolvedReasons": [],
+      "terminationRefused": false,
+      "captures": {
+        "stdout": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/engine-after.stdout",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666040,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 49,
+          "retainedBytes": 49,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "0d3568ea64a9bb77b1002e1f6e02c96e82e5c2dde3878d347d757031b668cfa2"
+        },
+        "stderr": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/engine-after.stderr",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666041,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 0,
+          "retainedBytes": 0,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "label": "labels-after",
+      "argv": [
+        "/Applications/Docker.app/Contents/Resources/bin/docker",
+        "--config",
+        "/private/tmp/sd-authority-real-9zj9uqav/docker",
+        "--host",
+        "unix:///Users/shubham/.docker/run/docker.sock",
+        "ps",
+        "--all",
+        "--filter",
+        "label=swasthadisha.test.purpose=app-isolation",
+        "--quiet",
+        "--no-trunc"
+      ],
+      "env": {
+        "PATH": "/usr/local/bin:/usr/bin:/bin"
+      },
+      "cwd": "/private/tmp/sd-authority-real-9zj9uqav",
+      "attempted": true,
+      "processStarted": true,
+      "pid": 25389,
+      "returnCode": 0,
+      "executionLimitSeconds": 20,
+      "cleanupLimitSeconds": 5,
+      "firstProblem": null,
+      "secondaryProblems": [],
+      "cleanupErrors": [],
+      "unresolved": false,
+      "unresolvedReasons": [],
+      "terminationRefused": false,
+      "captures": {
+        "stdout": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/labels-after.stdout",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666042,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 0,
+          "retainedBytes": 0,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/labels-after.stderr",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666043,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 0,
+          "retainedBytes": 0,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "label": "exact-container-after",
+      "argv": [
+        "/Applications/Docker.app/Contents/Resources/bin/docker",
+        "--config",
+        "/private/tmp/sd-authority-real-9zj9uqav/docker",
+        "--host",
+        "unix:///Users/shubham/.docker/run/docker.sock",
+        "container",
+        "inspect",
+        "7d2ff6c24bcb06e2722531beda60e5fbb0f0ab5cb3dcfa2ec7f83e1c13da0310"
+      ],
+      "env": {
+        "PATH": "/usr/local/bin:/usr/bin:/bin"
+      },
+      "cwd": "/private/tmp/sd-authority-real-9zj9uqav",
+      "attempted": true,
+      "processStarted": true,
+      "pid": 25390,
+      "returnCode": 1,
+      "executionLimitSeconds": 20,
+      "cleanupLimitSeconds": 5,
+      "firstProblem": null,
+      "secondaryProblems": [],
+      "cleanupErrors": [],
+      "unresolved": false,
+      "unresolvedReasons": [],
+      "terminationRefused": false,
+      "captures": {
+        "stdout": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/exact-container-after.stdout",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666044,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 3,
+          "retainedBytes": 3,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+        },
+        "stderr": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/exact-container-after.stderr",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666045,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 112,
+          "retainedBytes": 112,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "baf7bbc0cceaea1ce894ed6f556e456ee04bf689e8d4779f062578600cbe80c2"
+        }
+      }
+    },
+    {
+      "label": "after-git-0",
+      "argv": [
+        "/Library/Developer/CommandLineTools/usr/bin/git",
+        "rev-parse",
+        "--verify",
+        "HEAD"
+      ],
+      "env": {
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_TERMINAL_PROMPT": "0"
+      },
+      "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/authority-pure-runtime",
+      "attempted": true,
+      "processStarted": true,
+      "pid": 25391,
+      "returnCode": 0,
+      "executionLimitSeconds": 20,
+      "cleanupLimitSeconds": 5,
+      "firstProblem": null,
+      "secondaryProblems": [],
+      "cleanupErrors": [],
+      "unresolved": false,
+      "unresolvedReasons": [],
+      "terminationRefused": false,
+      "captures": {
+        "stdout": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/after-git-0.stdout",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666046,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 41,
+          "retainedBytes": 41,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "632f7e2b08f10d9968c056a04b8a5d31f1aeb95c7213ee30d828a7dd8282017b"
+        },
+        "stderr": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/after-git-0.stderr",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666047,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 0,
+          "retainedBytes": 0,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "label": "after-git-1",
+      "argv": [
+        "/Library/Developer/CommandLineTools/usr/bin/git",
+        "symbolic-ref",
+        "--short",
+        "HEAD"
+      ],
+      "env": {
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_TERMINAL_PROMPT": "0"
+      },
+      "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/authority-pure-runtime",
+      "attempted": true,
+      "processStarted": true,
+      "pid": 25392,
+      "returnCode": 0,
+      "executionLimitSeconds": 20,
+      "cleanupLimitSeconds": 5,
+      "firstProblem": null,
+      "secondaryProblems": [],
+      "cleanupErrors": [],
+      "unresolved": false,
+      "unresolvedReasons": [],
+      "terminationRefused": false,
+      "captures": {
+        "stdout": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/after-git-1.stdout",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666048,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 26,
+          "retainedBytes": 26,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "966276b82ee994e585dbf54279365555e4323295ac0c5166bf8f12baf3a4f059"
+        },
+        "stderr": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/after-git-1.stderr",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666049,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 0,
+          "retainedBytes": 0,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    },
+    {
+      "label": "after-git-2",
+      "argv": [
+        "/Library/Developer/CommandLineTools/usr/bin/git",
+        "--no-optional-locks",
+        "-c",
+        "core.fsmonitor=false",
+        "-c",
+        "core.untrackedCache=false",
+        "status",
+        "--porcelain=v1",
+        "--untracked-files=all",
+        "--ignore-submodules=none"
+      ],
+      "env": {
+        "GIT_CONFIG_NOSYSTEM": "1",
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_TERMINAL_PROMPT": "0"
+      },
+      "cwd": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/authority-pure-runtime",
+      "attempted": true,
+      "processStarted": true,
+      "pid": 25393,
+      "returnCode": 0,
+      "executionLimitSeconds": 20,
+      "cleanupLimitSeconds": 5,
+      "firstProblem": null,
+      "secondaryProblems": [],
+      "cleanupErrors": [],
+      "unresolved": false,
+      "unresolvedReasons": [],
+      "terminationRefused": false,
+      "captures": {
+        "stdout": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/after-git-2.stdout",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666050,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 0,
+          "retainedBytes": 0,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr": {
+          "path": "/private/tmp/sd-authority-real-9zj9uqav/after-git-2.stderr",
+          "allocated": true,
+          "identity": [
+            16777232,
+            54666051,
+            501,
+            0,
+            33152,
+            1
+          ],
+          "observedBytesAtLeast": 0,
+          "retainedBytes": 0,
+          "limit": 8192,
+          "eof": true,
+          "complete": true,
+          "ownershipVerified": true,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    }
+  ],
+  "firstProblem": null,
+  "secondaryProblems": [],
+  "cleanupErrors": [],
+  "processCleanupUnresolved": false,
+  "resources": {
+    "phase": "created",
+    "id": "7d2ff6c24bcb06e2722531beda60e5fbb0f0ab5cb3dcfa2ec7f83e1c13da0310",
+    "runId": "64051851-b9ed-4c00-9ced-5bc1455b612c",
+    "directory": "/private/tmp/sd-app-isolation-yQUUG4"
+  },
+  "postchecks": {
+    "sameEngine": true,
+    "zeroPurposeLabels": true,
+    "exactContainerAbsent": true,
+    "workspaceENOENT": true
+  },
+  "resultWritten": true,
+  "cachedImage": {
+    "Id": "sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
+    "RepoDigests": [
+      "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d"
+    ],
+    "Os": "linux",
+    "Architecture": "arm64"
+  },
+  "authorityEvidenceVerified": true,
+  "reviewRequiredBeforeAnyFurtherAttempt": true
+}

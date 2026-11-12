@@ -1,0 +1,90 @@
+{
+  "schema": "SD-AUTHORITY-REAL-POSTDECISIONS-1",
+  "approvedHead": "c04c1cd355c10e375874c4362c119e3e3d93848a",
+  "operatorSha256": "1a589cc979b5ce6ca19b3b91c6eada13321dc1c46e2716b7b375f09f1ac69570",
+  "manifestSha256": "0a19d8ff52d988587332c98bb7798277757789d9d2e88ff2a822c5f9ba09704b",
+  "sourceFreezeSha256": "7df6a0ba88c5cf1e19cb79fdbcfe3cf1e4ec67175d6f4b0102b817c868d554dc",
+  "offlineResultSha256": "dfa34ddafc26100da6a82c07a0e48a1010d202e5d8c188cd49831d20a8e112cc",
+  "actualRunApprovalDecisions": [
+    {
+      "reviewer": "/root/booking_write_contract",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_AND_ONE_FIXED_AUTHORITY_PURE_RUN",
+      "scope": "ONE_FIXED_AUTHORITY_PURE_RUN",
+      "approvedHead": "c04c1cd355c10e375874c4362c119e3e3d93848a",
+      "operatorSha256": "1a589cc979b5ce6ca19b3b91c6eada13321dc1c46e2716b7b375f09f1ac69570",
+      "manifestSha256": "0a19d8ff52d988587332c98bb7798277757789d9d2e88ff2a822c5f9ba09704b",
+      "sourceFreezeSha256": "7df6a0ba88c5cf1e19cb79fdbcfe3cf1e4ec67175d6f4b0102b817c868d554dc",
+      "offlineResultSha256": "dfa34ddafc26100da6a82c07a0e48a1010d202e5d8c188cd49831d20a8e112cc",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/payment_ctor_contract",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_AND_ONE_FIXED_AUTHORITY_PURE_RUN",
+      "scope": "ONE_FIXED_AUTHORITY_PURE_RUN",
+      "approvedHead": "c04c1cd355c10e375874c4362c119e3e3d93848a",
+      "operatorSha256": "1a589cc979b5ce6ca19b3b91c6eada13321dc1c46e2716b7b375f09f1ac69570",
+      "manifestSha256": "0a19d8ff52d988587332c98bb7798277757789d9d2e88ff2a822c5f9ba09704b",
+      "sourceFreezeSha256": "7df6a0ba88c5cf1e19cb79fdbcfe3cf1e4ec67175d6f4b0102b817c868d554dc",
+      "offlineResultSha256": "dfa34ddafc26100da6a82c07a0e48a1010d202e5d8c188cd49831d20a8e112cc",
+      "findings": []
+    }
+  ],
+  "approvalSha256": "24119ef01f1b9cdd59633846dc1bbb0d85f2423c893f81b34182306cd98b9d4e",
+  "consumedOnceSha256": "e3701871d42d494aea601f32700956815cc08f68d648a3dacb67349ea34097bd",
+  "resultSha256": "35a5417343182b1136575decc575dfe78ae1f6ba2c039340affa9196f57d2c00",
+  "rawArchiveManifestSha256": "948d3abf5fe3b7f50b4ce300c5abb2e45d27724eeb0c4538319f4a92797c2df0",
+  "rootActualInvocation": {
+    "nativeExecSession": 90153,
+    "terminalExit": 0,
+    "launcherInvocations": 1,
+    "overallClaimConsumed": true,
+    "resultStatus": "PASS"
+  },
+  "postDecisions": [
+    {
+      "reviewer": "/root/booking_write_contract",
+      "role": "Standards",
+      "decision": "ACCEPT_FIXED_AUTHORITY_PURE_RUNTIME_EVIDENCE_ONLY",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex outcome review, personally read all32 captures/84caseIDs/mutants/trace/pins and fresh same-engine exact absence readbacks."
+    },
+    {
+      "reviewer": "/root/payment_ctor_contract",
+      "role": "Spec",
+      "decision": "ACCEPT_FIXED_AUTHORITY_PURE_RUNTIME_EVIDENCE",
+      "findings": [],
+      "provenance": "Actual independent nonauthor internal Codex outcome review, personally read all32 captures/84caseIDs/mutants/trace/pins and fresh same-engine exact absence readbacks."
+    }
+  ],
+  "rootDecision": "ACCEPT_FIXED_AUTHORITY_PURE_RUNTIME_EVIDENCE_ONLY",
+  "rootPersonallyVerified": {
+    "all32Captures": true,
+    "all33ArchiveRawFilesByteIdentical": true,
+    "rawAuthorityRecords": 103,
+    "nominalCasesPassed": 84,
+    "mutantsDetectedAndRestored": 5,
+    "emits": 8,
+    "graphs": 11,
+    "moduleEvaluations": 33,
+    "compilerLoads": 1,
+    "casePhaseMs": 603.090083,
+    "engineId": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+    "engineOS": "linux",
+    "freshPurposeLabelsEmpty": true,
+    "freshExactContainerNoSuch": "7d2ff6c24bcb06e2722531beda60e5fbb0f0ab5cb3dcfa2ec7f83e1c13da0310",
+    "freshWorkspaceENOENT": "/private/tmp/sd-app-isolation-yQUUG4",
+    "freshLauncherPidAbsent": 25347,
+    "freshLauncherGroupAbsent": 25347
+  },
+  "limits": [
+    "Three complete Mongoose-free organizations modules evaluated under injected read ports, not a clinical or public staff activation.",
+    "No semantic TypeScript/root build, HTTP/JWT/Joi, real driver/session/index/provenance/provisioning/qualification/revocation or cross-module evidence.",
+    "Database/provider/source-write/native-import absence follows closed capabilities and executed admission, not general OS instrumentation.",
+    "No money/stock/Rx/F1 recovery, supported-client, named-owner/module/M0/production/100RPS/release acceptance.",
+    "700 fake cases remain separate from these84 actual nominal cases.",
+    "The invocation is consumed; no rerun or new grants follow."
+  ],
+  "earlierFailure": "fc45 pre-allocation environment rejection and exact inline diagnostic retained; no Node/Docker launch then."
+}
