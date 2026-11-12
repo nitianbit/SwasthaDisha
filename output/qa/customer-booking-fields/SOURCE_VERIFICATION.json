@@ -1,0 +1,50 @@
+{
+  "author": "/root/refund_error_writer",
+  "baseline": "a753358a7280a8d99b07bf62fa655e7d0d6fbd9c",
+  "contract_sha256": "b7a82e761ebeacd808dfe11fbb66d7e467631c2aa062f91a8a34deaa8f2d94ea",
+  "source_hashes": {
+    "src1/modules/bookings/controller/index.ts": {
+      "baseline": "c3b500d9343150d5edff79980f10825ce6592d02f1a1c7ea652f8c852c0ca76c",
+      "candidate": "b46f119eb8fbd509f6c29033bbb9546e8e19da84b6a0ba6b2f360510defeaf85"
+    },
+    "src1/modules/bookings/services/index.ts": {
+      "baseline": "d32c2a8a7e0af52d6e062e29c82e7fee87dcb6dcdfe4488e89e7d09c4cc2c8cf",
+      "candidate": "25645bc17bb535e2c3c5b6dcec14917ef5df905fe31838c980431dcf9e591051"
+    }
+  },
+  "patch_sha256": "c1bad55bf2dc651bfd688cb9700693da310f8bce7bb512714ce174680ef2bb7e",
+  "data_only_checks": {
+    "only_production_changes": [
+      "src1/modules/bookings/controller/index.ts",
+      "src1/modules/bookings/services/index.ts"
+    ],
+    "controller_exact_single_dispatch_replacement": true,
+    "service_exact_single_operation_insertion": true,
+    "owner_helper_and_sibling_controller_bytes_unchanged": true,
+    "entire_original_service_and_generic_update_bytes_unchanged": true,
+    "types_byte_identical_no_unused_alias": true,
+    "one_owned_getById_and_one_repository_update_in_new_operation": true
+  },
+  "source_inspection": {
+    "order": "Required signed scope and plain shape; existing owned getById404; all-own-key forbidden422; required bounded trimmed notes400; pending/confirmed state409; final same-owner/same-status-set notes-only write; null409; direct updated return.",
+    "notes_property": "Use an own data-property descriptor, so no inherited/getter value or caller object is forwarded into the write. Symbols and nonenumerable forbidden keys are rejected after object authorization.",
+    "write": "New literal {$set:{notes:normalizedNotes}}, combined _id/userId/status predicate, new:true/upsert:false; no generic update or business-effect helper.",
+    "noncustomers": "All other actors retain original generic update call and arguments after unchanged owner/HR checks."
+  },
+  "limitations": [
+    "No TypeScript/Joi/HTTP/Mongoose/provider behavior proof from these data checks.",
+    "Existing shared Joi stripUnknown and earlier validation order remain; no all-raw-key422 or full AR-26 compliance claim.",
+    "Existing constructor and getById scope are not admitted for execution by this source slice.",
+    "Other generic actors and create/delete/contact/cancel/reschedule/payment/clinical defects remain outside this slice.",
+    "Notes replace current text with last-writer-wins among eligible states; no note history or complete multiwriter/ABA guarantee."
+  ],
+  "execution": {
+    "typescript_evaluations": 0,
+    "node_invocations": 0,
+    "compiler_or_build": 0,
+    "application_imports": 0,
+    "db_docker_provider_calls": 0,
+    "runtime_status": "NOT_RUN"
+  },
+  "source_reviews": "PENDING two fresh independent nonauthor source reviews; no acceptance/release or integration claim."
+}

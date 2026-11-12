@@ -366,7 +366,9 @@ export class BookingController {
     this.ensureHRReadOnly(req);
     const { id } = req.params;
     const data: UpdateBookingRequest = req.body;
-    const result = await this.bookingService.update(id, data, userId);
+    const result = req.user?.userType === 'user'
+      ? await this.bookingService.updateCustomerNotes(id, data, userId)
+      : await this.bookingService.update(id, data, userId);
 
     res.status(200).json({
       success: true,

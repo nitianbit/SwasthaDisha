@@ -1,0 +1,23 @@
+{
+  "baseline": "a753358a7280a8d99b07bf62fa655e7d0d6fbd9c",
+  "author": "/root/refund_error_writer",
+  "files": {
+    "documentation/planning/implementation/CUSTOMER_BOOKING_FIELDS_CONTRACT.md": "b7a82e761ebeacd808dfe11fbb66d7e467631c2aa062f91a8a34deaa8f2d94ea",
+    "output/qa/customer-booking-fields/PREIMPLEMENTATION_DECISIONS.json": "1def088f67e113f5e412b8be8fd7652c1f317b6af883db1d7fe8c8afb5fb2be4",
+    "src1/modules/bookings/controller/index.ts": "b46f119eb8fbd509f6c29033bbb9546e8e19da84b6a0ba6b2f360510defeaf85",
+    "src1/modules/bookings/services/index.ts": "25645bc17bb535e2c3c5b6dcec14917ef5df905fe31838c980431dcf9e591051",
+    "src1/modules/bookings/types/index.ts": "30d1a615c3f157ec9a73f9a13968c3afcec59f84bdfa0178413f22c906f42a79",
+    "src1/modules/bookings/validation/index.ts": "ce9743b4cc50af6b230089c0ff0523f490f8685c6fbb48cc475f4b8e52e6f728",
+    "src1/modules/bookings/routes/index.ts": "b2ed40c971e35ceb28eeccb8b491bcf7c4b2dcaf35a7267c783a8345760e3cfb",
+    "src1/modules/bookings/repository/index.ts": "d54ebba522cd290589296918eb2dcb4f7609e42d836ef3f23dfb89114b375713",
+    "src1/modules/common/repository/BaseRepository.ts": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+    "src1/modules/common/middleware/validation.ts": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef",
+    "output/qa/customer-booking-fields/candidate.diff": "c1bad55bf2dc651bfd688cb9700693da310f8bce7bb512714ce174680ef2bb7e",
+    "output/qa/customer-booking-fields/SOURCE_VERIFICATION.json": "f2a1d784cea402043b34b4b8480008a9934e17633ce4ddc4094b31708a12ca8a"
+  },
+  "production_delta": [
+    "src1/modules/bookings/controller/index.ts",
+    "src1/modules/bookings/services/index.ts"
+  ],
+  "scope": "Source-only candidate; two independent nonauthor reviews required before merge. Runtime/type/HTTP/DB effects NOT_RUN."
+}

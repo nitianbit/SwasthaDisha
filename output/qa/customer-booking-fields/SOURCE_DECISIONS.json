@@ -1,0 +1,21 @@
+{
+  "candidate_commit": "d3895bb9a70ffe628ee72f5f0d98cd439654b869",
+  "author": "/root/refund_error_writer",
+  "source_freeze_sha256": "7441f44ecd7a8380fa1f2aa3d569394fe4f0fbc2ba11b27eedfc29918d2aa2ff",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/policy_standards",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    }
+  ],
+  "evidence": "Both actual nonauthor internal Codex source inspections: exact inverse two-file diff, all12 pins, inherited helper/generic update/type preservation, signed owner/plain shape/owned404/field422/format400/state409/final scoped literalwrite/null409/directreturn. No generic update or business effect helper in new method.",
+  "limits": "Runtime/type/Joi/HTTP/DB/race/provider behavior NOT_RUN. Raw unknown stripping, other actor/update/delete/contact/cancellation/clinical/money gaps and note last-writer-wins remain explicit. No module/release acceptance."
+}
