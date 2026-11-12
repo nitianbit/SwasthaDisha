@@ -1,0 +1,71 @@
+{
+  "schema": "SD-ENROLLMENT-INSTALL-EMIT-FAILURE-1",
+  "sourceCandidate": "a7208698ce6109d107bb1f6934b9671a71eb9423",
+  "actualExecSession": 43441,
+  "terminalExit": 1,
+  "terminalToolChunk": "79da65",
+  "workspace": "/private/tmp/sd-customer-enrollment-build-d0e48f58-678a-4cd6-80a7-1db1382736d8",
+  "identity": {
+    "dev": 16777230,
+    "ino": 54865418,
+    "uid": 501,
+    "mode": "0o700"
+  },
+  "stage": "emit diagnostic allowlist after nominal diagnostic capture",
+  "install": "Npm ci reached successful exit0 before emitter invocation (mandatory source predicate); scripts disabled,24 locked packages",
+  "compiler": {
+    "version": "5.9.3",
+    "sha256": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675"
+  },
+  "diagnosticCapture": {
+    "path": "output/qa/customer-enrollment-focused/revision-3/diagnostics-nominal.json",
+    "sha256": "056170525ac48df51e8189999e8032610118f79124c814477c7462ae2ed07f6a",
+    "bytes": 6867,
+    "returnedCount": 31,
+    "codeCounts": {
+      "2307": 30,
+      "2339": 1
+    },
+    "completeMeans": "Complete returned diagnostic data only, not typecheck/emission acceptance"
+  },
+  "onlyUnexpectedPolicyDiagnostic": [
+    {
+      "file": "src1/modules/common/types/error.ts",
+      "code": 2339,
+      "category": 1,
+      "start": 573,
+      "length": 17,
+      "message": "Property 'captureStackTrace' does not exist on type 'ErrorConstructor'."
+    }
+  ],
+  "nominalCompletenessPredicateReached": true,
+  "laterPhases": "OLD/NC1/NC2/NC3/NC4 NOT_RUN",
+  "mapsPublished": false,
+  "buildDescriptorCreated": false,
+  "appRuntimePackageEval": false,
+  "applicationServiceOr82CasesRun": false,
+  "containerDBProviderRun": false,
+  "nonce": "ef9ded35-97fb-48a7-a90c-7c85e46315dd",
+  "onceSha256": "e5f0abf64c90a26d4c9e58102de8ce94e57f1e4c112e685b90aab9f581768c83",
+  "receiptSha256": "f18139aa415338b45ca52cf2af58ff95f9c952ccc720f286c4261c61fdf288bb",
+  "privateLogs": {
+    "install.stdout.txt": {
+      "bytes": 25,
+      "sha256": "1d41eb5f721bb9d5710254973769ef57dc59f277b97c8647bf6ffaff5426b4ba"
+    },
+    "install.stderr.txt": {
+      "bytes": 209,
+      "sha256": "799f544422ef20e84949c8feabb844390db9306ac5cf97419981d0291eb45156"
+    },
+    "emit.stdout.txt": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "emit.stderr.txt": {
+      "bytes": 1117,
+      "sha256": "fa4feb969dd860495001c57518eb33c28e397f92f45652e8737f22b4f4f6ede5"
+    }
+  },
+  "workspaceDisposition": "RETAINED with original owned marker, installed code and actual diagnostics; no cleanup or automatic retry",
+  "independentOutcome": "PENDING_TWO_NONAUTHOR_DECISIONS"
+}
