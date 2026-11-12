@@ -1,0 +1,20 @@
+diff --git a/test/pharmacy.integration.test.ts b/test/pharmacy.integration.test.ts
+index 46e3e3bb24977bd01fade13eb8b624ee0fb03316..24cd3e283eede3ab50f3cd6e8c919fdb8456c746 100644
+--- a/test/pharmacy.integration.test.ts
++++ b/test/pharmacy.integration.test.ts
+@@ -215,0 +216 @@ integrationTest('only one concurrent manual payment claim succeeds', async () =>
++  const medicine = await createMedicine('Manual payment');
+@@ -222 +223,3 @@ integrationTest('only one concurrent manual payment claim succeeds', async () =>
+-    items: [],
++    items: [{ medicineId: medicine._id, orderedQty: 1, unitPrice: 10, lineTotal: 10, prescriptionRequired: false, itemStatus: 'active' }],
++    prescriptionStatus: 'not_required',
++    prescriptionUrls: [],
+@@ -326,0 +330,2 @@ integrationTest('prescription medicines cannot be ordered without a prescription
++  const inventoryBefore = await InventoryItemModel.findOne({ pharmacyId: seller._id, medicineId: medicine._id }).lean();
++
+@@ -339 +344,2 @@ integrationTest('prescription medicines cannot be ordered without a prescription
+-    (error: unknown) => (error as { code?: string }).code === 'PRESCRIPTION_REQUIRED'
++    (error: unknown) => (error as { status?: number }).status === 503 &&
++      (error as { code?: string }).code === 'PRESCRIPTION_CHECKOUT_UNAVAILABLE'
+@@ -342,0 +349 @@ integrationTest('prescription medicines cannot be ordered without a prescription
++  assert.deepEqual(inventory, inventoryBefore);

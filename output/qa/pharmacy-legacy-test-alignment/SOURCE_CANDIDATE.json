@@ -1,0 +1,105 @@
+{
+  "schema": "SD-SOURCE-CANDIDATE-1",
+  "baseline": "72361527824cd6e3cd61c7853b718ca7fc35ce57",
+  "author": "/root/lab_remaining_audit",
+  "branch": "m0/pharmacy-legacy-test-alignment",
+  "contractPath": "documentation/planning/implementation/PHARMACY_LEGACY_TEST_ALIGNMENT_CONTRACT_DRAFT.md",
+  "contractSha256": "944f172f5780dd1977af4a5357bb17e969cd3ac2a04bae11fc6ec97e7cc788d3",
+  "candidatePath": "test/pharmacy.integration.test.ts",
+  "candidateSha256": "40a5e341214044da49a1e4849b2bde6d2ec0972215e54a612029c4c4caf1f02c",
+  "patchPath": "output/qa/pharmacy-legacy-test-alignment/SOURCE.patch",
+  "patchSha256": "430f4507dc50439b392e49152053ccc163c89e963cdc2ba1a2e9db2ff83c4388",
+  "pins": [
+    {
+      "path": "test/pharmacy.integration.test.ts",
+      "baselineSha256": "e123eab6f5bde08475605f8ed47a1f3830cd97ecdd9c8fe2dd0f2aa49507d35e",
+      "candidateSha256": "40a5e341214044da49a1e4849b2bde6d2ec0972215e54a612029c4c4caf1f02c",
+      "unchanged": false
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/prescriptionCommerce.ts",
+      "baselineSha256": "8e6db5fc64d5a5b2fec6437660fb0d308c24d3e1c0aec2ae95efdc2f73fe0058",
+      "candidateSha256": "8e6db5fc64d5a5b2fec6437660fb0d308c24d3e1c0aec2ae95efdc2f73fe0058",
+      "unchanged": true
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/services/index.ts",
+      "baselineSha256": "83ca486a250403a777f0548ec57c98bd1e99e154b6f2034754ddc9aedbc3f35e",
+      "candidateSha256": "83ca486a250403a777f0548ec57c98bd1e99e154b6f2034754ddc9aedbc3f35e",
+      "unchanged": true
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/model/index.ts",
+      "baselineSha256": "f054a220020c66a83c49ea8658bd0d002cb3a9fd28c9b7771b0584c53471ac14",
+      "candidateSha256": "f054a220020c66a83c49ea8658bd0d002cb3a9fd28c9b7771b0584c53471ac14",
+      "unchanged": true
+    },
+    {
+      "path": "src1/modules/pharmacyOrders/repository/index.ts",
+      "baselineSha256": "df77e35abeb00913d6353e0bf76a3651b3a1b78b6e669548439472347c4b084f",
+      "candidateSha256": "df77e35abeb00913d6353e0bf76a3651b3a1b78b6e669548439472347c4b084f",
+      "unchanged": true
+    },
+    {
+      "path": "src1/modules/pharmacyMedicines/model/index.ts",
+      "baselineSha256": "2dd98cd59a4e9a3aaa156d917f7cc131d7e30c7546ad7296b8a0ca4920c70725",
+      "candidateSha256": "2dd98cd59a4e9a3aaa156d917f7cc131d7e30c7546ad7296b8a0ca4920c70725",
+      "unchanged": true
+    },
+    {
+      "path": "src1/modules/pharmacyMedicines/repository/index.ts",
+      "baselineSha256": "2d3f1cc7e21804546bbdaa68d8316c9f3f4ae176f6cebc26626960908a02c2f3",
+      "candidateSha256": "2d3f1cc7e21804546bbdaa68d8316c9f3f4ae176f6cebc26626960908a02c2f3",
+      "unchanged": true
+    },
+    {
+      "path": "src1/modules/common/repository/BaseRepository.ts",
+      "baselineSha256": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+      "candidateSha256": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+      "unchanged": true
+    },
+    {
+      "path": "src1/modules/payment/services/index.ts",
+      "baselineSha256": "9c1086e3aa9239855ed3d73a02f941015d869bdb36a689a5294dea367ee7457d",
+      "candidateSha256": "9c1086e3aa9239855ed3d73a02f941015d869bdb36a689a5294dea367ee7457d",
+      "unchanged": true
+    },
+    {
+      "path": "src1/modules/common/types/error.ts",
+      "baselineSha256": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+      "candidateSha256": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+      "unchanged": true
+    },
+    {
+      "path": "output/qa/customer-pharmacy-lab-claude-review/revision-8/operator/CLAUDE_REVIEW_8.md",
+      "baselineSha256": "5eaf50279e150016781dde05c27c1ee2520f8a724f65360febbce2a0b1c44188",
+      "candidateSha256": "5eaf50279e150016781dde05c27c1ee2520f8a724f65360febbce2a0b1c44188",
+      "unchanged": true
+    },
+    {
+      "path": "output/qa/customer-pharmacy-lab-claude-review/revision-8/operator/FINDING_DISPOSITIONS_8.md",
+      "baselineSha256": "ff88b0e0eaae87909f8b143687456041a7415b687869dcf64e85a983c2074f8d",
+      "candidateSha256": "ff88b0e0eaae87909f8b143687456041a7415b687869dcf64e85a983c2074f8d",
+      "unchanged": true
+    }
+  ],
+  "staticChecks": {
+    "exactTwoCaseBodiesOnly": "PASS",
+    "allOtherTrackedFilesUnchanged": "PASS",
+    "allProductionAndProvenancePinsUnchanged": "PASS",
+    "gitDiffCheck": "PASS_FOR_SOURCE",
+    "paymentServiceConstructorOutsideOwnedBodiesUnchanged": "PASS"
+  },
+  "execution": {
+    "typecheck": "NOT_RUN",
+    "legacySuite": "NOT_RUN",
+    "runtimeRace": "NOT_RUN",
+    "application": "NOT_RUN",
+    "database": "NOT_RUN",
+    "provider": "NOT_RUN"
+  },
+  "reviewStatus": "PENDING_TWO_NONAUTHOR_SOURCE_DECISIONS",
+  "scope": "Source alignment only; no runtime/race/clinical/financial/client/module/release claim.",
+  "patchContextLines": 0,
+  "artifactNote": "Initial full-context patch produced three whitespace diagnostics on literal unified-diff context markers, not test-source whitespace; replaced with exact zero-context full-index patch. git apply requires --unidiff-zero if used for reconstruction; no application or reconstruction ran."
+}

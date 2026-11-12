@@ -1,0 +1,21 @@
+{
+  "schema": "SD-PREIMPLEMENTATION-DECISIONS-1",
+  "baseline": "72361527824cd6e3cd61c7853b718ca7fc35ce57",
+  "contract": "documentation/planning/implementation/PHARMACY_LEGACY_TEST_ALIGNMENT_CONTRACT_DRAFT.md",
+  "contractSha256": "944f172f5780dd1977af4a5357bb17e969cd3ac2a04bae11fc6ec97e7cc788d3",
+  "decisions": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY"
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY"
+    }
+  ],
+  "scope": "Contracted source edits and source/text/hash inspection only. No application, compiler, test suite, Node, Docker, database, provider or model execution. Source reviews and composition remain required; runtime NOT_RUN."
+}

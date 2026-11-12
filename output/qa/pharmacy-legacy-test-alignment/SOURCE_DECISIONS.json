@@ -1,0 +1,25 @@
+{
+  "schema": "SD-INDEPENDENT-SOURCE-DECISIONS-1",
+  "baseline": "72361527824cd6e3cd61c7853b718ca7fc35ce57",
+  "sourceCommit": "8b32ecaf8377ac016357839dd9b4f138d1549df6",
+  "source": "test/pharmacy.integration.test.ts",
+  "sourceSha256": "40a5e341214044da49a1e4849b2bde6d2ec0972215e54a612029c4c4caf1f02c",
+  "candidateManifestSha256": "ee3a03e79d3ea9cf65b4bdfcf25bec18638d786c8ec7df1d8346dbf824626016",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    },
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Spec",
+      "provenance": "INTERNAL_CODEX_NATIVE_NONAUTHOR",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "findings": []
+    }
+  ],
+  "verification": "Independent static exact diff and contract inspection; no application/Node/compiler/tests/DB/Docker/provider execution. Runtime/type/race/rollback NOT_RUN. Not clinical/financial/owner/module/release acceptance. Composition and genuine Claude review remain separate."
+}
