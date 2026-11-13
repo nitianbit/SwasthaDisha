@@ -1,0 +1,57 @@
+{
+  "schema": "SD-R13-BINDING-DELTA-1",
+  "proof": {
+    "supervisor.py": {
+      "beforeSha256": "ad8487748dce7624328e2e0afa9b516340aac4f29a86bf1922c7f4f9401db2b0",
+      "afterSha256": "9cd33ca93e79b8a42f9eff48c3aabcd7413b4f2caf09702f7385d5abf15de2ec",
+      "bindings": [
+        {
+          "old": "revision-12",
+          "new": "revision-13"
+        },
+        {
+          "old": "beed0d865aa6bd61b46d7a767943f3812701a0be7d337d99c9f3b51982f40aa8",
+          "new": "05722764f5e3ff2bbbf7a33c98250edaebd54eba3d83190ec3e5bbac1254da5a"
+        },
+        {
+          "old": "00d23d929f35091f323329e91ba862f24360a6469b66c1c772a0e37b1c40285c",
+          "new": "622718d9e08c89c21fb6a9023b6b36d2b9dde067f3f93ee0beff8ec6961d70b1"
+        },
+        {
+          "old": "PREIMPLEMENTATION_12",
+          "new": "PREIMPLEMENTATION_13"
+        },
+        {
+          "old": "LIVE_APPROVAL_12",
+          "new": "LIVE_APPROVAL_13"
+        },
+        {
+          "old": "SD-CURRENT-CLAUDE-LIVE-APPROVAL-12",
+          "new": "SD-CURRENT-CLAUDE-LIVE-APPROVAL-13"
+        }
+      ],
+      "exactInverse": true,
+      "ASTParse": "PASS_SOURCE_ONLY_NO_EXECUTION"
+    },
+    "test_supervisor.py": {
+      "beforeSha256": "fadd86a14e5b44f1cfba6de5449e761e5790ed2bccbe32d6c6938f9cd7fe1a11",
+      "afterSha256": "bce8424ff5876018799d42947a453fa24aa65a5fc23b2d8fc0e204ffbcfdfbd4",
+      "bindings": [
+        {
+          "old": "test_old_live_receipt_does_not_admit_revision_twelve",
+          "new": "test_old_live_receipt_does_not_admit_revision_thirteen"
+        },
+        {
+          "old": "'LIVE_APPROVAL_11.json'",
+          "new": "'LIVE_APPROVAL_12.json'"
+        }
+      ],
+      "exactInverse": true,
+      "ASTParse": "PASS_SOURCE_ONLY_NO_EXECUTION"
+    }
+  },
+  "functionalChanges": false,
+  "fakeCampaign": "NOT_RUN_REUSE_ACCEPTED47_HISTORY",
+  "authCalls": 0,
+  "modelCalls": 0
+}

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "ruflo": {
+      "type": "stdio",
+      "command": "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+      "args": [
+        "/Users/shubham/.codex/ruflo-state/swasthadisha/adapters/57c226be79e9b832e6ee2b7122d387102b878f0ecaa7862a6fd65c4b64268b4d/ruflo-local.mjs"
+      ]
+    }
+  }
+}

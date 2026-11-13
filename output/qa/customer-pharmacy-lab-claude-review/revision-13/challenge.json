@@ -1,0 +1,40 @@
+{
+  "schema": "SD-CLAUDE-LAB-REFILL-CHALLENGE-13",
+  "team": "swasthadisha-local",
+  "fromAgent": "codex-lead",
+  "toAgent": "claude-reviewer",
+  "sessionId": "a321d4d7-574f-4cc8-8528-aea6d72002fa",
+  "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+  "controllerSha256": "15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7",
+  "contractSha256": "2771d786a23886d5537427c1ead6ffed1be69e4a93c063812033a9c81f109740",
+  "packetSha256": "c0798e9b975e62288a241a62795d85cafc102b424a6fc44133157a3e8795c6d0",
+  "nonce": "be6ddf30-74ad-472a-887d-4018bdd2174b",
+  "clientKind": "local-bundled-CLI",
+  "requestedModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "state": "PREPARED_NOT_ENQUEUED",
+  "sourceHashes": {
+    "src1/modules/organizations/types/index.ts": "98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670",
+    "src1/modules/organizations/model/index.ts": "d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a",
+    "src1/modules/organizations/rules.ts": "c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a",
+    "src1/modules/organizations/model/lab.ts": "42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c",
+    "src1/modules/organizations/labAuthorityRoot.ts": "15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7",
+    "src1/modules/organizations/labAuthorityReadiness.ts": "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9",
+    "src1/modules/organizations/labAuthorityProvisioning.ts": "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65",
+    "src1/operators/labAuthority.ts": "5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02",
+    "src1/modules/organizations/labAuthoritySourceManifest.json": "08324e39632809158a3b628514287354adbe9e12fae9dce2169026fe1504c9c9",
+    "API_SCHEMAS.md": "948f1ef2c319d1206438f283f6e7116d0f83f9d02b66495074f9a535891e8951",
+    "src1/modules/pharmacySubscriptions/controller/index.ts": "7bb21a7ec9aaf8693fb2438a5800f7308d2978353c5ed1c95c0f46e60278a9de",
+    "src1/modules/pharmacySubscriptions/repository/index.ts": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+    "src1/modules/pharmacySubscriptions/routes/index.ts": "08dcc367a86f6ffc1e675e8a010fcc87ffb5ff5329fda4c29fc0c04cca0c834c",
+    "src1/modules/pharmacySubscriptions/services/index.ts": "3b22b92d88790c521616302d7827023e4ffa16eb25989a6b443152d0af0f9171",
+    "src1/modules/pharmacySubscriptions/types/index.ts": "aec8ae4c8d1728f7539e68543e6e97a178b21b8cccc426ed9e4d43f85860fc6e",
+    "src1/modules/pharmacySubscriptions/validation/index.ts": "1e4dcc64b270c9c8ee242d78af13f3736f2c063de6f8c223822aca7e87de91e4"
+  },
+  "contractHashes": {
+    "documentation/planning/implementation/BUSINESS_STAFF_AUTHORITY_CONTRACT.md": "69dba46528295f55e184b95e1fb6ea451ee2371254d76eb7ac9fd6573068f9fd",
+    "documentation/planning/implementation/LAB_CANONICAL_AUTHORITY_S2_A_ADDENDUM_DRAFT.md": "dbe337575ff28360bf6a7b57a2c69cf2bdab9a234a2774c893ec1bba36159a57",
+    "documentation/planning/implementation/PHARMACY_REFILL_OPERATIONS_CONTRACT.md": "8e25a0a350f6a441256f22a0fb8fabe64bcdd72ca3fcaf47ddf800f1ddb6dad1",
+    "documentation/planning/implementation/PHARMACY_REFILL_FOCUSED_VERIFICATION_CONTRACT_DRAFT.md": "f0e5a04afa5d7cf222cf5b2be31c2b44bef107e48228d11ba55fd1ba01b8ed17"
+  }
+}

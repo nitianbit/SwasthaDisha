@@ -1,0 +1,13 @@
+{
+  "schema": "SD-R13-GENERATION-PRELAUNCH-NOTE-1",
+  "toolChunk": "fbf682",
+  "stage": "INERT_PUBLIC_NATIVE_MEMBER_SELECTION",
+  "error": "Root requested Mongo4 list_indexes.js; actualpinnedMongo4file isoperations/indexes.js. Corrected membername afterphysicalread.",
+  "recipeOrOutputNamespaceCreated": false,
+  "modelCalls": 0,
+  "authCalls": 0,
+  "challengeEnqueued": false,
+  "liveApprovalOrOnceCreated": false,
+  "applicationEvaluations": 0,
+  "archiveBytesUnmodified": true
+}

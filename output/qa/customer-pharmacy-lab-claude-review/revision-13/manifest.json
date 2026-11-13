@@ -1,0 +1,753 @@
+{
+  "schema": "SD-CLAUDE-PACKET-MANIFEST-13",
+  "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+  "sourceHashes": {
+    "src1/modules/organizations/types/index.ts": "98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670",
+    "src1/modules/organizations/model/index.ts": "d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a",
+    "src1/modules/organizations/rules.ts": "c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a",
+    "src1/modules/organizations/model/lab.ts": "42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c",
+    "src1/modules/organizations/labAuthorityRoot.ts": "15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7",
+    "src1/modules/organizations/labAuthorityReadiness.ts": "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9",
+    "src1/modules/organizations/labAuthorityProvisioning.ts": "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65",
+    "src1/operators/labAuthority.ts": "5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02",
+    "src1/modules/organizations/labAuthoritySourceManifest.json": "08324e39632809158a3b628514287354adbe9e12fae9dce2169026fe1504c9c9",
+    "API_SCHEMAS.md": "948f1ef2c319d1206438f283f6e7116d0f83f9d02b66495074f9a535891e8951",
+    "src1/modules/pharmacySubscriptions/controller/index.ts": "7bb21a7ec9aaf8693fb2438a5800f7308d2978353c5ed1c95c0f46e60278a9de",
+    "src1/modules/pharmacySubscriptions/repository/index.ts": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+    "src1/modules/pharmacySubscriptions/routes/index.ts": "08dcc367a86f6ffc1e675e8a010fcc87ffb5ff5329fda4c29fc0c04cca0c834c",
+    "src1/modules/pharmacySubscriptions/services/index.ts": "3b22b92d88790c521616302d7827023e4ffa16eb25989a6b443152d0af0f9171",
+    "src1/modules/pharmacySubscriptions/types/index.ts": "aec8ae4c8d1728f7539e68543e6e97a178b21b8cccc426ed9e4d43f85860fc6e",
+    "src1/modules/pharmacySubscriptions/validation/index.ts": "1e4dcc64b270c9c8ee242d78af13f3736f2c063de6f8c223822aca7e87de91e4"
+  },
+  "contractHashes": {
+    "documentation/planning/implementation/BUSINESS_STAFF_AUTHORITY_CONTRACT.md": "69dba46528295f55e184b95e1fb6ea451ee2371254d76eb7ac9fd6573068f9fd",
+    "documentation/planning/implementation/LAB_CANONICAL_AUTHORITY_S2_A_ADDENDUM_DRAFT.md": "dbe337575ff28360bf6a7b57a2c69cf2bdab9a234a2774c893ec1bba36159a57",
+    "documentation/planning/implementation/PHARMACY_REFILL_OPERATIONS_CONTRACT.md": "8e25a0a350f6a441256f22a0fb8fabe64bcdd72ca3fcaf47ddf800f1ddb6dad1",
+    "documentation/planning/implementation/PHARMACY_REFILL_FOCUSED_VERIFICATION_CONTRACT_DRAFT.md": "f0e5a04afa5d7cf222cf5b2be31c2b44bef107e48228d11ba55fd1ba01b8ed17"
+  },
+  "contractBundleSha256": "2771d786a23886d5537427c1ead6ffed1be69e4a93c063812033a9c81f109740",
+  "packetSha256": "c0798e9b975e62288a241a62795d85cafc102b424a6fc44133157a3e8795c6d0",
+  "packetBytes": 985337,
+  "fileCount": 76,
+  "subjectFiles": 16,
+  "nativePublicMembers": [
+    {
+      "package": "bson",
+      "version": "4.7.2",
+      "rootLockIntegrity": "sha512-Ry9wCtIZ5kGqkJoi6aD8KjxFZEx78guTQDnpXWiNthsxzrxAK/i8E6pCHAIZTbaEFWcOCvbecMukfK7XUvyLpQ==",
+      "tarSha256": "e876bd80d0754fad52329f022bbd7b8d332317ba4ee472dbcc7d1e31c3864852",
+      "member": "package/lib/long.js",
+      "sha256": "16e24a702550eec7f0d2389fccc97a124267e05e28135a3cbfe0e3992e952a4b",
+      "bytes": 37209
+    },
+    {
+      "package": "bson",
+      "version": "4.7.2",
+      "rootLockIntegrity": "sha512-Ry9wCtIZ5kGqkJoi6aD8KjxFZEx78guTQDnpXWiNthsxzrxAK/i8E6pCHAIZTbaEFWcOCvbecMukfK7XUvyLpQ==",
+      "tarSha256": "e876bd80d0754fad52329f022bbd7b8d332317ba4ee472dbcc7d1e31c3864852",
+      "member": "package/lib/timestamp.js",
+      "sha256": "e82be0fd433d686ad79413b27f1168b588fe0c9b5620e6c824274ebe58baf9fd",
+      "bytes": 4060
+    },
+    {
+      "package": "bson",
+      "version": "4.7.2",
+      "rootLockIntegrity": "sha512-Ry9wCtIZ5kGqkJoi6aD8KjxFZEx78guTQDnpXWiNthsxzrxAK/i8E6pCHAIZTbaEFWcOCvbecMukfK7XUvyLpQ==",
+      "tarSha256": "e876bd80d0754fad52329f022bbd7b8d332317ba4ee472dbcc7d1e31c3864852",
+      "member": "package/lib/binary.js",
+      "sha256": "8891625e2a3a294a51ce5a69838450f8c9c2c6fb6c4a0a314bc1c9e934c35dc4",
+      "bytes": 16318
+    },
+    {
+      "package": "bson",
+      "version": "4.7.2",
+      "rootLockIntegrity": "sha512-Ry9wCtIZ5kGqkJoi6aD8KjxFZEx78guTQDnpXWiNthsxzrxAK/i8E6pCHAIZTbaEFWcOCvbecMukfK7XUvyLpQ==",
+      "tarSha256": "e876bd80d0754fad52329f022bbd7b8d332317ba4ee472dbcc7d1e31c3864852",
+      "member": "package/lib/objectid.js",
+      "sha256": "9c53aac9cc7d3207c6b940d8fb97b34dbae5371533e769f26709d6d85fabe261",
+      "bytes": 11614
+    },
+    {
+      "package": "bson",
+      "version": "4.7.2",
+      "rootLockIntegrity": "sha512-Ry9wCtIZ5kGqkJoi6aD8KjxFZEx78guTQDnpXWiNthsxzrxAK/i8E6pCHAIZTbaEFWcOCvbecMukfK7XUvyLpQ==",
+      "tarSha256": "e876bd80d0754fad52329f022bbd7b8d332317ba4ee472dbcc7d1e31c3864852",
+      "member": "package/lib/parser/serializer.js",
+      "sha256": "76d32c59830e755ad9156c8f847920f67d386aa8415917665e40751841284b87",
+      "bytes": 36919
+    },
+    {
+      "package": "bson",
+      "version": "4.7.2",
+      "rootLockIntegrity": "sha512-Ry9wCtIZ5kGqkJoi6aD8KjxFZEx78guTQDnpXWiNthsxzrxAK/i8E6pCHAIZTbaEFWcOCvbecMukfK7XUvyLpQ==",
+      "tarSha256": "e876bd80d0754fad52329f022bbd7b8d332317ba4ee472dbcc7d1e31c3864852",
+      "member": "package/lib/parser/deserializer.js",
+      "sha256": "a78130552d5324e5f43fefb63785838bffc07c95087cb83736ff671287d96e0f",
+      "bytes": 30330
+    },
+    {
+      "package": "mongodb",
+      "version": "4.17.2",
+      "rootLockIntegrity": "sha512-mLV7SEiov2LHleRJPMPrK2PMyhXFZt2UQLC4VD4pnth3jMjYKHhtqfwwkkvS/NXuo/Fp3vbhaNcXrIDaLRb9Tg==",
+      "tarSha256": "c8dc719a35845c2b5563aded0771705d34ff350e6ddcaca3a727e1b63cd7d005",
+      "member": "package/lib/db.js",
+      "sha256": "aced05fd4f64ee206fba4cf9fbeada40c0452b1aa32574530f294f8832d5101e",
+      "bytes": 15189
+    },
+    {
+      "package": "mongodb",
+      "version": "4.17.2",
+      "rootLockIntegrity": "sha512-mLV7SEiov2LHleRJPMPrK2PMyhXFZt2UQLC4VD4pnth3jMjYKHhtqfwwkkvS/NXuo/Fp3vbhaNcXrIDaLRb9Tg==",
+      "tarSha256": "c8dc719a35845c2b5563aded0771705d34ff350e6ddcaca3a727e1b63cd7d005",
+      "member": "package/lib/mongo_client.js",
+      "sha256": "3a54b0938422e69e408524143aa031b7fbdde9d971e6a545346f76a5605fea1e",
+      "bytes": 13001
+    },
+    {
+      "package": "mongodb",
+      "version": "4.17.2",
+      "rootLockIntegrity": "sha512-mLV7SEiov2LHleRJPMPrK2PMyhXFZt2UQLC4VD4pnth3jMjYKHhtqfwwkkvS/NXuo/Fp3vbhaNcXrIDaLRb9Tg==",
+      "tarSha256": "c8dc719a35845c2b5563aded0771705d34ff350e6ddcaca3a727e1b63cd7d005",
+      "member": "package/lib/sessions.js",
+      "sha256": "10682959654ca9d1d0dcfce7ec59daf39a9820bdf2a9cb7ad6f7515de18c42f5",
+      "bytes": 33850
+    },
+    {
+      "package": "mongodb",
+      "version": "4.17.2",
+      "rootLockIntegrity": "sha512-mLV7SEiov2LHleRJPMPrK2PMyhXFZt2UQLC4VD4pnth3jMjYKHhtqfwwkkvS/NXuo/Fp3vbhaNcXrIDaLRb9Tg==",
+      "tarSha256": "c8dc719a35845c2b5563aded0771705d34ff350e6ddcaca3a727e1b63cd7d005",
+      "member": "package/lib/operations/indexes.js",
+      "sha256": "25d14dda1833fdf6c3a5a42a0ebdc790fdfb1b06e9eedd0375fe250a09b15295",
+      "bytes": 10990
+    },
+    {
+      "package": "mongodb",
+      "version": "4.17.2",
+      "rootLockIntegrity": "sha512-mLV7SEiov2LHleRJPMPrK2PMyhXFZt2UQLC4VD4pnth3jMjYKHhtqfwwkkvS/NXuo/Fp3vbhaNcXrIDaLRb9Tg==",
+      "tarSha256": "c8dc719a35845c2b5563aded0771705d34ff350e6ddcaca3a727e1b63cd7d005",
+      "member": "package/lib/operations/list_collections.js",
+      "sha256": "e6743c2ec855dc33a924a57d523ee0578da94df4c6d677853513bf9e05af0b10",
+      "bytes": 1920
+    },
+    {
+      "package": "mongoose",
+      "version": "6.13.8",
+      "rootLockIntegrity": "sha512-JHKco/533CyVrqCbyQsnqMpLn8ZCiKrPDTd2mvo2W7ygIvhygWjX2wj+RPjn6upZZgw0jC6U51RD7kUsyK8NBg==",
+      "tarSha256": "02191bdbe7d8969de79e1414b32c3ca0c703b4fd0e9c7ff640ffeaca27e264be",
+      "member": "package/lib/drivers/node-mongodb-native/collection.js",
+      "sha256": "57446ffdf9b89b501a235f9fd92779a7537209876f6beda0241767c9aa401459",
+      "bytes": 13995
+    }
+  ],
+  "files": [
+    {
+      "path": "API_SCHEMAS.md",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "948f1ef2c319d1206438f283f6e7116d0f83f9d02b66495074f9a535891e8951",
+      "wholeFileBytes": 18135,
+      "complete": true
+    },
+    {
+      "path": "documentation/planning/implementation/BUSINESS_STAFF_AUTHORITY_CONTRACT.md",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "69dba46528295f55e184b95e1fb6ea451ee2371254d76eb7ac9fd6573068f9fd",
+      "wholeFileBytes": 21973,
+      "complete": true
+    },
+    {
+      "path": "documentation/planning/implementation/LAB_CANONICAL_AUTHORITY_S2_A_ADDENDUM_DRAFT.md",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "dbe337575ff28360bf6a7b57a2c69cf2bdab9a234a2774c893ec1bba36159a57",
+      "wholeFileBytes": 34474,
+      "complete": true
+    },
+    {
+      "path": "documentation/planning/implementation/PHARMACY_REFILL_FOCUSED_VERIFICATION_CONTRACT_DRAFT.md",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "f0e5a04afa5d7cf222cf5b2be31c2b44bef107e48228d11ba55fd1ba01b8ed17",
+      "wholeFileBytes": 24675,
+      "complete": true
+    },
+    {
+      "path": "documentation/planning/implementation/PHARMACY_REFILL_OPERATIONS_CONTRACT.md",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "8e25a0a350f6a441256f22a0fb8fabe64bcdd72ca3fcaf47ddf800f1ddb6dad1",
+      "wholeFileBytes": 17578,
+      "complete": true
+    },
+    {
+      "path": "output/qa/lab-canonical-authority-contract/S2_A_REVISION_2_CONTRACT_DECISIONS.json",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "af526f4900ef19bb93722b8479440e652c304f383d17f7e6742dd3e508f830f2",
+      "wholeFileBytes": 1266,
+      "complete": true
+    },
+    {
+      "path": "output/qa/lab-canonical-authority-contract/S2_A_SERIALIZATION_VECTORS.json",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "d08280c503baadde02f6fe1313be5eb21aa6af697d4bae0320870dbef10cb49a",
+      "wholeFileBytes": 31185,
+      "complete": true
+    },
+    {
+      "path": "output/qa/lab-canonical-authority-contract/source-candidate/INITIAL_SOURCE_DECISIONS.json",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "06d183483386fc420dc5f8126ebf37b47b843d164926df927ed66232290f299b",
+      "wholeFileBytes": 1141,
+      "complete": true
+    },
+    {
+      "path": "output/qa/lab-canonical-authority-contract/source-candidate/revision-2/SOURCE_DECISIONS.json",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "1a32112de12da0045548a707875f4ae633c197c7beb600e3154a4e83872fe93f",
+      "wholeFileBytes": 1390,
+      "complete": true
+    },
+    {
+      "path": "output/qa/lab-canonical-authority-contract/source-candidate/revision-3/SOURCE_CANDIDATE.json",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "3c47ffec00a4dfb3de443ba8e84149f5a9ad46330b993a641981c844cd2297d7",
+      "wholeFileBytes": 6112,
+      "complete": true
+    },
+    {
+      "path": "output/qa/lab-canonical-authority-contract/source-candidate/revision-3/SOURCE_DECISIONS.json",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "236b28a78f1db33beea4c227a5d867b4edfb51a2b27e90853198a4aa243c022e",
+      "wholeFileBytes": 1523,
+      "complete": true
+    },
+    {
+      "path": "output/qa/lab-canonical-authority-contract/source-candidate/revision-3/SPEC_REVIEW.json",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "c706e6dd2ee1a50123a5b35b708f14b5b54c92904fb46db2aef373c8de1d0657",
+      "wholeFileBytes": 6178,
+      "complete": true
+    },
+    {
+      "path": "output/qa/lab-canonical-authority-contract/source-candidate/revision-3/STANDARDS_REVIEW.json",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "023601cfa1237e38feb1ce477d4103b9b6d4479f55b4c030d32bd40c9f3e0c5f",
+      "wholeFileBytes": 3102,
+      "complete": true
+    },
+    {
+      "path": "output/qa/pharmacy-refill-operations/source-candidate/revision-1/NATIVE_BSON_PROVENANCE.json",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "f8e43547cb0c70dc1519ecc3b276bcacf4629407b15dd70fc84f6713c85b195f",
+      "wholeFileBytes": 1160,
+      "complete": true
+    },
+    {
+      "path": "output/qa/pharmacy-refill-operations/source-candidate/revision-1/SOURCE_CANDIDATE.json",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "fe8c2a7d3ef013c444d1574fbe5bba7c6d370a073d8594127f5047f36210276d",
+      "wholeFileBytes": 4369,
+      "complete": true
+    },
+    {
+      "path": "output/qa/pharmacy-refill-operations/source-candidate/revision-1/SOURCE_DECISIONS.json",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "766339bba2d6f61e184b6b5914f0c44a16cba7827d3fe0d2e2b42adf645cf680",
+      "wholeFileBytes": 1783,
+      "complete": true
+    },
+    {
+      "path": "output/qa/pharmacy-refill-operations/source-candidate/revision-1/STATIC_CHECKS.json",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "a132f1c524b44212c61bf3c790b310ba9cbf11847fd6988c5a5c0b4f7bb77788",
+      "wholeFileBytes": 1477,
+      "complete": true
+    },
+    {
+      "path": "package-lock.json",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080",
+      "wholeFileBytes": 233000,
+      "complete": true
+    },
+    {
+      "path": "package.json",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "65b171e77e8cd3bfd37eb691cf9ce310d9108cedbf571232bd4859c4b16895ab",
+      "wholeFileBytes": 1898,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/common/middleware/validation.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef",
+      "wholeFileBytes": 937,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/common/repository/BaseRepository.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+      "wholeFileBytes": 2494,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/common/repository/index.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "6e13d4d0ced3ad40772c5b2c35034544fe49f0d7b715cf0309f954be7ab5cb77",
+      "wholeFileBytes": 62,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/common/types/error.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+      "wholeFileBytes": 622,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/common/types/index.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "63ad3821027150d368e993903e954b4a80b776ff223caf322c104008239d4cbd",
+      "wholeFileBytes": 53,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/common/types/response.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "44c5dbcf38ea117eaa13f3a715143ea147a7abf25c3491b61817e67b5f3d6f93",
+      "wholeFileBytes": 359,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/common/utils/asyncHandler.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "59fe49db58678ef81242a654f7457f74b067b2583a3f8dc70918b61f50228bd9",
+      "wholeFileBytes": 671,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/common/utils/indexReadiness.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "050ecc993c862638cf4912bb854e04baa5d80241cb124e7831fc3c95a78db5bd",
+      "wholeFileBytes": 18199,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/common/utils/mongoErrors.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "147a5687832d03c654acd97e0f9e0d9c6c0c7ab51a2841f0eb2260235229d43d",
+      "wholeFileBytes": 451,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/middleware/auth.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+      "wholeFileBytes": 8706,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/middleware/errorHandler.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51",
+      "wholeFileBytes": 944,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityProvisioning.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65",
+      "wholeFileBytes": 22614,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityReadiness.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9",
+      "wholeFileBytes": 21553,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityRoot.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7",
+      "wholeFileBytes": 14618,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/organizations/labAuthoritySourceManifest.json",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "08324e39632809158a3b628514287354adbe9e12fae9dce2169026fe1504c9c9",
+      "wholeFileBytes": 2462,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/organizations/model/index.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a",
+      "wholeFileBytes": 7453,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/organizations/model/lab.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c",
+      "wholeFileBytes": 1607,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/organizations/repository/index.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "14532bf2d667e37d4ded33bb3767f744cd524bf385d88341d31f7954ece61d3b",
+      "wholeFileBytes": 8845,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/organizations/rules.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a",
+      "wholeFileBytes": 17845,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/organizations/services/index.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "ccac5254a6e61c8cce4f14c58005cb39349689e3d0cbafc8ab551ca339397c73",
+      "wholeFileBytes": 1390,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/organizations/types/index.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670",
+      "wholeFileBytes": 8074,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/pharmacies/model/index.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "beda95d89a9773a8d5851dd923c363c83123a573f7391836dec69b13e5cfa177",
+      "wholeFileBytes": 3194,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/pharmacies/types/index.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "e43d4c6e5af5ebc9a21e3a35d41e475e92ab7509961cdafe6bfc3043af0b24f0",
+      "wholeFileBytes": 4043,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/pharmacySubscriptions/controller/index.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "7bb21a7ec9aaf8693fb2438a5800f7308d2978353c5ed1c95c0f46e60278a9de",
+      "wholeFileBytes": 2619,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/pharmacySubscriptions/model/index.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "568196be447d9f99cbfbb2fb81169abedbc93f777b7fc3dbf6302a19e925fcc8",
+      "wholeFileBytes": 1907,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+      "wholeFileBytes": 8547,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/pharmacySubscriptions/routes/index.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "08dcc367a86f6ffc1e675e8a010fcc87ffb5ff5329fda4c29fc0c04cca0c834c",
+      "wholeFileBytes": 1636,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/pharmacySubscriptions/services/index.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "3b22b92d88790c521616302d7827023e4ffa16eb25989a6b443152d0af0f9171",
+      "wholeFileBytes": 7480,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/pharmacySubscriptions/types/index.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "aec8ae4c8d1728f7539e68543e6e97a178b21b8cccc426ed9e4d43f85860fc6e",
+      "wholeFileBytes": 2346,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/pharmacySubscriptions/validation/index.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "1e4dcc64b270c9c8ee242d78af13f3736f2c063de6f8c223822aca7e87de91e4",
+      "wholeFileBytes": 5434,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/user/model/index.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "8ab08c867008d9788fd2105b6ac840794fcd5d8b2c518de500119aa2536cf5c4",
+      "wholeFileBytes": 3826,
+      "complete": true
+    },
+    {
+      "path": "src1/modules/user/types/index.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "91d4b48e4749d113733f471d64093c7269dffcf13bf48577c8dbc2edce7d5b71",
+      "wholeFileBytes": 3519,
+      "complete": true
+    },
+    {
+      "path": "src1/operators/labAuthority.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02",
+      "wholeFileBytes": 181,
+      "complete": true
+    },
+    {
+      "path": "src1/routes/index.ts",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "9be841178931003004cc53a0285b5c849d82a82dbc798a4a0d38bf69396de6ea",
+      "wholeFileBytes": 6828,
+      "complete": true
+    },
+    {
+      "path": "tsconfig.json",
+      "origin": "git",
+      "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "wholeFileSha256": "5555c293a75c85c3f89a539bd2b1be6db1953ffa746b43836929cdc20b9355c3",
+      "wholeFileBytes": 929,
+      "complete": true
+    },
+    {
+      "path": "git-history/b846486a4ebe1b7e6d906aec78b89413e2e574f9/src1/modules/organizations/types/index.ts",
+      "origin": "git-history",
+      "sourceCommit": "b846486a4ebe1b7e6d906aec78b89413e2e574f9",
+      "wholeFileSha256": "e873884e69db46d7de70d3120a5ac30809fe8dc526d118a4640463233c9633ff",
+      "wholeFileBytes": 5660,
+      "complete": true
+    },
+    {
+      "path": "git-history/b846486a4ebe1b7e6d906aec78b89413e2e574f9/src1/modules/organizations/model/index.ts",
+      "origin": "git-history",
+      "sourceCommit": "b846486a4ebe1b7e6d906aec78b89413e2e574f9",
+      "wholeFileSha256": "fb0e49483802ffe7eb64f2194804a2c15ef7e4cbd5a73fd6136af65ebc039ce0",
+      "wholeFileBytes": 6371,
+      "complete": true
+    },
+    {
+      "path": "git-history/b846486a4ebe1b7e6d906aec78b89413e2e574f9/src1/modules/organizations/rules.ts",
+      "origin": "git-history",
+      "sourceCommit": "b846486a4ebe1b7e6d906aec78b89413e2e574f9",
+      "wholeFileSha256": "b404c00381b5bf642aa648105cefb353a97c7ea7283c680059c426b5e4307942",
+      "wholeFileBytes": 17283,
+      "complete": true
+    },
+    {
+      "path": "git-history/e192ea11eba92bb68fa879b2ba0e5e3810842dc4/API_SCHEMAS.md",
+      "origin": "git-history",
+      "sourceCommit": "e192ea11eba92bb68fa879b2ba0e5e3810842dc4",
+      "wholeFileSha256": "68ba65584b18ebbb3c02f7c7f3c114123fb18ffa53d94c2fb57f67ca95d197a2",
+      "wholeFileBytes": 15781,
+      "complete": true
+    },
+    {
+      "path": "git-history/e192ea11eba92bb68fa879b2ba0e5e3810842dc4/src1/modules/pharmacySubscriptions/controller/index.ts",
+      "origin": "git-history",
+      "sourceCommit": "e192ea11eba92bb68fa879b2ba0e5e3810842dc4",
+      "wholeFileSha256": "556f198b294e6c2a93b0cdb690eb9d029a85efa01812c7f810784a7226677410",
+      "wholeFileBytes": 2347,
+      "complete": true
+    },
+    {
+      "path": "git-history/e192ea11eba92bb68fa879b2ba0e5e3810842dc4/src1/modules/pharmacySubscriptions/repository/index.ts",
+      "origin": "git-history",
+      "sourceCommit": "e192ea11eba92bb68fa879b2ba0e5e3810842dc4",
+      "wholeFileSha256": "10c18973414095984bc4d53a8ad2b112eb647152215b906db5921168affed871",
+      "wholeFileBytes": 1607,
+      "complete": true
+    },
+    {
+      "path": "git-history/e192ea11eba92bb68fa879b2ba0e5e3810842dc4/src1/modules/pharmacySubscriptions/routes/index.ts",
+      "origin": "git-history",
+      "sourceCommit": "e192ea11eba92bb68fa879b2ba0e5e3810842dc4",
+      "wholeFileSha256": "6afed846eb0502de57ead62d59e54fe2143c2d3afb6d8a367bb844cdd1c5f526",
+      "wholeFileBytes": 1450,
+      "complete": true
+    },
+    {
+      "path": "git-history/e192ea11eba92bb68fa879b2ba0e5e3810842dc4/src1/modules/pharmacySubscriptions/services/index.ts",
+      "origin": "git-history",
+      "sourceCommit": "e192ea11eba92bb68fa879b2ba0e5e3810842dc4",
+      "wholeFileSha256": "b83273acf9faf568bd91c39d2678a87be2b468ea99a0236c5908f8074de20dfe",
+      "wholeFileBytes": 7105,
+      "complete": true
+    },
+    {
+      "path": "git-history/e192ea11eba92bb68fa879b2ba0e5e3810842dc4/src1/modules/pharmacySubscriptions/types/index.ts",
+      "origin": "git-history",
+      "sourceCommit": "e192ea11eba92bb68fa879b2ba0e5e3810842dc4",
+      "wholeFileSha256": "f845d7974d1db9ad4dcb1f567e2809abce7dfacdf7c28bc1ec3bfe3fa2541025",
+      "wholeFileBytes": 1474,
+      "complete": true
+    },
+    {
+      "path": "git-history/e192ea11eba92bb68fa879b2ba0e5e3810842dc4/src1/modules/pharmacySubscriptions/validation/index.ts",
+      "origin": "git-history",
+      "sourceCommit": "e192ea11eba92bb68fa879b2ba0e5e3810842dc4",
+      "wholeFileSha256": "b590b65721dd25c5eb33e20e15e5e78f61c99ad0cccd6bb3ddaeb539a13fb087",
+      "wholeFileBytes": 1153,
+      "complete": true
+    },
+    {
+      "path": "native/bson@4.7.2/package/lib/long.js",
+      "origin": "pinned-public-npm-tar",
+      "sourceCommit": "e876bd80d0754fad52329f022bbd7b8d332317ba4ee472dbcc7d1e31c3864852",
+      "wholeFileSha256": "16e24a702550eec7f0d2389fccc97a124267e05e28135a3cbfe0e3992e952a4b",
+      "wholeFileBytes": 37209,
+      "complete": true
+    },
+    {
+      "path": "native/bson@4.7.2/package/lib/timestamp.js",
+      "origin": "pinned-public-npm-tar",
+      "sourceCommit": "e876bd80d0754fad52329f022bbd7b8d332317ba4ee472dbcc7d1e31c3864852",
+      "wholeFileSha256": "e82be0fd433d686ad79413b27f1168b588fe0c9b5620e6c824274ebe58baf9fd",
+      "wholeFileBytes": 4060,
+      "complete": true
+    },
+    {
+      "path": "native/bson@4.7.2/package/lib/binary.js",
+      "origin": "pinned-public-npm-tar",
+      "sourceCommit": "e876bd80d0754fad52329f022bbd7b8d332317ba4ee472dbcc7d1e31c3864852",
+      "wholeFileSha256": "8891625e2a3a294a51ce5a69838450f8c9c2c6fb6c4a0a314bc1c9e934c35dc4",
+      "wholeFileBytes": 16318,
+      "complete": true
+    },
+    {
+      "path": "native/bson@4.7.2/package/lib/objectid.js",
+      "origin": "pinned-public-npm-tar",
+      "sourceCommit": "e876bd80d0754fad52329f022bbd7b8d332317ba4ee472dbcc7d1e31c3864852",
+      "wholeFileSha256": "9c53aac9cc7d3207c6b940d8fb97b34dbae5371533e769f26709d6d85fabe261",
+      "wholeFileBytes": 11614,
+      "complete": true
+    },
+    {
+      "path": "native/bson@4.7.2/package/lib/parser/serializer.js",
+      "origin": "pinned-public-npm-tar",
+      "sourceCommit": "e876bd80d0754fad52329f022bbd7b8d332317ba4ee472dbcc7d1e31c3864852",
+      "wholeFileSha256": "76d32c59830e755ad9156c8f847920f67d386aa8415917665e40751841284b87",
+      "wholeFileBytes": 36919,
+      "complete": true
+    },
+    {
+      "path": "native/bson@4.7.2/package/lib/parser/deserializer.js",
+      "origin": "pinned-public-npm-tar",
+      "sourceCommit": "e876bd80d0754fad52329f022bbd7b8d332317ba4ee472dbcc7d1e31c3864852",
+      "wholeFileSha256": "a78130552d5324e5f43fefb63785838bffc07c95087cb83736ff671287d96e0f",
+      "wholeFileBytes": 30330,
+      "complete": true
+    },
+    {
+      "path": "native/mongodb@4.17.2/package/lib/db.js",
+      "origin": "pinned-public-npm-tar",
+      "sourceCommit": "c8dc719a35845c2b5563aded0771705d34ff350e6ddcaca3a727e1b63cd7d005",
+      "wholeFileSha256": "aced05fd4f64ee206fba4cf9fbeada40c0452b1aa32574530f294f8832d5101e",
+      "wholeFileBytes": 15189,
+      "complete": true
+    },
+    {
+      "path": "native/mongodb@4.17.2/package/lib/mongo_client.js",
+      "origin": "pinned-public-npm-tar",
+      "sourceCommit": "c8dc719a35845c2b5563aded0771705d34ff350e6ddcaca3a727e1b63cd7d005",
+      "wholeFileSha256": "3a54b0938422e69e408524143aa031b7fbdde9d971e6a545346f76a5605fea1e",
+      "wholeFileBytes": 13001,
+      "complete": true
+    },
+    {
+      "path": "native/mongodb@4.17.2/package/lib/sessions.js",
+      "origin": "pinned-public-npm-tar",
+      "sourceCommit": "c8dc719a35845c2b5563aded0771705d34ff350e6ddcaca3a727e1b63cd7d005",
+      "wholeFileSha256": "10682959654ca9d1d0dcfce7ec59daf39a9820bdf2a9cb7ad6f7515de18c42f5",
+      "wholeFileBytes": 33850,
+      "complete": true
+    },
+    {
+      "path": "native/mongodb@4.17.2/package/lib/operations/indexes.js",
+      "origin": "pinned-public-npm-tar",
+      "sourceCommit": "c8dc719a35845c2b5563aded0771705d34ff350e6ddcaca3a727e1b63cd7d005",
+      "wholeFileSha256": "25d14dda1833fdf6c3a5a42a0ebdc790fdfb1b06e9eedd0375fe250a09b15295",
+      "wholeFileBytes": 10990,
+      "complete": true
+    },
+    {
+      "path": "native/mongodb@4.17.2/package/lib/operations/list_collections.js",
+      "origin": "pinned-public-npm-tar",
+      "sourceCommit": "c8dc719a35845c2b5563aded0771705d34ff350e6ddcaca3a727e1b63cd7d005",
+      "wholeFileSha256": "e6743c2ec855dc33a924a57d523ee0578da94df4c6d677853513bf9e05af0b10",
+      "wholeFileBytes": 1920,
+      "complete": true
+    },
+    {
+      "path": "native/mongoose@6.13.8/package/lib/drivers/node-mongodb-native/collection.js",
+      "origin": "pinned-public-npm-tar",
+      "sourceCommit": "02191bdbe7d8969de79e1414b32c3ca0c703b4fd0e9c7ff640ffeaca27e264be",
+      "wholeFileSha256": "57446ffdf9b89b501a235f9fd92779a7537209876f6beda0241767c9aa401459",
+      "wholeFileBytes": 13995,
+      "complete": true
+    }
+  ]
+}

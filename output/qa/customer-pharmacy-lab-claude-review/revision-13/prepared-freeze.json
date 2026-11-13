@@ -1,0 +1,19 @@
+{
+  "schema": "SD-CLAUDE-FINAL-PREPARED-FREEZE-13",
+  "files": {
+    "ENV_BINDING_13.json": "8d847c9fdb221950be118a2c9d52fd8470ba53b12c9681424b8728f3282cb9b3",
+    "GENERATION_PRELAUNCH_NOTE.json": "bff635eebce92afdd9f9d0eddef5a51e5987c25b8a31d2cf14718e2bb09f334b",
+    "OPERATOR_PLAN.md": "622718d9e08c89c21fb6a9023b6b36d2b9dde067f3f93ee0beff8ec6961d70b1",
+    "PRIOR_REVISION_12_PRESERVATION.json": "f1b38051f1ad33a1db499891c4fe6ee7340ed0da7341e22dbf48c789fd0c7596",
+    "README.md": "b992ae0b18a5a21c7588999ff99d2eb134e2fa5d23ec8a9b639b38eb3d7cac1b",
+    "SELECTION_PLAN.json": "d7b767391e4f7d321f841d30593b52d44d53b6fac74bdd2cb8eeeac7de8fc623",
+    "challenge.json": "428e203d461ea03635f02338ac9f17f125a0f88087349775dfa31b6d375aabf2",
+    "manifest.json": "b0e6f2f8a943c9500f2b0038c6c120ef9e983fb8122efafd3fc77cf45e276a61",
+    "mcp-config.json": "a612d678b74998efe9b9d91c029d7f66731ff4fb8e5e096e41f07243369743b0",
+    "packet.json": "c0798e9b975e62288a241a62795d85cafc102b424a6fc44133157a3e8795c6d0",
+    "prior-seven.sha256.json": "6d490c04b63fd059f0d8cf49b277a48b3407a0f82d667b7837f7777d503e3b11",
+    "recipe.json": "17c249895e3481cf0226b83f3b30a2dc256fd02fd08c244af917e62ade281cb0"
+  },
+  "writesStopped": true,
+  "liveInvocationApproved": false
+}
