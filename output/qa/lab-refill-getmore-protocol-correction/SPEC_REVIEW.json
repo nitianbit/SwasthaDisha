@@ -1,0 +1,36 @@
+{
+  "schema": "SD-LAB-REFILL-GETMORE-INDEPENDENT-SCOPED-SPEC-1",
+  "reviewer": "/root/milestone_composition_r9",
+  "amendmentAuthor": "/root/lab_remaining_audit",
+  "decision": "APPROVE_SOURCE_ONLY",
+  "authorshipDisclosure": "Reviewer authored original Lab S2-A base and underlying P7 production. This vote is ONLY an independent review of the new Lab-authored two protocol field removals, generated manifest delta and unchanged composition; it does not independently reapprove reviewer-authored base production. Prior base source approvals remain separate.",
+  "candidateCommit": "0141a7761108e9837882acea9b203d6f6365114f",
+  "baselineCommit": "47ceccf441f682a02bc0946a234d8457bd6127ba",
+  "candidateManifestSha256": "c6528fc0f81bd92ebc4d0a37b1e55511fd9fe2881ad206ece290e17cfa02d20c",
+  "planSha256": "6c39c54c84048fa9880e4bd1957490a93a71713fa17c7300b1eb9914b1c72939",
+  "actualPreimplementationVotes": {
+    "RootStandards": "2ff8e98ee2e075a78a82afff387b17aef9386ef457e9b31549c5c68f7d23467f",
+    "MilestoneSpec": "e5a2367e0f1441144e2e859c9596a3a7b1cae283cfa1aeb53e2fd47aa834ba47"
+  },
+  "sourceAfterHashes": {
+    "src1/modules/organizations/labAuthorityReadiness.ts": "f8250e82ea4e116eec30841c53f3902adfd9539ce8ad71c8e2b1ba15be18a3a0",
+    "src1/modules/organizations/labAuthoritySourceManifest.json": "02a15cb78e3e3d1e1aa759775b0c108e0ef29491c29defa70db52539f2eea84d",
+    "test/api-runtime/pharmacy-refill/bootstrap.cjs": "3692ae98ffd00bf0f465625eefbf9c7ab2aae54247a2b80b4a2984d886996836"
+  },
+  "patchSha256": "986be3ba9f08fb7cbc5ef5f4e3ec8eb1dccc5441f838e758eb1ab4e838aa7543",
+  "inverseSha256": "cac7ed46c7f9acd2459bd58fd1f184de1a256874649f6ca4a707b0eb22bf35ad",
+  "findings": [],
+  "actualInertChecks": [
+    "Exact candidate HEAD, all three source before/after Git blobs/current hashes, full recorded forward patch and git diff -R inverse independently match.",
+    "Each code delta is exactly one approved removal of own getMore maxTimeMS:500 in Lab and1000 in P7. Literal replacement restores every other byte; no new helper, policy, cursor, import, capability, query, namespace or activation change.",
+    "Initiating Lab listCollections/listIndexes retain500ms server limit; P7 initiators retain1000ms. Existing session/same-client/defaultConnection checks, options/driver-timeouts, cursor validation/cleanup and count/row/metadata/time checkpoint budgets remain byte-identical. No claim that unchanged checkpoints alone hard-cancel native IO.",
+    "Generated manifest has exactly13 sorted path/hash pairs. All13 current files hash correctly; only readiness pair changes. Independently recomputed compact UTF8 JSON pair-list aggregate1888d52bcf2eb92ce7a726733e2fedc0682996354b57bfbc9b4922e4ed14cc4f matches, and all non-files/non-aggregate metadata equals baseline.",
+    "Independently derived current P7 producer names from OWN10+CONTEXT18+ports production19 equal47. All47 current after hashes/all47 baseline before hashes match. Only bootstrap hash changes; other46 remain byte-identical, including P7 production19.",
+    "All eight shared-unit source and four historical R13 artifact pins match current files and baseline. Historical accepted R13 source/capture remains unchanged and does not review these new bytes.",
+    "Plan and actual decision-record hashes plus both recorded nonauthor implementation-only vote files match. Original six-file staged full-index patch remains00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a."
+  ],
+  "activation": "No protectedroot/key/evidence installation or rotation supplied. Existing root validator recomputes pair aggregate and requires root.writerManifestSha256 equality. A previously pinned9db2 aggregate fails closed against1888; future controlled root preparation must bind1888 under existing owner/security/release gates. No operational root facts or deployment approval inferred.",
+  "verificationLimits": "All new-byte runtime/native/driver/crypto tests NOT_RUN. P7 current two-collection/small-index batch16 setup does not force a nonzero getMore; no false positive continuation claim, extraDDL or batch change admitted. Lab genuine writer/native verification remains separately gated. Official ordinary getMore protocol rationale was independently reviewed in owning plan; no prior private uncaptured nativecause is inferred.",
+  "execution": "Only inert direct file/text/JSON/hash/Git operations. No parser/Node/compiler/package/native/app/DB/Docker/model execution and no source edits by reviewer.",
+  "nextGates": "Second actual eligible source/composition vote, separately admitted focused verification/preparation and actual outcomes as applicable; no run/retry/installation/typecheck/behavior PASS, complete module, owner/release or activation grant."
+}

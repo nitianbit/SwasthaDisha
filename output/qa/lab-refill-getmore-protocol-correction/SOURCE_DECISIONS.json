@@ -1,0 +1,29 @@
+{
+  "schema": "SD-LAB-REFILL-GETMORE-SOURCE-DECISIONS-1",
+  "candidateCommit": "0141a7761108e9837882acea9b203d6f6365114f",
+  "baselineCommit": "47ceccf441f682a02bc0946a234d8457bd6127ba",
+  "candidateManifestSha256": "c6528fc0f81bd92ebc4d0a37b1e55511fd9fe2881ad206ece290e17cfa02d20c",
+  "actualDecisions": [
+    {
+      "reviewer": "/root",
+      "role": "STANDARDS",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "file": "STANDARDS_REVIEW.json",
+      "sha256": "2a16d116278764bc8ff2f9829319dc8a22830dfc6ee0e406e5c261806d8e3da5"
+    },
+    {
+      "reviewer": "/root/milestone_composition_r9",
+      "role": "SPEC",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "file": "SPEC_REVIEW.json",
+      "sha256": "9e223d82c9cf6451c25feb6e5a59f45e6db122c7fda232b01e28a2910104974d"
+    }
+  ],
+  "decision": "ACCEPT_REVIEWED_SOURCE_CORRECTION_ONLY",
+  "newLabWriterManifestSha256": "1888d52bcf2eb92ce7a726733e2fedc0682996354b57bfbc9b4922e4ed14cc4f",
+  "limits": [
+    "No native runtime or typecheck claim. Historical genuine R13 packet/review remains unchanged and does not cover new source bytes.",
+    "No protected root/key installation or activation; any old writer-manifest binding remains closed.",
+    "P7 current small catalog does not force getMore; dedicated real continuation verification remains pending."
+  ]
+}
