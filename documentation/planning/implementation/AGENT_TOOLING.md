@@ -21,3 +21,5 @@ Team/mailbox behavior and host filtering were inspected, not executed. The serve
 The current session permits four agents total: one lead and up to three actual native workers. Ruflo team registration retains metadata and returns a plan; it does not create native workers or add capacity. Task records can store native ownership in descriptions/results; team members are not automatically assignable task-agent IDs.
 
 The application diagnostic preflight is separately **BLOCKED_BEFORE_LAUNCH** because the recorded Docker daemon is unreachable. No container was created and no app test started in that preflight. Current [M0 progress](M0_A_PROGRESS.md), C2 retained-server facts and domain/release gates remain authoritative. Tool installation does not establish M0 acceptance or 100 RPS performance.
+
+For the owner-requested local Claude/Codex connection, read [local extension collaboration](LOCAL_EXTENSION_COLLABORATION.md), including the initial acknowledgement and extension lifecycle limits.
