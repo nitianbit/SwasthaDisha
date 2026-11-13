@@ -35,3 +35,5 @@ Use only the installed pinned Ruflo runtime and tools enabled in Codex configura
 After foundation, assign module workers to ready contracts rather than starting pharmacy, labs, doctors and hospitals simultaneously against unfinished shared identity, billing and inventory interfaces. Use the [approved implementation sequence](../M0_IMPLEMENTATION_APPROVAL.md) for scope; this queue does not declare later modules ready or add launch promises.
 
 Deployment, production migration, operational-resource access, real payments/messages/calls and account/key actions retain their specific authorization. Clinical, financial, security, restore, pilot and 100 RPS acceptance retain their named owners and measured evidence. Direct internal review removes the owner's prompt-relay work; it grants no extra resource or release authority.
+
+For the owner-requested local Claude/Codex connection, read [local extension collaboration](LOCAL_EXTENSION_COLLABORATION.md), including the initial acknowledgement and extension lifecycle limits.

@@ -1,0 +1,9 @@
+Work in /Users/shubham/Desktop/SwasthaDisha/SwasthaDisha on m0/f01-app-isolation, not the legacy ewa_backend checkout.
+
+Read documentation/planning/implementation/SESSION_HANDOVER.md completely, then its linked frozen inventory, preliminary review notes and unit-test receipt. Resume the exact next actions.
+
+The current HEAD is 5aecb5578869995063eabad5bc5a4c95c79f017b. Six staged changes are uncommitted; preserve them and the unstaged handover archive. The local Ruflo adapter has 14 passing tests, but final independent review and activation are pending. Claude has not yet been registered with Ruflo; the shared mailbox smoke and genuine Claude-extension acknowledgement are NOT_RUN.
+
+Use existing local VS Code Claude/Codex extensions through Ruflo, with no hosted workers or separate assumed CLI OAuth/API-account setup. Use parallel native Codex workers with explicit ownership and obtain technical reviews directly; do not make me relay review prompts. Complete the local integration with truthful evidence, then continue ready backend development under the existing gates. Docker was offline at the last application preflight; C2 still requires DevOps facts about the retained MongoDB server.
+
+Do not restart project planning, reinstall working ECC/Ruflo, reset staged work, run old application-smoke operators against changed hashes, or claim Claude connected before an actual acknowledgement. Ask only for genuinely missing user-controlled actions or decisions.
