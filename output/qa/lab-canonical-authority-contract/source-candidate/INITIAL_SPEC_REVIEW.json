@@ -1,0 +1,110 @@
+{
+  "schema": "SD-LAB-S2-A-NONAUTHOR-SPEC-SOURCE-REVIEW-1",
+  "reviewer": "/root/lab_remaining_audit",
+  "role": "NONAUTHOR_SPEC_SOURCE_COMPOSITION",
+  "author": "/root/milestone_composition_r9",
+  "decision": "REQUEST_CHANGES",
+  "candidate": "cf9c4ca9faf43596cd2e5a562fdeef36ec6cffb2",
+  "baseline": "b846486a4ebe1b7e6d906aec78b89413e2e574f9",
+  "contractSha256": "dbe337575ff28360bf6a7b57a2c69cf2bdab9a234a2774c893ec1bba36159a57",
+  "manifestSha256": "a128f070266c545e014661db17cdc8a7bd64ddfd578f6c8b9a765a079dbc410f",
+  "exactSourceFiles": [
+    {
+      "path": "src1/modules/organizations/types/index.ts",
+      "sha256": "98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670",
+      "bytes": 8074
+    },
+    {
+      "path": "src1/modules/organizations/model/index.ts",
+      "sha256": "d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a",
+      "bytes": 7453
+    },
+    {
+      "path": "src1/modules/organizations/rules.ts",
+      "sha256": "c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a",
+      "bytes": 17845
+    },
+    {
+      "path": "src1/modules/organizations/model/lab.ts",
+      "sha256": "42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c",
+      "bytes": 1607
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityRoot.ts",
+      "sha256": "2d085b083405f79d43b5a4a207165fc795bc3803aa56610b186e63b8163b2ed2",
+      "bytes": 14561
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityReadiness.ts",
+      "sha256": "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9",
+      "bytes": 21553
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityProvisioning.ts",
+      "sha256": "8062a715b526b8bc627a0b3688886464f1b5e0763324a0f869d93666399022bf",
+      "bytes": 22518
+    },
+    {
+      "path": "src1/operators/labAuthority.ts",
+      "sha256": "5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02",
+      "bytes": 181
+    },
+    {
+      "path": "src1/modules/organizations/labAuthoritySourceManifest.json",
+      "sha256": "2a2a58b14b5ed06cae767dfca60e3a0cd7211fd93f5b969679eff224d0c0dccf",
+      "bytes": 2462
+    }
+  ],
+  "sourcePatchSha256": "1a7638815ea923143c61c8fe05c2bc8c84be4291d5e6aac0a620504488160927",
+  "inversePatchSha256": "20631a1d73a68044a3d2d66da61ef4afa3bde5de559ac62e41a467434b127b1b",
+  "sourceManifestAggregateSha256": "0edef214464c14c57bdcb6a9dbb6646fd94017bbedd1e925bd078800e10b62d0",
+  "findings": [
+    {
+      "id": "LAB-S2A-SOURCE-SPEC-1",
+      "severity": "MEDIUM",
+      "title": "Bound persisted command and signature before historical JSON parse/envelope serialization",
+      "path": "src1/modules/organizations/labAuthorityProvisioning.ts",
+      "lines": [
+        69,
+        72,
+        74
+      ],
+      "relatedPaths": [
+        "src1/modules/organizations/labAuthorityRoot.ts:20",
+        "src1/modules/organizations/labAuthorityRoot.ts:71"
+      ],
+      "problem": "history validates proof.commandJson/signatureBase64 only as primitive strings, then JSON.parse(proof.commandJson) and JSON.stringify([parsed,signature]) execute before parseLabCommand checks the16KiB envelope bound and canonical64byte signature. rows/labData admit up to2MiB of string data. A malformed persisted proof can therefore exercise native JSON parsing/serialization far beyond the frozen16KiB/88encoded-byte proof limits instead of being rejected first. Nativeinsert/legacy/tampered rows bypass schema maxlength; closed historical validation must independently enforce them.",
+      "requiredCorrection": "Before the inner JSON.parse or outer JSON.stringify, require proof.commandJson primitive UTF8bytes<=16384 and signatureBase64 bounded to the exact88-character canonical64-byte signature representation. Preserve later genuine canonical base64 decode/reencode/64byte checks, proof equality/digest/signature validation,503invalidstoredproof semantics and all valid history/replay behavior. Do not broaden rawrow limits, add a generic parser/platform, duplicate cryptographic algorithms or repair malformed records.",
+      "relationshipToOtherReview": "Root independently reported same earlybound issue as LAB-S2A-STD-1; reviewer directly read both call sites and2MiB rawdata allowance and confirms it as material. One defect, not two independent failures.",
+      "focusedLaterEvidence": "After corrected source and separateadmission, over16KiB historical command and oversized signature must503 before innerparse/envelopeserialization; exactboundary valid storedproof and map/grant/revoke/regrant/replay positives remain genuine and usable."
+    }
+  ],
+  "actualReadOnlyChecks": [
+    "Read all eightcompletecode files plus generated data against entireamendedcontract/revokedtransition requirements. Allnineactualsource hashes/sizes/current+cf9Git matchmanifest. Eight unchangedcontext pins and27contractsourcecontext exceptthreeauthorizedchangedfiles match.",
+    "Actualsourcepatch equals gitdiff --binary --full-index baseline->cf9; actualinverse equals same diff -R including reversedprefixes. Bothfrozenhashes verified.",
+    "Generated13sortedpath/hashpairs allactualsource-match and canonicalcompactaggregate0edef214 matches. Excludesitself and wholeJSONhash separately pinned; this is selectedsourcebinding only, not runningbuild/ABI/index/provenance proof.",
+    "Actualtwo implementation-only contractvotes Customer4bb35511 and Lab84c1cdc3 boundrecordaf526f49 verified; authorMilestoneexcluded. No sourceapproval inferredfrom those votes.",
+    "Whole oldrules file mechanically equals baseline after removing onlynewthree-line revoke serializerbranch: originalcontext/currentdecision/evaluator/pharmacyfingerprint/threeoldserializedvariants unchanged. Actualorganizationsrepository/service bytes unchanged; lab.worklist.read context/evaluator remainsdenieduntilS2-B.",
+    "Fixedexternalroot/keyId-SPKI-Ed25519 signature/scopes/manifest/evidence boundary read; boundedmax+1 heldFDread correction present withbeforeafteridentity/UID/mode/nolink checks, no signing/rootinstallation or issuerfromrequest/JWT/Admin membership.",
+    "Newcommand grammar12arraybody/threepayloadshapes/canonicalserialization/time/revisions/branch/evidence rules and exactderivedlab/org/decision/membership/receipt inspected. Same-clientcapturedUser/nativebindings/minimalUserprojection and actualbrandedmetadata require genuine observations, no mutableREADYinput.",
+    "Fivefixedcollections/namednumericuniqueoptions/simplecollation/finishedwrappers/UUIDbeforeafter/nativeBSON4copies/ownedcursorgetMore+kill+endsession/1MiB5s32commands bounds inspected. Unsupported/malformed/uncertaincleanup closes; no DDL/autocreate/index startup. Actualnativeprofiles require latergenuinepositive evidence.",
+    "Transactionwriter starts internally owned snapshot/majority session, freshroot/evidence/metadata percallback, capturednow, exactwholeauthoritysnapshot$$ROOTliteralCAS/memberrevision/orgfence/immutabledecisionappend. SensitiveUserdisable remains snapshot-only explicitly, not invented sharedfence.",
+    "Wholeclosedselect({}) for exactorg/ID authority records preservesunknownphysicalfields for rejection andcompleteCAS. User is never wholeprofile-read; only_id/type/active. It is a scoped authority-provenance boundary, not generic business/patientreader; actualquery/indexcapacity remainsfutureverification.",
+    "Currentactiveissuer/nonself requirement; activeunexpiredlab/branch+subject fornewgrant; expired/inactive/deletedsubject doesnotblockrevoke. Previousgrantproof and exactrevokedM->D->G history bindmember/org/subject/oldgrant/validity/revisions/time/fences/evidence/rootgeneration, no oldrevision relabel/unbounded recursion.",
+    "Exactcommittedsamebodyreplay checks validcurrentroot/admittedhistoricalproof/evidence/currentissuer+metadata, returnsretainedreceiptwithoutcurrentauthority/newwrite evenafterwindowexpiry; differentB409/signaturebytesnotreplayidentity. Unknowncommit neverfalseCOMMITTED/freshIDretry. Defaultrealroot/index/evidence facts remainunobserved andsourcecannotactivateS2B."
+  ],
+  "qualifications": [
+    "No Ed25519/nativeBSON/filesystem/root/evidence/database/transaction/CAS/replay/parser/TypeScript/Node/application/Docker/provider check executed. Data/vector/source reasoning is not runtime evidence.",
+    "One material early-bound defect requires correction and two fresh exactsource reviews before integration. Currentcf9candidate andbothactualreviews staypreserved.",
+    "Originalpharmacybehavior preservation is mechanical source evidence; originalpharmacy positives/nativebehavior stillrequire separatelyadmitted checks.",
+    "Futureownedfixture mustprove usable real map/grant/revoke/regrant/replay/rollback/unique/CAS/nativecatalog/rootfault paths; defaultclosed is not deliveredS2/L2 or modulecompletion.",
+    "Realroot/issuer/keycustody/MFAwherequalified/evidence/clinical/source-to-lab/client/allwriter/build/C2/C3/restore/owner/release/lifecycle/S2B/worklist activation gates remain."
+  ],
+  "permissions": {
+    "sourceApproved": false,
+    "implementationChangesByReviewer": false,
+    "executionApproved": false,
+    "activationApproved": false
+  },
+  "reviewerExecution": "Inert exactfiles/Git/JSON/hash/textdiff/source reasoning only; no parser/Node/crypto/native/DB/Docker/app/model/providerexecution or source modifications."
+}

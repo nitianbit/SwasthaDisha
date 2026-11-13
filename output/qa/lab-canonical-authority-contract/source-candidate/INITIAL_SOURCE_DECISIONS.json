@@ -1,0 +1,23 @@
+{
+  "schema": "SD-LAB-S2-A-INITIAL-ACTUAL-SOURCE-DECISIONS-1",
+  "recorder": "/root",
+  "candidateCommit": "cf9c4ca9faf43596cd2e5a562fdeef36ec6cffb2",
+  "manifestSha256": "a128f070266c545e014661db17cdc8a7bd64ddfd578f6c8b9a765a079dbc410f",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "decision": "REQUEST_CHANGES",
+      "path": "output/qa/lab-canonical-authority-contract/source-candidate/INITIAL_STANDARDS_REVIEW.json",
+      "sha256": "15943a9503599b30d342b1069951a5c865cd63b7631ec51594c1803e39d6b4f8"
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "decision": "REQUEST_CHANGES",
+      "path": "output/qa/lab-canonical-authority-contract/source-candidate/INITIAL_SPEC_REVIEW.json",
+      "sha256": "16fb307703be5db624e8c053b24645eeef25d5c94bfd4062ef692191785cf0c5"
+    }
+  ],
+  "finding": "Bothindependentaxes confirmstoredproofcommandJson/signature must be bounded BEFORE innerJSONparse/outerJSONstringify. Originalcandidate and actualreviews preserved; sourceauthor may make minimal existing-contract guardrepair and regenerate admittedmanifest.",
+  "sourceApproval": false,
+  "executionApproval": false
+}
