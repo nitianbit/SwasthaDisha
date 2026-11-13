@@ -1,0 +1,24 @@
+{
+  "schema": "SD-LAB-S2-A-THIRD-ACTUAL-SOURCE-DECISIONS-3",
+  "recorder": "/root",
+  "candidateCommit": "9c43f6deea50dfe80eaead9338d21801cbb27755",
+  "manifestSha256": "3c47ffec00a4dfb3de443ba8e84149f5a9ad46330b993a641981c844cd2297d7",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "path": "output/qa/lab-canonical-authority-contract/source-candidate/revision-3/STANDARDS_REVIEW.json",
+      "sha256": "023601cfa1237e38feb1ce477d4103b9b6d4479f55b4c030d32bd40c9f3e0c5f"
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "path": "output/qa/lab-canonical-authority-contract/source-candidate/revision-3/SPEC_REVIEW.json",
+      "sha256": "c706e6dd2ee1a50123a5b35b708f14b5b54c92904fb46db2aef373c8de1d0657"
+    }
+  ],
+  "decision": "APPROVE_SOURCE_ONLY",
+  "resolved": "Bothactualaxes confirmstoredproofpreparsebounds andsignedUnicodeconservation repaired. Original2roundsREQUESTrecords andsource/data/patches preserved.",
+  "scope": "Preparatoryrealcanonicalmap/grant/revoke/regrant localcallable source, no permanentclosedwriterstub. CurrentlabScope remainscloseduntilS2B. Fullsource/crypto/nativeFS/BSON/Mongo/transaction/replay/owner/deployment validation remainsNOT_RUN orunsupplied.",
+  "nextGate": "GenuineClaude Opus5.5requestedxhigh(notmax) source review throughexistingVSCodeCLI/Ruflo and separatelyreviewedfocusedverification/resources. No realroot/evidenceinstallation oractivation/release authorization."
+}

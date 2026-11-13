@@ -1,0 +1,35 @@
+{
+  "schema": "SD-LAB-S2-A-AMENDED-ACTUAL-SOURCE-STANDARDS-REVIEW-3",
+  "reviewer": "/root",
+  "axis": "Standards",
+  "author": "/root/milestone_composition_r9",
+  "candidateCommit": "9c43f6deea50dfe80eaead9338d21801cbb27755",
+  "manifestSha256": "3c47ffec00a4dfb3de443ba8e84149f5a9ad46330b993a641981c844cd2297d7",
+  "decision": "APPROVE_SOURCE_ONLY",
+  "findings": [],
+  "reviewedSourceHashes": {
+    "src1/modules/organizations/types/index.ts": "98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670",
+    "src1/modules/organizations/model/index.ts": "d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a",
+    "src1/modules/organizations/rules.ts": "c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a",
+    "src1/modules/organizations/model/lab.ts": "42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c",
+    "src1/modules/organizations/labAuthorityRoot.ts": "15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7",
+    "src1/modules/organizations/labAuthorityReadiness.ts": "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9",
+    "src1/modules/organizations/labAuthorityProvisioning.ts": "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65",
+    "src1/operators/labAuthority.ts": "5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02",
+    "src1/modules/organizations/labAuthoritySourceManifest.json": "08324e39632809158a3b628514287354adbe9e12fae9dce2169026fe1504c9c9"
+  },
+  "resolvedFindings": [
+    "LAB-S2A-STD-1 / correspondingSpec1: historicalcommand UTF8<=16384 and siglen88 checks dominate innerparse/reconstruction, originalcanonical64decode unchanged.",
+    "LAB-S2A-STD-2 / correspondingSpec2: one primitiveUTF8roundtrip rejectionpredicate precedesNFC/length/use onbothfreeUnicodefields; no normalization/repair. ValidUnicode/pairedastrals areunchanged; unpairedsurrogatescannotpass."
+  ],
+  "actualInspection": [
+    "Exactonepredicate/inverse recoverswhole8b root; other7code bytes match8b includingproofboundwriter014f. All9source/current+9cGit/13sortedmanifestactualhashes and aggregate9db2f verified.",
+    "Compositionwithpriorcompletecf9review and8b amendment personallychecked; originalactualREQUESTrecords preserved. Existingoldpharmacy3serialization/evaluator/sourceadapter/service unchanged outsideapprovedrevokebranch/types/model additions; labbusinessscope remainsclosed.",
+    "No changedcommand/root/evidence/metadata/CAS/replay/receipt/action/protocol/native/version/permission/query/timing semantics beyondrejectinglossyUnicode. No newhelper/framework or root/deployment/ownerfacts."
+  ],
+  "limits": [
+    "Source-only technical approval, not cleanTypeScript/nativeFS/crypto/BSON/Mongo/transaction/CAS/replay/rollback proof. All such checks NOT_RUN.",
+    "Secondactualnonauthor amendedsourcevote andgenuineClaude reviewwhereavailable plus separatelyreviewedfocusedfixtures/stages/outcomes remainrequired.",
+    "Real trust/evidence installation, qualification/writerexclusion/topology/client/lifecycle/S2B/clinical/finance/owner/C2/release gates remainopen."
+  ]
+}

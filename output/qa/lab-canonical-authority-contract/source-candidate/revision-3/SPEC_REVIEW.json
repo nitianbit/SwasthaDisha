@@ -1,0 +1,95 @@
+{
+  "schema": "SD-LAB-S2-A-AMENDED-NONAUTHOR-SPEC-SOURCE-REVIEW-3",
+  "reviewer": "/root/lab_remaining_audit",
+  "role": "NONAUTHOR_SPEC_SOURCE_COMPOSITION",
+  "author": "/root/milestone_composition_r9",
+  "decision": "APPROVE_SOURCE_ONLY",
+  "candidate": "9c43f6deea50dfe80eaead9338d21801cbb27755",
+  "manifestSha256": "3c47ffec00a4dfb3de443ba8e84149f5a9ad46330b993a641981c844cd2297d7",
+  "contractSha256": "dbe337575ff28360bf6a7b57a2c69cf2bdab9a234a2774c893ec1bba36159a57",
+  "exactSourceFiles": [
+    {
+      "path": "src1/modules/organizations/types/index.ts",
+      "sha256": "98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670",
+      "bytes": 8074
+    },
+    {
+      "path": "src1/modules/organizations/model/index.ts",
+      "sha256": "d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a",
+      "bytes": 7453
+    },
+    {
+      "path": "src1/modules/organizations/rules.ts",
+      "sha256": "c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a",
+      "bytes": 17845
+    },
+    {
+      "path": "src1/modules/organizations/model/lab.ts",
+      "sha256": "42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c",
+      "bytes": 1607
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityRoot.ts",
+      "sha256": "15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7",
+      "bytes": 14618
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityReadiness.ts",
+      "sha256": "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9",
+      "bytes": 21553
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityProvisioning.ts",
+      "sha256": "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65",
+      "bytes": 22614
+    },
+    {
+      "path": "src1/operators/labAuthority.ts",
+      "sha256": "5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02",
+      "bytes": 181
+    },
+    {
+      "path": "src1/modules/organizations/labAuthoritySourceManifest.json",
+      "sha256": "08324e39632809158a3b628514287354adbe9e12fae9dce2169026fe1504c9c9",
+      "bytes": 2462
+    }
+  ],
+  "sourceManifestAggregateSha256": "9db2f7ea95adcbf7cb8e08713e03da89786ad19d69bd2799774e022d06d6582b",
+  "resolvedFindings": [
+    {
+      "id": "LAB-S2A-SOURCE-SPEC-1",
+      "rootCorresponding": "LAB-S2A-STD-1",
+      "status": "RESOLVED_IN_CURRENT_SOURCE",
+      "evidence": "Unchangedwriter014f992b guards primitivecommandJsonUTF8<=16384 and signaturelength88 BEFOREinnerJSONparse/outerstringify; actualcanonical64byte decode/reencode and storedproof503 remain. No originalrequest record rewritten."
+    },
+    {
+      "id": "LAB-S2A-SOURCE-SPEC-2",
+      "status": "RESOLVED_IN_CURRENT_SOURCE",
+      "evidence": "Root15bacfff adds exactlyone primitive-short-circuited UTF8roundtrip equality inexistingtext helper sharedby both map names. Isolatedsurrogates are rejected, not normalized/repaired; wellformed Unicode/pairedastralcharacters preservebytes and all oldNFC/trim/codepoint/controlrules. Checkdominatesmapstore and both fresh/history parsing."
+    }
+  ],
+  "actualChecks": [
+    "Readexactonepredicate8b->9crootdiff; inertremoveclause reconstructs entire8broot exactly. Otherseven codefiles byte-exact8b including earlyproofbounds; onlyroot+generateddata change.",
+    "Allninecurrent/candidateGit wholehashes/sizes verified; fullsourcepatch/inverse hashes andactualgitdiff--binary--full-index/-R match. All27context pins unchangedexceptoriginalthreeauthorizedsourcefiles; no Rootprofile/P7/productionunrelatedsource touched.",
+    "Generated13same sortedpaths/allactualhashes/canonicalcompactaggregate9db2f7 match; selfexcluded/wholedatahash08324e pinned. Onlyrootpair/aggregate changed frompreviousmanifest; selectiondoesnotprove runningbuild/ABI/index/writercoverage.",
+    "Wholepriorcf9eightcode+data/evaluator/pharmacy/metadata/root/evidence/sameclienttransaction/CAS/immutabledecision/history/replay/errorcomposition review reusedunderunchangedhashes plusactualtwo narrowfixes; no new permissive branch/action/route/authority minted.",
+    "M/D/Grevokedtransition exactboundedtwohistoryreads/proof/digest/generation/evidence/time/fences/retainedvalidity and originalgrantrevision remaincoherent. Revokeexpires/inactiveSubject exemption, active-onlyfresh vsverification-onlyhistoricalreplay and safeunknowncommit semantics unchanged.",
+    "Fixedwholeauthorityselect({}) retainsunknownfields forclosedvalidation/full$$ROOT CAS within exactorg/ID provenance scope. Useronly_id/type/active; originalpharmacyrules/readport/service unchanged andlabscope/reportrelease stillcloseduntilS2B.",
+    "Actualinitialcf9/8brequests/twoaxesrecords preserved andhash-bound; thisfreshapproval appliesonly9cwholecomposition, notretroactive approval. No selfsourceauthorvote."
+  ],
+  "findings": [],
+  "limits": [
+    "SOURCE_ONLY. No parser/TypeScript/Node/Ed25519/nativeBSON/productionprotectedFS/DB/DDL/transaction/CAS/replay/cleanup/provider/application/Docker execution or acceptance.",
+    "Actualsyntheticfixture mustprove usablepositive map/grant/revoke/regrant/replay/rollback/metadata/rootfault/Unicodepreservation and earlyoversizedproofdenial under separate reviewedadmission. No default503-only featurecompletion.",
+    "Twoactualnonauthor sourcevotes and genuineClaude review whereavailable remain required before declaringreviewedmilestone; current genuineClaude outcome NOT_RUN.",
+    "Realroot/evidenceinstallation/keycustody/individualidentity/MFAwherequalified/clinical/source-to-lab/provenance/allwriter/index/topology/build/C2/C3/restore/client/owner/release/lifecycle/reauthorization/S2B/L2 gates remain. Source cannotmanufacture those facts.",
+    "No operationalactivation/labBusinessScope/newclinical/payment/provider/writerentrystartup/router enablement or fullS2/L2/modulecompletion is granted."
+  ],
+  "permissions": {
+    "sourceOnlyApproved": true,
+    "sourceEditsByReviewer": false,
+    "executableStageApproved": false,
+    "activationApproved": false
+  },
+  "reviewerExecution": "Inert files/Git/JSON/hash/exacttext inverse/source reasoning only; no parser/Node/native/crypto/BSON/FScommands/app/DB/DDL/Docker execution."
+}
