@@ -1,8 +1,8 @@
 export type BusinessKind = 'pharmacy' | 'lab';
-export type Capability = 'pharmacy.prescription.review' | 'lab.report.release';
+export type Capability = 'pharmacy.prescription.review' | 'lab.report.release' | 'lab.worklist.read';
 export type Profession = 'pharmacist' | 'lab_signatory';
 export type AuthorityState = 'active' | 'suspended' | 'revoked';
-export type DecisionKind = 'business_mapped' | 'membership_granted' | 'professional_verified';
+export type DecisionKind = 'business_mapped' | 'membership_granted' | 'professional_verified' | 'lab_membership_revoked';
 export type DenialCategory = 'INVALID_CONTEXT' | 'AUTHORITY_DENIED' | 'AUTHORITY_NOT_READY' | 'AUTHORITY_MAPPING_UNAVAILABLE' | 'INVALID_TRANSACTION';
 
 export class AuthorityError extends Error {
@@ -51,6 +51,8 @@ export interface Organization extends RecordVersion {
   readonly state: AuthorityState;
   readonly sourceFingerprint: string;
   readonly mappingDecisionId: string;
+  /** Required only for new canonical labs; never a pharmacy backfill. */
+  readonly operationalFence?: number;
   readonly branches: readonly Branch[];
 }
 export interface StaffGrant {
@@ -90,6 +92,7 @@ export interface DecisionMetadata {
   readonly decidedAt: number;
   readonly authorityGeneration: string;
   readonly payloadSha256: string;
+  readonly issuerProof?: LabIssuerProof;
   readonly evidence: readonly EvidenceReference[];
   readonly createdAt: number;
   readonly updatedAt: number;
@@ -129,6 +132,7 @@ export type AuthorityDecision = DecisionMetadata & (
   | Readonly<{ decisionKind: 'business_mapped'; payload: MappingPayload }>
   | Readonly<{ decisionKind: 'membership_granted'; subjectActorId: string; payload: GrantPayload }>
   | Readonly<{ decisionKind: 'professional_verified'; subjectActorId: string; payload: VerificationPayload }>
+  | Readonly<{ decisionKind: 'lab_membership_revoked'; subjectActorId: string; payload: LabRevocationPayload }>
 );
 export interface AuthorityFacts {
   readonly user: unknown;
@@ -161,4 +165,56 @@ export interface BusinessScope extends AuthorityLookup {
   readonly evidenceSha256: string;
   readonly checkedAt: number;
   readonly expiresAt: number;
+}
+
+// S2-A is a protected writer only. These data types do not mint a lab BusinessScope.
+export type LabAuthorityAction = 'map_lab' | 'grant_lab_reader' | 'revoke_lab_reader';
+export interface LabIssuerProof {
+  readonly schema: 'SD-LAB-AUTHORITY-ISSUER-PROOF-1';
+  readonly keyId: string;
+  readonly commandJson: string;
+  readonly commandSha256: string;
+  readonly signatureBase64: string;
+}
+export interface LabRevocationPayload {
+  readonly organizationId: string;
+  readonly actorId: string;
+  readonly membershipId: string;
+  readonly membershipRevision: number;
+  readonly previousMembershipRevision: number;
+  readonly previousGrantDecisionId: string;
+  readonly branchId: string;
+  readonly capability: 'lab.worklist.read';
+  readonly operationalFence: number;
+  readonly reasonCode: 'access_withdrawn';
+}
+export interface LabBusiness extends RecordVersion {
+  readonly organizationId: string;
+  readonly legalName: string;
+  readonly registrationReference: string;
+  readonly state: AuthorityState;
+  readonly verificationValidFrom: number;
+  readonly verificationExpiresAt: number;
+  readonly verificationEvidence: EvidenceReference;
+}
+export interface LabAuthorityReceipt {
+  readonly status: 'COMMITTED';
+  readonly operationId: string;
+  readonly decisionId: string;
+  readonly action: LabAuthorityAction;
+  readonly organizationId: string;
+  readonly recordId: string;
+  readonly recordRevision: number;
+  readonly operationalFence: number;
+  readonly commandSha256: string;
+  readonly replayed: boolean;
+}
+export type LabAuthorityCode = 'LAB_AUTHORITY_INPUT_INVALID' | 'LAB_AUTHORITY_DENIED' | 'LAB_AUTHORITY_CONFLICT' | 'LAB_AUTHORITY_UNAVAILABLE';
+export class LabAuthorityError extends Error {
+  readonly status: number;
+  constructor(readonly code: LabAuthorityCode, readonly commitOutcome: 'UNKNOWN' | undefined = undefined) {
+    super('Lab authority request could not be completed');
+    this.name = 'LabAuthorityError';
+    this.status = code === 'LAB_AUTHORITY_INPUT_INVALID' ? 400 : code === 'LAB_AUTHORITY_DENIED' ? 403 : code === 'LAB_AUTHORITY_CONFLICT' ? 409 : 503;
+  }
 }

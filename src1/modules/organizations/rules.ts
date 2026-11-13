@@ -139,6 +139,9 @@ export function serializeDecision(decision: AuthorityDecision): string {
   } else if (decision.decisionKind === 'membership_granted') {
     const p = decision.payload;
     common.push(['subjectActorId', decision.subjectActorId], ['payload', ['organizationId', p.organizationId], ['actorId', p.actorId], ['membershipId', p.membershipId], ['membershipRevision', p.membershipRevision], ['validFrom', p.validFrom], ['expiresAt', p.expiresAt], ['grants', sortedGrants(p.grants)], ['branchId', p.branchId], ['capability', p.capability]]);
+  } else if (decision.decisionKind === 'lab_membership_revoked') {
+    const p = decision.payload;
+    common.push(['subjectActorId', decision.subjectActorId], ['payload', ['organizationId', p.organizationId], ['actorId', p.actorId], ['membershipId', p.membershipId], ['membershipRevision', p.membershipRevision], ['previousMembershipRevision', p.previousMembershipRevision], ['previousGrantDecisionId', p.previousGrantDecisionId], ['branchId', p.branchId], ['capability', p.capability], ['operationalFence', p.operationalFence], ['reasonCode', p.reasonCode]]);
   } else {
     const p = decision.payload;
     common.push(['subjectActorId', decision.subjectActorId], ['payload', ['organizationId', p.organizationId], ['actorId', p.actorId], ['eligibilityId', p.eligibilityId], ['eligibilityRevision', p.eligibilityRevision], ['profession', p.profession], ['validFrom', p.validFrom], ['expiresAt', p.expiresAt], ['evidenceVersionId', p.evidenceVersionId], ['evidenceSha256', p.evidenceSha256], ['grants', sortedGrants(p.grants)]]);

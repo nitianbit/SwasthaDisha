@@ -1,0 +1,119 @@
+{
+  "schema": "SD-LAB-S2-A-ACTUAL-SOURCE-CANDIDATE-1",
+  "author": "/root/milestone_composition_r9",
+  "baseline": "b846486a4ebe1b7e6d906aec78b89413e2e574f9",
+  "contractSha256": "dbe337575ff28360bf6a7b57a2c69cf2bdab9a234a2774c893ec1bba36159a57",
+  "actualContractDecisions": {
+    "path": "output/qa/lab-canonical-authority-contract/S2_A_REVISION_2_CONTRACT_DECISIONS.json",
+    "sha256": "af526f4900ef19bb93722b8479440e652c304f383d17f7e6742dd3e508f830f2",
+    "commit": "a6d87767aae099328e1014df6a8dc431c818b4f4"
+  },
+  "status": "PENDING_TWO_ACTUAL_NONAUTHOR_SOURCE_COMPOSITION_REVIEWS",
+  "ownSource": [
+    {
+      "path": "src1/modules/organizations/types/index.ts",
+      "sha256": "98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670",
+      "bytes": 8074
+    },
+    {
+      "path": "src1/modules/organizations/model/index.ts",
+      "sha256": "d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a",
+      "bytes": 7453
+    },
+    {
+      "path": "src1/modules/organizations/rules.ts",
+      "sha256": "c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a",
+      "bytes": 17845
+    },
+    {
+      "path": "src1/modules/organizations/model/lab.ts",
+      "sha256": "42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c",
+      "bytes": 1607
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityRoot.ts",
+      "sha256": "2d085b083405f79d43b5a4a207165fc795bc3803aa56610b186e63b8163b2ed2",
+      "bytes": 14561
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityReadiness.ts",
+      "sha256": "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9",
+      "bytes": 21553
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityProvisioning.ts",
+      "sha256": "8062a715b526b8bc627a0b3688886464f1b5e0763324a0f869d93666399022bf",
+      "bytes": 22518
+    },
+    {
+      "path": "src1/operators/labAuthority.ts",
+      "sha256": "5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02",
+      "bytes": 181
+    },
+    {
+      "path": "src1/modules/organizations/labAuthoritySourceManifest.json",
+      "sha256": "2a2a58b14b5ed06cae767dfca60e3a0cd7211fd93f5b969679eff224d0c0dccf",
+      "bytes": 2462
+    }
+  ],
+  "sourcePatch": {
+    "path": "output/qa/lab-canonical-authority-contract/source-candidate/SOURCE.patch",
+    "sha256": "1a7638815ea923143c61c8fe05c2bc8c84be4291d5e6aac0a620504488160927",
+    "bytes": 76720
+  },
+  "sourceInversePatch": {
+    "path": "output/qa/lab-canonical-authority-contract/source-candidate/SOURCE.inverse.patch",
+    "sha256": "20631a1d73a68044a3d2d66da61ef4afa3bde5de559ac62e41a467434b127b1b",
+    "bytes": 76744
+  },
+  "sourceManifestAggregateSha256": "0edef214464c14c57bdcb6a9dbb6646fd94017bbedd1e925bd078800e10b62d0",
+  "sourceManifestScope": "Selected13source pairs only; excludes manifest itself, wholemanifestbytes separately pinned. Not running build, native ABI, installedindex/all-writer provenance or activation proof.",
+  "unchangedContext": {
+    "src1/modules/organizations/repository/index.ts": "14532bf2d667e37d4ded33bb3767f744cd524bf385d88341d31f7954ece61d3b",
+    "src1/modules/organizations/services/index.ts": "ccac5254a6e61c8cce4f14c58005cb39349689e3d0cbafc8ab551ca339397c73",
+    "src1/modules/user/model/index.ts": "8ab08c867008d9788fd2105b6ac840794fcd5d8b2c518de500119aa2536cf5c4",
+    "src1/routes/index.ts": "9be841178931003004cc53a0285b5c849d82a82dbc798a4a0d38bf69396de6ea",
+    "API_SCHEMAS.md": "948f1ef2c319d1206438f283f6e7116d0f83f9d02b66495074f9a535891e8951",
+    "package.json": "65b171e77e8cd3bfd37eb691cf9ce310d9108cedbf571232bd4859c4b16895ab",
+    "package-lock.json": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080",
+    "tsconfig.json": "5555c293a75c85c3f89a539bd2b1be6db1953ffa746b43836929cdc20b9355c3"
+  },
+  "actualSourceAnalysis": [
+    "One local signed-text operator, no route/start/job/default connection. Exactly create-only map, missing/revoked grant, active/suspended revoke; four existing authority collections plus canonical labs only.",
+    "Canonical12-position body and3payloads/signature/domain/schema/time/revision/evidence/branch checks; fixed external root/publickey/evidence readers with max+1 bounded held-FD reads, strict ownership/realpath/identity guards; no signing or root/evidence installation.",
+    "Five fixed collections/named unique exact keys/simple collation/finished wrappers/full native cursor/getMore/kill/session/UUID observation; nativeBSON4Long/Timestamp/Binary/UUID descriptor copies and1MiB/5s bounds; metadataReady branded/private issuance and separate deployment/coverage facts.",
+    "Actual fixed User defaultConnection/client/native Db/wrapper/collection/projection; minimal current active personal issuer/subject only. No Admin/JWT/self-grant or provider/directory business mapping.",
+    "Same-client internally owned snapshot/majority transaction; fresh per-callback metadata/root/evidence checks, one callback time, complete $$ROOT literal snapshot CAS and organization operationalFence/member revision; native writes set explicit times, no automatic model timestamp rewrite.",
+    "Bounded unique revoked-row M->signed revocation D->prior signed grant G proof/signature/digest/evidence/generation/retainedgrant/validity/time/fences; R2->regrant3, no recursive history. Exact same signed operation replay returns historical receipt without current authority; unknown commit not rollback/automatic newID retry.",
+    "Existing pharmacy evaluator/current-decision rules and oldthree serializer branches mechanically byte-identical after removing onlynew revoke branch. Existing read adapter/minted scope service untouched, lab scope/report release still unavailable untilS2B."
+  ],
+  "reviewerAttention": [
+    "No code/parser/compiler/crypto/BSON/Joi/DB/DDL/provider run performed. This is source-only candidate, not a successful runtime or clean typecheck.",
+    "Authority record reads use a fixed WHOLE protected document projection (select({})) so unknown fields cannot be hidden and full $$ROOT CAS can compare actual shape. These exact org/ID-scoped provenance records contain no User profile; User uses only_id/userType/isActive. Review this explicit minimal implementation choice against fixed complete-record/unknown-field requirements.",
+    "Native four-field UUID/Long/Timestamp and ObjectId profiles are pinned-source-derived and require genuine native-positive/negative fixture admission; no native API guessed compatible or real production topology adopted.",
+    "All protectedFS path/UID/mode/read-growth/identity, realEd25519/keyroot/recordproof/CAS/transaction/retry/replay/cleanup/index fault behavior requires separately reviewed focused verification.",
+    "Driver callback/commit/kernel limits are not hard cancellation or rollback promises. No business/branch lifecycle, key rotation/reauthorization, actual staff worklist/assignment/report release/provider/patient/money surface or owner/activation fact implemented."
+  ],
+  "verification": {
+    "Parser": "NOT_RUN",
+    "TypeScript": "NOT_RUN",
+    "Node": "NOT_RUN",
+    "Crypto": "NOT_RUN",
+    "NativeBSON": "NOT_RUN",
+    "Application": "NOT_RUN",
+    "Database": "NOT_RUN",
+    "DDL": "NOT_RUN",
+    "RootEvidenceIO": "NOT_RUN",
+    "Transactions": "NOT_RUN",
+    "CASRaces": "NOT_RUN",
+    "Replay": "NOT_RUN",
+    "Cleanup": "NOT_RUN",
+    "Providers": "NOT_RUN",
+    "Docker": "NOT_RUN",
+    "GenuineClaudeReview": "NOT_RUN"
+  },
+  "implementationSourceCompletePendingReviews": true,
+  "activation": false,
+  "labBusinessScopeEnabled": false,
+  "nextExecutionPermission": false
+}

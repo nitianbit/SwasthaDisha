@@ -1,0 +1,68 @@
+{
+  "schema": "SD-LAB-AUTHORITY-SOURCE-MANIFEST-1",
+  "files": [
+    [
+      "package-lock.json",
+      "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080"
+    ],
+    [
+      "src1/modules/common/utils/indexReadiness.ts",
+      "050ecc993c862638cf4912bb854e04baa5d80241cb124e7831fc3c95a78db5bd"
+    ],
+    [
+      "src1/modules/organizations/labAuthorityProvisioning.ts",
+      "8062a715b526b8bc627a0b3688886464f1b5e0763324a0f869d93666399022bf"
+    ],
+    [
+      "src1/modules/organizations/labAuthorityReadiness.ts",
+      "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9"
+    ],
+    [
+      "src1/modules/organizations/labAuthorityRoot.ts",
+      "2d085b083405f79d43b5a4a207165fc795bc3803aa56610b186e63b8163b2ed2"
+    ],
+    [
+      "src1/modules/organizations/model/index.ts",
+      "d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a"
+    ],
+    [
+      "src1/modules/organizations/model/lab.ts",
+      "42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c"
+    ],
+    [
+      "src1/modules/organizations/rules.ts",
+      "c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a"
+    ],
+    [
+      "src1/modules/organizations/types/index.ts",
+      "98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670"
+    ],
+    [
+      "src1/modules/user/model/index.ts",
+      "8ab08c867008d9788fd2105b6ac840794fcd5d8b2c518de500119aa2536cf5c4"
+    ],
+    [
+      "src1/modules/user/types/index.ts",
+      "91d4b48e4749d113733f471d64093c7269dffcf13bf48577c8dbc2edce7d5b71"
+    ],
+    [
+      "src1/operators/labAuthority.ts",
+      "5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02"
+    ],
+    [
+      "tsconfig.json",
+      "5555c293a75c85c3f89a539bd2b1be6db1953ffa746b43836929cdc20b9355c3"
+    ]
+  ],
+  "aggregateSha256": "0edef214464c14c57bdcb6a9dbb6646fd94017bbedd1e925bd078800e10b62d0",
+  "aggregateEncoding": "UTF8(JSON.stringify(files)); sorted exact path/hash pairs, no newline",
+  "scope": "SELECTED_SOURCE_BINDING_ONLY_NOT_RUNNING_BUILD_NATIVE_ABI_OR_ALL_WRITER_COVERAGE",
+  "excludedSelf": "src1/modules/organizations/labAuthoritySourceManifest.json",
+  "nativeProfile": {
+    "mongoose": "6.13.8",
+    "mongodb": "4.17.2",
+    "bson": "4.7.2",
+    "catalog": "LOCAL_DIAGNOSTIC_MONGODB_8_INCLUDE_INDEX_BUILD_INFO"
+  },
+  "activation": "No real root/evidence installation, production topology/build/index/all-writer/client/owner/release acceptance is supplied."
+}

@@ -1,12 +1,12 @@
 import { Connection, Model, Schema } from 'mongoose';
 import { AuthorityError } from '../types';
 
-// Only the approved read adapter consumes this factory; importing it registers no model.
+// Approved authority adapters and the protected lab writer share this factory; import registers no model.
 const canonicalId = { type: String, required: true, match: /^[0-9a-f]{24}$/, immutable: true };
 const digest = { type: String, required: true, match: /^[0-9a-f]{64}$/ };
 const positive = { type: Number, required: true, min: 1, validate: Number.isSafeInteger };
 const date = { type: Date, required: true };
-const capability = { type: String, required: true, enum: ['pharmacy.prescription.review', 'lab.report.release'] };
+const capability = { type: String, required: true, enum: ['pharmacy.prescription.review', 'lab.report.release', 'lab.worklist.read'] };
 const state = { type: String, required: true, enum: ['active', 'suspended', 'revoked'] };
 const embedded = { _id: false, strict: 'throw' as const };
 const options = { timestamps: true, strict: 'throw' as const, versionKey: false as const, autoIndex: false, autoCreate: false };
@@ -32,6 +32,9 @@ export function createAuthorityModels(connection: Connection): AuthorityModels {
     ...base, kind: { type: String, required: true, enum: ['pharmacy', 'lab'] },
     sourceBusinessId: canonicalId, state, sourceFingerprint: digest, mappingDecisionId: canonicalId,
     branches: { type: [branch], required: true, validate: bounded },
+    operationalFence: { type: Number, min: 1,
+      required: function (this: { kind?: string }) { return this.kind === 'lab'; },
+      validate: function (this: { kind?: string }, value: unknown) { return this.kind === 'lab' ? typeof value === 'number' && Number.isSafeInteger(value) && value > 0 : value === undefined; } },
   }, options);
   organization.index({ kind: 1, sourceBusinessId: 1 }, { unique: true });
   const membership = new Schema<Record<string, unknown>>({
@@ -64,19 +67,28 @@ export function createAuthorityModels(connection: Connection): AuthorityModels {
     // Grant entries have an optional decision ID for the professional scope payload.
     grants: { type: [new Schema({ branchId: canonicalId, capability, grantDecisionId: { type: String, match: /^[0-9a-f]{24}$/ } }, embedded)], default: undefined, validate: bounded },
     branchId: { type: String, match: /^[0-9a-f]{24}$/ },
-    capability: { type: String, enum: ['pharmacy.prescription.review', 'lab.report.release'] },
+    capability: { type: String, enum: ['pharmacy.prescription.review', 'lab.report.release', 'lab.worklist.read'] },
     profession: { type: String, enum: ['pharmacist', 'lab_signatory'] },
     evidenceVersionId: { type: String, match: /^[0-9a-f]{24}$/ },
     evidenceSha256: { type: String, match: /^[0-9a-f]{64}$/ },
+    previousMembershipRevision: { type: Number, min: 1, validate: Number.isSafeInteger },
+    previousGrantDecisionId: { type: String, match: /^[0-9a-f]{24}$/ },
+    operationalFence: { type: Number, min: 1, validate: Number.isSafeInteger },
+    reasonCode: { type: String, enum: ['access_withdrawn'] },
   }, embedded);
   // No mutation API is exposed. Immutability is defense in depth, not grant authenticity.
   const decision = new Schema<Record<string, unknown>>({
     _id: canonicalId, schemaVersion: { type: Number, required: true, enum: [1], immutable: true },
     organizationId: canonicalId, operationId: canonicalId,
-    decisionKind: { type: String, required: true, enum: ['business_mapped', 'membership_granted', 'professional_verified'], immutable: true },
+    decisionKind: { type: String, required: true, enum: ['business_mapped', 'membership_granted', 'professional_verified', 'lab_membership_revoked'], immutable: true },
     subjectActorId: { type: String, match: /^[0-9a-f]{24}$/, immutable: true },
     decidingActorId: canonicalId, decidedAt: { ...date, immutable: true },
     authorityGeneration: { ...digest, immutable: true }, payloadSha256: { ...digest, immutable: true },
+    issuerProof: { type: new Schema({
+      schema: { type: String, required: true, enum: ['SD-LAB-AUTHORITY-ISSUER-PROOF-1'] },
+      keyId: digest, commandJson: { type: String, required: true, maxlength: 16384 },
+      commandSha256: digest, signatureBase64: { type: String, required: true, maxlength: 88 },
+    }, embedded), default: undefined, immutable: true },
     payload: { type: payload, required: true, immutable: true },
     evidence: { type: [evidence], required: true, validate: bounded, immutable: true },
   }, options);
