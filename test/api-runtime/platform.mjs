@@ -59,7 +59,7 @@ const CUSTOMER_CONTACT_ROLE = Object.freeze({
   runPrefix: 'sd-customer-contact-api-run-',
   preparationSources: Object.freeze(['bootstrap.cjs', 'scenario.cjs', 'ports-manifest.json', 'prepare.py', 'compile.cjs',
     'package-plan.json', 'profile.json'].map(name => 'test/api-runtime/customer-contact/' + name)
-    .concat(['test/application/app-bundle.mjs', 'package-lock.json'])),
+    .concat(['test/application/app-bundle.mjs', 'package-lock.json', 'test/api-runtime/disabled-express-template.cjs'])),
   cases: 32, sensitivity: 16,
 });
 const PHARMACY_REFILL_ROLE = Object.freeze({
@@ -71,7 +71,7 @@ const PHARMACY_REFILL_ROLE = Object.freeze({
   runPrefix: 'sd-pharmacy-refill-api-run-',
   preparationSources: Object.freeze(['bootstrap.cjs', 'scenario.cjs', 'ports-manifest.json', 'prepare.py', 'compile.cjs',
     'package-plan.json', 'profile.json'].map(name => 'test/api-runtime/pharmacy-refill/' + name)
-    .concat(['test/application/app-bundle.mjs', 'package-lock.json'])),
+    .concat(['test/application/app-bundle.mjs', 'package-lock.json', 'test/api-runtime/disabled-express-template.cjs'])),
   cases: 20, sensitivity: 7,
 });
 const plain = (v) => v !== null && typeof v === 'object' && [Object.prototype, null].includes(Object.getPrototypeOf(v));
