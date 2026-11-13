@@ -1,0 +1,117 @@
+{
+  "schema": "SD-LAB-S2-A-AMENDED-ACTUAL-SOURCE-CANDIDATE-3",
+  "author": "/root/milestone_composition_r9",
+  "initialCandidate": "cf9c4ca9faf43596cd2e5a562fdeef36ec6cffb2",
+  "previousCandidate": "8b4922b3390ef846b49c9f304687c3bcdab52e9a",
+  "originalSourceBaseline": "b846486a4ebe1b7e6d906aec78b89413e2e574f9",
+  "amendmentFreezeParent": "023e631a5cb3321effd301c4e1c400b1646ccd92",
+  "contractSha256": "dbe337575ff28360bf6a7b57a2c69cf2bdab9a234a2774c893ec1bba36159a57",
+  "actualPriorRequests": {
+    "output/qa/lab-canonical-authority-contract/source-candidate/revision-2/STANDARDS_REVIEW.json": "1382637f9fa3ab83c56c4bca016e5c99a7d4ea6d5b1c4d00c8fa9401ff50c2c5",
+    "output/qa/lab-canonical-authority-contract/source-candidate/revision-2/SPEC_REVIEW.json": "002f4a035cb3a339c8af54f3c577cc23ea40de8c0b340cea79b51629f743074d",
+    "output/qa/lab-canonical-authority-contract/source-candidate/revision-2/SOURCE_DECISIONS.json": "1a32112de12da0045548a707875f4ae633c197c7beb600e3154a4e83872fe93f"
+  },
+  "status": "PENDING_TWO_FRESH_NONAUTHOR_SOURCE_AMENDMENT_AND_COMPOSITION_REVIEWS",
+  "changedSource": [
+    "src1/modules/organizations/labAuthorityRoot.ts",
+    "src1/modules/organizations/labAuthoritySourceManifest.json"
+  ],
+  "ownSource": [
+    {
+      "path": "src1/modules/organizations/types/index.ts",
+      "sha256": "98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670",
+      "bytes": 8074
+    },
+    {
+      "path": "src1/modules/organizations/model/index.ts",
+      "sha256": "d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a",
+      "bytes": 7453
+    },
+    {
+      "path": "src1/modules/organizations/rules.ts",
+      "sha256": "c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a",
+      "bytes": 17845
+    },
+    {
+      "path": "src1/modules/organizations/model/lab.ts",
+      "sha256": "42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c",
+      "bytes": 1607
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityRoot.ts",
+      "sha256": "15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7",
+      "bytes": 14618
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityReadiness.ts",
+      "sha256": "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9",
+      "bytes": 21553
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityProvisioning.ts",
+      "sha256": "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65",
+      "bytes": 22614
+    },
+    {
+      "path": "src1/operators/labAuthority.ts",
+      "sha256": "5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02",
+      "bytes": 181
+    },
+    {
+      "path": "src1/modules/organizations/labAuthoritySourceManifest.json",
+      "sha256": "08324e39632809158a3b628514287354adbe9e12fae9dce2169026fe1504c9c9",
+      "bytes": 2462
+    }
+  ],
+  "fullSourcePatch": {
+    "path": "output/qa/lab-canonical-authority-contract/source-candidate/revision-3/SOURCE.patch",
+    "sha256": "2ad9f5e5742f03ba09160222cffc9bc86e12d94d992bc43e9f136dc87540ef01",
+    "bytes": 76873
+  },
+  "inverseSourcePatch": {
+    "path": "output/qa/lab-canonical-authority-contract/source-candidate/revision-3/SOURCE.inverse.patch",
+    "sha256": "a7358863600cbbcfa425dca6b43c1f1b46caf1221dbf02f3469ac9c30e3ef159",
+    "bytes": 76897
+  },
+  "amendmentPatch": {
+    "path": "output/qa/lab-canonical-authority-contract/source-candidate/revision-3/AMENDMENT.patch",
+    "sha256": "9d0f4ad5f05b6d04b378ef0e22390ca4fd4f5c01c17ecbb1ac81bb2fb4f9d79c",
+    "bytes": 2752
+  },
+  "sourceManifestAggregateSha256": "9db2f7ea95adcbf7cb8e08713e03da89786ad19d69bd2799774e022d06d6582b",
+  "actualStaticChecks": [
+    "Only one primitive-string-short-circuited UTF8 roundtrip equality predicate added to existing text helper. Removing that exact clause reproduces prior8b root bytes. No normalization/replacement or new helper/API/permission.",
+    "Other seven code files including stored-proof-bound writer014f992b remain byte-exact8b. Earlier proof bounds remain resolved; both actual original source-request histories preserved unchanged.",
+    "Exactly same13 sorted source pairs; only root source hash/aggregate regenerated. All13 actual file hashes recomputed; generated self excluded.",
+    "Complete nine source/data patch and its reverse recorded against original baseline; two-file amendment recorded against8b. No tests or source parser executed.",
+    "Git diff --check passed for exact two changed source/data files; git apply --check of complete SOURCE.inverse.patch passed without mutation.",
+    "Original checkout six physical/index files match frozen review-input hashes, full-index staged patch SHA00b2ad0d unchanged, and all eight archive files match artifacts.sha256.json. Unrelated current worktree untracked files preserved."
+  ],
+  "plannedFocusedNegatives": [
+    "Admitted future actual writer/BSON checks must reject isolated high surrogate and isolated low surrogate in legalName and registrationReference before write400/no effects. No coercion or repair.",
+    "Valid NFC text and paired astral characters must preserve exact signed text across actual BSON write/read/history and grant/revoke/regrant/replay.",
+    "Previously required oversized stored commandJson/signature guards retain before-parse503 controls and canonical64byte decode checks."
+  ],
+  "verification": {
+    "Parser": "NOT_RUN",
+    "TypeScript": "NOT_RUN",
+    "Node": "NOT_RUN",
+    "Crypto": "NOT_RUN",
+    "NativeBSON": "NOT_RUN",
+    "Application": "NOT_RUN",
+    "Database": "NOT_RUN",
+    "DDL": "NOT_RUN",
+    "RootEvidenceIO": "NOT_RUN",
+    "Transactions": "NOT_RUN",
+    "CASRaces": "NOT_RUN",
+    "Replay": "NOT_RUN",
+    "Cleanup": "NOT_RUN",
+    "Providers": "NOT_RUN",
+    "Docker": "NOT_RUN",
+    "GenuineClaudeReview": "NOT_RUN"
+  },
+  "sourceApproval": false,
+  "executionPermission": false,
+  "activation": false,
+  "scope": "Preparatory canonical lab mapping/protected grant-revoke only; lab business resolver remains closed until separately reviewed S2B; no owner/security/clinical/deployment facts supplied."
+}

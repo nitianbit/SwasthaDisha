@@ -58,7 +58,7 @@ function sortedIds(value: unknown): readonly string[] {
   labCheck(Array.isArray(value) && value.length >= 1 && value.length <= 100);
   labCheck(value.every((v, i) => labId(v) && (i === 0 || value[i - 1] < v))); return value as string[];
 }
-function text(value: unknown, max: number): value is string { return typeof value === 'string' && value.trim() === value && value.normalize('NFC') === value && [...value].length >= 1 && [...value].length <= max && !/[\u0000-\u001f\u007f-\u009f]/.test(value); }
+function text(value: unknown, max: number): value is string { return typeof value === 'string' && Buffer.from(value, 'utf8').toString('utf8') === value && value.trim() === value && value.normalize('NFC') === value && [...value].length >= 1 && [...value].length <= max && !/[\u0000-\u001f\u007f-\u009f]/.test(value); }
 function decode64(value: unknown, size: number): Buffer { labCheck(typeof value === 'string'); const b = Buffer.from(value, 'base64'); labCheck(b.length === size && b.toString('base64') === value); return b; }
 export interface LabCommand {
   readonly body: readonly unknown[]; readonly commandJson: string; readonly commandSha256: string; readonly signatureBase64: string;

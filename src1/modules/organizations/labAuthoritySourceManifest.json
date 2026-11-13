@@ -19,7 +19,7 @@
     ],
     [
       "src1/modules/organizations/labAuthorityRoot.ts",
-      "2d085b083405f79d43b5a4a207165fc795bc3803aa56610b186e63b8163b2ed2"
+      "15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7"
     ],
     [
       "src1/modules/organizations/model/index.ts",
@@ -54,7 +54,7 @@
       "5555c293a75c85c3f89a539bd2b1be6db1953ffa746b43836929cdc20b9355c3"
     ]
   ],
-  "aggregateSha256": "9e1d7bbdab861deac5b206adc5abee1b17b44b18968a9f5bcdf09b46de2e5e94",
+  "aggregateSha256": "9db2f7ea95adcbf7cb8e08713e03da89786ad19d69bd2799774e022d06d6582b",
   "aggregateEncoding": "UTF8(JSON.stringify(files)); sorted exact path/hash pairs, no newline",
   "scope": "SELECTED_SOURCE_BINDING_ONLY_NOT_RUNNING_BUILD_NATIVE_ABI_OR_ALL_WRITER_COVERAGE",
   "excludedSelf": "src1/modules/organizations/labAuthoritySourceManifest.json",

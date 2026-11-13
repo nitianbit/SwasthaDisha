@@ -1,0 +1,35 @@
+diff --git a/src1/modules/organizations/labAuthorityRoot.ts b/src1/modules/organizations/labAuthorityRoot.ts
+index 4d0f524516da6de70e5851343edf7ca1d416952e..7aafc4938a8edcb1358d802a7b8a8ca946c4f2c6 100644
+--- a/src1/modules/organizations/labAuthorityRoot.ts
++++ b/src1/modules/organizations/labAuthorityRoot.ts
+@@ -58,7 +58,7 @@ function sortedIds(value: unknown): readonly string[] {
+   labCheck(Array.isArray(value) && value.length >= 1 && value.length <= 100);
+   labCheck(value.every((v, i) => labId(v) && (i === 0 || value[i - 1] < v))); return value as string[];
+ }
+-function text(value: unknown, max: number): value is string { return typeof value === 'string' && value.trim() === value && value.normalize('NFC') === value && [...value].length >= 1 && [...value].length <= max && !/[\u0000-\u001f\u007f-\u009f]/.test(value); }
++function text(value: unknown, max: number): value is string { return typeof value === 'string' && Buffer.from(value, 'utf8').toString('utf8') === value && value.trim() === value && value.normalize('NFC') === value && [...value].length >= 1 && [...value].length <= max && !/[\u0000-\u001f\u007f-\u009f]/.test(value); }
+ function decode64(value: unknown, size: number): Buffer { labCheck(typeof value === 'string'); const b = Buffer.from(value, 'base64'); labCheck(b.length === size && b.toString('base64') === value); return b; }
+ export interface LabCommand {
+   readonly body: readonly unknown[]; readonly commandJson: string; readonly commandSha256: string; readonly signatureBase64: string;
+diff --git a/src1/modules/organizations/labAuthoritySourceManifest.json b/src1/modules/organizations/labAuthoritySourceManifest.json
+index 74febc1a71bd6ab6e1132072ffcfb18ffd9edb57..4bec5dca4258df0d7ce70c42fed012dbff47d5ea 100644
+--- a/src1/modules/organizations/labAuthoritySourceManifest.json
++++ b/src1/modules/organizations/labAuthoritySourceManifest.json
+@@ -19,7 +19,7 @@
+     ],
+     [
+       "src1/modules/organizations/labAuthorityRoot.ts",
+-      "2d085b083405f79d43b5a4a207165fc795bc3803aa56610b186e63b8163b2ed2"
++      "15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7"
+     ],
+     [
+       "src1/modules/organizations/model/index.ts",
+@@ -54,7 +54,7 @@
+       "5555c293a75c85c3f89a539bd2b1be6db1953ffa746b43836929cdc20b9355c3"
+     ]
+   ],
+-  "aggregateSha256": "9e1d7bbdab861deac5b206adc5abee1b17b44b18968a9f5bcdf09b46de2e5e94",
++  "aggregateSha256": "9db2f7ea95adcbf7cb8e08713e03da89786ad19d69bd2799774e022d06d6582b",
+   "aggregateEncoding": "UTF8(JSON.stringify(files)); sorted exact path/hash pairs, no newline",
+   "scope": "SELECTED_SOURCE_BINDING_ONLY_NOT_RUNNING_BUILD_NATIVE_ABI_OR_ALL_WRITER_COVERAGE",
+   "excludedSelf": "src1/modules/organizations/labAuthoritySourceManifest.json",
