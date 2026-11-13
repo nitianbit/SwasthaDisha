@@ -1,11 +1,11 @@
 {
   "schema": "SD-LAB-S2-A-DRAFT-SOURCE-BINDINGS-1",
   "author": "/root/milestone_composition_r9",
-  "sourceCommit": "3637c42b79218836caf3c505af88837633c21ebd",
+  "sourceCommit": "1b3692924b992f825c2a7c662ad8b3c03db5baf9",
   "contractPath": "documentation/planning/implementation/LAB_CANONICAL_AUTHORITY_S2_A_ADDENDUM_DRAFT.md",
-  "contractSha256": "0a960e37ca0c0b9a6f4247d6def8294a7885b8d576804de7403b2b84391775f3",
+  "contractSha256": "dbe337575ff28360bf6a7b57a2c69cf2bdab9a234a2774c893ec1bba36159a57",
   "vectorsPath": "output/qa/lab-canonical-authority-contract/S2_A_SERIALIZATION_VECTORS.json",
-  "vectorsSha256": "e67ec7f6695d8e08eccb0cfa3d57bfe05d780654adb6781e9baa65c824ac34a7",
+  "vectorsSha256": "d08280c503baadde02f6fe1313be5eb21aa6af697d4bae0320870dbef10cb49a",
   "state": "DRAFT_PENDING_TWO_ACTUAL_NONAUTHOR_CONTRACT_REVIEWS_NO_IMPLEMENTATION",
   "sourceBindings": {
     "GLOSSARY.md": "88b19e2eab9aaeb19a0bb889e4f54b6dcf80953b90d65f31b87c4ef8b3bb671f",
@@ -71,5 +71,17 @@
     ]
   },
   "execution": "INERT_TEXT_JSON_HASH_GIT_ONLY; no source implementation or executable checks",
-  "acceptance": "A usable protected actual diagnostic positive is required after independent contracts/source/run admissions; source-only draft and closed default are not S2/L2 completion."
+  "acceptance": "A usable protected actual diagnostic positive is required after independent contracts/source/run admissions; source-only draft and closed default are not S2/L2 completion.",
+  "revision": {
+    "number": 1,
+    "initialCommit": "53b5d51977adb9231b0bf70dff03da8cc4569e52",
+    "originalContractSha256": "0a960e37ca0c0b9a6f4247d6def8294a7885b8d576804de7403b2b84391775f3",
+    "originalVectorsSha256": "e67ec7f6695d8e08eccb0cfa3d57bfe05d780654adb6781e9baa65c824ac34a7",
+    "originalBindingsSha256": "541750a46002f5a7cace03d1df68813e1eed15b23913a1a971d0fc0db24b4a91",
+    "actualFindingRecord": "output/qa/lab-canonical-authority-contract/S2_A_SPEC_REVIEW.json",
+    "actualFindingRecordSha256": "5d2be9e1e3914390ef77151fbf091572a27e9e307c65debb4af06d03576f97e8",
+    "findingId": "LAB-S2A-SPEC-1",
+    "authorChange": "Exact bounded revoked M -> signed D -> original G lookup/cardinality/types/revision/fence/time/signature/digest/evidence and usable regrant3, no new action/schema/index/source scope",
+    "status": "AMENDED_DRAFT_PENDING_FRESH_NONAUTHOR_STANDARDS_AND_SPEC_DECISIONS"
+  }
 }

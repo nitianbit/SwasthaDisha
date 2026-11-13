@@ -102,6 +102,40 @@
       "commandSha256": "bd90477f7732dc6d91cb75184b54b80cf98f1dd46a112d36966591d45b0a1e06",
       "envelopeWithKnownInvalidSignature": "[[\"sd.lab.authority.command\",1,\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"000000000000000000000003\",\"000000000000000000000001\",\"000000000000000000000018\",\"000000000000000000000019\",1794528000000,1794528900000,\"revoke_lab_reader\",[\"000000000000000000000004\",\"000000000000000000000005\",1,2,\"000000000000000000000008\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"access_withdrawn\"]],\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"]",
       "signatureState": "INVALID_ALL_ZERO_BYTES_NOT_SUCCESS_PROOF"
+    },
+    {
+      "action": "grant_lab_reader",
+      "label": "regrant_after_signed_revoked_revision2",
+      "body": [
+        "sd.lab.authority.command",
+        1,
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "000000000000000000000003",
+        "000000000000000000000001",
+        "00000000000000000000001a",
+        "00000000000000000000001b",
+        1794528060000,
+        1794528960000,
+        "grant_lab_reader",
+        [
+          "000000000000000000000004",
+          "000000000000000000000005",
+          2,
+          3,
+          "000000000000000000000006",
+          1794528060000,
+          1794614400000,
+          "000000000000000000000008",
+          "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "operational_assignment"
+        ]
+      ],
+      "signedUtf8Text": "[\"sd.lab.authority.command\",1,\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"000000000000000000000003\",\"000000000000000000000001\",\"00000000000000000000001a\",\"00000000000000000000001b\",1794528060000,1794528960000,\"grant_lab_reader\",[\"000000000000000000000004\",\"000000000000000000000005\",2,3,\"000000000000000000000006\",1794528060000,1794614400000,\"000000000000000000000008\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"operational_assignment\"]]",
+      "signedUtf8Bytes": 553,
+      "commandSha256": "643a139eb7c9d6a70e0c9775c79ae0190f250d8cbe7254264e8a666bc00a8164",
+      "envelopeWithKnownInvalidSignature": "[[\"sd.lab.authority.command\",1,\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"000000000000000000000003\",\"000000000000000000000001\",\"00000000000000000000001a\",\"00000000000000000000001b\",1794528060000,1794528960000,\"grant_lab_reader\",[\"000000000000000000000004\",\"000000000000000000000005\",2,3,\"000000000000000000000006\",1794528060000,1794614400000,\"000000000000000000000008\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"operational_assignment\"]],\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"]",
+      "signatureState": "INVALID_ALL_ZERO_BYTES_NOT_SUCCESS_PROOF"
     }
   ],
   "fingerprint": {
@@ -411,6 +445,99 @@
       ],
       "text": "[\"business-authority-decision\",1,\"lab_membership_revoked\",[\"_id\",\"000000000000000000000019\"],[\"organizationId\",\"000000000000000000000001\"],[\"operationId\",\"000000000000000000000018\"],[\"decidingActorId\",\"000000000000000000000003\"],[\"decidedAt\",1794528000000],[\"authorityGeneration\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"],[\"evidence\",[[\"000000000000000000000008\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"]]],[\"subjectActorId\",\"000000000000000000000004\"],[\"payload\",[\"organizationId\",\"000000000000000000000001\"],[\"actorId\",\"000000000000000000000004\"],[\"membershipId\",\"000000000000000000000005\"],[\"membershipRevision\",2],[\"previousMembershipRevision\",1],[\"previousGrantDecisionId\",\"000000000000000000000017\"],[\"branchId\",\"000000000000000000000006\"],[\"capability\",\"lab.worklist.read\"],[\"operationalFence\",3],[\"reasonCode\",\"access_withdrawn\"]]]",
       "sha256": "fffb0ce9e6ad62c7c2bf08f36903fd228bbdc6510a3e72b4e4944d22de9a1b4f"
+    },
+    {
+      "kind": "membership_granted",
+      "label": "regrant_revision3",
+      "array": [
+        "business-authority-decision",
+        1,
+        "membership_granted",
+        [
+          "_id",
+          "00000000000000000000001b"
+        ],
+        [
+          "organizationId",
+          "000000000000000000000001"
+        ],
+        [
+          "operationId",
+          "00000000000000000000001a"
+        ],
+        [
+          "decidingActorId",
+          "000000000000000000000003"
+        ],
+        [
+          "decidedAt",
+          1794528060000
+        ],
+        [
+          "authorityGeneration",
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        [
+          "evidence",
+          [
+            [
+              "000000000000000000000008",
+              "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            ]
+          ]
+        ],
+        [
+          "subjectActorId",
+          "000000000000000000000004"
+        ],
+        [
+          "payload",
+          [
+            "organizationId",
+            "000000000000000000000001"
+          ],
+          [
+            "actorId",
+            "000000000000000000000004"
+          ],
+          [
+            "membershipId",
+            "000000000000000000000005"
+          ],
+          [
+            "membershipRevision",
+            3
+          ],
+          [
+            "validFrom",
+            1794528060000
+          ],
+          [
+            "expiresAt",
+            1794614400000
+          ],
+          [
+            "grants",
+            [
+              [
+                "000000000000000000000006",
+                "lab.worklist.read",
+                "00000000000000000000001b"
+              ]
+            ]
+          ],
+          [
+            "branchId",
+            "000000000000000000000006"
+          ],
+          [
+            "capability",
+            "lab.worklist.read"
+          ]
+        ]
+      ],
+      "text": "[\"business-authority-decision\",1,\"membership_granted\",[\"_id\",\"00000000000000000000001b\"],[\"organizationId\",\"000000000000000000000001\"],[\"operationId\",\"00000000000000000000001a\"],[\"decidingActorId\",\"000000000000000000000003\"],[\"decidedAt\",1794528060000],[\"authorityGeneration\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"],[\"evidence\",[[\"000000000000000000000008\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"]]],[\"subjectActorId\",\"000000000000000000000004\"],[\"payload\",[\"organizationId\",\"000000000000000000000001\"],[\"actorId\",\"000000000000000000000004\"],[\"membershipId\",\"000000000000000000000005\"],[\"membershipRevision\",3],[\"validFrom\",1794528060000],[\"expiresAt\",1794614400000],[\"grants\",[[\"000000000000000000000006\",\"lab.worklist.read\",\"00000000000000000000001b\"]]],[\"branchId\",\"000000000000000000000006\"],[\"capability\",\"lab.worklist.read\"]]]",
+      "sha256": "bf067c0a8ee0a1d0650c9b570120998c30cb49c348e01d3a68b52a9d76f8636c"
     }
   ],
   "negativeVectors": [
@@ -475,5 +602,175 @@
       "expected": "LAB_AUTHORITY_UNAVAILABLE"
     }
   ],
-  "notProof": "No signature verification/signing, production serializer, TypeScript/Node, DB, DDL, transaction, driver or runtime executed. Future admitted native vectors required."
+  "notProof": "No signature verification/signing, production serializer, TypeScript/Node, DB, DDL, transaction, driver or runtime executed. Future admitted native vectors required.",
+  "revokedTransitionRevision1": {
+    "finding": "LAB-S2A-SPEC-1",
+    "scope": "Immediate signed D plus immediate prior G only; no new action/schema/index and no unbounded history traversal",
+    "lookup": {
+      "revocationFilter": {
+        "organizationId": {
+          "$eq": "000000000000000000000001"
+        },
+        "decisionKind": {
+          "$eq": "lab_membership_revoked"
+        },
+        "payload.membershipId": {
+          "$eq": "000000000000000000000005"
+        },
+        "payload.membershipRevision": {
+          "$eq": 2
+        }
+      },
+      "priorGrantFilter": {
+        "_id": {
+          "$eq": "000000000000000000000017"
+        },
+        "organizationId": {
+          "$eq": "000000000000000000000001"
+        },
+        "decisionKind": {
+          "$eq": "membership_granted"
+        }
+      },
+      "limit": 2,
+      "requiredRowsEach": 1,
+      "maxTimeMS": 2000,
+      "collation": {
+        "locale": "simple"
+      },
+      "sameSnapshotSessionRequired": true
+    },
+    "states": [
+      {
+        "event": "grant",
+        "membershipId": "000000000000000000000005",
+        "actorId": "000000000000000000000004",
+        "organizationId": "000000000000000000000001",
+        "revision": 1,
+        "state": "active",
+        "validFrom": 1794528000000,
+        "expiresAt": 1794614400000,
+        "grants": [
+          [
+            "000000000000000000000006",
+            "lab.worklist.read",
+            "000000000000000000000017"
+          ]
+        ],
+        "createdAt": 1794528000000,
+        "updatedAt": 1794528000000,
+        "organizationOperationalFence": 2
+      },
+      {
+        "event": "signed_revocation",
+        "membershipId": "000000000000000000000005",
+        "actorId": "000000000000000000000004",
+        "organizationId": "000000000000000000000001",
+        "revision": 2,
+        "state": "revoked",
+        "validFrom": 1794528000000,
+        "expiresAt": 1794614400000,
+        "grants": [
+          [
+            "000000000000000000000006",
+            "lab.worklist.read",
+            "000000000000000000000017"
+          ]
+        ],
+        "createdAt": 1794528000000,
+        "updatedAt": 1794528000000,
+        "organizationOperationalFence": 3,
+        "revocationDecisionId": "000000000000000000000019",
+        "previousGrantDecisionId": "000000000000000000000017",
+        "previousMembershipRevision": 1
+      },
+      {
+        "event": "signed_regrant",
+        "membershipId": "000000000000000000000005",
+        "actorId": "000000000000000000000004",
+        "organizationId": "000000000000000000000001",
+        "revision": 3,
+        "state": "active",
+        "validFrom": 1794528060000,
+        "expiresAt": 1794614400000,
+        "grants": [
+          [
+            "000000000000000000000006",
+            "lab.worklist.read",
+            "00000000000000000000001b"
+          ]
+        ],
+        "createdAt": 1794528000000,
+        "updatedAt": 1794528060000,
+        "organizationOperationalFence": 4
+      }
+    ],
+    "notPersistedFields": "event/organizationOperationalFence/revocationDecisionId/previous* in this vector are explanatory transition evidence, not extra membership schema fields. Only the original membership fields are persisted; revocation is found through the exact bounded lookup.",
+    "historicalEvidence": "Validate both D/G canonical B/signature/decision digest and actual protected evidence file at admitted current root generation; no successful signature is included in these inert data examples.",
+    "negativeVectors": [
+      {
+        "id": "no-revocation",
+        "mutation": "revocation lookup yields zero records while mutable M says revoked2",
+        "expected": "LAB_AUTHORITY_UNAVAILABLE; zero writes"
+      },
+      {
+        "id": "duplicate-revocation",
+        "mutation": "revocation lookup yields two matching records",
+        "expected": "LAB_AUTHORITY_UNAVAILABLE; no first-row selection"
+      },
+      {
+        "id": "old-grant-as-revoked",
+        "mutation": "old grant payload membershipRevision changed1->2",
+        "expected": "LAB_AUTHORITY_UNAVAILABLE; do not relabel history"
+      },
+      {
+        "id": "wrong-subject-member-branch",
+        "mutation": "D/G payload subject/member/retained branch differs from M",
+        "expected": "LAB_AUTHORITY_UNAVAILABLE"
+      },
+      {
+        "id": "wrong-validity",
+        "mutation": "M retained validFrom/expiresAt differs from G snapshot",
+        "expected": "LAB_AUTHORITY_UNAVAILABLE"
+      },
+      {
+        "id": "wrong-prior-grant",
+        "mutation": "D.previousGrantDecisionId differs from M.grants[0].grantDecisionId or G._id",
+        "expected": "LAB_AUTHORITY_UNAVAILABLE"
+      },
+      {
+        "id": "wrong-revision-transition",
+        "mutation": "D.payload.previousMembershipRevision+1!=M.revision or G.payload.membershipRevision!=D.payload.previousMembershipRevision",
+        "expected": "LAB_AUTHORITY_UNAVAILABLE"
+      },
+      {
+        "id": "bad-historical-signature",
+        "mutation": "well-shaped canonical D/G signature fails genuine Ed25519 or root generation/key differs",
+        "expected": "LAB_AUTHORITY_DENIED"
+      },
+      {
+        "id": "future-fence",
+        "mutation": "D committed fence exceeds actual current org fence or prior-grant committed fence>=D fence",
+        "expected": "LAB_AUTHORITY_UNAVAILABLE"
+      },
+      {
+        "id": "old-expired-validity",
+        "mutation": "old G/M expiresAt before current time but was valid at G.createdAt; new grant validity current/admitted",
+        "expected": "nominal usable regrant3; old expiry alone does not deny"
+      },
+      {
+        "id": "new-regrant-cas-loss",
+        "mutation": "after validated D/G snapshot another writer changes current org/member fence/revision",
+        "expected": "LAB_AUTHORITY_CONFLICT and whole transaction rollback"
+      }
+    ]
+  },
+  "revision": {
+    "number": 1,
+    "initialCommit": "53b5d51977adb9231b0bf70dff03da8cc4569e52",
+    "initialVectorsSha256": "e67ec7f6695d8e08eccb0cfa3d57bfe05d780654adb6781e9baa65c824ac34a7",
+    "actualFindingRecord": "output/qa/lab-canonical-authority-contract/S2_A_SPEC_REVIEW.json",
+    "actualFindingId": "LAB-S2A-SPEC-1",
+    "disposition": "DRAFT_AUTHOR_AMENDMENT_PENDING_FRESH_NONAUTHOR_DECISIONS"
+  }
 }
