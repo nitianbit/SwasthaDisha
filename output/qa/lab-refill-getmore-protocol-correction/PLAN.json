@@ -1,0 +1,113 @@
+{
+  "schema": "SD-LAB-REFILL-GETMORE-PROTOCOL-CORRECTION-PLAN-1",
+  "author": "/root/lab_remaining_audit",
+  "status": "DATA_ONLY_PENDING_TWO_ACTUAL_NONAUTHOR_PLAN_DECISIONS",
+  "sourceRoot": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab",
+  "baselineCommit": "19013671fd1f26d4b27758ce1547284fb35e3ce2",
+  "decisionRequired": "APPROVE_IMPLEMENTATION_ONLY",
+  "scope": "Remove one invalid maxTimeMS field from each of two ordinary native catalog getMore callsites; regenerate only the Lab selected-source manifest readiness pair/aggregate. No global replacement, new authority, fixture role or runtime grant.",
+  "sourceAndContractPins": {
+    "src1/modules/organizations/labAuthorityReadiness.ts": "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9",
+    "test/api-runtime/pharmacy-refill/bootstrap.cjs": "e88da4895ab9fdc0390791ccbd1a4491e158bac532154d67d80e6ade1f878a27",
+    "src1/modules/organizations/labAuthoritySourceManifest.json": "08324e39632809158a3b628514287354adbe9e12fae9dce2169026fe1504c9c9",
+    "documentation/planning/implementation/LAB_CANONICAL_AUTHORITY_S2_A_ADDENDUM_DRAFT.md": "dbe337575ff28360bf6a7b57a2c69cf2bdab9a234a2774c893ec1bba36159a57",
+    "documentation/planning/implementation/PHARMACY_REFILL_FOCUSED_VERIFICATION_CONTRACT_DRAFT.md": "f0e5a04afa5d7cf222cf5b2be31c2b44bef107e48228d11ba55fd1ba01b8ed17",
+    "documentation/planning/implementation/BUSINESS_STAFF_AUTHORITY_CONTRACT.md": "69dba46528295f55e184b95e1fb6ea451ee2371254d76eb7ac9fd6573068f9fd"
+  },
+  "primaryProtocolEvidence": {
+    "url": "https://www.mongodb.com/docs/v8.0/reference/command/getmore/",
+    "section": "Command Fields/maxTimeMS; fetched as public source data",
+    "rule": "For ordinary non-tailable cursors omit maxTimeMS from getMore; specify the cumulative server limit on the initial cursor-creating operation. The per-getMore wait override is for tailable awaitData cursors only.",
+    "currentUse": "These paths continue ordinary listCollections/listIndexes cursors, not tailable awaitData. Initial list commands already retain maxTimeMS500 for Lab and1000 for P7.",
+    "limitations": "Server interrupt-point/client-timeout semantics do not provide physical hard cancellation of kernel/commit work. No native command was executed and prior private failure native cause is not captured."
+  },
+  "owningContractAssessment": [
+    {
+      "path": "documentation/planning/implementation/LAB_CANONICAL_AUTHORITY_S2_A_ADDENDUM_DRAFT.md",
+      "line": 100,
+      "sha256": "dbe337575ff28360bf6a7b57a2c69cf2bdab9a234a2774c893ec1bba36159a57",
+      "requirement": "Full real getMore/exact owned cursor cleanup, batch16, percollection64indexrows, cumulative <=1MiB and5seconds; lines98/102 retain same native client/models/session and bounded projected transaction reads.",
+      "assessment": "No exact clause requires invalid maxTimeMS on ordinary getMore. This minimal protocol correction preserves those requirements, so no parent contract edit is required for this plan. No change to valid2000ms ORM reads."
+    },
+    {
+      "path": "documentation/planning/implementation/PHARMACY_REFILL_FOCUSED_VERIFICATION_CONTRACT_DRAFT.md",
+      "lines": [
+        53,
+        59,
+        61
+      ],
+      "sha256": "f0e5a04afa5d7cf222cf5b2be31c2b44bef107e48228d11ba55fd1ba01b8ed17",
+      "requirement": "Same owned native client/session/cursors; <=64catalogrows/256KiB/12commands/5s; existing transport selections/connect/socket/wait bounds and actual due/explain2000ms bounds.",
+      "assessment": "No exact getMore-specific maxTimeMS requirement; initial list maxTimeMS1000 remains. This plan does not change metadata batch16 or case/control counts. All declared command/query/deadline limits remain."
+    }
+  ],
+  "exactEdits": [
+    {
+      "path": "src1/modules/organizations/labAuthorityReadiness.ts",
+      "line": 147,
+      "before": "raw = await command({ getMore: held.id, collection, batchSize: 16, maxTimeMS: 500 });",
+      "after": "raw = await command({ getMore: held.id, collection, batchSize: 16 });",
+      "count": 1
+    },
+    {
+      "path": "test/api-runtime/pharmacy-refill/bootstrap.cjs",
+      "line": 188,
+      "before": "reply=await call({getMore:id,collection,batchSize:16,maxTimeMS:1000});",
+      "after": "reply=await call({getMore:id,collection,batchSize:16});",
+      "count": 1
+    }
+  ],
+  "expectedCandidateSourceHashes": {
+    "src1/modules/organizations/labAuthorityReadiness.ts": {
+      "beforeSha256": "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9",
+      "afterSha256": "f8250e82ea4e116eec30841c53f3902adfd9539ce8ad71c8e2b1ba15be18a3a0",
+      "bytesAfter": 21537
+    },
+    "test/api-runtime/pharmacy-refill/bootstrap.cjs": {
+      "beforeSha256": "e88da4895ab9fdc0390791ccbd1a4491e158bac532154d67d80e6ade1f878a27",
+      "afterSha256": "3692ae98ffd00bf0f465625eefbf9c7ab2aae54247a2b80b4a2984d886996836",
+      "bytesAfter": 33922
+    }
+  },
+  "labGeneratedManifest": {
+    "path": "src1/modules/organizations/labAuthoritySourceManifest.json",
+    "beforeSha256": "08324e39632809158a3b628514287354adbe9e12fae9dce2169026fe1504c9c9",
+    "expectedAfterSha256": "02a15cb78e3e3d1e1aa759775b0c108e0ef29491c29defa70db52539f2eea84d",
+    "pairCount": 13,
+    "selfExcluded": true,
+    "onlyChangedPair": "src1/modules/organizations/labAuthorityReadiness.ts",
+    "beforeAggregateSha256": "9db2f7ea95adcbf7cb8e08713e03da89786ad19d69bd2799774e022d06d6582b",
+    "expectedAfterAggregateSha256": "1888d52bcf2eb92ce7a726733e2fedc0682996354b57bfbc9b4922e4ed14cc4f",
+    "algorithm": "Retain exact sorted13path/hash pairs. Hash actual amended readiness bytes into only its pair, regenerate aggregate SHA256 of compact UTF8 JSON.stringify(files), no newline. Retain every other field/pair/order and existing indent2+newline JSON file encoding. Do not patch expected digest before actual source is final.",
+    "unchangedOther12Pairs": true,
+    "rootImplication": "Accepted protected root writerManifestSha256 must match the new selected-source aggregate. No actual installed root value/custody/generation is known here. Never rewrite/install a protected root, rotate/reissue a key, weaken equality or claim activation automatically. Qualified security/owner release installation for final code remains a separate gate; stale configured manifest must continue fail-closed."
+  },
+  "preserveExactly": [
+    "Lab actual UserModel connection/client/default options, primary/native BSON options and internally owned nontransaction session; root/evidence/identity/provenance and transaction writer behavior unchanged.",
+    "Lab32command bound, 1MiB BSON-reply/logical-observation accounting budget,256total indexrows,64percollection/16batch, five loop iterations,5000ms overall and4500ms acquisition/cleanup reserve, held nativeLong/ns/UUID/index validation and kill/end-session logic untouched. Initial listCollections/listIndexes maxTimeMS500 and issuer/history/projected read maxTimeMS2000 untouched.",
+    "P7 sole client/session promoteLongs:false repair,12commands/64rows/256KiB/5000ms aggregate, owned native IDs/namespaces/metadataCursors/getMore batch16/kill/end-session and initial list maxTimeMS1000 untouched. Node180s/readiness30s/transport/query/case20/control7/resource/permission constraints unchanged.",
+    "All three source files only: two exact onefield removals plus necessary generated Lab data change. No ports/helper/compiler/producer/appbundle/model/index/package/start edits. P7 bootstrap after removal needs future fresh preparation descriptor; do not manually update old artifacts."
+  ],
+  "meaningfulVerificationPending": [
+    "Static source review: both before/after source hashes and exact inverse, only two scoped field removals; all other maxTimeMS literals byte-exact; manifest13actualpairs/aggregate/self-exclusion and whole other12pairs checked. Two actual eligible nonauthor implementation/source decisions required, author excluded.",
+    "Separate admitted native positive proof must force a real nonzero ordinary list/index cursor, observe genuine getMore on same owned native session without maxTimeMS, complete multiple batches/order/cardinality/UUID checks, and exact cursor/session cleanup within unchanged budgets. Restoring old field must be detected by actual protocol behavior if admitted; no fake positive response or uncaptured cause inference.",
+    "P7 current two collections and small frozen index sets ordinarily fit batch16; current planned catalog does not reliably exercise getMore. Record that branch as missing focused verification/NOT_RUN. Any finite real-cursor coverage setup/extra index or batching change needs its own exact fixture contract/source/stage review; none is authorized here and no case/control/resource cap changes follow.",
+    "Lab native-positive proof belongs to the separately qualified owned Lab fixture whose protected-filesystem role admission remains pending. Do not grow this correction into that entire role, invent real issuer/key/evidence facts, or claim source-only removal proves native readiness.",
+    "Fresh source-bound preparation/stage approvals and actual outcome/cleanup evidence remain separate for each affected lane. Existing 36helper units and package AST work prove different boundaries. No retry, install, app, Mongo or Docker invocation is approved by this plan."
+  ],
+  "preservedHistory": {
+    "R13": "Actual packet/source snapshot2c09 and76wholeentries, original9c43/7bsource votes, genuine Claude reviewa16a5645 and both accepted capture/provenance outcomes at1901367 remain immutable historical evidence. Do not repin/rewrite that packet, manifest, review or verdicts after source correction.",
+    "reviewMeaning": "Genuine model source-only approval did not identify this known protocol defect. Authenticity/capture acceptance is not proof of current correctness, native getMore compatibility or owner/runtime readiness.",
+    "otherLanes": "Private-fixture getMore amendment is a separate ownership lane. C1helper/AST/unit/producer work, original stagedsix/archive/failures/receipts all unchanged."
+  },
+  "workflow": [
+    "Two actual independent nonauthor plan decisions before source edits; Root/Milestone can review this Lab-authored plan with related base-source exposure disclosed.",
+    "Implement exact bounded source delta and regenerate actual Lab manifest. Freeze exact patch/inverse/whole-source pins. Two eligible nonauthor source/composition votes exclude actual amendment author and do not fabricate reapproval of original base source.",
+    "Obtain qualified native fixture resources/admission and exact fresh preparation/run votes/results/cleanup separately. Keep incomplete branches and owner/build/clinical/security/client/C2/C3/release/S2B/L2 gates explicit."
+  ],
+  "execution": "ZERO. Inert actual source/contracts/JSON/hash/Git and official Mongo8 documentation reads; only this private plan JSON authored. No source edit, parser/Node/compiler/npm/native BSON/crypto/DB/DDL/Docker/provider/model execution.",
+  "sourceEditApproved": false,
+  "executionPermission": false,
+  "rootOrKeyChangeApproved": false,
+  "moduleCompletion": false
+}

@@ -1,0 +1,21 @@
+{
+  "schema": "SD-LAB-REFILL-GETMORE-ACTUAL-PLAN-DECISIONS-1",
+  "recorder": "/root/lab_remaining_audit",
+  "planSha256": "6c39c54c84048fa9880e4bd1957490a93a71713fa17c7300b1eb9914b1c72939",
+  "decision": "APPROVE_IMPLEMENTATION_ONLY",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "path": "PLAN_STANDARDS_REVIEW.json",
+      "sha256": "2ff8e98ee2e075a78a82afff387b17aef9386ef457e9b31549c5c68f7d23467f"
+    },
+    {
+      "reviewer": "/root/milestone_composition_r9",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "path": "PLAN_SPEC_REVIEW.json",
+      "sha256": "e5a2367e0f1441144e2e859c9596a3a7b1cae283cfa1aeb53e2fd47aa834ba47"
+    }
+  ],
+  "disclosure": "Recorder authored plan and amendment; both actual decisions are separate nonauthor agents. No source selfapproval or executable stage granted."
+}

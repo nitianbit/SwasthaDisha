@@ -1,0 +1,308 @@
+{
+  "schema": "SD-LAB-REFILL-GETMORE-SOURCE-CANDIDATE-1",
+  "author": "/root/lab_remaining_audit",
+  "baselineCommit": "47ceccf441f682a02bc0946a234d8457bd6127ba",
+  "planSha256": "6c39c54c84048fa9880e4bd1957490a93a71713fa17c7300b1eb9914b1c72939",
+  "planDecisionsSha256": "59ca1f5812fe3d34f4bb28a947573aa34eb5f23b11c5054a5348351163414093",
+  "ownedSources": {
+    "src1/modules/organizations/labAuthorityReadiness.ts": {
+      "beforeSha256": "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9",
+      "afterSha256": "f8250e82ea4e116eec30841c53f3902adfd9539ce8ad71c8e2b1ba15be18a3a0",
+      "bytes": 21537
+    },
+    "src1/modules/organizations/labAuthoritySourceManifest.json": {
+      "beforeSha256": "08324e39632809158a3b628514287354adbe9e12fae9dce2169026fe1504c9c9",
+      "afterSha256": "02a15cb78e3e3d1e1aa759775b0c108e0ef29491c29defa70db52539f2eea84d",
+      "bytes": 2462
+    },
+    "test/api-runtime/pharmacy-refill/bootstrap.cjs": {
+      "beforeSha256": "e88da4895ab9fdc0390791ccbd1a4491e158bac532154d67d80e6ade1f878a27",
+      "afterSha256": "3692ae98ffd00bf0f465625eefbf9c7ab2aae54247a2b80b4a2984d886996836",
+      "bytes": 33922
+    }
+  },
+  "exactChanges": [
+    {
+      "path": "src1/modules/organizations/labAuthorityReadiness.ts",
+      "line": 147,
+      "before": "raw = await command({ getMore: held.id, collection, batchSize: 16, maxTimeMS: 500 });",
+      "after": "raw = await command({ getMore: held.id, collection, batchSize: 16 });",
+      "count": 1
+    },
+    {
+      "path": "test/api-runtime/pharmacy-refill/bootstrap.cjs",
+      "line": 188,
+      "before": "reply=await call({getMore:id,collection,batchSize:16,maxTimeMS:1000});",
+      "after": "reply=await call({getMore:id,collection,batchSize:16});",
+      "count": 1
+    }
+  ],
+  "patchSha256": "986be3ba9f08fb7cbc5ef5f4e3ec8eb1dccc5441f838e758eb1ab4e838aa7543",
+  "inversePatchSha256": "cac7ed46c7f9acd2459bd58fd1f184de1a256874649f6ca4a707b0eb22bf35ad",
+  "labManifestBefore": {
+    "schema": "SD-LAB-AUTHORITY-SOURCE-MANIFEST-1",
+    "files": [
+      [
+        "package-lock.json",
+        "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080"
+      ],
+      [
+        "src1/modules/common/utils/indexReadiness.ts",
+        "050ecc993c862638cf4912bb854e04baa5d80241cb124e7831fc3c95a78db5bd"
+      ],
+      [
+        "src1/modules/organizations/labAuthorityProvisioning.ts",
+        "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65"
+      ],
+      [
+        "src1/modules/organizations/labAuthorityReadiness.ts",
+        "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9"
+      ],
+      [
+        "src1/modules/organizations/labAuthorityRoot.ts",
+        "15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7"
+      ],
+      [
+        "src1/modules/organizations/model/index.ts",
+        "d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a"
+      ],
+      [
+        "src1/modules/organizations/model/lab.ts",
+        "42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c"
+      ],
+      [
+        "src1/modules/organizations/rules.ts",
+        "c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a"
+      ],
+      [
+        "src1/modules/organizations/types/index.ts",
+        "98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670"
+      ],
+      [
+        "src1/modules/user/model/index.ts",
+        "8ab08c867008d9788fd2105b6ac840794fcd5d8b2c518de500119aa2536cf5c4"
+      ],
+      [
+        "src1/modules/user/types/index.ts",
+        "91d4b48e4749d113733f471d64093c7269dffcf13bf48577c8dbc2edce7d5b71"
+      ],
+      [
+        "src1/operators/labAuthority.ts",
+        "5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02"
+      ],
+      [
+        "tsconfig.json",
+        "5555c293a75c85c3f89a539bd2b1be6db1953ffa746b43836929cdc20b9355c3"
+      ]
+    ],
+    "aggregateSha256": "9db2f7ea95adcbf7cb8e08713e03da89786ad19d69bd2799774e022d06d6582b",
+    "aggregateEncoding": "UTF8(JSON.stringify(files)); sorted exact path/hash pairs, no newline",
+    "scope": "SELECTED_SOURCE_BINDING_ONLY_NOT_RUNNING_BUILD_NATIVE_ABI_OR_ALL_WRITER_COVERAGE",
+    "excludedSelf": "src1/modules/organizations/labAuthoritySourceManifest.json",
+    "nativeProfile": {
+      "mongoose": "6.13.8",
+      "mongodb": "4.17.2",
+      "bson": "4.7.2",
+      "catalog": "LOCAL_DIAGNOSTIC_MONGODB_8_INCLUDE_INDEX_BUILD_INFO"
+    },
+    "activation": "No real root/evidence installation, production topology/build/index/all-writer/client/owner/release acceptance is supplied."
+  },
+  "labManifestAfter": {
+    "schema": "SD-LAB-AUTHORITY-SOURCE-MANIFEST-1",
+    "files": [
+      [
+        "package-lock.json",
+        "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080"
+      ],
+      [
+        "src1/modules/common/utils/indexReadiness.ts",
+        "050ecc993c862638cf4912bb854e04baa5d80241cb124e7831fc3c95a78db5bd"
+      ],
+      [
+        "src1/modules/organizations/labAuthorityProvisioning.ts",
+        "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65"
+      ],
+      [
+        "src1/modules/organizations/labAuthorityReadiness.ts",
+        "f8250e82ea4e116eec30841c53f3902adfd9539ce8ad71c8e2b1ba15be18a3a0"
+      ],
+      [
+        "src1/modules/organizations/labAuthorityRoot.ts",
+        "15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7"
+      ],
+      [
+        "src1/modules/organizations/model/index.ts",
+        "d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a"
+      ],
+      [
+        "src1/modules/organizations/model/lab.ts",
+        "42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c"
+      ],
+      [
+        "src1/modules/organizations/rules.ts",
+        "c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a"
+      ],
+      [
+        "src1/modules/organizations/types/index.ts",
+        "98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670"
+      ],
+      [
+        "src1/modules/user/model/index.ts",
+        "8ab08c867008d9788fd2105b6ac840794fcd5d8b2c518de500119aa2536cf5c4"
+      ],
+      [
+        "src1/modules/user/types/index.ts",
+        "91d4b48e4749d113733f471d64093c7269dffcf13bf48577c8dbc2edce7d5b71"
+      ],
+      [
+        "src1/operators/labAuthority.ts",
+        "5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02"
+      ],
+      [
+        "tsconfig.json",
+        "5555c293a75c85c3f89a539bd2b1be6db1953ffa746b43836929cdc20b9355c3"
+      ]
+    ],
+    "aggregateSha256": "1888d52bcf2eb92ce7a726733e2fedc0682996354b57bfbc9b4922e4ed14cc4f",
+    "aggregateEncoding": "UTF8(JSON.stringify(files)); sorted exact path/hash pairs, no newline",
+    "scope": "SELECTED_SOURCE_BINDING_ONLY_NOT_RUNNING_BUILD_NATIVE_ABI_OR_ALL_WRITER_COVERAGE",
+    "excludedSelf": "src1/modules/organizations/labAuthoritySourceManifest.json",
+    "nativeProfile": {
+      "mongoose": "6.13.8",
+      "mongodb": "4.17.2",
+      "bson": "4.7.2",
+      "catalog": "LOCAL_DIAGNOSTIC_MONGODB_8_INCLUDE_INDEX_BUILD_INFO"
+    },
+    "activation": "No real root/evidence installation, production topology/build/index/all-writer/client/owner/release acceptance is supplied."
+  },
+  "remainingTwelveManifestPairsUnchanged": true,
+  "p7ProducerDerivation": "Actual current prepare.py OWN10+CONTEXT18+ports.sourcePins19 =47 distinct inputs, not runtime map.",
+  "p7ProducerInputsBefore47": {
+    "test/api-runtime/pharmacy-refill/README.md": "74f0e5fd440beeaca62f6e96c0b018dcc0cbb4efaf52ba3ff7c6c9b631003e95",
+    "test/api-runtime/pharmacy-refill/profile.json": "15e8b72e9e3ab4f359df4f90f33f0582a20129ac2723064e800263ac1ced2ae2",
+    "test/api-runtime/pharmacy-refill/package-plan.json": "41bcf92c7913eec65f529eb911f4d1417e8bbb2c27a200ce284d74816ef07453",
+    "test/api-runtime/pharmacy-refill/ports-manifest.json": "7434fa1c735ac00abb3e959f65856437a6d7b72ae7e5a4c9c9b89c08c3ebfdd9",
+    "test/api-runtime/pharmacy-refill/prepare.py": "f3b5fac74a195909ecfdcbfc5471a7b086d55353d4fdfa11e72ebc8d68013aa3",
+    "test/api-runtime/pharmacy-refill/compile.cjs": "ab930e1daa97053de1cb2f1c23bdc53980d21f193333a642a365d6eb2c0b859e",
+    "test/api-runtime/pharmacy-refill/bootstrap.cjs": "e88da4895ab9fdc0390791ccbd1a4491e158bac532154d67d80e6ade1f878a27",
+    "test/api-runtime/pharmacy-refill/scenario.cjs": "d36c7cd5ff4fe0b09791658038b4ef618a707bd7010d1e8a6d7aab2bc1e40c7e",
+    "test/api-runtime/pharmacy-refill/launch.mjs": "563e2da1602dd6dc5e8ef9b415405cffabb537c09c0a62e7979343eb54aaea9c",
+    "test/api-runtime/pharmacy-refill/unit.mjs": "dab0b9e625a3ad703f0b05d931cbd3d4f2eedda06dc60c53b9999c55c9840c03",
+    "test/api-runtime/disabled-express-template.cjs": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779",
+    "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+    "test/api-runtime/private-documents/profile.json": "f21a759901d705f1e950fc8c194d988757ada73d22cba65b139cbae06fbcd197",
+    "test/api-runtime/customer-contact/profile.json": "8901145dbb08ee98e489c9241db8e32cc90f6485aa3f154c7aea73be8f2f5075",
+    "test/api-runtime/launch.mjs": "9c6d1c805de4c50542667b90532219c54666b8a764ee5672055f641938b099ed",
+    "test/api-runtime/launch.test.mjs": "9e9316041db0d3a7977a2e78130b9f1d26f331bb51a6c069327257a0c6c719be",
+    "test/api-runtime/platform.mjs": "3decce77cdc98038713818a79f49742df9ef8ff58803e931ae1a44c1ffd1e76c",
+    "test/api-runtime/platform.test.mjs": "4974277cd312e275436a11367a548fb3c44616d0cedf168254d4314e4ab971d1",
+    "test/api-runtime/unit.mjs": "253d2b6121752017044e9e814a837f05ba097051a55d0e64b36b8b1f85b03bb6",
+    "test/api-runtime/scenario/prepare.py": "39b4085370a09a34069b9f1c4f45cfd8fa38a3a1f0e380abcef9c469a5add598",
+    "test/application/app-bundle.mjs": "63a5e15779fd942b9ff9e1c3ccaa45d4d347387f196555e2a1b8998477c7ecfc",
+    "package-lock.json": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080",
+    "output/qa/customer-enrollment-focused/TOOL_INPUTS.json": "3729235cc997a657b533bd70daf6ce710e8c6b51b4452119f98be508173bf085",
+    "documentation/planning/implementation/PHARMACY_REFILL_FOCUSED_VERIFICATION_CONTRACT_DRAFT.md": "f0e5a04afa5d7cf222cf5b2be31c2b44bef107e48228d11ba55fd1ba01b8ed17",
+    "output/qa/pharmacy-refill-focused/contract/SOURCE_INPUTS.json": "516de95edc5aed54ed823e50ed6ab52b4a7c7eeb43da0517f99337b85bbfd1dd",
+    "output/qa/pharmacy-refill-focused/contract/DECISIONS.json": "00aeb8f9953395da226eb6d0bdb706c88d0c8945848062629fa1c64208d3018d",
+    "output/qa/pharmacy-refill-focused/contract/MAIN_CONTEXT_RECONCILIATION.json": "cefa195515ede638b77a699f6a3852824449fd1329057de5c9803265cf0434a4",
+    "output/qa/pharmacy-refill-focused/shared/INTERFACE.json": "21e4c7792bd7d8cb39a7b1e1bd9df15f84d4e1c66417396588d823edb875a1ff",
+    "src1/modules/pharmacySubscriptions/routes/index.ts": "08dcc367a86f6ffc1e675e8a010fcc87ffb5ff5329fda4c29fc0c04cca0c834c",
+    "src1/modules/pharmacySubscriptions/controller/index.ts": "7bb21a7ec9aaf8693fb2438a5800f7308d2978353c5ed1c95c0f46e60278a9de",
+    "src1/modules/pharmacySubscriptions/services/index.ts": "3b22b92d88790c521616302d7827023e4ffa16eb25989a6b443152d0af0f9171",
+    "src1/modules/pharmacySubscriptions/repository/index.ts": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+    "src1/modules/pharmacySubscriptions/validation/index.ts": "1e4dcc64b270c9c8ee242d78af13f3736f2c063de6f8c223822aca7e87de91e4",
+    "src1/modules/pharmacySubscriptions/types/index.ts": "aec8ae4c8d1728f7539e68543e6e97a178b21b8cccc426ed9e4d43f85860fc6e",
+    "src1/modules/pharmacySubscriptions/model/index.ts": "568196be447d9f99cbfbb2fb81169abedbc93f777b7fc3dbf6302a19e925fcc8",
+    "src1/modules/pharmacies/model/index.ts": "beda95d89a9773a8d5851dd923c363c83123a573f7391836dec69b13e5cfa177",
+    "src1/modules/pharmacies/types/index.ts": "e43d4c6e5af5ebc9a21e3a35d41e475e92ab7509961cdafe6bfc3043af0b24f0",
+    "src1/modules/middleware/auth.ts": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+    "src1/modules/middleware/errorHandler.ts": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51",
+    "src1/modules/common/middleware/validation.ts": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef",
+    "src1/modules/common/utils/asyncHandler.ts": "59fe49db58678ef81242a654f7457f74b067b2583a3f8dc70918b61f50228bd9",
+    "src1/modules/common/utils/mongoErrors.ts": "147a5687832d03c654acd97e0f9e0d9c6c0c7ab51a2841f0eb2260235229d43d",
+    "src1/modules/common/repository/BaseRepository.ts": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+    "src1/modules/common/repository/index.ts": "6e13d4d0ced3ad40772c5b2c35034544fe49f0d7b715cf0309f954be7ab5cb77",
+    "src1/modules/common/types/index.ts": "63ad3821027150d368e993903e954b4a80b776ff223caf322c104008239d4cbd",
+    "src1/modules/common/types/error.ts": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+    "src1/modules/common/types/response.ts": "44c5dbcf38ea117eaa13f3a715143ea147a7abf25c3491b61817e67b5f3d6f93"
+  },
+  "p7ProducerInputsAfter47": {
+    "test/api-runtime/pharmacy-refill/README.md": "74f0e5fd440beeaca62f6e96c0b018dcc0cbb4efaf52ba3ff7c6c9b631003e95",
+    "test/api-runtime/pharmacy-refill/profile.json": "15e8b72e9e3ab4f359df4f90f33f0582a20129ac2723064e800263ac1ced2ae2",
+    "test/api-runtime/pharmacy-refill/package-plan.json": "41bcf92c7913eec65f529eb911f4d1417e8bbb2c27a200ce284d74816ef07453",
+    "test/api-runtime/pharmacy-refill/ports-manifest.json": "7434fa1c735ac00abb3e959f65856437a6d7b72ae7e5a4c9c9b89c08c3ebfdd9",
+    "test/api-runtime/pharmacy-refill/prepare.py": "f3b5fac74a195909ecfdcbfc5471a7b086d55353d4fdfa11e72ebc8d68013aa3",
+    "test/api-runtime/pharmacy-refill/compile.cjs": "ab930e1daa97053de1cb2f1c23bdc53980d21f193333a642a365d6eb2c0b859e",
+    "test/api-runtime/pharmacy-refill/bootstrap.cjs": "3692ae98ffd00bf0f465625eefbf9c7ab2aae54247a2b80b4a2984d886996836",
+    "test/api-runtime/pharmacy-refill/scenario.cjs": "d36c7cd5ff4fe0b09791658038b4ef618a707bd7010d1e8a6d7aab2bc1e40c7e",
+    "test/api-runtime/pharmacy-refill/launch.mjs": "563e2da1602dd6dc5e8ef9b415405cffabb537c09c0a62e7979343eb54aaea9c",
+    "test/api-runtime/pharmacy-refill/unit.mjs": "dab0b9e625a3ad703f0b05d931cbd3d4f2eedda06dc60c53b9999c55c9840c03",
+    "test/api-runtime/disabled-express-template.cjs": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779",
+    "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+    "test/api-runtime/private-documents/profile.json": "f21a759901d705f1e950fc8c194d988757ada73d22cba65b139cbae06fbcd197",
+    "test/api-runtime/customer-contact/profile.json": "8901145dbb08ee98e489c9241db8e32cc90f6485aa3f154c7aea73be8f2f5075",
+    "test/api-runtime/launch.mjs": "9c6d1c805de4c50542667b90532219c54666b8a764ee5672055f641938b099ed",
+    "test/api-runtime/launch.test.mjs": "9e9316041db0d3a7977a2e78130b9f1d26f331bb51a6c069327257a0c6c719be",
+    "test/api-runtime/platform.mjs": "3decce77cdc98038713818a79f49742df9ef8ff58803e931ae1a44c1ffd1e76c",
+    "test/api-runtime/platform.test.mjs": "4974277cd312e275436a11367a548fb3c44616d0cedf168254d4314e4ab971d1",
+    "test/api-runtime/unit.mjs": "253d2b6121752017044e9e814a837f05ba097051a55d0e64b36b8b1f85b03bb6",
+    "test/api-runtime/scenario/prepare.py": "39b4085370a09a34069b9f1c4f45cfd8fa38a3a1f0e380abcef9c469a5add598",
+    "test/application/app-bundle.mjs": "63a5e15779fd942b9ff9e1c3ccaa45d4d347387f196555e2a1b8998477c7ecfc",
+    "package-lock.json": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080",
+    "output/qa/customer-enrollment-focused/TOOL_INPUTS.json": "3729235cc997a657b533bd70daf6ce710e8c6b51b4452119f98be508173bf085",
+    "documentation/planning/implementation/PHARMACY_REFILL_FOCUSED_VERIFICATION_CONTRACT_DRAFT.md": "f0e5a04afa5d7cf222cf5b2be31c2b44bef107e48228d11ba55fd1ba01b8ed17",
+    "output/qa/pharmacy-refill-focused/contract/SOURCE_INPUTS.json": "516de95edc5aed54ed823e50ed6ab52b4a7c7eeb43da0517f99337b85bbfd1dd",
+    "output/qa/pharmacy-refill-focused/contract/DECISIONS.json": "00aeb8f9953395da226eb6d0bdb706c88d0c8945848062629fa1c64208d3018d",
+    "output/qa/pharmacy-refill-focused/contract/MAIN_CONTEXT_RECONCILIATION.json": "cefa195515ede638b77a699f6a3852824449fd1329057de5c9803265cf0434a4",
+    "output/qa/pharmacy-refill-focused/shared/INTERFACE.json": "21e4c7792bd7d8cb39a7b1e1bd9df15f84d4e1c66417396588d823edb875a1ff",
+    "src1/modules/pharmacySubscriptions/routes/index.ts": "08dcc367a86f6ffc1e675e8a010fcc87ffb5ff5329fda4c29fc0c04cca0c834c",
+    "src1/modules/pharmacySubscriptions/controller/index.ts": "7bb21a7ec9aaf8693fb2438a5800f7308d2978353c5ed1c95c0f46e60278a9de",
+    "src1/modules/pharmacySubscriptions/services/index.ts": "3b22b92d88790c521616302d7827023e4ffa16eb25989a6b443152d0af0f9171",
+    "src1/modules/pharmacySubscriptions/repository/index.ts": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+    "src1/modules/pharmacySubscriptions/validation/index.ts": "1e4dcc64b270c9c8ee242d78af13f3736f2c063de6f8c223822aca7e87de91e4",
+    "src1/modules/pharmacySubscriptions/types/index.ts": "aec8ae4c8d1728f7539e68543e6e97a178b21b8cccc426ed9e4d43f85860fc6e",
+    "src1/modules/pharmacySubscriptions/model/index.ts": "568196be447d9f99cbfbb2fb81169abedbc93f777b7fc3dbf6302a19e925fcc8",
+    "src1/modules/pharmacies/model/index.ts": "beda95d89a9773a8d5851dd923c363c83123a573f7391836dec69b13e5cfa177",
+    "src1/modules/pharmacies/types/index.ts": "e43d4c6e5af5ebc9a21e3a35d41e475e92ab7509961cdafe6bfc3043af0b24f0",
+    "src1/modules/middleware/auth.ts": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+    "src1/modules/middleware/errorHandler.ts": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51",
+    "src1/modules/common/middleware/validation.ts": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef",
+    "src1/modules/common/utils/asyncHandler.ts": "59fe49db58678ef81242a654f7457f74b067b2583a3f8dc70918b61f50228bd9",
+    "src1/modules/common/utils/mongoErrors.ts": "147a5687832d03c654acd97e0f9e0d9c6c0c7ab51a2841f0eb2260235229d43d",
+    "src1/modules/common/repository/BaseRepository.ts": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+    "src1/modules/common/repository/index.ts": "6e13d4d0ced3ad40772c5b2c35034544fe49f0d7b715cf0309f954be7ab5cb77",
+    "src1/modules/common/types/index.ts": "63ad3821027150d368e993903e954b4a80b776ff223caf322c104008239d4cbd",
+    "src1/modules/common/types/error.ts": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+    "src1/modules/common/types/response.ts": "44c5dbcf38ea117eaa13f3a715143ea147a7abf25c3491b61817e67b5f3d6f93"
+  },
+  "onlyP7ProducerHashChanged": "test/api-runtime/pharmacy-refill/bootstrap.cjs",
+  "otherFortySixP7ProducerInputsUnchanged": true,
+  "sharedUnitEightSourcePinsUnchanged": {
+    "test/api-runtime/disabled-express-template.cjs": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779",
+    "test/api-runtime/disabled-express-template.test.mjs": "f0ec1cde80b48687fbc3853ab4b3d36420bb2af0281158291d05a51db1cf293d",
+    "test/api-runtime/platform.mjs": "3decce77cdc98038713818a79f49742df9ef8ff58803e931ae1a44c1ffd1e76c",
+    "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+    "test/api-runtime/private-documents/profile.json": "f21a759901d705f1e950fc8c194d988757ada73d22cba65b139cbae06fbcd197",
+    "test/api-runtime/customer-contact/profile.json": "8901145dbb08ee98e489c9241db8e32cc90f6485aa3f154c7aea73be8f2f5075",
+    "test/api-runtime/pharmacy-refill/profile.json": "15e8b72e9e3ab4f359df4f90f33f0582a20129ac2723064e800263ac1ced2ae2",
+    "test/application/app-bundle.mjs": "63a5e15779fd942b9ff9e1c3ccaa45d4d347387f196555e2a1b8998477c7ecfc"
+  },
+  "immutableR13ArtifactPins": {
+    "output/qa/customer-pharmacy-lab-claude-review/revision-13/packet.json": "c0798e9b975e62288a241a62795d85cafc102b424a6fc44133157a3e8795c6d0",
+    "output/qa/customer-pharmacy-lab-claude-review/revision-13/manifest.json": "b0e6f2f8a943c9500f2b0038c6c120ef9e983fb8122efafd3fc77cf45e276a61",
+    "output/qa/customer-pharmacy-lab-claude-review/revision-13/CLAUDE_REVIEW.md": "a16a5645f455eb528d9c62dabd393a0604778f47c55e95b6efc63c4db8f7f1e4",
+    "output/qa/customer-pharmacy-lab-claude-review/revision-13/operator/OUTCOME_DECISIONS_13.json": "c8a8ef451c003bccfabdc492ade934b00a62e4e0da7139073775fbc3a77c7227"
+  },
+  "authorStaticChecks": [
+    "Both exact before spans occur once; only invalid ordinary-getMore field removed. Exact reverse restores each complete original code file. Initial list maxTimeMS500/1000 and all other code bytes unchanged.",
+    "Regenerated actual readiness hash in exact13sorted pairs and aggregate from final actual source bytes; other12pairs/order/allmanifestmetadata unchanged. Whole generated JSON SHA02a15cb7 and aggregate1888d52b match approved prediction.",
+    "All47actualP7producer inputs baselineGit/current verified; only bootstrap hash changes.69C1/36helperunit source effects are outside scope; all8helperunit source pins explicitly unchanged.",
+    "Original R13packet/manifest/review/bothactualoutcome aggregate unchanged byte-exact; historical Claude reviewed earlier source, not this amendment."
+  ],
+  "meaningfulProofStatus": "NOT_RUN: no parser/Node/TypeScript/nativeMongo/BSON/DB/Docker/provider/model execution. P7 nonzero realgetMore remains unforced with current small catalog; no fake positive/extraDDL/batch/count/cap change. Lab real positive requires separate qualified protected-filesystem role/fixture.",
+  "activation": "No actual protectedroot/key/evidence install/rotation/weakening. Future root writerManifestSha256 must bind final1888 aggregate under owner/security release gate; stale root stays fail-closed. No operational code deployment or all-writer/build provenance supplied.",
+  "sourceDecisions": "PENDING_TWO_ACTUAL_ELIGIBLE_NONAUTHOR_SOURCE_AND_COMPOSITION_REVIEWS; amendment author excluded. Prior Lab base authorship disclosed separately.",
+  "stagePermission": false,
+  "runtimePermission": false,
+  "preservation": "Only3assignedsource+boundedQA edited; original stagedsix/archive, unrelated untracked files, priorP7fullhook reviews/47names/receipts/failures/R13historical snapshot and all application/owner/release gates preserved."
+}

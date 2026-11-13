@@ -1,0 +1,31 @@
+{
+  "schema": "SD-LAB-REFILL-GETMORE-PLAN-STANDARDS-1",
+  "reviewer": "/root",
+  "decision": "APPROVE_IMPLEMENTATION_ONLY",
+  "planSha256": "6c39c54c84048fa9880e4bd1957490a93a71713fa17c7300b1eb9914b1c72939",
+  "scope": "Independent technical review of Lab-authored minimal two callsite protocol correction plus necessary generated source manifest; not runtime or owner approval.",
+  "findings": [],
+  "personallyVerified": {
+    "actualSourceAndContractPins": 6,
+    "exactOneFieldRemovalAtEachOfTwoSites": true,
+    "wholeBeforeAfterInverse": true,
+    "initial500And1000ServerLimitsRemain": true,
+    "allOtherNativeClientSessionCursorDeadlinesCapsAndSourceBytesUnchanged": true,
+    "actualThirteenSortedPairsBefore": true,
+    "onlyReadinessPairChanges": true,
+    "newAggregateSha256": "1888d52bcf2eb92ce7a726733e2fedc0682996354b57bfbc9b4922e4ed14cc4f",
+    "newGeneratedDataSha256": "02a15cb78e3e3d1e1aa759775b0c108e0ef29491c29defa70db52539f2eea84d",
+    "owningContractsDoNotRequireInvalidGetMoreField": true
+  },
+  "primaryEvidence": "https://www.mongodb.com/docs/v8.0/reference/command/getmore/",
+  "conditions": [
+    "Other actual nonauthor plan vote before source edits; exact three files only",
+    "Generate actual final13pairaggregate from amended committed source bytes; no inventedhash or automatic protectedroot/key installation",
+    "Two eligible nonauthor exact source/composition votes after amendment; disclose old source authorship and do not selfapprove new source",
+    "P7 actual nonzero metadata cursor branch NOT_RUN; new fixture setup/count/batch orDDL requires own review",
+    "Lab nativeproof waits separately qualified protectedFSrole and nativefixture; no expansion here",
+    "Immutable acceptedR13snapshot/packet/review/capture remains unchanged and doesnotcover futurebytes"
+  ],
+  "execution": "Inert source/contract/JSON/hash/inverse checks and primarysource reading only; no source edits or Node/parser/compiler/packages/native/app/DB/Docker/model execution.",
+  "allExecutionAndRootKeyActionsApproved": false
+}

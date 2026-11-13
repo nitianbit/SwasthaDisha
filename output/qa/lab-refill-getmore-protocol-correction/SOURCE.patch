@@ -1,0 +1,48 @@
+diff --git a/src1/modules/organizations/labAuthorityReadiness.ts b/src1/modules/organizations/labAuthorityReadiness.ts
+index 7b5ece75f72f04066b77240402bc8e3174dfe70e..c0ab7ae0106312342c05526d2ad606c1ddeac060 100644
+--- a/src1/modules/organizations/labAuthorityReadiness.ts
++++ b/src1/modules/organizations/labAuthorityReadiness.ts
+@@ -144,7 +144,7 @@ export async function observeLabAuthorityReadiness(): Promise<LabAuthoritySnapsh
+       catch { uncertain = true; return labFailure(); }
+       const r = copyReply(raw); transport(r); const c = r.cursor as Record<string, unknown>; const batch = c[first ? 'firstBatch' : 'nextBatch']; labCheck(Array.isArray(batch) && batch.length <= 16 && (batch.length > 0 || !held)); rows = [...rows, ...batch]; labCheck(rows.length <= 64); checkpoint();
+       if (!held) return rows;
+-      raw = await command({ getMore: held.id, collection, batchSize: 16, maxTimeMS: 500 }); first = false;
++      raw = await command({ getMore: held.id, collection, batchSize: 16 }); first = false;
+     }
+     return labFailure();
+   };
+diff --git a/src1/modules/organizations/labAuthoritySourceManifest.json b/src1/modules/organizations/labAuthoritySourceManifest.json
+index 4bec5dca4258df0d7ce70c42fed012dbff47d5ea..4c499cc66ff81e16e121eb930411a7b394d18af4 100644
+--- a/src1/modules/organizations/labAuthoritySourceManifest.json
++++ b/src1/modules/organizations/labAuthoritySourceManifest.json
+@@ -15,7 +15,7 @@
+     ],
+     [
+       "src1/modules/organizations/labAuthorityReadiness.ts",
+-      "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9"
++      "f8250e82ea4e116eec30841c53f3902adfd9539ce8ad71c8e2b1ba15be18a3a0"
+     ],
+     [
+       "src1/modules/organizations/labAuthorityRoot.ts",
+@@ -54,7 +54,7 @@
+       "5555c293a75c85c3f89a539bd2b1be6db1953ffa746b43836929cdc20b9355c3"
+     ]
+   ],
+-  "aggregateSha256": "9db2f7ea95adcbf7cb8e08713e03da89786ad19d69bd2799774e022d06d6582b",
++  "aggregateSha256": "1888d52bcf2eb92ce7a726733e2fedc0682996354b57bfbc9b4922e4ed14cc4f",
+   "aggregateEncoding": "UTF8(JSON.stringify(files)); sorted exact path/hash pairs, no newline",
+   "scope": "SELECTED_SOURCE_BINDING_ONLY_NOT_RUNNING_BUILD_NATIVE_ABI_OR_ALL_WRITER_COVERAGE",
+   "excludedSelf": "src1/modules/organizations/labAuthoritySourceManifest.json",
+diff --git a/test/api-runtime/pharmacy-refill/bootstrap.cjs b/test/api-runtime/pharmacy-refill/bootstrap.cjs
+index ea10fe4efb45ec175c4a2e447bb272b62624268a..01ca6b7643245792317e008c34bbd7dbe11eb517 100644
+--- a/test/api-runtime/pharmacy-refill/bootstrap.cjs
++++ b/test/api-runtime/pharmacy-refill/bootstrap.cjs
+@@ -185,7 +185,7 @@ async function main(){
+   }
+   async function catalog(){const start=performance.now(),session=admittedClient.startSession({causalConsistency:false});let bytes=0,count=0,calls=0;const owned=[];
+     const call=async command=>{need(++calls<=12&&performance.now()-start<5000,'CATALOG_BOUND');const result=await fixedConnection.db.command(command,{session,promoteLongs:false});bytes+=native.BSON.calculateObjectSize(result);need(bytes<=262144,'CATALOG_BOUND');return result;};
+-    const rows=async(command,allowed)=>{let reply=await call(command),result=[];for(;;){need(reply.cursor&&typeof reply.cursor.ns==='string'&&reply.cursor.ns.startsWith(manifest.database+'.'),'CATALOG_NAMESPACE');const collection=reply.cursor.ns.slice(manifest.database.length+1);need(allowed.includes(collection),'CATALOG_NAMESPACE');const batch=reply.cursor.firstBatch??reply.cursor.nextBatch;need(Array.isArray(batch),'CATALOG_BATCH');result.push(...batch);count+=batch.length;need(count<=64,'CATALOG_BOUND');const id=reply.cursor.id;need(id&&typeof id.toString==='function','CATALOG_CURSOR');if(id.toString()==='0')break;metadataCursors.set(id.toString(),collection);owned.push([id,collection]);reply=await call({getMore:id,collection,batchSize:16,maxTimeMS:1000});metadataCursors.delete(id.toString());}return result;};
++    const rows=async(command,allowed)=>{let reply=await call(command),result=[];for(;;){need(reply.cursor&&typeof reply.cursor.ns==='string'&&reply.cursor.ns.startsWith(manifest.database+'.'),'CATALOG_NAMESPACE');const collection=reply.cursor.ns.slice(manifest.database.length+1);need(allowed.includes(collection),'CATALOG_NAMESPACE');const batch=reply.cursor.firstBatch??reply.cursor.nextBatch;need(Array.isArray(batch),'CATALOG_BATCH');result.push(...batch);count+=batch.length;need(count<=64,'CATALOG_BOUND');const id=reply.cursor.id;need(id&&typeof id.toString==='function','CATALOG_CURSOR');if(id.toString()==='0')break;metadataCursors.set(id.toString(),collection);owned.push([id,collection]);reply=await call({getMore:id,collection,batchSize:16});metadataCursors.delete(id.toString());}return result;};
+     try{const collections=await rows({listCollections:1,filter:{},nameOnly:false,cursor:{batchSize:16},maxTimeMS:1000},['$cmd.listCollections']);need(collections.length===2&&new Set(collections.map(row=>row.name)).size===2&&collections.every(row=>row.type==='collection'&&names.has(row.name)&&row.info?.uuid instanceof native.Binary&&row.info.uuid.sub_type===4&&row.info.uuid.position===16&&row.info.uuid.buffer.length===16&&plain(row.options)&&(!row.options.collation||row.options.collation.locale==='simple')),'CATALOG_COLLECTION');const indexes={};
+       for(const name of names){const raw=await rows({listIndexes:name,includeIndexBuildInfo:true,cursor:{batchSize:16},maxTimeMS:1000},[name]);need(raw.every(row=>exact(row,['spec'])&&plain(row.spec)&&Object.keys(row.spec).every(key=>['v','key','name','unique','collation','ns'].includes(key))&&row.spec.v===2&&typeof row.spec.name==='string'&&plain(row.spec.key)&&Object.values(row.spec.key).every(value=>value===1||value===-1)&&(!row.spec.collation||row.spec.collation.locale==='simple')),'CATALOG_FINISHED_INDEX');const specs=raw.map(row=>row.spec);for(const expected of ports.indexes.filter(i=>i.collection===name)){const found=specs.filter(i=>i.name===expected.name);need(found.length===1&&same(found[0].key,expected.key)&&(expected.name==='_id_'?found[0].unique!==false:expected.unique?found[0].unique===true:found[0].unique!==true),'CATALOG_INDEX');}need(!specs.some(i=>same(i.key,{pharmacyId:1,isActive:1,nextRefillDate:1,_id:1})),'NO_CAPACITY_INDEX_CLAIM');indexes[name]=specs;}return {collections,indexes};
+     }finally{for(const [id,collection]of owned)if(metadataCursors.has(id.toString())){await call({killCursors:collection,cursors:[id]});metadataCursors.delete(id.toString());}await session.endSession();need(session.hasEnded&&metadataCursors.size===0&&performance.now()-start<5000,'CATALOG_CLEANUP');}

@@ -144,7 +144,7 @@ export async function observeLabAuthorityReadiness(): Promise<LabAuthoritySnapsh
       catch { uncertain = true; return labFailure(); }
       const r = copyReply(raw); transport(r); const c = r.cursor as Record<string, unknown>; const batch = c[first ? 'firstBatch' : 'nextBatch']; labCheck(Array.isArray(batch) && batch.length <= 16 && (batch.length > 0 || !held)); rows = [...rows, ...batch]; labCheck(rows.length <= 64); checkpoint();
       if (!held) return rows;
-      raw = await command({ getMore: held.id, collection, batchSize: 16, maxTimeMS: 500 }); first = false;
+      raw = await command({ getMore: held.id, collection, batchSize: 16 }); first = false;
     }
     return labFailure();
   };

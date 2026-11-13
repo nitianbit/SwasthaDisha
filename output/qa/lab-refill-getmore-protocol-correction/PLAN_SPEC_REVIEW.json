@@ -1,0 +1,50 @@
+{
+  "schema": "SD-LAB-REFILL-GETMORE-INDEPENDENT-PLAN-REVIEW-1",
+  "reviewer": "/root/milestone_composition_r9",
+  "axis": "Spec",
+  "planAuthor": "/root/lab_remaining_audit",
+  "planSha256": "6c39c54c84048fa9880e4bd1957490a93a71713fa17c7300b1eb9914b1c72939",
+  "decision": "APPROVE_IMPLEMENTATION_ONLY",
+  "findings": [],
+  "authorshipDisclosure": "Reviewer authored original LabS2A production/readiness/manifest and underlyingP7production, but authoredneither thisLab-authored correctionplan nor CustomerP7fixturebootstrap. This is independent newplan scope only, not independentreapproval of ownbaseproduction or anunseenfutureamendment. Futureimplementation source votes must excludeits actualauthor.",
+  "exactScope": [
+    "Remove ONLYmaxTimeMS500 from exactLabgetMore andONLYmaxTimeMS1000 from exactP7getMore; retain initialcataloglimits500/1000 andallotherliterals/guards.",
+    "RegenerateONLYLabmanifestreadinesspair and13pairaggregate/wholedatahash. No rootinstallation/key/generation override, othercontract/source/helper/ports/compiler/producer/package/grant/role changes."
+  ],
+  "actualInertChecks": [
+    "Completeplan/owningcontractrequirements and currentreadercontinuation/initiator/clientdeadline/cursorcleanup source reviewed. All6declaredsource/contractpins matchactualcurrentbytes.",
+    "Bothbeforeliterals count1; exactinert replacements/reverses verified withpredictedLabf8250e82 andP73692ae98 bytehashes/counts21537/33922. No actualsource written.",
+    "Existingmanifest13sortedpairs/selfexcluded/compactJSONaggregate verified. Replacingonly actualnewreadinesshash yields expectedaggregate1888d52b/wholemanifest02a15cb7; remaining12pairs/order/metadata unchanged. This is data prediction, not a source approval.",
+    "MongoDB8officialgetMore rule/accepteddriver spec independentlyopened in precedingprivateplan review applies tothesameordinarylistCollections/listIndexes continuations. Initialcommands retain cumulative serverbudget; client/socket/pool/monotonic/session/heldnativecursor/Long/UUID/namespace/kill/end logic untouched.",
+    "Parentcontracts requireboundedrealpagination/session/metadata butdo notrequireillegalcontinuationmaxTimeMS; correctiondoesnotneedcontractpolicyrevision. No change tovalid2000msdue/ORM/read/explainlimits."
+  ],
+  "primarySupport": [
+    {
+      "url": "https://www.mongodb.com/docs/v8.0/reference/command/getmore/",
+      "claim": "Non-tailable continuation omitsmaxTimeMS; limit belongs on creatingoperation, with interrupt-point limitations."
+    },
+    {
+      "url": "https://specifications.readthedocs.io/en/latest/find_getmore_killcursors_commands/find_getmore_killcursors_commands/",
+      "claim": "Driverprotocol distinguishes ordinarycursors fromtailableawaitDatawaittime override."
+    }
+  ],
+  "retainedMeaningfulVerification": [
+    "Lab actualownedfilesystem-role/nativefixture is pending; forcegenuinenonzerocursor/samesession/getMorefieldabsence/multiplebatches/cleanupunderunchangedbudgets beforeclaimingreadiness. No seedednominaldecision or fakeREADYreply.",
+    "P7current2smallcatalogs/batch16 do not reliablyexercisecontinuation. Thatbranch remainsNOT_RUN/missingfocusednativeproof; anyfiniteextrareadinessindex/batchsetup requiresseparateexactfixturecontract/source/stage review. No fabricatedcursor/case/control/capchange implied.",
+    "Actual sourcecandidate/wholepatch/inverse/twoeligibleindependentsourcevotes andfreshsourceboundpreparation/run proposals/outcomes remainmandatory. Knownprivatefailurecause staysUNKNOWN; thiscorrectsdocumentedprotocolshape only."
+  ],
+  "rootAndHistoryGates": [
+    "Newgeneratedaggregate makes a staleexternalprotectedroot failclosed. Realroot/key/evidenceinstall/custody/security/owner/build/allwriteractivation remainsseparate; neverautomaticallyrewrite root or weakensourceequality.",
+    "AcceptedgenuineR13historicalpacket/76wholeentries/source/review/capture/outcomes stayimmutable. Laterfix isnot retrospectivelyreviewedbyClaude; no repin/rewrittenapproval.",
+    "Existingstagedsix/archive/allfailedreceipts/artifacts/privategetMorelane/sharedunit/ASTwork untouched; no crossrepo replacement or unrelatedframework."
+  ],
+  "futureConditions": [
+    "Otheractualeligibleexactplan implementationvote beforeauthoring. Authorfreezeonlytwofieldremovals+generateddata andownQA; reviewerofunseensource mustbeactualnonauthor.",
+    "Nativeproof/source/tool/descriptor/currentHEAD/newreceiptUUIDonce/ownedresources/cleanup and2actualoutcomesperstage separatelyadmitted. No parser/Node/compiler/npm/nativeBSON/crypto/DB/DDL/app/Docker/provider/model operation orautomaticretry approvednow.",
+    "S2B/worklist/reportrelease/clinical/client/C2/C3/rootadoption/owner/release/finalintegration gates retained."
+  ],
+  "reviewerExecution": "Inert source/contracts/JSON/hash/text transforms only; priorofficialprimarywebreads reused. No source edits/executableops.",
+  "sourceApproval": false,
+  "executionPermission": false,
+  "rootOrKeyChangePermission": false
+}
