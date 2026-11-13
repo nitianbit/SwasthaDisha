@@ -1,0 +1,10 @@
+CLAUDE_REVIEW_ACK nonce=be6ddf30-74ad-472a-887d-4018bdd2174b
+session=a321d4d7-574f-4cc8-8528-aea6d72002fa
+sourceCommit=2c09f09858f569f9f0081c6792604dc337fb118a
+challenge=msg_1794533678318_d1qenoyo (SD-CLAUDE-LAB-REFILL-CHALLENGE-13), the only one of 13 peeked messages with this session/snapshot
+packetSha256=c0798e9b975e62288a241a62795d85cafc102b424a6fc44133157a3e8795c6d0 (taken from the challenge; NOT independently hashed, no hashing tool)
+contractBundleSha256=2771d786a23886d5537427c1ead6ffed1be69e4a93c063812033a9c81f109740 (equals challenge contractSha256)
+sourceMap: 16/16 source and 4/4 contract path-to-hash pairs in the packet are string-identical to the challenge.
+route: this session's local Ruflo MCP tools (one mcp__ruflo__team_inbox peek, then mcp__ruflo__team_send) from a Claude Agent SDK/CLI session; not a webview. Whether this CLI is the VSCode-bundled build cannot be observed from inside the session.
+model: claude-opus-5-5 (from this session's environment declaration); requested effort xhigh (not max); effective effort UNPROVEN.
+The substantive review follows as the second and final send.

@@ -1,0 +1,92 @@
+{
+  "schema": "SD-R13-ACTUAL-ROOT-STREAM-REVIEW-1",
+  "reviewer": "/root",
+  "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+  "execSession": 89175,
+  "sessionId": "a321d4d7-574f-4cc8-8528-aea6d72002fa",
+  "frames": 1394,
+  "frameTypes": {
+    "system": 1377,
+    "assistant": 7,
+    "rate_limit_event": 5,
+    "user": 4,
+    "result": 1
+  },
+  "allFramesCompleteNewlineTerminated": true,
+  "inputBytes": 985337,
+  "stdoutBytes": 1111597,
+  "stderrBytes": 0,
+  "actualModelInitAllSevenAssistantAndUniqueUsage": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "actualClaudeExtensionACK": false,
+  "route": "Existing VSCodeextension-bundled CLI verified by pinned executable/argv/ownedprocess chain, plus scopedRuflo peek/ACK/review. No webview/hostedworker/delegation claim.",
+  "actualToolCalls": [
+    {
+      "id": "toolu_01WqhJq6AsVYAYuJcKvNrXHi",
+      "name": "mcp__ruflo__team_inbox"
+    },
+    {
+      "id": "toolu_01MTZcuv3wVHFWG5ht7m4Afj",
+      "name": "mcp__ruflo__team_send"
+    },
+    {
+      "id": "toolu_016eLA6icvYz8hBbKqkNQJV6",
+      "name": "mcp__ruflo__team_send"
+    }
+  ],
+  "threeSuccessfulCorrelatedResults": true,
+  "uniqueActualChallengeMessageId": "msg_1794533678318_d1qenoyo",
+  "ackMessageId": "msg_1794535434058_vzq156s4",
+  "reviewMessageId": "msg_1794535490629_20vdzo8m",
+  "freshActualMailboxBytesEqualSuccessfulToolArgumentsAndResults": true,
+  "finalAssistantAndResultTextByteIdenticalToReviewMessage": true,
+  "reviewBytes": 16560,
+  "reviewSha256": "a16a5645f455eb528d9c62dabd393a0604778f47c55e95b6efc63c4db8f7f1e4",
+  "ackSha256": "7997478819f932505b1b90bc75c556a285f9d2176ac3ac8963fdc9043be16483",
+  "cliExitCode": 0,
+  "launcherExitCode": 0,
+  "durationMs": 1797932,
+  "wrapperElapsedSeconds": 1800.344,
+  "rawCaptureState": "CAPTURED_PENDING_ROOT_STREAM_REVIEW",
+  "rawReviewAcceptedFieldUnchanged": false,
+  "firstFailure": null,
+  "firstObservationFailure": null,
+  "cleanupErrors": [],
+  "signals": [],
+  "allCapturedProcessesAndGroupAbsentInRawState": true,
+  "freshExactPidAbsence": [
+    44219,
+    44231,
+    44246,
+    44253
+  ],
+  "freshExactProcessGroupAbsent": 44231,
+  "freshAbsenceMethod": "Actual ps PID/PPID/PGID readback; no process matched exactcapturedIDs/group",
+  "frozenSourceRuntimeAndAllR12PreservationPinsRehashed": true,
+  "sourceContext": "76wholeentries=54currentGit+10BEFOREGit+12publicnative members;16subjectfiles. Packet supplied whole, token fit/file understanding not proved by bytecount or model selfreport.",
+  "genuineSourceVerdicts": {
+    "R13-LAB": "APPROVE_SOURCE_ONLY",
+    "R13-P7": "APPROVE_SOURCE_ONLY",
+    "R13-COMPOSITION": "APPROVE_SOURCE_ONLY"
+  },
+  "actualNativeOutputLimitContinuation": {
+    "count": 1,
+    "textBytes": 185,
+    "textSha256": "0c9631554ef67bd3a5a733f32227a96f62c7538bad803bfb331318e978af769c",
+    "meaning": "Nativeclient reported output token limit and instructed continuation. Same one CLIprocess/session, observedfive turns beloweightcap; finalterminalsuccess. No Root extra modelinvocation/toolgrant/retry; not a guarantee that review found every defect."
+  },
+  "modelInformationalNotes": [
+    "LAB-N1 transport/diagnosticprofile activationblocker",
+    "LAB-N2 scope/keyquarantine preventsrevoke percontract; lifecycle followup",
+    "LAB-N3 unknowncommit conservatively reported",
+    "LAB-N4 Linuxprotectedpaths required",
+    "LAB-N5 UUIDlistIndexes/nativeNS proofNOT_RUN",
+    "P7-N1 owner-due capacityindex absent and boundedexplain pending",
+    "P7-N2 reconcileForOrder stale pause date dispatcher contract",
+    "COMP-N1 deployedmanifest/custody requiresreleaseevidence"
+  ],
+  "knownIndependentFollowupAfterSourceSnapshot": "Root independently found forbidden maxTimeMS on nonawaitData getMore in current privatefixture (freshfailedrun localizedPRIVATE_CATALOG_READY), P7fixture and LabReadiness source. OfficialMongo8 getMore documentation supports protocoldefect; actualnativecause notcaptured. R13 didnotflagthis; captureacceptance/source-onlyverdict doesnotclose it. R13selectedsource untouched whilelive. Separate exact correction/reviews/nativeverification required.",
+  "acceptance": "PENDING_TWO_ACTUAL_INDEPENDENT_NONAUTHOR_OUTCOME_REVIEWS; Rootoperator cannot selfapprove capture/module/runtime/owner/release",
+  "privateThinkingExported": false
+}
