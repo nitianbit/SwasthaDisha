@@ -1,0 +1,132 @@
+{
+  "schema": "SD-R13-INDEPENDENT-STANDARDS-ACTUAL-OUTCOME-REVIEW-1",
+  "reviewer": "/root/lab_remaining_audit",
+  "axis": "Standards",
+  "operatorExcluded": "/root",
+  "decision": "ACCEPT_GENUINE_R13_SOURCE_REVIEW_AND_CAPTURE_ONLY",
+  "scope": "AUTHENTIC CAPTURE/MODEL/TOOL/MAILBOX/FINAL-BYTES/OWNED-PROCESS-CLEANUP PROVENANCE ONLY; NO PRODUCTION SOURCE OR MODULE SELF-APPROVAL",
+  "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+  "sessionId": "a321d4d7-574f-4cc8-8528-aea6d72002fa",
+  "packetSha256": "c0798e9b975e62288a241a62795d85cafc102b424a6fc44133157a3e8795c6d0",
+  "packetBytes": 985337,
+  "recipeSha256": "17c249895e3481cf0226b83f3b30a2dc256fd02fd08c244af917e62ade281cb0",
+  "rootObservationSha256": "c5c236d06d784c030ac11a17f54f838973fa97b8a8327f92b790361ac691bb58",
+  "rawStreamSha256": "224eda4e695fa1f99df2dde1efa4e59a4fe5d4375da9b34ae4e5a4edea2c5f0f",
+  "rawStateSha256": "6c443e5d238904c059c098b30dfe8e23b43e733b58c3194c7f0ba08d9ad49505",
+  "onceSha256": "4bf2d2771f3a5bed12e0fa5a90d460e0e49c4237d74944eef691dba53147067b",
+  "liveApprovalSha256": "fb36c6542c2a3da5058c00853b3cf5c7eae04e20629605f6d9a64f8e627e5ba8",
+  "reviewSha256": "a16a5645f455eb528d9c62dabd393a0604778f47c55e95b6efc63c4db8f7f1e4",
+  "reviewBytes": 16560,
+  "ackSha256": "7997478819f932505b1b90bc75c556a285f9d2176ac3ac8963fdc9043be16483",
+  "findings": [],
+  "actualCapture": {
+    "execSession": 89175,
+    "frames": 1394,
+    "frameTypes": {
+      "system": 1377,
+      "assistant": 7,
+      "rate_limit_event": 5,
+      "user": 4,
+      "result": 1
+    },
+    "allCompleteNewlineJSON": true,
+    "stdoutBytes": 1111597,
+    "stderrBytes": 0,
+    "inputBytesWritten": 985337,
+    "actualModelInitAllSevenAssistantAndSoleUsage": "claude-opus-5-5",
+    "requestedEffort": "xhigh",
+    "effectiveEffort": "UNPROVEN",
+    "numTurns": 5,
+    "maxTurns": 8,
+    "finalResult": "success",
+    "resultIsError": false,
+    "durationMs": 1797932,
+    "wrapperElapsedSeconds": 1800.344,
+    "childExit": 0,
+    "rawState": "CAPTURED_PENDING_ROOT_STREAM_REVIEW",
+    "rawReviewAcceptedRemainsFalse": true,
+    "firstFailure": null,
+    "firstObservationFailure": null,
+    "cleanupErrors": [],
+    "signals": []
+  },
+  "toolCorrelation": [
+    {
+      "id": "toolu_01WqhJq6AsVYAYuJcKvNrXHi",
+      "name": "mcp__ruflo__team_inbox",
+      "success": true
+    },
+    {
+      "id": "toolu_01MTZcuv3wVHFWG5ht7m4Afj",
+      "name": "mcp__ruflo__team_send",
+      "success": true,
+      "messageId": "msg_1794535434058_vzq156s4"
+    },
+    {
+      "id": "toolu_016eLA6icvYz8hBbKqkNQJV6",
+      "name": "mcp__ruflo__team_send",
+      "success": true,
+      "messageId": "msg_1794535490629_20vdzo8m"
+    }
+  ],
+  "challengeMessageId": "msg_1794533678318_d1qenoyo",
+  "nativeContinuation": {
+    "count": 1,
+    "bytes": 185,
+    "sha256": "0c9631554ef67bd3a5a733f32227a96f62c7538bad803bfb331318e978af769c",
+    "isSynthetic": true,
+    "classification": "Actual native-client output-token-limit continuation in same CLI/session. No new Root launch or extra tools observed; five turns within eight bound. It is retained, not hidden or described as a clean no-limit review.",
+    "understandingLimit": "Full input/capture byte integrity does not independently prove tokenizer fit, complete file understanding or that the model found every defect."
+  },
+  "freshIndependentProcessReadback": {
+    "pids": [
+      44219,
+      44231,
+      44246,
+      44253
+    ],
+    "processGroup": 44231,
+    "exactPidQueryExit": 1,
+    "exactGroupQueryExit": 1,
+    "bothStdoutEmpty": true,
+    "bothStderrEmpty": true,
+    "method": "Actual fresh /bin/ps exactPID pid/ppid/pgid and /usr/bin/pgrep exactPGID, read-only. First sandbox metadata denial was not treated as absence; authorized metadata escalation succeeded. No signal/retry/process launch by reviewer."
+  },
+  "actualIndependentChecks": [
+    "Read and parsed all1394 complete raw JSON frames; inspected only public protocol/model/tool/result metadata and final public review. Thinking blocks were skipped for output and never exported/printed. Init plus all7 assistant models and sole final usage key match actual claude-opus-5-5; actual5turns/permission denials empty/final completed success.",
+    "Exactly3 observed tool uses and3 matching successful results. First scoped inbox peek found exactlyone matching session challenge; its full parsed challenge equals frozen file including nonce/snapshot/source16/contract4/packet. Two sends have exact scoped team/from/to and actual message IDs. Fresh actual Root mailbox-peek artifact contains unique same ACK/review bodies/IDs, byte-identical to successful tool inputs/results. No extra Claude tool use.",
+    "Final assistant text and final result text equal exact review send and persisted review16560 bytes without adding/removing a trailing newline. ACK file equals exact ACK tool text and contains nonce/session/source/packet. Read full public review: three SOURCE_ONLY verdicts and8 notes, no runtime or module/owner acceptance.",
+    "Actual synthetic user-text continuation is exactly185bytes/hash0c963155 and occurs within same complete session stream; all four user frames are three tool results plus this native continuation. No hidden extra Root retry inferred. Effective effort remains unproven and native VSCode webview ACK false; genuine route is existing bundled CLI plus pinned local Ruflo.",
+    "Actual600 single-link same-user state/transcript/stderr/once/live receipt and700 private directory checked. Once binds consumed-before-client exactsession/packet; live schema13 receipt binds current argv/environment and the two actual eligible preexecution reviewer names. Raw reviewAccepted false is unchanged. Output/fullinput/caps, actual process-chain identities, no firstFailure/signals/cleanup errors and raw groupEmpty/absence reconcile.",
+    "All sourceFreeze own/prepared/recipe/packet bindings rehashed.76 complete packet entries revalidated:54 current physical plus exact2c09 snapshot Git,10 original BEFORE Git and12 native public tar members. Three native cached tars streamed SHA256/SHA512 against root-lock integrity; native content matches packet. Five executable/runtime pins streamed; no execution.",
+    "All34 recorded R12 preservation artifacts including private stream/state retain exact hashes, plus original prior7. Existing R10 launcher/cleanup fault is not upgraded or removed. No source/context from own later C1 hooks is part of R13.",
+    "Prelaunch schema12 rejected receipt archive72008b8a retained; current receipt differs only exact schema13 field. Actual reviewed supervisor validates receipt in load before reserving once/outputs or client start, supporting recorded preallocation failure. Same original scope stayed unconsumed at that failure; subsequent accepted capture is bound to the one consumed claim.",
+    "Root reports its later inspector newline-expectation assertion failed before writes and was corrected without a model rerun. Independent current verification uses exact actual tool/final/file bytes and does not invent a second client attempt."
+  ],
+  "sourceVerdictsReportedNotAdoptedAsCurrentCorrectness": {
+    "R13-LAB": "APPROVE_SOURCE_ONLY",
+    "R13-P7": "APPROVE_SOURCE_ONLY",
+    "R13-COMPOSITION": "APPROVE_SOURCE_ONLY",
+    "notes": [
+      "LAB-N1 diagnostic transport/activation blocker",
+      "LAB-N2 revoke/key-quarantine lifecycle",
+      "LAB-N3 conservative unknown commit",
+      "LAB-N4 Linux protected paths",
+      "LAB-N5 UUID/index/native evidence NOT_RUN",
+      "P7-N1 absent capacity index/explain",
+      "P7-N2 reconcile stale pause follow-up",
+      "COMP-N1 deployed manifest/custody release facts"
+    ]
+  },
+  "knownOpenProtocolIssue": "Root independently reports forbidden maxTimeMS on ordinary non-awaitData getMore in LabReadiness, P7 fixture and private fixture; R13 did not identify it. This genuine capture acceptance cannot close that source defect, prove it caused a native failure, or replace separate exact correction/source reviews/native verification. Frozen selected source remains untouched until both outcome votes and subsequent correction authority.",
+  "remainingGates": [
+    "Root must retain both actual independent outcome decisions and separately dispose each review note and known material source gap. This reviewer supplies no owner/source-runtime/module acceptance.",
+    "C2 deployment/build/start/adoption, C3/actual native BSON/crypto/protected root/evidence/metadata/transaction/HTTP/race/rollback/cleanup, qualified clinical/security/finance/client/key custody/index/restore/lifecycle/S2B/L2/P7 dispatcher/capacity/release gates remain.",
+    "Customer-contact future hooks/fullflow are outside R13. Earlier F1HIGH/F5-1MEDIUM/R10-F2-2 remain; corporate/HR/hospital expansion and final cross-module campaign stay deferred.",
+    "No model/auth/client/Ruflo send/application/Node/compiler/native/DB/Docker/provider execution or source mutation by reviewer. Only exact authorized read-only process metadata and inert file/Git/JSON/hash review."
+  ],
+  "privateThinkingExported": false,
+  "nativeWebviewACK": false,
+  "reviewerSourceSelfApproval": false,
+  "onlyReviewerRecordWritten": true
+}

@@ -1,0 +1,137 @@
+{
+  "schema": "SD-R13-ACTUAL-SPEC-OUTCOME-REVIEW-1",
+  "reviewer": "/root/customer_remaining_audit",
+  "decision": "ACCEPT_GENUINE_R13_SOURCE_REVIEW_AND_CAPTURE_ONLY",
+  "scope": "Independent NONAUTHOR operator/capture provenance outcome only; Root prepared/operated, Claude authored review. Reviewer authored P7 verification namespace and previously internally reviewed P7 production/design; related exposure disclosed. No own source approval or re-review of production149/76 claimed.",
+  "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+  "sessionId": "a321d4d7-574f-4cc8-8528-aea6d72002fa",
+  "packetSha256": "c0798e9b975e62288a241a62795d85cafc102b424a6fc44133157a3e8795c6d0",
+  "recipeSha256": "17c249895e3481cf0226b83f3b30a2dc256fd02fd08c244af917e62ade281cb0",
+  "supervisorSha256": "9cd33ca93e79b8a42f9eff48c3aabcd7413b4f2caf09702f7385d5abf15de2ec",
+  "sourceFreezeSha256": "d2474b20d16c7baa669669da3d1af5aee5ef6bc9130faebef371c3d7927c5b27",
+  "rootActualRecordSha256": "c5c236d06d784c030ac11a17f54f838973fa97b8a8327f92b790361ac691bb58",
+  "reviewSha256": "a16a5645f455eb528d9c62dabd393a0604778f47c55e95b6efc63c4db8f7f1e4",
+  "reviewBytes": 16560,
+  "reconciliation": {
+    "frames": 1394,
+    "frameTypes": {
+      "system": 1377,
+      "assistant": 7,
+      "rate_limit_event": 5,
+      "user": 4,
+      "result": 1
+    },
+    "sessionId": "a321d4d7-574f-4cc8-8528-aea6d72002fa",
+    "actualModel": "claude-opus-5-5",
+    "assistantBlocks": 7,
+    "uniqueAssistantMessages": 5,
+    "turns": 5,
+    "toolIds": [
+      "toolu_01WqhJq6AsVYAYuJcKvNrXHi",
+      "toolu_01MTZcuv3wVHFWG5ht7m4Afj",
+      "toolu_016eLA6icvYz8hBbKqkNQJV6"
+    ],
+    "challengeMessageId": "msg_1794533678318_d1qenoyo",
+    "sendMessageIds": [
+      "msg_1794535434058_vzq156s4",
+      "msg_1794535490629_20vdzo8m"
+    ],
+    "reviewSha256": "a16a5645f455eb528d9c62dabd393a0604778f47c55e95b6efc63c4db8f7f1e4",
+    "reviewBytes": 16560,
+    "ackSha256": "7997478819f932505b1b90bc75c556a285f9d2176ac3ac8963fdc9043be16483",
+    "origins": {
+      "git": 54,
+      "git-history": 10,
+      "pinned-public-npm-tar": 12
+    },
+    "source54FreshMatches": true,
+    "prior34FreshMatches": true,
+    "runtime5FreshMatches": true,
+    "ownFreezePinsFreshMatches": true,
+    "rawTranscriptSha256": "224eda4e695fa1f99df2dde1efa4e59a4fe5d4375da9b34ae4e5a4edea2c5f0f",
+    "rawStateSha256": "6c443e5d238904c059c098b30dfe8e23b43e733b58c3194c7f0ba08d9ad49505",
+    "onceSha256": "4bf2d2771f3a5bed12e0fa5a90d460e0e49c4237d74944eef691dba53147067b",
+    "privateOwnershipModesVerified": true,
+    "originalApprovalOnlySchemaCorrectionVerified": true,
+    "syntheticNativeContinuationCount": 1,
+    "noThinkingExported": true
+  },
+  "actualModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "actualClaudeExtensionACK": false,
+  "route": "Existing pinned VSCode-extension-bundled CLI argv/process chain + existing scoped local Ruflo; no nativewebview or hostedworkers claim.",
+  "rawCapture": {
+    "status": "CAPTURED_PENDING_ROOT_STREAM_REVIEW",
+    "reviewAccepted": false,
+    "exitCode": 0,
+    "firstFailure": null,
+    "firstObservationFailure": null,
+    "signals": [],
+    "cleanupErrors": [],
+    "elapsedSeconds": 1800.344,
+    "inputBytesWritten": 985337,
+    "outputBytes": {
+      "stderr": 0,
+      "stdout": 1111597
+    },
+    "eof": "1394 complete JSON frames, terminal newline, exactlyone successful finalresult; no discarded partialframes",
+    "ownership": "private0700 directory; regular singlelink sameUID0600 transcript/state/stderr/once/liveapproval personallychecked"
+  },
+  "actualMailboxCorrelation": "Personally parsed all complete frames without exporting thinking. Exactlyone peek=true inbox result has13messages and exactlyone matching actual challenge/session/source/maps/nonce. Two send inputs/results and fresh Rootpeek storedmessages match entiremessage objects and exact ACK/review bytes. Finalassistant and finalresult both equal public16560B review. All3 tool_use IDs have exactlyone successful tool_result and no extra tools.",
+  "freshProcessReadback": {
+    "method": "Read-only /bin/ps -axo pid=,ppid=,pgid=,comm= via sandbox-approved inspection; independently filtered exactIDs andgroup; noprocess mutation",
+    "exactPids": [
+      44219,
+      44231,
+      44246,
+      44253
+    ],
+    "exactProcessGroup": 44231,
+    "matches": [],
+    "allAbsent": true,
+    "rawStateAbsentAlsoVerified": true
+  },
+  "prelaunchCorrection": {
+    "record": "operator/ROOT_PRELAUNCH_CORRECTION_13.json",
+    "recordSha256": "2a987ab0ccc35fd8b4ac82c2568819fb70675320a95bc8c5990b93ffe005904f",
+    "rejectedArchiveSha256": "72008b8af255ae847427d51de08f4069a7d6a242cecada7ce9afd9559803aba9",
+    "correctedApprovalSha256": "fb36c6542c2a3da5058c00853b3cf5c7eae04e20629605f6d9a64f8e627e5ba8",
+    "independentlyVerified": "Rejected and corrected receipts differ ONLY schema12\u219213. Supervisor load/approval_check precedes PrivateFiles/Native allocation. Actual Rootnote reports APPROVAL_REJECTED before claim/private/client; one consumed current claim binds finalactualsession. Preserve prelaunch failure; not a consumed-model retry or second invocation grant."
+  },
+  "actualNativeContinuation": {
+    "count": 1,
+    "textBytes": 185,
+    "textSha256": "0c9631554ef67bd3a5a733f32227a96f62c7538bad803bfb331318e978af769c",
+    "provenance": "Native synthetic user continuation inside same complete rawstream/session after output-token-limit, no extra Rootinvocation. Finalsuccessfulresult5turns below frozen8. Not erased or mislabeled an entirely uninterrupted modelturn."
+  },
+  "preservedClaudeVerdicts": {
+    "R13-LAB": "APPROVE_SOURCE_ONLY",
+    "R13-P7": "APPROVE_SOURCE_ONLY",
+    "R13-COMPOSITION": "APPROVE_SOURCE_ONLY"
+  },
+  "preservedClaudeNonblockingNotes": [
+    "LAB-N1 exact diagnostictransport activationblocker",
+    "LAB-N2 revoke/key-scope lifecycle coupling",
+    "LAB-N3 conservative unknowncommit",
+    "LAB-N4 Linuxprotectedpaths requirement",
+    "LAB-N5 UUID/listIndexes nativeproof NOT_RUN",
+    "P7-N1 capacityindex/explain pending",
+    "P7-N2 reconcile stalepausedate dispatcherfollowup",
+    "COMP-N1 deploymanifest/custody externalreleaseevidence"
+  ],
+  "knownIndependentOpenDefect": "Root independently identified forbidden maxTimeMS on nonawaitData getMore in LabReadiness and private/P7 fixture catalog paths after frozen snapshot. Claude did not flag it. This acceptance preserves authentic capture/limitedsourceverdict ONLY and does not close this known protocol defect or infer that it caused the private failedrun. Exact correction + two eligible reviews + actualnativeverification remain required.",
+  "limits": [
+    "No guarantee packetbytecount/selfreported fullreading proves contextfit, completeunderstanding or defectabsence. Model hashstatements compare suppliedstrings only; reviewer independently rehashed source54/Gitbefore10/packet76 wholecontent/five runtimepins/34priorR12files and all frozenownfiles. Native12wholecontent remains bound to prior independentlyreviewed publictar provenance; no nativepackageevaluation occurred.",
+    "Raw state deliberately remains CAPTURED_PENDING_ROOT_STREAM_REVIEW/reviewAccepted=false; this separate independent decision does not mutate controller evidence into PASS.",
+    "No application/parser/compiler/crypto/Mongoose/BSON/nativeMongo/Joi/HTTP/race/rollback/explain/provider/runtime result or whole businessmodule completion follows from this source review.",
+    "No selfapproval of ownP7fixture hooks, no general sourceapproval of currenthead/newcandidate or owner/security/clinical/finance/production/release acceptance.",
+    "All Claude-noted blockers, C2/C3/start/compatibility/transport/keycustody/MFA/all-writer/restore/lifecycle/reauthorization/S2B/L2/F1HIGH/F5-1MEDIUM/R10-F2-2/capacity and futurefocusedverification remain open as applicable.",
+    "Privatecatalog failure progress/nativecause remains as actualboundedfailure evidence, never accepted domaincasecount. Customercontact fullflow not reviewed byR13.",
+    "Corporate/HR/hospital expansion and finalcrossmodule campaign remain deferred; eightweektarget notreset bythisreceipt.",
+    "PriorR12all34files and priorR10wrapperfault remain preserved; R13capture doesnot repair or overwrite priorhistory. Originalstagedsix/archive untouched."
+  ],
+  "findings": [],
+  "reviewerExecution": "Inert Python JSON/hash/text/Git and one read-onlyps inspection only; no model/toolbus/mailbox-drain/auth/client/application/DB/Docker/provider action; no private thinking exported.",
+  "sourceOperations": false
+}

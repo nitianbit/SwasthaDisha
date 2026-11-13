@@ -1,0 +1,37 @@
+{
+  "schema": "SD-R13-ACTUAL-OUTCOME-DECISIONS-1",
+  "recorder": "/root",
+  "sourceSnapshot": "2c09f09858f569f9f0081c6792604dc337fb118a",
+  "reviewSha256": "a16a5645f455eb528d9c62dabd393a0604778f47c55e95b6efc63c4db8f7f1e4",
+  "actualRootObservationSha256": "c5c236d06d784c030ac11a17f54f838973fa97b8a8327f92b790361ac691bb58",
+  "reviews": [
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "decision": "ACCEPT_GENUINE_R13_SOURCE_REVIEW_AND_CAPTURE_ONLY",
+      "path": "output/qa/customer-pharmacy-lab-claude-review/revision-13/operator/STANDARDS_OUTCOME_REVIEW_13.json",
+      "sha256": "ca472b4ad2ba98e2b85c8f1a6dcc20747708e60439b85a13dfb37b4a7d1f9d56"
+    },
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "decision": "ACCEPT_GENUINE_R13_SOURCE_REVIEW_AND_CAPTURE_ONLY",
+      "path": "output/qa/customer-pharmacy-lab-claude-review/revision-13/operator/SPEC_OUTCOME_REVIEW_13.json",
+      "sha256": "fcc1e01f7d388fa569c52c152013010c3e05f3adfd6ae4c42dda4410c63d8d20"
+    }
+  ],
+  "decision": "ACCEPT_GENUINE_R13_SOURCE_REVIEW_AND_CAPTURE_ONLY",
+  "observedModel": "claude-opus-5-5",
+  "requestedEffort": "xhigh",
+  "effectiveEffort": "UNPROVEN",
+  "nativeWebviewAck": false,
+  "route": "Pinned existingVSCodebundledCLI and Ruflo; one1394frame completedcapture/three successful correlated mailboxcalls; all exact ACK/review/final bytes and process cleanup independentlyreconciled",
+  "observedOutputLimitContinuation": 1,
+  "fiveTurnsWithinReviewedEight": true,
+  "actualSourceVerdicts": {
+    "R13-LAB": "APPROVE_SOURCE_ONLY",
+    "R13-P7": "APPROVE_SOURCE_ONLY",
+    "R13-COMPOSITION": "APPROVE_SOURCE_ONLY"
+  },
+  "sourceSnapshotFreeze": "Actual invocation and both actual outcome reviews rehashed current54source pins,76packetentries and preservedR12. This acceptedhistorical snapshot is now frozen in Git/packet. Later separately reviewed source amendments need new evidence; do not modify/rebind this packet/capture or claim approval for laterbytes.",
+  "knownOpenFollowup": "Independent nonawaitData getMore maxTimeMS protocol defect remains OPEN in privatefixture/P7fixture/LabReadiness. Claude didnotflagit. This genuine review/provenance acceptance cannot substitute for nativeverification or close the defect.",
+  "limits": "Source/capture only; no runtime/module/clinical/finance/security/owner/C2/C3/deployment/release/finalintegration acceptance. No hostedworkers or private thinking exported."
+}
