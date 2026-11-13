@@ -1,5 +1,8 @@
 # Packet: booking payment-retry integrity (split from P2, 13 Nov 2026)
 
+**Status: implemented on `m0/booking-payment-retry`; Codex approved it in review round 4 (msg_1794560892867).** The design is in `src1/modules/common/utils/bookingWalletFunding.ts`. Each booking keeps one record of the money it holds: wallet total, card captures (each applied once or returned), a closed flag and a revision counter. Funding, capture recording and the cancellation refund each change that record together with the wallet ledger, in one transaction. Tests: `test/booking-payment/retry-integrity.integration.ts` (26 checks).
+**Remaining known limit:** an external booking cancelled between the payment pre-check and lab-provider fulfilment can still be booked with the provider. The money is returned in that case.
+
 Owner decision: these issues already existed before P2 and are fixed in their own packet. P2 keeps the atomic wallet ledger (`WalletRepository.postEntry` / `debitUpTo`) and one-time credit keys. It also keeps the funding-slot key on booking wallet debits (`booking_wallet:<id>:<link at retry start>`), so atomic debits never take more than the old absolute writes did when two retries of the same step run at once (Codex round 6). Apart from that, booking payment retries behave as they do on the main branch.
 
 Found by Codex reviews of P2 (rounds 3–5); the reproductions are in those messages in the Ruflo `claude-reviewer` mailbox (msg_1794554896906, msg_1794555234314, msg_1794555806176).

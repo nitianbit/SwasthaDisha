@@ -1,4 +1,6 @@
 import { BookingRepository } from '@/modules/bookings/repository';
+import BookingModel from '@/modules/bookings/model';
+import { fundBookingFromWallet, refundAndClose } from '@/modules/common/utils/bookingWalletFunding';
 import {
   BookingType,
   CreateBookingRequest,
@@ -362,46 +364,22 @@ export class BookingService {
   }
 
   /**
-   * fundingSlot identifies one wallet-funding step: 'initial' (creation, or a retry before any payment record is linked), or the payment record the booking was linked to when a
-   * retry started. Concurrent duplicates of the same step debit once and all get that amount (keyed replay), so an
-   * atomic debit never takes more than the old absolute-write code did. Full retry coordination is a separate packet
-   * (PACKET_BOOKING_PAYMENT_RETRY_INTEGRITY.md).
+   * Only the attempt that read the current link may replace it, and never on a paid/refunded or cancelled booking.
+   * Money is safe if this loses: wallet funding is recorded on the booking (bookingWalletFunding), not on the link.
    */
-  private async deductWalletForBooking(params: {
-    userId: string;
-    bookingId: string;
-    amountToDeductFromWallet: number;
-    useWalletBalance?: boolean;
-    fundingSlot: string;
-  }): Promise<number> {
-    if (!params.useWalletBalance || params.amountToDeductFromWallet <= 0) {
-      return 0;
-    }
+  private payableLinkFence(bookingId: string, expectedLink: string | undefined): Record<string, unknown> {
+    return {
+      _id: bookingId,
+      status: { $ne: 'cancelled' },
+      paymentStatus: { $nin: ['paid', 'refunded'] },
+      ...(expectedLink ? { paymentTransactionId: expectedLink }
+        : { $or: [{ paymentTransactionId: { $exists: false } }, { paymentTransactionId: null }, { paymentTransactionId: '' }] }),
+    };
+  }
 
-    const wallet = await this.walletRepository.findByUserId(params.userId);
-    if (!wallet) {
-      return 0;
-    }
-
-    if (!wallet.isActive) {
-      throw new AppError({
-        status: 400,
-        code: 'WALLET_INACTIVE',
-        message: 'Wallet is not active',
-      });
-    }
-
-    // Atomic debit + ledger row: concurrent spenders/refunds can no longer overwrite the balance with a stale value.
-    // (Exactly-once funding of a booking across concurrent payment retries is a separate, pending packet.)
-    return this.walletRepository.debitUpTo({
-      userId: params.userId,
-      walletId: wallet._id!,
-      referenceType: 'booking',
-      referenceId: params.bookingId,
-      operationKey: `booking_wallet:${String(params.bookingId).toLowerCase()}:${params.fundingSlot}`,
-      description: 'Wallet used for booking payment',
-      transactionDate: getTodayYyyymmdd(),
-    }, params.amountToDeductFromWallet);
+  private paymentLinkConflict(): AppError {
+    return new AppError({ status: 409, code: 'BOOKING_PAYMENT_STATE_CHANGED',
+      message: 'This booking was paid, cancelled or updated by another payment attempt; reload and try again' });
   }
 
   private async validateWalletIfRequested(
@@ -422,76 +400,35 @@ export class BookingService {
     }
   }
 
-  private async getOrCreateActiveWallet(userId: string) {
-    let wallet = await this.walletRepository.findByUserId(userId);
-
-    if (!wallet) {
-      wallet = await this.walletRepository.save({
-        userId,
-        balance: 0,
-        isActive: true,
-      });
-    }
-
-    if (!wallet.isActive) {
-      throw new AppError({
-        status: 400,
-        code: 'WALLET_INACTIVE',
-        message: 'Wallet is not active',
-      });
-    }
-
-    return wallet;
-  }
-
   private async refundBookingAmountToWallet(booking: IBooking): Promise<number> {
-    const existingRefund = await this.walletTransactionRepository.findOne({
+    // Legacy: a refund posted by code from before the booking ledger (no operation key) settles it.
+    const legacyRefund = await this.walletTransactionRepository.findOne({
       userId: booking.userId,
       transactionType: 'refund',
       referenceType: 'booking',
       referenceId: booking._id!,
       status: 'completed',
+      operationKey: { $exists: false },
+    } as never);
+    if (legacyRefund) {
+      return legacyRefund.amount;
+    }
+
+    const paymentRecord = booking.paymentTransactionId
+      ? await this.paymentRepository.findById(booking.paymentTransactionId)
+      : null;
+
+    // Returns everything the booking holds (wallet funding + applied gateway captures) and closes it, in one
+    // transaction shared with every other money path of this booking (see bookingWalletFunding.ts).
+    const refundAmount = await refundAndClose({
+      model: BookingModel, kind: 'booking', bookingId: String(booking._id), userId: booking.userId,
+      legacyFunded: Number(paymentRecord?.notes?.walletDeductedAmount || 0),
+      legacyGateway: paymentRecord?.status === 'paid' ? Number(paymentRecord.finalAmount || 0) : 0,
+      legacyGatewayRecordId: paymentRecord?._id ? String(paymentRecord._id) : undefined,
+      wallets: this.walletRepository,
     });
 
-    if (existingRefund) {
-      return existingRefund.amount;
-    }
-
-    if (!booking.paymentTransactionId) {
-      return 0;
-    }
-
-    const paymentRecord = await this.paymentRepository.findById(
-      booking.paymentTransactionId
-    );
-
-    if (!paymentRecord) {
-      return 0;
-    }
-
-    const walletDeductedAmount = Number(
-      paymentRecord.notes?.walletDeductedAmount || 0
-    );
-    const gatewayPaidAmount =
-      paymentRecord.status === 'paid' ? Number(paymentRecord.finalAmount || 0) : 0;
-    const refundAmount = walletDeductedAmount + gatewayPaidAmount;
-
-    if (refundAmount > 0) {
-      const wallet = await this.getOrCreateActiveWallet(booking.userId);
-      await this.walletRepository.postEntry({
-        userId: booking.userId,
-        walletId: wallet._id!,
-        transactionType: 'refund',
-        amount: refundAmount,
-        referenceType: 'booking',
-        referenceId: booking._id!,
-        operationKey: `booking_refund:${String(booking._id).toLowerCase()}`,
-        description: 'Refund for cancelled booking',
-        transactionDate: getTodayYyyymmdd(),
-      });
-    }
-
-    if (paymentRecord.status === 'paid') {
+    if (paymentRecord?.status === 'paid') {
       if (paymentRecord.couponCode) {
         try {
           const coupon = await this.couponService.getByCode(paymentRecord.couponCode);
@@ -776,13 +713,9 @@ export class BookingService {
 
     let walletDeductedAmount = 0;
     if (finalPrice > 0 && data.useWalletBalance) {
-      walletDeductedAmount = await this.deductWalletForBooking({
-        userId: data.userId,
-        bookingId: savedBooking._id!,
-        amountToDeductFromWallet: finalPrice,
-        useWalletBalance: true,
-        fundingSlot: 'initial',
-      });
+      walletDeductedAmount = (await fundBookingFromWallet({ model: BookingModel, kind: 'booking',
+        bookingId: String(savedBooking._id), userId: data.userId, gross: finalPrice, requested: finalPrice,
+        legacyFunded: 0, wallets: this.walletRepository })).total;
     }
 
     const payableAfterWallet = Math.max(0, finalPrice - walletDeductedAmount);
@@ -804,7 +737,7 @@ export class BookingService {
       });
 
       const paidBooking = await this.bookingRepository.update(
-        { _id: savedBooking._id },
+        this.payableLinkFence(String(savedBooking._id), undefined),
         {
           status: 'confirmed',
           paymentStatus: 'paid',
@@ -821,9 +754,8 @@ export class BookingService {
         await this.couponService.incrementUsage(coupon._id!);
       }
 
-      await this.bookingReminderScheduler.scheduleBookingReminders(
-        paidBooking || savedBooking
-      );
+      if (!paidBooking) throw this.paymentLinkConflict();
+      await this.bookingReminderScheduler.scheduleBookingReminders(paidBooking);
       const bookingWithMeeting = await syncBookingMeet({
         booking: paidBooking || savedBooking,
         bookingRepository: this.bookingRepository,
@@ -855,7 +787,7 @@ export class BookingService {
     });
 
     const bookingWithOrder = await this.bookingRepository.update(
-      { _id: savedBooking._id },
+      this.payableLinkFence(String(savedBooking._id), undefined),
       {
         paymentTransactionId: order.paymentRecord._id!,
         lifecycle: this.buildLifecyclePatch(savedBooking.lifecycle, {
@@ -864,8 +796,9 @@ export class BookingService {
       }
     );
 
+    if (!bookingWithOrder) throw this.paymentLinkConflict();
     return {
-      booking: bookingWithOrder || savedBooking,
+      booking: bookingWithOrder,
       paymentRequired: true,
       walletDeductedAmount,
       payment: {
@@ -1023,13 +956,9 @@ export class BookingService {
 
     let walletDeductedAmount = 0;
     if (finalPrice > 0 && data.useWalletBalance) {
-      walletDeductedAmount = await this.deductWalletForBooking({
-        userId: data.userId,
-        bookingId: savedBooking._id!,
-        amountToDeductFromWallet: finalPrice,
-        useWalletBalance: true,
-        fundingSlot: 'initial',
-      });
+      walletDeductedAmount = (await fundBookingFromWallet({ model: BookingModel, kind: 'booking',
+        bookingId: String(savedBooking._id), userId: data.userId, gross: finalPrice, requested: finalPrice,
+        legacyFunded: 0, wallets: this.walletRepository })).total;
     }
 
     const payableAfterWallet = Math.max(0, finalPrice - walletDeductedAmount);
@@ -1051,7 +980,7 @@ export class BookingService {
       });
 
       const paidBooking = await this.bookingRepository.update(
-        { _id: savedBooking._id },
+        this.payableLinkFence(String(savedBooking._id), undefined),
         {
           status: 'confirmed',
           paymentStatus: 'paid',
@@ -1068,9 +997,8 @@ export class BookingService {
         await this.couponService.incrementUsage(coupon._id!);
       }
 
-      await this.bookingReminderScheduler.scheduleBookingReminders(
-        paidBooking || savedBooking
-      );
+      if (!paidBooking) throw this.paymentLinkConflict();
+      await this.bookingReminderScheduler.scheduleBookingReminders(paidBooking);
       const bookingWithMeeting = await syncBookingMeet({
         booking: paidBooking || savedBooking,
         bookingRepository: this.bookingRepository,
@@ -1102,7 +1030,7 @@ export class BookingService {
     });
 
     const bookingWithOrder = await this.bookingRepository.update(
-      { _id: savedBooking._id },
+      this.payableLinkFence(String(savedBooking._id), undefined),
       {
         paymentTransactionId: order.paymentRecord._id!,
         lifecycle: this.buildLifecyclePatch(savedBooking.lifecycle, {
@@ -1111,8 +1039,9 @@ export class BookingService {
       }
     );
 
+    if (!bookingWithOrder) throw this.paymentLinkConflict();
     return {
-      booking: bookingWithOrder || savedBooking,
+      booking: bookingWithOrder,
       paymentRequired: true,
       walletDeductedAmount,
       payment: {
@@ -1737,8 +1666,10 @@ export class BookingService {
 
     this.enforceUserCancellationWindow(booking, requester);
 
+    // Only one cancellation wins; after it, wallet funding can no longer change (fundBookingFromWallet refuses
+    // cancelled bookings), so the refund below is computed from the post-cancellation booking.
     const updated = await this.bookingRepository.update(
-      { _id: bookingId },
+      { _id: bookingId, status: { $ne: 'cancelled' } },
       {
         status: 'cancelled',
         paymentStatus: 'refunded',
@@ -1756,6 +1687,8 @@ export class BookingService {
     );
 
     if (!updated) {
+      const current = await this.bookingRepository.findById(bookingId);
+      if (current?.status === 'cancelled') return current; // a concurrent cancellation already did the work
       throw new AppError({
         status: 500,
         code: 'UPDATE_FAILED',
@@ -1764,7 +1697,7 @@ export class BookingService {
     }
 
     try {
-      await this.refundBookingAmountToWallet(booking);
+      await this.refundBookingAmountToWallet(updated);
     } catch (error) {
       console.error('Failed to refund cancelled booking amount to wallet:', error);
     }
@@ -2052,22 +1985,13 @@ export class BookingService {
     );
 
     const grossAmount = Math.max(0, baseAmount - discountAmount);
-    let extraWalletDeductedAmount = 0;
-    if (options.useWalletBalance) {
-      const walletRoom = Math.max(0, grossAmount - walletDeductedAmount);
-      if (walletRoom > 0) {
-        extraWalletDeductedAmount = await this.deductWalletForBooking({
-          userId: booking.userId,
-          bookingId: booking._id!,
-          amountToDeductFromWallet: walletRoom,
-          useWalletBalance: true,
-          fundingSlot: booking.paymentTransactionId ? String(booking.paymentTransactionId) : 'initial',
-        });
-      }
-    }
-
-    const totalWalletDeductedAmount =
-      walletDeductedAmount + extraWalletDeductedAmount;
+    // Wallet funding is recorded on the booking. Always reconcile it, also with the wallet off (keeps money taken by
+    // an earlier failed attempt) or after changed terms (returns any excess); only add new funding when requested.
+    const funding = await fundBookingFromWallet({ model: BookingModel, kind: 'booking', bookingId: String(booking._id),
+      userId: booking.userId, gross: grossAmount, requested: options.useWalletBalance ? grossAmount : 0,
+      legacyFunded: walletDeductedAmount, wallets: this.walletRepository });
+    const totalWalletDeductedAmount = funding.total;
+    const expectedLink = booking.paymentTransactionId ? String(booking.paymentTransactionId) : undefined;
     const payableAfterWallet = Math.max(0, grossAmount - totalWalletDeductedAmount);
 
     if (payableAfterWallet <= 0) {
@@ -2092,7 +2016,7 @@ export class BookingService {
         });
 
       const paidBooking = await this.bookingRepository.update(
-        { _id: booking._id! },
+        this.payableLinkFence(String(booking._id), expectedLink),
         {
           paymentStatus: 'paid',
           paymentTransactionId: directPaidTransaction._id!,
@@ -2109,7 +2033,8 @@ export class BookingService {
         await this.couponService.incrementUsage(coupon._id!);
       }
 
-      const settledBooking = paidBooking || booking;
+      if (!paidBooking) throw this.paymentLinkConflict();
+      const settledBooking = paidBooking;
       if (settledBooking.status === 'confirmed') {
         await this.bookingReminderScheduler.scheduleBookingReminders(
           settledBooking
@@ -2155,7 +2080,7 @@ export class BookingService {
     });
 
     const updatedBooking = await this.bookingRepository.update(
-      { _id: booking._id! },
+      this.payableLinkFence(String(booking._id), expectedLink),
       {
         paymentStatus: 'pending',
         paymentTransactionId: order.paymentRecord._id!,
@@ -2165,8 +2090,9 @@ export class BookingService {
       }
     );
 
+    if (!updatedBooking) throw this.paymentLinkConflict();
     return {
-      booking: updatedBooking || booking,
+      booking: updatedBooking,
       paymentRequired: true,
       walletDeductedAmount: totalWalletDeductedAmount,
       payment: {

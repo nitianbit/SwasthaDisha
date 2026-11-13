@@ -123,6 +123,10 @@ export interface IBooking {
   price: number;
   originalPrice?: number; // For wellness packages
   paymentTransactionId?: string; // Payment transaction reference for paid flows
+  /** Wallet money applied to this booking (rupees); authoritative for refunds and retries. */
+  postPaymentCompletedFor?: string;
+  walletFunding?: { total: number; revision?: number; closed?: boolean;
+    captures?: { recordId: string; amount: number; state: 'applied' | 'returned' }[]; updatedAt?: Date };
   
   // Status
   status: BookingStatus;

@@ -379,6 +379,23 @@ const bookingSchema = new Schema<IBooking>(
       trim: true,
       index: true,
     },
+    // Payment record whose post-payment follow-up (reminders/meeting/email) finished; replays resume until set.
+    postPaymentCompletedFor: { type: String },
+    // Wallet money applied to this booking (rupees); see common/utils/bookingWalletFunding.ts.
+    walletFunding: {
+      type: new Schema({
+        total: { type: Number, required: true, min: 0 },
+        revision: { type: Number, required: true, min: 0, default: 0 },
+        closed: { type: Boolean, default: false },
+        captures: {
+          type: [new Schema({ recordId: { type: String, required: true }, amount: { type: Number, required: true, min: 0 },
+            state: { type: String, required: true, enum: ['applied', 'returned'] } }, { _id: false })],
+          default: [],
+        },
+        updatedAt: { type: Date },
+      }, { _id: false }),
+      default: undefined,
+    },
     status: {
       type: String,
       enum: ['pending', 'confirmed', 'completed', 'cancelled'],

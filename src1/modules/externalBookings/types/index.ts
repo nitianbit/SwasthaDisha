@@ -157,6 +157,10 @@ export interface IExternalBooking {
   price?: number;
   paymentStatus?: 'pending' | 'paid' | 'cancelled' | 'refunded';
   paymentTransactionId?: string;
+  /** Wallet money applied to this booking (rupees); authoritative for refunds and retries. */
+  postPaymentCompletedFor?: string;
+  walletFunding?: { total: number; revision?: number; closed?: boolean;
+    captures?: { recordId: string; amount: number; state: 'applied' | 'returned' }[]; updatedAt?: Date };
   status?: string;
   meta?: Record<string, unknown>;
   createdAt?: Date;

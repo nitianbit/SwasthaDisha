@@ -1,4 +1,6 @@
 import fs from 'fs';
+import ExternalBookingModel from '@/modules/externalBookings/model';
+import { fundBookingFromWallet, refundAndClose } from '@/modules/common/utils/bookingWalletFunding';
 import path from 'path';
 import { Service } from 'typedi';
 
@@ -214,80 +216,24 @@ export class ExternalBookingService {
     }
   }
 
-  private async getOrCreateActiveWallet(userId: string) {
-    let wallet = await this.walletRepository.findByUserId(userId);
-
-    if (!wallet) {
-      wallet = await this.walletRepository.save({
-        userId,
-        balance: 0,
-        isActive: true,
-      });
-    }
-
-    if (!wallet.isActive) {
-      throw new AppError({
-        status: 400,
-        code: 'WALLET_INACTIVE',
-        message: 'Wallet is not active',
-      });
-    }
-
-    return wallet;
-  }
-
-  private async computeExternalBookingRefundAmount(
-    booking: IExternalBooking
-  ): Promise<number> {
-    const id = String(booking._id!);
-
-    if (booking.paymentTransactionId) {
-      const paymentRecord = await this.paymentRepository.findById(
-        booking.paymentTransactionId
-      );
-      if (
-        paymentRecord &&
-        paymentRecord.context === 'external_booking' &&
-        String(paymentRecord.contextId) === id
-      ) {
-        const walletDeductedAmount = Number(
-          paymentRecord.notes?.walletDeductedAmount || 0
-        );
-        const gatewayPaidAmount =
-          paymentRecord.status === 'paid'
-            ? Number(paymentRecord.finalAmount || 0)
-            : 0;
-        return walletDeductedAmount + gatewayPaidAmount;
-      }
-    }
-
-    const txs = await this.walletTransactionRepository.findByReference(
-      'external_booking',
-      id
-    );
-    const debits = txs.filter(
-      (t) => t.transactionType === 'debit' && t.status === 'completed'
-    );
-    return debits.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-  }
-
   /** Wallet (+ paid gateway via payment row) refund; idempotent. */
   private async refundExternalBookingAmountToWallet(
     booking: IExternalBooking
   ): Promise<number> {
     const id = String(booking._id!);
 
-    const existingStandard = await this.walletTransactionRepository.findOne({
+    // Legacy: refunds posted before the booking ledger existed (no operation key) settle it.
+    const legacyStandard = await this.walletTransactionRepository.findOne({
       userId: booking.userId,
       transactionType: 'refund',
       referenceType: 'external_booking',
       referenceId: id,
       status: 'completed',
-    });
-    if (existingStandard) {
-      return Number(existingStandard.amount || 0);
+      operationKey: { $exists: false },
+    } as never);
+    if (legacyStandard) {
+      return Number(legacyStandard.amount || 0);
     }
-
     const legacyTimeout = await this.walletTransactionRepository.findOne({
       referenceType: 'external_booking_timeout_refund',
       referenceId: id,
@@ -299,21 +245,23 @@ export class ExternalBookingService {
     const paymentRecord = booking.paymentTransactionId
       ? await this.paymentRepository.findById(booking.paymentTransactionId)
       : null;
-    const refundAmount = await this.computeExternalBookingRefundAmount(booking);
-    if (refundAmount > 0) {
-      const wallet = await this.getOrCreateActiveWallet(booking.userId);
-      await this.walletRepository.postEntry({
-        userId: booking.userId,
-        walletId: wallet._id!,
-        transactionType: 'refund',
-        amount: refundAmount,
-        referenceType: 'external_booking',
-        referenceId: id,
-        operationKey: `external_booking_refund:${String(id).toLowerCase()}`,
-        description: 'Refund for external booking',
-        transactionDate: getTodayYyyymmdd(),
-      });
+    const linked = paymentRecord && paymentRecord.context === 'external_booking' && String(paymentRecord.contextId) === id
+      ? paymentRecord : null;
+    // Legacy bookings without a ledger: linked notes, else the booking's completed wallet debits.
+    let legacyFunded = Number(linked?.notes?.walletDeductedAmount || 0);
+    if (!linked) {
+      const txs = await this.walletTransactionRepository.findByReference('external_booking', id);
+      legacyFunded = txs.filter((t) => t.transactionType === 'debit' && t.status === 'completed' && !t.operationKey)
+        .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
     }
+    // Returns everything the booking holds and CLOSES it in one transaction. Callers may refund before writing their
+    // cancelled status (e.g. the payment-timeout sweep): once closed, no new funding can be added, so order is safe.
+    const refundAmount = await refundAndClose({
+      model: ExternalBookingModel, kind: 'external_booking', bookingId: id, userId: booking.userId, legacyFunded,
+      legacyGateway: linked?.status === 'paid' ? Number(linked.finalAmount || 0) : 0,
+      legacyGatewayRecordId: linked?._id ? String(linked._id) : undefined,
+      wallets: this.walletRepository,
+    });
 
     if (booking.paymentTransactionId) {
       if (
@@ -486,44 +434,6 @@ export class ExternalBookingService {
     }
   }
 
-  private async deductWalletForExternal(params: {
-    userId: string;
-    externalBookingId: string;
-    amountToDeductFromWallet: number;
-    useWalletBalance?: boolean;
-    /** See BookingService.deductWalletForBooking: 'initial' or the payment record linked when the retry started. */
-    fundingSlot: string;
-  }): Promise<number> {
-    if (!params.useWalletBalance || params.amountToDeductFromWallet <= 0) {
-      return 0;
-    }
-
-    const wallet = await this.walletRepository.findByUserId(params.userId);
-    if (!wallet) {
-      return 0;
-    }
-
-    if (!wallet.isActive) {
-      throw new AppError({
-        status: 400,
-        code: 'WALLET_INACTIVE',
-        message: 'Wallet is not active',
-      });
-    }
-
-    // Atomic debit + ledger row: concurrent spenders/refunds can no longer overwrite the balance with a stale value.
-    // (Exactly-once funding of a booking across concurrent payment retries is a separate, pending packet.)
-    return this.walletRepository.debitUpTo({
-      userId: params.userId,
-      walletId: wallet._id!,
-      referenceType: 'external_booking',
-      referenceId: params.externalBookingId,
-      operationKey: `external_booking_wallet:${String(params.externalBookingId).toLowerCase()}:${params.fundingSlot}`,
-      description: 'Wallet used for external booking payment',
-      transactionDate: getTodayYyyymmdd(),
-    }, params.amountToDeductFromWallet);
-  }
-
   /** Shared by create (pay now) and retry-payment (pay later). */
   private buildExternalPaymentOrderNotes(
     kind: ExternalBookingKind,
@@ -552,8 +462,18 @@ export class ExternalBookingService {
     walletAlreadyApplied: number;
     attemptUseWalletBalance?: boolean;
     orderNotes: Record<string, unknown>;
-    fundingSlot: string;
+    /** Payment record the caller read as linked (undefined = unlinked); the link is replaced only if unchanged. */
+    expectedLink: string | undefined;
   }): Promise<ExternalBookingPaymentInitResponse> {
+    const linkFence: Record<string, unknown> = {
+      _id: params.bookingId,
+      status: { $ne: 'cancelled' },
+      paymentStatus: { $nin: ['paid', 'refunded', 'cancelled'] },
+      ...(params.expectedLink ? { paymentTransactionId: params.expectedLink }
+        : { $or: [{ paymentTransactionId: { $exists: false } }, { paymentTransactionId: null }, { paymentTransactionId: '' }] }),
+    };
+    const linkConflict = () => new AppError({ status: 409, code: 'BOOKING_PAYMENT_STATE_CHANGED',
+      message: 'This booking was paid, cancelled or updated by another payment attempt; reload and try again' });
     await this.validateWalletIfRequested(
       params.userId,
       params.attemptUseWalletBalance
@@ -561,21 +481,11 @@ export class ExternalBookingService {
 
     const discountedAmount = Math.max(0, params.grossAmount - params.discountAmount);
 
-    let extraWallet = 0;
-    if (params.attemptUseWalletBalance) {
-      const room = Math.max(0, discountedAmount - params.walletAlreadyApplied);
-      if (room > 0) {
-        extraWallet = await this.deductWalletForExternal({
-          userId: params.userId,
-          externalBookingId: params.bookingId,
-          amountToDeductFromWallet: room,
-          useWalletBalance: true,
-          fundingSlot: params.fundingSlot,
-        });
-      }
-    }
-
-    const walletTotal = params.walletAlreadyApplied + extraWallet;
+    // Wallet funding is recorded on the booking; always reconcile it (wallet off / changed terms included).
+    const funding = await fundBookingFromWallet({ model: ExternalBookingModel, kind: 'external_booking', bookingId: params.bookingId,
+      userId: params.userId, gross: discountedAmount, requested: params.attemptUseWalletBalance ? discountedAmount : 0,
+      legacyFunded: params.walletAlreadyApplied, wallets: this.walletRepository });
+    const walletTotal = funding.total;
     const payableAfterWallet = Math.max(0, discountedAmount - walletTotal);
     const notesWithWallet = {
       ...params.orderNotes,
@@ -604,13 +514,14 @@ export class ExternalBookingService {
         },
       });
 
-      await this.externalBookingRepository.update(
-        { _id: params.bookingId },
+      const linked = await this.externalBookingRepository.update(
+        linkFence,
         {
           paymentTransactionId: directPaid._id!,
           paymentStatus: 'paid',
         }
       );
+      if (!linked) throw linkConflict();
 
       try {
         const recovered =
@@ -663,16 +574,12 @@ export class ExternalBookingService {
     });
 
     const booking = await this.externalBookingRepository.update(
-      { _id: params.bookingId },
+      linkFence,
       { paymentTransactionId: order.paymentRecord._id! }
     );
 
     if (!booking) {
-      throw new AppError({
-        status: 500,
-        code: 'EXTERNAL_BOOKING_UPDATE_FAILED',
-        message: 'Failed to link payment to external booking',
-      });
+      throw linkConflict();
     }
 
     return {
@@ -736,7 +643,7 @@ export class ExternalBookingService {
       walletAlreadyApplied: 0,
       attemptUseWalletBalance: params.useWalletBalance,
       orderNotes: params.orderNotes,
-      fundingSlot: 'initial',
+      expectedLink: undefined,
     });
   }
 
@@ -913,7 +820,7 @@ export class ExternalBookingService {
       walletAlreadyApplied,
       attemptUseWalletBalance: options.useWalletBalance,
       orderNotes,
-      fundingSlot: booking.paymentTransactionId ? String(booking.paymentTransactionId) : 'initial',
+      expectedLink: booking.paymentTransactionId ? String(booking.paymentTransactionId) : undefined,
     });
   }
 

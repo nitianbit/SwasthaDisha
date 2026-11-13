@@ -1,4 +1,7 @@
 import crypto from 'crypto';
+import BookingModel from '@/modules/bookings/model';
+import { recordGatewayCapture, refundAndClose } from '@/modules/common/utils/bookingWalletFunding';
+import ExternalBookingModel from '@/modules/externalBookings/model';
 import { ClientSession, startSession } from 'mongoose';
 import Razorpay from 'razorpay';
 import { Service } from 'typedi';
@@ -940,25 +943,40 @@ export class PaymentService {
       });
     }
 
-    const updatedBooking = await this.bookingRepository.update(
-      { _id: booking._id },
-      {
+    // Apply this captured payment to the booking exactly once, or return it to the wallet if the booking is
+    // cancelled/closed or already paid by another payment. Same transaction as the booking money ledger, so it cannot
+    // race a cancellation refund or an excess return into paying twice (bookingWalletFunding.ts).
+    const thisRecord = String(paymentRecord._id);
+    const capture = await recordGatewayCapture({
+      model: BookingModel, kind: 'booking', bookingId: String(booking._id), userId: booking.userId, recordId: thisRecord,
+      amount: Number(paymentRecord.finalAmount || 0),
+      gross: Math.max(0, Number(paymentRecord.baseAmount || 0) - Number(paymentRecord.discountAmount || 0)),
+      legacyFunded: Number(paymentRecord.notes?.walletDeductedAmount || 0),
+      applicable: (b) => b.status !== 'cancelled' && !['paid', 'refunded'].includes(String(b.paymentStatus))
+        || (b.paymentStatus === 'paid' && String(b.paymentTransactionId) === thisRecord),
+      applyPatch: {
         paymentStatus: 'paid',
-        paymentTransactionId: paymentRecord._id!,
+        paymentTransactionId: thisRecord,
         status: booking.status === 'pending' ? 'confirmed' : booking.status,
         lifecycle: this.buildLifecyclePatch(booking.lifecycle, {
           paid: { amount: Number(paymentRecord.finalAmount || booking.price || 0) },
           confirmed: booking.status === 'pending' ? true : undefined,
         }),
-      }
-    );
-
+      },
+      wallets: this.walletRepository,
+    });
+    const updatedBooking = await this.bookingRepository.findById(paymentRecord.contextId);
+    if (capture.state === 'returned') {
+      const refunded = (await this.paymentRepository.update({ _id: paymentRecord._id! }, { status: 'refunded', isProcessed: true })) || paymentRecord;
+      return { paymentRecord: refunded as IPaymentRecord, entity: updatedBooking || booking };
+    }
     if (!updatedBooking) {
-      throw new AppError({
-        status: 500,
-        code: 'BOOKING_UPDATE_FAILED',
-        message: 'Failed to update booking payment status',
-      });
+      return { paymentRecord: await this.finalizePaymentProcessing(paymentRecord), entity: booking };
+    }
+    // Money is applied exactly once above; the follow-up work below is resumed on replay until it has completed
+    // (a crash after the capture must not leave a paid consultation without reminders/meeting/email).
+    if ((updatedBooking as IBooking & { postPaymentCompletedFor?: string }).postPaymentCompletedFor === thisRecord) {
+      return { paymentRecord: await this.finalizePaymentProcessing(paymentRecord), entity: updatedBooking };
     }
 
     let bookingForResponse = updatedBooking;
@@ -974,6 +992,7 @@ export class PaymentService {
     }
 
     await this.sendPaidBookingEmailNotification(bookingForResponse as IBooking);
+    await this.bookingRepository.update({ _id: updatedBooking._id }, { $set: { postPaymentCompletedFor: thisRecord } } as never);
 
     const finalizedPayment = await this.finalizePaymentProcessing(paymentRecord);
     return {
@@ -1132,15 +1151,46 @@ export class PaymentService {
     paymentRecord: IPaymentRecord;
     entity: unknown;
   }> {
+    const thisRecord = String(paymentRecord._id);
+    const capture = (applicable: (b: { status?: string; paymentStatus?: string; paymentTransactionId?: string }) => boolean) => recordGatewayCapture({
+      model: ExternalBookingModel, kind: 'external_booking', bookingId: String(paymentRecord.contextId), userId: paymentRecord.userId,
+      recordId: thisRecord, amount: Number(paymentRecord.finalAmount || 0),
+      gross: Math.max(0, Number(paymentRecord.baseAmount || 0) - Number(paymentRecord.discountAmount || 0)),
+      legacyFunded: Number(paymentRecord.notes?.walletDeductedAmount || 0), applicable, wallets: this.walletRepository,
+    });
+    const returned = async (entity: unknown) => {
+      const refunded = (await this.paymentRepository.update({ _id: paymentRecord._id! }, { status: 'refunded', isProcessed: true })) || paymentRecord;
+      return { paymentRecord: refunded as IPaymentRecord, entity };
+    };
+
+    // Not payable (cancelled/closed/refunded, or already paid through another record): never fulfil; return it.
+    const current = (await this.externalBookingRepository.findById(paymentRecord.contextId)) as IExternalBooking | null;
+    const payableOrOurs = (b: { status?: string; paymentStatus?: string; paymentTransactionId?: string; walletFunding?: { closed?: boolean } }) =>
+      !b.walletFunding?.closed && b.status !== 'cancelled' && !['refunded', 'cancelled'].includes(String(b.paymentStatus))
+      && !(b.paymentStatus === 'paid' && b.paymentTransactionId && String(b.paymentTransactionId) !== thisRecord);
+    if (current && !payableOrOurs(current as never)) {
+      const r = await capture(() => false);
+      if (r.state === 'returned') return returned(current);
+    }
+
     const updatedExternal = await this.finalizeExternalBookingPayment(
       paymentRecord,
     );
 
-    const finalizedPayment = await this.finalizePaymentProcessing(paymentRecord);
+    // The payment only counts if it is the one the booking ended up paid with (another capture may have won while
+    // this one was in flight, or the booking was cancelled meanwhile); otherwise it goes back to the wallet once.
+    const applied = await capture((b) => b.paymentStatus === 'paid' && String(b.paymentTransactionId) === thisRecord && b.status !== 'cancelled');
+    if (applied.state === 'returned') return returned(updatedExternal);
+    if ((updatedExternal as { postPaymentCompletedFor?: string } | null)?.postPaymentCompletedFor === thisRecord) {
+      return { paymentRecord: await this.finalizePaymentProcessing(paymentRecord), entity: updatedExternal };
+    }
+
     await this.sendExternalBookingEmailNotification(
       updatedExternal as IExternalBooking,
       'ORDER_SCHEDULED'
     );
+    await this.externalBookingRepository.update({ _id: paymentRecord.contextId }, { $set: { postPaymentCompletedFor: thisRecord } } as never);
+    const finalizedPayment = await this.finalizePaymentProcessing(paymentRecord);
     return {
       paymentRecord: finalizedPayment,
       entity: updatedExternal,
@@ -1410,36 +1460,27 @@ export class PaymentService {
   ): Promise<number> {
     const referenceId = String(booking._id!);
 
-    const existingRefund = await this.walletTransactionRepository.findOne({
+    // Legacy: a refund posted before the booking ledger existed (no operation key) settles it.
+    const legacyRefund = await this.walletTransactionRepository.findOne({
       userId: booking.userId,
       transactionType: 'refund',
       referenceType: 'external_booking',
       referenceId,
       status: 'completed',
+      operationKey: { $exists: false },
+    } as never);
+    if (legacyRefund) {
+      return Number(legacyRefund.amount || 0);
+    }
+
+    // Everything the booking holds (wallet funding + applied captures), returned once and the booking closed.
+    const refundAmount = await refundAndClose({
+      model: ExternalBookingModel, kind: 'external_booking', bookingId: referenceId, userId: booking.userId,
+      legacyFunded: Number(paymentRecord.notes?.walletDeductedAmount || 0),
+      legacyGateway: paymentRecord.status === 'paid' ? Number(paymentRecord.finalAmount || 0) : 0,
+      legacyGatewayRecordId: String(paymentRecord._id),
+      wallets: this.walletRepository,
     });
-    if (existingRefund) {
-      return Number(existingRefund.amount || 0);
-    }
-
-    const walletDeductedAmount = Number(paymentRecord.notes?.walletDeductedAmount || 0);
-    const gatewayPaidAmount =
-      paymentRecord.status === 'paid' ? Number(paymentRecord.finalAmount || 0) : 0;
-    const refundAmount = walletDeductedAmount + gatewayPaidAmount;
-
-    if (refundAmount > 0) {
-      const wallet = await this.getOrCreateActiveWallet(booking.userId);
-      await this.walletRepository.postEntry({
-        userId: booking.userId,
-        walletId: wallet._id!,
-        transactionType: 'refund',
-        amount: refundAmount,
-        referenceType: 'external_booking',
-        referenceId,
-        operationKey: `external_booking_refund:${String(referenceId).toLowerCase()}`,
-        description: 'Refund for external booking',
-        transactionDate: getTodayYyyymmdd(),
-      });
-    }
 
     if (paymentRecord.couponCode && paymentRecord.isProcessed) {
       try {

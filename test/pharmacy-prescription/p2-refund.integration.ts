@@ -23,13 +23,8 @@ import { GatewayRefund, PrescriptionRefundService, RefundGateway } from '@/modul
 import PaymentRecordModel from '@/modules/payment/model';
 import { WalletModel, WalletTransactionModel } from '@/modules/wallet/model';
 import { WalletRepository } from '@/modules/wallet/repository';
-import { BookingService } from '@/modules/bookings/services';
-import { ExternalBookingService } from '@/modules/externalBookings/services';
 import { WalletService } from '@/modules/wallet/services';
 import { PaymentService } from '@/modules/payment/services';
-import BookingModel from '@/modules/bookings/model';
-import { BookingRepository } from '@/modules/bookings/repository';
-import { PaymentRepository } from '@/modules/payment/repository';
 import { WalletTransactionRepository } from '@/modules/wallet/repository';
 
 // The script clears its database: accept only this exact disposable fixture URL, never a pattern match.
@@ -242,22 +237,11 @@ async function main() {
     }
   });
 
-  await check('[#1] real booking / external-booking / admin wallet writers are atomic under concurrency', async () => {
+  await check('[#1] admin wallet service writes are atomic under concurrency (booking writers: test/booking-payment)', async () => {
     const user = new Types.ObjectId().toHexString();
-    await WalletModel.create({ userId: user, balance: 120, isActive: true });
-    await WalletTransactionModel.create({ userId: user, walletId: (await WalletModel.findOne({ userId: user }).lean())!._id, transactionType: 'credit',
-      amount: 120, balanceBefore: 0, balanceAfter: 120, status: 'completed', referenceType: 'seed', transactionDate: '20261113' });
-    const ctx = { walletRepository: new WalletRepository() };
-    const book = (BookingService.prototype as unknown as { deductWalletForBooking: (p: object) => Promise<number> }).deductWalletForBooking;
-    const ext = (ExternalBookingService.prototype as unknown as { deductWalletForExternal: (p: object) => Promise<number> }).deductWalletForExternal;
-    const results = await Promise.all([
-      ...Array.from({ length: 3 }, (_, i) => book.call(ctx, { userId: user, bookingId: 'b' + i, amountToDeductFromWallet: 50, useWalletBalance: true })),
-      ...Array.from({ length: 3 }, (_, i) => ext.call(ctx, { userId: user, externalBookingId: 'e' + i, amountToDeductFromWallet: 50, useWalletBalance: true })),
-    ]);
-    assert.equal(results.reduce((a, b) => a + b, 0), 120, 'exactly the available 120 is spent, never more');
-    assert.equal(await balance(user), 0); await ledgerMatches(user);
+    const w = await WalletModel.create({ userId: user, balance: 0, isActive: true });
+    void w;
     const admin = new (WalletService as unknown as new (...a: unknown[]) => WalletService)(new WalletRepository(), {}, { createWalletCreditNotification: async () => undefined });
-    (admin as unknown as { walletTransactionRepository: unknown }).walletTransactionRepository = {};
     await rejects(admin.addTransaction({ userId: user, transactionType: 'debit', amount: 1, description: 'x' } as never), 'INSUFFICIENT_BALANCE', 400);
     await Promise.all(Array.from({ length: 4 }, () => admin.addTransaction({ userId: user, transactionType: 'credit', amount: 10, description: 'top-up' } as never)));
     assert.equal(await balance(user), 40); await ledgerMatches(user);
@@ -352,78 +336,6 @@ async function main() {
     assert.deepEqual(results, [100, 100, 100, 100, 100]);
     assert.equal(await new WalletRepository().debitUpTo(step, 100), 100, 'sequential duplicate after the wallet is empty');
     assert.equal(await balance(user), 0); await ledgerMatches(user);
-  });
-
-  await check('[r6] concurrent retries of one ₹100 booking (wallet ₹200): wallet never loses more than base; cancel refund restores it', async () => {
-    // bookings: the real retry flow, two at once
-    const user = new Types.ObjectId().toHexString();
-    const w = await WalletModel.create({ userId: user, balance: 200, isActive: true });
-    await WalletTransactionModel.create({ userId: user, walletId: w._id, transactionType: 'credit', amount: 200, balanceBefore: 0, balanceAfter: 200,
-      status: 'completed', referenceType: 'seed', transactionDate: '20261113' });
-    const p0 = await PaymentRecordModel.create({ userId: user, context: 'booking', contextId: 'x', baseAmount: 100, discountAmount: 0, finalAmount: 100,
-      currency: 'INR', paymentGateway: 'razorpay', razorpayOrderId: 'ord_p0_' + user, status: 'created', notes: { walletDeductedAmount: 0 } });
-    const { insertedId } = await BookingModel.collection.insertOne({ userId: user, bookingType: 'package', status: 'pending', paymentStatus: 'pending',
-      price: 100, paymentTransactionId: String(p0._id) } as never);
-    const bookingId = insertedId.toHexString();
-    const paymentService = {
-      createOrder: async (d: { userId: string; contextId: string; baseAmount: number; discountAmount: number; finalAmount: number; notes: object }) => {
-        const rec = await PaymentRecordModel.create({ userId: d.userId, context: 'booking', contextId: d.contextId, baseAmount: d.baseAmount,
-          discountAmount: d.discountAmount, finalAmount: d.finalAmount, currency: 'INR', paymentGateway: 'razorpay',
-          razorpayOrderId: 'ord_' + new Types.ObjectId().toHexString(), status: 'created', notes: d.notes });
-        return { paymentRecord: rec.toObject(), razorpayOrder: { id: rec.razorpayOrderId, currency: 'INR' }, razorpayKeyId: 'k' };
-      },
-      createDirectPaidTransaction: async (d: { userId: string; contextId: string; baseAmount: number; discountAmount: number; notes: object }) =>
-        (await PaymentRecordModel.create({ userId: d.userId, context: 'booking', contextId: d.contextId, baseAmount: d.baseAmount,
-          discountAmount: d.discountAmount, finalAmount: 0, currency: 'INR', paymentGateway: 'internal', status: 'paid', notes: d.notes })).toObject(),
-    };
-    const svc = Object.assign(Object.create(BookingService.prototype), {
-      bookingRepository: new BookingRepository(), paymentRepository: new PaymentRepository(), walletRepository: new WalletRepository(),
-      walletTransactionRepository: new WalletTransactionRepository(), paymentService, couponService: {},
-      bookingReminderScheduler: { scheduleBookingReminders: async () => undefined }, sendPaidBookingEmailNotification: async () => undefined,
-    }) as BookingService;
-    const snapshot = await svc.getById(bookingId);
-    const both = Object.assign(Object.create(svc), { getById: async () => snapshot }) as BookingService; // both read P0
-    await Promise.all([both.retryBookingPayment(bookingId, { _id: user, userType: 'user' }, { useWalletBalance: true }),
-      both.retryBookingPayment(bookingId, { _id: user, userType: 'user' }, { useWalletBalance: true })]);
-    assert.equal(await balance(user), 100, 'one ₹100 debit for the duplicated step (base also ends at ₹100)');
-    const booking = (await BookingModel.findById(bookingId).lean())!;
-    const refunded = await (svc as unknown as { refundBookingAmountToWallet: (b: object) => Promise<number> }).refundBookingAmountToWallet(booking);
-    assert.equal(refunded, 100); assert.equal(await balance(user), 200, 'cancellation restores the full wallet'); await ledgerMatches(user);
-    // external bookings: same funding step from two concurrent retries debits once
-    const ext = (ExternalBookingService.prototype as unknown as { deductWalletForExternal: (p: object) => Promise<number> }).deductWalletForExternal;
-    const u2 = new Types.ObjectId().toHexString();
-    const w2 = await WalletModel.create({ userId: u2, balance: 200, isActive: true });
-    await WalletTransactionModel.create({ userId: u2, walletId: w2._id, transactionType: 'credit', amount: 200, balanceBefore: 0, balanceAfter: 200,
-      status: 'completed', referenceType: 'seed', transactionDate: '20261113' });
-    const ep = { userId: u2, externalBookingId: new Types.ObjectId().toHexString(), amountToDeductFromWallet: 100, useWalletBalance: true, fundingSlot: 'P0' };
-    const r = await Promise.all([ext.call({ walletRepository: new WalletRepository() }, ep), ext.call({ walletRepository: new WalletRepository() }, ep)]);
-    assert.deepEqual(r, [100, 100]); assert.equal(await balance(u2), 100); await ledgerMatches(u2);
-  });
-
-  await check('[r7#1] booking creation overlapping the first retry (unlinked) share one funding step', async () => {
-    const user = new Types.ObjectId().toHexString();
-    const w = await WalletModel.create({ userId: user, balance: 200, isActive: true });
-    await WalletTransactionModel.create({ userId: user, walletId: w._id, transactionType: 'credit', amount: 200, balanceBefore: 0, balanceAfter: 200,
-      status: 'completed', referenceType: 'seed', transactionDate: '20261113' });
-    const { insertedId } = await BookingModel.collection.insertOne({ userId: user, bookingType: 'package', status: 'pending', paymentStatus: 'pending', price: 100 } as never);
-    const bookingId = insertedId.toHexString();
-    const svc = Object.assign(Object.create(BookingService.prototype), {
-      bookingRepository: new BookingRepository(), paymentRepository: new PaymentRepository(), walletRepository: new WalletRepository(),
-      walletTransactionRepository: new WalletTransactionRepository(), couponService: {},
-      paymentService: { createOrder: async (d: { userId: string; contextId: string; baseAmount: number; discountAmount: number; finalAmount: number; notes: object }) => {
-        const rec = await PaymentRecordModel.create({ userId: d.userId, context: 'booking', contextId: d.contextId, baseAmount: d.baseAmount, discountAmount: d.discountAmount,
-          finalAmount: d.finalAmount, currency: 'INR', paymentGateway: 'razorpay', razorpayOrderId: 'ord_' + new Types.ObjectId().toHexString(), status: 'created', notes: d.notes });
-        return { paymentRecord: rec.toObject(), razorpayOrder: { id: rec.razorpayOrderId, currency: 'INR' }, razorpayKeyId: 'k' };
-      }, createDirectPaidTransaction: async (d: { userId: string; contextId: string; baseAmount: number; discountAmount: number; notes: object }) =>
-        (await PaymentRecordModel.create({ userId: d.userId, context: 'booking', contextId: d.contextId, baseAmount: d.baseAmount, discountAmount: d.discountAmount,
-          finalAmount: 0, currency: 'INR', paymentGateway: 'internal', status: 'paid', notes: d.notes })).toObject() },
-      bookingReminderScheduler: { scheduleBookingReminders: async () => undefined }, sendPaidBookingEmailNotification: async () => undefined,
-    }) as BookingService;
-    const createDebit = (BookingService.prototype as unknown as { deductWalletForBooking: (p: object) => Promise<number> }).deductWalletForBooking
-      .call(svc, { userId: user, bookingId, amountToDeductFromWallet: 100, useWalletBalance: true, fundingSlot: 'initial' }); // what create does
-    const [created] = await Promise.all([createDebit, svc.retryBookingPayment(bookingId, { _id: user, userType: 'user' }, { useWalletBalance: true })]);
-    assert.equal(created, 100);
-    assert.equal(await balance(user), 100, 'one ₹100 debit for the first funding step, as in base'); await ledgerMatches(user);
   });
 
   await check('[r7#2] duplicates of one funding step that owe different amounts never absorb a larger earlier debit', async () => {
