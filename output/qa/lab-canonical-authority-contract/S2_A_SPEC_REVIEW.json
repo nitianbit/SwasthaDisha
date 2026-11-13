@@ -1,0 +1,59 @@
+{
+  "schema": "SD-LAB-S2-A-SPEC-CONTRACT-REVIEW-1",
+  "reviewer": "/root/lab_remaining_audit",
+  "role": "NONAUTHOR_SPEC",
+  "author": "/root/milestone_composition_r9",
+  "reviewedCandidate": "53b5d51977adb9231b0bf70dff03da8cc4569e52",
+  "decision": "REQUEST_CHANGES",
+  "contractPath": "documentation/planning/implementation/LAB_CANONICAL_AUTHORITY_S2_A_ADDENDUM_DRAFT.md",
+  "contractSha256": "0a960e37ca0c0b9a6f4247d6def8294a7885b8d576804de7403b2b84391775f3",
+  "vectorsPath": "output/qa/lab-canonical-authority-contract/S2_A_SERIALIZATION_VECTORS.json",
+  "vectorsSha256": "e67ec7f6695d8e08eccb0cfa3d57bfe05d780654adb6781e9baa65c824ac34a7",
+  "sourceBindingsPath": "output/qa/lab-canonical-authority-contract/S2_A_SOURCE_BINDINGS.json",
+  "sourceBindingsSha256": "541750a46002f5a7cace03d1df68813e1eed15b23913a1a971d0fc0db24b4a91",
+  "actualReadOnlyChecks": {
+    "all27ContextSourcePinsMatch": true,
+    "threeCommandCanonicalTextByteCountsHashesAndEnvelopesMatch": true,
+    "labFingerprintArrayTextAndHashMatch": true,
+    "threeDecisionArrayTextsAndHashesMatch": true,
+    "existingOrganizationTypesModelsRulesRepositoryAndServiceRead": true,
+    "parentAuthorityContractAndWiderDesignBoundaryRead": true
+  },
+  "findings": [
+    {
+      "id": "LAB-S2A-SPEC-1",
+      "severity": "MEDIUM",
+      "title": "Freeze signed revoked-transition validation before regrant",
+      "references": [
+        "documentation/planning/implementation/LAB_CANONICAL_AUTHORITY_S2_A_ADDENDUM_DRAFT.md:43",
+        "documentation/planning/implementation/LAB_CANONICAL_AUTHORITY_S2_A_ADDENDUM_DRAFT.md:64",
+        "documentation/planning/implementation/LAB_CANONICAL_AUTHORITY_S2_A_ADDENDUM_DRAFT.md:68",
+        "documentation/planning/implementation/LAB_CANONICAL_AUTHORITY_S2_A_ADDENDUM_DRAFT.md:78"
+      ],
+      "problem": "A revoked membership retains its original grant and validity while revoke increments its revision. For grant revision1 followed by revoked revision2, the original grant proof cannot directly match the current revoked revision. The addendum requires old grant proof and current-target/revision reconstruction but does not freeze how the intervening lab_membership_revoked decision is selected and validated. An implementation can reject every nominal regrant or accept a mutable revoked state without its signed transition provenance.",
+      "requiredCorrection": "Specify one bounded exact lookup by organizationId, decisionKind lab_membership_revoked, payload.membershipId and payload.membershipRevision=current revoked revision (limit2/maxTimeMS2000/simple collation), require exactly one result, and validate its issuer proof, digest, generation, subject/member/org/branch, previousGrantDecisionId, previousMembershipRevision+1 and retained original grant/validity linkage against the original prior grant proof and current revoked row. Preserve the original grant revision in history; never relabel it as current revoked revision. Missing, duplicate, malformed or mismatched transition denies with the frozen errors. No new action, privilege or generic query interface is needed.",
+      "authorClarification": "Author independently confirmed that the exact transition lookup is intended but omitted from the frozen draft; this clarification is not treated as an amendment or approval."
+    }
+  ],
+  "otherReviewedBoundaries": {
+    "externalRoot": "One fixed externally installed issuer root; request/JWT/Admin/membership do not select the key. No invented human independence, MFA, qualified evidence or deployment acceptance.",
+    "rootState": "Parent remains binding: active admits fresh signed commands; verification_only admits historical proof/replay only; revoked denies. No additional finding.",
+    "scope": "Exactly create-only map_lab, grant or regrant lab reader, and revoke lab reader. Existing pharmacy evaluator/read port/service stay unchanged; lab authority remains denied until S2-B.",
+    "transactions": "Same-client internally owned snapshot transaction with majority write concern, organization fence CAS and row revision CAS, immutable decision append, callback retry revalidation, exact same-operation replay and unknown commit distinction.",
+    "metadataAndSource": "Source manifest is a selected-source binding, not deployed build or installed-index proof; fixed real metadata acquisition is required and activation facts remain separate.",
+    "serialization": "Existing business_mapped and membership_granted serialization remains unchanged; only one explicit lab_membership_revoked variant is added."
+  },
+  "permissions": {
+    "implementationApproved": false,
+    "sourceApproved": false,
+    "executableChecksApproved": false,
+    "cryptoOrSigningExecuted": false,
+    "applicationOrDatabaseOrProviderExecuted": false,
+    "activationApproved": false
+  },
+  "limits": [
+    "Static independent contract/vector/source review only. JSON byte/hash checks do not prove production serialization, Ed25519 verification, native metadata acquisition, transactions or runtime behavior.",
+    "Real trust/evidence installation, current identity/key custody, writer exclusion, lifecycle and reauthorization, C2/C3/build/topology/release and S2-B remain pending.",
+    "No completion claim for S2, L2, labs or the overall modules; no new runtime permission supplied."
+  ]
+}
