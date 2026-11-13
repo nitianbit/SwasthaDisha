@@ -1,0 +1,116 @@
+{
+  "schema": "SD-LAB-S2-A-AMENDED-NONAUTHOR-SPEC-SOURCE-REVIEW-2",
+  "reviewer": "/root/lab_remaining_audit",
+  "role": "NONAUTHOR_SPEC_SOURCE_COMPOSITION",
+  "author": "/root/milestone_composition_r9",
+  "decision": "REQUEST_CHANGES",
+  "candidate": "8b4922b3390ef846b49c9f304687c3bcdab52e9a",
+  "manifestSha256": "b405545a025a552c9b3d666d530e7b6f7efb575c48187798936f4d857b6f60f3",
+  "contractSha256": "dbe337575ff28360bf6a7b57a2c69cf2bdab9a234a2774c893ec1bba36159a57",
+  "exactSourceFiles": [
+    {
+      "path": "src1/modules/organizations/types/index.ts",
+      "sha256": "98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670",
+      "bytes": 8074
+    },
+    {
+      "path": "src1/modules/organizations/model/index.ts",
+      "sha256": "d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a",
+      "bytes": 7453
+    },
+    {
+      "path": "src1/modules/organizations/rules.ts",
+      "sha256": "c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a",
+      "bytes": 17845
+    },
+    {
+      "path": "src1/modules/organizations/model/lab.ts",
+      "sha256": "42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c",
+      "bytes": 1607
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityRoot.ts",
+      "sha256": "2d085b083405f79d43b5a4a207165fc795bc3803aa56610b186e63b8163b2ed2",
+      "bytes": 14561
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityReadiness.ts",
+      "sha256": "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9",
+      "bytes": 21553
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityProvisioning.ts",
+      "sha256": "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65",
+      "bytes": 22614
+    },
+    {
+      "path": "src1/operators/labAuthority.ts",
+      "sha256": "5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02",
+      "bytes": 181
+    },
+    {
+      "path": "src1/modules/organizations/labAuthoritySourceManifest.json",
+      "sha256": "e97b2c74ce5ddacb7711734815362a4463595a409df72ecde7c562a81509dab3",
+      "bytes": 2462
+    }
+  ],
+  "sourceManifestAggregateSha256": "9e1d7bbdab861deac5b206adc5abee1b17b44b18968a9f5bcdf09b46de2e5e94",
+  "priorReview": {
+    "path": "/private/tmp/sd-lab-s2a-source-SPEC.json",
+    "sha256": "16fb307703be5db624e8c053b24645eeef25d5c94bfd4062ef692191785cf0c5",
+    "decision": "REQUEST_CHANGES",
+    "finding": "LAB-S2A-SOURCE-SPEC-1",
+    "disposition": "RESOLVED_BY_EARLY_BOUND_SOURCE_AMENDMENT_ONLY_ORIGINAL_REVIEW_PRESERVED"
+  },
+  "resolvedFinding": [
+    "Wholewriterdelta adds only primitive UTF8commandJson<=16384 and signatureencodedlength88 checks beforeinnerJSONparse/outerJSONstringify; unchangedparseLabCommand canonicaldecode/reencode64 checks and503storedproofbehavior retained. RootLAB-S2A-STD-1 is the same original defect and is resolved too.",
+    "Onlywriter014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65 andgenerateddatae97b2c74ce5ddacb7711734815362a4463595a409df72ecde7c562a81509dab3 changed. Other7code sourcehashes remain exactcf9;13paths same/onlywriterpair+aggregate updated."
+  ],
+  "findings": [
+    {
+      "id": "LAB-S2A-SOURCE-SPEC-2",
+      "severity": "MEDIUM",
+      "title": "Accepted signed name strings can change during BSON UTF8 persistence",
+      "path": "src1/modules/organizations/labAuthorityRoot.ts",
+      "lines": [
+        61,
+        78
+      ],
+      "relatedPaths": [
+        "src1/modules/organizations/labAuthorityProvisioning.ts:148",
+        "src1/modules/organizations/labAuthorityProvisioning.ts:106"
+      ],
+      "problem": "text(value,max) checks trim/NFC/codepointcount/controlcharacters but accepts an isolated high or low UTF16 surrogate. A canonical signed JSON B can validly carry its ASCII escaped spelling, so rawJSON UTF8/canonical serialization checks do not reject it. BSON4 serializes legalName/registrationReference using Buffer.write(value,...,utf8), which cannot preserve isolatedsurrogates as validUTF8scalars. The plain persisted field changes while issuerProof.commandJson retains originalJSONescape. map_lab can therefore acknowledge a create-only mapping whose next business/history exact signed-P comparison fails. This violates conservation of signedfield content without a server repair, independent of terminology about Unicodecodepoints.",
+      "example": "Wellformed otherwise-validsigned map_lab with legalName consisting of an isolated U+D800 (or U+DC00), or registrationReference containing one. Valid paired supplementary characters remain legitimate and must not be rejected.",
+      "requiredCorrection": "Add one primitive UTF8roundtrip equality predicate to existingtext helper before accepting either signed field; reject non-roundtrippabletext as LAB_AUTHORITY_INPUT_INVALID. Preserve allwellformedUnicode including validpairs, NFC/trim/count/controlrules and exactsignedbytes. Do not normalize/replace signedtext, addnewAPI/framework/nativeversion or silently repair existing mappings.",
+      "nativeEvidence": {
+        "path": "/private/tmp/sd-customer-contact-build-b5f90036-1f9c-4570-9ff3-0c689b30a1cb/public/node_modules/bson/lib/parser/serializer.js",
+        "sha256": "76d32c59830e755ad9156c8f847920f67d386aa8415917665e40751841284b87",
+        "lines": [
+          19,
+          30
+        ],
+        "call": "buffer.write(value,index+4,undefined,utf8)"
+      },
+      "laterFocusedEvidence": "Underseparateadmission validUnicode map/grant/revoke/regrant/replay remain usable; isolatedhigh/low/mixedunpaired cases denybeforeDB/provider/evidence effects, with no silentreplacement or COMMITTED poison mapping. No runtime reproduction claimed."
+    }
+  ],
+  "actualChecks": [
+    "Readexactnarrow8bwriterdiff and both complete priorcf9source/composition review scope; no hidden broadened parser/evaluator/readiness action. All9current+8bGit wholehashes verified.",
+    "All3storedfull/inverse/amendmentpatch hashes match;13generatedsourcepaths/hashes/canonicalaggregate9e1d7b matchactualsource. Existingcontext/pharmacy/readport/service/rootpackage/API/routes unchanged perretainedpriorbindings.",
+    "New earlyguard dominates history74parse, whilepublicparseLabCommand alreadyboundsrequestbeforeitsownparse. Nominal/historyreplay validlogic otherwisebytepreserved.",
+    "Independently traced escapedJSON -> parsedfree-text -> nativeBSONwrite -> storedplainfield vs retainedproofB -> business106 equality. ActualpinnedBSONsource read inertly; no Node/crypto/BSON/DB execution.",
+    "Earlierproofboundrequest records are preserved; newUnicodefinding separatelyboundto8b, not retroactively relabelling priorvotes."
+  ],
+  "limits": [
+    "This is REQUEST_CHANGES only. No source/runtime/crypto/native/clinical/owner/activation approval.",
+    "Both actualcurrentreviews mustberecorded before authornarrowrepair; preserve8b/manifest/oldrecords and obtain twofreshsourcevotes afterward.",
+    "Completefutureownedfixture/defaultclosedrealroot/index/provenance/lifecycle/S2B/C2/C3/build/restore/client/owner/release gates from priorreviewremain."
+  ],
+  "permissions": {
+    "sourceApproved": false,
+    "reviewerSourceEdits": false,
+    "executionApproved": false
+  },
+  "reviewerExecution": "Inert source/JSON/Git/hash/nativefile reasoning only; no parser/Node/crypto/BSON/model/app/DB/Docker/provider execution."
+}

@@ -1,0 +1,25 @@
+{
+  "schema": "SD-LAB-S2-A-SECOND-ACTUAL-SOURCE-DECISIONS-2",
+  "recorder": "/root",
+  "candidateCommit": "8b4922b3390ef846b49c9f304687c3bcdab52e9a",
+  "manifestSha256": "b405545a025a552c9b3d666d530e7b6f7efb575c48187798936f4d857b6f60f3",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "decision": "REQUEST_CHANGES",
+      "path": "output/qa/lab-canonical-authority-contract/source-candidate/revision-2/STANDARDS_REVIEW.json",
+      "sha256": "1382637f9fa3ab83c56c4bca016e5c99a7d4ea6d5b1c4d00c8fa9401ff50c2c5"
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "decision": "REQUEST_CHANGES",
+      "path": "output/qa/lab-canonical-authority-contract/source-candidate/revision-2/SPEC_REVIEW.json",
+      "sha256": "002f4a035cb3a339c8af54f3c577cc23ea40de8c0b340cea79b51629f743074d"
+    }
+  ],
+  "resolved": "Originalstoredproofbounds repaired by oneguardline andcanonicaldecode retained.",
+  "newFinding": "Bothindependentaxes confirmisolatedUTF16surrogates canbeacceptedinsignedfreeUnicodefields and repairedlossilybyBSONUTF8, breakingstoredproofconservation/create-onlymapping.",
+  "remedyScope": "OneunchangedUTF8roundtrip rejectionpredicate inexistingtext helper; no normalization, extraAPI orownerfact. Author mayrepair withinexistingcontract and regenerateownedmanifest; source frozenuntilnewcandidate.",
+  "sourceApproval": false,
+  "executionApproval": false
+}

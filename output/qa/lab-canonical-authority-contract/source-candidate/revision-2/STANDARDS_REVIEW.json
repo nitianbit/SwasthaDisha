@@ -1,0 +1,36 @@
+{
+  "schema": "SD-LAB-S2-A-AMENDED-ACTUAL-SOURCE-STANDARDS-REVIEW-2",
+  "reviewer": "/root",
+  "axis": "Standards",
+  "author": "/root/milestone_composition_r9",
+  "candidateCommit": "8b4922b3390ef846b49c9f304687c3bcdab52e9a",
+  "manifestSha256": "b405545a025a552c9b3d666d530e7b6f7efb575c48187798936f4d857b6f60f3",
+  "decision": "REQUEST_CHANGES",
+  "resolvedFindings": [
+    "LAB-S2A-STD-1: primitiveUTF8<=16384 and signaturelength88 guards nowdominate historicalJSONparse/reconstruction; originalcanonical64decode remains. Exactotherwriterbytes/inverse andmanifest13pairregeneration verified."
+  ],
+  "reviewedSourceHashes": {
+    "src1/modules/organizations/types/index.ts": "98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670",
+    "src1/modules/organizations/model/index.ts": "d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a",
+    "src1/modules/organizations/rules.ts": "c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a",
+    "src1/modules/organizations/model/lab.ts": "42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c",
+    "src1/modules/organizations/labAuthorityRoot.ts": "2d085b083405f79d43b5a4a207165fc795bc3803aa56610b186e63b8163b2ed2",
+    "src1/modules/organizations/labAuthorityReadiness.ts": "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9",
+    "src1/modules/organizations/labAuthorityProvisioning.ts": "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65",
+    "src1/operators/labAuthority.ts": "5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02",
+    "src1/modules/organizations/labAuthoritySourceManifest.json": "e97b2c74ce5ddacb7711734815362a4463595a409df72ecde7c562a81509dab3"
+  },
+  "findings": [
+    {
+      "id": "LAB-S2A-STD-2",
+      "severity": "MEDIUM",
+      "path": "src1/modules/organizations/labAuthorityRoot.ts",
+      "symbol": "text; parseLabCommand map_lab legalName/registrationReference",
+      "problem": "Canonical JSON admits escaped isolatedUTF16 surrogates (high or low). ExistingNFC/trim/control/codepoint checks accept those stringvalues. Native BSON4 serializeString writes them with UTF8 Buffer.write, which cannotpreserve an isolatedsurrogate: the persisted field differsfrom the exactsignedP value retainedin ASCIIescaped commandJson. map_lab cancommit an unusablecreate-onlymapping; laterbusiness() comparesstoredname/reg againstoriginalsignedpayload andcloses. This violates signed-field conservation/no inputrepair.",
+      "evidence": "Inertsourceanalysis only: text lackswellformedUnicode/UTF8roundtrip check; map inserts p[3]/p[4] raw; business comparesrawlab fields to signedp[3]/p[4]. Pinned native bson/lib/parser/serializer.js SHA76d32c59830e755ad9156c8f847920f67d386aa8415917665e40751841284b87:19\u201330 usesbuffer.write(value,index+4,undefined,utf8). No native/BSON execution claimed.",
+      "requiredChange": "Add one rejection predicate in existingtext helper requiring primitive value to roundtripUTF8 unchanged before anymapwrite, e.g Buffer.from(value,utf8).toString(utf8)===value. Do notnormalize/replace signedtext. PreservevalidNFCUnicode includingpairedastrals. Regeneratefrozen8source+data manifests/patches; no newframework/contractaction/owner assumption.",
+      "verification": "FutureadmittedactualBSON/realwriterfixture mustrejectisolatedhigh/low surrogates in eachfreeUnicodefield400/noeffects and roundtripvalidNFC/astralvalues unchanged. NOT_RUN; zero parser/crypto/DB commands performed."
+    }
+  ],
+  "scope": "Exact2fileproofboundamendment pluspriorcompletecf9composition reviewed. Other7codeunchanged; manifest13sourcepairs/aggregate verified. Newissue blocks sourceapproval; runtime/crypto/FS/native/staff/owner/activation/release remainunproven."
+}
