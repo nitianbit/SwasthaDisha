@@ -14,6 +14,9 @@ const files = new Map([
   ['test/api-runtime/platform.mjs', new URL('./platform.mjs', import.meta.url)],
   ['test/api-runtime/platform.test.mjs', new URL('./platform.test.mjs', import.meta.url)],
   ['test/api-runtime/profile.json', new URL('./profile.json', import.meta.url)],
+  ['test/api-runtime/private-documents/profile.json', new URL('./private-documents/profile.json', import.meta.url)],
+  ['test/api-runtime/customer-contact/profile.json', new URL('./customer-contact/profile.json', import.meta.url)],
+  ['test/api-runtime/pharmacy-refill/profile.json', new URL('./pharmacy-refill/profile.json', import.meta.url)],
   ['test/api-runtime/launch.mjs', new URL('./launch.mjs', import.meta.url)],
   ['test/api-runtime/launch.test.mjs', new URL('./launch.test.mjs', import.meta.url)],
   ['test/application/app-bundle.mjs', new URL('../application/app-bundle.mjs', import.meta.url)],
@@ -40,7 +43,7 @@ try {
   process.stdout.write(result.stdout || ''); process.stderr.write(result.stderr || '');
   const summary = (name) => [...(result.stdout || '').matchAll(new RegExp('^# ' + name + ' (\\d+)$', 'gm'))].at(-1)?.[1];
   const tests = Number(summary('tests'));
-  if (result.error || result.signal || result.status !== 0 || tests !== 96
+  if (result.error || result.signal || result.status !== 0 || tests !== 152
     || Number(summary('pass')) !== tests || ['fail', 'cancelled', 'skipped', 'todo'].some((name) => summary(name) !== '0')) {
     throw Error('API platform unit gate failed or required cases did not run');
   }

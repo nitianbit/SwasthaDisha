@@ -6,12 +6,16 @@ import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import profileJson from './profile.json' with { type: 'json' };
+import privateProfileJson from './private-documents/profile.json' with { type: 'json' };
+import contactProfileJson from './customer-contact/profile.json' with { type: 'json' };
+import refillProfileJson from './pharmacy-refill/profile.json' with { type: 'json' };
 import { verifyNetworkAdmission } from '../application/app-bundle.mjs';
 
 export const PROFILE = Object.freeze({ ...profileJson });
+export const PRIVATE_DOCUMENT_PROFILE = Object.freeze({ ...privateProfileJson });
+export const CUSTOMER_CONTACT_PROFILE = Object.freeze({ ...contactProfileJson });
+export const PHARMACY_REFILL_PROFILE = Object.freeze({ ...refillProfileJson });
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
-const ROLE = 'auth-user-wallet-api';
-const PURPOSE = 'auth-api-runtime';
 const MONGO_TMPFS = Object.freeze({
   '/data/db': 'rw,noexec,nosuid,size=536870912,mode=1777',
   '/data/configdb': 'rw,noexec,nosuid,size=16777216,mode=1777',
@@ -25,6 +29,51 @@ const RESULT_KEYS = Object.freeze(['schema', 'runId', 'role', 'database', 'repli
   'admissionPassed', 'egressBlocked', 'filesystemCanariesPassed', 'networkAdmission', 'failed', 'skipped', 'cases', 'sensitivity', 'providerSummary']);
 const PREPARATION_SOURCES = Object.freeze(['bootstrap.cjs', 'scenario.cjs', 'ports-manifest.json', 'prepare.py', 'compile.cjs', 'package-plan.json']
   .map((name) => 'test/api-runtime/scenario/' + name).concat(['test/application/app-bundle.mjs', 'package-lock.json']));
+// Entry points select internal literal roles; callers cannot supply one.
+const AUTH_ROLE = Object.freeze({
+  profile: PROFILE, profileSchema: 'SD-AUTH-API-PROFILE-2', role: 'auth-user-wallet-api', purpose: 'auth-api-runtime',
+  schemas: 'SD-AUTH-API-', scope: 'FOCUSED_PRODUCTION_ROUTERS',
+  template: new URL('./scenario/runtime-template.json', import.meta.url),
+  templatePath: /^\/private\/tmp\/sd-auth-api-build-[A-Za-z0-9_-]+\/runtime$/,
+  runPrefix: 'sd-auth-api-run-', preparationSources: PREPARATION_SOURCES,
+  cases: null, sensitivity: null,
+});
+const PRIVATE_DOCUMENT_ROLE = Object.freeze({
+  profile: PRIVATE_DOCUMENT_PROFILE, profileSchema: 'SD-PRIVATE-DOCUMENT-API-PROFILE-1',
+  role: 'private-document-core-api', purpose: 'private-document-api-runtime',
+  schemas: 'SD-PRIVATE-DOCUMENT-API-', scope: 'FOCUSED_PRIVATE_DOCUMENT_CORE',
+  template: new URL('./private-documents/runtime-template.json', import.meta.url),
+  templatePath: /^\/private\/tmp\/sd-private-document-build-[A-Za-z0-9_-]+\/runtime$/,
+  runPrefix: 'sd-private-document-api-run-',
+  preparationSources: Object.freeze(['bootstrap.cjs', 'scenario.cjs', 'ports-manifest.json', 'prepare.py', 'compile.cjs',
+    'package-plan.json', 'profile.json'].map(name => 'test/api-runtime/private-documents/' + name)
+    .concat(['test/application/app-bundle.mjs', 'package-lock.json'])),
+  cases: 24, sensitivity: 8,
+});
+const CUSTOMER_CONTACT_ROLE = Object.freeze({
+  profile: CUSTOMER_CONTACT_PROFILE, profileSchema: 'SD-CUSTOMER-CONTACT-API-PROFILE-1',
+  role: 'customer-contact-api', purpose: 'customer-contact-api-runtime',
+  schemas: 'SD-CUSTOMER-CONTACT-API-', scope: 'FOCUSED_CUSTOMER_CONTACT',
+  template: new URL('./customer-contact/runtime-template.json', import.meta.url),
+  templatePath: /^\/private\/tmp\/sd-customer-contact-build-[A-Za-z0-9_-]+\/runtime$/,
+  runPrefix: 'sd-customer-contact-api-run-',
+  preparationSources: Object.freeze(['bootstrap.cjs', 'scenario.cjs', 'ports-manifest.json', 'prepare.py', 'compile.cjs',
+    'package-plan.json', 'profile.json'].map(name => 'test/api-runtime/customer-contact/' + name)
+    .concat(['test/application/app-bundle.mjs', 'package-lock.json'])),
+  cases: 32, sensitivity: 16,
+});
+const PHARMACY_REFILL_ROLE = Object.freeze({
+  profile: PHARMACY_REFILL_PROFILE, profileSchema: 'SD-PHARMACY-REFILL-API-PROFILE-1',
+  role: 'pharmacy-refill-api', purpose: 'pharmacy-refill-api-runtime',
+  schemas: 'SD-PHARMACY-REFILL-API-', scope: 'FOCUSED_PHARMACY_REFILL',
+  template: new URL('./pharmacy-refill/runtime-template.json', import.meta.url),
+  templatePath: /^\/private\/tmp\/sd-pharmacy-refill-build-[A-Za-z0-9_-]+\/runtime$/,
+  runPrefix: 'sd-pharmacy-refill-api-run-',
+  preparationSources: Object.freeze(['bootstrap.cjs', 'scenario.cjs', 'ports-manifest.json', 'prepare.py', 'compile.cjs',
+    'package-plan.json', 'profile.json'].map(name => 'test/api-runtime/pharmacy-refill/' + name)
+    .concat(['test/application/app-bundle.mjs', 'package-lock.json'])),
+  cases: 20, sensitivity: 7,
+});
 const plain = (v) => v !== null && typeof v === 'object' && [Object.prototype, null].includes(Object.getPrototypeOf(v));
 export const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex');
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -60,6 +109,10 @@ export function fixtureFailureCodes(files) {
 
 /** No raw stdout, stderr, Error text, errorType or validation fields escape. */
 export function decodeDockerResult(result, args, codes) {
+  return decodeFixedDockerResult(result, args, codes, AUTH_ROLE);
+}
+
+function decodeFixedDockerResult(result, args, codes, fixed) {
   requireThat(OPERATIONS.includes(args[0]) && codes instanceof Set, 'Invalid fixed Docker decoder input');
   if (!result.error && !result.signal && result.status === 0) return result.stdout.trim();
   let child = null;
@@ -67,7 +120,7 @@ export function decodeDockerResult(result, args, codes) {
     let value;
     try { value = JSON.parse(result.stdout); } catch { /* Unavailable; never echo a parser snippet. */ }
     if (exactKeys(value, ['schema', 'stage', 'code', 'errorType', 'fieldNames', 'failed', 'skipped'])
-      && value.schema === 'SD-AUTH-API-FAILURE-1' && FAILURE_STAGES.includes(value.stage)
+      && value.schema === fixed.schemas + 'FAILURE-1' && FAILURE_STAGES.includes(value.stage)
       && codes.has(value.code) && value.failed === 1 && value.skipped === 0) {
       child = Object.freeze({ stage: value.stage, code: value.code });
     }
@@ -97,13 +150,14 @@ function safePath(root, path) {
 }
 
 /** Reading a frozen template grants no resource ownership and never cleans it up. */
-function reviewedTemplate() {
-  const bytes = regular(new URL('./scenario/runtime-template.json', import.meta.url));
+function reviewedTemplate(fixed) {
+  const PROFILE = fixed.profile;
+  const bytes = regular(fixed.template);
   const meta = JSON.parse(bytes);
-  requireThat(meta.schema === 'SD-AUTH-API-TEMPLATE-1' && commit(meta.sourceCommit)
+  requireThat(meta.schema === fixed.schemas + 'TEMPLATE-1' && commit(meta.sourceCommit)
     && plain(meta.files) && plain(meta.sourceFiles) && digest(meta.lockSha) && digest(meta.portsSha), 'Invalid prepared template');
   requireThat(typeof meta.directory === 'string'
-    && /^\/private\/tmp\/sd-auth-api-build-[A-Za-z0-9_-]+\/runtime$/.test(meta.directory)
+    && fixed.templatePath.test(meta.directory)
     && realpathSync(meta.directory) === meta.directory, 'Template is outside the reviewed preparation area');
   requireThat(meta.packageVersions?.mongoose === PROFILE.mongooseVersion
     && meta.packageVersions?.typescript === PROFILE.compilerVersion, 'Unreviewed test dependency profile');
@@ -131,13 +185,13 @@ function reviewedTemplate() {
     && sha256(files['ports-manifest.json']) === meta.portsSha, 'Lock or port manifest differs');
   requireThat(Object.keys(meta.sourceFiles).length > 0, 'Source closure is empty');
   for (const [name, hash] of Object.entries(meta.sourceFiles)) {
-    requireThat(((name.startsWith('src1/') && name.endsWith('.ts')) || PREPARATION_SOURCES.includes(name)) && digest(hash)
+    requireThat(((name.startsWith('src1/') && name.endsWith('.ts')) || fixed.preparationSources.includes(name)) && digest(hash)
       && sha256(regular(safePath(ROOT, name))) === hash, 'Current production source differs from template');
   }
   return Object.freeze({ meta, files: Object.freeze(files), templateSha: sha256(bytes) });
 }
 
-function realExecutor(endpoint, configuration, codes) {
+function realExecutor(endpoint, configuration, codes, fixed) {
   const socket = fileURLToPath(new URL(endpoint.replace(/^unix:/, 'file:')));
   requireThat(statSync(realpathSync(socket)).isSocket(), 'Recorded endpoint is not a local socket');
   return (args, timeout = 25_000) => {
@@ -145,14 +199,34 @@ function realExecutor(endpoint, configuration, codes) {
       env: { PATH: '/usr/local/bin:/usr/bin:/bin' }, encoding: 'utf8', timeout, maxBuffer: 2 * 1024 * 1024,
     });
     // Child output is not interpolated: failures must not disclose test JWT/OTP/key material.
-    return decodeDockerResult(r, args, codes);
+    return decodeFixedDockerResult(r, args, codes, fixed);
   };
 }
 
 /** No Docker operation occurs until run(); a returned handle retains all acknowledged IDs. */
 export function createApiRuntimeFixture(input, seams = {}) {
+  return createFixedRuntimeFixture(input, seams, AUTH_ROLE);
+}
+
+/** The only private role: same owned lifecycle, fixed template and no caller-selected grants. */
+export function createPrivateDocumentRuntimeFixture(input, seams = {}) {
+  return createFixedRuntimeFixture(input, seams, PRIVATE_DOCUMENT_ROLE);
+}
+
+/** Same lifecycle with the literal individual-customer contact profile only. */
+export function createCustomerContactRuntimeFixture(input, seams = {}) {
+  return createFixedRuntimeFixture(input, seams, CUSTOMER_CONTACT_ROLE);
+}
+
+/** Same owned lifecycle with the fixed pharmacy due-refill profile only. */
+export function createPharmacyRefillRuntimeFixture(input, seams = {}) {
+  return createFixedRuntimeFixture(input, seams, PHARMACY_REFILL_ROLE);
+}
+
+function createFixedRuntimeFixture(input, seams, fixed) {
+  const PROFILE = fixed.profile; const ROLE = fixed.role; const PURPOSE = fixed.purpose;
   requireThat(plain(input) && plain(seams), 'Plain input and test seams required');
-  requireThat(PROFILE.schema === 'SD-AUTH-API-PROFILE-2'
+  requireThat(PROFILE.schema === fixed.profileSchema && PROFILE.role === ROLE
     && PROFILE.indexBuildMinAvailableDiskSpaceMB === 64, 'Unreviewed test-only Mongo index-space profile');
   const request = Object.freeze({ ...input });
   const fake = Reflect.ownKeys(seams).length > 0;
@@ -164,23 +238,26 @@ export function createApiRuntimeFixture(input, seams = {}) {
   requireThat(Reflect.ownKeys(request).length === 1 && request.endpoint === PROFILE.endpoint, 'Only the fixed endpoint is accepted');
   requireThat(!Object.keys(process.env).some((k) => /^(DOCKER_|NODE_OPTIONS$|NODE_PATH$|MONGODB_|DATABASE_URL$|JWT_SECRET|SMTP|SMS_|FIREBASE_|RAZORPAY_|GOOGLE_|AWS_)/.test(k)),
     'Operational/preload configuration is forbidden');
-  const template = fake ? ports.template : reviewedTemplate();
+  const template = fake ? ports.template : reviewedTemplate(fixed);
   requireThat(plain(template.files) && plain(template.meta) && digest(template.templateSha), 'Invalid admitted template');
   const failureCodes = fixtureFailureCodes(template.files);
   const plan = JSON.parse(template.files['runtime-plan.json'].toString());
-  requireThat(plan.schema === 'SD-AUTH-API-PLAN-1' && plan.role === ROLE && Array.isArray(plan.requiredCaseIds)
-    && plan.requiredCaseIds.length >= 20 && new Set(plan.requiredCaseIds).size === plan.requiredCaseIds.length
+  requireThat(plan.schema === fixed.schemas + 'PLAN-1' && plan.role === ROLE && Array.isArray(plan.requiredCaseIds)
+    && (fixed.cases === null ? plan.requiredCaseIds.length >= 20 : plan.requiredCaseIds.length === fixed.cases) && new Set(plan.requiredCaseIds).size === plan.requiredCaseIds.length
     && plan.requiredCaseIds.every((v) => typeof v === 'string' && /^[A-Z][A-Z0-9_-]{1,80}$/.test(v)), 'Incomplete API case plan');
-  requireThat(Array.isArray(plan.requiredSensitivityIds) && plan.requiredSensitivityIds.length >= 2
+  requireThat(Array.isArray(plan.requiredSensitivityIds) && (fixed.sensitivity === null ? plan.requiredSensitivityIds.length >= 2 : plan.requiredSensitivityIds.length === fixed.sensitivity)
     && new Set(plan.requiredSensitivityIds).size === plan.requiredSensitivityIds.length
     && plan.requiredSensitivityIds.every((v) => typeof v === 'string' && /^[A-Z][A-Z0-9_-]{1,80}$/.test(v)), 'Incomplete sensitivity plan');
   requireThat(Array.isArray(plan.providerCounterKeys) && plan.providerCounterKeys.includes('unexpected')
     && new Set(plan.providerCounterKeys).size === plan.providerCounterKeys.length
-    && plan.providerCounterKeys.every((key) => PROVIDER_KEYS.includes(key)), 'Unreviewed provider counter plan');
+    && (fixed !== CUSTOMER_CONTACT_ROLE || plan.providerCounterKeys.includes('wallet'))
+    && (fixed !== PHARMACY_REFILL_ROLE || same(plan.providerCounterKeys, ['logger', 'unexpected']))
+    && plan.providerCounterKeys.every((key) => PROVIDER_KEYS.includes(key)
+      || (fixed === CUSTOMER_CONTACT_ROLE && key === 'wallet')), 'Unreviewed provider counter plan');
   const runId = randomUUID(); const compact = runId.replaceAll('-', '');
   const database = 'sd_api_' + compact; const replicaSet = 'sd_rs_' + compact;
   requireThat(fake || realpathSync(tmpdir()) === '/private/tmp', 'Real fixture requires the reviewed temporary root');
-  const directory = realpathSync(mkdtempSync(join(tmpdir(), 'sd-auth-api-run-')));
+  const directory = realpathSync(mkdtempSync(join(tmpdir(), fixed.runPrefix)));
   const identity = lstatSync(directory); const marker = join(directory, '.owner.json');
   const bundle = join(directory, 'bundle'); const config = join(directory, 'docker');
   let phase = 'prepared'; let disposed = false; let uncertainCreate; let cleanupUnresolved = false; let cleanupReceipt; let failure;
@@ -215,7 +292,7 @@ export function createApiRuntimeFixture(input, seams = {}) {
     throw cause;
   }
   let executor;
-  try { executor = fake ? ports.executor : realExecutor(request.endpoint, config, failureCodes); }
+  try { executor = fake ? ports.executor : realExecutor(request.endpoint, config, failureCodes, fixed); }
   catch (cause) { owned(); rmSync(directory, { recursive: true }); throw cause; }
   function execute(args, timeout) {
     try { return executor(args, timeout); }
@@ -377,7 +454,7 @@ export function createApiRuntimeFixture(input, seams = {}) {
         await delay(100);
       }
       requireThat(ready, 'Owned replica set did not become ready'); mongoRunning(mongo);
-      admission = { schema: 'SD-AUTH-API-RUN-1', runId, role: ROLE, database, replicaSet, mongoId: mongo.id,
+      admission = { schema: fixed.schemas + 'RUN-1', runId, role: ROLE, database, replicaSet, mongoId: mongo.id,
         templateSha: template.templateSha, files: Object.fromEntries(Object.entries(template.files).map(([p, b]) => [p, sha256(b)])),
         lockSha: template.meta.lockSha, portsSha: template.meta.portsSha, sourceCommit: template.meta.sourceCommit };
       const bytes = JSON.stringify(admission); manifestSha = sha256(bytes);
@@ -387,9 +464,9 @@ export function createApiRuntimeFixture(input, seams = {}) {
       validateAll(); mongoRunning(mongo); const state = validateResource(node).State;
       requireThat(state?.Status === 'exited' && state.ExitCode === 0 && state.OOMKilled === false, 'API child did not exit successfully');
       const result = safeJson(output, 'Invalid API result JSON');
-      requireThat(exactKeys(result, RESULT_KEYS) && result.schema === 'SD-AUTH-API-RESULT-1' && result.runId === runId && result.role === ROLE
+      requireThat(exactKeys(result, RESULT_KEYS) && result.schema === fixed.schemas + 'RESULT-1' && result.runId === runId && result.role === ROLE
         && result.database === database && result.replicaSet === replicaSet && result.sourceCommit === template.meta.sourceCommit
-        && result.domainScope === 'FOCUSED_PRODUCTION_ROUTERS' && result.admissionPassed === true
+        && result.domainScope === fixed.scope && result.admissionPassed === true
         && result.egressBlocked === true && result.filesystemCanariesPassed === true
         && !Object.hasOwn(result, 'networkInterfaces') && verifyNetworkAdmission(result.networkAdmission)
         && result.failed === 0 && result.skipped === 0 && Array.isArray(result.cases)

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, renameSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { PROFILE, createApiRuntimeFixture, sha256, assertPathAbsent, decodeDockerResult, fixtureFailureCodes } from './platform.mjs';
+import { PROFILE, PRIVATE_DOCUMENT_PROFILE, CUSTOMER_CONTACT_PROFILE, PHARMACY_REFILL_PROFILE, createPharmacyRefillRuntimeFixture, createApiRuntimeFixture, createPrivateDocumentRuntimeFixture, createCustomerContactRuntimeFixture, sha256, assertPathAbsent, decodeDockerResult, fixtureFailureCodes } from './platform.mjs';
 import { evaluateNetworkAdmission } from '../application/app-bundle.mjs';
 
 const CASES = Array.from({ length: 20 }, (_, i) => 'CASE_' + String(i).padStart(2, '0'));
@@ -11,22 +11,39 @@ const SENSITIVITY = ['OTP_UNCONDITIONAL_CONSUME', 'OTP_LOGIN_TARGET_UNBOUND'];
 const net = evaluateNetworkAdmission({ tag: 'APP-NET-DIAG-1',
   entries: [{ name: 'lo', kind: 'symlink', flags: '0x9', type: '772', operstate: 'unknown' }],
   addressedInterfaces: [{ name: 'lo', addresses: [{ address: '127.0.0.1', family: 'IPv4', internal: true }] }] });
-const template = () => ({ templateSha: 'a'.repeat(64), meta: {
+const PRIVATE_CASES = ['ADMISSION', 'DEFAULT_CLOSED', 'OBSERVED_CATALOG', 'AUTH_AND_SCOPE', 'UNBOUND_CAPTURE',
+  'BOUND_CAPTURE', 'MULTIPART_LIMITS', 'IMMUTABLE_DEDUPE', 'CAPTURE_RACE', 'VALIDATION', 'RELEASE', 'HISTORICAL_BYTES',
+  'LIST_AND_DTO', 'REVOKE_REPLAY', 'READ_AUDIT', 'STREAM_AND_HASH', 'PRIVATE_HEADERS', 'LEGACY_READ_ALIASES',
+  'LEGACY_WRITE_DELETE', 'TRANSACTION_ROLLBACK', 'POST_PARSE_TIMEOUT', 'ABORT_AND_LEASE', 'INITIAL_STAT_CLEANUP', 'FINAL_RESTORATION'];
+const PRIVATE_SENSITIVITY = Array.from({ length: 8 }, (_, i) => 'PRIVATE_CONTROL_' + (i + 1));
+const CONTACT_CASES = Array.from({ length: 32 }, (_, i) => 'CONTACT_GROUP_' + i);
+const CONTACT_SENSITIVITY = Array.from({ length: 16 }, (_, i) => 'CONTACT_CONTROL_' + i);
+const REFILL_CASES = ["ADMISSION", "AUTHENTICATION", "OPERATIONAL_AUTHORITY", "RAW_QUERY", "CALENDAR", "LIMITS", "CURSOR_CANONICAL", "CURSOR_SCOPE", "DUE_SLICE", "SCALAR_FILTERS", "RAW_ROW_SHAPES", "BSON4_POSITIVES", "BSON4_HOSTILE", "DENSE_ARRAY", "DTO_AND_HEADERS", "QUERY_AND_CATALOG", "PERSISTED_RESUME", "PAUSE_AND_COMPATIBILITY", "UPDATE_AUTHORITY", "SENSITIVITY_AND_RESTORATION"];
+const REFILL_SENSITIVITY = ["OWNER_AND_SCALAR_FENCES_REMOVED", "QUERY_ROW_BOUND_REMOVED", "RAW_QUERY_ALLOWLIST_WEAKENED", "PATIENT_FIELD_LEAKED", "UNDEFINED_RESUME_RESTORED", "SYMBOL_GETTER_GUARD_REGRESSED", "DENSE_ARRAY_GUARD_REGRESSED"];
+const template = (privateRole = false) => ({ templateSha: 'a'.repeat(64), meta: {
   sourceCommit: 'b'.repeat(40), lockSha: sha256('{}'), portsSha: sha256('{}'),
 }, files: { 'bootstrap.cjs': Buffer.from('// synthetic bootstrap, never executed\n'),
-  'runtime-plan.json': Buffer.from(JSON.stringify({ schema: 'SD-AUTH-API-PLAN-1', role: PROFILE.role, requiredCaseIds: CASES, requiredSensitivityIds: SENSITIVITY, providerCounterKeys: ['unexpected'] })),
+  'runtime-plan.json': Buffer.from(JSON.stringify({ schema: privateRole === 'refill' ? 'SD-PHARMACY-REFILL-API-PLAN-1' : privateRole === 'contact' ? 'SD-CUSTOMER-CONTACT-API-PLAN-1' : privateRole ? 'SD-PRIVATE-DOCUMENT-API-PLAN-1' : 'SD-AUTH-API-PLAN-1',
+    role: privateRole === 'refill' ? PHARMACY_REFILL_PROFILE.role : privateRole === 'contact' ? CUSTOMER_CONTACT_PROFILE.role : privateRole ? PRIVATE_DOCUMENT_PROFILE.role : PROFILE.role,
+    requiredCaseIds: privateRole === 'refill' ? REFILL_CASES : privateRole === 'contact' ? CONTACT_CASES : privateRole ? PRIVATE_CASES : CASES,
+    requiredSensitivityIds: privateRole === 'refill' ? REFILL_SENSITIVITY : privateRole === 'contact' ? CONTACT_SENSITIVITY : privateRole ? PRIVATE_SENSITIVITY : SENSITIVITY,
+    providerCounterKeys: privateRole === 'refill' ? ['logger', 'unexpected'] : privateRole === 'contact' ? ['unexpected', 'wallet'] : ['unexpected'] })),
   'package-lock.json': Buffer.from('{}'), 'ports-manifest.json': Buffer.from('{}') } });
 
-function transport() {
+function transport(privateRole = false) {
+  const contactRole = privateRole === 'contact'; const refillRole = privateRole === 'refill';
+  const selectedProfile = refillRole ? PHARMACY_REFILL_PROFILE : contactRole ? CUSTOMER_CONTACT_PROFILE : privateRole ? PRIVATE_DOCUMENT_PROFILE : PROFILE;
+  const selectedCases = refillRole ? REFILL_CASES : contactRole ? CONTACT_CASES : privateRole ? PRIVATE_CASES : CASES;
+  const selectedSensitivity = refillRole ? REFILL_SENSITIVITY : contactRole ? CONTACT_SENSITIVITY : privateRole ? PRIVATE_SENSITIVITY : SENSITIVITY;
   const calls = []; const rows = new Map(); const receipts = [];
   const state = { calls, rows, receipts, drift: null, resultMutation: null, failNodeCreate: false, beforeNode: null,
-    engineId: PROFILE.engineId, beforeInfo: null, afterMongoStart: null, afterNodeExit: null,
+    engineId: selectedProfile.engineId, beforeInfo: null, afterMongoStart: null, afterNodeExit: null,
     leaveRemoved: false, afterRemove: null, failAbsence: false, extraPurposeId: null, rawOutput: null, failAttach: false,
     ordinaryProbeFailures: 0, terminalProbe: null };
   const images = new Map([
-    [PROFILE.nodeImage, { Id: 'sha256:' + '1'.repeat(64), Os: 'linux', Architecture: 'arm64', RepoDigests: [PROFILE.nodeImage],
+    [selectedProfile.nodeImage, { Id: 'sha256:' + '1'.repeat(64), Os: 'linux', Architecture: 'arm64', RepoDigests: [selectedProfile.nodeImage],
       Config: { Env: ['PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'NODE_VERSION=22.23.4'] } }],
-    [PROFILE.mongoImage, { Id: 'sha256:' + '2'.repeat(64), Os: 'linux', Architecture: 'arm64', RepoDigests: [PROFILE.mongoImage],
+    [selectedProfile.mongoImage, { Id: 'sha256:' + '2'.repeat(64), Os: 'linux', Architecture: 'arm64', RepoDigests: [selectedProfile.mongoImage],
       Config: { Env: ['PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'MONGO_VERSION=8.0.34'], Volumes: { '/data/db': {}, '/data/configdb': {} } } }],
   ]);
   const executor = (args) => {
@@ -38,7 +55,7 @@ function transport() {
         if (state.failAbsence) throw Error('Synthetic unavailable absence proof');
         const id = filter.slice(3); return rows.has(id) ? id : '';
       }
-      assert.equal(filter, 'label=swasthadisha.test.purpose=auth-api-runtime');
+      assert.equal(filter, 'label=swasthadisha.test.purpose=' + (refillRole ? 'pharmacy-refill-api-runtime' : contactRole ? 'customer-contact-api-runtime' : privateRole ? 'private-document-api-runtime' : 'auth-api-runtime'));
       return [...rows.keys(), ...(state.extraPurposeId ? [state.extraPurposeId] : [])].join('\n');
     }
     if (args[0] === 'image') return JSON.stringify([images.get(args[2])]);
@@ -97,26 +114,27 @@ function transport() {
       state.afterNodeExit?.([...rows.values()].find((r) => r.Config.Labels['swasthadisha.test.role'] === 'mongo'));
       const bundle = row.HostConfig.Mounts[0].Source;
       const admission = JSON.parse(readFileSync(join(bundle, '.admission.json')));
-      const result = { schema: 'SD-AUTH-API-RESULT-1', runId: admission.runId, role: PROFILE.role,
+      const result = { schema: refillRole ? 'SD-PHARMACY-REFILL-API-RESULT-1' : contactRole ? 'SD-CUSTOMER-CONTACT-API-RESULT-1' : privateRole ? 'SD-PRIVATE-DOCUMENT-API-RESULT-1' : 'SD-AUTH-API-RESULT-1', runId: admission.runId, role: selectedProfile.role,
         database: admission.database, replicaSet: admission.replicaSet, sourceCommit: admission.sourceCommit,
-        domainScope: 'FOCUSED_PRODUCTION_ROUTERS', admissionPassed: true, egressBlocked: true,
+        domainScope: refillRole ? 'FOCUSED_PHARMACY_REFILL' : contactRole ? 'FOCUSED_CUSTOMER_CONTACT' : privateRole ? 'FOCUSED_PRIVATE_DOCUMENT_CORE' : 'FOCUSED_PRODUCTION_ROUTERS', admissionPassed: true, egressBlocked: true,
         filesystemCanariesPassed: true, networkAdmission: net, failed: 0, skipped: 0,
-        cases: CASES.map((id) => ({ id, status: 'PASS' })),
-        sensitivity: SENSITIVITY.map((id) => ({ id, detected: true })), providerSummary: { unexpected: 0 } };
+        cases: selectedCases.map((id) => ({ id, status: 'PASS' })),
+        sensitivity: selectedSensitivity.map((id) => ({ id, detected: true })), providerSummary: refillRole ? { logger: 0, unexpected: 0 } : contactRole ? { unexpected: 0, wallet: 0 } : { unexpected: 0 } };
       state.resultMutation?.(result); return state.rawOutput ?? JSON.stringify(result);
     }
     if (args[0] === 'rm') { if (!state.leaveRemoved) assert.equal(rows.delete(args.at(-1)), true); state.afterRemove?.(); return args.at(-1); }
     throw Error('Unexpected synthetic transport operation');
   };
-  return { state, executor, images, seams: { executor, template: template(), reportCreated: (receipt) => receipts.push(receipt) } };
+  return { state, executor, images, seams: { executor, template: template(privateRole), reportCreated: (receipt) => receipts.push(receipt) } };
 }
 
-function fixture(t, alter) {
+function fixture(t, alter, privateRole = false) {
   const parent = mkdtempSync(join(process.env.TMPDIR || '/private/tmp', 'api-platform-unit-'));
   const previous = process.env.TMPDIR; process.env.TMPDIR = parent;
   t.after(() => { process.env.TMPDIR = previous; rmSync(parent, { recursive: true, force: true }); });
-  const fake = transport(); alter?.(fake);
-  const handle = createApiRuntimeFixture({ endpoint: PROFILE.endpoint }, fake.seams);
+  const fake = transport(privateRole); alter?.(fake);
+  const create = privateRole === 'refill' ? createPharmacyRefillRuntimeFixture : privateRole === 'contact' ? createCustomerContactRuntimeFixture : privateRole ? createPrivateDocumentRuntimeFixture : createApiRuntimeFixture;
+  const handle = create({ endpoint: PROFILE.endpoint }, fake.seams);
   return { ...fake, handle, parent };
 }
 
@@ -378,4 +396,209 @@ for (const outcome of ['TIMEOUT', 'INTERRUPTED']) test('terminal readiness ' + o
   assert.equal(f.state.calls.filter(a => a[0] === 'exec').length, 1);
   assert.equal(f.state.calls.filter(a => a[0] === 'create').length, 1);
   f.handle.dispose(); assert.equal(f.state.rows.size, 0);
+});
+
+
+test('fixed private role shares owned lifecycle with distinct admission, purpose and finite evidence', async (t) => {
+  const f = fixture(t, undefined, true); const result = await f.handle.run();
+  assert.equal(result.schema, 'SD-PRIVATE-DOCUMENT-API-RESULT-1');
+  assert.equal(result.role, 'private-document-core-api');
+  assert.equal(result.domainScope, 'FOCUSED_PRIVATE_DOCUMENT_CORE');
+  assert.deepEqual(result.cases.map(row => row.id), PRIVATE_CASES);
+  assert.equal(result.sensitivity.length, 8);
+  assert.match(f.handle.directory, /sd-private-document-api-run-/);
+  const [mongo, node] = f.state.receipts;
+  const row = f.state.rows.get(node.id);
+  assert.equal(row.HostConfig.NetworkMode, 'container:' + mongo.id);
+  assert.equal(row.HostConfig.Memory, 536870912); assert.equal(row.HostConfig.PidsLimit, 64);
+  assert.equal(row.HostConfig.ReadonlyRootfs, true); assert.deepEqual(row.HostConfig.CapDrop, ['ALL']);
+  const admission = JSON.parse(readFileSync(join(row.HostConfig.Mounts[0].Source, '.admission.json')));
+  assert.equal(admission.schema, 'SD-PRIVATE-DOCUMENT-API-RUN-1');
+  assert.equal(admission.role, PRIVATE_DOCUMENT_PROFILE.role);
+  assert.equal(row.Config.Labels['swasthadisha.test.purpose'], 'private-document-api-runtime');
+  const receipt = f.handle.dispose();
+  assert.deepEqual(receipt.exactIdsAbsent, [mongo.id, node.id]); assert.equal(f.state.rows.size, 0);
+  assert.equal(receipt.workspaceAbsent, true); assert.equal(receipt.zeroPurposeLabels, true);
+});
+
+for (const [label, change] of [
+  ['role', plan => { plan.role = PROFILE.role; }],
+  ['schema', plan => { plan.schema = 'SD-AUTH-API-PLAN-1'; }],
+  ['missing-group', plan => { plan.requiredCaseIds.pop(); }],
+  ['extra-group', plan => { plan.requiredCaseIds.push('EXTRA'); }],
+  ['missing-control', plan => { plan.requiredSensitivityIds.pop(); }],
+  ['extra-control', plan => { plan.requiredSensitivityIds.push('EXTRA'); }],
+]) test('private role rejects substituted finite plan before allocation: ' + label, () => {
+  const f = transport(true); const plan = JSON.parse(f.seams.template.files['runtime-plan.json']);
+  change(plan); f.seams.template.files['runtime-plan.json'] = Buffer.from(JSON.stringify(plan));
+  assert.throws(() => createPrivateDocumentRuntimeFixture({ endpoint: PROFILE.endpoint }, f.seams), /Incomplete/);
+  assert.equal(f.state.calls.length, 0); assert.equal(f.state.receipts.length, 0);
+});
+
+test('callers cannot select private grants through either public input or an auth template', () => {
+  const auth = transport(); const privateFake = transport(true);
+  assert.throws(() => createPrivateDocumentRuntimeFixture({ endpoint: PROFILE.endpoint, role: PRIVATE_DOCUMENT_PROFILE.role }, privateFake.seams), /fixed endpoint/);
+  assert.throws(() => createPrivateDocumentRuntimeFixture({ endpoint: PROFILE.endpoint }, auth.seams), /Incomplete API/);
+  assert.throws(() => createApiRuntimeFixture({ endpoint: PROFILE.endpoint }, privateFake.seams), /Incomplete API/);
+  assert.equal(auth.state.calls.length + privateFake.state.calls.length, 0);
+});
+
+for (const [label, change] of [
+  ['schema', result => { result.schema = 'SD-AUTH-API-RESULT-1'; }],
+  ['role', result => { result.role = PROFILE.role; }],
+  ['scope', result => { result.domainScope = 'FOCUSED_PRODUCTION_ROUTERS'; }],
+  ['missing-group', result => { result.cases.pop(); }],
+  ['undetected-control', result => { result.sensitivity[0].detected = false; }],
+]) test('private role rejects cross-role or incomplete runtime claims: ' + label, async (t) => {
+  const f = fixture(t, fake => { fake.state.resultMutation = change; }, true);
+  await assert.rejects(f.handle.run(), /evidence mismatch/);
+  f.handle.dispose(); assert.equal(f.state.rows.size, 0);
+});
+
+
+test('fixed contact role retains owned lifecycle and separates its diagnostic profile and wallet intent', async (t) => {
+  const f = fixture(t, fake => { fake.state.resultMutation = result => { result.providerSummary.wallet = 3; }; }, 'contact');
+  const result = await f.handle.run();
+  assert.equal(result.schema, 'SD-CUSTOMER-CONTACT-API-RESULT-1');
+  assert.equal(result.role, 'customer-contact-api'); assert.equal(result.domainScope, 'FOCUSED_CUSTOMER_CONTACT');
+  assert.equal(CUSTOMER_CONTACT_PROFILE.mongooseVersion, '6.13.8');
+  assert.equal(PRIVATE_DOCUMENT_PROFILE.mongooseVersion, '9.12.0');
+  assert.deepEqual(result.cases.map(row => row.id), CONTACT_CASES); assert.equal(result.sensitivity.length, 16);
+  assert.deepEqual(result.providerSummary, { unexpected: 0, wallet: 3 });
+  assert.match(f.handle.directory, /sd-customer-contact-api-run-/);
+  const [mongo, node] = f.state.receipts; const row = f.state.rows.get(node.id);
+  assert.equal(row.Config.Labels['swasthadisha.test.purpose'], 'customer-contact-api-runtime');
+  assert.equal(row.HostConfig.NetworkMode, 'container:' + mongo.id);
+  assert.equal(row.HostConfig.Memory, 536870912); assert.equal(row.HostConfig.PidsLimit, 64);
+  assert.equal(row.HostConfig.ReadonlyRootfs, true); assert.deepEqual(row.HostConfig.CapDrop, ['ALL']);
+  const admission = JSON.parse(readFileSync(join(row.HostConfig.Mounts[0].Source, '.admission.json')));
+  assert.equal(admission.schema, 'SD-CUSTOMER-CONTACT-API-RUN-1'); assert.equal(admission.role, CUSTOMER_CONTACT_PROFILE.role);
+  const receipt = f.handle.dispose();
+  assert.deepEqual(receipt.exactIdsAbsent, [mongo.id, node.id]); assert.equal(f.state.rows.size, 0);
+  assert.equal(receipt.workspaceAbsent, true); assert.equal(receipt.zeroPurposeLabels, true);
+});
+
+for (const [label, change] of [
+  ['role', plan => { plan.role = PROFILE.role; }],
+  ['schema', plan => { plan.schema = 'SD-PRIVATE-DOCUMENT-API-PLAN-1'; }],
+  ['missing-group', plan => { plan.requiredCaseIds.pop(); }],
+  ['extra-group', plan => { plan.requiredCaseIds.push('EXTRA'); }],
+  ['missing-control', plan => { plan.requiredSensitivityIds.pop(); }],
+  ['extra-control', plan => { plan.requiredSensitivityIds.push('EXTRA'); }],
+  ['missing-wallet', plan => { plan.providerCounterKeys = ['unexpected']; }],
+]) test('contact role rejects substituted finite plan before allocation: ' + label, () => {
+  const f = transport('contact'); const plan = JSON.parse(f.seams.template.files['runtime-plan.json']);
+  change(plan); f.seams.template.files['runtime-plan.json'] = Buffer.from(JSON.stringify(plan));
+  assert.throws(() => createCustomerContactRuntimeFixture({ endpoint: PROFILE.endpoint }, f.seams), /Incomplete|provider counter plan/);
+  assert.equal(f.state.calls.length, 0); assert.equal(f.state.receipts.length, 0);
+});
+
+test('callers cannot select contact grants or exchange templates with either existing role', () => {
+  const contact = transport('contact');
+  assert.throws(() => createCustomerContactRuntimeFixture({ endpoint: PROFILE.endpoint, role: CUSTOMER_CONTACT_PROFILE.role }, contact.seams), /fixed endpoint/);
+  for (const [oldRole, create] of [[false, createApiRuntimeFixture], [true, createPrivateDocumentRuntimeFixture]]) {
+    const old = transport(oldRole);
+    assert.throws(() => createCustomerContactRuntimeFixture({ endpoint: PROFILE.endpoint }, old.seams), /Incomplete API/);
+    assert.throws(() => create({ endpoint: PROFILE.endpoint }, contact.seams), /Incomplete API/);
+    assert.equal(old.state.calls.length, 0);
+  }
+  assert.equal(contact.state.calls.length, 0);
+});
+
+for (const [label, role, key] of [['auth-wallet', false, 'wallet'], ['private-wallet', true, 'wallet'], ['contact-unknown', 'contact', 'unplanned']])
+  test('wallet admission stays confined to the fixed contact role: ' + label, () => {
+    const f = transport(role); const plan = JSON.parse(f.seams.template.files['runtime-plan.json']); plan.providerCounterKeys.push(key);
+    f.seams.template.files['runtime-plan.json'] = Buffer.from(JSON.stringify(plan));
+    const create = role === 'contact' ? createCustomerContactRuntimeFixture : role ? createPrivateDocumentRuntimeFixture : createApiRuntimeFixture;
+    assert.throws(() => create({ endpoint: PROFILE.endpoint }, f.seams), /provider counter plan/);
+    assert.equal(f.state.calls.length, 0); assert.equal(f.state.receipts.length, 0);
+  });
+
+for (const [label, change] of [
+  ['schema', result => { result.schema = 'SD-PRIVATE-DOCUMENT-API-RESULT-1'; }],
+  ['role', result => { result.role = PROFILE.role; }],
+  ['scope', result => { result.domainScope = 'FOCUSED_PRIVATE_DOCUMENT_CORE'; }],
+  ['missing-group', result => { result.cases.pop(); }],
+  ['undetected-control', result => { result.sensitivity[0].detected = false; }],
+  ['wallet-negative', result => { result.providerSummary.wallet = -1; }],
+  ['wallet-missing', result => { delete result.providerSummary.wallet; }],
+]) test('contact role rejects cross-role, incomplete or invalid wallet evidence: ' + label, async (t) => {
+  const f = fixture(t, fake => { fake.state.resultMutation = change; }, 'contact');
+  await assert.rejects(f.handle.run(), /evidence mismatch|provider evidence/);
+  f.handle.dispose(); assert.equal(f.state.rows.size, 0);
+});
+
+
+test('REFILL_FIXED_ROLE_POSITIVE', async (t) => {
+  const f = fixture(t, fake => { fake.state.resultMutation = result => { result.providerSummary.logger = 2; }; }, 'refill');
+  const result = await f.handle.run();
+  assert.equal(result.schema, 'SD-PHARMACY-REFILL-API-RESULT-1');
+  assert.equal(result.role, PHARMACY_REFILL_PROFILE.role);
+  assert.equal(result.domainScope, 'FOCUSED_PHARMACY_REFILL');
+  assert.deepEqual(result.cases.map(row => row.id), REFILL_CASES);
+  assert.deepEqual(result.sensitivity.map(row => row.id), REFILL_SENSITIVITY);
+  assert.deepEqual(result.providerSummary, { logger: 2, unexpected: 0 });
+  assert.match(f.handle.directory, /sd-pharmacy-refill-api-run-/);
+  const [mongo, node] = f.state.receipts; const row = f.state.rows.get(node.id);
+  assert.equal(row.Config.Labels['swasthadisha.test.purpose'], 'pharmacy-refill-api-runtime');
+  assert.equal(row.HostConfig.NetworkMode, 'container:' + mongo.id);
+  assert.equal(row.HostConfig.Memory, 536870912); assert.equal(row.HostConfig.PidsLimit, 64);
+  assert.equal(row.HostConfig.ReadonlyRootfs, true); assert.deepEqual(row.HostConfig.CapDrop, ['ALL']);
+  const admission = JSON.parse(readFileSync(join(row.HostConfig.Mounts[0].Source, '.admission.json')));
+  assert.equal(admission.schema, 'SD-PHARMACY-REFILL-API-RUN-1'); assert.equal(admission.role, PHARMACY_REFILL_PROFILE.role);
+  const receipt = f.handle.dispose();
+  assert.deepEqual(receipt.exactIdsAbsent, [mongo.id, node.id]); assert.equal(f.state.rows.size, 0);
+  assert.equal(receipt.workspaceAbsent, true); assert.equal(receipt.zeroPurposeLabels, true);
+});
+for (const [id, change] of [
+  ['REFILL_PLAN_WRONG_ROLE', plan => { plan.role = PROFILE.role; }],
+  ['REFILL_PLAN_WRONG_SCHEMA', plan => { plan.schema = 'SD-AUTH-API-PLAN-1'; }],
+  ['REFILL_PLAN_MISSING_GROUP', plan => { plan.requiredCaseIds.pop(); }],
+  ['REFILL_PLAN_EXTRA_GROUP', plan => { plan.requiredCaseIds.push('EXTRA'); }],
+  ['REFILL_PLAN_MISSING_CONTROL', plan => { plan.requiredSensitivityIds.pop(); }],
+  ['REFILL_PLAN_EXTRA_CONTROL', plan => { plan.requiredSensitivityIds.push('EXTRA'); }],
+  ['REFILL_PLAN_MISSING_LOGGER', plan => { plan.providerCounterKeys = ['unexpected']; }],
+  ['REFILL_PLAN_MISSING_UNEXPECTED', plan => { plan.providerCounterKeys = ['logger']; }],
+  ['REFILL_PLAN_EXTRA_EMAIL', plan => { plan.providerCounterKeys.push('email'); }],
+  ['REFILL_PLAN_EXTRA_WALLET', plan => { plan.providerCounterKeys.push('wallet'); }],
+]) test(id, () => {
+  const f = transport('refill'); const plan = JSON.parse(f.seams.template.files['runtime-plan.json']);
+  change(plan); f.seams.template.files['runtime-plan.json'] = Buffer.from(JSON.stringify(plan));
+  assert.throws(() => createPharmacyRefillRuntimeFixture({ endpoint: PROFILE.endpoint }, f.seams), /Incomplete|provider counter plan/);
+  assert.equal(f.state.calls.length, 0); assert.equal(f.state.receipts.length, 0);
+});
+for (const [id, extra] of [
+  ['REFILL_CALLER_ROLE_OVERRIDE', { role: PROFILE.role }],
+  ['REFILL_CALLER_TEMPLATE_OVERRIDE', { template: '/private/tmp/arbitrary' }],
+]) test(id, () => {
+  const f = transport('refill');
+  assert.throws(() => createPharmacyRefillRuntimeFixture({ endpoint: PROFILE.endpoint, ...extra }, f.seams), /fixed endpoint/);
+  assert.equal(f.state.calls.length, 0); assert.equal(f.state.receipts.length, 0);
+});
+test('REFILL_CROSS_ROLE_TEMPLATES', () => {
+  const refill = transport('refill');
+  for (const [role, create] of [[false, createApiRuntimeFixture], [true, createPrivateDocumentRuntimeFixture], ['contact', createCustomerContactRuntimeFixture]]) {
+    const old = transport(role);
+    assert.throws(() => createPharmacyRefillRuntimeFixture({ endpoint: PROFILE.endpoint }, old.seams), /Incomplete API/);
+    assert.throws(() => create({ endpoint: PROFILE.endpoint }, refill.seams), /Incomplete API/);
+    assert.equal(old.state.calls.length, 0); assert.equal(old.state.receipts.length, 0);
+  }
+  assert.equal(refill.state.calls.length, 0); assert.equal(refill.state.receipts.length, 0);
+});
+for (const [id, change] of [
+  ['REFILL_RESULT_WRONG_SCHEMA', result => { result.schema = 'SD-AUTH-API-RESULT-1'; }],
+  ['REFILL_RESULT_WRONG_ROLE', result => { result.role = PROFILE.role; }],
+  ['REFILL_RESULT_WRONG_SCOPE', result => { result.domainScope = 'FOCUSED_PRODUCTION_ROUTERS'; }],
+  ['REFILL_RESULT_MISSING_GROUP', result => { result.cases.pop(); }],
+  ['REFILL_RESULT_UNDETECTED_CONTROL', result => { result.sensitivity[0].detected = false; }],
+  ['REFILL_RESULT_MISSING_LOGGER', result => { delete result.providerSummary.logger; }],
+  ['REFILL_RESULT_UNEXPECTED', result => { result.providerSummary.unexpected = 1; }],
+  ['REFILL_RESULT_EXTRA_EMAIL', result => { result.providerSummary.email = 0; }],
+  ['REFILL_RESULT_UNSAFE_LOGGER', result => { result.providerSummary.logger = 1.5; }],
+  ['REFILL_RESULT_NEGATIVE_LOGGER', result => { result.providerSummary.logger = -1; }],
+]) test(id, async (t) => {
+  const f = fixture(t, fake => { fake.state.resultMutation = change; }, 'refill');
+  await assert.rejects(f.handle.run(), /evidence mismatch|provider evidence/);
+  const receipt = f.handle.dispose(); assert.equal(f.state.rows.size, 0);
+  assert.equal(receipt.workspaceAbsent, true); assert.equal(receipt.zeroPurposeLabels, true);
 });

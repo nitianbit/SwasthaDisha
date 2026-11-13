@@ -1,0 +1,419 @@
+{
+  "owningContract": {
+    "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-refill-operations",
+    "head": "1db59f2ede2a565b1b39fa21694f553f3c0a27ee",
+    "path": "documentation/planning/implementation/PHARMACY_REFILL_FOCUSED_VERIFICATION_CONTRACT_DRAFT.md",
+    "sha256": "f0e5a04afa5d7cf222cf5b2be31c2b44bef107e48228d11ba55fd1ba01b8ed17"
+  },
+  "actualMain": {
+    "root": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab",
+    "head": "a6d87767aae099328e1014df6a8dc431c818b4f4",
+    "pins": [
+      {
+        "path": "test/api-runtime/platform.mjs",
+        "sha256": "b5117065c90c4698cb9604a8da0cb673a38249d8eee07a8ac39e11040a56e29f",
+        "bytes": 30320
+      },
+      {
+        "path": "test/api-runtime/platform.test.mjs",
+        "sha256": "334387136951602d44faf72fb351461012409fa4b3f547e2200c9b1ffc81ac16",
+        "bytes": 26298
+      },
+      {
+        "path": "test/api-runtime/unit.mjs",
+        "sha256": "a1f9cfb45bae4c8f0ffa87625423d8ee548b614aa0a97228133e0e75f000cd66",
+        "bytes": 3515
+      },
+      {
+        "path": "test/api-runtime/profile.json",
+        "sha256": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+        "bytes": 612
+      },
+      {
+        "path": "test/api-runtime/launch.mjs",
+        "sha256": "9c6d1c805de4c50542667b90532219c54666b8a764ee5672055f641938b099ed",
+        "bytes": 7871
+      },
+      {
+        "path": "test/api-runtime/launch.test.mjs",
+        "sha256": "9e9316041db0d3a7977a2e78130b9f1d26f331bb51a6c069327257a0c6c719be",
+        "bytes": 3883
+      },
+      {
+        "path": "test/application/app-bundle.mjs",
+        "sha256": "63a5e15779fd942b9ff9e1c3ccaa45d4d347387f196555e2a1b8998477c7ecfc",
+        "bytes": 23561
+      },
+      {
+        "path": "test/api-runtime/private-documents/profile.json",
+        "state": "ABSENT"
+      },
+      {
+        "path": "test/api-runtime/customer-contact/profile.json",
+        "state": "ABSENT"
+      }
+    ],
+    "observation": "Main currently has only auth API platform; private/contact profiles absent, unit exact96. Main app-bundle separately contains accepted enrollment role and must remain byte-identical."
+  },
+  "acceptedContactBase": {
+    "root": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-contact-proof",
+    "observedHead": "e795baa33cf6563ade660851b04731f3bd341ba2",
+    "sourceCandidate": "2af646be2776907cba2eda24358427ebf85cdcb3",
+    "actual128FakeResultCommit": "d7eb6ff570b2cb91d8d624d820d921882b3950f6",
+    "selectedExactUpstreamPins": {
+      "test/api-runtime/platform.mjs": "7602312625abc76c033477b26222bcb9845a90bc2a5f58044b50d1fa6f7df265",
+      "test/api-runtime/platform.test.mjs": "64fda7f07db234037d34a1bb9d38401a44dafde0d8d637193a7853467faa3a76",
+      "test/api-runtime/unit.mjs": "df9316b0660777c3366cb0a48088feb2b0ea499065012c8b7ae7bf1de52eb94f",
+      "test/api-runtime/private-documents/profile.json": "f21a759901d705f1e950fc8c194d988757ada73d22cba65b139cbae06fbcd197",
+      "test/api-runtime/customer-contact/profile.json": "8901145dbb08ee98e489c9241db8e32cc90f6485aa3f154c7aea73be8f2f5075"
+    },
+    "sourceAndOutcomeContext": [
+      {
+        "path": "output/qa/customer-contact-focused/platform/SHARED_SOURCE_CANDIDATE.json",
+        "sha256": "af234e221843f3bedd6153036052a449149f06ce1613f349586b8672cd16794b",
+        "bytes": 2140
+      },
+      {
+        "path": "output/qa/customer-contact-focused/platform/SHARED_UNIT_OUTCOME_DECISIONS.json",
+        "sha256": "486751be428ba915a4d87854c51ddcd2acf4b5f1dfcb875af8cc0dd6bdf3b3b2",
+        "bytes": 1397
+      },
+      {
+        "path": "documentation/planning/implementation/CUSTOMER_CONTACT_FIXTURE_ROLE_INTERFACE.json",
+        "sha256": "a8784afa8ab201eb5766ce0c3921598ae10e9487bc6077d648196e3d90fe203b",
+        "bytes": 5980
+      }
+    ],
+    "scope": "Accepted exact3shared files plus2staticprofiles/provenance only; no namespace implementation, receipt, lock or old application bundle is imported."
+  },
+  "networkComposition": {
+    "mainWholeAppBundleSha256": "63a5e15779fd942b9ff9e1c3ccaa45d4d347387f196555e2a1b8998477c7ecfc",
+    "contactWholeAppBundleSha256": "993634db7d05213208ddda434d8d4c21f679ae342f46a1836dda115c7d3b5817",
+    "sameSuffixBoundary": "export function entryKind(stat) through EOF",
+    "suffixBytes": 10419,
+    "bothSuffixSha256": "e638f02b246869d060481ea68e29b39639334b85454121147b4ef15bb739a577",
+    "byteEqual": true,
+    "covered": [
+      "entryKind",
+      "captureNetworkDiagnostics",
+      "NETWORK_ADMISSION_TAG and finite validator helpers",
+      "evaluateNetworkAdmission",
+      "verifyNetworkAdmission",
+      "admitNetwork",
+      "egressCanaryBlocked"
+    ],
+    "disposition": "Keep ENTIRE main app-bundle63a5e157 unchanged. Its newer enrollment exports/limits/result verifier are outside older contact bundle; equal network suffix permits API composition without overwrite. No blind branch merge/cherry-pick of entire tree or rollback to993634db. Actual unit composition still needs current exact source/run/outcome reviews."
+  },
+  "proposedTransition": [
+    {
+      "step": 1,
+      "owner": "/root",
+      "action": "Review then selectively upstream exact accepted shared3 and private/contact static2profile bytes listed above into main, with their source/outcome provenance; retain main auth profile/launch/test and ENTIRE app-bundle byte-for-byte. This establishes one existing fixed API lifecycle for all three old API roles, not a new platform.",
+      "requires": "Actual nonauthor composition decision for main app-bundle plus accepted shared dependency/profile set; old128PASS not a newly executed main result."
+    },
+    {
+      "step": 2,
+      "owner": "/root",
+      "action": "Freeze final P7 fixed-role interface, new profile JSON below and actual source/invocation boundaries under two actual independent nonauthor implementation-only votes before editing shared code. Then add one literal private role descriptor, one static profile import/export and one helper delegating to existing createFixedRuntimeFixture. No public role selector or independent lifecycle."
+    },
+    {
+      "step": 3,
+      "owner": "/root",
+      "action": "Freeze exact new shared3+P7profile source candidate/inverse and all retained main+upstream dependency pins. Add only targeted refill/protocol tests below using existing fake transport; stage exactly the new profile in existing fixed unit runner and derive exact required count from source."
+    },
+    {
+      "step": 4,
+      "owner": "/root with two actual eligible nonauthor reviewers",
+      "action": "After source/composition votes and exact fake-unit command proposal, one existing two-entry dependency-free offline unit invocation at current main composition. Preserve all old128cases, add planned24meaningful cases (proposed152 total if implemented one per listed ID); no unrelated foundation324/Claude47/legacy/app/database campaign. Actual result and owned cleanup get two independent outcome reviews before any separate application preparation/runtime."
+    }
+  ],
+  "ownership": {
+    "RootNewSharedRoleFiles": [
+      "test/api-runtime/platform.mjs",
+      "test/api-runtime/platform.test.mjs",
+      "test/api-runtime/unit.mjs",
+      "test/api-runtime/pharmacy-refill/profile.json"
+    ],
+    "RootSelectiveUpstreamStaticDependencies": [
+      "test/api-runtime/private-documents/profile.json",
+      "test/api-runtime/customer-contact/profile.json"
+    ],
+    "futureFixtureWorkerOnly": [
+      "test/api-runtime/pharmacy-refill/README.md",
+      "test/api-runtime/pharmacy-refill/package-plan.json",
+      "test/api-runtime/pharmacy-refill/ports-manifest.json",
+      "test/api-runtime/pharmacy-refill/prepare.py",
+      "test/api-runtime/pharmacy-refill/compile.cjs",
+      "test/api-runtime/pharmacy-refill/bootstrap.cjs",
+      "test/api-runtime/pharmacy-refill/scenario.cjs",
+      "test/api-runtime/pharmacy-refill/launch.mjs",
+      "test/api-runtime/pharmacy-refill/unit.mjs"
+    ],
+    "unchanged": [
+      "ENTIRE test/application/app-bundle.mjs including enrollment",
+      "test/api-runtime/profile.json",
+      "test/api-runtime/launch.mjs",
+      "test/api-runtime/launch.test.mjs",
+      "production/rootpackage/lock/build/start and all existing role bounds"
+    ],
+    "authorIdentity": "Do not invent an executing agent. Actual future producer AUTHOR and receipt author-exclusion bind its real assigned writer at source freeze; proposed profile omits redundant preparationAuthor rather than naming a nonexistent agent. This proposal is not that assignment."
+  },
+  "literalInterface": {
+    "helper": "createPharmacyRefillRuntimeFixture(input, seams = {})",
+    "delegation": "return createFixedRuntimeFixture(input, seams, PHARMACY_REFILL_ROLE)",
+    "exportedProfile": "PHARMACY_REFILL_PROFILE",
+    "profileImport": "./pharmacy-refill/profile.json",
+    "role": "pharmacy-refill-api",
+    "purpose": "pharmacy-refill-api-runtime",
+    "schemaPrefix": "SD-PHARMACY-REFILL-API-",
+    "profileSchema": "SD-PHARMACY-REFILL-API-PROFILE-1",
+    "domainScope": "FOCUSED_PHARMACY_REFILL",
+    "template": "test/api-runtime/pharmacy-refill/runtime-template.json",
+    "buildPathRegex": "^/private/tmp/sd-pharmacy-refill-build-[A-Za-z0-9_-]+/runtime$",
+    "runPrefix": "sd-pharmacy-refill-api-run-",
+    "cases": 20,
+    "sensitivity": 7,
+    "caseIds": [
+      "ADMISSION",
+      "AUTHENTICATION",
+      "OPERATIONAL_AUTHORITY",
+      "RAW_QUERY",
+      "CALENDAR",
+      "LIMITS",
+      "CURSOR_CANONICAL",
+      "CURSOR_SCOPE",
+      "DUE_SLICE",
+      "SCALAR_FILTERS",
+      "RAW_ROW_SHAPES",
+      "BSON4_POSITIVES",
+      "BSON4_HOSTILE",
+      "DENSE_ARRAY",
+      "DTO_AND_HEADERS",
+      "QUERY_AND_CATALOG",
+      "PERSISTED_RESUME",
+      "PAUSE_AND_COMPATIBILITY",
+      "UPDATE_AUTHORITY",
+      "SENSITIVITY_AND_RESTORATION"
+    ],
+    "sensitivityIds": [
+      "OWNER_AND_SCALAR_FENCES_REMOVED",
+      "QUERY_ROW_BOUND_REMOVED",
+      "RAW_QUERY_ALLOWLIST_WEAKENED",
+      "PATIENT_FIELD_LEAKED",
+      "UNDEFINED_RESUME_RESTORED",
+      "SYMBOL_GETTER_GUARD_REGRESSED",
+      "DENSE_ARRAY_GUARD_REGRESSED"
+    ],
+    "publicInput": "Exactly existing endpoint only. No caller role/profile/URI/ID/command/path/resource/image/options. Same explicit fake executor+template/reportCreated trusted test seams; no executable fallback.",
+    "handle": "Same run/describe/dispose shape, held IDs and cleanup lifecycle.",
+    "preparationSources": [
+      "test/api-runtime/pharmacy-refill/bootstrap.cjs",
+      "test/api-runtime/pharmacy-refill/scenario.cjs",
+      "test/api-runtime/pharmacy-refill/ports-manifest.json",
+      "test/api-runtime/pharmacy-refill/prepare.py",
+      "test/api-runtime/pharmacy-refill/compile.cjs",
+      "test/api-runtime/pharmacy-refill/package-plan.json",
+      "test/api-runtime/pharmacy-refill/profile.json",
+      "test/application/app-bundle.mjs",
+      "package-lock.json"
+    ],
+    "result": "Existing exact RESULT_KEYS and failure-stage/schema envelopes under literal prefix; no count/skip success and no protocol fields added."
+  },
+  "proposedExactProfileJSON": {
+    "schema": "SD-PHARMACY-REFILL-API-PROFILE-1",
+    "role": "pharmacy-refill-api",
+    "endpoint": "unix:///Users/shubham/.docker/run/docker.sock",
+    "engineId": "16ab25f6-88c7-4687-a431-b119b6ab9319",
+    "nodeImage": "node@sha256:5ec23b7c622b00547753bc6ffd78085dd868a68aeb41c8e0a1418f033e13d96d",
+    "mongoImage": "mongo@sha256:b9924c330a8bbc5800fe9c69f04a84e221eca7b28fd049a0354147d9908fa142",
+    "nodeVersion": "22.23.4",
+    "mongooseVersion": "6.13.8",
+    "mongoVersion": "8.0.34",
+    "compilerVersion": "5.9.3",
+    "scope": "TEST_ONLY_FOCUSED_PHARMACY_REFILL_NOT_ROOT_ADOPTION",
+    "indexBuildMinAvailableDiskSpaceMB": 64,
+    "pythonTool": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+    "pythonToolSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+    "pythonVersion": "3.14.7",
+    "nodeTool": "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+    "nodeToolSha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+    "npmTool": "/Users/shubham/.nvm/versions/node/v24.19.0/lib/node_modules/npm/bin/npm-cli.js",
+    "npmToolSha256": "8e5f6f3429f8cdbe693cdc29904e9d5a7b127a494bd15c804bd54c7403bfcbe7",
+    "npmFiles": "output/qa/customer-enrollment-focused/TOOL_INPUTS.json",
+    "npmFilesSha256": "3729235cc997a657b533bd70daf6ce710e8c6b51b4452119f98be508173bf085",
+    "driverVersion": "4.17.2",
+    "bsonVersion": "4.7.2"
+  },
+  "staticToolInventoryReuse": {
+    "path": "output/qa/customer-enrollment-focused/TOOL_INPUTS.json",
+    "sha256": "3729235cc997a657b533bd70daf6ce710e8c6b51b4452119f98be508173bf085",
+    "bytes": 225908,
+    "files": 1939,
+    "reason": "Already committed immutable public npm-file inventory on main is byte-identical to accepted contact inventory. Reuse static input data to avoid another225908-byte duplicate; never reuse enrollment receipts/LOCK/results/nonces. Future source receipts bind this fixed input path/hash and actual tools afresh."
+  },
+  "providerBoundary": {
+    "P7PlanExactly": [
+      "logger",
+      "unexpected"
+    ],
+    "newRoleRule": "Add only (fixed !== PHARMACY_REFILL_ROLE || same(plan.providerCounterKeys, ['logger', 'unexpected'])) to existing finite plan checks; existing PROVIDER_KEYS unchanged. Order is fixed in the new plan.",
+    "P7ResultExactly": "Same exactKeys(result.providerSummary,plan.providerCounterKeys), unexpected===0 and every counter safe nonnegative integer. No email/SMS/push/payments/calendar/storage/queue/wallet key admitted for P7, even if old global key set includes it.",
+    "oldRoles": "Auth/private existing key policy unchanged; only contact still requires/allows its recording wallet key. Do not broaden those old roles or remove required contact wallet."
+  },
+  "unchangedBounds": {
+    "apiAttachMs": 180000,
+    "mongoReadyMs": 30000,
+    "fakeUnitTimeoutMs": 30000,
+    "fakeUnitOutputBytes": 1048576,
+    "fakeUnitEntryCount": 2,
+    "mongoMemoryBytes": 1073741824,
+    "mongoPids": 128,
+    "nodeMemoryBytes": 536870912,
+    "nodePids": 64,
+    "cpusEach": 1,
+    "nodeTmpfsBytes": 134217728,
+    "indexMinDiskMB": 64,
+    "network": "Mongo none/loopback; Node exact new owned Mongo namespace, no hostnetwork/ports/volumes/sockets",
+    "NodeGrants": "Unchanged literal NODE_ARGS readworkspace/sysfs/tmp,writetmp; child/worker/addon denied",
+    "engineEndpointImages": "Exact proposed profile values; no image pull/create adopted resources or Node/Docker execution by this draft."
+  },
+  "proposedMeaningfulFakeCases": [
+    {
+      "id": "REFILL_FIXED_ROLE_POSITIVE",
+      "assertion": "Actual shared fake lifecycle returns20/7 schema/role/scope, logger+unexpected only; exact purpose/node namespace/resources/admission and owned cleanup unchanged."
+    },
+    {
+      "id": "REFILL_PLAN_WRONG_ROLE",
+      "assertion": "Substituted old role fails before allocation/executor."
+    },
+    {
+      "id": "REFILL_PLAN_WRONG_SCHEMA",
+      "assertion": "Substituted old PLAN schema fails before allocation."
+    },
+    {
+      "id": "REFILL_PLAN_MISSING_GROUP",
+      "assertion": "19groups rejected before allocation."
+    },
+    {
+      "id": "REFILL_PLAN_EXTRA_GROUP",
+      "assertion": "21groups rejected before allocation."
+    },
+    {
+      "id": "REFILL_PLAN_MISSING_CONTROL",
+      "assertion": "6controls rejected before allocation."
+    },
+    {
+      "id": "REFILL_PLAN_EXTRA_CONTROL",
+      "assertion": "8controls rejected before allocation."
+    },
+    {
+      "id": "REFILL_PLAN_MISSING_LOGGER",
+      "assertion": "unexpected-only plan rejected before allocation."
+    },
+    {
+      "id": "REFILL_PLAN_MISSING_UNEXPECTED",
+      "assertion": "logger-only plan rejected before allocation."
+    },
+    {
+      "id": "REFILL_PLAN_EXTRA_EMAIL",
+      "assertion": "Existing global email key still denied for this literal role."
+    },
+    {
+      "id": "REFILL_PLAN_EXTRA_WALLET",
+      "assertion": "Contact-only wallet denied for this literal role."
+    },
+    {
+      "id": "REFILL_CALLER_ROLE_OVERRIDE",
+      "assertion": "Caller endpoint+role cannot choose another role or grants."
+    },
+    {
+      "id": "REFILL_CALLER_TEMPLATE_OVERRIDE",
+      "assertion": "Caller endpoint+template/path cannot select arbitrary input."
+    },
+    {
+      "id": "REFILL_CROSS_ROLE_TEMPLATES",
+      "assertion": "Bidirectional refill-vs-auth/private/contact template exchanges all reject before executor; no capability transfer."
+    },
+    {
+      "id": "REFILL_RESULT_WRONG_SCHEMA",
+      "assertion": "Wrong family result fails and exact fake resources clean."
+    },
+    {
+      "id": "REFILL_RESULT_WRONG_ROLE",
+      "assertion": "Wrong role result fails and exact fake resources clean."
+    },
+    {
+      "id": "REFILL_RESULT_WRONG_SCOPE",
+      "assertion": "Wrong domainScope result fails."
+    },
+    {
+      "id": "REFILL_RESULT_MISSING_GROUP",
+      "assertion": "Incomplete result group evidence fails."
+    },
+    {
+      "id": "REFILL_RESULT_UNDETECTED_CONTROL",
+      "assertion": "False source sensitivity evidence fails."
+    },
+    {
+      "id": "REFILL_RESULT_MISSING_LOGGER",
+      "assertion": "Returned providerSummary cannot omit required logger."
+    },
+    {
+      "id": "REFILL_RESULT_UNEXPECTED",
+      "assertion": "Returned unexpected>0 fails."
+    },
+    {
+      "id": "REFILL_RESULT_EXTRA_EMAIL",
+      "assertion": "Returned email key fails exact closed provider shape."
+    },
+    {
+      "id": "REFILL_RESULT_UNSAFE_LOGGER",
+      "assertion": "Noninteger/nonfinite logger count fails; no coercion."
+    },
+    {
+      "id": "REFILL_RESULT_NEGATIVE_LOGGER",
+      "assertion": "Negative logger count fails."
+    }
+  ],
+  "unitComposition": {
+    "acceptedBaseCases": 128,
+    "proposedNewStandaloneCases": 24,
+    "proposedTotal": 152,
+    "countTruth": "Planned only. Root source must prove one registered test per ID and actual summaries; no152PASS claim until exact reviewed invocation. Existing128 entries cannot silently be deleted/replaced/skipped.",
+    "staging": "Existing8staged files plus exact pharmacy-refill/profile.json ->9copied inputs. ENTIRE main app-bundle63a5 unchanged; no namespace bootstrap/scenario/app sources or node_modules staged. Same2testentries and fs/child/network policy.",
+    "command": "Later reviewed env -i TMPDIR=/private/tmp /Users/shubham/.nvm/versions/node/v24.19.0/bin/node test/api-runtime/unit.mjs with no positional/preload flags; this draft does not authorize it.",
+    "scope": "Fake protocol/controller/launcher/lifecycle only; cannot establish real pharmacy authority/parser/BSON/HTTP/Mongo/index/unset or production protection."
+  },
+  "schema": "SD-PHARMACY-REFILL-ROOT-SHARED-INTERFACE-1",
+  "author": "/root",
+  "sourceProposal": {
+    "path": "/private/tmp/sd-pharmacy-refill-shared-role-proposal.json",
+    "sha256": "27dc4294b572234e592a322bc953bae6254583dee4fd01f5a29ad784509237c2",
+    "author": "/root/customer_remaining_audit"
+  },
+  "owningContractVotes": {
+    "STANDARDS_REVIEW.json": {
+      "sha256": "dae9fc1ca14bd41147e9cbb009ab24b614c3d8699a43ceffa2fe682162ce4a9f",
+      "reviewer": "/root",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY"
+    },
+    "SPEC_REVIEW.json": {
+      "sha256": "cd90f23edf9765d85daebfab7eb188b57d70c5074fd79740c139229e6646c1af",
+      "reviewer": "/root/milestone_composition_r9",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY"
+    }
+  },
+  "decisionRequired": "APPROVE_SHARED_ROLE_IMPLEMENTATION_ONLY",
+  "reviewerEligibility": {
+    "required": [
+      "/root/lab_remaining_audit",
+      "/root/milestone_composition_r9"
+    ],
+    "excluded": [
+      "/root",
+      "/root/customer_remaining_audit"
+    ],
+    "reason": "Root final interface/shared source author; customer upstream data-proposal author excluded."
+  },
+  "gates": "Freeze before shared/namespace source edits. Source/exact fake invocation two reviews and actual result two outcomes separately required. No application/package/compile/Docker/native/DB/provider run by this interface. No false152PASS; real fixed unit remains pending. Source author of nine namespace files will be /root/customer_remaining_audit after actual two shared-interface decisions. All original/application/owner/release gates retained."
+}
