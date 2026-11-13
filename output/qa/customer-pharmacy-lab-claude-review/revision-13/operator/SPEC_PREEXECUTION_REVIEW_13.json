@@ -1,0 +1,71 @@
+{
+  "schema": "SD-R13-NONAUTHOR-SPEC-OPERATOR-PREEXECUTION-REVIEW-1",
+  "reviewer": "/root/customer_remaining_audit",
+  "axis": "NONAUTHOR_SPEC_OPERATOR_AND_ONE_EXACT_INVOCATION",
+  "preparerAndAuthor": "/root",
+  "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW",
+  "candidateFreezeCommit": "2f1050882593d5408a0be728294e4bdbe6869b4f",
+  "sourceSnapshot": "2c09f09858f569f9f0081c6792604dc337fb118a",
+  "sessionId": "a321d4d7-574f-4cc8-8528-aea6d72002fa",
+  "bindings": {
+    "sourceFreezeSha256": "d2474b20d16c7baa669669da3d1af5aee5ef6bc9130faebef371c3d7927c5b27",
+    "preparedFreezeSha256": "05722764f5e3ff2bbbf7a33c98250edaebd54eba3d83190ec3e5bbac1254da5a",
+    "planSha256": "622718d9e08c89c21fb6a9023b6b36d2b9dde067f3f93ee0beff8ec6961d70b1",
+    "recipeSha256": "17c249895e3481cf0226b83f3b30a2dc256fd02fd08c244af917e62ade281cb0",
+    "supervisorSha256": "9cd33ca93e79b8a42f9eff48c3aabcd7413b4f2caf09702f7385d5abf15de2ec",
+    "testsSha256": "bce8424ff5876018799d42947a453fa24aa65a5fc23b2d8fc0e204ffbcfdfbd4",
+    "packetSha256": "c0798e9b975e62288a241a62795d85cafc102b424a6fc44133157a3e8795c6d0",
+    "packetBytes": 985337,
+    "manifestSha256": "b0e6f2f8a943c9500f2b0038c6c120ef9e983fb8122efafd3fc77cf45e276a61",
+    "challengeSha256": "428e203d461ea03635f02338ac9f17f125a0f88087349775dfa31b6d375aabf2",
+    "environmentBindingSha256": "8d847c9fdb221950be118a2c9d52fd8470ba53b12c9681424b8728f3282cb9b3"
+  },
+  "authorshipDisclosure": "Reviewer authored earlier focused P7verification contract/fixture and earlier contact/private fixture work, reviewed P7production and S2-Acontract previously, but authored neither RootR13 packet/operator bindings nor current Lab/P7production subject implementations. This decision reviews only exact operator/protocol/selection/one invocation. It does not independently approve own earlier work or supply a Lab/P7source verdict. Rootpreparer excluded from the two independent live review votes.",
+  "materialFindings": [],
+  "actualIndependentChecks": [
+    "Personally read whole recipe/plan/packet instructions/milestone maps/challenge/config/SourceFreeze/preimplementation and complete R12->R13 binding diffs. Independently reconstructed both full supervisor and tests by exact literal replacements and reverseinverse; all other functional bytes equal accepted R12. No fake47campaign rerun or parser execution performed.",
+    "Verified all19SourceFreeze ownfile hashes and prepared12rootfile freeze, complete985337Bpacket and manifest, every76entry wholecontent/excerptSHA/UTF8bytecount/start1/endfull line count:54currentGit+10historicalBEFORE+12publicnpm native. All54currentphysicalfiles and exactsnapshotGit objects byteequal packet; tenBEFORE objects byteequal their declaredhistoricalGit versions. No mutabletest/api-runtime implementation present among packet currentGit entries.",
+    "All16subjectfiles and fourcontracts freshly match their source/contract maps across recipe/manifest/packet/challenge. Selection explicitly retainsLab9source/data and P7sixTS+API, with whole existingauthority/User/index/repository/routing/config/sourcehistory context. It supplies no executableclosure or fullmodule/ownerapproval claim.",
+    "Each of12publicnative members read from actual rootLOCK-integrity bound ownedcache tar, member regularsize/hash and packetwholecontent verified. Threearchives bson4.7.2 e876bd80/mongodb4.17.2 c8dc719a/mongoose6.13.8 02191bdb independently streamedSHA256+SHA512 equal declaredrootLOCKintegrity; all12memberbytes also equal retainedactualownedpublicinstall c35597e3/public/node_modules. No package evaluated/extracted/installed.",
+    "Personally streamed all five current runtimepins64KiBchunks, including actualexistingbundledClaudeCLI/Node24/localRufloadapter/CLI/lock. Seven-key env record equals recipe, four allowedOSidentityfields match actual currentprocess values without reading unrelatedenvironment. No authcheck/accountconfig/model/toolbus request.",
+    "All34R12preservation entries independently bytehash verified by streaming privatebinary/stream files without interpreting or printing private thinking; originalseven QAanchors rehashed. R12 outcome/history preserved, no R10/R11fault rewrite or success substitution.",
+    "Nonce absentfrom packet; session/source/maps/challenge match. Recipe privateoutput/once/LIVE_APPROVAL13 paths physicallyabsent on freshread. Sourcefreezeflags and challengestate PREPARED_NOT_ENQUEUED remain preparationrecords only; no independent externalmailboxabsence claim or model request performed.",
+    "Sameordinarytrusted localclient/account/VSCodebundledCLI route, exactOpus5.5/xhigh NOTmax,3600s/eightturns,8MiBstdout/64KiBstderr/2MiBframe/49152Breview/9sEOF grace and heldPID/start/group/clientchain bounds preserved. ActualnativewebviewACK false/effectiveeffort UNPROVEN. Defaultpermissionpolicy and no unansweredprompts/explicitrestrictedtools remain; this is not OSsandbox or managedpolicyabsence proof.",
+    "Protocol instruction requires oneunique freshpeek challenge then exactlyACK+substantivereview sends (three tools total), nonce/session/hash/source maps, no setup/drain/spawn/hosted/codebase/shell/nativeapp/other tools. Reviewtool/mailbox/finalbyte equality and model/init/fullstream/cleanEOF/CLI/wrapper/freshPIDgroupabsence require later actual outcomes. Packetmodel has no hashingtool and mustnot claim independenthash computation.",
+    "Packetbytecount not tokenizer/contextfit proof; INCOMPLETE mandatory if insufficient context. Generationnote records inertwrongfilename stop beforeR13namespace/effects; corrected exactMongo4operations/indexes.js native member verified in actualarchive. No hidden nativeexecution or priorfailure erased."
+  ],
+  "subjectHashes": {
+    "src1/modules/organizations/types/index.ts": "98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670",
+    "src1/modules/organizations/model/index.ts": "d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a",
+    "src1/modules/organizations/rules.ts": "c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a",
+    "src1/modules/organizations/model/lab.ts": "42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c",
+    "src1/modules/organizations/labAuthorityRoot.ts": "15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7",
+    "src1/modules/organizations/labAuthorityReadiness.ts": "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9",
+    "src1/modules/organizations/labAuthorityProvisioning.ts": "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65",
+    "src1/operators/labAuthority.ts": "5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02",
+    "src1/modules/organizations/labAuthoritySourceManifest.json": "08324e39632809158a3b628514287354adbe9e12fae9dce2169026fe1504c9c9",
+    "API_SCHEMAS.md": "948f1ef2c319d1206438f283f6e7116d0f83f9d02b66495074f9a535891e8951",
+    "src1/modules/pharmacySubscriptions/controller/index.ts": "7bb21a7ec9aaf8693fb2438a5800f7308d2978353c5ed1c95c0f46e60278a9de",
+    "src1/modules/pharmacySubscriptions/repository/index.ts": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+    "src1/modules/pharmacySubscriptions/routes/index.ts": "08dcc367a86f6ffc1e675e8a010fcc87ffb5ff5329fda4c29fc0c04cca0c834c",
+    "src1/modules/pharmacySubscriptions/services/index.ts": "3b22b92d88790c521616302d7827023e4ffa16eb25989a6b443152d0af0f9171",
+    "src1/modules/pharmacySubscriptions/types/index.ts": "aec8ae4c8d1728f7539e68543e6e97a178b21b8cccc426ed9e4d43f85860fc6e",
+    "src1/modules/pharmacySubscriptions/validation/index.ts": "1e4dcc64b270c9c8ee242d78af13f3736f2c063de6f8c223822aca7e87de91e4"
+  },
+  "contractHashes": {
+    "documentation/planning/implementation/BUSINESS_STAFF_AUTHORITY_CONTRACT.md": "69dba46528295f55e184b95e1fb6ea451ee2371254d76eb7ac9fd6573068f9fd",
+    "documentation/planning/implementation/LAB_CANONICAL_AUTHORITY_S2_A_ADDENDUM_DRAFT.md": "dbe337575ff28360bf6a7b57a2c69cf2bdab9a234a2774c893ec1bba36159a57",
+    "documentation/planning/implementation/PHARMACY_REFILL_OPERATIONS_CONTRACT.md": "8e25a0a350f6a441256f22a0fb8fabe64bcdd72ca3fcaf47ddf800f1ddb6dad1",
+    "documentation/planning/implementation/PHARMACY_REFILL_FOCUSED_VERIFICATION_CONTRACT_DRAFT.md": "f0e5a04afa5d7cf222cf5b2be31c2b44bef107e48228d11ba55fd1ba01b8ed17"
+  },
+  "conditionsBeforeOneInvocation": [
+    "Require other actual eligible NONAUTHOR exactsource/operator+invocation review, then Root fresh selectedsource/runtime/sevenOS checks, exactexisting scopedteam/member names verification and uniquechallenge enqueue acknowledgment. Rootauthor cannot count as nonauthorreviewer.",
+    "Only after those facts exist, exact600exclusive LIVE_APPROVAL13 binding allcurrentinputs/twoactual reviewers, privateoutput/once/transcript/state Gitexclusions and newpath identity; no oldnonce/receipt/claim reuse or automaticretry.",
+    "Freeze all16subjects/fourcontracts and selected54wholecontext/packet/operator/runtime through capture/readback. Nonselectedfixture/data work mayadvance only without those bytes changing; any selecteddrift stops.",
+    "One exact existinglocalClaudeCLI invocation only, no hostedworker/authchanges/newtrustoverride or app/crypto/native/BSON/FSadapter/HTTP/DB/provider/compile/install/Docker execution. No additionalmodel request is approved.",
+    "Capture complete actual JSONstream privately; Root must reconcile actualmodel, threecorrelatedsuccessful calls, exactcurrentchallenge ACK and secondtoolreview/mailbox/final bytes, cleanup/process identity+EOF+exit. Twoeligibleactual independent outcome decisions required; cleanwrapper alone cannot acceptreview.",
+    "Retain any limit/error/incomplete/identity/cleanup fault honestly; request xhigh doesnot proveeffectiveeffort, CLI route doesnot proveVSCodewebview. No fullLab/S2B/P7dispatch/customer/clinical/owner/C2/build/deploy/production/release/finalintegration acceptance."
+  ],
+  "reviewerExecution": "Read-only stdlibJSON/text/Git/archive-member/hash and absencereads; no operator/fake/model/auth/Ruflo/mailbox/native/application invocation.",
+  "writtenOnly": "output/qa/customer-pharmacy-lab-claude-review/revision-13/operator/SPEC_PREEXECUTION_REVIEW_13.json"
+}

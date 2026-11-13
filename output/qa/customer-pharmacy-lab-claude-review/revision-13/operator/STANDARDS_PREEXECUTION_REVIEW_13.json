@@ -1,0 +1,89 @@
+{
+  "schema": "SD-R13-INDEPENDENT-STANDARDS-PREEXECUTION-REVIEW-1",
+  "reviewer": "/root/lab_remaining_audit",
+  "role": "Standards",
+  "preparerExcluded": "/root",
+  "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW",
+  "reviewedCandidateCommit": "2f1050882593d5408a0be728294e4bdbe6869b4f",
+  "sourceCommit": "2c09f09858f569f9f0081c6792604dc337fb118a",
+  "sessionId": "a321d4d7-574f-4cc8-8528-aea6d72002fa",
+  "scope": "ROOT_AUTHORED_OPERATOR_AND_PACKET_BINDINGS_PLUS_ONE_EXACT_SOURCE_REVIEW_INVOCATION_ONLY",
+  "bindings": {
+    "sourceFreezeSha256": "d2474b20d16c7baa669669da3d1af5aee5ef6bc9130faebef371c3d7927c5b27",
+    "preparedFreezeSha256": "05722764f5e3ff2bbbf7a33c98250edaebd54eba3d83190ec3e5bbac1254da5a",
+    "planSha256": "622718d9e08c89c21fb6a9023b6b36d2b9dde067f3f93ee0beff8ec6961d70b1",
+    "packetSha256": "c0798e9b975e62288a241a62795d85cafc102b424a6fc44133157a3e8795c6d0",
+    "packetBytes": 985337,
+    "wholeEntries": 76,
+    "manifestSha256": "b0e6f2f8a943c9500f2b0038c6c120ef9e983fb8122efafd3fc77cf45e276a61",
+    "recipeSha256": "17c249895e3481cf0226b83f3b30a2dc256fd02fd08c244af917e62ade281cb0",
+    "challengeSha256": "428e203d461ea03635f02338ac9f17f125a0f88087349775dfa31b6d375aabf2",
+    "supervisorSha256": "9cd33ca93e79b8a42f9eff48c3aabcd7413b4f2caf09702f7385d5abf15de2ec",
+    "testsSha256": "bce8424ff5876018799d42947a453fa24aa65a5fc23b2d8fc0e204ffbcfdfbd4",
+    "contractBundleSha256": "2771d786a23886d5537427c1ead6ffed1be69e4a93c063812033a9c81f109740",
+    "sourceHashes": {
+      "src1/modules/organizations/types/index.ts": "98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670",
+      "src1/modules/organizations/model/index.ts": "d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a",
+      "src1/modules/organizations/rules.ts": "c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a",
+      "src1/modules/organizations/model/lab.ts": "42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c",
+      "src1/modules/organizations/labAuthorityRoot.ts": "15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7",
+      "src1/modules/organizations/labAuthorityReadiness.ts": "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9",
+      "src1/modules/organizations/labAuthorityProvisioning.ts": "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65",
+      "src1/operators/labAuthority.ts": "5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02",
+      "src1/modules/organizations/labAuthoritySourceManifest.json": "08324e39632809158a3b628514287354adbe9e12fae9dce2169026fe1504c9c9",
+      "API_SCHEMAS.md": "948f1ef2c319d1206438f283f6e7116d0f83f9d02b66495074f9a535891e8951",
+      "src1/modules/pharmacySubscriptions/controller/index.ts": "7bb21a7ec9aaf8693fb2438a5800f7308d2978353c5ed1c95c0f46e60278a9de",
+      "src1/modules/pharmacySubscriptions/repository/index.ts": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+      "src1/modules/pharmacySubscriptions/routes/index.ts": "08dcc367a86f6ffc1e675e8a010fcc87ffb5ff5329fda4c29fc0c04cca0c834c",
+      "src1/modules/pharmacySubscriptions/services/index.ts": "3b22b92d88790c521616302d7827023e4ffa16eb25989a6b443152d0af0f9171",
+      "src1/modules/pharmacySubscriptions/types/index.ts": "aec8ae4c8d1728f7539e68543e6e97a178b21b8cccc426ed9e4d43f85860fc6e",
+      "src1/modules/pharmacySubscriptions/validation/index.ts": "1e4dcc64b270c9c8ee242d78af13f3736f2c063de6f8c223822aca7e87de91e4"
+    },
+    "contractHashes": {
+      "documentation/planning/implementation/BUSINESS_STAFF_AUTHORITY_CONTRACT.md": "69dba46528295f55e184b95e1fb6ea451ee2371254d76eb7ac9fd6573068f9fd",
+      "documentation/planning/implementation/LAB_CANONICAL_AUTHORITY_S2_A_ADDENDUM_DRAFT.md": "dbe337575ff28360bf6a7b57a2c69cf2bdab9a234a2774c893ec1bba36159a57",
+      "documentation/planning/implementation/PHARMACY_REFILL_OPERATIONS_CONTRACT.md": "8e25a0a350f6a441256f22a0fb8fabe64bcdd72ca3fcaf47ddf800f1ddb6dad1",
+      "documentation/planning/implementation/PHARMACY_REFILL_FOCUSED_VERIFICATION_CONTRACT_DRAFT.md": "f0e5a04afa5d7cf222cf5b2be31c2b44bef107e48228d11ba55fd1ba01b8ed17"
+    }
+  },
+  "findings": [],
+  "actualIndependentChecks": [
+    "Read the installed Ruflo SKILL.md and repository parallel/local-extension workflow. This is a native internal Codex Standards review of Root-authored operator/binding/invocation; no production-source vote or claim of actual model review is supplied here.",
+    "Read exact operator plan, source freeze, preimplementation, exhaustive binding delta, supervisor admission/ownership/process/stream/EOF/cleanup paths, test delta, packet instructions, manifest, recipe, selection, challenge, environment, MCP config and retained generation prelaunch note. The wrong native filename note records an inert pre-namespace generator stop with zero model/auth/challenge/receipt effects, not a failed model run.",
+    "Personally recomputed every prepared-freeze and operator SOURCE_FREEZE own-file hash. Full985337-byte packet hash c0798e9b975e62288a241a62795d85cafc102b424a6fc44133157a3e8795c6d0 contains76 unique complete files:54 current Git,10 historical BEFORE and12 pinned public-native npm members. Every one-excerpt start/end/fullbyte count/hash equals complete content. Manifest metadata and exact selection paths match.",
+    "All54 current packet files equal physical source and exact2c09f09858f569f9f0081c6792604dc337fb118a Git objects; all10 BEFORE files equal exact declared historical objects. Subject map is exactly16 files: eight Lab code plus generated manifest, six pharmacy code plus API doc. Four contracts, source decisions and selected dependencies are complete current files. No mutable fixture implementation was included or executable-closure claim inferred.",
+    "Recomputed insertion-ordered json.dumps(contractHashes, indent=2) plus newline bundle2771d786a23886d5537427c1ead6ffed1be69e4a93c063812033a9c81f109740. Packet, manifest, recipe and challenge source/contract/session fields agree. Fresh challenge nonce is absent from packet, state PREPARED_NOT_ENQUEUED; exact new output, once and live approval absent when inspected.",
+    "Inertly derived three cached npm tar paths from actual root-lock SHA512 integrity; independently streamed each SHA512/SHA256. All12 full BSON4.7.2/driver4.17.2/Mongoose6.13.8 members exactly match tar contents and the existing pinned public installed files. No package/native/BSON code evaluated.",
+    "Independently applied every enumerated R12-to-R13 literal replacement to supervisor/tests and exact reverse replacements; both reconstruct byte-exact originals. Functional identity, process, permission, ownership, bounds and cleanup behavior is unchanged. No functional campaign rerun. Actual original OFFLINE_6 JSON/transcript still match retained R8 freeze (47 fake cases, zero failures/errors/skips); historical scope is synthetic, not current native verification.",
+    "All34 recorded R12 preservation members including private stream/state/stderr retain exact hashes, all prior7 original pins remain. Private thinking was neither exported nor printed. Earlier R10 wrapper/identity/cleanup fault remains separate historical evidence and is not upgraded by later success.",
+    "All five runtime files were streamed in65536-byte chunks and match exact pins. Seven environment values equal accepted R12 recipe; four public inherited OS fields match current parent without inspecting other parent values. Strict MCP config equals accepted R12 and selects only pinned local Node/Ruflo adapter.",
+    "Actual argv requests existing VSCode-bundled local CLI claude-opus-5-5 / literal xhigh, not max; restricted mode, no built-in tools, strict single MCP config, inbox/send only, default permission policy/no prompts, no Chrome/session persistence/slash commands. Protocol one scoped peek, nonce ACK and substantive review send, exactly3 calls; no drain/spawn/hosted worker or ambient-policy absence claim.",
+    "Limits remain3600s/eight turns/stdout8MiB/stderr64KiB/frame2MiB/review48KiB/EOF9s. One-use exclusive0600 claim/private held descriptors and fixed CLI/Node/Ruflo child chain/process-group checks retained. Capture can never self-approve substantive model review.",
+    "Owning two actual nonauthor source votes for Lab9c43 and pharmacy7b721 are present as context only. Packet explicitly retains S2B/root/evidence/clinical/owner/C2/C3/runtime/index/client/dispatch gaps and requires INCOMPLETE for insufficient context/time. Packet byte size is not tokenizer-fit proof and default closed lab scope is not full milestone/module completion."
+  ],
+  "oneInvocationConditions": [
+    "Root must retain two actual eligible independent operator/one-invocation decisions before launch; Root sole preparer and source-binding author cannot vote. This review is not a new production-source approval and cannot substitute for original author-independent source votes.",
+    "Before the sole launch, freshly revalidate all selected source/runtime/seven environment bindings and exact existing scoped team/member names. Enqueue exactly the unique challenge once; set exact private output/once/approval Git exclusions; create fresh exclusive0600 LIVE_APPROVAL_13 bound to these actual decisions and reviewed recipe/freeze/session. These future readiness facts are not claimed already done.",
+    "Use exact session a321d4d7-574f-4cc8-8528-aea6d72002fa and current immutable packet/supervisor/tests/recipe/challenge. No auth repair/check, account change, extra tools, model or effort fallback, old receipt reuse, source drift, automatic retry or timeout restart.",
+    "Genuine outcome needs complete JSON stream/model observation, all three successful correlated permitted tool calls, fresh challenge/session/source/packet nonce ACK, exact substantive mailbox/final bytes, full input/EOF/CLI/wrapper results and fresh exact owned PID/group absence plus two actual independent outcome reviews. Preserve every partial/limit/interruption/launcher/cleanup fault; model success cannot override wrapper failure.",
+    "If the complete packet cannot fit or be adequately reviewed within existing bounds, retain an honest INCOMPLETE outcome. No context truncation or source-scope completion fabrication."
+  ],
+  "claims": {
+    "requestedModel": "claude-opus-5-5",
+    "requestedEffort": "xhigh",
+    "effectiveModel": "UNOBSERVED_BEFORE_INVOCATION",
+    "effectiveEffort": "UNPROVEN",
+    "nativeWebviewACK": false,
+    "modelCallsByReviewer": 0,
+    "authCallsByReviewer": 0,
+    "fakeChecksByReviewer": 0,
+    "challengeEnqueuedByReviewer": false,
+    "liveReceiptWrittenByReviewer": false
+  },
+  "limits": [
+    "Ordinary trusted local client policy boundary retained, not an operating-system host/network sandbox. No host-account/credential/configuration discovery or change.",
+    "No app/Node/parser/compiler/npm/nativeBSON/crypto/protectedFS/DB/DDL/Docker/provider/model execution by reviewer; only inert file/Git/JSON/hash source review.",
+    "No runtime/build/start adoption, actual issuer/key/evidence facts, S2B/L2/P7 dispatch/clinical completion, module/owner/client/security/finance/release/capacity acceptance. Corporate/HR/hospital expansion and final cross-module campaign remain deferred.",
+    "Only this distinct reviewer JSON is written; selected source, four contracts, original staged changes, handover archive and other-worker work are preserved."
+  ]
+}

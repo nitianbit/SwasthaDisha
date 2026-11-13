@@ -1,0 +1,21 @@
+{
+  "schema": "SD-R13-ROOT-PRELAUNCH-CORRECTION-1",
+  "root": "/root",
+  "actualExecExit": 1,
+  "actualExecStdout": {
+    "firstFailure": "APPROVAL_REJECTED",
+    "reviewAccepted": false,
+    "status": "NO_SUCCESS"
+  },
+  "cause": "Root wrapper wrote legacy schema12 while current supervisor and both reviewed invocation bindings require13. Exactly one receipt schema value corrected; frozen source/supervisor/argv/environment/session/challenge and both actual reviews unchanged.",
+  "rejectedApprovalArchive": "/private/tmp/sd-r13-prelaunch-rejected-approval-schema12.json",
+  "rejectedApprovalSha256": "72008b8af255ae847427d51de08f4069a7d6a242cecada7ce9afd9559803aba9",
+  "correctedApprovalSha256": "fb36c6542c2a3da5058c00853b3cf5c7eae04e20629605f6d9a64f8e627e5ba8",
+  "noClientProcessStarted": true,
+  "onceClaimAbsent": true,
+  "privateOutputAbsent": true,
+  "liveModelRequests": 0,
+  "challengeReenqueue": false,
+  "newInvocationScope": false,
+  "futureModelRequest": "The same original approved exact invocation remains unconsumed; no post-create retry."
+}

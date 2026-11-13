@@ -1,0 +1,69 @@
+{
+  "schema": "SD-R13-ACTUAL-PREEXECUTION-DECISIONS-1",
+  "root": "/root",
+  "sessionId": "a321d4d7-574f-4cc8-8528-aea6d72002fa",
+  "packetSha256": "c0798e9b975e62288a241a62795d85cafc102b424a6fc44133157a3e8795c6d0",
+  "recipeSha256": "17c249895e3481cf0226b83f3b30a2dc256fd02fd08c244af917e62ade281cb0",
+  "reviewers": [
+    {
+      "agent": "/root/lab_remaining_audit",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    },
+    {
+      "agent": "/root/customer_remaining_audit",
+      "decision": "APPROVE_ONE_EXACT_CURRENT_CLAUDE_REVIEW"
+    }
+  ],
+  "provenance": "Two actual independent internal Codex operator/source-binding/exact invocation reviews. Root prepares/operates and cannot vote for itself. Both reviewers approve operator and exact invocation only, not source they authored. Exposures are recorded in actual reports.",
+  "challengeEnqueue": {
+    "success": true,
+    "action": "send",
+    "message": {
+      "id": "msg_1794533678318_d1qenoyo",
+      "teamId": "swasthadisha-local",
+      "from": "codex-lead",
+      "to": "claude-reviewer",
+      "summary": "R13 canonical lab and due-refill source review; one reviewed local invocation",
+      "content": "{\n  \"schema\": \"SD-CLAUDE-LAB-REFILL-CHALLENGE-13\",\n  \"team\": \"swasthadisha-local\",\n  \"fromAgent\": \"codex-lead\",\n  \"toAgent\": \"claude-reviewer\",\n  \"sessionId\": \"a321d4d7-574f-4cc8-8528-aea6d72002fa\",\n  \"sourceCommit\": \"2c09f09858f569f9f0081c6792604dc337fb118a\",\n  \"controllerSha256\": \"15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7\",\n  \"contractSha256\": \"2771d786a23886d5537427c1ead6ffed1be69e4a93c063812033a9c81f109740\",\n  \"packetSha256\": \"c0798e9b975e62288a241a62795d85cafc102b424a6fc44133157a3e8795c6d0\",\n  \"nonce\": \"be6ddf30-74ad-472a-887d-4018bdd2174b\",\n  \"clientKind\": \"local-bundled-CLI\",\n  \"requestedModel\": \"claude-opus-5-5\",\n  \"requestedEffort\": \"xhigh\",\n  \"state\": \"PREPARED_NOT_ENQUEUED\",\n  \"sourceHashes\": {\n    \"src1/modules/organizations/types/index.ts\": \"98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670\",\n    \"src1/modules/organizations/model/index.ts\": \"d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a\",\n    \"src1/modules/organizations/rules.ts\": \"c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a\",\n    \"src1/modules/organizations/model/lab.ts\": \"42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c\",\n    \"src1/modules/organizations/labAuthorityRoot.ts\": \"15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7\",\n    \"src1/modules/organizations/labAuthorityReadiness.ts\": \"73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9\",\n    \"src1/modules/organizations/labAuthorityProvisioning.ts\": \"014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65\",\n    \"src1/operators/labAuthority.ts\": \"5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02\",\n    \"src1/modules/organizations/labAuthoritySourceManifest.json\": \"08324e39632809158a3b628514287354adbe9e12fae9dce2169026fe1504c9c9\",\n    \"API_SCHEMAS.md\": \"948f1ef2c319d1206438f283f6e7116d0f83f9d02b66495074f9a535891e8951\",\n    \"src1/modules/pharmacySubscriptions/controller/index.ts\": \"7bb21a7ec9aaf8693fb2438a5800f7308d2978353c5ed1c95c0f46e60278a9de\",\n    \"src1/modules/pharmacySubscriptions/repository/index.ts\": \"4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f\",\n    \"src1/modules/pharmacySubscriptions/routes/index.ts\": \"08dcc367a86f6ffc1e675e8a010fcc87ffb5ff5329fda4c29fc0c04cca0c834c\",\n    \"src1/modules/pharmacySubscriptions/services/index.ts\": \"3b22b92d88790c521616302d7827023e4ffa16eb25989a6b443152d0af0f9171\",\n    \"src1/modules/pharmacySubscriptions/types/index.ts\": \"aec8ae4c8d1728f7539e68543e6e97a178b21b8cccc426ed9e4d43f85860fc6e\",\n    \"src1/modules/pharmacySubscriptions/validation/index.ts\": \"1e4dcc64b270c9c8ee242d78af13f3736f2c063de6f8c223822aca7e87de91e4\"\n  },\n  \"contractHashes\": {\n    \"documentation/planning/implementation/BUSINESS_STAFF_AUTHORITY_CONTRACT.md\": \"69dba46528295f55e184b95e1fb6ea451ee2371254d76eb7ac9fd6573068f9fd\",\n    \"documentation/planning/implementation/LAB_CANONICAL_AUTHORITY_S2_A_ADDENDUM_DRAFT.md\": \"dbe337575ff28360bf6a7b57a2c69cf2bdab9a234a2774c893ec1bba36159a57\",\n    \"documentation/planning/implementation/PHARMACY_REFILL_OPERATIONS_CONTRACT.md\": \"8e25a0a350f6a441256f22a0fb8fabe64bcdd72ca3fcaf47ddf800f1ddb6dad1\",\n    \"documentation/planning/implementation/PHARMACY_REFILL_FOCUSED_VERIFICATION_CONTRACT_DRAFT.md\": \"f0e5a04afa5d7cf222cf5b2be31c2b44bef107e48228d11ba55fd1ba01b8ed17\"\n  }\n}\n",
+      "type": "handoff",
+      "priority": 1,
+      "timestamp": "2026-11-13T01:34:38.318Z"
+    },
+    "recipients": [
+      "claude-reviewer"
+    ]
+  },
+  "freshScopedTeamStatus": {
+    "success": true,
+    "status": "active",
+    "membersVerified": [
+      "codex-lead",
+      "claude-reviewer"
+    ]
+  },
+  "selectedGitAndPhysicalHashesVerified": 54,
+  "selectedHistoryFilesVerified": 10,
+  "nativeTarMembersVerified": 12,
+  "runtimePinsVerified": 5,
+  "priorR12FilesPreserved": 34,
+  "publicOSEnvironmentMatched": true,
+  "privateOutputGitExclusionsVerified": true,
+  "scope": "One source-only local-bundled-CLI/Ruflo invocation; xhigh/notmax/effectiveUNPROVEN/nativewebviewfalse; all runtime/module/owner/release gates unchanged",
+  "exactCommand": [
+    "/usr/bin/env",
+    "-i",
+    "HOME=/Users/shubham",
+    "PATH=/usr/bin:/bin",
+    "TMPDIR=/private/tmp",
+    "USER=shubham",
+    "LOGNAME=shubham",
+    "SECURITYSESSIONID=186b9",
+    "__CF_USER_TEXT_ENCODING=0x1F5:0x0:0x0",
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+    "-I",
+    "-B",
+    "-S",
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/customer-pharmacy-lab-claude-review/revision-13/operator/supervisor.py",
+    "--live"
+  ]
+}
