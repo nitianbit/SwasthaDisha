@@ -1,0 +1,7 @@
+diff --git b/test/api-runtime/pharmacy-refill/bootstrap.cjs a/test/api-runtime/pharmacy-refill/bootstrap.cjs
+index 07bd59a80a162fd58db0be65b86f5e3a269b1f4d..b8472939bf39981789dee6114303f13fcf231de9 100644
+--- b/test/api-runtime/pharmacy-refill/bootstrap.cjs
++++ a/test/api-runtime/pharmacy-refill/bootstrap.cjs
+@@ -169 +169 @@ async function main(){
+-    const call=async command=>{need(++calls<=12&&performance.now()-start<5000,'CATALOG_BOUND');const result=await fixedConnection.db.command(command,{session,promoteLongs:false});bytes+=native.BSON.calculateObjectSize(result);need(bytes<=262144,'CATALOG_BOUND');return result;};
++    const call=async command=>{need(++calls<=12&&performance.now()-start<5000,'CATALOG_BOUND');const result=await fixedConnection.db.command(command,{session});bytes+=native.BSON.calculateObjectSize(result);need(bytes<=262144,'CATALOG_BOUND');return result;};
