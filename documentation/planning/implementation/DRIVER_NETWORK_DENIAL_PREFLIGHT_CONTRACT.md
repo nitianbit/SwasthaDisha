@@ -1,0 +1,79 @@
+# Driver host network-denial preflight — contract draft
+
+12 November 2026. AUTHORING_ONLY; NO_PROBE_OR_EXECUTION_ADMISSION. Author: /root/policy_standards. This is a candidate capability check before acquiring/importing a real driver. Two actual independent nonauthor contract decisions precede operator source; two exact source/invocation decisions precede the one real probe. Neither a contract approval nor a fake test authorizes network activity. Root owns integration and keeps the original staged changes, archive and R5 frozen inputs unchanged.
+
+## Question and chosen bounded direction
+
+Can the present macOS host apply a fixed OS sandbox to a reviewed Python process and actually deny raw TCP/UDP attempts to endpoints owned by this invocation? Select a small sandbox-exec preflight as the first investigation, without SDK, Node, Mongoose, application, Docker, database or provider code. This is not selection of a supported production sandbox. The installed Apple manual explicitly marks sandbox-exec DEPRECATED, and installed profiles warn their interface is private/subject to change. Unsupported policy syntax, nested-sandbox refusal, loader failure or missing capability is a failed/blocked preflight, never permission to use a weaker profile.
+
+Only newly owned numeric IPv4/IPv6 loopback endpoints may be contacted by the trusted parent for positive controls. The denied child may attempt only those exact endpoints. No internet, DNS, metadata IP, arbitrary localhost port, existing Unix socket, service or account is probed. A nonexistent listener, timeout, refused connection, ENETUNREACH, zero application command events or simply avoiding connect is not independent denial evidence here: the parent proves its endpoints are reachable immediately before and after the denied child.
+
+The accepted438 pure fixture checks/nine controls remain their recorded VM/exported-helper evidence. They do not establish this OS capability, actual driver construction, C3 application admission or repair of runtime3.
+
+## Read-only basis and existing alternative
+
+| Input | Exact SHA-256 / fact |
+| --- | --- |
+| /usr/bin/sandbox-exec | abc5bb136d6b5cce8fa85d789f78e3326c51ca60cae637b2064adfb67a1dcd9a |
+| /usr/share/man/man1/sandbox-exec.1 | 0d264f72dc6a8e0db5474840f33b512542c469beb109ed146c17055da287336b; DEPRECATED; -f selects a profile file |
+| Pinned Python3.14 | /opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14; SHA87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634 |
+| Existing readiness draft | Sibling pharmacy-pure-recovery documentation/planning/implementation/PHARMACY_DRIVER_CONSTRUCTOR_READINESS_DRAFT.md; SHA447c2e3bb319cad97afbae192c0c370e665b495d9a149c0a7018ee6ae14d01cf |
+
+Readiness findings are retained without rediscovery: driver7.8.0 is absent locally; the archived14 texts do not close imports/options/disposal; package/dependency acquisition and complete effect review are separate unfulfilled gates. This draft reads no operational data and does not fetch packages.
+
+The existing Docker fixture is the stronger alternative for future application/DB work: reviewed network=none, no host mounts/ports, bounded non-root/read-only resources and current semantic interface/egress checks. Its latest real smoke failed historically before scenario import; later offline324-case network checks do not constitute a new real run. Existing ownership/daemon/image/current-source requirements and consumed/failure receipts still apply. Current daemon availability is unknown; no Docker call is made here. If sandbox-exec is unavailable or inadequate, preserve the result and prepare a separate reviewed current Docker invocation. Do not automatically start a daemon, pull an image, fall back to old smoke approval or switch network targets.
+
+## Source and profile scope after contract reviews
+
+Own only a compact new QA directory output/qa/driver-network-denial-preflight with a Python parent operator, one fixed probe, one literal profile template, a closed plan/schema and bounded offline fake tests. Reuse the reviewed patterns for exclusive once claims, exact regular-file staging, held ownership/fds, bounded subprocess capture, first-failure preservation and identity-bound cleanup. Do not copy an entire general supervisor or add a generic process/network framework. No root package/runtime/config/source changes or startup hooks.
+
+The prospective profile uses version1 with default deny. Its only execution allowance is the pinned Python executable needed to start the fixed probe; only that self-exec target remains permitted and must retain the sandbox. No imports of Apple system/application profiles, default-allow clause, remote/network allow, sandbox extension, with-no-sandbox execution, arbitrary subprocess or privileged helper is permitted. Deny network* and process-fork explicitly as well as by default; no Mach lookup, AppleEvents, XPC, IOKit or local Unix-socket allowances. Do not import the permissive installed daemon profiles as templates.
+
+Filesystem data reads and executable mappings are restricted to the owned read-only staged code/plan and an exact frozen Python/OS loader support allowlist. No /Users, whole /private/tmp, cwd checkout, HOME, .env, node_modules, user-library, cache, preferences, keychain or service-account read grant. Do not use the entire Homebrew prefix as a loader shortcut. Every loader/native-module/stdlib path and relevant resolved target must be listed before the exact source/invocation review; parent hashes them as data, without executing a discovery import. Any required missing runtime path causes refusal and a separately reviewed amendment, not automatic grant expansion. OS immutable loader support remains an explicit trusted-runtime boundary, not a claim that hashing one Python executable seals its whole installation.
+
+Allow no child filesystem writes. stdout/stderr use only held pipes. If the profile cannot support the pinned interpreter with these boundaries, that is an honest failed capability investigation. Profile text, instantiated exact paths and allowlist hashes must be frozen before execution; this contract does not claim the private SBPL vocabulary has already compiled or run successfully.
+
+## Resource ownership and one prospective invocation
+
+After source/exact-invocation approvals, the sole prospective outer command is the pinned Python executable with arguments:
+
+`-I -S -B output/qa/driver-network-denial-preflight/run-network-preflight.py --run-once`
+
+Run from the focus worktree. Freeze actual operator/probe/profile/allowlist/test hashes, absolute invocation, Python/binary hashes, one fresh session/claim and two real reviewer decisions. Use a new private0600 closed receipt, never a consumed acquisition/pure/R5 receipt. There is no supplied output-directory/port/URI/command override and no automatic retry.
+
+Parent child environment is constructed from PATH=/usr/bin:/bin, LC_ALL=C and owned empty HOME/TMPDIR paths; Python isolated/no-site/no-bytecode flags are mandatory. Operational/preload/proxy/provider/runtime overrides are rejected before allocation, with names only in diagnostics. Any documented OS-added text-encoding metadata must be separately bounded and recorded; do not forward the ambient environment. The trusted parent itself imports only its frozen standard-library support and never application/dependency/account clients.
+
+Parent reserves exactly one private purpose-labelled filesystem lease beneath /private/tmp, holding parent/lease/marker/source identities in memory. It owns four non-inheritable sockets: TCP and UDP bound to127.0.0.1 and TCP and UDP bound to::1, each on kernel-assigned port0, with IPv6-only set for the IPv6 sockets. Bind exact numeric loopback, never wildcard. Read getsockname from each still-held socket; copy only those four endpoints and fresh nonce into the readonly closed child plan. No supplied endpoint/name/marker permits adopting an existing resource. Missing IPv6 support blocks complete acceptance; it is not silently skipped.
+
+The parent performs all endpoint handling in one bounded selector loop, without helper threads/processes. Positive controls are explicit trusted-parent operations against its held endpoint tuples only. They never execute an unrestricted SDK or child. The child starts through exactly:
+
+`/usr/bin/sandbox-exec -f <owned-deny-profile> <pinned-Python> -I -S -B <owned-probe.py> --fixed-plan <owned-plan.json>`
+
+Use shell=False, a retained process handle, new process session, close_fds=True and no pass_fds. Set explicit low child descriptor/core/file/CPU limits in the reviewed single-threaded launch path; no listener, connected socket, directory capability or credential fd is inherited. Child verifies the expected descriptor boundary before tests. Record each effective limit and required observed self-exec inheritance. No runtime escape through another executable is part of the allowlist.
+
+## Exact staged observations
+
+1. Freeze/hash inputs and validate receipt before claiming/allocating. Create/hold the lease and sockets under a try/finally starting with the first allocation. Record all resource identities immediately.
+2. Parent establishes positive TCP accept/nonce transfer and UDP nonce receipt for both families. Record exact listener identity, local endpoint, sent/received nonce and event counts. No DNS or remote contact. A missing positive control blocks the denied phase.
+3. Launch the fixed denied probe. For each family, test raw TCP connect, raw UDP connect followed by send when connect succeeds, and raw UDP sendto against the exact owned endpoint. Retain original imported socket call references in the reviewed probe: JavaScript/SDK monkeypatches play no role. Latch a per-operation attempt counter before each call and record error/result even if caught. All calls have an individual hard deadline. Any successful connect/send, unexpected result, missing event, unknown error, timeout, refusal or unreachable result fails this strict denial check; only immediate OS permission denial EPERM/EACCES counts as the selected expected denial. Parent must observe zero child accepts/datagrams. Lack of delivery alone cannot pass.
+4. Fixed escape/filesystem canaries test denied fork, denied exec of literal /usr/bin/true, denied read of a synthetic parent-owned file outside the allowed lease, and denied write in the readonly lease. No secret or operational file is used. Any unexpected success fails. If a forbidden fork unexpectedly succeeds, the fixed child branch does no work and exits immediately; record/reap that exact child, preserve failure, and do not credit containment.
+5. The only permitted self-exec target is the same pinned Python with the same fixed probe/plan and a fixed second-stage flag. Repeat the six network cases after self-exec, within the same owned process/session and sandbox. Require explicit before/after stage evidence, no reopened file/network capability and retained denial. This measures inheritance; it does not claim every process-exec is denied. No arbitrary child or alternate interpreter is run.
+6. Parent repeats its own four positive controls, proving endpoints remained reachable. Record no unexpected listener events throughout. Close sockets, reap exact children and dispose the lease only after fresh ownership checks. Independently verify process/group absence and lease absence; any unresolved resource makes the result unsuccessful.
+
+Intentional preflight attempts are expected and counted. Later SDK execution would require zero forbidden attempts even when its code catches errors; the preflight's expected-denial counters must never be reused as a clean SDK-import result. Reports include every attempted operation/stage, expected and actual counts, permission error codes, control events and cleanup disposition. No SKIP, silent unsupported family or empty probe may produce PASS.
+
+## Hard bounds and failure handling
+
+The whole admitted campaign is at most45seconds including cleanup; reserve a separate10second cleanup budget. Each child phase is at most15seconds, each connect/send/control at most1second, CPU at most5seconds, child output at most64KiB stdout plus16KiB stderr and each frame at most8KiB. Parent positive controls have a fixed per-endpoint message/accept budget and maximum total32 accepted/datagram events; unsolicited events fail the run rather than being processed. Child maximum descriptors64, core size0 and file output limit64KiB. No indefinite bind, read, resolver, select or wait.
+
+Record first failure unchanged, plus separate cleanup errors. Preserve bounded raw child stdout/stderr, argv/environment-key names, start/exit, source/profile/receipt hashes, resource identities, every control/probe count and all missing observations. Allocate only exact owned paths; refuse cleanup after identity drift. Revalidate held child PID/start/executable/group before a bounded TERM then KILL of that exact process if needed; never kill arbitrary process groups, scan argv broadly, prune resources or adopt a found process. An unidentified descendant or unresolved process/lease is an explicit cleanup exception and failed result. Parent closes only its held sockets/fds; no port-based service termination. One post-allocation failure consumes the receipt and requires review before another attempt. A preallocation refusal is preserved and independently checked before any corrected invocation.
+
+Offline fake regressions, after operator-source permission, must cover unsupported sandbox/profile startup, missing receipt/source drift, missing IPv6/positive control, accidental outside endpoint, swallowed permission attempt, missing/duplicate frames, successful send despite caught error, wrong errno, self-exec losing denial, leaked inherited fd, unexpected fork, output/deadline exhaustion, partial allocation and identity/cleanup drift. These checks may not fall through to sockets, subprocess, sandbox or other native execution. Their own execution still needs exact bounded admission; they prove fake behavior only.
+
+## What success can and cannot admit
+
+A successful result can establish only this exact host/profile/interpreter's measured raw IPv4/IPv6 TCP/UDP outbound denial and the measured escape/file/inheritance canaries, with working owned controls and cleanup. No arbitrary internet probe is needed or allowed. It does not directly exercise DNS via mDNSResponder, HTTPS/TLS/HTTP/fetch/WebSocket, AF_UNIX/Mach/XPC brokers, arbitrary native code or Node/driver aliases. Policy denies the ungranted network/IPC surfaces, but empirical coverage must remain accurately labelled; do not convert this protocol matrix into a universal malicious-code sandbox claim.
+
+Before any actual Node/SDK import, close the separate acquisition/import/effect graph and freeze the exact Node launcher/filesystem/native/worker/child restrictions. Prove the same OS denial and forbidden-attempt accounting under that actual Node runtime before the SDK import in its one admitted process; native/aliased paths cannot rely solely on patched JS methods. TLS/HTTP use denied transports, while DNS/IPC broker and native-worker paths need explicit source/permission evidence or remain closed. If the mechanism cannot supply that evidence, use the separately reviewed Docker boundary instead. This preflight neither downloads nor imports the SDK and does not authorize it by transitivity.
+
+Root dependency/runtime/start adoption remains under C2. Full C3 application/provider/data ownership, real index/DB tests, selected business scenarios and release gates remain. Corporate/HR/hospital expansion and the final cross-module integration campaign remain deferred. No model/auth, Node, sandbox, endpoint, Docker, DB, provider or operational action was run while authoring this draft; only local documentation/profile source and hashes were read.

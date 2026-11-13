@@ -1,0 +1,31 @@
+{
+  "schema": "SD-CORE-SEMANTIC-ROOT-CLARIFICATION-REQUEST-1",
+  "reviewer": "/root",
+  "reviewKind": "ACTUAL_ROOT_INTERNAL_NONAUTHOR_CONTRACT_READ",
+  "decision": "REQUEST_CHANGES",
+  "recordedBy": "/root/authority_operator",
+  "candidateFiles": {
+    "CORE_AUTHORITY_SEMANTIC_CONTRACT.md": {
+      "sha256": "04337b37bdf315da09d86882f8dfd1d9fc31d1b23511b616e86a8575eaa59477",
+      "bytes": 16825
+    },
+    "CORE_AUTHORITY_SEMANTIC_INPUTS.json": {
+      "sha256": "28eb9ca5fa91d79b7716303cb1155e3d0383dc9e265b8f47b8e6198b68fe27f4",
+      "bytes": 55709
+    }
+  },
+  "findings": [
+    {
+      "id": "CORE-CONTRACT-1",
+      "finding": "MapVFS wording could reject well-formed nonexistent TypeScript resolver probes, including crypto ambient file probes, before valid ambient resolution.",
+      "required": "Return false/undefined for normal well-formed misses inside virtual root without host filesystem fallback; deny malformed/outside-root probes; require only actually loaded source files to match fixed map and text hashes."
+    },
+    {
+      "id": "CORE-CONTRACT-2",
+      "finding": "A first full approximately149-file ID/hash report can exceed24KiB even with zero semantic diagnostics.",
+      "required": "Encode actually observed file sets as frozen inventory index references after actual ID+SourceFile full-text hash checks, canonical observed-set hashes and actual phase add/remove index arrays. Parent reconstructs complete exact tuples; no assumed loaded count. Full diagnostics remain complete, overflow is incomplete failure, no cap/grant increase."
+    }
+  ],
+  "provenance": "Actual /root native messages to /root/authority_operator requesting these two pre-vote clarifications and explicit preservation. Not one of the later two independent preimplementation approvals; no approval or execution invented.",
+  "scope": "Docs/inventory only. Preserve exact prior candidate as inert bytes; no app/source/staging/runtime/R8 changes."
+}

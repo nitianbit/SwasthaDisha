@@ -1,0 +1,18 @@
+{
+  "schema": "SD-CORE-SEMANTIC-ACTUAL-SPEC-REQUEST-1",
+  "reviewer": "/root/booking_write_contract",
+  "role": "Spec",
+  "decision": "REQUEST_CHANGES",
+  "contractSha256": "4f7b31d29b6aa23a76a28f50cc39e70f10e238b8ab492b8f9da390f266f186f0",
+  "inventorySha256": "38687ef321a5640657d201a47a8b2d8cde821acf353a568e35f979f0b53ce8a7",
+  "findings": [
+    {
+      "id": "SEM-SPEC-1",
+      "finding": "Pinned TypeScript Node10 bare crypto lookup can walk ancestors beyond /virtual without fixed getGlobalTypingsCacheLocation stop; outside-root guard would throw before ambient binding.",
+      "required": "Freeze exact /virtual stop hook on actual resolver host, preserve inside-root misses and zero outside callbacks/filesystem fallback, then actual boundary and genuine Node ambient-origin evidence in later admitted run."
+    }
+  ],
+  "otherMaterialFindings": "None after full contract/inventory and pinned-data checks, as expressly reported by reviewer.",
+  "provenance": "Formal actual internal Codex Spec native message directly to /root/authority_operator; recorded without converting it into implementation or execution approval.",
+  "nextGate": "Fresh independent re-review of narrow docs-only amendment; no execution/implementation approval from this vote."
+}

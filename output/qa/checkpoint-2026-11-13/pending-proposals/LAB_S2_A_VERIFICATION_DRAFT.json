@@ -1,0 +1,550 @@
+{
+  "schema": "SD-LAB-AUTHORITY-FOCUSED-VERIFICATION-PROPOSAL-1",
+  "author": "/root/milestone_composition_r9",
+  "status": "DRAFT_TECHNICAL_PROPOSAL_NOT_IMPLEMENTATION_OR_EXECUTION_APPROVAL",
+  "observedSourceHead": "1d7f6d6c9a97cd3537d9423039112b212fc7789c",
+  "productionCandidate": "9c43f6deea50dfe80eaead9338d21801cbb27755",
+  "ownProductionAuthorshipDisclosure": "Author wrote Lab S2A production and its contract. This draft cannot be a nonauthor source/contract/run approval. Root and Customer must independently review this proposal; later sourceauthors cannotapprove their own fixture/platform scopes.",
+  "objective": "Genuine positive verification of actual protected localoperator map/grant/revoke/regrant/replay with real signatures/files/nativecatalog/Mongo/session/transaction effects. No nominal authority-row seeding, pathredirect, testrootoverride or defaultclosed stub counted complete.",
+  "sourcePins": {
+    "src1/modules/organizations/types/index.ts": "98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670",
+    "src1/modules/organizations/model/index.ts": "d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a",
+    "src1/modules/organizations/rules.ts": "c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a",
+    "src1/modules/organizations/model/lab.ts": "42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c",
+    "src1/modules/organizations/labAuthorityRoot.ts": "15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7",
+    "src1/modules/organizations/labAuthorityReadiness.ts": "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9",
+    "src1/modules/organizations/labAuthorityProvisioning.ts": "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65",
+    "src1/operators/labAuthority.ts": "5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02",
+    "src1/modules/user/model/index.ts": "8ab08c867008d9788fd2105b6ac840794fcd5d8b2c518de500119aa2536cf5c4",
+    "src1/modules/user/types/index.ts": "91d4b48e4749d113733f471d64093c7269dffcf13bf48577c8dbc2edce7d5b71",
+    "src1/modules/common/utils/indexReadiness.ts": "050ecc993c862638cf4912bb854e04baa5d80241cb124e7831fc3c95a78db5bd",
+    "src1/modules/organizations/services/index.ts": "ccac5254a6e61c8cce4f14c58005cb39349689e3d0cbafc8ab551ca339397c73",
+    "src1/modules/organizations/labAuthoritySourceManifest.json": "08324e39632809158a3b628514287354adbe9e12fae9dce2169026fe1504c9c9"
+  },
+  "closure": {
+    "wholeTSCount": 12,
+    "writerReachableTS": 11,
+    "additionalPureCompatibilityModule": "src1/modules/organizations/services/index.ts",
+    "actualSourceManifest13Pairs": [
+      [
+        "package-lock.json",
+        "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080"
+      ],
+      [
+        "src1/modules/common/utils/indexReadiness.ts",
+        "050ecc993c862638cf4912bb854e04baa5d80241cb124e7831fc3c95a78db5bd"
+      ],
+      [
+        "src1/modules/organizations/labAuthorityProvisioning.ts",
+        "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65"
+      ],
+      [
+        "src1/modules/organizations/labAuthorityReadiness.ts",
+        "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9"
+      ],
+      [
+        "src1/modules/organizations/labAuthorityRoot.ts",
+        "15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7"
+      ],
+      [
+        "src1/modules/organizations/model/index.ts",
+        "d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a"
+      ],
+      [
+        "src1/modules/organizations/model/lab.ts",
+        "42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c"
+      ],
+      [
+        "src1/modules/organizations/rules.ts",
+        "c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a"
+      ],
+      [
+        "src1/modules/organizations/types/index.ts",
+        "98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670"
+      ],
+      [
+        "src1/modules/user/model/index.ts",
+        "8ab08c867008d9788fd2105b6ac840794fcd5d8b2c518de500119aa2536cf5c4"
+      ],
+      [
+        "src1/modules/user/types/index.ts",
+        "91d4b48e4749d113733f471d64093c7269dffcf13bf48577c8dbc2edce7d5b71"
+      ],
+      [
+        "src1/operators/labAuthority.ts",
+        "5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02"
+      ],
+      [
+        "tsconfig.json",
+        "5555c293a75c85c3f89a539bd2b1be6db1953ffa746b43836929cdc20b9355c3"
+      ]
+    ],
+    "manifestAggregateSha256": "9db2f7ea95adcbf7cb8e08713e03da89786ad19d69bd2799774e022d06d6582b",
+    "generatedJSONSource": "src1/modules/organizations/labAuthoritySourceManifest.json",
+    "cuts": [],
+    "runtimeRoots": {
+      "mongoose": "6.13.8"
+    },
+    "compilerRoot": {
+      "typescript": "5.9.3"
+    },
+    "nativeVersions": {
+      "mongodb": "4.17.2",
+      "bson": "4.7.2"
+    },
+    "models": [
+      {
+        "name": "User",
+        "collection": "users"
+      },
+      {
+        "name": "BusinessAuthorityOrganization",
+        "collection": "business_authority_organizations"
+      },
+      {
+        "name": "BusinessStaffMembership",
+        "collection": "business_staff_memberships"
+      },
+      {
+        "name": "BusinessProfessionalEligibility",
+        "collection": "business_professional_eligibility"
+      },
+      {
+        "name": "BusinessAuthorityDecision",
+        "collection": "business_authority_decisions"
+      },
+      {
+        "name": "LabBusiness",
+        "collection": "labs"
+      }
+    ],
+    "noImports": [
+      "Express/Joi/HTTProuters",
+      "rootstart/config/env/dbconnector",
+      "authorityrepository or businessclinicalproviders",
+      "JWT/adminbootstrap",
+      "legacyintegration suites"
+    ],
+    "compiler": "12wholeTS in9phases (nominal+8controls); stdlib/source/import/compiler maps+all diagnostics preserved, no clean-typecheck claim. RootJSON is actualdata copiedbesidecompiledroot and resolveJsonModule admitted explicitly. Installed actual literal/native/optional closure audited before app; Mongo exact caught optional tuple may be reused ONLY wholeparent/hash/specifier match, no blanket MODULE_NOT_FOUND or Expresscomputed exception.",
+    "variantBinding": "Eachphase derives privateJSON manifest with same13paths and onlyactualmutated sourcehashes/aggregate updated; corresponding syntheticroot binds thataggregate. NominalwholeJSON exactproductionbytes. Neverwritevariantmanifest/source intoGit or claim nominalsourcepins matchvariantbytes. Stablemodels/types/rules/User/index-evaluator/service remainnominalcached. Reimport only operator/root/readiness/writer core perphase, clearing theirwholemodules; emitted12wholemodules stillhashaudited. FixedfactoryWeakMaps/modelregistry andnativeclient preserved; no constructor/source-method extraction."
+  },
+  "contextPins": {
+    "documentation/planning/implementation/LAB_CANONICAL_AUTHORITY_S2_A_ADDENDUM_DRAFT.md": "dbe337575ff28360bf6a7b57a2c69cf2bdab9a234a2774c893ec1bba36159a57",
+    "documentation/planning/implementation/LAB_CANONICAL_AUTHORITY_AND_WORKLIST_CONTRACT_DRAFT.md": "1121a1657474948e1dec78941fd1d64d1514564de58a6c2476da28ca0dd863b9",
+    "documentation/planning/implementation/BUSINESS_STAFF_AUTHORITY_CONTRACT.md": "69dba46528295f55e184b95e1fb6ea451ee2371254d76eb7ac9fd6573068f9fd",
+    "documentation/planning/implementation/C3_MONGO_FIXTURE_CONTRACT.md": "208d702c9a1f7bc2826bda720603fa8fb382bfed9599739e1c8f4605b81368ce",
+    "test/foundation/README.md": "c3daefc9cc058e22c3e6cc60b0cc874d4ded45088baa4e545265857746cd8182",
+    "documentation/planning/M0_START_APPROVAL_STATUS.md": "67eea927661cf1a94d8644ede28eaa7315d4774866958ff346b37aac5a559be3",
+    "documentation/planning/implementation/C2_COMPATIBILITY_REVIEW.md": "e703e7bc43495868edd2ab535cb38b0f5f2ac54b5d572c2c38467b59e2ae67d4",
+    "test/api-runtime/platform.mjs": "de67306726019393eb5baf83ee17f2710e7cd6725b20cb245f6b064eff2b72b2",
+    "test/api-runtime/platform.test.mjs": "4974277cd312e275436a11367a548fb3c44616d0cedf168254d4314e4ab971d1",
+    "test/api-runtime/unit.mjs": "253d2b6121752017044e9e814a837f05ba097051a55d0e64b36b8b1f85b03bb6",
+    "test/application/app-bundle.mjs": "63a5e15779fd942b9ff9e1c3ccaa45d4d347387f196555e2a1b8998477c7ecfc",
+    "test/api-runtime/pharmacy-refill/profile.json": "15e8b72e9e3ab4f359df4f90f33f0582a20129ac2723064e800263ac1ced2ae2",
+    "package-lock.json": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080",
+    "tsconfig.json": "5555c293a75c85c3f89a539bd2b1be6db1953ffa746b43836929cdc20b9355c3",
+    "output/qa/customer-enrollment-focused/TOOL_INPUTS.json": "3729235cc997a657b533bd70daf6ce710e8c6b51b4452119f98be508173bf085",
+    "output/qa/business-staff-authority/SERIALIZATION_VECTORS.json": "9f2ab5e192c9eb4a1332680a77f0ed5d94eb28502af3fc9a426f68be350ea382",
+    "output/qa/lab-canonical-authority-contract/S2_A_SERIALIZATION_VECTORS.json": "d08280c503baadde02f6fe1313be5eb21aa6af697d4bae0320870dbef10cb49a",
+    "output/qa/lab-canonical-authority-contract/source-candidate/revision-3/SOURCE_DECISIONS.json": "236b28a78f1db33beea4c227a5d867b4edfb51a2b27e90853198a4aa243c022e"
+  },
+  "proposedOwnership": {
+    "namespace": "test/api-runtime/lab-authority/",
+    "files": [
+      "README.md",
+      "profile.json",
+      "package-plan.json",
+      "ports-manifest.json",
+      "prepare.py",
+      "compile.cjs",
+      "bootstrap.cjs",
+      "scenario.cjs",
+      "launch.mjs",
+      "unit.mjs"
+    ],
+    "sharedRootOwner": "Root alone owns fixedrole/profile/platform/platformtests and neededexactunitstaging proposal; this draft grants no edits. Minimalreuse existing run/describe/dispose/preparation/recording/result machinery, no third lifecycle or generic registry.",
+    "productionChanges": "NONE",
+    "proposedRole": "lab-authority-writer",
+    "purpose": "lab-authority-runtime",
+    "factory": "createLabAuthorityRuntimeFixture({endpoint})",
+    "schemaPrefix": "SD-LAB-AUTHORITY-",
+    "domainScope": "FOCUSED_LAB_AUTHORITY_PROVISIONING",
+    "counts": {
+      "groups": 18,
+      "controls": 8,
+      "wholeTS": 12,
+      "models": 6,
+      "cuts": 0,
+      "compilePhases": 9
+    },
+    "providerSummary": [
+      "unexpected"
+    ],
+    "noHTTP": "Localoperator and purecompatibility only; no HTTP listener/token/login endpoints."
+  },
+  "fixedFilesystemBoundary_UNAPPROVED": {
+    "problem": "protectedRead realpath/lstatsallancestors to /. Existing grants /workspace,/sys/class/net,/tmp cannotfaithfullyadmit fixed/etc and/var/lib root/evidence metadata. No silentlysame-grants claim or pathredirect.",
+    "proposedNodeRoleOnlyArgs": [
+      "--permission",
+      "--allow-fs-read=/",
+      "--allow-fs-write=/tmp",
+      "--allow-fs-write=/etc/swasthadisha",
+      "--allow-fs-write=/var/lib/swasthadisha/lab-authority-evidence",
+      "/workspace/bootstrap.cjs"
+    ],
+    "newRoleOnlyTmpfs": {
+      "/tmp": "rw,noexec,nosuid,size=134217728,mode=1777",
+      "/etc/swasthadisha": "rw,noexec,nosuid,size=65536,mode=0700,uid=1000,gid=1000",
+      "/var/lib/swasthadisha/lab-authority-evidence": "rw,noexec,nosuid,size=16777216,mode=0700,uid=1000,gid=1000"
+    },
+    "tradeoff": "Read=/ is a realbroader filesystem readgrant for this freshisolatedimage only, needed byexactancestorstat semantics; it permits readable publicimage/proc/Docker-generatedconfig bytes. It doesnot preserve Nodepermission-denial of/etc/passwd. ChildstillUID1000:1000/capdropALL/no-new-privileges/readOnlyroot, nohostroot/key/operationaldata mount or forwardedsecrets. Only existingownedworkspace readonlybind plusdeclaredtmpfs. No otherroleargs/tmpfs/result/lifecycle change.",
+    "preimportProof": "Freshinspect exactrolecommand/tmpfs/mounts/env/UID/caps/network; actualchild lstat/realpath eachfixedancestor upto/ mustmeetprotectedRead rules andexpectedtmpfsmount ownership. Dockerparent mountpoint creation is UNPROVEN; ifmissing/wrongmode/symlink stop, doNOTchmodhostimage or addroot/setupcaps. Bootstrapcancreateonlyfilesinsidealreadyownedtmpfs and/tmp.",
+    "canaries": "Create owned/tmp canary0600 thenchmod000 and requireactualread EACCES/EPERM undernonrootOS access, restoresmode in finallyforcleanup. This is OSreadprotection, not Nodefsreadpermissionproof. Retain actualoutsidewrite /workspace and otherungrantedpath ERR_ACCESS_DENIED, child/worker/addondenials. Codeclosedsource/networknamespace remain boundaries; no hostileJS sandbox claim.",
+    "syntheticKeyAndEvidence": "Trustedfixture generateownedEd25519keypair in memory ONLY afterpreimportresource/file/network admission; rootcontainscanonicalpublicSPKI only,0400/0600. Privatekey neverGit/stdout/hostfile orprovider. Sign fixtureB oncebeforetransaction callback; productionmodule stillactualverify only. Evidence syntheticopaque1..1MiB,atmost16files/16MiB; no patient/clinical/licence facts.",
+    "alternatives": "Redirect/testoverride breaksfixedproductioncomposition; disablingallNodepermissions broaderthanneeded; hostroot/filebind unsafe/unnecessary; LinuxLandlock/chroot/newsetupbinary orrootDockerexec addsanotherplatform/capability. Noneproposed. Root+peer must explicitlyapprove chosenrole-onlygrant orreject beforeimplementation.",
+    "nativeWrongOwnerLimitation": "Nonroot/capdropchildcannot chown a file to arbitrary foreignUID; do not fabricate wrong-owner nativeproof oraddCAP_CHOWN/rootsetup. Existing source predicate/source review covers this condition only until separatelyadmitted finiteownership fixture. This focusedproposal doesnot close all realrootcustody/owneractivation validation."
+  },
+  "nativeAdmission": {
+    "profileRefs": "Use currentfixedrecordedprofile endpoints/engine/digests only asdata; no livequerynow. Root must freeze exactnewlabprofile and actual cachedreadiness before anycommand; no install/pull/download allowed bydraft.",
+    "network": "SameownedMongo networknone/loopback27017,Node exactsharedownednamespace, nohostports/bridge/provider. No HTTPneeded: denyalllisteners/outsideconnect/DNS/TLS before mongoose import; allowonly exact127.0.0.1:27017 socket.",
+    "client": "ExistingactualMongoose6 assignment-order proof; capturedefaultConnection; fixedown-data suppliedoptions autoCreatefalse/autoIndexfalse/bufferfalse/directtrue/retryReadsfalse/pool2/selection2000/connect1000/socket5000/waitqueue1000/monitortrue. SavedMongoClient.connect only exactdefaultclient/URI/windowonce; commandmonitorinstalledbeforeconnect. No alternateClient/Connection/db/collection/session canreachnative boundary.",
+    "db": "OwnedreplicaSet/database derivesonlyfromcontroller ID;6namedcollections,_id_all; fiveexactuniqueindexes fromproductionreader (samekey/name/simplecollation). No sync/drop orproductionUser/text/contactindexes. Ownedsetup canseedminimalUsers only. Nativecommand/session/collection operationallowances frozenexactlyinsource; metadata separate nontransaction session,commandtx sameclient/snapshot/majority.",
+    "scopeLimits": "Rootpackage/version/topology/hosting/C2/owner/all-writer/activation remainunaccepted. ObservedMongo8 diagnostic success cannot establish production support."
+  },
+  "catalogAdditionalDDL": {
+    "status": "PROPOSED_EXPLICIT_NEW_FIXTURE_SETUP_ONLY",
+    "target": "business_professional_eligibility",
+    "count": 15,
+    "indexes": [
+      {
+        "name": "lab_fixture_cursor_01",
+        "key": {
+          "fixtureCursor01": 1
+        },
+        "unique": false
+      },
+      {
+        "name": "lab_fixture_cursor_02",
+        "key": {
+          "fixtureCursor02": 1
+        },
+        "unique": false
+      },
+      {
+        "name": "lab_fixture_cursor_03",
+        "key": {
+          "fixtureCursor03": 1
+        },
+        "unique": false
+      },
+      {
+        "name": "lab_fixture_cursor_04",
+        "key": {
+          "fixtureCursor04": 1
+        },
+        "unique": false
+      },
+      {
+        "name": "lab_fixture_cursor_05",
+        "key": {
+          "fixtureCursor05": 1
+        },
+        "unique": false
+      },
+      {
+        "name": "lab_fixture_cursor_06",
+        "key": {
+          "fixtureCursor06": 1
+        },
+        "unique": false
+      },
+      {
+        "name": "lab_fixture_cursor_07",
+        "key": {
+          "fixtureCursor07": 1
+        },
+        "unique": false
+      },
+      {
+        "name": "lab_fixture_cursor_08",
+        "key": {
+          "fixtureCursor08": 1
+        },
+        "unique": false
+      },
+      {
+        "name": "lab_fixture_cursor_09",
+        "key": {
+          "fixtureCursor09": 1
+        },
+        "unique": false
+      },
+      {
+        "name": "lab_fixture_cursor_10",
+        "key": {
+          "fixtureCursor10": 1
+        },
+        "unique": false
+      },
+      {
+        "name": "lab_fixture_cursor_11",
+        "key": {
+          "fixtureCursor11": 1
+        },
+        "unique": false
+      },
+      {
+        "name": "lab_fixture_cursor_12",
+        "key": {
+          "fixtureCursor12": 1
+        },
+        "unique": false
+      },
+      {
+        "name": "lab_fixture_cursor_13",
+        "key": {
+          "fixtureCursor13": 1
+        },
+        "unique": false
+      },
+      {
+        "name": "lab_fixture_cursor_14",
+        "key": {
+          "fixtureCursor14": 1
+        },
+        "unique": false
+      },
+      {
+        "name": "lab_fixture_cursor_15",
+        "key": {
+          "fixtureCursor15": 1
+        },
+        "unique": false
+      }
+    ],
+    "timing": "Afterinitialmissing-required-indexdenial andrequired-five-indexsetup, beforeactivewriter/metadatafaultphase, noactiveHTTP/transaction/read; retainalllaterphase, neverdrop. This yields_id_+required+15=17 ononecollection toforceactualbatch16 getMore/kill. Ordinarynumericindexes are allowedbyactualreader; allcounttoward64each/256global/1MiB/32commands/5s.",
+    "limits": "No performance/capacity/migration claim. Ifconstraintsnotfit actualsamecapfail ratherthanrelax; no fabricatedcursorreply nominal."
+  },
+  "mandatoryGroups": [
+    {
+      "id": "ADMISSION",
+      "proof": "Before imports: exactrole/files/tools/env/network/permission/sole-client/options/native-binding/model closure. Deny second sameURIclient,foreign connection/db/collection/session, unexpected module/provider/child/worker/addon and operationalenv before native effects.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "REAL_PROTECTED_FILES",
+      "proof": "Actual fixedpath root/evidence in newownedtmpfs, heldFD/no-follow regular singlelink0400/0600 and allancestors nonsymlink/nongroupwrite. No root/get-or-create override. Metadata/read permission and mode000 canary proven before imports.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "REAL_METADATA",
+      "proof": "Actual zeroarg reader over five authority collections, nativeBSON4 UUID/Long/cursor and exact5requireduniqueindexes/simplecollation. User model bound sameclient but userindexes intentionally only_id_; no User text metadata or rootproductioncapacity claim.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "MAP_POSITIVE",
+      "proof": "Generate owned testEd25519key in memory; write canonical publicroot/evidence; seed ONLY minimum actual issuer/subject Users. Call actual operator export, map lab/org/decision allfromwriter. Native readback independently checks IDs,revision1/fence1,fields,Digest,real persistedDates,canonical signature bytes,evidence and no extra rows.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "GRANT_POSITIVE",
+      "proof": "Actual writer-derived mapping; current personalnonself subject gets single reader grant member1/orgfence2 and one actual signed decision. No seeded positive authority decision/membership.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "REVOKE_REGRANT",
+      "proof": "Actual grant1->revoke2->regrant3 with fence2->3->4 and retainedmemberID/createdAt/history. Currentinactive subject or expiredoldvalidity must not block revoke; newgrant to inactive subject denies. Historical oldvalidity authenticated at original callbacktime.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "REPLAY",
+      "proof": "Exact same signedB replay creates no write and returns original trusted receipt values,replayedtrue even after subsequent revoke. DifferentB/sameoperation409. One real expired-window journey bounded5s: initial genuinecommit before notAfter, wait monotonic to after notAfter, exactreplay works but unseenexpired op400. No clock replacement.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "SIGNATURE_SCOPE_AND_IDENTITY",
+      "proof": "Mutate each12B field/payload slot/signature with canonicalshape and genuine wrongkey/root. Wrongissuer/key/generation/org/branch/self deny. Currentissuerinactive denies; businessJWT/admin facts neverbootstrap. Trusted testkey does not establish real owner/clinical identity.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "INPUT_AND_UNICODE",
+      "proof": "Nonstring,>16KiB,alternateJSON/BOM/whitespace/arity/type/noncanonicalbase64/unsafeinteger/-0/time/unknownaction/unsupportedcapability denied. Both isolatedhigh/low surrogate in both Unicodefields400/no effects; valid NFC and pairedastral values preserved through actual BSON/history.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "ROOT_EVIDENCE_INTEGRITY",
+      "proof": "Wrongsourceaggregate/rootstate/generation/evidencehash/missing/oversize/mode/symlink/hardlink/groupwritableancestor and mutationwhileheld deny; restorefixture-ownedfiles betweencases. active permitsnew, verification_only onlyhistoricalreplay, revokeddenies. WrongownerUID native construction is NOT claimed undercapdropnonroot; seeexplicitlimitation.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "HISTORICAL_PROVENANCE",
+      "proof": "Startingwriter-derived revokedstate, independentlytamper/miss/duplicate D orG,subject/member/branch/revisions/oldvalidity/timestamps/fence/digest/proof/signature/evidence. Restoreeachfixturecorruption; require exact503structural/cardinality vs403cryptographic and zero write. Include17000byte history/signature87/89 beforeinnerparse guards.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "NATIVE_CURSOR_AND_FAILURES",
+      "proof": "After exclusive setup add exact15benign nonunique numericindexes to eligibility (17total) to force realbatch16 getMore. Use post-completed-command faultport for namespace/numericcursor/getter/cycle/rows/name/buildstate/UUIDdrift; retireexacthiddennativecursorbeforecorruption, no unknowncursor adoption. Require realkill/endSession and descriptor/getterzero, not fabricated READY.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "TRANSACTION_AND_ROLLBACK",
+      "proof": "Real sessions/lsid/txnNumber snapshot/majority captured. For actual maplab/org/decision and grantmember/org/decision, throw once AFTER each real acknowledged write insideownedtx; eachattempt then freshnative snapshot equalsbefore. Preserve allpreviousrows/files, no partialcommits. No seed pretending a successful write.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "RACES_AND_CAS",
+      "proof": "Barrier AFTER actual two concurrent org reads under two ownedtransactions; two signed grant intents sameorgfence compete. Require atmostonecommit/otherconflict, onefenceadvance/member/decision effect. Observe actual full$$ROOT equality,session/simplecollation/limit2/maxTimeMS2000. Do not claim removingCAS alone defeats nativewrite-conflict protection.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "CALLBACK_RETRY_AND_UNKNOWN_COMMIT",
+      "proof": "One exact post-acknowledged-write TransientTransactionError injection exercises actual driver callbackretry (not nativecauseclaim); allguards/root/metadata reacquired and stable signedB reused. One post-real-acknowledged-commit opaque throw returns UNKNOWN; actual readback may showcommit, explicit SAMEoperation replay resolves withoutduplicate. No automaticfreshIDretry/false rollback.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "COUNTERS_AND_RECEIPTS",
+      "proof": "SafeMAXrev/fence409beforewrites; malformedstoredcounter503. Exact frozen10key minimal receipt uses expectedfixtureIDs/revisions/SHA, no root/evidence/signature/key/user/profile/permissiontokens. Firstfailure/cleanup/unknown disposition preserved.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "PHARMACY_COMPAT_AND_LAB_CLOSED",
+      "proof": "Use unchanged3oldserialization vectors against currentrules, and one actual existing pureService with syntheticport facts yields expected pharmacy scope/brand. Lab.worklist.read context/reportrelease stilldenies viaexistingcurrentresolver. This is syntheticpurecompatibility, not DB-authority positive orS2B.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "SENSITIVITY_AND_RESTORATION",
+      "proof": "Eight exactwhole-source variants: same nominalpredicate, own forbiddeneffect, then freshnominalcore modules/manifest/root/ownedrecords restore and predicatepasses. Final real map/grant/revoke/regrant/replay; allsessions/cursors/FDsclosed,clientdisconnected,unexpectedzero,exactresourcecleanup independentlyreviewed.",
+      "status": "NOT_RUN"
+    }
+  ],
+  "sourceControls": [
+    {
+      "id": "LC01_SIGNATURE",
+      "path": "src1/modules/organizations/labAuthorityRoot.ts",
+      "before": "labCheck(verify(null, Buffer.from(command.commandJson), root.key, decode64(command.signatureBase64, 64)), 'LAB_AUTHORITY_DENIED');",
+      "after": "labCheck(true, 'LAB_AUTHORITY_DENIED');",
+      "count": 1,
+      "nominalSha256": "15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7",
+      "variantSha256": "86d1369435fb9da48bb5ef35c5a25c39778ddaabbf97dc7fa282ef5b5f1a2efb",
+      "requiredActualForbiddenEffect": "Use canonical command with actual invalid64byte signature. Nominal403/no writes; variant really maps lab/org/decision despite invalid signature.",
+      "status": "PROPOSED_NOT_RUN"
+    },
+    {
+      "id": "LC02_BRANCH_SCOPE",
+      "path": "src1/modules/organizations/labAuthorityRoot.ts",
+      "before": "labCheck(scope && branches.every(b => scope[1].includes(b)), 'LAB_AUTHORITY_DENIED');",
+      "after": "labCheck(true, 'LAB_AUTHORITY_DENIED');",
+      "count": 1,
+      "nominalSha256": "15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7",
+      "variantSha256": "2c2f33d97932691c27a1d441a8b5a440b7aa01ed938017548b9dc2f0ea6c5783",
+      "requiredActualForbiddenEffect": "Valid real signature lists permitted org but forbidden branch. Nominal403/no writes; variant stores forbidden branch in actual canonical org.",
+      "status": "PROPOSED_NOT_RUN"
+    },
+    {
+      "id": "LC03_CURRENT_ISSUER",
+      "path": "src1/modules/organizations/labAuthorityProvisioning.ts",
+      "before": "await requireLabIssuer(work.snapshot, c.issuerUserId, work.session);",
+      "after": "",
+      "count": 1,
+      "nominalSha256": "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65",
+      "variantSha256": "7ac9a8b6c10c6aff72b1bc896861ac0d2133714bcbb3d31b199b2d13ed4d303a",
+      "requiredActualForbiddenEffect": "Real valid signed map with actual inactive issuer. Nominal403/no writes; variant commits actual mapping.",
+      "status": "PROPOSED_NOT_RUN"
+    },
+    {
+      "id": "LC04_REGRANT_HISTORY",
+      "path": "src1/modules/organizations/labAuthorityProvisioning.ts",
+      "before": "await authenticateRevoked(work, m, org);",
+      "after": "",
+      "count": 1,
+      "nominalSha256": "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65",
+      "variantSha256": "5b1d6e7d275df726c3b6a3791cac4d96a8551ac35885a0009988e6e0035deea9",
+      "requiredActualForbiddenEffect": "Writer-derived grant/revoke journey, then fixture removes its actual signed revocation decision. Nominal503/no new effects; variant really regrants revoked member3 without authentic transition.",
+      "status": "PROPOSED_NOT_RUN"
+    },
+    {
+      "id": "LC05_INSERT_SESSION",
+      "path": "src1/modules/organizations/labAuthorityProvisioning.ts",
+      "before": "model.collection.insertOne(toDatabase(doc) as Record<string, unknown>, { session: work.session })",
+      "after": "model.collection.insertOne(toDatabase(doc) as Record<string, unknown>, {})",
+      "count": 1,
+      "nominalSha256": "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65",
+      "variantSha256": "802898e17d0bbb4626db0e3a57ef8d8c400bb63ba1226f390b86294c5c58c9e7",
+      "requiredActualForbiddenEffect": "Throw once AFTER real acknowledged first map lab insert. Nominal rollback leaves no lab/org/decision; variant actual lab row remains outside transaction. Arbitrary error alone is not detection.",
+      "status": "PROPOSED_NOT_RUN"
+    },
+    {
+      "id": "LC06_UNICODE",
+      "path": "src1/modules/organizations/labAuthorityRoot.ts",
+      "before": " && Buffer.from(value, 'utf8').toString('utf8') === value",
+      "after": "",
+      "count": 1,
+      "nominalSha256": "15bacfff1a1116f30a6ba59bc30bae943b2fb16a62447bd2a8d41d1eb5e6bfa7",
+      "variantSha256": "2d085b083405f79d43b5a4a207165fc795bc3803aa56610b186e63b8163b2ed2",
+      "requiredActualForbiddenEffect": "Genuine signature over canonical JSON containing isolated surrogate in legalName. Nominal400 before session/effects; variant commits actual BSON text unequal to signed field. Do not repair input.",
+      "status": "PROPOSED_NOT_RUN"
+    },
+    {
+      "id": "LC07_HISTORY_PARSE_BOUND",
+      "path": "src1/modules/organizations/labAuthorityProvisioning.ts",
+      "before": " && Buffer.byteLength(proof.commandJson, 'utf8') <= 16384",
+      "after": "",
+      "count": 1,
+      "nominalSha256": "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65",
+      "variantSha256": "5e290efedcb8c33059e44385a295602784b993c8b704b672921cecfe78db4528",
+      "requiredActualForbiddenEffect": "Tamper only a writer-derived historical commandJson to bounded17000byte valid JSON. Nominal503 before inner parse; variant actually invokes original JSON.parse on that exact oversized protected string then fails. Fixed observing wrapper forwards actual this/args/result and records only this exact string; no parser mock, crash-only detection or2MiB allocation needed.",
+      "status": "PROPOSED_NOT_RUN"
+    },
+    {
+      "id": "LC08_REPLAY_IDENTITY",
+      "path": "src1/modules/organizations/labAuthorityProvisioning.ts",
+      "before": "labCheck(proof.commandSha256 === c.commandSha256 && proof.commandJson === c.commandJson, 'LAB_AUTHORITY_CONFLICT');",
+      "after": "labCheck(true, 'LAB_AUTHORITY_CONFLICT');",
+      "count": 1,
+      "nominalSha256": "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65",
+      "variantSha256": "6d8799bc39373b637566d64f3a52246447cdfec37ef6b4c8ab87386fe793115f",
+      "requiredActualForbiddenEffect": "Different genuinely signed B reuses committed operationId with changed decision/target data. Nominal409 unchanged; variant returns COMMITTED replay receipt for actual input SHA/decision not present in retained committed proof. Compare trusted submitted and persisted facts, not returned fields to themselves.",
+      "status": "PROPOSED_NOT_RUN"
+    }
+  ],
+  "controlledEffects": {
+    "nominalWriter": "No replacement of readLabRoot/readLabEvidence/checkLabSignature/observeLabAuthorityReadiness/requireLabIssuer/provisionLabAuthority/nativeCRUD results/transactionalgorithm. Calls actualoperator/root/model/query/nativefunctions.",
+    "observation": "Nativecommandmonitor and bounded wrappers retain this/args/originalresult; before/after BSONsnapshot ALL6collections andfixedfilehash/descriptor/session/FD/provider counts peroperation. No seededdecision/membership/lab/org positive; malformed/corruptrows may be created ONLY aftergenuinewriterjourney fordeclarednegative, thenrestored.",
+    "barriers": "Bounded2000ms hold afteractualcompleted org snapshotread for2realtransactions. Forcedpostwriteerrors and postcommitopaqueerror afteractualack, targetcollection/operationID/callback ordinal fixed; no fakequery/session/READY result. Nativeconflict vs injectedretry/unknown simulation labeledseparately.",
+    "boundedDriver": "Observe actualnativewithTransaction, do notreplacealgorithm. Fixturecallback wrapper rejects thirdcallback beforedomainwork; max2callbacks/command, max2commitforwards; exceedingboundFAIL/zeroacceptance, no new logicalretry/oldIDchange. Precise wrapper/labels and counters mustfreeze source beforeexecution.",
+    "rawFault": "Faultport afteractualDb.command cantransformdeclaredpublicmetadata response or throwonce; unknownactualcursor cannotbeadopted. Beforehidingidentity retireonlyexactoriginalheldnativecursor/sameclient/session andrecordactualcleanup. Restoreinfinally.",
+    "parserControlOnly": "OnefixedJSON.parse observation forLC07 forwardsoriginalbuiltin andrecords exactoversized historicalstring call. Neverchangesparse result/catches/inputs; no globalgenericparserframework.",
+    "evidence": "Freeze subordinatefixedvectors pergroup/sourcecandidate beforeapproval. Persist per-group actualcounts+privateproofIDs/wirelsid/txnNumber/callback/commit maps/forbiddeneffects/restorations bounded withinownedcaptures; publiconlyclosedsyntheticsummaries. PASSlabels alone insufficient."
+  },
+  "capsAndSchedule": {
+    "unchangedExistingRuntimeCaps": "Propose reuse180schild/30sMongo,1CPU,Node512MiB/PIDs64,Mongo1GiB/PIDs128/diskmin64MiB,existing/tmp limits, nochild/workers/addons. Onlyexplicitfsread/tmpfsdeltas above.",
+    "planningNotMeasured": {
+      "startupAdmissionSetupSeconds": 25,
+      "nominal18groupsSeconds": 60,
+      "eightTargetedControlRestorationsSeconds": 55,
+      "expiryAndSnapshotRealWaitsSeconds": 10,
+      "finalAndCleanupSeconds": 10,
+      "reserveSeconds": 20
+    },
+    "waits": "Atmostone5s actualexpired-command-replaywait andone5s metadata-snapshotexpirywait; monotonicboundedconditions nofakeDate/performance ormulti-minute sleeps. Ifactualfirstcommit misses5swindow orfullschedulecannotfit, retainfailure andpropose separatelyreviewedsplit, noautomaticcapincrease/skip.",
+    "snapshotExpiry": "Get actualissuedreadiness snapshot fromcompletedreader, startactualownedtx, holdto itsrealmonotonicexpiresAt+1 withinbounded5.1s, thenassertLabAuthoritySnapshot rejects beforewrite; no forgedsnapshot orclockoverride.",
+    "recordBounds": "Beforecodefreeze set exactmaxrecords/bytes/vectorcounts/FDcount; proposal recommends<=30000commandrecords/24MiBprivateevidence,<=128authorityrecords/16Users/16evidencefiles. Pendingexactsourceaudit andRootresourcesreview; thisdraftcannotauthorize thosecaps."
+  },
+  "executableGates": [
+    "Twoactualindependentnonauthor design/contract decisions andexplicitRootnewrolefs/interface ownership BEFORE code. This draft is not thosevotes.",
+    "Exactnamespace/sharedsourcecandidate/fullpatch/inverse/12TS+JSON/context/native/import/tool maps and2eligibleindependentnonauthorreviews, excludingactualauthors scopes. GenuineClaude requestedxhigh reviewseparate, no modelcallauthorizedhere.",
+    "Exactnewpublicmetadataresolve proposal/twovotes/newreceipt/nonce/owned0700scriptsdisabledminimal2rootlock andactual2outcomes; noRootlockadoption.",
+    "Separatelockedinstall/9phasewholeemission/nativegraph/diagnostics+actualfiledescriptor/twovotes/newreceipts/outcomes. No app duringprepare; exactunsafe/optional/dynamicedgeshold.",
+    "Separateoneactualroleinvocationpreimport/native/OS/metadata/FD/tool/artifact review/twovotes/newonce,actual18groups8forbiddeneffects/restorations andfreshsameengine/exact2IDs/purpose/workspacecleanup with2independentoutcomes. No automaticretry/rebind."
+  ],
+  "pendingBeforeImplementationReview": [
+    "Root mustfreeze precise sharedfixedrole interface/schema/failuredecoder/sourceallowances androle-onlyNodeArgs/tmpfsinspect logic; oldrolesremainbyte-equivalent.",
+    "Actualfixture source mustfreeze finite subordinate vectors,pergroup expectedoperation/command counts,exact6collectiongrants andcallback/commitwrapperbounds,OScanary semantics andfailurecodes; no countinflation.",
+    "NativewrongownerUID failure notconstructibleundercurrentproposednonrootcapdrop; explicitlyoutsidefocusedacceptance untilseparatefiniteadmission, no fabricatedclaim.",
+    "One-time sourcecontrol recipes are currently exacttext/data verified butbehavioralviability/native outcomesNOT_RUN. LC05outside-session writes requireactualbadpersistedrow,notmerelylatchedboundarydenial.",
+    "Originalpharmacyfullpureharness pin refresh isoutside thisdraft; focusedcompat group usesactualcurrentrules/service+original3serializationvectors only, notclaiming fulloldcampaignrerun."
+  ],
+  "preservation": "Writesonlythis/tmpJSONproposal. NoR13selected76source/context mutation, no code/hostroot/evidence/privatekey/DB/provider/model operation, originalsixstaged/archive/allfailedartifacts preserved. No S2B/worklist/assignment/reportrelease/clinical/corporateHRhospital expansion/finalintegration/deployment/release claim.",
+  "executionByAuthor": "NONE: inert source/text/Git/JSON/hash only. No parser/Node/crypto/BSON/compiler/package/app/model/DB/Docker/provider execution.",
+  "approvalClaimed": false
+}

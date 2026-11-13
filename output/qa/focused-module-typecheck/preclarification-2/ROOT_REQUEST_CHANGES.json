@@ -1,0 +1,9 @@
+{
+  "reviewer": "/root",
+  "role": "Standards",
+  "decision": "REQUEST_CHANGES",
+  "contractSha256": "4f7b31d29b6aa23a76a28f50cc39e70f10e238b8ab492b8f9da390f266f186f0",
+  "finding": "Pinned Node10 resolver can walk normal bare-crypto ancestor probes beyond /virtual. Freeze an exact compiler-host stop boundary or equally narrow miss treatment, with no host filesystem/loaded outside IDs/any shim.",
+  "sourceEvidence": "Independent Spec traced pinnedTS5.9.3 loadModuleFromNearestNodeModulesDirectoryWorker\u2192forEachAncestorDirectoryStoppingAtGlobalCache at46298\u201346345/21108/9146. No compiler execution.",
+  "scope": "Only contract boundary clarification, no new limits/grants/defaultrole/source/execution admission."
+}
