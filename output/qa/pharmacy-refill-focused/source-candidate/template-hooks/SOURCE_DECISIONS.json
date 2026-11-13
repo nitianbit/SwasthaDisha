@@ -1,0 +1,23 @@
+{
+  "schema": "SD-P7-DISABLED-EXPRESS-HOOK-SOURCE-DECISIONS-1",
+  "recorder": "/root",
+  "reviews": [
+    {
+      "reviewer": "/root",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "path": "output/qa/pharmacy-refill-focused/source-candidate/template-hooks/STANDARDS_REVIEW.json",
+      "sha256": "20f807c226773535ad91f7ffaa3e14c4db07d79f7c3e2271ab93af8807e8394c"
+    },
+    {
+      "reviewer": "/root/milestone_composition_r9",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "path": "output/qa/pharmacy-refill-focused/source-candidate/template-hooks/SPEC_REVIEW.json",
+      "sha256": "633bd56bc1056ad2927d7a631bcebd128dca1851fdebff730b4a22a2058e496a"
+    }
+  ],
+  "candidateCommit": "3a6153197613fa8d9f48b6c358f16d7c1051bdba",
+  "manifestSha256": "e9e72c0a32c8bf5610c48db1178e053e36186628c77b46910f98b68e85e0a5df",
+  "sourceAuthor": "/root/customer_remaining_audit",
+  "decision": "APPROVE_SOURCE_ONLY",
+  "limits": "New sixhooks only; Root sharedsource suppliedbyactualtwoothers. Milestone oldP7productionauthorshipdisclosed, notownproductionreapproval. Actualunits/packageaudit/publiclock/emission/app gates remain separate. KnowngetMore maxTimeMS source protocoldefect OPEN independently; no nativeclosure/moduleclaim."
+}

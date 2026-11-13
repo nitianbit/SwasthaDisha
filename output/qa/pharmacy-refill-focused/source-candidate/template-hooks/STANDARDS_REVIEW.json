@@ -1,0 +1,41 @@
+{
+  "schema": "SD-DISABLED-TEMPLATE-HOOKS-STANDARDS-1",
+  "reviewer": "/root",
+  "scope": "Independent internal Codex review of six namespace hook changes; Root shared helper source excluded from own approval and requires actual separate nonauthor decisions.",
+  "decision": "APPROVE_SOURCE_ONLY",
+  "candidateCommit": "3a6153197613fa8d9f48b6c358f16d7c1051bdba",
+  "baselineCommit": "3792f8ae08acd9a7644c7efcd1e758f9e331b554",
+  "manifestSha256": "e9e72c0a32c8bf5610c48db1178e053e36186628c77b46910f98b68e85e0a5df",
+  "findings": [],
+  "personallyVerified": {
+    "sixChangedFilesFullDiffAndRelevantFinalSources": true,
+    "actualProducerInputs": 47,
+    "actualProducerOwnContextProduction": [
+      10,
+      18,
+      19
+    ],
+    "portsOnlyTwoNewHelperBindings": true,
+    "sourceAndSnapshotGitPins": true,
+    "sameOneCanonicalHelperBytesCopiedProjectRuntimeAndSourceMaps": true,
+    "sharedGuardFirstBothWrappersBeforeStringCountersBuiltinCache": true,
+    "originalMongoPolicyFourNegativesUnchanged": true,
+    "newEightStructuralControlsAndExactNativeParents": true,
+    "intactActualViewThreeCapabilityProbesWithPersistentLatchAndZeroEffectAssertions": true,
+    "finallyRestoresOwnedFilesystemInstrumentation": true,
+    "caseControlCapsPermissionsAndProductionUnchanged": true,
+    "c1AuditOnlyUsesSameGraphAndNoEmissions": false
+  },
+  "actualSharedSourceVotes": {
+    "Standards": "3d0515518cfddff9736bc6002e7da338fee17feecd667cf81358eaa28fd24a0d",
+    "Spec": "c3adf631616baa32801442aeb9087bab4443d99cb34a5fdb8757bea58cdc837b"
+  },
+  "requiredNext": [
+    "Other actual independent hook source decision or amended source review",
+    "Separate exact focused helper-unit stage/results/two independent outcomes",
+    "Separately admitted whole reachable package audit and two actual outcomes before any new install",
+    "Own resolved public lock/wholeemission/artifact/run/result/cleanup gates; no old source rebind"
+  ],
+  "checks": "Inert source/JSON/Git/hash/data-literal inspection only; no JS parser/Node/compiler/native/app/DB/Docker/model execution by source review.",
+  "runtimeOwnerReleaseAcceptance": false
+}

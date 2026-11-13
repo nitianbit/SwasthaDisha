@@ -1,0 +1,43 @@
+{
+  "schema": "SD-REFILL-DISABLED-EXPRESS-HOOKS-INDEPENDENT-SOURCE-REVIEW-1",
+  "reviewer": "/root/milestone_composition_r9",
+  "axis": "Spec",
+  "author": "/root/customer_remaining_audit",
+  "candidateCommit": "3a6153197613fa8d9f48b6c358f16d7c1051bdba",
+  "baselineCommit": "3792f8ae08acd9a7644c7efcd1e758f9e331b554",
+  "manifestSha256": "e9e72c0a32c8bf5610c48db1178e053e36186628c77b46910f98b68e85e0a5df",
+  "designSha256": "c9a058f4bfa3135423496bb6673e3f17937c325c014f1ad1bc9215a6a5f7ae77",
+  "interfaceSha256": "0dea3a043efea2e284246bc29d5ecc5a4abb116d70f614f958c210d8ba5f2952",
+  "decision": "APPROVE_SOURCE_ONLY",
+  "findings": [],
+  "independenceDisclosure": "Reviewer authored P7production7b72154506caa037101f490963ca4bbdca594018 but authored neither these Customer hooks nor Root sharedhelper/platform. This is independent review solely of six new fixture hooks/C3/coverage composition, NOT independent reapproval of own production; existing Root/Customer production decisions remain separate.",
+  "sourceHashes": {
+    "test/api-runtime/pharmacy-refill/README.md": "74f0e5fd440beeaca62f6e96c0b018dcc0cbb4efaf52ba3ff7c6c9b631003e95",
+    "test/api-runtime/pharmacy-refill/prepare.py": "f3b5fac74a195909ecfdcbfc5471a7b086d55353d4fdfa11e72ebc8d68013aa3",
+    "test/api-runtime/pharmacy-refill/compile.cjs": "ab930e1daa97053de1cb2f1c23bdc53980d21f193333a642a365d6eb2c0b859e",
+    "test/api-runtime/pharmacy-refill/bootstrap.cjs": "e88da4895ab9fdc0390791ccbd1a4491e158bac532154d67d80e6ade1f878a27",
+    "test/api-runtime/pharmacy-refill/scenario.cjs": "d36c7cd5ff4fe0b09791658038b4ef618a707bd7010d1e8a6d7aab2bc1e40c7e",
+    "test/api-runtime/pharmacy-refill/ports-manifest.json": "7434fa1c735ac00abb3e959f65856437a6d7b72ae7e5a4c9c9b89c08c3ebfdd9"
+  },
+  "actualStaticVerification": [
+    "Full six-hook diff and changed caller/function source read with sharedhelper/interface composition context. Six current/baselineGit hashes match; exact full-index U0 Git patch and inverse match recorded2859/4ac4 artifacts.",
+    "ActualproducerOWN10+CONTEXT18+source19 yields47selectedfiles, all47hashesmatch. All41nonhook inputs equal baselineGit (includesseparatelyRoot-authored helper);19productionpins unchanged. Twoportsfields are soledatachanges; originalMongo matcher/fournegativefunctionbodies exactbaseline.",
+    "Actual helper52772 and canonical8a9 source/policy bindings checked separately; producer copies samebytes toownedproject+runtime beforecompiler; actualreceipt/source/plan/descriptor maps includehelper once. Completehashadmission precedeshelperload/packageimports.",
+    "Hostpunycode membershipassertion is beforeTypeScript import; childactualbuiltinassertion beforepackageimports. Exactnameonlyinventory preservespunycode/ asdistinctuserland. No packageexception/vendor edit.",
+    "Exact8field staticExpressrecord/eightorderednegativechecks, nativeparent+entryhashes/callspan/sharedpolicyexpression binding; uniqueactualincomingtoplevelliteraledge retained. Eight structural variants runsharedmatcher withoriginaldigest exceptwronghash. Ordinaryothercomputed/dynamicedgesremainfatal, Mongo4policyunchanged.",
+    "Bothload/resolveinvoke sharedguard BEFORE counters/stringmethods/builtin/cache/cuts/optional/savednativepaths. GenuineViewconstructor returnedbyassertSealed immediatelyafterExpressimport; no cache-reset/reinitialization/test override.",
+    "Threeactual unchangedconstructor fs/node:fs/cacheddebug probes useexistingpersistentexpectedlatch, assertSealedconstructoridentity andunchangedcapturedclient/connection/savednativeforwards/lookups/commands/providers/fileeffectcounts. Actualfsfunctions instrumentedwithoriginaldescriptors andfullyrestoredinfinally. No fatalidentity/cache/loaded corruption inliveADMISSION.",
+    "NativecatalogpromoteLongsfalse retained; all20domainIDs/7sourcecontrols/8compilephases, existing180s/30s/resources/grants andwholemainappbundle63a5 remainunchanged. No code/source edits made byreviewer."
+  ],
+  "conditionalCompositionPrerequisites": [
+    "Rootsharedhelper52772/platformscope needs both actualeligible nonauthor SOURCE decisions; thishookapproval doesnot approve Root algorithm/test/platform source by proxy. Separatelyadmitted helperunits remainNOT_RUN.",
+    "ExactcompleteC1 reachable-package ASTaudit usingexistingownedinstalledtree andSAMEmatcher/edges/visit plus2actualoutcomes precedesanynewinstall. P7 reuse requires actualP7lockedarchive/reachableedge equality, not names/versionlabels. TheC1audithook sourceorderfinding mustberepaired independently beforethatstage.",
+    "FutureP7metadata/install-emission/applicationproposals needexactcurrentcommittedsource/tool/native/inputmaps/newreceipts/nonces/ownedareas/twoactualstagevotes andoutcomes. No executablepermission, auto retry, descriptor/receiptrebind orgeneralcomputedexemption granted bysourcevote."
+  ],
+  "limitations": [
+    "JSparser/sharedASTpredicate/helperunits/compiler/package/native/Node/app/HTTP/Mongo/Docker/provider/model execution allNOT_RUN. Sourceinspection doesnot proveactualsealedconstructor/mutation/clinical/productioncapacity behavior.",
+    "No rootC2adoption/productionactivation/fullP7/module/owner/client/clinical/release/finalintegration approval. Allhistoricalsourcefindings/failedcaptures/originalsix/archive/R13selected76 preserved."
+  ],
+  "executionPermission": false,
+  "runtimePermission": false
+}
