@@ -34,6 +34,7 @@ import UserModel from '@/modules/user/model';
 import { UserRepository } from '@/modules/user/repository';
 import { UserService } from '@/modules/user/services';
 import { WalletModel, WalletTransactionModel } from '@/modules/wallet/model';
+import { beginProvider } from '@/modules/externalBookings/services/providerOps';
 import { WalletRepository, WalletTransactionRepository } from '@/modules/wallet/repository';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/a1_rules_check?directConnection=true';
@@ -211,8 +212,9 @@ async function main() {
     assert.equal(await WalletTransactionModel.countDocuments({ userId: u }), 0);
     const unpaid = await ExternalBookingModel.collection.insertOne({ userId: u, integration: 'healthians', providerType: 'DIAGNOSTICS',
       status: 'pending_payment', paymentStatus: 'pending', price: 100, ...inHours(3) } as never);
-    await rejects(externals.cancelBooking(unpaid.insertedId.toHexString(), { _id: u, userType: 'user' }, {}, 'diagnostics'), 'CANCELLATION_WINDOW_CLOSED', 400);
-    assert.equal((await ExternalBookingModel.findById(unpaid.insertedId).lean())!.status, 'pending_payment', 'external unpaid too, until A2b');
+    // A2b restored the milestone's exemption for external bookings too: an unpaid one may be cancelled inside the window.
+    await externals.cancelBooking(unpaid.insertedId.toHexString(), { _id: u, userType: 'user' }, {}, 'diagnostics');
+    assert.equal((await ExternalBookingModel.findById(unpaid.insertedId).lean())!.status, 'cancelled', 'external unpaid: exempt (A2b)');
   });
 
   await check('[D8/D9] Healthians: the slot is frozen right before the order is placed, and the post-coupon total incl. wallet is sent', async () => {
@@ -228,7 +230,11 @@ async function main() {
       freezeDiagnosticsSlot: async (a: { stmId: string }) => { calls.push('freeze:' + a.stmId); return {}; },
       placeDiagnosticsOrder: async (a: Record<string, unknown>) => { calls.push('place'); sent = a; return { externalBookingId: 'HL-9', externalStatus: 'confirmed', payload: {} }; },
     };
-    await completeExternalBookingAfterPayment(rec.toObject() as never, new ExternalBookingRepository(), {} as never, healthians as never);
+    // A2b: the payment is applied first, then the provider attempt is admitted; only its token records the result.
+    await ExternalBookingModel.updateOne({ _id: insertedId }, { $set: { paymentStatus: 'paid', paymentTransactionId: String(rec._id), status: 'pending' } });
+    const admission = await beginProvider(insertedId.toHexString(), String(rec._id));
+    await completeExternalBookingAfterPayment(rec.toObject() as never, new ExternalBookingRepository(), {} as never, healthians as never, admission.token!);
+    assert.equal((await ExternalBookingModel.findById(insertedId).lean())!.externalBookingId, 'HL-9');
     assert.deepEqual(calls, ['freeze:STM-5', 'place']);
     assert.equal(sent.discountedPrice, 80, 'gross 100 - coupon 20 (gateway 60 + wallet 20), not 100 and not 60');
   });

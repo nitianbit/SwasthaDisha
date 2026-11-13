@@ -134,6 +134,62 @@ const externalBookingSchema = new Schema<IExternalBooking>(
       }, { _id: false }),
       default: undefined,
     },
+    // Provider admission and two-phase cancellation (A2b; services/providerOps.ts). Private: never selected by default.
+    providerOps: {
+      type: new Schema({
+        attempt: {
+          type: new Schema({
+            token: { type: String, required: true },
+            state: { type: String, required: true, enum: ['started', 'succeeded', 'unknown', 'rejected', 'absent_attested'] },
+            recordId: { type: String, default: null },
+            at: { type: Date, required: true },
+            ref: { type: String },
+            error: { type: String },
+            attestedBy: { type: String },
+          }, { _id: false }),
+          default: undefined,
+        },
+        cancel: {
+          type: new Schema({
+            by: { type: String, required: true, enum: ['user', 'admin', 'system'] },
+            actorId: { type: String },
+            reason: { type: String },
+            priorStatus: { type: String },
+            at: { type: Date, required: true },
+            state: { type: String, required: true, enum: ['requested', 'calling', 'unknown', 'settled'] },
+            token: { type: String, required: true },
+            ackedRefs: { type: [String], default: [] },
+            callRef: { type: String },
+            callAt: { type: Date },
+            calls: { type: Number, min: 0, default: 0 },
+            nextAt: { type: Date },
+            needsAdmin: { type: Boolean, default: false },
+            blockedBy: { type: String },
+            response: { type: Schema.Types.Mixed },
+            error: { type: String },
+            attestedBy: { type: String },
+          }, { _id: false }),
+          default: undefined,
+        },
+        reschedule: {
+          type: new Schema({
+            token: { type: String, required: true },
+            state: { type: String, required: true, enum: ['started', 'done', 'unknown', 'attested'] },
+            at: { type: Date, required: true },
+            fromRef: { type: String },
+            newRef: { type: String },
+            error: { type: String },
+            attestedBy: { type: String },
+          }, { _id: false }),
+          default: undefined,
+        },
+        lateRefs: { type: [String], default: undefined },
+        priorTokens: { type: [String], default: undefined },
+        unresolvedPrior: { type: Boolean },
+      }, { _id: false }),
+      default: undefined,
+      select: false,
+    },
     status: {
       type: String,
       trim: true,
@@ -152,6 +208,8 @@ const externalBookingSchema = new Schema<IExternalBooking>(
 externalBookingSchema.index({ userId: 1, bookingDate: -1, createdAt: -1 });
 externalBookingSchema.index({ integration: 1, providerType: 1, appointmentType: 1 });
 externalBookingSchema.index({ externalBookingId: 1, integration: 1 });
+// Pending cancellations swept by the timeout scheduler (A2b).
+externalBookingSchema.index({ 'providerOps.cancel.state': 1, 'providerOps.cancel.nextAt': 1 }, { sparse: true });
 
 const ExternalBookingModel: Model<IExternalBooking> = model<IExternalBooking>(
   'ExternalBooking',

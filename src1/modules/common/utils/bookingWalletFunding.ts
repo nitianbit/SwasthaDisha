@@ -46,7 +46,8 @@ async function hydrate(b: Row, s: ClientSession, fallbackFunded = 0): Promise<Fu
   return f;
 }
 export const fundedTotal = (b: Row, legacyFunded = 0): number => read(b, legacyFunded).total;
-export const isPayable = (b: Row) => b.status !== 'cancelled' && !['paid', 'refunded', 'cancelled'].includes(String(b.paymentStatus))
+// 'cancellation_requested': an external booking with a recorded cancellation intent (A2b) is never payable again.
+export const isPayable = (b: Row) => !['cancelled', 'cancellation_requested'].includes(String(b.status)) && !['paid', 'refunded', 'cancelled'].includes(String(b.paymentStatus))
   && !(has(b) && b.walletFunding!.closed);
 
 const notPayable = () => new AppError({ status: 409, code: 'BOOKING_NOT_PAYABLE', message: 'This booking is already paid or cancelled' });
@@ -146,7 +147,9 @@ export async function fundBookingFromWallet(p: {
  */
 export async function recordGatewayCapture(p: {
   model: Model<any>; kind: FundedBookingKind; bookingId: string; userId: string; recordId: string; amount: number; gross: number;
-  legacyFunded: number; applicable: (b: Row) => boolean; applyPatch?: Record<string, unknown>; wallets?: WalletRepository;
+  legacyFunded: number; applicable: (b: Row) => boolean;
+  /** Written with the applied capture; a function is evaluated on the booking read in this transaction. */
+  applyPatch?: Record<string, unknown> | ((b: Row) => Record<string, unknown>); wallets?: WalletRepository;
 }): Promise<{ state: 'applied' | 'returned'; fresh: boolean; excessReturned: number }> {
   const wallets = p.wallets ?? new WalletRepository();
   const id = String(p.bookingId).toLowerCase();
@@ -171,7 +174,7 @@ export async function recordGatewayCapture(p: {
       state = 'applied';
       next.captures.push({ recordId, amount: rupees(p.amount), state });
       next.revision += 1;
-      patch = p.applyPatch ?? {};
+      patch = typeof p.applyPatch === 'function' ? p.applyPatch(b) : (p.applyPatch ?? {});
     } else {
       state = 'returned';
       next.captures.push({ recordId, amount: rupees(p.amount), state });

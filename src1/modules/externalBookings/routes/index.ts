@@ -4,8 +4,10 @@ import { Router } from 'express';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
 import { ExternalBookingController } from '@/modules/externalBookings/controller';
+import { requireAdmin } from '@/modules/middleware/auth';
 import {
   cancelExternalBookingSchema,
+  reconcileExternalCancellationSchema,
   createExternalDiagnosticsBookingSchema,
   createExternalBookingSchema,
   externalBookingIdParamSchema,
@@ -187,6 +189,15 @@ externalBookingRouter.post(
   validate(externalBookingIdParamSchema, 'params'),
   validate(cancelExternalBookingSchema, 'body'),
   catchAsync(externalBookingController.cancelBooking)
+);
+
+// Admin: settle a pending cancellation whose provider outcome could not be proven automatically (A2b).
+externalBookingRouter.post(
+  '/bookings/:id/reconcile-cancellation',
+  requireAdmin,
+  validate(externalBookingIdParamSchema, 'params'),
+  validate(reconcileExternalCancellationSchema, 'body'),
+  catchAsync(externalBookingController.reconcileCancellation)
 );
 
 externalBookingRouter.post(

@@ -40,13 +40,14 @@ All packets were reviewed by Codex through Ruflo (approved) and tested against a
 | P3b | `m0/p3b-recall-returns` | `a9c0872` + `8b16aab` | Recall worklist, swap/cancel, customer returns | `test/pharmacy-inventory/p3b-recall-returns.integration.ts` (13) |
 | C1r | `m0/c1r-session-revoke` | `0f89887` | Sign out on all devices (revoke-only): customer tokens carry a credential generation; today's OTP login unchanged | `test/customer-contact/c1r-session-revoke.integration.ts` (7) |
 | A1 | `m0/a1-milestone-rules` | `02d31f6` | Option A phase 1: the milestone's (`e8eb9bd`) non-ledger protections (§3) | `test/customer-bookings/a1-milestone-rules.integration.ts` (12); milestone `test/customer-profile/focused.mjs`, `test/customer-bookings/controllers.mjs` |
-| A2a | `m0/a2a-booking-settlement` | on top of `02d31f6` | Option A phase 2a: ordinary bookings' holds and one-transaction cancellation on the ledger; coupon usage counted/undone exactly once (§3) | `test/customer-bookings/a2a-booking-settlement.integration.ts` (14) |
+| A2a | `m0/a2a-booking-settlement` | `f1d9f54` | Option A phase 2a: ordinary bookings' holds and one-transaction cancellation on the ledger; coupon usage counted/undone exactly once (§3) | `test/customer-bookings/a2a-booking-settlement.integration.ts` (14) |
+| A2b | `m0/a2b-external-cancel` | on top of `f1d9f54` | Option A phase 2b: external bookings' provider admission and two-phase cancellation (cancel at the provider, then refund) on the ledger (§3) | `test/customer-bookings/a2b-external-cancel.integration.ts` (17) |
 
 Branch shape. Everything starts from `9c8d1d8` (end of the `m0/customer-pharmacy-lab-focus` line, 390 commits ahead
 of `main` = `origin/main` = `b06be01`):
 
 ```
-9c8d1d8 ─┬─ P1 ─ P2 ─ booking-retry ─ P7 ─ P3 ─ P3b ─ C1r ─ A1 ─ A2a   (one straight line; A2a contains all of them)
+9c8d1d8 ─┬─ P1 ─ P2 ─ booking-retry ─ P7 ─ P3 ─ P3b ─ C1r ─ A1 ─ A2a ─ A2b   (one straight line; A2b contains all of them)
          ├─ C1                                           (side branch)
          └─ e8eb9bd  customer/milestone-2026-11-13       (side branch, NOT part of this work; see §3)
 m0/f01-app-isolation = bfb608e + 2 docs/tooling commits  (bfb608e is already inside 9c8d1d8)
@@ -59,7 +60,7 @@ Trial merges (`git merge-tree`, nothing written):
 
 ## 2. Merge order
 
-1. Create the integration branch from the top of the line: `git switch -c release/m0-pharmacy m0/a2a-booking-settlement`.
+1. Create the integration branch from the top of the line: `git switch -c release/m0-pharmacy m0/a2b-external-cancel`.
 2. **Do not merge `m0/c1-contact-recovery`** into this release (§4, "C1 is rollout-blocked"). The trial merge is
    clean, but merging it would disable customer OTP login.
 3. `git merge m0/f01-app-isolation` (clean; docs and the local extension tooling).
@@ -107,7 +108,7 @@ Whichever option is chosen, the merged result must pass both test sets: §6 and 
     verification too; HR edits only its own corporate's users.
   - Cancellation window: IST, 24 h (48 h for a Monday appointment) for customers; nobody may cancel a started
     appointment. In A1 it applied to every customer cancellation; A2a restores the milestone's "unpaid is exempt"
-    rule for ordinary bookings (external bookings stay strict until A2b). Only `pending`/`confirmed` bookings can be
+    rule for ordinary bookings, and A2b for external ones. Only `pending`/`confirmed` ordinary bookings can be
     cancelled.
   - The generic booking edit/delete can no longer cancel, pay, refund or move a booking, and delete is refused (history
     is retained).
@@ -136,8 +137,29 @@ Whichever option is chosen, the merged result must pass both test sets: §6 and 
     it, and restore a follow-up only if no other live follow-up uses it; otherwise nothing is freed (§8).
   - Not ported (decided with the reviewer): the milestone's payment-setup lease (E1). The ledger already makes a
     cancel during setup money-safe, and the one effect it also covered (coupon count) is now serialized directly.
-- **A2b (after A2a): external bookings.** Provider admission token, two-phase cancel that waits for provider
-  acknowledgement before refunding, timeout schedulers through the same intent, payment-detail validation.
+- **A2b (done, `m0/a2b-external-cancel`): external bookings** (`src1/modules/externalBookings/services/providerOps.ts`,
+  private `providerOps` field):
+  - A captured payment is applied to the booking (paid + linked) before any provider work. A provider booking is made
+    only for an admitted attempt (a token recorded first), and only that attempt may record the result. A cancellation
+    recorded meanwhile turns a late provider booking into a provider cancellation; it never re-activates the booking.
+  - A provider failure counts as "no booking" only if the booking call was never made. Any provider error (timeout,
+    5xx, network, and 4xx too) is "unknown": no automatic refund and no automatic new attempt.
+  - Every provider booking id this booking ever had (current, superseded, or issued by a reschedule) must be cancelled
+    at the provider, and no provider call may be in flight or unknown, before any refund. A reschedule is recorded
+    before its provider call, so a cancellation waits for it.
+  - Cancelling (customer, admin, payment timeout, failed fulfilment) is two-phase. The intent is recorded first
+    (status `cancellation_requested`; no further payment setup, capture or provider booking). If the provider has a
+    booking, it is cancelled outside any transaction and accepted only on an explicit "cancelled" in the provider's
+    raw answer. Only then are the money returned and the coupon undone, in one transaction.
+  - Unknown outcomes stay `cancellation_requested`. The 5-minute sweep retries the provider cancel with back-off (at
+    most 5 calls); what it cannot prove leaves the automatic queue (`providerOps.cancel.needsAdmin`). An admin checks
+    with the provider and calls `POST /external-bookings/bookings/:id/reconcile-cancellation`
+    `{providerOutcome: 'absent' | 'cancelled'}`: 'absent' = no provider booking exists (also unblocks re-fulfilling a
+    paid booking whose attempt is unknown); 'cancelled' = every provider booking of it is cancelled.
+  - An unpaid external booking may be cancelled inside the window; a paid one may not (customers).
+  - Reschedule is refused while cancelling, or if the provider reference changed since it was read.
+  - Payment details check every attempt (owner, context, INR, paise; at most 50) and refuse inconsistent ones (409).
+    Gateway charges count every captured Razorpay attempt. New `refund.destination: 'internal_wallet' | null`.
 
 ## 4. Deploy steps (production)
 
@@ -164,6 +186,7 @@ exist only after `npm run sync-indexes`.
    | `pharmacyorders` | `{refill.paymentDueBy, status}` sparse | Expiry of unpaid refill orders (P7) |
    | `pharmacy_supplier_returns` | new collection + `{pharmacyId, createdAt}` | Supplier returns (P3) |
    | `pharmacy_customer_returns` | new collection + `{pharmacyId, requestKey}` **unique**, `{pharmacyId, createdAt}`, `{pharmacyId, lines.batchId}`, `{orderId}` | Customer returns; the unique index guarantees a retried submission is applied once (P3b) |
+   | `externalbookings` | `{providerOps.cancel.state, providerOps.cancel.nextAt}` sparse | Sweep of pending external cancellations (A2b) |
 
    The P3b follow-up commit moved both return models into `pharmacyInventory/model/`, because `sync-indexes` only
    loads `modules/*/model/*`. This was checked by running the real script against a test database: both
@@ -212,6 +235,7 @@ repeat work.
 | Customer login | Customer OTP send and verify succeed exactly as before; a token issued before the deploy still works |
 | C1r | `POST /v1/auth/sessions/revoke` with a customer token: 200; that token and every other device's token then get 401; a new OTP login works |
 | A2a | Two customers booking the last seat at once: one succeeds. Cancel a paid booking with a coupon: the wallet gets everything back, the payment is `refunded`, the coupon's usage count drops by one, the seat is free; cancelling again changes nothing. An unpaid booking can be cancelled inside the window. Reschedule: the old seat is freed and the time is the new slot's |
+| A2b | Cancel a paid external booking: the provider booking is cancelled first, then the wallet is refunded and the coupon count drops; an unpaid one cancels at once even inside 24 h; with the provider down the booking stays `cancellation_requested` with no refund, and the admin reconcile endpoint settles it. Pay a booking that was cancelled meanwhile: the money goes back to the wallet and no provider booking is made |
 | A1 | A paid customer cancel inside 24 h (48 h for Monday) is refused, and allowed outside it; `PUT /bookings/:id` with `status: cancelled` gives 409; a provider webhook changes no status or money; a customer can add but not replace an email; a Healthians order's amount equals the post-coupon total |
 | C1 contact change (later, once it ships per §4) | The change alert is a best-effort **email**: for an email change it goes to the previous email (none if there wasn't one); for a phone change it goes to the account email (none if the account has no email). No SMS alert is sent |
 | P1 | A prescription order is pending; the pharmacist approves it (the order can be packed) or rejects it (stock is released) |
@@ -244,13 +268,14 @@ Files (C1's `test/customer-contact/c1-sessions.integration.ts` runs on the C1 br
 - `test/customer-contact/c1r-session-revoke.integration.ts`
 - `test/customer-bookings/a1-milestone-rules.integration.ts`
 - `test/customer-bookings/a2a-booking-settlement.integration.ts`
+- `test/customer-bookings/a2b-external-cancel.integration.ts`
 - Milestone tests carried over unchanged: `node test/customer-profile/focused.mjs`,
   `node test/customer-bookings/controllers.mjs` (Node ≥ 22.13, `stripTypeScriptTypes`)
 
 ## 7. Rollback
 
 Older code ignoring the new fields does **not** make a rollback safe. **The rollback floor is this whole release**
-(P1, P2, booking-retry, P7, P3, P3b, C1r, A1, A2a). Once it is live, roll back only to a build that contains all of them, and turn
+(P1, P2, booking-retry, P7, P3, P3b, C1r, A1, A2a, A2b). Once it is live, roll back only to a build that contains all of them, and turn
 individual features off rather than reverting below it. Going below the floor needs an explicit, reviewed drain or
 reconciliation of the state listed here. The same rule applies to any later release that stores state only new code
 can read.
@@ -273,15 +298,22 @@ can read.
 - **A2a holds and coupon states.** Older code ignores `holds` and `couponUsage`: its cancel releases a seat and
   decrements a coupon by its own best-effort rules, so seats and coupon counts already settled by A2a could be
   released or decremented a second time.
+- **A2b pending external cancellations.** Older code does not know `cancellation_requested` or `providerOps`: those
+  bookings would never settle, and older timeout code would refund without the provider's acknowledgement. Check
+  first: `db.externalbookings.countDocuments({'providerOps.cancel.state': {$ne: 'settled', $exists: true}})`.
 - Indexes and new collections can stay in place for any rollback within the floor.
 
 ## 8. Known limits (not done)
 
 - No real Razorpay test-mode run yet; it needs the owner's test keys.
-- Until A2b: with the webhook record-only, a provider booking created after a local cancel is no longer auto-cancelled
-  when it is discovered. The customer's money is already refunded by the cancel path. Watch
-  `meta.providerEventReconciliationRequired` and cancel such bookings at the provider by hand.
-- External bookings: customers still cannot cancel an unpaid one inside the window until A2b.
+- The provider webhook stays record-only. A provider id that arrives for a superseded attempt is kept in
+  `providerOps.lateRefs` with `meta.providerEventReconciliationRequired`; cancel such bookings at the provider by hand.
+- External cancellations whose provider outcome is unknown wait for an admin (`meta.providerCancelReconciliationRequired`,
+  `providerOps.cancel.needsAdmin`). A provider error during fulfilment (including a 4xx refusal, which used to refund at
+  once) or a crash mid-call no longer refunds on its own, and a reschedule whose provider call failed blocks that
+  booking's cancellation until an admin attests. Watch this queue daily.
+- The provider's "cancelled" answer must be explicit in its raw response. If Healthians' real cancel response does not
+  carry such a status, every Healthians cancellation will need the admin step; check with a test-mode cancellation.
 - Bookings from before A2a: when the slot's count cannot prove the booking held a seat (the old code's increment
   could fail), its cancel frees no seat. The slot may then show one seat fewer than it really has (never oversold);
   operations can correct `currentBookings` by hand. The admin `POST /slots/:id/increment-booking` and `/decrement-booking` routes still
@@ -290,7 +322,5 @@ can read.
   marking it processed; a crash between the two cannot be told apart).
 - Deferred (C7b): a booking that is free from the start (₹0 price) is created already marked paid, outside the
   payable-link fence.
-- External bookings: a cancellation landing between the pre-check and the provider booking can still book with the
-  provider. The money is returned, but the provider booking has to be cancelled by hand.
 - No UI for any of the new endpoints.
 - Pre-existing type error in `pharmacySubscriptions/repository/index.ts(42)`.

@@ -798,9 +798,24 @@ export class ExternalBookingController {
       'doctor'
     );
 
+    res.status(data.status === 'cancelled' ? 200 : 202).json({
+      success: true,
+      message: data.status === 'cancelled' ? 'External booking cancelled successfully'
+        : 'Cancellation requested; it completes once the provider confirms it',
+      data,
+    });
+  };
+
+  reconcileCancellation = async (
+    req: AuthRequest,
+    res: Response,
+    _next: NextFunction
+  ) => {
+    const data = await this.externalBookingService.reconcileCancellation(req.params.id, req.user!,
+      req.body.providerOutcome as 'absent' | 'cancelled');
     res.status(200).json({
       success: true,
-      message: 'External booking cancelled successfully',
+      message: data.status === 'cancelled' ? 'External booking cancelled' : 'External booking cancellation is still pending',
       data,
     });
   };
@@ -840,9 +855,10 @@ export class ExternalBookingController {
       'diagnostics'
     );
 
-    res.status(200).json({
+    res.status(data.status === 'cancelled' ? 200 : 202).json({
       success: true,
-      message: 'External diagnostics booking cancelled successfully',
+      message: data.status === 'cancelled' ? 'External diagnostics booking cancelled successfully'
+        : 'Cancellation requested; it completes once the provider confirms it',
       data,
     });
   };

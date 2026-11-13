@@ -420,6 +420,10 @@ export const cancelExternalBookingSchema = Joi.object({
   reason: Joi.string().trim().optional(),
 });
 
+export const reconcileExternalCancellationSchema = Joi.object({
+  providerOutcome: Joi.string().valid('absent', 'cancelled').required(),
+});
+
 export const rescheduleExternalBookingSchema = Joi.object({
   bookingDate: Joi.string()
     .pattern(/^\d{8}$/)

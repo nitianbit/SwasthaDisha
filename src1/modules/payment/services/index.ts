@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { advanceRefillOnPayment } from '@/modules/pharmacySubscriptions/refillCycle';
 import BookingModel from '@/modules/bookings/model';
-import { recordGatewayCapture, refundAndClose, runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
+import { recordGatewayCapture, runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
 import { countCouponUsageIn } from '@/modules/coupon/usage';
 import PaymentRecordModel from '@/modules/payment/model';
 import ExternalBookingModel from '@/modules/externalBookings/model';
@@ -16,6 +16,8 @@ import { ExternalBookingRepository } from '@/modules/externalBookings/repository
 import { LabstackService } from '@/modules/bookings/services/labstack';
 import { HealthiansService } from '@/modules/bookings/services/healthians';
 import { completeExternalBookingAfterPayment } from '@/modules/externalBookings/services/externalBookingPaymentFinalize';
+import { beginProvider, CANCELLATION_REQUESTED, externalRefOf, failProvider, progressCancellation, publicExternalBooking,
+  requestCancellation } from '@/modules/externalBookings/services/providerOps';
 import {
   WalletRepository,
   WalletTransactionRepository,
@@ -1196,35 +1198,63 @@ export class PaymentService {
     entity: unknown;
   }> {
     const thisRecord = String(paymentRecord._id);
-    const capture = (applicable: (b: { status?: string; paymentStatus?: string; paymentTransactionId?: string }) => boolean) => recordGatewayCapture({
-      model: ExternalBookingModel, kind: 'external_booking', bookingId: String(paymentRecord.contextId), userId: paymentRecord.userId,
-      recordId: thisRecord, amount: Number(paymentRecord.finalAmount || 0),
-      gross: Math.max(0, Number(paymentRecord.baseAmount || 0) - Number(paymentRecord.discountAmount || 0)),
-      legacyFunded: Number(paymentRecord.notes?.walletDeductedAmount || 0), applicable, wallets: this.walletRepository,
-    });
+    const bookingId = String(paymentRecord.contextId);
     const returned = async (entity: unknown) => {
       const refunded = (await this.paymentRepository.update({ _id: paymentRecord._id! }, { status: 'refunded', isProcessed: true })) || paymentRecord;
       return { paymentRecord: refunded as IPaymentRecord, entity };
     };
 
-    // Not payable (cancelled/closed/refunded, or already paid through another record): never fulfil; return it.
-    const current = (await this.externalBookingRepository.findById(paymentRecord.contextId)) as IExternalBooking | null;
-    const payableOrOurs = (b: { status?: string; paymentStatus?: string; paymentTransactionId?: string; walletFunding?: { closed?: boolean } }) =>
-      !b.walletFunding?.closed && b.status !== 'cancelled' && !['refunded', 'cancelled'].includes(String(b.paymentStatus))
-      && !(b.paymentStatus === 'paid' && b.paymentTransactionId && String(b.paymentTransactionId) !== thisRecord);
-    if (current && !payableOrOurs(current as never)) {
-      const r = await capture(() => false);
-      if (r.state === 'returned') return returned(current);
+    // 1. The captured payment is applied to the booking (paid + linked) BEFORE any provider work, and only to a booking
+    //    that is still payable for it: not cancelled or cancelling, not closed, not paid through another record.
+    //    Otherwise it goes back to the wallet once and is never fulfilled (A2b).
+    const applied = await recordGatewayCapture({
+      model: ExternalBookingModel, kind: 'external_booking', bookingId, userId: paymentRecord.userId,
+      recordId: thisRecord, amount: Number(paymentRecord.finalAmount || 0),
+      gross: Math.max(0, Number(paymentRecord.baseAmount || 0) - Number(paymentRecord.discountAmount || 0)),
+      legacyFunded: Number(paymentRecord.notes?.walletDeductedAmount || 0), wallets: this.walletRepository,
+      applicable: (b: { status?: string; paymentStatus?: string; paymentTransactionId?: string }) =>
+        !['cancelled', CANCELLATION_REQUESTED].includes(String(b.status)) && !['refunded', 'cancelled'].includes(String(b.paymentStatus))
+        && !(b.paymentStatus === 'paid' && b.paymentTransactionId && String(b.paymentTransactionId) !== thisRecord),
+      // Awaiting provider confirmation, unless the booking is already fulfilled at the provider (e.g. a pre-A2b crash
+      // state replayed): its current status is kept, decided on the snapshot this capture is fenced to.
+      applyPatch: (b) => ({ paymentStatus: 'paid', paymentTransactionId: thisRecord,
+        ...(externalRefOf(b as IExternalBooking) || !['pending_payment', 'pending', undefined, null, ''].includes(b.status as string)
+          ? {} : { status: 'pending' }) }),
+    });
+    if (applied.state === 'returned') {
+      return returned(await this.externalBookingRepository.findById(bookingId));
     }
 
-    const updatedExternal = await this.finalizeExternalBookingPayment(
-      paymentRecord,
-    );
+    // 2. Provider admission: a durable attempt is recorded before the provider call; only it may record the result.
+    const admission = await beginProvider(bookingId, thisRecord);
+    let updatedExternal: unknown = admission.booking;
+    if (admission.token === null) {
+      if (admission.reason === 'cancelling') {
+        // A cancellation was recorded: it settles (and returns this payment) once the provider side is proven.
+        const progressed = await progressCancellation({ bookingId, wallets: this.walletRepository });
+        // Return the payment as committed (the settlement may have marked it refunded meanwhile).
+        const committed = (await this.paymentRepository.findById(thisRecord)) || paymentRecord;
+        return { paymentRecord: committed as IPaymentRecord, entity: publicExternalBooking(progressed.booking) };
+      }
+      if (admission.reason !== 'fulfilled') {
+        // Another attempt is in flight (or this payment is not the booking's): nothing more to do now.
+        return { paymentRecord, entity: publicExternalBooking(admission.booking) };
+      }
+    } else {
+      try {
+        updatedExternal = await this.finalizeExternalBookingPayment(paymentRecord, admission.token);
+      } catch (error) {
+        await failProvider(bookingId, admission.token, error);
+        throw error;
+      }
+      const after = updatedExternal as { status?: string };
+      if (after?.status === CANCELLATION_REQUESTED) {
+        // Cancelled while the provider call ran: the provider booking is now a cancellation obligation.
+        return { paymentRecord, entity: publicExternalBooking(updatedExternal as IExternalBooking) };
+      }
+    }
+    updatedExternal = publicExternalBooking(updatedExternal as IExternalBooking);
 
-    // The payment only counts if it is the one the booking ended up paid with (another capture may have won while
-    // this one was in flight, or the booking was cancelled meanwhile); otherwise it goes back to the wallet once.
-    const applied = await capture((b) => b.paymentStatus === 'paid' && String(b.paymentTransactionId) === thisRecord && b.status !== 'cancelled');
-    if (applied.state === 'returned') return returned(updatedExternal);
     if ((updatedExternal as { postPaymentCompletedFor?: string } | null)?.postPaymentCompletedFor === thisRecord) {
       return { paymentRecord: await this.finalizePaymentProcessing(paymentRecord), entity: updatedExternal };
     }
@@ -1256,18 +1286,15 @@ export class PaymentService {
     return this.processExternalBookingPayment(paymentRecord);
   }
 
-  async finalizeExternalBookingPayment(
-    paymentRecord: IPaymentRecord
-  ): Promise<unknown> {
-    return completeExternalBookingAfterPayment(
-      paymentRecord,
-      this.externalBookingRepository,
-      this.labstackService,
-      this.healthiansService
-    );
+  /** The provider booking for an admitted attempt (`token` from providerOps.beginProvider). */
+  async finalizeExternalBookingPayment(paymentRecord: IPaymentRecord, token: string): Promise<unknown> {
+    return completeExternalBookingAfterPayment(paymentRecord, this.externalBookingRepository, this.labstackService,
+      this.healthiansService, token);
   }
 
   private isRecoverableExternalFulfillmentError(error: unknown): boolean {
+    // A success without a provider reference is not a failure either: confirmation is pending (reconciliation).
+    if ((error as { code?: string } | undefined)?.code === 'EXTERNAL_PROVIDER_REFERENCE_MISSING') return true;
     const message =
       error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
     return message.includes('timeout') || message.includes('status code 5');
@@ -1294,21 +1321,15 @@ export class PaymentService {
         ? { ...(booking.meta as Record<string, unknown>) }
         : {};
 
+    // Only notes the pending confirmation on a booking paid through this record and not cancelling: the payment was
+    // applied (paid/link/status) by the capture step, and nothing here may re-activate or re-link a booking (A2b).
     const updated = await this.externalBookingRepository.update(
-      { _id: paymentRecord.contextId },
-      {
-        status: 'pending',
-        paymentStatus: 'paid',
-        paymentTransactionId: paymentRecord._id!,
-        meta: {
-          ...priorMeta,
-          paymentConfirmationPendingAt:
-            (priorMeta.paymentConfirmationPendingAt as string | undefined) ||
-            new Date().toISOString(),
-          paymentConfirmationError:
-            error instanceof Error ? error.message : String(error),
-        },
-      }
+      { _id: paymentRecord.contextId, paymentStatus: 'paid', paymentTransactionId: String(paymentRecord._id),
+        status: { $nin: ['cancelled', CANCELLATION_REQUESTED] } } as never,
+      { $set: {
+        'meta.paymentConfirmationPendingAt': (priorMeta.paymentConfirmationPendingAt as string | undefined) || new Date().toISOString(),
+        'meta.paymentConfirmationError': error instanceof Error ? error.message : String(error),
+      } } as never
     );
 
     if (updated) {
@@ -1498,56 +1519,6 @@ export class PaymentService {
     return undefined;
   }
 
-  private async refundExternalBookingAmountToWallet(
-    booking: IExternalBooking,
-    paymentRecord: IPaymentRecord
-  ): Promise<number> {
-    const referenceId = String(booking._id!);
-
-    // Legacy: a refund posted before the booking ledger existed (no operation key) settles it.
-    const legacyRefund = await this.walletTransactionRepository.findOne({
-      userId: booking.userId,
-      transactionType: 'refund',
-      referenceType: 'external_booking',
-      referenceId,
-      status: 'completed',
-      operationKey: { $exists: false },
-    } as never);
-    if (legacyRefund) {
-      return Number(legacyRefund.amount || 0);
-    }
-
-    // Everything the booking holds (wallet funding + applied captures), returned once and the booking closed.
-    const refundAmount = await refundAndClose({
-      model: ExternalBookingModel, kind: 'external_booking', bookingId: referenceId, userId: booking.userId,
-      legacyFunded: Number(paymentRecord.notes?.walletDeductedAmount || 0),
-      legacyGateway: paymentRecord.status === 'paid' ? Number(paymentRecord.finalAmount || 0) : 0,
-      legacyGatewayRecordId: String(paymentRecord._id),
-      wallets: this.walletRepository,
-    });
-
-    if (paymentRecord.couponCode && paymentRecord.isProcessed) {
-      try {
-        const coupon = await this.couponService.getByCode(paymentRecord.couponCode);
-        await this.couponService.decrementUsage(coupon._id!);
-      } catch (error) {
-        logger.error('[Payment][external] failed to reverse coupon usage on refund', {
-          bookingId: booking._id,
-          paymentTransactionId: paymentRecord._id,
-          couponCode: paymentRecord.couponCode,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-
-    await this.paymentRepository.update(
-      { _id: paymentRecord._id! },
-      { status: 'refunded', isProcessed: true }
-    );
-
-    return refundAmount;
-  }
-
   private async refundAbandonedPharmacyOrderToWallet(
     order: IPharmacyOrder,
     paymentRecord: IPaymentRecord,
@@ -1653,59 +1624,24 @@ export class PaymentService {
     return refundAmount;
   }
 
+  /**
+   * The provider booking failed and its outcome is proven (failProvider recorded 'rejected': never called or
+   * explicitly refused): the server records its own cancellation intent and settles it, returning the money once.
+   * An unknown outcome is not settled here; it stays pending until the provider side is proven (A2b).
+   */
   private async handleTerminalExternalFulfillmentFailure(
     paymentRecord: IPaymentRecord,
-    error: unknown
+    _error: unknown
   ): Promise<{ refunded: boolean; booking?: IExternalBooking }> {
-    const booking = (await this.externalBookingRepository.findById(
-      paymentRecord.contextId
-    )) as IExternalBooking | null;
-
-    if (!booking) {
-      return { refunded: false };
+    const bookingId = String(paymentRecord.contextId);
+    const booking = (await this.externalBookingRepository.findById(bookingId)) as IExternalBooking | null;
+    if (!booking || this.getExternalAppointmentId(booking)) return { refunded: false, booking: booking ?? undefined };
+    await requestCancellation({ bookingId, actor: 'system', reason: 'Booking creation failed after payment confirmation' });
+    const progressed = await progressCancellation({ bookingId, wallets: this.walletRepository });
+    if (progressed.settled) {
+      await this.sendExternalBookingEmailNotification(publicExternalBooking(progressed.booking) as IExternalBooking, 'CANCELED');
     }
-
-    const externalAppointmentId = this.getExternalAppointmentId(booking);
-    if (externalAppointmentId) {
-      return { refunded: false, booking };
-    }
-
-    const priorMeta = this.getExternalBookingMeta(booking);
-    const refundAmount = await this.refundExternalBookingAmountToWallet(
-      booking,
-      paymentRecord
-    );
-
-    const updated =
-      (await this.externalBookingRepository.update(
-        { _id: paymentRecord.contextId },
-        {
-          status: 'cancelled',
-          paymentStatus: refundAmount > 0 ? 'refunded' : 'cancelled',
-          paymentTransactionId: paymentRecord._id!,
-          meta: {
-            ...priorMeta,
-            cancellationReason:
-              'Booking creation failed after payment confirmation',
-            cancelRequestedWhileConfirmationPending: true,
-            cancelRequestedAt:
-              (priorMeta.cancelRequestedAt as string | undefined) ||
-              new Date().toISOString(),
-            needsProviderCancelIfDiscovered: true,
-            paymentFulfillmentFailedAt: new Date().toISOString(),
-            paymentFulfillmentError:
-              error instanceof Error ? error.message : String(error),
-            ...(refundAmount > 0 ? { paymentFailureWalletRefunded: true } : {}),
-          },
-        }
-      )) || booking;
-
-    await this.sendExternalBookingEmailNotification(
-      updated as IExternalBooking,
-      'CANCELED'
-    );
-
-    return { refunded: refundAmount > 0, booking: updated as IExternalBooking };
+    return { refunded: progressed.settled && progressed.refunded > 0, booking: publicExternalBooking(progressed.booking) as IExternalBooking };
   }
 
   private async processWalletRechargePayment(

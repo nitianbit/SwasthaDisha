@@ -1,6 +1,10 @@
 import fs from 'fs';
 import ExternalBookingModel from '@/modules/externalBookings/model';
-import { fundBookingFromWallet, refundAndClose } from '@/modules/common/utils/bookingWalletFunding';
+import { fundBookingFromWallet } from '@/modules/common/utils/bookingWalletFunding';
+import { providerReferenceMissing } from '@/modules/externalBookings/services/externalBookingPaymentFinalize';
+import { beginProvider, beginReschedule, CANCELLATION_REQUESTED, failProvider, failReschedule, findPendingCancellations,
+  progressCancellation, ProviderCanceller, publicExternalBooking, reconcileProviderState, recordProviderResult, recordRescheduleResult,
+  requestCancellation } from '@/modules/externalBookings/services/providerOps';
 import path from 'path';
 import { Service } from 'typedi';
 
@@ -13,6 +17,7 @@ import { HealthiansService } from '@/modules/bookings/services/healthians';
 import { CouponService } from '@/modules/coupon/services';
 import { PaymentService } from '@/modules/payment/services';
 import { PaymentRepository } from '@/modules/payment/repository';
+import { IPaymentRecord } from '@/modules/payment/types';
 import { EmailService } from '@/modules/email/services';
 import UserModel from '@/modules/user/model';
 import { UserRepository } from '@/modules/user/repository';
@@ -21,7 +26,6 @@ import {
   buildExternalBookingEmailContent,
   ExternalBookingEmailTemplate,
 } from '@/modules/externalBookings/emailTemplates';
-import { getTodayYyyymmdd } from '@/modules/common/utils/dateUtils';
 import { AppError } from '@/modules/common/types';
 import { normalizeCouponDiscount } from '@/modules/common/utils/couponMoney';
 import { enforceUserCancellationWindow } from '@/modules/common/utils/cancellationWindow';
@@ -193,83 +197,6 @@ export class ExternalBookingService {
   }
 
   /** Wallet (+ paid gateway via payment row) refund; idempotent. */
-  private async refundExternalBookingAmountToWallet(
-    booking: IExternalBooking
-  ): Promise<number> {
-    const id = String(booking._id!);
-
-    // Legacy: refunds posted before the booking ledger existed (no operation key) settle it.
-    const legacyStandard = await this.walletTransactionRepository.findOne({
-      userId: booking.userId,
-      transactionType: 'refund',
-      referenceType: 'external_booking',
-      referenceId: id,
-      status: 'completed',
-      operationKey: { $exists: false },
-    } as never);
-    if (legacyStandard) {
-      return Number(legacyStandard.amount || 0);
-    }
-    const legacyTimeout = await this.walletTransactionRepository.findOne({
-      referenceType: 'external_booking_timeout_refund',
-      referenceId: id,
-    });
-    if (legacyTimeout) {
-      return Number(legacyTimeout.amount || 0);
-    }
-
-    const paymentRecord = booking.paymentTransactionId
-      ? await this.paymentRepository.findById(booking.paymentTransactionId)
-      : null;
-    const linked = paymentRecord && paymentRecord.context === 'external_booking' && String(paymentRecord.contextId) === id
-      ? paymentRecord : null;
-    // Legacy bookings without a ledger: linked notes, else the booking's completed wallet debits.
-    let legacyFunded = Number(linked?.notes?.walletDeductedAmount || 0);
-    if (!linked) {
-      const txs = await this.walletTransactionRepository.findByReference('external_booking', id);
-      legacyFunded = txs.filter((t) => t.transactionType === 'debit' && t.status === 'completed' && !t.operationKey)
-        .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-    }
-    // Returns everything the booking holds and CLOSES it in one transaction. Callers may refund before writing their
-    // cancelled status (e.g. the payment-timeout sweep): once closed, no new funding can be added, so order is safe.
-    const refundAmount = await refundAndClose({
-      model: ExternalBookingModel, kind: 'external_booking', bookingId: id, userId: booking.userId, legacyFunded,
-      legacyGateway: linked?.status === 'paid' ? Number(linked.finalAmount || 0) : 0,
-      legacyGatewayRecordId: linked?._id ? String(linked._id) : undefined,
-      wallets: this.walletRepository,
-    });
-
-    if (booking.paymentTransactionId) {
-      if (
-        paymentRecord &&
-        paymentRecord.context === 'external_booking' &&
-        String(paymentRecord.contextId) === id &&
-        paymentRecord.status === 'paid'
-      ) {
-        if (paymentRecord.couponCode && paymentRecord.isProcessed) {
-          try {
-            const coupon = await this.couponService.getByCode(paymentRecord.couponCode);
-            await this.couponService.decrementUsage(coupon._id!);
-          } catch (error) {
-            logger.error('[ExternalBooking] failed to reverse coupon usage on refund', {
-              bookingId: id,
-              paymentTransactionId: paymentRecord._id,
-              couponCode: paymentRecord.couponCode,
-              error: error instanceof Error ? error.message : String(error),
-            });
-          }
-        }
-
-        await this.paymentRepository.update(
-          { _id: paymentRecord._id! },
-          { status: 'refunded', isProcessed: true }
-        );
-      }
-    }
-
-    return refundAmount;
-  }
-
   private getBookingMeta(
     booking: Pick<IExternalBooking, 'meta'>
   ): Record<string, unknown> {
@@ -293,26 +220,20 @@ export class ExternalBookingService {
     });
     const priorMeta = this.getBookingMeta(booking);
 
+    // Only notes the pending confirmation; never re-activates a cancelling/cancelled booking or changes payment (A2b).
     const updated = await this.externalBookingRepository.update(
-      { _id: String(booking._id) },
-      {
-        status: 'pending',
-        paymentStatus: 'paid',
-        meta: {
-          ...priorMeta,
-          paymentConfirmationPendingAt:
-            (priorMeta.paymentConfirmationPendingAt as string | undefined) ||
-            new Date().toISOString(),
-          paymentConfirmationError: message,
-        },
-      }
+      { _id: String(booking._id), paymentStatus: 'paid', status: { $nin: ['cancelled', CANCELLATION_REQUESTED] } } as never,
+      { $set: {
+        'meta.paymentConfirmationPendingAt': (priorMeta.paymentConfirmationPendingAt as string | undefined) || new Date().toISOString(),
+        'meta.paymentConfirmationError': message,
+      } } as never
     );
 
     if (!updated) {
       throw new AppError({
-        status: 500,
-        code: 'EXTERNAL_BOOKING_UPDATE_FAILED',
-        message: 'Failed to mark external booking confirmation as pending',
+        status: 409,
+        code: 'BOOKING_PAYMENT_STATE_CHANGED',
+        message: 'This booking was cancelled or changed while its confirmation was pending',
       });
     }
 
@@ -325,6 +246,7 @@ export class ExternalBookingService {
   }
 
   private isRecoverablePaidBookingTimeout(error: unknown): boolean {
+    if ((error as { code?: string } | undefined)?.code === 'EXTERNAL_PROVIDER_REFERENCE_MISSING') return true;
     const message =
       error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
     return message.includes('timeout') || message.includes('status code 5');
@@ -443,7 +365,7 @@ export class ExternalBookingService {
   }): Promise<ExternalBookingPaymentInitResponse> {
     const linkFence: Record<string, unknown> = {
       _id: params.bookingId,
-      status: { $ne: 'cancelled' },
+      status: { $nin: ['cancelled', CANCELLATION_REQUESTED] },
       paymentStatus: { $nin: ['paid', 'refunded', 'cancelled'] },
       ...(params.expectedLink ? { paymentTransactionId: params.expectedLink }
         : { $or: [{ paymentTransactionId: { $exists: false } }, { paymentTransactionId: null }, { paymentTransactionId: '' }] }),
@@ -1271,12 +1193,16 @@ export class ExternalBookingService {
       });
     }
 
+    // Free booking: a durable provider attempt is admitted first; only it may record the result (A2b).
+    const admission = await beginProvider(String(saved._id), null);
+    if (!admission.token) throw new AppError({ status: 409, code: 'EXTERNAL_BOOKING_CHANGED', message: 'External booking changed; please retry' });
     try {
       const booking = await this.applyLabstackConsultationToDraft(
         saved as IExternalBooking,
         data,
         effectiveSlotTime,
-        integration
+        integration,
+        admission.token
       );
       await this.sendExternalBookingEmailNotification(
         booking,
@@ -1297,7 +1223,7 @@ export class ExternalBookingService {
         pincode: data.pincode,
         error: err instanceof Error ? err.message : String(err),
       });
-      await this.externalBookingRepository.delete({ _id: String(saved._id) });
+      await this.discardFreeDraftIfProvenUnbooked(String(saved._id), admission.token, err);
       throw err;
     }
   }
@@ -1359,7 +1285,8 @@ export class ExternalBookingService {
     draft: IExternalBooking,
     data: CreateExternalBookingRequest,
     effectiveSlotTime: string,
-    integration: ExternalIntegration
+    integration: ExternalIntegration,
+    token: string
   ): Promise<IExternalBooking> {
     const splitName = this.splitName(data.patientName);
     const uniqueId = this.buildLabstackUniqueId({
@@ -1413,24 +1340,19 @@ export class ExternalBookingService {
         ? (draft.meta as Record<string, unknown>)
         : {};
 
-    const updated = await this.externalBookingRepository.update(
-      { _id: String(draft._id) },
-      {
-        externalProviderId:
-          result.externalProviderId || data.externalProviderId || '',
-        externalBookingId: result.externalBookingId,
-        externalSlotRef: result.externalSlotTime,
-        meetingLink: result.meetingLink,
-        price: draft.price ?? 0,
-        paymentStatus: draft.paymentStatus || 'paid',
-        status: result.externalStatus,
-        meta: {
-          ...priorMeta,
-          externalPayload: result.payload,
-        },
-      }
-    );
+    const { booking: updated, missingRef } = await recordProviderResult(String(draft._id), token, {
+      externalProviderId: result.externalProviderId || data.externalProviderId || '',
+      externalBookingId: result.externalBookingId,
+      externalSlotRef: result.externalSlotTime,
+      meetingLink: result.meetingLink,
+      status: result.externalStatus,
+      meta: {
+        ...priorMeta,
+        externalPayload: result.payload,
+      },
+    });
 
+    if (missingRef) throw providerReferenceMissing();
     if (!updated) {
       throw new AppError({
         status: 500,
@@ -1486,11 +1408,15 @@ export class ExternalBookingService {
       });
     }
 
+    // Free booking: a durable provider attempt is admitted first; only it may record the result (A2b).
+    const admission = await beginProvider(String(prepared._id), null);
+    if (!admission.token) throw new AppError({ status: 409, code: 'EXTERNAL_BOOKING_CHANGED', message: 'External booking changed; please retry' });
     try {
       const booking = await this.applyDiagnosticsOrderToDraft(
         prepared as IExternalBooking,
         data,
-        integration
+        integration,
+        admission.token
       );
       await this.sendExternalBookingEmailNotification(
         booking,
@@ -1513,7 +1439,7 @@ export class ExternalBookingService {
         longitude: data.longitude,
         error: err instanceof Error ? err.message : String(err),
       });
-      await this.externalBookingRepository.delete({ _id: String(prepared._id) });
+      await this.discardFreeDraftIfProvenUnbooked(String(prepared._id), admission.token, err);
       throw err;
     }
   }
@@ -1618,10 +1544,16 @@ export class ExternalBookingService {
   private async applyDiagnosticsOrderToDraft(
     draft: IExternalBooking,
     data: CreateExternalDiagnosticsBookingRequest,
-    integration: ExternalIntegration
+    integration: ExternalIntegration,
+    token: string
   ): Promise<IExternalBooking> {
     if (integration === 'healthians' && data.stmId?.trim()) {
-      await this.healthiansService.freezeDiagnosticsSlot({ stmId: data.stmId.trim(), vendorBillingUserId: data.userId });
+      try {
+        await this.healthiansService.freezeDiagnosticsSlot({ stmId: data.stmId.trim(), vendorBillingUserId: data.userId });
+      } catch (error) {
+        // Freezing books nothing: the provider booking was not attempted.
+        throw Object.assign(error instanceof Error ? error : new Error(String(error)), { providerNotCalled: true });
+      }
     }
     const uniqueId = this.buildLabstackUniqueId({
       name: data.patientName,
@@ -1721,26 +1653,21 @@ export class ExternalBookingService {
         ? this.extractLabstackLabLocationMeta(result.payload)
         : {};
 
-    const updated = await this.externalBookingRepository.update(
-      { _id: String(draft._id) },
-      {
-        externalProviderId:
-          data.labId?.trim() || (integration === 'healthians' ? 'healthians' : 'labstack'),
-        externalBookingId: result.externalBookingId,
-        externalSlotRef: data.stmId?.trim() || draft.externalSlotRef || data.bookingTime,
-        price: draft.price ?? 0,
-        paymentStatus: draft.paymentStatus || 'paid',
-        status: result.externalStatus,
-        meta: {
-          ...priorMeta,
-          pendingHealthians: undefined,
-          pendingLabstack: undefined,
-          ...providerLabMeta,
-          externalPayload: result.payload,
-        },
-      }
-    );
+    const { booking: updated, missingRef } = await recordProviderResult(String(draft._id), token, {
+      externalProviderId: data.labId?.trim() || (integration === 'healthians' ? 'healthians' : 'labstack'),
+      externalBookingId: result.externalBookingId,
+      externalSlotRef: data.stmId?.trim() || draft.externalSlotRef || data.bookingTime,
+      status: result.externalStatus,
+      meta: {
+        ...priorMeta,
+        pendingHealthians: undefined,
+        pendingLabstack: undefined,
+        ...providerLabMeta,
+        externalPayload: result.payload,
+      },
+    });
 
+    if (missingRef) throw providerReferenceMissing();
     if (!updated) {
       throw new AppError({
         status: 500,
@@ -1797,173 +1724,71 @@ export class ExternalBookingService {
     };
   }
 
+  /**
+   * A free booking's provider call failed. If that proves no provider booking exists (never called, or explicitly
+   * refused), the draft is removed as before; otherwise it is kept (provider outcome unknown, for reconciliation).
+   */
+  private async discardFreeDraftIfProvenUnbooked(bookingId: string, token: string, error: unknown): Promise<void> {
+    const outcome = await failProvider(bookingId, token, error);
+    if (outcome === 'rejected') {
+      await this.externalBookingRepository.delete({ _id: bookingId });
+      return;
+    }
+    await this.externalBookingRepository.update({ _id: bookingId } as never,
+      { $set: { 'meta.providerOutcomeUnknown': true, 'meta.providerReconciliationRequired': true } } as never);
+  }
+
+  /** Cancels at the provider (outside any transaction) for providerOps.progressCancellation. */
+  private async cancelAtProvider(...[booking, ref, reason]: Parameters<ProviderCanceller>): ReturnType<ProviderCanceller> {
+    const kind: ExternalBookingKind = booking.providerType === 'DIAGNOSTICS' ? 'diagnostics' : 'doctor';
+    return booking.integration === 'healthians'
+      ? this.healthiansService.cancelBooking({ bookingId: ref, vendorBillingUserId: this.getHealthiansVendorBillingUserId(booking),
+          reason, uniqueId: this.getHealthiansVendorCustomerId(booking) })
+      : kind === 'diagnostics'
+        ? this.labstackService.cancelOrder({ orderId: ref, reason })
+        : this.labstackService.cancelAppointment({ appointmentId: ref, reason });
+  }
+
+  /** Drives a recorded cancellation (provider call, then settlement) and notifies once it is settled. */
+  private async continueCancellation(bookingId: string): Promise<IExternalBooking> {
+    const r = await progressCancellation({ bookingId, wallets: this.walletRepository,
+      cancelAtProvider: (booking, ref, reason) => this.cancelAtProvider(booking, ref, reason) });
+    const visible = publicExternalBooking(r.booking) as IExternalBooking;
+    if (r.settled && !r.booking.meta?.cancellationNotifiedAt) {
+      // Only the continuation that wins the marker sends the e-mail.
+      const won = await this.externalBookingRepository.update({ _id: bookingId, 'meta.cancellationNotifiedAt': { $exists: false } } as never,
+        { $set: { 'meta.cancellationNotifiedAt': new Date().toISOString() } } as never);
+      if (won) await this.sendExternalBookingEmailNotification(visible, 'CANCELED');
+    }
+    return visible;
+  }
+
+  /**
+   * Two-phase cancellation (A2b, providerOps.ts): the intent is recorded first (customer window only when money was
+   * captured); the provider booking, if any, is cancelled and acknowledged; only then is the money returned. The
+   * result is 'cancelled' when settled, otherwise 'cancellation_requested' (the sweep or an admin completes it).
+   */
   async cancelBooking(
     id: string,
     actor: ExternalBookingActor,
     data: CancelExternalBookingRequest,
     _kind: ExternalBookingKind
   ): Promise<IExternalBooking> {
-    const booking = await this.getAccessibleBookingIgnoringKind(id, actor);
-    const effectiveKind: ExternalBookingKind =
-      booking.providerType === 'DIAGNOSTICS' ? 'diagnostics' : 'doctor';
+    const reason = data.cancellationReason?.trim() || data.reason?.trim() || 'Cancelled by user';
+    await requestCancellation({ bookingId: id, actor: { _id: String(actor._id), userType: actor.userType }, reason,
+      enforceWindow: (booking) => enforceUserCancellationWindow([{ bookingDate: booking.bookingDate, bookingTime: booking.bookingTime }],
+        actor.userType) });
+    return this.continueCancellation(id);
+  }
 
-    const cancellationReason =
-      data.cancellationReason?.trim() ||
-      data.reason?.trim() ||
-      'Cancelled by user';
-
-    if (booking.status === 'cancelled') {
-      return booking;
-    }
-
-    // Cancellation window (milestone B3): IST, 24 h (48 h for Monday) for customers; nobody may cancel a started
-    // appointment. Checked before any provider/refund effect. Applied to every cancellation until the A2 two-phase
-    // cancel can serialize the milestone's "unpaid is exempt" relaxation with the payment state.
-    enforceUserCancellationWindow([{ bookingDate: booking.bookingDate, bookingTime: booking.bookingTime }], actor.userType);
-
-    const cancelledAt = getTodayYyyymmdd();
-    const priorMeta =
-      booking.meta && typeof booking.meta === 'object' && !Array.isArray(booking.meta)
-        ? (booking.meta as Record<string, unknown>)
-        : {};
-
-    const externalAppointmentId = this.getExternalAppointmentId(booking);
-
-    if (
-      !externalAppointmentId &&
-      (booking.status === 'pending_payment' ||
-        (booking.status === 'pending' && booking.paymentStatus === 'paid')) &&
-      (effectiveKind === 'doctor' || effectiveKind === 'diagnostics')
-    ) {
-      const deferProviderCancel =
-        booking.status === 'pending' && booking.paymentStatus === 'paid';
-
-      const updated = await this.externalBookingRepository.update(
-        { _id: id },
-        {
-          status: 'cancelled',
-          paymentStatus: deferProviderCancel ? 'refunded' : 'cancelled',
-          meta: {
-            ...priorMeta,
-            cancellationReason,
-            cancelledAt,
-            ...(deferProviderCancel
-              ? {
-                  cancelRequestedWhileConfirmationPending: true,
-                  cancelRequestedAt: new Date().toISOString(),
-                  needsProviderCancelIfDiscovered: true,
-                }
-              : {}),
-          },
-        }
-      );
-
-      if (!updated) {
-        throw new AppError({
-          status: 500,
-          code: 'EXTERNAL_BOOKING_UPDATE_FAILED',
-          message: 'Failed to cancel pending external booking',
-        });
-      }
-
-      let finalBooking = updated;
-      try {
-        const refundedAmount =
-          await this.refundExternalBookingAmountToWallet(booking);
-        if (refundedAmount > 0 && finalBooking.paymentStatus !== 'refunded') {
-          finalBooking =
-            (await this.externalBookingRepository.update(
-              { _id: id },
-              { paymentStatus: 'refunded' }
-            )) || finalBooking;
-        }
-      } catch (error) {
-        console.error(
-          'Failed to refund cancelled external booking amount to wallet:',
-          error
-        );
-      }
-
-      await this.sendExternalBookingEmailNotification(
-        finalBooking as IExternalBooking,
-        'CANCELED'
-      );
-
-      return finalBooking;
-    }
-
-    if (!externalAppointmentId) {
-      throw new AppError({
-        status: 400,
-        code: 'EXTERNAL_BOOKING_ID_MISSING',
-        message: 'External booking ID is missing',
-      });
-    }
-
-    const result =
-      booking.integration === 'healthians'
-        ? await this.healthiansService.cancelBooking({
-            bookingId: externalAppointmentId,
-            vendorBillingUserId: this.getHealthiansVendorBillingUserId(booking),
-            reason: cancellationReason,
-            uniqueId: this.getHealthiansVendorCustomerId(booking),
-          })
-        : effectiveKind === 'diagnostics'
-          ? await this.labstackService.cancelOrder({
-              orderId: externalAppointmentId,
-              reason: cancellationReason,
-            })
-          : await this.labstackService.cancelAppointment({
-              appointmentId: externalAppointmentId,
-              reason: cancellationReason,
-            });
-
-    const updated = await this.externalBookingRepository.update(
-      { _id: id },
-      {
-        externalBookingId: booking.externalBookingId || externalAppointmentId,
-        status: result.externalStatus || 'cancelled',
-        meta: {
-          ...priorMeta,
-          cancellationReason,
-          cancelledAt,
-          cancellationResponse: result.payload,
-        },
-      }
-    );
-
-    if (!updated) {
-      throw new AppError({
-        status: 500,
-        code: 'EXTERNAL_BOOKING_UPDATE_FAILED',
-        message: 'Failed to update external booking after cancellation',
-      });
-    }
-
-    let finalBooking = updated;
-    try {
-      const refundedAmount =
-        await this.refundExternalBookingAmountToWallet(booking);
-      if (refundedAmount > 0 && finalBooking.paymentStatus !== 'refunded') {
-        finalBooking =
-          (await this.externalBookingRepository.update(
-            { _id: id },
-            { paymentStatus: 'refunded' }
-          )) || finalBooking;
-      }
-    } catch (error) {
-      console.error(
-        'Failed to refund cancelled external booking amount to wallet:',
-        error
-      );
-    }
-
-    await this.sendExternalBookingEmailNotification(
-      finalBooking as IExternalBooking,
-      'CANCELED'
-    );
-
-    return finalBooking;
+  /**
+   * Admin, after checking with the provider: 'absent' (no provider booking exists) or 'cancelled' (every provider
+   * booking of this booking is cancelled). Resolves what could not be proven automatically; then continues.
+   */
+  async reconcileCancellation(id: string, actor: ExternalBookingActor, providerOutcome: 'absent' | 'cancelled'): Promise<IExternalBooking> {
+    await reconcileProviderState({ bookingId: id, admin: { _id: String(actor._id), userType: actor.userType }, providerOutcome,
+      wallets: this.walletRepository });
+    return this.continueCancellation(id);
   }
 
   private async getAccessibleBookingIgnoringKind(
@@ -2051,93 +1876,27 @@ export class ExternalBookingService {
         );
       }
     }
-  }
 
-  private async processStaleUnpaidExternalBookingCancellation(
-    booking: IExternalBooking
-  ): Promise<void> {
-    const id = String(booking._id);
-    const reason = 'Payment not completed within 30 minutes';
-
-    const refundAmount = await this.refundExternalBookingAmountToWallet(booking);
-
-    const externalAppointmentId = this.getExternalAppointmentId(booking);
-    let cancellationLabstackResponse: unknown;
-
-    if (externalAppointmentId?.trim()) {
+    // Recorded cancellations not yet settled (provider call pending/unknown, attempt result arrived): continue them.
+    for (const bookingId of await findPendingCancellations(new Date())) {
       try {
-        const kind: ExternalBookingKind =
-          booking.providerType === 'DIAGNOSTICS' ? 'diagnostics' : 'doctor';
-        const result =
-          booking.integration === 'healthians'
-            ? await this.healthiansService.cancelBooking({
-                bookingId: externalAppointmentId.trim(),
-                vendorBillingUserId: this.getHealthiansVendorBillingUserId(booking),
-                reason,
-                uniqueId: this.getHealthiansVendorCustomerId(booking),
-              })
-            : kind === 'diagnostics'
-              ? await this.labstackService.cancelOrder({
-                  orderId: externalAppointmentId.trim(),
-                  reason,
-                })
-              : await this.labstackService.cancelAppointment({
-                  appointmentId: externalAppointmentId.trim(),
-                  reason,
-                });
-        cancellationLabstackResponse = result.payload;
-      } catch (err) {
-        cancellationLabstackResponse = {
-          error: err instanceof Error ? err.message : String(err),
-        };
+        await this.continueCancellation(bookingId);
+      } catch (error) {
+        logger.error('[ExternalBooking] pending cancellation sweep failed', { bookingId, error: error instanceof Error ? error.message : String(error) });
       }
     }
-
-    const priorMeta =
-      booking.meta && typeof booking.meta === 'object' && !Array.isArray(booking.meta)
-        ? (booking.meta as Record<string, unknown>)
-        : {};
-
-    await this.externalBookingRepository.update(
-      { _id: id },
-      {
-        status: 'cancelled',
-        paymentStatus: 'cancelled',
-        meta: {
-          ...priorMeta,
-          paymentTimeoutCancelledAt: new Date().toISOString(),
-          cancellationReason: reason,
-          ...(refundAmount > 0 ? { paymentTimeoutWalletRefunded: true } : {}),
-          ...(cancellationLabstackResponse !== undefined
-            ? { cancellationResponse: cancellationLabstackResponse }
-            : {}),
-        },
-      }
-    );
   }
 
-  private async processStalePaidConfirmationTimeout(
-    booking: IExternalBooking
-  ): Promise<void> {
-    const id = String(booking._id);
-    const reason = 'Booking confirmation not received within 30 minutes';
+  /** Payment timeout: the server's own cancellation intent, then the same two-phase path as any cancellation. */
+  private async processStaleUnpaidExternalBookingCancellation(booking: IExternalBooking): Promise<void> {
+    await requestCancellation({ bookingId: String(booking._id), actor: 'system', reason: 'Payment not completed within 30 minutes' });
+    await this.continueCancellation(String(booking._id));
+  }
 
-    const refundAmount = await this.refundExternalBookingAmountToWallet(booking);
-    const priorMeta = this.getBookingMeta(booking);
-
-    await this.externalBookingRepository.update(
-      { _id: id },
-      {
-        status: 'cancelled',
-        paymentStatus: refundAmount > 0 ? 'refunded' : 'cancelled',
-        meta: {
-          ...priorMeta,
-          paymentConfirmationTimedOutAt: new Date().toISOString(),
-          cancellationReason: reason,
-          ...(refundAmount > 0 ? { paymentConfirmationWalletRefunded: true } : {}),
-        },
-      }
-    );
+  /** Paid but never confirmed: cancelled through intent; money returns only once the provider side is proven. */
+  private async processStalePaidConfirmationTimeout(booking: IExternalBooking): Promise<void> {
+    await requestCancellation({ bookingId: String(booking._id), actor: 'system', reason: 'Booking confirmation not received within 30 minutes' });
+    await this.continueCancellation(String(booking._id));
   }
 
   async rescheduleBooking(
@@ -2150,6 +1909,12 @@ export class ExternalBookingService {
   ): Promise<IExternalBooking> {
     const booking = await this.getAccessibleBooking(id, actor, kind);
     const externalAppointmentId = this.getExternalAppointmentId(booking);
+    const changedConflict = () => new AppError({ status: 409, code: 'EXTERNAL_BOOKING_CHANGED',
+      message: 'This booking was cancelled or changed; reload and try again' });
+    if (['cancelled', CANCELLATION_REQUESTED].includes(String(booking.status))) throw changedConflict();
+    // Fence for every write below: still not cancelling, and the provider reference read here unchanged (A2b).
+    const unchanged = { _id: id, status: { $nin: ['cancelled', CANCELLATION_REQUESTED] },
+      externalBookingId: booking.externalBookingId ?? null } as never;
 
     if (
       !externalAppointmentId &&
@@ -2158,7 +1923,7 @@ export class ExternalBookingService {
     ) {
       const effectiveBookingTime = this.getEffectiveBookingTime(data);
       const updated = await this.externalBookingRepository.update(
-        { _id: id },
+        { ...(unchanged as object), status: 'pending_payment' } as never,
         {
           bookingDate: data.bookingDate,
           bookingTime: effectiveBookingTime,
@@ -2166,13 +1931,7 @@ export class ExternalBookingService {
         }
       );
 
-      if (!updated) {
-        throw new AppError({
-          status: 500,
-          code: 'EXTERNAL_BOOKING_UPDATE_FAILED',
-          message: 'Failed to reschedule pending external booking',
-        });
-      }
+      if (!updated) throw changedConflict();
 
       return updated;
     }
@@ -2199,8 +1958,47 @@ export class ExternalBookingService {
           )
         : undefined;
 
-    const result =
-      booking.integration === 'healthians'
+    // Admission: a durable reschedule record for exactly the reference read here (refused if it changed or a
+    // cancellation started). Until its result is recorded, no cancellation can settle (A2b).
+    const rescheduleToken = await beginReschedule(id, externalAppointmentId);
+
+    let result: { externalBookingId?: string; externalStatus?: string; payload: unknown };
+    try {
+      result = await this.callProviderReschedule(booking, kind, externalAppointmentId, appointment, healthiansSlotId,
+        effectiveBookingTime, data);
+    } catch (error) {
+      await failReschedule(id, rescheduleToken, error);
+      throw error;
+    }
+    const newRef = typeof result.externalBookingId === 'string' && result.externalBookingId.trim() ? result.externalBookingId.trim() : undefined;
+    const updated = await recordRescheduleResult(id, rescheduleToken, newRef, {
+      bookingDate: data.bookingDate,
+      bookingTime: effectiveBookingTime,
+      externalSlotRef: effectiveBookingTime,
+      status: result.externalStatus || 'rescheduled',
+      'meta.rescheduleRequest': data,
+      'meta.rescheduleResponse': result.payload,
+    });
+    if (!updated) {
+      logger.error('[ExternalBooking] rescheduled at the provider but the booking changed meanwhile; new reference kept', {
+        bookingId: id, externalAppointmentId, newRef });
+      throw changedConflict();
+    }
+    const visible = publicExternalBooking(updated) as IExternalBooking;
+    await this.sendExternalBookingEmailNotification(visible, 'RESCHEDULED', { oldBookingDate, oldBookingTime });
+    return visible;
+  }
+
+  private async callProviderReschedule(
+    booking: IExternalBooking,
+    kind: ExternalBookingKind,
+    externalAppointmentId: string,
+    appointment: string,
+    healthiansSlotId: string | undefined,
+    effectiveBookingTime: string,
+    data: RescheduleExternalBookingRequest | RescheduleExternalDiagnosticsBookingRequest
+  ): Promise<{ externalBookingId?: string; externalStatus?: string; payload: unknown }> {
+    return booking.integration === 'healthians'
         ? await this.healthiansService.rescheduleBooking({
             bookingId: externalAppointmentId,
             slotId: healthiansSlotId || effectiveBookingTime,
@@ -2219,40 +2017,6 @@ export class ExternalBookingService {
               appointmentId: externalAppointmentId,
               appointmentTime: appointment,
             });
-
-    const updated = await this.externalBookingRepository.update(
-      { _id: id },
-      {
-        bookingDate: data.bookingDate,
-        bookingTime: effectiveBookingTime,
-        externalBookingId:
-          result.externalBookingId ||
-          booking.externalBookingId ||
-          externalAppointmentId,
-        externalSlotRef: effectiveBookingTime,
-        status: result.externalStatus || 'rescheduled',
-        meta: {
-          ...(booking.meta || {}),
-          rescheduleRequest: data,
-          rescheduleResponse: result.payload,
-        },
-      }
-    );
-
-    if (!updated) {
-      throw new AppError({
-        status: 500,
-        code: 'EXTERNAL_BOOKING_UPDATE_FAILED',
-        message: 'Failed to update external booking after reschedule',
-      });
-    }
-
-    await this.sendExternalBookingEmailNotification(updated, 'RESCHEDULED', {
-      oldBookingDate,
-      oldBookingTime,
-    });
-
-    return updated;
   }
 
   private diagnosticsCustomerId(actor: unknown): unknown {
@@ -2360,18 +2124,37 @@ export class ExternalBookingService {
     actor: ExternalBookingActor
   ): Promise<ExternalBookingPaymentDetailsResponse> {
     const booking = await this.getAccessibleBookingIgnoringKind(id, actor);
+    const bookingId = String(booking._id);
+    const reconcile = (message: string) => new AppError({ status: 409, code: 'EXTERNAL_BOOKING_RECONCILIATION_REQUIRED', message });
 
-    const paymentRecord = booking.paymentTransactionId
-      ? await this.paymentRepository.findById(booking.paymentTransactionId)
-      : null;
-    const externalPaymentRecord =
-      paymentRecord?.context === 'external_booking' ? paymentRecord : null;
+    // Every payment attempt of this booking (bounded), each checked to really belong to it (A2b): owner, context,
+    // INR, and paise consistent with the rupee amounts. Anything else needs reconciliation, never a guessed receipt.
+    const LIMIT = 50;
+    const attempts = await this.paymentRepository.findAll({ context: 'external_booking', contextId: bookingId } as never,
+      { sort: { createdAt: 1 }, limit: LIMIT + 1 } as never) as IPaymentRecord[];
+    if (attempts.length > LIMIT) throw reconcile('Too many payment attempts for this booking');
+    const paise = (rupees: unknown) => Math.round(Number(rupees ?? 0) * 100);
+    for (const r of attempts) {
+      const ownerOk = String(r.userId) === String(booking.userId) && (!r.payerUserId || String(r.payerUserId) === String(booking.userId));
+      const amountsOk = [['baseAmount', 'baseAmountPaise'], ['discountAmount', 'discountAmountPaise'], ['finalAmount', 'finalAmountPaise']]
+        .every(([rupeeKey, paiseKey]) => {
+          const value = (r as unknown as Record<string, unknown>)[paiseKey];
+          const rupee = Number((r as unknown as Record<string, unknown>)[rupeeKey] ?? 0);
+          return Number.isFinite(rupee) && rupee >= 0 && (value === undefined || value === null || value === paise(rupee));
+        });
+      if (!ownerOk || String(r.currency || 'INR').toUpperCase() !== 'INR' || !amountsOk) {
+        throw reconcile('A payment record of this booking is inconsistent');
+      }
+    }
+    const linked = booking.paymentTransactionId ? attempts.find((r) => String(r._id) === String(booking.paymentTransactionId)) : undefined;
+    if (booking.paymentTransactionId && !linked) {
+      throw reconcile('The booking links a payment record that does not belong to it');
+    }
+    const externalPaymentRecord = linked ?? null;
 
-    const walletTransactions =
-      await this.walletTransactionRepository.findByReference(
-        'external_booking',
-        booking._id!
-      );
+    const walletTransactions = (
+      await this.walletTransactionRepository.findByReference('external_booking', booking._id!)
+    ).filter((transaction) => String(transaction.userId) === String(booking.userId));
 
     const walletDebitTransactions = walletTransactions.filter(
       (transaction) =>
@@ -2392,9 +2175,10 @@ export class ExternalBookingService {
       (sum, transaction) => sum + Number(transaction.amount || 0),
       0
     );
-    const amountChargedToRazorpay = externalPaymentRecord
-      ? Number(externalPaymentRecord.finalAmount || 0)
-      : 0;
+    // Actual gateway charges: every captured Razorpay attempt (paid, or paid and later refunded), counted once.
+    const amountChargedToRazorpay = attempts
+      .filter((r) => r.paymentGateway === 'razorpay' && ['paid', 'refunded'].includes(String(r.status)))
+      .reduce((sum, r) => sum + paise(r.finalAmount), 0) / 100;
 
     return {
       booking: {
@@ -2440,6 +2224,7 @@ export class ExternalBookingService {
       },
       refund: {
         amountRefunded,
+        destination: amountRefunded > 0 ? 'internal_wallet' : null,
         transactions: walletRefundTransactions.map((transaction) => ({
           _id: transaction._id,
           amount: transaction.amount,

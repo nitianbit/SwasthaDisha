@@ -1,6 +1,7 @@
 import { LabstackService } from '@/modules/bookings/services/labstack';
 import { HealthiansService } from '@/modules/bookings/services/healthians';
 import { ExternalBookingRepository } from '@/modules/externalBookings/repository';
+import { recordProviderResult } from '@/modules/externalBookings/services/providerOps';
 import { IExternalBooking } from '@/modules/externalBookings/types';
 import { AppError } from '@/modules/common/types';
 import { IPaymentRecord } from '@/modules/payment/types';
@@ -232,11 +233,24 @@ function acceptedTotal(record: IPaymentRecord): number {
   return (base - discount) / 100;
 }
 
+/** The provider answered success without a usable booking reference: the outcome stays unknown (reconciliation). */
+export const providerReferenceMissing = () => new AppError({ status: 502, code: 'EXTERNAL_PROVIDER_REFERENCE_MISSING',
+  message: 'The provider did not return a booking reference; confirmation is pending' });
+
+/** Runs a local step before the provider booking call; its error is tagged as "provider not called". */
+function providerNotCalledOnError<T>(step: () => T): T {
+  try { return step(); } catch (error) {
+    throw Object.assign(error instanceof Error ? error : new Error(String(error)), { providerNotCalled: true });
+  }
+}
+
 export async function completeExternalBookingAfterPayment(
   paymentRecord: IPaymentRecord,
   externalBookingRepository: ExternalBookingRepository,
   labstackService: LabstackService,
-  healthiansService: HealthiansService
+  healthiansService: HealthiansService,
+  /** The admitted provider attempt (providerOps.beginProvider); only it may record the result. */
+  token: string
 ): Promise<IExternalBooking> {
   logger.info('[ExternalBooking][finalize] start', {
     paymentTransactionId: paymentRecord._id,
@@ -270,7 +284,7 @@ export async function completeExternalBookingAfterPayment(
       return await completeDiagnosticsAfterPayment(
         typed,
         paymentRecord,
-        externalBookingRepository,
+        token,
         labstackService,
         healthiansService
       );
@@ -279,7 +293,7 @@ export async function completeExternalBookingAfterPayment(
     return await completeConsultationAfterPayment(
       typed,
       paymentRecord,
-      externalBookingRepository,
+      token,
       labstackService,
       healthiansService
     );
@@ -309,7 +323,7 @@ export async function completeExternalBookingAfterPayment(
 async function completeConsultationAfterPayment(
   booking: IExternalBooking,
   paymentRecord: IPaymentRecord,
-  externalBookingRepository: ExternalBookingRepository,
+  token: string,
   labstackService: LabstackService,
   healthiansService: HealthiansService
 ): Promise<IExternalBooking> {
@@ -384,30 +398,19 @@ async function completeConsultationAfterPayment(
 
   const { pendingLabstack: _drop, ...metaRest } = meta;
 
-  const updated = await externalBookingRepository.update(
-    { _id: booking._id },
-    {
-      externalProviderId: result.externalProviderId || booking.externalProviderId,
-      externalBookingId: result.externalBookingId,
-      externalSlotRef: result.externalSlotTime,
-      meetingLink: result.meetingLink,
-      status: result.externalStatus,
-      paymentStatus: 'paid',
-      paymentTransactionId: paymentRecord._id!,
-      meta: {
-        ...metaRest,
-        externalPayload: result.payload,
-      },
-    }
-  );
-
-  if (!updated) {
-    throw new AppError({
-      status: 500,
-      code: 'EXTERNAL_BOOKING_UPDATE_FAILED',
-      message: 'Failed to update external booking after payment',
-    });
-  }
+  // Only the admitted attempt records its result; a cancellation recorded meanwhile keeps just the reference.
+  const { booking: updated, missingRef } = await recordProviderResult(String(booking._id), token, {
+    externalProviderId: result.externalProviderId || booking.externalProviderId,
+    externalBookingId: result.externalBookingId,
+    externalSlotRef: result.externalSlotTime,
+    meetingLink: result.meetingLink,
+    status: result.externalStatus,
+    meta: {
+      ...metaRest,
+      externalPayload: result.payload,
+    },
+  });
+  if (missingRef) throw providerReferenceMissing();
 
   logger.info('[ExternalBooking][finalize][doctor] create success', {
     bookingId: booking._id,
@@ -423,7 +426,7 @@ async function completeConsultationAfterPayment(
 async function completeDiagnosticsAfterPayment(
   booking: IExternalBooking,
   paymentRecord: IPaymentRecord,
-  externalBookingRepository: ExternalBookingRepository,
+  token: string,
   labstackService: LabstackService,
   healthiansService: HealthiansService
 ): Promise<IExternalBooking> {
@@ -470,9 +473,16 @@ async function completeDiagnosticsAfterPayment(
     ? (meta.testIds as unknown[]).map((x) => String(x))
     : undefined;
 
-  // Milestone D8: freeze the Healthians slot at fulfilment, right before the order is placed.
+  // Milestone D9 total, validated before any provider call (a failure here proves no provider booking was made).
+  const discountedPrice = providerNotCalledOnError(() => acceptedTotal(paymentRecord));
+  // Milestone D8: freeze the Healthians slot at fulfilment, right before the order is placed. Freezing books nothing,
+  // so a failure here also proves no provider booking exists.
   if (booking.integration === 'healthians' && typeof meta.stmId === 'string' && meta.stmId.trim()) {
-    await healthiansService.freezeDiagnosticsSlot({ stmId: meta.stmId.trim(), vendorBillingUserId: booking.userId });
+    try {
+      await healthiansService.freezeDiagnosticsSlot({ stmId: meta.stmId.trim(), vendorBillingUserId: booking.userId });
+    } catch (error) {
+      throw Object.assign(error instanceof Error ? error : new Error(String(error)), { providerNotCalled: true });
+    }
   }
 
   const result =
@@ -515,7 +525,7 @@ async function completeDiagnosticsAfterPayment(
           vendorBookingId: String(booking._id),
           // Milestone D9: the accepted post-coupon total of this payment attempt (gateway + wallet portion), not just
           // the gateway part. booking.price stays the gross price on this branch, so it is derived from the record.
-          discountedPrice: acceptedTotal(paymentRecord),
+          discountedPrice,
           paymentOption:
             (meta.paymentOption as 'cod' | 'prepaid' | undefined) || 'prepaid',
           applicationNumber: meta.applicationNumber as string | undefined,
@@ -557,9 +567,7 @@ async function completeDiagnosticsAfterPayment(
     ...metaRest
   } = meta;
 
-  const updated = await externalBookingRepository.update(
-    { _id: booking._id },
-    {
+  const { booking: updated, missingRef } = await recordProviderResult(String(booking._id), token, {
       externalProviderId:
         booking.integration === 'healthians'
           ? (booking.externalProviderId || 'healthians')
@@ -572,23 +580,13 @@ async function completeDiagnosticsAfterPayment(
         booking.externalSlotRef ||
         booking.bookingTime,
       status: result.externalStatus,
-      paymentStatus: 'paid',
-      paymentTransactionId: paymentRecord._id!,
       meta: {
         ...metaRest,
         ...providerLabMeta,
         externalPayload: result.payload,
       },
-    }
-  );
-
-  if (!updated) {
-    throw new AppError({
-      status: 500,
-      code: 'EXTERNAL_BOOKING_UPDATE_FAILED',
-      message: 'Failed to update external diagnostics booking after payment',
-    });
-  }
+  });
+  if (missingRef) throw providerReferenceMissing();
 
   logger.info('[ExternalBooking][finalize][diagnostics] place success', {
     bookingId: booking._id,

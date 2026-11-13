@@ -161,10 +161,27 @@ export interface IExternalBooking {
   postPaymentCompletedFor?: string;
   walletFunding?: { total: number; revision?: number; closed?: boolean;
     captures?: { recordId: string; amount: number; state: 'applied' | 'returned' }[]; updatedAt?: Date };
+  /** Provider admission and two-phase cancellation (services/providerOps.ts). Private; not selected by default. */
+  providerOps?: ExternalProviderOps;
   status?: string;
   meta?: Record<string, unknown>;
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+export interface ExternalProviderOps {
+  attempt?: { token: string; state: 'started' | 'succeeded' | 'unknown' | 'rejected' | 'absent_attested'; recordId?: string | null;
+    at: Date; ref?: string | null; error?: string; attestedBy?: string };
+  cancel?: { by: 'user' | 'admin' | 'system'; actorId?: string; reason?: string; priorStatus?: string; at: Date;
+    state: 'requested' | 'calling' | 'unknown' | 'settled'; token: string; ackedRefs?: string[]; callRef?: string; callAt?: Date;
+    calls?: number; nextAt?: Date; needsAdmin?: boolean; blockedBy?: string; response?: unknown; error?: string; attestedBy?: string };
+  reschedule?: { token: string; state: 'started' | 'done' | 'unknown' | 'attested'; at: Date; fromRef?: string; newRef?: string | null;
+    error?: string; attestedBy?: string };
+  lateRefs?: string[];
+  /** Tokens of superseded admitted attempts (their late answers still count). */
+  priorTokens?: string[];
+  /** A superseded attempt answered without a usable reference: blocks settlement until reconciled. */
+  unresolvedPrior?: boolean;
 }
 
 export interface ExternalConsultationPaymentPayload {
@@ -229,6 +246,8 @@ export interface ExternalBookingPaymentDetailsResponse {
   };
   refund: {
     amountRefunded: number;
+    /** Where refunds of this booking go (A2b): always the customer's internal wallet; null when nothing was refunded. */
+    destination?: 'internal_wallet' | null;
     transactions: Array<{
       _id?: string;
       amount: number;

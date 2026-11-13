@@ -23,6 +23,7 @@ import { WalletRepository, WalletTransactionRepository } from '@/modules/wallet/
 import ExternalBookingModel from '@/modules/externalBookings/model';
 import { ExternalBookingRepository } from '@/modules/externalBookings/repository';
 import { ExternalBookingService } from '@/modules/externalBookings/services';
+import { progressCancellation, reconcileProviderState, recordProviderResult, requestCancellation } from '@/modules/externalBookings/services/providerOps';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/booking_retry_check?directConnection=true';
 const url = process.env.MONGODB_URL ?? '';
@@ -73,14 +74,15 @@ const payments = Object.assign(Object.create(PaymentService.prototype), {
 (payments as Record<string, unknown>).externalBookingRepository = new ExternalBookingRepository();
 // Like completeExternalBookingAfterPayment: an already-fulfilled booking is returned as is; otherwise this payment
 // is applied (paid + link) and the provider booking made.
-const finalizeGate: { wait?: Promise<void>; arrived: number } = { arrived: 0 };
-(payments as Record<string, unknown>).finalizeExternalBookingPayment = async (r: { _id: unknown; contextId: string }) => {
+// A2b: the provider booking runs only for an admitted attempt and records its result through that attempt's token.
+const finalizeGate: { wait?: Promise<void>; arrived: number; failNext?: string } = { arrived: 0 };
+(payments as Record<string, unknown>).finalizeExternalBookingPayment = async (r: { _id: unknown; contextId: string }, token: string) => {
   const b = await ExternalBookingModel.findById(r.contextId).lean() as { paymentStatus?: string; externalBookingId?: string } | null;
   if (b?.paymentStatus === 'paid' && b.externalBookingId) return b;
   finalizeGate.arrived++;
-  if (finalizeGate.wait) await finalizeGate.wait; // both provider calls read "unpaid" before either writes
-  return ExternalBookingModel.findByIdAndUpdate(r.contextId, { $set: { paymentStatus: 'paid', paymentTransactionId: String(r._id),
-    status: 'confirmed', externalBookingId: 'prov_' + String(r._id) } }, { new: true }).lean();
+  if (finalizeGate.wait) await finalizeGate.wait;
+  if (finalizeGate.failNext) { const m = finalizeGate.failNext; finalizeGate.failNext = undefined; throw new Error(m); }
+  return (await recordProviderResult(r.contextId, token, { status: 'confirmed', externalBookingId: 'prov_' + String(r._id) })).booking;
 };
 (payments as Record<string, unknown>).sendExternalBookingEmailNotification = async () => undefined;
 const externals = Object.assign(Object.create(ExternalBookingService.prototype), {
@@ -100,11 +102,13 @@ async function externalBooking(user: string) {
   await PaymentRecordModel.updateOne({ _id: p0._id }, { $set: { contextId: insertedId.toHexString() } });
   return { id: insertedId.toHexString(), p0: String(p0._id) };
 }
-/** Simulates any of the external cancellation paths: cancel, then refund from the (stale) pre-cancel snapshot. */
+/** Any external cancellation (A2b): intent, provider cancel (acknowledged by a fake provider), settlement. */
+const providerCancels: string[] = [];
+const ackingProvider = async (_b: unknown, ref: string) => { providerCancels.push(ref);
+  return { externalBookingId: ref, externalStatus: 'cancelled', payload: { status: 'cancelled', orderId: ref } }; };
 async function cancelExternal(id: string) {
-  const snapshot = await ExternalBookingModel.findById(id).lean();
-  await ExternalBookingModel.updateOne({ _id: id }, { $set: { status: 'cancelled', paymentStatus: 'cancelled' } });
-  return externals.refundExternalBookingAmountToWallet(snapshot);
+  await requestCancellation({ bookingId: id, actor: 'system', reason: 'test' });
+  return (await progressCancellation({ bookingId: id, wallets: new WalletRepository(), cancelAtProvider: ackingProvider })).refunded;
 }
 const complete = (recordId: string) => PaymentRecordModel.findById(recordId).lean().then(r => payments.processBookingPayment(r));
 
@@ -342,14 +346,13 @@ async function main() {
     assert.equal(await balance(user), 30, 'the ₹30 excess returned exactly once'); await ledgerMatches(user);
   });
 
-  await check('[R5] EXTERNAL refund BEFORE the cancelled status is written (timeout sweep order): later funding is refused', async () => {
+  await check('[R5] EXTERNAL timeout sweep records its intent first: a retry in between cannot fund; the funding returns once', async () => {
     const { user } = await customer(30); const b = await externalBooking(user);
     hooks.failOrder = true; await assert.rejects(settle(b.id, user, b.p0, true)); // ₹30 funded
-    const snapshot = await ExternalBookingModel.findById(b.id).lean();
-    const refunded = await externals.refundExternalBookingAmountToWallet(snapshot); // sweep refunds first...
-    assert.equal(refunded, 30);
-    await rejects(settle(b.id, user, b.p0, true), 'BOOKING_NOT_PAYABLE');          // ...a retry in between cannot fund
-    await ExternalBookingModel.updateOne({ _id: b.id }, { $set: { status: 'cancelled', paymentStatus: 'cancelled' } }); // ...then cancels
+    await requestCancellation({ bookingId: b.id, actor: 'system', reason: 'Payment not completed within 30 minutes' });
+    await rejects(settle(b.id, user, b.p0, true), 'BOOKING_NOT_PAYABLE');          // a retry in between cannot fund
+    const r = await progressCancellation({ bookingId: b.id, wallets: new WalletRepository() });
+    assert.equal(r.refunded, 30); assert.equal(r.booking.status, 'cancelled');
     assert.equal(await balance(user), 30); await ledgerMatches(user);
   });
 
@@ -385,7 +388,7 @@ async function main() {
     assert.equal(await balance(user), 250, '₹100 start + ₹100 stray + ₹50 card = ₹250, all accounted'); await ledgerMatches(user);
   });
 
-  await check('[S2] EXTERNAL both provider finalizers read "unpaid" before either writes: exactly one capture applied', async () => {
+  await check('[S2] EXTERNAL two captures at once: exactly one applied (before any provider call), the provider booked once', async () => {
     const { user } = await customer(0); const b = await externalBooking(user);
     const p1 = await PaymentRecordModel.create({ userId: user, context: 'external_booking', contextId: b.id, baseAmount: 100, discountAmount: 0,
       finalAmount: 100, currency: 'INR', paymentGateway: 'razorpay', razorpayOrderId: 'ord_s2_' + b.id, status: 'paid', notes: { walletDeductedAmount: 0 } });
@@ -393,9 +396,11 @@ async function main() {
     let release!: () => void; finalizeGate.wait = new Promise(r => { release = r; }); finalizeGate.arrived = 0;
     const both = Promise.all([payments.processExternalBookingPayment(await PaymentRecordModel.findById(b.p0).lean()),
       payments.processExternalBookingPayment(p1.toObject())]);
-    while (finalizeGate.arrived < 2) await new Promise(r => setTimeout(r, 10));
+    while (finalizeGate.arrived < 1) await new Promise(r => setTimeout(r, 10));
+    await new Promise(r => setTimeout(r, 100));
     finalizeGate.wait = undefined; release();
     await both;
+    assert.equal(finalizeGate.arrived, 1, 'the losing capture never reached the provider');
     const after = (await ExternalBookingModel.findById(b.id).lean())! as { paymentTransactionId?: string; walletFunding?: { captures?: { recordId: string; state: string }[] } };
     const applied = after.walletFunding!.captures!.filter(c => c.state === 'applied');
     assert.equal(applied.length, 1, 'one financial winner');
@@ -427,16 +432,21 @@ async function main() {
     assert.equal(emails.sent, 2); assert.equal(await balance(user), 0); await ledgerMatches(user);
   });
 
-  await check('[T1] EXTERNAL crash after provider paid/link but before capture registration, then cancel: ₹100 returned once', async () => {
+  await check('[T1] EXTERNAL provider call times out (outcome unknown), then cancel: nothing refunded until an admin attests; then once', async () => {
     const { user } = await customer(0); const b = await externalBooking(user);
     const r = await settle(b.id, user, b.p0, false);               // wallet off: ledger exists with total 0, captures []
     assert.equal(r.paymentRequired, true);
     const p1 = String((await ExternalBookingModel.findById(b.id).lean())!.paymentTransactionId);
     await PaymentRecordModel.updateOne({ _id: p1 }, { $set: { status: 'paid' } });
-    await (payments.finalizeExternalBookingPayment as (r: object) => Promise<unknown>)(await PaymentRecordModel.findById(p1).lean()); // provider wrote paid/link
-    // ...process crashed here, before recordGatewayCapture
+    finalizeGate.failNext = 'timeout of 30000ms exceeded';
+    await assert.rejects(payments.processExternalBookingPayment(await PaymentRecordModel.findById(p1).lean()), /timeout/);
+    assert.equal((await ExternalBookingModel.findById(b.id).lean())!.paymentStatus, 'paid', 'captured before the provider call');
     await cancelExternal(b.id);
-    assert.equal(await balance(user), 100, 'the captured ₹100 is refunded'); await ledgerMatches(user);
+    assert.equal((await ExternalBookingModel.findById(b.id).lean())!.status, 'cancellation_requested', 'unknown outcome: pending');
+    assert.equal(await balance(user), 0, 'no refund on an unproven provider state');
+    const settled = await reconcileProviderState({ bookingId: b.id, admin, providerOutcome: 'absent', wallets: new WalletRepository() });
+    assert.equal(settled.refunded, 100); assert.equal(settled.booking.status, 'cancelled');
+    assert.equal(await balance(user), 100); await ledgerMatches(user);
     await payments.processExternalBookingPayment(await PaymentRecordModel.findById(p1).lean()); // late processing
     assert.equal(await balance(user), 100, 'not refunded twice'); await ledgerMatches(user);
   });
@@ -459,7 +469,7 @@ async function main() {
     const { user } = await customer(0); const b = await externalBooking(user);
     await cancelExternal(b.id);                                         // closed, nothing held
     await PaymentRecordModel.updateOne({ _id: b.p0 }, { $set: { status: 'paid' } }); // P0 captured afterwards; processing crashed
-    await externals.refundExternalBookingAmountToWallet(await ExternalBookingModel.findById(b.id).lean()); // another cancel path runs
+    await cancelExternal(b.id);                                          // the cancellation is repeated (recovery)
     assert.equal(await balance(user), 100); await ledgerMatches(user);
     await payments.processExternalBookingPayment(await PaymentRecordModel.findById(b.p0).lean());
     assert.equal(await balance(user), 100, 'not twice'); await ledgerMatches(user);
