@@ -1,0 +1,1078 @@
+diff --git a/test/api-runtime/pharmacy-refill/README.md b/test/api-runtime/pharmacy-refill/README.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..c6440f4ffc3e1311f06450a62c5451c32a242073
+--- /dev/null
++++ b/test/api-runtime/pharmacy-refill/README.md
+@@ -0,0 +1,11 @@
++# Focused pharmacy due-refill verification
++
++Owned namespace under contract f0e5a04a, shared interface21e4c779; author /root/customer_remaining_audit. Production19wholemodules,2models,3fixedcuts,20groups and7actualsourcecontrols/8emissionphases. No production changes.
++
++`unit.mjs` delegates to the existing152case offline fakeprotocol gate. It does not certify these domain scenarios. `prepare.py --resolve-lock` is public metadata only; `--install-emit` is a distinct scripts-disabled lockedinstall/emission/package audit. `launch.mjs` is a separately admitted one-shot actualrole run using Root's existing sharedcontroller. Every executable stage requires its exact two-review source/proposal/receipt/nonce/ownedarea gate; no command is approved here. Old artifacts/consumedclaims must be preserved; no manual descriptor rebinding or automatic retries.
++
++Mongoose6.13.8/Mongo4.17.2/BSON4.7.2, pinned Node22 container/Mongo8 diagnostic profile and Node24/Python3.14 hosttools are test-only, not root C2 adoption. Querystring is explicitly in the finite emitternative list. Existing exact caught driveroptional/debug tuples and unreachable encryptionoverride ASTbranch remain sourcebound; additional unknownedges fail. No successfulmock/nativealgorithm replacement. Actual package closure still requires fresh admitted preparation.
++
++Real isolated HTTP/auth/Joi/TypeDI/ODM/nativequery/persistence plus hostile completed-raw-reply checks are distinguished. Synthetic customer-looking sentinels are not patient data. No wallet/provider/reminderdispatch/clinical/stock workflow. Dueworklist and explicitresume-unset only; no P7/fullmodule/productioncapacity/client/owner/release acceptance. Original stagedchanges/archive and independent source histories remain preserved.
++
++Known preparation hold: the separate C1 installed audit now identifies actual Express4.21.1 `lib/view.js` computed `require(mod)` under its template-engine constructor. This fixture retains the strict existing environment-only computed policy and therefore DENIES that edge. No P7 install/emission attempt is ready until a separate exact native-source/hash/branch/denial policy is reviewed and explicitly composed. No blanket dynamic-require allowance or claim that another fixture's regex audit proves this safe. The nine-file source candidate remains subject to this honest prerequisite and normal reviews.
+diff --git a/test/api-runtime/pharmacy-refill/package-plan.json b/test/api-runtime/pharmacy-refill/package-plan.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..06b6061bde96167b57845967c8bb9e055a350d51
+--- /dev/null
++++ b/test/api-runtime/pharmacy-refill/package-plan.json
+@@ -0,0 +1,16 @@
++{
++  "schema": "SD-PHARMACY-REFILL-PACKAGE-PLAN-1",
++  "packages": {
++    "express": "4.21.1",
++    "joi": "17.13.3",
++    "jsonwebtoken": "9.0.2",
++    "reflect-metadata": "0.2.2",
++    "typedi": "0.10.0",
++    "mongoose": "6.13.8",
++    "typescript": "5.9.3"
++  },
++  "requiredNativeVersions": {
++    "mongodb": "4.17.2",
++    "bson": "4.7.2"
++  }
++}
+diff --git a/test/api-runtime/pharmacy-refill/ports-manifest.json b/test/api-runtime/pharmacy-refill/ports-manifest.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..c2526ef8b86107dd2687bba012e68172778e0d2a
+--- /dev/null
++++ b/test/api-runtime/pharmacy-refill/ports-manifest.json
+@@ -0,0 +1,346 @@
++{
++  "schema": "SD-PHARMACY-REFILL-PORTS-1",
++  "role": "pharmacy-refill-api",
++  "sourcePins": {
++    "src1/modules/pharmacySubscriptions/routes/index.ts": "08dcc367a86f6ffc1e675e8a010fcc87ffb5ff5329fda4c29fc0c04cca0c834c",
++    "src1/modules/pharmacySubscriptions/controller/index.ts": "7bb21a7ec9aaf8693fb2438a5800f7308d2978353c5ed1c95c0f46e60278a9de",
++    "src1/modules/pharmacySubscriptions/services/index.ts": "3b22b92d88790c521616302d7827023e4ffa16eb25989a6b443152d0af0f9171",
++    "src1/modules/pharmacySubscriptions/repository/index.ts": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
++    "src1/modules/pharmacySubscriptions/validation/index.ts": "1e4dcc64b270c9c8ee242d78af13f3736f2c063de6f8c223822aca7e87de91e4",
++    "src1/modules/pharmacySubscriptions/types/index.ts": "aec8ae4c8d1728f7539e68543e6e97a178b21b8cccc426ed9e4d43f85860fc6e",
++    "src1/modules/pharmacySubscriptions/model/index.ts": "568196be447d9f99cbfbb2fb81169abedbc93f777b7fc3dbf6302a19e925fcc8",
++    "src1/modules/pharmacies/model/index.ts": "beda95d89a9773a8d5851dd923c363c83123a573f7391836dec69b13e5cfa177",
++    "src1/modules/pharmacies/types/index.ts": "e43d4c6e5af5ebc9a21e3a35d41e475e92ab7509961cdafe6bfc3043af0b24f0",
++    "src1/modules/middleware/auth.ts": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
++    "src1/modules/middleware/errorHandler.ts": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51",
++    "src1/modules/common/middleware/validation.ts": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef",
++    "src1/modules/common/utils/asyncHandler.ts": "59fe49db58678ef81242a654f7457f74b067b2583a3f8dc70918b61f50228bd9",
++    "src1/modules/common/utils/mongoErrors.ts": "147a5687832d03c654acd97e0f9e0d9c6c0c7ab51a2841f0eb2260235229d43d",
++    "src1/modules/common/repository/BaseRepository.ts": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
++    "src1/modules/common/repository/index.ts": "6e13d4d0ced3ad40772c5b2c35034544fe49f0d7b715cf0309f954be7ab5cb77",
++    "src1/modules/common/types/index.ts": "63ad3821027150d368e993903e954b4a80b776ff223caf322c104008239d4cbd",
++    "src1/modules/common/types/error.ts": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
++    "src1/modules/common/types/response.ts": "44c5dbcf38ea117eaa13f3a715143ea147a7abf25c3491b61817e67b5f3d6f93"
++  },
++  "requiredCaseIds": [
++    "ADMISSION",
++    "AUTHENTICATION",
++    "OPERATIONAL_AUTHORITY",
++    "RAW_QUERY",
++    "CALENDAR",
++    "LIMITS",
++    "CURSOR_CANONICAL",
++    "CURSOR_SCOPE",
++    "DUE_SLICE",
++    "SCALAR_FILTERS",
++    "RAW_ROW_SHAPES",
++    "BSON4_POSITIVES",
++    "BSON4_HOSTILE",
++    "DENSE_ARRAY",
++    "DTO_AND_HEADERS",
++    "QUERY_AND_CATALOG",
++    "PERSISTED_RESUME",
++    "PAUSE_AND_COMPATIBILITY",
++    "UPDATE_AUTHORITY",
++    "SENSITIVITY_AND_RESTORATION"
++  ],
++  "requiredSensitivityIds": [
++    "OWNER_AND_SCALAR_FENCES_REMOVED",
++    "QUERY_ROW_BOUND_REMOVED",
++    "RAW_QUERY_ALLOWLIST_WEAKENED",
++    "PATIENT_FIELD_LEAKED",
++    "UNDEFINED_RESUME_RESTORED",
++    "SYMBOL_GETTER_GUARD_REGRESSED",
++    "DENSE_ARRAY_GUARD_REGRESSED"
++  ],
++  "providerCounterKeys": [
++    "logger",
++    "unexpected"
++  ],
++  "models": [
++    {
++      "name": "Pharmacy",
++      "collection": "pharmacies",
++      "source": "src1/modules/pharmacies/model/index.ts"
++    },
++    {
++      "name": "PharmacySubscription",
++      "collection": "pharmacysubscriptions",
++      "source": "src1/modules/pharmacySubscriptions/model/index.ts"
++    }
++  ],
++  "cuts": [
++    {
++      "specifier": "@/config/config"
++    },
++    {
++      "specifier": "@/services/logger"
++    },
++    {
++      "specifier": "@/modules/pharmacyCustomers/services"
++    }
++  ],
++  "runtimeRoots": [
++    "express",
++    "joi",
++    "jsonwebtoken",
++    "reflect-metadata",
++    "typedi",
++    "mongoose"
++  ],
++  "indexes": [
++    {
++      "collection": "pharmacies",
++      "key": {
++        "_id": 1
++      },
++      "name": "_id_",
++      "unique": true
++    },
++    {
++      "collection": "pharmacysubscriptions",
++      "key": {
++        "_id": 1
++      },
++      "name": "_id_",
++      "unique": true
++    },
++    {
++      "collection": "pharmacysubscriptions",
++      "key": {
++        "pharmacyId": 1,
++        "isActive": 1
++      },
++      "name": "pharmacyId_1_isActive_1",
++      "unique": false
++    }
++  ],
++  "mutationRecipes": {
++    "OWNER_AND_SCALAR_FENCES_REMOVED": {
++      "predicate": "OWNER_AND_SCALAR_FENCES_REMOVED",
++      "changes": [
++        {
++          "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
++          "before": "pharmacyId: { $eq: new Types.ObjectId(scope) }, ",
++          "after": "",
++          "count": 1
++        },
++        {
++          "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
++          "before": "{ $eq: [{ $type: '$pharmacyId' }, 'objectId'] },",
++          "after": "{ $eq: [1, 1] },",
++          "count": 1
++        },
++        {
++          "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
++          "before": "refillObjectId(row.pharmacyId) !== pharmacyId || ",
++          "after": "",
++          "count": 1
++        }
++      ],
++      "expectedSourceHashes": {
++        "src1/modules/pharmacySubscriptions/repository/index.ts": "aeeb0252a7391596810388eb99b2835b13cf689838fa54e56311f753bf799209"
++      },
++      "nominalSha256": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
++      "assertion": "Returned subscription IDs are exactly the current pharmacy candidate subset; actual foreign canonical ID is forbidden.",
++      "counterexample": "Two operational pharmacies with interleaved valid due rows; own token/first page. Record actual foreign ID in HTTP response privately."
++    },
++    "QUERY_ROW_BOUND_REMOVED": {
++      "predicate": "QUERY_ROW_BOUND_REMOVED",
++      "changes": [
++        {
++          "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
++          "before": ".limit(query.limit + 1)",
++          "after": ".limit(0)",
++          "count": 1
++        }
++      ],
++      "expectedSourceHashes": {
++        "src1/modules/pharmacySubscriptions/repository/index.ts": "c6d57c5c990aeaed2da30e9b18508e5e2861c94714cd476e8dedc281b7417e57"
++      },
++      "nominalSha256": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
++      "assertion": "The completed actual DB read returns at most limit+1; a subsequent503 is not proof the query was bounded.",
++      "counterexample": "Owned fixture80 valid due rows, limit50. Record completed native/model result count before row guard; variant must read>51, not merely throw."
++    },
++    "RAW_QUERY_ALLOWLIST_WEAKENED": {
++      "predicate": "RAW_QUERY_ALLOWLIST_WEAKENED",
++      "changes": [
++        {
++          "path": "src1/modules/pharmacySubscriptions/validation/index.ts",
++          "before": "refillData(raw, ['through', 'limit', 'after'])",
++          "after": "refillData(raw, ['through', 'limit', 'after', 'pharmacyId'])",
++          "count": 1
++        }
++      ],
++      "expectedSourceHashes": {
++        "src1/modules/pharmacySubscriptions/validation/index.ts": "c6f5cd55a8a78b07172c96445c72c78060ae2dceb1951d2361cb8237be132507"
++      },
++      "nominalSha256": "1e4dcc64b270c9c8ee242d78af13f3736f2c063de6f8c223822aca7e87de91e4",
++      "assertion": "Extra owner key returns400 before repository dispatch; accepted ignored field with a real DB query is forbidden.",
++      "counterexample": "Valid own request plus foreign pharmacyId query. Nominal400/no dispatch; variant accepts and returns200 own data, exposing validation loss, not a foreign-scope claim."
++    },
++    "PATIENT_FIELD_LEAKED": {
++      "predicate": "PATIENT_FIELD_LEAKED",
++      "changes": [
++        {
++          "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
++          "before": "reminderChannel: 1, pausedUntil: 1 };",
++          "after": "reminderChannel: 1, pausedUntil: 1, userId: 1 };",
++          "count": 1
++        },
++        {
++          "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
++          "before": "return { subscriptionId, nextRefillDate:",
++          "after": "return { ...{ userId: String(row.userId) }, subscriptionId, nextRefillDate:",
++          "count": 1
++        }
++      ],
++      "expectedSourceHashes": {
++        "src1/modules/pharmacySubscriptions/repository/index.ts": "7578453bc943085e26e5fbe013be5c189e1db02f0d756e78e2d652deb35c618e"
++      },
++      "nominalSha256": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
++      "assertion": "Closed HTTP DTO keys exclude patient identity; actual synthetic userId in response is forbidden.",
++      "counterexample": "Owned valid subscription has actual userId; independently compare received field to seeded fixture user ID, not only schema/hash."
++    },
++    "UNDEFINED_RESUME_RESTORED": {
++      "predicate": "UNDEFINED_RESUME_RESTORED",
++      "changes": [
++        {
++          "path": "src1/modules/pharmacySubscriptions/services/index.ts",
++          "before": "delete nextPayload.pausedUntil;",
++          "after": "nextPayload.pausedUntil = undefined;",
++          "count": 1
++        },
++        {
++          "path": "src1/modules/pharmacySubscriptions/services/index.ts",
++          "before": "data.isActive === true\n      ? { $set: nextPayload, $unset: { pausedUntil: '' } }\n      : nextPayload",
++          "after": "nextPayload",
++          "count": 1
++        }
++      ],
++      "expectedSourceHashes": {
++        "src1/modules/pharmacySubscriptions/services/index.ts": "8917875bebcc0718330173f368c919a5077c7ae1ebe7797a62f8828299faac23"
++      },
++      "nominalSha256": "3b22b92d88790c521616302d7827023e4ffa16eb25989a6b443152d0af0f9171",
++      "assertion": "Explicit resume really removes pausedUntil from persisted BSON and returned row; retained old pause is forbidden.",
++      "counterexample": "Seed paused false/future date, resume through real service+Mongoose then fresh native read; nominal missing field, variant retains it."
++    },
++    "SYMBOL_GETTER_GUARD_REGRESSED": {
++      "predicate": "SYMBOL_GETTER_GUARD_REGRESSED",
++      "changes": [
++        {
++          "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
++          "before": "let refillObjectIdKey: symbol | undefined;\nfunction refillObjectId(value: unknown): string {\n  if (!value || typeof value !== 'object' || types.isProxy(value) || Object.getPrototypeOf(value) !== Types.ObjectId.prototype) throw refillUnavailable();\n  if (refillObjectIdKey === undefined) {\n    // BSON4.7.2 keeps its bytes under one module-private Symbol; do not identify it by its description.\n    const probe = new Types.ObjectId('000000000000000000000000');\n    const symbols = Object.getOwnPropertySymbols(probe);\n    if (symbols.length !== 1 || Reflect.ownKeys(probe).some(key => key !== symbols[0] && key !== '__id')) throw refillUnavailable();\n    refillObjectIdKey = symbols[0];\n  }\n  const keys = Reflect.ownKeys(value);\n  if (!keys.includes(refillObjectIdKey) || keys.some(key => key !== refillObjectIdKey && key !== '__id')) throw refillUnavailable();\n  for (const key of keys) {\n    const descriptor = Object.getOwnPropertyDescriptor(value, key);\n    if (!descriptor || !('value' in descriptor)) throw refillUnavailable();\n  }\n  const bytes = Object.getOwnPropertyDescriptor(value, refillObjectIdKey)!.value;\n  if (!bytes || typeof bytes !== 'object' || types.isProxy(bytes) || !Buffer.isBuffer(bytes) || Object.getPrototypeOf(bytes) !== Buffer.prototype) throw refillUnavailable();\n  const byteLength = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(Uint8Array.prototype), 'byteLength')!.get!;\n  if (Reflect.apply(byteLength, bytes, []) !== 12 || Reflect.ownKeys(bytes).length !== 12) throw refillUnavailable();\n  const owned = Buffer.alloc(12);\n  for (let i = 0; i < 12; i++) {\n    const descriptor = Object.getOwnPropertyDescriptor(bytes, String(i));\n    if (!descriptor || !('value' in descriptor) || !descriptor.enumerable || !Number.isInteger(descriptor.value) || descriptor.value < 0 || descriptor.value > 255) throw refillUnavailable();\n    owned[i] = descriptor.value;\n  }\n  const id = Reflect.apply(Buffer.prototype.toString, owned, ['hex']);\n  const cache = Object.getOwnPropertyDescriptor(value, '__id');\n  if (cache && cache.value !== id) throw refillUnavailable();\n  return id;\n}\n",
++          "after": "function refillObjectId(value: unknown): string {\n  if (!value || typeof value !== 'object' || types.isProxy(value) || Object.getPrototypeOf(value) !== Types.ObjectId.prototype ||\n    Object.values(Object.getOwnPropertyDescriptors(value)).some(d => !('value' in d))) throw refillUnavailable();\n  const id = Types.ObjectId.prototype.toHexString.call(value);\n  if (!/^[0-9a-f]{24}$/.test(id)) throw refillUnavailable();\n  return id;\n}\n",
++          "count": 1
++        }
++      ],
++      "expectedSourceHashes": {
++        "src1/modules/pharmacySubscriptions/repository/index.ts": "afc37ee0d19da68fc106c0750b373a35f0e14043508ab7dd8a71f27711478174"
++      },
++      "nominalSha256": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
++      "assertion": "Descriptor-safe raw reply validation fails closed before supplied code/partial output.",
++      "counterexample": "A native Symbol getter is ACTUALLY invoked (>0) on hostile actual-source reply even if a later safe503 occurs; arbitrary exception alone is not detection."
++    },
++    "DENSE_ARRAY_GUARD_REGRESSED": {
++      "predicate": "DENSE_ARRAY_GUARD_REGRESSED",
++      "changes": [
++        {
++          "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
++          "before": "      if (!Array.isArray(rows) || types.isProxy(rows) || Object.getPrototypeOf(rows) !== Array.prototype) throw refillUnavailable();\n      const length = Object.getOwnPropertyDescriptor(rows, 'length');\n      if (!length || !('value' in length) || !Number.isSafeInteger(length.value) || length.value < 0 || length.value > query.limit + 1) throw refillUnavailable();\n      const keys = Reflect.ownKeys(rows);\n      if (keys.length !== length.value + 1 || keys[length.value] !== 'length') throw refillUnavailable();\n      let previous: Pick<DueRefillRow, 'nextRefillDate' | 'subscriptionId'> | undefined = query.after;\n      const mapped: DueRefillRow[] = [];\n      for (let index = 0; index < length.value; index++) {\n        const entry = Object.getOwnPropertyDescriptor(rows, String(index));\n        if (keys[index] !== String(index) || !entry || !('value' in entry) || !entry.enumerable) throw refillUnavailable();\n        const result = dueRefillRow(entry.value, scope, query.through);\n        if (previous && (result.nextRefillDate < previous.nextRefillDate || (result.nextRefillDate === previous.nextRefillDate &&\n          result.subscriptionId <= previous.subscriptionId))) throw refillUnavailable();\n        previous = result;\n        mapped.push(result);\n      }\n",
++          "after": "      if (!Array.isArray(rows) || rows.length > query.limit + 1) throw refillUnavailable();\n      let previous: Pick<DueRefillRow, 'nextRefillDate' | 'subscriptionId'> | undefined = query.after;\n      const mapped = rows.map(row => {\n        const result = dueRefillRow(row, scope, query.through);\n        if (previous && (result.nextRefillDate < previous.nextRefillDate || (result.nextRefillDate === previous.nextRefillDate &&\n          result.subscriptionId <= previous.subscriptionId))) throw refillUnavailable();\n        previous = result;\n        return result;\n      });\n",
++          "count": 1
++        }
++      ],
++      "expectedSourceHashes": {
++        "src1/modules/pharmacySubscriptions/repository/index.ts": "4a4be14863aecad2eba00df21ff3261fe23d9c8f40e92d817d1bac953f50aaf8"
++      },
++      "nominalSha256": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
++      "assertion": "Descriptor-safe raw reply validation fails closed before supplied code/partial output.",
++      "counterexample": "Sparse returned array yields actual HTTP200 items containing null, or supplied map is ACTUALLY invoked; nominal503/no method call uses same source assertion."
++    }
++  },
++  "optionalAbsentEdges": [
++    {
++      "parent": "node_modules/mongodb/lib/deps.js",
++      "parentSha256": "2edcb7e407a8ebbd91626a160eba0af36762a4f1ab970d83d149d2fdd527ecdc",
++      "specifier": "kerberos"
++    },
++    {
++      "parent": "node_modules/mongodb/lib/deps.js",
++      "parentSha256": "2edcb7e407a8ebbd91626a160eba0af36762a4f1ab970d83d149d2fdd527ecdc",
++      "specifier": "@mongodb-js/zstd"
++    },
++    {
++      "parent": "node_modules/mongodb/lib/deps.js",
++      "parentSha256": "2edcb7e407a8ebbd91626a160eba0af36762a4f1ab970d83d149d2fdd527ecdc",
++      "specifier": "@aws-sdk/credential-providers"
++    },
++    {
++      "parent": "node_modules/mongodb/lib/deps.js",
++      "parentSha256": "2edcb7e407a8ebbd91626a160eba0af36762a4f1ab970d83d149d2fdd527ecdc",
++      "specifier": "snappy"
++    },
++    {
++      "parent": "node_modules/mongodb/lib/deps.js",
++      "parentSha256": "2edcb7e407a8ebbd91626a160eba0af36762a4f1ab970d83d149d2fdd527ecdc",
++      "specifier": "snappy/package.json"
++    },
++    {
++      "parent": "node_modules/mongodb/lib/deps.js",
++      "parentSha256": "2edcb7e407a8ebbd91626a160eba0af36762a4f1ab970d83d149d2fdd527ecdc",
++      "specifier": "@mongodb-js/saslprep"
++    },
++    {
++      "parent": "node_modules/mongodb/lib/deps.js",
++      "parentSha256": "2edcb7e407a8ebbd91626a160eba0af36762a4f1ab970d83d149d2fdd527ecdc",
++      "specifier": "aws4"
++    },
++    {
++      "parent": "node_modules/mongodb/lib/bson.js",
++      "parentSha256": "6e04274edabcd4c489e008f76bfe951d86c4d7164976c6fc02a59732a83a9f29",
++      "specifier": "bson-ext"
++    },
++    {
++      "parent": "node_modules/mongodb/lib/utils.js",
++      "parentSha256": "d85ac19e320b84534f5e1eb63bff3b57ee93bd648a391e9652f84571b4114408",
++      "specifier": "mongodb-client-encryption"
++    },
++    {
++      "parent": "node_modules/mquery/node_modules/debug/src/node.js",
++      "parentSha256": "d7b26d7c92f8ea7794b77ce11f3c11cd18c9084df7c357e3c7025344fa28aac6",
++      "specifier": "supports-color"
++    }
++  ],
++  "unreachableComputedEdge": {
++    "parent": "node_modules/mongodb/lib/utils.js",
++    "parentSha256": "d85ac19e320b84534f5e1eb63bff3b57ee93bd648a391e9652f84571b4114408",
++    "expression": "require(process.env.MONGODB_CLIENT_ENCRYPTION_OVERRIDE)",
++    "guard": "typeof process.env.MONGODB_CLIENT_ENCRYPTION_OVERRIDE === 'string' && process.env.MONGODB_CLIENT_ENCRYPTION_OVERRIDE.length > 0",
++    "functionName": "getMongoDBClientEncryption"
++  },
++  "nativeSourcePins": {
++    "node_modules/mongoose/lib/connection.js": "6da65adafb49ce321555758c7ecbe3bd4e875d1b94b644d5a48aef7a594da310",
++    "node_modules/mongodb/lib/mongo_client.js": "3a54b0938422e69e408524143aa031b7fbdde9d971e6a545346f76a5605fea1e",
++    "node_modules/mongodb/lib/db.js": "aced05fd4f64ee206fba4cf9fbeada40c0452b1aa32574530f294f8832d5101e",
++    "node_modules/bson/lib/objectid.js": "9c53aac9cc7d3207c6b940d8fb97b34dbae5371533e769f26709d6d85fabe261"
++  },
++  "nativeSourceProvenance": "Inert actual installed147package Mongoose6.13.8/driver4.17.2/BSON4.7.2 bytes from retained C1 firstfailed workspace; Mongoose connection.js802construct807assign810connect. This is source provenance only; P7 actualinstalledwholegraph still requires fresh admission.",
++  "optionalPolicyProvenance": {
++    "owningP7Contract": "f0e5a04afa5d7cf222cf5b2be31c2b44bef107e48228d11ba55fd1ba01b8ed17",
++    "reviewedC1NineNativeTuples": "61398f2a29d204b24ba9d1b830acb529e6e9d4381fc9df7cb4e15bcd1221b0b4",
++    "reviewedExactDebugTuple": "39a843c5b0e08908c9687a0fdeb3cebc7e4aa478d79d04243ba372c5d824de6f",
++    "reviewedExactUnreachableBranch": "b182050ca5302ec897b45615bd753e59016ec67939c3a04494177f98b9749023",
++    "rule": "Exactparent/fullhash/specifier tuples and exactguard/expression only. Unknownadditionaledge fails; no successfulmock/optionalinstall/global MODULE_NOT_FOUND exception."
++  },
++  "limits": {
++    "commandRecords": 20000,
++    "commandBytes": 16777216,
++    "seedRows": 128,
++    "pharmacies": 8,
++    "catalogRows": 64,
++    "catalogBytes": 262144,
++    "catalogCommands": 12,
++    "catalogMs": 5000
++  }
++}
+diff --git a/test/api-runtime/pharmacy-refill/prepare.py b/test/api-runtime/pharmacy-refill/prepare.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..8045af658975562389d2a5b872a4d9a28138d7f9
+--- /dev/null
++++ b/test/api-runtime/pharmacy-refill/prepare.py
+@@ -0,0 +1,171 @@
++"""Fixed pharmacy-refill public-lock/whole-module-emission producer; never import app code."""
++import importlib.util
++import json
++import os
++from pathlib import Path
++import re
++import shutil
++import stat
++import subprocess
++import sys
++import uuid
++
++ROOT = Path(__file__).resolve().parents[3]
++HERE = ROOT / 'test/api-runtime/pharmacy-refill'
++# Reuse the existing preparation's guarded, standard-library-only metadata helpers.
++spec = importlib.util.spec_from_file_location('sd_reviewed_public_lock_helpers', ROOT / 'test/api-runtime/scenario/prepare.py')
++helpers = importlib.util.module_from_spec(spec)
++spec.loader.exec_module(helpers)
++require, sha, lock_rows, dependency = helpers.require, helpers.sha, helpers.lock_rows, helpers.resolved_dependency
++RECEIPT = Path('/private/tmp/sd-pharmacy-refill-preparation-approval.json')
++LOCK = Path('/private/tmp/sd-pharmacy-refill-resolved-lock.json')
++AUTHOR = '/root/customer_remaining_audit'
++OWN = ['README.md', 'profile.json', 'package-plan.json', 'ports-manifest.json', 'prepare.py', 'compile.cjs', 'bootstrap.cjs', 'scenario.cjs', 'launch.mjs', 'unit.mjs']
++CONTEXT = ['test/api-runtime/profile.json', 'test/api-runtime/private-documents/profile.json', 'test/api-runtime/customer-contact/profile.json', 'test/api-runtime/launch.mjs', 'test/api-runtime/launch.test.mjs', 'test/api-runtime/platform.mjs', 'test/api-runtime/platform.test.mjs', 'test/api-runtime/unit.mjs', 'test/api-runtime/scenario/prepare.py', 'test/application/app-bundle.mjs', 'package-lock.json', 'output/qa/customer-enrollment-focused/TOOL_INPUTS.json', 'documentation/planning/implementation/PHARMACY_REFILL_FOCUSED_VERIFICATION_CONTRACT_DRAFT.md', 'output/qa/pharmacy-refill-focused/contract/SOURCE_INPUTS.json', 'output/qa/pharmacy-refill-focused/contract/DECISIONS.json', 'output/qa/pharmacy-refill-focused/contract/MAIN_CONTEXT_RECONCILIATION.json', 'output/qa/pharmacy-refill-focused/shared/INTERFACE.json']
++
++
++def regular(path, cap=32 * 1024 * 1024):
++    st = path.lstat()
++    require(stat.S_ISREG(st.st_mode) and st.st_nlink == 1 and st.st_size <= cap, 'Nonregular or oversized producer input')
++    return path.read_bytes()
++
++
++def git(*args):
++    return subprocess.check_output(['/usr/bin/git', '--no-optional-locks', '-c', 'core.fsmonitor=false', *args],
++                                   cwd=ROOT, env={'PATH': '/usr/bin:/bin'})
++
++
++def main():
++    require(len(sys.argv) == 2 and sys.argv[1] in ['--resolve-lock', '--install-emit'] and sys.flags.isolated == 1
++            and sys.flags.no_site == 1 and sys.flags.dont_write_bytecode == 1 and sys.dont_write_bytecode is True, 'Exact -I -B -S producer invocation')
++    require(set(os.environ) <= {'PATH', 'TMPDIR', 'LANG', 'LC_CTYPE', '__CF_USER_TEXT_ENCODING'}
++            and os.environ.get('PATH') == '/usr/bin:/bin' and os.environ.get('TMPDIR') == '/private/tmp', 'Clean producer environment')
++    require(os.environ.get('__CF_USER_TEXT_ENCODING') in [None, '0x' + format(os.getuid(), 'X') + ':0x0:0x0'], 'Public UID marker mismatch')
++    profile = json.loads(regular(HERE / 'profile.json'))
++    require(os.path.samefile(sys.executable, profile['pythonTool']) and sys.implementation.name == 'cpython'
++            and '.'.join(str(x) for x in sys.version_info[:3]) == profile['pythonVersion']
++            and sha(regular(Path(profile['pythonTool']))) == profile['pythonToolSha256'], 'Pinned producer Python drift')
++    mode = sys.argv[1][2:]
++    decision = 'APPROVE_PUBLIC_LOCK_RESOLUTION_ONLY' if mode == 'resolve-lock' else 'APPROVE_LOCKED_INSTALL_AND_EMIT_ONLY'
++    ports = json.loads(regular(HERE / 'ports-manifest.json')); packages = json.loads(regular(HERE / 'package-plan.json'))['packages']
++    selected = ['test/api-runtime/pharmacy-refill/' + name for name in OWN] + CONTEXT + list(ports['sourcePins'])
++    hashes = {name: sha(regular(ROOT / name)) for name in selected}
++    require(all(hashes[name] == digest for name, digest in ports['sourcePins'].items()), 'Selected source pins changed')
++    require(git('diff', '--name-only', 'HEAD', '--', *selected) == b''
++            and set(git('ls-files', '--', *selected).decode().splitlines()) == set(selected), 'Producer inputs must be committed and unchanged')
++    commit = git('rev-parse', 'HEAD').decode().strip()
++    receipt_meta = RECEIPT.lstat()
++    require(receipt_meta.st_uid == os.getuid() and receipt_meta.st_mode & 0o777 == 0o600, 'Private producer receipt')
++    receipt_bytes = regular(RECEIPT, 65536); approval = json.loads(receipt_bytes)
++    expected = {'schema': 'SD-PHARMACY-REFILL-PREP-APPROVAL-1', 'decision': decision, 'sourceRoot': str(ROOT),
++                'sourceCommit': commit, 'inputs': hashes, 'mode': mode}
++    if mode == 'install-emit':
++        require(LOCK.lstat().st_uid == os.getuid() and LOCK.lstat().st_mode & 0o777 == 0o600, 'Private resolved lock')
++        expected['resolvedLockSha256'] = sha(regular(LOCK))
++    require(set(approval) == set(expected) | {'nonce', 'reviewers'} and all(approval.get(k) == v for k, v in expected.items()), 'Exact producer receipt binding')
++    require(re.fullmatch(r'[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}', approval['nonce']), 'Producer nonce')
++    reviewers = approval['reviewers']
++    require(isinstance(reviewers, list) and len(reviewers) == 2 and len({row.get('agent') for row in reviewers}) == 2
++            and all(set(row) == {'agent', 'decision'} and row['agent'] != AUTHOR and row['decision'] == decision
++                    and re.fullmatch(r'/root(?:/[A-Za-z0-9_]+)*', row['agent']) for row in reviewers), 'Two actual nonauthor decisions')
++    node, npm = Path(profile['nodeTool']), Path(profile['npmTool'])
++    require(sha(regular(node, 128 * 1024 * 1024)) == profile['nodeToolSha256'] and sha(regular(npm)) == profile['npmToolSha256'], 'Producer Node/npm drift')
++    inventory_bytes = regular(ROOT / profile['npmFiles']); require(sha(inventory_bytes) == profile['npmFilesSha256'], 'npm inventory pin')
++    inventory = json.loads(inventory_bytes); tool_root = Path(inventory['root']); observed = {}
++    for entry in sorted(tool_root.rglob('*')):
++        require(not entry.is_symlink(), 'npm source link')
++        if entry.is_file(): observed[str(entry.relative_to(tool_root))] = sha(regular(entry))
++    require(observed == inventory['files'] and inventory['links'] == {} and npm == tool_root / 'bin/npm-cli.js', 'Whole npm source closure changed')
++    once = Path('/private/tmp/sd-pharmacy-refill-' + mode + '-' + approval['nonce'] + '.once')
++    with once.open('xb') as out:
++        os.chmod(once, 0o600); out.write(json.dumps({'decision': decision, 'receiptSha256': sha(receipt_bytes)}).encode())
++    area = Path('/private/tmp/sd-pharmacy-refill-build-' + str(uuid.uuid4())); area.mkdir(mode=0o700); identity = area.lstat()
++    marker = {'schema': 'SD-PHARMACY-REFILL-BUILD-1', 'path': str(area), 'dev': identity.st_dev, 'ino': identity.st_ino,
++              'uid': os.getuid(), 'sourceCommit': commit, 'inputs': hashes, 'mode': mode}
++    (area / '.owner.json').write_text(json.dumps(marker)); os.chmod(area / '.owner.json', 0o600)
++    for name in ['public', 'runtime', 'home', 'cache']:(area / name).mkdir(mode=0o700)
++    project, runtime = area / 'public', area / 'runtime'
++    for name in ['user.npmrc', 'global.npmrc']:(area / name).write_text('registry=https://registry.npmjs.org/\nignore-scripts=true\naudit=false\nfund=false\n')
++    env = {'PATH': str(node.parent) + ':/usr/bin:/bin', 'HOME': str(area / 'home'), 'TMPDIR': str(area),
++           'NPM_CONFIG_USERCONFIG': str(area / 'user.npmrc'), 'NPM_CONFIG_GLOBALCONFIG': str(area / 'global.npmrc'),
++           'NPM_CONFIG_CACHE': str(area / 'cache'), 'NPM_CONFIG_IGNORE_SCRIPTS': 'true', 'NPM_CONFIG_REGISTRY': 'https://registry.npmjs.org/',
++           'NPM_CONFIG_AUDIT': 'false', 'NPM_CONFIG_FUND': 'false'}
++    manifest = {'name': 'sd-pharmacy-refill-fixture', 'version': '1.0.0', 'private': True, 'dependencies': packages}
++    (project / 'package.json').write_text(json.dumps(manifest) + '\n')
++    original = json.loads(regular(ROOT / 'package-lock.json')); retained = {}
++    def retain(key):
++        if key in retained:return
++        row = original['packages'][key]; retained[key] = row
++        for name in row.get('dependencies', {}):retain(dependency(original, key, name))
++    for name in packages:retain('node_modules/' + name)
++    seed = {'name': manifest['name'], 'version': '1.0.0', 'lockfileVersion': 3, 'requires': True, 'packages': {'': manifest, **retained}}
++    lock_rows(seed); (project / 'package-lock.json').write_text(json.dumps(seed) + '\n')
++    def owned():
++        current = area.lstat()
++        require(current.st_dev == identity.st_dev and current.st_ino == identity.st_ino and current.st_uid == os.getuid()
++                and not area.is_symlink() and current.st_mode & 0o777 == 0o700 and json.loads(regular(area / '.owner.json')) == marker, 'Owned producer area changed')
++    def execute(label, args, seconds=900):
++        owned()
++        with (area / (label + '.stdout.txt')).open('wb') as out, (area / (label + '.stderr.txt')).open('wb') as err:
++            result = subprocess.run(args, cwd=project, env=env, stdout=out, stderr=err, timeout=seconds)
++        require(result.returncode == 0, 'Producer failed; retain owned diagnostics')
++    if mode == 'resolve-lock':
++        require(not LOCK.exists(), 'Existing lock requires explicit disposition')
++        execute('resolve', [str(node), str(npm), 'install', '--package-lock-only', '--ignore-scripts', '--omit=optional', '--no-audit', '--no-fund'])
++        resolved_bytes = regular(project / 'package-lock.json')
++    else:
++        resolved_bytes = regular(LOCK); (project / 'package-lock.json').write_bytes(resolved_bytes)
++    resolved = json.loads(resolved_bytes); lock_rows(resolved)
++    require(resolved['packages']['']['dependencies'] == packages, 'Package root set changed')
++    for name, version in packages.items():require(resolved['packages']['node_modules/' + name]['version'] == version, 'Package version changed')
++    helpers.preserve_root_closures(original, resolved, list(packages))
++    for name, version in json.loads(regular(HERE / 'package-plan.json'))['requiredNativeVersions'].items():
++        require(resolved['packages'][dependency(resolved, 'node_modules/mongoose', name)]['version'] == version, 'Diagnostic native dependency drift')
++    (area / 'resolved-lock.json').write_bytes(resolved_bytes)
++    if mode == 'resolve-lock':
++        owned()
++        with LOCK.open('xb') as out:os.chmod(LOCK, 0o600); out.write(resolved_bytes)
++        print(json.dumps({'status': 'LOCK_RESOLVED_INSTALL_NOT_RUN', 'workspace': str(area), 'sourceCommit': commit,
++                          'lockSha256': sha(resolved_bytes), 'packages': len(resolved['packages']) - 1, 'applicationEvaluations': 0}))
++        return
++    require(not (HERE / 'runtime-template.json').exists(), 'Previous runtime template requires disposition')
++    execute('install', [str(node), str(npm), 'ci', '--ignore-scripts', '--omit=optional', '--no-audit', '--no-fund'])
++    require(sha(regular(project / 'package-lock.json')) == approval['resolvedLockSha256'], 'Install lock changed')
++    shutil.copytree(project / 'node_modules', runtime / 'node_modules', symlinks=True)
++    for links in list((runtime / 'node_modules').rglob('.bin')):
++        require(links.is_dir() and not links.is_symlink(), 'Unexpected bin link directory'); shutil.rmtree(links)
++    for entry in runtime.rglob('*'):
++        require(not entry.is_symlink() and (entry.is_dir() or entry.is_file()), 'Runtime links/nonregular files')
++        if entry.is_file():require(entry.suffix != '.node' and not entry.name.startswith('.env'), 'Runtime native/environment file')
++    for name in ['bootstrap.cjs', 'scenario.cjs', 'ports-manifest.json']:(runtime / name).write_bytes(regular(HERE / name))
++    (runtime / 'network-admission.mjs').write_bytes(regular(ROOT / 'test/application/app-bundle.mjs'))
++    (runtime / 'package-lock.json').write_bytes(resolved_bytes)
++    data = {'sourceCommit': commit, 'sources': {name: regular(ROOT / name).decode() for name in ports['sourcePins']},
++            'ports': ports, 'lockSha': sha(resolved_bytes), 'portsSha': sha(regular(HERE / 'ports-manifest.json')), 'packageVersions': packages}
++    (project / 'compiler-input.json').write_text(json.dumps(data)); (project / 'compile.cjs').write_bytes(regular(HERE / 'compile.cjs'))
++    execute('compile', [str(node), '--permission', '--allow-fs-read=' + str(area), '--allow-fs-write=' + str(runtime),
++                        str(project / 'compile.cjs'), str(project / 'compiler-input.json'), str(runtime)], 120)
++    plan = json.loads(regular(runtime / 'runtime-plan.json'))
++    # Shared platform accepts these exact producer files; receipt above additionally binds controller/operator/context.
++    for name in ['bootstrap.cjs', 'scenario.cjs', 'ports-manifest.json', 'prepare.py', 'compile.cjs', 'package-plan.json', 'profile.json']:
++        relative = 'test/api-runtime/pharmacy-refill/' + name; plan['sourceFiles'][relative] = hashes[relative]
++    for name in ['test/application/app-bundle.mjs', 'package-lock.json']:plan['sourceFiles'][name] = hashes[name]
++    (runtime / 'runtime-plan.json').write_text(json.dumps(plan) + '\n')
++    files = {}; total = 0
++    for entry in sorted(runtime.rglob('*')):
++        require(not entry.is_symlink(), 'Runtime source link')
++        if entry.is_file():
++            data = regular(entry); total += len(data); files[str(entry.relative_to(runtime))] = sha(data)
++    require(len(files) <= 20000 and total <= 256 * 1024 * 1024, 'Runtime file/byte bound')
++    require(git('rev-parse', 'HEAD').decode().strip() == commit and all(sha(regular(ROOT / name)) == digest for name, digest in hashes.items()), 'Producer source changed')
++    owned()
++    descriptor = {'schema': 'SD-PHARMACY-REFILL-API-TEMPLATE-1', 'directory': str(runtime), 'files': files,
++                  'sourceFiles': plan['sourceFiles'], 'sourceCommit': commit, 'packageVersions': packages,
++                  'lockSha': sha(resolved_bytes), 'portsSha': sha(regular(HERE / 'ports-manifest.json'))}
++    with (area / 'runtime-template.json').open('x') as out:out.write(json.dumps(descriptor, indent=2) + '\n')
++    with (HERE / 'runtime-template.json').open('x') as out:out.write(json.dumps(descriptor, indent=2) + '\n')
++    print(json.dumps({'status': 'PREPARED_NOT_EXECUTED', 'workspace': str(area), 'templateSha256': sha(regular(HERE / 'runtime-template.json')),
++                      'sourceCommit': commit, 'files': len(files), 'bytes': total, 'applicationEvaluations': 0, 'DockerCalls': 0}))
++
++
++if __name__ == '__main__':main()
+diff --git a/test/api-runtime/pharmacy-refill/compile.cjs b/test/api-runtime/pharmacy-refill/compile.cjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..9e92f2940a43e52e3ec1f6844356bacfc3aaccc1
+--- /dev/null
++++ b/test/api-runtime/pharmacy-refill/compile.cjs
+@@ -0,0 +1,164 @@
++'use strict';
++// Preparation only. Compiler sees complete reviewed sources as data; no package/domain evaluation.
++const fs = require('node:fs');
++const path = require('node:path');
++const crypto = require('node:crypto');
++const ts = require('typescript');
++const [inputPath, runtime] = process.argv.slice(2);
++const need = (ok, code) => { if (!ok) throw Error(code); };
++const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
++need(process.argv.length === 4 && ts.version === '5.9.3', 'FIXED_COMPILER');
++const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
++const { ports, sources } = input;
++need(Object.keys(sources).length === 19 && ports.requiredCaseIds.length === 20 && ports.requiredSensitivityIds.length === 7, 'FIXED_SOURCE_COUNTS');
++for (const [id, digest] of Object.entries(ports.sourcePins)) need(sha(sources[id]) === digest, 'SOURCE_PIN');
++const phases = { nominal: sources }; const mutations = {};
++for (const id of ports.requiredSensitivityIds) {
++  const recipe = ports.mutationRecipes[id]; need(recipe && recipe.changes.length > 0, 'CONTROL_RECIPE');
++  const changed = { ...sources };
++  for (const edit of recipe.changes) {
++    need(Object.hasOwn(changed, edit.path) && typeof edit.before === 'string' && edit.before.length > 0 &&
++      changed[edit.path].split(edit.before).length === edit.count + 1 && Number.isSafeInteger(edit.count) && edit.count > 0, 'EXACT_CONTROL_TARGET');
++    changed[edit.path] = changed[edit.path].split(edit.before).join(edit.after);
++  }
++  const files = Object.keys(changed).filter(name => changed[name] !== sources[name]); need(files.length > 0, 'CONTROL_EMPTY');
++  need(Object.keys(recipe.expectedSourceHashes).sort().join() === files.sort().join() && files.every(name => sha(changed[name]) === recipe.expectedSourceHashes[name]), 'CONTROL_RESULT_PIN');
++  mutations[id] = { predicate: recipe.predicate, files: Object.fromEntries(files.map(name => [name, {
++    beforeSha256: sha(sources[name]), afterSha256: sha(changed[name]), before: sources[name], after: changed[name],
++  }])) };
++  phases[id] = changed;
++}
++const libraries = path.dirname(require.resolve('typescript'));
++const compilation = {}; const modules = {}; const libraryReads = {};
++function local(from, spec) {
++  const base = spec.startsWith('@/') ? 'src1/' + spec.slice(2) : spec.startsWith('.') ? path.posix.normalize(path.posix.join(path.posix.dirname(from), spec)) : null;
++  return base ? [base + '.ts', base + '/index.ts'].find(name => Object.hasOwn(sources, name)) : undefined;
++}
++const unreachableComputedEdges=[], unreachableComputedNegativeChecks=[];
++function disabledComputed(node,tree,filename,digest) {
++  const policy=ports.unreachableComputedEdge;
++  if(filename!==policy.parent||digest!==policy.parentSha256||!ts.isCallExpression(node)||!ts.isIdentifier(node.expression)||node.expression.text!=='require'||node.arguments.length!==1||ts.isStringLiteral(node.arguments[0])||node.getText(tree)!==policy.expression)return false;
++  let parent=node.parent,branch,fn;while(parent&&!ts.isSourceFile(parent)){if(!branch&&ts.isIfStatement(parent))branch=parent;if(ts.isFunctionDeclaration(parent)){fn=parent;break;}parent=parent.parent;}
++  return !!branch&&!!fn&&fn.name?.text===policy.functionName&&branch.thenStatement.pos<=node.pos&&branch.thenStatement.end>=node.end&&branch.expression.getText(tree).replace(/\s+/g,'')===policy.guard.replace(/\s+/g,'');
++}
++function computedNodes(tree){const found=[];const walk=node=>{if(ts.isCallExpression(node)&&ts.isIdentifier(node.expression)&&node.expression.text==='require'&&(node.arguments.length!==1||!ts.isStringLiteral(node.arguments[0])))found.push(node);ts.forEachChild(node,walk);};walk(tree);return found;}
++function proveDisabledPolicy(code,tree,node,filename){
++  const policy=ports.unreachableComputedEdge,digest=sha(code);need(computedNodes(tree).length===1&&disabledComputed(node,tree,filename,digest),'UNIQUE_DISABLED_COMPUTED_EDGE');
++  const changedGuard=code.replace('MONGODB_CLIENT_ENCRYPTION_OVERRIDE.length > 0','MONGODB_CLIENT_ENCRYPTION_OVERRIDE.length >= 0');
++  const changedCall=code.replace(policy.expression,policy.expression.replace(')'," + '')"));
++  const variants=[['wrong-parent',tree,node,filename+'.other',digest],['wrong-hash',tree,node,filename,'0'.repeat(64)]];
++  for(const [name,text]of[['wrong-guard',changedGuard],['wrong-expression',changedCall]]){need(text!==code,'NEGATIVE_POLICY_CHANGE');const parsed=ts.createSourceFile(filename,text,ts.ScriptTarget.ES2022,true),nodes=computedNodes(parsed);need(nodes.length===1,'NEGATIVE_POLICY_AST');variants.push([name,parsed,nodes[0],filename,digest]);}
++  for(const [id,parsed,call,parent,hash]of variants){need(!disabledComputed(call,parsed,parent,hash),'DISABLED_POLICY_NEGATIVE');unreachableComputedNegativeChecks.push({id,detected:true});}
++  unreachableComputedEdges.push({...policy,start:node.getStart(tree),length:node.getWidth(tree)});
++}
++function edges(code, filename) {
++  const result = new Set(); const tree = ts.createSourceFile(filename, code, ts.ScriptTarget.ES2022, true);
++  const walk = node => {
++    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'require') {
++      if(node.arguments.length===1&&ts.isStringLiteral(node.arguments[0]))result.add(node.arguments[0].text);
++      else{need(disabledComputed(node,tree,filename,sha(code)),'COMPUTED_REQUIRE');proveDisabledPolicy(code,tree,node,filename);}
++    }
++    need(!(ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword), 'DYNAMIC_IMPORT');
++    ts.forEachChild(node, walk);
++  }; walk(tree); return [...result];
++}
++const builtinNames = new Set(['assert','async_hooks','buffer','crypto','dns','events','fs','http','https','net','os','path','perf_hooks','process','querystring','stream','string_decoder','timers','tls','tty','url','util','zlib']);
++for (const [phase, texts] of Object.entries(phases)) {
++  const emitted = {}; const reads = {};
++  const read = name => {
++    if (name.startsWith('/closed/')) return texts[name.slice(8)];
++    if (path.dirname(name) === libraries && /^lib\.[A-Za-z0-9.]+\.d\.ts$/.test(path.basename(name))) {
++      const st = fs.lstatSync(name); need(st.isFile() && !st.isSymbolicLink(), 'LIBRARY_SHAPE');
++      const data = fs.readFileSync(name, 'utf8'); reads[path.basename(name)] = sha(data); return data;
++    }
++    return undefined;
++  };
++  const host = {
++    getSourceFile(name, lang) { const code = read(name); return code === undefined ? undefined : ts.createSourceFile(name, code, lang, true); },
++    getDefaultLibFileName: () => path.join(libraries, 'lib.es2022.full.d.ts'),
++    writeFile(name, text) { need(name.startsWith('/closed/') && name.endsWith('.js'), 'EMIT_PATH'); emitted[name.slice(8).replace(/\.js$/, '.ts')] = text; },
++    getCurrentDirectory: () => '/closed', getDirectories: () => [], fileExists: name => read(name) !== undefined, readFile: read,
++    getCanonicalFileName: name => name, useCaseSensitiveFileNames: () => true, getNewLine: () => '\n',
++    directoryExists: name => name === '/closed' || name === libraries,
++  };
++  const options = { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, experimentalDecorators: true,
++    emitDecoratorMetadata: true, esModuleInterop: true, skipLibCheck: true, noEmitOnError: false, types: [] };
++  const program = ts.createProgram(Object.keys(texts).map(name => '/closed/' + name), options, host);
++  need(program.getSyntacticDiagnostics().length === 0, 'SYNTAX_DIAGNOSTIC'); const result = program.emit();
++  const diagnostics = ts.getPreEmitDiagnostics(program).concat(result.diagnostics).map(d => ({ file: d.file?.fileName.replace('/closed/', '') ?? null,
++    code: d.code, category: d.category, start: d.start ?? null, length: d.length ?? null, message: ts.flattenDiagnosticMessageText(d.messageText, '\n') }));
++  const captured = JSON.stringify({ phase, captureStatus: 'COMPLETE', compiler: ts.version, diagnostics });
++  need(diagnostics.length <= 8192 && Buffer.byteLength(captured) <= 4 * 1024 * 1024, 'DIAGNOSTIC_CAPTURE_BOUND');
++  fs.writeFileSync(path.join(runtime, 'diagnostics-' + phase + '.json'), captured + '\n', { flag: 'wx', mode: 0o600 });
++  need(!result.emitSkipped && Object.keys(emitted).sort().join() === Object.keys(texts).sort().join(), 'WHOLE_EMISSION_INCOMPLETE');
++  const map = {}; const imports = {};
++  for (const [id, code] of Object.entries(emitted)) {
++    const filename = 'compiled/' + phase + '/' + id.replace(/\.ts$/, '.js'); fs.mkdirSync(path.dirname(path.join(runtime, filename)), { recursive: true });
++    fs.writeFileSync(path.join(runtime, filename), code, { flag: 'wx', mode: 0o444 }); map[id] = filename; imports[id] = {};
++    for (const spec of edges(code, id)) {
++      const target = local(id, spec); const native = spec.replace(/^node:/, '');
++      need(target || ports.cuts.some(cut => cut.specifier === spec) || ports.runtimeRoots.includes(spec) || builtinNames.has(native), 'APPLICATION_IMPORT_CLOSURE');
++      imports[id][spec] = target ?? spec;
++    }
++  }
++  const modelNames = Object.entries(texts).flatMap(([source, text]) => [...text.matchAll(/\bmodel(?:<[^;]+?>)?\(\s*['"]([^'"]+)['"]/g)].map(m => ({ source, name: m[1] })));
++  need(modelNames.length === 2 && modelNames.every(model => ports.models.some(actual => actual.name === model.name && actual.source === model.source)), 'MODEL_CLOSURE');
++  modules[phase] = map; compilation[phase] = { sources: Object.fromEntries(Object.entries(texts).map(([id, text]) => [id, sha(text)])), edges: imports,
++    emittedCount: 19, diagnostics, status: 'TRANSPILE_ONLY_NOT_TYPECHECKED' }; libraryReads[phase] = reads;
++}
++// Audited literal package resolution stays inside this owned install, never evaluates a package.
++const project = path.dirname(require.resolve('typescript/package.json')).replace(/\/node_modules\/typescript$/, '');
++const packageFiles = {}; const packageEdges = {}; const packageRoots = {}; const optional = []; const natives = new Set();
++function packageFile(filename) {
++  const relative = path.relative(project, filename).split(path.sep).join('/');
++  need(relative.startsWith('node_modules/') && !relative.includes('../') && /\.(js|json|cjs)$/.test(relative), 'PACKAGE_PATH');
++  const st = fs.lstatSync(filename); need(st.isFile() && !st.isSymbolicLink() && st.nlink === 1 && st.size <= 4 * 1024 * 1024, 'PACKAGE_FILE'); return relative;
++}
++function resolveFile(from, spec) {
++  need(!path.isAbsolute(spec) && !/[\\\0]/.test(spec), 'PACKAGE_SPECIFIER'); const candidates = [];
++  if (spec.startsWith('.')) candidates.push(path.resolve(path.dirname(from), spec));
++  else {
++    need(/^(?:@[A-Za-z0-9_-]+\/)?[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)*$/.test(spec), 'PACKAGE_SPECIFIER');
++    let current = path.dirname(from);
++    while (current === project || current.startsWith(project + '/')) { candidates.push(path.join(current, 'node_modules', spec)); const next = path.dirname(current); if (next === current) break; current = next; }
++  }
++  for (const base of candidates) {
++    for (const filename of [base, base + '.js', base + '.json', base + '.cjs']) if (fs.existsSync(filename) && fs.lstatSync(filename).isFile()) { packageFile(filename); return filename; }
++    const metadata = path.join(base, 'package.json');
++    if (fs.existsSync(metadata)) {
++      packageFile(metadata); const pkg = JSON.parse(fs.readFileSync(metadata, 'utf8')); const main = path.resolve(base, pkg.main || 'index.js');
++      for (const filename of [main, main + '.js', path.join(main, 'index.js')]) if (fs.existsSync(filename) && fs.lstatSync(filename).isFile()) { packageFile(filename); return filename; }
++    }
++    const index = path.join(base, 'index.js'); if (fs.existsSync(index)) { packageFile(index); return index; }
++  }
++  const error = Error('Absent package edge'); error.code = 'MODULE_NOT_FOUND'; throw error;
++}
++function visit(filename) {
++  const id = packageFile(filename); if (Object.hasOwn(packageFiles, id)) return id;
++  const code = fs.readFileSync(filename, 'utf8'); packageFiles[id] = sha(code); packageEdges[id] = {};
++  need(Object.keys(packageFiles).length <= 4096, 'PACKAGE_GRAPH_BOUND');
++  if (filename.endsWith('.json')) { JSON.parse(code); return id; }
++  for (const spec of edges(code, id)) {
++    const native = spec.replace(/^node:/, '');
++    if (builtinNames.has(native)) { natives.add(native); packageEdges[id][spec] = 'node:' + native; continue; }
++    let resolved;
++    try { resolved = resolveFile(filename, spec); }
++    catch (error) {
++      const tuple = ports.optionalAbsentEdges.find(row => row.parent === id && row.parentSha256 === packageFiles[id] && row.specifier === spec);
++      need(error.code === 'MODULE_NOT_FOUND' && tuple, 'UNDECLARED_ABSENT_EDGE');
++      optional.push(tuple); packageEdges[id][spec] = 'absent:' + spec; continue;
++    }
++    packageEdges[id][spec] = visit(resolved);
++  }
++  return id;
++}
++for (const name of ports.runtimeRoots) packageRoots[name] = visit(resolveFile(path.join(project, 'entry.js'), name));
++for(const [id,digest] of Object.entries(ports.nativeSourcePins)) need(packageFiles[id]===digest,'NATIVE_SOURCE_PROFILE');
++need(unreachableComputedEdges.length===1&&unreachableComputedNegativeChecks.length===4,'DISABLED_POLICY_COMPLETENESS');
++const plan = { schema: 'SD-PHARMACY-REFILL-API-PLAN-1', role: ports.role, sourceCommit: input.sourceCommit, lockSha: input.lockSha,
++  portsSha: input.portsSha, sourceFiles: ports.sourcePins, modules, phases: compilation, mutations,
++  requiredCaseIds: ports.requiredCaseIds, requiredSensitivityIds: ports.requiredSensitivityIds, providerCounterKeys: ports.providerCounterKeys,
++  models: ports.models, packageGraph: { files: packageFiles, edges: packageEdges, roots: packageRoots, absentOptional: optional, unreachableComputedEdges, unreachableComputedNegativeChecks, builtins: [...natives].sort() },
++  compilation: { status: 'TRANSPILE_ONLY_NOT_TYPECHECKED', compiler: ts.version, compilerSha256: sha(fs.readFileSync(require.resolve('typescript'))), libraryReads }, packageVersions: input.packageVersions };
++fs.writeFileSync(path.join(runtime, 'runtime-plan.json'), JSON.stringify(plan) + '\n', { flag: 'wx', mode: 0o600 });
++process.stdout.write(JSON.stringify({ status: 'PREPARED_NOT_EXECUTED', phases: 8, sources: 19, applicationEvaluations: 0 }) + '\n');
+diff --git a/test/api-runtime/pharmacy-refill/bootstrap.cjs b/test/api-runtime/pharmacy-refill/bootstrap.cjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..b8472939bf39981789dee6114303f13fcf231de9
+--- /dev/null
++++ b/test/api-runtime/pharmacy-refill/bootstrap.cjs
+@@ -0,0 +1,185 @@
++'use strict';
++// Trusted fixed fixture. No production/package import or connection precedes admission.
++const fs = require('node:fs');
++const path = require('node:path');
++const crypto = require('node:crypto');
++const os = require('node:os');
++const net = require('node:net');
++const tls = require('node:tls');
++const dns = require('node:dns');
++const http = require('node:http');
++const Module = require('node:module');
++const { pathToFileURL } = require('node:url');
++const { performance } = require('node:perf_hooks');
++const { types } = require('node:util');
++const ROOT = '/workspace'; const ROLE = 'pharmacy-refill-api';
++const CASE_IDS = ["ADMISSION", "AUTHENTICATION", "OPERATIONAL_AUTHORITY", "RAW_QUERY", "CALENDAR", "LIMITS", "CURSOR_CANONICAL", "CURSOR_SCOPE", "DUE_SLICE", "SCALAR_FILTERS", "RAW_ROW_SHAPES", "BSON4_POSITIVES", "BSON4_HOSTILE", "DENSE_ARRAY", "DTO_AND_HEADERS", "QUERY_AND_CATALOG", "PERSISTED_RESUME", "PAUSE_AND_COMPATIBILITY", "UPDATE_AUTHORITY", "SENSITIVITY_AND_RESTORATION"];
++const CONTROL_IDS = ["OWNER_AND_SCALAR_FENCES_REMOVED", "QUERY_ROW_BOUND_REMOVED", "RAW_QUERY_ALLOWLIST_WEAKENED", "PATIENT_FIELD_LEAKED", "UNDEFINED_RESUME_RESTORED", "SYMBOL_GETTER_GUARD_REGRESSED", "DENSE_ARRAY_GUARD_REGRESSED"];
++const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
++function fail(code) { const error = Error(code); error.fixtureCode = code; throw error; }
++const need = (ok, code) => { if (!ok) fail(code); };
++const same = (a,b) => JSON.stringify(a) === JSON.stringify(b);
++const plain = value => value !== null && typeof value === 'object' && !types.isProxy(value) && [Object.prototype,null].includes(Object.getPrototypeOf(value));
++const exact = (value,keys) => plain(value) && same(Object.keys(value).sort(),[...keys].sort());
++const latch = { unexpected:0, expected:null, observed:0 };
++function reject(code) { if(latch.expected===code)latch.observed++;else latch.unexpected=Math.min(2147483647,latch.unexpected+1);fail(code); }
++const admit = (ok,code) => { if(!ok)reject(code); };
++async function expectAdmission(code, action) {
++  need(latch.expected===null,'EXPECTED_ADMISSION_NESTING'); const before=latch.unexpected;latch.expected=code;latch.observed=0;let error;
++  try { await action(); } catch(e) { error=e; } finally { latch.expected=null; }
++  need(error?.fixtureCode===code && latch.observed===1 && latch.unexpected===before,'EXPECTED_ADMISSION_BOUNDARY');
++}
++async function expectCaughtAdmission(code,action){
++  need(latch.expected===null,'EXPECTED_ADMISSION_NESTING');const before=latch.unexpected;latch.expected=code;latch.observed=0;let value,error;
++  try{value=await action();}catch(caught){error=caught;}finally{latch.expected=null;}
++  need(error===undefined&&value===null&&latch.observed===1&&latch.unexpected===before,'EXPECTED_NATIVE_CAUGHT_ADMISSION');
++}
++function regular(root, relative) {
++  need(typeof relative==='string' && relative && !path.isAbsolute(relative) && !/[\\\0\r\n]/.test(relative) && relative.split('/').every(p=>p&&p!=='.'&&p!=='..'),'FILE_PATH');
++  let current=root;for(const part of relative.split('/')) {current=path.join(current,part);need(!fs.lstatSync(current).isSymbolicLink(),'FILE_SYMLINK');}
++  const st=fs.lstatSync(current);need(st.isFile()&&st.nlink===1&&st.size<=32*1024*1024,'FILE_SHAPE');return fs.readFileSync(current);
++}
++function validateAdmissionData(manifest,plan,ports,observed) {
++  need(exact(manifest,['schema','runId','role','database','replicaSet','mongoId','templateSha','files','lockSha','portsSha','sourceCommit']) && manifest.schema==='SD-PHARMACY-REFILL-API-RUN-1' && manifest.role===ROLE &&
++    /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(manifest.runId) &&
++    manifest.database==='sd_api_'+manifest.runId.replaceAll('-','') && manifest.replicaSet==='sd_rs_'+manifest.runId.replaceAll('-','') && /^[a-f0-9]{64}$/.test(manifest.mongoId) && /^[a-f0-9]{40}$/.test(manifest.sourceCommit),'RUN_BINDING');
++  need(plain(manifest.files)&&plain(observed)&&same(Object.keys(manifest.files).sort(),Object.keys(observed).sort()),'FILE_SET');let total=0;
++  for(const [name,bytes] of Object.entries(observed)) {need(Buffer.isBuffer(bytes)&&bytes.length<=32*1024*1024&&sha(bytes)===manifest.files[name]&&!/(^|\/)\.env(?:\.|$)|\.node$|service.?account.*\.json$/i.test(name),'FILE_HASH');total+=bytes.length;}
++  need(total<=256*1024*1024&&Object.keys(observed).length<=20000&&['bootstrap.cjs','scenario.cjs','runtime-plan.json','ports-manifest.json','package-lock.json','network-admission.mjs'].every(name=>Object.hasOwn(observed,name)),'FILE_BOUND');
++  need(sha(observed['ports-manifest.json'])===manifest.portsSha&&sha(observed['package-lock.json'])===manifest.lockSha&&plan.schema==='SD-PHARMACY-REFILL-API-PLAN-1'&&plan.role===ROLE&&ports.role===ROLE&&ports.schema==='SD-PHARMACY-REFILL-PORTS-1'&&plan.sourceCommit===manifest.sourceCommit&&plan.lockSha===manifest.lockSha&&plan.portsSha===manifest.portsSha,'PLAN_BINDING');
++  need(same(ports.requiredCaseIds,CASE_IDS)&&same(plan.requiredCaseIds,CASE_IDS)&&same(ports.requiredSensitivityIds,CONTROL_IDS)&&same(plan.requiredSensitivityIds,CONTROL_IDS)&&same(plan.models,ports.models)&&ports.models.length===2&&Object.keys(ports.sourcePins).length===19&&ports.cuts.length===3,'FIXED_COUNTS');
++  need(same(plan.providerCounterKeys,['logger','unexpected'])&&plan.compilation.status==='TRANSPILE_ONLY_NOT_TYPECHECKED'&&plan.compilation.compiler==='5.9.3'&&same(Object.keys(plan.modules).sort(),['nominal',...CONTROL_IDS].sort()),'PLAN_PROFILE');
++  for(const [id,digest] of Object.entries(ports.sourcePins))need(plan.sourceFiles[id]===digest&&plan.phases.nominal.sources[id]===digest,'SOURCE_PIN');
++  for(const [phase,map] of Object.entries(plan.modules)) {need(Object.keys(map).length===19&&plan.phases[phase].emittedCount===19,'WHOLE_MODULES');for(const [id,file] of Object.entries(map))need(Object.hasOwn(ports.sourcePins,id)&&file==='compiled/'+phase+'/'+id.replace(/\.ts$/,'.js')&&Object.hasOwn(observed,file),'COMPILED_BINDING');}
++  for(const [id,digest] of Object.entries(ports.nativeSourcePins))need(plan.packageGraph.files[id]===digest&&sha(observed[id])===digest,'NATIVE_SOURCE_PROFILE');
++  need(Object.keys(plan.packageGraph.files).length>0&&Object.keys(plan.packageGraph.files).length<=4096,'PACKAGE_BOUND');
++  for(const [id,digest] of Object.entries(plan.packageGraph.files))need(Object.hasOwn(observed,id)&&sha(observed[id])===digest,'PACKAGE_PIN');
++  for(const row of plan.packageGraph.absentOptional)need(ports.optionalAbsentEdges.some(x=>same(x,row))&&plan.packageGraph.files[row.parent]===row.parentSha256,'OPTIONAL_EDGE_BINDING');
++  need(plan.packageGraph.unreachableComputedEdges.length===1&&plan.packageGraph.unreachableComputedNegativeChecks.length===4&&same(plan.packageGraph.unreachableComputedNegativeChecks.map(row=>row.id),['wrong-parent','wrong-hash','wrong-guard','wrong-expression'])&&plan.packageGraph.unreachableComputedNegativeChecks.every(row=>exact(row,['id','detected'])&&row.detected===true),'DISABLED_EDGE_COUNT');
++  const edge=plan.packageGraph.unreachableComputedEdges[0],{start,length,...policy}=edge;
++  need(same(policy,ports.unreachableComputedEdge)&&plan.packageGraph.files[edge.parent]===edge.parentSha256&&Number.isSafeInteger(start)&&start>=0&&length===edge.expression.length&&observed[edge.parent].toString('utf8').slice(start,start+length)===edge.expression,'DISABLED_EDGE_BINDING');
++  return manifest;
++}
++function validateEnvironment(env,runtime) {
++  const keys=['PATH','NODE_VERSION','YARN_VERSION','HOME','HOSTNAME','NODE_ENV','APP_ROLE','APP_RUN_ID','APP_MANIFEST_SHA'];
++  need(plain(env)&&Object.keys(env).every(key=>keys.includes(key))&&!Object.hasOwn(env,'MONGODB_CLIENT_ENCRYPTION_OVERRIDE')&&env.NODE_ENV==='test'&&env.APP_ROLE===ROLE&&runtime.cwd===ROOT&&runtime.version==='v22.23.4'&&runtime.platform==='linux'&&runtime.permission===true,'ENVIRONMENT');
++}
++function closedNetwork() {
++  const ports=new Set(),connect=net.Socket.prototype.connect,listen=net.Server.prototype.listen;
++  net.Socket.prototype.connect=function(...args) {let value=args[0];if(Array.isArray(value))value=value[0];const options=plain(value)?value:{port:value,host:typeof args[1]==='string'?args[1]:'localhost'};
++    admit(!options.path&&['localhost','127.0.0.1','::1'].includes(options.host||'localhost')&&Number.isInteger(Number(options.port))&&(Number(options.port)===27017||ports.has(Number(options.port))),'DESTINATION_DENIED');return connect.apply(this,args);};
++  net.Server.prototype.listen=function(){reject('DOMAIN_LISTEN_DENIED');};tls.connect=()=>reject('TLS_DENIED');const lookup=dns.lookup;
++  dns.lookup=(host,...args)=>{admit(['localhost','127.0.0.1','::1'].includes(host),'DNS_DENIED');return lookup.call(dns,host,...args);};
++  for(const name of ['resolve','resolve4','resolve6','resolveSrv','resolveTxt','reverse'])dns[name]=()=>reject('DNS_DENIED');return {ports,listen};
++}
++function loader(manifest,plan,ports) {
++  const resolve=Module._resolveFilename,load=Module._load,builtins=new Set(Module.builtinModules.map(s=>s.replace(/^node:/,'')));
++  const denied=new Set(['child_process','worker_threads','cluster','vm','inspector','repl','module']);let phase='nominal',cuts=Object.freeze({}),imports=0,lookups=0;const optionalProbes=new Map();
++  const canonical=(request,parent)=>{
++    if(request.startsWith('@/')) {const base='src1/'+request.slice(2);return [base+'.ts',base+'/index.ts'].find(id=>Object.hasOwn(ports.sourcePins,id));}
++    if(request.startsWith('.')&&parent?.filename?.startsWith(ROOT+'/compiled/')) {const source=parent.filename.slice((ROOT+'/compiled/').length).split('/').slice(1).join('/').replace(/\.js$/,'.ts');const base=path.posix.normalize(path.posix.join(path.posix.dirname(source),request));return [base+'.ts',base+'/index.ts'].find(id=>Object.hasOwn(ports.sourcePins,id));}
++  };
++  function missing(request,parent) {const parentId=parent?.filename?.startsWith(ROOT+'/')?parent.filename.slice(ROOT.length+1):'';const tuple=plan.packageGraph.absentOptional.find(row=>row.parent===parentId&&row.specifier===request);
++    if(!tuple)return false;admit(manifest.files[parentId]===tuple.parentSha256,'OPTIONAL_PARENT_DRIFT');const key=parentId+'\0'+request;optionalProbes.set(key,(optionalProbes.get(key)||0)+1);try{resolve.call(Module,request,parent,false);}catch(error){if(error.code==='MODULE_NOT_FOUND')throw error;throw error;}reject('OPTIONAL_UNEXPECTED_PRESENT');}
++  const driverEnvironment=()=>admit(!Object.hasOwn(process.env,'MONGODB_CLIENT_ENCRYPTION_OVERRIDE'),'ENCRYPTION_OVERRIDE_ENV');
++  Module._resolveFilename=function(request,parent,isMain,options) {driverEnvironment();lookups++;
++    const native=request.replace(/^node:/,'');if(builtins.has(native)){admit(!denied.has(native),'BUILTIN_DENIED');return resolve.call(this,request,parent,isMain,options);}
++    missing(request,parent);const id=canonical(request,parent);let filename;
++    try {filename=id?path.join(ROOT,plan.modules[id.includes('/model/')?'nominal':phase][id]):resolve.call(this,request,parent,isMain,options);}catch{reject('UNDECLARED_MODULE');}
++    const relative=path.relative(ROOT,filename).split(path.sep).join('/');admit(!relative.startsWith('../')&&Object.hasOwn(manifest.files,relative)&&(!relative.startsWith('node_modules/')||Object.hasOwn(plan.packageGraph.files,relative)),'UNDECLARED_MODULE');return filename;
++  };
++  Module._load=function(request,parent,isMain) {driverEnvironment();lookups++;const native=request.replace(/^node:/,'');admit(!builtins.has(native)||!denied.has(native),'BUILTIN_DENIED');if(Object.hasOwn(cuts,request))return cuts[request];return load.call(this,request,parent,isMain);};
++  return {phase(name,bindings){admit(name==='nominal'||CONTROL_IDS.includes(name),'PHASE_DENIED');phase=name;cuts=Object.freeze({...bindings});for(const filename of Object.keys(require.cache))if(filename.startsWith(ROOT+'/compiled/')&&!filename.includes('/model/'))delete require.cache[filename];},
++    get(id){admit(Object.hasOwn(ports.sourcePins,id),'DOMAIN_ROOT_DENIED');imports++;return require(path.join(ROOT,plan.modules[id.includes('/model/')?'nominal':phase][id]));},
++    get name(){return phase;},get imports(){return imports;},get lookups(){return lookups;},get optionalProbes(){return [...optionalProbes].map(([key,count])=>{const [parent,specifier]=key.split('\0');return{parent,specifier,count};});}};
++}
++let stage='ADMISSION';let activeCheckpoint=null;
++async function main(){
++  validateEnvironment({...process.env},{cwd:process.cwd(),version:process.version,platform:process.platform,permission:!!process.permission});
++  const admission=regular(ROOT,'.admission.json');need(sha(admission)===process.env.APP_MANIFEST_SHA,'ADMISSION_HASH');const manifest=JSON.parse(admission),observed={};
++  need(process.env.APP_RUN_ID===manifest.runId,'RUN_ENVIRONMENT');const walk=(directory,prefix='')=>{for(const name of fs.readdirSync(directory)){const full=path.join(directory,name),st=fs.lstatSync(full);need(!st.isSymbolicLink(),'FILE_LINK');if(st.isDirectory())walk(full,prefix+name+'/');else if(prefix+name!=='.admission.json')observed[prefix+name]=regular(ROOT,prefix+name);}};walk(ROOT);
++  const ports=JSON.parse(observed['ports-manifest.json']),plan=JSON.parse(observed['runtime-plan.json']);validateAdmissionData(manifest,plan,ports,observed);
++  const networkModule=await import(pathToFileURL(ROOT+'/network-admission.mjs').href);
++  const networkAdmission=networkModule.admitNetwork({list:()=>fs.readdirSync('/sys/class/net'),entryType:p=>networkModule.entryKind(fs.lstatSync(p)),readText:p=>fs.readFileSync(p,'utf8'),addresses:os.networkInterfaces,report:()=>fail('NETWORK_ADMISSION')},manifest.runId);
++  for(const fn of [()=>fs.readFileSync('/etc/passwd'),()=>fs.writeFileSync(ROOT+'/unadmitted','x')]){let denied=false;try{fn();}catch(error){denied=error.code==='ERR_ACCESS_DENIED';}need(denied,'FILESYSTEM_CANARY');}
++  need(!process.permission.has('child')&&!process.permission.has('worker')&&!process.permission.has('addon'),'PROCESS_PERMISSION');
++  const [canary]=await Promise.allSettled([fetch('http://192.0.2.1:8080/',{signal:AbortSignal.timeout(1500)})]);need(networkModule.egressCanaryBlocked(canary),'EGRESS_CANARY');
++  const network=closedNetwork(),domain=loader(manifest,plan,ports);
++  require('reflect-metadata');const express=require('express'),jwt=require('jsonwebtoken'),typedi=require('typedi'),mongoose=require('mongoose');
++  need(mongoose.version==='6.13.8'&&mongoose.modelNames().length===0,'NATIVE_PROFILE');mongoose.set('autoIndex',false);mongoose.set('autoCreate',false);mongoose.set('bufferCommands',false);
++  const native=mongoose.mongo,secret=crypto.randomBytes(32).toString('hex'),commands=[],sessions=new Set(),loggerRecords=[],dueReads=[];
++  const names=new Set(ports.models.map(m=>m.collection));let current,commandBytes=0,bootstrapWindow=false,connectCalls=0,openUriCalls=0,clientConnectCalls=0,admittedClient;
++  const counters={logger:0,get unexpected(){return latch.unexpected;}};
++  class ClosedPharmacyCustomerService{}
++  for(const method of ['createCustomer','getCustomers','updateNotes','getLink','assertLinked','ensureLinked'])ClosedPharmacyCustomerService.prototype[method]=()=>reject('PHARMACY_CUSTOMER_DEPENDENCY_DENIED');
++  const logger=Object.freeze(Object.fromEntries(['error','warn','info','debug'].map(method=>[method,(...args)=>{
++    admit(args.length>=1&&args.length<=2&&typeof args[0]==='string'&&args[0].length<=512&&(args.length===1||(plain(args[1])&&Reflect.ownKeys(args[1]).length===0)),'LOGGER_SHAPE');admit(loggerRecords.length<4096,'LOGGER_BOUND');loggerRecords.push(args[0]);counters.logger++;
++  }])));
++  const cuts={'@/config/config':{CONFIG:Object.freeze({JWT_SECRET_KEY:secret})},'@/services/logger':{__esModule:true,default:logger},'@/modules/pharmacyCustomers/services':{PharmacyCustomerService:ClosedPharmacyCustomerService}};
++  const fixedConnection=mongoose.connection,uri='mongodb://127.0.0.1:27017/'+manifest.database+'?replicaSet='+manifest.replicaSet+'&directConnection=true';
++  const connectOptions=Object.freeze({autoCreate:false,autoIndex:false,bufferCommands:false,directConnection:true,retryReads:false,maxPoolSize:2,serverSelectionTimeoutMS:2000,connectTimeoutMS:1000,socketTimeoutMS:5000,waitQueueTimeoutMS:1000,monitorCommands:true});
++  const optionKeys=Reflect.ownKeys(connectOptions);
++  function fixedOptions(value){if(!plain(value))return false;const keys=Reflect.ownKeys(value);return keys.length===optionKeys.length&&keys.every(k=>typeof k==='string'&&optionKeys.includes(k))&&optionKeys.every(k=>{const d=Object.getOwnPropertyDescriptor(value,k);return d&&'value'in d&&d.enumerable&&d.value===connectOptions[k];});}
++  const connect=mongoose.connect.bind(mongoose);mongoose.connect=(value,options)=>{admit(value===uri,'URI_DENIED');admit(fixedOptions(options),'CONNECTION_OPTIONS_DENIED');admit(bootstrapWindow&&connectCalls===0,'CONNECT_WINDOW_DENIED');connectCalls++;return connect(value,options);};
++  mongoose.createConnection=()=>reject('SECOND_CONNECTION');const openUri=mongoose.Connection.prototype.openUri;
++  mongoose.Connection.prototype.openUri=function(value,options){admit(this===fixedConnection,'CONNECTION_IDENTITY_DENIED');admit(value===uri,'URI_DENIED');admit(fixedOptions(options),'CONNECTION_OPTIONS_DENIED');admit(bootstrapWindow&&openUriCalls===0,'CONNECT_WINDOW_DENIED');openUriCalls++;return openUri.call(this,value,options);};
++  const clientConnect=native.MongoClient.prototype.connect,clientDb=native.MongoClient.prototype.db,dbCollection=native.Db.prototype.collection,startSession=native.MongoClient.prototype.startSession,dbCommand=native.Db.prototype.command;
++  function knownClient(client){return client===admittedClient&&client===fixedConnection.getClient();}
++  native.MongoClient.prototype.startSession=function(...args){admit(knownClient(this),'CLIENT_IDENTITY_DENIED');const session=startSession.apply(this,args);sessions.add(session);return session;};
++  native.MongoClient.prototype.db=function(name,options){admit(knownClient(this),'CLIENT_IDENTITY_DENIED');admit((name||this.options?.dbName)===manifest.database,'DATABASE_DENIED');return clientDb.call(this,name,options);};
++  native.Db.prototype.collection=function(name,options){admit(knownClient(this.s?.client)&&this.databaseName===manifest.database&&names.has(name),'COLLECTION_DENIED');return dbCollection.call(this,name,options);};
++  mongoose.Connection.prototype.useDb=function(){reject('SECOND_CONNECTION');};
++  const metadataCursors=new Map();
++  function commandAdmission(command){const name=Object.keys(command)[0];const admin=['hello','ismaster','isMaster','ping','endSessions','commitTransaction','abortTransaction'].includes(name);if(admin)return;
++    if(name==='explain'){admit(command.explain?.find==='pharmacysubscriptions'&&command.verbosity==='executionStats'&&command.maxTimeMS===2000,'EXPLAIN_DENIED');return;}
++    if(name==='listCollections'){admit(command.nameOnly===false&&command.cursor?.batchSize===16,'CATALOG_COMMAND_DENIED');return;}
++    if(name==='getMore'){const key=command.getMore.toString();admit(metadataCursors.get(key)===command.collection,'CURSOR_DENIED');return;}
++    if(name==='killCursors'){admit(Array.isArray(command.cursors)&&command.cursors.every(id=>metadataCursors.get(id.toString())===command.killCursors),'CURSOR_DENIED');return;}
++    admit(['find','insert','update','delete','create','createIndexes','listIndexes','findAndModify'].includes(name)&&names.has(command[name]),'COMMAND_DENIED');
++    if(name==='listIndexes')admit(command.includeIndexBuildInfo===true&&command.cursor?.batchSize===16,'CATALOG_COMMAND_DENIED');
++  }
++  native.Db.prototype.command=function(command,options,...rest){admit(knownClient(this.s?.client)&&this.databaseName===manifest.database,'DATABASE_DENIED');commandAdmission(command);if(options?.session)admit(sessions.has(options.session),'SESSION_DENIED');return dbCommand.call(this,command,options,...rest);};
++  native.MongoClient.prototype.connect=function(...args){admit(this===fixedConnection.getClient()&&(!admittedClient||admittedClient===this),'CLIENT_IDENTITY_DENIED');admit(this.s?.url===uri,'DRIVER_URI_DENIED');
++    const supplied=Object.getOwnPropertyDescriptor(this,'options');admit(!supplied||'value'in supplied,'DRIVER_OPTIONS_DENIED');const value=supplied?supplied.value:this.options;admit(plain(value),'DRIVER_OPTIONS_DENIED');const effective={dbName:manifest.database,replicaSet:manifest.replicaSet,directConnection:true,retryReads:false,maxPoolSize:2,minPoolSize:0,serverSelectionTimeoutMS:2000,connectTimeoutMS:1000,socketTimeoutMS:5000,waitQueueTimeoutMS:1000,monitorCommands:true};
++    for(const [key,expected]of Object.entries(effective)){const d=Object.getOwnPropertyDescriptor(value,key);admit(d&&'value'in d&&d.value===expected,'DRIVER_OPTIONS_DENIED');}
++    for(const key of ['credentials','autoEncryption','proxyHost','proxyPort']){const d=Object.getOwnPropertyDescriptor(value,key);admit(!d||('value'in d&&d.value===undefined),'DRIVER_OPTIONS_DENIED');}
++    for(const key of ['tls','ssl']){const d=Object.getOwnPropertyDescriptor(value,key);admit(!d||('value'in d&&d.value!==true),'DRIVER_OPTIONS_DENIED');}
++    const compression=Object.getOwnPropertyDescriptor(value,'compressors');admit(compression&&'value'in compression,'DRIVER_OPTIONS_DENIED');const array=compression.value;
++    admit(Array.isArray(array)&&!types.isProxy(array)&&Object.getPrototypeOf(array)===Array.prototype,'DRIVER_OPTIONS_DENIED');const keys=Reflect.ownKeys(array),entry=Object.getOwnPropertyDescriptor(array,'0'),length=Object.getOwnPropertyDescriptor(array,'length');admit(keys.length===2&&keys[0]==='0'&&keys[1]==='length'&&entry&&'value'in entry&&entry.enumerable&&entry.value==='none'&&length&&'value'in length&&length.value===1,'DRIVER_OPTIONS_DENIED');
++    admit(bootstrapWindow&&clientConnectCalls===0,'CONNECT_WINDOW_DENIED');admittedClient=this;clientConnectCalls++;
++    this.on('commandStarted',event=>{const command=event.command,name=event.commandName;const admin=['hello','ismaster','isMaster','ping','endSessions','commitTransaction','abortTransaction'].includes(name);admit(event.databaseName===manifest.database||(event.databaseName==='admin'&&admin),'COMMAND_DATABASE');commandAdmission(command);
++      const bytes=native.BSON.serialize(command);commandBytes+=bytes.length;admit(commands.length<ports.limits.commandRecords&&commandBytes<=ports.limits.commandBytes,'COMMAND_BOUND');commands.push({name,phase:domain.name,database:event.databaseName,command:native.BSON.deserialize(bytes)});
++    });return clientConnect.apply(this,args);
++  };
++  const queryExec=mongoose.Query.prototype.exec;
++  mongoose.Query.prototype.exec=async function(...args){const isDue=this.model?.modelName==='PharmacySubscription'&&this.op==='find'&&!!this.getFilter().$expr;const rows=await queryExec.apply(this,args);if(!isDue)return rows;
++    dueReads.push({phase:domain.name,count:rows.length,filter:this.getFilter(),projection:this.projection(),options:this.getOptions()});need(dueReads.length<=2048,'DUE_READ_BOUND');return current?.replyFault?current.replyFault(rows):rows;
++  };
++  async function endPhase(){if(current){network.ports.delete(current.port);current.server.closeAllConnections();await new Promise((resolve,reject)=>current.server.close(error=>error?reject(error):resolve()));current=undefined;}}
++  async function phase(name='nominal'){const priorStage=stage;await endPhase();typedi.Container.reset();domain.phase(name,cuts);stage='ROUTER_IMPORT';typedi.Container.set(ClosedPharmacyCustomerService,new ClosedPharmacyCustomerService());
++    const router=domain.get('src1/modules/pharmacySubscriptions/routes/index.ts').default,auth=domain.get('src1/modules/middleware/auth.ts'),errorHandler=domain.get('src1/modules/middleware/errorHandler.ts').errorHandler;
++    const service=typedi.Container.get(domain.get('src1/modules/pharmacySubscriptions/services/index.ts').PharmacySubscriptionService),repository=typedi.Container.get(domain.get('src1/modules/pharmacySubscriptions/repository/index.ts').PharmacySubscriptionRepository),Controller=domain.get('src1/modules/pharmacySubscriptions/controller/index.ts').PharmacySubscriptionController;
++    const app=express();app.disable('x-powered-by');app.use(express.json({limit:'16kb'}));app.use('/api/v1/pharmacy-subscriptions',auth.authenticate,router);app.use(errorHandler);
++    need(same(mongoose.modelNames().sort(),ports.models.map(m=>m.name).sort())&&ports.models.every(m=>mongoose.model(m.name).db===fixedConnection&&mongoose.model(m.name).collection.name===m.collection),'MODEL_CLOSURE');
++    const server=http.createServer(app);await new Promise((resolve,reject)=>{server.once('error',reject);network.listen.call(server,{host:'127.0.0.1',port:0},resolve);});const port=server.address().port;network.ports.add(port);
++    current={name,server,port,app,service,repository,controller:new Controller(),validation:domain.get('src1/modules/pharmacySubscriptions/validation/index.ts'),replyFault:null,
++      token:(id,pharmacyId,extra={})=>jwt.sign({_id:String(id),pharmacyId:String(pharmacyId),userType:'pharmacy',...extra},secret,Object.hasOwn(extra,'exp')?{}:{expiresIn:'5m'}),wrongKey:(id,pharmacyId)=>jwt.sign({_id:String(id),pharmacyId:String(pharmacyId),userType:'pharmacy'},crypto.randomBytes(32).toString('hex'),{expiresIn:'5m'})};stage=priorStage;return current;
++  }
++  async function catalog(){const start=performance.now(),session=admittedClient.startSession({causalConsistency:false});let bytes=0,count=0,calls=0;const owned=[];
++    const call=async command=>{need(++calls<=12&&performance.now()-start<5000,'CATALOG_BOUND');const result=await fixedConnection.db.command(command,{session});bytes+=native.BSON.calculateObjectSize(result);need(bytes<=262144,'CATALOG_BOUND');return result;};
++    const rows=async(command,allowed)=>{let reply=await call(command),result=[];for(;;){need(reply.cursor&&typeof reply.cursor.ns==='string'&&reply.cursor.ns.startsWith(manifest.database+'.'),'CATALOG_NAMESPACE');const collection=reply.cursor.ns.slice(manifest.database.length+1);need(allowed.includes(collection),'CATALOG_NAMESPACE');const batch=reply.cursor.firstBatch??reply.cursor.nextBatch;need(Array.isArray(batch),'CATALOG_BATCH');result.push(...batch);count+=batch.length;need(count<=64,'CATALOG_BOUND');const id=reply.cursor.id;need(id&&typeof id.toString==='function','CATALOG_CURSOR');if(id.toString()==='0')break;metadataCursors.set(id.toString(),collection);owned.push([id,collection]);reply=await call({getMore:id,collection,batchSize:16,maxTimeMS:1000});metadataCursors.delete(id.toString());}return result;};
++    try{const collections=await rows({listCollections:1,filter:{},nameOnly:false,cursor:{batchSize:16},maxTimeMS:1000},['$cmd.listCollections']);need(collections.length===2&&new Set(collections.map(row=>row.name)).size===2&&collections.every(row=>row.type==='collection'&&names.has(row.name)&&row.info?.uuid instanceof native.Binary&&row.info.uuid.sub_type===4&&row.info.uuid.position===16&&row.info.uuid.buffer.length===16&&plain(row.options)&&(!row.options.collation||row.options.collation.locale==='simple')),'CATALOG_COLLECTION');const indexes={};
++      for(const name of names){const raw=await rows({listIndexes:name,includeIndexBuildInfo:true,cursor:{batchSize:16},maxTimeMS:1000},[name]);need(raw.every(row=>exact(row,['spec'])&&plain(row.spec)&&Object.keys(row.spec).every(key=>['v','key','name','unique','collation','ns'].includes(key))&&row.spec.v===2&&typeof row.spec.name==='string'&&plain(row.spec.key)&&Object.values(row.spec.key).every(value=>value===1||value===-1)&&(!row.spec.collation||row.spec.collation.locale==='simple')),'CATALOG_FINISHED_INDEX');const specs=raw.map(row=>row.spec);for(const expected of ports.indexes.filter(i=>i.collection===name)){const found=specs.filter(i=>i.name===expected.name);need(found.length===1&&same(found[0].key,expected.key)&&(expected.name==='_id_'?found[0].unique!==false:expected.unique?found[0].unique===true:found[0].unique!==true),'CATALOG_INDEX');}need(!specs.some(i=>same(i.key,{pharmacyId:1,isActive:1,nextRefillDate:1,_id:1})),'NO_CAPACITY_INDEX_CLAIM');indexes[name]=specs;}return {collections,indexes};
++    }finally{for(const [id,collection]of owned)if(metadataCursors.has(id.toString())){await call({killCursors:collection,cursors:[id]});metadataCursors.delete(id.toString());}await session.endSession();need(session.hasEnded&&metadataCursors.size===0&&performance.now()-start<5000,'CATALOG_CLEANUP');}
++  }
++  let result,primary;
++  try{await phase();stage='OWNED_DATABASE_CONNECT';bootstrapWindow=true;try{await mongoose.connect(uri,{...connectOptions});}finally{bootstrapWindow=false;}need(connectCalls===1&&openUriCalls===1&&clientConnectCalls===1&&knownClient(fixedConnection.getClient()),'SOLE_CLIENT');
++    const hello=await fixedConnection.db.command({hello:1});need(hello.isWritablePrimary&&hello.setName===manifest.replicaSet,'OWNED_REPLICA_SET');for(const m of ports.models)await fixedConnection.db.createCollection(m.collection);for(const index of ports.indexes.filter(i=>i.name!=='_id_'))await fixedConnection.db.collection(index.collection).createIndex(index.key,{name:index.name});
++    stage='API_SCENARIOS';result=await require(ROOT+'/scenario.cjs').run({get current(){return current;},phase,catalog,ports,plan,manifest,observed,validateAdmissionData,validateEnvironment,expectAdmission,domain,network,mongoose,native,http,fs,performance,need,sha,same,crypto,jwt,counters,commands,dueReads,loggerRecords,sessions,uri,connectOptions,connection:fixedConnection,get client(){return admittedClient;},get nativeEntries(){return{connectCalls,openUriCalls,clientConnectCalls};},checkpoint:id=>{need(id===null||CASE_IDS.includes(id)||CONTROL_IDS.includes(id),'CHECKPOINT_ID');activeCheckpoint=id;}});
++  }catch(error){primary=error;}
++  try{await endPhase();}catch(error){primary??=error;}for(const session of sessions)if(!session.hasEnded)try{await session.endSession();}catch(error){primary??=error;}try{await mongoose.disconnect();}catch(error){primary??=error;}
++  if(primary)throw primary;need(result&&result.failed===0&&result.skipped===0&&latch.unexpected===0,'SCENARIO_RESULT');
++  process.stdout.write(JSON.stringify({schema:'SD-PHARMACY-REFILL-API-RESULT-1',runId:manifest.runId,role:ROLE,database:manifest.database,replicaSet:manifest.replicaSet,sourceCommit:manifest.sourceCommit,domainScope:'FOCUSED_PHARMACY_REFILL',admissionPassed:true,networkAdmission,egressBlocked:true,filesystemCanariesPassed:true,failed:0,skipped:0,cases:result.cases,sensitivity:result.sensitivity,providerSummary:counters})+'\n');
++}
++if(require.main===module)main().catch(error=>{process.stdout.write(JSON.stringify({schema:'SD-PHARMACY-REFILL-API-FAILURE-1',stage,code:typeof error?.fixtureCode==='string'?error.fixtureCode:stage==='API_SCENARIOS'&&activeCheckpoint?activeCheckpoint:'RUNTIME_FIXTURE_FAILED',errorType:'Error',fieldNames:[],failed:1,skipped:0})+'\n');process.exitCode=1;});
++module.exports={validateAdmissionData,validateEnvironment,CASE_IDS,CONTROL_IDS,sha,need,exact,same};
+diff --git a/test/api-runtime/pharmacy-refill/scenario.cjs b/test/api-runtime/pharmacy-refill/scenario.cjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..be232ff11287d2cbeaceab9e1ff4a549914726d3
+--- /dev/null
++++ b/test/api-runtime/pharmacy-refill/scenario.cjs
+@@ -0,0 +1,68 @@
++'use strict';
++// Actual isolated HTTP/ODM/native persistence. Hostile reply ports run only AFTER a real due query.
++async function run(ctx){
++  const {mongoose,native,need,same,http,crypto}=ctx,cases=[],sensitivity=[];const O=value=>new mongoose.Types.ObjectId(value),id=n=>n.toString(16).padStart(24,'0');
++  const A=id(1),B=id(2),ACTOR=id(3),USER=id(4),MEDICINE=id(5),ORDER=id(6),BASE='/api/v1/pharmacy-subscriptions';
++  const col=name=>ctx.connection.db.collection(name),current=()=>ctx.current;let seeded=[];
++  const bson=value=>native.BSON.serialize({value}).toString('hex');
++  async function snapshot(){const out={};for(const name of ['pharmacies','pharmacysubscriptions'])out[name]=await col(name).find({}).sort({_id:1}).toArray();return out;}
++  async function request(method,url,body,options={}){return new Promise((resolve,reject)=>{const text=body===undefined?null:JSON.stringify(body);const token=Object.hasOwn(options,'token')?options.token:current().token(ACTOR,A);const req=http.request({host:'127.0.0.1',port:current().port,path:BASE+url,method,agent:false,headers:{...(token?{Authorization:'Bearer '+token}:{}),...(text?{'Content-Type':'application/json','Content-Length':Buffer.byteLength(text)}:{})}},res=>{const buffers=[];let size=0;res.on('data',chunk=>{size+=chunk.length;if(size>1048576){req.destroy(Error('HTTP_REPLY_BOUND'));return;}buffers.push(chunk);});res.on('error',reject);res.on('end',()=>{const raw=Buffer.concat(buffers).toString();let data;try{data=JSON.parse(raw);}catch{data=null;}resolve({status:res.statusCode,headers:res.headers,body:data,raw});});});req.on('error',reject);req.setTimeout(10000,()=>req.destroy(Error('HTTP_TIMEOUT')));if(text)req.write(text);req.end();});}
++  async function read(url='/due?through=20260131',options={}){const before=await snapshot(),reads=ctx.dueReads.length,commands=ctx.commands.length,unexpected=ctx.counters.unexpected;const response=await request('GET',url,undefined,options);const after=await snapshot();need(bson(before)===bson(after)&&ctx.counters.unexpected===unexpected,'DUE_NO_WRITES_OR_PROVIDER');return{...response,reads:ctx.dueReads.slice(reads),commands:ctx.commands.slice(commands)};}
++  async function seed(count=6){need(count>=1&&count<=100,'SEED_BOUND');for(const name of ['pharmacysubscriptions','pharmacies'])await col(name).deleteMany({});await col('pharmacies').insertMany([{_id:O(A),isActive:true,isVerified:true},{_id:O(B),isActive:true,isVerified:true}]);
++    const doc=(n,pharmacyId,date)=>({_id:O(id(n)),pharmacyId:O(pharmacyId),userId:O(USER),medicineId:O(MEDICINE),sourceOrderId:O(ORDER),createdById:O(ACTOR),medicineName:'SYNTHETIC_PRIVATE_MEDICINE',frequency:'SYNTHETIC_PRIVATE_FREQUENCY',sourceOrderStatus:'SYNTHETIC_PRIVATE_ORDER',lastSyncError:'SYNTHETIC_PRIVATE_NOTES',intervalDays:30,nextRefillDate:date,isActive:true,reminderChannel:'none',createdAt:new Date(0),updatedAt:new Date(0)});
++    seeded=Array.from({length:count},(_,i)=>doc(100+i,A,i%2===0?'20260101':'20260102'));seeded.push(doc(1000,B,'20260101'),doc(1001,B,'20260102'));const future=doc(2000,A,'20270101'),inactive=doc(2001,A,'20260101'),undated=doc(2002,A,'20260101');inactive.isActive=false;delete undated.nextRefillDate;seeded.push(future,inactive,undated);need(seeded.length<=128,'SEED_BOUND');await col('pharmacysubscriptions').insertMany(seeded);return seeded;}
++  const ownExpected=()=>seeded.filter(r=>r.pharmacyId.equals(O(A))&&r.isActive===true&&typeof r.nextRefillDate==='string'&&r.nextRefillDate<='20260131').sort((a,b)=>a.nextRefillDate.localeCompare(b.nextRefillDate)||a._id.toHexString().localeCompare(b._id.toHexString())).map(r=>r._id.toHexString());
++  function dto(result){need(result.status===200&&ctx.same(Object.keys(result.body).sort(),['data','success'])&&result.body.success===true,'DTO_ENVELOPE');const page=result.body.data;need(same(Object.keys(page).sort(),['items','limit','nextCursor','through'])&&Array.isArray(page.items),'DTO_PAGE');for(const row of page.items)need(same(Object.keys(row).sort(),['intervalDays','nextRefillDate','pauseEvaluation','pausedUntil','reminderChannel','subscriptionId'])&&row.pauseEvaluation==='not_evaluated','DTO_ROW');return page;}
++  function status(result,value,code,headers=true){need(result.status===value&&(!code||result.body?.code===code),'HTTP_STATUS');if(headers)need(result.headers['cache-control']==='private, no-store','PRIVATE_HEADERS');}
++  async function directRejected(scope,query,statusCode=400){const before=await snapshot(),n=ctx.dueReads.length;let caught;try{await current().service.getDueRefills(scope,query);}catch(error){caught=error;}need(caught?.status===statusCode&&ctx.dueReads.length===n&&bson(before)===bson(await snapshot()),'DIRECT_NO_DISPATCH');}
++  async function fault(transform,action){need(current().replyFault===null,'FAULT_NESTING');let completed=0;current().replyFault=rows=>{completed++;need(rows.length>0,'FAULT_REAL_ROWS');return transform(rows);};try{const result=await action();need(completed===1,'FAULT_COMPLETED_ACTUAL_QUERY');return result;}finally{current().replyFault=null;}}
++  const rowCopy=row=>Object.defineProperties({},Object.getOwnPropertyDescriptors(row));
++  const nativeIdCopy=value=>Object.create(Object.getPrototypeOf(value),Object.getOwnPropertyDescriptors(value));
++  async function deniedReply(transform,counter=()=>0){const result=await fault(transform,()=>read('/due?through=20260131&limit=2'));status(result,503,'REFILL_WORKLIST_UNAVAILABLE');need(counter()===0,'HOSTILE_CODE_NOT_INVOKED');}
++  async function write(method,route,body,allowed,options={}){const before=await snapshot(),result=await request(method,route,body,options),after=await snapshot();need(bson(before.pharmacies)===bson(after.pharmacies),'PHARMACY_IMMUTABLE');const target=route.split('/')[1],b=before.pharmacysubscriptions,a=after.pharmacysubscriptions;need(b.length===a.length,'ROW_COUNT_UNCHANGED');for(let i=0;i<b.length;i++){const strip=row=>{const copy={...row};if(row._id.toHexString()===target)for(const k of allowed)delete copy[k];return copy;};need(bson(strip(b[i]))===bson(strip(a[i])),'PER_WRITE_OTHER_FIELDS');}return{...result,before,after,row:after.pharmacysubscriptions.find(r=>r._id.toHexString()===target)};}
++  const predicates={};
++  predicates.OWNER_AND_SCALAR_FENCES_REMOVED=async()=>{await seed();const r=await read();const actual=r.body?.data?.items?.map(x=>x.subscriptionId)??[];const foreign=actual.some(x=>x===id(1000)||x===id(1001));return{ok:r.status===200&&same(actual,ownExpected()),forbidden:foreign};};
++  predicates.QUERY_ROW_BOUND_REMOVED=async()=>{await seed(80);const r=await read('/due?through=20260131&limit=50');const count=r.reads[0]?.count;return{ok:r.status===200&&r.reads.length===1&&count===51,forbidden:typeof count==='number'&&count>51};};
++  predicates.RAW_QUERY_ALLOWLIST_WEAKENED=async()=>{await seed();const r=await read('/due?through=20260131&pharmacyId='+B);return{ok:r.status===400&&r.reads.length===0,forbidden:r.status===200&&r.reads.length===1};};
++  predicates.PATIENT_FIELD_LEAKED=async()=>{await seed();const r=await read();const rows=r.body?.data?.items??[];const leaked=rows.some(x=>x.userId===USER);return{ok:r.status===200&&rows.length>0&&rows.every(x=>same(Object.keys(x).sort(),['intervalDays','nextRefillDate','pauseEvaluation','pausedUntil','reminderChannel','subscriptionId'])),forbidden:leaked};};
++  predicates.UNDEFINED_RESUME_RESTORED=async()=>{await seed();await col('pharmacysubscriptions').updateOne({_id:O(id(100))},{$set:{isActive:false,pausedUntil:'20990101'}});const r=await write('PUT','/'+id(100),{isActive:true},['isActive','pausedUntil','updatedAt']);const absent=r.row&&!Object.hasOwn(r.row,'pausedUntil');return{ok:r.status===200&&r.row.isActive===true&&absent&&!Object.hasOwn(r.body.data,'pausedUntil'),forbidden:r.status===200&&r.row?.pausedUntil==='20990101'};};
++  predicates.SYMBOL_GETTER_GUARD_REGRESSED=async()=>{await seed();let called=0;const r=await fault(rows=>{const out=rows.slice(),row=rowCopy(rows[0]),value=nativeIdCopy(row._id),symbol=Object.getOwnPropertySymbols(value)[0],bytes=Object.getOwnPropertyDescriptor(value,symbol).value;Object.defineProperty(value,symbol,{configurable:true,enumerable:true,get(){called++;return bytes;}});row._id=value;out[0]=row;return out;},()=>read('/due?through=20260131&limit=2'));return{ok:r.status===503&&called===0,forbidden:called>0};};
++  predicates.DENSE_ARRAY_GUARD_REGRESSED=async()=>{await seed();let called=0;const r=await fault(rows=>{const out=rows.slice();Object.defineProperty(out,'map',{enumerable:false,value:function(...args){called++;return Reflect.apply(Array.prototype.map,this,args);}});return out;},()=>read('/due?through=20260131&limit=2'));return{ok:r.status===503&&called===0,forbidden:called>0||r.status===200&&r.body?.data?.items?.includes(null)};};
++  const check=async name=>{const value=await predicates[name]();need(value.ok&&!value.forbidden,'NOMINAL_'+name);};
++  async function group(id,action){ctx.checkpoint(id);await action();cases.push({id,status:'PASS'});ctx.checkpoint(null);}
++  await seed();
++  await group('ADMISSION',async()=>{
++    need(same(ctx.nativeEntries,{connectCalls:1,openUriCalls:1,clientConnectCalls:1})&&mongoose.modelNames().length===2,'SOLE_CLIENT');const before=ctx.commands.length,entries={...ctx.nativeEntries};
++    for(const [code,action]of [['SECOND_CONNECTION',()=>mongoose.createConnection(ctx.uri)],['URI_DENIED',()=>mongoose.connect('mongodb://127.0.0.1:1/wrong',{...ctx.connectOptions})],['CONNECT_WINDOW_DENIED',()=>mongoose.connect(ctx.uri,{...ctx.connectOptions})],['CONNECTION_IDENTITY_DENIED',()=>mongoose.Connection.prototype.openUri.call(new mongoose.Connection(mongoose),ctx.uri,{...ctx.connectOptions})],['CLIENT_IDENTITY_DENIED',()=>new native.MongoClient(ctx.uri).connect()],['DATABASE_DENIED',()=>ctx.client.db('operational')],['COLLECTION_DENIED',()=>col('pharmacies').s.db.collection('users')],['DOMAIN_ROOT_DENIED',()=>ctx.domain.get('src1/modules/user/model/index.ts')],['BUILTIN_DENIED',()=>require('node:child_process')],['UNDECLARED_MODULE',()=>require('unadmitted-provider-fixture')],['DESTINATION_DENIED',()=>{const socket=new(require('node:net').Socket)();try{socket.connect({host:'192.0.2.2',port:443});}finally{socket.destroy();}}]])await ctx.expectAdmission(code,action);
++    let getters=0;const supplied=[{...ctx.connectOptions,maxPoolSize:3},Object.defineProperty({...ctx.connectOptions},'maxPoolSize',{get(){getters++;return 2;},enumerable:true}),Object.defineProperty({...ctx.connectOptions},'hidden',{value:1}),Object.assign({...ctx.connectOptions},{[Symbol('extra')]:1}),new Proxy({...ctx.connectOptions},{get(){getters++;return 2;}})];for(const options of supplied)await ctx.expectAdmission('CONNECTION_OPTIONS_DENIED',()=>mongoose.connect(ctx.uri,options));need(getters===0,'OPTIONS_NO_GETTER');
++    const ownOptions=Object.getOwnPropertyDescriptor(ctx.client,'options'),nativeOptions=ctx.client.options;
++    try{for(const altered of [{...nativeOptions,maxPoolSize:3},Object.defineProperty({...nativeOptions},'maxPoolSize',{get(){getters++;return 2;},enumerable:true}),{...nativeOptions,compressors:new Proxy(['none'],{get(){getters++;return null;}})}]){Object.defineProperty(ctx.client,'options',{configurable:true,value:altered});await ctx.expectAdmission('DRIVER_OPTIONS_DENIED',()=>ctx.client.connect());}
++      Object.defineProperty(ctx.client,'options',{configurable:true,get(){getters++;return nativeOptions;}});await ctx.expectAdmission('DRIVER_OPTIONS_DENIED',()=>ctx.client.connect());
++    }finally{if(ownOptions)Object.defineProperty(ctx.client,'options',ownOptions);else delete ctx.client.options;}need(getters===0,'EFFECTIVE_OPTIONS_NO_GETTER');
++    for(const method of ['createCustomer','getCustomers','updateNotes','getLink','assertLinked','ensureLinked'])await ctx.expectAdmission('PHARMACY_CUSTOMER_DEPENDENCY_DENIED',()=>current().service.customerService[method]());need(ctx.commands.length===before&&same(ctx.nativeEntries,entries),'ADMISSION_BEFORE_NATIVE_EFFECT');
++  });
++  await group('AUTHENTICATION',async()=>{for(const token of [null,'invalid',current().wrongKey(ACTOR,A),current().token(ACTOR,A,{exp:1})]){const r=await read('/due?through=20260131',{token});status(r,401,undefined,false);need(r.reads.length===0,'AUTH_NO_DUE');}dto(await read());});
++  await group('OPERATIONAL_AUTHORITY',async()=>{for(const role of ['user','admin','hr','specialist']){const r=await read('/due?through=bad&pharmacyId='+B,{token:current().token(ACTOR,A,{userType:role})});status(r,403,'FORBIDDEN');need(r.reads.length===0,'ROLE_PRECEDENCE');}
++    for(const [patch,code]of [[{isActive:false},'PHARMACY_INACTIVE'],[{archivedAt:new Date()},'PHARMACY_INACTIVE'],[{isVerified:false},'PHARMACY_NOT_VERIFIED']]){await seed();await col('pharmacies').updateOne({_id:O(A)},{$set:patch});const r=await read('/due?through=bad');status(r,403,code);need(r.reads.length===0,'PHARMACY_PRECEDENCE');}await seed();const r=await read('/due?through=bad',{token:current().token(ACTOR,id(9999))});status(r,403,'PHARMACY_INACTIVE');need(r.reads.length===0,'MISSING_PHARMACY');dto(await read());need(ACTOR!==A,'ACTOR_NOT_SCOPE');});
++  await group('RAW_QUERY',async()=>{for(const extra of ['pharmacyId='+B,'page=1','filter[x]=1','$where=x','through=20260102','limit=2&limit=3','limit[x]=1','after[x]=x']){const r=await read('/due?through=20260131&'+extra);status(r,400,'VALIDATION_ERROR');need(r.reads.length===0,'RAW_NO_DISPATCH');}
++    let traps=0;const good={through:'20260131'};for(const raw of [null,[],Object.create({through:'20260131'}),Object.assign({...good},{[Symbol('x')]:1}),Object.defineProperty({...good},'hidden',{value:1}),new Proxy(good,{ownKeys(){traps++;return Reflect.ownKeys(good);}}),Object.defineProperty({},'through',{get(){traps++;return good.through;},enumerable:true})])await directRejected(A,raw);need(traps===0,'RAW_NO_HOSTILE_CODE');await directRejected(A,{limit:'2'});await directRejected(A,{through:undefined});await current().service.getDueRefills(A,{through:'20260131',limit:undefined,after:undefined});for(const scope of [undefined,null,{},A.toUpperCase()===A?'X':A.toUpperCase(),'bad'])await directRejected(scope,new Proxy({},{ownKeys(){traps++;return[];}}),403);need(traps===0,'SCOPE_BEFORE_PARSE');});
++  await group('CALENDAR',async()=>{for(const date of ['00010101','00991231','20000229','20240229','99991231'])dto(await read('/due?through='+date));for(const date of ['00000101','19000229','20260229','20260431','20260001','20261301','20260100','20260132',' 20260101','２０２６０１０１']){const r=await read('/due?through='+encodeURIComponent(date));status(r,400,'VALIDATION_ERROR');need(r.reads.length===0,'CALENDAR_NO_DISPATCH');}await directRejected(A,{through:20260101});});
++  await group('LIMITS',async()=>{await seed(80);need(dto(await read()).limit===20,'DEFAULT_LIMIT');for(const n of ['1','50']){const r=await read('/due?through=20260131&limit='+n);need(dto(r).items.length===Number(n)&&r.reads.length===1&&r.reads[0].count===Number(n)+1,'READ_LOOKAHEAD_BOUND');}for(const n of ['0','51','01','+1','-1','1.5','1e1','']){const r=await read('/due?through=20260131&limit='+encodeURIComponent(n));status(r,400,'VALIDATION_ERROR');need(r.reads.length===0,'LIMIT_NO_DISPATCH');}await directRejected(A,{through:'20260131',limit:2});await seed();});
++  let cursor;
++  await group('CURSOR_CANONICAL',async()=>{const first=dto(await read('/due?through=20260131&limit=2'));cursor=first.nextCursor;need(typeof cursor==='string'&&!cursor.includes('='),'CURSOR_REAL');const decoded=JSON.parse(Buffer.from(cursor,'base64url').toString());need(same(Object.keys(decoded),['v','pharmacyId','through','limit','nextRefillDate','subscriptionId'])&&decoded.subscriptionId===first.items.at(-1).subscriptionId,'CURSOR_LAST_RETURNED');const enc=v=>Buffer.from(typeof v==='string'?v:JSON.stringify(v)).toString('base64url');const invalid=[cursor+'=','*',enc(Object.fromEntries(Object.entries(decoded).filter(([key])=>key!=='pharmacyId'))),enc({...decoded,v:0}),'a'.repeat(385),Buffer.from([255]).toString('base64url'),enc({...decoded,x:1}),enc({...decoded,v:'1'}),enc({...decoded,nextRefillDate:'20990101'}),enc({...decoded,subscriptionId:'x'}),enc({...decoded,limit:null}),enc(Object.fromEntries(Object.entries(decoded).reverse())),enc(JSON.stringify(decoded).replace('{','{ ')),enc(JSON.stringify(decoded).replace('"v":1','"v":1,"v":1'))];for(const after of invalid){const r=await read('/due?through=20260131&limit=2&after='+encodeURIComponent(after));status(r,400,'VALIDATION_ERROR');need(r.reads.length===0,'CURSOR_NO_DISPATCH');}});
++  await group('CURSOR_SCOPE',async()=>{const previous=JSON.parse(Buffer.from(cursor,'base64url').toString());await fault(rows=>{const out=rows.slice();out[0]={...out[0],_id:O(previous.subscriptionId),nextRefillDate:previous.nextRefillDate};return out;},async()=>{status(await read('/due?through=20260131&limit=2&after='+cursor),503,'REFILL_WORKLIST_UNAVAILABLE');});for(const [query,token]of [['through=20260130&limit=2',undefined],['through=20260131&limit=1',undefined],['through=20260131&limit=2',current().token(ACTOR,B)]]){const r=await read('/due?'+query+'&after='+cursor,token?{token}:{});status(r,400,'VALIDATION_ERROR');need(r.reads.length===0,'CURSOR_SCOPE');}const actual=[];let after;for(let i=0;i<6;i++){const page=dto(await read('/due?through=20260131&limit=2'+(after?'&after='+after:'')));actual.push(...page.items.map(x=>x.subscriptionId));after=page.nextCursor;if(after===null)break;}need(after===null&&same(actual,ownExpected()),'CURSOR_NO_LOOKAHEAD_LOSS');const empty=dto(await read('/due?through=00010101'));need(empty.items.length===0&&empty.nextCursor===null,'EMPTY_CURSOR');});
++  await group('DUE_SLICE',async()=>{await seed();seeded[0].nextRefillDate='20260131';await col('pharmacysubscriptions').updateOne({_id:O(id(100))},{$set:{nextRefillDate:'20260131',pausedUntil:'20990101'}});await col('pharmacysubscriptions').updateOne({_id:O(id(2001))},{$set:{pausedUntil:'20200101'}});const page=dto(await read());need(same(page.items.map(x=>x.subscriptionId),ownExpected())&&page.items.find(x=>x.subscriptionId===id(100)).pausedUntil==='20990101','OWNER_DUE_PAUSE');});
++  await group('SCALAR_FILTERS',async()=>{await seed();const template={...seeded[0]};const malformed=[{pharmacyId:[O(A)]},{isActive:[true]},{nextRefillDate:['20260101']},{_id:'synthetic-not-objectid'}];for(let i=0;i<malformed.length;i++)await col('pharmacysubscriptions').insertOne({...template,_id:O(id(3000+i)),...malformed[i]});need(dto(await read()).items.length===6,'SCALAR_ARRAYS_EXCLUDED');for(const change of [{nextRefillDate:'20260230'},{intervalDays:0},{reminderChannel:null},{pausedUntil:'20261301'}]){await seed();await col('pharmacysubscriptions').updateOne({_id:O(id(100))},{$set:change});status(await read('/due?through=20261231'),503,'REFILL_WORKLIST_UNAVAILABLE');}await seed();await deniedReply(rows=>{const out=rows.slice();out[2]={...out[2],intervalDays:0};return out;});});
++  await group('RAW_ROW_SHAPES',async()=>{await seed();let invoked=0;const transforms=[row=>({...row,private:'SYNTHETIC_PRIVATE_SENTINEL'}),row=>Object.defineProperty(row,'hidden',{value:1}),row=>Object.assign(row,{[Symbol('extra')]:1}),row=>Object.defineProperty(row,'intervalDays',{get(){invoked++;return 30;},enumerable:true}),row=>new Proxy(row,{get(){invoked++;return 1;}}),row=>({...row,reminderChannel:undefined}),row=>({...row,pausedUntil:null}),row=>({...row,pausedUntil:undefined}),row=>({...row,reminderChannel:'email'})];for(const transform of transforms)await deniedReply(rows=>{const out=rows.slice();out[0]=transform(rowCopy(out[0]));return out;},()=>invoked);for(const transform of [rows=>[rows[0],rows[0]],rows=>rows.slice().reverse()])await deniedReply(transform);await fault(rows=>rows.map(row=>{const out=rowCopy(row);delete out.reminderChannel;delete out.pausedUntil;return out;}),async()=>{const page=dto(await read('/due?through=20260131&limit=2'));need(page.items.every(x=>x.reminderChannel===null&&x.pausedUntil===null),'OPTIONAL_NULL_NO_DEFAULT');});});
++  await group('BSON4_POSITIVES',async()=>{await seed();dto(await read());for(const cached of [false,true])await fault(rows=>rows.map(row=>{const out=rowCopy(row);for(const key of ['_id','pharmacyId']){const hex=out[key].toHexString(),value=new mongoose.Types.ObjectId(hex);if(cached)Object.defineProperty(value,'__id',{value:hex,configurable:true,enumerable:true,writable:true});out[key]=value;}return out;}),async()=>{dto(await read('/due?through=20260131&limit=2'));});const old=mongoose.Types.ObjectId.cacheHexString;try{mongoose.Types.ObjectId.cacheHexString=true;await fault(rows=>rows.map(row=>({...row,_id:new mongoose.Types.ObjectId(row._id.toHexString())})),async()=>{dto(await read('/due?through=20260131&limit=2'));});}finally{mongoose.Types.ObjectId.cacheHexString=old;}});
++  await group('BSON4_HOSTILE',async()=>{await check('SYMBOL_GETTER_GUARD_REGRESSED');await seed();let called=0;const attacks=[value=>{Object.defineProperty(value,'__id',{value:'f'.repeat(24),configurable:true});return value;},value=>{Object.defineProperty(value,'__id',{value:undefined,configurable:true});return value;},value=>{Object.defineProperty(value,'__id',{value:null,configurable:true});return value;},value=>Object.assign(value,{toHexString(){called++;return id(9);}}),value=>Object.assign(value,{[Symbol('foreign')]:Buffer.alloc(12)}),value=>new Proxy(value,{get(){called++;return null;}}),value=>Object.create(Object.getPrototypeOf(value)),value=>{const symbol=Object.getOwnPropertySymbols(value)[0];Object.defineProperty(value,symbol,{value:new Proxy(Buffer.alloc(12),{get(){called++;return null;}}),configurable:true});return value;},value=>{const symbol=Object.getOwnPropertySymbols(value)[0],buffer=Buffer.alloc(12);Object.defineProperty(buffer,'toString',{value(){called++;return id(9);}});Object.defineProperty(value,symbol,{value:buffer,configurable:true});return value;},value=>{const symbol=Object.getOwnPropertySymbols(value)[0];Object.defineProperty(value,symbol,{value:Buffer.alloc(13),configurable:true});return value;}];for(const attack of attacks)await deniedReply(rows=>{const out=rows.slice();out[0]={...out[0],_id:attack(nativeIdCopy(out[0]._id))};return out;},()=>called);});
++  await group('DENSE_ARRAY',async()=>{await check('DENSE_ARRAY_GUARD_REGRESSED');await seed();let called=0;for(const transform of [rows=>{const out=rows.slice();delete out[0];return out;},rows=>{const out=rows.slice();Object.defineProperty(out,'0',{enumerable:false,value:out[0]});return out;},rows=>{const out=rows.slice();Object.defineProperty(out,'0',{get(){called++;return rows[0];},enumerable:true});return out;},rows=>new Proxy(rows,{get(){called++;return null;}}),rows=>Object.defineProperty(rows.slice(),'map',{get(){called++;return Array.prototype.map;}}),rows=>{const out=rows.slice();Object.setPrototypeOf(out,Object.create(Array.prototype));return out;},rows=>Object.defineProperty(rows.slice(),Symbol.iterator,{get(){called++;return Array.prototype[Symbol.iterator];}}),rows=>Object.assign(rows.slice(),{[Symbol('extra')]:1}),rows=>Object.assign(rows.slice(),{extra:1}),rows=>{const out=rows.slice();out.length=20;return out;}])await deniedReply(transform,()=>called);dto(await read());});
++  await group('DTO_AND_HEADERS',async()=>{await seed();const r=await read();dto(r);status(r,200);for(const value of [USER,MEDICINE,ORDER,ACTOR,'SYNTHETIC_PRIVATE_'])need(!r.raw.includes(value),'NO_PATIENT_FIELDS');const headers={};let body,code;await current().controller.due({user:{pharmacyId:A},query:{through:'20260131'}},{setHeader(k,v){headers[k]=v;},status(value){code=value;return this;},json(value){body=value;return this;}},()=>{});need(headers['Cache-Control']==='private, no-store'&&code===200&&body.success,'DIRECT_CONTROLLER_HEADERS');status(await read('/due?through=bad'),400,'VALIDATION_ERROR');});
++  await group('QUERY_AND_CATALOG',async()=>{await seed();const r=await read('/due?through=20260131&limit=2'),ob=r.reads[0];need(r.reads.length===1&&ob.count===3&&ob.options.limit===3&&ob.options.maxTimeMS===2000&&same(ob.options.collation,{locale:'simple'})&&same(ob.options.sort,{nextRefillDate:1,_id:1})&&same(ob.projection,{_id:1,pharmacyId:1,isActive:1,nextRefillDate:1,intervalDays:1,reminderChannel:1,pausedUntil:1}),'ACTUAL_QUERY_OPTIONS');const due=r.commands.filter(x=>x.name==='find'&&x.command.filter?.$expr);need(due.length===1&&due[0].command.find==='pharmacysubscriptions'&&due[0].command.filter.pharmacyId.$eq.equals(O(A))&&due[0].command.filter.isActive.$eq===true&&due[0].command.filter.nextRefillDate.$lte==='20260131'&&!due[0].command.skip,'ACTUAL_WIRE_SCOPE');need(!r.commands.some(x=>['update','insert','delete','aggregate','count','distinct','findAndModify'].includes(x.name)),'DUE_READONLY_COMMANDS');const observed=await ctx.catalog();need(observed.collections.length===2,'ACTUAL_CATALOG');const find=due[0].command,session=ctx.client.startSession({causalConsistency:false});try{const explain=await ctx.connection.db.command({explain:{find:'pharmacysubscriptions',filter:find.filter,projection:find.projection,sort:find.sort,limit:find.limit,collation:find.collation,maxTimeMS:2000},verbosity:'executionStats',maxTimeMS:2000},{session});need(explain.ok===1&&explain.executionStats&&Number.isSafeInteger(explain.executionStats.nReturned),'BOUNDED_EXPLAIN_ONLY');}finally{await session.endSession();}const sentinel='SYNTHETIC_UNSAFE_NATIVE_SENTINEL';const at=ctx.loggerRecords.length;await fault(()=>{const e=Error(sentinel);e.code=50;throw e;},async()=>{const failed=await read();status(failed,503,'REFILL_WORKLIST_UNAVAILABLE');need(!failed.raw.includes(sentinel),'SAFE_CAUSE');});need(ctx.loggerRecords.slice(at).every(text=>!text.includes(sentinel)),'SAFE_LOGGER');});
++  await group('PERSISTED_RESUME',async()=>{await check('UNDEFINED_RESUME_RESTORED');await seed();for(const pausedUntil of ['20990101','invalid-existing']){await col('pharmacysubscriptions').updateOne({_id:O(id(100))},{$set:{isActive:false,pausedUntil}});for(let i=0;i<2;i++){const r=await write('PUT','/'+id(100),{isActive:true},['isActive','pausedUntil','updatedAt']);need(r.status===200&&r.row.isActive===true&&!Object.hasOwn(r.row,'pausedUntil')&&!Object.hasOwn(r.body.data,'pausedUntil'),'PERSISTED_FIELD_ABSENCE');}}await col('pharmacysubscriptions').updateOne({_id:O(id(100))},{$set:{pausedUntil:'20990101'}});const before=await snapshot();await current().service.update(id(100),A,{isActive:true,pausedUntil:'20990101'});const after=await snapshot();need(!Object.hasOwn(after.pharmacysubscriptions.find(x=>x._id.equals(O(id(100)))),'pausedUntil'),'DIRECT_RESUME_WINS');const strip=rows=>rows.map(row=>{const x={...row};if(row._id.equals(O(id(100))))for(const k of ['isActive','pausedUntil','updatedAt'])delete x[k];return x;});need(bson(strip(before.pharmacysubscriptions))===bson(strip(after.pharmacysubscriptions)),'DIRECT_RESUME_OTHERS');});
++  await group('PAUSE_AND_COMPATIBILITY',async()=>{await seed();let r=await write('POST','/'+id(100)+'/pause',{pausedUntil:'20990101'},['isActive','pausedUntil','updatedAt']);need(r.status===200&&r.row.isActive===false&&r.row.pausedUntil==='20990101','PERSISTED_PAUSE');for(const body of [{intervalDays:7},{nextRefillDate:'20260103'},{reminderChannel:'sms'},{isActive:false},{intervalDays:9,pausedUntil:'20991231',$set:{isActive:true}}]){r=await write('PUT','/'+id(100),body,[...Object.keys(body).filter(key=>['intervalDays','nextRefillDate','reminderChannel','isActive'].includes(key)),'updatedAt']);need(r.status===200&&r.row.pausedUntil==='20990101'&&r.row.isActive===false,'NONRESUME_COMPATIBILITY');}r=await write('POST','/'+id(100)+'/pause',{},['isActive','updatedAt']);need(r.status===200&&r.row.pausedUntil==='20990101','OMITTED_PAUSE_COMPATIBILITY');});
++  await group('UPDATE_AUTHORITY',async()=>{await seed();for(const [target,body,statusCode,errorCode]of [[id(9999),{isActive:true},404,'SUBSCRIPTION_NOT_FOUND'],[id(1000),{isActive:true},403,'FORBIDDEN'],['invalid',{isActive:true},400,'VALIDATION_ERROR'],[id(100),{intervalDays:0},400,'VALIDATION_ERROR']]){const r=await write('PUT','/'+target,body,[]);need(r.status===statusCode&&r.body.code===errorCode,'UPDATE_ORDER');}const unauthorized=await write('PUT','/invalid',{intervalDays:0},[],{token:current().token(ACTOR,A,{userType:'user'})});need(unauthorized.status===403&&unauthorized.body.code==='FORBIDDEN','UPDATE_ROLE_BEFORE_VALIDATION');});
++  await group('SENSITIVITY_AND_RESTORATION',async()=>{for(const id of ctx.ports.requiredSensitivityIds){ctx.checkpoint(id);await ctx.phase();await check(id);await ctx.phase(id);const result=await predicates[id]();need(!result.ok&&result.forbidden,'SOURCE_CONTROL_NOT_DETECTED');sensitivity.push({id,detected:true});await ctx.phase();await check(id);}ctx.checkpoint('SENSITIVITY_AND_RESTORATION');await check('OWNER_AND_SCALAR_FENCES_REMOVED');await check('UNDEFINED_RESUME_RESTORED');need(current().name==='nominal'&&sensitivity.length===7&&ctx.counters.unexpected===0&&[...ctx.sessions].every(s=>s.hasEnded),'FINAL_RESTORATION');});
++  need(same(cases.map(x=>x.id),ctx.ports.requiredCaseIds)&&same(sensitivity.map(x=>x.id),ctx.ports.requiredSensitivityIds),'EXACT_CASE_CONTROL_SET');return{failed:0,skipped:0,cases,sensitivity};
++}
++module.exports={run};
+diff --git a/test/api-runtime/pharmacy-refill/launch.mjs b/test/api-runtime/pharmacy-refill/launch.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..d68d57b300e757cbb3de4e3fca516a3479846f56
+--- /dev/null
++++ b/test/api-runtime/pharmacy-refill/launch.mjs
+@@ -0,0 +1,61 @@
++// One exact role invocation, separate from preparation and all dependency-free unit checks.
++import { readFileSync, lstatSync, writeFileSync, mkdtempSync } from 'node:fs';
++import { fileURLToPath } from 'node:url';
++import { spawnSync } from 'node:child_process';
++import { createHash } from 'node:crypto';
++import { join } from 'node:path';
++const ROOT=fileURLToPath(new URL('../../../',import.meta.url)).replace(/\/$/,'');
++const HERE=fileURLToPath(new URL('.',import.meta.url));
++const AUTHOR='/root/customer_remaining_audit';
++const NODE_SHA='27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1';
++const RECEIPT='/private/tmp/sd-pharmacy-refill-runtime-approval.json';
++const DECISION='APPROVE_ONE_FIXED_PHARMACY_REFILL_API_RUN';
++const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
++const need=(ok,code)=>{if(!ok)throw Error(code);};
++const exact=(value,keys)=>value&&typeof value==='object'&&!Array.isArray(value)&&JSON.stringify(Object.keys(value).sort())===JSON.stringify([...keys].sort());
++function regular(file,cap=32*1024*1024){const st=lstatSync(file);need(st.isFile()&&!st.isSymbolicLink()&&st.nlink===1&&st.size<=cap,'Operator input shape');return readFileSync(file);}
++function git(args){const result=spawnSync('/usr/bin/git',['--no-optional-locks','-c','core.fsmonitor=false',...args],{cwd:ROOT,env:{PATH:'/usr/bin:/bin'},encoding:'utf8',timeout:25000,maxBuffer:1024*1024});need(!result.error&&!result.signal&&result.status===0,'Source readback unavailable');return result.stdout.trim();}
++export function validateReceipt(receipt,expected){
++  need(exact(receipt,[...Object.keys(expected),'nonce','reviewers'])&&Object.keys(expected).every(key=>receipt[key]===expected[key]),'Exact invocation binding');
++  need(/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(receipt.nonce),'Invocation nonce');
++  need(Array.isArray(receipt.reviewers)&&receipt.reviewers.length===2&&new Set(receipt.reviewers.map(row=>row.agent)).size===2&&receipt.reviewers.every(row=>exact(row,['agent','decision'])&&row.agent!==AUTHOR&&/^\/root(?:\/[A-Za-z0-9_]+)*$/.test(row.agent)&&row.decision===DECISION),'Two actual nonauthor invocation decisions');
++}
++function frozen(commit){
++  need(git(['rev-parse','HEAD'])===commit,'Source commit changed');
++  const status=git(['status','--porcelain','--untracked-files=all']);
++  // Sole generated descriptor: checked by hash/ownership below. No other untracked/modified source is admitted.
++  need(status===''||status==='?? test/api-runtime/pharmacy-refill/runtime-template.json','Source checkout changed');
++}
++export async function requestRun(run,report,save){report.runRequested=true;report.status='RUN_REQUESTED';save();const pending=run();report.runEntered=true;return await pending;}
++async function main(){
++  need(Object.keys(process.env).every(key=>['PATH','TMPDIR','__CF_USER_TEXT_ENCODING'].includes(key))&&process.env.TMPDIR==='/private/tmp'&&process.env.PATH==='/usr/bin:/bin'&&
++    (process.env.__CF_USER_TEXT_ENCODING===undefined||process.env.__CF_USER_TEXT_ENCODING==='0x'+process.getuid().toString(16).toUpperCase()+':0x0:0x0'),'Operator environment');
++  need(process.argv.length===2&&process.execArgv.length===0&&process.version==='v24.19.0'&&process.execPath==='/Users/shubham/.nvm/versions/node/v24.19.0/bin/node'&&sha(regular(process.execPath,128*1024*1024))===NODE_SHA,'Pinned operator invocation');
++  const meta=lstatSync(RECEIPT);need(meta.uid===process.getuid()&&(meta.mode&0o777)===0o600,'Private invocation receipt');
++  const receiptBytes=regular(RECEIPT),receipt=JSON.parse(receiptBytes),templateBytes=regular(join(HERE,'runtime-template.json')),template=JSON.parse(templateBytes);
++  const commit=git(['rev-parse','HEAD']);need(template.sourceCommit===commit,'Prepared source differs');
++  const expected={schema:'SD-PHARMACY-REFILL-API-INVOCATION-APPROVAL-1',decision:DECISION,sourceRoot:ROOT,sourceCommit:commit,
++    operatorSha:sha(regular(fileURLToPath(import.meta.url))),platformSha:sha(regular(join(HERE,'../platform.mjs'))),profileSha:sha(regular(join(HERE,'profile.json'))),
++    networkSha:sha(regular(join(HERE,'../../application/app-bundle.mjs'))),templateSha:sha(templateBytes),lockSha:template.lockSha,portsSha:template.portsSha,hostNodeSha:NODE_SHA};
++  validateReceipt(receipt,expected);frozen(commit);
++  const claim='/private/tmp/sd-pharmacy-refill-once-'+receipt.nonce+'.json';
++  writeFileSync(claim,JSON.stringify({sourceCommit:commit,templateSha:expected.templateSha,receiptSha:sha(receiptBytes)})+'\n',{flag:'wx',mode:0o600});
++  const reportDirectory=mkdtempSync('/private/tmp/sd-pharmacy-refill-invocation-'),identity=lstatSync(reportDirectory);
++  const report={schema:'SD-PHARMACY-REFILL-API-INVOCATION-1',sourceCommit:commit,approvalSha:sha(receiptBytes),templateSha:expected.templateSha,
++    status:'CLAIMED_NOT_ENTERED',fixtureHandleReturned:false,runRequested:false,runEntered:false,created:[],cleanup:'NOT_NEEDED'};
++  const save=()=>{const st=lstatSync(reportDirectory);need(st.isDirectory()&&!st.isSymbolicLink()&&st.dev===identity.dev&&st.ino===identity.ino,'Operator ownership changed');writeFileSync(join(reportDirectory,'operator-result.json'),JSON.stringify(report,null,2)+'\n',{mode:0o600});};
++  save();writeFileSync(join(reportDirectory,'one-run-approval.json'),receiptBytes,{flag:'wx',mode:0o600});let fixture;
++  try{
++    const {PHARMACY_REFILL_PROFILE,createPharmacyRefillRuntimeFixture}=await import('../platform.mjs');frozen(commit);
++    need(sha(regular(join(HERE,'runtime-template.json')))===expected.templateSha,'Template changed');
++    fixture=createPharmacyRefillRuntimeFixture({endpoint:PHARMACY_REFILL_PROFILE.endpoint});report.fixtureHandleReturned=true;report.runId=fixture.runId;report.workspace=fixture.directory;save();
++    report.result=await requestRun(()=>fixture.run(),report,save);frozen(commit);report.status='RESULT_PENDING_CLEANUP';save();
++  }catch{report.status='FAILED_REVIEW_REQUIRED';process.exitCode=1;}
++  finally{
++    if(fixture){const state=fixture.describe();report.created=state.resources;if(state.failure)report.failure=state.failure;
++      try{report.cleanupReceipt=fixture.dispose();report.cleanup='VERIFIED';}catch{report.cleanup='UNRESOLVED';report.status='UNRESOLVED';process.exitCode=1;}}
++    if(report.status==='RESULT_PENDING_CLEANUP'&&report.cleanup==='VERIFIED')report.status='FOCUSED_PHARMACY_REFILL_RESULT_PENDING_INDEPENDENT_REVIEW';
++    save();process.stdout.write(JSON.stringify({status:report.status,reportDirectory,runEntered:report.runEntered,createdResources:report.created.length,cleanup:report.cleanup})+'\n');
++  }
++}
++if(fileURLToPath(import.meta.url)===process.argv[1])main().catch(()=>{process.stderr.write('Pharmacy-refill invocation rejected; preserve any exact claim/report for review.\n');process.exitCode=1;});
+diff --git a/test/api-runtime/pharmacy-refill/unit.mjs b/test/api-runtime/pharmacy-refill/unit.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..cb3567e779012a873fc154dc7512d0f253582014
+--- /dev/null
++++ b/test/api-runtime/pharmacy-refill/unit.mjs
+@@ -0,0 +1,2 @@
++// Reuse the fixed shared152case offline gate; this does not evaluate pharmacy code.
++import '../unit.mjs';

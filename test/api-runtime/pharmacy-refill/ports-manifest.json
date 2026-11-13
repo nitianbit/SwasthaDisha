@@ -1,0 +1,346 @@
+{
+  "schema": "SD-PHARMACY-REFILL-PORTS-1",
+  "role": "pharmacy-refill-api",
+  "sourcePins": {
+    "src1/modules/pharmacySubscriptions/routes/index.ts": "08dcc367a86f6ffc1e675e8a010fcc87ffb5ff5329fda4c29fc0c04cca0c834c",
+    "src1/modules/pharmacySubscriptions/controller/index.ts": "7bb21a7ec9aaf8693fb2438a5800f7308d2978353c5ed1c95c0f46e60278a9de",
+    "src1/modules/pharmacySubscriptions/services/index.ts": "3b22b92d88790c521616302d7827023e4ffa16eb25989a6b443152d0af0f9171",
+    "src1/modules/pharmacySubscriptions/repository/index.ts": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+    "src1/modules/pharmacySubscriptions/validation/index.ts": "1e4dcc64b270c9c8ee242d78af13f3736f2c063de6f8c223822aca7e87de91e4",
+    "src1/modules/pharmacySubscriptions/types/index.ts": "aec8ae4c8d1728f7539e68543e6e97a178b21b8cccc426ed9e4d43f85860fc6e",
+    "src1/modules/pharmacySubscriptions/model/index.ts": "568196be447d9f99cbfbb2fb81169abedbc93f777b7fc3dbf6302a19e925fcc8",
+    "src1/modules/pharmacies/model/index.ts": "beda95d89a9773a8d5851dd923c363c83123a573f7391836dec69b13e5cfa177",
+    "src1/modules/pharmacies/types/index.ts": "e43d4c6e5af5ebc9a21e3a35d41e475e92ab7509961cdafe6bfc3043af0b24f0",
+    "src1/modules/middleware/auth.ts": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+    "src1/modules/middleware/errorHandler.ts": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51",
+    "src1/modules/common/middleware/validation.ts": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef",
+    "src1/modules/common/utils/asyncHandler.ts": "59fe49db58678ef81242a654f7457f74b067b2583a3f8dc70918b61f50228bd9",
+    "src1/modules/common/utils/mongoErrors.ts": "147a5687832d03c654acd97e0f9e0d9c6c0c7ab51a2841f0eb2260235229d43d",
+    "src1/modules/common/repository/BaseRepository.ts": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+    "src1/modules/common/repository/index.ts": "6e13d4d0ced3ad40772c5b2c35034544fe49f0d7b715cf0309f954be7ab5cb77",
+    "src1/modules/common/types/index.ts": "63ad3821027150d368e993903e954b4a80b776ff223caf322c104008239d4cbd",
+    "src1/modules/common/types/error.ts": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+    "src1/modules/common/types/response.ts": "44c5dbcf38ea117eaa13f3a715143ea147a7abf25c3491b61817e67b5f3d6f93"
+  },
+  "requiredCaseIds": [
+    "ADMISSION",
+    "AUTHENTICATION",
+    "OPERATIONAL_AUTHORITY",
+    "RAW_QUERY",
+    "CALENDAR",
+    "LIMITS",
+    "CURSOR_CANONICAL",
+    "CURSOR_SCOPE",
+    "DUE_SLICE",
+    "SCALAR_FILTERS",
+    "RAW_ROW_SHAPES",
+    "BSON4_POSITIVES",
+    "BSON4_HOSTILE",
+    "DENSE_ARRAY",
+    "DTO_AND_HEADERS",
+    "QUERY_AND_CATALOG",
+    "PERSISTED_RESUME",
+    "PAUSE_AND_COMPATIBILITY",
+    "UPDATE_AUTHORITY",
+    "SENSITIVITY_AND_RESTORATION"
+  ],
+  "requiredSensitivityIds": [
+    "OWNER_AND_SCALAR_FENCES_REMOVED",
+    "QUERY_ROW_BOUND_REMOVED",
+    "RAW_QUERY_ALLOWLIST_WEAKENED",
+    "PATIENT_FIELD_LEAKED",
+    "UNDEFINED_RESUME_RESTORED",
+    "SYMBOL_GETTER_GUARD_REGRESSED",
+    "DENSE_ARRAY_GUARD_REGRESSED"
+  ],
+  "providerCounterKeys": [
+    "logger",
+    "unexpected"
+  ],
+  "models": [
+    {
+      "name": "Pharmacy",
+      "collection": "pharmacies",
+      "source": "src1/modules/pharmacies/model/index.ts"
+    },
+    {
+      "name": "PharmacySubscription",
+      "collection": "pharmacysubscriptions",
+      "source": "src1/modules/pharmacySubscriptions/model/index.ts"
+    }
+  ],
+  "cuts": [
+    {
+      "specifier": "@/config/config"
+    },
+    {
+      "specifier": "@/services/logger"
+    },
+    {
+      "specifier": "@/modules/pharmacyCustomers/services"
+    }
+  ],
+  "runtimeRoots": [
+    "express",
+    "joi",
+    "jsonwebtoken",
+    "reflect-metadata",
+    "typedi",
+    "mongoose"
+  ],
+  "indexes": [
+    {
+      "collection": "pharmacies",
+      "key": {
+        "_id": 1
+      },
+      "name": "_id_",
+      "unique": true
+    },
+    {
+      "collection": "pharmacysubscriptions",
+      "key": {
+        "_id": 1
+      },
+      "name": "_id_",
+      "unique": true
+    },
+    {
+      "collection": "pharmacysubscriptions",
+      "key": {
+        "pharmacyId": 1,
+        "isActive": 1
+      },
+      "name": "pharmacyId_1_isActive_1",
+      "unique": false
+    }
+  ],
+  "mutationRecipes": {
+    "OWNER_AND_SCALAR_FENCES_REMOVED": {
+      "predicate": "OWNER_AND_SCALAR_FENCES_REMOVED",
+      "changes": [
+        {
+          "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+          "before": "pharmacyId: { $eq: new Types.ObjectId(scope) }, ",
+          "after": "",
+          "count": 1
+        },
+        {
+          "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+          "before": "{ $eq: [{ $type: '$pharmacyId' }, 'objectId'] },",
+          "after": "{ $eq: [1, 1] },",
+          "count": 1
+        },
+        {
+          "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+          "before": "refillObjectId(row.pharmacyId) !== pharmacyId || ",
+          "after": "",
+          "count": 1
+        }
+      ],
+      "expectedSourceHashes": {
+        "src1/modules/pharmacySubscriptions/repository/index.ts": "aeeb0252a7391596810388eb99b2835b13cf689838fa54e56311f753bf799209"
+      },
+      "nominalSha256": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+      "assertion": "Returned subscription IDs are exactly the current pharmacy candidate subset; actual foreign canonical ID is forbidden.",
+      "counterexample": "Two operational pharmacies with interleaved valid due rows; own token/first page. Record actual foreign ID in HTTP response privately."
+    },
+    "QUERY_ROW_BOUND_REMOVED": {
+      "predicate": "QUERY_ROW_BOUND_REMOVED",
+      "changes": [
+        {
+          "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+          "before": ".limit(query.limit + 1)",
+          "after": ".limit(0)",
+          "count": 1
+        }
+      ],
+      "expectedSourceHashes": {
+        "src1/modules/pharmacySubscriptions/repository/index.ts": "c6d57c5c990aeaed2da30e9b18508e5e2861c94714cd476e8dedc281b7417e57"
+      },
+      "nominalSha256": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+      "assertion": "The completed actual DB read returns at most limit+1; a subsequent503 is not proof the query was bounded.",
+      "counterexample": "Owned fixture80 valid due rows, limit50. Record completed native/model result count before row guard; variant must read>51, not merely throw."
+    },
+    "RAW_QUERY_ALLOWLIST_WEAKENED": {
+      "predicate": "RAW_QUERY_ALLOWLIST_WEAKENED",
+      "changes": [
+        {
+          "path": "src1/modules/pharmacySubscriptions/validation/index.ts",
+          "before": "refillData(raw, ['through', 'limit', 'after'])",
+          "after": "refillData(raw, ['through', 'limit', 'after', 'pharmacyId'])",
+          "count": 1
+        }
+      ],
+      "expectedSourceHashes": {
+        "src1/modules/pharmacySubscriptions/validation/index.ts": "c6f5cd55a8a78b07172c96445c72c78060ae2dceb1951d2361cb8237be132507"
+      },
+      "nominalSha256": "1e4dcc64b270c9c8ee242d78af13f3736f2c063de6f8c223822aca7e87de91e4",
+      "assertion": "Extra owner key returns400 before repository dispatch; accepted ignored field with a real DB query is forbidden.",
+      "counterexample": "Valid own request plus foreign pharmacyId query. Nominal400/no dispatch; variant accepts and returns200 own data, exposing validation loss, not a foreign-scope claim."
+    },
+    "PATIENT_FIELD_LEAKED": {
+      "predicate": "PATIENT_FIELD_LEAKED",
+      "changes": [
+        {
+          "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+          "before": "reminderChannel: 1, pausedUntil: 1 };",
+          "after": "reminderChannel: 1, pausedUntil: 1, userId: 1 };",
+          "count": 1
+        },
+        {
+          "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+          "before": "return { subscriptionId, nextRefillDate:",
+          "after": "return { ...{ userId: String(row.userId) }, subscriptionId, nextRefillDate:",
+          "count": 1
+        }
+      ],
+      "expectedSourceHashes": {
+        "src1/modules/pharmacySubscriptions/repository/index.ts": "7578453bc943085e26e5fbe013be5c189e1db02f0d756e78e2d652deb35c618e"
+      },
+      "nominalSha256": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+      "assertion": "Closed HTTP DTO keys exclude patient identity; actual synthetic userId in response is forbidden.",
+      "counterexample": "Owned valid subscription has actual userId; independently compare received field to seeded fixture user ID, not only schema/hash."
+    },
+    "UNDEFINED_RESUME_RESTORED": {
+      "predicate": "UNDEFINED_RESUME_RESTORED",
+      "changes": [
+        {
+          "path": "src1/modules/pharmacySubscriptions/services/index.ts",
+          "before": "delete nextPayload.pausedUntil;",
+          "after": "nextPayload.pausedUntil = undefined;",
+          "count": 1
+        },
+        {
+          "path": "src1/modules/pharmacySubscriptions/services/index.ts",
+          "before": "data.isActive === true\n      ? { $set: nextPayload, $unset: { pausedUntil: '' } }\n      : nextPayload",
+          "after": "nextPayload",
+          "count": 1
+        }
+      ],
+      "expectedSourceHashes": {
+        "src1/modules/pharmacySubscriptions/services/index.ts": "8917875bebcc0718330173f368c919a5077c7ae1ebe7797a62f8828299faac23"
+      },
+      "nominalSha256": "3b22b92d88790c521616302d7827023e4ffa16eb25989a6b443152d0af0f9171",
+      "assertion": "Explicit resume really removes pausedUntil from persisted BSON and returned row; retained old pause is forbidden.",
+      "counterexample": "Seed paused false/future date, resume through real service+Mongoose then fresh native read; nominal missing field, variant retains it."
+    },
+    "SYMBOL_GETTER_GUARD_REGRESSED": {
+      "predicate": "SYMBOL_GETTER_GUARD_REGRESSED",
+      "changes": [
+        {
+          "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+          "before": "let refillObjectIdKey: symbol | undefined;\nfunction refillObjectId(value: unknown): string {\n  if (!value || typeof value !== 'object' || types.isProxy(value) || Object.getPrototypeOf(value) !== Types.ObjectId.prototype) throw refillUnavailable();\n  if (refillObjectIdKey === undefined) {\n    // BSON4.7.2 keeps its bytes under one module-private Symbol; do not identify it by its description.\n    const probe = new Types.ObjectId('000000000000000000000000');\n    const symbols = Object.getOwnPropertySymbols(probe);\n    if (symbols.length !== 1 || Reflect.ownKeys(probe).some(key => key !== symbols[0] && key !== '__id')) throw refillUnavailable();\n    refillObjectIdKey = symbols[0];\n  }\n  const keys = Reflect.ownKeys(value);\n  if (!keys.includes(refillObjectIdKey) || keys.some(key => key !== refillObjectIdKey && key !== '__id')) throw refillUnavailable();\n  for (const key of keys) {\n    const descriptor = Object.getOwnPropertyDescriptor(value, key);\n    if (!descriptor || !('value' in descriptor)) throw refillUnavailable();\n  }\n  const bytes = Object.getOwnPropertyDescriptor(value, refillObjectIdKey)!.value;\n  if (!bytes || typeof bytes !== 'object' || types.isProxy(bytes) || !Buffer.isBuffer(bytes) || Object.getPrototypeOf(bytes) !== Buffer.prototype) throw refillUnavailable();\n  const byteLength = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(Uint8Array.prototype), 'byteLength')!.get!;\n  if (Reflect.apply(byteLength, bytes, []) !== 12 || Reflect.ownKeys(bytes).length !== 12) throw refillUnavailable();\n  const owned = Buffer.alloc(12);\n  for (let i = 0; i < 12; i++) {\n    const descriptor = Object.getOwnPropertyDescriptor(bytes, String(i));\n    if (!descriptor || !('value' in descriptor) || !descriptor.enumerable || !Number.isInteger(descriptor.value) || descriptor.value < 0 || descriptor.value > 255) throw refillUnavailable();\n    owned[i] = descriptor.value;\n  }\n  const id = Reflect.apply(Buffer.prototype.toString, owned, ['hex']);\n  const cache = Object.getOwnPropertyDescriptor(value, '__id');\n  if (cache && cache.value !== id) throw refillUnavailable();\n  return id;\n}\n",
+          "after": "function refillObjectId(value: unknown): string {\n  if (!value || typeof value !== 'object' || types.isProxy(value) || Object.getPrototypeOf(value) !== Types.ObjectId.prototype ||\n    Object.values(Object.getOwnPropertyDescriptors(value)).some(d => !('value' in d))) throw refillUnavailable();\n  const id = Types.ObjectId.prototype.toHexString.call(value);\n  if (!/^[0-9a-f]{24}$/.test(id)) throw refillUnavailable();\n  return id;\n}\n",
+          "count": 1
+        }
+      ],
+      "expectedSourceHashes": {
+        "src1/modules/pharmacySubscriptions/repository/index.ts": "afc37ee0d19da68fc106c0750b373a35f0e14043508ab7dd8a71f27711478174"
+      },
+      "nominalSha256": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+      "assertion": "Descriptor-safe raw reply validation fails closed before supplied code/partial output.",
+      "counterexample": "A native Symbol getter is ACTUALLY invoked (>0) on hostile actual-source reply even if a later safe503 occurs; arbitrary exception alone is not detection."
+    },
+    "DENSE_ARRAY_GUARD_REGRESSED": {
+      "predicate": "DENSE_ARRAY_GUARD_REGRESSED",
+      "changes": [
+        {
+          "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+          "before": "      if (!Array.isArray(rows) || types.isProxy(rows) || Object.getPrototypeOf(rows) !== Array.prototype) throw refillUnavailable();\n      const length = Object.getOwnPropertyDescriptor(rows, 'length');\n      if (!length || !('value' in length) || !Number.isSafeInteger(length.value) || length.value < 0 || length.value > query.limit + 1) throw refillUnavailable();\n      const keys = Reflect.ownKeys(rows);\n      if (keys.length !== length.value + 1 || keys[length.value] !== 'length') throw refillUnavailable();\n      let previous: Pick<DueRefillRow, 'nextRefillDate' | 'subscriptionId'> | undefined = query.after;\n      const mapped: DueRefillRow[] = [];\n      for (let index = 0; index < length.value; index++) {\n        const entry = Object.getOwnPropertyDescriptor(rows, String(index));\n        if (keys[index] !== String(index) || !entry || !('value' in entry) || !entry.enumerable) throw refillUnavailable();\n        const result = dueRefillRow(entry.value, scope, query.through);\n        if (previous && (result.nextRefillDate < previous.nextRefillDate || (result.nextRefillDate === previous.nextRefillDate &&\n          result.subscriptionId <= previous.subscriptionId))) throw refillUnavailable();\n        previous = result;\n        mapped.push(result);\n      }\n",
+          "after": "      if (!Array.isArray(rows) || rows.length > query.limit + 1) throw refillUnavailable();\n      let previous: Pick<DueRefillRow, 'nextRefillDate' | 'subscriptionId'> | undefined = query.after;\n      const mapped = rows.map(row => {\n        const result = dueRefillRow(row, scope, query.through);\n        if (previous && (result.nextRefillDate < previous.nextRefillDate || (result.nextRefillDate === previous.nextRefillDate &&\n          result.subscriptionId <= previous.subscriptionId))) throw refillUnavailable();\n        previous = result;\n        return result;\n      });\n",
+          "count": 1
+        }
+      ],
+      "expectedSourceHashes": {
+        "src1/modules/pharmacySubscriptions/repository/index.ts": "4a4be14863aecad2eba00df21ff3261fe23d9c8f40e92d817d1bac953f50aaf8"
+      },
+      "nominalSha256": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+      "assertion": "Descriptor-safe raw reply validation fails closed before supplied code/partial output.",
+      "counterexample": "Sparse returned array yields actual HTTP200 items containing null, or supplied map is ACTUALLY invoked; nominal503/no method call uses same source assertion."
+    }
+  },
+  "optionalAbsentEdges": [
+    {
+      "parent": "node_modules/mongodb/lib/deps.js",
+      "parentSha256": "2edcb7e407a8ebbd91626a160eba0af36762a4f1ab970d83d149d2fdd527ecdc",
+      "specifier": "kerberos"
+    },
+    {
+      "parent": "node_modules/mongodb/lib/deps.js",
+      "parentSha256": "2edcb7e407a8ebbd91626a160eba0af36762a4f1ab970d83d149d2fdd527ecdc",
+      "specifier": "@mongodb-js/zstd"
+    },
+    {
+      "parent": "node_modules/mongodb/lib/deps.js",
+      "parentSha256": "2edcb7e407a8ebbd91626a160eba0af36762a4f1ab970d83d149d2fdd527ecdc",
+      "specifier": "@aws-sdk/credential-providers"
+    },
+    {
+      "parent": "node_modules/mongodb/lib/deps.js",
+      "parentSha256": "2edcb7e407a8ebbd91626a160eba0af36762a4f1ab970d83d149d2fdd527ecdc",
+      "specifier": "snappy"
+    },
+    {
+      "parent": "node_modules/mongodb/lib/deps.js",
+      "parentSha256": "2edcb7e407a8ebbd91626a160eba0af36762a4f1ab970d83d149d2fdd527ecdc",
+      "specifier": "snappy/package.json"
+    },
+    {
+      "parent": "node_modules/mongodb/lib/deps.js",
+      "parentSha256": "2edcb7e407a8ebbd91626a160eba0af36762a4f1ab970d83d149d2fdd527ecdc",
+      "specifier": "@mongodb-js/saslprep"
+    },
+    {
+      "parent": "node_modules/mongodb/lib/deps.js",
+      "parentSha256": "2edcb7e407a8ebbd91626a160eba0af36762a4f1ab970d83d149d2fdd527ecdc",
+      "specifier": "aws4"
+    },
+    {
+      "parent": "node_modules/mongodb/lib/bson.js",
+      "parentSha256": "6e04274edabcd4c489e008f76bfe951d86c4d7164976c6fc02a59732a83a9f29",
+      "specifier": "bson-ext"
+    },
+    {
+      "parent": "node_modules/mongodb/lib/utils.js",
+      "parentSha256": "d85ac19e320b84534f5e1eb63bff3b57ee93bd648a391e9652f84571b4114408",
+      "specifier": "mongodb-client-encryption"
+    },
+    {
+      "parent": "node_modules/mquery/node_modules/debug/src/node.js",
+      "parentSha256": "d7b26d7c92f8ea7794b77ce11f3c11cd18c9084df7c357e3c7025344fa28aac6",
+      "specifier": "supports-color"
+    }
+  ],
+  "unreachableComputedEdge": {
+    "parent": "node_modules/mongodb/lib/utils.js",
+    "parentSha256": "d85ac19e320b84534f5e1eb63bff3b57ee93bd648a391e9652f84571b4114408",
+    "expression": "require(process.env.MONGODB_CLIENT_ENCRYPTION_OVERRIDE)",
+    "guard": "typeof process.env.MONGODB_CLIENT_ENCRYPTION_OVERRIDE === 'string' && process.env.MONGODB_CLIENT_ENCRYPTION_OVERRIDE.length > 0",
+    "functionName": "getMongoDBClientEncryption"
+  },
+  "nativeSourcePins": {
+    "node_modules/mongoose/lib/connection.js": "6da65adafb49ce321555758c7ecbe3bd4e875d1b94b644d5a48aef7a594da310",
+    "node_modules/mongodb/lib/mongo_client.js": "3a54b0938422e69e408524143aa031b7fbdde9d971e6a545346f76a5605fea1e",
+    "node_modules/mongodb/lib/db.js": "aced05fd4f64ee206fba4cf9fbeada40c0452b1aa32574530f294f8832d5101e",
+    "node_modules/bson/lib/objectid.js": "9c53aac9cc7d3207c6b940d8fb97b34dbae5371533e769f26709d6d85fabe261"
+  },
+  "nativeSourceProvenance": "Inert actual installed147package Mongoose6.13.8/driver4.17.2/BSON4.7.2 bytes from retained C1 firstfailed workspace; Mongoose connection.js802construct807assign810connect. This is source provenance only; P7 actualinstalledwholegraph still requires fresh admission.",
+  "optionalPolicyProvenance": {
+    "owningP7Contract": "f0e5a04afa5d7cf222cf5b2be31c2b44bef107e48228d11ba55fd1ba01b8ed17",
+    "reviewedC1NineNativeTuples": "61398f2a29d204b24ba9d1b830acb529e6e9d4381fc9df7cb4e15bcd1221b0b4",
+    "reviewedExactDebugTuple": "39a843c5b0e08908c9687a0fdeb3cebc7e4aa478d79d04243ba372c5d824de6f",
+    "reviewedExactUnreachableBranch": "b182050ca5302ec897b45615bd753e59016ec67939c3a04494177f98b9749023",
+    "rule": "Exactparent/fullhash/specifier tuples and exactguard/expression only. Unknownadditionaledge fails; no successfulmock/optionalinstall/global MODULE_NOT_FOUND exception."
+  },
+  "limits": {
+    "commandRecords": 20000,
+    "commandBytes": 16777216,
+    "seedRows": 128,
+    "pharmacies": 8,
+    "catalogRows": 64,
+    "catalogBytes": 262144,
+    "catalogCommands": 12,
+    "catalogMs": 5000
+  }
+}

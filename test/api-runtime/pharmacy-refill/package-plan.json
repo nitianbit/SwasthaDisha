@@ -1,0 +1,16 @@
+{
+  "schema": "SD-PHARMACY-REFILL-PACKAGE-PLAN-1",
+  "packages": {
+    "express": "4.21.1",
+    "joi": "17.13.3",
+    "jsonwebtoken": "9.0.2",
+    "reflect-metadata": "0.2.2",
+    "typedi": "0.10.0",
+    "mongoose": "6.13.8",
+    "typescript": "5.9.3"
+  },
+  "requiredNativeVersions": {
+    "mongodb": "4.17.2",
+    "bson": "4.7.2"
+  }
+}
