@@ -1,0 +1,479 @@
+{
+  "schema": "SD-LAB-S2-A-LITERAL-SERIALIZATION-VECTORS-1",
+  "status": "DRAFT_DATA_ONLY_NO_NODE_OR_CRYPTO_EXECUTION",
+  "ids": "Synthetic canonical IDs only; no real users/labs/evidence/root",
+  "compactEncoding": "UTF8 JSON.stringify equivalent for these arrays/ASCII values; no whitespace/newline",
+  "commands": [
+    {
+      "action": "map_lab",
+      "body": [
+        "sd.lab.authority.command",
+        1,
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "000000000000000000000003",
+        "000000000000000000000001",
+        "000000000000000000000014",
+        "000000000000000000000015",
+        1794528000000,
+        1794528900000,
+        "map_lab",
+        [
+          "000000000000000000000002",
+          0,
+          0,
+          "Synthetic lab",
+          "SYNTHETIC-REG-1",
+          1794527999000,
+          1794614400000,
+          "000000000000000000000008",
+          "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          [
+            "000000000000000000000006"
+          ],
+          "initial_mapping"
+        ]
+      ],
+      "signedUtf8Text": "[\"sd.lab.authority.command\",1,\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"000000000000000000000003\",\"000000000000000000000001\",\"000000000000000000000014\",\"000000000000000000000015\",1794528000000,1794528900000,\"map_lab\",[\"000000000000000000000002\",0,0,\"Synthetic lab\",\"SYNTHETIC-REG-1\",1794527999000,1794614400000,\"000000000000000000000008\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",[\"000000000000000000000006\"],\"initial_mapping\"]]",
+      "signedUtf8Bytes": 546,
+      "commandSha256": "10902d32b578bc80ca44a76f6ddbf594765848db70a22d0d2b026466efa0fa8c",
+      "envelopeWithKnownInvalidSignature": "[[\"sd.lab.authority.command\",1,\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"000000000000000000000003\",\"000000000000000000000001\",\"000000000000000000000014\",\"000000000000000000000015\",1794528000000,1794528900000,\"map_lab\",[\"000000000000000000000002\",0,0,\"Synthetic lab\",\"SYNTHETIC-REG-1\",1794527999000,1794614400000,\"000000000000000000000008\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",[\"000000000000000000000006\"],\"initial_mapping\"]],\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"]",
+      "signatureState": "INVALID_ALL_ZERO_BYTES_NOT_SUCCESS_PROOF"
+    },
+    {
+      "action": "grant_lab_reader",
+      "body": [
+        "sd.lab.authority.command",
+        1,
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "000000000000000000000003",
+        "000000000000000000000001",
+        "000000000000000000000016",
+        "000000000000000000000017",
+        1794528000000,
+        1794528900000,
+        "grant_lab_reader",
+        [
+          "000000000000000000000004",
+          "000000000000000000000005",
+          0,
+          1,
+          "000000000000000000000006",
+          1794528000000,
+          1794614400000,
+          "000000000000000000000008",
+          "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "operational_assignment"
+        ]
+      ],
+      "signedUtf8Text": "[\"sd.lab.authority.command\",1,\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"000000000000000000000003\",\"000000000000000000000001\",\"000000000000000000000016\",\"000000000000000000000017\",1794528000000,1794528900000,\"grant_lab_reader\",[\"000000000000000000000004\",\"000000000000000000000005\",0,1,\"000000000000000000000006\",1794528000000,1794614400000,\"000000000000000000000008\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"operational_assignment\"]]",
+      "signedUtf8Bytes": 553,
+      "commandSha256": "3d2bed0fdf2281bb1a549a2c29128afcdcc83f46ba876e6e7522fc165fe67fe3",
+      "envelopeWithKnownInvalidSignature": "[[\"sd.lab.authority.command\",1,\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"000000000000000000000003\",\"000000000000000000000001\",\"000000000000000000000016\",\"000000000000000000000017\",1794528000000,1794528900000,\"grant_lab_reader\",[\"000000000000000000000004\",\"000000000000000000000005\",0,1,\"000000000000000000000006\",1794528000000,1794614400000,\"000000000000000000000008\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"operational_assignment\"]],\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"]",
+      "signatureState": "INVALID_ALL_ZERO_BYTES_NOT_SUCCESS_PROOF"
+    },
+    {
+      "action": "revoke_lab_reader",
+      "body": [
+        "sd.lab.authority.command",
+        1,
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "000000000000000000000003",
+        "000000000000000000000001",
+        "000000000000000000000018",
+        "000000000000000000000019",
+        1794528000000,
+        1794528900000,
+        "revoke_lab_reader",
+        [
+          "000000000000000000000004",
+          "000000000000000000000005",
+          1,
+          2,
+          "000000000000000000000008",
+          "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "access_withdrawn"
+        ]
+      ],
+      "signedUtf8Text": "[\"sd.lab.authority.command\",1,\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"000000000000000000000003\",\"000000000000000000000001\",\"000000000000000000000018\",\"000000000000000000000019\",1794528000000,1794528900000,\"revoke_lab_reader\",[\"000000000000000000000004\",\"000000000000000000000005\",1,2,\"000000000000000000000008\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"access_withdrawn\"]]",
+      "signedUtf8Bytes": 493,
+      "commandSha256": "bd90477f7732dc6d91cb75184b54b80cf98f1dd46a112d36966591d45b0a1e06",
+      "envelopeWithKnownInvalidSignature": "[[\"sd.lab.authority.command\",1,\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"000000000000000000000003\",\"000000000000000000000001\",\"000000000000000000000018\",\"000000000000000000000019\",1794528000000,1794528900000,\"revoke_lab_reader\",[\"000000000000000000000004\",\"000000000000000000000005\",1,2,\"000000000000000000000008\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"access_withdrawn\"]],\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==\"]",
+      "signatureState": "INVALID_ALL_ZERO_BYTES_NOT_SUCCESS_PROOF"
+    }
+  ],
+  "fingerprint": {
+    "array": [
+      "business-source",
+      1,
+      "lab",
+      [
+        "_id",
+        "000000000000000000000002"
+      ],
+      [
+        "organizationId",
+        "000000000000000000000001"
+      ],
+      [
+        "revision",
+        1
+      ],
+      [
+        "legalName",
+        "Synthetic lab"
+      ],
+      [
+        "registrationReference",
+        "SYNTHETIC-REG-1"
+      ],
+      [
+        "state",
+        "active"
+      ],
+      [
+        "verificationValidFrom",
+        1794527999000
+      ],
+      [
+        "verificationExpiresAt",
+        1794614400000
+      ],
+      [
+        "evidenceVersionId",
+        "000000000000000000000008"
+      ],
+      [
+        "evidenceSha256",
+        "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      ]
+    ],
+    "text": "[\"business-source\",1,\"lab\",[\"_id\",\"000000000000000000000002\"],[\"organizationId\",\"000000000000000000000001\"],[\"revision\",1],[\"legalName\",\"Synthetic lab\"],[\"registrationReference\",\"SYNTHETIC-REG-1\"],[\"state\",\"active\"],[\"verificationValidFrom\",1794527999000],[\"verificationExpiresAt\",1794614400000],[\"evidenceVersionId\",\"000000000000000000000008\"],[\"evidenceSha256\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"]]",
+    "sha256": "e38c144f5a1cbd0e260065d1619f5b6248a0c9aa1d9c3457274556caeaeef9e6"
+  },
+  "decisions": [
+    {
+      "kind": "business_mapped",
+      "array": [
+        "business-authority-decision",
+        1,
+        "business_mapped",
+        [
+          "_id",
+          "000000000000000000000015"
+        ],
+        [
+          "organizationId",
+          "000000000000000000000001"
+        ],
+        [
+          "operationId",
+          "000000000000000000000014"
+        ],
+        [
+          "decidingActorId",
+          "000000000000000000000003"
+        ],
+        [
+          "decidedAt",
+          1794528000000
+        ],
+        [
+          "authorityGeneration",
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        [
+          "evidence",
+          [
+            [
+              "000000000000000000000008",
+              "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            ]
+          ]
+        ],
+        [
+          "payload",
+          [
+            "organizationId",
+            "000000000000000000000001"
+          ],
+          [
+            "organizationRevision",
+            1
+          ],
+          [
+            "kind",
+            "lab"
+          ],
+          [
+            "sourceBusinessId",
+            "000000000000000000000002"
+          ],
+          [
+            "sourceFingerprint",
+            "e38c144f5a1cbd0e260065d1619f5b6248a0c9aa1d9c3457274556caeaeef9e6"
+          ],
+          [
+            "branches",
+            [
+              [
+                "000000000000000000000006",
+                "active",
+                1
+              ]
+            ]
+          ]
+        ]
+      ],
+      "text": "[\"business-authority-decision\",1,\"business_mapped\",[\"_id\",\"000000000000000000000015\"],[\"organizationId\",\"000000000000000000000001\"],[\"operationId\",\"000000000000000000000014\"],[\"decidingActorId\",\"000000000000000000000003\"],[\"decidedAt\",1794528000000],[\"authorityGeneration\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"],[\"evidence\",[[\"000000000000000000000008\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"]]],[\"payload\",[\"organizationId\",\"000000000000000000000001\"],[\"organizationRevision\",1],[\"kind\",\"lab\"],[\"sourceBusinessId\",\"000000000000000000000002\"],[\"sourceFingerprint\",\"e38c144f5a1cbd0e260065d1619f5b6248a0c9aa1d9c3457274556caeaeef9e6\"],[\"branches\",[[\"000000000000000000000006\",\"active\",1]]]]]",
+      "sha256": "54d37c66682a8f5d342e8792fd3fd4ec5f861e7a21da781b2bade46f62ea5590"
+    },
+    {
+      "kind": "membership_granted",
+      "array": [
+        "business-authority-decision",
+        1,
+        "membership_granted",
+        [
+          "_id",
+          "000000000000000000000017"
+        ],
+        [
+          "organizationId",
+          "000000000000000000000001"
+        ],
+        [
+          "operationId",
+          "000000000000000000000016"
+        ],
+        [
+          "decidingActorId",
+          "000000000000000000000003"
+        ],
+        [
+          "decidedAt",
+          1794528000000
+        ],
+        [
+          "authorityGeneration",
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        [
+          "evidence",
+          [
+            [
+              "000000000000000000000008",
+              "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            ]
+          ]
+        ],
+        [
+          "subjectActorId",
+          "000000000000000000000004"
+        ],
+        [
+          "payload",
+          [
+            "organizationId",
+            "000000000000000000000001"
+          ],
+          [
+            "actorId",
+            "000000000000000000000004"
+          ],
+          [
+            "membershipId",
+            "000000000000000000000005"
+          ],
+          [
+            "membershipRevision",
+            1
+          ],
+          [
+            "validFrom",
+            1794528000000
+          ],
+          [
+            "expiresAt",
+            1794614400000
+          ],
+          [
+            "grants",
+            [
+              [
+                "000000000000000000000006",
+                "lab.worklist.read",
+                "000000000000000000000017"
+              ]
+            ]
+          ],
+          [
+            "branchId",
+            "000000000000000000000006"
+          ],
+          [
+            "capability",
+            "lab.worklist.read"
+          ]
+        ]
+      ],
+      "text": "[\"business-authority-decision\",1,\"membership_granted\",[\"_id\",\"000000000000000000000017\"],[\"organizationId\",\"000000000000000000000001\"],[\"operationId\",\"000000000000000000000016\"],[\"decidingActorId\",\"000000000000000000000003\"],[\"decidedAt\",1794528000000],[\"authorityGeneration\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"],[\"evidence\",[[\"000000000000000000000008\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"]]],[\"subjectActorId\",\"000000000000000000000004\"],[\"payload\",[\"organizationId\",\"000000000000000000000001\"],[\"actorId\",\"000000000000000000000004\"],[\"membershipId\",\"000000000000000000000005\"],[\"membershipRevision\",1],[\"validFrom\",1794528000000],[\"expiresAt\",1794614400000],[\"grants\",[[\"000000000000000000000006\",\"lab.worklist.read\",\"000000000000000000000017\"]]],[\"branchId\",\"000000000000000000000006\"],[\"capability\",\"lab.worklist.read\"]]]",
+      "sha256": "dffe3c83dea010aca20e8dce33985e6f8871d8c5485d6c4408f0bf43cb6e6ad2"
+    },
+    {
+      "kind": "lab_membership_revoked",
+      "array": [
+        "business-authority-decision",
+        1,
+        "lab_membership_revoked",
+        [
+          "_id",
+          "000000000000000000000019"
+        ],
+        [
+          "organizationId",
+          "000000000000000000000001"
+        ],
+        [
+          "operationId",
+          "000000000000000000000018"
+        ],
+        [
+          "decidingActorId",
+          "000000000000000000000003"
+        ],
+        [
+          "decidedAt",
+          1794528000000
+        ],
+        [
+          "authorityGeneration",
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        [
+          "evidence",
+          [
+            [
+              "000000000000000000000008",
+              "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+            ]
+          ]
+        ],
+        [
+          "subjectActorId",
+          "000000000000000000000004"
+        ],
+        [
+          "payload",
+          [
+            "organizationId",
+            "000000000000000000000001"
+          ],
+          [
+            "actorId",
+            "000000000000000000000004"
+          ],
+          [
+            "membershipId",
+            "000000000000000000000005"
+          ],
+          [
+            "membershipRevision",
+            2
+          ],
+          [
+            "previousMembershipRevision",
+            1
+          ],
+          [
+            "previousGrantDecisionId",
+            "000000000000000000000017"
+          ],
+          [
+            "branchId",
+            "000000000000000000000006"
+          ],
+          [
+            "capability",
+            "lab.worklist.read"
+          ],
+          [
+            "operationalFence",
+            3
+          ],
+          [
+            "reasonCode",
+            "access_withdrawn"
+          ]
+        ]
+      ],
+      "text": "[\"business-authority-decision\",1,\"lab_membership_revoked\",[\"_id\",\"000000000000000000000019\"],[\"organizationId\",\"000000000000000000000001\"],[\"operationId\",\"000000000000000000000018\"],[\"decidingActorId\",\"000000000000000000000003\"],[\"decidedAt\",1794528000000],[\"authorityGeneration\",\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"],[\"evidence\",[[\"000000000000000000000008\",\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"]]],[\"subjectActorId\",\"000000000000000000000004\"],[\"payload\",[\"organizationId\",\"000000000000000000000001\"],[\"actorId\",\"000000000000000000000004\"],[\"membershipId\",\"000000000000000000000005\"],[\"membershipRevision\",2],[\"previousMembershipRevision\",1],[\"previousGrantDecisionId\",\"000000000000000000000017\"],[\"branchId\",\"000000000000000000000006\"],[\"capability\",\"lab.worklist.read\"],[\"operationalFence\",3],[\"reasonCode\",\"access_withdrawn\"]]]",
+      "sha256": "fffb0ce9e6ad62c7c2bf08f36903fd228bbdc6510a3e72b4e4944d22de9a1b4f"
+    }
+  ],
+  "negativeVectors": [
+    {
+      "id": "unknown-action",
+      "mutation": "body[10]=\"set_lab_state\"",
+      "expected": "LAB_AUTHORITY_INPUT_INVALID"
+    },
+    {
+      "id": "self-grant",
+      "mutation": "grant body[11][0]=body[4] with otherwise well-formed valid signature",
+      "expected": "LAB_AUTHORITY_DENIED"
+    },
+    {
+      "id": "changed-body-old-signature",
+      "mutation": "change any signed field retaining prior signature",
+      "expected": "LAB_AUTHORITY_DENIED"
+    },
+    {
+      "id": "trailing-newline",
+      "mutation": "append LF to canonical envelope",
+      "expected": "LAB_AUTHORITY_INPUT_INVALID"
+    },
+    {
+      "id": "payload-object",
+      "mutation": "replace action payload array with object",
+      "expected": "LAB_AUTHORITY_INPUT_INVALID"
+    },
+    {
+      "id": "unknown-null",
+      "mutation": "replace any required field with null",
+      "expected": "LAB_AUTHORITY_INPUT_INVALID"
+    },
+    {
+      "id": "branch-duplicate-or-order",
+      "mutation": "map branch IDs duplicated or descending",
+      "expected": "LAB_AUTHORITY_INPUT_INVALID"
+    },
+    {
+      "id": "old-active-grant-overwrite",
+      "mutation": "new signed grant expectedRevision matches current ACTIVE membership",
+      "expected": "LAB_AUTHORITY_CONFLICT"
+    },
+    {
+      "id": "revoke-deleted-subject",
+      "mutation": "delete subject after valid grant before signed revoke; issuer still active",
+      "expected": "nominal revoke succeeds if other guards valid; no subject lookup"
+    },
+    {
+      "id": "expired-replay",
+      "mutation": "replay identical prior committed command after notAfter while currently admitted historical root/evidence/issuer and metadata still valid",
+      "expected": "retained COMMITTED receipt with replayed=true; no authority claim or write"
+    },
+    {
+      "id": "generation-change",
+      "mutation": "root authorityGeneration differs from signed body",
+      "expected": "LAB_AUTHORITY_DENIED"
+    },
+    {
+      "id": "metadata-unknown",
+      "mutation": "missing or unsupported actual index catalog/cursor/cleanup",
+      "expected": "LAB_AUTHORITY_UNAVAILABLE"
+    }
+  ],
+  "notProof": "No signature verification/signing, production serializer, TypeScript/Node, DB, DDL, transaction, driver or runtime executed. Future admitted native vectors required."
+}
