@@ -57,6 +57,11 @@ const fence = (b: Row) => ({ _id: b._id, ...(has(b) ? { 'walletFunding.revision'
   : { walletFunding: { $exists: false } }) });
 const store = (f: Funding) => ({ walletFunding: { total: rupees(f.total), revision: f.revision, closed: f.closed, captures: f.captures, updatedAt: new Date() } });
 
+/** The ledger's transaction runner (retries write conflicts and duplicate-key races); shared by booking settlement. */
+export async function runLedgerTransaction<T>(work: (s: ClientSession) => Promise<T>): Promise<T> {
+  return inTransaction(work);
+}
+
 async function inTransaction<T>(work: (s: ClientSession) => Promise<T>): Promise<T> {
   for (let attempt = 0; ; attempt++) {
     const session = await startSession();
@@ -195,46 +200,69 @@ export async function recordGatewayCapture(p: {
 /**
  * Cancellation refund: returns everything the booking holds (wallet funding + applied captures) and CLOSES it in
  * the same transaction, so no later funding, capture or excess return can add to or repeat it. Safe to call before
- * or after the caller writes its cancelled status, and safe to repeat (returns 0 once closed).
+ * or after the caller writes its cancelled status, and safe to repeat (returns 0 once closed and reconciled).
+ *
+ * `paidRecords`: every captured payment record of the booking (and its owner) the caller read in this transaction.
+ * One the ledger does not know (its capture registration was interrupted, e.g. an earlier attempt the booking no
+ * longer links) is money the booking holds as well: it is recorded as returned and credited once under its own
+ * capture key, the same key a later registration would use, so nothing is paid twice or stranded.
  */
-export async function refundAndClose(p: {
+export interface RefundAndCloseParams {
   model: Model<any>; kind: FundedBookingKind; bookingId: string; userId: string; legacyFunded: number; legacyGateway: number;
-  legacyGatewayRecordId?: string; wallets?: WalletRepository;
-}): Promise<number> {
+  legacyGatewayRecordId?: string; paidRecords?: { recordId: string; amount: number }[];
+  /** A refund from before the ledger already returned the funding and the linked capture. */
+  priorRefund?: boolean; wallets?: WalletRepository;
+}
+export async function refundAndClose(p: RefundAndCloseParams): Promise<number> {
+  return inTransaction(s => refundAndCloseIn(p, s));
+}
+
+/** refundAndClose inside the caller's transaction (e.g. together with the cancellation write and hold releases). */
+export async function refundAndCloseIn(p: RefundAndCloseParams, s: ClientSession): Promise<number> {
   const wallets = p.wallets ?? new WalletRepository();
   const id = String(p.bookingId).toLowerCase();
-  return inTransaction(async s => {
-    const b = await p.model.findById(id).session(s).lean() as Row | null;
-    if (!b) return 0;
-    const f = await hydrate(b, s, p.legacyFunded);
-    const paidKey = p.legacyGatewayRecordId ? String(p.legacyGatewayRecordId).toLowerCase() : undefined;
-    if (f.closed) {
-      // Already refunded and closed, but a paid record arrived that the ledger does not know: return it once.
-      if (!paidKey || !(p.legacyGateway > 0) || f.captures.some(c => c.recordId === paidKey)) return 0;
-      const late: Funding = { ...f, revision: f.revision + 1, captures: [...f.captures, { recordId: paidKey, amount: rupees(p.legacyGateway), state: 'returned' }] };
-      const r0 = await p.model.updateOne(fence(b), { $set: store(late) }, { session: s });
-      if (r0.matchedCount !== 1) throw changed();
-      await credit({ wallets, kind: p.kind, id, userId: p.userId, amount: p.legacyGateway, key: `${p.kind}_capture_returned:${paidKey}`,
-        description: 'Payment received for a cancelled booking; returned to wallet' }, s);
-      return rupees(p.legacyGateway);
+  const b = await p.model.findById(id).session(s).lean() as Row | null;
+  if (!b) return 0;
+  const f = await hydrate(b, s, p.legacyFunded);
+  const paidKey = p.legacyGatewayRecordId ? String(p.legacyGatewayRecordId).toLowerCase() : undefined;
+  const linkedUnknown = !!paidKey && p.legacyGateway > 0 && !f.captures.some(c => c.recordId === paidKey);
+  const others: Capture[] = [];
+  for (const r of p.paidRecords ?? []) {
+    const recordId = String(r.recordId).toLowerCase();
+    const amount = rupees(Number(r.amount));
+    if (!(amount > 0) || recordId === paidKey || f.captures.some(c => c.recordId === recordId) || others.some(c => c.recordId === recordId)) continue;
+    others.push({ recordId, amount, state: 'returned' });
+  }
+  const returnEach = async (list: Capture[], description: string) => {
+    for (const c of list) {
+      await credit({ wallets, kind: p.kind, id, userId: p.userId, amount: c.amount, key: `${p.kind}_capture_returned:${c.recordId}`, description }, s);
     }
-    const captures = [...f.captures];
-    // A paid linked record the ledger does not know yet (pre-ledger booking, or a crash between the provider's
-    // paid/link write and the capture registration): its money is held by this booking too, so it is refunded here
-    // (closing returns every capture) and any later processing of it finds it already returned.
-    if (paidKey && p.legacyGateway > 0 && !captures.some(c => c.recordId === paidKey)) {
-      captures.push({ recordId: paidKey, amount: rupees(p.legacyGateway), state: 'applied' });
-    }
-    const gateway = captures.filter(c => c.state === 'applied').reduce((a, c) => a + c.amount, 0);
-    const amount = rupees(f.total + gateway);
-    const next: Funding = { total: 0, revision: f.revision + 1, closed: true,
-      captures: captures.map(c => c.state === 'applied' ? { ...c, state: 'returned' as const } : c) };
-    const r = await p.model.updateOne(fence(b), { $set: store(next) }, { session: s });
-    if (r.matchedCount !== 1) throw changed();
-    // A refund under this key from before the booking ledger existed: close without paying again.
-    if (await WalletTransactionModel.exists({ operationKey: `${p.kind}_refund:${id}` }).session(s)) return 0;
-    await credit({ wallets, kind: p.kind, id, userId: p.userId, amount, key: `${p.kind}_refund:${id}`,
-      description: p.kind === 'booking' ? 'Refund for cancelled booking' : 'Refund for external booking' }, s);
-    return amount;
-  });
+    return rupees(list.reduce((a, c) => a + c.amount, 0));
+  };
+
+  if (f.closed) {
+    // Already refunded and closed, but captured payments arrived that the ledger does not know: return each once.
+    const late = [...(linkedUnknown ? [{ recordId: paidKey!, amount: rupees(p.legacyGateway), state: 'returned' as const }] : []), ...others];
+    if (!late.length) return 0;
+    const r0 = await p.model.updateOne(fence(b), { $set: store({ ...f, revision: f.revision + 1, captures: [...f.captures, ...late] }) }, { session: s });
+    if (r0.matchedCount !== 1) throw changed();
+    return returnEach(late, 'Payment received for a cancelled booking; returned to wallet');
+  }
+  const captures = [...f.captures];
+  // A paid linked record the ledger does not know yet (pre-ledger booking, or a crash between the provider's
+  // paid/link write and the capture registration): its money is held by this booking too, so it is refunded here
+  // (closing returns every capture) and any later processing of it finds it already returned.
+  if (linkedUnknown) captures.push({ recordId: paidKey!, amount: rupees(p.legacyGateway), state: 'applied' });
+  const gateway = captures.filter(c => c.state === 'applied').reduce((a, c) => a + c.amount, 0);
+  const amount = rupees(f.total + gateway);
+  const next: Funding = { total: 0, revision: f.revision + 1, closed: true,
+    captures: [...captures.map(c => c.state === 'applied' ? { ...c, state: 'returned' as const } : c), ...others] };
+  const r = await p.model.updateOne(fence(b), { $set: store(next) }, { session: s });
+  if (r.matchedCount !== 1) throw changed();
+  const extra = await returnEach(others, 'Earlier payment attempt for a cancelled booking returned to wallet');
+  // A refund from before the booking ledger existed: close without paying it again.
+  if (p.priorRefund || await WalletTransactionModel.exists({ operationKey: `${p.kind}_refund:${id}` }).session(s)) return extra;
+  await credit({ wallets, kind: p.kind, id, userId: p.userId, amount, key: `${p.kind}_refund:${id}`,
+    description: p.kind === 'booking' ? 'Refund for cancelled booking' : 'Refund for external booking' }, s);
+  return rupees(amount + extra);
 }

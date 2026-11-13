@@ -379,6 +379,16 @@ const bookingSchema = new Schema<IBooking>(
       trim: true,
       index: true,
     },
+    // Capacity and benefits this booking holds (A2a), taken in the creation transaction and given back once by the
+    // cancellation transaction. Absent on bookings created before A2a (see bookings/holds.ts for how those are reconciled).
+    holds: {
+      type: new Schema({
+        version: { type: Number, required: true, enum: [1] },
+        heldSlotId: { type: String, default: null },
+        followUpParentId: { type: String, default: null },
+      }, { _id: false }),
+      default: undefined,
+    },
     // Payment record whose post-payment follow-up (reminders/meeting/email) finished; replays resume until set.
     postPaymentCompletedFor: { type: String },
     // Wallet money applied to this booking (rupees); see common/utils/bookingWalletFunding.ts.

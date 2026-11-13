@@ -1,9 +1,11 @@
 import crypto from 'crypto';
 import { advanceRefillOnPayment } from '@/modules/pharmacySubscriptions/refillCycle';
 import BookingModel from '@/modules/bookings/model';
-import { recordGatewayCapture, refundAndClose } from '@/modules/common/utils/bookingWalletFunding';
+import { recordGatewayCapture, refundAndClose, runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
+import { countCouponUsageIn } from '@/modules/coupon/usage';
+import PaymentRecordModel from '@/modules/payment/model';
 import ExternalBookingModel from '@/modules/externalBookings/model';
-import { ClientSession, startSession } from 'mongoose';
+import { ClientSession, startSession, Types } from 'mongoose';
 import Razorpay from 'razorpay';
 import { Service } from 'typedi';
 import { CONFIG } from '@/config/config';
@@ -553,6 +555,14 @@ export class PaymentService {
     const discountAmountPaise = Math.round((data.discountAmount || 0) * 100);
     const finalAmountPaise = Math.round(data.finalAmount * 100);
 
+    const isProcessed = data.isProcessed ?? true;
+    const couponCode = typeof data.couponCode === 'string' && data.couponCode.trim() ? data.couponCode : undefined;
+    // A processed booking record with a coupon is created and counted in one transaction (coupon/usage.ts); one
+    // created unprocessed is counted by the finalizer.
+    if (couponCode && data.context === 'booking' && isProcessed) {
+      return runLedgerTransaction((session) => this.createDirectPaidBookingRecordIn(data, session));
+    }
+
     return this.paymentRepository.save({
       userId: data.userId,
       payerUserId: this.getPaymentPayerUserId(data),
@@ -568,11 +578,33 @@ export class PaymentService {
       currency,
       paymentGateway: 'internal',
       couponCode: data.couponCode,
+      ...(couponCode && data.context === 'booking' ? { couponUsage: 'pending' as const } : {}),
       status: 'paid',
-      isProcessed: data.isProcessed ?? true,
+      isProcessed,
       paidAt: new Date(),
       notes: data.notes,
     });
+  }
+
+  /**
+   * Inserts a processed, internally paid booking record inside the caller's transaction and counts its coupon in it
+   * (coupon/usage.ts). The caller writes the payable booking in the same transaction, which serializes the whole
+   * effect with cancellation (A2a).
+   */
+  async createDirectPaidBookingRecordIn(data: CreateDirectPaidTransactionRequest, session: ClientSession,
+    id: Types.ObjectId = new Types.ObjectId()): Promise<IPaymentRecord> {
+    if (data.context !== 'booking') throw new AppError({ status: 500, code: 'INVALID_PAYMENT_CONTEXT', message: 'Booking payments only' });
+    const couponCode = typeof data.couponCode === 'string' && data.couponCode.trim() ? data.couponCode : undefined;
+    await PaymentRecordModel.create([{
+      _id: id, userId: data.userId, payerUserId: this.getPaymentPayerUserId(data), payerPharmacyId: data.payerPharmacyId,
+      context: data.context, contextId: data.contextId, baseAmount: data.baseAmount, discountAmount: data.discountAmount || 0,
+      finalAmount: data.finalAmount, baseAmountPaise: Math.round(data.baseAmount * 100),
+      discountAmountPaise: Math.round((data.discountAmount || 0) * 100), finalAmountPaise: Math.round(data.finalAmount * 100),
+      currency: (data.currency || 'INR').toUpperCase(), paymentGateway: 'internal',
+      ...(couponCode ? { couponCode, couponUsage: 'pending' } : {}), status: 'paid', isProcessed: true, paidAt: new Date(), notes: data.notes,
+    }], { session });
+    if (couponCode) await countCouponUsageIn(String(id), session);
+    return (await PaymentRecordModel.findById(id).session(session).lean()) as unknown as IPaymentRecord;
   }
 
   private async getPaymentRecordForVerification(
@@ -856,11 +888,13 @@ export class PaymentService {
   private async finalizePaymentProcessing(
     paymentRecord: IPaymentRecord
   ): Promise<IPaymentRecord> {
-    const finalized = await this.markAsProcessedIfNotProcessed(paymentRecord._id!);
-    if (finalized && paymentRecord.couponCode) {
-      const coupon = await this.couponService.getByCode(paymentRecord.couponCode);
-      await this.couponService.incrementUsage(coupon._id!);
-    }
+    // Processing and the coupon count commit together (coupon/usage.ts): a cancellation either sees the count and
+    // undoes it, or voids the record first so it is never counted.
+    await runLedgerTransaction(async (session) => {
+      const processed = await PaymentRecordModel.updateOne({ _id: paymentRecord._id!, isProcessed: { $ne: true } },
+        { $set: { isProcessed: true } }, { session });
+      if (processed.modifiedCount === 1) await countCouponUsageIn(String(paymentRecord._id), session);
+    });
 
     const processedPayment = await this.paymentRepository.findById(paymentRecord._id!);
     return processedPayment || paymentRecord;

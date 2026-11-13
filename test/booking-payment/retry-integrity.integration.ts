@@ -45,6 +45,12 @@ const paymentStub = {
     return (await PaymentRecordModel.create({ userId: d.userId, context: d.context ?? 'booking', contextId: d.contextId, baseAmount: d.baseAmount,
       discountAmount: d.discountAmount, finalAmount: 0, currency: 'INR', paymentGateway: 'internal', status: 'paid', notes: d.notes })).toObject();
   },
+  // Booking wallet-covered/zero-payable settlement (A2a): the record is inserted inside the booking's transaction.
+  createDirectPaidBookingRecordIn: async (d: unknown, session: unknown, id: unknown) => {
+    if (hooks.failOrder) { hooks.failOrder = false; throw new Error('Payment record creation failed'); }
+    const real = Object.create(PaymentService.prototype) as { createDirectPaidBookingRecordIn: (...a: unknown[]) => Promise<unknown> };
+    return real.createDirectPaidBookingRecordIn(d, session, id);
+  },
 };
 const coupon = { discount: 0 };
 const emails = { sent: 0, failNext: false };

@@ -66,6 +66,11 @@ const paymentRecordSchema = new Schema<IPaymentRecord>(
       trim: true,
       index: true,
     },
+    // Coupon usage state of this record (see coupon/usage.ts); absent on gateway and pre-A2a records.
+    couponUsage: {
+      type: String,
+      enum: ['pending', 'counted', 'void', 'reversed'],
+    },
     razorpayOrderId: {
       type: String,
       sparse: true,

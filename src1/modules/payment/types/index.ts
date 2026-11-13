@@ -17,6 +17,8 @@ export interface IPaymentRecord {
   currency: string;
   paymentGateway: 'razorpay' | 'internal';
   couponCode?: string;
+  /** Coupon usage state (coupon/usage.ts). */
+  couponUsage?: 'pending' | 'counted' | 'void' | 'reversed';
   razorpayOrderId: string;
   razorpayPaymentId?: string;
   razorpaySignature?: string;

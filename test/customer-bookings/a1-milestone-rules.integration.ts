@@ -102,7 +102,7 @@ async function main() {
     await rejects(() => enforceUserCancellationWindow([{ bookingDate: '20261131', bookingTime: '10:00' }], 'user'), 'INVALID_BOOKING_DATETIME', 400);
   });
 
-  await check('[B2] inside the window a customer cancel is refused (paid, or pending with a paid record) and nothing changes; outside it, or as admin, it cancels', async () => {
+  await check('[B2] inside the window a customer cancel is refused when money was captured (paid, or pending with a paid record); unpaid, outside it, or as admin, it cancels', async () => {
     const u = await customer();
     const paidSoon = await booking(u, inHours(3), true);
     await rejects(cancel(paidSoon, u), 'CANCELLATION_WINDOW_CLOSED', 400);
@@ -112,9 +112,9 @@ async function main() {
     await PaymentRecordModel.create({ userId: u, context: 'booking', contextId: recordPaid, baseAmount: 100, discountAmount: 0, finalAmount: 100,
       currency: 'INR', paymentGateway: 'razorpay', razorpayOrderId: 'ord_' + recordPaid, status: 'paid' });
     await rejects(cancel(recordPaid, u), 'CANCELLATION_WINDOW_CLOSED', 400);
-    // Until A2 serializes the payment state with the cancel, the window applies to unpaid bookings too.
+    // A2a: the decision is serialized with capture, so an unpaid booking is exempt again (milestone B2).
     const unpaidSoon = await booking(u, inHours(3), false);
-    await rejects(cancel(unpaidSoon, u), 'CANCELLATION_WINDOW_CLOSED', 400);
+    assert.equal((await cancel(unpaidSoon, u)).status, 'cancelled', 'unpaid: no window');
     const paidLater = await booking(u, inHours(96), true);
     assert.equal((await cancel(paidLater, u)).status, 'cancelled', 'outside the window');
     const admin = new Types.ObjectId().toHexString();
@@ -212,7 +212,7 @@ async function main() {
     const unpaid = await ExternalBookingModel.collection.insertOne({ userId: u, integration: 'healthians', providerType: 'DIAGNOSTICS',
       status: 'pending_payment', paymentStatus: 'pending', price: 100, ...inHours(3) } as never);
     await rejects(externals.cancelBooking(unpaid.insertedId.toHexString(), { _id: u, userType: 'user' }, {}, 'diagnostics'), 'CANCELLATION_WINDOW_CLOSED', 400);
-    assert.equal((await ExternalBookingModel.findById(unpaid.insertedId).lean())!.status, 'pending_payment', 'unpaid too, until A2');
+    assert.equal((await ExternalBookingModel.findById(unpaid.insertedId).lean())!.status, 'pending_payment', 'external unpaid too, until A2b');
   });
 
   await check('[D8/D9] Healthians: the slot is frozen right before the order is placed, and the post-coupon total incl. wallet is sent', async () => {

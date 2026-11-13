@@ -125,6 +125,8 @@ export interface IBooking {
   paymentTransactionId?: string; // Payment transaction reference for paid flows
   /** Wallet money applied to this booking (rupees); authoritative for refunds and retries. */
   postPaymentCompletedFor?: string;
+  /** Slot capacity / follow-up benefit held by this booking (bookings/holds.ts). */
+  holds?: { version: 1; heldSlotId?: string | null; followUpParentId?: string | null };
   walletFunding?: { total: number; revision?: number; closed?: boolean;
     captures?: { recordId: string; amount: number; state: 'applied' | 'returned' }[]; updatedAt?: Date };
   
