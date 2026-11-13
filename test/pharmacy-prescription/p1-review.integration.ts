@@ -44,7 +44,8 @@ const sideEffectService = {
   queueSubscriptionSync: async (_id: string, trigger: string) => { notices.push('sync:' + trigger); },
 };
 const service = new (PharmacyOrderService as unknown as new (...a: unknown[]) => PharmacyOrderService)(
-  new PharmacyOrderRepository(), {}, inventoryService, {}, {}, {}, sideEffectService, {});
+  new PharmacyOrderRepository(), {}, inventoryService, {}, {}, {}, sideEffectService, {},
+  { buildIntent: async () => ({ status: 'manual_review', walletAmount: 0, gatewayAmountPaise: 0, generation: 0, updatedAt: new Date() }), settleAfterRejection: async () => undefined }); // refunds are covered by the P2 test
 
 const pharmacyA = new Types.ObjectId().toHexString();
 const pharmacyB = new Types.ObjectId().toHexString();
@@ -71,8 +72,12 @@ async function check(name: string, fn: () => Promise<void>) { await fn(); passed
 
 async function main() {
   await mongoose.connect(url);
-  await mongoose.connection.db!.dropDatabase();
-  await PharmacyOrderModel.init();
+  // Clear instead of drop: a pending dropDatabase races with Mongoose's own collection creation.
+  for (const c of await mongoose.connection.db!.collections()) await c.deleteMany({});
+  for (let i = 0; ; i++) { // dropDatabase completes asynchronously; retry while it is still pending
+    try { await PharmacyOrderModel.init(); break; }
+    catch (e) { if ((e as { code?: number }).code !== 215 || i > 20) throw e; await new Promise(r => setTimeout(r, 500)); }
+  }
 
   await check('approve: status approved, review recorded, stock untouched, customer notified', async () => {
     const id = await seed({ status: 'accepted', paymentStatus: 'paid' });

@@ -88,6 +88,37 @@ const prescriptionReviewSchema = new Schema(
   { _id: false }
 );
 
+const prescriptionRefundSchema = new Schema(
+  {
+    status: { type: String, required: true, enum: ['wallet_pending', 'wallet_credited', 'source_processing', 'source_refunded', 'manual_review'] },
+    payerUserId: { type: String },
+    paymentRecordId: { type: String },
+    walletAmount: { type: Number, required: true, min: 0 },
+    gatewayAmountPaise: { type: Number, required: true, min: 0 },
+    razorpayPaymentId: { type: String },
+    walletCreditedAt: { type: Date },
+    generation: { type: Number, required: true, min: 0, default: 0 },
+    source: {
+      type: new Schema({
+        attemptId: { type: String },
+        requestedAt: { type: Date, required: true },
+        leaseUntil: { type: Date },
+        attempts: { type: Number, required: true, min: 1 },
+        /** Refund-create requests sent to Razorpay for this generation (incremented before sending). */
+        submissions: { type: Number, min: 0 },
+        lastSubmittedAt: { type: Date },
+        razorpayRefundId: { type: String },
+        razorpayStatus: { type: String },
+        refundedAt: { type: Date },
+      }, { _id: false }),
+      default: undefined,
+    },
+    lastError: { type: String },
+    updatedAt: { type: Date, required: true },
+  },
+  { _id: false }
+);
+
 const recoveryRequestSchema = new Schema(
   {
     schemaVersion: { type: Number, required: true, enum: [1] },
@@ -170,6 +201,7 @@ const pharmacyOrderSchema = new Schema<IPharmacyOrder>(
       index: true,
     },
     prescriptionReview: { type: prescriptionReviewSchema, default: undefined },
+    prescriptionRefund: { type: prescriptionRefundSchema, default: undefined },
     notes: { type: String, trim: true },
     linkedConsultationId: { type: Schema.Types.ObjectId as any, ref: 'Booking', index: true },
     linkedDiagnosticOrderId: { type: String, index: true },
@@ -184,6 +216,8 @@ pharmacyOrderSchema.index({ customerId: 1, status: 1 });
 pharmacyOrderSchema.index({ pharmacyId: 1, createdAt: -1 });
 // Pharmacist review queue: pending prescriptions per pharmacy, oldest first.
 pharmacyOrderSchema.index({ pharmacyId: 1, prescriptionStatus: 1, createdAt: 1 });
+// Finance/ops follow-up: refunds that did not settle automatically.
+pharmacyOrderSchema.index({ 'prescriptionRefund.status': 1, 'prescriptionRefund.updatedAt': 1 }, { sparse: true });
 
 const PharmacyOrderModel: Model<IPharmacyOrder> = model<IPharmacyOrder>(
   'PharmacyOrder',

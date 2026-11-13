@@ -179,7 +179,8 @@ function createOrderService() {
     {} as never,
     {} as never,
     sideEffects as never,
-    new MedicineRepository()
+    new MedicineRepository(),
+    { buildIntent: async () => ({ status: 'manual_review', walletAmount: 0, gatewayAmountPaise: 0, generation: 0, updatedAt: new Date() }), settleAfterRejection: async () => undefined } as never
   );
 }
 

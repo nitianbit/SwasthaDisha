@@ -302,27 +302,17 @@ export class ExternalBookingService {
     const refundAmount = await this.computeExternalBookingRefundAmount(booking);
     if (refundAmount > 0) {
       const wallet = await this.getOrCreateActiveWallet(booking.userId);
-      const balanceBefore = wallet.balance;
-      const balanceAfter = balanceBefore + refundAmount;
-
-      await this.walletTransactionRepository.save({
+      await this.walletRepository.postEntry({
         userId: booking.userId,
         walletId: wallet._id!,
         transactionType: 'refund',
         amount: refundAmount,
-        balanceBefore,
-        balanceAfter,
-        status: 'completed',
         referenceType: 'external_booking',
         referenceId: id,
+        operationKey: `external_booking_refund:${String(id).toLowerCase()}`,
         description: 'Refund for external booking',
         transactionDate: getTodayYyyymmdd(),
       });
-
-      await this.walletRepository.update(
-        { _id: wallet._id! },
-        { balance: balanceAfter }
-      );
     }
 
     if (booking.paymentTransactionId) {
@@ -501,6 +491,8 @@ export class ExternalBookingService {
     externalBookingId: string;
     amountToDeductFromWallet: number;
     useWalletBalance?: boolean;
+    /** See BookingService.deductWalletForBooking: 'initial' or the payment record linked when the retry started. */
+    fundingSlot: string;
   }): Promise<number> {
     if (!params.useWalletBalance || params.amountToDeductFromWallet <= 0) {
       return 0;
@@ -519,37 +511,17 @@ export class ExternalBookingService {
       });
     }
 
-    const walletDeductedAmount = Math.min(
-      wallet.balance,
-      params.amountToDeductFromWallet
-    );
-    if (walletDeductedAmount <= 0) {
-      return 0;
-    }
-
-    const balanceBefore = wallet.balance;
-    const balanceAfter = balanceBefore - walletDeductedAmount;
-
-    await this.walletTransactionRepository.save({
+    // Atomic debit + ledger row: concurrent spenders/refunds can no longer overwrite the balance with a stale value.
+    // (Exactly-once funding of a booking across concurrent payment retries is a separate, pending packet.)
+    return this.walletRepository.debitUpTo({
       userId: params.userId,
       walletId: wallet._id!,
-      transactionType: 'debit',
-      amount: walletDeductedAmount,
-      balanceBefore,
-      balanceAfter,
-      status: 'completed',
       referenceType: 'external_booking',
       referenceId: params.externalBookingId,
+      operationKey: `external_booking_wallet:${String(params.externalBookingId).toLowerCase()}:${params.fundingSlot}`,
       description: 'Wallet used for external booking payment',
       transactionDate: getTodayYyyymmdd(),
-    });
-
-    await this.walletRepository.update(
-      { _id: wallet._id! },
-      { balance: balanceAfter }
-    );
-
-    return walletDeductedAmount;
+    }, params.amountToDeductFromWallet);
   }
 
   /** Shared by create (pay now) and retry-payment (pay later). */
@@ -580,6 +552,7 @@ export class ExternalBookingService {
     walletAlreadyApplied: number;
     attemptUseWalletBalance?: boolean;
     orderNotes: Record<string, unknown>;
+    fundingSlot: string;
   }): Promise<ExternalBookingPaymentInitResponse> {
     await this.validateWalletIfRequested(
       params.userId,
@@ -597,6 +570,7 @@ export class ExternalBookingService {
           externalBookingId: params.bookingId,
           amountToDeductFromWallet: room,
           useWalletBalance: true,
+          fundingSlot: params.fundingSlot,
         });
       }
     }
@@ -762,6 +736,7 @@ export class ExternalBookingService {
       walletAlreadyApplied: 0,
       attemptUseWalletBalance: params.useWalletBalance,
       orderNotes: params.orderNotes,
+      fundingSlot: 'initial',
     });
   }
 
@@ -938,6 +913,7 @@ export class ExternalBookingService {
       walletAlreadyApplied,
       attemptUseWalletBalance: options.useWalletBalance,
       orderNotes,
+      fundingSlot: booking.paymentTransactionId ? String(booking.paymentTransactionId) : 'initial',
     });
   }
 

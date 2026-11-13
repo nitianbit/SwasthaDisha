@@ -25,6 +25,7 @@ import {
 import { AppError } from '@/modules/common/types';
 import { assertPrescriptionCommerceAvailable } from '@/modules/pharmacyOrders/prescriptionCommerce';
 import { createHash } from 'node:crypto';
+import { PrescriptionRefundService } from '@/modules/pharmacyOrders/prescriptionRefund';
 
 /** Fingerprint of the exact ordered document list a pharmacist reviewed (bounded evidence, any list size). */
 export function prescriptionDocumentSetSha256(urls: readonly string[]): string {
@@ -134,7 +135,8 @@ export class PharmacyOrderService {
     private bookingRepository: BookingRepository,
     private externalBookingRepository: ExternalBookingRepository,
     private sideEffectService: PharmacyOrderSideEffectService,
-    private medicineRepository: MedicineRepository
+    private medicineRepository: MedicineRepository,
+    private prescriptionRefundService: PrescriptionRefundService
   ) {}
 
   private buildInventoryItems(items: Array<{ medicineId: string; orderedQty: number }>) {
@@ -1296,17 +1298,25 @@ export class PharmacyOrderService {
     const rejectNote = `Prescription rejected by pharmacist: ${reason}`;
     const priorNotes = order.notes?.trim();
     const updated = await this.runOrderInventoryTransaction(async (session) => {
+      // Paid order: the refund intent commits atomically with the rejection, so it can never be lost.
+      const refundIntent = review.refundRequired ? await this.prescriptionRefundService.buildIntent(order, session) : undefined;
       const next = await this.orderRepo.update(fence, {
         $set: { prescriptionStatus: 'rejected', prescriptionReview: review, status: nextStatus,
-          notes: priorNotes ? `${priorNotes}\n${rejectNote}` : rejectNote },
+          notes: priorNotes ? `${priorNotes}\n${rejectNote}` : rejectNote, ...(refundIntent ? { prescriptionRefund: refundIntent } : {}) },
       }, { new: true, session });
       if (!next) throw stateChanged();
       await this.releaseOrderInventory(pharmacyId, order.items, session);
       return next;
     });
+    // Credit the payer's wallet now; if that fails the intent stays wallet_pending for the scheduled reconciler.
+    let result = updated;
+    if (review.refundRequired) {
+      await this.prescriptionRefundService.settleAfterRejection(id);
+      result = (await this.orderRepo.findById(id)) ?? updated;
+    }
     await this.queueSubscriptionSyncSafely(id, 'status_changed');
     if (updated.customerId) await this.queueNotificationSafely(id, 'status_changed');
-    return updated;
+    return result;
   }
 
   async markPaid(

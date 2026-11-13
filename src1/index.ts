@@ -12,6 +12,7 @@ import '@/modules/queue/service/consumers';
 import TaskQueue from '@/modules/queue/service/TaskQueue';
 import { runExternalBookingPaymentTimeoutScheduler } from '@/modules/externalBookings/services/externalBookingPaymentTimeoutScheduler';
 import { runPharmacyOrderTimeoutScheduler } from '@/modules/pharmacyOrders/services/pharmacyOrderTimeoutScheduler';
+import { runPrescriptionRefundScheduler } from '@/modules/pharmacyOrders/services/prescriptionRefundScheduler';
 import { backfillMedicineNameKeys } from '@/modules/pharmacyMedicines/services/nameKeyMigration';
 import { runInventoryImportCleanupScheduler } from '@/modules/pharmacyInventoryImports/services/inventoryImportCleanupScheduler';
 import logger from '@/services/logger';
@@ -73,6 +74,7 @@ connectDB()
     runExternalBookingPaymentTimeoutScheduler();
     logger.info('External booking payment-timeout scheduler started');
     runPharmacyOrderTimeoutScheduler();
+    runPrescriptionRefundScheduler();
     logger.info('Pharmacy order payment-timeout scheduler started');
     runInventoryImportCleanupScheduler();
     logger.info('Pharmacy inventory import cleanup scheduler started');

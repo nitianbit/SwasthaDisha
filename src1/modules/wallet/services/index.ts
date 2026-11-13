@@ -169,41 +169,26 @@ export class WalletService {
       });
     }
 
-    const balanceBefore = wallet.balance;
-    let balanceAfter = balanceBefore;
-
-    // Calculate new balance based on transaction type
-    if (data.transactionType === 'credit' || data.transactionType === 'refund' || data.transactionType === 'cashback' || data.transactionType === 'promotion') {
-      balanceAfter = balanceBefore + data.amount;
-    } else if (data.transactionType === 'debit') {
-      if (balanceBefore < data.amount) {
-        throw new AppError({
-          status: 400,
-          code: 'INSUFFICIENT_BALANCE',
-          message: 'Insufficient wallet balance',
-        });
-      }
-      balanceAfter = balanceBefore - data.amount;
-    }
-
-    // Create transaction
-    const transaction = await this.walletTransactionRepository.save({
+    // Atomic balance change + ledger row (debit only if covered).
+    const posted = await this.walletRepository.postEntry({
       userId: data.userId,
       walletId: wallet._id!,
       transactionType: data.transactionType,
       amount: data.amount,
-      balanceBefore,
-      balanceAfter,
-      status: 'completed',
       referenceType: data.referenceType,
       referenceId: data.referenceId,
       description: data.description,
       notes: data.notes,
       transactionDate: data.transactionDate || getTodayYyyymmdd(),
     });
-
-    // Update wallet balance
-    await this.walletRepository.update({ _id: wallet._id! }, { balance: balanceAfter });
+    if (!posted) {
+      throw new AppError({
+        status: 400,
+        code: 'INSUFFICIENT_BALANCE',
+        message: 'Insufficient wallet balance',
+      });
+    }
+    const transaction = posted.transaction;
 
     // Create notification for wallet credit transactions
     if (data.transactionType === 'credit' || data.transactionType === 'refund' || data.transactionType === 'cashback' || data.transactionType === 'promotion') {
@@ -214,8 +199,8 @@ export class WalletService {
           data.amount,
           {
             transactionType: data.transactionType,
-            balanceBefore,
-            balanceAfter,
+            balanceBefore: transaction.balanceBefore,
+            balanceAfter: transaction.balanceAfter,
             referenceType: data.referenceType,
             referenceId: data.referenceId,
             description: data.description,

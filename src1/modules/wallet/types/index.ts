@@ -41,6 +41,8 @@ export interface IWalletTransaction {
   description?: string; // Description of the transaction
   notes?: string; // Additional notes
   transactionDate?: string; // YYYYMMDD format - Date of transaction
+  /** Stable business-operation identity (unique when present): the same operation can never post twice. */
+  operationKey?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

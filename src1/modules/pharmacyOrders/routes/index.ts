@@ -52,6 +52,12 @@ pharmacyOrderRouter.get(
   catchAsync(controller.getRecoveryRequests)
 );
 
+// Admin/finance queue: prescription refunds that did not settle automatically.
+pharmacyOrderRouter.get(
+  '/prescription-refunds/attention',
+  catchAsync(controller.prescriptionRefundsNeedingAttention)
+);
+
 pharmacyOrderRouter.get(
   '/:id',
   validate(idParamSchema, 'params'),
@@ -89,6 +95,21 @@ pharmacyOrderRouter.post(
   validate(idParamSchema, 'params'),
   validate(prescriptionReviewSchema, 'body'),
   catchAsync(controller.reviewPrescription)
+);
+
+// Retry a wallet refund that did not settle automatically (owning pharmacy or admin).
+pharmacyOrderRouter.post(
+  '/:id/prescription-refund/retry',
+  requireAdminOrOperationalPharmacy,
+  validate(idParamSchema, 'params'),
+  catchAsync(controller.retryPrescriptionRefund)
+);
+
+// The paying customer moves the refunded amount from wallet back to the original card/UPI.
+pharmacyOrderRouter.post(
+  '/:id/prescription-refund/to-source',
+  validate(idParamSchema, 'params'),
+  catchAsync(controller.refundPrescriptionToSource)
 );
 
 pharmacyOrderRouter.post(

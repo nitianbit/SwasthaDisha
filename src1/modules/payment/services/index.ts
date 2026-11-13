@@ -1338,28 +1338,19 @@ export class PaymentService {
     });
 
     if (!existingTransaction) {
-      const balanceBefore = wallet.balance;
-      const balanceAfter = balanceBefore + paymentRecord.baseAmount;
-
-      await this.walletTransactionRepository.save({
+      const posted = await this.walletRepository.postEntry({
         userId: paymentRecord.userId,
         walletId: wallet._id!,
         transactionType: 'credit',
         amount: paymentRecord.baseAmount,
-        balanceBefore,
-        balanceAfter,
-        status: 'completed',
         referenceType: 'wallet_recharge',
         referenceId: paymentRecord._id!,
+        operationKey: `wallet_recharge:${paymentRecord._id}`,
         description: `Wallet recharge via Razorpay${paymentRecord.couponCode ? ` (coupon: ${paymentRecord.couponCode})` : ''}`,
         notes: paymentRecord.razorpayPaymentId,
         transactionDate: getTodayYyyymmdd(),
       });
-
-      wallet = (await this.walletRepository.update(
-        { _id: wallet._id! },
-        { balance: balanceAfter }
-      )) || wallet;
+      wallet = posted?.wallet || wallet;
     }
 
     return wallet;
@@ -1437,24 +1428,17 @@ export class PaymentService {
 
     if (refundAmount > 0) {
       const wallet = await this.getOrCreateActiveWallet(booking.userId);
-      const balanceBefore = wallet.balance;
-      const balanceAfter = balanceBefore + refundAmount;
-
-      await this.walletTransactionRepository.save({
+      await this.walletRepository.postEntry({
         userId: booking.userId,
         walletId: wallet._id!,
         transactionType: 'refund',
         amount: refundAmount,
-        balanceBefore,
-        balanceAfter,
-        status: 'completed',
         referenceType: 'external_booking',
         referenceId,
+        operationKey: `external_booking_refund:${String(referenceId).toLowerCase()}`,
         description: 'Refund for external booking',
         transactionDate: getTodayYyyymmdd(),
       });
-
-      await this.walletRepository.update({ _id: wallet._id! }, { balance: balanceAfter });
     }
 
     if (paymentRecord.couponCode && paymentRecord.isProcessed) {
@@ -1544,12 +1528,17 @@ export class PaymentService {
               status: 'completed',
               referenceType: 'pharmacy_order',
               referenceId,
+              // Same key as the prescription-rejection refund: one pharmacy-order refund, whichever path wins.
+              operationKey: `pharmacy_order_refund:${String(referenceId).toLowerCase()}`,
               description: 'Refund for abandoned pharmacy order',
               transactionDate: getTodayYyyymmdd(),
             },
             { session }
           );
         });
+      } catch (error) {
+        // A concurrent refund for this order already posted (unique operationKey); this transaction rolled back.
+        if (!((error as { code?: number })?.code === 11000 && /operationKey/.test(String((error as Error)?.message)))) throw error;
       } finally {
         await session.endSession();
       }

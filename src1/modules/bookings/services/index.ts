@@ -361,11 +361,18 @@ export class BookingService {
     return updated || { ...booking, followUp };
   }
 
+  /**
+   * fundingSlot identifies one wallet-funding step: 'initial' (creation, or a retry before any payment record is linked), or the payment record the booking was linked to when a
+   * retry started. Concurrent duplicates of the same step debit once and all get that amount (keyed replay), so an
+   * atomic debit never takes more than the old absolute-write code did. Full retry coordination is a separate packet
+   * (PACKET_BOOKING_PAYMENT_RETRY_INTEGRITY.md).
+   */
   private async deductWalletForBooking(params: {
     userId: string;
     bookingId: string;
     amountToDeductFromWallet: number;
     useWalletBalance?: boolean;
+    fundingSlot: string;
   }): Promise<number> {
     if (!params.useWalletBalance || params.amountToDeductFromWallet <= 0) {
       return 0;
@@ -384,37 +391,17 @@ export class BookingService {
       });
     }
 
-    const walletDeductedAmount = Math.min(
-      wallet.balance,
-      params.amountToDeductFromWallet
-    );
-    if (walletDeductedAmount <= 0) {
-      return 0;
-    }
-
-    const balanceBefore = wallet.balance;
-    const balanceAfter = balanceBefore - walletDeductedAmount;
-
-    await this.walletTransactionRepository.save({
+    // Atomic debit + ledger row: concurrent spenders/refunds can no longer overwrite the balance with a stale value.
+    // (Exactly-once funding of a booking across concurrent payment retries is a separate, pending packet.)
+    return this.walletRepository.debitUpTo({
       userId: params.userId,
       walletId: wallet._id!,
-      transactionType: 'debit',
-      amount: walletDeductedAmount,
-      balanceBefore,
-      balanceAfter,
-      status: 'completed',
       referenceType: 'booking',
       referenceId: params.bookingId,
+      operationKey: `booking_wallet:${String(params.bookingId).toLowerCase()}:${params.fundingSlot}`,
       description: 'Wallet used for booking payment',
       transactionDate: getTodayYyyymmdd(),
-    });
-
-    await this.walletRepository.update(
-      { _id: wallet._id! },
-      { balance: balanceAfter }
-    );
-
-    return walletDeductedAmount;
+    }, params.amountToDeductFromWallet);
   }
 
   private async validateWalletIfRequested(
@@ -491,27 +478,17 @@ export class BookingService {
 
     if (refundAmount > 0) {
       const wallet = await this.getOrCreateActiveWallet(booking.userId);
-      const balanceBefore = wallet.balance;
-      const balanceAfter = balanceBefore + refundAmount;
-
-      await this.walletTransactionRepository.save({
+      await this.walletRepository.postEntry({
         userId: booking.userId,
         walletId: wallet._id!,
         transactionType: 'refund',
         amount: refundAmount,
-        balanceBefore,
-        balanceAfter,
-        status: 'completed',
         referenceType: 'booking',
         referenceId: booking._id!,
+        operationKey: `booking_refund:${String(booking._id).toLowerCase()}`,
         description: 'Refund for cancelled booking',
         transactionDate: getTodayYyyymmdd(),
       });
-
-      await this.walletRepository.update(
-        { _id: wallet._id! },
-        { balance: balanceAfter }
-      );
     }
 
     if (paymentRecord.status === 'paid') {
@@ -804,6 +781,7 @@ export class BookingService {
         bookingId: savedBooking._id!,
         amountToDeductFromWallet: finalPrice,
         useWalletBalance: true,
+        fundingSlot: 'initial',
       });
     }
 
@@ -1050,6 +1028,7 @@ export class BookingService {
         bookingId: savedBooking._id!,
         amountToDeductFromWallet: finalPrice,
         useWalletBalance: true,
+        fundingSlot: 'initial',
       });
     }
 
@@ -2082,6 +2061,7 @@ export class BookingService {
           bookingId: booking._id!,
           amountToDeductFromWallet: walletRoom,
           useWalletBalance: true,
+          fundingSlot: booking.paymentTransactionId ? String(booking.paymentTransactionId) : 'initial',
         });
       }
     }

@@ -170,6 +170,7 @@ export interface IPharmacyOrder {
   prescriptionUrls?: string[];
   prescriptionStatus?: 'not_required' | 'pending' | 'approved' | 'rejected';
   prescriptionReview?: PrescriptionReview;
+  prescriptionRefund?: PrescriptionRefund;
   notes?: string;
   // linked healthcare
   linkedConsultationId?: string;
@@ -260,6 +261,29 @@ export interface PrescriptionReview {
   paymentStatusAtReview: PaymentStatus;
   /** True when a rejected order had money paid/held; settlement is a separate finance step. */
   refundRequired: boolean;
+}
+
+/**
+ * Refund of a paid order rejected by the pharmacist.
+ * wallet_pending -> wallet_credited -> (optional, payer-initiated) source_processing -> source_refunded.
+ * manual_review: the paid payment record could not be matched; finance must settle it.
+ */
+export interface PrescriptionRefund {
+  status: 'wallet_pending' | 'wallet_credited' | 'source_processing' | 'source_refunded' | 'manual_review';
+  payerUserId?: string;
+  paymentRecordId?: string;
+  /** Rupees credited to the wallet: gateway-paid plus wallet-paid portions. */
+  walletAmount: number;
+  /** Gateway-paid portion (paise) that may be sent back to the original card/UPI. */
+  gatewayAmountPaise: number;
+  razorpayPaymentId?: string;
+  walletCreditedAt?: Date;
+  /** Incremented on each wallet -> source transfer; part of the Razorpay receipt key. */
+  generation: number;
+  source?: { attemptId?: string; requestedAt: Date; leaseUntil?: Date; attempts: number; submissions?: number; lastSubmittedAt?: Date;
+    razorpayRefundId?: string; razorpayStatus?: string; refundedAt?: Date };
+  lastError?: string;
+  updatedAt: Date;
 }
 
 export interface PrescriptionReviewRequest {

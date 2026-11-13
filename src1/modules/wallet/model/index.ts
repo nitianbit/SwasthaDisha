@@ -84,6 +84,7 @@ const walletTransactionSchema = new Schema<IWalletTransaction>(
       type: String,
       trim: true,
     }, // Additional notes
+    operationKey: { type: String },
     transactionDate: {
       type: String,
       match: /^\d{8}$/, // YYYYMMDD format
@@ -103,6 +104,8 @@ walletTransactionSchema.index({ userId: 1, transactionType: 1 });
 walletTransactionSchema.index({ userId: 1, status: 1 });
 walletTransactionSchema.index({ userId: 1, transactionDate: 1 });
 walletTransactionSchema.index({ referenceType: 1, referenceId: 1 });
+// Exactly-once posting per business operation (legacy rows without a key are unaffected).
+walletTransactionSchema.index({ operationKey: 1 }, { unique: true, partialFilterExpression: { operationKey: { $type: 'string' } } });
 walletTransactionSchema.index({ transactionDate: 1, status: 1 });
 walletTransactionSchema.index({ createdAt: -1 }); // For recent transactions
 walletTransactionSchema.index(

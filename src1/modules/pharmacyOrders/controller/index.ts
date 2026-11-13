@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { PharmacyOrderService } from '@/modules/pharmacyOrders/services';
+import { PrescriptionRefundService } from '@/modules/pharmacyOrders/prescriptionRefund';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { MarkOrderPaidRequest, OrderQueryParams, PharmacyRecoveryWorklistQuery } from '@/modules/pharmacyOrders/types';
 import { AppError } from '@/modules/common/types';
@@ -127,6 +128,36 @@ export class PharmacyOrderController {
     const result = await this.service.reviewPrescription(req.params.id, pharmacyId, req.body);
     const approved = result.prescriptionStatus === 'approved';
     res.status(200).json({ success: true, message: approved ? 'Prescription approved' : 'Prescription rejected', data: result });
+  };
+
+  retryPrescriptionRefund = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const result = await Container.get(PrescriptionRefundService).retryWalletCredit(req.params.id,
+      { userType: req.user?.userType || '', pharmacyId: req.user?.pharmacyId });
+    const status = result.prescriptionRefund?.status;
+    const message = status === 'wallet_credited' ? 'Refund credited to wallet'
+      : status === 'manual_review' ? 'Refund needs manual review by finance; nothing was credited'
+      : 'Refund is still pending';
+    res.status(200).json({ success: true, message, data: result });
+  };
+
+  prescriptionRefundsNeedingAttention = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    if (req.user?.userType !== 'admin') throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Admin access required' });
+    const data = await Container.get(PrescriptionRefundService).needsAttention(Number(req.query.limit) || 50);
+    res.status(200).json({ success: true, data });
+  };
+
+  refundPrescriptionToSource = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    res.setHeader('Cache-Control', 'private, no-store');
+    if (req.user?.userType !== 'user' || typeof req.user?._id !== 'string') {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Only the customer who paid can request this' });
+    }
+    const result = await Container.get(PrescriptionRefundService).refundToSource(req.params.id, req.user._id);
+    const status = result.prescriptionRefund?.status;
+    const [code, message] = status === 'source_refunded' ? [200, 'Refund sent to your original payment method']
+      : status === 'source_processing' ? [202, 'Refund is being confirmed with the payment provider; check again shortly']
+      : status === 'wallet_credited' ? [200, 'The payment provider did not complete the refund; the amount is in your wallet']
+      : [200, 'Refund needs manual review'];
+    res.status(code as number).json({ success: true, message, data: { orderId: req.params.id, prescriptionRefund: result.prescriptionRefund } });
   };
 
   markPaid = async (req: AuthRequest, res: Response, _next: NextFunction) => {
