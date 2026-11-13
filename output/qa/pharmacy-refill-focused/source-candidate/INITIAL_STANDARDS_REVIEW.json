@@ -1,0 +1,85 @@
+{
+  "schema": "SD-P7-FIXTURE-INDEPENDENT-SOURCE-REVIEW-1",
+  "reviewer": "/root/milestone_composition_r9",
+  "axis": "Standards",
+  "candidate": "39eb5e463b7bd03b60378dfb1c204596654c443c",
+  "manifestSha256": "8082d524c12ffe469a961405815153d3a391cecad8bc5bc4ae9eb92298add1c9",
+  "decision": "REQUEST_CHANGES",
+  "independence": {
+    "fixtureAuthor": "/root/customer_remaining_audit",
+    "reviewerAuthoredFixture": false,
+    "reviewerAuthoredUnderlyingProduction": "7b72154506caa037101f490963ca4bbdca594018",
+    "scope": "Independent review of nine new Customer-authored fixture files and their C3/coverage composition only. This is not independent reapproval of underlying production authored by this reviewer. Existing Root/Customer production approvals remain separate."
+  },
+  "ownedNamespace": {
+    "test/api-runtime/pharmacy-refill/README.md": "7a2ea24526d5c2b023e42e669d66dd064785b8adec1aa4a4962dc2a0c55a4c91",
+    "test/api-runtime/pharmacy-refill/package-plan.json": "41bcf92c7913eec65f529eb911f4d1417e8bbb2c27a200ce284d74816ef07453",
+    "test/api-runtime/pharmacy-refill/ports-manifest.json": "b1274f5077e4dd2ca365fda19f7733cc606183eb24a5574e7f382da747e1c0ec",
+    "test/api-runtime/pharmacy-refill/prepare.py": "b249b646e87f570f958d9881728102149bd9e0b676b121f6f80ca5bee68bc379",
+    "test/api-runtime/pharmacy-refill/compile.cjs": "996355bb46e3d926871b3d784b91faa20bc2ff738119397e0f1f2e67e82e4c2f",
+    "test/api-runtime/pharmacy-refill/bootstrap.cjs": "04421cb3a0a3b155d76186fb752ad4dc7c01a77dc867d22ff4ae6c7f23596079",
+    "test/api-runtime/pharmacy-refill/scenario.cjs": "af0896baf1d0e12d406a12b79b2b882672be88be53305a0c5051c27a8e55c6ff",
+    "test/api-runtime/pharmacy-refill/launch.mjs": "563e2da1602dd6dc5e8ef9b415405cffabb537c09c0a62e7979343eb54aaea9c",
+    "test/api-runtime/pharmacy-refill/unit.mjs": "dab0b9e625a3ad703f0b05d931cbd3d4f2eedda06dc60c53b9999c55c9840c03"
+  },
+  "actualStaticChecks": {
+    "fullNineFilesRead": true,
+    "whole46ProducerInputsHashesMatch": true,
+    "whole19ProductionContextHashesMatch": true,
+    "retained10SharedProfileHashesMatch": true,
+    "sourcePatchExactPerPathGitDiff": true,
+    "inversePatchExactPerPathReverseCommitGitDiff": true,
+    "sevenMutationRecipesExactMultiplicitiesAndResultHashes": true,
+    "twentyCaseRegistrationsAndSevenMatchedPredicatesInspected": true,
+    "productionWritesDuringReview": false
+  },
+  "findings": [
+    {
+      "id": "P7-FIXTURE-STD-1",
+      "severity": "MEDIUM",
+      "file": "test/api-runtime/pharmacy-refill/bootstrap.cjs",
+      "lines": [
+        161,
+        162,
+        163
+      ],
+      "title": "Raw catalog decodes exhausted cursor Long0 to number0, then rejects it",
+      "evidence": "catalog.call invokes fixedConnection.db.command(command,{session}) without promoteLongs:false. Its rows loop requires id && typeof id.toString===function. Pinned Mongo4 Db.command creates RunCommandOperation with only supplied options; AbstractOperation resolveBSONOptions(options) defaults promoteLongs/promoteValues true. Pinned BSON4 deserializer converts safe int64 (including zero) to JS number. Exhausted real listCollections/listIndexes cursor therefore reaches id=0 and fails CATALOG_CURSOR. No global supplied connect option changes this command-local default; none sets promoteLongs:false anyway.",
+      "impact": "QUERY_AND_CATALOG cannot pass on ordinary exhausted native replies, even after the separately held Express import policy is resolved. This is source-derived, not an observed application run.",
+      "minimalRemediation": "At this bounded raw metadata command boundary request promoteLongs:false explicitly and retain its exact native Long exhausted/nonzero validation and cursor cleanup; add or retain real native exhausted-cursor success evidence before counting catalog success. Do not relax a truthiness check into accepting arbitrary cursor shapes or broaden global runtime options."
+    }
+  ],
+  "nativeSourceEvidence": {
+    "provenance": "Inert retained installed C1 package bytes, exact Mongoose6.13.8/driver4.17.2/BSON4.7.2 profile; BSON distributed archive independently matches e876bd80d0754fad52329f022bbd7b8d332317ba4ee472dbcc7d1e31c3864852. No package was loaded or executed.",
+    "files": {
+      "mongodb/lib/db.js": "aced05fd4f64ee206fba4cf9fbeada40c0452b1aa32574530f294f8832d5101e",
+      "mongodb/lib/operations/run_command.js": "0b7221a1960315fc1311bd5ce476598602c4524cf46bf7285cd694f96a327e7a",
+      "mongodb/lib/operations/operation.js": "c5d5f7ddcb2a7826c55ab84813feea5b7dc23759d92b5705bb464c73fb420ed3",
+      "mongodb/lib/operations/command.js": "9496e18789c472b67b559c82ab6802488ee92f87f54a080ff6e3b253c7ec5365",
+      "mongodb/lib/bson.js": "6e04274edabcd4c489e008f76bfe951d86c4d7164976c6fc02a59732a83a9f29",
+      "bson/lib/parser/deserializer.js": "a78130552d5324e5f43fefb63785838bffc07c95087cb83736ff671287d96e0f"
+    },
+    "locations": [
+      "mongodb/lib/db.js:161-165",
+      "mongodb/lib/operations/run_command.js:8-14",
+      "mongodb/lib/operations/operation.js:33",
+      "mongodb/lib/operations/command.js:50-55",
+      "mongodb/lib/bson.js:60-61",
+      "bson/lib/parser/deserializer.js:75-77,280-289"
+    ]
+  },
+  "reviewedBehaviorBoundaries": [
+    "Actual auth/Joi/router/service/ODM composition and three fixed cuts; sole default connection/native client/options pre-native guards and persistent unexpected latch.",
+    "Actual query completion before raw-reply transformations; normal native BSON4/cache positives separated from hostile Symbol/Buffer/array/property observations.",
+    "Twenty concrete HTTP/direct groups, raw BSON before/after all owned collections per command, immediate per-write target/other-field checks, persisted resume absence, actual seven matched nominal/forbidden-effect/fresh-restoration schedules.",
+    "Bounded catalog session/cursor/namespace/index-wrapper observation, fixed explain, safe fault/log mapping; command/file/count/time/cleanup admission.",
+    "Preparation-only source/module/installed graph/diagnostic capture, exact receipts/once/current source bindings, existing fixed shared launcher/controller and retained role semantics."
+  ],
+  "retainedHolds": [
+    "Known Express4.21.1 computed view-engine import remains DENIED; no policy exception or preparation/runtime admission supplied by this review.",
+    "No Node/compiler/parser/npm/app/DB/BSON/Docker/provider execution. Runtime groups/controls/native cursor behavior all NOT_RUN.",
+    "Shared152 fake protocol result is separate and is not domain runtime evidence.",
+    "No typecheck, production index/capacity, P7 full-module, clinical/dispatch, owner/client/C2/release/final-integration acceptance."
+  ],
+  "limits": "Read-only source review; native conclusions derive from exact pinned primary package source, not execution. No other material source finding identified in this review; that is not runtime correctness proof."
+}

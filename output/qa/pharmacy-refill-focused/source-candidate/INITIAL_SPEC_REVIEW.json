@@ -1,0 +1,108 @@
+{
+  "schema": "SD-PHARMACY-REFILL-FOCUSED-NAMESPACE-NONAUTHOR-SPEC-SOURCE-REVIEW-1",
+  "reviewer": "/root/lab_remaining_audit",
+  "role": "NONAUTHOR_SPEC_SOURCE_COMPOSITION",
+  "author": "/root/customer_remaining_audit",
+  "decision": "REQUEST_CHANGES",
+  "candidate": "39eb5e463b7bd03b60378dfb1c204596654c443c",
+  "manifestSha256": "8082d524c12ffe469a961405815153d3a391cecad8bc5bc4ae9eb92298add1c9",
+  "contractSha256": "f0e5a04afa5d7cf222cf5b2be31c2b44bef107e48228d11ba55fd1ba01b8ed17",
+  "ownedNamespace": {
+    "test/api-runtime/pharmacy-refill/README.md": "7a2ea24526d5c2b023e42e669d66dd064785b8adec1aa4a4962dc2a0c55a4c91",
+    "test/api-runtime/pharmacy-refill/package-plan.json": "41bcf92c7913eec65f529eb911f4d1417e8bbb2c27a200ce284d74816ef07453",
+    "test/api-runtime/pharmacy-refill/ports-manifest.json": "b1274f5077e4dd2ca365fda19f7733cc606183eb24a5574e7f382da747e1c0ec",
+    "test/api-runtime/pharmacy-refill/prepare.py": "b249b646e87f570f958d9881728102149bd9e0b676b121f6f80ca5bee68bc379",
+    "test/api-runtime/pharmacy-refill/compile.cjs": "996355bb46e3d926871b3d784b91faa20bc2ff738119397e0f1f2e67e82e4c2f",
+    "test/api-runtime/pharmacy-refill/bootstrap.cjs": "04421cb3a0a3b155d76186fb752ad4dc7c01a77dc867d22ff4ae6c7f23596079",
+    "test/api-runtime/pharmacy-refill/scenario.cjs": "af0896baf1d0e12d406a12b79b2b882672be88be53305a0c5051c27a8e55c6ff",
+    "test/api-runtime/pharmacy-refill/launch.mjs": "563e2da1602dd6dc5e8ef9b415405cffabb537c09c0a62e7979343eb54aaea9c",
+    "test/api-runtime/pharmacy-refill/unit.mjs": "dab0b9e625a3ad703f0b05d931cbd3d4f2eedda06dc60c53b9999c55c9840c03"
+  },
+  "sourcePatchSha256": "d3f270cef0695cb0d7485ed90aa197403f5c5e510f796bd0b43ac9dc1ddb1d4b",
+  "inversePatchSha256": "394a165619352a18af20672e3a47c0658fb98fa977bc723aef2879d6fccee50e",
+  "authorshipDisclosure": "Reviewer authored earlier C1 fixture patterns but did not author this P7 namespace, its refill production slice or Root shared platform. This is review of Customer-authored P7 source/composition, not independent selfapproval of earlier C1 or production. Existing parent/shared/source/outcome votes keep original attribution.",
+  "findings": [
+    {
+      "id": "P7-FIXTURE-SPEC-1",
+      "severity": "MEDIUM",
+      "title": "Raw catalog reader rejects ordinary exhausted numeric cursor0",
+      "path": "test/api-runtime/pharmacy-refill/bootstrap.cjs",
+      "lines": [
+        169,
+        170,
+        171,
+        172
+      ],
+      "problem": "catalog call uses fixedConnection.db.command(command,{session}) with default BSON Long promotion. Pinned driver4 defaults promoteLongs/promoteValues true, so BSON Long0 becomes number0. rows then requires id&&typeofid.toString==function before checking id.toString()==0; numeric0 fails CATALOG_CURSOR. The ordinary exhausted listCollections reply for twoownedcollections therefore cannot complete QUERY_AND_CATALOG, independently of the separate known Expresshold. Native AbstractCursor explicitly normalizes numericIDs, but this rawcommandreader doesnot.",
+      "requiredCorrection": "Choose and enforce one exact admitted raw cursorrepresentation before validation (for example explicit promoteLongs:false in this fixed catalog command path with nativeLong validation), or deliberately accept/validate numericzero without arbitrary method/coercion and preserve ownednonzerocursor identity/getMore/kill/session semantics. Do not replace catalog with fixturedata, skipgroup or broaden command/capability bounds. Ensure genuine exhaustedEOF and any ownednonzero continuation/cleanup paths are coherent before nextsourcefreeze.",
+      "nativeSourceEvidence": [
+        {
+          "path": "/private/tmp/sd-customer-contact-build-c35597e3-337a-4bc3-a2b8-bd2093a12242/public/node_modules/mongodb/lib/bson.js",
+          "sha256": "6e04274edabcd4c489e008f76bfe951d86c4d7164976c6fc02a59732a83a9f29",
+          "lines": [
+            60
+          ]
+        },
+        {
+          "path": "/private/tmp/sd-customer-contact-build-c35597e3-337a-4bc3-a2b8-bd2093a12242/public/node_modules/mongodb/lib/cmap/connection.js",
+          "sha256": "368048461f7b5d02e32d9dc79a106ad7e0b8340470d3493b90923d9d5dbce263",
+          "lines": [
+            438,
+            439
+          ]
+        },
+        {
+          "path": "/private/tmp/sd-customer-contact-build-c35597e3-337a-4bc3-a2b8-bd2093a12242/public/node_modules/bson/lib/parser/deserializer.js",
+          "sha256": "a78130552d5324e5f43fefb63785838bffc07c95087cb83736ff671287d96e0f",
+          "lines": [
+            280,
+            282,
+            284,
+            285
+          ]
+        },
+        {
+          "path": "/private/tmp/sd-customer-contact-build-c35597e3-337a-4bc3-a2b8-bd2093a12242/public/node_modules/mongodb/lib/cursor/abstract_cursor.js",
+          "sha256": "7276fa413574ecbd94bbea501fdce9c750e58354e9d6d7bdab90e0315cde220d",
+          "lines": [
+            451,
+            452,
+            453
+          ]
+        }
+      ],
+      "evidenceScope": "Read actual pinned installed sources only; no nativeBSON/Node/DB/fixture run. This is source-proven typeflow, not observed runtimefailure."
+    }
+  ],
+  "knownPreparationHold": {
+    "status": "NOT_READY_FOR_INSTALL_EMIT_OR_APPLICATION",
+    "reason": "ActualExpress4.21.1 view.js computedrequire(mod) is stillDENIED by strict compiler policy. README/manifest make this explicit; no fabricatedpolicyorblanketexception was introduced.",
+    "nativeParentSha256": "ec627880c1b43aee5887164ac2e9c58f01e4ee8086e23a829eddf1af3858c021",
+    "requiredNextGate": "Separately reviewed exactparent/hash/branch/runtime-denial policy and narrowfutureamendment before preparation; thissourcevote doesnotadmit it."
+  },
+  "actualReadOnlyChecks": [
+    "Read complete9namespacefiles and all19actualproductionfiles, owningcontract/actualtwoimplementationvotes/Rootsharedinterface+priorfee9twosourcevotes/actual152fakeoutcomes. Scope is focused due/read+resume/pause compatibility, not fullP7dispatch/clinical/finance/customerflow.",
+    "All46selectedproducerinputs current+39ebGit and10preservedshared/profile/mainbindings verified. ActualOWN10+CONTEXT17+19sourcepins exactlyequals46map; no runtime/producer mapconflation. Rootprofile/shared6/main63a5/full19production unchanged.",
+    "20actualgroup registrations/7sourcecontrolpredicates/8whole19TSphase compilation and threefixedcuts inspected. Closedcustomerclasssixmethods throw/latch; logger onlyprimitiveboundedstring+optionalempty{}; nominalsourcecontroller/service/repo/auth/Joi algorithms notsubstituted.",
+    "All7whole-source mutation recipe expectedhashes and exactposition-bound inverses independently reproduced as inerttext. Each designedforbiddenpredicate is meaningful actualbehavior, not staticPASS: foreignID,>51completedrows,ignoredextraqueryaccepted,seededuserIDleak,persistedpauseretention,privateSymbolgetterinvocation,suppliedmap/nullarrayeffect; restorationuses samepredicate.",
+    "Closed loader/fullinstalledliteralAST audit/declarednativeoptional tuples/sourcepins/env-only computedbranch and fourASTnegativechecks read. Unknownmodule/computed/native-addon edges remainclosed; nominaloldExpressedge explicitlyholdsnextstage. Actualpackageclosure stillunobserved.",
+    "SoledefaultMongoose6/client/nativeDb/collection, exactsuppliedReflect.ownKeys+data-descriptor options/effectiveboundedprofile/startmonitorbeforeconnect/persistentattemptlatch and expectednegativecounters read. Networknamespace/semanticinterface+ENETUNREACH/fs/process/preimport gates use existingsharedlifecycle, no newgrants.",
+    "ActualHTTP tokenrole/operationalpharmacy/queryprecedence,calendar/year<100,limits/lookahead,scopeboundcanonicalcursor/keysetpagination/scalarMongo filters/closedDTO/no-store scope inspectedagainstreal19source. Premount401 headerpromise explicitlynotmade.",
+    "Hostilefaultport waitsactualdueQuery.exec then appliesonefixedtransform/throw, restoresfinally. RealObjectId/Symbol/cachepositives precede foreignsymbol/getter/proxy/buffers/row/arrayholes/ownmap/cache mismatch denials; nominalrawrows remainactualdriverresults.",
+    "Read/denial fullBSON beforeafter snapshots and perindividualHTTPwrite targetedfield+allotherrow/createdAt invariants, actualfreshpersistedpausedUntilABSENCE/idempotentrepeatedresume/nonresume+pause compatibility/roleandforeignupdate denials inspected. Directresume alsorequiresrealstoredabsence; no undefinedassignmentspy asproof.",
+    "Existingfixedoperator env/argv/sourceHEAD/template/600two-reviewnonce/exclusiveclaim/report/finallycleanup and sharedunitdelegation retained. Producer scriptsdisabledpubliclockedinstall/whole19TS+diagnostics/source/nativehash closure/data-only compiler boundary read. No commands executed."
+  ],
+  "limits": [
+    "Currentcandidate requires nominalcursorcorrection plus separateExpresspolicyprerequisite; no source/preparation/runtimeapproval.",
+    "No publiclock/install/emission/parser/TypeScript/Node/HTTP/Mongo/BSON/nativebehavior/controls/timing/cleanup resultclaimed.152sharedfakepasses do notstandinfor20groups/sevenactualcontrols.",
+    "Exactruntimecaps180s/30s/memory/pids/CPU/fs/network/provider/default-readiness/owner/C2/C3/client/deployment/clinical/release/finalintegrationdeferral unchanged.",
+    "Original39ebcandidate/sourcecontract/recipe/sourceapproval histories preserved. Fix onlyafteractualnonauthorreviews; futurefreshsource/stage/votes/nonce/ownedarea/outcomes separate."
+  ],
+  "permissions": {
+    "sourceApproval": false,
+    "sourceEditsByReviewer": false,
+    "executableStageApproved": false,
+    "runtimeOrProviderApproved": false
+  },
+  "reviewerExecution": "Inert source/JSON/Git/hash/pinnednative source/textmutation reasoning only; no parser/compiler/Node/package/app/DB/Docker/provider execution."
+}

@@ -1,0 +1,25 @@
+{
+  "schema": "SD-P7-FIXTURE-INITIAL-ACTUAL-SOURCE-DECISIONS-1",
+  "recorder": "/root",
+  "candidateCommit": "39eb5e463b7bd03b60378dfb1c204596654c443c",
+  "manifestSha256": "8082d524c12ffe469a961405815153d3a391cecad8bc5bc4ae9eb92298add1c9",
+  "decisions": [
+    {
+      "reviewer": "/root/milestone_composition_r9",
+      "decision": "REQUEST_CHANGES",
+      "path": "output/qa/pharmacy-refill-focused/source-candidate/INITIAL_STANDARDS_REVIEW.json",
+      "sha256": "cf9048dd62bb0882e0d278b466691141a094093b51b31bd3a1ca75e6f51ba8e7"
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "decision": "REQUEST_CHANGES",
+      "path": "output/qa/pharmacy-refill-focused/source-candidate/INITIAL_SPEC_REVIEW.json",
+      "sha256": "221272b62185e44c5a72652d9c063a5eef9641369898e371b97ac21fa68c376e"
+    }
+  ],
+  "finding": "Bothactualaxes confirmrawMongo4command defaultpromoteLongs=true normalizesexhaustedLong0tonumeric0, thenfixturecatalog rejectsfalseyid. Minimal explicitpromoteLongs:false preservesnativeLongwithoutwideningacceptedidshape.",
+  "disclosure": "StandardsreviewerMilestone authoredP7production7b; voteonnewCustomerfixture/C3/coverage only, no ownproductionreapproval. ExistingproductionRoot+Customer decisions separate.",
+  "retainedHold": "Expressviewcomputedimportpolicy remainsDENIED; no preparation/runtime admission.",
+  "sourceApproval": false,
+  "executionApproval": false
+}
