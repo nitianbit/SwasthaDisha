@@ -1,0 +1,25 @@
+{
+  "schema": "SD-P7-CATALOG-LONG-ACTUAL-SOURCE-DECISIONS-2",
+  "recorder": "/root",
+  "candidateCommit": "f5499f87467828e1f3680ddedf4c23d4daf95070",
+  "sourceManifestSha256": "5de441feff0bfcbf03a0e9f7d58e8cee096f537bda0d3d72d2993a36d7e9ff80",
+  "decisions": [
+    {
+      "reviewer": "/root",
+      "decision": "APPROVE_SCOPED_SOURCE_AMENDMENT_ONLY",
+      "path": "output/qa/pharmacy-refill-focused/source-candidate/revision-2/STANDARDS_REVIEW.json",
+      "sha256": "5559cc9ed4128d640794c8947fdc48d07e174825709497e98c0a0fb7ae3b2d11"
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "decision": "APPROVE_SCOPED_SOURCE_AMENDMENT_ONLY",
+      "path": "output/qa/pharmacy-refill-focused/source-candidate/revision-2/SPEC_REVIEW.json",
+      "sha256": "1811d3eba2866f0cb01689743c1dd71210256f137faba0d1726752364de152b8"
+    }
+  ],
+  "decision": "APPROVE_SCOPED_SOURCE_AMENDMENT_ONLY",
+  "composition": "Actual full nine-file initial nonauthor Standards/Spec reviews requested only rawcatalog promoteLongs flag. Current exact one-callsite fix and all other45producer inputs unchanged; scoped Root amendment Standards plus fresh sameSpec closes that one source finding. Prior actual Standards remains necessary full fixture scope; Root has not claimed a new full ninefile review.",
+  "hold": "Express computed site preparation policy remains unresolved; no metadata/install/emission/application execution approved.",
+  "runtime": "NOT_RUN",
+  "productionOrOwnerAcceptance": false
+}

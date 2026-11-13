@@ -1,0 +1,19 @@
+{
+  "schema": "SD-P7-FIXTURE-CATALOG-AMENDMENT-STANDARDS-REVIEW-2",
+  "reviewer": "/root",
+  "axis": "Standards",
+  "author": "/root/customer_remaining_audit",
+  "candidateCommit": "f5499f87467828e1f3680ddedf4c23d4daf95070",
+  "manifestSha256": "5de441feff0bfcbf03a0e9f7d58e8cee096f537bda0d3d72d2993a36d7e9ff80",
+  "decision": "APPROVE_SCOPED_SOURCE_AMENDMENT_ONLY",
+  "findings": [],
+  "scope": "Rootindependentoneflagamendment and unchangedcomposition review, combinedwith priorMilestone full9fixture Standards and LabfullSpec39eb reviewsthatidentifiedsameonecatalogblocker. Rootdoesnotclaimnewfullreviewofeveryother9filebody; originalactualreviewsretained. No selfsourceapproval ofunchangedRootsharedplatform.",
+  "actualInspection": [
+    "One explicitcommandoption promoteLongs:false at boundedrawcatalogcallsite; wholefileinverse exactlyrecovers39ebbootstrap04421cb3, newd719aea2 matchescandidate/currentGit. Other8namespace/45producerinputs/19production/10sharedprofileinputs exact; actualOWN10+CONTEXT17+19 map46 independentlyderived asdata.",
+    "Actualdriver4Db.command\u2192operationBSONoptions propagatesthisoverride into BSON4deserializer, preservingnativeLongincludingEOFzero. Existingcursor guard/acceptedtypes/namespace/getMore/session/command/resourcebounds unchanged; no coercion/globaldefault change.",
+    "Actualtwoinitialnative-sourcefindings retained; nominalEOFpath source repair verified butnotexecuted. Sameactualproduction7b reviewedbyothers remainsseparate."
+  ],
+  "resolvedFinding": "P7-FIXTURE-SPEC-1 and sameStandardsnumericEOFblocker repaired atsource only.",
+  "knownPreparationHold": "ExactExpressviewcomputed-templateimportpolicy stillDENIED/pending. This scopedamendment vote grants no overallpreparationadmission, runtime, wholefixturepositive-proof or fullP7completion. Newpolicyimplementation+twoexactsource/stagevotes required.",
+  "execution": "No parser/TypeScript/Node/native/BSON/app/DB/Docker/provider evaluated; onlyPythonASTdata/inputidentity/source/hash reads."
+}

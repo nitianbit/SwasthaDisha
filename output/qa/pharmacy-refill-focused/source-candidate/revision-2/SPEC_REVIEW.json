@@ -1,0 +1,48 @@
+{
+  "schema": "SD-P7-FIXTURE-CATALOG-AMENDMENT-NONAUTHOR-SPEC-REVIEW-2",
+  "reviewer": "/root/lab_remaining_audit",
+  "axis": "Spec",
+  "author": "/root/customer_remaining_audit",
+  "candidateCommit": "f5499f87467828e1f3680ddedf4c23d4daf95070",
+  "manifestSha256": "5de441feff0bfcbf03a0e9f7d58e8cee096f537bda0d3d72d2993a36d7e9ff80",
+  "decision": "APPROVE_SCOPED_SOURCE_AMENDMENT_ONLY",
+  "findings": [],
+  "priorActualWholeFixtureSpecReviewSha256": "221272b62185e44c5a72652d9c063a5eef9641369898e371b97ac21fa68c376e",
+  "sourceHashes": {
+    "test/api-runtime/pharmacy-refill/README.md": "7a2ea24526d5c2b023e42e669d66dd064785b8adec1aa4a4962dc2a0c55a4c91",
+    "test/api-runtime/pharmacy-refill/package-plan.json": "41bcf92c7913eec65f529eb911f4d1417e8bbb2c27a200ce284d74816ef07453",
+    "test/api-runtime/pharmacy-refill/ports-manifest.json": "b1274f5077e4dd2ca365fda19f7733cc606183eb24a5574e7f382da747e1c0ec",
+    "test/api-runtime/pharmacy-refill/prepare.py": "b249b646e87f570f958d9881728102149bd9e0b676b121f6f80ca5bee68bc379",
+    "test/api-runtime/pharmacy-refill/compile.cjs": "996355bb46e3d926871b3d784b91faa20bc2ff738119397e0f1f2e67e82e4c2f",
+    "test/api-runtime/pharmacy-refill/bootstrap.cjs": "d719aea2ae30c272cb4f3aa45464f0e77ada541307fdd90844749dd4f4c158ad",
+    "test/api-runtime/pharmacy-refill/scenario.cjs": "af0896baf1d0e12d406a12b79b2b882672be88be53305a0c5051c27a8e55c6ff",
+    "test/api-runtime/pharmacy-refill/launch.mjs": "563e2da1602dd6dc5e8ef9b415405cffabb537c09c0a62e7979343eb54aaea9c",
+    "test/api-runtime/pharmacy-refill/unit.mjs": "dab0b9e625a3ad703f0b05d931cbd3d4f2eedda06dc60c53b9999c55c9840c03"
+  },
+  "resolvedFinding": {
+    "id": "P7-FIXTURE-SPEC-1",
+    "status": "RESOLVED_IN_SOURCE_ONLY",
+    "evidence": "At bounded catalog call169, Db.command(command,{session,promoteLongs:false}) overrides actual driver4 default. BSON4 deserializer preserves nativeLong EOFzero/nonzero, so existing object guard and zero.toString check now admit genuine exhausted cursor. No numeric coercion, native-shape widening, global setting or fake response."
+  },
+  "actualChecks": [
+    "Exact one-callsite substitution and full inverse reproduce original39eb bootstrap04421cb3/newd719aea2. All other8 namespace files match exact39eb Git objects; all9 current/candidate hashes match. Patch5361ffae and inverse67664594 match manifest.",
+    "All46 producer input hashes match actual current files and exactf549 Git objects. Independently derived literal OWN10+CONTEXT17+ports19 selection as inert text, no parser/eval. It is distinct from future runtime-plan sourceFiles19production+7namespace+2root=28; no descriptor generated or rebound by review.",
+    "Retained actual initial39eb/22233ca two REQUEST records verified, including our full9file Spec221272 and manifest8082d524. Reuse actual prior complete fixture/native19 production/model/port/race/20group/7control review under unchanged hashes; this fresh vote binds only explicit flag correction plus unchanged composition, not retroactive original approval.",
+    "Independently read actual installed Mongo4 Db.command161-165, RunCommandOperation/CommandOperation options propagation, resolveBSONOptions override and BSON4 deserializer280-290. Explicit false is retained through native operation/response to prevent safe int64 promotion. No native code executed.",
+    "Existing owned cursor/ns/getMore/killCursors/session cleanup/12command/64rows/262144bytes/5seconds and index/native metadata validation retained byte-exact; nominal behavior/cleanup actual evidence remains NOT_RUN.",
+    "Original source decisions/contract/shared platform bytes preserved. This is not a production-source reapproval or proof that every future phase runs."
+  ],
+  "preparationHold": "Express4.21.1 view.js computed require(mod) remains DENIED by existing closed compiler policy. Exact parent/hash/branch/runtime-denial policy, separate source amendment and two actual stage decisions required before preparation; no known-failing retry authorized.",
+  "permissions": {
+    "scopedSourceAmendmentApproved": true,
+    "preparationApproved": false,
+    "runtimeApproved": false,
+    "activationApproved": false
+  },
+  "execution": "Inert file/Git/JSON/hash/regex/exacttext review only; no parser/Node/TypeScript/npm/package/nativeBSON/app/DB/Docker/provider execution.",
+  "limits": [
+    "Source only. Actual native catalog EOF/nonzero cleanup and full20group/7control runtime still require admitted verification.",
+    "P7 dispatcher/clinical/stock/money/capacity/owner/client/C2/C3/release gates remain; no full module completion.",
+    "Original original39eb requests and all other worker/R13 frozen sources untouched."
+  ]
+}
