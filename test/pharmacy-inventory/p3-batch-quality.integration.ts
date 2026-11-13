@@ -19,7 +19,7 @@ import PharmacyModel from '@/modules/pharmacies/model';
 import { InventoryAdjustmentModel, InventoryItemModel } from '@/modules/pharmacyInventory/model';
 import { InventoryItemRepository } from '@/modules/pharmacyInventory/repository';
 import { BatchQualityService } from '@/modules/pharmacyInventory/batchQuality';
-import { SupplierReturnModel } from '@/modules/pharmacyInventory/supplierReturnModel';
+import { SupplierReturnModel } from '@/modules/pharmacyInventory/model/supplierReturn';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/p3_quality_check?directConnection=true';

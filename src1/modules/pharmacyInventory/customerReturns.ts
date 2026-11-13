@@ -3,7 +3,7 @@ import { ClientSession, startSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import { getTodayYyyymmdd } from '@/modules/common/utils/dateUtils';
 import { InventoryAdjustmentModel, InventoryItemModel } from '@/modules/pharmacyInventory/model';
-import { CustomerReturnModel, CustomerReturnDisposition, ICustomerReturn, ICustomerReturnLine } from '@/modules/pharmacyInventory/customerReturnModel';
+import { CustomerReturnModel, CustomerReturnDisposition, ICustomerReturn, ICustomerReturnLine } from '@/modules/pharmacyInventory/model/customerReturn';
 import { rearmLowStock } from '@/modules/pharmacyInventory/sellable';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
 import { WalletModel } from '@/modules/wallet/model';

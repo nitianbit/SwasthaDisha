@@ -2,11 +2,11 @@ import { Service } from 'typedi';
 import { ClientSession, startSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import { InventoryAdjustmentModel, InventoryItemModel } from '@/modules/pharmacyInventory/model';
-import { SupplierReturnModel, ISupplierReturn } from '@/modules/pharmacyInventory/supplierReturnModel';
+import { SupplierReturnModel, ISupplierReturn } from '@/modules/pharmacyInventory/model/supplierReturn';
 import { rearmLowStock, todayYyyymmdd } from '@/modules/pharmacyInventory/sellable';
 import PharmacySupplierModel from '@/modules/pharmacySuppliers/model';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
-import { CustomerReturnModel } from '@/modules/pharmacyInventory/customerReturnModel';
+import { CustomerReturnModel } from '@/modules/pharmacyInventory/model/customerReturn';
 
 export interface StaffActor { pharmacyId: string; actorId: string }
 const OPEN_ORDER_STATUSES = ['placed', 'accepted', 'packed', 'ready_for_pickup', 'out_for_delivery', 'delivery_failed'];

@@ -21,7 +21,7 @@ import { InventoryAdjustmentModel, InventoryItemModel } from '@/modules/pharmacy
 import { InventoryItemRepository } from '@/modules/pharmacyInventory/repository';
 import { BatchQualityService } from '@/modules/pharmacyInventory/batchQuality';
 import { CustomerReturnService } from '@/modules/pharmacyInventory/customerReturns';
-import { CustomerReturnModel } from '@/modules/pharmacyInventory/customerReturnModel';
+import { CustomerReturnModel } from '@/modules/pharmacyInventory/model/customerReturn';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
 import { PharmacyOrderRepository } from '@/modules/pharmacyOrders/repository';
 import { PharmacyOrderService } from '@/modules/pharmacyOrders/services';
