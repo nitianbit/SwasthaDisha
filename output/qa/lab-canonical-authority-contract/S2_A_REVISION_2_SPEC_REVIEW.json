@@ -1,0 +1,70 @@
+{
+  "schema": "SD-LAB-S2-A-AMENDED-SPEC-CONTRACT-REVIEW-1",
+  "reviewer": "/root/lab_remaining_audit",
+  "role": "NONAUTHOR_SPEC",
+  "author": "/root/milestone_composition_r9",
+  "reviewedCandidate": "f8e5eb54164ba385fe904b210fc657558fb20d95",
+  "decision": "APPROVE_IMPLEMENTATION_ONLY",
+  "contractPath": "documentation/planning/implementation/LAB_CANONICAL_AUTHORITY_S2_A_ADDENDUM_DRAFT.md",
+  "contractSha256": "dbe337575ff28360bf6a7b57a2c69cf2bdab9a234a2774c893ec1bba36159a57",
+  "vectorsPath": "output/qa/lab-canonical-authority-contract/S2_A_SERIALIZATION_VECTORS.json",
+  "vectorsSha256": "d08280c503baadde02f6fe1313be5eb21aa6af697d4bae0320870dbef10cb49a",
+  "sourceBindingsPath": "output/qa/lab-canonical-authority-contract/S2_A_SOURCE_BINDINGS.json",
+  "sourceBindingsSha256": "d3a79d9c3bd447c7f1fb6bbf6f852ea12fb43f1a6ec3466b57700a3478d63d55",
+  "initialReview": {
+    "path": "output/qa/lab-canonical-authority-contract/S2_A_SPEC_REVIEW.json",
+    "sha256": "5d2be9e1e3914390ef77151fbf091572a27e9e307c65debb4af06d03576f97e8",
+    "decision": "REQUEST_CHANGES",
+    "finding": "LAB-S2A-SPEC-1",
+    "disposition": "RESOLVED_IN_AMENDED_CONTRACT_ONLY; original actual decision remains unchanged"
+  },
+  "actualChecks": [
+    "Read full initial contract and exact26-line amendment; other contract bytes preserved. Revalidated all27 actual context/source bindings.",
+    "Both history queries now have exact fixed predicates/projection/session/simplecollation/limit2/maxTimeMS2000 and exactlyone cardinality. No arbitrary history API,new action/schema/index/source/privilege or recursive traversal.",
+    "Current revoked M revisionR binds signed D revisionR/previousR-1 and signed G originalgrant revisionR-1. Subject/member/org/retained single grant+validity/previousGrantDecisionId/reason/operation and decision IDs are checked; original G is never relabelled as revoked R.",
+    "Both historical proofs reconstruct canonical commands/decision payloads, actual current accepted root key/generation and real protected historical evidence hashes; genuine signatures remain required. Historical validity uses actual recorded callback createdAt, not current regrant time.",
+    "Exact timestamp and strictly ordered historical fence linkage now connects M,D,G while allowing unrelated commands between grant and revoke. New regrant requires currentorgfence and wholemember CAS; no stale-history/current-fence equality assumption.",
+    "Historical active-or-verification_only verification is distinguished from active-only fresh commands, including revoke. Current new issuer must be active/nonself. No present User flag invents historical approval or real human independence/MFA.",
+    "Canonical text/bytecounts/hashes/envelopes for all four command examples, fingerprint, and four decision examples independently recomputed as inertJSON data. All original three command/decision vectors and original ancillary fields remain exact, with one new regrant example appended each.",
+    "New nominal grant1/revoked2/regrant3 IDs/revisions/retainedoldstate/newgrant/fences2,3,4 and fixed query values personally checked. Eleven additional transition counterexamples remain planned inert data, not executed security tests.",
+    "Uniform503 malformed/missing/ambiguous history,403 cryptographic/generation denial,409 newexpected-CAS conflict and no-write rollback requirements are coherent. Existing sameoperation replay authenticates retained committed history without claiming current authority."
+  ],
+  "findings": [],
+  "implementationScope": {
+    "actions": [
+      "map_lab",
+      "grant_lab_reader",
+      "revoke_lab_reader"
+    ],
+    "codeFiles": 8,
+    "dataFiles": 1,
+    "labScopeEnabled": false,
+    "existingPharmacyEvaluatorReadPortServiceUnchanged": true,
+    "completeS2OrL2": false
+  },
+  "conditions": [
+    "Two actual independent nonauthor contract decisions are still required before implementation; this is one actual Spec vote only.",
+    "Implement closed raw validation and exact proof/transition/error semantics; no model casting, readinessboolean, copied oldrevision or unsigned history substitute.",
+    "Freeze exact eight code files/source manifest and obtain two nonauthor source/composition reviews and genuine Claude review where available; this vote does not approve future code.",
+    "Real signature/metadata/root/evidence/sameclienttransaction/map-grant-revoke-regrant/replay/rollback/unique-race positives and negatives need separately admitted focused fixture stages.",
+    "Root sourceManifest binding does not prove deployed build/client/topology/index/all-writer exclusion or real issuer/evidence acceptance."
+  ],
+  "permissions": {
+    "implementationOnly": true,
+    "sourceApproval": false,
+    "cryptoExecution": false,
+    "packageOrCompilerExecution": false,
+    "applicationOrDatabaseOrDDLOrProviderExecution": false,
+    "productionProvisioning": false,
+    "activation": false
+  },
+  "retainedGates": [
+    "C2/C3/build/release and supported topology/client proof",
+    "Installed correctness indexes and conflict-free/all-writer/restore controls",
+    "Real root installation,issuer identity/key custody/evidence custody and required MFA/owner acceptance",
+    "Lab/branch lifecycle and key rotation/reauthorization",
+    "S2-B operational authority/assignment and L2 worklist",
+    "Clinical signatory/report-release/provider/finance and patient access decisions"
+  ],
+  "reviewerExecution": "Static source/JSON/Git/hash inspection only; no Ed25519/signing, production serializer, TypeScript/Node, DB, transaction, DDL or runtime execution."
+}

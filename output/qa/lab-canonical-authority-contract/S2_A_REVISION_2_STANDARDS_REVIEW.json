@@ -1,0 +1,46 @@
+{
+  "schema": "SD-LAB-S2-A-NONAUTHOR-STANDARDS-CONTRACT-REVIEW-2",
+  "reviewer": "/root/customer_remaining_audit",
+  "axis": "NONAUTHOR_STANDARDS",
+  "author": "/root/milestone_composition_r9",
+  "candidateCommit": "f8e5eb54164ba385fe904b210fc657558fb20d95",
+  "contract": {
+    "path": "documentation/planning/implementation/LAB_CANONICAL_AUTHORITY_S2_A_ADDENDUM_DRAFT.md",
+    "sha256": "dbe337575ff28360bf6a7b57a2c69cf2bdab9a234a2774c893ec1bba36159a57"
+  },
+  "vectors": {
+    "path": "output/qa/lab-canonical-authority-contract/S2_A_SERIALIZATION_VECTORS.json",
+    "sha256": "d08280c503baadde02f6fe1313be5eb21aa6af697d4bae0320870dbef10cb49a"
+  },
+  "bindings": {
+    "path": "output/qa/lab-canonical-authority-contract/S2_A_SOURCE_BINDINGS.json",
+    "sha256": "d3a79d9c3bd447c7f1fb6bbf6f852ea12fb43f1a6ec3466b57700a3478d63d55",
+    "currentPinsPersonallyVerified": 27
+  },
+  "decision": "APPROVE_IMPLEMENTATION_ONLY",
+  "materialFindings": [],
+  "reviewScope": "Whole amended S2-A contract, current authority model/types/rules/repository/service and parent authority contract; independent source/text/JSON/hash review only. This is not source, runtime, root installation, clinical or production approval.",
+  "reasons": [
+    "Exactly create-only map_lab, missing/revoked grant_lab_reader and active/suspended revoke_lab_reader. Single fixed offline Ed25519 issuer is explicitly distinct from human independence, MFA and real evidence acceptance. Active personal issuer and non-self subject bind membership actions; expired membership/business or missing subject does not prevent authorized withdrawal.",
+    "Closed canonical ordered command arrays bind generation/key/issuer/org/operation/decision/window/action/evidence and expected revision/fence. Exact signed bytes, canonical 64-byte signature, root manifest binding, held-file identity and bounded evidence/root reads are implementable without request-selected trust or new general RBAC.",
+    "The amendment materially resolves LAB-S2A-SPEC-1: same-session exact bounded limit-2 D/G reads require cardinality one, authenticate retained revoked revision R against actual signed revocation R and prior grant R-1, preserve prior validity/grant, validate historical callback time and evidence, and require old grant fence < revoked fence <= current fence. Regrant uses current expected fence and revision R, persists R+1 atomically and retains identity/createdAt. No recursive history or disguised current-authority replay.",
+    "The exact G1 -> revoked M2 -> regrant3 synthetic chain has coherent revisions 1/2/3 and committed fences 2/3/4; old expired validity is validated at original grant time rather than incorrectly preventing regrant. Missing/ambiguous/forged/wrong-subject/revision/validity/prior-grant/future-fence and CAS-loss cases are specifically required.",
+    "Exact same User connection/native client/model identities, five collection metadata/index constraints with includeIndexBuildInfo and full retained rows/cursor cleanup, separate provenance/custody/coverage facts, owned snapshot transaction, full old snapshot CAS, overflow and immutable decision append are frozen. No schema declaration or source-manifest string is misrepresented as installed or deployment evidence.",
+    "Scope remains eight code files plus one generated data manifest; existing old three serialization variants, pharmacy evaluator/fingerprint/read adapter/service stay unchanged, new revoke serializer precedes existing professional fallback, and no lab scope is minted until separately reviewed S2-B. Runtime positive must use actual writer, not seeded nominal decisions or permanent closed stub."
+  ],
+  "dataOnlyChecks": {
+    "sourceBindings": 27,
+    "canonicalCommandTextByteCountAndSha256": 4,
+    "fingerprintTextAndSha256": 1,
+    "decisionArrayTextAndSha256": 4,
+    "allZeroSignatureExamples": "EXPLICITLY_INVALID_NOT_CRYPTO_VERIFIED"
+  },
+  "retainedConditions": [
+    "Second actual independent nonauthor exact-contract decision required before source implementation; after implementation exact source/composition reviews and genuine Claude review where available remain separate.",
+    "No Ed25519 sign/verify, source import, parser/compiler, Node/npm, application, database, DDL, filesystem adapter, provider or container execution performed. All actual native/transaction/rollback/race/replay/metadata/crypto verification is NOT_RUN.",
+    "Preserve existing pharmacy authority positives and serializer bytes; lab operational resolver/read adapter/worklist/assignment/report release remain denied/deferred pending S2-B and later contracts.",
+    "Root/evidence provisioning, current issuer identity/key custody and MFA where required, writer exclusion/restore, actual deployed build/C2/client/topology/index/capacity and owner/release activation are unobserved operational gates. Single-key signature is not independent human approval or clinical evidence truth.",
+    "Create-only phase does not supply business/branch lifecycle, key rotation/re-authorization, professional eligibility or production activation; those are required before real operational activation. Unknown commit remains UNKNOWN pending explicit same-operation readback."
+  ],
+  "preservation": "Only this distinct reviewer record written; no candidate/source/vector/binding or other worker edits. Original finding and author amendment remain preserved."
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "SD-LAB-S2-A-CONTRACT-DECISIONS-2",
+  "recorder": "/root",
+  "candidateCommit": "f8e5eb54164ba385fe904b210fc657558fb20d95",
+  "contractSha256": "dbe337575ff28360bf6a7b57a2c69cf2bdab9a234a2774c893ec1bba36159a57",
+  "decisions": [
+    {
+      "path": "output/qa/lab-canonical-authority-contract/S2_A_REVISION_2_STANDARDS_REVIEW.json",
+      "sha256": "4bb35511b795090cdae11071a23489cb92b356f0858f87ac0ec97aaf001f5f98",
+      "reviewer": "/root/customer_remaining_audit",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY"
+    },
+    {
+      "path": "output/qa/lab-canonical-authority-contract/S2_A_REVISION_2_SPEC_REVIEW.json",
+      "sha256": "84c1cdc39e48334c7a49de6b51af34edee0a0df90c712f74482a7a3f667b0d6a",
+      "reviewer": "/root/lab_remaining_audit",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY"
+    }
+  ],
+  "disposition": "APPROVE_IMPLEMENTATION_ONLY",
+  "priorFinding": "LAB-S2A-SPEC-1 resolved in amended contract; original REQUEST_CHANGES remains preserved.",
+  "implementationAuthor": "/root/milestone_composition_r9",
+  "scope": "Exactly eight code and one generated data file named in amended contract; actual source/runtime reviews remain required. No operational root/evidence installation, activation or lab worklist scope granted."
+}
