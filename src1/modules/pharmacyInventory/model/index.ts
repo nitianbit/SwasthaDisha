@@ -24,6 +24,11 @@ const inventoryBatchSchema = new Schema(
       index: true,
     },
     depletedAt: { type: Date },
+    // Quality hold (P3): why/when/who put the batch in quarantine; cleared on release.
+    holdId: { type: String },
+    holdReason: { type: String, trim: true, maxlength: 500 },
+    heldAt: { type: Date },
+    heldBy: { type: String },
   },
   { _id: true }
 );

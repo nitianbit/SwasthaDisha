@@ -97,3 +97,18 @@ export const idParamSchema = Joi.object({
     'any.required': 'ID is required',
   }),
 });
+
+const objectId = Joi.string().pattern(/^[0-9a-fA-F]{24}$/);
+export const batchParamSchema = Joi.object({ id: objectId.required(), batchId: objectId.required() });
+export const quarantineBatchSchema = Joi.object({ reason: Joi.string().trim().min(3).max(500).required() });
+export const releaseBatchSchema = Joi.object({
+  writeOffQty: Joi.number().integer().min(0).default(0),
+  reason: Joi.string().trim().min(3).max(500).required(),
+});
+export const supplierReturnSchema = Joi.object({
+  supplierId: objectId.required(),
+  quantity: Joi.number().integer().min(1).required(),
+  reason: Joi.string().valid('expired', 'damaged', 'recalled', 'near_expiry', 'other').required(),
+  notes: Joi.string().trim().max(500).optional(),
+});
+export const supplierReturnListSchema = Joi.object({ page: Joi.number().integer().min(1).max(1000).optional(), limit: Joi.number().integer().min(1).max(100).optional() });

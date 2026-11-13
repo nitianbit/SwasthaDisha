@@ -13,6 +13,11 @@ import {
   inventoryQuerySchema,
   qualityWorklistQuerySchema,
   idParamSchema,
+  batchParamSchema,
+  quarantineBatchSchema,
+  releaseBatchSchema,
+  supplierReturnSchema,
+  supplierReturnListSchema,
 } from '@/modules/pharmacyInventory/validation';
 
 const pharmacyInventoryRouter = Router();
@@ -74,6 +79,17 @@ pharmacyInventoryRouter.get(
 );
 
 // Get inventory item by ID
+// Batch quality (P3): returns to suppliers and open orders holding units of quarantined/recalled batches.
+pharmacyInventoryRouter.get('/supplier-returns', requireOperationalPharmacy, validate(supplierReturnListSchema, 'query'),
+  catchAsync(inventoryController.listSupplierReturns));
+pharmacyInventoryRouter.get('/held-batch-orders', requireOperationalPharmacy, catchAsync(inventoryController.heldBatchOrders));
+pharmacyInventoryRouter.post('/:id/batches/:batchId/quarantine', requireOperationalPharmacy, validate(batchParamSchema, 'params'),
+  validate(quarantineBatchSchema, 'body'), catchAsync(inventoryController.quarantineBatch));
+pharmacyInventoryRouter.post('/:id/batches/:batchId/release', requireOperationalPharmacy, validate(batchParamSchema, 'params'),
+  validate(releaseBatchSchema, 'body'), catchAsync(inventoryController.releaseBatch));
+pharmacyInventoryRouter.post('/:id/batches/:batchId/supplier-return', requireOperationalPharmacy, validate(batchParamSchema, 'params'),
+  validate(supplierReturnSchema, 'body'), catchAsync(inventoryController.returnBatchToSupplier));
+
 pharmacyInventoryRouter.get(
   '/:id',
   requireAdminOrOperationalPharmacy,

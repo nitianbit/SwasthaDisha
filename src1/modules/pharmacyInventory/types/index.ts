@@ -61,6 +61,10 @@ export interface IInventoryBatch {
   wholesalePrice?: number;
   status: InventoryBatchStatus;
   depletedAt?: Date;
+  holdId?: string;
+  holdReason?: string;
+  heldAt?: Date;
+  heldBy?: string;
 }
 
 export interface IInventoryBatchAllocation {

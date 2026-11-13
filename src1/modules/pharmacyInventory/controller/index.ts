@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { LowStockAlertService } from '@/modules/pharmacyInventory/lowStockAlerts';
+import { BatchQualityService } from '@/modules/pharmacyInventory/batchQuality';
 import { InventoryService } from '@/modules/pharmacyInventory/services';
 import { PharmacyService } from '@/modules/pharmacies/services';
 import { AuthRequest } from '@/modules/middleware/auth';
@@ -217,6 +218,35 @@ export class InventoryController {
       data: result.data,
       pagination: { page: result.page, limit: result.limit, total: result.total, totalPages: result.totalPages },
     });
+  };
+
+  private staff(req: AuthRequest) {
+    return { pharmacyId: String(req.user?.pharmacyId || ''), actorId: String(req.user?._id || '') };
+  }
+
+  quarantineBatch = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const data = await Container.get(BatchQualityService).quarantine(this.staff(req), req.params.id, req.params.batchId, req.body.reason);
+    res.status(200).json({ success: true, message: 'Batch quarantined', data });
+  };
+
+  releaseBatch = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const data = await Container.get(BatchQualityService).release(this.staff(req), req.params.id, req.params.batchId, req.body.writeOffQty ?? 0, req.body.reason);
+    res.status(200).json({ success: true, message: 'Batch released', data });
+  };
+
+  returnBatchToSupplier = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const data = await Container.get(BatchQualityService).returnToSupplier(this.staff(req), req.params.id, req.params.batchId, req.body);
+    res.status(201).json({ success: true, message: 'Returned to supplier', data });
+  };
+
+  listSupplierReturns = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const page = Number(req.query.page) || 1, limit = Number(req.query.limit) || 20;
+    const r = await Container.get(BatchQualityService).listSupplierReturns(this.staff(req), page, limit);
+    res.status(200).json({ success: true, data: r.data, pagination: { page: r.page, limit, total: r.total, totalPages: r.totalPages } });
+  };
+
+  heldBatchOrders = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    res.status(200).json({ success: true, data: await Container.get(BatchQualityService).impactedOrders(this.staff(req)) });
   };
 
   getLowStock = async (req: AuthRequest, res: Response, _next: NextFunction) => {
