@@ -78,6 +78,7 @@ export interface IInventoryItem {
   reservedQty: number;
   freeQty: number;
   batches?: IInventoryBatch[];
+  lowStockNotifiedAt?: Date;
   reorderThreshold?: number;
   rackLocation?: string;
   purchasePrice?: number;

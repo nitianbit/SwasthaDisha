@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
+import { LowStockAlertService } from '@/modules/pharmacyInventory/lowStockAlerts';
 import { InventoryService } from '@/modules/pharmacyInventory/services';
 import { PharmacyService } from '@/modules/pharmacies/services';
 import { AuthRequest } from '@/modules/middleware/auth';
@@ -229,9 +230,13 @@ export class InventoryController {
     const page = req.query.page ? parseInt(req.query.page as string) : 1;
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
     const result = await this.inventoryService.getLowStock(pharmacyId, page, limit);
+    // How many active refill subscriptions will need each item soon (P7c).
+    // medicineId may be a plain id or a populated/projected medicine object depending on the list path.
+    const medicineKey = (m: unknown) => String(m && typeof m === 'object' && '_id' in m ? (m as { _id: unknown })._id : m);
+    const demand = await Container.get(LowStockAlertService).refillDemand(pharmacyId, result.data.map((item) => medicineKey(item.medicineId)));
     res.status(200).json({
       success: true,
-      data: result.data.map((item) => this.sanitizeInventoryItem(req, item)),
+      data: result.data.map((item) => ({ ...this.sanitizeInventoryItem(req, item), upcomingRefills: demand.get(medicineKey(item.medicineId)) ?? 0 })),
       pagination: { page: result.page, limit, total: result.total, totalPages: result.totalPages },
     });
   };

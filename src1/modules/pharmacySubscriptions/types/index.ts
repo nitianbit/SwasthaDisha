@@ -18,6 +18,8 @@ export interface IPharmacySubscription {
   sourceOrderStatus?: string;
   lastSyncStatus?: SubscriptionSyncStatus;
   lastSyncError?: string;
+  pendingRefill?: { cycleDate: string; orderId?: string; claimToken?: string; claimedAt?: Date };
+  lastRefilledCycle?: string;
   createdById?: string;
   createdByRole?: string;
   createdAt?: Date;

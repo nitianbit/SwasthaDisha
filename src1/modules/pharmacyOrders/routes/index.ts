@@ -14,6 +14,7 @@ import {
   cancelOrderSchema,
   markOrderPaidSchema,
   prescriptionReviewSchema,
+  deliveryExceptionSchema,
   orderQuerySchema,
   recoveryWorklistQuerySchema,
   idParamSchema,
@@ -86,6 +87,15 @@ pharmacyOrderRouter.post(
   validate(idParamSchema, 'params'),
   validate(cancelOrderSchema, 'body'),
   catchAsync(controller.cancel)
+);
+
+// Delivery/pickup exceptions: failed delivery, retry, switch to pickup, not collected, refused at the door.
+pharmacyOrderRouter.post(
+  '/:id/delivery-exception',
+  requireOperationalPharmacy,
+  validate(idParamSchema, 'params'),
+  validate(deliveryExceptionSchema, 'body'),
+  catchAsync(controller.recordDeliveryException)
 );
 
 // Pharmacist approves/rejects the order's prescription. Queue: GET /?prescriptionStatus=pending

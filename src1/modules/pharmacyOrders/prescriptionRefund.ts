@@ -75,6 +75,14 @@ export class RazorpayRefundGateway implements RefundGateway {
 const receiptKey = (orderId: string, generation: number) => `rx-${orderId}-${generation}`;
 
 const notFound = () => new AppError({ status: 404, code: 'ORDER_NOT_FOUND', message: 'Order not found' });
+
+/** Why the order was refunded; shown on the customer's wallet history. */
+export type RefundCause = 'prescription_rejected' | 'delivery_not_collected' | 'delivery_refused';
+const REFUND_DESCRIPTION: Record<RefundCause, string> = {
+  prescription_rejected: 'Refund for pharmacy order rejected by pharmacist',
+  delivery_not_collected: 'Refund for pharmacy order not collected',
+  delivery_refused: 'Refund for pharmacy order refused at delivery',
+};
 /**
  * Every ledger reference, operation key and Razorpay receipt uses this canonical form (lowercase hex, as
  * String(ObjectId) produces), whatever spelling the request URL used.
@@ -109,14 +117,15 @@ export class PrescriptionRefundService {
   }
 
   /** Refund intent for a paid order, computed from its PaymentRecord. Used inside the rejection transaction. */
-  async buildIntent(order: Pick<IPharmacyOrder, '_id' | 'paymentTransactionId'>, session?: ClientSession): Promise<PrescriptionRefund> {
+  async buildIntent(order: Pick<IPharmacyOrder, '_id' | 'paymentTransactionId'>, session?: ClientSession,
+    cause: RefundCause = 'prescription_rejected'): Promise<PrescriptionRefund> {
     const orderId = canonicalOrderId(String(order._id));
     const now = new Date();
     const linked = order.paymentTransactionId && Types.ObjectId.isValid(String(order.paymentTransactionId))
       ? await PaymentRecordModel.findById(String(order.paymentTransactionId)).session(session ?? null).lean() : null;
     const record = linked ?? await PaymentRecordModel.findOne({ context: 'pharmacy_order', contextId: orderId, status: 'paid' }).session(session ?? null).lean();
     if (!record || record.context !== 'pharmacy_order' || record.contextId !== orderId || record.status !== 'paid') {
-      return { status: 'manual_review', walletAmount: 0, gatewayAmountPaise: 0, generation: 0, lastError: 'PAID_PAYMENT_RECORD_NOT_FOUND', updatedAt: now };
+      return { cause, status: 'manual_review', walletAmount: 0, gatewayAmountPaise: 0, generation: 0, lastError: 'PAID_PAYMENT_RECORD_NOT_FOUND', updatedAt: now };
     }
     const walletPart = Number(record.notes?.walletDeductedAmount || 0);
     const gatewayPart = Number(record.finalAmount || 0);
@@ -124,9 +133,9 @@ export class PrescriptionRefundService {
       ? (Number.isSafeInteger(record.finalAmountPaise) ? Number(record.finalAmountPaise) : Math.round(gatewayPart * 100)) : 0;
     if (!Number.isFinite(walletPart) || walletPart < 0 || !Number.isFinite(gatewayPart) || gatewayPart < 0 ||
       (gatewayPaise > 0 && Math.round(gatewayPart * 100) !== gatewayPaise)) {
-      return { status: 'manual_review', walletAmount: 0, gatewayAmountPaise: 0, generation: 0, lastError: 'PAYMENT_AMOUNT_INVALID', updatedAt: now };
+      return { cause, status: 'manual_review', walletAmount: 0, gatewayAmountPaise: 0, generation: 0, lastError: 'PAYMENT_AMOUNT_INVALID', updatedAt: now };
     }
-    return { status: 'wallet_pending', payerUserId: String(record.payerUserId || record.userId), paymentRecordId: String(record._id),
+    return { cause, status: 'wallet_pending', payerUserId: String(record.payerUserId || record.userId), paymentRecordId: String(record._id),
       walletAmount: Math.round((walletPart + gatewayPart) * 100) / 100, gatewayAmountPaise: gatewayPaise, generation: 0,
       ...(gatewayPaise > 0 ? { razorpayPaymentId: record.razorpayPaymentId } : {}), updatedAt: now };
   }
@@ -173,7 +182,7 @@ export class PrescriptionRefundService {
           const wallet = await WalletModel.findOne({ userId: payer }).session(session).lean();
           if (!wallet?.isActive) throw new AppError({ status: 409, code: 'WALLET_INACTIVE', message: 'Customer wallet is not active' });
           await this.wallets.postEntry({ userId: payer, walletId: wallet._id, transactionType: 'refund', amount, referenceType: 'pharmacy_order',
-            referenceId: orderId, operationKey: `pharmacy_order_refund:${orderId}`, description: 'Refund for pharmacy order rejected by pharmacist',
+            referenceId: orderId, operationKey: `pharmacy_order_refund:${orderId}`, description: REFUND_DESCRIPTION[refund.cause ?? 'prescription_rejected'],
             transactionDate: getTodayYyyymmdd() }, session);
         }
         const moved = await PharmacyOrderModel.updateOne(fence,

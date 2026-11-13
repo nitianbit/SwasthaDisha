@@ -1,4 +1,6 @@
 import { Service } from 'typedi';
+import PaymentRecordModel from '@/modules/payment/model';
+import { advanceRefillOnPayment } from '@/modules/pharmacySubscriptions/refillCycle';
 import { ClientSession, startSession, Types } from 'mongoose';
 import { PharmacyOrderRepository } from '@/modules/pharmacyOrders/repository';
 import { PharmacyCustomerService } from '@/modules/pharmacyCustomers/services';
@@ -21,6 +23,8 @@ import {
   OrderStatus,
   PrescriptionReview,
   PrescriptionReviewRequest,
+  DeliveryExceptionRecord,
+  DeliveryExceptionType,
 } from '@/modules/pharmacyOrders/types';
 import { AppError } from '@/modules/common/types';
 import { assertPrescriptionCommerceAvailable } from '@/modules/pharmacyOrders/prescriptionCommerce';
@@ -47,6 +51,8 @@ const ALLOWED_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   packed: ['ready_for_pickup', 'out_for_delivery', 'cancelled'],
   ready_for_pickup: ['completed'],
   out_for_delivery: ['completed'],
+  // Only through recordDeliveryException (reasons + stock/refund handling), never the generic status update.
+  delivery_failed: [],
   completed: [],
   abandoned: [],
   cancelled: [],
@@ -289,7 +295,8 @@ export class PharmacyOrderService {
 
     await this.runOrderInventoryTransaction(async (session) => {
       const updated = await this.orderRepo.update(
-        { _id: order._id, status: 'placed' },
+        // Only an order still without any payment link: a refill resume may have linked a valid checkout meanwhile.
+        { _id: order._id, status: 'placed', $or: [{ paymentTransactionId: { $exists: false } }, { paymentTransactionId: null }] } as never,
         {
           status: 'abandoned',
           paymentStatus: 'failed',
@@ -555,7 +562,12 @@ export class PharmacyOrderService {
     data: CreateOrderRequest,
     createdById: string,
     createdByRole: string,
-    options: { allowPriceOverride?: boolean } = {}
+    options: {
+      allowPriceOverride?: boolean;
+      /** Refill orders (P7): the order id allocated on the subscription beforehand, and its cycle binding. */
+      orderId?: string;
+      refill?: { subscriptionId: string; cycleDate: string; paymentDueBy: Date };
+    } = {}
   ): Promise<{
     order: IPharmacyOrder;
     paymentRequired: boolean;
@@ -639,6 +651,10 @@ export class PharmacyOrderService {
       }));
       const created = await this.orderRepo.save(
         {
+          // Refill orders are inserted under their pre-allocated id together with the cycle binding, so the order
+          // can never exist (or be paid) unbound, and a retry can only ever produce this same order (E11000).
+          ...(options.orderId ? { _id: options.orderId } : {}),
+          ...(options.refill ? { refill: options.refill } : {}),
           orderNumber: this.generateOrderNumber(),
           pharmacyId,
           orderType: data.orderType,
@@ -657,7 +673,8 @@ export class PharmacyOrderService {
           taxTotalPaise,
           grandTotalPaise,
           paymentMode: data.paymentMode,
-          paymentStatus: grandTotal <= 0 ? 'paid' : 'pending',
+          // A zero-priced REFILL stays pending until completeZeroPayableRefill commits paid + cycle advance together.
+          paymentStatus: grandTotal <= 0 && !options.refill ? 'paid' : 'pending',
           deliveryMode: data.deliveryMode,
           deliveryAddress: data.deliveryAddress,
           isWalkIn: data.isWalkIn ?? false,
@@ -698,14 +715,10 @@ export class PharmacyOrderService {
         throw error;
       }
 
-      const paidOrder = await this.orderRepo.update(
-        { _id: savedOrder._id },
-        {
-          status: 'accepted',
-          paymentStatus: 'paid',
-          paymentTransactionId: paymentRecord._id!,
-        }
-      );
+      const paidPatch = { status: 'accepted' as const, paymentStatus: 'paid' as const, paymentTransactionId: paymentRecord._id! };
+      const paidOrder = options.refill
+        ? await this.commitZeroPayableRefill(String(savedOrder._id), String(paymentRecord._id))
+        : await this.orderRepo.update({ _id: savedOrder._id }, paidPatch);
       order = paidOrder || order;
 
       await this.queueNotificationSafely(String(order._id), 'order_created');
@@ -750,10 +763,23 @@ export class PharmacyOrderService {
       }
 
       const orderWithPayment = await this.orderRepo.update(
-        { _id: savedOrder._id },
+        // Fenced: link only while no payment is linked (a refill resume may have linked one first).
+        { _id: savedOrder._id, $or: [{ paymentTransactionId: { $exists: false } }, { paymentTransactionId: null }] } as never,
         { paymentTransactionId: createdPaymentOrder.paymentRecord._id! }
       );
-      order = orderWithPayment || order;
+      if (!orderWithPayment) {
+        // Lost the link race: our payment order stays unlinked and is never exposed; return the canonical one.
+        const current = (await this.orderRepo.findById(String(savedOrder._id))) as IPharmacyOrder;
+        const linked = current?.paymentTransactionId ? await PaymentRecordModel.findById(String(current.paymentTransactionId)).lean() : null;
+        return {
+          order: current,
+          paymentRequired: current?.paymentStatus !== 'paid',
+          ...(linked && linked.status === 'created' ? { payment: {
+            paymentTransactionId: String(linked._id), razorpayOrderId: linked.razorpayOrderId, razorpayKeyId: createdPaymentOrder.razorpayKeyId,
+            amount: linked.finalAmount, currency: linked.currency, baseAmount: linked.baseAmount, discountAmount: linked.discountAmount } } : {}),
+        };
+      }
+      order = orderWithPayment;
 
       await this.queueNotificationSafely(String(order._id), 'order_created');
 
@@ -1154,6 +1180,10 @@ export class PharmacyOrderService {
         message: 'Payment must be completed before this order can progress',
       });
     }
+    if (order.refill && payload.status === 'accepted' && order.paymentStatus !== 'paid') {
+      // Refill orders are confirmed only by the customer's payment (P7).
+      throw new AppError({ status: 409, code: 'ORDER_PAYMENT_REQUIRED', message: 'A refill order is confirmed only after the customer pays' });
+    }
     if (payload.status === 'completed' && order.paymentStatus !== 'paid') {
       throw new AppError({
         status: 409,
@@ -1312,6 +1342,132 @@ export class PharmacyOrderService {
     let result = updated;
     if (review.refundRequired) {
       await this.prescriptionRefundService.settleAfterRejection(id);
+      result = (await this.orderRepo.findById(id)) ?? updated;
+    }
+    await this.queueSubscriptionSyncSafely(id, 'status_changed');
+    if (updated.customerId) await this.queueNotificationSafely(id, 'status_changed');
+    return result;
+  }
+
+  /**
+   * Finishes a refill order whose creation was interrupted (P7): a paid refill whose cycle did not advance is advanced
+   * (fenced, exactly once); an unpaid online refill with no payment record gets its payment set up, without
+   * re-creating the order or its stock reservation. Safe to call repeatedly.
+   */
+  async resumeRefillOrder(orderId: string): Promise<IPharmacyOrder | null> {
+    const order = await this.orderRepo.findById(orderId);
+    if (!order?.refill) return order;
+    if (order.paymentStatus === 'paid') {
+      await advanceRefillOnPayment(order);
+      return this.orderRepo.findById(orderId);
+    }
+    if (order.status !== 'placed' || order.paymentStatus !== 'pending' || order.paymentMode !== 'online_payment' || order.paymentTransactionId) {
+      return order;
+    }
+    const { payerUserId, payerPharmacyId } = this.resolvePaymentPayer({
+      customerId: order.customerId ? String(order.customerId) : undefined,
+      buyerPharmacyId: order.buyerPharmacyId ? String(order.buyerPharmacyId) : undefined,
+      createdById: String(order.createdById),
+    });
+    if (Number(order.grandTotal || 0) <= 0) {
+      // Interrupted zero-priced refill: finish it through the same completion as creation.
+      const direct = await this.paymentService.createDirectPaidTransaction({
+        userId: String(order.createdById), payerUserId, payerPharmacyId, context: 'pharmacy_order', contextId: String(order._id),
+        baseAmount: Number(order.subtotal || 0), discountAmount: Number(order.discountTotal || 0), finalAmount: 0,
+        notes: { reason: 'zero_payable_amount', orderChannel: order.orderType, orderType: order.orderType, resumedRefill: true },
+      });
+      return (await this.commitZeroPayableRefill(orderId, String(direct._id))) ?? this.orderRepo.findById(orderId);
+    }
+    const created = await this.paymentService.createOrder({
+      userId: String(order.createdById),
+      payerUserId,
+      payerPharmacyId,
+      context: 'pharmacy_order',
+      contextId: String(order._id),
+      baseAmount: Number(order.subtotal || 0),
+      discountAmount: Number(order.discountTotal || 0),
+      finalAmount: Number(order.grandTotal || 0),
+      notes: { orderChannel: order.orderType, orderType: order.orderType, pharmacyId: String(order.pharmacyId), resumedRefillPaymentSetup: true },
+    });
+    // Link only if nobody linked one meanwhile; a losing payment order stays unlinked and unpaid.
+    await this.orderRepo.update(
+      { _id: order._id, $or: [{ paymentTransactionId: { $exists: false } }, { paymentTransactionId: null }] } as never,
+      { paymentTransactionId: created.paymentRecord._id! }
+    );
+    return this.orderRepo.findById(orderId);
+  }
+
+  /**
+   * The ONLY place a zero-priced refill becomes paid: still placed + pending → accepted + paid + linked, and the
+   * subscription cycle advances, in one transaction. Losing concurrent completions change nothing.
+   */
+  private async commitZeroPayableRefill(orderId: string, paymentRecordId: string): Promise<IPharmacyOrder | null> {
+    return this.runOrderInventoryTransaction(async (session) => {
+      const paid = await this.orderRepo.update({ _id: orderId, status: 'placed', paymentStatus: 'pending' },
+        { status: 'accepted', paymentStatus: 'paid', paymentTransactionId: paymentRecordId }, { new: true, session });
+      if (paid) await advanceRefillOnPayment(paid, session);
+      return paid ?? ((await this.orderRepo.findById(orderId)) as IPharmacyOrder);
+    });
+  }
+
+  /**
+   * Delivery/pickup exceptions (P7b). One CAS transaction on the observed status and payment state, with a recorded
+   * reason. Cancelling exceptions (not_collected, refused_at_door) release reserved stock and, for a paid order,
+   * write the refund intent in the same transaction; the wallet credit follows (P2 refund service + reconciler).
+   */
+  async recordDeliveryException(
+    id: string,
+    pharmacyId: string,
+    data: { type: DeliveryExceptionType; reason?: string }
+  ): Promise<IPharmacyOrder> {
+    const rules: Record<DeliveryExceptionType, { from: OrderStatus[]; to: OrderStatus; pickup?: boolean; cancel?: boolean }> = {
+      delivery_failed: { from: ['out_for_delivery'], to: 'delivery_failed' },
+      retry_delivery: { from: ['delivery_failed'], to: 'out_for_delivery' },
+      switch_to_pickup: { from: ['out_for_delivery', 'delivery_failed'], to: 'ready_for_pickup', pickup: true },
+      not_collected: { from: ['ready_for_pickup'], to: 'cancelled', cancel: true },
+      refused_at_door: { from: ['out_for_delivery', 'delivery_failed'], to: 'cancelled', cancel: true },
+    };
+    const rule = rules[data.type];
+    if (!rule) throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Unknown delivery exception' });
+    if (typeof id !== 'string' || !/^[0-9a-fA-F]{24}$/.test(id)) {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid order ID' });
+    }
+    const order = await this.orderRepo.findById(id);
+    if (!order) throw new AppError({ status: 404, code: 'ORDER_NOT_FOUND', message: 'Order not found' });
+    if (!pharmacyId || String(order.pharmacyId) !== pharmacyId) throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
+    if (!rule.from.includes(order.status)) {
+      throw new AppError({ status: 409, code: 'INVALID_ORDER_STATUS_TRANSITION',
+        message: `"${data.type}" is not possible for an order that is ${order.status}` });
+    }
+    const reason = data.reason?.trim();
+    if (data.type !== 'retry_delivery' && !reason) {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'A reason is required' });
+    }
+    const paymentStatus = order.paymentStatus ?? 'pending';
+    const refundRequired = !!rule.cancel && ['paid', 'partially_paid', 'authorized'].includes(paymentStatus) && !order.prescriptionRefund;
+    const record: DeliveryExceptionRecord = { type: data.type, ...(reason ? { reason } : {}), at: new Date(), byPharmacyId: pharmacyId,
+      fromStatus: order.status, toStatus: rule.to, refundRequired };
+    const fence = { _id: id, pharmacyId: order.pharmacyId, status: order.status,
+      ...(order.paymentStatus === undefined ? { paymentStatus: { $exists: false } } : { paymentStatus: order.paymentStatus }),
+      prescriptionRefund: order.prescriptionRefund ? { $exists: true } : { $exists: false } };
+
+    const updated = await this.runOrderInventoryTransaction(async (session) => {
+      const refundIntent = refundRequired ? await this.prescriptionRefundService.buildIntent(order, session,
+        data.type === 'not_collected' ? 'delivery_not_collected' : 'delivery_refused') : undefined;
+      const next = await this.orderRepo.update(fence, {
+        $set: { status: rule.to, ...(rule.pickup ? { deliveryMode: 'pickup' } : {}), ...(refundIntent ? { prescriptionRefund: refundIntent } : {}) },
+        $push: { deliveryExceptions: record },
+      }, { new: true, session });
+      if (!next) {
+        throw new AppError({ status: 409, code: 'ORDER_STATE_CHANGED', message: 'Order changed while this was being recorded; reload and try again' });
+      }
+      if (rule.cancel) await this.releaseOrderInventory(pharmacyId, order.items, session);
+      return next;
+    });
+
+    let result = updated;
+    if (refundRequired) {
+      await this.prescriptionRefundService.settleAfterRejection(id); // wallet credit; reconciler retries on failure
       result = (await this.orderRepo.findById(id)) ?? updated;
     }
     await this.queueSubscriptionSyncSafely(id, 'status_changed');

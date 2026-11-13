@@ -160,6 +160,11 @@ export class PharmacyOrderController {
     res.status(code as number).json({ success: true, message, data: { orderId: req.params.id, prescriptionRefund: result.prescriptionRefund } });
   };
 
+  recordDeliveryException = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const result = await this.service.recordDeliveryException(req.params.id, req.user?.pharmacyId || '', req.body);
+    res.status(200).json({ success: true, message: 'Delivery update recorded', data: result });
+  };
+
   markPaid = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const result = await this.service.markPaid(req.params.id, {
       userType: req.user?.userType || '',

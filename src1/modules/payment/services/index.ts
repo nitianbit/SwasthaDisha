@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { advanceRefillOnPayment } from '@/modules/pharmacySubscriptions/refillCycle';
 import BookingModel from '@/modules/bookings/model';
 import { recordGatewayCapture, refundAndClose } from '@/modules/common/utils/bookingWalletFunding';
 import ExternalBookingModel from '@/modules/externalBookings/model';
@@ -148,6 +149,10 @@ export class PaymentService {
   }
 
   private isPharmacyOrderPaymentWindowExpired(order: IPharmacyOrder): boolean {
+    // Refill orders wait for the customer's payment until their own deadline (P7).
+    if (order.refill?.paymentDueBy) {
+      return Date.now() > new Date(order.refill.paymentDueBy).getTime();
+    }
     if (!order.createdAt) {
       return false;
     }
@@ -1103,6 +1108,8 @@ export class PaymentService {
             message: 'Failed to update pharmacy order payment status',
           });
         }
+        // Paid refill order: its subscription moves to the next cycle in this same transaction.
+        await advanceRefillOnPayment(nextOrder as IPharmacyOrder, session);
 
         const processedPayment = await this.paymentRepository.update(
           { _id: paymentRecord._id!, isProcessed: false },

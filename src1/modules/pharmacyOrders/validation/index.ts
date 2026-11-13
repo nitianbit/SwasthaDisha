@@ -1,7 +1,7 @@
 import Joi from 'joi';
 
 const orderTypes = ['in_store', 'online'];
-const orderStatuses = ['placed', 'accepted', 'packed', 'ready_for_pickup', 'out_for_delivery', 'completed', 'abandoned', 'cancelled', 'rejected'];
+const orderStatuses = ['placed', 'accepted', 'packed', 'ready_for_pickup', 'out_for_delivery', 'delivery_failed', 'completed', 'abandoned', 'cancelled', 'rejected'];
 const paymentModes = ['online_payment', 'in_store_payment', 'cash_on_delivery'];
 const paymentStatuses = ['pending', 'authorized', 'paid', 'failed', 'refunded', 'partially_paid'];
 
@@ -120,4 +120,9 @@ export const idParamSchema = Joi.object({
   id: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required().messages({
     'string.pattern.base': 'Invalid ID format',
   }),
+});
+
+export const deliveryExceptionSchema = Joi.object({
+  type: Joi.string().valid('delivery_failed', 'retry_delivery', 'switch_to_pickup', 'not_collected', 'refused_at_door').required(),
+  reason: Joi.string().trim().min(3).max(500).when('type', { is: 'retry_delivery', then: Joi.optional(), otherwise: Joi.required() }),
 });

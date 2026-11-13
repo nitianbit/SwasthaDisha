@@ -111,23 +111,27 @@ export class PharmacySubscriptionService {
         continue;
       }
 
-      await this.repo.update(
-        { _id: subscription._id },
-        {
-          userId,
-          medicineName: nextItem.medicineName,
-          frequency: nextItem.frequency,
-          intervalDays: nextItem.intervalDays,
-          nextRefillDate: nextItem.nextRefillDate,
-          reminderChannel: nextItem.reminderChannel ?? 'push',
-          isActive: true,
-          sourceOrderStatus,
-          lastSyncStatus: 'synced',
-          lastSyncError: undefined,
-          createdById,
-          createdByRole: 'pharmacy',
-        }
+      // Once refill ordering owns the cycle (an open refill order or a paid one), the refill cursor is operational
+      // state and source-order sync must not rewind it (P7). Decided INSIDE the write: the date is only written while
+      // no refill owns the cursor; otherwise only the metadata is updated.
+      const metadata = {
+        userId,
+        medicineName: nextItem.medicineName,
+        frequency: nextItem.frequency,
+        intervalDays: nextItem.intervalDays,
+        reminderChannel: nextItem.reminderChannel ?? 'push',
+        isActive: true,
+        sourceOrderStatus,
+        lastSyncStatus: 'synced' as const,
+        lastSyncError: undefined,
+        createdById,
+        createdByRole: 'pharmacy',
+      };
+      const withCursor = await this.repo.update(
+        { _id: subscription._id, lastRefilledCycle: { $exists: false }, pendingRefill: { $exists: false } } as never,
+        { ...metadata, nextRefillDate: nextItem.nextRefillDate }
       );
+      if (!withCursor) await this.repo.update({ _id: subscription._id }, metadata);
     }
 
     const newItems = items.filter((item) => !existingByMedicine.has(item.medicineId));

@@ -104,6 +104,7 @@ export class PharmacyOrderSideEffectService {
       packed: 'packed',
       ready_for_pickup: 'ready for pickup',
       out_for_delivery: 'out for delivery',
+      delivery_failed: 'waiting for a new delivery attempt',
       completed: 'completed',
       cancelled: 'cancelled',
       rejected: 'rejected',

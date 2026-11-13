@@ -64,6 +64,8 @@ const inventoryItemSchema = new Schema<IInventoryItem>(
       type: [inventoryBatchSchema],
       default: [],
     },
+    // Set when the pharmacy was notified of this item's current drop below reorderThreshold (P7c).
+    lowStockNotifiedAt: { type: Date },
     reorderThreshold: {
       type: Number,
       min: 0,

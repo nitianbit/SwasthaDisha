@@ -90,6 +90,7 @@ const prescriptionReviewSchema = new Schema(
 
 const prescriptionRefundSchema = new Schema(
   {
+    cause: { type: String, enum: ['prescription_rejected', 'delivery_not_collected', 'delivery_refused'] },
     status: { type: String, required: true, enum: ['wallet_pending', 'wallet_credited', 'source_processing', 'source_refunded', 'manual_review'] },
     payerUserId: { type: String },
     paymentRecordId: { type: String },
@@ -153,7 +154,7 @@ const pharmacyOrderSchema = new Schema<IPharmacyOrder>(
       type: String,
       enum: [
         'placed', 'accepted', 'packed',
-        'ready_for_pickup', 'out_for_delivery',
+        'ready_for_pickup', 'out_for_delivery', 'delivery_failed',
         'completed', 'abandoned', 'cancelled', 'rejected',
       ],
       default: 'placed',
@@ -202,6 +203,25 @@ const pharmacyOrderSchema = new Schema<IPharmacyOrder>(
     },
     prescriptionReview: { type: prescriptionReviewSchema, default: undefined },
     prescriptionRefund: { type: prescriptionRefundSchema, default: undefined },
+    // Delivery/pickup exceptions recorded by the pharmacy (P7b), oldest first.
+    deliveryExceptions: {
+      type: [new Schema({
+        type: { type: String, required: true, enum: ['delivery_failed', 'retry_delivery', 'switch_to_pickup', 'not_collected', 'refused_at_door'] },
+        reason: { type: String, trim: true, maxlength: 500 },
+        at: { type: Date, required: true },
+        byPharmacyId: { type: String, required: true },
+        fromStatus: { type: String, required: true },
+        toStatus: { type: String, required: true },
+        refundRequired: { type: Boolean, required: true },
+      }, { _id: false })],
+      default: undefined,
+    },
+    // Refill order of a subscription cycle (P7): waits paymentDueBy for the customer's payment.
+    refill: {
+      type: new Schema({ subscriptionId: { type: String, required: true }, cycleDate: { type: String, required: true, match: /^\d{8}$/ },
+        paymentDueBy: { type: Date, required: true } }, { _id: false }),
+      default: undefined,
+    },
     notes: { type: String, trim: true },
     linkedConsultationId: { type: Schema.Types.ObjectId as any, ref: 'Booking', index: true },
     linkedDiagnosticOrderId: { type: String, index: true },
@@ -214,6 +234,7 @@ pharmacyOrderSchema.index({ pharmacyId: 1, status: 1 });
 pharmacyOrderSchema.index({ pharmacyId: 1, orderType: 1 });
 pharmacyOrderSchema.index({ customerId: 1, status: 1 });
 pharmacyOrderSchema.index({ pharmacyId: 1, createdAt: -1 });
+pharmacyOrderSchema.index({ 'refill.paymentDueBy': 1, status: 1 }, { sparse: true });
 // Pharmacist review queue: pending prescriptions per pharmacy, oldest first.
 pharmacyOrderSchema.index({ pharmacyId: 1, prescriptionStatus: 1, createdAt: 1 });
 // Finance/ops follow-up: refunds that did not settle automatically.

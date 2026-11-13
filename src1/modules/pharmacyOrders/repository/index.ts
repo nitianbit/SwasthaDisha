@@ -302,7 +302,11 @@ export class PharmacyOrderRepository extends BaseRepository<IPharmacyOrder> {
       paymentMode: 'online_payment',
       paymentStatus: 'pending',
       status: 'placed',
-      createdAt: { $lt: cutoff },
+      // Normal orders: the 35-minute cutoff. Refill orders: their own payment deadline (P7).
+      $or: [
+        { refill: { $exists: false }, createdAt: { $lt: cutoff } },
+        { 'refill.paymentDueBy': { $lt: new Date() } },
+      ],
     })
       .sort({ createdAt: 1 })
       .limit(limit)

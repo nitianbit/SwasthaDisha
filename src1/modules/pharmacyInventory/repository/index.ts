@@ -1,4 +1,5 @@
 import { Service } from 'typedi';
+import { rearmLowStock, rearmStage, sellableQtyExpr } from '@/modules/pharmacyInventory/sellable';
 import { ClientSession, Model, PipelineStage, Types } from 'mongoose';
 import {
   InventoryItemModel,
@@ -132,6 +133,7 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
     document.markModified('batches');
 
     const saved = await document.save({ session });
+    await rearmLowStock(pharmacyId, medicineId, session);
     return {
       item: saved.toObject() as IInventoryItem,
       batchId: String((batch as any)._id),
@@ -226,6 +228,7 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
     document.availableQty += total;
     document.markModified('batches');
     const saved = await document.save({ session });
+    await rearmLowStock(pharmacyId, medicineId, session);
     return saved.toObject() as IInventoryItem;
   }
 
@@ -304,7 +307,7 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
         pharmacyId: new Types.ObjectId(pharmacyId),
         medicineId: new Types.ObjectId(medicineId),
       },
-      [{ $set: setStage }] as any,
+      [{ $set: setStage }, rearmStage()] as any,
       { new: true, upsert: true, session }
     ).lean();
 
@@ -449,7 +452,8 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
     if (filter.medicineId) query.medicineId = new Types.ObjectId(filter.medicineId);
     if (filter.isActive !== undefined) query.isActive = filter.isActive;
     if (filter.lowStock) {
-      query.$expr = { $lte: ['$availableQty', '$reorderThreshold'] };
+      // Sellable stock (active, unexpired batches), not the raw total (P7c).
+      query.$expr = { $lte: [sellableQtyExpr(), '$reorderThreshold'] };
     }
 
     const skip = (page - 1) * limit;
@@ -904,15 +908,17 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
     medicineId: string,
     qty: number
   ): Promise<IInventoryItem | null> {
+    // Stock change and low-stock re-arm in ONE atomic pipeline write (no caller transaction here).
     return InventoryItemModel.findOneAndUpdate(
       {
         pharmacyId,
         medicineId,
         reservedQty: { $gte: qty },
       },
-      {
-        $inc: { availableQty: qty, reservedQty: -qty },
-      },
+      [
+        { $set: { availableQty: { $add: ['$availableQty', qty] }, reservedQty: { $subtract: ['$reservedQty', qty] } } },
+        rearmStage(),
+      ] as any,
       { new: true }
     ).lean();
   }
@@ -945,7 +951,7 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
   ): Promise<IInventoryItem | null> {
     return InventoryItemModel.findOneAndUpdate(
       { pharmacyId, medicineId, isActive: true },
-      { $inc: { availableQty: qty } },
+      [{ $set: { availableQty: { $add: ['$availableQty', qty] } } }, rearmStage()] as any,
       { new: true, session }
     ).lean();
   }

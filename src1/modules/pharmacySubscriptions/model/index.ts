@@ -26,6 +26,14 @@ const pharmacySubscriptionSchema = new Schema<IPharmacySubscription>(
       index: true,
     },
     lastSyncError: { type: String, trim: true },
+    // Last cycle whose refill order was paid; from then on source-order sync leaves nextRefillDate alone (P7).
+    lastRefilledCycle: { type: String, match: /^\d{8}$/ },
+    // Open refill order for the current cycle (P7): orderId is allocated before the order is created.
+    pendingRefill: {
+      type: new Schema({ cycleDate: { type: String, required: true }, orderId: { type: String }, claimToken: { type: String },
+        claimedAt: { type: Date } }, { _id: false }),
+      default: undefined,
+    },
     createdById: { type: Schema.Types.ObjectId as any, ref: 'User' },
     createdByRole: { type: String, trim: true },
   },

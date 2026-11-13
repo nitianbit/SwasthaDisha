@@ -1,10 +1,29 @@
 import 'reflect-metadata';
 import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
+import { RefillOrderService } from '@/modules/pharmacySubscriptions/refillOrders';
+import { AppError } from '@/modules/common/types';
 import { PharmacySubscriptionService } from '@/modules/pharmacySubscriptions/services';
 import { AuthRequest } from '@/modules/middleware/auth';
 
 export class PharmacySubscriptionController {
+  /** Pharmacy (owning) or the subscribed customer creates the refill order for the due cycle. */
+  createRefillOrder = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    res.setHeader('Cache-Control', 'private, no-store');
+    const result = await Container.get(RefillOrderService).createRefillOrder(req.params.id,
+      { _id: String(req.user?._id || ''), userType: req.user?.userType || '', pharmacyId: req.user?.pharmacyId }, req.body);
+    res.status(result.created ? 201 : 200).json({ success: true,
+      message: result.created ? 'Refill order created; it is confirmed once the customer pays' : 'A refill order for this cycle already exists',
+      data: result });
+  };
+
+  /** Customer: their active refill subscriptions. */
+  mine = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    if (req.user?.userType !== 'user') throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Customer access required' });
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(200).json({ success: true, data: await Container.get(RefillOrderService).listMine(String(req.user._id)) });
+  };
+
   private service: PharmacySubscriptionService;
 
   constructor() {

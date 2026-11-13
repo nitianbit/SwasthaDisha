@@ -97,3 +97,9 @@ export function encodeDueRefillCursor(pharmacyId: string, query: DueRefillQuery,
   return refillCursorText({ v: 1, pharmacyId, through: query.through, limit: query.limit,
     nextRefillDate: row.nextRefillDate, subscriptionId: row.subscriptionId });
 }
+
+export const refillOrderSchema = Joi.object({
+  quantity: Joi.number().integer().min(1).max(1000).optional(),
+  deliveryMode: Joi.string().valid('pickup', 'delivery').optional(),
+  deliveryAddress: Joi.string().trim().max(500).optional(),
+});

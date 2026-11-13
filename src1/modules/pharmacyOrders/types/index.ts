@@ -6,6 +6,7 @@ export type OrderStatus =
   | 'packed'
   | 'ready_for_pickup'
   | 'out_for_delivery'
+  | 'delivery_failed'
   | 'completed'
   | 'abandoned'
   | 'cancelled'
@@ -171,6 +172,8 @@ export interface IPharmacyOrder {
   prescriptionStatus?: 'not_required' | 'pending' | 'approved' | 'rejected';
   prescriptionReview?: PrescriptionReview;
   prescriptionRefund?: PrescriptionRefund;
+  refill?: { subscriptionId: string; cycleDate: string; paymentDueBy: Date };
+  deliveryExceptions?: DeliveryExceptionRecord[];
   notes?: string;
   // linked healthcare
   linkedConsultationId?: string;
@@ -269,6 +272,8 @@ export interface PrescriptionReview {
  * manual_review: the paid payment record could not be matched; finance must settle it.
  */
 export interface PrescriptionRefund {
+  /** Why this order is being refunded (default: pharmacist rejected the prescription). */
+  cause?: 'prescription_rejected' | 'delivery_not_collected' | 'delivery_refused';
   status: 'wallet_pending' | 'wallet_credited' | 'source_processing' | 'source_refunded' | 'manual_review';
   payerUserId?: string;
   paymentRecordId?: string;
@@ -284,6 +289,17 @@ export interface PrescriptionRefund {
     razorpayRefundId?: string; razorpayStatus?: string; refundedAt?: Date };
   lastError?: string;
   updatedAt: Date;
+}
+
+export type DeliveryExceptionType = 'delivery_failed' | 'retry_delivery' | 'switch_to_pickup' | 'not_collected' | 'refused_at_door';
+export interface DeliveryExceptionRecord {
+  type: DeliveryExceptionType;
+  reason?: string;
+  at: Date;
+  byPharmacyId: string;
+  fromStatus: OrderStatus;
+  toStatus: OrderStatus;
+  refundRequired: boolean;
 }
 
 export interface PrescriptionReviewRequest {

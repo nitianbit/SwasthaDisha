@@ -9,6 +9,7 @@ import {
   updateSubscriptionSchema,
   pauseSubscriptionSchema,
   idParamSchema,
+  refillOrderSchema,
 } from '@/modules/pharmacySubscriptions/validation';
 
 const pharmacySubscriptionRouter = Router();
@@ -26,6 +27,17 @@ pharmacySubscriptionRouter.get('/due', (_req, res, next) => {
 }, requireOperationalPharmacy, catchAsync(controller.due));
 
 pharmacySubscriptionRouter.get('/', requireOperationalPharmacy, catchAsync(controller.list));
+
+// Customer: own refill subscriptions.
+pharmacySubscriptionRouter.get('/mine', catchAsync(controller.mine));
+
+// Pharmacy or the subscribed customer: create the refill order for the due cycle (unconfirmed until paid).
+pharmacySubscriptionRouter.post(
+  '/:id/refill-order',
+  validate(idParamSchema, 'params'),
+  validate(refillOrderSchema, 'body'),
+  catchAsync(controller.createRefillOrder)
+);
 
 pharmacySubscriptionRouter.put(
   '/:id',
