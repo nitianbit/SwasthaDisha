@@ -65,6 +65,7 @@ export interface IInventoryBatch {
   holdReason?: string;
   heldAt?: Date;
   heldBy?: string;
+  recallReference?: string;
 }
 
 export interface IInventoryBatchAllocation {

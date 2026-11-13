@@ -18,6 +18,8 @@ import {
   releaseBatchSchema,
   supplierReturnSchema,
   supplierReturnListSchema,
+  recallBatchSchema,
+  customerReturnListSchema,
 } from '@/modules/pharmacyInventory/validation';
 
 const pharmacyInventoryRouter = Router();
@@ -82,6 +84,8 @@ pharmacyInventoryRouter.get(
 // Batch quality (P3): returns to suppliers and open orders holding units of quarantined/recalled batches.
 pharmacyInventoryRouter.get('/supplier-returns', requireOperationalPharmacy, validate(supplierReturnListSchema, 'query'),
   catchAsync(inventoryController.listSupplierReturns));
+pharmacyInventoryRouter.get('/customer-returns', requireOperationalPharmacy, validate(customerReturnListSchema, 'query'),
+  catchAsync(inventoryController.listCustomerReturns));
 pharmacyInventoryRouter.get('/held-batch-orders', requireOperationalPharmacy, catchAsync(inventoryController.heldBatchOrders));
 pharmacyInventoryRouter.post('/:id/batches/:batchId/quarantine', requireOperationalPharmacy, validate(batchParamSchema, 'params'),
   validate(quarantineBatchSchema, 'body'), catchAsync(inventoryController.quarantineBatch));
@@ -89,6 +93,11 @@ pharmacyInventoryRouter.post('/:id/batches/:batchId/release', requireOperational
   validate(releaseBatchSchema, 'body'), catchAsync(inventoryController.releaseBatch));
 pharmacyInventoryRouter.post('/:id/batches/:batchId/supplier-return', requireOperationalPharmacy, validate(batchParamSchema, 'params'),
   validate(supplierReturnSchema, 'body'), catchAsync(inventoryController.returnBatchToSupplier));
+// Recall (P3b): permanent hold + trace of open orders and customers the batch was dispensed to.
+pharmacyInventoryRouter.post('/:id/batches/:batchId/recall', requireOperationalPharmacy, validate(batchParamSchema, 'params'),
+  validate(recallBatchSchema, 'body'), catchAsync(inventoryController.recallBatch));
+pharmacyInventoryRouter.get('/:id/batches/:batchId/recall-trace', requireOperationalPharmacy, validate(batchParamSchema, 'params'),
+  catchAsync(inventoryController.recallTrace));
 
 pharmacyInventoryRouter.get(
   '/:id',

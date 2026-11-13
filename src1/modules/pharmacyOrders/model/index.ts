@@ -90,7 +90,7 @@ const prescriptionReviewSchema = new Schema(
 
 const prescriptionRefundSchema = new Schema(
   {
-    cause: { type: String, enum: ['prescription_rejected', 'delivery_not_collected', 'delivery_refused'] },
+    cause: { type: String, enum: ['prescription_rejected', 'delivery_not_collected', 'delivery_refused', 'stock_hold_cancelled'] },
     status: { type: String, required: true, enum: ['wallet_pending', 'wallet_credited', 'source_processing', 'source_refunded', 'manual_review'] },
     payerUserId: { type: String },
     paymentRecordId: { type: String },
@@ -220,6 +220,32 @@ const pharmacyOrderSchema = new Schema<IPharmacyOrder>(
     refill: {
       type: new Schema({ subscriptionId: { type: String, required: true }, cycleDate: { type: String, required: true, match: /^\d{8}$/ },
         paymentDueBy: { type: Date, required: true } }, { _id: false }),
+      default: undefined,
+    },
+    // Units swapped off quarantined/recalled batches by staff (P3b), oldest first.
+    batchReallocations: {
+      type: [new Schema({
+        at: { type: Date, required: true },
+        byActorId: { type: String, required: true },
+        moves: { type: [new Schema({
+          medicineId: { type: String, required: true },
+          quantity: { type: Number, required: true, min: 1 },
+          from: { type: [new Schema({ batchId: { type: String, required: true }, quantity: { type: Number, required: true, min: 1 } }, { _id: false })], default: [] },
+          to: { type: [new Schema({ batchId: { type: String, required: true }, quantity: { type: Number, required: true, min: 1 } }, { _id: false })], default: [] },
+        }, { _id: false })], default: [] },
+      }, { _id: false })],
+      default: undefined,
+    },
+    // Order cancelled by staff because its units came from a quarantined/recalled batch (P3b).
+    stockHoldCancellation: {
+      type: new Schema({ reason: { type: String, required: true, trim: true, maxlength: 500 }, at: { type: Date, required: true },
+        byPharmacyId: { type: String, required: true }, fromStatus: { type: String, required: true }, refundRequired: { type: Boolean, required: true } }, { _id: false }),
+      default: undefined,
+    },
+    // Customer returns against this completed order (P3b): count (write fence) and wallet refunds so far, in paise.
+    customerReturns: {
+      type: new Schema({ count: { type: Number, required: true, min: 0, default: 0 }, refundedPaise: { type: Number, required: true, min: 0, default: 0 },
+        lastReturnAt: { type: Date } }, { _id: false }),
       default: undefined,
     },
     notes: { type: String, trim: true },

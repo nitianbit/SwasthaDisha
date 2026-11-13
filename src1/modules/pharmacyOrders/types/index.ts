@@ -174,6 +174,10 @@ export interface IPharmacyOrder {
   prescriptionRefund?: PrescriptionRefund;
   refill?: { subscriptionId: string; cycleDate: string; paymentDueBy: Date };
   deliveryExceptions?: DeliveryExceptionRecord[];
+  batchReallocations?: { at: Date; byActorId: string;
+    moves: { medicineId: string; quantity: number; from: { batchId: string; quantity: number }[]; to: { batchId: string; quantity: number }[] }[] }[];
+  stockHoldCancellation?: { reason: string; at: Date; byPharmacyId: string; fromStatus: string; refundRequired: boolean };
+  customerReturns?: { count: number; refundedPaise: number; lastReturnAt?: Date };
   notes?: string;
   // linked healthcare
   linkedConsultationId?: string;
@@ -273,7 +277,7 @@ export interface PrescriptionReview {
  */
 export interface PrescriptionRefund {
   /** Why this order is being refunded (default: pharmacist rejected the prescription). */
-  cause?: 'prescription_rejected' | 'delivery_not_collected' | 'delivery_refused';
+  cause?: 'prescription_rejected' | 'delivery_not_collected' | 'delivery_refused' | 'stock_hold_cancelled';
   status: 'wallet_pending' | 'wallet_credited' | 'source_processing' | 'source_refunded' | 'manual_review';
   payerUserId?: string;
   paymentRecordId?: string;

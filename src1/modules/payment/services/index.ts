@@ -242,9 +242,12 @@ export class PaymentService {
         }
 
         if (!inventoryWasAlreadyReleased && batchInventoryItems.length) {
+          // Allocations as written in this transaction (a staff batch swap may have changed them since `order` was read).
           await this.inventoryService.releaseOrderStockBulk(
             String(nextOrder.pharmacyId),
-            batchInventoryItems,
+            nextOrder.items
+              .filter((item) => item.itemStatus === 'active' && item.batchAllocations?.length)
+              .map((item) => ({ medicineId: String(item.medicineId), batchAllocations: item.batchAllocations })),
             session
           );
         }

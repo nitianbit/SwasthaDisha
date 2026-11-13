@@ -3,6 +3,7 @@ import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { LowStockAlertService } from '@/modules/pharmacyInventory/lowStockAlerts';
 import { BatchQualityService } from '@/modules/pharmacyInventory/batchQuality';
+import { CustomerReturnService } from '@/modules/pharmacyInventory/customerReturns';
 import { InventoryService } from '@/modules/pharmacyInventory/services';
 import { PharmacyService } from '@/modules/pharmacies/services';
 import { AuthRequest } from '@/modules/middleware/auth';
@@ -242,6 +243,22 @@ export class InventoryController {
   listSupplierReturns = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const page = Number(req.query.page) || 1, limit = Number(req.query.limit) || 20;
     const r = await Container.get(BatchQualityService).listSupplierReturns(this.staff(req), page, limit);
+    res.status(200).json({ success: true, data: r.data, pagination: { page: r.page, limit, total: r.total, totalPages: r.totalPages } });
+  };
+
+  recallBatch = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const data = await Container.get(BatchQualityService).recall(this.staff(req), req.params.id, req.params.batchId, req.body);
+    res.status(200).json({ success: true, message: 'Batch recalled', data });
+  };
+
+  recallTrace = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    res.status(200).json({ success: true, data: await Container.get(BatchQualityService).recallTrace(this.staff(req), req.params.id, req.params.batchId) });
+  };
+
+  listCustomerReturns = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const limit = Number(req.query.limit) || 20;
+    const r = await Container.get(CustomerReturnService).list(this.staff(req),
+      { orderId: req.query.orderId as string | undefined, page: Number(req.query.page) || 1, limit });
     res.status(200).json({ success: true, data: r.data, pagination: { page: r.page, limit, total: r.total, totalPages: r.totalPages } });
   };
 

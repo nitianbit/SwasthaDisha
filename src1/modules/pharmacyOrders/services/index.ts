@@ -36,6 +36,7 @@ export function prescriptionDocumentSetSha256(urls: readonly string[]): string {
   return createHash('sha256').update(JSON.stringify(urls)).digest('hex');
 }
 import logger from '@/services/logger';
+import { InventoryItemModel } from '@/modules/pharmacyInventory/model';
 
 const TERMINAL_STATUSES: OrderStatus[] = ['completed', 'abandoned', 'cancelled', 'rejected'];
 const PRESCRIPTION_GATED_STATUSES: OrderStatus[] = [
@@ -220,6 +221,12 @@ export class PharmacyOrderService {
     }
   }
 
+  /**
+   * Allocation note (P3b): an order's batchAllocations can change while its status stays the same (staff swap units
+   * off a recalled/quarantined batch). Callers must pass the items of the order as read or written INSIDE the same
+   * transaction (e.g. the document returned by the fenced order update), never a copy read before it: the order
+   * write then conflicts with any concurrent swap, so released/consumed allocations are always the current ones.
+   */
   private async releaseOrderInventory(
     pharmacyId: string,
     items: IOrderItem[],
@@ -306,7 +313,7 @@ export class PharmacyOrderService {
       );
 
       if (updated && order.items.length) {
-        await this.releaseOrderInventory(pharmacyId, order.items, session);
+        await this.releaseOrderInventory(pharmacyId, updated.items, session);
       }
 
       return updated ?? order;
@@ -1108,7 +1115,11 @@ export class PharmacyOrderService {
     try {
       const updated = await this.runOrderInventoryTransaction(async (session) => {
         if (shouldRepriceItems && usesBatchReservations) {
-          await this.releaseOrderInventory(pharmacyId, order.items, session);
+          // Release the allocations as they are NOW (read in this transaction; a concurrent batch swap conflicts on
+          // the order write below), never the copy read before the transaction.
+          const current = await this.orderRepo.findById(id, session);
+          if (!current) throw new AppError({ status: 409, code: 'ORDER_UPDATE_CONFLICT', message: 'Order changed before the update could be completed' });
+          await this.releaseOrderInventory(pharmacyId, current.items, session);
           const nextItems = updatePayload.items as IOrderItem[];
           const allocations = await this.inventoryService.reserveOrderStockBulk(
             pharmacyId,
@@ -1228,11 +1239,12 @@ export class PharmacyOrderService {
       }
 
       if (shouldReturnInventory && inventoryItems.length) {
-        await this.releaseOrderInventory(pharmacyId, order.items, session);
+        await this.releaseOrderInventory(pharmacyId, nextOrder.items, session);
       }
 
       if (payload.status === 'completed') {
-        await this.consumeOrderInventory(pharmacyId, order.items, session);
+        // nextOrder is this transaction's write of the order: its allocations are current (see allocation note).
+        await this.consumeOrderInventory(pharmacyId, nextOrder.items, session);
       }
 
       return nextOrder;
@@ -1335,7 +1347,7 @@ export class PharmacyOrderService {
           notes: priorNotes ? `${priorNotes}\n${rejectNote}` : rejectNote, ...(refundIntent ? { prescriptionRefund: refundIntent } : {}) },
       }, { new: true, session });
       if (!next) throw stateChanged();
-      await this.releaseOrderInventory(pharmacyId, order.items, session);
+      await this.releaseOrderInventory(pharmacyId, next.items, session);
       return next;
     });
     // Credit the payer's wallet now; if that fails the intent stays wallet_pending for the scheduled reconciler.
@@ -1461,13 +1473,69 @@ export class PharmacyOrderService {
       if (!next) {
         throw new AppError({ status: 409, code: 'ORDER_STATE_CHANGED', message: 'Order changed while this was being recorded; reload and try again' });
       }
-      if (rule.cancel) await this.releaseOrderInventory(pharmacyId, order.items, session);
+      if (rule.cancel) await this.releaseOrderInventory(pharmacyId, next.items, session);
       return next;
     });
 
     let result = updated;
     if (refundRequired) {
       await this.prescriptionRefundService.settleAfterRejection(id); // wallet credit; reconciler retries on failure
+      result = (await this.orderRepo.findById(id)) ?? updated;
+    }
+    await this.queueSubscriptionSyncSafely(id, 'status_changed');
+    if (updated.customerId) await this.queueNotificationSafely(id, 'status_changed');
+    return result;
+  }
+
+  /**
+   * Staff cancel an open order because units reserved for it came from a quarantined, recalled or expired batch and
+   * cannot be swapped (P3b recall worklist). Stock goes back to its batches (held batches stay held); a paid order
+   * gets its refund intent in the same transaction and is credited to the wallet (P2 refund service + reconciler).
+   */
+  async cancelForStockHold(id: string, pharmacyId: string, data: { reason: string }): Promise<IPharmacyOrder> {
+    if (typeof id !== 'string' || !/^[0-9a-fA-F]{24}$/.test(id)) {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid order ID' });
+    }
+    const reason = data.reason?.trim();
+    if (!reason) throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'A reason is required' });
+    const order = await this.orderRepo.findById(id);
+    if (!order) throw new AppError({ status: 404, code: 'ORDER_NOT_FOUND', message: 'Order not found' });
+    if (!pharmacyId || String(order.pharmacyId) !== pharmacyId) throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
+    if (!['placed', 'accepted', 'packed', 'ready_for_pickup', 'out_for_delivery', 'delivery_failed'].includes(order.status)) {
+      throw new AppError({ status: 409, code: 'INVALID_ORDER_STATUS_TRANSITION', message: `An order that is ${order.status} cannot be cancelled` });
+    }
+    const paymentStatus = order.paymentStatus ?? 'pending';
+    const refundRequired = ['paid', 'partially_paid', 'authorized'].includes(paymentStatus) && !order.prescriptionRefund;
+    const fence = { _id: id, pharmacyId: order.pharmacyId, status: order.status,
+      ...(order.paymentStatus === undefined ? { paymentStatus: { $exists: false } } : { paymentStatus: order.paymentStatus }),
+      prescriptionRefund: order.prescriptionRefund ? { $exists: true } : { $exists: false } };
+
+    const updated = await this.runOrderInventoryTransaction(async (session) => {
+      // Only an order that really holds units of a withdrawn batch (checked in the transaction snapshot).
+      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      let held = false;
+      const current = await this.orderRepo.findById(id, session);
+      for (const item of (current?.items ?? []).filter(i => i.itemStatus === 'active' && i.batchAllocations?.length)) {
+        const inv = await InventoryItemModel.findOne({ pharmacyId, medicineId: item.medicineId }).select('batches._id batches.status batches.expiryDate').session(session).lean();
+        held ||= (item.batchAllocations ?? []).some(a => {
+          const b = inv?.batches?.find(x => String((x as { _id?: unknown })._id) === String(a.batchId));
+          return !b || b.status !== 'active' || b.expiryDate < today;
+        });
+      }
+      if (!held) throw new AppError({ status: 409, code: 'NO_HELD_STOCK', message: 'This order holds no units from quarantined, recalled or expired batches' });
+      const refundIntent = refundRequired ? await this.prescriptionRefundService.buildIntent(order, session, 'stock_hold_cancelled') : undefined;
+      const next = await this.orderRepo.update(fence, {
+        $set: { status: 'cancelled', stockHoldCancellation: { reason, at: new Date(), byPharmacyId: pharmacyId, fromStatus: order.status, refundRequired },
+          ...(refundIntent ? { prescriptionRefund: refundIntent } : {}) },
+      }, { new: true, session });
+      if (!next) throw new AppError({ status: 409, code: 'ORDER_STATE_CHANGED', message: 'Order changed while it was being cancelled; reload and try again' });
+      await this.releaseOrderInventory(pharmacyId, next.items, session);
+      return next;
+    });
+
+    let result = updated;
+    if (refundRequired) {
+      await this.prescriptionRefundService.settleAfterRejection(id);
       result = (await this.orderRepo.findById(id)) ?? updated;
     }
     await this.queueSubscriptionSyncSafely(id, 'status_changed');
@@ -1619,7 +1687,7 @@ export class PharmacyOrderService {
         }
 
         if (inventoryItems.length) {
-          await this.releaseOrderInventory(String(order.pharmacyId), order.items, session);
+          await this.releaseOrderInventory(String(order.pharmacyId), nextOrder.items, session);
         }
 
         return nextOrder;

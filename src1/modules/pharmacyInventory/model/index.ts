@@ -29,6 +29,8 @@ const inventoryBatchSchema = new Schema(
     holdReason: { type: String, trim: true, maxlength: 500 },
     heldAt: { type: Date },
     heldBy: { type: String },
+    // Recall (P3b): the manufacturer/regulator notice this batch was recalled under. A recall is never released.
+    recallReference: { type: String, trim: true, maxlength: 200 },
   },
   { _id: true }
 );

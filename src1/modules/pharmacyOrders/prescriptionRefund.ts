@@ -77,11 +77,12 @@ const receiptKey = (orderId: string, generation: number) => `rx-${orderId}-${gen
 const notFound = () => new AppError({ status: 404, code: 'ORDER_NOT_FOUND', message: 'Order not found' });
 
 /** Why the order was refunded; shown on the customer's wallet history. */
-export type RefundCause = 'prescription_rejected' | 'delivery_not_collected' | 'delivery_refused';
+export type RefundCause = 'prescription_rejected' | 'delivery_not_collected' | 'delivery_refused' | 'stock_hold_cancelled';
 const REFUND_DESCRIPTION: Record<RefundCause, string> = {
   prescription_rejected: 'Refund for pharmacy order rejected by pharmacist',
   delivery_not_collected: 'Refund for pharmacy order not collected',
   delivery_refused: 'Refund for pharmacy order refused at delivery',
+  stock_hold_cancelled: 'Refund for pharmacy order cancelled: stock batch withdrawn',
 };
 /**
  * Every ledger reference, operation key and Razorpay receipt uses this canonical form (lowercase hex, as

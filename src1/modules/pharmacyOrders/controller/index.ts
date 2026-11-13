@@ -3,6 +3,8 @@ import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { PharmacyOrderService } from '@/modules/pharmacyOrders/services';
 import { PrescriptionRefundService } from '@/modules/pharmacyOrders/prescriptionRefund';
+import { BatchQualityService } from '@/modules/pharmacyInventory/batchQuality';
+import { CustomerReturnService } from '@/modules/pharmacyInventory/customerReturns';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { MarkOrderPaidRequest, OrderQueryParams, PharmacyRecoveryWorklistQuery } from '@/modules/pharmacyOrders/types';
 import { AppError } from '@/modules/common/types';
@@ -163,6 +165,23 @@ export class PharmacyOrderController {
   recordDeliveryException = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const result = await this.service.recordDeliveryException(req.params.id, req.user?.pharmacyId || '', req.body);
     res.status(200).json({ success: true, message: 'Delivery update recorded', data: result });
+  };
+
+  reallocateHeldStock = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const data = await Container.get(BatchQualityService).reallocateHeldUnits(
+      { pharmacyId: String(req.user?.pharmacyId || ''), actorId: String(req.user?._id || '') }, req.params.id);
+    res.status(200).json({ success: true, message: 'Units moved to sellable batches', data });
+  };
+
+  cancelForStockHold = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const result = await this.service.cancelForStockHold(req.params.id, req.user?.pharmacyId || '', req.body);
+    res.status(200).json({ success: true, message: 'Order cancelled', data: result });
+  };
+
+  recordCustomerReturn = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const data = await Container.get(CustomerReturnService).record(
+      { pharmacyId: String(req.user?.pharmacyId || ''), actorId: String(req.user?._id || '') }, req.params.id, req.body);
+    res.status(data.duplicate ? 200 : 201).json({ success: true, message: data.duplicate ? 'Return already recorded' : 'Return recorded', data });
   };
 
   markPaid = async (req: AuthRequest, res: Response, _next: NextFunction) => {

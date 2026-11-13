@@ -112,3 +112,14 @@ export const supplierReturnSchema = Joi.object({
   notes: Joi.string().trim().max(500).optional(),
 });
 export const supplierReturnListSchema = Joi.object({ page: Joi.number().integer().min(1).max(1000).optional(), limit: Joi.number().integer().min(1).max(100).optional() });
+
+// Recall + customer returns (P3b)
+export const recallBatchSchema = Joi.object({
+  reason: Joi.string().trim().min(3).max(500).required(),
+  reference: Joi.string().trim().max(200).optional(),
+});
+export const customerReturnListSchema = Joi.object({
+  orderId: objectId.optional(),
+  page: Joi.number().integer().min(1).max(1000).optional(),
+  limit: Joi.number().integer().min(1).max(100).optional(),
+});

@@ -15,6 +15,8 @@ import {
   markOrderPaidSchema,
   prescriptionReviewSchema,
   deliveryExceptionSchema,
+  stockHoldCancelSchema,
+  customerReturnSchema,
   orderQuerySchema,
   recoveryWorklistQuerySchema,
   idParamSchema,
@@ -120,6 +122,31 @@ pharmacyOrderRouter.post(
   '/:id/prescription-refund/to-source',
   validate(idParamSchema, 'params'),
   catchAsync(controller.refundPrescriptionToSource)
+);
+
+// Recall worklist (P3b): swap units off held batches, or cancel (with refund when paid).
+pharmacyOrderRouter.post(
+  '/:id/reallocate-held-stock',
+  requireOperationalPharmacy,
+  validate(idParamSchema, 'params'),
+  catchAsync(controller.reallocateHeldStock)
+);
+
+pharmacyOrderRouter.post(
+  '/:id/stock-hold-cancel',
+  requireOperationalPharmacy,
+  validate(idParamSchema, 'params'),
+  validate(stockHoldCancelSchema, 'body'),
+  catchAsync(controller.cancelForStockHold)
+);
+
+// Customer brings medicines back from a completed order; staff choose restock/discard and the wallet refund.
+pharmacyOrderRouter.post(
+  '/:id/customer-returns',
+  requireOperationalPharmacy,
+  validate(idParamSchema, 'params'),
+  validate(customerReturnSchema, 'body'),
+  catchAsync(controller.recordCustomerReturn)
 );
 
 pharmacyOrderRouter.post(

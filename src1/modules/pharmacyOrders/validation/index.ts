@@ -126,3 +126,17 @@ export const deliveryExceptionSchema = Joi.object({
   type: Joi.string().valid('delivery_failed', 'retry_delivery', 'switch_to_pickup', 'not_collected', 'refused_at_door').required(),
   reason: Joi.string().trim().min(3).max(500).when('type', { is: 'retry_delivery', then: Joi.optional(), otherwise: Joi.required() }),
 });
+
+// Recall worklist + customer returns (P3b)
+export const stockHoldCancelSchema = Joi.object({ reason: Joi.string().trim().min(3).max(500).required() });
+export const customerReturnSchema = Joi.object({
+  requestKey: Joi.string().trim().pattern(/^[A-Za-z0-9_-]{8,64}$/).required(),
+  reason: Joi.string().trim().min(3).max(500).required(),
+  lines: Joi.array().min(1).max(50).items(Joi.object({
+    medicineId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required(),
+    batchId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required(),
+    quantity: Joi.number().integer().min(1).required(),
+    disposition: Joi.string().valid('restock', 'discard').required(),
+  })).required(),
+  refundAmount: Joi.number().min(0).precision(2).strict().optional(),
+});
