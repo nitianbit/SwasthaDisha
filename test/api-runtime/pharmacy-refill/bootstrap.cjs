@@ -52,6 +52,14 @@ function validateAdmissionData(manifest,plan,ports,observed) {
   for(const [id,digest] of Object.entries(ports.sourcePins))need(plan.sourceFiles[id]===digest&&plan.phases.nominal.sources[id]===digest,'SOURCE_PIN');
   for(const [phase,map] of Object.entries(plan.modules)) {need(Object.keys(map).length===19&&plan.phases[phase].emittedCount===19,'WHOLE_MODULES');for(const [id,file] of Object.entries(map))need(Object.hasOwn(ports.sourcePins,id)&&file==='compiled/'+phase+'/'+id.replace(/\.ts$/,'.js')&&Object.hasOwn(observed,file),'COMPILED_BINDING');}
   for(const [id,digest] of Object.entries(ports.nativeSourcePins))need(plan.packageGraph.files[id]===digest&&sha(observed[id])===digest,'NATIVE_SOURCE_PROFILE');
+  const helperPath='test/api-runtime/disabled-express-template.cjs';
+  need(Object.hasOwn(observed,'disabled-express-template.cjs')&&sha(observed['disabled-express-template.cjs'])===ports.disabledExpressTemplateHelperSha256&&plan.sourceFiles[helperPath]===ports.disabledExpressTemplateHelperSha256,'TEMPLATE_HELPER_SOURCE');
+  const template=plan.packageGraph.disabledExpressTemplate;
+  need(exact(template,['parent','parentSha256','entryParent','entryParentSha256','start','length','canonicalPolicySha256','negativeChecks'])&&template.canonicalPolicySha256===ports.disabledExpressTemplatePolicySha256,'TEMPLATE_POLICY_RECORD');
+  for(const [path,hash]of [[template.parent,template.parentSha256],[template.entryParent,template.entryParentSha256]])need(plan.packageGraph.files[path]===hash&&Object.hasOwn(observed,path)&&sha(observed[path])===hash,'TEMPLATE_PARENT_BINDING');
+  need(Number.isSafeInteger(template.start)&&template.start>=0&&Number.isSafeInteger(template.length)&&template.length>0&&template.start+template.length<=observed[template.parent].length,'TEMPLATE_CALL_SPAN');
+  const expected=["wrong-parent-path","wrong-parent-hash","wrong-View-function-or-params","wrong-engine-guard","wrong-require-or-__express-expression","wrong-mod-target-declaration","moved-to-top-level-or-export-before-three-imports","duplicate-computed-site-or-incoming-view-edge"];
+  need(Array.isArray(template.negativeChecks)&&same(template.negativeChecks.map(row=>row.id),expected)&&template.negativeChecks.every(row=>exact(row,['id','detected'])&&row.detected===true),'TEMPLATE_STATIC_CONTROLS');
   need(Object.keys(plan.packageGraph.files).length>0&&Object.keys(plan.packageGraph.files).length<=4096,'PACKAGE_BOUND');
   for(const [id,digest] of Object.entries(plan.packageGraph.files))need(Object.hasOwn(observed,id)&&sha(observed[id])===digest,'PACKAGE_PIN');
   for(const row of plan.packageGraph.absentOptional)need(ports.optionalAbsentEdges.some(x=>same(x,row))&&plan.packageGraph.files[row.parent]===row.parentSha256,'OPTIONAL_EDGE_BINDING');
@@ -72,8 +80,12 @@ function closedNetwork() {
   dns.lookup=(host,...args)=>{admit(['localhost','127.0.0.1','::1'].includes(host),'DNS_DENIED');return lookup.call(dns,host,...args);};
   for(const name of ['resolve','resolve4','resolve6','resolveSrv','resolveTxt','reverse'])dns[name]=()=>reject('DNS_DENIED');return {ports,listen};
 }
-function loader(manifest,plan,ports) {
-  const resolve=Module._resolveFilename,load=Module._load,builtins=new Set(Module.builtinModules.map(s=>s.replace(/^node:/,'')));
+function loader(manifest,plan,ports,templateHelper) {
+  const savedResolve=Module._resolveFilename,savedLoad=Module._load;let loads=0,resolutions=0;
+  function resolve(...args){resolutions++;return Reflect.apply(savedResolve,this,args);}
+  function load(...args){loads++;return Reflect.apply(savedLoad,this,args);}
+  const viewGuard=templateHelper.createExpressViewGuard(ROOT,manifest.files,()=>reject('TEMPLATE_ENGINE_DISABLED'));
+  const builtins=new Set(Module.builtinModules.map(s=>s.replace(/^node:/,'')));
   const denied=new Set(['child_process','worker_threads','cluster','vm','inspector','repl','module']);let phase='nominal',cuts=Object.freeze({}),imports=0,lookups=0;const optionalProbes=new Map();
   const canonical=(request,parent)=>{
     if(request.startsWith('@/')) {const base='src1/'+request.slice(2);return [base+'.ts',base+'/index.ts'].find(id=>Object.hasOwn(ports.sourcePins,id));}
@@ -82,15 +94,16 @@ function loader(manifest,plan,ports) {
   function missing(request,parent) {const parentId=parent?.filename?.startsWith(ROOT+'/')?parent.filename.slice(ROOT.length+1):'';const tuple=plan.packageGraph.absentOptional.find(row=>row.parent===parentId&&row.specifier===request);
     if(!tuple)return false;admit(manifest.files[parentId]===tuple.parentSha256,'OPTIONAL_PARENT_DRIFT');const key=parentId+'\0'+request;optionalProbes.set(key,(optionalProbes.get(key)||0)+1);try{resolve.call(Module,request,parent,false);}catch(error){if(error.code==='MODULE_NOT_FOUND')throw error;throw error;}reject('OPTIONAL_UNEXPECTED_PRESENT');}
   const driverEnvironment=()=>admit(!Object.hasOwn(process.env,'MONGODB_CLIENT_ENCRYPTION_OVERRIDE'),'ENCRYPTION_OVERRIDE_ENV');
-  Module._resolveFilename=function(request,parent,isMain,options) {driverEnvironment();lookups++;
+  Module._resolveFilename=function(request,parent,isMain,options) {viewGuard.resolve(request,parent);driverEnvironment();lookups++;
     const native=request.replace(/^node:/,'');if(builtins.has(native)){admit(!denied.has(native),'BUILTIN_DENIED');return resolve.call(this,request,parent,isMain,options);}
     missing(request,parent);const id=canonical(request,parent);let filename;
     try {filename=id?path.join(ROOT,plan.modules[id.includes('/model/')?'nominal':phase][id]):resolve.call(this,request,parent,isMain,options);}catch{reject('UNDECLARED_MODULE');}
     const relative=path.relative(ROOT,filename).split(path.sep).join('/');admit(!relative.startsWith('../')&&Object.hasOwn(manifest.files,relative)&&(!relative.startsWith('node_modules/')||Object.hasOwn(plan.packageGraph.files,relative)),'UNDECLARED_MODULE');return filename;
   };
-  Module._load=function(request,parent,isMain) {driverEnvironment();lookups++;const native=request.replace(/^node:/,'');admit(!builtins.has(native)||!denied.has(native),'BUILTIN_DENIED');if(Object.hasOwn(cuts,request))return cuts[request];return load.call(this,request,parent,isMain);};
+  Module._load=function(request,parent,isMain) {return viewGuard.load(request,parent,()=>{driverEnvironment();lookups++;const native=request.replace(/^node:/,'');admit(!builtins.has(native)||!denied.has(native),'BUILTIN_DENIED');if(Object.hasOwn(cuts,request))return cuts[request];return load.call(this,request,parent,isMain);});};
   return {phase(name,bindings){admit(name==='nominal'||CONTROL_IDS.includes(name),'PHASE_DENIED');phase=name;cuts=Object.freeze({...bindings});for(const filename of Object.keys(require.cache))if(filename.startsWith(ROOT+'/compiled/')&&!filename.includes('/model/'))delete require.cache[filename];},
     get(id){admit(Object.hasOwn(ports.sourcePins,id),'DOMAIN_ROOT_DENIED');imports++;return require(path.join(ROOT,plan.modules[id.includes('/model/')?'nominal':phase][id]));},
+    assertView(){return viewGuard.assertSealed();},get savedForwards(){return Object.freeze({loads,resolutions});},
     get name(){return phase;},get imports(){return imports;},get lookups(){return lookups;},get optionalProbes(){return [...optionalProbes].map(([key,count])=>{const [parent,specifier]=key.split('\0');return{parent,specifier,count};});}};
 }
 let stage='ADMISSION';let activeCheckpoint=null;
@@ -104,8 +117,13 @@ async function main(){
   for(const fn of [()=>fs.readFileSync('/etc/passwd'),()=>fs.writeFileSync(ROOT+'/unadmitted','x')]){let denied=false;try{fn();}catch(error){denied=error.code==='ERR_ACCESS_DENIED';}need(denied,'FILESYSTEM_CANARY');}
   need(!process.permission.has('child')&&!process.permission.has('worker')&&!process.permission.has('addon'),'PROCESS_PERMISSION');
   const [canary]=await Promise.allSettled([fetch('http://192.0.2.1:8080/',{signal:AbortSignal.timeout(1500)})]);need(networkModule.egressCanaryBlocked(canary),'EGRESS_CANARY');
-  const network=closedNetwork(),domain=loader(manifest,plan,ports);
-  require('reflect-metadata');const express=require('express'),jwt=require('jsonwebtoken'),typedi=require('typedi'),mongoose=require('mongoose');
+  need(Module.builtinModules.includes('punycode'),'PUNYCODE_NATIVE_PROFILE');
+  const templateHelper=require(ROOT+'/disabled-express-template.cjs');need(templateHelper.EXPRESS_VIEW_POLICY_SHA256===ports.disabledExpressTemplatePolicySha256,'TEMPLATE_POLICY_BINDING');
+  const proof=plan.packageGraph.disabledExpressTemplate,policy=templateHelper.EXPRESS_VIEW_POLICY;
+  need(proof.parent===policy.parent&&proof.parentSha256===policy.parentSha256&&proof.entryParent===policy.entryParent&&proof.entryParentSha256===policy.entryParentSha256&&proof.length===policy.expression.length&&observed[proof.parent].toString('utf8').slice(proof.start,proof.start+proof.length)===policy.expression,'TEMPLATE_EXACT_SITE');
+  const network=closedNetwork(),domain=loader(manifest,plan,ports,templateHelper);
+  require('reflect-metadata');const express=require('express');const ActualView=domain.assertView();
+  const jwt=require('jsonwebtoken'),typedi=require('typedi'),mongoose=require('mongoose');
   need(mongoose.version==='6.13.8'&&mongoose.modelNames().length===0,'NATIVE_PROFILE');mongoose.set('autoIndex',false);mongoose.set('autoCreate',false);mongoose.set('bufferCommands',false);
   const native=mongoose.mongo,secret=crypto.randomBytes(32).toString('hex'),commands=[],sessions=new Set(),loggerRecords=[],dueReads=[];
   const names=new Set(ports.models.map(m=>m.collection));let current,commandBytes=0,bootstrapWindow=false,connectCalls=0,openUriCalls=0,clientConnectCalls=0,admittedClient;
@@ -175,7 +193,7 @@ async function main(){
   let result,primary;
   try{await phase();stage='OWNED_DATABASE_CONNECT';bootstrapWindow=true;try{await mongoose.connect(uri,{...connectOptions});}finally{bootstrapWindow=false;}need(connectCalls===1&&openUriCalls===1&&clientConnectCalls===1&&knownClient(fixedConnection.getClient()),'SOLE_CLIENT');
     const hello=await fixedConnection.db.command({hello:1});need(hello.isWritablePrimary&&hello.setName===manifest.replicaSet,'OWNED_REPLICA_SET');for(const m of ports.models)await fixedConnection.db.createCollection(m.collection);for(const index of ports.indexes.filter(i=>i.name!=='_id_'))await fixedConnection.db.collection(index.collection).createIndex(index.key,{name:index.name});
-    stage='API_SCENARIOS';result=await require(ROOT+'/scenario.cjs').run({get current(){return current;},phase,catalog,ports,plan,manifest,observed,validateAdmissionData,validateEnvironment,expectAdmission,domain,network,mongoose,native,http,fs,performance,need,sha,same,crypto,jwt,counters,commands,dueReads,loggerRecords,sessions,uri,connectOptions,connection:fixedConnection,get client(){return admittedClient;},get nativeEntries(){return{connectCalls,openUriCalls,clientConnectCalls};},checkpoint:id=>{need(id===null||CASE_IDS.includes(id)||CONTROL_IDS.includes(id),'CHECKPOINT_ID');activeCheckpoint=id;}});
+    stage='API_SCENARIOS';result=await require(ROOT+'/scenario.cjs').run({get current(){return current;},phase,catalog,ports,plan,manifest,observed,validateAdmissionData,validateEnvironment,expectAdmission,domain,ActualView,network,mongoose,native,http,fs,performance,need,sha,same,crypto,jwt,counters,commands,dueReads,loggerRecords,sessions,uri,connectOptions,connection:fixedConnection,get client(){return admittedClient;},get nativeEntries(){return{connectCalls,openUriCalls,clientConnectCalls};},checkpoint:id=>{need(id===null||CASE_IDS.includes(id)||CONTROL_IDS.includes(id),'CHECKPOINT_ID');activeCheckpoint=id;}});
   }catch(error){primary=error;}
   try{await endPhase();}catch(error){primary??=error;}for(const session of sessions)if(!session.hasEnded)try{await session.endSession();}catch(error){primary??=error;}try{await mongoose.disconnect();}catch(error){primary??=error;}
   if(primary)throw primary;need(result&&result.failed===0&&result.skipped===0&&latch.unexpected===0,'SCENARIO_RESULT');

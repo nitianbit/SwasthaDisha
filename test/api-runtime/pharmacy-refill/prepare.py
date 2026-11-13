@@ -21,7 +21,7 @@ RECEIPT = Path('/private/tmp/sd-pharmacy-refill-preparation-approval.json')
 LOCK = Path('/private/tmp/sd-pharmacy-refill-resolved-lock.json')
 AUTHOR = '/root/customer_remaining_audit'
 OWN = ['README.md', 'profile.json', 'package-plan.json', 'ports-manifest.json', 'prepare.py', 'compile.cjs', 'bootstrap.cjs', 'scenario.cjs', 'launch.mjs', 'unit.mjs']
-CONTEXT = ['test/api-runtime/profile.json', 'test/api-runtime/private-documents/profile.json', 'test/api-runtime/customer-contact/profile.json', 'test/api-runtime/launch.mjs', 'test/api-runtime/launch.test.mjs', 'test/api-runtime/platform.mjs', 'test/api-runtime/platform.test.mjs', 'test/api-runtime/unit.mjs', 'test/api-runtime/scenario/prepare.py', 'test/application/app-bundle.mjs', 'package-lock.json', 'output/qa/customer-enrollment-focused/TOOL_INPUTS.json', 'documentation/planning/implementation/PHARMACY_REFILL_FOCUSED_VERIFICATION_CONTRACT_DRAFT.md', 'output/qa/pharmacy-refill-focused/contract/SOURCE_INPUTS.json', 'output/qa/pharmacy-refill-focused/contract/DECISIONS.json', 'output/qa/pharmacy-refill-focused/contract/MAIN_CONTEXT_RECONCILIATION.json', 'output/qa/pharmacy-refill-focused/shared/INTERFACE.json']
+CONTEXT = ['test/api-runtime/disabled-express-template.cjs', 'test/api-runtime/profile.json', 'test/api-runtime/private-documents/profile.json', 'test/api-runtime/customer-contact/profile.json', 'test/api-runtime/launch.mjs', 'test/api-runtime/launch.test.mjs', 'test/api-runtime/platform.mjs', 'test/api-runtime/platform.test.mjs', 'test/api-runtime/unit.mjs', 'test/api-runtime/scenario/prepare.py', 'test/application/app-bundle.mjs', 'package-lock.json', 'output/qa/customer-enrollment-focused/TOOL_INPUTS.json', 'documentation/planning/implementation/PHARMACY_REFILL_FOCUSED_VERIFICATION_CONTRACT_DRAFT.md', 'output/qa/pharmacy-refill-focused/contract/SOURCE_INPUTS.json', 'output/qa/pharmacy-refill-focused/contract/DECISIONS.json', 'output/qa/pharmacy-refill-focused/contract/MAIN_CONTEXT_RECONCILIATION.json', 'output/qa/pharmacy-refill-focused/shared/INTERFACE.json']
 
 
 def regular(path, cap=32 * 1024 * 1024):
@@ -142,6 +142,10 @@ def main():
     (runtime / 'package-lock.json').write_bytes(resolved_bytes)
     data = {'sourceCommit': commit, 'sources': {name: regular(ROOT / name).decode() for name in ports['sourcePins']},
             'ports': ports, 'lockSha': sha(resolved_bytes), 'portsSha': sha(regular(HERE / 'ports-manifest.json')), 'packageVersions': packages}
+    helper_bytes = regular(ROOT / 'test/api-runtime/disabled-express-template.cjs')
+    require(sha(helper_bytes) == ports['disabledExpressTemplateHelperSha256'], 'Shared helper source changed')
+    (project / 'disabled-express-template.cjs').write_bytes(helper_bytes)
+    (runtime / 'disabled-express-template.cjs').write_bytes(helper_bytes)
     (project / 'compiler-input.json').write_text(json.dumps(data)); (project / 'compile.cjs').write_bytes(regular(HERE / 'compile.cjs'))
     execute('compile', [str(node), '--permission', '--allow-fs-read=' + str(area), '--allow-fs-write=' + str(runtime),
                         str(project / 'compile.cjs'), str(project / 'compiler-input.json'), str(runtime)], 120)
@@ -149,7 +153,7 @@ def main():
     # Shared platform accepts these exact producer files; receipt above additionally binds controller/operator/context.
     for name in ['bootstrap.cjs', 'scenario.cjs', 'ports-manifest.json', 'prepare.py', 'compile.cjs', 'package-plan.json', 'profile.json']:
         relative = 'test/api-runtime/pharmacy-refill/' + name; plan['sourceFiles'][relative] = hashes[relative]
-    for name in ['test/application/app-bundle.mjs', 'package-lock.json']:plan['sourceFiles'][name] = hashes[name]
+    for name in ['test/application/app-bundle.mjs', 'package-lock.json', 'test/api-runtime/disabled-express-template.cjs']:plan['sourceFiles'][name] = hashes[name]
     (runtime / 'runtime-plan.json').write_text(json.dumps(plan) + '\n')
     files = {}; total = 0
     for entry in sorted(runtime.rglob('*')):

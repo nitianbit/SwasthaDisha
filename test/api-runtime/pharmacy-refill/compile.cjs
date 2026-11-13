@@ -3,6 +3,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const NativeModule = require('node:module');
+if (!NativeModule.builtinModules.includes('punycode')) throw Error('PUNYCODE_NATIVE_PROFILE');
 const ts = require('typescript');
 const [inputPath, runtime] = process.argv.slice(2);
 const need = (ok, code) => { if (!ok) throw Error(code); };
@@ -10,6 +12,9 @@ const sha = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 need(process.argv.length === 4 && ts.version === '5.9.3', 'FIXED_COMPILER');
 const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
 const { ports, sources } = input;
+need(sha(fs.readFileSync(path.join(__dirname, 'disabled-express-template.cjs'))) === ports.disabledExpressTemplateHelperSha256, 'TEMPLATE_HELPER_SOURCE');
+const { EXPRESS_VIEW_POLICY, EXPRESS_VIEW_POLICY_SHA256, matchDisabledExpressViewSite } = require('./disabled-express-template.cjs');
+need(EXPRESS_VIEW_POLICY_SHA256 === ports.disabledExpressTemplatePolicySha256, 'TEMPLATE_POLICY_BINDING');
 need(Object.keys(sources).length === 19 && ports.requiredCaseIds.length === 20 && ports.requiredSensitivityIds.length === 7, 'FIXED_SOURCE_COUNTS');
 for (const [id, digest] of Object.entries(ports.sourcePins)) need(sha(sources[id]) === digest, 'SOURCE_PIN');
 const phases = { nominal: sources }; const mutations = {};
@@ -51,18 +56,46 @@ function proveDisabledPolicy(code,tree,node,filename){
   for(const [id,parsed,call,parent,hash]of variants){need(!disabledComputed(call,parsed,parent,hash),'DISABLED_POLICY_NEGATIVE');unreachableComputedNegativeChecks.push({id,detected:true});}
   unreachableComputedEdges.push({...policy,start:node.getStart(tree),length:node.getWidth(tree)});
 }
+const disabledExpressTemplateSites = [], disabledExpressTemplateNegativeChecks = [];
+function proveDisabledExpressTemplate(code, tree, node, filename) {
+  const policy = EXPRESS_VIEW_POLICY, digest = sha(code);
+  need(disabledExpressTemplateSites.length === 0 && matchDisabledExpressViewSite(ts, tree, node, filename, digest), 'TEMPLATE_SINGLE_SITE');
+  const replaceOne = (text, before, after) => { need(before.length > 0 && text.split(before).length === 2, 'TEMPLATE_NEGATIVE_TARGET'); return text.replace(before, after); };
+  const declaration = 'function ' + policy.functionName + '(' + policy.functionParameters.join(', ') + ')';
+  const expression = 'var ' + policy.resultBinding + ' = ' + policy.containingExpression;
+  const earlyExport = replaceOne(replaceOne(code, policy.moduleExport + ';', ''), "'use strict';", "'use strict';\n" + policy.moduleExport + ';');
+  const variants = [
+    ['wrong-parent-path', code, filename + '.other', digest],
+    ['wrong-parent-hash', code, filename, '0'.repeat(64)],
+    ['wrong-View-function-or-params', replaceOne(code, declaration, declaration.replace(policy.functionName, 'OtherView')), filename, digest],
+    ['wrong-engine-guard', replaceOne(code, policy.guard, '!!opts.engines[this.ext]'), filename, digest],
+    ['wrong-require-or-__express-expression', replaceOne(code, policy.containingExpression, policy.expression + '.render'), filename, digest],
+    ['wrong-mod-target-declaration', replaceOne(code, policy.targetDeclaration, 'var mod = this.ext.slice(2)'), filename, digest],
+    ['moved-to-top-level-or-export-before-three-imports', earlyExport, filename, digest],
+    ['duplicate-computed-site-or-incoming-view-edge', replaceOne(code, expression, expression + ';\n    ' + expression), filename, digest],
+  ];
+  for (const [id, changed, parent, hash] of variants) {
+    const parsed = ts.createSourceFile(parent, changed, ts.ScriptTarget.ES2022, true), nodes = computedNodes(parsed);
+    need(nodes.length > 0 && nodes.every(call => !matchDisabledExpressViewSite(ts, parsed, call, parent, hash)), 'TEMPLATE_NEGATIVE_UNDETECTED');
+    disabledExpressTemplateNegativeChecks.push({ id, detected: true });
+  }
+  disabledExpressTemplateSites.push({ parent: policy.parent, parentSha256: digest, entryParent: policy.entryParent,
+    entryParentSha256: policy.entryParentSha256, start: node.getStart(tree), length: node.getWidth(tree),
+    canonicalPolicySha256: EXPRESS_VIEW_POLICY_SHA256, negativeChecks: disabledExpressTemplateNegativeChecks });
+}
 function edges(code, filename) {
   const result = new Set(); const tree = ts.createSourceFile(filename, code, ts.ScriptTarget.ES2022, true);
   const walk = node => {
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'require') {
       if(node.arguments.length===1&&ts.isStringLiteral(node.arguments[0]))result.add(node.arguments[0].text);
+      else if (matchDisabledExpressViewSite(ts, tree, node, filename, sha(code))) proveDisabledExpressTemplate(code, tree, node, filename);
       else{need(disabledComputed(node,tree,filename,sha(code)),'COMPUTED_REQUIRE');proveDisabledPolicy(code,tree,node,filename);}
     }
     need(!(ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword), 'DYNAMIC_IMPORT');
     ts.forEachChild(node, walk);
   }; walk(tree); return [...result];
 }
-const builtinNames = new Set(['assert','async_hooks','buffer','crypto','dns','events','fs','http','https','net','os','path','perf_hooks','process','querystring','stream','string_decoder','timers','tls','tty','url','util','zlib']);
+const builtinNames = new Set(['assert','async_hooks','buffer','crypto','dns','events','fs','http','https','net','os','path','perf_hooks','process','punycode','querystring','stream','string_decoder','timers','tls','tty','url','util','zlib']);
 for (const [phase, texts] of Object.entries(phases)) {
   const emitted = {}; const reads = {};
   const read = name => {
@@ -155,10 +188,18 @@ function visit(filename) {
 for (const name of ports.runtimeRoots) packageRoots[name] = visit(resolveFile(path.join(project, 'entry.js'), name));
 for(const [id,digest] of Object.entries(ports.nativeSourcePins)) need(packageFiles[id]===digest,'NATIVE_SOURCE_PROFILE');
 need(unreachableComputedEdges.length===1&&unreachableComputedNegativeChecks.length===4,'DISABLED_POLICY_COMPLETENESS');
+need(disabledExpressTemplateSites.length === 1 && disabledExpressTemplateNegativeChecks.length === 8, 'TEMPLATE_POLICY_COMPLETENESS');
+need(packageFiles[EXPRESS_VIEW_POLICY.parent] === EXPRESS_VIEW_POLICY.parentSha256 && packageFiles[EXPRESS_VIEW_POLICY.entryParent] === EXPRESS_VIEW_POLICY.entryParentSha256, 'TEMPLATE_NATIVE_PARENTS');
+const entryCode = fs.readFileSync(path.join(project, EXPRESS_VIEW_POLICY.entryParent), 'utf8');
+const entryTree = ts.createSourceFile(EXPRESS_VIEW_POLICY.entryParent, entryCode, ts.ScriptTarget.ES2022, true), incoming = [];
+const entryWalk = node => { if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'require' && node.arguments.length === 1 && ts.isStringLiteral(node.arguments[0]) && node.arguments[0].text === EXPRESS_VIEW_POLICY.entrySpecifier) incoming.push(node); ts.forEachChild(node, entryWalk); };
+entryWalk(entryTree); need(incoming.length === 1, 'TEMPLATE_INCOMING_EDGE');
+for (let parent = incoming[0].parent; parent; parent = parent.parent) need(!ts.isFunctionLike(parent), 'TEMPLATE_INCOMING_TOPLEVEL');
+
 const plan = { schema: 'SD-PHARMACY-REFILL-API-PLAN-1', role: ports.role, sourceCommit: input.sourceCommit, lockSha: input.lockSha,
   portsSha: input.portsSha, sourceFiles: ports.sourcePins, modules, phases: compilation, mutations,
   requiredCaseIds: ports.requiredCaseIds, requiredSensitivityIds: ports.requiredSensitivityIds, providerCounterKeys: ports.providerCounterKeys,
-  models: ports.models, packageGraph: { files: packageFiles, edges: packageEdges, roots: packageRoots, absentOptional: optional, unreachableComputedEdges, unreachableComputedNegativeChecks, builtins: [...natives].sort() },
+  models: ports.models, packageGraph: { disabledExpressTemplate: disabledExpressTemplateSites[0], files: packageFiles, edges: packageEdges, roots: packageRoots, absentOptional: optional, unreachableComputedEdges, unreachableComputedNegativeChecks, builtins: [...natives].sort() },
   compilation: { status: 'TRANSPILE_ONLY_NOT_TYPECHECKED', compiler: ts.version, compilerSha256: sha(fs.readFileSync(require.resolve('typescript'))), libraryReads }, packageVersions: input.packageVersions };
 fs.writeFileSync(path.join(runtime, 'runtime-plan.json'), JSON.stringify(plan) + '\n', { flag: 'wx', mode: 0o600 });
 process.stdout.write(JSON.stringify({ status: 'PREPARED_NOT_EXECUTED', phases: 8, sources: 19, applicationEvaluations: 0 }) + '\n');

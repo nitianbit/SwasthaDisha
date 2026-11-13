@@ -1,0 +1,144 @@
+diff --git a/test/api-runtime/pharmacy-refill/README.md b/test/api-runtime/pharmacy-refill/README.md
+index c6440f4ffc3e1311f06450a62c5451c32a242073..52fb2d93396ce06fc20119adb7424f5d2a99d210 100644
+--- a/test/api-runtime/pharmacy-refill/README.md
++++ b/test/api-runtime/pharmacy-refill/README.md
+@@ -11 +11,3 @@ Real isolated HTTP/auth/Joi/TypeDI/ODM/nativequery/persistence plus hostile comp
+-Known preparation hold: the separate C1 installed audit now identifies actual Express4.21.1 `lib/view.js` computed `require(mod)` under its template-engine constructor. This fixture retains the strict existing environment-only computed policy and therefore DENIES that edge. No P7 install/emission attempt is ready until a separate exact native-source/hash/branch/denial policy is reviewed and explicitly composed. No blanket dynamic-require allowance or claim that another fixture's regex audit proves this safe. The nine-file source candidate remains subject to this honest prerequisite and normal reviews.
++Shared disabled-template boundary: the exact Express4.21.1 lazy View computed site is represented only by Root's canonical policy/shared helper. Both load and resolution gates precede cache/builtin/optional handling. Genuine cached View fs/node:fs/debug attempts must deny with intact SEALED state and zero downstream effects; fatal/corrupt identities abort, never recover in the live run. Structural8controls remain distinct from Mongo4controls and seven production sensitivities. Helper actual bytes are bound in source/producer/runtime maps, not inferred from policySHA.
++
++Finite compiler native names include punycode and querystring; actual pinned host/child membership is asserted before package import. punycode/ is distinct userland, not prefix-admitted. The separately reviewed complete reachable-package AST audit and its two actual outcomes are still prerequisites to another install/emission attempt; this unexecuted hook source does not establish complete package closure. Preserve all original failures/consumedclaims; no automaticretry, olddescriptorrebind or fullmodule claim.
+diff --git a/test/api-runtime/pharmacy-refill/bootstrap.cjs b/test/api-runtime/pharmacy-refill/bootstrap.cjs
+index 07bd59a80a162fd58db0be65b86f5e3a269b1f4d..ea10fe4efb45ec175c4a2e447bb272b62624268a 100644
+--- a/test/api-runtime/pharmacy-refill/bootstrap.cjs
++++ b/test/api-runtime/pharmacy-refill/bootstrap.cjs
+@@ -54,0 +55,8 @@ function validateAdmissionData(manifest,plan,ports,observed) {
++  const helperPath='test/api-runtime/disabled-express-template.cjs';
++  need(Object.hasOwn(observed,'disabled-express-template.cjs')&&sha(observed['disabled-express-template.cjs'])===ports.disabledExpressTemplateHelperSha256&&plan.sourceFiles[helperPath]===ports.disabledExpressTemplateHelperSha256,'TEMPLATE_HELPER_SOURCE');
++  const template=plan.packageGraph.disabledExpressTemplate;
++  need(exact(template,['parent','parentSha256','entryParent','entryParentSha256','start','length','canonicalPolicySha256','negativeChecks'])&&template.canonicalPolicySha256===ports.disabledExpressTemplatePolicySha256,'TEMPLATE_POLICY_RECORD');
++  for(const [path,hash]of [[template.parent,template.parentSha256],[template.entryParent,template.entryParentSha256]])need(plan.packageGraph.files[path]===hash&&Object.hasOwn(observed,path)&&sha(observed[path])===hash,'TEMPLATE_PARENT_BINDING');
++  need(Number.isSafeInteger(template.start)&&template.start>=0&&Number.isSafeInteger(template.length)&&template.length>0&&template.start+template.length<=observed[template.parent].length,'TEMPLATE_CALL_SPAN');
++  const expected=["wrong-parent-path","wrong-parent-hash","wrong-View-function-or-params","wrong-engine-guard","wrong-require-or-__express-expression","wrong-mod-target-declaration","moved-to-top-level-or-export-before-three-imports","duplicate-computed-site-or-incoming-view-edge"];
++  need(Array.isArray(template.negativeChecks)&&same(template.negativeChecks.map(row=>row.id),expected)&&template.negativeChecks.every(row=>exact(row,['id','detected'])&&row.detected===true),'TEMPLATE_STATIC_CONTROLS');
+@@ -75,2 +83,6 @@ function closedNetwork() {
+-function loader(manifest,plan,ports) {
+-  const resolve=Module._resolveFilename,load=Module._load,builtins=new Set(Module.builtinModules.map(s=>s.replace(/^node:/,'')));
++function loader(manifest,plan,ports,templateHelper) {
++  const savedResolve=Module._resolveFilename,savedLoad=Module._load;let loads=0,resolutions=0;
++  function resolve(...args){resolutions++;return Reflect.apply(savedResolve,this,args);}
++  function load(...args){loads++;return Reflect.apply(savedLoad,this,args);}
++  const viewGuard=templateHelper.createExpressViewGuard(ROOT,manifest.files,()=>reject('TEMPLATE_ENGINE_DISABLED'));
++  const builtins=new Set(Module.builtinModules.map(s=>s.replace(/^node:/,'')));
+@@ -85 +97 @@ function loader(manifest,plan,ports) {
+-  Module._resolveFilename=function(request,parent,isMain,options) {driverEnvironment();lookups++;
++  Module._resolveFilename=function(request,parent,isMain,options) {viewGuard.resolve(request,parent);driverEnvironment();lookups++;
+@@ -91 +103 @@ function loader(manifest,plan,ports) {
+-  Module._load=function(request,parent,isMain) {driverEnvironment();lookups++;const native=request.replace(/^node:/,'');admit(!builtins.has(native)||!denied.has(native),'BUILTIN_DENIED');if(Object.hasOwn(cuts,request))return cuts[request];return load.call(this,request,parent,isMain);};
++  Module._load=function(request,parent,isMain) {return viewGuard.load(request,parent,()=>{driverEnvironment();lookups++;const native=request.replace(/^node:/,'');admit(!builtins.has(native)||!denied.has(native),'BUILTIN_DENIED');if(Object.hasOwn(cuts,request))return cuts[request];return load.call(this,request,parent,isMain);});};
+@@ -93,0 +106 @@ function loader(manifest,plan,ports) {
++    assertView(){return viewGuard.assertSealed();},get savedForwards(){return Object.freeze({loads,resolutions});},
+@@ -107,2 +120,7 @@ async function main(){
+-  const network=closedNetwork(),domain=loader(manifest,plan,ports);
+-  require('reflect-metadata');const express=require('express'),jwt=require('jsonwebtoken'),typedi=require('typedi'),mongoose=require('mongoose');
++  need(Module.builtinModules.includes('punycode'),'PUNYCODE_NATIVE_PROFILE');
++  const templateHelper=require(ROOT+'/disabled-express-template.cjs');need(templateHelper.EXPRESS_VIEW_POLICY_SHA256===ports.disabledExpressTemplatePolicySha256,'TEMPLATE_POLICY_BINDING');
++  const proof=plan.packageGraph.disabledExpressTemplate,policy=templateHelper.EXPRESS_VIEW_POLICY;
++  need(proof.parent===policy.parent&&proof.parentSha256===policy.parentSha256&&proof.entryParent===policy.entryParent&&proof.entryParentSha256===policy.entryParentSha256&&proof.length===policy.expression.length&&observed[proof.parent].toString('utf8').slice(proof.start,proof.start+proof.length)===policy.expression,'TEMPLATE_EXACT_SITE');
++  const network=closedNetwork(),domain=loader(manifest,plan,ports,templateHelper);
++  require('reflect-metadata');const express=require('express');const ActualView=domain.assertView();
++  const jwt=require('jsonwebtoken'),typedi=require('typedi'),mongoose=require('mongoose');
+@@ -178 +196 @@ async function main(){
+-    stage='API_SCENARIOS';result=await require(ROOT+'/scenario.cjs').run({get current(){return current;},phase,catalog,ports,plan,manifest,observed,validateAdmissionData,validateEnvironment,expectAdmission,domain,network,mongoose,native,http,fs,performance,need,sha,same,crypto,jwt,counters,commands,dueReads,loggerRecords,sessions,uri,connectOptions,connection:fixedConnection,get client(){return admittedClient;},get nativeEntries(){return{connectCalls,openUriCalls,clientConnectCalls};},checkpoint:id=>{need(id===null||CASE_IDS.includes(id)||CONTROL_IDS.includes(id),'CHECKPOINT_ID');activeCheckpoint=id;}});
++    stage='API_SCENARIOS';result=await require(ROOT+'/scenario.cjs').run({get current(){return current;},phase,catalog,ports,plan,manifest,observed,validateAdmissionData,validateEnvironment,expectAdmission,domain,ActualView,network,mongoose,native,http,fs,performance,need,sha,same,crypto,jwt,counters,commands,dueReads,loggerRecords,sessions,uri,connectOptions,connection:fixedConnection,get client(){return admittedClient;},get nativeEntries(){return{connectCalls,openUriCalls,clientConnectCalls};},checkpoint:id=>{need(id===null||CASE_IDS.includes(id)||CONTROL_IDS.includes(id),'CHECKPOINT_ID');activeCheckpoint=id;}});
+diff --git a/test/api-runtime/pharmacy-refill/compile.cjs b/test/api-runtime/pharmacy-refill/compile.cjs
+index 9e92f2940a43e52e3ec1f6844356bacfc3aaccc1..7a0a49909b4a65db307c13d9441967b82fc13728 100644
+--- a/test/api-runtime/pharmacy-refill/compile.cjs
++++ b/test/api-runtime/pharmacy-refill/compile.cjs
+@@ -5,0 +6,2 @@ const crypto = require('node:crypto');
++const NativeModule = require('node:module');
++if (!NativeModule.builtinModules.includes('punycode')) throw Error('PUNYCODE_NATIVE_PROFILE');
+@@ -12,0 +15,3 @@ const { ports, sources } = input;
++need(sha(fs.readFileSync(path.join(__dirname, 'disabled-express-template.cjs'))) === ports.disabledExpressTemplateHelperSha256, 'TEMPLATE_HELPER_SOURCE');
++const { EXPRESS_VIEW_POLICY, EXPRESS_VIEW_POLICY_SHA256, matchDisabledExpressViewSite } = require('./disabled-express-template.cjs');
++need(EXPRESS_VIEW_POLICY_SHA256 === ports.disabledExpressTemplatePolicySha256, 'TEMPLATE_POLICY_BINDING');
+@@ -53,0 +59,27 @@ function proveDisabledPolicy(code,tree,node,filename){
++const disabledExpressTemplateSites = [], disabledExpressTemplateNegativeChecks = [];
++function proveDisabledExpressTemplate(code, tree, node, filename) {
++  const policy = EXPRESS_VIEW_POLICY, digest = sha(code);
++  need(disabledExpressTemplateSites.length === 0 && matchDisabledExpressViewSite(ts, tree, node, filename, digest), 'TEMPLATE_SINGLE_SITE');
++  const replaceOne = (text, before, after) => { need(before.length > 0 && text.split(before).length === 2, 'TEMPLATE_NEGATIVE_TARGET'); return text.replace(before, after); };
++  const declaration = 'function ' + policy.functionName + '(' + policy.functionParameters.join(', ') + ')';
++  const expression = 'var ' + policy.resultBinding + ' = ' + policy.containingExpression;
++  const earlyExport = replaceOne(replaceOne(code, policy.moduleExport + ';', ''), "'use strict';", "'use strict';\n" + policy.moduleExport + ';');
++  const variants = [
++    ['wrong-parent-path', code, filename + '.other', digest],
++    ['wrong-parent-hash', code, filename, '0'.repeat(64)],
++    ['wrong-View-function-or-params', replaceOne(code, declaration, declaration.replace(policy.functionName, 'OtherView')), filename, digest],
++    ['wrong-engine-guard', replaceOne(code, policy.guard, '!!opts.engines[this.ext]'), filename, digest],
++    ['wrong-require-or-__express-expression', replaceOne(code, policy.containingExpression, policy.expression + '.render'), filename, digest],
++    ['wrong-mod-target-declaration', replaceOne(code, policy.targetDeclaration, 'var mod = this.ext.slice(2)'), filename, digest],
++    ['moved-to-top-level-or-export-before-three-imports', earlyExport, filename, digest],
++    ['duplicate-computed-site-or-incoming-view-edge', replaceOne(code, expression, expression + ';\n    ' + expression), filename, digest],
++  ];
++  for (const [id, changed, parent, hash] of variants) {
++    const parsed = ts.createSourceFile(parent, changed, ts.ScriptTarget.ES2022, true), nodes = computedNodes(parsed);
++    need(nodes.length > 0 && nodes.every(call => !matchDisabledExpressViewSite(ts, parsed, call, parent, hash)), 'TEMPLATE_NEGATIVE_UNDETECTED');
++    disabledExpressTemplateNegativeChecks.push({ id, detected: true });
++  }
++  disabledExpressTemplateSites.push({ parent: policy.parent, parentSha256: digest, entryParent: policy.entryParent,
++    entryParentSha256: policy.entryParentSha256, start: node.getStart(tree), length: node.getWidth(tree),
++    canonicalPolicySha256: EXPRESS_VIEW_POLICY_SHA256, negativeChecks: disabledExpressTemplateNegativeChecks });
++}
+@@ -58,0 +91 @@ function edges(code, filename) {
++      else if (matchDisabledExpressViewSite(ts, tree, node, filename, sha(code))) proveDisabledExpressTemplate(code, tree, node, filename);
+@@ -65 +98 @@ function edges(code, filename) {
+-const builtinNames = new Set(['assert','async_hooks','buffer','crypto','dns','events','fs','http','https','net','os','path','perf_hooks','process','querystring','stream','string_decoder','timers','tls','tty','url','util','zlib']);
++const builtinNames = new Set(['assert','async_hooks','buffer','crypto','dns','events','fs','http','https','net','os','path','perf_hooks','process','punycode','querystring','stream','string_decoder','timers','tls','tty','url','util','zlib']);
+@@ -157,0 +191,8 @@ need(unreachableComputedEdges.length===1&&unreachableComputedNegativeChecks.leng
++need(disabledExpressTemplateSites.length === 1 && disabledExpressTemplateNegativeChecks.length === 8, 'TEMPLATE_POLICY_COMPLETENESS');
++need(packageFiles[EXPRESS_VIEW_POLICY.parent] === EXPRESS_VIEW_POLICY.parentSha256 && packageFiles[EXPRESS_VIEW_POLICY.entryParent] === EXPRESS_VIEW_POLICY.entryParentSha256, 'TEMPLATE_NATIVE_PARENTS');
++const entryCode = fs.readFileSync(path.join(project, EXPRESS_VIEW_POLICY.entryParent), 'utf8');
++const entryTree = ts.createSourceFile(EXPRESS_VIEW_POLICY.entryParent, entryCode, ts.ScriptTarget.ES2022, true), incoming = [];
++const entryWalk = node => { if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'require' && node.arguments.length === 1 && ts.isStringLiteral(node.arguments[0]) && node.arguments[0].text === EXPRESS_VIEW_POLICY.entrySpecifier) incoming.push(node); ts.forEachChild(node, entryWalk); };
++entryWalk(entryTree); need(incoming.length === 1, 'TEMPLATE_INCOMING_EDGE');
++for (let parent = incoming[0].parent; parent; parent = parent.parent) need(!ts.isFunctionLike(parent), 'TEMPLATE_INCOMING_TOPLEVEL');
++
+@@ -161 +202 @@ const plan = { schema: 'SD-PHARMACY-REFILL-API-PLAN-1', role: ports.role, source
+-  models: ports.models, packageGraph: { files: packageFiles, edges: packageEdges, roots: packageRoots, absentOptional: optional, unreachableComputedEdges, unreachableComputedNegativeChecks, builtins: [...natives].sort() },
++  models: ports.models, packageGraph: { disabledExpressTemplate: disabledExpressTemplateSites[0], files: packageFiles, edges: packageEdges, roots: packageRoots, absentOptional: optional, unreachableComputedEdges, unreachableComputedNegativeChecks, builtins: [...natives].sort() },
+diff --git a/test/api-runtime/pharmacy-refill/ports-manifest.json b/test/api-runtime/pharmacy-refill/ports-manifest.json
+index c2526ef8b86107dd2687bba012e68172778e0d2a..83df936678936a41d5d47cfc0e832b04b4a60298 100644
+--- a/test/api-runtime/pharmacy-refill/ports-manifest.json
++++ b/test/api-runtime/pharmacy-refill/ports-manifest.json
+@@ -345 +345,3 @@
+-  }
++  },
++  "disabledExpressTemplatePolicySha256": "8a9b9d03d5fda5c029c206089864d99d45313a3a7a850532f78eb9eda9d49dcd",
++  "disabledExpressTemplateHelperSha256": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779"
+diff --git a/test/api-runtime/pharmacy-refill/prepare.py b/test/api-runtime/pharmacy-refill/prepare.py
+index 8045af658975562389d2a5b872a4d9a28138d7f9..a0163d8c9e9099aace8322481b5ff062de9dd1df 100644
+--- a/test/api-runtime/pharmacy-refill/prepare.py
++++ b/test/api-runtime/pharmacy-refill/prepare.py
+@@ -24 +24 @@ OWN = ['README.md', 'profile.json', 'package-plan.json', 'ports-manifest.json',
+-CONTEXT = ['test/api-runtime/profile.json', 'test/api-runtime/private-documents/profile.json', 'test/api-runtime/customer-contact/profile.json', 'test/api-runtime/launch.mjs', 'test/api-runtime/launch.test.mjs', 'test/api-runtime/platform.mjs', 'test/api-runtime/platform.test.mjs', 'test/api-runtime/unit.mjs', 'test/api-runtime/scenario/prepare.py', 'test/application/app-bundle.mjs', 'package-lock.json', 'output/qa/customer-enrollment-focused/TOOL_INPUTS.json', 'documentation/planning/implementation/PHARMACY_REFILL_FOCUSED_VERIFICATION_CONTRACT_DRAFT.md', 'output/qa/pharmacy-refill-focused/contract/SOURCE_INPUTS.json', 'output/qa/pharmacy-refill-focused/contract/DECISIONS.json', 'output/qa/pharmacy-refill-focused/contract/MAIN_CONTEXT_RECONCILIATION.json', 'output/qa/pharmacy-refill-focused/shared/INTERFACE.json']
++CONTEXT = ['test/api-runtime/disabled-express-template.cjs', 'test/api-runtime/profile.json', 'test/api-runtime/private-documents/profile.json', 'test/api-runtime/customer-contact/profile.json', 'test/api-runtime/launch.mjs', 'test/api-runtime/launch.test.mjs', 'test/api-runtime/platform.mjs', 'test/api-runtime/platform.test.mjs', 'test/api-runtime/unit.mjs', 'test/api-runtime/scenario/prepare.py', 'test/application/app-bundle.mjs', 'package-lock.json', 'output/qa/customer-enrollment-focused/TOOL_INPUTS.json', 'documentation/planning/implementation/PHARMACY_REFILL_FOCUSED_VERIFICATION_CONTRACT_DRAFT.md', 'output/qa/pharmacy-refill-focused/contract/SOURCE_INPUTS.json', 'output/qa/pharmacy-refill-focused/contract/DECISIONS.json', 'output/qa/pharmacy-refill-focused/contract/MAIN_CONTEXT_RECONCILIATION.json', 'output/qa/pharmacy-refill-focused/shared/INTERFACE.json']
+@@ -144,0 +145,4 @@ def main():
++    helper_bytes = regular(ROOT / 'test/api-runtime/disabled-express-template.cjs')
++    require(sha(helper_bytes) == ports['disabledExpressTemplateHelperSha256'], 'Shared helper source changed')
++    (project / 'disabled-express-template.cjs').write_bytes(helper_bytes)
++    (runtime / 'disabled-express-template.cjs').write_bytes(helper_bytes)
+@@ -152 +156 @@ def main():
+-    for name in ['test/application/app-bundle.mjs', 'package-lock.json']:plan['sourceFiles'][name] = hashes[name]
++    for name in ['test/application/app-bundle.mjs', 'package-lock.json', 'test/api-runtime/disabled-express-template.cjs']:plan['sourceFiles'][name] = hashes[name]
+diff --git a/test/api-runtime/pharmacy-refill/scenario.cjs b/test/api-runtime/pharmacy-refill/scenario.cjs
+index be232ff11287d2cbeaceab9e1ff4a549914726d3..f8b7a7a4b9969a21a731c641f1786cf6d10d07af 100644
+--- a/test/api-runtime/pharmacy-refill/scenario.cjs
++++ b/test/api-runtime/pharmacy-refill/scenario.cjs
+@@ -34,0 +35,7 @@ async function run(ctx){
++    const ActualView=ctx.ActualView,originalFs=new Map(),fileEffects={openSync:0,readFileSync:0,statSync:0};
++    try{for(const name of Object.keys(fileEffects)){const descriptor=Object.getOwnPropertyDescriptor(ctx.fs,name);need(descriptor&&'value'in descriptor&&typeof descriptor.value==='function','TEMPLATE_FS_DESCRIPTOR');originalFs.set(name,descriptor);Object.defineProperty(ctx.fs,name,{...descriptor,value:function(...args){fileEffects[name]++;return Reflect.apply(descriptor.value,this,args);}});}
++      for(const extension of ['fs','node:fs','debug']){need(ctx.domain.assertView()===ActualView,'TEMPLATE_GENUINE_CONSTRUCTOR');const client=ctx.client,connection=ctx.connection,forward=ctx.domain.savedForwards,lookups=ctx.domain.lookups,commands=ctx.commands.length,provider={logger:ctx.counters.logger,unexpected:ctx.counters.unexpected},files={...fileEffects};
++        await ctx.expectAdmission('TEMPLATE_ENGINE_DISABLED',()=>new ActualView('probe.'+extension,{engines:Object.create(null)}));
++        need(ctx.domain.assertView()===ActualView&&ctx.client===client&&ctx.connection===connection&&same(ctx.domain.savedForwards,forward)&&ctx.domain.lookups===lookups&&ctx.commands.length===commands&&ctx.counters.logger===provider.logger&&ctx.counters.unexpected===provider.unexpected&&same(fileEffects,files),'TEMPLATE_ZERO_EFFECTS');
++      }
++    }finally{for(const [name,descriptor]of originalFs)Object.defineProperty(ctx.fs,name,descriptor);}

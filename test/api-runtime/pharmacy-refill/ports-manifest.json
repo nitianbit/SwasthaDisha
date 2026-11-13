@@ -342,5 +342,7 @@
     "catalogBytes": 262144,
     "catalogCommands": 12,
     "catalogMs": 5000
-  }
+  },
+  "disabledExpressTemplatePolicySha256": "8a9b9d03d5fda5c029c206089864d99d45313a3a7a850532f78eb9eda9d49dcd",
+  "disabledExpressTemplateHelperSha256": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779"
 }
