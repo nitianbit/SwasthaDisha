@@ -42,7 +42,9 @@ import {
   buildExternalBookingEmailContent,
   ExternalBookingEmailTemplate,
 } from '@/modules/externalBookings/emailTemplates';
-import { buildBookingLifecyclePatch } from '@/modules/bookings/utils/lifecycle';
+import { BookingLocalOperations } from '@/modules/bookings/services/localOperations';
+import { ExternalBookingLocalOperations } from '@/modules/externalBookings/services/localOperations';
+import { WalletLocalOperations } from '@/modules/wallet/services/localOperations';
 import { isDuplicateKeyError } from '@/modules/common/utils/mongoErrors';
 import {
   CreatePaymentOrderRequest,
@@ -74,6 +76,9 @@ const PHARMACY_ORDER_LATE_REFUND_NOTE =
 
 @Service()
 export class PaymentService {
+  private readonly ordinaryBookingOperations = new BookingLocalOperations();
+  private readonly externalBookingOperations = new ExternalBookingLocalOperations();
+  private readonly customerWalletOperations = new WalletLocalOperations();
   private razorpayClient?: Razorpay;
 
   constructor(
@@ -354,13 +359,6 @@ export class PaymentService {
         error: error instanceof Error ? error.message : String(error),
       });
     }
-  }
-
-  private buildLifecyclePatch(
-    current: IBooking['lifecycle'],
-    updates: Parameters<typeof buildBookingLifecyclePatch>[1]
-  ) {
-    return buildBookingLifecyclePatch(current, updates);
   }
 
   private getRazorpayCredentials(): { keyId: string; keySecret: string } {
@@ -656,7 +654,7 @@ export class PaymentService {
 
     if (generatedSignature !== data.razorpaySignature) {
       await this.paymentRepository.update(
-        { _id: paymentRecord._id },
+        { _id: paymentRecord._id, ...(['booking', 'external_booking'].includes(paymentRecord.context) ? { status: { $nin: ['paid', 'refunded'] } } : {}) },
         {
           status: 'failed',
           razorpayPaymentId: data.razorpayPaymentId,
@@ -740,7 +738,7 @@ export class PaymentService {
   ): Promise<void> {
     if (razorpayPayment.status === 'failed') {
       await this.paymentRepository.update(
-        { _id: paymentRecord._id },
+        { _id: paymentRecord._id, ...(['booking', 'external_booking'].includes(paymentRecord.context) ? { status: { $nin: ['paid', 'refunded'] } } : {}) },
         {
           status: 'failed',
           isProcessed: true,
@@ -758,7 +756,7 @@ export class PaymentService {
 
     if (razorpayPayment.status === 'refunded') {
       await this.paymentRepository.update(
-        { _id: paymentRecord._id },
+        { _id: paymentRecord._id, ...(['booking', 'external_booking'].includes(paymentRecord.context) ? { status: { $nin: ['paid', 'refunded'] } } : {}) },
         {
           status: 'refunded',
           isProcessed: true,
@@ -788,7 +786,7 @@ export class PaymentService {
     data: VerifyPaymentRequest
   ): Promise<IPaymentRecord> {
     const updated = await this.paymentRepository.update(
-      { _id: paymentRecord._id },
+      { _id: paymentRecord._id, ...(['booking', 'external_booking'].includes(paymentRecord.context) ? { status: { $nin: ['paid', 'refunded'] } } : {}) },
       {
         status: 'paid',
         razorpayPaymentId: data.razorpayPaymentId,
@@ -798,11 +796,9 @@ export class PaymentService {
     );
 
     if (!updated) {
-      throw new AppError({
-        status: 500,
-        code: 'PAYMENT_UPDATE_FAILED',
-        message: 'Failed to update payment status',
-      });
+      const current = await this.paymentRepository.findById(paymentRecord._id!);
+      if (current?.status === 'paid') return current;
+      throw new AppError({ status: 409, code: 'PAYMENT_CHANGED', message: 'Payment changed; refresh before retrying' });
     }
 
     return updated;
@@ -926,60 +922,17 @@ export class PaymentService {
 
   private async processBookingPayment(
     paymentRecord: IPaymentRecord
-  ): Promise<{
-    paymentRecord: IPaymentRecord;
-    entity: unknown;
-  }> {
-    const booking = await this.bookingRepository.findById(paymentRecord.contextId);
-
-    if (!booking || booking.userId !== paymentRecord.userId) {
-      throw new AppError({
-        status: 404,
-        code: 'BOOKING_NOT_FOUND',
-        message: 'Booking not found for this payment',
-      });
+  ): Promise<{ paymentRecord: IPaymentRecord; entity: unknown }> {
+    const result = await this.ordinaryBookingOperations.confirmPayment(paymentRecord._id!);
+    const { localEffects: _internal, ...booking } = result.entity;
+    let entity: IBooking = booking;
+    if (booking.status === 'confirmed') {
+      await this.bookingReminderScheduler.scheduleBookingReminders(booking);
+      entity = await syncBookingMeet({ booking, bookingRepository: this.bookingRepository,
+        userRepository: this.userRepository, specialistRepository: this.specialistRepository, slotRepository: this.slotRepository });
+      await this.sendPaidBookingEmailNotification(entity);
     }
-
-    const updatedBooking = await this.bookingRepository.update(
-      { _id: booking._id },
-      {
-        paymentStatus: 'paid',
-        paymentTransactionId: paymentRecord._id!,
-        status: booking.status === 'pending' ? 'confirmed' : booking.status,
-        lifecycle: this.buildLifecyclePatch(booking.lifecycle, {
-          paid: { amount: Number(paymentRecord.finalAmount || booking.price || 0) },
-          confirmed: booking.status === 'pending' ? true : undefined,
-        }),
-      }
-    );
-
-    if (!updatedBooking) {
-      throw new AppError({
-        status: 500,
-        code: 'BOOKING_UPDATE_FAILED',
-        message: 'Failed to update booking payment status',
-      });
-    }
-
-    let bookingForResponse = updatedBooking;
-    if (updatedBooking.status === 'confirmed') {
-      await this.bookingReminderScheduler.scheduleBookingReminders(updatedBooking);
-      bookingForResponse = await syncBookingMeet({
-        booking: updatedBooking,
-        bookingRepository: this.bookingRepository,
-        userRepository: this.userRepository,
-        specialistRepository: this.specialistRepository,
-        slotRepository: this.slotRepository,
-      });
-    }
-
-    await this.sendPaidBookingEmailNotification(bookingForResponse as IBooking);
-
-    const finalizedPayment = await this.finalizePaymentProcessing(paymentRecord);
-    return {
-      paymentRecord: finalizedPayment,
-      entity: bookingForResponse,
-    };
+    return { paymentRecord: result.paymentRecord, entity };
   }
 
   private async processPharmacyOrderPayment(
@@ -1126,25 +1079,36 @@ export class PaymentService {
     };
   }
 
+  private publicExternalBooking(booking: IExternalBooking): IExternalBooking {
+    const { localEffects: _internal, ...visible } = booking;
+    return visible;
+  }
+
   private async processExternalBookingPayment(
     paymentRecord: IPaymentRecord
-  ): Promise<{
-    paymentRecord: IPaymentRecord;
-    entity: unknown;
-  }> {
-    const updatedExternal = await this.finalizeExternalBookingPayment(
-      paymentRecord,
-    );
-
-    const finalizedPayment = await this.finalizePaymentProcessing(paymentRecord);
-    await this.sendExternalBookingEmailNotification(
-      updatedExternal as IExternalBooking,
-      'ORDER_SCHEDULED'
-    );
-    return {
-      paymentRecord: finalizedPayment,
-      entity: updatedExternal,
-    };
+  ): Promise<{ paymentRecord: IPaymentRecord; entity: unknown }> {
+    const claim = await this.externalBookingOperations.beginProvider(String(paymentRecord.contextId), String(paymentRecord._id));
+    let booking = claim.booking;
+    if (claim.shouldFulfill) {
+      if (!claim.token) throw new AppError({ status: 409, code: 'EXTERNAL_BOOKING_CHANGED', message: 'Provider attempt must be retried' });
+      try {
+        booking = await this.finalizeExternalBookingPayment(paymentRecord, claim.token) as IExternalBooking;
+      } catch (error) {
+        // An attempted provider operation with no returned ID is unknown, never proof of no effect.
+        await this.externalBookingOperations.failProvider(String(paymentRecord.contextId), claim.token,
+          error instanceof Error ? error.message : String(error));
+        const pending = await this.externalBookingRepository.findById(paymentRecord.contextId);
+        const currentPayment = await this.paymentRepository.findById(paymentRecord._id!);
+        if (!pending || !currentPayment) throw error;
+        return { paymentRecord: currentPayment, entity: this.publicExternalBooking(pending) };
+      }
+      if (!['cancelled', 'abandoned'].includes(booking.status)) {
+        await this.sendExternalBookingEmailNotification(this.publicExternalBooking(booking), 'ORDER_SCHEDULED');
+      }
+    }
+    const currentPayment = await this.paymentRepository.findById(paymentRecord._id!);
+    if (!currentPayment) throw new AppError({ status: 409, code: 'PAYMENT_CHANGED', message: 'Payment record needs reconciliation' });
+    return { paymentRecord: currentPayment, entity: this.publicExternalBooking(booking) };
   }
 
   async recoverExternalBookingPayment(
@@ -1162,69 +1126,9 @@ export class PaymentService {
     return this.processExternalBookingPayment(paymentRecord);
   }
 
-  async finalizeExternalBookingPayment(
-    paymentRecord: IPaymentRecord
-  ): Promise<unknown> {
-    return completeExternalBookingAfterPayment(
-      paymentRecord,
-      this.externalBookingRepository,
-      this.labstackService,
-      this.healthiansService
-    );
-  }
-
-  private isRecoverableExternalFulfillmentError(error: unknown): boolean {
-    const message =
-      error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-    return message.includes('timeout') || message.includes('status code 5');
-  }
-
-  private async markExternalBookingConfirmationPending(
-    paymentRecord: IPaymentRecord,
-    error: unknown
-  ): Promise<unknown> {
-    logger.error('[Payment][external] fulfillment pending after verify', {
-      paymentTransactionId: paymentRecord._id,
-      bookingId: paymentRecord.contextId,
-      paymentStatus: paymentRecord.status,
-      isProcessed: paymentRecord.isProcessed,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    const booking = await this.externalBookingRepository.findById(paymentRecord.contextId);
-    if (!booking) {
-      throw error instanceof Error ? error : new Error(String(error));
-    }
-
-    const priorMeta =
-      booking.meta && typeof booking.meta === 'object' && !Array.isArray(booking.meta)
-        ? { ...(booking.meta as Record<string, unknown>) }
-        : {};
-
-    const updated = await this.externalBookingRepository.update(
-      { _id: paymentRecord.contextId },
-      {
-        status: 'pending',
-        paymentStatus: 'paid',
-        paymentTransactionId: paymentRecord._id!,
-        meta: {
-          ...priorMeta,
-          paymentConfirmationPendingAt:
-            (priorMeta.paymentConfirmationPendingAt as string | undefined) ||
-            new Date().toISOString(),
-          paymentConfirmationError:
-            error instanceof Error ? error.message : String(error),
-        },
-      }
-    );
-
-    if (updated) {
-      await this.sendExternalBookingEmailNotification(
-        updated as IExternalBooking,
-        'CREATED'
-      );
-    }
-
-    return updated;
+  async finalizeExternalBookingPayment(paymentRecord: IPaymentRecord, attemptToken: string): Promise<unknown> {
+    return completeExternalBookingAfterPayment(paymentRecord, this.externalBookingRepository,
+      this.labstackService, this.healthiansService, attemptToken);
   }
 
   private async getOrCreateActiveWallet(userId: string) {
@@ -1328,155 +1232,7 @@ export class PaymentService {
   }
 
   private async ensureWalletRechargeTransaction(paymentRecord: IPaymentRecord): Promise<unknown> {
-    let wallet = await this.getOrCreateActiveWallet(paymentRecord.userId);
-
-    const existingTransaction = await this.walletTransactionRepository.findOne({
-      userId: paymentRecord.userId,
-      referenceType: 'wallet_recharge',
-      referenceId: paymentRecord._id!,
-      status: 'completed',
-    });
-
-    if (!existingTransaction) {
-      const balanceBefore = wallet.balance;
-      const balanceAfter = balanceBefore + paymentRecord.baseAmount;
-
-      await this.walletTransactionRepository.save({
-        userId: paymentRecord.userId,
-        walletId: wallet._id!,
-        transactionType: 'credit',
-        amount: paymentRecord.baseAmount,
-        balanceBefore,
-        balanceAfter,
-        status: 'completed',
-        referenceType: 'wallet_recharge',
-        referenceId: paymentRecord._id!,
-        description: `Wallet recharge via Razorpay${paymentRecord.couponCode ? ` (coupon: ${paymentRecord.couponCode})` : ''}`,
-        notes: paymentRecord.razorpayPaymentId,
-        transactionDate: getTodayYyyymmdd(),
-      });
-
-      wallet = (await this.walletRepository.update(
-        { _id: wallet._id! },
-        { balance: balanceAfter }
-      )) || wallet;
-    }
-
-    return wallet;
-  }
-
-  private getExternalBookingMeta(
-    booking: Pick<IExternalBooking, 'meta'>
-  ): Record<string, unknown> {
-    return booking.meta &&
-      typeof booking.meta === 'object' &&
-      !Array.isArray(booking.meta)
-      ? { ...(booking.meta as Record<string, unknown>) }
-      : {};
-  }
-
-  private getExternalAppointmentId(booking: IExternalBooking): string | undefined {
-    if (booking.externalBookingId?.trim()) {
-      return booking.externalBookingId.trim();
-    }
-
-    const root = this.getExternalBookingMeta(booking);
-    const externalPayload =
-      root.externalPayload && typeof root.externalPayload === 'object'
-        ? (root.externalPayload as Record<string, unknown>)
-        : undefined;
-    const bookingResponse =
-      externalPayload?.bookingResponse &&
-      typeof externalPayload.bookingResponse === 'object'
-        ? (externalPayload.bookingResponse as Record<string, unknown>)
-        : undefined;
-    const order =
-      bookingResponse?.order && typeof bookingResponse.order === 'object'
-        ? (bookingResponse.order as Record<string, unknown>)
-        : undefined;
-    const appointment =
-      bookingResponse?.appointment &&
-      typeof bookingResponse.appointment === 'object'
-        ? (bookingResponse.appointment as Record<string, unknown>)
-        : undefined;
-
-    const source = order || appointment || bookingResponse || externalPayload || root;
-    const candidates = ['orderId', 'appointmentId', 'lsAppointmentId', 'referenceId', 'id'];
-
-    for (const key of candidates) {
-      const value = source[key];
-      if (typeof value === 'string' && value.trim()) {
-        return value.trim();
-      }
-    }
-
-    return undefined;
-  }
-
-  private async refundExternalBookingAmountToWallet(
-    booking: IExternalBooking,
-    paymentRecord: IPaymentRecord
-  ): Promise<number> {
-    const referenceId = String(booking._id!);
-
-    const existingRefund = await this.walletTransactionRepository.findOne({
-      userId: booking.userId,
-      transactionType: 'refund',
-      referenceType: 'external_booking',
-      referenceId,
-      status: 'completed',
-    });
-    if (existingRefund) {
-      return Number(existingRefund.amount || 0);
-    }
-
-    const walletDeductedAmount = Number(paymentRecord.notes?.walletDeductedAmount || 0);
-    const gatewayPaidAmount =
-      paymentRecord.status === 'paid' ? Number(paymentRecord.finalAmount || 0) : 0;
-    const refundAmount = walletDeductedAmount + gatewayPaidAmount;
-
-    if (refundAmount > 0) {
-      const wallet = await this.getOrCreateActiveWallet(booking.userId);
-      const balanceBefore = wallet.balance;
-      const balanceAfter = balanceBefore + refundAmount;
-
-      await this.walletTransactionRepository.save({
-        userId: booking.userId,
-        walletId: wallet._id!,
-        transactionType: 'refund',
-        amount: refundAmount,
-        balanceBefore,
-        balanceAfter,
-        status: 'completed',
-        referenceType: 'external_booking',
-        referenceId,
-        description: 'Refund for external booking',
-        transactionDate: getTodayYyyymmdd(),
-      });
-
-      await this.walletRepository.update({ _id: wallet._id! }, { balance: balanceAfter });
-    }
-
-    if (paymentRecord.couponCode && paymentRecord.isProcessed) {
-      try {
-        const coupon = await this.couponService.getByCode(paymentRecord.couponCode);
-        await this.couponService.decrementUsage(coupon._id!);
-      } catch (error) {
-        logger.error('[Payment][external] failed to reverse coupon usage on refund', {
-          bookingId: booking._id,
-          paymentTransactionId: paymentRecord._id,
-          couponCode: paymentRecord.couponCode,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-
-    await this.paymentRepository.update(
-      { _id: paymentRecord._id! },
-      { status: 'refunded', isProcessed: true }
-    );
-
-    return refundAmount;
+    return this.customerWalletOperations.creditRecharge(String(paymentRecord._id));
   }
 
   private async refundAbandonedPharmacyOrderToWallet(
@@ -1579,61 +1335,6 @@ export class PaymentService {
     return refundAmount;
   }
 
-  private async handleTerminalExternalFulfillmentFailure(
-    paymentRecord: IPaymentRecord,
-    error: unknown
-  ): Promise<{ refunded: boolean; booking?: IExternalBooking }> {
-    const booking = (await this.externalBookingRepository.findById(
-      paymentRecord.contextId
-    )) as IExternalBooking | null;
-
-    if (!booking) {
-      return { refunded: false };
-    }
-
-    const externalAppointmentId = this.getExternalAppointmentId(booking);
-    if (externalAppointmentId) {
-      return { refunded: false, booking };
-    }
-
-    const priorMeta = this.getExternalBookingMeta(booking);
-    const refundAmount = await this.refundExternalBookingAmountToWallet(
-      booking,
-      paymentRecord
-    );
-
-    const updated =
-      (await this.externalBookingRepository.update(
-        { _id: paymentRecord.contextId },
-        {
-          status: 'cancelled',
-          paymentStatus: refundAmount > 0 ? 'refunded' : 'cancelled',
-          paymentTransactionId: paymentRecord._id!,
-          meta: {
-            ...priorMeta,
-            cancellationReason:
-              'Booking creation failed after payment confirmation',
-            cancelRequestedWhileConfirmationPending: true,
-            cancelRequestedAt:
-              (priorMeta.cancelRequestedAt as string | undefined) ||
-              new Date().toISOString(),
-            needsProviderCancelIfDiscovered: true,
-            paymentFulfillmentFailedAt: new Date().toISOString(),
-            paymentFulfillmentError:
-              error instanceof Error ? error.message : String(error),
-            ...(refundAmount > 0 ? { paymentFailureWalletRefunded: true } : {}),
-          },
-        }
-      )) || booking;
-
-    await this.sendExternalBookingEmailNotification(
-      updated as IExternalBooking,
-      'CANCELED'
-    );
-
-    return { refunded: refundAmount > 0, booking: updated as IExternalBooking };
-  }
-
   private async processWalletRechargePayment(
     paymentRecord: IPaymentRecord
   ): Promise<{
@@ -1672,7 +1373,17 @@ export class PaymentService {
       isProcessed: paymentRecord.isProcessed,
     });
 
-    if (paymentRecord.isProcessed) {
+    if (paymentRecord.context === 'booking' && !this.shouldFulfillExternalBooking(paymentRecord, data.module)) {
+      const result = await this.processBookingPayment(paymentRecord);
+      return { context: 'booking', paymentRecord: result.paymentRecord, entity: result.entity };
+    }
+
+    if (paymentRecord.context === 'wallet_recharge' && !this.isPharmacyWalletRecharge(paymentRecord)) {
+      const result = await this.processWalletRechargePayment(paymentRecord);
+      return { context: 'wallet_recharge', paymentRecord: result.paymentRecord, entity: result.entity };
+    }
+
+    if (paymentRecord.isProcessed && !this.shouldFulfillExternalBooking(paymentRecord, data.module)) {
       logger.info('[Payment][verify] already processed, returning existing entity', {
         paymentTransactionId: paymentRecord._id,
         bookingId: paymentRecord.contextId,
@@ -1681,72 +1392,8 @@ export class PaymentService {
     }
 
     if (this.shouldFulfillExternalBooking(paymentRecord, data.module)) {
-      try {
-        logger.info('[Payment][external] fulfillment start after verify', {
-          paymentTransactionId: paymentRecord._id,
-          bookingId: paymentRecord.contextId,
-          paymentStatus: paymentRecord.status,
-          isProcessed: paymentRecord.isProcessed,
-        });
-        const result = await this.processExternalBookingPayment(paymentRecord);
-        logger.info('[Payment][external] fulfillment success after verify', {
-          paymentTransactionId: result.paymentRecord._id,
-          bookingId: paymentRecord.contextId,
-          paymentStatus: result.paymentRecord.status,
-          isProcessed: result.paymentRecord.isProcessed,
-        });
-        return {
-          context: 'external_booking',
-          paymentRecord: result.paymentRecord,
-          entity: result.entity,
-        };
-      } catch (error) {
-        if (!this.isRecoverableExternalFulfillmentError(error)) {
-          let refunded = false;
-          try {
-            const handled = await this.handleTerminalExternalFulfillmentFailure(
-              paymentRecord,
-              error
-            );
-            refunded = handled.refunded;
-          } catch (cleanupError) {
-            logger.error('[Payment][external] terminal failure cleanup failed', {
-              paymentTransactionId: paymentRecord._id,
-              bookingId: paymentRecord.contextId,
-              cleanupError:
-                cleanupError instanceof Error
-                  ? cleanupError.message
-                  : String(cleanupError),
-            });
-          }
-
-          logger.error('[Payment][external] fulfillment failed after verify', {
-            paymentTransactionId: paymentRecord._id,
-            bookingId: paymentRecord.contextId,
-            error: error instanceof Error ? error.message : String(error),
-            refundedToWallet: refunded,
-          });
-          if (refunded) {
-            throw new AppError({
-              status: 502,
-              code: 'EXTERNAL_BOOKING_FULFILLMENT_FAILED_REFUNDED',
-              message: `External booking failed after payment and the amount was refunded to wallet. Original error: ${
-                error instanceof Error ? error.message : String(error)
-              }`,
-            });
-          }
-          throw error;
-        }
-
-        const pendingEntity =
-          await this.markExternalBookingConfirmationPending(paymentRecord, error);
-
-        return {
-          context: 'external_booking',
-          paymentRecord,
-          entity: pendingEntity || {},
-        };
-      }
+      const result = await this.processExternalBookingPayment(paymentRecord);
+      return { context: 'external_booking', paymentRecord: result.paymentRecord, entity: result.entity };
     }
 
     if (paymentRecord.context === 'booking') {

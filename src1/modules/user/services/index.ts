@@ -4,6 +4,7 @@ import { CorporateRepository } from '@/modules/corporates/repository';
 import { IUser, CreateUserRequest, UpdateUserRequest, UserQueryParams } from '@/modules/user/types';
 import { AppError } from '@/modules/common/types';
 import { buildContainsRegex } from '@/modules/common/utils/queryUtils';
+import { PROFILE_SELF_FORBIDDEN_FIELDS, updateUserSchema } from '@/modules/user/validation';
 
 @Service()
 export class UserService {
@@ -112,7 +113,24 @@ export class UserService {
     return user;
   }
 
-  async update(id: string, data: UpdateUserRequest): Promise<IUser> {
+  async update(
+    id: string,
+    input: UpdateUserRequest,
+    actor: { _id: string; userType: string; corporateId?: string }
+  ): Promise<IUser> {
+    if (!actor?._id) {
+      throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Authentication is required' });
+    }
+    const selfUpdate = actor.userType === 'user' && actor._id === id;
+    if (!selfUpdate && actor.userType !== 'admin' && !(actor.userType === 'hr' && actor.corporateId)) {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access to this user resource is not permitted' });
+    }
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Profile update must be an object' });
+    }
+    if (selfUpdate && PROFILE_SELF_FORBIDDEN_FIELDS.some(field => Object.prototype.hasOwnProperty.call(input, field))) {
+      throw new AppError({ status: 422, code: 'FORBIDDEN_FIELD', message: 'One or more fields cannot be changed through this endpoint' });
+    }
     const user = await this.userRepository.get(id);
     if (!user) {
       throw new AppError({
@@ -122,12 +140,31 @@ export class UserService {
       });
     }
 
-    if (data.userType && data.userType !== 'user') {
-      throw new AppError({
-        status: 400,
-        code: 'INVALID_USER_TYPE',
-        message: 'User module only supports user type',
-      });
+    if (actor.userType === 'hr' && user.corporateId !== actor.corporateId) {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'HR can only access users from their own corporate' });
+    }
+
+    const candidate: UpdateUserRequest = { ...input };
+    const missingContact = (value: unknown) => value === undefined || value === null || value === '';
+    // Customers can fill an absent contact, but submitted replacements never block other edits.
+    for (const field of ['phone', 'email'] as const) {
+      if (actor.userType !== 'admin' && (!selfUpdate || !missingContact(user[field]))) delete candidate[field];
+    }
+    if (typeof candidate.phone === 'string') {
+      candidate.phone = candidate.phone.trim().replace(/\s+/g, '').replace(/^\+91/, '').replace(/^0+(?=\d{10}$)/, '');
+    }
+    const { error, value } = updateUserSchema.validate(candidate, { abortEarly: false, stripUnknown: true });
+    if (error) {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: error.details.map(detail => detail.message).join(', ') });
+    }
+    const data: UpdateUserRequest = Object.fromEntries(Object.entries(value).filter(([, field]) => field !== undefined));
+    if (Object.keys(data).length === 0) return user;
+
+    if (data.phone !== undefined) {
+      const existing = await this.userRepository.findByPhone(data.phone, 'user');
+      if (existing && String(existing._id) !== id) {
+        throw new AppError({ status: 400, code: 'PHONE_ALREADY_IN_USE', message: 'Phone is already in use by another user' });
+      }
     }
 
     const nextEmail = data.email ?? user.email;
@@ -181,12 +218,22 @@ export class UserService {
       data.isCorporateEmailVerified = false;
     }
 
-    const updated = await this.userRepository.update({ _id: id }, data);
+    if (data.email !== undefined && data.email !== user.email) data.isVerified = false;
+
+    const filter: Record<string, unknown> = { _id: id };
+    if (actor.userType === 'hr') filter.corporateId = actor.corporateId;
+    const additions = selfUpdate ? (['phone', 'email'] as const).filter(field => data[field] !== undefined) : [];
+    for (const field of additions) filter[field] = { $in: [null, ''] };
+    if (additions.length) {
+      // Query equality alone can match arrays; require an actual scalar/missing field.
+      filter.$expr = { $and: additions.map(field => ({ $in: [{ $type: '$' + field }, ['missing', 'null', 'string']] })) };
+    }
+    const updated = await this.userRepository.update(filter, data, { new: true, runValidators: true });
     if (!updated) {
       throw new AppError({
-        status: 500,
-        code: 'UPDATE_FAILED',
-        message: 'Failed to update user',
+        status: additions.length || actor.userType === 'hr' ? 409 : 500,
+        code: additions.length ? 'CONTACT_ALREADY_SET' : actor.userType === 'hr' ? 'PROFILE_CHANGED' : 'UPDATE_FAILED',
+        message: 'Profile changed or could not be updated; refresh and try again',
       });
     }
 

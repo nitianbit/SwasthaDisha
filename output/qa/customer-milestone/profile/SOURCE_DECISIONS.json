@@ -1,0 +1,26 @@
+{
+  "baseline": "9c8d1d8f6ecda8d0832f9294c4b1b7a6fdf7077c",
+  "scope": "CUSTOMER_PROFILE_SOURCE_ONLY",
+  "sources": {
+    "src1/modules/user/controller/index.ts": "616f3a4e1551ff6c52a879dc6a643ab26a015ba5b4426118dcd2ca492bd590a7",
+    "src1/modules/user/routes/index.ts": "c44796cea0b4a8b15b4eb82cdd4644afd72952d3728a6e7e7712f5f3d1bc2af9",
+    "src1/modules/user/services/index.ts": "2926263243a14b4ad45ddf84612a5c2e4c4062d1a47e59e86724d62e42ab2868",
+    "src1/modules/user/validation/index.ts": "d943f1613457698381c0c1d28d1045adcb24cb11a0d8db62100079d8ea7a5b3f"
+  },
+  "decisions": [
+    {
+      "reviewer": "/root/reviewer",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "basis": "Personally inspected full four-file diff and requested malformed-body correction in service/controller; amended source approved against frozen contract."
+    },
+    {
+      "reviewer": "/root",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "basis": "Personally inspected signed actor checks, HR final fence, raw privilege fields, ignore-before-Joi contacts, same-account scalar missing-contact predicates, validation/admin checks."
+    }
+  ],
+  "initialFinding": "Removing route body validation initially allowed malformed null/array/string bodies to become empty no-ops after controller spreading. Corrected in both service and controller before source approval.",
+  "limits": ["No application/HTTP/real Joi/database/index/client/session/runtime acceptance", "Phone/email availability prechecks do not prove concurrent cross-account uniqueness"]
+}

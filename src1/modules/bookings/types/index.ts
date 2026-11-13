@@ -84,7 +84,26 @@ export interface IVirtualMeeting {
   cancelledAt?: Date;
 }
 
+export interface IBookingLocalEffects {
+  version: 1;
+  revision: number;
+  setupToken: string | null;
+  setupDeadlineMs: number;
+  setupFailed: boolean;
+  heldSlotId: string | null;
+  followUpParentId: string | null;
+  followUpHeldByBookingId: string | null;
+  walletDebitedPaise: number;
+  walletRefundedPaise: number;
+  settledPaymentIds: string[];
+  couponPaymentIds: string[];
+  reversedCouponPaymentIds: string[];
+  cancelled: boolean;
+  refundDestination?: 'internal_wallet';
+}
+
 export interface IBooking {
+  localEffects?: IBookingLocalEffects;
   _id?: string;
   bookingType: BookingType;
   userId: string; // User making the booking
@@ -296,6 +315,7 @@ export interface BookingPaymentDetailsResponse {
     }>;
   };
   refund: {
+    destination: 'internal_wallet' | null;
     amountRefunded: number;
     transactions: Array<{
       _id?: string;

@@ -1,0 +1,38 @@
+# Review prompt — existing customer milestone
+
+Use this prompt with the saved local candidate. Resolve the exact code/evidence commit and final source manifest from `CUSTOMER_MILESTONE_OUTCOME_2026-11-13.md` beside this file before reviewing. Do not substitute the original checkout's old branch for the candidate.
+
+```text
+Perform an independent technical and delivery review of the SwasthaDisha existing-customer milestone. Inspect the actual source/diff and raw evidence; do not accept prior agent verdicts as your own findings.
+
+Repository: nitianbit/SwasthaDisha. Candidate branch: customer/milestone-2026-11-13. Baseline: 9c8d1d8f6ecda8d0832f9294c4b1b7a6fdf7077c. Find the exact code/evidence commit, durable checkout and source-manifest hashes in documentation/planning/implementation/CUSTOMER_MILESTONE_OUTCOME_2026-11-13.md. Historical legacy reference: sibling ewa_backend, local origin/integration/perks-v2-combined at 2347787e312721d89652913f9d36adf11a9be251, read-only reference only. Codebase graph tools remain disabled; use inert Git/file/rg reads. No secrets, patient data or uploaded documents are needed.
+
+This review is read-only. Do not install packages, evaluate the application graph, run legacy suites, contact DB/providers, merge/push/deploy, start external reviewers or reuse consumed execution approvals. If further execution is required, specify the smallest exact checks and their existing C2/C3 admission requirements without executing an unapproved recipe.
+
+Read AGENTS.md, the repository transition, current progress, the stopped historical checkpoint and the NEW owner-resumed CUSTOMER_MILESTONE_SCOPE_2026-11-13.md. This owner resumed only the narrowed customer work, not all pharmacy/lab/clinical/runtime/deployment work. The original six tooling files, handover archive and existing saved branches must remain preserved.
+
+Owner scope:
+1. Signup/login: either phone or email is sufficient; leave existing signup/login work unchanged and further checks for later.
+2. Profile: self or admin edits. Customer replacement of an existing phone/email is ignored while other valid fields still save. A missing contact can be added. Only admin replaces existing contacts. Keep ownership, protected privilege fields and available-contact validation. Missing-contact filling is not OTP proof. Do not make the isolated full contact-change/recovery branch a prerequisite.
+3. Addresses: reuse own-address editing, without claiming a new executed native/API campaign for unchanged code.
+4. Existing ordinary and LabStack/Healthians booking creation/list/detail/status/cancellation: use the legacy reference where relevant, preserve signed ownership and existing private-document boundaries, repair actual gaps.
+5. Explicit deferral: BetaCura/hybrid, CRM/events, certificate/report expansion, new patient/caregiver identity workflows and new provider/job infrastructure are later work.
+
+Review in this order:
+A. Compare baseline to the exact candidate code/evidence commit and check the final source manifest. Identify unintended scope, missing source dependencies, new TypeScript errors and public/internal field leaks. Root packages/runtime/build/start and unchanged clinical-file core must retain their bytes. Syntax-only transpilation must not be called a semantic typecheck or build.
+B. Trace all effective personal-contact writers in this candidate. Check mixed valid/invalid ignored replacements, same-account concurrent missing fills, admin replacement, HR restrictions, no raw privilege escalation and no alternate personal-email-verification replacement bypass. Inspect same-email and missing-email positive verification as well as denials. Confirm signup/login and corporate-only methods retain their scoped historical behavior. Explicitly retain nonunique contact-index, all-writer uniqueness, OTP-purpose/session and client limitations.
+C. Trace ordinary booking create/setup/retry/confirm/cancel/reschedule/delete paths together. Check capacity and slot/service/date/time binding, setup expiry/takeover, free setup failure recovery, integer-paise calculations/server coupon rounding, one-time recorded coupon/slot/follow-up effects, transaction retry and failure rollback, late capture after cancellation, final owner/state fences and historical reconciliation conflicts. Compare the paid-only IST24h/48hMonday cutoff with the legacy reference. Confirm generic writes/deletes cannot bypass retained financial/history controls.
+D. Check payment-detail truth: pending orders are not charged money, internal wallet destination is explicit, captured/refunded attempts are bounded/deduplicated and combined with actual owned completed wallet ledger rows, and corrupt owner/reference/currency/units cannot leak or invent totals. Sequential reads are not native snapshot proof.
+E. Trace existing external provider flows and shared PaymentService composition. Provider attempt must be durable before a real-call seam, and missing ID/timeout must remain unknown. Check actual server result tokens/allowed fields, cancel-before/after/in-flight provider outcomes, no duplicate create on unknown outcome, no cancelled-booking resurrection, one shared bound settlement path, private marker exclusion, late captures and safe genuine cancellation acknowledgement. An unsigned webhook cannot manufacture financial intent, payment/provider facts, cancellation acknowledgement or report release. Do not mistake an explicit operational reconciliation gap for a completed recovery workflow.
+F. Examine the shared wallet-write correction and every remaining affected balance writer. No stale read/modify/write may overwrite a booking refund. Distinguish local source/recording evidence from global ledger, native concurrency, index, refund-budget and owner/finance acceptance. Flag a concrete remaining all-writer defect rather than inferring wallet correctness from one passing helper.
+G. Read the actual raw outcomes under output/qa/customer-milestone and the source review records referenced by the outcome report. Separate actual full selected-module recording cases and weakening/restoration controls from real HTTP/Joi/Mongoose/MongoDB/provider/client proof. Historical source snapshots stay bound to their exact runs; newer shared PaymentService bytes require actual composition review. Do not sum test counts into a completion percentage.
+H. Confirm preservation and local-only delivery. No branch is silently replaced/merged, no original tooling/archive is rebuilt, no secret/data archive is imported from the legacy checkout, and no push/deploy/live provider or operational DB action is inferred from local commits.
+
+Return:
+- Highest-priority findings first: severity, exact commit/file:line, concrete trigger/consequence and smallest justified correction. Separate source bugs, missing execution evidence, external facts and deferred features.
+- A short feature matrix: implemented source; actual passing checks; remaining native/client/owner acceptance. Do not declare the full customer module or production release complete from recording-only evidence.
+- Separate verdicts for source/composition correctness, scope/preservation, focused evidence and native/client/release readiness: APPROVE, REQUEST_CHANGES or NOT_PROVEN with exact scope.
+- The smallest dependency-ordered remaining checks/fixes. Reuse accepted unchanged infrastructure and behavior evidence. Do not propose another general tooling/review framework or repeat old discovery without a concrete reason.
+
+Report reviewer identity/model as actually observed, exact inspected commit/paths, operations performed and limitations. An internal technical review is not clinical, finance, privacy, client, owner or deployment acceptance.
+```

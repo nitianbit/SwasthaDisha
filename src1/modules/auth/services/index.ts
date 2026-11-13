@@ -49,6 +49,17 @@ export class AuthService {
     return email?.trim().toLowerCase();
   }
 
+  private assertPersonalEmailVerificationTarget(stored: string | undefined, target: string | undefined): void {
+    const current = this.normalizeEmail(stored);
+    if (current && current !== target) {
+      throw new AppError({
+        status: 422,
+        code: 'EMAIL_CHANGE_ADMIN_ONLY',
+        message: 'Only an admin can replace an existing email address',
+      });
+    }
+  }
+
   private async ensureEmailAvailableAcrossUserFields(
     email: string,
     excludeUserId?: string
@@ -462,6 +473,7 @@ export class AuthService {
     }
 
     const normalizedEmail = this.normalizeEmail(data.email)!;
+    this.assertPersonalEmailVerificationTarget(user.email, normalizedEmail);
     await this.ensureEmailAvailableAcrossUserFields(normalizedEmail, userId);
 
     if (data.isCorporateUser) {
@@ -517,7 +529,8 @@ export class AuthService {
       });
     }
 
-    const normalizedEmail = this.normalizeEmail(data.email);
+    const normalizedEmail = this.normalizeEmail(data.email) || this.normalizeEmail(user.email);
+    this.assertPersonalEmailVerificationTarget(user.email, normalizedEmail);
     const verifiedOTP = await this.otpService.verifyOTP({
       userId,
       otp: data.otp,
@@ -533,6 +546,8 @@ export class AuthService {
         message: 'Please request email verification OTP first',
       });
     }
+
+    this.assertPersonalEmailVerificationTarget(user.email, verifiedEmail);
 
     let corporateIdToSet = user.corporateId;
 
@@ -578,15 +593,19 @@ export class AuthService {
     }
 
     const updatedUser = await this.userRepository.update(
-      { _id: userId } as any,
+      {
+        _id: userId,
+        email: user.email === undefined ? { $exists: false } : user.email,
+        $expr: { $in: [{ $type: '$email' }, ['missing', 'null', 'string']] },
+      } as any,
       updateData
     );
 
     if (!updatedUser) {
       throw new AppError({
-        status: 500,
-        code: 'UPDATE_FAILED',
-        message: 'Failed to update user email',
+        status: 409,
+        code: 'CONTACT_CHANGED',
+        message: 'Email changed; refresh the profile and request a new verification code',
       });
     }
 

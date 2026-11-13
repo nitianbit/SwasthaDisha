@@ -1,0 +1,31 @@
+{
+  "schema": "SD-CUSTOMER-BOOKING-RECEIPT-SOURCE-DECISIONS-1",
+  "author": "/root/reviewer",
+  "decision": "APPROVE_SOURCE_ONLY",
+  "scope": "getPaymentDetails and additive receipt type delta on previously approved ordinary local-effects source; not unreviewed shared external payment composition",
+  "sourceSha256": {
+    "src1/modules/bookings/services/index.ts": "8840273e12c67b59a82e95be64dbb747edbc73ea0a07566d9ccaa6c689766997",
+    "src1/modules/bookings/types/index.ts": "0950cc792ba9e6ca2da46e8b5229e14c8c37ae1c8ea99372023c8c6389b0807b"
+  },
+  "actualReviews": [
+    {
+      "agent": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "basis": "Personally read full receipt method/diff: selected/allattempt identity/context/owner/INR/units, boundedcap/dedupe, paid/refunded chargegate and explicit completed own-wallet refund destination."
+    },
+    {
+      "agent": "/root/booking_owner",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "basis": "Personally read full getter/type and fresh hashes:129bound, owncontext attempts validated/deduped; corrupt currency/units/provenance409; internal-wallet destination only for completed ownledger."
+    }
+  ],
+  "provenance": "Actual direct independent native Codex messages transcribed by author; source review only, no human/clinical/finance/owner/release acceptance.",
+  "limits": [
+    "Receipt uses sequential read-only repository queries, not a native atomic snapshot.",
+    "Focused DTO source/invocation/outcome checks are separate; actual driver/DB/HTTP/index/client evidence remains unproven.",
+    "Earlier41case ordinary campaign remains immutable historical evidence for its earlier exact source snapshot.",
+    "No new runtime/dependency/start, provider/operational resource, push or deployment authorization."
+  ]
+}

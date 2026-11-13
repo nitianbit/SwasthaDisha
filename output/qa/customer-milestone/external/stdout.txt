@@ -1,0 +1,66 @@
+{
+  "status": "PASS",
+  "nominalCases": 17,
+  "restoredCases": 17,
+  "cases": [
+    "setup debit is owned and failed ledger rolls back",
+    "captured provider attempt persists paid before unknown outcome",
+    "foreign customer and unsigned cancellation have no authority",
+    "known no-provider cancellation credits exact delta once",
+    "refund ledger failure rolls back booking wallet and payment then retry works",
+    "simulated transaction retry does not double refund",
+    "gateway-only refund creates absent wallet in same transaction",
+    "late provider result cannot revive cancellation or bypass acknowledgement",
+    "foreign payment rejected before completed or cancelled early return",
+    "provider result token and immutable reference are checked",
+    "stale reschedule provider reference denied before new remote authority",
+    "whole service empty raw cancellation ACK cannot refund; explicit ACK can",
+    "whole payment orchestration provider timeout reports pending without losing capture",
+    "whole service free creation remains positive and private",
+    "Healthians paid finalizer receives total100 rather than gateway40",
+    "unsigned callback records observations but no lifecycle or refund effects",
+    "owned detail returns sanitized DTO and denies foreign owner"
+  ],
+  "controls": [
+    {
+      "name": "require durable cancellation intent",
+      "detectedBy": [
+        "foreign customer and unsigned cancellation have no authority"
+      ]
+    },
+    {
+      "name": "require provider ACK before refund",
+      "detectedBy": [
+        "captured provider attempt persists paid before unknown outcome",
+        "late provider result cannot revive cancellation or bypass acknowledgement"
+      ]
+    },
+    {
+      "name": "explicit hidden state selection",
+      "detectedBy": [
+        "setup debit is owned and failed ledger rolls back",
+        "captured provider attempt persists paid before unknown outcome",
+        "foreign customer and unsigned cancellation have no authority",
+        "known no-provider cancellation credits exact delta once",
+        "refund ledger failure rolls back booking wallet and payment then retry works",
+        "simulated transaction retry does not double refund",
+        "gateway-only refund creates absent wallet in same transaction",
+        "late provider result cannot revive cancellation or bypass acknowledgement",
+        "foreign payment rejected before completed or cancelled early return",
+        "provider result token and immutable reference are checked",
+        "stale reschedule provider reference denied before new remote authority",
+        "whole service empty raw cancellation ACK cannot refund; explicit ACK can",
+        "whole payment orchestration provider timeout reports pending without losing capture",
+        "whole service free creation remains positive and private",
+        "Healthians paid finalizer receives total100 rather than gateway40",
+        "unsigned callback records observations but no lifecycle or refund effects",
+        "owned detail returns sanitized DTO and denies foreign owner"
+      ]
+    }
+  ],
+  "limits": [
+    "Actual complete external helper/service/PaymentService/finalizer with stripped imports and recording model/repository/provider ports",
+    "Snapshots and serial schedules simulate rollback/retry, not native MongoDB concurrency or provider commit/ACK contracts",
+    "No HTTP/Joi/Mongoose/native index/provider/network/client/clinical/production acceptance"
+  ]
+}

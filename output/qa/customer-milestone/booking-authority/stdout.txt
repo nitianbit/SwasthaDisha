@@ -1,0 +1,99 @@
+{
+  "status": "PASS",
+  "wholeControllerCases": 44,
+  "restoredCases": 44,
+  "cases": [
+    "ordinary/createBooking uses signed owner and ignores fabricated association",
+    "ordinary/createBooking retains signed association and owned dependent",
+    "ordinary/createBooking denies malformed dependent before user/service effects",
+    "ordinary/createBooking denies foreign dependent before user/service effects",
+    "ordinary/createBooking denies inactive dependent before user/service effects",
+    "ordinary/createBooking denies missing actor before every read/effect",
+    "ordinary/createBooking retains admin target and association",
+    "ordinary/createWellnessPackageBooking uses signed owner and ignores fabricated association",
+    "ordinary/createWellnessPackageBooking retains signed association and owned dependent",
+    "ordinary/createWellnessPackageBooking denies malformed dependent before user/service effects",
+    "ordinary/createWellnessPackageBooking denies foreign dependent before user/service effects",
+    "ordinary/createWellnessPackageBooking denies inactive dependent before user/service effects",
+    "ordinary/createWellnessPackageBooking denies missing actor before every read/effect",
+    "ordinary/createWellnessPackageBooking retains admin target and association",
+    "ordinary/createSpecialistBooking uses signed owner and ignores fabricated association",
+    "ordinary/createSpecialistBooking retains signed association and owned dependent",
+    "ordinary/createSpecialistBooking denies malformed dependent before user/service effects",
+    "ordinary/createSpecialistBooking denies foreign dependent before user/service effects",
+    "ordinary/createSpecialistBooking denies inactive dependent before user/service effects",
+    "ordinary/createSpecialistBooking denies missing actor before every read/effect",
+    "ordinary/createSpecialistBooking retains admin target and association",
+    "external/createBooking uses signed owner and ignores fabricated association",
+    "external/createBooking retains signed association and owned dependent",
+    "external/createBooking denies malformed dependent before user/service effects",
+    "external/createBooking denies foreign dependent before user/service effects",
+    "external/createBooking denies inactive dependent before user/service effects",
+    "external/createBooking denies missing actor before every read/effect",
+    "external/createBooking retains admin target and association",
+    "external/createDiagnosticsBooking uses signed owner and ignores fabricated association",
+    "external/createDiagnosticsBooking retains signed association and owned dependent",
+    "external/createDiagnosticsBooking denies malformed dependent before user/service effects",
+    "external/createDiagnosticsBooking denies foreign dependent before user/service effects",
+    "external/createDiagnosticsBooking denies inactive dependent before user/service effects",
+    "external/createDiagnosticsBooking denies missing actor before every read/effect",
+    "external/createDiagnosticsBooking retains admin target and association",
+    "ordinary/createBooking retains pharmacy target",
+    "ordinary/createWellnessPackageBooking retains pharmacy target",
+    "ordinary/createSpecialistBooking retains pharmacy target",
+    "ordinary detail binds signed owner",
+    "ordinary detail rejects foreign query before service",
+    "ordinary list retains signed owner with requested status",
+    "external list cannot replace signed owner from query",
+    "external list rejects missing actor before service",
+    "external list retains admin target"
+  ],
+  "controls": [
+    {
+      "name": "remove dependent guard",
+      "failures": [
+        "ordinary/createBooking retains signed association and owned dependent",
+        "ordinary/createBooking denies malformed dependent before user/service effects",
+        "ordinary/createBooking denies foreign dependent before user/service effects",
+        "ordinary/createBooking denies inactive dependent before user/service effects",
+        "ordinary/createBooking denies missing actor before every read/effect",
+        "ordinary/createWellnessPackageBooking retains signed association and owned dependent",
+        "ordinary/createWellnessPackageBooking denies malformed dependent before user/service effects",
+        "ordinary/createWellnessPackageBooking denies foreign dependent before user/service effects",
+        "ordinary/createWellnessPackageBooking denies inactive dependent before user/service effects",
+        "ordinary/createWellnessPackageBooking denies missing actor before every read/effect",
+        "ordinary/createSpecialistBooking retains signed association and owned dependent",
+        "ordinary/createSpecialistBooking denies malformed dependent before user/service effects",
+        "ordinary/createSpecialistBooking denies foreign dependent before user/service effects",
+        "ordinary/createSpecialistBooking denies inactive dependent before user/service effects",
+        "ordinary/createSpecialistBooking denies missing actor before every read/effect"
+      ]
+    },
+    {
+      "name": "restore fabricated association fallback",
+      "failures": [
+        "ordinary/createBooking uses signed owner and ignores fabricated association",
+        "ordinary/createWellnessPackageBooking uses signed owner and ignores fabricated association",
+        "ordinary/createSpecialistBooking uses signed owner and ignores fabricated association"
+      ]
+    },
+    {
+      "name": "allow inactive dependent",
+      "failures": [
+        "external/createBooking denies inactive dependent before user/service effects",
+        "external/createDiagnosticsBooking denies inactive dependent before user/service effects"
+      ]
+    },
+    {
+      "name": "restore list missing-actor fallback",
+      "failures": [
+        "external list rejects missing actor before service"
+      ]
+    }
+  ],
+  "limits": [
+    "Actual whole controllers transformed after exact import allowlist erasure with closed VM recording services/DI/UserModel/DependentService",
+    "No application graph, real Joi/HTTP/ODM/DB/provider/client checks; no dependent consent/activity TOCTOU proof",
+    "List checks prove forwarded predicates, not database evaluation of them"
+  ]
+}

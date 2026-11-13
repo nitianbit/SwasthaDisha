@@ -1,0 +1,89 @@
+{
+  "status": "PASS",
+  "wholeServiceCases": 29,
+  "restoredCases": 29,
+  "controllerCases": 7,
+  "cases": [
+    "mixed profile edit retains both stored contacts",
+    "malformed ignored contacts cannot block valid other edits",
+    "missing email normalizes and remains unverified",
+    "missing phone normalizes supported Indian format",
+    "null and empty contacts may both be filled",
+    "ignored contact-only self request is no-op",
+    "admin replaces contacts after normalization",
+    "HR retains corporate profile edit but cannot alter contacts",
+    "HR cannot fill missing contacts",
+    "foreign user is denied before repository reads",
+    "pharmacy is denied before repository reads",
+    "HR without corporate is denied before repository reads",
+    "missing signed actor denied before repository reads",
+    "foreign HR corporate denied",
+    "self privilege isActive rejected before read",
+    "self privilege isVerified rejected before read",
+    "self privilege isCorporateEmailVerified rejected before read",
+    "self privilege corporateId rejected before read",
+    "self privilege isCorporateUser rejected before read",
+    "service rejects null body",
+    "service rejects array body",
+    "service rejects string body",
+    "service rejects number body",
+    "invalid missing phone is rejected",
+    "observed duplicate phone is rejected",
+    "stale missing phone cannot overwrite",
+    "invalid missing email is rejected",
+    "observed duplicate email is rejected",
+    "stale missing email cannot overwrite"
+  ],
+  "controls": [
+    {
+      "name": "allow contact replacement",
+      "failures": [
+        "mixed profile edit retains both stored contacts",
+        "malformed ignored contacts cannot block valid other edits",
+        "ignored contact-only self request is no-op",
+        "HR retains corporate profile edit but cannot alter contacts",
+        "HR cannot fill missing contacts"
+      ]
+    },
+    {
+      "name": "reject whole mixed update",
+      "failures": [
+        "mixed profile edit retains both stored contacts",
+        "malformed ignored contacts cannot block valid other edits",
+        "missing email normalizes and remains unverified",
+        "missing phone normalizes supported Indian format",
+        "null and empty contacts may both be filled",
+        "ignored contact-only self request is no-op",
+        "invalid missing phone is rejected",
+        "observed duplicate phone is rejected",
+        "stale missing phone cannot overwrite",
+        "invalid missing email is rejected",
+        "observed duplicate email is rejected",
+        "stale missing email cannot overwrite"
+      ]
+    },
+    {
+      "name": "validate before ignoring contacts",
+      "failures": [
+        "mixed profile edit retains both stored contacts",
+        "malformed ignored contacts cannot block valid other edits",
+        "missing phone normalizes supported Indian format",
+        "null and empty contacts may both be filled"
+      ]
+    },
+    {
+      "name": "remove missing-contact compare-and-set",
+      "failures": [
+        "missing email normalizes and remains unverified",
+        "null and empty contacts may both be filled",
+        "stale missing phone cannot overwrite",
+        "stale missing email cannot overwrite"
+      ]
+    }
+  ],
+  "limits": [
+    "Closed VM whole-service/controller policies with recording dependencies; stripped imports and service decorator",
+    "Joi is a recording stub; schema shape assertions are source-only",
+    "No HTTP/ODM/database/index/concurrent cross-account uniqueness/client/session/release proof"
+  ]
+}

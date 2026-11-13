@@ -1,0 +1,72 @@
+{
+  "status": "PASS",
+  "nominalCases": 23,
+  "restoredCases": 23,
+  "cases": [
+    "manual credit commits exact balance and matching ledger",
+    "manual debit conserves exact paise",
+    "insufficient funds create no ledger",
+    "manual ledger failure rolls back balance then retry succeeds",
+    "manual commands observe prior refund and recharge balances",
+    "observed balance CAS rejects injected stale balance",
+    "inactive wallet blocks new manual command",
+    "invalid money and transaction kinds have no effect",
+    "missing wallet is created inside same transaction",
+    "mixed model connections refuse before transaction allocation",
+    "recharge credits base with exact durable ledger proof once",
+    "recharge ledger failure rolls back all credit and marker",
+    "payment marker failure rolls back ledger and balance",
+    "simulated transaction callback retry creates one recharge credit",
+    "legacy ledger without atomic proof is reconciliation-required",
+    "corrupted proof refuses repeat rather than credit again",
+    "captured owner context currency and exact units are required",
+    "whole WalletService notifies only after committed transaction",
+    "whole WalletService financial failure emits no notification",
+    "notification failure cannot roll back successful wallet command",
+    "new recharge server discount rounds once and derives final",
+    "whole PaymentService repeat verifies atomic credit proof before processed shortcut",
+    "whole PaymentService rejects legacy processed recharge without proof"
+  ],
+  "controls": [
+    {
+      "name": "omit atomic ledger creation",
+      "detectedBy": [
+        "manual credit commits exact balance and matching ledger",
+        "manual debit conserves exact paise",
+        "manual ledger failure rolls back balance then retry succeeds",
+        "manual commands observe prior refund and recharge balances",
+        "recharge credits base with exact durable ledger proof once",
+        "recharge ledger failure rolls back all credit and marker",
+        "simulated transaction callback retry creates one recharge credit",
+        "whole WalletService financial failure emits no notification",
+        "whole PaymentService repeat verifies atomic credit proof before processed shortcut"
+      ]
+    },
+    {
+      "name": "omit observed wallet balance CAS",
+      "detectedBy": [
+        "observed balance CAS rejects injected stale balance"
+      ]
+    },
+    {
+      "name": "accept legacy recharge credit without atomic proof",
+      "detectedBy": [
+        "legacy ledger without atomic proof is reconciliation-required",
+        "whole PaymentService rejects legacy processed recharge without proof"
+      ]
+    },
+    {
+      "name": "restore processed customer recharge bypass",
+      "detectedBy": [
+        "whole PaymentService repeat verifies atomic credit proof before processed shortcut",
+        "whole PaymentService rejects legacy processed recharge without proof"
+      ]
+    }
+  ],
+  "limits": [
+    "Actual whole wallet helper/WalletService/PaymentService and original whole money module with explicit import erasure and recording ports",
+    "Simulated snapshot rollback, callback retry and stale-predicate injection only; no native transaction/concurrency/index proof",
+    "No application/model/driver/config/provider/HTTP/client evaluation",
+    "Manual commands remain per explicit invocation; no new global replay or coupon/funding-budget acceptance"
+  ]
+}

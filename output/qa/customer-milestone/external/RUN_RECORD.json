@@ -1,0 +1,97 @@
+{
+  "schema": "SD-EXTERNAL-BOOKING-RECORDING-1",
+  "cwd": "/private/tmp/sd-customer-milestone-20261113",
+  "environment": {
+    "TMPDIR": "/tmp"
+  },
+  "argv": [
+    "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/test/customer-bookings/external-operations.mjs",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/bookings/services/localOperations.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/externalBookings/services/localOperations.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/externalBookings/services/index.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/payment/services/index.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/externalBookings/services/externalBookingPaymentFinalize.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/common/utils/cancellationWindow.ts",
+    "test/customer-bookings/external-operations.mjs"
+  ],
+  "terminal": {
+    "exitCode": 0,
+    "chunkId": "787273",
+    "wallSeconds": 1.106629042,
+    "invocationsThisAdmission": 1,
+    "totalCampaignInvocations": 3
+  },
+  "nodeSha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+  "runnerSha256": "7e6cb87c00112b0be9bfa2d98712eba38e64611adfc3c2a7d728e18ebe1cbb6a",
+  "sourceSha256": {
+    "src1/modules/bookings/services/localOperations.ts": "e49988179fffe61e903c66eda05588d0547167d2b9825ba29dce655da1d749d0",
+    "src1/modules/externalBookings/services/localOperations.ts": "df175057da6ccebd4e9fc9c0a1c7855ce5f9bf1a0f17a2bd5f8ef356d2e6dd0d",
+    "src1/modules/externalBookings/services/index.ts": "88ba8fb40d16cbb0c6f5f35591c182d2baf362e5cbffe298b6f20dbddc80b1d6",
+    "src1/modules/payment/services/index.ts": "83257cdfa42f407aa08489f71dfe5e76bcb484e7cf99a944118a4c2a1d734fcb",
+    "src1/modules/externalBookings/services/externalBookingPaymentFinalize.ts": "7887fe0718fa64465f9e36b0521a968cb8bf57cfd931c373ce1ab6d3fd6ddaa9",
+    "src1/modules/common/utils/cancellationWindow.ts": "ce98258acdd565477efa0bf872923980b7ac85f2c0aa5202293dd2558a03eeea"
+  },
+  "rawSha256": {
+    "stdout.txt": "51abefdbd607604c2687709d31b7bef683efc9e8b99afe51b32fec8b56234763",
+    "stderr.txt": "ad30c095e4bb730484eb733e70f5d3190212ec7360f2b83b005bcd896c1e2d5e",
+    "exit-status.txt": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+  },
+  "measured": {
+    "nominalCases": 17,
+    "restoredCases": 17,
+    "detectedSourceControls": 3
+  },
+  "preexecutionDecisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_ONE_EXTERNAL_RECORDING_VM_RUN_ONLY",
+      "runnerSHA256": "7e6cb87c00112b0be9bfa2d98712eba38e64611adfc3c2a7d728e18ebe1cbb6a"
+    },
+    {
+      "reviewer": "/root/booking_owner",
+      "role": "Spec",
+      "decision": "APPROVE_ONE_EXTERNAL_BOOKING_RECORDING_VM_RUN_ONLY",
+      "runnerSHA256": "7e6cb87c00112b0be9bfa2d98712eba38e64611adfc3c2a7d728e18ebe1cbb6a"
+    }
+  ],
+  "outcomeReview": "ACCEPTED_TWO_INDEPENDENT_RECORDING_VM_OUTCOMES_ONLY",
+  "earlierAttempts": [
+    {
+      "directory": "attempt-1",
+      "exitCode": 1,
+      "reason": "Harness blanket process guard rejected dormant process.cwd; no cases reached",
+      "record": "ATTEMPT_1_RECORD.json"
+    },
+    {
+      "directory": "attempt-2",
+      "exitCode": 1,
+      "reason": "16 nominal passed; fixture assumed all arbitrary meta hidden, contrary existing list DTO contract",
+      "record": "ATTEMPT_2_RECORD.json"
+    }
+  ],
+  "limits": [
+    "Actual complete external helper/service/PaymentService/finalizer with stripped imports and recording model/repository/provider ports",
+    "Snapshots and serial schedules simulate rollback/retry, not native MongoDB concurrency or provider commit/ACK contracts",
+    "No HTTP/Joi/Mongoose/native index/provider/network/client/clinical/production acceptance",
+    "Whole helper/service/PaymentService/finalizer were evaluated with recording ports; no native database, real provider ACK contract, API/controller/list/receipt campaign or runtime release evidence.",
+    "Owned-detail DTO excludes localEffects and raw externalPayload; existing ordinary meta is preserved by the existing summarized list DTO."
+  ],
+  "stderr": "Expected native stripTypeScriptTypes ExperimentalWarning only; verbatim raw retained.",
+  "outcomeDecisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "ACCEPT_EXTERNAL_BOOKING_RECORDING_VM_OUTCOME_ONLY",
+      "basis": "Personally read all17namedcases/17restored/threecontrols+warningonlystderr+terminalexit0; freshly verified runner/sixsources/rawhashes; both prior harnessfailures retained. Actual finite recordingports only, no native/provider/list/receipt/HTTP acceptance."
+    },
+    {
+      "reviewer": "/root/booking_owner",
+      "role": "Spec (fixture nonauthor; external source author)",
+      "decision": "ACCEPT_EXTERNAL_BOOKING_RECORDING_VM_OUTCOME_ONLY",
+      "basis": "Personally read complete actualstdout/stderr/runrecord: exit0,17nominal+17restored,3concrete sourceweakening controls detected, expected stripTypeScriptTypes warning only. Fresh runner/sixsource/raw hashes verified. Firsttwo failed harness attempts remain preserved. Sourceauthor role disclosed; fixture was independently authored. No actual nativeDB/providerACK/API/controller/list/receipt/client/clinical/financial release acceptance."
+    }
+  ]
+}

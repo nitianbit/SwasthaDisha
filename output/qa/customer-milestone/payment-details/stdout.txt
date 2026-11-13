@@ -1,0 +1,68 @@
+{
+  "status": "PASS",
+  "nominalCases": 33,
+  "restoredCases": 33,
+  "cases": [
+    "unpaid created gateway order is not actual payment",
+    "unpaid failed gateway order is not actual payment",
+    "internal payment is not a gateway charge",
+    "captured payment plus wallet debit reports precise total",
+    "completed wallet refund names actual internal destination",
+    "pending and failed refunds cannot manufacture destination",
+    "zero completed refund retains null destination",
+    "foreign requester denied before financial reads",
+    "admin can read the same truthful projection",
+    "foreign payment userId ffffffffffffffffffffffff denied",
+    "foreign payment userId 111111111111111111111111 denied",
+    "foreign payment context pharmacy_order denied",
+    "foreign payment contextId ffffffffffffffffffffffff denied",
+    "foreign ledger userId denied",
+    "foreign ledger referenceType denied",
+    "foreign ledger referenceId denied",
+    "invalid completed ledger amount -1 denied",
+    "invalid completed ledger amount NaN denied",
+    "invalid completed ledger amount Infinity denied",
+    "invalid completed ledger amount 1.001 denied",
+    "invalid completed ledger amount 1 denied",
+    "unsafe aggregate ledger total denied",
+    "selected payment _id provenance denied",
+    "selected payment currency provenance denied",
+    "selected payment finalAmountPaise provenance denied",
+    "selected payment paymentGateway provenance denied",
+    "selected payment status provenance denied",
+    "missing selected payment cannot silently become zero-paid",
+    "multiple captured attempts are included in historical charged total",
+    "duplicate consistent payment IDs are not charged twice",
+    "duplicate contradictory payment IDs require reconciliation",
+    "bounded payment attempts refuse over-cap history",
+    "query result with foreign attempt cannot leak into summary"
+  ],
+  "controls": [
+    {
+      "name": "allow foreign ledger owner",
+      "detectedBy": [
+        "foreign ledger userId denied"
+      ]
+    },
+    {
+      "name": "label wallet refund as original gateway",
+      "detectedBy": [
+        "completed wallet refund names actual internal destination",
+        "multiple captured attempts are included in historical charged total"
+      ]
+    },
+    {
+      "name": "count unpaid gateway amount as captured",
+      "detectedBy": [
+        "unpaid created gateway order is not actual payment",
+        "unpaid failed gateway order is not actual payment",
+        "admin can read the same truthful projection"
+      ]
+    }
+  ],
+  "limits": [
+    "Actual whole BookingService getter and money helper after strict import erasure with recording repositories",
+    "No actual database predicate evaluation, ledger/native transaction, HTTP, Joi/provider/client evidence",
+    "This getter-only increment does not rerun or extend the earlier41-case local-effects campaign"
+  ]
+}

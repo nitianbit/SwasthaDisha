@@ -398,6 +398,19 @@ const bookingSchema = new Schema<IBooking>(
       type: String,
       trim: true,
     },
+    localEffects: {
+      select: false,
+      type: new Schema({
+        version: { type: Number, required: true, enum: [1] },
+        revision: { type: Number, required: true, min: 0 },
+        setupToken: String, setupDeadlineMs: Number, setupFailed: Boolean,
+        heldSlotId: String, followUpParentId: String, followUpHeldByBookingId: String,
+        walletDebitedPaise: Number, walletRefundedPaise: Number,
+        settledPaymentIds: [String], couponPaymentIds: [String], reversedCouponPaymentIds: [String],
+        cancelled: Boolean, refundDestination: { type: String, enum: ['internal_wallet'] },
+      }, { _id: false }),
+      default: undefined,
+    },
     cancellationReason: {
       type: String,
       trim: true,

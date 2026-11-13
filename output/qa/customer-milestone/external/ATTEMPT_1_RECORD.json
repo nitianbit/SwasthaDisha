@@ -1,0 +1,31 @@
+{
+  "outcome": "HARNESS_LOADER_REJECTED_DORMANT_PROCESS_CWD",
+  "exitCode": 1,
+  "runnerSHA256": "a85d433d58366a8f149e69063c3f972e4b765d7714a65673e85899e8d8715a62",
+  "rawFiles": {
+    "stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr.txt": "19dc942253738016078d2e5382085f3522153a16477d93d38008bcb3998a7314",
+    "exit-status.txt": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "external-operations.mjs": "a85d433d58366a8f149e69063c3f972e4b765d7714a65673e85899e8d8715a62"
+  },
+  "limitation": "No nominal test reached; no application/provider/native effects",
+  "preexecutionDecisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_ONE_EXTERNAL_RECORDING_VM_RUN_ONLY",
+      "runnerSHA256": "a85d433d58366a8f149e69063c3f972e4b765d7714a65673e85899e8d8715a62"
+    },
+    {
+      "reviewer": "/root/booking_owner",
+      "role": "Spec",
+      "decision": "APPROVE_ONE_EXTERNAL_BOOKING_RECORDING_VM_RUN_ONLY",
+      "runnerSHA256": "a85d433d58366a8f149e69063c3f972e4b765d7714a65673e85899e8d8715a62"
+    }
+  ],
+  "terminal": {
+    "exitCode": 1,
+    "chunkId": "6a7c04",
+    "wallSeconds": 0.107566292
+  }
+}

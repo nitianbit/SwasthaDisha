@@ -1,0 +1,121 @@
+{
+  "status": "PASS",
+  "compilerVersion": "5.9.3",
+  "compilerSha256": "3ae902c92cc44dace175c0e69e13a4b0899f6983c6121d76b9ab8dd5795e7675",
+  "results": [
+    {
+      "path": "src1/modules/auth/services/index.ts",
+      "emittedBytes": 30108,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/bookings/controller/index.ts",
+      "emittedBytes": 17809,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/bookings/model/index.ts",
+      "emittedBytes": 9162,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/bookings/services/index.ts",
+      "emittedBytes": 54854,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/bookings/services/localOperations.ts",
+      "emittedBytes": 28156,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/bookings/types/index.ts",
+      "emittedBytes": 77,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/common/utils/cancellationWindow.ts",
+      "emittedBytes": 3209,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/externalBookings/controller/index.ts",
+      "emittedBytes": 25818,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/externalBookings/model/index.ts",
+      "emittedBytes": 3715,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/externalBookings/repository/index.ts",
+      "emittedBytes": 14544,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/externalBookings/routes/index.ts",
+      "emittedBytes": 7903,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/externalBookings/services/externalBookingPaymentFinalize.ts",
+      "emittedBytes": 17662,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/externalBookings/services/index.ts",
+      "emittedBytes": 125437,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/externalBookings/services/localOperations.ts",
+      "emittedBytes": 29975,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/externalBookings/types/index.ts",
+      "emittedBytes": 330,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/payment/services/index.ts",
+      "emittedBytes": 53721,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/user/controller/index.ts",
+      "emittedBytes": 6486,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/user/routes/index.ts",
+      "emittedBytes": 1343,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/user/services/index.ts",
+      "emittedBytes": 12786,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/user/validation/index.ts",
+      "emittedBytes": 7106,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/wallet/services/index.ts",
+      "emittedBytes": 11282,
+      "errors": []
+    },
+    {
+      "path": "src1/modules/wallet/services/localOperations.ts",
+      "emittedBytes": 8957,
+      "errors": []
+    }
+  ],
+  "limits": [
+    "Syntax-only TypeScript transpileModule with output held in memory",
+    "No semantic typecheck, dependency resolution, root build/start or application/model/provider evaluation"
+  ]
+}

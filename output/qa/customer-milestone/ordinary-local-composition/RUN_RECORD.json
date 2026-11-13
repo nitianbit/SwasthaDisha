@@ -1,0 +1,78 @@
+{
+  "schema": "SD-ORDINARY-FINAL-COMPOSITION-RECORDING-RUN-1",
+  "sourceBaseline": "9c8d1d8f6ecda8d0832f9294c4b1b7a6fdf7077c",
+  "cwd": "/private/tmp/sd-customer-milestone-20261113",
+  "environment": {
+    "TMPDIR": "/tmp"
+  },
+  "argv": [
+    "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/test/customer-bookings/local-operations.mjs",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/bookings/services/localOperations.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/bookings/services/index.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/payment/services/index.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/bookings/utils/lifecycle.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/common/utils/cancellationWindow.ts",
+    "test/customer-bookings/local-operations.mjs"
+  ],
+  "terminal": {
+    "exitCode": 0,
+    "chunkId": "2c80f6",
+    "wallSeconds": 0.667847833,
+    "invocations": 1
+  },
+  "nodeSha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+  "runnerSha256": "61d997514a91c9ed6188c3558cb6678eb516a837926cf0e861a2bcaf7cc319f2",
+  "sourceSha256": {
+    "src1/modules/bookings/services/localOperations.ts": "e49988179fffe61e903c66eda05588d0547167d2b9825ba29dce655da1d749d0",
+    "src1/modules/bookings/services/index.ts": "8840273e12c67b59a82e95be64dbb747edbc73ea0a07566d9ccaa6c689766997",
+    "src1/modules/payment/services/index.ts": "83257cdfa42f407aa08489f71dfe5e76bcb484e7cf99a944118a4c2a1d734fcb",
+    "src1/modules/bookings/utils/lifecycle.ts": "8551c300b245d98ad730f1cd09912f4e83b58e56adceb0e8421eea574480df44",
+    "src1/modules/common/utils/cancellationWindow.ts": "ce98258acdd565477efa0bf872923980b7ac85f2c0aa5202293dd2558a03eeea"
+  },
+  "rawSha256": {
+    "stdout.txt": "227101e538a200f45751cd431ef2f8685a5ed2519853a6da6d430ae611b50a25",
+    "stderr.txt": "9d9689887d6603f88a8eb51d8b3a5f875228bbcef7df71a3ef291152b29d167f"
+  },
+  "measured": {
+    "nominalCases": 41,
+    "restoredCases": 41,
+    "detectedWholeSourceControls": 4
+  },
+  "preexecutionDecisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_ONE_FINAL_ORDINARY_COMPOSITION_RECORDING_VM_RUN_ONLY"
+    },
+    {
+      "reviewer": "/root/booking_owner",
+      "role": "Spec",
+      "decision": "APPROVE_ONE_FINAL_ORDINARY_COMPOSITION_RECORDING_VM_RUN_ONLY"
+    }
+  ],
+  "outcomeReview": "ROOT_AND_SPEC_ACCEPTED_RECORDING_VM_OUTCOME_ONLY",
+  "limits": [
+    "Whole local-effects helper, lifecycle and relevant whole BookingService/PaymentService methods under fixed stripped-import recording ports",
+    "Model/session adapter enforces select:false localEffects, same owned session, snapshot rollback and simulated callback retry",
+    "Schedules are serial recording scenarios, not native MongoDB concurrency/isolation/capacity evidence",
+    "ExternalBookingLocalOperations and WalletLocalOperations are blocked constructor ports; no external-booking or recharge methods/effects are evaluated",
+    "No real Mongoose/Joi/HTTP/database/index/provider/SDK/config/client/session/production acceptance"
+  ],
+  "stderr": "Only expected native stripTypeScriptTypes ExperimentalWarning retained verbatim.",
+  "outcomeDecisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "ACCEPT_FINAL_ORDINARY_COMPOSITION_RECORDING_VM_OUTCOME_ONLY",
+      "basis": "Personally read complete actual41caseIDs/41restored, four weakening controls detected, exit0, nativeexperimentalwarningonly. Exact final source composition, external/wallet constructors blocked."
+    },
+    {
+      "reviewer": "/root/booking_owner",
+      "role": "Spec",
+      "decision": "ACCEPT_FINAL_ORDINARY_COMPOSITION_RECORDING_VM_OUTCOME_ONLY",
+      "basis": "Personally read complete raw stdout/stderr and run record: exit0,41 nominal/41 restored, four concrete whole-source weakening detections, only expected stripTypeScriptTypes warning. Fresh runner/source/raw hashes match. External/wallet constructors remain blocked; no native database/provider/HTTP/Joi/index or concurrency acceptance."
+    }
+  ]
+}

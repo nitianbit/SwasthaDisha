@@ -18,9 +18,12 @@ import { getTodayYyyymmdd } from '@/modules/common/utils/dateUtils';
 import { NotificationService } from '@/modules/notification/services';
 import { PaymentService } from '@/modules/payment/services';
 import { CouponService } from '@/modules/coupon/services';
+import { WalletLocalOperations } from './localOperations';
+import { bookingMoneyPaise } from '@/modules/bookings/services/localOperations';
 
 @Service()
 export class WalletService {
+  private readonly localOperations = new WalletLocalOperations();
   constructor(
     private walletRepository: WalletRepository,
     private walletTransactionRepository: WalletTransactionRepository,
@@ -155,55 +158,8 @@ export class WalletService {
   async addTransaction(
     data: CreateWalletTransactionRequest
   ): Promise<IWalletTransaction> {
-    // Get or create wallet
-    let wallet = await this.walletRepository.findByUserId(data.userId);
-    if (!wallet) {
-      wallet = await this.create({ userId: data.userId, initialBalance: 0 });
-    }
-
-    if (!wallet.isActive) {
-      throw new AppError({
-        status: 400,
-        code: 'WALLET_INACTIVE',
-        message: 'Wallet is not active',
-      });
-    }
-
-    const balanceBefore = wallet.balance;
-    let balanceAfter = balanceBefore;
-
-    // Calculate new balance based on transaction type
-    if (data.transactionType === 'credit' || data.transactionType === 'refund' || data.transactionType === 'cashback' || data.transactionType === 'promotion') {
-      balanceAfter = balanceBefore + data.amount;
-    } else if (data.transactionType === 'debit') {
-      if (balanceBefore < data.amount) {
-        throw new AppError({
-          status: 400,
-          code: 'INSUFFICIENT_BALANCE',
-          message: 'Insufficient wallet balance',
-        });
-      }
-      balanceAfter = balanceBefore - data.amount;
-    }
-
-    // Create transaction
-    const transaction = await this.walletTransactionRepository.save({
-      userId: data.userId,
-      walletId: wallet._id!,
-      transactionType: data.transactionType,
-      amount: data.amount,
-      balanceBefore,
-      balanceAfter,
-      status: 'completed',
-      referenceType: data.referenceType,
-      referenceId: data.referenceId,
-      description: data.description,
-      notes: data.notes,
-      transactionDate: data.transactionDate || getTodayYyyymmdd(),
-    });
-
-    // Update wallet balance
-    await this.walletRepository.update({ _id: wallet._id! }, { balance: balanceAfter });
+    const transaction = await this.localOperations.addTransaction(data);
+    const { balanceBefore, balanceAfter } = transaction;
 
     // Create notification for wallet credit transactions
     if (data.transactionType === 'credit' || data.transactionType === 'refund' || data.transactionType === 'cashback' || data.transactionType === 'promotion') {
@@ -302,6 +258,7 @@ export class WalletService {
     couponCode?: string;
     currency: string;
   }> {
+    const basePaise = bookingMoneyPaise(data.amount);
     let discountAmount = 0;
     let finalAmount = data.amount;
     let couponCode: string | undefined;
@@ -326,6 +283,14 @@ export class WalletService {
       couponCode = couponValidation.coupon?.code;
     }
 
+    // Normalize only a new server-calculated discount; stored funding stays strictly validated.
+    const discountPaise = typeof discountAmount === 'number' && Number.isFinite(discountAmount) && discountAmount >= 0
+      ? Math.round(discountAmount * 100) : NaN;
+    if (!Number.isSafeInteger(discountPaise) || discountPaise < 0 || discountPaise > basePaise) {
+      throw new AppError({ status: 409, code: 'WALLET_RECONCILIATION_REQUIRED', message: 'Calculated recharge discount is invalid' });
+    }
+    discountAmount = discountPaise / 100;
+    finalAmount = (basePaise - discountPaise) / 100;
     if (finalAmount <= 0) {
       throw new AppError({
         status: 400,

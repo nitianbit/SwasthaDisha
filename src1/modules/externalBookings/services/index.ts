@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import { Service } from 'typedi';
+import { ExternalBookingLocalOperations, publicExternalBooking } from './localOperations';
+import { bookingMoneyPaise } from '@/modules/bookings/services/localOperations';
+import { enforceUserCancellationWindow } from '@/modules/common/utils/cancellationWindow';
 
 import { CONFIG } from '@/config/config';
 import {
@@ -95,7 +98,7 @@ export interface ExternalDiagnosticsReportDocumentResult {
 
 @Service()
 export class ExternalBookingService {
-  private static readonly WEBHOOK_TIME_ZONE = 'Asia/Kolkata';
+  private readonly localOperations = new ExternalBookingLocalOperations();
 
   private readonly defaultIntegration: ExternalIntegration =
     CONFIG.EXTERNAL_BOOKING_DEFAULT_INTEGRATION || 'labstack';
@@ -107,7 +110,7 @@ export class ExternalBookingService {
     private couponService: CouponService,
     private paymentService: PaymentService,
     private paymentRepository: PaymentRepository,
-    private walletRepository: WalletRepository,
+    _walletRepository: WalletRepository,
     private walletTransactionRepository: WalletTransactionRepository,
     private userRepository: UserRepository,
     private emailService: EmailService,
@@ -171,243 +174,11 @@ export class ExternalBookingService {
     }
   }
 
-  private templateForExternalBookingStatus(
-    status?: string
-  ): ExternalBookingEmailTemplate | undefined {
-    const normalized = (status || '').trim().toLowerCase();
-    switch (normalized) {
-      case 'pending':
-        return 'CREATED';
-      case 'confirmed':
-      case 'booked':
-      case 'scheduled':
-        return 'ORDER_SCHEDULED';
-      case 'rescheduled':
-        return 'RESCHEDULED';
-      case 'phlebo_assigned':
-        return 'PHLEBO_ASSIGNED';
-      case 'report_delivered':
-        return 'REPORT_DELIVERED';
-      case 'cancelled':
-      case 'canceled':
-        return 'CANCELED';
-      default:
-        return undefined;
-    }
-  }
-
-  private async validateWalletIfRequested(
-    userId: string,
-    useWalletBalance?: boolean
-  ): Promise<void> {
-    if (!useWalletBalance) {
-      return;
-    }
-
-    const wallet = await this.walletRepository.findByUserId(userId);
-    if (wallet && !wallet.isActive) {
-      throw new AppError({
-        status: 400,
-        code: 'WALLET_INACTIVE',
-        message: 'Wallet is not active',
-      });
-    }
-  }
-
-  private async getOrCreateActiveWallet(userId: string) {
-    let wallet = await this.walletRepository.findByUserId(userId);
-
-    if (!wallet) {
-      wallet = await this.walletRepository.save({
-        userId,
-        balance: 0,
-        isActive: true,
-      });
-    }
-
-    if (!wallet.isActive) {
-      throw new AppError({
-        status: 400,
-        code: 'WALLET_INACTIVE',
-        message: 'Wallet is not active',
-      });
-    }
-
-    return wallet;
-  }
-
-  private async computeExternalBookingRefundAmount(
-    booking: IExternalBooking
-  ): Promise<number> {
-    const id = String(booking._id!);
-
-    if (booking.paymentTransactionId) {
-      const paymentRecord = await this.paymentRepository.findById(
-        booking.paymentTransactionId
-      );
-      if (
-        paymentRecord &&
-        paymentRecord.context === 'external_booking' &&
-        String(paymentRecord.contextId) === id
-      ) {
-        const walletDeductedAmount = Number(
-          paymentRecord.notes?.walletDeductedAmount || 0
-        );
-        const gatewayPaidAmount =
-          paymentRecord.status === 'paid'
-            ? Number(paymentRecord.finalAmount || 0)
-            : 0;
-        return walletDeductedAmount + gatewayPaidAmount;
-      }
-    }
-
-    const txs = await this.walletTransactionRepository.findByReference(
-      'external_booking',
-      id
-    );
-    const debits = txs.filter(
-      (t) => t.transactionType === 'debit' && t.status === 'completed'
-    );
-    return debits.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-  }
-
-  /** Wallet (+ paid gateway via payment row) refund; idempotent. */
-  private async refundExternalBookingAmountToWallet(
-    booking: IExternalBooking
-  ): Promise<number> {
-    const id = String(booking._id!);
-
-    const existingStandard = await this.walletTransactionRepository.findOne({
-      userId: booking.userId,
-      transactionType: 'refund',
-      referenceType: 'external_booking',
-      referenceId: id,
-      status: 'completed',
-    });
-    if (existingStandard) {
-      return Number(existingStandard.amount || 0);
-    }
-
-    const legacyTimeout = await this.walletTransactionRepository.findOne({
-      referenceType: 'external_booking_timeout_refund',
-      referenceId: id,
-    });
-    if (legacyTimeout) {
-      return Number(legacyTimeout.amount || 0);
-    }
-
-    const paymentRecord = booking.paymentTransactionId
-      ? await this.paymentRepository.findById(booking.paymentTransactionId)
-      : null;
-    const refundAmount = await this.computeExternalBookingRefundAmount(booking);
-    if (refundAmount > 0) {
-      const wallet = await this.getOrCreateActiveWallet(booking.userId);
-      const balanceBefore = wallet.balance;
-      const balanceAfter = balanceBefore + refundAmount;
-
-      await this.walletTransactionRepository.save({
-        userId: booking.userId,
-        walletId: wallet._id!,
-        transactionType: 'refund',
-        amount: refundAmount,
-        balanceBefore,
-        balanceAfter,
-        status: 'completed',
-        referenceType: 'external_booking',
-        referenceId: id,
-        description: 'Refund for external booking',
-        transactionDate: getTodayYyyymmdd(),
-      });
-
-      await this.walletRepository.update(
-        { _id: wallet._id! },
-        { balance: balanceAfter }
-      );
-    }
-
-    if (booking.paymentTransactionId) {
-      if (
-        paymentRecord &&
-        paymentRecord.context === 'external_booking' &&
-        String(paymentRecord.contextId) === id &&
-        paymentRecord.status === 'paid'
-      ) {
-        if (paymentRecord.couponCode && paymentRecord.isProcessed) {
-          try {
-            const coupon = await this.couponService.getByCode(paymentRecord.couponCode);
-            await this.couponService.decrementUsage(coupon._id!);
-          } catch (error) {
-            logger.error('[ExternalBooking] failed to reverse coupon usage on refund', {
-              bookingId: id,
-              paymentTransactionId: paymentRecord._id,
-              couponCode: paymentRecord.couponCode,
-              error: error instanceof Error ? error.message : String(error),
-            });
-          }
-        }
-
-        await this.paymentRepository.update(
-          { _id: paymentRecord._id! },
-          { status: 'refunded', isProcessed: true }
-        );
-      }
-    }
-
-    return refundAmount;
-  }
-
-  private getBookingMeta(
-    booking: Pick<IExternalBooking, 'meta'>
-  ): Record<string, unknown> {
-    return booking.meta &&
-      typeof booking.meta === 'object' &&
-      !Array.isArray(booking.meta)
-      ? { ...(booking.meta as Record<string, unknown>) }
-      : {};
-  }
-
-  private async markExternalBookingConfirmationPending(
-    booking: IExternalBooking,
-    message: string
-  ): Promise<IExternalBooking> {
-    logger.error('[ExternalBooking] marked confirmation pending', {
-      bookingId: booking._id,
-      paymentTransactionId: booking.paymentTransactionId,
-      previousStatus: booking.status,
-      previousPaymentStatus: booking.paymentStatus,
-      error: message,
-    });
-    const priorMeta = this.getBookingMeta(booking);
-
-    const updated = await this.externalBookingRepository.update(
-      { _id: String(booking._id) },
-      {
-        status: 'pending',
-        paymentStatus: 'paid',
-        meta: {
-          ...priorMeta,
-          paymentConfirmationPendingAt:
-            (priorMeta.paymentConfirmationPendingAt as string | undefined) ||
-            new Date().toISOString(),
-          paymentConfirmationError: message,
-        },
-      }
-    );
-
-    if (!updated) {
-      throw new AppError({
-        status: 500,
-        code: 'EXTERNAL_BOOKING_UPDATE_FAILED',
-        message: 'Failed to mark external booking confirmation as pending',
-      });
-    }
-
-    await this.sendExternalBookingEmailNotification(
-      updated as IExternalBooking,
-      'CREATED'
-    );
-
-    return updated as IExternalBooking;
+  private async markExternalBookingConfirmationPending(booking: IExternalBooking, _message: string): Promise<IExternalBooking> {
+    // The attempt adapter already persisted the unknown result. Never rewrite a concurrent cancellation.
+    const current = await this.externalBookingRepository.findById(String(booking._id));
+    if (!current) throw new AppError({ status: 404, code: 'EXTERNAL_BOOKING_NOT_FOUND', message: 'External booking not found' });
+    return publicExternalBooking(current as IExternalBooking);
   }
 
   private isRecoverablePaidBookingTimeout(error: unknown): boolean {
@@ -442,17 +213,6 @@ export class ExternalBookingService {
       isProcessed: paymentRecord.isProcessed,
     });
 
-    if (paymentRecord.isProcessed) {
-      return {
-        booking,
-        paymentRequired: false,
-        walletDeductedAmount: Number(
-          paymentRecord.notes?.walletDeductedAmount ?? 0
-        ),
-        fulfillmentState: 'completed',
-      };
-    }
-
     try {
       const recovered = await this.paymentService.recoverExternalBookingPayment(
         paymentRecord
@@ -467,7 +227,7 @@ export class ExternalBookingService {
         walletDeductedAmount: Number(
           paymentRecord.notes?.walletDeductedAmount ?? 0
         ),
-        fulfillmentState: 'completed',
+        fulfillmentState: await this.localOperations.fulfillmentState(String(booking._id)),
       };
     } catch (error) {
       if (!this.isRecoverablePaidBookingTimeout(error)) {
@@ -497,59 +257,10 @@ export class ExternalBookingService {
   }
 
   private async deductWalletForExternal(params: {
-    userId: string;
-    externalBookingId: string;
-    amountToDeductFromWallet: number;
-    useWalletBalance?: boolean;
+    userId: string; externalBookingId: string; setupToken: string; amountToDeductFromWallet: number; useWalletBalance?: boolean;
   }): Promise<number> {
-    if (!params.useWalletBalance || params.amountToDeductFromWallet <= 0) {
-      return 0;
-    }
-
-    const wallet = await this.walletRepository.findByUserId(params.userId);
-    if (!wallet) {
-      return 0;
-    }
-
-    if (!wallet.isActive) {
-      throw new AppError({
-        status: 400,
-        code: 'WALLET_INACTIVE',
-        message: 'Wallet is not active',
-      });
-    }
-
-    const walletDeductedAmount = Math.min(
-      wallet.balance,
-      params.amountToDeductFromWallet
-    );
-    if (walletDeductedAmount <= 0) {
-      return 0;
-    }
-
-    const balanceBefore = wallet.balance;
-    const balanceAfter = balanceBefore - walletDeductedAmount;
-
-    await this.walletTransactionRepository.save({
-      userId: params.userId,
-      walletId: wallet._id!,
-      transactionType: 'debit',
-      amount: walletDeductedAmount,
-      balanceBefore,
-      balanceAfter,
-      status: 'completed',
-      referenceType: 'external_booking',
-      referenceId: params.externalBookingId,
-      description: 'Wallet used for external booking payment',
-      transactionDate: getTodayYyyymmdd(),
-    });
-
-    await this.walletRepository.update(
-      { _id: wallet._id! },
-      { balance: balanceAfter }
-    );
-
-    return walletDeductedAmount;
+    if (!params.useWalletBalance || params.amountToDeductFromWallet <= 0) return 0;
+    return this.localOperations.debitWallet(params.externalBookingId, params.userId, params.setupToken, params.amountToDeductFromWallet);
   }
 
   /** Shared by create (pay now) and retry-payment (pay later). */
@@ -571,152 +282,51 @@ export class ExternalBookingService {
   }
 
   private async finalizeExternalPaymentSettlement(params: {
-    userId: string;
-    bookingId: string;
-    grossAmount: number;
-    discountAmount: number;
-    couponCode?: string;
-    /** Wallet already debited on a prior attempt (e.g. first create); not debited again */
-    walletAlreadyApplied: number;
-    attemptUseWalletBalance?: boolean;
-    orderNotes: Record<string, unknown>;
+    userId: string; bookingId: string; grossAmount: number; discountAmount: number; couponCode?: string;
+    walletAlreadyApplied: number; attemptUseWalletBalance?: boolean; orderNotes: Record<string, unknown>;
   }): Promise<ExternalBookingPaymentInitResponse> {
-    await this.validateWalletIfRequested(
-      params.userId,
-      params.attemptUseWalletBalance
-    );
-
-    const discountedAmount = Math.max(0, params.grossAmount - params.discountAmount);
-
-    let extraWallet = 0;
-    if (params.attemptUseWalletBalance) {
-      const room = Math.max(0, discountedAmount - params.walletAlreadyApplied);
-      if (room > 0) {
-        extraWallet = await this.deductWalletForExternal({
-          userId: params.userId,
-          externalBookingId: params.bookingId,
-          amountToDeductFromWallet: room,
-          useWalletBalance: true,
-        });
+    const setup = await this.localOperations.beginSetup(params.bookingId, { _id: params.userId, userType: 'user' });
+    const token = setup.localEffects!.setupToken!;
+    let failed = true;
+    let linked: IExternalBooking;
+    let payment: Awaited<ReturnType<PaymentService['createDirectPaidTransaction']>>;
+    let response: ExternalBookingPaymentInitResponse;
+    try {
+      const gross = bookingMoneyPaise(params.grossAmount) - bookingMoneyPaise(params.discountAmount);
+      const prior = setup.localEffects!.walletDebitedPaise;
+      if (gross < prior) throw new AppError({ status: 409, code: 'EXTERNAL_BOOKING_RECONCILIATION_REQUIRED', message: 'Existing wallet funding exceeds this price' });
+      const extra = await this.deductWalletForExternal({ userId: params.userId, externalBookingId: params.bookingId,
+        setupToken: token, amountToDeductFromWallet: (gross - prior) / 100, useWalletBalance: params.attemptUseWalletBalance });
+      const wallet = prior + bookingMoneyPaise(extra);
+      const payable = (gross - wallet) / 100;
+      const notes = { ...params.orderNotes, walletDeductedAmount: wallet / 100, grossAmount: params.grossAmount,
+        discountAmount: params.discountAmount, payableAfterCoupon: gross / 100 };
+      if (payable <= 0) {
+        payment = await this.paymentService.createDirectPaidTransaction({ userId: params.userId, context: 'external_booking',
+          contextId: params.bookingId, baseAmount: params.grossAmount, discountAmount: params.discountAmount,
+          finalAmount: 0, couponCode: params.couponCode, isProcessed: false, notes });
+        linked = await this.localOperations.attachPayment(params.bookingId, token, payment._id!);
+        response = { booking: publicExternalBooking(linked), paymentRequired: false, walletDeductedAmount: wallet / 100 };
+      } else {
+        const order = await this.paymentService.createOrder({ userId: params.userId, context: 'external_booking',
+          contextId: params.bookingId, baseAmount: params.grossAmount, discountAmount: params.discountAmount,
+          finalAmount: payable, couponCode: params.couponCode, notes });
+        payment = order.paymentRecord;
+        linked = await this.localOperations.attachPayment(params.bookingId, token, payment._id!);
+        response = { booking: publicExternalBooking(linked), paymentRequired: true, walletDeductedAmount: wallet / 100,
+          payment: { paymentTransactionId: payment._id!, razorpayOrderId: order.razorpayOrder.id,
+            razorpayKeyId: order.razorpayKeyId, amount: payable, currency: order.razorpayOrder.currency,
+            baseAmount: params.grossAmount, discountAmount: params.discountAmount, couponCode: params.couponCode,
+            walletDeductedAmount: wallet / 100 } };
       }
+      failed = false;
+    } finally { await this.localOperations.endSetup(params.bookingId, token, failed); }
+    if (!response.paymentRequired) {
+      const recovered = await this.paymentService.recoverExternalBookingPayment(payment!);
+      response.booking = publicExternalBooking(recovered.entity as IExternalBooking);
+      response.fulfillmentState = await this.localOperations.fulfillmentState(params.bookingId);
     }
-
-    const walletTotal = params.walletAlreadyApplied + extraWallet;
-    const payableAfterWallet = Math.max(0, discountedAmount - walletTotal);
-    const notesWithWallet = {
-      ...params.orderNotes,
-      walletDeductedAmount: walletTotal,
-      grossAmount: params.grossAmount,
-      discountAmount: params.discountAmount,
-      payableAfterCoupon: discountedAmount,
-    };
-
-    if (payableAfterWallet <= 0) {
-      const directPaid = await this.paymentService.createDirectPaidTransaction({
-        userId: params.userId,
-        context: 'external_booking',
-        contextId: params.bookingId,
-        baseAmount: params.grossAmount,
-        discountAmount: params.discountAmount,
-        finalAmount: 0,
-        couponCode: params.couponCode,
-        isProcessed: false,
-        notes: {
-          ...notesWithWallet,
-          reason:
-            walletTotal > 0
-              ? 'wallet_covered_amount'
-              : 'zero_payable_amount',
-        },
-      });
-
-      await this.externalBookingRepository.update(
-        { _id: params.bookingId },
-        {
-          paymentTransactionId: directPaid._id!,
-          paymentStatus: 'paid',
-        }
-      );
-
-      try {
-        const recovered =
-          await this.paymentService.recoverExternalBookingPayment(directPaid);
-
-        return {
-          booking: recovered.entity as IExternalBooking,
-          paymentRequired: false,
-          walletDeductedAmount: walletTotal,
-          fulfillmentState: 'completed',
-        };
-      } catch (error) {
-        if (!this.isRecoverablePaidBookingTimeout(error)) {
-          throw error;
-        }
-
-        const latestBooking = await this.externalBookingRepository.findById(
-          params.bookingId
-        );
-        const pendingBooking =
-          await this.markExternalBookingConfirmationPending(
-            (latestBooking || {
-              _id: params.bookingId,
-              paymentTransactionId: directPaid._id!,
-              paymentStatus: 'paid',
-              status: 'pending_payment',
-              meta: {},
-            }) as IExternalBooking,
-            error instanceof Error ? error.message : String(error)
-          );
-
-        return {
-          booking: pendingBooking,
-          paymentRequired: false,
-          walletDeductedAmount: walletTotal,
-          fulfillmentState: 'pending_confirmation',
-        };
-      }
-    }
-
-    const order = await this.paymentService.createOrder({
-      userId: params.userId,
-      context: 'external_booking',
-      contextId: params.bookingId,
-      baseAmount: params.grossAmount,
-      discountAmount: params.discountAmount,
-      finalAmount: payableAfterWallet,
-      couponCode: params.couponCode,
-      notes: notesWithWallet,
-    });
-
-    const booking = await this.externalBookingRepository.update(
-      { _id: params.bookingId },
-      { paymentTransactionId: order.paymentRecord._id! }
-    );
-
-    if (!booking) {
-      throw new AppError({
-        status: 500,
-        code: 'EXTERNAL_BOOKING_UPDATE_FAILED',
-        message: 'Failed to link payment to external booking',
-      });
-    }
-
-    return {
-      booking: booking as IExternalBooking,
-      paymentRequired: true,
-      walletDeductedAmount: walletTotal,
-      payment: {
-        paymentTransactionId: order.paymentRecord._id!,
-        razorpayOrderId: order.razorpayOrder.id,
-        razorpayKeyId: order.razorpayKeyId,
-        amount: payableAfterWallet,
-        currency: order.razorpayOrder.currency,
-        baseAmount: params.grossAmount,
-        discountAmount: params.discountAmount,
-        couponCode: params.couponCode,
-        walletDeductedAmount: walletTotal,
-      },
-    };
+    return response;
   }
 
   private async settleExternalBookingPayment(params: {
@@ -817,7 +427,14 @@ export class ExternalBookingService {
     }
 
     return {
-      discountAmount: couponValidation.discountAmount || 0,
+      discountAmount: (() => {
+        const raw = couponValidation.discountAmount ?? 0;
+        const rounded = typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? Math.round(raw * 100) : NaN;
+        if (!Number.isSafeInteger(rounded) || rounded < 0 || rounded > bookingMoneyPaise(params.grossAmount)) {
+          throw new AppError({ status: 409, code: 'EXTERNAL_BOOKING_RECONCILIATION_REQUIRED', message: 'Calculated external coupon amount is invalid' });
+        }
+        return rounded / 100;
+      })(),
       couponCode: couponValidation.coupon.code,
     };
   }
@@ -1394,7 +1011,7 @@ export class ExternalBookingService {
       paymentRequired,
       fixedPrice,
     });
-    const saved = await this.externalBookingRepository.save(draft);
+    const saved = await this.localOperations.createDraft(draft);
 
     if (paymentRequired) {
       return this.settleExternalBookingPayment({
@@ -1412,19 +1029,21 @@ export class ExternalBookingService {
       });
     }
 
+    const admission = await this.localOperations.beginProvider(String(saved._id));
     try {
       const booking = await this.applyLabstackConsultationToDraft(
         saved as IExternalBooking,
         data,
         effectiveSlotTime,
-        integration
+        integration,
+        admission.token!
       );
       await this.sendExternalBookingEmailNotification(
         booking,
         'ORDER_SCHEDULED'
       );
       return {
-        booking,
+        booking: publicExternalBooking(booking),
         paymentRequired: false,
         walletDeductedAmount: 0,
       };
@@ -1438,7 +1057,7 @@ export class ExternalBookingService {
         pincode: data.pincode,
         error: err instanceof Error ? err.message : String(err),
       });
-      await this.externalBookingRepository.delete({ _id: String(saved._id) });
+      await this.localOperations.failProvider(String(saved._id), admission.token!, err instanceof Error ? err.message : String(err));
       throw err;
     }
   }
@@ -1500,8 +1119,10 @@ export class ExternalBookingService {
     draft: IExternalBooking,
     data: CreateExternalBookingRequest,
     effectiveSlotTime: string,
-    integration: ExternalIntegration
+    integration: ExternalIntegration,
+    providerToken: string
   ): Promise<IExternalBooking> {
+    await this.localOperations.assertProviderAttempt(String(draft._id), providerToken);
     const splitName = this.splitName(data.patientName);
     const uniqueId = this.buildLabstackUniqueId({
       name: data.patientName,
@@ -1554,8 +1175,8 @@ export class ExternalBookingService {
         ? (draft.meta as Record<string, unknown>)
         : {};
 
-    const updated = await this.externalBookingRepository.update(
-      { _id: String(draft._id) },
+    const updated = await this.localOperations.recordProviderResult(
+      String(draft._id), providerToken,
       {
         externalProviderId:
           result.externalProviderId || data.externalProviderId || '',
@@ -1607,12 +1228,8 @@ export class ExternalBookingService {
       paymentRequired,
       total: payableTotal,
     });
-    const saved = await this.externalBookingRepository.save(draft);
-    const prepared = await this.freezeHealthiansDiagnosticsSlotIfNeeded(
-      saved as IExternalBooking,
-      data,
-      integration
-    );
+    const saved = await this.localOperations.createDraft(draft);
+    const prepared = saved;
 
     if (paymentRequired) {
       return this.settleExternalBookingPayment({
@@ -1630,18 +1247,20 @@ export class ExternalBookingService {
       });
     }
 
+    const admission = await this.localOperations.beginProvider(String(prepared._id));
     try {
       const booking = await this.applyDiagnosticsOrderToDraft(
         prepared as IExternalBooking,
         data,
-        integration
+        integration,
+        admission.token!
       );
       await this.sendExternalBookingEmailNotification(
         booking,
         'ORDER_SCHEDULED'
       );
       return {
-        booking,
+        booking: publicExternalBooking(booking),
         paymentRequired: false,
         walletDeductedAmount: 0,
       };
@@ -1657,7 +1276,7 @@ export class ExternalBookingService {
         longitude: data.longitude,
         error: err instanceof Error ? err.message : String(err),
       });
-      await this.externalBookingRepository.delete({ _id: String(prepared._id) });
+      await this.localOperations.failProvider(String(prepared._id), admission.token!, err instanceof Error ? err.message : String(err));
       throw err;
     }
   }
@@ -1759,49 +1378,18 @@ export class ExternalBookingService {
     };
   }
 
-  private async freezeHealthiansDiagnosticsSlotIfNeeded(
-    booking: IExternalBooking,
-    data: CreateExternalDiagnosticsBookingRequest,
-    integration: ExternalIntegration
-  ): Promise<IExternalBooking> {
-    if (integration !== 'healthians' || !data.stmId?.trim()) {
-      return booking;
-    }
 
-    const freezeResponse = await this.healthiansService.freezeDiagnosticsSlot({
-      stmId: data.stmId.trim(),
-      vendorBillingUserId: data.userId,
-    });
-
-    const priorMeta =
-      booking.meta && typeof booking.meta === 'object' && !Array.isArray(booking.meta)
-        ? (booking.meta as Record<string, unknown>)
-        : {};
-
-    const updated = await this.externalBookingRepository.update(
-      { _id: String(booking._id) },
-      {
-        externalSlotRef: data.stmId.trim(),
-        meta: {
-          ...priorMeta,
-          vendorBillingUserId: data.userId,
-          frozenHealthiansSlot: {
-            stmId: data.stmId.trim(),
-            response: freezeResponse,
-            frozenAt: new Date().toISOString(),
-          },
-        },
-      }
-    );
-
-    return (updated || booking) as IExternalBooking;
-  }
 
   private async applyDiagnosticsOrderToDraft(
     draft: IExternalBooking,
     data: CreateExternalDiagnosticsBookingRequest,
-    integration: ExternalIntegration
+    integration: ExternalIntegration,
+    providerToken: string
   ): Promise<IExternalBooking> {
+    await this.localOperations.assertProviderAttempt(String(draft._id), providerToken);
+    if (integration === 'healthians' && data.stmId?.trim()) {
+      await this.healthiansService.freezeDiagnosticsSlot({ stmId: data.stmId.trim(), vendorBillingUserId: data.userId });
+    }
     const uniqueId = this.buildLabstackUniqueId({
       name: data.patientName,
       mobile: data.patientPhone,
@@ -1900,8 +1488,8 @@ export class ExternalBookingService {
         ? this.extractLabstackLabLocationMeta(result.payload)
         : {};
 
-    const updated = await this.externalBookingRepository.update(
-      { _id: String(draft._id) },
+    const updated = await this.localOperations.recordProviderResult(
+      String(draft._id), providerToken,
       {
         externalProviderId:
           data.labId?.trim() || (integration === 'healthians' ? 'healthians' : 'labstack'),
@@ -1976,168 +1564,30 @@ export class ExternalBookingService {
     };
   }
 
-  async cancelBooking(
-    id: string,
-    actor: ExternalBookingActor,
-    data: CancelExternalBookingRequest,
-    _kind: ExternalBookingKind
-  ): Promise<IExternalBooking> {
-    const booking = await this.getAccessibleBookingIgnoringKind(id, actor);
-    const effectiveKind: ExternalBookingKind =
-      booking.providerType === 'DIAGNOSTICS' ? 'diagnostics' : 'doctor';
-
-    const cancellationReason =
-      data.cancellationReason?.trim() ||
-      data.reason?.trim() ||
-      'Cancelled by user';
-
-    if (booking.status === 'cancelled') {
-      return booking;
-    }
-
-    const cancelledAt = getTodayYyyymmdd();
-    const priorMeta =
-      booking.meta && typeof booking.meta === 'object' && !Array.isArray(booking.meta)
-        ? (booking.meta as Record<string, unknown>)
-        : {};
-
-    const externalAppointmentId = this.getExternalAppointmentId(booking);
-
-    if (
-      !externalAppointmentId &&
-      (booking.status === 'pending_payment' ||
-        (booking.status === 'pending' && booking.paymentStatus === 'paid')) &&
-      (effectiveKind === 'doctor' || effectiveKind === 'diagnostics')
-    ) {
-      const deferProviderCancel =
-        booking.status === 'pending' && booking.paymentStatus === 'paid';
-
-      const updated = await this.externalBookingRepository.update(
-        { _id: id },
-        {
-          status: 'cancelled',
-          paymentStatus: deferProviderCancel ? 'refunded' : 'cancelled',
-          meta: {
-            ...priorMeta,
-            cancellationReason,
-            cancelledAt,
-            ...(deferProviderCancel
-              ? {
-                  cancelRequestedWhileConfirmationPending: true,
-                  cancelRequestedAt: new Date().toISOString(),
-                  needsProviderCancelIfDiscovered: true,
-                }
-              : {}),
-          },
-        }
-      );
-
-      if (!updated) {
-        throw new AppError({
-          status: 500,
-          code: 'EXTERNAL_BOOKING_UPDATE_FAILED',
-          message: 'Failed to cancel pending external booking',
-        });
+  private async finishRequestedCancellation(requested: IExternalBooking): Promise<IExternalBooking> {
+    const effects = requested.localEffects!;
+    const id = String(requested._id);
+    if (effects.providerAttempted && !effects.providerCancelAck) {
+      if (!effects.providerCompleted || !requested.externalBookingId) {
+        throw new AppError({ status: 409, code: 'EXTERNAL_CANCELLATION_PENDING', message: 'Provider outcome is unknown; cancellation needs reconciliation' });
       }
-
-      let finalBooking = updated;
-      try {
-        const refundedAmount =
-          await this.refundExternalBookingAmountToWallet(booking);
-        if (refundedAmount > 0 && finalBooking.paymentStatus !== 'refunded') {
-          finalBooking =
-            (await this.externalBookingRepository.update(
-              { _id: id },
-              { paymentStatus: 'refunded' }
-            )) || finalBooking;
-        }
-      } catch (error) {
-        console.error(
-          'Failed to refund cancelled external booking amount to wallet:',
-          error
-        );
+      const result = await this.cancelProviderIfDiscoveredLater(requested, requested.externalBookingId,
+        String(requested.meta?.cancellationReason || 'Cancelled by user'));
+      if (!this.providerCancellationAcknowledged(requested, requested.externalBookingId, result)) {
+        throw new AppError({ status: 409, code: 'EXTERNAL_CANCELLATION_PENDING', message: 'Provider cancellation acknowledgement is pending' });
       }
-
-      await this.sendExternalBookingEmailNotification(
-        finalBooking as IExternalBooking,
-        'CANCELED'
-      );
-
-      return finalBooking;
+      await this.localOperations.acknowledgeProviderCancellation(id, effects.cancelToken!, requested.externalBookingId);
     }
+    const settled = await this.localOperations.settleCancelled(id, requested.userId);
+    await this.sendExternalBookingEmailNotification(settled, 'CANCELED');
+    return publicExternalBooking(settled);
+  }
 
-    if (!externalAppointmentId) {
-      throw new AppError({
-        status: 400,
-        code: 'EXTERNAL_BOOKING_ID_MISSING',
-        message: 'External booking ID is missing',
-      });
-    }
-
-    const result =
-      booking.integration === 'healthians'
-        ? await this.healthiansService.cancelBooking({
-            bookingId: externalAppointmentId,
-            vendorBillingUserId: this.getHealthiansVendorBillingUserId(booking),
-            reason: cancellationReason,
-            uniqueId: this.getHealthiansVendorCustomerId(booking),
-          })
-        : effectiveKind === 'diagnostics'
-          ? await this.labstackService.cancelOrder({
-              orderId: externalAppointmentId,
-              reason: cancellationReason,
-            })
-          : await this.labstackService.cancelAppointment({
-              appointmentId: externalAppointmentId,
-              reason: cancellationReason,
-            });
-
-    const updated = await this.externalBookingRepository.update(
-      { _id: id },
-      {
-        externalBookingId: booking.externalBookingId || externalAppointmentId,
-        status: result.externalStatus || 'cancelled',
-        meta: {
-          ...priorMeta,
-          cancellationReason,
-          cancelledAt,
-          cancellationResponse: result.payload,
-        },
-      }
-    );
-
-    if (!updated) {
-      throw new AppError({
-        status: 500,
-        code: 'EXTERNAL_BOOKING_UPDATE_FAILED',
-        message: 'Failed to update external booking after cancellation',
-      });
-    }
-
-    let finalBooking = updated;
-    try {
-      const refundedAmount =
-        await this.refundExternalBookingAmountToWallet(booking);
-      if (refundedAmount > 0 && finalBooking.paymentStatus !== 'refunded') {
-        finalBooking =
-          (await this.externalBookingRepository.update(
-            { _id: id },
-            { paymentStatus: 'refunded' }
-          )) || finalBooking;
-      }
-    } catch (error) {
-      console.error(
-        'Failed to refund cancelled external booking amount to wallet:',
-        error
-      );
-    }
-
-    await this.sendExternalBookingEmailNotification(
-      finalBooking as IExternalBooking,
-      'CANCELED'
-    );
-
-    return finalBooking;
+  async cancelBooking(id: string, actor: ExternalBookingActor, data: CancelExternalBookingRequest, _kind: ExternalBookingKind): Promise<IExternalBooking> {
+    const reason = data.cancellationReason?.trim() || data.reason?.trim() || 'Cancelled by user';
+    const requested = await this.localOperations.requestCancellation(id, actor, reason,
+      booking => enforceUserCancellationWindow([{ bookingDate: booking.bookingDate, bookingTime: booking.bookingTime }], actor.userType));
+    return this.finishRequestedCancellation(requested);
   }
 
   private async getAccessibleBookingIgnoringKind(
@@ -2227,91 +1677,37 @@ export class ExternalBookingService {
     }
   }
 
-  private async processStaleUnpaidExternalBookingCancellation(
-    booking: IExternalBooking
-  ): Promise<void> {
-    const id = String(booking._id);
-    const reason = 'Payment not completed within 30 minutes';
-
-    const refundAmount = await this.refundExternalBookingAmountToWallet(booking);
-
-    const externalAppointmentId = this.getExternalAppointmentId(booking);
-    let cancellationLabstackResponse: unknown;
-
-    if (externalAppointmentId?.trim()) {
-      try {
-        const kind: ExternalBookingKind =
-          booking.providerType === 'DIAGNOSTICS' ? 'diagnostics' : 'doctor';
-        const result =
-          booking.integration === 'healthians'
-            ? await this.healthiansService.cancelBooking({
-                bookingId: externalAppointmentId.trim(),
-                vendorBillingUserId: this.getHealthiansVendorBillingUserId(booking),
-                reason,
-                uniqueId: this.getHealthiansVendorCustomerId(booking),
-              })
-            : kind === 'diagnostics'
-              ? await this.labstackService.cancelOrder({
-                  orderId: externalAppointmentId.trim(),
-                  reason,
-                })
-              : await this.labstackService.cancelAppointment({
-                  appointmentId: externalAppointmentId.trim(),
-                  reason,
-                });
-        cancellationLabstackResponse = result.payload;
-      } catch (err) {
-        cancellationLabstackResponse = {
-          error: err instanceof Error ? err.message : String(err),
-        };
-      }
-    }
-
-    const priorMeta =
-      booking.meta && typeof booking.meta === 'object' && !Array.isArray(booking.meta)
-        ? (booking.meta as Record<string, unknown>)
-        : {};
-
-    await this.externalBookingRepository.update(
-      { _id: id },
-      {
-        status: 'cancelled',
-        paymentStatus: 'cancelled',
-        meta: {
-          ...priorMeta,
-          paymentTimeoutCancelledAt: new Date().toISOString(),
-          cancellationReason: reason,
-          ...(refundAmount > 0 ? { paymentTimeoutWalletRefunded: true } : {}),
-          ...(cancellationLabstackResponse !== undefined
-            ? { cancellationResponse: cancellationLabstackResponse }
-            : {}),
-        },
-      }
-    );
+  private async processStaleUnpaidExternalBookingCancellation(booking: IExternalBooking, reason = 'Payment not completed within 30 minutes'): Promise<void> {
+    const requested = await this.localOperations.requestSystemCancellation(String(booking._id), reason, 'unpaid_timeout');
+    await this.finishRequestedCancellation(requested);
   }
 
-  private async processStalePaidConfirmationTimeout(
-    booking: IExternalBooking
-  ): Promise<void> {
-    const id = String(booking._id);
-    const reason = 'Booking confirmation not received within 30 minutes';
+  private async processStalePaidConfirmationTimeout(booking: IExternalBooking): Promise<void> {
+    const requested = await this.localOperations.requestSystemCancellation(String(booking._id), 'Booking confirmation not received within 30 minutes', 'confirmation_timeout');
+    await this.finishRequestedCancellation(requested);
+  }
 
-    const refundAmount = await this.refundExternalBookingAmountToWallet(booking);
-    const priorMeta = this.getBookingMeta(booking);
-
-    await this.externalBookingRepository.update(
-      { _id: id },
-      {
-        status: 'cancelled',
-        paymentStatus: refundAmount > 0 ? 'refunded' : 'cancelled',
-        meta: {
-          ...priorMeta,
-          paymentConfirmationTimedOutAt: new Date().toISOString(),
-          cancellationReason: reason,
-          ...(refundAmount > 0 ? { paymentConfirmationWalletRefunded: true } : {}),
-        },
-      }
-    );
+  private providerCancellationAcknowledged(booking: IExternalBooking, expectedId: string, result: {
+    externalBookingId?: string; externalStatus?: string; payload: unknown;
+  }): boolean {
+    const record = (value: unknown): Record<string, unknown> =>
+      value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+    const raw = record(result.payload); const data = record(raw.data);
+    const records = booking.integration === 'healthians' ? [raw, data]
+      : [raw, data, record(raw.appointment), record(raw.order), record(data.appointment), record(data.order)];
+    const statuses = booking.integration === 'healthians' ? ['status', 'booking_status']
+      : ['status', 'appointmentStatus', 'orderStatus'];
+    const ids = booking.integration === 'healthians' ? ['booking_id', 'bookingId', 'id']
+      : ['appointmentId', 'lsAppointmentId', 'orderId', 'referenceId', 'id'];
+    const cancelled = (value: unknown) => typeof value === 'string' && ['cancelled', 'canceled'].includes(value.trim().toLowerCase());
+    if (!cancelled(result.externalStatus) || (result.externalBookingId !== undefined && result.externalBookingId !== expectedId)) return false;
+    if ([raw, data].some(item => item.success === false || item.status === false || item.status === 0 ||
+        (typeof item.status === 'string' && ['false', '0', 'failed', 'failure', 'error', 'rejected'].includes(item.status.toLowerCase())) ||
+        (booking.integration === 'healthians' && item.resCode !== undefined && item.resCode !== 'RES0001'))) return false;
+    for (const item of records) for (const key of ids) {
+      if (item[key] !== undefined && (typeof item[key] !== 'string' && typeof item[key] !== 'number' || String(item[key]) !== expectedId)) return false;
+    }
+    return records.some(item => statuses.some(key => cancelled(item[key])));
   }
 
   private async cancelProviderIfDiscoveredLater(
@@ -2319,6 +1715,7 @@ export class ExternalBookingService {
     externalBookingId: string,
     reason: string
   ): Promise<{
+    externalBookingId?: string;
     externalStatus?: string;
     payload: unknown;
   }> {
@@ -2344,6 +1741,7 @@ export class ExternalBookingService {
             });
 
     return {
+      externalBookingId: result.externalBookingId,
       externalStatus: result.externalStatus,
       payload: result.payload,
     };
@@ -2366,24 +1764,7 @@ export class ExternalBookingService {
       (kind === 'doctor' || kind === 'diagnostics')
     ) {
       const effectiveBookingTime = this.getEffectiveBookingTime(data);
-      const updated = await this.externalBookingRepository.update(
-        { _id: id },
-        {
-          bookingDate: data.bookingDate,
-          bookingTime: effectiveBookingTime,
-          externalSlotRef: effectiveBookingTime,
-        }
-      );
-
-      if (!updated) {
-        throw new AppError({
-          status: 500,
-          code: 'EXTERNAL_BOOKING_UPDATE_FAILED',
-          message: 'Failed to reschedule pending external booking',
-        });
-      }
-
-      return updated;
+      return publicExternalBooking(await this.localOperations.rescheduleDraft(id, actor, data.bookingDate, effectiveBookingTime));
     }
 
     if (!externalAppointmentId) {
@@ -2408,7 +1789,10 @@ export class ExternalBookingService {
           )
         : undefined;
 
-    const result =
+    const admission = await this.localOperations.beginReschedule(id, actor, externalAppointmentId);
+    let updated: IExternalBooking;
+    try {
+      const result =
       booking.integration === 'healthians'
         ? await this.healthiansService.rescheduleBooking({
             bookingId: externalAppointmentId,
@@ -2429,31 +1813,15 @@ export class ExternalBookingService {
               appointmentTime: appointment,
             });
 
-    const updated = await this.externalBookingRepository.update(
-      { _id: id },
-      {
-        bookingDate: data.bookingDate,
-        bookingTime: effectiveBookingTime,
-        externalBookingId:
-          result.externalBookingId ||
-          booking.externalBookingId ||
-          externalAppointmentId,
-        externalSlotRef: effectiveBookingTime,
-        status: result.externalStatus || 'rescheduled',
-        meta: {
-          ...(booking.meta || {}),
-          rescheduleRequest: data,
-          rescheduleResponse: result.payload,
-        },
-      }
-    );
-
-    if (!updated) {
-      throw new AppError({
-        status: 500,
-        code: 'EXTERNAL_BOOKING_UPDATE_FAILED',
-        message: 'Failed to update external booking after reschedule',
+      updated = await this.localOperations.recordProviderResult(id, admission.token, {
+        bookingDate: data.bookingDate, bookingTime: effectiveBookingTime,
+        externalBookingId: result.externalBookingId || booking.externalBookingId || externalAppointmentId,
+        externalSlotRef: effectiveBookingTime, status: result.externalStatus || 'rescheduled',
+        meta: { externalPayload: result.payload },
       });
+    } catch (error) {
+      await this.localOperations.failProvider(id, admission.token, error instanceof Error ? error.message : String(error));
+      throw error;
     }
 
     await this.sendExternalBookingEmailNotification(updated, 'RESCHEDULED', {
@@ -2461,7 +1829,7 @@ export class ExternalBookingService {
       oldBookingTime,
     });
 
-    return updated;
+    return publicExternalBooking(updated);
   }
 
   private diagnosticsCustomerId(actor: unknown): unknown {
@@ -2482,6 +1850,11 @@ export class ExternalBookingService {
 
   async getCustomerDiagnosticsHistory(actor: unknown, query: unknown): Promise<CustomerDiagnosticsHistoryPage> {
     return this.externalBookingRepository.findCustomerDiagnosticsHistory(this.diagnosticsCustomerId(actor), query);
+  }
+
+  async getBookingById(id: string, actor: ExternalBookingActor): Promise<IExternalBooking> {
+    const booking = await this.externalBookingRepository.findOwnedLocalBooking(id, actor);
+    return this.sanitizeBookingForList(booking);
   }
 
   async listBookings(query: ExternalBookingListQuery): Promise<{
@@ -2511,15 +1884,14 @@ export class ExternalBookingService {
     const filter: Record<string, unknown> = {};
 
     if (query.userId) {
-      filter.userId = query.userId;
+      filter.userId = { $eq: query.userId };
+      filter.$expr = { $eq: [{ $type: '$userId' }, 'string'] };
     }
     if (query.corporateId) {
       filter.corporateId = query.corporateId;
     }
     if (query.integration) {
       filter.integration = this.resolveIntegration(query.integration);
-    } else {
-      filter.integration = this.defaultIntegration;
     }
     if (query.providerType) {
       filter.providerType = query.providerType;
@@ -2567,14 +1939,40 @@ export class ExternalBookingService {
     const paymentRecord = booking.paymentTransactionId
       ? await this.paymentRepository.findById(booking.paymentTransactionId)
       : null;
-    const externalPaymentRecord =
-      paymentRecord?.context === 'external_booking' ? paymentRecord : null;
 
     const walletTransactions =
       await this.walletTransactionRepository.findByReference(
         'external_booking',
         booking._id!
       );
+    const invalidHistory = (): never => {
+      throw new AppError({ status: 409, code: 'EXTERNAL_BOOKING_RECONCILIATION_REQUIRED', message: 'Booking payment history requires reconciliation' });
+    };
+    const validatePayment = (payment: NonNullable<typeof paymentRecord>): void => {
+      if (!/^[a-f\d]{24}$/i.test(String(payment._id)) || payment.userId !== booking.userId ||
+          payment.context !== 'external_booking' || payment.contextId !== String(booking._id) || payment.currency !== 'INR' ||
+          !['razorpay', 'internal'].includes(payment.paymentGateway) || !['created', 'paid', 'failed', 'refunded'].includes(payment.status)) invalidHistory();
+      const finalPaise = bookingMoneyPaise(payment.finalAmount);
+      const basePaise = bookingMoneyPaise(payment.baseAmount);
+      const discountPaise = bookingMoneyPaise(payment.discountAmount);
+      if (discountPaise > basePaise || finalPaise > basePaise - discountPaise ||
+          (payment.finalAmountPaise !== undefined && payment.finalAmountPaise !== finalPaise)) invalidHistory();
+    };
+    if (booking.paymentTransactionId && (!paymentRecord || String(paymentRecord._id) !== booking.paymentTransactionId)) invalidHistory();
+    if (paymentRecord) validatePayment(paymentRecord);
+    if (walletTransactions.some(transaction => transaction.userId !== booking.userId || transaction.referenceType !== 'external_booking' ||
+        transaction.referenceId !== String(booking._id))) invalidHistory();
+    const paymentAttempts = await this.paymentRepository.findAll({ context: 'external_booking', contextId: String(booking._id), userId: booking.userId }, { limit: 129 });
+    if (paymentAttempts.length > 128) invalidHistory();
+    const uniquePayments = new Map<string, typeof paymentAttempts[number]>();
+    for (const attempt of paymentAttempts) {
+      validatePayment(attempt);
+      const id = String(attempt._id);
+      const prior = uniquePayments.get(id);
+      if (prior && (prior.finalAmount !== attempt.finalAmount || prior.status !== attempt.status || prior.paymentGateway !== attempt.paymentGateway)) invalidHistory();
+      uniquePayments.set(id, attempt);
+    }
+    if (paymentRecord && !uniquePayments.has(String(paymentRecord._id))) invalidHistory();
 
     const walletDebitTransactions = walletTransactions.filter(
       (transaction) =>
@@ -2587,17 +1985,18 @@ export class ExternalBookingService {
         transaction.status === 'completed'
     );
 
-    const amountUsedFromWallet = walletDebitTransactions.reduce(
-      (sum, transaction) => sum + Number(transaction.amount || 0),
-      0
-    );
-    const amountRefunded = walletRefundTransactions.reduce(
-      (sum, transaction) => sum + Number(transaction.amount || 0),
-      0
-    );
-    const amountChargedToRazorpay = externalPaymentRecord
-      ? Number(externalPaymentRecord.finalAmount || 0)
-      : 0;
+    const usedPaise = walletDebitTransactions.reduce((sum, transaction) => sum + bookingMoneyPaise(transaction.amount), 0);
+    const refundedPaise = walletRefundTransactions.reduce((sum, transaction) => sum + bookingMoneyPaise(transaction.amount), 0);
+    const chargedPaise = [...uniquePayments.values()].reduce((sum, attempt) =>
+      sum + (attempt.paymentGateway === 'razorpay' && ['paid', 'refunded'].includes(attempt.status) ? bookingMoneyPaise(attempt.finalAmount) : 0), 0);
+    if (![usedPaise, refundedPaise, usedPaise + chargedPaise].every(Number.isSafeInteger)) {
+      throw new AppError({ status: 409, code: 'EXTERNAL_BOOKING_RECONCILIATION_REQUIRED', message: 'Booking payment totals exceed the supported range' });
+    }
+    const amountUsedFromWallet = usedPaise / 100;
+    const amountRefunded = refundedPaise / 100;
+    const amountChargedToRazorpay = chargedPaise / 100;
+
+    const externalPaymentRecord = paymentRecord;
 
     return {
       booking: {
@@ -2642,6 +2041,7 @@ export class ExternalBookingService {
         })),
       },
       refund: {
+        destination: refundedPaise > 0 ? 'internal_wallet' : null,
         amountRefunded,
         transactions: walletRefundTransactions.map((transaction) => ({
           _id: transaction._id,
@@ -2656,7 +2056,7 @@ export class ExternalBookingService {
         amountChargedToRazorpay,
         amountUsedFromWallet,
         amountRefunded,
-        actualAmountPaid: amountChargedToRazorpay + amountUsedFromWallet,
+        actualAmountPaid: (chargedPaise + usedPaise) / 100,
         paidAt: externalPaymentRecord?.paidAt,
       },
     };
@@ -3065,226 +2465,20 @@ export class ExternalBookingService {
   }
 
 
-  async syncBookingFromWebhook(
-    payload: Record<string, unknown>
-  ): Promise<ExternalBookingWebhookSyncResult> {
+  async syncBookingFromWebhook(payload: Record<string, unknown>): Promise<ExternalBookingWebhookSyncResult> {
     const externalBookingId = this.extractWebhookExternalBookingId(payload);
-    if (!externalBookingId) {
-      return {
-        matched: false,
-        action: 'ignored',
-        reason: 'external_booking_id_missing',
-      };
-    }
-
-    const booking =
-      await this.externalBookingRepository.findByExternalReference(
-        externalBookingId
-      );
-    if (!booking) {
-      return {
-        matched: false,
-        action: 'ignored',
-        reason: 'external_booking_not_found',
-        externalBookingId,
-      };
-    }
-
-    const rawStatus = this.extractWebhookStatus(payload);
-    const normalizedStatus = this.normalizeWebhookStatus(rawStatus);
-    const appointmentAt = this.extractWebhookAppointmentDateTime(payload);
-    const nextBookingDate =
-      this.extractWebhookBookingDate(payload) ||
-      this.extractYyyymmddFromDateTime(appointmentAt);
-    const nextBookingTime =
-      this.extractWebhookBookingTime(payload) ||
-      this.extractDisplayTimeFromDateTime(appointmentAt);
-
-    const priorMeta =
-      booking.meta && typeof booking.meta === 'object' && !Array.isArray(booking.meta)
-        ? (booking.meta as Record<string, unknown>)
-        : {};
-
-    const nextMeta: Record<string, unknown> = {
-      ...priorMeta,
-      lastWebhookSync: {
-        externalBookingId,
-        rawStatus,
-        normalizedStatus,
-        receivedAt: new Date().toISOString(),
-      },
-      webhookSyncCount: Number(priorMeta.webhookSyncCount || 0) + 1,
-    };
-
-    const phleboName = this.extractWebhookPhleboName(payload);
-    const phleboContact = this.extractWebhookPhleboContact(payload);
-    if (phleboName) {
-      nextMeta.phleboName = phleboName;
-    }
-    if (phleboContact) {
-      nextMeta.phleboContact = phleboContact;
-    }
-
-    const updateData: Partial<IExternalBooking> = {
-      externalBookingId: booking.externalBookingId || externalBookingId,
-      meta: nextMeta,
-    };
-
-    let action: ExternalBookingWebhookSyncResult['action'] = 'updated';
-
-    if (nextBookingDate && nextBookingDate !== booking.bookingDate) {
-      updateData.bookingDate = nextBookingDate;
-      action = 'rescheduled';
-    }
-
-    if (nextBookingTime && nextBookingTime !== booking.bookingTime) {
-      updateData.bookingTime = nextBookingTime;
-      updateData.externalSlotRef = nextBookingTime;
-      action = 'rescheduled';
-    }
-
-    if (normalizedStatus) {
-      updateData.status = normalizedStatus;
-      if (normalizedStatus === 'cancelled') {
-        action = 'cancelled';
-      } else if (normalizedStatus === 'completed') {
-        action = 'completed';
-      } else if (action !== 'rescheduled') {
-        action = 'updated';
-      }
-    }
-
-    if (normalizedStatus === 'report_delivered') {
-      try {
-        const reportUrls = await this.persistReportsOnDeliveredWebhook(
-          booking as IExternalBooking,
-          payload
-        );
-        if (reportUrls.length) {
-          updateData.report = reportUrls;
-          nextMeta.reportDeliveredAt = new Date().toISOString();
-          nextMeta.reportSync = {
-            savedAt: new Date().toISOString(),
-            reportCount: reportUrls.length,
-            reportUrls,
-          };
-        }
-      } catch (error) {
-        nextMeta.reportSync = {
-          savedAt: new Date().toISOString(),
-          succeeded: false,
-          error: error instanceof Error ? error.message : String(error),
-        };
-        logger.error('[ExternalBooking] failed to persist reports from webhook', {
-          bookingId: booking._id,
-          externalBookingId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-
-    if (normalizedStatus === 'cancelled') {
-      nextMeta.cancellationReason =
-        this.extractWebhookCancellationReason(payload) || 'Cancelled by provider';
-      nextMeta.cancelledAt = getTodayYyyymmdd();
-    }
-
-    if (priorMeta.needsProviderCancelIfDiscovered) {
-      const cancellationReason =
-        (priorMeta.cancellationReason as string | undefined) ||
-        'Cancelled while booking confirmation was pending';
-
-      try {
-        const cancellation = await this.cancelProviderIfDiscoveredLater(
-          booking as IExternalBooking,
-          externalBookingId,
-          cancellationReason
-        );
-
-        nextMeta.deferredProviderCancellation = {
-          attemptedAt: new Date().toISOString(),
-          succeeded: true,
-          payload: cancellation.payload,
-        };
-        nextMeta.needsProviderCancelIfDiscovered = false;
-        updateData.status = cancellation.externalStatus || 'cancelled';
-        updateData.paymentStatus =
-          booking.paymentStatus === 'refunded' ? 'refunded' : 'cancelled';
-        nextMeta.cancelledAt =
-          (priorMeta.cancelledAt as string | undefined) || getTodayYyyymmdd();
-        action = 'cancelled';
-      } catch (error) {
-        nextMeta.deferredProviderCancellation = {
-          attemptedAt: new Date().toISOString(),
-          succeeded: false,
-          error: error instanceof Error ? error.message : String(error),
-        };
-      }
-    }
-
-    if (
-      normalizedStatus === 'cancelled' &&
-      booking.paymentStatus !== 'refunded' &&
-      booking.paymentStatus !== 'cancelled'
-    ) {
-      const refundAmount =
-        await this.refundExternalBookingAmountToWallet(booking);
-      updateData.paymentStatus =
-        refundAmount > 0 ? 'refunded' : 'cancelled';
-    }
-
-    const hasMeaningfulUpdate =
-      action !== 'updated' ||
-      Boolean(updateData.status) ||
-      Boolean(updateData.bookingDate) ||
-      Boolean(updateData.bookingTime) ||
-      Boolean(updateData.report?.length) ||
-      updateData.paymentStatus !== undefined;
-
-    if (!hasMeaningfulUpdate) {
-      const refreshed = await this.externalBookingRepository.update(
-        { _id: String(booking._id) },
-        { meta: nextMeta }
-      );
-
-      return {
-        matched: true,
-        action: 'updated',
-        externalBookingId,
-        normalizedStatus,
-        booking: (refreshed || booking) as IExternalBooking,
-      };
-    }
-
-    const updated = await this.externalBookingRepository.update(
-      { _id: String(booking._id) },
-      updateData
-    );
-
-    const latestBooking = (updated || booking) as IExternalBooking;
-    const template =
-      action === 'rescheduled'
-        ? 'RESCHEDULED'
-        : this.templateForExternalBookingStatus(
-            updateData.status || latestBooking.status
-          );
-
-    if (template) {
-      await this.sendExternalBookingEmailNotification(latestBooking, template, {
-        oldBookingDate:
-          action === 'rescheduled' ? booking.bookingDate : undefined,
-        oldBookingTime:
-          action === 'rescheduled' ? booking.bookingTime : undefined,
-      });
-    }
-
-    return {
-      matched: true,
-      action,
-      externalBookingId,
-      normalizedStatus,
-      booking: latestBooking,
-    };
+    if (!externalBookingId) return { matched: false, action: 'ignored', reason: 'external_booking_id_missing' };
+    const booking = await this.externalBookingRepository.findByExternalReference(externalBookingId);
+    if (!booking) return { matched: false, action: 'ignored', reason: 'external_booking_not_found', externalBookingId };
+    // This public callback has no verified provider-authentication contract. Observations confer no state or money authority.
+    const observed = this.normalizeWebhookStatus(this.extractWebhookStatus(payload));
+    const updated = await this.externalBookingRepository.update({ _id: String(booking._id), userId: { $eq: booking.userId },
+      $expr: { $eq: [{ $type: '$userId' }, 'string'] } }, { $set: {
+      'meta.lastUntrustedProviderObservation': { externalBookingId: externalBookingId.slice(0, 512), status: observed?.slice(0, 128), receivedAt: new Date().toISOString() },
+      'meta.providerEventReconciliationRequired': true,
+    } });
+    return { matched: true, action: 'updated', reason: 'provider_authentication_unproven', externalBookingId,
+      normalizedStatus: observed, booking: publicExternalBooking((updated || booking) as IExternalBooking) };
   }
 
   private ensureSupportedIntegration(integration: string): void {
@@ -4062,7 +3256,7 @@ export class ExternalBookingService {
 
   private sanitizeBookingForList(booking: IExternalBooking): IExternalBooking {
     const bookingRecord = booking as IExternalBooking & Record<string, unknown>;
-    const { meta, __v: _version, ...rest } = bookingRecord;
+    const { meta, localEffects: _internal, __v: _version, ...rest } = bookingRecord;
     const sanitized: IExternalBooking = {
       ...(rest as IExternalBooking),
     };
@@ -4456,99 +3650,6 @@ export class ExternalBookingService {
     return undefined;
   }
 
-  private extractWebhookCancellationReason(
-    payload: Record<string, unknown>
-  ): string | undefined {
-    const objects = this.collectWebhookObjects(payload);
-
-    for (const candidate of objects) {
-      const reason = this.getFirstString(candidate, [
-        'cancellationReason',
-        'cancelReason',
-        'reason',
-        'message',
-      ]);
-      if (reason) {
-        return reason;
-      }
-    }
-
-    return undefined;
-  }
-
-  private extractWebhookAppointmentDateTime(
-    payload: Record<string, unknown>
-  ): string | undefined {
-    const objects = this.collectWebhookObjects(payload);
-
-    for (const candidate of objects) {
-      const dateTime = this.getFirstString(candidate, [
-        'appointment',
-        'appointmentTime',
-        'appointmentDateTime',
-        'bookingDateTime',
-        'scheduledAt',
-        'dateTime',
-      ]);
-      if (dateTime) {
-        return dateTime;
-      }
-    }
-
-    return undefined;
-  }
-
-  private extractWebhookBookingDate(
-    payload: Record<string, unknown>
-  ): string | undefined {
-    const objects = this.collectWebhookObjects(payload);
-
-    for (const candidate of objects) {
-      const rawDate = this.getFirstString(candidate, [
-        'bookingDate',
-        'date',
-        'appointmentDate',
-      ]);
-
-      if (!rawDate) {
-        continue;
-      }
-
-      const normalized = this.normalizeDateCandidate(rawDate);
-      if (normalized) {
-        return normalized;
-      }
-    }
-
-    return undefined;
-  }
-
-  private extractWebhookBookingTime(
-    payload: Record<string, unknown>
-  ): string | undefined {
-    const objects = this.collectWebhookObjects(payload);
-
-    for (const candidate of objects) {
-      const rawTime = this.getFirstString(candidate, [
-        'bookingTime',
-        'time',
-        'slotTime',
-        'appointmentSlot',
-      ]);
-
-      if (!rawTime) {
-        continue;
-      }
-
-      const normalized = this.normalizeTimeCandidate(rawTime);
-      if (normalized) {
-        return normalized;
-      }
-    }
-
-    return undefined;
-  }
-
   private normalizeWebhookStatus(status?: string): string | undefined {
     const value = (status || '').trim().toLowerCase();
     if (!value) {
@@ -4618,51 +3719,6 @@ export class ExternalBookingService {
     return value;
   }
 
-  private extractWebhookPhleboName(
-    payload: Record<string, unknown>
-  ): string | undefined {
-    const objects = this.collectWebhookObjects(payload);
-
-    for (const candidate of objects) {
-      const name = this.getFirstString(candidate, [
-        'phleboName',
-        'phlebotomistName',
-        'collectorName',
-        'agentName',
-        'executiveName',
-        'phlebo_id',
-      ]);
-      if (name) {
-        return name;
-      }
-    }
-
-    return undefined;
-  }
-
-  private extractWebhookPhleboContact(
-    payload: Record<string, unknown>
-  ): string | undefined {
-    const objects = this.collectWebhookObjects(payload);
-
-    for (const candidate of objects) {
-      const contact = this.getFirstString(candidate, [
-        'phleboPhone',
-        'phlebotomistPhone',
-        'phleboMobile',
-        'phlebotomistMobile',
-        'collectorPhone',
-        'agentPhone',
-        'executivePhone',
-      ]);
-      if (contact) {
-        return contact;
-      }
-    }
-
-    return undefined;
-  }
-
   private collectWebhookObjects(
     payload: Record<string, unknown>
   ): Record<string, unknown>[] {
@@ -4698,121 +3754,5 @@ export class ExternalBookingService {
     return out;
   }
 
-  private normalizeDateCandidate(value: string): string | undefined {
-    const trimmed = value.trim();
-    if (/^\d{8}$/.test(trimmed)) {
-      return trimmed;
-    }
 
-    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(trimmed);
-    if (match) {
-      return `${match[1]}${match[2]}${match[3]}`;
-    }
-
-    return undefined;
-  }
-
-  private normalizeTimeCandidate(value: string): string | undefined {
-    const trimmed = value.trim();
-    if (/^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(trimmed)) {
-      return trimmed.toUpperCase();
-    }
-
-    const hhmm = /^(\d{1,2}):(\d{2})$/.exec(trimmed);
-    if (!hhmm) {
-      return undefined;
-    }
-
-    let hours = Number(hhmm[1]);
-    const minutes = hhmm[2];
-    const suffix = hours >= 12 ? 'PM' : 'AM';
-    if (hours === 0) {
-      hours = 12;
-    } else if (hours > 12) {
-      hours -= 12;
-    }
-
-    return `${hours}:${minutes} ${suffix}`;
-  }
-
-  private parseWebhookDateTimeToIstParts(
-    value?: string
-  ): { yyyymmdd: string; displayTime: string } | undefined {
-    if (!value) {
-      return undefined;
-    }
-
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return undefined;
-    }
-
-    const zonedDate = new Date(trimmed);
-    if (!Number.isNaN(zonedDate.getTime())) {
-      const formatter = new Intl.DateTimeFormat('en-CA', {
-        timeZone: ExternalBookingService.WEBHOOK_TIME_ZONE,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      });
-
-      const parts = formatter.formatToParts(zonedDate);
-      const year = parts.find((part) => part.type === 'year')?.value;
-      const month = parts.find((part) => part.type === 'month')?.value;
-      const day = parts.find((part) => part.type === 'day')?.value;
-      const hour = parts.find((part) => part.type === 'hour')?.value;
-      const minute = parts.find((part) => part.type === 'minute')?.value;
-
-      if (year && month && day && hour && minute) {
-        const displayTime = this.normalizeTimeCandidate(`${hour}:${minute}`);
-        if (displayTime) {
-          return {
-            yyyymmdd: `${year}${month}${day}`,
-            displayTime,
-          };
-        }
-      }
-    }
-
-    const localMatch =
-      /^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::\d{2}(?:\.\d{1,3})?)?)?$/.exec(
-        trimmed
-      );
-    if (!localMatch) {
-      return undefined;
-    }
-
-    const datePart = `${localMatch[1]}${localMatch[2]}${localMatch[3]}`;
-    const hour = localMatch[4];
-    const minute = localMatch[5];
-
-    if (!hour || !minute) {
-      return {
-        yyyymmdd: datePart,
-        displayTime: '',
-      };
-    }
-
-    const displayTime = this.normalizeTimeCandidate(`${hour}:${minute}`);
-    if (!displayTime) {
-      return undefined;
-    }
-
-    return {
-      yyyymmdd: datePart,
-      displayTime,
-    };
-  }
-
-  private extractYyyymmddFromDateTime(value?: string): string | undefined {
-    return this.parseWebhookDateTimeToIstParts(value)?.yyyymmdd;
-  }
-
-  private extractDisplayTimeFromDateTime(value?: string): string | undefined {
-    const parts = this.parseWebhookDateTimeToIstParts(value);
-    return parts?.displayTime || undefined;
-  }
 }

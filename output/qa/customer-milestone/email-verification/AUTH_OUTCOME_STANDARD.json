@@ -1,0 +1,18 @@
+{
+  "reviewer": "/root/profile_owner",
+  "role": "Standards",
+  "decision": "ACCEPT_EMAIL_VERIFICATION_RECORDING_VM_OUTCOME_ONLY",
+  "executionSha256": "dc9d33cf65b8e5735003db40a2fdfec6e9932be8e1febd53589c1fdf147e173e",
+  "personallyInspected": "Complete preserved combined native tool output,16caseIDs/fourcontrols/restoration,exact clean-env command,source/runner/executable hashes freshly matched. Exit0; only native stripTypeScriptTypes ExperimentalWarning.",
+  "measured": {
+    "nominal": 16,
+    "restored": 16,
+    "detectedControls": 4
+  },
+  "limits": [
+    "Actual whole AuthService in closed VM with stripped imports/decorator and recording repository/OTP/provider/JWT ports",
+    "No actual OTP consumption, Joi/JWT, HTTP, MongoDB, provider, session revocation or client evidence",
+    "Signup/login and corporate-only methods are not executed"
+  ],
+  "rerun": "Not executed or authorized"
+}

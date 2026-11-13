@@ -1,0 +1,117 @@
+{
+  "status": "PASS",
+  "nominalCases": 41,
+  "restoredCases": 41,
+  "cases": [
+    "creation atomically reserves one matching slot and inserts hidden effects",
+    "last-capacity serial competitors cannot oversell",
+    "slot date mismatch has zero effect",
+    "slot time mismatch has zero effect",
+    "slot package mismatch has zero effect",
+    "mixed model connections denied before session allocation",
+    "active setup blocks cancellation",
+    "expired setup permits takeover and rejects stale token",
+    "wallet debit and matching ledger update same transaction",
+    "debit ledger failure rolls back wallet and allows retry",
+    "wallet-funded direct payment confirms and counts coupon once",
+    "gateway payment attaches pending then captured confirmation processes once",
+    "paid cancellation refunds internal wallet and releases coupon and hold once",
+    "refund ledger failure leaves booking paid then retry settles",
+    "final booking fence failure rolls back refund ledger and payment",
+    "simulated transient callback retry cannot duplicate refund",
+    "late capture after unpaid cancel refunds without resurrecting or releasing again",
+    "wallet-only debit before failed setup is recovered exactly once",
+    "zero-money cancellation never invents refund",
+    "paid cancellation invokes window, unpaid does not",
+    "foreign customer and unsupported roles cannot cancel",
+    "legacy missing local state cannot be guessed",
+    "completed booking cannot cancel",
+    "payment provenance and paise mismatch deny attachment",
+    "invalid INR values are refused before effects",
+    "reschedule moves owned hold atomically and cancellation releases new slot",
+    "reschedule failure leaves original reservation and schedule",
+    "follow-up hold acquisition and cancellation restore parent once",
+    "whole BookingService initializes gateway and clears setup token",
+    "whole BookingService initializes wallet payment without leaking effects",
+    "whole BookingService provider setup failure clears lease and keeps recoverable debit",
+    "whole BookingService cancellation retries postcommit cleanup while refund stays once",
+    "whole PaymentService confirmation preserves cancellation and public response",
+    "missing slot is refused for ordinary drafts",
+    "same-slot reschedule cannot falsify appointment time",
+    "generic update and delete cannot bypass financial command or retention",
+    "zero-price failed setup remains pending and retry can complete",
+    "whole service rounds server coupon fraction once into valid paise",
+    "cutoff parses IST independently of host timezone and rejects trailing text",
+    "paid 24h cutoff inclusive boundary 20261117",
+    "paid 48h cutoff inclusive boundary 20261116"
+  ],
+  "controls": [
+    {
+      "name": "remove refund ledger atomic effect",
+      "detectedBy": [
+        "paid cancellation refunds internal wallet and releases coupon and hold once",
+        "refund ledger failure leaves booking paid then retry settles",
+        "simulated transient callback retry cannot duplicate refund",
+        "late capture after unpaid cancel refunds without resurrecting or releasing again",
+        "wallet-only debit before failed setup is recovered exactly once",
+        "whole BookingService cancellation retries postcommit cleanup while refund stays once"
+      ]
+    },
+    {
+      "name": "remove signed-owner selection fence",
+      "detectedBy": [
+        "foreign customer and unsupported roles cannot cancel"
+      ]
+    },
+    {
+      "name": "omit explicit hidden local-effects state selection",
+      "detectedBy": [
+        "active setup blocks cancellation",
+        "expired setup permits takeover and rejects stale token",
+        "wallet debit and matching ledger update same transaction",
+        "debit ledger failure rolls back wallet and allows retry",
+        "wallet-funded direct payment confirms and counts coupon once",
+        "gateway payment attaches pending then captured confirmation processes once",
+        "paid cancellation refunds internal wallet and releases coupon and hold once",
+        "refund ledger failure leaves booking paid then retry settles",
+        "final booking fence failure rolls back refund ledger and payment",
+        "simulated transient callback retry cannot duplicate refund",
+        "late capture after unpaid cancel refunds without resurrecting or releasing again",
+        "wallet-only debit before failed setup is recovered exactly once",
+        "zero-money cancellation never invents refund",
+        "paid cancellation invokes window, unpaid does not",
+        "foreign customer and unsupported roles cannot cancel",
+        "completed booking cannot cancel",
+        "reschedule moves owned hold atomically and cancellation releases new slot",
+        "reschedule failure leaves original reservation and schedule",
+        "follow-up hold acquisition and cancellation restore parent once",
+        "whole BookingService initializes gateway and clears setup token",
+        "whole BookingService initializes wallet payment without leaking effects",
+        "whole BookingService provider setup failure clears lease and keeps recoverable debit",
+        "whole BookingService cancellation retries postcommit cleanup while refund stays once",
+        "whole PaymentService confirmation preserves cancellation and public response",
+        "same-slot reschedule cannot falsify appointment time",
+        "generic update and delete cannot bypass financial command or retention",
+        "zero-price failed setup remains pending and retry can complete",
+        "whole service rounds server coupon fraction once into valid paise"
+      ]
+    },
+    {
+      "name": "retain cancelled slot and remove duplicate-release fence",
+      "detectedBy": [
+        "paid cancellation refunds internal wallet and releases coupon and hold once",
+        "late capture after unpaid cancel refunds without resurrecting or releasing again",
+        "wallet-only debit before failed setup is recovered exactly once",
+        "whole BookingService cancellation retries postcommit cleanup while refund stays once",
+        "whole PaymentService confirmation preserves cancellation and public response"
+      ]
+    }
+  ],
+  "limits": [
+    "Whole local-effects helper, lifecycle and relevant whole BookingService/PaymentService methods under fixed stripped-import recording ports",
+    "Model/session adapter enforces select:false localEffects, same owned session, snapshot rollback and simulated callback retry",
+    "Schedules are serial recording scenarios, not native MongoDB concurrency/isolation/capacity evidence",
+    "ExternalBookingLocalOperations and WalletLocalOperations are blocked constructor ports; no external-booking or recharge methods/effects are evaluated",
+    "No real Mongoose/Joi/HTTP/database/index/provider/SDK/config/client/session/production acceptance"
+  ]
+}

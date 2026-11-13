@@ -1,0 +1,36 @@
+{
+  "author": "/root/booking_owner",
+  "scope": "WHOLE_CONTROLLERS_RECORDING_VM_ONLY",
+  "command": [
+    "env", "-i", "TMPDIR=/tmp",
+    "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/test/customer-bookings/controllers.mjs",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/bookings/controller/index.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/externalBookings/controller/index.ts",
+    "/private/tmp/sd-customer-milestone-20261113/test/customer-bookings/controllers.mjs"
+  ],
+  "cwd": "/private/tmp/sd-customer-milestone-20261113",
+  "executableSha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+  "runnerSha256": "98f6f31b3eb954c98720eb2aee4c262e3cce90fab3ac74351ea16169d4a1ca09",
+  "sourceSha256": {
+    "ordinary": "8d32d4b66bf913162a1a373c46d068ed1764928f285b09ab110abae0305c2e6c",
+    "external": "495c2c2450c0f4fb8df786022be35a492baafa13abb7cd66db459af9c10e13f3"
+  },
+  "preExecutionDecisions": [
+    { "reviewer": "/root", "role": "Standards", "decision": "APPROVE_ONE_BOOKING_CONTROLLERS_RECORDING_VM_RUN_ONLY" },
+    { "reviewer": "/root/profile_owner", "role": "Spec", "decision": "APPROVE_ONE_BOOKING_CONTROLLER_RECORDING_VM_RUN_ONLY" }
+  ],
+  "actualToolResult": { "chunkId": "ee7864", "exitCode": 0, "wallTimeSeconds": 0.168918708 },
+  "measured": { "nominal": 44, "restored": 44, "weakenedVariantsDetected": 4 },
+  "stdoutSha256": "57766491469be84caac97d369450df51bfb2d90848989caaa89423e0f5c742a6",
+  "stderrSha256": "b0a950115756c33bc11079fb2388ef24b6cacb6b0c94961a4419677b5fc71449",
+  "stderr": "Only Node built-in stripTypeScriptTypes ExperimentalWarning; raw stream retained.",
+  "unchangedSourceAndRunnerAfterRun": true,
+  "limits": [
+    "Actual whole controllers after closed import erasure with recording dependencies, no application graph",
+    "No real HTTP/Joi/ODM/MongoDB/provider/client, no consent/activity-race proof",
+    "List checks establish forwarded predicates only, not actual DB query behavior",
+    "One admitted invocation consumed; no retry or general suite authority"
+  ]
+}

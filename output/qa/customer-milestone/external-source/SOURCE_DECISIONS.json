@@ -1,0 +1,61 @@
+{
+  "schema": "SD_CUSTOMER_EXTERNAL_SOURCE_DECISIONS_1",
+  "baseline": "9c8d1d8f6ecda8d0832f9294c4b1b7a6fdf7077c",
+  "author": "/root/booking_owner",
+  "sourceSha256": {
+    "src1/modules/externalBookings/services/localOperations.ts": "df175057da6ccebd4e9fc9c0a1c7855ce5f9bf1a0f17a2bd5f8ef356d2e6dd0d",
+    "src1/modules/externalBookings/services/index.ts": "88ba8fb40d16cbb0c6f5f35591c182d2baf362e5cbffe298b6f20dbddc80b1d6",
+    "src1/modules/externalBookings/services/externalBookingPaymentFinalize.ts": "7887fe0718fa64465f9e36b0521a968cb8bf57cfd931c373ce1ab6d3fd6ddaa9",
+    "src1/modules/externalBookings/model/index.ts": "9e85377bc95b913d6b6b6f2dddd192712ad141c8e565449ca64fb73bff3e44b0",
+    "src1/modules/externalBookings/repository/index.ts": "de2aadde0b6d7eba6b45d61bd30d7bd3e62795dd8883956cb361c1f93193a79a",
+    "src1/modules/externalBookings/types/index.ts": "4f1a8858ba1862a8ed1bfbce1e6b243ea8d8665f4fcf2385b8fe36520962d499",
+    "src1/modules/externalBookings/controller/index.ts": "ee359aa79dbd4919ce707df8d98f5b240ee6f048234cf6cb8024484b73116e50",
+    "src1/modules/externalBookings/routes/index.ts": "942584bdad141ff4e9b0b1d63926d174b3cad09eb73acdf2b3c401b7eb951761"
+  },
+  "sharedComposition": {
+    "src1/modules/payment/services/index.ts": "83257cdfa42f407aa08489f71dfe5e76bcb484e7cf99a944118a4c2a1d734fcb"
+  },
+  "ownership": {
+    "externalEightFileClosure": "/root/booking_owner",
+    "sharedPaymentService": "/root/reviewer"
+  },
+  "implementationScope": [
+    "Existing LabStack/Healthians only; BetaCura/hybrid deferred",
+    "Authenticated signed-owner/admin local detail and omitted-list-provider filter correction",
+    "Private token/revision/session-fenced setup, captured state, provider attempts/results, cancellation and local settlement",
+    "Unsigned public callback records untrusted observations only; no authoritative state, money or report effects",
+    "Truthful existing payment-detail receipts and same-transaction missing-wallet refund creation"
+  ],
+  "actualReviews": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "basis": "Read whole helper, full finalizer, changed service create/settle/recovery/receipt/callback/reschedule, boundary files and final value-alias/DI-cleanup/total-price deltas. Earlier provenance, fulfillment, raw-ACK, paid-pending, missing-wallet and stale-reference findings corrected."
+    },
+    {
+      "reviewer": "/root/profile_owner",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "basis": "Read whole helper/core service/finalizer and changed boundary files, shared PaymentService external methods. Subsequently inspected and approved final coordinate-value alias, declaration-only unused-field cleanup and Healthians total-price delta."
+    }
+  ],
+  "correctedFindings": [
+    "Foreign supplied payment validated before completed/cancelled early returns",
+    "Explicit raw provider cancellation status, failure and reference gates; normalized fallback is insufficient",
+    "Unknown fulfillment returns pending confirmation; validated capture records paid state before provider call",
+    "Expected provider reference checked at reschedule admission",
+    "Preserved bounded LabStack lab location fields",
+    "Gateway-only cancellation creates absent owned wallet inside refund transaction",
+    "Healthians diagnostics receives total discounted booking price including wallet-funded portion"
+  ],
+  "withdrawnFinding": "An alleged public cancellation/reschedule old-reference race was withdrawn after review of existing providerCompleted/cancelRequested guards; not a demonstrated remaining blocker. Exact-reference binding was retained as an explicit API defense.",
+  "limits": [
+    "Internal Codex technical source reviews only; author does not approve own source",
+    "No execution admission or passing runtime evidence is implied by source votes",
+    "No real HTTP/Joi/Mongoose/MongoDB/native index/concurrency/provider/client/financial/release acceptance",
+    "Native provider ACK contract and operational reconciliation for unknown outcomes remain unproved/unfinished",
+    "Unsigned automatic progress/report propagation is deliberately contained; no implemented operator recovery workflow",
+    "Sequential receipt reads do not prove a native consistent snapshot"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "outcome": "FIXTURE_ASSERTION_MISMATCH_EXISTING_LIST_DTO",
+  "exitCode": 1,
+  "runnerSHA256": "a1e5d5177d965bba029a2868ce580f9c58273aabd16cdf04c5ce35749aa9d168",
+  "nominalPassing": 16,
+  "nominalFailed": "owned detail returns sanitized DTO and denies foreign owner",
+  "limitation": "Contract preserves ordinary meta; strips raw externalPayload and localEffects. Arbitrary meta exclusion was unsupported fixture assumption.",
+  "preexecutionDecisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_ONE_EXTERNAL_RECORDING_VM_RUN_ONLY",
+      "runnerSHA256": "a1e5d5177d965bba029a2868ce580f9c58273aabd16cdf04c5ce35749aa9d168"
+    },
+    {
+      "reviewer": "/root/booking_owner",
+      "role": "Spec",
+      "decision": "APPROVE_ONE_EXTERNAL_BOOKING_RECORDING_VM_RUN_ONLY",
+      "runnerSHA256": "a1e5d5177d965bba029a2868ce580f9c58273aabd16cdf04c5ce35749aa9d168"
+    }
+  ],
+  "rawFiles": {
+    "stdout.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stderr.txt": "a42bedd45acf0c908baaa251acf6d7adc37909cedc3d8320a33c0fa5b4ffee9e",
+    "exit-status.txt": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865",
+    "external-operations.mjs": "a1e5d5177d965bba029a2868ce580f9c58273aabd16cdf04c5ce35749aa9d168"
+  },
+  "terminal": {
+    "exitCode": 1,
+    "chunkId": "a69195",
+    "wallSeconds": 0.17476
+  }
+}

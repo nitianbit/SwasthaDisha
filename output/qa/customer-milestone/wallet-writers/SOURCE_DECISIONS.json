@@ -1,0 +1,36 @@
+{
+  "schema": "SD-CUSTOMER-WALLET-WRITERS-SOURCE-DECISIONS-1",
+  "author": "/root/reviewer",
+  "scope": "Wallet two-writer correction, server-derived recharge coupon normalization, and customer recharge routing before processed shortcut; shared PaymentService hash also contains separately reviewed booking composition.",
+  "sourceSha256": {
+    "src1/modules/wallet/services/localOperations.ts": "12f37d5875dcc6e9bec44bdcf205bd0750c1058e9510f74a8d7304df077cf21f",
+    "src1/modules/wallet/services/index.ts": "7bec8685f8ee867e11a6003c11339d6544fe20b2517fde7169b7b0f32f30b024",
+    "src1/modules/payment/services/index.ts": "83257cdfa42f407aa08489f71dfe5e76bcb484e7cf99a944118a4c2a1d734fcb"
+  },
+  "decision": "APPROVE_SOURCE_ONLY",
+  "actualReviews": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "basis": "Actual independent review of the helper and both writer bodies; required correction of processed customer recharge bypass before the exact approved run. Fresh final source/outcome record requested directly by Root."
+    },
+    {
+      "reviewer": "/root/booking_owner",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_DELTA_ONLY",
+      "basis": "Actual complete original helper/WalletService/payment integration review followed by amended-source review of notes-shape rejection and customer recharge routing before the generic processed shortcut. Earlier source approval remains bound to its older bytes."
+    }
+  ],
+  "provenance": "Actual direct independent native Codex agent messages transcribed by source author at Root request. Neither reviewer authored these wallet changes. No Claude, clinical, finance, human owner or release approval is claimed.",
+  "requiredCorrectionPreserved": "Root found that the generic isProcessed shortcut bypassed recharge marker validation. The amended route invokes the customer-wallet helper before that shortcut; pharmacy recharge routing stays separate.",
+  "actualFocusedEvidence": "RUN_RECORD.json and stdout.txt/stderr.txt in this directory: one approved recording VM run, 23 nominal and 23 restored cases, four detected whole-source controls, exit 0; both independent actual outcome votes retained in RUN_RECORD.json.",
+  "limits": [
+    "Recording adapters establish changed source behavior only; native database transaction, concurrent consistency and index proof remain open.",
+    "Existing unique wallet userId index must actually exist; declaration alone is not runtime evidence.",
+    "Historical recharge ledger or processed row without the atomic marker is reconciliation-required, not assumed credited.",
+    "Manual/referral commands are atomic per explicit invocation; no general replay or referral reward idempotency guarantee was added.",
+    "General coupon finalization/budget conservation, initial balance migration, actual HTTP/provider/client behavior and release acceptance remain separate.",
+    "No dependency/runtime/start adoption, operational database/provider effect, push or deployment."
+  ]
+}

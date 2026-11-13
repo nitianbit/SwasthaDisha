@@ -216,4 +216,10 @@ externalBookingRouter.get(
   catchAsync(externalBookingController.listBookings)
 );
 
+externalBookingRouter.get(
+  '/bookings/:id',
+  validate(externalBookingIdParamSchema, 'params'),
+  catchAsync(externalBookingController.getById)
+);
+
 export default externalBookingRouter;

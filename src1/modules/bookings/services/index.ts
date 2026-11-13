@@ -41,6 +41,8 @@ import {
 } from '@/modules/meet/service';
 import { SpecialistRepository } from '@/modules/specialists/repository';
 import { buildBookingLifecyclePatch } from '@/modules/bookings/utils/lifecycle';
+import { BookingLocalOperations, bookingMoneyPaise } from './localOperations';
+import { enforceUserCancellationWindow } from '@/modules/common/utils/cancellationWindow';
 
 interface BookingPaymentInitResponse {
   booking: IBooking;
@@ -61,6 +63,7 @@ interface BookingPaymentInitResponse {
 
 @Service()
 export class BookingService {
+  private readonly localOperations = new BookingLocalOperations();
   constructor(
     private bookingRepository: BookingRepository,
     private wellnessPackageService: WellnessPackageService,
@@ -122,82 +125,8 @@ export class BookingService {
     return buildBookingLifecyclePatch(current, updates);
   }
 
-  private parseBookingDateTime(
-    bookingDate: string,
-    bookingTime: string
-  ): Date | null {
-    if (!/^\d{8}$/.test(bookingDate)) {
-      return null;
-    }
-
-    const match = bookingTime.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-    if (!match) {
-      return null;
-    }
-
-    const [, hourStr, minuteStr, meridiem] = match;
-    let hour = parseInt(hourStr, 10);
-    const minute = parseInt(minuteStr, 10);
-
-    if (hour < 1 || hour > 12 || minute < 0 || minute > 59) {
-      return null;
-    }
-
-    const upperMeridiem = meridiem.toUpperCase();
-    if (upperMeridiem === 'AM') {
-      hour = hour === 12 ? 0 : hour;
-    } else {
-      hour = hour === 12 ? 12 : hour + 12;
-    }
-
-    const year = parseInt(bookingDate.slice(0, 4), 10);
-    const monthIndex = parseInt(bookingDate.slice(4, 6), 10) - 1;
-    const day = parseInt(bookingDate.slice(6, 8), 10);
-
-    const parsed = new Date(year, monthIndex, day, hour, minute, 0, 0);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-
-  private enforceUserCancellationWindow(
-    booking: IBooking,
-    requester: { userType: string }
-  ): void {
-    const appointmentAt = this.parseBookingDateTime(
-      booking.bookingDate,
-      booking.bookingTime
-    );
-
-    if (!appointmentAt) {
-      throw new AppError({
-        status: 400,
-        code: 'INVALID_BOOKING_DATETIME',
-        message: 'Booking cannot be cancelled because its appointment time is invalid',
-      });
-    }
-
-    const cutoffMs = 60 * 60 * 1000;
-    const remainingMs = appointmentAt.getTime() - Date.now();
-
-    if (remainingMs <= 0) {
-      throw new AppError({
-        status: 400,
-        code: 'BOOKING_ALREADY_STARTED',
-        message: 'Booking cannot be cancelled once the appointment time has passed',
-      });
-    }
-
-    if (requester.userType !== 'user') {
-      return;
-    }
-
-    if (remainingMs <= cutoffMs) {
-      throw new AppError({
-        status: 400,
-        code: 'CANCELLATION_WINDOW_CLOSED',
-        message:
-          'Booking cannot be cancelled within 1 hour of the appointment time',
-      });
-    }
+  private enforceUserCancellationWindow(booking: IBooking, requester: { userType: string }): void {
+    enforceUserCancellationWindow([{ bookingDate: booking.bookingDate, bookingTime: booking.bookingTime }], requester.userType);
   }
 
   private isEligibleForNewFollowUpBenefit(booking: IBooking): boolean {
@@ -362,59 +291,11 @@ export class BookingService {
   }
 
   private async deductWalletForBooking(params: {
-    userId: string;
-    bookingId: string;
-    amountToDeductFromWallet: number;
-    useWalletBalance?: boolean;
+    userId: string; bookingId: string; amountToDeductFromWallet: number;
+    useWalletBalance?: boolean; setupToken: string;
   }): Promise<number> {
-    if (!params.useWalletBalance || params.amountToDeductFromWallet <= 0) {
-      return 0;
-    }
-
-    const wallet = await this.walletRepository.findByUserId(params.userId);
-    if (!wallet) {
-      return 0;
-    }
-
-    if (!wallet.isActive) {
-      throw new AppError({
-        status: 400,
-        code: 'WALLET_INACTIVE',
-        message: 'Wallet is not active',
-      });
-    }
-
-    const walletDeductedAmount = Math.min(
-      wallet.balance,
-      params.amountToDeductFromWallet
-    );
-    if (walletDeductedAmount <= 0) {
-      return 0;
-    }
-
-    const balanceBefore = wallet.balance;
-    const balanceAfter = balanceBefore - walletDeductedAmount;
-
-    await this.walletTransactionRepository.save({
-      userId: params.userId,
-      walletId: wallet._id!,
-      transactionType: 'debit',
-      amount: walletDeductedAmount,
-      balanceBefore,
-      balanceAfter,
-      status: 'completed',
-      referenceType: 'booking',
-      referenceId: params.bookingId,
-      description: 'Wallet used for booking payment',
-      transactionDate: getTodayYyyymmdd(),
-    });
-
-    await this.walletRepository.update(
-      { _id: wallet._id! },
-      { balance: balanceAfter }
-    );
-
-    return walletDeductedAmount;
+    if (!params.useWalletBalance || params.amountToDeductFromWallet <= 0) return 0;
+    return this.localOperations.debitWallet(params.bookingId, params.userId, params.setupToken, params.amountToDeductFromWallet);
   }
 
   private async validateWalletIfRequested(
@@ -433,104 +314,6 @@ export class BookingService {
         message: 'Wallet is not active',
       });
     }
-  }
-
-  private async getOrCreateActiveWallet(userId: string) {
-    let wallet = await this.walletRepository.findByUserId(userId);
-
-    if (!wallet) {
-      wallet = await this.walletRepository.save({
-        userId,
-        balance: 0,
-        isActive: true,
-      });
-    }
-
-    if (!wallet.isActive) {
-      throw new AppError({
-        status: 400,
-        code: 'WALLET_INACTIVE',
-        message: 'Wallet is not active',
-      });
-    }
-
-    return wallet;
-  }
-
-  private async refundBookingAmountToWallet(booking: IBooking): Promise<number> {
-    const existingRefund = await this.walletTransactionRepository.findOne({
-      userId: booking.userId,
-      transactionType: 'refund',
-      referenceType: 'booking',
-      referenceId: booking._id!,
-      status: 'completed',
-    });
-
-    if (existingRefund) {
-      return existingRefund.amount;
-    }
-
-    if (!booking.paymentTransactionId) {
-      return 0;
-    }
-
-    const paymentRecord = await this.paymentRepository.findById(
-      booking.paymentTransactionId
-    );
-
-    if (!paymentRecord) {
-      return 0;
-    }
-
-    const walletDeductedAmount = Number(
-      paymentRecord.notes?.walletDeductedAmount || 0
-    );
-    const gatewayPaidAmount =
-      paymentRecord.status === 'paid' ? Number(paymentRecord.finalAmount || 0) : 0;
-    const refundAmount = walletDeductedAmount + gatewayPaidAmount;
-
-    if (refundAmount > 0) {
-      const wallet = await this.getOrCreateActiveWallet(booking.userId);
-      const balanceBefore = wallet.balance;
-      const balanceAfter = balanceBefore + refundAmount;
-
-      await this.walletTransactionRepository.save({
-        userId: booking.userId,
-        walletId: wallet._id!,
-        transactionType: 'refund',
-        amount: refundAmount,
-        balanceBefore,
-        balanceAfter,
-        status: 'completed',
-        referenceType: 'booking',
-        referenceId: booking._id!,
-        description: 'Refund for cancelled booking',
-        transactionDate: getTodayYyyymmdd(),
-      });
-
-      await this.walletRepository.update(
-        { _id: wallet._id! },
-        { balance: balanceAfter }
-      );
-    }
-
-    if (paymentRecord.status === 'paid') {
-      if (paymentRecord.couponCode) {
-        try {
-          const coupon = await this.couponService.getByCode(paymentRecord.couponCode);
-          await this.couponService.decrementUsage(coupon._id!);
-        } catch (error) {
-          console.error('Failed to reverse coupon usage for cancelled booking:', error);
-        }
-      }
-
-      await this.paymentRepository.update(
-        { _id: paymentRecord._id! },
-        { status: 'refunded', isProcessed: true }
-      );
-    }
-
-    return refundAmount;
   }
 
   private async validateBookingDateAndSlot(
@@ -573,28 +356,6 @@ export class BookingService {
     }
   }
 
-  private async ensureCancelledBookingPaymentStatus(
-    booking: IBooking
-  ): Promise<IBooking> {
-    if (!booking._id || booking.paymentStatus === 'refunded') {
-      return booking;
-    }
-
-    return (
-      (await this.bookingRepository.update(
-        { _id: booking._id },
-        {
-          paymentStatus: 'refunded',
-          lifecycle: this.buildLifecyclePatch(booking.lifecycle, {
-            refunded: {
-              reason: booking.cancellationReason || 'Booking refunded',
-            },
-          }),
-        }
-      )) || booking
-    );
-  }
-
   private async validateInternalBookingCoupon(params: {
     couponCode?: string;
     userId: string;
@@ -629,9 +390,17 @@ export class BookingService {
       });
     }
 
+    // Coupon percentages are server calculations; normalize once at the new-payment boundary.
+    const basePaise = bookingMoneyPaise(params.purchaseAmount);
+    const rawDiscount = couponValidation.discountAmount ?? 0;
+    const discountPaise = typeof rawDiscount === 'number' && Number.isFinite(rawDiscount) && rawDiscount >= 0
+      ? Math.round(rawDiscount * 100) : NaN;
+    if (!Number.isSafeInteger(discountPaise) || discountPaise < 0 || discountPaise > basePaise) {
+      throw new AppError({ status: 409, code: 'BOOKING_RECONCILIATION_REQUIRED', message: 'Calculated coupon amount is invalid' });
+    }
     return {
-      discountAmount: couponValidation.discountAmount || 0,
-      finalAmount: couponValidation.finalAmount ?? params.purchaseAmount,
+      discountAmount: discountPaise / 100,
+      finalAmount: (basePaise - discountPaise) / 100,
       couponCode: couponValidation.coupon.code,
     };
   }
@@ -702,6 +471,68 @@ export class BookingService {
     return this.createSurgeryBooking(data);
   }
 
+  private publicBooking(booking: IBooking): IBooking {
+    const { localEffects: _internal, ...visible } = booking;
+    return visible;
+  }
+
+  private async initializeBookingPayment(
+    booking: IBooking, baseAmount: number, discountAmount: number,
+    couponCode?: string, useWalletBalance?: boolean
+  ): Promise<BookingPaymentInitResponse> {
+    const token = booking.localEffects?.setupToken;
+    if (!token) throw new AppError({ status: 409, code: 'BOOKING_CHANGED', message: 'Booking setup must be retried' });
+    let failed = true;
+    let result: BookingPaymentInitResponse;
+    try {
+      const priorPaise = booking.localEffects!.walletDebitedPaise;
+      const grossPaise = bookingMoneyPaise(booking.price);
+      if (priorPaise > grossPaise) throw new AppError({ status: 409, code: 'BOOKING_RECONCILIATION_REQUIRED', message: 'Existing wallet funding exceeds this price' });
+      const extra = await this.deductWalletForBooking({ userId: booking.userId, bookingId: booking._id!,
+        setupToken: token, amountToDeductFromWallet: (grossPaise - priorPaise) / 100, useWalletBalance });
+      const walletPaise = priorPaise + bookingMoneyPaise(extra);
+      const payable = (grossPaise - walletPaise) / 100;
+      const notes = { bookingType: booking.bookingType, walletDeductedAmount: walletPaise / 100 };
+      if (payable <= 0) {
+        const payment = await this.paymentService.createDirectPaidTransaction({ userId: booking.userId, context: 'booking',
+          contextId: booking._id!, baseAmount, discountAmount, finalAmount: 0, couponCode,
+          notes: { ...notes, reason: grossPaise === 0 ? 'zero_payable_amount' : 'wallet_covered_amount' } });
+        const paid = await this.localOperations.attachPayment(booking._id!, token, payment._id!);
+        result = { booking: this.publicBooking(paid), paymentRequired: false, walletDeductedAmount: walletPaise / 100 };
+      } else {
+        const order = await this.paymentService.createOrder({ userId: booking.userId, context: 'booking',
+          contextId: booking._id!, baseAmount, discountAmount, finalAmount: payable, couponCode, notes });
+        const pending = await this.localOperations.attachPayment(booking._id!, token, order.paymentRecord._id!);
+        result = { booking: this.publicBooking(pending), paymentRequired: true, walletDeductedAmount: walletPaise / 100,
+          payment: { paymentTransactionId: order.paymentRecord._id!, razorpayOrderId: order.razorpayOrder.id,
+            razorpayKeyId: order.razorpayKeyId, amount: payable, currency: order.razorpayOrder.currency,
+            baseAmount, discountAmount, couponCode, walletDeductedAmount: walletPaise / 100 } };
+      }
+      failed = false;
+    } finally {
+      // Failed setup leaves known wallet debits/payment rows recoverable and never a permanent token.
+      await this.localOperations.endSetup(booking._id!, token, failed);
+    }
+    try {
+      await this.notificationService.createBookingCreatedNotification(booking.userId, booking._id!, {
+        bookingType: booking.bookingType, bookingDate: booking.bookingDate, bookingTime: booking.bookingTime,
+        price: booking.price, packageName: booking.packageName, specialistName: booking.doctorName,
+        consultationMode: booking.consultationMode,
+      });
+      if (booking.specialistId) await this.notificationService.createSpecialistNewBookingNotification(booking.specialistId, booking._id!, {
+        bookingType: booking.bookingType, bookingDate: booking.bookingDate, bookingTime: booking.bookingTime,
+        consultationMode: booking.consultationMode, userId: booking.userId,
+      });
+    } catch (error) { console.error('Failed to create booking notification:', error); }
+    if (!result.paymentRequired) {
+      await this.bookingReminderScheduler.scheduleBookingReminders(result.booking);
+      result.booking = this.publicBooking(await syncBookingMeet({ booking: result.booking, bookingRepository: this.bookingRepository,
+        userRepository: this.userRepository, specialistRepository: this.specialistRepository, slotRepository: this.slotRepository }));
+      await this.sendPaidBookingEmailNotification(result.booking);
+    }
+    return result;
+  }
+
   async createWellnessPackageBooking(
     data: CreateWellnessPackageBookingRequest
   ): Promise<BookingPaymentInitResponse> {
@@ -719,7 +550,7 @@ export class BookingService {
 
     await this.validateBookingDateAndSlot(data.bookingDate, data.slotId);
 
-    const basePrice = wellnessPackage.discountedPrice || wellnessPackage.originalPrice;
+    const basePrice = wellnessPackage.discountedPrice ?? wellnessPackage.originalPrice;
     const originalPrice = wellnessPackage.originalPrice;
 
     let discountAmount = 0;
@@ -766,142 +597,15 @@ export class BookingService {
       price: finalPrice,
       originalPrice,
       status: 'pending',
-      paymentStatus: finalPrice > 0 ? 'pending' : 'paid',
+      paymentStatus: 'pending',
       lifecycle: this.buildLifecyclePatch(undefined, {
         created: true,
       }),
       notes: data.notes,
     };
 
-    const savedBooking = await this.bookingRepository.save(booking);
-
-    try {
-      await this.slotService.incrementBookingCount(data.slotId);
-    } catch (error) {
-      console.error('Failed to increment slot booking count:', error);
-    }
-
-    try {
-      await this.notificationService.createBookingCreatedNotification(
-        data.userId,
-        savedBooking._id!,
-        {
-          bookingType: 'package',
-          bookingDate: data.bookingDate,
-          bookingTime: data.bookingTime,
-          price: finalPrice,
-          packageName: wellnessPackage.name,
-        }
-      );
-    } catch (error) {
-      console.error('Failed to create booking notification:', error);
-    }
-
-    let walletDeductedAmount = 0;
-    if (finalPrice > 0 && data.useWalletBalance) {
-      walletDeductedAmount = await this.deductWalletForBooking({
-        userId: data.userId,
-        bookingId: savedBooking._id!,
-        amountToDeductFromWallet: finalPrice,
-        useWalletBalance: true,
-      });
-    }
-
-    const payableAfterWallet = Math.max(0, finalPrice - walletDeductedAmount);
-
-    if (payableAfterWallet <= 0) {
-      const directPaidTransaction = await this.paymentService.createDirectPaidTransaction({
-        userId: data.userId,
-        context: 'booking',
-        contextId: savedBooking._id!,
-        baseAmount: basePrice,
-        discountAmount,
-        finalAmount: 0,
-        couponCode,
-        notes: {
-          bookingType: 'package',
-          reason: finalPrice <= 0 ? 'zero_payable_amount' : 'wallet_covered_amount',
-          walletDeductedAmount,
-        },
-      });
-
-      const paidBooking = await this.bookingRepository.update(
-        { _id: savedBooking._id },
-        {
-          status: 'confirmed',
-          paymentStatus: 'paid',
-          paymentTransactionId: directPaidTransaction._id!,
-          lifecycle: this.buildLifecyclePatch(savedBooking.lifecycle, {
-            paid: { amount: finalPrice },
-            confirmed: true,
-          }),
-        }
-      );
-
-      if (couponCode) {
-        const coupon = await this.couponService.getByCode(couponCode);
-        await this.couponService.incrementUsage(coupon._id!);
-      }
-
-      await this.bookingReminderScheduler.scheduleBookingReminders(
-        paidBooking || savedBooking
-      );
-      const bookingWithMeeting = await syncBookingMeet({
-        booking: paidBooking || savedBooking,
-        bookingRepository: this.bookingRepository,
-        userRepository: this.userRepository,
-        specialistRepository: this.specialistRepository,
-        slotRepository: this.slotRepository,
-      });
-      await this.sendPaidBookingEmailNotification(bookingWithMeeting);
-
-      return {
-        booking: bookingWithMeeting,
-        paymentRequired: false,
-        walletDeductedAmount,
-      };
-    }
-
-    const order = await this.paymentService.createOrder({
-      userId: data.userId,
-      context: 'booking',
-      contextId: savedBooking._id!,
-      baseAmount: basePrice,
-      discountAmount,
-      finalAmount: payableAfterWallet,
-      couponCode,
-      notes: {
-        bookingType: 'package',
-        walletDeductedAmount,
-      },
-    });
-
-    const bookingWithOrder = await this.bookingRepository.update(
-      { _id: savedBooking._id },
-      {
-        paymentTransactionId: order.paymentRecord._id!,
-        lifecycle: this.buildLifecyclePatch(savedBooking.lifecycle, {
-          paymentPending: { amount: payableAfterWallet },
-        }),
-      }
-    );
-
-    return {
-      booking: bookingWithOrder || savedBooking,
-      paymentRequired: true,
-      walletDeductedAmount,
-      payment: {
-        paymentTransactionId: order.paymentRecord._id!,
-        razorpayOrderId: order.razorpayOrder.id,
-        razorpayKeyId: order.razorpayKeyId,
-        amount: payableAfterWallet,
-        currency: order.razorpayOrder.currency,
-        baseAmount: basePrice,
-        discountAmount,
-        couponCode,
-        walletDeductedAmount,
-      },
-    };
+    const savedBooking = await this.localOperations.createDraft(booking);
+    return this.initializeBookingPayment(savedBooking, basePrice, discountAmount, couponCode, data.useWalletBalance);
   }
 
   async createSpecialistBooking(
@@ -979,175 +683,15 @@ export class BookingService {
       alternateContactNo: data.alternateContactNo,
       price: finalPrice,
       status: 'pending',
-      paymentStatus: finalPrice > 0 ? 'pending' : 'paid',
+      paymentStatus: 'pending',
       lifecycle: this.buildLifecyclePatch(undefined, {
         created: true,
       }),
       notes: data.notes,
     };
 
-    const savedBooking = await this.bookingRepository.save(booking);
-
-    if (followUpConfig.parentConsultation?._id) {
-      await this.bookingRepository.update(
-        { _id: followUpConfig.parentConsultation._id },
-        {
-          followUp: {
-            ...(followUpConfig.parentConsultation.followUp || {}),
-            isFollowUp: false,
-            completedAt: followUpConfig.parentConsultation.followUp?.completedAt,
-            eligibilityExpiresAt:
-              followUpConfig.parentConsultation.followUp?.eligibilityExpiresAt,
-            benefitUsed: true,
-          },
-        }
-      );
-    }
-
-    try {
-      await this.slotService.incrementBookingCount(data.slotId);
-    } catch (error) {
-      console.error('Failed to increment slot booking count:', error);
-    }
-
-    try {
-      await this.notificationService.createBookingCreatedNotification(
-        data.userId,
-        savedBooking._id!,
-        {
-          bookingType,
-          bookingDate: data.bookingDate,
-          bookingTime: data.bookingTime,
-          price: finalPrice,
-          specialistName: specialist.name,
-          consultationMode: data.consultationMode,
-        }
-      );
-    } catch (error) {
-      console.error('Failed to create booking notification:', error);
-    }
-
-    try {
-      await this.notificationService.createSpecialistNewBookingNotification(
-        specialistId,
-        savedBooking._id!,
-        {
-          bookingType,
-          bookingDate: data.bookingDate,
-          bookingTime: data.bookingTime,
-          consultationMode: data.consultationMode,
-          userId: data.userId,
-        }
-      );
-    } catch (error) {
-      console.error('Failed to create specialist booking notification:', error);
-    }
-
-    let walletDeductedAmount = 0;
-    if (finalPrice > 0 && data.useWalletBalance) {
-      walletDeductedAmount = await this.deductWalletForBooking({
-        userId: data.userId,
-        bookingId: savedBooking._id!,
-        amountToDeductFromWallet: finalPrice,
-        useWalletBalance: true,
-      });
-    }
-
-    const payableAfterWallet = Math.max(0, finalPrice - walletDeductedAmount);
-
-    if (payableAfterWallet <= 0) {
-      const directPaidTransaction = await this.paymentService.createDirectPaidTransaction({
-        userId: data.userId,
-        context: 'booking',
-        contextId: savedBooking._id!,
-        baseAmount: basePrice,
-        discountAmount,
-        finalAmount: 0,
-        couponCode,
-        notes: {
-          bookingType,
-          reason: finalPrice <= 0 ? 'zero_payable_amount' : 'wallet_covered_amount',
-          walletDeductedAmount,
-        },
-      });
-
-      const paidBooking = await this.bookingRepository.update(
-        { _id: savedBooking._id },
-        {
-          status: 'confirmed',
-          paymentStatus: 'paid',
-          paymentTransactionId: directPaidTransaction._id!,
-          lifecycle: this.buildLifecyclePatch(savedBooking.lifecycle, {
-            paid: { amount: finalPrice },
-            confirmed: true,
-          }),
-        }
-      );
-
-      if (couponCode) {
-        const coupon = await this.couponService.getByCode(couponCode);
-        await this.couponService.incrementUsage(coupon._id!);
-      }
-
-      await this.bookingReminderScheduler.scheduleBookingReminders(
-        paidBooking || savedBooking
-      );
-      const bookingWithMeeting = await syncBookingMeet({
-        booking: paidBooking || savedBooking,
-        bookingRepository: this.bookingRepository,
-        userRepository: this.userRepository,
-        specialistRepository: this.specialistRepository,
-        slotRepository: this.slotRepository,
-      });
-      await this.sendPaidBookingEmailNotification(bookingWithMeeting);
-
-      return {
-        booking: bookingWithMeeting,
-        paymentRequired: false,
-        walletDeductedAmount,
-      };
-    }
-
-    const order = await this.paymentService.createOrder({
-      userId: data.userId,
-      context: 'booking',
-      contextId: savedBooking._id!,
-      baseAmount: basePrice,
-      discountAmount,
-      finalAmount: payableAfterWallet,
-      couponCode,
-      notes: {
-        bookingType,
-        walletDeductedAmount,
-      },
-    });
-
-    const bookingWithOrder = await this.bookingRepository.update(
-      { _id: savedBooking._id },
-      {
-        paymentTransactionId: order.paymentRecord._id!,
-        lifecycle: this.buildLifecyclePatch(savedBooking.lifecycle, {
-          paymentPending: { amount: payableAfterWallet },
-        }),
-      }
-    );
-
-    return {
-      booking: bookingWithOrder || savedBooking,
-      paymentRequired: true,
-      walletDeductedAmount,
-      payment: {
-        paymentTransactionId: order.paymentRecord._id!,
-        razorpayOrderId: order.razorpayOrder.id,
-        razorpayKeyId: order.razorpayKeyId,
-        amount: payableAfterWallet,
-        currency: order.razorpayOrder.currency,
-        baseAmount: basePrice,
-        discountAmount,
-        couponCode,
-        walletDeductedAmount,
-      },
-    };
+    const savedBooking = await this.localOperations.createDraft(booking);
+    return this.initializeBookingPayment(savedBooking, basePrice, discountAmount, couponCode, data.useWalletBalance);
   }
 
   async createSurgeryBooking(
@@ -1196,7 +740,7 @@ export class BookingService {
       notes: data.notes,
     };
 
-    const savedBooking = await this.bookingRepository.save(booking);
+    const savedBooking = await this.localOperations.createDraft(booking, false);
 
     try {
       await this.notificationService.createBookingCreatedNotification(
@@ -1224,7 +768,7 @@ export class BookingService {
     await this.sendPaidBookingEmailNotification(bookingWithMeeting);
 
     return {
-      booking: bookingWithMeeting,
+      booking: this.publicBooking(bookingWithMeeting),
       paymentRequired: false,
       walletDeductedAmount: 0,
     };
@@ -1247,7 +791,7 @@ export class BookingService {
       });
     }
 
-    return booking;
+    return this.publicBooking(booking);
   }
 
   async getPaymentDetails(
@@ -1286,6 +830,34 @@ export class BookingService {
         'booking',
         booking._id!
       );
+    const invalidHistory = (): never => {
+      throw new AppError({ status: 409, code: 'BOOKING_RECONCILIATION_REQUIRED', message: 'Booking payment history requires reconciliation' });
+    };
+    const validatePayment = (payment: NonNullable<typeof paymentRecord>): void => {
+      if (!/^[a-f\d]{24}$/i.test(String(payment._id)) || payment.userId !== booking.userId ||
+          payment.context !== 'booking' || payment.contextId !== String(booking._id) || payment.currency !== 'INR' ||
+          !['razorpay', 'internal'].includes(payment.paymentGateway) || !['created', 'paid', 'failed', 'refunded'].includes(payment.status)) invalidHistory();
+      const finalPaise = bookingMoneyPaise(payment.finalAmount);
+      const basePaise = bookingMoneyPaise(payment.baseAmount);
+      const discountPaise = bookingMoneyPaise(payment.discountAmount);
+      if (discountPaise > basePaise || finalPaise > basePaise - discountPaise ||
+          (payment.finalAmountPaise !== undefined && payment.finalAmountPaise !== finalPaise)) invalidHistory();
+    };
+    if (booking.paymentTransactionId && (!paymentRecord || String(paymentRecord._id) !== booking.paymentTransactionId)) invalidHistory();
+    if (paymentRecord) validatePayment(paymentRecord);
+    if (walletTransactions.some(transaction => transaction.userId !== booking.userId || transaction.referenceType !== 'booking' ||
+        transaction.referenceId !== String(booking._id))) invalidHistory();
+    const paymentAttempts = await this.paymentRepository.findAll({ context: 'booking', contextId: String(booking._id), userId: booking.userId }, { limit: 129 });
+    if (paymentAttempts.length > 128) invalidHistory();
+    const uniquePayments = new Map<string, typeof paymentAttempts[number]>();
+    for (const attempt of paymentAttempts) {
+      validatePayment(attempt);
+      const id = String(attempt._id);
+      const prior = uniquePayments.get(id);
+      if (prior && (prior.finalAmount !== attempt.finalAmount || prior.status !== attempt.status || prior.paymentGateway !== attempt.paymentGateway)) invalidHistory();
+      uniquePayments.set(id, attempt);
+    }
+    if (paymentRecord && !uniquePayments.has(String(paymentRecord._id))) invalidHistory();
 
     const walletDebitTransactions = walletTransactions.filter(
       (transaction) =>
@@ -1298,17 +870,16 @@ export class BookingService {
         transaction.status === 'completed'
     );
 
-    const amountUsedFromWallet = walletDebitTransactions.reduce(
-      (sum, transaction) => sum + Number(transaction.amount || 0),
-      0
-    );
-    const amountRefunded = walletRefundTransactions.reduce(
-      (sum, transaction) => sum + Number(transaction.amount || 0),
-      0
-    );
-    const amountChargedToRazorpay = paymentRecord
-      ? Number(paymentRecord.finalAmount || 0)
-      : 0;
+    const usedPaise = walletDebitTransactions.reduce((sum, transaction) => sum + bookingMoneyPaise(transaction.amount), 0);
+    const refundedPaise = walletRefundTransactions.reduce((sum, transaction) => sum + bookingMoneyPaise(transaction.amount), 0);
+    const chargedPaise = [...uniquePayments.values()].reduce((sum, attempt) =>
+      sum + (attempt.paymentGateway === 'razorpay' && ['paid', 'refunded'].includes(attempt.status) ? bookingMoneyPaise(attempt.finalAmount) : 0), 0);
+    if (![usedPaise, refundedPaise, usedPaise + chargedPaise].every(Number.isSafeInteger)) {
+      throw new AppError({ status: 409, code: 'BOOKING_RECONCILIATION_REQUIRED', message: 'Booking payment totals exceed the supported range' });
+    }
+    const amountUsedFromWallet = usedPaise / 100;
+    const amountRefunded = refundedPaise / 100;
+    const amountChargedToRazorpay = chargedPaise / 100;
 
     return {
       booking: {
@@ -1351,6 +922,7 @@ export class BookingService {
         })),
       },
       refund: {
+        destination: refundedPaise > 0 ? 'internal_wallet' : null,
         amountRefunded,
         transactions: walletRefundTransactions.map((transaction) => ({
           _id: transaction._id,
@@ -1365,7 +937,7 @@ export class BookingService {
         amountChargedToRazorpay,
         amountUsedFromWallet,
         amountRefunded,
-        actualAmountPaid: amountChargedToRazorpay + amountUsedFromWallet,
+        actualAmountPaid: (chargedPaise + usedPaise) / 100,
         paidAt: paymentRecord?.paidAt,
       },
     };
@@ -1440,7 +1012,7 @@ export class BookingService {
       }
 
       const data = await this.bookingRepository.findAll(filter, { sort });
-      return { data };
+      return { data: data.map(booking => this.publicBooking(booking)) };
     }
 
     if (queryParams.page && queryParams.limit) {
@@ -1499,27 +1071,14 @@ export class BookingService {
       sort.createdAt = -1;
     }
 
-    let data: IBooking[];
-
-    if (queryParams.userId) {
-      data = await this.bookingRepository.findByUserId(queryParams.userId);
-    } else if (queryParams.dependentId) {
-      data = await this.bookingRepository.findByDependentId(
-        queryParams.dependentId
-      );
-    } else if (queryParams.wellnessPackageId) {
-      data = await this.bookingRepository.findByWellnessPackageId(
-        queryParams.wellnessPackageId
-      );
-    } else if (queryParams.specialistId) {
-      data = await this.bookingRepository.findBySpecialistId(
-        queryParams.specialistId
-      );
-    } else {
-      data = await this.bookingRepository.findAll(filter, { sort });
+    if (queryParams.bookingDateFrom || queryParams.bookingDateTo) {
+      filter.bookingDate = {};
+      if (queryParams.bookingDateFrom) filter.bookingDate.$gte = queryParams.bookingDateFrom;
+      if (queryParams.bookingDateTo) filter.bookingDate.$lte = queryParams.bookingDateTo;
     }
+    const data = await this.bookingRepository.findAll(filter, { sort });
 
-    return { data };
+    return { data: data.map(booking => this.publicBooking(booking)) };
   }
 
   async updateCustomerNotes(
@@ -1572,7 +1131,7 @@ export class BookingService {
       { new: true, upsert: false }
     );
     if (!updated) throw notEditable();
-    return updated;
+    return this.publicBooking(updated);
   }
 
   async update(
@@ -1581,63 +1140,23 @@ export class BookingService {
     userId?: string
   ): Promise<IBooking> {
     const booking = await this.getById(id, userId);
-
-    if (data.bookingDate) {
-      const today = getTodayYyyymmdd();
-      if (compareYyyymmdd(data.bookingDate, today) < 0) {
-        throw new AppError({
-          status: 400,
-          code: 'INVALID_BOOKING_DATE',
-          message: 'Booking date cannot be in the past',
-        });
-      }
+    if (data.status === 'cancelled' || data.paymentStatus !== undefined || Object.prototype.hasOwnProperty.call(data, 'paymentTransactionId') ||
+        data.lifecycle !== undefined || data.followUp !== undefined || data.slotId !== undefined || data.bookingDate !== undefined || data.bookingTime !== undefined) {
+      throw new AppError({ status: 409, code: 'DEDICATED_BOOKING_COMMAND_REQUIRED', message: 'Use cancellation, rescheduling or payment commands for this change' });
     }
+    if (booking.status === 'cancelled') throw new AppError({ status: 409, code: 'BOOKING_CANCELLED', message: 'Cancelled booking history cannot be rewritten' });
 
-    if (data.status === 'cancelled' && booking.status !== 'cancelled') {
-      data.cancelledAt = getTodayYyyymmdd();
-      data.paymentStatus = 'refunded';
-      if (!data.cancellationReason) {
-        data.cancellationReason = 'Cancelled by user';
-      }
-    }
 
     const lifecyclePatch = this.buildLifecyclePatch(booking.lifecycle, {
-      paymentPending:
-        data.paymentStatus === 'pending' && booking.paymentStatus !== 'pending'
-          ? { amount: booking.price }
-          : undefined,
-      paid:
-        data.paymentStatus === 'paid' && booking.paymentStatus !== 'paid'
-          ? { amount: booking.price }
-          : undefined,
-      confirmed:
-        data.status === 'confirmed' && booking.status !== 'confirmed'
-          ? true
-          : undefined,
-      cancelled:
-        data.status === 'cancelled' && booking.status !== 'cancelled'
-          ? { reason: data.cancellationReason || 'Cancelled by user' }
-          : undefined,
-      completed:
-        data.status === 'completed' && booking.status !== 'completed'
-          ? true
-          : undefined,
-      refunded:
-        data.paymentStatus === 'refunded' && booking.paymentStatus !== 'refunded'
-          ? {
-              reason:
-                data.cancellationReason ||
-                booking.cancellationReason ||
-                'Booking refunded',
-            }
-          : undefined,
+      confirmed: data.status === 'confirmed' && booking.status !== 'confirmed' ? true : undefined,
+      completed: data.status === 'completed' && booking.status !== 'completed' ? true : undefined,
     });
 
     if (lifecyclePatch) {
       data.lifecycle = lifecyclePatch;
     }
 
-    const updated = await this.bookingRepository.update({ _id: id }, data);
+    const updated = await this.bookingRepository.update({ _id: id, status: booking.status, ...(userId ? { userId: { $eq: userId } } : {}) }, data);
 
     if (!updated) {
       throw new AppError({
@@ -1663,19 +1182,7 @@ export class BookingService {
       return meetingUpdatedBooking;
     }
 
-    if (updated.status === 'cancelled' || data.status === 'cancelled') {
-      const cancelledBooking =
-        await this.ensureCancelledBookingPaymentStatus(updated);
-      await this.bookingReminderScheduler.clearBookingReminders(
-        cancelledBooking._id!
-      );
-      const meetingUpdatedBooking = await cancelBookingMeet({
-        booking: cancelledBooking,
-        reason: data.cancellationReason,
-        bookingRepository: this.bookingRepository,
-      });
-      return meetingUpdatedBooking;
-    } else if (
+    if (
       updated.status === 'confirmed' &&
       (
         data.status !== undefined ||
@@ -1697,170 +1204,28 @@ export class BookingService {
   }
 
   async delete(id: string, userId?: string): Promise<void> {
-    if (userId !== undefined && (typeof userId !== 'string' || userId.trim().length === 0)) {
-      throw new AppError({
-        status: 401,
-        code: 'UNAUTHORIZED',
-        message: 'Authentication is required',
-      });
-    }
-    const booking = await this.getById(id, userId);
-    await this.bookingReminderScheduler.clearBookingReminders(booking._id!);
-    await cancelBookingMeet({
-      booking,
-      reason: 'Booking deleted',
-      bookingRepository: this.bookingRepository,
-    });
-
-    if (booking.slotId) {
-      try {
-        const slot = await this.slotRepository.findById(booking.slotId);
-        if (slot?.currentBookings && slot.currentBookings > 0) {
-          await this.slotService.decrementBookingCount(booking.slotId);
-        }
-      } catch (error) {
-        console.error('Failed to decrement slot booking count:', error);
-      }
-    }
-
-    if (userId === undefined) {
-      await this.bookingRepository.delete({ _id: id });
-    } else if (!(await this.bookingRepository.deleteByIdAndUserId(id, userId))) {
-      throw new AppError({
-        status: 409,
-        code: 'BOOKING_DELETE_CONFLICT',
-        message: 'Booking could not be deleted because it changed',
-      });
-    }
+    await this.getById(id, userId);
+    throw new AppError({ status: 409, code: 'BOOKING_RETENTION_REQUIRED', message: 'Use the cancellation command; booking history must be retained' });
   }
 
   async getByUserId(userId: string): Promise<IBooking[]> {
-    return this.bookingRepository.findByUserId(userId);
+    return (await this.bookingRepository.findByUserId(userId)).map(booking => this.publicBooking(booking));
   }
 
   async getUpcomingBookings(userId?: string): Promise<IBooking[]> {
-    return this.bookingRepository.findUpcomingBookings(userId);
+    return (await this.bookingRepository.findUpcomingBookings(userId)).map(booking => this.publicBooking(booking));
   }
 
   async cancelBooking(
-    bookingId: string,
-    data: { cancellationReason?: string },
-    requester: { _id: string; userType: string }
+    bookingId: string, data: { cancellationReason?: string }, requester: { _id: string; userType: string }
   ): Promise<IBooking> {
-    const booking =
-      requester.userType === 'admin'
-        ? await this.getById(bookingId)
-        : await this.getById(bookingId, requester._id);
-
-    if (booking.status === 'cancelled') {
-      return booking;
-    }
-
-    this.enforceUserCancellationWindow(booking, requester);
-
-    const updated = await this.bookingRepository.update(
-      { _id: bookingId },
-      {
-        status: 'cancelled',
-        paymentStatus: 'refunded',
-        cancellationReason: data.cancellationReason || 'Cancelled by user',
-        cancelledAt: getTodayYyyymmdd(),
-        lifecycle: this.buildLifecyclePatch(booking.lifecycle, {
-          cancelled: {
-            reason: data.cancellationReason || 'Cancelled by user',
-          },
-          refunded: {
-            reason: data.cancellationReason || 'Cancelled by user',
-          },
-        }),
-      }
-    );
-
-    if (!updated) {
-      throw new AppError({
-        status: 500,
-        code: 'UPDATE_FAILED',
-        message: 'Failed to cancel booking',
-      });
-    }
-
-    try {
-      await this.refundBookingAmountToWallet(booking);
-    } catch (error) {
-      console.error('Failed to refund cancelled booking amount to wallet:', error);
-    }
-
-    if (booking.specialistId) {
-      try {
-        await this.notificationService.createSpecialistAppointmentCancelledNotification(
-          booking.specialistId,
-          bookingId,
-          {
-            bookingType: booking.bookingType,
-            bookingDate: booking.bookingDate,
-            bookingTime: booking.bookingTime,
-            cancellationReason: data.cancellationReason || 'Cancelled by user',
-            userId: booking.userId,
-          }
-        );
-      } catch (error) {
-        console.error(
-          'Failed to create specialist cancellation notification:',
-          error
-        );
-      }
-    }
-
-    if (
-      booking.followUp?.isFollowUp &&
-      booking.followUp.parentConsultationId &&
-      booking.status !== 'completed'
-    ) {
-      try {
-        const parentConsultation = await this.bookingRepository.findById(
-          booking.followUp.parentConsultationId
-        );
-
-        if (parentConsultation) {
-          await this.bookingRepository.update(
-            { _id: parentConsultation._id },
-            {
-              followUp: {
-                ...(parentConsultation.followUp || {}),
-                isFollowUp: false,
-                completedAt: parentConsultation.followUp?.completedAt,
-                eligibilityExpiresAt:
-                  parentConsultation.followUp?.eligibilityExpiresAt,
-                benefitUsed: false,
-              },
-            }
-          );
-        }
-      } catch (error) {
-        console.error('Failed to restore parent follow-up benefit:', error);
-      }
-    }
-
-    const finalBooking = await this.ensureCancelledBookingPaymentStatus(updated);
-
-    await this.bookingReminderScheduler.clearBookingReminders(finalBooking._id!);
-
-    if (booking.slotId) {
-      try {
-        const slot = await this.slotRepository.findById(booking.slotId);
-        if (slot?.currentBookings && slot.currentBookings > 0) {
-          await this.slotService.decrementBookingCount(booking.slotId);
-        }
-      } catch (error) {
-        console.error('Failed to decrement slot booking count:', error);
-      }
-    }
-
-    return cancelBookingMeet({
-      booking: finalBooking,
-      reason: finalBooking.cancellationReason,
-      bookingRepository: this.bookingRepository,
-    });
+    const settled = await this.localOperations.cancel(bookingId, requester, data.cancellationReason?.trim() || 'Cancelled by user',
+      booking => this.enforceUserCancellationWindow(booking, requester));
+    // These idempotent cleanup attempts are outside the financial transaction and retried on the next call.
+    try { await this.bookingReminderScheduler.clearBookingReminders(settled._id!); }
+    catch (error) { console.error('Cancelled booking reminder cleanup remains pending:', error); }
+    try { return this.publicBooking(await cancelBookingMeet({ booking: settled, reason: settled.cancellationReason, bookingRepository: this.bookingRepository })); }
+    catch (error) { console.error('Cancelled booking meeting cleanup remains pending:', error); return this.publicBooking(settled); }
   }
 
   async rescheduleBooking(
@@ -1905,24 +1270,7 @@ export class BookingService {
       allowCurrentSlotId: booking.slotId,
     });
 
-    const oldSlotId = booking.slotId;
     const newSlotId = data.slotId;
-    const slotChanged = !!newSlotId && newSlotId !== oldSlotId;
-
-    if (slotChanged) {
-      await this.slotService.incrementBookingCount(newSlotId);
-      try {
-        if (oldSlotId) {
-          const oldSlot = await this.slotRepository.findById(oldSlotId);
-          if (oldSlot?.currentBookings && oldSlot.currentBookings > 0) {
-            await this.slotService.decrementBookingCount(oldSlotId);
-          }
-        }
-      } catch (error) {
-        await this.slotService.decrementBookingCount(newSlotId);
-        throw error;
-      }
-    }
 
     const updatePayload: UpdateBookingRequest = {
       slotId: newSlotId,
@@ -1943,43 +1291,20 @@ export class BookingService {
       updatePayload.consultationMode = data.consultationMode;
     }
 
-    const updated = await this.bookingRepository.update(
-      { _id: bookingId },
-      {
-        ...updatePayload,
-        lifecycle: this.buildLifecyclePatch(booking.lifecycle, {
-          rescheduled: true,
-        }),
-      }
-    );
-
-    if (!updated) {
-      if (slotChanged) {
-        await this.slotService.decrementBookingCount(newSlotId);
-        if (oldSlotId) {
-          await this.slotService.incrementBookingCount(oldSlotId);
-        }
-      }
-
-      throw new AppError({
-        status: 500,
-        code: 'UPDATE_FAILED',
-        message: 'Failed to reschedule booking',
-      });
-    }
+    const updated = await this.localOperations.reschedule(bookingId, requester, updatePayload as unknown as Record<string, unknown>);
 
     if (updated.status === 'confirmed') {
       await this.bookingReminderScheduler.scheduleBookingReminders(updated);
-      return syncBookingMeet({
+      return this.publicBooking(await syncBookingMeet({
         booking: updated,
         bookingRepository: this.bookingRepository,
         userRepository: this.userRepository,
         specialistRepository: this.specialistRepository,
         slotRepository: this.slotRepository,
-      });
+      }));
     }
 
-    return updated;
+    return this.publicBooking(updated);
   }
 
   async retryBookingPayment(
@@ -2023,183 +1348,26 @@ export class BookingService {
     }
 
     let baseAmount = booking.originalPrice ?? booking.price;
-    let discountAmount = Math.max(0, (booking.originalPrice ?? booking.price) - booking.price);
+    let discountAmount = Math.max(0, baseAmount - booking.price);
     let couponCode = options.couponCode;
-    let walletDeductedAmount = 0;
-
     if (booking.paymentTransactionId) {
-      const previousPayment = await this.paymentRepository.findById(
-        booking.paymentTransactionId
-      );
-
-      if (previousPayment) {
-        if (previousPayment.status === 'paid') {
-          throw new AppError({
-            status: 400,
-            code: 'BOOKING_ALREADY_PAID',
-            message: 'Booking is already paid',
-          });
-        }
-
-        baseAmount = previousPayment.baseAmount;
-        if (!couponCode) {
-          discountAmount = previousPayment.discountAmount;
-          couponCode = previousPayment.couponCode;
-        }
-        walletDeductedAmount = Number(previousPayment.notes?.walletDeductedAmount || 0);
+      const previous = await this.paymentRepository.findById(booking.paymentTransactionId);
+      if (previous) {
+        if (previous.status === 'paid' || previous.status === 'refunded') throw new AppError({ status: 409, code: 'BOOKING_RECONCILIATION_REQUIRED', message: 'Previous payment must be reconciled before retry' });
+        baseAmount = previous.baseAmount;
+        if (!couponCode) { discountAmount = previous.discountAmount; couponCode = previous.couponCode; }
       }
     }
-
     if (options.couponCode) {
-      const bookingCouponType = booking.bookingType === 'package' ? 'package' : 'consultation';
-      const couponResult = await this.resolveRetryBookingCoupon({
-        booking,
-        bookingType: bookingCouponType,
-        grossAmount: baseAmount,
-        requesterCorporateId:
-          requester.userType === 'admin'
-            ? booking.corporateId
-            : requester.corporateId,
-        couponCode: options.couponCode,
-      });
-
-      discountAmount = couponResult.discountAmount;
-      couponCode = couponResult.couponCode;
+      const coupon = await this.resolveRetryBookingCoupon({ booking,
+        bookingType: booking.bookingType === 'package' ? 'package' : 'consultation', grossAmount: baseAmount,
+        requesterCorporateId: requester.userType === 'admin' ? booking.corporateId : requester.corporateId,
+        couponCode: options.couponCode });
+      discountAmount = coupon.discountAmount; couponCode = coupon.couponCode;
     }
-
-    await this.validateWalletIfRequested(
-      booking.userId,
-      options.useWalletBalance
-    );
-
-    const grossAmount = Math.max(0, baseAmount - discountAmount);
-    let extraWalletDeductedAmount = 0;
-    if (options.useWalletBalance) {
-      const walletRoom = Math.max(0, grossAmount - walletDeductedAmount);
-      if (walletRoom > 0) {
-        extraWalletDeductedAmount = await this.deductWalletForBooking({
-          userId: booking.userId,
-          bookingId: booking._id!,
-          amountToDeductFromWallet: walletRoom,
-          useWalletBalance: true,
-        });
-      }
-    }
-
-    const totalWalletDeductedAmount =
-      walletDeductedAmount + extraWalletDeductedAmount;
-    const payableAfterWallet = Math.max(0, grossAmount - totalWalletDeductedAmount);
-
-    if (payableAfterWallet <= 0) {
-      const directPaidTransaction =
-        await this.paymentService.createDirectPaidTransaction({
-          userId: booking.userId,
-          context: 'booking',
-          contextId: booking._id!,
-          baseAmount,
-          discountAmount,
-          finalAmount: 0,
-          couponCode,
-          notes: {
-            bookingType: booking.bookingType,
-            reason:
-              totalWalletDeductedAmount > 0
-                ? 'wallet_covered_amount'
-                : 'zero_payable_amount',
-            retryOfBookingId: booking._id!,
-            walletDeductedAmount: totalWalletDeductedAmount,
-          },
-        });
-
-      const paidBooking = await this.bookingRepository.update(
-        { _id: booking._id! },
-        {
-          paymentStatus: 'paid',
-          paymentTransactionId: directPaidTransaction._id!,
-          status: booking.status === 'pending' ? 'confirmed' : booking.status,
-          lifecycle: this.buildLifecyclePatch(booking.lifecycle, {
-            paid: { amount: grossAmount },
-            confirmed: booking.status === 'pending' ? true : undefined,
-          }),
-        }
-      );
-
-      if (couponCode) {
-        const coupon = await this.couponService.getByCode(couponCode);
-        await this.couponService.incrementUsage(coupon._id!);
-      }
-
-      const settledBooking = paidBooking || booking;
-      if (settledBooking.status === 'confirmed') {
-        await this.bookingReminderScheduler.scheduleBookingReminders(
-          settledBooking
-        );
-        const bookingWithMeeting = await syncBookingMeet({
-          booking: settledBooking,
-          bookingRepository: this.bookingRepository,
-          userRepository: this.userRepository,
-          specialistRepository: this.specialistRepository,
-          slotRepository: this.slotRepository,
-        });
-        await this.sendPaidBookingEmailNotification(bookingWithMeeting);
-
-        return {
-          booking: bookingWithMeeting,
-          paymentRequired: false,
-          walletDeductedAmount: totalWalletDeductedAmount,
-        };
-      }
-
-      await this.sendPaidBookingEmailNotification(settledBooking);
-
-      return {
-        booking: settledBooking,
-        paymentRequired: false,
-        walletDeductedAmount: totalWalletDeductedAmount,
-      };
-    }
-
-    const order = await this.paymentService.createOrder({
-      userId: booking.userId,
-      context: 'booking',
-      contextId: booking._id!,
-      baseAmount,
-      discountAmount,
-      finalAmount: payableAfterWallet,
-      couponCode,
-      notes: {
-        bookingType: booking.bookingType,
-        retryOfBookingId: booking._id!,
-        walletDeductedAmount: totalWalletDeductedAmount,
-      },
-    });
-
-    const updatedBooking = await this.bookingRepository.update(
-      { _id: booking._id! },
-      {
-        paymentStatus: 'pending',
-        paymentTransactionId: order.paymentRecord._id!,
-        lifecycle: this.buildLifecyclePatch(booking.lifecycle, {
-          paymentPending: { amount: payableAfterWallet },
-        }),
-      }
-    );
-
-    return {
-      booking: updatedBooking || booking,
-      paymentRequired: true,
-      walletDeductedAmount: totalWalletDeductedAmount,
-      payment: {
-        paymentTransactionId: order.paymentRecord._id!,
-        razorpayOrderId: order.razorpayOrder.id,
-        razorpayKeyId: order.razorpayKeyId,
-        amount: payableAfterWallet,
-        currency: order.razorpayOrder.currency,
-        baseAmount,
-        discountAmount,
-        couponCode,
-        walletDeductedAmount: totalWalletDeductedAmount,
-      },
-    };
+    const setup = await this.localOperations.beginSetup(bookingId, { _id: requester._id, userType: requester.userType, pharmacyId: requester.pharmacyId });
+    setup.price = (bookingMoneyPaise(baseAmount) - bookingMoneyPaise(discountAmount)) / 100;
+    return this.initializeBookingPayment(setup, baseAmount, discountAmount, couponCode, options.useWalletBalance);
   }
+
 }

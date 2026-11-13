@@ -128,7 +128,18 @@ export interface IExternalDiagnosticsSlot {
   meta?: Record<string, unknown>;
 }
 
+export interface IExternalBookingLocalEffects {
+  version: 1; revision: number; setupToken: string | null; setupDeadlineMs: number; setupFailed: boolean;
+  walletDebitedPaise: number; walletRefundedPaise: number;
+  settledPaymentIds: string[]; couponPaymentIds: string[]; reversedCouponPaymentIds: string[];
+  cancelRequested: boolean; cancelled: boolean; refundDestination?: 'internal_wallet';
+  providerAttempted: boolean; providerCompleted: boolean; providerUnknown: boolean;
+  providerToken: string | null; providerPaymentId: string | null;
+  cancelToken: string | null; providerCancelAck: boolean;
+}
+
 export interface IExternalBooking {
+  localEffects?: IExternalBookingLocalEffects;
   _id?: string;
   userId: string;
   dependentId?: string;
@@ -224,6 +235,7 @@ export interface ExternalBookingPaymentDetailsResponse {
     }>;
   };
   refund: {
+    destination: 'internal_wallet' | null;
     amountRefunded: number;
     transactions: Array<{
       _id?: string;

@@ -1,0 +1,79 @@
+{
+  "schema": "SD-ORDINARY-LOCAL-RECORDING-RUN-1",
+  "sourceBaseline": "9c8d1d8f6ecda8d0832f9294c4b1b7a6fdf7077c",
+  "cwd": "/private/tmp/sd-customer-milestone-20261113",
+  "environment": {
+    "TMPDIR": "/tmp"
+  },
+  "argv": [
+    "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/test/customer-bookings/local-operations.mjs",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/bookings/services/localOperations.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/bookings/services/index.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/payment/services/index.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/bookings/utils/lifecycle.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/common/utils/cancellationWindow.ts",
+    "test/customer-bookings/local-operations.mjs"
+  ],
+  "terminal": {
+    "exitCode": 0,
+    "chunkId": "7915dd",
+    "wallSeconds": 0.590503125,
+    "invocations": 1
+  },
+  "nodeSha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+  "runnerSha256": "a370773f5cb72fc39b472430b97870d010717bd978172d9dbc88fd5051f75953",
+  "sourceSha256": {
+    "src1/modules/bookings/services/localOperations.ts": "e49988179fffe61e903c66eda05588d0547167d2b9825ba29dce655da1d749d0",
+    "src1/modules/bookings/services/index.ts": "a75619a18513cde068c31d4bc4373d943692719d88c664e0b2d7ad9977b04e27",
+    "src1/modules/payment/services/index.ts": "a98ff09a6d8a90b1e9549b13ac8d12d911358f1e481583b7fcc3bcc227d72745",
+    "src1/modules/bookings/utils/lifecycle.ts": "8551c300b245d98ad730f1cd09912f4e83b58e56adceb0e8421eea574480df44",
+    "src1/modules/common/utils/cancellationWindow.ts": "ce98258acdd565477efa0bf872923980b7ac85f2c0aa5202293dd2558a03eeea"
+  },
+  "rawSha256": {
+    "stdout.txt": "fd5783c2ba32aa38e34a7d8907071a955cec6156c8f8721bf367d7e02ae5a65f",
+    "stderr.txt": "be2450def62ff38b6b43ae9d5c8d6323cc2d61e70a03c579719447de16a3b89c"
+  },
+  "measured": {
+    "nominalCases": 41,
+    "restoredCases": 41,
+    "detectedWholeSourceControls": 4
+  },
+  "preexecutionDecisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_ONE_ORDINARY_BOOKING_RECORDING_VM_RUN_ONLY"
+    },
+    {
+      "reviewer": "/root/booking_owner",
+      "role": "Spec",
+      "decision": "APPROVE_ONE_ORDINARY_BOOKING_RECORDING_VM_RUN_ONLY"
+    }
+  ],
+  "outcomeReview": "ACCEPTED_RECORDING_VM_OUTCOME_ONLY",
+  "limits": [
+    "Whole local-effects helper, lifecycle and relevant whole BookingService/PaymentService methods under fixed stripped-import recording ports",
+    "Model/session adapter enforces select:false localEffects, same owned session, snapshot rollback and simulated callback retry",
+    "Schedules are serial recording scenarios, not native MongoDB concurrency/isolation/capacity evidence",
+    "No real Mongoose/Joi/HTTP/database/index/provider/SDK/config/client/session/production acceptance"
+  ],
+  "sourceSnapshot": "Exact public evaluated five-module bytes saved beneath source-snapshot; later shared PaymentService edits are outside this exact run. This snapshot is historical evidence, not new application admission.",
+  "stderr": "Only expected native stripTypeScriptTypes ExperimentalWarning retained verbatim.",
+  "outcomeDecisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "ACCEPT_ORDINARY_BOOKING_RECORDING_VM_OUTCOME_ONLY",
+      "basis": "Personally read complete actual stdout/stderr/RUN_RECORD,41nominal+41restored/four named controls/exit0/nativewarning only; preserved exact source snapshot."
+    },
+    {
+      "reviewer": "/root/booking_owner",
+      "role": "Spec",
+      "decision": "ACCEPT_ORDINARY_BOOKING_RECORDING_VM_OUTCOME_ONLY",
+      "basis": "Personally read complete41caseIDs+41restored/four controls/rawwarning and terminal0.590503125s; freshly rehashed exact runner and all five sources against admission. Recording serial scenarios only; no native claims."
+    }
+  ],
+  "runnerSnapshot": "source-snapshot/test/customer-bookings/local-operations.mjs"
+}

@@ -1,0 +1,38 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: [{"name":"owned detail returns sanitized DTO and denies foreign owner","error":"Expected values to be strictly equal:\n+ actual - expected\n\n+ 'not-public'\n- undefined\n"}]
++ actual - expected
+
++ [
++   {
++     error: 'Expected values to be strictly equal:\n' +
++       '+ actual - expected\n' +
++       '\n' +
++       "+ 'not-public'\n" +
++       '- undefined\n',
++     name: 'owned detail returns sanitized DTO and denies foreign owner'
++   }
++ ]
+- []
+
+    at file:///private/tmp/sd-customer-milestone-20261113/test/customer-bookings/external-operations.mjs:125:43 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: [
+    {
+      name: 'owned detail returns sanitized DTO and denies foreign owner',
+      error: 'Expected values to be strictly equal:\n' +
+        '+ actual - expected\n' +
+        '\n' +
+        "+ 'not-public'\n" +
+        '- undefined\n'
+    }
+  ],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.19.0

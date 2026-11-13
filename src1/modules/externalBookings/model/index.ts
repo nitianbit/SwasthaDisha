@@ -126,6 +126,19 @@ const externalBookingSchema = new Schema<IExternalBooking>(
       type: Schema.Types.Mixed,
       default: {},
     },
+    localEffects: {
+      select: false,
+      type: new Schema({
+        version: { type: Number, enum: [1], required: true }, revision: { type: Number, required: true },
+        setupToken: String, setupDeadlineMs: Number, setupFailed: Boolean,
+        walletDebitedPaise: Number, walletRefundedPaise: Number,
+        settledPaymentIds: [String], couponPaymentIds: [String], reversedCouponPaymentIds: [String],
+        cancelRequested: Boolean, cancelled: Boolean, refundDestination: { type: String, enum: ['internal_wallet'] },
+        providerAttempted: Boolean, providerCompleted: Boolean, providerUnknown: Boolean,
+        providerToken: String, providerPaymentId: String, cancelToken: String, providerCancelAck: Boolean,
+      }, { _id: false }),
+      default: undefined,
+    },
   },
   {
     timestamps: true,

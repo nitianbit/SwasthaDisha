@@ -1,0 +1,9 @@
+{
+  "scope": "WHOLE_CONTROLLERS_RECORDING_VM_ONLY",
+  "actualOutcomes": [
+    { "reviewer": "/root", "role": "Standards", "decision": "ACCEPT_BOOKING_CONTROLLER_RECORDING_VM_OUTCOME_ONLY", "basis": "Personally read complete actual stdout/stderr:44 nominal and44 restored cases, four concrete weakening detections, expected Node strip warning only." },
+    { "reviewer": "/root/profile_owner", "role": "Spec", "decision": "ACCEPT_BOOKING_CONTROLLER_RECORDING_VM_OUTCOME_ONLY", "basis": "Personally read complete stdout/stderr44caseIDs/restoration/four intended detections and freshly rehashed runner/source unchanged." }
+  ],
+  "provenance": "Actual independent nonauthor reviewer messages, transcribed by author /root/booking_owner. Not owner/module/release acceptance.",
+  "limits": "Recording DI/UserModel/dependent/service-forwarding only; no actual DB predicate evaluation, native/Joi/HTTP/provider/client/consent-race proof. One-run authority consumed."
+}

@@ -4,6 +4,7 @@ import { Container } from 'typedi';
 import { AppError } from '@/modules/common/types';
 import { getTodayYyyymmdd } from '@/modules/common/utils/dateUtils';
 import { BookingService } from '@/modules/bookings/services';
+import { DependentService } from '@/modules/dependents/services';
 import { AuthRequest } from '@/modules/middleware/auth';
 import {
   CancelBookingRequest,
@@ -18,9 +19,11 @@ import {
 
 export class BookingController {
   private bookingService: BookingService;
+  private dependentService: DependentService;
 
   constructor() {
     this.bookingService = Container.get(BookingService);
+    this.dependentService = Container.get(DependentService);
   }
 
   private requireBookingActor(req: AuthRequest) {
@@ -40,6 +43,20 @@ export class BookingController {
     }
 
     return actor;
+  }
+
+  private async assertCustomerDependentOwner(req: AuthRequest): Promise<void> {
+    const actor = this.requireBookingActor(req);
+    if (actor.userType !== 'user') return;
+    const dependentId = req.body.dependentId;
+    if (dependentId === undefined) return;
+    if (typeof dependentId !== 'string' || !/^[0-9a-fA-F]{24}$/.test(dependentId)) {
+      throw new AppError({ status: 404, code: 'DEPENDENT_NOT_FOUND', message: 'Dependent not found' });
+    }
+    const dependent = await this.dependentService.getById(dependentId, actor._id);
+    if (dependent.isActive === false) {
+      throw new AppError({ status: 404, code: 'DEPENDENT_NOT_FOUND', message: 'Dependent not found' });
+    }
   }
 
   private resolveBookingOwnerScope(req: AuthRequest): string | undefined {
@@ -188,6 +205,7 @@ export class BookingController {
     _next: NextFunction
   ) => {
     this.ensureHRReadOnly(req);
+    await this.assertCustomerDependentOwner(req);
     const userId = this.resolveBookingUserId(req);
 
     const data: CreateBookingRequest = {
@@ -197,7 +215,7 @@ export class BookingController {
       corporateId:
         req.user?.userType === 'admin'
           ? req.body.corporateId
-          : req.user?.corporateId || req.body.corporateId,
+          : req.user?.corporateId,
       doctorName:
         (req.body.doctorName as string | undefined) ||
         (req.body.doctor_name as string | undefined),
@@ -222,6 +240,7 @@ export class BookingController {
     _next: NextFunction
   ) => {
     this.ensureHRReadOnly(req);
+    await this.assertCustomerDependentOwner(req);
     const userId = this.resolveBookingUserId(req);
 
     const data: CreateWellnessPackageBookingRequest = {
@@ -231,7 +250,7 @@ export class BookingController {
       corporateId:
         req.user?.userType === 'admin'
           ? req.body.corporateId
-          : req.user?.corporateId || req.body.corporateId,
+          : req.user?.corporateId,
       packageName:
         (req.body.packageName as string | undefined) ||
         (req.body.package_name as string | undefined),
@@ -253,6 +272,7 @@ export class BookingController {
     _next: NextFunction
   ) => {
     this.ensureHRReadOnly(req);
+    await this.assertCustomerDependentOwner(req);
     const userId = this.resolveBookingUserId(req);
 
     const data: CreateSpecialistBookingRequest = {
@@ -262,7 +282,7 @@ export class BookingController {
       corporateId:
         req.user?.userType === 'admin'
           ? req.body.corporateId
-          : req.user?.corporateId || req.body.corporateId,
+          : req.user?.corporateId,
       doctorName:
         (req.body.doctorName as string | undefined) ||
         (req.body.doctor_name as string | undefined),

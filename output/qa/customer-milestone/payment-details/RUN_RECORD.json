@@ -1,0 +1,70 @@
+{
+  "schema": "SD-ORDINARY-PAYMENT-DETAILS-RECORDING-1",
+  "cwd": "/private/tmp/sd-customer-milestone-20261113",
+  "environment": {
+    "TMPDIR": "/tmp"
+  },
+  "argv": [
+    "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/test/customer-bookings/payment-details.mjs",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/bookings/services/index.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/bookings/services/localOperations.ts",
+    "test/customer-bookings/payment-details.mjs"
+  ],
+  "terminal": {
+    "exitCode": 0,
+    "chunkId": "96f578",
+    "wallSeconds": 0.482643375,
+    "invocations": 1
+  },
+  "nodeSha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+  "runnerSha256": "78ea15d85fc88571337387f97bbcb0f683668a08a64b147e95e7c75e5e6b28dc",
+  "sourceSha256": {
+    "src1/modules/bookings/services/index.ts": "8840273e12c67b59a82e95be64dbb747edbc73ea0a07566d9ccaa6c689766997",
+    "src1/modules/bookings/services/localOperations.ts": "e49988179fffe61e903c66eda05588d0547167d2b9825ba29dce655da1d749d0"
+  },
+  "rawSha256": {
+    "stdout.txt": "6676a5ca483f45ed9a5d6818a15498101b64383ebbe7de4ba344ab1b3e1eb7bd",
+    "stderr.txt": "475d5824b0534268b48157451dc15788fc13f4b28588496ff4af4116a0f14c9f"
+  },
+  "measured": {
+    "nominalCases": 33,
+    "restoredCases": 33,
+    "detectedSourceControls": 3
+  },
+  "preexecutionDecisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_ONE_ORDINARY_PAYMENT_DETAILS_RECORDING_VM_RUN_ONLY"
+    },
+    {
+      "reviewer": "/root/booking_owner",
+      "role": "Spec",
+      "decision": "APPROVE_ONE_BOOKING_PAYMENT_DETAILS_RECORDING_VM_RUN_ONLY"
+    }
+  ],
+  "outcomeReview": "ACCEPTED_RECORDING_VM_OUTCOME_ONLY",
+  "limits": [
+    "Actual whole BookingService getter and money helper after strict import erasure with recording repositories",
+    "No actual database predicate evaluation, ledger/native transaction, HTTP, Joi/provider/client evidence",
+    "This getter-only increment does not rerun or extend the earlier41-case local-effects campaign",
+    "Getter repositories run sequentially; this does not establish a native consistent read snapshot."
+  ],
+  "stderr": "Only expected native stripTypeScriptTypes ExperimentalWarning retained verbatim.",
+  "outcomeDecisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "ACCEPT_ORDINARY_PAYMENT_DETAILS_RECORDING_VM_OUTCOME_ONLY",
+      "basis": "Personally read complete33nominal+33restored/three specific controls/terminal0/rawwarning only; sequential recording reads,no native snapshot claim."
+    },
+    {
+      "reviewer": "/root/booking_owner",
+      "role": "Spec",
+      "decision": "ACCEPT_BOOKING_PAYMENT_DETAILS_RECORDING_VM_OUTCOME_ONLY",
+      "basis": "Personally read complete33caseIDs+33restore/three controls/rawwarning/RUN_RECORD0.482643375s and freshly hashed exact runner+two sources. Sequential recording only; no native snapshot/HTTP/Joi/provider/client proof."
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import { AppError } from '@/modules/common/types';
 import { IPaymentRecord } from '@/modules/payment/types';
 import { toDiagnosticsAppointmentIso } from '@/modules/externalBookings/services/diagnosticsPricing';
 import logger from '@/services/logger';
+import { ExternalBookingLocalOperations, publicExternalBooking } from './localOperations';
 
 function splitPatientName(name: string): { firstName: string; lastName?: string } {
   const parts = (name || '').trim().split(/\s+/).filter(Boolean);
@@ -226,8 +227,10 @@ export async function completeExternalBookingAfterPayment(
   paymentRecord: IPaymentRecord,
   externalBookingRepository: ExternalBookingRepository,
   labstackService: LabstackService,
-  healthiansService: HealthiansService
+  healthiansService: HealthiansService,
+  providerToken: string
 ): Promise<IExternalBooking> {
+  await new ExternalBookingLocalOperations().assertProviderAttempt(paymentRecord.contextId, providerToken);
   logger.info('[ExternalBooking][finalize] start', {
     paymentTransactionId: paymentRecord._id,
     bookingId: paymentRecord.contextId,
@@ -262,7 +265,8 @@ export async function completeExternalBookingAfterPayment(
         paymentRecord,
         externalBookingRepository,
         labstackService,
-        healthiansService
+        healthiansService,
+        providerToken
       );
     }
 
@@ -271,7 +275,8 @@ export async function completeExternalBookingAfterPayment(
       paymentRecord,
       externalBookingRepository,
       labstackService,
-      healthiansService
+      healthiansService,
+      providerToken
     );
   } catch (error) {
     const meta =
@@ -301,7 +306,8 @@ async function completeConsultationAfterPayment(
   paymentRecord: IPaymentRecord,
   externalBookingRepository: ExternalBookingRepository,
   labstackService: LabstackService,
-  healthiansService: HealthiansService
+  healthiansService: HealthiansService,
+  providerToken: string
 ): Promise<IExternalBooking> {
   logger.info('[ExternalBooking][finalize][doctor] create start', {
     bookingId: booking._id,
@@ -374,8 +380,8 @@ async function completeConsultationAfterPayment(
 
   const { pendingLabstack: _drop, ...metaRest } = meta;
 
-  const updated = await externalBookingRepository.update(
-    { _id: booking._id },
+  const updated = await new ExternalBookingLocalOperations().recordProviderResult(
+    String(booking._id), providerToken,
     {
       externalProviderId: result.externalProviderId || booking.externalProviderId,
       externalBookingId: result.externalBookingId,
@@ -407,7 +413,7 @@ async function completeConsultationAfterPayment(
     externalStatus: result.externalStatus,
   });
 
-  return updated as IExternalBooking;
+  return publicExternalBooking(updated as IExternalBooking);
 }
 
 async function completeDiagnosticsAfterPayment(
@@ -415,7 +421,8 @@ async function completeDiagnosticsAfterPayment(
   paymentRecord: IPaymentRecord,
   externalBookingRepository: ExternalBookingRepository,
   labstackService: LabstackService,
-  healthiansService: HealthiansService
+  healthiansService: HealthiansService,
+  providerToken: string
 ): Promise<IExternalBooking> {
   logger.info('[ExternalBooking][finalize][diagnostics] place start', {
     bookingId: booking._id,
@@ -460,6 +467,10 @@ async function completeDiagnosticsAfterPayment(
     ? (meta.testIds as unknown[]).map((x) => String(x))
     : undefined;
 
+  if (booking.integration === 'healthians' && typeof meta.stmId === 'string' && meta.stmId.trim()) {
+    await healthiansService.freezeDiagnosticsSlot({ stmId: meta.stmId.trim(), vendorBillingUserId: booking.userId });
+  }
+
   const result =
     booking.integration === 'healthians'
       ? await healthiansService.placeDiagnosticsOrder({
@@ -498,9 +509,7 @@ async function completeDiagnosticsAfterPayment(
           altEmail: meta.altEmail as string | undefined,
           hardCopy: meta.hardCopy as number | undefined,
           vendorBookingId: String(booking._id),
-          discountedPrice: Number(
-            paymentRecord.finalAmount ?? booking.price ?? 0
-          ),
+          discountedPrice: booking.price ?? 0,
           paymentOption:
             (meta.paymentOption as 'cod' | 'prepaid' | undefined) || 'prepaid',
           applicationNumber: meta.applicationNumber as string | undefined,
@@ -542,8 +551,8 @@ async function completeDiagnosticsAfterPayment(
     ...metaRest
   } = meta;
 
-  const updated = await externalBookingRepository.update(
-    { _id: booking._id },
+  const updated = await new ExternalBookingLocalOperations().recordProviderResult(
+    String(booking._id), providerToken,
     {
       externalProviderId:
         booking.integration === 'healthians'
@@ -583,5 +592,5 @@ async function completeDiagnosticsAfterPayment(
     externalStatus: result.externalStatus,
   });
 
-  return updated as IExternalBooking;
+  return publicExternalBooking(updated as IExternalBooking);
 }

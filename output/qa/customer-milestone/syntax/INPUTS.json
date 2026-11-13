@@ -1,0 +1,93 @@
+{
+  "schema": "CUSTOMER_MILESTONE_TS_SYNTAX_INPUTS_1",
+  "files": [
+    {
+      "path": "src1/modules/auth/services/index.ts",
+      "sha256": "9efd9197042311a90d668295300af8e01d4d6826f2c8921fcd1056a5c10177d3"
+    },
+    {
+      "path": "src1/modules/bookings/controller/index.ts",
+      "sha256": "8d32d4b66bf913162a1a373c46d068ed1764928f285b09ab110abae0305c2e6c"
+    },
+    {
+      "path": "src1/modules/bookings/model/index.ts",
+      "sha256": "3844518e689281e6e6629c6c9a22e837d61e5218187e926c0f05701c7e4016d7"
+    },
+    {
+      "path": "src1/modules/bookings/services/index.ts",
+      "sha256": "8840273e12c67b59a82e95be64dbb747edbc73ea0a07566d9ccaa6c689766997"
+    },
+    {
+      "path": "src1/modules/bookings/services/localOperations.ts",
+      "sha256": "e49988179fffe61e903c66eda05588d0547167d2b9825ba29dce655da1d749d0"
+    },
+    {
+      "path": "src1/modules/bookings/types/index.ts",
+      "sha256": "0950cc792ba9e6ca2da46e8b5229e14c8c37ae1c8ea99372023c8c6389b0807b"
+    },
+    {
+      "path": "src1/modules/common/utils/cancellationWindow.ts",
+      "sha256": "ce98258acdd565477efa0bf872923980b7ac85f2c0aa5202293dd2558a03eeea"
+    },
+    {
+      "path": "src1/modules/externalBookings/controller/index.ts",
+      "sha256": "ee359aa79dbd4919ce707df8d98f5b240ee6f048234cf6cb8024484b73116e50"
+    },
+    {
+      "path": "src1/modules/externalBookings/model/index.ts",
+      "sha256": "9e85377bc95b913d6b6b6f2dddd192712ad141c8e565449ca64fb73bff3e44b0"
+    },
+    {
+      "path": "src1/modules/externalBookings/repository/index.ts",
+      "sha256": "de2aadde0b6d7eba6b45d61bd30d7bd3e62795dd8883956cb361c1f93193a79a"
+    },
+    {
+      "path": "src1/modules/externalBookings/routes/index.ts",
+      "sha256": "942584bdad141ff4e9b0b1d63926d174b3cad09eb73acdf2b3c401b7eb951761"
+    },
+    {
+      "path": "src1/modules/externalBookings/services/externalBookingPaymentFinalize.ts",
+      "sha256": "7887fe0718fa64465f9e36b0521a968cb8bf57cfd931c373ce1ab6d3fd6ddaa9"
+    },
+    {
+      "path": "src1/modules/externalBookings/services/index.ts",
+      "sha256": "88ba8fb40d16cbb0c6f5f35591c182d2baf362e5cbffe298b6f20dbddc80b1d6"
+    },
+    {
+      "path": "src1/modules/externalBookings/services/localOperations.ts",
+      "sha256": "df175057da6ccebd4e9fc9c0a1c7855ce5f9bf1a0f17a2bd5f8ef356d2e6dd0d"
+    },
+    {
+      "path": "src1/modules/externalBookings/types/index.ts",
+      "sha256": "4f1a8858ba1862a8ed1bfbce1e6b243ea8d8665f4fcf2385b8fe36520962d499"
+    },
+    {
+      "path": "src1/modules/payment/services/index.ts",
+      "sha256": "83257cdfa42f407aa08489f71dfe5e76bcb484e7cf99a944118a4c2a1d734fcb"
+    },
+    {
+      "path": "src1/modules/user/controller/index.ts",
+      "sha256": "616f3a4e1551ff6c52a879dc6a643ab26a015ba5b4426118dcd2ca492bd590a7"
+    },
+    {
+      "path": "src1/modules/user/routes/index.ts",
+      "sha256": "c44796cea0b4a8b15b4eb82cdd4644afd72952d3728a6e7e7712f5f3d1bc2af9"
+    },
+    {
+      "path": "src1/modules/user/services/index.ts",
+      "sha256": "2926263243a14b4ad45ddf84612a5c2e4c4062d1a47e59e86724d62e42ab2868"
+    },
+    {
+      "path": "src1/modules/user/validation/index.ts",
+      "sha256": "d943f1613457698381c0c1d28d1045adcb24cb11a0d8db62100079d8ea7a5b3f"
+    },
+    {
+      "path": "src1/modules/wallet/services/index.ts",
+      "sha256": "7bec8685f8ee867e11a6003c11339d6544fe20b2517fde7169b7b0f32f30b024"
+    },
+    {
+      "path": "src1/modules/wallet/services/localOperations.ts",
+      "sha256": "12f37d5875dcc6e9bec44bdcf205bd0750c1058e9510f74a8d7304df077cf21f"
+    }
+  ]
+}

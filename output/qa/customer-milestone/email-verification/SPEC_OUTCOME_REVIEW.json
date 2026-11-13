@@ -1,0 +1,9 @@
+{
+  "reviewer": "/root/booking_owner",
+  "role": "Spec",
+  "decision": "ACCEPT_EMAIL_VERIFICATION_RECORDING_VM_RESULT_ONLY",
+  "inspection": "Personally read complete EXECUTION.json actual Root tool return and independently rehashed exact runner/source after execution. Exit 0, 16 nominal and 16 restored cases, all four behavioral weakening controls detected. Only Node stripTypeScriptTypes ExperimentalWarning in combined output.",
+  "runnerSha256": "7b647dd911717d491e0d397621bfcc7f5519a99cfeac8483eebd507ff9afa613",
+  "sourceSha256": "9efd9197042311a90d668295300af8e01d4d6826f2c8921fcd1056a5c10177d3",
+  "limits": "Whole AuthService with recording ports only; no real OTP/Joi/JWT/HTTP/MongoDB/provider/session/client or module acceptance. The one-run authority is consumed."
+}

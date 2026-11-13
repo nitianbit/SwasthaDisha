@@ -1,0 +1,49 @@
+{
+  "schema": "SD-CUSTOMER-CANCELLATION-SOURCE-DECISIONS-1",
+  "baseline": "9c8d1d8f6ecda8d0832f9294c4b1b7a6fdf7077c",
+  "legacyReference": "ewa_backend origin/integration/perks-v2-combined 2347787e312721d89652913f9d36adf11a9be251",
+  "author": "/root/reviewer",
+  "sourceSha256": {
+    "src1/modules/bookings/services/index.ts": "a75619a18513cde068c31d4bc4373d943692719d88c664e0b2d7ad9977b04e27",
+    "src1/modules/bookings/services/localOperations.ts": "e49988179fffe61e903c66eda05588d0547167d2b9825ba29dce655da1d749d0",
+    "src1/modules/bookings/model/index.ts": "3844518e689281e6e6629c6c9a22e837d61e5218187e926c0f05701c7e4016d7",
+    "src1/modules/bookings/types/index.ts": "48de8b6c39e42e1f520072b378deace2201b74607074915dc73e184f513663af",
+    "src1/modules/common/utils/cancellationWindow.ts": "ce98258acdd565477efa0bf872923980b7ac85f2c0aa5202293dd2558a03eeea",
+    "src1/modules/payment/services/index.ts": "a98ff09a6d8a90b1e9549b13ac8d12d911358f1e481583b7fcc3bcc227d72745"
+  },
+  "decision": "APPROVE_SOURCE_ONLY",
+  "reviews": [
+    {
+      "agent": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "basis": "Actual direct nonauthor review of the helper, ordinary create/setup/retry/reschedule/cancel and payment composition. Fresh amendment approval inspected coupon normalization/conservation, zero pending draft override, pharmacy retry, same-slot and preceding repairs."
+    },
+    {
+      "agent": "/root/booking_owner",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "basis": "Actual direct nonauthor review of full helper/shared window and owned diff/composition. Four initial blockers corrected: legacy IST cutoff, same-slot validation, followUp bypass and recoverable free setup. Server-derived coupon rounding maintains exact paise conservation."
+    }
+  ],
+  "preservedFindings": [
+    "hidden localEffects requires explicit +selection",
+    "expired setup must permit bounded recovery and reject old token",
+    "same-slot reschedule metadata validation",
+    "captured sum/current price conservation",
+    "generic admin followUp/cancellation/financial bypass",
+    "legacy IST 24h or Monday 48h paid cancellation cutoff",
+    "zero-price failed setup pending and retryable",
+    "server percentage discount normalized only at new-payment boundary"
+  ],
+  "provenance": "Recorder /root/reviewer transcribes actual direct independent native Codex agent messages. Neither reviewer authored these six production files. This is not Claude, named human, clinical, finance, release or owner acceptance.",
+  "executionByAuthor": "Inert file/Git/hash/JSON reads and source writes only. No application/model/DB/provider execution, package/compiler operation or test run.",
+  "limits": [
+    "Source review only; exact focused test source/invocation/outcome reviews are separate.",
+    "Transactions, select overrides, casts, indexes, HTTP, providers and client compatibility are not natively proven.",
+    "Historical bookings missing trusted local effects return reconciliation-required conflicts; no backfill/migration is included.",
+    "Internal-wallet destination is explicit; no original-instrument gateway refund is supplied.",
+    "External cleanup/notifications are not durable exactly-once effects.",
+    "No root runtime/dependency/start adoption, operational resources, push or deployment."
+  ]
+}

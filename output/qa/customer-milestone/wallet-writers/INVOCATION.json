@@ -1,0 +1,37 @@
+{
+  "cwd": "/private/tmp/sd-customer-milestone-20261113",
+  "environment": {
+    "TMPDIR": "/tmp"
+  },
+  "argv": [
+    "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/test/customer-wallet/local-operations.mjs",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/bookings/services/localOperations.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/wallet/services/localOperations.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/wallet/services/index.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/payment/services/index.ts",
+    "test/customer-wallet/local-operations.mjs"
+  ],
+  "nodeSha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+  "sourceSha256": {
+    "test/customer-wallet/local-operations.mjs": "55f2b9c8cf89d8fae831d92e74bc264961dc64e2e3d3086eefc9e275b818b59f",
+    "src1/modules/bookings/services/localOperations.ts": "e49988179fffe61e903c66eda05588d0547167d2b9825ba29dce655da1d749d0",
+    "src1/modules/wallet/services/localOperations.ts": "12f37d5875dcc6e9bec44bdcf205bd0750c1058e9510f74a8d7304df077cf21f",
+    "src1/modules/wallet/services/index.ts": "7bec8685f8ee867e11a6003c11339d6544fe20b2517fde7169b7b0f32f30b024",
+    "src1/modules/payment/services/index.ts": "83257cdfa42f407aa08489f71dfe5e76bcb484e7cf99a944118a4c2a1d734fcb"
+  },
+  "preexecutionDecisions": [
+    {
+      "reviewer": "/root",
+      "role": "Standards",
+      "decision": "APPROVE_ONE_WALLET_RECORDING_VM_RUN_ONLY"
+    },
+    {
+      "reviewer": "/root/booking_owner",
+      "role": "Spec",
+      "decision": "APPROVE_ONE_WALLET_RECORDING_VM_RUN_ONLY"
+    }
+  ],
+  "status": "PREPARED_NOT_RUN"
+}

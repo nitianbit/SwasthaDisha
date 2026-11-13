@@ -1,0 +1,72 @@
+{
+  "schema": "SD-CUSTOMER-PROFILE-RECORDING-RUN-1",
+  "sourceBaseline": "9c8d1d8f6ecda8d0832f9294c4b1b7a6fdf7077c",
+  "cwd": "/private/tmp/sd-customer-milestone-20261113",
+  "environment": {
+    "TMPDIR": "/tmp"
+  },
+  "argv": [
+    "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/test/customer-profile/focused.mjs",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/user/services/index.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/user/controller/index.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/user/routes/index.ts",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/user/validation/index.ts",
+    "test/customer-profile/focused.mjs"
+  ],
+  "terminalExitCode": 0,
+  "invocations": 1,
+  "nodeSha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+  "sourceSha256": {
+    "test/customer-profile/focused.mjs": "4a1721cb705f47c09ad311017f6530cf8f42999d7d961df5e84365d8c8c71b1c",
+    "src1/modules/user/controller/index.ts": "616f3a4e1551ff6c52a879dc6a643ab26a015ba5b4426118dcd2ca492bd590a7",
+    "src1/modules/user/services/index.ts": "2926263243a14b4ad45ddf84612a5c2e4c4062d1a47e59e86724d62e42ab2868",
+    "src1/modules/user/routes/index.ts": "c44796cea0b4a8b15b4eb82cdd4644afd72952d3728a6e7e7712f5f3d1bc2af9",
+    "src1/modules/user/validation/index.ts": "d943f1613457698381c0c1d28d1045adcb24cb11a0d8db62100079d8ea7a5b3f"
+  },
+  "rawSha256": {
+    "stdout.txt": "f36f7a2b8c2531eb0c17c1095f06384a9183df32c6fc093f6d8e810058613552",
+    "stderr.txt": "035dc263c8e510c4187be2982c17cc09b3bf51fcd4daea38ce6248af20efab85"
+  },
+  "measured": {
+    "serviceCases": 29,
+    "restoredServiceCases": 29,
+    "controllerCases": 7,
+    "detectedSourceControls": 4
+  },
+  "stderr": "Only native ExperimentalWarning for stripTypeScriptTypes; retained verbatim.",
+  "preexecutionDecisions": [
+    {
+      "reviewer": "/root",
+      "role": "Spec",
+      "decision": "APPROVE_ONE_PROFILE_RECORDING_VM_RUN_ONLY"
+    },
+    {
+      "reviewer": "/root/booking_owner",
+      "role": "Standards",
+      "decision": "APPROVE_ONE_PROFILE_RECORDING_VM_RUN_ONLY"
+    }
+  ],
+  "outcomeReview": "ACCEPTED_RECORDING_VM_RESULT_ONLY",
+  "limits": [
+    "Closed VM whole-service/controller policies with recording dependencies; stripped imports and service decorator",
+    "Joi is a recording stub; schema shape assertions are source-only",
+    "No HTTP/ODM/database/index/concurrent cross-account uniqueness/client/session/release proof"
+  ],
+  "resources": "No container/database/owned temporary allocation, no network or provider ports, no filesystem write/child/worker/addon grants in child. Parent shell wrote only raw stdout/stderr files.",
+  "outcomeDecisions": [
+    {
+      "reviewer": "/root",
+      "role": "Spec",
+      "decision": "ACCEPT_PROFILE_RECORDING_VM_OUTCOME_ONLY",
+      "basis": "Personally read stdout/stderr and source decision record; confirmed29nominal+29restored,7controller,4detected weakening variants and only experimental warning."
+    },
+    {
+      "reviewer": "/root/booking_owner",
+      "role": "Standards",
+      "decision": "ACCEPT_PROFILE_RECORDING_VM_RESULT_ONLY",
+      "basis": "Personally read actual stdout JSON and complete stderr, nominal29/restored29/controller7/fourmutants; fresh runner/source hashes match admitted. Only experimental warning; no broader evidence claimed."
+    }
+  ]
+}

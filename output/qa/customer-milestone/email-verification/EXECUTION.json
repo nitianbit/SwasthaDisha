@@ -1,0 +1,43 @@
+{
+  "scope": "EMAIL_VERIFICATION_RECORDING_VM_ONLY",
+  "toolResult": {
+    "chunk_id": "5e091b",
+    "wall_time_seconds": 0.039678708,
+    "exit_code": 0,
+    "original_token_count": 575,
+    "output": "{\n  \"status\": \"PASS\",\n  \"nominalCases\": 16,\n  \"restoredCases\": 16,\n  \"cases\": [\n    \"send replacement denied before OTP and provider\",\n    \"send same normalized email remains usable\",\n    \"send missing email remains usable\",\n    \"verify explicit replacement denied before consumption\",\n    \"omitted verify target binds current stored email\",\n    \"recorded differing proof cannot replace email\",\n    \"missing email verification positive: absent\",\n    \"missing email verification positive: null\",\n    \"missing email verification positive: \",\n    \"raw observed email retained in compare-and-set\",\n    \"concurrent admin change returns conflict without signing\",\n    \"concurrent first addition returns conflict without signing\",\n    \"missing proof target is rejected\",\n    \"duplicate new contact denied after proof\",\n    \"expired proof cannot update or sign\",\n    \"missing user cannot issue challenge\"\n  ],\n  \"controls\": [\n    {\n      \"name\": \"remove admin-only replacement rule\",\n      \"detectedBy\": [\n        \"send replacement denied before OTP and provider\",\n        \"verify explicit replacement denied before consumption\",\n        \"recorded differing proof cannot replace email\"\n      ]\n    },\n    {\n      \"name\": \"trust differing consumed proof\",\n      \"detectedBy\": [\n        \"recorded differing proof cannot replace email\"\n      ]\n    },\n    {\n      \"name\": \"remove final contact compare-and-set\",\n      \"detectedBy\": [\n        \"raw observed email retained in compare-and-set\",\n        \"concurrent admin change returns conflict without signing\",\n        \"concurrent first addition returns conflict without signing\"\n      ]\n    },\n    {\n      \"name\": \"leave omitted verification destination unbound\",\n      \"detectedBy\": [\n        \"omitted verify target binds current stored email\"\n      ]\n    }\n  ],\n  \"limits\": [\n    \"Actual whole AuthService in closed VM with stripped imports/decorator and recording repository/OTP/provider/JWT ports\",\n    \"No actual OTP consumption, Joi/JWT, HTTP, MongoDB, provider, session revocation or client evidence\",\n    \"Signup/login and corporate-only methods are not executed\"\n  ]\n}\n(node:90007) ExperimentalWarning: stripTypeScriptTypes is an experimental feature and might change at any time\n(Use `node --trace-warnings ...` to show where the warning was created)\n"
+  },
+  "executable": "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+  "nodeVersion": "24.19.0",
+  "executableSha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+  "sourceSha256": "9efd9197042311a90d668295300af8e01d4d6826f2c8921fcd1056a5c10177d3",
+  "runnerSha256": "7b647dd911717d491e0d397621bfcc7f5519a99cfeac8483eebd507ff9afa613",
+  "cwd": "/private/tmp/sd-customer-milestone-20261113",
+  "command": [
+    "env",
+    "-i",
+    "TMPDIR=/tmp",
+    "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+    "--permission",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/test/customer-profile/email-verification.mjs",
+    "--allow-fs-read=/private/tmp/sd-customer-milestone-20261113/src1/modules/auth/services/index.ts",
+    "test/customer-profile/email-verification.mjs"
+  ],
+  "preExecutionDecisions": [
+    {
+      "reviewer": "/root/profile_owner",
+      "role": "Standards",
+      "decision": "APPROVE_ONE_EMAIL_VERIFICATION_RECORDING_VM_RUN_ONLY"
+    },
+    {
+      "reviewer": "/root/booking_owner",
+      "role": "Spec",
+      "decision": "APPROVE_ONE_EMAIL_VERIFICATION_RECORDING_VM_RUN_ONLY"
+    }
+  ],
+  "provenance": "Root's actual exec tool return preserved with combined stdout/stderr; no separate-stream claim. Both independent reviewers personally read exact source/runner and executable hashes before invocation.",
+  "limits": [
+    "Recording OTP/repository/email/JWT ports only; no actual HTTP/Joi/JWT/OTP/MongoDB/provider/client evidence",
+    "No root compiler/build/start/install/runtime adoption"
+  ]
+}
