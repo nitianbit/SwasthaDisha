@@ -50,6 +50,18 @@ export class AuthService {
     return email?.trim().toLowerCase();
   }
 
+  /** Milestone F4: a customer may add or re-verify their own email; replacing an existing one is admin-only. */
+  private assertPersonalEmailVerificationTarget(stored: string | undefined, target: string | undefined): void {
+    const current = this.normalizeEmail(stored);
+    if (current && current !== target) {
+      throw new AppError({
+        status: 422,
+        code: 'EMAIL_CHANGE_ADMIN_ONLY',
+        message: 'Only an admin can replace an existing email address',
+      });
+    }
+  }
+
   private async ensureEmailAvailableAcrossUserFields(
     email: string,
     excludeUserId?: string
@@ -473,6 +485,7 @@ export class AuthService {
     }
 
     const normalizedEmail = this.normalizeEmail(data.email)!;
+    this.assertPersonalEmailVerificationTarget(user.email, normalizedEmail);
     await this.ensureEmailAvailableAcrossUserFields(normalizedEmail, userId);
 
     if (data.isCorporateUser) {
@@ -529,7 +542,9 @@ export class AuthService {
       });
     }
 
-    const normalizedEmail = this.normalizeEmail(data.email);
+    // An omitted target binds to the stored email (re-verification); a different one is refused before the OTP.
+    const normalizedEmail = this.normalizeEmail(data.email) || this.normalizeEmail(user.email);
+    this.assertPersonalEmailVerificationTarget(user.email, normalizedEmail);
     const verifiedOTP = await this.otpService.verifyOTP({
       userId,
       otp: data.otp,
@@ -545,6 +560,8 @@ export class AuthService {
         message: 'Please request email verification OTP first',
       });
     }
+
+    this.assertPersonalEmailVerificationTarget(user.email, verifiedEmail);
 
     let corporateIdToSet = user.corporateId;
 
@@ -591,8 +608,17 @@ export class AuthService {
 
     // Fenced on the caller's credential generation: a session signed out meanwhile cannot change the email or get a
     // fresh token. The new token keeps that same generation (never the stored one).
+    // Two fences in one write: the email observed above is unchanged (milestone F4: an email set or changed meanwhile
+    // is not overwritten) and the caller's session is still at its credential generation (C1r).
     const updatedUser = await this.userRepository.update(
-      { _id: userId, ...credentialFilter(tokenVersion) } as any,
+      {
+        _id: userId,
+        email: user.email === undefined ? { $exists: false } : user.email,
+        $and: [
+          { $expr: { $in: [{ $type: '$email' }, ['missing', 'null', 'string']] } },
+          credentialFilter(tokenVersion),
+        ],
+      } as any,
       updateData
     );
 
@@ -601,9 +627,9 @@ export class AuthService {
     }
     if (!updatedUser) {
       throw new AppError({
-        status: 500,
-        code: 'UPDATE_FAILED',
-        message: 'Failed to update user email',
+        status: 409,
+        code: 'CONTACT_CHANGED',
+        message: 'Email changed; refresh the profile and request a new verification code',
       });
     }
 

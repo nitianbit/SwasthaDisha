@@ -4,7 +4,6 @@ import { UserController } from '@/modules/user/controller';
 import {
   createUserSchema,
   idParamSchema,
-  updateUserSchema,
   userQuerySchema,
 } from '@/modules/user/validation';
 import { Router } from 'express';
@@ -40,7 +39,6 @@ userRouter.get(
 userRouter.put(
   '/:id',
   validate(idParamSchema, 'params'),
-  validate(updateUserSchema, 'body'),
   catchAsync(userController.update)
 );
 

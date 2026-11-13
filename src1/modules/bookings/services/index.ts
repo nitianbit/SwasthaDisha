@@ -15,6 +15,8 @@ import {
   UpdateBookingRequest,
 } from '@/modules/bookings/types';
 import { AppError } from '@/modules/common/types';
+import { normalizeCouponDiscount } from '@/modules/common/utils/couponMoney';
+import { enforceUserCancellationWindow } from '@/modules/common/utils/cancellationWindow';
 import {
   addDaysToYyyymmdd,
   compareYyyymmdd,
@@ -60,6 +62,8 @@ interface BookingPaymentInitResponse {
     walletDeductedAmount?: number;
   };
 }
+
+const CANCELLABLE_BOOKING_STATUSES = ['pending', 'confirmed'];
 
 @Service()
 export class BookingService {
@@ -124,82 +128,12 @@ export class BookingService {
     return buildBookingLifecyclePatch(current, updates);
   }
 
-  private parseBookingDateTime(
-    bookingDate: string,
-    bookingTime: string
-  ): Date | null {
-    if (!/^\d{8}$/.test(bookingDate)) {
-      return null;
-    }
-
-    const match = bookingTime.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-    if (!match) {
-      return null;
-    }
-
-    const [, hourStr, minuteStr, meridiem] = match;
-    let hour = parseInt(hourStr, 10);
-    const minute = parseInt(minuteStr, 10);
-
-    if (hour < 1 || hour > 12 || minute < 0 || minute > 59) {
-      return null;
-    }
-
-    const upperMeridiem = meridiem.toUpperCase();
-    if (upperMeridiem === 'AM') {
-      hour = hour === 12 ? 0 : hour;
-    } else {
-      hour = hour === 12 ? 12 : hour + 12;
-    }
-
-    const year = parseInt(bookingDate.slice(0, 4), 10);
-    const monthIndex = parseInt(bookingDate.slice(4, 6), 10) - 1;
-    const day = parseInt(bookingDate.slice(6, 8), 10);
-
-    const parsed = new Date(year, monthIndex, day, hour, minute, 0, 0);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-
-  private enforceUserCancellationWindow(
-    booking: IBooking,
-    requester: { userType: string }
-  ): void {
-    const appointmentAt = this.parseBookingDateTime(
-      booking.bookingDate,
-      booking.bookingTime
-    );
-
-    if (!appointmentAt) {
-      throw new AppError({
-        status: 400,
-        code: 'INVALID_BOOKING_DATETIME',
-        message: 'Booking cannot be cancelled because its appointment time is invalid',
-      });
-    }
-
-    const cutoffMs = 60 * 60 * 1000;
-    const remainingMs = appointmentAt.getTime() - Date.now();
-
-    if (remainingMs <= 0) {
-      throw new AppError({
-        status: 400,
-        code: 'BOOKING_ALREADY_STARTED',
-        message: 'Booking cannot be cancelled once the appointment time has passed',
-      });
-    }
-
-    if (requester.userType !== 'user') {
-      return;
-    }
-
-    if (remainingMs <= cutoffMs) {
-      throw new AppError({
-        status: 400,
-        code: 'CANCELLATION_WINDOW_CLOSED',
-        message:
-          'Booking cannot be cancelled within 1 hour of the appointment time',
-      });
-    }
+  /**
+   * Customer cancellation window (milestone B1/B2): appointment read in IST; a started appointment cannot be cancelled
+   * by anyone; customers must cancel at least 24 h before (48 h for a Monday appointment).
+   */
+  private enforceUserCancellationWindow(booking: IBooking, requester: { userType: string }): void {
+    enforceUserCancellationWindow([{ bookingDate: booking.bookingDate, bookingTime: booking.bookingTime }], requester.userType);
   }
 
   private isEligibleForNewFollowUpBenefit(booking: IBooking): boolean {
@@ -543,9 +477,9 @@ export class BookingService {
       });
     }
 
+    // Milestone C6: one paise rounding of the server-calculated discount; final = base - discount exactly.
     return {
-      discountAmount: couponValidation.discountAmount || 0,
-      finalAmount: couponValidation.finalAmount ?? params.purchaseAmount,
+      ...normalizeCouponDiscount(params.purchaseAmount, couponValidation.discountAmount, 'BOOKING_RECONCILIATION_REQUIRED'),
       couponCode: couponValidation.coupon.code,
     };
   }
@@ -633,7 +567,8 @@ export class BookingService {
 
     await this.validateBookingDateAndSlot(data.bookingDate, data.slotId);
 
-    const basePrice = wellnessPackage.discountedPrice || wellnessPackage.originalPrice;
+    // `??`: a discounted price of 0 means free, not "fall back to the original price" (milestone C7).
+    const basePrice = wellnessPackage.discountedPrice ?? wellnessPackage.originalPrice;
     const originalPrice = wellnessPackage.originalPrice;
 
     let discountAmount = 0;
@@ -1489,63 +1424,25 @@ export class BookingService {
     userId?: string
   ): Promise<IBooking> {
     const booking = await this.getById(id, userId);
-
-    if (data.bookingDate) {
-      const today = getTodayYyyymmdd();
-      if (compareYyyymmdd(data.bookingDate, today) < 0) {
-        throw new AppError({
-          status: 400,
-          code: 'INVALID_BOOKING_DATE',
-          message: 'Booking date cannot be in the past',
-        });
-      }
+    if (data.status === 'cancelled' || data.paymentStatus !== undefined || Object.prototype.hasOwnProperty.call(data, 'paymentTransactionId') ||
+        data.lifecycle !== undefined || data.followUp !== undefined || data.slotId !== undefined || data.bookingDate !== undefined || data.bookingTime !== undefined) {
+      throw new AppError({ status: 409, code: 'DEDICATED_BOOKING_COMMAND_REQUIRED', message: 'Use cancellation, rescheduling or payment commands for this change' });
     }
+    if (booking.status === 'cancelled') throw new AppError({ status: 409, code: 'BOOKING_CANCELLED', message: 'Cancelled booking history cannot be rewritten' });
+    // Milestone E8: cancellation, payment and slot/date changes only through their dedicated commands (refunds, slot
+    // holds and the money ledger); the generic edit can no longer mark a booking cancelled/refunded or paid.
 
-    if (data.status === 'cancelled' && booking.status !== 'cancelled') {
-      data.cancelledAt = getTodayYyyymmdd();
-      data.paymentStatus = 'refunded';
-      if (!data.cancellationReason) {
-        data.cancellationReason = 'Cancelled by user';
-      }
-    }
 
     const lifecyclePatch = this.buildLifecyclePatch(booking.lifecycle, {
-      paymentPending:
-        data.paymentStatus === 'pending' && booking.paymentStatus !== 'pending'
-          ? { amount: booking.price }
-          : undefined,
-      paid:
-        data.paymentStatus === 'paid' && booking.paymentStatus !== 'paid'
-          ? { amount: booking.price }
-          : undefined,
-      confirmed:
-        data.status === 'confirmed' && booking.status !== 'confirmed'
-          ? true
-          : undefined,
-      cancelled:
-        data.status === 'cancelled' && booking.status !== 'cancelled'
-          ? { reason: data.cancellationReason || 'Cancelled by user' }
-          : undefined,
-      completed:
-        data.status === 'completed' && booking.status !== 'completed'
-          ? true
-          : undefined,
-      refunded:
-        data.paymentStatus === 'refunded' && booking.paymentStatus !== 'refunded'
-          ? {
-              reason:
-                data.cancellationReason ||
-                booking.cancellationReason ||
-                'Booking refunded',
-            }
-          : undefined,
+      confirmed: data.status === 'confirmed' && booking.status !== 'confirmed' ? true : undefined,
+      completed: data.status === 'completed' && booking.status !== 'completed' ? true : undefined,
     });
 
     if (lifecyclePatch) {
       data.lifecycle = lifecyclePatch;
     }
 
-    const updated = await this.bookingRepository.update({ _id: id }, data);
+    const updated = await this.bookingRepository.update({ _id: id, status: booking.status, ...(userId ? { userId: { $eq: userId } } : {}) }, data);
 
     if (!updated) {
       throw new AppError({
@@ -1571,19 +1468,7 @@ export class BookingService {
       return meetingUpdatedBooking;
     }
 
-    if (updated.status === 'cancelled' || data.status === 'cancelled') {
-      const cancelledBooking =
-        await this.ensureCancelledBookingPaymentStatus(updated);
-      await this.bookingReminderScheduler.clearBookingReminders(
-        cancelledBooking._id!
-      );
-      const meetingUpdatedBooking = await cancelBookingMeet({
-        booking: cancelledBooking,
-        reason: data.cancellationReason,
-        bookingRepository: this.bookingRepository,
-      });
-      return meetingUpdatedBooking;
-    } else if (
+    if (
       updated.status === 'confirmed' &&
       (
         data.status !== undefined ||
@@ -1605,41 +1490,8 @@ export class BookingService {
   }
 
   async delete(id: string, userId?: string): Promise<void> {
-    if (userId !== undefined && (typeof userId !== 'string' || userId.trim().length === 0)) {
-      throw new AppError({
-        status: 401,
-        code: 'UNAUTHORIZED',
-        message: 'Authentication is required',
-      });
-    }
-    const booking = await this.getById(id, userId);
-    await this.bookingReminderScheduler.clearBookingReminders(booking._id!);
-    await cancelBookingMeet({
-      booking,
-      reason: 'Booking deleted',
-      bookingRepository: this.bookingRepository,
-    });
-
-    if (booking.slotId) {
-      try {
-        const slot = await this.slotRepository.findById(booking.slotId);
-        if (slot?.currentBookings && slot.currentBookings > 0) {
-          await this.slotService.decrementBookingCount(booking.slotId);
-        }
-      } catch (error) {
-        console.error('Failed to decrement slot booking count:', error);
-      }
-    }
-
-    if (userId === undefined) {
-      await this.bookingRepository.delete({ _id: id });
-    } else if (!(await this.bookingRepository.deleteByIdAndUserId(id, userId))) {
-      throw new AppError({
-        status: 409,
-        code: 'BOOKING_DELETE_CONFLICT',
-        message: 'Booking could not be deleted because it changed',
-      });
-    }
+    await this.getById(id, userId);
+    throw new AppError({ status: 409, code: 'BOOKING_RETENTION_REQUIRED', message: 'Use the cancellation command; booking history must be retained' });
   }
 
   async getByUserId(userId: string): Promise<IBooking[]> {
@@ -1664,12 +1516,19 @@ export class BookingService {
       return booking;
     }
 
+    // Only an open booking can be cancelled; completed history is never rewritten (also fenced in the write below).
+    if (!CANCELLABLE_BOOKING_STATUSES.includes(booking.status as never)) {
+      throw new AppError({ status: 409, code: 'BOOKING_NOT_CANCELLABLE', message: `A ${booking.status} booking cannot be cancelled` });
+    }
+    // The window applies to every cancellation here. The milestone's "unpaid bookings are exempt" relaxation needs the
+    // payment state serialized with the cancel (an attempt can be recorded paid before the booking is), which comes
+    // with the A2 settlement transaction; until then the stricter rule holds for everyone.
     this.enforceUserCancellationWindow(booking, requester);
 
     // Only one cancellation wins; after it, wallet funding can no longer change (fundBookingFromWallet refuses
     // cancelled bookings), so the refund below is computed from the post-cancellation booking.
     const updated = await this.bookingRepository.update(
-      { _id: bookingId, status: { $ne: 'cancelled' } },
+      { _id: bookingId, status: { $in: CANCELLABLE_BOOKING_STATUSES } },
       {
         status: 'cancelled',
         paymentStatus: 'refunded',
@@ -1689,6 +1548,9 @@ export class BookingService {
     if (!updated) {
       const current = await this.bookingRepository.findById(bookingId);
       if (current?.status === 'cancelled') return current; // a concurrent cancellation already did the work
+      if (current && !CANCELLABLE_BOOKING_STATUSES.includes(current.status as never)) {
+        throw new AppError({ status: 409, code: 'BOOKING_NOT_CANCELLABLE', message: `A ${current.status} booking cannot be cancelled` });
+      }
       throw new AppError({
         status: 500,
         code: 'UPDATE_FAILED',

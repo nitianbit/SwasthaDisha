@@ -6,13 +6,7 @@ import { AuthRequest } from '@/modules/middleware/auth';
 import { UserService } from '@/modules/user/services';
 import { CreateUserRequest, UpdateUserRequest, UserQueryParams } from '@/modules/user/types';
 
-const SELF_FORBIDDEN_FIELDS = [
-  'isActive',
-  'isVerified',
-  'isCorporateEmailVerified',
-  'corporateId',
-  'isCorporateUser',
-] as const;
+import { PROFILE_SELF_FORBIDDEN_FIELDS } from '@/modules/user/validation';
 
 export class UserController {
   private userService: UserService;
@@ -94,7 +88,7 @@ export class UserController {
     }
 
     const body = req.body ?? {};
-    for (const field of SELF_FORBIDDEN_FIELDS) {
+    for (const field of PROFILE_SELF_FORBIDDEN_FIELDS) {
       if (Object.prototype.hasOwnProperty.call(body, field)) {
         throw new AppError({
           status: 422,
@@ -146,13 +140,15 @@ export class UserController {
   update = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const { id } = req.params;
     this.assertUserRouteActor(req, id);
+    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Profile update must be an object' });
+    }
     this.assertNoSelfPrivilegeFields(req);
     await this.ensureHRCanAccessUser(req, id);
-    const data: UpdateUserRequest = {
-      ...req.body,
-      corporateId: this.getHRCorporateId(req) || req.body.corporateId,
-    };
-    const user = await this.userService.update(id, data);
+    const data: UpdateUserRequest = { ...req.body };
+    const hrCorporateId = this.getHRCorporateId(req);
+    if (hrCorporateId) data.corporateId = hrCorporateId;
+    const user = await this.userService.update(id, data, req.user!);
 
     res.status(200).json({
       success: true,

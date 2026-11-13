@@ -14,6 +14,7 @@ import {
   WalletTransactionQueryParams,
 } from '@/modules/wallet/types';
 import { AppError } from '@/modules/common/types';
+import { normalizeCouponDiscount } from '@/modules/common/utils/couponMoney';
 import { getTodayYyyymmdd } from '@/modules/common/utils/dateUtils';
 import { NotificationService } from '@/modules/notification/services';
 import { PaymentService } from '@/modules/payment/services';
@@ -306,8 +307,8 @@ export class WalletService {
         });
       }
 
-      discountAmount = couponValidation.discountAmount || 0;
-      finalAmount = couponValidation.finalAmount ?? data.amount;
+      // Milestone C6: one paise rounding of the server-calculated discount; final = base - discount exactly.
+      ({ discountAmount, finalAmount } = normalizeCouponDiscount(data.amount, couponValidation.discountAmount, 'WALLET_RECONCILIATION_REQUIRED'));
       couponCode = couponValidation.coupon?.code;
     }
 

@@ -1,5 +1,9 @@
 import Joi from 'joi';
 
+export const PROFILE_SELF_FORBIDDEN_FIELDS = [
+  'isActive', 'isVerified', 'isCorporateEmailVerified', 'corporateId', 'isCorporateUser',
+] as const;
+
 const emergencyContactSchema = Joi.object({
   name: Joi.string().optional(),
   phone: Joi.string().optional(),
@@ -66,14 +70,15 @@ export const createUserSchema = Joi.object({
 });
 
 export const updateUserSchema = Joi.object({
-  email: Joi.string().email().optional().messages({
+  email: Joi.string().trim().lowercase().email().optional().messages({
     'string.email': 'Email must be a valid email address',
   }),
   corporateEmail: Joi.string().email().optional().messages({
     'string.email': 'Corporate email must be a valid email address',
   }),
-  phone: Joi.string().optional().messages({
+  phone: Joi.string().pattern(/^[0-9]{10}$/).optional().messages({
     'string.empty': 'Phone cannot be empty',
+    'string.pattern.base': 'Phone must be exactly 10 digits',
   }),
   userType: Joi.string().valid('user').optional().messages({
     'any.only': 'User type must be user',

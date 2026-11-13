@@ -23,6 +23,8 @@ import {
 } from '@/modules/externalBookings/emailTemplates';
 import { getTodayYyyymmdd } from '@/modules/common/utils/dateUtils';
 import { AppError } from '@/modules/common/types';
+import { normalizeCouponDiscount } from '@/modules/common/utils/couponMoney';
+import { enforceUserCancellationWindow } from '@/modules/common/utils/cancellationWindow';
 import {
   WalletRepository,
   WalletTransactionRepository,
@@ -97,7 +99,6 @@ export interface ExternalDiagnosticsReportDocumentResult {
 
 @Service()
 export class ExternalBookingService {
-  private static readonly WEBHOOK_TIME_ZONE = 'Asia/Kolkata';
 
   private readonly defaultIntegration: ExternalIntegration =
     CONFIG.EXTERNAL_BOOKING_DEFAULT_INTEGRATION || 'labstack';
@@ -170,31 +171,6 @@ export class ExternalBookingService {
         template,
         error: error instanceof Error ? error.message : String(error),
       });
-    }
-  }
-
-  private templateForExternalBookingStatus(
-    status?: string
-  ): ExternalBookingEmailTemplate | undefined {
-    const normalized = (status || '').trim().toLowerCase();
-    switch (normalized) {
-      case 'pending':
-        return 'CREATED';
-      case 'confirmed':
-      case 'booked':
-      case 'scheduled':
-        return 'ORDER_SCHEDULED';
-      case 'rescheduled':
-        return 'RESCHEDULED';
-      case 'phlebo_assigned':
-        return 'PHLEBO_ASSIGNED';
-      case 'report_delivered':
-        return 'REPORT_DELIVERED';
-      case 'cancelled':
-      case 'canceled':
-        return 'CANCELED';
-      default:
-        return undefined;
     }
   }
 
@@ -699,7 +675,7 @@ export class ExternalBookingService {
     }
 
     return {
-      discountAmount: couponValidation.discountAmount || 0,
+      discountAmount: normalizeCouponDiscount(params.grossAmount, couponValidation.discountAmount, 'EXTERNAL_BOOKING_RECONCILIATION_REQUIRED').discountAmount,
       couponCode: couponValidation.coupon.code,
     };
   }
@@ -1490,12 +1466,9 @@ export class ExternalBookingService {
       paymentRequired,
       total: payableTotal,
     });
-    const saved = await this.externalBookingRepository.save(draft);
-    const prepared = await this.freezeHealthiansDiagnosticsSlotIfNeeded(
-      saved as IExternalBooking,
-      data,
-      integration
-    );
+    // Milestone D8: the Healthians slot is frozen at fulfilment (just before the order is placed), not at draft
+    // creation, so an abandoned unpaid draft never holds a provider slot.
+    const prepared = await this.externalBookingRepository.save(draft);
 
     if (paymentRequired) {
       return this.settleExternalBookingPayment({
@@ -1642,49 +1615,14 @@ export class ExternalBookingService {
     };
   }
 
-  private async freezeHealthiansDiagnosticsSlotIfNeeded(
-    booking: IExternalBooking,
-    data: CreateExternalDiagnosticsBookingRequest,
-    integration: ExternalIntegration
-  ): Promise<IExternalBooking> {
-    if (integration !== 'healthians' || !data.stmId?.trim()) {
-      return booking;
-    }
-
-    const freezeResponse = await this.healthiansService.freezeDiagnosticsSlot({
-      stmId: data.stmId.trim(),
-      vendorBillingUserId: data.userId,
-    });
-
-    const priorMeta =
-      booking.meta && typeof booking.meta === 'object' && !Array.isArray(booking.meta)
-        ? (booking.meta as Record<string, unknown>)
-        : {};
-
-    const updated = await this.externalBookingRepository.update(
-      { _id: String(booking._id) },
-      {
-        externalSlotRef: data.stmId.trim(),
-        meta: {
-          ...priorMeta,
-          vendorBillingUserId: data.userId,
-          frozenHealthiansSlot: {
-            stmId: data.stmId.trim(),
-            response: freezeResponse,
-            frozenAt: new Date().toISOString(),
-          },
-        },
-      }
-    );
-
-    return (updated || booking) as IExternalBooking;
-  }
-
   private async applyDiagnosticsOrderToDraft(
     draft: IExternalBooking,
     data: CreateExternalDiagnosticsBookingRequest,
     integration: ExternalIntegration
   ): Promise<IExternalBooking> {
+    if (integration === 'healthians' && data.stmId?.trim()) {
+      await this.healthiansService.freezeDiagnosticsSlot({ stmId: data.stmId.trim(), vendorBillingUserId: data.userId });
+    }
     const uniqueId = this.buildLabstackUniqueId({
       name: data.patientName,
       mobile: data.patientPhone,
@@ -1877,6 +1815,11 @@ export class ExternalBookingService {
     if (booking.status === 'cancelled') {
       return booking;
     }
+
+    // Cancellation window (milestone B3): IST, 24 h (48 h for Monday) for customers; nobody may cancel a started
+    // appointment. Checked before any provider/refund effect. Applied to every cancellation until the A2 two-phase
+    // cancel can serialize the milestone's "unpaid is exempt" relaxation with the payment state.
+    enforceUserCancellationWindow([{ bookingDate: booking.bookingDate, bookingTime: booking.bookingTime }], actor.userType);
 
     const cancelledAt = getTodayYyyymmdd();
     const priorMeta =
@@ -2197,41 +2140,6 @@ export class ExternalBookingService {
     );
   }
 
-  private async cancelProviderIfDiscoveredLater(
-    booking: IExternalBooking,
-    externalBookingId: string,
-    reason: string
-  ): Promise<{
-    externalStatus?: string;
-    payload: unknown;
-  }> {
-    const kind: ExternalBookingKind =
-      booking.providerType === 'DIAGNOSTICS' ? 'diagnostics' : 'doctor';
-
-    const result =
-      booking.integration === 'healthians'
-        ? await this.healthiansService.cancelBooking({
-            bookingId: externalBookingId,
-            vendorBillingUserId: this.getHealthiansVendorBillingUserId(booking),
-            reason,
-            uniqueId: this.getHealthiansVendorCustomerId(booking),
-          })
-        : kind === 'diagnostics'
-          ? await this.labstackService.cancelOrder({
-              orderId: externalBookingId,
-              reason,
-            })
-          : await this.labstackService.cancelAppointment({
-              appointmentId: externalBookingId,
-              reason,
-            });
-
-    return {
-      externalStatus: result.externalStatus,
-      payload: result.payload,
-    };
-  }
-
   async rescheduleBooking(
     id: string,
     actor: ExternalBookingActor,
@@ -2367,6 +2275,12 @@ export class ExternalBookingService {
     return this.externalBookingRepository.findCustomerDiagnosticsHistory(this.diagnosticsCustomerId(actor), query);
   }
 
+  /** Owner-scoped detail (milestone A4): the booking's owner or an admin; internal ledger fields are not returned. */
+  async getBookingById(id: string, actor: ExternalBookingActor): Promise<IExternalBooking> {
+    const booking = await this.externalBookingRepository.findOwnedLocalBooking(id, actor);
+    return this.sanitizeBookingForList(booking);
+  }
+
   async listBookings(query: ExternalBookingListQuery): Promise<{
     data: IExternalBooking[];
     total?: number;
@@ -2394,15 +2308,15 @@ export class ExternalBookingService {
     const filter: Record<string, unknown> = {};
 
     if (query.userId) {
-      filter.userId = query.userId;
+      // Scalar equality only: an array-valued userId must never match (milestone A5).
+      filter.userId = { $eq: query.userId };
+      filter.$expr = { $eq: [{ $type: '$userId' }, 'string'] };
     }
     if (query.corporateId) {
       filter.corporateId = query.corporateId;
     }
     if (query.integration) {
       filter.integration = this.resolveIntegration(query.integration);
-    } else {
-      filter.integration = this.defaultIntegration;
     }
     if (query.providerType) {
       filter.providerType = query.providerType;
@@ -2948,226 +2862,24 @@ export class ExternalBookingService {
   }
 
 
-  async syncBookingFromWebhook(
-    payload: Record<string, unknown>
-  ): Promise<ExternalBookingWebhookSyncResult> {
+  /**
+   * Provider webhook (milestone D7). This public callback has no verified provider-authentication contract, so an
+   * observation confers no state or money authority: it is recorded for reconciliation and nothing else (no status,
+   * reschedule, report, provider cancel or refund). Reports remain available through the authenticated report reads.
+   */
+  async syncBookingFromWebhook(payload: Record<string, unknown>): Promise<ExternalBookingWebhookSyncResult> {
     const externalBookingId = this.extractWebhookExternalBookingId(payload);
-    if (!externalBookingId) {
-      return {
-        matched: false,
-        action: 'ignored',
-        reason: 'external_booking_id_missing',
-      };
-    }
-
-    const booking =
-      await this.externalBookingRepository.findByExternalReference(
-        externalBookingId
-      );
-    if (!booking) {
-      return {
-        matched: false,
-        action: 'ignored',
-        reason: 'external_booking_not_found',
-        externalBookingId,
-      };
-    }
-
-    const rawStatus = this.extractWebhookStatus(payload);
-    const normalizedStatus = this.normalizeWebhookStatus(rawStatus);
-    const appointmentAt = this.extractWebhookAppointmentDateTime(payload);
-    const nextBookingDate =
-      this.extractWebhookBookingDate(payload) ||
-      this.extractYyyymmddFromDateTime(appointmentAt);
-    const nextBookingTime =
-      this.extractWebhookBookingTime(payload) ||
-      this.extractDisplayTimeFromDateTime(appointmentAt);
-
-    const priorMeta =
-      booking.meta && typeof booking.meta === 'object' && !Array.isArray(booking.meta)
-        ? (booking.meta as Record<string, unknown>)
-        : {};
-
-    const nextMeta: Record<string, unknown> = {
-      ...priorMeta,
-      lastWebhookSync: {
-        externalBookingId,
-        rawStatus,
-        normalizedStatus,
-        receivedAt: new Date().toISOString(),
-      },
-      webhookSyncCount: Number(priorMeta.webhookSyncCount || 0) + 1,
-    };
-
-    const phleboName = this.extractWebhookPhleboName(payload);
-    const phleboContact = this.extractWebhookPhleboContact(payload);
-    if (phleboName) {
-      nextMeta.phleboName = phleboName;
-    }
-    if (phleboContact) {
-      nextMeta.phleboContact = phleboContact;
-    }
-
-    const updateData: Partial<IExternalBooking> = {
-      externalBookingId: booking.externalBookingId || externalBookingId,
-      meta: nextMeta,
-    };
-
-    let action: ExternalBookingWebhookSyncResult['action'] = 'updated';
-
-    if (nextBookingDate && nextBookingDate !== booking.bookingDate) {
-      updateData.bookingDate = nextBookingDate;
-      action = 'rescheduled';
-    }
-
-    if (nextBookingTime && nextBookingTime !== booking.bookingTime) {
-      updateData.bookingTime = nextBookingTime;
-      updateData.externalSlotRef = nextBookingTime;
-      action = 'rescheduled';
-    }
-
-    if (normalizedStatus) {
-      updateData.status = normalizedStatus;
-      if (normalizedStatus === 'cancelled') {
-        action = 'cancelled';
-      } else if (normalizedStatus === 'completed') {
-        action = 'completed';
-      } else if (action !== 'rescheduled') {
-        action = 'updated';
-      }
-    }
-
-    if (normalizedStatus === 'report_delivered') {
-      try {
-        const reportUrls = await this.persistReportsOnDeliveredWebhook(
-          booking as IExternalBooking,
-          payload
-        );
-        if (reportUrls.length) {
-          updateData.report = reportUrls;
-          nextMeta.reportDeliveredAt = new Date().toISOString();
-          nextMeta.reportSync = {
-            savedAt: new Date().toISOString(),
-            reportCount: reportUrls.length,
-            reportUrls,
-          };
-        }
-      } catch (error) {
-        nextMeta.reportSync = {
-          savedAt: new Date().toISOString(),
-          succeeded: false,
-          error: error instanceof Error ? error.message : String(error),
-        };
-        logger.error('[ExternalBooking] failed to persist reports from webhook', {
-          bookingId: booking._id,
-          externalBookingId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
-
-    if (normalizedStatus === 'cancelled') {
-      nextMeta.cancellationReason =
-        this.extractWebhookCancellationReason(payload) || 'Cancelled by provider';
-      nextMeta.cancelledAt = getTodayYyyymmdd();
-    }
-
-    if (priorMeta.needsProviderCancelIfDiscovered) {
-      const cancellationReason =
-        (priorMeta.cancellationReason as string | undefined) ||
-        'Cancelled while booking confirmation was pending';
-
-      try {
-        const cancellation = await this.cancelProviderIfDiscoveredLater(
-          booking as IExternalBooking,
-          externalBookingId,
-          cancellationReason
-        );
-
-        nextMeta.deferredProviderCancellation = {
-          attemptedAt: new Date().toISOString(),
-          succeeded: true,
-          payload: cancellation.payload,
-        };
-        nextMeta.needsProviderCancelIfDiscovered = false;
-        updateData.status = cancellation.externalStatus || 'cancelled';
-        updateData.paymentStatus =
-          booking.paymentStatus === 'refunded' ? 'refunded' : 'cancelled';
-        nextMeta.cancelledAt =
-          (priorMeta.cancelledAt as string | undefined) || getTodayYyyymmdd();
-        action = 'cancelled';
-      } catch (error) {
-        nextMeta.deferredProviderCancellation = {
-          attemptedAt: new Date().toISOString(),
-          succeeded: false,
-          error: error instanceof Error ? error.message : String(error),
-        };
-      }
-    }
-
-    if (
-      normalizedStatus === 'cancelled' &&
-      booking.paymentStatus !== 'refunded' &&
-      booking.paymentStatus !== 'cancelled'
-    ) {
-      const refundAmount =
-        await this.refundExternalBookingAmountToWallet(booking);
-      updateData.paymentStatus =
-        refundAmount > 0 ? 'refunded' : 'cancelled';
-    }
-
-    const hasMeaningfulUpdate =
-      action !== 'updated' ||
-      Boolean(updateData.status) ||
-      Boolean(updateData.bookingDate) ||
-      Boolean(updateData.bookingTime) ||
-      Boolean(updateData.report?.length) ||
-      updateData.paymentStatus !== undefined;
-
-    if (!hasMeaningfulUpdate) {
-      const refreshed = await this.externalBookingRepository.update(
-        { _id: String(booking._id) },
-        { meta: nextMeta }
-      );
-
-      return {
-        matched: true,
-        action: 'updated',
-        externalBookingId,
-        normalizedStatus,
-        booking: (refreshed || booking) as IExternalBooking,
-      };
-    }
-
-    const updated = await this.externalBookingRepository.update(
-      { _id: String(booking._id) },
-      updateData
-    );
-
-    const latestBooking = (updated || booking) as IExternalBooking;
-    const template =
-      action === 'rescheduled'
-        ? 'RESCHEDULED'
-        : this.templateForExternalBookingStatus(
-            updateData.status || latestBooking.status
-          );
-
-    if (template) {
-      await this.sendExternalBookingEmailNotification(latestBooking, template, {
-        oldBookingDate:
-          action === 'rescheduled' ? booking.bookingDate : undefined,
-        oldBookingTime:
-          action === 'rescheduled' ? booking.bookingTime : undefined,
-      });
-    }
-
-    return {
-      matched: true,
-      action,
-      externalBookingId,
-      normalizedStatus,
-      booking: latestBooking,
-    };
+    if (!externalBookingId) return { matched: false, action: 'ignored', reason: 'external_booking_id_missing' };
+    const booking = await this.externalBookingRepository.findByExternalReference(externalBookingId);
+    if (!booking) return { matched: false, action: 'ignored', reason: 'external_booking_not_found', externalBookingId };
+    const observed = this.normalizeWebhookStatus(this.extractWebhookStatus(payload));
+    const updated = await this.externalBookingRepository.update({ _id: String(booking._id), userId: { $eq: booking.userId },
+      $expr: { $eq: [{ $type: '$userId' }, 'string'] } } as never, { $set: {
+      'meta.lastUntrustedProviderObservation': { externalBookingId: externalBookingId.slice(0, 512), status: observed?.slice(0, 128), receivedAt: new Date().toISOString() },
+      'meta.providerEventReconciliationRequired': true,
+    } } as never);
+    return { matched: true, action: 'updated', reason: 'provider_authentication_unproven', externalBookingId,
+      normalizedStatus: observed, booking: this.sanitizeBookingForList((updated || booking) as IExternalBooking) };
   }
 
   private ensureSupportedIntegration(integration: string): void {
@@ -3945,7 +3657,7 @@ export class ExternalBookingService {
 
   private sanitizeBookingForList(booking: IExternalBooking): IExternalBooking {
     const bookingRecord = booking as IExternalBooking & Record<string, unknown>;
-    const { meta, __v: _version, ...rest } = bookingRecord;
+    const { meta, walletFunding: _ledger, __v: _version, ...rest } = bookingRecord;
     const sanitized: IExternalBooking = {
       ...(rest as IExternalBooking),
     };
@@ -4339,99 +4051,6 @@ export class ExternalBookingService {
     return undefined;
   }
 
-  private extractWebhookCancellationReason(
-    payload: Record<string, unknown>
-  ): string | undefined {
-    const objects = this.collectWebhookObjects(payload);
-
-    for (const candidate of objects) {
-      const reason = this.getFirstString(candidate, [
-        'cancellationReason',
-        'cancelReason',
-        'reason',
-        'message',
-      ]);
-      if (reason) {
-        return reason;
-      }
-    }
-
-    return undefined;
-  }
-
-  private extractWebhookAppointmentDateTime(
-    payload: Record<string, unknown>
-  ): string | undefined {
-    const objects = this.collectWebhookObjects(payload);
-
-    for (const candidate of objects) {
-      const dateTime = this.getFirstString(candidate, [
-        'appointment',
-        'appointmentTime',
-        'appointmentDateTime',
-        'bookingDateTime',
-        'scheduledAt',
-        'dateTime',
-      ]);
-      if (dateTime) {
-        return dateTime;
-      }
-    }
-
-    return undefined;
-  }
-
-  private extractWebhookBookingDate(
-    payload: Record<string, unknown>
-  ): string | undefined {
-    const objects = this.collectWebhookObjects(payload);
-
-    for (const candidate of objects) {
-      const rawDate = this.getFirstString(candidate, [
-        'bookingDate',
-        'date',
-        'appointmentDate',
-      ]);
-
-      if (!rawDate) {
-        continue;
-      }
-
-      const normalized = this.normalizeDateCandidate(rawDate);
-      if (normalized) {
-        return normalized;
-      }
-    }
-
-    return undefined;
-  }
-
-  private extractWebhookBookingTime(
-    payload: Record<string, unknown>
-  ): string | undefined {
-    const objects = this.collectWebhookObjects(payload);
-
-    for (const candidate of objects) {
-      const rawTime = this.getFirstString(candidate, [
-        'bookingTime',
-        'time',
-        'slotTime',
-        'appointmentSlot',
-      ]);
-
-      if (!rawTime) {
-        continue;
-      }
-
-      const normalized = this.normalizeTimeCandidate(rawTime);
-      if (normalized) {
-        return normalized;
-      }
-    }
-
-    return undefined;
-  }
-
   private normalizeWebhookStatus(status?: string): string | undefined {
     const value = (status || '').trim().toLowerCase();
     if (!value) {
@@ -4501,51 +4120,6 @@ export class ExternalBookingService {
     return value;
   }
 
-  private extractWebhookPhleboName(
-    payload: Record<string, unknown>
-  ): string | undefined {
-    const objects = this.collectWebhookObjects(payload);
-
-    for (const candidate of objects) {
-      const name = this.getFirstString(candidate, [
-        'phleboName',
-        'phlebotomistName',
-        'collectorName',
-        'agentName',
-        'executiveName',
-        'phlebo_id',
-      ]);
-      if (name) {
-        return name;
-      }
-    }
-
-    return undefined;
-  }
-
-  private extractWebhookPhleboContact(
-    payload: Record<string, unknown>
-  ): string | undefined {
-    const objects = this.collectWebhookObjects(payload);
-
-    for (const candidate of objects) {
-      const contact = this.getFirstString(candidate, [
-        'phleboPhone',
-        'phlebotomistPhone',
-        'phleboMobile',
-        'phlebotomistMobile',
-        'collectorPhone',
-        'agentPhone',
-        'executivePhone',
-      ]);
-      if (contact) {
-        return contact;
-      }
-    }
-
-    return undefined;
-  }
-
   private collectWebhookObjects(
     payload: Record<string, unknown>
   ): Record<string, unknown>[] {
@@ -4579,123 +4153,5 @@ export class ExternalBookingService {
 
     visit(payload);
     return out;
-  }
-
-  private normalizeDateCandidate(value: string): string | undefined {
-    const trimmed = value.trim();
-    if (/^\d{8}$/.test(trimmed)) {
-      return trimmed;
-    }
-
-    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(trimmed);
-    if (match) {
-      return `${match[1]}${match[2]}${match[3]}`;
-    }
-
-    return undefined;
-  }
-
-  private normalizeTimeCandidate(value: string): string | undefined {
-    const trimmed = value.trim();
-    if (/^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(trimmed)) {
-      return trimmed.toUpperCase();
-    }
-
-    const hhmm = /^(\d{1,2}):(\d{2})$/.exec(trimmed);
-    if (!hhmm) {
-      return undefined;
-    }
-
-    let hours = Number(hhmm[1]);
-    const minutes = hhmm[2];
-    const suffix = hours >= 12 ? 'PM' : 'AM';
-    if (hours === 0) {
-      hours = 12;
-    } else if (hours > 12) {
-      hours -= 12;
-    }
-
-    return `${hours}:${minutes} ${suffix}`;
-  }
-
-  private parseWebhookDateTimeToIstParts(
-    value?: string
-  ): { yyyymmdd: string; displayTime: string } | undefined {
-    if (!value) {
-      return undefined;
-    }
-
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return undefined;
-    }
-
-    const zonedDate = new Date(trimmed);
-    if (!Number.isNaN(zonedDate.getTime())) {
-      const formatter = new Intl.DateTimeFormat('en-CA', {
-        timeZone: ExternalBookingService.WEBHOOK_TIME_ZONE,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      });
-
-      const parts = formatter.formatToParts(zonedDate);
-      const year = parts.find((part) => part.type === 'year')?.value;
-      const month = parts.find((part) => part.type === 'month')?.value;
-      const day = parts.find((part) => part.type === 'day')?.value;
-      const hour = parts.find((part) => part.type === 'hour')?.value;
-      const minute = parts.find((part) => part.type === 'minute')?.value;
-
-      if (year && month && day && hour && minute) {
-        const displayTime = this.normalizeTimeCandidate(`${hour}:${minute}`);
-        if (displayTime) {
-          return {
-            yyyymmdd: `${year}${month}${day}`,
-            displayTime,
-          };
-        }
-      }
-    }
-
-    const localMatch =
-      /^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::\d{2}(?:\.\d{1,3})?)?)?$/.exec(
-        trimmed
-      );
-    if (!localMatch) {
-      return undefined;
-    }
-
-    const datePart = `${localMatch[1]}${localMatch[2]}${localMatch[3]}`;
-    const hour = localMatch[4];
-    const minute = localMatch[5];
-
-    if (!hour || !minute) {
-      return {
-        yyyymmdd: datePart,
-        displayTime: '',
-      };
-    }
-
-    const displayTime = this.normalizeTimeCandidate(`${hour}:${minute}`);
-    if (!displayTime) {
-      return undefined;
-    }
-
-    return {
-      yyyymmdd: datePart,
-      displayTime,
-    };
-  }
-
-  private extractYyyymmddFromDateTime(value?: string): string | undefined {
-    return this.parseWebhookDateTimeToIstParts(value)?.yyyymmdd;
-  }
-
-  private extractDisplayTimeFromDateTime(value?: string): string | undefined {
-    const parts = this.parseWebhookDateTimeToIstParts(value);
-    return parts?.displayTime || undefined;
   }
 }

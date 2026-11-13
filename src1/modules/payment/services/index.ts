@@ -667,7 +667,8 @@ export class PaymentService {
 
     if (generatedSignature !== data.razorpaySignature) {
       await this.paymentRepository.update(
-        { _id: paymentRecord._id },
+        // A settled (paid/refunded) record is never rewritten by a later bad or replayed verify (milestone E10).
+        { _id: paymentRecord._id, status: { $nin: ['paid', 'refunded'] } },
         {
           status: 'failed',
           razorpayPaymentId: data.razorpayPaymentId,
@@ -751,7 +752,7 @@ export class PaymentService {
   ): Promise<void> {
     if (razorpayPayment.status === 'failed') {
       await this.paymentRepository.update(
-        { _id: paymentRecord._id },
+        { _id: paymentRecord._id, status: { $nin: ['paid', 'refunded'] } },
         {
           status: 'failed',
           isProcessed: true,
@@ -769,7 +770,7 @@ export class PaymentService {
 
     if (razorpayPayment.status === 'refunded') {
       await this.paymentRepository.update(
-        { _id: paymentRecord._id },
+        { _id: paymentRecord._id, status: { $nin: ['paid', 'refunded'] } },
         {
           status: 'refunded',
           isProcessed: true,
@@ -799,7 +800,7 @@ export class PaymentService {
     data: VerifyPaymentRequest
   ): Promise<IPaymentRecord> {
     const updated = await this.paymentRepository.update(
-      { _id: paymentRecord._id },
+      { _id: paymentRecord._id, status: { $nin: ['paid', 'refunded'] } },
       {
         status: 'paid',
         razorpayPaymentId: data.razorpayPaymentId,
@@ -809,11 +810,10 @@ export class PaymentService {
     );
 
     if (!updated) {
-      throw new AppError({
-        status: 500,
-        code: 'PAYMENT_UPDATE_FAILED',
-        message: 'Failed to update payment status',
-      });
+      // Already paid (concurrent verify): that is the answer. Refunded (e.g. a returned capture): never revived.
+      const current = await this.paymentRepository.findById(paymentRecord._id!);
+      if (current?.status === 'paid') return current;
+      throw new AppError({ status: 409, code: 'PAYMENT_CHANGED', message: 'Payment changed; refresh before retrying' });
     }
 
     return updated;

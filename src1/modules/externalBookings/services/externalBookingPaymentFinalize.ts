@@ -222,6 +222,16 @@ function extractLabstackLabLocationMeta(
   };
 }
 
+/** base - discount of the accepted payment attempt, in exact paise (includes the wallet-paid portion). */
+function acceptedTotal(record: IPaymentRecord): number {
+  const base = Math.round(Number(record.baseAmount ?? 0) * 100);
+  const discount = Math.round(Number(record.discountAmount ?? 0) * 100);
+  if (!Number.isSafeInteger(base) || !Number.isSafeInteger(discount) || base < 0 || discount < 0 || discount > base) {
+    throw new AppError({ status: 409, code: 'EXTERNAL_BOOKING_RECONCILIATION_REQUIRED', message: 'Payment amounts are inconsistent' });
+  }
+  return (base - discount) / 100;
+}
+
 export async function completeExternalBookingAfterPayment(
   paymentRecord: IPaymentRecord,
   externalBookingRepository: ExternalBookingRepository,
@@ -460,6 +470,11 @@ async function completeDiagnosticsAfterPayment(
     ? (meta.testIds as unknown[]).map((x) => String(x))
     : undefined;
 
+  // Milestone D8: freeze the Healthians slot at fulfilment, right before the order is placed.
+  if (booking.integration === 'healthians' && typeof meta.stmId === 'string' && meta.stmId.trim()) {
+    await healthiansService.freezeDiagnosticsSlot({ stmId: meta.stmId.trim(), vendorBillingUserId: booking.userId });
+  }
+
   const result =
     booking.integration === 'healthians'
       ? await healthiansService.placeDiagnosticsOrder({
@@ -498,9 +513,9 @@ async function completeDiagnosticsAfterPayment(
           altEmail: meta.altEmail as string | undefined,
           hardCopy: meta.hardCopy as number | undefined,
           vendorBookingId: String(booking._id),
-          discountedPrice: Number(
-            paymentRecord.finalAmount ?? booking.price ?? 0
-          ),
+          // Milestone D9: the accepted post-coupon total of this payment attempt (gateway + wallet portion), not just
+          // the gateway part. booking.price stays the gross price on this branch, so it is derived from the record.
+          discountedPrice: acceptedTotal(paymentRecord),
           paymentOption:
             (meta.paymentOption as 'cod' | 'prepaid' | undefined) || 'prepaid',
           applicationNumber: meta.applicationNumber as string | undefined,

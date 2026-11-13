@@ -38,13 +38,14 @@ All packets were reviewed by Codex through Ruflo (approved) and tested against a
 | P7 | `m0/p7-delivery-refill` | `126bbde` | Refill orders, delivery/pickup exceptions, low-stock alerts | `test/pharmacy-refill/…` (19), `test/pharmacy-delivery/…` (8), `test/pharmacy-inventory/p7c-low-stock…` (10) |
 | P3 | `m0/p3-stock-quality` | `f416bcc` | Quarantine/release, returns to supplier | `test/pharmacy-inventory/p3-batch-quality.integration.ts` (10) |
 | P3b | `m0/p3b-recall-returns` | `a9c0872` + `8b16aab` | Recall worklist, swap/cancel, customer returns | `test/pharmacy-inventory/p3b-recall-returns.integration.ts` (13) |
-| C1r | `m0/c1r-session-revoke` | on top of `8b16aab` | Sign out on all devices (revoke-only): customer tokens carry a credential generation; today's OTP login unchanged | `test/customer-contact/c1r-session-revoke.integration.ts` (7) |
+| C1r | `m0/c1r-session-revoke` | `0f89887` | Sign out on all devices (revoke-only): customer tokens carry a credential generation; today's OTP login unchanged | `test/customer-contact/c1r-session-revoke.integration.ts` (7) |
+| A1 | `m0/a1-milestone-rules` | on top of `0f89887` | Option A phase 1: the milestone's (`e8eb9bd`) non-ledger protections (§3) | `test/customer-bookings/a1-milestone-rules.integration.ts` (12); milestone `test/customer-profile/focused.mjs`, `test/customer-bookings/controllers.mjs` |
 
 Branch shape. Everything starts from `9c8d1d8` (end of the `m0/customer-pharmacy-lab-focus` line, 390 commits ahead
 of `main` = `origin/main` = `b06be01`):
 
 ```
-9c8d1d8 ─┬─ P1 ─ P2 ─ booking-retry ─ P7 ─ P3 ─ P3b ─ C1r   (one straight line; C1r contains all of them)
+9c8d1d8 ─┬─ P1 ─ P2 ─ booking-retry ─ P7 ─ P3 ─ P3b ─ C1r ─ A1   (one straight line; A1 contains all of them)
          ├─ C1                                           (side branch)
          └─ e8eb9bd  customer/milestone-2026-11-13       (side branch, NOT part of this work; see §3)
 m0/f01-app-isolation = bfb608e + 2 docs/tooling commits  (bfb608e is already inside 9c8d1d8)
@@ -57,7 +58,7 @@ Trial merges (`git merge-tree`, nothing written):
 
 ## 2. Merge order
 
-1. Create the integration branch from the top of the line: `git switch -c release/m0-pharmacy m0/c1r-session-revoke`.
+1. Create the integration branch from the top of the line: `git switch -c release/m0-pharmacy m0/a1-milestone-rules`.
 2. **Do not merge `m0/c1-contact-recovery`** into this release (§4, "C1 is rollout-blocked"). The trial merge is
    clean, but merging it would disable customer OTP login.
 3. `git merge m0/f01-app-isolation` (clean; docs and the local extension tooling).
@@ -95,6 +96,31 @@ risks double refunds or double wallet debits. Options:
 
 Whichever option is chosen, the merged result must pass both test sets: §6 and the milestone's
 `test/customer-bookings/*.mjs`, `test/customer-profile/*.mjs`, `test/customer-wallet/*.mjs`.
+
+**Decision: option A (owner, 13 Nov).** The milestone branch itself is NOT merged; its rules are ported:
+
+- **A1 (done, `m0/a1-milestone-rules`).** Rules that do not move money through the ledger:
+  - Who may book or cancel for whom: own active dependents only; no customer-supplied `corporateId`; external
+    bookings need a signed actor; new owner-scoped `GET /external-bookings/bookings/:id`; scalar `userId` list filters.
+  - Profile: a customer may only fill a missing phone or email; replacing an email is admin-only, enforced in email
+    verification too; HR edits only its own corporate's users.
+  - Cancellation window: IST, 24 h (48 h for a Monday appointment) for customers; nobody may cancel a started
+    appointment. **For now it applies to every customer cancellation, paid or not**; the milestone's "unpaid is
+    exempt" relaxation comes back in A2, where it can be serialized with the payment state. Only `pending`/`confirmed`
+    bookings can be cancelled.
+  - The generic booking edit/delete can no longer cancel, pay, refund or move a booking, and delete is refused (history
+    is retained).
+  - A `paid`/`refunded` payment record is never rewritten by a replayed verify (all payment contexts).
+  - Coupon discounts are rounded once to paise; a ₹0 discounted package price means free.
+  - Healthians: the slot is frozen at fulfilment, not at draft creation, and the accepted post-coupon total (gateway +
+    wallet) is sent.
+  - **The provider webhook is now record-only** (`meta.lastUntrustedProviderObservation`,
+    `meta.providerEventReconciliationRequired`). It no longer changes status, reschedules, stores reports, cancels at
+    the provider or refunds. Reports are still read through the authenticated report endpoints.
+- **A2a (next): ordinary bookings, money path.** Slot hold, follow-up benefit and coupon count in the same transaction
+  as the cancel refund; payment-setup lease; restore the unpaid exemption safely.
+- **A2b (after A2a): external bookings.** Provider admission token, two-phase cancel that waits for provider
+  acknowledgement before refunding, timeout schedulers through the same intent, payment-detail validation.
 
 ## 4. Deploy steps (production)
 
@@ -168,6 +194,7 @@ repeat work.
 |---|---|
 | Customer login | Customer OTP send and verify succeed exactly as before; a token issued before the deploy still works |
 | C1r | `POST /v1/auth/sessions/revoke` with a customer token: 200; that token and every other device's token then get 401; a new OTP login works |
+| A1 | A customer cancel inside 24 h (48 h for Monday) is refused, and allowed outside it; `PUT /bookings/:id` with `status: cancelled` gives 409; a provider webhook changes no status or money; a customer can add but not replace an email; a Healthians order's amount equals the post-coupon total |
 | C1 contact change (later, once it ships per §4) | The change alert is a best-effort **email**: for an email change it goes to the previous email (none if there wasn't one); for a phone change it goes to the account email (none if the account has no email). No SMS alert is sent |
 | P1 | A prescription order is pending; the pharmacist approves it (the order can be packed) or rejects it (stock is released) |
 | P2 | Reject a paid order: the wallet is credited in full and `prescriptionRefund.status = wallet_credited`; with test keys, "to source" reaches `source_refunded` |
@@ -197,6 +224,9 @@ Files (C1's `test/customer-contact/c1-sessions.integration.ts` runs on the C1 br
 - `test/pharmacy-inventory/p3-batch-quality.integration.ts`
 - `test/pharmacy-inventory/p3b-recall-returns.integration.ts`
 - `test/customer-contact/c1r-session-revoke.integration.ts`
+- `test/customer-bookings/a1-milestone-rules.integration.ts`
+- Milestone tests carried over unchanged: `node test/customer-profile/focused.mjs`,
+  `node test/customer-bookings/controllers.mjs` (Node ≥ 22.13, `stripTypeScriptTypes`)
 
 ## 7. Rollback
 
@@ -226,6 +256,10 @@ can read.
 ## 8. Known limits (not done)
 
 - No real Razorpay test-mode run yet; it needs the owner's test keys.
+- Until A2b: with the webhook record-only, a provider booking created after a local cancel is no longer auto-cancelled
+  when it is discovered. The customer's money is already refunded by the cancel path. Watch
+  `meta.providerEventReconciliationRequired` and cancel such bookings at the provider by hand.
+- Until A2a: customers cannot cancel an unpaid booking inside the cancellation window (admins can until it starts).
 - External bookings: a cancellation landing between the pre-check and the provider booking can still book with the
   provider. The money is returned, but the provider booking has to be cancelled by hand.
 - No UI for any of the new endpoints.

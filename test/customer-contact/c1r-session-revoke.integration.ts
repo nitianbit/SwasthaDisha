@@ -129,12 +129,15 @@ async function main() {
     const ok = await sendAndVerify(a, `c${phoneSeq}@example.com`);
     assert.equal(claims(ok.accessToken).authVersion, 0);
     assert.deepEqual(await admits(ok.accessToken), { ok: true });
-    // A request admitted just before "sign out everywhere" must not get a fresh valid token or change the email.
-    await auth.sendEmailVerificationOTP(c.id, { email: `late${phoneSeq}@example.com` } as never);
+    // A request admitted just before "sign out everywhere" must not get a fresh valid token or set the email. (Since the
+    // milestone F4 rule an existing email can only be re-verified, so use a customer adding their first email.)
+    const d = await customer();
+    const t = await login(d.phone);
+    await auth.sendEmailVerificationOTP(d.id, { email: `late${phoneSeq}@example.com` } as never);
     const otp = lastOtp(mail[mail.length - 1].textBody);
-    await auth.revokeSessions(claims(a) as never);
-    await rejects(auth.verifyEmailVerificationOTP(c.id, { otp, email: `late${phoneSeq}@example.com` } as never, 0), 'UNAUTHORIZED', 401);
-    assert.equal((await UserModel.findById(c.id).lean())!.email, `c${phoneSeq}@example.com`, 'email unchanged');
+    await auth.revokeSessions(claims(t) as never);
+    await rejects(auth.verifyEmailVerificationOTP(d.id, { otp, email: `late${phoneSeq}@example.com` } as never, 0), 'UNAUTHORIZED', 401);
+    assert.equal((await UserModel.findById(d.id).lean())!.email, undefined, 'email not set');
   });
 
   await check('malformed generation claims, deleted accounts and corrupt stored values are refused; other user types are unaffected', async () => {

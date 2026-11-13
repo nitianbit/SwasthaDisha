@@ -46,19 +46,22 @@ export class ExternalBookingController {
     this.dependentService = Container.get(DependentService);
   }
 
-  private async assertCustomerDependentOwner(req: AuthRequest): Promise<void> {
+  private requireBookingActor(req: AuthRequest) {
     const actor = req.user;
-    if (actor?.userType !== 'user') {
-      return;
-    }
-
-    if (typeof actor._id !== 'string' || actor._id.trim().length === 0) {
+    if (!actor || typeof actor._id !== 'string' || actor._id.trim().length === 0 ||
+        typeof actor.userType !== 'string' || actor.userType.trim().length === 0) {
       throw new AppError({
         status: 401,
         code: 'UNAUTHORIZED',
         message: 'Authentication is required',
       });
     }
+    return actor;
+  }
+
+  private async assertCustomerDependentOwner(req: AuthRequest): Promise<void> {
+    const actor = this.requireBookingActor(req);
+    if (actor.userType !== 'user') return;
 
     const dependentId = req.body.dependentId;
     if (dependentId === undefined) {
@@ -76,7 +79,10 @@ export class ExternalBookingController {
       });
     }
 
-    await this.dependentService.getById(dependentId, actor._id);
+    const dependent = await this.dependentService.getById(dependentId, actor._id);
+    if (dependent.isActive === false) {
+      throw new AppError({ status: 404, code: 'DEPENDENT_NOT_FOUND', message: 'Dependent not found' });
+    }
   }
 
   private resolveIntegration(value: unknown): ExternalIntegration {
@@ -384,18 +390,15 @@ export class ExternalBookingController {
     res: Response,
     _next: NextFunction
   ) => {
+    const actor = this.requireBookingActor(req);
     await this.assertCustomerDependentOwner(req);
-    const userId = req.user
-      ? req.user.userType === 'admin'
-        ? ((req.body.userId as string | undefined) || req.user._id)
-        : req.user._id
-      : ((req.body.userId as string | undefined) || 'test-user');
+    const userId = actor.userType === 'admin'
+      ? ((req.body.userId as string | undefined) || actor._id)
+      : actor._id;
 
-    const user = userId && userId !== 'test-user'
-      ? await UserModel.findById(userId)
+    const user = await UserModel.findById(userId)
           .select('name email phone dateOfBirth gender address city state pincode')
-          .lean()
-      : null;
+          .lean();
 
     const patientDateOfBirth =
       (req.body.patientDateOfBirth as string | undefined) || user?.dateOfBirth;
@@ -460,18 +463,15 @@ export class ExternalBookingController {
     res: Response,
     _next: NextFunction
   ) => {
+    const actor = this.requireBookingActor(req);
     await this.assertCustomerDependentOwner(req);
-    const userId = req.user
-      ? req.user.userType === 'admin'
-        ? ((req.body.userId as string | undefined) || req.user._id)
-        : req.user._id
-      : ((req.body.userId as string | undefined) || 'test-user');
+    const userId = actor.userType === 'admin'
+      ? ((req.body.userId as string | undefined) || actor._id)
+      : actor._id;
 
-    const user = userId && userId !== 'test-user'
-      ? await UserModel.findById(userId)
+    const user = await UserModel.findById(userId)
           .select('address city state pincode gender')
-          .lean()
-      : null;
+          .lean();
 
     const patientGender =
       (req.body.patientGender as string | undefined) ||
@@ -719,16 +719,15 @@ export class ExternalBookingController {
     res: Response,
     _next: NextFunction
   ) => {
-    const effectiveUserId = req.user
-      ? req.user.userType === 'admin'
-        ? (req.query.userId as string | undefined)
-        : req.user._id
-      : (req.query.userId as string | undefined);
+    const actor = this.requireBookingActor(req);
+    const effectiveUserId = actor.userType === 'admin'
+      ? (req.query.userId as string | undefined)
+      : actor._id;
 
     const query: ExternalBookingListQuery = {
       userId: effectiveUserId,
       corporateId: req.query.corporateId as string | undefined,
-      integration: this.resolveIntegration(req.query.integration),
+      integration: req.query.integration === undefined ? undefined : this.resolveIntegration(req.query.integration),
       providerType: req.query.providerType as string | undefined,
       appointmentType: req.query.appointmentType as string | undefined,
       patientName: req.query.patientName as string | undefined,
@@ -776,6 +775,13 @@ export class ExternalBookingController {
       success: true,
       data: result.data,
     });
+  };
+
+  getById = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const actor = this.requireBookingActor(req);
+    const booking = await this.externalBookingService.getBookingById(req.params.id, actor);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(200).json({ success: true, data: booking });
   };
 
   cancelBooking = async (

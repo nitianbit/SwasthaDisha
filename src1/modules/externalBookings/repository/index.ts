@@ -51,6 +51,23 @@ export class ExternalBookingRepository extends BaseRepository<IExternalBooking> 
     super(ExternalBookingModel as Model<IExternalBooking>);
   }
 
+  async findOwnedLocalBooking(id: string, actor: { _id: string; userType: string }): Promise<IExternalBooking> {
+    if (!actor?._id || typeof actor._id !== 'string' || !['user', 'admin'].includes(actor.userType)) {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Customer or admin access is required' });
+    }
+    if (typeof id !== 'string' || !/^[a-f\d]{24}$/i.test(id)) {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid external booking ID' });
+    }
+    const booking = await ExternalBookingModel.findOne({ _id: id,
+      ...(actor.userType === 'admin' ? {} : { userId: { $eq: actor._id } }),
+      $expr: { $eq: [{ $type: '$userId' }, 'string'] },
+    }).select('-walletFunding').maxTimeMS(2000).lean().exec();
+    if (!booking || (actor.userType !== 'admin' && booking.userId !== actor._id)) {
+      throw new AppError({ status: 404, code: 'EXTERNAL_BOOKING_NOT_FOUND', message: 'External booking not found' });
+    }
+    return booking as IExternalBooking;
+  }
+
   async findCustomerDiagnosticsProgress(id: unknown, customerId: unknown): Promise<CustomerDiagnosticsProgress> {
     if (typeof customerId !== 'string' || !/^[0-9a-f]{24}$/.test(customerId)) {
       throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
@@ -165,7 +182,8 @@ export class ExternalBookingRepository extends BaseRepository<IExternalBooking> 
     const query: Record<string, unknown> = {};
 
     if (filter.userId) {
-      query.userId = filter.userId;
+      query.userId = { $eq: filter.userId };
+      query.$expr = { $eq: [{ $type: '$userId' }, 'string'] };
     }
     if (filter.corporateId) {
       query.corporateId = filter.corporateId;
