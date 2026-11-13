@@ -1,0 +1,75 @@
+{
+  "schema": "SD-DISABLED-EXPRESS-SHARED-SOURCE-SPEC-1",
+  "reviewer": "/root/customer_remaining_audit",
+  "decision": "APPROVE_SOURCE_ONLY",
+  "candidateMainCommit": "3792f8ae08acd9a7644c7efcd1e758f9e331b554",
+  "candidateContactCommit": "b06adee16ce355e2b8cddef6fef51da6574f894d",
+  "manifestPath": "output/qa/shared-disabled-express-template/source-candidate/SOURCE_CANDIDATE.json",
+  "manifestSha256": "853e1dc480fc0e80056f07c0a7e72dce05a85c7600b79d6bbbc05373483a4f68",
+  "proposalSha256": "c9a058f4bfa3135423496bb6673e3f17937c325c014f1ad1bc9215a6a5f7ae77",
+  "interfaceSha256": "0dea3a043efea2e284246bc29d5ecc5a4abb116d70f614f958c210d8ba5f2952",
+  "eligibleScope": "Independent NONAUTHOR Spec review of Root shared helper, helper test source and exact main/contact platform allowances ONLY. Reviewer authored P7 namespace hooks and previously reviewed design; related consumer exposure disclosed. This vote explicitly excludes those own hooks and all production source.",
+  "exactMainSources": {
+    "test/api-runtime/disabled-express-template.cjs": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779",
+    "test/api-runtime/disabled-express-template.test.mjs": "f0ec1cde80b48687fbc3853ab4b3d36420bb2af0281158291d05a51db1cf293d",
+    "test/api-runtime/platform.mjs": "3decce77cdc98038713818a79f49742df9ef8ff58803e931ae1a44c1ffd1e76c"
+  },
+  "exactContactSources": {
+    "test/api-runtime/disabled-express-template.cjs": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779",
+    "test/api-runtime/platform.mjs": "aab3e4fef50434f8b9ca1a0eea699568e5e82ceb9f54d1a241acb8ee46a74b07"
+  },
+  "unchangedMainContextPersonallyRehashed": {
+    "test/api-runtime/platform.test.mjs": "4974277cd312e275436a11367a548fb3c44616d0cedf168254d4314e4ab971d1",
+    "test/api-runtime/unit.mjs": "253d2b6121752017044e9e814a837f05ba097051a55d0e64b36b8b1f85b03bb6",
+    "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+    "test/api-runtime/private-documents/profile.json": "f21a759901d705f1e950fc8c194d988757ada73d22cba65b139cbae06fbcd197",
+    "test/api-runtime/customer-contact/profile.json": "8901145dbb08ee98e489c9241db8e32cc90f6485aa3f154c7aea73be8f2f5075",
+    "test/api-runtime/pharmacy-refill/profile.json": "15e8b72e9e3ab4f359df4f90f33f0582a20129ac2723064e800263ac1ced2ae2",
+    "test/application/app-bundle.mjs": "63a5e15779fd942b9ff9e1c3ccaa45d4d347387f196555e2a1b8998477c7ecfc",
+    "package.json": "65b171e77e8cd3bfd37eb691cf9ce310d9108cedbf571232bd4859c4b16895ab",
+    "package-lock.json": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080"
+  },
+  "findings": [],
+  "actualInspection": [
+    {
+      "path": "test/api-runtime/disabled-express-template.cjs:5",
+      "conclusion": "One frozen canonical policy and separately frozen parameter/import/count arrays; source literal tuple matches reviewed JSON, sorted compact JSON canonical SHA independently recomputed with stdlib only. Exactly four frozen exports; no state/reset/registration API."
+    },
+    {
+      "path": "test/api-runtime/disabled-express-template.cjs:20",
+      "conclusion": "Pure supplied-parser matcher fixes whole parent path/hash, unique require(mod), lazy top-level View(name,options), nearest exact branch, prior same-branch var mod, var fn.__express and exactly three eager ordered literal imports before single export. Nested debug initializer traversed; function bodies skipped for eager scan. Entry-parent unique incoming edge remains caller compiler responsibility, not falsely implemented by this View-only matcher."
+    },
+    {
+      "path": "test/api-runtime/disabled-express-template.cjs:70",
+      "conclusion": "Factory captures trusted native Module/prototype/cache, descriptor-only admitted manifest hashes and absent View cache. Proxy checks precede descriptors. Entry opening requires actual cache identity/native prototype/own-data filename/id/loadedfalse. Capture occurs only during that original incoming forward at first exact outgoing debug."
+    },
+    {
+      "path": "test/api-runtime/disabled-express-template.cjs:119",
+      "conclusion": "Initial load claims one ordered debug/path/fs count and one outgoing frame; corresponding direct resolver must have same frame, parent and request. Saved initializer/initial outgoing forward errors preserve exact error identity while latching FAILED and clearing window/frame. Unrelated forward exceptions are not caught or converted and therefore preserve optional behavior."
+    },
+    {
+      "path": "test/api-runtime/disabled-express-template.cjs:123",
+      "conclusion": "Intact SEALED genuine-parent denial calls supplied existing latch before any caller forward and outside poisoning catch. Captured cache/module/exports/loaded identity checks occur first; integrity/window faults permanently fail. External restoration cannot clear FAILED. assertSealed validates exact final cached function, count3 and closed frames/windows without a new loader operation."
+    },
+    {
+      "path": "test/api-runtime/disabled-express-template.test.mjs",
+      "conclusion": "Full source read: 36 planned standard-library guard/source-admission tests. Each fatal schedule gets fresh actual native Module/cache objects; external restoration is cleanup only and the same guard stays failed. Intact denials check subsequent seal; forward-error sentinel identity and unrelated MODULE_NOT_FOUND sentinel preserved. Proxy/accessor checks verify zero traps. No actual Express/TypeScript/app/nativeDB import in unit source."
+    },
+    {
+      "path": "test/api-runtime/platform.mjs:153",
+      "conclusion": "Personally verified whole byte inverse of main two role-array additions and contact one addition against each commit parent. Auth/private source allowlists and entire lifecycle/profile/options/bundle bytes unchanged. New unit source calls actual no-seam factory\u2192reviewedTemplate and expects helper-source rejection for auth/private, then intentional incomplete caseplan for contact/refill before workspace/executor; future exact owned stager must supply those real data prerequisites."
+    }
+  ],
+  "limits": [
+    "SOURCE ONLY, no parser/Node/standard-library helper execution, compiler/npm/package/app/nativeDB/Docker/provider/model invocation. Assertions and count36 are planned source, not outcomes.",
+    "No source review or functional approval of own P7 hooks, C1 hooks, production algorithms or full module. Namespace composition requires separate eligible reviews.",
+    "Source admission unit marker/four exact owned inert templates/stager and exact invocation are not prepared or approved by this vote. Future stager must bind valid source hashes and role schemas and preserve stop before workspace/executor.",
+    "Shared helper units and full installed reachable-package AST audit remain separately exact-reviewed stages with actual outcomes. View matcher structural controls are not substitutes for actual whole-file native provenance or incoming-parent census.",
+    "Runtime trusts admitted closed fixture code and standard-library intrinsics. Guard is not a hostile arbitrary-code sandbox and does not establish native application composition or runtime compatibility before real checks.",
+    "Whole per-worktree bundles/root packages/original source histories/failures/receipts/staged six/archive and R13 selected inputs remain unchanged by this read-only review.",
+    "C2/C3/preimport/owner/client/clinical/production/final integration/release gates retained."
+  ],
+  "executionAuthorization": false,
+  "sourceEdits": false,
+  "selfApproval": false
+}

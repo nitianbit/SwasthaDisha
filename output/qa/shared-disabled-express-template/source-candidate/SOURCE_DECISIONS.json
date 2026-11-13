@@ -1,0 +1,26 @@
+{
+  "schema": "SD-SHARED-DISABLED-EXPRESS-SOURCE-DECISIONS-1",
+  "recorder": "/root",
+  "reviews": [
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "path": "output/qa/shared-disabled-express-template/source-candidate/STANDARDS_REVIEW.json",
+      "sha256": "3d0515518cfddff9736bc6002e7da338fee17feecd667cf81358eaa28fd24a0d"
+    },
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "path": "output/qa/shared-disabled-express-template/source-candidate/SPEC_REVIEW.json",
+      "sha256": "c3adf631616baa32801442aeb9087bab4443d99cb34a5fdb8757bea58cdc837b"
+    }
+  ],
+  "candidateCommit": "3792f8ae08acd9a7644c7efcd1e758f9e331b554",
+  "contactCopyCommit": "b06adee16ce355e2b8cddef6fef51da6574f894d",
+  "manifestSha256": "853e1dc480fc0e80056f07c0a7e72dce05a85c7600b79d6bbbc05373483a4f68",
+  "sourceAuthor": "/root",
+  "decision": "APPROVE_SOURCE_ONLY",
+  "provenance": "Both internalCodexreviewers inspectRootsharedalgorithm/test/platform source; ownconsumerhooks explicitlyexcluded. No authorSelfvote.",
+  "unitStatus": "ActualfreshR3returned0/36exactTAP but separatetwooutcomespending; priorR2failedformatpreserved.",
+  "runtimeOrReleaseAcceptance": false
+}
