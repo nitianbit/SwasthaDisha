@@ -9,6 +9,7 @@ import { UserRepository } from '@/modules/user/repository';
 import { SpecialistRepository } from '@/modules/specialists/repository';
 import { PharmacyRepository } from '@/modules/pharmacies/repository';
 import { AuthRequest } from '@/modules/middleware/auth';
+import { tokenCredentialVersion } from '@/modules/user/credentialGeneration';
 
 export class AuthController {
   private authService: AuthService;
@@ -66,6 +67,11 @@ export class AuthController {
         user: result.userData,
       },
     });
+  };
+
+  revokeSessions = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const data = await this.authService.revokeSessions(req.user);
+    return res.status(200).json({ success: true, message: 'Signed out on all devices', data });
   };
 
   getProfile = async (req: Request, res: Response, _next: NextFunction) => {
@@ -185,7 +191,7 @@ export class AuthController {
       otp,
       email,
       isCorporateUser,
-    });
+    }, tokenCredentialVersion(req.user));
 
     return res.status(200).json({
       success: true,
@@ -226,7 +232,8 @@ export class AuthController {
 
     const result = await this.authService.verifyCorporateEmailVerificationOTP(
       userId!,
-      { otp, corporateEmail }
+      { otp, corporateEmail },
+      tokenCredentialVersion(req.user)
     );
 
     return res.status(200).json({

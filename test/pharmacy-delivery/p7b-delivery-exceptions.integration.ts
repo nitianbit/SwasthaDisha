@@ -75,6 +75,15 @@ async function rejects(p: Promise<unknown>, code: string, status?: number) {
   await assert.rejects(p, (e: { code?: string; status?: number }) => e.code === code && (status === undefined || e.status === status));
 }
 
+/** Customer tokens are admitted only for an existing customer account (credential generation check): create it. */
+async function bearer(claims: { _id?: unknown; userType?: unknown }): Promise<string> {
+  if (claims.userType === 'user' && typeof claims._id === 'string') {
+    await mongoose.model('User').collection.updateOne({ _id: new mongoose.Types.ObjectId(claims._id) },
+      { $setOnInsert: { userType: 'user', isActive: true } }, { upsert: true });
+  }
+  return jwt.sign(claims, CONFIG.JWT_SECRET_KEY);
+}
+
 let passed = 0;
 async function check(name: string, fn: () => Promise<void>) { await fn(); passed++; console.log('ok -', name); }
 
@@ -174,8 +183,8 @@ async function main() {
     const server = app.listen(0);
     try {
       const port = (server.address() as { port: number }).port;
-      const post = (path: string, claims: object, body: object) => fetch(`http://127.0.0.1:${port}/api/v1/pharmacy-orders${path}`,
-        { method: 'POST', headers: { authorization: 'Bearer ' + jwt.sign(claims, CONFIG.JWT_SECRET_KEY), 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const post = async (path: string, claims: { _id?: unknown; userType?: unknown }, body: object) => fetch(`http://127.0.0.1:${port}/api/v1/pharmacy-orders${path}`,
+        { method: 'POST', headers: { authorization: 'Bearer ' + await bearer(claims), 'content-type': 'application/json' }, body: JSON.stringify(body) });
       const pharmacy = { _id: pharmacyA, pharmacyId: pharmacyA, userType: 'pharmacy' };
       const o = await order();
       assert.equal((await post(`/${o.id}/delivery-exception`, pharmacy, { type: 'delivery_failed' })).status, 400); // reason required

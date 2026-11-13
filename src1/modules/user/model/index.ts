@@ -136,6 +136,9 @@ const userSchema = new Schema<IUser>(
       index: true,
     },
 
+    // Customer credential generation (C1 revoke-only): tokens carry it; "sign out everywhere" advances it.
+    authVersion: { type: Number, select: false, min: 0, validate: Number.isSafeInteger },
+
     // Status fields
     isActive: {
       type: Boolean,

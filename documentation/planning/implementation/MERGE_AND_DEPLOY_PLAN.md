@@ -37,13 +37,14 @@ All packets were reviewed by Codex through Ruflo (approved) and tested against a
 | Booking retry | `m0/booking-payment-retry` | `ce7d595` | Booking money ledger (wallet funding, captures, refunds) | `test/booking-payment/retry-integrity.integration.ts` (26) |
 | P7 | `m0/p7-delivery-refill` | `126bbde` | Refill orders, delivery/pickup exceptions, low-stock alerts | `test/pharmacy-refill/…` (19), `test/pharmacy-delivery/…` (8), `test/pharmacy-inventory/p7c-low-stock…` (10) |
 | P3 | `m0/p3-stock-quality` | `f416bcc` | Quarantine/release, returns to supplier | `test/pharmacy-inventory/p3-batch-quality.integration.ts` (10) |
-| P3b | `m0/p3b-recall-returns` | `a9c0872` + follow-up | Recall worklist, swap/cancel, customer returns | `test/pharmacy-inventory/p3b-recall-returns.integration.ts` (13) |
+| P3b | `m0/p3b-recall-returns` | `a9c0872` + `8b16aab` | Recall worklist, swap/cancel, customer returns | `test/pharmacy-inventory/p3b-recall-returns.integration.ts` (13) |
+| C1r | `m0/c1r-session-revoke` | on top of `8b16aab` | Sign out on all devices (revoke-only): customer tokens carry a credential generation; today's OTP login unchanged | `test/customer-contact/c1r-session-revoke.integration.ts` (7) |
 
 Branch shape. Everything starts from `9c8d1d8` (end of the `m0/customer-pharmacy-lab-focus` line, 390 commits ahead
 of `main` = `origin/main` = `b06be01`):
 
 ```
-9c8d1d8 ─┬─ P1 ─ P2 ─ booking-retry ─ P7 ─ P3 ─ P3b      (one straight line; P3b contains all of them)
+9c8d1d8 ─┬─ P1 ─ P2 ─ booking-retry ─ P7 ─ P3 ─ P3b ─ C1r   (one straight line; C1r contains all of them)
          ├─ C1                                           (side branch)
          └─ e8eb9bd  customer/milestone-2026-11-13       (side branch, NOT part of this work; see §3)
 m0/f01-app-isolation = bfb608e + 2 docs/tooling commits  (bfb608e is already inside 9c8d1d8)
@@ -56,7 +57,7 @@ Trial merges (`git merge-tree`, nothing written):
 
 ## 2. Merge order
 
-1. Create the integration branch from the top of the line: `git switch -c release/m0-pharmacy m0/p3b-recall-returns`.
+1. Create the integration branch from the top of the line: `git switch -c release/m0-pharmacy m0/c1r-session-revoke`.
 2. **Do not merge `m0/c1-contact-recovery`** into this release (§4, "C1 is rollout-blocked"). The trial merge is
    clean, but merging it would disable customer OTP login.
 3. `git merge m0/f01-app-isolation` (clean; docs and the local extension tooling).
@@ -142,7 +143,11 @@ C1 can ship only after one of these:
 - **(b)** a separately reviewed revoke-only change that keeps today's customer login working: sign out on all devices
   plus `authVersion` enforcement, without the contact-identity gate.
 
-Nothing in P1–P3b depends on C1.
+Nothing in P1–P3b depends on C1. **Option (b) is done: C1r** (`m0/c1r-session-revoke`, in this release). Customer
+tokens carry `authVersion` (absent = 0, so the deploy signs nobody out). `authenticate`/`authenticateOptional` admit a
+customer token only at the account's current generation, and `POST /v1/auth/sessions/revoke` advances it. There is no
+`keepCurrent`, no `isActive` enforcement, and no contact change. Behaviour changes: a customer token whose account no
+longer exists is now refused (401), and each customer request does one `_id` read. No migration or index is needed.
 
 ### Configuration
 - `REFILL_PAYMENT_WINDOW_HOURS` (optional, default `48`): how long a refill order waits for the customer's payment.
@@ -161,8 +166,9 @@ repeat work.
 
 | Area | Check |
 |---|---|
-| Customer login | Not in this release, but check it still works: customer OTP send and verify succeed (this release must not change login) |
-| C1 (later, once it ships per §4) | `POST /v1/auth/sessions/revoke` makes every old token fail with 401; `keepCurrent=true` keeps this device signed in (needs a login in the last 10 minutes). The change alert is a best-effort **email**: for an email change it goes to the previous email (none if there wasn't one); for a phone change it goes to the account email (none if the account has no email). No SMS alert is sent |
+| Customer login | Customer OTP send and verify succeed exactly as before; a token issued before the deploy still works |
+| C1r | `POST /v1/auth/sessions/revoke` with a customer token: 200; that token and every other device's token then get 401; a new OTP login works |
+| C1 contact change (later, once it ships per §4) | The change alert is a best-effort **email**: for an email change it goes to the previous email (none if there wasn't one); for a phone change it goes to the account email (none if the account has no email). No SMS alert is sent |
 | P1 | A prescription order is pending; the pharmacist approves it (the order can be packed) or rejects it (stock is released) |
 | P2 | Reject a paid order: the wallet is credited in full and `prescriptionRefund.status = wallet_credited`; with test keys, "to source" reaches `source_refunded` |
 | Booking | Pay a booking with wallet + card; cancel it: the refund equals what was paid; a retried payment callback does not double-credit |
@@ -190,11 +196,12 @@ Files (C1's `test/customer-contact/c1-sessions.integration.ts` runs on the C1 br
 - `test/pharmacy-inventory/p7c-low-stock.integration.ts`
 - `test/pharmacy-inventory/p3-batch-quality.integration.ts`
 - `test/pharmacy-inventory/p3b-recall-returns.integration.ts`
+- `test/customer-contact/c1r-session-revoke.integration.ts`
 
 ## 7. Rollback
 
 Older code ignoring the new fields does **not** make a rollback safe. **The rollback floor is this whole release**
-(P1, P2, booking-retry, P7, P3, P3b). Once it is live, roll back only to a build that contains all of them, and turn
+(P1, P2, booking-retry, P7, P3, P3b, C1r). Once it is live, roll back only to a build that contains all of them, and turn
 individual features off rather than reverting below it. Going below the floor needs an explicit, reviewed drain or
 reconciliation of the state listed here. The same rule applies to any later release that stores state only new code
 can read.
@@ -211,8 +218,8 @@ can read.
   `db.pharmacyorders.countDocuments({'prescriptionRefund.status': {$in: ['wallet_pending', 'source_processing']}})`.
 - **Wallet races.** Pre-P2 code writes absolute wallet balances (the race P2 removed) and does not use
   `operationKey`. Under concurrency it can overwrite ledger-backed balances.
-- **C1 (when it ships later).** Once customers have revoked sessions, rolling back below C1 makes those revoked tokens
-  valid again, because older `authenticate` checks only the signature and expiry. That would need a separately
+- **C1r sign-outs.** Once customers have used "sign out on all devices", rolling back below C1r makes those revoked
+  tokens valid again, because older `authenticate` checks only the signature and expiry. That would need a separately
   approved all-token cutover, for example rotating `JWT_SECRET_KEY`.
 - Indexes and new collections can stay in place for any rollback within the floor.
 

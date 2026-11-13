@@ -47,6 +47,13 @@ authRouterV1.post(
   catchAsync(authController.verifyCorporateEmailVerificationOTP)
 );
 
+// Sign out on all devices (customers): every token issued so far stops working; sign in again with OTP.
+authRouterV1.post(
+  '/sessions/revoke',
+  authenticate,
+  catchAsync(authController.revokeSessions)
+);
+
 authRouterV1.post(
   '/:userType/send',
   validate(userTypeParamSchema, 'params'),

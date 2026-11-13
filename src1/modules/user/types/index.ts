@@ -36,6 +36,8 @@ export interface IUser {
   referredByUserId?: string; // Referrer user ID if referral was applied
 
   // Status fields
+  /** Customer credential generation (C1 revoke-only); absent = 0. */
+  authVersion?: number;
   isActive?: boolean;
   isVerified?: boolean;
   isCorporateEmailVerified?: boolean;

@@ -27,6 +27,7 @@ import { NotificationService } from '@/modules/notification/services';
 import { EmailService } from '@/modules/email/services';
 import { SMSService } from '@/modules/sms/services';
 import jwt from 'jsonwebtoken';
+import { advanceCredentialVersion, credentialFilter, readCredentialVersion, tokenCredentialVersion } from '@/modules/user/credentialGeneration';
 import { Service } from 'typedi';
 
 @Service()
@@ -437,7 +438,17 @@ export class AuthService {
       };
     }
 
-    const accessToken = jwt.sign(tokenPayload, CONFIG.JWT_SECRET_KEY, {
+    // Customer tokens carry the account's credential generation, read after the OTP was consumed. If a "sign out
+    // everywhere" commits in between, this token simply carries the old generation and is refused.
+    let claims: typeof tokenPayload & { authVersion?: number } = tokenPayload;
+    if (tokenPayload.userType === 'user') {
+      const authVersion = await readCredentialVersion(String(id));
+      if (authVersion === null || authVersion < 0) {
+        throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Please sign in again' });
+      }
+      claims = { ...tokenPayload, authVersion };
+    }
+    const accessToken = jwt.sign(claims, CONFIG.JWT_SECRET_KEY, {
       expiresIn: '30d', // Token expires in 30 days
     });
 
@@ -506,7 +517,8 @@ export class AuthService {
 
   async verifyEmailVerificationOTP(
     userId: string,
-    data: VerifyEmailVerificationOTPRequest
+    data: VerifyEmailVerificationOTPRequest,
+    tokenVersion = 0
   ): Promise<{ message: string; user: Partial<IUser>; accessToken: string }> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
@@ -577,11 +589,16 @@ export class AuthService {
       updateData.corporateId = corporateIdToSet;
     }
 
+    // Fenced on the caller's credential generation: a session signed out meanwhile cannot change the email or get a
+    // fresh token. The new token keeps that same generation (never the stored one).
     const updatedUser = await this.userRepository.update(
-      { _id: userId } as any,
+      { _id: userId, ...credentialFilter(tokenVersion) } as any,
       updateData
     );
 
+    if (!updatedUser && await readCredentialVersion(userId) !== tokenVersion) {
+      throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Please sign in again' });
+    }
     if (!updatedUser) {
       throw new AppError({
         status: 500,
@@ -598,7 +615,7 @@ export class AuthService {
       userType: updatedUser.userType!,
     };
 
-    const accessToken = jwt.sign(tokenPayload, CONFIG.JWT_SECRET_KEY, {
+    const accessToken = jwt.sign({ ...tokenPayload, authVersion: tokenVersion }, CONFIG.JWT_SECRET_KEY, {
       expiresIn: '30d',
     });
 
@@ -674,7 +691,8 @@ export class AuthService {
 
   async verifyCorporateEmailVerificationOTP(
     userId: string,
-    data: VerifyCorporateEmailVerificationOTPRequest
+    data: VerifyCorporateEmailVerificationOTPRequest,
+    tokenVersion = 0
   ): Promise<{ message: string; user: Partial<IUser>; accessToken: string }> {
     const user = await this.userRepository.findById(userId);
     if (!user) {
@@ -732,7 +750,7 @@ export class AuthService {
     }
 
     const updatedUser = await this.userRepository.update(
-      { _id: userId } as any,
+      { _id: userId, ...credentialFilter(tokenVersion) } as any,
       {
         corporateEmail: verifiedCorporateEmail,
         isCorporateEmailVerified: true,
@@ -740,6 +758,9 @@ export class AuthService {
       } as any
     );
 
+    if (!updatedUser && await readCredentialVersion(userId) !== tokenVersion) {
+      throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Please sign in again' });
+    }
     if (!updatedUser) {
       throw new AppError({
         status: 500,
@@ -756,7 +777,7 @@ export class AuthService {
       userType: updatedUser.userType!,
     };
 
-    const accessToken = jwt.sign(tokenPayload, CONFIG.JWT_SECRET_KEY, {
+    const accessToken = jwt.sign({ ...tokenPayload, authVersion: tokenVersion }, CONFIG.JWT_SECRET_KEY, {
       expiresIn: '30d',
     });
 
@@ -765,6 +786,21 @@ export class AuthService {
       accessToken,
       user: updatedUser,
     };
+  }
+
+  /**
+   * Sign out on every device (C1 revoke-only): advances the customer's credential generation from the caller's own
+   * token generation, so every token issued so far (this one included) stops working. The customer signs in again
+   * with the normal OTP login.
+   */
+  async revokeSessions(actor: { _id?: unknown; userType?: unknown; authVersion?: unknown } | undefined) {
+    if (!actor || actor.userType !== 'user') throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Individual customer access required' });
+    if (typeof actor._id !== 'string') throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Please sign in again' });
+    const version = tokenCredentialVersion(actor);
+    if (!(await advanceCredentialVersion(actor._id, version))) {
+      throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Please sign in again' });
+    }
+    return { signedOutEverywhere: true as const, reauthenticationRequired: true as const };
   }
 
   private async verifyEmailDomain(email: string, corporateId?: string): Promise<void> {

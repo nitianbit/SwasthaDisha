@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { CONFIG } from '@/config/config';
 import { AppError } from '@/modules/common/types';
 import PharmacyModel from '@/modules/pharmacies/model';
+import { admitCustomerToken } from '@/modules/user/credentialGeneration';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -13,6 +14,8 @@ export interface AuthRequest extends Request {
     specialistId?: string;
     pharmacyId?: string;
     userType: string;
+    /** Customer credential generation the token was issued at (absent on legacy tokens = 0). */
+    authVersion?: number;
   };
 }
 
@@ -26,11 +29,11 @@ const decodeAuthToken = (authHeader?: string): AuthRequest['user'] | null => {
   return decoded;
 };
 
-export const authenticate = (
+export const authenticate = async (
   req: AuthRequest,
   _res: Response,
   next: NextFunction
-): void => {
+): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -44,7 +47,6 @@ export const authenticate = (
 
     try {
       req.user = decodeAuthToken(authHeader) || undefined;
-      next();
     } catch (error: any) {
       if (error.name === 'TokenExpiredError') {
         throw new AppError({
@@ -61,16 +63,20 @@ export const authenticate = (
       }
       throw error;
     }
+    // A customer token is admitted only at the account's current credential generation (signed out everywhere = no).
+    await admitCustomerToken(req.user);
   } catch (error) {
     next(error);
+    return;
   }
+  next(); // outside the try: errors from later handlers are not re-reported as authentication failures
 };
 
-export const authenticateOptional = (
+export const authenticateOptional = async (
   req: AuthRequest,
   _res: Response,
   next: NextFunction
-): void => {
+): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -80,10 +86,12 @@ export const authenticateOptional = (
     }
 
     req.user = decodeAuthToken(authHeader) || undefined;
-    next();
+    await admitCustomerToken(req.user);
   } catch (error) {
     next(error);
+    return;
   }
+  next();
 };
 
 export const requireAdmin = (
