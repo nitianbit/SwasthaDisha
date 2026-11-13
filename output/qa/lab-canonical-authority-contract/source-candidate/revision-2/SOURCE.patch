@@ -1,0 +1,862 @@
+diff --git a/src1/modules/organizations/labAuthorityProvisioning.ts b/src1/modules/organizations/labAuthorityProvisioning.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..f01f617025e280301b2e69759a99072b1e3b556f
+--- /dev/null
++++ b/src1/modules/organizations/labAuthorityProvisioning.ts
+@@ -0,0 +1,205 @@
++import { ClientSession, Model } from 'mongoose';
++import { AuthorityDecision, LabAuthorityError, LabAuthorityReceipt } from './types';
++import { decisionDigest } from './rules';
++import { assertLabAuthoritySnapshot, LabAuthoritySnapshot, observeLabAuthorityReadiness, requireLabIssuer, startLabAuthoritySession } from './labAuthorityReadiness';
++import { checkLabScope, checkLabSignature, LabCommand, LabRoot, ProtectedRead, labCheck, labData, labDigest, labEvidence, labFailure, labId, labNext, labProof, labRevision, labSame, labSha, labShape, labTime, parseLabCommand, readLabEvidence, readLabRoot } from './labAuthorityRoot';
++
++type Data = Record<string, unknown>;
++const base = ['_id', 'schemaVersion', 'revision', 'createdAt', 'updatedAt'];
++const decisionFields = ['_id', 'schemaVersion', 'organizationId', 'operationId', 'decisionKind', 'decidingActorId', 'decidedAt', 'authorityGeneration', 'payloadSha256', 'payload', 'evidence', 'createdAt', 'updatedAt', 'issuerProof'];
++const timestamps = new Set(['createdAt', 'updatedAt', 'decidedAt', 'validFrom', 'expiresAt', 'verificationValidFrom', 'verificationExpiresAt']);
++const toDatabase = (value: unknown, key = ''): unknown => {
++  if (typeof value === 'number' && timestamps.has(key)) return new Date(value);
++  if (Array.isArray(value)) return value.map(v => toDatabase(v));
++  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, toDatabase(v, k)]));
++  return value;
++};
++const fingerprint = (c: LabCommand): string => {
++  const p = c.payload;
++  return labSha(JSON.stringify(['business-source', 1, 'lab', ['_id', p[0]], ['organizationId', c.organizationId], ['revision', 1], ['legalName', p[3]], ['registrationReference', p[4]], ['state', 'active'], ['verificationValidFrom', p[5]], ['verificationExpiresAt', p[6]], ['evidenceVersionId', p[7]], ['evidenceSha256', p[8]]]));
++};
++function version(row: Data, now: number): void {
++  labCheck(labId(row._id) && row.schemaVersion === 1 && labRevision(row.revision) && labTime(row.createdAt) && labTime(row.updatedAt) && row.createdAt <= row.updatedAt && row.updatedAt <= now);
++}
++interface Work {
++  readonly snapshot: LabAuthoritySnapshot; readonly session: ClientSession; readonly root: LabRoot; readonly now: number;
++  readonly files: Map<string, ProtectedRead>;
++}
++function evidence(work: Work, command: LabCommand): void {
++  const ref = labEvidence(command), key = ref.evidenceVersionId + ':' + ref.evidenceSha256;
++  if (!work.files.has(key)) { labCheck(work.files.size < 8); work.files.set(key, readLabEvidence(ref)); }
++  work.files.get(key)!.check();
++}
++function guard(work: Work): void {
++  assertLabAuthoritySnapshot(work.snapshot, work.session); work.root.file.check(); for (const file of work.files.values()) file.check();
++  const fresh = readLabRoot(); try { labCheck(fresh.file.bytes.equals(work.root.file.bytes)); } finally { fresh.file.close(); }
++}
++async function rows(work: Work, model: Model<Record<string, unknown>>, filter: Data): Promise<Data[]> {
++  guard(work); labCheck(model.db === work.snapshot.connection);
++  // Fixed whole protected-authority document projection: retain unknown fields so closed validation cannot hide them.
++  // These exact-ID/org-scoped records contain authority provenance only, never a User profile.
++  const raw = await model.find(filter).select({}).session(work.session).collation({ locale: 'simple' }).limit(2).maxTimeMS(2000).lean().exec();
++  guard(work); const copied = labData(raw, true); labCheck(Array.isArray(copied) && copied.length <= 2); return copied as Data[];
++}
++function one(values: Data[]): Data { labCheck(values.length === 1); return values[0]; }
++function member(raw: Data, now: number): Data {
++  const m = labShape(raw, [...base, 'organizationId', 'actorId', 'state', 'validFrom', 'expiresAt', 'grants']); version(m, now);
++  labCheck(labId(m.organizationId) && labId(m.actorId) && ['active', 'suspended', 'revoked'].includes(m.state as string) && labTime(m.validFrom) && labTime(m.expiresAt) && m.validFrom < m.expiresAt && Array.isArray(m.grants) && m.grants.length === 1);
++  const g = labShape(m.grants[0], ['branchId', 'capability', 'grantDecisionId']); labCheck(labId(g.branchId) && labId(g.grantDecisionId) && g.capability === 'lab.worklist.read'); return m;
++}
++function derive(c: LabCommand, at: number, previousGrant?: Data): Data {
++  const p = c.payload; let payload: Data, kind: string;
++  if (c.action === 'map_lab') {
++    kind = 'business_mapped'; payload = { organizationId: c.organizationId, organizationRevision: 1, kind: 'lab', sourceBusinessId: p[0], sourceFingerprint: fingerprint(c), branches: (p[9] as string[]).map(branchId => ({ branchId, state: 'active', revision: 1 })) };
++  } else if (c.action === 'grant_lab_reader') {
++    kind = 'membership_granted'; const revision = p[2] === 0 ? 1 : labNext(p[2] as number);
++    payload = { organizationId: c.organizationId, actorId: p[0], membershipId: p[1], membershipRevision: revision, validFrom: p[5], expiresAt: p[6], grants: [{ branchId: p[4], capability: 'lab.worklist.read', grantDecisionId: c.decisionId }], branchId: p[4], capability: 'lab.worklist.read' };
++  } else {
++    labCheck(previousGrant); const g = previousGrant.payload as Data;
++    labCheck(g.organizationId === c.organizationId && g.actorId === p[0] && g.membershipId === p[1] && g.membershipRevision === p[2]);
++    kind = 'lab_membership_revoked'; payload = { organizationId: c.organizationId, actorId: p[0], membershipId: p[1], membershipRevision: labNext(p[2] as number), previousMembershipRevision: p[2], previousGrantDecisionId: previousGrant._id, branchId: g.branchId, capability: 'lab.worklist.read', operationalFence: labNext(p[3] as number), reasonCode: 'access_withdrawn' };
++  }
++  const d: Data = { _id: c.decisionId, schemaVersion: 1, organizationId: c.organizationId, operationId: c.operationId, decisionKind: kind,
++    ...(c.action !== 'map_lab' ? { subjectActorId: p[0] } : {}), decidingActorId: c.issuerUserId, decidedAt: c.submittedAt,
++    authorityGeneration: c.authorityGeneration, payloadSha256: '', payload, evidence: [labEvidence(c)], createdAt: at, updatedAt: at, issuerProof: labProof(c) };
++  d.payloadSha256 = decisionDigest(d as unknown as AuthorityDecision); return d;
++}
++/** Authenticates a historical decision and reconstructs its entire signed derivation. */
++async function history(work: Work, raw: Data, expected: 'business_mapped' | 'membership_granted' | 'lab_membership_revoked', revokeGrant?: Data): Promise<{ decision: Data; command: LabCommand }> {
++  const d = labShape(raw, [...decisionFields, ...(expected === 'business_mapped' ? [] : ['subjectActorId'])]);
++  labCheck(d.schemaVersion === 1 && d.decisionKind === expected && labId(d._id) && labId(d.organizationId) && labId(d.operationId) && labId(d.decidingActorId) && labDigest(d.authorityGeneration) && labDigest(d.payloadSha256) && labTime(d.createdAt) && labTime(d.updatedAt) && d.createdAt === d.updatedAt && d.updatedAt <= work.now);
++  const proof = labShape(d.issuerProof, ['schema', 'keyId', 'commandJson', 'commandSha256', 'signatureBase64']);
++  labCheck(proof.schema === 'SD-LAB-AUTHORITY-ISSUER-PROOF-1' && typeof proof.commandJson === 'string' && Buffer.byteLength(proof.commandJson, 'utf8') <= 16384 && labDigest(proof.commandSha256) && typeof proof.signatureBase64 === 'string' && proof.signatureBase64.length === 88);
++  let command: LabCommand;
++  try { command = parseLabCommand(JSON.stringify([JSON.parse(proof.commandJson), proof.signatureBase64])); }
++  catch { return labFailure(); }
++  labCheck(command.commandJson === proof.commandJson && command.commandSha256 === proof.commandSha256 && command.keyId === proof.keyId && command.organizationId === d.organizationId && command.decisionId === d._id && command.operationId === d.operationId && command.issuerUserId === d.decidingActorId && command.submittedAt === d.decidedAt);
++  try { checkLabSignature(command, work.root, d.createdAt, true); }
++  catch (error) { if (error instanceof LabAuthorityError && error.code === 'LAB_AUTHORITY_DENIED') throw error; return labFailure(); }
++  if (command.action !== 'map_lab') labCheck(command.issuerUserId !== command.payload[0], 'LAB_AUTHORITY_DENIED');
++  if (command.action !== 'revoke_lab_reader') labCheck((command.payload[5] as number) <= d.createdAt && d.createdAt < (command.payload[6] as number) && (command.payload[6] as number) <= work.root.expiresAt);
++  const branches = command.action === 'map_lab' ? command.payload[9] as string[] : command.action === 'grant_lab_reader' ? [command.payload[4] as string] : [(revokeGrant?.payload as Data)?.branchId as string];
++  checkLabScope(command, work.root, branches); evidence(work, command);
++  labCheck(labSame(d, derive(command, d.createdAt, revokeGrant))); return { decision: d, command };
++}
++async function priorGrant(work: Work, grantId: string, organizationId: string): Promise<{ decision: Data; command: LabCommand }> {
++  const raw = one(await rows(work, work.snapshot.models.decision, { _id: { $eq: grantId }, organizationId: { $eq: organizationId }, decisionKind: { $eq: 'membership_granted' } }));
++  const result = await history(work, raw, 'membership_granted'); labCheck(result.decision._id === grantId && result.decision.organizationId === organizationId); return result;
++}
++async function authenticateRevoked(work: Work, m: Data, org: Data): Promise<void> {
++  const r = m.revision as number, grant = (m.grants as Data[])[0]; labCheck(r >= 2);
++  const d = one(await rows(work, work.snapshot.models.decision, { organizationId: { $eq: m.organizationId }, decisionKind: { $eq: 'lab_membership_revoked' }, 'payload.membershipId': { $eq: m._id }, 'payload.membershipRevision': { $eq: r } }));
++  const g = await priorGrant(work, grant.grantDecisionId as string, m.organizationId as string); const revoked = await history(work, d, 'lab_membership_revoked', g.decision);
++  const dp = revoked.decision.payload as Data, gp = g.decision.payload as Data;
++  labCheck(d.organizationId === m.organizationId && dp.organizationId === m.organizationId && (org.branches as Data[]).some(b => b.branchId === grant.branchId) && dp.actorId === m.actorId && dp.membershipId === m._id && dp.membershipRevision === r && dp.previousMembershipRevision === r - 1 && dp.previousGrantDecisionId === grant.grantDecisionId && gp.actorId === m.actorId && gp.membershipId === m._id && gp.membershipRevision === r - 1 && gp.validFrom === m.validFrom && gp.expiresAt === m.expiresAt && labSame(gp.grants, m.grants));
++  labCheck((m.createdAt as number) <= (g.decision.createdAt as number) && (g.decision.createdAt as number) <= (d.createdAt as number) && m.updatedAt === d.createdAt && d.createdAt === d.updatedAt);
++  labCheck((g.command.payload[3] as number) + 1 < (dp.operationalFence as number) && (dp.operationalFence as number) <= (org.operationalFence as number) && g.decision._id !== d._id && g.decision.operationId !== d.operationId);
++}
++async function business(work: Work, c: LabCommand): Promise<{ org: Data; lab: Data }> {
++  const org = labShape(one(await rows(work, work.snapshot.models.organization, { _id: { $eq: c.organizationId } })), [...base, 'kind', 'sourceBusinessId', 'state', 'sourceFingerprint', 'mappingDecisionId', 'branches', 'operationalFence']); version(org, work.now);
++  labCheck(org._id === c.organizationId && org.kind === 'lab' && org.revision === 1 && labId(org.sourceBusinessId) && org.sourceBusinessId !== org._id && labDigest(org.sourceFingerprint) && labId(org.mappingDecisionId) && labRevision(org.operationalFence) && ['active', 'suspended', 'revoked'].includes(org.state as string));
++  const lab = labShape(one(await rows(work, work.snapshot.lab, { _id: { $eq: org.sourceBusinessId } })), [...base, 'organizationId', 'legalName', 'registrationReference', 'state', 'verificationValidFrom', 'verificationExpiresAt', 'verificationEvidence']); version(lab, work.now);
++  labCheck(lab._id === org.sourceBusinessId && lab.revision === 1 && lab.organizationId === org._id && ['active', 'suspended', 'revoked'].includes(lab.state as string));
++  const mapped = await history(work, one(await rows(work, work.snapshot.models.decision, { _id: { $eq: org.mappingDecisionId }, organizationId: { $eq: org._id }, decisionKind: { $eq: 'business_mapped' } })), 'business_mapped');
++  const mp = mapped.decision.payload as Data, p = mapped.command.payload;
++  labCheck(mapped.decision._id === org.mappingDecisionId && mapped.decision.organizationId === org._id && mp.organizationId === org._id && mp.organizationRevision === org.revision && mp.kind === 'lab' && mp.sourceBusinessId === lab._id && mp.sourceFingerprint === org.sourceFingerprint && labSame(mp.branches, org.branches) && org.createdAt === mapped.decision.createdAt && lab.createdAt === mapped.decision.createdAt);
++  labCheck(lab.legalName === p[3] && lab.registrationReference === p[4] && lab.verificationValidFrom === p[5] && lab.verificationExpiresAt === p[6] && labSame(lab.verificationEvidence, labEvidence(mapped.command)));
++  if (c.action === 'grant_lab_reader') {
++    labCheck(org.state === 'active' && lab.state === 'active' && (lab.verificationValidFrom as number) <= work.now && work.now < (lab.verificationExpiresAt as number), 'LAB_AUTHORITY_DENIED');
++    labCheck((org.branches as Data[]).some(b => b.branchId === c.payload[4] && b.state === 'active'), 'LAB_AUTHORITY_DENIED');
++  }
++  return { org, lab };
++}
++async function insert(work: Work, model: Model<Record<string, unknown>>, doc: Data): Promise<void> {
++  guard(work); const result = await model.collection.insertOne(toDatabase(doc) as Record<string, unknown>, { session: work.session });
++  labCheck(result.acknowledged && (result.insertedId as unknown) === doc._id); guard(work);
++}
++async function replace(work: Work, model: Model<Record<string, unknown>>, before: Data, patch: Data, fence = false): Promise<void> {
++  guard(work);
++  // $$ROOT equality compares the COMPLETE snapshot (including array shape and all fields), not array-matching query equality.
++  const filter = { _id: { $eq: before._id }, $expr: { $eq: ['$$ROOT', { $literal: toDatabase(before) }] } };
++  const result = await model.collection.updateOne(filter, { $set: toDatabase(patch) as Record<string, unknown>, ...(fence ? { $inc: { operationalFence: 1 } } : {}) }, { session: work.session, maxTimeMS: 2000 });
++  labCheck(result.acknowledged && result.matchedCount === 1 && result.modifiedCount === 1, 'LAB_AUTHORITY_CONFLICT'); guard(work);
++}
++function receipt(c: LabCommand, replayed: boolean): LabAuthorityReceipt {
++  return Object.freeze({ status: 'COMMITTED', operationId: c.operationId, decisionId: c.decisionId, action: c.action, organizationId: c.organizationId,
++    recordId: c.payload[c.action === 'map_lab' ? 0 : 1] as string, recordRevision: c.action === 'map_lab' ? 1 : c.payload[2] === 0 ? 1 : labNext(c.payload[2] as number),
++    operationalFence: c.action === 'map_lab' ? 1 : labNext(c.payload[3] as number), commandSha256: c.commandSha256, replayed });
++}
++async function apply(work: Work, c: LabCommand): Promise<LabAuthorityReceipt> {
++  // Verify the submitted bytes even for replay; expired exact committed replay is checked at its historical callback time below.
++  checkLabSignature(c, work.root, c.submittedAt, true); await requireLabIssuer(work.snapshot, c.issuerUserId, work.session);
++  const replay = await rows(work, work.snapshot.models.decision, { organizationId: { $eq: c.organizationId }, operationId: { $eq: c.operationId } });
++  if (replay.length) {
++    labCheck(replay.length === 1); const proof = labShape(replay[0].issuerProof, ['schema', 'keyId', 'commandJson', 'commandSha256', 'signatureBase64']);
++    labCheck(proof.commandSha256 === c.commandSha256 && proof.commandJson === c.commandJson, 'LAB_AUTHORITY_CONFLICT');
++    let oldGrant: Data | undefined;
++    if (c.action === 'revoke_lab_reader') { const payload = labShape(replay[0].payload, ['organizationId', 'actorId', 'membershipId', 'membershipRevision', 'previousMembershipRevision', 'previousGrantDecisionId', 'branchId', 'capability', 'operationalFence', 'reasonCode']); labCheck(labId(payload.previousGrantDecisionId)); oldGrant = (await priorGrant(work, payload.previousGrantDecisionId, c.organizationId)).decision; }
++    await history(work, replay[0], c.action === 'map_lab' ? 'business_mapped' : c.action === 'grant_lab_reader' ? 'membership_granted' : 'lab_membership_revoked', oldGrant);
++    guard(work); return receipt(c, true);
++  }
++  checkLabSignature(c, work.root, work.now); evidence(work, c);
++  if (c.action !== 'map_lab') labCheck(c.issuerUserId !== c.payload[0], 'LAB_AUTHORITY_DENIED');
++  const p = c.payload;
++  if (c.action === 'map_lab') {
++    checkLabScope(c, work.root, p[9] as string[]); labCheck((p[5] as number) <= work.now && work.now < (p[6] as number) && (p[6] as number) <= work.root.expiresAt, 'LAB_AUTHORITY_DENIED');
++    labCheck((await rows(work, work.snapshot.lab, { _id: { $eq: p[0] } })).length === 0 && (await rows(work, work.snapshot.models.organization, { _id: { $eq: c.organizationId } })).length === 0, 'LAB_AUTHORITY_CONFLICT');
++    const decision = derive(c, work.now), payload = decision.payload as Data;
++    await insert(work, work.snapshot.lab, { _id: p[0], schemaVersion: 1, revision: 1, organizationId: c.organizationId, legalName: p[3], registrationReference: p[4], state: 'active', verificationValidFrom: p[5], verificationExpiresAt: p[6], verificationEvidence: labEvidence(c), createdAt: work.now, updatedAt: work.now });
++    await insert(work, work.snapshot.models.organization, { _id: c.organizationId, schemaVersion: 1, revision: 1, kind: 'lab', sourceBusinessId: p[0], state: 'active', sourceFingerprint: payload.sourceFingerprint, mappingDecisionId: c.decisionId, branches: payload.branches, operationalFence: 1, createdAt: work.now, updatedAt: work.now });
++    await insert(work, work.snapshot.models.decision, decision);
++  } else {
++    const { org, lab } = await business(work, c); labCheck(org.operationalFence === p[3], 'LAB_AUTHORITY_CONFLICT'); labNext(org.operationalFence as number);
++    const found = await rows(work, work.snapshot.models.membership, { organizationId: { $eq: c.organizationId }, actorId: { $eq: p[0] } }); labCheck(found.length <= 1); let m = found.length ? member(found[0], work.now) : undefined;
++    if (m) labCheck(m.organizationId === c.organizationId && m.actorId === p[0]);
++    if (m) labCheck(m._id === p[1] && m.revision === p[2], 'LAB_AUTHORITY_CONFLICT'); else labCheck(c.action === 'grant_lab_reader' && p[2] === 0, 'LAB_AUTHORITY_CONFLICT');
++    let decision: Data;
++    if (c.action === 'grant_lab_reader') {
++      checkLabScope(c, work.root, [p[4] as string]); labCheck((p[5] as number) <= work.now && work.now < (p[6] as number) && (p[6] as number) <= Math.min(lab.verificationExpiresAt as number, work.root.expiresAt), 'LAB_AUTHORITY_DENIED');
++      await requireLabIssuer(work.snapshot, p[0] as string, work.session);
++      if (m) { labCheck(m.state === 'revoked', 'LAB_AUTHORITY_CONFLICT'); await authenticateRevoked(work, m, org); }
++      decision = derive(c, work.now); const payload = decision.payload as Data;
++      const next = { state: 'active', revision: payload.membershipRevision, validFrom: p[5], expiresAt: p[6], grants: payload.grants, updatedAt: work.now };
++      if (m) await replace(work, work.snapshot.models.membership, m, next);
++      else await insert(work, work.snapshot.models.membership, { _id: p[1], schemaVersion: 1, organizationId: c.organizationId, actorId: p[0], ...next, createdAt: work.now });
++    } else {
++      labCheck(m && ['active', 'suspended'].includes(m.state as string), 'LAB_AUTHORITY_CONFLICT');
++      const grant = (m.grants as Data[])[0]; labCheck((org.branches as Data[]).some(b => b.branchId === grant.branchId)); checkLabScope(c, work.root, [grant.branchId as string]);
++      const prior = await priorGrant(work, grant.grantDecisionId as string, c.organizationId), gp = prior.decision.payload as Data;
++      labCheck(gp.actorId === m.actorId && gp.membershipId === m._id && gp.membershipRevision === m.revision && gp.validFrom === m.validFrom && gp.expiresAt === m.expiresAt && labSame(gp.grants, m.grants));
++      decision = derive(c, work.now, prior.decision); await replace(work, work.snapshot.models.membership, m, { state: 'revoked', revision: labNext(m.revision as number), updatedAt: work.now });
++    }
++    await replace(work, work.snapshot.models.organization, org, { updatedAt: work.now }, true);
++    await insert(work, work.snapshot.models.decision, decision);
++  }
++  guard(work); return receipt(c, false);
++}
++/** No startup/HTTP entry. The only argument is signed canonical text, never a caller connection or ready flag. */
++export async function provisionLabAuthority(commandJson: string): Promise<LabAuthorityReceipt> {
++  const command = parseLabCommand(commandJson);
++  let session: ClientSession | undefined, result: LabAuthorityReceipt | undefined, primary: unknown; let acknowledged = false;
++  try {
++    session = startLabAuthoritySession(); const ownedSession = session;
++    await ownedSession.withTransaction(async () => {
++      const snapshot = await observeLabAuthorityReadiness(), root = readLabRoot(), files = new Map<string, ProtectedRead>();
++      const work: Work = { snapshot, session: ownedSession, root, now: Date.now(), files }; let first: unknown;
++      try { labCheck(labTime(work.now)); result = await apply(work, command); }
++      catch (error) { first = error; throw error; }
++      finally {
++        let cleanup: unknown;
++        for (const file of [...files.values(), root.file]) { try { file.close(); } catch (error) { cleanup ??= error; } }
++        if (!first && cleanup) throw new LabAuthorityError('LAB_AUTHORITY_UNAVAILABLE');
++      }
++    }, { readConcern: { level: 'snapshot' }, writeConcern: { w: 'majority', wtimeout: 2000 }, maxCommitTimeMS: 2000 });
++    acknowledged = true; labCheck(result); return result;
++  } catch (error) {
++    if (error instanceof LabAuthorityError) { primary = error; throw error; }
++    const code = error && typeof error === 'object' ? Object.getOwnPropertyDescriptor(error, 'code') : undefined;
++    if (code && 'value' in code && code.value === 11000) { primary = new LabAuthorityError('LAB_AUTHORITY_CONFLICT'); throw primary; }
++    // Driver/transport commit failures are not represented as a known rollback or automatically retried by this facade.
++    primary = new LabAuthorityError('LAB_AUTHORITY_UNAVAILABLE', 'UNKNOWN'); throw primary;
++  } finally {
++    try { if (session) await session.endSession(); }
++    catch { if (!primary) throw new LabAuthorityError('LAB_AUTHORITY_UNAVAILABLE', acknowledged ? 'UNKNOWN' : undefined); }
++  }
++}
+diff --git a/src1/modules/organizations/labAuthorityReadiness.ts b/src1/modules/organizations/labAuthorityReadiness.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..7b5ece75f72f04066b77240402bc8e3174dfe70e
+--- /dev/null
++++ b/src1/modules/organizations/labAuthorityReadiness.ts
+@@ -0,0 +1,203 @@
++import mongoose, { ClientSession, Connection, mongo, Types } from 'mongoose';
++import { performance } from 'perf_hooks';
++import { types } from 'util';
++import UserModel from '@/modules/user/model';
++import { createAuthorityModels, AuthorityModels } from './model';
++import { createLabBusinessModel } from './model/lab';
++import { evaluateIndexReadiness } from '@/modules/common/utils/indexReadiness';
++import { labCheck, labFailure, labShape } from './labAuthorityRoot';
++
++type Client = ReturnType<Connection['getClient']>;
++type Db = NonNullable<Connection['db']>;
++type NativeLong = InstanceType<typeof mongo.Long>;
++const indexes = Object.freeze([
++  { collection: 'business_authority_organizations', name: 'kind_1_sourceBusinessId_1', key: [['kind', 1], ['sourceBusinessId', 1]] },
++  { collection: 'business_staff_memberships', name: 'organizationId_1_actorId_1', key: [['organizationId', 1], ['actorId', 1]] },
++  { collection: 'business_professional_eligibility', name: 'organizationId_1_actorId_1_profession_1', key: [['organizationId', 1], ['actorId', 1], ['profession', 1]] },
++  { collection: 'business_authority_decisions', name: 'organizationId_1_operationId_1', key: [['organizationId', 1], ['operationId', 1]] },
++  { collection: 'labs', name: 'organizationId_1', key: [['organizationId', 1]] },
++]);
++export interface LabAuthoritySnapshot {
++  readonly connection: Connection; readonly client: Client; readonly db: Db; readonly database: string;
++  readonly models: AuthorityModels; readonly lab: ReturnType<typeof createLabBusinessModel>;
++  readonly metadataReady: true; readonly observedAt: number; readonly expiresAt: number;
++  readonly collectionUuids: Readonly<Record<string, string>>;
++}
++const issued = new WeakSet<object>();
++function object(value: unknown): object { labCheck(value !== null && typeof value === 'object' && !types.isProxy(value)); return value; }
++function own(value: unknown, key: string): unknown { const d = Object.getOwnPropertyDescriptor(object(value), key); labCheck(d && 'value' in d); return d.value; }
++function prototype(value: unknown, expected: object): void { labCheck(Object.getPrototypeOf(object(value)) === expected); }
++function nativeLong(value: unknown, timestamp = false): NativeLong {
++  prototype(value, timestamp ? mongo.Timestamp.prototype : mongo.Long.prototype);
++  const keys = Reflect.ownKeys(value as object), allowed = ['low', 'high', 'unsigned', '__isLong__', ...(timestamp ? ['_bsontype'] : [])];
++  labCheck(keys.length === allowed.length && keys.every(k => typeof k === 'string' && allowed.includes(k)));
++  const low = own(value, 'low'), high = own(value, 'high');
++  labCheck([low, high].every(v => typeof v === 'number' && Number.isInteger(v) && v >= -2147483648 && v <= 2147483647) && own(value, 'unsigned') === timestamp && own(value, '__isLong__') === true && (!timestamp || own(value, '_bsontype') === 'Timestamp'));
++  return timestamp ? new mongo.Timestamp(low as number, high as number) : new mongo.Long(low as number, high as number, false);
++}
++const zero = (v: NativeLong): boolean => v.low === 0 && v.high === 0;
++const sameLong = (a: NativeLong, b: NativeLong): boolean => a.low === b.low && a.high === b.high && a.unsigned === b.unsigned;
++function nativeBuffer(value: unknown, max: number): Buffer {
++  prototype(value, Buffer.prototype); labCheck(Buffer.isBuffer(value));
++  const get = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(Uint8Array.prototype), 'byteLength')!.get!;
++  const length = Reflect.apply(get, value, []); labCheck(Number.isSafeInteger(length) && length >= 0 && length <= max);
++  const keys = Reflect.ownKeys(value as object); labCheck(keys.length === length && keys.every((key, i) => key === String(i)));
++  const bytes = Buffer.alloc(length);
++  for (let i = 0; i < length; i++) { const b = own(value, String(i)); labCheck(typeof b === 'number' && Number.isInteger(b) && b >= 0 && b <= 255); bytes[i] = b; }
++  return bytes;
++}
++function nativeBinary(value: unknown, uuid: boolean): InstanceType<typeof mongo.Binary> {
++  const proto = Object.getPrototypeOf(object(value)), isUuid = uuid && proto === mongo.BSON.UUID.prototype;
++  labCheck(proto === mongo.Binary.prototype || isUuid);
++  const keys = Reflect.ownKeys(value as object), allowed = ['buffer', 'sub_type', 'position', ...(isUuid ? ['__id'] : [])];
++  labCheck(keys.length === allowed.length && keys.every(k => typeof k === 'string' && allowed.includes(k)) && (!isUuid || own(value, '__id') === undefined));
++  const subtype = own(value, 'sub_type'), position = own(value, 'position');
++  labCheck(subtype === (uuid ? 4 : 0) && typeof position === 'number' && Number.isSafeInteger(position) && position >= 0 && position <= 256 && (!uuid || position === 16));
++  const bytes = nativeBuffer(own(value, 'buffer'), uuid ? 16 : 256); labCheck(bytes.length === position); return new mongo.Binary(bytes, subtype as number);
++}
++function binding(): { connection: Connection; client: Client; db: Db; database: string } {
++  labCheck(mongoose.version === '6.13.8' && UserModel.modelName === 'User');
++  const connection = UserModel.db; labCheck(connection instanceof mongoose.Connection && connection.readyState === 1);
++  const client = Reflect.apply(mongoose.Connection.prototype.getClient, connection, []) as Client, db = own(connection, 'db') as Db;
++  prototype(client, mongo.MongoClient.prototype); prototype(db, mongo.Db.prototype);
++  labCheck(own(own(db, 's'), 'client') === client && own(UserModel.collection, 'conn') === connection && own(UserModel.collection, 'name') === 'users');
++  const native = own(UserModel.collection, 'collection'); prototype(native, mongo.Collection.prototype); labCheck(own(own(native, 's'), 'db') === db);
++  const getter = Object.getOwnPropertyDescriptor(mongo.Db.prototype, 'databaseName')!.get!, database = Reflect.apply(getter, db, []);
++  labCheck(typeof database === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(database));
++  const options = Reflect.apply(Object.getOwnPropertyDescriptor(mongo.MongoClient.prototype, 'options')!.get!, client, []);
++  labCheck(own(options, 'directConnection') === true && own(options, 'retryReads') === false && [1, 2].includes(own(options, 'maxPoolSize') as number));
++  for (const k of ['serverSelectionTimeoutMS', 'connectTimeoutMS', 'socketTimeoutMS', 'waitQueueTimeoutMS']) { const v = own(options, k); labCheck(typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 5000); }
++  for (const k of ['credentials', 'autoEncryption', 'proxyHost', 'proxyPort']) labCheck(!Object.prototype.hasOwnProperty.call(options, k) || own(options, k) === undefined);
++  labCheck((!Object.prototype.hasOwnProperty.call(options, 'tls') || own(options, 'tls') !== true) && (!Object.prototype.hasOwnProperty.call(options, 'dbName') || own(options, 'dbName') === database));
++  return { connection, client, db, database };
++}
++function modelBindings(connection: Connection, db: Db, models: AuthorityModels, lab: ReturnType<typeof createLabBusinessModel>): void {
++  const entries: Array<[ModelLike, string, string]> = [
++    [models.organization, 'BusinessAuthorityOrganization', 'business_authority_organizations'],
++    [models.membership, 'BusinessStaffMembership', 'business_staff_memberships'],
++    [models.eligibility, 'BusinessProfessionalEligibility', 'business_professional_eligibility'],
++    [models.decision, 'BusinessAuthorityDecision', 'business_authority_decisions'], [lab, 'LabBusiness', 'labs'],
++  ];
++  for (const [model, name, collection] of entries) {
++    labCheck(model.db === connection && model.modelName === name);
++    const wrapper = object(model.collection); labCheck(own(wrapper, 'conn') === connection && own(wrapper, 'name') === collection);
++    const native = own(wrapper, 'collection'); prototype(native, mongo.Collection.prototype); labCheck(own(own(native, 's'), 'db') === db);
++    labCheck(Reflect.apply(Object.getOwnPropertyDescriptor(mongo.Collection.prototype, 'collectionName')!.get!, native, []) === collection);
++  }
++}
++type ModelLike = AuthorityModels['organization'];
++export function assertLabAuthoritySnapshot(snapshot: LabAuthoritySnapshot, session?: ClientSession): void {
++  labCheck(issued.has(snapshot) && performance.now() < snapshot.expiresAt);
++  const b = binding(); labCheck(b.connection === snapshot.connection && b.client === snapshot.client && b.db === snapshot.db && b.database === snapshot.database);
++  modelBindings(b.connection, b.db, snapshot.models, snapshot.lab);
++  if (session) { prototype(session, mongo.ClientSession.prototype); labCheck(own(session, 'client') === b.client && own(session, 'hasEnded') === false && session.inTransaction() && (session as unknown as { transaction: { options: { readConcern?: { level?: string } } } }).transaction.options.readConcern?.level === 'snapshot'); }
++}
++/** Creates only the internally owned native session; never opens another connection. */
++export function startLabAuthoritySession(): ClientSession {
++  const b = binding(); const session = Reflect.apply(mongo.MongoClient.prototype.startSession, b.client, []) as ClientSession;
++  prototype(session, mongo.ClientSession.prototype); labCheck(own(session, 'client') === b.client && own(session, 'hasEnded') === false && !session.inTransaction()); return session;
++}
++/** Complete catalog acquisition, not deployment/all-writer provenance or production activation. */
++export async function observeLabAuthorityReadiness(): Promise<LabAuthoritySnapshot> {
++  const b = binding(), started = performance.now(), end = started + 5000, acquireEnd = end - 500;
++  const models = createAuthorityModels(b.connection), lab = createLabBusinessModel(b.connection);
++  modelBindings(b.connection, b.db, models, lab);
++  const session = Reflect.apply(mongo.MongoClient.prototype.startSession, b.client, [{ causalConsistency: false }]) as ClientSession;
++  let held: { id: NativeLong; collection: string } | undefined, uncertain = false, bytes = 0, commands = 0, totalRows = 0;
++  const checkpoint = (cleanup = false) => {
++    const fresh = binding(); labCheck(fresh.client === b.client && fresh.db === b.db && fresh.connection === b.connection && fresh.database === b.database);
++    prototype(session, mongo.ClientSession.prototype); labCheck(own(session, 'client') === b.client && own(session, 'hasEnded') === false && !session.inTransaction() && performance.now() < (cleanup ? end : acquireEnd));
++  };
++  const command = async (literal: Record<string, unknown>, cleanup = false): Promise<unknown> => {
++    checkpoint(cleanup); labCheck(++commands <= 32);
++    try { return await Reflect.apply(mongo.Db.prototype.command, b.db, [literal, { session, readPreference: 'primary', promoteLongs: false, promoteBuffers: false, enableUtf8Validation: true }]); }
++    catch { uncertain = true; return labFailure(); }
++  };
++  const copyReply = (raw: unknown): Record<string, unknown> => {
++    let nodes = 0, logical = bytes; const active = new Set<object>();
++    const take = (n: number) => { logical += n; labCheck(logical <= 1048576); };
++    const copy = (v: unknown, parts: string[], depth: number): unknown => {
++      labCheck(++nodes <= 8192 && depth <= 16 && performance.now() < end);
++      if (v === null) { take(1); return v; }
++      if (typeof v === 'string') { take(5 + Buffer.byteLength(v)); return v; }
++      if (typeof v === 'boolean') { take(1); return v; }
++      if (typeof v === 'number' && Number.isFinite(v)) { take(8); return v; }
++      const o = object(v), proto = Object.getPrototypeOf(o), p = parts.join('/'); labCheck(!active.has(o));
++      if (proto === mongo.Long.prototype) { labCheck(p === 'cursor/id' || p === '$clusterTime/signature/keyId' || /^cursors(?:Killed|NotFound|Alive|Unknown)\/[0-9]+$/.test(p)); take(8); return nativeLong(o); }
++      if (proto === mongo.Timestamp.prototype) { labCheck(p === 'operationTime' || p === '$clusterTime/clusterTime'); take(8); return nativeLong(o, true); }
++      if (proto === mongo.Binary.prototype || proto === mongo.BSON.UUID.prototype) { const uuid = /^cursor\/(?:firstBatch|nextBatch)\/[0-9]+\/info\/uuid$/.test(p); labCheck(uuid || p === '$clusterTime/signature/hash'); const owned = nativeBinary(o, uuid); take(5 + owned.position); return owned; }
++      active.add(o); take(5); let out: unknown;
++      if (Array.isArray(o)) { const n = own(o, 'length'), keys = Reflect.ownKeys(o); labCheck(proto === Array.prototype && typeof n === 'number' && Number.isSafeInteger(n) && n >= 0 && n <= 8192 && keys.length === n + 1); const a: unknown[] = []; for (let i = 0; i < n; i++) { labCheck(keys[i] === String(i)); const d = Object.getOwnPropertyDescriptor(o, String(i)); labCheck(d && 'value' in d && d.enumerable); take(2 + Buffer.byteLength(String(i))); a.push(copy(d.value, [...parts, String(i)], depth + 1)); } out = a; }
++      else { labCheck(proto === Object.prototype || proto === null); const r: Record<string, unknown> = {}; for (const k of Reflect.ownKeys(o)) { labCheck(typeof k === 'string' && !['__proto__', 'constructor', 'prototype'].includes(k)); const d = Object.getOwnPropertyDescriptor(o, k); labCheck(d && 'value' in d && d.enumerable); take(2 + Buffer.byteLength(k)); r[k] = copy(d.value, [...parts, k], depth + 1); } out = r; }
++      active.delete(o); return out;
++    };
++    const result = copy(raw, [], 0) as Record<string, unknown>; const size = mongo.BSON.calculateObjectSize(result); labCheck(Number.isSafeInteger(size)); bytes += size; labCheck(bytes <= 1048576); return result;
++  };
++  const transport = (r: Record<string, unknown>) => {
++    if (Object.prototype.hasOwnProperty.call(r, 'operationTime')) nativeLong(r.operationTime, true);
++    if (Object.prototype.hasOwnProperty.call(r, '$clusterTime')) { const c = labShape(r.$clusterTime, ['clusterTime', 'signature']), s = labShape(c.signature, ['hash', 'keyId']); nativeLong(c.clusterTime, true); nativeBinary(s.hash, false); nativeLong(s.keyId); }
++  };
++  const list = async (literal: Record<string, unknown>, collection: string): Promise<unknown[]> => {
++    let raw = await command(literal), first = true, rows: unknown[] = [];
++    for (let n = 0; n < 5; n++) {
++      try { const outer = labShape(raw, ['ok', 'cursor'], ['operationTime', '$clusterTime']), c = labShape(outer.cursor, ['id', 'ns', first ? 'firstBatch' : 'nextBatch']); labCheck(outer.ok === 1 && c.ns === b.database + '.' + collection); const id = nativeLong(c.id); labCheck(!held || zero(id) || sameLong(held.id, id)); held = zero(id) ? undefined : { id, collection }; }
++      catch { uncertain = true; return labFailure(); }
++      const r = copyReply(raw); transport(r); const c = r.cursor as Record<string, unknown>; const batch = c[first ? 'firstBatch' : 'nextBatch']; labCheck(Array.isArray(batch) && batch.length <= 16 && (batch.length > 0 || !held)); rows = [...rows, ...batch]; labCheck(rows.length <= 64); checkpoint();
++      if (!held) return rows;
++      raw = await command({ getMore: held.id, collection, batchSize: 16, maxTimeMS: 500 }); first = false;
++    }
++    return labFailure();
++  };
++  const collectionList = async () => {
++    const rows = await list({ listCollections: 1, filter: { name: { $in: indexes.map(x => x.collection) } }, nameOnly: false, authorizedCollections: false, cursor: { batchSize: 16 }, maxTimeMS: 500 }, '$cmd.listCollections');
++    labCheck(rows.length === 5); const result = new Map<string, { uuid: string; native: InstanceType<typeof mongo.Binary> }>();
++    for (const raw of rows) {
++      const r = labShape(raw, ['name', 'type', 'options', 'info', 'idIndex']), info = labShape(r.info, ['readOnly', 'uuid']); labCheck(typeof r.name === 'string' && indexes.some(i => i.collection === r.name) && !result.has(r.name) && r.type === 'collection' && info.readOnly === false);
++      const options = labShape(r.options, [], ['collation']); if (Object.prototype.hasOwnProperty.call(options, 'collation')) labCheck(JSON.stringify(labShape(options.collation, ['locale'])) === '{"locale":"simple"}');
++      const id = labShape(r.idIndex, ['v', 'key', 'name'], ['ns']); labCheck([1, 2].includes(id.v as number) && id.name === '_id_' && JSON.stringify(labShape(id.key, ['_id'])) === '{"_id":1}');
++      const uuid = nativeBinary(info.uuid, true); result.set(r.name, { uuid: Reflect.apply(Buffer.prototype.toString, uuid.buffer, ['hex']), native: uuid });
++    }
++    return result;
++  };
++  let failure: unknown, uuids: Record<string, string> = {};
++  try {
++    const before = await collectionList(), observations: unknown[] = [];
++    for (const expected of indexes) {
++      const source = before.get(expected.collection)!; const rows = await list({ listIndexes: source.native, includeIndexBuildInfo: true, cursor: { batchSize: 16 }, maxTimeMS: 500 }, expected.collection);
++      totalRows += rows.length; labCheck(totalRows <= 256);
++      const copied = rows.map(raw => {
++        const wrapper = labShape(raw, ['spec']), spec = labShape(wrapper.spec, ['name', 'key'], ['v', 'ns', 'unique', 'sparse', 'hidden', 'background', 'collation']);
++        labCheck(typeof spec.name === 'string' && spec.sparse !== true && spec.hidden !== true && (!Object.prototype.hasOwnProperty.call(spec, 'ns') || spec.ns === b.database + '.' + expected.collection));
++        const key = labShape(spec.key, [] , Reflect.ownKeys(object(spec.key)).filter((k): k is string => typeof k === 'string'));
++        labCheck(Object.keys(key).length > 0 && Object.keys(key).every(k => /^[A-Za-z_][A-Za-z0-9_.]*$/.test(k) && (key[k] === 1 || key[k] === -1)));
++        if (spec.name === expected.name) labCheck(JSON.stringify(Object.entries(key)) === JSON.stringify(expected.key) && spec.unique === true);
++        return { spec: { ...spec, key: Object.entries(key) } };
++      });
++      labCheck(copied.some(r => r.spec.name === expected.name)); observations.push({ collection: expected.collection, status: 'COMPLETE', mode: 'MONGODB_8_INCLUDE_INDEX_BUILD_INFO', indexes: copied });
++      uuids[expected.collection] = source.uuid;
++    }
++    const manifest = indexes.map(x => ({ collection: x.collection, indexes: [{ key: x.key, options: { unique: true, collation: { locale: 'simple' } } }] }));
++    labCheck(evaluateIndexReadiness(manifest, observations).ready);
++    const after = await collectionList(); labCheck(indexes.every(x => after.get(x.collection)!.uuid === before.get(x.collection)!.uuid));
++    const logical = Buffer.byteLength(JSON.stringify({ observations, uuids })); labCheck(Math.max(bytes, logical) <= 1048576); checkpoint();
++  } catch (error) { failure = error; }
++  finally {
++    try { if (held) { const target = held; const raw = copyReply(await command({ killCursors: target.collection, cursors: [target.id] }, true)); transport(raw); const r = labShape(raw, ['ok', 'cursorsKilled', 'cursorsNotFound', 'cursorsAlive', 'cursorsUnknown'], ['operationTime', '$clusterTime']); labCheck(r.ok === 1 && Array.isArray(r.cursorsKilled) && Array.isArray(r.cursorsNotFound) && Array.isArray(r.cursorsAlive) && Array.isArray(r.cursorsUnknown) && r.cursorsAlive.length === 0 && r.cursorsUnknown.length === 0 && r.cursorsKilled.length + r.cursorsNotFound.length === 1 && sameLong(nativeLong([...r.cursorsKilled, ...r.cursorsNotFound][0]), target.id)); held = undefined; } }
++    catch (error) { failure ??= error; }
++    try { labCheck(own(session, 'client') === b.client && own(session, 'hasEnded') === false && performance.now() < end); await Reflect.apply(mongo.ClientSession.prototype.endSession, session, []); labCheck(own(session, 'hasEnded') === true && performance.now() < end); }
++    catch (error) { failure ??= error; }
++  }
++  if (failure || uncertain || held) return labFailure();
++  const observedAt = performance.now(); const snapshot = Object.freeze({ ...b, models, lab, metadataReady: true as const, observedAt, expiresAt: observedAt + 5000, collectionUuids: Object.freeze(uuids) }); issued.add(snapshot); return snapshot;
++}
++/** Minimal current personal identity, not a patient/profile reader. */
++export async function requireLabIssuer(snapshot: LabAuthoritySnapshot, id: string, session: ClientSession): Promise<void> {
++  assertLabAuthoritySnapshot(snapshot, session);
++  const rows = await UserModel.find({ _id: { $eq: new Types.ObjectId(id) }, userType: { $eq: 'user' }, isActive: { $eq: true } }).select({ _id: 1, userType: 1, isActive: 1 }).session(session).collation({ locale: 'simple' }).maxTimeMS(2000).limit(2).lean().exec();
++  const array = object(rows); prototype(array, Array.prototype); labCheck(own(array, 'length') !== 0, 'LAB_AUTHORITY_DENIED'); labCheck(own(array, 'length') === 1 && JSON.stringify(Reflect.ownKeys(array)) === '["0","length"]' && Object.getOwnPropertyDescriptor(array, '0')?.enumerable === true);
++  const row = labShape(own(array, '0'), ['_id', 'userType', 'isActive']); labCheck(typeof row.userType === 'string' && typeof row.isActive === 'boolean'); prototype(row._id, Types.ObjectId.prototype);
++  const probe = new Types.ObjectId('000000000000000000000000'), symbols = Object.getOwnPropertySymbols(probe); labCheck(symbols.length === 1); const keys = Reflect.ownKeys(row._id as object); labCheck(keys.every(k => k === symbols[0] || k === '__id') && keys.includes(symbols[0]));
++  for (const k of keys) { const d = Object.getOwnPropertyDescriptor(row._id as object, k); labCheck(d && 'value' in d); }
++  const bytes = nativeBuffer(Object.getOwnPropertyDescriptor(row._id as object, symbols[0])!.value, 12); labCheck(bytes.length === 12); const value = Reflect.apply(Buffer.prototype.toString, bytes, ['hex']);
++  labCheck((!keys.includes('__id') || own(row._id, '__id') === value) && value === id && row.userType === 'user' && row.isActive === true, 'LAB_AUTHORITY_DENIED'); assertLabAuthoritySnapshot(snapshot, session);
++}
+diff --git a/src1/modules/organizations/labAuthorityRoot.ts b/src1/modules/organizations/labAuthorityRoot.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..4d0f524516da6de70e5851343edf7ca1d416952e
+--- /dev/null
++++ b/src1/modules/organizations/labAuthorityRoot.ts
+@@ -0,0 +1,155 @@
++import fs from 'fs';
++import path from 'path';
++import { createHash, createPublicKey, KeyObject, verify } from 'crypto';
++import { types } from 'util';
++import sourceManifest from './labAuthoritySourceManifest.json';
++import { LabAuthorityAction, LabAuthorityError, LabIssuerProof } from './types';
++
++type Data = Record<string, unknown>;
++export const labFailure = (code: 'LAB_AUTHORITY_INPUT_INVALID' | 'LAB_AUTHORITY_DENIED' | 'LAB_AUTHORITY_CONFLICT' | 'LAB_AUTHORITY_UNAVAILABLE' = 'LAB_AUTHORITY_UNAVAILABLE'): never => { throw new LabAuthorityError(code); };
++export function labCheck(ok: unknown, code?: Parameters<typeof labFailure>[0]): asserts ok { if (!ok) labFailure(code); }
++export const labSha = (value: string | Buffer): string => createHash('sha256').update(value).digest('hex');
++export const labId = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{24}$/.test(v);
++export const labDigest = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{64}$/.test(v);
++export const labTime = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v) && !Object.is(v, -0) && v >= 0 && v <= 8640000000000000;
++export const labRevision = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v) && v > 0;
++export function labNext(value: number): number { labCheck(labRevision(value), 'LAB_AUTHORITY_UNAVAILABLE'); labCheck(value < Number.MAX_SAFE_INTEGER, 'LAB_AUTHORITY_CONFLICT'); return value + 1; }
++export const labSame = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
++const dateFields = new Set(['createdAt', 'updatedAt', 'decidedAt', 'validFrom', 'expiresAt', 'verificationValidFrom', 'verificationExpiresAt']);
++/** Owned data only. Native Dates are admitted only at declared persisted timestamp positions. */
++export function labData(value: unknown, dates = false, maxNodes = 8192, maxBytes = 2097152, maxDepth = 16): unknown {
++  let nodes = 0, bytes = 0; const active = new Set<object>();
++  const copy = (v: unknown, key: string, depth: number): unknown => {
++    labCheck(++nodes <= maxNodes && depth <= maxDepth);
++    if (v === null || typeof v === 'boolean') return v;
++    if (typeof v === 'string') { bytes += Buffer.byteLength(v); labCheck(bytes <= maxBytes); return v; }
++    if (typeof v === 'number') { labCheck(Number.isFinite(v) && !Object.is(v, -0)); return v; }
++    labCheck(v !== null && typeof v === 'object' && !types.isProxy(v) && !active.has(v));
++    const proto = Object.getPrototypeOf(v);
++    if (dates && proto === Date.prototype && dateFields.has(key)) {
++      labCheck(Reflect.ownKeys(v).length === 0); const n = Reflect.apply(Date.prototype.getTime, v, []); labCheck(labTime(n)); return n;
++    }
++    active.add(v); const keys = Reflect.ownKeys(v); labCheck(keys.length <= maxNodes - nodes);
++    let result: unknown;
++    if (Array.isArray(v)) {
++      const d = Object.getOwnPropertyDescriptor(v, 'length');
++      labCheck(proto === Array.prototype && d && 'value' in d && Number.isSafeInteger(d.value) && d.value >= 0 && keys.length === d.value + 1 && keys[d.value] === 'length');
++      const a: unknown[] = [];
++      for (let i = 0; i < d.value; i++) { const e = Object.getOwnPropertyDescriptor(v, String(i)); labCheck(keys[i] === String(i) && e && 'value' in e && e.enumerable); a.push(copy(e.value, '', depth + 1)); }
++      result = a;
++    } else {
++      labCheck(proto === Object.prototype || proto === null); const record: Data = {};
++      for (const k of keys) { labCheck(typeof k === 'string' && k !== '__proto__' && k !== 'constructor' && k !== 'prototype'); const d = Object.getOwnPropertyDescriptor(v, k); labCheck(d && 'value' in d && d.enumerable); bytes += Buffer.byteLength(k); labCheck(bytes <= maxBytes); record[k] = copy(d.value, k, depth + 1); }
++      result = record;
++    }
++    active.delete(v); return Object.freeze(result);
++  };
++  return copy(value, '', 0);
++}
++export function labShape(value: unknown, required: readonly string[], optional: readonly string[] = []): Data {
++  labCheck(value !== null && typeof value === 'object' && !types.isProxy(value) && !Array.isArray(value));
++  const proto = Object.getPrototypeOf(value), keys = Reflect.ownKeys(value);
++  labCheck((proto === Object.prototype || proto === null) && keys.every(k => typeof k === 'string' && [...required, ...optional].includes(k)) && required.every(k => Object.prototype.hasOwnProperty.call(value, k)));
++  const out: Data = {};
++  for (const k of keys as string[]) { const d = Object.getOwnPropertyDescriptor(value, k); labCheck(d && 'value' in d && d.enumerable); out[k] = d.value; }
++  return out;
++}
++function sortedIds(value: unknown): readonly string[] {
++  labCheck(Array.isArray(value) && value.length >= 1 && value.length <= 100);
++  labCheck(value.every((v, i) => labId(v) && (i === 0 || value[i - 1] < v))); return value as string[];
++}
++function text(value: unknown, max: number): value is string { return typeof value === 'string' && value.trim() === value && value.normalize('NFC') === value && [...value].length >= 1 && [...value].length <= max && !/[\u0000-\u001f\u007f-\u009f]/.test(value); }
++function decode64(value: unknown, size: number): Buffer { labCheck(typeof value === 'string'); const b = Buffer.from(value, 'base64'); labCheck(b.length === size && b.toString('base64') === value); return b; }
++export interface LabCommand {
++  readonly body: readonly unknown[]; readonly commandJson: string; readonly commandSha256: string; readonly signatureBase64: string;
++  readonly authorityGeneration: string; readonly keyId: string; readonly issuerUserId: string; readonly organizationId: string;
++  readonly operationId: string; readonly decisionId: string; readonly submittedAt: number; readonly notAfter: number;
++  readonly action: LabAuthorityAction; readonly payload: readonly unknown[];
++}
++export function parseLabCommand(raw: unknown): LabCommand {
++  try {
++    labCheck(typeof raw === 'string' && Buffer.byteLength(raw) <= 16384, 'LAB_AUTHORITY_INPUT_INVALID');
++    const envelope = labData(JSON.parse(raw), false, 512, 16384, 8);
++    labCheck(Array.isArray(envelope) && envelope.length === 2 && JSON.stringify(envelope) === raw);
++    const b = envelope[0], signature = envelope[1]; labCheck(Array.isArray(b) && b.length === 12); decode64(signature, 64);
++    labCheck(b[0] === 'sd.lab.authority.command' && b[1] === 1 && labDigest(b[2]) && labDigest(b[3]) && [4, 5, 6, 7].every(i => labId(b[i])) && labTime(b[8]) && labTime(b[9]) && b[8] < b[9] && b[9] <= b[8] + 900000);
++    const a = b[10], p = b[11]; labCheck(Array.isArray(p));
++    if (a === 'map_lab') {
++      labCheck(p.length === 11 && labId(p[0]) && p[0] !== b[5] && p[1] === 0 && p[2] === 0 && text(p[3], 160) && text(p[4], 128) && labTime(p[5]) && labTime(p[6]) && p[5] < p[6] && labId(p[7]) && labDigest(p[8]) && p[10] === 'initial_mapping'); sortedIds(p[9]);
++    } else if (a === 'grant_lab_reader') {
++      labCheck(p.length === 10 && labId(p[0]) && labId(p[1]) && typeof p[2] === 'number' && Number.isSafeInteger(p[2]) && !Object.is(p[2], -0) && p[2] >= 0 && labRevision(p[3]) && labId(p[4]) && labTime(p[5]) && labTime(p[6]) && p[5] < p[6] && labId(p[7]) && labDigest(p[8]) && p[9] === 'operational_assignment');
++    } else if (a === 'revoke_lab_reader') {
++      labCheck(p.length === 7 && labId(p[0]) && labId(p[1]) && labRevision(p[2]) && labRevision(p[3]) && labId(p[4]) && labDigest(p[5]) && p[6] === 'access_withdrawn');
++    } else labFailure();
++    const commandJson = JSON.stringify(b);
++    return Object.freeze({ body: b, commandJson, commandSha256: labSha(commandJson), signatureBase64: signature as string,
++      authorityGeneration: b[2] as string, keyId: b[3] as string, issuerUserId: b[4] as string, organizationId: b[5] as string,
++      operationId: b[6] as string, decisionId: b[7] as string, submittedAt: b[8] as number, notAfter: b[9] as number, action: a as LabAuthorityAction, payload: p });
++  } catch { return labFailure('LAB_AUTHORITY_INPUT_INVALID'); }
++}
++export interface ProtectedRead { readonly bytes: Buffer; check(): void; close(): void }
++function protectedRead(filename: string, max: number): ProtectedRead {
++  let fd: number | undefined;
++  try {
++    const absolute = path.resolve(filename); labCheck(absolute === filename && fs.realpathSync(filename) === filename);
++    let directory = path.dirname(filename);
++    for (;;) { const s = fs.lstatSync(directory, { bigint: true }); labCheck(s.isDirectory() && !s.isSymbolicLink() && (s.mode & 0o022n) === 0n); const parent = path.dirname(directory); if (parent === directory) break; directory = parent; }
++    fd = fs.openSync(filename, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
++    const original = fs.fstatSync(fd, { bigint: true }); const uid = BigInt(process.getuid!());
++    labCheck(original.isFile() && original.nlink === 1n && original.size > 0n && original.size <= BigInt(max) && (original.uid === 0n || original.uid === uid) && [0o400n, 0o600n].includes(original.mode & 0o777n));
++    const held = fd, bounded = Buffer.alloc(max + 1); let used = 0;
++    for (;;) { const count = fs.readSync(held, bounded, used, bounded.length - used, used); used += count; labCheck(used <= max); if (count === 0) break; }
++    const bytes = Buffer.from(bounded.subarray(0, used)); labCheck(bytes.length === Number(original.size));
++    const check = () => {
++      const current = fs.fstatSync(held, { bigint: true }), named = fs.lstatSync(filename, { bigint: true });
++      labCheck(['dev', 'ino', 'nlink', 'uid', 'mode', 'size', 'mtimeNs', 'ctimeNs'].every(k => current[k as keyof typeof current] === original[k as keyof typeof original] && named[k as keyof typeof named] === original[k as keyof typeof original]) && !named.isSymbolicLink());
++    };
++    check(); fd = undefined; let closed = false;
++    return { bytes, check() { labCheck(!closed); check(); }, close() { if (!closed) { closed = true; fs.closeSync(held); } } };
++  } catch { if (fd !== undefined) fs.closeSync(fd); return labFailure(); }
++}
++export interface LabRoot {
++  readonly record: Readonly<Data>; readonly key: KeyObject; readonly file: ProtectedRead;
++  readonly authorityGeneration: string; readonly keyId: string; readonly issuerUserId: string;
++  readonly state: 'active' | 'verification_only' | 'revoked'; readonly validFrom: number; readonly expiresAt: number;
++  readonly scopes: ReadonlyArray<readonly [string, readonly string[]]>;
++}
++export function readLabRoot(): LabRoot {
++  const file = protectedRead('/etc/swasthadisha/lab-authority-root.json', 32768);
++  try {
++    const text = file.bytes.toString('utf8'); labCheck(Buffer.from(text).equals(file.bytes)); const raw = labData(JSON.parse(text)); labCheck(JSON.stringify(raw) === text);
++    const r = labShape(raw, ['schema', 'authorityGeneration', 'writerManifestSha256', 'issuerUserId', 'keyId', 'publicKeySpkiBase64', 'state', 'validFrom', 'expiresAt', 'scopes']);
++    const manifestHash = labSha(JSON.stringify(sourceManifest.files));
++    labCheck(sourceManifest.files.length > 0 && manifestHash === sourceManifest.aggregateSha256 && r.writerManifestSha256 === manifestHash);
++    labCheck(r.schema === 'SD-LAB-AUTHORITY-ROOT-1' && labDigest(r.authorityGeneration) && labId(r.issuerUserId) && labDigest(r.keyId) && ['active', 'verification_only', 'revoked'].includes(r.state as string) && labTime(r.validFrom) && labTime(r.expiresAt) && r.validFrom < r.expiresAt && typeof r.publicKeySpkiBase64 === 'string');
++    const der = Buffer.from(r.publicKeySpkiBase64, 'base64'); labCheck(der.length <= 128 && der.toString('base64') === r.publicKeySpkiBase64 && labSha(der) === r.keyId);
++    const key = createPublicKey({ key: der, format: 'der', type: 'spki' }); labCheck(key.asymmetricKeyType === 'ed25519' && key.export({ format: 'der', type: 'spki' }).equals(der));
++    labCheck(Array.isArray(r.scopes) && r.scopes.length >= 1 && r.scopes.length <= 100);
++    const scopes = r.scopes.map((entry: unknown, index: number) => { labCheck(Array.isArray(entry) && entry.length === 2 && labId(entry[0]) && (index === 0 || (r.scopes as unknown[][])[index - 1][0] < entry[0])); return Object.freeze([entry[0], sortedIds(entry[1])] as const); });
++    return Object.freeze({ record: Object.freeze(r), key, file, authorityGeneration: r.authorityGeneration as string, keyId: r.keyId as string,
++      issuerUserId: r.issuerUserId as string, state: r.state as LabRoot['state'], validFrom: r.validFrom as number, expiresAt: r.expiresAt as number, scopes });
++  } catch { file.close(); return labFailure(); }
++}
++export function checkLabSignature(command: LabCommand, root: LabRoot, callbackTime: number, historical = false): void {
++  labCheck(root.state === 'active' || (historical && root.state === 'verification_only'), 'LAB_AUTHORITY_DENIED');
++  labCheck(command.authorityGeneration === root.authorityGeneration && command.keyId === root.keyId && command.issuerUserId === root.issuerUserId && root.scopes.some(s => s[0] === command.organizationId), 'LAB_AUTHORITY_DENIED');
++  labCheck(root.validFrom <= command.submittedAt && command.notAfter <= root.expiresAt && command.submittedAt <= callbackTime && callbackTime < command.notAfter, 'LAB_AUTHORITY_INPUT_INVALID');
++  labCheck(verify(null, Buffer.from(command.commandJson), root.key, decode64(command.signatureBase64, 64)), 'LAB_AUTHORITY_DENIED');
++  root.file.check();
++}
++export function checkLabScope(command: LabCommand, root: LabRoot, branches: readonly string[]): void {
++  const scope = root.scopes.find(s => s[0] === command.organizationId); labCheck(scope && branches.every(b => scope[1].includes(b)), 'LAB_AUTHORITY_DENIED');
++}
++export function labEvidence(command: LabCommand): { evidenceVersionId: string; evidenceSha256: string } {
++  const p = command.payload, offset = command.action === 'revoke_lab_reader' ? 4 : 7;
++  return { evidenceVersionId: p[offset] as string, evidenceSha256: p[offset + 1] as string };
++}
++export function readLabEvidence(reference: { evidenceVersionId: string; evidenceSha256: string }): ProtectedRead {
++  labCheck(labId(reference.evidenceVersionId) && labDigest(reference.evidenceSha256));
++  const file = protectedRead('/var/lib/swasthadisha/lab-authority-evidence/' + reference.evidenceVersionId, 1048576);
++  try { labCheck(labSha(file.bytes) === reference.evidenceSha256); return file; } catch { file.close(); return labFailure(); }
++}
++export function labProof(command: LabCommand): LabIssuerProof {
++  return Object.freeze({ schema: 'SD-LAB-AUTHORITY-ISSUER-PROOF-1', keyId: command.keyId, commandJson: command.commandJson,
++    commandSha256: command.commandSha256, signatureBase64: command.signatureBase64 });
++}
+diff --git a/src1/modules/organizations/labAuthoritySourceManifest.json b/src1/modules/organizations/labAuthoritySourceManifest.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..74febc1a71bd6ab6e1132072ffcfb18ffd9edb57
+--- /dev/null
++++ b/src1/modules/organizations/labAuthoritySourceManifest.json
+@@ -0,0 +1,68 @@
++{
++  "schema": "SD-LAB-AUTHORITY-SOURCE-MANIFEST-1",
++  "files": [
++    [
++      "package-lock.json",
++      "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080"
++    ],
++    [
++      "src1/modules/common/utils/indexReadiness.ts",
++      "050ecc993c862638cf4912bb854e04baa5d80241cb124e7831fc3c95a78db5bd"
++    ],
++    [
++      "src1/modules/organizations/labAuthorityProvisioning.ts",
++      "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65"
++    ],
++    [
++      "src1/modules/organizations/labAuthorityReadiness.ts",
++      "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9"
++    ],
++    [
++      "src1/modules/organizations/labAuthorityRoot.ts",
++      "2d085b083405f79d43b5a4a207165fc795bc3803aa56610b186e63b8163b2ed2"
++    ],
++    [
++      "src1/modules/organizations/model/index.ts",
++      "d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a"
++    ],
++    [
++      "src1/modules/organizations/model/lab.ts",
++      "42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c"
++    ],
++    [
++      "src1/modules/organizations/rules.ts",
++      "c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a"
++    ],
++    [
++      "src1/modules/organizations/types/index.ts",
++      "98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670"
++    ],
++    [
++      "src1/modules/user/model/index.ts",
++      "8ab08c867008d9788fd2105b6ac840794fcd5d8b2c518de500119aa2536cf5c4"
++    ],
++    [
++      "src1/modules/user/types/index.ts",
++      "91d4b48e4749d113733f471d64093c7269dffcf13bf48577c8dbc2edce7d5b71"
++    ],
++    [
++      "src1/operators/labAuthority.ts",
++      "5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02"
++    ],
++    [
++      "tsconfig.json",
++      "5555c293a75c85c3f89a539bd2b1be6db1953ffa746b43836929cdc20b9355c3"
++    ]
++  ],
++  "aggregateSha256": "9e1d7bbdab861deac5b206adc5abee1b17b44b18968a9f5bcdf09b46de2e5e94",
++  "aggregateEncoding": "UTF8(JSON.stringify(files)); sorted exact path/hash pairs, no newline",
++  "scope": "SELECTED_SOURCE_BINDING_ONLY_NOT_RUNNING_BUILD_NATIVE_ABI_OR_ALL_WRITER_COVERAGE",
++  "excludedSelf": "src1/modules/organizations/labAuthoritySourceManifest.json",
++  "nativeProfile": {
++    "mongoose": "6.13.8",
++    "mongodb": "4.17.2",
++    "bson": "4.7.2",
++    "catalog": "LOCAL_DIAGNOSTIC_MONGODB_8_INCLUDE_INDEX_BUILD_INFO"
++  },
++  "activation": "No real root/evidence installation, production topology/build/index/all-writer/client/owner/release acceptance is supplied."
++}
+diff --git a/src1/modules/organizations/model/index.ts b/src1/modules/organizations/model/index.ts
+index 4cae8428e9473eb0c60d106be7be4e1457b50833..8a4bba539de6446c577595d5ac04a3686a23d89d 100644
+--- a/src1/modules/organizations/model/index.ts
++++ b/src1/modules/organizations/model/index.ts
+@@ -1,12 +1,12 @@
+ import { Connection, Model, Schema } from 'mongoose';
+ import { AuthorityError } from '../types';
+ 
+-// Only the approved read adapter consumes this factory; importing it registers no model.
++// Approved authority adapters and the protected lab writer share this factory; import registers no model.
+ const canonicalId = { type: String, required: true, match: /^[0-9a-f]{24}$/, immutable: true };
+ const digest = { type: String, required: true, match: /^[0-9a-f]{64}$/ };
+ const positive = { type: Number, required: true, min: 1, validate: Number.isSafeInteger };
+ const date = { type: Date, required: true };
+-const capability = { type: String, required: true, enum: ['pharmacy.prescription.review', 'lab.report.release'] };
++const capability = { type: String, required: true, enum: ['pharmacy.prescription.review', 'lab.report.release', 'lab.worklist.read'] };
+ const state = { type: String, required: true, enum: ['active', 'suspended', 'revoked'] };
+ const embedded = { _id: false, strict: 'throw' as const };
+ const options = { timestamps: true, strict: 'throw' as const, versionKey: false as const, autoIndex: false, autoCreate: false };
+@@ -32,6 +32,9 @@ export function createAuthorityModels(connection: Connection): AuthorityModels {
+     ...base, kind: { type: String, required: true, enum: ['pharmacy', 'lab'] },
+     sourceBusinessId: canonicalId, state, sourceFingerprint: digest, mappingDecisionId: canonicalId,
+     branches: { type: [branch], required: true, validate: bounded },
++    operationalFence: { type: Number, min: 1,
++      required: function (this: { kind?: string }) { return this.kind === 'lab'; },
++      validate: function (this: { kind?: string }, value: unknown) { return this.kind === 'lab' ? typeof value === 'number' && Number.isSafeInteger(value) && value > 0 : value === undefined; } },
+   }, options);
+   organization.index({ kind: 1, sourceBusinessId: 1 }, { unique: true });
+   const membership = new Schema<Record<string, unknown>>({
+@@ -64,19 +67,28 @@ export function createAuthorityModels(connection: Connection): AuthorityModels {
+     // Grant entries have an optional decision ID for the professional scope payload.
+     grants: { type: [new Schema({ branchId: canonicalId, capability, grantDecisionId: { type: String, match: /^[0-9a-f]{24}$/ } }, embedded)], default: undefined, validate: bounded },
+     branchId: { type: String, match: /^[0-9a-f]{24}$/ },
+-    capability: { type: String, enum: ['pharmacy.prescription.review', 'lab.report.release'] },
++    capability: { type: String, enum: ['pharmacy.prescription.review', 'lab.report.release', 'lab.worklist.read'] },
+     profession: { type: String, enum: ['pharmacist', 'lab_signatory'] },
+     evidenceVersionId: { type: String, match: /^[0-9a-f]{24}$/ },
+     evidenceSha256: { type: String, match: /^[0-9a-f]{64}$/ },
++    previousMembershipRevision: { type: Number, min: 1, validate: Number.isSafeInteger },
++    previousGrantDecisionId: { type: String, match: /^[0-9a-f]{24}$/ },
++    operationalFence: { type: Number, min: 1, validate: Number.isSafeInteger },
++    reasonCode: { type: String, enum: ['access_withdrawn'] },
+   }, embedded);
+   // No mutation API is exposed. Immutability is defense in depth, not grant authenticity.
+   const decision = new Schema<Record<string, unknown>>({
+     _id: canonicalId, schemaVersion: { type: Number, required: true, enum: [1], immutable: true },
+     organizationId: canonicalId, operationId: canonicalId,
+-    decisionKind: { type: String, required: true, enum: ['business_mapped', 'membership_granted', 'professional_verified'], immutable: true },
++    decisionKind: { type: String, required: true, enum: ['business_mapped', 'membership_granted', 'professional_verified', 'lab_membership_revoked'], immutable: true },
+     subjectActorId: { type: String, match: /^[0-9a-f]{24}$/, immutable: true },
+     decidingActorId: canonicalId, decidedAt: { ...date, immutable: true },
+     authorityGeneration: { ...digest, immutable: true }, payloadSha256: { ...digest, immutable: true },
++    issuerProof: { type: new Schema({
++      schema: { type: String, required: true, enum: ['SD-LAB-AUTHORITY-ISSUER-PROOF-1'] },
++      keyId: digest, commandJson: { type: String, required: true, maxlength: 16384 },
++      commandSha256: digest, signatureBase64: { type: String, required: true, maxlength: 88 },
++    }, embedded), default: undefined, immutable: true },
+     payload: { type: payload, required: true, immutable: true },
+     evidence: { type: [evidence], required: true, validate: bounded, immutable: true },
+   }, options);
+diff --git a/src1/modules/organizations/model/lab.ts b/src1/modules/organizations/model/lab.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..52456d14db739f00592e878218e55b5d49e66e21
+--- /dev/null
++++ b/src1/modules/organizations/model/lab.ts
+@@ -0,0 +1,23 @@
++import { Connection, Model, Schema } from 'mongoose';
++import { LabAuthorityError } from '../types';
++
++const models = new WeakMap<Connection, Model<Record<string, unknown>>>();
++export function createLabBusinessModel(connection: Connection): Model<Record<string, unknown>> {
++  const previous = models.get(connection);
++  if (previous) return previous;
++  if (connection.models.LabBusiness) throw new LabAuthorityError('LAB_AUTHORITY_UNAVAILABLE');
++  const id = { type: String, required: true, match: /^[0-9a-f]{24}$/, immutable: true };
++  const schema = new Schema<Record<string, unknown>>({
++    _id: id, schemaVersion: { type: Number, required: true, enum: [1], immutable: true },
++    revision: { type: Number, required: true, min: 1, validate: Number.isSafeInteger },
++    organizationId: id,
++    legalName: { type: String, required: true, maxlength: 320 },
++    registrationReference: { type: String, required: true, maxlength: 256 },
++    state: { type: String, required: true, enum: ['active', 'suspended', 'revoked'] },
++    verificationValidFrom: { type: Date, required: true }, verificationExpiresAt: { type: Date, required: true },
++    verificationEvidence: { type: new Schema({ evidenceVersionId: id,
++      evidenceSha256: { type: String, required: true, match: /^[0-9a-f]{64}$/ } }, { _id: false, strict: 'throw' }), required: true },
++  }, { timestamps: true, strict: 'throw', versionKey: false, autoIndex: false, autoCreate: false });
++  schema.index({ organizationId: 1 }, { unique: true });
++  const model = connection.model('LabBusiness', schema, 'labs'); models.set(connection, model); return model;
++}
+diff --git a/src1/modules/organizations/rules.ts b/src1/modules/organizations/rules.ts
+index c8bb52e980b4fd4314a0868be7f6c609a3329566..24109a0b3e277f7bc66c01f829caeb6d27037852 100644
+--- a/src1/modules/organizations/rules.ts
++++ b/src1/modules/organizations/rules.ts
+@@ -139,6 +139,9 @@ export function serializeDecision(decision: AuthorityDecision): string {
+   } else if (decision.decisionKind === 'membership_granted') {
+     const p = decision.payload;
+     common.push(['subjectActorId', decision.subjectActorId], ['payload', ['organizationId', p.organizationId], ['actorId', p.actorId], ['membershipId', p.membershipId], ['membershipRevision', p.membershipRevision], ['validFrom', p.validFrom], ['expiresAt', p.expiresAt], ['grants', sortedGrants(p.grants)], ['branchId', p.branchId], ['capability', p.capability]]);
++  } else if (decision.decisionKind === 'lab_membership_revoked') {
++    const p = decision.payload;
++    common.push(['subjectActorId', decision.subjectActorId], ['payload', ['organizationId', p.organizationId], ['actorId', p.actorId], ['membershipId', p.membershipId], ['membershipRevision', p.membershipRevision], ['previousMembershipRevision', p.previousMembershipRevision], ['previousGrantDecisionId', p.previousGrantDecisionId], ['branchId', p.branchId], ['capability', p.capability], ['operationalFence', p.operationalFence], ['reasonCode', p.reasonCode]]);
+   } else {
+     const p = decision.payload;
+     common.push(['subjectActorId', decision.subjectActorId], ['payload', ['organizationId', p.organizationId], ['actorId', p.actorId], ['eligibilityId', p.eligibilityId], ['eligibilityRevision', p.eligibilityRevision], ['profession', p.profession], ['validFrom', p.validFrom], ['expiresAt', p.expiresAt], ['evidenceVersionId', p.evidenceVersionId], ['evidenceSha256', p.evidenceSha256], ['grants', sortedGrants(p.grants)]]);
+diff --git a/src1/modules/organizations/types/index.ts b/src1/modules/organizations/types/index.ts
+index 23b72c77c929e2c017c6ae73f763b2f5b1433d0c..0b9e7c867193ea6ee33f03de715900297292c754 100644
+--- a/src1/modules/organizations/types/index.ts
++++ b/src1/modules/organizations/types/index.ts
+@@ -1,8 +1,8 @@
+ export type BusinessKind = 'pharmacy' | 'lab';
+-export type Capability = 'pharmacy.prescription.review' | 'lab.report.release';
++export type Capability = 'pharmacy.prescription.review' | 'lab.report.release' | 'lab.worklist.read';
+ export type Profession = 'pharmacist' | 'lab_signatory';
+ export type AuthorityState = 'active' | 'suspended' | 'revoked';
+-export type DecisionKind = 'business_mapped' | 'membership_granted' | 'professional_verified';
++export type DecisionKind = 'business_mapped' | 'membership_granted' | 'professional_verified' | 'lab_membership_revoked';
+ export type DenialCategory = 'INVALID_CONTEXT' | 'AUTHORITY_DENIED' | 'AUTHORITY_NOT_READY' | 'AUTHORITY_MAPPING_UNAVAILABLE' | 'INVALID_TRANSACTION';
+ 
+ export class AuthorityError extends Error {
+@@ -51,6 +51,8 @@ export interface Organization extends RecordVersion {
+   readonly state: AuthorityState;
+   readonly sourceFingerprint: string;
+   readonly mappingDecisionId: string;
++  /** Required only for new canonical labs; never a pharmacy backfill. */
++  readonly operationalFence?: number;
+   readonly branches: readonly Branch[];
+ }
+ export interface StaffGrant {
+@@ -90,6 +92,7 @@ export interface DecisionMetadata {
+   readonly decidedAt: number;
+   readonly authorityGeneration: string;
+   readonly payloadSha256: string;
++  readonly issuerProof?: LabIssuerProof;
+   readonly evidence: readonly EvidenceReference[];
+   readonly createdAt: number;
+   readonly updatedAt: number;
+@@ -129,6 +132,7 @@ export type AuthorityDecision = DecisionMetadata & (
+   | Readonly<{ decisionKind: 'business_mapped'; payload: MappingPayload }>
+   | Readonly<{ decisionKind: 'membership_granted'; subjectActorId: string; payload: GrantPayload }>
+   | Readonly<{ decisionKind: 'professional_verified'; subjectActorId: string; payload: VerificationPayload }>
++  | Readonly<{ decisionKind: 'lab_membership_revoked'; subjectActorId: string; payload: LabRevocationPayload }>
+ );
+ export interface AuthorityFacts {
+   readonly user: unknown;
+@@ -162,3 +166,55 @@ export interface BusinessScope extends AuthorityLookup {
+   readonly checkedAt: number;
+   readonly expiresAt: number;
+ }
++
++// S2-A is a protected writer only. These data types do not mint a lab BusinessScope.
++export type LabAuthorityAction = 'map_lab' | 'grant_lab_reader' | 'revoke_lab_reader';
++export interface LabIssuerProof {
++  readonly schema: 'SD-LAB-AUTHORITY-ISSUER-PROOF-1';
++  readonly keyId: string;
++  readonly commandJson: string;
++  readonly commandSha256: string;
++  readonly signatureBase64: string;
++}
++export interface LabRevocationPayload {
++  readonly organizationId: string;
++  readonly actorId: string;
++  readonly membershipId: string;
++  readonly membershipRevision: number;
++  readonly previousMembershipRevision: number;
++  readonly previousGrantDecisionId: string;
++  readonly branchId: string;
++  readonly capability: 'lab.worklist.read';
++  readonly operationalFence: number;
++  readonly reasonCode: 'access_withdrawn';
++}
++export interface LabBusiness extends RecordVersion {
++  readonly organizationId: string;
++  readonly legalName: string;
++  readonly registrationReference: string;
++  readonly state: AuthorityState;
++  readonly verificationValidFrom: number;
++  readonly verificationExpiresAt: number;
++  readonly verificationEvidence: EvidenceReference;
++}
++export interface LabAuthorityReceipt {
++  readonly status: 'COMMITTED';
++  readonly operationId: string;
++  readonly decisionId: string;
++  readonly action: LabAuthorityAction;
++  readonly organizationId: string;
++  readonly recordId: string;
++  readonly recordRevision: number;
++  readonly operationalFence: number;
++  readonly commandSha256: string;
++  readonly replayed: boolean;
++}
++export type LabAuthorityCode = 'LAB_AUTHORITY_INPUT_INVALID' | 'LAB_AUTHORITY_DENIED' | 'LAB_AUTHORITY_CONFLICT' | 'LAB_AUTHORITY_UNAVAILABLE';
++export class LabAuthorityError extends Error {
++  readonly status: number;
++  constructor(readonly code: LabAuthorityCode, readonly commitOutcome: 'UNKNOWN' | undefined = undefined) {
++    super('Lab authority request could not be completed');
++    this.name = 'LabAuthorityError';
++    this.status = code === 'LAB_AUTHORITY_INPUT_INVALID' ? 400 : code === 'LAB_AUTHORITY_DENIED' ? 403 : code === 'LAB_AUTHORITY_CONFLICT' ? 409 : 503;
++  }
++}
+diff --git a/src1/operators/labAuthority.ts b/src1/operators/labAuthority.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..88a845e0e6e89d21db848393e59352bdac2da755
+--- /dev/null
++++ b/src1/operators/labAuthority.ts
+@@ -0,0 +1,2 @@
++// Explicit local operator composition only. Importing this module never runs the writer.
++export { provisionLabAuthority } from '../modules/organizations/labAuthorityProvisioning';

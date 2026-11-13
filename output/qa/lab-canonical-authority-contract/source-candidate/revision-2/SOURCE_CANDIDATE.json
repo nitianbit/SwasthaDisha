@@ -1,0 +1,128 @@
+{
+  "schema": "SD-LAB-S2-A-AMENDED-ACTUAL-SOURCE-CANDIDATE-2",
+  "author": "/root/milestone_composition_r9",
+  "initialCandidate": "cf9c4ca9faf43596cd2e5a562fdeef36ec6cffb2",
+  "originalSourceBaseline": "b846486a4ebe1b7e6d906aec78b89413e2e574f9",
+  "amendmentFreezeParent": "ea1038d38cbebe9e2b03359688c5bd6865c1ccd0",
+  "contractSha256": "dbe337575ff28360bf6a7b57a2c69cf2bdab9a234a2774c893ec1bba36159a57",
+  "initialActualFindings": {
+    "aggregatePath": "output/qa/lab-canonical-authority-contract/source-candidate/INITIAL_SOURCE_DECISIONS.json",
+    "aggregateSha256": "06d183483386fc420dc5f8126ebf37b47b843d164926df927ed66232290f299b",
+    "actualDecisions": [
+      {
+        "reviewer": "/root",
+        "decision": "REQUEST_CHANGES",
+        "path": "output/qa/lab-canonical-authority-contract/source-candidate/INITIAL_STANDARDS_REVIEW.json",
+        "sha256": "15943a9503599b30d342b1069951a5c865cd63b7631ec51594c1803e39d6b4f8"
+      },
+      {
+        "reviewer": "/root/lab_remaining_audit",
+        "decision": "REQUEST_CHANGES",
+        "path": "output/qa/lab-canonical-authority-contract/source-candidate/INITIAL_SPEC_REVIEW.json",
+        "sha256": "16fb307703be5db624e8c053b24645eeef25d5c94bfd4062ef692191785cf0c5"
+      }
+    ],
+    "disposition": "ONE_IDENTICAL_STORED_PROOF_BOUND_FINDING_REPAIRED_IN_SOURCE_PENDING_TWO_FRESH_NONAUTHOR_REVIEW_DECISIONS"
+  },
+  "status": "PENDING_TWO_FRESH_NONAUTHOR_SOURCE_AMENDMENT_AND_COMPOSITION_REVIEWS",
+  "changedSource": [
+    "src1/modules/organizations/labAuthorityProvisioning.ts",
+    "src1/modules/organizations/labAuthoritySourceManifest.json"
+  ],
+  "ownSource": [
+    {
+      "path": "src1/modules/organizations/types/index.ts",
+      "sha256": "98d9fb26379bc1ec81f3dfcf056b4629c03476eb52b87e005832b8686400b670",
+      "bytes": 8074
+    },
+    {
+      "path": "src1/modules/organizations/model/index.ts",
+      "sha256": "d86616e251f424ff6d1b2100a225cb8a127542200b9d498b1e9e6bbffd671d2a",
+      "bytes": 7453
+    },
+    {
+      "path": "src1/modules/organizations/rules.ts",
+      "sha256": "c3e03a7300cafaca9c9d02d80e672da5dd3e1dc45b3a343a98ffb8ddab70588a",
+      "bytes": 17845
+    },
+    {
+      "path": "src1/modules/organizations/model/lab.ts",
+      "sha256": "42af97e5cecae40569d0bdd045b942cde5a677175c8c1e2d743efc4d5b0ced5c",
+      "bytes": 1607
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityRoot.ts",
+      "sha256": "2d085b083405f79d43b5a4a207165fc795bc3803aa56610b186e63b8163b2ed2",
+      "bytes": 14561
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityReadiness.ts",
+      "sha256": "73e486445af7b091365cf4b59611e46adf2f2f236ab35b2d5e0027540129e8e9",
+      "bytes": 21553
+    },
+    {
+      "path": "src1/modules/organizations/labAuthorityProvisioning.ts",
+      "sha256": "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65",
+      "bytes": 22614
+    },
+    {
+      "path": "src1/operators/labAuthority.ts",
+      "sha256": "5bc4d17f8224d56d2870aeff840284a1e3fb39bf979b7b3c26fff333d82a4c02",
+      "bytes": 181
+    },
+    {
+      "path": "src1/modules/organizations/labAuthoritySourceManifest.json",
+      "sha256": "e97b2c74ce5ddacb7711734815362a4463595a409df72ecde7c562a81509dab3",
+      "bytes": 2462
+    }
+  ],
+  "fullSourcePatch": {
+    "path": "output/qa/lab-canonical-authority-contract/source-candidate/revision-2/SOURCE.patch",
+    "sha256": "74a994b69a970d5ae03d19752e399f659b59913f33718a9e674564d5a8c5ec27",
+    "bytes": 76816
+  },
+  "inverseSourcePatch": {
+    "path": "output/qa/lab-canonical-authority-contract/source-candidate/revision-2/SOURCE.inverse.patch",
+    "sha256": "48a139957f66a1edacb6a27aa140ed47284a86699de28cb75ca6d5f0f36b381c",
+    "bytes": 76840
+  },
+  "amendmentPatch": {
+    "path": "output/qa/lab-canonical-authority-contract/source-candidate/revision-2/AMENDMENT.patch",
+    "sha256": "57432b034d866b2dbd41fdf61b57b216c867c0be7416bea416fffa6b2aabda1a",
+    "bytes": 2881
+  },
+  "sourceManifestAggregateSha256": "9e1d7bbdab861deac5b206adc5abee1b17b44b18968a9f5bcdf09b46de2e5e94",
+  "actualStaticChecks": [
+    "Whole writer equals originalcf9 bytes after removing ONLY two added boolean guard clauses. Both primitive-string/type and UTF8commandJson<=16384 plus signatureencodedlength88 dominate innerJSONparse/outerJSONstringify.",
+    "No changed parser/decode/signature/framework/interface/policy helper. parseLabCommand actualcanonicaldecode/reencode64byte checks retained; malformedstoredproof still503 before parsing.",
+    "Generateddata has exactly same13paths; onlywriterfilehash and aggregate hash changed, remainingdata metadata unchanged. Other7code files exactcf9hashes.",
+    "Originalcf9/source/data/patch/initial two actualREQUEST_CHANGES records preserved inGit/currentQA. Allpreviouscompletefull-source reviews remainhistorical, not inventedamendedvotes."
+  ],
+  "plannedFocusedNegatives": [
+    "StoredJSONproof at16385UTF8bytes and a large2MiBrowstring rejects503 BEFORE JSON.parse; multibyte string usesbytesnotJScharacter count.",
+    "Stored signature primitive string lengths87/89 or oversized rejects503 BEFORE parse/reconstruction.",
+    "Nonstringproof/signature remains503 without coercion; validcanonical64bytesignature encoded88 and admitted normal map/grant/revoke/regrant/replay proof remain unchanged.",
+    "Canonicalbase64invalid alphabet/padding/reencoding/decodedsize still rejected by unchangedparseLabCommand; no genericparser/nativecause/typecheck PASS."
+  ],
+  "verification": {
+    "Parser": "NOT_RUN",
+    "TypeScript": "NOT_RUN",
+    "Node": "NOT_RUN",
+    "Crypto": "NOT_RUN",
+    "NativeBSON": "NOT_RUN",
+    "Application": "NOT_RUN",
+    "Database": "NOT_RUN",
+    "DDL": "NOT_RUN",
+    "RootEvidenceIO": "NOT_RUN",
+    "Transactions": "NOT_RUN",
+    "CASRaces": "NOT_RUN",
+    "Replay": "NOT_RUN",
+    "Cleanup": "NOT_RUN",
+    "Providers": "NOT_RUN",
+    "Docker": "NOT_RUN",
+    "GenuineClaudeReview": "NOT_RUN"
+  },
+  "sourceApproval": false,
+  "executionPermission": false,
+  "activation": false
+}

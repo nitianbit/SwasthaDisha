@@ -69,7 +69,7 @@ async function history(work: Work, raw: Data, expected: 'business_mapped' | 'mem
   const d = labShape(raw, [...decisionFields, ...(expected === 'business_mapped' ? [] : ['subjectActorId'])]);
   labCheck(d.schemaVersion === 1 && d.decisionKind === expected && labId(d._id) && labId(d.organizationId) && labId(d.operationId) && labId(d.decidingActorId) && labDigest(d.authorityGeneration) && labDigest(d.payloadSha256) && labTime(d.createdAt) && labTime(d.updatedAt) && d.createdAt === d.updatedAt && d.updatedAt <= work.now);
   const proof = labShape(d.issuerProof, ['schema', 'keyId', 'commandJson', 'commandSha256', 'signatureBase64']);
-  labCheck(proof.schema === 'SD-LAB-AUTHORITY-ISSUER-PROOF-1' && typeof proof.commandJson === 'string' && labDigest(proof.commandSha256) && typeof proof.signatureBase64 === 'string');
+  labCheck(proof.schema === 'SD-LAB-AUTHORITY-ISSUER-PROOF-1' && typeof proof.commandJson === 'string' && Buffer.byteLength(proof.commandJson, 'utf8') <= 16384 && labDigest(proof.commandSha256) && typeof proof.signatureBase64 === 'string' && proof.signatureBase64.length === 88);
   let command: LabCommand;
   try { command = parseLabCommand(JSON.stringify([JSON.parse(proof.commandJson), proof.signatureBase64])); }
   catch { return labFailure(); }

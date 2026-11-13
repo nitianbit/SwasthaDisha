@@ -1,0 +1,35 @@
+diff --git a/src1/modules/organizations/labAuthorityProvisioning.ts b/src1/modules/organizations/labAuthorityProvisioning.ts
+index a280f5f2cfd01dae33ea38d33e78850206ca3272..f01f617025e280301b2e69759a99072b1e3b556f 100644
+--- a/src1/modules/organizations/labAuthorityProvisioning.ts
++++ b/src1/modules/organizations/labAuthorityProvisioning.ts
+@@ -69,7 +69,7 @@ async function history(work: Work, raw: Data, expected: 'business_mapped' | 'mem
+   const d = labShape(raw, [...decisionFields, ...(expected === 'business_mapped' ? [] : ['subjectActorId'])]);
+   labCheck(d.schemaVersion === 1 && d.decisionKind === expected && labId(d._id) && labId(d.organizationId) && labId(d.operationId) && labId(d.decidingActorId) && labDigest(d.authorityGeneration) && labDigest(d.payloadSha256) && labTime(d.createdAt) && labTime(d.updatedAt) && d.createdAt === d.updatedAt && d.updatedAt <= work.now);
+   const proof = labShape(d.issuerProof, ['schema', 'keyId', 'commandJson', 'commandSha256', 'signatureBase64']);
+-  labCheck(proof.schema === 'SD-LAB-AUTHORITY-ISSUER-PROOF-1' && typeof proof.commandJson === 'string' && labDigest(proof.commandSha256) && typeof proof.signatureBase64 === 'string');
++  labCheck(proof.schema === 'SD-LAB-AUTHORITY-ISSUER-PROOF-1' && typeof proof.commandJson === 'string' && Buffer.byteLength(proof.commandJson, 'utf8') <= 16384 && labDigest(proof.commandSha256) && typeof proof.signatureBase64 === 'string' && proof.signatureBase64.length === 88);
+   let command: LabCommand;
+   try { command = parseLabCommand(JSON.stringify([JSON.parse(proof.commandJson), proof.signatureBase64])); }
+   catch { return labFailure(); }
+diff --git a/src1/modules/organizations/labAuthoritySourceManifest.json b/src1/modules/organizations/labAuthoritySourceManifest.json
+index eebe2a615333f47d5100829efd334ea05ddf2207..74febc1a71bd6ab6e1132072ffcfb18ffd9edb57 100644
+--- a/src1/modules/organizations/labAuthoritySourceManifest.json
++++ b/src1/modules/organizations/labAuthoritySourceManifest.json
+@@ -11,7 +11,7 @@
+     ],
+     [
+       "src1/modules/organizations/labAuthorityProvisioning.ts",
+-      "8062a715b526b8bc627a0b3688886464f1b5e0763324a0f869d93666399022bf"
++      "014f992bb75eb4fe8d15451b67ba845051f3e43b4c682d831acc0ae17d21eb65"
+     ],
+     [
+       "src1/modules/organizations/labAuthorityReadiness.ts",
+@@ -54,7 +54,7 @@
+       "5555c293a75c85c3f89a539bd2b1be6db1953ffa746b43836929cdc20b9355c3"
+     ]
+   ],
+-  "aggregateSha256": "0edef214464c14c57bdcb6a9dbb6646fd94017bbedd1e925bd078800e10b62d0",
++  "aggregateSha256": "9e1d7bbdab861deac5b206adc5abee1b17b44b18968a9f5bcdf09b46de2e5e94",
+   "aggregateEncoding": "UTF8(JSON.stringify(files)); sorted exact path/hash pairs, no newline",
+   "scope": "SELECTED_SOURCE_BINDING_ONLY_NOT_RUNNING_BUILD_NATIVE_ABI_OR_ALL_WRITER_COVERAGE",
+   "excludedSelf": "src1/modules/organizations/labAuthoritySourceManifest.json",
