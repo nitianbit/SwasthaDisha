@@ -13,6 +13,7 @@ import {
   updateOrderStatusSchema,
   cancelOrderSchema,
   markOrderPaidSchema,
+  prescriptionReviewSchema,
   orderQuerySchema,
   recoveryWorklistQuerySchema,
   idParamSchema,
@@ -79,6 +80,15 @@ pharmacyOrderRouter.post(
   validate(idParamSchema, 'params'),
   validate(cancelOrderSchema, 'body'),
   catchAsync(controller.cancel)
+);
+
+// Pharmacist approves/rejects the order's prescription. Queue: GET /?prescriptionStatus=pending
+pharmacyOrderRouter.post(
+  '/:id/prescription-review',
+  requireOperationalPharmacy,
+  validate(idParamSchema, 'params'),
+  validate(prescriptionReviewSchema, 'body'),
+  catchAsync(controller.reviewPrescription)
 );
 
 pharmacyOrderRouter.post(

@@ -79,6 +79,7 @@ export class PharmacyOrderController {
       orderFor: q.orderFor as 'consultation' | 'diagnostic' | undefined,
       status: q.status as any,
       paymentStatus: q.paymentStatus as any,
+      prescriptionStatus: q.prescriptionStatus as OrderQueryParams['prescriptionStatus'],
     };
 
     const page = q.page ? parseInt(q.page) : 1;
@@ -119,6 +120,13 @@ export class PharmacyOrderController {
       notes: req.body?.notes,
     });
     res.status(200).json({ success: true, message: 'Order cancelled', data: result });
+  };
+
+  reviewPrescription = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const pharmacyId = req.user?.pharmacyId || '';
+    const result = await this.service.reviewPrescription(req.params.id, pharmacyId, req.body);
+    const approved = result.prescriptionStatus === 'approved';
+    res.status(200).json({ success: true, message: approved ? 'Prescription approved' : 'Prescription rejected', data: result });
   };
 
   markPaid = async (req: AuthRequest, res: Response, _next: NextFunction) => {

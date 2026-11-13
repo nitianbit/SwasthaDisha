@@ -169,6 +169,7 @@ export interface IPharmacyOrder {
   isWalkIn?: boolean;
   prescriptionUrls?: string[];
   prescriptionStatus?: 'not_required' | 'pending' | 'approved' | 'rejected';
+  prescriptionReview?: PrescriptionReview;
   notes?: string;
   // linked healthcare
   linkedConsultationId?: string;
@@ -244,6 +245,31 @@ export interface MarkOrderPaidRequest {
   notes?: string;
 }
 
+/** Pharmacist decision on an order's prescription; immutable once written. */
+export interface PrescriptionReview {
+  decision: 'approved' | 'rejected';
+  pharmacistName: string;
+  pharmacistRegistrationNumber: string;
+  reason?: string;
+  /** SHA-256 of JSON.stringify(the exact ordered prescriptionUrls reviewed); the list itself stays on the order. */
+  reviewedDocumentSetSha256: string;
+  reviewedDocumentCount: number;
+  reviewedByPharmacyId: string;
+  reviewedAt: Date;
+  orderStatusAtReview: OrderStatus;
+  paymentStatusAtReview: PaymentStatus;
+  /** True when a rejected order had money paid/held; settlement is a separate finance step. */
+  refundRequired: boolean;
+}
+
+export interface PrescriptionReviewRequest {
+  decision: 'approve' | 'reject';
+  pharmacistName: string;
+  pharmacistRegistrationNumber: string;
+  reason?: string;
+  reviewedPrescriptionUrls: string[];
+}
+
 export interface OrderQueryParams {
   pharmacyId?: string;
   customerId?: string;
@@ -254,6 +280,7 @@ export interface OrderQueryParams {
   orderFor?: 'consultation' | 'diagnostic';
   status?: OrderStatus;
   paymentStatus?: PaymentStatus;
+  prescriptionStatus?: 'not_required' | 'pending' | 'approved' | 'rejected';
   page?: number;
   limit?: number;
 }

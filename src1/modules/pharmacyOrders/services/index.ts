@@ -19,9 +19,17 @@ import {
   UpdateOrderStatusRequest,
   OrderQueryParams,
   OrderStatus,
+  PrescriptionReview,
+  PrescriptionReviewRequest,
 } from '@/modules/pharmacyOrders/types';
 import { AppError } from '@/modules/common/types';
 import { assertPrescriptionCommerceAvailable } from '@/modules/pharmacyOrders/prescriptionCommerce';
+import { createHash } from 'node:crypto';
+
+/** Fingerprint of the exact ordered document list a pharmacist reviewed (bounded evidence, any list size). */
+export function prescriptionDocumentSetSha256(urls: readonly string[]): string {
+  return createHash('sha256').update(JSON.stringify(urls)).digest('hex');
+}
 import logger from '@/services/logger';
 
 const TERMINAL_STATUSES: OrderStatus[] = ['completed', 'abandoned', 'cancelled', 'rejected'];
@@ -1210,6 +1218,97 @@ export class PharmacyOrderService {
     return updated;
   }
 
+  /**
+   * Pharmacist approves or rejects a pending prescription on the pharmacy's own order.
+   * - The pharmacist must name the exact prescription documents reviewed; if the order's documents differ, the
+   *   review is refused so nobody approves documents they did not see.
+   * - Approve: prescriptionStatus -> approved; the order can then be packed/dispatched via the normal status flow.
+   * - Reject: placed -> rejected, accepted -> cancelled; reserved stock is released in the same transaction.
+   *   Paid/authorized money is NOT moved here: the review records refundRequired=true for finance to settle.
+   * All writes are compare-and-set on the state that was read (status, payment, prescription and documents).
+   */
+  async reviewPrescription(id: string, pharmacyId: string, data: PrescriptionReviewRequest): Promise<IPharmacyOrder> {
+    if (typeof id !== 'string' || !/^[0-9a-fA-F]{24}$/.test(id)) {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid order ID' });
+    }
+    const order = await this.orderRepo.findById(id);
+    if (!order) throw new AppError({ status: 404, code: 'ORDER_NOT_FOUND', message: 'Order not found' });
+    if (!pharmacyId || String(order.pharmacyId) !== pharmacyId) {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
+    }
+    if (TERMINAL_STATUSES.includes(order.status)) {
+      throw new AppError({ status: 409, code: 'ORDER_TERMINAL', message: 'Order is already in a terminal state' });
+    }
+    if (order.prescriptionStatus !== 'pending') {
+      throw new AppError({ status: 409, code: 'PRESCRIPTION_NOT_PENDING', message: 'This order has no prescription awaiting review' });
+    }
+    if (!['placed', 'accepted'].includes(order.status)) {
+      // Packing/dispatch already requires approval, so a pending prescription can only be on placed/accepted.
+      throw new AppError({ status: 409, code: 'ORDER_STATE_INCONSISTENT', message: 'Order state does not allow prescription review' });
+    }
+    const urls = Array.isArray(order.prescriptionUrls) ? order.prescriptionUrls.map(String) : [];
+    const reviewed = data.reviewedPrescriptionUrls;
+    if (reviewed.length !== urls.length || reviewed.some((url, i) => url !== urls[i])) {
+      throw new AppError({ status: 409, code: 'PRESCRIPTION_CHANGED', message: 'Prescription documents changed; reload the order and review again' });
+    }
+    const approve = data.decision === 'approve';
+    if (approve && !urls.length) {
+      throw new AppError({ status: 409, code: 'PRESCRIPTION_REQUIRED', message: 'There is no prescription document to approve' });
+    }
+    const reason = data.reason?.trim();
+    if (!approve && !reason) {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'A reason is required to reject a prescription' });
+    }
+
+    const paymentStatus = order.paymentStatus ?? 'pending';
+    const review: PrescriptionReview = {
+      decision: approve ? 'approved' : 'rejected',
+      pharmacistName: data.pharmacistName.trim(),
+      pharmacistRegistrationNumber: data.pharmacistRegistrationNumber.trim(),
+      ...(reason ? { reason } : {}),
+      reviewedDocumentSetSha256: prescriptionDocumentSetSha256(urls),
+      reviewedDocumentCount: urls.length,
+      reviewedByPharmacyId: pharmacyId,
+      reviewedAt: new Date(),
+      orderStatusAtReview: order.status,
+      paymentStatusAtReview: paymentStatus,
+      refundRequired: !approve && ['paid', 'partially_paid', 'authorized'].includes(paymentStatus),
+    };
+    const fence = {
+      _id: id,
+      pharmacyId: order.pharmacyId,
+      status: order.status,
+      prescriptionStatus: 'pending',
+      prescriptionUrls: { $eq: [...urls] },
+      prescriptionReview: { $exists: false },
+      ...(order.paymentStatus === undefined ? { paymentStatus: { $exists: false } } : { paymentStatus: order.paymentStatus }),
+    };
+    const stateChanged = () => new AppError({ status: 409, code: 'ORDER_STATE_CHANGED', message: 'Order changed while it was being reviewed; reload and try again' });
+
+    if (approve) {
+      const updated = await this.orderRepo.update(fence, { $set: { prescriptionStatus: 'approved', prescriptionReview: review } }, { new: true });
+      if (!updated) throw stateChanged();
+      if (updated.customerId) await this.queueNotificationSafely(id, 'order_updated');
+      return updated;
+    }
+
+    const nextStatus: OrderStatus = order.status === 'placed' ? 'rejected' : 'cancelled';
+    const rejectNote = `Prescription rejected by pharmacist: ${reason}`;
+    const priorNotes = order.notes?.trim();
+    const updated = await this.runOrderInventoryTransaction(async (session) => {
+      const next = await this.orderRepo.update(fence, {
+        $set: { prescriptionStatus: 'rejected', prescriptionReview: review, status: nextStatus,
+          notes: priorNotes ? `${priorNotes}\n${rejectNote}` : rejectNote },
+      }, { new: true, session });
+      if (!next) throw stateChanged();
+      await this.releaseOrderInventory(pharmacyId, order.items, session);
+      return next;
+    });
+    await this.queueSubscriptionSyncSafely(id, 'status_changed');
+    if (updated.customerId) await this.queueNotificationSafely(id, 'status_changed');
+    return updated;
+  }
+
   async markPaid(
     id: string,
     payload: {
@@ -1264,7 +1363,10 @@ export class PharmacyOrderService {
       });
     }
 
-    await this.assertNewCommerceForOrder(order, id);
+    // A pharmacist-approved prescription order is already reviewed; recording its cash/in-store payment is not new
+    // prescription commerce. Every other order keeps the prospective-commerce gate.
+    const pharmacistApproved = order.prescriptionStatus === 'approved' && order.prescriptionReview?.decision === 'approved';
+    if (!pharmacistApproved) await this.assertNewCommerceForOrder(order, id);
 
     const paidAt =
       payload.data.paidDate && payload.data.paidTime
@@ -1292,7 +1394,9 @@ export class PharmacyOrderService {
       {
         _id: id,
         paymentStatus: { $nin: ['paid', 'refunded'] },
-        status: { $nin: TERMINAL_STATUSES },
+        // Exact observed status: the write below derives status from this read, so a concurrent status change
+        // (e.g. accepted -> packed) must fail the compare-and-set rather than be overwritten with a stale value.
+        status: { $eq: order.status, $nin: TERMINAL_STATUSES },
       },
       {
         paymentStatus: 'paid',

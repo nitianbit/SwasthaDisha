@@ -225,6 +225,7 @@ export class PharmacyOrderRepository extends BaseRepository<IPharmacyOrder> {
     }
     if (filter.status) query.status = filter.status;
     if (filter.paymentStatus) query.paymentStatus = filter.paymentStatus;
+    if (filter.prescriptionStatus) query.prescriptionStatus = filter.prescriptionStatus;
 
     return query;
   }

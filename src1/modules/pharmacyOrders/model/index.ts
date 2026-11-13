@@ -71,6 +71,23 @@ const recoveryObservationSchema = new Schema(
   { _id: false, strict: 'throw' }
 );
 
+const prescriptionReviewSchema = new Schema(
+  {
+    decision: { type: String, required: true, enum: ['approved', 'rejected'] },
+    pharmacistName: { type: String, required: true, trim: true, maxlength: 120 },
+    pharmacistRegistrationNumber: { type: String, required: true, trim: true, maxlength: 60 },
+    reason: { type: String, trim: true, maxlength: 1000 },
+    reviewedDocumentSetSha256: { type: String, required: true, match: /^[0-9a-f]{64}$/ },
+    reviewedDocumentCount: { type: Number, required: true, min: 0 },
+    reviewedByPharmacyId: { type: Schema.Types.ObjectId as any, ref: 'Pharmacy', required: true },
+    reviewedAt: { type: Date, required: true },
+    orderStatusAtReview: { type: String, required: true },
+    paymentStatusAtReview: { type: String, required: true },
+    refundRequired: { type: Boolean, required: true },
+  },
+  { _id: false }
+);
+
 const recoveryRequestSchema = new Schema(
   {
     schemaVersion: { type: Number, required: true, enum: [1] },
@@ -152,6 +169,7 @@ const pharmacyOrderSchema = new Schema<IPharmacyOrder>(
       default: 'not_required',
       index: true,
     },
+    prescriptionReview: { type: prescriptionReviewSchema, default: undefined },
     notes: { type: String, trim: true },
     linkedConsultationId: { type: Schema.Types.ObjectId as any, ref: 'Booking', index: true },
     linkedDiagnosticOrderId: { type: String, index: true },
@@ -164,6 +182,8 @@ pharmacyOrderSchema.index({ pharmacyId: 1, status: 1 });
 pharmacyOrderSchema.index({ pharmacyId: 1, orderType: 1 });
 pharmacyOrderSchema.index({ customerId: 1, status: 1 });
 pharmacyOrderSchema.index({ pharmacyId: 1, createdAt: -1 });
+// Pharmacist review queue: pending prescriptions per pharmacy, oldest first.
+pharmacyOrderSchema.index({ pharmacyId: 1, prescriptionStatus: 1, createdAt: 1 });
 
 const PharmacyOrderModel: Model<IPharmacyOrder> = model<IPharmacyOrder>(
   'PharmacyOrder',

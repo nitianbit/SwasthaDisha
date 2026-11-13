@@ -95,8 +95,19 @@ export const orderQuerySchema = Joi.object({
   orderFor: Joi.string().valid('consultation', 'diagnostic').optional(),
   status: Joi.string().valid(...orderStatuses).optional(),
   paymentStatus: Joi.string().valid(...paymentStatuses).optional(),
+  prescriptionStatus: Joi.string().valid('not_required', 'pending', 'approved', 'rejected').optional(),
   page: Joi.number().integer().min(1).optional(),
   limit: Joi.number().integer().min(1).max(100).optional(),
+});
+
+export const prescriptionReviewSchema = Joi.object({
+  decision: Joi.string().valid('approve', 'reject').required(),
+  pharmacistName: Joi.string().trim().min(2).max(120).required(),
+  pharmacistRegistrationNumber: Joi.string().trim().pattern(/^[A-Za-z0-9][A-Za-z0-9/\-. ]{2,59}$/).required(),
+  reason: Joi.string().trim().min(3).max(1000).when('decision', { is: 'reject', then: Joi.required(), otherwise: Joi.optional() }),
+  // No per-item/count caps: legacy orders stored lists without bounds and must remain reviewable. Size is bounded
+  // by the 10mb JSON body limit, the same limit those lists were originally submitted under.
+  reviewedPrescriptionUrls: Joi.array().items(Joi.string()).required(),
 });
 
 export const recoveryWorklistQuerySchema = Joi.object({
