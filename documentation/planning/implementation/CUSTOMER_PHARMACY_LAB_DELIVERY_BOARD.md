@@ -1,5 +1,7 @@
 # Customer, pharmacy and lab delivery board
 
+> **Owner stop, 13 November 2026:** development is stopped and existing work is committed locally. Read [the consolidated checkpoint](PROJECT_CHECKPOINT_2026-11-13.md) for current done/pending status, saved branches, accepted private R9 preparation and historical execution bindings. Earlier instructions to continue are superseded until a fresh owner resume request.
+
 13 November 2026. Customer enrollment focused service evidence is accepted and merged at `dda914d`. Genuine Claude R13 is complete and independently accepted twice at `1901367`: actual `claude-opus-5-5` through the existing VS Code bundled CLI/Ruflo route, requested `xhigh` (not max), effective effort unproven. It approves lab/refill source and composition at its historical snapshot `2c09f09`; it does not review later cursor corrections. Focused runtime and full-module acceptance remain separate. R12/R11/R10 retain their older snapshots and outcomes.
 
 Original eight-week TOTAL target retained; it does not restart at this checkpoint. Previous unsupported remaining-duration figures are withdrawn. No verified engineer-hour ledger or complete feature throughput baseline exists, so no numerical remaining estimate is asserted. Derive the next forecast from completed feature scope, focused evidence, actual review waits and external dependencies. Calendar targets are not completion evidence.
