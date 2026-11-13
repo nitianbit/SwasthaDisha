@@ -1,0 +1,55 @@
+{
+  "schema": "SD-DISABLED-EXPRESS-TEMPLATE-INDEPENDENT-DESIGN-REVIEW-1",
+  "reviewer": "/root/milestone_composition_r9",
+  "axis": "Standards",
+  "proposalSha256": "c4764240adbf8314338c66c26883a59e4b6617efaac2afb6e8158f4060b1c415",
+  "proposalAuthor": "/root/contact_preparation_independent",
+  "decision": "REQUEST_CHANGES",
+  "scope": "Data-only technical design review; no implementation/parser/package/app/DB/Docker/model execution or grants. Reviewer authored neither proposal nor proposed future shared boundary. Underlying P7 production was authored by reviewer; this decision does not reapprove that production.",
+  "actualBindings": {
+    "allObservedC1EightSourceHashesMatch": true,
+    "allObservedP7EightSourceHashesMatch": true,
+    "canonicalSortedPolicyHashRecomputed": "8a9b9d03d5fda5c029c206089864d99d45313a3a7a850532f78eb9eda9d49dcd",
+    "nativeFiles": {
+      "express/lib/view.js": "ec627880c1b43aee5887164ac2e9c58f01e4ee8086e23a829eddf1af3858c021",
+      "express/lib/application.js": "5901b32f609ba349351bf7406dbdc0c4c57b77ce6f7215ea67ccca5ac2a28e88",
+      "debug/src/index.js": "9a34fedeb2d269c46ed94e6f13039eb0d16d866dd460ec66fa3acd78122fa9fe",
+      "debug/src/node.js": "a3e83594a4ce88997e2e4fc66bc942b17b9d736290ad62560c7f09d6d0989ad0",
+      "debug/src/debug.js": "d8d1c1d6c387ab67c3f28d78fd0b20b9becd69442db9d3efe110ca464b509c8a"
+    }
+  },
+  "soundBoundedDesign": [
+    "Exact immutable Express View/application source binding, unique lazy computed site and one genuine incoming application ./view initialization window, with debug/path/fs initial requests in frozen order.",
+    "Shared guard before both existing _load/_resolveFilename bodies closes ordinary cached/builtin bypasses; after-seal genuine constructor fs/node:fs/cached-debug probes can verify saved-loader denial instead of only AST labels.",
+    "Single helper/policy consumed by both namespaces; ordinary optional Mongo/debug tuples and disabled environment branch remain separate. No vendor rewriting, guessed renderer, blanket computed exception or successful mock.",
+    "Literal contact/refill preparationSources additions only, per-worktree app-bundle preserved, helper producer/runtime copies plus actual hash maps, unchanged role counts/resource/result protocol.",
+    "Punycode classified as finite native member only with exact pinned compiler/child membership assertions before package imports; punycode/ stays distinct userland.",
+    "Full existing reachable package AST audit is a separately admitted data-only stage with retained failure findings; no new install or runtime admission follows from the plan."
+  ],
+  "findings": [
+    {
+      "id": "DISABLED-TEMPLATE-STD-1",
+      "severity": "MEDIUM",
+      "sections": [
+        "lifetimeStateMachine.seal",
+        "lifetimeStateMachine.afterSeal",
+        "requiredActualAdmissionControls.identityNegatives",
+        "requiredActualAdmissionControls.safeTesting"
+      ],
+      "title": "Separate irreversible live guard integrity failure from nonpoisoning capability denials and isolated identity tests",
+      "problem": "The plan declares an irreversible FAILED state on exception/state mismatch and no reset, yet groups cache getter/proxy/replacement/deletion, loaded rollback, altered exports/prototype, and repeated load after FAILED under required actual admission controls, followed by restoring mutations and continuing nominal. Restoring descriptors cannot restore a permanently FAILED private closure. Conversely making these live integrity failures recover merely to pass tests weakens the stated lifetime binding. The current wording leaves an implementer to invent which failures poison the live guard and which negative tests run only in isolated instances.",
+      "requiredMinimalChange": "Freeze an explicit transition/test split: successful SEALED computed-load denials from the unchanged genuine View (fs,node:fs,cached debug) invoke the existing expected rejection exactly once and leave SEALED with zero forward effects; genuine lifecycle/identity/cache/state corruption and initialization forwarding failure latch FAILED permanently and cannot regain live readiness after descriptor restoration. Run corrupt-identity, duplicate/missing initialization, direct-resolve-without-frame, FAILED/reset and failed-initialization controls on fresh isolated pure native Module/cache guard fixtures, restoring external descriptors only for test isolation, never resetting/replacing the live guard to continue. Any detected integrity failure in the actual live guard aborts that run. Actual constructor capability denials alone can precede nominal JSON HTTP. No new API/framework/grant is needed."
+    }
+  ],
+  "implementationReviewAttention": [
+    "Obtain the genuine cached View constructor after assertSealed via own-data cache/exports descriptor inspection; do not reopen initialization or bypass the same guarded loader to recover it. Bind the exact method in implementation source.",
+    "Structural AST negative variants should deliberately preserve the supplied original parent digest except the dedicated wrong-hash control so they test structural predicates rather than all failing the whole-source hash check. Final source review must verify actual controls and unique incoming-edge/export ordering.",
+    "Guard request/parent/cache validation must precede request string methods, environment counters, substitutions, optional handlers, builtin checks and native saved load/resolve; proxy/accessor inspections must not invoke supplied code.",
+    "Any additional imports, computed edge or effective native membership mismatch stays held; exact Root shared interface/source candidate, two source votes and all future stage/run/outcome gates remain pending."
+  ],
+  "notClaimed": [
+    "No parser/AST/unit/runtime execution. Native source was read as inert public package bytes only.",
+    "No current Node22/24 builtin-membership observation or actual guard behavior proof.",
+    "No P7 promoteLongs amendment approval, production source approval, C2 adoption, owner/client/clinical/release/final-integration permission."
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "schema": "SD-DISABLED-EXPRESS-TEMPLATE-SHARED-INTERFACE-1",
+  "owner": "/root",
+  "proposalSha256": "c9a058f4bfa3135423496bb6673e3f17937c325c014f1ad1bc9215a6a5f7ae77",
+  "actualImplementationVotes": [
+    {
+      "reviewer": "/root/milestone_composition_r9",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "path": "output/qa/shared-disabled-express-template/STANDARDS_REVIEW.json",
+      "sha256": "ec260169b5eda52345b5cdf31d3556a135b87d1d442c5deb192ec7c782c5c740"
+    },
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "path": "output/qa/shared-disabled-express-template/SPEC_REVIEW.json",
+      "sha256": "2ec4060af1e12321f30e87cbbe06ed0f4a43f96f59269182bbc71ca369500b78"
+    }
+  ],
+  "decision": "AUTHORIZE_EXACT_IMPLEMENTATION_ONLY",
+  "canonicalPolicySha256": "8a9b9d03d5fda5c029c206089864d99d45313a3a7a850532f78eb9eda9d49dcd",
+  "helperSourcePath": "test/api-runtime/disabled-express-template.cjs",
+  "helperProjectAndRuntimeBasename": "disabled-express-template.cjs",
+  "helperSourceSha256": "PENDING_ACTUAL_IMPLEMENTED_BYTES",
+  "exports": [
+    "EXPRESS_VIEW_POLICY",
+    "EXPRESS_VIEW_POLICY_SHA256",
+    "matchDisabledExpressViewSite(ts, tree, node, parentPath, parentSha256)",
+    "createExpressViewGuard(root, manifestFileHashes, deny)"
+  ],
+  "factoryResult": [
+    "load(request,parentModule,forward)",
+    "resolve(request,parentModule)",
+    "assertSealed(): GenuineViewConstructor"
+  ],
+  "ordering": "Load and resolve guard precede existing wrappers string methods/counters/builtin/cache/optional/substitution/nativeforward. assertSealed returns exact validated final cached exports function, not initial constructor Module.exports {}.",
+  "transitionAndTestPartition": [
+    {
+      "when": "NEW receives the exact valid incoming application ./view edge with target cache absent",
+      "transition": "ENTERING",
+      "effects": "Only the one actual saved View-load window opens."
+    },
+    {
+      "when": "ENTERING completes original View native load, all three initial requests exactlyonce/order, loadedtrue/cache/exports identity and no active frame",
+      "transition": "SEALED",
+      "effects": "Permanently close the initialization window; no later adoption/reinitialization."
+    },
+    {
+      "when": "SEALED receives load or resolve FROM the unchanged genuine captured View, with all identity/cache/exports/loaded/descriptor invariants intact",
+      "transition": "SEALED",
+      "effects": "Deny capability with TEMPLATE_ENGINE_DISABLED via existing persistent latch exactlyonce and zero saved-forward/lookup/provider/storage/DB effects. This deliberate denial throw must occur outside any initialization-poisoning catch/finally. Expected denial is consumed; unexpected denial increments persistent unexpected and still fails live acceptance without resetting it."
+    },
+    {
+      "when": "Any identity/cache/prototype/filename/id/exports/loaded descriptor invariant fails, or an initialization window/order/count/frame is invalid",
+      "transition": "FAILED",
+      "effects": "Latch permanently before rejection. In a live fixture abort the run; restoring external data or another call can never regain readiness."
+    },
+    {
+      "when": "The exact incoming initialization forward or an admitted View initial-request forward throws or fails its completion checks",
+      "transition": "FAILED",
+      "effects": "Latch permanently, close windows/frames in finally and rethrow the original exception unchanged; no retry/adoption. A nested unrelated optional error caught normally by the library does not count unless it propagates out of the admitted forward."
+    },
+    {
+      "when": "An ordinary unrelated request is forwarded through existing loader policy",
+      "transition": "UNCHANGED",
+      "effects": "Return/throw the original result/error unchanged. Do not catch every ordinary load as a guard failure. In particular an existing exact optional MODULE_NOT_FOUND/catch cannot poison NEW or SEALED."
+    },
+    {
+      "when": "FAILED receives any later guard load/resolve/assertSealed/open attempt",
+      "transition": "FAILED",
+      "effects": "Deny without savedforward and without any reset/replacement/reinitialization; live runtime cannot continue nominal."
+    }
+  ],
+  "liveProbes": "Only intact genuine cached View constructors fs/node:fs/debug using existing expected-latch. assertSealed+samector before/aftereach and zero savedforward/lookups/DB/provider/storage deltas. All corrupt/fatal schedules are isolated pure nativeModule/cache unitfixtures; no liveFAILED recovery.",
+  "ownership": {
+    "/root": [
+      "test/api-runtime/disabled-express-template.cjs",
+      "test/api-runtime/disabled-express-template.test.mjs",
+      "test/api-runtime/platform.mjs",
+      "test/api-runtime/platform.test.mjs"
+    ],
+    "/root/lab_remaining_audit": [
+      "customer-contact namespace6hooks in customer-contact-proof"
+    ],
+    "/root/customer_remaining_audit": [
+      "pharmacy-refill namespace6hooks in customer-pharmacy-lab"
+    ]
+  },
+  "literalPlatformAllowances": {
+    "CUSTOMER_CONTACT_ROLE": [
+      "test/api-runtime/disabled-express-template.cjs"
+    ],
+    "PHARMACY_REFILL_ROLE": [
+      "test/api-runtime/disabled-express-template.cjs"
+    ]
+  },
+  "unchangedOtherRoles": [
+    "AUTH_ROLE",
+    "PRIVATE_DOCUMENT_ROLE"
+  ],
+  "producerExpectedCountsToDeriveAtSource": {
+    "C1": 90,
+    "P7": 47
+  },
+  "reviewContextOnly": "Interface SHA goes in additionalReviewContextPins of later invocation proposals; never manually insert into producer maps unless actual reviewed producer consumes it. Helper actual bytes must appear in all actual producer/runtime maps and admitted ports.",
+  "sourceReview": "Two actual eligible nonauthor decisions exclude each changed scope author; code is not approved by these design votes. Root sharedalgorithm/platform changes reviewed by two nonauthors.",
+  "execution": "No unit/parser/compiler/audit/npm/app/Docker stage authorized; audit-only whole reachable package closure requires separate exact stage and outcomes before new install.",
+  "preserved": "Current per-worktree app-bundle/root packages and all R13 selected76 bytes unchanged. Existing counts/caps/network/Nodegrants/optionalMongo policy/nativeP7catalog option unchanged."
+}

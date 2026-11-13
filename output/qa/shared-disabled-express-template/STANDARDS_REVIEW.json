@@ -1,0 +1,51 @@
+{
+  "schema": "SD-DISABLED-EXPRESS-TEMPLATE-INDEPENDENT-DESIGN-REVIEW-2",
+  "reviewer": "/root/milestone_composition_r9",
+  "axis": "Standards",
+  "proposalAuthor": "/root/contact_preparation_independent",
+  "proposalPath": "/private/tmp/sd-disabled-template-policy-proposal-r2.json",
+  "proposalSha256": "c9a058f4bfa3135423496bb6673e3f17937c325c014f1ad1bc9215a6a5f7ae77",
+  "decision": "APPROVE_IMPLEMENTATION_ONLY",
+  "findings": [],
+  "resolvedFindings": [
+    {
+      "id": "DISABLED-TEMPLATE-STD-1",
+      "disposition": "RESOLVED_IN_EXACT_R2_DESIGN",
+      "evidence": "Explicit transitionRules now distinguish intact sealed capability denial (staysSEALED, one existing expected/unexpected rejection and zero forward) from fatal identity/cache/window/initial-forward errors (irreversibleFAILED, live run abort). requiredActualAdmissionControls confines live probes to genuine unchanged fs/node:fs/cacheddebug constructor denials; isolatedFatalControls places corruption/init/direct-resolve/reset tests in fresh pure native Module/cache fixtures with no live recovery."
+    },
+    {
+      "id": "DISABLED-TEMPLATE-SPEC-1",
+      "disposition": "INDEPENDENTLY_CONFIRMED_SAME_R2_DESIGN_RESOLUTION",
+      "evidence": "Ordinary unrelated errors preserve original error/state; no poisoning on native optional MODULE_NOT_FOUND catches unless error escapes the actual admitted View initialization forward. Each benign live probe is bracketed by assertSealed identity/count/window validation and zero-effect counters."
+    }
+  ],
+  "actualReadOnlyChecks": {
+    "fullCoherentProposalAndDeltaRead": true,
+    "priorBothRequestRecordsHashesMatch": true,
+    "allObservedC1EightSourcePinsMatch": true,
+    "allObservedP7EightSourcePinsMatch": true,
+    "canonicalPolicyHashRecomputed": "8a9b9d03d5fda5c029c206089864d99d45313a3a7a850532f78eb9eda9d49dcd",
+    "nativeExpressViewApplicationDebugSourcesInspectedUnderOriginalAndReusedUnchangedBindings": true,
+    "execution": "NONE"
+  },
+  "implementationBoundary": [
+    "One shared helper owns exact frozen policy, canonical SHA, pure AST predicate and native Module/cache lifetime algorithm; no generic computed exemption, vendor modification, renderer dependency, runtime TS import or successful mock.",
+    "Actual _load/_resolveFilename guard calls precede counters/string methods/cache/builtin/substitution/optional/native forwarding. Target genuine module identity and descriptor/cache/exports invariants remain checked for every captured-parent request.",
+    "assertSealed now returns the same validated own-data cached View exports constructor, avoiding unguarded reimports or duplicate cache-inspection algorithms. No state/reset/recovery/testmode API.",
+    "Structural AST variants use original supplied digest except dedicated wrong-hash case; actual source audit computes real hash, validates unique site/incoming parent/export/init order, and persists eight new plus four unchanged Mongo negatives.",
+    "Shared role allowances remain literal C1/P7 only; auth/private must reject helper source bindings. Per-worktree app-bundle remains unchanged. Helper source pin and exact producer maps are derived from implemented source, separately from policy/context/runtime maps.",
+    "Finite punycode builtin classification requires exact pinned Node24/22 membership assertions before respective package imports; punycode/ remains userland. Unknown static/computed/dynamic edges stay fatal.",
+    "Live integrity failure always aborts; restoring external descriptors, replacing helper or constructing new guard cannot resume that live run. Isolated pure corruption controls are not app evidence."
+  ],
+  "independenceDisclosure": "Reviewer authored underlying P7 production7b, not this proposal or future guard; this approval is solely new shared guard/policy/AST/audit design and grants no independent reapproval of own production or related existing fixture source.",
+  "retainedGates": [
+    "Root must freeze actual shared interface and explicit author ownership after both exactR2 votes; combined implementation requires two actual eligible nonauthor source/composition reviews.",
+    "No executable parser/helper-unit/static-AST-audit/Node/compiler/package/install/emission/app/DB/Docker/provider/model operation is approved here. Separate exact proposals, actual votes/receipts/nonces/owned areas and outcomes remain required.",
+    "P7 promoteLongs source approval separate. Full package audit and future exact native artifacts remain unproved; no reused old plan/template/receipt or automatic retry.",
+    "Contact69/32/16 and refill19/20/7, same180s/30s/resources/network/filesystem/provider/case/control predicates unchanged; R13frozen subjects/context and all historical failures preserved.",
+    "No root dependency/runtime adoption, production activation, owner/client/clinical/release/final-integration permission."
+  ],
+  "sourceEdits": false,
+  "runtimePermission": false,
+  "actualImplementationExistsOrApproved": false
+}

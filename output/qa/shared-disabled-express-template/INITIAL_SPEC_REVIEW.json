@@ -1,0 +1,59 @@
+{
+  "schema": "SD-DISABLED-TEMPLATE-POLICY-NONAUTHOR-SPEC-DESIGN-REVIEW-1",
+  "reviewer": "/root/customer_remaining_audit",
+  "axis": "NONAUTHOR_SPEC_NEW_DESIGN_ONLY",
+  "author": "/root/contact_preparation_independent",
+  "proposalPath": "/private/tmp/sd-disabled-template-policy-proposal.json",
+  "proposalSha256": "c4764240adbf8314338c66c26883a59e4b6617efaac2afb6e8158f4060b1c415",
+  "decision": "REQUEST_CHANGES",
+  "authorshipDisclosure": "Reviewer authored P7fixture/bootstrap/compiler/contract and earlier private/contact source work, but did not author this new shared guard/policy/AST/audit design. Review is limited to that new design; no selfapproval of related existing source or source/execution grant.",
+  "findings": [
+    {
+      "id": "DISABLED-TEMPLATE-SPEC-1",
+      "severity": "MEDIUM",
+      "sections": [
+        "lifetimeStateMachine.seal",
+        "lifetimeStateMachine.afterSeal",
+        "requiredActualAdmissionControls.withinExistingADMISSION",
+        "requiredActualAdmissionControls.identityNegatives",
+        "requiredActualAdmissionControls.safeTesting"
+      ],
+      "title": "Expected constructor capability denials and fatal integrity failures need distinct frozen transitions",
+      "trigger": "The genuine sealed View constructor probe reaches require(fs/node:fs/debug); the helper must deny before any cached/builtin/original load. Original seal says anyexception/state mismatch makesFAILED without distinguishing these expected-denial throws. safeTesting also says actualnegatives use genuinelycaptured Module and restoreownedmutations before continuing; its identitynegative list includes cache/prototype/loaded corruption and repeated/reset attempts.",
+      "effect": "An implementation can poison the liveguard on the first required benignconstructor denial, then be forced to reset/replace guard state to make laterprobes/nominalJSON flow pass. Alternatively it can restore a corrupted cache/loaded/prototype fixture and silently treat FAILED as SEALED. Either interpretation defeats an irreversiblelifetime proof or makes ordinarypositive application composition unsatisfiable. This is a designambiguity, not observedruntime behavior.",
+      "minimalRequiredAmendment": [
+        "Explicitly separate intact genuinelycaptured sealed View capability denials from integrity/window/forward faults. Intact postseal load/resolve denial returns typed TEMPLATE_ENGINE_DISABLED through existing latch while retaining SEALED; knowncounter accounting still distinguishes expected vsunexpected.",
+        "Any changedModule/cache/prototype/filename/id/exports/loaded descriptor, invalidinitialwindow/order/count/frame or nativeforward failure setsFAILED irreversibly and aborts the liveapplication attempt. No live reset/recreate/replacement to continue.",
+        "Confine all corrupt-identity/cache/loaded/reset/FAILED tests to separate fresh pureguard/nativeModule-cache fixtures. Restore exact test descriptors in finally only toclean up isolatedtests, never as guardrecovery. The liveC1/P7 runtime ADMISSION contains only the three unchanged-genuineView constructor capability denials.",
+        "After each benignliveprobe require assertSealed plus unchangedinitialcounts/export/cache/clientidentity and zero savedforward/native/provider/storage/DB deltas. After fatalpurefixturefailure prove every later View load/resolve/open attempt denied without forward; no reinitialization."
+      ]
+    }
+  ],
+  "positiveDesignAssessment": [
+    "Both CommonJS load ANDresolve gates precede existing .replace/builtin/cache/optional/substitution branches. Actual barefs, node:fs and alreadycacheddebug constructor probes therefore target the known cached/builtin bypass, not only a synthetic renamed request.",
+    "ExactnativeView/application source read: incomingrequire ./view only during application top-level loadedfalse; Viewtop-level debug/path/fs initialize once beforemodule.exports View, while require(mod).__express is lazy in View(name,options) under !opts.engines[this.ext]. Node caches and closureidentity must remain the proof, not filenameallowlists.",
+    "Onefrozenpolicy+canonicalSHA and sharedAST/runtimehelper avoids duplicateC1/P7 implementations. Rootrole-specific preparationSources additions/helper source and copiedfile hash bindings correctly distinguish policyhash from actualhelperbytes and preserve auth/private denial.",
+    "EightstaticASTnegativecontrols remain required alongside fourexistingMongo negatives; each must exercise intendedmismatch rather than allfalling onlybecausechangedtext hash mismatches. Wholeparent/incominghash, uniqueASTsite and fixedentry/init/sourceclosure proof remain mandatory.",
+    "punycode exactname classification retains punycode/ as userland and actualfixedNode24/22 builtinmembership assertions before imports; exactbinarymembership is UNPROVEN now. No guessedchild_process/dependency/optional allowance.",
+    "One separatelyreviewed data-only complete reachablepackage audit using existingownedC1 install and same traversalmatcher can surface remainingunknownedges without anotherblindinstall. P7 reuse requires actuallater lock/reachablebytes equivalence, not name/versionassumption.",
+    "No vendor rewrite/enginepackage/genericcomputedregistry/new appcapability/production code. Sourceclosed trustedfixture is explicit, not arbitraryhostileJavaScript sandbox or proof that a cachedcaller-suppliedengine could never beexecuted independently ofrequire."
+  ],
+  "actualReadOnlyChecks": {
+    "fullProposalRead": true,
+    "currentBaselineWholeFilesRehashed": 16,
+    "canonicalPolicyHashVerified": "8a9b9d03d5fda5c029c206089864d99d45313a3a7a850532f78eb9eda9d49dcd",
+    "nativeExpressViewAndApplicationSourceHashesVerified": true,
+    "tr46BarePunycodeAndInstalledUserlandSourceVerified": true,
+    "sourceExecution": "NONE",
+    "R13FrozenPacketSubjectChanges": "NONE"
+  },
+  "retainedConditions": [
+    "Authoramendment requires two actual independent nonauthor newdesign decisions before source; this REQUEST grants noimplementation. Root finalsharedinterface/source ownership/gates still need freezing.",
+    "Actualcombinedhelper/hooks/platform source needs two eligible nonauthor source/composition reviews excluding eachchangedscopeauthor; existingP7promoteLongs sourcefix/approvals separate.",
+    "Helperunits/staticASTaudit/metadata/install/emission/actualappinvocation all separate exactproposals/twovotes/receipts/nonces/ownedareas/outcomes; no parser/compiler/package/model/DB/Docker/provider execution here.",
+    "C1source69/groups32/controls16 and P7source19/groups20/controls7,180s/30s/resource/network/fs/provider/defaultclosure and all originalfailedartifacts stay preserved.",
+    "OrdinaryJSON composition and completecase/control predicates must pass afterbenignsealedprobes. Frozenruntimealiases are not a generalcallsite provenance or managedsecuritypolicy proof.",
+    "R13 live selected76subject/context bytes untouched; no invokes/sends/account/config changes."
+  ],
+  "reviewerExecution": "Inert source/JSON/hash/directnativepublicfile reads only; no parser/TypeScript/Node/compiler/app/package/model/DB/provider execution or sourceedit."
+}

@@ -1,0 +1,399 @@
+{
+  "schema": "SD-SHARED-DISABLED-EXPRESS-TEMPLATE-IMPLEMENTATION-PROPOSAL-2",
+  "author": "/root/contact_preparation_independent",
+  "status": "FROZEN_DATA_ONLY_PENDING_TWO_FRESH_ACTUAL_NONAUTHOR_R2_IMPLEMENTATION_VOTES",
+  "decisionRequired": "APPROVE_IMPLEMENTATION_ONLY",
+  "approvalClaimed": false,
+  "objective": "Admit exactly one hash/AST-bound Express View computed site as a disabled capability, enforced by one shared lifetime guard in C1 and P7 before cached/builtin/resolution paths; correct the known punycode builtin classification. No template engine may execute.",
+  "baselineQualification": "C1 current726ddf3 retains two actualfailed-outcome votes and untouched39975compiler. P7 observedf5499f8 is the separately authored promoteLongs:false amendment atop earlier39eb fixture; its independent source approvals remain a separate prerequisite. Existing other/untracked work is untouched. Baseline maps below are observations, not source or execution approval. Baselines remain original-plan-time observations, not a claim about a later execution HEAD. Preserve all currently frozen R13 selected76 subject/context bytes and unrelated edits; no rebase/repin/integration/model invocation is authorized by r2.",
+  "observedBaselines": {
+    "C1": {
+      "root": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-contact-proof",
+      "observedHead": "726ddf31a1d3c2c52d6baaad3b3eab82a2a8a8b5",
+      "files": {
+        "test/api-runtime/customer-contact/bootstrap.cjs": "e972503f57fef0e5aee6350d5397576ba01fdf8e50a993031ed53556e8bae371",
+        "test/api-runtime/customer-contact/compile.cjs": "39975d87dee44534175d1ce2f607566e386dcbfdf22f29472eef2dd2c8c963fa",
+        "test/api-runtime/customer-contact/ports-manifest.json": "025aed7301be709f640662c7e37049a7e559f6277a4b48ada30b072a5247c82e",
+        "test/api-runtime/customer-contact/prepare.py": "001ec42b4305f3a435f5c918059ef3e316b51f5ff2578c33039a154ff9dbe6ef",
+        "test/api-runtime/customer-contact/scenario.cjs": "16b771973f460c7d4957fdc949c20ae15cfecb77e9af7c25cff6d6856c389781",
+        "test/api-runtime/platform.mjs": "7602312625abc76c033477b26222bcb9845a90bc2a5f58044b50d1fa6f7df265",
+        "test/api-runtime/platform.test.mjs": "64fda7f07db234037d34a1bb9d38401a44dafde0d8d637193a7853467faa3a76",
+        "test/application/app-bundle.mjs": "993634db7d05213208ddda434d8d4c21f679ae342f46a1836dda115c7d3b5817"
+      }
+    },
+    "P7": {
+      "root": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab",
+      "observedHead": "2c09f09858f569f9f0081c6792604dc337fb118a",
+      "files": {
+        "test/api-runtime/pharmacy-refill/bootstrap.cjs": "d719aea2ae30c272cb4f3aa45464f0e77ada541307fdd90844749dd4f4c158ad",
+        "test/api-runtime/pharmacy-refill/compile.cjs": "996355bb46e3d926871b3d784b91faa20bc2ff738119397e0f1f2e67e82e4c2f",
+        "test/api-runtime/pharmacy-refill/ports-manifest.json": "b1274f5077e4dd2ca365fda19f7733cc606183eb24a5574e7f382da747e1c0ec",
+        "test/api-runtime/pharmacy-refill/prepare.py": "b249b646e87f570f958d9881728102149bd9e0b676b121f6f80ca5bee68bc379",
+        "test/api-runtime/pharmacy-refill/scenario.cjs": "af0896baf1d0e12d406a12b79b2b882672be88be53305a0c5051c27a8e55c6ff",
+        "test/api-runtime/platform.mjs": "de67306726019393eb5baf83ee17f2710e7cd6725b20cb245f6b064eff2b72b2",
+        "test/api-runtime/platform.test.mjs": "4974277cd312e275436a11367a548fb3c44616d0cedf168254d4314e4ab971d1",
+        "test/application/app-bundle.mjs": "63a5e15779fd942b9ff9e1c3ccaa45d4d347387f196555e2a1b8998477c7ecfc"
+      }
+    }
+  },
+  "owningContracts": [
+    "documentation/planning/implementation/CUSTOMER_CONTACT_FOCUSED_VERIFICATION_CONTRACT.md",
+    "documentation/planning/implementation/PHARMACY_REFILL_FOCUSED_VERIFICATION_CONTRACT_DRAFT.md",
+    "documentation/planning/implementation/PARALLEL_DEVELOPMENT_WORKFLOW.md"
+  ],
+  "unchangedCounts": {
+    "C1": {
+      "sources": 69,
+      "groups": 32,
+      "controls": 16,
+      "emissionPhases": 17
+    },
+    "P7": {
+      "sources": 19,
+      "groups": 20,
+      "controls": 7,
+      "emissionPhases": 8
+    }
+  },
+  "singleCanonicalPolicy": {
+    "storage": "One deep-frozen exported literal EXPRESS_VIEW_POLICY in the new shared CJS helper. Both compilers and both bootstraps consume that literal; ports carry only its canonical hash, never a second independently maintained policy object.",
+    "tuple": {
+      "schema": "SD-DISABLED-EXPRESS-VIEW-1",
+      "parent": "node_modules/express/lib/view.js",
+      "parentSha256": "ec627880c1b43aee5887164ac2e9c58f01e4ee8086e23a829eddf1af3858c021",
+      "entryParent": "node_modules/express/lib/application.js",
+      "entryParentSha256": "5901b32f609ba349351bf7406dbdc0c4c57b77ce6f7215ea67ccca5ac2a28e88",
+      "entrySpecifier": "./view",
+      "functionName": "View",
+      "functionParameters": [
+        "name",
+        "options"
+      ],
+      "guard": "!opts.engines[this.ext]",
+      "targetDeclaration": "var mod = this.ext.slice(1)",
+      "expression": "require(mod)",
+      "containingExpression": "require(mod).__express",
+      "resultBinding": "fn",
+      "initialLiteralRequests": [
+        "debug",
+        "path",
+        "fs"
+      ],
+      "initialRequestCounts": [
+        1,
+        1,
+        1
+      ],
+      "moduleExport": "module.exports = View",
+      "disabledCapability": "template-engine-loading"
+    },
+    "canonicalSerialization": "UTF8 JSON with sorted keys, no insignificant whitespace, separators comma and colon",
+    "canonicalSha256": "8a9b9d03d5fda5c029c206089864d99d45313a3a7a850532f78eb9eda9d49dcd",
+    "helperSourceSha256": "NOT_YET_IMPLEMENTED; must be actual bytes in later source candidate, never fabricated or substituted by this policy hash",
+    "shaConstant": "Export exact canonicalPolicySha256 as EXPRESS_VIEW_POLICY_SHA256 from the same helper. Source freeze recomputes canonical JSON to verify that constant; callers compare the constant to the ports pin. Do not duplicate a canonical-sort/hash implementation in both loaders.",
+    "r2Disposition": "Tuple and canonical8a9b9d03 hash unchanged. R2 changes lifetime/test semantics, not native source/AST policy values. Actual helper bytehash remains pending the later reviewed implementation; it is distinct from this tuple hash."
+  },
+  "implementationOwnership": {
+    "proposedBoundaryAmendmentAuthor": "/root, after two actual nonauthor implementation votes; Root can assign narrow namespace hooks explicitly under the workflow, but final source reviews must disclose actual authorship and exclude each author from their own changed scope.",
+    "sharedRootFiles": [
+      "test/api-runtime/disabled-express-template.cjs",
+      "test/api-runtime/disabled-express-template.test.mjs",
+      "test/api-runtime/platform.mjs",
+      "test/api-runtime/platform.test.mjs"
+    ],
+    "namespaceHooksOnly": {
+      "C1": [
+        "test/api-runtime/customer-contact/prepare.py",
+        "test/api-runtime/customer-contact/compile.cjs",
+        "test/api-runtime/customer-contact/bootstrap.cjs",
+        "test/api-runtime/customer-contact/scenario.cjs",
+        "test/api-runtime/customer-contact/ports-manifest.json",
+        "test/api-runtime/customer-contact/README.md"
+      ],
+      "P7": [
+        "test/api-runtime/pharmacy-refill/prepare.py",
+        "test/api-runtime/pharmacy-refill/compile.cjs",
+        "test/api-runtime/pharmacy-refill/bootstrap.cjs",
+        "test/api-runtime/pharmacy-refill/scenario.cjs",
+        "test/api-runtime/pharmacy-refill/ports-manifest.json",
+        "test/api-runtime/pharmacy-refill/README.md"
+      ]
+    },
+    "platformCopies": "Root owns main customer-pharmacy-lab platform plus the dependent customer-contact-proof platform. Add the helper literal source path only to CUSTOMER_CONTACT_ROLE and PHARMACY_REFILL_ROLE preparationSources where those roles exist. Auth/private role objects, dispatch behavior, result protocol, NodeArgs and all lifecycle resource logic remain byte-equivalent.",
+    "outsideScope": [
+      "Any src1 production file",
+      "Any root package/lock/start/runtime adoption",
+      "Both current test/application/app-bundle.mjs bodies (they differ across worktrees and each must remain byteexact)",
+      "P7 promoteLongs:false logic/native driver source policy",
+      "C1 metadata/identity algorithms",
+      "Auth/private bootstrap/preparation policies",
+      "Generic registry/RBAC/framework/third lifecycle",
+      "Vendor bytes or a renderer dependency"
+    ]
+  },
+  "sharedHelperInterface": {
+    "sourcePath": "test/api-runtime/disabled-express-template.cjs",
+    "projectAndRuntimeBasename": "disabled-express-template.cjs",
+    "exports": [
+      "EXPRESS_VIEW_POLICY",
+      "EXPRESS_VIEW_POLICY_SHA256",
+      "matchDisabledExpressViewSite(ts, tree, node, parentPath, parentSha256)",
+      "createExpressViewGuard(root, manifestFileHashes, deny)"
+    ],
+    "factoryResult": [
+      "load(request, parentModule, forward)",
+      "resolve(request, parentModule)",
+      "assertSealed(): GenuineViewConstructor"
+    ],
+    "dependencies": "Trusted Node standard-library Module and util.types only, plus primitive descriptor/identity operations. No package import, fs/network/DB/provider operation, source execution, dynamic registration or runtime TypeScript import. Compiler passes its already admitted TypeScript object only to the pure AST matcher.",
+    "boundaryCallback": "Each bootstrap supplies () => reject('TEMPLATE_ENGINE_DISABLED'). This one public literal in bootstrap keeps the existing fixed failure-code decoder complete; all expected/unexpected accounting uses its existing persistent latch. Helper does not reset counters.",
+    "minimality": "One runtime algorithm, one AST predicate and one literal policy/hash in the helper. Thin namespace hooks call load/resolve/assertSealed and existing reject latch. assertSealed returning the validated constructor eliminates duplicated cache inspection and another public helper method. No state getter/reset/recover/test-mode/registration API.",
+    "assertSealedContract": "Validate private stateSEALED, exact original native Module/cache/filename/id/own-data loadedtrue/own-data exports identity, three initial counts1 each and closed windows/frames. Return that SAME unchanged own-data cached exports function after validation. It performs no import/resolve/fs/provider/DB call, reinitialization or reset. The genuine function is available only to trusted bootstrap/scenario code after sealing."
+  },
+  "lifetimeStateMachine": {
+    "creation": [
+      "Run only after full manifest/files/helper hash admission and before any package/app import. Capture actual native Module object, its prototype and its own-data _cache object. Reject a proxy/accessor/replaced cache before inspecting entries. Require target View cache entry absent. Capture policy-hash equality from manifest own data descriptors.",
+      "State is a private closure NEW/ENTERING/SEALED/FAILED, with no externally supplied state/reset/registration. Native Module/cache identities and filename/id/loaded/exports use own-data descriptors; proxy/getter/coercion cases fail before any forward. Typed intact SEALED capability denial is distinct from fatal integrity failure under the exact transition table."
+    ],
+    "openOnlyAtFrozenIncomingEdge": [
+      "Only the genuine application.js Module request ./view may open NEW\u2192ENTERING. Require own filename/id exact entryParent path, exact native Module prototype, own-data loaded===false and actual cache entry value===that parent. The complete pinned entryParent source/hash and manifest graph must match. Target View cache must still be absent.",
+      "Open the window only around this actual existing saved CommonJS load; forward synchronously once and close in finally. No exported method can adopt a supplied View object. A forged preinserted target cache entry prevents opening. Frozen code before the first View import must not mutate the cache or expose/execute View."
+    ],
+    "captureAndInitialImports": [
+      "Inside that active saved-load window, capture the newly created actual View Module only at its first outgoing debug request. Require own-data filename/id exact target path, native Module prototype, actual current own-data cache entry===parent and loaded===false. Retain that exact object for the lifetime.",
+      "Permit outgoing requests only in exact order debug,path,fs and once each while ENTERING and loaded===false. Claim count in the load gate before forward; never claim again in resolve. Every other request, duplicate/order mismatch, missing/changed cache, proxy/accessor, wrong prototype or different Module object fails before forward.",
+      "Each admitted initial View load opens one private outgoing frame; its same-parent/request resolve may pass only while that frame is active, without consuming the initial count twice. A direct resolve without that frame during ENTERING is fatalFAILED. Valid unrelated dependency loads preserve ordinary loader semantics, including caught optional errors. An intact SEALED resolve is a nonpoisoning capability denial, never an initialization request."
+    ],
+    "seal": [
+      "On successful saved View-load return, require captured native Module own-data loaded===true, original filename/id/cache/exports identity, three counts exactly1 in order, no active outgoing frame and returnvalue===that unchanged exports function. Transition ENTERING\u2192SEALED only here.",
+      "Only an exception escaping the active incoming View initialization/admitted initial request or a genuine invariant/window mismatch latches FAILED. A valid postseal capability denial is a separate branch and leaves SEALED. Unrelated ordinary forward errors propagate without guard-state change; original optional-missing behavior stays intact.",
+      "After normal Express import call assertSealed. It validates and returns the genuine cached own-data exports constructor, with no reimport, bypassed savedload, reopened initialization or new resolver. That same pointer is used by the three live ADMISSION probes."
+    ],
+    "afterSeal": [
+      "For an intact captured View parent/cache/exports/loadedtrue identity, every outgoing load/resolve request is a capability denial: before savedload/requirecache/builtin/substitution/optional/native resolution, invoke existing reject exactlyonce and retain SEALED. This includes barefs, node:fs, path, cacheddebug and any other audited target. No successful module/engine is returned.",
+      "For a changed/fake/proxy/accessor/module-cache/prototype/filename/id/exports/loaded state, latch FAILED irreversibly and reject before forward. Any actual live detection aborts that application attempt. Restoring descriptors, rerunning assertSealed, replacing the helper or creating another guard may never recover that live run.",
+      "Both existing native wrappers call the one common guard before string methods, counters, substitutions, optional handling, builtin/cache checks or native forwarding. Parentnull main entry and valid unrelated module forwards retain existing behavior; no generic new role/capability is created.",
+      "The proof remains genuine captured Module/cache plus a closed actual initialization lifetime, not a filename/request allowlist or callsite provenance claim. It retains the trusted closed fixture threat model."
+    ],
+    "transitionRules": [
+      {
+        "when": "NEW receives the exact valid incoming application ./view edge with target cache absent",
+        "transition": "ENTERING",
+        "effects": "Only the one actual saved View-load window opens."
+      },
+      {
+        "when": "ENTERING completes original View native load, all three initial requests exactlyonce/order, loadedtrue/cache/exports identity and no active frame",
+        "transition": "SEALED",
+        "effects": "Permanently close the initialization window; no later adoption/reinitialization."
+      },
+      {
+        "when": "SEALED receives load or resolve FROM the unchanged genuine captured View, with all identity/cache/exports/loaded/descriptor invariants intact",
+        "transition": "SEALED",
+        "effects": "Deny capability with TEMPLATE_ENGINE_DISABLED via existing persistent latch exactlyonce and zero saved-forward/lookup/provider/storage/DB effects. This deliberate denial throw must occur outside any initialization-poisoning catch/finally. Expected denial is consumed; unexpected denial increments persistent unexpected and still fails live acceptance without resetting it."
+      },
+      {
+        "when": "Any identity/cache/prototype/filename/id/exports/loaded descriptor invariant fails, or an initialization window/order/count/frame is invalid",
+        "transition": "FAILED",
+        "effects": "Latch permanently before rejection. In a live fixture abort the run; restoring external data or another call can never regain readiness."
+      },
+      {
+        "when": "The exact incoming initialization forward or an admitted View initial-request forward throws or fails its completion checks",
+        "transition": "FAILED",
+        "effects": "Latch permanently, close windows/frames in finally and rethrow the original exception unchanged; no retry/adoption. A nested unrelated optional error caught normally by the library does not count unless it propagates out of the admitted forward."
+      },
+      {
+        "when": "An ordinary unrelated request is forwarded through existing loader policy",
+        "transition": "UNCHANGED",
+        "effects": "Return/throw the original result/error unchanged. Do not catch every ordinary load as a guard failure. In particular an existing exact optional MODULE_NOT_FOUND/catch cannot poison NEW or SEALED."
+      },
+      {
+        "when": "FAILED receives any later guard load/resolve/assertSealed/open attempt",
+        "transition": "FAILED",
+        "effects": "Deny without savedforward and without any reset/replacement/reinitialization; live runtime cannot continue nominal."
+      }
+    ]
+  },
+  "staticASTAdmission": {
+    "oneNewField": "packageGraph.disabledExpressTemplate is one explicit record for this policy, with parent SHA, entryParent SHA, call start/length and canonicalPolicySha256. Keep existing Mongo unreachableComputedEdges singleton and its four negatives unchanged; do not introduce an open computed-edge registry.",
+    "matcherRequirements": [
+      "Whole parent path/hash exactly match; unique computed require in view.js; call is require(mod) with exactly one identifier argument, inside property access .__express as initializer of var fn.",
+      "Nearest containing function is the one top-level View(name,options), nearest branch is exactly !opts.engines[this.ext], and preceding same-branch mod declaration is exactly this.ext.slice(1).",
+      "Exactly three top-level literal require calls in frozen order debug/path/fs occur before module.exports=View. No top-level new View/View call, invocation of its exports or alias is admitted. Declaration body is lazy; its value is not passed into the debug initializer. Frozen debug dependency literal closure must have no path that re-enters or calls this View before export/load completion.",
+      "entryParent contains one exact top-level require(./view) at the pinned source. Entry/load/exports ordering and no cache surgery before it are included in source review. Both source hashes must be in the ordinary audited package graph.",
+      "All other computed requires/dynamic imports remain fatal. A missing/unmatched/duplicate site fails audit; no guessed target, vendor rewrite, successful mock or renderer grant."
+    ],
+    "eightNegativeControls": [
+      "wrong-parent-path",
+      "wrong-parent-hash",
+      "wrong-View-function-or-params",
+      "wrong-engine-guard",
+      "wrong-require-or-__express-expression",
+      "wrong-mod-target-declaration",
+      "moved-to-top-level-or-export-before-three-imports",
+      "duplicate-computed-site-or-incoming-view-edge"
+    ],
+    "negativeMethod": "In the separately approved parser audit, structural variants pass the supplied ORIGINAL parent digest to the SAME AST matcher (except the dedicated wrong-hash case), so the intended function/guard/expression/order/duplicate predicate is reached. The wrong-hash case alone changes the supplied digest on original text. Label these explicitly as pure matcher controls, never valid changed-source provenance. Production audit always computes actual whole source SHA itself and applies both hash and structural gates. Exactly8new IDs plus the unchanged4Mongo IDs are required; original vendor files remain untouched."
+  },
+  "producerAndArtifactChanges": {
+    "maps": "Current source-derived producer selections are C1OWN10+CONTEXT10+source69=89 and P7OWN10+CONTEXT17+source19=46 at original inspection. Require helper source path in actual CONTEXT selection. Expected increments are90/47 only if no other selected names change. Final exact receipt maps/counts must be freshly derived from the actual reviewed producer source and sourcePins, not hand-copied from runtime descriptor bindings, this plan or Root interface. Any additional consumed context name must be explicit in that source review; never fabricate/guess cardinality.",
+    "copies": "Copy the SAME regular committed helper bytes to owned public project and runtime basenames before compiler startup. The compiler may require its local helper; bootstrap may require the admitted workspace helper after full source/file admission but before installing module wrappers. This avoids runtime attempts to import node:module through the already closed loader.",
+    "descriptor": "Include runtime helper file hash in descriptor files, source helper path/hash in plan/descriptor.sourceFiles and each producer receipt map; cross-check copied bytes and policy canonical SHA. Existing final source/HEAD/owned-area/readback and no-links/noaddons/noenv/bounds gates apply. No old plan/template is repaired or rebound.",
+    "ports": "Add canonical disabledExpressTemplatePolicySha256 and actual helper byteSHA binding only; no duplicate policy object. Runtime asserts both before package import. Keep explicit disabledExpressTemplate singleton/8new matcher controls and original Mongo singleton/4negatives; all existing optional edges unchanged. Root interface carries authority/provenance only.",
+    "sourceLists": "Root adds exact helper path to the literal contact/refill role preparationSources allowances only. Auth/private must still reject a descriptor that names this new helper; add meaningful cross-role negatives. No shared unit-runner staging/count change is needed merely for the helper; freeze any separate helper test invocation independently.",
+    "rootInterfaceContext": "Root shared interface is a separate additionalReviewContextPin by default; it does not change executable producer counts. Canonical policy is in one helper only. Current C1/P7 source maps and artifact maps remain distinct; final source/candidate receipts bind actual current committed bytes."
+  },
+  "requiredActualAdmissionControls": {
+    "liveProbeScope": "ONLY three benign capability denials using the unchanged genuine captured View constructor: fs,node:fs,cacheddebug. No live Module/cache/loaded/exports/prototype/descriptor corruption, failed-initialization, directresolve-without-frame, duplicateinit or FAILED/reset test followed by nominal continuation.",
+    "withinExistingADMISSION": "Keep existing groups/source controls unchanged. After actual Express import, obtain ActualView=guard.assertSealed(), which performs own-data cached Module/exports validation and returns the genuine unwrapped constructor. Do not fetch it through an unguarded load/resolver or reopen the initialization window. Exercise new ActualView('probe.fs',{engines:Object.create(null)}), probe.node:fs and probe.debug, each through the genuine fixed constructor computed require.",
+    "beforeEach": "Call assertSealed and require its result===ActualView, with admitted client/connection identity unchanged. Snapshot saved Module._load/_resolveFilename forward counters, lookup/resolution counters, provider, storage/read and DB command counts and persistent unexpected latch.",
+    "expectedDenial": "Use the existing expectAdmission(TEMPLATE_ENGINE_DISABLED) for exactlyone genuine boundary rejection. Helper SEALED state/identity remains intact even though reject throws; no poisoning catch wraps this deliberate denial.",
+    "afterEach": "Require guard.assertSealed()===ActualView, unchanged private initialization counts/order/window through assertSealed, unchanged cached exports/Module/client identity and zero savedforward/lookup/provider/fs/storage/DB deltas. Persistent unexpected latch must equal baseline; it is never cleared/reset.",
+    "continuation": "Only after all three intact SEALED controls pass, continue normal genuine JSON HTTP composition and every existing domain/control predicate under the same caps. If any guard integrity/window/initial-forward fault is detected in this actual runtime, abort and preserve failure/cleanup; do not attempt to repair external descriptors and continue."
+  },
+  "punycodeClassification": {
+    "observedActualSource": {
+      "parent": "node_modules/tr46/index.js",
+      "version": "3.0.0",
+      "parentSha256": "f949eb33d8ca753be1ba45dd58b1a30294e1e6963c899f4056cc7dddadc8a79c",
+      "line": 3,
+      "literal": "require(\"punycode\")",
+      "actualInstalledUserland": "node_modules/punycode/punycode.js2.3.1 exists with SHA6052a80eac47e46bd4de17ae0095e0192c336d3d7c387d292ad2176ebfc53d04"
+    },
+    "primarySourceEvidence": [
+      {
+        "url": "https://raw.githubusercontent.com/nodejs/node/v22.0.0/lib/punycode.js",
+        "meaning": "Official Node22 built-in source exists; read as data."
+      },
+      {
+        "url": "https://r2.nodejs.org/docs/latest-jod/api/punycode.html",
+        "observedVersion": "22.23.1",
+        "meaning": "Official Node22 documentation identifies bundled punycode."
+      },
+      {
+        "url": "https://nodejs.org/docs/latest-v22.x/api/modules.html#built-in-modules",
+        "observedVersion": "22.23.5",
+        "meaning": "Official source explains builtin-before-node_modules resolution and module.loaded semantics."
+      }
+    ],
+    "exactPatchQualification": "Exact22.23.4 public doc/source endpoints were unavailable through the browsing tool. No frozen Node22/24 code was executed in this task. Node22 core classification is supported by primary source/docs; actual exact-binary membership remains a mandatory pre-import assertion in a separately admitted stage, not already observed proof.",
+    "minimalChange": "Add literal punycode to both existing finite compiler builtinNames inventories. Classify bare punycode/node:punycode as node:punycode BEFORE package resolution; require actual pinned compiler Node24 and child Node22 builtin membership before respective package imports. If membership differs, fail closed for review. Runtime already uses its actual builtin set; do not add a loader capability or successful replacement.",
+    "preserve": "punycode/ remains a distinct userland request and is not made a builtin by prefix/name truncation. Retain installed lock/file inventory as data, but traverse userland package only if an independently real runtime edge requests it. No child_process allowance for an unreachable package script or dependency addition."
+  },
+  "completeGraphScanBeforeAnotherInstall": {
+    "status": "NOT_RUN; current task forbids parser/Node/package execution. Text/literal discovery above is not AST closure proof.",
+    "requiredGate": "Before any additional install/emission attempt, freeze and obtain two exact stage votes for a single bounded data-only full runtime-reachable package AST audit using the existing preserved C1 installed tree and pinned TypeScript5.9.3. Read old area only; put reports in a new owned audit area. Reuse compiler edges/visit audit logic via an explicit audit-only mode; do not emit app modules or install anything.",
+    "implementationScope": "One audit-only entry branch in the existing C1 compiler may bypass emission and call the SAME package traversal/matcher, with explicit frozen inputs/root/LOCK/whole installed file map/helper/TS hashes and a new exact invocation proposal. It must not have a separate looser resolver. Exact staging/argv/permissions are a later review artifact, not approved here.",
+    "coverage": "C1 and P7 currently declare the same seven package roots/versions and six runtime roots. Audit the union once under known C1 LOCK4f640/147 and actual source hashes; apply its result to P7 only after P7 actual resolved lock and archive/source bytes are proven equal for every reachable package edge. No assumption of a P7 accepted lock exists now.",
+    "output": "Persist all reachable public parent paths/hashes, each literal edge and Node-vs-package target, all optional exact absences, both exact disabled sites, all static negatives and every unmatched/computed/dynamic/missing-edge finding. Collect complete findings across visited literal closure rather than stopping at the first issue; final status FAIL if any unresolved edge. Never guess targets for unknown computed expressions.",
+    "scopeLimit": "Reachable runtime roots only, not every installed dev/tool/example/CLI script. Installed file inventory still hashes all files. No script execution, child_process for unreachable code or claim that regex/comment scans prove AST reachability. Two independent audit outcomes precede new install permission; a later real install still audits its exact bytes again."
+  },
+  "reviewAndExecutionGates": [
+    "Obtain two fresh actual independent nonauthor APPROVE_IMPLEMENTATION_ONLY decisions on exact r2 bytes, addressing both retained REQUEST_CHANGES findings, before Root freezes the shared interface or code changes. Original request records are not approvals; author cannot selfapprove.",
+    "Preserve P7 promoteLongs amendment/source reviews separately. Freeze coherent combined helper/hooks/platform candidate and exact forward/inverse hashes; obtain two eligible nonauthor source/composition reviews excluding each actual code author. No claim that original Lab/Customer-authored bases were independently selfapproved.",
+    "Freeze separately reviewed helper-unit/static-AST-audit invocation; no parser/unit/compiler/Docker execution is approved by this plan. Accept actual complete audit outcomes before further public install.",
+    "Each fixture still needs its own exact new-source metadata/install/emission stage as applicable, new600receipt/currentHEAD/newUUID/once/freshownedarea and two actual preparation outcomes. Retain all C1/P7 old failures/receipts/once/artifacts byteexact; no manual reuse/rebind.",
+    "Then each actual native application invocation needs separate current artifact pre-import review/two exact votes and one new receipt. All real controls, HTTP/domain result, zero unexpected effects and fresh same-engine exactID/workspace cleanup outcomes remain unproved until actual execution.",
+    "Any unmodeled source edge, helper identity/lifetime defect, source drift, failed stage or unknown cleanup stops dependent work. No automatic retry/cap extension/optional broadening/default readiness or production activation."
+  ],
+  "executionByThisTask": "NONE: r2 used only inert JSON/hash/text reads and wrote only the new r2 proposal. No executable checks, parser/Node/compiler/package/app/model/DB/Docker/provider/model invocation, source/worktree edit or R13selected76 mutation.",
+  "allowedWritesByThisTask": [
+    "/private/tmp/sd-disabled-template-policy-proposal-r2.json"
+  ],
+  "retainedLimits": "All C2/C3/owner/client/clinical/production/root-adoption/final-integration/release gates remain. Contact32/16 and refill20/7, original180s/30s resources/network/permissions/provider and complete-case/control predicates remain unchanged.",
+  "revision": 2,
+  "supersedes": {
+    "path": "/private/tmp/sd-disabled-template-policy-proposal.json",
+    "sha256": "c4764240adbf8314338c66c26883a59e4b6617efaac2afb6e8158f4060b1c415",
+    "disposition": "Original proposal and both actual REQUEST_CHANGES records preserved byteexact; no implementation or execution occurred under this amendment."
+  },
+  "actualPriorReviews": [
+    {
+      "path": "/private/tmp/sd-disabled-template-policy-STANDARDS.json",
+      "sha256": "3a4d26f70c093a51b0dba7a60d2738ad56cb2100c1a6e8929b439d86beeddacb",
+      "reviewer": "/root/milestone_composition_r9",
+      "decision": "REQUEST_CHANGES",
+      "findingIds": [
+        "DISABLED-TEMPLATE-STD-1"
+      ]
+    },
+    {
+      "path": "/private/tmp/sd-disabled-template-policy-SPEC.json",
+      "sha256": "8834dc7cdad00bf1a4e9464bde1fd1c903b5f5d012d8e43fbe4dc077b7963dd2",
+      "reviewer": "/root/customer_remaining_audit",
+      "decision": "REQUEST_CHANGES",
+      "findingIds": [
+        "DISABLED-TEMPLATE-SPEC-1"
+      ]
+    }
+  ],
+  "r2AmendmentScope": [
+    "Make postseal capability denials nonpoisoning only when the genuine captured View/cache/exports/loaded state is intact; expected/unexpected latch semantics stay authoritative.",
+    "Make integrity/window/initial-forward failures irreversible FAILED, aborting a live attempt without resetting/replacing the guard. Move all fatal/corruption controls to fresh isolated pure guard/nativeModule-cache fixtures.",
+    "Specify that unrelated ordinary forwards propagate their original errors without poisoning state, preserving existing exact optional MODULE_NOT_FOUND catches; only errors escaping the active View initialization or its admitted initial requests poison that lifetime.",
+    "Specify shared assertSealed return of the genuine own-data cached exports constructor, avoiding duplicate cache inspection or unguarded reimports in two bootstraps.",
+    "Make structural AST negatives retain the original supplied digest except the dedicated wrong-hash test, so they exercise structural predicates.",
+    "Clarify Root-only shared interface ownership and later exact producer-map derivation. No canonical tuple/source/grant/case/control change."
+  ],
+  "findingDispositions": [
+    {
+      "id": "DISABLED-TEMPLATE-STD-1",
+      "disposition": "AMENDED_FOR_FRESH_R2_REVIEW_ONLY_NOT_SELFAPPROVED",
+      "sections": [
+        "lifetimeStateMachine.transitionRules",
+        "lifetimeStateMachine.seal",
+        "lifetimeStateMachine.afterSeal",
+        "requiredActualAdmissionControls",
+        "isolatedFatalControls"
+      ]
+    },
+    {
+      "id": "DISABLED-TEMPLATE-SPEC-1",
+      "disposition": "AMENDED_FOR_FRESH_R2_REVIEW_ONLY_NOT_SELFAPPROVED",
+      "sections": [
+        "lifetimeStateMachine.transitionRules",
+        "lifetimeStateMachine.seal",
+        "lifetimeStateMachine.afterSeal",
+        "requiredActualAdmissionControls",
+        "isolatedFatalControls"
+      ]
+    }
+  ],
+  "isolatedFatalControls": {
+    "location": "Separately frozen shared helper pure unit fixture; fresh isolated native Module/cache guard instance per fatal schedule, with trusted standard-library-only test setup. These tests are not actual application/domain or native-driver proof.",
+    "controls": [
+      "fake/clone target Module",
+      "proxy parent/cache with observable traps",
+      "accessor filename/id/loaded/exports or cache entry",
+      "wrong native Module prototype",
+      "cache replacement/deletion/identity mismatch",
+      "mutated loadedfalse/exports/filename after sealing",
+      "duplicate/order-mismatched or missing initial request",
+      "ENTERING directresolve with no active outgoing frame",
+      "initialization incoming/initial outgoing savedforward throws",
+      "assertSealed before successful initialization or after FAILED",
+      "repeated reset/reinitialization/adoption attempt after FAILED"
+    ],
+    "requiredProof": "The first integrity/window/initial-forward failure permanently prevents readiness. After that failure every later View load/resolve/open/assertSealed attempt denies without forwarding, including after restoring external cache/descriptor bytes. No reset/recover/state setter or replacement guard is used to make that same fixture ready.",
+    "cleanupOnly": "Restore original external Module/cache/descriptors in finally solely to clean the isolated test environment. Restoration is not guard recovery. Discard the failed test instance; a fresh isolated instance is permitted only for a different separately declared pure test. Never restore/replace a live C1/P7 guard to continue application execution.",
+    "nonfatalRegression": "In a separate intact initialized pure fixture, an ordinary unrelated original forward throwing the existing MODULE_NOT_FOUND sentinel must propagate exactly without changing SEALED; subsequent assertSealed remains valid. This protects existing optional-catch behavior, not an added missing-module permission.",
+    "liveSeparation": "All corrupt/fatal schedules stay out of actual runtime ADMISSION. The live run includes only unchanged-genuine-constructor capability denials; any naturally detected integrity failure is terminal."
+  },
+  "rootSharedInterfaceResponsibilities": {
+    "owner": "/root only; freeze after two actual r2 design votes and before source changes. Proposal author does not issue or infer those votes.",
+    "suggestedDataPath": "output/qa/shared-disabled-express-template/INTERFACE.json",
+    "exactRequiredBindings": [
+      "schema",
+      "actual reviewed r2 proposal SHA256",
+      "two actual implementation vote identities/paths/hashes/decisions",
+      "unchanged canonical policy SHA2568a9b9d03d5fda5c029c206089864d99d45313a3a7a850532f78eb9eda9d49dcd",
+      "literal helper source/runtime/project path",
+      "four helper exports and the assertSealed constructor-return contract",
+      "load/resolve ordering and explicit transition/test partition",
+      "literal C1/P7 role-only platform allowances",
+      "actual code authors/owned files and stage boundaries"
+    ],
+    "pinRole": "The interface is a review-context authority pin, not a second policy object or executable guard algorithm. Add its actual filehash to later exact proposal additionalReviewContextPins; do not silently insert it into a producer receipt map unless actual reviewed producer source consumes it.",
+    "helperByteHash": "Root freezes actual implemented helper SHA only in the later source candidate/ports/producer/runtime copies; no helper code exists here and no implementation hash is invented.",
+    "scope": "Root freezes shared path/interface/platform allowances and integration; namespace author handoffs remain explicit and authors cannot approve their own changed scope. Auth/private role behavior, per-worktree app-bundle and R13selected76 inputs remain preserved."
+  }
+}
