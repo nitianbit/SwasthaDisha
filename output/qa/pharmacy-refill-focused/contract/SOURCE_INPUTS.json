@@ -1,0 +1,483 @@
+{
+  "schema": "SD-PHARMACY-REFILL-FOCUSED-CONTRACT-INPUTS-1",
+  "author": "/root/customer_remaining_audit",
+  "baseline": "3a977847ce69bb030a3e950f82c74af272270bae",
+  "productionCandidate": "7b72154506caa037101f490963ca4bbdca594018",
+  "status": "DRAFT_SOURCE_INVENTORY_ONLY_NO_EXECUTION_AUTHORITY",
+  "wholeProductionSources": [
+    {
+      "path": "src1/modules/pharmacySubscriptions/routes/index.ts",
+      "sha256": "08dcc367a86f6ffc1e675e8a010fcc87ffb5ff5329fda4c29fc0c04cca0c834c",
+      "bytes": 1636
+    },
+    {
+      "path": "src1/modules/pharmacySubscriptions/controller/index.ts",
+      "sha256": "7bb21a7ec9aaf8693fb2438a5800f7308d2978353c5ed1c95c0f46e60278a9de",
+      "bytes": 2619
+    },
+    {
+      "path": "src1/modules/pharmacySubscriptions/services/index.ts",
+      "sha256": "3b22b92d88790c521616302d7827023e4ffa16eb25989a6b443152d0af0f9171",
+      "bytes": 7480
+    },
+    {
+      "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+      "sha256": "4c730ceb1c4f8a6f64a07e7fe83caca7029c1e9fd81d18f82f0dbe0a8185aa0f",
+      "bytes": 8547
+    },
+    {
+      "path": "src1/modules/pharmacySubscriptions/validation/index.ts",
+      "sha256": "1e4dcc64b270c9c8ee242d78af13f3736f2c063de6f8c223822aca7e87de91e4",
+      "bytes": 5434
+    },
+    {
+      "path": "src1/modules/pharmacySubscriptions/types/index.ts",
+      "sha256": "aec8ae4c8d1728f7539e68543e6e97a178b21b8cccc426ed9e4d43f85860fc6e",
+      "bytes": 2346
+    },
+    {
+      "path": "src1/modules/pharmacySubscriptions/model/index.ts",
+      "sha256": "568196be447d9f99cbfbb2fb81169abedbc93f777b7fc3dbf6302a19e925fcc8",
+      "bytes": 1907
+    },
+    {
+      "path": "src1/modules/pharmacies/model/index.ts",
+      "sha256": "beda95d89a9773a8d5851dd923c363c83123a573f7391836dec69b13e5cfa177",
+      "bytes": 3194
+    },
+    {
+      "path": "src1/modules/pharmacies/types/index.ts",
+      "sha256": "e43d4c6e5af5ebc9a21e3a35d41e475e92ab7509961cdafe6bfc3043af0b24f0",
+      "bytes": 4043
+    },
+    {
+      "path": "src1/modules/middleware/auth.ts",
+      "sha256": "db0f9bb4307e46e3cd05968a9de8f7777f5de0c6ca1894254491e9d855f893a2",
+      "bytes": 8706
+    },
+    {
+      "path": "src1/modules/middleware/errorHandler.ts",
+      "sha256": "1e06885f2c5b8df8ed186dba28cd975aaf4f4d5233a2daa277e6b7f7b15fad51",
+      "bytes": 944
+    },
+    {
+      "path": "src1/modules/common/middleware/validation.ts",
+      "sha256": "8be55cee7485531491ff095ed1d9f36af443987690f22d04dd67ef9318a0a5ef",
+      "bytes": 937
+    },
+    {
+      "path": "src1/modules/common/utils/asyncHandler.ts",
+      "sha256": "59fe49db58678ef81242a654f7457f74b067b2583a3f8dc70918b61f50228bd9",
+      "bytes": 671
+    },
+    {
+      "path": "src1/modules/common/utils/mongoErrors.ts",
+      "sha256": "147a5687832d03c654acd97e0f9e0d9c6c0c7ab51a2841f0eb2260235229d43d",
+      "bytes": 451
+    },
+    {
+      "path": "src1/modules/common/repository/BaseRepository.ts",
+      "sha256": "14a0fe5fdc9abd7a54b913bca4816a631b4bb263c11ad21ec37da0ee6c3f723a",
+      "bytes": 2494
+    },
+    {
+      "path": "src1/modules/common/repository/index.ts",
+      "sha256": "6e13d4d0ced3ad40772c5b2c35034544fe49f0d7b715cf0309f954be7ab5cb77",
+      "bytes": 62
+    },
+    {
+      "path": "src1/modules/common/types/index.ts",
+      "sha256": "63ad3821027150d368e993903e954b4a80b776ff223caf322c104008239d4cbd",
+      "bytes": 53
+    },
+    {
+      "path": "src1/modules/common/types/error.ts",
+      "sha256": "3f69860897913c1d8467e3f8aaca7d083e9d50a841553adce33ec6421a0fda07",
+      "bytes": 622
+    },
+    {
+      "path": "src1/modules/common/types/response.ts",
+      "sha256": "44c5dbcf38ea117eaa13f3a715143ea147a7abf25c3491b61817e67b5f3d6f93",
+      "bytes": 359
+    }
+  ],
+  "contextOnly": [
+    {
+      "path": "API_SCHEMAS.md",
+      "sha256": "948f1ef2c319d1206438f283f6e7116d0f83f9d02b66495074f9a535891e8951",
+      "bytes": 18135
+    },
+    {
+      "path": "src1/routes/index.ts",
+      "sha256": "9be841178931003004cc53a0285b5c849d82a82dbc798a4a0d38bf69396de6ea",
+      "bytes": 6828
+    },
+    {
+      "path": "src1/modules/pharmacyCustomers/services/index.ts",
+      "sha256": "ab1cc1893fc2c8e3c369120ae6f5d9393c30a0ecb1a7f59d0c6ca80165e8e386",
+      "bytes": 5248
+    },
+    {
+      "path": "package.json",
+      "sha256": "65b171e77e8cd3bfd37eb691cf9ce310d9108cedbf571232bd4859c4b16895ab",
+      "bytes": 1898
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "0f8d4fe081e8de1cf87673f743b73ee404be2483fbc144416039ca3076822080",
+      "bytes": 233000
+    },
+    {
+      "path": "documentation/planning/implementation/PHARMACY_REFILL_OPERATIONS_CONTRACT.md",
+      "sha256": "8e25a0a350f6a441256f22a0fb8fabe64bcdd72ca3fcaf47ddf800f1ddb6dad1",
+      "bytes": 17578
+    },
+    {
+      "path": "documentation/planning/implementation/PARALLEL_DEVELOPMENT_WORKFLOW.md",
+      "sha256": "c4f99a171df17ae98405a1fdd1c6aad0f9ab2dedfdb4aafabff60cb292d6148a",
+      "bytes": 6206
+    },
+    {
+      "path": "documentation/planning/implementation/C3_MONGO_FIXTURE_CONTRACT.md",
+      "sha256": "208d702c9a1f7bc2826bda720603fa8fb382bfed9599739e1c8f4605b81368ce",
+      "bytes": 3583
+    },
+    {
+      "path": "documentation/planning/implementation/C3_AUTH_API_RUNTIME_CONTRACT.md",
+      "sha256": "73301872982a0f79fa805538f679c08e53ce6ef0528790cc75144ed7e2a7d0ee",
+      "bytes": 10083
+    },
+    {
+      "path": "documentation/planning/implementation/C2_COMPATIBILITY_REVIEW.md",
+      "sha256": "e703e7bc43495868edd2ab535cb38b0f5f2ac54b5d572c2c38467b59e2ae67d4",
+      "bytes": 9660
+    },
+    {
+      "path": "documentation/planning/M0_START_APPROVAL_STATUS.md",
+      "sha256": "67eea927661cf1a94d8644ede28eaa7315d4774866958ff346b37aac5a559be3",
+      "bytes": 14481
+    },
+    {
+      "path": "documentation/planning/implementation/M0_A_PROGRESS.md",
+      "sha256": "31ed2ad7dfee558df0518d9b21f504a2bf6b956fc6faeb67454d4efcb4f81e93",
+      "bytes": 96621
+    },
+    {
+      "path": "documentation/planning/implementation/CUSTOMER_PHARMACY_LAB_DELIVERY_BOARD.md",
+      "sha256": "3e60af2ee33a5b390be0a1a3bc0aeaae991817964466c970fd97e2ead924184b",
+      "bytes": 10132
+    },
+    {
+      "path": "documentation/planning/CAPABILITY_MATRIX.md",
+      "sha256": "05ab06d569b8dad2a690ac434922738bd20ce15d9484b60e4bf55e62e14e7fea",
+      "bytes": 32257
+    },
+    {
+      "path": "documentation/planning/ROADMAP.md",
+      "sha256": "6a5b2e5bfdb42d16021cb28f83531389977d535d9743ae8908ab75ceeabd37cf",
+      "bytes": 69551
+    },
+    {
+      "path": "test/api-runtime/platform.mjs",
+      "sha256": "b5117065c90c4698cb9604a8da0cb673a38249d8eee07a8ac39e11040a56e29f",
+      "bytes": 30320
+    },
+    {
+      "path": "test/api-runtime/platform.test.mjs",
+      "sha256": "334387136951602d44faf72fb351461012409fa4b3f547e2200c9b1ffc81ac16",
+      "bytes": 26298
+    },
+    {
+      "path": "test/api-runtime/unit.mjs",
+      "sha256": "a1f9cfb45bae4c8f0ffa87625423d8ee548b614aa0a97228133e0e75f000cd66",
+      "bytes": 3515
+    },
+    {
+      "path": "test/application/app-bundle.mjs",
+      "sha256": "993634db7d05213208ddda434d8d4c21f679ae342f46a1836dda115c7d3b5817",
+      "bytes": 21325
+    },
+    {
+      "path": "test/foundation/mongo-fixture.mjs",
+      "sha256": "a95eec22111a57f4a6e70efc242fe5e54d1a89ab4020975bbdb9fae3cab4afc2",
+      "bytes": 9097
+    },
+    {
+      "path": "test/application/app-container.mjs",
+      "sha256": "4c2a061a45a30478d4fc04d6cd28bb88aa2fd679e4346136b7714f29142948aa",
+      "bytes": 21188
+    },
+    {
+      "path": "test/api-runtime/scenario/prepare.py",
+      "sha256": "39b4085370a09a34069b9f1c4f45cfd8fa38a3a1f0e380abcef9c469a5add598",
+      "bytes": 15560
+    },
+    {
+      "path": "test/api-runtime/scenario/package-plan.json",
+      "sha256": "d7830a9ce688235bb64f3f9f7ac3d5dd604bb63641cdae97b8b7250bfd957227",
+      "bytes": 426
+    },
+    {
+      "path": "output/qa/pharmacy-refill-operations/CONTRACT_DECISIONS.json",
+      "sha256": "2fdf5f4a0ecfeccdc93016e1cad24b9903ad4c5ab4e68698a37d3a934a46606d",
+      "bytes": 1750
+    },
+    {
+      "path": "output/qa/pharmacy-refill-operations/source-candidate/revision-1/SOURCE_DECISIONS.json",
+      "sha256": "766339bba2d6f61e184b6b5914f0c44a16cba7827d3fe0d2e2b42adf645cf680",
+      "bytes": 1783
+    },
+    {
+      "path": "output/qa/pharmacy-refill-operations/source-candidate/revision-1/SOURCE_CANDIDATE.json",
+      "sha256": "fe8c2a7d3ef013c444d1574fbe5bba7c6d370a073d8594127f5047f36210276d",
+      "bytes": 4369
+    },
+    {
+      "path": "output/qa/pharmacy-refill-operations/source-candidate/revision-1/FOCUSED_VERIFICATION_PLAN.json",
+      "sha256": "180fd3e56666bfbda4e110526fdbcebeaae1cac51aad175447a8507e64780e4f",
+      "bytes": 15097
+    },
+    {
+      "path": "output/qa/pharmacy-refill-operations/source-candidate/revision-1/NATIVE_BSON_PROVENANCE.json",
+      "sha256": "f8e43547cb0c70dc1519ecc3b276bcacf4629407b15dd70fc84f6713c85b195f",
+      "bytes": 1160
+    }
+  ],
+  "literalSourceEdges": [
+    {
+      "parent": "src1/modules/pharmacySubscriptions/routes/index.ts",
+      "specifier": "@/modules/common/utils/asyncHandler",
+      "path": "src1/modules/common/utils/asyncHandler.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/pharmacySubscriptions/routes/index.ts",
+      "specifier": "@/modules/common/middleware/validation",
+      "path": "src1/modules/common/middleware/validation.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/pharmacySubscriptions/routes/index.ts",
+      "specifier": "@/modules/middleware/auth",
+      "path": "src1/modules/middleware/auth.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/pharmacySubscriptions/routes/index.ts",
+      "specifier": "@/modules/pharmacySubscriptions/controller",
+      "path": "src1/modules/pharmacySubscriptions/controller/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/pharmacySubscriptions/routes/index.ts",
+      "specifier": "@/modules/pharmacySubscriptions/validation",
+      "path": "src1/modules/pharmacySubscriptions/validation/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/pharmacySubscriptions/controller/index.ts",
+      "specifier": "@/modules/pharmacySubscriptions/services",
+      "path": "src1/modules/pharmacySubscriptions/services/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/pharmacySubscriptions/controller/index.ts",
+      "specifier": "@/modules/middleware/auth",
+      "path": "src1/modules/middleware/auth.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/pharmacySubscriptions/services/index.ts",
+      "specifier": "@/modules/pharmacySubscriptions/repository",
+      "path": "src1/modules/pharmacySubscriptions/repository/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/pharmacySubscriptions/services/index.ts",
+      "specifier": "@/modules/pharmacyCustomers/services",
+      "kind": "FINITE_CUT"
+    },
+    {
+      "parent": "src1/modules/pharmacySubscriptions/services/index.ts",
+      "specifier": "@/modules/pharmacySubscriptions/types",
+      "path": "src1/modules/pharmacySubscriptions/types/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/pharmacySubscriptions/services/index.ts",
+      "specifier": "@/modules/common/types",
+      "path": "src1/modules/common/types/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/pharmacySubscriptions/services/index.ts",
+      "specifier": "../validation",
+      "path": "src1/modules/pharmacySubscriptions/validation/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/pharmacySubscriptions/repository/index.ts",
+      "specifier": "@/modules/common/types",
+      "path": "src1/modules/common/types/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/pharmacySubscriptions/repository/index.ts",
+      "specifier": "../validation",
+      "path": "src1/modules/pharmacySubscriptions/validation/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/pharmacySubscriptions/repository/index.ts",
+      "specifier": "@/modules/pharmacySubscriptions/model",
+      "path": "src1/modules/pharmacySubscriptions/model/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/pharmacySubscriptions/repository/index.ts",
+      "specifier": "@/modules/pharmacySubscriptions/types",
+      "path": "src1/modules/pharmacySubscriptions/types/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/pharmacySubscriptions/repository/index.ts",
+      "specifier": "@/modules/common/repository",
+      "path": "src1/modules/common/repository/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/pharmacySubscriptions/validation/index.ts",
+      "specifier": "@/modules/common/types",
+      "path": "src1/modules/common/types/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/pharmacySubscriptions/validation/index.ts",
+      "specifier": "../types",
+      "path": "src1/modules/pharmacySubscriptions/types/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/pharmacySubscriptions/model/index.ts",
+      "specifier": "@/modules/pharmacySubscriptions/types",
+      "path": "src1/modules/pharmacySubscriptions/types/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/pharmacies/model/index.ts",
+      "specifier": "@/modules/pharmacies/types",
+      "path": "src1/modules/pharmacies/types/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/middleware/auth.ts",
+      "specifier": "@/config/config",
+      "kind": "FINITE_CUT"
+    },
+    {
+      "parent": "src1/modules/middleware/auth.ts",
+      "specifier": "@/modules/common/types",
+      "path": "src1/modules/common/types/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/middleware/auth.ts",
+      "specifier": "@/modules/pharmacies/model",
+      "path": "src1/modules/pharmacies/model/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/middleware/errorHandler.ts",
+      "specifier": "@/modules/common/types",
+      "path": "src1/modules/common/types/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/middleware/errorHandler.ts",
+      "specifier": "@/services/logger",
+      "kind": "FINITE_CUT"
+    },
+    {
+      "parent": "src1/modules/middleware/errorHandler.ts",
+      "specifier": "@/modules/common/utils/mongoErrors",
+      "path": "src1/modules/common/utils/mongoErrors.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/common/middleware/validation.ts",
+      "specifier": "../types",
+      "path": "src1/modules/common/types/index.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/common/utils/asyncHandler.ts",
+      "specifier": "@/services/logger",
+      "kind": "FINITE_CUT"
+    },
+    {
+      "parent": "src1/modules/common/repository/index.ts",
+      "specifier": "./BaseRepository",
+      "path": "src1/modules/common/repository/BaseRepository.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/common/types/index.ts",
+      "specifier": "./error",
+      "path": "src1/modules/common/types/error.ts",
+      "kind": "WHOLE_SOURCE"
+    },
+    {
+      "parent": "src1/modules/common/types/index.ts",
+      "specifier": "./response",
+      "path": "src1/modules/common/types/response.ts",
+      "kind": "WHOLE_SOURCE"
+    }
+  ],
+  "externalSourceImports": [
+    "express",
+    "joi",
+    "jsonwebtoken",
+    "mongoose",
+    "reflect-metadata",
+    "typedi",
+    "util"
+  ],
+  "cuts": [
+    "@/config/config",
+    "@/services/logger",
+    "@/modules/pharmacyCustomers/services"
+  ],
+  "proposedPackageRoots": {
+    "express": "4.21.1",
+    "joi": "17.13.3",
+    "jsonwebtoken": "9.0.2",
+    "reflect-metadata": "0.2.2",
+    "typedi": "0.10.0",
+    "mongoose": "6.13.8",
+    "typescript": "5.9.3"
+  },
+  "nativeRootLockProfiles": {
+    "mongoose": {
+      "version": "6.13.8",
+      "integrity": "sha512-JHKco/533CyVrqCbyQsnqMpLn8ZCiKrPDTd2mvo2W7ygIvhygWjX2wj+RPjn6upZZgw0jC6U51RD7kUsyK8NBg==",
+      "resolved": "https://registry.npmjs.org/mongoose/-/mongoose-6.13.8.tgz"
+    },
+    "mongodb": {
+      "version": "4.17.2",
+      "integrity": "sha512-mLV7SEiov2LHleRJPMPrK2PMyhXFZt2UQLC4VD4pnth3jMjYKHhtqfwwkkvS/NXuo/Fp3vbhaNcXrIDaLRb9Tg==",
+      "resolved": "https://registry.npmjs.org/mongodb/-/mongodb-4.17.2.tgz"
+    },
+    "bson": {
+      "version": "4.7.2",
+      "integrity": "sha512-Ry9wCtIZ5kGqkJoi6aD8KjxFZEx78guTQDnpXWiNthsxzrxAK/i8E6pCHAIZTbaEFWcOCvbecMukfK7XUvyLpQ==",
+      "resolved": "https://registry.npmjs.org/bson/-/bson-4.7.2.tgz"
+    }
+  },
+  "scopeLimits": [
+    "19whole TypeScript files form the current static nominal selection after three explicit finite cuts; not yet a successful emitted/installed runtime closure.",
+    "Current shared API source pins are context, not permission to amend Root-owned files or inherit another role receipt. Root freezes exact fixed-role interface/composition first.",
+    "All package transitives/stdlib/emitted AST edges and optional native probes must be observed and frozen at later exact preparation gates. No package source evaluated here.",
+    "Existing production source decisions retained; they are not fixture contract/source/run decisions.",
+    "No application, Node/parser/compiler/npm/DB/Docker/provider or legacy suite execution; tests/source variants remain NOT_RUN."
+  ]
+}

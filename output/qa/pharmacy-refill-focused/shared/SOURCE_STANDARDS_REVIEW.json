@@ -1,0 +1,55 @@
+{
+  "schema": "SD-P7-SHARED-SOURCE-NONAUTHOR-STANDARDS-REVIEW-1",
+  "reviewer": "/root/customer_remaining_audit",
+  "author": "/root",
+  "axis": "NONAUTHOR_STANDARDS_SOURCE_AND_MAIN_COMPOSITION",
+  "candidateCommit": "fee9e5de35c67ad21d0aba310530407a40d680ae",
+  "candidateManifestSha256": "65561f894c4dbcedf375a79b49a6e7f31627ad9b9d48888611fc0f817f90052b",
+  "interfaceSha256": "21e4c7792bd7d8cb39a7b1e1bd9df15f84d4e1c66417396588d823edb875a1ff",
+  "decision": "APPROVE_SOURCE_ONLY",
+  "materialFindings": [],
+  "eligibilityDisclosure": "Reviewer authored earlier rough data-only role proposal27dc4294 and owning focused verification draft, but did not author Root final interface or any of these six shared/profile source files. The final interface excluded reviewer from interface voting; no interface selfapproval is supplied here. This is the separately assigned nonauthor SOURCE/composition decision on actual Root implementation.",
+  "actualBindings": {
+    "ownedFiles": {
+      "test/api-runtime/platform.mjs": "de67306726019393eb5baf83ee17f2710e7cd6725b20cb245f6b064eff2b72b2",
+      "test/api-runtime/platform.test.mjs": "4974277cd312e275436a11367a548fb3c44616d0cedf168254d4314e4ab971d1",
+      "test/api-runtime/unit.mjs": "253d2b6121752017044e9e814a837f05ba097051a55d0e64b36b8b1f85b03bb6",
+      "test/api-runtime/pharmacy-refill/profile.json": "15e8b72e9e3ab4f359df4f90f33f0582a20129ac2723064e800263ac1ced2ae2",
+      "test/api-runtime/private-documents/profile.json": "f21a759901d705f1e950fc8c194d988757ada73d22cba65b139cbae06fbcd197",
+      "test/api-runtime/customer-contact/profile.json": "8901145dbb08ee98e489c9241db8e32cc90f6485aa3f154c7aea73be8f2f5075"
+    },
+    "retainedMain": {
+      "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+      "test/api-runtime/launch.mjs": "9c6d1c805de4c50542667b90532219c54666b8a764ee5672055f641938b099ed",
+      "test/api-runtime/launch.test.mjs": "9e9316041db0d3a7977a2e78130b9f1d26f331bb51a6c069327257a0c6c719be",
+      "test/application/app-bundle.mjs": "63a5e15779fd942b9ff9e1c3ccaa45d4d347387f196555e2a1b8998477c7ecfc"
+    },
+    "acceptedContactSource": "2af646be2776907cba2eda24358427ebf85cdcb3",
+    "acceptedContactSharedAndProfiles": "All five exact accepted upstream inputs independently Git-hash checked; two imported static profiles byte-equal accepted source.",
+    "currentAndCandidateGitWholePinsVerified": 10,
+    "newProfileMatchesExactInterfaceJSON": true,
+    "reusedStaticNpmInventorySha256": "3729235cc997a657b533bd70daf6ce710e8c6b51b4452119f98be508173bf085"
+  },
+  "actualInspection": [
+    "Read actual complete fixed-role delta against accepted Contact shared base, current role descriptors/admission/result validators/shared runtime/resource/cleanup path and exact unit runner; no generic new lifecycle or caller role selector introduced. Four old/new role helpers all choose internal literal role and delegate to same createFixedRuntimeFixture.",
+    "New pharmacy-refill-api descriptor fixes purpose/schema/scope/buildpath/runprefix, reviewed preparation-source whitelist and20/7 counts. Existing auth at-least20/2, private24/8 and contact32/16 descriptors and old role predicates stay byte-preserved against accepted Contact base.",
+    "Only newrole requires plan.providerCounterKeys exactly ordered logger/unexpected; existing globalproviderallowlist unchanged. Contact alone retains required/allowedwallet; older role validation unaffected by new role-identity conditional. Result has exact provider keys, unexpected0 and safe nonnegativeinteger counter checks under existing verifier.",
+    "New profile exactly matches reviewed interface values: Mongoose6.13.8/driver4.17.2/BSON4.7.2 and fixed Mongo8/Node22 images/engine/endpoint; existing hostNode24/Python3.14/npm1939 public file inventory reused by hash, no download/dependency/rootC2adoption.",
+    "Actual test helper changes only select refill schema/purpose/profile/cases/sensitivity/provider fake outputs when privateRole===refill; all preexisting branch choices retained. Existing test bodies below helper unchanged,24new registered labels match interface list: positive1,plan10,caller2,crossrole1,result10. Meaningful wrong schemas/roles/counts/providers/calleroverrides reject before fake allocation; result mutations fail acceptance and exercise owned cleanup. Positive inspects actual fake lifecycle namespace/resources/admission/receipts and nonzero logger2 acceptance. These remain fake protocol assertions, not pharmacy behavior.",
+    "Unit adds precisely one public static refill profile to accepted8 staged inputs, count128->152, same2testentries/30s/1MiB/permissionflags/nopreload/ownedcleanup. No namespace/app/node_modules input added; no Docker/resource capability expansion.",
+    "All four main-retained files byte-equal candidate base including entire newer app-bundle63a5e157 containing accepted enrollment exports. Compared full older-vs-main app-bundle delta and independently verified entryKind-through-EOF10419B network suffix byte-equal SHAe638f02b246869d060481ea68e29b39639334b85454121147b4ef15bb739a577. No old bundle rollback or alteration to network verifier."
+  ],
+  "scopeAndLimits": {
+    "sourceOnly": true,
+    "oldAcceptedFakeCases": 128,
+    "newFakeCasesByActualStaticRegistration": 24,
+    "expectedTotal": 152,
+    "actualFakeUnitResult": "NOT_RUN",
+    "invocationApproval": "NOT_GRANTED_BY_THIS_SOURCE_REVIEW",
+    "applicationImports": "NOT_RUN",
+    "realPharmacyHTTPMongoBSONCursorUnset": "NOT_RUN",
+    "preservedBounds": "180000ms app attach,30000ms Mongo readiness,existingNode/Mongo memory/pid/CPU/tmpfs/network/fs/child/worker/addongrants and owned cleanup unchanged.",
+    "futureGates": "Second actual nonauthor source/composition decision, separate exact offline unit proposal/two votes, actual result/outcome reviews; later nine namespace fixture source, preparation, native/preimport and actual domain run separately gated. No clinical/financial/production/module completion."
+  },
+  "preservation": "Only this review record written. Concurrent organization implementation/untracked diagnostics and original staged/archive untouched."
+}

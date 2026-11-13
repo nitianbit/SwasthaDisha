@@ -1,0 +1,101 @@
+{
+  "schema": "SD-P7-SHARED-ACTUAL-FAKE-UNIT-NONAUTHOR-STANDARDS-OUTCOME-1",
+  "reviewer": "/root/customer_remaining_audit",
+  "producerAndSourceAuthor": "/root",
+  "decision": "ACCEPT_FIXED_P7_SHARED_FAKE_UNIT_RESULT_ONLY",
+  "sourceCandidate": "fee9e5de35c67ad21d0aba310530407a40d680ae",
+  "proposalSha256": "be64fdbd2899865483de6f1f28a858890e7fd0bb156c607b62b3d7506c3c5359",
+  "actualCapture": {
+    "directory": "/private/tmp/sd-p7-shared-unit-execution-dd7409e3-db15-40a6-b2ef-54a6afe4e5ff",
+    "resultSha256": "b0495b2efd232e704ddd28d4fbc09778e0d894c81db55b3c1fd3d2493468dadc",
+    "stdoutSha256": "e641c6ce12e3bd6095489c3b52239f1a42874a8a244c9d6add1b67395efc9f4d",
+    "stderrSha256": "47f1d2ed63f19e8e4c7746a6b01ed03386521dcf6c4a188d00aca71db323b35f",
+    "claimSha256": "a17028b3e29789c80c04fe53e16d26611e0eda72551c08098067bb240cca998f",
+    "nonce": "dd7409e3-db15-40a6-b2ef-54a6afe4e5ff",
+    "exitCode": 0,
+    "elapsedSeconds": 0.687008708002395
+  },
+  "actualReviewsPersonallyReadAndHashVerified": [
+    {
+      "path": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/pharmacy-refill-focused/shared/SOURCE_STANDARDS_REVIEW.json",
+      "sha256": "04db08ecc8a76e13869b0197ab87d022ce0dae162443b29263261bd5aa87352a",
+      "reviewer": "/root/customer_remaining_audit",
+      "decision": "APPROVE_SOURCE_ONLY"
+    },
+    {
+      "path": "/private/tmp/sd-p7-shared-source-SPEC-REVIEW.json",
+      "sha256": "c4b3ecf1e9f0a7a42a6cc6567856612d0c57f2dcb6fc3ce8fe0d0c0cd720d2e0",
+      "reviewer": "/root/lab_remaining_audit",
+      "decision": "APPROVE_SOURCE_ONLY"
+    },
+    {
+      "path": "/private/tmp/sd-p7-shared-unit-STANDARDS-REVIEW.json",
+      "sha256": "84b92069a2d1760eafdfb516eb997cc56a3a532a9427694bd05916302a784a26",
+      "reviewer": "/root/customer_remaining_audit",
+      "decision": "APPROVE_ONE_FIXED_P7_SHARED_FAKE_UNIT_RUN"
+    },
+    {
+      "path": "/private/tmp/sd-p7-shared-unit-SPEC-REVIEW.json",
+      "sha256": "b23a9547d1b314e6cb7eac4d7cffd2a602f778cd0afbe744037c81920508b7e9",
+      "reviewer": "/root/lab_remaining_audit",
+      "decision": "APPROVE_ONE_FIXED_P7_SHARED_FAKE_UNIT_RUN"
+    }
+  ],
+  "actualChecks": {
+    "fullTapRead": true,
+    "numberedPassingRows": 152,
+    "sequentialAndUnique": true,
+    "oldCasesRetained": 128,
+    "newRefillCaseIdsExactlyProposal": 24,
+    "summary": {
+      "tests": 152,
+      "pass": 152,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "todo": 0
+    },
+    "stagedSourceHashes": {
+      "test/api-runtime/platform.mjs": "de67306726019393eb5baf83ee17f2710e7cd6725b20cb245f6b064eff2b72b2",
+      "test/api-runtime/platform.test.mjs": "4974277cd312e275436a11367a548fb3c44616d0cedf168254d4314e4ab971d1",
+      "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+      "test/api-runtime/private-documents/profile.json": "f21a759901d705f1e950fc8c194d988757ada73d22cba65b139cbae06fbcd197",
+      "test/api-runtime/customer-contact/profile.json": "8901145dbb08ee98e489c9241db8e32cc90f6485aa3f154c7aea73be8f2f5075",
+      "test/api-runtime/pharmacy-refill/profile.json": "15e8b72e9e3ab4f359df4f90f33f0582a20129ac2723064e800263ac1ced2ae2",
+      "test/api-runtime/launch.mjs": "9c6d1c805de4c50542667b90532219c54666b8a764ee5672055f641938b099ed",
+      "test/api-runtime/launch.test.mjs": "9e9316041db0d3a7977a2e78130b9f1d26f331bb51a6c069327257a0c6c719be",
+      "test/application/app-bundle.mjs": "63a5e15779fd942b9ff9e1c3ccaa45d4d347387f196555e2a1b8998477c7ecfc"
+    },
+    "currentOuter10HashesMatch": true,
+    "workspace": {
+      "path": "/private/tmp/sd-api-platform-units-MR9MxZ",
+      "operatorObservedBefore": {
+        "dev": 16777230,
+        "ino": 54985975,
+        "uid": 501,
+        "mode": "0o700"
+      },
+      "reviewerFreshLstat": "ENOENT",
+      "freshPrefixRemainingNames": []
+    },
+    "privateCaptureMode": "0o700",
+    "claimMode": "0o600"
+  },
+  "prelaunchFaultPreserved": {
+    "path": "/private/tmp/sd-p7-shared-unit-prelaunch-note.json",
+    "sha256": "4cf572ac1475da8b61d61cceb1f77e8329952e7b05a1fedb7695b2ee40103d5f",
+    "scope": "ROOT_WRAPPER_PRELAUNCH_BINARY_INDEX_ERROR",
+    "unitInvocations": 0,
+    "claimOrCaptureCreated": false,
+    "approvalConsumed": false,
+    "interpretation": "Preserved operator indexing error before claim/producer; actual exact one unit invocation is the later terminal0 capture, not a unit failure or unit retry."
+  },
+  "interpretation": "Actual dependency-free fake protocol/controller/launcher evidence only. Reviewed tests meaningfully exercise fixednewrole isolation/schema/casecounts/providers/resources/ownedcleanup and oldrole compatibility; fake replies never prove realpharmacy behavior.",
+  "limitations": [
+    "No application/nativepackage/HTTP/Mongo/BSON/parser/provider/Docker evaluation by reviewer; recorded summary reports0applicationImports/0DockerCalls/0databaseConnections.",
+    "Original source and exact invocation votes are not runtime/owner/release approvals. This result does not supply realpharmacy Joi/native BSON/cursor/calendar/persisted$unset evidence.",
+    "Later nine namespace source/preparation/runtime and actual outcomes need separate exact gates; no dependency/C2/production/module completion claim.",
+    "Observed original dev/ino binding is preserved operator evidence; reviewer independently verifies present absence and exact capture/source bindings, not unrecorded historical process state."
+  ],
+  "reviewerExecution": "Inert full capture/source/review JSON/text/hash reads and exact fresh lstat only. No repeat unit or other execution."
+}

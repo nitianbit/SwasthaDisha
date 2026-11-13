@@ -1,0 +1,32 @@
+{
+  "schema": "SD-PHARMACY-REFILL-FOCUSED-CONTRACT-NONAUTHOR-SPEC-REVIEW-1",
+  "reviewer": "/root/milestone_composition_r9",
+  "role": "Spec",
+  "nonauthorVerificationContract": true,
+  "productionAuthorshipDisclosure": "Reviewer authored the underlying pharmacy refill production slice; this vote reviews only customer-authored verification contract/selection/coverage and grants NO independent production source approval. Existing two production source approvals remain separately attributed to Root/customer.",
+  "decision": "APPROVE_IMPLEMENTATION_ONLY",
+  "candidate": "389cb7d",
+  "contractPath": "documentation/planning/implementation/PHARMACY_REFILL_FOCUSED_VERIFICATION_CONTRACT_DRAFT.md",
+  "contractSha256": "f0e5a04afa5d7cf222cf5b2be31c2b44bef107e48228d11ba55fd1ba01b8ed17",
+  "inventorySha256": "516de95edc5aed54ed823e50ed6ab52b4a7c7eeb43da0517f99337b85bbfd1dd",
+  "underlyingProductionCandidate": "7b72154506caa037101f490963ca4bbdca594018",
+  "materialFindings": [],
+  "actualReadOnlyChecks": [
+    "Read complete focused contract/inventory, owning refill contract and retained source/verification provenance, actual router/controller/service/parser/repository/raw-BSON/array/model/error/operational-guard paths relevant to proposed assertions. Scope is verification design, not a self-review vote on production.",
+    "All19whole TypeScript and28context byte sizes/hashes match current files and actual389cb7dGit source. Checked32literal internal/cut edge inventory against selected source, exactly3finite cuts. Those source imports are static selection, not a successful installed/emitted closure.",
+    "20unique mandatory group IDs (excluding table header ID) cover real JWT/operational guard and scope precedence, closed raw query/calendar/limits/canonical cursor/scope/page/lookahead, actual Mongo scalar exclusion, actual raw row/BSON4/Symbol/cache/dense-array positives and hostile faults, DTO/header/query evidence, real per-write resume-unset and unchanged nonresume state, authority and final restoration. No nominal source/controller/repository/identity algorithm is replaced by a test copy.",
+    "Exact native models are Pharmacy and PharmacySubscription only. The constructor-only pharmacy customer-service cut names its actual six current methods and makes every method unexpected/throwing, with persistent latch; unused User/Medicine/Order/Customer/Wallet refs do not import those models or claim real relationships. Config/logger cuts finite and controlled.",
+    "All7existing frozen mutation recipes applied inertly as unique text replacements reproduce their declared variant hashes. Contract requires meaningful corresponding forbidden behavior, not lexical success or any crash: foreign ID, actual>51completed read, real query after forbidden extra key, actual seeded userId leak, native persisted pausedUntil retention, invoked private-Symbol getter, sparse200null/supplied-map invocation. Fresh nominal restoration uses same predicate after each.",
+    "Actual route-local no-store is required only after due route entry; premount401 is explicitly excluded, no ETag/global-header claim. Resume requires native BSON field absence after each real HTTP/direct mutation, not undefined assignment or aggregate after-state. Catalog observes existing selected index/absence of supporting composite without asserting production capacity; explain stays one finite owned command allowance pending source review.",
+    "Pinned7roots/Mongoose6.13.8/Mongo4.17.2/BSON4.7.2 versus Node22/Mongo8diagnostic profile remain separate from root adoption. Actual optional/computed/package/stdlib/native closure must be established at later fresh stages; no blanket optional mock or computed-import exception. Source/native profiles and hostile data cannot substitute for actual native positives.",
+    "C2/C3/preimport sole default-Connection/nativeclient, exact supplied descriptor/effective options and finite network/fs/provider boundaries are explicit. Fixed20groups7controls/19whole modules8phases/180s30s and bounded resources preserved; planning allocation is not measured timing. No new runtime platform, timeout extension or final integration campaign added."
+  ],
+  "implementationPrerequisite": "Root must first freeze and obtain actual independent reviews of the proposed fixed pharmacy-refill shared role/interface/schema/profile/controller/unit inventory. This contract vote alone does not authorize namespace implementation against an unfrozen shared interface or merging older shared controller pins.",
+  "limits": [
+    "IMPLEMENTATION_ONLY for the verification namespace after its stated Root shared-interface prerequisite and two actual contract decisions; no fixture source, preparation, package installation/emission, runtime/native/HTTP/Mongo evidence or next invocation authorized by this review.",
+    "All contract vectors/7behaviorcontrols/native compatible positives/per-command raw persistence/catalog/query/timing/cleanup remain NOT_RUN. Later source/composition and exact-stage/run/outcome admissions required.",
+    "Does not complete P7 reminder dispatch/consent/qualified staff/prescriptions/stock/dispensing/delivery/finance/provider/jobs; underlying source approvals retain independent reviewers. Production deployment/index/capacity/all-writer/client/privacy/owner/C2/final-integration/release gates remain open."
+  ],
+  "reviewerExecution": "INERT_FILE_TEXT_JSON_HASH_GIT_AND_SOURCE_RECIPE_DATA_TRANSFORMS_ONLY",
+  "newExecutionPermission": false
+}

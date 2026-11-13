@@ -1,0 +1,50 @@
+{
+  "schema": "SD-P7-SHARED-UNIT-ACTUAL-NONAUTHOR-OUTCOME-1",
+  "reviewer": "/root/lab_remaining_audit",
+  "role": "NONAUTHOR_SPEC_OUTCOME",
+  "decision": "ACCEPT_OFFLINE_FAKE_UNIT_RESULT_ONLY",
+  "sourceCandidate": "fee9e5de35c67ad21d0aba310530407a40d680ae",
+  "proposalSha256": "be64fdbd2899865483de6f1f28a858890e7fd0bb156c607b62b3d7506c3c5359",
+  "capture": "/private/tmp/sd-p7-shared-unit-execution-dd7409e3-db15-40a6-b2ef-54a6afe4e5ff",
+  "captureResultSha256": "b0495b2efd232e704ddd28d4fbc09778e0d894c81db55b3c1fd3d2493468dadc",
+  "stdoutSha256": "e641c6ce12e3bd6095489c3b52239f1a42874a8a244c9d6add1b67395efc9f4d",
+  "stderrSha256": "47f1d2ed63f19e8e4c7746a6b01ed03386521dcf6c4a188d00aca71db323b35f",
+  "claimSha256": "a17028b3e29789c80c04fe53e16d26611e0eda72551c08098067bb240cca998f",
+  "actualResult": {
+    "operatorTool": "84039e",
+    "exitCode": 0,
+    "elapsedSeconds": 0.687008708002395,
+    "tests": 152,
+    "pass": 152,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "oldNamedCasesUnchanged": 128,
+    "newNamedRefillCases": 24
+  },
+  "actualChecks": [
+    "Full28215-byte rawTAP read; exactly sequential1..152 unique named okrows/1..152 plan/exact single summaries, no notok/skip/TODO or partial result. Original128names/order equal actual acceptedContact rawTAP; last24exactproposal IDs.",
+    "Actualstderr is sole OFFLINE_FAKE_TRANSPORT_ONLY summary with152tests/exact9stagedsourcehashes/applicationImports0/DockerCalls0/databaseConnections0. Actual9staged map equals proposed10outerinputs minus unitrunner; all10current+fee9Git hashes match.",
+    "Fresh600claimnonce/proposal/inputmap and actual result hashes match; fouractualsource/invocationrecords read/hashverified: CustomerStandards+LabSpec source and CustomerStandards+LabSpec exactrun. Rootsourceauthor/operator excluded.",
+    "Actualunit source binds one stagedownedworkspace/twoentries/stdlibfakeexecutor/30s1MiB/fs-onlychild/cleanenv, checks result and finallyidentitymarker beforecleanup. This outcome does not rerununit or import app.",
+    "Personally fresh lstat observed Root-recorded /private/tmp/sd-api-platform-units-MR9MxZ returnsENOENT; fresh complete fixedprefix scan findszero sd-api-platform-units- entries. Rootcaptured precleanupidentitydev16777230ino54985975UID501mode0700 is retained as operator observation, not invented independent precleanup proof.",
+    "Initial Rootwrapper indexerrora8ce0c is preserved in prelaunchnote as operator-reported preclaim/preunit zeroeffects; it is not a failedunit or consumedunitretry. Correctedwrapper thenoneactual approvedunitcapture hasterminal0."
+  ],
+  "cleanup": {
+    "rootObservedWorkspace": "/private/tmp/sd-api-platform-units-MR9MxZ",
+    "rootObservedDev": 16777230,
+    "rootObservedIno": 54985975,
+    "freshIndependentExactWorkspaceAbsent": true,
+    "freshIndependentPrefixNames": [],
+    "scope": "No Docker/process resources created by this fakegate; onlyownedFS workspace lifecycle."
+  },
+  "findings": [],
+  "limits": [
+    "Accepts dependency-free fake sharedcontroller/launcher/protocol only. No actualrefill HTTP/Joi/BSON/Mongo/nativeclient/query/persistedunset or20groups/sevenbehaviorcontrol acceptance.",
+    "No app/package/compiler/provider/production effects or fullP7/module/release/owner/C2 acceptance. Existing application/preparation/source/run/outcome gates remain.",
+    "No automaticrepeat or nextheavy stage permission supplied.",
+    "Claim600UID501 observed; sanitizedRESULT is0644 withinprivatecapture, no blanketallfiles600 claim."
+  ],
+  "reviewerExecution": "Inert rawTAP/JSON/source/Git/hash/filesystemmetadata reads only; no unitrepeat/Node/application/Docker execution."
+}

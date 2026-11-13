@@ -1,0 +1,10 @@
+{
+  "stage": "ROOT_WRAPPER_PRELAUNCH",
+  "error": "Root wrapper indexed unit entry rather than node for binary hash; fixed to command[-2].",
+  "toolChunk": "a8ce0c",
+  "wrapperExit": 1,
+  "unitInvocations": 0,
+  "captureOrClaimCreated": false,
+  "approvalConsumed": false,
+  "scope": "No unit/app/Docker process was launched."
+}

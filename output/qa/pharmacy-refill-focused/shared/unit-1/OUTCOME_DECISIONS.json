@@ -1,0 +1,28 @@
+{
+  "schema": "SD-P7-SHARED-UNIT-ACTUAL-OUTCOME-DECISIONS-1",
+  "recorder": "/root",
+  "sourceCandidate": "fee9e5de35c67ad21d0aba310530407a40d680ae",
+  "tests": 152,
+  "passed": 152,
+  "failed": 0,
+  "cancelled": 0,
+  "skipped": 0,
+  "todo": 0,
+  "exitCode": 0,
+  "elapsedSeconds": 0.687008708002395,
+  "observedWorkspace": "/private/tmp/sd-api-platform-units-MR9MxZ",
+  "freshCleanup": "Root and both actual reviewers observed ENOENT; no newly remaining fixedprefix workspaces.",
+  "actualOutcomes": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "decision": "ACCEPT_FIXED_P7_SHARED_FAKE_UNIT_RESULT_ONLY",
+      "sha256": "6bc5b868b540b5af52038fc44d80f27380862d62e3bc5a4aa33acb50dec85c91"
+    },
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "decision": "ACCEPT_OFFLINE_FAKE_UNIT_RESULT_ONLY",
+      "sha256": "abb59bcf39e4705fd4f50d4ce9bb3e676a7d4f15207957b31209f68de32f5c8e"
+    }
+  ],
+  "scope": "Accepted fakecontroller/protocol/lifecycle only. Real pharmacy HTTP/Joi/BSON/Mongo/persistence/query/index/production/module/release NOT_PROVEN."
+}

@@ -1,0 +1,25 @@
+{
+  "schema": "SD-P7-FOCUSED-CONTRACT-ACTUAL-DECISIONS-1",
+  "recorder": "/root",
+  "contractSha256": "f0e5a04afa5d7cf222cf5b2be31c2b44bef107e48228d11ba55fd1ba01b8ed17",
+  "decision": "APPROVE_IMPLEMENTATION_ONLY",
+  "reviews": [
+    {
+      "reviewer": "/root",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "sha256": "dae9fc1ca14bd41147e9cbb009ab24b614c3d8699a43ceffa2fe682162ce4a9f",
+      "disclosure": null
+    },
+    {
+      "reviewer": "/root/milestone_composition_r9",
+      "decision": "APPROVE_IMPLEMENTATION_ONLY",
+      "sha256": "cd90f23edf9765d85daebfab7eb188b57d70c5074fd79740c139229e6646c1af",
+      "disclosure": "Reviewer authored the underlying pharmacy refill production slice; this vote reviews only customer-authored verification contract/selection/coverage and grants NO independent production source approval. Existing two production source approvals remain separately attributed to Root/customer."
+    }
+  ],
+  "sharedInterface": "../shared/INTERFACE.json",
+  "sharedSource": "fee9e5d",
+  "sharedActualOutcome": "../shared/unit-1/OUTCOME_DECISIONS.json",
+  "namespaceOwner": "/root/customer_remaining_audit",
+  "scope": "Nine own namespace source files only; Root owns profile/shared/toolinventory/context and integration. No executable application/preparation permission."
+}

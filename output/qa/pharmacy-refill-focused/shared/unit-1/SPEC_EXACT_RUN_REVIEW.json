@@ -1,0 +1,28 @@
+{
+  "schema": "SD-P7-SHARED-EXACT-UNIT-NONAUTHOR-SPEC-REVIEW-1",
+  "reviewer": "/root/lab_remaining_audit",
+  "role": "NONAUTHOR_SPEC_EXACT_INVOCATION",
+  "decision": "APPROVE_ONE_FIXED_P7_SHARED_FAKE_UNIT_RUN",
+  "proposalSha256": "be64fdbd2899865483de6f1f28a858890e7fd0bb156c607b62b3d7506c3c5359",
+  "sourceCandidate": "fee9e5de35c67ad21d0aba310530407a40d680ae",
+  "sourceReviewPath": "/private/tmp/sd-p7-shared-source-SPEC-REVIEW.json",
+  "sourceReviewSha256": "c4b3ecf1e9f0a7a42a6cc6567856612d0c57f2dcb6fc3ce8fe0d0c0cd720d2e0",
+  "actualChecks": [
+    "Full exactproposal read against current10outer source hashes/current+fee9Git bindings and actual source-reviewed unit/platform/tests. Rootsourceauthorexcluded; CustomerStandards isothereligible source/invocation voter.",
+    "Command exact env-i TMPDIR=/private/tmp pinnedNode24 unit.mjs only; currenthostbinary27db independently stream-hashed during currentexactprivate invocation review, unchangedpinnedpath. No positional/preload/env/providerflags.",
+    "Actualunitstages9public files (platform/tests/authprofile/privateprofile/contactprofile/refillprofile/launch/launchtests/mainappbundle), executes2stdlib-only testentries in oneexclusive ownedworkspace child withfsread/writeonly,30s/1MiB, envTMPDIRonly; no child/worker/addon/network grant.",
+    "Actual24new REFILL IDs staticallymatch proposed list and reviewedregistration, old128preserved. Exactgate requires152tests/pass,zero fail/cancel/skip/todo andexit0; fullrawTAP/stderrsourcehashsummaryneeded. Fake model/server outputs are stdlib fakeexecutor protocol only, not real apporDocker.",
+    "Finally checks stagingdev/ino/directory/nonlink/owner marker before recursive ownedcleanup. Freshbounded capture/terminal/prefixcleanup evidence must retainfailures; exactstagingpathmaynotbeemitted, do notinventit.",
+    "Privateactualrun96662 isterminal; oneheavy stage only. No package/compiler/app/Docker/DB/provider stage authorized."
+  ],
+  "findings": [],
+  "conditions": [
+    "Both actualnonauthor source votes and exactinvocation votes must exist beforeonecommand; Rootauthorcannotselfapprove.",
+    "All10outer source inputs unchanged; evidence-only HEAD advancement allowed only with sourcepins intact.",
+    "FreshUUID/privatecapture/claim evidence beforecommand, preserveactualstdout/stderr/exit/elapsed/hashes andbeforeafterworkspaceobservations. No automaticretry.",
+    "Two independent actualoutcome/cleanupreviews required; expected152 is not passeduntilactualevidence."
+  ],
+  "scope": "ONE OFFLINE_FAKE_TRANSPORT_ONLY unit run; no application/namespace/package/DB/Docker/provider/realpharmacy evidence",
+  "reviewerExecution": "Read-only source/JSON/hash review; did not execute unit/Node/test,createclaimorreceiptorcapture.",
+  "applicationOrPreparationPermission": false
+}

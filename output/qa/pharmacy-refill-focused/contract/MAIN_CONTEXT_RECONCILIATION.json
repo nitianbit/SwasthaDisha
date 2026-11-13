@@ -1,0 +1,51 @@
+{
+  "schema": "SD-P7-CURRENT-MAIN-CONTEXT-1",
+  "recorder": "/root",
+  "whole19ProductionSourcesMatch": true,
+  "historicalInventoryPreserved": true,
+  "contextChanges": [
+    {
+      "path": "documentation/planning/implementation/M0_A_PROGRESS.md",
+      "historicalContractHash": "31ed2ad7dfee558df0518d9b21f504a2bf6b956fc6faeb67454d4efcb4f81e93",
+      "currentMainHash": "a97d01c5d9cea43ac0cd98790b32e158e7d393c7f0225183abb77f7ef6c41d45",
+      "scope": "Existing current context; no production19source delta. Sharedcomposition independentlysource/unitreviewed; whole main bundle retained; app-container not imported/staged byAPIunit orplatform. Documents progressed separately."
+    },
+    {
+      "path": "documentation/planning/implementation/CUSTOMER_PHARMACY_LAB_DELIVERY_BOARD.md",
+      "historicalContractHash": "3e60af2ee33a5b390be0a1a3bc0aeaae991817964466c970fd97e2ead924184b",
+      "currentMainHash": "2989df490992275ceb0aa91c0fdf2c27156704d3f504c14326a1d06a17576b1b",
+      "scope": "Existing current context; no production19source delta. Sharedcomposition independentlysource/unitreviewed; whole main bundle retained; app-container not imported/staged byAPIunit orplatform. Documents progressed separately."
+    },
+    {
+      "path": "test/api-runtime/platform.mjs",
+      "historicalContractHash": "b5117065c90c4698cb9604a8da0cb673a38249d8eee07a8ac39e11040a56e29f",
+      "currentMainHash": "de67306726019393eb5baf83ee17f2710e7cd6725b20cb245f6b064eff2b72b2",
+      "scope": "Existing current context; no production19source delta. Sharedcomposition independentlysource/unitreviewed; whole main bundle retained; app-container not imported/staged byAPIunit orplatform. Documents progressed separately."
+    },
+    {
+      "path": "test/api-runtime/platform.test.mjs",
+      "historicalContractHash": "334387136951602d44faf72fb351461012409fa4b3f547e2200c9b1ffc81ac16",
+      "currentMainHash": "4974277cd312e275436a11367a548fb3c44616d0cedf168254d4314e4ab971d1",
+      "scope": "Existing current context; no production19source delta. Sharedcomposition independentlysource/unitreviewed; whole main bundle retained; app-container not imported/staged byAPIunit orplatform. Documents progressed separately."
+    },
+    {
+      "path": "test/api-runtime/unit.mjs",
+      "historicalContractHash": "a1f9cfb45bae4c8f0ffa87625423d8ee548b614aa0a97228133e0e75f000cd66",
+      "currentMainHash": "253d2b6121752017044e9e814a837f05ba097051a55d0e64b36b8b1f85b03bb6",
+      "scope": "Existing current context; no production19source delta. Sharedcomposition independentlysource/unitreviewed; whole main bundle retained; app-container not imported/staged byAPIunit orplatform. Documents progressed separately."
+    },
+    {
+      "path": "test/application/app-bundle.mjs",
+      "historicalContractHash": "993634db7d05213208ddda434d8d4c21f679ae342f46a1836dda115c7d3b5817",
+      "currentMainHash": "63a5e15779fd942b9ff9e1c3ccaa45d4d347387f196555e2a1b8998477c7ecfc",
+      "scope": "Existing current context; no production19source delta. Sharedcomposition independentlysource/unitreviewed; whole main bundle retained; app-container not imported/staged byAPIunit orplatform. Documents progressed separately."
+    },
+    {
+      "path": "test/application/app-container.mjs",
+      "historicalContractHash": "4c2a061a45a30478d4fc04d6cd28bb88aa2fd679e4346136b7714f29142948aa",
+      "currentMainHash": "99259887ebe19a5737ba44f6c680d16eb6afe589b219a1c2cb465752ac1bcb17",
+      "scope": "Existing current context; no production19source delta. Sharedcomposition independentlysource/unitreviewed; whole main bundle retained; app-container not imported/staged byAPIunit orplatform. Documents progressed separately."
+    }
+  ],
+  "scope": "Root-owned implementation source binding reconciliation; later fixture exactsource/stage votes bind current actual context, no oldresult oradmission reuse."
+}
