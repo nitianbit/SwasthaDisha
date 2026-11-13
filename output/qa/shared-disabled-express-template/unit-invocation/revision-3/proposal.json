@@ -1,0 +1,214 @@
+{
+  "schema": "SD-DISABLED-EXPRESS-ONE-UNIT-INVOCATION-PROPOSAL-3",
+  "author": "/root/lab_remaining_audit",
+  "status": "DATA_AND_CONTROLLER_SOURCE_ONLY_PENDING_TWO_ACTUAL_ELIGIBLE_REVIEWS",
+  "decisionRequired": "APPROVE_ONE_FIXED_DISABLED_EXPRESS_HELPER_UNIT_RUN",
+  "stagerPath": "/private/tmp/sd-disabled-express-unit-stager-r3.py",
+  "stagerSha256": "586d368f970798b44a82903b9c053cde87e4342a1eb120b3117cf6f407bc4f66",
+  "sourceRoot": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab",
+  "sourceSnapshotCommit": "19013671fd1f26d4b27758ce1547284fb35e3ce2",
+  "sourceCommitBinding": "Fresh receipt must bind actual current committed evidence-only HEAD with all eight source pins unchanged, not manually repin a descriptor.",
+  "sourcePins": {
+    "test/api-runtime/disabled-express-template.cjs": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779",
+    "test/api-runtime/disabled-express-template.test.mjs": "f0ec1cde80b48687fbc3853ab4b3d36420bb2af0281158291d05a51db1cf293d",
+    "test/api-runtime/platform.mjs": "3decce77cdc98038713818a79f49742df9ef8ff58803e931ae1a44c1ffd1e76c",
+    "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+    "test/api-runtime/private-documents/profile.json": "f21a759901d705f1e950fc8c194d988757ada73d22cba65b139cbae06fbcd197",
+    "test/api-runtime/customer-contact/profile.json": "8901145dbb08ee98e489c9241db8e32cc90f6485aa3f154c7aea73be8f2f5075",
+    "test/api-runtime/pharmacy-refill/profile.json": "15e8b72e9e3ab4f359df4f90f33f0582a20129ac2723064e800263ac1ced2ae2",
+    "test/application/app-bundle.mjs": "63a5e15779fd942b9ff9e1c3ccaa45d4d347387f196555e2a1b8998477c7ecfc"
+  },
+  "additionalReviewContextPins": {
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/shared-disabled-express-template/INTERFACE.json": "0dea3a043efea2e284246bc29d5ecc5a4abb116d70f614f958c210d8ba5f2952",
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/shared-disabled-express-template/source-candidate/SOURCE_CANDIDATE.json": "853e1dc480fc0e80056f07c0a7e72dce05a85c7600b79d6bbbc05373483a4f68",
+    "/private/tmp/sd-disabled-express-shared-source-STANDARDS.json": "3d0515518cfddff9736bc6002e7da338fee17feecd667cf81358eaa28fd24a0d",
+    "/private/tmp/sd-disabled-express-shared-source-SPEC.json": "c3adf631616baa32801442aeb9087bab4443d99cb34a5fdb8757bea58cdc837b"
+  },
+  "actualSharedSourceDecisions": [
+    {
+      "reviewer": "/root/lab_remaining_audit",
+      "role": "Standards",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "path": "/private/tmp/sd-disabled-express-shared-source-STANDARDS.json",
+      "sha256": "3d0515518cfddff9736bc6002e7da338fee17feecd667cf81358eaa28fd24a0d"
+    },
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "role": "Spec",
+      "decision": "APPROVE_SOURCE_ONLY",
+      "path": "/private/tmp/sd-disabled-express-shared-source-SPEC.json",
+      "sha256": "c3adf631616baa32801442aeb9087bab4443d99cb34a5fdb8757bea58cdc837b"
+    }
+  ],
+  "hostCommand": [
+    "/usr/bin/env",
+    "-i",
+    "PATH=/usr/bin:/bin",
+    "TMPDIR=/private/tmp",
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+    "-I",
+    "-B",
+    "-S",
+    "/private/tmp/sd-disabled-express-unit-stager-r3.py",
+    "--run"
+  ],
+  "pythonToolSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634",
+  "nodeTool": "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+  "nodeToolSha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+  "hostEnvironment": "Exact PATH/TMPDIR; Python startup optional LC_CTYPE and exact current UID CF marker only. -I/-B/-S, same actual CPython3.14.7 file/version/hash. No source imports or account/config discovery.",
+  "receiptPath": "/private/tmp/sd-disabled-express-unit-approval.json",
+  "receiptSchema": "SD-DISABLED-EXPRESS-UNIT-APPROVAL-1",
+  "receiptMode": "EXCLUSIVE0600",
+  "receiptFields": [
+    "schema",
+    "decision",
+    "stagerSha256",
+    "proposalSha256",
+    "sourceRoot",
+    "sourceCommit",
+    "sourcePins",
+    "contextPins",
+    "nodeSha256",
+    "pythonSha256",
+    "expectedTests",
+    "nonce",
+    "reviewers"
+  ],
+  "reviewersRequired": [
+    "/root",
+    "/root/customer_remaining_audit"
+  ],
+  "stagerAuthorExcluded": "/root/lab_remaining_audit",
+  "receiptAndClaim": "Current R2 approval is CONSUMED and must remain unchanged until both actual failure-outcome decisions plus two fresh exact R3 source/invocation votes. Then Root verifies and archives exact old0600 receipt byte-for-byte at the unique absent failed-SPEC sibling below, preserves old once/capture, and creates new exclusive0600 approval with new UUIDv4 nonce. No automatic retry; no replacement occurred during preparation.",
+  "oneNodeArgv": [
+    "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+    "--permission",
+    "--test-reporter=tap",
+    "--allow-fs-read=EXACT_OWNED_SOURCE_AREA",
+    "--allow-fs-read=EXACT_AUTH_RUNTIME",
+    "--allow-fs-read=EXACT_PRIVATE_RUNTIME",
+    "--allow-fs-read=EXACT_CONTACT_RUNTIME",
+    "--allow-fs-read=EXACT_REFILL_RUNTIME",
+    "EXACT_OWNED_SOURCE_AREA/test/api-runtime/disabled-express-template.test.mjs"
+  ],
+  "nodeEnvironment": {
+    "PATH": "/usr/bin:/bin",
+    "TMPDIR": "EXACT_OWNED_SOURCE_AREA"
+  },
+  "nodeCwd": "EXACT_OWNED_SOURCE_AREA",
+  "permissions": "Only those five read roots. No fs-write/child/worker/addon permissions, no --test mode/worker process, no source/workspace/app/credential/package/operational host grants. Existing direct node:test entry emits TAP. This is a trusted standard-library source fixture, not an OS hostile-code/network sandbox.",
+  "expectedTests": 36,
+  "expectedCountDerivation": "2 standalone setup/seal +4 intact request cases +1 optional sentinel +6 initializer failures +2 native forward errors +2 readiness/reopen +4 accessor fields +4 changed fields +1 fake Module +1 proxy +4 cache mutations +1 prototype +4 real source-gate roles =36. No original152 gate rerun.",
+  "stagedClosure": "Eight exact complete source files above; unit entry imports only native test/assert/Module/crypto/fs, helper requires native Module/util, platform imports native stdlib plus four pinned profileJSONs and whole stdlib-only app-bundle. No Express/TypeScript/Mongoose/application package evaluation or actual renderer.",
+  "generatedFixtures": {
+    "ownership": "Fresh UUID. Source area /private/tmp/sd-disabled-express-unit-source-UUID and four distinct exact role build-unit-UUID parents;0700, dev/ino/UID identity plus immutable0600 marker. Source snapshot is copied, never read by child from real checkout.",
+    "rolePrefixes": [
+      "sd-auth-api-build-unit-",
+      "sd-private-document-build-unit-",
+      "sd-customer-contact-build-unit-",
+      "sd-pharmacy-refill-build-unit-"
+    ],
+    "runtimeSubdirectory": "runtime under each parent; descriptor satisfies existing exact reviewedTemplate path profile/prefix/schema/sourceCommit/lock/ports/file-hash gates.",
+    "fiveFiles": [
+      "bootstrap.cjs (inert comment only)",
+      "runtime-plan.json (correct schema/role but intentional empty case/sensitivity arrays)",
+      "ports-manifest.json {}",
+      "package-lock.json {}",
+      "disabled-express-template.cjs (same actual pinned bytes)"
+    ],
+    "sourceFiles": "ONLY exact test/api-runtime/disabled-express-template.cjs \u219252772 actual hash, identical for all four descriptors. Each descriptor placed at its corresponding STAGED scenario/private-documents/customer-contact/pharmacy-refill/runtime-template.json.",
+    "marker": "SD-DISABLED-EXPRESS-SOURCE-UNIT-FIXTURES-1 with four roles/descriptors placed beside staged helper test.",
+    "requiredActualBehavior": "Auth/private reject same valid helper source at actual source allowance. Contact/refill pass helper/source admission then reject incomplete domain cases. Existing no-seam factory gate order proves this precedes controller workspace/executor/socket/Docker. No fake Docker/source-admission seam is used."
+  },
+  "bounds": {
+    "nodeSeconds": 30,
+    "terminationGraceSeconds": 2,
+    "killReapSeconds": 2,
+    "stdoutBytes": 1048576,
+    "stderrBytes": 65536,
+    "expectedCases": 36,
+    "expectedPass": 36,
+    "expectedFail": 0,
+    "expectedCancelled": 0,
+    "expectedSkipped": 0,
+    "expectedTodo": 0,
+    "expectedSuites": 0
+  },
+  "capture": "Fresh0700 /private/tmp/sd-disabled-express-unit-execution-UUID is retained outside cleanup.0600 ownership marker/INVOCATION.json/raw stdout.tap/stderr/RESULT.json bind argv/env/source/tool/context/receipt/claim/staged source/roles/owned dev+ino+paths, actual childPid/reaped/exit/counts/cleanup. No PASS until actual terminal zero/full named36TAP/zero others/current pins and cleanup.",
+  "cleanup": "After direct retained Popen child is reaped, revalidate each exact owned parent dev/ino/UID/0700/0600 same marker and no symlinks, then remove only those five areas in reverse. Refuse on identity/link/marker drift; preserve path/failure. If child cleanup unresolved preserve all areas. Evidence/once/receipt never deleted. Future independent fresh ENOENT readback for all five exact paths still required.",
+  "ordinaryFailureRules": "Bounded output/time and abnormal errors retain first fixed failure. Only direct owned Popen child is terminated/killed after fresh Popen state; no unowned PID/group action. A post-claim setup/cleanup failure remains consumed and is not a preflight-unconsumed retry grant. Any FAILED_OR_UNRESOLVED result requires review, no automatic retry.",
+  "authorChecks": "Only inert file/source/local-import/JSON/hash/text inspection and controller/proposal file authoring. No stager default/run/parser/unit/Node/compiler/npm/app/DB/Docker/provider/model invocation. All assertions/count36 are planned until actual run.",
+  "sourceEditsInWorktrees": false,
+  "invocationApproved": false,
+  "moduleRuntimeAcceptance": false,
+  "limits": [
+    "This is proposed pure helper/cache and real prepared-source boundary unit evidence, not AST matcher/native Express constructor/C1/P7 application/module acceptance.",
+    "Separate source reviews cover each namespace hook; exact full reachable-package AST audit and two actual outcomes still precede new install. Then separately reviewed fixture preparation/application/result+cleanup gates remain.",
+    "Root packages, distinct app bundles, original152gate evidence, all failure receipts/areas, R13selected76/stagedsix/archive remain unchanged."
+  ],
+  "expectedTestNameInventorySha256": "7c0d78d52de7fbecbde507ca5002aee05acf7c77c53328770446c648fd704d03",
+  "expectedTestNameInventoryCanonicalization": "UTF8 JSON array with ensure_ascii=False and separators comma/colon, no trailing newline",
+  "expectedTestNameInventoryAuthority": "One authoritative ordered36-name literal EXPECTED_TEST_NAMES in the exact hash-pinned R2 stager. Proposal carries its digest only; receipt binds full stager and proposal hashes. Actual TAP names must equal this array in addition to original sequence/unique/noSKIP/noTODO/fullsummary predicates.",
+  "initialActualReviews": [
+    {
+      "path": "/private/tmp/sd-disabled-express-unit-STANDARDS.json",
+      "sha256": "4f4fb05bc63fc14c01b32adf8ddf3ef2a627221edcc18624456ea9b2fd5f5df3",
+      "reviewer": "/root",
+      "decision": "REQUEST_CHANGES"
+    },
+    {
+      "path": "/private/tmp/sd-disabled-express-unit-SPEC.json",
+      "sha256": "660d3a11ca7061ffeb663c2624196f6f49858f5c398aec4a712e4f0dba9de7ff",
+      "reviewer": "/root/customer_remaining_audit",
+      "decision": "REQUEST_CHANGES"
+    }
+  ],
+  "amendment": {
+    "preservedR2StagerSha256": "cdcd369aaa11f566ee58ab2aa7754237dd0589b78069af129ea92f82021a9818",
+    "preservedR2ProposalSha256": "c469266f9b6ed971f17b6db04bd1ad5c9613a7709683a29aa4e1f0e472b3eed6",
+    "scope": "Add one literal --test-reporter=tap to SAME direct Node argv plus exact R3 SELF/PROPOSAL path bindings. All36 ordered names/inventoryhash/assertions, eight source pins, tools/context, permissions, resources, timeout/cleanup and receipt fields unchanged.",
+    "wholeInverseVerified": true,
+    "execution": "NONE: only source/data/hash/public primary-document reads and two new private files written. No Node/stager default/run/parser/unit/model/DB/Docker action."
+  },
+  "previousFailedAttempt": {
+    "stagerPath": "/private/tmp/sd-disabled-express-unit-stager-r2.py",
+    "stagerSha256": "cdcd369aaa11f566ee58ab2aa7754237dd0589b78069af129ea92f82021a9818",
+    "proposalPath": "/private/tmp/sd-disabled-express-unit-proposal-r2.json",
+    "proposalSha256": "c469266f9b6ed971f17b6db04bd1ad5c9613a7709683a29aa4e1f0e472b3eed6",
+    "capture": "/private/tmp/sd-disabled-express-unit-execution-06d65cd1-7323-457e-a4ff-938e789a3c18",
+    "resultSha256": "332643465f21d3762a80deee6e1156e73be934c171b25837ebeb6decebddc2bc",
+    "stdoutSha256": "f6155c0346469b5ac7a099519a1880365d75bbe9e48d5aeb3f7f7c2a9893cb52",
+    "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "historicalStatus": "FAILED_OR_UNRESOLVED / TAP_CASES; actual child0 reported36 SPEC passes, which are NOT a TAP gate PASS. Outer exit1; all five owned cleanup records true and child74631 reaped per actual result. Two independent failure/cleanup acceptances remain required.",
+    "receiptPath": "/private/tmp/sd-disabled-express-unit-approval.json",
+    "receiptSha256": "575c76254431a6bf304fde0fe1489eb168bd8e0e2e0644315380b28739357009",
+    "nonce": "c5f00453-5053-450f-bd3c-a94d76d145ea",
+    "oncePath": "/private/tmp/sd-disabled-express-unit-c5f00453-5053-450f-bd3c-a94d76d145ea.once",
+    "onceSha256": "d30c7610e669370b5f0d7ab806c66fe1a143789312b89835bc2ebb6140abf337",
+    "futureArchivePath": "/private/tmp/sd-disabled-express-unit-approval.archive-failed-spec-c5f00453-5053-450f-bd3c-a94d76d145ea.json",
+    "archiveState": "ABSENT; not created or moved by author",
+    "archiveMethod": "Only after both actual nonauthor failed-outcome reviews AND two fresh exact R3 stage votes: verify oldreceipt/nonce/once hashes and0600 ownership, preserve byte-exact under this unique absent0600 sibling before fresh exclusive0600 currentHEAD/R3hashes/newUUID approval. Never delete old once or capture."
+  },
+  "primaryDocumentation": [
+    {
+      "url": "https://raw.githubusercontent.com/nodejs/node/v24.19.0/doc/api/cli.md",
+      "section": "--test-reporter, lines2526-2539",
+      "inertEvidence": "Pinned version CLI documents the reporter selection flag; no Node command used."
+    },
+    {
+      "url": "https://raw.githubusercontent.com/nodejs/node/v24.19.0/doc/api/test.md",
+      "section": "Test reporters1259-1286 and multiple reporters1500-1517",
+      "inertEvidence": "Default nonTTY reporter changed to spec in23.0; tap is built in. Flag example omits --test, and one selected reporter defaults tostdout."
+    },
+    {
+      "url": "https://raw.githubusercontent.com/nodejs/node/v24.19.0/lib/internal/test_runner/utils.js",
+      "section": "parseCommandLine225-284 and329-330",
+      "inertEvidence": "Reporter selection is parsed for non-child direct execution independently of isTestRunner; direct branch retains concurrency1. Read as source data only; actual binary outcome still NOT_RUN."
+    }
+  ],
+  "futureInvocationPrerequisites": [
+    "Two actual eligible nonauthor acceptances of the failed R2 actual outcome and exact cleanup before any new invocation.",
+    "Two actual eligible nonauthor exact R3 stager/source+invocation approvals; author cannot vote.",
+    "Fresh source/tool/context/current committedHEAD verification; exact consumedreceipt archive then fresh newUUID600approval/once/ownedareas. No old artifact/claim reuse or automatic retry."
+  ]
+}

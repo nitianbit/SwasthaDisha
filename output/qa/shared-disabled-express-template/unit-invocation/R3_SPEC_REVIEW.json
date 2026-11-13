@@ -1,0 +1,90 @@
+{
+  "schema": "SD-DISABLED-EXPRESS-UNIT-SPEC-3",
+  "reviewer": "/root/customer_remaining_audit",
+  "decision": "APPROVE_ONE_FIXED_DISABLED_EXPRESS_HELPER_UNIT_RUN",
+  "stagerPath": "/private/tmp/sd-disabled-express-unit-stager-r3.py",
+  "stagerSha256": "586d368f970798b44a82903b9c053cde87e4342a1eb120b3117cf6f407bc4f66",
+  "proposalPath": "/private/tmp/sd-disabled-express-unit-proposal-r3.json",
+  "proposalSha256": "635fa43e5370cf2156fc91c7d855720947a59f33cbec26e50dc272ac05089d40",
+  "scope": "Independent NONAUTHOR exact one-R3-invocation review; Lab author excluded. Prior shared-source, exactR2vote/failure-review and relatedP7consumer exposure disclosed; no ownP7 sourceapproval or result.",
+  "actualDelta": "Whole inverse independently reconstructs cdcdR2 exactly: onlyone literal --test-reporter=tap argv addition and lexical SELF/PROPOSAL r2\u2192r3 paths. Fullprevious292+38line controllerreview carries forward; no othercleanup/deadline/count/assertion/permission/package/source change.",
+  "personallyRehashedCurrentSourcePins": {
+    "test/api-runtime/disabled-express-template.cjs": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779",
+    "test/api-runtime/disabled-express-template.test.mjs": "f0ec1cde80b48687fbc3853ab4b3d36420bb2af0281158291d05a51db1cf293d",
+    "test/api-runtime/platform.mjs": "3decce77cdc98038713818a79f49742df9ef8ff58803e931ae1a44c1ffd1e76c",
+    "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+    "test/api-runtime/private-documents/profile.json": "f21a759901d705f1e950fc8c194d988757ada73d22cba65b139cbae06fbcd197",
+    "test/api-runtime/customer-contact/profile.json": "8901145dbb08ee98e489c9241db8e32cc90f6485aa3f154c7aea73be8f2f5075",
+    "test/api-runtime/pharmacy-refill/profile.json": "15e8b72e9e3ab4f359df4f90f33f0582a20129ac2723064e800263ac1ced2ae2",
+    "test/application/app-bundle.mjs": "63a5e15779fd942b9ff9e1c3ccaa45d4d347387f196555e2a1b8998477c7ecfc"
+  },
+  "personallyRehashedContextPins": {
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/shared-disabled-express-template/INTERFACE.json": "0dea3a043efea2e284246bc29d5ecc5a4abb116d70f614f958c210d8ba5f2952",
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/shared-disabled-express-template/source-candidate/SOURCE_CANDIDATE.json": "853e1dc480fc0e80056f07c0a7e72dce05a85c7600b79d6bbbc05373483a4f68",
+    "/private/tmp/sd-disabled-express-shared-source-STANDARDS.json": "3d0515518cfddff9736bc6002e7da338fee17feecd667cf81358eaa28fd24a0d",
+    "/private/tmp/sd-disabled-express-shared-source-SPEC.json": "c3adf631616baa32801442aeb9087bab4443d99cb34a5fdb8757bea58cdc837b"
+  },
+  "expectedNames": {
+    "count": 36,
+    "canonicalSha256": "7c0d78d52de7fbecbde507ca5002aee05acf7c77c53328770446c648fd704d03",
+    "sameOrderedLiteralAndExactTAPEquality": true
+  },
+  "actualPreservedR2FailureOutcomes": {
+    "/private/tmp/sd-disabled-express-unit-OUTCOME-STANDARDS-r2.json": {
+      "sha256": "cce8041ec714c7287f22e0b80450b86564db6615e38ad2e96e702b7e2d287e9e",
+      "reviewer": "/root/customer_remaining_audit",
+      "decision": "ACCEPT_FAILED_SHARED_UNIT_RESULT_ONLY"
+    },
+    "/private/tmp/sd-disabled-express-unit-OUTCOME-SPEC-r2.json": {
+      "sha256": "54b720acfe11a474ed0c74a1192c139cb5520bd81bed05f023f697ba8aae0e96",
+      "reviewer": "/root/milestone_composition_r9",
+      "decision": "ACCEPT_FAILED_UNIT_EVIDENCE_AND_VERIFIED_CLEANUP_ONLY"
+    }
+  },
+  "previousActualFailure": {
+    "stagerPath": "/private/tmp/sd-disabled-express-unit-stager-r2.py",
+    "stagerSha256": "cdcd369aaa11f566ee58ab2aa7754237dd0589b78069af129ea92f82021a9818",
+    "proposalPath": "/private/tmp/sd-disabled-express-unit-proposal-r2.json",
+    "proposalSha256": "c469266f9b6ed971f17b6db04bd1ad5c9613a7709683a29aa4e1f0e472b3eed6",
+    "capture": "/private/tmp/sd-disabled-express-unit-execution-06d65cd1-7323-457e-a4ff-938e789a3c18",
+    "resultSha256": "332643465f21d3762a80deee6e1156e73be934c171b25837ebeb6decebddc2bc",
+    "stdoutSha256": "f6155c0346469b5ac7a099519a1880365d75bbe9e48d5aeb3f7f7c2a9893cb52",
+    "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "historicalStatus": "FAILED_OR_UNRESOLVED / TAP_CASES; actual child0 reported36 SPEC passes, which are NOT a TAP gate PASS. Outer exit1; all five owned cleanup records true and child74631 reaped per actual result. Two independent failure/cleanup acceptances remain required.",
+    "receiptPath": "/private/tmp/sd-disabled-express-unit-approval.json",
+    "receiptSha256": "575c76254431a6bf304fde0fe1489eb168bd8e0e2e0644315380b28739357009",
+    "nonce": "c5f00453-5053-450f-bd3c-a94d76d145ea",
+    "oncePath": "/private/tmp/sd-disabled-express-unit-c5f00453-5053-450f-bd3c-a94d76d145ea.once",
+    "onceSha256": "d30c7610e669370b5f0d7ab806c66fe1a143789312b89835bc2ebb6140abf337",
+    "futureArchivePath": "/private/tmp/sd-disabled-express-unit-approval.archive-failed-spec-c5f00453-5053-450f-bd3c-a94d76d145ea.json",
+    "archiveState": "ABSENT; not created or moved by author",
+    "archiveMethod": "Only after both actual nonauthor failed-outcome reviews AND two fresh exact R3 stage votes: verify oldreceipt/nonce/once hashes and0600 ownership, preserve byte-exact under this unique absent0600 sibling before fresh exclusive0600 currentHEAD/R3hashes/newUUID approval. Never delete old once or capture."
+  },
+  "primarySourceVerification": [
+    {
+      "url": "https://raw.githubusercontent.com/nodejs/node/v24.19.0/doc/api/test.md",
+      "meaning": "Personally browsed exactversion primarydocs: spec is default afterv23; tap built-in produces TAP. This supports boundedreporterchoice, not alreadyexecutedresult."
+    },
+    {
+      "url": "https://raw.githubusercontent.com/nodejs/node/v24.19.0/lib/internal/test_runner/utils.js",
+      "meaning": "Personally browsed exactv24.19 source225-340: non-child branch selects reportersindependentlyof --test; one reporter defaultsstdout; non-test directbranchconcurrency1. No vendor/runtimecode executed."
+    },
+    {
+      "url": "https://raw.githubusercontent.com/nodejs/node/v24.19.0/doc/api/cli.md",
+      "meaning": "Exactversion CLI2526-2539 defines --test-reporter. Flagselects builtin tap withoutadding--test/testisolation/workers/permissions."
+    }
+  ],
+  "conditions": [
+    "ActualRootindependentexactR3vote also required; authorLabcannotvote.",
+    "Before invocation verify consumed575c receipt/nonce/once/current8sources/tools/contexts; preserve old0600bytes at exactuniqueabsent archivefailed-spec-c5f00453 sibling, oldonce/captureunchanged; then exclusivefresh0600currentcommittedHEADreceipt/newUUIDnonce/oneuse/fivefreshownedareas. No oldclaimreuse or automaticretry.",
+    "One exact pinnedPython -I-B-S --run underenv-i PATH/TMPDIR; directpinnedNode24 --permission --test-reporter=tap withsamefiveownedreadroots andsameentry. No--test/fswrite/children/workers/addons/network/app/package/DB/Docker scope.30s/output/reap/heldidentitycleanup unchanged.",
+    "FormalPASS requires actualzeroexit/exact36orderedTAPnames+allsummarycounts/zeroothers/pinsunchanged and independentexact5path/processabsence/outcomereviews; stillNOT_RUN atthisvote.",
+    "R2actualTAP_CASES failure remainsfailed despite SPEC36greens; R3doesnotrewriteprioroutput/outcome.",
+    "Only helper/cache and realpreparedsourceboundary unit scope. ASTaudit/namespacecomposition/fixturepreparation/preimport/nativeapp/domain/owner/client/clinical/C2C3/releasegates remain."
+  ],
+  "findings": [],
+  "sourceEdits": false,
+  "executionByReviewer": "Inertfile/JSON/text/hash reads plus officialversiondocumentation/source browsing only; no Node/stager/default/parser/compiler/packages/app/DB/Docker/provider/model invocation.",
+  "receiptOrArchiveCreated": false,
+  "outcomeAccepted": false
+}

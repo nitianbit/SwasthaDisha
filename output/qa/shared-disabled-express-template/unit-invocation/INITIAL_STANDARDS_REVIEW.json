@@ -1,0 +1,33 @@
+{
+  "schema": "SD-DISABLED-EXPRESS-UNIT-STANDARDS-1",
+  "reviewer": "/root",
+  "scope": "Independent Standards review of Lab-authored new standard-library unit stager and exact invocation. Root helper/tests source approval comes from the two actual nonauthor records, not this operator review.",
+  "decision": "REQUEST_CHANGES",
+  "proposalSha256": "5dbcf77e9b88bd87c5c4d8207bf9766545c3d01055a907fe5f9d946ff2e528db",
+  "stagerSha256": "f257b0fd3499bb55dbcd776cb0d365f579e2c4c8c1945a8be754e4e0bd3f9ae1",
+  "findings": [
+    {
+      "id": "UNIT-STAGER-STD-1",
+      "severity": "MEDIUM",
+      "path": "/private/tmp/sd-disabled-express-unit-stager.py",
+      "problem": "TAP acceptance checks 36 unique sequential rows and summary but never compares actual names with the exact required 36 source-derived names promised by proposal/capture scope. A different named set of36 satisfies current predicate.",
+      "minimalFix": "Freeze one exact ordered expected36-name inventory, bound through proposal/receipt/stager; compare actual row names to this inventory, retaining existing sequence/count/noSKIP/noTODO/summary checks. Preserve initial stager/proposal/reviews. No source tests/argv/permissions/timeouts/resources change."
+    }
+  ],
+  "personallyInspected": {
+    "entire292LineStagerAndWholeProposal": true,
+    "actualWholeSourcePins": 8,
+    "contextPins": 4,
+    "fiveFreshOwnedAreasAndFourRealNoSeamTemplates": true,
+    "sameHelperDataAcrossAllRoles": true,
+    "actualSourceGuardThenEmptyCaseOrder": true,
+    "NodeDirectEntryNoWorkersChildrenAddonOrFsWrite": true,
+    "boundedStreamPumpAndFirstFailurePreservation": true,
+    "cleanupOnlyReapedChildAndExactIdentityMarkerNoSymlinks": true,
+    "outsideCaptureAndConsumedClaimRetained": true
+  },
+  "noOtherMaterialFinding": true,
+  "execution": "No stager/Node/parser/compiler/packages/native/app/DB/Docker/model invocation; source/data/hash reads only.",
+  "futureDecisionRequired": "APPROVE_ONE_FIXED_DISABLED_EXPRESS_HELPER_UNIT_RUN",
+  "invocationPermission": false
+}

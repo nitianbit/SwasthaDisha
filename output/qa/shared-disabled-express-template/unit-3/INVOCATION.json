@@ -1,0 +1,186 @@
+{
+  "sourceCommit": "19013671fd1f26d4b27758ce1547284fb35e3ce2",
+  "sourcePins": {
+    "test/api-runtime/disabled-express-template.cjs": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779",
+    "test/api-runtime/disabled-express-template.test.mjs": "f0ec1cde80b48687fbc3853ab4b3d36420bb2af0281158291d05a51db1cf293d",
+    "test/api-runtime/platform.mjs": "3decce77cdc98038713818a79f49742df9ef8ff58803e931ae1a44c1ffd1e76c",
+    "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+    "test/api-runtime/private-documents/profile.json": "f21a759901d705f1e950fc8c194d988757ada73d22cba65b139cbae06fbcd197",
+    "test/api-runtime/customer-contact/profile.json": "8901145dbb08ee98e489c9241db8e32cc90f6485aa3f154c7aea73be8f2f5075",
+    "test/api-runtime/pharmacy-refill/profile.json": "15e8b72e9e3ab4f359df4f90f33f0582a20129ac2723064e800263ac1ced2ae2",
+    "test/application/app-bundle.mjs": "63a5e15779fd942b9ff9e1c3ccaa45d4d347387f196555e2a1b8998477c7ecfc"
+  },
+  "stagerSha256": "586d368f970798b44a82903b9c053cde87e4342a1eb120b3117cf6f407bc4f66",
+  "proposalSha256": "635fa43e5370cf2156fc91c7d855720947a59f33cbec26e50dc272ac05089d40",
+  "receiptSha256": "d78a0768f70836cc12b689850a934c1bf58a10d292d66a6a156413ff2c4d83ca",
+  "once": "/private/tmp/sd-disabled-express-unit-87673499-30ca-43f5-8e1c-f1a0c5a3fae2.once",
+  "runId": "7535a767-59aa-4dfa-b73d-35fc942f1003",
+  "argv": [
+    "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+    "--permission",
+    "--test-reporter=tap",
+    "--allow-fs-read=/private/tmp/sd-disabled-express-unit-source-7535a767-59aa-4dfa-b73d-35fc942f1003",
+    "--allow-fs-read=/private/tmp/sd-auth-api-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003/runtime",
+    "--allow-fs-read=/private/tmp/sd-private-document-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003/runtime",
+    "--allow-fs-read=/private/tmp/sd-customer-contact-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003/runtime",
+    "--allow-fs-read=/private/tmp/sd-pharmacy-refill-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003/runtime",
+    "/private/tmp/sd-disabled-express-unit-source-7535a767-59aa-4dfa-b73d-35fc942f1003/test/api-runtime/disabled-express-template.test.mjs"
+  ],
+  "environment": {
+    "PATH": "/usr/bin:/bin",
+    "TMPDIR": "/private/tmp/sd-disabled-express-unit-source-7535a767-59aa-4dfa-b73d-35fc942f1003"
+  },
+  "areas": [
+    {
+      "runId": "7535a767-59aa-4dfa-b73d-35fc942f1003",
+      "path": "/private/tmp/sd-disabled-express-unit-source-7535a767-59aa-4dfa-b73d-35fc942f1003",
+      "dev": 16777230,
+      "ino": 55039598,
+      "purpose": "DISABLED_EXPRESS_UNIT_ONLY"
+    },
+    {
+      "runId": "7535a767-59aa-4dfa-b73d-35fc942f1003",
+      "path": "/private/tmp/sd-auth-api-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003",
+      "dev": 16777230,
+      "ino": 55039614,
+      "purpose": "DISABLED_EXPRESS_UNIT_ONLY"
+    },
+    {
+      "runId": "7535a767-59aa-4dfa-b73d-35fc942f1003",
+      "path": "/private/tmp/sd-private-document-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003",
+      "dev": 16777230,
+      "ino": 55039624,
+      "purpose": "DISABLED_EXPRESS_UNIT_ONLY"
+    },
+    {
+      "runId": "7535a767-59aa-4dfa-b73d-35fc942f1003",
+      "path": "/private/tmp/sd-customer-contact-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003",
+      "dev": 16777230,
+      "ino": 55039633,
+      "purpose": "DISABLED_EXPRESS_UNIT_ONLY"
+    },
+    {
+      "runId": "7535a767-59aa-4dfa-b73d-35fc942f1003",
+      "path": "/private/tmp/sd-pharmacy-refill-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003",
+      "dev": 16777230,
+      "ino": 55039642,
+      "purpose": "DISABLED_EXPRESS_UNIT_ONLY"
+    }
+  ],
+  "roles": [
+    {
+      "role": "auth",
+      "runtime": "/private/tmp/sd-auth-api-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003/runtime",
+      "sourceHelperSha256": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779",
+      "descriptor": {
+        "schema": "SD-AUTH-API-TEMPLATE-1",
+        "sourceCommit": "19013671fd1f26d4b27758ce1547284fb35e3ce2",
+        "files": {
+          "bootstrap.cjs": "8b41926ebe9c612f48616d6c52a6f11f54851050245b09ea3abf75c4f4462141",
+          "runtime-plan.json": "8d291fe9f91d13ba6bbcd1d4a07b6aa6f9d3faee79d6d587a4128245b303aed0",
+          "ports-manifest.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+          "package-lock.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+          "disabled-express-template.cjs": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779"
+        },
+        "sourceFiles": {
+          "test/api-runtime/disabled-express-template.cjs": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779"
+        },
+        "directory": "/private/tmp/sd-auth-api-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003/runtime",
+        "lockSha": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "portsSha": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "packageVersions": {
+          "mongoose": "9.12.0",
+          "typescript": "5.9.3"
+        }
+      }
+    },
+    {
+      "role": "private",
+      "runtime": "/private/tmp/sd-private-document-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003/runtime",
+      "sourceHelperSha256": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779",
+      "descriptor": {
+        "schema": "SD-PRIVATE-DOCUMENT-API-TEMPLATE-1",
+        "sourceCommit": "19013671fd1f26d4b27758ce1547284fb35e3ce2",
+        "files": {
+          "bootstrap.cjs": "8b41926ebe9c612f48616d6c52a6f11f54851050245b09ea3abf75c4f4462141",
+          "runtime-plan.json": "6895059b85a9514e09332f42f6df48fdc2fedc0f677df6c9a30b7a941b5ae6e3",
+          "ports-manifest.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+          "package-lock.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+          "disabled-express-template.cjs": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779"
+        },
+        "sourceFiles": {
+          "test/api-runtime/disabled-express-template.cjs": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779"
+        },
+        "directory": "/private/tmp/sd-private-document-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003/runtime",
+        "lockSha": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "portsSha": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "packageVersions": {
+          "mongoose": "9.12.0",
+          "typescript": "5.9.3"
+        }
+      }
+    },
+    {
+      "role": "contact",
+      "runtime": "/private/tmp/sd-customer-contact-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003/runtime",
+      "sourceHelperSha256": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779",
+      "descriptor": {
+        "schema": "SD-CUSTOMER-CONTACT-API-TEMPLATE-1",
+        "sourceCommit": "19013671fd1f26d4b27758ce1547284fb35e3ce2",
+        "files": {
+          "bootstrap.cjs": "8b41926ebe9c612f48616d6c52a6f11f54851050245b09ea3abf75c4f4462141",
+          "runtime-plan.json": "4b92a27388f9cfb950c13530c2ebe750435135c4f06bd099947b17b298ef5687",
+          "ports-manifest.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+          "package-lock.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+          "disabled-express-template.cjs": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779"
+        },
+        "sourceFiles": {
+          "test/api-runtime/disabled-express-template.cjs": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779"
+        },
+        "directory": "/private/tmp/sd-customer-contact-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003/runtime",
+        "lockSha": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "portsSha": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "packageVersions": {
+          "mongoose": "6.13.8",
+          "typescript": "5.9.3"
+        }
+      }
+    },
+    {
+      "role": "refill",
+      "runtime": "/private/tmp/sd-pharmacy-refill-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003/runtime",
+      "sourceHelperSha256": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779",
+      "descriptor": {
+        "schema": "SD-PHARMACY-REFILL-API-TEMPLATE-1",
+        "sourceCommit": "19013671fd1f26d4b27758ce1547284fb35e3ce2",
+        "files": {
+          "bootstrap.cjs": "8b41926ebe9c612f48616d6c52a6f11f54851050245b09ea3abf75c4f4462141",
+          "runtime-plan.json": "85f01e0c36196788c54911e2b4a103acdd0a6fbe2bc83fadf29d6972fb684e7c",
+          "ports-manifest.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+          "package-lock.json": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+          "disabled-express-template.cjs": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779"
+        },
+        "sourceFiles": {
+          "test/api-runtime/disabled-express-template.cjs": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779"
+        },
+        "directory": "/private/tmp/sd-pharmacy-refill-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003/runtime",
+        "lockSha": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "portsSha": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+        "packageVersions": {
+          "mongoose": "6.13.8",
+          "typescript": "5.9.3"
+        }
+      }
+    }
+  ],
+  "stagedSourceHashes": {
+    "test/api-runtime/disabled-express-template.cjs": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779",
+    "test/api-runtime/disabled-express-template.test.mjs": "f0ec1cde80b48687fbc3853ab4b3d36420bb2af0281158291d05a51db1cf293d",
+    "test/api-runtime/platform.mjs": "3decce77cdc98038713818a79f49742df9ef8ff58803e931ae1a44c1ffd1e76c",
+    "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+    "test/api-runtime/private-documents/profile.json": "f21a759901d705f1e950fc8c194d988757ada73d22cba65b139cbae06fbcd197",
+    "test/api-runtime/customer-contact/profile.json": "8901145dbb08ee98e489c9241db8e32cc90f6485aa3f154c7aea73be8f2f5075",
+    "test/api-runtime/pharmacy-refill/profile.json": "15e8b72e9e3ab4f359df4f90f33f0582a20129ac2723064e800263ac1ced2ae2",
+    "test/application/app-bundle.mjs": "63a5e15779fd942b9ff9e1c3ccaa45d4d347387f196555e2a1b8998477c7ecfc"
+  }
+}

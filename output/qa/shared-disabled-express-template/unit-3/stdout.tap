@@ -1,0 +1,226 @@
+TAP version 13
+# Subtest: one immutable canonical policy and no mutable guard control API
+ok 1 - one immutable canonical policy and no mutable guard control API
+  ---
+  duration_ms: 1.194334
+  type: 'test'
+  ...
+# Subtest: one ordered initialization seals the final exports function, distinct from initial Module.exports
+ok 2 - one ordered initialization seals the final exports function, distinct from initial Module.exports
+  ---
+  duration_ms: 0.252458
+  type: 'test'
+  ...
+# Subtest: intact SEALED load and resolve deny before forwarding and retain readiness: fs
+ok 3 - intact SEALED load and resolve deny before forwarding and retain readiness: fs
+  ---
+  duration_ms: 0.248917
+  type: 'test'
+  ...
+# Subtest: intact SEALED load and resolve deny before forwarding and retain readiness: node:fs
+ok 4 - intact SEALED load and resolve deny before forwarding and retain readiness: node:fs
+  ---
+  duration_ms: 0.123792
+  type: 'test'
+  ...
+# Subtest: intact SEALED load and resolve deny before forwarding and retain readiness: debug
+ok 5 - intact SEALED load and resolve deny before forwarding and retain readiness: debug
+  ---
+  duration_ms: 0.138291
+  type: 'test'
+  ...
+# Subtest: intact SEALED load and resolve deny before forwarding and retain readiness: path
+ok 6 - intact SEALED load and resolve deny before forwarding and retain readiness: path
+  ---
+  duration_ms: 0.116583
+  type: 'test'
+  ...
+# Subtest: unrelated caught optional error retains exact identity and does not poison the guard
+ok 7 - unrelated caught optional error retains exact identity and does not poison the guard
+  ---
+  duration_ms: 0.114958
+  type: 'test'
+  ...
+# Subtest: initialization failure is irreversible: order
+ok 8 - initialization failure is irreversible: order
+  ---
+  duration_ms: 0.117959
+  type: 'test'
+  ...
+# Subtest: initialization failure is irreversible: duplicate
+ok 9 - initialization failure is irreversible: duplicate
+  ---
+  duration_ms: 0.0775
+  type: 'test'
+  ...
+# Subtest: initialization failure is irreversible: missing
+ok 10 - initialization failure is irreversible: missing
+  ---
+  duration_ms: 0.097083
+  type: 'test'
+  ...
+# Subtest: initialization failure is irreversible: extra
+ok 11 - initialization failure is irreversible: extra
+  ---
+  duration_ms: 0.080459
+  type: 'test'
+  ...
+# Subtest: initialization failure is irreversible: loaded false at completion
+ok 12 - initialization failure is irreversible: loaded false at completion
+  ---
+  duration_ms: 0.057459
+  type: 'test'
+  ...
+# Subtest: initialization failure is irreversible: direct resolution without outgoing frame
+ok 13 - initialization failure is irreversible: direct resolution without outgoing frame
+  ---
+  duration_ms: 0.050167
+  type: 'test'
+  ...
+# Subtest: native initialization forward error retains identity and leaves FAILED: incomingError
+ok 14 - native initialization forward error retains identity and leaves FAILED: incomingError
+  ---
+  duration_ms: 0.073875
+  type: 'test'
+  ...
+# Subtest: native initialization forward error retains identity and leaves FAILED: outgoingError
+ok 15 - native initialization forward error retains identity and leaves FAILED: outgoingError
+  ---
+  duration_ms: 0.061292
+  type: 'test'
+  ...
+# Subtest: readiness before initialization cannot later be repaired
+ok 16 - readiness before initialization cannot later be repaired
+  ---
+  duration_ms: 0.043792
+  type: 'test'
+  ...
+# Subtest: a second incoming initializer cannot reopen a sealed window
+ok 17 - a second incoming initializer cannot reopen a sealed window
+  ---
+  duration_ms: 0.06
+  type: 'test'
+  ...
+# Subtest: accessor on genuine Module is denied without invocation and restoration cannot recover: filename
+ok 18 - accessor on genuine Module is denied without invocation and restoration cannot recover: filename
+  ---
+  duration_ms: 0.066458
+  type: 'test'
+  ...
+# Subtest: accessor on genuine Module is denied without invocation and restoration cannot recover: id
+ok 19 - accessor on genuine Module is denied without invocation and restoration cannot recover: id
+  ---
+  duration_ms: 0.053042
+  type: 'test'
+  ...
+# Subtest: accessor on genuine Module is denied without invocation and restoration cannot recover: loaded
+ok 20 - accessor on genuine Module is denied without invocation and restoration cannot recover: loaded
+  ---
+  duration_ms: 0.048
+  type: 'test'
+  ...
+# Subtest: accessor on genuine Module is denied without invocation and restoration cannot recover: exports
+ok 21 - accessor on genuine Module is denied without invocation and restoration cannot recover: exports
+  ---
+  duration_ms: 0.042167
+  type: 'test'
+  ...
+# Subtest: changed genuine Module data irreversibly fails: filename
+ok 22 - changed genuine Module data irreversibly fails: filename
+  ---
+  duration_ms: 0.066917
+  type: 'test'
+  ...
+# Subtest: changed genuine Module data irreversibly fails: id
+ok 23 - changed genuine Module data irreversibly fails: id
+  ---
+  duration_ms: 0.048667
+  type: 'test'
+  ...
+# Subtest: changed genuine Module data irreversibly fails: loaded
+ok 24 - changed genuine Module data irreversibly fails: loaded
+  ---
+  duration_ms: 0.047459
+  type: 'test'
+  ...
+# Subtest: changed genuine Module data irreversibly fails: exports
+ok 25 - changed genuine Module data irreversibly fails: exports
+  ---
+  duration_ms: 0.055833
+  type: 'test'
+  ...
+# Subtest: fake native Module with target filename cannot replace the captured identity
+ok 26 - fake native Module with target filename cannot replace the captured identity
+  ---
+  duration_ms: 0.059583
+  type: 'test'
+  ...
+# Subtest: proxy parent does not invoke observable traps
+ok 27 - proxy parent does not invoke observable traps
+  ---
+  duration_ms: 0.069792
+  type: 'test'
+  ...
+# Subtest: cache integrity fails closed without recovery: getter
+ok 28 - cache integrity fails closed without recovery: getter
+  ---
+  duration_ms: 0.062333
+  type: 'test'
+  ...
+# Subtest: cache integrity fails closed without recovery: replace
+ok 29 - cache integrity fails closed without recovery: replace
+  ---
+  duration_ms: 0.271625
+  type: 'test'
+  ...
+# Subtest: cache integrity fails closed without recovery: delete
+ok 30 - cache integrity fails closed without recovery: delete
+  ---
+  duration_ms: 0.041167
+  type: 'test'
+  ...
+# Subtest: cache integrity fails closed without recovery: cache-proxy
+ok 31 - cache integrity fails closed without recovery: cache-proxy
+  ---
+  duration_ms: 0.039791
+  type: 'test'
+  ...
+# Subtest: changed native Module prototype remains failed after external restoration
+ok 32 - changed native Module prototype remains failed after external restoration
+  ---
+  duration_ms: 0.057083
+  type: 'test'
+  ...
+# Subtest: actual prepared-source boundary confines helper to intended roles: auth
+ok 33 - actual prepared-source boundary confines helper to intended roles: auth
+  ---
+  duration_ms: 2.399292
+  type: 'test'
+  ...
+# Subtest: actual prepared-source boundary confines helper to intended roles: private
+ok 34 - actual prepared-source boundary confines helper to intended roles: private
+  ---
+  duration_ms: 0.429209
+  type: 'test'
+  ...
+# Subtest: actual prepared-source boundary confines helper to intended roles: contact
+ok 35 - actual prepared-source boundary confines helper to intended roles: contact
+  ---
+  duration_ms: 0.464708
+  type: 'test'
+  ...
+# Subtest: actual prepared-source boundary confines helper to intended roles: refill
+ok 36 - actual prepared-source boundary confines helper to intended roles: refill
+  ---
+  duration_ms: 0.451208
+  type: 'test'
+  ...
+1..36
+# tests 36
+# suites 0
+# pass 36
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 13.106166

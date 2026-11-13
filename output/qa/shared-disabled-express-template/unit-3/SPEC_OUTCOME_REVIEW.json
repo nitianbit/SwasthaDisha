@@ -1,0 +1,119 @@
+{
+  "schema": "SD-DISABLED-EXPRESS-UNIT-INDEPENDENT-ACTUAL-OUTCOME-3",
+  "reviewer": "/root/milestone_composition_r9",
+  "axis": "Spec",
+  "decision": "ACCEPT_OFFLINE_HELPER_AND_SOURCE_ADMISSION_UNIT_RESULT_ONLY",
+  "independence": "Reviewer authored neither Rootsharedhelper/tests/platform nor Labstager/proposal and didnotoperate run; actualstageRoot+Customer votes/sourceauthor disclosures remain separate.",
+  "capture": {
+    "path": "/private/tmp/sd-disabled-express-unit-execution-7535a767-59aa-4dfa-b73d-35fc942f1003",
+    "hashes": {
+      "RESULT.json": "2c72edb19977168dd1e3087adbbcf4f59f604847787891162845fd67314da8ba",
+      "INVOCATION.json": "4f20d1829834a7d7d5cdd2d2d7843634af4b034ddd470ee576bcd22cb4dacc9f",
+      "stdout.tap": "0e10345e4cf4009e7dd82b9f2891a5a4ca2c789cacbf90532be8a8edcc6ce2e5",
+      "stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "sourceCommit": "19013671fd1f26d4b27758ce1547284fb35e3ce2",
+    "stagerSha256": "586d368f970798b44a82903b9c053cde87e4342a1eb120b3117cf6f407bc4f66",
+    "proposalSha256": "635fa43e5370cf2156fc91c7d855720947a59f33cbec26e50dc272ac05089d40",
+    "receiptSha256": "d78a0768f70836cc12b689850a934c1bf58a10d292d66a6a156413ff2c4d83ca",
+    "oncePath": "/private/tmp/sd-disabled-express-unit-87673499-30ca-43f5-8e1c-f1a0c5a3fae2.once",
+    "onceSha256": "aaf397b977d7ce6866c4ab96798dee5fec2df78ea207c9a71a8ea177f02d5c81",
+    "runId": "7535a767-59aa-4dfa-b73d-35fc942f1003",
+    "childPid": 75737,
+    "childExitCode": 0,
+    "childReapedRecorded": true,
+    "outerExitCodeOperatorReported": 0,
+    "firstFailure": null
+  },
+  "actualTAP": {
+    "version": 13,
+    "namedTests": 36,
+    "orderedNamesMatchExactPinnedInventory": true,
+    "inventorySha256": "7c0d78d52de7fbecbde507ca5002aee05acf7c77c53328770446c648fd704d03",
+    "testIds": "1..36 consecutiveunique",
+    "plan": "1..36 exactlyonce",
+    "tests": 36,
+    "suites": 0,
+    "pass": 36,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0,
+    "stdoutBytes": 7649,
+    "stderrBytes": 0,
+    "completeEOF": true,
+    "duration_ms": 13.106166
+  },
+  "actualReadOnlyChecks": [
+    "EntireRESULT/INVOCATION/7649BrawTAP/emptystderr read,36ordereduniquenames equal literalpinnedstagerinventory,allsummaryfieldsexactonce/plan/zeroothers/noSKIPTODO/notok/completeEOF verified independently asdata. Directargv includesoneexplicit--test-reporter=tap andno--testworker entry.",
+    "Actual8currentwholefile/Git1901367 hashes matchreceipt/result/invocation/stagedhashrecords. Fourcontextpins/actualsharedsourcevotes/hostNode24+CPython bytepins verified; same52772helper/36assertions and sourcegate paths as reviewedsource.",
+    "Currentd78a receipt/new87673499nonce/consumedonceaaf397 bindactual586dstager/635fproposal/currentevidenceHEAD. Actuala06bRoot+4ad055Customerexactstagevotes verified. Old575failedSPEC receipt archive isbyteexact andoldc5f00453once/capture retained; no oldfailure rewrittenasPASS.",
+    "Exact107lineunit source read: pureguardtests usefreshnativeModule/cache fixtures; noAST/compiler/Express/Mongoose/app evaluation. Nativeerroridentity/nonpoisoningsealeddenial/fatalirreversibility/gettertrapzero/cache/prototype assertions are realnativeModule tests, not genuineExpressconstructor proof.",
+    "Fourrecordedroletemplates shareactualhelperpin and structurallyvalidinertdescriptors/roleprofile/version/sourcepaths; testcallsrealno-seamcreate factory withendpointonly. Auth/private rejecthelper atsourceallowance, contact/refill passsourcegate thenrejectemptydomaincases. Distinctexpectederrorsasserted byok33..36; no fakeexecutor/template seam or container/socket operation used.",
+    "Allfiveinvocationarea path/dev/ino identities exactlymatchcleanuprecords; stagerowns/reapschildbeforeidentity+UID+mode+marker+nosymlinkcheckedreversecleanup. Freshreviewer lstat all5exactpaths ENOENT. Deletedstagedfiles cannotberehashednow; stagedhashrecord/trustedstager/proofs retained withoutclaimingpresentpaths.",
+    "Freshauthorizedread-only ps-p75737 andpgrep-g75737 bothreturn1/emptystdout/stderr. Currentreceipt/once/archive/capturefiles currentUIDregularsinglelink0600/capture0700 verified. No signaling/deletion/source/test/package/app/DB/Docker/model operation byreviewer."
+  ],
+  "independentFreshCleanup": {
+    "paths": [
+      {
+        "path": "/private/tmp/sd-pharmacy-refill-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003",
+        "errno": 2,
+        "observation": "ENOENT"
+      },
+      {
+        "path": "/private/tmp/sd-customer-contact-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003",
+        "errno": 2,
+        "observation": "ENOENT"
+      },
+      {
+        "path": "/private/tmp/sd-private-document-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003",
+        "errno": 2,
+        "observation": "ENOENT"
+      },
+      {
+        "path": "/private/tmp/sd-auth-api-build-unit-7535a767-59aa-4dfa-b73d-35fc942f1003",
+        "errno": 2,
+        "observation": "ENOENT"
+      },
+      {
+        "path": "/private/tmp/sd-disabled-express-unit-source-7535a767-59aa-4dfa-b73d-35fc942f1003",
+        "errno": 2,
+        "observation": "ENOENT"
+      }
+    ],
+    "processChecks": [
+      {
+        "argv": [
+          "/bin/ps",
+          "-p",
+          "75737",
+          "-o",
+          "pid=,ppid=,pgid=,stat=,comm="
+        ],
+        "exitCode": 1,
+        "stdout": "",
+        "stderr": ""
+      },
+      {
+        "argv": [
+          "/usr/bin/pgrep",
+          "-g",
+          "75737"
+        ],
+        "exitCode": 1,
+        "stdout": "",
+        "stderr": ""
+      }
+    ],
+    "allVerified": true
+  },
+  "limits": [
+    "AcceptONLYthisactual36-testofflinehelper/nativeModule-cache andrealprepared-source-roleadmission result withverifiedcleanup. Notoriginal152fakegatererun, completeASTmatcher/packageclosureaudit, realnativeExpressconstructor, C1/P7app/DB/module/clinical/productionbehavior.",
+    "Allunseenparser/compiler/install/emission/application/nativecatalog/sourcecontrols remainseparatelygated. No executablepermission/automaticretry/grantchange/descriptorrebind/rootC2adoption/owner/client/release/finalintegration acceptance.",
+    "OldfailedSPEC capture/once/receipt preserved;R13acceptedhistoricalpacket/source/frozen76 andoriginalsix/archive notmodified."
+  ],
+  "reviewerExecution": "Only inert files/Git/JSON/hash/text and scopedread-onlyprocessmetadata; didnotrunNode/unit/parser/app/DB/Docker/model.",
+  "sourceEdits": false,
+  "futureExecutionPermission": false,
+  "findings": []
+}

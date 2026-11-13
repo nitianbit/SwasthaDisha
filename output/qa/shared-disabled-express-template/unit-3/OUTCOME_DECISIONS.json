@@ -1,0 +1,40 @@
+{
+  "schema": "SD-SHARED-DISABLED-EXPRESS-ACTUAL-UNIT-DECISIONS-3",
+  "recorder": "/root",
+  "decision": "ACCEPT_SHARED_HELPER_AND_REAL_SOURCE_ADMISSION_UNIT_RESULT_ONLY",
+  "sourceCommit": "19013671fd1f26d4b27758ce1547284fb35e3ce2",
+  "actualExec": "00a1d1",
+  "reviews": [
+    {
+      "reviewer": "/root/customer_remaining_audit",
+      "decision": "ACCEPT_SHARED_HELPER_UNIT_RESULT_ONLY",
+      "path": "output/qa/shared-disabled-express-template/unit-3/STANDARDS_OUTCOME_REVIEW.json",
+      "sha256": "0e4cb42254c291ead1b7ff1a721f0444aec145b0a2be1a690c77a9901fd3e850"
+    },
+    {
+      "reviewer": "/root/milestone_composition_r9",
+      "decision": "ACCEPT_OFFLINE_HELPER_AND_SOURCE_ADMISSION_UNIT_RESULT_ONLY",
+      "path": "output/qa/shared-disabled-express-template/unit-3/SPEC_OUTCOME_REVIEW.json",
+      "sha256": "d702dc735e82c3fbf746391b425ada6e729e63a836686e981cf6e93121ffaa46"
+    }
+  ],
+  "resultSha256": "2c72edb19977168dd1e3087adbbcf4f59f604847787891162845fd67314da8ba",
+  "tapSha256": "0e10345e4cf4009e7dd82b9f2891a5a4ca2c789cacbf90532be8a8edcc6ce2e5",
+  "actualTests": 36,
+  "actualPass": 36,
+  "actualFail": 0,
+  "actualCancelled": 0,
+  "actualSkipped": 0,
+  "actualTodo": 0,
+  "allExpectedNamesAndOrderVerified": true,
+  "childExit": 0,
+  "childPid": 75737,
+  "childReaped": true,
+  "fiveExactTemporaryParentsAndProcessGroupAbsentIndependently": true,
+  "scope": "Actual pure nativeModule/cache lifetime algorithm tests plus actual no-seam preparedsource allowance for four inert role templates; no AST/Express/app/nativeDB/module proof.",
+  "priorFailure": "unit-2 rawstdout filename .tap contains nativeSPEC, childreported36greenchecksbutformalTAP_CASESfailed; bothactualfailedoutcomesretained. R3addsoneexplicitbuiltintapreporterflag afternewexactvotes/600receipt/newUUID; no retroactivePASS.",
+  "rawResultStatusPreserved": "PASS_PENDING_INDEPENDENT_OUTCOME_REVIEW",
+  "nodeHostProfile": "24.19.0 pureunit only; not production runtimeadoption",
+  "privateClaimsAndApprovalReceipts": "RemainoutsideGit, unchanged andconsumed; archivedold575exact beforefreshd78. No automaticretry.",
+  "applicationAndOwnerReleaseGatesUnchanged": true
+}

@@ -1,0 +1,59 @@
+{
+  "schema": "SD-DISABLED-EXPRESS-UNIT-SPEC-1",
+  "reviewer": "/root/customer_remaining_audit",
+  "author": "/root/lab_remaining_audit",
+  "decision": "REQUEST_CHANGES",
+  "stagerPath": "/private/tmp/sd-disabled-express-unit-stager.py",
+  "stagerSha256": "f257b0fd3499bb55dbcd776cb0d365f579e2c4c8c1945a8be754e4e0bd3f9ae1",
+  "proposalPath": "/private/tmp/sd-disabled-express-unit-proposal.json",
+  "proposalSha256": "5dbcf77e9b88bd87c5c4d8207bf9766545c3d01055a907fe5f9d946ff2e528db",
+  "scope": "Independent nonauthor exact stager source and ONE proposed invocation review. Related P7 hook authorship and prior shared-source review disclosed; no own namespace/source approval here.",
+  "findings": [
+    {
+      "id": "DISABLED-EXPRESS-UNIT-SPEC-1",
+      "severity": "MEDIUM",
+      "path": "/private/tmp/sd-disabled-express-unit-stager.py",
+      "lines": [
+        232,
+        236
+      ],
+      "problem": "The exact named36 acceptance required by proposal and assignment is not implemented. Controller verifies36 sequential IDs and uniqueness of names, but never compares actual names to the frozen source-derived expected36. Arbitrary other36 distinct names with same numeric IDs/summaries satisfy the present predicate. This is an inert reading of acceptance expression, not an executed mutant or claim actual unit is wrong.",
+      "requestedChange": "Freeze complete ordered36 expected test names from pinned unit source in controller/proposal and require actual ordered names equal that inventory exactly, retaining sequential IDs, uniqueness, full summaries and zero skip/TODO/otherfailure checks. Preserve old f257/5db bytes and source/invocation bounds. Rehash amended exact stager/proposal and obtain fresh eligible votes before receipt/once/Node.",
+      "whyMaterial": "One exact stage is intended to establish all named guard and real-role source admission controls, not an unnamed count-only result. Pinned source mitigates accidental drift but does not fulfill promised controller/result predicate."
+    }
+  ],
+  "verifiedPins": {
+    "test/api-runtime/disabled-express-template.cjs": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779",
+    "test/api-runtime/disabled-express-template.test.mjs": "f0ec1cde80b48687fbc3853ab4b3d36420bb2af0281158291d05a51db1cf293d",
+    "test/api-runtime/platform.mjs": "3decce77cdc98038713818a79f49742df9ef8ff58803e931ae1a44c1ffd1e76c",
+    "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+    "test/api-runtime/private-documents/profile.json": "f21a759901d705f1e950fc8c194d988757ada73d22cba65b139cbae06fbcd197",
+    "test/api-runtime/customer-contact/profile.json": "8901145dbb08ee98e489c9241db8e32cc90f6485aa3f154c7aea73be8f2f5075",
+    "test/api-runtime/pharmacy-refill/profile.json": "15e8b72e9e3ab4f359df4f90f33f0582a20129ac2723064e800263ac1ced2ae2",
+    "test/application/app-bundle.mjs": "63a5e15779fd942b9ff9e1c3ccaa45d4d347387f196555e2a1b8998477c7ecfc"
+  },
+  "verifiedAdditionalContextPins": {
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/shared-disabled-express-template/INTERFACE.json": "0dea3a043efea2e284246bc29d5ecc5a4abb116d70f614f958c210d8ba5f2952",
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/shared-disabled-express-template/source-candidate/SOURCE_CANDIDATE.json": "853e1dc480fc0e80056f07c0a7e72dce05a85c7600b79d6bbbc05373483a4f68",
+    "/private/tmp/sd-disabled-express-shared-source-STANDARDS.json": "3d0515518cfddff9736bc6002e7da338fee17feecd667cf81358eaa28fd24a0d",
+    "/private/tmp/sd-disabled-express-shared-source-SPEC.json": "c3adf631616baa32801442aeb9087bab4443d99cb34a5fdb8757bea58cdc837b"
+  },
+  "verifiedTools": {
+    "nodeSha256": "27db838bb204ef7c21df2931f5656e4c8fb32e6e947f363a402b49714d32b5b1",
+    "pythonSha256": "87d4df53fd91304be5bac391fb204643c36b7df2023c04a0953bcbc7d4fdf634"
+  },
+  "receiptAbsentAtReview": true,
+  "coherentUnchangedParts": [
+    "Full292line stager source personally read; source/context/tool/currentGit/receipt/reviewer/nonce gates precede exclusive once and five stagedareas. No automatic retry.",
+    "Five owned0700 areas contain copied8source closure and four valid-role inert descriptors with exact helper/source hashes; auth/private expectedactualsourcegate denial and contact/refill intentionalplan denial occur before workspace/executor allocation. No fakeexecutor or operational fixture imports.",
+    "One direct pinnedNode24 with only five ownedreadroots, fixedPATH/TMPDIR, no--test/fswrite/children/workers/addon grants; Popen ownedchild only,30s/outputbounds. No application or DB command in intended unit path.",
+    "Capture retained separately; exactheld dev/ino/UID/0700/0600marker and no-links revalidatedbefore cleanup; unresolvedchild/ownership preservesareas. Source/toolpins rechecked after intended run."
+  ],
+  "limits": [
+    "No invocation authorization issued until this finding fixed and two fresh exact eligible decisions.",
+    "No stager default/run,Node/parser/compiler/npm/package/app/DB/Docker/provider/model execution or retry occurred in this review.",
+    "36test source is stillNOT_RUN; no helperunit/AST/nativeExpress/C1/P7/fullmodule outcome claimed.",
+    "FullpackageASTaudit, namespace source reviews, futurepreparation/preimport/runtime/outcome/cleanup andC2/C3/owner/client/clinical/release gates remain.",
+    "No worktree or producer source edits; only this private review record created. Originalfailures/receipts/stagedsix/archive/R13selected source preserved."
+  ]
+}

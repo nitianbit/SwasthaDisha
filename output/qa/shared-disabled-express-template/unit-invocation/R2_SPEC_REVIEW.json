@@ -1,0 +1,56 @@
+{
+  "schema": "SD-DISABLED-EXPRESS-UNIT-SPEC-2",
+  "reviewer": "/root/customer_remaining_audit",
+  "decision": "APPROVE_ONE_FIXED_DISABLED_EXPRESS_HELPER_UNIT_RUN",
+  "stagerPath": "/private/tmp/sd-disabled-express-unit-stager-r2.py",
+  "stagerSha256": "cdcd369aaa11f566ee58ab2aa7754237dd0589b78069af129ea92f82021a9818",
+  "proposalPath": "/private/tmp/sd-disabled-express-unit-proposal-r2.json",
+  "proposalSha256": "c469266f9b6ed971f17b6db04bd1ad5c9613a7709683a29aa4e1f0e472b3eed6",
+  "expectedTestNameInventorySha256": "7c0d78d52de7fbecbde507ca5002aee05acf7c77c53328770446c648fd704d03",
+  "actualFindingDisposition": "DISABLED-EXPRESS-UNIT-SPEC-1 RESOLVED: complete ordered36-name literal compared exactly against actual TAP names before acceptance; numeric sequence/uniqueness/fullsummary/noSKIP/noTODO/zeroerror predicates unchanged. Each name and explicit loop order personally reconciled with full pinned unit source.",
+  "wholeInverseToOriginalVerified": true,
+  "preservedOriginals": {
+    "preservedOriginalStager": {
+      "path": "/private/tmp/sd-disabled-express-unit-stager.py",
+      "sha256": "f257b0fd3499bb55dbcd776cb0d365f579e2c4c8c1945a8be754e4e0bd3f9ae1"
+    },
+    "preservedOriginalProposal": {
+      "path": "/private/tmp/sd-disabled-express-unit-proposal.json",
+      "sha256": "5dbcf77e9b88bd87c5c4d8207bf9766545c3d01055a907fe5f9d946ff2e528db"
+    },
+    "scope": "Only add exact36-name inventory/actual ordered equality and R2 SELF/PROPOSAL path bindings; all source/tool/context/argv/permissions/resources/counts/timeouts/cleanup/receipt fields remain unchanged. Exact whole inverse reconstructs original stager.",
+    "derivation": "Inert full pinned107line test source read: exact standalone names and each explicit dynamic-loop vector/header/order checked, no Node/parser execution.",
+    "expectedNameCount": 36,
+    "wholeInverseVerified": true,
+    "execution": "ZERO. No controller/default/main/Node/unit/parser/app/DB/Docker invocation; no receipt/claim/area allocated."
+  },
+  "personallyRehashedSources": {
+    "test/api-runtime/disabled-express-template.cjs": "52772defe90437b827fb74e39f10dd20afe6abe4ad8534ddd9a76d76c4c9b779",
+    "test/api-runtime/disabled-express-template.test.mjs": "f0ec1cde80b48687fbc3853ab4b3d36420bb2af0281158291d05a51db1cf293d",
+    "test/api-runtime/platform.mjs": "3decce77cdc98038713818a79f49742df9ef8ff58803e931ae1a44c1ffd1e76c",
+    "test/api-runtime/profile.json": "bb310dd4909678d239a37975b7326960ffce1fb9b788bbe41beb65c7bcfdad54",
+    "test/api-runtime/private-documents/profile.json": "f21a759901d705f1e950fc8c194d988757ada73d22cba65b139cbae06fbcd197",
+    "test/api-runtime/customer-contact/profile.json": "8901145dbb08ee98e489c9241db8e32cc90f6485aa3f154c7aea73be8f2f5075",
+    "test/api-runtime/pharmacy-refill/profile.json": "15e8b72e9e3ab4f359df4f90f33f0582a20129ac2723064e800263ac1ced2ae2",
+    "test/application/app-bundle.mjs": "63a5e15779fd942b9ff9e1c3ccaa45d4d347387f196555e2a1b8998477c7ecfc"
+  },
+  "personallyRehashedAdditionalContext": {
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/shared-disabled-express-template/INTERFACE.json": "0dea3a043efea2e284246bc29d5ecc5a4abb116d70f614f958c210d8ba5f2952",
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab/output/qa/shared-disabled-express-template/source-candidate/SOURCE_CANDIDATE.json": "853e1dc480fc0e80056f07c0a7e72dce05a85c7600b79d6bbbc05373483a4f68",
+    "/private/tmp/sd-disabled-express-shared-source-STANDARDS.json": "3d0515518cfddff9736bc6002e7da338fee17feecd667cf81358eaa28fd24a0d",
+    "/private/tmp/sd-disabled-express-shared-source-SPEC.json": "c3adf631616baa32801442aeb9087bab4443d99cb34a5fdb8757bea58cdc837b"
+  },
+  "reviewScope": "Independent exact R2 stager source and ONE invocation only. Lab author excluded. OwnP7hooks excluded, consumer exposure and previoussharedsource review disclosed.",
+  "conditions": [
+    "Root must separately provide actual own eligible R2 decision before exclusive0600 fresh currentHEAD receipt, UUIDv4 one-use claim and one invocation. Receipt absent at this review.",
+    "Exact env-i PATH/TMPDIR pinnedPython -I-B-S stager-r2 --run; exact pinnedNode24 directunitentry; onlyfivefreshownedreadroots, no --test/fswrite/child/worker/addon/grant expansion.30s/boundedstdoutstderr/directchild-onlyreap/identitycleanup retained.",
+    "No automatic retry. Any setup/child/output/cleanup failure preserves firstfailure/claim/evidence and unresolvedownedareas. Independently verify exact fiveareas absent afteractualterminal before acceptingoutcome.",
+    "Only pure standard-library guard/cache + fouractual no-seam sourceadmission predicates; no parser/AST/nativeExpress/application/DB/Docker/provider operation authorized.",
+    "36 is expectedcount only until actualfullnamedTAP/zeroothercounts/source/toolpinreadback andcleanupreview. Original152fakegate notrerun or reclaimed.",
+    "Separate namespace source, ASTaudit, futurepreparation/preimport/runtime/outcome/C2/C3/owner/clinical/client/releasegates retained."
+  ],
+  "executionByReviewer": "NONE",
+  "sourceEdits": false,
+  "receiptCreated": false,
+  "resultAccepted": false
+}

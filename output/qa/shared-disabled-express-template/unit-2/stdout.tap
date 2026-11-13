@@ -1,0 +1,44 @@
+✔ one immutable canonical policy and no mutable guard control API (1.303458ms)
+✔ one ordered initialization seals the final exports function, distinct from initial Module.exports (0.285083ms)
+✔ intact SEALED load and resolve deny before forwarding and retain readiness: fs (0.264708ms)
+✔ intact SEALED load and resolve deny before forwarding and retain readiness: node:fs (0.165167ms)
+✔ intact SEALED load and resolve deny before forwarding and retain readiness: debug (0.145ms)
+✔ intact SEALED load and resolve deny before forwarding and retain readiness: path (0.123958ms)
+✔ unrelated caught optional error retains exact identity and does not poison the guard (0.117083ms)
+✔ initialization failure is irreversible: order (0.116125ms)
+✔ initialization failure is irreversible: duplicate (0.07425ms)
+✔ initialization failure is irreversible: missing (0.089416ms)
+✔ initialization failure is irreversible: extra (0.072292ms)
+✔ initialization failure is irreversible: loaded false at completion (0.067666ms)
+✔ initialization failure is irreversible: direct resolution without outgoing frame (0.051375ms)
+✔ native initialization forward error retains identity and leaves FAILED: incomingError (0.06925ms)
+✔ native initialization forward error retains identity and leaves FAILED: outgoingError (0.056875ms)
+✔ readiness before initialization cannot later be repaired (0.052875ms)
+✔ a second incoming initializer cannot reopen a sealed window (0.060667ms)
+✔ accessor on genuine Module is denied without invocation and restoration cannot recover: filename (0.066792ms)
+✔ accessor on genuine Module is denied without invocation and restoration cannot recover: id (0.058542ms)
+✔ accessor on genuine Module is denied without invocation and restoration cannot recover: loaded (0.049167ms)
+✔ accessor on genuine Module is denied without invocation and restoration cannot recover: exports (0.043709ms)
+✔ changed genuine Module data irreversibly fails: filename (0.06125ms)
+✔ changed genuine Module data irreversibly fails: id (0.044708ms)
+✔ changed genuine Module data irreversibly fails: loaded (0.048375ms)
+✔ changed genuine Module data irreversibly fails: exports (0.046083ms)
+✔ fake native Module with target filename cannot replace the captured identity (0.066084ms)
+✔ proxy parent does not invoke observable traps (0.059875ms)
+✔ cache integrity fails closed without recovery: getter (0.071875ms)
+✔ cache integrity fails closed without recovery: replace (0.04625ms)
+✔ cache integrity fails closed without recovery: delete (0.113041ms)
+✔ cache integrity fails closed without recovery: cache-proxy (0.060459ms)
+✔ changed native Module prototype remains failed after external restoration (0.093292ms)
+✔ actual prepared-source boundary confines helper to intended roles: auth (2.523542ms)
+✔ actual prepared-source boundary confines helper to intended roles: private (0.436542ms)
+✔ actual prepared-source boundary confines helper to intended roles: contact (0.460666ms)
+✔ actual prepared-source boundary confines helper to intended roles: refill (0.458708ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 11.735417
