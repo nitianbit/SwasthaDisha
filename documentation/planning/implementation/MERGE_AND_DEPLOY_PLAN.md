@@ -51,9 +51,10 @@ All packets were reviewed by Codex through Ruflo (approved) and tested against a
 | D2 | `m0/d2-booking-payment-timeout` | `c6d8fda` | Owner decision 2: unpaid priced doctor/package bookings expire 30 minutes after creation. A 5-minute sweep checks Razorpay first (backs off 5 min → 6 h while it cannot answer), then cancels in one transaction (coupon, wallet, slot, follow-up restored; a late capture goes back to the wallet). `retry-payment` answers 409 `BOOKING_PAYMENT_EXPIRED` after the window. Free bookings never expire | `test/customer-bookings/d2-booking-timeout.integration.ts` (8) |
 | D1 | `m0/d1-private-files` | `2744e22` | Owner decision 1: uploaded files need a login. One access decision for `/api/static`, `/api/v1/file/static`, `/api/v1/file/fetch`: uploader provenance (`file_uploads`), record+field bindings (`file_grants`, generation-fenced, honoured only while the record holds the file), exact server folders, public images only when bound to a public field; nobody writes back a file they do not own. Legacy files admin-only until the curated manifest is applied (`npm run d1-manifest`). Report emails no longer link stored files. Approved by Codex 2026-11-14 | `test/file-access/d1-private-files.integration.ts` (23) |
 | D3 | `m0/d3-pharmacy-pending-cancel` | `f331e01` | Owner decision 3: cancelling a PAID pharmacy order puts it in `pending_cancel` (frozen) until an admin or the order's pharmacy approves (cancel + stock released once + P2 wallet-first refund; COD cash → manual review) or rejects (restored; refused once the payment was returned). Unpaid orders cancel at once. Generic cancel/reject refuses paid orders. Each capture has one stored decision (`pharmacySettlement` applied/returned); a losing commit is routed, the 5-minute recovery sweep includes pharmacy captures; refill cycles advance only for paid, live orders. Approved by Codex 2026-11-14 | `test/pharmacy-cancel/d3-pending-cancel.integration.ts` (21) |
+| D4 | `m0/d4-cookie-sessions` | `4b23d20` | Owner decision 4: a reload keeps staff and customers signed in. First-party HttpOnly `__Host-` cookie sessions (each web app's host forwards `/api`), 15-minute access tokens bound to a session (checked per request), refresh tokens `sid.gen.HMAC` with lifetime reuse detection, logout / sign-out-everywhere (staff too, cookie sessions), login-CSRF origin + header gate, fresh sign-in replaces the browser's previous family. `request_keys` admission fence for once-only operations (customer/supplier returns, keyed booking create) + `POST /request-keys/abandon`. Also: sellable stock uses the business date. Approved by Codex 2026-11-15 | `test/auth-sessions/d4-cookie-sessions.integration.ts` (13), `test/request-keys/d4-request-keys.integration.ts` (4) |
 
 The W-branches (staff workspace backend support, reviewed by Codex 14 Nov) are stacked on A2b:
-`A2b ─ W1 ─ W2c-q ─ W2b ─ W2c ─ W3b-pay ─ W3b ─ D2 ─ D1 ─ D3`. `m0/d3-pharmacy-pending-cancel` contains all of them; release it in place of
+`A2b ─ W1 ─ W2c-q ─ W2b ─ W2c ─ W3b-pay ─ W3b ─ D2 ─ D1 ─ D3 ─ D4`. `m0/d4-cookie-sessions` contains all of them; release it in place of
 `m0/a2b-external-cancel`. The frontend lives in the separate `jansetu-web` repo.
 
 Branch shape. Everything starts from `9c8d1d8` (end of the `m0/customer-pharmacy-lab-focus` line, 390 commits ahead
@@ -205,6 +206,8 @@ exist only after `npm run sync-indexes`.
    | `bookings` | `{status, paymentStatus, expiryNextAt, createdAt}` | Due-first sweep of unpaid bookings past the 30-minute payment window (D2) |
    | `file_uploads` | new collection + `{path}` unique | Who uploaded each file (D1) |
    | `file_grants` | new collection + `{path, model, resourceId, field}` unique, `{path, state, kind}` | File access bindings (D1) |
+   | `auth_sessions` | new collection + `{userId, userType, revokedAt}`, TTL `{absoluteExpiresAt}` (+30 days) | Web sessions (D4) |
+   | `request_keys` | new collection + `{scope, key}` unique | Once-only operation admission fence (D4) |
    | `pharmacy_supplier_returns` | `{pharmacyId, requestKey}` unique, partial (string) | A resent supplier return is answered with the first record (W2b) |
 
    The P3b follow-up commit moved both return models into `pharmacyInventory/model/`, because `sync-indexes` only
@@ -363,3 +366,15 @@ can read.
 - Fixed: sellable stock used the UTC date for batch expiry while every other date uses the server's local business
   date (`getTodayYyyymmdd`), so between 00:00 and 05:30 IST an expired batch still counted as sellable (and P7c [C2]
   failed in that window). Run the API with `TZ=Asia/Kolkata` so the business date is the Indian date.
+
+## D4 deploy steps
+
+1. `npm run sync-indexes` (creates `auth_sessions`, `request_keys`).
+2. Backend env: `SESSION_ORIGINS_CUSTOMER` and `SESSION_ORIGINS_WORKSPACE` = the exact HTTPS origins of the customer and staff
+   web apps; keep `CORS_ORIGIN` explicit (credentials are only ever given to listed origins); `TZ=Asia/Kolkata`. Never set
+   `SESSION_COOKIE_INSECURE_DEV` outside development (the server refuses to start).
+3. Each web app's own host forwards `/api/*` to the backend (same origin); build with `VITE_API_SAME_ORIGIN=true`. A build
+   with `VITE_API_BASE_URL` (separate origin) still works but keeps memory-only sessions (a reload signs out).
+4. Native apps keep the legacy 30-day bearer for now; the native session protocol is specified in
+   D4_COOKIE_SESSIONS.md and ships with the Capacitor shell.
+5. Recommended before release (not in D4): OTP attempt limits / rate limiting.
