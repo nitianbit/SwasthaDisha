@@ -29,6 +29,10 @@ import { PharmacyRepository } from '@/modules/pharmacies/repository';
 import { UserRepository } from '@/modules/user/repository';
 import { BannerService } from '@/modules/banners/services';
 import { BannerRepository } from '@/modules/banners/repository';
+import BannerModel from '@/modules/banners/model';
+import { CorporateService } from '@/modules/corporates/services';
+import { CorporateRepository } from '@/modules/corporates/repository';
+import { SpecialistRepository } from '@/modules/specialists/repository';
 import { apply as applyManifest, loadAllModels, propose as proposeManifest } from '@/scripts/d1LegacyFileManifest';
 import { errorHandler } from '@/modules/middleware';
 
@@ -369,6 +373,35 @@ async function main() {
       assert.equal(await FileGrantModel.countDocuments({ path: 'general/legacy-rx.pdf', source: 'legacy_manifest' }), 1);
       assert.deepEqual(await applyManifest([{ ...rx, approved: true }]), { applied: 1, not_approved: 0, flagged: 0, invalid: 0, stale: 0 });
       assert.equal(await FileGrantModel.countDocuments({ path: 'general/legacy-rx.pdf' }), 1, 'idempotent');
+    });
+    await check('a keyed resend of an existing booking is not re-checked (pre-D1 legacy document); a new insert is', async () => {
+      const { BookingController } = await import('@/modules/bookings/controller');
+      const ctl = new BookingController() as unknown as { createWithFiles: (req: object, data: object, create: () => Promise<unknown>) => Promise<unknown> };
+      const legacy = '/api/static/general/legacy-old-request.pdf';
+      await BookingModel.collection.insertOne({ _id: new Types.ObjectId(), userId: a._id, createRequestKey: 'pre-d1-key-0001',
+        documents: [{ url: legacy }] } as never);
+      const body = { userId: a._id, requestKey: 'pre-d1-key-0001', documents: [{ url: legacy }] };
+      assert.equal(await ctl.createWithFiles({ user: a.claims }, body, async () => 'replayed'), 'replayed');
+      await assert.rejects(ctl.createWithFiles({ user: a.claims }, { ...body, requestKey: 'new-key-0002' }, async () => 'inserted'),
+        (e: { code?: string }) => e.code === 'FILE_NOT_ATTACHABLE');
+      // Another customer's key does not count as a replay.
+      await assert.rejects(ctl.createWithFiles({ user: b.claims }, { ...body, userId: b._id }, async () => 'inserted'),
+        (e: { code?: string }) => e.code === 'FILE_NOT_ATTACHABLE');
+    });
+
+    await check('common banners cloned for a new corporate keep their image after the source banner changes', async () => {
+      const img = (await upload(admin.token, 'common.png')).body.data!.files[0]!.url;
+      const src = await BannerModel.create({ title: 'Common', imageUrl: img } as never);
+      await grantFiles(admin.claims, [img.slice('/api/static/'.length)], 'public', { model: 'Banner', resourceId: src._id, field: 'imageUrl' });
+      const corp = new CorporateService(new CorporateRepository(), new BannerRepository(), new SpecialistRepository());
+      const corporateId = oid();
+      await (corp as unknown as { cloneCommonBannersForCorporate: (id: string) => Promise<void> }).cloneCommonBannersForCorporate(corporateId);
+      const clone = await BannerModel.findOne({ corporateId, imageUrl: img }).lean();
+      assert.ok(clone);
+      await BannerModel.updateOne({ _id: src._id }, { $set: { imageUrl: '/api/static/general/other.png' } });
+      assert.equal((await get(img)).status, 200, 'the clone still publishes it');
+      await BannerModel.deleteOne({ _id: clone!._id });
+      assert.equal((await get(img)).status, 401);
     });
   } finally {
     server.close();

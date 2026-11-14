@@ -110,7 +110,8 @@ const main = async (): Promise<void> => {
     if (mode === 'propose') {
       if (fs.existsSync(file)) throw new Error(`${file} exists; refusing to overwrite a reviewed manifest`);
       const entries = await propose();
-      fs.writeFileSync(file, entries.map((e) => JSON.stringify(e)).join('\n') + (entries.length ? '\n' : ''), { mode: 0o600 });
+      // Exclusive create: a manifest that appeared (or was reviewed) during the scan is never overwritten.
+      fs.writeFileSync(file, entries.map((e) => JSON.stringify(e)).join('\n') + (entries.length ? '\n' : ''), { mode: 0o600, flag: 'wx' });
       const flagged = entries.filter((e) => e.flags.length).length;
       console.log(`proposed ${entries.length} bindings (${flagged} flagged) to ${file}; review and set "approved": true`);
     } else {

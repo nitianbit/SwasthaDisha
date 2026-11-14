@@ -102,6 +102,18 @@ async function currentOrWithdraw(g: Binding): Promise<boolean> {
   return false;
 }
 
+/**
+ * Copies a record's current bindings to a copy of that record (e.g. common banners cloned for a new corporate). The
+ * authority is the source's own trusted, current binding; the copy's binding is validated against the copy at read.
+ */
+export async function copyCurrentBindings(actor: Reader | undefined, model: string, fromId: unknown, toId: unknown): Promise<void> {
+  for await (const g of FileGrantModel.find({ model, resourceId: id(fromId) }).lean().cursor()) {
+    if (await currentOrWithdraw(g as Binding)) {
+      await grantFiles(actor, [g.path], g.kind, { model, resourceId: toId, field: g.field });
+    }
+  }
+}
+
 /** The decision. `rel` has already passed `legacyPath` (traversal, symlink and reserved-subtree guard). */
 export async function decideFileAccess(reader: Reader | undefined, rel: string): Promise<Decision> {
   // Every binding is examined (no cut-off).

@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import BookingModel from '@/modules/bookings/model';
 import { withFiles } from '@/modules/file/access';
 import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
@@ -58,6 +59,21 @@ export class BookingController {
     if (dependent.isActive === false) {
       throw new AppError({ status: 404, code: 'DEPENDENT_NOT_FOUND', message: 'Dependent not found' });
     }
+  }
+
+  /**
+   * D1: a keyed resend of an existing booking changes no attachment (the service replays the stored booking from its
+   * stored terms), so it is not re-checked: a pre-D1 request carrying a legacy document can still finish. Only an
+   * actual insert checks and binds its files.
+   */
+  private async createWithFiles<T>(req: AuthRequest, data: { userId?: unknown; requestKey?: unknown }, create: () => Promise<T>): Promise<T> {
+    const key = data.requestKey;
+    if (typeof key === 'string' && data.userId != null
+      && await BookingModel.exists({ userId: { $eq: data.userId }, createRequestKey: { $eq: key } })) {
+      return create();
+    }
+    return withFiles(req.user, 'Booking', data, undefined, create,
+      (r) => (r as { booking?: { _id?: unknown } } | null)?.booking?._id ?? (r as { _id?: unknown } | null)?._id);
   }
 
   private resolveBookingOwnerScope(req: AuthRequest): string | undefined {
@@ -224,8 +240,7 @@ export class BookingController {
         (req.body.packageName as string | undefined) ||
         (req.body.package_name as string | undefined),
     };
-    const result = await withFiles(req.user, 'Booking', data, undefined, () => this.bookingService.createBooking(data),
-      (r) => (r as { booking?: { _id?: unknown } } | null)?.booking?._id ?? (r as { _id?: unknown } | null)?._id);
+    const result = await this.createWithFiles(req, data, () => this.bookingService.createBooking(data));
 
     res.status(201).json({
       success: true,
@@ -257,8 +272,7 @@ export class BookingController {
         (req.body.packageName as string | undefined) ||
         (req.body.package_name as string | undefined),
     };
-    const result = await withFiles(req.user, 'Booking', data, undefined, () => this.bookingService.createWellnessPackageBooking(data),
-      (r) => (r as { booking?: { _id?: unknown } } | null)?.booking?._id ?? (r as { _id?: unknown } | null)?._id);
+    const result = await this.createWithFiles(req, data, () => this.bookingService.createWellnessPackageBooking(data));
 
     res.status(201).json({
       success: true,
@@ -290,8 +304,7 @@ export class BookingController {
         (req.body.doctorName as string | undefined) ||
         (req.body.doctor_name as string | undefined),
     };
-    const result = await withFiles(req.user, 'Booking', data, undefined, () => this.bookingService.createSpecialistBooking(data),
-      (r) => (r as { booking?: { _id?: unknown } } | null)?.booking?._id ?? (r as { _id?: unknown } | null)?._id);
+    const result = await this.createWithFiles(req, data, () => this.bookingService.createSpecialistBooking(data));
 
     res.status(201).json({
       success: true,

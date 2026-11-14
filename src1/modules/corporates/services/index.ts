@@ -1,3 +1,4 @@
+import { copyCurrentBindings } from '@/modules/file/access';
 import { Service } from 'typedi';
 import { CorporateRepository } from '@/modules/corporates/repository';
 import { BannerRepository } from '@/modules/banners/repository';
@@ -59,12 +60,14 @@ export class CorporateService {
     );
 
     await Promise.all(
-      commonBanners.map((banner) =>
-        this.bannerRepository.save({
+      commonBanners.map(async (banner) => {
+        const clone = await this.bannerRepository.save({
           ...this.toCorporateBannerPayload(banner),
           corporateId,
-        })
-      )
+        });
+        // D1: the clone shows the same image, so it gets the source banner's current bindings.
+        await copyCurrentBindings({ _id: 'corporate-banner-clone', userType: 'system' }, 'Banner', banner._id, clone._id);
+      })
     );
   }
 
