@@ -393,6 +393,17 @@ const bookingSchema = new Schema<IBooking>(
     postPaymentCompletedFor: { type: String },
     // Client key of the create request (W3b): a resent create answers with this booking instead of booking again.
     createRequestKey: { type: String },
+    // The validated payment terms of the create, stored with the insert: an interrupted creation is finished with
+    // exactly these (never with a resent request's body).
+    createTerms: {
+      type: new Schema({
+        basePrice: { type: Number, required: true },
+        discountAmount: { type: Number, required: true },
+        couponCode: { type: String },
+        useWalletBalance: { type: Boolean, required: true },
+      }, { _id: false }),
+      default: undefined,
+    },
     // Wallet money applied to this booking (rupees); see common/utils/bookingWalletFunding.ts.
     walletFunding: {
       type: new Schema({

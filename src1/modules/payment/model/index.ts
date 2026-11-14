@@ -104,6 +104,9 @@ const paymentRecordSchema = new Schema<IPaymentRecord>(
     paidAt: {
       type: Date,
     },
+    // Background recovery (W3b): when this unsettled attempt is next checked with the gateway, and how often it was.
+    recoveryNextAt: { type: Date },
+    recoveryChecks: { type: Number, default: undefined },
   },
   { timestamps: true }
 );
@@ -111,6 +114,8 @@ const paymentRecordSchema = new Schema<IPaymentRecord>(
 paymentRecordSchema.index({ userId: 1, context: 1, contextId: 1 });
 paymentRecordSchema.index({ payerUserId: 1, context: 1, contextId: 1 });
 paymentRecordSchema.index({ status: 1, isProcessed: 1 });
+// Due-first scan of unsettled booking attempts by the recovery sweep (W3b).
+paymentRecordSchema.index({ context: 1, status: 1, recoveryNextAt: 1, createdAt: 1 });
 
 const PaymentRecordModel: Model<IPaymentRecord> = model<IPaymentRecord>(
   'PaymentRecord',

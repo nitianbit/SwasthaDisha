@@ -88,6 +88,8 @@ export interface IBooking {
   _id?: string;
   /** Client key of the create request (W3b); a resent create returns this booking. */
   createRequestKey?: string;
+  /** Validated create terms (W3b); an interrupted creation is finished with exactly these. */
+  createTerms?: { basePrice: number; discountAmount: number; couponCode?: string; useWalletBalance: boolean };
   bookingType: BookingType;
   userId: string; // User making the booking
   pharmacyId?: string; // Pharmacy creating the booking on behalf of the user

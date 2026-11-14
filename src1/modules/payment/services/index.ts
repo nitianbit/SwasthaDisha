@@ -1751,22 +1751,32 @@ export class PaymentService {
   }
 
   /**
-   * Background recovery (W3b): there is no gateway webhook, so every 5 minutes unsettled booking payment attempts are
-   * checked with Razorpay (a capture whose confirmation never arrived is applied, or returned to the wallet if the
-   * booking is already paid or closed), and paid-but-unprocessed records are resumed. Window: older than 10 minutes
-   * (the customer's own flow goes first), younger than 7 days.
+   * Background recovery (W3b): there is no gateway webhook, so unsettled booking payment attempts are checked with
+   * Razorpay until they are settled: a capture whose confirmation never arrived is applied (or returned to the wallet
+   * if the booking is already paid or closed), and paid-but-unapplied records are resumed. Fair and complete: each
+   * attempt carries its own next-check time (first check 10 minutes after creation, then backing off from 5 minutes to
+   * at most 24 hours), the due ones are taken oldest-due first, and nothing ages out while it is unresolved.
    */
   async sweepUnsettledBookingPayments(now = new Date(), limit = 100): Promise<{ checked: number; unsettled: number }> {
-    const records = await PaymentRecordModel.find({ context: 'booking', ...UNSETTLED_ATTEMPT,
-      createdAt: { $lt: new Date(now.getTime() - 10 * 60_000), $gt: new Date(now.getTime() - 7 * 86_400_000) } })
-      .sort({ createdAt: 1 }).limit(limit).lean();
+    const records = await PaymentRecordModel.find({
+      context: 'booking', ...UNSETTLED_ATTEMPT,
+      createdAt: { $lt: new Date(now.getTime() - 10 * 60_000) },
+      $and: [{ $or: [{ recoveryNextAt: { $exists: false } }, { recoveryNextAt: null }, { recoveryNextAt: { $lte: now } }] }],
+    }).sort({ recoveryNextAt: 1, createdAt: 1 }).limit(limit).lean();
     let unsettled = 0;
     for (const r of records) {
+      let settled = false;
       try {
         const out = await this.reconcilePaymentAndProcess({ paymentTransactionId: String(r._id), userId: String(r.payerUserId || r.userId) });
-        if (out.state !== 'paid') unsettled += 1;
+        settled = out.state === 'paid';
       } catch {
+        settled = false;
+      }
+      if (!settled) {
         unsettled += 1;
+        const checks = Number(r.recoveryChecks || 0) + 1;
+        const delay = Math.min(24 * 3_600_000, 5 * 60_000 * 2 ** Math.min(checks - 1, 10));
+        await PaymentRecordModel.updateOne({ _id: r._id }, { $set: { recoveryNextAt: new Date(now.getTime() + delay), recoveryChecks: checks } });
       }
     }
     return { checked: records.length, unsettled };

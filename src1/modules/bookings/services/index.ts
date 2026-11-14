@@ -692,9 +692,11 @@ export class BookingService {
    * Answer for a create whose key was already used: the existing booking, unchanged. Payment (if still due) is resumed
    * from the booking (retry-payment / payment reconciliation), never by creating a second booking.
    */
-  private async replayedCreate(booking: IBooking, data: CreateSpecialistBookingRequest): Promise<BookingPaymentInitResponse> {
+  private async replayedCreate(booking: IBooking, _resent: CreateSpecialistBookingRequest): Promise<BookingPaymentInitResponse> {
     // Interrupted after the insert (no payment link, not settled): finish it now with the original request's terms.
-    if (booking.status === 'pending' && !booking.paymentTransactionId) {
+    // Only with the validated terms stored at the insert; the resent request's body is not trusted for money.
+    if (booking.status === 'pending' && !booking.paymentTransactionId && booking.createTerms) {
+      const terms = booking.createTerms;
       const finalPrice = Number(booking.price || 0);
       if (finalPrice <= 0 && booking.paymentStatus === 'paid') {
         // Created by the earlier path that marked a free booking paid at insert (and then could not settle it).
@@ -702,9 +704,8 @@ export class BookingService {
           $or: [{ paymentTransactionId: { $exists: false } }, { paymentTransactionId: null }, { paymentTransactionId: '' }] },
           { $set: { paymentStatus: 'pending' } });
       }
-      const basePrice = Number(booking.originalPrice ?? finalPrice);
-      const resumed = await this.finishCreate(booking, { userId: booking.userId, bookingType: booking.bookingType, finalPrice, basePrice,
-        discountAmount: Math.max(0, basePrice - finalPrice), couponCode: data.couponCode, useWalletBalance: data.useWalletBalance === true });
+      const resumed = await this.finishCreate(booking, { userId: booking.userId, bookingType: booking.bookingType, finalPrice,
+        basePrice: terms.basePrice, discountAmount: terms.discountAmount, couponCode: terms.couponCode, useWalletBalance: terms.useWalletBalance });
       return { ...resumed, replayed: true };
     }
     return {
@@ -803,7 +804,10 @@ export class BookingService {
         created: true,
       }),
       notes: data.notes,
-      ...(requestKey ? { createRequestKey: requestKey } : {}),
+      ...(requestKey ? {
+        createRequestKey: requestKey,
+        createTerms: { basePrice, discountAmount, ...(couponCode ? { couponCode } : {}), useWalletBalance: data.useWalletBalance === true },
+      } : {}),
     };
 
     // Slot capacity and (for a follow-up) the parent consultation's benefit are taken in the same transaction as

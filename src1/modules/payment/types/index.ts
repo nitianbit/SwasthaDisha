@@ -26,6 +26,9 @@ export interface IPaymentRecord {
   isProcessed: boolean;
   notes?: Record<string, unknown>;
   paidAt?: Date;
+  /** Background recovery schedule (W3b). */
+  recoveryNextAt?: Date;
+  recoveryChecks?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }

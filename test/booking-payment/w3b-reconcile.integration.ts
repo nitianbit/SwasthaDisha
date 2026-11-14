@@ -266,7 +266,8 @@ async function main() {
     const slot = await SlotModel.create({ specialistId, date: '20991231', startTime: '10:00 AM', endTime: '10:15 AM', duration: 15,
       maxBookings: 3, currentBookings: 0, isActive: true, isAvailable: true, slotType: 'consultation' } as never);
     const input = { bookingType: 'consultation', userId: u, specialistId, slotId: String(slot._id), bookingDate: '20991231',
-      bookingTime: '10:00 AM', serviceMode: 'video', consultationMode: 'video', primaryConcern: 'test', status: 'pending', paymentStatus: 'pending', price: 100, createRequestKey: 'create-key-0001' } as never;
+      bookingTime: '10:00 AM', serviceMode: 'video', consultationMode: 'video', primaryConcern: 'test', status: 'pending', paymentStatus: 'pending', price: 100, createRequestKey: 'create-key-0001',
+      createTerms: { basePrice: 100, discountAmount: 0, useWalletBalance: false } } as never;
     const both = await Promise.all([createBookingWithHolds(input), createBookingWithHolds(input)]);
     assert.equal(String(both[0]._id), String(both[1]._id));
     assert.equal(both.filter(isReplayedBooking).length, 1);
@@ -281,7 +282,7 @@ async function main() {
     assert.ok(replay.payment, 'payment set up on resume');
     assert.equal((await SlotModel.findById(slot._id).lean())!.currentBookings, 1, 'still one seat');
     // Without a key nothing changes: a second create is a second booking.
-    const plain = { ...(input as object), createRequestKey: undefined } as never;
+    const plain = { ...(input as object), createRequestKey: undefined, createTerms: undefined } as never;
     await createBookingWithHolds(plain);
     assert.equal(await BookingModel.countDocuments({ userId: u }), 2);
     const idx = (await BookingModel.collection.indexes()).find(x => x.key?.createRequestKey === 1);
@@ -313,6 +314,7 @@ async function main() {
     assert.equal((await BookingModel.findById(b.id).lean())!.paymentStatus, 'paid');
     gateway.set(b.orderId, [captured(b.orderId)]);   // P1 captures later; its browser confirmation is lost
     const old = new Date(Date.now() + 11 * 60_000);  // the sweep runs 11 minutes later
+    await PaymentRecordModel.updateMany({}, { $unset: { recoveryNextAt: 1, recoveryChecks: 1 } }); // earlier checks in this file
     const swept = await payments.sweepUnsettledBookingPayments(old);
     assert.ok(swept.checked >= 1);
     assert.equal((await PaymentRecordModel.findById(b.record).lean())!.status, 'refunded');
@@ -322,6 +324,32 @@ async function main() {
     gateway.set(fresh.orderId, [captured(fresh.orderId)]);
     await payments.sweepUnsettledBookingPayments(new Date());
     assert.equal((await PaymentRecordModel.findById(fresh.record).lean())!.status, 'created');
+  });
+
+  await check('[sweep] fair and complete: 100 abandoned orders do not starve a captured one, and nothing ages out', async () => {
+    await PaymentRecordModel.deleteMany({});
+    const u = await customer();
+    const base = Date.now() - 30 * 86_400_000; // all a month old: there is no age cutoff
+    for (let i = 0; i < 100; i++) {
+      const b = await booking(u);
+      await PaymentRecordModel.collection.updateOne({ _id: new Types.ObjectId(b.record) }, { $set: { createdAt: new Date(base + i) } });
+    }
+    const late = await booking(u);
+    await PaymentRecordModel.collection.updateOne({ _id: new Types.ObjectId(late.record) }, { $set: { createdAt: new Date(base + 1000) } });
+    gateway.set(late.orderId, [captured(late.orderId)]);
+    const t0 = new Date();
+    const first = await payments.sweepUnsettledBookingPayments(t0, 100);
+    assert.deepEqual(first, { checked: 100, unsettled: 100 });
+    assert.equal((await BookingModel.findById(late.id).lean())!.paymentStatus, 'pending', 'not reached in the first run');
+    const second = await payments.sweepUnsettledBookingPayments(new Date(t0.getTime() + 60_000), 100);
+    assert.equal(second.checked, 1, 'the abandoned ones wait for their next check; the unseen one is due');
+    assert.equal((await BookingModel.findById(late.id).lean())!.paymentStatus, 'paid');
+    // Back-off: an abandoned order is checked again after 5 min, then 10, … at most 24 h.
+    const one = (await PaymentRecordModel.findOne({ recoveryChecks: 1 }).lean())!;
+    assert.equal(new Date(one.recoveryNextAt!).getTime() - t0.getTime(), 5 * 60_000);
+    await payments.sweepUnsettledBookingPayments(new Date(t0.getTime() + 6 * 60_000), 1);
+    const twice = (await PaymentRecordModel.findOne({ recoveryChecks: 2 }).lean())!;
+    assert.equal(new Date(twice.recoveryNextAt!).getTime() - (t0.getTime() + 6 * 60_000), 10 * 60_000);
   });
 
   await check('[scan] a payment marked paid but not applied (interrupted) is resumed from the booking', async () => {
@@ -338,7 +366,8 @@ async function main() {
     const u = await customer();
     // Inserted (slot held) but the process died before the payment order was made and linked.
     const { insertedId } = await BookingModel.collection.insertOne({ userId: u, bookingType: 'consultation', status: 'pending',
-      paymentStatus: 'pending', price: 100, originalPrice: 120, createRequestKey: 'create-key-0002' } as never);
+      paymentStatus: 'pending', price: 100, originalPrice: 120, createRequestKey: 'create-key-0002',
+      createTerms: { basePrice: 120, discountAmount: 20, useWalletBalance: false } } as never);
     const r = await bookingSvc().createSpecialistBooking({ userId: u, requestKey: 'create-key-0002' } as never) as {
       replayed?: boolean; paymentRequired: boolean; payment?: { paymentTransactionId: string; amount: number; discountAmount: number } };
     assert.equal(r.replayed, true); assert.equal(r.paymentRequired, true);
@@ -350,10 +379,32 @@ async function main() {
     assert.equal(await PaymentRecordModel.countDocuments({ contextId: String(insertedId) }), 1);
   });
 
+  await check('[create] a resent create finishes with the STORED validated terms, not the resent body', async () => {
+    const u = await customer();
+    const { insertedId } = await BookingModel.collection.insertOne({ userId: u, bookingType: 'consultation', status: 'pending',
+      paymentStatus: 'pending', price: 0, originalPrice: 500, createRequestKey: 'create-key-0004',
+      createTerms: { basePrice: 500, discountAmount: 500, couponCode: 'FREE100', useWalletBalance: false } } as never);
+    // The resend drops the coupon (and asks for the wallet): ignored, the stored terms apply.
+    await bookingSvc().createSpecialistBooking({ userId: u, requestKey: 'create-key-0004', useWalletBalance: true } as never);
+    const bk = (await BookingModel.findById(insertedId).lean())!;
+    assert.equal(bk.status, 'confirmed');
+    const rec = (await PaymentRecordModel.findOne({ contextId: String(insertedId) }).lean())!;
+    assert.equal(rec.couponCode, 'FREE100', 'the coupon is accounted');
+    assert.equal(rec.discountAmount, 500);
+    assert.equal(await balance(u), 0, 'the wallet was not touched');
+    // A keyed booking without stored terms (written before this change) is not finished from a resend.
+    const { insertedId: legacy } = await BookingModel.collection.insertOne({ userId: u, bookingType: 'consultation', status: 'pending',
+      paymentStatus: 'pending', price: 100, createRequestKey: 'create-key-0005' } as never);
+    const r = await bookingSvc().createSpecialistBooking({ userId: u, requestKey: 'create-key-0005' } as never) as { payment?: unknown; replayed?: boolean };
+    assert.equal(r.replayed, true); assert.equal(r.payment, undefined);
+    assert.equal(await PaymentRecordModel.countDocuments({ contextId: String(legacy) }), 0);
+  });
+
   await check('[create] a resent create confirms a free booking interrupted before its direct confirmation', async () => {
     const u = await customer();
     const { insertedId } = await BookingModel.collection.insertOne({ userId: u, bookingType: 'consultation', status: 'pending',
-      paymentStatus: 'paid', price: 0, originalPrice: 0, createRequestKey: 'create-key-0003' } as never);
+      paymentStatus: 'paid', price: 0, originalPrice: 0, createRequestKey: 'create-key-0003',
+      createTerms: { basePrice: 0, discountAmount: 0, useWalletBalance: false } } as never);
     const r = await bookingSvc().createSpecialistBooking({ userId: u, requestKey: 'create-key-0003' } as never) as { replayed?: boolean; paymentRequired: boolean };
     assert.equal(r.replayed, true); assert.equal(r.paymentRequired, false);
     const bk = (await BookingModel.findById(insertedId).lean())!;
