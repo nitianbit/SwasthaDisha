@@ -1,8 +1,9 @@
 import 'reflect-metadata';
+import { withFiles } from '@/modules/file/access';
+import { AuthRequest } from '@/modules/middleware/auth';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { CorporateService } from '@/modules/corporates/services';
-import { AuthRequest } from '@/modules/middleware/auth';
 import {
   CreateCorporateRequest,
   UpdateCorporateRequest,
@@ -18,7 +19,7 @@ export class CorporateController {
 
   create = async (req: Request, res: Response, _next: NextFunction) => {
     const data: CreateCorporateRequest = req.body;
-    const result = await this.corporateService.create(data);
+    const result = await withFiles((req as AuthRequest).user, 'Corporate', data, undefined, () => this.corporateService.create(data));
 
     res.status(201).json({
       success: true,
@@ -90,7 +91,7 @@ export class CorporateController {
   update = async (req: Request, res: Response, _next: NextFunction) => {
     const { id } = req.params;
     const data: UpdateCorporateRequest = req.body;
-    const result = await this.corporateService.update(id, data);
+    const result = await withFiles((req as AuthRequest).user, 'Corporate', data, id, () => this.corporateService.update(id, data));
 
     res.status(200).json({
       success: true,

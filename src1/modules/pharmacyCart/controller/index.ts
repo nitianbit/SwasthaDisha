@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { checkAttachable, valuesAt } from '@/modules/file/access';
 import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { PharmacyCartService } from '@/modules/pharmacyCart/services';
@@ -53,6 +54,9 @@ export class PharmacyCartController {
   };
 
   checkout = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    // D1: only the customer's own uploads may be referenced. New prescription URLs are refused further on (503) until
+    // prescription commerce reopens; binding them to the created orders belongs to that change.
+    await checkAttachable(req.user, valuesAt(req.body, 'prescriptionUrls'));
     const result = await this.pharmacyCartService.checkout(
       req.user || {},
       req.body as CheckoutPharmacyCartRequest

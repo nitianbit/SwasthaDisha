@@ -1,4 +1,6 @@
 import 'reflect-metadata';
+import { withFiles } from '@/modules/file/access';
+import { AuthRequest } from '@/modules/middleware/auth';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { BannerService } from '@/modules/banners/services';
@@ -8,7 +10,6 @@ import {
   BannerQueryParams,
   BannerType,
 } from '@/modules/banners/types';
-import { AuthRequest } from '@/modules/middleware/auth';
 
 export class BannerController {
   private bannerService: BannerService;
@@ -19,7 +20,7 @@ export class BannerController {
 
   create = async (req: Request, res: Response, _next: NextFunction) => {
     const data: CreateBannerRequest = req.body;
-    const result = await this.bannerService.create(data);
+    const result = await withFiles((req as AuthRequest).user, 'Banner', data, undefined, () => this.bannerService.create(data));
 
     res.status(201).json({
       success: true,
@@ -93,7 +94,7 @@ export class BannerController {
   update = async (req: Request, res: Response, _next: NextFunction) => {
     const { id } = req.params;
     const data: UpdateBannerRequest = req.body;
-    const result = await this.bannerService.update(id, data);
+    const result = await withFiles((req as AuthRequest).user, 'Banner', data, id, () => this.bannerService.update(id, data));
 
     res.status(200).json({
       success: true,

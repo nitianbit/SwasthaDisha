@@ -1,9 +1,10 @@
 import 'reflect-metadata';
+import { withFiles } from '@/modules/file/access';
+import { AuthRequest } from '@/modules/middleware/auth';
 import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { HRService } from '@/modules/hr/services';
 import { AppError } from '@/modules/common/types';
-import { AuthRequest } from '@/modules/middleware/auth';
 import {
   CreateHRRequest,
   HRCorporateOverviewQueryParams,
@@ -42,7 +43,7 @@ export class HRController {
 
   create = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const data: CreateHRRequest = req.body;
-    const result = await this.hrService.create(data);
+    const result = await withFiles((req as AuthRequest).user, 'HR', data, undefined, () => this.hrService.create(data));
 
     res.status(201).json({
       success: true,
@@ -130,7 +131,7 @@ export class HRController {
   update = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const { id } = req.params;
     const data: UpdateHRRequest = req.body;
-    const result = await this.hrService.update(id, data);
+    const result = await withFiles((req as AuthRequest).user, 'HR', data, id, () => this.hrService.update(id, data));
 
     res.status(200).json({
       success: true,

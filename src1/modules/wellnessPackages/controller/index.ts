@@ -1,8 +1,9 @@
 import 'reflect-metadata';
+import { withFiles } from '@/modules/file/access';
+import { AuthRequest } from '@/modules/middleware/auth';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { WellnessPackageService } from '@/modules/wellnessPackages/services';
-import { AuthRequest } from '@/modules/middleware/auth';
 import {
   CreateWellnessPackageRequest,
   UpdateWellnessPackageRequest,
@@ -23,7 +24,7 @@ export class WellnessPackageController {
     }: CreateWellnessPackageRequest & {
       corporate_id?: string;
     } = req.body;
-    const result = await this.wellnessPackageService.create(data, corporate_id);
+    const result = await withFiles((req as AuthRequest).user, 'WellnessPackage', data, undefined, () => this.wellnessPackageService.create(data, corporate_id));
 
     res.status(201).json({
       success: true,
@@ -96,7 +97,7 @@ export class WellnessPackageController {
   update = async (req: Request, res: Response, _next: NextFunction) => {
     const { id } = req.params;
     const data: UpdateWellnessPackageRequest = req.body;
-    const result = await this.wellnessPackageService.update(id, data);
+    const result = await withFiles((req as AuthRequest).user, 'WellnessPackage', data, id, () => this.wellnessPackageService.update(id, data));
 
     res.status(200).json({
       success: true,

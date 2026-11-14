@@ -23,7 +23,13 @@ import ExternalBookingModel from '@/modules/externalBookings/model';
 import { FileGrantModel, FileUploadModel } from '@/modules/file/model/access';
 import { attachFiles, checkAttachable, grantFiles } from '@/modules/file/access';
 import PharmacyModel from '@/modules/pharmacies/model';
-import { configureRoutes } from '@/routes';
+import { Container } from 'typedi';
+import { PharmacyService } from '@/modules/pharmacies/services';
+import { PharmacyRepository } from '@/modules/pharmacies/repository';
+import { UserRepository } from '@/modules/user/repository';
+import { BannerService } from '@/modules/banners/services';
+import { BannerRepository } from '@/modules/banners/repository';
+import { apply as applyManifest, loadAllModels, propose as proposeManifest } from '@/scripts/d1LegacyFileManifest';
 import { errorHandler } from '@/modules/middleware';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/d1_files_check?directConnection=true';
@@ -65,6 +71,10 @@ async function main() {
   fs.rmSync(UPLOAD, { recursive: true, force: true });
   fs.mkdirSync(UPLOAD, { recursive: true });
 
+  // tsx emits no decorator metadata, so constructor-injected services are wired by hand before the routes load.
+  Container.set(PharmacyService, new PharmacyService(new PharmacyRepository(), new UserRepository()));
+  Container.set(BannerService, new BannerService(new BannerRepository()));
+  const { configureRoutes } = await import('@/routes');
   const app = express();
   app.use(express.json());
   configureRoutes(app);
@@ -243,6 +253,82 @@ async function main() {
       assert.deepEqual(await checkAttachable(b.claims, ['https://cdn.example.com/photo.jpg', 'heart', '']), []);
       assert.deepEqual(await checkAttachable(admin.claims, ['/api/static/general/logo.png'], [], { publicImage: true }), ['general/logo.png']);
       await refused(checkAttachable(a.claims, [url], [], { publicImage: true })); // a PDF can never be public
+    });
+    await check('HTTP: a pharmacy cannot launder a customer file into its public avatar; its own image is published', async () => {
+      const ph = new Types.ObjectId();
+      await PharmacyModel.collection.insertOne({ _id: ph, name: 'Test Pharmacy', phone: '9123400001', email: 'p1@example.in', isActive: true } as never);
+      const me = sign({ _id: ph.toHexString(), userType: 'pharmacy', pharmacyId: ph.toHexString() });
+      const send = (body: object, token = me, url = '/api/v1/pharmacies/me/profile') => fetch(base + url, { method: 'PUT',
+        headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const victim = (await upload(a.token, 'victim2.png')).body.data!.files[0]!.url;
+      const r = await send({ profilePictureUrl: victim });
+      assert.equal(r.status, 400); assert.equal((await r.json() as { code?: string }).code, 'FILE_NOT_ATTACHABLE');
+      assert.equal((await PharmacyModel.collection.findOne({ _id: ph }))!.profilePictureUrl, undefined);
+      assert.equal((await get(victim)).status, 401);
+
+      const own = (await upload(me, 'logo.png')).body.data!.files[0]!.url;
+      assert.equal((await send({ profilePictureUrl: own })).status, 200);
+      assert.equal((await get(own)).status, 200, 'published');
+      const next = (await upload(me, 'logo2.png')).body.data!.files[0]!.url;
+      assert.equal((await send({ profilePictureUrl: next })).status, 200);
+      assert.equal((await get(own)).status, 401, 'the replaced avatar is no longer public');
+      assert.equal((await get(next)).status, 200);
+
+      // KYC documents attached by an admin are read by that pharmacy (not the uploader) and nobody else.
+      const kyc = (await upload(admin.token, 'gst.pdf')).body.data!.files[0]!.url;
+      const ar = await send({ gstCertificateUrl: kyc }, admin.token, `/api/v1/pharmacies/${ph.toHexString()}`);
+      assert.equal(ar.status, 200, await ar.text());
+      assert.equal((await get(kyc, me)).status, 200);
+      assert.equal((await get(kyc, otherPharmacy.token)).status, 404);
+      assert.equal((await get(kyc)).status, 401);
+      // A PDF can never become a public avatar.
+      const pdf = (await upload(me, 'menu.pdf')).body.data!.files[0]!.url;
+      assert.equal((await send({ profilePictureUrl: pdf })).status, 400);
+    });
+
+    await check('HTTP: an admin banner publishes its image', async () => {
+      const img = (await upload(admin.token, 'banner.webp')).body.data!.files[0]!.url;
+      assert.equal((await get(img)).status, 401);
+      const r = await fetch(base + '/api/v1/banners', { method: 'POST', headers: { authorization: 'Bearer ' + admin.token,
+        'content-type': 'application/json' }, body: JSON.stringify({ title: 'Hello', imageUrl: img }) });
+      assert.equal(r.status, 201, await r.text());
+      assert.equal((await get(img)).status, 200);
+    });
+    await check('legacy manifest: proposals flag shared/public-PDF/server paths; apply binds only approved, unflagged, current entries', async () => {
+      const bk1 = new Types.ObjectId(); const bk2 = new Types.ObjectId();
+      put('general/legacy-rx.pdf'); put('general/legacy-shared.pdf'); put('general/legacy-card.pdf');
+      await BookingModel.collection.insertMany([
+        { _id: bk1, userId: new Types.ObjectId(b._id), specialistId: new Types.ObjectId(otherSpec._id),
+          documents: [{ url: '/api/static/general/legacy-rx.pdf' }, { url: '/api/static/general/legacy-shared.pdf' }] },
+        { _id: bk2, userId: new Types.ObjectId(a._id), documents: [{ url: '/api/static/general/legacy-shared.pdf' }] },
+      ] as never);
+      await PharmacyModel.collection.insertOne({ _id: new Types.ObjectId(), phone: '9123400099', email: 'p99@example.in', profilePictureUrl: '/api/static/general/legacy-card.pdf' } as never);
+      await loadAllModels();
+      const entries = await proposeManifest();
+      const find = (p: string) => entries.filter((e) => e.path === p);
+      assert.deepEqual(find('general/legacy-rx.pdf').map((e) => e.flags), [[]]);
+      assert.ok(find('general/legacy-shared.pdf').every((e) => e.flags.includes('referenced_by_several_private_records')));
+      assert.ok(find('general/legacy-card.pdf').every((e) => e.flags.includes('public_but_not_an_image')));
+      assert.ok(entries.filter((e) => e.path.startsWith('bookings/')).every((e) => e.flags.includes('server_folder')));
+      assert.equal(entries.some((e) => e.path === urlA.slice('/api/static/'.length)), false, 'uploads with a recorded uploader are never proposed');
+      assert.equal((await get('/api/static/general/legacy-rx.pdf', otherSpec.token)).status, 404, 'admin-only until curated');
+
+      const rx = find('general/legacy-rx.pdf')[0]!;
+      const counts = await applyManifest([
+        { ...rx, approved: true },
+        ...find('general/legacy-shared.pdf').map((e) => ({ ...e, approved: true })), // flagged: never applied
+        { ...rx, approved: true, kind: 'public' as const }, // a reviewer cannot widen the audience
+        { ...rx, approved: true, resourceId: bk2.toHexString() }, // bk2 does not hold it: stale
+        { ...find('general/legacy-card.pdf')[0]!, approved: false },
+      ]);
+      assert.deepEqual(counts, { applied: 1, not_approved: 1, flagged: 2, invalid: 1, stale: 1 });
+      assert.equal((await get('/api/static/general/legacy-rx.pdf', otherSpec.token)).status, 200);
+      assert.equal((await get('/api/static/general/legacy-rx.pdf', b.token)).status, 200);
+      assert.equal((await get('/api/static/general/legacy-rx.pdf', a.token)).status, 404);
+      assert.equal((await get('/api/static/general/legacy-shared.pdf', a.token)).status, 404);
+      assert.equal(await FileGrantModel.countDocuments({ path: 'general/legacy-rx.pdf', source: 'legacy_manifest' }), 1);
+      assert.deepEqual(await applyManifest([{ ...rx, approved: true }]), { applied: 1, not_approved: 0, flagged: 0, invalid: 0, stale: 0 });
+      assert.equal(await FileGrantModel.countDocuments({ path: 'general/legacy-rx.pdf' }), 1, 'idempotent');
     });
   } finally {
     server.close();

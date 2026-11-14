@@ -1,9 +1,10 @@
 import 'reflect-metadata';
+import { withFiles } from '@/modules/file/access';
+import { AuthRequest } from '@/modules/middleware/auth';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { PharmacyService } from '@/modules/pharmacies/services';
 import { InventoryService } from '@/modules/pharmacyInventory/services';
-import { AuthRequest } from '@/modules/middleware/auth';
 import {
   CreatePharmacyRequest,
   UpdatePharmacyRequest,
@@ -63,7 +64,7 @@ export class PharmacyController {
 
   create = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const data: CreatePharmacyRequest = req.body;
-    const result = await this.pharmacyService.create(data, req.user?.userType);
+    const result = await withFiles((req as AuthRequest).user, 'Pharmacy', data, undefined, () => this.pharmacyService.create(data, req.user?.userType));
 
     res.status(201).json({
       success: true,
@@ -182,7 +183,7 @@ export class PharmacyController {
   updateMyProfile = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const pharmacyId = req.user?.pharmacyId || '';
     const data: UpdatePharmacyRequest = req.body;
-    const result = await this.pharmacyService.update(pharmacyId, data);
+    const result = await withFiles((req as AuthRequest).user, 'Pharmacy', data, pharmacyId, () => this.pharmacyService.update(pharmacyId, data));
 
     res.status(200).json({
       success: true,
@@ -194,7 +195,7 @@ export class PharmacyController {
   update = async (req: Request, res: Response, _next: NextFunction) => {
     const { id } = req.params;
     const data: UpdatePharmacyRequest = req.body;
-    const result = await this.pharmacyService.update(id, data);
+    const result = await withFiles((req as AuthRequest).user, 'Pharmacy', data, id, () => this.pharmacyService.update(id, data));
 
     res.status(200).json({
       success: true,

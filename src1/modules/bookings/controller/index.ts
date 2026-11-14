@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { withFiles } from '@/modules/file/access';
 import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { AppError } from '@/modules/common/types';
@@ -223,7 +224,8 @@ export class BookingController {
         (req.body.packageName as string | undefined) ||
         (req.body.package_name as string | undefined),
     };
-    const result = await this.bookingService.createBooking(data);
+    const result = await withFiles(req.user, 'Booking', data, undefined, () => this.bookingService.createBooking(data),
+      (r) => (r as { booking?: { _id?: unknown } } | null)?.booking?._id ?? (r as { _id?: unknown } | null)?._id);
 
     res.status(201).json({
       success: true,
@@ -255,7 +257,8 @@ export class BookingController {
         (req.body.packageName as string | undefined) ||
         (req.body.package_name as string | undefined),
     };
-    const result = await this.bookingService.createWellnessPackageBooking(data);
+    const result = await withFiles(req.user, 'Booking', data, undefined, () => this.bookingService.createWellnessPackageBooking(data),
+      (r) => (r as { booking?: { _id?: unknown } } | null)?.booking?._id ?? (r as { _id?: unknown } | null)?._id);
 
     res.status(201).json({
       success: true,
@@ -287,7 +290,8 @@ export class BookingController {
         (req.body.doctorName as string | undefined) ||
         (req.body.doctor_name as string | undefined),
     };
-    const result = await this.bookingService.createSpecialistBooking(data);
+    const result = await withFiles(req.user, 'Booking', data, undefined, () => this.bookingService.createSpecialistBooking(data),
+      (r) => (r as { booking?: { _id?: unknown } } | null)?.booking?._id ?? (r as { _id?: unknown } | null)?._id);
 
     res.status(201).json({
       success: true,
@@ -399,9 +403,9 @@ export class BookingController {
     const userId = this.resolveGenericBookingWriteScope(req);
     const { id } = req.params;
     const data: UpdateBookingRequest = req.body;
-    const result = req.user?.userType === 'user'
-      ? await this.bookingService.updateCustomerNotes(id, data, userId)
-      : await this.bookingService.update(id, data, userId);
+    const result = await withFiles(req.user, 'Booking', data, id, () => (req.user?.userType === 'user'
+      ? this.bookingService.updateCustomerNotes(id, data, userId)
+      : this.bookingService.update(id, data, userId)));
 
     res.status(200).json({
       success: true,

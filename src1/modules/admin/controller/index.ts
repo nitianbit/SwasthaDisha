@@ -1,7 +1,8 @@
 import 'reflect-metadata';
+import { withFiles } from '@/modules/file/access';
+import { AuthRequest } from '@/modules/middleware/auth';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
-import { AuthRequest } from '@/modules/middleware/auth';
 import { AdminService } from '@/modules/admin/services';
 import { AdminQueryParams, UpdateAdminProfileRequest } from '@/modules/admin/types';
 
@@ -25,7 +26,7 @@ export class AdminController {
   updateMyProfile = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const adminId = req.user!._id;
     const data: UpdateAdminProfileRequest = req.body;
-    const result = await this.adminService.updateProfile(adminId, data);
+    const result = await withFiles((req as AuthRequest).user, 'Admin', data, adminId, () => this.adminService.updateProfile(adminId, data));
 
     res.status(200).json({
       success: true,

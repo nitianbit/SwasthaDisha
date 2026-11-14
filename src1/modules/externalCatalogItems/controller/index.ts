@@ -1,4 +1,6 @@
 import 'reflect-metadata';
+import { withFiles } from '@/modules/file/access';
+import { AuthRequest } from '@/modules/middleware/auth';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { ExternalCatalogItemService } from '@/modules/externalCatalogItems/services';
@@ -17,7 +19,7 @@ export class ExternalCatalogItemController {
 
   create = async (req: Request, res: Response, _next: NextFunction) => {
     const data: CreateExternalCatalogItemRequest = req.body;
-    const result = await this.externalCatalogItemService.create(data);
+    const result = await withFiles((req as AuthRequest).user, 'ExternalCatalogItem', data, undefined, () => this.externalCatalogItemService.create(data));
 
     res.status(201).json({
       success: true,
@@ -84,7 +86,7 @@ export class ExternalCatalogItemController {
 
   update = async (req: Request, res: Response, _next: NextFunction) => {
     const data: UpdateExternalCatalogItemRequest = req.body;
-    const result = await this.externalCatalogItemService.update(req.params.id, data);
+    const result = await withFiles((req as AuthRequest).user, 'ExternalCatalogItem', data, req.params.id, () => this.externalCatalogItemService.update(req.params.id, data));
 
     res.status(200).json({
       success: true,

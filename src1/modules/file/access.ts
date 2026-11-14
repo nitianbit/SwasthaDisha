@@ -230,3 +230,50 @@ export async function attachFiles<T>(actor: Reader | undefined, model: string, s
   }
   return saved;
 }
+
+/**
+ * D1 field table: every stored field that can reference an uploaded file, per model, with the grant kind its binding
+ * gets. Public fields are images shown to everyone; the others are read by the record's own reader set.
+ */
+export const FILE_FIELDS: Record<string, [field: string, kind: GrantKind][]> = {
+  Pharmacy: [['profilePictureUrl', 'public'], ['gstCertificateUrl', 'pharmacy'], ['drugLicenseDocumentUrl', 'pharmacy'],
+    ['ownerIdProofUrl', 'pharmacy'], ['shopFrontPhotoUrl', 'pharmacy']],
+  Specialist: [['profilePictureUrl', 'public'], ['documents.url', 'specialist']],
+  Medicine: [['imageUrl', 'public']],
+  User: [['profilePictureUrl', 'public']],
+  Admin: [['profilePictureUrl', 'public']],
+  HR: [['profilePictureUrl', 'public'], ['documents.url', 'hr']],
+  Corporate: [['logoUrl', 'public']],
+  Partner: [['logoUrl', 'public']],
+  Banner: [['imageUrl', 'public']],
+  Blog: [['heroImage', 'public'], ['sections.image', 'public'], ['seo.ogImage', 'public']],
+  News: [['image', 'public']],
+  HealthTip: [['icon', 'public'], ['imageUrl', 'public']],
+  WellnessPackage: [['imageUrl', 'public']],
+  ExternalCatalogItem: [['image', 'public'], ['coverImage', 'public']],
+  Booking: [['documents.url', 'booking'], ['prescription.fileUrls', 'booking'], ['report.fileUrls', 'booking']],
+  PharmacyOrder: [['prescriptionUrls', 'pharmacy_order']],
+};
+
+/** Specs for the fields this write touches (a field absent from a partial update is not changed, so not checked). */
+export function specsFor(model: string, data: unknown, previous: unknown): AttachSpec[] {
+  const fields = FILE_FIELDS[model];
+  if (!fields) throw new AppError({ status: 500, code: 'FILE_FIELDS_UNKNOWN', message: `No file fields for ${model}` });
+  if (!data || typeof data !== 'object') return [];
+  return fields
+    .filter(([field]) => (field.split('.')[0]! in (data as object)))
+    .map(([field, kind]) => ({ field, kind, values: valuesAt(data, field), previous: previous ? valuesAt(previous, field) : [] }));
+}
+
+/**
+ * One-line controller wrapper: `withFiles(req.user, 'Pharmacy', body, id, () => service.update(id, body))`.
+ * `id` is the record being updated (its current values are the "previous" ones), or undefined for a create, where
+ * the saved record's `_id` is used.
+ */
+export async function withFiles<T>(actor: Reader | undefined, model: string, data: unknown, id: unknown,
+  save: () => Promise<T>, savedId: (saved: T) => unknown = (s) => (s as { _id?: unknown; id?: unknown } | null)?._id ?? (s as { id?: unknown } | null)?.id ?? id): Promise<T> {
+  const M = mongoose.models[model];
+  if (!M) throw new AppError({ status: 500, code: 'FILE_FIELDS_UNKNOWN', message: `Unknown model ${model}` });
+  const previous = id != null && isValidObjectId(String(id)) ? await M.findById(String(id)).lean() : null;
+  return attachFiles(actor, model, specsFor(model, data, previous), save, savedId);
+}

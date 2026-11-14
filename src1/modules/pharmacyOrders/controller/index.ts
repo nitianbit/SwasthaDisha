@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { withFiles } from '@/modules/file/access';
 import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { PharmacyOrderService } from '@/modules/pharmacyOrders/services';
@@ -18,12 +19,12 @@ export class PharmacyOrderController {
 
   create = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const pharmacyId = req.user?.pharmacyId || '';
-    const result = await this.service.create(
+    const result = await withFiles(req.user, 'PharmacyOrder', req.body, undefined, () => this.service.create(
       pharmacyId,
       req.body,
       req.user?._id || '',
       req.user?.userType || 'pharmacy'
-    );
+    ));
     res.status(201).json({ success: true, message: 'Order created', data: result });
   };
 
@@ -118,7 +119,8 @@ export class PharmacyOrderController {
 
   update = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const pharmacyId = req.user?.pharmacyId || '';
-    const result = await this.service.update(req.params.id, pharmacyId, req.body);
+    const result = await withFiles(req.user, 'PharmacyOrder', req.body, req.params.id,
+      () => this.service.update(req.params.id, pharmacyId, req.body));
     res.status(200).json({ success: true, message: 'Order updated', data: result });
   };
 

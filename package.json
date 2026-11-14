@@ -11,6 +11,7 @@
     "type-check": "tsc --noEmit",
     "dev": "ts-node-dev -r tsconfig-paths/register --respawn src1/index.ts",
     "sync-indexes": "tsx src1/scripts/syncIndexes.ts",
+    "d1-manifest": "tsx src1/scripts/d1LegacyFileManifest.ts",
     "migrate:pharmacy-inventory-batches": "tsx src1/scripts/migratePharmacyInventoryBatches.ts",
     "test:api": "tsx test/test-api.ts",
     "test:pharmacy": "tsx --test test/pharmacy.integration.test.ts",

@@ -1,4 +1,6 @@
 import 'reflect-metadata';
+import { withFiles } from '@/modules/file/access';
+import { AuthRequest } from '@/modules/middleware/auth';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { NewsService } from '@/modules/news/services';
@@ -17,7 +19,7 @@ export class NewsController {
 
   create = async (req: Request, res: Response, _next: NextFunction) => {
     const data: CreateNewsRequest = req.body;
-    const result = await this.newsService.create(data);
+    const result = await withFiles((req as AuthRequest).user, 'News', data, undefined, () => this.newsService.create(data));
 
     res.status(201).json({
       success: true,
@@ -72,7 +74,7 @@ export class NewsController {
   update = async (req: Request, res: Response, _next: NextFunction) => {
     const { id } = req.params;
     const data: UpdateNewsRequest = req.body;
-    const result = await this.newsService.update(id, data);
+    const result = await withFiles((req as AuthRequest).user, 'News', data, id, () => this.newsService.update(id, data));
 
     res.status(200).json({
       success: true,

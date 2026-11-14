@@ -1,9 +1,10 @@
 import 'reflect-metadata';
+import { withFiles } from '@/modules/file/access';
+import { AuthRequest } from '@/modules/middleware/auth';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { SpecialistService } from '@/modules/specialists/services';
 import { SpecialistPortalService } from '@/modules/specialistPortal/services';
-import { AuthRequest } from '@/modules/middleware/auth';
 import {
   CreateSpecialistRequest,
   UpdateSpecialistRequest,
@@ -30,7 +31,7 @@ export class SpecialistController {
     }: CreateSpecialistRequest & {
       corporate_id?: string;
     } = req.body;
-    const result = await this.specialistService.create(data, corporate_id);
+    const result = await withFiles((req as AuthRequest).user, 'Specialist', data, undefined, () => this.specialistService.create(data, corporate_id));
 
     res.status(201).json({
       success: true,
@@ -113,7 +114,7 @@ export class SpecialistController {
   update = async (req: Request, res: Response, _next: NextFunction) => {
     const { id } = req.params;
     const data: UpdateSpecialistRequest = req.body;
-    const result = await this.specialistService.update(id, data);
+    const result = await withFiles((req as AuthRequest).user, 'Specialist', data, id, () => this.specialistService.update(id, data));
 
     res.status(200).json({
       success: true,
@@ -181,10 +182,8 @@ export class SpecialistController {
     res: Response,
     _next: NextFunction
   ) => {
-    const data = await this.specialistPortalService.updateProfile(
-      this.specialistId(req),
-      req.body
-    );
+    const data = await withFiles(req.user, 'Specialist', req.body, this.specialistId(req),
+      () => this.specialistPortalService.updateProfile(this.specialistId(req), req.body));
     res.status(200).json({
       success: true,
       message: 'Profile updated successfully',

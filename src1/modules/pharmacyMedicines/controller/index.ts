@@ -1,8 +1,9 @@
 import 'reflect-metadata';
+import { withFiles } from '@/modules/file/access';
+import { AuthRequest } from '@/modules/middleware/auth';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { MedicineService } from '@/modules/pharmacyMedicines/services';
-import { AuthRequest } from '@/modules/middleware/auth';
 import {
   CreateMedicineRequest,
   UpdateMedicineRequest,
@@ -19,7 +20,7 @@ export class MedicineController {
 
   create = async (req: Request, res: Response, _next: NextFunction) => {
     const data: CreateMedicineRequest = req.body;
-    const result = await this.medicineService.create(data);
+    const result = await withFiles((req as AuthRequest).user, 'Medicine', data, undefined, () => this.medicineService.create(data));
     res.status(201).json({ success: true, message: 'Medicine created successfully', data: result });
   };
 
@@ -92,7 +93,7 @@ export class MedicineController {
 
   update = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const data: UpdateMedicineRequest = req.body;
-    const result = await this.medicineService.update(req.params.id, data, req.user?.userType);
+    const result = await withFiles((req as AuthRequest).user, 'Medicine', data, req.params.id, () => this.medicineService.update(req.params.id, data, req.user?.userType));
     res.status(200).json({ success: true, message: 'Medicine updated successfully', data: result });
   };
 

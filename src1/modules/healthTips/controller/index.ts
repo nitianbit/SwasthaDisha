@@ -1,4 +1,6 @@
 import 'reflect-metadata';
+import { withFiles } from '@/modules/file/access';
+import { AuthRequest } from '@/modules/middleware/auth';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { HealthTipService } from '@/modules/healthTips/services';
@@ -17,7 +19,7 @@ export class HealthTipController {
 
   create = async (req: Request, res: Response, _next: NextFunction) => {
     const data: CreateHealthTipRequest = req.body;
-    const result = await this.healthTipService.create(data);
+    const result = await withFiles((req as AuthRequest).user, 'HealthTip', data, undefined, () => this.healthTipService.create(data));
 
     res.status(201).json({
       success: true,
@@ -78,7 +80,7 @@ export class HealthTipController {
   update = async (req: Request, res: Response, _next: NextFunction) => {
     const { id } = req.params;
     const data: UpdateHealthTipRequest = req.body;
-    const result = await this.healthTipService.update(id, data);
+    const result = await withFiles((req as AuthRequest).user, 'HealthTip', data, id, () => this.healthTipService.update(id, data));
 
     res.status(200).json({
       success: true,

@@ -1,3 +1,4 @@
+import { uploadPathOf } from '@/modules/file/access';
 import { CONFIG } from '@/config/config';
 import { IExternalBooking } from '@/modules/externalBookings/types';
 
@@ -81,9 +82,10 @@ export function buildExternalBookingEmailContent({
     'phlebotomistMobile',
     'phleboContact',
   ]);
+  // D1: our stored report files need a login, so an emailed link would not open; only provider-hosted links are sent.
   const reportUrls = Array.isArray(booking.report)
     ? booking.report
-        .filter((url): url is string => typeof url === 'string' && url.trim().length > 0)
+        .filter((url): url is string => typeof url === 'string' && url.trim().length > 0 && uploadPathOf(url) === null)
         .map((url) => toAbsoluteUrl(url))
     : [];
 
@@ -214,7 +216,7 @@ function renderReportDelivered(view: any): ExternalBookingEmailContent {
     `We are pleased to inform you that your lab test results from ${view.providerName} are now ready.`,
     ...(view.reportUrls.length
       ? ['Please use the link(s) below to access your report(s):', ...view.reportUrls]
-      : ['Your report(s) can now be accessed from your booking.']),
+      : ['Please sign in to the app and open your booking to view your report(s).']),
     '',
     `Should you have any questions, feel free to contact us at ${SUPPORT_PHONE} or email us at ${SUPPORT_EMAIL}.`,
     'Best regards,',
@@ -237,7 +239,7 @@ function renderReportDelivered(view: any): ExternalBookingEmailContent {
             .join('')}</ul>`,
         ]
       : [
-          `<p style="${bodyParagraphStyle()}">Your report(s) can now be accessed from your booking.</p>`,
+          `<p style="${bodyParagraphStyle()}">Please sign in to the app and open your booking to view your report(s).</p>`,
         ]),
     contactFooterHtml(),
   ];

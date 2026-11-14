@@ -1,4 +1,6 @@
 import 'reflect-metadata';
+import { withFiles } from '@/modules/file/access';
+import { AuthRequest } from '@/modules/middleware/auth';
 import { NextFunction, Request, Response } from 'express';
 import { Container } from 'typedi';
 import { BlogService } from '@/modules/blogs/services';
@@ -81,7 +83,7 @@ export class BlogController {
 
   createBlog = async (req: Request, res: Response, _next: NextFunction) => {
     const data: CreateBlogRequest = req.body;
-    const result = await this.blogService.createBlog(data);
+    const result = await withFiles((req as AuthRequest).user, 'Blog', data, undefined, () => this.blogService.createBlog(data));
 
     res.status(201).json({
       success: true,
@@ -133,7 +135,7 @@ export class BlogController {
 
   updateBlog = async (req: Request, res: Response, _next: NextFunction) => {
     const data: UpdateBlogRequest = req.body;
-    const result = await this.blogService.updateBlog(req.params.id, data);
+    const result = await withFiles((req as AuthRequest).user, 'Blog', data, req.params.id, () => this.blogService.updateBlog(req.params.id, data));
 
     res.status(200).json({
       success: true,

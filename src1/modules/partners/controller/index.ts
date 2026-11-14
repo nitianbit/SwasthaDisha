@@ -1,4 +1,6 @@
 import 'reflect-metadata';
+import { withFiles } from '@/modules/file/access';
+import { AuthRequest } from '@/modules/middleware/auth';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { PartnerService } from '@/modules/partners/services';
@@ -17,7 +19,7 @@ export class PartnerController {
 
   create = async (req: Request, res: Response, _next: NextFunction) => {
     const data: CreatePartnerRequest = req.body;
-    const result = await this.partnerService.create(data);
+    const result = await withFiles((req as AuthRequest).user, 'Partner', data, undefined, () => this.partnerService.create(data));
 
     res.status(201).json({
       success: true,
@@ -86,7 +88,7 @@ export class PartnerController {
   update = async (req: Request, res: Response, _next: NextFunction) => {
     const { id } = req.params;
     const data: UpdatePartnerRequest = req.body;
-    const result = await this.partnerService.update(id, data);
+    const result = await withFiles((req as AuthRequest).user, 'Partner', data, id, () => this.partnerService.update(id, data));
 
     res.status(200).json({
       success: true,

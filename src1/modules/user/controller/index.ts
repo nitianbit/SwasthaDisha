@@ -1,8 +1,9 @@
 import 'reflect-metadata';
+import { withFiles } from '@/modules/file/access';
+import { AuthRequest } from '@/modules/middleware/auth';
 import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { AppError } from '@/modules/common/types';
-import { AuthRequest } from '@/modules/middleware/auth';
 import { UserService } from '@/modules/user/services';
 import { CreateUserRequest, UpdateUserRequest, UserQueryParams } from '@/modules/user/types';
 
@@ -115,7 +116,7 @@ export class UserController {
       ...req.body,
       corporateId: this.getHRCorporateId(req) || req.body.corporateId,
     };
-    const user = await this.userService.create(data);
+    const user = await withFiles((req as AuthRequest).user, 'User', data, undefined, () => this.userService.create(data));
 
     res.status(201).json({
       success: true,
@@ -148,7 +149,7 @@ export class UserController {
     const data: UpdateUserRequest = { ...req.body };
     const hrCorporateId = this.getHRCorporateId(req);
     if (hrCorporateId) data.corporateId = hrCorporateId;
-    const user = await this.userService.update(id, data, req.user!);
+    const user = await withFiles((req as AuthRequest).user, 'User', data, id, () => this.userService.update(id, data, req.user!));
 
     res.status(200).json({
       success: true,
