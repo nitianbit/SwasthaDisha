@@ -48,9 +48,10 @@ All packets were reviewed by Codex through Ruflo (approved) and tested against a
 | W2c | `m0/w2c-obligation-fence` | `7eb93c8` | Reconciliation attests the reviewed provider obligations (`expectedObligations` now required); admin obligation snapshot per booking | A2b (18), `test/booking-payment/retry-integrity.integration.ts` (26) |
 | W3b-pay | `m0/w3b-payment-reconcile` | `bc855da` | `POST /payments/reconcile`: settles a captured Razorpay payment whose browser verification never arrived (server asks Razorpay for the record's own order) | `test/booking-payment/w3b-reconcile.integration.ts` (7) |
 | W3b | `m0/w3b-booking-safety` | `5e94bb7` | Safe consultation booking for the customer app: booking-level payment reconciliation, open-order reuse, 5-minute fair recovery sweep of unsettled booking payments (scheduler), keyed create with stored validated terms, free bookings inserted unpaid (closes C7b) | `test/booking-payment/w3b-reconcile.integration.ts` (17) |
+| D2 | `m0/d2-booking-payment-timeout` | `c6d8fda` | Owner decision 2: unpaid priced doctor/package bookings expire 30 minutes after creation. A 5-minute sweep checks Razorpay first (backs off 5 min → 6 h while it cannot answer), then cancels in one transaction (coupon, wallet, slot, follow-up restored; a late capture goes back to the wallet). `retry-payment` answers 409 `BOOKING_PAYMENT_EXPIRED` after the window. Free bookings never expire | `test/customer-bookings/d2-booking-timeout.integration.ts` (8) |
 
 The W-branches (staff workspace backend support, reviewed by Codex 14 Nov) are stacked on A2b:
-`A2b ─ W1 ─ W2c-q ─ W2b ─ W2c ─ W3b-pay ─ W3b`. `m0/w3b-booking-safety` contains all of them; release it in place of
+`A2b ─ W1 ─ W2c-q ─ W2b ─ W2c ─ W3b-pay ─ W3b ─ D2`. `m0/d2-booking-payment-timeout` contains all of them; release it in place of
 `m0/a2b-external-cancel`. The frontend lives in the separate `jansetu-web` repo.
 
 Branch shape. Everything starts from `9c8d1d8` (end of the `m0/customer-pharmacy-lab-focus` line, 390 commits ahead
@@ -199,6 +200,7 @@ exist only after `npm run sync-indexes`.
    | `externalbookings` | `{providerOps.cancel.state, providerOps.cancel.nextAt}` sparse | Sweep of pending external cancellations (A2b) |
    | `bookings` | `{userId, createRequestKey}` unique, partial (string) | A resent booking create returns the first booking (W3b) |
    | `paymentrecords` | `{context, status, recoveryNextAt, createdAt}` | Due-first booking payment recovery sweep (W3b) |
+   | `bookings` | `{status, paymentStatus, expiryNextAt, createdAt}` | Due-first sweep of unpaid bookings past the 30-minute payment window (D2) |
    | `pharmacy_supplier_returns` | `{pharmacyId, requestKey}` unique, partial (string) | A resent supplier return is answered with the first record (W2b) |
 
    The P3b follow-up commit moved both return models into `pharmacyInventory/model/`, because `sync-indexes` only
