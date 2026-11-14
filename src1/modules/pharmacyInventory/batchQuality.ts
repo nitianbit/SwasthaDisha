@@ -100,7 +100,36 @@ export class BatchQualityService {
 
   /** Sends unreserved units of a batch back to one of the pharmacy's own active suppliers. */
   async returnToSupplier(actor: StaffActor, itemId: unknown, batchId: unknown,
-    input: { supplierId: unknown; quantity: number; reason: ISupplierReturn['reason']; notes?: string }) {
+    input: { supplierId: unknown; quantity: number; reason: ISupplierReturn['reason']; notes?: string; requestKey?: string })
+    : Promise<ISupplierReturn & { duplicate?: boolean }> {
+    const requestKey = typeof input.requestKey === 'string' && input.requestKey.trim() ? input.requestKey.trim() : undefined;
+    // Replay first: after the original committed, the batch has fewer units and the checks below could refuse it.
+    if (requestKey) {
+      const prior = await SupplierReturnModel.findOne({ pharmacyId: actor.pharmacyId, requestKey }).lean();
+      if (prior) return this.replaySupplierReturn(prior, itemId, batchId);
+    }
+    try {
+      return await this.recordSupplierReturn(actor, itemId, batchId, input, requestKey);
+    } catch (error) {
+      // The same key committed concurrently: answer with that record.
+      if (requestKey && (error as { code?: number })?.code === 11000 && /requestKey/.test(String((error as Error)?.message))) {
+        const existing = await SupplierReturnModel.findOne({ pharmacyId: actor.pharmacyId, requestKey }).lean();
+        if (existing) return this.replaySupplierReturn(existing, itemId, batchId);
+      }
+      throw error;
+    }
+  }
+
+  /** The same key is the same return: only for the same batch. */
+  private replaySupplierReturn(existing: ISupplierReturn, itemId: unknown, batchId: unknown): ISupplierReturn & { duplicate: true } {
+    if (existing.inventoryItemId !== String(itemId).toLowerCase() || existing.batchId !== String(batchId).toLowerCase()) {
+      throw new AppError({ status: 409, code: 'REQUEST_KEY_REUSED', message: 'This request key was already used for another return' });
+    }
+    return { ...existing, duplicate: true };
+  }
+
+  private async recordSupplierReturn(actor: StaffActor, itemId: unknown, batchId: unknown,
+    input: { supplierId: unknown; quantity: number; reason: ISupplierReturn['reason']; notes?: string }, requestKey: string | undefined) {
     const { item, batch } = await this.loadBatch(actor, itemId, batchId);
     if (!isId(input.supplierId)) throw new AppError({ status: 404, code: 'SUPPLIER_NOT_FOUND', message: 'Supplier not found' });
     const supplier = await PharmacySupplierModel.findOne({ _id: input.supplierId, pharmacyId: new Types.ObjectId(actor.pharmacyId) }).lean();
@@ -130,7 +159,7 @@ export class BatchQualityService {
       const [record] = await SupplierReturnModel.create([{ pharmacyId: actor.pharmacyId, supplierId: String(input.supplierId).toLowerCase(),
         inventoryItemId: String(pre._id), medicineId: String(pre.medicineId), batchId: String(batchId).toLowerCase(), batchNumber: was.batchNumber,
         expiryDate: was.expiryDate, batchStatusAtReturn: was.status, quantity: q, unitCost: was.purchasePrice, reason: input.reason,
-        ...(input.notes ? { notes: input.notes.trim() } : {}), createdBy: actor.actorId }], { session: s });
+        ...(input.notes ? { notes: input.notes.trim() } : {}), ...(requestKey ? { requestKey } : {}), createdBy: actor.actorId }], { session: s });
       await InventoryAdjustmentModel.create([{ pharmacyId: actor.pharmacyId, medicineId: pre.medicineId, inventoryItemId: pre._id,
         adjustmentType: 'remove', quantity: q, batchId: was._id, batchNumber: was.batchNumber, expiryDate: was.expiryDate,
         availableQtyBefore: was.availableQty, availableQtyAfter: was.availableQty - q, sourceType: 'manual', sourceId: String(record._id),

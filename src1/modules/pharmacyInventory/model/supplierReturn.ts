@@ -15,6 +15,8 @@ export interface ISupplierReturn {
   unitCost?: number;
   reason: 'expired' | 'damaged' | 'recalled' | 'near_expiry' | 'other';
   notes?: string;
+  /** Client key of the request that created it (W2b): a resent request answers with this record instead of a second return. */
+  requestKey?: string;
   createdBy: string;
   createdAt?: Date;
 }
@@ -32,8 +34,11 @@ const supplierReturnSchema = new Schema<ISupplierReturn>({
   unitCost: { type: Number, min: 0 },
   reason: { type: String, required: true, enum: ['expired', 'damaged', 'recalled', 'near_expiry', 'other'] },
   notes: { type: String, trim: true, maxlength: 500 },
+  requestKey: { type: String },
   createdBy: { type: String, required: true },
 }, { timestamps: { createdAt: true, updatedAt: false } });
 supplierReturnSchema.index({ pharmacyId: 1, createdAt: -1 });
+// One record per request key and pharmacy; records from before W2b have no key and are not constrained.
+supplierReturnSchema.index({ pharmacyId: 1, requestKey: 1 }, { unique: true, partialFilterExpression: { requestKey: { $type: 'string' } } });
 
 export const SupplierReturnModel: Model<ISupplierReturn> = model<ISupplierReturn>('PharmacySupplierReturn', supplierReturnSchema, 'pharmacy_supplier_returns');

@@ -245,6 +245,37 @@ async function main() {
     } finally { server.close(); }
   });
 
+  await check('[W2b] a supplier return resent with its request key is recorded once, also after the batch ran low and when concurrent', async () => {
+    const i = await item();
+    const sup = await supplier(pharmacyA);
+    const input = { supplierId: sup, quantity: 8, reason: 'expired' as const, requestKey: 'w2b-key-0001' };
+    const first = await svc.returnToSupplier(staffA, i.id, i.b1, input);       // b1: 10 unreserved
+    assert.equal(first.duplicate, undefined);
+    // The answer was lost; the same request again. Only 2 units are left, so a fresh return of 8 would be refused.
+    const again = await svc.returnToSupplier(staffA, i.id, i.b1, input);
+    assert.equal(again.duplicate, true);
+    assert.equal(String(again._id), String(first._id));
+    assert.equal((await batch(i.id, i.b1)).availableQty, 2, 'stock left the shelf once');
+    assert.equal(await SupplierReturnModel.countDocuments({ requestKey: 'w2b-key-0001' }), 1);
+    assert.equal(await InventoryAdjustmentModel.countDocuments({ sourceId: String(first._id) }), 1);
+    await consistent(i.id);
+
+    // Same key for another batch is a client mistake, not a replay.
+    await rejects(svc.returnToSupplier(staffA, i.id, i.b0, { ...input, quantity: 1 }), 'REQUEST_KEY_REUSED', 409);
+    // Two identical requests at once: one record, one decrement.
+    const both = await Promise.all([1, 2].map(() => svc.returnToSupplier(staffA, i.id, i.b0, { supplierId: sup, quantity: 3, reason: 'damaged', requestKey: 'w2b-key-0002' })));
+    assert.equal(new Set(both.map(r => String(r._id))).size, 1);
+    assert.equal(both.filter(r => r.duplicate).length, 1);
+    assert.equal((await batch(i.id, i.b0)).availableQty, 27);
+    // Without a key (older clients) nothing changes: each call is a return.
+    await svc.returnToSupplier(staffA, i.id, i.b0, { supplierId: sup, quantity: 1, reason: 'damaged' });
+    await svc.returnToSupplier(staffA, i.id, i.b0, { supplierId: sup, quantity: 1, reason: 'damaged' });
+    assert.equal((await batch(i.id, i.b0)).availableQty, 25);
+    await consistent(i.id);
+    const idx = (await SupplierReturnModel.collection.indexes()).find(x => x.key?.requestKey === 1);
+    assert.ok(idx?.unique && idx.partialFilterExpression, 'unique partial index on requestKey');
+  });
+
   console.log(`\n${passed} checks passed`);
 }
 

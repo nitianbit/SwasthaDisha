@@ -110,6 +110,8 @@ export const supplierReturnSchema = Joi.object({
   quantity: Joi.number().integer().min(1).required(),
   reason: Joi.string().valid('expired', 'damaged', 'recalled', 'near_expiry', 'other').required(),
   notes: Joi.string().trim().max(500).optional(),
+  // Optional for older clients; with it, a resent request is answered with the first record (W2b).
+  requestKey: Joi.string().trim().pattern(/^[A-Za-z0-9_-]{8,64}$/).optional(),
 });
 export const supplierReturnListSchema = Joi.object({ page: Joi.number().integer().min(1).max(1000).optional(), limit: Joi.number().integer().min(1).max(100).optional() });
 

@@ -237,7 +237,7 @@ export class InventoryController {
 
   returnBatchToSupplier = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const data = await Container.get(BatchQualityService).returnToSupplier(this.staff(req), req.params.id, req.params.batchId, req.body);
-    res.status(201).json({ success: true, message: 'Returned to supplier', data });
+    res.status(data.duplicate ? 200 : 201).json({ success: true, message: data.duplicate ? 'Return already recorded' : 'Returned to supplier', data });
   };
 
   listSupplierReturns = async (req: AuthRequest, res: Response, _next: NextFunction) => {
