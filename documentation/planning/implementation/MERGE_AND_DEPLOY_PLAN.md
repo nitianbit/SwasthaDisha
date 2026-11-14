@@ -47,9 +47,10 @@ All packets were reviewed by Codex through Ruflo (approved) and tested against a
 | W2b | `m0/w2b-supplier-return-key` | `00554f2` | Supplier returns replay a `requestKey` (new unique partial index, §4) | `test/pharmacy-inventory/p3-batch-quality.integration.ts` (11) |
 | W2c | `m0/w2c-obligation-fence` | `7eb93c8` | Reconciliation attests the reviewed provider obligations (`expectedObligations` now required); admin obligation snapshot per booking | A2b (18), `test/booking-payment/retry-integrity.integration.ts` (26) |
 | W3b-pay | `m0/w3b-payment-reconcile` | `bc855da` | `POST /payments/reconcile`: settles a captured Razorpay payment whose browser verification never arrived (server asks Razorpay for the record's own order) | `test/booking-payment/w3b-reconcile.integration.ts` (7) |
+| W3b | `m0/w3b-booking-safety` | `5e94bb7` | Safe consultation booking for the customer app: booking-level payment reconciliation, open-order reuse, 5-minute fair recovery sweep of unsettled booking payments (scheduler), keyed create with stored validated terms, free bookings inserted unpaid (closes C7b) | `test/booking-payment/w3b-reconcile.integration.ts` (17) |
 
 The W-branches (staff workspace backend support, reviewed by Codex 14 Nov) are stacked on A2b:
-`A2b ─ W1 ─ W2c-q ─ W2b ─ W2c ─ W3b-pay`. `m0/w3b-payment-reconcile` contains all of them; release it in place of
+`A2b ─ W1 ─ W2c-q ─ W2b ─ W2c ─ W3b-pay ─ W3b`. `m0/w3b-booking-safety` contains all of them; release it in place of
 `m0/a2b-external-cancel`. The frontend lives in the separate `jansetu-web` repo.
 
 Branch shape. Everything starts from `9c8d1d8` (end of the `m0/customer-pharmacy-lab-focus` line, 390 commits ahead
@@ -196,6 +197,8 @@ exist only after `npm run sync-indexes`.
    | `pharmacy_supplier_returns` | new collection + `{pharmacyId, createdAt}` | Supplier returns (P3) |
    | `pharmacy_customer_returns` | new collection + `{pharmacyId, requestKey}` **unique**, `{pharmacyId, createdAt}`, `{pharmacyId, lines.batchId}`, `{orderId}` | Customer returns; the unique index guarantees a retried submission is applied once (P3b) |
    | `externalbookings` | `{providerOps.cancel.state, providerOps.cancel.nextAt}` sparse | Sweep of pending external cancellations (A2b) |
+   | `bookings` | `{userId, createRequestKey}` unique, partial (string) | A resent booking create returns the first booking (W3b) |
+   | `paymentrecords` | `{context, status, recoveryNextAt, createdAt}` | Due-first booking payment recovery sweep (W3b) |
    | `pharmacy_supplier_returns` | `{pharmacyId, requestKey}` unique, partial (string) | A resent supplier return is answered with the first record (W2b) |
 
    The P3b follow-up commit moved both return models into `pharmacyInventory/model/`, because `sync-indexes` only
