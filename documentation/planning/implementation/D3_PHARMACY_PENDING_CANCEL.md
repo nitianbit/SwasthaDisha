@@ -1,6 +1,7 @@
 # D3 — Paid pharmacy order cancel → `pending_cancel` (owner decision 3, 2026-11-14)
 
-Status: design for Codex review (incorporates Codex design notes msg_1794658919870, D3 section). Branch
+Status: design, revised after Codex review msg_1794669027648 (lost capture recovery; exact snapshot predicates;
+decisions fenced to one request). Incorporates Codex design notes msg_1794658919870 (D3 section). Branch
 `m0/d3-pharmacy-pending-cancel` on `m0/d2-booking-payment-timeout` (independent of D1).
 
 ## Owner decisions
@@ -15,7 +16,8 @@ Status: design for Codex review (incorporates Codex design notes msg_17946589198
 `status: 'pending_cancel'` (new enum value) plus an embedded record:
 
 ```
-cancelRequest: { state: 'pending' | 'approved' | 'rejected', fromStatus, paymentStatusAtRequest,
+cancelRequest: { requestId (new ObjectId per request, immutable), state: 'pending' | 'approved' | 'rejected',
+                 fromStatus, paymentStatusAtRequest,
                  requestedByType: 'user' | 'pharmacy' | 'admin', requestedById, reason, requestedAt,
                  decidedByType?, decidedById?, decidedAt?, decisionNote? }
 ```
@@ -28,13 +30,17 @@ timeout sweep) already fails on a frozen order. The writers that do not are fixe
 
 | Command | Who | Atomic filter (one write, in a transaction with stock release where noted) | Effect |
 |---|---|---|---|
-| `POST /pharmacy-orders/:id/cancel-request` `{reason}` | the order's customer, the order's pharmacy, admin | **Unpaid**: `{_id, status ∈ placed/accepted/packed, paymentStatus ∈ pending/failed}` | `cancelled` at once, stock released in the same transaction (no money) |
-| | | **Paid**: `{_id, status ∈ placed/accepted/packed, paymentStatus ∈ paid/authorized/partially_paid, cancelRequest.state ≠ pending}` | `pending_cancel`, `cancelRequest` pending with `fromStatus` |
-| `POST /:id/cancel-request/approve` `{note?}` | admin, the order's pharmacy | `{_id, status: pending_cancel, cancelRequest.state: pending, paymentStatus: <read>}`; `paymentStatus: authorized` → 409 `PAYMENT_IN_PROGRESS` (capture not settled yet; try again) | in one transaction: `cancelled`, request approved, items re-read inside the transaction and released exactly once (the status CAS is the once-only fence), P2 refund intent built (cause `order_cancelled`) when paid and none exists. After commit: wallet credit (`settleAfterRejection`, never throws; the reconciler recovers it) |
-| `POST /:id/cancel-request/reject` `{note}` | admin, the order's pharmacy | `{_id, status: pending_cancel, cancelRequest.state: pending}` | back to `fromStatus` (placed → accepted if it became paid meanwhile), request rejected |
+| `POST /pharmacy-orders/:id/cancel-request` `{reason}` | the order's customer, the order's pharmacy, admin | read `s` = status, `p` = paymentStatus; **exact** CAS `{_id, status: s, paymentStatus: p}` with `s ∈ placed/accepted/packed`. Unpaid (`p ∈ pending/failed`) | `cancelled` at once, stock released in the same transaction (no money) |
+| | | same exact CAS, paid (`p ∈ paid/authorized/partially_paid`) | `pending_cancel`, new `cancelRequest` {requestId, state pending, fromStatus: s, paymentStatusAtRequest: p} — stored values are exactly the matched ones |
+| `POST /:id/cancel-request/approve` `{requestId, note?}` | admin, the order's pharmacy | in a transaction: fresh read, then CAS `{_id, status: pending_cancel, cancelRequest.requestId: <body>, cancelRequest.state: pending, paymentStatus: <fresh>}`; `paymentStatus: authorized` → 409 `PAYMENT_IN_PROGRESS` | `cancelled`, request approved, items released exactly once (the status CAS is the once-only fence), P2 refund intent (cause `order_cancelled`) when paid and none exists. After commit: wallet credit (`settleAfterRejection`, never throws; reconciler recovers it) |
+| `POST /:id/cancel-request/reject` `{requestId, note}` | admin, the order's pharmacy | same transaction pattern: fresh read; CAS `{…, requestId, state pending, paymentStatus: <fresh>}` | restored status computed from the fresh read: `fromStatus`, except `placed` + now paid → `accepted`; request rejected |
 
-Unpaid vs paid is decided by the filter, not by an earlier read: a COD order that becomes paid between read and write
-fails the unpaid filter and the request is retried as paid (one retry, then 409).
+The exact CAS is retried after a re-read (3 tries, then 409 `ORDER_CHANGED`), so a concurrent progress (accepted →
+packed) is never stored as a stale `fromStatus`, and a COD order that becomes paid in between is re-classified as paid.
+Every decision names the `requestId` the decider reviewed: a delayed decision prepared for an earlier request R1 cannot
+decide a later R2 (409 `CANCEL_REQUEST_CHANGED`). The order screen and the queue always show the current requestId.
+Decisions use a transaction (fresh read + write-conflict retry), so the restored status and payment predicate come from
+the same snapshot as the write.
 
 Approval authority = rejection authority = `requireAdminOrOperationalPharmacy` + own-pharmacy check, as for P2 retry.
 
@@ -47,6 +53,16 @@ Approval authority = rejection authority = `requireAdminOrOperationalPharmacy` +
 - A capture that lands while the order is `pending_cancel` is **recorded** (paymentStatus paid) but does not move the
   order: approval then refunds it; rejection resumes the order (placed → accepted).
 - A capture on a cancelled order keeps the existing late-payment wallet refund, without overwriting the status.
+- **A losing payment commit is routed, never dropped** (Codex HIGH): when the gateway commit's CAS fails, the handler
+  re-reads the order and routes its actual state: open → retry the commit; `pending_cancel` → record paid, stay frozen;
+  cancelled/rejected/abandoned → late-payment wallet refund (idempotent key `pharmacy_order_refund:<id>`), PaymentRecord
+  marked processed. It no longer ends in a 500 with a paid, unprocessed record.
+- **Durable recovery of pharmacy payments**: the 5-minute payment recovery sweep (W3b, bookings only today) also covers
+  `context: 'pharmacy_order'` records that are captured but unprocessed (or still `created` with a possible capture):
+  reconcile with Razorpay, then the same routed processing. A lost browser/webhook continuation cannot strand money.
+- **Refill orders (P7)**: the subscription cursor (`advanceRefillOnPayment`) is a payment effect, not an order-status CAS.
+  A capture on a refill order in `pending_cancel` is recorded but does not advance the cursor; a rejection advances it
+  in the rejection transaction; an approval does not (the cycle is refunded). Otherwise P7's policy is unchanged.
 
 ## Writers that must be fixed (from the writer inventory)
 
@@ -61,7 +77,11 @@ Approval authority = rejection authority = `requireAdminOrOperationalPharmacy` +
 
 ## Tests (planned, integration on the replica set)
 
-Unpaid immediate cancel + exactly-once stock release; COD becomes paid during the cancel → pending path; paid request
+Accepted/pending online order: unpaid cancel commits between the payment handler's final read and its commit → routed to
+wallet refund, record processed, no 500; the same with the browser continuation lost → the recovery sweep refunds it
+without a customer retry. Request reads accepted, order packed meanwhile → CAS retries, fromStatus packed. Reject R1 →
+progress → request R2 → delayed R1 approve/reject → 409, R2 untouched. Capture during pending on a placed order, then a
+stale reject → accepted (fresh read). Unpaid immediate cancel + exactly-once stock release; COD becomes paid during the cancel → pending path; paid request
 → every progress writer refused (status, P1 review, P7b, stock-hold, batch swap, markPaid, update) while pending;
 approve → cancelled, stock released once, wallet credited once (concurrent double approve: one wins); approve while
 authorized → 409; capture landing during pending → recorded, order not progressed, then refunded on approve; reject →
