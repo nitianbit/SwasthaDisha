@@ -107,6 +107,12 @@ async function main() {
       assert.equal(r.status, 200);
       assert.ok(await RequestKeyModel.exists({ scope: scopeOf('customer_return', pharmacyId), key: 'rt-key-0001' }));
       assert.equal((await call(pharmacy, { kind: 'customer_return', key: 'x' })).status, 400);
+      // A used key: the abandon answers with the exact record (caller-scoped), however old it is.
+      const bk = new Types.ObjectId();
+      await mongoose.connection.collection('bookings').insertOne({ _id: bk, userId: String(user._id), createRequestKey: 'bk-used-0003', status: 'pending', paymentStatus: 'pending' });
+      await RequestKeyModel.create({ scope: scopeOf('booking_create', String(user._id)), key: 'bk-used-0003', state: 'used', at: new Date() });
+      const used = await call(customer, { kind: 'booking_create', key: 'bk-used-0003' }) as { status: number; body: { data?: { state?: string; record?: { _id?: string } } } };
+      assert.equal(used.body.data?.state, 'used'); assert.equal(used.body.data?.record?._id, bk.toHexString());
     } finally {
       server.close();
     }

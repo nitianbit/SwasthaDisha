@@ -172,6 +172,24 @@ async function main() {
       assert.equal((await call('/api/v1/me', { bearer: replaced })).status, 401);
     });
 
+    await check('a fresh sign-in replaces the browser\'s previous family; sign-out also ends the family of the token in use', async () => {
+      const phone = nextPhone();
+      const first = await login('user', CUSTOMER, phone);
+      // Sign in again in the same browser (the old cookie is presented): the old family is revoked.
+      await call('/api/v1/auth/user/send', { body: { phone }, header: false });
+      const again = await call('/api/v1/auth/user/verify', { body: { phone, otp: lastOtp(), session: 'cookie' }, cookie: first.cookie });
+      assert.equal(again.status, 200);
+      assert.equal((await call('/api/v1/me', { bearer: first.token })).status, 401, 'the replaced family is over');
+      // A tab holding family S1's token while the cookie belongs to S2 (signed in elsewhere without the old cookie).
+      const s1 = await login('user', CUSTOMER, phone);
+      await call('/api/v1/auth/user/send', { body: { phone }, header: false });
+      const s2 = await call('/api/v1/auth/user/verify', { body: { phone, otp: lastOtp(), session: 'cookie' } });
+      const out = await call('/api/v1/auth/session/logout', { cookie: pair(s2.cookie), bearer: s1.token });
+      assert.equal(out.status, 200);
+      assert.equal((await call('/api/v1/me', { bearer: s1.token })).status, 401, 'the tab\'s own family ended');
+      assert.equal((await call('/api/v1/me', { bearer: String(s2.body.data!.token) })).status, 401, 'and the cookie\'s');
+    });
+
     await check('refresh is refused without the header, from another origin, or with the other app\'s cookie', async () => {
       const l = await login('user', CUSTOMER);
       assert.equal((await call('/api/v1/auth/session/refresh', { cookie: l.cookie, header: false })).status, 403);

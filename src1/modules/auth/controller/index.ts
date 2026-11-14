@@ -69,7 +69,7 @@ export class AuthController {
       // The same request that consumed the OTP starts the family; the long-lived bearer is not handed out.
       const claims = jwt.decode(result.accessToken) as Record<string, unknown> & { _id: string; userType: string };
       privateTokenResponse(res);
-      const token = await createSession(res, audience, claims);
+      const token = await createSession(res, audience, claims, new Date(), req);
       return res.status(200).json({ success: true, message: result.message,
         data: { token, expiresIn: ACCESS_TOKEN_TTL_SECONDS, user: result.userData } });
     }

@@ -132,9 +132,15 @@ function accessToken(claims: Claims, session: Pick<AuthSession, '_id' | 'audienc
     CONFIG.JWT_SECRET_KEY, { expiresIn: ACCESS_TOKEN_TTL_SECONDS });
 }
 
-/** Creates a family in the request that consumed the OTP; sets the cookie; returns the access token. */
-export async function createSession(res: Response, audience: Audience, claims: Claims, now = new Date()): Promise<string> {
+/**
+ * Creates a family in the request that consumed the OTP; sets the cookie; returns the access token. The family this
+ * browser held before (its correctly signed cookie, if any) is revoked first: a fresh sign-in replaces it, so no tab
+ * can keep using the old family's tokens beyond the next sign-out.
+ */
+export async function createSession(res: Response, audience: Audience, claims: Claims, now = new Date(), req?: Request): Promise<string> {
   assertRoleForAudience(audience, claims.userType);
+  const previous = req ? parseRefresh(readCookie(req, cookieName(audience))) : null;
+  if (previous) await revokeFamily(previous.sid, 'replaced_by_new_sign_in');
   const life = LIFETIME[audience];
   const sid = randomBytes(16).toString('hex');
   const token = refreshToken(sid, 1);
@@ -224,6 +230,18 @@ export async function logoutSession(req: Request, res: Response): Promise<void> 
   if (presented) {
     await AuthSessionModel.updateOne({ _id: presented.sid, audience, revokedAt: { $exists: false } },
       { $set: { revokedAt: new Date(), revokeReason: 'logout' } });
+  }
+  // The family of the access token the tab was using is ended too (it may differ from the cookie's after another
+  // sign-in in this browser). Only a valid token, only its own family, only in this audience.
+  const header = req.headers.authorization;
+  if (typeof header === 'string' && header.startsWith('Bearer ')) {
+    try {
+      const c = jwt.verify(header.slice(7), CONFIG.JWT_SECRET_KEY) as { sid?: unknown; aud?: unknown; _id?: unknown; userType?: unknown };
+      if (typeof c.sid === 'string' && c.aud === audience) {
+        await AuthSessionModel.updateOne({ _id: c.sid, audience, userId: String(c._id), userType: String(c.userType), revokedAt: { $exists: false } },
+          { $set: { revokedAt: new Date(), revokeReason: 'logout' } });
+      }
+    } catch { /* an invalid or expired token ends nothing */ }
   }
   clearCookie(res, audience);
 }

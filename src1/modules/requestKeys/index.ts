@@ -5,6 +5,9 @@ import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import type { AuthRequest } from '@/modules/middleware/auth';
 import { assertOperationalPharmacy } from '@/modules/middleware/auth';
 import { RequestKeyModel } from './model';
+import { CustomerReturnModel } from '@/modules/pharmacyInventory/model/customerReturn';
+import { SupplierReturnModel } from '@/modules/pharmacyInventory/model/supplierReturn';
+import BookingModel from '@/modules/bookings/model';
 
 /**
  * D4 admission fence for once-only operations (customer return, supplier return, booking create). A client whose page
@@ -61,5 +64,11 @@ requestKeyRouter.post('/abandon', catchAsync(async (req: AuthRequest, res: Respo
     owner = String(req.user!.pharmacyId ?? user._id);
   }
   const state = await abandonRequestKey(scopeOf(kind, owner), key);
-  res.status(200).json({ success: true, data: { state } });
+  if (state === 'abandoned') { res.status(200).json({ success: true, data: { state } }); return; }
+  // Used: the record was written in the same transaction as the claim, so it exists; return it (exact key, caller's
+  // scope) so the client can always resolve the request, however far back it is in any list.
+  const record = kind === 'customer_return' ? await CustomerReturnModel.findOne({ pharmacyId: owner, requestKey: key }).lean()
+    : kind === 'supplier_return' ? await SupplierReturnModel.findOne({ pharmacyId: owner, requestKey: key }).lean()
+    : await BookingModel.findOne({ userId: { $eq: owner }, createRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean();
+  res.status(200).json({ success: true, data: { state, record } });
 }));
