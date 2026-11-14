@@ -42,6 +42,14 @@ All packets were reviewed by Codex through Ruflo (approved) and tested against a
 | A1 | `m0/a1-milestone-rules` | `02d31f6` | Option A phase 1: the milestone's (`e8eb9bd`) non-ledger protections (§3) | `test/customer-bookings/a1-milestone-rules.integration.ts` (12); milestone `test/customer-profile/focused.mjs`, `test/customer-bookings/controllers.mjs` |
 | A2a | `m0/a2a-booking-settlement` | `f1d9f54` | Option A phase 2a: ordinary bookings' holds and one-transaction cancellation on the ledger; coupon usage counted/undone exactly once (§3) | `test/customer-bookings/a2a-booking-settlement.integration.ts` (14) |
 | A2b | `m0/a2b-external-cancel` | on top of `f1d9f54` | Option A phase 2b: external bookings' provider admission and two-phase cancellation (cancel at the provider, then refund) on the ledger (§3) | `test/customer-bookings/a2b-external-cancel.integration.ts` (17) |
+| W1 | `m0/w1-rx-review-queue` | `f1fbec5` | Pharmacist work queue for the new staff workspace (`GET /pharmacy-orders/prescription-reviews`) | `test/pharmacy-prescription/p1-review.integration.ts` (16) |
+| W2c-q | `m0/w2c-admin-queues` | `815f93e` | Admin worklist of open external cancellations | `test/customer-bookings/a2b-external-cancel.integration.ts` (18) |
+| W2b | `m0/w2b-supplier-return-key` | `00554f2` | Supplier returns replay a `requestKey` (new unique partial index, §4) | `test/pharmacy-inventory/p3-batch-quality.integration.ts` (11) |
+| W2c | `m0/w2c-obligation-fence` | `7eb93c8` | Reconciliation attests the reviewed provider obligations (`expectedObligations` now required); admin obligation snapshot per booking | A2b (18), `test/booking-payment/retry-integrity.integration.ts` (26) |
+
+The W-branches (staff workspace backend support, reviewed by Codex 14 Nov) are stacked on A2b:
+`A2b ─ W1 ─ W2c-q ─ W2b ─ W2c`. `m0/w2c-obligation-fence` contains all of them; release it in place of
+`m0/a2b-external-cancel`. The frontend lives in the separate `jansetu-web` repo.
 
 Branch shape. Everything starts from `9c8d1d8` (end of the `m0/customer-pharmacy-lab-focus` line, 390 commits ahead
 of `main` = `origin/main` = `b06be01`):
@@ -187,6 +195,7 @@ exist only after `npm run sync-indexes`.
    | `pharmacy_supplier_returns` | new collection + `{pharmacyId, createdAt}` | Supplier returns (P3) |
    | `pharmacy_customer_returns` | new collection + `{pharmacyId, requestKey}` **unique**, `{pharmacyId, createdAt}`, `{pharmacyId, lines.batchId}`, `{orderId}` | Customer returns; the unique index guarantees a retried submission is applied once (P3b) |
    | `externalbookings` | `{providerOps.cancel.state, providerOps.cancel.nextAt}` sparse | Sweep of pending external cancellations (A2b) |
+   | `pharmacy_supplier_returns` | `{pharmacyId, requestKey}` unique, partial (string) | A resent supplier return is answered with the first record (W2b) |
 
    The P3b follow-up commit moved both return models into `pharmacyInventory/model/`, because `sync-indexes` only
    loads `modules/*/model/*`. This was checked by running the real script against a test database: both
