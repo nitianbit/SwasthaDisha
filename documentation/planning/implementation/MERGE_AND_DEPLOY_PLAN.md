@@ -46,9 +46,10 @@ All packets were reviewed by Codex through Ruflo (approved) and tested against a
 | W2c-q | `m0/w2c-admin-queues` | `815f93e` | Admin worklist of open external cancellations | `test/customer-bookings/a2b-external-cancel.integration.ts` (18) |
 | W2b | `m0/w2b-supplier-return-key` | `00554f2` | Supplier returns replay a `requestKey` (new unique partial index, §4) | `test/pharmacy-inventory/p3-batch-quality.integration.ts` (11) |
 | W2c | `m0/w2c-obligation-fence` | `7eb93c8` | Reconciliation attests the reviewed provider obligations (`expectedObligations` now required); admin obligation snapshot per booking | A2b (18), `test/booking-payment/retry-integrity.integration.ts` (26) |
+| W3b-pay | `m0/w3b-payment-reconcile` | `bc855da` | `POST /payments/reconcile`: settles a captured Razorpay payment whose browser verification never arrived (server asks Razorpay for the record's own order) | `test/booking-payment/w3b-reconcile.integration.ts` (7) |
 
 The W-branches (staff workspace backend support, reviewed by Codex 14 Nov) are stacked on A2b:
-`A2b ─ W1 ─ W2c-q ─ W2b ─ W2c`. `m0/w2c-obligation-fence` contains all of them; release it in place of
+`A2b ─ W1 ─ W2c-q ─ W2b ─ W2c ─ W3b-pay`. `m0/w3b-payment-reconcile` contains all of them; release it in place of
 `m0/a2b-external-cancel`. The frontend lives in the separate `jansetu-web` repo.
 
 Branch shape. Everything starts from `9c8d1d8` (end of the `m0/customer-pharmacy-lab-focus` line, 390 commits ahead
