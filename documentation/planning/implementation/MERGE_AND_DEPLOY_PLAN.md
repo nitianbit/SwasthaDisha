@@ -49,9 +49,10 @@ All packets were reviewed by Codex through Ruflo (approved) and tested against a
 | W3b-pay | `m0/w3b-payment-reconcile` | `bc855da` | `POST /payments/reconcile`: settles a captured Razorpay payment whose browser verification never arrived (server asks Razorpay for the record's own order) | `test/booking-payment/w3b-reconcile.integration.ts` (7) |
 | W3b | `m0/w3b-booking-safety` | `5e94bb7` | Safe consultation booking for the customer app: booking-level payment reconciliation, open-order reuse, 5-minute fair recovery sweep of unsettled booking payments (scheduler), keyed create with stored validated terms, free bookings inserted unpaid (closes C7b) | `test/booking-payment/w3b-reconcile.integration.ts` (17) |
 | D2 | `m0/d2-booking-payment-timeout` | `c6d8fda` | Owner decision 2: unpaid priced doctor/package bookings expire 30 minutes after creation. A 5-minute sweep checks Razorpay first (backs off 5 min → 6 h while it cannot answer), then cancels in one transaction (coupon, wallet, slot, follow-up restored; a late capture goes back to the wallet). `retry-payment` answers 409 `BOOKING_PAYMENT_EXPIRED` after the window. Free bookings never expire | `test/customer-bookings/d2-booking-timeout.integration.ts` (8) |
+| D1 | `m0/d1-private-files` | `2744e22` | Owner decision 1: uploaded files need a login. One access decision for `/api/static`, `/api/v1/file/static`, `/api/v1/file/fetch`: uploader provenance (`file_uploads`), record+field bindings (`file_grants`, generation-fenced, honoured only while the record holds the file), exact server folders, public images only when bound to a public field; nobody writes back a file they do not own. Legacy files admin-only until the curated manifest is applied (`npm run d1-manifest`). Report emails no longer link stored files. Approved by Codex 2026-11-14 | `test/file-access/d1-private-files.integration.ts` (23) |
 
 The W-branches (staff workspace backend support, reviewed by Codex 14 Nov) are stacked on A2b:
-`A2b ─ W1 ─ W2c-q ─ W2b ─ W2c ─ W3b-pay ─ W3b ─ D2`. `m0/d2-booking-payment-timeout` contains all of them; release it in place of
+`A2b ─ W1 ─ W2c-q ─ W2b ─ W2c ─ W3b-pay ─ W3b ─ D2 ─ D1`. `m0/d1-private-files` contains all of them; release it in place of
 `m0/a2b-external-cancel`. The frontend lives in the separate `jansetu-web` repo.
 
 Branch shape. Everything starts from `9c8d1d8` (end of the `m0/customer-pharmacy-lab-focus` line, 390 commits ahead
@@ -201,6 +202,8 @@ exist only after `npm run sync-indexes`.
    | `bookings` | `{userId, createRequestKey}` unique, partial (string) | A resent booking create returns the first booking (W3b) |
    | `paymentrecords` | `{context, status, recoveryNextAt, createdAt}` | Due-first booking payment recovery sweep (W3b) |
    | `bookings` | `{status, paymentStatus, expiryNextAt, createdAt}` | Due-first sweep of unpaid bookings past the 30-minute payment window (D2) |
+   | `file_uploads` | new collection + `{path}` unique | Who uploaded each file (D1) |
+   | `file_grants` | new collection + `{path, model, resourceId, field}` unique, `{path, state, kind}` | File access bindings (D1) |
    | `pharmacy_supplier_returns` | `{pharmacyId, requestKey}` unique, partial (string) | A resent supplier return is answered with the first record (W2b) |
 
    The P3b follow-up commit moved both return models into `pharmacyInventory/model/`, because `sync-indexes` only
@@ -339,3 +342,13 @@ can read.
   payable-link fence.
 - No UI for any of the new endpoints.
 - Pre-existing type error in `pharmacySubscriptions/repository/index.ts(42)`.
+
+## D1 deploy steps (in this order)
+
+1. `npm run sync-indexes` (creates `file_uploads`, `file_grants`).
+2. Purge `/api/static/*` and `/api/v1/file/static/*` from every CDN / reverse-proxy cache (they were served
+   `public, max-age=31536000`; new origin headers do not recall cached copies).
+3. `npm run d1-manifest -- propose <file>` → an operator reviews it and sets `"approved": true` on accepted entries
+   (flagged entries are never applied) → `npm run d1-manifest -- apply <file>`. Keep the manifest out of Git.
+4. Release the new web/mobile builds. Until step 3, legacy uploads (including public images uploaded before D1) open
+   for admins only; old app screens that open private files by plain URL stop working by design.
