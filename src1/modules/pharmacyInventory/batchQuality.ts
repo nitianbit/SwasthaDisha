@@ -1,3 +1,4 @@
+import { claimRequestKey, scopeOf } from '@/modules/requestKeys';
 import { Service } from 'typedi';
 import { ClientSession, startSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
@@ -148,6 +149,8 @@ export class BatchQualityService {
       if (requestKey) {
         const prior = await SupplierReturnModel.findOne({ pharmacyId: actor.pharmacyId, requestKey }).session(s).lean();
         if (prior) return this.replaySupplierReturn(prior, itemId, batchId);
+        // D4: an abandoned key is never performed; claimed as used in this transaction (conflicts with an abandon).
+        await claimRequestKey(scopeOf('supplier_return', String(actor.pharmacyId)), requestKey, s);
       }
       // new:false → the pre-image of exactly the write that committed: status, cost and quantities for the audit.
       const pre = await InventoryItemModel.findOneAndUpdate(

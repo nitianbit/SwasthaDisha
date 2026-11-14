@@ -207,6 +207,11 @@ async function main() {
       assert.equal(c.aud, 'workspace'); assert.equal(c.pharmacyId, c._id);
       const r = await call('/api/v1/auth/session/refresh', { cookie: l.cookie, origin: STAFF });
       assert.equal(r.status, 200);
+      // Policy: an unverified (onboarding) pharmacy keeps its session; operational routes check verification per action.
+      await PharmacyModel.updateOne({ _id: c._id }, { $set: { isVerified: false } });
+      const onboarding = await call('/api/v1/auth/session/refresh', { cookie: pair(r.cookie), origin: STAFF });
+      assert.equal(onboarding.status, 200);
+      r.cookie = onboarding.cookie;
       await PharmacyModel.updateOne({ _id: c._id }, { $set: { isActive: false } });
       assert.equal((await call('/api/v1/auth/session/refresh', { cookie: pair(r.cookie), origin: STAFF })).status, 401);
       await PharmacyModel.updateOne({ _id: c._id }, { $set: { isActive: true } });

@@ -1,3 +1,4 @@
+import { requestKeyRouter } from '@/modules/requestKeys';
 import { Express } from 'express';
 import authRouterV1 from '@/modules/auth/routes';
 import userRouter from '@/modules/user/routes';
@@ -103,6 +104,8 @@ export const configureRoutes = (app: Express): void => {
   app.use('/api/v1/pharmacy-tracking', authenticate, pharmacyTrackingRouter);
   app.use('/api/v1/external-bookings',authenticate, externalBookingRouter);
   app.use('/api/v1/webhooks', webhookRouter);
+  // D4: abandon an unresolved once-only request key (admission fence; scoped to the caller).
+  app.use('/api/v1/request-keys', authenticate, requestKeyRouter);
   
   // Health check endpoint
   app.get('/health', (_req, res) => {

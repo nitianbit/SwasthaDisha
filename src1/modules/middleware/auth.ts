@@ -325,7 +325,7 @@ export const requireAdminOrPharmacy = (
   }
 };
 
-const assertOperationalPharmacy = async (req: AuthRequest): Promise<void> => {
+export const assertOperationalPharmacy = async (req: AuthRequest): Promise<void> => {
   const pharmacyId = req.user?.pharmacyId || req.user?._id;
   if (!pharmacyId) {
     throw new AppError({

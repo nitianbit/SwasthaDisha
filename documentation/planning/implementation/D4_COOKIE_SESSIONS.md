@@ -73,7 +73,10 @@ into a session.
 3. No match: if the family's current `gen` is newer than the signed one → **reuse**: revoke the family
    (`reuse_detected`), clear the cookie, 401. Otherwise 401 and clear the cookie.
 4. Account checks on every refresh: customer `authVersion` must equal the session's (sign-out-everywhere wins);
-   staff `isActive` (and for pharmacies the operational check) must still hold. Failing → revoke, 401.
+   staff `isActive` must still hold, and a pharmacy must not be archived. Failing → revoke, 401. An **unverified**
+   pharmacy keeps its session (it signs in during onboarding, as OTP login already allows); every operational route
+   still requires a verified, active pharmacy (`requireOperationalPharmacy`), so verification is enforced per action,
+   not per session.
 5. New access token with the same `sid` and `auth_time`.
 
 Clients serialise refresh across tabs with the Web Locks API (`navigator.locks.request('sd-refresh')`), and every tab
@@ -110,13 +113,17 @@ token. Refresh issues only session-bound tokens.
 ## Unresolved once-only operations across a reload (Codex finding 3)
 
 Before each send, a once-only operation (customer return, supplier return, booking create) stores a marker in the
-tab's `sessionStorage`: `{requestKey, kind, scope id (order / inventory item / doctor), firstAttemptAt, lastAttemptAt}`
-under the principal's id — no request body, no names, no health data, no credentials. After a reload the screen restores
-the marker and blocks a new submission of that kind for that scope until either the server shows the record carrying the
-key (existing receipt look-up by key; bookings list carries `createRequestKey`) or the request is provably dead: not
-found more than 5 minutes after its last attempt (the server writes these in MongoDB transactions, which cannot commit
-after 60 seconds). Routine token renewal never touches in-memory pending operations. Markers are cleared on resolution,
-proven death, sign-out and identity change.
+tab's `sessionStorage`: `{requestKey, slot, firstAttemptAt, lastAttemptAt}` under the principal's id — no request body,
+no names, no health data, no credentials. After a reload the screen restores the marker and blocks a new submission for
+that slot until the old key is resolved **by the server**, never by elapsed time (Codex msg_1794683854755):
+- found: the record carrying the key is shown (receipt look-up by key; bookings list carries `createRequestKey`);
+- abandoned: `POST /api/v1/request-keys/abandon {kind, key}` (scoped to the caller: pharmacy for returns, customer for
+  bookings). The `request_keys` collection holds one claim per `(scope, key)`, unique: each once-only transaction checks
+  and claims its key as `used` inside the transaction that performs it; the abandon claims it as `abandoned`. Exactly one
+  can exist: once abandoned, a delayed original request is refused (409 `REQUEST_ABANDONED`) whenever it arrives; if it
+  was used, the abandon answers `used` and the client keeps looking for the record.
+Routine token renewal never touches in-memory pending operations. Markers are kept per principal through sign-out and
+account switches (never shown to another principal) and removed only on resolution (found or abandoned).
 
 ## Native (Capacitor) protocol — specified, implemented with the native shell
 

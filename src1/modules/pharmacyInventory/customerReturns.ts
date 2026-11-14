@@ -1,3 +1,4 @@
+import { claimRequestKey, scopeOf } from '@/modules/requestKeys';
 import { Service } from 'typedi';
 import { ClientSession, startSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
@@ -75,6 +76,8 @@ export class CustomerReturnService {
         // twin that won must be answered with its receipt, not judged against the units it already took back.
         const seen = await CustomerReturnModel.findOne({ pharmacyId: actor.pharmacyId, requestKey }).session(s).lean();
         if (seen) return { record: seen as ICustomerReturn, replayed: true };
+        // D4: an abandoned key is never performed; this transaction claims the key as used (conflicts with an abandon).
+        await claimRequestKey(scopeOf('customer_return', String(actor.pharmacyId)), requestKey, s);
         // Write the order FIRST: every concurrent return (or other order write) now conflicts with this transaction,
         // so the checks below see all committed returns and refunds of the order.
         const fresh = await PharmacyOrderModel.findOneAndUpdate({ _id: id, pharmacyId: actor.pharmacyId, status: 'completed' },

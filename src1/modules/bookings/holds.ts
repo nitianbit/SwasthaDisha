@@ -1,3 +1,4 @@
+import { claimRequestKey, scopeOf } from '@/modules/requestKeys';
 import { ClientSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import { refundAndCloseIn, runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
@@ -140,6 +141,11 @@ export async function createBookingWithHolds(input: IBooking): Promise<IBooking>
         'followUp.benefitUsed': { $ne: true } }, { $set: { 'followUp.benefitUsed': true } }, { session: s });
       if (r.modifiedCount !== 1) throw conflict('FOLLOW_UP_UNAVAILABLE', 'The follow-up benefit of this consultation is no longer available');
       holds.followUpParentId = parentId;
+    }
+    // D4: a keyed create whose key was abandoned is never performed; the key is claimed as used in this transaction.
+    const requestKey = (doc as { createRequestKey?: unknown }).createRequestKey;
+    if (typeof requestKey === 'string' && requestKey) {
+      await claimRequestKey(scopeOf('booking_create', String((doc as { userId?: unknown }).userId)), requestKey, s);
     }
     const [created] = await BookingModel.create([{ ...doc, holds }], { session: s });
     return created.toObject() as IBooking;
