@@ -27,6 +27,11 @@ code; a binding written late (after a newer removal) or for a save that never co
 bind the same file and each counts independently (a file stays public while at least one current public binding
 exists).
 
+**Withdrawal is permanent** (Codex msg_1794667621304): a write that removes a file from a field deletes that binding
+**before** it saves, and a read that finds a binding no longer current deletes it. A stale save by an editor without
+authority over the file can then put the old value back, but there is no binding left to revive; only an authorised
+attach binds it again. Reads examine every binding (no cut-off); stale ones met on the way are withdrawn.
+
 ## One read decision, three routes
 
 `GET /api/static/*` (now `authenticateOptional`), `GET /api/v1/file/static/*` and `GET /api/v1/file/fetch?url=`

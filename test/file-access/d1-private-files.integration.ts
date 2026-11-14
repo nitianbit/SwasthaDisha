@@ -3,14 +3,14 @@
  * throwaway upload directory: the one access decision on /api/static, /api/v1/file/static and /api/v1/file/fetch,
  * uploader provenance, server folders, grants, headers, and the attach-time check.
  *
- * Run (throwaway DB and directory only):
- *   UPLOAD_DIR="$(mktemp -d)/files" MONGODB_URL='mongodb://127.0.0.1:27917/d1_files_check?directConnection=true' \
+ * Run (throwaway DB; the test creates and removes its own upload directory):
+ *   MONGODB_URL='mongodb://127.0.0.1:27917/d1_files_check?directConnection=true' \
  *     JWT_SECRET_KEY=local-check-only npx tsx --tsconfig tsconfig.json test/file-access/d1-private-files.integration.ts
  */
+import { removeFixtureDir, UPLOAD_DIR } from './d1-fixture-dir';
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import express from 'express';
 import jwt from 'jsonwebtoken';
@@ -35,10 +35,7 @@ import { errorHandler } from '@/modules/middleware';
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/d1_files_check?directConnection=true';
 if (process.env.MONGODB_URL !== FIXTURE_URL) throw new Error('Refusing to run: MONGODB_URL must be exactly ' + FIXTURE_URL);
 const UPLOAD = CONFIG.UPLOAD_DIR;
-if (!path.resolve(UPLOAD).startsWith(fs.realpathSync(os.tmpdir())) && !path.resolve(UPLOAD).startsWith(os.tmpdir())
-  && !UPLOAD.startsWith('/var/folders/') && !UPLOAD.startsWith('/tmp/')) {
-  throw new Error('Refusing to run: UPLOAD_DIR must be a temporary directory, got ' + UPLOAD);
-}
+if (UPLOAD !== UPLOAD_DIR) throw new Error('Refusing to run: configuration did not pick up the fixture directory');
 
 const sign = (claims: object) => jwt.sign(claims, CONFIG.JWT_SECRET_KEY, { expiresIn: '1h' });
 let phoneSeq = 0;
@@ -68,8 +65,6 @@ async function main() {
   await mongoose.connect(FIXTURE_URL);
   await mongoose.connection.dropDatabase();
   for (const m of [FileUploadModel, FileGrantModel]) { await m.createCollection(); await m.syncIndexes(); }
-  fs.rmSync(UPLOAD, { recursive: true, force: true });
-  fs.mkdirSync(UPLOAD, { recursive: true });
 
   // tsx emits no decorator metadata, so constructor-injected services are wired by hand before the routes load.
   Container.set(PharmacyService, new PharmacyService(new PharmacyRepository(), new UserRepository()));
@@ -220,6 +215,51 @@ async function main() {
       assert.equal((await get(docs[0]!.url, spec.token)).status, 404, 'removed from the booking');
     });
 
+    await check('a stale save that restores a removed file cannot revive its old binding (remove-then-stale-resave)', async () => {
+      const ph = new Types.ObjectId();
+      await PharmacyModel.collection.insertOne({ _id: ph, phone: '9123400101', email: 'p101@example.in' } as never);
+      const img = (await upload(admin.token, 'stale.png')).body.data!.files[0]!.url;
+      const set = (v: string | null) => PharmacyModel.collection.updateOne({ _id: ph }, v ? { $set: { profilePictureUrl: v } } : { $unset: { profilePictureUrl: 1 } });
+      await attachFiles(admin.claims, 'Pharmacy', [{ field: 'profilePictureUrl', values: [img], previous: [], kind: 'public' }],
+        async () => { await set(img); return { _id: ph }; }, (x) => x._id, ph);
+      assert.equal((await get(img)).status, 200);
+      const editor = { _id: ph.toHexString(), userType: 'pharmacy', pharmacyId: ph.toHexString() };
+      // The editor (not the uploader) read the record while it held the image; the admin's removal commits before the
+      // editor's save, which writes the old value back.
+      await attachFiles(editor, 'Pharmacy', [{ field: 'profilePictureUrl', values: [img], previous: [img], kind: 'public' }],
+        async () => {
+          await attachFiles(admin.claims, 'Pharmacy', [{ field: 'profilePictureUrl', values: [], previous: [img], kind: 'public' }],
+            async () => { await set(null); return { _id: ph }; }, (x) => x._id, ph);
+          assert.equal((await get(img)).status, 401);
+          await set(img);
+          return { _id: ph };
+        }, (x) => x._id, ph);
+      assert.equal((await PharmacyModel.collection.findOne({ _id: ph }))!.profilePictureUrl, img, 'the stale value is back');
+      assert.equal((await get(img)).status, 401, 'but not published again');
+      assert.equal(await FileGrantModel.countDocuments({ path: img.slice('/api/static/'.length) }), 0);
+
+      // A removal outside the wrappers is withdrawn when a read sees it; a later restore stays unpublished.
+      await attachFiles(admin.claims, 'Pharmacy', [{ field: 'profilePictureUrl', values: [img], previous: [img], kind: 'public' }],
+        async () => ({ _id: ph }), (x) => x._id, ph);
+      assert.equal((await get(img)).status, 200, 'an authorised re-save binds again');
+      await set(null);
+      assert.equal((await get(img)).status, 401);
+      await set(img);
+      assert.equal((await get(img)).status, 401);
+    });
+
+    await check('every binding is examined: 100 stale bindings do not hide the current one', async () => {
+      const img = (await upload(admin.token, 'many.png')).body.data!.files[0]!.url;
+      const rel = img.slice('/api/static/'.length);
+      await FileGrantModel.insertMany(Array.from({ length: 100 }, () => ({ path: rel, kind: 'public', model: 'Pharmacy',
+        resourceId: oid(), field: 'profilePictureUrl', source: 'attach', createdByType: 'admin', createdById: admin._id, createdAt: new Date() })));
+      const ph = new Types.ObjectId();
+      await PharmacyModel.collection.insertOne({ _id: ph, phone: '9123400102', email: 'p102@example.in', profilePictureUrl: img } as never);
+      await grantFiles(admin.claims, [rel], 'public', { model: 'Pharmacy', resourceId: ph, field: 'profilePictureUrl' });
+      assert.equal((await get(img)).status, 200);
+      assert.equal(await FileGrantModel.countDocuments({ path: rel }), 1, 'the stale ones seen on the way were withdrawn');
+    });
+
     await check('a poisoned pre-D1 reference resent unchanged grants nothing (pharmacy avatar → a customer file)', async () => {
       const r = await upload(a.token, 'victim.png');
       const url = r.body.data!.files[0]!.url;
@@ -333,6 +373,7 @@ async function main() {
   } finally {
     server.close();
     await mongoose.disconnect();
+    removeFixtureDir();
   }
   console.log(`${passed} checks passed`);
 }

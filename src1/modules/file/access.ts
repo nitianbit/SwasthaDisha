@@ -90,10 +90,24 @@ async function bindingIsCurrent(g: { path: string; model: string; resourceId: st
   return !!doc && valuesAt(doc, g.field).some((v) => uploadPathOf(v) === g.path);
 }
 
+type Binding = { _id: unknown; path: string; model: string; resourceId: string; field: string };
+
+/**
+ * Current, or withdrawn for good: a binding seen to be no longer current is deleted, so restoring the same value later
+ * (a stale save by an editor without authority over the file) cannot revive it. Only an authorised attach binds again.
+ */
+async function currentOrWithdraw(g: Binding): Promise<boolean> {
+  if (await bindingIsCurrent(g)) return true;
+  await FileGrantModel.deleteOne({ _id: g._id });
+  return false;
+}
+
 /** The decision. `rel` has already passed `legacyPath` (traversal, symlink and reserved-subtree guard). */
 export async function decideFileAccess(reader: Reader | undefined, rel: string): Promise<Decision> {
-  const bindings = await FileGrantModel.find({ path: rel }).limit(100).lean();
-  for (const g of bindings) if (g.kind === 'public' && await bindingIsCurrent(g)) return { allow: true, visibility: 'public' };
+  // Every binding is examined (no cut-off).
+  for await (const g of FileGrantModel.find({ path: rel, kind: 'public' }).lean().cursor()) {
+    if (await currentOrWithdraw(g as Binding)) return { allow: true, visibility: 'public' };
+  }
   if (!reader) return { allow: false, status: 401 };
   const ok: Decision = { allow: true, visibility: 'private' };
   if (reader.userType === 'admin') return ok;
@@ -106,8 +120,8 @@ export async function decideFileAccess(reader: Reader | undefined, rel: string):
     const lab = LAB_REPORT.exec(rel);
     if (lab && await canReadLabReport(reader, lab[1]!)) return ok;
   }
-  for (const g of bindings) {
-    if (g.kind !== 'public' && await canReadResource(reader, g.kind, g.resourceId) && await bindingIsCurrent(g)) return ok;
+  for await (const g of FileGrantModel.find({ path: rel, kind: { $ne: 'public' } }).lean().cursor()) {
+    if (await canReadResource(reader, g.kind, g.resourceId) && await currentOrWithdraw(g as Binding)) return ok;
   }
   return { allow: false, status: 404 };
 }
@@ -213,16 +227,25 @@ export function fileValues(...xs: unknown[]): unknown[] {
 }
 
 /**
- * D1 write wrapper: checks every referenced upload BEFORE the save, saves, then binds the authorised files to the saved
- * record's fields. Bindings are validated against the record at read time, so a binding written after a later removal,
- * or for a save that did not keep the value, grants nothing. If binding fails the request fails (fail closed); any
- * authorised re-save of the record binds again.
+ * D1 write wrapper: checks every referenced upload BEFORE the save; withdraws the bindings of files this write removes
+ * from a field BEFORE the save (so a concurrent stale save that puts one back finds nothing to revive); saves; then binds
+ * the authorised files to the saved record's fields. Bindings are validated against the record at read time, so a
+ * binding written after a later removal, or for a save that did not keep the value, grants nothing. If binding fails
+ * the request fails (fail closed); any authorised re-save of the record binds again.
  */
 export async function attachFiles<T>(actor: Reader | undefined, model: string, specs: AttachSpec[], save: () => Promise<T>,
-  resourceId: (saved: T) => unknown): Promise<T> {
+  resourceId: (saved: T) => unknown, existingId?: unknown): Promise<T> {
   const checked: { spec: AttachSpec; paths: string[] }[] = [];
   for (const spec of specs) {
     checked.push({ spec, paths: await checkAttachable(actor, spec.values, spec.previous ?? [], { publicImage: spec.kind === 'public' }) });
+  }
+  const rid = id(existingId);
+  if (rid) {
+    for (const spec of specs) {
+      const keep = new Set(spec.values.map(uploadPathOf).filter((p): p is string => !!p));
+      const removed = [...new Set((spec.previous ?? []).map(uploadPathOf).filter((p): p is string => !!p && !keep.has(p)))];
+      if (removed.length) await FileGrantModel.deleteMany({ path: { $in: removed }, model, resourceId: rid, field: spec.field });
+    }
   }
   const saved = await save();
   for (const { spec, paths } of checked) {
@@ -275,5 +298,5 @@ export async function withFiles<T>(actor: Reader | undefined, model: string, dat
   const M = mongoose.models[model];
   if (!M) throw new AppError({ status: 500, code: 'FILE_FIELDS_UNKNOWN', message: `Unknown model ${model}` });
   const previous = id != null && isValidObjectId(String(id)) ? await M.findById(String(id)).lean() : null;
-  return attachFiles(actor, model, specsFor(model, data, previous), save, savedId);
+  return attachFiles(actor, model, specsFor(model, data, previous), save, savedId, previous ? id : undefined);
 }
