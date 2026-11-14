@@ -27,10 +27,14 @@ code; a binding written late (after a newer removal) or for a save that never co
 bind the same file and each counts independently (a file stays public while at least one current public binding
 exists).
 
-**Withdrawal is permanent** (Codex msg_1794667621304): a write that removes a file from a field deletes that binding
-**before** it saves, and a read that finds a binding no longer current deletes it. A stale save by an editor without
-authority over the file can then put the old value back, but there is no binding left to revive; only an authorised
-attach binds it again. Reads examine every binding (no cut-off); stale ones met on the way are withdrawn.
+**Withdrawal is permanent, by generation** (Codex msg_1794667621304, msg_1794668108486): a binding slot
+`(path, model, resourceId, field)` is never deleted. Withdrawing marks it `revoked` and increments `gen` (creating a
+tombstone if nothing was bound yet); granting activates it only at the generation read when the actor's authority was
+checked. So a grant delayed past a removal cannot revive the binding, whatever stale saves happen in between; only a
+fresh authorised attach (which reads the new generation) binds again. Withdrawal happens only **after a successful
+save**, judged from the saved record (the returned record, or the stored one if the response lacks the field), so a
+rejected write or a field the service ignored withdraws nothing. A read that finds an active binding no longer current
+revokes exactly that generation. Reads examine every active binding (no cut-off) and always close their cursors.
 
 ## One read decision, three routes
 

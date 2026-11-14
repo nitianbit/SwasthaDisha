@@ -240,7 +240,7 @@ async function main() {
         }, (x) => x._id, ph);
       assert.equal((await PharmacyModel.collection.findOne({ _id: ph }))!.profilePictureUrl, img, 'the stale value is back');
       assert.equal((await get(img)).status, 401, 'but not published again');
-      assert.equal(await FileGrantModel.countDocuments({ path: img.slice('/api/static/'.length) }), 0);
+      assert.equal(await FileGrantModel.countDocuments({ path: img.slice('/api/static/'.length), state: 'active' }), 0);
 
       // A removal outside the wrappers is withdrawn when a read sees it; a later restore stays unpublished.
       await attachFiles(admin.claims, 'Pharmacy', [{ field: 'profilePictureUrl', values: [img], previous: [img], kind: 'public' }],
@@ -256,12 +256,54 @@ async function main() {
       const img = (await upload(admin.token, 'many.png')).body.data!.files[0]!.url;
       const rel = img.slice('/api/static/'.length);
       await FileGrantModel.insertMany(Array.from({ length: 100 }, () => ({ path: rel, kind: 'public', model: 'Pharmacy',
-        resourceId: oid(), field: 'profilePictureUrl', source: 'attach', createdByType: 'admin', createdById: admin._id, createdAt: new Date() })));
+        resourceId: oid(), field: 'profilePictureUrl', source: 'attach', state: 'active', gen: 1, createdByType: 'admin', createdById: admin._id, createdAt: new Date() })));
       const ph = new Types.ObjectId();
       await PharmacyModel.collection.insertOne({ _id: ph, phone: '9123400102', email: 'p102@example.in', profilePictureUrl: img } as never);
       await grantFiles(admin.claims, [rel], 'public', { model: 'Pharmacy', resourceId: ph, field: 'profilePictureUrl' });
       assert.equal((await get(img)).status, 200);
-      assert.equal(await FileGrantModel.countDocuments({ path: rel }), 1, 'the stale ones seen on the way were withdrawn');
+      assert.equal(await FileGrantModel.countDocuments({ path: rel, state: 'active' }), 1, 'the stale ones seen on the way were withdrawn');
+    });
+
+    await check('a grant delayed past a removal and a stale restore stays inert (generation fence)', async () => {
+      const ph = new Types.ObjectId();
+      await PharmacyModel.collection.insertOne({ _id: ph, phone: '9123400103', email: 'p103@example.in' } as never);
+      const img = (await upload(admin.token, 'delayed.png')).body.data!.files[0]!.url;
+      const set = (v: string | null) => PharmacyModel.collection.updateOne({ _id: ph }, v ? { $set: { profilePictureUrl: v } } : { $unset: { profilePictureUrl: 1 } });
+      const editor = { _id: ph.toHexString(), userType: 'pharmacy', pharmacyId: ph.toHexString() };
+      // A (admin, authorised) saves P and is delayed before its grant; meanwhile B removes P and C (no authority) restores it.
+      await attachFiles(admin.claims, 'Pharmacy', [{ field: 'profilePictureUrl', values: [img], previous: [], kind: 'public' }],
+        async () => {
+          await set(img);
+          await attachFiles(admin.claims, 'Pharmacy', [{ field: 'profilePictureUrl', values: [], previous: [img], kind: 'public' }],
+            async () => { await set(null); return { _id: ph, profilePictureUrl: undefined }; }, (x) => x._id, ph);
+          await attachFiles(editor, 'Pharmacy', [{ field: 'profilePictureUrl', values: [img], previous: [img], kind: 'public' }],
+            async () => { await set(img); return { _id: ph, profilePictureUrl: img }; }, (x) => x._id, ph);
+          return { _id: ph, profilePictureUrl: img };
+        }, (x) => x._id, ph);
+      assert.equal((await PharmacyModel.collection.findOne({ _id: ph }))!.profilePictureUrl, img);
+      assert.equal((await get(img)).status, 401, 'the delayed grant did not republish it');
+      const slot = await FileGrantModel.findOne({ path: img.slice('/api/static/'.length) }).lean();
+      assert.equal(slot?.state, 'revoked');
+      // A later authorised attach (fresh authority) binds again.
+      await attachFiles(admin.claims, 'Pharmacy', [{ field: 'profilePictureUrl', values: [img], previous: [img], kind: 'public' }],
+        async () => ({ _id: ph, profilePictureUrl: img }), (x) => x._id, ph);
+      assert.equal((await get(img)).status, 200);
+    });
+
+    await check('a rejected write, or a field the service ignored, withdraws nothing', async () => {
+      const r1 = await upload(a.token, 'kept.pdf');
+      const url = r1.body.data!.files[0]!.url;
+      const bk = new Types.ObjectId();
+      await BookingModel.collection.insertOne({ _id: bk, userId: a._id, specialistId: new Types.ObjectId(spec._id), documents: [{ url }] } as never);
+      await grantFiles(a.claims, [url.slice('/api/static/'.length)], 'booking', { model: 'Booking', resourceId: bk, field: 'documents.url' });
+      assert.equal((await get(url, spec.token)).status, 200);
+      const specs = [{ field: 'documents.url', values: [], previous: [url], kind: 'booking' as const }];
+      // Another customer's update of this booking is refused by the service (404): bindings unchanged.
+      await assert.rejects(attachFiles(b.claims, 'Booking', specs, async () => { throw Object.assign(new Error('nf'), { status: 404 }); }, () => bk, bk));
+      assert.equal((await get(url, spec.token)).status, 200);
+      // The owner's notes-only update ignores documents: the saved booking still holds the file, nothing withdrawn.
+      await attachFiles(a.claims, 'Booking', specs, async () => ({ _id: bk, documents: [{ url }] }), (x) => x._id, bk);
+      assert.equal((await get(url, spec.token)).status, 200);
     });
 
     await check('a poisoned pre-D1 reference resent unchanged grants nothing (pharmacy avatar → a customer file)', async () => {

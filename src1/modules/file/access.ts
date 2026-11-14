@@ -90,16 +90,68 @@ async function bindingIsCurrent(g: { path: string; model: string; resourceId: st
   return !!doc && valuesAt(doc, g.field).some((v) => uploadPathOf(v) === g.path);
 }
 
-type Binding = { _id: unknown; path: string; model: string; resourceId: string; field: string };
+type Key = { path: string; model: string; resourceId: string; field: string };
+type Binding = Key & { _id: unknown; kind: GrantKind; state: 'active' | 'revoked'; gen: number };
+const keyOf = (g: Key): Key => ({ path: g.path, model: g.model, resourceId: g.resourceId, field: g.field });
+const isDuplicate = (e: unknown) => (e as { code?: number })?.code === 11000;
+
+/** The generation of a binding slot as seen now (0 = never bound). Read when authority is checked. */
+async function generationOf(k: Key): Promise<number> {
+  const g = await FileGrantModel.findOne(k).select({ gen: 1 }).lean();
+  return g ? Number(g.gen) : 0;
+}
 
 /**
- * Current, or withdrawn for good: a binding seen to be no longer current is deleted, so restoring the same value later
- * (a stale save by an editor without authority over the file) cannot revive it. Only an authorised attach binds again.
+ * Activates a binding only if its slot is still at `expectedGen` (the generation seen when the actor's authority was
+ * checked). A withdrawal in between moved the generation on, so a delayed grant changes nothing. Returns whether it applied.
  */
+async function activate(actor: Reader | undefined, k: Key, kind: GrantKind, expectedGen: number,
+  source: 'attach' | 'legacy_manifest'): Promise<boolean> {
+  try {
+    if (expectedGen === 0) {
+      const r = await FileGrantModel.updateOne(k, { $setOnInsert: { ...k, kind, source, state: 'active', gen: 1,
+        createdByType: actor?.userType ?? 'system', createdById: id(actor?._id) || 'system', createdAt: new Date() } }, { upsert: true });
+      return r.upsertedCount === 1;
+    }
+    const r = await FileGrantModel.updateOne({ ...k, gen: expectedGen }, { $set: { state: 'active' }, $inc: { gen: 1 } });
+    return r.modifiedCount === 1;
+  } catch (e) {
+    if (isDuplicate(e)) return false; // a concurrent change took the slot first
+    throw e;
+  }
+}
+
+/**
+ * Withdraws for good: marks the slot revoked and moves its generation on, creating a tombstone if nothing was bound yet
+ * (so a grant still in flight from before cannot land). With `onlyGen`, only that exact active generation is revoked.
+ */
+async function revoke(k: Key, kind: GrantKind, onlyGen?: number): Promise<void> {
+  const update = { $set: { state: 'revoked' as const }, $inc: { gen: 1 } };
+  if (onlyGen !== undefined) { await FileGrantModel.updateOne({ ...k, gen: onlyGen, state: 'active' }, update); return; }
+  const insert = { kind, source: 'attach', createdByType: 'system', createdById: 'withdrawal', createdAt: new Date() };
+  try {
+    await FileGrantModel.updateOne(k, { ...update, $setOnInsert: insert }, { upsert: true });
+  } catch (e) {
+    if (!isDuplicate(e)) throw e;
+    await FileGrantModel.updateOne(k, update); // the slot was created concurrently: revoke it
+  }
+}
+
+/** Current, or withdrawn for good (a binding seen no longer current is revoked at the generation that was read). */
 async function currentOrWithdraw(g: Binding): Promise<boolean> {
   if (await bindingIsCurrent(g)) return true;
-  await FileGrantModel.deleteOne({ _id: g._id });
+  await revoke(keyOf(g), g.kind, g.gen);
   return false;
+}
+
+/** Iterates a query cursor and always closes it (early return and errors included). */
+async function firstMatch<T>(cursor: { next(): Promise<T | null>; close(): Promise<unknown> }, test: (doc: T) => Promise<boolean>): Promise<boolean> {
+  try {
+    for (let doc = await cursor.next(); doc; doc = await cursor.next()) if (await test(doc)) return true;
+    return false;
+  } finally {
+    await cursor.close();
+  }
 }
 
 /**
@@ -107,19 +159,17 @@ async function currentOrWithdraw(g: Binding): Promise<boolean> {
  * authority is the source's own trusted, current binding; the copy's binding is validated against the copy at read.
  */
 export async function copyCurrentBindings(actor: Reader | undefined, model: string, fromId: unknown, toId: unknown): Promise<void> {
-  for await (const g of FileGrantModel.find({ model, resourceId: id(fromId) }).lean().cursor()) {
-    if (await currentOrWithdraw(g as Binding)) {
-      await grantFiles(actor, [g.path], g.kind, { model, resourceId: toId, field: g.field });
-    }
-  }
+  const active: Binding[] = [];
+  await firstMatch(FileGrantModel.find({ model, resourceId: id(fromId), state: 'active' }).lean().cursor() as never,
+    async (g: Binding) => { if (await currentOrWithdraw(g)) active.push(g); return false; });
+  for (const g of active) await activate(actor, { ...keyOf(g), resourceId: id(toId) }, g.kind, 0, 'attach');
 }
 
 /** The decision. `rel` has already passed `legacyPath` (traversal, symlink and reserved-subtree guard). */
 export async function decideFileAccess(reader: Reader | undefined, rel: string): Promise<Decision> {
-  // Every binding is examined (no cut-off).
-  for await (const g of FileGrantModel.find({ path: rel, kind: 'public' }).lean().cursor()) {
-    if (await currentOrWithdraw(g as Binding)) return { allow: true, visibility: 'public' };
-  }
+  // Every active binding is examined (no cut-off); cursors are always closed.
+  if (await firstMatch(FileGrantModel.find({ path: rel, kind: 'public', state: 'active' }).lean().cursor() as never,
+    (g: Binding) => currentOrWithdraw(g))) return { allow: true, visibility: 'public' };
   if (!reader) return { allow: false, status: 401 };
   const ok: Decision = { allow: true, visibility: 'private' };
   if (reader.userType === 'admin') return ok;
@@ -132,9 +182,8 @@ export async function decideFileAccess(reader: Reader | undefined, rel: string):
     const lab = LAB_REPORT.exec(rel);
     if (lab && await canReadLabReport(reader, lab[1]!)) return ok;
   }
-  for await (const g of FileGrantModel.find({ path: rel, kind: { $ne: 'public' } }).lean().cursor()) {
-    if (await canReadResource(reader, g.kind, g.resourceId) && await currentOrWithdraw(g as Binding)) return ok;
-  }
+  if (await firstMatch(FileGrantModel.find({ path: rel, kind: { $ne: 'public' }, state: 'active' }).lean().cursor() as never,
+    async (g: Binding) => await canReadResource(reader, g.kind, g.resourceId) && await currentOrWithdraw(g))) return ok;
   return { allow: false, status: 404 };
 }
 
@@ -198,23 +247,22 @@ export async function checkAttachable(actor: Reader | undefined, values: unknown
   return bind;
 }
 
-/** Records bindings of files to one field of one record. Idempotent; inert unless the field holds the file. */
+/**
+ * Binds files to one field of one record with the authority of THIS moment (manifest import, tests): reads each slot's
+ * generation and activates at it. Idempotent; inert unless the field holds the file.
+ */
 export async function grantFiles(actor: Reader | undefined, paths: string[], kind: GrantKind,
   binding: { model: string; resourceId: unknown; field: string }, source: 'attach' | 'legacy_manifest' = 'attach'): Promise<void> {
-  if (paths.length === 0) return;
   const rid = id(binding.resourceId);
   if (!rid || !mongoose.models[binding.model] || !binding.field) {
     throw new AppError({ status: 500, code: 'FILE_GRANT_INVALID', message: 'File grant needs a record and field' });
   }
-  const now = new Date();
-  await FileGrantModel.bulkWrite(paths.map((path) => ({
-    updateOne: {
-      filter: { path, model: binding.model, resourceId: rid, field: binding.field },
-      update: { $setOnInsert: { path, kind, model: binding.model, resourceId: rid, field: binding.field, source,
-        createdByType: actor?.userType ?? 'system', createdById: id(actor?._id) || 'system', createdAt: now } },
-      upsert: true,
-    },
-  })), { ordered: false });
+  for (const path of new Set(paths)) {
+    const k = { path, model: binding.model, resourceId: rid, field: binding.field };
+    const current = await FileGrantModel.findOne(k).select({ gen: 1, state: 1 }).lean();
+    if (current?.state === 'active') continue;
+    await activate(actor, k, kind, current ? Number(current.gen) : 0, source);
+  }
 }
 
 /** Records the uploader of a newly written legacy upload (same request as the bytes). */
@@ -239,29 +287,47 @@ export function fileValues(...xs: unknown[]): unknown[] {
 }
 
 /**
- * D1 write wrapper: checks every referenced upload BEFORE the save; withdraws the bindings of files this write removes
- * from a field BEFORE the save (so a concurrent stale save that puts one back finds nothing to revive); saves; then binds
- * the authorised files to the saved record's fields. Bindings are validated against the record at read time, so a
- * binding written after a later removal, or for a save that did not keep the value, grants nothing. If binding fails
- * the request fails (fail closed); any authorised re-save of the record binds again.
+ * D1 write wrapper.
+ * 1. Before the save: check every referenced upload (uploader or admin; public fields take images) and note the
+ *    generation of each binding slot this write may activate.
+ * 2. Save (the service authorises and validates; nothing has been changed if it throws).
+ * 3. After a successful save: activate the authorised bindings at the generations noted in 1 (a withdrawal in between
+ *    wins), and withdraw - permanently, as tombstones - the bindings of files the SAVED record no longer holds in that
+ *    field (judged from the saved record, so a field the service ignored, or a rejected write, withdraws nothing).
+ * Reads validate bindings against the record, so a binding never grants more than the record currently shows.
  */
 export async function attachFiles<T>(actor: Reader | undefined, model: string, specs: AttachSpec[], save: () => Promise<T>,
   resourceId: (saved: T) => unknown, existingId?: unknown): Promise<T> {
-  const checked: { spec: AttachSpec; paths: string[] }[] = [];
-  for (const spec of specs) {
-    checked.push({ spec, paths: await checkAttachable(actor, spec.values, spec.previous ?? [], { publicImage: spec.kind === 'public' }) });
-  }
   const rid = id(existingId);
-  if (rid) {
+  const checked: { spec: AttachSpec; paths: string[]; gens: number[] }[] = [];
+  for (const spec of specs) {
+    const paths = await checkAttachable(actor, spec.values, spec.previous ?? [], { publicImage: spec.kind === 'public' });
+    const gens = await Promise.all(paths.map((path) => (rid ? generationOf({ path, model, resourceId: rid, field: spec.field }) : 0)));
+    checked.push({ spec, paths, gens });
+  }
+  const saved = await save();
+  const savedRid = id(resourceId(saved));
+  if (!savedRid) return saved;
+  for (const { spec, paths, gens } of checked) {
+    for (let i = 0; i < paths.length; i++) {
+      await activate(actor, { path: paths[i]!, model, resourceId: savedRid, field: spec.field }, spec.kind,
+        savedRid === rid ? gens[i]! : 0, 'attach');
+    }
+  }
+  if (rid && savedRid === rid) {
+    const top = (field: string) => field.split('.')[0]!;
+    let fresh: unknown;
     for (const spec of specs) {
       const keep = new Set(spec.values.map(uploadPathOf).filter((p): p is string => !!p));
       const removed = [...new Set((spec.previous ?? []).map(uploadPathOf).filter((p): p is string => !!p && !keep.has(p)))];
-      if (removed.length) await FileGrantModel.deleteMany({ path: { $in: removed }, model, resourceId: rid, field: spec.field });
+      if (!removed.length) continue;
+      // What the save actually wrote: the returned record when it carries the field, else the record as stored now.
+      let source: unknown = saved && typeof saved === 'object' && top(spec.field) in (saved as object) ? saved : undefined;
+      if (source === undefined) fresh ??= await mongoose.models[model]!.findById(rid).lean();
+      source ??= fresh;
+      const held = new Set(valuesAt(source, spec.field).map(uploadPathOf).filter((p): p is string => !!p));
+      for (const path of removed) if (!held.has(path)) await revoke({ path, model, resourceId: rid, field: spec.field }, spec.kind);
     }
-  }
-  const saved = await save();
-  for (const { spec, paths } of checked) {
-    if (paths.length) await grantFiles(actor, paths, spec.kind, { model, resourceId: resourceId(saved), field: spec.field });
   }
   return saved;
 }
