@@ -167,8 +167,9 @@ async function activeSlots(model: string, recordId: string): Promise<SlotView[]>
 
 /**
  * A consistent copy source: the record and the bindings that were current for exactly that record state. Bindings are
- * read before and after the record; if any active slot changed in between, it is read again (3 tries). Returns null when
- * the source keeps changing or is gone - the caller then skips the copy rather than produce a mismatched one.
+ * read before and after the record; if any active slot changed in between, or a post-D1 file the record holds has no
+ * binding yet (publication in progress), it is read again (3 tries). Returns null when the source keeps changing or is
+ * gone - the caller then skips the copy rather than produce an unbound or mismatched one.
  */
 export async function snapshotWithBindings(model: string, recordId: unknown): Promise<{ doc: Record<string, unknown>; bindings: SlotView[] } | null> {
   const M = mongoose.models[model];
@@ -182,6 +183,19 @@ export async function snapshotWithBindings(model: string, recordId: unknown): Pr
     const after = await activeSlots(model, rid);
     if (sig(before) !== sig(after)) continue;
     const bindings = after.filter((b) => valuesAt(doc, b.field).some((v) => uploadPathOf(v) === b.path));
+    // Every post-D1 file (one with a recorded uploader) the record holds must come with its binding: a missing one means
+    // a publication still in progress (the record was saved, its binding not yet written), so read again or give up.
+    // A legacy file (no uploader record) has no binding on the source either and is copied as it is.
+    const fields = FILE_FIELDS[model] ?? [];
+    let incomplete = false;
+    for (const [field] of fields) {
+      for (const p of new Set(valuesAt(doc, field).map(uploadPathOf).filter((x): x is string => !!x))) {
+        if (bindings.some((b) => b.field === field && b.path === p)) continue;
+        if (await FileUploadModel.exists({ path: p })) { incomplete = true; break; }
+      }
+      if (incomplete) break;
+    }
+    if (incomplete) { await new Promise((r) => setTimeout(r, 50 * (attempt + 1))); continue; }
     return { doc, bindings };
   }
   return null;

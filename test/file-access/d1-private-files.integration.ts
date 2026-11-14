@@ -523,6 +523,21 @@ async function main() {
       await BannerModel.deleteOne({ _id: clone!._id });
       assert.equal((await get(img)).status, 401);
     });
+    await check('a banner caught mid-publication (saved, binding not yet written) is not cloned unbound', async () => {
+      const B = (await upload(admin.token, 'midway.png')).body.data!.files[0]!.url;
+      const src = await BannerModel.create({ title: 'Midway', imageUrl: B } as never); // saved; its binding not written yet
+      const corp = new CorporateService(new CorporateRepository(), new BannerRepository(), new SpecialistRepository());
+      const corporateId = oid();
+      await (corp as unknown as { cloneCommonBannersForCorporate: (id: string) => Promise<void> }).cloneCommonBannersForCorporate(corporateId);
+      assert.equal(await BannerModel.countDocuments({ corporateId, imageUrl: B }), 0, 'skipped, not cloned without its binding');
+      // Once the publication completes, a clone is made with the binding.
+      await grantFiles(admin.claims, [B.slice('/api/static/'.length)], 'public', { model: 'Banner', resourceId: src._id, field: 'imageUrl' });
+      const corporate2 = oid();
+      await (corp as unknown as { cloneCommonBannersForCorporate: (id: string) => Promise<void> }).cloneCommonBannersForCorporate(corporate2);
+      const clone = await BannerModel.findOne({ corporateId: corporate2, imageUrl: B }).lean();
+      assert.ok(clone);
+      assert.equal(await FileGrantModel.countDocuments({ model: 'Banner', resourceId: String(clone!._id), state: 'active' }), 1);
+    });
   } finally {
     server.close();
     await mongoose.disconnect();
