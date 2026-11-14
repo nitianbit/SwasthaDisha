@@ -1661,6 +1661,68 @@ export class PaymentService {
     };
   }
 
+  /** Every payment Razorpay holds for an order (server-to-server, authenticated with the merchant key). */
+  private async fetchOrderPayments(orderId: string): Promise<RazorpayPaymentDetails[]> {
+    const razorpayClient = this.getRazorpayClient();
+    try {
+      const res = (await razorpayClient.orders.fetchPayments(orderId)) as unknown as {
+        items?: { id: string; order_id: string; amount: number | string; currency: string; status: string }[];
+      };
+      return (res.items ?? []).map((p) => ({ id: p.id, order_id: p.order_id, amount: Number(p.amount), currency: p.currency, status: p.status }));
+    } catch (error: any) {
+      throw new AppError({
+        status: 502,
+        code: 'RAZORPAY_PAYMENT_FETCH_FAILED',
+        message: error?.error?.description || error?.description || 'Failed to check the payment with Razorpay',
+      });
+    }
+  }
+
+  /**
+   * Customer-initiated reconciliation (W3b). Settles a payment whose browser-side verification never arrived (closed
+   * tab, lost connection, reload): there is no gateway webhook, so without this a captured payment stayed unapplied.
+   * The server asks Razorpay for the record's OWN order's payments; a captured one with the expected amount and
+   * currency is the proof (no client signature is needed: the answer comes from the gateway itself). It is then marked
+   * paid with the same guarded write as verify and processed by the same path (processVerifiedPayment), so late,
+   * cancelled or duplicate cases are handled exactly as for verify. Nothing is changed when nothing was captured.
+   * Records already failed or refunded are not revived.
+   */
+  async reconcilePaymentAndProcess(data: { paymentTransactionId: string; userId: string; requesterUserType?: string; requesterPharmacyId?: string }):
+  Promise<{ state: 'unpaid'; gatewayStatuses: string[] } | ({ state: 'paid' } & Awaited<ReturnType<PaymentService['processVerifiedPayment']>>)> {
+    // The order checked is always the record's own (never one supplied by the client); ownership is checked as for verify.
+    const own = await this.paymentRepository.findById(data.paymentTransactionId);
+    const request = { ...data, razorpayOrderId: own?.razorpayOrderId as string, razorpayPaymentId: '', razorpaySignature: '' } as VerifyPaymentRequest;
+    let paymentRecord = await this.getPaymentRecordForVerification(request);
+    if (paymentRecord.status !== 'paid') {
+      this.handleExistingRecordStatus(paymentRecord);
+      const orderId = paymentRecord.razorpayOrderId;
+      if (paymentRecord.paymentGateway !== 'razorpay' || !orderId) {
+        throw new AppError({ status: 400, code: 'PAYMENT_NOT_RECONCILABLE', message: 'This payment has no gateway order to check' });
+      }
+      const gatewayPayments = await this.fetchOrderPayments(orderId);
+      const captured = gatewayPayments.find((p) => p.status === 'captured' && p.order_id === orderId);
+      if (!captured) return { state: 'unpaid', gatewayStatuses: gatewayPayments.map((p) => p.status) };
+      this.validateRazorpayPaymentForRecord(paymentRecord, { ...request, razorpayOrderId: orderId, razorpayPaymentId: captured.id }, captured);
+      const updated = await this.paymentRepository.update(
+        { _id: paymentRecord._id, status: { $nin: ['paid', 'refunded'] } },
+        { status: 'paid', razorpayPaymentId: captured.id, paidAt: new Date() }
+      );
+      if (!updated) {
+        const current = await this.paymentRepository.findById(paymentRecord._id!);
+        if (current?.status !== 'paid') {
+          throw new AppError({ status: 409, code: 'PAYMENT_CHANGED', message: 'Payment changed; refresh before retrying' });
+        }
+        paymentRecord = current;
+      } else {
+        paymentRecord = updated;
+      }
+      logger.info('[Payment][reconcile] captured payment applied from the gateway', {
+        paymentTransactionId: paymentRecord._id, razorpayOrderId: orderId, razorpayPaymentId: captured.id,
+      });
+    }
+    return { state: 'paid', ...(await this.processVerifiedPayment(paymentRecord)) };
+  }
+
   async verifyPaymentAndProcess(data: VerifyPaymentRequest): Promise<{
     context: 'booking' | 'wallet_recharge' | 'external_booking' | 'pharmacy_order';
     paymentRecord: IPaymentRecord;
@@ -1673,7 +1735,18 @@ export class PaymentService {
       module: data.module,
     });
     const paymentRecord = await this.verifyAndMarkPaid(data);
+    return this.processVerifiedPayment(paymentRecord, data.module);
+  }
 
+  /**
+   * Everything after a payment record is known to be paid (verify, or reconciliation with the gateway): fulfil the
+   * entity once. Shared so both paths apply exactly the same rules.
+   */
+  private async processVerifiedPayment(paymentRecord: IPaymentRecord, module?: string): Promise<{
+    context: 'booking' | 'wallet_recharge' | 'external_booking' | 'pharmacy_order';
+    paymentRecord: IPaymentRecord;
+    entity: unknown;
+  }> {
     logger.info('[Payment][verify] payment verified', {
       paymentTransactionId: paymentRecord._id,
       bookingId: paymentRecord.contextId,
@@ -1687,10 +1760,10 @@ export class PaymentService {
         paymentTransactionId: paymentRecord._id,
         bookingId: paymentRecord.contextId,
       });
-      return this.buildAlreadyProcessedResponse(paymentRecord, data.module);
+      return this.buildAlreadyProcessedResponse(paymentRecord, module);
     }
 
-    if (this.shouldFulfillExternalBooking(paymentRecord, data.module)) {
+    if (this.shouldFulfillExternalBooking(paymentRecord, module)) {
       try {
         logger.info('[Payment][external] fulfillment start after verify', {
           paymentTransactionId: paymentRecord._id,

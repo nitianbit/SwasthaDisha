@@ -22,3 +22,8 @@ export const verifyPaymentSchema = Joi.object({
   }),
   module: Joi.string().trim().valid('external-bookings').optional(),
 });
+
+/** POST /payments/reconcile (W3b): settle a payment from the gateway's own record of the order. */
+export const reconcilePaymentSchema = Joi.object({
+  paymentTransactionId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required(),
+});

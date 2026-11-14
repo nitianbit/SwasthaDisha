@@ -34,4 +34,19 @@ export class PaymentController {
       data: result,
     });
   };
+
+  reconcile = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const result = await this.paymentService.reconcilePaymentAndProcess({
+      paymentTransactionId: String(req.body.paymentTransactionId),
+      userId: req.user!._id,
+      requesterUserType: req.user!.userType,
+      requesterPharmacyId: req.user?.pharmacyId,
+    });
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(200).json({
+      success: true,
+      message: result.state === 'paid' ? 'Payment found and applied' : 'No completed payment was found for this order',
+      data: result,
+    });
+  };
 }
