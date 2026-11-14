@@ -2,6 +2,8 @@ import Joi from 'joi';
 
 const orderTypes = ['in_store', 'online'];
 const orderStatuses = ['placed', 'accepted', 'packed', 'ready_for_pickup', 'out_for_delivery', 'delivery_failed', 'completed', 'abandoned', 'cancelled', 'rejected'];
+/** D3: lists can select pending_cancel (the request worklist); only the cancellation commands enter or leave it. */
+const listStatuses = [...orderStatuses, 'pending_cancel'];
 const paymentModes = ['online_payment', 'in_store_payment', 'cash_on_delivery'];
 const paymentStatuses = ['pending', 'authorized', 'paid', 'failed', 'refunded', 'partially_paid'];
 
@@ -93,7 +95,7 @@ export const orderQuerySchema = Joi.object({
   buyerPharmacyId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).optional(),
   orderType: Joi.string().valid(...orderTypes).optional(),
   orderFor: Joi.string().valid('consultation', 'diagnostic').optional(),
-  status: Joi.string().valid(...orderStatuses).optional(),
+  status: Joi.string().valid(...listStatuses).optional(),
   paymentStatus: Joi.string().valid(...paymentStatuses).optional(),
   prescriptionStatus: Joi.string().valid('not_required', 'pending', 'approved', 'rejected').optional(),
   page: Joi.number().integer().min(1).optional(),

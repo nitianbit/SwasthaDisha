@@ -1,4 +1,4 @@
-import { ClientSession, startSession } from 'mongoose';
+import mongoose, { ClientSession, startSession } from 'mongoose';
 import { addDaysToYyyymmdd } from '@/modules/common/utils/dateUtils';
 import PharmacySubscriptionModel from '@/modules/pharmacySubscriptions/model';
 
@@ -17,6 +17,13 @@ export async function advanceRefillOnPayment(
   const refill = order.refill;
   if (!refill?.subscriptionId || !refill.cycleDate) return;
   const run = async (s: ClientSession) => {
+    // D3: the cycle moves on only while the order is not frozen by a cancellation request (a rejection advances it
+    // then; an approval never does). The conditional touch of the order also conflicts with a concurrent request's
+    // write, so the two are serialised.
+    const orders = mongoose.models.PharmacyOrder?.collection ?? mongoose.connection.collection('pharmacyorders');
+    const live = await orders.updateOne(
+      { _id: new mongoose.Types.ObjectId(String(order._id)), status: { $ne: 'pending_cancel' } }, { $set: { updatedAt: new Date() } }, { session: s });
+    if (live.matchedCount === 0) return;
     const sub = await PharmacySubscriptionModel.findOne({ _id: refill.subscriptionId, 'pendingRefill.orderId': String(order._id) }).session(s).lean();
     if (!sub) return;
     await PharmacySubscriptionModel.updateOne({ _id: sub._id, 'pendingRefill.orderId': String(order._id) },

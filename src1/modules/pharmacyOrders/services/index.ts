@@ -732,7 +732,9 @@ export class PharmacyOrderService {
       const paidPatch = { status: 'accepted' as const, paymentStatus: 'paid' as const, paymentTransactionId: paymentRecord._id! };
       const paidOrder = options.refill
         ? await this.commitZeroPayableRefill(String(savedOrder._id), String(paymentRecord._id))
-        : await this.orderRepo.update({ _id: savedOrder._id, status: 'placed', paymentStatus: 'pending' }, paidPatch);
+        // Inserted paid (zero total) and not yet linked: accepted + linked exactly once; a cancellation that froze or
+        // closed the order meanwhile wins (the status no longer matches).
+        : await this.orderRepo.update({ _id: savedOrder._id, status: 'placed', paymentStatus: 'paid', paymentTransactionId: { $in: [null] } }, paidPatch);
       order = paidOrder || order;
 
       await this.queueNotificationSafely(String(order._id), 'order_created');
@@ -1605,7 +1607,9 @@ export class PharmacyOrderService {
         throw new AppError({ status: 409, code: 'INVALID_ORDER_STATUS_TRANSITION', message: 'This order cannot be cancelled' });
       }
       // Exact snapshot: the stored fromStatus / paymentStatusAtRequest are exactly what this write matched.
-      const fence = { _id: id, status, ...(payment === undefined ? { paymentStatus: { $exists: false } } : { paymentStatus: payment }) };
+      // The authority this request was checked against is part of the write: a reassigned customer or pharmacy fails it.
+      const fence = { _id: id, status, ...(payment === undefined ? { paymentStatus: { $exists: false } } : { paymentStatus: payment }),
+        pharmacyId: order.pharmacyId, customerId: order.customerId ?? { $exists: false } };
       const request = { requestId: new Types.ObjectId().toHexString(), fromStatus: status, paymentStatusAtRequest: payment ?? 'pending',
         requestedByType: actor.userType, requestedById: String(actor._id), ...(reason ? { reason } : {}), requestedAt: new Date() };
       let next: IPharmacyOrder | null;
@@ -1654,7 +1658,7 @@ export class PharmacyOrderService {
       const refundRequired = (payment === 'paid' || payment === 'partially_paid') && !order.prescriptionRefund;
       const intent = refundRequired ? await this.prescriptionRefundService.buildIntent(order, session, 'order_cancelled') : undefined;
       const next = await this.orderRepo.update({
-        _id: id, status: 'pending_cancel', 'cancelRequest.requestId': requestId, 'cancelRequest.state': 'pending',
+        _id: id, status: 'pending_cancel', 'cancelRequest.requestId': requestId, 'cancelRequest.state': 'pending', pharmacyId: order.pharmacyId,
         ...(payment === undefined ? { paymentStatus: { $exists: false } } : { paymentStatus: payment }),
         prescriptionRefund: order.prescriptionRefund ? { $exists: true } : { $exists: false },
       }, { $set: { status: 'cancelled', 'cancelRequest.state': 'approved', 'cancelRequest.decidedByType': actor.userType,
@@ -1689,7 +1693,7 @@ export class PharmacyOrderService {
       // From the same fresh read: a capture recorded while frozen confirms a placed order (as the payment would have).
       const restored: OrderStatus = request.fromStatus === 'placed' && payment === 'paid' ? 'accepted' : request.fromStatus;
       const updated = await this.orderRepo.update({
-        _id: id, status: 'pending_cancel', 'cancelRequest.requestId': requestId, 'cancelRequest.state': 'pending',
+        _id: id, status: 'pending_cancel', 'cancelRequest.requestId': requestId, 'cancelRequest.state': 'pending', pharmacyId: order.pharmacyId,
         ...(payment === undefined ? { paymentStatus: { $exists: false } } : { paymentStatus: payment }),
       }, { $set: { status: restored, 'cancelRequest.state': 'rejected', 'cancelRequest.decidedByType': actor.userType,
         'cancelRequest.decidedById': String(actor._id), 'cancelRequest.decidedAt': new Date(), 'cancelRequest.restoredStatus': restored,

@@ -209,6 +209,20 @@ export class PaymentService {
     }
   }
 
+  /**
+   * D3: when the order already holds THIS payment (paid and linked to this record), processing it again - a second
+   * verify, a reconcile, the recovery sweep - is an idempotent success: the record is marked processed, nothing is
+   * refunded. Returns null when the order does not hold this payment.
+   */
+  private async pharmacyPaymentAlreadyApplied(order: IPharmacyOrder, paymentRecord: IPaymentRecord):
+    Promise<{ paymentRecord: IPaymentRecord; entity: unknown } | null> {
+    if (String(order.paymentTransactionId ?? '') !== String(paymentRecord._id)
+      || !['paid', 'partially_paid'].includes(String(order.paymentStatus))) return null;
+    const processed = (await this.paymentRepository.update({ _id: paymentRecord._id!, isProcessed: false }, { isProcessed: true }, { new: true }))
+      || (await this.paymentRepository.findById(paymentRecord._id!)) || paymentRecord;
+    return { paymentRecord: processed as IPaymentRecord, entity: order };
+  }
+
   private async handleTimedOutPharmacyOrderPayment(
     order: IPharmacyOrder,
     paymentRecord: IPaymentRecord
@@ -216,6 +230,10 @@ export class PaymentService {
     paymentRecord: IPaymentRecord;
     entity: unknown;
   }> {
+    // Decided before any wallet credit, from a fresh read: a payment this order already holds is never returned.
+    const current = (await this.pharmacyOrderRepository.findById(String(order._id))) as IPharmacyOrder | null;
+    const applied = current ? await this.pharmacyPaymentAlreadyApplied(current, paymentRecord) : null;
+    if (applied) return applied;
     const batchInventoryItems = order.items
       .filter((item) => item.itemStatus === 'active' && item.batchAllocations?.length)
       .map((item) => ({
@@ -1193,6 +1211,9 @@ export class PaymentService {
       if (!latest) {
         throw new AppError({ status: 404, code: 'PHARMACY_ORDER_NOT_FOUND', message: 'Pharmacy order not found for this payment' });
       }
+      // Applied by a concurrent worker through THIS record: that is success, never a refund.
+      const applied = await this.pharmacyPaymentAlreadyApplied(latest, paymentRecord);
+      if (applied) return applied;
       // Closed, completed, or already paid/refunded through another record: this capture goes back to the wallet once.
       if (!PHARMACY_ORDER_PAYABLE_STATUSES.includes(latest.status)
         || ['paid', 'partially_paid', 'refunded'].includes(String(latest.paymentStatus))) {

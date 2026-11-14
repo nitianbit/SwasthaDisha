@@ -20,6 +20,10 @@ import { PaymentRepository } from '@/modules/payment/repository';
 import { PaymentService } from '@/modules/payment/services';
 import { WalletModel, WalletTransactionModel } from '@/modules/wallet/model';
 import { WalletRepository, WalletTransactionRepository } from '@/modules/wallet/repository';
+import PharmacySubscriptionModel from '@/modules/pharmacySubscriptions/model';
+import MedicineModel from '@/modules/pharmacyMedicines/model';
+import { MedicineRepository } from '@/modules/pharmacyMedicines/repository';
+import { orderQuerySchema, updateOrderStatusSchema } from '@/modules/pharmacyOrders/validation';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/d3_cancel_check?directConnection=true';
 const url = process.env.MONGODB_URL ?? '';
@@ -263,6 +267,84 @@ async function main() {
     await sweeper.sweepUnsettledBookingPayments(new Date());
     assert.ok(seen.includes(o.recordId!));
     assert.equal((await get(o.id)).paymentStatus, 'paid');
+  });
+
+  await check('two workers processing the SAME payment: one applies it, the other succeeds idempotently (no refund)', async () => {
+    const o = await order({ status: 'accepted', paymentStatus: 'pending', record: 'unprocessed' });
+    const rec = await PaymentRecordModel.findById(o.recordId).lean();
+    await Promise.all([payments.processPharmacyOrderPayment!(rec), payments.processPharmacyOrderPayment!(rec)]);
+    const now = await get(o.id);
+    assert.equal(now.status, 'accepted'); assert.equal(now.paymentStatus, 'paid'); assert.equal(String(now.paymentTransactionId), o.recordId);
+    const r = (await PaymentRecordModel.findById(o.recordId).lean())!;
+    assert.equal(r.status, 'paid'); assert.equal(r.isProcessed, true);
+    assert.equal(await balance(o.customer), 0, 'the applied payment was not returned');
+    await payments.processPharmacyOrderPayment!(await PaymentRecordModel.findById(o.recordId).lean()); // a later reconcile/sweep
+    assert.equal(await balance(o.customer), 0); assert.equal((await get(o.id)).paymentStatus, 'paid');
+  });
+
+  await check('a request checked against one customer cannot cancel the order after it was reassigned', async () => {
+    const repo = new PharmacyOrderRepository();
+    const read = repo.findById.bind(repo);
+    let after: (() => Promise<void>) | undefined;
+    (repo as unknown as { findById: typeof read }).findById = async (...a: Parameters<typeof read>) => {
+      const r = await read(...a);
+      if (after) { const h = after; after = undefined; await h(); }
+      return r;
+    };
+    const svc = makeOrders(repo);
+    const o = await order({ status: 'placed', paymentStatus: 'pending', record: 'none' });
+    const other = new Types.ObjectId();
+    after = async () => { await PharmacyOrderModel.updateOne({ _id: o.id }, { $set: { customerId: other } }); };
+    await rejects(svc.requestCancel(o.id, o.user), 'FORBIDDEN');
+    const now = await get(o.id);
+    assert.equal(now.status, 'placed'); assert.equal(String(now.customerId), String(other));
+    assert.equal(released.get(o.med), undefined);
+  });
+
+  await check('a paid refill frozen by a request: recovery does not advance the cycle; rejection does, approval never', async () => {
+    const mk = async () => {
+      const o = await order({ status: 'accepted' });
+      const subId = new Types.ObjectId();
+      await PharmacySubscriptionModel.collection.insertOne({ _id: subId, pharmacyId: pharmacyA, userId: o.customer, medicineId: new Types.ObjectId(o.med),
+        intervalDays: 30, nextRefillDate: '20261114', isActive: true, pendingRefill: { orderId: o.id, cycleDate: '20261114' } } as never);
+      await PharmacyOrderModel.updateOne({ _id: o.id }, { $set: { refill: { subscriptionId: String(subId), cycleDate: '20261114' } } });
+      const r = await orders.requestCancel(o.id, o.user);
+      return { ...o, subId, requestId: r.cancelRequest!.requestId };
+    };
+    const sub = async (id: Types.ObjectId) => (await PharmacySubscriptionModel.collection.findOne({ _id: id }))!;
+    const a = await mk();
+    await orders.resumeRefillOrder(a.id);
+    assert.equal((await sub(a.subId)).nextRefillDate, '20261114', 'frozen: cursor unchanged');
+    assert.ok((await sub(a.subId)).pendingRefill);
+    await orders.rejectCancel(a.id, pharmacy, { requestId: a.requestId });
+    assert.equal((await sub(a.subId)).nextRefillDate, '20261214', 'resumed: the cycle moves on');
+    const b = await mk();
+    await orders.approveCancel(b.id, pharmacy, { requestId: b.requestId });
+    await orders.resumeRefillOrder(b.id);
+    assert.equal((await sub(b.subId)).nextRefillDate, '20261114', 'cancelled and refunded: never advanced');
+  });
+
+  await check('a free (zero-total) order is accepted and linked once at creation', async () => {
+    const med = (await MedicineModel.collection.insertOne({ name: 'Free sample', isActive: true, prescriptionRequired: false, gstPercent: 0 } as never)).insertedId;
+    const freeInventory = { ...inventory, getInventoryByMedicine: async () => ({ retailPrice: 0, wholesalePrice: 0 }), reserveOrderStockBulk: async () => new Map() };
+    const direct = { createDirectPaidTransaction: async (d: { userId: string; context: string; contextId: string; baseAmount: number; discountAmount: number; notes: object }) =>
+      (await PaymentRecordModel.create({ userId: d.userId, context: d.context, contextId: d.contextId, baseAmount: d.baseAmount,
+        discountAmount: d.discountAmount, finalAmount: 0, currency: 'INR', paymentGateway: 'internal', status: 'paid', notes: d.notes })).toObject() };
+    const svc = new (PharmacyOrderService as unknown as new (...a: unknown[]) => PharmacyOrderService)(
+      new PharmacyOrderRepository(), { ensureLinked: async () => undefined }, freeInventory, direct, {}, {}, sideEffects, new MedicineRepository(), refunds);
+    const customer = new Types.ObjectId().toHexString();
+    const created = await svc.create(pharmacyA, { orderType: 'online', customerId: customer, paymentMode: 'online_payment', deliveryMode: 'pickup',
+      items: [{ medicineId: String(med), orderedQty: 1 }] } as never, pharmacyA, 'pharmacy');
+    const createdId = String((created as unknown as { order: { _id: unknown } }).order._id);
+    const row = await get(createdId);
+    assert.equal(row.status, 'accepted'); assert.equal(row.paymentStatus, 'paid');
+    const rec = await PaymentRecordModel.findOne({ context: 'pharmacy_order', contextId: createdId }).lean();
+    assert.equal(String(row.paymentTransactionId), String(rec!._id), 'linked to its direct-paid record');
+  });
+
+  await check('the order list can select the pending_cancel worklist; the status command cannot enter it', async () => {
+    assert.equal(orderQuerySchema.validate({ status: 'pending_cancel' }).error, undefined);
+    assert.ok(updateOrderStatusSchema.validate({ status: 'pending_cancel' }).error, 'not settable through /status');
   });
 
   await mongoose.disconnect();
