@@ -272,6 +272,20 @@ async function main() {
     await svc.returnToSupplier(staffA, i.id, i.b0, { supplierId: sup, quantity: 1, reason: 'damaged' });
     assert.equal((await batch(i.id, i.b0)).availableQty, 25);
     await consistent(i.id);
+    // Near exhaustion: two identical requests of 8 from 10. The second can no longer pass the stock check, yet it is
+    // the same return: both answers must be the one receipt.
+    const j = await item();
+    const pair = await Promise.allSettled([1, 2].map(() => svc.returnToSupplier(staffA, j.id, j.b1, { supplierId: sup, quantity: 8, reason: 'expired', requestKey: 'w2b-key-0003' })));
+    assert.deepEqual(pair.map(r => r.status), ['fulfilled', 'fulfilled'], JSON.stringify(pair.map(r => r.status === 'rejected' ? (r.reason as { code?: string }).code : 'ok')));
+    const recs = pair.map(r => (r as PromiseFulfilledResult<Awaited<ReturnType<typeof svc.returnToSupplier>>>).value);
+    assert.equal(new Set(recs.map(r => String(r._id))).size, 1);
+    assert.equal(recs.filter(r => r.duplicate).length, 1);
+    assert.equal((await batch(j.id, j.b1)).availableQty, 2);
+    assert.equal(await InventoryAdjustmentModel.countDocuments({ sourceId: String(recs[0]!._id) }), 1);
+    // A replay arriving after the batch is down to 2 still gets the receipt (the outer quantity check would refuse 8).
+    const late = await svc.returnToSupplier(staffA, j.id, j.b1, { supplierId: sup, quantity: 8, reason: 'expired', requestKey: 'w2b-key-0003' });
+    assert.equal(String(late._id), String(recs[0]!._id));
+    await consistent(j.id);
     const idx = (await SupplierReturnModel.collection.indexes()).find(x => x.key?.requestKey === 1);
     assert.ok(idx?.unique && idx.partialFilterExpression, 'unique partial index on requestKey');
   });

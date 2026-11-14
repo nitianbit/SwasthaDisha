@@ -111,8 +111,9 @@ export class BatchQualityService {
     try {
       return await this.recordSupplierReturn(actor, itemId, batchId, input, requestKey);
     } catch (error) {
-      // The same key committed concurrently: answer with that record.
-      if (requestKey && (error as { code?: number })?.code === 11000 && /requestKey/.test(String((error as Error)?.message))) {
+      // Any failure of a keyed request (unique-index clash, batch changed, quantity or state check after a concurrent
+      // commit of the SAME key): if that key is recorded now, this request is that return; answer with its record.
+      if (requestKey) {
         const existing = await SupplierReturnModel.findOne({ pharmacyId: actor.pharmacyId, requestKey }).lean();
         if (existing) return this.replaySupplierReturn(existing, itemId, batchId);
       }
@@ -143,6 +144,11 @@ export class BatchQualityService {
       throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: `Quantity must be between 1 and ${batch.availableQty} (unreserved units)` });
     }
     return inTransaction(async s => {
+      // Every transaction attempt first looks for the key (a concurrent request may have committed it meanwhile).
+      if (requestKey) {
+        const prior = await SupplierReturnModel.findOne({ pharmacyId: actor.pharmacyId, requestKey }).session(s).lean();
+        if (prior) return this.replaySupplierReturn(prior, itemId, batchId);
+      }
       // new:false → the pre-image of exactly the write that committed: status, cost and quantities for the audit.
       const pre = await InventoryItemModel.findOneAndUpdate(
         { _id: item._id, pharmacyId: actor.pharmacyId, availableQty: { $gte: q },
