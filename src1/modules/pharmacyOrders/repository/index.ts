@@ -289,6 +289,30 @@ export class PharmacyOrderRepository extends BaseRepository<IPharmacyOrder> {
     return { data, total, page, totalPages: Math.ceil(total / limit) };
   }
 
+  /**
+   * Pharmacist work queue (W1): orders this pharmacy SELLS (never ones it buys) whose prescription awaits review and
+   * that review still accepts (`PRESCRIPTION_REVIEWABLE_STATUSES`). Oldest first; served by the
+   * {pharmacyId, prescriptionStatus, createdAt} index.
+   */
+  async findPrescriptionReviewQueue(
+    pharmacyId: string,
+    statuses: readonly string[],
+    page: number,
+    limit: number
+  ): Promise<{ data: IPharmacyOrder[]; total: number; page: number; totalPages: number }> {
+    const query = { pharmacyId, prescriptionStatus: 'pending', status: { $in: [...statuses] } };
+    const [data, total] = await Promise.all([
+      PharmacyOrderModel.find(query)
+        .populate('customerId', 'name phone')
+        .sort({ createdAt: 1, _id: 1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      PharmacyOrderModel.countDocuments(query),
+    ]);
+    return { data, total, page, totalPages: Math.ceil(total / limit) };
+  }
+
   async findByCustomer(customerId: string, page = 1, limit = 20) {
     return this.findWithPagination({ customerId }, page, limit);
   }

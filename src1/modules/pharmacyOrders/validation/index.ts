@@ -110,6 +110,13 @@ export const prescriptionReviewSchema = Joi.object({
   reviewedPrescriptionUrls: Joi.array().items(Joi.string()).required(),
 });
 
+/** Pharmacist work queue (W1): the pharmacy is always the caller's own, so no pharmacyId is accepted. */
+export const prescriptionReviewQueueQuerySchema = Joi.object({
+  page: Joi.number().integer().min(1).max(1000).optional(),
+  limit: Joi.number().integer().min(1).max(100).optional(),
+  pharmacyId: Joi.forbidden(),
+});
+
 export const recoveryWorklistQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).max(1000).optional(),
   limit: Joi.number().integer().min(1).max(50).optional(),

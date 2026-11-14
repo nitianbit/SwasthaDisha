@@ -288,6 +288,68 @@ async function main() {
     } finally { server.close(); }
   });
 
+  await check('HTTP: pharmacist work queue lists only reviewable orders this pharmacy sells, oldest first (W1)', async () => {
+    const seller = new Types.ObjectId().toHexString();
+    const other = new Types.ObjectId().toHexString();
+    await PharmacyModel.collection.insertMany([
+      { _id: new Types.ObjectId(seller), isActive: true, isVerified: true, phone: '9000000101' },
+      { _id: new Types.ObjectId(other), isActive: true, isVerified: true, phone: '9000000102' },
+    ] as never);
+    const at = (min: number) => new Date(Date.UTC(2026, 10, 14, 6, min));
+    const placed = await seed({ pharmacyId: seller, status: 'placed' });
+    const accepted = await seed({ pharmacyId: seller, status: 'accepted' });
+    const cancelled = await seed({ pharmacyId: seller, status: 'cancelled' }); // pending, but review refuses it
+    await seed({ pharmacyId: seller, status: 'placed', prescriptionStatus: 'approved' });
+    await seed({ pharmacyId: seller, status: 'placed', prescriptionStatus: 'not_required', prescriptionUrls: [] });
+    const bought = await seed({ pharmacyId: other, buyerPharmacyId: seller, status: 'placed' }); // seller is the BUYER here
+    // createdAt is immutable through the model; set it raw so the order is deterministic.
+    for (const [id, min] of [[accepted, 1], [placed, 2], [cancelled, 3], [bought, 4]] as const) {
+      await PharmacyOrderModel.collection.updateOne({ _id: new Types.ObjectId(id) }, { $set: { createdAt: at(min) } });
+    }
+
+    const { default: router } = await import('@/modules/pharmacyOrders/routes');
+    const { authenticate } = await import('@/modules/middleware/auth');
+    const app = express();
+    app.use(express.json());
+    app.use('/api/v1/pharmacy-orders', authenticate, router);
+    app.use((err: { status?: number; code?: string }, _q: express.Request, res: express.Response, _n: express.NextFunction) => {
+      res.status(err.status ?? 500).json({ success: false, code: err.code });
+    });
+    const server = app.listen(0);
+    try {
+      const port = (server.address() as { port: number }).port;
+      const call = (path: string, claims: Record<string, string>) => fetch(`http://127.0.0.1:${port}/api/v1/pharmacy-orders${path}`,
+        { headers: { authorization: 'Bearer ' + jwt.sign(claims, CONFIG.JWT_SECRET_KEY) } });
+      const asPharmacy = (pid: string) => ({ _id: pid, pharmacyId: pid, userType: 'pharmacy' });
+      type Page = { data: { _id: string }[]; pagination: { page: number; limit: number; total: number; totalPages: number } };
+
+      let res = await call('/prescription-reviews', asPharmacy(seller));
+      assert.equal(res.status, 200);
+      assert.equal(res.headers.get('cache-control'), 'private, no-store');
+      const page = await res.json() as Page;
+      assert.deepEqual(page.data.map(o => String(o._id)), [accepted, placed], 'only reviewable, sold-by-me, oldest first');
+      assert.deepEqual(page.pagination, { page: 1, limit: 20, total: 2, totalPages: 1 });
+
+      const second = await (await call('/prescription-reviews?page=2&limit=1', asPharmacy(seller))).json() as Page;
+      assert.deepEqual(second.data.map(o => String(o._id)), [placed]);
+      assert.deepEqual(second.pagination, { page: 2, limit: 1, total: 2, totalPages: 2 });
+
+      // Every listed order is one the review itself accepts.
+      await service.reviewPrescription(accepted, seller, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX });
+      await rejects(service.reviewPrescription(cancelled, seller, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX }), 'ORDER_TERMINAL');
+      await rejects(service.reviewPrescription(bought, seller, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX }), 'FORBIDDEN', 403);
+      const after = await (await call('/prescription-reviews', asPharmacy(seller))).json() as Page;
+      assert.deepEqual(after.data.map(o => String(o._id)), [placed]);
+
+      assert.equal((await call('/prescription-reviews?pharmacyId=' + other, asPharmacy(seller))).status, 400);
+      assert.equal((await call('/prescription-reviews?limit=101', asPharmacy(seller))).status, 400);
+      assert.equal((await call('/prescription-reviews', { _id: seller, userType: 'admin' })).status, 403);
+      assert.equal((await call('/prescription-reviews', asPharmacy(pharmacyB))).status, 403); // unverified pharmacy
+      const otherQueue = await (await call('/prescription-reviews', asPharmacy(other))).json() as Page;
+      assert.deepEqual(otherQueue.data.map(o => String(o._id)), [bought], 'the seller of a B2B order reviews it');
+    } finally { server.close(); }
+  });
+
   console.log(`\n${passed} checks passed`);
 }
 

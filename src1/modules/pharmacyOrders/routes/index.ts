@@ -19,6 +19,7 @@ import {
   customerReturnSchema,
   orderQuerySchema,
   recoveryWorklistQuerySchema,
+  prescriptionReviewQueueQuerySchema,
   idParamSchema,
 } from '@/modules/pharmacyOrders/validation';
 
@@ -48,6 +49,13 @@ pharmacyOrderRouter.get(
   catchAsync(controller.getCustomerRecovery)
 );
 
+// Pharmacist work queue: this pharmacy's own orders whose prescription can be reviewed now (W1).
+pharmacyOrderRouter.get(
+  '/prescription-reviews',
+  requireOperationalPharmacy,
+  validate(prescriptionReviewQueueQuerySchema, 'query'),
+  catchAsync(controller.prescriptionReviewQueue)
+);
 pharmacyOrderRouter.get(
   '/recovery-requests',
   requireOperationalPharmacy,

@@ -39,6 +39,8 @@ import logger from '@/services/logger';
 import { InventoryItemModel } from '@/modules/pharmacyInventory/model';
 
 const TERMINAL_STATUSES: OrderStatus[] = ['completed', 'abandoned', 'cancelled', 'rejected'];
+/** The only order states a prescription review accepts; the review queue lists exactly these (W1). */
+export const PRESCRIPTION_REVIEWABLE_STATUSES: readonly OrderStatus[] = ['placed', 'accepted'];
 const PRESCRIPTION_GATED_STATUSES: OrderStatus[] = [
   'packed',
   'ready_for_pickup',
@@ -864,6 +866,13 @@ export class PharmacyOrderService {
     return this.customerRecovery(actor, id, false);
   }
 
+  async getPrescriptionReviewQueue(pharmacyId: unknown, page = 1, limit = 20) {
+    if (typeof pharmacyId !== 'string' || !/^[0-9a-fA-F]{24}$/.test(pharmacyId)) {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Pharmacy access is required' });
+    }
+    return this.orderRepo.findPrescriptionReviewQueue(pharmacyId, PRESCRIPTION_REVIEWABLE_STATUSES, page, limit);
+  }
+
   async getRecoveryRequests(pharmacyId: unknown, query: unknown): Promise<PharmacyRecoveryWorklistPage> {
     return this.orderRepo.findRecoveryRequests(pharmacyId, query);
   }
@@ -1286,7 +1295,7 @@ export class PharmacyOrderService {
     if (order.prescriptionStatus !== 'pending') {
       throw new AppError({ status: 409, code: 'PRESCRIPTION_NOT_PENDING', message: 'This order has no prescription awaiting review' });
     }
-    if (!['placed', 'accepted'].includes(order.status)) {
+    if (!PRESCRIPTION_REVIEWABLE_STATUSES.includes(order.status)) {
       // Packing/dispatch already requires approval, so a pending prescription can only be on placed/accepted.
       throw new AppError({ status: 409, code: 'ORDER_STATE_INCONSISTENT', message: 'Order state does not allow prescription review' });
     }

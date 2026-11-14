@@ -39,6 +39,18 @@ export class PharmacyOrderController {
     res.status(200).json({ success: true, data });
   };
 
+  prescriptionReviewQueue = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const page = req.query.page === undefined ? 1 : Number(req.query.page);
+    const limit = req.query.limit === undefined ? 20 : Number(req.query.limit);
+    const result = await this.service.getPrescriptionReviewQueue(req.user?.pharmacyId, page, limit);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(200).json({
+      success: true,
+      data: result.data,
+      pagination: { page: result.page, limit, total: result.total, totalPages: result.totalPages },
+    });
+  };
+
   getRecoveryRequests = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const query: PharmacyRecoveryWorklistQuery = {
       page: req.query.page === undefined ? 1 : Number(req.query.page),
