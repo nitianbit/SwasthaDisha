@@ -1727,6 +1727,29 @@ export class PaymentService {
     return { state: 'paid', ...(await this.processVerifiedPayment(paymentRecord)) };
   }
 
+  /**
+   * Checks EVERY unsettled Razorpay attempt of one booking with the gateway (W3b): a capture on any attempt (also an
+   * older order replaced by retry-payment) is applied, or returned to the wallet if the booking is already paid or
+   * closed (processVerifiedPayment). Each record is reconciled as its own payer. `unknown` counts attempts that
+   * could not be settled now (gateway unreachable, concurrent change): the caller must not start another payment.
+   */
+  async reconcileBookingPayments(bookingId: string): Promise<{ checked: number; unknown: number }> {
+    const records = await PaymentRecordModel.find({ context: 'booking', contextId: { $eq: String(bookingId) },
+      paymentGateway: 'razorpay', status: 'created', razorpayOrderId: { $type: 'string' } }).sort({ createdAt: 1 }).lean();
+    let unknown = 0;
+    for (const r of records) {
+      try {
+        await this.reconcilePaymentAndProcess({ paymentTransactionId: String(r._id), userId: String(r.payerUserId || r.userId) });
+      } catch (error) {
+        logger.warn('[Payment][reconcile] booking attempt not settled', {
+          bookingId, paymentTransactionId: String(r._id), code: (error as { code?: string })?.code,
+        });
+        unknown += 1;
+      }
+    }
+    return { checked: records.length, unknown };
+  }
+
   async verifyPaymentAndProcess(data: VerifyPaymentRequest): Promise<{
     context: 'booking' | 'wallet_recharge' | 'external_booking' | 'pharmacy_order';
     paymentRecord: IPaymentRecord;

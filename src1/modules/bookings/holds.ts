@@ -114,8 +114,18 @@ async function releaseSlot(slotId: string, s: ClientSession) {
 }
 
 /** Inserts a new booking together with its slot hold and (for a follow-up) the parent's benefit, atomically. */
+/** Set on a booking returned because its create key was already used (W3b); not stored. */
+export const isReplayedBooking = (b: IBooking) => (b as IBooking & { [REPLAYED]?: boolean })[REPLAYED] === true;
+const REPLAYED = Symbol('replayedBooking');
+
 export async function createBookingWithHolds(input: IBooking): Promise<IBooking> {
   return runLedgerTransaction(async s => {
+    // Every attempt (also a retry after a duplicate-key clash) first looks for a booking made with this create key.
+    if (input.createRequestKey) {
+      const prior = await BookingModel.findOne({ userId: { $eq: input.userId }, createRequestKey: { $eq: input.createRequestKey } })
+        .session(s).lean() as IBooking | null;
+      if (prior) return Object.assign(prior, { [REPLAYED]: true });
+    }
     const slotId = input.slotId ? canon(input.slotId) : null;
     if (input.slotId && !slotId && input.bookingType !== 'surgery') throw conflict('SLOT_NOT_AVAILABLE', 'Slot is not available');
     const parentId = input.followUp?.isFollowUp && input.followUp.parentConsultationId ? canon(input.followUp.parentConsultationId) : null;

@@ -217,6 +217,8 @@ const optionalSlotIdSchema = Joi.string()
 
 // Create General Booking schema
 export const createBookingSchema = Joi.object({
+  // Resent creates with the same key return the first booking (W3b). Optional for older clients.
+  requestKey: Joi.string().trim().pattern(/^[A-Za-z0-9_-]{8,64}$/).optional(),
   bookingType: Joi.string()
     .valid('package', 'consultation', 'second-opinion', 'surgery')
     .required()

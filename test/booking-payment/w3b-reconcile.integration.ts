@@ -17,6 +17,9 @@ import { CONFIG } from '@/config/config';
 import '@/modules/user/model';
 import BookingModel from '@/modules/bookings/model';
 import { BookingRepository } from '@/modules/bookings/repository';
+import { BookingService } from '@/modules/bookings/services';
+import { createBookingWithHolds, isReplayedBooking } from '@/modules/bookings/holds';
+import SlotModel from '@/modules/slots/model';
 import PaymentRecordModel from '@/modules/payment/model';
 import { PaymentRepository } from '@/modules/payment/repository';
 import { PaymentService } from '@/modules/payment/services';
@@ -32,9 +35,11 @@ const gateway = new Map<string, { id: string; order_id: string; amount: number; 
 const gatewayCalls: string[] = [];
 /** Runs while the gateway lookup is in flight (to interleave a concurrent writer). */
 const duringFetch: { hook?: () => Promise<void> } = {};
+const unreachable = new Set<string>();
 const fakeRazorpay = {
   orders: { fetchPayments: async (orderId: string) => {
     gatewayCalls.push(orderId);
+    if (unreachable.has(orderId)) throw new Error('gateway timeout');
     const h = duringFetch.hook; duringFetch.hook = undefined; if (h) await h();
     return { items: gateway.get(orderId) ?? [] };
   } },
@@ -79,6 +84,7 @@ async function check(name: string, fn: () => Promise<void>) { await fn(); passed
 async function main() {
   await mongoose.connect(url);
   for (const c of await mongoose.connection.db!.collections()) await c.deleteMany({});
+  await Promise.all([BookingModel.init(), SlotModel.init(), PaymentRecordModel.init()]);
 
   await check('a captured payment whose verify never arrived is applied from the gateway; a replay changes nothing', async () => {
     const u = await customer();
@@ -191,6 +197,78 @@ async function main() {
     duringFetch.hook = async () => { await PaymentRecordModel.updateOne({ _id: p4.record }, { $set: { status: 'pending' } }); };
     await rejects(reconcile(p4.record, u), 'PAYMENT_CHANGED', 409);
     assert.equal((await PaymentRecordModel.findById(p4.record).lean())!.status, 'pending');
+  });
+
+  /** A newer attempt (as retry-payment makes) for the same booking. */
+  async function laterAttempt(user: string, bookingId: string) {
+    const orderId = 'order_' + new Types.ObjectId().toHexString();
+    const p = await PaymentRecordModel.create({ userId: user, context: 'booking', contextId: bookingId, baseAmount: 100, discountAmount: 0,
+      finalAmount: 100, currency: 'INR', paymentGateway: 'razorpay', razorpayOrderId: orderId, status: 'created', notes: { walletDeductedAmount: 0 } });
+    await BookingModel.updateOne({ _id: bookingId }, { $set: { paymentTransactionId: String(p._id) } });
+    return { record: String(p._id), orderId };
+  }
+
+  await check('[booking] every attempt is checked: an older captured order is applied; a later capture of another goes to the wallet', async () => {
+    const u = await customer();
+    const b = await booking(u);                      // P1
+    gateway.set(b.orderId, [captured(b.orderId)]);   // P1 captured, its confirmation lost
+    const p2 = await laterAttempt(u, b.id);          // the booking now points at P2
+    let r = await payments.reconcileBookingPayments(b.id);
+    assert.deepEqual(r, { checked: 2, unknown: 0 });
+    assert.equal((await BookingModel.findById(b.id).lean())!.paymentStatus, 'paid', 'paid by the older attempt');
+    assert.equal((await PaymentRecordModel.findById(p2.record).lean())!.status, 'created');
+    gateway.set(p2.orderId, [captured(p2.orderId)]); // later, the customer also paid P2 in another tab
+    r = await payments.reconcileBookingPayments(b.id);
+    assert.deepEqual(r, { checked: 1, unknown: 0 });
+    assert.equal(await balance(u), 100, 'the second payment goes back to the wallet');
+    assert.equal((await PaymentRecordModel.findById(p2.record).lean())!.status, 'refunded');
+  });
+
+  await check('[retry] no new order while an earlier attempt cannot be checked, or when it was captured', async () => {
+    const svc = Object.assign(Object.create(BookingService.prototype), {
+      bookingRepository: new BookingRepository(), paymentRepository: new PaymentRepository(), paymentService: payments,
+    }) as BookingService;
+    const u = await customer();
+    const b = await booking(u);
+    unreachable.add(b.orderId);
+    await rejects(svc.retryBookingPayment(b.id, { _id: u, userType: 'user' }, {}), 'PAYMENT_STATE_UNKNOWN', 503);
+    assert.equal(await PaymentRecordModel.countDocuments({ contextId: b.id }), 1, 'no new order');
+    unreachable.delete(b.orderId);
+    gateway.set(b.orderId, [captured(b.orderId)]);
+    await rejects(svc.retryBookingPayment(b.id, { _id: u, userType: 'user' }, {}), 'BOOKING_ALREADY_PAID', 400);
+    assert.equal(await PaymentRecordModel.countDocuments({ contextId: b.id }), 1, 'no new order');
+    assert.equal((await BookingModel.findById(b.id).lean())!.paymentStatus, 'paid', 'the lost payment was applied instead');
+    const other = await customer();
+    await rejects(svc.reconcileBookingPayments(b.id, { _id: other, userType: 'user' }), 'BOOKING_NOT_FOUND', 404);
+    const own = await svc.reconcileBookingPayments(b.id, { _id: u, userType: 'user' });
+    assert.equal((own.booking as { paymentStatus: string }).paymentStatus, 'paid');
+  });
+
+  await check('[create] the same create key gives one booking and one slot hold, also when sent twice at once', async () => {
+    const u = await customer();
+    const specialistId = new Types.ObjectId().toHexString();
+    const slot = await SlotModel.create({ specialistId, date: '20991231', startTime: '10:00 AM', endTime: '10:15 AM', duration: 15,
+      maxBookings: 3, currentBookings: 0, isActive: true, isAvailable: true, slotType: 'consultation' } as never);
+    const input = { bookingType: 'consultation', userId: u, specialistId, slotId: String(slot._id), bookingDate: '20991231',
+      bookingTime: '10:00 AM', serviceMode: 'video', consultationMode: 'video', primaryConcern: 'test', status: 'pending', paymentStatus: 'pending', price: 100, createRequestKey: 'create-key-0001' } as never;
+    const both = await Promise.all([createBookingWithHolds(input), createBookingWithHolds(input)]);
+    assert.equal(String(both[0]._id), String(both[1]._id));
+    assert.equal(both.filter(isReplayedBooking).length, 1);
+    assert.equal(await BookingModel.countDocuments({ userId: u }), 1);
+    assert.equal((await SlotModel.findById(slot._id).lean())!.currentBookings, 1, 'one seat held');
+    const again = await createBookingWithHolds(input);
+    assert.ok(isReplayedBooking(again));
+    assert.equal((await SlotModel.findById(slot._id).lean())!.currentBookings, 1);
+    // The service answers a resent create before any check or charge.
+    const svc = Object.create(BookingService.prototype) as BookingService;
+    const replay = await svc.createSpecialistBooking({ userId: u, requestKey: 'create-key-0001' } as never) as { replayed?: boolean; paymentRequired: boolean; booking: { _id: unknown } };
+    assert.equal(replay.replayed, true); assert.equal(replay.paymentRequired, true); assert.equal(String(replay.booking._id), String(both[0]._id));
+    // Without a key nothing changes: a second create is a second booking.
+    const plain = { ...(input as object), createRequestKey: undefined } as never;
+    await createBookingWithHolds(plain);
+    assert.equal(await BookingModel.countDocuments({ userId: u }), 2);
+    const idx = (await BookingModel.collection.indexes()).find(x => x.key?.createRequestKey === 1);
+    assert.ok(idx?.unique && idx.partialFilterExpression, 'unique partial index');
   });
 
   await check('HTTP: POST /payments/reconcile validates and answers through the real router', async () => {

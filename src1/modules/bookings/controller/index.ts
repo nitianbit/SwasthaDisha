@@ -491,6 +491,15 @@ export class BookingController {
     });
   };
 
+  reconcilePayments = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    this.ensureHRReadOnly(req);
+    const result = await this.bookingService.reconcileBookingPayments(req.params.id, {
+      _id: req.user!._id, userType: req.user!.userType, pharmacyId: req.user?.pharmacyId,
+    });
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(200).json({ success: true, data: result });
+  };
+
   retryPayment = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     this.ensureHRReadOnly(req);
     const { id } = req.params;

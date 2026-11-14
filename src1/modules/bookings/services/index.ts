@@ -3,7 +3,7 @@ import BookingModel from '@/modules/bookings/model';
 import { fundBookingFromWallet, runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
 import { Types } from 'mongoose';
 import { CreateDirectPaidTransactionRequest } from '@/modules/payment/types';
-import { cancelBookingSettlement, createBookingWithHolds, rescheduleWithHolds } from '@/modules/bookings/holds';
+import { cancelBookingSettlement, createBookingWithHolds, isReplayedBooking, rescheduleWithHolds } from '@/modules/bookings/holds';
 import {
   BookingType,
   CreateBookingRequest,
@@ -52,6 +52,8 @@ import { buildBookingLifecyclePatch } from '@/modules/bookings/utils/lifecycle';
 interface BookingPaymentInitResponse {
   booking: IBooking;
   paymentRequired: boolean;
+  /** True when a create key was already used: `booking` is that booking; no new payment was started. */
+  replayed?: boolean;
   walletDeductedAmount?: number;
     payment?: {
       paymentTransactionId: string;
@@ -686,10 +688,28 @@ export class BookingService {
     };
   }
 
+  /**
+   * Answer for a create whose key was already used: the existing booking, unchanged. Payment (if still due) is resumed
+   * from the booking (retry-payment / payment reconciliation), never by creating a second booking.
+   */
+  private replayedCreate(booking: IBooking): BookingPaymentInitResponse {
+    return {
+      booking,
+      paymentRequired: booking.status !== 'cancelled' && booking.paymentStatus !== 'paid' && Number(booking.price || 0) > 0,
+      replayed: true,
+    } as BookingPaymentInitResponse;
+  }
+
   async createSpecialistBooking(
     data: CreateSpecialistBookingRequest,
     bookingType: Extract<BookingType, 'consultation' | 'second-opinion'> = 'consultation'
   ): Promise<BookingPaymentInitResponse> {
+    // A resent create (same key) is the same booking: answer with it before any check or charge (W3b).
+    const requestKey = typeof data.requestKey === 'string' && data.requestKey.trim() ? data.requestKey.trim() : undefined;
+    if (requestKey) {
+      const prior = await BookingModel.findOne({ userId: { $eq: data.userId }, createRequestKey: { $eq: requestKey } }).lean() as IBooking | null;
+      if (prior) return this.replayedCreate(prior);
+    }
     const followUpConfig = await this.validateAndPrepareFollowUp(
       data,
       bookingType
@@ -766,11 +786,14 @@ export class BookingService {
         created: true,
       }),
       notes: data.notes,
+      ...(requestKey ? { createRequestKey: requestKey } : {}),
     };
 
     // Slot capacity and (for a follow-up) the parent consultation's benefit are taken in the same transaction as
     // the insert (A2a): a slot is never oversold and a follow-up benefit never used twice.
     const savedBooking = await createBookingWithHolds(booking);
+    // A concurrent request with the same key created it: no notifications, wallet debit or order for this one.
+    if (isReplayedBooking(savedBooking)) return this.replayedCreate(savedBooking);
 
     try {
       await this.notificationService.createBookingCreatedNotification(
@@ -1519,6 +1542,17 @@ export class BookingService {
     return updated;
   }
 
+  /** Owner/admin: checks every payment attempt of this booking with the gateway (W3b); returns the current booking. */
+  async reconcileBookingPayments(bookingId: string, requester: { _id: string; userType: string; pharmacyId?: string }) {
+    const booking = await this.getById(bookingId);
+    const canAccess = requester.userType === 'admin'
+      || (requester.userType === 'pharmacy' && requester.pharmacyId && String(booking.pharmacyId) === String(requester.pharmacyId))
+      || String(booking.userId) === String(requester._id);
+    if (!canAccess) throw new AppError({ status: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
+    const result = await this.paymentService.reconcileBookingPayments(bookingId);
+    return { booking: await this.getById(bookingId), unknown: result.unknown };
+  }
+
   async retryBookingPayment(
     bookingId: string,
     requester: { _id: string; userType: string; corporateId?: string; pharmacyId?: string },
@@ -1557,6 +1591,24 @@ export class BookingService {
         code: 'BOOKING_ALREADY_PAID',
         message: 'Booking is already paid',
       });
+    }
+
+    // Before a new order replaces the current one, every earlier attempt is checked with the gateway (W3b): a capture
+    // whose confirmation was lost is applied instead of charging again, and no new order is made while an earlier
+    // attempt cannot be checked.
+    const earlier = await this.paymentService.reconcileBookingPayments(bookingId);
+    if (earlier.unknown > 0) {
+      throw new AppError({ status: 503, code: 'PAYMENT_STATE_UNKNOWN',
+        message: 'We could not check your earlier payment for this booking. Please try again in a few minutes.' });
+    }
+    if (earlier.checked > 0) {
+      const fresh = await this.getById(bookingId);
+      if (fresh.paymentStatus === 'paid') {
+        throw new AppError({ status: 400, code: 'BOOKING_ALREADY_PAID', message: 'Booking is already paid' });
+      }
+      if (fresh.status === 'cancelled') {
+        throw new AppError({ status: 400, code: 'BOOKING_CANCELLED', message: 'Cannot retry payment for a cancelled booking' });
+      }
     }
 
     let baseAmount = booking.originalPrice ?? booking.price;

@@ -391,6 +391,8 @@ const bookingSchema = new Schema<IBooking>(
     },
     // Payment record whose post-payment follow-up (reminders/meeting/email) finished; replays resume until set.
     postPaymentCompletedFor: { type: String },
+    // Client key of the create request (W3b): a resent create answers with this booking instead of booking again.
+    createRequestKey: { type: String },
     // Wallet money applied to this booking (rupees); see common/utils/bookingWalletFunding.ts.
     walletFunding: {
       type: new Schema({
@@ -444,6 +446,8 @@ const bookingSchema = new Schema<IBooking>(
 
 // Compound indexes for better query performance
 bookingSchema.index({ userId: 1, status: 1 });
+// One booking per customer and create key; bookings without a key are not constrained (W3b).
+bookingSchema.index({ userId: 1, createRequestKey: 1 }, { unique: true, partialFilterExpression: { createRequestKey: { $type: 'string' } } });
 bookingSchema.index({ userId: 1, bookingDate: 1 });
 bookingSchema.index({ pharmacyId: 1, status: 1 });
 bookingSchema.index({ pharmacyId: 1, bookingDate: 1 });

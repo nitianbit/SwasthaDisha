@@ -63,6 +63,13 @@ bookingRouter.get(
   catchAsync(bookingController.getUpcomingBookings)
 );
 
+// Check every payment attempt of a booking with the gateway; applies a capture whose confirmation was lost (W3b)
+bookingRouter.post(
+  '/:id/reconcile-payments',
+  validate(idParamSchema, 'params'),
+  catchAsync(bookingController.reconcilePayments)
+);
+
 // Retry payment for an existing booking
 bookingRouter.post(
   '/:id/retry-payment',

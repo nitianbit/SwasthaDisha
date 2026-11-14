@@ -86,6 +86,8 @@ export interface IVirtualMeeting {
 
 export interface IBooking {
   _id?: string;
+  /** Client key of the create request (W3b); a resent create returns this booking. */
+  createRequestKey?: string;
   bookingType: BookingType;
   userId: string; // User making the booking
   pharmacyId?: string; // Pharmacy creating the booking on behalf of the user
@@ -170,6 +172,8 @@ export interface CreateWellnessPackageBookingRequest {
 
 export interface CreateSpecialistBookingRequest {
   userId: string;
+  /** Optional create key (^[A-Za-z0-9_-]{8,64}$): the same key again returns the booking it created (W3b). */
+  requestKey?: string;
   pharmacyId?: string;
   dependentId?: string;
   corporateId?: string; // Corporate ID if booking is through corporate
