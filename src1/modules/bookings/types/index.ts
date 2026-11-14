@@ -89,6 +89,7 @@ export interface IBooking {
   /** Machine-readable reason of a system cancellation (D2: 'payment_timeout'). */
   cancellationCause?: string;
   expiryNextAt?: Date;
+  expiryChecks?: number;
   /** Client key of the create request (W3b); a resent create returns this booking. */
   createRequestKey?: string;
   /** Validated create terms (W3b); an interrupted creation is finished with exactly these. */

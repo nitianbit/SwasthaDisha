@@ -274,7 +274,7 @@ export async function expireUnpaidBooking(p: { bookingId: string; now: Date; wal
     const cancelled = await BookingModel.updateOne({ _id: id, status: 'pending', paymentStatus: 'pending' },
       { $set: { status: 'cancelled', paymentStatus: 'refunded', cancellationReason: 'Payment was not completed in time',
         cancellationCause: 'payment_timeout', cancelledAt: p.cancelledAt, lifecycle: p.lifecycle(booking) },
-        $unset: { expiryNextAt: 1 } }, { session: s });
+        $unset: { expiryNextAt: 1, expiryChecks: 1 } }, { session: s });
     if (cancelled.modifiedCount !== 1) throw changed();
     await undoCouponUsageIn(records.map(r => String(r._id)), s);
     const refunded = await settleMoney(booking, id, records, p.wallets, s);

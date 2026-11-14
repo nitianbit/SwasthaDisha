@@ -53,6 +53,7 @@ const bookings = Object.assign(Object.create(BookingService.prototype), {
   bookingRepository: new BookingRepository(), paymentRepository: new PaymentRepository(), walletRepository: new WalletRepository(),
   paymentService: payments, bookingReminderScheduler: { scheduleBookingReminders: async () => undefined,
     clearBookingReminders: async (id: string) => { cleared.push(String(id)); } },
+  sendPaidBookingEmailNotification: async () => undefined, notificationService: {},
 }) as BookingService;
 
 async function customer(balance = 0) {
@@ -146,8 +147,16 @@ async function main() {
     assert.equal(next - t0.getTime(), 5 * MIN);
     await bookings.expireUnpaidBookings(new Date(t0.getTime() + MIN)); // not due yet
     assert.equal((await row(b.id)).status, 'pending');
+    // Repeated inconclusive checks back off 5, 10, 20, 40 … minutes.
+    let at = t0.getTime() + 6 * MIN;
+    for (const expected of [10, 20, 40]) {
+      await bookings.expireUnpaidBookings(new Date(at));
+      bk = await row(b.id);
+      assert.equal(new Date(bk.expiryNextAt as Date).getTime() - at, expected * MIN, `back-off ${expected} min`);
+      at = new Date(bk.expiryNextAt as Date).getTime();
+    }
     unreachable.delete(b.orderId);
-    await bookings.expireUnpaidBookings(new Date(t0.getTime() + 6 * MIN));
+    await bookings.expireUnpaidBookings(new Date(at));
     bk = await row(b.id);
     assert.equal(bk.status, 'cancelled'); assert.equal(bk.cancellationCause, 'payment_timeout');
   });
@@ -176,6 +185,19 @@ async function main() {
     gateway.set(won.orderId, [captured(won.orderId, 10000)]);
     await rejects(bookings.retryBookingPayment(won.id, { _id: u, userType: 'user' }, {}), 'BOOKING_ALREADY_PAID', 400);
     assert.equal((await row(won.id)).paymentStatus, 'paid');
+  });
+
+  await check('a free booking interrupted before confirmation is still finished after 30 minutes (free never expires)', async () => {
+    const u = await customer();
+    const { insertedId } = await BookingModel.collection.insertOne({ userId: u, bookingType: 'consultation', status: 'pending',
+      paymentStatus: 'pending', price: 0, originalPrice: 0, createRequestKey: 'free-old-0001', createdAt: new Date(Date.now() - 90 * MIN),
+      createTerms: { basePrice: 0, discountAmount: 0, useWalletBalance: false } } as never);
+    await bookings.expireUnpaidBookings(new Date());
+    assert.equal((await row(String(insertedId))).status, 'pending', 'the sweep leaves free bookings alone');
+    const r = await bookings.createSpecialistBooking({ userId: u, requestKey: 'free-old-0001' } as never) as { replayed?: boolean; paymentRequired: boolean };
+    assert.equal(r.replayed, true); assert.equal(r.paymentRequired, false);
+    const bk = await row(String(insertedId));
+    assert.equal(bk.status, 'confirmed'); assert.equal(bk.paymentStatus, 'paid');
   });
 
   await check('a capture arriving after the booking expired goes back to the wallet', async () => {

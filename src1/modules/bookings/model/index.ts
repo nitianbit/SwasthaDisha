@@ -450,6 +450,7 @@ const bookingSchema = new Schema<IBooking>(
     cancellationCause: { type: String },
     // Unpaid-booking expiry sweep (D2): next time this booking is examined after an inconclusive gateway check.
     expiryNextAt: { type: Date },
+    expiryChecks: { type: Number },
     virtualMeeting: {
       type: virtualMeetingSchema,
     },

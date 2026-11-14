@@ -695,7 +695,9 @@ export class BookingService {
   private async replayedCreate(booking: IBooking, _resent: CreateSpecialistBookingRequest): Promise<BookingPaymentInitResponse> {
     // Interrupted after the insert (no payment link, not settled): finish it now with the original request's terms.
     // Only with the validated terms stored at the insert; the resent request's body is not trusted for money.
-    if (booking.status === 'pending' && !booking.paymentTransactionId && booking.createTerms && !paymentDeadlinePassed(booking, new Date())) {
+    // The payment deadline concerns priced bookings only: a free one is always finished (it never expires).
+    const pricedAndLate = Number(booking.price || 0) > 0 && paymentDeadlinePassed(booking, new Date());
+    if (booking.status === 'pending' && !booking.paymentTransactionId && booking.createTerms && !pricedAndLate) {
       const terms = booking.createTerms;
       const finalPrice = Number(booking.price || 0);
       if (finalPrice <= 0 && booking.paymentStatus === 'paid') {
@@ -1588,7 +1590,7 @@ export class BookingService {
       status: 'pending', paymentStatus: 'pending', price: { $gt: 0 },
       createdAt: { $lte: new Date(now.getTime() - 30 * 60_000) },
       $or: [{ expiryNextAt: { $exists: false } }, { expiryNextAt: null }, { expiryNextAt: { $lte: now } }],
-    }).sort({ expiryNextAt: 1, createdAt: 1 }).limit(limit).select({ _id: 1, expiryNextAt: 1 }).lean() as unknown as { _id: unknown; expiryNextAt?: Date }[];
+    }).sort({ expiryNextAt: 1, createdAt: 1 }).limit(limit).select({ _id: 1, expiryChecks: 1 }).lean() as unknown as { _id: unknown; expiryChecks?: number }[];
     let expired = 0;
     let deferred = 0;
     for (const row of due) {
@@ -1596,9 +1598,11 @@ export class BookingService {
       try {
         const check = await this.paymentService.reconcileBookingPayments(id);
         if (check.unknown > 0) {
-          const last = row.expiryNextAt ? Math.max(5 * 60_000, now.getTime() - new Date(row.expiryNextAt).getTime()) : 0;
-          const delay = Math.min(6 * 3_600_000, last ? last * 2 : 5 * 60_000);
-          await BookingModel.updateOne({ _id: id, status: 'pending', paymentStatus: 'pending' }, { $set: { expiryNextAt: new Date(now.getTime() + delay) } });
+          // Back-off from the number of inconclusive checks: 5, 10, 20, 40 … minutes, at most 6 hours.
+          const checks = Number(row.expiryChecks || 0) + 1;
+          const delay = Math.min(6 * 3_600_000, 5 * 60_000 * 2 ** Math.min(checks - 1, 10));
+          await BookingModel.updateOne({ _id: id, status: 'pending', paymentStatus: 'pending' },
+            { $set: { expiryNextAt: new Date(now.getTime() + delay), expiryChecks: checks } });
           deferred += 1;
           continue;
         }
