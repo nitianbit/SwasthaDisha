@@ -80,6 +80,12 @@ const PHARMACY_ORDER_PAYMENT_TIMEOUT_NOTE =
 const PHARMACY_ORDER_LATE_REFUND_NOTE =
   'Late payment was refunded to wallet because the 30-minute payment window expired.';
 
+/** A booking payment attempt not yet settled: an open Razorpay order, or paid but not yet applied (interrupted). */
+const UNSETTLED_ATTEMPT = {
+  paymentGateway: 'razorpay', razorpayOrderId: { $type: 'string' },
+  $or: [{ status: 'created' }, { status: 'paid', isProcessed: { $ne: true } }],
+};
+
 @Service()
 export class PaymentService {
   private razorpayClient?: Razorpay;
@@ -1728,14 +1734,53 @@ export class PaymentService {
   }
 
   /**
+   * The booking's current unpaid Razorpay order, for "pay again" to reuse instead of creating another order (W3b): one
+   * order captures at most once, so reusing it cannot charge twice. null when it is not reusable.
+   */
+  async resumableOrder(paymentTransactionId: string): Promise<{
+    paymentTransactionId: string; razorpayOrderId: string; razorpayKeyId: string; amount: number; currency: string;
+    baseAmount: number; discountAmount: number; couponCode?: string; walletDeductedAmount: number;
+  } | null> {
+    const r = await this.paymentRepository.findById(paymentTransactionId);
+    if (!r || r.status !== 'created' || r.paymentGateway !== 'razorpay' || !r.razorpayOrderId) return null;
+    return {
+      paymentTransactionId: String(r._id), razorpayOrderId: r.razorpayOrderId, razorpayKeyId: this.getRazorpayCredentials().keyId,
+      amount: Number(r.finalAmount), currency: r.currency, baseAmount: Number(r.baseAmount), discountAmount: Number(r.discountAmount),
+      couponCode: r.couponCode, walletDeductedAmount: Number(r.notes?.walletDeductedAmount || 0),
+    };
+  }
+
+  /**
+   * Background recovery (W3b): there is no gateway webhook, so every 5 minutes unsettled booking payment attempts are
+   * checked with Razorpay (a capture whose confirmation never arrived is applied, or returned to the wallet if the
+   * booking is already paid or closed), and paid-but-unprocessed records are resumed. Window: older than 10 minutes
+   * (the customer's own flow goes first), younger than 7 days.
+   */
+  async sweepUnsettledBookingPayments(now = new Date(), limit = 100): Promise<{ checked: number; unsettled: number }> {
+    const records = await PaymentRecordModel.find({ context: 'booking', ...UNSETTLED_ATTEMPT,
+      createdAt: { $lt: new Date(now.getTime() - 10 * 60_000), $gt: new Date(now.getTime() - 7 * 86_400_000) } })
+      .sort({ createdAt: 1 }).limit(limit).lean();
+    let unsettled = 0;
+    for (const r of records) {
+      try {
+        const out = await this.reconcilePaymentAndProcess({ paymentTransactionId: String(r._id), userId: String(r.payerUserId || r.userId) });
+        if (out.state !== 'paid') unsettled += 1;
+      } catch {
+        unsettled += 1;
+      }
+    }
+    return { checked: records.length, unsettled };
+  }
+
+  /**
    * Checks EVERY unsettled Razorpay attempt of one booking with the gateway (W3b): a capture on any attempt (also an
    * older order replaced by retry-payment) is applied, or returned to the wallet if the booking is already paid or
    * closed (processVerifiedPayment). Each record is reconciled as its own payer. `unknown` counts attempts that
    * could not be settled now (gateway unreachable, concurrent change): the caller must not start another payment.
    */
   async reconcileBookingPayments(bookingId: string): Promise<{ checked: number; unknown: number }> {
-    const records = await PaymentRecordModel.find({ context: 'booking', contextId: { $eq: String(bookingId) },
-      paymentGateway: 'razorpay', status: 'created', razorpayOrderId: { $type: 'string' } }).sort({ createdAt: 1 }).lean();
+    const records = await PaymentRecordModel.find({ context: 'booking', contextId: { $eq: String(bookingId) }, ...UNSETTLED_ATTEMPT })
+      .sort({ createdAt: 1 }).lean();
     let unknown = 0;
     for (const r of records) {
       try {

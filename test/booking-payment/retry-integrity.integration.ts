@@ -34,6 +34,8 @@ const hooks: { beforeOrder?: () => Promise<void>; failOrder?: boolean } = {};
 const paymentStub = {
   // W3b: retry-payment first reconciles earlier attempts with the gateway (covered in w3b-reconcile); none here.
   reconcileBookingPayments: async () => ({ checked: 0, unknown: 0 }),
+  // Order reuse (same terms, same amount) is covered in w3b-reconcile; these flows always need a new order.
+  resumableOrder: async () => null,
   createOrder: async (d: { userId: string; context?: string; contextId: string; baseAmount: number; discountAmount: number; finalAmount: number; couponCode?: string; notes: object }) => {
     const h = hooks.beforeOrder; hooks.beforeOrder = undefined; if (h) await h();
     if (hooks.failOrder) { hooks.failOrder = false; throw new Error('Razorpay order creation failed'); }

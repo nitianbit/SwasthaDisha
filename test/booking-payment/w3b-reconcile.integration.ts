@@ -45,15 +45,31 @@ const fakeRazorpay = {
   } },
   payments: { fetch: async () => { throw new Error('not used'); } },
 };
+let createdOrders = 0;
+(fakeRazorpay.orders as Record<string, unknown>).create = async (o: { amount: number; currency: string }) => {
+  createdOrders += 1;
+  return { id: 'order_new_' + createdOrders + '_' + new Types.ObjectId().toHexString(), amount: o.amount, currency: o.currency, status: 'created' };
+};
 const emails = { sent: 0 };
 const payments = Object.assign(Object.create(PaymentService.prototype), {
   bookingRepository: new BookingRepository(), paymentRepository: new PaymentRepository(), walletRepository: new WalletRepository(),
   walletTransactionRepository: new WalletTransactionRepository(), bookingReminderScheduler: { scheduleBookingReminders: async () => undefined },
   sendPaidBookingEmailNotification: async () => { emails.sent++; },
-  finalizePaymentProcessing: async (r: object) => r,
+  // Like the real step: marks the record processed (the coupon count is covered elsewhere).
+  finalizePaymentProcessing: async (r: { _id: unknown }) => {
+    await PaymentRecordModel.updateOne({ _id: r._id }, { $set: { isProcessed: true } });
+    return PaymentRecordModel.findById(r._id).lean();
+  },
   getRazorpayClient: () => fakeRazorpay,
+  getRazorpayCredentials: () => ({ keyId: 'rzp_test_key', keySecret: 'secret' }),
 }) as unknown as PaymentService & Record<string, unknown>;
 payments.getOrCreateActiveWallet = (PaymentService.prototype as unknown as Record<string, (...a: unknown[]) => unknown>).getOrCreateActiveWallet.bind(payments);
+
+const bookingSvc = () => Object.assign(Object.create(BookingService.prototype), {
+  bookingRepository: new BookingRepository(), paymentRepository: new PaymentRepository(), walletRepository: new WalletRepository(),
+  paymentService: payments, bookingReminderScheduler: { scheduleBookingReminders: async () => undefined },
+  sendPaidBookingEmailNotification: async () => undefined, notificationService: {},
+}) as BookingService;
 
 async function customer() {
   const user = new Types.ObjectId().toHexString();
@@ -259,16 +275,92 @@ async function main() {
     const again = await createBookingWithHolds(input);
     assert.ok(isReplayedBooking(again));
     assert.equal((await SlotModel.findById(slot._id).lean())!.currentBookings, 1);
-    // The service answers a resent create before any check or charge.
-    const svc = Object.create(BookingService.prototype) as BookingService;
-    const replay = await svc.createSpecialistBooking({ userId: u, requestKey: 'create-key-0001' } as never) as { replayed?: boolean; paymentRequired: boolean; booking: { _id: unknown } };
+    // A resent create answers with that booking (no second hold); here its payment setup had not run, so it is finished.
+    const replay = await bookingSvc().createSpecialistBooking({ userId: u, requestKey: 'create-key-0001' } as never) as { replayed?: boolean; paymentRequired: boolean; booking: { _id: unknown }; payment?: unknown };
     assert.equal(replay.replayed, true); assert.equal(replay.paymentRequired, true); assert.equal(String(replay.booking._id), String(both[0]._id));
+    assert.ok(replay.payment, 'payment set up on resume');
+    assert.equal((await SlotModel.findById(slot._id).lean())!.currentBookings, 1, 'still one seat');
     // Without a key nothing changes: a second create is a second booking.
     const plain = { ...(input as object), createRequestKey: undefined } as never;
     await createBookingWithHolds(plain);
     assert.equal(await BookingModel.countDocuments({ userId: u }), 2);
     const idx = (await BookingModel.collection.indexes()).find(x => x.key?.createRequestKey === 1);
     assert.ok(idx?.unique && idx.partialFilterExpression, 'unique partial index');
+  });
+
+  await check('[retry] paying again on the same terms reuses the open order: no second chargeable order', async () => {
+    const u = await customer();
+    const b = await booking(u);
+    gateway.set(b.orderId, [{ ...captured(b.orderId), status: 'failed' }]); // tried, not paid
+    const r = await bookingSvc().retryBookingPayment(b.id, { _id: u, userType: 'user' }, {}) as { payment: { paymentTransactionId: string; razorpayOrderId: string; razorpayKeyId: string; amount: number } };
+    assert.equal(r.payment.paymentTransactionId, b.record);
+    assert.equal(r.payment.razorpayOrderId, b.orderId);
+    assert.equal(r.payment.razorpayKeyId, 'rzp_test_key');
+    assert.equal(r.payment.amount, 100);
+    assert.equal(await PaymentRecordModel.countDocuments({ contextId: b.id }), 1, 'no new order');
+    // If the amount due changed (e.g. wallet funding added since), the open order is not reused.
+    await BookingModel.updateOne({ _id: b.id }, { $set: { walletFunding: { total: 30, revision: 1, captures: [] } } });
+    const changed = await bookingSvc().retryBookingPayment(b.id, { _id: u, userType: 'user' }, {}) as { payment: { paymentTransactionId: string } };
+    assert.notEqual(String(changed.payment.paymentTransactionId), b.record, 'a new order for the new amount');
+  });
+
+  await check('[sweep] a late capture on a replaced order, after another attempt paid, is returned to the wallet with nobody watching', async () => {
+    const u = await customer();
+    const b = await booking(u);                      // P1
+    const p2 = await laterAttempt(u, b.id);          // P2 (e.g. made with a new coupon)
+    gateway.set(p2.orderId, [captured(p2.orderId)]);
+    await payments.reconcileBookingPayments(b.id);   // P2 pays the booking; P1 still open
+    assert.equal((await BookingModel.findById(b.id).lean())!.paymentStatus, 'paid');
+    gateway.set(b.orderId, [captured(b.orderId)]);   // P1 captures later; its browser confirmation is lost
+    const old = new Date(Date.now() + 11 * 60_000);  // the sweep runs 11 minutes later
+    const swept = await payments.sweepUnsettledBookingPayments(old);
+    assert.ok(swept.checked >= 1);
+    assert.equal((await PaymentRecordModel.findById(b.record).lean())!.status, 'refunded');
+    assert.equal(await balance(u), 100, 'returned to the wallet');
+    // Younger than 10 minutes: left to the customer's own flow.
+    const fresh = await booking(u);
+    gateway.set(fresh.orderId, [captured(fresh.orderId)]);
+    await payments.sweepUnsettledBookingPayments(new Date());
+    assert.equal((await PaymentRecordModel.findById(fresh.record).lean())!.status, 'created');
+  });
+
+  await check('[scan] a payment marked paid but not applied (interrupted) is resumed from the booking', async () => {
+    const u = await customer();
+    const b = await booking(u);
+    await PaymentRecordModel.updateOne({ _id: b.record }, { $set: { status: 'paid', isProcessed: false, razorpayPaymentId: 'pay_x' } });
+    const r = await payments.reconcileBookingPayments(b.id);
+    assert.deepEqual(r, { checked: 1, unknown: 0 });
+    assert.equal((await BookingModel.findById(b.id).lean())!.paymentStatus, 'paid', 'applied, not just reported');
+    await rejects(bookingSvc().retryBookingPayment(b.id, { _id: u, userType: 'user' }, {}), 'BOOKING_ALREADY_PAID', 400);
+  });
+
+  await check('[create] a resent create completes a creation interrupted after the insert', async () => {
+    const u = await customer();
+    // Inserted (slot held) but the process died before the payment order was made and linked.
+    const { insertedId } = await BookingModel.collection.insertOne({ userId: u, bookingType: 'consultation', status: 'pending',
+      paymentStatus: 'pending', price: 100, originalPrice: 120, createRequestKey: 'create-key-0002' } as never);
+    const r = await bookingSvc().createSpecialistBooking({ userId: u, requestKey: 'create-key-0002' } as never) as {
+      replayed?: boolean; paymentRequired: boolean; payment?: { paymentTransactionId: string; amount: number; discountAmount: number } };
+    assert.equal(r.replayed, true); assert.equal(r.paymentRequired, true);
+    assert.equal(r.payment!.amount, 100); assert.equal(r.payment!.discountAmount, 20);
+    const linked = (await BookingModel.findById(insertedId).lean())!;
+    assert.equal(String(linked.paymentTransactionId), String(r.payment!.paymentTransactionId), 'linked to the booking');
+    const again = await bookingSvc().createSpecialistBooking({ userId: u, requestKey: 'create-key-0002' } as never) as { payment?: unknown };
+    assert.equal(again.payment, undefined, 'complete now: a further resend only returns the booking');
+    assert.equal(await PaymentRecordModel.countDocuments({ contextId: String(insertedId) }), 1);
+  });
+
+  await check('[create] a resent create confirms a free booking interrupted before its direct confirmation', async () => {
+    const u = await customer();
+    const { insertedId } = await BookingModel.collection.insertOne({ userId: u, bookingType: 'consultation', status: 'pending',
+      paymentStatus: 'paid', price: 0, originalPrice: 0, createRequestKey: 'create-key-0003' } as never);
+    const r = await bookingSvc().createSpecialistBooking({ userId: u, requestKey: 'create-key-0003' } as never) as { replayed?: boolean; paymentRequired: boolean };
+    assert.equal(r.replayed, true); assert.equal(r.paymentRequired, false);
+    const bk = (await BookingModel.findById(insertedId).lean())!;
+    assert.equal(bk.status, 'confirmed'); assert.equal(bk.paymentStatus, 'paid');
+    assert.ok(bk.paymentTransactionId, 'settled with a paid record');
+    await bookingSvc().createSpecialistBooking({ userId: u, requestKey: 'create-key-0003' } as never);
+    assert.equal(await PaymentRecordModel.countDocuments({ contextId: String(insertedId) }), 1, 'settled once');
   });
 
   await check('HTTP: POST /payments/reconcile validates and answers through the real router', async () => {

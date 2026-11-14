@@ -692,7 +692,21 @@ export class BookingService {
    * Answer for a create whose key was already used: the existing booking, unchanged. Payment (if still due) is resumed
    * from the booking (retry-payment / payment reconciliation), never by creating a second booking.
    */
-  private replayedCreate(booking: IBooking): BookingPaymentInitResponse {
+  private async replayedCreate(booking: IBooking, data: CreateSpecialistBookingRequest): Promise<BookingPaymentInitResponse> {
+    // Interrupted after the insert (no payment link, not settled): finish it now with the original request's terms.
+    if (booking.status === 'pending' && !booking.paymentTransactionId) {
+      const finalPrice = Number(booking.price || 0);
+      if (finalPrice <= 0 && booking.paymentStatus === 'paid') {
+        // Created by the earlier path that marked a free booking paid at insert (and then could not settle it).
+        await BookingModel.updateOne({ _id: booking._id, status: 'pending', paymentStatus: 'paid', price: { $lte: 0 },
+          $or: [{ paymentTransactionId: { $exists: false } }, { paymentTransactionId: null }, { paymentTransactionId: '' }] },
+          { $set: { paymentStatus: 'pending' } });
+      }
+      const basePrice = Number(booking.originalPrice ?? finalPrice);
+      const resumed = await this.finishCreate(booking, { userId: booking.userId, bookingType: booking.bookingType, finalPrice, basePrice,
+        discountAmount: Math.max(0, basePrice - finalPrice), couponCode: data.couponCode, useWalletBalance: data.useWalletBalance === true });
+      return { ...resumed, replayed: true };
+    }
     return {
       booking,
       paymentRequired: booking.status !== 'cancelled' && booking.paymentStatus !== 'paid' && Number(booking.price || 0) > 0,
@@ -708,7 +722,7 @@ export class BookingService {
     const requestKey = typeof data.requestKey === 'string' && data.requestKey.trim() ? data.requestKey.trim() : undefined;
     if (requestKey) {
       const prior = await BookingModel.findOne({ userId: { $eq: data.userId }, createRequestKey: { $eq: requestKey } }).lean() as IBooking | null;
-      if (prior) return this.replayedCreate(prior);
+      if (prior) return this.replayedCreate(prior, data);
     }
     const followUpConfig = await this.validateAndPrepareFollowUp(
       data,
@@ -780,8 +794,11 @@ export class BookingService {
       contactNo: data.contactNo,
       alternateContactNo: data.alternateContactNo,
       price: finalPrice,
+      originalPrice: basePrice,
       status: 'pending',
-      paymentStatus: finalPrice > 0 ? 'pending' : 'paid',
+      // Always unpaid at insert: a free or wallet-covered booking is marked paid by settleDirectPaid (fenced, with its
+      // paid record), never at insert (closes C7b; marking it paid here made that settlement refuse it).
+      paymentStatus: 'pending',
       lifecycle: this.buildLifecyclePatch(undefined, {
         created: true,
       }),
@@ -793,7 +810,7 @@ export class BookingService {
     // the insert (A2a): a slot is never oversold and a follow-up benefit never used twice.
     const savedBooking = await createBookingWithHolds(booking);
     // A concurrent request with the same key created it: no notifications, wallet debit or order for this one.
-    if (isReplayedBooking(savedBooking)) return this.replayedCreate(savedBooking);
+    if (isReplayedBooking(savedBooking)) return this.replayedCreate(savedBooking, data);
 
     try {
       await this.notificationService.createBookingCreatedNotification(
@@ -828,6 +845,20 @@ export class BookingService {
       console.error('Failed to create specialist booking notification:', error);
     }
 
+    return this.finishCreate(savedBooking, { userId: data.userId, bookingType, finalPrice, basePrice, discountAmount, couponCode,
+      useWalletBalance: data.useWalletBalance === true });
+  }
+
+  /**
+   * Everything after the insert of a new consultation: wallet funding, then either direct settlement (nothing left to
+   * pay) or a Razorpay order linked to the booking. Each step is idempotent (wallet funding tops up to the amount due;
+   * settlement and linking are fenced), so a resent create (same key) can complete a creation that was interrupted
+   * after the insert (W3b).
+   */
+  private async finishCreate(savedBooking: IBooking, a: { userId: string; bookingType: BookingType; finalPrice: number;
+    basePrice: number; discountAmount: number; couponCode?: string; useWalletBalance: boolean }): Promise<BookingPaymentInitResponse> {
+    const { finalPrice, basePrice, discountAmount, couponCode, bookingType } = a;
+    const data = { userId: a.userId, useWalletBalance: a.useWalletBalance };
     let walletDeductedAmount = 0;
     if (finalPrice > 0 && data.useWalletBalance) {
       walletDeductedAmount = (await fundBookingFromWallet({ model: BookingModel, kind: 'booking',
@@ -1608,6 +1639,18 @@ export class BookingService {
       }
       if (fresh.status === 'cancelled') {
         throw new AppError({ status: 400, code: 'BOOKING_CANCELLED', message: 'Cannot retry payment for a cancelled booking' });
+      }
+    }
+    // Paying again on the same terms reuses the open order: an order captures at most once, so a late capture of a
+    // replaced order can no longer charge a second time. A new order only when the terms change (coupon / wallet).
+    // Only when the open order is for exactly what is due now (price minus wallet funding); otherwise a new order.
+    if (!options.couponCode && options.useWalletBalance !== true && booking.paymentTransactionId) {
+      const open = await this.paymentService.resumableOrder(String(booking.paymentTransactionId));
+      const current = await this.getById(bookingId);
+      const funded = Number((current as IBooking & { walletFunding?: { total?: number } }).walletFunding?.total || 0);
+      const due = Math.round((Number(current.price || 0) - funded) * 100);
+      if (open && Math.round(open.amount * 100) === due && String(current.paymentTransactionId) === open.paymentTransactionId) {
+        return { booking: current, paymentRequired: true, walletDeductedAmount: funded, payment: open };
       }
     }
 
