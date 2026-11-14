@@ -16,6 +16,8 @@ export type Reader = NonNullable<AuthRequest['user']>;
 export type Decision = { allow: true; visibility: 'public' | 'private' } | { allow: false; status: 401 | 404 };
 
 const id = (v: unknown) => (v == null ? '' : String(v));
+/** Canonical record id for binding keys: ObjectId hex is lower-cased, so every spelling of a record maps to one slot. */
+const canon = (v: unknown): string => { const s = id(v).trim(); return /^[0-9a-fA-F]{24}$/.test(s) ? s.toLowerCase() : s; };
 const specialistOf = (r: Reader) => id(r.specialistId ?? r._id);
 const pharmacyOf = (r: Reader) => id(r.pharmacyId ?? r._id);
 
@@ -122,18 +124,20 @@ async function activate(actor: Reader | undefined, k: Key, kind: GrantKind, expe
 }
 
 /**
- * Withdraws for good: marks the slot revoked and moves its generation on, creating a tombstone if nothing was bound yet
- * (so a grant still in flight from before cannot land). With `onlyGen`, only that exact active generation is revoked.
+ * Withdraws the slot exactly at `expectedGen` (the generation seen when the withdrawing write was checked): an active
+ * slot there is revoked and its generation moved on; a slot that did not exist gets a revoked tombstone so a grant still
+ * in flight from before cannot land. A NEWER generation (a later authorised re-attach) is never touched.
  */
-async function revoke(k: Key, kind: GrantKind, onlyGen?: number): Promise<void> {
-  const update = { $set: { state: 'revoked' as const }, $inc: { gen: 1 } };
-  if (onlyGen !== undefined) { await FileGrantModel.updateOne({ ...k, gen: onlyGen, state: 'active' }, update); return; }
-  const insert = { kind, source: 'attach', createdByType: 'system', createdById: 'withdrawal', createdAt: new Date() };
+async function revoke(k: Key, kind: GrantKind, expectedGen: number): Promise<void> {
+  if (expectedGen > 0) {
+    await FileGrantModel.updateOne({ ...k, gen: expectedGen, state: 'active' }, { $set: { state: 'revoked' }, $inc: { gen: 1 } });
+    return;
+  }
   try {
-    await FileGrantModel.updateOne(k, { ...update, $setOnInsert: insert }, { upsert: true });
+    await FileGrantModel.updateOne(k, { $setOnInsert: { ...k, kind, source: 'attach', state: 'revoked', gen: 1,
+      createdByType: 'system', createdById: 'withdrawal', createdAt: new Date() } }, { upsert: true });
   } catch (e) {
-    if (!isDuplicate(e)) throw e;
-    await FileGrantModel.updateOne(k, update); // the slot was created concurrently: revoke it
+    if (!isDuplicate(e)) throw e; // created concurrently by a newer attach: leave it
   }
 }
 
@@ -168,7 +172,7 @@ async function activeSlots(model: string, recordId: string): Promise<SlotView[]>
  */
 export async function snapshotWithBindings(model: string, recordId: unknown): Promise<{ doc: Record<string, unknown>; bindings: SlotView[] } | null> {
   const M = mongoose.models[model];
-  const rid = id(recordId);
+  const rid = canon(recordId);
   if (!M || !isValidObjectId(rid)) return null;
   const sig = (xs: SlotView[]) => xs.map((x) => `${x.field}|${x.path}|${x.gen}`).sort().join(',');
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -185,7 +189,7 @@ export async function snapshotWithBindings(model: string, recordId: unknown): Pr
 
 /** Binds a freshly created copy with the bindings taken from its source snapshot (new record: nothing to fence). */
 export async function bindCopy(actor: Reader | undefined, model: string, copyId: unknown, bindings: SlotView[]): Promise<void> {
-  for (const b of bindings) await activate(actor, { path: b.path, model, resourceId: id(copyId), field: b.field }, b.kind, 0, 'attach');
+  for (const b of bindings) await activate(actor, { path: b.path, model, resourceId: canon(copyId), field: b.field }, b.kind, 0, 'attach');
 }
 
 /** The decision. `rel` has already passed `legacyPath` (traversal, symlink and reserved-subtree guard). */
@@ -238,6 +242,14 @@ export function notAttachable(message: string): AppError {
   return new AppError({ status: 400, code: 'FILE_NOT_ATTACHABLE', message });
 }
 
+/** Authority over a file: an admin, or the recorded uploader. */
+async function hasAuthority(actor: Reader | undefined, path: string): Promise<boolean> {
+  if (!actor) return false;
+  if (actor.userType === 'admin') return true;
+  const up = await FileUploadModel.findOne({ path }).select({ uploaderType: 1, uploaderId: 1 }).lean();
+  return !!up && up.uploaderType === actor.userType && up.uploaderId === id(actor._id);
+}
+
 /**
  * Attach-time check, run BEFORE the record is saved. Returns the upload paths the actor may BIND to the record:
  * every referenced upload that the actor uploaded (or any, for an admin). A reference the actor has no authority over is
@@ -251,12 +263,7 @@ export async function checkAttachable(actor: Reader | undefined, values: unknown
   const bind: string[] = [];
   for (const p of paths) {
     const unchanged = before.has(p);
-    let authorised = false;
-    if (actor?.userType === 'admin') authorised = true;
-    else if (actor) {
-      const up = await FileUploadModel.findOne({ path: p }).select({ uploaderType: 1, uploaderId: 1 }).lean();
-      authorised = !!up && up.uploaderType === actor.userType && up.uploaderId === id(actor._id);
-    }
+    const authorised = await hasAuthority(actor, p);
     if (!authorised) {
       if (unchanged) continue;
       throw notAttachable(actor ? 'A file can only be attached by the account that uploaded it' : 'Sign in to attach files');
@@ -276,7 +283,7 @@ export async function checkAttachable(actor: Reader | undefined, values: unknown
  */
 export async function grantFiles(actor: Reader | undefined, paths: string[], kind: GrantKind,
   binding: { model: string; resourceId: unknown; field: string }, source: 'attach' | 'legacy_manifest' = 'attach'): Promise<void> {
-  const rid = id(binding.resourceId);
+  const rid = canon(binding.resourceId);
   if (!rid || !mongoose.models[binding.model] || !binding.field) {
     throw new AppError({ status: 500, code: 'FILE_GRANT_INVALID', message: 'File grant needs a record and field' });
   }
@@ -303,7 +310,7 @@ export async function rebindStored(actor: Reader | undefined, model: string, rec
     const values = valuesAt(doc, field);
     // Every value counts as "unchanged", so a value without authority is skipped rather than refused.
     const paths = await checkAttachable(actor, values, values, { publicImage: kind === 'public' });
-    if (paths.length) await grantFiles(actor, paths, kind, { model, resourceId: String(recordId), field });
+    if (paths.length) await grantFiles(actor, paths, kind, { model, resourceId: doc._id, field });
   }
 }
 
@@ -329,46 +336,51 @@ export function fileValues(...xs: unknown[]): unknown[] {
 }
 
 /**
- * D1 write wrapper.
- * 1. Before the save: check every referenced upload (uploader or admin; public fields take images) and note the
- *    generation of each binding slot this write may activate.
+ * D1 write wrapper (use `withFiles`, which prepares the body first).
+ * 1. Before the save: check every referenced upload (uploader or admin; public fields take images) and read the
+ *    generation of each slot this write may activate or withdraw.
  * 2. Save (the service authorises and validates; nothing has been changed if it throws).
- * 3. After a successful save: activate the authorised bindings at the generations noted in 1 (a withdrawal in between
- *    wins), and withdraw - permanently, as tombstones - the bindings of files the SAVED record no longer holds in that
- *    field (judged from the saved record, so a field the service ignored, or a rejected write, withdraws nothing).
- * Reads validate bindings against the record, so a binding never grants more than the record currently shows.
+ * 3. After a successful save: activate the authorised bindings at the generations read in 1, and withdraw, at the
+ *    generations read in 1, the files the SAVED record no longer holds in that field. A withdrawal or re-attach in
+ *    between always wins over this write's older view; a field the service ignored, or a rejected write, changes nothing.
+ * `withFiles` never writes a file value back on behalf of someone without authority over it, so a stale save cannot
+ * restore a removed file; reads validate bindings against the record.
  */
 export async function attachFiles<T>(actor: Reader | undefined, model: string, specs: AttachSpec[], save: () => Promise<T>,
   resourceId: (saved: T) => unknown, existingId?: unknown): Promise<T> {
-  const rid = id(existingId);
-  const checked: { spec: AttachSpec; paths: string[]; gens: number[] }[] = [];
+  const rid = canon(existingId);
+  const slot = (path: string, field: string, r = rid) => ({ path, model, resourceId: r, field });
+  const checked: { spec: AttachSpec; paths: string[]; gens: number[]; removed: string[]; removedGens: number[] }[] = [];
   for (const spec of specs) {
     const paths = await checkAttachable(actor, spec.values, spec.previous ?? [], { publicImage: spec.kind === 'public' });
-    const gens = await Promise.all(paths.map((path) => (rid ? generationOf({ path, model, resourceId: rid, field: spec.field }) : 0)));
-    checked.push({ spec, paths, gens });
+    const keep = new Set(spec.values.map(uploadPathOf).filter((p): p is string => !!p));
+    const removed = rid ? [...new Set((spec.previous ?? []).map(uploadPathOf).filter((p): p is string => !!p && !keep.has(p)))] : [];
+    const gens = await Promise.all(paths.map((p) => (rid ? generationOf(slot(p, spec.field)) : 0)));
+    const removedGens = await Promise.all(removed.map((p) => generationOf(slot(p, spec.field))));
+    checked.push({ spec, paths, gens, removed, removedGens });
   }
   const saved = await save();
-  const savedRid = id(resourceId(saved));
+  const savedRid = canon(resourceId(saved));
   if (!savedRid) return saved;
+  const same = !!rid && savedRid === rid;
   for (const { spec, paths, gens } of checked) {
     for (let i = 0; i < paths.length; i++) {
-      await activate(actor, { path: paths[i]!, model, resourceId: savedRid, field: spec.field }, spec.kind,
-        savedRid === rid ? gens[i]! : 0, 'attach');
+      await activate(actor, slot(paths[i]!, spec.field, savedRid), spec.kind, same ? gens[i]! : 0, 'attach');
     }
   }
-  if (rid && savedRid === rid) {
+  if (same) {
     const top = (field: string) => field.split('.')[0]!;
     let fresh: unknown;
-    for (const spec of specs) {
-      const keep = new Set(spec.values.map(uploadPathOf).filter((p): p is string => !!p));
-      const removed = [...new Set((spec.previous ?? []).map(uploadPathOf).filter((p): p is string => !!p && !keep.has(p)))];
+    for (const { spec, removed, removedGens } of checked) {
       if (!removed.length) continue;
       // What the save actually wrote: the returned record when it carries the field, else the record as stored now.
       let source: unknown = saved && typeof saved === 'object' && top(spec.field) in (saved as object) ? saved : undefined;
       if (source === undefined) fresh ??= await mongoose.models[model]!.findById(rid).lean();
       source ??= fresh;
       const held = new Set(valuesAt(source, spec.field).map(uploadPathOf).filter((p): p is string => !!p));
-      for (const path of removed) if (!held.has(path)) await revoke({ path, model, resourceId: rid, field: spec.field }, spec.kind);
+      for (let i = 0; i < removed.length; i++) {
+        if (!held.has(removed[i]!)) await revoke(slot(removed[i]!, spec.field), spec.kind, removedGens[i]!);
+      }
     }
   }
   return saved;
@@ -408,15 +420,55 @@ export function specsFor(model: string, data: unknown, previous: unknown): Attac
     .map(([field, kind]) => ({ field, kind, values: valuesAt(data, field), previous: previous ? valuesAt(previous, field) : [] }));
 }
 
+/** Deep comparison of stored and submitted values, ignoring Mongo-managed keys and Date/ObjectId spellings. */
+function sameValue(a: unknown, b: unknown): boolean {
+  const norm = (v: unknown): unknown => {
+    if (v instanceof Date) return v.toISOString();
+    if (v && typeof v === 'object' && typeof (v as { toHexString?: unknown }).toHexString === 'function') return String(v);
+    if (Array.isArray(v)) return v.map(norm);
+    if (v && typeof v === 'object') {
+      return Object.fromEntries(Object.entries(v as Record<string, unknown>)
+        .filter(([k, x]) => !['_id', 'createdAt', 'updatedAt'].includes(k) && x !== undefined)
+        .sort(([x], [y]) => x.localeCompare(y)).map(([k, x]) => [k, norm(x)]));
+    }
+    return v;
+  };
+  return JSON.stringify(norm(a)) === JSON.stringify(norm(b));
+}
+
 /**
  * One-line controller wrapper: `withFiles(req.user, 'Pharmacy', body, id, () => service.update(id, body))`.
  * `id` is the record being updated (its current values are the "previous" ones), or undefined for a create, where
  * the saved record's `_id` is used.
+ *
+ * A file value is never written back by someone without authority over it: when a submitted key keeps a file the
+ * actor did not upload (and is not admin), the key is removed from `data` if it is unchanged (nothing is lost; the
+ * stored value stays as it is, so a stale copy cannot restore a removed file), and the request is refused if the key
+ * also changes something else (ask the uploader or an admin).
  */
 export async function withFiles<T>(actor: Reader | undefined, model: string, data: unknown, id: unknown,
   save: () => Promise<T>, savedId: (saved: T) => unknown = (s) => (s as { _id?: unknown; id?: unknown } | null)?._id ?? (s as { id?: unknown } | null)?.id ?? id): Promise<T> {
   const M = mongoose.models[model];
-  if (!M) throw new AppError({ status: 500, code: 'FILE_FIELDS_UNKNOWN', message: `Unknown model ${model}` });
-  const previous = id != null && isValidObjectId(String(id)) ? await M.findById(String(id)).lean() : null;
-  return attachFiles(actor, model, specsFor(model, data, previous), save, savedId, previous ? id : undefined);
+  const fields = FILE_FIELDS[model];
+  if (!M || !fields) throw new AppError({ status: 500, code: 'FILE_FIELDS_UNKNOWN', message: `Unknown model ${model}` });
+  const previous = id != null && isValidObjectId(String(id)) ? await M.findById(String(id)).lean() as Record<string, unknown> | null : null;
+  if (previous && data && typeof data === 'object') {
+    const body = data as Record<string, unknown>;
+    const pathsOf = (doc: unknown, top: string) => new Set(fields.filter(([f]) => f.split('.')[0] === top)
+      .flatMap(([f]) => valuesAt(doc, f).map(uploadPathOf)).filter((p): p is string => !!p));
+    for (const top of [...new Set(fields.map(([f]) => f.split('.')[0]!))]) {
+      if (!(top in body)) continue;
+      const now = pathsOf(body, top);
+      const before = pathsOf(previous, top);
+      const retained = [...now].filter((p) => before.has(p));
+      const unowned: string[] = [];
+      for (const p of retained) if (!(await hasAuthority(actor, p))) unowned.push(p);
+      if (!unowned.length) continue;
+      const unchangedFiles = now.size === before.size && retained.length === now.size;
+      const pureFileKey = fields.some(([f]) => f === top);
+      if (unchangedFiles && (pureFileKey || sameValue(body[top], previous[top]))) { delete body[top]; continue; }
+      throw notAttachable('This change keeps files that only their uploader or an admin can keep; ask an admin to make it');
+    }
+  }
+  return attachFiles(actor, model, specsFor(model, data, previous), save, savedId, previous ? previous._id : undefined);
 }

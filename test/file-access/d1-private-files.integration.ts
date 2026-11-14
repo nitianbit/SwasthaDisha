@@ -21,7 +21,7 @@ import BookingModel from '@/modules/bookings/model';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
 import ExternalBookingModel from '@/modules/externalBookings/model';
 import { FileGrantModel, FileUploadModel } from '@/modules/file/model/access';
-import { attachFiles, checkAttachable, grantFiles } from '@/modules/file/access';
+import { attachFiles, checkAttachable, grantFiles, withFiles } from '@/modules/file/access';
 import PharmacyModel from '@/modules/pharmacies/model';
 import { Container } from 'typedi';
 import { PharmacyService } from '@/modules/pharmacies/services';
@@ -304,6 +304,71 @@ async function main() {
       // The owner's notes-only update ignores documents: the saved booking still holds the file, nothing withdrawn.
       await attachFiles(a.claims, 'Booking', specs, async () => ({ _id: bk, documents: [{ url }] }), (x) => x._id, bk);
       assert.equal((await get(url, spec.token)).status, 200);
+    });
+
+    await check('withFiles never writes back a file the actor does not own: unchanged → dropped, mixed change → refused', async () => {
+      const ph = new Types.ObjectId();
+      const adminImg = (await upload(admin.token, 'by-admin.png')).body.data!.files[0]!.url;
+      await PharmacyModel.collection.insertOne({ _id: ph, phone: '9123400104', email: 'p104@example.in', name: 'Old', profilePictureUrl: adminImg } as never);
+      const me = { _id: ph.toHexString(), userType: 'pharmacy', pharmacyId: ph.toHexString() };
+      const body: Record<string, unknown> = { name: 'New', profilePictureUrl: adminImg };
+      await withFiles(me, 'Pharmacy', body, ph.toHexString(), async () => {
+        await PharmacyModel.collection.updateOne({ _id: ph }, { $set: body });
+        return PharmacyModel.collection.findOne({ _id: ph });
+      });
+      assert.deepEqual(Object.keys(body), ['name'], 'the unchanged unowned avatar was not re-sent');
+      const spec2 = new Types.ObjectId();
+      const adminDoc = (await upload(admin.token, 'degree.pdf')).body.data!.files[0]!.url;
+      const ownDoc = (await upload(sign({ _id: spec2.toHexString(), userType: 'specialist' }), 'own.pdf')).body.data!.files[0]!.url;
+      await mongoose.models.Specialist!.collection.insertOne({ _id: spec2, documents: [{ name: 'Degree', url: adminDoc }] } as never);
+      await assert.rejects(withFiles({ _id: spec2.toHexString(), userType: 'specialist' }, 'Specialist',
+        { documents: [{ name: 'Degree', url: adminDoc }, { name: 'Mine', url: ownDoc }] }, spec2, async () => ({ _id: spec2 })),
+        (e: { code?: string }) => e.code === 'FILE_NOT_ATTACHABLE');
+    });
+
+    await check('a stale self-save during an interrupted replacement cannot restore the old public image', async () => {
+      const ph = new Types.ObjectId();
+      await PharmacyModel.collection.insertOne({ _id: ph, phone: '9123400105', email: 'p105@example.in' } as never);
+      const P = (await upload(admin.token, 'p.png')).body.data!.files[0]!.url;
+      const Q = (await upload(admin.token, 'q.png')).body.data!.files[0]!.url;
+      const write = (body: Record<string, unknown>) => async () => { await PharmacyModel.collection.updateOne({ _id: ph }, { $set: body }); return PharmacyModel.collection.findOne({ _id: ph }); };
+      const adminBody = { profilePictureUrl: P };
+      await withFiles(admin.claims, 'Pharmacy', adminBody, ph, write(adminBody));
+      assert.equal((await get(P)).status, 200);
+      const me = { _id: ph.toHexString(), userType: 'pharmacy', pharmacyId: ph.toHexString() };
+      const stale: Record<string, unknown> = { name: 'x', profilePictureUrl: P }; // the editor loaded P
+      await withFiles(me, 'Pharmacy', stale, ph, async () => {
+        // The admin's replacement P→Q commits but crashes before any binding work (P's binding stays active).
+        await PharmacyModel.collection.updateOne({ _id: ph }, { $set: { profilePictureUrl: Q } });
+        return write(stale)();
+      });
+      assert.equal((await PharmacyModel.collection.findOne({ _id: ph }))!.profilePictureUrl, Q, 'the stale copy did not restore P');
+      assert.equal((await get(P)).status, 401);
+    });
+
+    await check('an uppercase record id withdraws the canonical slot; an older removal never revokes a newer re-attach', async () => {
+      const ph = new Types.ObjectId();
+      await PharmacyModel.collection.insertOne({ _id: ph, phone: '9123400106', email: 'p106@example.in' } as never);
+      const P = (await upload(admin.token, 'u1.png')).body.data!.files[0]!.url;
+      const Q = (await upload(admin.token, 'u2.png')).body.data!.files[0]!.url;
+      const write = (body: Record<string, unknown>) => async () => { await PharmacyModel.collection.updateOne({ _id: ph }, { $set: body }); return PharmacyModel.collection.findOne({ _id: ph }); };
+      const up = ph.toHexString().toUpperCase();
+      const b1 = { profilePictureUrl: P }; await withFiles(admin.claims, 'Pharmacy', b1, up, write(b1));
+      const b2 = { profilePictureUrl: Q }; await withFiles(admin.claims, 'Pharmacy', b2, up, write(b2));
+      const slotP = await FileGrantModel.findOne({ path: P.slice('/api/static/'.length) }).lean();
+      assert.equal(slotP?.resourceId, ph.toHexString()); assert.equal(slotP?.state, 'revoked');
+      assert.equal((await get(P)).status, 401); assert.equal((await get(Q)).status, 200);
+      // Older A replaces Q→P' and pauses after its save; newer B (authorised) re-attaches Q; then A withdraws.
+      const R = (await upload(admin.token, 'u3.png')).body.data!.files[0]!.url;
+      const a1: Record<string, unknown> = { profilePictureUrl: R };
+      await withFiles(admin.claims, 'Pharmacy', a1, ph, async () => {
+        await write(a1)();
+        const b3 = { profilePictureUrl: Q };
+        await withFiles(admin.claims, 'Pharmacy', b3, ph, write(b3));
+        return { _id: ph, profilePictureUrl: R }; // A's own (older) view of what it saved
+      });
+      assert.equal((await PharmacyModel.collection.findOne({ _id: ph }))!.profilePictureUrl, Q);
+      assert.equal((await get(Q)).status, 200, 'the newer re-attach survives the older withdrawal');
     });
 
     await check('a poisoned pre-D1 reference resent unchanged grants nothing (pharmacy avatar → a customer file)', async () => {

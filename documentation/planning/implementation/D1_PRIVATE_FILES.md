@@ -27,14 +27,18 @@ code; a binding written late (after a newer removal) or for a save that never co
 bind the same file and each counts independently (a file stays public while at least one current public binding
 exists).
 
-**Withdrawal is permanent, by generation** (Codex msg_1794667621304, msg_1794668108486): a binding slot
-`(path, model, resourceId, field)` is never deleted. Withdrawing marks it `revoked` and increments `gen` (creating a
-tombstone if nothing was bound yet); granting activates it only at the generation read when the actor's authority was
-checked. So a grant delayed past a removal cannot revive the binding, whatever stale saves happen in between; only a
-fresh authorised attach (which reads the new generation) binds again. Withdrawal happens only **after a successful
-save**, judged from the saved record (the returned record, or the stored one if the response lacks the field), so a
-rejected write or a field the service ignored withdraws nothing. A read that finds an active binding no longer current
-revokes exactly that generation. Reads examine every active binding (no cut-off) and always close their cursors.
+**No write-back without authority; withdrawal by generation** (Codex msg_1794667621304, msg_1794668108486,
+msg_1794668628887). `withFiles` never writes a file value on behalf of someone without authority over it: a submitted key
+that keeps a file the actor did not upload (and is not admin) is dropped from the body when unchanged (the stored value
+stays, so a stale copy can never restore a removed file), and the request is refused (`FILE_NOT_ATTACHABLE`) when that
+key also changes something else. So file values are only ever written by authorised changes or removals.
+A binding slot `(path, model, canonical resourceId, field)` is never deleted. Each write reads, before its save, the
+generation of every slot it may activate or withdraw; after a successful save it activates and withdraws only at those
+generations (withdrawal judged from the saved record; a missing slot gets a revoked tombstone). A delayed grant cannot
+land after a withdrawal, and an older withdrawal cannot revoke a newer re-attach. A crash between save and binding work
+leaves at most an inert binding (the record no longer holds the file, and nobody without authority can write it back);
+reads revoke such bindings at the generation they read. Record ids are canonical (lower-case hex) in every slot. Reads
+examine every active binding (no cut-off) and always close their cursors.
 
 ## One read decision, three routes
 
