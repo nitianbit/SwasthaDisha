@@ -1,7 +1,10 @@
+import { getTodayYyyymmdd } from '@/modules/common/utils/dateUtils';
 import { ClientSession, Types } from 'mongoose';
 import { InventoryItemModel } from '@/modules/pharmacyInventory/model';
 
-export const todayYyyymmdd = () => new Date().toISOString().slice(0, 10).replace(/-/g, '');
+// The business date, the same one every other date in the system uses (getTodayYyyymmdd). It used to be the UTC date,
+// so between 00:00 and 05:30 IST a batch that expired "yesterday" still counted as sellable.
+export const todayYyyymmdd = () => getTodayYyyymmdd();
 
 /**
  * Sellable stock, the same rule reservations use: active, unexpired batch quantity; items without batches (legacy)

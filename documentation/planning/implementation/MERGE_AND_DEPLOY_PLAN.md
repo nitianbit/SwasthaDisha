@@ -360,5 +360,6 @@ can read.
 - Behaviour change for staff clients: `POST /pharmacy-orders/:id/cancel` and `/status` cancelled/rejected/abandoned now
   answer 409 `ORDER_PAID_USE_CANCEL_REQUEST` for paid orders; paid orders are cancelled through
   `POST /:id/cancel-request` + `/cancel-request/approve|reject` (body `{requestId}`).
-- Known test issue (not D3): `test/pharmacy-inventory/p7c-low-stock.integration.ts` check [C2] fails between 00:00 IST
-  and 05:30 IST (its "today" and the sweep use different time zones). Fix the test before using it as a release gate.
+- Fixed: sellable stock used the UTC date for batch expiry while every other date uses the server's local business
+  date (`getTodayYyyymmdd`), so between 00:00 and 05:30 IST an expired batch still counted as sellable (and P7c [C2]
+  failed in that window). Run the API with `TZ=Asia/Kolkata` so the business date is the Indian date.
