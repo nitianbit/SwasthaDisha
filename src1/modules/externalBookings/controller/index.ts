@@ -5,7 +5,7 @@ import { Container } from 'typedi';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { AppError } from '@/modules/common/types';
 import { ExternalBookingService } from '@/modules/externalBookings/services';
-import { listOpenCancellations } from '@/modules/externalBookings/services/providerOps';
+import { listOpenCancellations, obligationSnapshot } from '@/modules/externalBookings/services/providerOps';
 import { DependentService } from '@/modules/dependents/services';
 import UserModel from '@/modules/user/model';
 import {
@@ -820,6 +820,12 @@ export class ExternalBookingController {
       data: result.data,
       pagination: { page: result.page, limit, total: result.total, totalPages: result.totalPages },
     });
+  };
+
+  obligations = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const data = await obligationSnapshot(req.params.id);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(200).json({ success: true, data });
   };
 
   reconcileCancellation = async (

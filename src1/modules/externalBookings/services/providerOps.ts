@@ -631,22 +631,39 @@ export async function listOpenCancellations(q: { scope: 'admin' | 'open'; page: 
     ExternalBookingModel.countDocuments(filter),
   ]);
   const rows = found as unknown as Booking[];
-  const data = rows.map(b => {
-    const c = opsOf(b).cancel!;
-    const acked = new Set(c.ackedRefs ?? []);
-    return {
-      _id: String(b._id), status: b.status, integration: b.integration, providerType: b.providerType,
-      appointmentType: b.appointmentType, bookingDate: b.bookingDate, bookingTime: b.bookingTime, patientName: b.patientName,
-      doctorName: b.doctorName, labName: b.labName, packageNames: b.packageNames, testNames: b.testNames,
-      price: b.price, paymentStatus: b.paymentStatus, userId: b.userId,
-      providerRefs: providerRefs(b).map(ref => ({ ref, cancelled: acked.has(ref) })),
-      /** Send back unchanged with the reconciliation: it is refused if the obligations changed meanwhile. */
-      obligations: obligationFingerprint(b),
-      cancel: { by: c.by, reason: c.reason, at: c.at, state: c.state, calls: c.calls ?? 0, nextAt: c.nextAt,
-        needsAdmin: c.needsAdmin === true, blockedBy: c.blockedBy, error: c.error },
-    };
-  });
+  const data = rows.map(b => obligationView(b) as ObligationView & { cancel: NonNullable<ObligationView['cancel']> });
   return { data, total, page: q.page, totalPages: Math.ceil(total / q.limit) };
+}
+
+/**
+ * Admin view of what a booking may still hold at the provider (W2c): safe fields, every provider reference with its
+ * acknowledged flag, the open provider operations, and the fingerprint a reconciliation must send back. Never the raw
+ * provider responses, tokens or acknowledgement bookkeeping.
+ */
+export function obligationView(b: Booking) {
+  const ops = opsOf(b);
+  const c = ops.cancel;
+  const acked = new Set(c?.ackedRefs ?? []);
+  return {
+    _id: String(b._id), status: b.status, integration: b.integration, providerType: b.providerType,
+    appointmentType: b.appointmentType, bookingDate: b.bookingDate, bookingTime: b.bookingTime, patientName: b.patientName,
+    doctorName: b.doctorName, labName: b.labName, packageNames: b.packageNames, testNames: b.testNames,
+    price: b.price, paymentStatus: b.paymentStatus, userId: b.userId,
+    providerRefs: providerRefs(b).map(ref => ({ ref, cancelled: acked.has(ref) })),
+    attempt: ops.attempt ? { state: ops.attempt.state, at: ops.attempt.at, error: ops.attempt.error } : null,
+    reschedule: ops.reschedule ? { state: ops.reschedule.state, at: ops.reschedule.at, error: ops.reschedule.error } : null,
+    unresolvedPrior: ops.unresolvedPrior === true,
+    cancel: c ? { by: c.by, reason: c.reason, at: c.at, state: c.state, calls: c.calls ?? 0, nextAt: c.nextAt,
+      needsAdmin: c.needsAdmin === true, blockedBy: c.blockedBy, error: c.error } : null,
+    /** Send back unchanged with the reconciliation: it is refused if the obligations changed meanwhile. */
+    obligations: obligationFingerprint(b),
+  };
+}
+export type ObligationView = ReturnType<typeof obligationView>;
+
+/** One booking's obligations for an admin, also when it is not being cancelled (e.g. an unknown provider attempt). */
+export async function obligationSnapshot(bookingId: string): Promise<ObligationView> {
+  return obligationView(await read(String(bookingId).toLowerCase()));
 }
 
 /** Booking without the private providerOps sub-document (public results). */

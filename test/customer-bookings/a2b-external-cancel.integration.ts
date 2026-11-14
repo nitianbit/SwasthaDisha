@@ -571,9 +571,31 @@ async function main() {
       const staleRes = await post({ providerOutcome: 'cancelled', expectedObligations: '0'.repeat(64) });
       assert.equal(staleRes.status, 409);
       assert.equal(((await staleRes.json()) as { code?: string }).code, 'EXTERNAL_OBLIGATIONS_CHANGED');
+      // A paid booking that is NOT being cancelled, with a provider attempt whose outcome is unknown: the admin gets its
+      // obligations over HTTP and records "absent", so the booking can be fulfilled again; no cancellation, no refund.
+      const stuck = new Types.ObjectId();
+      await ExternalBookingModel.collection.insertOne({ ...base(7, undefined), _id: stuck, status: 'pending', externalBookingId: undefined,
+        providerOps: { attempt: { token: 'att-7', state: 'unknown', at: new Date(Date.now() - 30 * 60_000), error: 'timeout' } } } as never);
+      const asAdmin = { authorization: 'Bearer ' + jwt.sign({ _id: admin._id, userType: 'admin' }, CONFIG.JWT_SECRET_KEY) };
+      const snapRes = await fetch(`http://127.0.0.1:${port}/api/v1/external-bookings/bookings/${stuck}/obligations`, { headers: asAdmin });
+      assert.equal(snapRes.status, 200);
+      assert.equal(snapRes.headers.get('cache-control'), 'private, no-store');
+      const snap = (await snapRes.json() as { data: { obligations: string; attempt: { state: string }; cancel: unknown; providerRefs: unknown[] } }).data;
+      assert.deepEqual([snap.attempt.state, snap.cancel, snap.providerRefs], ['unknown', null, []]);
+      assert.ok(!JSON.stringify(snap).includes('att-7'), 'no token');
+      const recover = await fetch(`http://127.0.0.1:${port}/api/v1/external-bookings/bookings/${stuck}/reconcile-cancellation`, {
+        method: 'POST', headers: { ...asAdmin, 'content-type': 'application/json' },
+        body: JSON.stringify({ providerOutcome: 'absent', expectedObligations: snap.obligations }) });
+      assert.equal(recover.status, 200, await recover.clone().text());
+      const after = await row(String(stuck));
+      assert.equal(after.providerOps!.attempt!.state, 'absent_attested');
+      assert.equal(after.status, 'pending', 'not cancelled');
+      assert.equal(after.paymentStatus, 'paid', 'not refunded');
       const customerId = new Types.ObjectId().toHexString();
       await mongoose.connection.collection('users').insertOne({ _id: new Types.ObjectId(customerId), phone: '9000000777', name: 'C', userType: 'user' } as never);
       assert.equal((await call('', { _id: customerId, userType: 'user' })).status, 403, 'a signed-in customer is refused');
+      const asCustomer = { authorization: 'Bearer ' + jwt.sign({ _id: customerId, userType: 'user' }, CONFIG.JWT_SECRET_KEY) };
+      assert.equal((await fetch(`http://127.0.0.1:${port}/api/v1/external-bookings/bookings/${stuck}/obligations`, { headers: asCustomer })).status, 403);
     } finally { server.close(); }
   });
 

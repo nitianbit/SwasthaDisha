@@ -200,6 +200,15 @@ externalBookingRouter.get(
   catchAsync(externalBookingController.openCancellations)
 );
 
+// Admin: one booking's provider obligations and the fingerprint a reconciliation must send back (W2c). Also for a
+// booking that is not being cancelled (an unknown provider attempt the admin resolves as 'absent').
+externalBookingRouter.get(
+  '/bookings/:id/obligations',
+  requireAdmin,
+  validate(externalBookingIdParamSchema, 'params'),
+  catchAsync(externalBookingController.obligations)
+);
+
 // Admin: settle a pending cancellation whose provider outcome could not be proven automatically (A2b).
 externalBookingRouter.post(
   '/bookings/:id/reconcile-cancellation',

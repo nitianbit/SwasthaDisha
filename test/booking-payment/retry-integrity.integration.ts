@@ -23,7 +23,7 @@ import { WalletRepository, WalletTransactionRepository } from '@/modules/wallet/
 import ExternalBookingModel from '@/modules/externalBookings/model';
 import { ExternalBookingRepository } from '@/modules/externalBookings/repository';
 import { ExternalBookingService } from '@/modules/externalBookings/services';
-import { progressCancellation, reconcileProviderState, recordProviderResult, requestCancellation } from '@/modules/externalBookings/services/providerOps';
+import { obligationSnapshot, progressCancellation, reconcileProviderState, recordProviderResult, requestCancellation } from '@/modules/externalBookings/services/providerOps';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/booking_retry_check?directConnection=true';
 const url = process.env.MONGODB_URL ?? '';
@@ -444,7 +444,9 @@ async function main() {
     await cancelExternal(b.id);
     assert.equal((await ExternalBookingModel.findById(b.id).lean())!.status, 'cancellation_requested', 'unknown outcome: pending');
     assert.equal(await balance(user), 0, 'no refund on an unproven provider state');
-    const settled = await reconcileProviderState({ bookingId: b.id, admin, providerOutcome: 'absent', wallets: new WalletRepository() });
+    const reviewed = await obligationSnapshot(b.id);               // what the admin sees and attests to (W2c)
+    const settled = await reconcileProviderState({ bookingId: b.id, admin, providerOutcome: 'absent', expectedObligations: reviewed.obligations,
+      wallets: new WalletRepository() });
     assert.equal(settled.refunded, 100); assert.equal(settled.booking.status, 'cancelled');
     assert.equal(await balance(user), 100); await ledgerMatches(user);
     await payments.processExternalBookingPayment(await PaymentRecordModel.findById(p1).lean()); // late processing
