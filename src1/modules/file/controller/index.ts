@@ -11,6 +11,7 @@ import { AuthRequest } from '@/modules/middleware/auth';
 import { FileDocumentService } from '../documents';
 import { legacyPath } from '../storage';
 import { actor, documentError, input } from '../validation';
+import { decideFileAccess } from '../access';
 
 const privateResponses = new WeakSet<Response>();
 
@@ -129,7 +130,9 @@ export class FileController {
     // Extract file path from URL
     // Remove /api/v1/file/static/ or /api/v1/file/ prefix
     let filePath: string;
-    if (url.startsWith('/api/v1/file/static/')) {
+    if (url.startsWith('/api/static/')) {
+      filePath = url.slice('/api/static/'.length);
+    } else if (url.startsWith('/api/v1/file/static/')) {
       filePath = url.replace('/api/v1/file/static/', '');
     } else if (url.startsWith('/api/v1/file/')) {
       filePath = url.replace('/api/v1/file/', '');
@@ -141,7 +144,7 @@ export class FileController {
       filePath = url;
     }
 
-    await this.serveFileByPath(filePath, res);
+    await this.serveFileByPath(filePath, res, (req as AuthRequest).user);
   };
 
   /**
@@ -160,7 +163,7 @@ export class FileController {
       filePath = `${module}/${fileName}`;
     }
 
-    await this.serveFileByPath(filePath, res);
+    await this.serveFileByPath(filePath, res, (req as AuthRequest).user);
   };
 
   /**
@@ -212,70 +215,63 @@ export class FileController {
    */
   serveFile = async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
     const filePath = req.params[0]; // Catch-all parameter
-    await this.serveFileByPath(filePath, res);
+    await this.serveFileByPath(filePath, res, (req as AuthRequest).user);
   };
 
   /**
-   * Internal method to serve file by path
+   * The one read path of every legacy alias (/api/static, /api/v1/file/static, /api/v1/file/fetch). D1: the path guard
+   * runs first, then the access decision, and only then is the file looked at, so an unauthorised reader learns nothing
+   * about whether it exists.
    */
-  private async serveFileByPath(filePath: string, res: Response): Promise<void> {
-    try {
-      // Every alias reaches the same reserved-subtree guard before byte/stat access.
-      if (typeof filePath !== 'string') throw documentError(400, 'DOCUMENT_INPUT_INVALID');
-      // Security: Prevent directory traversal
-      if (filePath.includes('..') || filePath.includes('~')) {
-        res.status(400).json({
-          success: false,
-          message: 'Invalid file path',
-        });
-        return;
-      }
-
-      const uploadDir = CONFIG.UPLOAD_DIR || path.join(process.cwd(), 'files');
-      const fullPath = this.legacyFilePath(filePath, uploadDir, res);
-
-      if (!fs.existsSync(fullPath)) {
-        res.status(404).json({
-          success: false,
-          message: 'File not found',
-        });
-        return;
-      }
-
-      const stats = fs.statSync(fullPath);
-      if (!stats.isFile()) {
-        res.status(400).json({
-          success: false,
-          message: 'Path is not a file',
-        });
-        return;
-      }
-
-      const file = fs.readFileSync(fullPath);
-      const contentType = mime.contentType(path.extname(fullPath)) || 'application/octet-stream';
-      const fileName = path.basename(fullPath);
-
-      // Set headers
-      res.setHeader('Content-Length', file.length);
-      res.setHeader('Content-Type', contentType);
-      res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
-      
-      // Cache headers for better performance
-      res.setHeader('Cache-Control', 'public, max-age=31536000'); // 1 year cache
-      res.setHeader('ETag', `"${stats.mtime.getTime()}"`);
-      res.setHeader('Last-Modified', stats.mtime.toUTCString());
-
-      res.send(file);
-    } catch (error: any) {
-      if (error instanceof AppError) {
-        applyPrivateDocumentHeaders(res);
-        throw error;
-      }
-      res.status(500).json({
-        success: false,
-        message: 'Error serving file',
-        error: error.message,
-      });
+  private async serveFileByPath(filePath: unknown, res: Response, reader: AuthRequest['user']): Promise<void> {
+    if (typeof filePath !== 'string') { applyPrivateDocumentHeaders(res); throw documentError(400, 'DOCUMENT_INPUT_INVALID'); }
+    const uploadDir = CONFIG.UPLOAD_DIR || path.join(process.cwd(), 'files');
+    const fullPath = this.legacyFilePath(filePath, uploadDir, res);
+    let decision;
+    try { decision = await decideFileAccess(reader, filePath); } catch {
+      applyPrivateDocumentHeaders(res);
+      throw documentError();
     }
+    if (!decision.allow) {
+      applyPrivateDocumentHeaders(res);
+      if (decision.status === 401) {
+        res.status(401).json({ success: false, code: 'UNAUTHORIZED', message: 'Sign in to open this file' });
+      } else {
+        res.status(404).json({ success: false, message: 'File not found' });
+      }
+      return;
+    }
+    if (decision.visibility === 'private') applyPrivateDocumentHeaders(res);
+
+    let stats: fs.Stats;
+    try { stats = fs.statSync(fullPath); } catch {
+      res.status(404).json({ success: false, message: 'File not found' });
+      return;
+    }
+    if (!stats.isFile()) {
+      res.status(404).json({ success: false, message: 'File not found' });
+      return;
+    }
+    const file = fs.readFileSync(fullPath);
+    const ext = path.extname(fullPath).toLowerCase();
+    const fileName = path.basename(fullPath).replace(/[^A-Za-z0-9._-]/g, '_');
+    const html = ext === '.html' || ext === '.htm';
+
+    res.setHeader('Content-Length', file.length);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    if (html) {
+      // Payout invoices/receipts: never rendered in the API origin.
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.setHeader('Content-Security-Policy', 'sandbox');
+    } else {
+      res.setHeader('Content-Type', mime.contentType(ext) || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+    }
+    if (decision.visibility === 'public') {
+      // Short, so that withdrawing a public grant is honoured within the hour.
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+    }
+    res.send(file);
   }
 }

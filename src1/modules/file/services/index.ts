@@ -7,6 +7,8 @@ import { IUploadedFile } from '../types';
 import { AppError } from '@/modules/common/types';
 import { CONFIG } from '@/config/config';
 import { legacyPath, legacyUploadScope } from '../storage';
+import { recordUpload, RESERVED_UPLOAD_MODULES } from '../access';
+import { FileUploadModel } from '../model/access';
 
 @Service()
 export class FileService {
@@ -64,8 +66,19 @@ export class FileService {
     module: string,
     recordId?: string
   ): Promise<IUploadedFile[]> {
+    const written: string[] = [];
+    const recorded: string[] = [];
     try {
       legacyUploadScope(module, recordId);
+      // D1: the uploader is the only proof of who may attach or read a file, so an upload without one is refused.
+      const actor = req.user;
+      if (!actor || !actor._id || !actor.userType) {
+        throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Authorization token is required' });
+      }
+      // Server-written folders; a client upload there could pose as a server file.
+      if (RESERVED_UPLOAD_MODULES.has(String(module).toLowerCase())) {
+        throw new AppError({ status: 400, code: 'UPLOAD_MODULE_RESERVED', message: 'Files cannot be uploaded to this folder' });
+      }
       const relativeModule = recordId ? `${module}/${recordId}` : module;
       legacyPath(relativeModule, this.uploadDir);
       const { files } = await this.parseFormData(req);
@@ -125,12 +138,15 @@ export class FileService {
         
 
         // Save file
-        fs.writeFileSync(filePath, fileData);
+        fs.writeFileSync(filePath, fileData, { flag: 'wx' });
+        written.push(filePath);
 
         // Generate relative path - store relative path in database
         const relativePath = recordId
           ? `${module}/${recordId}/${fileName}`
           : `${module}/${fileName}`;
+        await recordUpload(actor, relativePath);
+        recorded.push(relativePath);
         // Store relative path that can be accessed via /api/static/*
         const url = `/api/static/${relativePath}`;
 
@@ -152,6 +168,9 @@ export class FileService {
 
       return uploadedFiles;
     } catch (error: any) {
+      // Never leave bytes without a recorded uploader.
+      for (const f of written) { try { fs.unlinkSync(f); } catch { /* already gone */ } }
+      if (recorded.length) await FileUploadModel.deleteMany({ path: { $in: recorded } }).catch(() => undefined);
       if (error instanceof AppError) {
         throw error;
       }

@@ -1,6 +1,7 @@
 # D1 — Uploaded files need a login (owner decision 1, 2026-11-14)
 
-Status: design, revised after Codex review msg_1794658919870 (references are not authority). Branch
+Status: design, revised after Codex reviews msg_1794658919870 (references are not authority) and
+msg_1794667154658 (unchanged-reference bypass; grant lifecycle). Branch
 `m0/d1-private-files` (on `m0/d2-booking-payment-timeout`).
 
 ## Goal
@@ -16,9 +17,15 @@ legacy manifest. A URL stored in a writable field never grants anything by itsel
 | Collection | Shape | Written by |
 |---|---|---|
 | `file_uploads` | `{path (unique), uploaderType, uploaderId, createdAt}` | `POST /file/upload[/:module]`, in the same request that writes the bytes (bytes deleted if the row cannot be written) |
-| `file_grants` | `{path, kind, resourceId?, source: 'attach' \| 'legacy_manifest', createdByType, createdById, createdAt}`, unique `{path, kind, resourceId}` | attach-time binding (below); the legacy manifest importer |
+| `file_grants` (bindings) | `{path, kind, model, resourceId, field, source: 'attach' \| 'legacy_manifest', createdByType, createdById, createdAt}`, unique `{path, model, resourceId, field}` | attach-time binding by an authorised actor (below); the curated legacy manifest importer |
 
 `kind` ∈ `public`, `booking`, `pharmacy_order`, `specialist`, `pharmacy`, `hr`, `user`.
+
+**A binding is honoured only while it is current**: at read time the record (`model`, `resourceId`) is loaded and its
+`field` must still hold the file. Removing or replacing the value, or deleting the record, withdraws it with no detach
+code; a binding written late (after a newer removal) or for a save that never committed is inert; several records may
+bind the same file and each counts independently (a file stays public while at least one current public binding
+exists).
 
 ## One read decision, three routes
 
@@ -29,7 +36,7 @@ symlinks, reserved private subtree) runs first and is unchanged.
 
 Decision, deny by default:
 
-1. A `public` grant exists → anyone, including anonymous.
+1. A current `public` binding exists → anyone, including anonymous.
 2. No reader → 401 (`/api/static` without a token) — no hint whether the file exists.
 3. Reader is admin → allow.
 4. `file_uploads` row: reader is the uploader → allow.
@@ -37,7 +44,7 @@ Decision, deny by default:
    - `bookings/<24hex>/prescription-<digits>.pdf` → booking readers of that booking;
    - `external-bookings/<24hex>/diagnostics-report-*.pdf` → that booking's customer;
    - `payouts/(invoices|receipts)/…` → admin only (step 3).
-6. Any grant whose resource the reader can read:
+6. Any current binding whose resource the reader can read:
    - `booking:<id>` → booking `userId` (user), `specialistId` (specialist), `pharmacyId` (pharmacy), HR with the same
      `corporateId`;
    - `pharmacy_order:<id>` → customer, seller pharmacy, buyer pharmacy (same rule as `getById`);
@@ -52,13 +59,18 @@ invoices/receipts) → `Content-Disposition: attachment` + `Content-Security-Pol
 
 ## Attach-time validation (stops laundering)
 
-`FileAttachments.check(actor, urls, previousUrls)` runs in each write service **before** saving; `grant(...)` after.
+`attachFiles(actor, model, specs, save, idOf)` wraps each write: per field, `checkAttachable` runs **before** the save;
+after the save the authorised files are bound to that record's field.
 
-- A value that is not one of our upload paths (`/api/static/…`, `/api/v1/file/static/…`, or an absolute URL whose path
-  is one of those) is not a file of ours and passes through unchanged (external image URLs keep working).
-- A value already present on the same record (unchanged on update) is accepted without a check.
-- Otherwise the actor must be admin or the recorded uploader; else 400 `FILE_NOT_ATTACHABLE`. A server-folder file or
-  a legacy path without an upload row can be attached only by an admin.
+- A value that is not one of our upload paths (`/api/static/…`, `/api/v1/file/static/…`, `/api/v1/file/fetch?url=…`,
+  an absolute URL whose path is one of those, or a bare `module/file` path) is not a file of ours and passes through
+  unchanged (external image URLs keep working).
+- Authority = the actor is admin or the recorded uploader. Only authorised files are bound, whether new or unchanged
+  (so an authorised re-save repairs a missing binding).
+- A file without authority: refused (400 `FILE_NOT_ATTACHABLE`) when new in that field; when the same field already
+  held it, kept but **never bound**. A pre-D1 poisoned reference therefore stays inert; only the curated manifest can
+  bind legacy files.
+- A public field binds images only; a non-image is refused when new.
 
 So a pharmacy cannot set its public `profilePictureUrl` to a customer's prescription, and a customer cannot put
 another booking's report into their own booking.
@@ -77,8 +89,9 @@ Field → grant kind:
 Profile pictures are published (unguessable random names): treating a chosen avatar as public keeps every list that
 shows it working without per-viewer rules. Anyone can publish only files they uploaded.
 
-`grant` runs after the record is saved and is idempotent (upsert). If it fails the request fails; the uploader and
-admin can still read the file, and repeating the write re-grants.
+Binding runs after the save and is idempotent (upsert). If it fails the request fails closed: the uploader and admins
+can still read the file; any authorised re-save of the record binds again (a unique create that rejects the retry is
+repaired by an update). Because reads validate the current record, no transaction with the save is needed.
 
 ## Legacy files (no upload row)
 
@@ -88,8 +101,8 @@ admin can still read the file, and repeating the write re-grants.
   records. It **flags** and does not propose: a path referenced by more than one distinct private resource; a path
   referenced by both a public and a private field; a PDF/non-image proposed as public; a path under a server folder.
 - An operator reviews the file (the "curated manifest").
-- `apply <file>` inserts only unflagged, reviewed entries as `source: 'legacy_manifest'` grants (idempotent) and
-  prints counts.
+- `apply <file>` inserts only unflagged, reviewed entries as `source: 'legacy_manifest'` bindings (record + field, so
+  they are validated at read time like any other) and prints counts. Idempotent.
 
 Until the manifest is applied, legacy `general/…` files are readable by admin only. This is the deliberate cost of
 the owner's "lock them down": old app screens that open private files by plain URL stop working; public images keep

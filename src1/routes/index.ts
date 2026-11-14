@@ -52,7 +52,8 @@ export const configureRoutes = (app: Express): void => {
   // Simple static file serving - /api/static/*path
   // This allows direct access to files: base_url/api/static/bookings/12345/document.pdf
   const fileController = new FileController();
-  app.get('/api/static/*', catchAsync(fileController.serveFile));
+  // D1: a public file is served to anyone; any other file needs a token and passes the one access decision.
+  app.get('/api/static/*', authenticateOptional, catchAsync(fileController.serveFile));
 
   // API v1 routes
   app.use('/api/v1/auth', authRouterV1);
