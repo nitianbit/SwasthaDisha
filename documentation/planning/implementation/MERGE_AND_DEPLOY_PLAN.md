@@ -50,9 +50,10 @@ All packets were reviewed by Codex through Ruflo (approved) and tested against a
 | W3b | `m0/w3b-booking-safety` | `5e94bb7` | Safe consultation booking for the customer app: booking-level payment reconciliation, open-order reuse, 5-minute fair recovery sweep of unsettled booking payments (scheduler), keyed create with stored validated terms, free bookings inserted unpaid (closes C7b) | `test/booking-payment/w3b-reconcile.integration.ts` (17) |
 | D2 | `m0/d2-booking-payment-timeout` | `c6d8fda` | Owner decision 2: unpaid priced doctor/package bookings expire 30 minutes after creation. A 5-minute sweep checks Razorpay first (backs off 5 min → 6 h while it cannot answer), then cancels in one transaction (coupon, wallet, slot, follow-up restored; a late capture goes back to the wallet). `retry-payment` answers 409 `BOOKING_PAYMENT_EXPIRED` after the window. Free bookings never expire | `test/customer-bookings/d2-booking-timeout.integration.ts` (8) |
 | D1 | `m0/d1-private-files` | `2744e22` | Owner decision 1: uploaded files need a login. One access decision for `/api/static`, `/api/v1/file/static`, `/api/v1/file/fetch`: uploader provenance (`file_uploads`), record+field bindings (`file_grants`, generation-fenced, honoured only while the record holds the file), exact server folders, public images only when bound to a public field; nobody writes back a file they do not own. Legacy files admin-only until the curated manifest is applied (`npm run d1-manifest`). Report emails no longer link stored files. Approved by Codex 2026-11-14 | `test/file-access/d1-private-files.integration.ts` (23) |
+| D3 | `m0/d3-pharmacy-pending-cancel` | `f331e01` | Owner decision 3: cancelling a PAID pharmacy order puts it in `pending_cancel` (frozen) until an admin or the order's pharmacy approves (cancel + stock released once + P2 wallet-first refund; COD cash → manual review) or rejects (restored; refused once the payment was returned). Unpaid orders cancel at once. Generic cancel/reject refuses paid orders. Each capture has one stored decision (`pharmacySettlement` applied/returned); a losing commit is routed, the 5-minute recovery sweep includes pharmacy captures; refill cycles advance only for paid, live orders. Approved by Codex 2026-11-14 | `test/pharmacy-cancel/d3-pending-cancel.integration.ts` (21) |
 
 The W-branches (staff workspace backend support, reviewed by Codex 14 Nov) are stacked on A2b:
-`A2b ─ W1 ─ W2c-q ─ W2b ─ W2c ─ W3b-pay ─ W3b ─ D2 ─ D1`. `m0/d1-private-files` contains all of them; release it in place of
+`A2b ─ W1 ─ W2c-q ─ W2b ─ W2c ─ W3b-pay ─ W3b ─ D2 ─ D1 ─ D3`. `m0/d3-pharmacy-pending-cancel` contains all of them; release it in place of
 `m0/a2b-external-cancel`. The frontend lives in the separate `jansetu-web` repo.
 
 Branch shape. Everything starts from `9c8d1d8` (end of the `m0/customer-pharmacy-lab-focus` line, 390 commits ahead
@@ -352,3 +353,12 @@ can read.
    (flagged entries are never applied) → `npm run d1-manifest -- apply <file>`. Keep the manifest out of Git.
 4. Release the new web/mobile builds. Until step 3, legacy uploads (including public images uploaded before D1) open
    for admins only; old app screens that open private files by plain URL stop working by design.
+
+## D3 release notes
+
+- No new index or collection (new fields only: `pharmacyorders.cancelRequest`, `paymentrecords.pharmacySettlement`).
+- Behaviour change for staff clients: `POST /pharmacy-orders/:id/cancel` and `/status` cancelled/rejected/abandoned now
+  answer 409 `ORDER_PAID_USE_CANCEL_REQUEST` for paid orders; paid orders are cancelled through
+  `POST /:id/cancel-request` + `/cancel-request/approve|reject` (body `{requestId}`).
+- Known test issue (not D3): `test/pharmacy-inventory/p7c-low-stock.integration.ts` check [C2] fails between 00:00 IST
+  and 05:30 IST (its "today" and the sweep use different time zones). Fix the test before using it as a release gate.
