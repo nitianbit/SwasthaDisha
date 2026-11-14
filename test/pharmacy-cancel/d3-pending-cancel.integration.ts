@@ -21,6 +21,7 @@ import { PaymentService } from '@/modules/payment/services';
 import { WalletModel, WalletTransactionModel } from '@/modules/wallet/model';
 import { WalletRepository, WalletTransactionRepository } from '@/modules/wallet/repository';
 import PharmacySubscriptionModel from '@/modules/pharmacySubscriptions/model';
+import { advanceRefillOnPayment } from '@/modules/pharmacySubscriptions/refillCycle';
 import MedicineModel from '@/modules/pharmacyMedicines/model';
 import { MedicineRepository } from '@/modules/pharmacyMedicines/repository';
 import { orderQuerySchema, updateOrderStatusSchema } from '@/modules/pharmacyOrders/validation';
@@ -345,6 +346,50 @@ async function main() {
   await check('the order list can select the pending_cancel worklist; the status command cannot enter it', async () => {
     assert.equal(orderQuerySchema.validate({ status: 'pending_cancel' }).error, undefined);
     assert.ok(updateOrderStatusSchema.validate({ status: 'pending_cancel' }).error, 'not settable through /status');
+  });
+
+  await check('one decision per capture: a late refund that decides first wins over an earlier worker applying it', async () => {
+    const o = await order({ status: 'packed', paymentStatus: 'pending', record: 'unprocessed' });
+    const rec = await PaymentRecordModel.findById(o.recordId).lean();
+    // Worker A has passed its checks and is about to commit; worker B (late-payment refund) runs fully first.
+    beforeCommit = async () => {
+      await (payments as unknown as { handleTimedOutPharmacyOrderPayment: (o: unknown, r: unknown) => Promise<unknown> })
+        .handleTimedOutPharmacyOrderPayment(await get(o.id), rec);
+    };
+    await payments.processPharmacyOrderPayment!(rec);
+    const now = await get(o.id);
+    assert.notEqual(now.paymentStatus, 'paid', 'not a paid, fulfillable order as well as a refund');
+    assert.equal(await balance(o.customer), 100, 'refunded exactly once');
+    const r = (await PaymentRecordModel.findById(o.recordId).lean())!;
+    assert.equal(r.pharmacySettlement, 'returned'); assert.equal(r.isProcessed, true);
+  });
+
+  await check('a pre-D3 cancelled order that kept a payment with no refund intent is refunded, not swallowed', async () => {
+    for (const processed of [false, true]) {
+      const o = await order({ status: 'cancelled', paymentStatus: 'paid', record: 'unprocessed' });
+      await PharmacyOrderModel.updateOne({ _id: o.id }, { $set: { paymentTransactionId: o.recordId } });
+      if (processed) await PaymentRecordModel.updateOne({ _id: o.recordId }, { $set: { isProcessed: true } });
+      await payments.processPharmacyOrderPayment!(await PaymentRecordModel.findById(o.recordId).lean());
+      assert.equal(await balance(o.customer), 100, `refunded (record processed: ${processed})`);
+      assert.equal((await PaymentRecordModel.findById(o.recordId).lean())!.pharmacySettlement, 'returned');
+    }
+  });
+
+  await check('refill cycle: never advanced for an approved cancellation still awaiting its wallet credit, nor from a stale paid read', async () => {
+    const o = await order({ status: 'accepted' });
+    const subId = new Types.ObjectId();
+    await PharmacySubscriptionModel.collection.insertOne({ _id: subId, pharmacyId: pharmacyA, userId: o.customer, medicineId: new Types.ObjectId(o.med),
+      intervalDays: 30, nextRefillDate: '20261114', isActive: true, pendingRefill: { orderId: o.id, cycleDate: '20261114' } } as never);
+    await PharmacyOrderModel.updateOne({ _id: o.id }, { $set: { refill: { subscriptionId: String(subId), cycleDate: '20261114' } } });
+    const stalePaid = await get(o.id);
+    await WalletModel.updateOne({ userId: o.customer }, { $set: { isActive: false } }); // the wallet credit cannot settle yet
+    const r = await orders.requestCancel(o.id, o.user);
+    const done = await orders.approveCancel(o.id, pharmacy, { requestId: r.cancelRequest!.requestId });
+    assert.equal(done.status, 'cancelled'); assert.equal(done.paymentStatus, 'paid'); assert.notEqual(done.prescriptionRefund?.status, 'wallet_credited');
+    await orders.resumeRefillOrder(o.id);
+    await advanceRefillOnPayment(stalePaid as never);
+    const sub = (await PharmacySubscriptionModel.collection.findOne({ _id: subId }))!;
+    assert.equal(sub.nextRefillDate, '20261114'); assert.ok(sub.pendingRefill);
   });
 
   await mongoose.disconnect();

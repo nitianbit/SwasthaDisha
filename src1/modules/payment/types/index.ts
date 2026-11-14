@@ -24,6 +24,8 @@ export interface IPaymentRecord {
   razorpaySignature?: string;
   status: PaymentRecordStatus;
   isProcessed: boolean;
+  /** D3: pharmacy order captures only - applied to the order or returned to the wallet (set once). */
+  pharmacySettlement?: 'applied' | 'returned';
   notes?: Record<string, unknown>;
   paidAt?: Date;
   /** Background recovery schedule (W3b). */

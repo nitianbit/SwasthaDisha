@@ -86,6 +86,9 @@ const UNSETTLED_ATTEMPT = {
   $or: [{ status: 'created' }, { status: 'paid', isProcessed: { $ne: true } }],
 };
 
+/** D3: thrown inside the payment commit transaction when the capture was already decided (aborts the transaction). */
+class SettlementAlreadyDecided extends Error {}
+
 /** D3: order states that can take a captured payment (pending_cancel records it without moving). */
 const PHARMACY_ORDER_PAYABLE_STATUSES: string[] = ['placed', 'accepted', 'packed', 'ready_for_pickup', 'out_for_delivery',
   'delivery_failed', 'pending_cancel'];
@@ -210,17 +213,24 @@ export class PaymentService {
   }
 
   /**
-   * D3: when the order already holds THIS payment (paid and linked to this record), processing it again - a second
-   * verify, a reconcile, the recovery sweep - is an idempotent success: the record is marked processed, nothing is
-   * refunded. Returns null when the order does not hold this payment.
+   * D3: the one decision for a pharmacy order capture, stored on its payment record and claimed once from absent:
+   * 'applied' (the commit claims it in the transaction that pays the order) or 'returned' (claimed here before any
+   * wallet credit). Whichever claims first wins; the other path follows it. A record from before this decision existed
+   * is classified once from the order: a live order holding this processed payment, or a closed one whose refund is
+   * already an intent (P2), counts as applied; anything else - including a cancelled order that kept a payment with
+   * no refund intent - is returned to the wallet.
    */
-  private async pharmacyPaymentAlreadyApplied(order: IPharmacyOrder, paymentRecord: IPaymentRecord):
-    Promise<{ paymentRecord: IPaymentRecord; entity: unknown } | null> {
-    if (String(order.paymentTransactionId ?? '') !== String(paymentRecord._id)
-      || !['paid', 'partially_paid'].includes(String(order.paymentStatus))) return null;
-    const processed = (await this.paymentRepository.update({ _id: paymentRecord._id!, isProcessed: false }, { isProcessed: true }, { new: true }))
-      || (await this.paymentRepository.findById(paymentRecord._id!)) || paymentRecord;
-    return { paymentRecord: processed as IPaymentRecord, entity: order };
+  private async decidePharmacySettlement(order: IPharmacyOrder, paymentRecord: IPaymentRecord): Promise<'applied' | 'returned'> {
+    const current = await PaymentRecordModel.findById(paymentRecord._id).lean() as IPaymentRecord | null;
+    if (current?.pharmacySettlement) return current.pharmacySettlement;
+    const closed = ['cancelled', 'rejected', 'abandoned'].includes(order.status);
+    const holdsThis = String(order.paymentTransactionId ?? '') === String(paymentRecord._id)
+      && ['paid', 'partially_paid', 'refunded'].includes(String(order.paymentStatus));
+    const want = holdsThis && current?.isProcessed && (!closed || !!order.prescriptionRefund) ? 'applied' : 'returned';
+    const claimed = await PaymentRecordModel.findOneAndUpdate({ _id: paymentRecord._id, pharmacySettlement: { $in: [null] } },
+      { $set: { pharmacySettlement: want } }, { new: true }).lean() as IPaymentRecord | null;
+    const decided = claimed ?? (await PaymentRecordModel.findById(paymentRecord._id).lean() as IPaymentRecord | null);
+    return decided?.pharmacySettlement ?? want;
   }
 
   private async handleTimedOutPharmacyOrderPayment(
@@ -230,10 +240,13 @@ export class PaymentService {
     paymentRecord: IPaymentRecord;
     entity: unknown;
   }> {
-    // Decided before any wallet credit, from a fresh read: a payment this order already holds is never returned.
-    const current = (await this.pharmacyOrderRepository.findById(String(order._id))) as IPharmacyOrder | null;
-    const applied = current ? await this.pharmacyPaymentAlreadyApplied(current, paymentRecord) : null;
-    if (applied) return applied;
+    // Decided before any wallet credit, through the capture's one stored decision: an applied payment is never returned.
+    const current = ((await this.pharmacyOrderRepository.findById(String(order._id))) as IPharmacyOrder | null) ?? order;
+    if (await this.decidePharmacySettlement(current, paymentRecord) === 'applied') {
+      const processed = (await this.paymentRepository.update({ _id: paymentRecord._id!, isProcessed: false }, { isProcessed: true }, { new: true }))
+        || (await this.paymentRepository.findById(paymentRecord._id!)) || paymentRecord;
+      return { paymentRecord: processed as IPaymentRecord, entity: current };
+    }
     const batchInventoryItems = order.items
       .filter((item) => item.itemStatus === 'active' && item.batchAllocations?.length)
       .map((item) => ({
@@ -1171,7 +1184,7 @@ export class PaymentService {
     let commit: { updatedOrder: IPharmacyOrder; updatedPayment: IPaymentRecord; paymentProcessingClaimed: boolean } | null = null;
     const orderObjectId = order._id;
     for (let attempt = 0; attempt < 3 && !commit; attempt++) {
-      commit = await this.runPharmacyPaymentCoreTransaction(async (session) => {
+      const outcome = await this.runPharmacyPaymentCoreTransaction(async (session) => {
         const paidOrder = await this.pharmacyOrderRepository.update(
           {
             _id: orderObjectId,
@@ -1189,31 +1202,38 @@ export class PaymentService {
         // frozen by a cancellation request (a rejection of the request advances it then; an approval does not).
         if (nextOrder.status !== 'pending_cancel') await advanceRefillOnPayment(nextOrder as IPharmacyOrder, session);
 
+        // The capture's one decision, in the same transaction as the order write: applied. If it was already decided
+        // (returned to the wallet by a late-payment refund), this transaction is abandoned and the order is untouched.
         const processedPayment = await this.paymentRepository.update(
-          { _id: paymentRecord._id!, isProcessed: false },
-          { isProcessed: true },
+          { _id: paymentRecord._id!, pharmacySettlement: { $in: [null] } },
+          { pharmacySettlement: 'applied', isProcessed: true },
           { new: true, session }
         );
+        if (!processedPayment) throw new SettlementAlreadyDecided();
 
-        const latestPayment =
-          processedPayment ||
-          ((await this.paymentRepository.findById(paymentRecord._id!, session)) as IPaymentRecord | null) ||
-          paymentRecord;
+        const latestPayment = processedPayment;
 
         return {
           updatedOrder: nextOrder as IPharmacyOrder,
           updatedPayment: latestPayment,
           paymentProcessingClaimed: Boolean(processedPayment),
         };
+      }).catch((error: unknown) => {
+        if (error instanceof SettlementAlreadyDecided) return 'decided' as const;
+        throw error;
       });
+      if (outcome === 'decided') {
+        // Already decided elsewhere (returned to the wallet): settle through that decision, never apply it.
+        const decidedOrder = await this.pharmacyOrderRepository.findById(paymentRecord.contextId) as IPharmacyOrder | null;
+        if (!decidedOrder) throw new AppError({ status: 404, code: 'PHARMACY_ORDER_NOT_FOUND', message: 'Pharmacy order not found for this payment' });
+        return this.handleTimedOutPharmacyOrderPayment(decidedOrder, paymentRecord);
+      }
+      commit = outcome;
       if (commit) break;
       const latest = await this.pharmacyOrderRepository.findById(paymentRecord.contextId) as IPharmacyOrder | null;
       if (!latest) {
         throw new AppError({ status: 404, code: 'PHARMACY_ORDER_NOT_FOUND', message: 'Pharmacy order not found for this payment' });
       }
-      // Applied by a concurrent worker through THIS record: that is success, never a refund.
-      const applied = await this.pharmacyPaymentAlreadyApplied(latest, paymentRecord);
-      if (applied) return applied;
       // Closed, completed, or already paid/refunded through another record: this capture goes back to the wallet once.
       if (!PHARMACY_ORDER_PAYABLE_STATUSES.includes(latest.status)
         || ['paid', 'partially_paid', 'refunded'].includes(String(latest.paymentStatus))) {

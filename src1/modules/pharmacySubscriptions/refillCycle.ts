@@ -10,6 +10,9 @@ import PharmacySubscriptionModel from '@/modules/pharmacySubscriptions/model';
  * moves to the next cycle exactly once (fenced on pendingRefill.orderId), and the cycle is recorded so that
  * source-order reconciliation no longer rewrites the refill date.
  */
+/** Order states in which a paid refill counts as delivered-or-on-its-way (its cycle may move on). */
+const REFILL_ADVANCE_STATUSES = ['accepted', 'packed', 'ready_for_pickup', 'out_for_delivery', 'delivery_failed', 'completed'];
+
 export async function advanceRefillOnPayment(
   order: { _id?: unknown; refill?: { subscriptionId?: string; cycleDate?: string } },
   session?: ClientSession
@@ -17,12 +20,13 @@ export async function advanceRefillOnPayment(
   const refill = order.refill;
   if (!refill?.subscriptionId || !refill.cycleDate) return;
   const run = async (s: ClientSession) => {
-    // D3: the cycle moves on only while the order is not frozen by a cancellation request (a rejection advances it
-    // then; an approval never does). The conditional touch of the order also conflicts with a concurrent request's
-    // write, so the two are serialised.
+    // D3: the cycle moves on only for an order that is authoritatively paid and live - never one frozen by a cancellation
+    // request (a rejection advances it then), cancelled, refunded or otherwise closed. The conditional touch of the order
+    // also conflicts with a concurrent request's or cancellation's write, so they are serialised.
     const orders = mongoose.models.PharmacyOrder?.collection ?? mongoose.connection.collection('pharmacyorders');
     const live = await orders.updateOne(
-      { _id: new mongoose.Types.ObjectId(String(order._id)), status: { $ne: 'pending_cancel' } }, { $set: { updatedAt: new Date() } }, { session: s });
+      { _id: new mongoose.Types.ObjectId(String(order._id)), paymentStatus: 'paid', status: { $in: REFILL_ADVANCE_STATUSES } },
+      { $set: { updatedAt: new Date() } }, { session: s });
     if (live.matchedCount === 0) return;
     const sub = await PharmacySubscriptionModel.findOne({ _id: refill.subscriptionId, 'pendingRefill.orderId': String(order._id) }).session(s).lean();
     if (!sub) return;
