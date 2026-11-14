@@ -422,6 +422,8 @@ export const cancelExternalBookingSchema = Joi.object({
 
 export const reconcileExternalCancellationSchema = Joi.object({
   providerOutcome: Joi.string().valid('absent', 'cancelled').required(),
+  // The `obligations` value from the admin worklist row that was reviewed (W2c).
+  expectedObligations: Joi.string().pattern(/^[0-9a-f]{64}$/).required(),
 });
 
 export const rescheduleExternalBookingSchema = Joi.object({

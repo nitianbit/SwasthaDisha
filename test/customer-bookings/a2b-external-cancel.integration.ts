@@ -15,7 +15,7 @@ import '@/modules/user/model';
 import ExternalBookingModel from '@/modules/externalBookings/model';
 import { ExternalBookingRepository } from '@/modules/externalBookings/repository';
 import { ExternalBookingService } from '@/modules/externalBookings/services';
-import { beginProvider, findPendingCancellations, listOpenCancellations, recordProviderResult, requestCancellation } from '@/modules/externalBookings/services/providerOps';
+import { beginProvider, findPendingCancellations, listOpenCancellations, obligationFingerprint, recordProviderResult, requestCancellation } from '@/modules/externalBookings/services/providerOps';
 import { recordGatewayCapture } from '@/modules/common/utils/bookingWalletFunding';
 import { CouponModel } from '@/modules/coupon/model';
 import PaymentRecordModel from '@/modules/payment/model';
@@ -107,6 +107,8 @@ async function pay(b: { p0: string }) {
   return payments.processExternalBookingPayment(await PaymentRecordModel.findById(b.p0).lean());
 }
 const row = async (id: string) => (await ExternalBookingModel.findById(id).select('+providerOps').lean())! as IExternalBooking;
+/** What the admin reviewed: the booking's current provider obligations (W2c). */
+const reviewed = async (id: string) => obligationFingerprint(await row(id) as never);
 const cancel = (id: string, user: string, userType = 'user') => externals.cancelBooking(id, { _id: user, userType } as never, {}, 'diagnostics');
 
 let passed = 0;
@@ -205,8 +207,8 @@ async function main() {
     assert.equal((await row(t.id)).providerOps!.attempt!.state, 'unknown');
     await cancel(t.id, u);
     assert.equal((await row(t.id)).status, 'cancellation_requested'); assert.equal(await balance(u), 0);
-    await rejects(externals.reconcileCancellation(t.id, { _id: u, userType: 'user' } as never, 'absent'), 'FORBIDDEN', 403);
-    const done = await externals.reconcileCancellation(t.id, admin as never, 'absent');
+    await rejects(externals.reconcileCancellation(t.id, { _id: u, userType: 'user' } as never, 'absent', '0'.repeat(64)), 'FORBIDDEN', 403);
+    const done = await externals.reconcileCancellation(t.id, admin as never, 'absent', await reviewed(t.id));
     assert.equal(done.status, 'cancelled'); assert.equal(await balance(u), 100);
     const four = await booking(u);
     providerGate.next = 'refused';
@@ -235,7 +237,7 @@ async function main() {
     await ExternalBookingModel.updateOne({ _id: b.id }, { $set: { 'providerOps.attempt.at': new Date(Date.now() - 20 * 60_000) } }); // expired
     const again = await beginProvider(b.id, b.p0);
     assert.equal(again.token, null); assert.equal((again as { reason: string }).reason, 'unresolved', 'an expired lease admits nothing');
-    await externals.reconcileCancellation(b.id, admin as never, 'absent');              // admin checked: nothing at the provider
+    await externals.reconcileCancellation(b.id, admin as never, 'absent', await reviewed(b.id));              // admin checked: nothing at the provider
     const second = await beginProvider(b.id, b.p0);
     assert.ok(second.token);
     await recordProviderResult(b.id, second.token!, { status: 'confirmed', externalBookingId: 'prov-B' });
@@ -252,7 +254,7 @@ async function main() {
     const b = await booking(u);
     await PaymentRecordModel.updateOne({ _id: b.p0 }, { $set: { status: 'paid' } });
     await ExternalBookingModel.updateOne({ _id: b.id }, { $set: { paymentStatus: 'paid', status: 'pending' } });
-    await beginProvider(b.id, b.p0);                                                    // ...process crashes here
+    const crashed = await beginProvider(b.id, b.p0);                                    // ...process crashes here
     const mid = await cancel(b.id, u);
     assert.equal(mid.status, 'cancellation_requested', 'fresh attempt: waits');
     await ExternalBookingModel.updateOne({ _id: b.id }, { $set: { 'providerOps.attempt.at': new Date(Date.now() - 20 * 60_000) } });
@@ -260,7 +262,16 @@ async function main() {
     const r = await row(b.id);
     assert.equal(r.providerOps!.attempt!.state, 'unknown'); assert.equal(r.providerOps!.cancel!.needsAdmin, true);
     assert.equal(await balance(u), 0, 'elapsed time proves nothing');
-    const done = await externals.reconcileCancellation(b.id, admin as never, 'cancelled');
+    // [W2c] The admin reviews the booking, but before confirming, the crashed attempt's late result adds a provider
+    // reference. The stale attestation must be refused: the admin has not checked that reference.
+    const stale = await reviewed(b.id);
+    await recordProviderResult(b.id, crashed.token!, { status: 'confirmed', externalBookingId: 'prov-LATE' });
+    assert.notEqual(await reviewed(b.id), stale, 'the late reference changes the obligations');
+    await rejects(externals.reconcileCancellation(b.id, admin as never, 'cancelled', stale), 'EXTERNAL_OBLIGATIONS_CHANGED', 409);
+    assert.equal((await row(b.id)).status, 'cancellation_requested');
+    assert.ok(!((await row(b.id)).providerOps!.cancel!.ackedRefs ?? []).includes('prov-LATE'), 'nothing attested');
+    assert.equal(await balance(u), 0, 'no refund on a stale review');
+    const done = await externals.reconcileCancellation(b.id, admin as never, 'cancelled', await reviewed(b.id));
     assert.equal(done.status, 'cancelled'); assert.equal(await balance(u), 100); await ledgerMatches(u);
   });
 
@@ -271,7 +282,7 @@ async function main() {
     await ExternalBookingModel.updateOne({ _id: b.id }, { $set: { paymentStatus: 'paid', status: 'pending' } });
     const first = await beginProvider(b.id, b.p0);
     await ExternalBookingModel.updateOne({ _id: b.id }, { $set: { 'providerOps.attempt.at': new Date(Date.now() - 20 * 60_000) } });
-    await externals.reconcileCancellation(b.id, admin as never, 'absent');              // admin was wrong
+    await externals.reconcileCancellation(b.id, admin as never, 'absent', await reviewed(b.id));              // admin was wrong
     const late = await recordProviderResult(b.id, first.token!, { status: 'confirmed', externalBookingId: 'prov-A' });
     assert.equal(late.applied, true, 'adopted as the booking');
     assert.equal((await row(b.id)).externalBookingId, 'prov-A');
@@ -300,7 +311,7 @@ async function main() {
     await ExternalBookingModel.updateOne({ _id: sup.id }, { $set: { paymentStatus: 'paid', status: 'pending' } });
     const A = await beginProvider(sup.id, sup.p0);
     await ExternalBookingModel.updateOne({ _id: sup.id }, { $set: { 'providerOps.attempt.at': new Date(Date.now() - 20 * 60_000) } });
-    await externals.reconcileCancellation(sup.id, admin as never, 'absent');
+    await externals.reconcileCancellation(sup.id, admin as never, 'absent', await reviewed(sup.id));
     const B = await beginProvider(sup.id, sup.p0);
     await recordProviderResult(sup.id, B.token!, { status: 'confirmed', externalBookingId: 'prov-B2' });
     const lateA = await recordProviderResult(sup.id, A.token!, { status: 'confirmed' });
@@ -309,7 +320,7 @@ async function main() {
     assert.equal(parkedSup.status, 'cancellation_requested'); assert.equal(await balance(u), 0);
     assert.deepEqual(provider.cancels, [], 'no provider cancellation while an outcome is unknown');
     assert.equal((await row(sup.id)).providerOps!.cancel!.needsAdmin, true);
-    const settledSup = await externals.reconcileCancellation(sup.id, admin as never, 'cancelled');
+    const settledSup = await externals.reconcileCancellation(sup.id, admin as never, 'cancelled', await reviewed(sup.id));
     assert.equal(settledSup.status, 'cancelled'); assert.equal(await balance(u), 100); await ledgerMatches(u);
     // Free booking: same rule; the draft is kept (flagged), not deleted.
     const { insertedId } = await ExternalBookingModel.collection.insertOne({ userId: u, integration: 'labstack', providerType: 'DIAGNOSTICS',
@@ -359,7 +370,7 @@ async function main() {
     const tq = await beginReschedule(q.id, 'prov_' + q.p0);
     await ExternalBookingModel.updateOne({ _id: q.id }, { $set: { 'providerOps.reschedule.at': new Date(Date.now() - 20 * 60_000) } });
     await cancel(q.id, u);
-    const attested = await externals.reconcileCancellation(q.id, admin as never, 'cancelled');
+    const attested = await externals.reconcileCancellation(q.id, admin as never, 'cancelled', await reviewed(q.id));
     assert.equal(attested.status, 'cancelled'); const after = await balance(u);
     await recordRescheduleResult(q.id, tq, undefined, {});                                // the provider moved prov_q afterwards
     assert.deepEqual((await row(q.id)).providerOps!.cancel!.ackedRefs, [], 'proof invalidated');
@@ -373,7 +384,7 @@ async function main() {
     await ExternalBookingModel.updateOne({ _id: w.id }, { $set: { 'providerOps.lateRefs': ['prov-W-B'],
       'providerOps.reschedule.at': new Date(Date.now() - 20 * 60_000) } });
     await cancel(w.id, u);
-    await externals.reconcileCancellation(w.id, admin as never, 'cancelled');           // proof for A and B
+    await externals.reconcileCancellation(w.id, admin as never, 'cancelled', await reviewed(w.id));           // proof for A and B
     assert.deepEqual([...(await row(w.id)).providerOps!.cancel!.ackedRefs!].sort(), ['prov-W-B', 'prov_' + w.p0].sort());
     await recordRescheduleResult(w.id, tw, 'prov-W-B', {});                              // the provider moved/returned B
     assert.deepEqual((await row(w.id)).providerOps!.cancel!.ackedRefs, [], 'both proofs invalidated');
@@ -512,6 +523,7 @@ async function main() {
     assert.deepEqual(adminList.data.map(r => r.patientName), ['Patient 2', 'Patient 3'], 'needsAdmin only, oldest request first');
     assert.equal(adminList.total, 2);
     const two = adminList.data[0]!;
+    assert.equal(two.obligations, obligationFingerprint(await row(String(docs[1]!._id)) as never), 'row carries the reviewable fingerprint');
     assert.deepEqual(two.providerRefs, [{ ref: 'REF-2', cancelled: true }, { ref: 'LATE-2', cancelled: false }]);
     assert.deepEqual(adminList.data[1]!.cancel, { by: 'user', reason: undefined, at: docs[0]!.providerOps!.cancel.at, state: 'unknown', calls: 5,
       nextAt: undefined, needsAdmin: true, blockedBy: 'provider_unknown', error: 'timeout' });
@@ -530,6 +542,7 @@ async function main() {
     const { authenticate } = await import('@/modules/middleware/auth');
     const { default: router } = await import('@/modules/externalBookings/routes');
     const app = express();
+    app.use(express.json());
     app.use('/api/v1/external-bookings', authenticate, router);
     app.use((err: { status?: number; code?: string }, _q: unknown, res: { status: (n: number) => { json: (b: unknown) => void } }, _n: unknown) => {
       res.status(err.status ?? 500).json({ code: err.code });
@@ -549,6 +562,15 @@ async function main() {
       assert.equal(openRes.data.length, 3);
       assert.equal((await call('?limit=51', { _id: admin._id, userType: 'admin' })).status, 400);
       assert.equal((await call('?scope=all', { _id: admin._id, userType: 'admin' })).status, 400);
+      // Reconciling requires the reviewed obligations fingerprint (W2c).
+      const reconcileUrl = `http://127.0.0.1:${port}/api/v1/external-bookings/bookings/${String(docs[1]!._id)}/reconcile-cancellation`;
+      const post = (body: unknown) => fetch(reconcileUrl, { method: 'POST', body: JSON.stringify(body),
+        headers: { 'content-type': 'application/json', authorization: 'Bearer ' + jwt.sign({ _id: admin._id, userType: 'admin' }, CONFIG.JWT_SECRET_KEY) } });
+      assert.equal((await post({ providerOutcome: 'cancelled' })).status, 400, 'no fingerprint');
+      assert.equal((await post({ providerOutcome: 'cancelled', expectedObligations: 'abc' })).status, 400, 'malformed fingerprint');
+      const staleRes = await post({ providerOutcome: 'cancelled', expectedObligations: '0'.repeat(64) });
+      assert.equal(staleRes.status, 409);
+      assert.equal(((await staleRes.json()) as { code?: string }).code, 'EXTERNAL_OBLIGATIONS_CHANGED');
       const customerId = new Types.ObjectId().toHexString();
       await mongoose.connection.collection('users').insertOne({ _id: new Types.ObjectId(customerId), phone: '9000000777', name: 'C', userType: 'user' } as never);
       assert.equal((await call('', { _id: customerId, userType: 'user' })).status, 403, 'a signed-in customer is refused');

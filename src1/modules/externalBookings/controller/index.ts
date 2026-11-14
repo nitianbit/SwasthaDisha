@@ -828,7 +828,7 @@ export class ExternalBookingController {
     _next: NextFunction
   ) => {
     const data = await this.externalBookingService.reconcileCancellation(req.params.id, req.user!,
-      req.body.providerOutcome as 'absent' | 'cancelled');
+      req.body.providerOutcome as 'absent' | 'cancelled', String(req.body.expectedObligations));
     res.status(200).json({
       success: true,
       message: data.status === 'cancelled' ? 'External booking cancelled' : 'External booking cancellation is still pending',

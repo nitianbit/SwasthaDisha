@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { ClientSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import { refundAndCloseIn, runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
@@ -82,6 +82,23 @@ const fresh = (at: Date | undefined, now: Date) => !!at && now.getTime() - new D
 /** Every provider reference this booking may hold. */
 export function providerRefs(b: Booking): string[] {
   return [...new Set([externalRefOf(b), ...(opsOf(b).lateRefs ?? [])].filter((r): r is string => !!r))];
+}
+/**
+ * What an admin attests to when reconciling (W2c): every provider reference and whether its cancellation is
+ * acknowledged, and every provider operation whose outcome may be open. Any change (a late provider result adding a
+ * reference, a new attempt or reschedule) makes an earlier review stale, so reconciliation requires this exact value.
+ */
+export function obligationFingerprint(b: Booking): string {
+  const ops = opsOf(b);
+  const acked = new Set(ops.cancel?.ackedRefs ?? []);
+  const view = {
+    refs: providerRefs(b).map(r => `${r}:${acked.has(r) ? 1 : 0}`).sort(),
+    attempt: ops.attempt ? [ops.attempt.token, ops.attempt.state, ops.attempt.ref ?? null] : null,
+    reschedule: ops.reschedule ? [ops.reschedule.token, ops.reschedule.state, ops.reschedule.fromRef ?? null, ops.reschedule.newRef ?? null] : null,
+    priorTokens: [...(ops.priorTokens ?? [])].sort(),
+    unresolvedPrior: ops.unresolvedPrior === true,
+  };
+  return createHash('sha256').update(JSON.stringify(view)).digest('hex');
 }
 /** What still blocks settlement. */
 function openObligations(b: Booking, now: Date) {
@@ -541,13 +558,18 @@ async function returnMoney(b: Booking, id: string, records: PaymentRow[], wallet
  * Recorded with the admin's id; a call still in flight (within its window) is refused. Then the cancellation (if
  * any) continues.
  */
-export async function reconcileProviderState(p: { bookingId: string; admin: Actor; providerOutcome: 'absent' | 'cancelled'; wallets: WalletRepository; now?: Date }):
+export async function reconcileProviderState(p: { bookingId: string; admin: Actor; providerOutcome: 'absent' | 'cancelled';
+  /** obligationFingerprint of the booking as the admin reviewed it (W2c). */ expectedObligations: string; wallets: WalletRepository; now?: Date }):
 Promise<Progress> {
   if (p.admin?.userType !== 'admin' || !p.admin._id) throw conflict('FORBIDDEN', 'Admin access is required', 403);
   const id = String(p.bookingId).toLowerCase();
   const now = p.now ?? new Date();
   await runLedgerTransaction(async s => {
     const b = await read(id, s);
+    // The attestation covers exactly what the admin reviewed; the update below is fenced on this same read.
+    if (obligationFingerprint(b) !== p.expectedObligations) {
+      throw conflict('EXTERNAL_OBLIGATIONS_CHANGED', 'The provider bookings changed since you checked them; review them again');
+    }
     const ops = opsOf(b);
     if ([ops.attempt, ops.reschedule].some(x => x?.state === 'started' && fresh(x.at, now))) {
       throw conflict('EXTERNAL_PROVIDER_IN_FLIGHT', 'A provider call is still running; try again later');
@@ -618,6 +640,8 @@ export async function listOpenCancellations(q: { scope: 'admin' | 'open'; page: 
       doctorName: b.doctorName, labName: b.labName, packageNames: b.packageNames, testNames: b.testNames,
       price: b.price, paymentStatus: b.paymentStatus, userId: b.userId,
       providerRefs: providerRefs(b).map(ref => ({ ref, cancelled: acked.has(ref) })),
+      /** Send back unchanged with the reconciliation: it is refused if the obligations changed meanwhile. */
+      obligations: obligationFingerprint(b),
       cancel: { by: c.by, reason: c.reason, at: c.at, state: c.state, calls: c.calls ?? 0, nextAt: c.nextAt,
         needsAdmin: c.needsAdmin === true, blockedBy: c.blockedBy, error: c.error },
     };

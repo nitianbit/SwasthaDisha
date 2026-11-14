@@ -1785,9 +1785,10 @@ export class ExternalBookingService {
    * Admin, after checking with the provider: 'absent' (no provider booking exists) or 'cancelled' (every provider
    * booking of this booking is cancelled). Resolves what could not be proven automatically; then continues.
    */
-  async reconcileCancellation(id: string, actor: ExternalBookingActor, providerOutcome: 'absent' | 'cancelled'): Promise<IExternalBooking> {
+  async reconcileCancellation(id: string, actor: ExternalBookingActor, providerOutcome: 'absent' | 'cancelled',
+    expectedObligations: string): Promise<IExternalBooking> {
     await reconcileProviderState({ bookingId: id, admin: { _id: String(actor._id), userType: actor.userType }, providerOutcome,
-      wallets: this.walletRepository });
+      expectedObligations, wallets: this.walletRepository });
     return this.continueCancellation(id);
   }
 
