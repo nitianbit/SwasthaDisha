@@ -14,6 +14,7 @@ import { runExternalBookingPaymentTimeoutScheduler } from '@/modules/externalBoo
 import { runPharmacyOrderTimeoutScheduler } from '@/modules/pharmacyOrders/services/pharmacyOrderTimeoutScheduler';
 import { runPrescriptionRefundScheduler } from '@/modules/pharmacyOrders/services/prescriptionRefundScheduler';
 import { runBookingPaymentRecoveryScheduler } from '@/modules/payment/services/bookingPaymentRecoveryScheduler';
+import { runBookingPaymentTimeoutScheduler } from '@/modules/bookings/services/bookingPaymentTimeoutScheduler';
 import { runLowStockAlertScheduler } from '@/modules/pharmacyInventory/lowStockScheduler';
 import { backfillMedicineNameKeys } from '@/modules/pharmacyMedicines/services/nameKeyMigration';
 import { runInventoryImportCleanupScheduler } from '@/modules/pharmacyInventoryImports/services/inventoryImportCleanupScheduler';
@@ -78,6 +79,7 @@ connectDB()
     runPharmacyOrderTimeoutScheduler();
     runPrescriptionRefundScheduler();
     runBookingPaymentRecoveryScheduler();
+    runBookingPaymentTimeoutScheduler();
     runLowStockAlertScheduler();
     logger.info('Pharmacy order payment-timeout scheduler started');
     runInventoryImportCleanupScheduler();

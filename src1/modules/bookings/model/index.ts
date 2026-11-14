@@ -446,6 +446,10 @@ const bookingSchema = new Schema<IBooking>(
       type: String,
       match: /^\d{8}$/, // YYYYMMDD format
     },
+    // Machine-readable reason of a cancellation the system made (D2: 'payment_timeout').
+    cancellationCause: { type: String },
+    // Unpaid-booking expiry sweep (D2): next time this booking is examined after an inconclusive gateway check.
+    expiryNextAt: { type: Date },
     virtualMeeting: {
       type: virtualMeetingSchema,
     },
@@ -457,6 +461,8 @@ const bookingSchema = new Schema<IBooking>(
 
 // Compound indexes for better query performance
 bookingSchema.index({ userId: 1, status: 1 });
+// Unpaid-booking expiry sweep (D2): pending, unpaid, due first.
+bookingSchema.index({ status: 1, paymentStatus: 1, expiryNextAt: 1, createdAt: 1 });
 // One booking per customer and create key; bookings without a key are not constrained (W3b).
 bookingSchema.index({ userId: 1, createRequestKey: 1 }, { unique: true, partialFilterExpression: { createRequestKey: { $type: 'string' } } });
 bookingSchema.index({ userId: 1, bookingDate: 1 });

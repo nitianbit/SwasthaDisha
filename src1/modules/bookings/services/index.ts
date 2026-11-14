@@ -3,7 +3,7 @@ import BookingModel from '@/modules/bookings/model';
 import { fundBookingFromWallet, runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
 import { Types } from 'mongoose';
 import { CreateDirectPaidTransactionRequest } from '@/modules/payment/types';
-import { cancelBookingSettlement, createBookingWithHolds, isReplayedBooking, rescheduleWithHolds } from '@/modules/bookings/holds';
+import { cancelBookingSettlement, createBookingWithHolds, expireUnpaidBooking, isReplayedBooking, paymentDeadlinePassed, rescheduleWithHolds } from '@/modules/bookings/holds';
 import {
   BookingType,
   CreateBookingRequest,
@@ -695,7 +695,7 @@ export class BookingService {
   private async replayedCreate(booking: IBooking, _resent: CreateSpecialistBookingRequest): Promise<BookingPaymentInitResponse> {
     // Interrupted after the insert (no payment link, not settled): finish it now with the original request's terms.
     // Only with the validated terms stored at the insert; the resent request's body is not trusted for money.
-    if (booking.status === 'pending' && !booking.paymentTransactionId && booking.createTerms) {
+    if (booking.status === 'pending' && !booking.paymentTransactionId && booking.createTerms && !paymentDeadlinePassed(booking, new Date())) {
       const terms = booking.createTerms;
       const finalPrice = Number(booking.price || 0);
       if (finalPrice <= 0 && booking.paymentStatus === 'paid') {
@@ -1577,6 +1577,47 @@ export class BookingService {
     return updated;
   }
 
+  /**
+   * Expiry sweep (D2), run by bookingPaymentTimeoutScheduler. Due bookings (pending, unpaid, priced, past the payment
+   * window, not backed off) oldest-due first: every payment attempt is checked with the gateway first; if any cannot be
+   * checked the booking is backed off (5 min doubling, max 6 h) instead of expired; otherwise expireUnpaidBooking makes
+   * the final, transactional decision. Fenced and idempotent across instances.
+   */
+  async expireUnpaidBookings(now = new Date(), limit = 100): Promise<{ examined: number; expired: number; deferred: number }> {
+    const due = await BookingModel.find({
+      status: 'pending', paymentStatus: 'pending', price: { $gt: 0 },
+      createdAt: { $lte: new Date(now.getTime() - 30 * 60_000) },
+      $or: [{ expiryNextAt: { $exists: false } }, { expiryNextAt: null }, { expiryNextAt: { $lte: now } }],
+    }).sort({ expiryNextAt: 1, createdAt: 1 }).limit(limit).select({ _id: 1, expiryNextAt: 1 }).lean() as unknown as { _id: unknown; expiryNextAt?: Date }[];
+    let expired = 0;
+    let deferred = 0;
+    for (const row of due) {
+      const id = String(row._id);
+      try {
+        const check = await this.paymentService.reconcileBookingPayments(id);
+        if (check.unknown > 0) {
+          const last = row.expiryNextAt ? Math.max(5 * 60_000, now.getTime() - new Date(row.expiryNextAt).getTime()) : 0;
+          const delay = Math.min(6 * 3_600_000, last ? last * 2 : 5 * 60_000);
+          await BookingModel.updateOne({ _id: id, status: 'pending', paymentStatus: 'pending' }, { $set: { expiryNextAt: new Date(now.getTime() + delay) } });
+          deferred += 1;
+          continue;
+        }
+        const reason = 'Payment was not completed in time';
+        const r = await expireUnpaidBooking({ bookingId: id, now, wallets: this.walletRepository, cancelledAt: getTodayYyyymmdd(),
+          lifecycle: (b) => this.buildLifecyclePatch(b.lifecycle, { cancelled: { reason }, refunded: { reason } }) });
+        if (r.expired) {
+          expired += 1;
+          try { await this.bookingReminderScheduler.clearBookingReminders(r.booking._id!); } catch { /* best effort */ }
+        }
+      } catch (error) {
+        deferred += 1;
+        await BookingModel.updateOne({ _id: id, status: 'pending', paymentStatus: 'pending' }, { $set: { expiryNextAt: new Date(now.getTime() + 5 * 60_000) } });
+        console.error('Booking payment expiry failed', id, error instanceof Error ? error.message : error);
+      }
+    }
+    return { examined: due.length, expired, deferred };
+  }
+
   /** Owner/admin: checks every payment attempt of this booking with the gateway (W3b); returns the current booking. */
   async reconcileBookingPayments(bookingId: string, requester: { _id: string; userType: string; pharmacyId?: string }) {
     const booking = await this.getById(bookingId);
@@ -1628,6 +1669,10 @@ export class BookingService {
       });
     }
 
+    // Past its payment window an unpaid booking takes no new payment; it is about to expire (D2). A payment already
+    // made is still found by the reconciliation below and by the expiry sweep.
+    const deadlinePassed = booking.status === 'pending' && booking.paymentStatus === 'pending' && paymentDeadlinePassed(booking, new Date());
+
     // Before a new order replaces the current one, every earlier attempt is checked with the gateway (W3b): a capture
     // whose confirmation was lost is applied instead of charging again, and no new order is made while an earlier
     // attempt cannot be checked.
@@ -1635,6 +1680,14 @@ export class BookingService {
     if (earlier.unknown > 0) {
       throw new AppError({ status: 503, code: 'PAYMENT_STATE_UNKNOWN',
         message: 'We could not check your earlier payment for this booking. Please try again in a few minutes.' });
+    }
+    if (deadlinePassed) {
+      const fresh = await this.getById(bookingId);
+      if (fresh.paymentStatus === 'paid') {
+        throw new AppError({ status: 400, code: 'BOOKING_ALREADY_PAID', message: 'Booking is already paid' });
+      }
+      throw new AppError({ status: 409, code: 'BOOKING_PAYMENT_EXPIRED',
+        message: 'The time to pay for this booking has run out. Please book again.' });
     }
     if (earlier.checked > 0) {
       const fresh = await this.getById(bookingId);

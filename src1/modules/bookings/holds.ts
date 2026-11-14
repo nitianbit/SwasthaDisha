@@ -237,6 +237,57 @@ export async function cancelBookingSettlement(p: {
   });
 }
 
+/** How long a booking may wait for its payment before it expires (D2). */
+export const BOOKING_PAYMENT_WINDOW_MS = 30 * 60_000;
+export const paymentDeadlinePassed = (b: Pick<IBooking, 'createdAt'>, now: Date) =>
+  !!b.createdAt && new Date(b.createdAt).getTime() <= now.getTime() - BOOKING_PAYMENT_WINDOW_MS;
+
+export type ExpiryResult = { expired: true; booking: IBooking; refunded: number } | { expired: false; reason: 'not_pending' | 'not_due' | 'paid' };
+
+/**
+ * Expires an unpaid booking whose payment window passed (D2). An internal operation (no requester, not reachable from
+ * a client), and the ONLY admission is inside this transaction, after the capture fence: still pending, still
+ * unpaid, past its deadline, and no captured or applied money. A payment that won the race leaves the booking alone
+ * (the caller resumes its processing). Otherwise one cancellation as cancelBookingSettlement: coupon undone, wallet
+ * funding returned, slot and follow-up released, cause 'payment_timeout'. A capture arriving later is returned to
+ * the wallet by the existing payment paths.
+ */
+export async function expireUnpaidBooking(p: { bookingId: string; now: Date; wallets: WalletRepository; cancelledAt: string;
+  lifecycle: (b: IBooking) => IBooking['lifecycle'] }): Promise<ExpiryResult> {
+  if (!Types.ObjectId.isValid(p.bookingId)) return { expired: false, reason: 'not_pending' };
+  const id = String(p.bookingId).toLowerCase();
+  return runLedgerTransaction(async s => {
+    const booking = await BookingModel.findById(id).session(s).lean() as IBooking | null;
+    if (!booking || booking.status !== 'pending' || booking.paymentStatus !== 'pending') return { expired: false, reason: 'not_pending' };
+    if (!paymentDeadlinePassed(booking, p.now)) return { expired: false, reason: 'not_due' };
+
+    // Serialize with capture exactly like a cancellation, then decide on what is now committed.
+    await PaymentRecordModel.collection.updateMany({ context: 'booking', contextId: id, status: { $nin: ['paid', 'refunded'] } },
+      { $set: { updatedAt: new Date() } }, { session: s });
+    const records = await PaymentRecordModel.find({ context: 'booking', contextId: id }).session(s).lean() as unknown as PaymentRow[];
+    if (records.some(r => r.status === 'paid') || (booking.walletFunding?.captures ?? []).some(c => c.state === 'applied')) {
+      return { expired: false, reason: 'paid' };
+    }
+
+    const slot = await heldSlot(booking, s);
+    const parent = await heldFollowUpParent(booking, s);
+    const cancelled = await BookingModel.updateOne({ _id: id, status: 'pending', paymentStatus: 'pending' },
+      { $set: { status: 'cancelled', paymentStatus: 'refunded', cancellationReason: 'Payment was not completed in time',
+        cancellationCause: 'payment_timeout', cancelledAt: p.cancelledAt, lifecycle: p.lifecycle(booking) },
+        $unset: { expiryNextAt: 1 } }, { session: s });
+    if (cancelled.modifiedCount !== 1) throw changed();
+    await undoCouponUsageIn(records.map(r => String(r._id)), s);
+    const refunded = await settleMoney(booking, id, records, p.wallets, s);
+    if (slot) await releaseSlot(slot, s);
+    if (parent) {
+      await BookingModel.updateOne({ _id: parent, 'followUp.benefitUsed': true }, { $set: { 'followUp.benefitUsed': false } }, { session: s });
+    }
+    await BookingModel.updateOne({ _id: id, status: 'cancelled' },
+      { $set: { holds: { version: 1, heldSlotId: null, followUpParentId: null } } }, { session: s });
+    return { expired: true, booking: await BookingModel.findById(id).session(s).lean() as IBooking, refunded };
+  });
+}
+
 /**
  * Moves the booking's slot hold to `nextSlotId` and writes the new appointment, atomically (milestone C3). The
  * appointment time is always the target slot's start time.
