@@ -154,15 +154,38 @@ async function firstMatch<T>(cursor: { next(): Promise<T | null>; close(): Promi
   }
 }
 
+type SlotView = { path: string; field: string; kind: GrantKind; gen: number };
+
+async function activeSlots(model: string, recordId: string): Promise<SlotView[]> {
+  const rows = await FileGrantModel.find({ model, resourceId: recordId, state: 'active' }).select({ path: 1, field: 1, kind: 1, gen: 1 }).lean();
+  return rows.map((r) => ({ path: r.path, field: r.field, kind: r.kind, gen: Number(r.gen) }));
+}
+
 /**
- * Copies a record's current bindings to a copy of that record (e.g. common banners cloned for a new corporate). The
- * authority is the source's own trusted, current binding; the copy's binding is validated against the copy at read.
+ * A consistent copy source: the record and the bindings that were current for exactly that record state. Bindings are
+ * read before and after the record; if any active slot changed in between, it is read again (3 tries). Returns null when
+ * the source keeps changing or is gone - the caller then skips the copy rather than produce a mismatched one.
  */
-export async function copyCurrentBindings(actor: Reader | undefined, model: string, fromId: unknown, toId: unknown): Promise<void> {
-  const active: Binding[] = [];
-  await firstMatch(FileGrantModel.find({ model, resourceId: id(fromId), state: 'active' }).lean().cursor() as never,
-    async (g: Binding) => { if (await currentOrWithdraw(g)) active.push(g); return false; });
-  for (const g of active) await activate(actor, { ...keyOf(g), resourceId: id(toId) }, g.kind, 0, 'attach');
+export async function snapshotWithBindings(model: string, recordId: unknown): Promise<{ doc: Record<string, unknown>; bindings: SlotView[] } | null> {
+  const M = mongoose.models[model];
+  const rid = id(recordId);
+  if (!M || !isValidObjectId(rid)) return null;
+  const sig = (xs: SlotView[]) => xs.map((x) => `${x.field}|${x.path}|${x.gen}`).sort().join(',');
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const before = await activeSlots(model, rid);
+    const doc = await M.findById(rid).lean() as Record<string, unknown> | null;
+    if (!doc) return null;
+    const after = await activeSlots(model, rid);
+    if (sig(before) !== sig(after)) continue;
+    const bindings = after.filter((b) => valuesAt(doc, b.field).some((v) => uploadPathOf(v) === b.path));
+    return { doc, bindings };
+  }
+  return null;
+}
+
+/** Binds a freshly created copy with the bindings taken from its source snapshot (new record: nothing to fence). */
+export async function bindCopy(actor: Reader | undefined, model: string, copyId: unknown, bindings: SlotView[]): Promise<void> {
+  for (const b of bindings) await activate(actor, { path: b.path, model, resourceId: id(copyId), field: b.field }, b.kind, 0, 'attach');
 }
 
 /** The decision. `rel` has already passed `legacyPath` (traversal, symlink and reserved-subtree guard). */
@@ -262,6 +285,25 @@ export async function grantFiles(actor: Reader | undefined, paths: string[], kin
     const current = await FileGrantModel.findOne(k).select({ gen: 1, state: 1 }).lean();
     if (current?.state === 'active') continue;
     await activate(actor, k, kind, current ? Number(current.gen) : 0, source);
+  }
+}
+
+/**
+ * Repairs the bindings of a stored record for the files `actor` has authority over (uploader, or admin): binds each
+ * such file the record currently holds, at the authority of now. Files without that authority are left as they are
+ * (never refused, never bound). Used where a request re-presents a record without changing it (a keyed replay).
+ */
+export async function rebindStored(actor: Reader | undefined, model: string, recordId: unknown): Promise<void> {
+  const M = mongoose.models[model];
+  const fields = FILE_FIELDS[model];
+  if (!M || !fields || !actor || !isValidObjectId(String(recordId ?? ''))) return;
+  const doc = await M.findById(String(recordId)).lean();
+  if (!doc) return;
+  for (const [field, kind] of fields) {
+    const values = valuesAt(doc, field);
+    // Every value counts as "unchanged", so a value without authority is skipped rather than refused.
+    const paths = await checkAttachable(actor, values, values, { publicImage: kind === 'public' });
+    if (paths.length) await grantFiles(actor, paths, kind, { model, resourceId: String(recordId), field });
   }
 }
 

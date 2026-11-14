@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import BookingModel from '@/modules/bookings/model';
-import { withFiles } from '@/modules/file/access';
+import { rebindStored, withFiles } from '@/modules/file/access';
 import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { AppError } from '@/modules/common/types';
@@ -62,15 +62,23 @@ export class BookingController {
   }
 
   /**
-   * D1: a keyed resend of an existing booking changes no attachment (the service replays the stored booking from its
-   * stored terms), so it is not re-checked: a pre-D1 request carrying a legacy document can still finish. Only an
-   * actual insert checks and binds its files.
+   * D1: only `createSpecialistBooking` (consultation / second-opinion) replays a keyed resend. When the same owner + key
+   * already exists it returns the stored booking from its stored terms and changes no attachment, so the request's
+   * attachments are not re-checked (a pre-D1 request carrying a legacy document can still finish); instead the stored
+   * booking's bindings are repaired for the files this actor uploaded (a first attempt whose binding failed after the
+   * save is healed by its retry). Every other create - package and surgery inserts included - checks and binds normally.
    */
-  private async createWithFiles<T>(req: AuthRequest, data: { userId?: unknown; requestKey?: unknown }, create: () => Promise<T>): Promise<T> {
-    const key = data.requestKey;
-    if (typeof key === 'string' && data.userId != null
-      && await BookingModel.exists({ userId: { $eq: data.userId }, createRequestKey: { $eq: key } })) {
-      return create();
+  private async createWithFiles<T>(req: AuthRequest, data: { userId?: unknown; requestKey?: unknown }, replays: boolean,
+    create: () => Promise<T>): Promise<T> {
+    const key = typeof data.requestKey === 'string' ? data.requestKey.trim() : '';
+    const prior = replays && key && data.userId != null
+      ? await BookingModel.findOne({ userId: { $eq: data.userId }, createRequestKey: { $eq: key } }).select({ _id: 1 }).lean()
+      : null;
+    if (prior) {
+      const result = await create();
+      const id = (result as { booking?: { _id?: unknown } } | null)?.booking?._id ?? prior._id;
+      await rebindStored(req.user, 'Booking', id);
+      return result;
     }
     return withFiles(req.user, 'Booking', data, undefined, create,
       (r) => (r as { booking?: { _id?: unknown } } | null)?.booking?._id ?? (r as { _id?: unknown } | null)?._id);
@@ -240,7 +248,8 @@ export class BookingController {
         (req.body.packageName as string | undefined) ||
         (req.body.package_name as string | undefined),
     };
-    const result = await this.createWithFiles(req, data, () => this.bookingService.createBooking(data));
+    const result = await this.createWithFiles(req, data, data.bookingType === 'consultation' || data.bookingType === 'second-opinion',
+      () => this.bookingService.createBooking(data));
 
     res.status(201).json({
       success: true,
@@ -272,7 +281,7 @@ export class BookingController {
         (req.body.packageName as string | undefined) ||
         (req.body.package_name as string | undefined),
     };
-    const result = await this.createWithFiles(req, data, () => this.bookingService.createWellnessPackageBooking(data));
+    const result = await this.createWithFiles(req, data, false, () => this.bookingService.createWellnessPackageBooking(data));
 
     res.status(201).json({
       success: true,
@@ -304,7 +313,7 @@ export class BookingController {
         (req.body.doctorName as string | undefined) ||
         (req.body.doctor_name as string | undefined),
     };
-    const result = await this.createWithFiles(req, data, () => this.bookingService.createSpecialistBooking(data));
+    const result = await this.createWithFiles(req, data, true, () => this.bookingService.createSpecialistBooking(data));
 
     res.status(201).json({
       success: true,

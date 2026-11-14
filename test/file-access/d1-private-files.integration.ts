@@ -416,19 +416,32 @@ async function main() {
       assert.deepEqual(await applyManifest([{ ...rx, approved: true }]), { applied: 1, not_approved: 0, flagged: 0, invalid: 0, stale: 0 });
       assert.equal(await FileGrantModel.countDocuments({ path: 'general/legacy-rx.pdf' }), 1, 'idempotent');
     });
-    await check('a keyed resend of an existing booking is not re-checked (pre-D1 legacy document); a new insert is', async () => {
+    await check('keyed replays: a consultation resend is not re-checked and repairs bindings; a package insert with that key is checked', async () => {
       const { BookingController } = await import('@/modules/bookings/controller');
-      const ctl = new BookingController() as unknown as { createWithFiles: (req: object, data: object, create: () => Promise<unknown>) => Promise<unknown> };
+      const ctl = new BookingController() as unknown as {
+        createWithFiles: (req: object, data: object, replays: boolean, create: () => Promise<unknown>) => Promise<unknown> };
       const legacy = '/api/static/general/legacy-old-request.pdf';
       await BookingModel.collection.insertOne({ _id: new Types.ObjectId(), userId: a._id, createRequestKey: 'pre-d1-key-0001',
         documents: [{ url: legacy }] } as never);
-      const body = { userId: a._id, requestKey: 'pre-d1-key-0001', documents: [{ url: legacy }] };
-      assert.equal(await ctl.createWithFiles({ user: a.claims }, body, async () => 'replayed'), 'replayed');
-      await assert.rejects(ctl.createWithFiles({ user: a.claims }, { ...body, requestKey: 'new-key-0002' }, async () => 'inserted'),
+      const body = { userId: a._id, requestKey: ' pre-d1-key-0001 ', documents: [{ url: legacy }] };
+      assert.equal(await ctl.createWithFiles({ user: a.claims }, body, true, async () => 'replayed'), 'replayed');
+      await assert.rejects(ctl.createWithFiles({ user: a.claims }, { ...body, requestKey: 'new-key-0002' }, true, async () => 'inserted'),
         (e: { code?: string }) => e.code === 'FILE_NOT_ATTACHABLE');
-      // Another customer's key does not count as a replay.
-      await assert.rejects(ctl.createWithFiles({ user: b.claims }, { ...body, userId: b._id }, async () => 'inserted'),
-        (e: { code?: string }) => e.code === 'FILE_NOT_ATTACHABLE');
+      await assert.rejects(ctl.createWithFiles({ user: b.claims }, { ...body, userId: b._id }, true, async () => 'inserted'),
+        (e: { code?: string }) => e.code === 'FILE_NOT_ATTACHABLE', 'another customer\'s key is not a replay');
+      await assert.rejects(ctl.createWithFiles({ user: a.claims }, body, false, async () => 'package inserted'),
+        (e: { code?: string }) => e.code === 'FILE_NOT_ATTACHABLE', 'package/surgery never replay keys, so they are always checked');
+
+      // First attempt saved the booking but its binding failed; the same-key retry repairs it from the stored booking.
+      const doc = (await upload(a.token, 'retry.pdf')).body.data!.files[0]!.url;
+      const bk = new Types.ObjectId();
+      await BookingModel.collection.insertOne({ _id: bk, userId: a._id, specialistId: new Types.ObjectId(spec._id), createRequestKey: 'retry-key-0003',
+        documents: [{ url: doc }, { url: legacy }] } as never);
+      assert.equal((await get(doc, spec.token)).status, 404);
+      await ctl.createWithFiles({ user: a.claims }, { userId: a._id, requestKey: 'retry-key-0003', documents: [] }, true,
+        async () => ({ booking: { _id: bk }, replayed: true }));
+      assert.equal((await get(doc, spec.token)).status, 200, 'repaired');
+      assert.equal(await FileGrantModel.countDocuments({ path: legacy.slice('/api/static/'.length), state: 'active' }), 0, 'legacy stays inert');
     });
 
     await check('common banners cloned for a new corporate keep their image after the source banner changes', async () => {

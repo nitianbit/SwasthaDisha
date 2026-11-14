@@ -1,4 +1,5 @@
-import { copyCurrentBindings } from '@/modules/file/access';
+import { bindCopy, snapshotWithBindings } from '@/modules/file/access';
+import logger from '@/services/logger';
 import { Service } from 'typedi';
 import { CorporateRepository } from '@/modules/corporates/repository';
 import { BannerRepository } from '@/modules/banners/repository';
@@ -61,12 +62,18 @@ export class CorporateService {
 
     await Promise.all(
       commonBanners.map(async (banner) => {
+        // D1: the clone is built from the same snapshot its bindings are copied from, so its image is never left
+        // without the authority it had on the source. A source changing throughout is skipped, not mis-cloned.
+        const snap = await snapshotWithBindings('Banner', banner._id);
+        if (!snap) {
+          logger.warn('Common banner not cloned: it changed while being copied', { bannerId: String(banner._id), corporateId });
+          return;
+        }
         const clone = await this.bannerRepository.save({
-          ...this.toCorporateBannerPayload(banner),
+          ...this.toCorporateBannerPayload(snap.doc as unknown as IBanner),
           corporateId,
         });
-        // D1: the clone shows the same image, so it gets the source banner's current bindings.
-        await copyCurrentBindings({ _id: 'corporate-banner-clone', userType: 'system' }, 'Banner', banner._id, clone._id);
+        await bindCopy({ _id: 'corporate-banner-clone', userType: 'system' }, 'Banner', clone._id, snap.bindings);
       })
     );
   }
