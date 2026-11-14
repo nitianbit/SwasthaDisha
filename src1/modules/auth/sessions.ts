@@ -234,14 +234,17 @@ export async function logoutSession(req: Request, res: Response): Promise<void> 
   // The family of the access token the tab was using is ended too (it may differ from the cookie's after another
   // sign-in in this browser). Only a valid token, only its own family, only in this audience.
   const header = req.headers.authorization;
+  type BearerClaims = { sid?: unknown; aud?: unknown; _id?: unknown; userType?: unknown };
+  let bearer: BearerClaims | null = null;
   if (typeof header === 'string' && header.startsWith('Bearer ')) {
     try {
-      const c = jwt.verify(header.slice(7), CONFIG.JWT_SECRET_KEY) as { sid?: unknown; aud?: unknown; _id?: unknown; userType?: unknown };
-      if (typeof c.sid === 'string' && c.aud === audience) {
-        await AuthSessionModel.updateOne({ _id: c.sid, audience, userId: String(c._id), userType: String(c.userType), revokedAt: { $exists: false } },
-          { $set: { revokedAt: new Date(), revokeReason: 'logout' } });
-      }
-    } catch { /* an invalid or expired token ends nothing */ }
+      bearer = jwt.verify(header.slice(7), CONFIG.JWT_SECRET_KEY) as unknown as BearerClaims;
+    } catch { bearer = null; /* an invalid or expired token ends nothing */ }
+  }
+  // A failure to revoke a valid token's family is an error (never a successful-looking logout).
+  if (bearer && typeof bearer.sid === 'string' && bearer.aud === audience) {
+    await AuthSessionModel.updateOne({ _id: bearer.sid, audience, userId: String(bearer._id), userType: String(bearer.userType), revokedAt: { $exists: false } },
+      { $set: { revokedAt: new Date(), revokeReason: 'logout' } });
   }
   clearCookie(res, audience);
 }

@@ -188,6 +188,23 @@ async function main() {
       assert.equal(out.status, 200);
       assert.equal((await call('/api/v1/me', { bearer: s1.token })).status, 401, 'the tab\'s own family ended');
       assert.equal((await call('/api/v1/me', { bearer: String(s2.body.data!.token) })).status, 401, 'and the cookie\'s');
+      // If revoking the tab token's family fails, logout fails (it never reports success with that token still valid).
+      const t1 = await login('user', CUSTOMER, phone);
+      await call('/api/v1/auth/user/send', { body: { phone }, header: false });
+      const t2 = await call('/api/v1/auth/user/verify', { body: { phone, otp: lastOtp(), session: 'cookie' } });
+      const sid1 = String((jwt.decode(t1.token) as Record<string, string>).sid);
+      const original = AuthSessionModel.updateOne.bind(AuthSessionModel);
+      (AuthSessionModel as unknown as { updateOne: unknown }).updateOne = ((filter: { _id?: unknown }, ...rest: unknown[]) => {
+        if (filter?._id === sid1) throw new Error('database unavailable');
+        return (original as (...a: unknown[]) => unknown)(filter, ...rest);
+      }) as never;
+      try {
+        const failed = await call('/api/v1/auth/session/logout', { cookie: pair(t2.cookie), bearer: t1.token });
+        assert.notEqual(failed.status, 200);
+      } finally {
+        (AuthSessionModel as unknown as { updateOne: unknown }).updateOne = original;
+      }
+      assert.equal((await AuthSessionModel.findById(sid1).lean())!.revokedAt, undefined);
     });
 
     await check('refresh is refused without the header, from another origin, or with the other app\'s cookie', async () => {
