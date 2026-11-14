@@ -392,6 +392,24 @@ async function main() {
     assert.equal(sub.nextRefillDate, '20261114'); assert.ok(sub.pendingRefill);
   });
 
+  await check('a payment returned while the order is frozen: rejection is refused; approval completes it, stock once, no second refund', async () => {
+    const o = await order({ status: 'placed', paymentStatus: 'authorized', record: 'unprocessed' });
+    const r = await orders.requestCancel(o.id, o.user);
+    // A late-payment worker decides first: the capture is returned to the wallet while the order stays frozen.
+    await (payments as unknown as { handleTimedOutPharmacyOrderPayment: (o: unknown, r: unknown) => Promise<unknown> })
+      .handleTimedOutPharmacyOrderPayment(await get(o.id), await PaymentRecordModel.findById(o.recordId).lean());
+    const frozen = await get(o.id);
+    assert.equal(frozen.status, 'pending_cancel'); assert.equal(frozen.paymentStatus, 'refunded');
+    assert.equal(await balance(o.customer), 100);
+    await rejects(orders.rejectCancel(o.id, pharmacy, { requestId: r.cancelRequest!.requestId }), 'CANCEL_MUST_COMPLETE');
+    assert.equal((await get(o.id)).status, 'pending_cancel');
+    const done = await orders.approveCancel(o.id, pharmacy, { requestId: r.cancelRequest!.requestId });
+    assert.equal(done.status, 'cancelled'); assert.equal(done.cancelRequest?.requestId, r.cancelRequest!.requestId);
+    assert.equal(released.get(o.med), 2, 'stock released once');
+    assert.equal(await balance(o.customer), 100, 'no second refund');
+    assert.equal(done.prescriptionRefund, undefined);
+  });
+
   await mongoose.disconnect();
   console.log(`${passed} checks passed`);
 }

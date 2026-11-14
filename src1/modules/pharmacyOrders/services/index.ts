@@ -1690,6 +1690,12 @@ export class PharmacyOrderService {
       const request = order.cancelRequest;
       if (order.status !== 'pending_cancel' || request?.state !== 'pending' || request.requestId !== requestId) throw this.requestChanged();
       const payment = order.paymentStatus;
+      // The payment was returned to the customer while the order was frozen: it can no longer resume - the
+      // cancellation must be completed (approve releases its stock once, with no second refund).
+      if (payment === 'refunded') {
+        throw new AppError({ status: 409, code: 'CANCEL_MUST_COMPLETE',
+          message: 'The payment for this order was already returned to the customer; approve the cancellation to complete it' });
+      }
       // From the same fresh read: a capture recorded while frozen confirms a placed order (as the payment would have).
       const restored: OrderStatus = request.fromStatus === 'placed' && payment === 'paid' ? 'accepted' : request.fromStatus;
       const updated = await this.orderRepo.update({
