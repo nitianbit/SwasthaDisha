@@ -10,6 +10,9 @@ import { SpecialistRepository } from '@/modules/specialists/repository';
 import { PharmacyRepository } from '@/modules/pharmacies/repository';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { tokenCredentialVersion } from '@/modules/user/credentialGeneration';
+import jwt from 'jsonwebtoken';
+import { ACCESS_TOKEN_TTL_SECONDS, assertRoleForAudience, createSession, logoutSession, privateTokenResponse, refreshSession,
+  reissueForCaller, revokeAllSessions, sessionAudience } from '@/modules/auth/sessions';
 
 export class AuthController {
   private authService: AuthService;
@@ -49,6 +52,9 @@ export class AuthController {
   verifyOTP = async (req: Request, res: Response, _next: NextFunction) => {
     const { userType } = req.params;
     const { phone, email, otp } = req.body;
+    // D4: decided (origin, header, audience, role) BEFORE the single-use OTP is consumed.
+    const audience = req.body?.session === 'cookie' ? sessionAudience(req) : null;
+    if (audience) assertRoleForAudience(audience, String(userType));
 
     const data: VerifyOTPRequest = {
       userType: userType as VerifyOTPRequest['userType'],
@@ -58,6 +64,15 @@ export class AuthController {
     };
 
     const result = await this.authService.verifyOTP(data);
+
+    if (audience) {
+      // The same request that consumed the OTP starts the family; the long-lived bearer is not handed out.
+      const claims = jwt.decode(result.accessToken) as Record<string, unknown> & { _id: string; userType: string };
+      privateTokenResponse(res);
+      const token = await createSession(res, audience, claims);
+      return res.status(200).json({ success: true, message: result.message,
+        data: { token, expiresIn: ACCESS_TOKEN_TTL_SECONDS, user: result.userData } });
+    }
 
     return res.status(200).json({
       success: true,
@@ -70,8 +85,30 @@ export class AuthController {
   };
 
   revokeSessions = async (req: AuthRequest, res: Response, _next: NextFunction) => {
-    const data = await this.authService.revokeSessions(req.user);
-    return res.status(200).json({ success: true, message: 'Signed out on all devices', data });
+    const user = req.user;
+    if (user?.userType === 'user') {
+      const data = await this.authService.revokeSessions(user);
+      await revokeAllSessions('user', String(user._id));
+      return res.status(200).json({ success: true, message: 'Signed out on all devices', data });
+    }
+    // D4: staff end every web session of their account (legacy 30-day staff bearer tokens are not revocable).
+    if (!user?._id || !['admin', 'pharmacy', 'hr', 'specialist'].includes(user.userType)) {
+      return res.status(403).json({ success: false, code: 'FORBIDDEN', message: 'Access denied' });
+    }
+    await revokeAllSessions(user.userType, String(user._id));
+    return res.status(200).json({ success: true, message: 'Signed out on all devices', data: { signedOutEverywhere: true } });
+  };
+
+  refreshSession = async (req: Request, res: Response, _next: NextFunction) => {
+    privateTokenResponse(res);
+    const data = await refreshSession(req, res);
+    return res.status(200).json({ success: true, data });
+  };
+
+  logoutSession = async (req: Request, res: Response, _next: NextFunction) => {
+    privateTokenResponse(res);
+    await logoutSession(req, res);
+    return res.status(200).json({ success: true, data: { signedOut: true } });
   };
 
   getProfile = async (req: Request, res: Response, _next: NextFunction) => {
@@ -197,7 +234,7 @@ export class AuthController {
       success: true,
       message: result.message,
       data: {
-        token: result.accessToken,
+        token: reissueForCaller((req as AuthRequest).user as never, result.accessToken),
         user: result.user,
       },
     });
@@ -240,7 +277,7 @@ export class AuthController {
       success: true,
       message: result.message,
       data: {
-        token: result.accessToken,
+        token: reissueForCaller((req as AuthRequest).user as never, result.accessToken),
         user: result.user,
       },
     });

@@ -4,6 +4,7 @@ import { CONFIG } from '@/config/config';
 import { AppError } from '@/modules/common/types';
 import PharmacyModel from '@/modules/pharmacies/model';
 import { admitCustomerToken } from '@/modules/user/credentialGeneration';
+import { admitSessionToken } from '@/modules/auth/sessions';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -65,6 +66,8 @@ export const authenticate = async (
     }
     // A customer token is admitted only at the account's current credential generation (signed out everywhere = no).
     await admitCustomerToken(req.user);
+    // D4: a web-session token only while its session is live (logout / revocation are immediate).
+    await admitSessionToken(req.user);
   } catch (error) {
     next(error);
     return;
@@ -85,8 +88,18 @@ export const authenticateOptional = async (
       return;
     }
 
-    req.user = decodeAuthToken(authHeader) || undefined;
+    try {
+      req.user = decodeAuthToken(authHeader) || undefined;
+    } catch (error: any) {
+      // D4: an expired or invalid token is a 401 here too (it used to surface as a 500).
+      if (error?.name === 'TokenExpiredError') throw new AppError({ status: 401, code: 'TOKEN_EXPIRED', message: 'Token has expired' });
+      if (error?.name === 'JsonWebTokenError' || error?.name === 'NotBeforeError') {
+        throw new AppError({ status: 401, code: 'INVALID_TOKEN', message: 'Invalid token' });
+      }
+      throw error;
+    }
     await admitCustomerToken(req.user);
+    await admitSessionToken(req.user);
   } catch (error) {
     next(error);
     return;

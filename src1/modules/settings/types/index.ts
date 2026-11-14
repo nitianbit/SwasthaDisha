@@ -48,6 +48,9 @@ export interface ISettings {
   
   // CORS configuration
   CORS_ORIGIN: string;
+  SESSION_ORIGINS_CUSTOMER: string;
+  SESSION_ORIGINS_WORKSPACE: string;
+  SESSION_COOKIE_INSECURE_DEV: boolean;
 
   // Razorpay configuration
   RAZORPAY_KEY_ID?: string;

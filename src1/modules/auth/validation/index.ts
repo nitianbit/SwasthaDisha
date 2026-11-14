@@ -34,6 +34,8 @@ export const sendOTPSchema = Joi.object({
 export const verifyOTPSchema = Joi.object({
   phone: phoneSchema.optional(),
   email: emailSchema.optional(),
+  // D4: a web app asks for a cookie session (checked against its Origin before the OTP is consumed).
+  session: Joi.string().valid('cookie').optional(),
   otp: Joi.string()
     .pattern(/^[0-9]{6}$/)
     .required()

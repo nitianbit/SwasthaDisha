@@ -18,7 +18,7 @@ const privateResponses = new WeakSet<Response>();
 /** One header policy shared by pre-auth private routes, handlers and reserved-subtree denials. */
 export function applyPrivateDocumentHeaders(res: Response): void {
   res.setHeader('Cache-Control', 'private, no-store'); res.setHeader('Pragma', 'no-cache');
-  res.vary('Authorization'); res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.vary('Authorization'); res.vary('Cookie'); res.setHeader('X-Content-Type-Options', 'nosniff');
   res.removeHeader('ETag'); res.removeHeader('Last-Modified');
   // Express computes freshness before end(), so suppress only private cache validators first.
   delete res.req.headers['if-none-match']; delete res.req.headers['if-modified-since'];

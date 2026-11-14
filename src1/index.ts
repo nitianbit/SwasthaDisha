@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import express, { Express } from 'express';
 import cors from 'cors';
+import { assertSessionConfig, sessionOrigins } from '@/modules/auth/sessions';
 import dotenv from 'dotenv';
 import path from 'path';
 
@@ -27,20 +28,23 @@ const app: Express = express();
 
 // Middleware
 const allowedOrigins = CONFIG.CORS_ORIGIN === '*'
-  ? null  // null means allow all
+  ? null  // null means allow all (bearer-only: never with credentials)
   : CONFIG.CORS_ORIGIN.split(',').map((o) => o.trim());
+// D4: credentials (cookies) only ever for explicitly listed origins - never for the '*' default.
+const credentialedOrigins = new Set([...(allowedOrigins ?? []), ...sessionOrigins()]);
+assertSessionConfig();
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, Postman, server-to-server)
-    if (!origin) return callback(null, true);
-    if (!allowedOrigins) return callback(null, true); // wildcard — allow all
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error(`CORS: origin ${origin} not allowed`));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Idempotency-Key'],
+app.use(cors((req, callback) => {
+  const origin = req.headers.origin;
+  const base = {
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Idempotency-Key', 'X-Jansetu-Session'],
+  };
+  // Requests with no origin (mobile apps, Postman, server-to-server)
+  if (!origin) return callback(null, { ...base, origin: true, credentials: false });
+  if (credentialedOrigins.has(origin)) return callback(null, { ...base, origin: true, credentials: true });
+  if (!allowedOrigins) return callback(null, { ...base, origin: true, credentials: false }); // wildcard: bearer only
+  callback(new Error(`CORS: origin ${origin} not allowed`));
 }));
 
 // Handle preflight requests for all routes

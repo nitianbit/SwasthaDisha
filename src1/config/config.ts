@@ -73,6 +73,11 @@ export const CONFIG: ISettings = {
   
   // CORS configuration
   CORS_ORIGIN: process.env.CORS_ORIGIN || '*',
+  // D4: exact web origins allowed to use cookie sessions (comma-separated), per app.
+  SESSION_ORIGINS_CUSTOMER: process.env.SESSION_ORIGINS_CUSTOMER || '',
+  SESSION_ORIGINS_WORKSPACE: process.env.SESSION_ORIGINS_WORKSPACE || '',
+  // D4: development only - cookies without __Host-/Secure for http://127.0.0.1 dev servers.
+  SESSION_COOKIE_INSECURE_DEV: process.env.SESSION_COOKIE_INSECURE_DEV === 'true',
 
   // Razorpay configuration
   RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,

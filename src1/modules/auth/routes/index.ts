@@ -54,6 +54,10 @@ authRouterV1.post(
   catchAsync(authController.revokeSessions)
 );
 
+// D4: web sessions (cookie). Origin + X-Jansetu-Session header required; no bearer.
+authRouterV1.post('/session/refresh', catchAsync(authController.refreshSession));
+authRouterV1.post('/session/logout', catchAsync(authController.logoutSession));
+
 authRouterV1.post(
   '/:userType/send',
   validate(userTypeParamSchema, 'params'),
