@@ -48,6 +48,9 @@ const PRESCRIPTION_GATED_STATUSES: OrderStatus[] = [
   'completed',
 ];
 const UNPAID_ORDER_ABANDON_WINDOW_MS = 35 * 60 * 1000;
+/** D3: statuses from which an order can be cancelled (later ones go through delivery exceptions). */
+const CANCELLABLE_STATUSES: OrderStatus[] = ['placed', 'accepted', 'packed'];
+export interface CancelActor { userType: 'user' | 'pharmacy' | 'admin'; _id: string; pharmacyId?: string }
 const ALLOWED_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   placed: ['accepted', 'rejected', 'cancelled', 'abandoned'],
   accepted: ['packed', 'cancelled'],
@@ -60,6 +63,8 @@ const ALLOWED_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   abandoned: [],
   cancelled: [],
   rejected: [],
+  // Only through the cancellation-request decisions (D3), never the generic status update.
+  pending_cancel: [],
 };
 
 type PricedOrderItem = CreateOrderRequest['items'][number] & {
@@ -727,7 +732,7 @@ export class PharmacyOrderService {
       const paidPatch = { status: 'accepted' as const, paymentStatus: 'paid' as const, paymentTransactionId: paymentRecord._id! };
       const paidOrder = options.refill
         ? await this.commitZeroPayableRefill(String(savedOrder._id), String(paymentRecord._id))
-        : await this.orderRepo.update({ _id: savedOrder._id }, paidPatch);
+        : await this.orderRepo.update({ _id: savedOrder._id, status: 'placed', paymentStatus: 'pending' }, paidPatch);
       order = paidOrder || order;
 
       await this.queueNotificationSafely(String(order._id), 'order_created');
@@ -1111,9 +1116,14 @@ export class PharmacyOrderService {
       ? this.buildInventoryDelta(order.items, nextItemsForInventory)
       : { toConsume: [], toReturn: [] };
 
+    if (order.status === 'pending_cancel') {
+      throw new AppError({ status: 409, code: 'ORDER_CANCEL_PENDING', message: 'A cancellation is waiting for a decision; decide it first' });
+    }
     const updateFilter = {
       _id: new Types.ObjectId(id),
       pharmacyId: { $eq: new Types.ObjectId(pharmacyId) },
+      // D3: the status this update was validated against (a cancellation request freezes the order).
+      status: { $eq: order.status },
       $expr: { $and: [
         { $eq: [{ $type: '$_id' }, 'objectId'] },
         { $eq: [{ $type: '$pharmacyId' }, 'objectId'] },
@@ -1229,6 +1239,12 @@ export class PharmacyOrderService {
       order.items.filter((item) => item.itemStatus === 'active')
     );
     const shouldReturnInventory = ['abandoned', 'cancelled', 'rejected'].includes(payload.status);
+    // D3: the generic status update never closes an order that holds money (it would not refund it): a paid order is
+    // cancelled through a cancellation request. Checked here and again atomically in the write below.
+    if (shouldReturnInventory && !['pending', 'failed', undefined].includes(order.paymentStatus)) {
+      throw new AppError({ status: 409, code: 'ORDER_PAID_USE_CANCEL_REQUEST',
+        message: 'This order is paid: request its cancellation instead, so the customer is refunded' });
+    }
 
     const updated = await this.runOrderInventoryTransaction(async (session) => {
       const nextOrder = await this.orderRepo.update(
@@ -1238,6 +1254,7 @@ export class PharmacyOrderService {
           ...(requiresPrescriptionCheck
             ? { prescriptionStatus: order.prescriptionStatus }
             : {}),
+          ...(shouldReturnInventory ? { paymentStatus: { $in: ['pending', 'failed', null] } } : {}),
         },
         { status: payload.status, ...(payload.notes ? { notes: payload.notes } : {}) },
         { new: true, session }
@@ -1552,6 +1569,141 @@ export class PharmacyOrderService {
     return result;
   }
 
+  // ---------------------------------------------------------------------------------------------------------------
+  // D3: cancellation of pharmacy orders. Unpaid → cancelled at once; paid → `pending_cancel`, decided by an admin or the
+  // order's pharmacy. The request and every decision are exact compare-and-sets on what was read; decisions name the
+  // requestId they reviewed and run in a transaction with a fresh read.
+  // ---------------------------------------------------------------------------------------------------------------
+
+  private assertCancelActor(order: IPharmacyOrder, actor: CancelActor, deciding: boolean): void {
+    if (actor.userType === 'admin') return;
+    if (actor.userType === 'pharmacy' && actor.pharmacyId && String(order.pharmacyId) === String(actor.pharmacyId)) return;
+    if (!deciding && actor.userType === 'user' && order.customerId && String(order.customerId) === String(actor._id)) return;
+    throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
+  }
+
+  async requestCancel(id: string, actor: CancelActor, data: { reason?: string } = {}): Promise<IPharmacyOrder> {
+    if (typeof id !== 'string' || !/^[0-9a-fA-F]{24}$/.test(id)) {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid order ID' });
+    }
+    const reason = typeof data.reason === 'string' ? data.reason.trim().slice(0, 500) : undefined;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const order = await this.orderRepo.findById(id);
+      if (!order) throw new AppError({ status: 404, code: 'ORDER_NOT_FOUND', message: 'Order not found' });
+      this.assertCancelActor(order as IPharmacyOrder, actor, false);
+      const status = order.status;
+      if (status === 'pending_cancel') {
+        throw new AppError({ status: 409, code: 'CANCEL_ALREADY_REQUESTED', message: 'A cancellation is already waiting for a decision' });
+      }
+      if (!CANCELLABLE_STATUSES.includes(status)) {
+        throw new AppError({ status: 409, code: 'INVALID_ORDER_STATUS_TRANSITION', message: `An order that is ${status} cannot be cancelled` });
+      }
+      const payment = order.paymentStatus;
+      const unpaid = payment === undefined || payment === 'pending' || payment === 'failed';
+      const paid = payment === 'paid' || payment === 'authorized' || payment === 'partially_paid';
+      if (!unpaid && !paid) {
+        throw new AppError({ status: 409, code: 'INVALID_ORDER_STATUS_TRANSITION', message: 'This order cannot be cancelled' });
+      }
+      // Exact snapshot: the stored fromStatus / paymentStatusAtRequest are exactly what this write matched.
+      const fence = { _id: id, status, ...(payment === undefined ? { paymentStatus: { $exists: false } } : { paymentStatus: payment }) };
+      const request = { requestId: new Types.ObjectId().toHexString(), fromStatus: status, paymentStatusAtRequest: payment ?? 'pending',
+        requestedByType: actor.userType, requestedById: String(actor._id), ...(reason ? { reason } : {}), requestedAt: new Date() };
+      let next: IPharmacyOrder | null;
+      if (unpaid) {
+        // No money involved: cancelled at once, stock released in the same transaction (the status CAS is the once-only fence).
+        next = await this.runOrderInventoryTransaction(async (session) => {
+          const done = await this.orderRepo.update(fence, { $set: { status: 'cancelled',
+            cancelRequest: { ...request, state: 'approved', decidedAt: new Date(), decisionNote: 'Unpaid order: cancelled at once' } } },
+          { new: true, session });
+          if (done) await this.releaseOrderInventory(String(done.pharmacyId), done.items, session);
+          return done as IPharmacyOrder | null;
+        });
+      } else {
+        next = await this.orderRepo.update(fence, { $set: { status: 'pending_cancel', cancelRequest: { ...request, state: 'pending' } } },
+          { new: true }) as IPharmacyOrder | null;
+      }
+      if (next) {
+        await this.queueSubscriptionSyncSafely(id, 'status_changed');
+        if (next.customerId) await this.queueNotificationSafely(id, 'status_changed');
+        return next;
+      }
+      // The order changed between the read and the write (progressed, or a COD order became paid): read again.
+    }
+    throw new AppError({ status: 409, code: 'ORDER_CHANGED', message: 'The order changed while it was being cancelled; reload and try again' });
+  }
+
+  private requestChanged(): AppError {
+    return new AppError({ status: 409, code: 'CANCEL_REQUEST_CHANGED', message: 'This cancellation request changed; reload the order and decide again' });
+  }
+
+  async approveCancel(id: string, actor: CancelActor, data: { requestId?: string; note?: string }): Promise<IPharmacyOrder> {
+    const requestId = typeof data.requestId === 'string' ? data.requestId : '';
+    if (!/^[0-9a-f]{24}$/.test(requestId)) throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'requestId is required' });
+    const note = typeof data.note === 'string' ? data.note.trim().slice(0, 500) : undefined;
+    const outcome = await this.runOrderInventoryTransaction(async (session) => {
+      const order = await this.orderRepo.findById(id, session) as IPharmacyOrder | null;
+      if (!order) throw new AppError({ status: 404, code: 'ORDER_NOT_FOUND', message: 'Order not found' });
+      this.assertCancelActor(order, actor, true);
+      if (order.status !== 'pending_cancel' || order.cancelRequest?.state !== 'pending' || order.cancelRequest.requestId !== requestId) {
+        throw this.requestChanged();
+      }
+      const payment = order.paymentStatus;
+      if (payment === 'authorized') {
+        throw new AppError({ status: 409, code: 'PAYMENT_IN_PROGRESS', message: 'The payment is still being confirmed; try again in a few minutes' });
+      }
+      const refundRequired = (payment === 'paid' || payment === 'partially_paid') && !order.prescriptionRefund;
+      const intent = refundRequired ? await this.prescriptionRefundService.buildIntent(order, session, 'order_cancelled') : undefined;
+      const next = await this.orderRepo.update({
+        _id: id, status: 'pending_cancel', 'cancelRequest.requestId': requestId, 'cancelRequest.state': 'pending',
+        ...(payment === undefined ? { paymentStatus: { $exists: false } } : { paymentStatus: payment }),
+        prescriptionRefund: order.prescriptionRefund ? { $exists: true } : { $exists: false },
+      }, { $set: { status: 'cancelled', 'cancelRequest.state': 'approved', 'cancelRequest.decidedByType': actor.userType,
+        'cancelRequest.decidedById': String(actor._id), 'cancelRequest.decidedAt': new Date(),
+        ...(note ? { 'cancelRequest.decisionNote': note } : {}), ...(intent ? { prescriptionRefund: intent } : {}) } },
+      { new: true, session }) as IPharmacyOrder | null;
+      if (!next) throw this.requestChanged();
+      await this.releaseOrderInventory(String(next.pharmacyId), next.items, session);
+      return { next, refundRequired };
+    });
+    let result = outcome.next;
+    if (outcome.refundRequired) {
+      await this.prescriptionRefundService.settleAfterRejection(id);
+      result = (await this.orderRepo.findById(id) as IPharmacyOrder | null) ?? result;
+    }
+    await this.queueSubscriptionSyncSafely(id, 'status_changed');
+    if (result.customerId) await this.queueNotificationSafely(id, 'status_changed');
+    return result;
+  }
+
+  async rejectCancel(id: string, actor: CancelActor, data: { requestId?: string; note?: string }): Promise<IPharmacyOrder> {
+    const requestId = typeof data.requestId === 'string' ? data.requestId : '';
+    if (!/^[0-9a-f]{24}$/.test(requestId)) throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'requestId is required' });
+    const note = typeof data.note === 'string' ? data.note.trim().slice(0, 500) : undefined;
+    const next = await this.runOrderInventoryTransaction(async (session) => {
+      const order = await this.orderRepo.findById(id, session) as IPharmacyOrder | null;
+      if (!order) throw new AppError({ status: 404, code: 'ORDER_NOT_FOUND', message: 'Order not found' });
+      this.assertCancelActor(order, actor, true);
+      const request = order.cancelRequest;
+      if (order.status !== 'pending_cancel' || request?.state !== 'pending' || request.requestId !== requestId) throw this.requestChanged();
+      const payment = order.paymentStatus;
+      // From the same fresh read: a capture recorded while frozen confirms a placed order (as the payment would have).
+      const restored: OrderStatus = request.fromStatus === 'placed' && payment === 'paid' ? 'accepted' : request.fromStatus;
+      const updated = await this.orderRepo.update({
+        _id: id, status: 'pending_cancel', 'cancelRequest.requestId': requestId, 'cancelRequest.state': 'pending',
+        ...(payment === undefined ? { paymentStatus: { $exists: false } } : { paymentStatus: payment }),
+      }, { $set: { status: restored, 'cancelRequest.state': 'rejected', 'cancelRequest.decidedByType': actor.userType,
+        'cancelRequest.decidedById': String(actor._id), 'cancelRequest.decidedAt': new Date(), 'cancelRequest.restoredStatus': restored,
+        ...(note ? { 'cancelRequest.decisionNote': note } : {}) } }, { new: true, session }) as IPharmacyOrder | null;
+      if (!updated) throw this.requestChanged();
+      // P7: a refill capture recorded while frozen moves the subscription on now that the order resumes (idempotent).
+      if (payment === 'paid') await advanceRefillOnPayment(updated, session);
+      return updated;
+    });
+    await this.queueSubscriptionSyncSafely(id, 'status_changed');
+    if (next.customerId) await this.queueNotificationSafely(id, 'status_changed');
+    return next;
+  }
+
   async markPaid(
     id: string,
     payload: {
@@ -1604,6 +1756,10 @@ export class PharmacyOrderService {
         code: 'ORDER_TERMINAL',
         message: `A ${order.status} order cannot be marked as paid`,
       });
+    }
+    // D3: a frozen order is decided first (its status CAS below also fails if a request arrives meanwhile).
+    if (order.status === 'pending_cancel') {
+      throw new AppError({ status: 409, code: 'ORDER_CANCEL_PENDING', message: 'A cancellation is waiting for a decision; decide it first' });
     }
 
     // A pharmacist-approved prescription order is already reviewed; recording its cash/in-store payment is not new

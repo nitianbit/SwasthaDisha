@@ -219,6 +219,8 @@ async function main() {
     const a = await order(i, [{ batchId: i.b0, batchNumber: 'R-100', quantity: 5 }], 'accepted');
     const b = await order(i, [{ batchId: i.b0, batchNumber: 'R-100', quantity: 5 }], 'accepted');
     await svc.recall(staffA, i.id, i.b0, { reason: 'Recall' });
+    // D3: the generic cancel only closes unpaid orders (a paid one goes through a cancellation request), so A is COD.
+    await PharmacyOrderModel.updateOne({ _id: a.id }, { $set: { paymentMode: 'cash_on_delivery', paymentStatus: 'pending' } });
     const snapA = await PharmacyOrderModel.findById(a.id).lean();         // cancel request reads A (on Q) and pauses
     await svc.reallocateHeldUnits(staffA, a.id);                           // swap commits: A now on R = B2
     await staleService(snapA).updateStatus(a.id, pharmacyA, { status: 'cancelled' });

@@ -86,6 +86,10 @@ const UNSETTLED_ATTEMPT = {
   $or: [{ status: 'created' }, { status: 'paid', isProcessed: { $ne: true } }],
 };
 
+/** D3: order states that can take a captured payment (pending_cancel records it without moving). */
+const PHARMACY_ORDER_PAYABLE_STATUSES: string[] = ['placed', 'accepted', 'packed', 'ready_for_pickup', 'out_for_delivery',
+  'delivery_failed', 'pending_cancel'];
+
 @Service()
 export class PaymentService {
   private razorpayClient?: Razorpay;
@@ -228,20 +232,32 @@ export class PaymentService {
 
     const { updatedOrder, updatedPayment } = await this.runPharmacyPaymentCoreTransaction(
       async (session) => {
-        const inventoryWasAlreadyReleased = ['abandoned', 'cancelled', 'rejected'].includes(order.status);
-        const nextOrder =
-          inventoryWasAlreadyReleased
-            ? ((await this.pharmacyOrderRepository.findById(String(order._id), session)) as IPharmacyOrder | null) ||
-              order
-            : ((await this.pharmacyOrderRepository.update(
-                { _id: order._id },
-                {
-                  status: 'abandoned',
-                  paymentTransactionId: paymentRecord._id!,
-                  notes: this.appendOrderNote(order.notes, PHARMACY_ORDER_PAYMENT_TIMEOUT_NOTE),
-                },
-                { new: true, session }
-              )) as IPharmacyOrder | null);
+        // D3: decided from a fresh read in this transaction, never from the caller's copy. Only an open, unpaid
+        // order whose payment window expired is abandoned (with its stock released by that same write); a closed
+        // order released its stock already, and any other order (paid through another record, frozen by a
+        // cancellation request, progressed) keeps its status and stock - only this capture is refunded.
+        const fresh = (await this.pharmacyOrderRepository.findById(String(order._id), session)) as IPharmacyOrder | null;
+        if (!fresh) {
+          throw new AppError({ status: 404, code: 'PHARMACY_ORDER_NOT_FOUND', message: 'Pharmacy order not found for this payment' });
+        }
+        const abandonable = ['placed', 'accepted'].includes(fresh.status)
+          && ['pending', 'failed', 'authorized', undefined].includes(fresh.paymentStatus);
+        const abandoned = abandonable
+          ? ((await this.pharmacyOrderRepository.update(
+              { _id: fresh._id, status: fresh.status, paymentStatus: fresh.paymentStatus ?? { $exists: false } },
+              {
+                status: 'abandoned',
+                paymentTransactionId: paymentRecord._id!,
+                notes: this.appendOrderNote(fresh.notes, PHARMACY_ORDER_PAYMENT_TIMEOUT_NOTE),
+              },
+              { new: true, session }
+            )) as IPharmacyOrder | null)
+          : null;
+        if (abandonable && !abandoned) {
+          throw new AppError({ status: 409, code: 'PHARMACY_ORDER_PAYMENT_STATE_CHANGED', message: 'The order changed while its payment was refunded' });
+        }
+        const inventoryWasAlreadyReleased = !abandoned;
+        const nextOrder = abandoned || fresh;
 
         if (!nextOrder) {
           throw new AppError({
@@ -261,7 +277,7 @@ export class PaymentService {
             session
           );
         }
-        if (!inventoryWasAlreadyReleased && legacyInventoryItems.length) {
+        if (!inventoryWasAlreadyReleased && legacyInventoryItems.length && abandoned) {
           await this.inventoryService.returnStockBulk(
             String(nextOrder.pharmacyId),
             legacyInventoryItems,
@@ -269,9 +285,10 @@ export class PaymentService {
           );
         }
 
+        // Marks the order refunded only when no other payment holds it (never a paid / frozen order's state).
         const orderAfterRefund =
           ((await this.pharmacyOrderRepository.update(
-            { _id: nextOrder._id },
+            { _id: nextOrder._id, paymentStatus: { $nin: ['paid', 'partially_paid', 'refunded'] } },
             {
               paymentStatus: refundAmount > 0 ? 'refunded' : nextOrder.paymentStatus,
               paymentTransactionId: paymentRecord._id!,
@@ -1130,31 +1147,29 @@ export class PaymentService {
     }
     if (latestBeforePaymentCommit) order = latestBeforePaymentCommit;
 
-    const { updatedOrder, updatedPayment, paymentProcessingClaimed } =
-      await this.runPharmacyPaymentCoreTransaction(async (session) => {
-        const nextOrder = await this.pharmacyOrderRepository.update(
+    // D3: the commit writes only the payment (from an explicit list of states that can take one) and never writes a
+    // status read earlier; placed → accepted is its own compare-and-set. A frozen order (pending_cancel) records the
+    // capture but does not move. If the commit loses to a concurrent change, the order's actual state is routed.
+    let commit: { updatedOrder: IPharmacyOrder; updatedPayment: IPaymentRecord; paymentProcessingClaimed: boolean } | null = null;
+    const orderObjectId = order._id;
+    for (let attempt = 0; attempt < 3 && !commit; attempt++) {
+      commit = await this.runPharmacyPaymentCoreTransaction(async (session) => {
+        const paidOrder = await this.pharmacyOrderRepository.update(
           {
-            _id: order._id,
-            status: { $nin: ['abandoned', 'cancelled', 'rejected', 'completed'] },
-            paymentStatus: { $in: ['pending', 'authorized'] },
+            _id: orderObjectId,
+            status: { $in: PHARMACY_ORDER_PAYABLE_STATUSES },
+            paymentStatus: { $in: ['pending', 'authorized', 'failed'] },
           },
-          {
-            status: order.status === 'placed' ? 'accepted' : order.status,
-            paymentStatus: 'paid',
-            paymentTransactionId: paymentRecord._id!,
-          },
+          { paymentStatus: 'paid', paymentTransactionId: paymentRecord._id! },
           { new: true, session }
         );
-
-        if (!nextOrder) {
-          throw new AppError({
-            status: 500,
-            code: 'PHARMACY_ORDER_UPDATE_FAILED',
-            message: 'Failed to update pharmacy order payment status',
-          });
-        }
-        // Paid refill order: its subscription moves to the next cycle in this same transaction.
-        await advanceRefillOnPayment(nextOrder as IPharmacyOrder, session);
+        if (!paidOrder) return null;
+        const nextOrder = paidOrder.status === 'placed'
+          ? ((await this.pharmacyOrderRepository.update({ _id: orderObjectId, status: 'placed' }, { status: 'accepted' }, { new: true, session })) || paidOrder)
+          : paidOrder;
+        // Paid refill order: its subscription moves to the next cycle in this same transaction - unless the order is
+        // frozen by a cancellation request (a rejection of the request advances it then; an approval does not).
+        if (nextOrder.status !== 'pending_cancel') await advanceRefillOnPayment(nextOrder as IPharmacyOrder, session);
 
         const processedPayment = await this.paymentRepository.update(
           { _id: paymentRecord._id!, isProcessed: false },
@@ -1168,11 +1183,28 @@ export class PaymentService {
           paymentRecord;
 
         return {
-          updatedOrder: nextOrder,
+          updatedOrder: nextOrder as IPharmacyOrder,
           updatedPayment: latestPayment,
           paymentProcessingClaimed: Boolean(processedPayment),
         };
       });
+      if (commit) break;
+      const latest = await this.pharmacyOrderRepository.findById(paymentRecord.contextId) as IPharmacyOrder | null;
+      if (!latest) {
+        throw new AppError({ status: 404, code: 'PHARMACY_ORDER_NOT_FOUND', message: 'Pharmacy order not found for this payment' });
+      }
+      // Closed, completed, or already paid/refunded through another record: this capture goes back to the wallet once.
+      if (!PHARMACY_ORDER_PAYABLE_STATUSES.includes(latest.status)
+        || ['paid', 'partially_paid', 'refunded'].includes(String(latest.paymentStatus))) {
+        return this.handleTimedOutPharmacyOrderPayment(latest, paymentRecord);
+      }
+      // still payable (the commit lost to a concurrent change of state): try it again
+    }
+    if (!commit) {
+      // Left unprocessed: the recovery sweep settles it later.
+      throw new AppError({ status: 409, code: 'PHARMACY_ORDER_PAYMENT_STATE_CHANGED', message: 'The order changed while its payment was applied; it will be settled shortly' });
+    }
+    const { updatedOrder, updatedPayment, paymentProcessingClaimed } = commit;
 
     if (!updatedOrder) {
       throw new AppError({
@@ -1759,7 +1791,8 @@ export class PaymentService {
    */
   async sweepUnsettledBookingPayments(now = new Date(), limit = 100): Promise<{ checked: number; unsettled: number }> {
     const records = await PaymentRecordModel.find({
-      context: 'booking', ...UNSETTLED_ATTEMPT,
+      // D3: pharmacy order payments too, so a lost browser continuation never strands a capture.
+      context: { $in: ['booking', 'pharmacy_order'] }, ...UNSETTLED_ATTEMPT,
       createdAt: { $lt: new Date(now.getTime() - 10 * 60_000) },
       $and: [{ $or: [{ recoveryNextAt: { $exists: false } }, { recoveryNextAt: null }, { recoveryNextAt: { $lte: now } }] }],
     }).sort({ recoveryNextAt: 1, createdAt: 1 }).limit(limit).lean();

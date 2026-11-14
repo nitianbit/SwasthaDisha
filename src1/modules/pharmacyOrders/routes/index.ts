@@ -99,6 +99,28 @@ pharmacyOrderRouter.post(
   catchAsync(controller.cancel)
 );
 
+// D3: cancellation requests. Customer (own order), the order's pharmacy or an admin requests; an unpaid order is
+// cancelled at once, a paid one waits (pending_cancel) for an admin or the order's pharmacy to approve or reject.
+pharmacyOrderRouter.post(
+  '/:id/cancel-request',
+  (req, res, next) => ((req as { user?: { userType?: string } }).user?.userType === 'pharmacy'
+    ? requireOperationalPharmacy(req as never, res, next) : next()),
+  validate(idParamSchema, 'params'),
+  catchAsync(controller.requestCancel)
+);
+pharmacyOrderRouter.post(
+  '/:id/cancel-request/approve',
+  requireAdminOrOperationalPharmacy,
+  validate(idParamSchema, 'params'),
+  catchAsync(controller.approveCancel)
+);
+pharmacyOrderRouter.post(
+  '/:id/cancel-request/reject',
+  requireAdminOrOperationalPharmacy,
+  validate(idParamSchema, 'params'),
+  catchAsync(controller.rejectCancel)
+);
+
 // Delivery/pickup exceptions: failed delivery, retry, switch to pickup, not collected, refused at the door.
 pharmacyOrderRouter.post(
   '/:id/delivery-exception',

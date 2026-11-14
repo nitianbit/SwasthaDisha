@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { withFiles } from '@/modules/file/access';
+import type { CancelActor } from '@/modules/pharmacyOrders/services';
 import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { PharmacyOrderService } from '@/modules/pharmacyOrders/services';
@@ -137,6 +138,30 @@ export class PharmacyOrderController {
       notes: req.body?.notes,
     });
     res.status(200).json({ success: true, message: 'Order cancelled', data: result });
+  };
+
+  private cancelActor(req: AuthRequest): CancelActor {
+    const u = req.user;
+    if (!u || !['user', 'pharmacy', 'admin'].includes(u.userType)) {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
+    }
+    return { userType: u.userType as CancelActor['userType'], _id: String(u._id), pharmacyId: u.pharmacyId ? String(u.pharmacyId) : undefined };
+  }
+
+  requestCancel = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const result = await this.service.requestCancel(req.params.id, this.cancelActor(req), { reason: req.body?.reason });
+    const waiting = result.status === 'pending_cancel';
+    res.status(200).json({ success: true, message: waiting ? 'Cancellation requested' : 'Order cancelled', data: result });
+  };
+
+  approveCancel = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const result = await this.service.approveCancel(req.params.id, this.cancelActor(req), { requestId: req.body?.requestId, note: req.body?.note });
+    res.status(200).json({ success: true, message: 'Cancellation approved', data: result });
+  };
+
+  rejectCancel = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const result = await this.service.rejectCancel(req.params.id, this.cancelActor(req), { requestId: req.body?.requestId, note: req.body?.note });
+    res.status(200).json({ success: true, message: 'Cancellation rejected', data: result });
   };
 
   reviewPrescription = async (req: AuthRequest, res: Response, _next: NextFunction) => {

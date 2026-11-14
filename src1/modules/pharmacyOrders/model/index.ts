@@ -90,7 +90,7 @@ const prescriptionReviewSchema = new Schema(
 
 const prescriptionRefundSchema = new Schema(
   {
-    cause: { type: String, enum: ['prescription_rejected', 'delivery_not_collected', 'delivery_refused', 'stock_hold_cancelled'] },
+    cause: { type: String, enum: ['prescription_rejected', 'delivery_not_collected', 'delivery_refused', 'stock_hold_cancelled', 'order_cancelled'] },
     status: { type: String, required: true, enum: ['wallet_pending', 'wallet_credited', 'source_processing', 'source_refunded', 'manual_review'] },
     payerUserId: { type: String },
     paymentRecordId: { type: String },
@@ -155,7 +155,7 @@ const pharmacyOrderSchema = new Schema<IPharmacyOrder>(
       enum: [
         'placed', 'accepted', 'packed',
         'ready_for_pickup', 'out_for_delivery', 'delivery_failed',
-        'completed', 'abandoned', 'cancelled', 'rejected',
+        'completed', 'abandoned', 'cancelled', 'rejected', 'pending_cancel',
       ],
       default: 'placed',
       index: true,
@@ -240,6 +240,25 @@ const pharmacyOrderSchema = new Schema<IPharmacyOrder>(
     stockHoldCancellation: {
       type: new Schema({ reason: { type: String, required: true, trim: true, maxlength: 500 }, at: { type: Date, required: true },
         byPharmacyId: { type: String, required: true }, fromStatus: { type: String, required: true }, refundRequired: { type: Boolean, required: true } }, { _id: false }),
+      default: undefined,
+    },
+    // D3: cancellation request of a paid order (status pending_cancel while it waits for a decision).
+    cancelRequest: {
+      type: new Schema({
+        requestId: { type: String, required: true },
+        state: { type: String, required: true, enum: ['pending', 'approved', 'rejected'] },
+        fromStatus: { type: String, required: true },
+        paymentStatusAtRequest: { type: String, required: true },
+        requestedByType: { type: String, required: true, enum: ['user', 'pharmacy', 'admin'] },
+        requestedById: { type: String, required: true },
+        reason: { type: String, trim: true, maxlength: 500 },
+        requestedAt: { type: Date, required: true },
+        decidedByType: { type: String, enum: ['pharmacy', 'admin'] },
+        decidedById: { type: String },
+        decidedAt: { type: Date },
+        decisionNote: { type: String, trim: true, maxlength: 500 },
+        restoredStatus: { type: String },
+      }, { _id: false }),
       default: undefined,
     },
     // Customer returns against this completed order (P3b): count (write fence) and wallet refunds so far, in paise.

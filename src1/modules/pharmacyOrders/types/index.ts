@@ -10,7 +10,9 @@ export type OrderStatus =
   | 'completed'
   | 'abandoned'
   | 'cancelled'
-  | 'rejected';
+  | 'rejected'
+  /** D3: a paid order whose cancellation waits for approval by an admin or the order's pharmacy (frozen meanwhile). */
+  | 'pending_cancel';
 
 export type PaymentMode = 'online_payment' | 'in_store_payment' | 'cash_on_delivery';
 
@@ -177,6 +179,8 @@ export interface IPharmacyOrder {
   batchReallocations?: { at: Date; byActorId: string;
     moves: { medicineId: string; quantity: number; from: { batchId: string; quantity: number }[]; to: { batchId: string; quantity: number }[] }[] }[];
   stockHoldCancellation?: { reason: string; at: Date; byPharmacyId: string; fromStatus: string; refundRequired: boolean };
+  /** D3: the current (or last) cancellation request of a paid order. */
+  cancelRequest?: CancelRequest;
   customerReturns?: { count: number; refundedPaise: number; lastReturnAt?: Date };
   notes?: string;
   // linked healthcare
@@ -277,7 +281,7 @@ export interface PrescriptionReview {
  */
 export interface PrescriptionRefund {
   /** Why this order is being refunded (default: pharmacist rejected the prescription). */
-  cause?: 'prescription_rejected' | 'delivery_not_collected' | 'delivery_refused' | 'stock_hold_cancelled';
+  cause?: 'prescription_rejected' | 'delivery_not_collected' | 'delivery_refused' | 'stock_hold_cancelled' | 'order_cancelled';
   status: 'wallet_pending' | 'wallet_credited' | 'source_processing' | 'source_refunded' | 'manual_review';
   payerUserId?: string;
   paymentRecordId?: string;
@@ -327,4 +331,22 @@ export interface OrderQueryParams {
   prescriptionStatus?: 'not_required' | 'pending' | 'approved' | 'rejected';
   page?: number;
   limit?: number;
+}
+
+/** D3: a cancellation request; every decision names `requestId`, so a stale decision cannot decide a later request. */
+export interface CancelRequest {
+  requestId: string;
+  state: 'pending' | 'approved' | 'rejected';
+  fromStatus: OrderStatus;
+  paymentStatusAtRequest: PaymentStatus;
+  requestedByType: 'user' | 'pharmacy' | 'admin';
+  requestedById: string;
+  reason?: string;
+  requestedAt: Date;
+  decidedByType?: 'pharmacy' | 'admin';
+  decidedById?: string;
+  decidedAt?: Date;
+  decisionNote?: string;
+  /** Status the order returned to on rejection. */
+  restoredStatus?: OrderStatus;
 }
