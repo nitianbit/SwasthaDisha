@@ -1703,16 +1703,20 @@ export class PaymentService {
       const captured = gatewayPayments.find((p) => p.status === 'captured' && p.order_id === orderId);
       if (!captured) return { state: 'unpaid', gatewayStatuses: gatewayPayments.map((p) => p.status) };
       this.validateRazorpayPaymentForRecord(paymentRecord, { ...request, razorpayOrderId: orderId, razorpayPaymentId: captured.id }, captured);
+      // Compare-and-set on exactly the state read before asking the gateway: a record that turned failed/refunded
+      // meanwhile (e.g. a concurrent verify with a bad signature) is never revived.
       const updated = await this.paymentRepository.update(
-        { _id: paymentRecord._id, status: { $nin: ['paid', 'refunded'] } },
+        { _id: paymentRecord._id, status: paymentRecord.status },
         { status: 'paid', razorpayPaymentId: captured.id, paidAt: new Date() }
       );
       if (!updated) {
         const current = await this.paymentRepository.findById(paymentRecord._id!);
-        if (current?.status !== 'paid') {
+        if (!current) throw new AppError({ status: 404, code: 'PAYMENT_RECORD_NOT_FOUND', message: 'Payment record not found' });
+        if (current.status !== 'paid') {
+          this.handleExistingRecordStatus(current); // failed / refunded: refused, not revived
           throw new AppError({ status: 409, code: 'PAYMENT_CHANGED', message: 'Payment changed; refresh before retrying' });
         }
-        paymentRecord = current;
+        paymentRecord = current; // a concurrent verify or reconcile won: that is the answer
       } else {
         paymentRecord = updated;
       }

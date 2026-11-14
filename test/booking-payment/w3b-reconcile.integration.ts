@@ -30,8 +30,14 @@ if (url !== FIXTURE_URL) throw new Error('Refusing to run: MONGODB_URL must be e
 /** What Razorpay holds per order. */
 const gateway = new Map<string, { id: string; order_id: string; amount: number; currency: string; status: string }[]>();
 const gatewayCalls: string[] = [];
+/** Runs while the gateway lookup is in flight (to interleave a concurrent writer). */
+const duringFetch: { hook?: () => Promise<void> } = {};
 const fakeRazorpay = {
-  orders: { fetchPayments: async (orderId: string) => { gatewayCalls.push(orderId); return { items: gateway.get(orderId) ?? [] }; } },
+  orders: { fetchPayments: async (orderId: string) => {
+    gatewayCalls.push(orderId);
+    const h = duringFetch.hook; duringFetch.hook = undefined; if (h) await h();
+    return { items: gateway.get(orderId) ?? [] };
+  } },
   payments: { fetch: async () => { throw new Error('not used'); } },
 };
 const emails = { sent: 0 };
@@ -146,9 +152,45 @@ async function main() {
     const both = await Promise.allSettled([reconcile(b.record, u), reconcile(b.record, u)]);
     assert.ok(both.some(x => x.status === 'fulfilled'));
     for (const x of both) if (x.status === 'rejected') assert.equal((x.reason as { code?: string }).code, 'PAYMENT_CHANGED');
-    assert.equal((await BookingModel.findById(b.id).lean())!.paymentStatus, 'paid');
-    assert.equal(emails.sent - before, 1);
-    assert.equal(await balance(u), 0);
+    const bk = (await BookingModel.findById(b.id).lean())! as { paymentStatus: string; walletFunding?: { captures?: unknown[] } };
+    assert.equal(bk.paymentStatus, 'paid');
+    assert.equal((bk.walletFunding?.captures ?? []).length, 1, 'the capture is applied once');
+    assert.equal(await balance(u), 0, 'nothing returned twice');
+    assert.equal(await WalletTransactionModel.countDocuments({ userId: u }), 0);
+    // Follow-up work (reminders, meeting, email) is at-least-once by design (resumed after a crash), as for two
+    // concurrent verifies; only money is exactly-once.
+    assert.ok(emails.sent - before >= 1);
+  });
+
+  await check('a record that turns failed while the gateway is asked is not revived, and nothing claims success', async () => {
+    const u = await customer();
+    const b = await booking(u);
+    gateway.set(b.orderId, [captured(b.orderId)]);
+    // A concurrent verify with a bad signature (or a failed gateway status) marks it failed during the lookup.
+    duringFetch.hook = async () => { await PaymentRecordModel.updateOne({ _id: b.record }, { $set: { status: 'failed', isProcessed: true } }); };
+    await rejects(reconcile(b.record, u), 'PAYMENT_FAILED', 400);
+    const rec = (await PaymentRecordModel.findById(b.record).lean())!;
+    assert.equal(rec.status, 'failed', 'not revived');
+    assert.equal((await BookingModel.findById(b.id).lean())!.paymentStatus, 'pending', 'no false success');
+    // Refunded meanwhile: also refused.
+    const r2 = await booking(u);
+    gateway.set(r2.orderId, [captured(r2.orderId)]);
+    duringFetch.hook = async () => { await PaymentRecordModel.updateOne({ _id: r2.record }, { $set: { status: 'refunded' } }); };
+    await rejects(reconcile(r2.record, u), 'PAYMENT_REFUNDED', 400);
+    // Paid by a concurrent verify meanwhile: that is the answer.
+    const p3 = await booking(u);
+    const pay = captured(p3.orderId);
+    gateway.set(p3.orderId, [pay]);
+    duringFetch.hook = async () => { await PaymentRecordModel.updateOne({ _id: p3.record }, { $set: { status: 'paid', razorpayPaymentId: pay.id } }); };
+    const r = await reconcile(p3.record, u) as { state: string };
+    assert.equal(r.state, 'paid');
+    assert.equal((await BookingModel.findById(p3.id).lean())!.paymentStatus, 'paid');
+    // Some other change (e.g. a new attempt state): 409, nothing written.
+    const p4 = await booking(u);
+    gateway.set(p4.orderId, [captured(p4.orderId)]);
+    duringFetch.hook = async () => { await PaymentRecordModel.updateOne({ _id: p4.record }, { $set: { status: 'pending' } }); };
+    await rejects(reconcile(p4.record, u), 'PAYMENT_CHANGED', 409);
+    assert.equal((await PaymentRecordModel.findById(p4.record).lean())!.status, 'pending');
   });
 
   await check('HTTP: POST /payments/reconcile validates and answers through the real router', async () => {
