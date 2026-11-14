@@ -5,6 +5,7 @@ import { Container } from 'typedi';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { AppError } from '@/modules/common/types';
 import { ExternalBookingService } from '@/modules/externalBookings/services';
+import { listOpenCancellations } from '@/modules/externalBookings/services/providerOps';
 import { DependentService } from '@/modules/dependents/services';
 import UserModel from '@/modules/user/model';
 import {
@@ -803,6 +804,21 @@ export class ExternalBookingController {
       message: data.status === 'cancelled' ? 'External booking cancelled successfully'
         : 'Cancellation requested; it completes once the provider confirms it',
       data,
+    });
+  };
+
+  openCancellations = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    // Joi has validated the query; defaults are applied here too because req.query may not be replaceable.
+    const q = req.query as Record<string, unknown>;
+    const scope = q.scope === 'open' ? 'open' : 'admin';
+    const page = Number(q.page) || 1;
+    const limit = Number(q.limit) || 20;
+    const result = await listOpenCancellations({ scope, page, limit });
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.status(200).json({
+      success: true,
+      data: result.data,
+      pagination: { page: result.page, limit, total: result.total, totalPages: result.totalPages },
     });
   };
 

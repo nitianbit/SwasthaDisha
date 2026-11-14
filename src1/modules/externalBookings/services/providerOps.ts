@@ -593,6 +593,38 @@ export async function findPendingCancellations(now: Date, limit = 100): Promise<
   return rows.map(r => String(r._id));
 }
 
+/**
+ * Admin worklist (W2c): external bookings whose cancellation is still open. scope 'admin' = those that left the
+ * automatic queue and wait for POST /bookings/:id/reconcile-cancellation; 'open' = every unsettled cancellation.
+ * Exposes what an admin needs to check with the provider (every provider reference, the cancel progress), never the
+ * raw provider response, tokens or acknowledged-reference bookkeeping.
+ */
+export const OPEN_CANCEL_STATES = ['requested', 'calling', 'unknown'] as const;
+export async function listOpenCancellations(q: { scope: 'admin' | 'open'; page: number; limit: number }) {
+  const filter: Record<string, unknown> = { 'providerOps.cancel.state': { $in: [...OPEN_CANCEL_STATES] } };
+  if (q.scope === 'admin') filter['providerOps.cancel.needsAdmin'] = true;
+  const [found, total] = await Promise.all([
+    ExternalBookingModel.find(filter).select('+providerOps').sort({ 'providerOps.cancel.at': 1, _id: 1 })
+      .skip((q.page - 1) * q.limit).limit(q.limit).lean(),
+    ExternalBookingModel.countDocuments(filter),
+  ]);
+  const rows = found as unknown as Booking[];
+  const data = rows.map(b => {
+    const c = opsOf(b).cancel!;
+    const acked = new Set(c.ackedRefs ?? []);
+    return {
+      _id: String(b._id), status: b.status, integration: b.integration, providerType: b.providerType,
+      appointmentType: b.appointmentType, bookingDate: b.bookingDate, bookingTime: b.bookingTime, patientName: b.patientName,
+      doctorName: b.doctorName, labName: b.labName, packageNames: b.packageNames, testNames: b.testNames,
+      price: b.price, paymentStatus: b.paymentStatus, userId: b.userId,
+      providerRefs: providerRefs(b).map(ref => ({ ref, cancelled: acked.has(ref) })),
+      cancel: { by: c.by, reason: c.reason, at: c.at, state: c.state, calls: c.calls ?? 0, nextAt: c.nextAt,
+        needsAdmin: c.needsAdmin === true, blockedBy: c.blockedBy, error: c.error },
+    };
+  });
+  return { data, total, page: q.page, totalPages: Math.ceil(total / q.limit) };
+}
+
 /** Booking without the private providerOps sub-document (public results). */
 export function publicExternalBooking<T extends { providerOps?: unknown }>(b: T): Omit<T, 'providerOps'> {
   const { providerOps: _private, ...visible } = b;

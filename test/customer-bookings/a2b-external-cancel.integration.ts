@@ -15,7 +15,7 @@ import '@/modules/user/model';
 import ExternalBookingModel from '@/modules/externalBookings/model';
 import { ExternalBookingRepository } from '@/modules/externalBookings/repository';
 import { ExternalBookingService } from '@/modules/externalBookings/services';
-import { beginProvider, findPendingCancellations, recordProviderResult, requestCancellation } from '@/modules/externalBookings/services/providerOps';
+import { beginProvider, findPendingCancellations, listOpenCancellations, recordProviderResult, requestCancellation } from '@/modules/externalBookings/services/providerOps';
 import { recordGatewayCapture } from '@/modules/common/utils/bookingWalletFunding';
 import { CouponModel } from '@/modules/coupon/model';
 import PaymentRecordModel from '@/modules/payment/model';
@@ -487,6 +487,72 @@ async function main() {
     assert.equal((await row(unpaid.id)).status, 'cancelled'); assert.equal((await row(unpaid.id)).providerOps!.cancel!.by, 'system');
     assert.equal((await row(paid.id)).status, 'cancellation_requested'); assert.equal((await row(paid.id)).providerOps!.cancel!.state, 'unknown');
     assert.equal(await balance(u), 0, 'paid ₹100 not refunded on an unknown provider outcome'); await ledgerMatches(u);
+  });
+
+  await check('[W2c] admin worklist lists open cancellations (admin scope = needsAdmin), oldest first, with provider refs and no private fields', async () => {
+    await ExternalBookingModel.deleteMany({});
+    const base = (n: number, cancel: Record<string, unknown> | undefined, extra: Record<string, unknown> = {}) => ({
+      _id: new Types.ObjectId(), userId: new Types.ObjectId().toHexString(), integration: 'healthians', providerType: 'lab',
+      appointmentType: 'diagnostics', externalProviderId: 'p', bookingDate: '20261120', bookingTime: '09:00', patientName: `Patient ${n}`,
+      price: 100, paymentStatus: 'paid', status: cancel ? 'cancellation_requested' : 'confirmed', externalBookingId: `REF-${n}`,
+      ...(cancel ? { providerOps: { cancel: { by: 'user', at: new Date(Date.UTC(2026, 10, 14, 6, n)), token: `tok-${n}`, calls: 5, ackedRefs: [],
+        response: { secret: 'raw provider answer' }, ...cancel }, lateRefs: n === 2 ? ['LATE-2'] : undefined } } : {}),
+      ...extra,
+    });
+    const docs = [
+      base(3, { state: 'unknown', needsAdmin: true, blockedBy: 'provider_unknown', error: 'timeout' }),
+      base(2, { state: 'requested', needsAdmin: true, ackedRefs: ['REF-2'] }),
+      base(4, { state: 'requested', needsAdmin: false, nextAt: new Date(Date.UTC(2026, 10, 14, 7)) }),
+      base(5, { state: 'settled', needsAdmin: false }, { status: 'cancelled' }),
+      base(6, undefined),
+    ];
+    await ExternalBookingModel.collection.insertMany(docs as never);
+
+    const adminList = await listOpenCancellations({ scope: 'admin', page: 1, limit: 20 });
+    assert.deepEqual(adminList.data.map(r => r.patientName), ['Patient 2', 'Patient 3'], 'needsAdmin only, oldest request first');
+    assert.equal(adminList.total, 2);
+    const two = adminList.data[0]!;
+    assert.deepEqual(two.providerRefs, [{ ref: 'REF-2', cancelled: true }, { ref: 'LATE-2', cancelled: false }]);
+    assert.deepEqual(adminList.data[1]!.cancel, { by: 'user', reason: undefined, at: docs[0]!.providerOps!.cancel.at, state: 'unknown', calls: 5,
+      nextAt: undefined, needsAdmin: true, blockedBy: 'provider_unknown', error: 'timeout' });
+    const flat = JSON.stringify(adminList.data);
+    for (const secret of ['tok-', 'raw provider answer', 'ackedRefs', 'providerOps', 'patientPhone']) assert.ok(!flat.includes(secret), secret);
+
+    const open = await listOpenCancellations({ scope: 'open', page: 1, limit: 20 });
+    assert.deepEqual(open.data.map(r => r.patientName), ['Patient 2', 'Patient 3', 'Patient 4'], 'settled and never-cancelled are excluded');
+    const paged = await listOpenCancellations({ scope: 'open', page: 2, limit: 2 });
+    assert.deepEqual([paged.data.map(r => r.patientName), paged.total, paged.totalPages], [['Patient 4'], 3, 2]);
+
+    // Through the real router: admin only, query validated, never cached.
+    const express = (await import('express')).default;
+    const jwt = (await import('jsonwebtoken')).default;
+    const { CONFIG } = await import('@/config/config');
+    const { authenticate } = await import('@/modules/middleware/auth');
+    const { default: router } = await import('@/modules/externalBookings/routes');
+    const app = express();
+    app.use('/api/v1/external-bookings', authenticate, router);
+    app.use((err: { status?: number; code?: string }, _q: unknown, res: { status: (n: number) => { json: (b: unknown) => void } }, _n: unknown) => {
+      res.status(err.status ?? 500).json({ code: err.code });
+    });
+    const server = app.listen(0);
+    try {
+      const port = (server.address() as { port: number }).port;
+      const call = (qs: string, claims: Record<string, string>) => fetch(`http://127.0.0.1:${port}/api/v1/external-bookings/bookings/cancellations/attention${qs}`,
+        { headers: { authorization: 'Bearer ' + jwt.sign(claims, CONFIG.JWT_SECRET_KEY) } });
+      const res = await call('', { _id: admin._id, userType: 'admin' });
+      assert.equal(res.status, 200);
+      assert.equal(res.headers.get('cache-control'), 'private, no-store');
+      const body = await res.json() as { data: { patientName: string }[]; pagination: unknown };
+      assert.deepEqual(body.data.map(r => r.patientName), ['Patient 2', 'Patient 3']);
+      assert.deepEqual(body.pagination, { page: 1, limit: 20, total: 2, totalPages: 1 });
+      const openRes = await (await call('?scope=open&limit=50', { _id: admin._id, userType: 'admin' })).json() as { data: unknown[] };
+      assert.equal(openRes.data.length, 3);
+      assert.equal((await call('?limit=51', { _id: admin._id, userType: 'admin' })).status, 400);
+      assert.equal((await call('?scope=all', { _id: admin._id, userType: 'admin' })).status, 400);
+      const customerId = new Types.ObjectId().toHexString();
+      await mongoose.connection.collection('users').insertOne({ _id: new Types.ObjectId(customerId), phone: '9000000777', name: 'C', userType: 'user' } as never);
+      assert.equal((await call('', { _id: customerId, userType: 'user' })).status, 403, 'a signed-in customer is refused');
+    } finally { server.close(); }
   });
 
   console.log(`\n${passed} checks passed`);

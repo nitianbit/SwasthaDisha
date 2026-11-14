@@ -8,6 +8,7 @@ import { requireAdmin } from '@/modules/middleware/auth';
 import {
   cancelExternalBookingSchema,
   reconcileExternalCancellationSchema,
+  openCancellationsQuerySchema,
   createExternalDiagnosticsBookingSchema,
   createExternalBookingSchema,
   externalBookingIdParamSchema,
@@ -189,6 +190,14 @@ externalBookingRouter.post(
   validate(externalBookingIdParamSchema, 'params'),
   validate(cancelExternalBookingSchema, 'body'),
   catchAsync(externalBookingController.cancelBooking)
+);
+
+// Admin worklist: external cancellations still open; by default those waiting for an admin (W2c).
+externalBookingRouter.get(
+  '/bookings/cancellations/attention',
+  requireAdmin,
+  validate(openCancellationsQuerySchema, 'query'),
+  catchAsync(externalBookingController.openCancellations)
 );
 
 // Admin: settle a pending cancellation whose provider outcome could not be proven automatically (A2b).

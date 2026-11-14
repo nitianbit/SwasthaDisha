@@ -443,3 +443,10 @@ export const rescheduleExternalDiagnosticsBookingSchema = Joi.object({
     }),
   bookingTime: Joi.string().trim().required(),
 });
+
+/** Admin cancellation worklist (W2c). */
+export const openCancellationsQuerySchema = Joi.object({
+  scope: Joi.string().valid('admin', 'open').default('admin'),
+  page: Joi.number().integer().min(1).max(1000).default(1),
+  limit: Joi.number().integer().min(1).max(50).default(20),
+});
