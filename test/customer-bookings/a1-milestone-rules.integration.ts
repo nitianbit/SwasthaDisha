@@ -36,6 +36,7 @@ import { UserService } from '@/modules/user/services';
 import { WalletModel, WalletTransactionModel } from '@/modules/wallet/model';
 import { beginProvider } from '@/modules/externalBookings/services/providerOps';
 import { WalletRepository, WalletTransactionRepository } from '@/modules/wallet/repository';
+import { OtpThrottleModel } from '@/modules/otp/model/throttle';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/a1_rules_check?directConnection=true';
 const url = process.env.MONGODB_URL ?? '';
@@ -248,10 +249,12 @@ async function main() {
     const otp = () => /(\d{6})/.exec(mail[mail.length - 1].textBody)![1];
     const u = await UserModel.create({ phone: '9811100001', userType: 'user', isActive: true });
     const id = String(u._id);
+    await OtpThrottleModel.deleteMany({}); // O1 limits have their own suite
     await auth.sendEmailVerificationOTP(id, { email: 'first@example.com' } as never);
     await auth.verifyEmailVerificationOTP(id, { otp: otp(), email: 'first@example.com' } as never, 0);
     assert.equal((await UserModel.findById(id).lean())!.email, 'first@example.com');
     await rejects(auth.sendEmailVerificationOTP(id, { email: 'second@example.com' } as never), 'EMAIL_CHANGE_ADMIN_ONLY', 422);
+    await OtpThrottleModel.deleteMany({}); // O1 limits have their own suite
     await auth.sendEmailVerificationOTP(id, { email: 'first@example.com' } as never);
     await auth.verifyEmailVerificationOTP(id, { otp: otp() } as never, 0);             // omitted target = stored email
     const v = await UserModel.create({ phone: '9811100002', userType: 'user', isActive: true });
