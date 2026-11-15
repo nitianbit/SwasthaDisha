@@ -3,6 +3,9 @@ import jwt from 'jsonwebtoken';
 import { CONFIG } from '@/config/config';
 import { AppError } from '@/modules/common/types';
 import PharmacyModel from '@/modules/pharmacies/model';
+import PartnerModel from '@/modules/partners/model';
+import MemberModel from '@/modules/partners/model/member';
+import type { PartnerPermission } from '@/modules/partners/types';
 import { admitCustomerToken } from '@/modules/user/credentialGeneration';
 import { admitSessionToken } from '@/modules/auth/sessions';
 
@@ -14,6 +17,8 @@ export interface AuthRequest extends Request {
     corporateId?: string;
     specialistId?: string;
     pharmacyId?: string;
+    memberId?: string;
+    partnerId?: string;
     userType: string;
     /** Customer credential generation the token was issued at (absent on legacy tokens = 0). */
     authVersion?: number;
@@ -400,6 +405,123 @@ export const requireAdminOrOperationalPharmacy = async (
     }
     await assertOperationalPharmacy(req);
     next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const requirePartner = (
+  req: AuthRequest,
+  _res: Response,
+  next: NextFunction
+): void => {
+  try {
+    if (!req.user) {
+      throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Authentication is required' });
+    }
+    if (req.user.userType !== 'partner') {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Partner access is required' });
+    }
+    const memberId = req.user.memberId || req.user._id;
+    if (!memberId) {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Partner membership is required' });
+    }
+    req.user.memberId = memberId;
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const assertOperationalPartner = async (req: AuthRequest): Promise<void> => {
+  const memberId = req.user?.memberId || req.user?._id;
+  if (!memberId) {
+    throw new AppError({ status: 403, code: 'PARTNER_MEMBERSHIP_REQUIRED', message: 'Partner membership is required' });
+  }
+  const member = await MemberModel.findById(memberId).select('partnerId isActive role permissions').lean();
+  if (!member || member.isActive === false) {
+    throw new AppError({ status: 403, code: 'PARTNER_MEMBER_INACTIVE', message: 'Partner membership is inactive' });
+  }
+  const partner = await PartnerModel.findById(member.partnerId).select('isActive verification.state').lean();
+  if (!partner || partner.isActive === false) {
+    throw new AppError({ status: 403, code: 'PARTNER_INACTIVE', message: 'Partner is inactive' });
+  }
+  if ((partner as any).verification?.state !== 'verified') {
+    throw new AppError({ status: 403, code: 'PARTNER_NOT_VERIFIED', message: 'Partner verification is required for this operation' });
+  }
+  req.user!.memberId = String(member._id);
+  req.user!.partnerId = String(member.partnerId);
+};
+
+export const requireOperationalPartner = async (
+  req: AuthRequest,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user) {
+      throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Authentication is required' });
+    }
+    if (req.user.userType !== 'partner') {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Partner access is required' });
+    }
+    await assertOperationalPartner(req);
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const requirePartnerPermission = (...perms: PartnerPermission[]) => {
+  return async (req: AuthRequest, _res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) {
+        throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Authentication is required' });
+      }
+      if (req.user.userType !== 'partner') {
+        throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Partner access is required' });
+      }
+      await assertOperationalPartner(req);
+      const member = await MemberModel.findById(req.user.memberId).select('role permissions').lean();
+      if (!member) {
+        throw new AppError({ status: 403, code: 'PARTNER_MEMBER_NOT_FOUND', message: 'Member not found' });
+      }
+      if ((member as any).role === 'owner') {
+        return next();
+      }
+      const memberPerms: string[] = (member as any).permissions || [];
+      const missing = perms.filter(p => !memberPerms.includes(p));
+      if (missing.length > 0) {
+        throw new AppError({ status: 403, code: 'INSUFFICIENT_PERMISSIONS', message: `Missing permissions: ${missing.join(', ')}` });
+      }
+      next();
+    } catch (error) {
+      next(error);
+    }
+  };
+};
+
+export const requireAdminOrPartner = (
+  req: AuthRequest,
+  _res: Response,
+  next: NextFunction
+): void => {
+  try {
+    if (!req.user) {
+      throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Authentication is required' });
+    }
+    if (req.user.userType === 'admin') {
+      return next();
+    }
+    if (req.user.userType === 'partner') {
+      const memberId = req.user.memberId || req.user._id;
+      if (!memberId) {
+        throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Partner membership is required' });
+      }
+      req.user.memberId = memberId;
+      return next();
+    }
+    throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Admin or partner access is required' });
   } catch (error) {
     next(error);
   }

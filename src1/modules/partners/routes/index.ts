@@ -2,71 +2,162 @@ import 'reflect-metadata';
 import { Router } from 'express';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
-import { requireAdmin } from '@/modules/middleware/auth';
-import { PartnerController } from '@/modules/partners/controller';
+import { requireAdmin, requireOperationalPartner, requirePartnerPermission } from '@/modules/middleware/auth';
 import {
   createPartnerSchema,
   updatePartnerSchema,
   partnerQuerySchema,
-  idParamSchema,
-  partnerTypeParamSchema,
+  partnerIdParamSchema,
+  addMemberSchema,
+  updateMemberPermissionsSchema,
+  createBranchSchema,
+  updateBranchSchema,
 } from '@/modules/partners/validation';
+import {
+  adminCreatePartner,
+  adminListPartners,
+  adminGetPartner,
+  adminUpdatePartner,
+  adminVerifyPartner,
+  adminSuspendPartner,
+  adminListMembers,
+  adminListBranches,
+  getMyPartner,
+  updateMyPartner,
+  listMembers,
+  getMember,
+  addMember,
+  removeMember,
+  updateMemberPermissions,
+  listBranches,
+  getBranch,
+  createBranch,
+  updateBranch,
+  deactivateBranch,
+} from '@/modules/partners/controller';
 
 const partnerRouter = Router();
 
-const partnerController = new PartnerController();
-
-// Create partner
+// ── Admin routes ──
 partnerRouter.post(
-  '/',
+  '/admin',
   requireAdmin,
   validate(createPartnerSchema, 'body'),
-  catchAsync(partnerController.create)
+  catchAsync(adminCreatePartner)
 );
-
-// Get all partners (with optional query params)
-// Supports: ?partnerType=hospital&isVerified=true&city=Mumbai&page=1&limit=10
 partnerRouter.get(
-  '/',
+  '/admin',
+  requireAdmin,
   validate(partnerQuerySchema, 'query'),
-  catchAsync(partnerController.getAll)
+  catchAsync(adminListPartners)
 );
-
-// Get verified partners
 partnerRouter.get(
-  '/verified',
-  catchAsync(partnerController.getVerifiedPartners)
+  '/admin/:partnerId',
+  requireAdmin,
+  validate(partnerIdParamSchema, 'params'),
+  catchAsync(adminGetPartner)
 );
-
-// Get partners by partner type
-partnerRouter.get(
-  '/type/:partnerType',
-  validate(partnerTypeParamSchema, 'params'),
-  catchAsync(partnerController.getByPartnerType)
-);
-
-// Get partner by ID
-partnerRouter.get(
-  '/:id',
-  validate(idParamSchema, 'params'),
-  catchAsync(partnerController.getById)
-);
-
-// Update partner
 partnerRouter.put(
-  '/:id',
+  '/admin/:partnerId',
   requireAdmin,
-  validate(idParamSchema, 'params'),
+  validate(partnerIdParamSchema, 'params'),
   validate(updatePartnerSchema, 'body'),
-  catchAsync(partnerController.update)
+  catchAsync(adminUpdatePartner)
+);
+partnerRouter.post(
+  '/admin/:partnerId/verify',
+  requireAdmin,
+  validate(partnerIdParamSchema, 'params'),
+  catchAsync(adminVerifyPartner)
+);
+partnerRouter.post(
+  '/admin/:partnerId/suspend',
+  requireAdmin,
+  validate(partnerIdParamSchema, 'params'),
+  catchAsync(adminSuspendPartner)
+);
+partnerRouter.get(
+  '/admin/:partnerId/members',
+  requireAdmin,
+  validate(partnerIdParamSchema, 'params'),
+  catchAsync(adminListMembers)
+);
+partnerRouter.get(
+  '/admin/:partnerId/branches',
+  requireAdmin,
+  validate(partnerIdParamSchema, 'params'),
+  catchAsync(adminListBranches)
 );
 
-// Delete partner
+// ── Partner self-service routes ──
+partnerRouter.get(
+  '/me',
+  requireOperationalPartner,
+  catchAsync(getMyPartner)
+);
+partnerRouter.put(
+  '/me',
+  requireOperationalPartner,
+  validate(updatePartnerSchema, 'body'),
+  catchAsync(updateMyPartner)
+);
+
+// ── Member routes ──
+partnerRouter.get(
+  '/members',
+  requirePartnerPermission('staff.manage'),
+  catchAsync(listMembers)
+);
+partnerRouter.get(
+  '/members/:memberId',
+  requirePartnerPermission('staff.manage'),
+  catchAsync(getMember)
+);
+partnerRouter.post(
+  '/members',
+  requirePartnerPermission('staff.manage'),
+  validate(addMemberSchema, 'body'),
+  catchAsync(addMember)
+);
 partnerRouter.delete(
-  '/:id',
-  requireAdmin,
-  validate(idParamSchema, 'params'),
-  catchAsync(partnerController.delete)
+  '/members/:memberId',
+  requirePartnerPermission('staff.manage'),
+  catchAsync(removeMember)
+);
+partnerRouter.put(
+  '/members/:memberId/permissions',
+  requirePartnerPermission('staff.manage'),
+  validate(updateMemberPermissionsSchema, 'body'),
+  catchAsync(updateMemberPermissions)
+);
+
+// ── Branch routes ──
+partnerRouter.get(
+  '/branches',
+  requirePartnerPermission('branches.manage'),
+  catchAsync(listBranches)
+);
+partnerRouter.get(
+  '/branches/:branchId',
+  requirePartnerPermission('branches.manage'),
+  catchAsync(getBranch)
+);
+partnerRouter.post(
+  '/branches',
+  requirePartnerPermission('branches.manage'),
+  validate(createBranchSchema, 'body'),
+  catchAsync(createBranch)
+);
+partnerRouter.put(
+  '/branches/:branchId',
+  requirePartnerPermission('branches.manage'),
+  validate(updateBranchSchema, 'body'),
+  catchAsync(updateBranch)
+);
+partnerRouter.delete(
+  '/branches/:branchId',
+  requirePartnerPermission('branches.manage'),
+  catchAsync(deactivateBranch)
 );
 
 export default partnerRouter;

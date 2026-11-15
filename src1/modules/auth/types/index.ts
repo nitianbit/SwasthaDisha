@@ -5,13 +5,13 @@ import { IUser } from '@/modules/user/types';
 export type IAuth = IUser | IAdmin | IHR;
 
 export interface SendOTPRequest {
-  userType: 'user' | 'admin' | 'specialist' | 'hr' | 'pharmacy';
+  userType: 'user' | 'admin' | 'specialist' | 'hr' | 'pharmacy' | 'partner';
   phone?: string;
   email?: string;
 }
 
 export interface VerifyOTPRequest {
-  userType: 'user' | 'admin' | 'specialist' | 'hr' | 'pharmacy';
+  userType: 'user' | 'admin' | 'specialist' | 'hr' | 'pharmacy' | 'partner';
   phone?: string;
   email?: string;
   otp: string;

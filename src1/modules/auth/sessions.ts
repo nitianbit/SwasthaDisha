@@ -8,6 +8,8 @@ import AdminModel from '@/modules/admin/model';
 import HRModel from '@/modules/hr/model';
 import SpecialistModel from '@/modules/specialists/model';
 import PharmacyModel from '@/modules/pharmacies/model';
+import MemberModel from '@/modules/partners/model/member';
+import PartnerModel from '@/modules/partners/model';
 import { readCredentialVersion } from '@/modules/user/credentialGeneration';
 import { AuthSessionModel, type AuthSession } from './model/session';
 
@@ -33,9 +35,9 @@ const LIFETIME: Record<Audience, { idle: number; absolute: number }> = {
 };
 const AUDIENCE_ROLES: Record<Audience, readonly string[]> = {
   customer: ['user'],
-  workspace: ['admin', 'pharmacy', 'hr', 'specialist'],
+  workspace: ['admin', 'pharmacy', 'hr', 'specialist', 'partner'],
   native_customer: ['user'],
-  native_workspace: ['admin', 'pharmacy', 'hr', 'specialist'],
+  native_workspace: ['admin', 'pharmacy', 'hr', 'specialist', 'partner'],
 };
 export const SESSION_HEADER = 'x-jansetu-session';
 export const NATIVE_HEADER = 'x-jansetu-native';
@@ -195,6 +197,13 @@ async function accountStillAllowed(s: AuthSession): Promise<Claims | null> {
     case 'pharmacy': {
       const p = await PharmacyModel.findById(id).lean() as { phone?: string; email?: string; isActive?: boolean; archivedAt?: Date } | null;
       return p && p.isActive !== false && !p.archivedAt ? { _id: id, pharmacyId: id, phone: p.phone, email: p.email, userType: 'pharmacy' } : null;
+    }
+    case 'partner': {
+      const member = await MemberModel.findById(id).lean() as { phone?: string; partnerId?: string; isActive?: boolean } | null;
+      if (!member || member.isActive === false) return null;
+      const partner = await PartnerModel.findById(member.partnerId).select('isActive verification.state').lean() as { isActive?: boolean; verification?: { state?: string } } | null;
+      if (!partner || partner.isActive === false) return null;
+      return { _id: id, memberId: id, partnerId: String(member.partnerId), phone: member.phone, userType: 'partner' };
     }
     default:
       return null;

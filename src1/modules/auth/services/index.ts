@@ -23,6 +23,8 @@ import { SpecialistRepository } from '@/modules/specialists/repository';
 import { ISpecialist } from '@/modules/specialists/types';
 import { PharmacyRepository } from '@/modules/pharmacies/repository';
 import { IPharmacy } from '@/modules/pharmacies/types';
+import { MemberRepository } from '@/modules/partners/repository/member';
+import { IMember } from '@/modules/partners/types';
 import { WalletService } from '@/modules/wallet/services';
 import { NotificationService } from '@/modules/notification/services';
 import { EmailService } from '@/modules/email/services';
@@ -44,7 +46,8 @@ export class AuthService {
     private walletService: WalletService,
     private notificationService: NotificationService,
     private emailService: EmailService,
-    private smsService: SMSService
+    private smsService: SMSService,
+    private memberRepository: MemberRepository
   ) {}
 
   private normalizeEmail(email?: string): string | undefined {
@@ -146,6 +149,11 @@ export class AuthService {
       userRecord = data.phone
         ? await this.pharmacyRepository.findByPhone(data.phone)
         : await this.pharmacyRepository.findByEmail(data.email!);
+    } else if (data.userType === 'partner') {
+      const members = data.phone
+        ? await this.memberRepository.findActiveByPhoneAcrossPartners(data.phone)
+        : [];
+      userRecord = members.length > 0 ? (members[0] as any) : null;
     } else {
       userRecord = await this.userRepository.findByPhoneOrEmail(
         customerIdentity ?? { phone: data.phone, email: data.email },
@@ -167,6 +175,13 @@ export class AuthService {
           status: 404,
           code: 'HR_NOT_FOUND',
           message: 'HR not found',
+        });
+      }
+      if (data.userType === 'partner') {
+        throw new AppError({
+          status: 404,
+          code: 'PARTNER_MEMBER_NOT_FOUND',
+          message: 'No active partner membership found for this phone',
         });
       }
       if (data.userType === 'pharmacy') {
@@ -221,6 +236,13 @@ export class AuthService {
           message: 'Pharmacy account is inactive',
         });
       }
+      if (data.userType === 'partner' && (userRecord as unknown as IMember).isActive === false) {
+        throw new AppError({
+          status: 403,
+          code: 'PARTNER_MEMBER_INACTIVE',
+          message: 'Partner membership is inactive',
+        });
+      }
       userId = userRecord._id!;
     }
 
@@ -269,6 +291,8 @@ export class AuthService {
       corporateId?: string;
       specialistId?: string;
       pharmacyId?: string;
+      memberId?: string;
+      partnerId?: string;
       userType: string;
     }
   }> => {
@@ -299,6 +323,11 @@ export class AuthService {
       userRecord = data.phone
         ? await this.pharmacyRepository.findByPhone(data.phone)
         : await this.pharmacyRepository.findByEmail(data.email!);
+    } else if (data.userType === 'partner') {
+      const members = data.phone
+        ? await this.memberRepository.findActiveByPhoneAcrossPartners(data.phone)
+        : [];
+      userRecord = members.length > 0 ? (members[0] as any) : null;
     } else {
       userRecord = await this.userRepository.findByPhoneOrEmail(
         customerIdentity ?? { phone: data.phone, email: data.email },
@@ -405,10 +434,21 @@ export class AuthService {
       corporateId?: string;
       specialistId?: string;
       pharmacyId?: string;
+      memberId?: string;
+      partnerId?: string;
       userType: string;
     };
 
-    if (data.userType === 'pharmacy') {
+    if (data.userType === 'partner') {
+      const member = userRecord as unknown as IMember;
+      tokenPayload = {
+        _id: id,
+        memberId: id,
+        partnerId: member.partnerId,
+        phone: member.phone,
+        userType: 'partner',
+      };
+    } else if (data.userType === 'pharmacy') {
       const pharmacy = userRecord as IPharmacy;
       tokenPayload = {
         _id: id,

@@ -13,10 +13,10 @@ const emailSchema = Joi.string().email().messages({
 });
 
 const userTypeSchema = Joi.string()
-  .valid('user', 'admin', 'specialist', 'hr', 'pharmacy')
+  .valid('user', 'admin', 'specialist', 'hr', 'pharmacy', 'partner')
   .required()
   .messages({
-    'any.only': 'userType must be one of: user, admin, specialist, hr, pharmacy',
+    'any.only': 'userType must be one of: user, admin, specialist, hr, pharmacy, partner',
     'any.required': 'userType is required',
   });
 

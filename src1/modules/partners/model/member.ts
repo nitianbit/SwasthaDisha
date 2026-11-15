@@ -1,0 +1,59 @@
+import { Schema, model, Model } from 'mongoose';
+import { IMember, ALL_PERMISSIONS } from '@/modules/partners/types';
+
+const memberSchema = new Schema<IMember>(
+  {
+    partnerId: {
+      type: String,
+      required: true,
+      index: true,
+    },
+    phone: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    role: {
+      type: String,
+      required: true,
+      enum: ['owner', 'staff'],
+    },
+    permissions: [{
+      type: String,
+      enum: ALL_PERMISSIONS as unknown as string[],
+    }],
+    branchIds: [{ type: String }],
+    doctorId: {
+      type: String,
+      sparse: true,
+    },
+    professional: {
+      kind: { type: String, enum: ['pathologist', 'pharmacist', 'doctor'] },
+      registrationNumber: { type: String, trim: true },
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+      index: true,
+    },
+    invitedBy: {
+      type: String,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+memberSchema.index({ partnerId: 1, isActive: 1 });
+memberSchema.index({ phone: 1, partnerId: 1 });
+memberSchema.index({ partnerId: 1, role: 1, isActive: 1 });
+
+const MemberModel: Model<IMember> = model<IMember>('Member', memberSchema);
+
+export default MemberModel;
