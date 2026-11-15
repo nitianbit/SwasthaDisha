@@ -27,6 +27,21 @@ Owner decision (15 Nov): build "pay again" and duplicate-order protection for me
   can never place an order (409 `REQUEST_ABANDONED`); abandoning a used key answers `used` with the order.
 - Pharmacies (B2B cart) cannot send a key (400 `REQUEST_KEY_UNSUPPORTED`).
 
+## Fences added after Codex review (msg_1794729426421)
+
+- **Payment admission vs financial edits.** A recovered set-up links its payment only while the order is exactly what
+  the payment was created for (status, pending, online, total, customer, unlinked); a lost link retries once with the
+  fresh order. The original create link also requires the created total. A financial/party edit commits only while
+  the order is pending and unlinked (checked at write time), so an edit validated before a link cannot land after it.
+  Defence in depth: a capture is applied only if its amount equals the order's current total (orders without a real
+  total keep the old behaviour); the authorisation claim is fenced on that total. A mismatching capture is returned to
+  the wallet (and, as for any returned capture, an open unpaid order is closed) - unreachable through the fences above.
+- **Key identity.** The customer of a keyed app order cannot be changed (409 `ORDER_CHECKOUT_PARTY_LOCKED`, fenced at
+  write time), so replay and recovery always find it under the customer who placed it.
+- **Cart after replay.** The order records the cart it came from (id + version); a replay deletes that cart only if
+  unchanged (a cart changed since is the next order).
+- **Id case.** Earlier attempts are checked under the order's canonical id.
+
 ## Known, not changed (recorded follow-up)
 
 - Late-capture refunds are deduplicated per order, not per payment record. Today a second record per order only arises
@@ -36,8 +51,10 @@ Owner decision (15 Nov): build "pay again" and duplicate-order protection for me
 
 ## Tests
 
-`test/pharmacy-payments/p8-pay-again.integration.ts` (11): key validation; repeated key → same order and same Razorpay
+`test/pharmacy-payments/p8-pay-again.integration.ts` (16): key validation; repeated key → same order and same Razorpay
 order, no second record; concurrent same key → one order; abandoned key refused; pharmacy refused; used key cannot be
 abandoned; pay again reuses the open order (no new Razorpay order); lost capture applied by pay again; gateway down →
 503; window/closed/offline/foreign/pharmacy refusals; interrupted setup set up once under concurrency (and named by the
-replay); replay of a paid order offers no payment.
+replay); replay of a paid order offers no payment; edit during a recovered set-up (never the old amount; a capture of it
+returned); stale financial edit after a link refused; keyed order's customer locked; replay empties the exact cart only;
+upper-case id still reconciles.

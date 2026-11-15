@@ -590,6 +590,8 @@ export class PharmacyOrderService {
       refill?: { subscriptionId: string; cycleDate: string; paymentDueBy: Date };
       /** P8: the customer's checkout request key; claimed in the order's transaction (once-only). */
       checkoutRequestKey?: string;
+      /** P8: the cart this checkout came from (id + version), so a replay can finish emptying exactly that cart. */
+      checkoutCart?: { id: string; updatedAt: Date };
     } = {}
   ): Promise<{
     order: IPharmacyOrder;
@@ -685,6 +687,7 @@ export class PharmacyOrderService {
           ...(options.orderId ? { _id: options.orderId } : {}),
           ...(options.refill ? { refill: options.refill } : {}),
           ...(options.checkoutRequestKey ? { checkoutRequestKey: options.checkoutRequestKey } : {}),
+          ...(options.checkoutCart ? { checkoutCart: options.checkoutCart } : {}),
           orderNumber: this.generateOrderNumber(),
           pharmacyId,
           orderType: data.orderType,
@@ -795,8 +798,9 @@ export class PharmacyOrderService {
       }
 
       const orderWithPayment = await this.orderRepo.update(
-        // Fenced: link only while no payment is linked (a refill resume may have linked one first).
-        { _id: savedOrder._id, $or: [{ paymentTransactionId: { $exists: false } }, { paymentTransactionId: null }] } as never,
+        // Fenced: link only while no payment is linked (a refill resume may have linked one first), and only at the total
+        // the payment was created for (P8: a financial edit in between makes this payment unusable, never attached).
+        { _id: savedOrder._id, grandTotal: savedOrder.grandTotal, paymentStatus: 'pending', $or: [{ paymentTransactionId: { $exists: false } }, { paymentTransactionId: null }] } as never,
         { paymentTransactionId: createdPaymentOrder.paymentRecord._id! }
       );
       if (!orderWithPayment) {
@@ -843,29 +847,37 @@ export class PharmacyOrderService {
    * one: late-capture refunds are keyed per order). If the original request was interrupted before its payment was
    * set up (no payment linked), sets it up now, linking it only while nothing is linked. null when it cannot be paid.
    */
-  private async payableDetails(order: IPharmacyOrder): Promise<PharmacyPaymentDetails | null> {
-    if (order.paymentMode !== 'online_payment' || order.status !== 'placed' || order.paymentStatus !== 'pending') return null;
-    if (!this.paymentService.pharmacyPaymentWindowOpen(order)) return null;
-    if (order.paymentTransactionId) return this.paymentService.resumablePharmacyPayment(order);
-    if (!order.customerId || !(Number(order.grandTotal) > 0)) return null;
-    const created = await this.paymentService.createOrder({
-      userId: String(order.createdById ?? order.customerId), payerUserId: String(order.customerId),
-      context: 'pharmacy_order', contextId: String(order._id),
-      baseAmount: Number(order.subtotal), discountAmount: Number(order.discountTotal ?? 0), finalAmount: Number(order.grandTotal),
-      notes: { orderChannel: order.orderType, orderType: order.orderType, pharmacyId: String(order.pharmacyId), resumedSetup: true },
-    });
-    const linked = await this.orderRepo.update(
-      { _id: order._id, status: 'placed', paymentStatus: 'pending', $or: [{ paymentTransactionId: { $exists: false } }, { paymentTransactionId: null }] } as never,
-      { paymentTransactionId: created.paymentRecord._id! },
-    );
-    // Lost the link (another request linked first, or the order moved): ours is never exposed; use the canonical one.
-    const current = linked ?? ((await this.orderRepo.findById(String(order._id))) as IPharmacyOrder | null);
-    if (!current) return null;
-    if (!linked) return current.status === 'placed' && current.paymentStatus === 'pending' ? this.paymentService.resumablePharmacyPayment(current) : null;
-    return {
-      paymentTransactionId: String(created.paymentRecord._id), razorpayOrderId: created.razorpayOrder.id, razorpayKeyId: created.razorpayKeyId,
-      amount: Number(order.grandTotal), currency: created.razorpayOrder.currency, baseAmount: Number(order.subtotal), discountAmount: Number(order.discountTotal ?? 0),
-    };
+  private async payableDetails(first: IPharmacyOrder): Promise<PharmacyPaymentDetails | null> {
+    let order: IPharmacyOrder | null = first;
+    // At most two set-ups: one more if a financial edit (or a concurrent set-up) changed the order meanwhile.
+    for (let attempt = 0; attempt < 2 && order; attempt++) {
+      if (order.paymentMode !== 'online_payment' || order.status !== 'placed' || order.paymentStatus !== 'pending') return null;
+      if (!this.paymentService.pharmacyPaymentWindowOpen(order)) return null;
+      if (order.paymentTransactionId) return this.paymentService.resumablePharmacyPayment(order);
+      if (!order.customerId || !(Number(order.grandTotal) > 0)) return null;
+      const created = await this.paymentService.createOrder({
+        userId: String(order.createdById ?? order.customerId), payerUserId: String(order.customerId),
+        context: 'pharmacy_order', contextId: String(order._id),
+        baseAmount: Number(order.subtotal), discountAmount: Number(order.discountTotal ?? 0), finalAmount: Number(order.grandTotal),
+        notes: { orderChannel: order.orderType, orderType: order.orderType, pharmacyId: String(order.pharmacyId), resumedSetup: true },
+      });
+      // Linked only while the order is exactly what the payment was created for: party, payment mode, total, unlinked.
+      // A financial edit while Razorpay answered makes this payment unusable (never exposed, and a capture of it would
+      // be returned: its amount no longer matches).
+      const linked = await this.orderRepo.update(
+        { _id: order._id, status: 'placed', paymentStatus: 'pending', paymentMode: 'online_payment', grandTotal: order.grandTotal,
+          customerId: order.customerId, $or: [{ paymentTransactionId: { $exists: false } }, { paymentTransactionId: null }] } as never,
+        { paymentTransactionId: created.paymentRecord._id! },
+      );
+      if (linked) {
+        return {
+          paymentTransactionId: String(created.paymentRecord._id), razorpayOrderId: created.razorpayOrder.id, razorpayKeyId: created.razorpayKeyId,
+          amount: Number(order.grandTotal), currency: created.razorpayOrder.currency, baseAmount: Number(order.subtotal), discountAmount: Number(order.discountTotal ?? 0),
+        };
+      }
+      order = (await this.orderRepo.findById(String(order._id))) as IPharmacyOrder | null;
+    }
+    return null;
   }
 
   /**
@@ -890,7 +902,8 @@ export class PharmacyOrderService {
     if (order.paymentMode !== 'online_payment') {
       throw new AppError({ status: 409, code: 'PAYMENT_NOT_ONLINE', message: 'This order is paid at the pharmacy or on delivery' });
     }
-    const settled = await this.paymentService.reconcilePharmacyOrderPayments(orderId);
+    // Payment records name the order by its canonical id (lowercase hex), whatever case the request used.
+    const settled = await this.paymentService.reconcilePharmacyOrderPayments(String(order._id));
     order = await owned();
     if (order.paymentStatus === 'paid' || order.paymentStatus === 'authorized') return { order, paymentRequired: false };
     if (settled.unknown > 0) {
@@ -1041,6 +1054,10 @@ export class PharmacyOrderService {
 
     const partyFields = ['customerId', 'buyerPharmacyId', 'orderType'] as const;
     const changesOrderParty = partyFields.some((field) => Object.prototype.hasOwnProperty.call(data, field));
+    // P8: a customer's keyed checkout order keeps its customer (the key's identity; replay and recovery find it by it).
+    if (changesOrderParty && order.checkoutRequestKey) {
+      throw new AppError({ status: 409, code: 'ORDER_CHECKOUT_PARTY_LOCKED', message: 'The customer of an app order cannot be changed' });
+    }
     if (changesOrderParty && Object.prototype.hasOwnProperty.call(order, 'recoveryRequest')) {
       throw new AppError({
         status: 409,
@@ -1226,7 +1243,10 @@ export class PharmacyOrderService {
         { $eq: [{ $type: '$_id' }, 'objectId'] },
         { $eq: [{ $type: '$pharmacyId' }, 'objectId'] },
       ] },
-      ...(changesOrderParty ? { recoveryRequest: { $exists: false } } : {}),
+      ...(changesOrderParty ? { recoveryRequest: { $exists: false }, checkoutRequestKey: { $exists: false } } : {}),
+      // P8: a financial edit commits only while no payment is admitted (pending, nothing linked) - checked at write time,
+      // so an edit validated before a payment was linked cannot change the order afterwards.
+      ...(changesFinancialData ? { paymentStatus: { $eq: 'pending' }, $or: [{ paymentTransactionId: { $exists: false } }, { paymentTransactionId: null }] } : {}),
     };
 
     try {

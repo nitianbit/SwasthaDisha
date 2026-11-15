@@ -34,10 +34,14 @@ const PHARMACY = new Types.ObjectId().toHexString();
 const MED = new Types.ObjectId().toHexString();
 
 /** Fake Razorpay: orders it created, and which of them are captured. `down` = the gateway cannot be reached. */
-const gateway = { n: 0, created: [] as string[], amounts: new Map<string, number>(), captured: new Set<string>(), down: false };
+const gateway = { n: 0, created: [] as string[], amounts: new Map<string, number>(), captured: new Set<string>(), down: false,
+  /** Runs while Razorpay is creating an order (to interleave an edit). */
+  onCreate: undefined as undefined | (() => Promise<void>) };
 const razorpay = {
   orders: {
-    create: async (p: { amount: number; currency: string }) => { gateway.n += 1; const id = `order_fake_${gateway.n}`; gateway.created.push(id); gateway.amounts.set(id, p.amount); return { id, amount: p.amount, currency: p.currency, status: 'created' }; },
+    create: async (p: { amount: number; currency: string }) => {
+      if (gateway.onCreate) { const h = gateway.onCreate; gateway.onCreate = undefined; await h(); }
+      gateway.n += 1; const id = `order_fake_${gateway.n}`; gateway.created.push(id); gateway.amounts.set(id, p.amount); return { id, amount: p.amount, currency: p.currency, status: 'created' }; },
     fetchPayments: async (id: string) => {
       if (gateway.down) throw new Error('gateway unreachable');
       return { items: gateway.captured.has(id) ? [{ id: `pay_${id}`, order_id: id, amount: gateway.amounts.get(id) ?? 0, currency: 'INR', status: 'captured' }] : [] };
@@ -65,8 +69,9 @@ const payments = Object.assign(Object.create(PaymentService.prototype), {
   getRazorpayClient: () => razorpay,
 }) as PaymentService;
 
+const orderRepo = new PharmacyOrderRepository();
 const orders = new (PharmacyOrderService as unknown as new (...a: unknown[]) => PharmacyOrderService)(
-  new PharmacyOrderRepository(), { ensureLinked: async () => undefined }, inventory, payments, {}, {}, sideEffects, medicines, refunds);
+  orderRepo, { ensureLinked: async () => undefined }, inventory, payments, {}, {}, sideEffects, medicines, refunds);
 (orders as unknown as { validateLinkedReferences: () => Promise<void> }).validateLinkedReferences = async () => undefined;
 
 const cartService = new (PharmacyCartService as unknown as new (...a: unknown[]) => PharmacyCartService)(
@@ -230,6 +235,85 @@ async function main() {
     await orders.retryPayment(String(placed.order._id), me); // applies the capture
     const replay = await checkout(me, { requestKey: 'checkout-paid-001' });
     assert.equal(replay.replayed, true); assert.equal(replay.paymentRequired, false); assert.equal(replay.payment, undefined);
+  });
+
+  await check('an edit while a recovered payment is being set up: the old-amount payment is never attached; a new one is', async () => {
+    const me = await customer();
+    await fillCart(me);
+    const placed = await checkout(me);
+    const id = String(placed.order._id);
+    await PharmacyOrderModel.updateOne({ _id: id }, { $unset: { paymentTransactionId: 1 } });
+    await PaymentRecordModel.deleteMany({ contextId: id });
+    // While Razorpay creates the Rs 100 order, the pharmacy changes the order to Rs 500.
+    gateway.onCreate = async () => { await PharmacyOrderModel.updateOne({ _id: id }, { $set: { grandTotal: 500, grandTotalPaise: 50_000 } }); };
+    const firstGatewayOrder = `order_fake_${gateway.n + 1}`;
+    const r = await orders.retryPayment(id, me);
+    assert.equal(r.payment?.amount, 500, 'set up again at the new total');
+    assert.notEqual(r.payment?.razorpayOrderId, firstGatewayOrder);
+    const linked = await PaymentRecordModel.findById((await PharmacyOrderModel.findById(id).lean())!.paymentTransactionId).lean();
+    assert.equal(linked!.finalAmountPaise, 50_000);
+    // Even if the old Rs 100 order were paid somehow, it is returned, never used to mark the Rs 500 order paid.
+    const stale = await PaymentRecordModel.findOne({ contextId: id, razorpayOrderId: firstGatewayOrder }).lean();
+    gateway.captured.add(firstGatewayOrder);
+    await (payments as unknown as { reconcilePaymentAndProcess: (d: unknown) => Promise<unknown> })
+      .reconcilePaymentAndProcess({ paymentTransactionId: String(stale!._id), userId: me._id }).catch(() => undefined);
+    const after = (await PharmacyOrderModel.findById(id).lean())!;
+    assert.notEqual(after.paymentStatus, 'paid');
+    assert.equal((await PaymentRecordModel.findById(stale!._id).lean())!.status, 'refunded');
+  });
+
+  await check('a financial edit validated before a payment was linked cannot commit after it', async () => {
+    const me = await customer();
+    await fillCart(me);
+    const placed = await checkout(me, { paymentMode: 'online_payment' });
+    const id = String(placed.order._id);
+    const linked = (await PharmacyOrderModel.findById(id).lean())!;
+    const stale = { ...linked, paymentTransactionId: undefined } as never;
+    const realFind = orderRepo.findById.bind(orderRepo);
+    (orderRepo as unknown as { findById: unknown }).findById = async (...a: unknown[]) => {
+      (orderRepo as unknown as { findById: unknown }).findById = realFind; return stale; // the edit read the order before the link
+    };
+    await rejects(orders.update(id, PHARMACY, { deliveryAddress: 'Changed after payment started' } as never), 'ORDER_UPDATE_CONFLICT');
+    assert.equal((await PharmacyOrderModel.findById(id).lean())!.deliveryAddress, undefined);
+  });
+
+  await check('the customer of a keyed app order cannot be changed (the key stays theirs)', async () => {
+    const me = await customer();
+    await fillCart(me);
+    const placed = await checkout(me, { requestKey: 'checkout-party-01', paymentMode: 'cash_on_delivery', deliveryMode: 'delivery', deliveryAddress: '1 Lane, Pune' });
+    const other = await customer();
+    await rejects(orders.update(String(placed.order._id), PHARMACY, { customerId: other._id } as never), 'ORDER_CHECKOUT_PARTY_LOCKED');
+    const replay = await checkout(me, { requestKey: 'checkout-party-01' });
+    assert.equal(String(replay.order._id), String(placed.order._id));
+  });
+
+  await check('a replay finishes emptying the exact cart the order came from; a cart changed since is kept', async () => {
+    const me = await customer();
+    await fillCart(me);
+    const cart = (await PharmacyCartModel.findOne({ actorId: me._id }).lean())!;
+    const placed = await checkout(me, { requestKey: 'checkout-cart-001' });
+    // The first request died after the order and before emptying the cart: the same cart is still there.
+    await PharmacyCartModel.collection.insertOne(cart as never);
+    await checkout(me, { requestKey: 'checkout-cart-001' });
+    assert.equal(await PharmacyCartModel.countDocuments({ actorId: me._id }), 0, 'emptied by the replay');
+    // A cart changed since (the customer added something) belongs to the next order: kept.
+    await PharmacyCartModel.collection.insertOne({ ...cart, updatedAt: new Date(Date.now() + 1000) } as never);
+    const again = await checkout(me, { requestKey: 'checkout-cart-001' });
+    assert.equal(String(again.order._id), String(placed.order._id));
+    assert.equal(await PharmacyCartModel.countDocuments({ actorId: me._id }), 1);
+  });
+
+  await check('an upper-case order id still checks the earlier attempts (captured and unreachable cases)', async () => {
+    const me = await customer();
+    await fillCart(me);
+    const down = await checkout(me);
+    gateway.down = true;
+    try { await rejects(orders.retryPayment(String(down.order._id).toUpperCase(), me), 'PAYMENT_STATE_UNKNOWN'); } finally { gateway.down = false; }
+    await fillCart(me);
+    const placed = await checkout(me);
+    gateway.captured.add(placed.payment!.razorpayOrderId!);
+    const r = await orders.retryPayment(String(placed.order._id).toUpperCase(), me);
+    assert.equal(r.paymentRequired, false); assert.equal(r.order.paymentStatus, 'paid');
   });
 
   await mongoose.disconnect();

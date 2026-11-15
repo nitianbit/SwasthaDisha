@@ -163,6 +163,8 @@ const pharmacyOrderSchema = new Schema<IPharmacyOrder>(
     customerId: { type: Schema.Types.ObjectId as any, ref: 'User', index: true },
     // P8: the customer's checkout request key (once-only checkout; a repeat returns this order).
     checkoutRequestKey: { type: String },
+    // P8: the cart the keyed checkout came from (id + version), for a replay to finish emptying it.
+    checkoutCart: { type: new Schema({ id: { type: String, required: true }, updatedAt: { type: Date, required: true } }, { _id: false }) },
     buyerPharmacyId: { type: Schema.Types.ObjectId as any, ref: 'Pharmacy', index: true },
     createdById: { type: Schema.Types.ObjectId as any, required: true },
     createdByRole: { type: String, required: true, trim: true },

@@ -139,6 +139,8 @@ export interface PharmacyRecoveryWorklistPage {
 export interface IPharmacyOrder {
   /** P8: the customer's checkout request key (once-only checkout). */
   checkoutRequestKey?: string;
+  /** P8: the cart a keyed checkout came from (id + version). */
+  checkoutCart?: { id: string; updatedAt: Date };
   _id?: string;
   orderNumber?: string;
   pharmacyId: string;

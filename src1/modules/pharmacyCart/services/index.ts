@@ -392,8 +392,16 @@ export class PharmacyCartService {
     const keyed = async () => (key
       ? (await PharmacyOrderModel.findOne({ customerId: { $eq: actor.actorId }, checkoutRequestKey: { $eq: key } }).lean()) as IPharmacyOrder | null
       : null);
+    // A replay also finishes emptying the cart the order came from (its first request may have died before that),
+    // only if that cart is unchanged since: a cart changed or replaced since is the customer's next order.
+    const replay = async (order: IPharmacyOrder) => {
+      if (order.checkoutCart) {
+        await this.cartRepository.deleteIfUnchanged({ _id: order.checkoutCart.id, updatedAt: order.checkoutCart.updatedAt } as never);
+      }
+      return this.orderService.checkoutReplay(order);
+    };
     const prior = await keyed();
-    if (prior) return this.orderService.checkoutReplay(prior);
+    if (prior) return replay(prior);
     const cart = await this.cartRepository.findByActor(actor.actorId, actor.actorRole);
     if (!cart?.pharmacyId || !cart.items.length) {
       throw new AppError({ status: 400, code: 'CART_EMPTY', message: 'Cart is empty' });
@@ -468,13 +476,13 @@ export class PharmacyCartService {
       },
       actor.actorId,
       actor.actorRole,
-      { allowPriceOverride: false, ...(key ? { checkoutRequestKey: key } : {}) }
+      { allowPriceOverride: false, ...(key ? { checkoutRequestKey: key, checkoutCart: { id: String(cart._id), updatedAt: cart.updatedAt as Date } } : {}) }
     );
     } catch (error) {
       // The same key won a concurrent checkout: answer with that order.
       if (key && isDuplicateKeyError(error)) {
         const winner = await keyed();
-        if (winner) return this.orderService.checkoutReplay(winner);
+        if (winner) return replay(winner);
       }
       throw error;
     }

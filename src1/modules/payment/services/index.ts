@@ -1127,9 +1127,19 @@ export class PaymentService {
       return this.handleTimedOutPharmacyOrderPayment(order as IPharmacyOrder, paymentRecord);
     }
 
+    // P8 (defence): a payment is applied only to the amount it was taken for. A capture whose amount differs from the
+    // order's current total is returned to the wallet, never used to mark a changed order paid.
+    if (order.paymentMode === 'online_payment' && order.paymentStatus === 'pending' && !this.paymentCoversOrder(paymentRecord, order as IPharmacyOrder)) {
+      logger.warn('[Payment][pharmacy] capture amount differs from the order total; returned', {
+        orderId: String(order._id), paymentTransactionId: String(paymentRecord._id) });
+      return this.handleTimedOutPharmacyOrderPayment(order as IPharmacyOrder, paymentRecord);
+    }
+
     if (order.paymentMode === 'online_payment' && order.paymentStatus === 'pending') {
       const claimedOrder = await this.pharmacyOrderRepository.update(
-        { _id: order._id, status: 'placed', paymentStatus: 'pending' },
+        // P8: claimed only at the total that was checked against this payment.
+        { _id: order._id, status: 'placed', paymentStatus: 'pending',
+          ...(typeof order.grandTotal === 'number' && Number.isFinite(order.grandTotal) ? { grandTotal: order.grandTotal } : {}) },
         {
           paymentStatus: 'authorized',
           paymentTransactionId: paymentRecord._id!,
@@ -1876,6 +1886,15 @@ export class PaymentService {
       }
     }
     return { checked: records.length, unknown };
+  }
+
+  /** P8: the payment was taken for exactly the order's current total (in paise). */
+  private paymentCoversOrder(record: IPaymentRecord, order: IPharmacyOrder): boolean {
+    // Only orders carrying a real total are checked; a legacy order without one keeps the previous behaviour.
+    if (!(typeof order.grandTotal === 'number' && Number.isFinite(order.grandTotal) && order.grandTotal > 0)) return true;
+    const recordPaise = Number.isFinite(Number(record.finalAmountPaise)) ? Number(record.finalAmountPaise) : Math.round(Number(record.finalAmount) * 100);
+    const orderPaise = Number.isFinite(Number(order.grandTotalPaise)) ? Number(order.grandTotalPaise) : Math.round(order.grandTotal * 100);
+    return Number.isFinite(recordPaise) && recordPaise === orderPaise;
   }
 
   /** P8: whether a captured payment would still be applied to this unpaid pharmacy order (else it is returned). */
