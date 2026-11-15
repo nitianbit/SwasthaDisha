@@ -145,3 +145,6 @@ export const partnerQuerySchema = Joi.object({
   verificationState: Joi.string().valid('pending', 'verified', 'suspended').optional(),
   isActive: Joi.string().valid('true', 'false').optional(),
 });
+
+export * from './catalogue';
+export * from './invoice';

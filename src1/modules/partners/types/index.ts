@@ -114,3 +114,6 @@ export interface IDayHours {
   open: string;
   close: string;
 }
+
+export * from './catalogue';
+export * from './invoice';

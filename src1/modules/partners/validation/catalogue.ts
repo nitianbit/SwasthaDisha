@@ -1,0 +1,38 @@
+import Joi from 'joi';
+
+const objectIdPattern = /^[0-9a-fA-F]{24}$/;
+
+export const createCatalogueItemSchema = Joi.object({
+  kind: Joi.string().valid('test', 'package').required(),
+  name: Joi.string().trim().min(1).max(200).required(),
+  code: Joi.string().trim().max(50).optional(),
+  description: Joi.string().trim().max(1000).optional(),
+  preparation: Joi.string().trim().max(500).optional(),
+  sampleType: Joi.string().trim().max(100).optional(),
+  includes: Joi.array().items(Joi.string().trim()).optional(),
+  priceMinor: Joi.number().integer().min(0).required(),
+  mrpMinor: Joi.number().integer().min(0).optional(),
+  gstRate: Joi.number().valid(0, 5, 12, 18, 28).required(),
+  sac: Joi.string().trim().max(20).optional(),
+  visitModes: Joi.array().items(Joi.string().valid('home', 'lab')).min(1).required(),
+  reportTatHours: Joi.number().integer().min(0).optional(),
+});
+
+export const updateCatalogueItemSchema = Joi.object({
+  name: Joi.string().trim().min(1).max(200).optional(),
+  code: Joi.string().trim().max(50).optional(),
+  description: Joi.string().trim().max(1000).optional(),
+  preparation: Joi.string().trim().max(500).optional(),
+  sampleType: Joi.string().trim().max(100).optional(),
+  includes: Joi.array().items(Joi.string().trim()).optional(),
+  priceMinor: Joi.number().integer().min(0).optional(),
+  mrpMinor: Joi.number().integer().min(0).optional(),
+  gstRate: Joi.number().valid(0, 5, 12, 18, 28).optional(),
+  sac: Joi.string().trim().max(20).optional(),
+  visitModes: Joi.array().items(Joi.string().valid('home', 'lab')).min(1).optional(),
+  reportTatHours: Joi.number().integer().min(0).optional(),
+}).min(1);
+
+export const catalogueItemParamSchema = Joi.object({
+  itemId: Joi.string().pattern(objectIdPattern).required(),
+});

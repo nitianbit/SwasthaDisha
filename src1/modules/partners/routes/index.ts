@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { Router } from 'express';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
-import { requireAdmin, requireOperationalPartner, requirePartnerPermission } from '@/modules/middleware/auth';
+import { authenticate, requireAdmin, requireOperationalPartner, requirePartnerPermission } from '@/modules/middleware/auth';
 import {
   createPartnerSchema,
   updatePartnerSchema,
@@ -12,6 +12,14 @@ import {
   updateMemberPermissionsSchema,
   createBranchSchema,
   updateBranchSchema,
+  createCatalogueItemSchema,
+  updateCatalogueItemSchema,
+  catalogueItemParamSchema,
+  createInvoiceSchema,
+  recordPaymentSchema,
+  cancelInvoiceSchema,
+  invoiceParamSchema,
+  invoiceQuerySchema,
 } from '@/modules/partners/validation';
 import {
   adminCreatePartner,
@@ -35,6 +43,22 @@ import {
   updateBranch,
   deactivateBranch,
 } from '@/modules/partners/controller';
+import {
+  listCatalogueItems,
+  getCatalogueItem,
+  createCatalogueItem,
+  updateCatalogueItem,
+  deactivateCatalogueItem,
+  adminDisableCatalogueItem,
+} from '@/modules/partners/controller/catalogue';
+import {
+  createInvoice,
+  recordPayment,
+  cancelInvoice,
+  getInvoice,
+  listPartnerInvoices,
+  listCustomerBills,
+} from '@/modules/partners/controller/invoice';
 
 const partnerRouter = Router();
 
@@ -158,6 +182,85 @@ partnerRouter.delete(
   '/branches/:branchId',
   requirePartnerPermission('branches.manage'),
   catchAsync(deactivateBranch)
+);
+
+// ── Catalogue routes ──
+partnerRouter.get(
+  '/catalogue',
+  requirePartnerPermission('catalogue.manage'),
+  catchAsync(listCatalogueItems)
+);
+partnerRouter.get(
+  '/catalogue/:itemId',
+  requirePartnerPermission('catalogue.manage'),
+  validate(catalogueItemParamSchema, 'params'),
+  catchAsync(getCatalogueItem)
+);
+partnerRouter.post(
+  '/catalogue',
+  requirePartnerPermission('catalogue.manage'),
+  validate(createCatalogueItemSchema, 'body'),
+  catchAsync(createCatalogueItem)
+);
+partnerRouter.put(
+  '/catalogue/:itemId',
+  requirePartnerPermission('catalogue.manage'),
+  validate(catalogueItemParamSchema, 'params'),
+  validate(updateCatalogueItemSchema, 'body'),
+  catchAsync(updateCatalogueItem)
+);
+partnerRouter.delete(
+  '/catalogue/:itemId',
+  requirePartnerPermission('catalogue.manage'),
+  validate(catalogueItemParamSchema, 'params'),
+  catchAsync(deactivateCatalogueItem)
+);
+partnerRouter.post(
+  '/admin/catalogue/:itemId/disable',
+  requireAdmin,
+  validate(catalogueItemParamSchema, 'params'),
+  catchAsync(adminDisableCatalogueItem)
+);
+
+// ── Invoice routes ──
+partnerRouter.get(
+  '/invoices',
+  requirePartnerPermission('invoices.create'),
+  validate(invoiceQuerySchema, 'query'),
+  catchAsync(listPartnerInvoices)
+);
+partnerRouter.post(
+  '/invoices',
+  requirePartnerPermission('invoices.create'),
+  validate(createInvoiceSchema, 'body'),
+  catchAsync(createInvoice)
+);
+partnerRouter.get(
+  '/invoices/:invoiceId',
+  requirePartnerPermission('invoices.create'),
+  validate(invoiceParamSchema, 'params'),
+  catchAsync(getInvoice)
+);
+partnerRouter.post(
+  '/invoices/:invoiceId/pay',
+  requirePartnerPermission('payments.record'),
+  validate(invoiceParamSchema, 'params'),
+  validate(recordPaymentSchema, 'body'),
+  catchAsync(recordPayment)
+);
+partnerRouter.post(
+  '/invoices/:invoiceId/cancel',
+  requirePartnerPermission('invoices.cancel'),
+  validate(invoiceParamSchema, 'params'),
+  validate(cancelInvoiceSchema, 'body'),
+  catchAsync(cancelInvoice)
+);
+
+// ── Customer bills (authenticated customer) ──
+partnerRouter.get(
+  '/bills',
+  authenticate,
+  catchAsync(listCustomerBills)
 );
 
 export default partnerRouter;
