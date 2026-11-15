@@ -20,7 +20,7 @@ import BookingModel from '@/modules/bookings/model';
 import { IBooking } from '@/modules/bookings/types';
 import { DoctorPresenceModel, InstantRequestModel, IInstantRequest, InstantMode, MoneySplit } from '@/modules/doctors/model/instant';
 import { DoctorReservationModel } from '@/modules/doctors/model/reservation';
-import { reserveInterval, moveInterval, releaseInterval } from '@/modules/doctors/services/reservations';
+import { reserveInterval, moveInterval, releaseInterval, bumpGuard } from '@/modules/doctors/services/reservations';
 import { settlementSystemFor } from '@/modules/partners/services/cutover';
 import { ensureSettlementAccount } from '@/modules/partners/services/settlement';
 
@@ -126,9 +126,20 @@ export class InstantConsultService {
     ).lean();
   }
 
-  /** Refreshes `lastSeenAt` only; busy is derived from held intervals, so a heartbeat can never clear it. */
+  /** The doctor's account as it is now: active and verified, or refused (and taken offline). */
+  private async activeDoctor(doctorId: string): Promise<{ name?: string; specialization?: string }> {
+    const sp = Types.ObjectId.isValid(doctorId) ? await SpecialistModel.findById(doctorId).select({ name: 1, specialization: 1, isActive: 1, isVerified: 1 }).lean() as any : null;
+    if (!sp || sp.isActive === false || sp.isVerified === false) {
+      await DoctorPresenceModel.updateOne({ doctorId: String(doctorId) }, { $set: { available: false } });
+      throw err(403, 'SPECIALIST_NOT_ACTIVE', 'Only active, verified doctors can take instant consultations');
+    }
+    return sp;
+  }
+
+  /** Refreshes `lastSeenAt` (and the cached speciality) only for an eligible doctor; busy is derived from held intervals, so a heartbeat can never clear it. */
   async heartbeat(doctorId: string, now = new Date()): Promise<{ online: boolean }> {
-    const r = await DoctorPresenceModel.updateOne({ doctorId: String(doctorId), available: true }, { $set: { lastSeenAt: now } });
+    const sp = await this.activeDoctor(doctorId);
+    const r = await DoctorPresenceModel.updateOne({ doctorId: String(doctorId), available: true }, { $set: { lastSeenAt: now, specialization: sp.specialization } });
     return { online: r.matchedCount === 1 && !(await this.busyAt(doctorId, now)) };
   }
 
@@ -136,24 +147,28 @@ export class InstantConsultService {
     return !!(await DoctorReservationModel.exists({ doctorId: String(doctorId), isActive: true, startTime: { $lte: at }, endTime: { $gt: at } }));
   }
 
-  /** Online doctors for a speciality and mode: available, heartbeat within 2 min, active/verified, not holding an interval now. */
-  async onlineDoctors(f: { specialization: string; mode: InstantMode; maxFeeMinor?: number }, now = new Date()) {
+  /**
+   * Online doctors for a speciality and mode: available, heartbeat within 2 min, active/verified, not holding an interval
+   * now. The speciality is the doctor's CURRENT profile (presence only caches it), so a corrected profile takes effect at once.
+   */
+  async onlineDoctors(f: { specialization: string; mode: InstantMode; maxFeeMinor?: number; onlyDoctorIds?: string[] }, now = new Date()) {
     const presences = await DoctorPresenceModel.find({
       available: true, lastSeenAt: { $gte: new Date(now.getTime() - PRESENCE_TTL_MS) }, modes: f.mode,
-      specialization: new RegExp(`^${escapeRx(f.specialization.trim())}$`, 'i'),
       ...(f.maxFeeMinor !== undefined ? { instantFeeMinor: { $lte: f.maxFeeMinor } } : {}),
+      ...(f.onlyDoctorIds ? { doctorId: { $in: f.onlyDoctorIds } } : {}),
     }).lean();
     if (!presences.length) return [];
     const ids = presences.map((p) => p.doctorId);
     const [busy, doctors] = await Promise.all([
       DoctorReservationModel.find({ doctorId: { $in: ids }, isActive: true, startTime: { $lte: now }, endTime: { $gt: now } }).select({ doctorId: 1 }).lean(),
-      SpecialistModel.find({ _id: { $in: ids.filter((i) => Types.ObjectId.isValid(i)) }, isActive: true, isVerified: true }).select({ name: 1, rating: 1, specialization: 1 }).lean() as any,
+      SpecialistModel.find({ _id: { $in: ids.filter((i) => Types.ObjectId.isValid(i)) }, isActive: true, isVerified: true,
+        specialization: new RegExp(`^\\s*${escapeRx(f.specialization.trim())}\\s*$`, 'i') }).select({ name: 1, rating: 1, specialization: 1 }).lean() as any,
     ]);
     const busyIds = new Set(busy.map((b) => b.doctorId));
     const byId = new Map((doctors as any[]).map((d) => [String(d._id), d]));
     return presences
       .filter((p) => !busyIds.has(p.doctorId) && byId.has(p.doctorId))
-      .map((p) => ({ doctorId: p.doctorId, name: byId.get(p.doctorId).name, rating: byId.get(p.doctorId).rating, specialization: p.specialization,
+      .map((p) => ({ doctorId: p.doctorId, name: byId.get(p.doctorId).name, rating: byId.get(p.doctorId).rating, specialization: byId.get(p.doctorId).specialization,
         modes: p.modes, instantFeeMinor: p.instantFeeMinor, instantFee: rupees(p.instantFeeMinor) }))
       .sort((a, b) => a.instantFeeMinor - b.instantFeeMinor);
   }
@@ -172,7 +187,7 @@ export class InstantConsultService {
 
   // ───────────────────────────── Customer: create and pay ─────────────────────────────
 
-  async create(userId: string, input: CreateInstantInput, now = new Date()) {
+  async create(userId: string, input: CreateInstantInput, now = new Date(), account: { corporateId?: string } = {}) {
     if (input.target.kind === 'specific' && !input.target.doctorId) throw err(400, 'DOCTOR_REQUIRED', 'Choose a doctor');
     const hash = instantRequestHash(input);
     const prior = await InstantRequestModel.findOne({ userId: { $eq: userId }, createRequestKey: { $eq: input.requestKey } }).lean();
@@ -183,12 +198,17 @@ export class InstantConsultService {
     const patient = await this.patientOf(userId, input.patient);
     let discountMinor = 0;
     let couponCode: string | undefined;
+    let couponDoctorIds: string[] | undefined;
     if (input.couponCode && quotedAmountMinor > 0) {
+      // The same eligibility context as an ordinary consultation: the resolved patient and the account's corporate.
       const v = await this.couponService.validateCoupon({ code: input.couponCode, userId, bookingType: 'consultation',
-        bookingId: input.target.kind === 'specific' ? input.target.doctorId : undefined, purchaseAmount: rupees(quotedAmountMinor) });
+        bookingId: input.target.kind === 'specific' ? input.target.doctorId : undefined, purchaseAmount: rupees(quotedAmountMinor),
+        dependentId: patient.kind === 'dependent' ? patient.dependentId : undefined, corporateId: account.corporateId });
       if (!v.isValid || !v.coupon) throw err(400, 'INVALID_COUPON', v.message || 'Invalid coupon code');
       discountMinor = Math.min(quotedAmountMinor, paiseOf(v.discountAmount ?? 0));
       couponCode = v.coupon.code;
+      // A coupon for named doctors stays bound to them through re-offers and acceptance (frozen with the price).
+      if (v.coupon.applicableTo === 'specific') couponDoctorIds = (v.coupon.applicableIds ?? []).map(String);
     }
 
     const request = await runLedgerTransaction(async (s) => {
@@ -197,7 +217,7 @@ export class InstantConsultService {
       await claimRequestKey(scopeOf('instant_request_create', userId), input.requestKey, s);
       const [created] = await InstantRequestModel.create([{
         userId, createRequestKey: input.requestKey, createRequestHash: hash, patient, specialization: input.specialization.trim(), mode: input.mode,
-        target: input.target, quotedAmountMinor, couponCode, discountMinor, fundingState: 'awaiting', status: 'pending_payment', statusVersion: 0,
+        target: input.target, quotedAmountMinor, couponCode, ...(couponDoctorIds ? { couponDoctorIds } : {}), discountMinor, fundingState: 'awaiting', status: 'pending_payment', statusVersion: 0,
         paymentStatus: 'pending', paymentDeadline: new Date(now.getTime() + INSTANT_PAYMENT_WINDOW_MS), offerGeneration: 0, offeredTo: [],
       }], { session: s });
       return created!.toObject() as IInstantRequest;
@@ -276,10 +296,11 @@ export class InstantConsultService {
         amount: remaining, currency: order.razorpayOrder.currency } };
   }
 
-  /** Doctors the first offer goes to: the chosen one, or every eligible online doctor (fee within the quote). */
-  private async offerTargets(r: Pick<IInstantRequest, 'target' | 'specialization' | 'mode' | 'quotedAmountMinor'>, now: Date): Promise<string[]> {
+  /** Doctors the first offer goes to: the chosen one, or every eligible online doctor (fee within the quote, coupon's doctors only). */
+  private async offerTargets(r: Pick<IInstantRequest, 'target' | 'specialization' | 'mode' | 'quotedAmountMinor' | 'couponDoctorIds'>, now: Date): Promise<string[]> {
     if (r.target.kind === 'specific') return [String(r.target.doctorId)];
-    return (await this.onlineDoctors({ specialization: r.specialization, mode: r.mode, maxFeeMinor: r.quotedAmountMinor }, now)).map((d) => d.doctorId);
+    return (await this.onlineDoctors({ specialization: r.specialization, mode: r.mode, maxFeeMinor: r.quotedAmountMinor,
+      ...(r.couponDoctorIds ? { onlyDoctorIds: r.couponDoctorIds } : {}) }, now)).map((d) => d.doctorId);
   }
 
   /** The held state: funding recorded (coupon + wallet + gateway == quote) and the first offer generation opened. */
@@ -332,6 +353,7 @@ export class InstantConsultService {
   // ───────────────────────────── Offers: accept, re-offer ─────────────────────────────
 
   async myOffers(doctorId: string, now = new Date()) {
+    await this.activeDoctor(doctorId); // a deactivated doctor no longer sees patient details
     const rows = await InstantRequestModel.find({ status: 'offered', fundingState: 'held', offeredTo: String(doctorId), offerExpiresAt: { $gt: now } })
       .sort({ offerExpiresAt: 1 }).limit(50).lean();
     return rows.map((r) => ({ requestId: String(r._id), mode: r.mode, specialization: r.specialization, patient: { name: r.patient.name, age: r.patient.age,
@@ -359,6 +381,12 @@ export class InstantConsultService {
       }
       const sp = await SpecialistModel.findById(doctorId).session(s).lean() as any;
       if (!sp || sp.isActive === false || sp.isVerified === false) throw err(403, 'SPECIALIST_NOT_ACTIVE', 'Doctor account is not active');
+      if (String(sp.specialization ?? '').trim().toLowerCase() !== r.specialization.trim().toLowerCase()) {
+        throw err(409, 'SPECIALIZATION_MISMATCH', 'This request is for another speciality');
+      }
+      if (r.couponDoctorIds && !r.couponDoctorIds.includes(String(doctorId))) {
+        throw err(409, 'COUPON_NOT_FOR_DOCTOR', "The patient's coupon is for other doctors");
+      }
       const fee = presence.instantFeeMinor;
       if (fee > r.quotedAmountMinor) throw err(409, 'FEE_ABOVE_QUOTE', 'Your fee is above what this patient paid');
       const { allocated, returned } = allocateFunding(r.funding as MoneySplit, fee);
@@ -398,18 +426,15 @@ export class InstantConsultService {
     return { request: requestView(out.request), booking: out.booking };
   }
 
-  /** After commit, best effort: Meet link for call/video (synthetic slot = the consultation window) and notifications. */
-  private async afterAccept(r: IInstantRequest, booking: IBooking, now: Date) {
+  /** After commit, best effort: Meet link for call/video (the window comes from the instant reservation) and notifications. */
+  private async afterAccept(r: IInstantRequest, booking: IBooking, _now: Date) {
     try {
-      const [{ syncBookingMeet }, { BookingRepository }, { UserRepository }, { SpecialistRepository }] = await Promise.all([
+      const [{ syncBookingMeet }, { BookingRepository }, { UserRepository }, { SpecialistRepository }, { SlotRepository }] = await Promise.all([
         import('@/modules/meet/service'), import('@/modules/bookings/repository'), import('@/modules/user/repository'), import('@/modules/specialists/repository'),
+        import('@/modules/slots/repository'),
       ]);
-      const end = istParts(new Date(now.getTime() + CONSULT_MS));
-      await syncBookingMeet({
-        booking: { ...booking, slotId: 'instant' } as IBooking, bookingRepository: new BookingRepository(), userRepository: new UserRepository(),
-        specialistRepository: new SpecialistRepository(),
-        slotRepository: { findById: async () => ({ date: booking.bookingDate, startTime: booking.bookingTime, endTime: end.time, duration: CONSULT_MS / 60_000 }) } as any,
-      });
+      await syncBookingMeet({ booking, bookingRepository: new BookingRepository(), userRepository: new UserRepository(),
+        specialistRepository: new SpecialistRepository(), slotRepository: new SlotRepository() });
     } catch (e) {
       console.error('instant consult meet link failed', (e as Error)?.message);
     }
@@ -424,11 +449,14 @@ export class InstantConsultService {
     let offeredTo: string[];
     if (target.kind === 'specific') {
       if (!target.doctorId) throw err(400, 'DOCTOR_REQUIRED', 'Choose a doctor');
+      if (r.couponDoctorIds && !r.couponDoctorIds.includes(String(target.doctorId))) {
+        throw err(409, 'COUPON_NOT_FOR_DOCTOR', 'Your coupon is for other doctors; choose one of them or ask for a refund');
+      }
       const online = await this.onlineDoctors({ specialization: r.specialization, mode: r.mode, maxFeeMinor: r.quotedAmountMinor }, now);
       if (!online.some((d) => d.doctorId === String(target.doctorId))) throw err(409, 'DOCTOR_NOT_ONLINE', 'This doctor is not available within your paid amount');
       offeredTo = [String(target.doctorId)];
     } else {
-      offeredTo = (await this.onlineDoctors({ specialization: r.specialization, mode: r.mode, maxFeeMinor: r.quotedAmountMinor }, now)).map((d) => d.doctorId);
+      offeredTo = await this.offerTargets({ ...r, target }, now);
       if (!offeredTo.length) throw err(409, 'NO_DOCTOR_ONLINE', 'No doctor is online within your paid amount right now');
     }
     const updated = await InstantRequestModel.findOneAndUpdate(
@@ -548,15 +576,23 @@ export class InstantConsultService {
     return out;
   }
 
-  /** The doctor keeps the consultation going: its interval is extended (refused if it would overlap another booking). */
+  /**
+   * The doctor keeps the consultation going: its interval is extended (refused if it would overlap another booking).
+   * Read and computed inside the doctor-guarded transaction, so concurrent extensions add up and never overwrite.
+   */
   async extend(doctorId: string, bookingId: string, minutes: number, now = new Date()) {
-    if (!(minutes > 0 && minutes <= 60)) throw err(400, 'INVALID_MINUTES', 'Extend by 1–60 minutes');
-    const b = await BookingModel.findOne({ _id: bookingId, specialistId: String(doctorId), bookingKind: 'instant', status: 'confirmed' }).lean();
-    if (!b) throw err(404, 'BOOKING_NOT_FOUND', 'Booking not found');
-    const cur = await DoctorReservationModel.findOne({ refId: String(bookingId).toLowerCase(), kind: 'instant', isActive: true }).lean();
-    if (!cur) throw err(409, 'RESERVATION_NOT_ACTIVE', 'The consultation is no longer held');
-    const end = new Date(Math.max(new Date(cur.endTime).getTime(), now.getTime()) + minutes * 60_000);
-    return runLedgerTransaction((s) => moveInterval({ doctorId: String(doctorId), kind: 'instant', refId: String(bookingId).toLowerCase(), start: cur.startTime, end }, s));
+    if (!(Number.isInteger(minutes) && minutes > 0 && minutes <= 60)) throw err(400, 'INVALID_MINUTES', 'Extend by 1–60 minutes');
+    if (!Types.ObjectId.isValid(bookingId)) throw err(404, 'BOOKING_NOT_FOUND', 'Booking not found');
+    const refId = String(bookingId).toLowerCase();
+    return runLedgerTransaction(async (s) => {
+      await bumpGuard(String(doctorId), s);
+      const b = await BookingModel.findOne({ _id: refId, specialistId: String(doctorId), bookingKind: 'instant', status: 'confirmed' }).session(s).lean();
+      if (!b) throw err(404, 'BOOKING_NOT_FOUND', 'Booking not found');
+      const cur = await DoctorReservationModel.findOne({ refId, kind: 'instant', isActive: true }).session(s).lean();
+      if (!cur) throw err(409, 'RESERVATION_NOT_ACTIVE', 'The consultation is no longer held');
+      const end = new Date(Math.max(new Date(cur.endTime).getTime(), now.getTime()) + minutes * 60_000);
+      return moveInterval({ doctorId: String(doctorId), kind: 'instant', refId, start: cur.startTime, end }, s);
+    });
   }
 
   // ───────────────────────────── Sweeps ─────────────────────────────

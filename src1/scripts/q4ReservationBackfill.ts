@@ -44,8 +44,9 @@ export async function runReservationBackfill(commit: boolean, now = new Date()):
         // Re-admitted on committed state inside the transaction, then fenced: same status, same slot.
         const current = await eligible(String(c._id), now, s);
         if (!current) return false;
-        const fenced = await BookingModel.updateOne({ _id: current.b._id, status: current.b.status, slotId: current.b.slotId },
-          { $set: { updatedAt: new Date() } }, { session: s, timestamps: false });
+        // A definite write (version increment, never a same-value no-op), so every admitted candidate conflicts with a racing change.
+        const fenced = await BookingModel.collection.updateOne({ _id: current.b._id, status: current.b.status, slotId: current.b.slotId },
+          { $inc: { __v: 1 } }, { session: s });
         if (fenced.modifiedCount !== 1) return false;
         await reserveInterval({ doctorId: String(current.b.specialistId), kind: 'scheduled', refId: String(current.b._id).toLowerCase(),
           start: current.w.start, end: current.w.end, branchId: current.slot.branchId }, s);

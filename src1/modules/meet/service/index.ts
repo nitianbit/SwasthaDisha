@@ -3,6 +3,8 @@ import { CONFIG } from '@/config/config';
 import { BookingRepository } from '@/modules/bookings/repository';
 import { IBooking, IVirtualMeeting } from '@/modules/bookings/types';
 import { AppError } from '@/modules/common/types';
+import { slotIntervalOf } from '@/modules/common/utils/slotInterval';
+import { DoctorReservationModel } from '@/modules/doctors/model/reservation';
 import { SlotRepository } from '@/modules/slots/repository';
 import { SpecialistRepository } from '@/modules/specialists/repository';
 import { UserRepository } from '@/modules/user/repository';
@@ -383,56 +385,31 @@ async function getMeetOAuthAccessToken(): Promise<string> {
   return token;
 }
 
-function parse12HourTime(time: string): string {
-  const trimmed = time.trim().toUpperCase();
-  const match = trimmed.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/);
-  if (!match) {
-    throw new AppError({
-      status: 400,
-      code: 'INVALID_BOOKING_TIME',
-      message: `Unsupported booking time format: ${time}`,
-    });
-  }
+/** An instant as the India-time wall clock Google Calendar expects with timeZone Asia/Kolkata (YYYY-MM-DDTHH:mm:00). */
+const istWallClock = (at: Date) => `${new Date(at.getTime() + 330 * 60_000).toISOString().slice(0, 16)}:00`;
 
-  let hours = Number(match[1]);
-  const minutes = match[2];
-  const meridiem = match[3];
-  if (meridiem === 'AM') {
-    hours = hours === 12 ? 0 : hours;
-  } else if (hours !== 12) {
-    hours += 12;
-  }
-
-  return `${String(hours).padStart(2, '0')}:${minutes}`;
+/**
+ * The meeting window of a slot, through the one slot-time parser (h:mm AM/PM from the slot API, HH:mm from schedule
+ * templates and instant consultations). An end at or before the start (a window crossing midnight) falls back to the
+ * duration, so the end rolls over to the next day.
+ */
+/**
+ * Q4b: an instant consultation has no slot; its window is the doctor's instant reservation for the booking (start and
+ * current end, extensions included), else the booking time + 30 minutes. Any later re-sync rebuilds the same window.
+ */
+async function instantWindowOf(booking: IBooking): Promise<{ date: string; startTime: string; duration: number } | null> {
+  if (booking.bookingKind !== 'instant' || !booking.bookingDate || !booking.bookingTime) return null;
+  const r = await DoctorReservationModel.findOne({ refId: String(booking._id).toLowerCase(), kind: 'instant' }).lean();
+  const minutes = r ? Math.max(1, Math.round((new Date(r.endTime).getTime() - new Date(r.startTime).getTime()) / 60_000)) : 30;
+  return { date: booking.bookingDate, startTime: booking.bookingTime, duration: minutes };
 }
 
-function buildDateTime(dateYyyymmdd: string, time: string): string {
-  const year = dateYyyymmdd.slice(0, 4);
-  const month = dateYyyymmdd.slice(4, 6);
-  const day = dateYyyymmdd.slice(6, 8);
-  return `${year}-${month}-${day}T${parse12HourTime(time)}:00`;
-}
-
-function buildEndDateTime(
-  dateYyyymmdd: string,
-  startTime: string,
-  endTime?: string,
-  duration?: number
-): string {
-  if (endTime) return buildDateTime(dateYyyymmdd, endTime);
-
-  const [hours, minutes] = parse12HourTime(startTime).split(':').map(Number);
-  const year = Number(dateYyyymmdd.slice(0, 4));
-  const month = Number(dateYyyymmdd.slice(4, 6)) - 1;
-  const day = Number(dateYyyymmdd.slice(6, 8));
-  const endDate = new Date(year, month, day, hours, minutes + (duration || 30));
-  return `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(
-    2,
-    '0'
-  )}-${String(endDate.getDate()).padStart(2, '0')}T${String(endDate.getHours()).padStart(
-    2,
-    '0'
-  )}:${String(endDate.getMinutes()).padStart(2, '0')}:00`;
+export function meetWindowOf(slot: { date?: string; startTime?: string; endTime?: string; duration?: number }): { startDateTime: string; endDateTime: string } {
+  const w = slotIntervalOf(slot);
+  if (!w) {
+    throw new AppError({ status: 400, code: 'INVALID_BOOKING_TIME', message: `Unsupported booking time format: ${slot.startTime}` });
+  }
+  return { startDateTime: istWallClock(w.start), endDateTime: istWallClock(w.end) };
 }
 
 function buildBookingFailureVirtualMeeting(
@@ -482,7 +459,7 @@ export async function syncBookingMeet(params: {
       booking.specialistId
         ? specialistRepository.findById(booking.specialistId)
         : Promise.resolve(null),
-      booking.slotId ? slotRepository.findById(booking.slotId) : Promise.resolve(null),
+      booking.slotId ? slotRepository.findById(booking.slotId) : instantWindowOf(booking),
     ]);
 
     if (!user?.email || !specialist?.email || !slot) {
@@ -500,13 +477,7 @@ export async function syncBookingMeet(params: {
       );
     }
 
-    const startDateTime = buildDateTime(slot.date, slot.startTime);
-    const endDateTime = buildEndDateTime(
-      slot.date,
-      slot.startTime,
-      slot.endTime,
-      slot.duration
-    );
+    const { startDateTime, endDateTime } = meetWindowOf(slot);
 
     const eventPayload = buildMeetEventPayload({
       summary: `${specialist.name} consultation with ${user.name || user.phone || 'Patient'}`,

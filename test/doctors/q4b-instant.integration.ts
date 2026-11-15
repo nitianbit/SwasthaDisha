@@ -44,6 +44,13 @@ import * as instantDoctor from '@/modules/doctors/controller/instant';
 import { presenceSchema, requestIdParamSchema } from '@/modules/doctors/validation';
 import { instantRouter } from '@/modules/doctors/routes';
 import { SettlementAccountModel, LedgerEntryModel } from '@/modules/partners/model/settlement';
+import DependentModel from '@/modules/dependents/model';
+import { rescheduleWithHolds } from '@/modules/bookings/holds';
+import SlotModel from '@/modules/slots/model';
+import { meetWindowOf, syncBookingMeet } from '@/modules/meet/service';
+import { UserRepository } from '@/modules/user/repository';
+import { SpecialistRepository } from '@/modules/specialists/repository';
+import { SlotRepository } from '@/modules/slots/repository';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/q4b_instant_check?directConnection=true';
 const url = process.env.MONGODB_URL ?? '';
@@ -108,7 +115,7 @@ async function main() {
   await mongoose.connect(url, { autoIndex: false });
   for (const c of await mongoose.connection.db!.collections()) await c.drop().catch(() => {});
   for (const M of [UserModel, SpecialistModel, BookingModel, PaymentRecordModel, WalletModel, WalletTransactionModel, CouponModel, RequestKeyModel,
-    DoctorReservationModel, DoctorScheduleGuardModel, DoctorPresenceModel, InstantRequestModel, SettlementAccountModel, LedgerEntryModel] as mongoose.Model<any>[]) {
+    DoctorReservationModel, DoctorScheduleGuardModel, DoctorPresenceModel, InstantRequestModel, SettlementAccountModel, LedgerEntryModel, DependentModel, SlotModel] as mongoose.Model<any>[]) {
     await M.createCollection(); await M.createIndexes();
   }
 
@@ -344,6 +351,136 @@ async function main() {
       end: new Date(res!.endTime.getTime() + 40 * 60_000) }, s));
     await svc.extend(d, String(out.booking._id), 10);
     await assert.rejects(() => svc.extend(d, String(out.booking._id), 5), code('DOCTOR_BUSY'));
+  });
+
+  // ── Review findings (Q4b round 1) ──
+  await check('Meet window: one parser for HH:mm and h:mm AM/PM; a window across midnight rolls over to the next day', () => {
+    assert.deepEqual(meetWindowOf({ date: '20261120', startTime: '10:15', duration: 30 }), { startDateTime: '2026-11-20T10:15:00', endDateTime: '2026-11-20T10:45:00' });
+    assert.deepEqual(meetWindowOf({ date: '20261120', startTime: '9:00 PM', endTime: '9:30 PM' }), { startDateTime: '2026-11-20T21:00:00', endDateTime: '2026-11-20T21:30:00' });
+    assert.deepEqual(meetWindowOf({ date: '20261120', startTime: '23:45', endTime: '00:15', duration: 30 }), { startDateTime: '2026-11-20T23:45:00', endDateTime: '2026-11-21T00:15:00' });
+    assert.throws(() => meetWindowOf({ date: '20261120', startTime: 'soon' }), code('INVALID_BOOKING_TIME'));
+  });
+
+  await check('Meet link for an accepted video consult through the real helper (fake Google): the reservation window, rebuilt on re-sync after an extension', async () => {
+    const cfg = CONFIG as any;
+    const saved = { id: cfg.GOOGLE_OAUTH_CLIENT_ID, secret: cfg.GOOGLE_OAUTH_CLIENT_SECRET, refresh: cfg.GOOGLE_OAUTH_REFRESH_TOKEN, cal: cfg.GOOGLE_CALENDAR_ID };
+    Object.assign(cfg, { GOOGLE_OAUTH_CLIENT_ID: 'fake-client', GOOGLE_OAUTH_CLIENT_SECRET: 'fake-secret', GOOGLE_OAUTH_REFRESH_TOKEN: 'fake-refresh', GOOGLE_CALENDAR_ID: 'primary' });
+    const realFetch = globalThis.fetch;
+    const events: any[] = [];
+    globalThis.fetch = (async (input: any, init?: any) => {
+      const u = String(input);
+      if (u.startsWith('https://oauth2.googleapis.com/')) return new Response(JSON.stringify({ access_token: 'fake-token', expires_in: 3600 }), { status: 200 });
+      if (u.startsWith('https://www.googleapis.com/calendar/')) {
+        const body = JSON.parse(String(init?.body ?? '{}'));
+        events.push({ url: u, method: init?.method, body });
+        return new Response(JSON.stringify({ id: 'evt-1', hangoutLink: 'https://meet.google.com/abc-defg-hij', start: body.start, end: body.end,
+          conferenceData: { conferenceId: 'abc-defg-hij' } }), { status: 200 });
+      }
+      return realFetch(input, init);
+    }) as typeof fetch;
+    try {
+      const d = await doctor('Dr Meet', 400, 'ENT');
+      const u = await customer(400);
+      await UserModel.updateOne({ _id: u }, { $set: { email: 'asha@x.test' } });
+      const r = await svc.create(u, ask({ useWalletBalance: true, specialization: 'ENT', target: { kind: 'specific', doctorId: d } }));
+      const out = await svc.accept(d, String((r.request as any)._id));
+      const b = await BookingModel.findById(out.booking._id).lean() as any;
+      assert.equal(b.virtualMeeting?.status, 'active', b.virtualMeeting?.error);
+      const start = meetWindowOf({ date: b.bookingDate, startTime: b.bookingTime, duration: 30 });
+      assert.equal(events[0].body.start.dateTime, start.startDateTime);
+      assert.equal(events[0].body.end.dateTime, start.endDateTime);
+      await svc.extend(d, String(out.booking._id), 10);
+      const again = await syncBookingMeet({ booking: b, bookingRepository: new BookingRepository(), userRepository: new UserRepository(),
+        specialistRepository: new SpecialistRepository(), slotRepository: new SlotRepository() });
+      assert.equal(again.virtualMeeting?.status, 'active');
+      assert.equal(events[events.length - 1].body.end.dateTime, meetWindowOf({ date: b.bookingDate, startTime: b.bookingTime, duration: 40 }).endDateTime,
+        'a re-sync reads the (extended) reservation, not a slot');
+    } finally {
+      globalThis.fetch = realFetch;
+      Object.assign(cfg, { GOOGLE_OAUTH_CLIENT_ID: saved.id, GOOGLE_OAUTH_CLIENT_SECRET: saved.secret, GOOGLE_OAUTH_REFRESH_TOKEN: saved.refresh, GOOGLE_CALENDAR_ID: saved.cal });
+    }
+  });
+
+  await check('an accepted instant consult cannot be rescheduled onto a slot (no seat, no scheduled interval taken)', async () => {
+    const d = await doctor('Dr NoMove', 300, 'Ortho');
+    const u = await customer(300);
+    const r = await svc.create(u, ask({ useWalletBalance: true, specialization: 'Ortho', target: { kind: 'specific', doctorId: d } }));
+    const out = await svc.accept(d, String((r.request as any)._id));
+    const tomorrow = new Date(Date.now() + 86_400_000 + 330 * 60_000).toISOString().slice(0, 10).replace(/-/g, '');
+    const slot = await SlotModel.create({ specialistId: d, date: tomorrow, startTime: '10:00', endTime: '10:30', duration: 30, slotType: 'consultation',
+      maxBookings: 1, currentBookings: 0, isAvailable: true, isActive: true } as any);
+    await assert.rejects(() => rescheduleWithHolds({ bookingId: String(out.booking._id), requester: { _id: u, userType: 'user' }, nextSlotId: String(slot._id),
+      patch: { bookingDate: tomorrow } }), code('INSTANT_CONSULT_COMMAND_REQUIRED'));
+    assert.equal((await SlotModel.findById(slot._id).lean() as any).currentBookings, 0);
+    assert.equal(await DoctorReservationModel.countDocuments({ refId: String(out.booking._id).toLowerCase(), kind: 'scheduled' }), 0);
+  });
+
+  await check('concurrent extensions add up (never a shorter stale end)', async () => {
+    const d = await doctor('Dr Long', 300, 'Neuro');
+    const u = await customer(300);
+    const r = await svc.create(u, ask({ useWalletBalance: true, specialization: 'Neuro', target: { kind: 'specific', doctorId: d } }));
+    const out = await svc.accept(d, String((r.request as any)._id));
+    const before = await DoctorReservationModel.findOne({ refId: String(out.booking._id).toLowerCase(), kind: 'instant' }).lean();
+    await Promise.all([svc.extend(d, String(out.booking._id), 20), svc.extend(d, String(out.booking._id), 10), svc.extend(d, String(out.booking._id), 5)]);
+    const after = await DoctorReservationModel.findOne({ refId: String(out.booking._id).toLowerCase(), kind: 'instant' }).lean();
+    assert.equal(after!.endTime.getTime() - before!.endTime.getTime(), 35 * 60_000);
+  });
+
+  await check('coupons see the real patient and account: self-only refused for a family member; corporate coupons need the corporate', async () => {
+    await doctor('Dr Coupon', 500, 'Cardio');
+    await CouponModel.create({ code: 'SELFONLY', discountType: 'fixed', discountValue: 50, applicableTo: 'all', eligibleFor: 'all', forUser: 'self',
+      startDate: '20200101', endDate: '20991231', currentUsageCount: 0, isActive: true } as any);
+    const corp = new Types.ObjectId().toString();
+    await CouponModel.create({ code: 'CORP50', discountType: 'fixed', discountValue: 50, applicableTo: 'all', eligibleFor: 'all', corporateIds: [corp],
+      startDate: '20200101', endDate: '20991231', currentUsageCount: 0, isActive: true } as any);
+    const u = await customer(500);
+    const dep = await DependentModel.create({ userId: u, name: 'Ravi', relationship: 'Son', age: 9 } as any);
+    await assert.rejects(() => svc.create(u, ask({ useWalletBalance: true, couponCode: 'SELFONLY', specialization: 'Cardio',
+      patient: { kind: 'dependent', dependentId: String(dep._id) } })), code('INVALID_COUPON'));
+    await assert.rejects(() => svc.create(u, ask({ useWalletBalance: true, couponCode: 'CORP50', specialization: 'Cardio' })), code('INVALID_COUPON'));
+    const ok = await svc.create(u, ask({ useWalletBalance: true, couponCode: 'CORP50', specialization: 'Cardio' }), new Date(), { corporateId: corp });
+    assert.equal((await InstantRequestModel.findById((ok.request as any)._id).lean())!.discountMinor, 5000);
+  });
+
+  await check("a coupon for named doctors stays bound to them: re-offer and accept by another doctor are refused", async () => {
+    const a = await doctor('Dr Named', 500, 'Pulmo');
+    const b = await doctor('Dr Other', 500, 'Pulmo');
+    await CouponModel.create({ code: 'NAMEDDOC', discountType: 'fixed', discountValue: 100, applicableTo: 'specific', applicableIds: [a], eligibleFor: 'all',
+      startDate: '20200101', endDate: '20991231', currentUsageCount: 0, isActive: true } as any);
+    const u = await customer(500);
+    await assert.rejects(() => svc.create(u, ask({ useWalletBalance: true, couponCode: 'NAMEDDOC', specialization: 'Pulmo' })), code('INVALID_COUPON'));
+    const r = await svc.create(u, ask({ useWalletBalance: true, couponCode: 'NAMEDDOC', specialization: 'Pulmo', target: { kind: 'specific', doctorId: a } }));
+    const id = String((r.request as any)._id);
+    assert.deepEqual((await InstantRequestModel.findById(id).lean())!.couponDoctorIds, [a]);
+    await assert.rejects(() => svc.reoffer(u, id, { kind: 'specific', doctorId: b }), code('COUPON_NOT_FOR_DOCTOR'));
+    const any = await svc.reoffer(u, id, { kind: 'any' });
+    assert.deepEqual((any as any).offeredTo ?? (await InstantRequestModel.findById(id).lean())!.offeredTo, [a]);
+    await InstantRequestModel.updateOne({ _id: id }, { $addToSet: { offeredTo: b } }); // even if an offer reached b somehow
+    await assert.rejects(() => svc.accept(b, id), code('COUPON_NOT_FOR_DOCTOR'));
+    assert.equal((await InstantRequestModel.findById(id).lean())!.status, 'offered');
+    await svc.accept(a, id);
+  });
+
+  await check('a deactivated or unverified doctor can no longer read offers (patient details) or stay online by heartbeat', async () => {
+    const d = await doctor('Dr Gone', 300, 'Uro');
+    const u = await customer(300);
+    await svc.create(u, ask({ useWalletBalance: true, specialization: 'Uro', target: { kind: 'specific', doctorId: d } }));
+    assert.equal((await svc.myOffers(d)).length, 1);
+    await SpecialistModel.updateOne({ _id: d }, { $set: { isVerified: false } });
+    await assert.rejects(() => svc.myOffers(d), code('SPECIALIST_NOT_ACTIVE'));
+    await assert.rejects(() => svc.heartbeat(d), code('SPECIALIST_NOT_ACTIVE'));
+    assert.equal((await DoctorPresenceModel.findOne({ doctorId: d }).lean())!.available, false, 'taken offline');
+  });
+
+  await check("discovery and acceptance follow the doctor's current speciality, not the cached one", async () => {
+    const d = await doctor('Dr Moved', 300, 'General Physician');
+    const u = await customer(800);
+    const r = await svc.create(u, ask({ useWalletBalance: true, specialization: 'General Physician', target: { kind: 'specific', doctorId: d } }));
+    await SpecialistModel.updateOne({ _id: d }, { $set: { specialization: 'Dermatology' } });
+    assert.ok(!(await svc.onlineDoctors({ specialization: 'General Physician', mode: 'video' })).some((x) => x.doctorId === d));
+    const derm = await svc.onlineDoctors({ specialization: 'dermatology', mode: 'video' });
+    assert.equal(derm.find((x) => x.doctorId === d)?.specialization, 'Dermatology');
+    await assert.rejects(() => svc.accept(d, String((r.request as any)._id)), code('SPECIALIZATION_MISMATCH'));
   });
 
   // ── HTTP ──

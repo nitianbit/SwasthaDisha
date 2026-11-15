@@ -1420,7 +1420,11 @@ export class BookingService {
       data.lifecycle = lifecyclePatch;
     }
 
-    const fence = { _id: id, status: booking.status, ...(userId ? { userId: { $eq: userId } } : {}) };
+    // A consultation-type change was admitted against the slot the booking held when read: the write is bound to that
+    // slot and mode, so a reschedule committing in between makes it a conflict instead of a stale mode on a new slot.
+    const modeChange = data.consultationMode !== undefined && data.consultationMode !== booking.consultationMode;
+    const fence = { _id: id, status: booking.status, ...(userId ? { userId: { $eq: userId } } : {}),
+      ...(modeChange ? { slotId: booking.slotId ?? null, 'holds.heldSlotId': booking.holds?.heldSlotId ?? null, consultationMode: booking.consultationMode ?? null } : {}) };
     // Q4: completing a ledger consultation posts the doctor's earning in the same transaction as the status change.
     const updated = data.status === 'completed' && booking.status !== 'completed'
       ? await runLedgerTransaction(async (session) => {
@@ -1440,11 +1444,7 @@ export class BookingService {
       : await this.bookingRepository.update(fence, data);
 
     if (!updated) {
-      throw new AppError({
-        status: 500,
-        code: 'UPDATE_FAILED',
-        message: 'Failed to update booking',
-      });
+      throw Object.assign(new AppError({ status: 409, code: 'BOOKING_CHANGED', message: 'The booking changed meanwhile; reload and try again' }), { retryable: true });
     }
 
     const becameCompleted =

@@ -408,6 +408,33 @@ async function main() {
     await rescheduleWithHolds({ bookingId: String(b._id), requester: { _id: u, userType: 'user' }, nextSlotId: s1, patch: { notes: 'same slot, same mode' } });
   });
 
+  await check('a mode edit validated against the old slot cannot land after a reschedule moved the booking (conflict, nothing written)', async () => {
+    const docW = await doctor('Dr Window');
+    const a = await slot(docW, 14, '10:00', '10:30', { serviceModes: ['video', 'chat'] });
+    const b = await slot(docW, 14, '11:00', '11:30', { serviceModes: ['video'] });
+    const u = await customer();
+    const bk = await book(u, docW, a);
+    const stale = await BookingModel.findById(bk._id).lean();
+    await rescheduleWithHolds({ bookingId: String(bk._id), requester: { _id: u, userType: 'user' }, nextSlotId: b, patch: {} });
+    // The edit read the booking before the reschedule committed (its admission saw slot A, which offers chat).
+    const racing = Object.assign(Object.create(Object.getPrototypeOf(bookings)), bookings, { getById: async () => stale });
+    await assert.rejects(() => racing.update(String(bk._id), { consultationMode: 'chat' } as any), code('BOOKING_CHANGED'));
+    const now = await BookingModel.findById(bk._id).lean();
+    assert.deepEqual([now!.slotId, now!.consultationMode], [b, 'video']);
+  });
+
+  await check('backfill fences each candidate with a definite version write', async () => {
+    const docV = await doctor('Dr Version');
+    const sid = await slot(docV, 15, '10:00', '10:30', { currentBookings: 1, isAvailable: false });
+    const s = await SlotModel.findById(sid).lean() as any;
+    const _id = new Types.ObjectId();
+    await BookingModel.collection.insertOne({ _id, bookingType: 'consultation', userId: 'u', specialistId: docV, slotId: sid, bookingDate: s.date,
+      bookingTime: s.startTime, serviceMode: 'video', price: 500, status: 'confirmed', paymentStatus: 'paid', __v: 3 } as never);
+    await runReservationBackfill(true);
+    assert.equal(((await BookingModel.collection.findOne({ _id })) as any).__v, 4);
+    assert.equal(await DoctorReservationModel.countDocuments({ refId: String(_id), isActive: true }), 1);
+  });
+
   await check('clinic authority is current: removal, branch closure or suspension stop new clinic slots and bookings; made bookings stay', async () => {
     const partners = new PartnerService(new PartnerRepository(), new MemberRepository(), new BranchRepository());
     const { partner, owner } = await partners.createPartner({ kind: 'clinic', name: 'Lake Clinic', contactPhone: String(ph++), invoiceSeriesPrefix: 'LC',

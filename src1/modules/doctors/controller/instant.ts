@@ -30,7 +30,11 @@ export const getQuote = async (req: Request, res: Response, _n: NextFunction) =>
   customerId(req);
   ok(res, await svc().quote({ specialization: String(req.query.specialization), mode: req.query.mode as any, doctorId: req.query.doctorId as string | undefined }));
 };
-export const createRequest = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().create(customerId(req), req.body), 201);
+export const createRequest = async (req: Request, res: Response, _n: NextFunction) => {
+  const userId = customerId(req);
+  const corporateId = (req as AuthRequest).user?.corporateId;
+  ok(res, await svc().create(userId, req.body, new Date(), { corporateId: typeof corporateId === 'string' ? corporateId : undefined }), 201);
+};
 export const myRequests = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().listForCustomer(customerId(req)));
 export const myRequest = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().getForCustomer(customerId(req), req.params.requestId));
 export const payRequest = async (req: Request, res: Response, _n: NextFunction) =>
