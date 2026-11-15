@@ -25,6 +25,14 @@ export const partnerBranchParamSchema = Joi.object({
   branchId: Joi.string().pattern(objectIdPattern).required(),
 });
 
+export const memberIdParamSchema = Joi.object({
+  memberId: Joi.string().pattern(objectIdPattern).required(),
+});
+
+export const branchIdParamSchema = Joi.object({
+  branchId: Joi.string().pattern(objectIdPattern).required(),
+});
+
 const dayHoursSchema = Joi.object({
   open: Joi.string().pattern(/^([01]\d|2[0-3]):[0-5]\d$/).required(),
   close: Joi.string().pattern(/^([01]\d|2[0-3]):[0-5]\d$/).required(),

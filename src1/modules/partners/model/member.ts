@@ -57,6 +57,6 @@ memberSchema.index(
 );
 memberSchema.index({ partnerId: 1, role: 1, isActive: 1 });
 
-const MemberModel: Model<IMember> = model<IMember>('Member', memberSchema);
+const MemberModel: Model<IMember> = model<IMember>('PartnerMember', memberSchema, 'partner_members');
 
 export default MemberModel;

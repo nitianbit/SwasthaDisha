@@ -2,28 +2,65 @@ import 'reflect-metadata';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { AuthRequest } from '@/modules/middleware/auth';
-import { PartnerService } from '@/modules/partners/services';
+import { PartnerService, PartnerActor, adminActor } from '@/modules/partners/services';
 import { PartnerPermission, MemberRole } from '@/modules/partners/types';
 import MemberModel from '@/modules/partners/model/member';
+import { AppError } from '@/modules/common/types';
 
 const service = () => Container.get(PartnerService);
 
-async function callerMemberContext(req: AuthRequest): Promise<{
-  memberId: string;
-  partnerId: string;
-  role: MemberRole;
-  permissions: PartnerPermission[];
-  branchIds: string[];
-}> {
-  const memberId = req.user!.memberId!;
-  const partnerId = req.user!.partnerId!;
-  const member = await MemberModel.findById(memberId).select('role permissions branchIds').lean();
+export type PartnerActorRequest = AuthRequest & { partnerActor?: PartnerActor };
+
+/** Set by attachMemberActor / attachAdminActor; every workspace handler acts only through it. */
+export function actorOf(req: Request): PartnerActor {
+  const actor = (req as PartnerActorRequest).partnerActor;
+  if (!actor) throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Partner access is required' });
+  return actor;
+}
+
+export const attachMemberActor = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+  try {
+    (req as PartnerActorRequest).partnerActor = await loadPartnerActor(req as AuthRequest);
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** A platform admin manages any partner with owner authority (whatever its verification state). */
+export const attachAdminActor = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const user = (req as AuthRequest).user;
+    if (!user || user.userType !== 'admin') {
+      throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Admin access is required' });
+    }
+    const partnerId = String(req.params.partnerId ?? '');
+    if (!/^[0-9a-fA-F]{24}$/.test(partnerId)) {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid partner id' });
+    }
+    await service().getPartnerById(partnerId);
+    (req as PartnerActorRequest).partnerActor = adminActor(String(user._id), partnerId);
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** The admitted member, re-read from the database (role, permissions and branch scope are never taken from the token). */
+export async function loadPartnerActor(req: AuthRequest): Promise<PartnerActor> {
+  const memberId = req.user?.memberId;
+  const member = memberId
+    ? await MemberModel.findById(memberId).select('partnerId role permissions branchIds isActive').lean()
+    : null;
+  if (!member || member.isActive === false || String(member.partnerId) !== String(req.user?.partnerId)) {
+    throw new AppError({ status: 403, code: 'PARTNER_MEMBER_INACTIVE', message: 'Partner membership is inactive' });
+  }
   return {
-    memberId,
-    partnerId,
-    role: (member as any)?.role ?? 'staff',
-    permissions: ((member as any)?.permissions ?? []) as PartnerPermission[],
-    branchIds: ((member as any)?.branchIds ?? []) as string[],
+    memberId: String(member._id),
+    partnerId: String(member.partnerId),
+    role: member.role as MemberRole,
+    permissions: (member.permissions ?? []) as PartnerPermission[],
+    branchIds: (member.branchIds ?? []).map(String),
   };
 }
 
@@ -66,110 +103,83 @@ export const adminSuspendPartner = async (req: Request, res: Response, _next: Ne
 // ── Partner self-service endpoints ──
 
 export const getMyPartner = async (req: Request, res: Response, _next: NextFunction) => {
-  const { partnerId } = await callerMemberContext(req as AuthRequest);
-  const data = await service().getPartnerById(partnerId);
+  const actor = actorOf(req);
+  const data = await service().getPartnerById(actor.partnerId);
   res.status(200).json({ success: true, data });
 };
 
 export const updateMyPartner = async (req: Request, res: Response, _next: NextFunction) => {
-  const { partnerId } = await callerMemberContext(req as AuthRequest);
-  const { taxRegime: _t, gstin: _g, pan: _p, invoiceSeriesPrefix: _i, ...safeBody } = req.body;
-  const data = await service().updatePartner(partnerId, safeBody);
+  const actor = actorOf(req);
+  const data = await service().updateOwnProfile(actor, req.body);
   res.status(200).json({ success: true, data });
 };
 
 // ── Member endpoints ──
 
 export const listMembers = async (req: Request, res: Response, _next: NextFunction) => {
-  const { partnerId } = await callerMemberContext(req as AuthRequest);
-  const data = await service().listMembers(partnerId);
+  const actor = actorOf(req);
+  const data = await service().listMembers(actor);
   res.status(200).json({ success: true, data });
 };
 
 export const getMember = async (req: Request, res: Response, _next: NextFunction) => {
-  const { partnerId } = await callerMemberContext(req as AuthRequest);
-  const data = await service().getMemberById(partnerId, req.params.memberId);
+  const actor = actorOf(req);
+  const data = await service().getMember(actor, req.params.memberId);
   res.status(200).json({ success: true, data });
 };
 
 export const addMember = async (req: Request, res: Response, _next: NextFunction) => {
-  const ctx = await callerMemberContext(req as AuthRequest);
-  const data = await service().addMember(
-    ctx.partnerId, req.body, ctx.memberId, ctx.role, ctx.permissions
-  );
+  const actor = actorOf(req);
+  const data = await service().addMember(actor, req.body);
   res.status(201).json({ success: true, data });
 };
 
 export const removeMember = async (req: Request, res: Response, _next: NextFunction) => {
-  const ctx = await callerMemberContext(req as AuthRequest);
-  await service().removeMember(ctx.partnerId, req.params.memberId, ctx.memberId, ctx.role);
+  const actor = actorOf(req);
+  await service().removeMember(actor, req.params.memberId);
   res.status(200).json({ success: true, message: 'Member removed' });
 };
 
 export const updateMemberPermissions = async (req: Request, res: Response, _next: NextFunction) => {
-  const ctx = await callerMemberContext(req as AuthRequest);
-  const data = await service().updateMemberPermissions(
-    ctx.partnerId, req.params.memberId, req.body.permissions, ctx.role, ctx.permissions
-  );
+  const actor = actorOf(req);
+  const data = await service().updateMemberPermissions(actor, req.params.memberId, req.body.permissions);
   res.status(200).json({ success: true, data });
 };
 
 // ── Branch endpoints ──
 
 export const listBranches = async (req: Request, res: Response, _next: NextFunction) => {
-  const ctx = await callerMemberContext(req as AuthRequest);
-  let data = await service().listBranches(ctx.partnerId);
-  if (ctx.role !== 'owner' && ctx.branchIds.length > 0) {
-    data = data.filter(b => ctx.branchIds.includes(String(b._id)));
-  }
+  const actor = actorOf(req);
+  const data = await service().listBranches(actor);
   res.status(200).json({ success: true, data });
 };
 
 export const getBranch = async (req: Request, res: Response, _next: NextFunction) => {
-  const ctx = await callerMemberContext(req as AuthRequest);
-  service().assertBranchScope(ctx.role, ctx.branchIds, req.params.branchId);
-  const data = await service().getBranchById(ctx.partnerId, req.params.branchId);
+  const actor = actorOf(req);
+  const data = await service().getBranch(actor, req.params.branchId);
   res.status(200).json({ success: true, data });
 };
 
 export const createBranch = async (req: Request, res: Response, _next: NextFunction) => {
-  const ctx = await callerMemberContext(req as AuthRequest);
-  service().assertCanCreateBranch(ctx.role, ctx.branchIds);
-  const data = await service().createBranch(ctx.partnerId, req.body);
+  const actor = actorOf(req);
+  const data = await service().createBranch(actor, req.body);
   res.status(201).json({ success: true, data });
 };
 
 export const updateBranch = async (req: Request, res: Response, _next: NextFunction) => {
-  const ctx = await callerMemberContext(req as AuthRequest);
-  service().assertBranchScope(ctx.role, ctx.branchIds, req.params.branchId);
-  const data = await service().updateBranch(ctx.partnerId, req.params.branchId, req.body);
+  const actor = actorOf(req);
+  const data = await service().updateBranch(actor, req.params.branchId, req.body);
   res.status(200).json({ success: true, data });
 };
 
 export const deactivateBranch = async (req: Request, res: Response, _next: NextFunction) => {
-  const ctx = await callerMemberContext(req as AuthRequest);
-  service().assertBranchScope(ctx.role, ctx.branchIds, req.params.branchId);
-  await service().deactivateBranch(ctx.partnerId, req.params.branchId);
+  const actor = actorOf(req);
+  await service().deactivateBranch(actor, req.params.branchId);
   res.status(200).json({ success: true, message: 'Branch deactivated' });
 };
 
-// ── Public directory endpoint ──
-
-export const publicListPartners = async (req: Request, res: Response, _next: NextFunction) => {
-  const filter: any = { verificationState: 'verified', isActive: true };
-  if (req.query.kind) filter.kind = req.query.kind;
-  const data = await service().listPartners(filter);
-  res.status(200).json({ success: true, data });
-};
-
-// ── Admin member/branch endpoints (for admin managing any partner) ──
-
-export const adminListMembers = async (req: Request, res: Response, _next: NextFunction) => {
-  const data = await service().listMembers(req.params.partnerId);
-  res.status(200).json({ success: true, data });
-};
-
-export const adminListBranches = async (req: Request, res: Response, _next: NextFunction) => {
-  const data = await service().listBranches(req.params.partnerId);
+export const listAudit = async (req: Request, res: Response, _next: NextFunction) => {
+  const actor = actorOf(req);
+  const data = await service().listAudit(actor);
   res.status(200).json({ success: true, data });
 };

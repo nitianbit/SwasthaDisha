@@ -81,6 +81,6 @@ const partnerSchema = new Schema<IPartner>(
 partnerSchema.index({ kind: 1, isActive: 1 });
 partnerSchema.index({ 'verification.state': 1, isActive: 1 });
 
-const PartnerModel: Model<IPartner> = model<IPartner>('Partner', partnerSchema);
+const PartnerModel: Model<IPartner> = model<IPartner>('PartnerOrg', partnerSchema, 'partner_orgs');
 
 export default PartnerModel;

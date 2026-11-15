@@ -1,5 +1,6 @@
 import { Service } from 'typedi';
-import mongoose from 'mongoose';
+import mongoose, { ClientSession } from 'mongoose';
+import PartnerAuditEventModel from '@/modules/partners/model/audit';
 import { PartnerRepository } from '@/modules/partners/repository';
 import { MemberRepository } from '@/modules/partners/repository/member';
 import { BranchRepository } from '@/modules/partners/repository/branch';
@@ -14,6 +15,79 @@ import {
   MemberRole,
 } from '@/modules/partners/types';
 import { AppError } from '@/modules/common/types';
+
+/** The admitted member making a request; always loaded from the database, never from the request body. */
+export interface PartnerActor {
+  memberId: string;
+  partnerId: string;
+  role: MemberRole;
+  permissions: PartnerPermission[];
+  /** Empty = every branch of the partner. */
+  branchIds: string[];
+  /** 'admin': a platform admin acting with owner authority on this partner (memberId is `admin:<adminId>`). */
+  actorKind?: 'member' | 'admin';
+}
+
+export function adminActor(adminId: string, partnerId: string): PartnerActor {
+  return {
+    memberId: `admin:${adminId}`,
+    partnerId,
+    role: 'owner',
+    permissions: [...ALL_PERMISSIONS],
+    branchIds: [],
+    actorKind: 'admin',
+  };
+}
+
+const scopeExceeded = (message: string) => new AppError({ status: 403, code: 'BRANCH_SCOPE_EXCEEDED', message });
+const memberNotFound = () => new AppError({ status: 404, code: 'MEMBER_NOT_FOUND', message: 'Member not found in this partner' });
+const branchNotFound = () => new AppError({ status: 404, code: 'BRANCH_NOT_FOUND', message: 'Branch not found' });
+
+export function hasGlobalScope(actor: Pick<PartnerActor, 'role' | 'branchIds'>): boolean {
+  return actor.role === 'owner' || actor.branchIds.length === 0;
+}
+
+/** A restricted actor may only hand out a non-empty scope inside its own (empty would mean every branch). */
+export function assertScopeWithin(actor: Pick<PartnerActor, 'role' | 'branchIds'>, target: string[]): void {
+  if (hasGlobalScope(actor)) return;
+  if (target.length === 0) throw scopeExceeded('A branch-restricted member cannot grant access to all branches');
+  const outside = target.filter((b) => !actor.branchIds.includes(String(b)));
+  if (outside.length > 0) throw scopeExceeded('Cannot grant access to branches outside your own scope');
+}
+
+export function assertBranchInScope(actor: Pick<PartnerActor, 'role' | 'branchIds'>, branchId: string): void {
+  if (hasGlobalScope(actor)) return;
+  if (!actor.branchIds.includes(String(branchId))) throw scopeExceeded('Operation not allowed for this branch');
+}
+
+/** A restricted actor sees/manages only staff whose whole scope lies inside its own; never owners or global staff. */
+export function memberInScope(actor: Pick<PartnerActor, 'role' | 'branchIds'>, member: Pick<IMember, 'role' | 'branchIds'>): boolean {
+  if (hasGlobalScope(actor)) return true;
+  if (member.role === 'owner') return false;
+  const scope = (member.branchIds ?? []).map(String);
+  return scope.length > 0 && scope.every((b) => actor.branchIds.includes(b));
+}
+
+/** Audit trail (§8): who did what to which record. Written in the operation's transaction when it has one. */
+export async function recordPartnerAudit(
+  actor: PartnerActor,
+  action: string,
+  target?: { kind: string; id: string },
+  detail?: Record<string, unknown>,
+  session?: ClientSession
+): Promise<void> {
+  const isAdmin = actor.actorKind === 'admin';
+  await PartnerAuditEventModel.create([{
+    partnerId: actor.partnerId,
+    actorKind: isAdmin ? 'admin' : 'member',
+    actorId: isAdmin ? actor.memberId.replace(/^admin:/, '') : actor.memberId,
+    action,
+    targetKind: target?.kind,
+    targetId: target?.id,
+    detail,
+    at: new Date(),
+  }], session ? { session } : {});
+}
 
 @Service()
 export class PartnerService {
@@ -132,6 +206,17 @@ export class PartnerService {
     return updated;
   }
 
+  async updateOwnProfile(
+    actor: PartnerActor,
+    data: { name?: string; legalName?: string; contactPhone?: string; contactEmail?: string; logo?: string }
+  ): Promise<IPartner> {
+    const { name, legalName, contactPhone, contactEmail, logo } = data;
+    const updated = await this.updatePartner(actor.partnerId, { name, legalName, contactPhone, contactEmail, logo });
+    await recordPartnerAudit(actor, 'partner.profile.update', { kind: 'partner', id: actor.partnerId },
+      { fields: Object.keys(data).filter((k) => (data as any)[k] !== undefined) });
+    return updated;
+  }
+
   async verifyPartner(partnerId: string, verifiedBy: string): Promise<IPartner> {
     const updated = await this.partnerRepository.update(
       { _id: partnerId, 'verification.state': 'pending' },
@@ -154,55 +239,55 @@ export class PartnerService {
     return updated;
   }
 
-  // ── Member management ──
+  // ── Member management (actor = admitted member) ──
 
   async addMember(
-    partnerId: string,
-    data: { phone: string; name: string; role: MemberRole; permissions: PartnerPermission[]; branchIds?: string[] },
-    invitedByMemberId: string,
-    inviterRole: MemberRole,
-    inviterPermissions: PartnerPermission[]
+    actor: PartnerActor,
+    data: { phone: string; name: string; role: MemberRole; permissions: PartnerPermission[]; branchIds?: string[] }
   ): Promise<IMember> {
-    if (data.role === 'owner' && inviterRole !== 'owner') {
+    if (data.role === 'owner' && actor.role !== 'owner') {
       throw new AppError({ status: 403, code: 'OWNER_REQUIRED', message: 'Only an owner can add another owner' });
     }
+    this.enforceDelegationCeiling(actor.role, actor.permissions, data.permissions);
 
-    this.enforceDelegationCeiling(inviterRole, inviterPermissions, data.permissions);
+    const branchIds = data.role === 'owner' ? [] : (data.branchIds ?? []).map(String);
+    if (data.role !== 'owner') assertScopeWithin(actor, branchIds);
+    if (branchIds.length > 0) await this.validateBranchIds(actor.partnerId, branchIds);
 
-    if (data.branchIds && data.branchIds.length > 0) {
-      await this.validateBranchIds(partnerId, data.branchIds);
-    }
-
-    const existing = await this.memberRepository.findByPhone(data.phone, partnerId);
-    if (existing && existing.isActive) {
+    const existing = await this.memberRepository.findOne({ phone: data.phone, partnerId: actor.partnerId, isActive: true });
+    if (existing) {
       throw new AppError({ status: 409, code: 'MEMBER_ALREADY_EXISTS', message: 'An active member with this phone already exists for this partner' });
     }
 
     if (data.role === 'owner') {
-      return this.addOwner(partnerId, data, invitedByMemberId);
+      return this.addOwner(actor, data);
     }
 
-    return this.memberRepository.save({
-      partnerId,
-      phone: data.phone,
-      name: data.name,
-      role: data.role,
-      permissions: data.permissions,
-      branchIds: data.branchIds || [],
-      isActive: true,
-      invitedBy: invitedByMemberId,
-    } as Partial<IMember>);
+    try {
+      const member = await this.memberRepository.save({
+        partnerId: actor.partnerId,
+        phone: data.phone,
+        name: data.name,
+        role: 'staff',
+        permissions: data.permissions,
+        branchIds,
+        isActive: true,
+        invitedBy: actor.memberId,
+      } as Partial<IMember>);
+      await recordPartnerAudit(actor, 'member.add', { kind: 'member', id: String(member._id) },
+        { role: 'staff', permissions: data.permissions, branchIds });
+      return member;
+    } catch (error: any) {
+      if (error?.code === 11000) {
+        throw new AppError({ status: 409, code: 'MEMBER_ALREADY_EXISTS', message: 'An active member with this phone already exists for this partner' });
+      }
+      throw error;
+    }
   }
 
-  private async addOwner(
-    partnerId: string,
-    data: { phone: string; name: string; permissions: PartnerPermission[] },
-    invitedByMemberId: string
-  ): Promise<IMember> {
-    const partner = await this.partnerRepository.findById(partnerId);
-    if (!partner) {
-      throw new AppError({ status: 404, code: 'PARTNER_NOT_FOUND', message: 'Partner not found' });
-    }
+  private async addOwner(actor: PartnerActor, data: { phone: string; name: string }): Promise<IMember> {
+    const partnerId = actor.partnerId;
+    const partner = await this.getPartnerById(partnerId);
 
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -223,53 +308,51 @@ export class PartnerService {
           permissions: [...ALL_PERMISSIONS],
           branchIds: [],
           isActive: true,
-          invitedBy: invitedByMemberId,
+          invitedBy: actor.memberId,
         } as Partial<IMember>,
         { session }
       );
+      await recordPartnerAudit(actor, 'member.add', { kind: 'member', id: String(member._id) }, { role: 'owner' }, session);
 
       await session.commitTransaction();
       return member;
-    } catch (error) {
+    } catch (error: any) {
       await session.abortTransaction();
+      if (error?.code === 11000) {
+        throw new AppError({ status: 409, code: 'MEMBER_ALREADY_EXISTS', message: 'An active member with this phone already exists for this partner' });
+      }
       throw error;
     } finally {
       session.endSession();
     }
   }
 
-  async removeMember(
-    partnerId: string,
-    memberId: string,
-    actorMemberId: string,
-    actorRole: MemberRole
-  ): Promise<void> {
+  async removeMember(actor: PartnerActor, memberId: string): Promise<void> {
     const member = await this.memberRepository.findById(memberId);
-    if (!member || String(member.partnerId) !== String(partnerId)) {
-      throw new AppError({ status: 404, code: 'MEMBER_NOT_FOUND', message: 'Member not found in this partner' });
-    }
-    if (!member.isActive) {
-      return;
-    }
-    if (String(member._id) === String(actorMemberId)) {
+    if (!member || String(member.partnerId) !== String(actor.partnerId)) throw memberNotFound();
+    if (String(member._id) === String(actor.memberId)) {
       throw new AppError({ status: 400, code: 'CANNOT_REMOVE_SELF', message: 'Cannot remove yourself' });
     }
-    if (member.role === 'owner' && actorRole !== 'owner') {
+    if (member.role === 'owner' && actor.role !== 'owner') {
       throw new AppError({ status: 403, code: 'OWNER_REQUIRED', message: 'Only an owner can remove another owner' });
     }
+    if (!memberInScope(actor, member)) throw memberNotFound();
+    if (!member.isActive) return;
 
     if (member.role === 'owner') {
-      await this.removeOwner(partnerId, memberId);
+      await this.removeOwner(actor, memberId);
     } else {
-      await this.memberRepository.update({ _id: memberId, isActive: true }, { isActive: false });
+      const removed = await this.memberRepository.update(
+        { _id: memberId, partnerId: actor.partnerId, role: 'staff', isActive: true },
+        { isActive: false }
+      );
+      if (removed) await recordPartnerAudit(actor, 'member.remove', { kind: 'member', id: memberId });
     }
   }
 
-  private async removeOwner(partnerId: string, memberId: string): Promise<void> {
-    const partner = await this.partnerRepository.findById(partnerId);
-    if (!partner) {
-      throw new AppError({ status: 404, code: 'PARTNER_NOT_FOUND', message: 'Partner not found' });
-    }
+  private async removeOwner(actor: PartnerActor, memberId: string): Promise<void> {
+    const partnerId = actor.partnerId;
+    const partner = await this.getPartnerById(partnerId);
     // §3: last-active-owner protection
     if (partner.activeOwnerCount <= 1) {
       throw new AppError({ status: 409, code: 'LAST_OWNER', message: 'Cannot remove the last owner' });
@@ -284,19 +367,19 @@ export class PartnerService {
       if (!updated) {
         throw new AppError({ status: 409, code: 'OWNER_COUNT_CONFLICT', message: 'Owner count changed concurrently, please retry' });
       }
-      // Double-check: never go below 1 active owner
       if (updated.activeOwnerCount < 1) {
         throw new AppError({ status: 409, code: 'LAST_OWNER', message: 'Cannot remove the last owner' });
       }
 
       const deactivated = await this.memberRepository.update(
-        { _id: memberId, isActive: true, role: 'owner' },
+        { _id: memberId, partnerId, isActive: true, role: 'owner' },
         { isActive: false },
         { new: true, session } as any
       );
       if (!deactivated) {
         throw new AppError({ status: 409, code: 'MEMBER_STATE_CONFLICT', message: 'Member state changed concurrently, please retry' });
       }
+      await recordPartnerAudit(actor, 'member.remove', { kind: 'member', id: memberId }, { role: 'owner' }, session);
 
       await session.commitTransaction();
     } catch (error) {
@@ -307,51 +390,51 @@ export class PartnerService {
     }
   }
 
-  async updateMemberPermissions(
-    partnerId: string,
-    memberId: string,
-    permissions: PartnerPermission[],
-    actorRole: MemberRole,
-    actorPermissions: PartnerPermission[]
-  ): Promise<IMember> {
-    if (actorRole !== 'owner') {
+  async updateMemberPermissions(actor: PartnerActor, memberId: string, permissions: PartnerPermission[]): Promise<IMember> {
+    if (actor.role !== 'owner') {
       throw new AppError({ status: 403, code: 'OWNER_REQUIRED', message: 'Only an owner can change member permissions' });
     }
     const member = await this.memberRepository.findById(memberId);
-    if (!member || String(member.partnerId) !== String(partnerId) || !member.isActive) {
-      throw new AppError({ status: 404, code: 'MEMBER_NOT_FOUND', message: 'Active member not found' });
-    }
+    if (!member || String(member.partnerId) !== String(actor.partnerId) || !member.isActive) throw memberNotFound();
     if (member.role === 'owner') {
       throw new AppError({ status: 400, code: 'OWNER_PERMS_FIXED', message: 'Owner permissions cannot be restricted' });
     }
 
-    this.enforceDelegationCeiling(actorRole, actorPermissions, permissions);
-
     const updated = await this.memberRepository.update(
-      { _id: memberId },
+      { _id: memberId, partnerId: actor.partnerId, role: 'staff', isActive: true },
       { permissions }
     );
-    if (!updated) {
-      throw new AppError({ status: 404, code: 'MEMBER_NOT_FOUND', message: 'Member not found' });
-    }
+    if (!updated) throw memberNotFound();
+    await recordPartnerAudit(actor, 'member.permissions', { kind: 'member', id: memberId }, { permissions });
     return updated;
   }
 
-  async listMembers(partnerId: string): Promise<IMember[]> {
-    return this.memberRepository.findActiveByPartner(partnerId);
+  async listMembers(actor: PartnerActor): Promise<IMember[]> {
+    const all = await this.memberRepository.findActiveByPartner(actor.partnerId);
+    return all.filter((m) => memberInScope(actor, m));
   }
 
-  async getMemberById(partnerId: string, memberId: string): Promise<IMember> {
+  async getMember(actor: PartnerActor, memberId: string): Promise<IMember> {
     const member = await this.memberRepository.findById(memberId);
-    if (!member || String(member.partnerId) !== String(partnerId)) {
-      throw new AppError({ status: 404, code: 'MEMBER_NOT_FOUND', message: 'Member not found in this partner' });
-    }
+    if (!member || String(member.partnerId) !== String(actor.partnerId)) throw memberNotFound();
+    if (!memberInScope(actor, member)) throw memberNotFound();
     return member;
   }
 
-  // ── Branch management ──
+  async listMembersForPartner(partnerId: string): Promise<IMember[]> {
+    return this.memberRepository.findActiveByPartner(partnerId);
+  }
 
-  async createBranch(partnerId: string, data: Omit<IBranch, '_id' | 'partnerId' | 'isActive' | 'createdAt' | 'updatedAt'>): Promise<IBranch> {
+  // ── Branch management (actor = admitted member) ──
+
+  async createBranch(actor: PartnerActor, data: Omit<IBranch, '_id' | 'partnerId' | 'isActive' | 'createdAt' | 'updatedAt'>): Promise<IBranch> {
+    if (!hasGlobalScope(actor)) throw scopeExceeded('Branch-scoped staff cannot create new branches');
+    const branch = await this.createBranchForPartner(actor.partnerId, data);
+    await recordPartnerAudit(actor, 'branch.create', { kind: 'branch', id: String(branch._id) });
+    return branch;
+  }
+
+  async createBranchForPartner(partnerId: string, data: Omit<IBranch, '_id' | 'partnerId' | 'isActive' | 'createdAt' | 'updatedAt'>): Promise<IBranch> {
     await this.getPartnerById(partnerId);
     return this.branchRepository.save({
       ...data,
@@ -360,52 +443,39 @@ export class PartnerService {
     } as Partial<IBranch>);
   }
 
-  async updateBranch(partnerId: string, branchId: string, data: Partial<IBranch>): Promise<IBranch> {
-    const branch = await this.branchRepository.findById(branchId);
-    if (!branch || String(branch.partnerId) !== String(partnerId)) {
-      throw new AppError({ status: 404, code: 'BRANCH_NOT_FOUND', message: 'Branch not found' });
-    }
+  async updateBranch(actor: PartnerActor, branchId: string, data: Partial<IBranch>): Promise<IBranch> {
+    await this.getBranch(actor, branchId);
     const { _id, partnerId: _p, isActive: _a, createdAt: _c, updatedAt: _u, ...safeData } = data;
-    const updated = await this.branchRepository.update({ _id: branchId }, safeData);
-    if (!updated) {
-      throw new AppError({ status: 404, code: 'BRANCH_NOT_FOUND', message: 'Branch not found' });
-    }
+    const updated = await this.branchRepository.update({ _id: branchId, partnerId: actor.partnerId }, safeData);
+    if (!updated) throw branchNotFound();
+    await recordPartnerAudit(actor, 'branch.update', { kind: 'branch', id: branchId }, { fields: Object.keys(safeData) });
     return updated;
   }
 
-  async deactivateBranch(partnerId: string, branchId: string): Promise<void> {
-    const branch = await this.branchRepository.findById(branchId);
-    if (!branch || String(branch.partnerId) !== String(partnerId)) {
-      throw new AppError({ status: 404, code: 'BRANCH_NOT_FOUND', message: 'Branch not found' });
-    }
-    await this.branchRepository.update({ _id: branchId }, { isActive: false });
+  async deactivateBranch(actor: PartnerActor, branchId: string): Promise<void> {
+    await this.getBranch(actor, branchId);
+    await this.branchRepository.update({ _id: branchId, partnerId: actor.partnerId }, { isActive: false });
+    await recordPartnerAudit(actor, 'branch.deactivate', { kind: 'branch', id: branchId });
   }
 
-  async listBranches(partnerId: string): Promise<IBranch[]> {
-    return this.branchRepository.findActiveByPartner(partnerId);
+  async listAudit(actor: PartnerActor, limit = 100) {
+    return PartnerAuditEventModel.find({ partnerId: actor.partnerId }).sort({ at: -1 }).limit(Math.min(limit, 500)).lean();
   }
 
-  async getBranchById(partnerId: string, branchId: string): Promise<IBranch> {
+  async listBranches(actor: PartnerActor): Promise<IBranch[]> {
+    const all = await this.branchRepository.findActiveByPartner(actor.partnerId);
+    return hasGlobalScope(actor) ? all : all.filter((b) => actor.branchIds.includes(String(b._id)));
+  }
+
+  async getBranch(actor: PartnerActor, branchId: string): Promise<IBranch> {
     const branch = await this.branchRepository.findById(branchId);
-    if (!branch || String(branch.partnerId) !== String(partnerId)) {
-      throw new AppError({ status: 404, code: 'BRANCH_NOT_FOUND', message: 'Branch not found' });
-    }
+    if (!branch || String(branch.partnerId) !== String(actor.partnerId)) throw branchNotFound();
+    assertBranchInScope(actor, branchId);
     return branch;
   }
 
-  assertBranchScope(actorRole: MemberRole, actorBranchIds: string[], targetBranchId: string): void {
-    if (actorRole === 'owner') return;
-    if (actorBranchIds.length === 0) return;
-    if (!actorBranchIds.includes(targetBranchId)) {
-      throw new AppError({ status: 403, code: 'BRANCH_SCOPE_EXCEEDED', message: 'Operation not allowed for this branch' });
-    }
-  }
-
-  assertCanCreateBranch(actorRole: MemberRole, actorBranchIds: string[]): void {
-    if (actorRole === 'owner') return;
-    if (actorBranchIds.length > 0) {
-      throw new AppError({ status: 403, code: 'BRANCH_SCOPE_EXCEEDED', message: 'Branch-scoped staff cannot create new branches' });
-    }
+  async listBranchesForPartner(partnerId: string): Promise<IBranch[]> {
+    return this.branchRepository.findActiveByPartner(partnerId);
   }
 
   // ── Private helpers ──
@@ -430,7 +500,7 @@ export class PartnerService {
   private async validateBranchIds(partnerId: string, branchIds: string[]): Promise<void> {
     const branches = await this.branchRepository.findActiveByPartner(partnerId);
     const activeBranchIds = new Set(branches.map(b => String(b._id)));
-    const invalid = branchIds.filter(id => !activeBranchIds.has(id));
+    const invalid = branchIds.filter(id => !activeBranchIds.has(String(id)));
     if (invalid.length > 0) {
       throw new AppError({
         status: 400,

@@ -389,3 +389,13 @@ integrations for new partners; inventory of lab consumables; insurance/corporate
 
 Each packet: backend + workspace/customer screens + tests (integration + browser) + Codex review; design questions
 that are the owner's go to the owner.
+
+## 11. Build decisions (recorded during Q1–Q6)
+
+| Date | Decision | Why |
+|---|---|---|
+| 2026-11-15 | Owner (asked directly): **platform admins can do everything a partner's owner can do, for any partner** | Owner requirement. The partner workspace routes are registered twice: for members (`/api/v1/partner-workspace/...`) and for admins (`/api/v1/partner-workspace/admin/:partnerId/workspace/...`) with owner authority, whatever the partner's verification state. Every later packet adds its workspace routes to the same registration, so admin access follows automatically. |
+| 2026-11-15 | Every workspace mutation writes a `PartnerAuditEvent` (`partner_audit_events`): actor kind (member/admin), actor id, action, target | §8 audit trail; admin-as-owner makes "who did it" essential. Written in the operation's transaction where it has one. |
+| 2026-11-15 | The existing `partners` display directory stays untouched (model `Partner`, collection `partners`, routes at `/api/v1/partners`); operational partners use `PartnerOrg`/`partner_orgs`, `PartnerMember`/`partner_members`, `PartnerBranch`/`partner_branches` and `/api/v1/partner-workspace` | Codex Q1 re-review: keep the legacy contract and its data; keep operational authority separate from display data. |
+| 2026-11-15 | Partner tokens are refused (`denyRoles('partner')`) on every authenticated legacy router except auth, the workspace, the directory, file access (D1 decides per file) and request keys | Default-deny for a new role rather than a list of known-bad routers. |
+| 2026-11-15 | Branch ceiling: a restricted member (non-empty `branchIds`) may only hand out a non-empty scope inside its own, and sees/manages only staff whose whole scope lies inside its own (never owners or all-branch staff); restricted members cannot create branches | §3 "cannot expand branch scope beyond their own"; empty = all branches must never be delegated by a restricted member. |

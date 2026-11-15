@@ -67,6 +67,6 @@ const branchSchema = new Schema<IBranch>(
 branchSchema.index({ partnerId: 1, isActive: 1 });
 branchSchema.index({ geo: '2dsphere' });
 
-const BranchModel: Model<IBranch> = model<IBranch>('Branch', branchSchema);
+const BranchModel: Model<IBranch> = model<IBranch>('PartnerBranch', branchSchema, 'partner_branches');
 
 export default BranchModel;
