@@ -27,6 +27,7 @@ export const partnerStatement = async (req: Request, res: Response, _n: NextFunc
   ok(res, await f.statementPage((await partnerAccount(req)).account, req.query as any));
 export const partnerStatementCsv = async (req: Request, res: Response, _n: NextFunction) =>
   csv(res, csvName('partner', req.query), await f.statementCsv((await partnerAccount(req)).account, period(req.query)));
+export const partnerEvents = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.financeEvents((await partnerAccount(req)).account));
 export const partnerPayouts = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.listPayouts((await partnerAccount(req)).account));
 export const putPartnerPayoutDetails = async (req: Request, res: Response, _n: NextFunction) => {
   const actor = actorOf(req);
@@ -43,6 +44,7 @@ export const doctorStatement = async (req: Request, res: Response, _n: NextFunct
 export const doctorStatementCsv = async (req: Request, res: Response, _n: NextFunction) =>
   csv(res, csvName('doctor', req.query), await f.statementCsv(await doctorAccount(req), period(req.query)));
 export const doctorPayouts = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.listPayouts(await doctorAccount(req)));
+export const doctorEvents = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.financeEvents(await doctorAccount(req)));
 export const doctorHistory = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.historyRefs(await doctorAccount(req)));
 export const putDoctorPayoutDetails = async (req: Request, res: Response, _n: NextFunction) =>
   ok(res, await f.setPayoutDetails({ ownerKind: 'doctor', ownerId: doctorOf(req) }, req.body, { kind: 'doctor', id: doctorOf(req) }));

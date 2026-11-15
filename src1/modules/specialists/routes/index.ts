@@ -100,6 +100,7 @@ specialistRouter.get('/me/finance/statement', requireSpecialist, validate(finV.s
 specialistRouter.get('/me/finance/statement.csv', requireSpecialist, validate(finV.csvQuerySchema, 'query'), catchAsync(fin.doctorStatementCsv));
 specialistRouter.get('/me/finance/payouts', requireSpecialist, catchAsync(fin.doctorPayouts));
 specialistRouter.get('/me/finance/history', requireSpecialist, catchAsync(fin.doctorHistory));
+specialistRouter.get('/me/finance/events', requireSpecialist, catchAsync(fin.doctorEvents));
 specialistRouter.put('/me/finance/payout-details', requireSpecialist, validate(finV.payoutDetailsSchema, 'body'), catchAsync(fin.putDoctorPayoutDetails));
 // Q4b: instant consultations — "available now", heartbeat, offers, accept, extend.
 specialistRouter.put('/me/presence', requireSpecialist, validate(presenceSchema, 'body'), catchAsync(instantDoctor.putPresence));

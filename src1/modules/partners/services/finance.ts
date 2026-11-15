@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { ClientSession, Types } from 'mongoose';
+import mongoose, { ClientSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import {
   SettlementAccountModel, LedgerEntryModel, LedgerHistoryRefModel, SettlementPayoutModel, SettlementEventModel,
@@ -28,12 +28,27 @@ export type FinanceActor =
 
 const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
 const MAX_MINOR = 1_000_000_000_00; // ₹1,00,00,00,000 — far above any single payout or adjustment
+export const CSV_MAX_LINES = 5000;
+/** Ids are stored canonical (lowercase hex); every boundary compares the canonical form. */
+const canon = (id: string) => String(id).toLowerCase();
+
+/** Reads that must agree with each other (rows and balances) come from one database snapshot. */
+async function inSnapshot<T>(fn: (s: ClientSession) => Promise<T>): Promise<T> {
+  const session = await mongoose.startSession();
+  try {
+    let out!: T;
+    await session.withTransaction(async () => { out = await fn(session); }, { readConcern: { level: 'snapshot' } });
+    return out;
+  } finally {
+    await session.endSession();
+  }
+}
 
 // ── Accounts ──
 
 export async function accountById(id: string, s?: ClientSession): Promise<ISettlementAccount> {
   if (!Types.ObjectId.isValid(id)) throw err(404, 'SETTLEMENT_ACCOUNT_NOT_FOUND', 'Settlement account not found');
-  const a = await SettlementAccountModel.findById(id).session(s ?? null).lean() as ISettlementAccount | null;
+  const a = await SettlementAccountModel.findById(canon(id)).session(s ?? null).lean() as ISettlementAccount | null;
   if (!a) throw err(404, 'SETTLEMENT_ACCOUNT_NOT_FOUND', 'Settlement account not found');
   return a;
 }
@@ -89,7 +104,9 @@ async function recordFinanceEvent(account: ISettlementAccount, actor: FinanceAct
   await SettlementEventModel.create([{ settlementAccountId: String(account._id), action, byKind: actor.kind, by, detail, at: new Date() }], { session: s });
   if (account.ownerKind === 'partner') {
     const pa = actor.kind === 'member' ? actor.partner : actor.kind === 'admin' ? adminActor(actor.id, account.ownerId) : null;
-    if (pa) await recordPartnerAudit(pa, action, { kind: 'settlement_account', id: String(account._id) }, detail, s);
+    // The general partner audit (readable with staff.manage) records only who did what to which account; amounts,
+    // references and destinations stay in the finance event stream, which needs finance.view.
+    if (pa) await recordPartnerAudit(pa, action, { kind: 'settlement_account', id: String(account._id) }, undefined, s);
   }
 }
 
@@ -149,11 +166,20 @@ const FALLBACK: Record<string, string> = {
 };
 
 /** Balance after `e` = Σ every entry at or before it in (at, _id) order — independent of any date filter. */
-async function balanceThrough(accountId: string, e: Pick<ILedgerEntry, 'at'> & { _id?: unknown }): Promise<number> {
+async function balanceThrough(accountId: string, e: Pick<ILedgerEntry, 'at'> & { _id?: unknown }, s: ClientSession): Promise<number> {
   const agg = await LedgerEntryModel.aggregate([
     { $match: { settlementAccountId: accountId, $or: [{ at: { $lt: e.at } }, { at: e.at, _id: { $lte: e._id } }] } },
     { $group: { _id: null, total: { $sum: '$amountMinor' } } },
-  ]);
+  ]).session(s);
+  return agg[0]?.total ?? 0;
+}
+
+/** Σ entries strictly before an instant (the opening balance of a period). */
+async function balanceBefore(accountId: string, at: Date, s: ClientSession): Promise<number> {
+  const agg = await LedgerEntryModel.aggregate([
+    { $match: { settlementAccountId: accountId, at: { $lt: at } } },
+    { $group: { _id: null, total: { $sum: '$amountMinor' } } },
+  ]).session(s);
   return agg[0]?.total ?? 0;
 }
 
@@ -180,11 +206,15 @@ export async function statementPage(account: ISettlementAccount | null, opts: { 
   const cur = parseCursor(opts.before);
   const filter: Record<string, unknown> = { settlementAccountId: id, ...range(opts.from, opts.to),
     ...(cur ? { $or: [{ at: { $lt: cur.at } }, { at: cur.at, _id: { $lt: cur.id } }] } : {}) };
-  const page = await LedgerEntryModel.find(filter).sort({ at: -1, _id: -1 }).limit(limit + 1).lean() as ILedgerEntry[];
+  // The page and its starting balance come from one snapshot, so a row committing meanwhile is in both or in neither.
+  const { page, startBalance } = await inSnapshot(async (s) => {
+    const rows = await LedgerEntryModel.find(filter).sort({ at: -1, _id: -1 }).limit(limit + 1).session(s).lean() as ILedgerEntry[];
+    return { page: rows, startBalance: rows.length ? await balanceThrough(id, rows[0]!, s) : 0 };
+  });
   const more = page.length > limit;
   const entries = page.slice(0, limit);
   const labels = await describe(entries);
-  let after = entries.length ? await balanceThrough(id, entries[0]!) : 0;
+  let after = startBalance;
   const lines: StatementLine[] = entries.map((e) => {
     const line = { _id: String(e._id), at: e.at, kind: e.kind, source: e.source, sourceId: e.sourceId,
       description: labels.get(`${e.source}:${e.sourceId}`) ?? FALLBACK[e.source] ?? e.source, reference: e.reference, note: e.note,
@@ -205,14 +235,25 @@ const cell = (v: unknown) => {
 };
 const istStamp = (d: Date) => new Date(new Date(d).getTime() + 330 * 60_000).toISOString().slice(0, 16).replace('T', ' ');
 
-/** Oldest first for a period (at most 5,000 lines), opening and closing balance included. */
+/**
+ * Oldest first for a period, with opening (Σ before the period) and closing balance — even for a period without
+ * activity. Rows and balances come from one snapshot. A period with more than CSV_MAX_LINES entries is refused (narrow
+ * the period) rather than silently cut.
+ */
 export async function statementCsv(account: ISettlementAccount | null, opts: { from?: string; to?: string }): Promise<string> {
   const header = ['Date (IST)', 'Type', 'Description', 'Reference', 'Note', 'Amount (INR)', 'Balance (INR)'].map(cell).join(',');
   if (!account) return header + '\n';
   const id = String(account._id);
-  const entries = await LedgerEntryModel.find({ settlementAccountId: id, ...range(opts.from, opts.to) }).sort({ at: 1, _id: 1 }).limit(5000).lean() as ILedgerEntry[];
+  const period = range(opts.from, opts.to) as { at?: { $gte?: Date; $lt?: Date } };
+  const { entries, opening } = await inSnapshot(async (s) => {
+    const rows = await LedgerEntryModel.find({ settlementAccountId: id, ...period }).sort({ at: 1, _id: 1 }).limit(CSV_MAX_LINES + 1).session(s).lean() as ILedgerEntry[];
+    if (rows.length > CSV_MAX_LINES) {
+      throw err(400, 'EXPORT_TOO_LARGE', `More than ${CSV_MAX_LINES} entries in this period; export a shorter period`);
+    }
+    return { entries: rows, opening: period.at?.$gte ? await balanceBefore(id, period.at.$gte, s) : 0 };
+  });
   const labels = await describe(entries);
-  let bal = entries.length ? (await balanceThrough(id, entries[0]!)) - entries[0]!.amountMinor : 0;
+  let bal = opening;
   const rows = [header, ['', 'Opening balance', '', '', '', '', rupees(bal)].map(cell).join(',')];
   for (const e of entries) {
     bal += e.amountMinor;
@@ -221,6 +262,12 @@ export async function statementCsv(account: ISettlementAccount | null, opts: { f
   }
   rows.push(['', 'Closing balance', '', '', '', '', rupees(bal)].map(cell).join(','));
   return rows.join('\n') + '\n';
+}
+
+/** The finance event stream of an account (who changed destinations, recorded/voided payouts, adjustments). */
+export async function financeEvents(account: ISettlementAccount | null, limit = 200) {
+  if (!account) return [];
+  return SettlementEventModel.find({ settlementAccountId: String(account._id) }).sort({ at: -1 }).limit(Math.min(limit, 500)).lean();
 }
 
 export async function listPayouts(account: ISettlementAccount | null, limit = 100): Promise<ISettlementPayout[]> {
@@ -262,7 +309,7 @@ export async function setPayoutDetails(target: { ownerKind: 'partner' | 'doctor'
   input: PayoutDetailsInput, actor: FinanceActor) {
   if (actor.kind === 'member' && actor.partner.role !== 'owner') throw err(403, 'OWNER_REQUIRED', 'Only an owner can change where payouts are sent');
   const details = normalizeDetails(input);
-  const base = 'accountId' in target ? await accountById(target.accountId) : await ensureOwnerAccount(target.ownerKind, target.ownerId);
+  const base = 'accountId' in target ? await accountById(canon(target.accountId)) : await ensureOwnerAccount(target.ownerKind, target.ownerId);
   const updated = await inTransaction(async (s) => {
     await bumpFinance(String(base._id), s);
     const a = await SettlementAccountModel.findOneAndUpdate({ _id: base._id },
@@ -276,7 +323,8 @@ export async function setPayoutDetails(target: { ownerKind: 'partner' | 'doctor'
 }
 
 /** Admin confirms the destination they checked (penny drop / documents). Refused if it changed since they looked. */
-export async function verifyPayoutDetails(accountId: string, version: number, adminId: string) {
+export async function verifyPayoutDetails(rawAccountId: string, version: number, adminId: string) {
+  const accountId = canon(rawAccountId);
   const updated = await inTransaction(async (s) => {
     const before = await accountById(accountId, s);
     if (before.payoutDetailsState === 'verified' && before.payoutDetailsVersion === version) return before;
@@ -308,13 +356,15 @@ const publicPayout = (p: ISettlementPayout) => { const { requestKey: _k, request
  * version the admin saw, refuse more than the balance, insert the payout and its `payout` ledger entry. Exactly once
  * per (admin, requestKey): a replay returns the original; the same key with different content is refused.
  */
-export async function recordPayout(adminId: string, accountId: string, input: RecordPayoutInput) {
+export async function recordPayout(adminId: string, rawAccountId: string, input: RecordPayoutInput) {
+  if (!Types.ObjectId.isValid(rawAccountId)) throw err(404, 'SETTLEMENT_ACCOUNT_NOT_FOUND', 'Settlement account not found');
+  const accountId = canon(rawAccountId);
   const amount = input.amountMinor;
   if (!Number.isSafeInteger(amount) || amount <= 0 || amount > MAX_MINOR) throw err(400, 'INVALID_AMOUNT', 'Amount must be a positive number of paise');
   const reference = String(input.reference ?? '').trim();
   if (reference.length < 4 || reference.length > 64) throw err(400, 'INVALID_REFERENCE', 'Reference (UTR) must be 4 to 64 characters');
   if (!isRealDate(input.paidOn) || input.paidOn > istDate(new Date())) throw err(400, 'INVALID_DATE', 'paidOn must be a real date, not in the future');
-  const requestHash = hashOf({ accountId: String(accountId).toLowerCase(), amount, method: input.method, reference, paidOn: input.paidOn,
+  const requestHash = hashOf({ accountId, amount, method: input.method, reference, paidOn: input.paidOn,
     note: input.note?.trim() || null, detailsVersion: input.detailsVersion });
   const replay = async (s?: ClientSession) => {
     const p = await SettlementPayoutModel.findOne({ by: adminId, requestKey: input.requestKey }).session(s ?? null).lean() as ISettlementPayout | null;
@@ -360,8 +410,9 @@ export async function recordPayout(adminId: string, accountId: string, input: Re
 }
 
 /** A payout recorded by mistake: marked voided and compensated by an `adjustment` (+amount), exactly once. */
-export async function voidPayout(adminId: string, payoutId: string, reason: string) {
-  if (!Types.ObjectId.isValid(payoutId)) throw err(404, 'PAYOUT_NOT_FOUND', 'Payout not found');
+export async function voidPayout(adminId: string, rawPayoutId: string, reason: string) {
+  if (!Types.ObjectId.isValid(rawPayoutId)) throw err(404, 'PAYOUT_NOT_FOUND', 'Payout not found');
+  const payoutId = canon(rawPayoutId);
   const why = String(reason ?? '').trim();
   if (why.length < 3 || why.length > 500) throw err(400, 'INVALID_REASON', 'Give a reason (3 to 500 characters)');
   return inTransaction(async (s) => {
@@ -383,14 +434,16 @@ export async function voidPayout(adminId: string, payoutId: string, reason: stri
  * Admin correction (+ credit / − recovery) with a reason, exactly once per (admin, requestKey). It may take the balance
  * below zero: a recovery owed is a fact to record, not something to refuse.
  */
-export async function postAdjustment(adminId: string, accountId: string, input: { amountMinor: number; reason: string; requestKey: string }) {
+export async function postAdjustment(adminId: string, rawAccountId: string, input: { amountMinor: number; reason: string; requestKey: string }) {
+  if (!Types.ObjectId.isValid(rawAccountId)) throw err(404, 'SETTLEMENT_ACCOUNT_NOT_FOUND', 'Settlement account not found');
+  const accountId = canon(rawAccountId);
   const amount = input.amountMinor;
   if (!Number.isSafeInteger(amount) || amount === 0 || Math.abs(amount) > MAX_MINOR) throw err(400, 'INVALID_AMOUNT', 'Amount must be a non-zero number of paise');
   const why = String(input.reason ?? '').trim();
   if (why.length < 3 || why.length > 500) throw err(400, 'INVALID_REASON', 'Give a reason (3 to 500 characters)');
   const sourceId = `${adminId}:${input.requestKey}`;
   return inTransaction(async (s) => {
-    const existing = await LedgerEntryModel.findOne({ settlementAccountId: String(accountId), source: 'admin_adjustment', sourceId, kind: 'adjustment' }).session(s).lean() as ILedgerEntry | null;
+    const existing = await LedgerEntryModel.findOne({ settlementAccountId: accountId, source: 'admin_adjustment', sourceId, kind: 'adjustment' }).session(s).lean() as ILedgerEntry | null;
     if (existing) {
       if (existing.amountMinor !== amount || existing.note !== why) throw err(409, 'REQUEST_KEY_REUSED', 'This request key was already used for a different adjustment');
       return { entry: existing, replayed: true };
@@ -405,29 +458,38 @@ export async function postAdjustment(adminId: string, accountId: string, input: 
 
 // ── Admin lists ──
 
-/** Every account with its balance; `due` = balance above zero (the payout queue), largest first. */
+/**
+ * Every matching account with its balance; `due` = balance above zero (the payout queue), largest first. Balances,
+ * the due filter, totals, ordering and the page are all computed by the database over every matching account.
+ */
 export async function adminListAccounts(q: { ownerKind?: 'partner' | 'doctor'; due?: boolean; search?: string; detailsState?: string; limit?: number; skip?: number }) {
   const filter: Record<string, unknown> = {};
   if (q.ownerKind) filter.ownerKind = q.ownerKind;
   if (q.detailsState) filter.payoutDetailsState = q.detailsState;
   if (q.search?.trim()) filter.beneficiaryName = { $regex: q.search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
-  const accounts = await SettlementAccountModel.find(filter).limit(5000).lean() as ISettlementAccount[];
-  const sums = await LedgerEntryModel.aggregate([
-    { $match: { settlementAccountId: { $in: accounts.map((a) => String(a._id)) } } },
-    { $group: { _id: '$settlementAccountId', total: { $sum: '$amountMinor' } } },
-  ]);
-  const bal = new Map(sums.map((x: { _id: string; total: number }) => [x._id, x.total]));
-  let rows = accounts.map((a) => ({ ...accountView(a, false), balanceMinor: bal.get(String(a._id)) ?? 0 }));
-  if (q.due) rows = rows.filter((r) => r.balanceMinor > 0);
-  rows.sort((x, y) => y.balanceMinor - x.balanceMinor || x.beneficiaryName.localeCompare(y.beneficiaryName));
   const skip = Math.max(0, Number(q.skip) || 0);
   const limit = Math.min(Math.max(Number(q.limit) || 50, 1), 200);
-  return { total: rows.length, totalDueMinor: rows.reduce((t, r) => t + Math.max(0, r.balanceMinor), 0), rows: rows.slice(skip, skip + limit) };
+  const [out] = await SettlementAccountModel.aggregate([
+    { $match: filter },
+    { $lookup: { from: LedgerEntryModel.collection.name, let: { id: { $toString: '$_id' } },
+      pipeline: [{ $match: { $expr: { $eq: ['$settlementAccountId', '$$id'] } } }, { $group: { _id: null, total: { $sum: '$amountMinor' } } }], as: 'ledger' } },
+    { $addFields: { balanceMinor: { $ifNull: [{ $arrayElemAt: ['$ledger.total', 0] }, 0] } } },
+    ...(q.due ? [{ $match: { balanceMinor: { $gt: 0 } } }] : []),
+    { $facet: {
+      rows: [{ $sort: { balanceMinor: -1, beneficiaryName: 1, _id: 1 } }, { $skip: skip }, { $limit: limit }, { $project: { ledger: 0 } }],
+      meta: [{ $group: { _id: null, total: { $sum: 1 }, totalDueMinor: { $sum: { $max: ['$balanceMinor', 0] } } } }],
+    } },
+  ]);
+  const meta = out?.meta?.[0] ?? { total: 0, totalDueMinor: 0 };
+  return {
+    total: meta.total, totalDueMinor: meta.totalDueMinor,
+    rows: (out?.rows ?? []).map((a: ISettlementAccount & { balanceMinor: number }) => ({ ...accountView(a, false), balanceMinor: a.balanceMinor })),
+  };
 }
 
 export async function adminListPayouts(q: { accountId?: string; from?: string; to?: string; state?: 'recorded' | 'voided'; limit?: number }) {
   const filter: Record<string, unknown> = {};
-  if (q.accountId) filter.settlementAccountId = String(q.accountId);
+  if (q.accountId) filter.settlementAccountId = canon(q.accountId);
   if (q.state) filter.state = q.state;
   if (q.from || q.to) {
     if ((q.from && !isRealDate(q.from)) || (q.to && !isRealDate(q.to))) throw err(400, 'INVALID_DATE', 'Dates must be real, YYYY-MM-DD');
@@ -438,7 +500,7 @@ export async function adminListPayouts(q: { accountId?: string; from?: string; t
 }
 
 export async function adminAccountEvents(accountId: string) {
-  return SettlementEventModel.find({ settlementAccountId: String(accountId) }).sort({ at: -1 }).limit(200).lean();
+  return SettlementEventModel.find({ settlementAccountId: canon(accountId) }).sort({ at: -1 }).limit(200).lean();
 }
 
 export { ensureOwnerAccount };
