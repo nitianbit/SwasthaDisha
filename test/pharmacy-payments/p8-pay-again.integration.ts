@@ -316,6 +316,21 @@ async function main() {
     assert.equal(r.paymentRequired, false); assert.equal(r.order.paymentStatus, 'paid');
   });
 
+  await check('a non-keyed order moved to another customer during set-up: refused, never set up for the new customer', async () => {
+    const me = await customer();
+    const other = await customer();
+    await fillCart(me);
+    const placed = await checkout(me); // no key: a pharmacy may still change its customer
+    const id = String(placed.order._id);
+    await PharmacyOrderModel.updateOne({ _id: id }, { $unset: { paymentTransactionId: 1 } });
+    await PaymentRecordModel.deleteMany({ contextId: id });
+    gateway.onCreate = async () => { await PharmacyOrderModel.updateOne({ _id: id }, { $set: { customerId: new Types.ObjectId(other._id) } }); };
+    await rejects(orders.retryPayment(id, me), 'ORDER_NOT_FOUND');
+    const after = (await PharmacyOrderModel.findById(id).lean())!;
+    assert.equal(after.paymentTransactionId, undefined, 'nothing linked');
+    assert.equal(await PaymentRecordModel.countDocuments({ contextId: id, payerUserId: other._id }), 0, 'no payment set up for the new customer');
+  });
+
   await mongoose.disconnect();
   console.log(`${passed} checks passed`);
 }

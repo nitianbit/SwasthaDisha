@@ -847,10 +847,12 @@ export class PharmacyOrderService {
    * one: late-capture refunds are keyed per order). If the original request was interrupted before its payment was
    * set up (no payment linked), sets it up now, linking it only while nothing is linked. null when it cannot be paid.
    */
-  private async payableDetails(first: IPharmacyOrder): Promise<PharmacyPaymentDetails | null> {
+  private async payableDetails(first: IPharmacyOrder, customerId: string): Promise<PharmacyPaymentDetails | null> {
     let order: IPharmacyOrder | null = first;
-    // At most two set-ups: one more if a financial edit (or a concurrent set-up) changed the order meanwhile.
+    // At most two set-ups: one more if a financial edit (or a concurrent set-up) changed the order meanwhile. Every
+    // read must still belong to the customer who asked: a party change is refused, never followed.
     for (let attempt = 0; attempt < 2 && order; attempt++) {
+      if (!order.customerId || String(order.customerId) !== customerId) return null;
       if (order.paymentMode !== 'online_payment' || order.status !== 'placed' || order.paymentStatus !== 'pending') return null;
       if (!this.paymentService.pharmacyPaymentWindowOpen(order)) return null;
       if (order.paymentTransactionId) return this.paymentService.resumablePharmacyPayment(order);
@@ -915,16 +917,19 @@ export class PharmacyOrderService {
     if (!this.paymentService.pharmacyPaymentWindowOpen(order)) {
       throw new AppError({ status: 409, code: 'ORDER_PAYMENT_EXPIRED', message: 'The time to pay for this order has passed. Please place a new order.' });
     }
-    const payment = await this.payableDetails(order);
+    const payment = await this.payableDetails(order, String(actor._id));
+    // The answer names the order as it is now, and only if it is still this customer's.
+    const now = await owned();
     if (!payment) {
       throw new AppError({ status: 409, code: 'PAYMENT_NOT_RESUMABLE', message: 'This order cannot be paid again. Please cancel it and place a new order.' });
     }
-    return { order, paymentRequired: true, payment };
+    return { order: now, paymentRequired: true, payment };
   }
 
   /** P8: the answer to a repeated keyed checkout: the order the key produced, payable again if it is still unpaid. */
   async checkoutReplay(order: IPharmacyOrder): Promise<{ order: IPharmacyOrder; paymentRequired: boolean; payment?: PharmacyPaymentDetails; replayed: true }> {
-    const payment = order.paymentMode === 'online_payment' ? await this.payableDetails(order) : null;
+    // A keyed order's customer is locked (ORDER_CHECKOUT_PARTY_LOCKED), so it is still the customer who placed it.
+    const payment = order.paymentMode === 'online_payment' && order.customerId ? await this.payableDetails(order, String(order.customerId)) : null;
     return { order, paymentRequired: !!payment, ...(payment ? { payment } : {}), replayed: true };
   }
 
