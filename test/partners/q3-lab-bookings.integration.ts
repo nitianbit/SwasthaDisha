@@ -227,15 +227,18 @@ async function main() {
   await check('create: pending payment with frozen terms and one gateway order; a resent create resumes the same booking and order', async () => {
     const u = await customer();
     const key = rk();
-    const first = await labSvc.create(u, input({ slotId: await slotOn(5, '08:00'), requestKey: key }));
+    const req = input({ slotId: await slotOn(5, '08:00'), requestKey: key });
+    const first = await labSvc.create(u, req);
     assert.equal(first.paymentRequired, true);
     assert.equal(first.payment!.amount, 1300);
     const b = await PartnerLabBookingModel.findOne({ userId: u }).lean();
     assert.equal(b!.status, 'pending_payment');
     assert.deepEqual(b!.items.map((i) => i.priceMinor), [50000, 80000]);
     assert.equal(b!.settlement.settlementSystem, 'ledger');
-    const again = await labSvc.create(u, input({ slotId: await slotOn(6, '08:00'), requestKey: key, itemIds: [String(cbc._id)] }));
+    const again = await labSvc.create(u, { ...req, itemIds: [...req.itemIds].reverse(), useWalletBalance: false });
     assert.equal(again.payment!.razorpayOrderId, first.payment!.razorpayOrderId);
+    await assert.rejects(async () => labSvc.create(u, input({ slotId: await slotOn(6, '08:00'), requestKey: key, itemIds: [String(cbc._id)] })),
+      code('IDEMPOTENCY_KEY_REUSED'));
     assert.equal(await PartnerLabBookingModel.countDocuments({ userId: u }), 1);
     assert.equal(await PaymentRecordModel.countDocuments({ context: 'lab_booking', contextId: String(b!._id) }), 1);
   });
@@ -448,6 +451,21 @@ async function main() {
     const audit = await PartnerAuditEventModel.find({ targetId: flow.id }).lean();
     assert.ok(['lab_booking.visit', 'lab_booking.process', 'lab_booking.report_upload', 'lab_booking.report_release', 'lab_booking.complete']
       .every((a) => audit.some((x) => x.action === a)));
+  });
+
+  await check('a no-show is not refunded and the partner earns it once; customers never see staff ids', async () => {
+    const { u, id } = await confirmedBooking(16, '08:00');
+    await labSvc.assignCollector(deskA, id, { memberId: String(desk._id), name: 'Ravi', phone: '9000011111' });
+    const b = await PartnerLabBookingModel.findById(id).lean();
+    const after = new Date(new Date(b!.slot.startsAt).getTime() + 60_000);
+    assert.equal(((await labSvc.markNoShow(deskA, id, after)) as any).status, 'no_show');
+    const acct = await SettlementAccountModel.findOne({ ownerKind: 'partner', ownerId: partnerId }).lean();
+    const e = await LedgerEntryModel.find({ settlementAccountId: String(acct!._id), source: 'partner_lab_booking', sourceId: id }).lean();
+    assert.deepEqual(e.map((x) => [x.kind, x.amountMinor]), [['earning', 130000]]);
+    assert.equal(await balanceOf(u), 0, 'no refund');
+    const cv = await labSvc.getForCustomer(u, id) as any;
+    assert.deepEqual(cv.collector, { name: 'Ravi', phone: '9000011111' });
+    assert.ok(!JSON.stringify(cv).includes(String(desk._id)));
   });
 
   await check('admin acts as owner on lab bookings (releases under a named member)', async () => {

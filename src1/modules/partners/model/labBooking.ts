@@ -38,6 +38,8 @@ export interface IPartnerLabBooking {
   branchId: string;
   userId: string;
   createRequestKey?: string;
+  /** Hash of the create request: a resent create with a different request under the same key is refused. */
+  createRequestHash?: string;
   patient: { kind: 'self' | 'dependent'; dependentId?: string; name: string; age?: number; gender?: string };
   visitMode: VisitMode;
   address?: { line1: string; line2?: string; city: string; state?: string; pincode: string; landmark?: string };
@@ -95,6 +97,7 @@ const labBookingSchema = new Schema<IPartnerLabBooking>(
     branchId: { type: String, required: true },
     userId: { type: String, required: true },
     createRequestKey: { type: String },
+    createRequestHash: { type: String },
     patient: {
       kind: { type: String, required: true, enum: ['self', 'dependent'] },
       dependentId: { type: String },

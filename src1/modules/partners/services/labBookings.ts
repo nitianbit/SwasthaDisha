@@ -1,4 +1,6 @@
 import { Service, Container } from 'typedi';
+import { createHash } from 'crypto';
+import { canonicalJson } from '@/modules/partners/services/invoice';
 import { ClientSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import { fundBookingFromWallet, recordGatewayCapture, refundAndCloseIn, runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
@@ -71,6 +73,21 @@ export interface LabBookingPaymentInit {
   payment?: { paymentTransactionId: string; razorpayOrderId: string; razorpayKeyId: string; amount: number; currency: string };
 }
 
+/** What a create request asks for (wallet use excluded: it only changes how the same booking is paid). */
+export function createRequestHash(input: CreateLabBookingInput): string {
+  return createHash('sha256').update(canonicalJson({
+    partnerId: input.partnerId, branchId: input.branchId, visitMode: input.visitMode, slotId: input.slotId,
+    itemIds: [...new Set(input.itemIds.map(String))].sort(), patient: input.patient, address: input.address, couponCode: input.couponCode,
+  })).digest('hex');
+}
+
+function assertSameRequest(b: IPartnerLabBooking, requestHash: string): IPartnerLabBooking {
+  if (b.createRequestHash && b.createRequestHash !== requestHash) {
+    throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different booking');
+  }
+  return b;
+}
+
 type Actor = { kind: 'customer'; userId: string } | { kind: 'partner'; actor: PartnerActor } | { kind: 'system' };
 const byOf = (a: Actor) => a.kind === 'customer' ? { by: a.userId, byKind: 'customer' as const }
   : a.kind === 'partner' ? { by: a.actor.memberId, byKind: a.actor.actorKind === 'admin' ? 'admin' as const : 'member' as const }
@@ -85,9 +102,14 @@ export function readerOf(actor: PartnerActor): NonNullable<AuthRequest['user']> 
 
 /** What a customer sees: never draft report files; released files as URLs. */
 export function customerView(b: IPartnerLabBooking): Record<string, unknown> {
-  const { walletFunding: _w, createRequestKey: _k, expiryNextAt: _e, expiryChecks: _c, postPaymentCompletedFor: _p, report, settlement: _s, ...rest } = b as any;
+  const { walletFunding: _w, createRequestKey: _k, createRequestHash: _h, expiryNextAt: _e, expiryChecks: _c, postPaymentCompletedFor: _p,
+    report, settlement: _s, cancellation, reschedule, collector, ...rest } = b as any;
   return {
     ...rest,
+    // Member ids are internal: the customer sees what happened and who to expect, not staff identifiers.
+    cancellation: cancellation ? { reason: cancellation.reason, note: cancellation.note, at: cancellation.at, byKind: cancellation.byKind } : undefined,
+    reschedule: reschedule ? { version: reschedule.version, pending: reschedule.pending, previousSlot: reschedule.previousSlot, reason: reschedule.reason, at: reschedule.at } : undefined,
+    collector: collector ? { name: collector.name, phone: collector.phone } : undefined,
     report: {
       files: (report?.releasedFiles ?? []).map((p: string) => `/api/static/${p}`),
       releases: (report?.releases ?? []).map((r: any) => ({ releasedAt: r.releasedAt, signer: { name: r.signer.name, kind: r.signer.kind, registrationNumber: r.signer.registrationNumber } })),
@@ -96,7 +118,7 @@ export function customerView(b: IPartnerLabBooking): Record<string, unknown> {
 }
 
 export function partnerView(b: IPartnerLabBooking): Record<string, unknown> {
-  const { walletFunding: _w, createRequestKey: _k, postPaymentCompletedFor: _p, ...rest } = b as any;
+  const { walletFunding: _w, createRequestKey: _k, createRequestHash: _h, postPaymentCompletedFor: _p, ...rest } = b as any;
   return {
     ...rest,
     report: {
@@ -120,8 +142,9 @@ export class LabBookingService {
   // ───────────────────────────── Customer: create and pay ─────────────────────────────
 
   async create(userId: string, input: CreateLabBookingInput, now = new Date()): Promise<LabBookingPaymentInit> {
+    const requestHash = createRequestHash(input);
     const prior = await PartnerLabBookingModel.findOne({ userId: { $eq: userId }, createRequestKey: { $eq: input.requestKey } }).lean();
-    if (prior) return this.resume(prior, !!input.useWalletBalance);
+    if (prior) return this.resume(assertSameRequest(prior as IPartnerLabBooking, requestHash), !!input.useWalletBalance);
 
     const partner = await PartnerOrgModel.findById(input.partnerId).lean();
     if (!partner || partner.kind !== 'lab' || partner.isActive === false || partner.verification?.state !== 'verified') {
@@ -149,13 +172,13 @@ export class LabBookingService {
 
     const booking = await runLedgerTransaction(async (s) => {
       const again = await PartnerLabBookingModel.findOne({ userId: { $eq: userId }, createRequestKey: { $eq: input.requestKey } }).session(s).lean();
-      if (again) return again;
+      if (again) return assertSameRequest(again as IPartnerLabBooking, requestHash);
       await claimRequestKey(scopeOf('lab_booking_create', userId), input.requestKey, s);
       const slot = await takeSeat(input.slotId, {
         partnerId: String(partner._id), branchId: String(branch._id), visitMode: input.visitMode, minStart: new Date(now.getTime() + LAB_MIN_LEAD_MS),
       }, s);
       const [created] = await PartnerLabBookingModel.create([{
-        partnerId: String(partner._id), branchId: String(branch._id), userId, createRequestKey: input.requestKey,
+        partnerId: String(partner._id), branchId: String(branch._id), userId, createRequestKey: input.requestKey, createRequestHash: requestHash,
         patient, visitMode: input.visitMode, address: input.visitMode === 'home' ? input.address : undefined,
         slot: { slotId: String(slot._id), date: slot.date, startTime: slot.startTime, endTime: slot.endTime, startsAt: slot.startsAt },
         items: items.map((i) => ({ catalogItemId: String(i._id), kind: i.kind, name: i.name, code: i.code, priceMinor: i.priceMinor,
@@ -499,8 +522,10 @@ export class LabBookingService {
     return this.transition(actor, bookingId, 'visit', ['confirmed'], 'visited', { 'lifecycle.visitedAt': new Date() }, { visitMode: 'lab', noPendingReschedule: true });
   }
 
+  /** A no-show is not refunded (§4), so the partner earns it like a completed booking (its slot was kept). */
   async markNoShow(actor: PartnerActor, bookingId: string, now = new Date()) {
-    return this.transition(actor, bookingId, 'no_show', ['confirmed'], 'no_show', { 'lifecycle.noShowAt': now }, { noPendingReschedule: true, slotStarted: now });
+    return this.transition(actor, bookingId, 'no_show', ['confirmed'], 'no_show', { 'lifecycle.noShowAt': now }, { noPendingReschedule: true, slotStarted: now },
+      (b, s) => this.postEarning(actor, b, s));
   }
 
   async startProcessing(actor: PartnerActor, bookingId: string) {
@@ -509,13 +534,18 @@ export class LabBookingService {
 
   /** Completion posts the partner's earning (its own price; commission 0) in the same transaction (§7). */
   async complete(actor: PartnerActor, bookingId: string) {
-    return this.transition(actor, bookingId, 'complete', ['report_ready'], 'completed', { 'lifecycle.completedAt': new Date() }, {}, async (b, s) => {
-      await postLedgerEntry({
-        settlementAccountId: b.settlement.settlementAccountId, kind: 'earning', amountMinor: b.pricing.subtotalMinor,
-        grossMinor: b.pricing.subtotalMinor, commissionMinor: 0, source: 'partner_lab_booking', sourceId: String(b._id),
-        by: actor.memberId, byKind: actor.actorKind === 'admin' ? 'admin' : 'system',
-      }, s);
-    });
+    return this.transition(actor, bookingId, 'complete', ['report_ready'], 'completed', { 'lifecycle.completedAt': new Date() }, {},
+      (b, s) => this.postEarning(actor, b, s));
+  }
+
+  /** Earnings only for money actually collected through us (paid bookings), once per booking. */
+  private async postEarning(actor: PartnerActor, b: IPartnerLabBooking, s: ClientSession): Promise<void> {
+    if (b.paymentStatus !== 'paid') return;
+    await postLedgerEntry({
+      settlementAccountId: b.settlement.settlementAccountId, kind: 'earning', amountMinor: b.pricing.subtotalMinor,
+      grossMinor: b.pricing.subtotalMinor, commissionMinor: 0, source: 'partner_lab_booking', sourceId: String(b._id),
+      by: actor.memberId, byKind: actor.actorKind === 'admin' ? 'admin' : 'system',
+    }, s);
   }
 
   private async transition(
