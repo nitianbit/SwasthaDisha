@@ -1,6 +1,6 @@
 # Q — Partner labs, clinics and doctors: online bookings, instant consultations, in-house sales (design, 2026-11-15)
 
-Status: design revised after Codex re-review #3 (msg_1794740112180_ia1ute6i). Built in packets Q1–Q6 (§10), each reviewed by Codex.
+Status: design revised after Codex re-review #4 (msg_1794740298614_vlo09yy1). Built in packets Q1–Q6 (§10), each reviewed by Codex.
 
 ## 1. Owner decisions (15 Nov 2026, asked directly)
 
@@ -281,14 +281,18 @@ Walk-in linking, partner walk-in, and any future path that needs to find-or-crea
 coordinated path: `resolveCustomerByPhone(phone, source)`.
 
 1. Normalize the phone to ten-digit canonical form.
-2. **Prerequisite: unique index must be live before the resolver is activated.** A migration script (run as part
-   of Q2 deployment) scans for duplicate `{phone, userType: 'user'}` pairs. Duplicates are resolved by the admin
-   (merge or designate canonical) before the unique index is created. The resolver is **not activated** until the
+2. **Prerequisite: unique partial index must be live before the resolver is activated.** A migration script (run
+   as part of Q2 deployment) normalizes all existing phone values to ten-digit canonical form and scans for
+   duplicate `{phone, userType: 'user'}` pairs among rows where `phone` is present. Duplicates are resolved by the
+   admin (merge or designate canonical). Then a **unique partial index** is created:
+   `{ phone: 1, userType: 1 }, { unique: true, partialFilterExpression: { phone: { $type: 'string' } } }`.
+   This excludes rows where `phone` is null/missing (email-only customers created via `auth/validation` email-only
+   enrollment), preserving their ability to exist without a phone. The resolver is **not activated** until the
    index is confirmed live — there is no pre-index fallback mode. This eliminates the concurrent-creation race
-   entirely.
-3. With the unique index live: `findOneAndUpdate` with `{ phone, userType: 'user' }` and
-   `$setOnInsert: { createdSource: source }`, `upsert: true`, `returnDocument: 'after'`. The unique index
-   prevents concurrent duplicates atomically.
+   entirely while preserving email-only user accounts.
+3. With the unique partial index live: `findOneAndUpdate` with `{ phone, userType: 'user' }` and
+   `$setOnInsert: { createdSource: source }`, `upsert: true`, `returnDocument: 'after'`. The partial unique index
+   prevents concurrent duplicates atomically for all phone-bearing rows. Email-only users are unaffected.
 4. If the upsert created a new user, send the SMS link.
 5. Never merge accounts or overwrite an existing customer's name/verified-contact fields from invoice input.
 5. The visit patient/dependent (age, gender on the invoice) is distinct from the billing contact (the linked
