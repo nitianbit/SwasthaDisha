@@ -151,6 +151,23 @@ async function main() {
     }), code('CATALOGUE_ITEM_NOT_FOUND'));
   });
 
+  await check('catalogue writes roll back when their audit write fails', async () => {
+    const original = PartnerAuditEventModel.create.bind(PartnerAuditEventModel);
+    const before = await CatalogueItemModel.find({ partnerId: lab.partnerId }).lean();
+    (PartnerAuditEventModel as any).create = async () => { throw new Error('audit store down'); };
+    try {
+      await assert.rejects(() => catalogueSvc.createItem(lab.actor, { kind: 'test', name: 'Ghost', priceMinor: 1, gstRate: 0, visitModes: ['lab'] }));
+      await assert.rejects(() => catalogueSvc.updateItem(lab.actor, cbcId, { priceMinor: 1 }));
+      await assert.rejects(() => catalogueSvc.deactivateItem(lab.actor, cbcId));
+      await assert.rejects(() => catalogueSvc.setAdminDisabled('adm', cbcId, true));
+    } finally {
+      (PartnerAuditEventModel as any).create = original;
+    }
+    const after = await CatalogueItemModel.find({ partnerId: lab.partnerId }).lean();
+    assert.deepEqual(after.map((i) => [String(i._id), i.priceMinor, i.isActive, i.adminDisabled]),
+      before.map((i) => [String(i._id), i.priceMinor, i.isActive, i.adminDisabled]));
+  });
+
   // ── Pure rules ──
   await check('phone normalisation and IST financial-year boundary; serial ≤ 16 chars', () => {
     for (const p of ['+919876543210', '919876543210', '09876543210', '98765 43210', '9876543210']) assert.equal(normalizePhone(p), '9876543210');

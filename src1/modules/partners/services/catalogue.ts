@@ -2,7 +2,7 @@ import { Service } from 'typedi';
 import { CatalogueItemRepository } from '@/modules/partners/repository/catalogueItem';
 import { ICatalogueItem, CatalogueItemKind } from '@/modules/partners/types';
 import { AppError } from '@/modules/common/types';
-import { PartnerActor, recordPartnerAudit } from '@/modules/partners/services';
+import { PartnerActor, adminActor, inTransaction, recordPartnerAudit } from '@/modules/partners/services';
 
 const notFound = () => new AppError({ status: 404, code: 'CATALOGUE_ITEM_NOT_FOUND', message: 'Catalogue item not found' });
 
@@ -31,14 +31,16 @@ export class CatalogueService {
     if (data.mrpMinor !== undefined && data.mrpMinor < data.priceMinor) {
       throw new AppError({ status: 400, code: 'INVALID_MRP', message: 'MRP cannot be below the price' });
     }
-    const item = await this.catalogueRepo.save({
-      ...data,
-      partnerId: actor.partnerId,
-      isActive: true,
-      adminDisabled: false,
-    } as Partial<ICatalogueItem>);
-    await recordPartnerAudit(actor, 'catalogue.create', { kind: 'catalogue_item', id: String(item._id) }, { priceMinor: data.priceMinor });
-    return item;
+    return inTransaction(async (session) => {
+      const item = await this.catalogueRepo.save({
+        ...data,
+        partnerId: actor.partnerId,
+        isActive: true,
+        adminDisabled: false,
+      } as Partial<ICatalogueItem>, { session });
+      await recordPartnerAudit(actor, 'catalogue.create', { kind: 'catalogue_item', id: String(item._id) }, { priceMinor: data.priceMinor }, session);
+      return item;
+    });
   }
 
   async updateItem(actor: PartnerActor, itemId: string, data: Partial<CatalogueItemInput>): Promise<ICatalogueItem> {
@@ -49,16 +51,20 @@ export class CatalogueService {
     if (mrp !== undefined && mrp < price) {
       throw new AppError({ status: 400, code: 'INVALID_MRP', message: 'MRP cannot be below the price' });
     }
-    const updated = await this.catalogueRepo.update({ _id: itemId, partnerId: actor.partnerId }, { $set: safe });
-    if (!updated) throw notFound();
-    await recordPartnerAudit(actor, 'catalogue.update', { kind: 'catalogue_item', id: itemId }, { fields: Object.keys(safe) });
-    return updated;
+    return inTransaction(async (session) => {
+      const updated = await this.catalogueRepo.update({ _id: itemId, partnerId: actor.partnerId }, { $set: safe }, { new: true, session } as any);
+      if (!updated) throw notFound();
+      await recordPartnerAudit(actor, 'catalogue.update', { kind: 'catalogue_item', id: itemId }, { fields: Object.keys(safe) }, session);
+      return updated;
+    });
   }
 
   async deactivateItem(actor: PartnerActor, itemId: string): Promise<void> {
     await this.getItem(actor, itemId);
-    await this.catalogueRepo.update({ _id: itemId, partnerId: actor.partnerId }, { isActive: false });
-    await recordPartnerAudit(actor, 'catalogue.deactivate', { kind: 'catalogue_item', id: itemId });
+    await inTransaction(async (session) => {
+      const done = await this.catalogueRepo.update({ _id: itemId, partnerId: actor.partnerId, isActive: true }, { isActive: false }, { new: true, session } as any);
+      if (done) await recordPartnerAudit(actor, 'catalogue.deactivate', { kind: 'catalogue_item', id: itemId }, undefined, session);
+    });
   }
 
   async listItems(actor: PartnerActor, kind?: CatalogueItemKind): Promise<ICatalogueItem[]> {
@@ -77,11 +83,11 @@ export class CatalogueService {
   async setAdminDisabled(adminId: string, itemId: string, disabled: boolean): Promise<ICatalogueItem> {
     const item = await this.catalogueRepo.findById(itemId);
     if (!item) throw notFound();
-    const updated = await this.catalogueRepo.update({ _id: itemId }, { adminDisabled: disabled });
-    await recordPartnerAudit(
-      { memberId: `admin:${adminId}`, partnerId: String(item.partnerId), role: 'owner', permissions: [], branchIds: [], actorKind: 'admin' },
-      disabled ? 'catalogue.admin_disable' : 'catalogue.admin_enable', { kind: 'catalogue_item', id: itemId }
-    );
-    return updated!;
+    return inTransaction(async (session) => {
+      const updated = await this.catalogueRepo.update({ _id: itemId }, { adminDisabled: disabled }, { new: true, session } as any);
+      await recordPartnerAudit(adminActor(adminId, String(item.partnerId)),
+        disabled ? 'catalogue.admin_disable' : 'catalogue.admin_enable', { kind: 'catalogue_item', id: itemId }, undefined, session);
+      return updated!;
+    });
   }
 }
