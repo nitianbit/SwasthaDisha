@@ -51,7 +51,7 @@ export class InvoiceEventRepository extends BaseRepository<IInvoiceEvent> {
   }
 
   async findByInvoice(invoiceId: string): Promise<IInvoiceEvent[]> {
-    return this.findAll({ invoiceId }, { sort: { at: 1 } });
+    return this.findAll({ invoiceId }, { sort: { version: 1 } });
   }
 }
 

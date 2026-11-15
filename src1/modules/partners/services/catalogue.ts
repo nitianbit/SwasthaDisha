@@ -44,16 +44,22 @@ export class CatalogueService {
   }
 
   async updateItem(actor: PartnerActor, itemId: string, data: Partial<CatalogueItemInput>): Promise<ICatalogueItem> {
-    const item = await this.getItem(actor, itemId);
+    await this.getItem(actor, itemId);
     const { kind: _k, ...safe } = data as Partial<CatalogueItemInput>;
-    const price = safe.priceMinor ?? item.priceMinor;
-    const mrp = safe.mrpMinor ?? item.mrpMinor;
-    if (mrp !== undefined && mrp < price) {
-      throw new AppError({ status: 400, code: 'INVALID_MRP', message: 'MRP cannot be below the price' });
-    }
+    // The price/MRP pair is validated on the state read in this transaction attempt and written with a compare-and-set
+    // on exactly that pair, so two concurrent edits can never combine into an invalid pair.
     return inTransaction(async (session) => {
-      const updated = await this.catalogueRepo.update({ _id: itemId, partnerId: actor.partnerId }, { $set: safe }, { new: true, session } as any);
-      if (!updated) throw notFound();
+      const item = await this.catalogueRepo.findOne({ _id: itemId, partnerId: actor.partnerId }, session);
+      if (!item) throw notFound();
+      const price = safe.priceMinor ?? item.priceMinor;
+      const mrp = safe.mrpMinor ?? item.mrpMinor;
+      if (mrp !== undefined && mrp !== null && mrp < price) {
+        throw new AppError({ status: 400, code: 'INVALID_MRP', message: 'MRP cannot be below the price' });
+      }
+      const updated = await this.catalogueRepo.update(
+        { _id: itemId, partnerId: actor.partnerId, priceMinor: item.priceMinor, mrpMinor: item.mrpMinor ?? null },
+        { $set: safe }, { new: true, session } as any);
+      if (!updated) throw Object.assign(new AppError({ status: 409, code: 'CATALOGUE_ITEM_CHANGED', message: 'The item changed meanwhile; reload and try again' }), { retryable: true });
       await recordPartnerAudit(actor, 'catalogue.update', { kind: 'catalogue_item', id: itemId }, { fields: Object.keys(safe) }, session);
       return updated;
     });

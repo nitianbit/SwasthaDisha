@@ -79,6 +79,8 @@ export interface IInvoiceEvent {
   reference?: string;
   reason?: string;
   note?: string;
+  /** The invoice's lifecycleVersion this event produced (1, 2): the event order, independent of clocks. */
+  version: number;
   at: Date;
   by: string;
   byKind: 'member' | 'admin';

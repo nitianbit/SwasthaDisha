@@ -9,17 +9,12 @@
  * user id for an admin to resolve (merge or designate canonical); the index is not built until the list is empty.
  * Phone numbers are not printed.
  */
-import mongoose from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import { CONFIG } from '@/config/config';
 import UserModel from '@/modules/user/model';
+import { canonicalMobile } from '@/modules/common/utils/phone';
 
-export function canonicalPhone(raw: string): string | null {
-  let p = raw.replace(/[\s-]/g, '');
-  if (p.startsWith('+91')) p = p.slice(3);
-  else if (p.startsWith('91') && p.length === 12) p = p.slice(2);
-  else if (p.startsWith('0') && p.length === 11) p = p.slice(1);
-  return /^[0-9]{10}$/.test(p) ? p : null;
-}
+export const canonicalPhone = canonicalMobile;
 
 export interface PhoneMigrationReport {
   inspected: number;
@@ -33,7 +28,9 @@ export interface PhoneMigrationReport {
 export async function runPhoneMigration(commit: boolean): Promise<PhoneMigrationReport> {
   const report: PhoneMigrationReport = { inspected: 0, alreadyCanonical: 0, rewritable: 0, rewritten: 0, invalid: [], duplicateGroups: [] };
   const groups = new Map<string, { id: string; phone: string }[]>();
-  const cursor = UserModel.find({ phone: { $type: 'string' } }).select({ _id: 1, phone: 1, userType: 1 }).sort({ _id: 1 }).lean().cursor();
+  // Raw driver reads/writes: the model's phone setter would canonicalise the legacy values this script must see as stored.
+  const users = UserModel.collection;
+  const cursor = users.find({ phone: { $type: 'string' } }, { projection: { _id: 1, phone: 1, userType: 1 } }).sort({ _id: 1 });
   for await (const u of cursor as AsyncIterable<any>) {
     report.inspected += 1;
     const canonical = canonicalPhone(u.phone);
@@ -51,7 +48,7 @@ export async function runPhoneMigration(commit: boolean): Promise<PhoneMigration
     report.rewritable += 1;
     if (!commit) continue;
     // Compare-and-set on the value read: a phone changed meanwhile is left for the next run.
-    const r = await UserModel.updateOne({ _id: row.id, phone: row.phone }, { $set: { phone: canonical } });
+    const r = await users.updateOne({ _id: new Types.ObjectId(row.id), phone: row.phone }, { $set: { phone: canonical } });
     report.rewritten += r.modifiedCount;
   }
   return report;
