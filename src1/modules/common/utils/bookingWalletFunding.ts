@@ -18,7 +18,7 @@ import { WalletRepository } from '@/modules/wallet/repository';
  * Bookings created before this existed are initialised on first touch from `legacyFunded` (the linked payment
  * record's notes.walletDeductedAmount) and, for refunds, `legacyGateway` (a paid linked record).
  */
-export type FundedBookingKind = 'booking' | 'external_booking' | 'lab_booking';
+export type FundedBookingKind = 'booking' | 'external_booking' | 'lab_booking' | 'instant_request';
 export interface Capture { recordId: string; amount: number; state: 'applied' | 'returned' }
 interface Funding { total: number; revision: number; closed: boolean; captures: Capture[] }
 interface Row { _id?: unknown; status?: string; paymentStatus?: string; paymentTransactionId?: string; userId?: string; walletFunding?: Partial<Funding> }
@@ -132,7 +132,7 @@ export async function fundBookingFromWallet(p: {
     await save(next);
     const posted = await wallets.postEntry({ userId: p.userId, walletId: wallet!._id, transactionType: 'debit', amount, referenceType: p.kind, referenceId: id,
       operationKey: `${p.kind}_funding:${id}:r${next.revision}`,
-      description: p.kind === 'booking' ? 'Wallet used for booking payment' : p.kind === 'lab_booking' ? 'Wallet used for lab booking payment' : 'Wallet used for external booking payment',
+      description: p.kind === 'booking' ? 'Wallet used for booking payment' : p.kind === 'lab_booking' ? 'Wallet used for lab booking payment' : p.kind === 'instant_request' ? 'Wallet used for an instant consultation' : 'Wallet used for external booking payment',
       transactionDate: getTodayYyyymmdd() }, s);
     if (!posted) throw changed();
     return { total: next.total, debited: amount, returned: 0 };
@@ -266,6 +266,6 @@ export async function refundAndCloseIn(p: RefundAndCloseParams, s: ClientSession
   // A refund from before the booking ledger existed: close without paying it again.
   if (p.priorRefund || await WalletTransactionModel.exists({ operationKey: `${p.kind}_refund:${id}` }).session(s)) return extra;
   await credit({ wallets, kind: p.kind, id, userId: p.userId, amount, key: `${p.kind}_refund:${id}`,
-    description: p.kind === 'booking' ? 'Refund for cancelled booking' : p.kind === 'lab_booking' ? 'Refund for cancelled lab booking' : 'Refund for external booking' }, s);
+    description: p.kind === 'booking' ? 'Refund for cancelled booking' : p.kind === 'lab_booking' ? 'Refund for cancelled lab booking' : p.kind === 'instant_request' ? 'Refund for an instant consultation request' : 'Refund for external booking' }, s);
   return rupees(amount + extra);
 }

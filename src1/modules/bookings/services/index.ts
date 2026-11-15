@@ -1415,7 +1415,10 @@ export class BookingService {
     const updated = data.status === 'completed' && booking.status !== 'completed'
       ? await runLedgerTransaction(async (session) => {
         const done = await BookingModel.findOneAndUpdate(fence, { $set: data }, { new: true, session }).lean() as IBooking | null;
-        if (done) await postConsultationEarningIn(done, session, { by: 'system', byKind: 'system' });
+        if (done) {
+          await postConsultationEarningIn(done, session, { by: 'system', byKind: 'system' });
+          await releaseInterval('instant', String(id).toLowerCase(), session); // an instant consult frees the doctor at once
+        }
         return done;
       })
       : await this.bookingRepository.update(fence, data);
@@ -1515,6 +1518,15 @@ export class BookingService {
    * cancellation, always a full refund to the wallet, cause 'doctor'. Admins may do the same.
    */
   async cancelByDoctor(bookingId: string, requester: { _id: string; userType: 'specialist' | 'admin' }, reason: string): Promise<IBooking> {
+    // Q4b: an instant consultation's money lives on its request; its own command refunds the allocation.
+    const kind = Types.ObjectId.isValid(bookingId) ? await BookingModel.findById(bookingId).select({ bookingKind: 1 }).lean() as IBooking | null : null;
+    if (kind?.bookingKind === 'instant') {
+      const { InstantConsultService } = await import('@/modules/doctors/services/instant');
+      const { Container } = await import('typedi');
+      await Container.get(InstantConsultService).cancelAccepted(bookingId, requester, reason);
+      const after = await BookingModel.findById(bookingId).lean() as IBooking;
+      return cancelBookingMeet({ booking: after, reason: after.cancellationReason, bookingRepository: this.bookingRepository });
+    }
     const result = await cancelBookingSettlement({
       bookingId, requester, reason, cause: 'doctor', cancelledAt: getTodayYyyymmdd(), wallets: this.walletRepository,
       enforceWindow: () => undefined,
@@ -1553,6 +1565,7 @@ export class BookingService {
         { $set: { status: 'no_show' } }, { new: true, session }).lean() as IBooking | null;
       if (!done) throw new AppError({ status: 409, code: 'BOOKING_CHANGED', message: 'Booking changed; please retry' });
       await releaseInterval('scheduled', String(bookingId).toLowerCase(), session);
+      await releaseInterval('instant', String(bookingId).toLowerCase(), session);
       await postConsultationEarningIn(done, session, { by: requester.userType === 'admin' ? `admin:${requester._id}` : 'system',
         byKind: requester.userType === 'admin' ? 'admin' : 'system' });
       return done;

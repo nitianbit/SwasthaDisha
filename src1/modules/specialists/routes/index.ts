@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { getMySchedule, putMySchedule, addMyLeave, removeMyLeave } from '@/modules/doctors/controller';
-import { scheduleTemplateSchema, leaveSchema, leaveParamSchema } from '@/modules/doctors/validation';
+import { scheduleTemplateSchema, leaveSchema, leaveParamSchema, presenceSchema, requestIdParamSchema, bookingIdParamSchema, extendSchema } from '@/modules/doctors/validation';
+import * as instantDoctor from '@/modules/doctors/controller/instant';
 import { Router } from 'express';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
@@ -91,6 +92,13 @@ specialistRouter.get('/me/schedule', requireSpecialist, catchAsync(getMySchedule
 specialistRouter.put('/me/schedule', requireSpecialist, validate(scheduleTemplateSchema, 'body'), catchAsync(putMySchedule));
 specialistRouter.post('/me/leave', requireSpecialist, validate(leaveSchema, 'body'), catchAsync(addMyLeave));
 specialistRouter.delete('/me/leave/:date', requireSpecialist, validate(leaveParamSchema, 'params'), catchAsync(removeMyLeave));
+// Q4b: instant consultations — "available now", heartbeat, offers, accept, extend.
+specialistRouter.put('/me/presence', requireSpecialist, validate(presenceSchema, 'body'), catchAsync(instantDoctor.putPresence));
+specialistRouter.post('/me/presence/heartbeat', requireSpecialist, catchAsync(instantDoctor.postHeartbeat));
+specialistRouter.get('/me/instant/offers', requireSpecialist, catchAsync(instantDoctor.getOffers));
+specialistRouter.post('/me/instant/:requestId/accept', requireSpecialist, validate(requestIdParamSchema, 'params'), catchAsync(instantDoctor.acceptOffer));
+specialistRouter.post('/me/instant/bookings/:bookingId/extend', requireSpecialist, validate(bookingIdParamSchema, 'params'), validate(extendSchema, 'body'),
+  catchAsync(instantDoctor.extendConsult));
 
 specialistRouter.post(
   '/me/slots',

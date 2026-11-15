@@ -12,6 +12,8 @@ import bookingRouter from '@/modules/bookings/routes';
 import partnerDirectoryRouter from '@/modules/partnerDirectory/routes';
 import partnerWorkspaceRouter, { customerBillsRouter, customerLabRouter, customerLabBookingRouter } from '@/modules/partners/routes';
 import { registerLabBookingPayments } from '@/modules/partners/services/labBookings';
+import { registerInstantPayments } from '@/modules/doctors/services/instant';
+import { instantRouter } from '@/modules/doctors/routes';
 import slotRouter from '@/modules/slots/routes';
 import corporateRouter from '@/modules/corporates/routes';
 import fileRouter, { privateDocumentHeaders } from '@/modules/file/routes';
@@ -54,6 +56,7 @@ import { authenticate, authenticateOptional, denyRoles } from '@/modules/middlew
 export const configureRoutes = (app: Express): void => {
   // Q3: payment verification for partner-lab bookings is dispatched through the payment context registry.
   registerLabBookingPayments();
+  registerInstantPayments();
   // Simple static file serving - /api/static/*path
   // This allows direct access to files: base_url/api/static/bookings/12345/document.pdf
   const fileController = new FileController();
@@ -77,6 +80,7 @@ export const configureRoutes = (app: Express): void => {
   app.use('/api/v1/bills', authenticate, denyRoles('partner'), customerBillsRouter);
   app.use('/api/v1/partner-labs', authenticate, denyRoles('partner'), customerLabRouter);
   app.use('/api/v1/lab-bookings', authenticate, denyRoles('partner'), customerLabBookingRouter);
+  app.use('/api/v1/instant', authenticate, denyRoles('partner'), instantRouter);
   app.use('/api/v1/slots', authenticate, denyRoles('partner'), slotRouter);
   app.use('/api/v1/corporates', authenticate, denyRoles('partner'), corporateRouter);
   app.use('/api/v1/file', privateDocumentHeaders, authenticate, fileRouter);

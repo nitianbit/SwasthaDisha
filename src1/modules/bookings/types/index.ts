@@ -138,6 +138,8 @@ export interface IBooking {
   /** Q3 §7a: settled by the legacy payouts or the ledger (never both). */
   settlementSystem?: 'legacy' | 'ledger';
   settlement?: { settlementAccountId?: string; beneficiaryName?: string };
+  bookingKind?: 'scheduled' | 'instant';
+  instantRequestId?: string;
   walletFunding?: { total: number; revision?: number; closed?: boolean;
     captures?: { recordId: string; amount: number; state: 'applied' | 'returned' }[]; updatedAt?: Date };
   

@@ -18,3 +18,36 @@ export const scheduleTemplateSchema = Joi.object({
 });
 export const leaveSchema = Joi.object({ date: ymd.required() });
 export const leaveParamSchema = Joi.object({ date: ymd.required() });
+
+const objectId = Joi.string().pattern(/^[0-9a-fA-F]{24}$/);
+const instantMode = Joi.string().valid('video', 'call', 'chat');
+const target = Joi.object({
+  kind: Joi.string().valid('specific', 'any').required(),
+  doctorId: objectId.when('kind', { is: 'specific', then: Joi.required(), otherwise: Joi.forbidden() }),
+});
+
+export const presenceSchema = Joi.object({
+  available: Joi.boolean().required(),
+  modes: Joi.array().items(instantMode).unique().max(3),
+  instantFeeMinor: Joi.number().integer().min(0).max(100_000_000),
+});
+export const requestIdParamSchema = Joi.object({ requestId: objectId.required() });
+export const bookingIdParamSchema = Joi.object({ bookingId: objectId.required() });
+export const extendSchema = Joi.object({ minutes: Joi.number().integer().min(1).max(60).required() });
+export const onlineDoctorsQuerySchema = Joi.object({ specialization: Joi.string().trim().min(2).max(80).required(), mode: instantMode.required() });
+export const quoteQuerySchema = onlineDoctorsQuerySchema.append({ doctorId: objectId });
+export const createInstantSchema = Joi.object({
+  target: target.required(),
+  specialization: Joi.string().trim().min(2).max(80).required(),
+  mode: instantMode.required(),
+  patient: Joi.object({
+    kind: Joi.string().valid('self', 'dependent').required(),
+    dependentId: objectId.when('kind', { is: 'dependent', then: Joi.required(), otherwise: Joi.forbidden() }),
+  }).required(),
+  couponCode: Joi.string().trim().max(40),
+  useWalletBalance: Joi.boolean(),
+  requestKey: Joi.string().pattern(/^[A-Za-z0-9_-]{8,64}$/).required(),
+});
+export const payInstantSchema = Joi.object({ useWalletBalance: Joi.boolean() });
+export const reofferSchema = Joi.object({ target: target.required() });
+export const adminCancelInstantSchema = Joi.object({ reason: Joi.string().trim().min(3).max(500).required() });

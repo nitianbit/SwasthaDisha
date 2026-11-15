@@ -432,6 +432,9 @@ const bookingSchema = new Schema<IBooking>(
       enum: ['legacy', 'ledger'],
       default: 'legacy',
     },
+    // Q4b: 'instant' consultations come from an accepted InstantRequest (money held there, not on this booking).
+    bookingKind: { type: String, enum: ['scheduled', 'instant'] },
+    instantRequestId: { type: String },
     // Q4 §7a: the doctor's settlement account at creation (ledger bookings only); earnings never re-derive it.
     settlement: {
       settlementAccountId: { type: String },
@@ -487,6 +490,7 @@ bookingSchema.index({ bookingType: 1, status: 1 });
 bookingSchema.index({ wellnessPackageId: 1, status: 1 });
 bookingSchema.index({ specialistId: 1, status: 1 });
 bookingSchema.index({ specialistId: 1, settlementSystem: 1, bookingType: 1, bookingDate: 1 });
+bookingSchema.index({ instantRequestId: 1 }, { unique: true, partialFilterExpression: { instantRequestId: { $type: 'string' } } });
 bookingSchema.index({ slotId: 1, status: 1 }); // Index for slot-based queries
 bookingSchema.index({ bookingDate: 1, bookingTime: 1 });
 bookingSchema.index({ status: 1, paymentStatus: 1 });

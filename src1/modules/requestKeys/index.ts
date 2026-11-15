@@ -10,6 +10,7 @@ import { SupplierReturnModel } from '@/modules/pharmacyInventory/model/supplierR
 import BookingModel from '@/modules/bookings/model';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
 import { PartnerLabBookingModel } from '@/modules/partners/model/labBooking';
+import { InstantRequestModel } from '@/modules/doctors/model/instant';
 import { rebindStored } from '@/modules/file/access';
 
 /**
@@ -17,7 +18,7 @@ import { rebindStored } from '@/modules/file/access';
  * was reloaded before it learnt the outcome of a request can only make a NEW request after the old key is either found
  * (it was performed) or abandoned here (it can never be performed). No time-based guess is involved.
  */
-export type OnceOnlyKind = 'customer_return' | 'supplier_return' | 'booking_create' | 'pharmacy_checkout' | 'lab_booking_create';
+export type OnceOnlyKind = 'customer_return' | 'supplier_return' | 'booking_create' | 'pharmacy_checkout' | 'lab_booking_create' | 'instant_request_create';
 
 /**
  * Inside the operation's transaction: refuses a key that was abandoned, and claims it as used. The claim is written in
@@ -53,12 +54,12 @@ export const requestKeyRouter = Router();
 requestKeyRouter.post('/abandon', catchAsync(async (req: AuthRequest, res: Response) => {
   const kind = req.body?.kind as OnceOnlyKind;
   const key = typeof req.body?.key === 'string' ? req.body.key.trim() : '';
-  if (!KEY.test(key) || !['customer_return', 'supplier_return', 'booking_create', 'pharmacy_checkout', 'lab_booking_create'].includes(kind)) {
+  if (!KEY.test(key) || !['customer_return', 'supplier_return', 'booking_create', 'pharmacy_checkout', 'lab_booking_create', 'instant_request_create'].includes(kind)) {
     throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'kind and key are required' });
   }
   const user = req.user;
   let owner: string;
-  if (kind === 'booking_create' || kind === 'pharmacy_checkout' || kind === 'lab_booking_create') {
+  if (kind === 'booking_create' || kind === 'pharmacy_checkout' || kind === 'lab_booking_create' || kind === 'instant_request_create') {
     if (user?.userType !== 'user') throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
     owner = String(user._id);
   } else {
@@ -74,6 +75,8 @@ requestKeyRouter.post('/abandon', catchAsync(async (req: AuthRequest, res: Respo
     : kind === 'supplier_return' ? await SupplierReturnModel.findOne({ pharmacyId: owner, requestKey: key }).lean()
     : kind === 'pharmacy_checkout'
       ? await PharmacyOrderModel.findOne({ customerId: { $eq: owner }, checkoutRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
+    : kind === 'instant_request_create'
+      ? await InstantRequestModel.findOne({ userId: { $eq: owner }, createRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
     : kind === 'lab_booking_create'
       ? await PartnerLabBookingModel.findOne({ userId: { $eq: owner }, createRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
     : await BookingModel.findOne({ userId: { $eq: owner }, createRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean();

@@ -245,6 +245,8 @@ export async function cancelBookingSettlement(p: {
       : { userId: { $eq: p.requester._id } };
     const booking = await BookingModel.findOne({ _id: id, ...owner }).session(s).lean() as IBooking | null;
     if (!booking) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
+    // Q4b: an instant consultation's money is held by its InstantRequest; only the instant cancel command refunds it.
+    if (booking.bookingKind === 'instant') throw conflict('INSTANT_CONSULT_COMMAND_REQUIRED', 'Use the instant consultation cancel command');
     const already = booking.status === 'cancelled';
     if (already && !booking.walletFunding?.closed) return { booking, refunded: 0, alreadyCancelled: true };
     if (!already && !CANCELLABLE_BOOKING_STATUSES.includes(String(booking.status))) {

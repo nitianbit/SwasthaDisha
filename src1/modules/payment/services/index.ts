@@ -490,6 +490,8 @@ export class PaymentService {
             ? 'po'
           : data.context === 'lab_booking'
             ? 'lb'
+          : data.context === 'instant_request'
+            ? 'ic'
           : 'bk';
     const contextId = String(data.contextId || '');
     const userId = String(data.userId || '');
@@ -670,7 +672,7 @@ export class PaymentService {
    */
   async createDirectPaidBookingRecordIn(data: CreateDirectPaidTransactionRequest, session: ClientSession,
     id: Types.ObjectId = new Types.ObjectId()): Promise<IPaymentRecord> {
-    if (data.context !== 'booking' && data.context !== 'lab_booking') {
+    if (data.context !== 'booking' && data.context !== 'lab_booking' && data.context !== 'instant_request') {
       throw new AppError({ status: 500, code: 'INVALID_PAYMENT_CONTEXT', message: 'Booking payments only' });
     }
     const couponCode = typeof data.couponCode === 'string' && data.couponCode.trim() ? data.couponCode : undefined;
@@ -1871,7 +1873,7 @@ export class PaymentService {
   async sweepUnsettledBookingPayments(now = new Date(), limit = 100): Promise<{ checked: number; unsettled: number }> {
     const records = await PaymentRecordModel.find({
       // D3: pharmacy order payments too, so a lost browser continuation never strands a capture.
-      context: { $in: ['booking', 'pharmacy_order', 'lab_booking'] }, ...UNSETTLED_ATTEMPT,
+      context: { $in: ['booking', 'pharmacy_order', 'lab_booking', 'instant_request'] }, ...UNSETTLED_ATTEMPT,
       createdAt: { $lt: new Date(now.getTime() - 10 * 60_000) },
       $and: [{ $or: [{ recoveryNextAt: { $exists: false } }, { recoveryNextAt: null }, { recoveryNextAt: { $lte: now } }] }],
     }).sort({ recoveryNextAt: 1, createdAt: 1 }).limit(limit).lean();

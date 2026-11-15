@@ -1,4 +1,4 @@
-export type PaymentContext = 'wallet_recharge' | 'booking' | 'external_booking' | 'pharmacy_order' | 'lab_booking';
+export type PaymentContext = 'wallet_recharge' | 'booking' | 'external_booking' | 'pharmacy_order' | 'lab_booking' | 'instant_request';
 export type PaymentRecordStatus = 'created' | 'paid' | 'failed' | 'refunded';
 
 export interface IPaymentRecord {
