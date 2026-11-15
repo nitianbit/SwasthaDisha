@@ -1,6 +1,6 @@
 # Q — Partner labs, clinics and doctors: online bookings, instant consultations, in-house sales (design, 2026-11-15)
 
-Status: design revised after Codex re-review (msg_1794739368286_a4bh1bx6). Built in packets Q1–Q6 (§10), each reviewed by Codex.
+Status: design revised after Codex re-review #2 (msg_1794739862185_xpph309k). Built in packets Q1–Q6 (§10), each reviewed by Codex.
 
 ## 1. Owner decisions (15 Nov 2026, asked directly)
 
@@ -132,15 +132,19 @@ Status: design revised after Codex re-review (msg_1794739368286_a4bh1bx6). Built
 - **Scheduled (existing, fixed):** weekly template expanded into slots (rolling 30 days), leave days, per-mode slots
   (video/call/chat/in-clinic) and per-clinic slots (`branchId`); conditional seat counters; fix the portal cancel
   (dedicated cancel command with refund); add `no_show`.
-- **Doctor interval reservations:** all booking paths (scheduled, instant, in-clinic) share a
+- **Doctor interval reservations with concurrency guard:** all booking paths (scheduled, instant, in-clinic) share a
   `DoctorReservation { doctorId, bookingId, kind, startTime, endTime, branchId?, isActive }` collection with a
-  compound index on `{doctorId, isActive, startTime, endTime}`. Each reservation represents an interval. Acceptance
-  of any booking type must atomically insert a reservation and verify no overlapping active reservation exists for
-  that doctor (query: active reservations where `startTime < newEnd AND endTime > newStart`). This allows
-  nonoverlapping appointments across branches/modes (e.g., tomorrow 10:00 and tomorrow 11:00) while preventing
-  double-booking of overlapping times. Instant consultations create a reservation with a short duration (e.g., 30
-  min default, extended on completion). Presence heartbeat (`PUT /presence`) must not overwrite `busy` state — it
-  only refreshes `lastSeen` when the doctor has no active instant reservation.
+  compound index on `{doctorId, isActive, startTime, endTime}`, plus a **`DoctorScheduleGuard`** document per doctor
+  (unique index on `doctorId`, `{ doctorId, version: Number }`). Every reservation admission/change transaction must:
+  (1) `findOneAndUpdate` the guard document (`$inc: {version: 1}` with the doctor's `_id`; upsert on first use),
+  (2) query for overlapping active reservations (`startTime < newEnd AND endTime > newStart`),
+  (3) if no overlap, insert the `DoctorReservation`. Because both concurrent transactions mutate the same guard
+  document, MongoDB's WiredTiger write conflict detection forces one to retry, eliminating the read-then-insert
+  write-skew. The overlap query runs within the transaction and sees a consistent snapshot. This combines concurrency
+  exclusion (guard document) with nonoverlapping appointment coexistence (interval rows).
+  Instant consultations create a reservation with a short duration (e.g., 30 min default, extended on completion).
+  Presence heartbeat (`PUT /presence`) must not overwrite `busy` state — it only refreshes `lastSeen` when the
+  doctor has no active instant reservation.
 - **Instant:** doctor toggles **"available now"** with modes and an `instantFee` (falls back to `consultationFee`);
   presence expires without a heartbeat (2 min) and on sign-out/busy.
 - **Instant request lifecycle:**
@@ -152,13 +156,21 @@ Status: design revised after Codex re-review (msg_1794739368286_a4bh1bx6). Built
   - **Acceptance eligibility and funding allocation:** a doctor can accept only if their `instantFee <= quotedAmount`,
     the current offer has not expired (specific: 5 min, any-available: 5 min per generation), the doctor is currently
     available (mode eligible, not in an overlapping reservation), and the request's `fundingState` is `'held'`
-    (not already refunded). On accept, the exact fee is **allocated** from the held funding in priority order:
-    coupon first (non-withdrawable), then wallet, then gateway. The difference (`quotedAmount − instantFee`) is
-    refunded: coupon portion is voided (not converted to wallet credit), wallet portion returned to wallet, gateway
-    portion returned to source. The request's `allocatedAmountMinor` and `refundedAmountMinor` are updated
-    atomically; `fundingState` transitions `held → allocated`. All subsequent refunds (cancellation, etc.) are
-    limited to `allocatedAmountMinor − previouslyRefundedMinor`. This prevents the booking cancellation path from
-    refunding the original `quotedAmount` instead of the allocated `instantFee`.
+    (not already refunded). On accept, funding is **split** into two pools in one atomic update:
+    - **Allocated** (used for the consultation): `instantFee`, allocated from the held funding in priority order —
+      coupon first, then wallet, then gateway. Stored per-source:
+      `allocated: {couponMinor, walletMinor, gatewayMinor, totalMinor}`.
+    - **Returned** (quote difference, immediate): `quotedAmount − instantFee`, returned from the held funding in
+      reverse priority — gateway first, then wallet; coupon portion is voided (not converted to wallet credit).
+      Stored per-source: `returned: {couponVoidedMinor, walletMinor, gatewayMinor, totalMinor}`.
+    - `fundingState` transitions `held → allocated`.
+    - **Invariant:** `allocated.totalMinor + returned.totalMinor == quotedAmount` (verified on write).
+    - **Subsequent refunds** (cancellation, etc.) draw only from `allocated`, not from `returned` or `quotedAmount`.
+      A separate `refunded: {walletMinor, gatewayMinor, totalMinor}` tracks what has been refunded against the
+      allocation. Refund limit: `allocated.walletMinor − refunded.walletMinor` for wallet,
+      `allocated.gatewayMinor − refunded.gatewayMinor` for gateway. Coupon allocation is non-refundable (voided on
+      cancellation). This prevents double-refunding the quote difference and ensures coupon discounts never become
+      withdrawable wallet credit.
   - **Specific doctor:** offered to that doctor for **5 minutes**; the offer carries an `offerGeneration` counter
     incremented on each re-offer, and an `offerExpiresAt` deadline. Accept must CAS on the current
     `offerGeneration`, `status: 'offered'`, and verify `now < offerExpiresAt`.
@@ -207,18 +219,25 @@ Status: design revised after Codex re-review (msg_1794739368286_a4bh1bx6). Built
   supply match; IGST otherwise. `gstRate` per item must be from the allowed set (validated, not arbitrary);
   `gstRate: 0` is an explicit no-tax line (exempt/nil-rated).
 
-  **Invoice classification by supplier tax regime:** the Partner stores `taxRegime: 'regular'|'composition'|'unregistered'`
-  (set by admin at verification; default `'unregistered'` until GSTIN is verified).
-  - `regular` + verified GSTIN → **tax invoice**: GSTIN printed, per-line GST calculated and shown, tax totals shown.
+  **Invoice classification by supplier tax regime and supply type:** the Partner stores
+  `taxRegime: 'regular'|'composition'|'unregistered'` (set by admin at verification; default `'unregistered'` until
+  GSTIN is verified). The invoice classification depends on both the regime and the line items:
+  - `regular` + verified GSTIN + **at least one taxable line** (gstRate > 0) → **tax invoice**: GSTIN printed,
+    per-line GST calculated and shown, tax totals shown. Mixed taxable + exempt lines are allowed (exempt lines
+    show gstRate: 0 with zero tax).
+  - `regular` + verified GSTIN + **all lines exempt/nil-rated** (every gstRate == 0) → **bill of supply**: GSTIN
+    printed, no tax breakdown (all supplies are exempt). This correctly classifies a registered supplier's
+    exempt-only document.
   - `composition` + verified GSTIN → **bill of supply**: GSTIN printed, no per-line GST breakdown (composition
     suppliers cannot charge GST to customers), all line amounts are inclusive. A note "Composition dealer — tax not
-    chargeable" is printed.
+    chargeable" is printed. All `gstRate` fields must be 0.
   - `unregistered` (no verified GSTIN) → **commercial invoice**: no GSTIN, no GST breakdown. All `gstRate` fields
     must be 0; the system rejects invoice creation with nonzero tax rates for unregistered suppliers.
 
-  The classification is frozen into the invoice at creation time from the Partner's current `taxRegime` and GSTIN
-  state. Tax fields are enforced by the classification: a `composition` or `unregistered` invoice cannot have nonzero
-  computed tax amounts.
+  The classification (`documentKind: 'tax_invoice'|'bill_of_supply'|'commercial_invoice'`) is computed at creation
+  time from the Partner's current `taxRegime`, GSTIN state, and line item tax rates, then **frozen** into the
+  invoice. Tax fields are enforced by the classification: a `bill_of_supply` or `commercial_invoice` cannot have
+  nonzero computed tax totals.
 - **Immutability:** the issued invoice document is **never mutated**. Payment and cancellation are recorded as separate
   **InvoiceEvent** documents `{ invoiceId, kind: 'payment'|'cancellation', ...payload, at, by }`. The invoice's
   `checksum` covers all financial fields and is verified on every read. Payment event:
@@ -262,12 +281,18 @@ Walk-in linking, partner walk-in, and any future path that needs to find-or-crea
 coordinated path: `resolveCustomerByPhone(phone, source)`.
 
 1. Normalize the phone to ten-digit canonical form.
-2. `findOneAndUpdate` with `{ phone, userType: 'user' }` and `$setOnInsert: { createdSource: source }`, `upsert: true`,
-   `returnDocument: 'after'`. The unique index `{phone, userType}` prevents duplicates from concurrent calls.
-   Legacy ambiguous matches (multiple accounts for one phone due to historical data) are handled by selecting the
-   most recently active account; the resolver never silently merges or deletes the others.
-3. If the upsert created a new user, send the SMS link.
-4. Never merge accounts or overwrite an existing customer's name/verified-contact fields from invoice input.
+2. Query `{ phone, userType: 'user' }`. If exactly one match, use it. If no match, create via `findOneAndUpdate`
+   with `$setOnInsert` and `upsert: true`; the unique index `{phone, userType}` prevents concurrent duplicates.
+3. **Ambiguous legacy matches** (multiple accounts for the same phone — possible from historical data before the
+   unique index): the resolver **fails closed**. It does not select one or create another. Instead, it returns a
+   quarantine result: the invoice/report is created without a `customer.userId` link, and an admin notification is
+   queued. The admin must resolve the ambiguity (merge or designate canonical) before the link is established.
+   The OTP login path (`user/repositories/index.ts`) must use the same canonical resolution — until the unique
+   index is established, both paths must agree on which account is authoritative. **Index admission:** the unique
+   `{phone, userType}` index is installed only after a migration script verifies no duplicates exist (or resolves
+   them). Until then, the resolver uses the query-then-upsert pattern with the quarantine fallback.
+4. If the upsert created a new user, send the SMS link.
+5. Never merge accounts or overwrite an existing customer's name/verified-contact fields from invoice input.
 5. The visit patient/dependent (age, gender on the invoice) is distinct from the billing contact (the linked
    customer account). Invoice `customer.userId` points to the resolved account; patient details stay on the
    invoice line.
@@ -300,16 +325,25 @@ Every entity that can earn money through the platform has a **SettlementAccount*
   the other.
 - **Cutover steps (Q3, before Q4):**
   1. Add `settlementSystem: 'legacy'` to all existing bookings (migration script, idempotent).
-  2. Reconcile historical state: compute each doctor's `earnings` (sum of completed consultation amounts),
-     `disbursed` (sum of recorded payouts/billings from the old system), and `outstandingDue = earnings − disbursed`.
-     Import as an `opening_balance` ledger entry per doctor's settlement account. This gives the ledger an accurate
-     starting balance without double-counting.
-  3. Import each historical disbursal as a `payout` ledger entry with `source: 'legacy_import'` and the billing
-     period/reference, so the ledger statement shows complete history.
-  4. Set a `cutoverDate` in config. All bookings created after `cutoverDate` get `settlementSystem: 'ledger'`
-     automatically.
-  5. The legacy system continues to operate on `settlementSystem: 'legacy'` bookings only — it can still settle
-     pre-cutover bookings that complete after cutover, but the ledger does not duplicate those earnings.
+  2. Set a `cutoverDate` in config. All bookings created after `cutoverDate` get `settlementSystem: 'ledger'`
+     automatically. The legacy payout query adds `settlementSystem: 'legacy'`; the new ledger earning creation
+     requires `settlementSystem: 'ledger'`.
+  3. **Reconcile and import (net opening balance only):** compute each doctor's net outstanding due from the legacy
+     system: `outstandingDue = Σ(completed consultation amounts for legacy bookings) − Σ(disbursed from old payout
+     billings)`. Import as a single `opening_balance` ledger entry per doctor's settlement account with
+     `amountMinor = outstandingDue`. Historical disbursals are imported as **non-posting reference records** (a
+     separate `LedgerHistoryRef` collection with `source: 'legacy_import'`, billing period, amounts) visible on the
+     statement for context but **not** included in the ledger balance sum. This prevents double-counting: the
+     opening balance already accounts for what was paid.
+  4. **Legacy unpaid liabilities stay with the legacy system.** The `opening_balance` entry represents only the net
+     due that will be paid through the new ledger. Pre-cutover bookings that complete after cutover and are still
+     `settlementSystem: 'legacy'` are settled exclusively by the old system — their earnings/payouts do **not**
+     appear in the new ledger balance. The opening balance is computed once at cutover; subsequent legacy settlements
+     reduce the old system's liability, not the new ledger's.
+  5. **Balance equation (verified at cutover):** for each doctor,
+     `opening_balance == Σ(legacy completed amounts) − Σ(legacy disbursals)`. This is checked by the migration
+     script and logged. Any discrepancy is flagged for manual review before activation.
+  6. The two systems are permanently partitioned by `settlementSystem`. Each liability has exactly one payable owner.
 - From that point forward, every new booking earning goes exclusively to the ledger. The two systems are
   permanently partitioned by `settlementSystem`.
 - This cutover is in Q3 (before Q4 doctors), not deferred to Q5. Q5 delivers the partner finance screens and admin
