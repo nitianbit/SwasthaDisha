@@ -10,6 +10,7 @@ import { undoCouponUsageIn } from '@/modules/coupon/usage';
 import PaymentRecordModel from '@/modules/payment/model';
 import { WalletTransactionModel } from '@/modules/wallet/model';
 import { WalletRepository } from '@/modules/wallet/repository';
+import { settlementSystemFor } from '@/modules/partners/services/cutover';
 
 /**
  * Ordinary-booking holds and settlement (option A, phase A2a; milestone C1–C5/E5 on the walletFunding ledger).
@@ -147,7 +148,7 @@ export async function createBookingWithHolds(input: IBooking): Promise<IBooking>
     if (typeof requestKey === 'string' && requestKey) {
       await claimRequestKey(scopeOf('booking_create', String((doc as { userId?: unknown }).userId)), requestKey, s);
     }
-    const [created] = await BookingModel.create([{ ...doc, holds }], { session: s });
+    const [created] = await BookingModel.create([{ ...doc, holds, settlementSystem: settlementSystemFor(new Date()) }], { session: s });
     return created.toObject() as IBooking;
   });
 }

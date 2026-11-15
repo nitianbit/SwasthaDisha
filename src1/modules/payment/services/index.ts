@@ -56,6 +56,7 @@ import {
   CreatePaymentOrderRequest,
   CreateDirectPaidTransactionRequest,
   IPaymentRecord,
+  PaymentContext,
   VerifyPaymentRequest,
 } from '@/modules/payment/types';
 
@@ -92,6 +93,24 @@ class SettlementAlreadyDecided extends Error {}
 /** D3: order states that can take a captured payment (pending_cancel records it without moving). */
 const PHARMACY_ORDER_PAYABLE_STATUSES: string[] = ['placed', 'accepted', 'packed', 'ready_for_pickup', 'out_for_delivery',
   'delivery_failed', 'pending_cancel'];
+
+/**
+ * Q3: booking-like contexts owned by other modules register how a verified payment is applied, so this service does not
+ * import them (the lab-booking module registers 'lab_booking'). Checked after the built-in contexts.
+ */
+export interface PaymentContextHandler {
+  /** Applies a paid, not yet processed record exactly once; must call `finalize` (applied) or `markReturned` (returned). */
+  process(record: IPaymentRecord, helpers: {
+    finalize(record: IPaymentRecord): Promise<IPaymentRecord>;
+    markReturned(record: IPaymentRecord): Promise<IPaymentRecord>;
+  }): Promise<{ paymentRecord: IPaymentRecord; entity: unknown }>;
+  /** The entity shown for an already processed record. */
+  entity(record: IPaymentRecord): Promise<unknown>;
+}
+const CONTEXT_HANDLERS = new Map<PaymentContext, PaymentContextHandler>();
+export function registerPaymentContextHandler(context: PaymentContext, handler: PaymentContextHandler): void {
+  CONTEXT_HANDLERS.set(context, handler);
+}
 
 @Service()
 export class PaymentService {
@@ -469,6 +488,8 @@ export class PaymentService {
           ? 'eb'
           : data.context === 'pharmacy_order'
             ? 'po'
+          : data.context === 'lab_booking'
+            ? 'lb'
           : 'bk';
     const contextId = String(data.contextId || '');
     const userId = String(data.userId || '');
@@ -649,7 +670,9 @@ export class PaymentService {
    */
   async createDirectPaidBookingRecordIn(data: CreateDirectPaidTransactionRequest, session: ClientSession,
     id: Types.ObjectId = new Types.ObjectId()): Promise<IPaymentRecord> {
-    if (data.context !== 'booking') throw new AppError({ status: 500, code: 'INVALID_PAYMENT_CONTEXT', message: 'Booking payments only' });
+    if (data.context !== 'booking' && data.context !== 'lab_booking') {
+      throw new AppError({ status: 500, code: 'INVALID_PAYMENT_CONTEXT', message: 'Booking payments only' });
+    }
     const couponCode = typeof data.couponCode === 'string' && data.couponCode.trim() ? data.couponCode : undefined;
     await PaymentRecordModel.create([{
       _id: id, userId: data.userId, payerUserId: this.getPaymentPayerUserId(data), payerPharmacyId: data.payerPharmacyId,
@@ -960,7 +983,7 @@ export class PaymentService {
     paymentRecord: IPaymentRecord,
     module?: string
   ): boolean {
-    if (paymentRecord.context === 'wallet_recharge') {
+    if (paymentRecord.context === 'wallet_recharge' || CONTEXT_HANDLERS.has(paymentRecord.context)) {
       return false;
     }
     if (paymentRecord.context === 'external_booking') {
@@ -973,7 +996,7 @@ export class PaymentService {
     paymentRecord: IPaymentRecord,
     module?: string
   ): Promise<{
-    context: 'booking' | 'wallet_recharge' | 'external_booking' | 'pharmacy_order';
+    context: PaymentContext;
     paymentRecord: IPaymentRecord;
     entity: unknown;
   }> {
@@ -986,6 +1009,11 @@ export class PaymentService {
         paymentRecord,
         entity: external || {},
       };
+    }
+
+    const handler = CONTEXT_HANDLERS.get(paymentRecord.context);
+    if (handler) {
+      return { context: paymentRecord.context, paymentRecord, entity: (await handler.entity(paymentRecord)) ?? {} };
     }
 
     if (paymentRecord.context === 'booking') {
@@ -1843,7 +1871,7 @@ export class PaymentService {
   async sweepUnsettledBookingPayments(now = new Date(), limit = 100): Promise<{ checked: number; unsettled: number }> {
     const records = await PaymentRecordModel.find({
       // D3: pharmacy order payments too, so a lost browser continuation never strands a capture.
-      context: { $in: ['booking', 'pharmacy_order'] }, ...UNSETTLED_ATTEMPT,
+      context: { $in: ['booking', 'pharmacy_order', 'lab_booking'] }, ...UNSETTLED_ATTEMPT,
       createdAt: { $lt: new Date(now.getTime() - 10 * 60_000) },
       $and: [{ $or: [{ recoveryNextAt: { $exists: false } }, { recoveryNextAt: null }, { recoveryNextAt: { $lte: now } }] }],
     }).sort({ recoveryNextAt: 1, createdAt: 1 }).limit(limit).lean();
@@ -1931,7 +1959,12 @@ export class PaymentService {
    * could not be settled now (gateway unreachable, concurrent change): the caller must not start another payment.
    */
   async reconcileBookingPayments(bookingId: string): Promise<{ checked: number; unknown: number }> {
-    const records = await PaymentRecordModel.find({ context: 'booking', contextId: { $eq: String(bookingId) }, ...UNSETTLED_ATTEMPT })
+    return this.reconcileContextPayments('booking', bookingId);
+  }
+
+  /** reconcileBookingPayments for any booking-like context (every unsettled attempt of one record, each as its own payer). */
+  async reconcileContextPayments(context: PaymentContext, bookingId: string): Promise<{ checked: number; unknown: number }> {
+    const records = await PaymentRecordModel.find({ context, contextId: { $eq: String(bookingId) }, ...UNSETTLED_ATTEMPT })
       .sort({ createdAt: 1 }).lean();
     let unknown = 0;
     for (const r of records) {
@@ -1948,7 +1981,7 @@ export class PaymentService {
   }
 
   async verifyPaymentAndProcess(data: VerifyPaymentRequest): Promise<{
-    context: 'booking' | 'wallet_recharge' | 'external_booking' | 'pharmacy_order';
+    context: PaymentContext;
     paymentRecord: IPaymentRecord;
     entity: unknown;
   }> {
@@ -1967,7 +2000,7 @@ export class PaymentService {
    * entity once. Shared so both paths apply exactly the same rules.
    */
   private async processVerifiedPayment(paymentRecord: IPaymentRecord, module?: string): Promise<{
-    context: 'booking' | 'wallet_recharge' | 'external_booking' | 'pharmacy_order';
+    context: PaymentContext;
     paymentRecord: IPaymentRecord;
     entity: unknown;
   }> {
@@ -2084,6 +2117,15 @@ export class PaymentService {
         paymentRecord: result.paymentRecord,
         entity: result.entity,
       };
+    }
+
+    const contextHandler = CONTEXT_HANDLERS.get(paymentRecord.context);
+    if (contextHandler) {
+      const result = await contextHandler.process(paymentRecord, {
+        finalize: (r) => this.finalizePaymentProcessing(r),
+        markReturned: async (r) => ((await this.paymentRepository.update({ _id: r._id! }, { status: 'refunded', isProcessed: true })) || r) as IPaymentRecord,
+      });
+      return { context: paymentRecord.context, paymentRecord: result.paymentRecord, entity: result.entity };
     }
 
     throw new AppError({

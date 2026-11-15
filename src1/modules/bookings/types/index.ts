@@ -135,6 +135,8 @@ export interface IBooking {
   postPaymentCompletedFor?: string;
   /** Slot capacity / follow-up benefit held by this booking (bookings/holds.ts). */
   holds?: { version: 1; heldSlotId?: string | null; followUpParentId?: string | null };
+  /** Q3 §7a: settled by the legacy payouts or the ledger (never both). */
+  settlementSystem?: 'legacy' | 'ledger';
   walletFunding?: { total: number; revision?: number; closed?: boolean;
     captures?: { recordId: string; amount: number; state: 'applied' | 'returned' }[]; updatedAt?: Date };
   

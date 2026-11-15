@@ -44,6 +44,8 @@ export class BookingRepository extends BaseRepository<IBooking> {
     options: {
       from?: string;
       to?: string;
+      /** Q3 §7a: only bookings settled by the legacy payout system. */
+      legacyOnly?: boolean;
     } = {}
   ): Promise<{
     totalAppointments: number;
@@ -54,6 +56,7 @@ export class BookingRepository extends BaseRepository<IBooking> {
     const match: Record<string, unknown> = {
       specialistId,
       bookingType: 'consultation',
+      ...(options.legacyOnly ? { settlementSystem: { $ne: 'ledger' } } : {}),
     };
 
     if (options.from || options.to) {

@@ -8,7 +8,8 @@ export interface FileUpload {
   createdAt: Date;
 }
 
-export const GRANT_KINDS = ['public', 'booking', 'pharmacy_order', 'specialist', 'pharmacy', 'hr', 'user'] as const;
+export const GRANT_KINDS = ['public', 'booking', 'pharmacy_order', 'specialist', 'pharmacy', 'hr', 'user',
+  'partner_lab_report_draft', 'partner_lab_report'] as const;
 export type GrantKind = (typeof GRANT_KINDS)[number];
 
 /**

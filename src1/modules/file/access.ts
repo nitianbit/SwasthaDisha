@@ -4,6 +4,9 @@ import type { AuthRequest } from '@/modules/middleware/auth';
 import BookingModel from '@/modules/bookings/model';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
 import ExternalBookingModel from '@/modules/externalBookings/model';
+import { PartnerLabBookingModel } from '@/modules/partners/model/labBooking';
+import PartnerMemberModel from '@/modules/partners/model/member';
+import PartnerOrgModel from '@/modules/partners/model';
 import { FileGrantModel, FileUploadModel, type GrantKind } from './model/access';
 
 /**
@@ -57,6 +60,31 @@ async function canReadLabReport(r: Reader, bookingId: string): Promise<boolean> 
   return !!b && id(b.userId) === id(r._id);
 }
 
+/**
+ * Q3: a partner member reads a lab booking's report files while admitted (member and partner active), of the same partner,
+ * with the branch in scope, and holding one of `perms` (owners hold every permission).
+ */
+async function partnerMemberMayRead(r: Reader, b: { partnerId?: unknown; branchId?: unknown }, perms: string[]): Promise<boolean> {
+  if (r.userType !== 'partner') return false;
+  const m = await PartnerMemberModel.findById(id(r.memberId ?? r._id)).select({ partnerId: 1, role: 1, permissions: 1, branchIds: 1, isActive: 1 }).lean();
+  if (!m || m.isActive === false || id(m.partnerId) !== id(b.partnerId)) return false;
+  const p = await PartnerOrgModel.findById(id(m.partnerId)).select({ isActive: 1 }).lean();
+  if (!p || p.isActive === false) return false;
+  const scope = (m.branchIds ?? []).map(id);
+  if (m.role !== 'owner' && scope.length > 0 && !scope.includes(id(b.branchId))) return false;
+  return m.role === 'owner' || (m.permissions ?? []).some((x: string) => perms.includes(x));
+}
+
+async function canReadPartnerLabReport(r: Reader, bookingId: string, released: boolean): Promise<boolean> {
+  if (!isValidObjectId(bookingId)) return false;
+  const b = await PartnerLabBookingModel.findById(bookingId).select({ userId: 1, partnerId: 1, branchId: 1 }).lean();
+  if (!b) return false;
+  if (released && r.userType === 'user') return id(b.userId) === id(r._id);
+  return partnerMemberMayRead(r, b, released
+    ? ['reports.upload', 'reports.release', 'bookings.view', 'bookings.manage']
+    : ['reports.upload', 'reports.release']);
+}
+
 /** Whether a (non-admin) reader may read the resource a grant names. */
 async function canReadResource(r: Reader, kind: GrantKind, resourceId: string): Promise<boolean> {
   switch (kind) {
@@ -66,6 +94,8 @@ async function canReadResource(r: Reader, kind: GrantKind, resourceId: string): 
     case 'pharmacy': return r.userType === 'pharmacy' && pharmacyOf(r) === resourceId;
     case 'hr': return r.userType === 'hr' && id(r._id) === resourceId;
     case 'user': return r.userType === 'user' && id(r._id) === resourceId;
+    case 'partner_lab_report_draft': return canReadPartnerLabReport(r, resourceId, false);
+    case 'partner_lab_report': return canReadPartnerLabReport(r, resourceId, true);
     default: return false;
   }
 }
@@ -422,6 +452,8 @@ export const FILE_FIELDS: Record<string, [field: string, kind: GrantKind][]> = {
   ExternalCatalogItem: [['image', 'public'], ['coverImage', 'public']],
   Booking: [['documents.url', 'booking'], ['prescription.fileUrls', 'booking'], ['report.fileUrls', 'booking']],
   PharmacyOrder: [['prescriptionUrls', 'pharmacy_order']],
+  // Q3: drafts are partner-only; a released file moves to releasedFiles (the draft binding then no longer counts).
+  PartnerLabBooking: [['report.draftFiles', 'partner_lab_report_draft'], ['report.releasedFiles', 'partner_lab_report']],
 };
 
 /** Specs for the fields this write touches (a field absent from a partial update is not changed, so not checked). */

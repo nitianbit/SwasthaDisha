@@ -1,0 +1,257 @@
+import { ClientSession } from 'mongoose';
+import { AppError } from '@/modules/common/types';
+import BranchModel from '@/modules/partners/model/branch';
+import {
+  PartnerSlotModel,
+  PartnerSlotTemplateModel,
+  IPartnerSlot,
+  IPartnerSlotTemplate,
+  ISlotWindow,
+  VisitMode,
+  Weekday,
+  WEEKDAYS,
+} from '@/modules/partners/model/slot';
+import { PartnerActor, assertBranchInScope, inTransaction, recordPartnerAudit } from '@/modules/partners/services';
+
+const IST_OFFSET_MIN = 330;
+export const ROLLING_DAYS = 30;
+
+const toMinutes = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+const toHHMM = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
+/** UTC instant of an India-time date + HH:mm. */
+export function istInstant(date: string, hhmm: string): Date {
+  const [y, mo, d] = date.split('-').map(Number);
+  return new Date(Date.UTC(y!, mo! - 1, d!, 0, 0) + (toMinutes(hhmm) - IST_OFFSET_MIN) * 60_000);
+}
+
+/** India-time calendar date of an instant, YYYY-MM-DD. */
+export function istDate(at: Date): string {
+  return new Date(at.getTime() + IST_OFFSET_MIN * 60_000).toISOString().slice(0, 10);
+}
+
+export function addDays(date: string, n: number): string {
+  const t = Date.UTC(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10))) + n * 86_400_000;
+  return new Date(t).toISOString().slice(0, 10);
+}
+
+function weekdayOf(date: string): Weekday {
+  const t = Date.UTC(Number(date.slice(0, 4)), Number(date.slice(5, 7)) - 1, Number(date.slice(8, 10)));
+  return WEEKDAYS[new Date(t).getUTCDay()]!;
+}
+
+/** Slot start/end times a template gives for one weekday (whole slots only, windows may not overlap). */
+export function slotTimesFor(template: Pick<IPartnerSlotTemplate, 'slotMinutes' | 'days'>, day: Weekday): { start: string; end: string }[] {
+  const out: { start: string; end: string }[] = [];
+  for (const w of template.days[day] ?? []) {
+    for (let m = toMinutes(w.start); m + template.slotMinutes <= toMinutes(w.end); m += template.slotMinutes) {
+      out.push({ start: toHHMM(m), end: toHHMM(m + template.slotMinutes) });
+    }
+  }
+  return out;
+}
+
+function validateWindows(days: Partial<Record<Weekday, ISlotWindow[]>>): void {
+  for (const [day, windows] of Object.entries(days)) {
+    const sorted = [...(windows ?? [])].sort((a, b) => toMinutes(a.start) - toMinutes(b.start));
+    for (let i = 0; i < sorted.length; i++) {
+      if (toMinutes(sorted[i]!.end) <= toMinutes(sorted[i]!.start)) {
+        throw new AppError({ status: 400, code: 'INVALID_WINDOW', message: `${day}: a window must end after it starts` });
+      }
+      if (i > 0 && toMinutes(sorted[i]!.start) < toMinutes(sorted[i - 1]!.end)) {
+        throw new AppError({ status: 400, code: 'OVERLAPPING_WINDOWS', message: `${day}: windows overlap` });
+      }
+    }
+  }
+}
+
+async function branchFor(actor: PartnerActor, branchId: string, visitMode: VisitMode) {
+  const branch = await BranchModel.findById(branchId).lean();
+  if (!branch || String(branch.partnerId) !== actor.partnerId || branch.isActive === false) {
+    throw new AppError({ status: 404, code: 'BRANCH_NOT_FOUND', message: 'Branch not found' });
+  }
+  assertBranchInScope(actor, branchId);
+  const offered = visitMode === 'home' ? branch.services?.homeCollection : branch.services?.inLab;
+  if (!offered) {
+    throw new AppError({ status: 409, code: 'VISIT_MODE_NOT_OFFERED', message: `This branch does not offer ${visitMode === 'home' ? 'home collection' : 'lab visits'}` });
+  }
+  return branch;
+}
+
+export async function saveSlotTemplate(
+  actor: PartnerActor,
+  branchId: string,
+  visitMode: VisitMode,
+  input: { slotMinutes: number; capacity: number; days: Partial<Record<Weekday, ISlotWindow[]>> },
+  now = new Date()
+): Promise<{ template: IPartnerSlotTemplate; expansion: ExpansionResult }> {
+  await branchFor(actor, branchId, visitMode);
+  validateWindows(input.days);
+  const template = await inTransaction(async (session) => {
+    const t = await PartnerSlotTemplateModel.findOneAndUpdate(
+      { branchId, visitMode },
+      { $set: { partnerId: actor.partnerId, slotMinutes: input.slotMinutes, capacity: input.capacity, days: input.days, isActive: true } },
+      { upsert: true, new: true, session }
+    ).lean();
+    await recordPartnerAudit(actor, 'slots.template.save', { kind: 'branch', id: branchId }, { visitMode, ...input }, session);
+    return t as IPartnerSlotTemplate;
+  });
+  const expansion = await expandSlots(branchId, visitMode, istDate(now), ROLLING_DAYS);
+  return { template, expansion };
+}
+
+export interface ExpansionResult { inserted: number; closed: number; reopened: number }
+
+/**
+ * Brings slots for [fromDate, fromDate+days) in line with the template and the branch holidays. Only inserts missing
+ * slots, closes template slots that are no longer wanted (holds kept), and reopens slots it closed itself. Never deletes
+ * a slot, never touches `booked`, never reopens a manual closure. Safe to run repeatedly and concurrently.
+ */
+export async function expandSlots(branchId: string, visitMode: VisitMode, fromDate: string, days: number): Promise<ExpansionResult> {
+  const result: ExpansionResult = { inserted: 0, closed: 0, reopened: 0 };
+  const [template, branch] = await Promise.all([
+    PartnerSlotTemplateModel.findOne({ branchId, visitMode }).lean(),
+    BranchModel.findById(branchId).lean(),
+  ]);
+  if (!template || !branch) return result;
+  const holidays = new Set((branch.holidays ?? []).map(String));
+  const live = template.isActive && branch.isActive !== false;
+  for (let i = 0; i < days; i++) {
+    const date = addDays(fromDate, i);
+    const holiday = holidays.has(date);
+    const wanted = live && !holiday ? slotTimesFor(template, weekdayOf(date)) : [];
+    const wantedStarts = new Set(wanted.map((w) => w.start));
+    if (wanted.length > 0) {
+      const ops = wanted.map((w) => ({
+        updateOne: {
+          filter: { branchId, visitMode, date, startTime: w.start },
+          update: {
+            $setOnInsert: {
+              partnerId: String(branch.partnerId), branchId, visitMode, date, startTime: w.start, endTime: w.end,
+              startsAt: istInstant(date, w.start), endsAt: istInstant(date, w.end),
+              capacity: template.capacity, booked: 0, closed: null, source: 'template',
+            },
+          },
+          upsert: true,
+        },
+      }));
+      const r = await PartnerSlotModel.bulkWrite(ops as any, { ordered: false });
+      result.inserted += r.upsertedCount;
+      const reopened = await PartnerSlotModel.updateMany(
+        { branchId, visitMode, date, startTime: { $in: [...wantedStarts] }, closed: { $in: ['holiday', 'template'] } },
+        { $set: { closed: null } }
+      );
+      result.reopened += reopened.modifiedCount;
+    }
+    const closed = await PartnerSlotModel.updateMany(
+      { branchId, visitMode, date, closed: null, ...(holiday ? {} : { source: 'template', startTime: { $nin: [...wantedStarts] } }) },
+      { $set: { closed: holiday ? 'holiday' : 'template' } }
+    );
+    result.closed += closed.modifiedCount;
+  }
+  return result;
+}
+
+/** Daily rolling expansion for every active template (run by the scheduler). */
+export async function expandAllRolling(now = new Date()): Promise<number> {
+  let n = 0;
+  for await (const t of PartnerSlotTemplateModel.find({ isActive: true }).lean().cursor() as AsyncIterable<IPartnerSlotTemplate>) {
+    const r = await expandSlots(t.branchId, t.visitMode, istDate(now), ROLLING_DAYS);
+    n += r.inserted;
+  }
+  return n;
+}
+
+async function slotFor(actor: PartnerActor, slotId: string): Promise<IPartnerSlot> {
+  const slot = await PartnerSlotModel.findById(slotId).lean();
+  if (!slot || slot.partnerId !== actor.partnerId) throw new AppError({ status: 404, code: 'SLOT_NOT_FOUND', message: 'Slot not found' });
+  assertBranchInScope(actor, slot.branchId);
+  return slot;
+}
+
+/** Capacity may change, but never below the seats already held. */
+export async function setSlotCapacity(actor: PartnerActor, slotId: string, capacity: number): Promise<IPartnerSlot> {
+  await slotFor(actor, slotId);
+  return inTransaction(async (session) => {
+    const updated = await PartnerSlotModel.findOneAndUpdate(
+      { _id: slotId, partnerId: actor.partnerId, booked: { $lte: capacity } },
+      { $set: { capacity } },
+      { new: true, session }
+    ).lean();
+    if (!updated) throw new AppError({ status: 409, code: 'SLOT_CAPACITY_BELOW_BOOKED', message: 'Capacity cannot be lower than the seats already booked' });
+    await recordPartnerAudit(actor, 'slots.capacity', { kind: 'slot', id: slotId }, { capacity }, session);
+    return updated as IPartnerSlot;
+  });
+}
+
+/** Closing stops new bookings; existing holds stay. */
+export async function setSlotClosed(actor: PartnerActor, slotId: string, close: boolean): Promise<IPartnerSlot> {
+  await slotFor(actor, slotId);
+  return inTransaction(async (session) => {
+    const updated = await PartnerSlotModel.findOneAndUpdate(
+      { _id: slotId, partnerId: actor.partnerId },
+      { $set: { closed: close ? 'manual' : null } },
+      { new: true, session }
+    ).lean();
+    await recordPartnerAudit(actor, close ? 'slots.close' : 'slots.reopen', { kind: 'slot', id: slotId }, undefined, session);
+    return updated as IPartnerSlot;
+  });
+}
+
+export async function addManualSlot(
+  actor: PartnerActor,
+  input: { branchId: string; visitMode: VisitMode; date: string; startTime: string; endTime: string; capacity: number }
+): Promise<IPartnerSlot> {
+  await branchFor(actor, input.branchId, input.visitMode);
+  if (toMinutes(input.endTime) <= toMinutes(input.startTime)) {
+    throw new AppError({ status: 400, code: 'INVALID_WINDOW', message: 'A slot must end after it starts' });
+  }
+  try {
+    return await inTransaction(async (session) => {
+      const [slot] = await PartnerSlotModel.create([{
+        partnerId: actor.partnerId, ...input,
+        startsAt: istInstant(input.date, input.startTime), endsAt: istInstant(input.date, input.endTime),
+        booked: 0, closed: null, source: 'manual',
+      }], { session });
+      await recordPartnerAudit(actor, 'slots.add', { kind: 'slot', id: String(slot!._id) }, input, session);
+      return slot!.toObject() as IPartnerSlot;
+    });
+  } catch (e: any) {
+    if (e?.code === 11000) throw new AppError({ status: 409, code: 'SLOT_EXISTS', message: 'A slot already starts at that time' });
+    throw e;
+  }
+}
+
+export async function listSlotsForPartner(actor: PartnerActor, branchId: string, visitMode: VisitMode, from: string, to: string): Promise<IPartnerSlot[]> {
+  assertBranchInScope(actor, branchId);
+  return PartnerSlotModel.find({ partnerId: actor.partnerId, branchId, visitMode, date: { $gte: from, $lte: to } })
+    .sort({ startsAt: 1 }).limit(2000).lean();
+}
+
+/** What a customer can pick: open, not full, starting after `minStart`. */
+export async function listBookableSlots(branchId: string, visitMode: VisitMode, from: string, to: string, minStart: Date): Promise<IPartnerSlot[]> {
+  return PartnerSlotModel.find({
+    branchId, visitMode, date: { $gte: from, $lte: to }, closed: null, startsAt: { $gt: minStart },
+    $expr: { $lt: ['$booked', '$capacity'] },
+  }).sort({ startsAt: 1 }).limit(500).lean();
+}
+
+/** Takes one seat inside the caller's transaction, or fails (closed, full, or starting too soon). */
+export async function takeSeat(slotId: string, expect: { partnerId: string; branchId: string; visitMode: VisitMode; minStart: Date }, session: ClientSession): Promise<IPartnerSlot> {
+  const slot = await PartnerSlotModel.findOneAndUpdate(
+    {
+      _id: slotId, partnerId: expect.partnerId, branchId: expect.branchId, visitMode: expect.visitMode, closed: null,
+      startsAt: { $gt: expect.minStart }, $expr: { $lt: ['$booked', '$capacity'] },
+    },
+    { $inc: { booked: 1 } },
+    { new: true, session }
+  ).lean();
+  if (!slot) throw new AppError({ status: 409, code: 'SLOT_UNAVAILABLE', message: 'That slot is no longer available; pick another' });
+  return slot as IPartnerSlot;
+}
+
+/** Returns a seat inside the caller's transaction; callers guarantee once-only by a state CAS in the same transaction. */
+export async function releaseSeat(slotId: string, session: ClientSession): Promise<void> {
+  const r = await PartnerSlotModel.updateOne({ _id: slotId, booked: { $gt: 0 } }, { $inc: { booked: -1 } }, { session });
+  if (r.modifiedCount !== 1) throw new AppError({ status: 500, code: 'SEAT_RELEASE_FAILED', message: 'Slot seat accounting is inconsistent' });
+}

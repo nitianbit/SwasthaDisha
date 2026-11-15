@@ -10,7 +10,8 @@ import addressRouter from '@/modules/addresses/routes';
 import specialistRouter from '@/modules/specialists/routes';
 import bookingRouter from '@/modules/bookings/routes';
 import partnerDirectoryRouter from '@/modules/partnerDirectory/routes';
-import partnerWorkspaceRouter, { customerBillsRouter } from '@/modules/partners/routes';
+import partnerWorkspaceRouter, { customerBillsRouter, customerLabRouter, customerLabBookingRouter } from '@/modules/partners/routes';
+import { registerLabBookingPayments } from '@/modules/partners/services/labBookings';
 import slotRouter from '@/modules/slots/routes';
 import corporateRouter from '@/modules/corporates/routes';
 import fileRouter, { privateDocumentHeaders } from '@/modules/file/routes';
@@ -51,6 +52,8 @@ import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { authenticate, authenticateOptional, denyRoles } from '@/modules/middleware';
 
 export const configureRoutes = (app: Express): void => {
+  // Q3: payment verification for partner-lab bookings is dispatched through the payment context registry.
+  registerLabBookingPayments();
   // Simple static file serving - /api/static/*path
   // This allows direct access to files: base_url/api/static/bookings/12345/document.pdf
   const fileController = new FileController();
@@ -72,6 +75,8 @@ export const configureRoutes = (app: Express): void => {
   // Q: operational lab/clinic partners (accounts, members, branches); separate from the display directory above.
   app.use('/api/v1/partner-workspace', authenticate, partnerWorkspaceRouter);
   app.use('/api/v1/bills', authenticate, denyRoles('partner'), customerBillsRouter);
+  app.use('/api/v1/partner-labs', authenticate, denyRoles('partner'), customerLabRouter);
+  app.use('/api/v1/lab-bookings', authenticate, denyRoles('partner'), customerLabBookingRouter);
   app.use('/api/v1/slots', authenticate, denyRoles('partner'), slotRouter);
   app.use('/api/v1/corporates', authenticate, denyRoles('partner'), corporateRouter);
   app.use('/api/v1/file', privateDocumentHeaders, authenticate, fileRouter);

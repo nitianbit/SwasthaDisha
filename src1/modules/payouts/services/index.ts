@@ -116,7 +116,7 @@ export class PayoutService {
 
     const stats = await this.bookingRepository.getConsultationStatsBySpecialistId(
       specialistId,
-      { from, to }
+      { from, to, legacyOnly: true }
     );
 
     const [amount] = await BookingModel.aggregate([
@@ -124,6 +124,8 @@ export class PayoutService {
         $match: {
           specialistId,
           bookingType: 'consultation',
+          // Q3 §7a: a booking settled by the ledger is never billed here (exclusive ownership by settlementSystem).
+          settlementSystem: { $ne: 'ledger' },
           paymentStatus: 'paid',
           status: { $ne: 'cancelled' },
           bookingDate: {
@@ -299,6 +301,7 @@ export class PayoutService {
               {
                 from: range.from,
                 to: range.to,
+                legacyOnly: true,
               }
             );
           const snapshot = await this.calculateBillingSnapshot(
@@ -327,6 +330,7 @@ export class PayoutService {
 
     const query: Record<string, unknown> = {
       bookingType: 'consultation',
+      settlementSystem: { $ne: 'ledger' },
     };
 
     if (range.from || range.to) {

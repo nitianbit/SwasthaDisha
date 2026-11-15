@@ -50,6 +50,8 @@ import {
   getCustomerBill,
   getCustomerBillPdf,
 } from '@/modules/partners/controller/invoice';
+import * as lab from '@/modules/partners/controller/labBooking';
+import * as labV from '@/modules/partners/validation/labBooking';
 import {
   adminCreatePartner,
   adminListPartners,
@@ -135,6 +137,31 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
     validate(recordPaymentSchema, 'body'), catchAsync(recordPayment));
   r.post('/invoices/:invoiceId/cancel', ...guard('invoices.cancel'), validate(invoiceParamSchema, 'params'),
     validate(cancelInvoiceSchema, 'body'), catchAsync(cancelInvoice));
+
+  // Q3: lab slots (server-owned) and online lab bookings
+  r.get('/slots', ...guard.any('slots.manage', 'bookings.view', 'bookings.manage'), validate(labV.partnerSlotsQuerySchema, 'query'), catchAsync(lab.getPartnerSlots));
+  r.put('/branches/:branchId/slot-templates/:visitMode', ...guard('slots.manage'), validate(labV.slotTemplateParamSchema, 'params'),
+    validate(labV.slotTemplateSchema, 'body'), catchAsync(lab.putSlotTemplate));
+  r.post('/slots', ...guard('slots.manage'), validate(labV.manualSlotSchema, 'body'), catchAsync(lab.postManualSlot));
+  r.put('/slots/:slotId/capacity', ...guard('slots.manage'), validate(labV.slotIdParamSchema, 'params'), validate(labV.slotCapacitySchema, 'body'),
+    catchAsync(lab.putSlotCapacity));
+  r.post('/slots/:slotId/close', ...guard('slots.manage'), validate(labV.slotIdParamSchema, 'params'), catchAsync(lab.closeSlot));
+  r.post('/slots/:slotId/reopen', ...guard('slots.manage'), validate(labV.slotIdParamSchema, 'params'), catchAsync(lab.reopenSlot));
+
+  const LAB_READERS: PartnerPermission[] = ['bookings.view', 'bookings.manage', 'reports.upload', 'reports.release'];
+  const id = validate(labV.labBookingIdParamSchema, 'params');
+  r.get('/lab-bookings', ...guard.any(...LAB_READERS), validate(labV.partnerLabBookingQuerySchema, 'query'), catchAsync(lab.listLabBookings));
+  r.get('/lab-bookings/:bookingId', ...guard.any(...LAB_READERS), id, catchAsync(lab.getLabBooking));
+  r.post('/lab-bookings/:bookingId/assign', ...guard('bookings.manage'), id, validate(labV.assignCollectorSchema, 'body'), catchAsync(lab.assignCollector));
+  r.post('/lab-bookings/:bookingId/collect', ...guard('bookings.manage'), id, catchAsync(lab.markCollected));
+  r.post('/lab-bookings/:bookingId/visit', ...guard('bookings.manage'), id, catchAsync(lab.markVisited));
+  r.post('/lab-bookings/:bookingId/no-show', ...guard('bookings.manage'), id, catchAsync(lab.markNoShow));
+  r.post('/lab-bookings/:bookingId/process', ...guard('bookings.manage'), id, catchAsync(lab.startProcessing));
+  r.post('/lab-bookings/:bookingId/complete', ...guard('bookings.manage'), id, catchAsync(lab.completeLabBooking));
+  r.post('/lab-bookings/:bookingId/reject', ...guard('bookings.manage'), id, validate(labV.rejectSchema, 'body'), catchAsync(lab.rejectLabBooking));
+  r.post('/lab-bookings/:bookingId/reschedule', ...guard('bookings.manage'), id, validate(labV.labRescheduleSchema, 'body'), catchAsync(lab.rescheduleLabBooking));
+  r.post('/lab-bookings/:bookingId/reports', ...guard('reports.upload'), id, validate(labV.uploadReportsSchema, 'body'), catchAsync(lab.uploadLabReports));
+  r.post('/lab-bookings/:bookingId/reports/release', ...guard('reports.release'), id, validate(labV.releaseReportSchema, 'body'), catchAsync(lab.releaseLabReport));
 }
 
 const partnerRouter = Router();
@@ -142,6 +169,8 @@ const partnerRouter = Router();
 // ── Admin: partner accounts ──
 partnerRouter.post('/admin', requireAdmin, validate(createPartnerSchema, 'body'), catchAsync(adminCreatePartner));
 partnerRouter.get('/admin', requireAdmin, validate(partnerQuerySchema, 'query'), catchAsync(adminListPartners));
+// Static admin paths before /admin/:partnerId (which would otherwise capture them).
+partnerRouter.get('/admin/lab-bookings', requireAdmin, catchAsync(lab.adminListLabBookings));
 partnerRouter.get('/admin/:partnerId', requireAdmin, validate(partnerIdParamSchema, 'params'), catchAsync(adminGetPartner));
 partnerRouter.put('/admin/:partnerId', requireAdmin, validate(partnerIdParamSchema, 'params'),
   validate(updatePartnerSchema, 'body'), catchAsync(adminUpdatePartner));
@@ -166,3 +195,24 @@ customerBillsRouter.get('/', catchAsync(listCustomerBills));
 customerBillsRouter.get('/:invoiceId', validate(invoiceParamSchema, 'params'), catchAsync(getCustomerBill));
 customerBillsRouter.get('/:invoiceId/pdf', validate(invoiceParamSchema, 'params'), validate(invoicePdfQuerySchema, 'query'),
   catchAsync(getCustomerBillPdf));
+
+
+/** Customer discovery of partner labs (shown next to Healthians/LabStack in the app). */
+export const customerLabRouter = Router();
+customerLabRouter.get('/', validate(labV.labsQuerySchema, 'query'), catchAsync(lab.listLabs));
+customerLabRouter.get('/branches/:branchId/slots', validate(labV.branchSlotsParamSchema, 'params'), validate(labV.branchSlotsQuerySchema, 'query'),
+  catchAsync(lab.branchSlots));
+customerLabRouter.get('/:partnerId/catalogue', validate(labV.labCatalogueParamSchema, 'params'), validate(labV.labCatalogueQuerySchema, 'query'),
+  catchAsync(lab.labCatalogue));
+
+/** Customer partner-lab bookings: create + pay, pay again, cancel, accept a new time, view (released reports only). */
+export const customerLabBookingRouter = Router();
+customerLabBookingRouter.post('/', validate(labV.createLabBookingSchema, 'body'), catchAsync(lab.createLabBooking));
+customerLabBookingRouter.get('/', catchAsync(lab.myLabBookings));
+customerLabBookingRouter.get('/:bookingId', validate(labV.labBookingIdParamSchema, 'params'), catchAsync(lab.myLabBooking));
+customerLabBookingRouter.post('/:bookingId/pay', validate(labV.labBookingIdParamSchema, 'params'), validate(labV.payAgainSchema, 'body'),
+  catchAsync(lab.payLabBookingAgain));
+customerLabBookingRouter.post('/:bookingId/cancel', validate(labV.labBookingIdParamSchema, 'params'), validate(labV.customerCancelSchema, 'body'),
+  catchAsync(lab.cancelMyLabBooking));
+customerLabBookingRouter.post('/:bookingId/accept-reschedule', validate(labV.labBookingIdParamSchema, 'params'),
+  validate(labV.acceptRescheduleSchema, 'body'), catchAsync(lab.acceptLabReschedule));

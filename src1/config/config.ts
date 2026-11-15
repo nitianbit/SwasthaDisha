@@ -58,6 +58,8 @@ export const CONFIG: ISettings = {
   SMS_TEMPLATE_ID: process.env.SMS_TEMPLATE_ID,
   // Q2: DLT-registered template for the walk-in bill notice; unset = the notice is not sent.
   SMS_TEMPLATE_ID_PARTNER_BILL: process.env.SMS_TEMPLATE_ID_PARTNER_BILL,
+  // Q3 §7a: bookings created at or after this ISO instant are settled by the ledger; unset = all legacy.
+  SETTLEMENT_CUTOVER_AT: process.env.SETTLEMENT_CUTOVER_AT,
   SMS_PE_ID: process.env.SMS_PE_ID,
   SMS_COOKIE: process.env.SMS_COOKIE,
   

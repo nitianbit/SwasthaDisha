@@ -32,6 +32,7 @@ export interface ISettings {
   SMS_FROM?: string;
   SMS_TEMPLATE_ID?: string;
   SMS_TEMPLATE_ID_PARTNER_BILL?: string;
+  SETTLEMENT_CUTOVER_AT?: string;
   SMS_PE_ID?: string;
   SMS_COOKIE?: string;
   

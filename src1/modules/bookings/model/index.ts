@@ -425,6 +425,12 @@ const bookingSchema = new Schema<IBooking>(
       default: 'pending',
       index: true,
     },
+    // Q3 §7a: which system pays this booking's provider — the legacy monthly payouts or the new ledger. Exclusive.
+    settlementSystem: {
+      type: String,
+      enum: ['legacy', 'ledger'],
+      default: 'legacy',
+    },
     paymentStatus: {
       type: String,
       enum: ['pending', 'paid', 'failed', 'refunded'],
@@ -474,6 +480,7 @@ bookingSchema.index({ corporateId: 1, bookingDate: 1 });
 bookingSchema.index({ bookingType: 1, status: 1 });
 bookingSchema.index({ wellnessPackageId: 1, status: 1 });
 bookingSchema.index({ specialistId: 1, status: 1 });
+bookingSchema.index({ specialistId: 1, settlementSystem: 1, bookingType: 1, bookingDate: 1 });
 bookingSchema.index({ slotId: 1, status: 1 }); // Index for slot-based queries
 bookingSchema.index({ bookingDate: 1, bookingTime: 1 });
 bookingSchema.index({ status: 1, paymentStatus: 1 });

@@ -1,6 +1,7 @@
 import { Service } from 'typedi';
 import mongoose, { ClientSession } from 'mongoose';
 import PartnerAuditEventModel from '@/modules/partners/model/audit';
+import { ensureSettlementAccount } from '@/modules/partners/services/settlement';
 import { PartnerRepository } from '@/modules/partners/repository';
 import { MemberRepository } from '@/modules/partners/repository/member';
 import { BranchRepository } from '@/modules/partners/repository/branch';
@@ -142,6 +143,9 @@ export class PartnerService {
         } as Partial<IPartner>,
         { session }
       );
+
+      // §7a: a partner gets its settlement account when it is created.
+      await ensureSettlementAccount('partner', String(partner._id), data.legalName || data.name, session);
 
       const owner = await this.memberRepository.save(
         {
