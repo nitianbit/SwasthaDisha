@@ -104,13 +104,14 @@ export const orderQuerySchema = Joi.object({
 
 export const prescriptionReviewSchema = Joi.object({
   decision: Joi.string().valid('approve', 'reject').required(),
-  pharmacistName: Joi.string().trim().min(2).max(120).required(),
-  pharmacistRegistrationNumber: Joi.string().trim().pattern(/^[A-Za-z0-9][A-Za-z0-9/\-. ]{2,59}$/).required(),
+  // P9: both optional together; when absent the pharmacy's registered pharmacist is recorded.
+  pharmacistName: Joi.string().trim().min(2).max(120).optional(),
+  pharmacistRegistrationNumber: Joi.string().trim().pattern(/^[A-Za-z0-9][A-Za-z0-9/\-. ]{2,59}$/).optional(),
   reason: Joi.string().trim().min(3).max(1000).when('decision', { is: 'reject', then: Joi.required(), otherwise: Joi.optional() }),
   // No per-item/count caps: legacy orders stored lists without bounds and must remain reviewable. Size is bounded
   // by the 10mb JSON body limit, the same limit those lists were originally submitted under.
   reviewedPrescriptionUrls: Joi.array().items(Joi.string()).required(),
-});
+}).and('pharmacistName', 'pharmacistRegistrationNumber');
 
 /** Pharmacist work queue (W1): the pharmacy is always the caller's own, so no pharmacyId is accepted. */
 export const prescriptionReviewQueueQuerySchema = Joi.object({

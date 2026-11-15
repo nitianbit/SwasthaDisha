@@ -9,6 +9,7 @@ import { CustomerReturnModel } from '@/modules/pharmacyInventory/model/customerR
 import { SupplierReturnModel } from '@/modules/pharmacyInventory/model/supplierReturn';
 import BookingModel from '@/modules/bookings/model';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
+import { rebindStored } from '@/modules/file/access';
 
 /**
  * D4 admission fence for once-only operations (customer return, supplier return, booking create). A client whose page
@@ -73,5 +74,7 @@ requestKeyRouter.post('/abandon', catchAsync(async (req: AuthRequest, res: Respo
     : kind === 'pharmacy_checkout'
       ? await PharmacyOrderModel.findOne({ customerId: { $eq: owner }, checkoutRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
     : await BookingModel.findOne({ userId: { $eq: owner }, createRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean();
+  // P9: the customer's prescription files of a checkout whose first request died before binding are bound now.
+  if (kind === 'pharmacy_checkout' && record?._id) await rebindStored(user, 'PharmacyOrder', record._id);
   res.status(200).json({ success: true, data: { state, record } });
 }));

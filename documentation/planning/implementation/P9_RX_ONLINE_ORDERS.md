@@ -1,4 +1,4 @@
-# P9 — Prescription medicines online, one-button pharmacist approval (design, 2026-11-15)
+# P9 — Prescription medicines online, one-button pharmacist approval (2026-11-15)
 
 ## Owner decisions (15 Nov 2026, asked directly)
 
@@ -42,3 +42,31 @@ fences).
 - Catalogue flags are read at pricing; a medicine that becomes Rx after an order was placed does not make that order
   need review.
 - A capture that lands after a rejection is returned to the wallet only (no card/UPI choice) - pre-existing.
+
+## Changes after Codex design review (msg_1794732249003)
+
+1. **Review bound to the reviewed version.** Orders carry `revision` (every edit `$inc`s it). A review's
+   compare-and-set includes the revision it read (and records `reviewedRevision`), so an edit between opening and
+   deciding fails the decision (`ORDER_STATE_CHANGED`). After a review, item and prescription-document edits are refused
+   (`PRESCRIPTION_REVIEWED_LOCKED`), also at write time (`prescriptionStatus ∈ {not_required, pending}` in the edit's
+   filter), so an edit validated before the review cannot land after it.
+2. **Counter / COD payment.** `markPaid` refuses an order with any Rx line or a non-`not_required` prescription status
+   unless approved (`PRESCRIPTION_REVIEW_REQUIRED`), and its write filter requires `prescriptionStatus: 'approved'` and an
+   approved review.
+3. **File binding on every recovery path.** Cart checkout binds through `withFiles` (saved id from `{order}`); a keyed
+   replay, the used-key receipt (`/request-keys/abandon` → `used`) and `retry-payment` all `rebindStored` for the
+   customer (uploader fence: only their own uploads). Staff create uses the same `{order}` id selector. Refill orders do
+   not copy prescriptions.
+4. **Refills stay non-Rx.** The guard runs with `rx: 'forbid'` for refill creation and for stored refill orders, so a paid
+   refill never consumes its cycle on an Rx order that a pharmacist could reject.
+5. **Guard.** All non-Rx admission checks are kept (identity, unique ids, active non-archived catalogue, active lines,
+   boolean flags); an order with an Rx line can never be `not_required`.
+
+## Tests
+
+`test/pharmacy-prescription/p9-rx-online.integration.ts` (7): Rx order without a prescription → pending, payment set up
+(non-Rx stays not_required); packing gated; one-button approval needs the pharmacist on file and records name /
+number / no document / revision; stale approval after an edit refused; post-review document/item edits refused, also a
+pre-review read committing after the review; counter payment only after approval, write-time fence; prescription file
+bound (pharmacy can open, stranger cannot), re-bound after loss, someone else's upload refused; paid Rx rejection →
+refund intent (P2). P1 test updated for the two intended changes (mark-paid code; approval without documents).

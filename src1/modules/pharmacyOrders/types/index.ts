@@ -137,6 +137,8 @@ export interface PharmacyRecoveryWorklistPage {
 }
 
 export interface IPharmacyOrder {
+  /** P9: edit revision (a review binds to it). */
+  revision?: number;
   /** P8: the customer's checkout request key (once-only checkout). */
   checkoutRequestKey?: string;
   /** P8: the cart a keyed checkout came from (id + version). */
@@ -270,6 +272,8 @@ export interface PrescriptionReview {
   /** SHA-256 of JSON.stringify(the exact ordered prescriptionUrls reviewed); the list itself stays on the order. */
   reviewedDocumentSetSha256: string;
   reviewedDocumentCount: number;
+  prescriptionAttached?: boolean;
+  reviewedRevision?: number;
   reviewedByPharmacyId: string;
   reviewedAt: Date;
   orderStatusAtReview: OrderStatus;
@@ -316,8 +320,9 @@ export interface DeliveryExceptionRecord {
 
 export interface PrescriptionReviewRequest {
   decision: 'approve' | 'reject';
-  pharmacistName: string;
-  pharmacistRegistrationNumber: string;
+  /** P9: optional; the pharmacy's registered pharmacist is used when absent. */
+  pharmacistName?: string;
+  pharmacistRegistrationNumber?: string;
   reason?: string;
   reviewedPrescriptionUrls: string[];
 }

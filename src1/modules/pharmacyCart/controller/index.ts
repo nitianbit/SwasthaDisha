@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { checkAttachable, valuesAt } from '@/modules/file/access';
+import { rebindStored, withFiles } from '@/modules/file/access';
 import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { PharmacyCartService } from '@/modules/pharmacyCart/services';
@@ -54,13 +54,15 @@ export class PharmacyCartController {
   };
 
   checkout = async (req: AuthRequest, res: Response, _next: NextFunction) => {
-    // D1: only the customer's own uploads may be referenced. New prescription URLs are refused further on (503) until
-    // prescription commerce reopens; binding them to the created orders belongs to that change.
-    await checkAttachable(req.user, valuesAt(req.body, 'prescriptionUrls'));
-    const result = await this.pharmacyCartService.checkout(
-      req.user || {},
-      req.body as CheckoutPharmacyCartRequest
-    );
+    // D1 + P9: only the customer's own uploads may be referenced, and they are bound to the created order so its
+    // pharmacy can open them. A keyed replay re-binds the stored order's files (its first request may have died before
+    // binding).
+    const result = await withFiles(req.user, 'PharmacyOrder', req.body, undefined,
+      () => this.pharmacyCartService.checkout(req.user || {}, req.body as CheckoutPharmacyCartRequest),
+      (r) => (r as { order?: { _id?: unknown } }).order?._id);
+    if ((result as { replayed?: boolean }).replayed) {
+      await rebindStored(req.user, 'PharmacyOrder', (result as { order: { _id: unknown } }).order._id);
+    }
     res.status(201).json({
       success: true,
       message: 'Order placed successfully',

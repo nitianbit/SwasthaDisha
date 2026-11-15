@@ -90,6 +90,15 @@ const pharmacySchema = new Schema<IPharmacy>(
       sparse: true,
       index: true,
     },
+    // P9: the pharmacy's registered pharmacist, recorded on every one-button prescription approval.
+    pharmacist: {
+      type: new Schema({
+        name: { type: String, trim: true, required: true },
+        registrationNumber: { type: String, trim: true, required: true },
+        updatedAt: { type: Date, required: true },
+      }, { _id: false }),
+      default: undefined,
+    },
     gstCertificateUrl: {
       type: String,
       trim: true,

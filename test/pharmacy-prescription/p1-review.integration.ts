@@ -106,8 +106,9 @@ async function main() {
 
   await check('approved COD Rx order can be marked paid and completed (was blocked by the commerce gate)', async () => {
     const id = await seed({ status: 'accepted', paymentMode: 'cash_on_delivery', paymentStatus: 'pending' });
+    // P9: an explicit guard (no longer the closed commerce gate): paid at the counter only after approval.
     await rejects(service.markPaid(id, { userType: 'pharmacy', pharmacyId: pharmacyA, userId: pharmacyA, data: {} as never }),
-      'PRESCRIPTION_CHECKOUT_UNAVAILABLE', 503);
+      'PRESCRIPTION_REVIEW_REQUIRED', 409);
     await service.reviewPrescription(id, pharmacyA, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX });
     await service.updateStatus(id, pharmacyA, { status: 'packed' });
     await service.updateStatus(id, pharmacyA, { status: 'out_for_delivery' });
@@ -164,7 +165,10 @@ async function main() {
     const plain = await seed({ prescriptionStatus: 'not_required', prescriptionUrls: [] });
     await rejects(service.reviewPrescription(plain, pharmacyA, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: [] }), 'PRESCRIPTION_NOT_PENDING', 409);
     const empty = await seed({ prescriptionUrls: [] });
-    await rejects(service.reviewPrescription(empty, pharmacyA, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: [] }), 'PRESCRIPTION_REQUIRED', 409);
+    // P9 (owner decision): approval without an attached prescription is allowed and recorded as such.
+    const noDoc = await seed({ prescriptionUrls: [] });
+    const approvedNoDoc = await service.reviewPrescription(noDoc, pharmacyA, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: [] });
+    assert.equal(approvedNoDoc.prescriptionStatus, 'approved'); assert.equal(approvedNoDoc.prescriptionReview?.prescriptionAttached, false);
     await rejects(service.reviewPrescription(id, pharmacyA, { decision: 'reject', ...pharmacist, reason: '  ', reviewedPrescriptionUrls: RX }), 'VALIDATION_ERROR', 400);
     await rejects(service.reviewPrescription('nope', pharmacyA, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX }), 'VALIDATION_ERROR', 400);
     // empty pending order can still be rejected (no prescription supplied)

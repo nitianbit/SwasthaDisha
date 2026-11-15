@@ -79,6 +79,10 @@ const prescriptionReviewSchema = new Schema(
     reason: { type: String, trim: true, maxlength: 1000 },
     reviewedDocumentSetSha256: { type: String, required: true, match: /^[0-9a-f]{64}$/ },
     reviewedDocumentCount: { type: Number, required: true, min: 0 },
+    // P9: whether any prescription document was attached when the pharmacist decided (upload is optional).
+    prescriptionAttached: { type: Boolean },
+    // P9: the order revision the decision was made on.
+    reviewedRevision: { type: Number },
     reviewedByPharmacyId: { type: Schema.Types.ObjectId as any, ref: 'Pharmacy', required: true },
     reviewedAt: { type: Date, required: true },
     orderStatusAtReview: { type: String, required: true },
@@ -206,6 +210,8 @@ const pharmacyOrderSchema = new Schema<IPharmacyOrder>(
       index: true,
     },
     prescriptionReview: { type: prescriptionReviewSchema, default: undefined },
+    // P9: moved by every edit; a prescription review is accepted only for the revision it saw.
+    revision: { type: Number, default: 0 },
     prescriptionRefund: { type: prescriptionRefundSchema, default: undefined },
     // Delivery/pickup exceptions recorded by the pharmacy (P7b), oldest first.
     deliveryExceptions: {

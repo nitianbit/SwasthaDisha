@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { withFiles } from '@/modules/file/access';
+import { rebindStored, withFiles } from '@/modules/file/access';
 import type { CancelActor } from '@/modules/pharmacyOrders/services';
 import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
@@ -25,7 +25,7 @@ export class PharmacyOrderController {
       req.body,
       req.user?._id || '',
       req.user?.userType || 'pharmacy'
-    ));
+    ), (r) => (r as { order?: { _id?: unknown } }).order?._id); // P9: the result is {order, ...}
     res.status(201).json({ success: true, message: 'Order created', data: result });
   };
 
@@ -83,6 +83,11 @@ export class PharmacyOrderController {
   };
 
   retryPayment = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    // P9: an order whose checkout died before its files were bound gets them bound now (the customer's own uploads).
+    if (req.user?.userType === 'user' && /^[0-9a-fA-F]{24}$/.test(req.params.id)) {
+      const owned = await this.service.getById(req.params.id, req.user._id, 'user').catch(() => null);
+      if (owned) await rebindStored(req.user, 'PharmacyOrder', req.params.id);
+    }
     const result = await this.service.retryPayment(req.params.id, req.user);
     res.status(200).json({ success: true, data: result });
   };

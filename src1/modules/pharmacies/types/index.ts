@@ -29,6 +29,8 @@ export interface IPharmacy {
   longitude?: number;
   gstNumber?: string;
   drugLicenseNumber?: string;
+  /** P9: the registered pharmacist recorded on prescription approvals. */
+  pharmacist?: { name: string; registrationNumber: string; updatedAt: Date };
   gstCertificateUrl?: string;
   drugLicenseDocumentUrl?: string;
   ownerIdProofUrl?: string;

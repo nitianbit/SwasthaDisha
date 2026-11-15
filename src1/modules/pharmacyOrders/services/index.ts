@@ -36,6 +36,7 @@ export function prescriptionDocumentSetSha256(urls: readonly string[]): string {
   return createHash('sha256').update(JSON.stringify(urls)).digest('hex');
 }
 import logger from '@/services/logger';
+import PharmacyModel from '@/modules/pharmacies/model';
 import { claimRequestKey, scopeOf } from '@/modules/requestKeys';
 import { InventoryItemModel } from '@/modules/pharmacyInventory/model';
 
@@ -75,7 +76,8 @@ type PricedOrderItem = CreateOrderRequest['items'][number] & {
   gstPercent: number;
   prescriptionRequired: boolean | undefined;
 };
-type NonPrescriptionOrderItem = PricedOrderItem & { prescriptionRequired: false };
+/** P9: a priced line whose Rx flag the commerce guard confirmed is an explicit boolean. */
+type NonPrescriptionOrderItem = PricedOrderItem & { prescriptionRequired: boolean };
 
 function computeTotals(items: NonPrescriptionOrderItem[]) {
   let subtotalPaise = 0;
@@ -523,17 +525,9 @@ export class PharmacyOrderService {
     items: PricedOrderItem[],
     prescriptionUrls?: string[]
   ): 'not_required' | 'pending' {
-    const required = items.filter((item) => item.prescriptionRequired);
-    if (required.length && !prescriptionUrls?.length) {
-      throw new AppError({
-        status: 422,
-        code: 'PRESCRIPTION_REQUIRED',
-        message: `Prescription is required for one or more medicines: ${required
-          .map((item) => item.medicineName)
-          .join(', ')}`,
-      });
-    }
-    return required.length ? 'pending' : 'not_required';
+    // P9 (owner decision): attaching a prescription is optional; any Rx line puts the order under pharmacist review.
+    void prescriptionUrls;
+    return items.some((item) => item.prescriptionRequired) ? 'pending' : 'not_required';
   }
 
   private async queueSubscriptionSyncSafely(
@@ -631,8 +625,10 @@ export class PharmacyOrderService {
       kind: 'new_items',
       items: pricedItems,
       prescriptionUrls: data.prescriptionUrls,
+      // P9: refill orders stay non-Rx (a paid refill consumes its cycle before any pharmacist review).
+      rx: options.refill ? 'forbid' : 'allow',
     });
-    // Only explicit canonical false values survive the shared guard.
+    // Only explicit boolean flags survive the shared guard.
     const admittedItems = pricedItems as NonPrescriptionOrderItem[];
     if (data.customerId) {
       await this.customerService.ensureLinked(
@@ -1096,6 +1092,12 @@ export class PharmacyOrderService {
       });
     }
 
+    // P9: what the pharmacist reviewed is fixed once reviewed: no item or prescription-document edits afterwards.
+    const changesReviewedEvidence = data.items !== undefined || data.prescriptionUrls !== undefined;
+    if (changesReviewedEvidence && (order.prescriptionStatus === 'approved' || order.prescriptionStatus === 'rejected')) {
+      throw new AppError({ status: 409, code: 'PRESCRIPTION_REVIEWED_LOCKED', message: 'The medicines and prescription were already reviewed and can no longer change' });
+    }
+
     const enrichesCommerce = Reflect.ownKeys(data).some(key => key !== 'notes');
     if (enrichesCommerce) {
       await this.assertNewCommerceForOrder(order, id);
@@ -1214,16 +1216,6 @@ export class PharmacyOrderService {
         grandTotalPaise: totals.grandTotalPaise,
         prescriptionStatus,
       };
-    } else if (
-      data.prescriptionUrls !== undefined &&
-      order.items.some((item) => item.prescriptionRequired) &&
-      data.prescriptionUrls.length === 0
-    ) {
-      throw new AppError({
-        status: 422,
-        code: 'PRESCRIPTION_REQUIRED',
-        message: 'Prescription is required for one or more medicines',
-      });
     }
 
     if (nextCustomerId && String(order.customerId || '') !== nextCustomerId) {
@@ -1277,7 +1269,10 @@ export class PharmacyOrderService {
           await this.applyInventoryDelta(pharmacyId, inventoryDelta, session);
         }
 
-        const updatedOrder = await this.orderRepo.update(updateFilter, updatePayload, { new: true, session });
+        // P9: every edit moves the order's revision; a review is accepted only for the revision it saw.
+        const updatedOrder = await this.orderRepo.update(
+          { ...updateFilter, ...(changesReviewedEvidence ? { prescriptionStatus: { $in: ['not_required', 'pending'] } } : {}) },
+          { $set: updatePayload, $inc: { revision: 1 } }, { new: true, session });
         if (!updatedOrder) {
           throw new AppError({
             status: 409,
@@ -1445,10 +1440,19 @@ export class PharmacyOrderService {
       throw new AppError({ status: 409, code: 'PRESCRIPTION_CHANGED', message: 'Prescription documents changed; reload the order and review again' });
     }
     const approve = data.decision === 'approve';
-    if (approve && !urls.length) {
-      throw new AppError({ status: 409, code: 'PRESCRIPTION_REQUIRED', message: 'There is no prescription document to approve' });
-    }
+    // P9 (owner decision): approval without an attached prescription is allowed; the record says none was attached.
     const reason = data.reason?.trim();
+    // P9: the pharmacist named in the request, else the pharmacy's registered pharmacist (one-button approval).
+    let pharmacistName = data.pharmacistName?.trim();
+    let pharmacistRegistrationNumber = data.pharmacistRegistrationNumber?.trim();
+    if (!pharmacistName || !pharmacistRegistrationNumber) {
+      const pharmacy = await PharmacyModel.findById(pharmacyId).select({ pharmacist: 1 }).lean() as { pharmacist?: { name?: string; registrationNumber?: string } } | null;
+      pharmacistName = pharmacy?.pharmacist?.name?.trim();
+      pharmacistRegistrationNumber = pharmacy?.pharmacist?.registrationNumber?.trim();
+      if (!pharmacistName || !pharmacistRegistrationNumber) {
+        throw new AppError({ status: 409, code: 'PHARMACIST_PROFILE_REQUIRED', message: "Add your pharmacist's name and registration number first" });
+      }
+    }
     if (!approve && !reason) {
       throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'A reason is required to reject a prescription' });
     }
@@ -1456,11 +1460,13 @@ export class PharmacyOrderService {
     const paymentStatus = order.paymentStatus ?? 'pending';
     const review: PrescriptionReview = {
       decision: approve ? 'approved' : 'rejected',
-      pharmacistName: data.pharmacistName.trim(),
-      pharmacistRegistrationNumber: data.pharmacistRegistrationNumber.trim(),
+      pharmacistName,
+      pharmacistRegistrationNumber,
       ...(reason ? { reason } : {}),
       reviewedDocumentSetSha256: prescriptionDocumentSetSha256(urls),
       reviewedDocumentCount: urls.length,
+      prescriptionAttached: urls.length > 0,
+      reviewedRevision: Number(order.revision ?? 0),
       reviewedByPharmacyId: pharmacyId,
       reviewedAt: new Date(),
       orderStatusAtReview: order.status,
@@ -1474,6 +1480,8 @@ export class PharmacyOrderService {
       prescriptionStatus: 'pending',
       prescriptionUrls: { $eq: [...urls] },
       prescriptionReview: { $exists: false },
+      // P9: exactly the revision reviewed (items, documents, totals): any edit in between makes this decision fail.
+      ...(order.revision === undefined ? { revision: { $in: [null, 0] } } : { revision: order.revision }),
       ...(order.paymentStatus === undefined ? { paymentStatus: { $exists: false } } : { paymentStatus: order.paymentStatus }),
     };
     const stateChanged = () => new AppError({ status: 409, code: 'ORDER_STATE_CHANGED', message: 'Order changed while it was being reviewed; reload and try again' });
@@ -1896,6 +1904,12 @@ export class PharmacyOrderService {
     // A pharmacist-approved prescription order is already reviewed; recording its cash/in-store payment is not new
     // prescription commerce. Every other order keeps the prospective-commerce gate.
     const pharmacistApproved = order.prescriptionStatus === 'approved' && order.prescriptionReview?.decision === 'approved';
+    // P9: an order with prescription medicines is paid at the counter / on delivery only after the pharmacist approved
+    // it (checked again at write time below), so a rejection never has to return cash that has no gateway record.
+    const needsReview = order.prescriptionStatus !== 'not_required' || order.items.some((item) => item.prescriptionRequired === true);
+    if (needsReview && !pharmacistApproved) {
+      throw new AppError({ status: 409, code: 'PRESCRIPTION_REVIEW_REQUIRED', message: 'The pharmacist must approve the prescription before this order is paid' });
+    }
     if (!pharmacistApproved) await this.assertNewCommerceForOrder(order, id);
 
     const paidAt =
@@ -1927,6 +1941,7 @@ export class PharmacyOrderService {
         // Exact observed status: the write below derives status from this read, so a concurrent status change
         // (e.g. accepted -> packed) must fail the compare-and-set rather than be overwritten with a stale value.
         status: { $eq: order.status, $nin: TERMINAL_STATUSES },
+        ...(needsReview ? { prescriptionStatus: 'approved', 'prescriptionReview.decision': 'approved' } : {}),
       },
       {
         paymentStatus: 'paid',
