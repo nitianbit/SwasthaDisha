@@ -42,8 +42,9 @@ import BranchModel from '@/modules/partners/model/branch';
 import PartnerAuditEventModel from '@/modules/partners/model/audit';
 import CatalogueItemModel from '@/modules/partners/model/catalogueItem';
 import { SettlementAccountModel, LedgerEntryModel, LedgerHistoryRefModel } from '@/modules/partners/model/settlement';
-import { PartnerSlotModel, PartnerSlotTemplateModel } from '@/modules/partners/model/slot';
-import { LeaseModel } from '@/modules/common/utils/leaseLock';
+import { PartnerSlotModel, PartnerSlotTemplateModel, ScheduleGuardModel } from '@/modules/partners/model/slot';
+import fs from 'node:fs';
+import nodePath from 'node:path';
 import { PharmacyService } from '@/modules/pharmacies/services';
 import { PharmacyRepository } from '@/modules/pharmacies/repository';
 import { UserRepository } from '@/modules/user/repository';
@@ -128,7 +129,7 @@ async function main() {
   for (const c of await mongoose.connection.db!.collections()) await c.drop().catch(() => {});
   for (const M of [PartnerModel, MemberModel, BranchModel, PartnerAuditEventModel, CatalogueItemModel, SettlementAccountModel, LedgerEntryModel,
     LedgerHistoryRefModel, PartnerSlotModel, PartnerSlotTemplateModel, PartnerLabBookingModel, UserModel, BookingModel, PaymentRecordModel,
-    WalletModel, WalletTransactionModel, RequestKeyModel, FileUploadModel, FileGrantModel, PayoutBillingModel, PayoutDisbursalModel, SpecialistModel, LeaseModel] as mongoose.Model<any>[]) {
+    WalletModel, WalletTransactionModel, RequestKeyModel, FileUploadModel, FileGrantModel, PayoutBillingModel, PayoutDisbursalModel, SpecialistModel, ScheduleGuardModel] as mongoose.Model<any>[]) {
     await M.createCollection(); await M.createIndexes();
   }
 
@@ -268,7 +269,7 @@ async function main() {
     assert.ok((await PartnerSlotModel.find({ branchId: A, visitMode: 'lab', date: d, source: 'template' }).lean()).every((x) => x.closed === null));
   });
 
-  await check('concurrent expansions never publish a stale template (each reads its configuration under the lease)', async () => {
+  await check('concurrent expansions never publish a stale template (each runs as one guarded transaction)', async () => {
     const d = addDays(today, 22);
     const every = (w: { start: string; end: string }[]) => Object.fromEntries(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((x) => [x, w]));
     for (let round = 0; round < 3; round++) {
@@ -281,6 +282,51 @@ async function main() {
       const open = (await PartnerSlotModel.find({ branchId: B, visitMode: 'lab', date: d, closed: null }).lean()).map((x) => x.startTime).sort();
       assert.deepEqual(open, ['15:00', '15:30'], `round ${round}`);
     }
+  });
+
+  await check('a slow stale expansion cannot overwrite a newer template: its transaction holds the guard, the save waits and wins', async () => {
+    const d = addDays(today, 23);
+    const every = (w: { start: string; end: string }[]) => Object.fromEntries(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((x) => [x, w]));
+    await saveSlotTemplate(own, B, 'lab', { slotMinutes: 30, capacity: 2, days: every([{ start: '15:00', end: '16:00' }]) });
+    // A stale run (it read the old 08:00 template) takes the guard and is paused before writing.
+    const stale = await mongoose.startSession();
+    stale.startTransaction();
+    await ScheduleGuardModel.updateOne({ key: `partner-slots:${B}:lab` }, { $inc: { version: 1 } }, { session: stale });
+    const saving = saveSlotTemplate(own, B, 'lab', { slotMinutes: 30, capacity: 2, days: every([{ start: '11:00', end: '12:00' }]) });
+    await new Promise((r) => setTimeout(r, 400));
+    // The stale run now publishes its old view, long "after expiry" in the old lease design, and commits.
+    await PartnerSlotModel.updateMany({ branchId: B, visitMode: 'lab', date: d, startTime: { $in: ['15:00', '15:30'] } }, { $set: { closed: null } }, { session: stale });
+    await PartnerSlotModel.updateMany({ branchId: B, visitMode: 'lab', date: d, startTime: { $in: ['11:00', '11:30'] } }, { $set: { closed: 'template' } }, { session: stale });
+    await stale.commitTransaction();
+    await stale.endSession();
+    await saving;
+    const open = (await PartnerSlotModel.find({ branchId: B, visitMode: 'lab', date: d, closed: null }).lean()).map((x) => x.startTime).sort();
+    assert.deepEqual(open, ['11:00', '11:30'], 'the newest template is what is published');
+  });
+
+  await check('a branch with manual slots only still gets holidays; booking refuses a holiday even on a slot left open', async () => {
+    const C = String((await partnerSvc.createBranch(own, branchIn('Manual only')))._id);
+    const d = addDays(today, 24);
+    const m = await addManualSlot(own, { branchId: C, visitMode: 'lab', date: d, startTime: '10:00', endTime: '10:30', capacity: 1 });
+    await partnerSvc.updateBranch(own, C, { holidays: [d] } as any);
+    assert.equal((await PartnerSlotModel.findById(m._id).lean())!.closed, 'holiday');
+    await PartnerSlotModel.updateOne({ _id: m._id }, { $set: { closed: null } }); // as if no expansion had run
+    await assert.rejects(async () => labSvc.create(await customer(), ({ partnerId, branchId: C, visitMode: 'lab', itemIds: [String(cbc._id)], patient: { kind: 'self' }, requestKey: rk(), slotId: String(m._id) } as any)), code('SLOT_UNAVAILABLE'));
+    await partnerSvc.updateBranch(own, C, { holidays: [] } as any);
+    assert.equal((await PartnerSlotModel.findById(m._id).lean())!.closed, null);
+    await labSvc.create(await customer(), ({ partnerId, branchId: C, visitMode: 'lab', itemIds: [String(cbc._id)], patient: { kind: 'self' }, requestKey: rk(), slotId: String(m._id) } as any));
+  });
+
+  await check('the schedule guard is discovered by deploy-time index setup (modules/*/model) with its unique key', async () => {
+    const modulesDir = nodePath.join(process.cwd(), 'src1', 'modules');
+    for (const entry of fs.readdirSync(modulesDir, { withFileTypes: true })) {
+      const dir = nodePath.join(modulesDir, entry.name, 'model');
+      if (!entry.isDirectory() || !fs.existsSync(dir)) continue;
+      for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.ts') && !x.endsWith('.d.ts'))) await import(nodePath.join(dir, f));
+    }
+    const guard = mongoose.models.ScheduleGuard;
+    assert.ok(guard, 'ScheduleGuard is defined in a model directory');
+    assert.ok(guard.schema.indexes().some(([k, o]) => JSON.stringify(k) === '{"key":1}' && (o as any)?.unique === true));
   });
 
   await check('impossible calendar dates are refused, never rolled over to another day', async () => {
@@ -612,7 +658,7 @@ async function main() {
     await partnerSvc.createPartner({ kind: 'lab', name: 'Unverified Lab', contactPhone: nextPhone(), invoiceSeriesPrefix: 'UL', firstOwner: { phone: nextPhone(), name: 'x' } });
     const labs = await labSvc.listLabs({ city: 'bengaluru' });
     assert.deepEqual(labs.map((l) => l.name), ['Metro Labs']);
-    assert.equal(labs[0]!.branches.length, 2);
+    assert.ok([A, B].every((b) => labs[0]!.branches.some((x) => x.branchId === b)));
     const items = await labSvc.labCatalogue(partnerId, 'home');
     assert.deepEqual(items.map((i) => i.name), ['CBC']);
     await PartnerSlotModel.updateOne({ branchId: A, visitMode: 'lab', date: addDays(today, 4), startTime: '09:00' }, { $set: { booked: 2 } });

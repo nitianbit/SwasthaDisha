@@ -95,3 +95,16 @@ templateSchema.index({ branchId: 1, visitMode: 1 }, { unique: true });
 export const PartnerSlotTemplateModel: Model<IPartnerSlotTemplate> = model<IPartnerSlotTemplate>(
   'PartnerSlotTemplate', templateSchema, 'partner_slot_templates'
 );
+
+/**
+ * Serialization point for one generated schedule (`partner-slots:<branch>:<mode>`, `doctor-slots:<doctor>`). Every
+ * expansion and every configuration change bumps it inside its own transaction, so two of them never commit
+ * interleaved: the loser's transaction conflicts and is retried, re-reading the configuration that won.
+ */
+export interface IScheduleGuard { _id?: string; key: string; version: number }
+const scheduleGuardSchema = new Schema<IScheduleGuard>(
+  { key: { type: String, required: true }, version: { type: Number, required: true, default: 0 } },
+  { versionKey: false }
+);
+scheduleGuardSchema.index({ key: 1 }, { unique: true });
+export const ScheduleGuardModel: Model<IScheduleGuard> = model<IScheduleGuard>('ScheduleGuard', scheduleGuardSchema, 'schedule_guards');
