@@ -88,6 +88,14 @@ type SlotRow = { _id?: unknown; date?: string; startTime?: string; endTime?: str
 /** Q6: a clinic desk acting: the slot must be at one of its branches within the desk member's scope (empty = all). */
 export interface DeskScope { partnerId: string; branchIds: string[] }
 
+/** The desk bookings a desk scope may act on, as currently stored (every attempt re-reads it in the transaction). */
+function deskOwnerFilter(desk?: DeskScope): Record<string, unknown> {
+  if (!desk) return { _id: { $exists: false } }; // no scope, nothing
+  return { 'clinicDesk.partnerId': { $eq: desk.partnerId }, ...(desk.branchIds.length ? { 'clinicDesk.branchId': { $in: desk.branchIds } } : {}) };
+}
+export const deskBookingInScope = (b: Pick<IBooking, 'clinicDesk'>, desk: DeskScope) =>
+  !!b.clinicDesk && b.clinicDesk.partnerId === desk.partnerId && (desk.branchIds.length === 0 || desk.branchIds.includes(String(b.clinicDesk.branchId)));
+
 async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate' | 'specialistId' | 'wellnessPackageId' | 'consultationMode'>, s: ClientSession,
   desk?: DeskScope) {
   if (!Types.ObjectId.isValid(slotId)) throw conflict('SLOT_NOT_AVAILABLE', 'Slot is not available');
@@ -190,6 +198,12 @@ export async function createBookingWithHolds(input: IBooking, inTx?: (b: IBookin
         .session(s).lean() as IBooking | null;
       if (prior) return Object.assign(prior, { [REPLAYED]: true });
     }
+    // Q6: a desk key already used is answered with its booking on every attempt, before any capacity is taken
+    // (the caller compares the content hash and the current branch scope).
+    if (input.clinicDesk?.requestKey) {
+      const prior = await BookingModel.findOne({ 'clinicDesk.requestKey': { $eq: input.clinicDesk.requestKey } }).session(s).lean() as IBooking | null;
+      if (prior) return Object.assign(prior, { [REPLAYED]: true });
+    }
     const slotId = input.slotId ? canon(input.slotId) : null;
     if (input.slotId && !slotId && input.bookingType !== 'surgery') throw conflict('SLOT_NOT_AVAILABLE', 'Slot is not available');
     const parentId = input.followUp?.isFollowUp && input.followUp.parentConsultationId ? canon(input.followUp.parentConsultationId) : null;
@@ -278,6 +292,8 @@ export async function cancelBookingSettlement(p: {
   lifecycle: (b: IBooking) => IBooking['lifecycle']; enforceWindow: (b: IBooking) => void; wallets: WalletRepository;
   /** Runs inside the transaction after a (first) cancellation, e.g. a partner audit. */
   inTx?: (b: IBooking, s: ClientSession) => Promise<void>;
+  /** Q6: requester 'clinic' — the desk's clinic and branch scope, applied to the booking as read in the transaction. */
+  desk?: DeskScope;
 }): Promise<CancelResult> {
   if (!Types.ObjectId.isValid(p.bookingId)) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
   const id = String(p.bookingId).toLowerCase();
@@ -285,7 +301,7 @@ export async function cancelBookingSettlement(p: {
     // Q4: the booking's own doctor may cancel it too (always a full refund; the caller passes no window).
     const owner = p.requester.userType === 'admin' ? {}
       : p.requester.userType === 'specialist' ? { specialistId: { $eq: p.requester._id } }
-      : p.requester.userType === 'clinic' ? { 'clinicDesk.partnerId': { $eq: p.requester._id } } // Q6: _id = partnerId
+      : p.requester.userType === 'clinic' ? deskOwnerFilter(p.desk)
       : { userId: { $eq: p.requester._id } };
     const booking = await BookingModel.findOne({ _id: id, ...owner }).session(s).lean() as IBooking | null;
     if (!booking) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
@@ -414,6 +430,8 @@ export async function rescheduleWithHolds(p: {
     if (booking.clinicDesk && booking.clinicDesk.partnerId !== p.desk?.partnerId) {
       throw conflict('CLINIC_APPOINTMENT', 'Ask the clinic to change this appointment');
     }
+    // Q6: the source appointment must still be at one of the desk's branches as read now (another desk may have moved it).
+    if (booking.clinicDesk && p.desk && !deskBookingInScope(booking, p.desk)) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
     if (!CANCELLABLE_BOOKING_STATUSES.includes(String(booking.status))) {
       throw conflict('BOOKING_NOT_RESCHEDULABLE', `A ${booking.status} booking cannot be rescheduled`);
     }

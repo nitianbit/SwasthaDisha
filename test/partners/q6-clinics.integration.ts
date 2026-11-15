@@ -435,6 +435,52 @@ async function main() {
     assert.equal(row.patient.phone, (parent as any).phone);
   });
 
+  // ── Review findings (Q6 round 2) ──
+  await check('a desk acts only on appointments currently at its branches: receipts, cancel, reschedule, check-in after another desk moved them', async () => {
+    const deskOnlyA = actorFor(deskA); // branch A only
+    const slotsA = await clinic.deskSlots(own, { doctorId: drRao.id, branchId: A, date: at(13) });
+    const key = rk();
+    const phone = nextPhone();
+    const made = await clinic.createDeskAppointment(deskOnlyA, { slotId: slotsA[0]!.slotId, customer: { phone }, requestKey: key });
+    // A clinic-wide desk moves it to branch B (the doctor consults there too).
+    await clinic.respondToInvite(drRao.id, String((await clinic.inviteDoctor(own, { doctorId: drRao.id, branchIds: [] }).catch(async () => ({ invite: { _id: '' } }))).invite._id), true).catch(() => undefined);
+    await MemberModel.updateOne({ partnerId, doctorId: drRao.id, isActive: true }, { $set: { doctorBranchIds: [] } });
+    await saveTemplate(drRao.id, { slotMinutes: 30, days: every({ start: '10:00', end: '12:00', modes: ['in-person'], branchId: A }) as any });
+    const sB = await SlotModel.create({ specialistId: drRao.id, date: ymd(at(13)), startTime: '13:00', endTime: '13:30', duration: 30, slotType: 'consultation',
+      maxBookings: 1, currentBookings: 0, isAvailable: true, isActive: true, serviceModes: ['in-person'], branchId: B } as any);
+    await clinic.rescheduleDeskAppointment(own, made.booking.bookingId, String(sB._id));
+    await assert.rejects(() => clinic.createDeskAppointment(deskOnlyA, { slotId: slotsA[0]!.slotId, customer: { phone }, requestKey: key }), code('BOOKING_NOT_FOUND'));
+    await assert.rejects(() => clinic.cancelDeskAppointment(deskOnlyA, made.booking.bookingId, 'x'), code('BOOKING_NOT_FOUND'));
+    await assert.rejects(() => clinic.markArrived(deskOnlyA, made.booking.bookingId), code('BOOKING_NOT_FOUND'));
+    await assert.rejects(() => clinic.rescheduleDeskAppointment(deskOnlyA, made.booking.bookingId, slotsA[1]!.slotId), code('BOOKING_NOT_FOUND'));
+    // The shared commands refuse it too when the scope is checked inside (a desk that read it at A before the move).
+    await assert.rejects(() => cancelBookingSettlement({ bookingId: made.booking.bookingId, requester: { _id: partnerId, userType: 'clinic' },
+      desk: { partnerId, branchIds: [A] }, reason: 'x', cancelledAt: ymd(today), wallets: new WalletRepository(), enforceWindow: () => undefined,
+      lifecycle: (x) => x.lifecycle }), code('BOOKING_NOT_FOUND'));
+    await assert.rejects(() => rescheduleWithHolds({ bookingId: made.booking.bookingId, requester: { _id: 'x', userType: 'admin' }, nextSlotId: slotsA[1]!.slotId,
+      patch: {}, desk: { partnerId, branchIds: [A] } }), code('BOOKING_NOT_FOUND'));
+    const still = await BookingModel.findById(made.booking.bookingId).lean() as any;
+    assert.deepEqual([still.status, still.clinicDesk.branchId], ['confirmed', B]);
+  });
+
+  await check('identical racing desk requests: every one answers with the same receipt (never a seat error)', async () => {
+    const slots = await clinic.deskSlots(own, { doctorId: drRao.id, branchId: A, date: at(14) });
+    const req = { slotId: slots[0]!.slotId, customer: { phone: nextPhone() }, requestKey: rk() };
+    const all = await Promise.all(Array.from({ length: 5 }, () => clinic.createDeskAppointment(own, req)));
+    assert.equal(new Set(all.map((x) => x.booking.bookingId)).size, 1);
+    assert.equal(all.filter((x) => !x.replayed).length, 1);
+  });
+
+  await check("the doctor's own clinic list shows the branches they accepted, not their staff access", async () => {
+    const drSix = await doctor('Dr Six');
+    await partnerSvc.addMember(own, { phone: drSix.phone, name: 'Six at B desk', role: 'staff', branchIds: [B], permissions: ['bookings.view'] } as any);
+    const inv = await clinic.inviteDoctor(own, { doctorId: drSix.id, branchIds: [A] });
+    await clinic.respondToInvite(drSix.id, String(inv.invite._id), true);
+    const mine = (await clinic.myClinics(drSix.id)).clinics.find((c) => c.partnerId === partnerId)!;
+    assert.deepEqual(mine.branches.map((b) => b.branchId), [A]);
+    assert.deepEqual((await clinic.listClinicDoctors(own)).find((d) => d.doctorId === drSix.id)!.branchIds, [A]);
+  });
+
   // ── HTTP: the real application routes ──
   Container.set(PharmacyService, new PharmacyService(new PharmacyRepository(), new UserRepository()));
   Container.set(BannerService, new BannerService(new BannerRepository()));
