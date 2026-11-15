@@ -59,6 +59,7 @@ const inventory = {
   getInventoryByMedicine: async () => ({ retailPrice: 50, wholesalePrice: 40 }),
   reserveOrderStockBulk: async (_p: string, items: { medicineId: string }[]) => new Map(items.map((i) => [String(i.medicineId), []])),
   returnStockBulk: async () => [], releaseOrderStockBulk: async () => undefined, consumeOrderReservedStockBulk: async () => undefined,
+  consumeAvailableStockBulk: async () => undefined, returnAvailableStockBulk: async () => undefined,
 };
 const medicines = {
   findById: async (id: unknown) => ({ _id: String(id), name: isRx(id) ? 'Amoxicillin 500' : 'Vitamin D', isActive: true, prescriptionRequired: isRx(id), gstPercent: 0 }),
@@ -147,9 +148,9 @@ async function main() {
     await PharmacyOrderModel.updateOne({ _id: id }, { $set: { status: 'accepted', paymentStatus: 'paid' } });
     await rejects(orders.updateStatus(id, PHARMACY, { status: 'packed' }), 'ORDER_PRESCRIPTION_APPROVAL_REQUIRED');
     await PharmacyModel.collection.updateOne({ _id: new Types.ObjectId(PHARMACY) }, { $unset: { pharmacist: 1 } }, { upsert: true });
-    await rejects(orders.reviewPrescription(id, PHARMACY, { decision: 'approve', reviewedPrescriptionUrls: [] }), 'PHARMACIST_PROFILE_REQUIRED');
+    await rejects(orders.reviewPrescription(id, PHARMACY, { decision: 'approve', expectedRevision: 0, reviewedPrescriptionUrls: [] }), 'PHARMACIST_PROFILE_REQUIRED');
     await setPharmacist();
-    const approved = await orders.reviewPrescription(id, PHARMACY, { decision: 'approve', reviewedPrescriptionUrls: [] });
+    const approved = await orders.reviewPrescription(id, PHARMACY, { decision: 'approve', expectedRevision: 0, reviewedPrescriptionUrls: [] });
     assert.equal(approved.prescriptionStatus, 'approved');
     assert.equal(approved.prescriptionReview?.pharmacistName, 'Ravi Kumar');
     assert.equal(approved.prescriptionReview?.pharmacistRegistrationNumber, 'MH/RPH/12345');
@@ -157,8 +158,8 @@ async function main() {
     assert.equal(approved.prescriptionReview?.reviewedRevision, 0);
     await orders.updateStatus(id, PHARMACY, { status: 'packed' });
     // Name and number come together or not at all.
-    assert.ok(prescriptionReviewSchema.validate({ decision: 'approve', pharmacistName: 'Only Name', reviewedPrescriptionUrls: [] }).error);
-    assert.equal(prescriptionReviewSchema.validate({ decision: 'approve', reviewedPrescriptionUrls: [] }).error, undefined);
+    assert.ok(prescriptionReviewSchema.validate({ decision: 'approve', expectedRevision: 0, pharmacistName: 'Only Name', reviewedPrescriptionUrls: [] }).error);
+    assert.equal(prescriptionReviewSchema.validate({ decision: 'approve', expectedRevision: 0, reviewedPrescriptionUrls: [] }).error, undefined);
   });
 
   await check('an approval is accepted only for the revision it saw: an edit in between makes it fail', async () => {
@@ -170,11 +171,17 @@ async function main() {
     const seen = await get(id); // the pharmacist opens the order (revision 0)
     await orders.update(id, PHARMACY, { deliveryAddress: '2 Lane, Pune' } as never); // the order is edited (revision 1)
     assert.equal((await get(id)).revision, 1);
-    staleNextRead(seen);
-    await rejects(orders.reviewPrescription(id, PHARMACY, { decision: 'approve', reviewedPrescriptionUrls: [] }), 'ORDER_STATE_CHANGED');
+    // The pharmacist decides on the version they were shown (0): refused, nothing approved.
+    await rejects(orders.reviewPrescription(id, PHARMACY, { decision: 'approve', expectedRevision: 0, reviewedPrescriptionUrls: [] }), 'ORDER_STATE_CHANGED');
     assert.equal((await get(id)).prescriptionStatus, 'pending');
-    const ok = await orders.reviewPrescription(id, PHARMACY, { decision: 'approve', reviewedPrescriptionUrls: [] });
-    assert.equal(ok.prescriptionReview?.reviewedRevision, 1);
+    // An edit after the server's own read (the decision attested the current version): the write fence refuses it too.
+    const now = await get(id);
+    await orders.update(id, PHARMACY, { deliveryAddress: '3 Lane, Pune' } as never); // revision 2
+    staleNextRead(now);
+    await rejects(orders.reviewPrescription(id, PHARMACY, { decision: 'approve', expectedRevision: 1, reviewedPrescriptionUrls: [] }), 'ORDER_STATE_CHANGED');
+    void seen;
+    const ok = await orders.reviewPrescription(id, PHARMACY, { decision: 'approve', expectedRevision: 2, reviewedPrescriptionUrls: [] });
+    assert.equal(ok.prescriptionReview?.reviewedRevision, 2);
   });
 
   await check('after review, medicines and prescription documents cannot change (also an edit that read before the review)', async () => {
@@ -184,7 +191,7 @@ async function main() {
     const r = await checkout(me, { paymentMode: 'cash_on_delivery', deliveryMode: 'delivery', deliveryAddress: '1 Lane, Pune' });
     const id = String(r.order._id);
     const before = await get(id);
-    await orders.reviewPrescription(id, PHARMACY, { decision: 'approve', reviewedPrescriptionUrls: [] });
+    await orders.reviewPrescription(id, PHARMACY, { decision: 'approve', expectedRevision: 0, reviewedPrescriptionUrls: [] });
     await rejects(orders.update(id, PHARMACY, { prescriptionUrls: ['general/other.pdf'] } as never), 'PRESCRIPTION_REVIEWED_LOCKED');
     await rejects(orders.update(id, PHARMACY, { items: [{ medicineId: RX_MED, orderedQty: 5 }] } as never), 'PRESCRIPTION_REVIEWED_LOCKED');
     staleNextRead(before); // an edit validated against the pre-review order commits after the review: refused
@@ -204,7 +211,7 @@ async function main() {
     const pending = await get(id);
     staleNextRead({ ...pending, prescriptionStatus: 'approved', prescriptionReview: { decision: 'approved' } });
     await rejects(markPaid(), 'ORDER_PAYMENT_STATE_CHANGED');
-    await orders.reviewPrescription(id, PHARMACY, { decision: 'approve', reviewedPrescriptionUrls: [] });
+    await orders.reviewPrescription(id, PHARMACY, { decision: 'approve', expectedRevision: 0, reviewedPrescriptionUrls: [] });
     await markPaid();
     assert.equal((await get(id)).paymentStatus, 'paid');
   });
@@ -246,11 +253,44 @@ async function main() {
     await orders.retryPayment(String(r.order._id), me); // applies the capture: paid, accepted
     const paid = await get(r.order._id);
     assert.equal(paid.paymentStatus, 'paid');
-    const out = await orders.reviewPrescription(String(r.order._id), PHARMACY, { decision: 'reject', reason: 'Antibiotic needs a doctor\'s prescription', reviewedPrescriptionUrls: [] });
+    const out = await orders.reviewPrescription(String(r.order._id), PHARMACY, { decision: 'reject', expectedRevision: 0, reason: 'Antibiotic needs a doctor\'s prescription', reviewedPrescriptionUrls: [] });
     assert.equal(out.status, 'cancelled');
     const o = await get(r.order._id);
     assert.ok(o.prescriptionRefund, 'refund recorded with the rejection');
     assert.ok(['wallet_pending', 'wallet_credited'].includes(String(o.prescriptionRefund?.status)));
+  });
+
+  await check('the decision needs the version shown; it is validated as a whole number', async () => {
+    assert.ok(prescriptionReviewSchema.validate({ decision: 'approve', reviewedPrescriptionUrls: [] }).error, 'required');
+    assert.ok(prescriptionReviewSchema.validate({ decision: 'approve', expectedRevision: -1, reviewedPrescriptionUrls: [] }).error);
+    assert.ok(prescriptionReviewSchema.validate({ decision: 'approve', expectedRevision: 1.5, reviewedPrescriptionUrls: [] }).error);
+  });
+
+  await check('a counter payment checked as a non-prescription order cannot land after it became one', async () => {
+    await setPharmacist();
+    const me = await customer();
+    await fillCart(me, 1, MED);
+    const r = await checkout(me, { paymentMode: 'cash_on_delivery', deliveryMode: 'delivery', deliveryAddress: '1 Lane, Pune' });
+    const id = String(r.order._id);
+    const otc = await get(id);
+    assert.equal(otc.prescriptionStatus, 'not_required');
+    // Meanwhile the order is changed to a prescription medicine (revision 1, pending review).
+    await orders.update(id, PHARMACY, { items: [{ medicineId: RX_MED, orderedQty: 1 }] } as never);
+    assert.equal((await get(id)).prescriptionStatus, 'pending');
+    staleNextRead(otc); // mark-paid validated the old OTC copy
+    await rejects(orders.markPaid(id, { userType: 'pharmacy', pharmacyId: PHARMACY, userId: PHARMACY, data: {} as never }), 'ORDER_PAYMENT_STATE_CHANGED');
+    assert.notEqual((await get(id)).paymentStatus, 'paid');
+  });
+
+  await check('a refill order stays non-prescription on every edit (items or documents)', async () => {
+    const me = await customer();
+    await fillCart(me, 1, MED);
+    const r = await checkout(me, { paymentMode: 'cash_on_delivery', deliveryMode: 'delivery', deliveryAddress: '1 Lane, Pune' });
+    const id = String(r.order._id);
+    await PharmacyOrderModel.updateOne({ _id: id }, { $set: { refill: { subscriptionId: new Types.ObjectId().toHexString(), cycleDate: '20261115', paymentDueBy: new Date(Date.now() + 86400000) } } });
+    await rejects(orders.update(id, PHARMACY, { items: [{ medicineId: RX_MED, orderedQty: 1 }] } as never), 'PRESCRIPTION_CHECKOUT_UNAVAILABLE');
+    await rejects(orders.update(id, PHARMACY, { prescriptionUrls: ['general/x.pdf'] } as never), 'PRESCRIPTION_CHECKOUT_UNAVAILABLE');
+    assert.equal((await get(id)).prescriptionStatus, 'not_required');
   });
 
   await mongoose.disconnect();

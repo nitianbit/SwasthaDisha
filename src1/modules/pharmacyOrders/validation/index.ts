@@ -111,6 +111,8 @@ export const prescriptionReviewSchema = Joi.object({
   // No per-item/count caps: legacy orders stored lists without bounds and must remain reviewable. Size is bounded
   // by the 10mb JSON body limit, the same limit those lists were originally submitted under.
   reviewedPrescriptionUrls: Joi.array().items(Joi.string()).required(),
+  // P9: the order revision the pharmacist was shown; the decision applies only to exactly that version.
+  expectedRevision: Joi.number().integer().min(0).required(),
 }).and('pharmacistName', 'pharmacistRegistrationNumber');
 
 /** Pharmacist work queue (W1): the pharmacy is always the caller's own, so no pharmacyId is accepted. */

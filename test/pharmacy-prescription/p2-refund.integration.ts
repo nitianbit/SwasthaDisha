@@ -106,7 +106,7 @@ async function paidOrder(opts: { record?: boolean; walletActive?: boolean } = {}
   await WalletModel.create({ userId: customer, balance: 0, isActive: opts.walletActive ?? true });
   return { id, customer, paymentId };
 }
-const reject = (id: string) => orders.reviewPrescription(id, pharmacyA, { decision: 'reject', ...pharmacist, reason: 'Invalid prescription', reviewedPrescriptionUrls: RX });
+const reject = (id: string) => orders.reviewPrescription(id, pharmacyA, { decision: 'reject', expectedRevision: 0, ...pharmacist, reason: 'Invalid prescription', reviewedPrescriptionUrls: RX });
 const balance = async (u: string) => (await WalletModel.findOne({ userId: u }).lean())?.balance;
 const txns = (u: string) => WalletTransactionModel.find({ userId: u }).sort({ createdAt: 1 }).lean();
 const refundOf = async (id: string) => (await PharmacyOrderModel.findById(id).lean())!.prescriptionRefund!;
@@ -314,7 +314,7 @@ async function main() {
     await new WalletRepository().postEntry({ userId: e.customer, walletId: we._id, transactionType: 'refund', amount: 120,
       referenceType: 'pharmacy_order', referenceId: e.id, operationKey: `pharmacy_order_refund:${e.id}`, description: 'late', transactionDate: '20261113' });
     const out = await orders.reviewPrescription(e.id.toUpperCase(), pharmacyA,
-      { decision: 'reject', ...pharmacist, reason: 'Invalid prescription', reviewedPrescriptionUrls: RX });
+      { decision: 'reject', expectedRevision: 0, ...pharmacist, reason: 'Invalid prescription', reviewedPrescriptionUrls: RX });
     assert.equal(out.prescriptionRefund?.status, 'wallet_credited');
     assert.equal(await balance(e.customer), 120, 'no second credit'); await ledgerMatches(e.customer);
     // uppercase retry on an intent-less order also settles under the canonical key

@@ -64,9 +64,17 @@ fences).
 
 ## Tests
 
-`test/pharmacy-prescription/p9-rx-online.integration.ts` (7): Rx order without a prescription → pending, payment set up
+`test/pharmacy-prescription/p9-rx-online.integration.ts` (10): Rx order without a prescription → pending, payment set up
 (non-Rx stays not_required); packing gated; one-button approval needs the pharmacist on file and records name /
 number / no document / revision; stale approval after an edit refused; post-review document/item edits refused, also a
 pre-review read committing after the review; counter payment only after approval, write-time fence; prescription file
 bound (pharmacy can open, stranger cannot), re-bound after loss, someone else's upload refused; paid Rx rejection →
 refund intent (P2). P1 test updated for the two intended changes (mark-paid code; approval without documents).
+
+## Changes after the implementation review (msg_1794733163372)
+
+- The decision carries `expectedRevision` (required, whole number ≥ 0): the revision the pharmacist was shown. It must
+  equal the current revision and is the revision the compare-and-set requires and the review records.
+- Counter / COD mark-paid fences the checked revision in both branches, plus the prescription classification
+  (approved when review is needed, unchanged otherwise): an order changed to Rx meanwhile cannot be marked paid.
+- Edits of refill orders validate with `rx: 'forbid'` (items and documents), so a refill never becomes Rx.

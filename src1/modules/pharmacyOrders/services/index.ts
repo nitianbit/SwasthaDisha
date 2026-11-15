@@ -1106,6 +1106,7 @@ export class PharmacyOrderService {
           kind: 'new_items',
           items: order.items,
           prescriptionUrls: data.prescriptionUrls !== undefined ? data.prescriptionUrls : order.prescriptionUrls,
+          rx: order.refill ? 'forbid' : 'allow', // P9: refills stay non-Rx on every edit
         });
       }
     }
@@ -1199,6 +1200,7 @@ export class PharmacyOrderService {
         kind: 'new_items',
         items: pricedItems,
         prescriptionUrls: nextPrescriptionUrls,
+        rx: order.refill ? 'forbid' : 'allow', // P9: refills stay non-Rx on every edit
       });
       const admittedItems = pricedItems as NonPrescriptionOrderItem[];
       const totals = computeTotals(admittedItems);
@@ -1439,6 +1441,11 @@ export class PharmacyOrderService {
     if (reviewed.length !== urls.length || reviewed.some((url, i) => url !== urls[i])) {
       throw new AppError({ status: 409, code: 'PRESCRIPTION_CHANGED', message: 'Prescription documents changed; reload the order and review again' });
     }
+    // P9: the decision is about the version the pharmacist was shown, not whatever the server reads now.
+    const shownRevision = Number(data.expectedRevision);
+    if (!Number.isInteger(shownRevision) || shownRevision < 0 || shownRevision !== Number(order.revision ?? 0)) {
+      throw new AppError({ status: 409, code: 'ORDER_STATE_CHANGED', message: 'Order changed since it was opened; reload and review again' });
+    }
     const approve = data.decision === 'approve';
     // P9 (owner decision): approval without an attached prescription is allowed; the record says none was attached.
     const reason = data.reason?.trim();
@@ -1466,7 +1473,7 @@ export class PharmacyOrderService {
       reviewedDocumentSetSha256: prescriptionDocumentSetSha256(urls),
       reviewedDocumentCount: urls.length,
       prescriptionAttached: urls.length > 0,
-      reviewedRevision: Number(order.revision ?? 0),
+      reviewedRevision: shownRevision,
       reviewedByPharmacyId: pharmacyId,
       reviewedAt: new Date(),
       orderStatusAtReview: order.status,
@@ -1481,7 +1488,7 @@ export class PharmacyOrderService {
       prescriptionUrls: { $eq: [...urls] },
       prescriptionReview: { $exists: false },
       // P9: exactly the revision reviewed (items, documents, totals): any edit in between makes this decision fail.
-      ...(order.revision === undefined ? { revision: { $in: [null, 0] } } : { revision: order.revision }),
+      ...(shownRevision === 0 ? { revision: { $in: [null, 0] } } : { revision: shownRevision }),
       ...(order.paymentStatus === undefined ? { paymentStatus: { $exists: false } } : { paymentStatus: order.paymentStatus }),
     };
     const stateChanged = () => new AppError({ status: 409, code: 'ORDER_STATE_CHANGED', message: 'Order changed while it was being reviewed; reload and try again' });
@@ -1941,7 +1948,11 @@ export class PharmacyOrderService {
         // Exact observed status: the write below derives status from this read, so a concurrent status change
         // (e.g. accepted -> packed) must fail the compare-and-set rather than be overwritten with a stale value.
         status: { $eq: order.status, $nin: TERMINAL_STATUSES },
-        ...(needsReview ? { prescriptionStatus: 'approved', 'prescriptionReview.decision': 'approved' } : {}),
+        // P9: exactly the version checked (any edit, e.g. an OTC order changed to Rx, moves the revision) and its
+        // prescription classification: approved for an order that needs review, unchanged otherwise.
+        ...(order.revision === undefined || order.revision === 0 ? { revision: { $in: [null, 0] } } : { revision: order.revision }),
+        ...(needsReview ? { prescriptionStatus: 'approved', 'prescriptionReview.decision': 'approved' }
+          : { prescriptionStatus: order.prescriptionStatus ?? 'not_required' }),
       },
       {
         paymentStatus: 'paid',

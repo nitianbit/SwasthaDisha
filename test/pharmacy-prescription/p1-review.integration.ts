@@ -82,7 +82,7 @@ async function main() {
   await check('approve: status approved, review recorded, stock untouched, customer notified', async () => {
     const id = await seed({ status: 'accepted', paymentStatus: 'paid' });
     released.length = 0; notices.length = 0;
-    const out = await service.reviewPrescription(id, pharmacyA, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX });
+    const out = await service.reviewPrescription(id, pharmacyA, { decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: RX });
     assert.equal(out.prescriptionStatus, 'approved');
     assert.equal(out.status, 'accepted');
     const r = (await get(id))!.prescriptionReview!;
@@ -99,7 +99,7 @@ async function main() {
   await check('previously stuck paid Rx order now completes through the normal status flow', async () => {
     const id = await seed({ status: 'accepted', paymentStatus: 'paid' });
     await rejects(service.updateStatus(id, pharmacyA, { status: 'packed' }), 'ORDER_PRESCRIPTION_APPROVAL_REQUIRED', 409);
-    await service.reviewPrescription(id, pharmacyA, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX });
+    await service.reviewPrescription(id, pharmacyA, { decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: RX });
     for (const status of ['packed', 'out_for_delivery', 'completed'] as const) await service.updateStatus(id, pharmacyA, { status });
     assert.equal((await get(id))!.status, 'completed');
   });
@@ -109,7 +109,7 @@ async function main() {
     // P9: an explicit guard (no longer the closed commerce gate): paid at the counter only after approval.
     await rejects(service.markPaid(id, { userType: 'pharmacy', pharmacyId: pharmacyA, userId: pharmacyA, data: {} as never }),
       'PRESCRIPTION_REVIEW_REQUIRED', 409);
-    await service.reviewPrescription(id, pharmacyA, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX });
+    await service.reviewPrescription(id, pharmacyA, { decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: RX });
     await service.updateStatus(id, pharmacyA, { status: 'packed' });
     await service.updateStatus(id, pharmacyA, { status: 'out_for_delivery' });
     await service.markPaid(id, { userType: 'pharmacy', pharmacyId: pharmacyA, userId: pharmacyA, data: {} as never });
@@ -121,7 +121,7 @@ async function main() {
   await check('reject unpaid placed order: rejected, stock released, no refund flag', async () => {
     const id = await seed();
     released.length = 0; notices.length = 0;
-    const out = await service.reviewPrescription(id, pharmacyA, { decision: 'reject', ...pharmacist, reason: 'Prescription expired', reviewedPrescriptionUrls: RX });
+    const out = await service.reviewPrescription(id, pharmacyA, { decision: 'reject', expectedRevision: 0, ...pharmacist, reason: 'Prescription expired', reviewedPrescriptionUrls: RX });
     assert.equal(out.status, 'rejected'); assert.equal(out.prescriptionStatus, 'rejected');
     const o = (await get(id))!;
     assert.equal(o.prescriptionReview!.refundRequired, false);
@@ -134,7 +134,7 @@ async function main() {
 
   await check('reject paid accepted order: cancelled, refundRequired=true, payment status untouched', async () => {
     const id = await seed({ status: 'accepted', paymentStatus: 'paid' });
-    await service.reviewPrescription(id, pharmacyA, { decision: 'reject', ...pharmacist, reason: 'Not a valid prescription', reviewedPrescriptionUrls: RX });
+    await service.reviewPrescription(id, pharmacyA, { decision: 'reject', expectedRevision: 0, ...pharmacist, reason: 'Not a valid prescription', reviewedPrescriptionUrls: RX });
     const o = (await get(id))!;
     assert.equal(o.status, 'cancelled'); assert.equal(o.paymentStatus, 'paid');
     assert.equal(o.prescriptionReview!.refundRequired, true);
@@ -144,7 +144,7 @@ async function main() {
   await check('stock release failure rolls back the rejection', async () => {
     const id = await seed();
     failRelease = true;
-    try { await assert.rejects(service.reviewPrescription(id, pharmacyA, { decision: 'reject', ...pharmacist, reason: 'Unreadable', reviewedPrescriptionUrls: RX })); }
+    try { await assert.rejects(service.reviewPrescription(id, pharmacyA, { decision: 'reject', expectedRevision: 0, ...pharmacist, reason: 'Unreadable', reviewedPrescriptionUrls: RX })); }
     finally { failRelease = false; }
     const o = (await get(id))!;
     assert.equal(o.status, 'placed'); assert.equal(o.prescriptionStatus, 'pending'); assert.equal(o.prescriptionReview, undefined);
@@ -152,34 +152,34 @@ async function main() {
 
   await check('documents differ from what pharmacist reviewed -> refused, nothing written', async () => {
     const id = await seed();
-    await rejects(service.reviewPrescription(id, pharmacyA, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: [RX[0]] }), 'PRESCRIPTION_CHANGED', 409);
-    await rejects(service.reviewPrescription(id, pharmacyA, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: [RX[1], RX[0]] }), 'PRESCRIPTION_CHANGED', 409);
+    await rejects(service.reviewPrescription(id, pharmacyA, { decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: [RX[0]] }), 'PRESCRIPTION_CHANGED', 409);
+    await rejects(service.reviewPrescription(id, pharmacyA, { decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: [RX[1], RX[0]] }), 'PRESCRIPTION_CHANGED', 409);
     assert.equal((await get(id))!.prescriptionStatus, 'pending');
   });
 
   await check('other pharmacy, terminal, not-pending, no-document approve and missing reason are refused', async () => {
     const id = await seed();
-    await rejects(service.reviewPrescription(id, pharmacyB, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX }), 'FORBIDDEN', 403);
+    await rejects(service.reviewPrescription(id, pharmacyB, { decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: RX }), 'FORBIDDEN', 403);
     const done = await seed({ status: 'cancelled' });
-    await rejects(service.reviewPrescription(done, pharmacyA, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX }), 'ORDER_TERMINAL', 409);
+    await rejects(service.reviewPrescription(done, pharmacyA, { decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: RX }), 'ORDER_TERMINAL', 409);
     const plain = await seed({ prescriptionStatus: 'not_required', prescriptionUrls: [] });
-    await rejects(service.reviewPrescription(plain, pharmacyA, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: [] }), 'PRESCRIPTION_NOT_PENDING', 409);
+    await rejects(service.reviewPrescription(plain, pharmacyA, { decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: [] }), 'PRESCRIPTION_NOT_PENDING', 409);
     const empty = await seed({ prescriptionUrls: [] });
     // P9 (owner decision): approval without an attached prescription is allowed and recorded as such.
     const noDoc = await seed({ prescriptionUrls: [] });
-    const approvedNoDoc = await service.reviewPrescription(noDoc, pharmacyA, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: [] });
+    const approvedNoDoc = await service.reviewPrescription(noDoc, pharmacyA, { decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: [] });
     assert.equal(approvedNoDoc.prescriptionStatus, 'approved'); assert.equal(approvedNoDoc.prescriptionReview?.prescriptionAttached, false);
-    await rejects(service.reviewPrescription(id, pharmacyA, { decision: 'reject', ...pharmacist, reason: '  ', reviewedPrescriptionUrls: RX }), 'VALIDATION_ERROR', 400);
-    await rejects(service.reviewPrescription('nope', pharmacyA, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX }), 'VALIDATION_ERROR', 400);
+    await rejects(service.reviewPrescription(id, pharmacyA, { decision: 'reject', expectedRevision: 0, ...pharmacist, reason: '  ', reviewedPrescriptionUrls: RX }), 'VALIDATION_ERROR', 400);
+    await rejects(service.reviewPrescription('nope', pharmacyA, { decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: RX }), 'VALIDATION_ERROR', 400);
     // empty pending order can still be rejected (no prescription supplied)
-    const out = await service.reviewPrescription(empty, pharmacyA, { decision: 'reject', ...pharmacist, reason: 'No prescription uploaded', reviewedPrescriptionUrls: [] });
+    const out = await service.reviewPrescription(empty, pharmacyA, { decision: 'reject', expectedRevision: 0, ...pharmacist, reason: 'No prescription uploaded', reviewedPrescriptionUrls: [] });
     assert.equal(out.status, 'rejected');
   });
 
   await check('second review is refused; decision is final', async () => {
     const id = await seed();
-    await service.reviewPrescription(id, pharmacyA, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX });
-    await rejects(service.reviewPrescription(id, pharmacyA, { decision: 'reject', ...pharmacist, reason: 'changed mind', reviewedPrescriptionUrls: RX }), 'PRESCRIPTION_NOT_PENDING', 409);
+    await service.reviewPrescription(id, pharmacyA, { decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: RX });
+    await rejects(service.reviewPrescription(id, pharmacyA, { decision: 'reject', expectedRevision: 0, ...pharmacist, reason: 'changed mind', reviewedPrescriptionUrls: RX }), 'PRESCRIPTION_NOT_PENDING', 409);
     assert.equal((await get(id))!.prescriptionStatus, 'approved');
   });
 
@@ -188,8 +188,8 @@ async function main() {
       const id = await seed({ status: 'accepted', paymentStatus: 'paid' });
       released.length = 0;
       const results = await Promise.allSettled([
-        service.reviewPrescription(id, pharmacyA, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX }),
-        service.reviewPrescription(id, pharmacyA, { decision: 'reject', ...pharmacist, reason: 'Duplicate check', reviewedPrescriptionUrls: RX }),
+        service.reviewPrescription(id, pharmacyA, { decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: RX }),
+        service.reviewPrescription(id, pharmacyA, { decision: 'reject', expectedRevision: 0, ...pharmacist, reason: 'Duplicate check', reviewedPrescriptionUrls: RX }),
       ]);
       assert.equal(results.filter(r => r.status === 'fulfilled').length, 1);
       const o = (await get(id))!;
@@ -208,7 +208,7 @@ async function main() {
       return row;
     };
     try {
-      await rejects(service.reviewPrescription(id, pharmacyA, { decision: 'reject', ...pharmacist, reason: 'Invalid', reviewedPrescriptionUrls: RX }), 'ORDER_STATE_CHANGED', 409);
+      await rejects(service.reviewPrescription(id, pharmacyA, { decision: 'reject', expectedRevision: 0, ...pharmacist, reason: 'Invalid', reviewedPrescriptionUrls: RX }), 'ORDER_STATE_CHANGED', 409);
     } finally { (repo as unknown as { findById: unknown }).findById = original; }
     assert.equal((await get(id))!.prescriptionStatus, 'pending');
   });
@@ -218,15 +218,15 @@ async function main() {
     assert.ok(rows.total > 0);
     assert.ok(rows.data.every(o => o.prescriptionStatus === 'pending'));
     assert.equal(orderQuerySchema.validate({ prescriptionStatus: 'pending' }).error, undefined);
-    assert.ok(prescriptionReviewSchema.validate({ decision: 'reject', ...pharmacist, reviewedPrescriptionUrls: RX }).error, 'reject needs reason');
-    assert.ok(prescriptionReviewSchema.validate({ decision: 'approve', pharmacistName: 'A', pharmacistRegistrationNumber: 'X', reviewedPrescriptionUrls: RX }).error);
-    assert.ok(prescriptionReviewSchema.validate({ decision: 'approve', ...pharmacist }).error, 'reviewed documents required');
-    assert.equal(prescriptionReviewSchema.validate({ decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX }).error, undefined);
+    assert.ok(prescriptionReviewSchema.validate({ decision: 'reject', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: RX }).error, 'reject needs reason');
+    assert.ok(prescriptionReviewSchema.validate({ decision: 'approve', expectedRevision: 0, pharmacistName: 'A', pharmacistRegistrationNumber: 'X', reviewedPrescriptionUrls: RX }).error);
+    assert.ok(prescriptionReviewSchema.validate({ decision: 'approve', expectedRevision: 0, ...pharmacist }).error, 'reviewed documents required');
+    assert.equal(prescriptionReviewSchema.validate({ decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: RX }).error, undefined);
   });
 
   await check('markPaid cannot overwrite a concurrent status advance with its stale read', async () => {
     const id = await seed({ status: 'accepted', paymentMode: 'cash_on_delivery', paymentStatus: 'pending' });
-    await service.reviewPrescription(id, pharmacyA, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX });
+    await service.reviewPrescription(id, pharmacyA, { decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: RX });
     const repo = (service as unknown as { orderRepo: PharmacyOrderRepository }).orderRepo;
     const original = repo.findById;
     (repo as unknown as { findById: unknown }).findById = async (x: string) => {
@@ -247,11 +247,11 @@ async function main() {
   await check('legacy order with 25 long prescription URLs can be reviewed; evidence is a bounded fingerprint', async () => {
     const many = Array.from({ length: 25 }, (_, i) => 'https://files.example/' + 'x'.repeat(3000) + '/' + i);
     const id = await seed({ status: 'accepted', paymentStatus: 'paid', prescriptionUrls: many });
-    await service.reviewPrescription(id, pharmacyA, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: many });
+    await service.reviewPrescription(id, pharmacyA, { decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: many });
     const r = (await get(id))!.prescriptionReview!;
     assert.equal(r.reviewedDocumentCount, 25);
     assert.equal(r.reviewedDocumentSetSha256, prescriptionDocumentSetSha256(many));
-    assert.equal(prescriptionReviewSchema.validate({ decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: many }).error, undefined);
+    assert.equal(prescriptionReviewSchema.validate({ decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: many }).error, undefined);
   });
 
   await check('HTTP: review queue filter and review endpoint through real router, auth and Joi', async () => {
@@ -281,11 +281,11 @@ async function main() {
       assert.ok(all.pagination.total > list.pagination.total);
 
       const id = await seed();
-      let res = await call('POST', `/${id}/prescription-review`, pharmacyA, { decision: 'reject', ...pharmacist, reviewedPrescriptionUrls: RX });
+      let res = await call('POST', `/${id}/prescription-review`, pharmacyA, { decision: 'reject', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: RX });
       assert.equal(res.status, 400); // reason required
-      res = await call('POST', `/${id}/prescription-review`, pharmacyB, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX });
+      res = await call('POST', `/${id}/prescription-review`, pharmacyB, { decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: RX });
       assert.equal(res.status, 403); // unverified / other pharmacy
-      res = await call('POST', `/${id}/prescription-review`, pharmacyA, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX, prescriptionStatus: 'approved' });
+      res = await call('POST', `/${id}/prescription-review`, pharmacyA, { decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: RX, prescriptionStatus: 'approved' });
       assert.equal(res.status, 200);
       const body = await res.json() as { message: string; data: { prescriptionStatus: string } };
       assert.equal(body.message, 'Prescription approved'); assert.equal(body.data.prescriptionStatus, 'approved');
@@ -339,9 +339,9 @@ async function main() {
       assert.deepEqual(second.pagination, { page: 2, limit: 1, total: 2, totalPages: 2 });
 
       // Every listed order is one the review itself accepts.
-      await service.reviewPrescription(accepted, seller, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX });
-      await rejects(service.reviewPrescription(cancelled, seller, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX }), 'ORDER_TERMINAL');
-      await rejects(service.reviewPrescription(bought, seller, { decision: 'approve', ...pharmacist, reviewedPrescriptionUrls: RX }), 'FORBIDDEN', 403);
+      await service.reviewPrescription(accepted, seller, { decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: RX });
+      await rejects(service.reviewPrescription(cancelled, seller, { decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: RX }), 'ORDER_TERMINAL');
+      await rejects(service.reviewPrescription(bought, seller, { decision: 'approve', expectedRevision: 0, ...pharmacist, reviewedPrescriptionUrls: RX }), 'FORBIDDEN', 403);
       const after = await (await call('/prescription-reviews', asPharmacy(seller))).json() as Page;
       assert.deepEqual(after.data.map(o => String(o._id)), [placed]);
 

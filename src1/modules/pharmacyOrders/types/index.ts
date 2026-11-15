@@ -323,6 +323,8 @@ export interface PrescriptionReviewRequest {
   /** P9: optional; the pharmacy's registered pharmacist is used when absent. */
   pharmacistName?: string;
   pharmacistRegistrationNumber?: string;
+  /** P9: the order revision shown to the pharmacist (required). */
+  expectedRevision: number;
   reason?: string;
   reviewedPrescriptionUrls: string[];
 }
