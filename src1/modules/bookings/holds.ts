@@ -382,6 +382,8 @@ export async function rescheduleWithHolds(p: {
     const owner = p.requester.userType === 'admin' ? {} : { userId: { $eq: p.requester._id } };
     const booking = await BookingModel.findOne({ _id: id, ...owner }).session(s).lean() as IBooking | null;
     if (!booking) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
+    // Q4b: an instant consultation holds no slot and its own interval; it is never moved onto a scheduled slot.
+    if (booking.bookingKind === 'instant') throw conflict('INSTANT_CONSULT_COMMAND_REQUIRED', 'An instant consultation cannot be rescheduled');
     if (!CANCELLABLE_BOOKING_STATUSES.includes(String(booking.status))) {
       throw conflict('BOOKING_NOT_RESCHEDULABLE', `A ${booking.status} booking cannot be rescheduled`);
     }

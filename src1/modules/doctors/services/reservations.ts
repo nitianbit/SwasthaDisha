@@ -10,7 +10,7 @@ import {
 const busy = () => new AppError({ status: 409, code: 'DOCTOR_BUSY', message: 'The doctor is not free at that time' });
 
 /** Serializes this transaction with every other admission for the doctor (write-write conflict on the guard). */
-async function bumpGuard(doctorId: string, s: ClientSession): Promise<void> {
+export async function bumpGuard(doctorId: string, s: ClientSession): Promise<void> {
   await DoctorScheduleGuardModel.findOneAndUpdate(
     { doctorId: String(doctorId) },
     { $inc: { version: 1 }, $setOnInsert: { doctorId: String(doctorId) } },

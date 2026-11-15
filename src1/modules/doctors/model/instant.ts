@@ -49,6 +49,8 @@ export interface IInstantRequest {
   target: { kind: 'specific' | 'any'; doctorId?: string };
   quotedAmountMinor: number;
   couponCode?: string;
+  /** The coupon's doctor targets frozen with the price contract (absent = any doctor). Offers and acceptance honour it. */
+  couponDoctorIds?: string[];
   discountMinor: number;
   /** What the customer put in (set when the funding is held): total == quotedAmountMinor. */
   funding?: MoneySplit;
@@ -96,6 +98,7 @@ const instantSchema = new Schema<IInstantRequest>(
     target: { kind: { type: String, required: true, enum: ['specific', 'any'] }, doctorId: String },
     quotedAmountMinor: { type: Number, required: true, min: 0 },
     couponCode: String,
+    couponDoctorIds: { type: [String], default: undefined },
     discountMinor: { type: Number, required: true, default: 0, min: 0 },
     funding: split,
     fundingState: { type: String, required: true, enum: ['awaiting', 'held', 'allocated', 'refunded'] },
