@@ -1,3 +1,4 @@
+import { hitClient } from '@/modules/otp/throttle';
 import 'reflect-metadata';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
@@ -41,6 +42,7 @@ export class AuthController {
       email,
     };
 
+    await hitClient('ip-send', req);
     const result = await this.authService.sendOTP(data);
 
     res.status(200).json({
@@ -63,6 +65,7 @@ export class AuthController {
       otp,
     };
 
+    await hitClient('ip-verify', req);
     const result = await this.authService.verifyOTP(data);
 
     if (audience) {

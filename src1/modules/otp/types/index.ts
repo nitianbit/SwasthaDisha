@@ -1,7 +1,10 @@
 export interface IOTP {
   _id?: string;
   userId: string; // Reference to User
-  otp: string;
+  /** Legacy rows only; new rows carry `otpHash`. */
+  otp?: string;
+  otpHash?: string;
+  attempts?: number;
   target: 'phone' | 'email';
   targetValue?: string;
   createdAt?: Date;

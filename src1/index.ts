@@ -25,6 +25,8 @@ import logger from '@/services/logger';
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const app: Express = express();
+// O1: behind a proxy/load balancer set TRUST_PROXY (e.g. 1) so req.ip is the client, not the proxy.
+if (CONFIG.TRUST_PROXY) app.set('trust proxy', /^\d+$/.test(CONFIG.TRUST_PROXY) ? Number(CONFIG.TRUST_PROXY) : CONFIG.TRUST_PROXY);
 
 // Middleware
 const allowedOrigins = CONFIG.CORS_ORIGIN === '*'

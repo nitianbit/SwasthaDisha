@@ -9,9 +9,18 @@ const otpSchema = new Schema<IOTP>(
       required: true,
       index: true,
     } as any,
+    // Legacy rows only (created before O1): the code in plain text. New rows store `otpHash` instead.
     otp: {
       type: String,
-      required: true,
+    },
+    // O1: HMAC of the code bound to the user and destination; the code itself is never stored.
+    otpHash: {
+      type: String,
+    },
+    // O1: checks made against this code (right or wrong); at OTP_MAX_ATTEMPTS the code is burnt.
+    attempts: {
+      type: Number,
+      default: 0,
     },
     target: {
       type: String,
@@ -43,6 +52,8 @@ const otpSchema = new Schema<IOTP>(
 // Compound index for efficient queries
 otpSchema.index({ userId: 1, target: 1, isVerified: 1 });
 otpSchema.index({ userId: 1, otp: 1 });
+// O1: the latest pending code of one destination.
+otpSchema.index({ userId: 1, target: 1, targetValue: 1, isVerified: 1, _id: -1 });
 
 const OTPModel: Model<IOTP> = model<IOTP>('OTP', otpSchema);
 

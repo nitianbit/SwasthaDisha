@@ -28,6 +28,7 @@ import PharmacyModel from '@/modules/pharmacies/model';
 import { AuthSessionModel } from '@/modules/auth/model/session';
 import { reissueForCaller } from '@/modules/auth/sessions';
 import { errorHandler } from '@/modules/middleware';
+import { OtpThrottleModel } from '@/modules/otp/model/throttle';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/d4_sessions_check?directConnection=true';
 if (process.env.MONGODB_URL !== FIXTURE_URL) throw new Error('Refusing to run: MONGODB_URL must be exactly ' + FIXTURE_URL);
@@ -49,6 +50,8 @@ const auth = new (AuthService as unknown as new (...a: unknown[]) => AuthService
 let base = '';
 type Res = { status: number; body: { data?: Record<string, unknown>; code?: string }; cookie: string | null; headers: Headers };
 async function call(path: string, opts: { origin?: string | null; header?: boolean; body?: unknown; cookie?: string | null; bearer?: string } = {}): Promise<Res> {
+  // O1 limits (one code per 30 s per number) have their own suite; these session checks re-send freely.
+  if (path.endsWith('/send')) await OtpThrottleModel.deleteMany({});
   const headers: Record<string, string> = { 'content-type': 'application/json' };
   if (opts.origin !== null) headers.origin = opts.origin ?? CUSTOMER;
   if (opts.header !== false) headers['x-jansetu-session'] = '1';

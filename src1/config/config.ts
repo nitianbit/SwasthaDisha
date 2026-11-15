@@ -70,6 +70,17 @@ export const CONFIG: ISettings = {
   
   // OTP configuration
   OTP_EXPIRY_MINUTES: parseInt(process.env.OTP_EXPIRY_MINUTES || '10', 10),
+  // O1: OTP limits. Wrong guesses per code before it is burnt; sends and checks per identity; optional per address.
+  OTP_MAX_ATTEMPTS: parseInt(process.env.OTP_MAX_ATTEMPTS || '5', 10),
+  OTP_SEND_PER_HOUR: parseInt(process.env.OTP_SEND_PER_HOUR || '5', 10),
+  OTP_SEND_PER_DAY: parseInt(process.env.OTP_SEND_PER_DAY || '10', 10),
+  OTP_VERIFY_PER_HOUR: parseInt(process.env.OTP_VERIFY_PER_HOUR || '10', 10),
+  OTP_VERIFY_PER_DAY: parseInt(process.env.OTP_VERIFY_PER_DAY || '20', 10),
+  OTP_IP_LIMITS: process.env.OTP_IP_LIMITS === 'true',
+  OTP_IP_SEND_PER_HOUR: parseInt(process.env.OTP_IP_SEND_PER_HOUR || '30', 10),
+  OTP_IP_VERIFY_PER_HOUR: parseInt(process.env.OTP_IP_VERIFY_PER_HOUR || '60', 10),
+  // Express 'trust proxy' (hop count, or a list such as 'loopback'); unset = X-Forwarded-For is not trusted.
+  TRUST_PROXY: process.env.TRUST_PROXY || '',
   
   // CORS configuration
   CORS_ORIGIN: process.env.CORS_ORIGIN || '*',

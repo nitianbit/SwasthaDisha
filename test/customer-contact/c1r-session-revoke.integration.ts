@@ -8,6 +8,7 @@
  *     npx tsx --tsconfig tsconfig.json test/customer-contact/c1r-session-revoke.integration.ts
  */
 import 'reflect-metadata';
+import { OtpThrottleModel } from '@/modules/otp/model/throttle';
 import assert from 'node:assert/strict';
 import express from 'express';
 import jwt from 'jsonwebtoken';
@@ -60,6 +61,7 @@ async function customer() {
   return { id: String(u._id), phone };
 }
 async function login(phone: string): Promise<string> {
+  await OtpThrottleModel.deleteMany({}); // O1 limits have their own suite
   await auth.sendOTP({ userType: 'user', phone } as never);
   const out = await auth.verifyOTP({ userType: 'user', phone, otp: lastOtp(sms[sms.length - 1].text) } as never) as { accessToken: string };
   return out.accessToken;
@@ -109,6 +111,7 @@ async function main() {
   await check('a login whose token is signed while a revoke commits carries the old generation and is refused', async () => {
     const c = await customer();
     const a = await login(c.phone);
+    await OtpThrottleModel.deleteMany({});
     await auth.sendOTP({ userType: 'user', phone: c.phone } as never);
     const otp = lastOtp(sms[sms.length - 1].text);
     await auth.revokeSessions(claims(a) as never);                                   // generation 0 -> 1

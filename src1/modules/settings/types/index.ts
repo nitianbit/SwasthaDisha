@@ -45,6 +45,15 @@ export interface ISettings {
   
   // OTP configuration
   OTP_EXPIRY_MINUTES: number;
+  OTP_MAX_ATTEMPTS: number;
+  OTP_SEND_PER_HOUR: number;
+  OTP_SEND_PER_DAY: number;
+  OTP_VERIFY_PER_HOUR: number;
+  OTP_VERIFY_PER_DAY: number;
+  OTP_IP_LIMITS: boolean;
+  OTP_IP_SEND_PER_HOUR: number;
+  OTP_IP_VERIFY_PER_HOUR: number;
+  TRUST_PROXY: string;
   
   // CORS configuration
   CORS_ORIGIN: string;
