@@ -12,6 +12,8 @@ import {
   partnerIdParamSchema,
   addMemberSchema,
   updateMemberPermissionsSchema,
+  updateMemberBranchesSchema,
+  branchListQuerySchema,
   createBranchSchema,
   updateBranchSchema,
   memberIdParamSchema,
@@ -63,6 +65,9 @@ import {
   adminUpdatePartner,
   adminVerifyPartner,
   adminSuspendPartner,
+  adminReinstatePartner,
+  updateMemberBranches,
+  reactivateBranch,
   attachAdminActor,
   attachMemberActor,
   getMyPartner,
@@ -114,15 +119,19 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.delete('/members/:memberId', ...guard('staff.manage'), validate(memberIdParamSchema, 'params'), catchAsync(removeMember));
   r.put('/members/:memberId/permissions', ...guard('staff.manage'), validate(memberIdParamSchema, 'params'),
     validate(updateMemberPermissionsSchema, 'body'), catchAsync(updateMemberPermissions));
+  r.put('/members/:memberId/branches', ...guard('staff.manage'), validate(memberIdParamSchema, 'params'),
+    validate(updateMemberBranchesSchema, 'body'), catchAsync(updateMemberBranches));
 
   r.get('/audit', ...guard('staff.manage'), catchAsync(listAudit));
 
-  r.get('/branches', ...guard('branches.manage'), catchAsync(listBranches));
-  r.get('/branches/:branchId', ...guard('branches.manage'), validate(branchIdParamSchema, 'params'), catchAsync(getBranch));
+  // Q8: any member may read their branches (names are needed to scope staff, bookings, invoices); closed ones only for branch managers.
+  r.get('/branches', ...guard(), validate(branchListQuerySchema, 'query'), catchAsync(listBranches));
+  r.get('/branches/:branchId', ...guard(), validate(branchIdParamSchema, 'params'), catchAsync(getBranch));
   r.post('/branches', ...guard('branches.manage'), validate(createBranchSchema, 'body'), catchAsync(createBranch));
   r.put('/branches/:branchId', ...guard('branches.manage'), validate(branchIdParamSchema, 'params'),
     validate(updateBranchSchema, 'body'), catchAsync(updateBranch));
   r.delete('/branches/:branchId', ...guard('branches.manage'), validate(branchIdParamSchema, 'params'), catchAsync(deactivateBranch));
+  r.post('/branches/:branchId/reactivate', ...guard('branches.manage'), validate(branchIdParamSchema, 'params'), catchAsync(reactivateBranch));
 
   // Q2: catalogue (anyone who bills needs to read it) and in-house invoices
   r.get('/catalogue', ...guard.any('catalogue.manage', 'invoices.create'), catchAsync(listCatalogueItems));
@@ -205,6 +214,7 @@ partnerRouter.post('/admin/:partnerId/verify', requireAdmin, validate(partnerIdP
 partnerRouter.post('/admin/catalogue/:itemId/disable', requireAdmin, validate(catalogueItemParamSchema, 'params'), catchAsync(adminDisableCatalogueItem));
 partnerRouter.post('/admin/catalogue/:itemId/enable', requireAdmin, validate(catalogueItemParamSchema, 'params'), catchAsync(adminEnableCatalogueItem));
 partnerRouter.post('/admin/:partnerId/suspend', requireAdmin, validate(partnerIdParamSchema, 'params'), catchAsync(adminSuspendPartner));
+partnerRouter.post('/admin/:partnerId/reinstate', requireAdmin, validate(partnerIdParamSchema, 'params'), catchAsync(adminReinstatePartner));
 
 // ── Admin: everything a partner's owner can do, for any partner ──
 const adminWorkspaceRouter = Router({ mergeParams: true });

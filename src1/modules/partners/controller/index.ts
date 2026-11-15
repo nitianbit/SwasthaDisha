@@ -67,8 +67,9 @@ export async function loadPartnerActor(req: AuthRequest): Promise<PartnerActor> 
 // ── Admin endpoints ──
 
 export const adminCreatePartner = async (req: Request, res: Response, _next: NextFunction) => {
-  const result = await service().createPartner(req.body);
-  res.status(201).json({ success: true, data: result });
+  const { requestKey, ...body } = req.body;
+  const result = await service().createPartner({ ...body, ...(requestKey ? { requestKey, createdBy: String((req as AuthRequest).user!._id) } : {}) });
+  res.status(result.replayed ? 200 : 201).json({ success: true, data: { partner: result.partner, owner: result.owner } });
 };
 
 export const adminListPartners = async (req: Request, res: Response, _next: NextFunction) => {
@@ -76,8 +77,11 @@ export const adminListPartners = async (req: Request, res: Response, _next: Next
   if (req.query.kind) filter.kind = req.query.kind;
   if (req.query.verificationState) filter.verificationState = req.query.verificationState;
   if (req.query.isActive !== undefined) filter.isActive = req.query.isActive === 'true';
-  const data = await service().listPartners(filter);
-  res.status(200).json({ success: true, data });
+  if (typeof req.query.q === 'string') filter.q = req.query.q;
+  if (req.query.page !== undefined) filter.page = Number(req.query.page);
+  if (req.query.limit !== undefined) filter.limit = Number(req.query.limit);
+  const r = await service().listPartners(filter);
+  res.status(200).json({ success: true, data: r.items, pagination: { page: r.page, limit: r.limit, total: r.total, totalPages: r.totalPages } });
 };
 
 export const adminGetPartner = async (req: Request, res: Response, _next: NextFunction) => {
@@ -97,6 +101,11 @@ export const adminVerifyPartner = async (req: Request, res: Response, _next: Nex
 
 export const adminSuspendPartner = async (req: Request, res: Response, _next: NextFunction) => {
   const data = await service().suspendPartner(req.params.partnerId);
+  res.status(200).json({ success: true, data });
+};
+
+export const adminReinstatePartner = async (req: Request, res: Response, _next: NextFunction) => {
+  const data = await service().reinstatePartner(req.params.partnerId, String((req as AuthRequest).user!._id));
   res.status(200).json({ success: true, data });
 };
 
@@ -146,11 +155,16 @@ export const updateMemberPermissions = async (req: Request, res: Response, _next
   res.status(200).json({ success: true, data });
 };
 
+export const updateMemberBranches = async (req: Request, res: Response, _next: NextFunction) => {
+  const data = await service().updateMemberBranches(actorOf(req), req.params.memberId, req.body.branchIds);
+  res.status(200).json({ success: true, data });
+};
+
 // ── Branch endpoints ──
 
 export const listBranches = async (req: Request, res: Response, _next: NextFunction) => {
   const actor = actorOf(req);
-  const data = await service().listBranches(actor);
+  const data = await service().listBranches(actor, req.query.includeInactive === 'true');
   res.status(200).json({ success: true, data });
 };
 
@@ -176,6 +190,11 @@ export const deactivateBranch = async (req: Request, res: Response, _next: NextF
   const actor = actorOf(req);
   await service().deactivateBranch(actor, req.params.branchId);
   res.status(200).json({ success: true, message: 'Branch deactivated' });
+};
+
+export const reactivateBranch = async (req: Request, res: Response, _next: NextFunction) => {
+  const data = await service().reactivateBranch(actorOf(req), req.params.branchId);
+  res.status(200).json({ success: true, data });
 };
 
 export const listAudit = async (req: Request, res: Response, _next: NextFunction) => {

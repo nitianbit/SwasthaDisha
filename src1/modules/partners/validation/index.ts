@@ -49,6 +49,8 @@ export const addressSchema = Joi.object({
 });
 
 export const createPartnerSchema = Joi.object({
+  /** Q8: exactly-once creation per admin. */
+  requestKey: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).optional(),
   kind: Joi.string().valid('lab', 'clinic').required(),
   name: Joi.string().trim().min(1).max(200).required(),
   legalName: Joi.string().trim().max(200).optional(),
@@ -158,6 +160,9 @@ export const updateBranchSchema = Joi.object({
 }).min(1);
 
 export const partnerQuerySchema = Joi.object({
+  q: Joi.string().trim().max(100).allow('').optional(),
+  page: Joi.number().integer().min(1).optional(),
+  limit: Joi.number().integer().min(1).max(200).optional(),
   kind: Joi.string().valid('lab', 'clinic').optional(),
   verificationState: Joi.string().valid('pending', 'verified', 'suspended').optional(),
   isActive: Joi.string().valid('true', 'false').optional(),
@@ -165,3 +170,10 @@ export const partnerQuerySchema = Joi.object({
 
 export * from './catalogue';
 export * from './invoice';
+
+/** Q8: a staff member's branch access (empty = every branch). */
+export const updateMemberBranchesSchema = Joi.object({
+  branchIds: Joi.array().items(Joi.string().pattern(objectIdPattern)).max(200).required(),
+});
+
+export const branchListQuerySchema = Joi.object({ includeInactive: Joi.string().valid('true', 'false').optional() });

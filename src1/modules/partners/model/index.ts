@@ -67,6 +67,10 @@ const partnerSchema = new Schema<IPartner>(
     soloDoctorId: {
       type: String,
     },
+    // Q8: admin creation exactly once per (admin, request key).
+    createdBy: { type: String },
+    createRequestKey: { type: String },
+    createRequestHash: { type: String },
     isActive: {
       type: Boolean,
       default: true,
@@ -79,6 +83,8 @@ const partnerSchema = new Schema<IPartner>(
 );
 
 partnerSchema.index({ kind: 1, isActive: 1 });
+partnerSchema.index({ createdBy: 1, createRequestKey: 1 }, { unique: true, partialFilterExpression: { createRequestKey: { $type: 'string' } } });
+partnerSchema.index({ name: 1 });
 // Q6: one solo practice per doctor.
 partnerSchema.index({ soloDoctorId: 1 }, { unique: true, partialFilterExpression: { soloDoctorId: { $type: 'string' } } });
 partnerSchema.index({ 'verification.state': 1, isActive: 1 });

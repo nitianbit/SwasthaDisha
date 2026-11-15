@@ -26,6 +26,9 @@ export interface IPartner {
   activeOwnerCount: number;
   solo?: boolean;
   soloDoctorId?: string;
+  createdBy?: string;
+  createRequestKey?: string;
+  createRequestHash?: string;
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;

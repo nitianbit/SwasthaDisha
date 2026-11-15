@@ -1,3 +1,7 @@
+import { createHash } from 'crypto';
+import BranchModel from '@/modules/partners/model/branch';
+import MemberModel from '@/modules/partners/model/member';
+import PartnerModel from '@/modules/partners/model';
 import { Service } from 'typedi';
 import mongoose, { ClientSession } from 'mongoose';
 import PartnerAuditEventModel from '@/modules/partners/model/audit';
@@ -134,10 +138,34 @@ export class PartnerService {
     invoiceSeriesPrefix: string;
     solo?: boolean;
     firstOwner: { phone: string; name: string };
-  }): Promise<{ partner: IPartner; owner: IMember }> {
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    /** Q8: admin create is exactly once per (admin, requestKey); a repeat with other content is refused. */
+    requestKey?: string;
+    createdBy?: string;
+  }): Promise<{ partner: IPartner; owner: IMember; replayed?: boolean }> {
+    const { requestKey, createdBy, ...content } = data;
+    const requestHash = requestKey ? createHash('sha256').update(JSON.stringify(content)).digest('hex') : undefined;
+    const replay = async () => {
+      if (!requestKey || !createdBy) return null;
+      const p = await PartnerModel.findOne({ createdBy, createRequestKey: requestKey }).lean() as (IPartner & { createRequestHash?: string }) | null;
+      if (!p) return null;
+      if (p.createRequestHash !== requestHash) throw new AppError({ status: 409, code: 'REQUEST_KEY_REUSED', message: 'This request key was already used for a different partner' });
+      const owner = await MemberModel.findOne({ partnerId: String(p._id), role: 'owner' }).sort({ createdAt: 1 }).lean() as IMember;
+      return { partner: p as IPartner, owner, replayed: true };
+    };
+    const prior = await replay();
+    if (prior) return prior;
     try {
+      return await this.createPartnerOnce(data, requestHash);
+    } catch (e: any) {
+      if (e?.code !== 11000) throw e;
+      const raced = await replay();
+      if (!raced) throw e;
+      return raced;
+    }
+  }
+
+  private async createPartnerOnce(data: Parameters<PartnerService['createPartner']>[0], requestHash?: string): Promise<{ partner: IPartner; owner: IMember }> {
+    return inTransaction(async (session) => {
       const partner = await this.partnerRepository.save(
         {
           kind: data.kind,
@@ -150,6 +178,7 @@ export class PartnerService {
           invoiceSeries: { prefix: data.invoiceSeriesPrefix },
           activeOwnerCount: 1,
           solo: data.solo,
+          ...(data.requestKey && data.createdBy ? { createdBy: data.createdBy, createRequestKey: data.requestKey, createRequestHash: requestHash } : {}),
           isActive: true,
           verification: { state: 'pending', documents: [] },
         } as Partial<IPartner>,
@@ -172,14 +201,8 @@ export class PartnerService {
         { session }
       );
 
-      await session.commitTransaction();
       return { partner, owner };
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
-    }
+    });
   }
 
   async getPartnerById(id: string): Promise<IPartner> {
@@ -194,12 +217,22 @@ export class PartnerService {
     kind?: PartnerKind;
     verificationState?: string;
     isActive?: boolean;
-  }): Promise<IPartner[]> {
+    q?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ items: IPartner[]; page: number; limit: number; total: number; totalPages: number }> {
     const query: any = {};
     if (filter.kind) query.kind = filter.kind;
     if (filter.verificationState) query['verification.state'] = filter.verificationState;
     if (filter.isActive !== undefined) query.isActive = filter.isActive;
-    return this.partnerRepository.findAll(query, { sort: { name: 1 } });
+    if (filter.q?.trim()) query.name = { $regex: filter.q.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
+    const limit = Math.min(Math.max(Number(filter.limit) || 50, 1), 200);
+    const page = Math.max(Number(filter.page) || 1, 1);
+    const [items, total] = await Promise.all([
+      PartnerModel.find(query).sort({ name: 1, _id: 1 }).skip((page - 1) * limit).limit(limit).lean().then((r) => r as unknown as IPartner[]),
+      PartnerModel.countDocuments(query),
+    ]);
+    return { items, page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) };
   }
 
   async updatePartner(
@@ -239,6 +272,8 @@ export class PartnerService {
     actor: PartnerActor,
     data: { name?: string; legalName?: string; contactPhone?: string; contactEmail?: string; logo?: string }
   ): Promise<IPartner> {
+    // Q8: the partner's public identity and contact are the owners' to change (admins act as owner).
+    if (actor.role !== 'owner') throw new AppError({ status: 403, code: 'OWNER_REQUIRED', message: 'Only an owner can change the partner profile' });
     const { name, legalName, contactPhone, contactEmail, logo } = data;
     const fields = { name, legalName, contactPhone, contactEmail, logo };
     return inTransaction(async (session) => {
@@ -269,6 +304,20 @@ export class PartnerService {
       throw new AppError({ status: 409, code: 'ALREADY_SUSPENDED', message: 'Partner is already suspended' });
     }
     return updated;
+  }
+
+  /** Q8: a suspended partner becomes verified and active again (admin), audited with the admin as actor. */
+  async reinstatePartner(partnerId: string, adminId: string): Promise<IPartner> {
+    return inTransaction(async (session) => {
+      const updated = await this.partnerRepository.update(
+        { _id: partnerId, 'verification.state': 'suspended' },
+        { 'verification.state': 'verified', isActive: true, 'verification.verifiedAt': new Date(), 'verification.verifiedBy': adminId },
+        { new: true, session } as any
+      );
+      if (!updated) throw new AppError({ status: 409, code: 'NOT_SUSPENDED', message: 'Only a suspended partner can be reinstated' });
+      await recordPartnerAudit(adminActor(adminId, partnerId), 'partner.reinstate', { kind: 'partner', id: partnerId }, undefined, session);
+      return updated;
+    });
   }
 
   // ── Member management (actor = admitted member) ──
@@ -449,6 +498,28 @@ export class PartnerService {
     });
   }
 
+  /**
+   * Q8: which branches a staff member works at (empty = all). The delegation ceiling applies as when adding staff: the
+   * actor must see the member and may only hand out a scope within their own (a restricted actor never grants "all").
+   * Owners always cover every branch. A doctor's consultation scope (doctorBranchIds) is not changed here.
+   */
+  async updateMemberBranches(actor: PartnerActor, memberId: string, branchIds: string[]): Promise<IMember> {
+    const member = await this.memberRepository.findById(memberId);
+    if (!member || String(member.partnerId) !== String(actor.partnerId) || !member.isActive || !memberInScope(actor, member)) throw memberNotFound();
+    if (member.role === 'owner') throw new AppError({ status: 400, code: 'OWNER_SCOPE_FIXED', message: 'Owners always cover every branch' });
+    if (String(member._id) === actor.memberId) throw new AppError({ status: 403, code: 'SELF_SCOPE_CHANGE', message: 'You cannot change your own branch access' });
+    const scope = [...new Set(branchIds.map(String))];
+    assertScopeWithin(actor, scope);
+    if (scope.length > 0) await this.validateBranchIds(actor.partnerId, scope);
+    return inTransaction(async (session) => {
+      const updated = await this.memberRepository.update(
+        { _id: memberId, partnerId: actor.partnerId, role: 'staff', isActive: true }, { branchIds: scope }, { new: true, session } as any);
+      if (!updated) throw memberNotFound();
+      await recordPartnerAudit(actor, 'member.branches', { kind: 'member', id: memberId }, { branchIds: scope }, session);
+      return updated;
+    });
+  }
+
   async listMembers(actor: PartnerActor): Promise<IMember[]> {
     const all = await this.memberRepository.findActiveByPartner(actor.partnerId);
     return all.filter((m) => memberInScope(actor, m));
@@ -506,14 +577,34 @@ export class PartnerService {
     await (await import('@/modules/partners/services/slots')).expandBranchTemplates(branchId);
   }
 
+  /** Q8: a deactivated branch opens again (all-branch actors, like creating one); its generated slots follow. */
+  async reactivateBranch(actor: PartnerActor, branchId: string): Promise<IBranch> {
+    if (!hasGlobalScope(actor)) throw scopeExceeded('Branch-scoped staff cannot reopen branches');
+    await this.getBranch(actor, branchId);
+    await ensureBranchScheduleGuards(branchId);
+    const updated = await inTransaction(async (session) => {
+      await bumpBranchScheduleGuards(branchId, session);
+      const done = await this.branchRepository.update({ _id: branchId, partnerId: actor.partnerId, isActive: false }, { isActive: true }, { new: true, session } as any);
+      if (!done) throw new AppError({ status: 409, code: 'BRANCH_ALREADY_ACTIVE', message: 'This branch is already open' });
+      await recordPartnerAudit(actor, 'branch.reactivate', { kind: 'branch', id: branchId }, undefined, session);
+      return done;
+    });
+    await (await import('@/modules/partners/services/slots')).expandBranchTemplates(branchId);
+    return updated;
+  }
+
   /** The partner-wide trail names members and grants on every branch, so only all-branch actors may read it. */
   async listAudit(actor: PartnerActor, limit = 100) {
     if (!hasGlobalScope(actor)) throw scopeExceeded('The activity log is available to owners and all-branch staff only');
     return PartnerAuditEventModel.find({ partnerId: actor.partnerId }).sort({ at: -1 }).limit(Math.min(limit, 500)).lean();
   }
 
-  async listBranches(actor: PartnerActor): Promise<IBranch[]> {
-    const all = await this.branchRepository.findActiveByPartner(actor.partnerId);
+  async listBranches(actor: PartnerActor, includeInactive = false): Promise<IBranch[]> {
+    // Q8: closed branches are listed (to reopen them) only for those who manage branches.
+    const canManage = actor.role === 'owner' || actor.permissions.includes('branches.manage');
+    const all = includeInactive && canManage
+      ? await BranchModel.find({ partnerId: actor.partnerId }).sort({ name: 1 }).lean() as IBranch[]
+      : await this.branchRepository.findActiveByPartner(actor.partnerId);
     return hasGlobalScope(actor) ? all : all.filter((b) => actor.branchIds.includes(String(b._id)));
   }
 
