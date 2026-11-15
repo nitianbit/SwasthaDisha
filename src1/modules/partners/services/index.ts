@@ -89,6 +89,18 @@ export async function recordPartnerAudit(
   }], session ? { session } : {});
 }
 
+/** Runs `fn` in one transaction (retried on transient conflicts): a mutation and its audit commit or roll back together. */
+export async function inTransaction<T>(fn: (session: ClientSession) => Promise<T>): Promise<T> {
+  const session = await mongoose.startSession();
+  try {
+    let result!: T;
+    await session.withTransaction(async () => { result = await fn(session); });
+    return result;
+  } finally {
+    await session.endSession();
+  }
+}
+
 @Service()
 export class PartnerService {
   constructor(
@@ -186,7 +198,8 @@ export class PartnerService {
       taxRegime?: TaxRegime;
       invoiceSeriesPrefix?: string;
       logo?: string;
-    }
+    },
+    session?: ClientSession
   ): Promise<IPartner> {
     const update: any = {};
     if (data.name !== undefined) update.name = data.name;
@@ -199,7 +212,7 @@ export class PartnerService {
     if (data.invoiceSeriesPrefix !== undefined) update['invoiceSeries.prefix'] = data.invoiceSeriesPrefix;
     if (data.logo !== undefined) update.logo = data.logo;
 
-    const updated = await this.partnerRepository.update({ _id: partnerId }, update);
+    const updated = await this.partnerRepository.update({ _id: partnerId }, update, { new: true, ...(session ? { session } : {}) } as any);
     if (!updated) {
       throw new AppError({ status: 404, code: 'PARTNER_NOT_FOUND', message: 'Partner not found' });
     }
@@ -211,10 +224,13 @@ export class PartnerService {
     data: { name?: string; legalName?: string; contactPhone?: string; contactEmail?: string; logo?: string }
   ): Promise<IPartner> {
     const { name, legalName, contactPhone, contactEmail, logo } = data;
-    const updated = await this.updatePartner(actor.partnerId, { name, legalName, contactPhone, contactEmail, logo });
-    await recordPartnerAudit(actor, 'partner.profile.update', { kind: 'partner', id: actor.partnerId },
-      { fields: Object.keys(data).filter((k) => (data as any)[k] !== undefined) });
-    return updated;
+    const fields = { name, legalName, contactPhone, contactEmail, logo };
+    return inTransaction(async (session) => {
+      const updated = await this.updatePartner(actor.partnerId, fields, session);
+      await recordPartnerAudit(actor, 'partner.profile.update', { kind: 'partner', id: actor.partnerId },
+        { fields: Object.keys(fields).filter((k) => (fields as any)[k] !== undefined) }, session);
+      return updated;
+    });
   }
 
   async verifyPartner(partnerId: string, verifiedBy: string): Promise<IPartner> {
@@ -264,19 +280,21 @@ export class PartnerService {
     }
 
     try {
-      const member = await this.memberRepository.save({
-        partnerId: actor.partnerId,
-        phone: data.phone,
-        name: data.name,
-        role: 'staff',
-        permissions: data.permissions,
-        branchIds,
-        isActive: true,
-        invitedBy: actor.memberId,
-      } as Partial<IMember>);
-      await recordPartnerAudit(actor, 'member.add', { kind: 'member', id: String(member._id) },
-        { role: 'staff', permissions: data.permissions, branchIds });
-      return member;
+      return await inTransaction(async (session) => {
+        const member = await this.memberRepository.save({
+          partnerId: actor.partnerId,
+          phone: data.phone,
+          name: data.name,
+          role: 'staff',
+          permissions: data.permissions,
+          branchIds,
+          isActive: true,
+          invitedBy: actor.memberId,
+        } as Partial<IMember>, { session });
+        await recordPartnerAudit(actor, 'member.add', { kind: 'member', id: String(member._id) },
+          { role: 'staff', permissions: data.permissions, branchIds }, session);
+        return member;
+      });
     } catch (error: any) {
       if (error?.code === 11000) {
         throw new AppError({ status: 409, code: 'MEMBER_ALREADY_EXISTS', message: 'An active member with this phone already exists for this partner' });
@@ -342,11 +360,14 @@ export class PartnerService {
     if (member.role === 'owner') {
       await this.removeOwner(actor, memberId);
     } else {
-      const removed = await this.memberRepository.update(
-        { _id: memberId, partnerId: actor.partnerId, role: 'staff', isActive: true },
-        { isActive: false }
-      );
-      if (removed) await recordPartnerAudit(actor, 'member.remove', { kind: 'member', id: memberId });
+      await inTransaction(async (session) => {
+        const removed = await this.memberRepository.update(
+          { _id: memberId, partnerId: actor.partnerId, role: 'staff', isActive: true },
+          { isActive: false },
+          { new: true, session } as any
+        );
+        if (removed) await recordPartnerAudit(actor, 'member.remove', { kind: 'member', id: memberId }, undefined, session);
+      });
     }
   }
 
@@ -400,13 +421,16 @@ export class PartnerService {
       throw new AppError({ status: 400, code: 'OWNER_PERMS_FIXED', message: 'Owner permissions cannot be restricted' });
     }
 
-    const updated = await this.memberRepository.update(
-      { _id: memberId, partnerId: actor.partnerId, role: 'staff', isActive: true },
-      { permissions }
-    );
-    if (!updated) throw memberNotFound();
-    await recordPartnerAudit(actor, 'member.permissions', { kind: 'member', id: memberId }, { permissions });
-    return updated;
+    return inTransaction(async (session) => {
+      const updated = await this.memberRepository.update(
+        { _id: memberId, partnerId: actor.partnerId, role: 'staff', isActive: true },
+        { permissions },
+        { new: true, session } as any
+      );
+      if (!updated) throw memberNotFound();
+      await recordPartnerAudit(actor, 'member.permissions', { kind: 'member', id: memberId }, { permissions }, session);
+      return updated;
+    });
   }
 
   async listMembers(actor: PartnerActor): Promise<IMember[]> {
@@ -429,36 +453,36 @@ export class PartnerService {
 
   async createBranch(actor: PartnerActor, data: Omit<IBranch, '_id' | 'partnerId' | 'isActive' | 'createdAt' | 'updatedAt'>): Promise<IBranch> {
     if (!hasGlobalScope(actor)) throw scopeExceeded('Branch-scoped staff cannot create new branches');
-    const branch = await this.createBranchForPartner(actor.partnerId, data);
-    await recordPartnerAudit(actor, 'branch.create', { kind: 'branch', id: String(branch._id) });
-    return branch;
-  }
-
-  async createBranchForPartner(partnerId: string, data: Omit<IBranch, '_id' | 'partnerId' | 'isActive' | 'createdAt' | 'updatedAt'>): Promise<IBranch> {
-    await this.getPartnerById(partnerId);
-    return this.branchRepository.save({
-      ...data,
-      partnerId,
-      isActive: true,
-    } as Partial<IBranch>);
+    await this.getPartnerById(actor.partnerId);
+    return inTransaction(async (session) => {
+      const branch = await this.branchRepository.save({ ...data, partnerId: actor.partnerId, isActive: true } as Partial<IBranch>, { session });
+      await recordPartnerAudit(actor, 'branch.create', { kind: 'branch', id: String(branch._id) }, undefined, session);
+      return branch;
+    });
   }
 
   async updateBranch(actor: PartnerActor, branchId: string, data: Partial<IBranch>): Promise<IBranch> {
     await this.getBranch(actor, branchId);
     const { _id, partnerId: _p, isActive: _a, createdAt: _c, updatedAt: _u, ...safeData } = data;
-    const updated = await this.branchRepository.update({ _id: branchId, partnerId: actor.partnerId }, safeData);
-    if (!updated) throw branchNotFound();
-    await recordPartnerAudit(actor, 'branch.update', { kind: 'branch', id: branchId }, { fields: Object.keys(safeData) });
-    return updated;
+    return inTransaction(async (session) => {
+      const updated = await this.branchRepository.update({ _id: branchId, partnerId: actor.partnerId }, safeData, { new: true, session } as any);
+      if (!updated) throw branchNotFound();
+      await recordPartnerAudit(actor, 'branch.update', { kind: 'branch', id: branchId }, { fields: Object.keys(safeData) }, session);
+      return updated;
+    });
   }
 
   async deactivateBranch(actor: PartnerActor, branchId: string): Promise<void> {
     await this.getBranch(actor, branchId);
-    await this.branchRepository.update({ _id: branchId, partnerId: actor.partnerId }, { isActive: false });
-    await recordPartnerAudit(actor, 'branch.deactivate', { kind: 'branch', id: branchId });
+    await inTransaction(async (session) => {
+      const done = await this.branchRepository.update({ _id: branchId, partnerId: actor.partnerId, isActive: true }, { isActive: false }, { new: true, session } as any);
+      if (done) await recordPartnerAudit(actor, 'branch.deactivate', { kind: 'branch', id: branchId }, undefined, session);
+    });
   }
 
+  /** The partner-wide trail names members and grants on every branch, so only all-branch actors may read it. */
   async listAudit(actor: PartnerActor, limit = 100) {
+    if (!hasGlobalScope(actor)) throw scopeExceeded('The activity log is available to owners and all-branch staff only');
     return PartnerAuditEventModel.find({ partnerId: actor.partnerId }).sort({ at: -1 }).limit(Math.min(limit, 500)).lean();
   }
 
