@@ -207,7 +207,8 @@ export class PharmacyOrderRepository extends BaseRepository<IPharmacyOrder> {
   }
 
   private applyCommonFilters(query: Record<string, unknown>, filter: OrderQueryParams): Record<string, unknown> {
-    const effectiveCustomerId = filter.userId || filter.customerId;
+    // S1: the scoped customerId always wins over the `userId` alias.
+    const effectiveCustomerId = filter.customerId || filter.userId;
     if (effectiveCustomerId) {
       query.customerId = effectiveCustomerId;
     }

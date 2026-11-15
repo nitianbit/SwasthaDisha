@@ -914,7 +914,10 @@ export class PharmacyOrderService {
       filter.viewerPharmacyId = requesterId;
       delete filter.pharmacyId;
     } else if (requesterRole === 'user') {
+      // S1: a customer sees only their own orders. `userId` is an alias the repository honours, so it must go too
+      // (before this fix `?userId=<someone else>` listed another customer's orders).
       filter.customerId = requesterId;
+      delete filter.userId;
       delete filter.pharmacyId;
       delete filter.buyerPharmacyId;
       delete filter.viewerPharmacyId;
