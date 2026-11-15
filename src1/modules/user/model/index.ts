@@ -160,7 +160,7 @@ const userSchema = new Schema<IUser>(
     },
     createdSource: {
       type: String,
-      enum: ['self_signup', 'pharmacy_app', 'partner_invoice'],
+      enum: ['self_signup', 'pharmacy_app', 'partner_invoice', 'clinic_desk'],
       default: 'self_signup',
       index: true,
     },

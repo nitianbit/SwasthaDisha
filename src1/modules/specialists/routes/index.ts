@@ -3,6 +3,8 @@ import { getMySchedule, putMySchedule, addMyLeave, removeMyLeave } from '@/modul
 import { scheduleTemplateSchema, leaveSchema, leaveParamSchema, presenceSchema, requestIdParamSchema, bookingIdParamSchema, extendSchema } from '@/modules/doctors/validation';
 import * as instantDoctor from '@/modules/doctors/controller/instant';
 import * as fin from '@/modules/partners/controller/finance';
+import * as clinicDoc from '@/modules/partners/controller/clinic';
+import * as clinicV from '@/modules/partners/validation/clinic';
 import * as finV from '@/modules/partners/validation/finance';
 import { Router } from 'express';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
@@ -94,6 +96,13 @@ specialistRouter.get('/me/schedule', requireSpecialist, catchAsync(getMySchedule
 specialistRouter.put('/me/schedule', requireSpecialist, validate(scheduleTemplateSchema, 'body'), catchAsync(putMySchedule));
 specialistRouter.post('/me/leave', requireSpecialist, validate(leaveSchema, 'body'), catchAsync(addMyLeave));
 specialistRouter.delete('/me/leave/:date', requireSpecialist, validate(leaveParamSchema, 'params'), catchAsync(removeMyLeave));
+// Q6: the clinics a doctor consults with (invitations to accept/decline, leave) and their own solo practice.
+specialistRouter.get('/me/clinics', requireSpecialist, catchAsync(clinicDoc.myClinics));
+specialistRouter.post('/me/clinic-invites/:inviteId/accept', requireSpecialist, validate(clinicV.inviteIdParamSchema, 'params'), catchAsync(clinicDoc.acceptInvite));
+specialistRouter.post('/me/clinic-invites/:inviteId/decline', requireSpecialist, validate(clinicV.inviteIdParamSchema, 'params'), catchAsync(clinicDoc.declineInvite));
+specialistRouter.post('/me/clinics/:partnerId/leave', requireSpecialist, validate(clinicV.partnerIdParamSchema, 'params'), catchAsync(clinicDoc.leaveClinic));
+specialistRouter.get('/me/practice', requireSpecialist, catchAsync(clinicDoc.getMyPractice));
+specialistRouter.post('/me/practice', requireSpecialist, validate(clinicV.soloPracticeSchema, 'body'), catchAsync(clinicDoc.createMyPractice));
 // Q5: the doctor's own earnings — balance, statement (+CSV), payouts, legacy history, payout destination.
 specialistRouter.get('/me/finance', requireSpecialist, catchAsync(fin.doctorFinance));
 specialistRouter.get('/me/finance/statement', requireSpecialist, validate(finV.statementQuerySchema, 'query'), catchAsync(fin.doctorStatement));

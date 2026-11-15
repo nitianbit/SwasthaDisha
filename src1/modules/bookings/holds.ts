@@ -171,7 +171,8 @@ async function releaseSlot(slotId: string, s: ClientSession) {
 export const isReplayedBooking = (b: IBooking) => (b as IBooking & { [REPLAYED]?: boolean })[REPLAYED] === true;
 const REPLAYED = Symbol('replayedBooking');
 
-export async function createBookingWithHolds(input: IBooking): Promise<IBooking> {
+/** `inTx` runs inside the booking's transaction after the insert (e.g. a partner audit that must commit with it). */
+export async function createBookingWithHolds(input: IBooking, inTx?: (b: IBooking, s: ClientSession) => Promise<void>): Promise<IBooking> {
   return runLedgerTransaction(async s => {
     // Every attempt (also a retry after a duplicate-key clash) first looks for a booking made with this create key.
     if (input.createRequestKey) {
@@ -207,7 +208,8 @@ export async function createBookingWithHolds(input: IBooking): Promise<IBooking>
     if (typeof requestKey === 'string' && requestKey) {
       await claimRequestKey(scopeOf('booking_create', String((doc as { userId?: unknown }).userId)), requestKey, s);
     }
-    const settlementSystem = settlementSystemFor(new Date());
+    // Q6: a front-desk appointment is paid at the clinic — never the legacy payouts', never the ledger's.
+    const settlementSystem = input.clinicDesk ? 'clinic' as const : settlementSystemFor(new Date());
     // Q4 §7a: a ledger consultation snapshots the doctor's settlement account (created here on first use).
     let settlement: { settlementAccountId: string; beneficiaryName: string } | undefined;
     if (settlementSystem === 'ledger' && input.specialistId) {
@@ -216,7 +218,9 @@ export async function createBookingWithHolds(input: IBooking): Promise<IBooking>
       settlement = { settlementAccountId: String(account._id), beneficiaryName: account.beneficiaryName };
     }
     const [created] = await BookingModel.create([{ ...doc, _id: bookingId, holds, settlementSystem, ...(settlement ? { settlement } : {}) }], { session: s });
-    return created.toObject() as IBooking;
+    const out = created.toObject() as IBooking;
+    if (inTx) await inTx(out, s);
+    return out;
   });
 }
 
@@ -257,6 +261,8 @@ async function settleMoney(booking: IBooking, id: string, records: PaymentRow[],
 export async function cancelBookingSettlement(p: {
   bookingId: string; requester: { _id: string; userType: string }; reason: string; cancelledAt: string; cause?: string;
   lifecycle: (b: IBooking) => IBooking['lifecycle']; enforceWindow: (b: IBooking) => void; wallets: WalletRepository;
+  /** Runs inside the transaction after a (first) cancellation, e.g. a partner audit. */
+  inTx?: (b: IBooking, s: ClientSession) => Promise<void>;
 }): Promise<CancelResult> {
   if (!Types.ObjectId.isValid(p.bookingId)) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
   const id = String(p.bookingId).toLowerCase();
@@ -264,6 +270,7 @@ export async function cancelBookingSettlement(p: {
     // Q4: the booking's own doctor may cancel it too (always a full refund; the caller passes no window).
     const owner = p.requester.userType === 'admin' ? {}
       : p.requester.userType === 'specialist' ? { specialistId: { $eq: p.requester._id } }
+      : p.requester.userType === 'clinic' ? { 'clinicDesk.partnerId': { $eq: p.requester._id } } // Q6: _id = partnerId
       : { userId: { $eq: p.requester._id } };
     const booking = await BookingModel.findOne({ _id: id, ...owner }).session(s).lean() as IBooking | null;
     if (!booking) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
@@ -313,6 +320,7 @@ export async function cancelBookingSettlement(p: {
     await BookingModel.updateOne({ _id: id, status: 'cancelled' },
       { $set: { holds: { version: 1, heldSlotId: null, followUpParentId: null } } }, { session: s });
     const after = await BookingModel.findById(id).session(s).lean() as IBooking;
+    if (p.inTx) await p.inTx(after, s);
     return { booking: after, refunded, alreadyCancelled: false };
   });
 }
@@ -375,6 +383,9 @@ export async function expireUnpaidBooking(p: { bookingId: string; now: Date; wal
  */
 export async function rescheduleWithHolds(p: {
   bookingId: string; requester: { _id: string; userType: string }; nextSlotId: string; patch: Record<string, unknown>;
+  /** Q6: set only by the clinic desk command, after it admitted the target slot as one of its own. */
+  clinicPartnerId?: string;
+  inTx?: (b: IBooking, s: ClientSession) => Promise<void>;
 }): Promise<IBooking> {
   if (!Types.ObjectId.isValid(p.bookingId)) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
   const id = String(p.bookingId).toLowerCase();
@@ -384,6 +395,10 @@ export async function rescheduleWithHolds(p: {
     if (!booking) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
     // Q4b: an instant consultation holds no slot and its own interval; it is never moved onto a scheduled slot.
     if (booking.bookingKind === 'instant') throw conflict('INSTANT_CONSULT_COMMAND_REQUIRED', 'An instant consultation cannot be rescheduled');
+    // Q6: a clinic desk appointment moves only to another slot of the same clinic, by that clinic (p.clinicPartnerId).
+    if (booking.clinicDesk && booking.clinicDesk.partnerId !== p.clinicPartnerId) {
+      throw conflict('CLINIC_APPOINTMENT', 'Ask the clinic to change this appointment');
+    }
     if (!CANCELLABLE_BOOKING_STATUSES.includes(String(booking.status))) {
       throw conflict('BOOKING_NOT_RESCHEDULABLE', `A ${booking.status} booking cannot be rescheduled`);
     }
@@ -421,6 +436,7 @@ export async function rescheduleWithHolds(p: {
     const updated = await BookingModel.findOneAndUpdate({ _id: id, status: booking.status },
       { $set: { ...p.patch, bookingTime, slotId: target, holds } }, { new: true, session: s }).lean() as IBooking | null;
     if (!updated) throw changed();
+    if (p.inTx) await p.inTx(updated, s);
     return updated;
   });
 }

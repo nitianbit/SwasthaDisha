@@ -429,8 +429,18 @@ const bookingSchema = new Schema<IBooking>(
     // Q3 §7a: which system pays this booking's provider — the legacy monthly payouts or the new ledger. Exclusive.
     settlementSystem: {
       type: String,
-      enum: ['legacy', 'ledger'],
+      enum: ['legacy', 'ledger', 'clinic'],
       default: 'legacy',
+    },
+    // Q6: an appointment a clinic's front desk booked; the clinic collects the fee (its own invoice), never us.
+    clinicDesk: {
+      type: new Schema({
+        partnerId: { type: String, required: true },
+        branchId: { type: String, required: true },
+        createdBy: { type: String, required: true },
+        arrivedAt: { type: Date },
+      }, { _id: false }),
+      default: undefined,
     },
     // Q4b: 'instant' consultations come from an accepted InstantRequest (money held there, not on this booking).
     bookingKind: { type: String, enum: ['scheduled', 'instant'] },
@@ -490,6 +500,7 @@ bookingSchema.index({ bookingType: 1, status: 1 });
 bookingSchema.index({ wellnessPackageId: 1, status: 1 });
 bookingSchema.index({ specialistId: 1, status: 1 });
 bookingSchema.index({ specialistId: 1, settlementSystem: 1, bookingType: 1, bookingDate: 1 });
+bookingSchema.index({ 'clinicDesk.partnerId': 1, bookingDate: 1 });
 bookingSchema.index({ instantRequestId: 1 }, { unique: true, partialFilterExpression: { instantRequestId: { $type: 'string' } } });
 bookingSchema.index({ slotId: 1, status: 1 }); // Index for slot-based queries
 bookingSchema.index({ bookingDate: 1, bookingTime: 1 });

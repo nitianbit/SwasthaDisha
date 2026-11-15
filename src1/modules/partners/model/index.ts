@@ -79,6 +79,8 @@ const partnerSchema = new Schema<IPartner>(
 );
 
 partnerSchema.index({ kind: 1, isActive: 1 });
+// Q6: one solo practice per doctor.
+partnerSchema.index({ soloDoctorId: 1 }, { unique: true, partialFilterExpression: { soloDoctorId: { $type: 'string' } } });
 partnerSchema.index({ 'verification.state': 1, isActive: 1 });
 
 const PartnerModel: Model<IPartner> = model<IPartner>('PartnerOrg', partnerSchema, 'partner_orgs');

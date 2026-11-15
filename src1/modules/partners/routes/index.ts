@@ -52,6 +52,8 @@ import {
 } from '@/modules/partners/controller/invoice';
 import * as lab from '@/modules/partners/controller/labBooking';
 import * as fin from '@/modules/partners/controller/finance';
+import * as clinic from '@/modules/partners/controller/clinic';
+import * as clinicV from '@/modules/partners/validation/clinic';
 import * as finV from '@/modules/partners/validation/finance';
 import * as labV from '@/modules/partners/validation/labBooking';
 import {
@@ -164,6 +166,21 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.post('/lab-bookings/:bookingId/reschedule', ...guard('bookings.manage'), id, validate(labV.labRescheduleSchema, 'body'), catchAsync(lab.rescheduleLabBooking));
   r.post('/lab-bookings/:bookingId/reports', ...guard('reports.upload'), id, catchAsync(lab.uploadLabReports));
   r.post('/lab-bookings/:bookingId/reports/release', ...guard('reports.release'), id, validate(labV.releaseReportSchema, 'body'), catchAsync(lab.releaseLabReport));
+
+  // Q6: clinic — doctors (by invitation the doctor accepts), front-desk appointments on clinic doctors' slots.
+  const appt = validate(clinicV.appointmentIdParamSchema, 'params');
+  r.get('/clinic/doctors', ...guard.any('staff.manage', 'bookings.view', 'bookings.manage', 'invoices.create'), catchAsync(clinic.clinicDoctors));
+  r.get('/clinic/doctor-invites', ...guard('staff.manage'), validate(clinicV.invitesQuerySchema, 'query'), catchAsync(clinic.clinicInvites));
+  r.post('/clinic/doctor-invites', ...guard('staff.manage'), validate(clinicV.inviteDoctorSchema, 'body'), catchAsync(clinic.inviteDoctor));
+  r.delete('/clinic/doctor-invites/:inviteId', ...guard('staff.manage'), validate(clinicV.inviteIdParamSchema, 'params'), catchAsync(clinic.revokeInvite));
+  r.get('/clinic/slots', ...guard.any('bookings.view', 'bookings.manage'), validate(clinicV.deskSlotsQuerySchema, 'query'), catchAsync(clinic.deskSlots));
+  r.get('/clinic/appointments', ...guard.any('bookings.view', 'bookings.manage'), validate(clinicV.appointmentsQuerySchema, 'query'), catchAsync(clinic.clinicAppointments));
+  r.post('/clinic/appointments', ...guard('bookings.manage'), validate(clinicV.deskBookingSchema, 'body'), catchAsync(clinic.bookDesk));
+  r.post('/clinic/appointments/:bookingId/arrived', ...guard('bookings.manage'), appt, catchAsync(clinic.deskArrived));
+  r.post('/clinic/appointments/:bookingId/complete', ...guard('bookings.manage'), appt, catchAsync(clinic.deskComplete));
+  r.post('/clinic/appointments/:bookingId/no-show', ...guard('bookings.manage'), appt, catchAsync(clinic.deskNoShow));
+  r.post('/clinic/appointments/:bookingId/cancel', ...guard('bookings.manage'), appt, validate(clinicV.deskCancelSchema, 'body'), catchAsync(clinic.deskCancel));
+  r.post('/clinic/appointments/:bookingId/reschedule', ...guard('bookings.manage'), appt, validate(clinicV.deskRescheduleSchema, 'body'), catchAsync(clinic.deskReschedule));
 
   // Q5: finance — balance, statement (+CSV), payouts; the payout destination is set by an owner (verified by an admin).
   r.get('/finance', ...guard('finance.view'), catchAsync(fin.partnerFinance));

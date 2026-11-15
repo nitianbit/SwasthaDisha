@@ -39,7 +39,7 @@ const dayHoursSchema = Joi.object({
   close: Joi.string().pattern(/^([01]\d|2[0-3]):[0-5]\d$/).required(),
 });
 
-const addressSchema = Joi.object({
+export const addressSchema = Joi.object({
   line1: Joi.string().trim().required(),
   line2: Joi.string().trim().allow('').optional(),
   city: Joi.string().trim().required(),

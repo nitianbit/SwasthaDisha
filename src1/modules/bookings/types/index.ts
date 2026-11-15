@@ -136,7 +136,9 @@ export interface IBooking {
   /** Slot capacity / follow-up benefit held by this booking (bookings/holds.ts). */
   holds?: { version: 1; heldSlotId?: string | null; followUpParentId?: string | null };
   /** Q3 §7a: settled by the legacy payouts or the ledger (never both). */
-  settlementSystem?: 'legacy' | 'ledger';
+  /** 'clinic' = booked by a clinic's front desk and paid at the clinic: never settled by the legacy payouts or the ledger. */
+  settlementSystem?: 'legacy' | 'ledger' | 'clinic';
+  clinicDesk?: { partnerId: string; branchId: string; createdBy: string; arrivedAt?: Date };
   settlement?: { settlementAccountId?: string; beneficiaryName?: string };
   bookingKind?: 'scheduled' | 'instant';
   instantRequestId?: string;

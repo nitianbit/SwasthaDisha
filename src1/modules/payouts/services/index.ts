@@ -125,7 +125,7 @@ export class PayoutService {
           specialistId,
           bookingType: 'consultation',
           // Q3 §7a: a booking settled by the ledger is never billed here (exclusive ownership by settlementSystem).
-          settlementSystem: { $ne: 'ledger' },
+          settlementSystem: { $nin: ['ledger', 'clinic'] },
           paymentStatus: 'paid',
           status: { $ne: 'cancelled' },
           bookingDate: {
@@ -330,7 +330,7 @@ export class PayoutService {
 
     const query: Record<string, unknown> = {
       bookingType: 'consultation',
-      settlementSystem: { $ne: 'ledger' },
+      settlementSystem: { $nin: ['ledger', 'clinic'] },
     };
 
     if (range.from || range.to) {

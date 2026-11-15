@@ -56,7 +56,7 @@ export class BookingRepository extends BaseRepository<IBooking> {
     const match: Record<string, unknown> = {
       specialistId,
       bookingType: 'consultation',
-      ...(options.legacyOnly ? { settlementSystem: { $ne: 'ledger' } } : {}),
+      ...(options.legacyOnly ? { settlementSystem: { $nin: ['ledger', 'clinic'] } } : {}),
     };
 
     if (options.from || options.to) {

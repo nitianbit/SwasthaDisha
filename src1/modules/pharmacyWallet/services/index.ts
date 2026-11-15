@@ -173,6 +173,10 @@ export class PharmacyWalletService {
       });
     }
 
+    if ((consultation as { settlementSystem?: string }).settlementSystem === 'clinic') {
+      throw new AppError({ status: 409, code: 'PAY_AT_CLINIC', message: 'This appointment is paid at the clinic' });
+    }
+
     if (consultation.paymentStatus === 'paid') {
       throw new AppError({
         status: 400,

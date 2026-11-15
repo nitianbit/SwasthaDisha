@@ -56,6 +56,9 @@ memberSchema.index(
   { unique: true, partialFilterExpression: { isActive: true } }
 );
 memberSchema.index({ partnerId: 1, role: 1, isActive: 1 });
+// Q6: a doctor is linked to a clinic at most once (active), and found by doctor across clinics.
+memberSchema.index({ partnerId: 1, doctorId: 1 }, { unique: true, partialFilterExpression: { isActive: true, doctorId: { $type: 'string' } } });
+memberSchema.index({ doctorId: 1, isActive: 1 }, { partialFilterExpression: { doctorId: { $type: 'string' } } });
 
 const MemberModel: Model<IMember> = model<IMember>('PartnerMember', memberSchema, 'partner_members');
 
