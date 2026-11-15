@@ -33,6 +33,15 @@ import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
 import PartnerModel from '@/modules/partners/model';
 import { PartnerSelectionTicketModel } from '@/modules/auth/model/partnerSelection';
+import { createHmac } from 'crypto';
+
+/**
+ * Q7: selection tickets are signed with their own key (derived from the secret, never the access-token key) and their
+ * own audience, so no access-token verification can ever accept one (and the access middleware refuses any token
+ * carrying a purpose).
+ */
+const SELECTION_AUDIENCE = 'partner-select';
+const selectionKey = () => createHmac('sha256', CONFIG.JWT_SECRET_KEY).update('q7:partner-selection-ticket').digest('hex');
 import { advanceCredentialVersion, credentialFilter, readCredentialVersion, tokenCredentialVersion } from '@/modules/user/credentialGeneration';
 import { Service } from 'typedi';
 
@@ -568,7 +577,7 @@ export class AuthService {
     const jti = randomUUID();
     const ttl = 5 * 60;
     await PartnerSelectionTicketModel.create({ jti, phone, expiresAt: new Date(Date.now() + ttl * 1000) });
-    return jwt.sign({ purpose: 'partner_select', phone, jti }, CONFIG.JWT_SECRET_KEY, { expiresIn: ttl });
+    return jwt.sign({ purpose: 'partner_select', phone, jti }, selectionKey(), { expiresIn: ttl, audience: SELECTION_AUDIENCE });
   }
 
   /**
@@ -578,7 +587,7 @@ export class AuthService {
   selectPartner = async (data: { ticket: string; partnerId: string }) => {
     let claims: { purpose?: string; phone?: string; jti?: string };
     try {
-      claims = jwt.verify(data.ticket, CONFIG.JWT_SECRET_KEY) as typeof claims;
+      claims = jwt.verify(data.ticket, selectionKey(), { audience: SELECTION_AUDIENCE }) as typeof claims;
     } catch {
       throw new AppError({ status: 401, code: 'SELECTION_EXPIRED', message: 'This sign-in expired; request a new code' });
     }

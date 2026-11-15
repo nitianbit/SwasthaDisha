@@ -31,9 +31,18 @@ const decodeAuthToken = (authHeader?: string): AuthRequest['user'] | null => {
   }
 
   const token = authHeader.substring(7);
-  const decoded = jwt.verify(token, CONFIG.JWT_SECRET_KEY) as AuthRequest['user'];
+  const decoded = jwt.verify(token, CONFIG.JWT_SECRET_KEY) as (AuthRequest['user'] & { purpose?: unknown }) | string;
+  // Only access tokens authenticate: a token with a purpose (e.g. a Q7 selection ticket), or one without an access
+  // identity and a known role, is refused before any route sees it.
+  if (typeof decoded !== 'object' || decoded === null || decoded.purpose !== undefined
+      || typeof decoded._id !== 'string' || !decoded._id || !ACCESS_ROLES.includes(String(decoded.userType))) {
+    throw Object.assign(new Error('Not an access token'), { name: 'JsonWebTokenError' });
+  }
   return decoded;
 };
+
+/** Roles an access token may carry. */
+const ACCESS_ROLES = ['user', 'admin', 'specialist', 'hr', 'pharmacy', 'partner'];
 
 export const authenticate = async (
   req: AuthRequest,

@@ -158,6 +158,23 @@ async function main() {
       assert.equal((await call('/api/v1/auth/partner/select', { ticket: 'x', partnerId: 'nope' })).status, 400);
     });
 
+    await check('a selection ticket never authenticates an ordinary route, before or after it is used; nor does any non-access token', async () => {
+      await call('/api/v1/auth/partner/send', { phone });
+      const t = String((await call('/api/v1/auth/partner/verify', { phone, otp: lastOtp() })).body.data!.ticket);
+      assert.equal((await call('/api/v1/me', {}, { bearer: t })).status, 401, 'unused ticket');
+      assert.equal((await call('/api/v1/auth/partner/select', { ticket: t, partnerId: clinic })).status, 200);
+      assert.equal((await call('/api/v1/me', {}, { bearer: t })).status, 401, 'used ticket');
+      // Defence in depth: even signed with the access key, a purpose-carrying or identity-less token is refused.
+      const withPurpose = jwt.sign({ purpose: 'partner_select', phone, jti: 'z', _id: 'x', userType: 'partner' }, CONFIG.JWT_SECRET_KEY, { expiresIn: 300 });
+      assert.equal((await call('/api/v1/me', {}, { bearer: withPurpose })).status, 401);
+      assert.equal((await call('/api/v1/me', {}, { bearer: jwt.sign({ phone }, CONFIG.JWT_SECRET_KEY) })).status, 401);
+      assert.equal((await call('/api/v1/me', {}, { bearer: jwt.sign({ _id: 'u1', userType: 'robot' }, CONFIG.JWT_SECRET_KEY) })).status, 401);
+      // A ticket signed with the access key (the old format) is not a ticket either.
+      const old = jwt.sign({ purpose: 'partner_select', phone, jti: 'w' }, CONFIG.JWT_SECRET_KEY, { expiresIn: 300 });
+      await PartnerSelectionTicketModel.create({ jti: 'w', phone, expiresAt: new Date(Date.now() + 60_000) });
+      assert.equal((await call('/api/v1/auth/partner/select', { ticket: old, partnerId: clinic })).status, 401);
+    });
+
     await check('naming the partner up front still works (code bound to that membership)', async () => {
       await call('/api/v1/auth/partner/send', { phone, partnerId: clinic });
       const r = await call('/api/v1/auth/partner/verify', { phone, otp: lastOtp(), partnerId: clinic });
