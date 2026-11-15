@@ -1,6 +1,6 @@
 # Q — Partner labs, clinics and doctors: online bookings, instant consultations, in-house sales (design, 2026-11-15)
 
-Status: design revised after Codex review (msg_1794738703339_zjpor6dd). Built in packets Q1–Q6 (§10), each reviewed by Codex.
+Status: design revised after Codex re-review (msg_1794739368286_a4bh1bx6). Built in packets Q1–Q6 (§10), each reviewed by Codex.
 
 ## 1. Owner decisions (15 Nov 2026, asked directly)
 
@@ -39,7 +39,8 @@ Status: design revised after Codex review (msg_1794738703339_zjpor6dd). Built in
 ## 3. Partners, places and people
 
 - **Partner** `{ _id, kind: 'lab' | 'clinic', name, legalName, gstin?, pan?, contact, logo, verification
-  {state: pending|verified|suspended, documents[], verifiedAt, verifiedBy}, invoiceSeries {prefix}, isActive }`.
+  {state: pending|verified|suspended, documents[], verifiedAt, verifiedBy}, taxRegime: 'regular'|'composition'|'unregistered'
+  (default unregistered, set by admin at verification), invoiceSeries {prefix}, activeOwnerCount, isActive }`.
   A solo doctor's practice is a `clinic` partner owned by that doctor (`solo: true`), created when the doctor first
   enables in-clinic billing.
 - **Branch** `{ partnerId, name, address, geo, phone, hours (weekly), holidays[], services: {homeCollection,
@@ -54,10 +55,12 @@ Status: design revised after Codex review (msg_1794738703339_zjpor6dd). Built in
 - **Delegation ceiling:** only owners may grant/revoke permissions and change roles. A staff member with `staff.manage`
   can invite new staff and toggle their `isActive`, but cannot grant any permission they do not hold, cannot promote
   to owner, cannot expand branch scope beyond their own, and cannot modify another owner. Owner role changes
-  (`role: 'owner' ↔ 'staff'`) are owner-only. **Last-owner protection:** the Partner document carries an `ownerCount`
-  (maintained by `$inc` in the same transaction as any Member role change). Demotion/removal of an owner requires
-  `ownerCount > 1` as a CAS pre-condition; the counter prevents two concurrent last-owner removals. Actor/target must
-  share the same `partnerId` (enforced from admitted membership, never from the request).
+  (`role: 'owner' ↔ 'staff'`) are owner-only. **Last-active-owner protection:** the Partner document carries an
+  `activeOwnerCount` (maintained by `$inc` in the same transaction as any Member role change, activation/deactivation,
+  or removal where the target is an owner). Every operation that would reduce `activeOwnerCount` (demote owner to
+  staff, deactivate an owner, remove an owner) requires `activeOwnerCount > 1` as a CAS pre-condition on the Partner
+  document. This covers concurrent demotion, concurrent deactivation, and mixed demotion + deactivation races.
+  Actor/target must share the same `partnerId` (enforced from admitted membership, never from the request).
 - **Sign-in:** OTP `userType: 'partner'` (new) for members; doctors keep `specialist` and reach their clinic/practice
   through their Member record. A person in several partners chooses one; the access token carries
   `{memberId, partnerId}` and every request re-admits the membership (active, partner active) like D4 sessions —
@@ -87,24 +90,36 @@ Status: design revised after Codex review (msg_1794738703339_zjpor6dd). Built in
 
   | Command | Source states | Guards | Hold effect | Target state |
   |---|---|---|---|---|
-  | create (pay) | (new) | slot seat available, payment verified | +1 seat | `pending_payment` |
-  | payment confirmed | `pending_payment` | payment callback verified | — | `confirmed` |
-  | payment timeout | `pending_payment` | 30 min expired, no payment | −1 seat | `cancelled` (reason: timeout) |
-  | customer cancel | `pending_payment`, `confirmed` | before cutoff (booking time − 2 h) | −1 seat | `cancelled` (reason: customer; full refund) |
+  | create | (new) | slot seat available, keyed idempotent create, frozen terms snapshotted | +1 seat | `pending_payment` (booking exists, payment not yet verified) |
+  | payment confirmed | `pending_payment` | payment callback/wallet/zero-pay verified idempotently against booking | — | `confirmed` |
+  | payment timeout | `pending_payment` | 30 min expired, no verified payment | −1 seat | `cancelled` (reason: timeout) |
+  | customer cancel | `pending_payment`, `confirmed` | before cutoff (booking time − 2 h), OR booking has `rescheduleRefundEntitlement` | −1 seat | `cancelled` (reason: customer; full refund) |
   | lab reject | `confirmed` | — | −1 seat | `cancelled` (reason: lab_reject; full refund, reason shown) |
-  | lab reschedule | `confirmed` | new slot seat available | −1 old, +1 new | stays `confirmed` (new slot; customer notified; customer may cancel for full refund regardless of cutoff) |
+  | lab reschedule | `confirmed` | new slot seat available | −1 old, +1 new | stays `confirmed` (new slot, `rescheduleVersion` incremented, `rescheduleRefundEntitlement: true`; customer notified) |
+  | customer accept reschedule | `confirmed` | booking has pending reschedule, CAS on `rescheduleVersion` | — | stays `confirmed` (`rescheduleRefundEntitlement` cleared) |
   | confirm/assign | `confirmed` | member has `bookings.manage` | — | stays `confirmed` (collector assigned) |
-  | mark collected | `confirmed` (home) | `bookings.manage` | — | `sample_collected` |
-  | mark visited | `confirmed` (lab) | `bookings.manage` | — | `visited` |
-  | mark no-show | `confirmed` | `bookings.manage`, slot time passed | — | `no_show` (no refund) |
+  | mark collected | `confirmed` (home) | `bookings.manage`, no pending unaccepted reschedule | — | `sample_collected` |
+  | mark visited | `confirmed` (lab) | `bookings.manage`, no pending unaccepted reschedule | — | `visited` |
+  | mark no-show | `confirmed` | `bookings.manage`, slot time passed, no pending unaccepted reschedule | — | `no_show` (no refund) |
   | processing | `sample_collected` or `visited` | `bookings.manage` | — | `processing` |
   | upload report | `processing` | `reports.upload`; D1 file binding | — | stays `processing` (draft, partner-only) |
   | release report | `processing` | `reports.release`; releasing member's name + professional registration stamped on the report record | — | `report_ready` (customer can access released version) |
   | complete | `report_ready` | `bookings.manage` | — | `completed` (ledger earning created) |
 
+  **Creation order:** keyed creation reserves the seat and persists frozen terms (items, prices, patient, slot) in
+  `pending_payment` first. Payment is then initiated/linked to the existing booking. Verified capture/reconciliation,
+  direct wallet debit, or zero-pay settlement confirms it idempotently. P8-style pay-again links new payment attempts
+  to the same booking. An interrupted payment leaves the booking in `pending_payment` for the timeout sweep.
+
   Every transition is a compare-and-set on the current state, records who (member) and when (`$min` lifecycle
-  timestamps), and notifies the customer. Lab-initiated reschedule grants the customer a **durable full-refund
-  entitlement** (stored on the booking, survives cutoff) until the customer explicitly accepts or cancels.
+  timestamps), and notifies the customer.
+
+  **Reschedule entitlement lifecycle:** lab reschedule increments `rescheduleVersion` and sets
+  `rescheduleRefundEntitlement: true`. The customer can: (a) accept the reschedule (CAS on `rescheduleVersion`,
+  clears the entitlement), (b) cancel for a full refund (the entitlement overrides the normal cutoff). Staff
+  transitions that advance the booking (mark collected/visited/no-show) are **blocked while an unaccepted reschedule
+  is pending** — the lab must wait for the customer to accept or cancel. This prevents silently extinguishing the
+  entitlement.
 - **Report upload vs release (separate):** uploaded reports are bound to the booking as draft files (D1 binding with
   `released: false`). The customer cannot access them until a member with `reports.release` atomically sets
   `released: true` on the exact file version and stamps the releasing member's name and professional registration.
@@ -117,42 +132,62 @@ Status: design revised after Codex review (msg_1794738703339_zjpor6dd). Built in
 - **Scheduled (existing, fixed):** weekly template expanded into slots (rolling 30 days), leave days, per-mode slots
   (video/call/chat/in-clinic) and per-clinic slots (`branchId`); conditional seat counters; fix the portal cancel
   (dedicated cancel command with refund); add `no_show`.
-- **Doctor-wide reservation lock:** all booking paths (scheduled, instant, in-clinic) share a single
-  `DoctorReservation { doctorId, bookingId, kind, expiresAt }` document with a unique index on `doctorId`. Acceptance
-  of any booking type must claim this reservation atomically; scheduled slot holds also check it. The reservation
-  prevents a doctor from accepting two instant requests, or an instant request overlapping a scheduled slot. Presence
-  heartbeat (`PUT /presence`) must not overwrite `busy` state — it only refreshes `lastSeen` when the doctor is not
-  in an active reservation.
+- **Doctor interval reservations:** all booking paths (scheduled, instant, in-clinic) share a
+  `DoctorReservation { doctorId, bookingId, kind, startTime, endTime, branchId?, isActive }` collection with a
+  compound index on `{doctorId, isActive, startTime, endTime}`. Each reservation represents an interval. Acceptance
+  of any booking type must atomically insert a reservation and verify no overlapping active reservation exists for
+  that doctor (query: active reservations where `startTime < newEnd AND endTime > newStart`). This allows
+  nonoverlapping appointments across branches/modes (e.g., tomorrow 10:00 and tomorrow 11:00) while preventing
+  double-booking of overlapping times. Instant consultations create a reservation with a short duration (e.g., 30
+  min default, extended on completion). Presence heartbeat (`PUT /presence`) must not overwrite `busy` state — it
+  only refreshes `lastSeen` when the doctor has no active instant reservation.
 - **Instant:** doctor toggles **"available now"** with modes and an `instantFee` (falls back to `consultationFee`);
   presence expires without a heartbeat (2 min) and on sign-out/busy.
 - **Instant request lifecycle:**
-  - **Price contract:** at request creation, the customer sees the specific doctor's `instantFee` (or a
-    **quoted maximum fee** for "any available", computed from the highest fee among currently online doctors of the
-    speciality). The customer pays the quoted amount upfront. The `InstantRequest` stores
-    `{quotedAmount, quotedCurrency, fundingSource (payment/wallet/coupon breakdown)}`.
-  - **Acceptance eligibility:** a doctor can accept only if their `instantFee <= quotedAmount`. On accept, the exact
-    fee is charged; any difference (`quotedAmount − instantFee`) is **refunded to wallet immediately**. If the
-    doctor's fee exceeds the quoted amount (fee changed between quote and accept), acceptance is rejected and the
-    request re-enters the offer pool.
+  - **Price contract and funding allocation:** at request creation, the customer sees the specific doctor's
+    `instantFee` (or a **quoted maximum fee** for "any available", computed from the highest fee among currently
+    online doctors of the speciality). The customer pays the quoted amount upfront. The `InstantRequest` stores
+    `{quotedAmount, quotedCurrency, fundingAllocation: {gatewayAmountMinor, walletAmountMinor, couponAmountMinor,
+    totalMinor}, fundingState: 'held'|'allocated'|'refunded', allocatedAmountMinor: 0, refundedAmountMinor: 0}`.
+  - **Acceptance eligibility and funding allocation:** a doctor can accept only if their `instantFee <= quotedAmount`,
+    the current offer has not expired (specific: 5 min, any-available: 5 min per generation), the doctor is currently
+    available (mode eligible, not in an overlapping reservation), and the request's `fundingState` is `'held'`
+    (not already refunded). On accept, the exact fee is **allocated** from the held funding in priority order:
+    coupon first (non-withdrawable), then wallet, then gateway. The difference (`quotedAmount − instantFee`) is
+    refunded: coupon portion is voided (not converted to wallet credit), wallet portion returned to wallet, gateway
+    portion returned to source. The request's `allocatedAmountMinor` and `refundedAmountMinor` are updated
+    atomically; `fundingState` transitions `held → allocated`. All subsequent refunds (cancellation, etc.) are
+    limited to `allocatedAmountMinor − previouslyRefundedMinor`. This prevents the booking cancellation path from
+    refunding the original `quotedAmount` instead of the allocated `instantFee`.
   - **Specific doctor:** offered to that doctor for **5 minutes**; the offer carries an `offerGeneration` counter
-    incremented on each re-offer. Accept must CAS on the current `offerGeneration` and `status: 'offered'`.
-  - **Any available:** offered to all online doctors of the speciality; the **first accept wins** (CAS on
-    `status: 'offered'` and `acceptedBy: null` atomically). The request stores `offerGeneration` so re-offers
-    invalidate stale accepts.
-  - **No accept in time** → the customer is shown other online doctors (re-offer increments `offerGeneration`) **or**
-    asks for a refund (wallet; card/UPI on request). **Refund policy (owner decision):** never refunded automatically
-    while the customer is actively choosing (UI heartbeat / screen visible); if the customer leaves it unanswered
-    (no UI activity for 30 minutes from the last offer), refunded automatically. The 30-minute inactivity deadline
-    is stored on the request (`inactivityRefundAt`); the customer can extend it by re-offering or choosing another
-    doctor. This is not an explicit refund request — it is a safety net. The customer can always request an explicit
-    refund at any time.
-  - **Accept → booking (atomic):** in one transaction: (1) CAS the request `status: offered → accepted`,
-    (2) claim the `DoctorReservation`, (3) create the consultation booking (`bookingKind: 'instant'`), (4) link
-    `request._id → booking._id` (unique). If the transaction fails (doctor already reserved, request already
-    accepted), the accept is rejected. A crash between steps is recovered by checking the unique
-    `request→booking` link: if the booking exists, the accept succeeded; if not, the reservation is released.
-    Meet link created for video/call; doctor marked busy via the reservation.
-  - Completion feeds the doctor's **settlement account** (§7a).
+    incremented on each re-offer, and an `offerExpiresAt` deadline. Accept must CAS on the current
+    `offerGeneration`, `status: 'offered'`, and verify `now < offerExpiresAt`.
+  - **Any available:** offered to all online doctors of the speciality for **5 minutes** per generation; the
+    **first accept wins** (CAS on `status: 'offered'`, `acceptedBy: null`, `offerGeneration`, and
+    `now < offerExpiresAt` atomically).
+  - **Refund vs acceptance serialization:** the `InstantRequest` has a `fundingState` field that serializes refund
+    against acceptance. Explicit refund (customer-initiated) or inactivity refund atomically transitions
+    `fundingState: 'held' → 'refunded'` and `status: 'offered' → 'refund_requested'`. Acceptance requires
+    `fundingState: 'held'` in its CAS — if the customer has already initiated a refund, acceptance fails. Conversely,
+    if acceptance succeeds first (fundingState → allocated), refund of the held amount fails. The two are mutually
+    exclusive on the same document.
+  - **No accept in time** → the customer is shown other online doctors (re-offer increments `offerGeneration` and
+    resets `offerExpiresAt`) **or** requests a refund. **Refund policy (owner decision):** never refunded
+    automatically while the customer is actively choosing (UI heartbeat / screen visible); if the customer leaves it
+    unanswered (no UI activity for 30 minutes from the last offer), refunded automatically via the
+    `fundingState: held → refunded` transition. The `inactivityRefundAt` deadline is stored on the request; the
+    customer extends it by re-offering or choosing another doctor.
+  - **Accept → booking (atomic):** in one transaction: (1) CAS the request `status: offered → accepted` with
+    `fundingState: held`, verify `now < offerExpiresAt`, verify doctor eligible/available/mode, (2) insert a
+    `DoctorReservation` (overlap check), (3) allocate funding (update `fundingState → allocated`,
+    `allocatedAmountMinor`, refund difference), (4) create the consultation booking (`bookingKind: 'instant'`),
+    (5) link `request._id → booking._id` (unique). If the transaction fails (doctor overlap, request already
+    accepted/refunded, offer expired), the accept is rejected. Crash recovery: check the unique `request→booking`
+    link — if the booking exists, the accept succeeded; if not, no reservation was persisted (transaction rolled
+    back). Meet link created for video/call; doctor marked busy via the reservation.
+  - Completion feeds the doctor's **settlement account** (§7a). The settlement account is provisioned idempotently
+    (find-or-create by `{ownerKind: 'doctor', ownerId: specialistId}`) before the booking/payment snapshot, so it
+    exists at snapshot time even for a doctor's first consultation.
 - **Customer app:** "Consult now" (online doctors, speciality filter, any-available) and "Book an appointment"
   (existing flow).
 
@@ -169,9 +204,21 @@ Status: design revised after Codex review (msg_1794738703339_zjpor6dd). Built in
   createdBy, checksum, idempotencyKey }`.
   All monetary fields are **integer minor units** (paise). Tax rounding: per-line `taxableMinor × rate / 100` rounded
   to nearest paise; totals are sums of rounded line amounts. GST split: CGST+SGST when supplier and customer place of
-  supply match; IGST otherwise. A GST tax invoice (with GSTIN on the document) is issued only when the partner has a
-  verified GSTIN; without it, a bill of supply is generated. `gstRate` per item must be from the allowed set
-  (validated, not arbitrary).
+  supply match; IGST otherwise. `gstRate` per item must be from the allowed set (validated, not arbitrary);
+  `gstRate: 0` is an explicit no-tax line (exempt/nil-rated).
+
+  **Invoice classification by supplier tax regime:** the Partner stores `taxRegime: 'regular'|'composition'|'unregistered'`
+  (set by admin at verification; default `'unregistered'` until GSTIN is verified).
+  - `regular` + verified GSTIN → **tax invoice**: GSTIN printed, per-line GST calculated and shown, tax totals shown.
+  - `composition` + verified GSTIN → **bill of supply**: GSTIN printed, no per-line GST breakdown (composition
+    suppliers cannot charge GST to customers), all line amounts are inclusive. A note "Composition dealer — tax not
+    chargeable" is printed.
+  - `unregistered` (no verified GSTIN) → **commercial invoice**: no GSTIN, no GST breakdown. All `gstRate` fields
+    must be 0; the system rejects invoice creation with nonzero tax rates for unregistered suppliers.
+
+  The classification is frozen into the invoice at creation time from the Partner's current `taxRegime` and GSTIN
+  state. Tax fields are enforced by the classification: a `composition` or `unregistered` invoice cannot have nonzero
+  computed tax amounts.
 - **Immutability:** the issued invoice document is **never mutated**. Payment and cancellation are recorded as separate
   **InvoiceEvent** documents `{ invoiceId, kind: 'payment'|'cancellation', ...payload, at, by }`. The invoice's
   `checksum` covers all financial fields and is verified on every read. Payment event:
@@ -183,9 +230,16 @@ Status: design revised after Codex review (msg_1794738703339_zjpor6dd). Built in
   `<PREFIX>` max 6 chars; total serial max 16 characters per CBIC Rule 46. Financial year is server-determined
   (April–March). Unique compound index `{partnerId, financialYear, number}`.
   Partner-scoped idempotency key unique index prevents duplicate invoices from retried requests.
+- **Invoice lifecycle fence:** although the invoice financial document is immutable, the Invoice document carries a
+  mutable `lifecycleVersion` (integer, starts at 0) and `lifecycleState: 'issued'|'paid'|'cancelled'`. Every event
+  (payment or cancellation) is a transaction that: (1) CAS the Invoice's `lifecycleVersion` to `version + 1` and
+  transitions `lifecycleState`, (2) inserts the InvoiceEvent. Legal transitions: `issued → paid` (payment event),
+  `issued → cancelled` (cancellation event), `paid → cancelled` (cancellation event — records cancellation of a paid
+  invoice). `cancelled` is terminal. The `lifecycleVersion` CAS serializes concurrent payment vs cancellation —
+  both cannot succeed. InvoiceEvent has a unique index `{invoiceId, kind}` to prevent duplicate payment events,
+  but the primary serialization is the Invoice's `lifecycleVersion` CAS.
 - **Payment is not collected by us:** a member with `payments.record` picks the mode, adds a reference/keyword and
-  creates a payment event; it can be recorded once (CAS: no prior payment event exists for the invoice); reversal only
-  by cancelling the invoice.
+  creates a payment event via the lifecycle fence (CAS `issued → paid`); reversal only by cancelling the invoice.
 - **Walk-in linking:** if a phone number is given, it is resolved through a **shared race-safe customer identity
   resolver** (§6a). The invoice and any lab report released for that visit appear in the customer app under
   "Bills" / "Reports". In-house sales are **not** in the payout ledger (the money never passes through us) but are
@@ -195,14 +249,23 @@ Status: design revised after Codex review (msg_1794738703339_zjpor6dd). Built in
   regenerated when a new event is recorded (payment or cancellation) — each version is a new file; prior versions
   remain accessible for audit.
 
-### 6a. Shared race-safe customer identity resolver
+### 6a. Shared race-safe customer identity resolver and canonical phone representation
 
-Walk-in linking, partner OTP login, and any future path that needs to find-or-create a customer by phone share one
+**Canonical phone format:** all customer phone numbers are stored and queried in **ten-digit format** (matching
+the existing `auth/validation` and customer-contact login selector). The current User model stores ten-digit phones;
+the existing OTP flow, pharmacy walk-in, and all customer lookups use this format. The resolver does **not** store
+E.164 — it normalizes input to ten digits (strip `+91` / `0` prefix, validate length) before query/upsert. This
+ensures walk-in linking finds existing accounts created by OTP signup, and OTP login finds accounts created by
+walk-in linking. A future migration to E.164 across all writers would be a separate coordinated change.
+
+Walk-in linking, partner walk-in, and any future path that needs to find-or-create a customer by phone share one
 coordinated path: `resolveCustomerByPhone(phone, source)`.
 
-1. Normalize the phone to E.164.
+1. Normalize the phone to ten-digit canonical form.
 2. `findOneAndUpdate` with `{ phone, userType: 'user' }` and `$setOnInsert: { createdSource: source }`, `upsert: true`,
    `returnDocument: 'after'`. The unique index `{phone, userType}` prevents duplicates from concurrent calls.
+   Legacy ambiguous matches (multiple accounts for one phone due to historical data) are handled by selecting the
+   most recently active account; the resolver never silently merges or deletes the others.
 3. If the upsert created a new user, send the SMS link.
 4. Never merge accounts or overwrite an existing customer's name/verified-contact fields from invoice input.
 5. The visit patient/dependent (age, gender on the invoice) is distinct from the billing contact (the linked
@@ -216,9 +279,11 @@ Every entity that can earn money through the platform has a **SettlementAccount*
 `{ _id, ownerKind: 'partner'|'doctor', ownerId (partnerId or specialistId), bankDetails?, isActive }`.
 
 - A **partner** gets a settlement account when created by an admin.
-- A **doctor** gets a settlement account when they first receive a paid consultation (scheduled or instant). A
-  tele-only doctor who never enables in-clinic billing has a settlement account without a Partner — the solo
-  practice Partner is created only when in-clinic billing is enabled (§3).
+- A **doctor** gets a settlement account provisioned idempotently (find-or-create by
+  `{ownerKind: 'doctor', ownerId: specialistId}`) **before** the first booking/payment snapshot that references it.
+  This is called at booking creation time, so the settlement account exists when the snapshot is taken, even for a
+  doctor's first consultation. A tele-only doctor who never enables in-clinic billing has a settlement account
+  without a Partner — the solo practice Partner is created only when in-clinic billing is enabled (§3).
 - A **clinic partner** earns from lab bookings and in-house invoices. When a consultation at a clinic completes, the
   earning goes to the **doctor's** settlement account (the doctor is the service provider). The clinic may charge a
   facility fee in the future (deferred); for now, clinic partners earn only from their own lab/invoice services.
@@ -227,12 +292,26 @@ Every entity that can earn money through the platform has a **SettlementAccount*
 
 **Doctor payout cutover (required before Q4 earnings):**
 - The existing `payouts` module (`payouts/services/index.ts`) selects paid, non-cancelled specialist consultations
-  and runs a separate billing/disbursal path.
-- Before Q4 activates any new doctor earning on the ledger, Q3 must: (1) import all historical disbursals from the
-  old `payouts` system as `payout` ledger entries with `source: 'legacy_import'`; (2) mark each imported booking as
-  `legacySettled: true`; (3) exclude `legacySettled` bookings from the old payout recalculation query.
-- From that point forward, every new doctor earning goes exclusively to the ledger. The old payout calculation still
-  runs for bookings created before the cutover date but not yet settled.
+  and runs a separate billing/disbursal path. Its billings are monthly aggregations, not per-booking records.
+- **Exclusive source ownership:** every booking is assigned to exactly one settlement system. A `settlementSystem`
+  field is added to the Booking model: `'legacy'` (default for all existing bookings) or `'ledger'` (for new
+  bookings created after cutover). The legacy payout query adds `settlementSystem: 'legacy'` to its filter; the
+  new ledger earning creation requires `settlementSystem: 'ledger'`. Neither system can process a booking owned by
+  the other.
+- **Cutover steps (Q3, before Q4):**
+  1. Add `settlementSystem: 'legacy'` to all existing bookings (migration script, idempotent).
+  2. Reconcile historical state: compute each doctor's `earnings` (sum of completed consultation amounts),
+     `disbursed` (sum of recorded payouts/billings from the old system), and `outstandingDue = earnings − disbursed`.
+     Import as an `opening_balance` ledger entry per doctor's settlement account. This gives the ledger an accurate
+     starting balance without double-counting.
+  3. Import each historical disbursal as a `payout` ledger entry with `source: 'legacy_import'` and the billing
+     period/reference, so the ledger statement shows complete history.
+  4. Set a `cutoverDate` in config. All bookings created after `cutoverDate` get `settlementSystem: 'ledger'`
+     automatically.
+  5. The legacy system continues to operate on `settlementSystem: 'legacy'` bookings only — it can still settle
+     pre-cutover bookings that complete after cutover, but the ledger does not duplicate those earnings.
+- From that point forward, every new booking earning goes exclusively to the ledger. The two systems are
+  permanently partitioned by `settlementSystem`.
 - This cutover is in Q3 (before Q4 doctors), not deferred to Q5. Q5 delivers the partner finance screens and admin
   payout recording UI, but the data model and exclusion fence must exist first.
 
@@ -252,9 +331,12 @@ in transactions with exactly-once keys; file access through D1 bindings with rel
 audit trail on every partner action (who, when, what); rate limits on partner OTP as O1.
 
 Settlement account ownership is snapshotted at booking/payment time (§7a); earnings are never re-derived from
-current membership. Walk-in customer identity is resolved through a single race-safe path with uniqueness fence (§6a).
-Instant-request acceptance is atomic with doctor reservation and booking creation (§5); price contract is frozen at
-request time.
+current membership; doctor settlement accounts are provisioned idempotently before first snapshot. Walk-in customer
+identity is resolved through a single race-safe path with canonical ten-digit phone matching (§6a).
+Instant-request acceptance is atomic with doctor interval reservation and booking creation (§5); price contract is
+frozen at request time; funding allocation tracks gateway/wallet/coupon separately; refund vs acceptance serialized
+on `fundingState`. Invoice lifecycle versioned to serialize payment vs cancellation (§6). Supplier tax regime
+determines invoice classification and enforces tax field constraints (§6).
 
 ## 9. Not in scope now (recorded)
 
@@ -265,10 +347,10 @@ integrations for new partners; inventory of lab consumables; insurance/corporate
 
 | Packet | Content |
 |---|---|
-| **Q1** Partner foundation | Partner (with `ownerCount`), Branch, Member, permissions (delegation ceiling), OTP `partner` login + membership admission, admin onboarding, workspace "Partner" shell with staff & branch management |
-| **Q2** In-house invoices | Catalogue (minimal), immutable invoices (integer paise, GST split by place of supply, CBIC-compliant serial ≤16 chars) + InvoiceEvents (payment/cancel), PDF, shared customer identity resolver (§6a), walk-in linking + SMS, customer "Bills" |
-| **Q3** Partner-lab online bookings | Settlement accounts + doctor payout cutover (§7a), lab catalogue + server-owned slots (unique identity, hold-preserving edits), executable state machine (§4), customer search & booking & payment (explicit `lab_booking` adapters, pay-again, expiry), lab booking management, report upload/release (draft→released, §4), customer "Reports", ledger earnings/refunds |
-| **Q4** Doctors | Doctor-wide reservation lock (§5), weekly template, leave, per-mode/per-clinic slots, cancel fix, no-show; instant consultations (presence, price contract + quoted max, offer generation/deadline, atomic accept→reservation→booking, re-offer, inactivity refund); customer "Consult now" |
+| **Q1** Partner foundation | Partner (with `activeOwnerCount`, `taxRegime`), Branch, Member, permissions (delegation ceiling with active-owner protection), OTP `partner` login + membership admission, admin onboarding, workspace "Partner" shell with staff & branch management |
+| **Q2** In-house invoices | Catalogue (minimal), immutable invoices (integer paise, supplier tax regime classification, CBIC-compliant serial ≤16 chars) + InvoiceEvents with lifecycle version fence (payment/cancel serialization), PDF, shared customer identity resolver (§6a, canonical 10-digit phone), walk-in linking + SMS, customer "Bills" |
+| **Q3** Partner-lab online bookings | Settlement accounts (idempotent doctor provisioning) + doctor payout cutover (exclusive `settlementSystem` ownership, reconciled opening balance, §7a), lab catalogue + server-owned slots (unique identity, hold-preserving edits), executable state machine (§4, creation-before-payment, reschedule acceptance lifecycle), customer search & booking & payment (explicit `lab_booking` adapters, pay-again, expiry), lab booking management, report upload/release (draft→released, §4), customer "Reports", ledger earnings/refunds |
+| **Q4** Doctors | Doctor interval reservations (nonoverlapping, §5), weekly template, leave, per-mode/per-clinic slots, cancel fix, no-show; instant consultations (presence, price contract + funding allocation with gateway/wallet/coupon tracking, offer generation/deadline/expiry, atomic accept with funding/refund serialization on `fundingState`, re-offer, inactivity refund); customer "Consult now" |
 | **Q5** Payouts | Ledger statements, admin payout recording, partner finance screens |
 | **Q6** Clinics | Clinic partners with several doctors, clinic front desk booking/invoicing per doctor, solo practice auto-creation |
 
