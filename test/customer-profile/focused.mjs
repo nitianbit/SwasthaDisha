@@ -21,7 +21,8 @@ assert.doesNotMatch(sources.routes, /validate\(updateUserSchema/);
 
 const importAllowlist = {
   service: ['typedi', '@/modules/user/repository', '@/modules/corporates/repository', '@/modules/user/types', '@/modules/common/types', '@/modules/common/utils/queryUtils', '@/modules/user/validation'],
-  controller: ['reflect-metadata', 'express', 'typedi', '@/modules/common/types', '@/modules/middleware/auth', '@/modules/user/services', '@/modules/user/types', '@/modules/user/validation'],
+  // D1 added the file-binding wrapper (withFiles; its behaviour is proven by test/file-access/d1-private-files).
+  controller: ['reflect-metadata', '@/modules/file/access', '@/modules/middleware/auth', 'express', 'typedi', '@/modules/common/types', '@/modules/user/services', '@/modules/user/types', '@/modules/user/validation'],
 };
 function compileWhole(source, kind, ports) {
   const imports = [];
@@ -169,6 +170,7 @@ assert.deepEqual(nominal.failures, [], JSON.stringify(nominal.failures));
 const f = fixture();
 const UserController = compileWhole(sources.controller, 'controller', {
   AppError: RecordingAppError, PROFILE_SELF_FORBIDDEN_FIELDS: forbidden, UserService: f.UserService,
+  withFiles: async (_actor, _model, _data, _id, run) => run(), // pass-through: file binding is D1's own suite
   Container: { get(klass) { assert.equal(klass, f.UserService); return f.service; } },
 });
 const controller = new UserController();

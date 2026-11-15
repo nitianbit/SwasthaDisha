@@ -11,8 +11,11 @@ const paths = {
 };
 const sources = Object.fromEntries(Object.entries(paths).map(([key, path]) => [key, readFileSync(new URL(path, root), 'utf8')]));
 const imports = {
-  ordinary: ['reflect-metadata', 'express', 'typedi', '@/modules/common/types', '@/modules/common/utils/dateUtils', '@/modules/bookings/services', '@/modules/dependents/services', '@/modules/middleware/auth', '@/modules/bookings/types'],
-  external: ['reflect-metadata', 'express', 'typedi', '@/modules/middleware/auth', '@/modules/common/types', '@/modules/externalBookings/services', '@/modules/dependents/services', '@/modules/user/model', '@/modules/externalBookings/utils/helpers', '@/config/config', '@/services/logger', '@/modules/externalBookings/types'],
+  // Later reviewed packets added: the booking model (W3b keyed-create replay) and the file-binding wrapper (D1) to the
+  // ordinary controller; the provider-operations worklist (A2b/W2c) to the external one. Their behaviour is proven by
+  // their own suites; here they are pass-through ports.
+  ordinary: ['reflect-metadata', '@/modules/bookings/model', '@/modules/file/access', 'express', 'typedi', '@/modules/common/types', '@/modules/common/utils/dateUtils', '@/modules/bookings/services', '@/modules/dependents/services', '@/modules/middleware/auth', '@/modules/bookings/types'],
+  external: ['reflect-metadata', 'express', 'typedi', '@/modules/middleware/auth', '@/modules/common/types', '@/modules/externalBookings/services', '@/modules/externalBookings/services/providerOps', '@/modules/dependents/services', '@/modules/user/model', '@/modules/externalBookings/utils/helpers', '@/config/config', '@/services/logger', '@/modules/externalBookings/types'],
 };
 class AppError extends Error { constructor(details) { super(details.message); Object.assign(this, details); } }
 const actor = { _id: '111111111111111111111111', userType: 'user' };
@@ -45,6 +48,9 @@ function fixture(kind, source, options = {}) {
   const ports = {
     AppError, BookingService, ExternalBookingService, DependentService,
     getTodayYyyymmdd: () => '20261113', CONFIG: { EXTERNAL_BOOKING_DEFAULT_INTEGRATION: 'labstack' },
+    BookingModel: { findOne() { return { select() { return this; }, async lean() { return null; } }; } },
+    withFiles: async (_actor, _model, _data, _id, run) => run(), rebindStored: async () => undefined,
+    listOpenCancellations: async () => { throw new Error('not used here'); }, obligationSnapshot: async () => { throw new Error('not used here'); },
     logger: { info() {} }, calculateAgeFromDob: () => '30', toLabstackGender: () => 'male',
     UserModel: { findById(id) {
       events.push('user-read'); assert.ok(typeof id === 'string');

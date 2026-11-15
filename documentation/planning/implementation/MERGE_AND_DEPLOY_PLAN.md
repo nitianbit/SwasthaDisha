@@ -116,7 +116,10 @@ risks double refunds or double wallet debits. Options:
 Whichever option is chosen, the merged result must pass both test sets: §6 and the milestone's
 `test/customer-bookings/*.mjs`, `test/customer-profile/*.mjs`, `test/customer-wallet/*.mjs`.
 
-**Decision: option A (owner, 13 Nov).** The milestone branch itself is NOT merged; its rules are ported:
+**Decision: option A (owner, 13 Nov).** The milestone branch itself is NOT merged; its rules are ported. **Closed 15 Nov
+(owner):** `release/m0` records the branch as merged with the `ours` strategy (no code taken; one money ledger), and its
+carried tests pass against the release: `node test/customer-profile/focused.mjs`, `node test/customer-bookings/controllers.mjs`
+(44 cases; their closed import lists now include the later reviewed modules as pass-through ports):
 
 - **A1 (done, `m0/a1-milestone-rules`).** Rules that do not move money through the ledger:
   - Who may book or cancel for whom: own active dependents only; no customer-supplied `corporateId`; external
