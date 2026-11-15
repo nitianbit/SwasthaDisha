@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import { DoctorReservationModel } from '@/modules/doctors/model/reservation';
-import { istInstant } from '@/modules/partners/services/slots';
+import { slotIntervalOf } from '@/modules/common/utils/slotInterval';
 import { SlotRepository } from '@/modules/slots/repository';
 import {
   ISlot,
@@ -10,16 +10,6 @@ import {
 } from '@/modules/slots/types';
 import { AppError } from '@/modules/common/types';
 import { getTodayYyyymmdd, compareYyyymmdd } from '@/modules/common/utils/dateUtils';
-
-/** India-time interval of a slot (YYYYMMDD + HH:mm). */
-function slotWindow(s: { date?: string; startTime?: string; endTime?: string; duration?: number }): { start: Date; end: Date } {
-  const d = String(s.date);
-  const date = `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
-  const start = istInstant(date, String(s.startTime));
-  const end = s.endTime && s.endTime > String(s.startTime) ? istInstant(date, s.endTime)
-    : new Date(start.getTime() + (Number(s.duration) > 0 ? Number(s.duration) : 30) * 60_000);
-  return { start, end };
-}
 
 @Service()
 export class SlotService {
@@ -382,14 +372,16 @@ export class SlotService {
     const byMode = mode ? slots.filter((s) => !s.serviceModes?.length || s.serviceModes.includes(mode)) : slots;
     const doctorIds = [...new Set(byMode.map((s) => s.specialistId).filter(Boolean).map(String))];
     if (!doctorIds.length) return byMode;
-    const windows = byMode.map((s) => slotWindow(s));
+    // A slot whose time does not parse cannot be booked (admission refuses it), so it is not listed either.
+    const parsed = byMode.map((s) => ({ s, w: slotIntervalOf(s) })).filter((x): x is { s: ISlot; w: { start: Date; end: Date } } => !!x.w);
+    const windows = parsed.map((x) => x.w);
+    if (!windows.length) return [];
     const from = new Date(Math.min(...windows.map((w) => w.start.getTime())));
     const to = new Date(Math.max(...windows.map((w) => w.end.getTime())));
     const held = await DoctorReservationModel.find({ doctorId: { $in: doctorIds }, isActive: true, startTime: { $lt: to }, endTime: { $gt: from } })
       .select({ doctorId: 1, startTime: 1, endTime: 1 }).lean();
-    if (!held.length) return byMode;
-    return byMode.filter((s, i) => Number(s.maxBookings ?? 1) !== 1 || !held.some((h) =>
-      h.doctorId === String(s.specialistId) && h.startTime < windows[i]!.end && h.endTime > windows[i]!.start));
+    return parsed.filter(({ s, w }) => Number(s.maxBookings ?? 1) !== 1 || !held.some((h) =>
+      h.doctorId === String(s.specialistId) && h.startTime < w.end && h.endTime > w.start)).map((x) => x.s);
   }
 
   async incrementBookingCount(id: string): Promise<ISlot> {

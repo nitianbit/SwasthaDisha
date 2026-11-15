@@ -6,7 +6,7 @@ import { parseAppointment } from '@/modules/common/utils/cancellationWindow';
 import { postConsultationEarningIn } from '@/modules/doctors/services/earnings';
 import { releaseInterval } from '@/modules/doctors/services/reservations';
 import { CreateDirectPaidTransactionRequest } from '@/modules/payment/types';
-import { cancelBookingSettlement, createBookingWithHolds, expireUnpaidBooking, isReplayedBooking, paymentDeadlinePassed, rescheduleWithHolds } from '@/modules/bookings/holds';
+import { assertModeForHeldSlot, cancelBookingSettlement, createBookingWithHolds, expireUnpaidBooking, isReplayedBooking, paymentDeadlinePassed, rescheduleWithHolds } from '@/modules/bookings/holds';
 import {
   BookingType,
   CreateBookingRequest,
@@ -70,6 +70,9 @@ interface BookingPaymentInitResponse {
     walletDeductedAmount?: number;
   };
 }
+
+/** Q4: statuses no writer leaves (completion/no-show may have posted the doctor's earning). */
+const TERMINAL_BOOKING_STATUSES = ['completed', 'no_show'];
 
 @Service()
 export class BookingService {
@@ -1397,6 +1400,13 @@ export class BookingService {
       throw new AppError({ status: 409, code: 'DEDICATED_BOOKING_COMMAND_REQUIRED', message: 'Use cancellation, rescheduling or payment commands for this change' });
     }
     if (booking.status === 'cancelled') throw new AppError({ status: 409, code: 'BOOKING_CANCELLED', message: 'Cancelled booking history cannot be rewritten' });
+    // Q4: completed and no-show are terminal (an earning may exist for them); no writer moves them back.
+    if (TERMINAL_BOOKING_STATUSES.includes(String(booking.status)) && data.status !== undefined && data.status !== booking.status) {
+      throw new AppError({ status: 409, code: 'BOOKING_TERMINAL', message: `A ${booking.status} booking cannot change status` });
+    }
+    if (data.consultationMode !== undefined && data.consultationMode !== booking.consultationMode) {
+      await assertModeForHeldSlot(booking, data.consultationMode);
+    }
     // Milestone E8: cancellation, payment and slot/date changes only through their dedicated commands (refunds, slot
     // holds and the money ledger); the generic edit can no longer mark a booking cancelled/refunded or paid.
 
@@ -1414,7 +1424,13 @@ export class BookingService {
     // Q4: completing a ledger consultation posts the doctor's earning in the same transaction as the status change.
     const updated = data.status === 'completed' && booking.status !== 'completed'
       ? await runLedgerTransaction(async (session) => {
-        const done = await BookingModel.findOneAndUpdate(fence, { $set: data }, { new: true, session }).lean() as IBooking | null;
+        // Q4: a ledger consultation is completed only once paid (its earning is posted here and nowhere else); the
+        // write fence repeats the paid state.
+        const ledger = booking.settlementSystem === 'ledger';
+        if (ledger && booking.paymentStatus !== 'paid') {
+          throw new AppError({ status: 409, code: 'BOOKING_NOT_PAID', message: 'An unpaid consultation cannot be completed' });
+        }
+        const done = await BookingModel.findOneAndUpdate(ledger ? { ...fence, paymentStatus: 'paid' } : fence, { $set: data }, { new: true, session }).lean() as IBooking | null;
         if (done) {
           await postConsultationEarningIn(done, session, { by: 'system', byKind: 'system' });
           await releaseInterval('instant', String(id).toLowerCase(), session); // an instant consult frees the doctor at once

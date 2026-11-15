@@ -150,6 +150,10 @@ export const slotQuerySchema = Joi.object({
     }),
   isAvailable: Joi.string().valid('true', 'false').optional(),
   isActive: Joi.string().valid('true', 'false').optional(),
+  /** Q4: consultation type the slot must be offered for (GET /slots/available). */
+  mode: Joi.string().valid('chat', 'call', 'video', 'in-person').optional().messages({
+    'any.only': 'mode must be one of: chat, call, video, in-person',
+  }),
   page: Joi.number().integer().min(1).optional().messages({
     'number.base': 'Page must be a number',
     'number.integer': 'Page must be an integer',

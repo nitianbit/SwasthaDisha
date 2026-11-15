@@ -12,10 +12,11 @@ import { WalletTransactionModel } from '@/modules/wallet/model';
 import { WalletRepository } from '@/modules/wallet/repository';
 import { settlementSystemFor } from '@/modules/partners/services/cutover';
 import { ensureSettlementAccount } from '@/modules/partners/services/settlement';
-import { istInstant } from '@/modules/partners/services/slots';
+import { slotIntervalOf } from '@/modules/common/utils/slotInterval';
 import { reserveInterval, moveInterval, releaseInterval } from '@/modules/doctors/services/reservations';
 import SpecialistModel from '@/modules/specialists/model';
 import { DoctorScheduleTemplateModel } from '@/modules/doctors/model/schedule';
+import { clinicBranchAllowed } from '@/modules/doctors/services/schedule';
 
 /**
  * Ordinary-booking holds and settlement (option A, phase A2a; milestone C1–C5/E5 on the walletFunding ledger).
@@ -98,10 +99,10 @@ async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate'
   if (slot.specialistId && await DoctorScheduleTemplateModel.exists({ doctorId: String(slot.specialistId), leaveDates: String(slot.date) }).session(s)) {
     throw conflict('SLOT_NOT_AVAILABLE', 'The doctor is on leave that day');
   }
-  // Q4: a slot offered for some modes only takes bookings in those modes.
-  const modes = (slot as SlotRow).serviceModes ?? [];
-  if (modes.length > 0 && booking.consultationMode && !modes.includes(String(booking.consultationMode))) {
-    throw conflict('SLOT_NOT_AVAILABLE', 'This slot is not offered for that consultation type');
+  assertSlotMode(slot as SlotRow, booking);
+  // Q4: an in-clinic slot is sold only while the doctor still consults at that clinic branch (current state).
+  if ((slot as SlotRow).branchId && !(await clinicBranchAllowed(String(slot.specialistId), String((slot as SlotRow).branchId), s))) {
+    throw conflict('SLOT_NOT_AVAILABLE', 'The doctor no longer consults at this clinic');
   }
   const r = await SlotModel.updateOne({ _id: slotId, ...(slot.currentBookings === undefined ? { currentBookings: { $exists: false } } : { currentBookings: current }) },
     { $inc: { currentBookings: 1 }, $set: { isAvailable: current + 1 < max } }, { session: s });
@@ -109,14 +110,30 @@ async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate'
   return { time, slot: slot as SlotRow };
 }
 
-/** India-time interval of a slot (YYYYMMDD + HH:mm; end from endTime, else duration, else 30 minutes). */
+/** Q4: a slot offered for some modes only takes bookings (and mode changes) in those modes. */
+function assertSlotMode(slot: SlotRow, booking: Pick<IBooking, 'consultationMode'>) {
+  const modes = slot.serviceModes ?? [];
+  if (modes.length > 0 && booking.consultationMode && !modes.includes(String(booking.consultationMode))) {
+    throw conflict('SLOT_NOT_AVAILABLE', 'This slot is not offered for that consultation type');
+  }
+}
+
+/**
+ * Generic writers that change a booking's consultation mode admit it against the slot the booking holds. A booked slot's
+ * modes are never refreshed by expansion (it only rewrites unbooked template slots), so this read is stable.
+ */
+export async function assertModeForHeldSlot(booking: Pick<IBooking, 'slotId' | 'holds'>, consultationMode: unknown): Promise<void> {
+  const slotId = canon(booking.holds?.heldSlotId ?? booking.slotId);
+  if (!slotId || typeof consultationMode !== 'string') return;
+  const slot = await SlotModel.findById(slotId).lean();
+  if (slot) assertSlotMode(slot as SlotRow, { consultationMode } as Pick<IBooking, 'consultationMode'>);
+}
+
+/** India-time interval of a slot in either stored time format; a slot whose time does not parse is refused. */
 function slotInterval(slot: SlotRow): { start: Date; end: Date } {
-  const d = String(slot.date);
-  const date = `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
-  const start = istInstant(date, String(slot.startTime));
-  const end = slot.endTime && slot.endTime > String(slot.startTime) ? istInstant(date, slot.endTime)
-    : new Date(start.getTime() + (Number(slot.duration) > 0 ? Number(slot.duration) : 30) * 60_000);
-  return { start, end };
+  const w = slotIntervalOf(slot);
+  if (!w) throw conflict('SLOT_NOT_AVAILABLE', 'Slot is not available for booking');
+  return w;
 }
 
 /**
@@ -395,6 +412,8 @@ export async function rescheduleWithHolds(p: {
       const slot = await SlotModel.findById(target).session(s).lean();
       if (!slot) throw conflict('SLOT_NOT_AVAILABLE', 'Slot is not available for booking');
       bookingTime = slotTime(slot, next);
+      // A mode change on the same slot is admitted like a new booking's mode.
+      if (next.consultationMode !== booking.consultationMode) assertSlotMode(slot as SlotRow, next);
     }
     const holds: Holds = { version: 1, heldSlotId: target, followUpParentId: await heldFollowUpParent(booking, s) };
     const updated = await BookingModel.findOneAndUpdate({ _id: id, status: booking.status },

@@ -35,6 +35,7 @@ import { DoctorReservationModel, DoctorScheduleGuardModel } from '@/modules/doct
 import { DoctorScheduleTemplateModel } from '@/modules/doctors/model/schedule';
 import { reserveInterval } from '@/modules/doctors/services/reservations';
 import { saveTemplate, setLeave, expandDoctorSlots } from '@/modules/doctors/services/schedule';
+import { Container } from 'typedi';
 import { getMySchedule, putMySchedule, addMyLeave, removeMyLeave } from '@/modules/doctors/controller';
 import { scheduleTemplateSchema, leaveSchema, leaveParamSchema } from '@/modules/doctors/validation';
 import { runReservationBackfill } from '@/scripts/q4ReservationBackfill';
@@ -340,6 +341,154 @@ async function main() {
     assert.ok(r2.conflicts.includes(second));
   });
 
+  // ── Review findings (Q4a round 1) ──
+  await check('manual slots in h:mm AM/PM (the slot API output) get the right interval; listing reads them too', async () => {
+    const docM = await doctor('Dr Manual');
+    const isoD = addDays(today, 10);
+    const date = ymd(isoD);
+    const morning = await slotSvc.create({ specialistId: docM, date, startTime: '9:00 AM', endTime: '10:00 AM', duration: 30, slotType: 'consultation' } as any);
+    const night = await slotSvc.create({ specialistId: docM, date, startTime: '10:00 PM', endTime: '10:30 PM', duration: 30, slotType: 'consultation' } as any);
+    const noon = await slotSvc.create({ specialistId: docM, date, startTime: '12:30 PM', endTime: '1:00 PM', duration: 30, slotType: 'consultation' } as any);
+    assert.deepEqual(morning.map((s) => s.startTime), ['9:00 AM', '9:30 AM']);
+    const at = (hm: string) => new Date(`${isoD}T${hm}:00+05:30`).toISOString();
+    const held = async (b: any) => DoctorReservationModel.findOne({ refId: String(b._id).toLowerCase(), isActive: true }).lean();
+    const b1 = await book(await customer(), docM, String(morning[0]!._id));
+    const b2 = await book(await customer(), docM, String(night[0]!._id));
+    const b3 = await book(await customer(), docM, String(noon[0]!._id));
+    assert.deepEqual([(await held(b1))!.startTime.toISOString(), (await held(b1))!.endTime.toISOString()], [at('09:00'), at('09:30')]);
+    assert.equal((await held(b2))!.startTime.toISOString(), at('22:00'), '10:00 PM is not reserved twelve hours early');
+    assert.deepEqual([(await held(b3))!.startTime.toISOString(), (await held(b3))!.endTime.toISOString()], [at('12:30'), at('13:00')]);
+    assert.deepEqual((await slotSvc.getAvailableSlots(docM, undefined, date)).map((s) => s.startTime), ['9:30 AM']);
+    await runLedgerTransaction((s) => reserveInterval({ doctorId: docM, kind: 'instant', refId: 'manual-instant', start: new Date(at('09:40')), end: new Date(at('09:50')) }, s));
+    assert.deepEqual(await slotSvc.getAvailableSlots(docM, undefined, date), []);
+  });
+
+  await check('completed and no-show are terminal: no writer reopens them, so no refund can follow an earning', async () => {
+    (CONFIG as any).SETTLEMENT_CUTOVER_AT = new Date(Date.now() - 60_000).toISOString();
+    try {
+      const docZ = await doctor('Dr Terminal');
+      const u = await customer();
+      const b = await book(u, docZ, await slot(docZ, 11, '10:00', '10:30'));
+      await BookingModel.updateOne({ _id: b._id }, { $set: { status: 'confirmed', paymentStatus: 'paid', walletFunding: { total: 500, revision: 1, closed: false, captures: [] } } });
+      await bookings.update(String(b._id), { status: 'completed' } as any);
+      for (const st of ['confirmed', 'pending']) await assert.rejects(() => bookings.update(String(b._id), { status: st } as any), code('BOOKING_TERMINAL'));
+      await assert.rejects(() => bookings.cancelByDoctor(String(b._id), { _id: docZ, userType: 'specialist' }, 'x'), code('BOOKING_NOT_CANCELLABLE'));
+      await bookings.update(String(b._id), { notes: 'follow up in a week' } as any); // non-status edits stay possible
+      assert.equal((await BookingModel.findById(b._id).lean())!.status, 'completed');
+      assert.equal(Number((await WalletModel.findOne({ userId: u }).lean())!.balance), 0, 'no refund');
+      assert.equal(await LedgerEntryModel.countDocuments({ source: 'consultation', sourceId: String(b._id) }), 1);
+
+      const n = await book(await customer(), docZ, await slot(docZ, 11, '11:00', '11:30'));
+      await confirmPaid(n._id);
+      await bookings.markNoShow(String(n._id), { _id: docZ, userType: 'specialist' }, new Date(Date.now() + 12 * 86_400_000));
+      await assert.rejects(() => bookings.update(String(n._id), { status: 'confirmed' } as any), code('BOOKING_TERMINAL'));
+      await assert.rejects(() => bookings.cancelByDoctor(String(n._id), { _id: docZ, userType: 'specialist' }, 'x'), code('BOOKING_NOT_CANCELLABLE'));
+      assert.equal((await BookingModel.findById(n._id).lean())!.status, 'no_show');
+
+      // Unpaid ledger consultation: completion refused (it would never earn); once paid it completes and earns once.
+      const unpaid = await book(await customer(), docZ, await slot(docZ, 11, '12:00', '12:30'));
+      await BookingModel.updateOne({ _id: unpaid._id }, { $set: { status: 'confirmed' } });
+      await assert.rejects(() => bookings.update(String(unpaid._id), { status: 'completed' } as any), code('BOOKING_NOT_PAID'));
+      assert.equal((await BookingModel.findById(unpaid._id).lean())!.status, 'confirmed');
+      await confirmPaid(unpaid._id);
+      await bookings.update(String(unpaid._id), { status: 'completed' } as any);
+      assert.equal(await LedgerEntryModel.countDocuments({ source: 'consultation', sourceId: String(unpaid._id), kind: 'earning' }), 1);
+    } finally { (CONFIG as any).SETTLEMENT_CUTOVER_AT = undefined; }
+  });
+
+  await check('a consultation-type change is admitted against the slot on every path (same-slot reschedule, generic edit)', async () => {
+    const docV = await doctor('Dr Modes');
+    const s1 = await slot(docV, 12, '10:00', '10:30', { serviceModes: ['video'] });
+    const u = await customer();
+    const b = await book(u, docV, s1);
+    await assert.rejects(() => rescheduleWithHolds({ bookingId: String(b._id), requester: { _id: u, userType: 'user' }, nextSlotId: s1,
+      patch: { consultationMode: 'chat' } }), code('SLOT_NOT_AVAILABLE'));
+    await assert.rejects(() => bookings.update(String(b._id), { consultationMode: 'chat' } as any), code('SLOT_NOT_AVAILABLE'));
+    assert.equal((await BookingModel.findById(b._id).lean())!.consultationMode, 'video');
+    await rescheduleWithHolds({ bookingId: String(b._id), requester: { _id: u, userType: 'user' }, nextSlotId: s1, patch: { notes: 'same slot, same mode' } });
+  });
+
+  await check('clinic authority is current: removal, branch closure or suspension stop new clinic slots and bookings; made bookings stay', async () => {
+    const partners = new PartnerService(new PartnerRepository(), new MemberRepository(), new BranchRepository());
+    const { partner, owner } = await partners.createPartner({ kind: 'clinic', name: 'Lake Clinic', contactPhone: String(ph++), invoiceSeriesPrefix: 'LC',
+      firstOwner: { phone: String(ph++), name: 'Owner' } });
+    await partners.verifyPartner(String(partner._id), 'admin');
+    const actor = { memberId: String(owner._id), partnerId: String(partner._id), role: 'owner' as const, permissions: [], branchIds: [] };
+    const br = await partners.createBranch(actor as any, { name: 'Lake', phone: '9876500001', holidays: [], hours: {},
+      services: { homeCollection: false, inLab: false, inClinic: true }, address: { line1: 'x', city: 'y', state: 'z', stateCode: '29', pincode: '560001' } } as any);
+    const docK = await doctor('Dr Clinic');
+    const member = await MemberModel.create({ partnerId: String(partner._id), phone: String(ph++), name: 'Dr Clinic', role: 'staff', permissions: [], branchIds: [],
+      doctorId: docK, isActive: true });
+    const branchId = String(br._id);
+    const days = Object.fromEntries(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((d) => [d, [{ start: '14:00', end: '15:00', modes: ['in-person'], branchId }]]));
+    await saveTemplate(docK, { slotMinutes: 30, days: days as any });
+    const day = (n: number) => ymd(addDays(today, n));
+    const at = async (n: number, t: string) => String((await SlotModel.findOne({ specialistId: docK, date: day(n), startTime: t }).lean() as any)._id);
+    const inPerson = { consultationMode: 'in-person', serviceMode: 'in-person' };
+    const kept = await book(await customer(), docK, await at(2, '14:00'), inPerson);
+    const openCount = () => SlotModel.countDocuments({ specialistId: docK, branchId, isActive: true });
+
+    await MemberModel.updateOne({ _id: member._id }, { $set: { isActive: false } });
+    await assert.rejects(async () => book(await customer(), docK, await at(3, '14:00'), inPerson), code('SLOT_NOT_AVAILABLE'), 'refused before any expansion');
+    await expandDoctorSlots(docK, today, 30);
+    assert.equal(await openCount(), 0, 'expansion closes the clinic slots');
+    assert.equal((await BookingModel.findById(kept._id).lean())!.status, 'pending', 'the booking already made stays');
+    assert.equal((await SlotModel.findById(await at(2, '14:00')).lean() as any).currentBookings, 1);
+
+    await MemberModel.updateOne({ _id: member._id }, { $set: { isActive: true } });
+    await expandDoctorSlots(docK, today, 30);
+    assert.ok(await openCount() > 0, 'authority back: slots reopen');
+    const probe = await at(4, '14:30');
+    await BranchModel.updateOne({ _id: br._id }, { $set: { isActive: false } });
+    await assert.rejects(async () => book(await customer(), docK, probe, inPerson), code('SLOT_NOT_AVAILABLE'));
+    await BranchModel.updateOne({ _id: br._id }, { $set: { isActive: true } });
+    await PartnerModel.updateOne({ _id: partner._id }, { $set: { isActive: false } });
+    await assert.rejects(async () => book(await customer(), docK, probe, inPerson), code('SLOT_NOT_AVAILABLE'));
+    assert.equal((await SlotModel.findById(probe).lean() as any).currentBookings, 0, 'refusals take no seat');
+    await PartnerModel.updateOne({ _id: partner._id }, { $set: { isActive: true } });
+    await book(await customer(), docK, probe, inPerson);
+  });
+
+  await check('leave beyond the rolling window closes that day at once and is refused at booking; removing it reopens', async () => {
+    const docF = await doctor('Dr Far');
+    const far = await slot(docF, 40, '10:00', '10:30');
+    const farDay = ymd(addDays(today, 40));
+    await setLeave(docF, farDay, true);
+    assert.equal((await SlotModel.findById(far).lean() as any).isActive, false);
+    await SlotModel.updateOne({ _id: far }, { $set: { isActive: true, isAvailable: true }, $unset: { closedReason: 1 } }); // even if reopened by hand
+    await assert.rejects(async () => book(await customer(), docF, far), code('SLOT_NOT_AVAILABLE'));
+    await SlotModel.updateOne({ _id: far }, { $set: { isActive: false, isAvailable: false, closedReason: 'leave' } });
+    await setLeave(docF, farDay, false);
+    assert.equal((await SlotModel.findById(far).lean() as any).isActive, true);
+    assert.equal(await SlotModel.countDocuments({ specialistId: docF, date: farDay }), 1, 'no template slots generated outside the window');
+    await book(await customer(), docF, far);
+  });
+
+  await check('backfill never leaves an interval on a booking cancelled while it runs; it reads AM/PM slots', async () => {
+    const docR = await doctor('Dr Race');
+    for (let round = 0; round < 4; round++) {
+      const u = await customer();
+      const sid = await slot(docR, 13 + round, '9:00 AM', '9:30 AM', { currentBookings: 1, isAvailable: false });
+      const s = await SlotModel.findById(sid).lean() as any;
+      const _id = new Types.ObjectId();
+      await BookingModel.collection.insertOne({ _id, bookingType: 'consultation', userId: u, specialistId: docR, slotId: sid, bookingDate: s.date,
+        bookingTime: s.startTime, serviceMode: 'video', price: 500, status: 'confirmed', paymentStatus: 'pending' } as never);
+      await Promise.all([runReservationBackfill(true), cancelBookingSettlement({ bookingId: String(_id), requester: { _id: u, userType: 'user' }, reason: 'x',
+        cancelledAt: '20261201', wallets: new WalletRepository(), enforceWindow: () => undefined, lifecycle: () => undefined as any })]);
+      assert.equal((await BookingModel.findById(_id).lean())!.status, 'cancelled');
+      assert.equal(await DoctorReservationModel.countDocuments({ refId: String(_id), isActive: true }), 0, `round ${round}`);
+    }
+    const u = await customer();
+    const sid = await slot(docR, 20, '9:00 AM', '9:30 AM', { currentBookings: 1, isAvailable: false });
+    const s = await SlotModel.findById(sid).lean() as any;
+    const _id = new Types.ObjectId();
+    await BookingModel.collection.insertOne({ _id, bookingType: 'consultation', userId: u, specialistId: docR, slotId: sid, bookingDate: s.date,
+      bookingTime: s.startTime, serviceMode: 'video', price: 500, status: 'confirmed', paymentStatus: 'paid' } as never);
+    await runReservationBackfill(true);
+    const r = await DoctorReservationModel.findOne({ refId: String(_id), isActive: true }).lean();
+    assert.equal(r!.startTime.toISOString(), new Date(`${addDays(today, 20)}T09:00:00+05:30`).toISOString());
+  });
+
   // ── HTTP: the doctor's own schedule routes (real authenticate → requireSpecialist → controller) ──
   const r = Router();
   r.get('/me/schedule', requireSpecialist, catchAsync(getMySchedule));
@@ -349,6 +498,9 @@ async function main() {
   const app = express();
   app.use(express.json());
   app.use('/api/v1/specialists', authenticate, r);
+  Container.set(SlotService, slotSvc);
+  const { default: slotRouter } = await import('@/modules/slots/routes');
+  app.use('/api/v1/slots', slotRouter);
   app.use(errorHandler);
   const server = app.listen(0);
   const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -372,6 +524,16 @@ async function main() {
       assert.equal(await SlotModel.countDocuments({ specialistId: docH, date: ymd(addDays(today, 3)), isActive: true }), 2);
       const userToken = jwt.sign({ _id: await customer(), userType: 'user', authVersion: 0 }, CONFIG.JWT_SECRET_KEY);
       assert.equal((await call('GET', '/api/v1/specialists/me/schedule', userToken)).status, 403);
+    });
+    await check('HTTP: GET /slots/available keeps the mode filter through validation', async () => {
+      const docQ = await doctor('Dr Query');
+      const d = ymd(addDays(today, 21));
+      await slot(docQ, 21, '10:00', '10:30', { serviceModes: ['video'] });
+      await slot(docQ, 21, '10:30', '11:00', { serviceModes: ['chat'] });
+      const res = await call('GET', `/api/v1/slots/available?specialistId=${docQ}&date=${d}&mode=video`, token);
+      assert.equal(res.status, 200);
+      assert.deepEqual(res.json.data.map((s: any) => s.startTime), ['10:00']);
+      assert.equal((await call('GET', `/api/v1/slots/available?specialistId=${docQ}&date=${d}&mode=fax`, token)).status, 400);
     });
   } finally {
     server.close();

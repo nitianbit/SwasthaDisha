@@ -18,14 +18,24 @@ const iso = (yyyymmdd: string) => `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6
 const weekdayOf = (isoDate: string): Weekday =>
   WEEKDAYS[new Date(Date.UTC(Number(isoDate.slice(0, 4)), Number(isoDate.slice(5, 7)) - 1, Number(isoDate.slice(8, 10)))).getUTCDay()]!;
 
-/** In-clinic windows: the doctor must be an active member of a verified clinic holding that in-clinic branch. */
-export async function assertClinicBranchForDoctor(doctorId: string, branchId: string): Promise<void> {
-  const branch = await BranchModel.findById(branchId).lean();
-  const partner = branch ? await PartnerOrgModel.findById(branch.partnerId).lean() : null;
-  const member = branch ? await MemberModel.findOne({ partnerId: String(branch.partnerId), doctorId: String(doctorId), isActive: true }).lean() : null;
-  const inScope = !!member && (member.role === 'owner' || (member.branchIds ?? []).length === 0 || (member.branchIds ?? []).map(String).includes(String(branchId)));
-  if (!branch || branch.isActive === false || !branch.services?.inClinic || !partner || partner.kind !== 'clinic'
-      || partner.isActive === false || partner.verification?.state !== 'verified' || !inScope) {
+/**
+ * In-clinic authority, checked against the CURRENT state every time it matters (template save, every expansion, every
+ * new booking admission): the doctor is an active member of an active, verified clinic whose active branch offers
+ * in-clinic consultations and is within the member's branch scope. Existing appointments are never touched by a loss of
+ * authority; only new clinic commerce is refused.
+ */
+export async function clinicBranchAllowed(doctorId: string, branchId: string, s?: ClientSession): Promise<boolean> {
+  if (!/^[0-9a-fA-F]{24}$/.test(String(branchId))) return false;
+  const branch = await BranchModel.findById(branchId).session(s ?? null).lean();
+  if (!branch || branch.isActive === false || !branch.services?.inClinic) return false;
+  const partner = await PartnerOrgModel.findById(branch.partnerId).session(s ?? null).lean();
+  if (!partner || partner.kind !== 'clinic' || partner.isActive === false || partner.verification?.state !== 'verified') return false;
+  const member = await MemberModel.findOne({ partnerId: String(branch.partnerId), doctorId: String(doctorId), isActive: true }).session(s ?? null).lean();
+  return !!member && (member.role === 'owner' || (member.branchIds ?? []).length === 0 || (member.branchIds ?? []).map(String).includes(String(branchId)));
+}
+
+export async function assertClinicBranchForDoctor(doctorId: string, branchId: string, s?: ClientSession): Promise<void> {
+  if (!(await clinicBranchAllowed(doctorId, branchId, s))) {
     throw new AppError({ status: 403, code: 'CLINIC_BRANCH_NOT_ALLOWED', message: 'You do not consult at that clinic branch' });
   }
 }
@@ -71,14 +81,42 @@ export async function saveTemplate(doctorId: string, input: { slotMinutes: numbe
   return { template, expansion };
 }
 
-/** Leave day on/off (YYYYMMDD); slots that already hold bookings keep them. */
+/**
+ * Leave day on/off (YYYYMMDD); slots that already hold bookings keep them. One transaction: the guard bump, the
+ * template write, the rolling window and — when the changed day lies outside it — that day itself, so a leave day is
+ * never left bookable whatever its distance (booking admission refuses leave days independently as well).
+ */
 export async function setLeave(doctorId: string, date: string, onLeave: boolean, now = new Date()) {
   if (!/^\d{8}$/.test(date) || !isRealDate(iso(date))) throw new AppError({ status: 400, code: 'INVALID_DATE', message: 'Date must be a real date, YYYYMMDD' });
-  const template = await writeTemplate(doctorId,
-    onLeave ? { $addToSet: { leaveDates: date }, $setOnInsert: { doctorId: String(doctorId), slotMinutes: 30, days: {}, isActive: true } }
-      : { $pull: { leaveDates: date } }, onLeave);
-  const expansion = await expandDoctorSlots(doctorId, istDate(now), DOCTOR_ROLLING_DAYS);
-  return { template, expansion };
+  const today = istDate(now);
+  await ensureScheduleGuard(doctorScheduleKey(doctorId));
+  return runLedgerTransaction(async (s) => {
+    await bumpScheduleGuard(doctorScheduleKey(doctorId), s);
+    const template = await DoctorScheduleTemplateModel.findOneAndUpdate({ doctorId: String(doctorId) },
+      onLeave ? { $addToSet: { leaveDates: date }, $setOnInsert: { doctorId: String(doctorId), slotMinutes: 30, days: {}, isActive: true } }
+        : { $pull: { leaveDates: date } }, { upsert: onLeave, new: true, session: s }).lean();
+    const expansion = await expandDoctorSlotsIn(doctorId, today, DOCTOR_ROLLING_DAYS, s);
+    const inWindow = iso(date) >= today && iso(date) < addDays(today, DOCTOR_ROLLING_DAYS);
+    if (!inWindow && iso(date) >= today) {
+      const day = await reconcileLeaveDayIn(doctorId, date, onLeave, s);
+      expansion.closed += day.closed; expansion.reopened += day.reopened;
+    }
+    return { template, expansion };
+  });
+}
+
+/** Outside the rolling window only the leave state of that one day is reconciled (no template slots are generated there). */
+async function reconcileLeaveDayIn(doctorId: string, date: string, onLeave: boolean, s: ClientSession) {
+  const specialistId = String(doctorId);
+  if (onLeave) {
+    const r = await SlotModel.updateMany({ specialistId, date, isActive: { $ne: false } },
+      { $set: { isActive: false, isAvailable: false, closedReason: 'leave' } }, { session: s });
+    return { closed: r.modifiedCount, reopened: 0 };
+  }
+  const r = await SlotModel.updateMany({ specialistId, date, closedReason: 'leave' },
+    [{ $set: { isActive: true, isAvailable: { $lt: [{ $ifNull: ['$currentBookings', 0] }, { $ifNull: ['$maxBookings', 1] }] } } }, { $unset: 'closedReason' }],
+    { session: s });
+  return { closed: 0, reopened: r.modifiedCount };
 }
 
 export interface DoctorExpansion { inserted: number; updated: number; closed: number; reopened: number }
@@ -105,6 +143,12 @@ async function expandDoctorSlotsIn(doctorId: string, fromIsoDate: string, days: 
   const t = await getTemplate(doctorId, s);
   if (!t) return out;
   const leave = new Set((t.leaveDates ?? []).filter((d) => /^\d{8}$/.test(d) && isRealDate(iso(d))));
+  // Clinic authority is re-checked on every run: windows at a clinic branch the doctor may no longer use generate
+  // nothing, so their template slots close for new bookings (bookings already made are kept).
+  const clinicOk = new Map<string, boolean>();
+  for (const w of Object.values(t.days ?? {}).flat()) {
+    if (w?.branchId && !clinicOk.has(String(w.branchId))) clinicOk.set(String(w.branchId), await clinicBranchAllowed(doctorId, String(w.branchId), s));
+  }
   for (let i = 0; i < days; i++) {
     const isoDate = addDays(fromIsoDate, i);
     const date = ymd(isoDate);
@@ -118,6 +162,7 @@ async function expandDoctorSlotsIn(doctorId: string, fromIsoDate: string, days: 
     const wanted: { start: string; end: string; w: IScheduleWindow }[] = [];
     if (t.isActive) {
       for (const w of t.days[weekdayOf(isoDate)] ?? []) {
+        if (w.branchId && !clinicOk.get(String(w.branchId))) continue;
         for (let m = toMin(w.start); m + t.slotMinutes <= toMin(w.end); m += t.slotMinutes) wanted.push({ start: toHHMM(m), end: toHHMM(m + t.slotMinutes), w });
       }
     }
