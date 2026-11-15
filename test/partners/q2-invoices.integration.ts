@@ -31,7 +31,7 @@ import { CatalogueItemRepository } from '@/modules/partners/repository/catalogue
 import { InvoiceRepository, InvoiceEventRepository, InvoiceCounterRepository } from '@/modules/partners/repository/invoice';
 import { PartnerService, PartnerActor, adminActor } from '@/modules/partners/services';
 import { CatalogueService } from '@/modules/partners/services/catalogue';
-import { InvoiceService, financialYearOf, formatSerial, eventsAsOf } from '@/modules/partners/services/invoice';
+import { InvoiceService, financialYearOf, formatSerial, eventsAsOf, doctorNames } from '@/modules/partners/services/invoice';
 import { renderInvoiceHtml, renderInvoicePdf, indiaDate } from '@/modules/partners/services/invoicePdf';
 import { normalizePhone, resetCustomerPhoneIndexCache } from '@/modules/partners/services/customerResolver';
 import { SMSService } from '@/modules/sms/services';
@@ -517,6 +517,10 @@ async function main() {
       assert.equal(paged.json.data.length, 1);
       assert.deepEqual([paged.json.pagination.page, paged.json.pagination.limit, paged.json.pagination.total], [2, 1, mine.json.pagination.total]);
       assert.ok(renderInvoiceHtml({ ...(mine.json.data[0] as any), issuedAt: new Date() }, [], { doctorName: 'Dr Bill Name' }).includes('Doctor:</strong> Dr Bill Name'));
+      const docId = new Types.ObjectId();
+      await mongoose.connection.collection('specialists').insertOne({ _id: docId, name: 'Dr Case' } as never);
+      const names = await doctorNames([{ doctorId: docId.toHexString().toUpperCase() }, { doctorId: docId.toHexString() }]);
+      assert.deepEqual([names[docId.toHexString().toUpperCase()], names[docId.toHexString()]], ['Dr Case', 'Dr Case'], 'either letter case');
       const one = await call('GET', `/api/v1/bills/${mine.json.data[0]._id}`, userToken(linkedUserId));
       assert.equal(one.status, 200);
       const stranger = await UserModel.create({ phone: '9822200099', userType: 'user' } as any);
