@@ -32,7 +32,7 @@ async function check(name: string, fn: () => Promise<void>) { await fn(); passed
 
 async function main() {
   await mongoose.connect(url);
-  for (const c of await mongoose.connection.db!.collections()) await c.deleteMany({});
+  for (const c of await mongoose.connection.db!.collections()) await c.drop().catch(() => {});
   await Promise.all([PartnerModel.init(), MemberModel.init(), BranchModel.init()]);
 
   // ── Create partner + first owner ──
@@ -145,7 +145,7 @@ async function main() {
     const owners = await memberRepo.findOwnersByPartner(partnerId);
     const pre = await partnerRepo.findById(partnerId);
 
-    await svc.removeMember(partnerId, staff._id!, owners[0]._id!);
+    await svc.removeMember(partnerId, staff._id!, owners[0]._id!, 'owner');
     const post = await partnerRepo.findById(partnerId);
     assert.equal(post!.activeOwnerCount, pre!.activeOwnerCount);
     const removed = await memberRepo.findById(staff._id!);
@@ -159,7 +159,7 @@ async function main() {
     assert.ok(owners.length >= 2, 'need at least 2 owners');
     const pre = await partnerRepo.findById(partnerId);
 
-    await svc.removeMember(partnerId, owners[1]._id!, owners[0]._id!);
+    await svc.removeMember(partnerId, owners[1]._id!, owners[0]._id!, 'owner');
     const post = await partnerRepo.findById(partnerId);
     assert.equal(post!.activeOwnerCount, pre!.activeOwnerCount - 1);
   });
@@ -172,7 +172,7 @@ async function main() {
 
     // Try removing the last owner with themselves (also blocked by CANNOT_REMOVE_SELF)
     await assert.rejects(
-      () => svc.removeMember(partnerId, owners[0]._id!, owners[0]._id!),
+      () => svc.removeMember(partnerId, owners[0]._id!, owners[0]._id!, 'owner'),
       (e: any) => e.code === 'CANNOT_REMOVE_SELF'
     );
 
@@ -194,8 +194,8 @@ async function main() {
     );
     // staff tries to remove the sole owner (but staff can't — staffMember is the actor)
     await assert.rejects(
-      () => svc.removeMember(solo.partner._id!, solo.owner._id!, staffMember._id!),
-      (e: any) => e.code === 'LAST_OWNER'
+      () => svc.removeMember(solo.partner._id!, solo.owner._id!, staffMember._id!, 'staff'),
+      (e: any) => e.code === 'OWNER_REQUIRED'
     );
   });
 
@@ -280,6 +280,97 @@ async function main() {
     await svc.deactivateBranch(partnerId, branches[0]._id!);
     const remaining = await svc.listBranches(partnerId);
     assert.equal(remaining.length, 0);
+  });
+
+  // ── Owner-only gates (#3) ──
+
+  await check('staff cannot add an owner', async () => {
+    const partners = await partnerRepo.findAll({ name: 'City Labs' });
+    const partnerId = partners[0]._id!;
+    const members = await memberRepo.findActiveByPartner(partnerId);
+    const staff = members.find(m => (m as any).role === 'staff')!;
+
+    await assert.rejects(
+      () => svc.addMember(
+        partnerId,
+        { phone: '1122334455', name: 'Sneaky Owner', role: 'owner', permissions: [...ALL_PERMISSIONS] },
+        staff._id!,
+        'staff',
+        ['bookings.view', 'bookings.manage', 'finance.view']
+      ),
+      (e: any) => e.code === 'OWNER_REQUIRED'
+    );
+  });
+
+  await check('staff cannot remove an owner', async () => {
+    const { partner, owner } = await svc.createPartner({
+      kind: 'lab',
+      name: 'Staff Remove Test',
+      contactPhone: '4455667788',
+      invoiceSeriesPrefix: 'SR',
+      firstOwner: { phone: '4455667788', name: 'Owner SR' },
+    });
+    const owner2 = await svc.addMember(
+      partner._id!,
+      { phone: '4455667789', name: 'Owner SR2', role: 'owner', permissions: [...ALL_PERMISSIONS] },
+      owner._id!,
+      'owner',
+      [...ALL_PERMISSIONS]
+    );
+    const staff = await svc.addMember(
+      partner._id!,
+      { phone: '4455667790', name: 'Staff SR', role: 'staff', permissions: ['staff.manage'] },
+      owner._id!,
+      'owner',
+      [...ALL_PERMISSIONS]
+    );
+    await assert.rejects(
+      () => svc.removeMember(partner._id!, owner2._id!, staff._id!, 'staff'),
+      (e: any) => e.code === 'OWNER_REQUIRED'
+    );
+  });
+
+  await check('staff cannot change member permissions', async () => {
+    const partners = await partnerRepo.findAll({ name: 'City Labs' });
+    const partnerId = partners[0]._id!;
+    const members = await memberRepo.findActiveByPartner(partnerId);
+    const staff = members.find(m => (m as any).role === 'staff')!;
+    const anotherStaff = members.filter(m => (m as any).role === 'staff')[1];
+    if (anotherStaff) {
+      await assert.rejects(
+        () => svc.updateMemberPermissions(
+          partnerId, anotherStaff._id!, ['bookings.view'],
+          'staff', ['bookings.view', 'bookings.manage']
+        ),
+        (e: any) => e.code === 'OWNER_REQUIRED'
+      );
+    }
+  });
+
+  // ── Branch scope enforcement (#4) ──
+
+  await check('assertBranchScope blocks staff outside their assigned branches', () => {
+    assert.throws(
+      () => svc.assertBranchScope('staff', ['branchA', 'branchB'], 'branchC'),
+      (e: any) => e.code === 'BRANCH_SCOPE_EXCEEDED'
+    );
+    // Owner bypasses scope
+    svc.assertBranchScope('owner', ['branchA'], 'branchC');
+    // Unbounded staff (empty branchIds) passes
+    svc.assertBranchScope('staff', [], 'branchC');
+    return Promise.resolve();
+  });
+
+  await check('assertCanCreateBranch blocks scoped staff', () => {
+    assert.throws(
+      () => svc.assertCanCreateBranch('staff', ['branchA']),
+      (e: any) => e.code === 'BRANCH_SCOPE_EXCEEDED'
+    );
+    // Owner can create
+    svc.assertCanCreateBranch('owner', ['branchA']);
+    // Unbounded staff can create
+    svc.assertCanCreateBranch('staff', []);
+    return Promise.resolve();
   });
 
   // ── Partner update ──

@@ -6,6 +6,7 @@ import { requireAdmin, requireOperationalPartner, requirePartnerPermission } fro
 import {
   createPartnerSchema,
   updatePartnerSchema,
+  updateMyPartnerSchema,
   partnerQuerySchema,
   partnerIdParamSchema,
   addMemberSchema,
@@ -34,6 +35,7 @@ import {
   createBranch,
   updateBranch,
   deactivateBranch,
+  publicListPartners,
 } from '@/modules/partners/controller';
 
 const partnerRouter = Router();
@@ -98,7 +100,7 @@ partnerRouter.get(
 partnerRouter.put(
   '/me',
   requireOperationalPartner,
-  validate(updatePartnerSchema, 'body'),
+  validate(updateMyPartnerSchema, 'body'),
   catchAsync(updateMyPartner)
 );
 
@@ -158,6 +160,13 @@ partnerRouter.delete(
   '/branches/:branchId',
   requirePartnerPermission('branches.manage'),
   catchAsync(deactivateBranch)
+);
+
+export const publicPartnerRouter = Router();
+publicPartnerRouter.get(
+  '/directory',
+  validate(partnerQuerySchema, 'query'),
+  catchAsync(publicListPartners)
 );
 
 export default partnerRouter;

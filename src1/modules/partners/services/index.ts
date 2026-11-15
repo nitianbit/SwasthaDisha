@@ -163,6 +163,10 @@ export class PartnerService {
     inviterRole: MemberRole,
     inviterPermissions: PartnerPermission[]
   ): Promise<IMember> {
+    if (data.role === 'owner' && inviterRole !== 'owner') {
+      throw new AppError({ status: 403, code: 'OWNER_REQUIRED', message: 'Only an owner can add another owner' });
+    }
+
     this.enforceDelegationCeiling(inviterRole, inviterPermissions, data.permissions);
 
     if (data.branchIds && data.branchIds.length > 0) {
@@ -237,7 +241,8 @@ export class PartnerService {
   async removeMember(
     partnerId: string,
     memberId: string,
-    actorMemberId: string
+    actorMemberId: string,
+    actorRole: MemberRole
   ): Promise<void> {
     const member = await this.memberRepository.findById(memberId);
     if (!member || String(member.partnerId) !== String(partnerId)) {
@@ -249,11 +254,14 @@ export class PartnerService {
     if (String(member._id) === String(actorMemberId)) {
       throw new AppError({ status: 400, code: 'CANNOT_REMOVE_SELF', message: 'Cannot remove yourself' });
     }
+    if (member.role === 'owner' && actorRole !== 'owner') {
+      throw new AppError({ status: 403, code: 'OWNER_REQUIRED', message: 'Only an owner can remove another owner' });
+    }
 
     if (member.role === 'owner') {
       await this.removeOwner(partnerId, memberId);
     } else {
-      await this.memberRepository.update({ _id: memberId }, { isActive: false });
+      await this.memberRepository.update({ _id: memberId, isActive: true }, { isActive: false });
     }
   }
 
@@ -281,7 +289,14 @@ export class PartnerService {
         throw new AppError({ status: 409, code: 'LAST_OWNER', message: 'Cannot remove the last owner' });
       }
 
-      await this.memberRepository.update({ _id: memberId }, { isActive: false });
+      const deactivated = await this.memberRepository.update(
+        { _id: memberId, isActive: true, role: 'owner' },
+        { isActive: false },
+        { new: true, session } as any
+      );
+      if (!deactivated) {
+        throw new AppError({ status: 409, code: 'MEMBER_STATE_CONFLICT', message: 'Member state changed concurrently, please retry' });
+      }
 
       await session.commitTransaction();
     } catch (error) {
@@ -299,6 +314,9 @@ export class PartnerService {
     actorRole: MemberRole,
     actorPermissions: PartnerPermission[]
   ): Promise<IMember> {
+    if (actorRole !== 'owner') {
+      throw new AppError({ status: 403, code: 'OWNER_REQUIRED', message: 'Only an owner can change member permissions' });
+    }
     const member = await this.memberRepository.findById(memberId);
     if (!member || String(member.partnerId) !== String(partnerId) || !member.isActive) {
       throw new AppError({ status: 404, code: 'MEMBER_NOT_FOUND', message: 'Active member not found' });
@@ -373,6 +391,21 @@ export class PartnerService {
       throw new AppError({ status: 404, code: 'BRANCH_NOT_FOUND', message: 'Branch not found' });
     }
     return branch;
+  }
+
+  assertBranchScope(actorRole: MemberRole, actorBranchIds: string[], targetBranchId: string): void {
+    if (actorRole === 'owner') return;
+    if (actorBranchIds.length === 0) return;
+    if (!actorBranchIds.includes(targetBranchId)) {
+      throw new AppError({ status: 403, code: 'BRANCH_SCOPE_EXCEEDED', message: 'Operation not allowed for this branch' });
+    }
+  }
+
+  assertCanCreateBranch(actorRole: MemberRole, actorBranchIds: string[]): void {
+    if (actorRole === 'owner') return;
+    if (actorBranchIds.length > 0) {
+      throw new AppError({ status: 403, code: 'BRANCH_SCOPE_EXCEEDED', message: 'Branch-scoped staff cannot create new branches' });
+    }
   }
 
   // ── Private helpers ──

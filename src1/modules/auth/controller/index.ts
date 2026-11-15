@@ -9,6 +9,8 @@ import { HRRepository } from '@/modules/hr/repository';
 import { UserRepository } from '@/modules/user/repository';
 import { SpecialistRepository } from '@/modules/specialists/repository';
 import { PharmacyRepository } from '@/modules/pharmacies/repository';
+import { MemberRepository } from '@/modules/partners/repository/member';
+import { PartnerRepository } from '@/modules/partners/repository';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { tokenCredentialVersion } from '@/modules/user/credentialGeneration';
 import jwt from 'jsonwebtoken';
@@ -23,6 +25,8 @@ export class AuthController {
   private hrRepository: HRRepository;
   private specialistRepository: SpecialistRepository;
   private pharmacyRepository: PharmacyRepository;
+  private memberRepository: MemberRepository;
+  private partnerRepository: PartnerRepository;
 
   constructor() {
     this.authService = Container.get(AuthService);
@@ -31,6 +35,8 @@ export class AuthController {
     this.hrRepository = Container.get(HRRepository);
     this.specialistRepository = Container.get(SpecialistRepository);
     this.pharmacyRepository = Container.get(PharmacyRepository);
+    this.memberRepository = Container.get(MemberRepository);
+    this.partnerRepository = Container.get(PartnerRepository);
   }
 
   sendOTP = async (req: Request, res: Response, _next: NextFunction) => {
@@ -41,6 +47,7 @@ export class AuthController {
       userType: userType as SendOTPRequest['userType'],
       phone,
       email,
+      partnerId: req.body.partnerId,
     };
 
     await hitClient('ip-send', req);
@@ -67,6 +74,7 @@ export class AuthController {
       phone,
       email,
       otp,
+      partnerId: req.body.partnerId,
     };
 
     await hitClient('ip-verify', req);
@@ -106,7 +114,7 @@ export class AuthController {
       return res.status(200).json({ success: true, message: 'Signed out on all devices', data });
     }
     // D4: staff end every web session of their account (legacy 30-day staff bearer tokens are not revocable).
-    if (!user?._id || !['admin', 'pharmacy', 'hr', 'specialist'].includes(user.userType)) {
+    if (!user?._id || !['admin', 'pharmacy', 'hr', 'specialist', 'partner'].includes(user.userType)) {
       return res.status(403).json({ success: false, code: 'FORBIDDEN', message: 'Access denied' });
     }
     await revokeAllSessions(user.userType, String(user._id));
@@ -206,6 +214,20 @@ export class AuthController {
         success: true,
         message: 'Profile retrieved successfully',
         data: { user: pharmacy, userRole: 'pharmacy' },
+      });
+    }
+
+    if (authUser.userType === 'partner') {
+      const memberId = authUser.memberId || authUser._id;
+      const member = await this.memberRepository.findById(memberId);
+      if (!member) {
+        return res.status(401).json({ success: false, message: 'Partner member not found' });
+      }
+      const partner = await this.partnerRepository.findById(String((member as any).partnerId));
+      return res.status(200).json({
+        success: true,
+        message: 'Profile retrieved successfully',
+        data: { user: member, partner, userRole: 'partner' },
       });
     }
 

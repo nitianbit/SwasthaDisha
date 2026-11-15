@@ -24,6 +24,7 @@ const userTypeSchema = Joi.string()
 export const sendOTPSchema = Joi.object({
   phone: phoneSchema.optional(),
   email: emailSchema.optional(),
+  partnerId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).optional(),
 })
   .or('phone', 'email')
   .messages({
@@ -34,6 +35,7 @@ export const sendOTPSchema = Joi.object({
 export const verifyOTPSchema = Joi.object({
   phone: phoneSchema.optional(),
   email: emailSchema.optional(),
+  partnerId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).optional(),
   // D4: a web app asks for a cookie session (checked against its Origin before the OTP is consumed).
   // N1: the phone app asks for a native session (refresh token in the answer; `app` names which app).
   session: Joi.string().valid('cookie', 'native').optional(),

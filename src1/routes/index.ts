@@ -9,7 +9,7 @@ import dependentRouter from '@/modules/dependents/routes';
 import addressRouter from '@/modules/addresses/routes';
 import specialistRouter from '@/modules/specialists/routes';
 import bookingRouter from '@/modules/bookings/routes';
-import partnerRouter from '@/modules/partners/routes';
+import partnerRouter, { publicPartnerRouter } from '@/modules/partners/routes';
 import slotRouter from '@/modules/slots/routes';
 import corporateRouter from '@/modules/corporates/routes';
 import fileRouter, { privateDocumentHeaders } from '@/modules/file/routes';
@@ -47,7 +47,7 @@ import pharmacyCartRouter from '@/modules/pharmacyCart/routes';
 import pharmacySupplierRouter from '@/modules/pharmacySuppliers/routes';
 import { FileController } from '@/modules/file/controller';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
-import { authenticate, authenticateOptional } from '@/modules/middleware';
+import { authenticate, authenticateOptional, denyRoles } from '@/modules/middleware';
 
 export const configureRoutes = (app: Express): void => {
   // Simple static file serving - /api/static/*path
@@ -58,21 +58,22 @@ export const configureRoutes = (app: Express): void => {
 
   // API v1 routes
   app.use('/api/v1/auth', authRouterV1);
-  app.use('/api/v1/users', authenticate, userRouter);
-  app.use('/api/v1/addresses', authenticate, addressRouter);
+  app.use('/api/v1/users', authenticate, denyRoles('partner'), userRouter);
+  app.use('/api/v1/addresses', authenticate, denyRoles('partner'), addressRouter);
   app.use('/api/v1/health-tips', authenticate, healthTipRouter);
   app.use('/api/v1/news', newsRouter);
-  app.use('/api/v1/wellness-packages', authenticate, wellnessPackageRouter);
-  app.use('/api/v1/dependents', authenticate, dependentRouter);
+  app.use('/api/v1/wellness-packages', authenticate, denyRoles('partner'), wellnessPackageRouter);
+  app.use('/api/v1/dependents', authenticate, denyRoles('partner'), dependentRouter);
   app.use('/api/v1/specialists', authenticate, specialistRouter);
-  app.use('/api/v1/bookings', authenticate, bookingRouter);
+  app.use('/api/v1/bookings', authenticate, denyRoles('partner'), bookingRouter);
   app.use('/api/v1/meet', meetRouter);
+  app.use('/api/v1/partners', publicPartnerRouter);
   app.use('/api/v1/partners', authenticate, partnerRouter);
   app.use('/api/v1/slots', authenticate, slotRouter);
   app.use('/api/v1/corporates', authenticate, corporateRouter);
   app.use('/api/v1/file', privateDocumentHeaders, authenticate, fileRouter);
   app.use('/api/v1/banners', authenticate, bannerRouter);
-  app.use('/api/v1/wallet', authenticate, walletRouter);
+  app.use('/api/v1/wallet', authenticate, denyRoles('partner'), walletRouter);
   app.use('/api/v1/coupons', authenticate, couponRouter);
   app.use('/api/v1/notifications', authenticate, notificationRouter);
   app.use('/api/v1/hr', authenticate, hrRouter);
@@ -102,7 +103,7 @@ export const configureRoutes = (app: Express): void => {
   app.use('/api/v1/pharmacy-subscriptions', authenticate, pharmacySubscriptionRouter);
   app.use('/api/v1/patient-tracking', authenticate, patientTrackingRouter);
   app.use('/api/v1/pharmacy-tracking', authenticate, pharmacyTrackingRouter);
-  app.use('/api/v1/external-bookings',authenticate, externalBookingRouter);
+  app.use('/api/v1/external-bookings', authenticate, denyRoles('partner'), externalBookingRouter);
   app.use('/api/v1/webhooks', webhookRouter);
   // D4: abandon an unresolved once-only request key (admission fence; scoped to the caller).
   app.use('/api/v1/request-keys', authenticate, requestKeyRouter);

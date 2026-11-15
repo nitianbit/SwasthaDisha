@@ -13,15 +13,17 @@ async function callerMemberContext(req: AuthRequest): Promise<{
   partnerId: string;
   role: MemberRole;
   permissions: PartnerPermission[];
+  branchIds: string[];
 }> {
   const memberId = req.user!.memberId!;
   const partnerId = req.user!.partnerId!;
-  const member = await MemberModel.findById(memberId).select('role permissions').lean();
+  const member = await MemberModel.findById(memberId).select('role permissions branchIds').lean();
   return {
     memberId,
     partnerId,
     role: (member as any)?.role ?? 'staff',
     permissions: ((member as any)?.permissions ?? []) as PartnerPermission[],
+    branchIds: ((member as any)?.branchIds ?? []) as string[],
   };
 }
 
@@ -71,7 +73,8 @@ export const getMyPartner = async (req: Request, res: Response, _next: NextFunct
 
 export const updateMyPartner = async (req: Request, res: Response, _next: NextFunction) => {
   const { partnerId } = await callerMemberContext(req as AuthRequest);
-  const data = await service().updatePartner(partnerId, req.body);
+  const { taxRegime: _t, gstin: _g, pan: _p, invoiceSeriesPrefix: _i, ...safeBody } = req.body;
+  const data = await service().updatePartner(partnerId, safeBody);
   res.status(200).json({ success: true, data });
 };
 
@@ -99,7 +102,7 @@ export const addMember = async (req: Request, res: Response, _next: NextFunction
 
 export const removeMember = async (req: Request, res: Response, _next: NextFunction) => {
   const ctx = await callerMemberContext(req as AuthRequest);
-  await service().removeMember(ctx.partnerId, req.params.memberId, ctx.memberId);
+  await service().removeMember(ctx.partnerId, req.params.memberId, ctx.memberId, ctx.role);
   res.status(200).json({ success: true, message: 'Member removed' });
 };
 
@@ -114,33 +117,49 @@ export const updateMemberPermissions = async (req: Request, res: Response, _next
 // ── Branch endpoints ──
 
 export const listBranches = async (req: Request, res: Response, _next: NextFunction) => {
-  const { partnerId } = await callerMemberContext(req as AuthRequest);
-  const data = await service().listBranches(partnerId);
+  const ctx = await callerMemberContext(req as AuthRequest);
+  let data = await service().listBranches(ctx.partnerId);
+  if (ctx.role !== 'owner' && ctx.branchIds.length > 0) {
+    data = data.filter(b => ctx.branchIds.includes(String(b._id)));
+  }
   res.status(200).json({ success: true, data });
 };
 
 export const getBranch = async (req: Request, res: Response, _next: NextFunction) => {
-  const { partnerId } = await callerMemberContext(req as AuthRequest);
-  const data = await service().getBranchById(partnerId, req.params.branchId);
+  const ctx = await callerMemberContext(req as AuthRequest);
+  service().assertBranchScope(ctx.role, ctx.branchIds, req.params.branchId);
+  const data = await service().getBranchById(ctx.partnerId, req.params.branchId);
   res.status(200).json({ success: true, data });
 };
 
 export const createBranch = async (req: Request, res: Response, _next: NextFunction) => {
-  const { partnerId } = await callerMemberContext(req as AuthRequest);
-  const data = await service().createBranch(partnerId, req.body);
+  const ctx = await callerMemberContext(req as AuthRequest);
+  service().assertCanCreateBranch(ctx.role, ctx.branchIds);
+  const data = await service().createBranch(ctx.partnerId, req.body);
   res.status(201).json({ success: true, data });
 };
 
 export const updateBranch = async (req: Request, res: Response, _next: NextFunction) => {
-  const { partnerId } = await callerMemberContext(req as AuthRequest);
-  const data = await service().updateBranch(partnerId, req.params.branchId, req.body);
+  const ctx = await callerMemberContext(req as AuthRequest);
+  service().assertBranchScope(ctx.role, ctx.branchIds, req.params.branchId);
+  const data = await service().updateBranch(ctx.partnerId, req.params.branchId, req.body);
   res.status(200).json({ success: true, data });
 };
 
 export const deactivateBranch = async (req: Request, res: Response, _next: NextFunction) => {
-  const { partnerId } = await callerMemberContext(req as AuthRequest);
-  await service().deactivateBranch(partnerId, req.params.branchId);
+  const ctx = await callerMemberContext(req as AuthRequest);
+  service().assertBranchScope(ctx.role, ctx.branchIds, req.params.branchId);
+  await service().deactivateBranch(ctx.partnerId, req.params.branchId);
   res.status(200).json({ success: true, message: 'Branch deactivated' });
+};
+
+// ── Public directory endpoint ──
+
+export const publicListPartners = async (req: Request, res: Response, _next: NextFunction) => {
+  const filter: any = { verificationState: 'verified', isActive: true };
+  if (req.query.kind) filter.kind = req.query.kind;
+  const data = await service().listPartners(filter);
+  res.status(200).json({ success: true, data });
 };
 
 // ── Admin member/branch endpoints (for admin managing any partner) ──

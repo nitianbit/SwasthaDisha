@@ -8,6 +8,7 @@ export interface SendOTPRequest {
   userType: 'user' | 'admin' | 'specialist' | 'hr' | 'pharmacy' | 'partner';
   phone?: string;
   email?: string;
+  partnerId?: string;
 }
 
 export interface VerifyOTPRequest {
@@ -15,6 +16,7 @@ export interface VerifyOTPRequest {
   phone?: string;
   email?: string;
   otp: string;
+  partnerId?: string;
 }
 
 export interface SendEmailVerificationOTPRequest {

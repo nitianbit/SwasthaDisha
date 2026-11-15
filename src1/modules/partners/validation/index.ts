@@ -72,6 +72,14 @@ export const updatePartnerSchema = Joi.object({
   logo: Joi.string().trim().optional(),
 }).min(1);
 
+export const updateMyPartnerSchema = Joi.object({
+  name: Joi.string().trim().min(1).max(200).optional(),
+  legalName: Joi.string().trim().max(200).optional(),
+  contactPhone: Joi.string().pattern(phonePattern).optional(),
+  contactEmail: Joi.string().email().optional(),
+  logo: Joi.string().trim().optional(),
+}).min(1);
+
 export const addMemberSchema = Joi.object({
   phone: Joi.string().pattern(phonePattern).required().messages({
     'string.pattern.base': 'Phone must be exactly 10 digits',
