@@ -8,13 +8,14 @@ import { RequestKeyModel } from './model';
 import { CustomerReturnModel } from '@/modules/pharmacyInventory/model/customerReturn';
 import { SupplierReturnModel } from '@/modules/pharmacyInventory/model/supplierReturn';
 import BookingModel from '@/modules/bookings/model';
+import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
 
 /**
  * D4 admission fence for once-only operations (customer return, supplier return, booking create). A client whose page
  * was reloaded before it learnt the outcome of a request can only make a NEW request after the old key is either found
  * (it was performed) or abandoned here (it can never be performed). No time-based guess is involved.
  */
-export type OnceOnlyKind = 'customer_return' | 'supplier_return' | 'booking_create';
+export type OnceOnlyKind = 'customer_return' | 'supplier_return' | 'booking_create' | 'pharmacy_checkout';
 
 /**
  * Inside the operation's transaction: refuses a key that was abandoned, and claims it as used. The claim is written in
@@ -50,12 +51,12 @@ export const requestKeyRouter = Router();
 requestKeyRouter.post('/abandon', catchAsync(async (req: AuthRequest, res: Response) => {
   const kind = req.body?.kind as OnceOnlyKind;
   const key = typeof req.body?.key === 'string' ? req.body.key.trim() : '';
-  if (!KEY.test(key) || !['customer_return', 'supplier_return', 'booking_create'].includes(kind)) {
+  if (!KEY.test(key) || !['customer_return', 'supplier_return', 'booking_create', 'pharmacy_checkout'].includes(kind)) {
     throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'kind and key are required' });
   }
   const user = req.user;
   let owner: string;
-  if (kind === 'booking_create') {
+  if (kind === 'booking_create' || kind === 'pharmacy_checkout') {
     if (user?.userType !== 'user') throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
     owner = String(user._id);
   } else {
@@ -69,6 +70,8 @@ requestKeyRouter.post('/abandon', catchAsync(async (req: AuthRequest, res: Respo
   // scope) so the client can always resolve the request, however far back it is in any list.
   const record = kind === 'customer_return' ? await CustomerReturnModel.findOne({ pharmacyId: owner, requestKey: key }).lean()
     : kind === 'supplier_return' ? await SupplierReturnModel.findOne({ pharmacyId: owner, requestKey: key }).lean()
+    : kind === 'pharmacy_checkout'
+      ? await PharmacyOrderModel.findOne({ customerId: { $eq: owner }, checkoutRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
     : await BookingModel.findOne({ userId: { $eq: owner }, createRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean();
   res.status(200).json({ success: true, data: { state, record } });
 }));

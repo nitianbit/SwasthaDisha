@@ -161,6 +161,8 @@ const pharmacyOrderSchema = new Schema<IPharmacyOrder>(
       index: true,
     },
     customerId: { type: Schema.Types.ObjectId as any, ref: 'User', index: true },
+    // P8: the customer's checkout request key (once-only checkout; a repeat returns this order).
+    checkoutRequestKey: { type: String },
     buyerPharmacyId: { type: Schema.Types.ObjectId as any, ref: 'Pharmacy', index: true },
     createdById: { type: Schema.Types.ObjectId as any, required: true },
     createdByRole: { type: String, required: true, trim: true },
@@ -278,6 +280,8 @@ const pharmacyOrderSchema = new Schema<IPharmacyOrder>(
 pharmacyOrderSchema.index({ pharmacyId: 1, status: 1 });
 pharmacyOrderSchema.index({ pharmacyId: 1, orderType: 1 });
 pharmacyOrderSchema.index({ customerId: 1, status: 1 });
+// P8: one order per (customer, checkout request key).
+pharmacyOrderSchema.index({ customerId: 1, checkoutRequestKey: 1 }, { unique: true, partialFilterExpression: { checkoutRequestKey: { $type: 'string' } } });
 pharmacyOrderSchema.index({ pharmacyId: 1, createdAt: -1 });
 pharmacyOrderSchema.index({ 'refill.paymentDueBy': 1, status: 1 }, { sparse: true });
 // Pharmacist review queue: pending prescriptions per pharmacy, oldest first.

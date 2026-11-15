@@ -39,6 +39,7 @@ export const checkoutCartSchema = Joi.object({
   deliveryAddress: Joi.string().trim().optional(),
   prescriptionUrls: Joi.array().items(Joi.string().trim()).optional(),
   notes: Joi.string().trim().max(1000).optional(),
+  requestKey: Joi.string().pattern(/^[A-Za-z0-9_-]{8,64}$/).optional(),
 }).custom((value, helpers) => {
   if (value.deliveryMode === 'delivery' && !value.deliveryAddress?.trim()) {
     return helpers.error('any.invalid');

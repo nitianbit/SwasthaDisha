@@ -14,6 +14,8 @@ import { InventoryService } from '@/modules/pharmacyInventory/services';
 import { PharmacyRepository } from '@/modules/pharmacies/repository';
 import { MedicineRepository } from '@/modules/pharmacyMedicines/repository';
 import { PharmacyOrderService } from '@/modules/pharmacyOrders/services';
+import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
+import type { IPharmacyOrder } from '@/modules/pharmacyOrders/types';
 
 @Service()
 export class PharmacyCartService {
@@ -382,6 +384,16 @@ export class PharmacyCartService {
     payload: CheckoutPharmacyCartRequest
   ) {
     const actor = this.assertSupportedActor(user);
+    // P8: a keyed checkout that already produced an order answers with that order (before the cart, which is gone).
+    const key = payload.requestKey;
+    if (key && actor.actorRole !== 'user') {
+      throw new AppError({ status: 400, code: 'REQUEST_KEY_UNSUPPORTED', message: 'Request keys are for customer orders' });
+    }
+    const keyed = async () => (key
+      ? (await PharmacyOrderModel.findOne({ customerId: { $eq: actor.actorId }, checkoutRequestKey: { $eq: key } }).lean()) as IPharmacyOrder | null
+      : null);
+    const prior = await keyed();
+    if (prior) return this.orderService.checkoutReplay(prior);
     const cart = await this.cartRepository.findByActor(actor.actorId, actor.actorRole);
     if (!cart?.pharmacyId || !cart.items.length) {
       throw new AppError({ status: 400, code: 'CART_EMPTY', message: 'Cart is empty' });
@@ -436,7 +448,9 @@ export class PharmacyCartService {
       });
     }
 
-    const result = await this.orderService.create(
+    let result;
+    try {
+      result = await this.orderService.create(
       sellerPharmacyId,
       {
         orderType: 'online',
@@ -454,8 +468,16 @@ export class PharmacyCartService {
       },
       actor.actorId,
       actor.actorRole,
-      { allowPriceOverride: false }
+      { allowPriceOverride: false, ...(key ? { checkoutRequestKey: key } : {}) }
     );
+    } catch (error) {
+      // The same key won a concurrent checkout: answer with that order.
+      if (key && isDuplicateKeyError(error)) {
+        const winner = await keyed();
+        if (winner) return this.orderService.checkoutReplay(winner);
+      }
+      throw error;
+    }
 
     // Avoid deleting items added by another request while checkout was running.
     await this.cartRepository.deleteIfUnchanged(cart);

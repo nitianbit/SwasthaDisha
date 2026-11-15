@@ -36,6 +36,7 @@ export function prescriptionDocumentSetSha256(urls: readonly string[]): string {
   return createHash('sha256').update(JSON.stringify(urls)).digest('hex');
 }
 import logger from '@/services/logger';
+import { claimRequestKey, scopeOf } from '@/modules/requestKeys';
 import { InventoryItemModel } from '@/modules/pharmacyInventory/model';
 
 const TERMINAL_STATUSES: OrderStatus[] = ['completed', 'abandoned', 'cancelled', 'rejected'];
@@ -137,6 +138,12 @@ function computeTotals(items: NonPrescriptionOrderItem[]) {
     taxTotalPaise,
     grandTotalPaise,
   };
+}
+
+/** P8: Razorpay Checkout details for an unpaid pharmacy order (amount in rupees). */
+export interface PharmacyPaymentDetails {
+  paymentTransactionId: string; razorpayOrderId: string; razorpayKeyId: string; amount: number; currency: string;
+  baseAmount: number; discountAmount: number;
 }
 
 @Service()
@@ -581,6 +588,8 @@ export class PharmacyOrderService {
       /** Refill orders (P7): the order id allocated on the subscription beforehand, and its cycle binding. */
       orderId?: string;
       refill?: { subscriptionId: string; cycleDate: string; paymentDueBy: Date };
+      /** P8: the customer's checkout request key; claimed in the order's transaction (once-only). */
+      checkoutRequestKey?: string;
     } = {}
   ): Promise<{
     order: IPharmacyOrder;
@@ -654,6 +663,12 @@ export class PharmacyOrderService {
     // Create the order and consume stock as one unit: either both are
     // committed or neither is, so no orphan order or lost stock on failure.
     const savedOrder = await this.runOrderInventoryTransaction(async (session) => {
+      // P8: a keyed checkout claims its key in the same transaction as the order: a key abandoned meanwhile refuses
+      // (REQUEST_ABANDONED), and a second order under the same key is impossible (unique {customerId, key}).
+      if (options.checkoutRequestKey) {
+        if (!data.customerId) throw new AppError({ status: 400, code: 'REQUEST_KEY_UNSUPPORTED', message: 'Request keys are for customer orders' });
+        await claimRequestKey(scopeOf('pharmacy_checkout', String(data.customerId)), options.checkoutRequestKey, session);
+      }
       const allocations = await this.inventoryService.reserveOrderStockBulk(
         pharmacyId,
         inventoryItems,
@@ -669,6 +684,7 @@ export class PharmacyOrderService {
           // can never exist (or be paid) unbound, and a retry can only ever produce this same order (E11000).
           ...(options.orderId ? { _id: options.orderId } : {}),
           ...(options.refill ? { refill: options.refill } : {}),
+          ...(options.checkoutRequestKey ? { checkoutRequestKey: options.checkoutRequestKey } : {}),
           orderNumber: this.generateOrderNumber(),
           pharmacyId,
           orderType: data.orderType,
@@ -820,6 +836,83 @@ export class PharmacyOrderService {
       order,
       paymentRequired: false,
     };
+  }
+
+  /**
+   * P8: how an unpaid online customer order can be paid now. Reuses the order's own open Razorpay order (never a second
+   * one: late-capture refunds are keyed per order). If the original request was interrupted before its payment was
+   * set up (no payment linked), sets it up now, linking it only while nothing is linked. null when it cannot be paid.
+   */
+  private async payableDetails(order: IPharmacyOrder): Promise<PharmacyPaymentDetails | null> {
+    if (order.paymentMode !== 'online_payment' || order.status !== 'placed' || order.paymentStatus !== 'pending') return null;
+    if (!this.paymentService.pharmacyPaymentWindowOpen(order)) return null;
+    if (order.paymentTransactionId) return this.paymentService.resumablePharmacyPayment(order);
+    if (!order.customerId || !(Number(order.grandTotal) > 0)) return null;
+    const created = await this.paymentService.createOrder({
+      userId: String(order.createdById ?? order.customerId), payerUserId: String(order.customerId),
+      context: 'pharmacy_order', contextId: String(order._id),
+      baseAmount: Number(order.subtotal), discountAmount: Number(order.discountTotal ?? 0), finalAmount: Number(order.grandTotal),
+      notes: { orderChannel: order.orderType, orderType: order.orderType, pharmacyId: String(order.pharmacyId), resumedSetup: true },
+    });
+    const linked = await this.orderRepo.update(
+      { _id: order._id, status: 'placed', paymentStatus: 'pending', $or: [{ paymentTransactionId: { $exists: false } }, { paymentTransactionId: null }] } as never,
+      { paymentTransactionId: created.paymentRecord._id! },
+    );
+    // Lost the link (another request linked first, or the order moved): ours is never exposed; use the canonical one.
+    const current = linked ?? ((await this.orderRepo.findById(String(order._id))) as IPharmacyOrder | null);
+    if (!current) return null;
+    if (!linked) return current.status === 'placed' && current.paymentStatus === 'pending' ? this.paymentService.resumablePharmacyPayment(current) : null;
+    return {
+      paymentTransactionId: String(created.paymentRecord._id), razorpayOrderId: created.razorpayOrder.id, razorpayKeyId: created.razorpayKeyId,
+      amount: Number(order.grandTotal), currency: created.razorpayOrder.currency, baseAmount: Number(order.subtotal), discountAmount: Number(order.discountTotal ?? 0),
+    };
+  }
+
+  /**
+   * P8: "pay again" for the customer's unpaid online order. Every earlier attempt is checked with Razorpay first (a
+   * capture whose confirmation was lost is applied: then the order is simply paid); while any cannot be checked no
+   * payment is offered (503 PAYMENT_STATE_UNKNOWN). Within the payment window the order's own open Razorpay order is
+   * handed back for Checkout.
+   */
+  async retryPayment(orderId: string, actor: { _id?: string; userType?: string } | undefined): Promise<{
+    order: IPharmacyOrder; paymentRequired: boolean; payment?: PharmacyPaymentDetails;
+  }> {
+    if (typeof orderId !== 'string' || !/^[0-9a-fA-F]{24}$/.test(orderId)) {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid pharmacy order ID' });
+    }
+    if (actor?.userType !== 'user' || !actor._id) throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
+    const owned = async () => {
+      const o = (await this.orderRepo.findById(orderId)) as IPharmacyOrder | null;
+      if (!o || String(o.customerId) !== String(actor._id)) throw new AppError({ status: 404, code: 'ORDER_NOT_FOUND', message: 'Order not found' });
+      return o;
+    };
+    let order = await owned();
+    if (order.paymentMode !== 'online_payment') {
+      throw new AppError({ status: 409, code: 'PAYMENT_NOT_ONLINE', message: 'This order is paid at the pharmacy or on delivery' });
+    }
+    const settled = await this.paymentService.reconcilePharmacyOrderPayments(orderId);
+    order = await owned();
+    if (order.paymentStatus === 'paid' || order.paymentStatus === 'authorized') return { order, paymentRequired: false };
+    if (settled.unknown > 0) {
+      throw new AppError({ status: 503, code: 'PAYMENT_STATE_UNKNOWN', message: 'We could not check your earlier payment just now. Please try again in a few minutes.' });
+    }
+    if (order.status !== 'placed' || order.paymentStatus !== 'pending') {
+      throw new AppError({ status: 409, code: 'ORDER_NOT_PAYABLE', message: 'This order can no longer be paid' });
+    }
+    if (!this.paymentService.pharmacyPaymentWindowOpen(order)) {
+      throw new AppError({ status: 409, code: 'ORDER_PAYMENT_EXPIRED', message: 'The time to pay for this order has passed. Please place a new order.' });
+    }
+    const payment = await this.payableDetails(order);
+    if (!payment) {
+      throw new AppError({ status: 409, code: 'PAYMENT_NOT_RESUMABLE', message: 'This order cannot be paid again. Please cancel it and place a new order.' });
+    }
+    return { order, paymentRequired: true, payment };
+  }
+
+  /** P8: the answer to a repeated keyed checkout: the order the key produced, payable again if it is still unpaid. */
+  async checkoutReplay(order: IPharmacyOrder): Promise<{ order: IPharmacyOrder; paymentRequired: boolean; payment?: PharmacyPaymentDetails; replayed: true }> {
+    const payment = order.paymentMode === 'online_payment' ? await this.payableDetails(order) : null;
+    return { order, paymentRequired: !!payment, ...(payment ? { payment } : {}), replayed: true };
   }
 
   private async customerRecovery(actor: unknown, id: unknown, create: boolean): Promise<PharmacyRecoveryReceipt | null> {

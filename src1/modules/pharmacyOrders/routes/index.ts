@@ -121,6 +121,13 @@ pharmacyOrderRouter.post(
   catchAsync(controller.rejectCancel)
 );
 
+// P8: "pay again" for the customer's unpaid online order (reuses its own open Razorpay order).
+pharmacyOrderRouter.post(
+  '/:id/retry-payment',
+  validate(idParamSchema, 'params'),
+  catchAsync(controller.retryPayment)
+);
+
 // Delivery/pickup exceptions: failed delivery, retry, switch to pickup, not collected, refused at the door.
 pharmacyOrderRouter.post(
   '/:id/delivery-exception',

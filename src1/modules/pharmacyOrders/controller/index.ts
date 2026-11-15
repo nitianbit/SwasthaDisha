@@ -82,6 +82,11 @@ export class PharmacyOrderController {
     res.status(200).json({ success: true, data: result });
   };
 
+  retryPayment = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const result = await this.service.retryPayment(req.params.id, req.user);
+    res.status(200).json({ success: true, data: result });
+  };
+
   getAll = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const q = req.query as Record<string, string | undefined>;
     const isPharmacy = req.user?.userType === 'pharmacy';

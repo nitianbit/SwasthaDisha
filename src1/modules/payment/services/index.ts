@@ -1857,6 +1857,55 @@ export class PaymentService {
   }
 
   /**
+   * P8: checks every unsettled Razorpay attempt of one pharmacy order with the gateway (as for bookings): a capture
+   * whose confirmation never arrived is applied, or returned to the wallet when the order is closed or already paid.
+   * `unknown` > 0 means some attempt could not be settled now: no payment may be offered meanwhile.
+   */
+  async reconcilePharmacyOrderPayments(orderId: string): Promise<{ checked: number; unknown: number }> {
+    const records = await PaymentRecordModel.find({ context: 'pharmacy_order', contextId: { $eq: String(orderId) }, ...UNSETTLED_ATTEMPT })
+      .sort({ createdAt: 1 }).lean();
+    let unknown = 0;
+    for (const r of records) {
+      try {
+        await this.reconcilePaymentAndProcess({ paymentTransactionId: String(r._id), userId: String(r.payerUserId || r.userId) });
+      } catch (error) {
+        logger.warn('[Payment][reconcile] pharmacy order attempt not settled', {
+          orderId, paymentTransactionId: String(r._id), code: (error as { code?: string })?.code,
+        });
+        unknown += 1;
+      }
+    }
+    return { checked: records.length, unknown };
+  }
+
+  /** P8: whether a captured payment would still be applied to this unpaid pharmacy order (else it is returned). */
+  pharmacyPaymentWindowOpen(order: IPharmacyOrder): boolean {
+    return !this.isPharmacyOrderPaymentWindowExpired(order);
+  }
+
+  /**
+   * P8: the pharmacy order's linked, still-open Razorpay order, for "pay again" to reuse. Never a second Razorpay order
+   * for the same pharmacy order: one order captures at most once, so reusing it cannot charge twice (late-capture
+   * refunds are keyed per order). null when the linked record is not an open order for exactly the amount due.
+   */
+  async resumablePharmacyPayment(order: IPharmacyOrder): Promise<{
+    paymentTransactionId: string; razorpayOrderId: string; razorpayKeyId: string; amount: number; currency: string;
+    baseAmount: number; discountAmount: number;
+  } | null> {
+    if (!order.paymentTransactionId) return null;
+    const r = await this.paymentRepository.findById(String(order.paymentTransactionId));
+    if (!r || r.status !== 'created' || r.paymentGateway !== 'razorpay' || !r.razorpayOrderId) return null;
+    if (r.context !== 'pharmacy_order' || String(r.contextId) !== String(order._id)) return null;
+    const duePaise = Math.round(Number(order.grandTotal) * 100);
+    const recordPaise = Number.isFinite(Number(r.finalAmountPaise)) ? Number(r.finalAmountPaise) : Math.round(Number(r.finalAmount) * 100);
+    if (!(duePaise > 0) || recordPaise !== duePaise) return null;
+    return {
+      paymentTransactionId: String(r._id), razorpayOrderId: r.razorpayOrderId, razorpayKeyId: this.getRazorpayCredentials().keyId,
+      amount: Number(r.finalAmount), currency: r.currency, baseAmount: Number(r.baseAmount), discountAmount: Number(r.discountAmount),
+    };
+  }
+
+  /**
    * Checks EVERY unsettled Razorpay attempt of one booking with the gateway (W3b): a capture on any attempt (also an
    * older order replaced by retry-payment) is applied, or returned to the wallet if the booking is already paid or
    * closed (processVerifiedPayment). Each record is reconciled as its own payer. `unknown` counts attempts that

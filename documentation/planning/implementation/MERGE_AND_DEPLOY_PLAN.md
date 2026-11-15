@@ -55,6 +55,7 @@ All packets were reviewed by Codex through Ruflo (approved) and tested against a
 | O1 | `m0/o1-otp-limits` | `d36d658` | OTP limits: codes stored as HMACs; 5 checks per code (spent atomically before comparing, so parallel guesses cannot exceed it), only the newest code counts; per destination (shared by every account, role and purpose) 1 send / 30 s, 5 / hour, 10 / day and 10 checks / hour, 20 / day; 10 email-verification sends / hour per account (MongoDB fixed windows, HMAC'd keys, TTL); 429 + `Retry-After`; optional per-address limits (`OTP_IP_LIMITS`, `TRUST_PROXY`). Same limits for email-verification codes. See O1_OTP_LIMITS.md. Approved by Codex 2026-11-15 | `test/otp-limits/o1-otp-limits.integration.ts` (14) |
 | N1 | `m0/n1-native-sessions` | `5f93e7f` | Phone-app sessions: OTP verify `{session:'native', app}` returns a refresh token in the body (OS secure store); `POST /auth/session/native/refresh|logout`; audiences `native_customer` (30 d idle / 90 d) and `native_workspace` (staff limits); same rotation, reuse detection, account checks and per-request admission as D4, plus a 30-second retry window for a lost refresh answer (immediately previous generation only). See D4_COOKIE_SESSIONS.md. Approved by Codex 2026-11-15 | `test/auth-sessions/n1-native-sessions.integration.ts` (10) |
 | S1 | `m0/n1-native-sessions` (+ `hotfix/s1-pharmacy-orders-customer-scope` from `main`) | `997da42` (hotfix `5cac856`) | **Security, live on `main`:** `GET /pharmacy-orders` honoured `?userId=` for customers, so any signed-in customer could list another customer's pharmacy orders (with name and phone). Customer scope now drops `userId`; the scoped `customerId` always wins. The hotfix branch applies only this to `main` so it can ship before the release. Approved by Codex 2026-11-15 | `test/pharmacy-orders/s1-customer-scope.integration.ts` (2) |
+| P8 | `m0/p8-pharmacy-pay-again` (on `release/m0`) | (pending review) | Customer pharmacy orders: `POST /pharmacy-orders/:id/retry-payment` (checks every earlier attempt with Razorpay first; reuses the order's own open Razorpay order, never a second one; sets up an interrupted payment once); once-only checkout with `requestKey` (claimed in the order transaction; unique `{customerId, checkoutRequestKey}`; replay answers with the first order). See P8_PHARMACY_PAY_AGAIN.md | `test/pharmacy-payments/p8-pay-again.integration.ts` (11) |
 
 The W-branches (staff workspace backend support, reviewed by Codex 14 Nov) are stacked on A2b:
 `A2b ─ W1 ─ W2c-q ─ W2b ─ W2c ─ W3b-pay ─ W3b ─ D2 ─ D1 ─ D3 ─ D4 ─ O1 ─ N1`. `m0/n1-native-sessions` contains all of them; release it in place of
@@ -407,3 +408,8 @@ can read.
 `pharmacyOrders`, plus `test/pharmacy-orders/s1-customer-scope.integration.ts` (fails on `main`, passes on the hotfix).
 No migration, no index, no configuration. Any signed-in customer can list other customers' pharmacy orders on the
 current `main`; consider reviewing access logs for `GET /api/v1/pharmacy-orders?userId=` from customer tokens.
+
+## P8 deploy steps
+
+1. `npm run sync-indexes` (adds the unique partial `{customerId, checkoutRequestKey}` index on `pharmacyorders`).
+2. Customer app: release with P8 (sends the checkout key; "Pay" on an unpaid order works after leaving the app).

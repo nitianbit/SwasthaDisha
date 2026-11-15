@@ -44,4 +44,6 @@ export interface CheckoutPharmacyCartRequest {
   deliveryAddress?: string;
   prescriptionUrls?: string[];
   notes?: string;
+  /** P8: customer checkout request key; repeating it returns the same order (never a second one). */
+  requestKey?: string;
 }
