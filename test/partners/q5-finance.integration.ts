@@ -108,10 +108,10 @@ async function main() {
     assert.equal((v.payoutDetails as any).ifsc, 'HDFC0001234');
     const full = await fin.financeSummary(await fin.accountById(L), true);
     assert.equal((full.account!.payoutDetails as any).accountNumber, '123456789012');
-    const audit = await PartnerAuditEventModel.findOne({ partnerId, action: 'finance.payout_details_changed' }).lean();
-    assert.equal((audit!.detail as any).last4, '9012');
-    assert.ok(!JSON.stringify(audit).includes('123456789012'), 'the audit never stores the full number');
-    assert.ok(await SettlementEventModel.exists({ settlementAccountId: L, action: 'finance.payout_details_changed' }));
+    assert.ok(await PartnerAuditEventModel.exists({ partnerId, action: 'finance.payout_details_changed' }), 'who/what in the partner audit');
+    const event = await SettlementEventModel.findOne({ settlementAccountId: L, action: 'finance.payout_details_changed' }).lean();
+    assert.equal((event!.detail as any).last4, '9012');
+    assert.ok(!JSON.stringify(event).includes('123456789012'), 'the finance events never store the full number');
   });
 
   await check('admin verification is for the version they saw; a later change clears it', async () => {
@@ -273,6 +273,72 @@ async function main() {
     assert.equal(await ledgerBalance(String(d._id)), 999999, 'history refs are never part of the balance');
   });
 
+  // ── Review findings (Q5 round 1) ──
+  await check('the general partner audit carries no finance detail; the finance event stream does', async () => {
+    const rows = await PartnerAuditEventModel.find({ partnerId, action: /^finance\./ }).lean();
+    assert.ok(rows.length >= 5);
+    assert.ok(rows.every((r) => r.detail === undefined || r.detail === null), 'no amounts, references or destinations in the partner audit');
+    const ev = await fin.financeEvents(await fin.accountById(L));
+    assert.ok(ev.some((e: any) => e.action === 'finance.payout_recorded' && typeof e.detail?.amountMinor === 'number'));
+  });
+
+  await check('a statement page and its balances come from one snapshot (backdated rows committing meanwhile)', async () => {
+    const acct = String((await ensureSettlementAccount('partner', new Types.ObjectId().toString(), 'Snapshot Labs'))._id);
+    const t0 = Date.now() - 3_600_000;
+    for (let i = 0; i < 10; i++) {
+      await LedgerEntryModel.create({ settlementAccountId: acct, kind: 'earning', amountMinor: 100, grossMinor: 100, commissionMinor: 0, source: 'snap',
+        sourceId: `base${i}`, at: new Date(t0 + i * 60_000), by: 'system', byKind: 'system' });
+    }
+    let seq = 0;
+    for (let round = 0; round < 25; round++) {
+      const insert = LedgerEntryModel.create({ settlementAccountId: acct, kind: 'earning', amountMinor: 7, grossMinor: 7, commissionMinor: 0, source: 'snap',
+        sourceId: `late${seq++}`, at: new Date(t0 + 30_000 + (round % 9) * 60_000), by: 'system', byKind: 'system' });
+      const page = await fin.statementPage(await fin.accountById(acct), { limit: 200 });
+      await insert;
+      const oldest = page.lines[page.lines.length - 1]!;
+      assert.equal(oldest.balanceAfterMinor, oldest.amountMinor, `round ${round}: the full history starts from zero`);
+      assert.equal(page.lines[0]!.balanceAfterMinor, page.lines.reduce((s, l) => s + l.amountMinor, 0), `round ${round}`);
+    }
+  });
+
+  await check('CSV: a quiet period carries the balance in (opening = closing = prior balance); an oversized period is refused, never cut', async () => {
+    const before = await ledgerBalance(L);
+    const quiet = await fin.statementCsv(await fin.accountById(L), { from: addDays(today, 10), to: addDays(today, 12) });
+    const lines = quiet.trim().split('\n');
+    assert.equal(lines.length, 3);
+    assert.ok(lines[1]!.endsWith(`"${(before / 100).toFixed(2)}"`) && lines[2]!.endsWith(`"${(before / 100).toFixed(2)}"`));
+    const big = String((await ensureSettlementAccount('partner', new Types.ObjectId().toString(), 'Big Labs'))._id);
+    const at = new Date(Date.now() - 86_400_000);
+    await LedgerEntryModel.insertMany(Array.from({ length: fin.CSV_MAX_LINES + 1 }, (_, i) => ({ settlementAccountId: big, kind: 'earning', amountMinor: 100,
+      grossMinor: 100, commissionMinor: 0, source: 'bulk', sourceId: `b${i}`, at: new Date(at.getTime() + i), by: 'system', byKind: 'system' })));
+    const bigAccount = await fin.accountById(big);
+    await assert.rejects(() => fin.statementCsv(bigAccount, {}), code('EXPORT_TOO_LARGE'));
+    await LedgerEntryModel.deleteOne({ settlementAccountId: big, sourceId: 'b0' });
+    const ok = await fin.statementCsv(await fin.accountById(big), {});
+    assert.ok(ok.trim().split('\n').pop()!.endsWith(`"${(fin.CSV_MAX_LINES * 100 / 100).toFixed(2)}"`));
+  });
+
+  await check('payout queue covers every account (beyond any candidate cap): totals, ordering and pages over all of them', async () => {
+    await SettlementAccountModel.insertMany(Array.from({ length: 5001 }, (_, i) => ({ ownerKind: 'partner', ownerId: `bulk-${i}`, beneficiaryName: `Bulk ${i}`,
+      payoutDetailsVersion: 0, payoutDetailsState: 'none', financeVersion: 0, isActive: true })));
+    const last = await SettlementAccountModel.findOne({ ownerId: 'bulk-5000' }).lean();
+    await earn(String(last!._id), 12345);
+    const q = await fin.adminListAccounts({ due: true, search: 'Bulk' });
+    assert.deepEqual([q.total, q.totalDueMinor, q.rows[0]!._id], [1, 12345, String(last!._id)]);
+    const page2 = await fin.adminListAccounts({ search: 'Bulk', skip: 5000, limit: 10 });
+    assert.equal(page2.total, 5001);
+    assert.equal(page2.rows.length, 1);
+  });
+
+  await check('ids are canonical at every boundary: an upper-case account id cannot slip a changed adjustment past its key', async () => {
+    const key = rk();
+    await fin.postAdjustment(ADMIN, L, { amountMinor: 300, reason: 'Original reason', requestKey: key });
+    await assert.rejects(() => fin.postAdjustment(ADMIN, L.toUpperCase(), { amountMinor: 300, reason: 'Changed reason', requestKey: key }), code('REQUEST_KEY_REUSED'));
+    assert.equal((await fin.postAdjustment(ADMIN, L.toUpperCase(), { amountMinor: 300, reason: 'Original reason', requestKey: key })).replayed, true);
+    assert.equal(await SettlementEventModel.countDocuments({ settlementAccountId: L, action: 'finance.adjustment_posted', 'detail.reason': { $in: ['Original reason', 'Changed reason'] } }), 1);
+    assert.equal((await fin.adminListPayouts({ accountId: L.toUpperCase() })).length, (await fin.adminListPayouts({ accountId: L })).length);
+  });
+
   // ── HTTP: the real application routes ──
   Container.set(PharmacyService, new PharmacyService(new PharmacyRepository(), new UserRepository()));
   Container.set(BannerService, new BannerService(new BannerRepository()));
@@ -308,6 +374,8 @@ async function main() {
       assert.match(c.type, /text\/csv/);
       assert.match(c.disposition, /attachment; filename="partner-statement-/);
       assert.equal((await call('GET', '/api/v1/partner-workspace/finance/payouts', partnerToken(accountant))).status, 200);
+      assert.ok((await call('GET', '/api/v1/partner-workspace/finance/events', partnerToken(accountant))).json.data.length > 0);
+      assert.equal((await call('GET', '/api/v1/partner-workspace/finance/events', partnerToken(desk))).status, 403);
       assert.equal((await call('GET', '/api/v1/partner-workspace/finance', partnerToken(branchFinance))).status, 403);
       assert.equal((await call('GET', '/api/v1/partner-workspace/finance', partnerToken(desk))).status, 403);
       assert.equal((await call('PUT', '/api/v1/partner-workspace/finance/payout-details', partnerToken(accountant), bank)).status, 403);

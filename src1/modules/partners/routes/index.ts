@@ -187,6 +187,7 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.get('/finance/statement', ...guard('finance.view'), validate(finV.statementQuerySchema, 'query'), catchAsync(fin.partnerStatement));
   r.get('/finance/statement.csv', ...guard('finance.view'), validate(finV.csvQuerySchema, 'query'), catchAsync(fin.partnerStatementCsv));
   r.get('/finance/payouts', ...guard('finance.view'), catchAsync(fin.partnerPayouts));
+  r.get('/finance/events', ...guard('finance.view'), catchAsync(fin.partnerEvents));
   r.put('/finance/payout-details', ...guard(), validate(finV.payoutDetailsSchema, 'body'), catchAsync(fin.putPartnerPayoutDetails));
 }
 
