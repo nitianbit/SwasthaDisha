@@ -35,7 +35,11 @@ export const verifyOTPSchema = Joi.object({
   phone: phoneSchema.optional(),
   email: emailSchema.optional(),
   // D4: a web app asks for a cookie session (checked against its Origin before the OTP is consumed).
-  session: Joi.string().valid('cookie').optional(),
+  // N1: the phone app asks for a native session (refresh token in the answer; `app` names which app).
+  session: Joi.string().valid('cookie', 'native').optional(),
+  app: Joi.string().valid('customer', 'workspace').when('session', { is: 'native', then: Joi.required(), otherwise: Joi.forbidden() }),
+  // N1: the refresh token the app still holds, ended by this sign-in (optional).
+  previousRefreshToken: Joi.string().max(200).when('session', { is: 'native', then: Joi.optional(), otherwise: Joi.forbidden() }),
   otp: Joi.string()
     .pattern(/^[0-9]{6}$/)
     .required()

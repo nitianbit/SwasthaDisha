@@ -7,7 +7,7 @@ import { model, Schema } from 'mongoose';
  */
 export interface AuthSession {
   _id: string;
-  audience: 'customer' | 'workspace';
+  audience: 'customer' | 'workspace' | 'native_customer' | 'native_workspace';
   userType: string;
   userId: string;
   /** Time of the OTP login; never changed by refresh. */
@@ -25,7 +25,7 @@ export interface AuthSession {
 
 const sessionSchema = new Schema<AuthSession>({
   _id: { type: String, required: true },
-  audience: { type: String, enum: ['customer', 'workspace'], required: true, immutable: true },
+  audience: { type: String, enum: ['customer', 'workspace', 'native_customer', 'native_workspace'], required: true, immutable: true },
   userType: { type: String, required: true, immutable: true },
   userId: { type: String, required: true, immutable: true },
   authTime: { type: Date, required: true, immutable: true },

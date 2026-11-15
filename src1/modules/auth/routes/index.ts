@@ -57,6 +57,9 @@ authRouterV1.post(
 // D4: web sessions (cookie). Origin + X-Jansetu-Session header required; no bearer.
 authRouterV1.post('/session/refresh', catchAsync(authController.refreshSession));
 authRouterV1.post('/session/logout', catchAsync(authController.logoutSession));
+// N1: phone app sessions. X-Jansetu-Native header + JSON body {app, refreshToken}; no cookie.
+authRouterV1.post('/session/native/refresh', catchAsync(authController.refreshNativeSession));
+authRouterV1.post('/session/native/logout', catchAsync(authController.logoutNativeSession));
 
 authRouterV1.post(
   '/:userType/send',

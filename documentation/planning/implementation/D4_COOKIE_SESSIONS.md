@@ -125,12 +125,24 @@ that slot until the old key is resolved **by the server**, never by elapsed time
 Routine token renewal never touches in-memory pending operations. Markers are kept per principal through sign-out and
 account switches (never shown to another principal) and removed only on resolution (found or abandoned).
 
-## Native (Capacitor) protocol — specified, implemented with the native shell
+## Native (Capacitor) protocol — N1, built (`m0/n1-native-sessions`, 2026-11-15)
 
-Same `auth_sessions` rows with `audience: 'native'`; the refresh token is returned in the body and kept in the OS secure
-store; `POST /auth/session/refresh` with `{ refreshToken }` and no cookie, same CAS rotation, reuse detection, account
-checks and expiries; no Origin requirement (native requests have no web origin) but requires the native app header.
-Not implemented in this packet.
+Same `auth_sessions` rows, audiences `native_customer` (customers: idle 30 days, absolute 90 days) and
+`native_workspace` (staff: idle 12 hours, absolute 7 days, as on the web). Requests carry `X-Jansetu-Native: 1` and a
+JSON body naming the app (`app: 'customer' | 'workspace'`); no Origin requirement (a WebView origin proves nothing) and
+no cookie, so no login CSRF.
+- Sign-in: `POST /auth/:userType/verify` with `{"session":"native","app":...}` (checked before the OTP is consumed)
+  answers `{token, expiresIn, refreshToken, refreshExpiresIn, user}`. `previousRefreshToken` (optional) ends the family
+  the app still holds.
+- `POST /auth/session/native/refresh {app, refreshToken}` → `{token, expiresIn, refreshToken, refreshExpiresIn,
+  principal}`: same CAS rotation, account checks and reuse detection as the web, with one difference for phones on
+  flaky networks: presenting the **immediately previous** generation within 30 seconds of its rotation returns the
+  current refresh token again (it is deterministic, nothing is stored) instead of ending the family. Any older
+  generation, or the previous one after 30 seconds, is reuse: the family ends.
+- `POST /auth/session/native/logout {app, refreshToken?}` (+ optional bearer): ends that family and the bearer's family.
+- Access tokens are admitted per request exactly like web ones; sign-out-everywhere and deactivation end them.
+- The refresh token lives only in the OS secure store (Keychain / Android Keystore), never in WebView storage.
+- CORS: list the WebView origins (`capacitor://localhost`, `https://localhost`) in `CORS_ORIGIN` (bearer, no credentials).
 
 ## Also in this packet
 

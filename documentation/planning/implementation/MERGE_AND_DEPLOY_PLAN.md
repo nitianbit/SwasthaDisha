@@ -52,10 +52,11 @@ All packets were reviewed by Codex through Ruflo (approved) and tested against a
 | D1 | `m0/d1-private-files` | `2744e22` | Owner decision 1: uploaded files need a login. One access decision for `/api/static`, `/api/v1/file/static`, `/api/v1/file/fetch`: uploader provenance (`file_uploads`), record+field bindings (`file_grants`, generation-fenced, honoured only while the record holds the file), exact server folders, public images only when bound to a public field; nobody writes back a file they do not own. Legacy files admin-only until the curated manifest is applied (`npm run d1-manifest`). Report emails no longer link stored files. Approved by Codex 2026-11-14 | `test/file-access/d1-private-files.integration.ts` (23) |
 | D3 | `m0/d3-pharmacy-pending-cancel` | `f331e01` | Owner decision 3: cancelling a PAID pharmacy order puts it in `pending_cancel` (frozen) until an admin or the order's pharmacy approves (cancel + stock released once + P2 wallet-first refund; COD cash → manual review) or rejects (restored; refused once the payment was returned). Unpaid orders cancel at once. Generic cancel/reject refuses paid orders. Each capture has one stored decision (`pharmacySettlement` applied/returned); a losing commit is routed, the 5-minute recovery sweep includes pharmacy captures; refill cycles advance only for paid, live orders. Approved by Codex 2026-11-14 | `test/pharmacy-cancel/d3-pending-cancel.integration.ts` (21) |
 | D4 | `m0/d4-cookie-sessions` | `4b23d20` | Owner decision 4: a reload keeps staff and customers signed in. First-party HttpOnly `__Host-` cookie sessions (each web app's host forwards `/api`), 15-minute access tokens bound to a session (checked per request), refresh tokens `sid.gen.HMAC` with lifetime reuse detection, logout / sign-out-everywhere (staff too, cookie sessions), login-CSRF origin + header gate, fresh sign-in replaces the browser's previous family. `request_keys` admission fence for once-only operations (customer/supplier returns, keyed booking create) + `POST /request-keys/abandon`. Also: sellable stock uses the business date. Approved by Codex 2026-11-15 | `test/auth-sessions/d4-cookie-sessions.integration.ts` (13), `test/request-keys/d4-request-keys.integration.ts` (4) |
-| O1 | `m0/o1-otp-limits` | (pending review) | OTP limits: codes stored as HMACs; 5 checks per code (spent atomically before comparing, so parallel guesses cannot exceed it), only the newest code counts; per destination (shared by every account, role and purpose) 1 send / 30 s, 5 / hour, 10 / day and 10 checks / hour, 20 / day; 10 email-verification sends / hour per account (MongoDB fixed windows, HMAC'd keys, TTL); 429 + `Retry-After`; optional per-address limits (`OTP_IP_LIMITS`, `TRUST_PROXY`). Same limits for email-verification codes. See O1_OTP_LIMITS.md | `test/otp-limits/o1-otp-limits.integration.ts` (14) |
+| O1 | `m0/o1-otp-limits` | `d36d658` | OTP limits: codes stored as HMACs; 5 checks per code (spent atomically before comparing, so parallel guesses cannot exceed it), only the newest code counts; per destination (shared by every account, role and purpose) 1 send / 30 s, 5 / hour, 10 / day and 10 checks / hour, 20 / day; 10 email-verification sends / hour per account (MongoDB fixed windows, HMAC'd keys, TTL); 429 + `Retry-After`; optional per-address limits (`OTP_IP_LIMITS`, `TRUST_PROXY`). Same limits for email-verification codes. See O1_OTP_LIMITS.md. Approved by Codex 2026-11-15 | `test/otp-limits/o1-otp-limits.integration.ts` (14) |
+| N1 | `m0/n1-native-sessions` | (pending review) | Phone-app sessions: OTP verify `{session:'native', app}` returns a refresh token in the body (OS secure store); `POST /auth/session/native/refresh|logout`; audiences `native_customer` (30 d idle / 90 d) and `native_workspace` (staff limits); same rotation, reuse detection, account checks and per-request admission as D4, plus a 30-second retry window for a lost refresh answer (immediately previous generation only). See D4_COOKIE_SESSIONS.md | `test/auth-sessions/n1-native-sessions.integration.ts` (10) |
 
 The W-branches (staff workspace backend support, reviewed by Codex 14 Nov) are stacked on A2b:
-`A2b ─ W1 ─ W2c-q ─ W2b ─ W2c ─ W3b-pay ─ W3b ─ D2 ─ D1 ─ D3 ─ D4 ─ O1`. `m0/o1-otp-limits` contains all of them; release it in place of
+`A2b ─ W1 ─ W2c-q ─ W2b ─ W2c ─ W3b-pay ─ W3b ─ D2 ─ D1 ─ D3 ─ D4 ─ O1 ─ N1`. `m0/n1-native-sessions` contains all of them; release it in place of
 `m0/a2b-external-cancel`. The frontend lives in the separate `jansetu-web` repo.
 
 Branch shape. Everything starts from `9c8d1d8` (end of the `m0/customer-pharmacy-lab-focus` line, 390 commits ahead
@@ -376,8 +377,7 @@ can read.
    `SESSION_COOKIE_INSECURE_DEV` outside development (the server refuses to start).
 3. Each web app's own host forwards `/api/*` to the backend (same origin); build with `VITE_API_SAME_ORIGIN=true`. A build
    with `VITE_API_BASE_URL` (separate origin) still works but keeps memory-only sessions (a reload signs out).
-4. Native apps keep the legacy 30-day bearer for now; the native session protocol is specified in
-   D4_COOKIE_SESSIONS.md and ships with the Capacitor shell.
+4. Native apps: see N1 deploy steps.
 5. OTP limits: see O1 deploy steps.
 
 ## O1 deploy steps
@@ -389,3 +389,10 @@ can read.
    (`OTP_IP_SEND_PER_HOUR=30`, `OTP_IP_VERIFY_PER_HOUR=60`). Without `TRUST_PROXY` leave per-address limits off.
 4. Codes sent in the 10 minutes before the deploy still work (plain-text legacy rows, same attempt limit).
 5. Apps: a `429` carries `Retry-After` and a readable message; the new web apps show it.
+
+## N1 deploy steps
+
+1. No new collection or index (`auth_sessions` gains the native audiences).
+2. When the phone apps ship: add their WebView origins (`capacitor://localhost`, `https://localhost`) to an explicit
+   `CORS_ORIGIN` list; the server allows the `X-Jansetu-Native` header.
+3. Existing mobile apps keep the legacy 30-day bearer until they move to `session: 'native'`.

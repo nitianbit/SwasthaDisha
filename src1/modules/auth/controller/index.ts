@@ -12,8 +12,9 @@ import { PharmacyRepository } from '@/modules/pharmacies/repository';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { tokenCredentialVersion } from '@/modules/user/credentialGeneration';
 import jwt from 'jsonwebtoken';
-import { ACCESS_TOKEN_TTL_SECONDS, assertRoleForAudience, createSession, logoutSession, privateTokenResponse, refreshSession,
-  reissueForCaller, revokeAllSessions, sessionAudience } from '@/modules/auth/sessions';
+import { ACCESS_TOKEN_TTL_SECONDS, assertRoleForAudience, createNativeSession, createSession, logoutNativeSession, logoutSession,
+  nativeAudience, privateTokenResponse, refreshNativeSession, refreshSession, reissueForCaller, revokeAllSessions,
+  sessionAudience } from '@/modules/auth/sessions';
 
 export class AuthController {
   private authService: AuthService;
@@ -57,6 +58,9 @@ export class AuthController {
     // D4: decided (origin, header, audience, role) BEFORE the single-use OTP is consumed.
     const audience = req.body?.session === 'cookie' ? sessionAudience(req) : null;
     if (audience) assertRoleForAudience(audience, String(userType));
+    // N1: likewise for the phone app (header, JSON, app and role) before the OTP is consumed.
+    const native = req.body?.session === 'native' ? nativeAudience(req) : null;
+    if (native) assertRoleForAudience(native, String(userType));
 
     const data: VerifyOTPRequest = {
       userType: userType as VerifyOTPRequest['userType'],
@@ -75,6 +79,13 @@ export class AuthController {
       const token = await createSession(res, audience, claims, new Date(), req);
       return res.status(200).json({ success: true, message: result.message,
         data: { token, expiresIn: ACCESS_TOKEN_TTL_SECONDS, user: result.userData } });
+    }
+
+    if (native) {
+      const claims = jwt.decode(result.accessToken) as Record<string, unknown> & { _id: string; userType: string };
+      privateTokenResponse(res);
+      const tokens = await createNativeSession(native, claims, req.body?.previousRefreshToken);
+      return res.status(200).json({ success: true, message: result.message, data: { ...tokens, user: result.userData } });
     }
 
     return res.status(200).json({
@@ -106,6 +117,19 @@ export class AuthController {
     privateTokenResponse(res);
     const data = await refreshSession(req, res);
     return res.status(200).json({ success: true, data });
+  };
+
+  /** N1: phone app refresh (refresh token in the body, never a cookie). */
+  refreshNativeSession = async (req: Request, res: Response, _next: NextFunction) => {
+    privateTokenResponse(res);
+    const data = await refreshNativeSession(req);
+    return res.status(200).json({ success: true, data });
+  };
+
+  logoutNativeSession = async (req: Request, res: Response, _next: NextFunction) => {
+    privateTokenResponse(res);
+    await logoutNativeSession(req);
+    return res.status(200).json({ success: true, data: { signedOut: true } });
   };
 
   logoutSession = async (req: Request, res: Response, _next: NextFunction) => {

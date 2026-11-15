@@ -40,7 +40,7 @@ app.use(cors((req, callback) => {
   const origin = req.headers.origin;
   const base = {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Idempotency-Key', 'X-Jansetu-Session'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Idempotency-Key', 'X-Jansetu-Session', 'X-Jansetu-Native'],
   };
   // Requests with no origin (mobile apps, Postman, server-to-server)
   if (!origin) return callback(null, { ...base, origin: true, credentials: false });
