@@ -65,6 +65,62 @@ Key docs:
     `P9_RX_ONLINE_ORDERS.md`.
 - Web: `docs/PLAN.md` (decisions and verification log), `docs/PHONE_APPS.md`, `README.md`.
 
+## 2a. Current work — START HERE: partner labs, clinics and doctors (packets Q1–Q6)
+
+The owner asked (15 Nov) for:
+- a system for partner labs that have no API, alongside Healthians and LabStack: a panel to manage lab-visit and home
+  bookings made through us;
+- doctors who either set slots or switch on "available now" for instant teleconsultation, so customers get two kinds
+  of consultation, instant and scheduled;
+- in-house (walk-in) sales for labs, clinics and doctors: the partner generates an invoice, and we do **not** collect
+  the money. Staff pick the payment mode, add a reference number or keyword, and mark it paid.
+
+The owner answered a questionnaire on 15 Nov. All answers are recorded in §1 of the design.
+
+- **Design:** `documentation/planning/implementation/Q_PARTNERS_LABS_CLINICS_DESIGN.md`.
+  - Worktree: `~/Desktop/SwasthaDisha/SwasthaDisha-worktrees/q-partners`.
+  - Branch: `m0/q0-partners-design`, based on `release/stage-2026-11-15` `344f373`. Local only, not pushed.
+  - Commits: design `0b4d98c`; this handover update is the next commit.
+- **Reference studied:** ewa_backend branch `integration/perks-v2-combined`. It shows how vendors manage bookings.
+  Design §2 lists what we reuse and what we avoid. Do not open credential files in ewa_backend (for example the
+  firebase-adminsdk JSON).
+- **Codex DESIGN review:**
+  - Request sent 15 Nov 10:24 UTC as message `msg_1794738244716_iu10z9ji`.
+  - No reply yet when this handover was written.
+  - First, read the mailbox (command in §3). If nothing has arrived, start the wait with `--since 1794738244000`, so a
+    reply that landed between sessions is still caught.
+  - Fold every finding into the design doc, commit, and send a short re-review if Codex asks for one.
+- **Then build in order**, each packet with backend, screens, tests and a Codex review:
+  1. **Q1 Partner foundation:**
+     - Partner, Branch, Member, permissions;
+     - OTP `userType: 'partner'` with the membership checked on every request;
+     - admin onboarding;
+     - a "Partner" section in the workspace for staff and branches.
+  2. **Q2 In-house invoices:**
+     - GST, the partner's own series, PDF;
+     - record payment (mode and reference), cancel;
+     - walk-in linking by phone and SMS;
+     - customer "Bills".
+  3. **Q3 Partner-lab online bookings:**
+     - catalogue and home/lab slots;
+     - customer booking and payment with pay-again and expiry;
+     - lab actions; report upload and release;
+     - ledger earnings and refunds.
+  4. **Q4 Doctors:**
+     - weekly template, leave, per-mode and per-clinic slots;
+     - fix the portal cancel (it returns 409 today);
+     - no-show;
+     - instant consultations: presence, offer and accept, re-offer, refund on request;
+     - customer "Consult now".
+  5. **Q5 Payouts:** ledger statements, admin payout recording, partner finance screens.
+  6. **Q6 Clinics:**
+     - several doctors per clinic;
+     - front-desk booking and invoices per doctor;
+     - solo practices created automatically.
+- Start each packet from the newest approved packet branch, in a new worktree.
+- Web work goes in jansetu-web on a new branch from `main`.
+- Commits stay local until the owner asks to push.
+
 ## 3. The Codex review setup (how it works)
 
 Claude and Codex run as local VS Code extensions. They talk through **Ruflo**, a local MCP server named `ruflo` that
@@ -216,6 +272,7 @@ Web:
 ## 8. Upcoming plan (suggested order)
 
 1. Help the owner finish §6, then fix whatever the live checks turn up.
+1a. Partner labs, clinics and doctors, packets Q1–Q6 (§2a). This is the active build.
 2. Per-payment refund keys, plus a card-or-wallet choice for late captures.
 3. Phone app store releases: customer first, then the workspace.
 4. Login hardening: answers that don't reveal accounts, and staff credential versions.
