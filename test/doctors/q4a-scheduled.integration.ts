@@ -48,6 +48,7 @@ import { MemberRepository } from '@/modules/partners/repository/member';
 import { BranchRepository } from '@/modules/partners/repository/branch';
 import { PartnerService } from '@/modules/partners/services';
 import { addDays, istDate } from '@/modules/partners/services/slots';
+import { LeaseModel } from '@/modules/common/utils/leaseLock';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/q4a_doctor_check?directConnection=true';
 const url = process.env.MONGODB_URL ?? '';
@@ -101,7 +102,7 @@ async function main() {
   for (const c of await mongoose.connection.db!.collections()) await c.drop().catch(() => {});
   for (const M of [UserModel, SpecialistModel, SlotModel, BookingModel, PaymentRecordModel, WalletModel, WalletTransactionModel, DoctorReservationModel,
     DoctorScheduleGuardModel, DoctorScheduleTemplateModel, SettlementAccountModel, LedgerEntryModel, PartnerModel, MemberModel, BranchModel,
-    PartnerAuditEventModel] as mongoose.Model<any>[]) {
+    PartnerAuditEventModel, LeaseModel] as mongoose.Model<any>[]) {
     await M.createCollection(); await M.createIndexes();
   }
 
@@ -263,6 +264,19 @@ async function main() {
     assert.deepEqual(rows.find((s) => s.startTime === '09:30').serviceModes, ['video']);
     assert.deepEqual(rows.find((s) => s.startTime === '09:00').serviceModes, ['video', 'call'], 'a booked slot keeps its terms');
     assert.equal(rows.find((s) => s.startTime === '09:00').currentBookings, 1);
+  });
+
+  await check('concurrent doctor expansions never publish a stale template; impossible leave dates are refused', async () => {
+    const docC = await doctor('Dr Concurrent');
+    const every = (start: string, end: string) => Object.fromEntries(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((d) => [d, [{ start, end, modes: ['video'] }]]));
+    const d = ymd(addDays(today, 4));
+    for (let round = 0; round < 3; round++) {
+      await saveTemplate(docC, { slotMinutes: 30, days: every('08:00', '09:00') as any });
+      await Promise.all([expandDoctorSlots(docC, today, 30), saveTemplate(docC, { slotMinutes: 30, days: every('15:00', '16:00') as any }), expandDoctorSlots(docC, today, 30)]);
+      const open = (await SlotModel.find({ specialistId: docC, date: d, isActive: true }).lean() as any[]).map((x) => x.startTime).sort();
+      assert.deepEqual(open, ['15:00', '15:30'], `round ${round}`);
+    }
+    await assert.rejects(() => setLeave(docC, '20270231', true), code('INVALID_DATE'));
   });
 
   await check('clinic windows: only for a clinic the doctor works at (verified, in-clinic branch), in-person only', async () => {

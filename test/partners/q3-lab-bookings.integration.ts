@@ -635,7 +635,7 @@ async function main() {
     await SpecialistModel.collection.insertOne({ _id: new Types.ObjectId(sp), name: 'Dr Legacy' } as never);
     const created = await createBookingWithHolds({ userId: new Types.ObjectId().toHexString(), specialistId: sp, bookingType: 'surgery',
       bookingDate: '20261201', bookingTime: '10:00', serviceMode: 'in-person', price: 999, status: 'confirmed', paymentStatus: 'paid' } as any);
-    assert.equal(created.settlementSystem, 'legacy', 'Q3: ordinary bookings stay legacy until the doctor ledger earnings exist (Q4a)');
+    assert.equal(created.settlementSystem, 'ledger', 'Q4a: with the doctor ledger earnings in place, the cutover applies to ordinary bookings');
     (CONFIG as any).SETTLEMENT_CUTOVER_AT = undefined;
     const base = { specialistId: sp, bookingType: 'consultation', bookingDate: '20261210', status: 'confirmed', paymentStatus: 'paid' };
     await BookingModel.collection.insertMany([{ ...base, price: 500 }, { ...base, price: 700, settlementSystem: 'legacy' }, { ...base, price: 900, settlementSystem: 'ledger' }] as never);
@@ -659,7 +659,7 @@ async function main() {
     const refs = await LedgerHistoryRefModel.find({ settlementAccountId: String(acct!._id) }).lean();
     assert.deepEqual(refs.map((x) => [x.legacyKind, x.amountMinor]).sort(), [['billing', 123450], ['disbursal', 100000]].sort());
     assert.equal(await ledgerBalance(String(acct!._id)), 0, 'history never posts to the balance');
-    assert.equal(await BookingModel.countDocuments({ specialistId: sp, settlementSystem: 'legacy' }), 3);
+    assert.equal(await BookingModel.countDocuments({ specialistId: sp, settlementSystem: 'legacy' }), 2);
   });
 
   // ── HTTP ──

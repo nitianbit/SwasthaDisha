@@ -4,7 +4,8 @@ import PartnerOrgModel from '@/modules/partners/model';
 import BranchModel from '@/modules/partners/model/branch';
 import MemberModel from '@/modules/partners/model/member';
 import { DoctorScheduleTemplateModel, IDoctorScheduleTemplate, IScheduleWindow, Weekday } from '@/modules/doctors/model/schedule';
-import { addDays, istDate } from '@/modules/partners/services/slots';
+import { addDays, istDate, isRealDate, assertRealDate } from '@/modules/partners/services/slots';
+import { withLease } from '@/modules/common/utils/leaseLock';
 
 export const DOCTOR_ROLLING_DAYS = 30;
 const WEEKDAYS: Weekday[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
@@ -62,7 +63,7 @@ export async function saveTemplate(doctorId: string, input: { slotMinutes: numbe
 
 /** Leave day on/off (YYYYMMDD); slots that already hold bookings keep them. */
 export async function setLeave(doctorId: string, date: string, onLeave: boolean, now = new Date()) {
-  if (!/^\d{8}$/.test(date)) throw new AppError({ status: 400, code: 'INVALID_DATE', message: 'Date must be YYYYMMDD' });
+  if (!/^\d{8}$/.test(date) || !isRealDate(iso(date))) throw new AppError({ status: 400, code: 'INVALID_DATE', message: 'Date must be a real date, YYYYMMDD' });
   const template = await DoctorScheduleTemplateModel.findOneAndUpdate(
     { doctorId: String(doctorId) },
     onLeave ? { $addToSet: { leaveDates: date }, $setOnInsert: { doctorId: String(doctorId), slotMinutes: 30, days: {}, isActive: true } }
@@ -82,10 +83,17 @@ export interface DoctorExpansion { inserted: number; updated: number; closed: nu
  * never changes currentBookings, never reopens a slot someone closed by hand. Idempotent.
  */
 export async function expandDoctorSlots(doctorId: string, fromIsoDate: string, days: number): Promise<DoctorExpansion> {
+  assertRealDate(fromIsoDate, 'from');
+  // One expansion per doctor at a time; the template is read after acquiring the lease, so the last run always acts
+  // on the latest template and leave days (an older concurrent run cannot publish a stale snapshot).
+  return withLease(`doctor-slots:${String(doctorId)}`, () => expandDoctorSlotsLocked(doctorId, fromIsoDate, days));
+}
+
+async function expandDoctorSlotsLocked(doctorId: string, fromIsoDate: string, days: number): Promise<DoctorExpansion> {
   const out: DoctorExpansion = { inserted: 0, updated: 0, closed: 0, reopened: 0 };
   const t = await getTemplate(doctorId);
   if (!t) return out;
-  const leave = new Set(t.leaveDates ?? []);
+  const leave = new Set((t.leaveDates ?? []).filter((d) => /^\d{8}$/.test(d) && isRealDate(iso(d))));
   for (let i = 0; i < days; i++) {
     const isoDate = addDays(fromIsoDate, i);
     const date = ymd(isoDate);
