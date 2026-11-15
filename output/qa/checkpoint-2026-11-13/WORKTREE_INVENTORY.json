@@ -1,0 +1,1287 @@
+{
+  "schema": "SD-STOPPED-WORKTREE-INVENTORY-1",
+  "date": "2026-11-13",
+  "phase": "After source/evidence saving and focus documentation commit, before final original-checkout documentation commit. Original checkout status may list this checkpoint own documentation/evidence; final clean verification follows the commit.",
+  "existingWorktrees": 29,
+  "missingHistoricalPaths": 86,
+  "worktrees": [
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha",
+      "HEAD": "e9446528c90e70a5f7480c3f9ffa36405023f21c",
+      "branch": "refs/heads/m0/f01-app-isolation",
+      "exists": true,
+      "statusAtInventory": "?? documentation/planning/implementation/HANDOVER_PROMPT_2026-11-13.md\n?? documentation/planning/implementation/PROJECT_CHECKPOINT_2026-11-13.md\n?? documentation/planning/implementation/REVIEW_PROMPT_2026-11-13.md\n?? output/qa/checkpoint-2026-11-13/COMMIT_RECORD.json\n?? output/qa/checkpoint-2026-11-13/PRESERVATION_VERIFICATION.json\n?? output/qa/checkpoint-2026-11-13/WORKTREE_INVENTORY_BEFORE.json\n"
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/api-lock-resolution",
+      "HEAD": "a651691a00ee4834851f4a0736dc68ce2a303495",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-platform",
+      "HEAD": "67f1bd747fa065812053ee575ff6da6dcf21e803",
+      "branch": "refs/heads/m0/week2-api-platform",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation",
+      "HEAD": "cca8a5b453a35ce8517694568bd4c5f82c029e7e",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-10",
+      "HEAD": "ea2a39c9e2734a7b3cfd5ee20523906373c1fef6",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-11",
+      "HEAD": "b26012c2001aa562fa40b4e08e855ade421d7f78",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-12",
+      "HEAD": "17957201d54418f2dcae182626c642e9a0bdee60",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-13",
+      "HEAD": "0f0d36bf4f1df92ad5492991c27524b8e5a25a8f",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-14",
+      "HEAD": "bc3233bb249b5e5603d61f4e294accbcda7a0fc6",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-15",
+      "HEAD": "5901bc20e8def58f023b9ef4fe43c8e80fec1f1e",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-2",
+      "HEAD": "d0db1ed1107478a6d1f7fb7ceef920882b8d9db3",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-3",
+      "HEAD": "b3a04bc5bb9ee551a5c4d8fadf95f695f07896f5",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-4",
+      "HEAD": "d91e1a3d37f2b229efc7fc2507d666ddc2576d99",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-5",
+      "HEAD": "ca404f6911e662811702d65fd0110a02e88f7c9a",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6",
+      "HEAD": "1543658ff53e3906f71f4fa8b92a5756b97a7ee1",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-7",
+      "HEAD": "1c58cf5159fe0fbdc0a4309523f26f974644d43f",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-8",
+      "HEAD": "0a6da87051dc6eae8c2415c4ea3ce09ded414662",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9",
+      "HEAD": "c2dbac3e44b0bbf30e4574640cd940e2f0075975",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-scenario",
+      "HEAD": "489bb73ce9b6fc11894a9c5cd47592ff48e1b23c",
+      "branch": "refs/heads/m0/week2-api-scenario",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/authority",
+      "HEAD": "0a1f77a97eede0d8e0b3eb41d85796c817ae9996",
+      "branch": "refs/heads/m0/parallel-authority",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/authority-jwt",
+      "HEAD": "843bdb056ba3c481464ce8cd926ca28ab7ca0f33",
+      "branch": "refs/heads/m0/authority-jwt-secret",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/authority-next",
+      "HEAD": "ea0710c405749dbc60cff2e1045fa87c68ef5789",
+      "branch": "refs/heads/m0/authority-next",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/claude-review-window",
+      "HEAD": "a1d7198d9613a29f023a61049a0c54353013149c",
+      "branch": "refs/heads/m0/week2-claude-review-window",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/diagnostic-41539",
+      "HEAD": "41539ca749c8a9dbf49ecf43bcca00749eccfe3c",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/foundation",
+      "HEAD": "4c38e0b4612e42a800b99bf6c3cc8c184bed24a3",
+      "branch": "refs/heads/m0/parallel-foundation",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/integration",
+      "HEAD": "7df9121440813dec14cd4c57d347ee20982c3ec7",
+      "branch": "refs/heads/m0/parallel-integration",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/inventory-runtime-preparation-1",
+      "HEAD": "35be2fa5dca3fbdba41e4ffe6b349598e1412003",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/inventory-runtime-preparation-2",
+      "HEAD": "b1a0bd38eca046debef19937f2e8b0de4dee3244",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/inventory-runtime-preparation-3",
+      "HEAD": "3a962c90f0e33ca162baa3bbe4284e8a9b51f758",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/local-review-link",
+      "HEAD": "ab0666ed50dd91120a58c33ad15c9740b36ebdef",
+      "branch": "refs/heads/m0/week2-local-review-link",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/money-clinical",
+      "HEAD": "8409858a9e471812cba2aaa99d1004c8a22ee6e4",
+      "branch": "refs/heads/m0/money-provider-clinical",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/net-admission",
+      "HEAD": "baaf071babae538d2bf9096e980b8e0155c9af82",
+      "branch": "refs/heads/m0/foundation-network-admission",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/network-recipe",
+      "HEAD": "aab5188af3c3dc1223a30c7bd767913f80eaee47",
+      "branch": "refs/heads/m0/batch3-network-recipe",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/network-run-eba7e5c",
+      "HEAD": "eba7e5c82e3ff63af9e9a958fbd100733e1fc439",
+      "detached": "",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/otp",
+      "HEAD": "66de4894f666449331e7c90fb0e94b6c01a54418",
+      "branch": "refs/heads/m0/parallel-otp",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/otp-consume",
+      "HEAD": "5299215ac6164ee881421a21eab3907651e0ebcb",
+      "branch": "refs/heads/m0/week2-otp-consume",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/outbound-guards",
+      "HEAD": "2ea38267c361e6b3322459bcd22c2be1dc22e09c",
+      "branch": "refs/heads/m0/batch3-outbound-guards",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/planning-eight-weeks",
+      "HEAD": "044e94d2e1486628e6af9fb09471748c75532e88",
+      "branch": "refs/heads/planning/eight-week-acceleration",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/wallet-reads",
+      "HEAD": "d3a1f82147c0b3346abab43e6e34d260171b0c25",
+      "branch": "refs/heads/m0/batch3-wallet-reads",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-authority-api-extension",
+      "HEAD": "b8a3ea26179e0ae3de08a2490e41a8aac4862872",
+      "branch": "refs/heads/m0/week2-authority-api-extension",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-authority-api-shared",
+      "HEAD": "30f5e9598df17c6089561bedae79ada47d33da5e",
+      "branch": "refs/heads/m0/week2-authority-api-shared",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-catalogue-integration",
+      "HEAD": "19b5955aa0f67738ae5188d07f9c59a51f96d462",
+      "branch": "refs/heads/m0/week2-catalogue-integration",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-catalogue-quality-contract",
+      "HEAD": "1db3da7bf90106e1b2f3ef03eec2c9999161286c",
+      "branch": "refs/heads/m0/week2-catalogue-quality-contract",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-compiler-library-admission",
+      "HEAD": "e4b810ba734bfb20eca0bf739756a52948ed3ea0",
+      "branch": "refs/heads/m0/week2-compiler-library-admission",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-db-index-diagnostic",
+      "HEAD": "ca404f6911e662811702d65fd0110a02e88f7c9a",
+      "branch": "refs/heads/m0/week2-db-index-diagnostic",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-dependents",
+      "HEAD": "e9ec873e4ead3837e7a4b335215fe6b922efbe68",
+      "branch": "refs/heads/m0/week2-dependents",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-fixture-index-space",
+      "HEAD": "1543658ff53e3906f71f4fa8b92a5756b97a7ee1",
+      "branch": "refs/heads/m0/week2-fixture-index-space",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-hr-booking-scope-contract",
+      "HEAD": "a3f3b922c29da03b8244246dd9e271f90d8b9ee3",
+      "branch": "refs/heads/m0/week2-hr-booking-scope-contract",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-hr-booking-scope-source",
+      "HEAD": "51fe35aa20420b8f38cfea408574bb68b6d6a020",
+      "branch": "refs/heads/m0/week2-hr-booking-scope",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-index-bootstrap",
+      "HEAD": "134179d14fdde76627e670c1fff8b202ce72df9b",
+      "branch": "refs/heads/m0/week2-index-bootstrap",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-index-readiness",
+      "HEAD": "e58650a9aa2e9a906a61d51b532fddeeb5de2e1a",
+      "branch": "refs/heads/m0/week2-index-readiness",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-index-runtime-contract",
+      "HEAD": "fd1c855b7405dd020cc7e7db1efa0f47d624af39",
+      "branch": "refs/heads/m0/week2-index-runtime-contract",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-index-scenario",
+      "HEAD": "368c9fe6ffff2a3cab7ba5daace4b6e7beded936",
+      "branch": "refs/heads/m0/week2-index-scenario",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-apm-cursor",
+      "HEAD": "037376c4905530817438fffd481445e0be67b376",
+      "branch": "refs/heads/m0/week2-inventory-apm-cursor",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-bootstrap-amendment",
+      "HEAD": "3aeb73a1287cb3664f141c37bede6dc08358da14",
+      "branch": "refs/heads/m0/week2-inventory-bootstrap-amendment",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-bootstrap-source",
+      "HEAD": "faaac5d0ac0d9ea77970e61e871bd33a10f796bd",
+      "branch": "refs/heads/m0/week2-inventory-bootstrap-source",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-budget-amendment",
+      "HEAD": "71065a6541a52e74ca6c049af8209b7d6b2f9395",
+      "branch": "refs/heads/m0/week2-inventory-budget-amendment",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-child-source",
+      "HEAD": "ae14d6b11e8cefa7e3f620ca56461a1b8ee7b9cf",
+      "branch": "refs/heads/m0/week2-inventory-child-source",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-composition",
+      "HEAD": "35be2fa5dca3fbdba41e4ffe6b349598e1412003",
+      "branch": "refs/heads/m0/week2-inventory-composition",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-diagnostic-amendment",
+      "HEAD": "e7d6ffceeed3d9e7e77abe633acc3556bff40a3d",
+      "branch": "refs/heads/m0/week2-inventory-diagnostic-amendment",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-import-diagnostic",
+      "HEAD": "42a83c3ff9cca4383951f55e13b9b10e823768c6",
+      "branch": "refs/heads/m0/week2-inventory-import-diagnostic",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-parent-amendment",
+      "HEAD": "a0a4108a9de679f9c81b790bbd2a2d747beb70cd",
+      "branch": "refs/heads/m0/week2-inventory-parent-amendment",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-parent-source",
+      "HEAD": "5c76f77c962ccec5b0a68b33cf136e3d3d7867a8",
+      "branch": "refs/heads/m0/week2-inventory-parent-source",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-public-init-sites",
+      "HEAD": "58719fdb0e7be542112c0b76f88e19bd33a7364c",
+      "branch": "refs/heads/m0/week2-inventory-public-init-sites",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-quality",
+      "HEAD": "c39e8af3e5f22f96c6a053c28677fdf1106afd22",
+      "branch": "refs/heads/m0/week2-inventory-quality",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-runtime-amendments",
+      "HEAD": "b1a0bd38eca046debef19937f2e8b0de4dee3244",
+      "branch": "refs/heads/m0/week2-inventory-runtime-amendments",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-runtime-contract",
+      "HEAD": "5abb1a9987eaa9cab2105cc6a50029692013f63d",
+      "branch": "refs/heads/m0/week2-inventory-runtime-contract",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-inventory-runtime-draft",
+      "HEAD": "19b5955aa0f67738ae5188d07f9c59a51f96d462",
+      "branch": "refs/heads/m0/week2-inventory-runtime-draft",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-jwt-config-runtime",
+      "HEAD": "83814746314781ebc64ef5b71ac6116f87665e0c",
+      "branch": "refs/heads/m0/week2-jwt-config-runtime",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-jwt-config-shared",
+      "HEAD": "d4fe30f888e5a24c6c9ce384aab4fe4dfdb875ed",
+      "branch": "refs/heads/m0/week2-jwt-config-shared",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-medicine-bootstrap-source",
+      "HEAD": "1d406afd7a475f3ea7f3570921ccfb376b3ad5bf",
+      "branch": "refs/heads/m0/week2-medicine-bootstrap-source",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-medicine-parent-source",
+      "HEAD": "5ba857b4d891bdece3328afddc64fa571f2174e6",
+      "branch": "refs/heads/m0/week2-medicine-parent-source",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-medicine-prescription",
+      "HEAD": "b399ff98e0e86b7fdb46ec6cf624f6a94197ada8",
+      "branch": "refs/heads/m0/week2-medicine-prescription",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-medicine-runtime-draft",
+      "HEAD": "6052cb9f126abeb465b5311a80701d00bbd3ad6a",
+      "branch": "refs/heads/m0/week2-medicine-runtime-draft",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-medicine-scenario-source",
+      "HEAD": "b3ac3a25c3ef565007303e4d1bee23f4705506e0",
+      "branch": "refs/heads/m0/week2-medicine-scenario-source",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-meet-runtime",
+      "HEAD": "d36fb31e9656c7f8725b05002ba9188ba2408712",
+      "branch": "refs/heads/m0/week2-meet-runtime",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-meet-shared",
+      "HEAD": "244d0d8bb6f04bc1217a0cc224f64e9c2450110e",
+      "branch": "refs/heads/m0/week2-meet-shared",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-notification-reads",
+      "HEAD": "200fd1de60b7f787fae2238f7913a9146823af20",
+      "branch": "refs/heads/m0/week2-notification-reads",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-bootstrap",
+      "HEAD": "aceaeb9fe6db91d4bb5c4f2519ca30409d4ab624",
+      "branch": "refs/heads/m0/week2-profile-bootstrap",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-lifecycle-contract",
+      "HEAD": "7eb4a6b3753917925d799b096f0a54dfbe1d8154",
+      "branch": "refs/heads/m0/week2-profile-lifecycle-contract",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-lifecycle-source",
+      "HEAD": "3e7b6f7023c94550be177ebd212565265008aa86",
+      "branch": "refs/heads/m0/week2-profile-lifecycle-source",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-scenario",
+      "HEAD": "7b7f3573eeff3df3f5ceb698eb863a2ceb6e4c62",
+      "branch": "refs/heads/m0/week2-profile-scenario",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-bootstrap",
+      "HEAD": "e56a1c14c12d1939e3bebcdbbb99ab0901b5658b",
+      "branch": "refs/heads/m0/week2-profile-warning-bootstrap",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-contract",
+      "HEAD": "ed7e1e4a455114784cbb836156fffc85c276f0d6",
+      "branch": "refs/heads/m0/week2-profile-warning-contract",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-profile-warning-scenario",
+      "HEAD": "4bf3446939acb22c3670777fd5872d572025fe07",
+      "branch": "refs/heads/m0/week2-profile-warning-scenario",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-specialist-profile-contract",
+      "HEAD": "480f5230b2030c1d69393ce48910acfbf3abcd92",
+      "branch": "refs/heads/m0/week2-specialist-profile-contract",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/private/tmp/swasthadisha-parallel-p1qom53w/week2-specialist-profile-runtime-contract",
+      "HEAD": "28e6dfef0efb9316fa21d004372440e53bc670b3",
+      "branch": "refs/heads/m0/week2-specialist-profile-runtime-contract",
+      "prunable": "gitdir file points to non-existent location",
+      "exists": false
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/authority-pure-runtime",
+      "HEAD": "f7daeb6569599d8f163a11e1ad5376eb4917b281",
+      "branch": "refs/heads/m0/authority-pure-runtime",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/business-staff-authority",
+      "HEAD": "a74d2d09dca4d2ba1e58ef9d2326e76178e52c55",
+      "branch": "refs/heads/m0/business-staff-authority",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/core-authority-semantic",
+      "HEAD": "ea68ff303becd668c412ed868df93fa6b2ed2f8e",
+      "branch": "refs/heads/m0/core-authority-semantic",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-booking-fields",
+      "HEAD": "42a2396e535e00e22fd4c961c753849e124fac61",
+      "branch": "refs/heads/m0/customer-booking-fields",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-booking-write-boundary",
+      "HEAD": "a97d0a4a14b52846ddd05b2187e3568fee368203",
+      "branch": "refs/heads/m0/customer-booking-write-boundary",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-contact-index",
+      "HEAD": "5832e8b8af38d317b8493565fb285d0fb089caa9",
+      "branch": "refs/heads/m0/customer-contact-index",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-contact-proof",
+      "HEAD": "25f92bacc55b7e2261b095a3d391b81bee6f3b0d",
+      "branch": "refs/heads/m0/customer-contact-proof",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-enrollment-contact",
+      "HEAD": "17b8168b4bf8b0a17b34d21bd21e608e424d25a6",
+      "branch": "refs/heads/m0/customer-enrollment-contact",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/customer-pharmacy-lab",
+      "HEAD": "9c8d1d8f6ecda8d0832f9294c4b1b7a6fdf7077c",
+      "branch": "refs/heads/m0/customer-pharmacy-lab-focus",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/gateway-capture-admission",
+      "HEAD": "86bbaa2c5b8ddb8967738e14b56bf56ed33db72e",
+      "branch": "refs/heads/m0/gateway-capture-admission",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/lab-booking-log-minimization",
+      "HEAD": "5f77223c205d50cd0f21a1e6e4bf7aeb9aea4aa0",
+      "branch": "refs/heads/m0/lab-booking-log-minimization",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/lab-customer-history",
+      "HEAD": "523fb70517a490ec373475bc39708704f698d5ae",
+      "branch": "refs/heads/m0/lab-customer-history",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/lab-customer-progress",
+      "HEAD": "7ab056ab63b99877c63a18c0dee3b753ce9295e7",
+      "branch": "refs/heads/m0/lab-customer-progress",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/lab-dependent-ownership",
+      "HEAD": "82082ffcec1bdb4c1aabb7523a627f161c1f9588",
+      "branch": "refs/heads/m0/lab-dependent-ownership",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/legacy-test-alignment",
+      "HEAD": "b67ba340002a514e25592a0c5c3af0d802847559",
+      "branch": "refs/heads/m0/pharmacy-legacy-test-alignment",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/payment-constructor-compatibility",
+      "HEAD": "578e1dba39ec2083875470ecac304f3a79e04487",
+      "branch": "refs/heads/m0/payment-constructor-compatibility",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-customer-recovery",
+      "HEAD": "133be822135c1bdbc5b32ad206f3c65a22b3625d",
+      "branch": "refs/heads/m0/pharmacy-customer-recovery",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-prescription-progress",
+      "HEAD": "d59e7fc3f48d8861f625f30071119f49eec50ebc",
+      "branch": "refs/heads/m0/pharmacy-prescription-progress",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-pure-recovery",
+      "HEAD": "9bbc96058cf278943b58b8af81ad7f5c2e42ff1f",
+      "branch": "refs/heads/m0/pharmacy-pure-recovery",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-quality-worklist",
+      "HEAD": "9851eecc330a5150b0b95b1a109f67449c2a9d76",
+      "branch": "refs/heads/m0/pharmacy-quality-worklist",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-recovery-worklist",
+      "HEAD": "f7fecc4e0a527ee71dbb56094ddba2b1342d0527",
+      "branch": "refs/heads/m0/pharmacy-recovery-worklist",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-refill-operations",
+      "HEAD": "1db59f2ede2a565b1b39fa21694f553f3c0a27ee",
+      "branch": "refs/heads/m0/pharmacy-refill-operations",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-refund-error-propagation",
+      "HEAD": "0e6c8e285b5ee37943a7503f14abcf64553f97d3",
+      "branch": "refs/heads/m0/pharmacy-refund-error-propagation",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-supplier-cas-return",
+      "HEAD": "29880637fa3a7f8e3064e2d3193a4d9e4336b5d1",
+      "branch": "refs/heads/m0/pharmacy-supplier-cas-return",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/pharmacy-supplier-master",
+      "HEAD": "75861b039fe2965dc5e6dac72db178b735433f39",
+      "branch": "refs/heads/m0/pharmacy-supplier-master",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/prescription-checkout-enablement",
+      "HEAD": "65d71c1d337ca706325fce0038f267b29a20a2e0",
+      "branch": "refs/heads/m0/prescription-checkout-enablement",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/private-document-core",
+      "HEAD": "73078cb94491010073dada401af12f26ec635e49",
+      "branch": "refs/heads/m0/private-document-core",
+      "exists": true,
+      "statusAtInventory": ""
+    },
+    {
+      "worktree": "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha-worktrees/recovery-party-fence",
+      "HEAD": "a0f0c008139e93b69f83acf73258af4c8b649348",
+      "branch": "refs/heads/m0/pharmacy-recovery-party-fence",
+      "exists": true,
+      "statusAtInventory": ""
+    }
+  ],
+  "localRefs": [
+    {
+      "ref": "refs/heads/m0/authority-jwt-secret",
+      "commit": "843bdb056ba3c481464ce8cd926ca28ab7ca0f33"
+    },
+    {
+      "ref": "refs/heads/m0/authority-next",
+      "commit": "ea0710c405749dbc60cff2e1045fa87c68ef5789"
+    },
+    {
+      "ref": "refs/heads/m0/authority-pure-runtime",
+      "commit": "f7daeb6569599d8f163a11e1ad5376eb4917b281"
+    },
+    {
+      "ref": "refs/heads/m0/batch3-network-recipe",
+      "commit": "aab5188af3c3dc1223a30c7bd767913f80eaee47"
+    },
+    {
+      "ref": "refs/heads/m0/batch3-outbound-guards",
+      "commit": "2ea38267c361e6b3322459bcd22c2be1dc22e09c"
+    },
+    {
+      "ref": "refs/heads/m0/batch3-wallet-reads",
+      "commit": "d3a1f82147c0b3346abab43e6e34d260171b0c25"
+    },
+    {
+      "ref": "refs/heads/m0/business-staff-authority",
+      "commit": "a74d2d09dca4d2ba1e58ef9d2326e76178e52c55"
+    },
+    {
+      "ref": "refs/heads/m0/core-authority-semantic",
+      "commit": "ea68ff303becd668c412ed868df93fa6b2ed2f8e"
+    },
+    {
+      "ref": "refs/heads/m0/customer-booking-fields",
+      "commit": "42a2396e535e00e22fd4c961c753849e124fac61"
+    },
+    {
+      "ref": "refs/heads/m0/customer-booking-write-boundary",
+      "commit": "a97d0a4a14b52846ddd05b2187e3568fee368203"
+    },
+    {
+      "ref": "refs/heads/m0/customer-contact-index",
+      "commit": "5832e8b8af38d317b8493565fb285d0fb089caa9"
+    },
+    {
+      "ref": "refs/heads/m0/customer-contact-proof",
+      "commit": "25f92bacc55b7e2261b095a3d391b81bee6f3b0d"
+    },
+    {
+      "ref": "refs/heads/m0/customer-enrollment-contact",
+      "commit": "17b8168b4bf8b0a17b34d21bd21e608e424d25a6"
+    },
+    {
+      "ref": "refs/heads/m0/customer-pharmacy-lab-focus",
+      "commit": "9c8d1d8f6ecda8d0832f9294c4b1b7a6fdf7077c"
+    },
+    {
+      "ref": "refs/heads/m0/f01-app-isolation",
+      "commit": "e9446528c90e70a5f7480c3f9ffa36405023f21c"
+    },
+    {
+      "ref": "refs/heads/m0/f01-static-compatibility",
+      "commit": "555bec4b4729fb14487bcfc48c40c53b6f85421f"
+    },
+    {
+      "ref": "refs/heads/m0/foundation-network-admission",
+      "commit": "baaf071babae538d2bf9096e980b8e0155c9af82"
+    },
+    {
+      "ref": "refs/heads/m0/gateway-capture-admission",
+      "commit": "86bbaa2c5b8ddb8967738e14b56bf56ed33db72e"
+    },
+    {
+      "ref": "refs/heads/m0/lab-booking-log-minimization",
+      "commit": "5f77223c205d50cd0f21a1e6e4bf7aeb9aea4aa0"
+    },
+    {
+      "ref": "refs/heads/m0/lab-customer-history",
+      "commit": "523fb70517a490ec373475bc39708704f698d5ae"
+    },
+    {
+      "ref": "refs/heads/m0/lab-customer-progress",
+      "commit": "7ab056ab63b99877c63a18c0dee3b753ce9295e7"
+    },
+    {
+      "ref": "refs/heads/m0/lab-dependent-ownership",
+      "commit": "82082ffcec1bdb4c1aabb7523a627f161c1f9588"
+    },
+    {
+      "ref": "refs/heads/m0/money-provider-clinical",
+      "commit": "8409858a9e471812cba2aaa99d1004c8a22ee6e4"
+    },
+    {
+      "ref": "refs/heads/m0/parallel-authority",
+      "commit": "0a1f77a97eede0d8e0b3eb41d85796c817ae9996"
+    },
+    {
+      "ref": "refs/heads/m0/parallel-foundation",
+      "commit": "4c38e0b4612e42a800b99bf6c3cc8c184bed24a3"
+    },
+    {
+      "ref": "refs/heads/m0/parallel-integration",
+      "commit": "7df9121440813dec14cd4c57d347ee20982c3ec7"
+    },
+    {
+      "ref": "refs/heads/m0/parallel-otp",
+      "commit": "66de4894f666449331e7c90fb0e94b6c01a54418"
+    },
+    {
+      "ref": "refs/heads/m0/payment-constructor-compatibility",
+      "commit": "578e1dba39ec2083875470ecac304f3a79e04487"
+    },
+    {
+      "ref": "refs/heads/m0/pharmacy-customer-recovery",
+      "commit": "133be822135c1bdbc5b32ad206f3c65a22b3625d"
+    },
+    {
+      "ref": "refs/heads/m0/pharmacy-legacy-test-alignment",
+      "commit": "b67ba340002a514e25592a0c5c3af0d802847559"
+    },
+    {
+      "ref": "refs/heads/m0/pharmacy-prescription-progress",
+      "commit": "d59e7fc3f48d8861f625f30071119f49eec50ebc"
+    },
+    {
+      "ref": "refs/heads/m0/pharmacy-pure-recovery",
+      "commit": "9bbc96058cf278943b58b8af81ad7f5c2e42ff1f"
+    },
+    {
+      "ref": "refs/heads/m0/pharmacy-quality-worklist",
+      "commit": "9851eecc330a5150b0b95b1a109f67449c2a9d76"
+    },
+    {
+      "ref": "refs/heads/m0/pharmacy-recovery-party-fence",
+      "commit": "a0f0c008139e93b69f83acf73258af4c8b649348"
+    },
+    {
+      "ref": "refs/heads/m0/pharmacy-recovery-worklist",
+      "commit": "f7fecc4e0a527ee71dbb56094ddba2b1342d0527"
+    },
+    {
+      "ref": "refs/heads/m0/pharmacy-refill-operations",
+      "commit": "1db59f2ede2a565b1b39fa21694f553f3c0a27ee"
+    },
+    {
+      "ref": "refs/heads/m0/pharmacy-refund-error-propagation",
+      "commit": "0e6c8e285b5ee37943a7503f14abcf64553f97d3"
+    },
+    {
+      "ref": "refs/heads/m0/pharmacy-supplier-cas-return",
+      "commit": "29880637fa3a7f8e3064e2d3193a4d9e4336b5d1"
+    },
+    {
+      "ref": "refs/heads/m0/pharmacy-supplier-master",
+      "commit": "75861b039fe2965dc5e6dac72db178b735433f39"
+    },
+    {
+      "ref": "refs/heads/m0/prescription-checkout-enablement",
+      "commit": "65d71c1d337ca706325fce0038f267b29a20a2e0"
+    },
+    {
+      "ref": "refs/heads/m0/private-document-core",
+      "commit": "73078cb94491010073dada401af12f26ec635e49"
+    },
+    {
+      "ref": "refs/heads/m0/week2-api-platform",
+      "commit": "67f1bd747fa065812053ee575ff6da6dcf21e803"
+    },
+    {
+      "ref": "refs/heads/m0/week2-api-scenario",
+      "commit": "489bb73ce9b6fc11894a9c5cd47592ff48e1b23c"
+    },
+    {
+      "ref": "refs/heads/m0/week2-authority-api-extension",
+      "commit": "b8a3ea26179e0ae3de08a2490e41a8aac4862872"
+    },
+    {
+      "ref": "refs/heads/m0/week2-authority-api-shared",
+      "commit": "30f5e9598df17c6089561bedae79ada47d33da5e"
+    },
+    {
+      "ref": "refs/heads/m0/week2-catalogue-integration",
+      "commit": "19b5955aa0f67738ae5188d07f9c59a51f96d462"
+    },
+    {
+      "ref": "refs/heads/m0/week2-catalogue-quality-contract",
+      "commit": "1db3da7bf90106e1b2f3ef03eec2c9999161286c"
+    },
+    {
+      "ref": "refs/heads/m0/week2-claude-review-window",
+      "commit": "a1d7198d9613a29f023a61049a0c54353013149c"
+    },
+    {
+      "ref": "refs/heads/m0/week2-compiler-library-admission",
+      "commit": "e4b810ba734bfb20eca0bf739756a52948ed3ea0"
+    },
+    {
+      "ref": "refs/heads/m0/week2-db-index-diagnostic",
+      "commit": "ca404f6911e662811702d65fd0110a02e88f7c9a"
+    },
+    {
+      "ref": "refs/heads/m0/week2-dependents",
+      "commit": "e9ec873e4ead3837e7a4b335215fe6b922efbe68"
+    },
+    {
+      "ref": "refs/heads/m0/week2-fixture-index-space",
+      "commit": "1543658ff53e3906f71f4fa8b92a5756b97a7ee1"
+    },
+    {
+      "ref": "refs/heads/m0/week2-hr-booking-scope",
+      "commit": "51fe35aa20420b8f38cfea408574bb68b6d6a020"
+    },
+    {
+      "ref": "refs/heads/m0/week2-hr-booking-scope-contract",
+      "commit": "a3f3b922c29da03b8244246dd9e271f90d8b9ee3"
+    },
+    {
+      "ref": "refs/heads/m0/week2-index-bootstrap",
+      "commit": "134179d14fdde76627e670c1fff8b202ce72df9b"
+    },
+    {
+      "ref": "refs/heads/m0/week2-index-readiness",
+      "commit": "e58650a9aa2e9a906a61d51b532fddeeb5de2e1a"
+    },
+    {
+      "ref": "refs/heads/m0/week2-index-runtime-contract",
+      "commit": "fd1c855b7405dd020cc7e7db1efa0f47d624af39"
+    },
+    {
+      "ref": "refs/heads/m0/week2-index-scenario",
+      "commit": "368c9fe6ffff2a3cab7ba5daace4b6e7beded936"
+    },
+    {
+      "ref": "refs/heads/m0/week2-inventory-apm-cursor",
+      "commit": "037376c4905530817438fffd481445e0be67b376"
+    },
+    {
+      "ref": "refs/heads/m0/week2-inventory-bootstrap-amendment",
+      "commit": "3aeb73a1287cb3664f141c37bede6dc08358da14"
+    },
+    {
+      "ref": "refs/heads/m0/week2-inventory-bootstrap-source",
+      "commit": "faaac5d0ac0d9ea77970e61e871bd33a10f796bd"
+    },
+    {
+      "ref": "refs/heads/m0/week2-inventory-budget-amendment",
+      "commit": "71065a6541a52e74ca6c049af8209b7d6b2f9395"
+    },
+    {
+      "ref": "refs/heads/m0/week2-inventory-child-source",
+      "commit": "ae14d6b11e8cefa7e3f620ca56461a1b8ee7b9cf"
+    },
+    {
+      "ref": "refs/heads/m0/week2-inventory-composition",
+      "commit": "35be2fa5dca3fbdba41e4ffe6b349598e1412003"
+    },
+    {
+      "ref": "refs/heads/m0/week2-inventory-diagnostic-amendment",
+      "commit": "e7d6ffceeed3d9e7e77abe633acc3556bff40a3d"
+    },
+    {
+      "ref": "refs/heads/m0/week2-inventory-import-diagnostic",
+      "commit": "42a83c3ff9cca4383951f55e13b9b10e823768c6"
+    },
+    {
+      "ref": "refs/heads/m0/week2-inventory-parent-amendment",
+      "commit": "a0a4108a9de679f9c81b790bbd2a2d747beb70cd"
+    },
+    {
+      "ref": "refs/heads/m0/week2-inventory-parent-source",
+      "commit": "5c76f77c962ccec5b0a68b33cf136e3d3d7867a8"
+    },
+    {
+      "ref": "refs/heads/m0/week2-inventory-public-init-sites",
+      "commit": "58719fdb0e7be542112c0b76f88e19bd33a7364c"
+    },
+    {
+      "ref": "refs/heads/m0/week2-inventory-quality",
+      "commit": "c39e8af3e5f22f96c6a053c28677fdf1106afd22"
+    },
+    {
+      "ref": "refs/heads/m0/week2-inventory-runtime-amendments",
+      "commit": "b1a0bd38eca046debef19937f2e8b0de4dee3244"
+    },
+    {
+      "ref": "refs/heads/m0/week2-inventory-runtime-contract",
+      "commit": "5abb1a9987eaa9cab2105cc6a50029692013f63d"
+    },
+    {
+      "ref": "refs/heads/m0/week2-inventory-runtime-draft",
+      "commit": "19b5955aa0f67738ae5188d07f9c59a51f96d462"
+    },
+    {
+      "ref": "refs/heads/m0/week2-jwt-config-runtime",
+      "commit": "83814746314781ebc64ef5b71ac6116f87665e0c"
+    },
+    {
+      "ref": "refs/heads/m0/week2-jwt-config-shared",
+      "commit": "d4fe30f888e5a24c6c9ce384aab4fe4dfdb875ed"
+    },
+    {
+      "ref": "refs/heads/m0/week2-local-review-link",
+      "commit": "ab0666ed50dd91120a58c33ad15c9740b36ebdef"
+    },
+    {
+      "ref": "refs/heads/m0/week2-medicine-bootstrap-source",
+      "commit": "1d406afd7a475f3ea7f3570921ccfb376b3ad5bf"
+    },
+    {
+      "ref": "refs/heads/m0/week2-medicine-parent-source",
+      "commit": "5ba857b4d891bdece3328afddc64fa571f2174e6"
+    },
+    {
+      "ref": "refs/heads/m0/week2-medicine-prescription",
+      "commit": "b399ff98e0e86b7fdb46ec6cf624f6a94197ada8"
+    },
+    {
+      "ref": "refs/heads/m0/week2-medicine-runtime-draft",
+      "commit": "6052cb9f126abeb465b5311a80701d00bbd3ad6a"
+    },
+    {
+      "ref": "refs/heads/m0/week2-medicine-scenario-source",
+      "commit": "b3ac3a25c3ef565007303e4d1bee23f4705506e0"
+    },
+    {
+      "ref": "refs/heads/m0/week2-meet-runtime",
+      "commit": "d36fb31e9656c7f8725b05002ba9188ba2408712"
+    },
+    {
+      "ref": "refs/heads/m0/week2-meet-shared",
+      "commit": "244d0d8bb6f04bc1217a0cc224f64e9c2450110e"
+    },
+    {
+      "ref": "refs/heads/m0/week2-notification-reads",
+      "commit": "200fd1de60b7f787fae2238f7913a9146823af20"
+    },
+    {
+      "ref": "refs/heads/m0/week2-otp-consume",
+      "commit": "5299215ac6164ee881421a21eab3907651e0ebcb"
+    },
+    {
+      "ref": "refs/heads/m0/week2-profile-bootstrap",
+      "commit": "aceaeb9fe6db91d4bb5c4f2519ca30409d4ab624"
+    },
+    {
+      "ref": "refs/heads/m0/week2-profile-lifecycle-contract",
+      "commit": "7eb4a6b3753917925d799b096f0a54dfbe1d8154"
+    },
+    {
+      "ref": "refs/heads/m0/week2-profile-lifecycle-source",
+      "commit": "3e7b6f7023c94550be177ebd212565265008aa86"
+    },
+    {
+      "ref": "refs/heads/m0/week2-profile-scenario",
+      "commit": "7b7f3573eeff3df3f5ceb698eb863a2ceb6e4c62"
+    },
+    {
+      "ref": "refs/heads/m0/week2-profile-warning-bootstrap",
+      "commit": "e56a1c14c12d1939e3bebcdbbb99ab0901b5658b"
+    },
+    {
+      "ref": "refs/heads/m0/week2-profile-warning-contract",
+      "commit": "ed7e1e4a455114784cbb836156fffc85c276f0d6"
+    },
+    {
+      "ref": "refs/heads/m0/week2-profile-warning-scenario",
+      "commit": "4bf3446939acb22c3670777fd5872d572025fe07"
+    },
+    {
+      "ref": "refs/heads/m0/week2-specialist-profile-contract",
+      "commit": "480f5230b2030c1d69393ce48910acfbf3abcd92"
+    },
+    {
+      "ref": "refs/heads/m0/week2-specialist-profile-runtime-contract",
+      "commit": "28e6dfef0efb9316fa21d004372440e53bc670b3"
+    },
+    {
+      "ref": "refs/heads/main",
+      "commit": "b06be010c8bee7468eaaeb432952c787b300a5b4"
+    },
+    {
+      "ref": "refs/heads/planning/eight-week-acceleration",
+      "commit": "044e94d2e1486628e6af9fb09471748c75532e88"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/0a6da87051dc",
+      "commit": "0a6da87051dc6eae8c2415c4ea3ce09ded414662"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/0f0d36bf4f1d",
+      "commit": "0f0d36bf4f1df92ad5492991c27524b8e5a25a8f"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/1543658ff53e",
+      "commit": "1543658ff53e3906f71f4fa8b92a5756b97a7ee1"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/17957201d544",
+      "commit": "17957201d54418f2dcae182626c642e9a0bdee60"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/1c58cf5159fe",
+      "commit": "1c58cf5159fe0fbdc0a4309523f26f974644d43f"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/35be2fa5dca3",
+      "commit": "35be2fa5dca3fbdba41e4ffe6b349598e1412003"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/3a962c90f0e3",
+      "commit": "3a962c90f0e33ca162baa3bbe4284e8a9b51f758"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/41539ca749c8",
+      "commit": "41539ca749c8a9dbf49ecf43bcca00749eccfe3c"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/5901bc20e8de",
+      "commit": "5901bc20e8def58f023b9ef4fe43c8e80fec1f1e"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/a651691a00ee",
+      "commit": "a651691a00ee4834851f4a0736dc68ce2a303495"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/b1a0bd38eca0",
+      "commit": "b1a0bd38eca046debef19937f2e8b0de4dee3244"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/b26012c2001a",
+      "commit": "b26012c2001aa562fa40b4e08e855ade421d7f78"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/b3a04bc5bb9e",
+      "commit": "b3a04bc5bb9ee551a5c4d8fadf95f695f07896f5"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/bc3233bb249b",
+      "commit": "bc3233bb249b5e5603d61f4e294accbcda7a0fc6"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/c2dbac3e44b0",
+      "commit": "c2dbac3e44b0bbf30e4574640cd940e2f0075975"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/ca404f6911e6",
+      "commit": "ca404f6911e662811702d65fd0110a02e88f7c9a"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/cca8a5b453a3",
+      "commit": "cca8a5b453a35ce8517694568bd4c5f82c029e7e"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/d0db1ed11074",
+      "commit": "d0db1ed1107478a6d1f7fb7ceef920882b8d9db3"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/d91e1a3d37f2",
+      "commit": "d91e1a3d37f2b229efc7fc2507d666ddc2576d99"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/ea2a39c9e273",
+      "commit": "ea2a39c9e2734a7b3cfd5ee20523906373c1fef6"
+    },
+    {
+      "ref": "refs/tags/checkpoint/2026-11-13/detached/eba7e5c82e3f",
+      "commit": "eba7e5c82e3ff63af9e9a958fbd100733e1fc439"
+    }
+  ],
+  "noMerge": true,
+  "noPush": true,
+  "noPruneOrReset": true
+}

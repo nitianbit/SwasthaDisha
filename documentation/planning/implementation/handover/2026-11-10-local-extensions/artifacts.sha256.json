@@ -1,0 +1,10 @@
+{
+  "adapter-unit.tap": "a07c05276fd685591bc3007c2fb1756541fbe7630fa761e3792c17db726bb259",
+  "adapter-unit.json": "61d313e37962f30a1de4ce95a5f65499ed4e529f766ae404de4fbf92fdcea520",
+  "adapter-unit.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "prepared-local-extension-smoke.py": "b184feb253147e35f2449892aed731c81fc19b0a36fa14d3df5409cfcb1d4c63",
+  "review-input.json": "a6fab192de0c88b1ef113cefb4741922d2138afe225d8952e3474b09a87ba3c8",
+  "candidate.diff": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+  "local-config-baseline.json": "7814976db973f081ed1636e2665466da1ce0bedcca39d6439e99dc87257ae87f",
+  "PRELIMINARY_REVIEWS.md": "dd0171b10fe60540cf22e453a67d884ec0c25fb105eb2578935daff074ee81de"
+}

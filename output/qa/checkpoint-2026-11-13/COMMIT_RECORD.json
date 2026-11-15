@@ -1,0 +1,20 @@
+{
+  "private": "73078cb94491010073dada401af12f26ec635e49",
+  "focus": "99e1191beabe977d44559af2231278f0a8b1249b",
+  "pure": "9bbc96058cf278943b58b8af81ad7f5c2e42ff1f",
+  "original": "e9446528c90e70a5f7480c3f9ffa36405023f21c",
+  "originalSixSha256": {
+    "CLAUDE.md": "f786d269b8568ab6a64469a79aaebb5c7d18b9d4d5d85fa14f651e709c09eb2d",
+    "documentation/planning/implementation/AGENT_TOOLING.md": "2ff39c22ae056efb6b6b738b1d4414974555f00b0706aba553e0d808353e2bed",
+    "documentation/planning/implementation/LOCAL_EXTENSION_COLLABORATION.md": "777c41566e83b2d8a2f1eab3f318e8f8718c4cea0b6e2756e583252aae1dec6c",
+    "documentation/planning/implementation/PARALLEL_DEVELOPMENT_WORKFLOW.md": "136b4526ed8ce3d52eb4d6f7a24bbe7aa039c8b3d4bb4fbe10dd0c4913b84dd4",
+    "tools/agents/ruflo-local.mjs": "57c226be79e9b832e6ee2b7122d387102b878f0ecaa7862a6fd65c4b64268b4d",
+    "tools/agents/ruflo-local.test.mjs": "ca37e313b992af1acce851e8f2b4f1bc13443715396d5c098c0b7a33047cfc3b"
+  },
+  "originalPatchSha256": "00b2ad0daae9ac54adda82e8a7eb1450ca25340be4412ac76f226bfd6c45ff9a",
+  "originalArchiveManifestSha256": "8db501e58ccb11df861273392228c947668c6fe477f7fee43a03a170a45acff5",
+  "focusDocumentationCommit": "9c8d1d8f6ecda8d0832f9294c4b1b7a6fdf7077c",
+  "customerContactSavedCommit": "25f92bacc55b7e2261b095a3d391b81bee6f3b0d",
+  "documentationStatus": "Owner requested save-only stop; no new technical review approval supplied for this documentation. Final enclosing original-checkout commit resolved by git log for the status document.",
+  "allNewOperations": "Inert file/Git/JSON/hash and exact process metadata reads only; no package/compiler/application/model/provider/DB invocation, merge or push."
+}

@@ -1,0 +1,29 @@
+{
+  "command": [
+    "/Users/shubham/.nvm/versions/node/v24.19.0/bin/node",
+    "--experimental-test-isolation=none",
+    "--test",
+    "--test-reporter=tap",
+    "/Users/shubham/Desktop/SwasthaDisha/SwasthaDisha/tools/agents/ruflo-local.test.mjs"
+  ],
+  "environment": {},
+  "exit_code": 0,
+  "duration_seconds": 0.18,
+  "test_counts": {
+    "tests": 14,
+    "pass": 14,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0
+  },
+  "source_sha256": {
+    "tools/agents/ruflo-local.mjs": "57c226be79e9b832e6ee2b7122d387102b878f0ecaa7862a6fd65c4b64268b4d",
+    "tools/agents/ruflo-local.test.mjs": "ca37e313b992af1acce851e8f2b4f1bc13443715396d5c098c0b7a33047cfc3b"
+  },
+  "evidence_sha256": {
+    "/private/tmp/sd-ruflo-adapter-unit.tap": "a07c05276fd685591bc3007c2fb1756541fbe7630fa761e3792c17db726bb259",
+    "/private/tmp/sd-ruflo-adapter-unit.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "scope": "stdlib unit/pure policy plus real adapter main with newly owned synthetic HOME and fake Node CLI; no actual Ruflo, app, model or Docker"
+}

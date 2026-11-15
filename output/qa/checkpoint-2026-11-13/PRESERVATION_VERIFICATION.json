@@ -1,0 +1,157 @@
+{
+  "checks": [
+    {
+      "branch": "original",
+      "commit": "e9446528c90e70a5f7480c3f9ffa36405023f21c",
+      "filesScanned": 17,
+      "scope": "Heuristic scan of newly committed files; no credential values exported. Not a universal secret-free guarantee."
+    },
+    {
+      "branch": "focus",
+      "commit": "99e1191beabe977d44559af2231278f0a8b1249b",
+      "filesScanned": 19,
+      "scope": "Heuristic scan of newly committed files; no credential values exported. Not a universal secret-free guarantee."
+    },
+    {
+      "branch": "private",
+      "commit": "73078cb94491010073dada401af12f26ec635e49",
+      "filesScanned": 23,
+      "scope": "Heuristic scan of newly committed files; no credential values exported. Not a universal secret-free guarantee."
+    },
+    {
+      "branch": "pure",
+      "commit": "9bbc96058cf278943b58b8af81ad7f5c2e42ff1f",
+      "filesScanned": 1,
+      "scope": "Heuristic scan of newly committed files; no credential values exported. Not a universal secret-free guarantee."
+    }
+  ],
+  "findings": [],
+  "retainedDetachedHeads": [
+    {
+      "tag": "checkpoint/2026-11-13/detached/a651691a00ee",
+      "commit": "a651691a00ee4834851f4a0736dc68ce2a303495",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/api-lock-resolution",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/cca8a5b453a3",
+      "commit": "cca8a5b453a35ce8517694568bd4c5f82c029e7e",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/ea2a39c9e273",
+      "commit": "ea2a39c9e2734a7b3cfd5ee20523906373c1fef6",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-10",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/b26012c2001a",
+      "commit": "b26012c2001aa562fa40b4e08e855ade421d7f78",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-11",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/17957201d544",
+      "commit": "17957201d54418f2dcae182626c642e9a0bdee60",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-12",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/0f0d36bf4f1d",
+      "commit": "0f0d36bf4f1df92ad5492991c27524b8e5a25a8f",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-13",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/bc3233bb249b",
+      "commit": "bc3233bb249b5e5603d61f4e294accbcda7a0fc6",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-14",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/5901bc20e8de",
+      "commit": "5901bc20e8def58f023b9ef4fe43c8e80fec1f1e",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-15",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/d0db1ed11074",
+      "commit": "d0db1ed1107478a6d1f7fb7ceef920882b8d9db3",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-2",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/b3a04bc5bb9e",
+      "commit": "b3a04bc5bb9ee551a5c4d8fadf95f695f07896f5",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-3",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/d91e1a3d37f2",
+      "commit": "d91e1a3d37f2b229efc7fc2507d666ddc2576d99",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-4",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/ca404f6911e6",
+      "commit": "ca404f6911e662811702d65fd0110a02e88f7c9a",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-5",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/1543658ff53e",
+      "commit": "1543658ff53e3906f71f4fa8b92a5756b97a7ee1",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-6",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/1c58cf5159fe",
+      "commit": "1c58cf5159fe0fbdc0a4309523f26f974644d43f",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-7",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/0a6da87051dc",
+      "commit": "0a6da87051dc6eae8c2415c4ea3ce09ded414662",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-8",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/c2dbac3e44b0",
+      "commit": "c2dbac3e44b0bbf30e4574640cd940e2f0075975",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/api-runtime-preparation-9",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/41539ca749c8",
+      "commit": "41539ca749c8a9dbf49ecf43bcca00749eccfe3c",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/diagnostic-41539",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/35be2fa5dca3",
+      "commit": "35be2fa5dca3fbdba41e4ffe6b349598e1412003",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/inventory-runtime-preparation-1",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/b1a0bd38eca0",
+      "commit": "b1a0bd38eca046debef19937f2e8b0de4dee3244",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/inventory-runtime-preparation-2",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/3a962c90f0e3",
+      "commit": "3a962c90f0e33ca162baa3bbe4284e8a9b51f758",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/inventory-runtime-preparation-3",
+      "pathExists": false
+    },
+    {
+      "tag": "checkpoint/2026-11-13/detached/eba7e5c82e3f",
+      "commit": "eba7e5c82e3ff63af9e9a958fbd100733e1fc439",
+      "historicalPath": "/private/tmp/swasthadisha-parallel-p1qom53w/network-run-eba7e5c",
+      "pathExists": false
+    }
+  ]
+}

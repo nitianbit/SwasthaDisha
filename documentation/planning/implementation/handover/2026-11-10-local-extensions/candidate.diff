@@ -1,0 +1,520 @@
+diff --git a/CLAUDE.md b/CLAUDE.md
+index 71b5f015f388fb3d50bab12d6393a40afd649327..2edc021b26b665905302fb5873a6830d60535cd5 100644
+--- a/CLAUDE.md
++++ b/CLAUDE.md
+@@ -1 +1,2 @@
+ Read [AGENTS.md](AGENTS.md) for the active repository, code discovery and implementation gates.
++For local cross-agent messages, follow [the Ruflo extension workflow](documentation/planning/implementation/LOCAL_EXTENSION_COLLABORATION.md).
+diff --git a/documentation/planning/implementation/AGENT_TOOLING.md b/documentation/planning/implementation/AGENT_TOOLING.md
+index 64ae242f6fc55cdf84adc100d605a39b97373744..7f22118fcdbc9eefd44702d10c153932a50ab7b5 100644
+--- a/documentation/planning/implementation/AGENT_TOOLING.md
++++ b/documentation/planning/implementation/AGENT_TOOLING.md
+@@ -21,3 +21,5 @@ Team/mailbox behavior and host filtering were inspected, not executed. The serve
+ The current session permits four agents total: one lead and up to three actual native workers. Ruflo team registration retains metadata and returns a plan; it does not create native workers or add capacity. Task records can store native ownership in descriptions/results; team members are not automatically assignable task-agent IDs.
+ 
+ The application diagnostic preflight is separately **BLOCKED_BEFORE_LAUNCH** because the recorded Docker daemon is unreachable. No container was created and no app test started in that preflight. Current [M0 progress](M0_A_PROGRESS.md), C2 retained-server facts and domain/release gates remain authoritative. Tool installation does not establish M0 acceptance or 100 RPS performance.
++
++For the owner-requested local Claude/Codex connection, read [local extension collaboration](LOCAL_EXTENSION_COLLABORATION.md), including the initial acknowledgement and extension lifecycle limits.
+diff --git a/documentation/planning/implementation/LOCAL_EXTENSION_COLLABORATION.md b/documentation/planning/implementation/LOCAL_EXTENSION_COLLABORATION.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..9795a86c7bdc3b432a72a593c40b293f43690878
+--- /dev/null
++++ b/documentation/planning/implementation/LOCAL_EXTENSION_COLLABORATION.md
+@@ -0,0 +1,24 @@
++# Local Claude and Codex coordination through Ruflo
++
++The owner requested the existing VS Code extensions connected through local Ruflo on 10 November 2026. Coordination uses the installed Ruflo 3.75.0 runtime and the shared `~/.codex/ruflo-state/swasthadisha` directory. No hosted worker, new model API account or remote coordination endpoint is part of this setup. Model inference still follows each extension's existing provider and account.
++
++## Connection design
++
++Codex and Claude each start a local stdio adapter that runs the same pinned Ruflo CLI with its actual working directory set to shared state. The adapter filters discovery and dispatch to the 13 coordination methods in the existing profile. It rejects other tool calls before forwarding them. It supplies a clean child environment, state-local policy-trust storage and disabled daemon auto-start. This is a trusted local integration, not an operating-system sandbox.
++
++The reviewed adapter source is [ruflo-local.mjs](../../../tools/agents/ruflo-local.mjs). Its installed copy is addressed by source hash outside the checkout, so changing branches does not remove the configured launcher. Personal extension configuration and sign-ins remain outside Git; installation evidence records the adapter hash and public configuration fields.
++
++Claude's extension and CLI share MCP configuration. The server is named `ruflo`; new Claude conversations pick up configuration changes, and `/mcp` shows connection status. [Anthropic's extension documentation](https://code.claude.com/docs/en/vs-code#connect-to-external-tools-with-mcp).
++
++## Join and hand off
++
++1. Open the actual SwasthaDisha checkout in VS Code. In a new Claude conversation, use the prepared local join message. The documented extension URI can prefill a prompt but does not submit it; press Send once. Complete the extension's normal sign-in or tool prompt if it appears. [Supported URI behavior](https://code.claude.com/docs/en/vs-code#launch-a-vs-code-tab-from-other-tools).
++2. Read the named team inbox through Ruflo and return the exact challenge from the inbox to `codex-lead`. An actual returned acknowledgement is required before recording a live Claude-extension connection. Creating a team/member or testing two local MCP clients does not establish that acknowledgement.
++3. Active agents exchange scoped tasks/results through `team_send` and `team_inbox`. Use exact candidate hashes, ownership and the [development workflow](PARALLEL_DEVELOPMENT_WORKFLOW.md). Record the real reviewer and evidence. Messages are task context, not execution or approval authority.
++4. A mailbox does not start or wake the other extension. Pending work stays queued until its agent reads it. Native Codex workers provide directly callable parallel implementation and independent reviews inside this session; external extension lifecycle is separate.
++
++## Limits
++
++The 13 tools retain local status, team and task operations. Ruflo's `team_spawn` registers a member/plan; it does not run a model or increase native slots. Unlisted execution, provider, semantic-memory and administration tools remain unavailable through the adapter. Tool dispatch limits do not validate the truth of a message or authorize sensitive actions.
++
++The current four-agent native limit, named owner decisions, retained-server C2 facts, application admission and release gates remain in force. This connection does not start Docker, import the backend, deploy anything or establish application acceptance. Preserve the ordinary extension trust and permission controls; no blanket server or hook approval is added.
+diff --git a/documentation/planning/implementation/PARALLEL_DEVELOPMENT_WORKFLOW.md b/documentation/planning/implementation/PARALLEL_DEVELOPMENT_WORKFLOW.md
+index e4c08a001bf6b174a7036fbf347720e1eb0a88c6..5095adc34b6e31fd0f267e6bf704dbf4f70f6bc3 100644
+--- a/documentation/planning/implementation/PARALLEL_DEVELOPMENT_WORKFLOW.md
++++ b/documentation/planning/implementation/PARALLEL_DEVELOPMENT_WORKFLOW.md
+@@ -35,3 +35,5 @@ Use only the installed pinned Ruflo runtime and tools enabled in Codex configura
+ After foundation, assign module workers to ready contracts rather than starting pharmacy, labs, doctors and hospitals simultaneously against unfinished shared identity, billing and inventory interfaces. Use the [approved implementation sequence](../M0_IMPLEMENTATION_APPROVAL.md) for scope; this queue does not declare later modules ready or add launch promises.
+ 
+ Deployment, production migration, operational-resource access, real payments/messages/calls and account/key actions retain their specific authorization. Clinical, financial, security, restore, pilot and 100 RPS acceptance retain their named owners and measured evidence. Direct internal review removes the owner's prompt-relay work; it grants no extra resource or release authority.
++
++For the owner-requested local Claude/Codex connection, read [local extension collaboration](LOCAL_EXTENSION_COLLABORATION.md), including the initial acknowledgement and extension lifecycle limits.
+diff --git a/tools/agents/ruflo-local.mjs b/tools/agents/ruflo-local.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..82d150245ab142c4f41a73a8d54329e182b1c2d8
+--- /dev/null
++++ b/tools/agents/ruflo-local.mjs
+@@ -0,0 +1,208 @@
++import { spawn } from 'node:child_process';
++import { once } from 'node:events';
++import { mkdirSync, readFileSync } from 'node:fs';
++import { homedir } from 'node:os';
++import { dirname, join, resolve } from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++export const ALLOWED_TOOLS = Object.freeze([
++  'mcp_status', 'system_health', 'team_create', 'team_spawn', 'team_send',
++  'team_inbox', 'team_status', 'team_shutdown', 'task_create', 'task_status',
++  'task_list', 'task_update', 'task_complete',
++]);
++const allowed = new Set(ALLOWED_TOOLS);
++const methods = new Set(['initialize', 'ping', 'tools/list', 'tools/call']);
++const notifications = new Set(['notifications/initialized', 'notifications/cancelled']);
++const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
++const identifier = (value) => typeof value === 'string' || Number.isSafeInteger(value);
++const error = (id, code, message) => ({ jsonrpc: '2.0', id, error: { code, message } });
++
++/** Pure routing policy. Only accepted requests acquire an upstream response slot. */
++export function createPolicy() {
++  const pending = new Map();
++  return {
++    client(message) {
++      const id = object(message) && identifier(message.id) ? message.id : null;
++      const reject = (code, text) => ({ reply: error(id, code, text) });
++      if (!object(message) || message.jsonrpc !== '2.0' || typeof message.method !== 'string'
++        || (message.params !== undefined && !object(message.params))) {
++        return reject(-32600, 'Invalid MCP request');
++      }
++      if (!Object.hasOwn(message, 'id')) {
++        return notifications.has(message.method) ? { forward: message } : {};
++      }
++      if (!identifier(message.id)) return reject(-32600, 'Invalid request identifier');
++      if (!methods.has(message.method)) return reject(-32601, 'Method is outside the local coordination profile');
++      if (pending.has(id)) return reject(-32600, 'Request identifier is already pending');
++      if (pending.size >= 64) return reject(-32000, 'Too many pending coordination requests');
++      if (message.method === 'tools/call') {
++        const params = message.params;
++        if (!object(params) || !allowed.has(params.name)
++          || (params.arguments !== undefined && !object(params.arguments))) {
++          return reject(-32602, 'Tool is outside the local coordination profile');
++        }
++        if (params.name === 'system_health'
++          && [params.arguments?.deep, params.arguments?.fix].some((value) => value !== undefined && value !== false)) {
++          return reject(-32602, 'Only shallow, non-repairing health checks are supported');
++        }
++      }
++      pending.set(id, message.method);
++      return { forward: message };
++    },
++    server(message) {
++      if (!object(message) || message.jsonrpc !== '2.0') throw new Error('Invalid upstream MCP frame');
++      if (Object.hasOwn(message, 'method')) {
++        if (Object.hasOwn(message, 'id')) return { reply: error(message.id, -32601, 'Client callbacks are not supported') };
++        return ['notifications/tools/list_changed', 'notifications/progress', 'notifications/message'].includes(message.method)
++          ? { forward: message } : {};
++      }
++      if (!pending.has(message.id)) throw new Error('Upstream returned an unknown request identifier');
++      const method = pending.get(message.id);
++      pending.delete(message.id);
++      if (message.error) return { forward: message };
++      if (!object(message.result)) throw new Error('Invalid upstream MCP result');
++      if (method === 'initialize') {
++        return { forward: { ...message, result: { ...message.result, capabilities: { tools: { listChanged: true } } } } };
++      }
++      if (method === 'tools/list') {
++        if (!Array.isArray(message.result.tools)) throw new Error('Invalid upstream tool inventory');
++        return { forward: { ...message, result: { tools: message.result.tools.filter((tool) => object(tool) && allowed.has(tool.name)) } } };
++      }
++      return { forward: message };
++    },
++  };
++}
++
++/** Bound each newline-delimited JSON frame before parsing or forwarding it. */
++export async function* frames(stream, limit = 2 * 1024 * 1024) {
++  stream.setEncoding('utf8');
++  let buffer = '';
++  for await (const chunk of stream) {
++    buffer += chunk;
++    let newline;
++    while ((newline = buffer.indexOf('\n')) >= 0) {
++      const line = buffer.slice(0, newline);
++      buffer = buffer.slice(newline + 1);
++      if (Buffer.byteLength(line) > limit) throw new Error('MCP frame exceeds the local size limit');
++      if (line.trim()) yield JSON.parse(line);
++    }
++    if (Buffer.byteLength(buffer) > limit) throw new Error('MCP frame exceeds the local size limit');
++  }
++  if (buffer.trim()) throw new Error('Incomplete MCP frame at end of stream');
++}
++
++async function write(stream, message) {
++  if (stream.destroyed || stream.writableEnded || !stream.writable) throw new Error('MCP transport pipe is closed');
++  if (!stream.write(JSON.stringify(message) + '\n')) await once(stream, 'drain');
++}
++
++/** Keep asynchronous pipe errors inside the owned-child cleanup path. */
++export function watchPipeFailures(streams, onFailure) {
++  let failed = false;
++  const listener = (failure) => {
++    if (!failed) { failed = true; onFailure(failure); }
++  };
++  for (const stream of streams) stream.on('error', listener);
++  return () => { for (const stream of streams) stream.removeListener('error', listener); };
++}
++
++/** One fixed local runtime, one state directory; no caller-provided commands. */
++async function main() {
++  if (process.argv.length !== 2) throw new Error('This adapter accepts no command-line arguments');
++  const home = homedir();
++  const runtime = join(home, '.codex/runtimes/ruflo/3.75.0/node_modules/@claude-flow/cli');
++  const state = join(home, '.codex/ruflo-state/swasthadisha');
++  if (JSON.parse(readFileSync(join(runtime, 'package.json'), 'utf8')).version !== '3.75.0') {
++    throw new Error('The pinned Ruflo CLI 3.75.0 is required');
++  }
++  mkdirSync(join(state, 'config/ruflo/policy-trust'), { recursive: true, mode: 0o700 });
++  const child = spawn(process.execPath, [join(runtime, 'bin/cli.js'), 'mcp', 'start', '--transport', 'stdio'], {
++    cwd: state, stdio: ['pipe', 'pipe', 'pipe'], env: {
++      HOME: home, PATH: dirname(process.execPath) + ':/usr/bin:/bin',
++      CLAUDE_FLOW_CWD: state, CLAUDE_FLOW_MEMORY_PATH: join(state, '.swarm'),
++      CLAUDE_FLOW_DISABLE_BRIDGE: '1', RUFLO_DAEMON_AUTOSTART: '0',
++      XDG_CONFIG_HOME: join(state, 'config'), TRANSFORMERS_CACHE: join(state, 'model-cache'),
++      HF_HOME: join(state, 'model-cache'), CLAUDE_FLOW_MCP_TOOLS: ALLOWED_TOOLS.join(','),
++    },
++  });
++  const policy = createPolicy();
++  let stderrBytes = 0;
++  child.stderr.on('data', (chunk) => {
++    const remaining = Math.max(0, 64 * 1024 - stderrBytes);
++    if (remaining) process.stderr.write(chunk.subarray(0, remaining));
++    stderrBytes += chunk.length;
++  });
++  let stopTimer;
++  let killTimer;
++  let transportFailure;
++  const stop = () => {
++    if (child.exitCode !== null || child.signalCode !== null) return;
++    child.stdin.end();
++    stopTimer ??= setTimeout(() => {
++      child.kill('SIGTERM');
++      killTimer = setTimeout(() => child.kill('SIGKILL'), 2000);
++    }, 5000);
++  };
++  const unwatch = watchPipeFailures([process.stdout, process.stderr, child.stdin], (failure) => {
++    transportFailure ??= failure;
++    stop();
++    process.stdin.destroy();
++  });
++  process.once('SIGINT', stop);
++  process.once('SIGTERM', stop);
++  const exited = new Promise((resolveExit, rejectExit) => {
++    child.once('error', rejectExit);
++    child.once('close', (code, signal) => {
++      clearTimeout(stopTimer);
++      clearTimeout(killTimer);
++      process.stdin.destroy();
++      resolveExit({ code, signal });
++    });
++  });
++  const upstream = (async () => {
++    for await (const frame of frames(child.stdout)) {
++      const routed = policy.server(frame);
++      if (routed.forward) await write(process.stdout, routed.forward);
++      if (routed.reply) await write(child.stdin, routed.reply);
++    }
++  })();
++  const downstream = (async () => {
++    try {
++      for await (const frame of frames(process.stdin)) {
++        const routed = policy.client(frame);
++        if (routed.reply) await write(process.stdout, routed.reply);
++        if (routed.forward) await write(child.stdin, routed.forward);
++      }
++    } finally { stop(); }
++  })();
++  try {
++    const [, , result] = await Promise.all([upstream, downstream, exited]);
++    if (transportFailure) throw transportFailure;
++    if (result.code !== 0 || result.signal) throw new Error('Local Ruflo server exited abnormally');
++  } catch (failure) {
++    stop();
++    child.kill('SIGTERM');
++    await Promise.allSettled([upstream, downstream, exited]);
++    throw transportFailure ?? failure;
++  } finally {
++    clearTimeout(stopTimer);
++    clearTimeout(killTimer);
++    unwatch();
++    process.removeListener('SIGINT', stop);
++    process.removeListener('SIGTERM', stop);
++  }
++}
++
++if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
++  main().catch((failure) => {
++    process.exitCode = 1;
++    if (!process.stderr.destroyed) {
++      // A final diagnostic can itself encounter a closed consumer after cleanup.
++      const ignoreClosedSink = () => {};
++      process.stderr.once('error', ignoreClosedSink);
++      process.stderr.write('Local Ruflo adapter: ' + failure.message + '\n', (writeFailure) => {
++        if (!writeFailure) process.stderr.removeListener('error', ignoreClosedSink);
++      });
++    }
++  });
++}
+diff --git a/tools/agents/ruflo-local.test.mjs b/tools/agents/ruflo-local.test.mjs
+new file mode 100644
+index 0000000000000000000000000000000000000000..22191dcbd617bf8719654f675fc4517b6d766067
+--- /dev/null
++++ b/tools/agents/ruflo-local.test.mjs
+@@ -0,0 +1,243 @@
++import assert from 'node:assert/strict';
++import { EventEmitter, once } from 'node:events';
++import { spawn } from 'node:child_process';
++import { lstat, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
++import { tmpdir } from 'node:os';
++import { join } from 'node:path';
++import { Readable } from 'node:stream';
++import { fileURLToPath } from 'node:url';
++import test from 'node:test';
++import { ALLOWED_TOOLS, createPolicy, frames, watchPipeFailures } from './ruflo-local.mjs';
++
++const request = (id, method, params = {}) => ({ jsonrpc: '2.0', id, method, params });
++const response = (id, result) => ({ jsonrpc: '2.0', id, result });
++
++test('all 13 coordination tools forward with their exact identifier and arguments', () => {
++  assert.equal(ALLOWED_TOOLS.length, 13);
++  assert.equal(new Set(ALLOWED_TOOLS).size, 13);
++  for (const [index, name] of ALLOWED_TOOLS.entries()) {
++    const frame = request('call-' + index, 'tools/call', { name, arguments: {} });
++    const policy = createPolicy();
++    assert.equal(policy.client(frame).forward, frame);
++    const result = response(frame.id, { content: [{ type: 'text', text: 'synthetic' }] });
++    assert.equal(policy.server(result).forward, result);
++  }
++});
++
++test('unlisted execution, model and policy tools never forward, even without tools/list', () => {
++  const policy = createPolicy();
++  for (const name of ['agent_execute', 'memory_store', 'memory_search', 'terminal_execute', 'policy_update', '', '__proto__']) {
++    const result = policy.client(request(name, 'tools/call', { name, arguments: {} }));
++    assert.equal(result.forward, undefined);
++    assert.equal(result.reply.error.code, -32602);
++    assert.equal(result.reply.id, name);
++  }
++});
++
++test('tools/list exposes only the approved tools and closes unused pagination', () => {
++  const policy = createPolicy();
++  policy.client(request(1, 'tools/list'));
++  const filtered = policy.server(response(1, {
++    tools: [...ALLOWED_TOOLS.map((name) => ({ name, inputSchema: { type: 'object' } })),
++      { name: 'agent_execute' }, { name: 'memory_store' }, null], nextCursor: 'unapproved-page',
++  })).forward;
++  assert.deepEqual(filtered.result.tools.map((item) => item.name), ALLOWED_TOOLS);
++  assert.equal(filtered.result.nextCursor, undefined);
++});
++
++test('only shallow health calls forward', () => {
++  for (const arguments_ of [{}, { deep: false, fix: false }]) {
++    assert.ok(createPolicy().client(request(1, 'tools/call', { name: 'system_health', arguments: arguments_ })).forward);
++  }
++  for (const arguments_ of [{ deep: true }, { fix: true }, { deep: 'false' }, { fix: null }]) {
++    const result = createPolicy().client(request(1, 'tools/call', { name: 'system_health', arguments: arguments_ }));
++    assert.equal(result.forward, undefined);
++    assert.equal(result.reply.error.code, -32602);
++  }
++});
++
++test('unknown methods, malformed requests and notification tool calls cannot forward', () => {
++  const policy = createPolicy();
++  for (const frame of [null, [], request(null, 'ping'), request({}, 'ping'), { ...request(1, 'ping'), jsonrpc: '1.0' },
++    request(1, 'tools/call', { name: 'task_list', arguments: [] }), request(1, 'resources/read'), request(1, 'prompts/get')]) {
++    const result = policy.client(frame);
++    assert.equal(result.forward, undefined);
++    assert.ok(result.reply.error);
++  }
++  assert.deepEqual(policy.client({ jsonrpc: '2.0', method: 'tools/call', params: { name: 'task_create' } }), {});
++  const initialized = { jsonrpc: '2.0', method: 'notifications/initialized' };
++  assert.equal(policy.client(initialized).forward, initialized);
++});
++
++test('pending identifiers cannot collide and become reusable only after response', () => {
++  const policy = createPolicy();
++  const ping = request(1, 'ping');
++  assert.equal(policy.client(ping).forward, ping);
++  assert.equal(policy.client(ping).forward, undefined);
++  assert.ok(policy.server(response(1, {})).forward);
++  assert.equal(policy.client(ping).forward, ping);
++  assert.throws(() => policy.server(response('unrequested', {})), /unknown request/);
++});
++
++test('outstanding request slots are bounded and errors release their slot', () => {
++  const policy = createPolicy();
++  for (let id = 0; id < 64; id++) assert.ok(policy.client(request(id, 'ping')).forward);
++  assert.equal(policy.client(request(64, 'ping')).forward, undefined);
++  policy.server({ jsonrpc: '2.0', id: 0, error: { code: -1, message: 'synthetic' } });
++  assert.ok(policy.client(request(64, 'ping')).forward);
++});
++
++test('initialize advertises only proxied tools and server callbacks are rejected locally', () => {
++  const policy = createPolicy();
++  policy.client(request(1, 'initialize'));
++  assert.deepEqual(policy.server(response(1, { capabilities: { tools: {}, resources: {}, prompts: {} } })).forward.result.capabilities,
++    { tools: { listChanged: true } });
++  const callback = policy.server(request('server-call', 'elicitation/create'));
++  assert.equal(callback.forward, undefined);
++  assert.equal(callback.reply.error.code, -32601);
++  assert.equal(callback.reply.id, 'server-call');
++});
++
++test('framing tolerates split messages and blank lines without losing identifiers', async () => {
++  const output = [];
++  for await (const value of frames(Readable.from(['\n{"jsonrpc":"2.0",', '"id":9}\n\n{"id":"a"}\n']))) output.push(value);
++  assert.deepEqual(output, [{ jsonrpc: '2.0', id: 9 }, { id: 'a' }]);
++});
++
++test('oversized, malformed and incomplete frames reject before forwarding', async () => {
++  const collect = async (parts, limit) => { for await (const value of frames(Readable.from(parts), limit)) assert.fail(value); };
++  await assert.rejects(collect(['{"x":"' + 'a'.repeat(100) + '"}\n'], 30), /size limit/);
++  await assert.rejects(collect(['a'.repeat(31)], 30), /size limit/);
++  await assert.rejects(collect(['{bad}\n'], 30), SyntaxError);
++  await assert.rejects(collect(['{"id":1}'], 30), /Incomplete/);
++});
++
++test('asynchronous stdout, stderr and child-input failures enter cleanup once and preserve the first error', () => {
++  for (let first = 0; first < 3; first++) {
++    const streams = Array.from({ length: 3 }, () => new EventEmitter());
++    const original = Object.assign(new Error('synthetic closed consumer'), { code: 'EPIPE' });
++    let stops = 0;
++    let unblocks = 0;
++    let saved;
++    const unwatch = watchPipeFailures(streams, (failure) => { saved = failure; stops++; unblocks++; });
++    streams[first].emit('error', original);
++    streams[(first + 1) % 3].emit('error', new Error('later pipe failure'));
++    assert.equal(saved, original);
++    assert.equal(stops, 1);
++    assert.equal(unblocks, 1);
++    unwatch();
++    assert.ok(streams.every((stream) => stream.listenerCount('error') === 0));
++  }
++});
++
++test('pipe watcher removal preserves listeners owned by the caller', () => {
++  const stream = new EventEmitter();
++  let previousCalls = 0;
++  const previous = () => { previousCalls++; };
++  stream.on('error', previous);
++  const unwatch = watchPipeFailures([stream], () => assert.fail('released watcher must not run'));
++  unwatch();
++  stream.emit('error', new Error('synthetic after release'));
++  assert.equal(previousCalls, 1);
++  assert.deepEqual(stream.listeners('error'), [previous]);
++});
++
++const pause = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
++const absent = (pid) => {
++  try { process.kill(pid, 0); return false; }
++  catch (failure) { if (failure.code === 'ESRCH') return true; throw failure; }
++};
++async function until(check, timeout) {
++  const deadline = Date.now() + timeout;
++  while (Date.now() < deadline) { if (await check()) return; await pause(20); }
++  assert.fail('Synthetic pipe fixture exceeded its bounded wait');
++}
++async function bounded(promise, milliseconds) {
++  let timer;
++  try {
++    return await Promise.race([promise, new Promise((_, reject) => {
++      timer = setTimeout(() => reject(new Error('Adapter did not terminate after the broken output pipe')), milliseconds);
++    })]);
++  } finally { clearTimeout(timer); }
++}
++
++for (const sink of ['stdout', 'stderr']) {
++  test('real adapter closes its exact synthetic child after client ' + sink + ' breaks', { timeout: 16000 }, async () => {
++    const home = await mkdtemp(join(tmpdir(), 'sd-ruflo-pipe-'));
++    const identity = await lstat(home);
++    const runtime = join(home, '.codex/runtimes/ruflo/3.75.0/node_modules/@claude-flow/cli');
++    const marker = join(home, 'synthetic-child.json');
++    let child;
++    let closed;
++    let fakePid;
++    try {
++      await mkdir(join(runtime, 'bin'), { recursive: true });
++      await writeFile(join(runtime, 'package.json'), JSON.stringify({ type: 'module', version: '3.75.0' }));
++      await writeFile(join(runtime, 'bin/cli.js'), `
++import { writeFileSync } from 'node:fs';
++import { homedir } from 'node:os';
++import { join } from 'node:path';
++writeFileSync(join(homedir(), 'synthetic-child.json'), JSON.stringify({ pid: process.pid, parent: process.ppid }));
++// Remain alive if an unhandled adapter error closes either output consumer.
++process.stdout.on('error', () => {});
++process.stderr.on('error', () => {});
++let input = '';
++process.stdin.setEncoding('utf8');
++process.stdin.on('data', (chunk) => {
++  input += chunk;
++  let newline;
++  while ((newline = input.indexOf('\\n')) >= 0) {
++    const line = input.slice(0, newline); input = input.slice(newline + 1);
++    if (!line.trim()) continue;
++    const request = JSON.parse(line);
++    if (request.method === 'initialize') process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id: request.id,
++      result: { protocolVersion: '2025-11-25', serverInfo: { name: 'synthetic-fixture', version: '1' }, capabilities: {} } }) + '\\n');
++  }
++});
++// Deliberately stay alive on stdin EOF so an adapter crash cannot masquerade as cleanup.
++process.stdin.on('end', () => {});
++setInterval(() => {
++  process.stdout.write(JSON.stringify({ jsonrpc: '2.0', method: 'notifications/progress',
++    params: { progressToken: 'synthetic', progress: 1 } }) + '\\n');
++  process.stderr.write('synthetic child heartbeat\\n');
++}, 20);
++// A regression cannot leave an unbounded orphan; this is longer than the adapter's TERM deadline.
++setTimeout(() => process.exit(0), 8000);
++`);
++      child = spawn(process.execPath, [fileURLToPath(new URL('./ruflo-local.mjs', import.meta.url))], {
++        cwd: home, env: { HOME: home, PATH: '/usr/bin:/bin' }, stdio: ['pipe', 'pipe', 'pipe'],
++      });
++      closed = once(child, 'close');
++      let output = '';
++      child.stdout.on('data', (chunk) => { output = (output + chunk.toString()).slice(-8192); });
++      child.stderr.on('data', () => {});
++      child.stdin.write(JSON.stringify(request(1, 'initialize', { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'synthetic-test', version: '1' } })) + '\n');
++      await until(async () => {
++        try {
++          const ack = JSON.parse(await readFile(marker, 'utf8'));
++          assert.equal(ack.parent, child.pid);
++          assert.ok(Number.isSafeInteger(ack.pid) && ack.pid > 0);
++          fakePid = ack.pid;
++          return output.split('\n').some((line) => {
++            try { const frame = JSON.parse(line); return frame.id === 1 && frame.result?.serverInfo?.name === 'synthetic-fixture'; }
++            catch { return false; }
++          });
++        } catch (failure) { if (failure.code === 'ENOENT') return false; throw failure; }
++      }, 2000);
++      // Keep adapter stdin open. Only the consumer's read side disappears.
++      child[sink].destroy();
++      const [code, signal] = await bounded(closed, 7000);
++      assert.equal(signal, null);
++      assert.notEqual(code, 0);
++      assert.ok(absent(fakePid), 'Exact synthetic child must be gone when the adapter finishes');
++    } finally {
++      if (child && child.exitCode === null && child.signalCode === null) child.kill('SIGTERM');
++      if (child) { child.stdin.destroy(); await closed; }
++      if (fakePid) await until(() => absent(fakePid), 10000);
++      const current = await lstat(home);
++      assert.equal(current.dev, identity.dev);
++      assert.equal(current.ino, identity.ino);
++      await rm(home, { recursive: true });
++    }
++  });
++}

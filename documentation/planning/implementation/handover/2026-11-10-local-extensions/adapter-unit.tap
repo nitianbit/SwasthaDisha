@@ -1,0 +1,94 @@
+TAP version 13
+# Subtest: all 13 coordination tools forward with their exact identifier and arguments
+ok 1 - all 13 coordination tools forward with their exact identifier and arguments
+  ---
+  duration_ms: 0.478791
+  type: 'test'
+  ...
+# Subtest: unlisted execution, model and policy tools never forward, even without tools/list
+ok 2 - unlisted execution, model and policy tools never forward, even without tools/list
+  ---
+  duration_ms: 0.073834
+  type: 'test'
+  ...
+# Subtest: tools/list exposes only the approved tools and closes unused pagination
+ok 3 - tools/list exposes only the approved tools and closes unused pagination
+  ---
+  duration_ms: 0.285375
+  type: 'test'
+  ...
+# Subtest: only shallow health calls forward
+ok 4 - only shallow health calls forward
+  ---
+  duration_ms: 0.073666
+  type: 'test'
+  ...
+# Subtest: unknown methods, malformed requests and notification tool calls cannot forward
+ok 5 - unknown methods, malformed requests and notification tool calls cannot forward
+  ---
+  duration_ms: 0.076334
+  type: 'test'
+  ...
+# Subtest: pending identifiers cannot collide and become reusable only after response
+ok 6 - pending identifiers cannot collide and become reusable only after response
+  ---
+  duration_ms: 0.131833
+  type: 'test'
+  ...
+# Subtest: outstanding request slots are bounded and errors release their slot
+ok 7 - outstanding request slots are bounded and errors release their slot
+  ---
+  duration_ms: 0.069125
+  type: 'test'
+  ...
+# Subtest: initialize advertises only proxied tools and server callbacks are rejected locally
+ok 8 - initialize advertises only proxied tools and server callbacks are rejected locally
+  ---
+  duration_ms: 0.370417
+  type: 'test'
+  ...
+# Subtest: framing tolerates split messages and blank lines without losing identifiers
+ok 9 - framing tolerates split messages and blank lines without losing identifiers
+  ---
+  duration_ms: 1.015083
+  type: 'test'
+  ...
+# Subtest: oversized, malformed and incomplete frames reject before forwarding
+ok 10 - oversized, malformed and incomplete frames reject before forwarding
+  ---
+  duration_ms: 0.494708
+  type: 'test'
+  ...
+# Subtest: asynchronous stdout, stderr and child-input failures enter cleanup once and preserve the first error
+ok 11 - asynchronous stdout, stderr and child-input failures enter cleanup once and preserve the first error
+  ---
+  duration_ms: 0.129083
+  type: 'test'
+  ...
+# Subtest: pipe watcher removal preserves listeners owned by the caller
+ok 12 - pipe watcher removal preserves listeners owned by the caller
+  ---
+  duration_ms: 0.047917
+  type: 'test'
+  ...
+# Subtest: real adapter closes its exact synthetic child after client stdout breaks
+ok 13 - real adapter closes its exact synthetic child after client stdout breaks
+  ---
+  duration_ms: 65.829834
+  type: 'test'
+  ...
+# Subtest: real adapter closes its exact synthetic child after client stderr breaks
+ok 14 - real adapter closes its exact synthetic child after client stderr breaks
+  ---
+  duration_ms: 66.28575
+  type: 'test'
+  ...
+1..14
+# tests 14
+# suites 0
+# pass 14
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 140.806541
