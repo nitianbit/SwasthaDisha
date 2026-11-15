@@ -293,6 +293,29 @@ async function main() {
     assert.equal((await get(id)).prescriptionStatus, 'not_required');
   });
 
+  await check('prescriptions go only to the pharmacy whose cart was shown: a cart replaced meanwhile is refused', async () => {
+    const me = await customer();
+    const reader = { _id: me._id, userType: 'user' } as never;
+    await recordUpload(reader, 'general/rx-for-a.pdf');
+    await fillCart(me); // pharmacy A
+    // Elsewhere the cart is replaced by one from pharmacy B before this screen refreshes.
+    const B = new Types.ObjectId().toHexString();
+    await PharmacyCartModel.updateOne({ actorId: me._id }, { $set: { pharmacyId: B } });
+    const body = { paymentMode: 'online_payment', deliveryMode: 'pickup', prescriptionUrls: ['/api/static/general/rx-for-a.pdf'], expectedPharmacyId: PHARMACY };
+    await rejects(withFiles(reader, 'PharmacyOrder', body, undefined, () => cartService.checkout(me, body as never),
+      (x) => (x as { order?: { _id?: unknown } }).order?._id), 'CART_CHANGED');
+    assert.equal(await PharmacyOrderModel.countDocuments({ customerId: me._id }), 0, 'no order');
+    assert.equal(await FileGrantModel.countDocuments({ path: 'general/rx-for-a.pdf', state: 'active' }), 0, 'nothing bound');
+    // Sending prescriptions requires naming the pharmacy; without documents it stays optional.
+    assert.ok(checkoutCartSchema.validate({ paymentMode: 'online_payment', prescriptionUrls: ['x/y.pdf'] }).error);
+    assert.equal(checkoutCartSchema.validate({ paymentMode: 'online_payment' }).error, undefined);
+    // The same request for the cart actually shown succeeds.
+    await fillCart(me);
+    const ok = await withFiles(reader, 'PharmacyOrder', body, undefined, () => cartService.checkout(me, body as never),
+      (x) => (x as { order?: { _id?: unknown } }).order?._id) as { order: { _id: unknown } };
+    assert.equal(String((await get(ok.order._id)).pharmacyId), PHARMACY);
+  });
+
   await mongoose.disconnect();
   console.log(`${passed} checks passed`);
 }

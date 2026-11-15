@@ -40,6 +40,9 @@ export const checkoutCartSchema = Joi.object({
   prescriptionUrls: Joi.array().items(Joi.string().trim()).optional(),
   notes: Joi.string().trim().max(1000).optional(),
   requestKey: Joi.string().pattern(/^[A-Za-z0-9_-]{8,64}$/).optional(),
+  // P9: the pharmacy whose cart the customer saw; required when prescriptions are sent (they go to that pharmacy only).
+  expectedPharmacyId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/)
+    .when('prescriptionUrls', { is: Joi.array().min(1).required(), then: Joi.required(), otherwise: Joi.optional() }),
 }).custom((value, helpers) => {
   if (value.deliveryMode === 'delivery' && !value.deliveryAddress?.trim()) {
     return helpers.error('any.invalid');

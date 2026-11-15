@@ -408,6 +408,11 @@ export class PharmacyCartService {
     }
 
     const sellerPharmacyId = String(cart.pharmacyId);
+    // P9: documents (prescriptions) go only to the pharmacy the customer saw. A cart replaced meanwhile (another tab or
+    // device) is refused before any stock, order or file binding; the client reloads it.
+    if (payload.expectedPharmacyId && payload.expectedPharmacyId.toLowerCase() !== sellerPharmacyId.toLowerCase()) {
+      throw new AppError({ status: 409, code: 'CART_CHANGED', message: 'Your cart changed in another window. Check it and place the order again.' });
+    }
     await this.ensureTargetPharmacyAccessible(sellerPharmacyId, actor);
 
     if (actor.actorRole === 'pharmacy') {

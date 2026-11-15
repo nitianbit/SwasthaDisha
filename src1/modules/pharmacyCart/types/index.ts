@@ -46,4 +46,6 @@ export interface CheckoutPharmacyCartRequest {
   notes?: string;
   /** P8: customer checkout request key; repeating it returns the same order (never a second one). */
   requestKey?: string;
+  /** P9: the pharmacy whose cart was shown; a different current cart is refused (409 CART_CHANGED). */
+  expectedPharmacyId?: string;
 }
