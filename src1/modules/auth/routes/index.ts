@@ -7,6 +7,7 @@ import {
   verifyCorporateEmailVerificationOTPSchema,
   verifyEmailVerificationOTPSchema,
   verifyOTPSchema,
+  selectPartnerSchema,
 } from '@/modules/auth/validation';
 import { validate } from '@/modules/common/middleware/validation';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
@@ -60,6 +61,9 @@ authRouterV1.post('/session/logout', catchAsync(authController.logoutSession));
 // N1: phone app sessions. X-Jansetu-Native header + JSON body {app, refreshToken}; no cookie.
 authRouterV1.post('/session/native/refresh', catchAsync(authController.refreshNativeSession));
 authRouterV1.post('/session/native/logout', catchAsync(authController.logoutNativeSession));
+
+// Q7: choose the partner workspace after a multi-membership OTP sign-in.
+authRouterV1.post('/partner/select', validate(selectPartnerSchema, 'body'), catchAsync(authController.selectPartner));
 
 authRouterV1.post(
   '/:userType/send',

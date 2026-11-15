@@ -136,3 +136,12 @@ export const verifyCorporateEmailVerificationOTPSchema = Joi.object({
 export const userTypeParamSchema = Joi.object({
   userType: userTypeSchema,
 });
+
+/** Q7: the workspace chosen after a multi-membership partner OTP sign-in (the ticket stands for the proven OTP). */
+export const selectPartnerSchema = Joi.object({
+  ticket: Joi.string().max(2000).required(),
+  partnerId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).required(),
+  session: Joi.string().valid('cookie', 'native').optional(),
+  app: Joi.string().valid('workspace').when('session', { is: 'native', then: Joi.required(), otherwise: Joi.forbidden() }),
+  previousRefreshToken: Joi.string().max(200).when('session', { is: 'native', then: Joi.optional(), otherwise: Joi.forbidden() }),
+});

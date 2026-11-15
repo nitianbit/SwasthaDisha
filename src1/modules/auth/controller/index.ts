@@ -79,7 +79,27 @@ export class AuthController {
 
     await hitClient('ip-verify', req);
     const result = await this.authService.verifyOTP(data);
+    if (result.selection) {
+      // Q7: the phone is proven but the person has several workspaces: no session yet, a one-use ticket to choose.
+      privateTokenResponse(res);
+      return res.status(200).json({ success: true, message: result.message, data: { selectionRequired: true, ...result.selection } });
+    }
+    return this.signedIn(res, req, result, audience, native);
+  };
 
+  /** Q7: the partner chosen after a multi-membership OTP sign-in; answered exactly like a verify (bearer, cookie or native). */
+  selectPartner = async (req: Request, res: Response, _next: NextFunction) => {
+    const audience = req.body?.session === 'cookie' ? sessionAudience(req) : null;
+    if (audience) assertRoleForAudience(audience, 'partner');
+    const native = req.body?.session === 'native' ? nativeAudience(req) : null;
+    if (native) assertRoleForAudience(native, 'partner');
+    await hitClient('ip-verify', req);
+    const result = await this.authService.selectPartner({ ticket: req.body.ticket, partnerId: req.body.partnerId });
+    return this.signedIn(res, req, result, audience, native);
+  };
+
+  private async signedIn(res: Response, req: Request, result: { message: string; accessToken: string; userData: unknown },
+    audience: ReturnType<typeof sessionAudience> | null, native: ReturnType<typeof nativeAudience> | null) {
     if (audience) {
       // The same request that consumed the OTP starts the family; the long-lived bearer is not handed out.
       const claims = jwt.decode(result.accessToken) as Record<string, unknown> & { _id: string; userType: string };
@@ -104,7 +124,7 @@ export class AuthController {
         user: result.userData,
       },
     });
-  };
+  }
 
   revokeSessions = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const user = req.user;

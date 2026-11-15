@@ -30,6 +30,9 @@ import { NotificationService } from '@/modules/notification/services';
 import { EmailService } from '@/modules/email/services';
 import { SMSService } from '@/modules/sms/services';
 import jwt from 'jsonwebtoken';
+import { randomUUID } from 'crypto';
+import PartnerModel from '@/modules/partners/model';
+import { PartnerSelectionTicketModel } from '@/modules/auth/model/partnerSelection';
 import { advanceCredentialVersion, credentialFilter, readCredentialVersion, tokenCredentialVersion } from '@/modules/user/credentialGeneration';
 import { Service } from 'typedi';
 
@@ -153,13 +156,8 @@ export class AuthService {
       const members = data.phone
         ? await this.memberRepository.findActiveByPhoneAcrossPartners(data.phone)
         : [];
-      if (members.length > 1 && !data.partnerId) {
-        throw new AppError({
-          status: 400,
-          code: 'PARTNER_SELECTION_REQUIRED',
-          message: 'Multiple partner memberships found; include partnerId to select one',
-        });
-      }
+      // Q7: with several memberships and no choice yet, the code is bound to the first membership (partnerId order,
+      // the same at verify); after the code proves the phone, the person chooses (selectPartner).
       if (data.partnerId) {
         userRecord = (members.find(m => String((m as any).partnerId) === data.partnerId) as any) ?? null;
       } else {
@@ -305,7 +303,9 @@ export class AuthService {
       memberId?: string;
       partnerId?: string;
       userType: string;
-    }
+    };
+    /** Q7: present (and no token) when a partner person must choose among several memberships. */
+    selection?: { ticket: string; choices: { partnerId: string; name: string; kind: string; solo: boolean; role: string }[] };
   }> => {
     const customerContact = data.userType === 'user'
       ? selectCustomerLoginContact(data, true)
@@ -338,13 +338,8 @@ export class AuthService {
       const members = data.phone
         ? await this.memberRepository.findActiveByPhoneAcrossPartners(data.phone)
         : [];
-      if (members.length > 1 && !data.partnerId) {
-        throw new AppError({
-          status: 400,
-          code: 'PARTNER_SELECTION_REQUIRED',
-          message: 'Multiple partner memberships found; include partnerId to select one',
-        });
-      }
+      // Q7: with several memberships and no choice yet, the code is bound to the first membership (partnerId order,
+      // the same at verify); after the code proves the phone, the person chooses (selectPartner).
       if (data.partnerId) {
         userRecord = (members.find(m => String((m as any).partnerId) === data.partnerId) as any) ?? null;
       } else {
@@ -420,6 +415,25 @@ export class AuthService {
       target,
       targetValue,
     });
+
+    // Q7: the phone is proven; a person with several memberships (and no choice yet) now chooses one.
+    if (data.userType === 'partner' && !data.partnerId) {
+      const choices = await this.partnerChoices(String(userRecord.phone));
+      if (choices.length > 1) {
+        return { message: 'Choose the workspace to open', accessToken: '', userData: { _id: '', userType: 'partner' },
+          selection: { ticket: await this.issueSelectionTicket(String(userRecord.phone)), choices } };
+      }
+      if (choices.length === 1 && choices[0]!.partnerId !== String((userRecord as unknown as IMember).partnerId)) {
+        // The proven membership's partner is inactive; the one active membership is the only choice.
+        const only = (await this.memberRepository.findActiveByPhoneAcrossPartners(String(userRecord.phone)))
+          .find((m) => String((m as any).partnerId) === choices[0]!.partnerId);
+        if (!only) throw new AppError({ status: 403, code: 'PARTNER_INACTIVE', message: 'None of your partner workspaces is active' });
+        userRecord = only as unknown as IUser;
+      }
+      if (choices.length === 0) {
+        throw new AppError({ status: 403, code: 'PARTNER_INACTIVE', message: 'None of your partner workspaces is active' });
+      }
+    }
 
     // Create wallet for regular users (not admins) if it doesn't exist
     // getByUserId will auto-create the wallet if it doesn't exist
@@ -536,6 +550,52 @@ export class AuthService {
       accessToken,
       userData: tokenPayload,
     };
+  };
+
+  /** Q7: the active memberships of a phone whose partner is active, in the order the sign-in uses. */
+  private async partnerChoices(phone: string): Promise<{ partnerId: string; name: string; kind: string; solo: boolean; role: string }[]> {
+    const members = await this.memberRepository.findActiveByPhoneAcrossPartners(phone);
+    const partners = await PartnerModel.find({ _id: { $in: members.map((m) => String((m as any).partnerId)) }, isActive: { $ne: false } })
+      .select({ name: 1, kind: 1, solo: 1 }).lean() as any[];
+    const byId = new Map(partners.map((p) => [String(p._id), p]));
+    return members.filter((m) => byId.has(String((m as any).partnerId))).map((m) => {
+      const p = byId.get(String((m as any).partnerId));
+      return { partnerId: String((m as any).partnerId), name: p.name, kind: p.kind, solo: !!p.solo, role: (m as any).role };
+    });
+  }
+
+  private async issueSelectionTicket(phone: string): Promise<string> {
+    const jti = randomUUID();
+    const ttl = 5 * 60;
+    await PartnerSelectionTicketModel.create({ jti, phone, expiresAt: new Date(Date.now() + ttl * 1000) });
+    return jwt.sign({ purpose: 'partner_select', phone, jti }, CONFIG.JWT_SECRET_KEY, { expiresIn: ttl });
+  }
+
+  /**
+   * Q7: completes a partner sign-in with the chosen membership. The ticket (signed, 5 minutes, one use) stands for the
+   * OTP the person already proved; the choice must be one of that phone's active memberships of an active partner.
+   */
+  selectPartner = async (data: { ticket: string; partnerId: string }) => {
+    let claims: { purpose?: string; phone?: string; jti?: string };
+    try {
+      claims = jwt.verify(data.ticket, CONFIG.JWT_SECRET_KEY) as typeof claims;
+    } catch {
+      throw new AppError({ status: 401, code: 'SELECTION_EXPIRED', message: 'This sign-in expired; request a new code' });
+    }
+    if (claims.purpose !== 'partner_select' || !claims.phone || !claims.jti) {
+      throw new AppError({ status: 401, code: 'SELECTION_EXPIRED', message: 'This sign-in expired; request a new code' });
+    }
+    const claimed = await PartnerSelectionTicketModel.findOneAndDelete({ jti: claims.jti, phone: claims.phone, expiresAt: { $gt: new Date() } });
+    if (!claimed) throw new AppError({ status: 401, code: 'SELECTION_EXPIRED', message: 'This sign-in expired; request a new code' });
+    const choices = await this.partnerChoices(claims.phone);
+    if (!choices.some((c) => c.partnerId === String(data.partnerId))) {
+      throw new AppError({ status: 403, code: 'PARTNER_NOT_AVAILABLE', message: 'That workspace is not available to you' });
+    }
+    const member = (await this.memberRepository.findActiveByPhoneAcrossPartners(claims.phone))
+      .find((m) => String((m as any).partnerId) === String(data.partnerId)) as unknown as IMember;
+    const tokenPayload = { _id: String(member._id), memberId: String(member._id), partnerId: String(member.partnerId), phone: member.phone, userType: 'partner' };
+    const accessToken = jwt.sign(tokenPayload, CONFIG.JWT_SECRET_KEY, { expiresIn: '30d' });
+    return { message: 'Signed in', accessToken, userData: tokenPayload };
   };
 
   async sendEmailVerificationOTP(
