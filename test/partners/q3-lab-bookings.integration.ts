@@ -603,6 +603,19 @@ async function main() {
     assert.equal(r.json.data.report.releases[0].signer.registrationNumber, 'KMC-12345');
     const cv = await customerView(flow.u, flow.id);
     assert.deepEqual(cv.report.files, [`/api/static/${releasedPath}`]);
+    // Q9: each release names its file; the lab and branch are named; the list is paged; one lab can be read.
+    assert.equal(cv.report.releases[0].file, `/api/static/${releasedPath}`);
+    assert.equal(cv.report.releases[0].signer.registrationNumber, 'KMC-12345');
+    assert.ok(cv.lab?.name && cv.branch?.name);
+    const page = await labSvc.listForCustomer(flow.u, 1, 1);
+    assert.equal(page.items.length, 1);
+    assert.ok(page.total >= 1 && page.totalPages >= page.total);
+    assert.equal((await labSvc.labProfile(partnerId)).name, 'Metro Labs');
+    await assert.rejects(() => labSvc.labProfile(String(new Types.ObjectId())), code('LAB_NOT_FOUND'));
+    const prof = await call('GET', `/api/v1/partner-labs/${partnerId}`, userToken(flow.u));
+    assert.equal(prof.status, 200);
+    const lst = await call('GET', '/api/v1/lab-bookings?limit=1', userToken(flow.u));
+    assert.ok(Array.isArray(lst.json.data) && lst.json.pagination.limit === 1);
     for (const a of aliases(releasedPath)) {
       assert.equal(await fetchStatus(a, userToken(flow.u)), 200, `customer reads the release via ${a.split('?')[0]}`);
       assert.equal(await fetchStatus(a, userToken(await customer())), 404);

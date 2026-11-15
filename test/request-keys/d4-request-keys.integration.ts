@@ -113,6 +113,18 @@ async function main() {
       await RequestKeyModel.create({ scope: scopeOf('booking_create', String(user._id)), key: 'bk-used-0003', state: 'used', at: new Date() });
       const used = await call(customer, { kind: 'booking_create', key: 'bk-used-0003' }) as { status: number; body: { data?: { state?: string; record?: { _id?: string } } } };
       assert.equal(used.body.data?.state, 'used'); assert.equal(used.body.data?.record?._id, bk.toHexString());
+      // Q9: GET /lookup is read-only: used (with record), abandoned, or unknown — and it never creates or abandons a key.
+      const look = async (token: string, q: string) => {
+        const r = await fetch(base.replace('/abandon', '/lookup') + q, { headers: { authorization: 'Bearer ' + token } });
+        return { status: r.status, body: await r.json() as { data?: { state?: string; record?: { _id?: string } } } };
+      };
+      const u1 = await look(customer, '?kind=booking_create&key=bk-used-0003');
+      assert.deepEqual([u1.body.data?.state, u1.body.data?.record?._id], ['used', bk.toHexString()]);
+      assert.equal((await look(customer, '?kind=booking_create&key=bk-key-0001')).body.data?.state, 'abandoned');
+      assert.equal((await look(customer, '?kind=booking_create&key=bk-none-0009')).body.data?.state, 'unknown');
+      assert.equal(await RequestKeyModel.exists({ key: 'bk-none-0009' }), null, 'lookup wrote nothing');
+      assert.equal((await look(pharmacy, '?kind=booking_create&key=bk-used-0003')).status, 403);
+      assert.equal((await look(customer, '?kind=nope&key=bk-used-0003')).status, 400);
     } finally {
       server.close();
     }

@@ -7,10 +7,11 @@ import * as v from '@/modules/doctors/validation';
 
 /** Customer "Consult now" (mounted at /api/v1/instant with authenticate + denyRoles('partner')); customers only. */
 export const instantRouter = Router();
+instantRouter.get('/specialities', validate(v.specialitiesQuerySchema, 'query'), catchAsync(c.specialities));
 instantRouter.get('/doctors', validate(v.onlineDoctorsQuerySchema, 'query'), catchAsync(c.onlineDoctors));
 instantRouter.get('/quote', validate(v.quoteQuerySchema, 'query'), catchAsync(c.getQuote));
 instantRouter.post('/requests', validate(v.createInstantSchema, 'body'), catchAsync(c.createRequest));
-instantRouter.get('/requests', catchAsync(c.myRequests));
+instantRouter.get('/requests', validate(v.pageQuerySchema, 'query'), catchAsync(c.myRequests));
 instantRouter.get('/requests/:requestId', validate(v.requestIdParamSchema, 'params'), catchAsync(c.myRequest));
 instantRouter.post('/requests/:requestId/pay', validate(v.requestIdParamSchema, 'params'), validate(v.payInstantSchema, 'body'), catchAsync(c.payRequest));
 instantRouter.post('/requests/:requestId/reoffer', validate(v.requestIdParamSchema, 'params'), validate(v.reofferSchema, 'body'), catchAsync(c.reofferRequest));

@@ -63,8 +63,8 @@ function customerId(req: Request): string {
 }
 
 export const listCustomerBills = async (req: Request, res: Response, _next: NextFunction) => {
-  const data = await service().listCustomerBills(customerId(req));
-  res.status(200).json({ success: true, data });
+  const r = await service().listCustomerBills(customerId(req), Number(req.query.page) || 1, Number(req.query.limit) || 20);
+  res.status(200).json({ success: true, data: r.items, pagination: { page: r.page, limit: r.limit, total: r.total, totalPages: r.totalPages } });
 };
 
 export const getCustomerBill = async (req: Request, res: Response, _next: NextFunction) => {

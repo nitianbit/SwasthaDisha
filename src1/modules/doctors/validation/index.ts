@@ -51,3 +51,7 @@ export const createInstantSchema = Joi.object({
 export const payInstantSchema = Joi.object({ useWalletBalance: Joi.boolean() });
 export const reofferSchema = Joi.object({ target: target.required() });
 export const adminCancelInstantSchema = Joi.object({ reason: Joi.string().trim().min(3).max(500).required() });
+
+/** Q9 */
+export const specialitiesQuerySchema = Joi.object({ mode: Joi.string().valid('video', 'call', 'chat').optional() });
+export const pageQuerySchema = Joi.object({ page: Joi.number().integer().min(1).optional(), limit: Joi.number().integer().min(1).max(100).optional() });

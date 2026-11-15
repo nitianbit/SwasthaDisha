@@ -242,6 +242,7 @@ async function main() {
         assert.equal(ref.status, 'fulfilled');
         assert.equal(row!.fundingState, 'refunded');
         assert.equal(await balance(u), 500);
+        assert.equal(row!.refunded?.totalMinor, 50000, 'Q9: the held refund is recorded on the request');
         assert.equal(await BookingModel.countDocuments({ instantRequestId: id }), 0);
       }
       await DoctorPresenceModel.updateOne({ doctorId: d }, { $set: { available: false } });
@@ -351,6 +352,17 @@ async function main() {
       end: new Date(res!.endTime.getTime() + 40 * 60_000) }, s));
     await svc.extend(d, String(out.booking._id), 10);
     await assert.rejects(() => svc.extend(d, String(out.booking._id), 5), code('DOCTOR_BUSY'));
+  });
+
+  await check('Q9: specialities with doctors online now; customer requests are paged', async () => {
+    const sp = await svc.specialities('video');
+    assert.ok(sp.some((x) => x.specialization === 'General Physician' && x.onlineNow >= 1));
+    assert.ok(sp.every((x, i) => i === 0 || sp[i - 1]!.onlineNow >= x.onlineNow));
+    const u = await customer(800);
+    await svc.create(u, ask({ useWalletBalance: true }));
+    await svc.create(u, ask({ useWalletBalance: true }));
+    const p = await svc.listForCustomer(u, 1, 1);
+    assert.deepEqual([p.items.length, p.total, p.totalPages], [1, 2, 2]);
   });
 
   // ── Review findings (Q4b round 1) ──

@@ -51,6 +51,49 @@ const KEY = /^[A-Za-z0-9_-]{8,64}$/;
 
 /** POST /api/v1/request-keys/abandon {kind, key}: scoped to the caller (pharmacy for returns, customer for bookings). */
 export const requestKeyRouter = Router();
+/** Q9: the record a used key produced, in the caller's scope (exact key). */
+async function recordFor(kind: OnceOnlyKind, owner: string, key: string) {
+  return kind === 'customer_return' ? CustomerReturnModel.findOne({ pharmacyId: owner, requestKey: key }).lean()
+    : kind === 'supplier_return' ? SupplierReturnModel.findOne({ pharmacyId: owner, requestKey: key }).lean()
+    : kind === 'pharmacy_checkout'
+      ? PharmacyOrderModel.findOne({ customerId: { $eq: owner }, checkoutRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
+    : kind === 'instant_request_create'
+      ? InstantRequestModel.findOne({ userId: { $eq: owner }, createRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
+    : kind === 'lab_booking_create'
+      ? PartnerLabBookingModel.findOne({ userId: { $eq: owner }, createRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean()
+    : BookingModel.findOne({ userId: { $eq: owner }, createRequestKey: { $eq: key } }).select({ _id: 1, status: 1, paymentStatus: 1 }).lean();
+}
+
+const ALL_KINDS: OnceOnlyKind[] = ['customer_return', 'supplier_return', 'booking_create', 'pharmacy_checkout', 'lab_booking_create', 'instant_request_create'];
+const CUSTOMER_KINDS: OnceOnlyKind[] = ['booking_create', 'pharmacy_checkout', 'lab_booking_create', 'instant_request_create'];
+
+async function ownerFor(req: AuthRequest, kind: OnceOnlyKind): Promise<string> {
+  const user = req.user;
+  if (CUSTOMER_KINDS.includes(kind)) {
+    if (user?.userType !== 'user') throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
+    return String(user._id);
+  }
+  if (user?.userType !== 'pharmacy') throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access denied' });
+  await assertOperationalPharmacy(req);
+  return String(req.user!.pharmacyId ?? user._id);
+}
+
+/**
+ * Q9: GET /api/v1/request-keys/lookup?kind&key — read-only: 'used' (with the record), 'abandoned', or 'unknown' (not
+ * performed and not abandoned: the request may still be in flight, so the client may only resend the same request or
+ * abandon the key). Never changes anything.
+ */
+requestKeyRouter.get('/lookup', catchAsync(async (req: AuthRequest, res: Response) => {
+  const kind = req.query.kind as OnceOnlyKind;
+  const key = typeof req.query.key === 'string' ? req.query.key.trim() : '';
+  if (!KEY.test(key) || !ALL_KINDS.includes(kind)) throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'kind and key are required' });
+  const owner = await ownerFor(req, kind);
+  const row = await RequestKeyModel.findOne({ scope: scopeOf(kind, owner), key }).lean();
+  if (row?.state === 'abandoned') { res.status(200).json({ success: true, data: { state: 'abandoned' } }); return; }
+  const record = row?.state === 'used' ? await recordFor(kind, owner, key) : null;
+  res.status(200).json({ success: true, data: record ? { state: 'used', record } : { state: 'unknown' } });
+}));
+
 requestKeyRouter.post('/abandon', catchAsync(async (req: AuthRequest, res: Response) => {
   const kind = req.body?.kind as OnceOnlyKind;
   const key = typeof req.body?.key === 'string' ? req.body.key.trim() : '';

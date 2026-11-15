@@ -512,6 +512,11 @@ async function main() {
       assert.equal(mine.status, 200);
       assert.ok(mine.json.data.length >= 2);
       assert.ok(mine.json.data.every((b: any) => b.customer.userId === linkedUserId));
+      // Q9: paged (data stays an array) and the doctor named on a clinic bill shows by name (not part of the checksum).
+      const paged = await call('GET', '/api/v1/bills?limit=1&page=2', userToken(linkedUserId));
+      assert.equal(paged.json.data.length, 1);
+      assert.deepEqual([paged.json.pagination.page, paged.json.pagination.limit, paged.json.pagination.total], [2, 1, mine.json.pagination.total]);
+      assert.ok(renderInvoiceHtml({ ...(mine.json.data[0] as any), issuedAt: new Date() }, [], { doctorName: 'Dr Bill Name' }).includes('Doctor:</strong> Dr Bill Name'));
       const one = await call('GET', `/api/v1/bills/${mine.json.data[0]._id}`, userToken(linkedUserId));
       assert.equal(one.status, 200);
       const stranger = await UserModel.create({ phone: '9822200099', userType: 'user' } as any);

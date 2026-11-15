@@ -72,7 +72,11 @@ export const branchSlots = async (req: Request, res: Response, _n: NextFunction)
   ok(res, await svc().branchSlots(req.params.branchId, req.query.visitMode as any, req.query.from as string | undefined, Number(req.query.days ?? 7)));
 };
 export const createLabBooking = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().create(customerId(req), req.body), 201);
-export const myLabBookings = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().listForCustomer(customerId(req)));
+export const myLabBookings = async (req: Request, res: Response, _n: NextFunction) => {
+  const r = await svc().listForCustomer(customerId(req), Number(req.query.page) || 1, Number(req.query.limit) || 20);
+  res.status(200).json({ success: true, data: r.items, pagination: { page: r.page, limit: r.limit, total: r.total, totalPages: r.totalPages } });
+};
+export const labProfile = async (req: Request, res: Response, _n: NextFunction) => { customerId(req); ok(res, await svc().labProfile(req.params.partnerId)); };
 export const myLabBooking = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().getForCustomer(customerId(req), req.params.bookingId));
 export const payLabBookingAgain = async (req: Request, res: Response, _n: NextFunction) =>
   ok(res, await svc().retryPayment(customerId(req), req.params.bookingId, !!req.body?.useWalletBalance));

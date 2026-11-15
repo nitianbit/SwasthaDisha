@@ -501,7 +501,10 @@ export class InstantConsultService {
       if (reason === 'inactivity' && (!r.inactivityRefundAt || now < new Date(r.inactivityRefundAt))) return { refunded: 0, request: r, skipped: true };
       const records = await this.fenceRecords(id, s);
       const done = await InstantRequestModel.updateOne({ _id: id, status: 'offered', fundingState: 'held', statusVersion: r.statusVersion },
-        { $set: { status: 'refunded', fundingState: 'refunded', paymentStatus: 'refunded', refundReason: reason }, $inc: { statusVersion: 1 } }, { session: s });
+        { $set: { status: 'refunded', fundingState: 'refunded', paymentStatus: 'refunded', refundReason: reason,
+          // Q9: what went back is recorded on the request (the held wallet + gateway parts; the coupon is voided, never money).
+          refunded: { walletMinor: r.funding?.walletMinor ?? 0, gatewayMinor: r.funding?.gatewayMinor ?? 0,
+            totalMinor: (r.funding?.walletMinor ?? 0) + (r.funding?.gatewayMinor ?? 0) } }, $inc: { statusVersion: 1 } }, { session: s });
       if (done.modifiedCount !== 1) throw changed();
       await undoCouponUsageIn(records.map((x) => String(x._id)), s);
       const refunded = await this.returnAll(r, records, s);
@@ -654,8 +657,40 @@ export class InstantConsultService {
 
   async getForCustomer(userId: string, requestId: string) { return requestView(await this.own(userId, requestId)); }
 
-  async listForCustomer(userId: string) {
-    return (await InstantRequestModel.find({ userId: { $eq: userId } }).sort({ createdAt: -1 }).limit(50).lean()).map((r) => requestView(r as IInstantRequest));
+  /** Q9: paged, newest first. */
+  async listForCustomer(userId: string, page = 1, limit = 20) {
+    const lim = Math.min(Math.max(Number(limit) || 20, 1), 100);
+    const pg = Math.max(Number(page) || 1, 1);
+    const q = { userId: { $eq: userId } };
+    const [rows, total] = await Promise.all([
+      InstantRequestModel.find(q).sort({ createdAt: -1, _id: -1 }).skip((pg - 1) * lim).limit(lim).lean(),
+      InstantRequestModel.countDocuments(q),
+    ]);
+    return { items: rows.map((r) => requestView(r as IInstantRequest)), page: pg, limit: lim, total, totalPages: Math.max(1, Math.ceil(total / lim)) };
+  }
+
+  /** Q9: the specialities customers can ask for (active, verified doctors' current profiles), with how many are online now. */
+  async specialities(mode?: InstantMode, now = new Date()) {
+    const all = (await SpecialistModel.distinct('specialization', { isActive: { $ne: false }, isVerified: { $ne: false } }) as unknown[])
+      .filter((x): x is string => typeof x === 'string' && x.trim().length > 0).map((x) => x.trim());
+    const fresh = await DoctorPresenceModel.find({ available: true, lastSeenAt: { $gte: new Date(now.getTime() - PRESENCE_TTL_MS) }, ...(mode ? { modes: mode } : {}) })
+      .select({ doctorId: 1 }).lean();
+    const ids = fresh.map((p) => p.doctorId).filter((i) => Types.ObjectId.isValid(i));
+    const [busy, docs] = await Promise.all([
+      DoctorReservationModel.find({ doctorId: { $in: ids }, isActive: true, startTime: { $lte: now }, endTime: { $gt: now } }).select({ doctorId: 1 }).lean(),
+      SpecialistModel.find({ _id: { $in: ids }, isActive: true, isVerified: true }).select({ specialization: 1 }).lean() as any,
+    ]);
+    const busyIds = new Set(busy.map((b) => b.doctorId));
+    const online = new Map<string, number>();
+    for (const d of docs as any[]) {
+      if (busyIds.has(String(d._id)) || typeof d.specialization !== 'string') continue;
+      const k = d.specialization.trim().toLowerCase();
+      online.set(k, (online.get(k) ?? 0) + 1);
+    }
+    const seen = new Map<string, string>();
+    for (const s of all) if (!seen.has(s.toLowerCase())) seen.set(s.toLowerCase(), s);
+    return [...seen.entries()].map(([k, name]) => ({ specialization: name, onlineNow: online.get(k) ?? 0 }))
+      .sort((a, b) => b.onlineNow - a.onlineNow || a.specialization.localeCompare(b.specialization));
   }
 }
 

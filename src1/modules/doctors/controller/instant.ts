@@ -35,7 +35,14 @@ export const createRequest = async (req: Request, res: Response, _n: NextFunctio
   const corporateId = (req as AuthRequest).user?.corporateId;
   ok(res, await svc().create(userId, req.body, new Date(), { corporateId: typeof corporateId === 'string' ? corporateId : undefined }), 201);
 };
-export const myRequests = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().listForCustomer(customerId(req)));
+export const myRequests = async (req: Request, res: Response, _n: NextFunction) => {
+  const r = await svc().listForCustomer(customerId(req), Number(req.query.page) || 1, Number(req.query.limit) || 20);
+  res.status(200).json({ success: true, data: r.items, pagination: { page: r.page, limit: r.limit, total: r.total, totalPages: r.totalPages } });
+};
+export const specialities = async (req: Request, res: Response, _n: NextFunction) => {
+  customerId(req);
+  ok(res, await svc().specialities(req.query.mode as any));
+};
 export const myRequest = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().getForCustomer(customerId(req), req.params.requestId));
 export const payRequest = async (req: Request, res: Response, _n: NextFunction) =>
   ok(res, await svc().payAgain(customerId(req), req.params.requestId, !!req.body?.useWalletBalance));

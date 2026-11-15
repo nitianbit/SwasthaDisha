@@ -100,6 +100,17 @@ export function readerOf(actor: PartnerActor): NonNullable<AuthRequest['user']> 
     : { _id: actor.memberId, memberId: actor.memberId, partnerId: actor.partnerId, userType: 'partner' };
 }
 
+/** Q9: the lab's and branch's names for customer views (looked up in one batch). */
+async function withPlaceNames(rows: IPartnerLabBooking[]): Promise<Record<string, unknown>[]> {
+  const partners = await PartnerOrgModel.find({ _id: { $in: [...new Set(rows.map((r) => String(r.partnerId)))] } }).select({ name: 1 }).lean() as any[];
+  const branches = await BranchModel.find({ _id: { $in: [...new Set(rows.map((r) => String(r.branchId)))] } }).select({ name: 1, address: 1, phone: 1 }).lean() as any[];
+  const p = new Map(partners.map((x) => [String(x._id), x]));
+  const b = new Map(branches.map((x) => [String(x._id), x]));
+  return rows.map((r) => ({ ...customerView(r), lab: { name: p.get(String(r.partnerId))?.name },
+    branch: b.get(String(r.branchId)) ? { name: b.get(String(r.branchId)).name, address: b.get(String(r.branchId)).address, phone: b.get(String(r.branchId)).phone } : undefined }));
+}
+export async function customerViewNamed(b: IPartnerLabBooking): Promise<Record<string, unknown>> { return (await withPlaceNames([b]))[0]!; }
+
 /** What a customer sees: never draft report files; released files as URLs. */
 export function customerView(b: IPartnerLabBooking): Record<string, unknown> {
   const { walletFunding: _w, createRequestKey: _k, createRequestHash: _h, expiryNextAt: _e, expiryChecks: _c, postPaymentCompletedFor: _p,
@@ -112,7 +123,9 @@ export function customerView(b: IPartnerLabBooking): Record<string, unknown> {
     collector: collector ? { name: collector.name, phone: collector.phone } : undefined,
     report: {
       files: (report?.releasedFiles ?? []).map((p: string) => `/api/static/${p}`),
-      releases: (report?.releases ?? []).map((r: any) => ({ releasedAt: r.releasedAt, signer: { name: r.signer.name, kind: r.signer.kind, registrationNumber: r.signer.registrationNumber } })),
+      // Q9: each release names its own file, so a report is paired with its signer exactly.
+      releases: (report?.releases ?? []).map((r: any) => ({ file: `/api/static/${r.path}`, releasedAt: r.releasedAt,
+        signer: { name: r.signer.name, kind: r.signer.kind, registrationNumber: r.signer.registrationNumber } })),
     },
   };
 }
@@ -716,12 +729,29 @@ export class LabBookingService {
   }
 
   async getForCustomer(userId: string, bookingId: string) {
-    return customerView(await this.ownBooking(userId, bookingId));
+    return customerViewNamed(await this.ownBooking(userId, bookingId));
   }
 
-  async listForCustomer(userId: string) {
-    const rows = await PartnerLabBookingModel.find({ userId: { $eq: userId } }).sort({ createdAt: -1 }).limit(100).lean();
-    return rows.map((b) => customerView(b as IPartnerLabBooking));
+  /** Q9: paged, newest first, each with the lab's and branch's names (and the branch's address/phone). */
+  async listForCustomer(userId: string, page = 1, limit = 20) {
+    const lim = Math.min(Math.max(Number(limit) || 20, 1), 100);
+    const pg = Math.max(Number(page) || 1, 1);
+    const q = { userId: { $eq: userId } };
+    const [rows, total] = await Promise.all([
+      PartnerLabBookingModel.find(q).sort({ createdAt: -1, _id: -1 }).skip((pg - 1) * lim).limit(lim).lean(),
+      PartnerLabBookingModel.countDocuments(q),
+    ]);
+    const named = await withPlaceNames(rows as IPartnerLabBooking[]);
+    return { items: named, page: pg, limit: lim, total, totalPages: Math.max(1, Math.ceil(total / lim)) };
+  }
+
+  /** Q9: one partner lab as customers see it (verified, active; active branches only). */
+  async labProfile(partnerId: string) {
+    if (!/^[0-9a-fA-F]{24}$/.test(String(partnerId))) throw new AppError({ status: 404, code: 'LAB_NOT_FOUND', message: 'Lab not found' });
+    const p = await PartnerOrgModel.findOne({ _id: partnerId, kind: 'lab', isActive: true, 'verification.state': 'verified' }).select({ name: 1, logo: 1 }).lean() as any;
+    if (!p) throw new AppError({ status: 404, code: 'LAB_NOT_FOUND', message: 'Lab not found' });
+    const branches = await BranchModel.find({ partnerId: String(p._id), isActive: true }).select({ name: 1, address: 1, phone: 1, services: 1, hours: 1 }).lean();
+    return { partnerId: String(p._id), name: p.name, logo: p.logo, provider: 'partner' as const, branches };
   }
 
   async getForPartner(actor: PartnerActor, bookingId: string) {

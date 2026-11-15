@@ -1,3 +1,4 @@
+import { InvoiceModel } from '@/modules/partners/model/invoice';
 import { Service } from 'typedi';
 import { createHash } from 'crypto';
 import mongoose from 'mongoose';
@@ -24,6 +25,15 @@ import { PartnerActor, assertBranchInScope, hasGlobalScope, recordPartnerAudit }
 import { SMSService } from '@/modules/sms/services';
 import { CONFIG } from '@/config/config';
 import { renderInvoicePdf } from '@/modules/partners/services/invoicePdf';
+import SpecialistModel from '@/modules/specialists/model';
+
+/** Q9: display names of the doctors named on invoices (not part of the immutable document or its checksum). */
+async function doctorNames(rows: { doctorId?: string }[]): Promise<Record<string, string>> {
+  const ids = [...new Set(rows.map((r) => r.doctorId).filter((d): d is string => !!d && /^[0-9a-fA-F]{24}$/.test(d)))];
+  if (!ids.length) return {};
+  const sps = await SpecialistModel.find({ _id: { $in: ids } }).select({ name: 1 }).lean() as { _id: unknown; name?: string }[];
+  return Object.fromEntries(sps.filter((s) => s.name).map((s) => [String(s._id), String(s.name)]));
+}
 
 export type GstRate = 0 | 5 | 12 | 18 | 28;
 
@@ -419,17 +429,27 @@ export class InvoiceService {
     return rows;
   }
 
-  async listCustomerBills(userId: string): Promise<IInvoice[]> {
-    const rows = await this.invoiceRepository.findByCustomerUserId(userId);
+  /** Q9: paged, newest first; each bill names its doctor (clinic bills) from the doctor's current profile. */
+  async listCustomerBills(userId: string, page = 1, limit = 20) {
+    const lim = Math.min(Math.max(Number(limit) || 20, 1), 100);
+    const pg = Math.max(Number(page) || 1, 1);
+    const q = { 'customer.userId': userId };
+    const [rows, total] = await Promise.all([
+      InvoiceModel.find(q).sort({ issuedAt: -1, _id: -1 }).skip((pg - 1) * lim).limit(lim).lean() as unknown as Promise<IInvoice[]>,
+      InvoiceModel.countDocuments(q),
+    ]);
     rows.forEach((r) => this.verifyChecksum(r));
-    return rows;
+    const names = await doctorNames(rows);
+    return { items: rows.map((r) => ({ ...r, doctorName: r.doctorId ? names[String(r.doctorId)] : undefined })), page: pg, limit: lim, total,
+      totalPages: Math.max(1, Math.ceil(total / lim)) };
   }
 
   async getCustomerBill(userId: string, invoiceId: string): Promise<{ invoice: IInvoice; events: IInvoiceEvent[] }> {
     const invoice = await this.invoiceRepository.findById(invoiceId);
     if (!invoice || !invoice.customer?.userId || String(invoice.customer.userId) !== String(userId)) throw invoiceNotFound();
     this.verifyChecksum(invoice);
-    return { invoice, events: await this.invoiceEventRepository.findByInvoice(invoiceId) };
+    const doctorName = invoice.doctorId ? (await doctorNames([invoice]))[String(invoice.doctorId)] : undefined;
+    return { invoice: { ...invoice, ...(doctorName ? { doctorName } : {}) } as IInvoice, events: await this.invoiceEventRepository.findByInvoice(invoiceId) };
   }
 
   /** PDF of the bill as of lifecycle `version` (0 = as issued; default = current). */
@@ -448,7 +468,7 @@ export class InvoiceService {
     if (!Number.isInteger(v) || v < 0 || v > invoice.lifecycleVersion) {
       throw new AppError({ status: 400, code: 'INVALID_VERSION', message: `Version must be between 0 and ${invoice.lifecycleVersion}` });
     }
-    const pdf = await renderInvoicePdf(invoice, eventsAsOf(events, v));
+    const pdf = await renderInvoicePdf(invoice, eventsAsOf(events, v), { doctorName: (await doctorNames([invoice]))[String(invoice.doctorId)] });
     return { pdf, fileName: `${invoice.serial.replace(/\//g, '-')}-v${v}.pdf` };
   }
 

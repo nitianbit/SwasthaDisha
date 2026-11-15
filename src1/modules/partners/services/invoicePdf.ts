@@ -39,7 +39,7 @@ export function statusAfter(events: IInvoiceEvent[]): { label: string; detail?: 
 }
 
 /** Self-contained HTML of the immutable invoice plus the given events; every value is escaped. */
-export function renderInvoiceHtml(inv: IInvoice, events: IInvoiceEvent[]): string {
+export function renderInvoiceHtml(inv: IInvoice, events: IInvoiceEvent[], extra: { doctorName?: string } = {}): string {
   const showTax = inv.documentKind === 'tax_invoice';
   const status = statusAfter(events);
   const rows = inv.items.map((l, i) => `<tr><td>${i + 1}</td><td>${esc(l.description)}${l.sac ? ` <small>SAC ${esc(l.sac)}</small>` : ''}${l.hsn ? ` <small>HSN ${esc(l.hsn)}</small>` : ''}</td>
@@ -64,7 +64,8 @@ ${s.gstin ? `<br>GSTIN: ${esc(s.gstin)}` : ''}${s.pan ? `<br>PAN: ${esc(s.pan)}`
 <div><strong>No.</strong> ${esc(inv.serial)}<br><strong>Date</strong> ${indiaDate(inv.issuedAt)}
 <br><span class="status">${esc(status.label)}</span>${status.detail ? `<br><small>${esc(status.detail)}</small>` : ''}</div></div>
 <div><strong>Billed to:</strong> ${esc(c.name)}${c.age !== undefined ? `, ${esc(c.age)}` : ''}${c.gender ? ` ${esc(c.gender)}` : ''}
-${c.gstin ? `<br>GSTIN: ${esc(c.gstin)}` : ''}${c.placeOfSupply ? `<br>Place of supply: ${esc(c.placeOfSupply)}` : ''}</div>
+${c.gstin ? `<br>GSTIN: ${esc(c.gstin)}` : ''}${c.placeOfSupply ? `<br>Place of supply: ${esc(c.placeOfSupply)}` : ''}
+${extra.doctorName ? `<br><strong>Doctor:</strong> ${esc(extra.doctorName)}` : ''}</div>
 <table style="margin-top:12px"><thead><tr><th>#</th><th>Item</th><th class="n">Qty</th><th class="n">Rate</th><th class="n">Discount</th>
 ${showTax ? '<th class="n">GST</th>' : ''}<th class="n">Amount</th></tr></thead><tbody>${rows}</tbody></table>
 <table style="margin-top:8px;width:40%;margin-left:auto"><tbody>
@@ -76,12 +77,12 @@ ${inv.documentKind === 'commercial_invoice' ? '<p class="note">Supplier not regi
 }
 
 /** PDF bytes via wkhtmltopdf (same renderer as prescriptions). Nothing is stored; temp files are removed. */
-export async function renderInvoicePdf(inv: IInvoice, events: IInvoiceEvent[]): Promise<Buffer> {
+export async function renderInvoicePdf(inv: IInvoice, events: IInvoiceEvent[], extra: { doctorName?: string } = {}): Promise<Buffer> {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'sd-invoice-'));
   const html = path.join(dir, 'invoice.html');
   const pdf = path.join(dir, 'invoice.pdf');
   try {
-    await writeFile(html, renderInvoiceHtml(inv, events), 'utf8');
+    await writeFile(html, renderInvoiceHtml(inv, events, extra), 'utf8');
     try {
       await execFileAsync(process.env.WKHTMLTOPDF_BINARY || 'wkhtmltopdf', ['--quiet', '--disable-javascript', '--disable-local-file-access', '--allow', dir, html, pdf]);
     } catch (error: any) {

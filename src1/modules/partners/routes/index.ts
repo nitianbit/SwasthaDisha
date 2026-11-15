@@ -58,6 +58,10 @@ import * as clinic from '@/modules/partners/controller/clinic';
 import * as clinicV from '@/modules/partners/validation/clinic';
 import * as finV from '@/modules/partners/validation/finance';
 import * as labV from '@/modules/partners/validation/labBooking';
+import Joi from 'joi';
+
+/** Q9: page/limit for customer lists. */
+const customerPageQuerySchema = Joi.object({ page: Joi.number().integer().min(1).optional(), limit: Joi.number().integer().min(1).max(100).optional() });
 import {
   adminCreatePartner,
   adminListPartners,
@@ -228,7 +232,7 @@ export default partnerRouter;
 
 /** Customer "Bills": in-house invoices linked to the signed-in customer (§6 walk-in linking). */
 export const customerBillsRouter = Router();
-customerBillsRouter.get('/', catchAsync(listCustomerBills));
+customerBillsRouter.get('/', validate(customerPageQuerySchema, 'query'), catchAsync(listCustomerBills));
 customerBillsRouter.get('/:invoiceId', validate(invoiceParamSchema, 'params'), catchAsync(getCustomerBill));
 customerBillsRouter.get('/:invoiceId/pdf', validate(invoiceParamSchema, 'params'), validate(invoicePdfQuerySchema, 'query'),
   catchAsync(getCustomerBillPdf));
@@ -239,13 +243,14 @@ export const customerLabRouter = Router();
 customerLabRouter.get('/', validate(labV.labsQuerySchema, 'query'), catchAsync(lab.listLabs));
 customerLabRouter.get('/branches/:branchId/slots', validate(labV.branchSlotsParamSchema, 'params'), validate(labV.branchSlotsQuerySchema, 'query'),
   catchAsync(lab.branchSlots));
+customerLabRouter.get('/:partnerId', validate(labV.labCatalogueParamSchema, 'params'), catchAsync(lab.labProfile));
 customerLabRouter.get('/:partnerId/catalogue', validate(labV.labCatalogueParamSchema, 'params'), validate(labV.labCatalogueQuerySchema, 'query'),
   catchAsync(lab.labCatalogue));
 
 /** Customer partner-lab bookings: create + pay, pay again, cancel, accept a new time, view (released reports only). */
 export const customerLabBookingRouter = Router();
 customerLabBookingRouter.post('/', validate(labV.createLabBookingSchema, 'body'), catchAsync(lab.createLabBooking));
-customerLabBookingRouter.get('/', catchAsync(lab.myLabBookings));
+customerLabBookingRouter.get('/', validate(customerPageQuerySchema, 'query'), catchAsync(lab.myLabBookings));
 customerLabBookingRouter.get('/:bookingId', validate(labV.labBookingIdParamSchema, 'params'), catchAsync(lab.myLabBooking));
 customerLabBookingRouter.post('/:bookingId/pay', validate(labV.labBookingIdParamSchema, 'params'), validate(labV.payAgainSchema, 'body'),
   catchAsync(lab.payLabBookingAgain));
