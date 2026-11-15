@@ -79,6 +79,8 @@ export interface IInvoiceEvent {
   reference?: string;
   reason?: string;
   note?: string;
+  /** Q10: for the cancellation of a paid bill — how the money was returned. */
+  refund?: { mode: PaymentMode; reference?: string; note?: string };
   /** The invoice's lifecycleVersion this event produced (1, 2): the event order, independent of clocks. */
   version: number;
   at: Date;

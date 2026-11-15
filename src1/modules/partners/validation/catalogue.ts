@@ -3,7 +3,9 @@ import Joi from 'joi';
 const objectIdPattern = /^[0-9a-fA-F]{24}$/;
 
 export const createCatalogueItemSchema = Joi.object({
-  kind: Joi.string().valid('test', 'package').required(),
+  /** Q10: exactly-once creation. */
+  requestKey: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).optional(),
+  kind: Joi.string().valid('test', 'package', 'consultation', 'procedure', 'other').required(),
   name: Joi.string().trim().min(1).max(200).required(),
   code: Joi.string().trim().max(50).optional(),
   description: Joi.string().trim().max(1000).optional(),
@@ -14,7 +16,7 @@ export const createCatalogueItemSchema = Joi.object({
   mrpMinor: Joi.number().integer().min(0).max(100_000_000_00).optional(),
   gstRate: Joi.number().valid(0, 5, 12, 18, 28).required(),
   sac: Joi.string().trim().max(20).optional(),
-  visitModes: Joi.array().items(Joi.string().valid('home', 'lab')).min(1).required(),
+  visitModes: Joi.array().items(Joi.string().valid('home', 'lab')).optional(),
   reportTatHours: Joi.number().integer().min(0).optional(),
 });
 
@@ -31,7 +33,14 @@ export const updateCatalogueItemSchema = Joi.object({
   sac: Joi.string().trim().max(20).optional(),
   visitModes: Joi.array().items(Joi.string().valid('home', 'lab')).min(1).optional(),
   reportTatHours: Joi.number().integer().min(0).optional(),
+  /** Q10: optimistic concurrency — the item's updatedAt the editor started from (refused 409 if it changed). */
+  expectedUpdatedAt: Joi.date().iso().optional(),
 }).min(1);
+
+export const catalogueListQuerySchema = Joi.object({
+  kind: Joi.string().valid('test', 'package', 'consultation', 'procedure', 'other').optional(),
+  includeInactive: Joi.string().valid('true', 'false').optional(),
+});
 
 export const catalogueItemParamSchema = Joi.object({
   itemId: Joi.string().pattern(objectIdPattern).required(),

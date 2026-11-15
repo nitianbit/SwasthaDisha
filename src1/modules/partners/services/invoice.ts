@@ -1,3 +1,4 @@
+import { claimRequestKey, abandonRequestKey } from '@/modules/requestKeys';
 import { InvoiceModel } from '@/modules/partners/model/invoice';
 import { Service } from 'typedi';
 import { createHash } from 'crypto';
@@ -26,6 +27,9 @@ import { SMSService } from '@/modules/sms/services';
 import { CONFIG } from '@/config/config';
 import { renderInvoicePdf } from '@/modules/partners/services/invoicePdf';
 import SpecialistModel from '@/modules/specialists/model';
+
+/** Q10: request-key scope of partner bills (claim/abandon). */
+export const invoiceKeyScope = (partnerId: string) => `partner_invoice_create:${String(partnerId).toLowerCase()}`;
 
 /** Q9: display names of the doctors named on invoices (not part of the immutable document or its checksum). */
 async function doctorNames(rows: { doctorId?: string }[]): Promise<Record<string, string>> {
@@ -227,8 +231,15 @@ export class InvoiceService {
     if (!stateCode) throw new AppError({ status: 409, code: 'BRANCH_STATE_CODE_MISSING', message: 'Set the branch GST state code before billing' });
 
     if (data.doctorId) {
-      const doctorHere = await MemberModel.exists({ partnerId: actor.partnerId, doctorId: data.doctorId, isActive: true });
+      const doctorHere = await MemberModel.findOne({ partnerId: actor.partnerId, doctorId: data.doctorId, isActive: true }).lean();
       if (!doctorHere) throw new AppError({ status: 400, code: 'DOCTOR_NOT_IN_PARTNER', message: 'The doctor does not work at this partner' });
+      // Q10: the named doctor consults at this branch and is an active, verified doctor now.
+      const { doctorScopeOf } = await import('@/modules/doctors/services/schedule');
+      const scope = doctorScopeOf(doctorHere as any);
+      const sp = await SpecialistModel.findById(data.doctorId).select({ isActive: 1, isVerified: 1 }).lean() as { isActive?: boolean; isVerified?: boolean } | null;
+      if ((scope.length > 0 && !scope.includes(String(data.branchId))) || !sp || sp.isActive === false || sp.isVerified === false) {
+        throw new AppError({ status: 400, code: 'DOCTOR_NOT_AT_BRANCH', message: 'The doctor does not consult at this branch' });
+      }
     }
 
     const catalogueIds = [...new Set(data.items.map((i) => i.catalogItemId).filter(Boolean).map(String))];
@@ -236,6 +247,14 @@ export class InvoiceService {
     if (catalogueIds.length > 0) {
       const rows = await this.catalogueRepository.findAll({ _id: { $in: catalogueIds }, partnerId: actor.partnerId, isActive: true, adminDisabled: { $ne: true } });
       for (const r of rows) catalogue.set(String(r._id), { name: r.name });
+      // Q10: a line linked to the catalogue bills the catalogue's own price and GST (only qty and discount vary).
+      const byId = new Map(rows.map((r) => [String(r._id), r]));
+      for (const line of data.items) {
+        const item = line.catalogItemId ? byId.get(String(line.catalogItemId)) : undefined;
+        if (item && (line.unitPriceMinor !== item.priceMinor || line.gstRate !== item.gstRate)) {
+          throw new AppError({ status: 409, code: 'CATALOGUE_PRICE_CHANGED', message: `${item.name} is now ₹${(item.priceMinor / 100).toFixed(2)} at ${item.gstRate}% GST; review the bill` });
+        }
+      }
     }
 
     const lines = computeLines(data.items, catalogue);
@@ -272,6 +291,8 @@ export class InvoiceService {
     const session = await mongoose.startSession();
     try {
       await session.withTransaction(async () => {
+        // Q10: the key is claimed with the bill, so a reloaded client's abandon and this create cannot both win.
+        await claimRequestKey(invoiceKeyScope(actor.partnerId), data.idempotencyKey, session);
         const issuedAt = new Date();
         const fy = financialYearOf(issuedAt);
         const seq = await this.invoiceCounterRepository.nextSequence(actor.partnerId, fy, session);
@@ -342,14 +363,49 @@ export class InvoiceService {
     actor: PartnerActor,
     invoiceId: string,
     data: { mode: PaymentMode; reference?: string; note?: string }
-  ): Promise<{ invoice: IInvoice; event: IInvoiceEvent }> {
+  ): Promise<{ invoice: IInvoice; event: IInvoiceEvent; replayed?: boolean }> {
+    // Q10: a repeat of the payment already recorded (same mode and reference) answers with that receipt.
+    const current = await this.loadForActor(actor, invoiceId);
+    if (current.lifecycleState === 'paid') {
+      const ev = (await this.invoiceEventRepository.findByInvoice(invoiceId)).find((e) => e.kind === 'payment');
+      if (ev && ev.mode === data.mode && (ev.reference ?? '') === (data.reference?.trim() ?? '')) return { invoice: current, event: ev, replayed: true };
+    }
     return this.transition(actor, invoiceId, ['issued'], 'paid', {
       kind: 'payment', mode: data.mode, reference: data.reference, note: data.note,
     }, 'invoice.pay');
   }
 
-  async cancelInvoice(actor: PartnerActor, invoiceId: string, reason: string): Promise<{ invoice: IInvoice; event: IInvoiceEvent }> {
-    return this.transition(actor, invoiceId, ['issued', 'paid'], 'cancelled', { kind: 'cancellation', reason }, 'invoice.cancel');
+  /**
+   * Q10: cancelling a PAID bill records how the money went back (the partner returns it themselves); an issued bill
+   * needs none. The refund is part of the cancellation event and printed with it.
+   */
+  async cancelInvoice(actor: PartnerActor, invoiceId: string, reason: string,
+    refund?: { mode: PaymentMode; reference?: string; note?: string }): Promise<{ invoice: IInvoice; event: IInvoiceEvent }> {
+    const current = await this.loadForActor(actor, invoiceId);
+    if (current.lifecycleState === 'cancelled') throw new AppError({ status: 409, code: 'ALREADY_CANCELLED', message: 'This bill is cancelled' });
+    if (current.lifecycleState === 'paid' && !refund) {
+      throw new AppError({ status: 400, code: 'REFUND_REQUIRED', message: 'This bill was paid: record how the money was returned' });
+    }
+    if (current.lifecycleState !== 'paid' && refund) {
+      throw new AppError({ status: 400, code: 'NOTHING_TO_REFUND', message: 'This bill was not paid' });
+    }
+    return this.transition(actor, invoiceId, [current.lifecycleState === 'paid' ? 'paid' : 'issued'], 'cancelled',
+      { kind: 'cancellation', reason, ...(refund ? { refund } : {}) }, 'invoice.cancel', current);
+  }
+
+  /** Q10: the bill a request key produced (a lost answer), within the actor's branch scope; null when none. */
+  async findByKey(actor: PartnerActor, key: string): Promise<IInvoice | null> {
+    const inv = await this.invoiceRepository.findByIdempotencyKey(actor.partnerId, key);
+    if (!inv) return null;
+    if (!hasGlobalScope(actor) && !actor.branchIds.includes(String(inv.branchId))) return null;
+    this.verifyChecksum(inv);
+    return inv;
+  }
+
+  /** Q10: give up a bill whose answer was lost: abandoned (it can never be issued) or used (here is the bill). */
+  async abandonKey(actor: PartnerActor, key: string): Promise<{ state: 'abandoned' | 'used'; invoice?: IInvoice | null }> {
+    const state = await abandonRequestKey(invoiceKeyScope(actor.partnerId), key);
+    return state === 'abandoned' ? { state } : { state, invoice: await this.findByKey(actor, key) };
   }
 
   /** §6 lifecycle fence: CAS on lifecycleVersion + state, then the event, in one transaction. */
@@ -359,9 +415,10 @@ export class InvoiceService {
     from: InvoiceLifecycleState[],
     to: InvoiceLifecycleState,
     payload: Partial<IInvoiceEvent>,
-    action: string
+    action: string,
+    loaded?: IInvoice
   ): Promise<{ invoice: IInvoice; event: IInvoiceEvent }> {
-    const current = await this.loadForActor(actor, invoiceId);
+    const current = loaded ?? await this.loadForActor(actor, invoiceId);
     if (!from.includes(current.lifecycleState)) {
       throw new AppError({
         status: 409,
@@ -412,6 +469,40 @@ export class InvoiceService {
     const invoice = await this.loadForActor(actor, invoiceId);
     const events = await this.invoiceEventRepository.findByInvoice(invoiceId);
     return { invoice, events };
+  }
+
+  /**
+   * Q10: newest first with an exact cursor `<issuedAt ms>_<id>` (no rounding, ties broken by id), IST date range,
+   * search on serial / customer name / phone, and the total matching count.
+   */
+  async listInvoicesPage(actor: PartnerActor, filter: { state?: InvoiceLifecycleState; branchId?: string; limit?: number; cursor?: string;
+    from?: string; to?: string; q?: string }): Promise<{ items: IInvoice[]; nextCursor: string | null; total: number }> {
+    const query: any = { partnerId: actor.partnerId };
+    if (filter.state) query.lifecycleState = filter.state;
+    if (filter.branchId) { assertBranchInScope(actor, filter.branchId); query.branchId = filter.branchId; }
+    else if (!hasGlobalScope(actor)) query.branchId = { $in: actor.branchIds };
+    if (filter.from || filter.to) {
+      query.issuedAt = { ...(filter.from ? { $gte: new Date(`${filter.from}T00:00:00+05:30`) } : {}),
+        ...(filter.to ? { $lt: new Date(new Date(`${filter.to}T00:00:00+05:30`).getTime() + 86_400_000) } : {}) };
+    }
+    if (filter.q?.trim()) {
+      const rx = { $regex: filter.q.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
+      query.$or = [{ serial: rx }, { 'customer.name': rx }, { 'customer.phone': rx }];
+    }
+    const total = await InvoiceModel.countDocuments(query);
+    const page: any = { ...query };
+    if (filter.cursor) {
+      const [ms, id] = filter.cursor.split('_');
+      if (!/^\d{1,15}$/.test(ms ?? '') || !/^[0-9a-fA-F]{24}$/.test(id ?? '')) throw new AppError({ status: 400, code: 'INVALID_CURSOR', message: 'Invalid cursor' });
+      const at = new Date(Number(ms));
+      page.$and = [...(page.$and ?? []), { $or: [{ issuedAt: { $lt: at } }, { issuedAt: at, _id: { $lt: new mongoose.Types.ObjectId(id) } }] }];
+    }
+    const limit = Math.min(Math.max(Number(filter.limit) || 50, 1), 200);
+    const rows = await InvoiceModel.find(page).sort({ issuedAt: -1, _id: -1 }).limit(limit + 1).lean() as unknown as IInvoice[];
+    const items = rows.slice(0, limit);
+    items.forEach((r) => this.verifyChecksum(r));
+    const last = items[items.length - 1];
+    return { items, total, nextCursor: rows.length > limit && last ? `${new Date(last.issuedAt).getTime()}_${String(last._id)}` : null };
   }
 
   async listInvoices(actor: PartnerActor, filter: { state?: InvoiceLifecycleState; branchId?: string; limit?: number; before?: Date }): Promise<IInvoice[]> {

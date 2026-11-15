@@ -135,8 +135,9 @@ async function main() {
     const item = await catalogueSvc.createItem(lab.actor, { kind: 'test', name: 'CBC', code: 'CBC', priceMinor: 50000, mrpMinor: 60000, gstRate: 5, visitModes: ['lab', 'home'] });
     cbcId = String(item._id);
     await assert.rejects(() => catalogueSvc.createItem(lab.actor, { kind: 'test', name: 'Bad', priceMinor: 500, mrpMinor: 100, gstRate: 0, visitModes: ['lab'] }), code('INVALID_MRP'));
-    const upd = await catalogueSvc.updateItem(lab.actor, cbcId, { priceMinor: 55000 });
-    assert.equal(upd.priceMinor, 55000);
+    // Q10: a catalogue-linked bill line must carry the catalogue price; the rounding checks below bill CBC at ₹500.01.
+    const upd = await catalogueSvc.updateItem(lab.actor, cbcId, { priceMinor: 50001 });
+    assert.equal(upd.priceMinor, 50001);
     const lipid = await catalogueSvc.createItem(lab.actor, { kind: 'test', name: 'Lipid', priceMinor: 80000, gstRate: 5, visitModes: ['lab'] });
     await catalogueSvc.deactivateItem(lab.actor, String(lipid._id));
     assert.deepEqual((await catalogueSvc.listItems(lab.actor)).map((i) => i.name), ['CBC']);
@@ -280,9 +281,14 @@ async function main() {
     assert.equal(paid.event.byKind, 'member');
     assert.equal(paid.event.by, lab.actor.memberId);
     await assert.rejects(() => invoiceSvc.recordPayment(lab.actor, String(inv._id), { mode: 'cash' }), code('INVOICE_STATE_CONFLICT'));
-    const cancelled = await invoiceSvc.cancelInvoice(lab.actor, String(inv._id), 'Duplicate billing');
+    // Q10: the same payment again is answered with its receipt; a paid bill is cancelled only with how the money went back.
+    const again = await invoiceSvc.recordPayment(lab.actor, String(inv._id), { mode: 'upi', reference: 'UPI123' });
+    assert.equal(again.replayed, true);
+    await assert.rejects(() => invoiceSvc.cancelInvoice(lab.actor, String(inv._id), 'Duplicate billing'), code('REFUND_REQUIRED'));
+    const cancelled = await invoiceSvc.cancelInvoice(lab.actor, String(inv._id), 'Duplicate billing', { mode: 'upi', reference: 'RF-1' });
     assert.equal(cancelled.invoice.lifecycleVersion, 2);
-    await assert.rejects(() => invoiceSvc.cancelInvoice(lab.actor, String(inv._id), 'again'), code('ALREADY_CANCELLED'));
+    assert.deepEqual(cancelled.event.refund, { mode: 'upi', reference: 'RF-1' });
+    await assert.rejects(() => invoiceSvc.cancelInvoice(lab.actor, String(inv._id), 'again', { mode: 'cash' }), code('ALREADY_CANCELLED'));
     const { events } = await invoiceSvc.getInvoice(lab.actor, String(inv._id));
     assert.deepEqual(events.map((e) => e.kind), ['payment', 'cancellation']);
   });
@@ -297,7 +303,7 @@ async function main() {
       const after = await InvoiceModel.findById(id).lean();
       assert.ok(ok >= 1 && ok <= 2);
       assert.equal(events, after!.lifecycleVersion, 'one event per version step');
-      if (ok === 1) assert.ok(r.some((x) => x.status === 'rejected' && ['LIFECYCLE_VERSION_CONFLICT', 'INVOICE_STATE_CONFLICT', 'ALREADY_CANCELLED'].includes((x as any).reason?.code)));
+      if (ok === 1) assert.ok(r.some((x) => x.status === 'rejected' && ['LIFECYCLE_VERSION_CONFLICT', 'INVOICE_STATE_CONFLICT', 'ALREADY_CANCELLED', 'REFUND_REQUIRED'].includes((x as any).reason?.code)));
     }
   });
 
@@ -401,7 +407,7 @@ async function main() {
   await check('event order is the lifecycle version, not the clock (skewed timestamps do not reorder history)', async () => {
     const inv = await invoiceSvc.createInvoice(lab.actor, { branchId: lab.branchId, customer: { name: 'Skew' }, items: [line()], idempotencyKey: key() });
     await invoiceSvc.recordPayment(lab.actor, String(inv._id), { mode: 'cash' });
-    await invoiceSvc.cancelInvoice(lab.actor, String(inv._id), 'Wrong patient');
+    await invoiceSvc.cancelInvoice(lab.actor, String(inv._id), 'Wrong patient', { mode: 'cash' });
     // The payment's node clock was ahead: its timestamp is later than the cancellation's.
     await InvoiceEventModel.updateOne({ invoiceId: String(inv._id), kind: 'payment' }, { $set: { at: new Date(Date.now() + 3_600_000) } });
     const { invoice, events } = await invoiceSvc.getInvoice(lab.actor, String(inv._id));

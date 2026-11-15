@@ -21,6 +21,7 @@ import {
 } from '@/modules/partners/validation';
 import {
   createCatalogueItemSchema,
+  catalogueListQuerySchema,
   updateCatalogueItemSchema,
   catalogueItemParamSchema,
 } from '@/modules/partners/validation/catalogue';
@@ -28,6 +29,7 @@ import {
   createInvoiceSchema,
   recordPaymentSchema,
   cancelInvoiceSchema,
+  invoiceKeyParamSchema,
   invoiceParamSchema,
   invoiceQuerySchema,
   invoicePdfQuerySchema,
@@ -38,6 +40,7 @@ import {
   createCatalogueItem,
   updateCatalogueItem,
   deactivateCatalogueItem,
+  reactivateCatalogueItem,
   adminDisableCatalogueItem,
   adminEnableCatalogueItem,
 } from '@/modules/partners/controller/catalogue';
@@ -48,6 +51,8 @@ import {
   getInvoicePdf,
   recordPayment,
   cancelInvoice,
+  invoiceByKey,
+  abandonInvoiceKey,
   listCustomerBills,
   getCustomerBill,
   getCustomerBillPdf,
@@ -138,7 +143,8 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.post('/branches/:branchId/reactivate', ...guard('branches.manage'), validate(branchIdParamSchema, 'params'), catchAsync(reactivateBranch));
 
   // Q2: catalogue (anyone who bills needs to read it) and in-house invoices
-  r.get('/catalogue', ...guard.any('catalogue.manage', 'invoices.create'), catchAsync(listCatalogueItems));
+  r.get('/catalogue', ...guard.any('catalogue.manage', 'invoices.create'), validate(catalogueListQuerySchema, 'query'), catchAsync(listCatalogueItems));
+  r.post('/catalogue/:itemId/reactivate', ...guard('catalogue.manage'), validate(catalogueItemParamSchema, 'params'), catchAsync(reactivateCatalogueItem));
   r.get('/catalogue/:itemId', ...guard.any('catalogue.manage', 'invoices.create'), validate(catalogueItemParamSchema, 'params'), catchAsync(getCatalogueItem));
   r.post('/catalogue', ...guard('catalogue.manage'), validate(createCatalogueItemSchema, 'body'), catchAsync(createCatalogueItem));
   r.put('/catalogue/:itemId', ...guard('catalogue.manage'), validate(catalogueItemParamSchema, 'params'),
@@ -147,6 +153,9 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
 
   r.get('/invoices', ...guard.any(...INVOICE_READERS), validate(invoiceQuerySchema, 'query'), catchAsync(listPartnerInvoices));
   r.post('/invoices', ...guard('invoices.create'), validate(createInvoiceSchema, 'body'), catchAsync(createInvoice));
+  // Q10: a bill whose answer was lost — look it up by its key, or give the key up (only invoice creators).
+  r.get('/invoices/by-key/:key', ...guard('invoices.create'), validate(invoiceKeyParamSchema, 'params'), catchAsync(invoiceByKey));
+  r.post('/invoices/by-key/:key/abandon', ...guard('invoices.create'), validate(invoiceKeyParamSchema, 'params'), catchAsync(abandonInvoiceKey));
   r.get('/invoices/:invoiceId', ...guard.any(...INVOICE_READERS), validate(invoiceParamSchema, 'params'), catchAsync(getInvoice));
   r.get('/invoices/:invoiceId/pdf', ...guard.any(...INVOICE_READERS), validate(invoiceParamSchema, 'params'),
     validate(invoicePdfQuerySchema, 'query'), catchAsync(getInvoicePdf));

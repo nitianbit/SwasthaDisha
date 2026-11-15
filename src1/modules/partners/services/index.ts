@@ -135,6 +135,10 @@ async function refreshDoctorsAt(branchIds: string[]): Promise<void> {
   }
 }
 
+/** Q10: the fence an edit adds when the editor sent the version (updatedAt) it started from. */
+const versionFence = (expected?: Date | string) => (expected ? { updatedAt: new Date(expected) } : {});
+const recordChanged = () => new AppError({ status: 409, code: 'RECORD_CHANGED', message: 'Someone else changed this meanwhile; reload and review' });
+
 @Service()
 export class PartnerService {
   constructor(
@@ -266,6 +270,7 @@ export class PartnerService {
       taxRegime?: TaxRegime;
       invoiceSeriesPrefix?: string;
       logo?: string;
+      expectedUpdatedAt?: Date | string;
     },
     session?: ClientSession
   ): Promise<IPartner> {
@@ -280,8 +285,9 @@ export class PartnerService {
     if (data.invoiceSeriesPrefix !== undefined) update['invoiceSeries.prefix'] = data.invoiceSeriesPrefix;
     if (data.logo !== undefined) update.logo = data.logo;
 
-    const updated = await this.partnerRepository.update({ _id: partnerId }, update, { new: true, ...(session ? { session } : {}) } as any);
+    const updated = await this.partnerRepository.update({ _id: partnerId, ...versionFence(data.expectedUpdatedAt) }, update, { new: true, ...(session ? { session } : {}) } as any);
     if (!updated) {
+      if (data.expectedUpdatedAt && await PartnerModel.exists({ _id: partnerId })) throw recordChanged();
       throw new AppError({ status: 404, code: 'PARTNER_NOT_FOUND', message: 'Partner not found' });
     }
     return updated;
@@ -289,14 +295,14 @@ export class PartnerService {
 
   async updateOwnProfile(
     actor: PartnerActor,
-    data: { name?: string; legalName?: string; contactPhone?: string; contactEmail?: string; logo?: string }
+    data: { name?: string; legalName?: string; contactPhone?: string; contactEmail?: string; logo?: string; expectedUpdatedAt?: Date | string }
   ): Promise<IPartner> {
     // Q8: the partner's public identity and contact are the owners' to change (admins act as owner).
     if (actor.role !== 'owner') throw new AppError({ status: 403, code: 'OWNER_REQUIRED', message: 'Only an owner can change the partner profile' });
     const { name, legalName, contactPhone, contactEmail, logo } = data;
     const fields = { name, legalName, contactPhone, contactEmail, logo };
     return inTransaction(async (session) => {
-      const updated = await this.updatePartner(actor.partnerId, fields, session);
+      const updated = await this.updatePartner(actor.partnerId, { ...fields, expectedUpdatedAt: data.expectedUpdatedAt }, session);
       await recordPartnerAudit(actor, 'partner.profile.update', { kind: 'partner', id: actor.partnerId },
         { fields: Object.keys(fields).filter((k) => (fields as any)[k] !== undefined) }, session);
       return updated;
@@ -500,7 +506,7 @@ export class PartnerService {
     }
   }
 
-  async updateMemberPermissions(actor: PartnerActor, memberId: string, permissions: PartnerPermission[]): Promise<IMember> {
+  async updateMemberPermissions(actor: PartnerActor, memberId: string, permissions: PartnerPermission[], expectedUpdatedAt?: Date | string): Promise<IMember> {
     if (actor.role !== 'owner') {
       throw new AppError({ status: 403, code: 'OWNER_REQUIRED', message: 'Only an owner can change member permissions' });
     }
@@ -512,11 +518,11 @@ export class PartnerService {
 
     return inTransaction(async (session) => {
       const updated = await this.memberRepository.update(
-        { _id: memberId, partnerId: actor.partnerId, role: 'staff', isActive: true },
+        { _id: memberId, partnerId: actor.partnerId, role: 'staff', isActive: true, ...versionFence(expectedUpdatedAt) },
         { permissions },
         { new: true, session } as any
       );
-      if (!updated) throw memberNotFound();
+      if (!updated) { if (expectedUpdatedAt && await MemberModel.exists({ _id: memberId, isActive: true }).session(session)) throw recordChanged(); throw memberNotFound(); }
       await recordPartnerAudit(actor, 'member.permissions', { kind: 'member', id: memberId }, { permissions }, session);
       return updated;
     });
@@ -527,7 +533,7 @@ export class PartnerService {
    * actor must see the member and may only hand out a scope within their own (a restricted actor never grants "all").
    * Owners always cover every branch. A doctor's consultation scope (doctorBranchIds) is not changed here.
    */
-  async updateMemberBranches(actor: PartnerActor, memberId: string, branchIds: string[]): Promise<IMember> {
+  async updateMemberBranches(actor: PartnerActor, memberId: string, branchIds: string[], expectedUpdatedAt?: Date | string): Promise<IMember> {
     const member = await this.memberRepository.findById(memberId);
     if (!member || String(member.partnerId) !== String(actor.partnerId) || !member.isActive || !memberInScope(actor, member)) throw memberNotFound();
     if (member.role === 'owner') throw new AppError({ status: 400, code: 'OWNER_SCOPE_FIXED', message: 'Owners always cover every branch' });
@@ -540,6 +546,7 @@ export class PartnerService {
       // write is bound to exactly that scope (a concurrent move makes it a conflict, never a silent move back).
       const current = await MemberModel.findOne({ _id: memberId, partnerId: actor.partnerId, role: 'staff', isActive: true }).session(session).lean() as IMember | null;
       if (!current || !memberInScope(actor, current)) throw memberNotFound();
+      if (expectedUpdatedAt && new Date(current.updatedAt as Date).getTime() !== new Date(expectedUpdatedAt).getTime()) throw recordChanged();
       const updated = await this.memberRepository.update(
         { _id: memberId, partnerId: actor.partnerId, role: 'staff', isActive: true, branchIds: current.branchIds ?? [] }, { branchIds: scope }, { new: true, session } as any);
       if (!updated) throw memberNotFound();
@@ -576,15 +583,15 @@ export class PartnerService {
     });
   }
 
-  async updateBranch(actor: PartnerActor, branchId: string, data: Partial<IBranch>): Promise<IBranch> {
+  async updateBranch(actor: PartnerActor, branchId: string, data: Partial<IBranch> & { expectedUpdatedAt?: Date | string }): Promise<IBranch> {
     await this.getBranch(actor, branchId);
-    const { _id, partnerId: _p, isActive: _a, createdAt: _c, updatedAt: _u, ...safeData } = data;
+    const { _id, partnerId: _p, isActive: _a, createdAt: _c, updatedAt: _u, expectedUpdatedAt, ...safeData } = data;
     const shapesSlots = 'holidays' in safeData || 'services' in safeData;
     if (shapesSlots) await ensureBranchScheduleGuards(branchId);
     return inTransaction(async (session) => {
       if (shapesSlots) await bumpBranchScheduleGuards(branchId, session);
-      const updated = await this.branchRepository.update({ _id: branchId, partnerId: actor.partnerId }, safeData, { new: true, session } as any);
-      if (!updated) throw branchNotFound();
+      const updated = await this.branchRepository.update({ _id: branchId, partnerId: actor.partnerId, ...versionFence(expectedUpdatedAt) }, safeData, { new: true, session } as any);
+      if (!updated) { if (expectedUpdatedAt && await BranchModel.exists({ _id: branchId }).session(session)) throw recordChanged(); throw branchNotFound(); }
       await recordPartnerAudit(actor, 'branch.update', { kind: 'branch', id: branchId }, { fields: Object.keys(safeData) }, session);
       return updated;
     }).then(async (updated) => {

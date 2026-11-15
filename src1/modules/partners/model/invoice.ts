@@ -92,6 +92,12 @@ const invoiceEventSchema = new Schema<IInvoiceEvent>(
     reference: { type: String, trim: true },
     reason: { type: String, trim: true },
     note: { type: String, trim: true },
+    // Q10: how the money of a cancelled paid bill went back.
+    refund: {
+      type: new Schema({ mode: { type: String, required: true, enum: ['cash', 'upi', 'card', 'bank', 'other'] },
+        reference: { type: String, trim: true }, note: { type: String, trim: true } }, { _id: false }),
+      default: undefined,
+    },
     version: { type: Number, required: true, min: 1 },
     at: { type: Date, required: true },
     by: { type: String, required: true },

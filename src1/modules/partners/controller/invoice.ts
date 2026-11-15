@@ -24,13 +24,29 @@ export const createInvoice = async (req: Request, res: Response, _next: NextFunc
 };
 
 export const listPartnerInvoices = async (req: Request, res: Response, _next: NextFunction) => {
-  const data = await service().listInvoices(actorOf(req), {
-    state: req.query.state as any,
-    branchId: req.query.branchId as string | undefined,
-    limit: req.query.limit ? Number(req.query.limit) : undefined,
-    before: req.query.before ? new Date(String(req.query.before)) : undefined,
-  });
+  const q = req.query as Record<string, unknown>;
+  if (q.before !== undefined && q.cursor === undefined) {
+    // Legacy `before` (Joi already made it a Date — keep its milliseconds).
+    const before = q.before instanceof Date ? q.before : new Date(String(q.before));
+    const data = await service().listInvoices(actorOf(req), { state: q.state as any, branchId: q.branchId as string | undefined,
+      limit: q.limit ? Number(q.limit) : undefined, before });
+    res.status(200).json({ success: true, data });
+    return;
+  }
+  const r = await service().listInvoicesPage(actorOf(req), { state: q.state as any, branchId: q.branchId as string | undefined,
+    limit: q.limit ? Number(q.limit) : undefined, cursor: q.cursor as string | undefined, from: q.from as string | undefined,
+    to: q.to as string | undefined, q: q.q as string | undefined });
+  res.status(200).json({ success: true, data: r.items, pagination: { total: r.total, nextCursor: r.nextCursor } });
+};
+
+export const invoiceByKey = async (req: Request, res: Response, _next: NextFunction) => {
+  const data = await service().findByKey(actorOf(req), req.params.key);
+  if (!data) { res.status(404).json({ error: 404, code: 'INVOICE_NOT_FOUND', message: 'No bill was issued with this key' }); return; }
   res.status(200).json({ success: true, data });
+};
+
+export const abandonInvoiceKey = async (req: Request, res: Response, _next: NextFunction) => {
+  res.status(200).json({ success: true, data: await service().abandonKey(actorOf(req), req.params.key) });
 };
 
 export const getInvoice = async (req: Request, res: Response, _next: NextFunction) => {
@@ -44,11 +60,11 @@ export const getInvoicePdf = async (req: Request, res: Response, _next: NextFunc
 
 export const recordPayment = async (req: Request, res: Response, _next: NextFunction) => {
   const data = await service().recordPayment(actorOf(req), req.params.invoiceId, req.body);
-  res.status(200).json({ success: true, data });
+  res.status(200).json({ success: true, data: { invoice: data.invoice, event: data.event }, replayed: !!data.replayed });
 };
 
 export const cancelInvoice = async (req: Request, res: Response, _next: NextFunction) => {
-  const data = await service().cancelInvoice(actorOf(req), req.params.invoiceId, req.body.reason);
+  const data = await service().cancelInvoice(actorOf(req), req.params.invoiceId, req.body.reason, req.body.refund);
   res.status(200).json({ success: true, data });
 };
 

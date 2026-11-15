@@ -72,6 +72,8 @@ export const createPartnerSchema = Joi.object({
 });
 
 export const updatePartnerSchema = Joi.object({
+  /** Q10: optimistic concurrency — the record's updatedAt the editor started from (409 RECORD_CHANGED if it moved). */
+  expectedUpdatedAt: Joi.date().iso().optional(),
   name: Joi.string().trim().min(1).max(200).optional(),
   legalName: Joi.string().trim().max(200).optional(),
   gstin: Joi.string().trim().uppercase().pattern(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/).optional(),
@@ -84,6 +86,8 @@ export const updatePartnerSchema = Joi.object({
 }).min(1);
 
 export const updateMyPartnerSchema = Joi.object({
+  /** Q10: optimistic concurrency — the record's updatedAt the editor started from (409 RECORD_CHANGED if it moved). */
+  expectedUpdatedAt: Joi.date().iso().optional(),
   name: Joi.string().trim().min(1).max(200).optional(),
   legalName: Joi.string().trim().max(200).optional(),
   contactPhone: Joi.string().pattern(phonePattern).optional(),
@@ -104,6 +108,8 @@ export const addMemberSchema = Joi.object({
 });
 
 export const updateMemberPermissionsSchema = Joi.object({
+  /** Q10: optimistic concurrency — the record's updatedAt the editor started from (409 RECORD_CHANGED if it moved). */
+  expectedUpdatedAt: Joi.date().iso().optional(),
   permissions: Joi.array()
     .items(Joi.string().valid(...ALL_PERMISSIONS))
     .required(),
@@ -135,6 +141,8 @@ export const createBranchSchema = Joi.object({
 });
 
 export const updateBranchSchema = Joi.object({
+  /** Q10: optimistic concurrency — the record's updatedAt the editor started from (409 RECORD_CHANGED if it moved). */
+  expectedUpdatedAt: Joi.date().iso().optional(),
   name: Joi.string().trim().min(1).max(200).optional(),
   address: addressSchema.optional(),
   geo: Joi.object({
@@ -173,6 +181,8 @@ export * from './invoice';
 
 /** Q8: a staff member's branch access (empty = every branch). */
 export const updateMemberBranchesSchema = Joi.object({
+  /** Q10: optimistic concurrency — the record's updatedAt the editor started from (409 RECORD_CHANGED if it moved). */
+  expectedUpdatedAt: Joi.date().iso().optional(),
   branchIds: Joi.array().items(Joi.string().pattern(objectIdPattern)).max(200).required(),
 });
 

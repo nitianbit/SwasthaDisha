@@ -8,7 +8,7 @@ import { actorOf } from '@/modules/partners/controller';
 const service = () => Container.get(CatalogueService);
 
 export const listCatalogueItems = async (req: Request, res: Response, _next: NextFunction) => {
-  const data = await service().listItems(actorOf(req), req.query.kind as any);
+  const data = await service().listItems(actorOf(req), req.query.kind as any, req.query.includeInactive === 'true');
   res.status(200).json({ success: true, data });
 };
 
@@ -18,8 +18,8 @@ export const getCatalogueItem = async (req: Request, res: Response, _next: NextF
 };
 
 export const createCatalogueItem = async (req: Request, res: Response, _next: NextFunction) => {
-  const data = await service().createItem(actorOf(req), req.body);
-  res.status(201).json({ success: true, data });
+  const { replayed, ...data } = await service().createItem(actorOf(req), req.body) as any;
+  res.status(replayed ? 200 : 201).json({ success: true, data });
 };
 
 export const updateCatalogueItem = async (req: Request, res: Response, _next: NextFunction) => {
@@ -39,5 +39,10 @@ export const adminDisableCatalogueItem = async (req: Request, res: Response, _ne
 
 export const adminEnableCatalogueItem = async (req: Request, res: Response, _next: NextFunction) => {
   const data = await service().setAdminDisabled(String((req as AuthRequest).user!._id), req.params.itemId, false);
+  res.status(200).json({ success: true, data });
+};
+
+export const reactivateCatalogueItem = async (req: Request, res: Response, _next: NextFunction) => {
+  const data = await service().reactivateItem(actorOf(req), req.params.itemId);
   res.status(200).json({ success: true, data });
 };

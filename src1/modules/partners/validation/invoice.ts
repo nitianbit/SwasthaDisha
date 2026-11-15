@@ -37,7 +37,15 @@ export const recordPaymentSchema = Joi.object({
 
 export const cancelInvoiceSchema = Joi.object({
   reason: Joi.string().trim().min(1).max(500).required(),
+  /** Q10: required when the bill was paid. */
+  refund: Joi.object({
+    mode: Joi.string().valid('cash', 'upi', 'card', 'bank', 'other').required(),
+    reference: Joi.string().trim().max(200).optional(),
+    note: Joi.string().trim().max(500).optional(),
+  }).optional(),
 });
+
+export const invoiceKeyParamSchema = Joi.object({ key: Joi.string().trim().min(1).max(100).required() });
 
 export const invoiceParamSchema = Joi.object({
   invoiceId: Joi.string().pattern(objectIdPattern).required(),
@@ -48,6 +56,11 @@ export const invoiceQuerySchema = Joi.object({
   branchId: Joi.string().pattern(objectIdPattern).optional(),
   limit: Joi.number().integer().min(1).max(200).optional(),
   before: Joi.date().iso().optional(),
+  /** Q10: exact cursor `<ms>_<id>` (preferred over `before`), dates and search. */
+  cursor: Joi.string().max(64).optional(),
+  from: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  to: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  q: Joi.string().trim().max(100).allow('').optional(),
 });
 
 export const invoicePdfQuerySchema = Joi.object({

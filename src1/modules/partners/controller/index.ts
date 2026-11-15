@@ -151,12 +151,12 @@ export const removeMember = async (req: Request, res: Response, _next: NextFunct
 
 export const updateMemberPermissions = async (req: Request, res: Response, _next: NextFunction) => {
   const actor = actorOf(req);
-  const data = await service().updateMemberPermissions(actor, req.params.memberId, req.body.permissions);
+  const data = await service().updateMemberPermissions(actor, req.params.memberId, req.body.permissions, req.body.expectedUpdatedAt);
   res.status(200).json({ success: true, data });
 };
 
 export const updateMemberBranches = async (req: Request, res: Response, _next: NextFunction) => {
-  const data = await service().updateMemberBranches(actorOf(req), req.params.memberId, req.body.branchIds);
+  const data = await service().updateMemberBranches(actorOf(req), req.params.memberId, req.body.branchIds, req.body.expectedUpdatedAt);
   res.status(200).json({ success: true, data });
 };
 

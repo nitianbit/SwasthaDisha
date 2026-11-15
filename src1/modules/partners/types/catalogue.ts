@@ -1,4 +1,5 @@
-export type CatalogueItemKind = 'test' | 'package';
+/** Labs: test | package (with visit modes). Q10 clinics: consultation | procedure | package | other (no visit modes). */
+export type CatalogueItemKind = 'test' | 'package' | 'consultation' | 'procedure' | 'other';
 
 export interface ICatalogueItem {
   _id?: string;
@@ -20,4 +21,6 @@ export interface ICatalogueItem {
   adminDisabled: boolean;
   createdAt?: Date;
   updatedAt?: Date;
+  createRequestKey?: string;
+  createRequestHash?: string;
 }
