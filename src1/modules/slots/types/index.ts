@@ -13,6 +13,10 @@ export interface ISlot {
   isRecurring?: boolean; // If this is part of a recurring schedule
   recurringPattern?: string; // e.g., "daily", "weekly", "monthly"
   isActive?: boolean;
+  serviceModes?: ('chat' | 'call' | 'video' | 'in-person')[];
+  branchId?: string;
+  source?: 'manual' | 'template';
+  closedReason?: 'leave' | 'template';
   createdAt?: Date;
   updatedAt?: Date;
 }

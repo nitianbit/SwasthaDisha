@@ -94,13 +94,14 @@ export const specialistAppointmentsQuerySchema = Joi.object({
 
 export const updateAppointmentStatusSchema = Joi.object({
   status: Joi.string()
-    .valid('pending', 'confirmed', 'completed', 'cancelled')
+    .valid('pending', 'confirmed', 'completed', 'cancelled', 'no_show')
     .required()
     .messages({
       'any.only':
-        'status must be one of: pending, confirmed, completed, cancelled',
+        'status must be one of: pending, confirmed, completed, cancelled, no_show',
       'any.required': 'status is required',
     }),
+  reason: Joi.string().trim().max(500).optional(),
 });
 
 export const specialistAppointmentPrescriptionSchema = Joi.object({

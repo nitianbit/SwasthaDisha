@@ -50,10 +50,15 @@ const service = Object.assign(Object.create(BookingService.prototype), {
   notificationService: { createSpecialistAppointmentCancelledNotification: async () => undefined },
 }) as BookingService;
 
+// Q4: one-patient slots of ONE doctor at the same time are now (correctly) exclusive. These checks are about slot seats
+// and money, so each slot gets its own doctor unless a check needs one doctor for several slots (reschedule).
 const specialist = new Types.ObjectId().toHexString();
-async function slot(at: { bookingDate: string; bookingTime: string }, max = 1, current = 0) {
-  const s = await SlotModel.create({ specialistId: specialist, date: at.bookingDate, startTime: at.bookingTime, endTime: '23:59',
+const slotDoctor = new Map<string, string>();
+const doctorOf = (slotId: string) => slotDoctor.get(String(slotId).toLowerCase()) ?? specialist;
+async function slot(at: { bookingDate: string; bookingTime: string }, max = 1, current = 0, doctor = new Types.ObjectId().toHexString()) {
+  const s = await SlotModel.create({ specialistId: doctor, date: at.bookingDate, startTime: at.bookingTime, endTime: '23:59',
     maxBookings: max, currentBookings: current, isAvailable: current < max, isActive: true, slotType: 'consultation' });
+  slotDoctor.set(String(s._id).toLowerCase(), doctor);
   return String(s._id);
 }
 async function customer(balance = 0) {
@@ -64,7 +69,7 @@ async function customer(balance = 0) {
   return user;
 }
 const draft = (user: string, slotId: string, at: { bookingDate: string; bookingTime: string }, extra: Partial<IBooking> = {}): IBooking => ({
-  bookingType: 'consultation', serviceMode: 'video', userId: user, specialistId: specialist, slotId, ...at, price: 100, status: 'pending', paymentStatus: 'pending',
+  bookingType: 'consultation', serviceMode: 'video', userId: user, specialistId: doctorOf(slotId), slotId, ...at, price: 100, status: 'pending', paymentStatus: 'pending',
   ...extra } as IBooking);
 const slotRow = async (id: string) => (await SlotModel.findById(id).lean())!;
 const balance = async (u: string) => Number((await WalletModel.findOne({ userId: u }).lean())?.balance);
@@ -204,7 +209,8 @@ async function main() {
 
   await check('[C3] reschedule moves the seat atomically; a full target slot changes nothing', async () => {
     const at = inHours(96), at2 = inHours(120);
-    const a = await slot(at), full = await slot(at2, 1, 1), free = await slot(at2, 1);
+    const dr = new Types.ObjectId().toHexString();
+    const a = await slot(at, 1, 0, dr), full = await slot(at2, 1, 1, dr), free = await slot(at2, 1, 0, dr);
     const u = await customer();
     const b = await createBookingWithHolds(draft(u, a, at));
     await rejects(service.rescheduleBooking(String(b._id), { slotId: full }, { _id: u, userType: 'user' }), 'SLOT_NOT_AVAILABLE');
@@ -238,7 +244,7 @@ async function main() {
     const { insertedId: parent } = await BookingModel.collection.insertOne({ userId: u, bookingType: 'consultation', status: 'completed',
       followUp: { benefitUsed: true } } as never);
     const { insertedId } = await BookingModel.collection.insertOne({ userId: u, bookingType: 'consultation', status: 'pending', paymentStatus: 'pending',
-      price: 100, slotId: s, specialistId: specialist, ...at, followUp: { isFollowUp: true, parentConsultationId: parent.toHexString() } } as never);
+      price: 100, slotId: s, specialistId: doctorOf(s), ...at, followUp: { isFollowUp: true, parentConsultationId: parent.toHexString() } } as never);
     await cancel(insertedId.toHexString(), u); await cancel(insertedId.toHexString(), u);
     assert.equal((await slotRow(s)).currentBookings, 0);
     assert.equal((await BookingModel.findById(parent).lean())!.followUp!.benefitUsed, false);
@@ -278,7 +284,7 @@ async function main() {
     const u = await customer();
     const holder = await createBookingWithHolds(draft(u, s, at));                       // owns the only seat
     const { insertedId: legacy } = await BookingModel.collection.insertOne({ userId: u, bookingType: 'consultation', status: 'pending',
-      paymentStatus: 'pending', price: 100, slotId: s, specialistId: specialist, ...at } as never);   // old best-effort increment had failed
+      paymentStatus: 'pending', price: 100, slotId: s, specialistId: doctorOf(s), ...at } as never);   // old best-effort increment had failed
     await cancel(legacy.toHexString(), u);
     assert.equal((await slotRow(s)).currentBookings, 1, 'the holder keeps its seat'); assert.equal((await slotRow(s)).isAvailable, false);
     await rejects(createBookingWithHolds(draft(u, s, at)), 'SLOT_NOT_AVAILABLE', 409);
@@ -288,7 +294,7 @@ async function main() {
     const s2 = await slot(at, 1);
     await createBookingWithHolds(draft(u, s2, at));
     const { insertedId: legacy2 } = await BookingModel.collection.insertOne({ userId: u, bookingType: 'consultation', status: 'pending',
-      paymentStatus: 'pending', price: 100, slotId: s2, specialistId: specialist, ...at } as never);
+      paymentStatus: 'pending', price: 100, slotId: s2, specialistId: doctorOf(s2), ...at } as never);
     await rejects(service.rescheduleBooking(legacy2.toHexString(), { slotId: s2 }, { _id: u, userType: 'user' }), 'SLOT_NOT_AVAILABLE');
     assert.equal((await slotRow(s2)).currentBookings, 1);
     // Two legacy follow-ups of one consultation: cancelling one leaves the benefit used.
@@ -329,14 +335,15 @@ async function main() {
   });
 
   await check('[A2a-4] the appointment time is the slot\'s: a supplied time is replaced on create and on every reschedule (same slot too)', async () => {
-    const at = inHours(96); const s = await slot(at, 2);
+    const dr = new Types.ObjectId().toHexString();
+    const at = inHours(96); const s = await slot(at, 2, 0, dr);
     const u = await customer();
     const b = await createBookingWithHolds(draft(u, s, { bookingDate: at.bookingDate, bookingTime: '23:00' }));
     assert.equal(b.bookingTime, at.bookingTime);
     assert.equal((await BookingModel.findById(b._id).lean())!.bookingTime, at.bookingTime);
     const same = await service.rescheduleBooking(String(b._id), { slotId: s, bookingTime: '23:59' }, { _id: u, userType: 'user' });
     assert.equal(same.bookingTime, at.bookingTime); assert.equal((await slotRow(s)).currentBookings, 1, 'same held slot: no second seat');
-    const at2 = inHours(120); const s2 = await slot(at2);
+    const at2 = inHours(120); const s2 = await slot(at2, 1, 0, dr);
     const moved = await service.rescheduleBooking(String(b._id), { slotId: s2, bookingTime: '00:01' }, { _id: u, userType: 'user' });
     assert.equal(moved.bookingTime, at2.bookingTime);
     const bad = await SlotModel.create({ specialistId: specialist, date: at.bookingDate, startTime: 'soon', endTime: '23:59', maxBookings: 1,
@@ -352,7 +359,7 @@ async function main() {
     assert.equal(holder.slotId, s); assert.equal(holder.holds!.heldSlotId, s);
     for (const variant of [s, s.toUpperCase()]) {
       const { insertedId } = await BookingModel.collection.insertOne({ userId: u, bookingType: 'consultation', status: 'pending', paymentStatus: 'pending',
-        price: 100, slotId: variant, specialistId: specialist, ...at } as never);
+        price: 100, slotId: variant, specialistId: doctorOf(variant), ...at } as never);
       await cancel(insertedId.toHexString(), u);
       assert.equal((await slotRow(s)).currentBookings, 1, `legacy ${variant === s ? 'lower' : 'upper'}-case row keeps the holder's seat`);
     }
@@ -362,7 +369,7 @@ async function main() {
     // A historic legacy holder in upper case, and a legacy row in lower case without a seat.
     const s2 = await slot(at, 1, 1);
     const ins = (slotId: string) => BookingModel.collection.insertOne({ userId: u, bookingType: 'consultation', status: 'pending', paymentStatus: 'pending',
-      price: 100, slotId, specialistId: specialist, ...at } as never);
+      price: 100, slotId, specialistId: doctorOf(slotId), ...at } as never);
     await ins(s2.toUpperCase()); const { insertedId: lower } = await ins(s2);
     await cancel(lower.toHexString(), u);
     assert.equal((await slotRow(s2)).currentBookings, 1, 'two claimants, one unit: nothing released');

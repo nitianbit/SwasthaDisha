@@ -1,4 +1,6 @@
 import 'reflect-metadata';
+import { getMySchedule, putMySchedule, addMyLeave, removeMyLeave } from '@/modules/doctors/controller';
+import { scheduleTemplateSchema, leaveSchema, leaveParamSchema } from '@/modules/doctors/validation';
 import { Router } from 'express';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
@@ -83,6 +85,12 @@ specialistRouter.get(
   validate(specialistSlotsQuerySchema, 'query'),
   catchAsync(specialistController.listMySlots)
 );
+
+// Q4: weekly schedule (per-mode, per-clinic windows) and leave days, expanded into slots for 30 days.
+specialistRouter.get('/me/schedule', requireSpecialist, catchAsync(getMySchedule));
+specialistRouter.put('/me/schedule', requireSpecialist, validate(scheduleTemplateSchema, 'body'), catchAsync(putMySchedule));
+specialistRouter.post('/me/leave', requireSpecialist, validate(leaveSchema, 'body'), catchAsync(addMyLeave));
+specialistRouter.delete('/me/leave/:date', requireSpecialist, validate(leaveParamSchema, 'params'), catchAsync(removeMyLeave));
 
 specialistRouter.post(
   '/me/slots',

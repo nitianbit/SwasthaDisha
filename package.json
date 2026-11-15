@@ -15,6 +15,7 @@
     "migrate:pharmacy-inventory-batches": "tsx src1/scripts/migratePharmacyInventoryBatches.ts",
     "migrate:q2-user-phones": "tsx src1/scripts/q2UserPhoneIndex.ts",
     "migrate:q3-settlement-cutover": "tsx src1/scripts/q3SettlementCutover.ts",
+    "migrate:q4-reservations": "tsx src1/scripts/q4ReservationBackfill.ts",
     "test:api": "tsx test/test-api.ts",
     "test:pharmacy": "tsx --test test/pharmacy.integration.test.ts",
     "update-images": "tsx test/update-images.ts",

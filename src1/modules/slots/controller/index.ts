@@ -148,10 +148,13 @@ export class SlotController {
       | string
       | undefined;
     const date = req.query.date as string | undefined;
+    const mode = typeof req.query.mode === 'string' && ['chat', 'call', 'video', 'in-person'].includes(req.query.mode)
+      ? req.query.mode as 'chat' | 'call' | 'video' | 'in-person' : undefined;
     const result = await this.slotService.getAvailableSlots(
       specialistId,
       wellnessPackageId,
-      date
+      date,
+      mode
     );
 
     res.status(200).json({

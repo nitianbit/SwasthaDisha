@@ -421,7 +421,8 @@ const bookingSchema = new Schema<IBooking>(
     },
     status: {
       type: String,
-      enum: ['pending', 'confirmed', 'completed', 'cancelled'],
+      // Q4: 'no_show' — the patient did not attend a paid consultation (no refund).
+      enum: ['pending', 'confirmed', 'completed', 'cancelled', 'no_show'],
       default: 'pending',
       index: true,
     },
@@ -430,6 +431,11 @@ const bookingSchema = new Schema<IBooking>(
       type: String,
       enum: ['legacy', 'ledger'],
       default: 'legacy',
+    },
+    // Q4 §7a: the doctor's settlement account at creation (ledger bookings only); earnings never re-derive it.
+    settlement: {
+      settlementAccountId: { type: String },
+      beneficiaryName: { type: String },
     },
     paymentStatus: {
       type: String,

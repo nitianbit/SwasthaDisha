@@ -11,6 +11,10 @@ import PaymentRecordModel from '@/modules/payment/model';
 import { WalletTransactionModel } from '@/modules/wallet/model';
 import { WalletRepository } from '@/modules/wallet/repository';
 import { settlementSystemFor } from '@/modules/partners/services/cutover';
+import { ensureSettlementAccount } from '@/modules/partners/services/settlement';
+import { istInstant } from '@/modules/partners/services/slots';
+import { reserveInterval, moveInterval, releaseInterval } from '@/modules/doctors/services/reservations';
+import SpecialistModel from '@/modules/specialists/model';
 
 /**
  * Ordinary-booking holds and settlement (option A, phase A2a; milestone C1–C5/E5 on the walletFunding ledger).
@@ -76,7 +80,10 @@ async function heldFollowUpParent(b: IBooking, s: ClientSession): Promise<string
  * Takes one unit of the slot's capacity for `booking` (its date and specialist/package must match) and returns the
  * slot's start time, which becomes the booking's appointment time.
  */
-async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate' | 'specialistId' | 'wellnessPackageId'>, s: ClientSession) {
+type SlotRow = { _id?: unknown; date?: string; startTime?: string; endTime?: string; duration?: number; maxBookings?: number; specialistId?: string;
+  serviceModes?: string[]; branchId?: string };
+
+async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate' | 'specialistId' | 'wellnessPackageId' | 'consultationMode'>, s: ClientSession) {
   if (!Types.ObjectId.isValid(slotId)) throw conflict('SLOT_NOT_AVAILABLE', 'Slot is not available');
   const slot = await SlotModel.findById(slotId).session(s).lean();
   const max = slot?.maxBookings ?? 1;
@@ -86,11 +93,33 @@ async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate'
     throw conflict('SLOT_NOT_AVAILABLE', 'Slot is not available for booking');
   }
   const time = slotTime(slot, booking);
+  // Q4: a slot offered for some modes only takes bookings in those modes.
+  const modes = (slot as SlotRow).serviceModes ?? [];
+  if (modes.length > 0 && booking.consultationMode && !modes.includes(String(booking.consultationMode))) {
+    throw conflict('SLOT_NOT_AVAILABLE', 'This slot is not offered for that consultation type');
+  }
   const r = await SlotModel.updateOne({ _id: slotId, ...(slot.currentBookings === undefined ? { currentBookings: { $exists: false } } : { currentBookings: current }) },
     { $inc: { currentBookings: 1 }, $set: { isAvailable: current + 1 < max } }, { session: s });
   if (r.modifiedCount !== 1) throw changed();
-  return time;
+  return { time, slot: slot as SlotRow };
 }
+
+/** India-time interval of a slot (YYYYMMDD + HH:mm; end from endTime, else duration, else 30 minutes). */
+function slotInterval(slot: SlotRow): { start: Date; end: Date } {
+  const d = String(slot.date);
+  const date = `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
+  const start = istInstant(date, String(slot.startTime));
+  const end = slot.endTime && slot.endTime > String(slot.startTime) ? istInstant(date, slot.endTime)
+    : new Date(start.getTime() + (Number(slot.duration) > 0 ? Number(slot.duration) : 30) * 60_000);
+  return { start, end };
+}
+
+/**
+ * Q4 §5: a doctor's one-patient slot is an exclusive interval of the doctor's time, shared with every other booking path
+ * (instant, in-clinic) through DoctorReservation. Slots deliberately sold to several patients keep only their counter.
+ */
+const exclusiveFor = (b: Pick<IBooking, 'specialistId' | 'bookingType'>, slot: SlotRow) =>
+  !!b.specialistId && ['consultation', 'second-opinion'].includes(String(b.bookingType)) && Number(slot.maxBookings ?? 1) === 1;
 
 /** The slot's appointment time for `booking`: the slot must be for its date and specialist/package, at a valid time. */
 function slotTime(slot: { date?: string; startTime?: string; specialistId?: string; wellnessPackageId?: string },
@@ -136,7 +165,15 @@ export async function createBookingWithHolds(input: IBooking): Promise<IBooking>
     }
     const doc = { ...input, ...(slotId ? { slotId } : {}), ...(parentId ? { followUp: { ...input.followUp!, parentConsultationId: parentId } } : {}) };
     const holds: Holds = { version: 1, heldSlotId: input.bookingType !== 'surgery' ? slotId : null, followUpParentId: null };
-    if (holds.heldSlotId) doc.bookingTime = await reserveSlot(holds.heldSlotId, input, s);
+    const bookingId = new Types.ObjectId();
+    if (holds.heldSlotId) {
+      const { time, slot } = await reserveSlot(holds.heldSlotId, input, s);
+      doc.bookingTime = time;
+      if (exclusiveFor(input, slot)) {
+        const { start, end } = slotInterval(slot);
+        await reserveInterval({ doctorId: String(input.specialistId), kind: 'scheduled', refId: String(bookingId), start, end, branchId: slot.branchId }, s);
+      }
+    }
     if (parentId) {
       const r = await BookingModel.updateOne({ _id: parentId, userId: { $eq: input.userId }, status: 'completed',
         'followUp.benefitUsed': { $ne: true } }, { $set: { 'followUp.benefitUsed': true } }, { session: s });
@@ -148,7 +185,15 @@ export async function createBookingWithHolds(input: IBooking): Promise<IBooking>
     if (typeof requestKey === 'string' && requestKey) {
       await claimRequestKey(scopeOf('booking_create', String((doc as { userId?: unknown }).userId)), requestKey, s);
     }
-    const [created] = await BookingModel.create([{ ...doc, holds, settlementSystem: settlementSystemFor(new Date()) }], { session: s });
+    const settlementSystem = settlementSystemFor(new Date());
+    // Q4 §7a: a ledger consultation snapshots the doctor's settlement account (created here on first use).
+    let settlement: { settlementAccountId: string; beneficiaryName: string } | undefined;
+    if (settlementSystem === 'ledger' && input.specialistId) {
+      const sp = await SpecialistModel.findById(String(input.specialistId)).select({ name: 1 }).session(s).lean() as { name?: string } | null;
+      const account = await ensureSettlementAccount('doctor', String(input.specialistId), sp?.name || input.doctorName || 'Doctor', s);
+      settlement = { settlementAccountId: String(account._id), beneficiaryName: account.beneficiaryName };
+    }
+    const [created] = await BookingModel.create([{ ...doc, _id: bookingId, holds, settlementSystem, ...(settlement ? { settlement } : {}) }], { session: s });
     return created.toObject() as IBooking;
   });
 }
@@ -188,13 +233,16 @@ async function settleMoney(booking: IBooking, id: string, records: PaymentRow[],
  * the ledger does not know yet and undoes any coupon count that landed after the cancel, and changes nothing else.
  */
 export async function cancelBookingSettlement(p: {
-  bookingId: string; requester: { _id: string; userType: string }; reason: string; cancelledAt: string;
+  bookingId: string; requester: { _id: string; userType: string }; reason: string; cancelledAt: string; cause?: string;
   lifecycle: (b: IBooking) => IBooking['lifecycle']; enforceWindow: (b: IBooking) => void; wallets: WalletRepository;
 }): Promise<CancelResult> {
   if (!Types.ObjectId.isValid(p.bookingId)) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
   const id = String(p.bookingId).toLowerCase();
   return runLedgerTransaction(async s => {
-    const owner = p.requester.userType === 'admin' ? {} : { userId: { $eq: p.requester._id } };
+    // Q4: the booking's own doctor may cancel it too (always a full refund; the caller passes no window).
+    const owner = p.requester.userType === 'admin' ? {}
+      : p.requester.userType === 'specialist' ? { specialistId: { $eq: p.requester._id } }
+      : { userId: { $eq: p.requester._id } };
     const booking = await BookingModel.findOne({ _id: id, ...owner }).session(s).lean() as IBooking | null;
     if (!booking) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
     const already = booking.status === 'cancelled';
@@ -226,8 +274,9 @@ export async function cancelBookingSettlement(p: {
 
     const cancelled = await BookingModel.updateOne({ _id: id, status: booking.status },
       { $set: { status: 'cancelled', paymentStatus: 'refunded', cancellationReason: p.reason, cancelledAt: p.cancelledAt,
-        lifecycle: p.lifecycle(booking) } }, { session: s });
+        ...(p.cause ? { cancellationCause: p.cause } : {}), lifecycle: p.lifecycle(booking) } }, { session: s });
     if (cancelled.modifiedCount !== 1) throw changed();
+    await releaseInterval('scheduled', id, s);
 
     // Coupon state first (it reads each record as captured, before the money step marks it refunded).
     await undoCouponUsageIn(records.map(r => String(r._id)), s);
@@ -283,6 +332,7 @@ export async function expireUnpaidBooking(p: { bookingId: string; now: Date; wal
         cancellationCause: 'payment_timeout', cancelledAt: p.cancelledAt, lifecycle: p.lifecycle(booking) },
         $unset: { expiryNextAt: 1, expiryChecks: 1 } }, { session: s });
     if (cancelled.modifiedCount !== 1) throw changed();
+    await releaseInterval('scheduled', id, s);
     await undoCouponUsageIn(records.map(r => String(r._id)), s);
     const refunded = await settleMoney(booking, id, records, p.wallets, s);
     if (slot) await releaseSlot(slot, s);
@@ -317,8 +367,22 @@ export async function rescheduleWithHolds(p: {
     const next = { ...booking, ...p.patch } as IBooking;
     let bookingTime: string;
     if (current !== target) {
-      bookingTime = await reserveSlot(target, next, s);
+      const reserved = await reserveSlot(target, next, s);
+      bookingTime = reserved.time;
       if (current) await releaseSlot(current, s);
+      // Q4: the doctor's interval moves with the appointment (refused if the doctor is not free then).
+      if (exclusiveFor(next, reserved.slot)) {
+        const { start, end } = slotInterval(reserved.slot);
+        const doctorId = String(next.specialistId);
+        try {
+          await moveInterval({ doctorId, kind: 'scheduled', refId: id, start, end }, s);
+        } catch (e) {
+          if ((e as { code?: string })?.code !== 'RESERVATION_NOT_ACTIVE') throw e;
+          await reserveInterval({ doctorId, kind: 'scheduled', refId: id, start, end, branchId: reserved.slot.branchId }, s);
+        }
+      } else {
+        await releaseInterval('scheduled', id, s);
+      }
     } else {
       // Same slot, already held: only the appointment fields may change, and they must still match the slot.
       const slot = await SlotModel.findById(target).session(s).lean();

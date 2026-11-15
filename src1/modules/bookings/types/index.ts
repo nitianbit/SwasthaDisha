@@ -1,7 +1,7 @@
 export type BookingType = 'package' | 'consultation' | 'second-opinion' | 'surgery';
 export type ServiceMode = 'in-person' | 'pickup' | 'chat' | 'call' | 'video';
 export type ConsultationMode = 'chat' | 'call' | 'video' | 'in-person';
-export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled';
+export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 export type VirtualMeetingStatus = 'active' | 'cancelled' | 'failed';
 
@@ -137,6 +137,7 @@ export interface IBooking {
   holds?: { version: 1; heldSlotId?: string | null; followUpParentId?: string | null };
   /** Q3 §7a: settled by the legacy payouts or the ledger (never both). */
   settlementSystem?: 'legacy' | 'ledger';
+  settlement?: { settlementAccountId?: string; beneficiaryName?: string };
   walletFunding?: { total: number; revision?: number; closed?: boolean;
     captures?: { recordId: string; amount: number; state: 'applied' | 'returned' }[]; updatedAt?: Date };
   

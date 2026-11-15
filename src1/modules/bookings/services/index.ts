@@ -2,6 +2,9 @@ import { BookingRepository } from '@/modules/bookings/repository';
 import BookingModel from '@/modules/bookings/model';
 import { fundBookingFromWallet, runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
 import { Types } from 'mongoose';
+import { parseAppointment } from '@/modules/common/utils/cancellationWindow';
+import { postConsultationEarningIn } from '@/modules/doctors/services/earnings';
+import { releaseInterval } from '@/modules/doctors/services/reservations';
 import { CreateDirectPaidTransactionRequest } from '@/modules/payment/types';
 import { cancelBookingSettlement, createBookingWithHolds, expireUnpaidBooking, isReplayedBooking, paymentDeadlinePassed, rescheduleWithHolds } from '@/modules/bookings/holds';
 import {
@@ -1389,7 +1392,7 @@ export class BookingService {
     userId?: string
   ): Promise<IBooking> {
     const booking = await this.getById(id, userId);
-    if (data.status === 'cancelled' || data.paymentStatus !== undefined || Object.prototype.hasOwnProperty.call(data, 'paymentTransactionId') ||
+    if (data.status === 'cancelled' || data.status === 'no_show' || data.paymentStatus !== undefined || Object.prototype.hasOwnProperty.call(data, 'paymentTransactionId') ||
         data.lifecycle !== undefined || data.followUp !== undefined || data.slotId !== undefined || data.bookingDate !== undefined || data.bookingTime !== undefined) {
       throw new AppError({ status: 409, code: 'DEDICATED_BOOKING_COMMAND_REQUIRED', message: 'Use cancellation, rescheduling or payment commands for this change' });
     }
@@ -1407,7 +1410,15 @@ export class BookingService {
       data.lifecycle = lifecyclePatch;
     }
 
-    const updated = await this.bookingRepository.update({ _id: id, status: booking.status, ...(userId ? { userId: { $eq: userId } } : {}) }, data);
+    const fence = { _id: id, status: booking.status, ...(userId ? { userId: { $eq: userId } } : {}) };
+    // Q4: completing a ledger consultation posts the doctor's earning in the same transaction as the status change.
+    const updated = data.status === 'completed' && booking.status !== 'completed'
+      ? await runLedgerTransaction(async (session) => {
+        const done = await BookingModel.findOneAndUpdate(fence, { $set: data }, { new: true, session }).lean() as IBooking | null;
+        if (done) await postConsultationEarningIn(done, session, { by: 'system', byKind: 'system' });
+        return done;
+      })
+      : await this.bookingRepository.update(fence, data);
 
     if (!updated) {
       throw new AppError({
@@ -1497,6 +1508,58 @@ export class BookingService {
       }
     }
     return cancelBookingMeet({ booking, reason: booking.cancellationReason, bookingRepository: this.bookingRepository });
+  }
+
+  /**
+   * Q4: the booking's own doctor cancels it (the portal's former 409): one settlement transaction like a customer
+   * cancellation, always a full refund to the wallet, cause 'doctor'. Admins may do the same.
+   */
+  async cancelByDoctor(bookingId: string, requester: { _id: string; userType: 'specialist' | 'admin' }, reason: string): Promise<IBooking> {
+    const result = await cancelBookingSettlement({
+      bookingId, requester, reason, cause: 'doctor', cancelledAt: getTodayYyyymmdd(), wallets: this.walletRepository,
+      enforceWindow: () => undefined,
+      lifecycle: booking => this.buildLifecyclePatch(booking.lifecycle, { cancelled: { reason }, refunded: { reason } }),
+    });
+    const booking = result.booking;
+    if (result.alreadyCancelled) return booking;
+    try { await this.bookingReminderScheduler.clearBookingReminders(booking._id!); }
+    catch (error) { console.error('Failed to clear booking reminders:', error); }
+    try {
+      await this.notificationService.create({
+        userId: String(booking.userId), type: 'booking_cancelled', title: 'Your doctor cancelled the appointment',
+        message: `${reason}. Your full payment is back in your wallet.`, referenceType: 'booking', referenceId: String(booking._id),
+        idempotencyKey: `booking:${booking._id}:doctor_cancelled`,
+      });
+    } catch (error) { console.error('Failed to notify customer of doctor cancellation:', error); }
+    return cancelBookingMeet({ booking, reason: booking.cancellationReason, bookingRepository: this.bookingRepository });
+  }
+
+  /**
+   * Q4: the patient did not attend a paid consultation: confirmed → no_show after the appointment time (no refund). The
+   * doctor's interval is freed and, for a ledger booking, the doctor earns it in the same transaction.
+   */
+  async markNoShow(bookingId: string, requester: { _id: string; userType: 'specialist' | 'admin' }, now = new Date()): Promise<IBooking> {
+    if (!Types.ObjectId.isValid(bookingId)) throw new AppError({ status: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
+    const owner = requester.userType === 'admin' ? {} : { specialistId: { $eq: requester._id } };
+    const updated = await runLedgerTransaction(async (session) => {
+      const b = await BookingModel.findOne({ _id: bookingId, ...owner }).session(session).lean() as IBooking | null;
+      if (!b) throw new AppError({ status: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
+      if (b.status !== 'confirmed' || b.paymentStatus !== 'paid') {
+        throw new AppError({ status: 409, code: 'BOOKING_STATE_CONFLICT', message: `A ${b.status} booking cannot be marked as no-show` });
+      }
+      const at = parseAppointment({ bookingDate: b.bookingDate, bookingTime: b.bookingTime });
+      if (!at || now < at.at) throw new AppError({ status: 409, code: 'APPOINTMENT_NOT_STARTED', message: 'A no-show can be marked only after the appointment time' });
+      const done = await BookingModel.findOneAndUpdate({ _id: bookingId, status: 'confirmed', paymentStatus: 'paid' },
+        { $set: { status: 'no_show' } }, { new: true, session }).lean() as IBooking | null;
+      if (!done) throw new AppError({ status: 409, code: 'BOOKING_CHANGED', message: 'Booking changed; please retry' });
+      await releaseInterval('scheduled', String(bookingId).toLowerCase(), session);
+      await postConsultationEarningIn(done, session, { by: requester.userType === 'admin' ? `admin:${requester._id}` : 'system',
+        byKind: requester.userType === 'admin' ? 'admin' : 'system' });
+      return done;
+    });
+    try { await this.bookingReminderScheduler.clearBookingReminders(updated._id!); }
+    catch (error) { console.error('Failed to clear booking reminders:', error); }
+    return cancelBookingMeet({ booking: updated, reason: 'Patient did not attend', bookingRepository: this.bookingRepository });
   }
 
   async rescheduleBooking(

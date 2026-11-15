@@ -316,7 +316,8 @@ export class SpecialistController {
     const booking = await this.specialistPortalService.updateAppointmentStatus(
       this.specialistId(req),
       req.params.id,
-      req.body.status
+      req.body.status,
+      req.body.reason
     );
     res.status(200).json({
       success: true,

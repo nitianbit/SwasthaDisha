@@ -1,4 +1,6 @@
 import { Service } from 'typedi';
+import { DoctorReservationModel } from '@/modules/doctors/model/reservation';
+import { istInstant } from '@/modules/partners/services/slots';
 import { SlotRepository } from '@/modules/slots/repository';
 import {
   ISlot,
@@ -8,6 +10,16 @@ import {
 } from '@/modules/slots/types';
 import { AppError } from '@/modules/common/types';
 import { getTodayYyyymmdd, compareYyyymmdd } from '@/modules/common/utils/dateUtils';
+
+/** India-time interval of a slot (YYYYMMDD + HH:mm). */
+function slotWindow(s: { date?: string; startTime?: string; endTime?: string; duration?: number }): { start: Date; end: Date } {
+  const d = String(s.date);
+  const date = `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
+  const start = istInstant(date, String(s.startTime));
+  const end = s.endTime && s.endTime > String(s.startTime) ? istInstant(date, s.endTime)
+    : new Date(start.getTime() + (Number(s.duration) > 0 ? Number(s.duration) : 30) * 60_000);
+  return { start, end };
+}
 
 @Service()
 export class SlotService {
@@ -357,13 +369,27 @@ export class SlotService {
   async getAvailableSlots(
     specialistId?: string,
     wellnessPackageId?: string,
-    date?: string
+    date?: string,
+    mode?: 'chat' | 'call' | 'video' | 'in-person'
   ): Promise<ISlot[]> {
-    return this.slotRepository.findAvailableSlots(
+    const slots = await this.slotRepository.findAvailableSlots(
       specialistId,
       wellnessPackageId,
       date
     );
+    // Q4: only slots offered for the requested mode, and never a one-patient slot overlapping time the doctor already
+    // holds through another path (e.g. an instant consultation).
+    const byMode = mode ? slots.filter((s) => !s.serviceModes?.length || s.serviceModes.includes(mode)) : slots;
+    const doctorIds = [...new Set(byMode.map((s) => s.specialistId).filter(Boolean).map(String))];
+    if (!doctorIds.length) return byMode;
+    const windows = byMode.map((s) => slotWindow(s));
+    const from = new Date(Math.min(...windows.map((w) => w.start.getTime())));
+    const to = new Date(Math.max(...windows.map((w) => w.end.getTime())));
+    const held = await DoctorReservationModel.find({ doctorId: { $in: doctorIds }, isActive: true, startTime: { $lt: to }, endTime: { $gt: from } })
+      .select({ doctorId: 1, startTime: 1, endTime: 1 }).lean();
+    if (!held.length) return byMode;
+    return byMode.filter((s, i) => Number(s.maxBookings ?? 1) !== 1 || !held.some((h) =>
+      h.doctorId === String(s.specialistId) && h.startTime < windows[i]!.end && h.endTime > windows[i]!.start));
   }
 
   async incrementBookingCount(id: string): Promise<ISlot> {

@@ -60,6 +60,14 @@ const slotSchema = new Schema<ISlot>(
       enum: ['daily', 'weekly', 'monthly'],
       trim: true,
     },
+    // Q4: consultation modes this slot offers (absent/empty = any mode, as before).
+    serviceModes: [{ type: String, enum: ['chat', 'call', 'video', 'in-person'] }],
+    // Q4/Q6: clinic branch the slot is held at (in-person consultations at a partner clinic).
+    branchId: { type: String },
+    // Q4: 'template' slots are generated from the doctor's weekly template; others were created by hand.
+    source: { type: String, enum: ['manual', 'template'], default: 'manual' },
+    // Q4: why the slot is not bookable (leave/template change); manual deactivation leaves this empty.
+    closedReason: { type: String, enum: ['leave', 'template'] },
     isActive: {
       type: Boolean,
       default: true,
@@ -77,6 +85,8 @@ slotSchema.index({ wellnessPackageId: 1, date: 1, isAvailable: 1 });
 slotSchema.index({ slotType: 1, date: 1, isAvailable: 1 });
 slotSchema.index({ date: 1, startTime: 1 });
 slotSchema.index({ date: 1, isActive: 1 });
+// Q4: one generated slot per doctor, date and start (manual legacy slots are not constrained).
+slotSchema.index({ specialistId: 1, date: 1, startTime: 1 }, { unique: true, partialFilterExpression: { source: 'template' } });
 
 // Virtual to check if slot is fully booked
 slotSchema.virtual('isFullyBooked').get(function () {

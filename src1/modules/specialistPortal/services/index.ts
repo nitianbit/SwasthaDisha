@@ -213,7 +213,8 @@ export class SpecialistPortalService {
   async updateAppointmentStatus(
     specialistId: string,
     bookingId: string,
-    status: IBooking['status']
+    status: IBooking['status'],
+    reason?: string
   ): Promise<IBooking> {
     const booking = await this.bookingRepository.findById(bookingId);
     if (
@@ -236,11 +237,13 @@ export class SpecialistPortalService {
       });
     }
 
-    const updated = await this.bookingService.update(bookingId, {
-      status,
-      cancellationReason:
-        status === 'cancelled' ? 'Cancelled by specialist' : undefined,
-    });
+    // Q4: cancellation and no-show are dedicated commands (refund / no refund, interval release, earnings).
+    const requester = { _id: String(specialistId), userType: 'specialist' as const };
+    const updated = status === 'cancelled'
+      ? await this.bookingService.cancelByDoctor(bookingId, requester, reason?.trim() || 'Cancelled by the doctor')
+      : status === 'no_show'
+        ? await this.bookingService.markNoShow(bookingId, requester)
+        : await this.bookingService.update(bookingId, { status });
 
     if (status === 'cancelled') {
       try {
