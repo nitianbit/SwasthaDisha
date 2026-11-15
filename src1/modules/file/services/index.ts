@@ -64,7 +64,9 @@ export class FileService {
   async uploadFiles(
     req: any,
     module: string,
-    recordId?: string
+    recordId?: string,
+    /** Server-chosen destinations (e.g. a booking's report folder) may write to a reserved module after their own checks. */
+    opts: { allowReserved?: boolean } = {}
   ): Promise<IUploadedFile[]> {
     const written: string[] = [];
     const recorded: string[] = [];
@@ -76,7 +78,7 @@ export class FileService {
         throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Authorization token is required' });
       }
       // Server-written folders; a client upload there could pose as a server file.
-      if (RESERVED_UPLOAD_MODULES.has(String(module).toLowerCase())) {
+      if (!opts.allowReserved && RESERVED_UPLOAD_MODULES.has(String(module).toLowerCase())) {
         throw new AppError({ status: 400, code: 'UPLOAD_MODULE_RESERVED', message: 'Files cannot be uploaded to this folder' });
       }
       const relativeModule = recordId ? `${module}/${recordId}` : module;

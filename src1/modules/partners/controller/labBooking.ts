@@ -39,8 +39,9 @@ export const rejectLabBooking = async (req: Request, res: Response, _n: NextFunc
   ok(res, await svc().labReject(actorOf(req), req.params.bookingId, req.body.reason));
 export const rescheduleLabBooking = async (req: Request, res: Response, _n: NextFunction) =>
   ok(res, await svc().labReschedule(actorOf(req), req.params.bookingId, req.body.slotId, req.body.reason));
+/** multipart/form-data `files`: written under the booking's report folder and attached as drafts in one step. */
 export const uploadLabReports = async (req: Request, res: Response, _n: NextFunction) =>
-  ok(res, await svc().uploadReports(actorOf(req), req.params.bookingId, req.body.files));
+  ok(res, await svc().uploadReportFiles(actorOf(req), req.params.bookingId, req), 201);
 export const releaseLabReport = async (req: Request, res: Response, _n: NextFunction) =>
   ok(res, await svc().releaseReport(actorOf(req), req.params.bookingId, req.body.file, req.body.signerMemberId));
 

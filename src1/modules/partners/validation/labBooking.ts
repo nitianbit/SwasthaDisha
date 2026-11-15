@@ -1,7 +1,8 @@
 import Joi from 'joi';
+import { isRealDate } from '@/modules/partners/services/slots';
 
 const objectId = Joi.string().pattern(/^[0-9a-fA-F]{24}$/);
-const date = Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/);
+const date = Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).custom((v, h) => (isRealDate(v) ? v : h.error('any.invalid')), 'real calendar date');
 const hhmm = Joi.string().pattern(/^([01]\d|2[0-3]):[0-5]\d$/);
 const visitMode = Joi.string().valid('home', 'lab');
 const window = Joi.object({ start: hhmm.required(), end: hhmm.required() });
@@ -31,7 +32,6 @@ export const assignCollectorSchema = Joi.object({
 });
 export const rejectSchema = Joi.object({ reason: Joi.string().trim().min(3).max(500).required() });
 export const labRescheduleSchema = Joi.object({ slotId: objectId.required(), reason: Joi.string().trim().min(3).max(500).required() });
-export const uploadReportsSchema = Joi.object({ files: Joi.array().items(Joi.string().trim().max(500)).min(1).max(10).required() });
 export const releaseReportSchema = Joi.object({ file: Joi.string().trim().max(500).required(), signerMemberId: objectId });
 
 export const createLabBookingSchema = Joi.object({

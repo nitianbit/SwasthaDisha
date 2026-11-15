@@ -27,7 +27,9 @@ const pharmacyOf = (r: Reader) => id(r.pharmacyId ?? r._id);
 /** Exact server-written folders (never client uploads: those modules are reserved). */
 const BOOKING_PRESCRIPTION = /^bookings\/([0-9a-f]{24})\/prescription-\d+\.pdf$/;
 const LAB_REPORT = /^external-bookings\/([0-9a-f]{24})\/diagnostics-report-[A-Za-z0-9_-]+\.pdf$/;
-export const RESERVED_UPLOAD_MODULES = new Set(['bookings', 'external-bookings', 'payouts']);
+export const RESERVED_UPLOAD_MODULES = new Set(['bookings', 'external-bookings', 'payouts', 'partner-lab-reports']);
+/** Q3: partner lab report files are readable only through their report bindings (never the uploader shortcut). */
+const PARTNER_LAB_REPORT = /^partner-lab-reports\//;
 
 async function canReadBooking(r: Reader, bookingId: string): Promise<boolean> {
   if (!isValidObjectId(bookingId)) return false;
@@ -246,7 +248,9 @@ export async function decideFileAccess(reader: Reader | undefined, rel: string):
   if (reader.userType === 'admin') return ok;
   const upload = await FileUploadModel.findOne({ path: rel }).lean();
   if (upload) {
-    if (upload.uploaderType === reader.userType && upload.uploaderId === id(reader._id)) return ok;
+    // A partner lab report is judged by its binding (current permission + branch), so a member whose report rights were
+    // removed cannot keep reading files they once uploaded.
+    if (!PARTNER_LAB_REPORT.test(rel) && upload.uploaderType === reader.userType && upload.uploaderId === id(reader._id)) return ok;
   } else {
     const rx = BOOKING_PRESCRIPTION.exec(rel);
     if (rx && await canReadBooking(reader, rx[1]!)) return ok;

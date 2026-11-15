@@ -473,6 +473,10 @@ export class PartnerService {
       if (!updated) throw branchNotFound();
       await recordPartnerAudit(actor, 'branch.update', { kind: 'branch', id: branchId }, { fields: Object.keys(safeData) }, session);
       return updated;
+    }).then(async (updated) => {
+      // Holidays and services decide which slots exist: bring the branch's generated slots in line now.
+      if ('holidays' in safeData || 'services' in safeData) await (await import('@/modules/partners/services/slots')).expandBranchTemplates(branchId);
+      return updated;
     });
   }
 
@@ -482,6 +486,7 @@ export class PartnerService {
       const done = await this.branchRepository.update({ _id: branchId, partnerId: actor.partnerId, isActive: true }, { isActive: false }, { new: true, session } as any);
       if (done) await recordPartnerAudit(actor, 'branch.deactivate', { kind: 'branch', id: branchId }, undefined, session);
     });
+    await (await import('@/modules/partners/services/slots')).expandBranchTemplates(branchId);
   }
 
   /** The partner-wide trail names members and grants on every branch, so only all-branch actors may read it. */

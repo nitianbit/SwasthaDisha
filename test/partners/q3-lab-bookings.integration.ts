@@ -8,6 +8,7 @@
  *   MONGODB_URL='mongodb://127.0.0.1:27917/q3_lab_check?directConnection=true' JWT_SECRET_KEY=local-check-only \
  *     npx tsx --tsconfig tsconfig.json test/partners/q3-lab-bookings.integration.ts
  */
+import { removeFixtureDir } from './q3-fixture-dir';
 import 'reflect-metadata';
 import assert from 'node:assert/strict';
 import type { AddressInfo } from 'node:net';
@@ -16,7 +17,6 @@ import jwt from 'jsonwebtoken';
 import mongoose, { Types } from 'mongoose';
 import { Container } from 'typedi';
 import { CONFIG } from '@/config/config';
-import { authenticate, denyRoles } from '@/modules/middleware/auth';
 import { errorHandler } from '@/modules/middleware';
 import UserModel from '@/modules/user/model';
 import BookingModel from '@/modules/bookings/model';
@@ -43,6 +43,12 @@ import PartnerAuditEventModel from '@/modules/partners/model/audit';
 import CatalogueItemModel from '@/modules/partners/model/catalogueItem';
 import { SettlementAccountModel, LedgerEntryModel, LedgerHistoryRefModel } from '@/modules/partners/model/settlement';
 import { PartnerSlotModel, PartnerSlotTemplateModel } from '@/modules/partners/model/slot';
+import { LeaseModel } from '@/modules/common/utils/leaseLock';
+import { PharmacyService } from '@/modules/pharmacies/services';
+import { PharmacyRepository } from '@/modules/pharmacies/repository';
+import { UserRepository } from '@/modules/user/repository';
+import { BannerService } from '@/modules/banners/services';
+import { BannerRepository } from '@/modules/banners/repository';
 import { PartnerLabBookingModel } from '@/modules/partners/model/labBooking';
 import { PartnerRepository } from '@/modules/partners/repository';
 import { MemberRepository } from '@/modules/partners/repository/member';
@@ -51,12 +57,11 @@ import { CatalogueItemRepository } from '@/modules/partners/repository/catalogue
 import { PartnerService, PartnerActor, adminActor } from '@/modules/partners/services';
 import { CatalogueService } from '@/modules/partners/services/catalogue';
 import { ensureSettlementAccount, postLedgerEntry, ledgerBalance } from '@/modules/partners/services/settlement';
-import { saveSlotTemplate, expandSlots, setSlotCapacity, setSlotClosed, addManualSlot, istDate, addDays } from '@/modules/partners/services/slots';
+import { saveSlotTemplate, expandSlots, setSlotCapacity, setSlotClosed, addManualSlot, istDate, addDays, listSlotsForPartner } from '@/modules/partners/services/slots';
 import { LabBookingService, registerLabBookingPayments, LAB_CANCEL_CUTOFF_MS } from '@/modules/partners/services/labBookings';
 import { settlementSystemFor } from '@/modules/partners/services/cutover';
 import { runSettlementCutover } from '@/scripts/q3SettlementCutover';
 import { IMember, PartnerPermission } from '@/modules/partners/types';
-import partnerWorkspaceRouter, { customerLabBookingRouter, customerLabRouter } from '@/modules/partners/routes';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/q3_lab_check?directConnection=true';
 const url = process.env.MONGODB_URL ?? '';
@@ -123,7 +128,7 @@ async function main() {
   for (const c of await mongoose.connection.db!.collections()) await c.drop().catch(() => {});
   for (const M of [PartnerModel, MemberModel, BranchModel, PartnerAuditEventModel, CatalogueItemModel, SettlementAccountModel, LedgerEntryModel,
     LedgerHistoryRefModel, PartnerSlotModel, PartnerSlotTemplateModel, PartnerLabBookingModel, UserModel, BookingModel, PaymentRecordModel,
-    WalletModel, WalletTransactionModel, RequestKeyModel, FileUploadModel, FileGrantModel, PayoutBillingModel, PayoutDisbursalModel, SpecialistModel] as mongoose.Model<any>[]) {
+    WalletModel, WalletTransactionModel, RequestKeyModel, FileUploadModel, FileGrantModel, PayoutBillingModel, PayoutDisbursalModel, SpecialistModel, LeaseModel] as mongoose.Model<any>[]) {
     await M.createCollection(); await M.createIndexes();
   }
 
@@ -148,6 +153,35 @@ async function main() {
   const lipid = await catalogueSvc.createItem(own, { kind: 'test', name: 'Lipid', priceMinor: 80000, gstRate: 0, visitModes: ['lab'] });
   const hidden = await catalogueSvc.createItem(own, { kind: 'test', name: 'Hidden', priceMinor: 10000, gstRate: 0, visitModes: ['lab', 'home'] });
   await catalogueSvc.setAdminDisabled('adm', String(hidden._id), true);
+
+  // ── The real application routes (content aliases, uploads, workspace, customer APIs) ──
+  Container.set(PharmacyService, new PharmacyService(new PharmacyRepository(), new UserRepository()));
+  Container.set(BannerService, new BannerService(new BannerRepository()));
+  const { configureRoutes } = await import('@/routes');
+  registerLabBookingPayments(() => labSvc);
+  const app = express();
+  app.use(express.json());
+  configureRoutes(app);
+  app.use(errorHandler);
+  const server = app.listen(0);
+  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const partnerToken = (m: IMember) => jwt.sign({ _id: String(m._id), memberId: String(m._id), partnerId: String(m.partnerId), userType: 'partner' }, CONFIG.JWT_SECRET_KEY);
+  const userToken = (id: string) => jwt.sign({ _id: id, userType: 'user', authVersion: 0 }, CONFIG.JWT_SECRET_KEY);
+  const adminId = new Types.ObjectId().toString();
+  const adminToken = jwt.sign({ _id: adminId, userType: 'admin' }, CONFIG.JWT_SECRET_KEY);
+  const call = async (method: string, p: string, token: string, body?: unknown) => {
+    const r = await fetch(base + p, { method, headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+    return { status: r.status, json: (await r.json().catch(() => ({}))) as any };
+  };
+  const pdf = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n');
+  const uploadVia = async (token: string, p: string, name = 'report.pdf') => {
+    const fd = new FormData();
+    fd.append('files', new Blob([pdf], { type: 'application/pdf' }), name);
+    const r = await fetch(base + p, { method: 'POST', headers: { authorization: `Bearer ${token}` }, body: fd });
+    return { status: r.status, json: (await r.json().catch(() => ({}))) as any };
+  };
+  const fetchStatus = async (p: string, token?: string) =>
+    (await fetch(base + p, { headers: token ? { authorization: `Bearer ${token}` } : {} })).status;
 
   // ── Settlement accounts and ledger ──
   await check('a partner gets its settlement account at creation; doctor accounts are find-or-create under concurrency', async () => {
@@ -205,6 +239,58 @@ async function main() {
     await PartnerSlotModel.updateOne({ _id: s!._id }, { $set: { booked: 0, capacity: 2 } });
     await addManualSlot(own, { branchId: A, visitMode: 'lab', date: addDays(today, 3), startTime: '18:00', endTime: '18:30', capacity: 1 });
     await assert.rejects(() => addManualSlot(own, { branchId: A, visitMode: 'lab', date: addDays(today, 3), startTime: '18:00', endTime: '18:30', capacity: 1 }), code('SLOT_EXISTS'));
+  });
+
+  await check('template edits reconcile generated slots: unbooked rows follow the template, booked rows keep time and holds', async () => {
+    const d = addDays(today, 20);
+    const every = (w: { start: string; end: string }[]) => Object.fromEntries(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((x) => [x, w]));
+    await saveSlotTemplate(own, B, 'home', { slotMinutes: 60, capacity: 5, days: every([{ start: '09:00', end: '11:00' }]) });
+    const booked = await PartnerSlotModel.findOne({ branchId: B, visitMode: 'home', date: d, startTime: '10:00' }).lean();
+    await PartnerSlotModel.updateOne({ _id: booked!._id }, { $set: { booked: 3 } });
+    await saveSlotTemplate(own, B, 'home', { slotMinutes: 30, capacity: 1, days: every([{ start: '09:00', end: '11:00' }]) });
+    const rows = await PartnerSlotModel.find({ branchId: B, visitMode: 'home', date: d }).sort({ startTime: 1 }).lean();
+    const by = (t: string) => rows.find((r) => r.startTime === t)!;
+    assert.deepEqual([by('09:00').endTime, by('09:00').capacity], ['09:30', 1], 'unbooked generated row now matches the template');
+    assert.ok(by('09:30') && by('10:30'));
+    assert.deepEqual([by('10:00').endTime, by('10:00').booked, by('10:00').capacity], ['11:00', 3, 3], 'booked row keeps its time; capacity never below bookings');
+  });
+
+  await check('removing a holiday reopens every slot the holiday closed (also extra manual ones), not manual closures', async () => {
+    const d = addDays(today, 21);
+    const extra = await addManualSlot(own, { branchId: A, visitMode: 'lab', date: d, startTime: '18:00', endTime: '18:30', capacity: 1 });
+    const closedByHand = await addManualSlot(own, { branchId: A, visitMode: 'lab', date: d, startTime: '19:00', endTime: '19:30', capacity: 1 });
+    await setSlotClosed(own, String(closedByHand._id), true);
+    await partnerSvc.updateBranch(own, A, { holidays: [d] } as any);
+    assert.equal((await PartnerSlotModel.findById(extra._id).lean())!.closed, 'holiday');
+    await partnerSvc.updateBranch(own, A, { holidays: [] } as any);
+    assert.equal((await PartnerSlotModel.findById(extra._id).lean())!.closed, null);
+    assert.equal((await PartnerSlotModel.findById(closedByHand._id).lean())!.closed, 'manual');
+    assert.ok((await PartnerSlotModel.find({ branchId: A, visitMode: 'lab', date: d, source: 'template' }).lean()).every((x) => x.closed === null));
+  });
+
+  await check('concurrent expansions never publish a stale template (each reads its configuration under the lease)', async () => {
+    const d = addDays(today, 22);
+    const every = (w: { start: string; end: string }[]) => Object.fromEntries(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((x) => [x, w]));
+    for (let round = 0; round < 3; round++) {
+      await saveSlotTemplate(own, B, 'lab', { slotMinutes: 30, capacity: 2, days: every([{ start: '08:00', end: '09:00' }]) });
+      await Promise.all([
+        expandSlots(B, 'lab', today, 30),
+        saveSlotTemplate(own, B, 'lab', { slotMinutes: 30, capacity: 2, days: every([{ start: '15:00', end: '16:00' }]) }),
+        expandSlots(B, 'lab', today, 30),
+      ]);
+      const open = (await PartnerSlotModel.find({ branchId: B, visitMode: 'lab', date: d, closed: null }).lean()).map((x) => x.startTime).sort();
+      assert.deepEqual(open, ['15:00', '15:30'], `round ${round}`);
+    }
+  });
+
+  await check('impossible calendar dates are refused, never rolled over to another day', async () => {
+    await assert.rejects(() => addManualSlot(own, { branchId: A, visitMode: 'lab', date: '2027-02-31', startTime: '10:00', endTime: '10:30', capacity: 1 }), code('INVALID_DATE'));
+    await assert.rejects(() => listSlotsForPartner(own, A, 'lab', '2027-02-30', '2027-03-05'), code('INVALID_DATE'));
+    const r = await call('PUT', `/api/v1/partner-workspace/branches/${A}`, partnerToken(owner), { holidays: ['2027-02-29'] });
+    assert.equal(r.status, 400);
+    const ok = await call('GET', `/api/v1/partner-workspace/slots?branchId=${A}&visitMode=lab&from=2027-02-28&to=2027-03-01`, partnerToken(owner));
+    assert.equal(ok.status, 200);
+    assert.equal((await call('GET', `/api/v1/partner-workspace/slots?branchId=${A}&visitMode=lab&from=2027-02-31&to=2027-03-01`, partnerToken(owner))).status, 400);
   });
 
   const slotOn = async (dayOffset: number, start: string, mode: 'lab' | 'home' = 'lab') =>
@@ -299,6 +385,31 @@ async function main() {
     await assert.rejects(() => labSvc.retryPayment(u, id, false, new Date(Date.now() + 31 * 60_000)), code('LAB_BOOKING_PAYMENT_EXPIRED'));
   });
 
+  await check('a resent create is admitted like pay again: never a new checkout after expiry or beside an unsettled attempt', async () => {
+    const u = await customer();
+    const req = input({ slotId: await slotOn(8, '09:00') });
+    const init = await labSvc.create(u, req);
+    const id = String((init.booking as any)._id);
+    const rec = await PaymentRecordModel.findById(init.payment!.paymentTransactionId).lean();
+    await PaymentRecordModel.updateOne({ _id: rec!._id }, { $set: { status: 'failed' } }); // not resumable any more
+    unreachable.add(rec!.razorpayOrderId);
+    await PaymentRecordModel.create({ userId: u, context: 'lab_booking', contextId: id, baseAmount: 1300, discountAmount: 0, finalAmount: 1300,
+      currency: 'INR', paymentGateway: 'razorpay', razorpayOrderId: rec!.razorpayOrderId + '_b', status: 'created', notes: { walletDeductedAmount: 0 } });
+    unreachable.add(rec!.razorpayOrderId + '_b');
+    try {
+      await assert.rejects(() => labSvc.create(u, req), code('PAYMENT_STATE_UNKNOWN'));
+    } finally { unreachable.delete(rec!.razorpayOrderId); unreachable.delete(rec!.razorpayOrderId + '_b'); }
+    const before = await PaymentRecordModel.countDocuments({ context: 'lab_booking', contextId: id });
+    await assert.rejects(() => labSvc.create(u, req, new Date(Date.now() + 31 * 60_000)), code('LAB_BOOKING_PAYMENT_EXPIRED'));
+    assert.equal(await PaymentRecordModel.countDocuments({ context: 'lab_booking', contextId: id }), before, 'no checkout after expiry');
+    // A capture on the earlier attempt is settled first; the resend then only returns the receipt.
+    gateway.set(rec!.razorpayOrderId + '_b', [{ id: 'pay_resend', order_id: rec!.razorpayOrderId + '_b', amount: 130000, currency: 'INR', status: 'captured' }]);
+    const again = await labSvc.create(u, req);
+    assert.equal(again.paymentRequired, false);
+    assert.equal((await PartnerLabBookingModel.findById(id).lean())!.status, 'confirmed');
+    assert.equal(await PaymentRecordModel.countDocuments({ context: 'lab_booking', contextId: id }), before);
+  });
+
   await check('unpaid bookings expire after 30 minutes: seat and wallet money returned; a later capture goes back to the wallet', async () => {
     const u = await customer(200);
     const slotId = await slotOn(8, '08:30');
@@ -388,7 +499,7 @@ async function main() {
   await check('branch scope: staff of branch A cannot see or act on a branch-B booking', async () => {
     await saveSlotTemplate(own, B, 'lab', { slotMinutes: 60, capacity: 1, days: { [['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date(Date.parse(addDays(today, 13))).getUTCDay()]!]: [{ start: '10:00', end: '11:00' }] } });
     const u = await customer(1300);
-    const slotB = String((await PartnerSlotModel.findOne({ branchId: B, visitMode: 'lab', date: addDays(today, 13) }).lean())!._id);
+    const slotB = String((await PartnerSlotModel.findOne({ branchId: B, visitMode: 'lab', date: addDays(today, 13), startTime: '10:00' }).lean())!._id);
     const init = await labSvc.create(u, input({ branchId: B, slotId: slotB, useWalletBalance: true }));
     const id = String((init.booking as any)._id);
     await assert.rejects(() => labSvc.getForPartner(deskA, id), code('LAB_BOOKING_NOT_FOUND'));
@@ -400,41 +511,56 @@ async function main() {
     assert.equal((await PartnerLabBookingModel.findById(id).lean())!.cancellation!.reason, 'lab_reject');
   });
 
-  // ── Reports ──
-  const upload = async (by: IMember, bookingId: string, name: string) => {
-    const p = `partner-lab-reports/${bookingId}/${Date.now()}-${name}`;
-    await FileUploadModel.create({ path: p, uploaderType: 'partner', uploaderId: String(by._id), createdAt: new Date() });
-    return p;
-  };
+  // ── Reports (real multipart upload → draft → release; every content alias) ──
+  async function customerView(u: string, id: string) { return labSvc.getForCustomer(u, id) as Promise<any>; }
+  const rel = (url: string) => url.replace(/^\/api\/static\//, '');
+  const aliases = (p: string) => [`/api/static/${p}`, `/api/v1/file/static/${p}`, `/api/v1/file/fetch?url=${encodeURIComponent(p)}`];
   let releasedPath = '';
-  await check('report drafts: uploader-only attach, booking folder only; customer cannot read a draft', async () => {
-    const draft = await upload(desk, flow.id, 'cbc.pdf');
-    await assert.rejects(() => labSvc.uploadReports(path, flow.id, [draft]), code('FILE_NOT_ATTACHABLE'));
-    const foreign = await upload(desk, new Types.ObjectId().toHexString(), 'x.pdf');
-    await assert.rejects(() => labSvc.uploadReports(deskA, flow.id, [foreign]), code('INVALID_REPORT_FILE'));
-    const v = await labSvc.uploadReports(deskA, flow.id, [`/api/static/${draft}`]) as any;
-    assert.deepEqual(v.report.draftFiles, [`/api/static/${draft}`]);
-    const user = { _id: flow.u, userType: 'user' };
-    assert.deepEqual(await decideFileAccess(user as any, draft), { allow: false, status: 404 });
-    assert.equal((await decideFileAccess({ _id: String(pathologist._id), memberId: String(pathologist._id), userType: 'partner' } as any, draft)).allow, true);
+  await check('report upload is booking-scoped HTTP only: generic uploads cannot write report folders; drafts are partner-only', async () => {
+    const generic = await uploadVia(partnerToken(desk), '/api/v1/file/upload/partner-lab-reports');
+    assert.equal(generic.status, 400);
+    assert.equal(generic.json.code ?? generic.json.error?.code, 'UPLOAD_MODULE_RESERVED');
+    const noPerm = await partnerSvc.addMember(own, { phone: nextPhone(), name: 'No reports', role: 'staff', permissions: ['bookings.view'] });
+    assert.equal((await uploadVia(partnerToken(noPerm), `/api/v1/partner-workspace/lab-bookings/${flow.id}/reports`)).status, 403);
+    const up = await uploadVia(partnerToken(desk), `/api/v1/partner-workspace/lab-bookings/${flow.id}/reports`, 'cbc.pdf');
+    assert.equal(up.status, 201);
+    const draftUrl = up.json.data.report.draftFiles[0] as string;
+    const draft = rel(draftUrl);
+    assert.ok(draft.startsWith(`partner-lab-reports/${flow.id}/`));
+    for (const a of aliases(draft)) {
+      assert.equal(await fetchStatus(a, userToken(flow.u)), 404, `customer cannot read a draft via ${a.split('?')[0]}`);
+      assert.equal(await fetchStatus(a, partnerToken(pathologist)), 200, `releaser reads the draft via ${a.split('?')[0]}`);
+    }
     assert.equal((await customerView(flow.u, flow.id)).report.files.length, 0);
     releasedPath = draft;
   });
 
-  async function customerView(u: string, id: string) { return labSvc.getForCustomer(u, id) as Promise<any>; }
+  await check('the uploader loses draft access with the permission or the branch (no uploader shortcut for reports)', async () => {
+    for (const a of aliases(releasedPath)) assert.equal(await fetchStatus(a, partnerToken(desk)), 200);
+    await MemberModel.updateOne({ _id: desk._id }, { $set: { permissions: ['bookings.view', 'bookings.manage', 'slots.manage'] } });
+    for (const a of aliases(releasedPath)) assert.equal(await fetchStatus(a, partnerToken(desk)), 404, `revoked permission via ${a.split('?')[0]}`);
+    await MemberModel.updateOne({ _id: desk._id }, { $set: { permissions: ['bookings.view', 'bookings.manage', 'slots.manage', 'reports.upload'], branchIds: [B] } });
+    for (const a of aliases(releasedPath)) assert.equal(await fetchStatus(a, partnerToken(desk)), 404, `other branch via ${a.split('?')[0]}`);
+    await MemberModel.updateOne({ _id: desk._id }, { $set: { branchIds: [A] } });
+    assert.equal(await fetchStatus(`/api/static/${releasedPath}`, partnerToken(desk)), 200);
+  });
 
-  await check('release needs a registered professional; then the customer (only) can read the released version', async () => {
+  await check('release needs a registered professional who also covers the booking\'s branch; then only the customer (and staff) read it', async () => {
     await assert.rejects(() => labSvc.releaseReport(own, flow.id, releasedPath), code('SIGNER_REGISTRATION_MISSING'));
     await assert.rejects(() => labSvc.releaseReport(adminActor('adm9', partnerId), flow.id, releasedPath), code('SIGNER_REQUIRED'));
-    const v = await labSvc.releaseReport(path, flow.id, releasedPath) as any;
-    assert.equal(v.status, 'report_ready');
-    assert.equal(v.report.releases[0].signer.registrationNumber, 'KMC-12345');
+    const bSigner = await partnerSvc.addMember(own, { phone: nextPhone(), name: 'Dr B', role: 'staff', branchIds: [B], permissions: ['reports.release'] });
+    await MemberModel.updateOne({ _id: bSigner._id }, { $set: { professional: { kind: 'pathologist', registrationNumber: 'KMC-B' } } });
+    await assert.rejects(() => labSvc.releaseReport(adminActor('adm9', partnerId), flow.id, releasedPath, String(bSigner._id)), code('SIGNER_NOT_AUTHORISED'));
+    const r = await call('POST', `/api/v1/partner-workspace/lab-bookings/${flow.id}/reports/release`, partnerToken(pathologist), { file: `/api/static/${releasedPath}` });
+    assert.equal(r.status, 200);
+    assert.equal(r.json.data.status, 'report_ready');
+    assert.equal(r.json.data.report.releases[0].signer.registrationNumber, 'KMC-12345');
     const cv = await customerView(flow.u, flow.id);
     assert.deepEqual(cv.report.files, [`/api/static/${releasedPath}`]);
-    assert.equal(cv.report.releases[0].signer.name, 'Dr Rao');
-    assert.equal((await decideFileAccess({ _id: flow.u, userType: 'user' } as any, releasedPath)).allow, true);
-    const stranger = await customer();
-    assert.deepEqual(await decideFileAccess({ _id: stranger, userType: 'user' } as any, releasedPath), { allow: false, status: 404 });
+    for (const a of aliases(releasedPath)) {
+      assert.equal(await fetchStatus(a, userToken(flow.u)), 200, `customer reads the release via ${a.split('?')[0]}`);
+      assert.equal(await fetchStatus(a, userToken(await customer())), 404);
+    }
     const again = await labSvc.releaseReport(path, flow.id, releasedPath) as any;
     assert.equal(again.report.releases.length, 1, 'idempotent');
   });
@@ -473,9 +599,9 @@ async function main() {
     const adm = adminActor('adm1', partnerId);
     await labSvc.markVisited(adm, id);
     await labSvc.startProcessing(adm, id);
-    const draft = `partner-lab-reports/${id}/admin.pdf`;
-    await FileUploadModel.create({ path: draft, uploaderType: 'admin', uploaderId: 'adm1', createdAt: new Date() });
-    await labSvc.uploadReports(adm, id, [draft]);
+    const up = await uploadVia(adminToken, `/api/v1/partner-workspace/admin/${partnerId}/workspace/lab-bookings/${id}/reports`, 'admin.pdf');
+    assert.equal(up.status, 201);
+    const draft = rel(up.json.data.report.draftFiles[0]);
     const v = await labSvc.releaseReport(adm, id, draft, String(pathologist._id)) as any;
     assert.equal(v.report.releases[0].releasedBy, 'admin:adm1');
     assert.equal(v.report.releases[0].signer.memberId, String(pathologist._id));
@@ -509,7 +635,7 @@ async function main() {
     await SpecialistModel.collection.insertOne({ _id: new Types.ObjectId(sp), name: 'Dr Legacy' } as never);
     const created = await createBookingWithHolds({ userId: new Types.ObjectId().toHexString(), specialistId: sp, bookingType: 'surgery',
       bookingDate: '20261201', bookingTime: '10:00', serviceMode: 'in-person', price: 999, status: 'confirmed', paymentStatus: 'paid' } as any);
-    assert.equal(created.settlementSystem, 'ledger');
+    assert.equal(created.settlementSystem, 'legacy', 'Q3: ordinary bookings stay legacy until the doctor ledger earnings exist (Q4a)');
     (CONFIG as any).SETTLEMENT_CUTOVER_AT = undefined;
     const base = { specialistId: sp, bookingType: 'consultation', bookingDate: '20261210', status: 'confirmed', paymentStatus: 'paid' };
     await BookingModel.collection.insertMany([{ ...base, price: 500 }, { ...base, price: 700, settlementSystem: 'legacy' }, { ...base, price: 900, settlementSystem: 'ledger' }] as never);
@@ -533,25 +659,10 @@ async function main() {
     const refs = await LedgerHistoryRefModel.find({ settlementAccountId: String(acct!._id) }).lean();
     assert.deepEqual(refs.map((x) => [x.legacyKind, x.amountMinor]).sort(), [['billing', 123450], ['disbursal', 100000]].sort());
     assert.equal(await ledgerBalance(String(acct!._id)), 0, 'history never posts to the balance');
-    assert.equal(await BookingModel.countDocuments({ specialistId: sp, settlementSystem: 'legacy' }), 2);
+    assert.equal(await BookingModel.countDocuments({ specialistId: sp, settlementSystem: 'legacy' }), 3);
   });
 
   // ── HTTP ──
-  const app = express();
-  app.use(express.json());
-  app.use('/api/v1/partner-workspace', authenticate, partnerWorkspaceRouter);
-  app.use('/api/v1/partner-labs', authenticate, denyRoles('partner'), customerLabRouter);
-  app.use('/api/v1/lab-bookings', authenticate, denyRoles('partner'), customerLabBookingRouter);
-  app.use(errorHandler);
-  const server = app.listen(0);
-  const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  const partnerToken = (m: IMember) => jwt.sign({ _id: String(m._id), memberId: String(m._id), partnerId: String(m.partnerId), userType: 'partner' }, CONFIG.JWT_SECRET_KEY);
-  const userToken = (id: string) => jwt.sign({ _id: id, userType: 'user', authVersion: 0 }, CONFIG.JWT_SECRET_KEY);
-  const adminToken = jwt.sign({ _id: new Types.ObjectId().toString(), userType: 'admin' }, CONFIG.JWT_SECRET_KEY);
-  const call = async (method: string, p: string, token: string, body?: unknown) => {
-    const r = await fetch(base + p, { method, headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
-    return { status: r.status, json: (await r.json().catch(() => ({}))) as any };
-  };
   try {
     await check('HTTP: customer discovers, books (201) and sees no draft files; partner tokens are refused on customer routes', async () => {
       const u = await customer(1300);
@@ -587,6 +698,7 @@ async function main() {
   }
 
   await mongoose.disconnect();
+  removeFixtureDir();
   console.log(`\n${passed} checks passed`);
 }
 
