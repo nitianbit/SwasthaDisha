@@ -1404,7 +1404,8 @@ export class BookingService {
     if (TERMINAL_BOOKING_STATUSES.includes(String(booking.status)) && data.status !== undefined && data.status !== booking.status) {
       throw new AppError({ status: 409, code: 'BOOKING_TERMINAL', message: `A ${booking.status} booking cannot change status` });
     }
-    if (data.consultationMode !== undefined && data.consultationMode !== booking.consultationMode) {
+    // Any supplied consultation type (also one equal to the snapshot) is admitted against the held slot and fenced below.
+    if (data.consultationMode !== undefined) {
       await assertModeForHeldSlot(booking, data.consultationMode);
     }
     // Milestone E8: cancellation, payment and slot/date changes only through their dedicated commands (refunds, slot
@@ -1420,9 +1421,9 @@ export class BookingService {
       data.lifecycle = lifecyclePatch;
     }
 
-    // A consultation-type change was admitted against the slot the booking held when read: the write is bound to that
-    // slot and mode, so a reschedule committing in between makes it a conflict instead of a stale mode on a new slot.
-    const modeChange = data.consultationMode !== undefined && data.consultationMode !== booking.consultationMode;
+    // A supplied consultation type (changed or not) was admitted against the slot the booking held when read: the write is
+    // bound to that slot and mode, so a reschedule committing in between makes it a conflict instead of a stale mode on a new slot.
+    const modeChange = data.consultationMode !== undefined;
     const fence = { _id: id, status: booking.status, ...(userId ? { userId: { $eq: userId } } : {}),
       ...(modeChange ? { slotId: booking.slotId ?? null, 'holds.heldSlotId': booking.holds?.heldSlotId ?? null, consultationMode: booking.consultationMode ?? null } : {}) };
     // Q4: completing a ledger consultation posts the doctor's earning in the same transaction as the status change.

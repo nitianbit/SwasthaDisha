@@ -421,6 +421,18 @@ async function main() {
     await assert.rejects(() => racing.update(String(bk._id), { consultationMode: 'chat' } as any), code('BOOKING_CHANGED'));
     const now = await BookingModel.findById(bk._id).lean();
     assert.deepEqual([now!.slotId, now!.consultationMode], [b, 'video']);
+
+    // The same interleaving with an explicit UNCHANGED mode: the edit read slot C (video) and the booking was moved to a
+    // chat-only slot D and switched to chat meanwhile; re-sending 'video' must not land on D.
+    const c = await slot(docW, 16, '10:00', '10:30', { serviceModes: ['video'] });
+    const d = await slot(docW, 16, '11:00', '11:30', { serviceModes: ['chat'] });
+    const bk2 = await book(u, docW, c);
+    const stale2 = await BookingModel.findById(bk2._id).lean();
+    await rescheduleWithHolds({ bookingId: String(bk2._id), requester: { _id: u, userType: 'user' }, nextSlotId: d, patch: { consultationMode: 'chat' } });
+    const racing2 = Object.assign(Object.create(Object.getPrototypeOf(bookings)), bookings, { getById: async () => stale2 });
+    await assert.rejects(() => racing2.update(String(bk2._id), { consultationMode: 'video', notes: 'Reviewed' } as any), code('BOOKING_CHANGED'));
+    const now2 = await BookingModel.findById(bk2._id).lean();
+    assert.deepEqual([now2!.slotId, now2!.consultationMode, now2!.notes ?? null], [d, 'chat', null]);
   });
 
   await check('backfill fences each candidate with a definite version write', async () => {
