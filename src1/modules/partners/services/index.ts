@@ -1,3 +1,4 @@
+import { claimRequestKey, abandonRequestKey } from '@/modules/requestKeys';
 import { createHash } from 'crypto';
 import BranchModel from '@/modules/partners/model/branch';
 import MemberModel from '@/modules/partners/model/member';
@@ -135,6 +136,9 @@ async function refreshDoctorsAt(branchIds: string[]): Promise<void> {
   }
 }
 
+/** Q10: request-key scope of an admin's partner creations. */
+export const partnerCreateScope = (adminId: string) => `partner_create:${String(adminId).toLowerCase()}`;
+
 /** Q10: the fence an edit adds when the editor sent the version (updatedAt) it started from. */
 const versionFence = (expected?: Date | string) => (expected ? { updatedAt: new Date(expected) } : {});
 const recordChanged = () => new AppError({ status: 409, code: 'RECORD_CHANGED', message: 'Someone else changed this meanwhile; reload and review' });
@@ -189,6 +193,8 @@ export class PartnerService {
 
   private async createPartnerOnce(data: Parameters<PartnerService['createPartner']>[0], requestHash?: string): Promise<{ partner: IPartner; owner: IMember }> {
     return inTransaction(async (session) => {
+      // Q10: claimed with the partner, so an admin's abandon of a lost create and this create cannot both win.
+      if (data.requestKey && data.createdBy) await claimRequestKey(partnerCreateScope(data.createdBy), data.requestKey, session);
       const partner = await this.partnerRepository.save(
         {
           kind: data.kind,
@@ -226,6 +232,21 @@ export class PartnerService {
 
       return { partner, owner };
     });
+  }
+
+  /** Q10: what an admin's create key produced (their own keys only); null when nothing was created under it. */
+  async findCreatedByKey(adminId: string, key: string): Promise<{ partner: IPartner; owner: IMember } | null> {
+    const p = await PartnerModel.findOne({ createdBy: adminId, createRequestKey: key }).lean() as IPartner | null;
+    if (!p) return null;
+    const owner = await MemberModel.findOne({ partnerId: String(p._id), role: 'owner' }).sort({ createdAt: 1 }).lean() as IMember;
+    return { partner: p, owner };
+  }
+
+  /** Q10: give up a lost create: abandoned (it can never be created) or used (here is the partner). */
+  async abandonCreateKey(adminId: string, key: string): Promise<{ state: 'abandoned' | 'used'; partner?: IPartner }> {
+    const state = await abandonRequestKey(partnerCreateScope(adminId), key);
+    if (state === 'abandoned') return { state };
+    return { state, partner: (await this.findCreatedByKey(adminId, key))?.partner };
   }
 
   async getPartnerById(id: string): Promise<IPartner> {

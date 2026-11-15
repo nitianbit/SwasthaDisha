@@ -187,3 +187,6 @@ export const updateMemberBranchesSchema = Joi.object({
 });
 
 export const branchListQuerySchema = Joi.object({ includeInactive: Joi.string().valid('true', 'false').optional() });
+
+/** Q10 */
+export const createKeyParamSchema = Joi.object({ key: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).required() });

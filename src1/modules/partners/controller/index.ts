@@ -104,6 +104,16 @@ export const adminSuspendPartner = async (req: Request, res: Response, _next: Ne
   res.status(200).json({ success: true, data });
 };
 
+export const adminPartnerByKey = async (req: Request, res: Response, _next: NextFunction) => {
+  const data = await service().findCreatedByKey(String((req as AuthRequest).user!._id), req.params.key);
+  if (!data) { res.status(404).json({ error: 404, code: 'PARTNER_NOT_FOUND', message: 'No partner was created with this key' }); return; }
+  res.status(200).json({ success: true, data });
+};
+
+export const adminAbandonPartnerKey = async (req: Request, res: Response, _next: NextFunction) => {
+  res.status(200).json({ success: true, data: await service().abandonCreateKey(String((req as AuthRequest).user!._id), req.params.key) });
+};
+
 export const adminReinstatePartner = async (req: Request, res: Response, _next: NextFunction) => {
   const data = await service().reinstatePartner(req.params.partnerId, String((req as AuthRequest).user!._id));
   res.status(200).json({ success: true, data });

@@ -187,6 +187,19 @@ async function main() {
     await assert.rejects(() => invoiceSvc.listInvoicesPage(plainLab.actor, { cursor: 'bad' }), code('INVALID_CURSOR'));
   });
 
+  await check('a lost partner create: an admin looks up or abandons their own key; an abandoned key never creates', async () => {
+    const admin = String(new Types.ObjectId());
+    const body = { kind: 'lab', name: 'Keyed Lab', contactPhone: nextPhone(), invoiceSeriesPrefix: 'KL', firstOwner: { phone: nextPhone(), name: 'K' } } as any;
+    const made = await partnerSvc.createPartner({ ...body, requestKey: 'pcreate-0001', createdBy: admin });
+    assert.equal(String((await partnerSvc.findCreatedByKey(admin, 'pcreate-0001'))!.partner._id), String(made.partner._id));
+    assert.equal(await partnerSvc.findCreatedByKey(String(new Types.ObjectId()), 'pcreate-0001'), null, 'another admin sees nothing');
+    const used = await partnerSvc.abandonCreateKey(admin, 'pcreate-0001');
+    assert.deepEqual([used.state, String(used.partner!._id)], ['used', String(made.partner._id)]);
+    assert.equal((await partnerSvc.abandonCreateKey(admin, 'pcreate-0002')).state, 'abandoned');
+    await assert.rejects(() => partnerSvc.createPartner({ ...body, name: 'Late', requestKey: 'pcreate-0002', createdBy: admin }), code('REQUEST_ABANDONED'));
+    assert.equal(await PartnerModel.countDocuments({ name: 'Late' }), 0);
+  });
+
   await check('profile, branch and member edits refuse a stale version (RECORD_CHANGED) and accept the current one', async () => {
     const p = await PartnerModel.findById(lab.partnerId).lean();
     const old = new Date(new Date(p!.updatedAt as any).getTime() - 5000);

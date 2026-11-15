@@ -13,6 +13,7 @@ import {
   addMemberSchema,
   updateMemberPermissionsSchema,
   updateMemberBranchesSchema,
+  createKeyParamSchema,
   branchListQuerySchema,
   createBranchSchema,
   updateBranchSchema,
@@ -75,6 +76,8 @@ import {
   adminVerifyPartner,
   adminSuspendPartner,
   adminReinstatePartner,
+  adminPartnerByKey,
+  adminAbandonPartnerKey,
   updateMemberBranches,
   reactivateBranch,
   attachAdminActor,
@@ -220,6 +223,9 @@ partnerRouter.post('/admin', requireAdmin, validate(createPartnerSchema, 'body')
 partnerRouter.get('/admin', requireAdmin, validate(partnerQuerySchema, 'query'), catchAsync(adminListPartners));
 // Static admin paths before /admin/:partnerId (which would otherwise capture them).
 partnerRouter.get('/admin/lab-bookings', requireAdmin, catchAsync(lab.adminListLabBookings));
+// Q10: a lost create answer — look up or abandon the admin's own create key (static paths before /admin/:partnerId).
+partnerRouter.get('/admin/by-key/:key', requireAdmin, validate(createKeyParamSchema, 'params'), catchAsync(adminPartnerByKey));
+partnerRouter.post('/admin/by-key/:key/abandon', requireAdmin, validate(createKeyParamSchema, 'params'), catchAsync(adminAbandonPartnerKey));
 partnerRouter.get('/admin/:partnerId', requireAdmin, validate(partnerIdParamSchema, 'params'), catchAsync(adminGetPartner));
 partnerRouter.put('/admin/:partnerId', requireAdmin, validate(partnerIdParamSchema, 'params'),
   validate(updatePartnerSchema, 'body'), catchAsync(adminUpdatePartner));
