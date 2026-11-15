@@ -1,0 +1,82 @@
+import { Request, Response, NextFunction } from 'express';
+import { AuthRequest } from '@/modules/middleware/auth';
+import { actorOf } from '@/modules/partners/controller';
+import * as f from '@/modules/partners/services/finance';
+
+const ok = (res: Response, data: unknown, status = 200) => res.status(status).json({ success: true, data });
+const csv = (res: Response, name: string, body: string) => {
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${name}"`);
+  res.setHeader('Cache-Control', 'no-store');
+  res.status(200).send(body);
+};
+const period = (q: Record<string, unknown>) => ({ from: q.from as string | undefined, to: q.to as string | undefined });
+const csvName = (prefix: string, q: Record<string, unknown>) => `${prefix}-statement${q.from ? '-' + q.from : ''}${q.to ? '-to-' + q.to : ''}.csv`;
+
+// ── Partner workspace (members with finance.view and partner-wide scope; admins with owner authority) ──
+async function partnerAccount(req: Request) {
+  const actor = actorOf(req);
+  f.assertPartnerFinanceReader(actor);
+  return { actor, account: await f.findOwnerAccount('partner', actor.partnerId), full: actor.actorKind === 'admin' };
+}
+export const partnerFinance = async (req: Request, res: Response, _n: NextFunction) => {
+  const { account, full } = await partnerAccount(req);
+  ok(res, await f.financeSummary(account, full));
+};
+export const partnerStatement = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await f.statementPage((await partnerAccount(req)).account, req.query as any));
+export const partnerStatementCsv = async (req: Request, res: Response, _n: NextFunction) =>
+  csv(res, csvName('partner', req.query), await f.statementCsv((await partnerAccount(req)).account, period(req.query)));
+export const partnerPayouts = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.listPayouts((await partnerAccount(req)).account));
+export const putPartnerPayoutDetails = async (req: Request, res: Response, _n: NextFunction) => {
+  const actor = actorOf(req);
+  const by: f.FinanceActor = actor.actorKind === 'admin' ? { kind: 'admin', id: actor.memberId.replace(/^admin:/, '') } : { kind: 'member', partner: actor };
+  if (by.kind === 'member') f.assertPartnerFinanceReader(actor);
+  ok(res, await f.setPayoutDetails({ ownerKind: 'partner', ownerId: actor.partnerId }, req.body, by));
+};
+
+// ── Doctor (specialist portal, their own account) ──
+const doctorOf = (req: Request) => String((req as AuthRequest).user!.specialistId || (req as AuthRequest).user!._id);
+const doctorAccount = (req: Request) => f.findOwnerAccount('doctor', doctorOf(req));
+export const doctorFinance = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.financeSummary(await doctorAccount(req), false));
+export const doctorStatement = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.statementPage(await doctorAccount(req), req.query as any));
+export const doctorStatementCsv = async (req: Request, res: Response, _n: NextFunction) =>
+  csv(res, csvName('doctor', req.query), await f.statementCsv(await doctorAccount(req), period(req.query)));
+export const doctorPayouts = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.listPayouts(await doctorAccount(req)));
+export const doctorHistory = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.historyRefs(await doctorAccount(req)));
+export const putDoctorPayoutDetails = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await f.setPayoutDetails({ ownerKind: 'doctor', ownerId: doctorOf(req) }, req.body, { kind: 'doctor', id: doctorOf(req) }));
+
+// ── Admin: every settlement account (partners and doctors) ──
+const adminId = (req: Request) => String((req as AuthRequest).user!._id);
+export const adminAccounts = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await f.adminListAccounts({ ...(req.query as any), due: req.query.due === 'true' }));
+export const adminAccount = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await f.financeSummary(await f.accountById(req.params.accountId), true));
+export const adminStatement = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await f.statementPage(await f.accountById(req.params.accountId), req.query as any));
+export const adminStatementCsv = async (req: Request, res: Response, _n: NextFunction) =>
+  csv(res, csvName(`account-${req.params.accountId}`, req.query), await f.statementCsv(await f.accountById(req.params.accountId), period(req.query)));
+export const adminAccountPayouts = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await f.listPayouts(await f.accountById(req.params.accountId)));
+export const adminHistory = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await f.historyRefs(await f.accountById(req.params.accountId)));
+export const adminEvents = async (req: Request, res: Response, _n: NextFunction) => {
+  await f.accountById(req.params.accountId);
+  ok(res, await f.adminAccountEvents(req.params.accountId));
+};
+export const adminPutPayoutDetails = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await f.setPayoutDetails({ accountId: req.params.accountId }, req.body, { kind: 'admin', id: adminId(req) }));
+export const adminVerifyPayoutDetails = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await f.verifyPayoutDetails(req.params.accountId, req.body.version, adminId(req)));
+export const adminRecordPayout = async (req: Request, res: Response, _n: NextFunction) => {
+  const r = await f.recordPayout(adminId(req), req.params.accountId, req.body);
+  ok(res, r, r.replayed ? 200 : 201);
+};
+export const adminVoidPayout = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await f.voidPayout(adminId(req), req.params.payoutId, req.body.reason));
+export const adminAdjustment = async (req: Request, res: Response, _n: NextFunction) => {
+  const r = await f.postAdjustment(adminId(req), req.params.accountId, req.body);
+  ok(res, r, r.replayed ? 200 : 201);
+};
+export const adminPayouts = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.adminListPayouts(req.query as any));

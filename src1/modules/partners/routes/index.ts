@@ -51,6 +51,8 @@ import {
   getCustomerBillPdf,
 } from '@/modules/partners/controller/invoice';
 import * as lab from '@/modules/partners/controller/labBooking';
+import * as fin from '@/modules/partners/controller/finance';
+import * as finV from '@/modules/partners/validation/finance';
 import * as labV from '@/modules/partners/validation/labBooking';
 import {
   adminCreatePartner,
@@ -162,6 +164,13 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.post('/lab-bookings/:bookingId/reschedule', ...guard('bookings.manage'), id, validate(labV.labRescheduleSchema, 'body'), catchAsync(lab.rescheduleLabBooking));
   r.post('/lab-bookings/:bookingId/reports', ...guard('reports.upload'), id, catchAsync(lab.uploadLabReports));
   r.post('/lab-bookings/:bookingId/reports/release', ...guard('reports.release'), id, validate(labV.releaseReportSchema, 'body'), catchAsync(lab.releaseLabReport));
+
+  // Q5: finance — balance, statement (+CSV), payouts; the payout destination is set by an owner (verified by an admin).
+  r.get('/finance', ...guard('finance.view'), catchAsync(fin.partnerFinance));
+  r.get('/finance/statement', ...guard('finance.view'), validate(finV.statementQuerySchema, 'query'), catchAsync(fin.partnerStatement));
+  r.get('/finance/statement.csv', ...guard('finance.view'), validate(finV.csvQuerySchema, 'query'), catchAsync(fin.partnerStatementCsv));
+  r.get('/finance/payouts', ...guard('finance.view'), catchAsync(fin.partnerPayouts));
+  r.put('/finance/payout-details', ...guard(), validate(finV.payoutDetailsSchema, 'body'), catchAsync(fin.putPartnerPayoutDetails));
 }
 
 const partnerRouter = Router();
@@ -216,3 +225,24 @@ customerLabBookingRouter.post('/:bookingId/cancel', validate(labV.labBookingIdPa
   catchAsync(lab.cancelMyLabBooking));
 customerLabBookingRouter.post('/:bookingId/accept-reschedule', validate(labV.labBookingIdParamSchema, 'params'),
   validate(labV.acceptRescheduleSchema, 'body'), catchAsync(lab.acceptLabReschedule));
+
+/**
+ * Q5 admin finance across every settlement account (partners and doctors): the payout queue, statements, verifying
+ * payout destinations, recording/voiding transfers and adjustments. Mounted at /api/v1/settlements (admins only).
+ */
+export const settlementAdminRouter = Router();
+const acc = validate(finV.accountIdParamSchema, 'params');
+settlementAdminRouter.use(requireAdmin);
+settlementAdminRouter.get('/accounts', validate(finV.accountsQuerySchema, 'query'), catchAsync(fin.adminAccounts));
+settlementAdminRouter.get('/accounts/:accountId', acc, catchAsync(fin.adminAccount));
+settlementAdminRouter.get('/accounts/:accountId/statement', acc, validate(finV.statementQuerySchema, 'query'), catchAsync(fin.adminStatement));
+settlementAdminRouter.get('/accounts/:accountId/statement.csv', acc, validate(finV.csvQuerySchema, 'query'), catchAsync(fin.adminStatementCsv));
+settlementAdminRouter.get('/accounts/:accountId/payouts', acc, catchAsync(fin.adminAccountPayouts));
+settlementAdminRouter.get('/accounts/:accountId/history', acc, catchAsync(fin.adminHistory));
+settlementAdminRouter.get('/accounts/:accountId/events', acc, catchAsync(fin.adminEvents));
+settlementAdminRouter.put('/accounts/:accountId/payout-details', acc, validate(finV.payoutDetailsSchema, 'body'), catchAsync(fin.adminPutPayoutDetails));
+settlementAdminRouter.post('/accounts/:accountId/payout-details/verify', acc, validate(finV.verifyDetailsSchema, 'body'), catchAsync(fin.adminVerifyPayoutDetails));
+settlementAdminRouter.post('/accounts/:accountId/payouts', acc, validate(finV.recordPayoutSchema, 'body'), catchAsync(fin.adminRecordPayout));
+settlementAdminRouter.post('/accounts/:accountId/adjustments', acc, validate(finV.adjustmentSchema, 'body'), catchAsync(fin.adminAdjustment));
+settlementAdminRouter.get('/payouts', validate(finV.payoutsQuerySchema, 'query'), catchAsync(fin.adminPayouts));
+settlementAdminRouter.post('/payouts/:payoutId/void', validate(finV.payoutIdParamSchema, 'params'), validate(finV.voidPayoutSchema, 'body'), catchAsync(fin.adminVoidPayout));

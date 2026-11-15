@@ -10,7 +10,7 @@ import addressRouter from '@/modules/addresses/routes';
 import specialistRouter from '@/modules/specialists/routes';
 import bookingRouter from '@/modules/bookings/routes';
 import partnerDirectoryRouter from '@/modules/partnerDirectory/routes';
-import partnerWorkspaceRouter, { customerBillsRouter, customerLabRouter, customerLabBookingRouter } from '@/modules/partners/routes';
+import partnerWorkspaceRouter, { customerBillsRouter, customerLabRouter, customerLabBookingRouter, settlementAdminRouter } from '@/modules/partners/routes';
 import { registerLabBookingPayments } from '@/modules/partners/services/labBookings';
 import { registerInstantPayments } from '@/modules/doctors/services/instant';
 import { instantRouter } from '@/modules/doctors/routes';
@@ -81,6 +81,8 @@ export const configureRoutes = (app: Express): void => {
   app.use('/api/v1/partner-labs', authenticate, denyRoles('partner'), customerLabRouter);
   app.use('/api/v1/lab-bookings', authenticate, denyRoles('partner'), customerLabBookingRouter);
   app.use('/api/v1/instant', authenticate, denyRoles('partner'), instantRouter);
+  // Q5: admin payouts and statements for every settlement account.
+  app.use('/api/v1/settlements', authenticate, denyRoles('partner'), settlementAdminRouter);
   app.use('/api/v1/slots', authenticate, denyRoles('partner'), slotRouter);
   app.use('/api/v1/corporates', authenticate, denyRoles('partner'), corporateRouter);
   app.use('/api/v1/file', privateDocumentHeaders, authenticate, fileRouter);
