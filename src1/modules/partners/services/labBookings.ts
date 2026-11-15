@@ -144,7 +144,7 @@ export class LabBookingService {
   async create(userId: string, input: CreateLabBookingInput, now = new Date()): Promise<LabBookingPaymentInit> {
     const requestHash = createRequestHash(input);
     const prior = await PartnerLabBookingModel.findOne({ userId: { $eq: userId }, createRequestKey: { $eq: input.requestKey } }).lean();
-    if (prior) return this.resume(assertSameRequest(prior as IPartnerLabBooking, requestHash), !!input.useWalletBalance);
+    if (prior) return this.resume(assertSameRequest(prior as IPartnerLabBooking, requestHash), !!input.useWalletBalance, now);
 
     const partner = await PartnerOrgModel.findById(input.partnerId).lean();
     if (!partner || partner.kind !== 'lab' || partner.isActive === false || partner.verification?.state !== 'verified') {
@@ -193,7 +193,7 @@ export class LabBookingService {
       }], { session: s });
       return created!.toObject() as IPartnerLabBooking;
     });
-    return this.resume(booking, !!input.useWalletBalance);
+    return this.resume(booking, !!input.useWalletBalance, now);
   }
 
   private async patientOf(userId: string, p: CreateLabBookingInput['patient']) {
@@ -221,10 +221,21 @@ export class LabBookingService {
     return { discountMinor, couponCode: v.coupon.code };
   }
 
-  /** Brings a pending booking to "paid" or "awaiting gateway payment"; every step is idempotent (a resent create resumes). */
-  private async resume(booking: IPartnerLabBooking, useWallet: boolean): Promise<LabBookingPaymentInit> {
-    if (booking.status !== 'pending_payment' || booking.paymentStatus !== 'pending') {
-      return { booking: customerView(booking), paymentRequired: false, walletDeductedAmount: 0 };
+  /**
+   * The ONE admission for starting or resuming payment (keyed create, its replay, and pay-again): a settled booking only
+   * returns its receipt; otherwise the payment window must still be open and every earlier attempt must be settled with
+   * the gateway first (unknown → 503), so no new checkout can start after expiry or beside an unresolved capture.
+   */
+  private async resume(booking: IPartnerLabBooking, useWallet: boolean, now = new Date()): Promise<LabBookingPaymentInit> {
+    const receipt = (b: IPartnerLabBooking) => ({ booking: customerView(b), paymentRequired: false, walletDeductedAmount: 0 });
+    if (booking.status !== 'pending_payment' || booking.paymentStatus !== 'pending') return receipt(booking);
+    if (now >= new Date(booking.paymentDeadline)) throw err(409, 'LAB_BOOKING_PAYMENT_EXPIRED', 'The payment window has closed; book again');
+    const id = String(booking._id);
+    if (await PaymentRecordModel.exists({ context: 'lab_booking', contextId: id })) {
+      const earlier = await this.paymentService.reconcileContextPayments('lab_booking', id);
+      if (earlier.unknown > 0) throw err(503, 'PAYMENT_STATE_UNKNOWN', 'An earlier payment is still being checked; try again in a minute');
+      booking = (await PartnerLabBookingModel.findById(id).lean()) as IPartnerLabBooking;
+      if (booking.status !== 'pending_payment' || booking.paymentStatus !== 'pending') return receipt(booking);
     }
     if (booking.paymentTransactionId) {
       const open = await this.paymentService.resumableOrder(String(booking.paymentTransactionId));
@@ -297,14 +308,7 @@ export class LabBookingService {
 
   /** Pay again within the window (P8): settle every earlier attempt first; reuse the open order or start a new one. */
   async retryPayment(userId: string, bookingId: string, useWallet: boolean, now = new Date()): Promise<LabBookingPaymentInit> {
-    const b = await this.ownBooking(userId, bookingId);
-    if (b.status !== 'pending_payment' || b.paymentStatus !== 'pending') {
-      return { booking: customerView(b), paymentRequired: false, walletDeductedAmount: 0 };
-    }
-    if (now >= b.paymentDeadline) throw err(409, 'LAB_BOOKING_PAYMENT_EXPIRED', 'The payment window has closed; book again');
-    const earlier = await this.paymentService.reconcileContextPayments('lab_booking', bookingId);
-    if (earlier.unknown > 0) throw err(503, 'PAYMENT_STATE_UNKNOWN', 'An earlier payment is still being checked; try again in a minute');
-    return this.resume(await this.ownBooking(userId, bookingId), useWallet);
+    return this.resume(await this.ownBooking(userId, bookingId), useWallet, now);
   }
 
   /** Payment context handler: a verified capture is applied exactly once (or returned to the wallet). */
@@ -617,6 +621,22 @@ export class LabBookingService {
     return partnerView(saved);
   }
 
+  /** Report bytes are written only here, under the booking's own folder, by an admitted member allowed to upload them. */
+  uploadFilesFor: (req: unknown, module: string, recordId: string) => Promise<{ url: string }[]> = async (req, module, recordId) => {
+    const { FileService } = await import('@/modules/file/services');
+    return Container.get(FileService).uploadFiles(req, module, recordId, { allowReserved: true });
+  };
+
+  async uploadReportFiles(actor: PartnerActor, bookingId: string, req: unknown): Promise<Record<string, unknown>> {
+    const id = String(bookingId).toLowerCase();
+    const b = await this.scopedBooking(actor, id);
+    if (!['processing', 'report_ready'].includes(b.status)) {
+      throw err(409, 'LAB_BOOKING_STATE_CONFLICT', 'Reports can be uploaded while the sample is being processed');
+    }
+    const files = await this.uploadFilesFor(req, REPORT_UPLOAD_MODULE, id);
+    return this.uploadReports(actor, id, files.map((f) => f.url));
+  }
+
   /**
    * Releases one exact draft file under a named professional (member with `reports.release` and a registration number):
    * moves it to releasedFiles (customer-readable), stamps the signer, and sets report_ready. Idempotent: releasing an
@@ -626,8 +646,8 @@ export class LabBookingService {
     const id = String(bookingId).toLowerCase();
     const path = uploadPathOf(file);
     if (!path) throw err(400, 'INVALID_REPORT_FILE', 'Unknown report file');
-    const signer = await this.signerFor(actor, signerMemberId);
     const before = await this.scopedBooking(actor, id);
+    const signer = await this.signerFor(actor, signerMemberId, before.branchId);
     let after: IPartnerLabBooking;
     if ((before.report?.releasedFiles ?? []).includes(path)) {
       after = before;
@@ -658,7 +678,7 @@ export class LabBookingService {
     return partnerView(after);
   }
 
-  private async signerFor(actor: PartnerActor, signerMemberId?: string) {
+  private async signerFor(actor: PartnerActor, signerMemberId: string | undefined, branchId: string) {
     const memberId = actor.actorKind === 'admin' ? signerMemberId : actor.memberId;
     if (!memberId) throw err(400, 'SIGNER_REQUIRED', 'Name the professional releasing this report');
     if (actor.actorKind !== 'admin' && signerMemberId && signerMemberId !== actor.memberId) {
@@ -667,6 +687,11 @@ export class LabBookingService {
     const m = await MemberModel.findOne({ _id: memberId, partnerId: actor.partnerId, isActive: true }).lean();
     const allowed = !!m && (m.role === 'owner' || (m.permissions ?? []).includes('reports.release'));
     if (!m || !allowed) throw err(403, 'SIGNER_NOT_AUTHORISED', 'The signer must be an active member allowed to release reports');
+    // The named professional needs the same whole authority as releasing it themselves: this booking's branch too.
+    const scope = (m.branchIds ?? []).map(String);
+    if (m.role !== 'owner' && scope.length > 0 && !scope.includes(String(branchId))) {
+      throw err(403, 'SIGNER_NOT_AUTHORISED', 'The signer does not work at this booking\'s branch');
+    }
     if (!m.professional?.registrationNumber) {
       throw err(409, 'SIGNER_REGISTRATION_MISSING', 'Add the professional registration number to this member before releasing');
     }

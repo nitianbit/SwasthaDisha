@@ -160,7 +160,7 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.post('/lab-bookings/:bookingId/complete', ...guard('bookings.manage'), id, catchAsync(lab.completeLabBooking));
   r.post('/lab-bookings/:bookingId/reject', ...guard('bookings.manage'), id, validate(labV.rejectSchema, 'body'), catchAsync(lab.rejectLabBooking));
   r.post('/lab-bookings/:bookingId/reschedule', ...guard('bookings.manage'), id, validate(labV.labRescheduleSchema, 'body'), catchAsync(lab.rescheduleLabBooking));
-  r.post('/lab-bookings/:bookingId/reports', ...guard('reports.upload'), id, validate(labV.uploadReportsSchema, 'body'), catchAsync(lab.uploadLabReports));
+  r.post('/lab-bookings/:bookingId/reports', ...guard('reports.upload'), id, catchAsync(lab.uploadLabReports));
   r.post('/lab-bookings/:bookingId/reports/release', ...guard('reports.release'), id, validate(labV.releaseReportSchema, 'body'), catchAsync(lab.releaseLabReport));
 }
 

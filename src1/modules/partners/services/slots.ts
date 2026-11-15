@@ -1,5 +1,6 @@
 import { ClientSession } from 'mongoose';
 import { AppError } from '@/modules/common/types';
+import { withLease } from '@/modules/common/utils/leaseLock';
 import BranchModel from '@/modules/partners/model/branch';
 import {
   PartnerSlotModel,
@@ -18,6 +19,18 @@ export const ROLLING_DAYS = 30;
 
 const toMinutes = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
 const toHHMM = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+
+/** A real calendar date YYYY-MM-DD (2027-02-31 is not one: it would silently become 3 March). */
+export function isRealDate(date: unknown): date is string {
+  if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+  const [y, m, d] = date.split('-').map(Number);
+  const t = new Date(Date.UTC(y!, m! - 1, d!));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === m! - 1 && t.getUTCDate() === d;
+}
+
+export function assertRealDate(date: unknown, field = 'date'): asserts date is string {
+  if (!isRealDate(date)) throw new AppError({ status: 400, code: 'INVALID_DATE', message: `${field} must be a real date (YYYY-MM-DD)` });
+}
 
 /** UTC instant of an India-time date + HH:mm. */
 export function istInstant(date: string, hhmm: string): Date {
@@ -100,56 +113,79 @@ export async function saveSlotTemplate(
   return { template, expansion };
 }
 
-export interface ExpansionResult { inserted: number; closed: number; reopened: number }
+export interface ExpansionResult { inserted: number; updated: number; closed: number; reopened: number }
 
 /**
- * Brings slots for [fromDate, fromDate+days) in line with the template and the branch holidays. Only inserts missing
- * slots, closes template slots that are no longer wanted (holds kept), and reopens slots it closed itself. Never deletes
- * a slot, never touches `booked`, never reopens a manual closure. Safe to run repeatedly and concurrently.
+ * Brings slots for [fromDate, fromDate+days) in line with the template and the branch holidays, under a per-schedule
+ * lease (the template and branch are read after acquiring it, so a concurrent older run can never publish a stale
+ * snapshot after a newer one). It inserts missing slots; makes unbooked generated slots match the template again
+ * (end time, capacity); raises a booked slot's capacity to the template's but never below its bookings, and keeps its
+ * time; closes holiday dates and generated slots no longer wanted (holds kept); reopens holiday closures (any slot) once
+ * the holiday is gone and template closures that are wanted again. Never deletes a slot, never changes `booked`, never
+ * reopens a manual closure. Idempotent.
  */
 export async function expandSlots(branchId: string, visitMode: VisitMode, fromDate: string, days: number): Promise<ExpansionResult> {
-  const result: ExpansionResult = { inserted: 0, closed: 0, reopened: 0 };
-  const [template, branch] = await Promise.all([
-    PartnerSlotTemplateModel.findOne({ branchId, visitMode }).lean(),
-    BranchModel.findById(branchId).lean(),
-  ]);
-  if (!template || !branch) return result;
-  const holidays = new Set((branch.holidays ?? []).map(String));
-  const live = template.isActive && branch.isActive !== false;
-  for (let i = 0; i < days; i++) {
-    const date = addDays(fromDate, i);
-    const holiday = holidays.has(date);
-    const wanted = live && !holiday ? slotTimesFor(template, weekdayOf(date)) : [];
-    const wantedStarts = new Set(wanted.map((w) => w.start));
-    if (wanted.length > 0) {
-      const ops = wanted.map((w) => ({
-        updateOne: {
-          filter: { branchId, visitMode, date, startTime: w.start },
-          update: {
-            $setOnInsert: {
+  assertRealDate(fromDate, 'from');
+  return withLease(`partner-slots:${branchId}:${visitMode}`, async () => {
+    const result: ExpansionResult = { inserted: 0, updated: 0, closed: 0, reopened: 0 };
+    const [template, branch] = await Promise.all([
+      PartnerSlotTemplateModel.findOne({ branchId, visitMode }).lean(),
+      BranchModel.findById(branchId).lean(),
+    ]);
+    if (!template || !branch) return result;
+    const holidays = new Set((branch.holidays ?? []).map(String).filter(isRealDate));
+    const live = template.isActive && branch.isActive !== false;
+    for (let i = 0; i < days; i++) {
+      const date = addDays(fromDate, i);
+      const holiday = holidays.has(date);
+      const wanted = live && !holiday ? slotTimesFor(template, weekdayOf(date)) : [];
+      const starts = wanted.map((w) => w.start);
+      if (wanted.length > 0) {
+        const ops = wanted.flatMap((w) => [
+          { updateOne: {
+            filter: { branchId, visitMode, date, startTime: w.start },
+            update: { $setOnInsert: {
               partnerId: String(branch.partnerId), branchId, visitMode, date, startTime: w.start, endTime: w.end,
               startsAt: istInstant(date, w.start), endsAt: istInstant(date, w.end),
               capacity: template.capacity, booked: 0, closed: null, source: 'template',
-            },
-          },
-          upsert: true,
-        },
-      }));
-      const r = await PartnerSlotModel.bulkWrite(ops as any, { ordered: false });
-      result.inserted += r.upsertedCount;
-      const reopened = await PartnerSlotModel.updateMany(
-        { branchId, visitMode, date, startTime: { $in: [...wantedStarts] }, closed: { $in: ['holiday', 'template'] } },
-        { $set: { closed: null } }
+            } },
+            upsert: true,
+          } },
+          { updateOne: {
+            filter: { branchId, visitMode, date, startTime: w.start, source: 'template', booked: 0,
+              $or: [{ endTime: { $ne: w.end } }, { capacity: { $ne: template.capacity } }] },
+            update: { $set: { endTime: w.end, endsAt: istInstant(date, w.end), capacity: template.capacity } },
+          } },
+          { updateOne: {
+            filter: { branchId, visitMode, date, startTime: w.start, source: 'template', booked: { $gt: 0 }, capacity: { $ne: template.capacity } },
+            update: [{ $set: { capacity: { $max: ['$booked', template.capacity] } } }],
+          } },
+        ]);
+        const r = await PartnerSlotModel.bulkWrite(ops as any, { ordered: true });
+        result.inserted += r.upsertedCount;
+        result.updated += r.modifiedCount;
+      }
+      if (!holiday) {
+        const reopened = await PartnerSlotModel.updateMany(
+          { branchId, visitMode, date, $or: [{ closed: 'holiday' }, { closed: 'template', source: 'template', startTime: { $in: starts } }] },
+          { $set: { closed: null } }
+        );
+        result.reopened += reopened.modifiedCount;
+      }
+      const closed = await PartnerSlotModel.updateMany(
+        { branchId, visitMode, date, closed: null, ...(holiday ? {} : { source: 'template', startTime: { $nin: starts } }) },
+        { $set: { closed: holiday ? 'holiday' : 'template' } }
       );
-      result.reopened += reopened.modifiedCount;
+      result.closed += closed.modifiedCount;
     }
-    const closed = await PartnerSlotModel.updateMany(
-      { branchId, visitMode, date, closed: null, ...(holiday ? {} : { source: 'template', startTime: { $nin: [...wantedStarts] } }) },
-      { $set: { closed: holiday ? 'holiday' : 'template' } }
-    );
-    result.closed += closed.modifiedCount;
-  }
-  return result;
+    return result;
+  });
+}
+
+/** Re-expands every slot template of a branch (after its holidays, services or active state changed). */
+export async function expandBranchTemplates(branchId: string, now = new Date()): Promise<void> {
+  const templates = await PartnerSlotTemplateModel.find({ branchId }).select({ visitMode: 1 }).lean();
+  for (const t of templates) await expandSlots(branchId, t.visitMode, istDate(now), ROLLING_DAYS);
 }
 
 /** Daily rolling expansion for every active template (run by the scheduler). */
@@ -203,6 +239,7 @@ export async function addManualSlot(
   input: { branchId: string; visitMode: VisitMode; date: string; startTime: string; endTime: string; capacity: number }
 ): Promise<IPartnerSlot> {
   await branchFor(actor, input.branchId, input.visitMode);
+  assertRealDate(input.date);
   if (toMinutes(input.endTime) <= toMinutes(input.startTime)) {
     throw new AppError({ status: 400, code: 'INVALID_WINDOW', message: 'A slot must end after it starts' });
   }
@@ -224,12 +261,16 @@ export async function addManualSlot(
 
 export async function listSlotsForPartner(actor: PartnerActor, branchId: string, visitMode: VisitMode, from: string, to: string): Promise<IPartnerSlot[]> {
   assertBranchInScope(actor, branchId);
+  assertRealDate(from, 'from');
+  assertRealDate(to, 'to');
   return PartnerSlotModel.find({ partnerId: actor.partnerId, branchId, visitMode, date: { $gte: from, $lte: to } })
     .sort({ startsAt: 1 }).limit(2000).lean();
 }
 
 /** What a customer can pick: open, not full, starting after `minStart`. */
 export async function listBookableSlots(branchId: string, visitMode: VisitMode, from: string, to: string, minStart: Date): Promise<IPartnerSlot[]> {
+  assertRealDate(from, 'from');
+  assertRealDate(to, 'to');
   return PartnerSlotModel.find({
     branchId, visitMode, date: { $gte: from, $lte: to }, closed: null, startsAt: { $gt: minStart },
     $expr: { $lt: ['$booked', '$capacity'] },

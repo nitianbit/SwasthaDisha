@@ -1,5 +1,5 @@
 /**
- * Q3 §7a cutover, run before SETTLEMENT_CUTOVER_AT is set:
+ * Q3 §7a cutover preparation (SETTLEMENT_CUTOVER_AT takes effect only with Q4a's doctor ledger earnings):
  *   npm run migrate:q3-settlement-cutover              # dry run: counts only
  *   npm run migrate:q3-settlement-cutover -- --commit  # stamp + import
  *
@@ -85,7 +85,7 @@ async function main(): Promise<void> {
       console.log('NOT READY: some bookings still have no settlement system; re-run.');
       process.exitCode = 2;
     } else if (commit) {
-      console.log('READY: every booking is owned by exactly one settlement system. Now set SETTLEMENT_CUTOVER_AT.');
+      console.log('READY: every booking is owned by exactly one settlement system. Do not set SETTLEMENT_CUTOVER_AT before the doctor ledger earnings (Q4a) are deployed.');
     }
   } finally {
     await mongoose.disconnect();

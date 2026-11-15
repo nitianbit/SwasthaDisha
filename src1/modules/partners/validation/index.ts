@@ -1,4 +1,5 @@
 import Joi from 'joi';
+import { isRealDate } from '@/modules/partners/services/slots';
 import { ALL_PERMISSIONS } from '@/modules/partners/types';
 
 const objectIdPattern = /^[0-9a-fA-F]{24}$/;
@@ -123,7 +124,7 @@ export const createBranchSchema = Joi.object({
     sat: dayHoursSchema.optional(),
     sun: dayHoursSchema.optional(),
   }).optional(),
-  holidays: Joi.array().items(Joi.string()).optional(),
+  holidays: Joi.array().items(Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).custom((v, h) => (isRealDate(v) ? v : h.error('any.invalid')), 'real calendar date')).max(400).optional(),
   services: Joi.object({
     homeCollection: Joi.boolean().optional(),
     inLab: Joi.boolean().optional(),
@@ -148,7 +149,7 @@ export const updateBranchSchema = Joi.object({
     sat: dayHoursSchema.optional(),
     sun: dayHoursSchema.optional(),
   }).optional(),
-  holidays: Joi.array().items(Joi.string()).optional(),
+  holidays: Joi.array().items(Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).custom((v, h) => (isRealDate(v) ? v : h.error('any.invalid')), 'real calendar date')).max(400).optional(),
   services: Joi.object({
     homeCollection: Joi.boolean().optional(),
     inLab: Joi.boolean().optional(),
