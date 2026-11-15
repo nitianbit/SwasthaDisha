@@ -52,6 +52,9 @@ export const createLabBookingSchema = Joi.object({
   couponCode: Joi.string().trim().max(40),
   useWalletBalance: Joi.boolean(),
   requestKey: Joi.string().pattern(/^[A-Za-z0-9_-]{8,64}$/).required(),
+  /** Q9: price fence (paise) — the create is refused with PRICE_CHANGED unless it matches the server's price now. */
+  acceptedPayableMinor: Joi.number().integer().min(0).required(),
+  acceptedSubtotalMinor: Joi.number().integer().min(0).optional(),
 });
 export const payAgainSchema = Joi.object({ useWalletBalance: Joi.boolean() });
 export const customerCancelSchema = Joi.object({ note: Joi.string().trim().max(500) });

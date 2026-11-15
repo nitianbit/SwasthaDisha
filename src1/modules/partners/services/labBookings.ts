@@ -54,6 +54,10 @@ export const defaultLabNotifier: LabNotifier = async (n) => {
 };
 
 export interface CreateLabBookingInput {
+  /** Q9: the payable amount (paise) the customer confirmed; required by the HTTP schema (customers always send it). */
+  acceptedPayableMinor?: number;
+  /** Q9: the tests' subtotal (paise) the customer saw; optional extra fence. */
+  acceptedSubtotalMinor?: number;
   partnerId: string;
   branchId: string;
   visitMode: VisitMode;
@@ -181,6 +185,12 @@ export class LabBookingService {
     const subtotalMinor = items.reduce((a, i) => a + i.priceMinor, 0);
     const { discountMinor, couponCode } = await this.couponFor(userId, String(partner._id), items, subtotalMinor, input.couponCode);
     const payableMinor = Math.max(0, subtotalMinor - discountMinor);
+    // Q9: the price the customer accepted is a fence — nothing is funded at any other price (prices or a coupon may
+    // have changed since the screen was shown).
+    if ((input.acceptedPayableMinor !== undefined && input.acceptedPayableMinor !== payableMinor)
+        || (input.acceptedSubtotalMinor !== undefined && input.acceptedSubtotalMinor !== subtotalMinor)) {
+      throw err(409, 'PRICE_CHANGED', `The price is now ₹${(payableMinor / 100).toFixed(2)} (tests ₹${(subtotalMinor / 100).toFixed(2)}, coupon −₹${(discountMinor / 100).toFixed(2)}); review and confirm again`);
+    }
     const account = await ensureSettlementAccount('partner', String(partner._id), partner.legalName || partner.name);
 
     const booking = await runLedgerTransaction(async (s) => {

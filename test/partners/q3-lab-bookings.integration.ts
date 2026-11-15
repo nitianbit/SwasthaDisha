@@ -729,14 +729,20 @@ async function main() {
       assert.equal((await call('GET', '/api/v1/partner-labs', t)).status, 200);
       const slots = await call('GET', `/api/v1/partner-labs/branches/${A}/slots?visitMode=lab&from=${addDays(today, 15)}&days=1`, t);
       assert.equal(slots.status, 200);
-      const made = await call('POST', '/api/v1/lab-bookings', t, input({ slotId: slots.json.data[0].slotId, useWalletBalance: true }));
+      // Q9: the accepted price is required and fences the create (nothing debited on a mismatch).
+      assert.equal((await call('POST', '/api/v1/lab-bookings', t, input({ slotId: slots.json.data[0].slotId, useWalletBalance: true }))).status, 400);
+      const stalePrice = await call('POST', '/api/v1/lab-bookings', t, input({ slotId: slots.json.data[0].slotId, useWalletBalance: true, acceptedPayableMinor: 120000 }));
+      assert.equal(stalePrice.status, 409);
+      assert.equal(stalePrice.json.code, 'PRICE_CHANGED');
+      assert.equal(await balanceOf(u), 1300);
+      const made = await call('POST', '/api/v1/lab-bookings', t, input({ slotId: slots.json.data[0].slotId, useWalletBalance: true, acceptedPayableMinor: 130000 }));
       assert.equal(made.status, 201);
       assert.equal(made.json.data.paymentRequired, false);
       const mine = await call('GET', `/api/v1/lab-bookings/${made.json.data.booking._id}`, t);
       assert.equal(mine.status, 200);
       assert.ok(!('draftFiles' in mine.json.data.report) && !('walletFunding' in mine.json.data));
       assert.equal((await call('GET', '/api/v1/lab-bookings', partnerToken(owner))).status, 403);
-      const bad = await call('POST', '/api/v1/lab-bookings', t, input({ slotId: slots.json.data[0].slotId, visitMode: 'home' }));
+      const bad = await call('POST', '/api/v1/lab-bookings', t, input({ slotId: slots.json.data[0].slotId, visitMode: 'home', acceptedPayableMinor: 130000 }));
       assert.equal(bad.status, 400, 'home without address refused by validation');
     });
 

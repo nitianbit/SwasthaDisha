@@ -354,6 +354,20 @@ async function main() {
     await assert.rejects(() => svc.extend(d, String(out.booking._id), 5), code('DOCTOR_BUSY'));
   });
 
+  await check('Q9: the accepted price fences the create — a changed quote or coupon refuses before any money moves', async () => {
+    const d = await doctor('Dr Fence', 500, 'Fence');
+    const u = await customer(600);
+    const q = (await svc.quote({ specialization: 'Fence', mode: 'video', doctorId: d })).quotedAmountMinor;
+    await DoctorPresenceModel.updateOne({ doctorId: d }, { $set: { instantFeeMinor: 60000 } }); // the fee rose after the screen was shown
+    await assert.rejects(() => svc.create(u, ask({ useWalletBalance: true, specialization: 'Fence', target: { kind: 'specific', doctorId: d },
+      acceptedQuoteMinor: q, acceptedPayableMinor: q })), code('QUOTE_CHANGED'));
+    assert.equal(await balance(u), 600, 'nothing debited');
+    assert.equal(await InstantRequestModel.countDocuments({ userId: u }), 0);
+    const ok = await svc.create(u, ask({ useWalletBalance: true, specialization: 'Fence', target: { kind: 'specific', doctorId: d },
+      acceptedQuoteMinor: 60000, acceptedPayableMinor: 60000 }));
+    assert.equal((ok.request as any).quotedAmountMinor, 60000);
+  });
+
   await check('Q9: specialities with doctors online now; customer requests are paged', async () => {
     const sp = await svc.specialities('video');
     assert.ok(sp.some((x) => x.specialization === 'General Physician' && x.onlineNow >= 1));
@@ -521,7 +535,7 @@ async function main() {
       const doctors = await call('GET', '/api/v1/instant/doctors?specialization=Gastro&mode=chat', ut);
       assert.equal(doctors.status, 200);
       assert.deepEqual(doctors.json.data.map((x: any) => x.doctorId), [d]);
-      const made = await call('POST', '/api/v1/instant/requests', ut, ask({ useWalletBalance: true, specialization: 'Gastro', mode: 'chat', target: { kind: 'specific', doctorId: d } }));
+      const made = await call('POST', '/api/v1/instant/requests', ut, ask({ useWalletBalance: true, specialization: 'Gastro', mode: 'chat', target: { kind: 'specific', doctorId: d }, acceptedQuoteMinor: 45000, acceptedPayableMinor: 45000 }));
       assert.equal(made.status, 201);
       assert.ok(!('walletFunding' in made.json.data.request));
       const offers = await call('GET', '/api/v1/specialists/me/instant/offers', dt);

@@ -73,6 +73,9 @@ export const defaultInstantNotifier: InstantNotifier = async (n) => {
 };
 
 export interface CreateInstantInput {
+  /** Q9: the quote (paise) the customer accepted and what they expect to pay after the coupon; both fence the create. */
+  acceptedQuoteMinor?: number;
+  acceptedPayableMinor?: number;
   target: { kind: 'specific' | 'any'; doctorId?: string };
   specialization: string;
   mode: InstantMode;
@@ -209,6 +212,12 @@ export class InstantConsultService {
       couponCode = v.coupon.code;
       // A coupon for named doctors stays bound to them through re-offers and acceptance (frozen with the price).
       if (v.coupon.applicableTo === 'specific') couponDoctorIds = (v.coupon.applicableIds ?? []).map(String);
+    }
+
+    // Q9: nothing is funded at a price the customer did not accept (a doctor's fee or the coupon may have changed).
+    if ((input.acceptedQuoteMinor !== undefined && input.acceptedQuoteMinor !== quotedAmountMinor)
+        || (input.acceptedPayableMinor !== undefined && input.acceptedPayableMinor !== quotedAmountMinor - discountMinor)) {
+      throw err(409, 'QUOTE_CHANGED', `The price is now ₹${((quotedAmountMinor - discountMinor) / 100).toFixed(2)} (fee ₹${(quotedAmountMinor / 100).toFixed(2)}); review and confirm again`);
     }
 
     const request = await runLedgerTransaction(async (s) => {

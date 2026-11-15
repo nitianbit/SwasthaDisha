@@ -47,6 +47,9 @@ export const createInstantSchema = Joi.object({
   couponCode: Joi.string().trim().max(40),
   useWalletBalance: Joi.boolean(),
   requestKey: Joi.string().pattern(/^[A-Za-z0-9_-]{8,64}$/).required(),
+  /** Q9: price fence (paise). */
+  acceptedQuoteMinor: Joi.number().integer().min(0).required(),
+  acceptedPayableMinor: Joi.number().integer().min(0).required(),
 });
 export const payInstantSchema = Joi.object({ useWalletBalance: Joi.boolean() });
 export const reofferSchema = Joi.object({ target: target.required() });
