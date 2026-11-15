@@ -20,11 +20,11 @@ import SlotModel from '@/modules/slots/model';
 import BookingModel from '@/modules/bookings/model';
 import UserModel from '@/modules/user/model';
 import { IBooking } from '@/modules/bookings/types';
-import { cancelBookingSettlement, createBookingWithHolds, rescheduleWithHolds, type DeskScope } from '@/modules/bookings/holds';
+import { cancelBookingSettlement, createBookingWithHolds, deskBookingInScope, isReplayedBooking, rescheduleWithHolds, type DeskScope } from '@/modules/bookings/holds';
 import DependentModel from '@/modules/dependents/model';
 import { DoctorReservationModel } from '@/modules/doctors/model/reservation';
 import { releaseInterval } from '@/modules/doctors/services/reservations';
-import { clinicBranchAllowed, expandDoctorSlots, DOCTOR_ROLLING_DAYS } from '@/modules/doctors/services/schedule';
+import { clinicBranchAllowed, doctorScopeOf, expandDoctorSlots, DOCTOR_ROLLING_DAYS } from '@/modules/doctors/services/schedule';
 import { WalletRepository } from '@/modules/wallet/repository';
 
 /**
@@ -81,7 +81,7 @@ async function refreshDoctorSlots(doctorId: string): Promise<void> {
 export async function listClinicDoctors(actor: PartnerActor) {
   await clinicOf(actor);
   const members = await MemberModel.find({ partnerId: actor.partnerId, isActive: true, doctorId: { $type: 'string' } }).lean() as IMember[];
-  const scopeOf = (m: IMember) => (Array.isArray(m.doctorBranchIds) ? m.doctorBranchIds : m.role === 'owner' ? [] : m.branchIds ?? []).map(String);
+  const scopeOf = (m: IMember) => doctorScopeOf(m);
   const visible = hasGlobalScope(actor) ? members
     : members.filter((m) => scopeOf(m).length === 0 || scopeOf(m).some((b) => actor.branchIds.includes(b)));
   const sps = await SpecialistModel.find({ _id: { $in: visible.map((m) => m.doctorId).filter((d) => Types.ObjectId.isValid(String(d))) } })
@@ -166,7 +166,7 @@ export async function myClinics(doctorId: string) {
     clinics: members.map((m) => {
       const p = pById.get(String(m.partnerId));
       return { partnerId: String(m.partnerId), name: p?.name, solo: !!p?.solo, verified: p?.verification?.state === 'verified', role: m.role,
-        branches: branchesOf(String(m.partnerId), (m.branchIds ?? []).map(String)) };
+        branches: branchesOf(String(m.partnerId), doctorScopeOf(m)) };
     }),
     invites: invites.map((i) => ({ inviteId: String(i._id), partnerId: i.partnerId, clinic: pById.get(i.partnerId)?.name, branches: branchesOf(i.partnerId, i.branchIds),
       createdAt: i.createdAt })),
@@ -273,11 +273,16 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
   const requestKey = `desk:${actor.memberId}:${input.requestKey}`;
   const requestHash = createHash('sha256').update(JSON.stringify({ slotId: String(slot._id).toLowerCase(),
     phone: canonicalMobile(input.customer.phone) ?? input.customer.phone, notes: input.notes?.trim() || null })).digest('hex');
+  const desk = deskScopeOf(actor);
+  const asReceipt = (prior: IBooking) => {
+    if (prior.clinicDesk?.requestHash !== requestHash) throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different appointment');
+    // A receipt is shown only while the appointment is still within this desk's branches (it may have been moved).
+    if (!deskBookingInScope(prior, desk)) throw err(404, 'BOOKING_NOT_FOUND', 'Appointment not found');
+    return prior;
+  };
   const replay = async () => {
     const prior = await BookingModel.findOne({ 'clinicDesk.requestKey': requestKey }).lean() as IBooking | null;
-    if (!prior) return null;
-    if (prior.clinicDesk?.requestHash !== requestHash) throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different appointment');
-    return prior;
+    return prior ? asReceipt(prior) : null;
   };
   const prior = await replay();
   if (prior) return { booking: deskView(prior), customer: { userId: String(prior.userId), phone: canonicalMobile(input.customer.phone), created: false }, replayed: true };
@@ -296,12 +301,16 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
       ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),
     } as IBooking, (b, s) => audit(actor, 'clinic.appointment_booked', { kind: 'booking', id: String(b._id) },
       { doctorId: String(slot.specialistId), branchId: b.clinicDesk?.branchId, slotId: String(slot._id), customerCreated: customer.created }, s),
-    deskScopeOf(actor));
+    desk);
   } catch (e: any) {
-    if (e?.code !== 11000) throw e;
+    // A racing identical request may have committed first (seat taken, or the unique key): answer with its receipt.
     const raced = await replay();
     if (!raced) throw e;
     return { booking: deskView(raced), customer: { userId: String(raced.userId), phone: customer.phone, created: false }, replayed: true };
+  }
+  if (isReplayedBooking(booking)) {
+    const r = asReceipt(booking);
+    return { booking: deskView(r), customer: { userId: String(r.userId), phone: customer.phone, created: false }, replayed: true };
   }
   return { booking: deskView(booking), customer: { userId: customer._id, phone: customer.phone, created: customer.created }, replayed: false };
 }
@@ -316,10 +325,12 @@ function deskView(b: IBooking) {
 async function ownDeskBooking(actor: PartnerActor, bookingId: string, s?: ClientSession): Promise<IBooking> {
   if (!Types.ObjectId.isValid(bookingId)) throw err(404, 'BOOKING_NOT_FOUND', 'Appointment not found');
   const b = await BookingModel.findOne({ _id: bookingId, 'clinicDesk.partnerId': actor.partnerId }).session(s ?? null).lean() as IBooking | null;
-  if (!b) throw err(404, 'BOOKING_NOT_FOUND', 'Appointment not found');
-  assertBranchInScope(actor, String(b.clinicDesk!.branchId));
+  if (!b || !deskBookingInScope(b, deskScopeOf(actor))) throw err(404, 'BOOKING_NOT_FOUND', 'Appointment not found');
   return b;
 }
+
+/** Write fence for desk mutations: the booking still at the branch it was admitted at (a concurrent move conflicts). */
+const atBranch = (b: IBooking) => ({ 'clinicDesk.branchId': String(b.clinicDesk!.branchId) });
 
 /** Clinic appointments (desk and online) at the clinic's branches in scope, for up to 31 days. */
 export async function listClinicAppointments(actor: PartnerActor, q: { from: string; to: string; doctorId?: string; branchId?: string; status?: string }) {
@@ -364,7 +375,7 @@ export async function listClinicAppointments(actor: PartnerActor, q: { from: str
 export async function markArrived(actor: PartnerActor, bookingId: string) {
   return inTransaction(async (s) => {
     const b = await ownDeskBooking(actor, bookingId, s);
-    const r = await BookingModel.findOneAndUpdate({ _id: b._id, status: 'confirmed', 'clinicDesk.partnerId': actor.partnerId, 'clinicDesk.arrivedAt': null },
+    const r = await BookingModel.findOneAndUpdate({ _id: b._id, status: 'confirmed', 'clinicDesk.partnerId': actor.partnerId, ...atBranch(b), 'clinicDesk.arrivedAt': null },
       { $set: { 'clinicDesk.arrivedAt': new Date() } }, { new: true, session: s }).lean() as IBooking | null;
     if (!r) throw err(409, 'BOOKING_STATE_CONFLICT', b.clinicDesk?.arrivedAt ? 'Already marked as arrived' : `A ${b.status} appointment cannot be checked in`);
     await audit(actor, 'clinic.appointment_arrived', { kind: 'booking', id: String(b._id) }, {}, s);
@@ -379,7 +390,7 @@ export async function closeDeskAppointment(actor: PartnerActor, bookingId: strin
     if (b.status !== 'confirmed') throw err(409, 'BOOKING_STATE_CONFLICT', `A ${b.status} appointment cannot be closed`);
     const at = parseAppointment({ bookingDate: b.bookingDate, bookingTime: b.bookingTime });
     if (outcome === 'no_show' && (!at || now < at.at)) throw err(409, 'APPOINTMENT_NOT_STARTED', 'A no-show can be marked only after the appointment time');
-    const r = await BookingModel.findOneAndUpdate({ _id: b._id, status: 'confirmed', 'clinicDesk.partnerId': actor.partnerId },
+    const r = await BookingModel.findOneAndUpdate({ _id: b._id, status: 'confirmed', 'clinicDesk.partnerId': actor.partnerId, ...atBranch(b) },
       { $set: { status: outcome } }, { new: true, session: s }).lean() as IBooking | null;
     if (!r) throw err(409, 'BOOKING_CHANGED', 'The appointment changed; reload');
     await releaseInterval('scheduled', String(b._id).toLowerCase(), s);
@@ -393,7 +404,7 @@ export async function cancelDeskAppointment(actor: PartnerActor, bookingId: stri
   const b = await ownDeskBooking(actor, bookingId);
   const why = String(reason ?? '').trim() || 'Cancelled by the clinic';
   const r = await cancelBookingSettlement({
-    bookingId: String(b._id), requester: { _id: actor.partnerId, userType: 'clinic' }, reason: why, cause: 'clinic', cancelledAt: ymd(istDate(new Date())),
+    bookingId: String(b._id), requester: { _id: actor.partnerId, userType: 'clinic' }, desk: deskScopeOf(actor), reason: why, cause: 'clinic', cancelledAt: ymd(istDate(new Date())),
     wallets: new WalletRepository(), enforceWindow: () => undefined, lifecycle: (x) => x.lifecycle,
     inTx: (x, s) => audit(actor, 'clinic.appointment_cancelled', { kind: 'booking', id: String(x._id) }, { reason: why }, s),
   });

@@ -24,6 +24,12 @@ const weekdayOf = (isoDate: string): Weekday =>
  * in-clinic consultations and is within the member's branch scope. Existing appointments are never touched by a loss of
  * authority; only new clinic commerce is refused.
  */
+/** Q6: the branches a doctor member consults at ([] = all): the accepted invitation's scope, else the member's own. */
+export function doctorScopeOf(member: { role?: string; branchIds?: string[]; doctorBranchIds?: string[] }): string[] {
+  if (Array.isArray(member.doctorBranchIds)) return member.doctorBranchIds.map(String);
+  return member.role === 'owner' ? [] : (member.branchIds ?? []).map(String);
+}
+
 export async function clinicBranchContext(doctorId: string, branchId: string, s?: ClientSession): Promise<{ partnerId: string; branchId: string } | null> {
   if (!/^[0-9a-fA-F]{24}$/.test(String(branchId))) return null;
   const branch = await BranchModel.findById(branchId).session(s ?? null).lean();
@@ -33,10 +39,8 @@ export async function clinicBranchContext(doctorId: string, branchId: string, s?
   const member = await MemberModel.findOne({ partnerId: String(branch.partnerId), doctorId: String(doctorId), isActive: true }).session(s ?? null).lean();
   if (!member) return null;
   // Q6: a doctor's consultation scope comes from the invitation they accepted; otherwise the member's own scope.
-  const consent = member.doctorBranchIds;
-  const inScope = Array.isArray(consent)
-    ? consent.length === 0 || consent.map(String).includes(String(branchId))
-    : member.role === 'owner' || (member.branchIds ?? []).length === 0 || (member.branchIds ?? []).map(String).includes(String(branchId));
+  const scope = doctorScopeOf(member);
+  const inScope = scope.length === 0 || scope.includes(String(branchId));
   return inScope ? { partnerId: String(branch.partnerId), branchId: String(branch._id) } : null;
 }
 
