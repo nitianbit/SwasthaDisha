@@ -5,7 +5,9 @@ import BranchModel from '@/modules/partners/model/branch';
 import MemberModel from '@/modules/partners/model/member';
 import { DoctorScheduleTemplateModel, IDoctorScheduleTemplate, IScheduleWindow, Weekday } from '@/modules/doctors/model/schedule';
 import { addDays, istDate, isRealDate, assertRealDate } from '@/modules/partners/services/slots';
-import { withLease } from '@/modules/common/utils/leaseLock';
+import { ClientSession } from 'mongoose';
+import { runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
+import { ensureScheduleGuard, bumpScheduleGuard } from '@/modules/partners/services/slots';
 
 export const DOCTOR_ROLLING_DAYS = 30;
 const WEEKDAYS: Weekday[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
@@ -46,17 +48,25 @@ async function validateTemplate(doctorId: string, days: Partial<Record<Weekday, 
   for (const b of branches) await assertClinicBranchForDoctor(doctorId, b);
 }
 
-export async function getTemplate(doctorId: string): Promise<IDoctorScheduleTemplate | null> {
-  return ((await DoctorScheduleTemplateModel.findOne({ doctorId: String(doctorId) }).lean()) as IDoctorScheduleTemplate | null) ?? null;
+export const doctorScheduleKey = (doctorId: string) => `doctor-slots:${String(doctorId)}`;
+
+export async function getTemplate(doctorId: string, s?: ClientSession): Promise<IDoctorScheduleTemplate | null> {
+  return ((await DoctorScheduleTemplateModel.findOne({ doctorId: String(doctorId) }).session(s ?? null).lean()) as IDoctorScheduleTemplate | null) ?? null;
+}
+
+/** Writes the doctor's template in a transaction that bumps the schedule guard (serialized with every expansion). */
+async function writeTemplate(doctorId: string, update: Record<string, unknown>, upsert: boolean) {
+  await ensureScheduleGuard(doctorScheduleKey(doctorId));
+  return runLedgerTransaction(async (s) => {
+    await bumpScheduleGuard(doctorScheduleKey(doctorId), s);
+    return DoctorScheduleTemplateModel.findOneAndUpdate({ doctorId: String(doctorId) }, update, { upsert, new: true, session: s }).lean();
+  });
 }
 
 export async function saveTemplate(doctorId: string, input: { slotMinutes: number; days: Partial<Record<Weekday, IScheduleWindow[]>> }, now = new Date()) {
   await validateTemplate(doctorId, input.days, input.slotMinutes);
-  const template = await DoctorScheduleTemplateModel.findOneAndUpdate(
-    { doctorId: String(doctorId) },
-    { $set: { slotMinutes: input.slotMinutes, days: input.days, isActive: true }, $setOnInsert: { doctorId: String(doctorId), leaveDates: [] } },
-    { upsert: true, new: true }
-  ).lean();
+  const template = await writeTemplate(doctorId,
+    { $set: { slotMinutes: input.slotMinutes, days: input.days, isActive: true }, $setOnInsert: { doctorId: String(doctorId), leaveDates: [] } }, true);
   const expansion = await expandDoctorSlots(doctorId, istDate(now), DOCTOR_ROLLING_DAYS);
   return { template, expansion };
 }
@@ -64,12 +74,9 @@ export async function saveTemplate(doctorId: string, input: { slotMinutes: numbe
 /** Leave day on/off (YYYYMMDD); slots that already hold bookings keep them. */
 export async function setLeave(doctorId: string, date: string, onLeave: boolean, now = new Date()) {
   if (!/^\d{8}$/.test(date) || !isRealDate(iso(date))) throw new AppError({ status: 400, code: 'INVALID_DATE', message: 'Date must be a real date, YYYYMMDD' });
-  const template = await DoctorScheduleTemplateModel.findOneAndUpdate(
-    { doctorId: String(doctorId) },
+  const template = await writeTemplate(doctorId,
     onLeave ? { $addToSet: { leaveDates: date }, $setOnInsert: { doctorId: String(doctorId), slotMinutes: 30, days: {}, isActive: true } }
-      : { $pull: { leaveDates: date } },
-    { upsert: onLeave, new: true }
-  ).lean();
+      : { $pull: { leaveDates: date } }, onLeave);
   const expansion = await expandDoctorSlots(doctorId, istDate(now), DOCTOR_ROLLING_DAYS);
   return { template, expansion };
 }
@@ -84,14 +91,18 @@ export interface DoctorExpansion { inserted: number; updated: number; closed: nu
  */
 export async function expandDoctorSlots(doctorId: string, fromIsoDate: string, days: number): Promise<DoctorExpansion> {
   assertRealDate(fromIsoDate, 'from');
-  // One expansion per doctor at a time; the template is read after acquiring the lease, so the last run always acts
-  // on the latest template and leave days (an older concurrent run cannot publish a stale snapshot).
-  return withLease(`doctor-slots:${String(doctorId)}`, () => expandDoctorSlotsLocked(doctorId, fromIsoDate, days));
+  // One transaction that first bumps the doctor's schedule guard (template/leave writes bump it too): a stale run can
+  // never commit after a newer one — the loser is retried and re-reads the template that won. No lease.
+  await ensureScheduleGuard(doctorScheduleKey(doctorId));
+  return runLedgerTransaction(async (s) => {
+    await bumpScheduleGuard(doctorScheduleKey(doctorId), s);
+    return expandDoctorSlotsIn(doctorId, fromIsoDate, days, s);
+  });
 }
 
-async function expandDoctorSlotsLocked(doctorId: string, fromIsoDate: string, days: number): Promise<DoctorExpansion> {
+async function expandDoctorSlotsIn(doctorId: string, fromIsoDate: string, days: number, s: ClientSession): Promise<DoctorExpansion> {
   const out: DoctorExpansion = { inserted: 0, updated: 0, closed: 0, reopened: 0 };
-  const t = await getTemplate(doctorId);
+  const t = await getTemplate(doctorId, s);
   if (!t) return out;
   const leave = new Set((t.leaveDates ?? []).filter((d) => /^\d{8}$/.test(d) && isRealDate(iso(d))));
   for (let i = 0; i < days; i++) {
@@ -100,7 +111,7 @@ async function expandDoctorSlotsLocked(doctorId: string, fromIsoDate: string, da
     const specialistId = String(doctorId);
     if (leave.has(date)) {
       const r = await SlotModel.updateMany({ specialistId, date, isActive: { $ne: false } },
-        { $set: { isActive: false, isAvailable: false, closedReason: 'leave' } });
+        { $set: { isActive: false, isAvailable: false, closedReason: 'leave' } }, { session: s });
       out.closed += r.modifiedCount;
       continue;
     }
@@ -119,19 +130,20 @@ async function expandDoctorSlotsLocked(doctorId: string, fromIsoDate: string, da
         { updateOne: { filter: { specialistId, date, startTime: start, source: 'template', currentBookings: 0 },
           update: w.branchId ? { $set: { endTime: end, duration: t.slotMinutes, serviceModes: w.modes, branchId: w.branchId } }
             : { $set: { endTime: end, duration: t.slotMinutes, serviceModes: w.modes }, $unset: { branchId: 1 } } } },
-      ]) as any, { ordered: true });
+      ]) as any, { ordered: true, session: s });
       out.inserted += r.upsertedCount;
       out.updated += Math.max(0, r.modifiedCount);
     }
     const starts = wanted.map((x) => x.start);
     const reopened = await SlotModel.updateMany(
       { specialistId, date, $or: [{ closedReason: 'leave' }, { closedReason: 'template', source: 'template', startTime: { $in: starts } }] },
-      [{ $set: { isActive: true, isAvailable: { $lt: [{ $ifNull: ['$currentBookings', 0] }, { $ifNull: ['$maxBookings', 1] }] } } }, { $unset: 'closedReason' }]
+      [{ $set: { isActive: true, isAvailable: { $lt: [{ $ifNull: ['$currentBookings', 0] }, { $ifNull: ['$maxBookings', 1] }] } } }, { $unset: 'closedReason' }],
+      { session: s }
     );
     out.reopened += reopened.modifiedCount;
     const closed = await SlotModel.updateMany(
       { specialistId, date, source: 'template', startTime: { $nin: starts }, isActive: { $ne: false } },
-      { $set: { isActive: false, isAvailable: false, closedReason: 'template' } }
+      { $set: { isActive: false, isAvailable: false, closedReason: 'template' } }, { session: s }
     );
     out.closed += closed.modifiedCount;
   }

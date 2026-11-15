@@ -1,10 +1,11 @@
 import { ClientSession } from 'mongoose';
 import { AppError } from '@/modules/common/types';
-import { withLease } from '@/modules/common/utils/leaseLock';
+import { runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
 import BranchModel from '@/modules/partners/model/branch';
 import {
   PartnerSlotModel,
   PartnerSlotTemplateModel,
+  ScheduleGuardModel,
   IPartnerSlot,
   IPartnerSlotTemplate,
   ISlotWindow,
@@ -31,6 +32,22 @@ export function isRealDate(date: unknown): date is string {
 export function assertRealDate(date: unknown, field = 'date'): asserts date is string {
   if (!isRealDate(date)) throw new AppError({ status: 400, code: 'INVALID_DATE', message: `${field} must be a real date (YYYY-MM-DD)` });
 }
+
+/** Creates the guard once, outside any transaction (two transactions creating it together would clash on the key). */
+export async function ensureScheduleGuard(key: string): Promise<void> {
+  try {
+    await ScheduleGuardModel.updateOne({ key }, { $setOnInsert: { key, version: 0 } }, { upsert: true });
+  } catch (e: any) {
+    if (e?.code !== 11000) throw e;
+  }
+}
+
+/** Bumps a schedule's guard inside the caller's transaction (see ScheduleGuardModel); ensureScheduleGuard first. */
+export async function bumpScheduleGuard(key: string, s: ClientSession): Promise<void> {
+  const r = await ScheduleGuardModel.updateOne({ key }, { $inc: { version: 1 } }, { session: s });
+  if (r.matchedCount !== 1) throw Object.assign(new AppError({ status: 409, code: 'SCHEDULE_GUARD_MISSING', message: 'Schedule not ready; retry' }), { retryable: true });
+}
+export const labScheduleKey = (branchId: string, visitMode: VisitMode) => `partner-slots:${branchId}:${visitMode}`;
 
 /** UTC instant of an India-time date + HH:mm. */
 export function istInstant(date: string, hhmm: string): Date {
@@ -100,12 +117,14 @@ export async function saveSlotTemplate(
 ): Promise<{ template: IPartnerSlotTemplate; expansion: ExpansionResult }> {
   await branchFor(actor, branchId, visitMode);
   validateWindows(input.days);
+  await ensureScheduleGuard(labScheduleKey(branchId, visitMode));
   const template = await inTransaction(async (session) => {
     const t = await PartnerSlotTemplateModel.findOneAndUpdate(
       { branchId, visitMode },
       { $set: { partnerId: actor.partnerId, slotMinutes: input.slotMinutes, capacity: input.capacity, days: input.days, isActive: true } },
       { upsert: true, new: true, session }
     ).lean();
+    await bumpScheduleGuard(labScheduleKey(branchId, visitMode), session);
     await recordPartnerAudit(actor, 'slots.template.save', { kind: 'branch', id: branchId }, { visitMode, ...input }, session);
     return t as IPartnerSlotTemplate;
   });
@@ -126,21 +145,27 @@ export interface ExpansionResult { inserted: number; updated: number; closed: nu
  */
 export async function expandSlots(branchId: string, visitMode: VisitMode, fromDate: string, days: number): Promise<ExpansionResult> {
   assertRealDate(fromDate, 'from');
-  return withLease(`partner-slots:${branchId}:${visitMode}`, async () => {
+  await ensureScheduleGuard(labScheduleKey(branchId, visitMode));
+  // One transaction for the whole window: it bumps the schedule's guard first, so a concurrent expansion or a
+  // configuration change (which bumps it too) can never commit interleaved with it — whichever loses is retried and
+  // re-reads the configuration that won. No lease, nothing to expire.
+  return runLedgerTransaction(async (s) => {
+    await bumpScheduleGuard(labScheduleKey(branchId, visitMode), s);
     const result: ExpansionResult = { inserted: 0, updated: 0, closed: 0, reopened: 0 };
     const [template, branch] = await Promise.all([
-      PartnerSlotTemplateModel.findOne({ branchId, visitMode }).lean(),
-      BranchModel.findById(branchId).lean(),
+      PartnerSlotTemplateModel.findOne({ branchId, visitMode }).session(s).lean(),
+      BranchModel.findById(branchId).session(s).lean(),
     ]);
-    if (!template || !branch) return result;
+    if (!branch) return result;
     const holidays = new Set((branch.holidays ?? []).map(String).filter(isRealDate));
-    const live = template.isActive && branch.isActive !== false;
+    // Without a template (manual slots only) nothing is generated, but holidays still close and reopen slots.
+    const live = !!template?.isActive && branch.isActive !== false;
     for (let i = 0; i < days; i++) {
       const date = addDays(fromDate, i);
       const holiday = holidays.has(date);
-      const wanted = live && !holiday ? slotTimesFor(template, weekdayOf(date)) : [];
+      const wanted = template && live && !holiday ? slotTimesFor(template, weekdayOf(date)) : [];
       const starts = wanted.map((w) => w.start);
-      if (wanted.length > 0) {
+      if (wanted.length > 0 && template) {
         const ops = wanted.flatMap((w) => [
           { updateOne: {
             filter: { branchId, visitMode, date, startTime: w.start },
@@ -161,20 +186,20 @@ export async function expandSlots(branchId: string, visitMode: VisitMode, fromDa
             update: [{ $set: { capacity: { $max: ['$booked', template.capacity] } } }],
           } },
         ]);
-        const r = await PartnerSlotModel.bulkWrite(ops as any, { ordered: true });
+        const r = await PartnerSlotModel.bulkWrite(ops as any, { ordered: true, session: s });
         result.inserted += r.upsertedCount;
         result.updated += r.modifiedCount;
       }
       if (!holiday) {
         const reopened = await PartnerSlotModel.updateMany(
           { branchId, visitMode, date, $or: [{ closed: 'holiday' }, { closed: 'template', source: 'template', startTime: { $in: starts } }] },
-          { $set: { closed: null } }
+          { $set: { closed: null } }, { session: s }
         );
         result.reopened += reopened.modifiedCount;
       }
       const closed = await PartnerSlotModel.updateMany(
         { branchId, visitMode, date, closed: null, ...(holiday ? {} : { source: 'template', startTime: { $nin: starts } }) },
-        { $set: { closed: holiday ? 'holiday' : 'template' } }
+        { $set: { closed: holiday ? 'holiday' : 'template' } }, { session: s }
       );
       result.closed += closed.modifiedCount;
     }
@@ -182,10 +207,9 @@ export async function expandSlots(branchId: string, visitMode: VisitMode, fromDa
   });
 }
 
-/** Re-expands every slot template of a branch (after its holidays, services or active state changed). */
+/** Re-expands both visit modes of a branch (after its holidays, services or active state changed) — with or without a template. */
 export async function expandBranchTemplates(branchId: string, now = new Date()): Promise<void> {
-  const templates = await PartnerSlotTemplateModel.find({ branchId }).select({ visitMode: 1 }).lean();
-  for (const t of templates) await expandSlots(branchId, t.visitMode, istDate(now), ROLLING_DAYS);
+  for (const mode of ['lab', 'home'] as VisitMode[]) await expandSlots(branchId, mode, istDate(now), ROLLING_DAYS);
 }
 
 /** Daily rolling expansion for every active template (run by the scheduler). */
@@ -279,9 +303,13 @@ export async function listBookableSlots(branchId: string, visitMode: VisitMode, 
 
 /** Takes one seat inside the caller's transaction, or fails (closed, full, or starting too soon). */
 export async function takeSeat(slotId: string, expect: { partnerId: string; branchId: string; visitMode: VisitMode; minStart: Date }, session: ClientSession): Promise<IPartnerSlot> {
+  // The branch's current holidays are enforced here too, whatever any expansion has (or has not yet) closed.
+  const branch = await BranchModel.findById(expect.branchId).select({ holidays: 1, isActive: 1 }).session(session).lean();
+  if (!branch || branch.isActive === false) throw new AppError({ status: 409, code: 'SLOT_UNAVAILABLE', message: 'That slot is no longer available; pick another' });
   const slot = await PartnerSlotModel.findOneAndUpdate(
     {
       _id: slotId, partnerId: expect.partnerId, branchId: expect.branchId, visitMode: expect.visitMode, closed: null,
+      date: { $nin: (branch.holidays ?? []).map(String) },
       startsAt: { $gt: expect.minStart }, $expr: { $lt: ['$booked', '$capacity'] },
     },
     { $inc: { booked: 1 } },

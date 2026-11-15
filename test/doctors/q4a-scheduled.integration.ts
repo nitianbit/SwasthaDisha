@@ -48,7 +48,7 @@ import { MemberRepository } from '@/modules/partners/repository/member';
 import { BranchRepository } from '@/modules/partners/repository/branch';
 import { PartnerService } from '@/modules/partners/services';
 import { addDays, istDate } from '@/modules/partners/services/slots';
-import { LeaseModel } from '@/modules/common/utils/leaseLock';
+import { ScheduleGuardModel } from '@/modules/partners/model/slot';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/q4a_doctor_check?directConnection=true';
 const url = process.env.MONGODB_URL ?? '';
@@ -102,7 +102,7 @@ async function main() {
   for (const c of await mongoose.connection.db!.collections()) await c.drop().catch(() => {});
   for (const M of [UserModel, SpecialistModel, SlotModel, BookingModel, PaymentRecordModel, WalletModel, WalletTransactionModel, DoctorReservationModel,
     DoctorScheduleGuardModel, DoctorScheduleTemplateModel, SettlementAccountModel, LedgerEntryModel, PartnerModel, MemberModel, BranchModel,
-    PartnerAuditEventModel, LeaseModel] as mongoose.Model<any>[]) {
+    PartnerAuditEventModel, ScheduleGuardModel] as mongoose.Model<any>[]) {
     await M.createCollection(); await M.createIndexes();
   }
 
@@ -266,7 +266,7 @@ async function main() {
     assert.equal(rows.find((s) => s.startTime === '09:00').currentBookings, 1);
   });
 
-  await check('concurrent doctor expansions never publish a stale template; impossible leave dates are refused', async () => {
+  await check('concurrent doctor expansions never publish a stale template; impossible leave dates and leave days are refused', async () => {
     const docC = await doctor('Dr Concurrent');
     const every = (start: string, end: string) => Object.fromEntries(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((d) => [d, [{ start, end, modes: ['video'] }]]));
     const d = ymd(addDays(today, 4));
@@ -277,6 +277,12 @@ async function main() {
       assert.deepEqual(open, ['15:00', '15:30'], `round ${round}`);
     }
     await assert.rejects(() => setLeave(docC, '20270231', true), code('INVALID_DATE'));
+    // A leave day is refused at booking even on a slot that was left open.
+    const leaveDay = ymd(addDays(today, 6));
+    await setLeave(docC, leaveDay, true);
+    const open = await SlotModel.findOne({ specialistId: docC, date: leaveDay, startTime: '15:00' }).lean() as any;
+    await SlotModel.updateOne({ _id: open._id }, { $set: { isActive: true, isAvailable: true }, $unset: { closedReason: 1 } });
+    await assert.rejects(async () => book(await customer(), docC, String(open._id)), code('SLOT_NOT_AVAILABLE'));
   });
 
   await check('clinic windows: only for a clinic the doctor works at (verified, in-clinic branch), in-person only', async () => {

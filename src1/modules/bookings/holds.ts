@@ -15,6 +15,7 @@ import { ensureSettlementAccount } from '@/modules/partners/services/settlement'
 import { istInstant } from '@/modules/partners/services/slots';
 import { reserveInterval, moveInterval, releaseInterval } from '@/modules/doctors/services/reservations';
 import SpecialistModel from '@/modules/specialists/model';
+import { DoctorScheduleTemplateModel } from '@/modules/doctors/model/schedule';
 
 /**
  * Ordinary-booking holds and settlement (option A, phase A2a; milestone C1–C5/E5 on the walletFunding ledger).
@@ -93,6 +94,10 @@ async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate'
     throw conflict('SLOT_NOT_AVAILABLE', 'Slot is not available for booking');
   }
   const time = slotTime(slot, booking);
+  // Q4: a doctor's leave day is refused here too, whatever any expansion has (or has not yet) closed.
+  if (slot.specialistId && await DoctorScheduleTemplateModel.exists({ doctorId: String(slot.specialistId), leaveDates: String(slot.date) }).session(s)) {
+    throw conflict('SLOT_NOT_AVAILABLE', 'The doctor is on leave that day');
+  }
   // Q4: a slot offered for some modes only takes bookings in those modes.
   const modes = (slot as SlotRow).serviceModes ?? [];
   if (modes.length > 0 && booking.consultationMode && !modes.includes(String(booking.consultationMode))) {

@@ -1,6 +1,7 @@
 import { Service } from 'typedi';
 import mongoose, { ClientSession } from 'mongoose';
 import PartnerAuditEventModel from '@/modules/partners/model/audit';
+import { ScheduleGuardModel } from '@/modules/partners/model/slot';
 import { ensureSettlementAccount } from '@/modules/partners/services/settlement';
 import { PartnerRepository } from '@/modules/partners/repository';
 import { MemberRepository } from '@/modules/partners/repository/member';
@@ -100,6 +101,17 @@ export async function inTransaction<T>(fn: (session: ClientSession) => Promise<T
   } finally {
     await session.endSession();
   }
+}
+
+/** A branch's holidays/services/active state shape both of its generated schedules: bump their guards in the change. */
+async function ensureBranchScheduleGuards(branchId: string): Promise<void> {
+  for (const mode of ['lab', 'home']) {
+    try { await ScheduleGuardModel.updateOne({ key: `partner-slots:${branchId}:${mode}` }, { $setOnInsert: { key: `partner-slots:${branchId}:${mode}`, version: 0 } }, { upsert: true }); }
+    catch (e: any) { if (e?.code !== 11000) throw e; }
+  }
+}
+async function bumpBranchScheduleGuards(branchId: string, session: ClientSession): Promise<void> {
+  await ScheduleGuardModel.updateMany({ key: { $in: [`partner-slots:${branchId}:lab`, `partner-slots:${branchId}:home`] } }, { $inc: { version: 1 } }, { session });
 }
 
 @Service()
@@ -468,21 +480,26 @@ export class PartnerService {
   async updateBranch(actor: PartnerActor, branchId: string, data: Partial<IBranch>): Promise<IBranch> {
     await this.getBranch(actor, branchId);
     const { _id, partnerId: _p, isActive: _a, createdAt: _c, updatedAt: _u, ...safeData } = data;
+    const shapesSlots = 'holidays' in safeData || 'services' in safeData;
+    if (shapesSlots) await ensureBranchScheduleGuards(branchId);
     return inTransaction(async (session) => {
+      if (shapesSlots) await bumpBranchScheduleGuards(branchId, session);
       const updated = await this.branchRepository.update({ _id: branchId, partnerId: actor.partnerId }, safeData, { new: true, session } as any);
       if (!updated) throw branchNotFound();
       await recordPartnerAudit(actor, 'branch.update', { kind: 'branch', id: branchId }, { fields: Object.keys(safeData) }, session);
       return updated;
     }).then(async (updated) => {
       // Holidays and services decide which slots exist: bring the branch's generated slots in line now.
-      if ('holidays' in safeData || 'services' in safeData) await (await import('@/modules/partners/services/slots')).expandBranchTemplates(branchId);
+      if (shapesSlots) await (await import('@/modules/partners/services/slots')).expandBranchTemplates(branchId);
       return updated;
     });
   }
 
   async deactivateBranch(actor: PartnerActor, branchId: string): Promise<void> {
     await this.getBranch(actor, branchId);
+    await ensureBranchScheduleGuards(branchId);
     await inTransaction(async (session) => {
+      await bumpBranchScheduleGuards(branchId, session);
       const done = await this.branchRepository.update({ _id: branchId, partnerId: actor.partnerId, isActive: true }, { isActive: false }, { new: true, session } as any);
       if (done) await recordPartnerAudit(actor, 'branch.deactivate', { kind: 'branch', id: branchId }, undefined, session);
     });
