@@ -259,6 +259,48 @@ async function main() {
     assert.equal(own[0]!.actorId, String(managerA._id));
   });
 
+  await check('activity log: owners and all-branch staff only (it names grants on every branch)', async () => {
+    await assert.rejects(() => svc.listAudit(mA), code('BRANCH_SCOPE_EXCEEDED'));
+    const all = await svc.listAudit(ownerActor);
+    assert.ok(all.some((a) => a.targetId === String(staffB._id)), 'the log does contain branch-B events');
+    await svc.listAudit(actorFor(globalStaff));
+  });
+
+  await check('a failed audit write leaves no unaudited change (each mutation and its audit commit together)', async () => {
+    const original = PartnerAuditEventModel.create.bind(PartnerAuditEventModel);
+    const victim = await svc.addMember(ownerActor, { phone: nextPhone(), name: 'Audit victim', role: 'staff', permissions: ['bookings.view'] });
+    const before = await partnerRepo.findById(partnerId);
+    const membersBefore = await MemberModel.countDocuments({ partnerId });
+    const branchesBefore = await BranchModel.countDocuments({ partnerId });
+    const auditBefore = await PartnerAuditEventModel.countDocuments({ partnerId });
+    (PartnerAuditEventModel as any).create = async () => { throw new Error('audit store down'); };
+    try {
+      await assert.rejects(() => svc.updateMemberPermissions(ownerActor, String(victim._id), ['bookings.view', 'finance.view']));
+      await assert.rejects(() => svc.addMember(ownerActor, { phone: nextPhone(), name: 'Ghost', role: 'staff', permissions: [] }));
+      await assert.rejects(() => svc.addMember(ownerActor, { phone: nextPhone(), name: 'Ghost owner', role: 'owner', permissions: [] }));
+      await assert.rejects(() => svc.removeMember(ownerActor, String(victim._id)));
+      await assert.rejects(() => svc.createBranch(ownerActor, branchInput('Ghost branch')));
+      await assert.rejects(() => svc.updateBranch(ownerActor, A, { name: 'Ghost name' } as any));
+      await assert.rejects(() => svc.deactivateBranch(ownerActor, B));
+      await assert.rejects(() => svc.updateOwnProfile(ownerActor, { name: 'Ghost profile' }));
+    } finally {
+      (PartnerAuditEventModel as any).create = original;
+    }
+    const v = await memberRepo.findById(String(victim._id));
+    assert.deepEqual(v!.permissions, ['bookings.view']);
+    assert.equal(v!.isActive, true);
+    assert.equal(await MemberModel.countDocuments({ partnerId }), membersBefore);
+    assert.equal(await BranchModel.countDocuments({ partnerId }), branchesBefore);
+    assert.equal((await branchRepo.findById(A))!.name, 'Branch A1');
+    assert.equal((await branchRepo.findById(B))!.isActive, true);
+    const after = await partnerRepo.findById(partnerId);
+    assert.equal(after!.name, before!.name);
+    assert.equal(after!.activeOwnerCount, before!.activeOwnerCount);
+    assert.equal(await PartnerAuditEventModel.countDocuments({ partnerId }), auditBefore);
+    await svc.updateMemberPermissions(ownerActor, String(victim._id), ['bookings.view', 'finance.view']);
+    assert.equal(await PartnerAuditEventModel.countDocuments({ partnerId }), auditBefore + 1, 'one audit row per successful mutation');
+  });
+
   await check('own-profile update cannot change tax identity', async () => {
     const before = await partnerRepo.findById(partnerId);
     await svc.updateOwnProfile(ownerActor, { name: 'City Diagnostics', taxRegime: 'regular', gstin: 'X', pan: 'Y' } as any);
@@ -313,6 +355,13 @@ async function main() {
       assert.equal((await call('GET', `/api/v1/partner-workspace/admin/${partnerId}/workspace/members`, userToken)).status, 403);
       assert.equal((await call('GET', '/api/v1/partner-workspace/members', adminToken)).status, 403);
       assert.equal((await call('GET', `/api/v1/partner-workspace/admin/${new Types.ObjectId()}/workspace/members`, adminToken)).status, 404);
+    });
+
+    await check('HTTP: activity log refused to a branch-restricted manager, served to the owner', async () => {
+      assert.equal((await call('GET', '/api/v1/partner-workspace/audit', tokenFor(managerA))).status, 403);
+      const r = await call('GET', '/api/v1/partner-workspace/audit', tokenFor(owner));
+      assert.equal(r.status, 200);
+      assert.ok(r.json.data.length > 0);
     });
 
     await check('HTTP: a removed member is refused at authentication (401) on any route', async () => {
