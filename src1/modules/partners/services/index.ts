@@ -118,6 +118,23 @@ async function bumpBranchScheduleGuards(branchId: string, session: ClientSession
   await ScheduleGuardModel.updateMany({ key: { $in: [`partner-slots:${branchId}:lab`, `partner-slots:${branchId}:home`] } }, { $inc: { version: 1 } }, { session });
 }
 
+/**
+ * Q8: after a clinic branch reopens or its partner is reinstated, the doctors whose weekly windows name those branches
+ * are expanded again (the guarded doctor expansion: booked holds and manual closures are kept). Best effort per doctor.
+ */
+async function refreshDoctorsAt(branchIds: string[]): Promise<void> {
+  if (!branchIds.length) return;
+  const { DoctorScheduleTemplateModel } = await import('@/modules/doctors/model/schedule');
+  const { expandDoctorSlots, DOCTOR_ROLLING_DAYS } = await import('@/modules/doctors/services/schedule');
+  const { istDate } = await import('@/modules/partners/services/slots');
+  const or = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((d) => ({ [`days.${d}.branchId`]: { $in: branchIds } }));
+  const templates = await DoctorScheduleTemplateModel.find({ isActive: true, $or: or }).select({ doctorId: 1 }).lean() as { doctorId: string }[];
+  for (const t of templates) {
+    try { await expandDoctorSlots(t.doctorId, istDate(new Date()), DOCTOR_ROLLING_DAYS); }
+    catch (e) { console.error('doctor slot refresh failed', (e as Error)?.message); }
+  }
+}
+
 @Service()
 export class PartnerService {
   constructor(
@@ -143,7 +160,9 @@ export class PartnerService {
     createdBy?: string;
   }): Promise<{ partner: IPartner; owner: IMember; replayed?: boolean }> {
     const { requestKey, createdBy, ...content } = data;
-    const requestHash = requestKey ? createHash('sha256').update(JSON.stringify(content)).digest('hex') : undefined;
+    // Canonical (key-order independent) so an identical retry with reordered fields is the same request.
+    const { canonicalJson } = await import('@/modules/partners/services/invoice');
+    const requestHash = requestKey ? createHash('sha256').update(canonicalJson(content)).digest('hex') : undefined;
     const replay = async () => {
       if (!requestKey || !createdBy) return null;
       const p = await PartnerModel.findOne({ createdBy, createRequestKey: requestKey }).lean() as (IPartner & { createRequestHash?: string }) | null;
@@ -316,6 +335,11 @@ export class PartnerService {
       );
       if (!updated) throw new AppError({ status: 409, code: 'NOT_SUSPENDED', message: 'Only a suspended partner can be reinstated' });
       await recordPartnerAudit(adminActor(adminId, partnerId), 'partner.reinstate', { kind: 'partner', id: partnerId }, undefined, session);
+      return updated;
+    }).then(async (updated) => {
+      // Clinic authority is valid again: the doctors' generated in-clinic slots at its branches follow at once.
+      const branchIds = (await BranchModel.find({ partnerId }).select({ _id: 1 }).lean()).map((b) => String(b._id));
+      await refreshDoctorsAt(branchIds);
       return updated;
     });
   }
@@ -512,8 +536,12 @@ export class PartnerService {
     assertScopeWithin(actor, scope);
     if (scope.length > 0) await this.validateBranchIds(actor.partnerId, scope);
     return inTransaction(async (session) => {
+      // Re-admitted on every attempt: the target as this transaction reads it must still be visible to the actor, and the
+      // write is bound to exactly that scope (a concurrent move makes it a conflict, never a silent move back).
+      const current = await MemberModel.findOne({ _id: memberId, partnerId: actor.partnerId, role: 'staff', isActive: true }).session(session).lean() as IMember | null;
+      if (!current || !memberInScope(actor, current)) throw memberNotFound();
       const updated = await this.memberRepository.update(
-        { _id: memberId, partnerId: actor.partnerId, role: 'staff', isActive: true }, { branchIds: scope }, { new: true, session } as any);
+        { _id: memberId, partnerId: actor.partnerId, role: 'staff', isActive: true, branchIds: current.branchIds ?? [] }, { branchIds: scope }, { new: true, session } as any);
       if (!updated) throw memberNotFound();
       await recordPartnerAudit(actor, 'member.branches', { kind: 'member', id: memberId }, { branchIds: scope }, session);
       return updated;
@@ -590,6 +618,7 @@ export class PartnerService {
       return done;
     });
     await (await import('@/modules/partners/services/slots')).expandBranchTemplates(branchId);
+    await refreshDoctorsAt([branchId]);
     return updated;
   }
 
