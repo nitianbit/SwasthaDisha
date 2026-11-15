@@ -138,7 +138,10 @@ no cookie, so no login CSRF.
   principal}`: same CAS rotation, account checks and reuse detection as the web, with one difference for phones on
   flaky networks: presenting the **immediately previous** generation within 30 seconds of its rotation returns the
   current refresh token again (it is deterministic, nothing is stored) instead of ending the family. Any older
-  generation, or the previous one after 30 seconds, is reuse: the family ends.
+  generation, or the previous one after 30 seconds, is reuse: the family ends. Accepted trade-off (Codex,
+  msg_1794723757424): someone holding a stolen token who redeems the immediately previous token inside each retry
+  window can keep following the rotations; detection is then not guaranteed. The window is the price of not signing
+  customers out whenever a mobile refresh answer is lost.
 - `POST /auth/session/native/logout {app, refreshToken?}` (+ optional bearer): ends that family and the bearer's family.
 - Access tokens are admitted per request exactly like web ones; sign-out-everywhere and deactivation end them.
 - The refresh token lives only in the OS secure store (Keychain / Android Keystore), never in WebView storage.
