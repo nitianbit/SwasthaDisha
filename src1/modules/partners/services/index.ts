@@ -244,6 +244,9 @@ export class PartnerService {
 
   /** Q10: give up a lost create: abandoned (it can never be created) or used (here is the partner). */
   async abandonCreateKey(adminId: string, key: string): Promise<{ state: 'abandoned' | 'used'; partner?: IPartner }> {
+    // A partner created under this key before claims existed (Q8 rows without a claim) is reconciled first.
+    const existing = await this.findCreatedByKey(adminId, key);
+    if (existing) return { state: 'used', partner: existing.partner };
     const state = await abandonRequestKey(partnerCreateScope(adminId), key);
     if (state === 'abandoned') return { state };
     return { state, partner: (await this.findCreatedByKey(adminId, key))?.partner };

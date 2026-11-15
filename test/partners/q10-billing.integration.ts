@@ -200,6 +200,33 @@ async function main() {
     assert.equal(await PartnerModel.countDocuments({ name: 'Late' }), 0);
   });
 
+  await check('Q10 r1: legacy keys reconcile to used; legacy clinic items stay editable and convert once; real dates only', async () => {
+    // A bill and a partner made under keys before claims existed (no RequestKey row).
+    const k1 = key();
+    const inv = await invoiceSvc.createInvoice(plainLab.actor, { branchId: plainLab.A, customer: { name: 'Legacy' }, items: [free], idempotencyKey: k1 });
+    await RequestKeyModel.deleteMany({ key: k1 });
+    const r = await invoiceSvc.abandonKey(plainLab.actor, k1);
+    assert.deepEqual([r.state, String(r.invoice!._id)], ['used', String(inv._id)]);
+    const admin = String(new Types.ObjectId());
+    const p = await partnerSvc.createPartner({ kind: 'lab', name: 'Legacy Partner', contactPhone: nextPhone(), invoiceSeriesPrefix: 'LP',
+      firstOwner: { phone: nextPhone(), name: 'L' }, requestKey: 'legacy-pk-0001', createdBy: admin } as any);
+    await RequestKeyModel.deleteMany({ key: 'legacy-pk-0001' });
+    const rp = await partnerSvc.abandonCreateKey(admin, 'legacy-pk-0001');
+    assert.deepEqual([rp.state, String(rp.partner!._id)], ['used', String(p.partner._id)]);
+    // A clinic 'test' item with visit modes from before Q10.
+    const legacy = await CatalogueItemModel.create({ partnerId: clinic.partnerId, kind: 'test', name: 'Old CBC', priceMinor: 30000, gstRate: 0, visitModes: ['lab'], isActive: true });
+    assert.equal((await catalogueSvc.updateItem(clinic.actor, String(legacy._id), { priceMinor: 35000 })).priceMinor, 35000, 'still editable');
+    assert.deepEqual((await catalogueSvc.updateItem(clinic.actor, String(legacy._id), { visitModes: [] })).visitModes, [], 'visit modes can be cleared');
+    assert.equal((await catalogueSvc.updateItem(clinic.actor, String(legacy._id), { kind: 'procedure' } as any)).kind, 'procedure', 'converted once');
+    await assert.rejects(() => catalogueSvc.updateItem(clinic.actor, String(legacy._id), { kind: 'other' } as any), code('KIND_FIXED'));
+    await assert.rejects(() => catalogueSvc.updateItem(lab.actor, cbc, { visitModes: [] }), code('VISIT_MODES_REQUIRED'));
+    await assert.rejects(() => invoiceSvc.listInvoicesPage(plainLab.actor, { from: '2026-99-99' }), code('INVALID_DATE'));
+    await assert.rejects(() => invoiceSvc.listInvoicesPage(plainLab.actor, { to: '2026-02-30' }), code('INVALID_DATE'));
+    const { invoiceQuerySchema } = await import('@/modules/partners/validation/invoice');
+    assert.ok(invoiceQuerySchema.validate({ from: '2026-02-30' }).error);
+    assert.equal(invoiceQuerySchema.validate({ from: '2026-02-28' }).error, undefined);
+  });
+
   await check('profile, branch and member edits refuse a stale version (RECORD_CHANGED) and accept the current one', async () => {
     const p = await PartnerModel.findById(lab.partnerId).lean();
     const old = new Date(new Date(p!.updatedAt as any).getTime() - 5000);

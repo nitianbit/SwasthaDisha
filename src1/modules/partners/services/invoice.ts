@@ -406,6 +406,8 @@ export class InvoiceService {
 
   /** Q10: give up a bill whose answer was lost: abandoned (it can never be issued) or used (here is the bill). */
   async abandonKey(actor: PartnerActor, key: string): Promise<{ state: 'abandoned' | 'used'; invoice?: IInvoice | null }> {
+    // A bill issued under this key before claims existed (no claim row) is reconciled first: it is used, never abandoned.
+    if (await this.invoiceRepository.findByIdempotencyKey(actor.partnerId, key)) return { state: 'used', invoice: await this.findByKey(actor, key) };
     const state = await abandonRequestKey(invoiceKeyScope(actor.partnerId), key);
     return state === 'abandoned' ? { state } : { state, invoice: await this.findByKey(actor, key) };
   }
@@ -484,6 +486,8 @@ export class InvoiceService {
     if (filter.branchId) { assertBranchInScope(actor, filter.branchId); query.branchId = filter.branchId; }
     else if (!hasGlobalScope(actor)) query.branchId = { $in: actor.branchIds };
     if (filter.from || filter.to) {
+      const real = (d?: string) => { if (!d) return true; const x = new Date(`${d}T00:00:00Z`); return /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(x.getTime()) && x.toISOString().slice(0, 10) === d; };
+      if (!real(filter.from) || !real(filter.to)) throw new AppError({ status: 400, code: 'INVALID_DATE', message: 'Dates must be real calendar dates (YYYY-MM-DD)' });
       query.issuedAt = { ...(filter.from ? { $gte: new Date(`${filter.from}T00:00:00+05:30`) } : {}),
         ...(filter.to ? { $lt: new Date(new Date(`${filter.to}T00:00:00+05:30`).getTime() + 86_400_000) } : {}) };
     }

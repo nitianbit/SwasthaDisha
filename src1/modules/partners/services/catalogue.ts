@@ -9,6 +9,11 @@ import PartnerOrgModel from '@/modules/partners/model';
 import CatalogueItemModel from '@/modules/partners/model/catalogueItem';
 
 const LAB_KINDS = ['test', 'package'];
+/** Whether `kind` is one this partner type takes (legacy items with another kind may be converted once). */
+async function kindFits(partnerId: string, kind: string): Promise<boolean> {
+  const p = await PartnerOrgModel.findById(partnerId).select({ kind: 1 }).lean() as { kind?: string } | null;
+  return (p?.kind === 'clinic' ? ['consultation', 'procedure', 'package', 'other'] : ['test', 'package']).includes(kind);
+}
 const CLINIC_KINDS = ['consultation', 'procedure', 'package', 'other'];
 
 /**
@@ -16,12 +21,14 @@ const CLINIC_KINDS = ['consultation', 'procedure', 'package', 'other'];
  * consultations/procedures/packages/other, no visit modes) and GST only when the partner can charge it (a regular
  * registration with a GSTIN; otherwise 0%).
  */
-async function assertItemFits(partnerId: string, item: { kind?: string; gstRate?: number; visitModes?: string[] }, current?: { kind: string }) {
+async function assertItemFits(partnerId: string, item: { kind?: string; gstRate?: number; visitModes?: string[] }, _current?: { kind: string }) {
   const p = await PartnerOrgModel.findById(partnerId).select({ kind: 1, taxRegime: 1, gstin: 1 }).lean() as { kind?: string; taxRegime?: string; gstin?: string } | null;
   if (!p) throw new AppError({ status: 404, code: 'PARTNER_NOT_FOUND', message: 'Partner not found' });
-  const kind = item.kind ?? current?.kind;
+  const kind = item.kind;
   const allowed = p.kind === 'clinic' ? CLINIC_KINDS : LAB_KINDS;
   if (kind && !allowed.includes(kind)) throw new AppError({ status: 400, code: 'ITEM_KIND_NOT_ALLOWED', message: `A ${p.kind} catalogue takes: ${allowed.join(', ')}` });
+  // Legacy items (created before these rules) stay editable: the kind is checked only when it is being set (create or
+  // an explicit conversion), never against the item's existing kind.
   if (p.kind === 'lab' && item.visitModes !== undefined && item.visitModes.length === 0) {
     throw new AppError({ status: 400, code: 'VISIT_MODES_REQUIRED', message: 'Choose home collection and/or visit the lab' });
   }
@@ -100,8 +107,13 @@ export class CatalogueService {
 
   async updateItem(actor: PartnerActor, itemId: string, data: Partial<CatalogueItemInput>): Promise<ICatalogueItem> {
     const before = await this.getItem(actor, itemId);
-    const { kind: _k, expectedUpdatedAt, ...safe } = data as Partial<CatalogueItemInput> & { expectedUpdatedAt?: Date };
-    await assertItemFits(actor.partnerId, { gstRate: safe.gstRate, visitModes: safe.visitModes }, before);
+    const { kind, expectedUpdatedAt, ...rest } = data as Partial<CatalogueItemInput> & { expectedUpdatedAt?: Date };
+    // Q10: a kind change is only a conversion of a legacy item into a kind this partner type takes.
+    const safe: Partial<CatalogueItemInput> = { ...rest, ...(kind !== undefined && kind !== before.kind ? { kind } : {}) };
+    await assertItemFits(actor.partnerId, { kind: safe.kind, gstRate: safe.gstRate, visitModes: safe.visitModes }, before);
+    if (safe.kind !== undefined && await kindFits(actor.partnerId, before.kind)) {
+      throw new AppError({ status: 400, code: 'KIND_FIXED', message: 'An item’s kind cannot be changed; add a new item instead' });
+    }
     // The price/MRP pair is validated on the state read in this transaction attempt and written with a compare-and-set
     // on exactly that pair, so two concurrent edits can never combine into an invalid pair.
     return inTransaction(async (session) => {
