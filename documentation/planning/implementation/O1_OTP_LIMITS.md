@@ -44,6 +44,9 @@ first so `req.ip` is the client.
 - Keep `404 OTP_NOT_FOUND` for a wrong code (existing apps handle it); new codes are `429`.
 - No CAPTCHA, no account lock-out beyond the windows (a lock-out would let anyone lock a customer out for a day; the
   windows only cost a wait).
+- Accepted trade-off: because a destination has one shared budget, someone who triggers codes to a victim's number
+  can use up that number's hourly/daily check budget. The victim then waits (at most a day); nobody signs in as them.
+  Per-address limits (`OTP_IP_LIMITS`) reduce it.
 - Account enumeration on send/verify (`ADMIN_NOT_FOUND`, `USER_NOT_FOUND`) is unchanged; recorded follow-up.
 
 ## Not changed / follow-ups
