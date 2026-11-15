@@ -16,7 +16,7 @@ import { slotIntervalOf } from '@/modules/common/utils/slotInterval';
 import { reserveInterval, moveInterval, releaseInterval } from '@/modules/doctors/services/reservations';
 import SpecialistModel from '@/modules/specialists/model';
 import { DoctorScheduleTemplateModel } from '@/modules/doctors/model/schedule';
-import { clinicBranchAllowed } from '@/modules/doctors/services/schedule';
+import { clinicBranchContext } from '@/modules/doctors/services/schedule';
 
 /**
  * Ordinary-booking holds and settlement (option A, phase A2a; milestone C1–C5/E5 on the walletFunding ledger).
@@ -85,7 +85,11 @@ async function heldFollowUpParent(b: IBooking, s: ClientSession): Promise<string
 type SlotRow = { _id?: unknown; date?: string; startTime?: string; endTime?: string; duration?: number; maxBookings?: number; specialistId?: string;
   serviceModes?: string[]; branchId?: string };
 
-async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate' | 'specialistId' | 'wellnessPackageId' | 'consultationMode'>, s: ClientSession) {
+/** Q6: a clinic desk acting: the slot must be at one of its branches within the desk member's scope (empty = all). */
+export interface DeskScope { partnerId: string; branchIds: string[] }
+
+async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate' | 'specialistId' | 'wellnessPackageId' | 'consultationMode'>, s: ClientSession,
+  desk?: DeskScope) {
   if (!Types.ObjectId.isValid(slotId)) throw conflict('SLOT_NOT_AVAILABLE', 'Slot is not available');
   const slot = await SlotModel.findById(slotId).session(s).lean();
   const max = slot?.maxBookings ?? 1;
@@ -100,14 +104,20 @@ async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate'
     throw conflict('SLOT_NOT_AVAILABLE', 'The doctor is on leave that day');
   }
   assertSlotMode(slot as SlotRow, booking);
-  // Q4: an in-clinic slot is sold only while the doctor still consults at that clinic branch (current state).
-  if ((slot as SlotRow).branchId && !(await clinicBranchAllowed(String(slot.specialistId), String((slot as SlotRow).branchId), s))) {
-    throw conflict('SLOT_NOT_AVAILABLE', 'The doctor no longer consults at this clinic');
+  // Q4: an in-clinic slot is sold only while the doctor still consults at that clinic branch (current state). Q6: the
+  // clinic association is decided here, on the slot as this transaction reads it, and a desk may only use its own branches.
+  let clinic: { partnerId: string; branchId: string } | null = null;
+  if ((slot as SlotRow).branchId) {
+    clinic = await clinicBranchContext(String(slot.specialistId), String((slot as SlotRow).branchId), s);
+    if (!clinic) throw conflict('SLOT_NOT_AVAILABLE', 'The doctor no longer consults at this clinic');
+  }
+  if (desk && (!clinic || clinic.partnerId !== desk.partnerId || (desk.branchIds.length > 0 && !desk.branchIds.includes(clinic.branchId)))) {
+    throw conflict('SLOT_NOT_AVAILABLE', 'This slot is not at one of your clinic branches');
   }
   const r = await SlotModel.updateOne({ _id: slotId, ...(slot.currentBookings === undefined ? { currentBookings: { $exists: false } } : { currentBookings: current }) },
     { $inc: { currentBookings: 1 }, $set: { isAvailable: current + 1 < max } }, { session: s });
   if (r.modifiedCount !== 1) throw changed();
-  return { time, slot: slot as SlotRow };
+  return { time, slot: slot as SlotRow, clinic };
 }
 
 /** Q4: a slot offered for some modes only takes bookings (and mode changes) in those modes. */
@@ -172,7 +182,7 @@ export const isReplayedBooking = (b: IBooking) => (b as IBooking & { [REPLAYED]?
 const REPLAYED = Symbol('replayedBooking');
 
 /** `inTx` runs inside the booking's transaction after the insert (e.g. a partner audit that must commit with it). */
-export async function createBookingWithHolds(input: IBooking, inTx?: (b: IBooking, s: ClientSession) => Promise<void>): Promise<IBooking> {
+export async function createBookingWithHolds(input: IBooking, inTx?: (b: IBooking, s: ClientSession) => Promise<void>, desk?: DeskScope): Promise<IBooking> {
   return runLedgerTransaction(async s => {
     // Every attempt (also a retry after a duplicate-key clash) first looks for a booking made with this create key.
     if (input.createRequestKey) {
@@ -189,9 +199,14 @@ export async function createBookingWithHolds(input: IBooking, inTx?: (b: IBookin
     const doc = { ...input, ...(slotId ? { slotId } : {}), ...(parentId ? { followUp: { ...input.followUp!, parentConsultationId: parentId } } : {}) };
     const holds: Holds = { version: 1, heldSlotId: input.bookingType !== 'surgery' ? slotId : null, followUpParentId: null };
     const bookingId = new Types.ObjectId();
+    if (input.clinicDesk && !desk) throw conflict('SLOT_NOT_AVAILABLE', 'A clinic desk booking needs its clinic scope');
     if (holds.heldSlotId) {
-      const { time, slot } = await reserveSlot(holds.heldSlotId, input, s);
+      const { time, slot, clinic } = await reserveSlot(holds.heldSlotId, input, s, desk);
       doc.bookingTime = time;
+      if (clinic) {
+        doc.clinicVisit = clinic;
+        if (doc.clinicDesk) doc.clinicDesk = { ...doc.clinicDesk, branchId: clinic.branchId };
+      }
       if (exclusiveFor(input, slot)) {
         const { start, end } = slotInterval(slot);
         await reserveInterval({ doctorId: String(input.specialistId), kind: 'scheduled', refId: String(bookingId), start, end, branchId: slot.branchId }, s);
@@ -383,8 +398,8 @@ export async function expireUnpaidBooking(p: { bookingId: string; now: Date; wal
  */
 export async function rescheduleWithHolds(p: {
   bookingId: string; requester: { _id: string; userType: string }; nextSlotId: string; patch: Record<string, unknown>;
-  /** Q6: set only by the clinic desk command, after it admitted the target slot as one of its own. */
-  clinicPartnerId?: string;
+  /** Q6: set only by the clinic desk command; the target slot is admitted against it inside the transaction. */
+  desk?: DeskScope;
   inTx?: (b: IBooking, s: ClientSession) => Promise<void>;
 }): Promise<IBooking> {
   if (!Types.ObjectId.isValid(p.bookingId)) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
@@ -395,8 +410,8 @@ export async function rescheduleWithHolds(p: {
     if (!booking) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
     // Q4b: an instant consultation holds no slot and its own interval; it is never moved onto a scheduled slot.
     if (booking.bookingKind === 'instant') throw conflict('INSTANT_CONSULT_COMMAND_REQUIRED', 'An instant consultation cannot be rescheduled');
-    // Q6: a clinic desk appointment moves only to another slot of the same clinic, by that clinic (p.clinicPartnerId).
-    if (booking.clinicDesk && booking.clinicDesk.partnerId !== p.clinicPartnerId) {
+    // Q6: a clinic desk appointment moves only to another slot of the same clinic, by that clinic (p.desk, admitted inside).
+    if (booking.clinicDesk && booking.clinicDesk.partnerId !== p.desk?.partnerId) {
       throw conflict('CLINIC_APPOINTMENT', 'Ask the clinic to change this appointment');
     }
     if (!CANCELLABLE_BOOKING_STATUSES.includes(String(booking.status))) {
@@ -407,9 +422,18 @@ export async function rescheduleWithHolds(p: {
     if (!target) throw conflict('SLOT_NOT_AVAILABLE', 'Slot is not available');
     const next = { ...booking, ...p.patch } as IBooking;
     let bookingTime: string;
+    // Q6: the clinic association follows the admitted target; a desk appointment that moves is no longer checked in.
+    let clinicSet: Record<string, unknown> = {};
+    let clinicUnset: Record<string, 1> = {};
     if (current !== target) {
-      const reserved = await reserveSlot(target, next, s);
+      const reserved = await reserveSlot(target, next, s, booking.clinicDesk ? p.desk : undefined);
       bookingTime = reserved.time;
+      if (reserved.clinic) {
+        clinicSet = { clinicVisit: reserved.clinic,
+          ...(booking.clinicDesk ? { 'clinicDesk.branchId': reserved.clinic.branchId, 'clinicDesk.arrivedAt': null } : {}) };
+      } else {
+        clinicUnset = { clinicVisit: 1 };
+      }
       if (current) await releaseSlot(current, s);
       // Q4: the doctor's interval moves with the appointment (refused if the doctor is not free then).
       if (exclusiveFor(next, reserved.slot)) {
@@ -434,7 +458,8 @@ export async function rescheduleWithHolds(p: {
     }
     const holds: Holds = { version: 1, heldSlotId: target, followUpParentId: await heldFollowUpParent(booking, s) };
     const updated = await BookingModel.findOneAndUpdate({ _id: id, status: booking.status },
-      { $set: { ...p.patch, bookingTime, slotId: target, holds } }, { new: true, session: s }).lean() as IBooking | null;
+      { $set: { ...p.patch, bookingTime, slotId: target, holds, ...clinicSet }, ...(Object.keys(clinicUnset).length ? { $unset: clinicUnset } : {}) },
+      { new: true, session: s }).lean() as IBooking | null;
     if (!updated) throw changed();
     if (p.inTx) await p.inTx(updated, s);
     return updated;

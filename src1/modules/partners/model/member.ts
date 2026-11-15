@@ -32,6 +32,9 @@ const memberSchema = new Schema<IMember>(
       type: String,
       sparse: true,
     },
+    // Q6: the branches the doctor consented to consult at (from the accepted invitation; empty = all). Kept apart from
+    // branchIds (workspace access), so linking an existing staff record never widens or narrows clinical authority.
+    doctorBranchIds: { type: [String], default: undefined },
     professional: {
       kind: { type: String, enum: ['pathologist', 'pharmacist', 'doctor'] },
       registrationNumber: { type: String, trim: true },

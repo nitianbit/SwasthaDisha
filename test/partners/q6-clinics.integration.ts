@@ -44,7 +44,8 @@ import * as clinic from '@/modules/partners/services/clinic';
 import { istDate, addDays } from '@/modules/partners/services/slots';
 import { DoctorReservationModel, DoctorScheduleGuardModel } from '@/modules/doctors/model/reservation';
 import { DoctorScheduleTemplateModel } from '@/modules/doctors/model/schedule';
-import { saveTemplate } from '@/modules/doctors/services/schedule';
+import { saveTemplate, clinicBranchAllowed } from '@/modules/doctors/services/schedule';
+import DependentModel from '@/modules/dependents/model';
 import { PharmacyService } from '@/modules/pharmacies/services';
 import { PharmacyRepository } from '@/modules/pharmacies/repository';
 import { UserRepository } from '@/modules/user/repository';
@@ -93,7 +94,7 @@ async function main() {
   for (const c of await mongoose.connection.db!.collections()) await c.drop().catch(() => {});
   for (const M of [UserModel, SpecialistModel, SlotModel, BookingModel, PaymentRecordModel, WalletModel, WalletTransactionModel, RequestKeyModel, PartnerModel,
     MemberModel, BranchModel, PartnerAuditEventModel, ClinicDoctorInviteModel, SettlementAccountModel, LedgerEntryModel, ScheduleGuardModel,
-    DoctorReservationModel, DoctorScheduleGuardModel, DoctorScheduleTemplateModel] as mongoose.Model<any>[]) {
+    DoctorReservationModel, DoctorScheduleGuardModel, DoctorScheduleTemplateModel, DependentModel] as mongoose.Model<any>[]) {
     await M.createCollection(); await M.createIndexes();
   }
 
@@ -305,6 +306,133 @@ async function main() {
     assert.ok(await SlotModel.exists({ specialistId: drSolo.id, branchId: String(branch!._id) }));
     await assert.rejects(() => clinic.leaveClinic(drSolo.id, String(p._id)), code('OWNER_CANNOT_LEAVE'));
     assert.equal((await clinic.mySoloPractice(drSolo.id))!.branches.length, 1);
+  });
+
+  // ── Review findings (Q6 round 1) ──
+  const second = await partnerSvc.createPartner({ kind: 'clinic', name: 'Second Clinic', contactPhone: nextPhone(), invoiceSeriesPrefix: 'SC2',
+    firstOwner: { phone: nextPhone(), name: 'Owner Two' } } as any);
+  const C = String(second.partner._id);
+  await partnerSvc.verifyPartner(C, 'admin');
+  const own2 = actorFor(second.owner);
+  const CB = String((await partnerSvc.createBranch(own2, branchIn('Aundh')))._id);
+  const drTwo = await doctor('Dr Two');
+  for (const [act, br] of [[own, [A]], [own2, [CB]]] as const) {
+    const inv = await clinic.inviteDoctor(act, { doctorId: drTwo.id, branchIds: [...br] });
+    await clinic.respondToInvite(drTwo.id, String(inv.invite._id), true);
+  }
+  const at = (n: number) => addDays(today, n);
+
+  await check('history belongs to the booking: a freed slot moving to another clinic never shows (or exposes) the old appointment there', async () => {
+    await saveTemplate(drTwo.id, { slotMinutes: 30, days: every({ start: '08:00', end: '08:30', modes: ['in-person'], branchId: A }) as any });
+    const s = (await clinic.deskSlots(own, { doctorId: drTwo.id, branchId: A, date: at(6) }))[0]!;
+    const r = await clinic.createDeskAppointment(own, { slotId: s.slotId, customer: { phone: nextPhone(), name: 'Private Patient' }, requestKey: rk() });
+    await clinic.cancelDeskAppointment(own, r.booking.bookingId, 'moved');
+    const online = await UserModel.create({ phone: nextPhone(), userType: 'user', name: 'Online At A' } as any);
+    const s2 = (await clinic.deskSlots(own, { doctorId: drTwo.id, branchId: A, date: at(7) }))[0]!;
+    const ob = await createBookingWithHolds({ bookingType: 'consultation', userId: String(online._id), specialistId: drTwo.id, slotId: s2.slotId,
+      bookingDate: ymd(at(7)), bookingTime: '08:00', consultationMode: 'in-person', serviceMode: 'in-person', price: 600, status: 'pending', paymentStatus: 'pending' } as any);
+    assert.deepEqual((await BookingModel.findById(ob._id).lean() as any).clinicVisit, { partnerId, branchId: A });
+    await cancelBookingSettlement({ bookingId: String(ob._id), requester: { _id: String(online._id), userType: 'user' }, reason: 'x', cancelledAt: ymd(today),
+      wallets: new WalletRepository(), enforceWindow: () => undefined, lifecycle: (x) => x.lifecycle });
+    // The doctor moves those hours to the second clinic: the now-unbooked template slots change branch.
+    await saveTemplate(drTwo.id, { slotMinutes: 30, days: every({ start: '08:00', end: '08:30', modes: ['in-person'], branchId: CB }) as any });
+    assert.equal((await SlotModel.findById(s.slotId).lean() as any).branchId, CB);
+    const theirs = await clinic.listClinicAppointments(own2, { from: at(6), to: at(7) });
+    assert.ok(!theirs.some((x) => x.bookingId === r.booking.bookingId || x.bookingId === String(ob._id)), 'nothing of clinic A leaks to clinic B');
+    const ours = await clinic.listClinicAppointments(own, { from: at(6), to: at(7) });
+    assert.ok(ours.some((x) => x.bookingId === r.booking.bookingId) && ours.some((x) => x.bookingId === String(ob._id)));
+  });
+
+  await check('the desk\'s clinic and branch scope are admitted inside the booking transaction (create and reschedule)', async () => {
+    const s = (await clinic.deskSlots(own2, { doctorId: drTwo.id, branchId: CB, date: at(8) }))[0]!;
+    // A desk of clinic A acting on a slot that is (now) at clinic C: refused by the shared admission itself.
+    const cust = await UserModel.create({ phone: nextPhone(), userType: 'user', name: 'X' } as any);
+    await assert.rejects(() => createBookingWithHolds({ bookingType: 'consultation', userId: String(cust._id), specialistId: drTwo.id, slotId: s.slotId,
+      bookingDate: ymd(at(8)), bookingTime: '08:00', consultationMode: 'in-person', serviceMode: 'in-person', price: 600, status: 'confirmed', paymentStatus: 'pending',
+      clinicDesk: { partnerId, branchId: A, createdBy: 'm' } } as any, undefined, { partnerId, branchIds: [] }), code('SLOT_NOT_AVAILABLE'));
+    await assert.rejects(() => createBookingWithHolds({ bookingType: 'consultation', userId: String(cust._id), specialistId: drTwo.id, slotId: s.slotId,
+      bookingDate: ymd(at(8)), bookingTime: '08:00', consultationMode: 'in-person', serviceMode: 'in-person', price: 600, status: 'confirmed', paymentStatus: 'pending',
+      clinicDesk: { partnerId: C, branchId: CB, createdBy: 'm' } } as any), code('SLOT_NOT_AVAILABLE'), 'a desk booking needs its scope');
+    assert.equal((await SlotModel.findById(s.slotId).lean() as any).currentBookings, 0);
+    // A branch-B-only desk of the second clinic cannot take its branch CB slot either (scope inside, not only outside).
+    const deskB = await partnerSvc.addMember(own2, { phone: nextPhone(), name: 'Other branch desk', role: 'staff', branchIds: [String((await partnerSvc.createBranch(own2, branchIn('Wakad')))._id)],
+      permissions: ['bookings.manage'] } as any);
+    await assert.rejects(() => createBookingWithHolds({ bookingType: 'consultation', userId: String(cust._id), specialistId: drTwo.id, slotId: s.slotId,
+      bookingDate: ymd(at(8)), bookingTime: '08:00', consultationMode: 'in-person', serviceMode: 'in-person', price: 600, status: 'confirmed', paymentStatus: 'pending',
+      clinicDesk: { partnerId: C, branchId: CB, createdBy: String(deskB._id) } } as any, undefined, { partnerId: C, branchIds: (deskB.branchIds ?? []).map(String) }), code('SLOT_NOT_AVAILABLE'));
+    // Reschedule: the target is admitted against the desk's clinic inside the transaction too.
+    const sA = (await clinic.deskSlots(own, { doctorId: drRao.id, branchId: A, date: at(9) }).catch(() => [])) as any[];
+    const mine = await clinic.createDeskAppointment(own2, { slotId: s.slotId, customer: { phone: nextPhone() }, requestKey: rk() });
+    await assert.rejects(() => rescheduleWithHolds({ bookingId: mine.booking.bookingId, requester: { _id: 'x', userType: 'admin' }, nextSlotId: s.slotId,
+      patch: {}, desk: { partnerId, branchIds: [] } }), code('CLINIC_APPOINTMENT'));
+    assert.ok(Array.isArray(sA));
+  });
+
+  await check('invitations stay within a branch-restricted manager\'s scope (list, revoke, existing pending)', async () => {
+    const drThree = await doctor('Dr Three');
+    const global = await clinic.inviteDoctor(own, { doctorId: drThree.id });
+    const deskAActor = actorFor(deskA);
+    assert.ok(!(await clinic.listInvites(deskAActor)).some((i) => String(i._id) === String(global.invite._id)));
+    await assert.rejects(() => clinic.revokeInvite(deskAActor, String(global.invite._id)), code('INVITE_NOT_FOUND'));
+    await assert.rejects(() => clinic.inviteDoctor(deskAActor, { doctorId: drThree.id, branchIds: [A] }), code('INVITE_PENDING'));
+    assert.equal((await ClinicDoctorInviteModel.findById(global.invite._id).lean())!.state, 'pending');
+    const drFour = await doctor('Dr Four');
+    const mineA = await clinic.inviteDoctor(deskAActor, { doctorId: drFour.id, branchIds: [A] });
+    assert.ok((await clinic.listInvites(deskAActor)).some((i) => String(i._id) === String(mineA.invite._id)));
+    await clinic.revokeInvite(deskAActor, String(mineA.invite._id));
+  });
+
+  await check('a doctor linked to an existing staff record consults exactly where they accepted; the staff access is unchanged', async () => {
+    const drFive = await doctor('Dr Five');
+    const staffB = await partnerSvc.addMember(own, { phone: drFive.phone, name: 'Five at B desk', role: 'staff', branchIds: [B], permissions: ['bookings.view'] } as any);
+    const inv = await clinic.inviteDoctor(own, { doctorId: drFive.id, branchIds: [A] });
+    await clinic.respondToInvite(drFive.id, String(inv.invite._id), true);
+    assert.equal(await clinicBranchAllowed(drFive.id, A), true);
+    assert.equal(await clinicBranchAllowed(drFive.id, B), false);
+    const m = await MemberModel.findById(staffB._id).lean();
+    assert.deepEqual([m!.branchIds.map(String), (m as any).doctorBranchIds], [[B], [A]]);
+  });
+
+  await check('a desk request key is used once per desk member, whatever customer or slot a repeat names; racing repeats make one', async () => {
+    const slots = await clinic.deskSlots(own, { doctorId: drRao.id, branchId: A, date: at(10) }).catch(() => []);
+    const fresh = slots.length ? slots : await (async () => {
+      await clinic.respondToInvite(drRao.id, String((await clinic.inviteDoctor(own, { doctorId: drRao.id, branchIds: [A] })).invite._id), true);
+      await saveTemplate(drRao.id, { slotMinutes: 30, days: every({ start: '10:00', end: '12:00', modes: ['in-person'], branchId: A }) as any });
+      return clinic.deskSlots(own, { doctorId: drRao.id, branchId: A, date: at(10) });
+    })();
+    const key = rk();
+    const phone = nextPhone();
+    const first = await clinic.createDeskAppointment(own, { slotId: fresh[0]!.slotId, customer: { phone }, requestKey: key });
+    await assert.rejects(() => clinic.createDeskAppointment(own, { slotId: fresh[1]!.slotId, customer: { phone: nextPhone() }, requestKey: key }), code('IDEMPOTENCY_KEY_REUSED'));
+    assert.equal((await clinic.createDeskAppointment(own, { slotId: fresh[0]!.slotId, customer: { phone }, requestKey: key })).booking.bookingId, first.booking.bookingId);
+    const k2 = rk();
+    const p2 = nextPhone();
+    const all = await Promise.allSettled([1, 2, 3].map(() => clinic.createDeskAppointment(own, { slotId: fresh[2]!.slotId, customer: { phone: p2 }, requestKey: k2 })));
+    const ok = all.filter((x) => x.status === 'fulfilled') as PromiseFulfilledResult<any>[];
+    assert.ok(ok.length >= 1);
+    assert.equal(new Set(ok.map((x) => x.value.booking.bookingId)).size, 1);
+    assert.equal(await BookingModel.countDocuments({ 'clinicDesk.requestKey': `desk:${String(owner._id)}:${k2}` }), 1);
+  });
+
+  await check('moving a checked-in appointment clears the check-in for the new time', async () => {
+    const slots = await clinic.deskSlots(own, { doctorId: drRao.id, branchId: A, date: at(11) });
+    const r = await clinic.createDeskAppointment(own, { slotId: slots[0]!.slotId, customer: { phone: nextPhone() }, requestKey: rk() });
+    await clinic.markArrived(own, r.booking.bookingId);
+    const moved = await clinic.rescheduleDeskAppointment(own, r.booking.bookingId, slots[1]!.slotId);
+    assert.equal(moved.arrivedAt ?? null, null);
+    assert.ok((await clinic.markArrived(own, r.booking.bookingId)).arrivedAt);
+  });
+
+  await check('the appointment list names the family member being seen, with the account holder as contact', async () => {
+    const parent = await UserModel.create({ phone: nextPhone(), userType: 'user', name: 'Parent Account' } as any);
+    const child = await DependentModel.create({ userId: String(parent._id), name: 'Little Kavya', relationship: 'Daughter', age: 6 } as any);
+    const slots = await clinic.deskSlots(own, { doctorId: drRao.id, branchId: A, date: at(12) });
+    const b = await createBookingWithHolds({ bookingType: 'consultation', userId: String(parent._id), dependentId: String(child._id), specialistId: drRao.id,
+      slotId: slots[0]!.slotId, bookingDate: ymd(at(12)), bookingTime: slots[0]!.startTime, consultationMode: 'in-person', serviceMode: 'in-person', price: 600,
+      status: 'confirmed', paymentStatus: 'paid' } as any);
+    const row = (await clinic.listClinicAppointments(own, { from: at(12), to: at(12) })).find((x) => x.bookingId === String(b._id))!;
+    assert.deepEqual([row.patient.name, row.patient.accountName, row.patient.relationship], ['Little Kavya', 'Parent Account', 'Daughter']);
+    assert.equal(row.patient.phone, (parent as any).phone);
   });
 
   // ── HTTP: the real application routes ──
