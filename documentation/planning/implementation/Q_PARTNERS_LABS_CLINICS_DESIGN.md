@@ -1,6 +1,6 @@
 # Q — Partner labs, clinics and doctors: online bookings, instant consultations, in-house sales (design, 2026-11-15)
 
-Status: design revised after Codex re-review #2 (msg_1794739862185_xpph309k). Built in packets Q1–Q6 (§10), each reviewed by Codex.
+Status: design revised after Codex re-review #3 (msg_1794740112180_ia1ute6i). Built in packets Q1–Q6 (§10), each reviewed by Codex.
 
 ## 1. Owner decisions (15 Nov 2026, asked directly)
 
@@ -281,16 +281,14 @@ Walk-in linking, partner walk-in, and any future path that needs to find-or-crea
 coordinated path: `resolveCustomerByPhone(phone, source)`.
 
 1. Normalize the phone to ten-digit canonical form.
-2. Query `{ phone, userType: 'user' }`. If exactly one match, use it. If no match, create via `findOneAndUpdate`
-   with `$setOnInsert` and `upsert: true`; the unique index `{phone, userType}` prevents concurrent duplicates.
-3. **Ambiguous legacy matches** (multiple accounts for the same phone — possible from historical data before the
-   unique index): the resolver **fails closed**. It does not select one or create another. Instead, it returns a
-   quarantine result: the invoice/report is created without a `customer.userId` link, and an admin notification is
-   queued. The admin must resolve the ambiguity (merge or designate canonical) before the link is established.
-   The OTP login path (`user/repositories/index.ts`) must use the same canonical resolution — until the unique
-   index is established, both paths must agree on which account is authoritative. **Index admission:** the unique
-   `{phone, userType}` index is installed only after a migration script verifies no duplicates exist (or resolves
-   them). Until then, the resolver uses the query-then-upsert pattern with the quarantine fallback.
+2. **Prerequisite: unique index must be live before the resolver is activated.** A migration script (run as part
+   of Q2 deployment) scans for duplicate `{phone, userType: 'user'}` pairs. Duplicates are resolved by the admin
+   (merge or designate canonical) before the unique index is created. The resolver is **not activated** until the
+   index is confirmed live — there is no pre-index fallback mode. This eliminates the concurrent-creation race
+   entirely.
+3. With the unique index live: `findOneAndUpdate` with `{ phone, userType: 'user' }` and
+   `$setOnInsert: { createdSource: source }`, `upsert: true`, `returnDocument: 'after'`. The unique index
+   prevents concurrent duplicates atomically.
 4. If the upsert created a new user, send the SMS link.
 5. Never merge accounts or overwrite an existing customer's name/verified-contact fields from invoice input.
 5. The visit patient/dependent (age, gender on the invoice) is distinct from the billing contact (the linked
@@ -328,21 +326,18 @@ Every entity that can earn money through the platform has a **SettlementAccount*
   2. Set a `cutoverDate` in config. All bookings created after `cutoverDate` get `settlementSystem: 'ledger'`
      automatically. The legacy payout query adds `settlementSystem: 'legacy'`; the new ledger earning creation
      requires `settlementSystem: 'ledger'`.
-  3. **Reconcile and import (net opening balance only):** compute each doctor's net outstanding due from the legacy
-     system: `outstandingDue = Σ(completed consultation amounts for legacy bookings) − Σ(disbursed from old payout
-     billings)`. Import as a single `opening_balance` ledger entry per doctor's settlement account with
-     `amountMinor = outstandingDue`. Historical disbursals are imported as **non-posting reference records** (a
-     separate `LedgerHistoryRef` collection with `source: 'legacy_import'`, billing period, amounts) visible on the
-     statement for context but **not** included in the ledger balance sum. This prevents double-counting: the
-     opening balance already accounts for what was paid.
-  4. **Legacy unpaid liabilities stay with the legacy system.** The `opening_balance` entry represents only the net
-     due that will be paid through the new ledger. Pre-cutover bookings that complete after cutover and are still
-     `settlementSystem: 'legacy'` are settled exclusively by the old system — their earnings/payouts do **not**
-     appear in the new ledger balance. The opening balance is computed once at cutover; subsequent legacy settlements
-     reduce the old system's liability, not the new ledger's.
-  5. **Balance equation (verified at cutover):** for each doctor,
-     `opening_balance == Σ(legacy completed amounts) − Σ(legacy disbursals)`. This is checked by the migration
-     script and logged. Any discrepancy is flagged for manual review before activation.
+  3. **All legacy liabilities stay with the legacy system; the new ledger opens at zero.** The new ledger has
+     **no opening balance entry** for legacy dues. Legacy bookings (`settlementSystem: 'legacy'`) are settled
+     exclusively by the old payout system — their earnings, outstanding dues, and disbursals never appear in the
+     new ledger's spendable balance. The new ledger balance starts at zero and grows only from `settlementSystem:
+     'ledger'` earnings.
+  4. **Historical display:** historical earnings and disbursals from the legacy system are imported as **non-posting
+     reference records** (a `LedgerHistoryRef` collection with `source: 'legacy_import'`, billing period, amounts,
+     per doctor). These are visible on the partner finance statement for context ("History before [cutoverDate]")
+     but are **not** included in the ledger balance sum and are **not** payable from the new ledger.
+  5. **Separation invariant:** no liability is payable by both systems. Legacy bookings → old payout billings only.
+     Ledger bookings → new ledger earnings/payouts only. The `settlementSystem` field is the exclusive ownership
+     fence. Verified by the migration script: no booking without a `settlementSystem` value after migration.
   6. The two systems are permanently partitioned by `settlementSystem`. Each liability has exactly one payable owner.
 - From that point forward, every new booking earning goes exclusively to the ledger. The two systems are
   permanently partitioned by `settlementSystem`.
