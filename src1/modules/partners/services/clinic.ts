@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { ClientSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import { canonicalMobile } from '@/modules/common/utils/phone';
@@ -19,7 +20,8 @@ import SlotModel from '@/modules/slots/model';
 import BookingModel from '@/modules/bookings/model';
 import UserModel from '@/modules/user/model';
 import { IBooking } from '@/modules/bookings/types';
-import { cancelBookingSettlement, createBookingWithHolds, isReplayedBooking, rescheduleWithHolds } from '@/modules/bookings/holds';
+import { cancelBookingSettlement, createBookingWithHolds, rescheduleWithHolds, type DeskScope } from '@/modules/bookings/holds';
+import DependentModel from '@/modules/dependents/model';
 import { DoctorReservationModel } from '@/modules/doctors/model/reservation';
 import { releaseInterval } from '@/modules/doctors/services/reservations';
 import { clinicBranchAllowed, expandDoctorSlots, DOCTOR_ROLLING_DAYS } from '@/modules/doctors/services/schedule';
@@ -58,6 +60,13 @@ async function clinicBranch(actor: PartnerActor, branchId: string, s?: ClientSes
   return b;
 }
 
+/** The desk's authority, re-admitted inside every booking transaction: this clinic, the member's branches (empty = all). */
+const deskScopeOf = (actor: PartnerActor): DeskScope => ({ partnerId: actor.partnerId, branchIds: hasGlobalScope(actor) ? [] : actor.branchIds.map(String) });
+
+/** A branch-restricted member manages only invitations wholly inside their branches (never an all-branches one). */
+const inviteInScope = (actor: PartnerActor, inv: Pick<IClinicDoctorInvite, 'branchIds'>) =>
+  hasGlobalScope(actor) || ((inv.branchIds ?? []).length > 0 && inv.branchIds.every((b) => actor.branchIds.includes(String(b))));
+
 const audit = (actor: PartnerActor, action: string, target: { kind: string; id: string }, detail: Record<string, unknown>, s: ClientSession) =>
   recordPartnerAudit(actor, action, target, detail, s);
 
@@ -72,14 +81,15 @@ async function refreshDoctorSlots(doctorId: string): Promise<void> {
 export async function listClinicDoctors(actor: PartnerActor) {
   await clinicOf(actor);
   const members = await MemberModel.find({ partnerId: actor.partnerId, isActive: true, doctorId: { $type: 'string' } }).lean() as IMember[];
+  const scopeOf = (m: IMember) => (Array.isArray(m.doctorBranchIds) ? m.doctorBranchIds : m.role === 'owner' ? [] : m.branchIds ?? []).map(String);
   const visible = hasGlobalScope(actor) ? members
-    : members.filter((m) => (m.branchIds ?? []).length === 0 || (m.branchIds ?? []).some((b) => actor.branchIds.includes(String(b))));
+    : members.filter((m) => scopeOf(m).length === 0 || scopeOf(m).some((b) => actor.branchIds.includes(b)));
   const sps = await SpecialistModel.find({ _id: { $in: visible.map((m) => m.doctorId).filter((d) => Types.ObjectId.isValid(String(d))) } })
     .select({ name: 1, specialization: 1, consultationFee: 1, isActive: 1, isVerified: 1 }).lean() as any[];
   const byId = new Map(sps.map((d) => [String(d._id), d]));
   return visible.map((m) => {
     const d = byId.get(String(m.doctorId));
-    return { memberId: String(m._id), doctorId: String(m.doctorId), role: m.role, branchIds: (m.branchIds ?? []).map(String), name: d?.name ?? m.name,
+    return { memberId: String(m._id), doctorId: String(m.doctorId), role: m.role, branchIds: scopeOf(m), name: d?.name ?? m.name,
       specialization: d?.specialization, consultationFee: d?.consultationFee, active: !!d && d.isActive !== false && d.isVerified !== false };
   });
 }
@@ -101,7 +111,10 @@ export async function inviteDoctor(actor: PartnerActor, input: { doctorId?: stri
   const doctorId = String(sp._id);
   if (await MemberModel.exists({ partnerId: actor.partnerId, doctorId, isActive: true })) throw err(409, 'DOCTOR_ALREADY_MEMBER', 'This doctor already consults here');
   const pending = await ClinicDoctorInviteModel.findOne({ partnerId: actor.partnerId, doctorId, state: 'pending' }).lean();
-  if (pending) return { invite: pending, doctor: { doctorId, name: sp.name, specialization: sp.specialization }, created: false };
+  if (pending) {
+    if (!inviteInScope(actor, pending)) throw err(409, 'INVITE_PENDING', 'This doctor already has a pending invitation from your clinic');
+    return { invite: pending, doctor: { doctorId, name: sp.name, specialization: sp.specialization }, created: false };
+  }
   try {
     const invite = await inTransaction(async (s) => {
       const [inv] = await ClinicDoctorInviteModel.create([{ partnerId: actor.partnerId, doctorId, branchIds, invitedBy: actor.memberId, state: 'pending' }], { session: s });
@@ -113,19 +126,23 @@ export async function inviteDoctor(actor: PartnerActor, input: { doctorId?: stri
     if (e?.code !== 11000) throw e;
     const raced = await ClinicDoctorInviteModel.findOne({ partnerId: actor.partnerId, doctorId, state: 'pending' }).lean();
     if (!raced) throw e;
+    if (!inviteInScope(actor, raced)) throw err(409, 'INVITE_PENDING', 'This doctor already has a pending invitation from your clinic');
     return { invite: raced, doctor: { doctorId, name: sp.name, specialization: sp.specialization }, created: false };
   }
 }
 
 export async function listInvites(actor: PartnerActor, state?: IClinicDoctorInvite['state']) {
   await clinicOf(actor);
-  return ClinicDoctorInviteModel.find({ partnerId: actor.partnerId, ...(state ? { state } : {}) }).sort({ createdAt: -1 }).limit(200).lean();
+  const rows = await ClinicDoctorInviteModel.find({ partnerId: actor.partnerId, ...(state ? { state } : {}) }).sort({ createdAt: -1 }).limit(500).lean();
+  return rows.filter((i) => inviteInScope(actor, i)).slice(0, 200);
 }
 
 export async function revokeInvite(actor: PartnerActor, inviteId: string) {
   await clinicOf(actor);
   if (!Types.ObjectId.isValid(inviteId)) throw err(404, 'INVITE_NOT_FOUND', 'Invitation not found');
   return inTransaction(async (s) => {
+    const current = await ClinicDoctorInviteModel.findOne({ _id: inviteId, partnerId: actor.partnerId }).session(s).lean();
+    if (!current || !inviteInScope(actor, current)) throw err(404, 'INVITE_NOT_FOUND', 'Invitation not found');
     const inv = await ClinicDoctorInviteModel.findOneAndUpdate({ _id: inviteId, partnerId: actor.partnerId, state: 'pending' },
       { $set: { state: 'revoked', respondedAt: new Date() } }, { new: true, session: s }).lean();
     if (!inv) throw err(409, 'INVITE_NOT_PENDING', 'This invitation is no longer pending');
@@ -180,12 +197,13 @@ export async function respondToInvite(doctorId: string, inviteId: string, accept
     let member: IMember;
     if (samePhone) {
       if (samePhone.doctorId) throw err(409, 'PHONE_USED_BY_ANOTHER_DOCTOR', 'Your mobile number belongs to another doctor at this clinic');
+      // The staff record keeps its workspace access; the doctor's clinical scope is exactly what they accepted.
       member = await MemberModel.findOneAndUpdate({ _id: samePhone._id, isActive: true, doctorId: { $exists: false } },
-        { $set: { doctorId: String(doctorId) } }, { new: true, session: s }).lean() as IMember;
+        { $set: { doctorId: String(doctorId), doctorBranchIds: inv.branchIds } }, { new: true, session: s }).lean() as IMember;
       if (!member) throw err(409, 'MEMBER_CHANGED', 'Please try again');
     } else {
       const [m] = await MemberModel.create([{ partnerId: inv.partnerId, phone, name: sp.name, role: 'staff', permissions: [], branchIds: inv.branchIds,
-        doctorId: String(doctorId), isActive: true, invitedBy: inv.invitedBy }], { session: s });
+        doctorId: String(doctorId), doctorBranchIds: inv.branchIds, isActive: true, invitedBy: inv.invitedBy }], { session: s });
       member = m!.toObject() as IMember;
     }
     const done = await ClinicDoctorInviteModel.updateOne({ _id: inviteId, state: 'pending' },
@@ -251,21 +269,41 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
   const branch = await clinicBranch(actor, String(slot.branchId));
   const sp = await SpecialistModel.findById(slot.specialistId).select({ name: 1, consultationFee: 1 }).lean() as any;
   if (!sp) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
+  // Exactly once per (desk member, request key), whatever customer or slot a repeat names (unique clinicDesk.requestKey).
+  const requestKey = `desk:${actor.memberId}:${input.requestKey}`;
+  const requestHash = createHash('sha256').update(JSON.stringify({ slotId: String(slot._id).toLowerCase(),
+    phone: canonicalMobile(input.customer.phone) ?? input.customer.phone, notes: input.notes?.trim() || null })).digest('hex');
+  const replay = async () => {
+    const prior = await BookingModel.findOne({ 'clinicDesk.requestKey': requestKey }).lean() as IBooking | null;
+    if (!prior) return null;
+    if (prior.clinicDesk?.requestHash !== requestHash) throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different appointment');
+    return prior;
+  };
+  const prior = await replay();
+  if (prior) return { booking: deskView(prior), customer: { userId: String(prior.userId), phone: canonicalMobile(input.customer.phone), created: false }, replayed: true };
   const customer = await resolveCustomerByPhone(input.customer.phone, 'clinic_desk');
   const name = input.customer.name?.trim();
   if (name) await UserModel.updateOne({ _id: customer._id, $or: [{ name: { $exists: false } }, { name: null }, { name: '' }] }, { $set: { name } });
   const fee = Number(sp.consultationFee) > 0 ? Number(sp.consultationFee) : 0;
-  const booking = await createBookingWithHolds({
-    bookingType: 'consultation', userId: customer._id, specialistId: String(slot.specialistId), doctorName: sp.name, slotId: String(slot._id),
-    bookingDate: slot.date, bookingTime: slot.startTime, consultationMode: 'in-person', serviceMode: 'in-person', price: fee, originalPrice: fee,
-    status: 'confirmed', paymentStatus: 'pending', clinicDesk: { partnerId: actor.partnerId, branchId: String(branch._id), createdBy: actor.memberId },
-    createRequestKey: `desk:${actor.memberId}:${input.requestKey}`, ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),
-  } as IBooking, (b, s) => audit(actor, 'clinic.appointment_booked', { kind: 'booking', id: String(b._id) },
-    { doctorId: String(slot.specialistId), branchId: String(branch._id), slotId: String(slot._id), customerCreated: customer.created }, s));
-  if (isReplayedBooking(booking) && (booking.clinicDesk?.partnerId !== actor.partnerId || String(booking.slotId) !== String(slot._id).toLowerCase())) {
-    throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different appointment');
+  let booking: IBooking;
+  try {
+    // The clinic and branch are admitted (and recorded) on the slot as the booking transaction reads it (deskScope).
+    booking = await createBookingWithHolds({
+      bookingType: 'consultation', userId: customer._id, specialistId: String(slot.specialistId), doctorName: sp.name, slotId: String(slot._id),
+      bookingDate: slot.date, bookingTime: slot.startTime, consultationMode: 'in-person', serviceMode: 'in-person', price: fee, originalPrice: fee,
+      status: 'confirmed', paymentStatus: 'pending',
+      clinicDesk: { partnerId: actor.partnerId, branchId: String(branch._id), createdBy: actor.memberId, requestKey, requestHash },
+      ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),
+    } as IBooking, (b, s) => audit(actor, 'clinic.appointment_booked', { kind: 'booking', id: String(b._id) },
+      { doctorId: String(slot.specialistId), branchId: b.clinicDesk?.branchId, slotId: String(slot._id), customerCreated: customer.created }, s),
+    deskScopeOf(actor));
+  } catch (e: any) {
+    if (e?.code !== 11000) throw e;
+    const raced = await replay();
+    if (!raced) throw e;
+    return { booking: deskView(raced), customer: { userId: String(raced.userId), phone: customer.phone, created: false }, replayed: true };
   }
-  return { booking: deskView(booking), customer: { userId: customer._id, phone: customer.phone, created: customer.created }, replayed: isReplayedBooking(booking) };
+  return { booking: deskView(booking), customer: { userId: customer._id, phone: customer.phone, created: customer.created }, replayed: false };
 }
 
 function deskView(b: IBooking) {
@@ -296,29 +334,37 @@ export async function listClinicAppointments(actor: PartnerActor, q: { from: str
   }
   const from = ymd(q.from);
   const to = ymd(q.to);
-  const slotIds = (await SlotModel.find({ branchId: { $in: branchIds }, date: { $gte: from, $lte: to }, ...(q.doctorId ? { specialistId: String(q.doctorId) } : {}) })
-    .select({ _id: 1 }).lean()).map((s) => String(s._id).toLowerCase());
+  // Ownership is the booking's own frozen association (desk rows: their clinicDesk only), never a slot's current branch.
   const rows = await BookingModel.find({
     bookingType: 'consultation', bookingDate: { $gte: from, $lte: to }, ...(q.status ? { status: q.status } : {}), ...(q.doctorId ? { specialistId: String(q.doctorId) } : {}),
-    $or: [{ slotId: { $in: slotIds } }, { 'clinicDesk.partnerId': actor.partnerId, 'clinicDesk.branchId': { $in: branchIds } }],
+    $or: [
+      { 'clinicDesk.partnerId': actor.partnerId, 'clinicDesk.branchId': { $in: branchIds } },
+      { clinicDesk: { $exists: false }, 'clinicVisit.partnerId': actor.partnerId, 'clinicVisit.branchId': { $in: branchIds } },
+    ],
   }).sort({ bookingDate: 1, bookingTime: 1 }).limit(1000).lean() as IBooking[];
   const users = await UserModel.find({ _id: { $in: [...new Set(rows.map((r) => String(r.userId)))].filter((u) => Types.ObjectId.isValid(u)) } })
     .select({ name: 1, phone: 1 }).lean() as any[];
   const uById = new Map(users.map((u) => [String(u._id), u]));
-  const slotBranch = new Map((await SlotModel.find({ _id: { $in: rows.map((r) => r.slotId).filter((x) => x && Types.ObjectId.isValid(String(x))) } })
-    .select({ branchId: 1 }).lean() as any[]).map((s) => [String(s._id).toLowerCase(), String(s.branchId)]));
-  return rows.map((r) => ({
-    ...deskView(r), branchId: r.clinicDesk?.branchId ?? slotBranch.get(String(r.slotId).toLowerCase()),
-    source: r.clinicDesk ? 'desk' : 'online', paidOnline: r.settlementSystem !== 'clinic' && r.paymentStatus === 'paid',
-    patient: { name: uById.get(String(r.userId))?.name, phone: uById.get(String(r.userId))?.phone },
-  }));
+  const depIds = [...new Set(rows.map((r) => (r as { dependentId?: string }).dependentId).filter((d): d is string => !!d && Types.ObjectId.isValid(d)))];
+  const deps = depIds.length ? await DependentModel.find({ _id: { $in: depIds } }).select({ name: 1, relationship: 1 }).lean() as any[] : [];
+  const dById = new Map(deps.map((d) => [String(d._id), d]));
+  return rows.map((r) => {
+    const account = uById.get(String(r.userId));
+    const dep = (r as { dependentId?: string }).dependentId ? dById.get(String((r as { dependentId?: string }).dependentId)) : undefined;
+    return {
+      ...deskView(r), branchId: r.clinicDesk?.branchId ?? r.clinicVisit?.branchId,
+      source: r.clinicDesk ? 'desk' : 'online', paidOnline: r.settlementSystem !== 'clinic' && r.paymentStatus === 'paid',
+      // The person being seen (a family member when booked for one); the account holder's mobile is the contact.
+      patient: { name: dep?.name ?? account?.name, relationship: dep?.relationship, accountName: dep ? account?.name : undefined, phone: account?.phone },
+    };
+  });
 }
 
 /** The patient is at the desk. */
 export async function markArrived(actor: PartnerActor, bookingId: string) {
   return inTransaction(async (s) => {
     const b = await ownDeskBooking(actor, bookingId, s);
-    const r = await BookingModel.findOneAndUpdate({ _id: b._id, status: 'confirmed', 'clinicDesk.partnerId': actor.partnerId, 'clinicDesk.arrivedAt': { $exists: false } },
+    const r = await BookingModel.findOneAndUpdate({ _id: b._id, status: 'confirmed', 'clinicDesk.partnerId': actor.partnerId, 'clinicDesk.arrivedAt': null },
       { $set: { 'clinicDesk.arrivedAt': new Date() } }, { new: true, session: s }).lean() as IBooking | null;
     if (!r) throw err(409, 'BOOKING_STATE_CONFLICT', b.clinicDesk?.arrivedAt ? 'Already marked as arrived' : `A ${b.status} appointment cannot be checked in`);
     await audit(actor, 'clinic.appointment_arrived', { kind: 'booking', id: String(b._id) }, {}, s);
@@ -362,8 +408,8 @@ export async function rescheduleDeskAppointment(actor: PartnerActor, bookingId: 
   if (!slot?.branchId) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
   await clinicBranch(actor, String(slot.branchId));
   const updated = await rescheduleWithHolds({
-    bookingId: String(b._id), requester: { _id: actor.memberId, userType: 'admin' }, nextSlotId: String(slot._id), clinicPartnerId: actor.partnerId,
-    patch: { bookingDate: slot.date, 'clinicDesk.branchId': String(slot.branchId) },
+    bookingId: String(b._id), requester: { _id: actor.memberId, userType: 'admin' }, nextSlotId: String(slot._id), desk: deskScopeOf(actor),
+    patch: { bookingDate: slot.date },
     inTx: (x, s) => audit(actor, 'clinic.appointment_rescheduled', { kind: 'booking', id: String(x._id) }, { slotId: String(slot._id) }, s),
   });
   return deskView(updated);

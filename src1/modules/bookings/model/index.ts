@@ -439,7 +439,16 @@ const bookingSchema = new Schema<IBooking>(
         branchId: { type: String, required: true },
         createdBy: { type: String, required: true },
         arrivedAt: { type: Date },
+        /** Exactly once per desk member + request key (unique below), with the request's content hash. */
+        requestKey: { type: String },
+        requestHash: { type: String },
       }, { _id: false }),
+      default: undefined,
+    },
+    // Q6: the clinic and branch an in-clinic booking belongs to, frozen at admission and moved only by an admitted
+    // reschedule (never inferred later from a slot, whose branch may change once its seat is free).
+    clinicVisit: {
+      type: new Schema({ partnerId: { type: String, required: true }, branchId: { type: String, required: true } }, { _id: false }),
       default: undefined,
     },
     // Q4b: 'instant' consultations come from an accepted InstantRequest (money held there, not on this booking).
@@ -501,6 +510,8 @@ bookingSchema.index({ wellnessPackageId: 1, status: 1 });
 bookingSchema.index({ specialistId: 1, status: 1 });
 bookingSchema.index({ specialistId: 1, settlementSystem: 1, bookingType: 1, bookingDate: 1 });
 bookingSchema.index({ 'clinicDesk.partnerId': 1, bookingDate: 1 });
+bookingSchema.index({ 'clinicVisit.partnerId': 1, bookingDate: 1 });
+bookingSchema.index({ 'clinicDesk.requestKey': 1 }, { unique: true, partialFilterExpression: { 'clinicDesk.requestKey': { $type: 'string' } } });
 bookingSchema.index({ instantRequestId: 1 }, { unique: true, partialFilterExpression: { instantRequestId: { $type: 'string' } } });
 bookingSchema.index({ slotId: 1, status: 1 }); // Index for slot-based queries
 bookingSchema.index({ bookingDate: 1, bookingTime: 1 });

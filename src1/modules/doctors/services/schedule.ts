@@ -24,14 +24,24 @@ const weekdayOf = (isoDate: string): Weekday =>
  * in-clinic consultations and is within the member's branch scope. Existing appointments are never touched by a loss of
  * authority; only new clinic commerce is refused.
  */
-export async function clinicBranchAllowed(doctorId: string, branchId: string, s?: ClientSession): Promise<boolean> {
-  if (!/^[0-9a-fA-F]{24}$/.test(String(branchId))) return false;
+export async function clinicBranchContext(doctorId: string, branchId: string, s?: ClientSession): Promise<{ partnerId: string; branchId: string } | null> {
+  if (!/^[0-9a-fA-F]{24}$/.test(String(branchId))) return null;
   const branch = await BranchModel.findById(branchId).session(s ?? null).lean();
-  if (!branch || branch.isActive === false || !branch.services?.inClinic) return false;
+  if (!branch || branch.isActive === false || !branch.services?.inClinic) return null;
   const partner = await PartnerOrgModel.findById(branch.partnerId).session(s ?? null).lean();
-  if (!partner || partner.kind !== 'clinic' || partner.isActive === false || partner.verification?.state !== 'verified') return false;
+  if (!partner || partner.kind !== 'clinic' || partner.isActive === false || partner.verification?.state !== 'verified') return null;
   const member = await MemberModel.findOne({ partnerId: String(branch.partnerId), doctorId: String(doctorId), isActive: true }).session(s ?? null).lean();
-  return !!member && (member.role === 'owner' || (member.branchIds ?? []).length === 0 || (member.branchIds ?? []).map(String).includes(String(branchId)));
+  if (!member) return null;
+  // Q6: a doctor's consultation scope comes from the invitation they accepted; otherwise the member's own scope.
+  const consent = member.doctorBranchIds;
+  const inScope = Array.isArray(consent)
+    ? consent.length === 0 || consent.map(String).includes(String(branchId))
+    : member.role === 'owner' || (member.branchIds ?? []).length === 0 || (member.branchIds ?? []).map(String).includes(String(branchId));
+  return inScope ? { partnerId: String(branch.partnerId), branchId: String(branch._id) } : null;
+}
+
+export async function clinicBranchAllowed(doctorId: string, branchId: string, s?: ClientSession): Promise<boolean> {
+  return !!(await clinicBranchContext(doctorId, branchId, s));
 }
 
 export async function assertClinicBranchForDoctor(doctorId: string, branchId: string, s?: ClientSession): Promise<void> {

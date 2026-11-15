@@ -78,6 +78,8 @@ export interface IMember {
   permissions: PartnerPermission[];
   branchIds: string[];
   doctorId?: string;
+  /** Q6: the branches a doctor member consults at (empty = all); absent = the member's own scope (owners: all). */
+  doctorBranchIds?: string[];
   professional?: IMemberProfessional;
   isActive: boolean;
   invitedBy?: string;

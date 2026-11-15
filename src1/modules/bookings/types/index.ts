@@ -138,7 +138,8 @@ export interface IBooking {
   /** Q3 §7a: settled by the legacy payouts or the ledger (never both). */
   /** 'clinic' = booked by a clinic's front desk and paid at the clinic: never settled by the legacy payouts or the ledger. */
   settlementSystem?: 'legacy' | 'ledger' | 'clinic';
-  clinicDesk?: { partnerId: string; branchId: string; createdBy: string; arrivedAt?: Date };
+  clinicDesk?: { partnerId: string; branchId: string; createdBy: string; arrivedAt?: Date | null; requestKey?: string; requestHash?: string };
+  clinicVisit?: { partnerId: string; branchId: string };
   settlement?: { settlementAccountId?: string; beneficiaryName?: string };
   bookingKind?: 'scheduled' | 'instant';
   instantRequestId?: string;
