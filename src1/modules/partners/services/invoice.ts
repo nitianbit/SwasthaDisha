@@ -32,11 +32,13 @@ import SpecialistModel from '@/modules/specialists/model';
 export const invoiceKeyScope = (partnerId: string) => `partner_invoice_create:${String(partnerId).toLowerCase()}`;
 
 /** Q9: display names of the doctors named on invoices (not part of the immutable document or its checksum). */
-async function doctorNames(rows: { doctorId?: string }[]): Promise<Record<string, string>> {
+export async function doctorNames(rows: { doctorId?: string }[]): Promise<Record<string, string>> {
   const ids = [...new Set(rows.map((r) => r.doctorId).filter((d): d is string => !!d && /^[0-9a-fA-F]{24}$/.test(d)))];
   if (!ids.length) return {};
   const sps = await SpecialistModel.find({ _id: { $in: ids } }).select({ name: 1 }).lean() as { _id: unknown; name?: string }[];
-  return Object.fromEntries(sps.filter((s) => s.name).map((s) => [String(s._id), String(s.name)]));
+  const byId = Object.fromEntries(sps.filter((s) => s.name).map((s) => [String(s._id).toLowerCase(), String(s.name)]));
+  // Keys in any letter case the invoices carry (ids are case-insensitive hex; the stored invoice is never rewritten).
+  return Object.fromEntries(rows.map((r) => r.doctorId).filter((d): d is string => !!d && !!byId[d.toLowerCase()]).map((d) => [d, byId[d.toLowerCase()]!]));
 }
 
 export type GstRate = 0 | 5 | 12 | 18 | 28;
