@@ -157,7 +157,7 @@ const userSchema = new Schema<IUser>(
     },
     createdSource: {
       type: String,
-      enum: ['self_signup', 'pharmacy_app'],
+      enum: ['self_signup', 'pharmacy_app', 'partner_invoice'],
       default: 'self_signup',
       index: true,
     },
@@ -186,6 +186,13 @@ const userSchema = new Schema<IUser>(
 
 // Compound indexes for efficient queries
 userSchema.index({ phone: 1, userType: 1 });
+// Q2 §6a: one account per phone and user type. Phone-less (email-only) accounts are outside the filter. Built at deploy by
+// sync-indexes only after scripts/q2UserPhoneIndex.ts reports no duplicates; the walk-in resolver refuses to run until
+// this index is ready.
+userSchema.index(
+  { phone: 1, userType: 1 },
+  { name: 'q2_user_phone_unique', unique: true, partialFilterExpression: { phone: { $type: 'string' } } }
+);
 userSchema.index({ email: 1, userType: 1 });
 userSchema.index({ corporateEmail: 1, userType: 1 });
 userSchema.index({ corporateId: 1, userType: 1 });

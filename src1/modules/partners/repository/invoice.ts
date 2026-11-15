@@ -19,14 +19,7 @@ export class InvoiceRepository extends BaseRepository<IInvoice> {
   async findByCustomerUserId(userId: string): Promise<IInvoice[]> {
     return this.findAll(
       { 'customer.userId': userId },
-      { sort: { issuedAt: -1 } }
-    );
-  }
-
-  async findByCustomerPhone(phone: string): Promise<IInvoice[]> {
-    return this.findAll(
-      { 'customer.phone': phone },
-      { sort: { issuedAt: -1 } }
+      { sort: { issuedAt: -1 }, limit: 200 }
     );
   }
 
@@ -34,14 +27,17 @@ export class InvoiceRepository extends BaseRepository<IInvoice> {
     return this.findOne({ partnerId, idempotencyKey: key });
   }
 
-  async casLifecycleVersion(
+  /** Compare-and-set on partner, lifecycle version and state. */
+  async casLifecycle(
+    partnerId: string,
     invoiceId: string,
     expectedVersion: number,
+    expectedState: string,
     newState: string,
     session: ClientSession
   ): Promise<IInvoice | null> {
     return InvoiceModel.findOneAndUpdate(
-      { _id: invoiceId, lifecycleVersion: expectedVersion },
+      { _id: invoiceId, partnerId, lifecycleVersion: expectedVersion, lifecycleState: expectedState },
       { $set: { lifecycleVersion: expectedVersion + 1, lifecycleState: newState } },
       { new: true, session }
     ).lean();

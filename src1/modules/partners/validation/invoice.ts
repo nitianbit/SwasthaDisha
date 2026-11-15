@@ -1,17 +1,17 @@
 import Joi from 'joi';
 
 const objectIdPattern = /^[0-9a-fA-F]{24}$/;
-const phonePattern = /^[0-9]{10}$/;
+const phonePattern = /^(\+91|91|0)?[0-9]{10}$/;
 
 export const createInvoiceSchema = Joi.object({
-  branchId: Joi.string().pattern(objectIdPattern).optional(),
+  branchId: Joi.string().pattern(objectIdPattern).required(),
   customer: Joi.object({
     name: Joi.string().trim().min(1).max(200).required(),
     phone: Joi.string().pattern(phonePattern).optional(),
-    gstin: Joi.string().trim().optional(),
+    gstin: Joi.string().trim().uppercase().pattern(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/).optional(),
     age: Joi.number().integer().min(0).max(150).optional(),
     gender: Joi.string().valid('male', 'female', 'other').optional(),
-    placeOfSupply: Joi.string().trim().max(5).optional(),
+    placeOfSupply: Joi.string().pattern(/^[0-9]{2}$/).optional(),
   }).required(),
   doctorId: Joi.string().pattern(objectIdPattern).optional(),
   items: Joi.array().items(
@@ -20,12 +20,12 @@ export const createInvoiceSchema = Joi.object({
       description: Joi.string().trim().min(1).max(500).required(),
       hsn: Joi.string().trim().max(20).optional(),
       sac: Joi.string().trim().max(20).optional(),
-      qty: Joi.number().integer().min(1).required(),
-      unitPriceMinor: Joi.number().integer().min(0).required(),
+      qty: Joi.number().integer().min(1).max(10000).required(),
+      unitPriceMinor: Joi.number().integer().min(0).max(100_000_000_00).required(),
       discountMinor: Joi.number().integer().min(0).optional(),
       gstRate: Joi.number().valid(0, 5, 12, 18, 28).required(),
     })
-  ).min(1).required(),
+  ).min(1).max(100).required(),
   idempotencyKey: Joi.string().trim().min(1).max(100).required(),
 });
 
@@ -45,4 +45,11 @@ export const invoiceParamSchema = Joi.object({
 
 export const invoiceQuerySchema = Joi.object({
   state: Joi.string().valid('issued', 'paid', 'cancelled').optional(),
+  branchId: Joi.string().pattern(objectIdPattern).optional(),
+  limit: Joi.number().integer().min(1).max(200).optional(),
+  before: Joi.date().iso().optional(),
+});
+
+export const invoicePdfQuerySchema = Joi.object({
+  version: Joi.number().integer().min(0).optional(),
 });

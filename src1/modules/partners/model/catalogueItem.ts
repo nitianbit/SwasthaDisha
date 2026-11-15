@@ -26,6 +26,6 @@ const catalogueItemSchema = new Schema<ICatalogueItem>(
 catalogueItemSchema.index({ partnerId: 1, isActive: 1 });
 catalogueItemSchema.index({ partnerId: 1, kind: 1, isActive: 1 });
 
-const CatalogueItemModel: Model<ICatalogueItem> = model<ICatalogueItem>('CatalogueItem', catalogueItemSchema);
+const CatalogueItemModel: Model<ICatalogueItem> = model<ICatalogueItem>('PartnerCatalogueItem', catalogueItemSchema, 'partner_catalogue_items');
 
 export default CatalogueItemModel;

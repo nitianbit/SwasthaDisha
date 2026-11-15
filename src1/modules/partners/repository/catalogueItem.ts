@@ -10,17 +10,17 @@ export class CatalogueItemRepository extends BaseRepository<ICatalogueItem> {
     super(CatalogueItemModel as Model<ICatalogueItem>);
   }
 
-  async findActiveByPartner(partnerId: string): Promise<ICatalogueItem[]> {
-    return this.findAll(
-      { partnerId, isActive: true, adminDisabled: false },
-      { sort: { name: 1 } }
-    );
+  /** The partner's own view: active items, including any an admin disabled (shown flagged). */
+  async findActiveByPartner(partnerId: string, kind?: string): Promise<ICatalogueItem[]> {
+    return this.findAll({ partnerId, isActive: true, ...(kind ? { kind } : {}) }, { sort: { name: 1 } });
   }
 
   async findActiveByPartnerAndKind(partnerId: string, kind: string): Promise<ICatalogueItem[]> {
-    return this.findAll(
-      { partnerId, kind, isActive: true, adminDisabled: false },
-      { sort: { name: 1 } }
-    );
+    return this.findActiveByPartner(partnerId, kind);
+  }
+
+  /** What customers may book or be billed for: active and not admin-disabled. */
+  async findOfferedByPartner(partnerId: string, kind?: string): Promise<ICatalogueItem[]> {
+    return this.findAll({ partnerId, isActive: true, adminDisabled: { $ne: true }, ...(kind ? { kind } : {}) }, { sort: { name: 1 } });
   }
 }

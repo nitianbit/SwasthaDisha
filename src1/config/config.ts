@@ -56,6 +56,8 @@ export const CONFIG: ISettings = {
   SMS_PASSWORD: process.env.SMS_PASSWORD,
   SMS_FROM: process.env.SMS_FROM,
   SMS_TEMPLATE_ID: process.env.SMS_TEMPLATE_ID,
+  // Q2: DLT-registered template for the walk-in bill notice; unset = the notice is not sent.
+  SMS_TEMPLATE_ID_PARTNER_BILL: process.env.SMS_TEMPLATE_ID_PARTNER_BILL,
   SMS_PE_ID: process.env.SMS_PE_ID,
   SMS_COOKIE: process.env.SMS_COOKIE,
   

@@ -73,6 +73,8 @@ export const authenticate = async (
     await admitCustomerToken(req.user);
     // D4: a web-session token only while its session is live (logout / revocation are immediate).
     await admitSessionToken(req.user);
+    // Q1: a partner token is admitted only while its member + parent partner are active.
+    await admitPartnerToken(req.user);
   } catch (error) {
     next(error);
     return;
@@ -105,6 +107,7 @@ export const authenticateOptional = async (
     }
     await admitCustomerToken(req.user);
     await admitSessionToken(req.user);
+    await admitPartnerToken(req.user);
   } catch (error) {
     next(error);
     return;
@@ -472,7 +475,7 @@ export const requireOperationalPartner = async (
   }
 };
 
-export const requirePartnerPermission = (...perms: PartnerPermission[]) => {
+const partnerPermissionGuard = (mode: 'all' | 'any', perms: PartnerPermission[]) => {
   return async (req: AuthRequest, _res: Response, next: NextFunction): Promise<void> => {
     try {
       if (!req.user) {
@@ -490,14 +493,42 @@ export const requirePartnerPermission = (...perms: PartnerPermission[]) => {
         return next();
       }
       const memberPerms: string[] = (member as any).permissions || [];
-      const missing = perms.filter(p => !memberPerms.includes(p));
-      if (missing.length > 0) {
-        throw new AppError({ status: 403, code: 'INSUFFICIENT_PERMISSIONS', message: `Missing permissions: ${missing.join(', ')}` });
+      const ok = mode === 'all' ? perms.every((p) => memberPerms.includes(p)) : perms.some((p) => memberPerms.includes(p));
+      if (!ok) {
+        throw new AppError({ status: 403, code: 'INSUFFICIENT_PERMISSIONS', message: `Missing permissions: ${perms.join(mode === 'all' ? ', ' : ' or ')}` });
       }
       next();
     } catch (error) {
       next(error);
     }
+  };
+};
+
+/** Every listed permission (owners hold all). */
+export const requirePartnerPermission = (...perms: PartnerPermission[]) => partnerPermissionGuard('all', perms);
+/** At least one of the listed permissions (owners hold all). */
+export const requireAnyPartnerPermission = (...perms: PartnerPermission[]) => partnerPermissionGuard('any', perms);
+
+async function admitPartnerToken(claims: { userType?: string; memberId?: string; _id?: string } | undefined): Promise<void> {
+  if (!claims || claims.userType !== 'partner') return;
+  const memberId = claims.memberId || claims._id;
+  if (!memberId) throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Please sign in again' });
+  const member = await MemberModel.findById(memberId).select('partnerId isActive').lean();
+  if (!member || (member as any).isActive === false) {
+    throw new AppError({ status: 401, code: 'PARTNER_MEMBER_REVOKED', message: 'Partner membership has been revoked' });
+  }
+  const partner = await PartnerModel.findById((member as any).partnerId).select('isActive').lean();
+  if (!partner || (partner as any).isActive === false) {
+    throw new AppError({ status: 401, code: 'PARTNER_SUSPENDED', message: 'Partner organisation is inactive' });
+  }
+}
+
+export const denyRoles = (...blocked: string[]) => {
+  return (req: AuthRequest, _res: Response, next: NextFunction): void => {
+    if (req.user && blocked.includes(req.user.userType)) {
+      return next(new AppError({ status: 403, code: 'ROLE_NOT_ALLOWED', message: 'This endpoint is not available for your account type' }));
+    }
+    next();
   };
 };
 

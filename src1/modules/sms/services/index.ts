@@ -10,11 +10,13 @@ export interface SendSMSPayload {
   peId?: string;
 }
 
-export type SMSType = 'otp';
+export type SMSType = 'otp' | 'partner_bill';
 
 export interface BuildSMSContentPayload {
   otp?: string;
   expiryMinutes?: number;
+  supplierName?: string;
+  serial?: string;
 }
 
 @Service()
@@ -42,6 +44,12 @@ export class SMSService {
         return {
           text: `Your OTP for verification on MyEwaCare, a service of EWA Healthcare Solutions, is ${payload.otp}. This OTP is valid for ${payload.expiryMinutes} minutes. Do not share this OTP with anyone.`,
           templateId: CONFIG.SMS_TEMPLATE_ID,
+        };
+      case 'partner_bill':
+        // No health details and no document link: the bill is reached by signing in to the app with this number.
+        return {
+          text: `Your bill ${payload.serial} from ${payload.supplierName} is in the SwasthaDisha app. Sign in with this mobile number to view it.`,
+          templateId: CONFIG.SMS_TEMPLATE_ID_PARTNER_BILL,
         };
       default:
         throw new AppError({

@@ -2,63 +2,76 @@ import 'reflect-metadata';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { AuthRequest } from '@/modules/middleware/auth';
+import { AppError } from '@/modules/common/types';
 import { InvoiceService } from '@/modules/partners/services/invoice';
-import MemberModel from '@/modules/partners/model/member';
+import { actorOf } from '@/modules/partners/controller';
 
 const service = () => Container.get(InvoiceService);
 
-async function callerPartnerId(req: AuthRequest): Promise<string> {
-  const memberId = req.user!.memberId!;
-  const member = await MemberModel.findById(memberId).select('partnerId').lean();
-  return String((member as any)?.partnerId);
-}
+const sendPdf = (res: Response, out: { pdf: Buffer; fileName: string }) => {
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `inline; filename="${out.fileName}"`);
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.status(200).send(out.pdf);
+};
+const versionOf = (req: Request) => (req.query.version === undefined ? undefined : Number(req.query.version));
+
+// ── Partner workspace (members and admins acting as owner) ──
 
 export const createInvoice = async (req: Request, res: Response, _next: NextFunction) => {
-  const partnerId = await callerPartnerId(req as AuthRequest);
-  const data = await service().createInvoice({
-    partnerId,
-    branchId: req.body.branchId,
-    customer: req.body.customer,
-    doctorId: req.body.doctorId,
-    items: req.body.items,
-    idempotencyKey: req.body.idempotencyKey,
-    createdBy: (req as AuthRequest).user!._id,
-  });
+  const data = await service().createInvoice(actorOf(req), req.body);
   res.status(201).json({ success: true, data });
 };
 
-export const recordPayment = async (req: Request, res: Response, _next: NextFunction) => {
-  const result = await service().recordPayment(
-    req.params.invoiceId,
-    req.body,
-    (req as AuthRequest).user!._id
-  );
-  res.status(200).json({ success: true, data: result });
-};
-
-export const cancelInvoice = async (req: Request, res: Response, _next: NextFunction) => {
-  const result = await service().cancelInvoice(
-    req.params.invoiceId,
-    req.body.reason,
-    (req as AuthRequest).user!._id
-  );
-  res.status(200).json({ success: true, data: result });
+export const listPartnerInvoices = async (req: Request, res: Response, _next: NextFunction) => {
+  const data = await service().listInvoices(actorOf(req), {
+    state: req.query.state as any,
+    branchId: req.query.branchId as string | undefined,
+    limit: req.query.limit ? Number(req.query.limit) : undefined,
+    before: req.query.before ? new Date(String(req.query.before)) : undefined,
+  });
+  res.status(200).json({ success: true, data });
 };
 
 export const getInvoice = async (req: Request, res: Response, _next: NextFunction) => {
-  const data = await service().getInvoiceWithEvents(req.params.invoiceId);
+  const data = await service().getInvoice(actorOf(req), req.params.invoiceId);
   res.status(200).json({ success: true, data });
 };
 
-export const listPartnerInvoices = async (req: Request, res: Response, _next: NextFunction) => {
-  const partnerId = await callerPartnerId(req as AuthRequest);
-  const state = req.query.state as string | undefined;
-  const data = await service().listPartnerInvoices(partnerId, state);
+export const getInvoicePdf = async (req: Request, res: Response, _next: NextFunction) => {
+  sendPdf(res, await service().pdfForActor(actorOf(req), req.params.invoiceId, versionOf(req)));
+};
+
+export const recordPayment = async (req: Request, res: Response, _next: NextFunction) => {
+  const data = await service().recordPayment(actorOf(req), req.params.invoiceId, req.body);
   res.status(200).json({ success: true, data });
 };
+
+export const cancelInvoice = async (req: Request, res: Response, _next: NextFunction) => {
+  const data = await service().cancelInvoice(actorOf(req), req.params.invoiceId, req.body.reason);
+  res.status(200).json({ success: true, data });
+};
+
+// ── Customer "Bills" ──
+
+function customerId(req: Request): string {
+  const user = (req as AuthRequest).user;
+  if (!user || user.userType !== 'user') {
+    throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Individual customer access required' });
+  }
+  return String(user._id);
+}
 
 export const listCustomerBills = async (req: Request, res: Response, _next: NextFunction) => {
-  const userId = (req as AuthRequest).user!._id;
-  const data = await service().listCustomerBills(userId);
+  const data = await service().listCustomerBills(customerId(req));
   res.status(200).json({ success: true, data });
+};
+
+export const getCustomerBill = async (req: Request, res: Response, _next: NextFunction) => {
+  const data = await service().getCustomerBill(customerId(req), req.params.invoiceId);
+  res.status(200).json({ success: true, data });
+};
+
+export const getCustomerBillPdf = async (req: Request, res: Response, _next: NextFunction) => {
+  sendPdf(res, await service().pdfForCustomer(customerId(req), req.params.invoiceId, versionOf(req)));
 };

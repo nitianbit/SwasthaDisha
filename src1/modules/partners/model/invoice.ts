@@ -19,7 +19,7 @@ const invoiceLineSchema = new Schema(
 const invoiceSchema = new Schema<IInvoice>(
   {
     partnerId: { type: String, required: true, index: true },
-    branchId: { type: String },
+    branchId: { type: String, required: true },
     number: { type: Number, required: true },
     financialYear: { type: String, required: true },
     serial: { type: String, required: true },
@@ -34,7 +34,7 @@ const invoiceSchema = new Schema<IInvoice>(
       legalName: { type: String, trim: true },
       gstin: { type: String, trim: true },
       pan: { type: String, trim: true },
-      address: { type: String, trim: true },
+      address: { type: String, required: true, trim: true },
       placeOfSupply: { type: String, required: true, trim: true },
     },
     customer: {
@@ -68,17 +68,19 @@ const invoiceSchema = new Schema<IInvoice>(
     createdBy: { type: String, required: true },
     checksum: { type: String, required: true },
     idempotencyKey: { type: String, required: true },
+    requestHash: { type: String, required: true },
   },
   { timestamps: true }
 );
 
 invoiceSchema.index({ partnerId: 1, financialYear: 1, number: 1 }, { unique: true });
 invoiceSchema.index({ partnerId: 1, idempotencyKey: 1 }, { unique: true });
-invoiceSchema.index({ partnerId: 1, lifecycleState: 1 });
-invoiceSchema.index({ 'customer.userId': 1, lifecycleState: 1 });
+invoiceSchema.index({ partnerId: 1, lifecycleState: 1, issuedAt: -1 });
+invoiceSchema.index({ partnerId: 1, branchId: 1, issuedAt: -1 });
+invoiceSchema.index({ 'customer.userId': 1, issuedAt: -1 });
 invoiceSchema.index({ 'customer.phone': 1, lifecycleState: 1 });
 
-export const InvoiceModel: Model<IInvoice> = model<IInvoice>('Invoice', invoiceSchema);
+export const InvoiceModel: Model<IInvoice> = model<IInvoice>('PartnerInvoice', invoiceSchema, 'partner_invoices');
 
 // ── InvoiceEvent ──
 
@@ -92,13 +94,14 @@ const invoiceEventSchema = new Schema<IInvoiceEvent>(
     note: { type: String, trim: true },
     at: { type: Date, required: true },
     by: { type: String, required: true },
+    byKind: { type: String, required: true, enum: ['member', 'admin'] },
   },
   { timestamps: true }
 );
 
 invoiceEventSchema.index({ invoiceId: 1, kind: 1 }, { unique: true });
 
-export const InvoiceEventModel: Model<IInvoiceEvent> = model<IInvoiceEvent>('InvoiceEvent', invoiceEventSchema);
+export const InvoiceEventModel: Model<IInvoiceEvent> = model<IInvoiceEvent>('PartnerInvoiceEvent', invoiceEventSchema, 'partner_invoice_events');
 
 // ── InvoiceCounter ──
 
@@ -113,4 +116,4 @@ const invoiceCounterSchema = new Schema<IInvoiceCounter>(
 
 invoiceCounterSchema.index({ partnerId: 1, financialYear: 1 }, { unique: true });
 
-export const InvoiceCounterModel: Model<IInvoiceCounter> = model<IInvoiceCounter>('InvoiceCounter', invoiceCounterSchema);
+export const InvoiceCounterModel: Model<IInvoiceCounter> = model<IInvoiceCounter>('PartnerInvoiceCounter', invoiceCounterSchema, 'partner_invoice_counters');

@@ -25,6 +25,14 @@ export const partnerBranchParamSchema = Joi.object({
   branchId: Joi.string().pattern(objectIdPattern).required(),
 });
 
+export const memberIdParamSchema = Joi.object({
+  memberId: Joi.string().pattern(objectIdPattern).required(),
+});
+
+export const branchIdParamSchema = Joi.object({
+  branchId: Joi.string().pattern(objectIdPattern).required(),
+});
+
 const dayHoursSchema = Joi.object({
   open: Joi.string().pattern(/^([01]\d|2[0-3]):[0-5]\d$/).required(),
   close: Joi.string().pattern(/^([01]\d|2[0-3]):[0-5]\d$/).required(),
@@ -43,14 +51,14 @@ export const createPartnerSchema = Joi.object({
   kind: Joi.string().valid('lab', 'clinic').required(),
   name: Joi.string().trim().min(1).max(200).required(),
   legalName: Joi.string().trim().max(200).optional(),
-  gstin: Joi.string().trim().optional(),
-  pan: Joi.string().trim().optional(),
+  gstin: Joi.string().trim().uppercase().pattern(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/).optional(),
+  pan: Joi.string().trim().uppercase().pattern(/^[A-Z]{5}[0-9]{4}[A-Z]$/).optional(),
   contactPhone: Joi.string().pattern(phonePattern).required().messages({
     'string.pattern.base': 'Contact phone must be exactly 10 digits',
   }),
   contactEmail: Joi.string().email().optional(),
   taxRegime: Joi.string().valid('regular', 'composition', 'unregistered').optional(),
-  invoiceSeriesPrefix: Joi.string().trim().min(1).max(6).required(),
+  invoiceSeriesPrefix: Joi.string().trim().uppercase().pattern(/^[A-Z0-9]{1,6}$/).required(),
   solo: Joi.boolean().optional(),
   firstOwner: Joi.object({
     phone: Joi.string().pattern(phonePattern).required().messages({
@@ -63,12 +71,20 @@ export const createPartnerSchema = Joi.object({
 export const updatePartnerSchema = Joi.object({
   name: Joi.string().trim().min(1).max(200).optional(),
   legalName: Joi.string().trim().max(200).optional(),
-  gstin: Joi.string().trim().optional(),
-  pan: Joi.string().trim().optional(),
+  gstin: Joi.string().trim().uppercase().pattern(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/).optional(),
+  pan: Joi.string().trim().uppercase().pattern(/^[A-Z]{5}[0-9]{4}[A-Z]$/).optional(),
   contactPhone: Joi.string().pattern(phonePattern).optional(),
   contactEmail: Joi.string().email().optional(),
   taxRegime: Joi.string().valid('regular', 'composition', 'unregistered').optional(),
-  invoiceSeriesPrefix: Joi.string().trim().min(1).max(6).optional(),
+  invoiceSeriesPrefix: Joi.string().trim().uppercase().pattern(/^[A-Z0-9]{1,6}$/).optional(),
+  logo: Joi.string().trim().optional(),
+}).min(1);
+
+export const updateMyPartnerSchema = Joi.object({
+  name: Joi.string().trim().min(1).max(200).optional(),
+  legalName: Joi.string().trim().max(200).optional(),
+  contactPhone: Joi.string().pattern(phonePattern).optional(),
+  contactEmail: Joi.string().email().optional(),
   logo: Joi.string().trim().optional(),
 }).min(1);
 

@@ -41,7 +41,7 @@ export interface IUser {
   isActive?: boolean;
   isVerified?: boolean;
   isCorporateEmailVerified?: boolean;
-  createdSource?: 'self_signup' | 'pharmacy_app';
+  createdSource?: 'self_signup' | 'pharmacy_app' | 'partner_invoice';
   createdByRole?: string;
   createdById?: string;
   otpVerified?: boolean;
@@ -82,7 +82,7 @@ export interface CreateUserRequest {
   isActive?: boolean;
   isVerified?: boolean;
   isCorporateEmailVerified?: boolean;
-  createdSource?: 'self_signup' | 'pharmacy_app';
+  createdSource?: 'self_signup' | 'pharmacy_app' | 'partner_invoice';
   createdByRole?: string;
   createdById?: string;
   otpVerified?: boolean;
@@ -121,7 +121,7 @@ export interface UpdateUserRequest {
   isActive?: boolean;
   isVerified?: boolean;
   isCorporateEmailVerified?: boolean;
-  createdSource?: 'self_signup' | 'pharmacy_app';
+  createdSource?: 'self_signup' | 'pharmacy_app' | 'partner_invoice';
   createdByRole?: string;
   createdById?: string;
   otpVerified?: boolean;

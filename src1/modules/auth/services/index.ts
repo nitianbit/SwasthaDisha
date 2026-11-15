@@ -153,7 +153,18 @@ export class AuthService {
       const members = data.phone
         ? await this.memberRepository.findActiveByPhoneAcrossPartners(data.phone)
         : [];
-      userRecord = members.length > 0 ? (members[0] as any) : null;
+      if (members.length > 1 && !data.partnerId) {
+        throw new AppError({
+          status: 400,
+          code: 'PARTNER_SELECTION_REQUIRED',
+          message: 'Multiple partner memberships found; include partnerId to select one',
+        });
+      }
+      if (data.partnerId) {
+        userRecord = (members.find(m => String((m as any).partnerId) === data.partnerId) as any) ?? null;
+      } else {
+        userRecord = members.length > 0 ? (members[0] as any) : null;
+      }
     } else {
       userRecord = await this.userRepository.findByPhoneOrEmail(
         customerIdentity ?? { phone: data.phone, email: data.email },
@@ -327,7 +338,18 @@ export class AuthService {
       const members = data.phone
         ? await this.memberRepository.findActiveByPhoneAcrossPartners(data.phone)
         : [];
-      userRecord = members.length > 0 ? (members[0] as any) : null;
+      if (members.length > 1 && !data.partnerId) {
+        throw new AppError({
+          status: 400,
+          code: 'PARTNER_SELECTION_REQUIRED',
+          message: 'Multiple partner memberships found; include partnerId to select one',
+        });
+      }
+      if (data.partnerId) {
+        userRecord = (members.find(m => String((m as any).partnerId) === data.partnerId) as any) ?? null;
+      } else {
+        userRecord = members.length > 0 ? (members[0] as any) : null;
+      }
     } else {
       userRecord = await this.userRepository.findByPhoneOrEmail(
         customerIdentity ?? { phone: data.phone, email: data.email },

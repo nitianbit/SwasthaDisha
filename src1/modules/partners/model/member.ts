@@ -51,9 +51,12 @@ const memberSchema = new Schema<IMember>(
 );
 
 memberSchema.index({ partnerId: 1, isActive: 1 });
-memberSchema.index({ phone: 1, partnerId: 1 });
+memberSchema.index(
+  { phone: 1, partnerId: 1 },
+  { unique: true, partialFilterExpression: { isActive: true } }
+);
 memberSchema.index({ partnerId: 1, role: 1, isActive: 1 });
 
-const MemberModel: Model<IMember> = model<IMember>('Member', memberSchema);
+const MemberModel: Model<IMember> = model<IMember>('PartnerMember', memberSchema, 'partner_members');
 
 export default MemberModel;

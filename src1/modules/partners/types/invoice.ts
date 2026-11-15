@@ -8,7 +8,8 @@ export interface IInvoiceSupplier {
   legalName?: string;
   gstin?: string;
   pan?: string;
-  address?: string;
+  address: string;
+  /** Two-digit GST state code of the issuing branch. */
   placeOfSupply: string;
 }
 
@@ -48,7 +49,7 @@ export interface IInvoiceTotals {
 export interface IInvoice {
   _id?: string;
   partnerId: string;
-  branchId?: string;
+  branchId: string;
   number: number;
   financialYear: string;
   serial: string;
@@ -64,6 +65,8 @@ export interface IInvoice {
   createdBy: string;
   checksum: string;
   idempotencyKey: string;
+  /** Hash of the request that created the invoice: a reused key with a different request is refused. */
+  requestHash: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -78,6 +81,7 @@ export interface IInvoiceEvent {
   note?: string;
   at: Date;
   by: string;
+  byKind: 'member' | 'admin';
   createdAt?: Date;
 }
 

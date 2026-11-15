@@ -31,6 +31,7 @@ export interface ISettings {
   SMS_PASSWORD?: string;
   SMS_FROM?: string;
   SMS_TEMPLATE_ID?: string;
+  SMS_TEMPLATE_ID_PARTNER_BILL?: string;
   SMS_PE_ID?: string;
   SMS_COOKIE?: string;
   

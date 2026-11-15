@@ -2,71 +2,86 @@ import { Service } from 'typedi';
 import { CatalogueItemRepository } from '@/modules/partners/repository/catalogueItem';
 import { ICatalogueItem, CatalogueItemKind } from '@/modules/partners/types';
 import { AppError } from '@/modules/common/types';
+import { PartnerActor, recordPartnerAudit } from '@/modules/partners/services';
 
+const notFound = () => new AppError({ status: 404, code: 'CATALOGUE_ITEM_NOT_FOUND', message: 'Catalogue item not found' });
+
+export type CatalogueItemInput = {
+  kind: CatalogueItemKind;
+  name: string;
+  code?: string;
+  description?: string;
+  preparation?: string;
+  sampleType?: string;
+  includes?: string[];
+  priceMinor: number;
+  mrpMinor?: number;
+  gstRate: 0 | 5 | 12 | 18 | 28;
+  sac?: string;
+  visitModes: ('home' | 'lab')[];
+  reportTatHours?: number;
+};
+
+/** §4: the partner sets its menu and prices (live at once); admins can disable an item. Catalogue is partner-wide. */
 @Service()
 export class CatalogueService {
   constructor(private catalogueRepo: CatalogueItemRepository) {}
 
-  async createItem(partnerId: string, data: {
-    kind: CatalogueItemKind;
-    name: string;
-    code?: string;
-    description?: string;
-    preparation?: string;
-    sampleType?: string;
-    includes?: string[];
-    priceMinor: number;
-    mrpMinor?: number;
-    gstRate: 0 | 5 | 12 | 18 | 28;
-    sac?: string;
-    visitModes: ('home' | 'lab')[];
-    reportTatHours?: number;
-  }): Promise<ICatalogueItem> {
-    return this.catalogueRepo.save({
+  async createItem(actor: PartnerActor, data: CatalogueItemInput): Promise<ICatalogueItem> {
+    if (data.mrpMinor !== undefined && data.mrpMinor < data.priceMinor) {
+      throw new AppError({ status: 400, code: 'INVALID_MRP', message: 'MRP cannot be below the price' });
+    }
+    const item = await this.catalogueRepo.save({
       ...data,
-      partnerId,
+      partnerId: actor.partnerId,
       isActive: true,
       adminDisabled: false,
     } as Partial<ICatalogueItem>);
+    await recordPartnerAudit(actor, 'catalogue.create', { kind: 'catalogue_item', id: String(item._id) }, { priceMinor: data.priceMinor });
+    return item;
   }
 
-  async updateItem(partnerId: string, itemId: string, data: Partial<ICatalogueItem>): Promise<ICatalogueItem> {
-    const item = await this.catalogueRepo.findById(itemId);
-    if (!item || String(item.partnerId) !== String(partnerId)) {
-      throw new AppError({ status: 404, code: 'CATALOGUE_ITEM_NOT_FOUND', message: 'Catalogue item not found' });
+  async updateItem(actor: PartnerActor, itemId: string, data: Partial<CatalogueItemInput>): Promise<ICatalogueItem> {
+    const item = await this.getItem(actor, itemId);
+    const { kind: _k, ...safe } = data as Partial<CatalogueItemInput>;
+    const price = safe.priceMinor ?? item.priceMinor;
+    const mrp = safe.mrpMinor ?? item.mrpMinor;
+    if (mrp !== undefined && mrp < price) {
+      throw new AppError({ status: 400, code: 'INVALID_MRP', message: 'MRP cannot be below the price' });
     }
-    const { _id, partnerId: _p, isActive: _a, adminDisabled: _d, createdAt: _c, updatedAt: _u, ...safe } = data;
-    const updated = await this.catalogueRepo.update({ _id: itemId }, safe);
-    if (!updated) {
-      throw new AppError({ status: 404, code: 'CATALOGUE_ITEM_NOT_FOUND', message: 'Catalogue item not found' });
-    }
+    const updated = await this.catalogueRepo.update({ _id: itemId, partnerId: actor.partnerId }, { $set: safe });
+    if (!updated) throw notFound();
+    await recordPartnerAudit(actor, 'catalogue.update', { kind: 'catalogue_item', id: itemId }, { fields: Object.keys(safe) });
     return updated;
   }
 
-  async deactivateItem(partnerId: string, itemId: string): Promise<void> {
+  async deactivateItem(actor: PartnerActor, itemId: string): Promise<void> {
+    await this.getItem(actor, itemId);
+    await this.catalogueRepo.update({ _id: itemId, partnerId: actor.partnerId }, { isActive: false });
+    await recordPartnerAudit(actor, 'catalogue.deactivate', { kind: 'catalogue_item', id: itemId });
+  }
+
+  async listItems(actor: PartnerActor, kind?: CatalogueItemKind): Promise<ICatalogueItem[]> {
+    return kind
+      ? this.catalogueRepo.findActiveByPartnerAndKind(actor.partnerId, kind)
+      : this.catalogueRepo.findActiveByPartner(actor.partnerId);
+  }
+
+  async getItem(actor: PartnerActor, itemId: string): Promise<ICatalogueItem> {
     const item = await this.catalogueRepo.findById(itemId);
-    if (!item || String(item.partnerId) !== String(partnerId)) {
-      throw new AppError({ status: 404, code: 'CATALOGUE_ITEM_NOT_FOUND', message: 'Catalogue item not found' });
-    }
-    await this.catalogueRepo.update({ _id: itemId }, { isActive: false });
-  }
-
-  async adminDisableItem(itemId: string): Promise<void> {
-    await this.catalogueRepo.update({ _id: itemId }, { adminDisabled: true });
-  }
-
-  async listItems(partnerId: string, kind?: CatalogueItemKind): Promise<ICatalogueItem[]> {
-    if (kind) {
-      return this.catalogueRepo.findActiveByPartnerAndKind(partnerId, kind);
-    }
-    return this.catalogueRepo.findActiveByPartner(partnerId);
-  }
-
-  async getItem(partnerId: string, itemId: string): Promise<ICatalogueItem> {
-    const item = await this.catalogueRepo.findById(itemId);
-    if (!item || String(item.partnerId) !== String(partnerId)) {
-      throw new AppError({ status: 404, code: 'CATALOGUE_ITEM_NOT_FOUND', message: 'Catalogue item not found' });
-    }
+    if (!item || String(item.partnerId) !== actor.partnerId) throw notFound();
     return item;
+  }
+
+  /** Admin-only switch the partner cannot undo. */
+  async setAdminDisabled(adminId: string, itemId: string, disabled: boolean): Promise<ICatalogueItem> {
+    const item = await this.catalogueRepo.findById(itemId);
+    if (!item) throw notFound();
+    const updated = await this.catalogueRepo.update({ _id: itemId }, { adminDisabled: disabled });
+    await recordPartnerAudit(
+      { memberId: `admin:${adminId}`, partnerId: String(item.partnerId), role: 'owner', permissions: [], branchIds: [], actorKind: 'admin' },
+      disabled ? 'catalogue.admin_disable' : 'catalogue.admin_enable', { kind: 'catalogue_item', id: itemId }
+    );
+    return updated!;
   }
 }
