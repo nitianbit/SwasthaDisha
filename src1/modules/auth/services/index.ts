@@ -12,7 +12,7 @@ import { CorporateRepository } from '@/modules/corporates/repository';
 import { AppError } from '@/modules/common/types';
 import { selectCustomerLoginContact } from '@/modules/auth/validation';
 import { OTPService } from '@/modules/otp/services';
-import { hit as otpLimit, limits as otpLimits, throttleId } from '@/modules/otp/throttle';
+import { destinationId, hit as otpLimit, limits as otpLimits, throttleId } from '@/modules/otp/throttle';
 import { AdminRepository } from '@/modules/admin/repository';
 import { IAdmin } from '@/modules/admin/types';
 import { HRRepository } from '@/modules/hr/repository';
@@ -121,7 +121,7 @@ export class AuthService {
     // O1: limited per destination before anything happens (no lookup, no sign-up row, no SMS).
     const sendTarget = customerContact?.target ?? (data.phone ? 'phone' : 'email');
     const sendValue = customerContact?.targetValue ?? (data.phone?.trim() || data.email?.trim().toLowerCase() || '');
-    await otpLimit('send', throttleId(`login|${data.userType}|${sendTarget}|${sendValue}`), otpLimits.send());
+    await otpLimit('send', destinationId(sendTarget, sendValue), otpLimits.send());
 
     const otp = randomInt(100000, 1000000).toString();
 
@@ -516,7 +516,8 @@ export class AuthService {
       }
     }
 
-    await otpLimit('send', throttleId(`email|${userId}|${normalizedEmail}`), otpLimits.send());
+    await otpLimit('send-account', throttleId(`account|${userId}`), otpLimits.sendAccount());
+    await otpLimit('send', destinationId('email', normalizedEmail), otpLimits.send());
     const otp = randomInt(100000, 1000000).toString();
     await this.otpService.createOTP({
       userId,
@@ -704,7 +705,8 @@ export class AuthService {
       });
     }
 
-    await otpLimit('send', throttleId(`email|${userId}|${normalizedEmail}`), otpLimits.send());
+    await otpLimit('send-account', throttleId(`account|${userId}`), otpLimits.sendAccount());
+    await otpLimit('send', destinationId('email', normalizedEmail), otpLimits.send());
     const otp = randomInt(100000, 1000000).toString();
     await this.otpService.createOTP({
       userId,

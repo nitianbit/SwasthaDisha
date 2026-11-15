@@ -11,6 +11,13 @@ const keyMaterial = () => createHash('sha256').update(`${CONFIG.JWT_SECRET_KEY}:
 /** A stable, non-reversible name for an identity (phone/email/user id) or client address. */
 export const throttleId = (value: string) => createHmac('sha256', keyMaterial()).update(value).digest('base64url').slice(0, 32);
 
+/**
+ * The one counter name of a destination (a phone number or an email address), shared by every account, role and
+ * purpose that sends to it or checks a code sent to it (Codex O1 review): no caller gets a budget of its own.
+ */
+export const destinationId = (target: 'phone' | 'email', value: string) =>
+  throttleId(`dest|${target}|${target === 'email' ? value.trim().toLowerCase() : value.trim().replace(/\s+/g, '')}`);
+
 async function bump(id: string, expireAt: Date): Promise<number> {
   for (let attempt = 0; ; attempt++) {
     try {
@@ -72,6 +79,8 @@ export const limits = {
     { seconds: 3600, max: CONFIG.OTP_SEND_PER_HOUR },
     { seconds: 86400, max: CONFIG.OTP_SEND_PER_DAY },
   ],
+  /** One signed-in account asking for email-verification codes, whatever the addresses: 10 per hour, 20 per day. */
+  sendAccount: (): Window[] => [{ seconds: 3600, max: 10 }, { seconds: 86400, max: 20 }],
   /** Checking codes for one identity, across all its codes: 10 per hour, 20 per day. */
   verify: (): Window[] => [
     { seconds: 3600, max: CONFIG.OTP_VERIFY_PER_HOUR },

@@ -34,7 +34,8 @@ const smsService = { buildSMSContent: (_t: string, p: { otp: string }) => ({ tex
 const emailService = { sendEmail: async (m: { to: string[]; textBody: string }) => { mails.push(m); return { success: true, data: null }; } };
 const userRepository = new UserRepository();
 const otpService = new OTPService(new OTPRepository());
-const auth = new (AuthService as unknown as new (...a: unknown[]) => AuthService)(userRepository, {}, {}, {}, new PharmacyRepository(), {},
+const corporateRepository = { findOne: async () => ({ _id: 'c0'.repeat(12), domain: 'corp.example', isActive: true }) };
+const auth = new (AuthService as unknown as new (...a: unknown[]) => AuthService)(userRepository, {}, {}, {}, new PharmacyRepository(), corporateRepository,
   otpService, { getByUserId: async () => ({}) },
   new NotificationService(new NotificationRepository(), userRepository, {} as never), emailService, smsService);
 
@@ -206,6 +207,49 @@ async function main() {
         (e: { status?: number; code?: string }) => e.status === 429 && e.code === 'OTP_ATTEMPTS_EXCEEDED');
       await assert.rejects(auth.verifyEmailVerificationOTP(String(u._id), { email, otp: code } as never),
         (e: { status?: number }) => e.status === 429);
+    });
+
+    await check('one destination, one budget: other accounts and roles get no fresh send allowance (Codex O1 #2)', async () => {
+      const a = await UserModel.create({ phone: nextPhone(), userType: 'user', isActive: true });
+      const b = await UserModel.create({ phone: nextPhone(), userType: 'user', isActive: true });
+      const target = `victim-${Date.now()}@corp.example`;
+      await auth.sendCorporateEmailVerificationOTP(String(a._id), { corporateEmail: target } as never);
+      await assert.rejects(auth.sendCorporateEmailVerificationOTP(String(b._id), { corporateEmail: target } as never),
+        (e: { status?: number; code?: string }) => e.status === 429 && e.code === 'OTP_SEND_LIMIT');
+      await assert.rejects(auth.sendEmailVerificationOTP(String(b._id), { email: target.toUpperCase() } as never),
+        (e: { status?: number }) => e.status === 429); // another purpose, same address (any case)
+      // Login: the same phone through another role shares the budget too.
+      const phone = nextPhone();
+      assert.equal((await send(phone, 'user')).status, 200);
+      assert.equal((await send(phone, 'pharmacy')).status, 429);
+    });
+
+    await check('one account cannot spray codes to many addresses: 10 email-verification sends an hour', async () => {
+      const u = await UserModel.create({ phone: nextPhone(), userType: 'user', isActive: true });
+      for (let i = 0; i < 10; i++) await auth.sendCorporateEmailVerificationOTP(String(u._id), { corporateEmail: `s${i}-${Date.now()}@corp.example` } as never);
+      await assert.rejects(auth.sendCorporateEmailVerificationOTP(String(u._id), { corporateEmail: `s10-${Date.now()}@corp.example` } as never),
+        (e: { status?: number; code?: string }) => e.status === 429 && e.code === 'OTP_SEND_LIMIT');
+    });
+
+    await check('checks are counted on the code\'s own destination: naming it or leaving it out shares one budget (Codex O1 #1)', async () => {
+      const u = await UserModel.create({ phone: nextPhone(), userType: 'user', isActive: true });
+      const email = `both-${Date.now()}@corp.example`;
+      const id = String(u._id);
+      const results: number[] = [];
+      for (let round = 0; round < 3; round++) {
+        await OtpThrottleModel.deleteMany({ _id: /^send:/ });
+        await auth.sendCorporateEmailVerificationOTP(id, { corporateEmail: email } as never);
+        const code = /(\d{6})/.exec(mails[mails.length - 1]!.textBody)![1]!;
+        for (let i = 0; i < 4; i++) {
+          const named = i % 2 === 0;
+          const status = await auth.verifyCorporateEmailVerificationOTP(id,
+            { otp: wrong(code), ...(named ? { corporateEmail: email } : {}) } as never).then(() => 200, (e: { status?: number }) => e.status ?? 500);
+          results.push(status);
+        }
+      }
+      // 12 checks across 3 codes, alternating named/omitted: the first 10 are judged (404), the rest refused (429).
+      assert.deepEqual(results.slice(0, 10), Array(10).fill(404));
+      assert.deepEqual(results.slice(10), [429, 429]);
     });
 
     await check('per-address limits are off by default and, when on, limit one address across numbers', async () => {

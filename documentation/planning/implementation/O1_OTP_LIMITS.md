@@ -1,6 +1,6 @@
 # O1 — OTP attempt and send limits (2026-11-15)
 
-Status: built on `m0/o1-otp-limits` (on `m0/d4-cookie-sessions`). Decided by Claude while the owner was away
+Status: revised after Codex review msg_1794723005981 (counters per destination, not per caller). Built on `m0/o1-otp-limits` (on `m0/d4-cookie-sessions`). Decided by Claude while the owner was away
 ("take all decisions"); reviewed by Codex.
 
 ## Problem
@@ -21,13 +21,18 @@ account rows: an unknown number creates a customer/pharmacy on send).
 - Only the destination's newest pending code (highest `_id`) is checked; sending a new code deletes the older pending
   ones. A wrong code keeps today's answer (`404 OTP_NOT_FOUND`) with "Incorrect code. N attempts left.".
 
-**Per destination** (`otp_throttles`, fixed windows, atomic `$inc`, TTL; keys are HMACs, never a phone number/email):
+**Per destination** (`otp_throttles`, fixed windows, atomic `$inc`, TTL; keys are HMACs, never a phone number/email).
+One counter per phone number / email address, shared by every account, role and purpose (login, personal and
+corporate email verification); a check is counted on the code's own stored destination, never on what the caller
+typed (Codex review msg_1794723005981):
 - Send: 1 per 30 s, 5 per hour, 10 per day (`OTP_SEND_PER_HOUR`, `OTP_SEND_PER_DAY`). Checked before anything else:
   no lookup, no sign-up row, no SMS. A send refused by the 30 s gap does not use up the hourly/daily allowance.
 - Check: 10 per hour, 20 per day across all codes (`OTP_VERIFY_PER_HOUR`, `OTP_VERIFY_PER_DAY`). So with resends an
   attacker gets at most 20 guesses a day per account (1 in 45,000), not 5 per code.
 - Refusals: `429 OTP_SEND_LIMIT` / `OTP_VERIFY_LIMIT`, `Retry-After` header and `retryAfter` in the body.
 - The same limits apply to the personal and corporate email-verification codes (same OTP service).
+- One signed-in account may also request at most 10 email-verification codes an hour / 20 a day, whatever the
+  addresses (no spraying codes to many mailboxes).
 
 **Per client address** (optional): `OTP_IP_LIMITS=true` adds 30 sends / 60 checks per hour per address on the public
 login routes. Off by default: behind a proxy every client would share the proxy's address. Set `TRUST_PROXY` (e.g. `1`)
@@ -50,7 +55,8 @@ first so `req.ip` is the client.
 
 ## Tests
 
-`test/otp-limits/o1-otp-limits.integration.ts` (11): hashed storage; 5 wrong codes burn the code; 40 parallel guesses
+`test/otp-limits/o1-otp-limits.integration.ts` (14): hashed storage; 5 wrong codes burn the code; 40 parallel guesses
 spend at most 5 attempts and never sign in; per-destination check limit across codes; newest code only; send gap and
 hourly limit with `Retry-After`, no SMS, no account for a refused unknown number; HMAC'd TTL counters; legacy rows;
-email verification limits; per-address limits off by default and working when on.
+email verification limits; one budget per destination across accounts, roles and purposes; per-account send limit;
+named vs omitted destination share one check budget; per-address limits off by default and working when on.

@@ -4,7 +4,7 @@ import { OTPRepository } from '@/modules/otp/repository';
 import { IOTP, CreateOTPRequest, VerifyOTPRequest } from '@/modules/otp/types';
 import { AppError } from '@/modules/common/types';
 import { CONFIG } from '@/config/config';
-import { hit, limits, throttleId } from '@/modules/otp/throttle';
+import { destinationId, hit, limits } from '@/modules/otp/throttle';
 
 const hashKey = () => createHash('sha256').update(`${CONFIG.JWT_SECRET_KEY}:o1-otp-hash-v1`).digest();
 /** The stored proof of a code: bound to its user and destination, so a row can never verify another identity. */
@@ -59,13 +59,12 @@ export class OTPService {
 
   /**
    * O1: checks a code against the destination's newest pending code. Every check spends one of the code's
-   * OTP_MAX_ATTEMPTS (atomically, before comparing), and counts toward the destination's hourly/daily check limit, so a
+   * OTP_MAX_ATTEMPTS (atomically, before comparing), and counts toward the destination's hourly/daily check limit
+   * (shared by every account, role and purpose), so a
    * 6-digit code cannot be guessed by parallel or repeated requests. A burnt code answers 429; request a new one.
    */
   async verifyOTP(data: VerifyOTPRequest): Promise<IOTP> {
     const userId = String(data.userId);
-    await hit('verify', throttleId(`verify|${userId}|${data.target}|${data.targetValue ?? ''}`), limits.verify());
-
     const pending = await this.otpRepository.findLatestPending(userId, data.target, data.targetValue);
     if (!pending) {
       throw new AppError({ status: 404, code: 'OTP_NOT_FOUND', message: 'OTP not found' });
@@ -75,6 +74,9 @@ export class OTPService {
       || (data.targetValue !== undefined && data.targetValue !== pending.targetValue)) {
       throw unavailable();
     }
+    // Counted against the code's own destination (never what the caller typed, never per account or role), so every
+    // way of checking a code sent to one phone/email shares one budget (Codex O1 review).
+    await hit('verify', destinationId(pending.target, pending.targetValue), limits.verify());
 
     const max = CONFIG.OTP_MAX_ATTEMPTS > 0 ? CONFIG.OTP_MAX_ATTEMPTS : 5;
     const claimed = await this.otpRepository.claimAttempt(String(pending._id), max, new Date());
