@@ -1,5 +1,6 @@
 import UserModel from '@/modules/user/model';
 import { AppError } from '@/modules/common/types';
+import { canonicalMobile } from '@/modules/common/utils/phone';
 
 /**
  * §6a. Customer phones are stored as ten digits. The resolver runs only while the unique partial index below is built
@@ -12,13 +13,8 @@ export const CUSTOMER_PHONE_INDEX = Object.freeze({
 });
 
 export function normalizePhone(raw: string): string {
-  let phone = String(raw ?? '').replace(/[\s-]/g, '');
-  if (phone.startsWith('+91')) phone = phone.slice(3);
-  else if (phone.startsWith('91') && phone.length === 12) phone = phone.slice(2);
-  else if (phone.startsWith('0') && phone.length === 11) phone = phone.slice(1);
-  if (!/^[0-9]{10}$/.test(phone)) {
-    throw new AppError({ status: 400, code: 'INVALID_PHONE', message: 'Enter a valid 10-digit mobile number' });
-  }
+  const phone = canonicalMobile(raw);
+  if (!phone) throw new AppError({ status: 400, code: 'INVALID_PHONE', message: 'Enter a valid 10-digit mobile number' });
   return phone;
 }
 

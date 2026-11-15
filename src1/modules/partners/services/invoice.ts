@@ -98,7 +98,10 @@ export function computeLines(items: CreateInvoiceInput['items'], catalogue: Map<
   return items.map((item) => {
     const discount = item.discountMinor ?? 0;
     const gross = item.unitPriceMinor * item.qty;
-    if (!Number.isSafeInteger(gross) || discount > gross) {
+    if (!Number.isSafeInteger(gross) || gross > MAX_BILL_MINOR) {
+      throw new AppError({ status: 400, code: 'AMOUNT_TOO_LARGE', message: 'This line is larger than a single bill can be' });
+    }
+    if (discount > gross) {
       throw new AppError({ status: 400, code: 'INVALID_LINE_AMOUNT', message: 'A line discount cannot exceed the line amount' });
     }
     if (item.catalogItemId && !catalogue.has(String(item.catalogItemId))) {
@@ -134,7 +137,11 @@ export function computeTotals(lines: IInvoiceLine[], sameState: boolean): IInvoi
       t.igstMinor += tax;
     }
   }
-  return { ...t, totalMinor: t.taxableMinor + t.cgstMinor + t.sgstMinor + t.igstMinor, currency: 'INR' };
+  const totals = { ...t, totalMinor: t.taxableMinor + t.cgstMinor + t.sgstMinor + t.igstMinor, currency: 'INR' as const };
+  if (!Object.values(totals).every((v) => typeof v !== 'number' || (Number.isSafeInteger(v) && v >= 0 && v <= MAX_BILL_MINOR))) {
+    throw new AppError({ status: 400, code: 'AMOUNT_TOO_LARGE', message: 'This bill is larger than a single bill can be' });
+  }
+  return totals;
 }
 
 function assertTaxConsistent(kind: DocumentKind, lines: IInvoiceLine[], totals: IInvoiceTotals): void {
@@ -150,6 +157,29 @@ function assertTaxConsistent(kind: DocumentKind, lines: IInvoiceLine[], totals: 
   }
   if (totals.cgstMinor || totals.sgstMinor || totals.igstMinor) {
     throw new AppError({ status: 400, code: 'TAX_TOTAL_MISMATCH', message: 'A bill of supply / commercial invoice cannot have tax totals' });
+  }
+}
+
+/** The events that made lifecycle version `v`, in version order (never clock order). */
+export function eventsAsOf(events: IInvoiceEvent[], v: number): IInvoiceEvent[] {
+  return events.filter((e) => e.version <= v).sort((a, b) => a.version - b.version);
+}
+
+/** ₹1,000 crore: far above any real bill, far below Number.MAX_SAFE_INTEGER paise even before tax. */
+export const MAX_BILL_MINOR = 10_000_000_000_00;
+
+/**
+ * GST registrations are state-specific: a bill that prints a GSTIN (tax invoice / bill of supply) must be issued from a
+ * branch in that GSTIN's state (its first two digits). Other states need their own registration.
+ */
+export function assertRegistrationCovers(kind: DocumentKind, gstin: string | undefined, branchStateCode: string): void {
+  if (kind === 'commercial_invoice' || !gstin) return;
+  if (gstin.slice(0, 2) !== branchStateCode) {
+    throw new AppError({
+      status: 409,
+      code: 'GST_REGISTRATION_STATE_MISMATCH',
+      message: `The partner's GST registration (state ${gstin.slice(0, 2)}) does not cover this branch (state ${branchStateCode}); this branch cannot issue GST bills yet`,
+    });
   }
 }
 
@@ -172,7 +202,7 @@ export class InvoiceService {
       branchId: data.branchId, customer: { ...data.customer, phone: data.customer.phone ? normalizePhone(data.customer.phone) : undefined },
       doctorId: data.doctorId, items: data.items,
     }));
-    const replay = await this.replayed(actor.partnerId, data.idempotencyKey, requestHash);
+    const replay = await this.replayed(actor, data.idempotencyKey, requestHash);
     if (replay) return replay;
 
     const partner = await this.partnerRepository.findById(actor.partnerId);
@@ -200,6 +230,7 @@ export class InvoiceService {
 
     const lines = computeLines(data.items, catalogue);
     const documentKind = classifyDocument(partner.taxRegime, partner.gstin, lines);
+    assertRegistrationCovers(documentKind, partner.gstin, stateCode);
     // B2C with no customer state: place of supply is the supplier's location (intra-state).
     const sameState = !data.customer.placeOfSupply || data.customer.placeOfSupply === stateCode;
     const totals = computeTotals(lines, sameState);
@@ -260,7 +291,7 @@ export class InvoiceService {
       });
     } catch (error: any) {
       if (error?.code === 11000 && error?.keyPattern?.idempotencyKey) {
-        const again = await this.replayed(actor.partnerId, data.idempotencyKey, requestHash);
+        const again = await this.replayed(actor, data.idempotencyKey, requestHash);
         if (again) return again;
       }
       throw error;
@@ -272,10 +303,14 @@ export class InvoiceService {
     return invoice!;
   }
 
-  /** The invoice already created under this key, if the request is the same; a different request under the key is refused. */
-  private async replayed(partnerId: string, key: string, requestHash: string): Promise<IInvoice | null> {
-    const existing = await this.invoiceRepository.findByIdempotencyKey(partnerId, key);
+  /**
+   * The invoice already created under this key, if the request is the same and the actor may still see its branch now
+   * (a replay is a read: the same admission as getInvoice). The old branch/catalogue need not still be active.
+   */
+  private async replayed(actor: PartnerActor, key: string, requestHash: string): Promise<IInvoice | null> {
+    const existing = await this.invoiceRepository.findByIdempotencyKey(actor.partnerId, key);
     if (!existing) return null;
+    if (!hasGlobalScope(actor) && !actor.branchIds.includes(String(existing.branchId))) throw invoiceNotFound();
     if (existing.requestHash !== requestHash) {
       throw new AppError({ status: 409, code: 'IDEMPOTENCY_KEY_REUSED', message: 'This request key was already used for a different bill' });
     }
@@ -335,6 +370,7 @@ export class InvoiceService {
         const event = await this.invoiceEventRepository.save({
           ...payload,
           invoiceId,
+          version: current.lifecycleVersion + 1,
           at: new Date(),
           by: actor.memberId,
           byKind: actor.actorKind === 'admin' ? 'admin' : 'member',
@@ -412,7 +448,7 @@ export class InvoiceService {
     if (!Number.isInteger(v) || v < 0 || v > invoice.lifecycleVersion) {
       throw new AppError({ status: 400, code: 'INVALID_VERSION', message: `Version must be between 0 and ${invoice.lifecycleVersion}` });
     }
-    const pdf = await renderInvoicePdf(invoice, events.slice(0, v));
+    const pdf = await renderInvoicePdf(invoice, eventsAsOf(events, v));
     return { pdf, fileName: `${invoice.serial.replace(/\//g, '-')}-v${v}.pdf` };
   }
 

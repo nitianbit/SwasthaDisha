@@ -31,8 +31,8 @@ import { CatalogueItemRepository } from '@/modules/partners/repository/catalogue
 import { InvoiceRepository, InvoiceEventRepository, InvoiceCounterRepository } from '@/modules/partners/repository/invoice';
 import { PartnerService, PartnerActor, adminActor } from '@/modules/partners/services';
 import { CatalogueService } from '@/modules/partners/services/catalogue';
-import { InvoiceService, financialYearOf, formatSerial } from '@/modules/partners/services/invoice';
-import { renderInvoiceHtml, renderInvoicePdf } from '@/modules/partners/services/invoicePdf';
+import { InvoiceService, financialYearOf, formatSerial, eventsAsOf } from '@/modules/partners/services/invoice';
+import { renderInvoiceHtml, renderInvoicePdf, indiaDate } from '@/modules/partners/services/invoicePdf';
 import { normalizePhone, resetCustomerPhoneIndexCache } from '@/modules/partners/services/customerResolver';
 import { SMSService } from '@/modules/sms/services';
 import { runPhoneMigration } from '@/scripts/q2UserPhoneIndex';
@@ -93,18 +93,20 @@ async function main() {
 
   // ── §6a migration script, before the unique index exists ──
   await check('phone migration: dry run reports, commit rewrites only non-colliding rows, duplicates listed by id', async () => {
-    const plain = await UserModel.create({ phone: '+91 98450 00001', userType: 'user' } as any);
-    const dupA = await UserModel.create({ phone: '9845000002', userType: 'user' } as any);
-    const dupB = await UserModel.create({ phone: '09845000002', userType: 'user' } as any);
-    await UserModel.create({ email: 'only@example.com', userType: 'user' } as any);
+    // Legacy rows as stored before Q2 (raw: the model now canonicalises every phone it writes).
+    const raw = async (doc: Record<string, unknown>) => ({ _id: (await UserModel.collection.insertOne({ ...doc } as never)).insertedId });
+    const plain = await raw({ phone: '+91 98450 00001', userType: 'user' });
+    const dupA = await raw({ phone: '9845000002', userType: 'user' });
+    const dupB = await raw({ phone: '09845000002', userType: 'user' });
+    await raw({ email: 'only@example.com', userType: 'user' });
     const dry = await runPhoneMigration(false);
     assert.equal(dry.rewritable, 1);
     assert.equal(dry.rewritten, 0);
     assert.deepEqual(dry.duplicateGroups.map((g) => g.sort()), [[String(dupA._id), String(dupB._id)].sort()]);
     const committed = await runPhoneMigration(true);
     assert.equal(committed.rewritten, 1);
-    assert.equal((await UserModel.findById(plain._id).lean() as any).phone, '9845000001');
-    assert.equal((await UserModel.findById(dupB._id).lean() as any).phone, '09845000002', 'duplicates are never rewritten');
+    assert.equal((await UserModel.collection.findOne({ _id: plain._id }) as any).phone, '9845000001');
+    assert.equal((await UserModel.collection.findOne({ _id: dupB._id }) as any).phone, '09845000002', 'duplicates are never rewritten');
     await UserModel.deleteMany({ _id: { $in: [dupA._id, dupB._id] } }); // "admin resolution" for the fixture
     const clean = await runPhoneMigration(false);
     assert.equal(clean.duplicateGroups.length, 0);
@@ -112,8 +114,9 @@ async function main() {
   });
 
   const lab = await setupPartner('Metro Diagnostics', 'MD', '9876543210', { taxRegime: 'regular', gstin: '29AABCM1234F1ZH' });
-  const branchB = await partnerSvc.createBranch(lab.actor, branchInput('Pune Centre', '27', 'Maharashtra'));
+  const branchB = await partnerSvc.createBranch(lab.actor, branchInput('Mysuru Centre', '29', 'Karnataka'));
   const B = String(branchB._id);
+  const P = String((await partnerSvc.createBranch(lab.actor, branchInput('Pune Centre', '27', 'Maharashtra')))._id);
 
   await check('resolver refuses to run until the unique phone index is ready (503); bills without a phone still work', async () => {
     resetCustomerPhoneIndexCache();
@@ -199,16 +202,21 @@ async function main() {
     assert.equal(first.checksum.length, 64);
   });
 
-  await check('IGST when the customer state differs; a branch in another state bills from that state', async () => {
+  await check('IGST when the customer state differs; a branch outside the GSTIN\'s state cannot issue GST bills', async () => {
     const inter = await invoiceSvc.createInvoice(lab.actor, {
       branchId: lab.branchId, customer: { name: 'Priya', placeOfSupply: '27' }, items: [line({ unitPriceMinor: 100000, gstRate: 18 })], idempotencyKey: key(),
     });
     assert.deepEqual([inter.totals.cgstMinor, inter.totals.sgstMinor, inter.totals.igstMinor], [0, 0, 18000]);
-    const pune = await invoiceSvc.createInvoice(lab.actor, {
-      branchId: B, customer: { name: 'Pune walk-in' }, items: [line({ unitPriceMinor: 100000, gstRate: 18 })], idempotencyKey: key(),
-    });
-    assert.equal(pune.supplier.placeOfSupply, '27');
-    assert.equal(pune.totals.cgstMinor + pune.totals.sgstMinor, 18000);
+    await assert.rejects(() => invoiceSvc.createInvoice(lab.actor, {
+      branchId: P, customer: { name: 'Pune walk-in' }, items: [line({ unitPriceMinor: 100000, gstRate: 18 })], idempotencyKey: key(),
+    }), code('GST_REGISTRATION_STATE_MISMATCH'));
+    await assert.rejects(() => invoiceSvc.createInvoice(lab.actor, {
+      branchId: P, customer: { name: 'Pune exempt' }, items: [line({ gstRate: 0 })], idempotencyKey: key(),
+    }), code('GST_REGISTRATION_STATE_MISMATCH'), 'a bill of supply prints the GSTIN too');
+    const unreg = await setupPartner('Two State Clinic', 'TS', '9000000020', { taxRegime: 'unregistered' });
+    const pune2 = await partnerSvc.createBranch(unreg.actor, branchInput('TS Pune', '27', 'Maharashtra'));
+    const c = await invoiceSvc.createInvoice(unreg.actor, { branchId: String(pune2._id), customer: { name: 'P' }, items: [line({ gstRate: 0 })], idempotencyKey: key() });
+    assert.equal(c.supplier.placeOfSupply, '27', 'an unregistered supplier bills from any state');
   });
 
   await check('regular all-exempt → bill of supply; composition → bill of supply; unregistered → commercial invoice; nonzero GST refused', async () => {
@@ -310,6 +318,7 @@ async function main() {
       permissions: ['invoices.create', 'payments.record', 'invoices.cancel'] });
     const a = actorFor(deskA);
     await assert.rejects(() => invoiceSvc.createInvoice(a, { branchId: B, customer: { name: 'x' }, items: [line()], idempotencyKey: key() }), code('BRANCH_SCOPE_EXCEEDED'));
+    await invoiceSvc.createInvoice(lab.actor, { branchId: B, customer: { name: 'Mysuru walk-in' }, items: [line()], idempotencyKey: key() });
     const puneBill = await InvoiceModel.findOne({ partnerId: lab.partnerId, branchId: B }).lean();
     await assert.rejects(() => invoiceSvc.getInvoice(a, String(puneBill!._id)), code('INVOICE_NOT_FOUND'));
     await assert.rejects(() => invoiceSvc.recordPayment(a, String(puneBill!._id), { mode: 'cash' }), code('INVOICE_NOT_FOUND'));
@@ -363,6 +372,69 @@ async function main() {
     } finally {
       (CONFIG as any).SMS_TEMPLATE_ID_PARTNER_BILL = undefined;
     }
+  });
+
+  await check('replay is a read: a member whose scope no longer covers the bill\'s branch gets 404, not the bill', async () => {
+    const roamer = await partnerSvc.addMember(lab.actor, { phone: '9000000030', name: 'Roamer', role: 'staff', permissions: ['invoices.create'] });
+    const req = { branchId: B, customer: { name: 'Replay target', phone: '9822200041' }, items: [line()], idempotencyKey: 'replay-scope-1' };
+    const made = await invoiceSvc.createInvoice(actorFor(roamer), req);
+    await MemberModel.updateOne({ _id: roamer._id }, { $set: { branchIds: [lab.branchId] } }); // narrowed to branch A
+    const narrowed = actorFor((await MemberModel.findById(roamer._id).lean()) as any);
+    await assert.rejects(() => invoiceSvc.createInvoice(narrowed, req), code('INVOICE_NOT_FOUND'));
+    await assert.rejects(() => invoiceSvc.createInvoice(actorFor(deskA), req), code('INVOICE_NOT_FOUND'));
+    const again = await invoiceSvc.createInvoice(lab.actor, req);
+    assert.equal(String(again._id), String(made._id), 'an actor with scope still replays');
+  });
+
+  await check('every model writer stores the canonical phone; billing and OTP lookup find that one account', async () => {
+    const u = await UserModel.create({ phone: '+91 98111 55555', userType: 'user', name: 'Admin-created' } as any);
+    assert.equal((await UserModel.collection.findOne({ _id: u._id }) as any).phone, '9811155555');
+    await UserModel.updateOne({ _id: u._id }, { $set: { phone: '09811155555' } });
+    assert.equal((await UserModel.collection.findOne({ _id: u._id }) as any).phone, '9811155555');
+    const inv = await invoiceSvc.createInvoice(lab.actor, { branchId: lab.branchId, customer: { name: 'Walk-in', phone: '9811155555' }, items: [line()], idempotencyKey: key() });
+    assert.equal(inv.customer.userId, String(u._id));
+    assert.equal(String((await UserModel.findOne({ phone: '9811155555', userType: 'user' }).lean())!._id), String(u._id));
+    await assert.rejects(() => UserModel.create({ phone: '+919811155555', userType: 'user' } as any), (e: any) => e?.code === 11000);
+    await UserModel.create({ email: 'no-phone@example.com', userType: 'user' } as any);
+  });
+
+  await check('event order is the lifecycle version, not the clock (skewed timestamps do not reorder history)', async () => {
+    const inv = await invoiceSvc.createInvoice(lab.actor, { branchId: lab.branchId, customer: { name: 'Skew' }, items: [line()], idempotencyKey: key() });
+    await invoiceSvc.recordPayment(lab.actor, String(inv._id), { mode: 'cash' });
+    await invoiceSvc.cancelInvoice(lab.actor, String(inv._id), 'Wrong patient');
+    // The payment's node clock was ahead: its timestamp is later than the cancellation's.
+    await InvoiceEventModel.updateOne({ invoiceId: String(inv._id), kind: 'payment' }, { $set: { at: new Date(Date.now() + 3_600_000) } });
+    const { invoice, events } = await invoiceSvc.getInvoice(lab.actor, String(inv._id));
+    assert.deepEqual(events.map((e) => [e.version, e.kind]), [[1, 'payment'], [2, 'cancellation']]);
+    assert.ok(renderInvoiceHtml(invoice, eventsAsOf(events, 1)).includes('>Paid<'));
+    assert.ok(renderInvoiceHtml(invoice, eventsAsOf(events, 2)).includes('>Cancelled<'));
+    await assert.rejects(() => InvoiceEventModel.create({ invoiceId: String(inv._id), kind: 'payment' as any, version: 2, at: new Date(), by: 'x', byKind: 'member' }),
+      (e: any) => e?.code === 11000);
+  });
+
+  await check('concurrent price and MRP edits never commit an invalid pair', async () => {
+    for (let i = 0; i < 8; i++) {
+      const item = await catalogueSvc.createItem(lab.actor, { kind: 'test', name: `Pair ${i}`, priceMinor: 10000, mrpMinor: 20000, gstRate: 0, visitModes: ['lab'] });
+      await Promise.allSettled([
+        catalogueSvc.updateItem(lab.actor, String(item._id), { priceMinor: 18000 }),
+        catalogueSvc.updateItem(lab.actor, String(item._id), { mrpMinor: 15000 }),
+      ]);
+      const after = await CatalogueItemModel.findById(item._id).lean();
+      assert.ok(after!.mrpMinor! >= after!.priceMinor, `pair ${after!.priceMinor}/${after!.mrpMinor}`);
+    }
+  });
+
+  await check('printed dates are India dates (same clock as numbering); amounts beyond a single bill are refused', async () => {
+    const boundary = new Date('2027-03-31T19:00:00Z'); // 00:30 on 1 April in India
+    assert.equal(indiaDate(boundary), '01-04-2027');
+    assert.equal(financialYearOf(boundary), '2728');
+    const inv = await invoiceSvc.createInvoice(lab.actor, { branchId: lab.branchId, customer: { name: 'Date' }, items: [line()], idempotencyKey: key() });
+    const html = renderInvoiceHtml({ ...inv, issuedAt: boundary } as any, []);
+    assert.ok(html.includes('01-04-2027') && !html.includes('2027-03-31'));
+    await assert.rejects(() => invoiceSvc.createInvoice(lab.actor, { branchId: lab.branchId, customer: { name: 'Big' },
+      items: [line({ unitPriceMinor: 100_000_000_00, qty: 101 })], idempotencyKey: key() }), code('AMOUNT_TOO_LARGE'));
+    await assert.rejects(() => invoiceSvc.createInvoice(lab.actor, { branchId: lab.branchId, customer: { name: 'Big' },
+      items: Array.from({ length: 100 }, () => line({ unitPriceMinor: 100_000_000_00, qty: 99, gstRate: 28 })), idempotencyKey: key() }), code('AMOUNT_TOO_LARGE'));
   });
 
   // ── Admin as owner ──

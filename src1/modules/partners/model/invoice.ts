@@ -92,6 +92,7 @@ const invoiceEventSchema = new Schema<IInvoiceEvent>(
     reference: { type: String, trim: true },
     reason: { type: String, trim: true },
     note: { type: String, trim: true },
+    version: { type: Number, required: true, min: 1 },
     at: { type: Date, required: true },
     by: { type: String, required: true },
     byKind: { type: String, required: true, enum: ['member', 'admin'] },
@@ -100,6 +101,7 @@ const invoiceEventSchema = new Schema<IInvoiceEvent>(
 );
 
 invoiceEventSchema.index({ invoiceId: 1, kind: 1 }, { unique: true });
+invoiceEventSchema.index({ invoiceId: 1, version: 1 }, { unique: true });
 
 export const InvoiceEventModel: Model<IInvoiceEvent> = model<IInvoiceEvent>('PartnerInvoiceEvent', invoiceEventSchema, 'partner_invoice_events');
 

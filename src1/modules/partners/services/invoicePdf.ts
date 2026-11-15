@@ -14,6 +14,12 @@ const esc = (v: unknown) => String(v ?? '')
 export const rupees = (minor: number) =>
   `₹${(minor / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+/** Business dates are India dates (the same clock the financial year and numbering use). */
+export const indiaDate = (d: Date | string) => {
+  const ist = new Date(new Date(d).getTime() + 330 * 60_000).toISOString();
+  return `${ist.slice(8, 10)}-${ist.slice(5, 7)}-${ist.slice(0, 4)}`;
+};
+
 const TITLES = { tax_invoice: 'Tax Invoice', bill_of_supply: 'Bill of Supply', commercial_invoice: 'Invoice' } as const;
 
 /** Status of the bill after the given events (events are in lifecycle order). */
@@ -23,10 +29,10 @@ export function statusAfter(events: IInvoiceEvent[]): { label: string; detail?: 
   for (const e of events) {
     if (e.kind === 'payment') {
       label = 'Paid';
-      detail = `${e.mode?.toUpperCase()}${e.reference ? ` · Ref ${e.reference}` : ''} · ${new Date(e.at).toISOString().slice(0, 10)}`;
+      detail = `${e.mode?.toUpperCase()}${e.reference ? ` · Ref ${e.reference}` : ''} · ${indiaDate(e.at)}`;
     } else if (e.kind === 'cancellation') {
       label = 'Cancelled';
-      detail = `${e.reason ?? ''} · ${new Date(e.at).toISOString().slice(0, 10)}`;
+      detail = `${e.reason ?? ''} · ${indiaDate(e.at)}`;
     }
   }
   return { label, detail };
@@ -55,7 +61,7 @@ small{color:#555}.note{margin-top:12px;color:#444}</style></head><body>
 <h1>${TITLES[inv.documentKind]}</h1>
 <div class="grid"><div><strong>${esc(s.name)}</strong>${s.legalName ? `<br>${esc(s.legalName)}` : ''}<br>${esc(s.address)}
 ${s.gstin ? `<br>GSTIN: ${esc(s.gstin)}` : ''}${s.pan ? `<br>PAN: ${esc(s.pan)}` : ''}<br>State code: ${esc(s.placeOfSupply)}</div>
-<div><strong>No.</strong> ${esc(inv.serial)}<br><strong>Date</strong> ${new Date(inv.issuedAt).toISOString().slice(0, 10)}
+<div><strong>No.</strong> ${esc(inv.serial)}<br><strong>Date</strong> ${indiaDate(inv.issuedAt)}
 <br><span class="status">${esc(status.label)}</span>${status.detail ? `<br><small>${esc(status.detail)}</small>` : ''}</div></div>
 <div><strong>Billed to:</strong> ${esc(c.name)}${c.age !== undefined ? `, ${esc(c.age)}` : ''}${c.gender ? ` ${esc(c.gender)}` : ''}
 ${c.gstin ? `<br>GSTIN: ${esc(c.gstin)}` : ''}${c.placeOfSupply ? `<br>Place of supply: ${esc(c.placeOfSupply)}` : ''}</div>

@@ -1,4 +1,5 @@
 import { Schema, model, Model } from 'mongoose';
+import { canonicalPhoneSetter } from '@/modules/common/utils/phone';
 import { IUser } from '@/modules/user/types';
 
 const emergencyContactSchema = new Schema(
@@ -33,6 +34,8 @@ const userSchema = new Schema<IUser>(
       sparse: true,
       index: true,
       trim: true,
+      // Q2 §6a: stored and queried in canonical ten-digit form by every model writer.
+      set: canonicalPhoneSetter,
     },
     userType: {
       type: String,
