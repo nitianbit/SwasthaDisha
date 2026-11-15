@@ -33,6 +33,12 @@ import { UserRepository } from '@/modules/user/repository';
 import { BannerService } from '@/modules/banners/services';
 import { BannerRepository } from '@/modules/banners/repository';
 import { IMember, PartnerPermission } from '@/modules/partners/types';
+import SpecialistModel from '@/modules/specialists/model';
+import SlotModel from '@/modules/slots/model';
+import { DoctorScheduleTemplateModel } from '@/modules/doctors/model/schedule';
+import { DoctorScheduleGuardModel, DoctorReservationModel } from '@/modules/doctors/model/reservation';
+import { saveTemplate, expandDoctorSlots } from '@/modules/doctors/services/schedule';
+import { istDate } from '@/modules/partners/services/slots';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/q8_partner_admin_check?directConnection=true';
 if (process.env.MONGODB_URL !== FIXTURE_URL) throw new Error('Refusing to run: MONGODB_URL must be exactly ' + FIXTURE_URL);
@@ -52,7 +58,7 @@ const branchIn = (name: string) => ({ name, phone: '9876500000', holidays: [], h
 async function main() {
   await mongoose.connect(FIXTURE_URL, { autoIndex: false });
   for (const c of await mongoose.connection.db!.collections()) await c.drop().catch(() => {});
-  for (const M of [PartnerModel, MemberModel, BranchModel, PartnerAuditEventModel, SettlementAccountModel, ScheduleGuardModel] as mongoose.Model<any>[]) {
+  for (const M of [PartnerModel, MemberModel, BranchModel, PartnerAuditEventModel, SettlementAccountModel, ScheduleGuardModel, SpecialistModel, SlotModel, DoctorScheduleTemplateModel, DoctorScheduleGuardModel, DoctorReservationModel] as mongoose.Model<any>[]) {
     await M.createCollection(); await M.createIndexes();
   }
   const { partner, owner } = await svc.createPartner({ kind: 'lab', name: 'Alpha Labs', contactPhone: nextPhone(), invoiceSeriesPrefix: 'AL',
@@ -115,6 +121,54 @@ async function main() {
     const p1 = await svc.listPartners({ q: 'gamma', limit: 2 });
     assert.deepEqual([p1.total, p1.items.length, p1.totalPages], [5, 2, 3]);
     assert.equal((await svc.listPartners({ q: 'gamma', limit: 2, page: 3 })).items.length, 1);
+  });
+
+  // ── Review findings (Q8 round 1) ──
+  await check('a branch-access change is re-admitted inside its transaction (a concurrent move out of scope is never undone)', async () => {
+    const target = await svc.addMember(own, { phone: nextPhone(), name: 'Moving', role: 'staff', branchIds: [A], permissions: [] } as any);
+    const stale = await MemberModel.findById(target._id).lean();
+    await svc.updateMemberBranches(own, String(target._id), [B]); // the owner moves them to B
+    // The manager's request read the member while still at A (outer check passes on the stale snapshot).
+    const racing = Object.create(svc);
+    racing.memberRepository = Object.assign(Object.create(Object.getPrototypeOf((svc as any).memberRepository)), (svc as any).memberRepository, { findById: async () => stale });
+    await assert.rejects(() => racing.updateMemberBranches(actorFor(manager), String(target._id), [A]), code('MEMBER_NOT_FOUND'));
+    assert.deepEqual((await MemberModel.findById(target._id).lean())!.branchIds.map(String), [B]);
+  });
+
+  await check('a keyed create retried with the same values in another field order is the same request', async () => {
+    const admin = String(new Types.ObjectId());
+    const a = await svc.createPartner({ kind: 'lab', name: 'Order Labs', contactPhone: '9700000001', invoiceSeriesPrefix: 'OL',
+      firstOwner: { phone: '9700000002', name: 'O' }, requestKey: 'order-key-0001', createdBy: admin } as any);
+    const b = await svc.createPartner({ firstOwner: { name: 'O', phone: '9700000002' }, invoiceSeriesPrefix: 'OL', contactPhone: '9700000001',
+      name: 'Order Labs', kind: 'lab', requestKey: 'order-key-0001', createdBy: admin } as any);
+    assert.equal(String(b.partner._id), String(a.partner._id));
+    assert.equal(b.replayed, true);
+  });
+
+  await check('reopening a clinic branch or reinstating its partner brings the doctors\' generated slots back at once', async () => {
+    const { partner: cp, owner: co } = await svc.createPartner({ kind: 'clinic', name: 'Reopen Clinic', contactPhone: nextPhone(), invoiceSeriesPrefix: 'RC',
+      firstOwner: { phone: nextPhone(), name: 'C' } } as any);
+    const cid = String(cp._id);
+    await svc.verifyPartner(cid, 'admin');
+    const cb = String((await svc.createBranch(actorFor(co), { ...branchIn('Clinic'), services: { homeCollection: false, inLab: false, inClinic: true } }))._id);
+    const doc = new Types.ObjectId();
+    await SpecialistModel.collection.insertOne({ _id: doc, name: 'Dr R', phone: nextPhone(), specialization: 'GP', isActive: true, isVerified: true } as never);
+    await MemberModel.create({ partnerId: cid, phone: nextPhone(), name: 'Dr R', role: 'staff', permissions: [], branchIds: [], doctorId: String(doc), isActive: true });
+    const every = Object.fromEntries(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((d) => [d, [{ start: '10:00', end: '11:00', modes: ['in-person'], branchId: cb }]]));
+    await saveTemplate(String(doc), { slotMinutes: 30, days: every as any });
+    const open = () => SlotModel.countDocuments({ specialistId: String(doc), branchId: cb, isActive: true });
+    const full = await open();
+    assert.ok(full > 0);
+    await svc.deactivateBranch(actorFor(co), cb);
+    await expandDoctorSlots(String(doc), istDate(new Date()), 30);
+    assert.equal(await open(), 0);
+    await svc.reactivateBranch(actorFor(co), cb);
+    assert.equal(await open(), full, 'branch reopened: slots back');
+    await svc.suspendPartner(cid);
+    await expandDoctorSlots(String(doc), istDate(new Date()), 30);
+    assert.equal(await open(), 0);
+    await svc.reinstatePartner(cid, String(new Types.ObjectId()));
+    assert.equal(await open(), full, 'partner reinstated: slots back');
   });
 
   // ── HTTP ──
