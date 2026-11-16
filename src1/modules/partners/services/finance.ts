@@ -515,20 +515,40 @@ export async function postAdjustment(adminId: string, rawAccountId: string,
   const why = String(input.reason ?? '').trim();
   if (why.length < 3 || why.length > 500) throw err(400, 'INVALID_REASON', 'Give a reason (3 to 500 characters)');
   const sourceId = `${adminId}:${input.requestKey}`;
-  return inTransaction(async (s) => {
-    const existing = await LedgerEntryModel.findOne({ settlementAccountId: accountId, source: 'admin_adjustment', sourceId, kind: 'adjustment' }).session(s).lean() as ILedgerEntry | null;
-    if (existing) {
-      if (existing.amountMinor !== amount || existing.note !== why) throw err(409, 'REQUEST_KEY_REUSED', 'This request key was already used for a different adjustment');
-      return { entry: existing, replayed: true };
+  const replay = async (s?: ClientSession) => {
+    const existing = await LedgerEntryModel.findOne({ settlementAccountId: accountId, source: 'admin_adjustment', sourceId, kind: 'adjustment' }).session(s ?? null).lean() as ILedgerEntry | null;
+    if (!existing) return null;
+    if (existing.amountMinor !== amount || existing.note !== why) throw err(409, 'REQUEST_KEY_REUSED', 'This request key was already used for a different adjustment');
+    return { entry: existing, replayed: true };
+  };
+  try {
+    return await postAdjustmentOnce(s => replay(s));
+  } catch (e: any) {
+    // Q13 review: a concurrent identical submission (or a competing give-up) makes this attempt's claim insert collide.
+    // Answer as the payout path does: the matching receipt, or REQUEST_ABANDONED for a key given up.
+    if (e?.code === 11000) {
+      const r = await replay();
+      if (r) return r;
+      if (await RequestKeyModel.exists({ scope: adjustmentKeyScope(accountId, adminId), key: input.requestKey, state: 'abandoned' })) {
+        throw err(409, 'REQUEST_ABANDONED', 'This request was cancelled before it was recorded; make a new one');
+      }
     }
+    throw e;
+  }
+
+  function postAdjustmentOnce(again: (s: ClientSession) => Promise<{ entry: ILedgerEntry; replayed: boolean } | null>) {
+    return inTransaction(async (s) => {
+    const prior = await again(s);
+    if (prior) return prior;
     // Q13: claimed with the entry (see recordPayout); the version fence is checked on the account as it is now.
     await claimRequestKey(adjustmentKeyScope(accountId, adminId), input.requestKey, s);
     const a = await bumpFinance(accountId, s, input.expectedFinanceVersion);
     const entry = await postLedgerEntry({ settlementAccountId: String(a._id), kind: 'adjustment', amountMinor: amount, grossMinor: Math.abs(amount),
       source: 'admin_adjustment', sourceId, note: why, by: `admin:${adminId}`, byKind: 'admin' }, s);
     await recordFinanceEvent(a, { kind: 'admin', id: adminId }, 'finance.adjustment_posted', { entryId: String(entry._id), amountMinor: amount, reason: why }, s);
-    return { entry, replayed: false };
-  });
+    return { entry: entry as ILedgerEntry, replayed: false };
+    });
+  }
 }
 
 // ── Q13: a lost payout/adjustment answer — look it up by its key, or give the key up ──

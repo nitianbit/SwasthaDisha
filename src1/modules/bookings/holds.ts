@@ -87,9 +87,13 @@ type SlotRow = { _id?: unknown; date?: string; startTime?: string; endTime?: str
 
 /**
  * Q6: a clinic desk acting: the slot must be at one of its branches within the desk member's scope (empty = all).
- * Q13: with `refuseStartedAt`, a slot whose start is at or before that instant is refused (409 SLOT_STARTED).
+ * Q13: with `refuseStartedClock`, a slot whose start is at or before the clock's time at admission is refused (409 SLOT_STARTED).
  */
-export interface DeskScope { partnerId: string; branchIds: string[]; refuseStartedAt?: Date }
+export interface DeskScope {
+  partnerId: string; branchIds: string[];
+  /** Q13 review: the clock read at admission, inside each booking transaction attempt (injectable for tests). */
+  refuseStartedClock?: () => Date;
+}
 
 /** Q13: the booking's updatedAt the caller decided on; any other current value refuses the change (409 BOOKING_CHANGED). */
 export function assertBookingVersion(b: Pick<IBooking, 'updatedAt'>, expectedUpdatedAt?: Date | string | null): void {
@@ -132,9 +136,10 @@ async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate'
   if (desk && (!clinic || clinic.partnerId !== desk.partnerId || (desk.branchIds.length > 0 && !desk.branchIds.includes(clinic.branchId)))) {
     throw conflict('SLOT_NOT_AVAILABLE', 'This slot is not at one of your clinic branches');
   }
-  if (desk?.refuseStartedAt) {
+  if (desk?.refuseStartedClock) {
     const w = slotIntervalOf(slot as SlotRow);
-    if (!w || w.start.getTime() <= desk.refuseStartedAt.getTime()) throw conflict('SLOT_STARTED', 'This slot has already started; choose a later one');
+    // Sampled now, at admission (each transaction attempt), not when the request arrived.
+    if (!w || w.start.getTime() <= desk.refuseStartedClock().getTime()) throw conflict('SLOT_STARTED', 'This slot has already started; choose a later one');
   }
   const r = await SlotModel.updateOne({ _id: slotId, ...(slot.currentBookings === undefined ? { currentBookings: { $exists: false } } : { currentBookings: current }) },
     { $inc: { currentBookings: 1 }, $set: { isAvailable: current + 1 < max } }, { session: s });

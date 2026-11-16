@@ -281,7 +281,12 @@ const samePartner = (a?: string, b?: string) => !!a && !!b && a.toLowerCase() ==
  * consultation on a clinic doctor's slot at this clinic. One admission with online bookings (seat, doctor interval,
  * leave, current clinic authority), exactly once per (desk member, request key), audited in the same transaction.
  */
-export async function createDeskAppointment(actor: PartnerActor, input: DeskBookingInput, now = new Date()) {
+/** Q13 review: a fixed instant (tests) or a clock read whenever a time decision is made (default: the real clock). */
+export type DeskClock = Date | (() => Date);
+const clockOf = (c: DeskClock): (() => Date) => (typeof c === 'function' ? c : () => c);
+
+export async function createDeskAppointment(actor: PartnerActor, input: DeskBookingInput, clock: DeskClock = () => new Date()) {
+  const readClock = clockOf(clock);
   await clinicOf(actor);
   if (!Types.ObjectId.isValid(input.slotId)) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
   const slot = await SlotModel.findById(input.slotId).lean() as any;
@@ -294,7 +299,7 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
   const requestHash = createHash('sha256').update(JSON.stringify({ slotId: String(slot._id).toLowerCase(),
     phone: canonicalMobile(input.customer.phone) ?? input.customer.phone, notes: input.notes?.trim() || null })).digest('hex');
   // Q13: a slot that has already started is refused, here and again inside the booking transaction.
-  const desk: DeskScope = { ...deskScopeOf(actor), refuseStartedAt: now };
+  const desk: DeskScope = { ...deskScopeOf(actor), refuseStartedClock: readClock };
   const asReceipt = (prior: IBooking) => {
     if (prior.clinicDesk?.requestHash !== requestHash) throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different appointment');
     // A receipt is shown only while the appointment is still within this desk's branches (it may have been moved).
@@ -312,7 +317,7 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
     throw err(409, 'REQUEST_ABANDONED', 'This request was cancelled before it was recorded; make a new one');
   }
   const startsAt = slotIntervalOf(slot)?.start;
-  if (!startsAt || startsAt.getTime() <= now.getTime()) throw err(409, 'SLOT_STARTED', 'This slot has already started; choose a later one');
+  if (!startsAt || startsAt.getTime() <= readClock().getTime()) throw err(409, 'SLOT_STARTED', 'This slot has already started; choose a later one');
   const customer = await resolveCustomerByPhone(input.customer.phone, 'clinic_desk');
   const name = input.customer.name?.trim();
   if (name) await UserModel.updateOne({ _id: customer._id, $or: [{ name: { $exists: false } }, { name: null }, { name: '' }] }, { $set: { name } });
@@ -468,7 +473,7 @@ export async function cancelDeskAppointment(actor: PartnerActor, bookingId: stri
 }
 
 /** Moved to another slot of the same doctor at this clinic (a branch in the actor's scope). */
-export async function rescheduleDeskAppointment(actor: PartnerActor, bookingId: string, slotId: string, expectedUpdatedAt?: Date | string | null, now = new Date()) {
+export async function rescheduleDeskAppointment(actor: PartnerActor, bookingId: string, slotId: string, expectedUpdatedAt?: Date | string | null, clock: DeskClock = () => new Date()) {
   const b = await ownDeskBooking(actor, bookingId);
   if (!Types.ObjectId.isValid(slotId)) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
   const slot = await SlotModel.findById(slotId).lean() as any;
@@ -477,7 +482,7 @@ export async function rescheduleDeskAppointment(actor: PartnerActor, bookingId: 
   const updated = await rescheduleWithHolds({
     bookingId: String(b._id), requester: { _id: actor.memberId, userType: 'admin' }, nextSlotId: String(slot._id),
     // Q13: the target slot must not have started (checked when the move takes a new slot), and the version must match.
-    desk: { ...deskScopeOf(actor), refuseStartedAt: now }, expectedUpdatedAt,
+    desk: { ...deskScopeOf(actor), refuseStartedClock: clockOf(clock) }, expectedUpdatedAt,
     patch: { bookingDate: slot.date },
     inTx: (x, s) => audit(actor, 'clinic.appointment_rescheduled', { kind: 'booking', id: String(x._id) }, { slotId: String(slot._id) }, s),
   });

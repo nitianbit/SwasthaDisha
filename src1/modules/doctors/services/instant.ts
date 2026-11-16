@@ -102,6 +102,12 @@ const istParts = (at: Date) => {
   return { date: `${ist.slice(0, 4)}${ist.slice(5, 7)}${ist.slice(8, 10)}`, time: ist.slice(11, 16) };
 };
 
+/**
+ * Q13 review: the one eligibility rule for instant consultations — the stored flags must be true (a legacy doctor missing
+ * either is not eligible), exactly as discovery (`onlineDoctors`) and speciality listing query it.
+ */
+const isEligibleDoctor = (sp: { isActive?: unknown; isVerified?: unknown } | null | undefined) => !!sp && sp.isActive === true && sp.isVerified === true;
+
 @Service()
 export class InstantConsultService {
   notify: InstantNotifier = defaultInstantNotifier;
@@ -116,7 +122,7 @@ export class InstantConsultService {
 
   async setPresence(doctorId: string, input: { available: boolean; modes?: InstantMode[]; instantFeeMinor?: number; expectedPresenceVersion?: number }, now = new Date()) {
     const sp = await SpecialistModel.findById(doctorId).lean() as any;
-    if (!sp || sp.isActive === false || sp.isVerified === false) throw err(403, 'SPECIALIST_NOT_ACTIVE', 'Only active, verified doctors can take instant consultations');
+    if (!isEligibleDoctor(sp)) throw err(403, 'SPECIALIST_NOT_ACTIVE', 'Only active, verified doctors can take instant consultations');
     const modes = input.modes ?? [];
     if (input.available && modes.length === 0) throw err(400, 'MODES_REQUIRED', 'Choose at least one consultation type');
     const fee = input.instantFeeMinor ?? paiseOf(sp.consultationFee);
@@ -149,7 +155,7 @@ export class InstantConsultService {
   /** The doctor's account as it is now: active and verified, or refused (and taken offline). */
   private async activeDoctor(doctorId: string): Promise<{ name?: string; specialization?: string }> {
     const sp = Types.ObjectId.isValid(doctorId) ? await SpecialistModel.findById(doctorId).select({ name: 1, specialization: 1, isActive: 1, isVerified: 1 }).lean() as any : null;
-    if (!sp || sp.isActive === false || sp.isVerified === false) {
+    if (!isEligibleDoctor(sp)) {
       await DoctorPresenceModel.updateOne({ doctorId: String(doctorId), available: true }, { $set: { available: false }, $inc: { presenceVersion: 1 } });
       throw err(403, 'SPECIALIST_NOT_ACTIVE', 'Only active, verified doctors can take instant consultations');
     }
@@ -171,7 +177,7 @@ export class InstantConsultService {
   async presence(doctorId: string, now = new Date()) {
     const sp = Types.ObjectId.isValid(doctorId)
       ? await SpecialistModel.findById(doctorId).select({ consultationFee: 1, isActive: 1, isVerified: 1 }).lean() as any : null;
-    const eligible = !!sp && sp.isActive !== false && sp.isVerified !== false;
+    const eligible = isEligibleDoctor(sp);
     const [p, held] = await Promise.all([
       DoctorPresenceModel.findOne({ doctorId: String(doctorId) }).lean(),
       DoctorReservationModel.findOne({ doctorId: String(doctorId), isActive: true, startTime: { $lte: now }, endTime: { $gt: now } }).sort({ endTime: -1 }).lean(),
@@ -459,7 +465,7 @@ export class InstantConsultService {
         throw err(409, 'DOCTOR_NOT_AVAILABLE', 'Go online for this consultation type to accept');
       }
       const sp = await SpecialistModel.findById(doctorId).session(s).lean() as any;
-      if (!sp || sp.isActive === false || sp.isVerified === false) throw err(403, 'SPECIALIST_NOT_ACTIVE', 'Doctor account is not active');
+      if (!isEligibleDoctor(sp)) throw err(403, 'SPECIALIST_NOT_ACTIVE', 'Doctor account is not active');
       if (String(sp.specialization ?? '').trim().toLowerCase() !== r.specialization.trim().toLowerCase()) {
         throw err(409, 'SPECIALIZATION_MISMATCH', 'This request is for another speciality');
       }

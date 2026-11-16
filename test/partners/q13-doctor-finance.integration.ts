@@ -182,6 +182,17 @@ async function main() {
 
   let reqA = '';
   let bookingA = '';
+  await check('one eligibility rule: a legacy doctor missing a stored active/verified flag is neither online nor admitted', async () => {
+    const id = new Types.ObjectId();
+    await SpecialistModel.collection.insertOne({ _id: id, name: 'Dr Legacy', phone: nextPhone(), specialization: 'Dermatology', consultationFee: 300, isActive: true } as never);
+    await DoctorPresenceModel.create({ doctorId: String(id), available: true, modes: ['video'], instantFeeMinor: 30000, specialization: 'Dermatology', lastSeenAt: new Date() });
+    const p = await svc.presence(String(id));
+    assert.deepEqual([p.eligible, p.online], [false, false]);
+    assert.equal((await svc.onlineDoctors({ specialization: 'Dermatology', mode: 'video' })).some((d) => d.doctorId === String(id)), false, 'agrees with discovery');
+    await assert.rejects(() => svc.setPresence(String(id), { available: true, modes: ['video'] }), code('SPECIALIST_NOT_ACTIVE'));
+    await assert.rejects(() => svc.heartbeat(String(id)), code('SPECIALIST_NOT_ACTIVE'));
+  });
+
   await check('presence writes are ordered: a late older change can never overwrite newer acknowledged terms', async () => {
     const drV = await doctor('Dr Vohra', 500, 'Dermatology');
     const v0 = (await svc.presence(drV)).presenceVersion;
@@ -421,6 +432,43 @@ async function main() {
     assert.equal((await fin.abandonAdjustmentKey(ADMIN, L1, ak)).state, 'used');
     const lostAdj = rk('adj');
     assert.deepEqual(await fin.abandonAdjustmentKey(ADMIN, L1, lostAdj), { state: 'abandoned' });
+    // The losing side of a concurrent identical submission, made deterministic: its reads ran before the winner committed
+    // (receipt and claim not seen), so its claim insert collides with the winner's. It is answered with the winner's entry.
+    {
+      const k = rk('adj');
+      const winner = await fin.postAdjustment(ADMIN, L1, { amountMinor: 333, reason: 'Late commit', requestKey: k });
+      const missOnce = (M: any) => {
+        const real = M.findOne;
+        let missed = false;
+        M.findOne = function (...args: unknown[]) {
+          if (missed) return real.apply(this, args);
+          missed = true;
+          const empty: any = { session: () => empty, select: () => empty, lean: async () => null, then: (r: any) => Promise.resolve(null).then(r) };
+          return empty;
+        };
+        return () => { M.findOne = real; };
+      };
+      const restoreLedger = missOnce(LedgerEntryModel);
+      const restoreKeys = missOnce(RequestKeyModel);
+      try {
+        const loser = await fin.postAdjustment(ADMIN, L1, { amountMinor: 333, reason: 'Late commit', requestKey: k });
+        assert.deepEqual([String(loser.entry._id), loser.replayed], [String(winner.entry._id), true]);
+      } finally { restoreLedger(); restoreKeys(); }
+    }
+    // Concurrent identical submissions: one entry, every answer is it (no DUPLICATE_RESOURCE).
+    for (let i = 0; i < 4; i++) {
+      const k = rk('adj');
+      const both = await Promise.allSettled([1, 2].map(() => fin.postAdjustment(ADMIN, L1, { amountMinor: 111, reason: 'Twin submit', requestKey: k })));
+      const ok = both.filter((x) => x.status === 'fulfilled') as PromiseFulfilledResult<any>[];
+      assert.equal(ok.length, 2, `both answered: ${both.map((x) => x.status === 'rejected' ? (x.reason as any)?.code : 'ok').join(',')}`);
+      assert.equal(new Set(ok.map((x) => String(x.value.entry._id))).size, 1);
+      // A give-up racing a post: the post either wins (give-up says used) or is refused as abandoned.
+      const k2 = rk('adj');
+      const [posted, gave] = await Promise.allSettled([fin.postAdjustment(ADMIN, L1, { amountMinor: 222, reason: 'Race', requestKey: k2 }), fin.abandonAdjustmentKey(ADMIN, L1, k2)]);
+      if (gave.status === 'fulfilled' && gave.value.state === 'abandoned') {
+        assert.equal(posted.status === 'rejected' && (posted.reason as any).code, 'REQUEST_ABANDONED');
+      } else assert.equal(posted.status, 'fulfilled');
+    }
     await assert.rejects(() => fin.postAdjustment(ADMIN, L1, { amountMinor: 700, reason: 'Collection kit refund', requestKey: lostAdj }), code('REQUEST_ABANDONED'));
     assert.equal(await LedgerEntryModel.countDocuments({ sourceId: `${ADMIN}:${lostAdj}` }), 0);
     assert.equal(accountKeyParamSchema.validate({ accountId: L1, key: 'short' }).error !== undefined, true);
@@ -527,6 +575,22 @@ async function main() {
     const past = await slotAt(drC, A, new Date(Date.now() - 70 * 60_000));
     await assert.rejects(() => clinic.rescheduleDeskAppointment(desk, moving.booking.bookingId, past.slotId), code('SLOT_STARTED'));
     assert.equal((await BookingModel.findById(moving.booking.bookingId).lean())!.slotId, later.slotId.toLowerCase());
+  });
+
+  await check('started-slot admission samples the clock at admission, not when the request arrived', async () => {
+    // A slot starting 5 minutes from "arrival"; the clock moves past its start before the booking transaction admits it.
+    const arrival = new Date(Date.now() - 20 * 60_000);
+    const slot = await slotAt(drC, A, new Date(arrival.getTime() + 5 * 60_000));
+    let reads = 0;
+    const lateClock = () => (++reads === 1 ? arrival : new Date(arrival.getTime() + 10 * 60_000));
+    const phone = nextPhone();
+    await assert.rejects(() => clinic.createDeskAppointment(desk, { slotId: slot.slotId, customer: { phone }, requestKey: rk('desk') }, lateClock), code('SLOT_STARTED'));
+    assert.ok(reads >= 2, 'read again inside the transaction');
+    assert.equal(await BookingModel.countDocuments({ slotId: slot.slotId.toLowerCase() }), 0, 'no seat taken');
+    // A move: the same — the target is checked against the clock when the move takes the seat.
+    const moving = await clinic.createDeskAppointment(desk, { slotId: (await future(futureN++)).slotId, customer: { phone: nextPhone() }, requestKey: rk('desk') });
+    reads = 0;
+    await assert.rejects(() => clinic.rescheduleDeskAppointment(desk, moving.booking.bookingId, slot.slotId, undefined, () => new Date(arrival.getTime() + 10 * 60_000)), code('SLOT_STARTED'));
   });
 
   await check('desk keys: a lost booking is found by its key (own desk and clinic only); give-up wins or finds it; legacy rows are used', async () => {
