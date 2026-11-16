@@ -112,7 +112,9 @@ export class CatalogueService {
         ...data,
         visitModes: data.visitModes ?? [],
         ...(requestKey ? { createRequestKey: requestKey, createRequestHash: requestHash } : {}),
-        partnerId: actor.partnerId,
+        // Q12: new rows store the canonical (lowercase) id, so the unique (partnerId, createRequestKey) index holds one
+        // item per key whatever spelling of the id the request came through (older rows are read via samePartner).
+        partnerId: String(actor.partnerId).toLowerCase(),
         isActive: true,
         adminDisabled: false,
       } as Partial<ICatalogueItem>, { session });

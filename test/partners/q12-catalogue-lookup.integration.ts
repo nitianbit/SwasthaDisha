@@ -117,6 +117,15 @@ async function main() {
       assert.ok(again?.replayed === true || again?.code === 'REQUEST_KEY_REUSED');
       assert.equal(await CatalogueItemModel.countDocuments({ createRequestKey: k }), 1);
     }
+    // Concurrent same-key creates through both spellings of the id: one item, both answered with it.
+    for (let i = 0; i < 6; i++) {
+      const k = `item-dual-${String(i).padStart(4, '0')}`;
+      const both = await Promise.allSettled([catalogueSvc.createItem(a, { ...test(k), requestKey: k }), catalogueSvc.createItem(loud, { ...test(k), requestKey: k })]);
+      assert.equal(await CatalogueItemModel.countDocuments({ createRequestKey: k }), 1, 'one item per key');
+      const ids = both.filter((x) => x.status === 'fulfilled').map((x) => String((x as PromiseFulfilledResult<any>).value._id));
+      assert.ok(ids.length >= 1 && new Set(ids).size === 1, 'every success is the same item');
+      assert.equal((await CatalogueItemModel.findOne({ createRequestKey: k }).lean())!.partnerId, a.partnerId, 'stored canonical');
+    }
     // Another partner never reaches them, whatever the spelling.
     const stranger = { ...b, partnerId: b.partnerId.toUpperCase() };
     const legacy = await CatalogueItemModel.findOne({ createRequestKey: 'item-case-0002' }).lean();
