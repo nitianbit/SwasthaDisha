@@ -10,6 +10,10 @@ const csv = (res: Response, name: string, body: string) => {
   res.setHeader('Cache-Control', 'no-store');
   res.status(200).send(body);
 };
+/** Q13: paged lists keep `data` an array and add `pagination` (as the Q10 bills list). */
+const paged = (res: Response, p: { items: unknown[]; total: number; nextCursor: string | null }) =>
+  res.status(200).json({ success: true, data: p.items, pagination: { total: p.total, nextCursor: p.nextCursor } });
+const pageOpts = (q: Record<string, unknown>) => ({ cursor: q.cursor as string | undefined, limit: q.limit ? Number(q.limit) : undefined });
 const period = (q: Record<string, unknown>) => ({ from: q.from as string | undefined, to: q.to as string | undefined });
 const csvName = (prefix: string, q: Record<string, unknown>) => `${prefix}-statement${q.from ? '-' + q.from : ''}${q.to ? '-to-' + q.to : ''}.csv`;
 
@@ -27,8 +31,10 @@ export const partnerStatement = async (req: Request, res: Response, _n: NextFunc
   ok(res, await f.statementPage((await partnerAccount(req)).account, req.query as any));
 export const partnerStatementCsv = async (req: Request, res: Response, _n: NextFunction) =>
   csv(res, csvName('partner', req.query), await f.statementCsv((await partnerAccount(req)).account, period(req.query)));
-export const partnerEvents = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.financeEvents((await partnerAccount(req)).account));
-export const partnerPayouts = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.listPayouts((await partnerAccount(req)).account));
+export const partnerEvents = async (req: Request, res: Response, _n: NextFunction) =>
+  paged(res, await f.eventsPage((await partnerAccount(req)).account, pageOpts(req.query)));
+export const partnerPayouts = async (req: Request, res: Response, _n: NextFunction) =>
+  paged(res, await f.payoutsPage((await partnerAccount(req)).account, pageOpts(req.query)));
 export const putPartnerPayoutDetails = async (req: Request, res: Response, _n: NextFunction) => {
   const actor = actorOf(req);
   const by: f.FinanceActor = actor.actorKind === 'admin' ? { kind: 'admin', id: actor.memberId.replace(/^admin:/, '') } : { kind: 'member', partner: actor };
@@ -43,8 +49,8 @@ export const doctorFinance = async (req: Request, res: Response, _n: NextFunctio
 export const doctorStatement = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.statementPage(await doctorAccount(req), req.query as any));
 export const doctorStatementCsv = async (req: Request, res: Response, _n: NextFunction) =>
   csv(res, csvName('doctor', req.query), await f.statementCsv(await doctorAccount(req), period(req.query)));
-export const doctorPayouts = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.listPayouts(await doctorAccount(req)));
-export const doctorEvents = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.financeEvents(await doctorAccount(req)));
+export const doctorPayouts = async (req: Request, res: Response, _n: NextFunction) => paged(res, await f.payoutsPage(await doctorAccount(req), pageOpts(req.query)));
+export const doctorEvents = async (req: Request, res: Response, _n: NextFunction) => paged(res, await f.eventsPage(await doctorAccount(req), pageOpts(req.query)));
 export const doctorHistory = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.historyRefs(await doctorAccount(req)));
 export const putDoctorPayoutDetails = async (req: Request, res: Response, _n: NextFunction) =>
   ok(res, await f.setPayoutDetails({ ownerKind: 'doctor', ownerId: doctorOf(req) }, req.body, { kind: 'doctor', id: doctorOf(req) }));
@@ -60,13 +66,11 @@ export const adminStatement = async (req: Request, res: Response, _n: NextFuncti
 export const adminStatementCsv = async (req: Request, res: Response, _n: NextFunction) =>
   csv(res, csvName(`account-${req.params.accountId}`, req.query), await f.statementCsv(await f.accountById(req.params.accountId), period(req.query)));
 export const adminAccountPayouts = async (req: Request, res: Response, _n: NextFunction) =>
-  ok(res, await f.listPayouts(await f.accountById(req.params.accountId)));
+  paged(res, await f.payoutsPage(await f.accountById(req.params.accountId), pageOpts(req.query)));
 export const adminHistory = async (req: Request, res: Response, _n: NextFunction) =>
   ok(res, await f.historyRefs(await f.accountById(req.params.accountId)));
-export const adminEvents = async (req: Request, res: Response, _n: NextFunction) => {
-  await f.accountById(req.params.accountId);
-  ok(res, await f.adminAccountEvents(req.params.accountId));
-};
+export const adminEvents = async (req: Request, res: Response, _n: NextFunction) =>
+  paged(res, await f.eventsPage(await f.accountById(req.params.accountId), pageOpts(req.query)));
 export const adminPutPayoutDetails = async (req: Request, res: Response, _n: NextFunction) =>
   ok(res, await f.setPayoutDetails({ accountId: req.params.accountId }, req.body, { kind: 'admin', id: adminId(req) }));
 export const adminVerifyPayoutDetails = async (req: Request, res: Response, _n: NextFunction) =>
@@ -81,4 +85,19 @@ export const adminAdjustment = async (req: Request, res: Response, _n: NextFunct
   const r = await f.postAdjustment(adminId(req), req.params.accountId, req.body);
   ok(res, r, r.replayed ? 200 : 201);
 };
-export const adminPayouts = async (req: Request, res: Response, _n: NextFunction) => ok(res, await f.adminListPayouts(req.query as any));
+export const adminPayouts = async (req: Request, res: Response, _n: NextFunction) => paged(res, await f.adminPayoutsPage(req.query as any));
+// Q13: a lost payout/adjustment answer — the admin's own key on this account.
+export const adminPayoutByKey = async (req: Request, res: Response, _n: NextFunction) => {
+  const p = await f.payoutByKey(adminId(req), req.params.accountId, req.params.key);
+  if (!p) { res.status(404).json({ error: 404, code: 'PAYOUT_NOT_FOUND', message: 'No payout was recorded with this key' }); return; }
+  ok(res, p);
+};
+export const adminAbandonPayoutKey = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await f.abandonPayoutKey(adminId(req), req.params.accountId, req.params.key));
+export const adminAdjustmentByKey = async (req: Request, res: Response, _n: NextFunction) => {
+  const e = await f.adjustmentByKey(adminId(req), req.params.accountId, req.params.key);
+  if (!e) { res.status(404).json({ error: 404, code: 'ADJUSTMENT_NOT_FOUND', message: 'No adjustment was posted with this key' }); return; }
+  ok(res, e);
+};
+export const adminAbandonAdjustmentKey = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await f.abandonAdjustmentKey(adminId(req), req.params.accountId, req.params.key));

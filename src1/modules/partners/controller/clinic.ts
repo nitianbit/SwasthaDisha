@@ -19,12 +19,23 @@ export const bookDesk = async (req: Request, res: Response, _n: NextFunction) =>
   const r = await c.createDeskAppointment(actorOf(req), req.body);
   ok(res, r, r.replayed ? 200 : 201);
 };
-export const deskArrived = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.markArrived(actorOf(req), req.params.bookingId));
-export const deskComplete = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.closeDeskAppointment(actorOf(req), req.params.bookingId, 'completed'));
-export const deskNoShow = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.closeDeskAppointment(actorOf(req), req.params.bookingId, 'no_show'));
-export const deskCancel = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.cancelDeskAppointment(actorOf(req), req.params.bookingId, req.body?.reason));
+const expected = (req: Request) => req.body?.expectedUpdatedAt as Date | undefined;
+export const deskArrived = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.markArrived(actorOf(req), req.params.bookingId, expected(req)));
+export const deskComplete = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await c.closeDeskAppointment(actorOf(req), req.params.bookingId, 'completed', new Date(), expected(req)));
+export const deskNoShow = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await c.closeDeskAppointment(actorOf(req), req.params.bookingId, 'no_show', new Date(), expected(req)));
+export const deskCancel = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await c.cancelDeskAppointment(actorOf(req), req.params.bookingId, req.body?.reason, expected(req)));
 export const deskReschedule = async (req: Request, res: Response, _n: NextFunction) =>
-  ok(res, await c.rescheduleDeskAppointment(actorOf(req), req.params.bookingId, req.body.slotId));
+  ok(res, await c.rescheduleDeskAppointment(actorOf(req), req.params.bookingId, req.body.slotId, expected(req)));
+// Q13: a desk booking whose answer was lost — look it up by its key, or give the key up.
+export const deskByKey = async (req: Request, res: Response, _n: NextFunction) => {
+  const b = await c.findDeskByKey(actorOf(req), req.params.key);
+  if (!b) { res.status(404).json({ error: 404, code: 'BOOKING_NOT_FOUND', message: 'No appointment was made with this key' }); return; }
+  ok(res, b);
+};
+export const abandonDeskKey = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.abandonDeskKey(actorOf(req), req.params.key));
 
 // ── Doctor (specialist portal) ──
 const doctorOf = (req: Request) => String((req as AuthRequest).user!.specialistId || (req as AuthRequest).user!._id);

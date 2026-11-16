@@ -21,6 +21,8 @@ export const payoutDetailsSchema = Joi.object({
   ifsc: Joi.string().trim().max(11).when('method', { is: 'bank', then: Joi.required(), otherwise: Joi.forbidden() }),
   bankName: Joi.string().trim().max(120).when('method', { is: 'bank', then: Joi.optional(), otherwise: Joi.forbidden() }),
   upiId: Joi.string().trim().max(320).when('method', { is: 'upi', then: Joi.required(), otherwise: Joi.forbidden() }),
+  /** Q13: the payoutDetailsVersion the editor started from (409 PAYOUT_DETAILS_CHANGED otherwise). */
+  expectedDetailsVersion: Joi.number().integer().min(0).optional(),
 });
 
 export const accountIdParamSchema = Joi.object({ accountId: objectId.required() });
@@ -36,6 +38,8 @@ export const recordPayoutSchema = Joi.object({
   note: Joi.string().trim().max(500).allow('').optional(),
   detailsVersion: Joi.number().integer().min(1).required(),
   requestKey,
+  /** Q13: the account's financeVersion the admin decided on (409 FINANCE_CHANGED otherwise). */
+  expectedFinanceVersion: Joi.number().integer().min(0).optional(),
 });
 
 export const voidPayoutSchema = Joi.object({ reason: Joi.string().trim().min(3).max(500).required() });
@@ -44,6 +48,7 @@ export const adjustmentSchema = Joi.object({
   amountMinor: Joi.number().integer().invalid(0).required(),
   reason: Joi.string().trim().min(3).max(500).required(),
   requestKey,
+  expectedFinanceVersion: Joi.number().integer().min(0).optional(),
 });
 
 export const accountsQuerySchema = Joi.object({
@@ -61,4 +66,10 @@ export const payoutsQuerySchema = Joi.object({
   to: isoDate.optional(),
   state: Joi.string().valid('recorded', 'voided').optional(),
   limit: Joi.number().integer().min(1).max(500).optional(),
+  /** Q13: `<createdAt ms>_<id>` from the previous page's pagination.nextCursor. */
+  cursor: Joi.string().max(64).optional(),
 });
+
+/** Q13: cursor pages of one account's payouts / finance events. */
+export const pageQuerySchema = Joi.object({ cursor: Joi.string().max(64).optional(), limit: Joi.number().integer().min(1).max(500).optional() });
+export const accountKeyParamSchema = Joi.object({ accountId: objectId.required(), key: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).required() });

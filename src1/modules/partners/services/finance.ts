@@ -12,6 +12,8 @@ import { PartnerLabBookingModel } from '@/modules/partners/model/labBooking';
 import { PartnerActor, adminActor, hasGlobalScope, inTransaction, recordPartnerAudit } from '@/modules/partners/services';
 import { ensureSettlementAccount, ledgerBalance, postLedgerEntry } from '@/modules/partners/services/settlement';
 import { istDate, isRealDate } from '@/modules/partners/services/slots';
+import { claimRequestKey, abandonRequestKey } from '@/modules/requestKeys';
+import { RequestKeyModel } from '@/modules/requestKeys/model';
 
 /**
  * Q5 — ledger statements, payout destinations and admin payout recording (§7). Money only moves through append-only
@@ -90,6 +92,9 @@ export function accountView(a: ISettlementAccount, full: boolean) {
     payoutDetails: detailsView(a.payoutDetails, full), payoutDetailsState: a.payoutDetailsState ?? 'none',
     payoutDetailsVersion: a.payoutDetailsVersion ?? 0, payoutDetailsChangedAt: a.payoutDetailsChangedAt,
     payoutDetailsVerifiedAt: a.payoutDetailsVerifiedAt,
+    // Q13: the serialization version of payouts, voids, adjustments and destination changes (earnings do not move it);
+    // a payout or adjustment may name the version it was decided on.
+    financeVersion: a.financeVersion ?? 0,
   };
 }
 
@@ -110,12 +115,27 @@ async function recordFinanceEvent(account: ISettlementAccount, actor: FinanceAct
   }
 }
 
-/** Every spending/correcting decision and destination change serializes on the account (see module note). */
-async function bumpFinance(accountId: string, s: ClientSession): Promise<ISettlementAccount> {
-  const a = await SettlementAccountModel.findOneAndUpdate({ _id: accountId }, { $inc: { financeVersion: 1 } }, { new: true, session: s }).lean();
-  if (!a) throw err(404, 'SETTLEMENT_ACCOUNT_NOT_FOUND', 'Settlement account not found');
+/**
+ * Every spending/correcting decision and destination change serializes on the account (see module note). Q13: with
+ * `expected` the bump happens only from that version (an account written before the field existed counts as 0); any
+ * other current version refuses the decision (409 FINANCE_CHANGED).
+ */
+async function bumpFinance(accountId: string, s: ClientSession, expected?: number): Promise<ISettlementAccount> {
+  const fence = expected === undefined ? {}
+    : expected === 0 ? { $or: [{ financeVersion: 0 }, { financeVersion: { $exists: false } }] } : { financeVersion: expected };
+  const a = await SettlementAccountModel.findOneAndUpdate({ _id: accountId, ...fence }, { $inc: { financeVersion: 1 } }, { new: true, session: s }).lean();
+  if (!a) {
+    if (expected !== undefined && await SettlementAccountModel.exists({ _id: accountId }).session(s)) {
+      throw err(409, 'FINANCE_CHANGED', 'This account changed since it was loaded (a payout, adjustment or destination change); review it again');
+    }
+    throw err(404, 'SETTLEMENT_ACCOUNT_NOT_FOUND', 'Settlement account not found');
+  }
   return a as ISettlementAccount;
 }
+
+/** Q13: request-key scopes of admin payouts and adjustments, per account and admin (claimed with the record). */
+export const payoutKeyScope = (accountId: string, adminId: string) => `settlement_payout:${canon(accountId)}:${canon(adminId)}`;
+export const adjustmentKeyScope = (accountId: string, adminId: string) => `settlement_adjustment:${canon(accountId)}:${canon(adminId)}`;
 
 // ── Summary and statement ──
 
@@ -264,6 +284,44 @@ export async function statementCsv(account: ISettlementAccount | null, opts: { f
   return rows.join('\n') + '\n';
 }
 
+// ── Q13: exact cursor pages `<ms>_<id>` (newest first, ties broken by id), as the Q10 bills list ──
+
+export interface PageOpts { cursor?: string; limit?: number }
+export interface Page<T> { items: T[]; total: number; nextCursor: string | null }
+
+function pageCursor(c?: string): { at: Date; id: Types.ObjectId } | null {
+  if (!c) return null;
+  const [ms, id] = c.split('_');
+  if (!/^\d{1,15}$/.test(ms ?? '') || !/^[0-9a-fA-F]{24}$/.test(id ?? '')) throw err(400, 'INVALID_CURSOR', 'Invalid cursor');
+  return { at: new Date(Number(ms)), id: new Types.ObjectId(id) };
+}
+
+async function cursorPage<T extends { _id?: unknown }>(model: mongoose.Model<any>, filter: Record<string, unknown>, field: 'createdAt' | 'at',
+  opts: PageOpts, defaultLimit: number, projection?: Record<string, 0>): Promise<Page<T>> {
+  const limit = Math.min(Math.max(Number(opts.limit) || defaultLimit, 1), 500);
+  const cur = pageCursor(opts.cursor);
+  const page = cur ? { $and: [filter, { $or: [{ [field]: { $lt: cur.at } }, { [field]: cur.at, _id: { $lt: cur.id } }] }] } : filter;
+  const [total, rows] = await Promise.all([
+    model.countDocuments(filter),
+    model.find(page).sort({ [field]: -1, _id: -1 }).limit(limit + 1).select(projection ?? {}).lean().exec() as Promise<T[]>,
+  ]);
+  const items = rows.slice(0, limit);
+  const last = items[items.length - 1] as (T & Record<string, unknown>) | undefined;
+  return { items, total, nextCursor: rows.length > limit && last ? `${new Date(last[field] as Date).getTime()}_${String(last._id)}` : null };
+}
+
+/** Q13: the payouts of one account, paged. */
+export async function payoutsPage(account: ISettlementAccount | null, opts: PageOpts): Promise<Page<ISettlementPayout>> {
+  if (!account) return { items: [], total: 0, nextCursor: null };
+  return cursorPage<ISettlementPayout>(SettlementPayoutModel, { settlementAccountId: String(account._id) }, 'createdAt', opts, 100, { requestKey: 0, requestHash: 0 });
+}
+
+/** Q13: the finance events of one account, paged. */
+export async function eventsPage(account: ISettlementAccount | null, opts: PageOpts) {
+  if (!account) return { items: [], total: 0, nextCursor: null };
+  return cursorPage(SettlementEventModel, { settlementAccountId: String(account._id) }, 'at', opts, 200);
+}
+
 /** The finance event stream of an account (who changed destinations, recorded/voided payouts, adjustments). */
 export async function financeEvents(account: ISettlementAccount | null, limit = 200) {
   if (!account) return [];
@@ -284,7 +342,11 @@ export async function historyRefs(account: ISettlementAccount | null) {
 
 // ── Payout destination ──
 
-export interface PayoutDetailsInput { method: 'bank' | 'upi'; accountName?: string; accountNumber?: string; ifsc?: string; bankName?: string; upiId?: string }
+export interface PayoutDetailsInput {
+  method: 'bank' | 'upi'; accountName?: string; accountNumber?: string; ifsc?: string; bankName?: string; upiId?: string;
+  /** Q13: the payoutDetailsVersion the editor started from; another current version refuses the change. */
+  expectedDetailsVersion?: number;
+}
 
 function normalizeDetails(i: PayoutDetailsInput): IPayoutDetails {
   if (i.method === 'bank') {
@@ -311,7 +373,10 @@ export async function setPayoutDetails(target: { ownerKind: 'partner' | 'doctor'
   const details = normalizeDetails(input);
   const base = 'accountId' in target ? await accountById(canon(target.accountId)) : await ensureOwnerAccount(target.ownerKind, target.ownerId);
   const updated = await inTransaction(async (s) => {
-    await bumpFinance(String(base._id), s);
+    const current = await bumpFinance(String(base._id), s);
+    if (input.expectedDetailsVersion !== undefined && (current.payoutDetailsVersion ?? 0) !== input.expectedDetailsVersion) {
+      throw err(409, 'PAYOUT_DETAILS_CHANGED', 'The payout details changed since they were loaded; review them again');
+    }
     const a = await SettlementAccountModel.findOneAndUpdate({ _id: base._id },
       { $set: { payoutDetails: details, payoutDetailsState: 'unverified', payoutDetailsChangedAt: new Date() }, $inc: { payoutDetailsVersion: 1 },
         $unset: { payoutDetailsVerifiedAt: 1, payoutDetailsVerifiedBy: 1 } }, { new: true, session: s }).lean() as ISettlementAccount;
@@ -346,6 +411,8 @@ export async function verifyPayoutDetails(rawAccountId: string, version: number,
 export interface RecordPayoutInput {
   amountMinor: number; method: 'bank_transfer' | 'upi' | 'other'; reference: string; paidOn: string; note?: string;
   detailsVersion: number; requestKey: string;
+  /** Q13: the account's financeVersion the admin decided on (a fence, not part of the request's identity). */
+  expectedFinanceVersion?: number;
 }
 
 const hashOf = (v: unknown) => crypto.createHash('sha256').update(JSON.stringify(v)).digest('hex');
@@ -378,7 +445,9 @@ export async function recordPayout(adminId: string, rawAccountId: string, input:
     return await inTransaction(async (s) => {
       const again = await replay(s);
       if (again) return again;
-      const a = await bumpFinance(accountId, s);
+      // Q13: claimed with the payout, so an admin's give-up of a lost answer and this payout cannot both win.
+      await claimRequestKey(payoutKeyScope(accountId, adminId), input.requestKey, s);
+      const a = await bumpFinance(accountId, s, input.expectedFinanceVersion);
       if (!a.isActive) throw err(409, 'ACCOUNT_INACTIVE', 'This settlement account is inactive');
       if (!a.payoutDetails || a.payoutDetailsState !== 'verified') throw err(409, 'PAYOUT_DETAILS_NOT_VERIFIED', 'Verify the payout details before recording a payout');
       if (a.payoutDetailsVersion !== input.detailsVersion) throw err(409, 'PAYOUT_DETAILS_CHANGED', 'The payout details changed since they were loaded; review them again');
@@ -403,6 +472,9 @@ export async function recordPayout(adminId: string, rawAccountId: string, input:
     if (e?.code === 11000) {
       const r = await replay();
       if (r) return r;
+      if (await RequestKeyModel.exists({ scope: payoutKeyScope(accountId, adminId), key: input.requestKey, state: 'abandoned' })) {
+        throw err(409, 'REQUEST_ABANDONED', 'This request was cancelled before it was recorded; make a new one');
+      }
       throw err(409, 'PAYOUT_REFERENCE_EXISTS', 'A payout with this reference is already recorded for this account');
     }
     throw e;
@@ -434,7 +506,8 @@ export async function voidPayout(adminId: string, rawPayoutId: string, reason: s
  * Admin correction (+ credit / − recovery) with a reason, exactly once per (admin, requestKey). It may take the balance
  * below zero: a recovery owed is a fact to record, not something to refuse.
  */
-export async function postAdjustment(adminId: string, rawAccountId: string, input: { amountMinor: number; reason: string; requestKey: string }) {
+export async function postAdjustment(adminId: string, rawAccountId: string,
+  input: { amountMinor: number; reason: string; requestKey: string; expectedFinanceVersion?: number }) {
   if (!Types.ObjectId.isValid(rawAccountId)) throw err(404, 'SETTLEMENT_ACCOUNT_NOT_FOUND', 'Settlement account not found');
   const accountId = canon(rawAccountId);
   const amount = input.amountMinor;
@@ -448,12 +521,48 @@ export async function postAdjustment(adminId: string, rawAccountId: string, inpu
       if (existing.amountMinor !== amount || existing.note !== why) throw err(409, 'REQUEST_KEY_REUSED', 'This request key was already used for a different adjustment');
       return { entry: existing, replayed: true };
     }
-    const a = await bumpFinance(accountId, s);
+    // Q13: claimed with the entry (see recordPayout); the version fence is checked on the account as it is now.
+    await claimRequestKey(adjustmentKeyScope(accountId, adminId), input.requestKey, s);
+    const a = await bumpFinance(accountId, s, input.expectedFinanceVersion);
     const entry = await postLedgerEntry({ settlementAccountId: String(a._id), kind: 'adjustment', amountMinor: amount, grossMinor: Math.abs(amount),
       source: 'admin_adjustment', sourceId, note: why, by: `admin:${adminId}`, byKind: 'admin' }, s);
     await recordFinanceEvent(a, { kind: 'admin', id: adminId }, 'finance.adjustment_posted', { entryId: String(entry._id), amountMinor: amount, reason: why }, s);
     return { entry, replayed: false };
   });
+}
+
+// ── Q13: a lost payout/adjustment answer — look it up by its key, or give the key up ──
+
+/** The payout this admin recorded on this account with this key, or null. */
+export async function payoutByKey(adminId: string, rawAccountId: string, key: string) {
+  const a = await accountById(rawAccountId);
+  const p = await SettlementPayoutModel.findOne({ settlementAccountId: String(a._id), by: { $eq: adminId }, requestKey: { $eq: key } }).lean() as ISettlementPayout | null;
+  return p ? publicPayout(p) : null;
+}
+
+/** Abandoned (the key can never record a payout on this account) or used (here is the payout). */
+export async function abandonPayoutKey(adminId: string, rawAccountId: string, key: string) {
+  const a = await accountById(rawAccountId);
+  // A payout recorded before claims existed (no claim row) is used, never abandoned.
+  const made = await payoutByKey(adminId, String(a._id), key);
+  if (made) return { state: 'used' as const, payout: made };
+  const state = await abandonRequestKey(payoutKeyScope(String(a._id), adminId), key);
+  return state === 'abandoned' ? { state } : { state, payout: await payoutByKey(adminId, String(a._id), key) };
+}
+
+/** The adjustment entry this admin posted on this account with this key, or null. */
+export async function adjustmentByKey(adminId: string, rawAccountId: string, key: string) {
+  const a = await accountById(rawAccountId);
+  return (await LedgerEntryModel.findOne({ settlementAccountId: String(a._id), source: 'admin_adjustment', sourceId: `${adminId}:${key}`, kind: 'adjustment' })
+    .lean()) as ILedgerEntry | null;
+}
+
+export async function abandonAdjustmentKey(adminId: string, rawAccountId: string, key: string) {
+  const a = await accountById(rawAccountId);
+  const made = await adjustmentByKey(adminId, String(a._id), key);
+  if (made) return { state: 'used' as const, entry: made };
+  const state = await abandonRequestKey(adjustmentKeyScope(String(a._id), adminId), key);
+  return state === 'abandoned' ? { state } : { state, entry: await adjustmentByKey(adminId, String(a._id), key) };
 }
 
 // ── Admin lists ──
@@ -487,7 +596,9 @@ export async function adminListAccounts(q: { ownerKind?: 'partner' | 'doctor'; d
   };
 }
 
-export async function adminListPayouts(q: { accountId?: string; from?: string; to?: string; state?: 'recorded' | 'voided'; limit?: number }) {
+type PayoutQuery = { accountId?: string; from?: string; to?: string; state?: 'recorded' | 'voided'; limit?: number };
+
+function payoutFilter(q: PayoutQuery): Record<string, unknown> {
   const filter: Record<string, unknown> = {};
   if (q.accountId) filter.settlementAccountId = canon(q.accountId);
   if (q.state) filter.state = q.state;
@@ -495,8 +606,37 @@ export async function adminListPayouts(q: { accountId?: string; from?: string; t
     if ((q.from && !isRealDate(q.from)) || (q.to && !isRealDate(q.to))) throw err(400, 'INVALID_DATE', 'Dates must be real, YYYY-MM-DD');
     filter.paidOn = { ...(q.from ? { $gte: q.from } : {}), ...(q.to ? { $lte: q.to } : {}) };
   }
-  return SettlementPayoutModel.find(filter).sort({ paidOn: -1, createdAt: -1 }).limit(Math.min(Number(q.limit) || 100, 500))
+  return filter;
+}
+
+export async function adminListPayouts(q: PayoutQuery) {
+  return SettlementPayoutModel.find(payoutFilter(q)).sort({ paidOn: -1, createdAt: -1 }).limit(Math.min(Number(q.limit) || 100, 500))
     .select({ requestKey: 0, requestHash: 0 }).lean();
+}
+
+/**
+ * Q13: the admin payout queue, newest recorded first with an exact `<createdAt ms>_<id>` cursor and the total, each row
+ * naming its account (beneficiary, owner kind/id and the owner's current display name).
+ */
+export async function adminPayoutsPage(q: PayoutQuery & { cursor?: string }) {
+  const page = await cursorPage<ISettlementPayout>(SettlementPayoutModel, payoutFilter(q), 'createdAt', q, 100, { requestKey: 0, requestHash: 0 });
+  const accountIds = [...new Set(page.items.map((p) => canon(p.settlementAccountId)))].filter((x) => Types.ObjectId.isValid(x));
+  const accounts = await SettlementAccountModel.find({ _id: { $in: accountIds } }).select({ ownerKind: 1, ownerId: 1, beneficiaryName: 1 }).lean() as ISettlementAccount[];
+  const ids = (kind: 'partner' | 'doctor') => accounts.filter((a) => a.ownerKind === kind).map((a) => a.ownerId).filter((x) => Types.ObjectId.isValid(x));
+  const [partners, doctors] = await Promise.all([
+    PartnerOrgModel.find({ _id: { $in: ids('partner') } }).select({ name: 1 }).lean().exec() as Promise<{ _id: unknown; name?: string }[]>,
+    SpecialistModel.find({ _id: { $in: ids('doctor') } }).select({ name: 1 }).lean().exec() as Promise<{ _id: unknown; name?: string }[]>,
+  ]);
+  const names = new Map([...partners, ...doctors].map((x) => [canon(String(x._id)), x.name]));
+  const byId = new Map(accounts.map((a) => [canon(String(a._id)), a]));
+  return {
+    ...page,
+    items: page.items.map((p) => {
+      const a = byId.get(canon(p.settlementAccountId));
+      return { ...p, account: a ? { accountId: String(a._id), ownerKind: a.ownerKind, ownerId: a.ownerId, beneficiaryName: a.beneficiaryName,
+        ownerName: names.get(canon(a.ownerId)) ?? null } : null };
+    }),
+  };
 }
 
 export async function adminAccountEvents(accountId: string) {

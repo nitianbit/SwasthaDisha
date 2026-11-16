@@ -20,7 +20,11 @@ import SlotModel from '@/modules/slots/model';
 import BookingModel from '@/modules/bookings/model';
 import UserModel from '@/modules/user/model';
 import { IBooking } from '@/modules/bookings/types';
-import { cancelBookingSettlement, createBookingWithHolds, deskBookingInScope, isReplayedBooking, rescheduleWithHolds, type DeskScope } from '@/modules/bookings/holds';
+import {
+  assertBookingVersion, cancelBookingSettlement, createBookingWithHolds, deskBookingInScope, isReplayedBooking, rescheduleWithHolds, type DeskScope,
+} from '@/modules/bookings/holds';
+import { claimRequestKey, abandonRequestKey } from '@/modules/requestKeys';
+import { RequestKeyModel } from '@/modules/requestKeys/model';
 import DependentModel from '@/modules/dependents/model';
 import { DoctorReservationModel } from '@/modules/doctors/model/reservation';
 import { releaseInterval } from '@/modules/doctors/services/reservations';
@@ -134,7 +138,15 @@ export async function inviteDoctor(actor: PartnerActor, input: { doctorId?: stri
 export async function listInvites(actor: PartnerActor, state?: IClinicDoctorInvite['state']) {
   await clinicOf(actor);
   const rows = await ClinicDoctorInviteModel.find({ partnerId: actor.partnerId, ...(state ? { state } : {}) }).sort({ createdAt: -1 }).limit(500).lean();
-  return rows.filter((i) => inviteInScope(actor, i)).slice(0, 200);
+  const visible = rows.filter((i) => inviteInScope(actor, i)).slice(0, 200);
+  // Q13: each invitation names the doctor (current display name and speciality only; no contact details).
+  const sps = await SpecialistModel.find({ _id: { $in: [...new Set(visible.map((i) => String(i.doctorId)))].filter((d) => Types.ObjectId.isValid(d)) } })
+    .select({ name: 1, specialization: 1 }).lean() as { _id: unknown; name?: string; specialization?: string }[];
+  const byId = new Map(sps.map((d) => [String(d._id).toLowerCase(), d]));
+  return visible.map((i) => {
+    const d = byId.get(String(i.doctorId).toLowerCase());
+    return { ...i, doctor: { doctorId: String(i.doctorId), name: d?.name ?? null, specialization: d?.specialization ?? null } };
+  });
 }
 
 export async function revokeInvite(actor: PartnerActor, inviteId: string) {
@@ -234,8 +246,11 @@ export async function leaveClinic(doctorId: string, partnerId: string) {
 
 // ───────────────────────────── Front desk: slots and appointments ─────────────────────────────
 
-/** Bookable in-clinic slots of a clinic doctor at one branch on one day (seat free, doctor's time not held elsewhere). */
-export async function deskSlots(actor: PartnerActor, q: { doctorId: string; branchId: string; date: string }) {
+/**
+ * Bookable in-clinic slots of a clinic doctor at one branch on one day (seat free, doctor's time not held elsewhere).
+ * Q13: slots that have already started are left out (the desk create refuses them with SLOT_STARTED).
+ */
+export async function deskSlots(actor: PartnerActor, q: { doctorId: string; branchId: string; date: string }, now = new Date()) {
   await clinicOf(actor);
   await clinicBranch(actor, q.branchId);
   if (!isRealDate(q.date)) throw err(400, 'INVALID_DATE', 'date must be a real date, YYYY-MM-DD');
@@ -243,7 +258,7 @@ export async function deskSlots(actor: PartnerActor, q: { doctorId: string; bran
   const slots = await SlotModel.find({ specialistId: String(q.doctorId), branchId: String(q.branchId), date: ymd(q.date), isActive: true, isAvailable: true,
     $expr: { $lt: [{ $ifNull: ['$currentBookings', 0] }, { $ifNull: ['$maxBookings', 1] }] } }).lean() as any[];
   const inPerson = slots.filter((s) => !(s.serviceModes?.length) || s.serviceModes.includes('in-person'));
-  const windows = inPerson.map((s) => ({ s, w: slotIntervalOf(s) })).filter((x) => x.w);
+  const windows = inPerson.map((s) => ({ s, w: slotIntervalOf(s) })).filter((x) => x.w && x.w.start.getTime() > now.getTime());
   if (!windows.length) return [];
   const held = await DoctorReservationModel.find({ doctorId: String(q.doctorId), isActive: true,
     startTime: { $lt: new Date(Math.max(...windows.map((x) => x.w!.end.getTime()))) }, endTime: { $gt: new Date(Math.min(...windows.map((x) => x.w!.start.getTime()))) } }).lean();
@@ -256,12 +271,17 @@ export async function deskSlots(actor: PartnerActor, q: { doctorId: string; bran
 
 export interface DeskBookingInput { slotId: string; customer: { phone: string; name?: string }; notes?: string; requestKey: string }
 
+/** Q13: request-key scope of desk appointments, per clinic and desk member (claimed in the booking transaction). */
+export const deskKeyScope = (actor: PartnerActor) => `clinic_desk_create:${String(actor.partnerId).toLowerCase()}:${String(actor.memberId).toLowerCase()}`;
+const storedDeskKey = (actor: PartnerActor, key: string) => `desk:${actor.memberId}:${key}`;
+const samePartner = (a?: string, b?: string) => !!a && !!b && a.toLowerCase() === b.toLowerCase();
+
 /**
  * A front-desk appointment: the customer (found or created by phone, never merged or overwritten) gets an in-person
  * consultation on a clinic doctor's slot at this clinic. One admission with online bookings (seat, doctor interval,
  * leave, current clinic authority), exactly once per (desk member, request key), audited in the same transaction.
  */
-export async function createDeskAppointment(actor: PartnerActor, input: DeskBookingInput) {
+export async function createDeskAppointment(actor: PartnerActor, input: DeskBookingInput, now = new Date()) {
   await clinicOf(actor);
   if (!Types.ObjectId.isValid(input.slotId)) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
   const slot = await SlotModel.findById(input.slotId).lean() as any;
@@ -270,10 +290,11 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
   const sp = await SpecialistModel.findById(slot.specialistId).select({ name: 1, consultationFee: 1 }).lean() as any;
   if (!sp) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
   // Exactly once per (desk member, request key), whatever customer or slot a repeat names (unique clinicDesk.requestKey).
-  const requestKey = `desk:${actor.memberId}:${input.requestKey}`;
+  const requestKey = storedDeskKey(actor, input.requestKey);
   const requestHash = createHash('sha256').update(JSON.stringify({ slotId: String(slot._id).toLowerCase(),
     phone: canonicalMobile(input.customer.phone) ?? input.customer.phone, notes: input.notes?.trim() || null })).digest('hex');
-  const desk = deskScopeOf(actor);
+  // Q13: a slot that has already started is refused, here and again inside the booking transaction.
+  const desk: DeskScope = { ...deskScopeOf(actor), refuseStartedAt: now };
   const asReceipt = (prior: IBooking) => {
     if (prior.clinicDesk?.requestHash !== requestHash) throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different appointment');
     // A receipt is shown only while the appointment is still within this desk's branches (it may have been moved).
@@ -286,6 +307,12 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
   };
   const prior = await replay();
   if (prior) return { booking: deskView(prior), customer: { userId: String(prior.userId), phone: canonicalMobile(input.customer.phone), created: false }, replayed: true };
+  // Q13: refused before a customer is resolved or created (the in-transaction claim and slot admission decide finally).
+  if (await RequestKeyModel.exists({ scope: deskKeyScope(actor), key: input.requestKey, state: 'abandoned' })) {
+    throw err(409, 'REQUEST_ABANDONED', 'This request was cancelled before it was recorded; make a new one');
+  }
+  const startsAt = slotIntervalOf(slot)?.start;
+  if (!startsAt || startsAt.getTime() <= now.getTime()) throw err(409, 'SLOT_STARTED', 'This slot has already started; choose a later one');
   const customer = await resolveCustomerByPhone(input.customer.phone, 'clinic_desk');
   const name = input.customer.name?.trim();
   if (name) await UserModel.updateOne({ _id: customer._id, $or: [{ name: { $exists: false } }, { name: null }, { name: '' }] }, { $set: { name } });
@@ -299,9 +326,12 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
       status: 'confirmed', paymentStatus: 'pending',
       clinicDesk: { partnerId: actor.partnerId, branchId: String(branch._id), createdBy: actor.memberId, requestKey, requestHash },
       ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),
-    } as IBooking, (b, s) => audit(actor, 'clinic.appointment_booked', { kind: 'booking', id: String(b._id) },
-      { doctorId: String(slot.specialistId), branchId: b.clinicDesk?.branchId, slotId: String(slot._id), customerCreated: customer.created }, s),
-    desk);
+    } as IBooking, async (b, s) => {
+      // Q13: the key is claimed with the appointment, so a desk's give-up of a lost answer and this booking cannot both win.
+      await claimRequestKey(deskKeyScope(actor), input.requestKey, s);
+      await audit(actor, 'clinic.appointment_booked', { kind: 'booking', id: String(b._id) },
+        { doctorId: String(slot.specialistId), branchId: b.clinicDesk?.branchId, slotId: String(slot._id), customerCreated: customer.created }, s);
+    }, desk);
   } catch (e: any) {
     // A racing identical request may have committed first (seat taken, or the unique key): answer with its receipt.
     const raced = await replay();
@@ -318,7 +348,29 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
 function deskView(b: IBooking) {
   return { bookingId: String(b._id), bookingDate: b.bookingDate, bookingTime: b.bookingTime, status: b.status, doctorId: b.specialistId,
     doctorName: b.doctorName, branchId: b.clinicDesk?.branchId, slotId: b.slotId, consultationMode: b.consultationMode, fee: b.price,
-    payAtClinic: b.settlementSystem === 'clinic', arrivedAt: b.clinicDesk?.arrivedAt };
+    payAtClinic: b.settlementSystem === 'clinic', arrivedAt: b.clinicDesk?.arrivedAt,
+    // Q13: the version a desk step names (`expectedUpdatedAt`) to refuse acting on a stale view.
+    updatedAt: b.updatedAt };
+}
+
+/** Q13: the appointment a desk request key made, within this desk's clinic and branches; null when none (or not visible). */
+export async function findDeskByKey(actor: PartnerActor, key: string) {
+  await clinicOf(actor);
+  const b = await BookingModel.findOne({ 'clinicDesk.requestKey': { $eq: storedDeskKey(actor, key) } }).lean() as IBooking | null;
+  if (!b || !samePartner(b.clinicDesk?.partnerId, actor.partnerId)) return null;
+  const desk = deskScopeOf(actor);
+  if (desk.branchIds.length > 0 && !desk.branchIds.includes(String(b.clinicDesk!.branchId))) return null;
+  return deskView(b);
+}
+
+/** Q13: give up a desk booking whose answer was lost: abandoned (it can never be made) or used (here it is, when visible). */
+export async function abandonDeskKey(actor: PartnerActor, key: string) {
+  await clinicOf(actor);
+  // An appointment made under this key before claims existed (no claim row) is used, never abandoned.
+  const made = await BookingModel.findOne({ 'clinicDesk.requestKey': { $eq: storedDeskKey(actor, key) } }).select({ clinicDesk: 1 }).lean() as IBooking | null;
+  if (made && samePartner(made.clinicDesk?.partnerId, actor.partnerId)) return { state: 'used' as const, booking: await findDeskByKey(actor, key) };
+  const state = await abandonRequestKey(deskKeyScope(actor), key);
+  return state === 'abandoned' ? { state } : { state, booking: await findDeskByKey(actor, key) };
 }
 
 /** A desk appointment of this clinic, within the actor's branch scope. */
@@ -372,9 +424,10 @@ export async function listClinicAppointments(actor: PartnerActor, q: { from: str
 }
 
 /** The patient is at the desk. */
-export async function markArrived(actor: PartnerActor, bookingId: string) {
+export async function markArrived(actor: PartnerActor, bookingId: string, expectedUpdatedAt?: Date | string | null) {
   return inTransaction(async (s) => {
     const b = await ownDeskBooking(actor, bookingId, s);
+    assertBookingVersion(b, expectedUpdatedAt);
     const r = await BookingModel.findOneAndUpdate({ _id: b._id, status: 'confirmed', 'clinicDesk.partnerId': actor.partnerId, ...atBranch(b), 'clinicDesk.arrivedAt': null },
       { $set: { 'clinicDesk.arrivedAt': new Date() } }, { new: true, session: s }).lean() as IBooking | null;
     if (!r) throw err(409, 'BOOKING_STATE_CONFLICT', b.clinicDesk?.arrivedAt ? 'Already marked as arrived' : `A ${b.status} appointment cannot be checked in`);
@@ -384,10 +437,12 @@ export async function markArrived(actor: PartnerActor, bookingId: string) {
 }
 
 /** Seen (completed) or did not come (no-show): the doctor's time is freed; nothing is settled through us. */
-export async function closeDeskAppointment(actor: PartnerActor, bookingId: string, outcome: 'completed' | 'no_show', now = new Date()) {
+export async function closeDeskAppointment(actor: PartnerActor, bookingId: string, outcome: 'completed' | 'no_show', now = new Date(),
+  expectedUpdatedAt?: Date | string | null) {
   return inTransaction(async (s) => {
     const b = await ownDeskBooking(actor, bookingId, s);
     if (b.status !== 'confirmed') throw err(409, 'BOOKING_STATE_CONFLICT', `A ${b.status} appointment cannot be closed`);
+    assertBookingVersion(b, expectedUpdatedAt);
     const at = parseAppointment({ bookingDate: b.bookingDate, bookingTime: b.bookingTime });
     if (outcome === 'no_show' && (!at || now < at.at)) throw err(409, 'APPOINTMENT_NOT_STARTED', 'A no-show can be marked only after the appointment time');
     const r = await BookingModel.findOneAndUpdate({ _id: b._id, status: 'confirmed', 'clinicDesk.partnerId': actor.partnerId, ...atBranch(b) },
@@ -400,10 +455,11 @@ export async function closeDeskAppointment(actor: PartnerActor, bookingId: strin
 }
 
 /** Cancelled by the clinic: seat and doctor's time released; no money moves (nothing was taken online). */
-export async function cancelDeskAppointment(actor: PartnerActor, bookingId: string, reason: string) {
+export async function cancelDeskAppointment(actor: PartnerActor, bookingId: string, reason: string, expectedUpdatedAt?: Date | string | null) {
   const b = await ownDeskBooking(actor, bookingId);
   const why = String(reason ?? '').trim() || 'Cancelled by the clinic';
   const r = await cancelBookingSettlement({
+    expectedUpdatedAt,
     bookingId: String(b._id), requester: { _id: actor.partnerId, userType: 'clinic' }, desk: deskScopeOf(actor), reason: why, cause: 'clinic', cancelledAt: ymd(istDate(new Date())),
     wallets: new WalletRepository(), enforceWindow: () => undefined, lifecycle: (x) => x.lifecycle,
     inTx: (x, s) => audit(actor, 'clinic.appointment_cancelled', { kind: 'booking', id: String(x._id) }, { reason: why }, s),
@@ -412,14 +468,16 @@ export async function cancelDeskAppointment(actor: PartnerActor, bookingId: stri
 }
 
 /** Moved to another slot of the same doctor at this clinic (a branch in the actor's scope). */
-export async function rescheduleDeskAppointment(actor: PartnerActor, bookingId: string, slotId: string) {
+export async function rescheduleDeskAppointment(actor: PartnerActor, bookingId: string, slotId: string, expectedUpdatedAt?: Date | string | null, now = new Date()) {
   const b = await ownDeskBooking(actor, bookingId);
   if (!Types.ObjectId.isValid(slotId)) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
   const slot = await SlotModel.findById(slotId).lean() as any;
   if (!slot?.branchId) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
   await clinicBranch(actor, String(slot.branchId));
   const updated = await rescheduleWithHolds({
-    bookingId: String(b._id), requester: { _id: actor.memberId, userType: 'admin' }, nextSlotId: String(slot._id), desk: deskScopeOf(actor),
+    bookingId: String(b._id), requester: { _id: actor.memberId, userType: 'admin' }, nextSlotId: String(slot._id),
+    // Q13: the target slot must not have started (checked when the move takes a new slot), and the version must match.
+    desk: { ...deskScopeOf(actor), refuseStartedAt: now }, expectedUpdatedAt,
     patch: { bookingDate: slot.date },
     inTx: (x, s) => audit(actor, 'clinic.appointment_rescheduled', { kind: 'booking', id: String(x._id) }, { slotId: String(slot._id) }, s),
   });

@@ -143,6 +143,8 @@ export interface IBooking {
   settlement?: { settlementAccountId?: string; beneficiaryName?: string };
   bookingKind?: 'scheduled' | 'instant';
   instantRequestId?: string;
+  /** Q13: every extension of an instant consultation (a keyed one happens once). */
+  instantExtensions?: { requestKey?: string; minutes: number; endTime: Date; at: Date }[];
   walletFunding?: { total: number; revision?: number; closed?: boolean;
     captures?: { recordId: string; amount: number; state: 'applied' | 'returned' }[]; updatedAt?: Date };
   

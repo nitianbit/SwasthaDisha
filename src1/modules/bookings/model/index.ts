@@ -454,6 +454,12 @@ const bookingSchema = new Schema<IBooking>(
     // Q4b: 'instant' consultations come from an accepted InstantRequest (money held there, not on this booking).
     bookingKind: { type: String, enum: ['scheduled', 'instant'] },
     instantRequestId: { type: String },
+    // Q13: the doctor's extensions of an instant consultation; a keyed extension is applied once (the doctor guard serializes them).
+    instantExtensions: {
+      type: [new Schema({ requestKey: { type: String }, minutes: { type: Number, required: true }, endTime: { type: Date, required: true },
+        at: { type: Date, required: true } }, { _id: false })],
+      default: undefined,
+    },
     // Q4 §7a: the doctor's settlement account at creation (ledger bookings only); earnings never re-derive it.
     settlement: {
       settlementAccountId: { type: String },

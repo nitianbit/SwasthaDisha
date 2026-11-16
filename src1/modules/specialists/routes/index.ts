@@ -107,15 +107,17 @@ specialistRouter.post('/me/practice', requireSpecialist, validate(clinicV.soloPr
 specialistRouter.get('/me/finance', requireSpecialist, catchAsync(fin.doctorFinance));
 specialistRouter.get('/me/finance/statement', requireSpecialist, validate(finV.statementQuerySchema, 'query'), catchAsync(fin.doctorStatement));
 specialistRouter.get('/me/finance/statement.csv', requireSpecialist, validate(finV.csvQuerySchema, 'query'), catchAsync(fin.doctorStatementCsv));
-specialistRouter.get('/me/finance/payouts', requireSpecialist, catchAsync(fin.doctorPayouts));
+specialistRouter.get('/me/finance/payouts', requireSpecialist, validate(finV.pageQuerySchema, 'query'), catchAsync(fin.doctorPayouts));
 specialistRouter.get('/me/finance/history', requireSpecialist, catchAsync(fin.doctorHistory));
-specialistRouter.get('/me/finance/events', requireSpecialist, catchAsync(fin.doctorEvents));
+specialistRouter.get('/me/finance/events', requireSpecialist, validate(finV.pageQuerySchema, 'query'), catchAsync(fin.doctorEvents));
 specialistRouter.put('/me/finance/payout-details', requireSpecialist, validate(finV.payoutDetailsSchema, 'body'), catchAsync(fin.putDoctorPayoutDetails));
 // Q4b: instant consultations — "available now", heartbeat, offers, accept, extend.
+specialistRouter.get('/me/presence', requireSpecialist, catchAsync(instantDoctor.getPresence));
 specialistRouter.put('/me/presence', requireSpecialist, validate(presenceSchema, 'body'), catchAsync(instantDoctor.putPresence));
 specialistRouter.post('/me/presence/heartbeat', requireSpecialist, catchAsync(instantDoctor.postHeartbeat));
 specialistRouter.get('/me/instant/offers', requireSpecialist, catchAsync(instantDoctor.getOffers));
 specialistRouter.post('/me/instant/:requestId/accept', requireSpecialist, validate(requestIdParamSchema, 'params'), catchAsync(instantDoctor.acceptOffer));
+specialistRouter.get('/me/instant/bookings/:bookingId', requireSpecialist, validate(bookingIdParamSchema, 'params'), catchAsync(instantDoctor.getInstantBooking));
 specialistRouter.post('/me/instant/bookings/:bookingId/extend', requireSpecialist, validate(bookingIdParamSchema, 'params'), validate(extendSchema, 'body'),
   catchAsync(instantDoctor.extendConsult));
 

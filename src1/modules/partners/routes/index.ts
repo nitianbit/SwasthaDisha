@@ -215,9 +215,13 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.get('/clinic/slots', ...guard.any('bookings.view', 'bookings.manage'), validate(clinicV.deskSlotsQuerySchema, 'query'), catchAsync(clinic.deskSlots));
   r.get('/clinic/appointments', ...guard.any('bookings.view', 'bookings.manage'), validate(clinicV.appointmentsQuerySchema, 'query'), catchAsync(clinic.clinicAppointments));
   r.post('/clinic/appointments', ...guard('bookings.manage'), validate(clinicV.deskBookingSchema, 'body'), catchAsync(clinic.bookDesk));
-  r.post('/clinic/appointments/:bookingId/arrived', ...guard('bookings.manage'), appt, catchAsync(clinic.deskArrived));
-  r.post('/clinic/appointments/:bookingId/complete', ...guard('bookings.manage'), appt, catchAsync(clinic.deskComplete));
-  r.post('/clinic/appointments/:bookingId/no-show', ...guard('bookings.manage'), appt, catchAsync(clinic.deskNoShow));
+  // Q13: a desk booking whose answer was lost — look it up by its key or give the key up (the desk member's own keys).
+  r.get('/clinic/appointments/by-key/:key', ...guard('bookings.manage'), validate(clinicV.deskKeyParamSchema, 'params'), catchAsync(clinic.deskByKey));
+  r.post('/clinic/appointments/by-key/:key/abandon', ...guard('bookings.manage'), validate(clinicV.deskKeyParamSchema, 'params'), catchAsync(clinic.abandonDeskKey));
+  const step = validate(clinicV.deskStepSchema, 'body');
+  r.post('/clinic/appointments/:bookingId/arrived', ...guard('bookings.manage'), appt, step, catchAsync(clinic.deskArrived));
+  r.post('/clinic/appointments/:bookingId/complete', ...guard('bookings.manage'), appt, step, catchAsync(clinic.deskComplete));
+  r.post('/clinic/appointments/:bookingId/no-show', ...guard('bookings.manage'), appt, step, catchAsync(clinic.deskNoShow));
   r.post('/clinic/appointments/:bookingId/cancel', ...guard('bookings.manage'), appt, validate(clinicV.deskCancelSchema, 'body'), catchAsync(clinic.deskCancel));
   r.post('/clinic/appointments/:bookingId/reschedule', ...guard('bookings.manage'), appt, validate(clinicV.deskRescheduleSchema, 'body'), catchAsync(clinic.deskReschedule));
 
@@ -225,8 +229,8 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.get('/finance', ...guard('finance.view'), catchAsync(fin.partnerFinance));
   r.get('/finance/statement', ...guard('finance.view'), validate(finV.statementQuerySchema, 'query'), catchAsync(fin.partnerStatement));
   r.get('/finance/statement.csv', ...guard('finance.view'), validate(finV.csvQuerySchema, 'query'), catchAsync(fin.partnerStatementCsv));
-  r.get('/finance/payouts', ...guard('finance.view'), catchAsync(fin.partnerPayouts));
-  r.get('/finance/events', ...guard('finance.view'), catchAsync(fin.partnerEvents));
+  r.get('/finance/payouts', ...guard('finance.view'), validate(finV.pageQuerySchema, 'query'), catchAsync(fin.partnerPayouts));
+  r.get('/finance/events', ...guard('finance.view'), validate(finV.pageQuerySchema, 'query'), catchAsync(fin.partnerEvents));
   r.put('/finance/payout-details', ...guard(), validate(finV.payoutDetailsSchema, 'body'), catchAsync(fin.putPartnerPayoutDetails));
 }
 
@@ -299,9 +303,15 @@ settlementAdminRouter.get('/accounts', validate(finV.accountsQuerySchema, 'query
 settlementAdminRouter.get('/accounts/:accountId', acc, catchAsync(fin.adminAccount));
 settlementAdminRouter.get('/accounts/:accountId/statement', acc, validate(finV.statementQuerySchema, 'query'), catchAsync(fin.adminStatement));
 settlementAdminRouter.get('/accounts/:accountId/statement.csv', acc, validate(finV.csvQuerySchema, 'query'), catchAsync(fin.adminStatementCsv));
-settlementAdminRouter.get('/accounts/:accountId/payouts', acc, catchAsync(fin.adminAccountPayouts));
+settlementAdminRouter.get('/accounts/:accountId/payouts', acc, validate(finV.pageQuerySchema, 'query'), catchAsync(fin.adminAccountPayouts));
 settlementAdminRouter.get('/accounts/:accountId/history', acc, catchAsync(fin.adminHistory));
-settlementAdminRouter.get('/accounts/:accountId/events', acc, catchAsync(fin.adminEvents));
+settlementAdminRouter.get('/accounts/:accountId/events', acc, validate(finV.pageQuerySchema, 'query'), catchAsync(fin.adminEvents));
+// Q13: a lost payout/adjustment answer — look up or give up the admin's own key on this account.
+const accKey = validate(finV.accountKeyParamSchema, 'params');
+settlementAdminRouter.get('/accounts/:accountId/payouts/by-key/:key', accKey, catchAsync(fin.adminPayoutByKey));
+settlementAdminRouter.post('/accounts/:accountId/payouts/by-key/:key/abandon', accKey, catchAsync(fin.adminAbandonPayoutKey));
+settlementAdminRouter.get('/accounts/:accountId/adjustments/by-key/:key', accKey, catchAsync(fin.adminAdjustmentByKey));
+settlementAdminRouter.post('/accounts/:accountId/adjustments/by-key/:key/abandon', accKey, catchAsync(fin.adminAbandonAdjustmentKey));
 settlementAdminRouter.put('/accounts/:accountId/payout-details', acc, validate(finV.payoutDetailsSchema, 'body'), catchAsync(fin.adminPutPayoutDetails));
 settlementAdminRouter.post('/accounts/:accountId/payout-details/verify', acc, validate(finV.verifyDetailsSchema, 'body'), catchAsync(fin.adminVerifyPayoutDetails));
 settlementAdminRouter.post('/accounts/:accountId/payouts', acc, validate(finV.recordPayoutSchema, 'body'), catchAsync(fin.adminRecordPayout));

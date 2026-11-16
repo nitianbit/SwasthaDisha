@@ -140,14 +140,36 @@ export class InstantConsultService {
   }
 
   /** Refreshes `lastSeenAt` (and the cached speciality) only for an eligible doctor; busy is derived from held intervals, so a heartbeat can never clear it. */
-  async heartbeat(doctorId: string, now = new Date()): Promise<{ online: boolean }> {
+  async heartbeat(doctorId: string, now = new Date()) {
     const sp = await this.activeDoctor(doctorId);
-    const r = await DoctorPresenceModel.updateOne({ doctorId: String(doctorId), available: true }, { $set: { lastSeenAt: now, specialization: sp.specialization } });
-    return { online: r.matchedCount === 1 && !(await this.busyAt(doctorId, now)) };
+    await DoctorPresenceModel.updateOne({ doctorId: String(doctorId), available: true }, { $set: { lastSeenAt: now, specialization: sp.specialization } });
+    return this.presence(doctorId, now);
   }
 
-  private async busyAt(doctorId: string, at: Date): Promise<boolean> {
-    return !!(await DoctorReservationModel.exists({ doctorId: String(doctorId), isActive: true, startTime: { $lte: at }, endTime: { $gt: at } }));
+  /**
+   * Q13: the doctor's own presence as the platform sees it. `online` is the one definition every path uses (offers,
+   * quotes, discovery, acceptance): an active, verified doctor, switched available with at least one mode, a heartbeat
+   * no older than PRESENCE_TTL_MS, and no doctor interval (scheduled, in-clinic or instant) held right now.
+   */
+  async presence(doctorId: string, now = new Date()) {
+    const sp = Types.ObjectId.isValid(doctorId)
+      ? await SpecialistModel.findById(doctorId).select({ consultationFee: 1, isActive: 1, isVerified: 1 }).lean() as any : null;
+    const eligible = !!sp && sp.isActive !== false && sp.isVerified !== false;
+    const [p, held] = await Promise.all([
+      DoctorPresenceModel.findOne({ doctorId: String(doctorId) }).lean(),
+      DoctorReservationModel.findOne({ doctorId: String(doctorId), isActive: true, startTime: { $lte: now }, endTime: { $gt: now } }).sort({ endTime: -1 }).lean(),
+    ]);
+    const lastSeenAt = p?.lastSeenAt ? new Date(p.lastSeenAt) : null;
+    const heartbeatExpired = !lastSeenAt || now.getTime() - lastSeenAt.getTime() > PRESENCE_TTL_MS;
+    const modes = p?.modes ?? [];
+    const feeMinor = p ? p.instantFeeMinor : paiseOf(sp?.consultationFee);
+    return {
+      doctorId: String(doctorId), eligible, available: !!p?.available, modes, instantFeeMinor: feeMinor, instantFee: rupees(feeMinor),
+      feeConfigured: !!p, lastSeenAt, heartbeatExpiresAt: lastSeenAt ? new Date(lastSeenAt.getTime() + PRESENCE_TTL_MS) : null, heartbeatExpired,
+      heartbeatTtlSeconds: PRESENCE_TTL_MS / 1000,
+      busy: !!held, busyUntil: held ? held.endTime : null, busyWith: held ? { kind: held.kind, bookingId: held.refId } : null,
+      online: eligible && !!p?.available && modes.length > 0 && !heartbeatExpired && !held,
+    };
   }
 
   /**
@@ -363,10 +385,17 @@ export class InstantConsultService {
 
   async myOffers(doctorId: string, now = new Date()) {
     await this.activeDoctor(doctorId); // a deactivated doctor no longer sees patient details
-    const rows = await InstantRequestModel.find({ status: 'offered', fundingState: 'held', offeredTo: String(doctorId), offerExpiresAt: { $gt: now } })
-      .sort({ offerExpiresAt: 1 }).limit(50).lean();
+    const [rows, presence] = await Promise.all([
+      InstantRequestModel.find({ status: 'offered', fundingState: 'held', offeredTo: String(doctorId), offerExpiresAt: { $gt: now } })
+        .sort({ offerExpiresAt: 1 }).limit(50).lean(),
+      DoctorPresenceModel.findOne({ doctorId: String(doctorId) }).select({ instantFeeMinor: 1 }).lean(),
+    ]);
+    // Q13: the quote the patient paid (coupon + wallet + gateway) is the ceiling of the fee this doctor may charge.
+    const yourFeeMinor = presence?.instantFeeMinor ?? null;
     return rows.map((r) => ({ requestId: String(r._id), mode: r.mode, specialization: r.specialization, patient: { name: r.patient.name, age: r.patient.age,
-      gender: r.patient.gender }, generation: r.offerGeneration, offerExpiresAt: r.offerExpiresAt }));
+      gender: r.patient.gender }, generation: r.offerGeneration, offerExpiresAt: r.offerExpiresAt,
+      quotedAmountMinor: r.quotedAmountMinor, quotedAmount: rupees(r.quotedAmountMinor), yourFeeMinor,
+      feeWithinQuote: yourFeeMinor !== null && yourFeeMinor <= r.quotedAmountMinor }));
   }
 
   /**
@@ -378,7 +407,30 @@ export class InstantConsultService {
   async accept(doctorId: string, requestId: string, now = new Date()) {
     if (!Types.ObjectId.isValid(requestId)) throw notFound();
     const id = String(requestId).toLowerCase();
-    const out = await runLedgerTransaction(async (s) => {
+    // Q13: accepting again (a lost answer, a double tap) is answered with this doctor's own booking, never "taken".
+    const replay = async () => {
+      const r = await InstantRequestModel.findById(id).lean() as IInstantRequest | null;
+      if (!r || r.acceptedBy !== String(doctorId) || !r.bookingId) return null;
+      const booking = await BookingModel.findOne({ _id: r.bookingId, specialistId: String(doctorId) }).lean() as IBooking | null;
+      return booking ? { request: requestView(r), booking, replayed: true } : null;
+    };
+    const prior = await replay();
+    if (prior) return prior;
+    let out: { request: IInstantRequest; booking: IBooking };
+    try {
+      out = await this.acceptIn(doctorId, id, now);
+    } catch (e) {
+      // A concurrent accept by this same doctor committed first: answer with it.
+      const raced = await replay();
+      if (raced) return raced;
+      throw e;
+    }
+    await this.afterAccept(out.request, out.booking, now);
+    return { request: requestView(out.request), booking: out.booking, replayed: false };
+  }
+
+  private async acceptIn(doctorId: string, id: string, now: Date): Promise<{ request: IInstantRequest; booking: IBooking }> {
+    return runLedgerTransaction(async (s) => {
       const r = await InstantRequestModel.findById(id).session(s).lean() as IInstantRequest | null;
       if (!r || !r.offeredTo.includes(String(doctorId))) throw notFound();
       if (r.status !== 'offered' || r.fundingState !== 'held' || r.acceptedBy) throw err(409, 'OFFER_NO_LONGER_AVAILABLE', 'This request was taken, refunded or withdrawn');
@@ -431,8 +483,6 @@ export class InstantConsultService {
       }], { session: s });
       return { request: taken, booking: booking!.toObject() as IBooking };
     });
-    await this.afterAccept(out.request, out.booking, now);
-    return { request: requestView(out.request), booking: out.booking };
   }
 
   /** After commit, best effort: Meet link for call/video (the window comes from the instant reservation) and notifications. */
@@ -592,19 +642,54 @@ export class InstantConsultService {
    * The doctor keeps the consultation going: its interval is extended (refused if it would overlap another booking).
    * Read and computed inside the doctor-guarded transaction, so concurrent extensions add up and never overwrite.
    */
-  async extend(doctorId: string, bookingId: string, minutes: number, now = new Date()) {
+  async extend(doctorId: string, bookingId: string, minutes: number, now = new Date(), requestKey?: string) {
     if (!(Number.isInteger(minutes) && minutes > 0 && minutes <= 60)) throw err(400, 'INVALID_MINUTES', 'Extend by 1–60 minutes');
     if (!Types.ObjectId.isValid(bookingId)) throw err(404, 'BOOKING_NOT_FOUND', 'Booking not found');
     const refId = String(bookingId).toLowerCase();
     return runLedgerTransaction(async (s) => {
       await bumpGuard(String(doctorId), s);
-      const b = await BookingModel.findOne({ _id: refId, specialistId: String(doctorId), bookingKind: 'instant', status: 'confirmed' }).session(s).lean();
+      const b = await BookingModel.findOne({ _id: refId, specialistId: String(doctorId), bookingKind: 'instant' }).session(s).lean() as IBooking | null;
       if (!b) throw err(404, 'BOOKING_NOT_FOUND', 'Booking not found');
+      // Q13: a keyed extension happens once. The doctor guard serializes every extension of this doctor, so the
+      // recorded keys read here are complete; the same key with the same minutes answers with the current hold.
+      if (requestKey) {
+        const prior = (b.instantExtensions ?? []).find((x) => x.requestKey === requestKey);
+        if (prior) {
+          if (prior.minutes !== minutes) throw err(409, 'REQUEST_KEY_REUSED', 'This request key was already used for a different extension');
+          const held = await DoctorReservationModel.findOne({ refId, kind: 'instant' }).session(s).lean();
+          return { ...(held ?? {}), extension: prior, replayed: true };
+        }
+      }
+      if (b.status !== 'confirmed') throw err(404, 'BOOKING_NOT_FOUND', 'Booking not found');
       const cur = await DoctorReservationModel.findOne({ refId, kind: 'instant', isActive: true }).session(s).lean();
       if (!cur) throw err(409, 'RESERVATION_NOT_ACTIVE', 'The consultation is no longer held');
       const end = new Date(Math.max(new Date(cur.endTime).getTime(), now.getTime()) + minutes * 60_000);
-      return moveInterval({ doctorId: String(doctorId), kind: 'instant', refId, start: cur.startTime, end }, s);
+      const moved = await moveInterval({ doctorId: String(doctorId), kind: 'instant', refId, start: cur.startTime, end }, s);
+      const extension = { ...(requestKey ? { requestKey } : {}), minutes, endTime: end, at: now };
+      const r = await BookingModel.updateOne({ _id: refId, status: 'confirmed' }, { $push: { instantExtensions: extension } }, { session: s });
+      if (r.modifiedCount !== 1) throw changed();
+      return { ...moved, extension, replayed: false };
     });
+  }
+
+  /** Q13: one of the doctor's instant consultations with the interval it holds now (a lost extend answer is checked here). */
+  async doctorInstantBooking(doctorId: string, bookingId: string, now = new Date()) {
+    if (!Types.ObjectId.isValid(bookingId)) throw err(404, 'BOOKING_NOT_FOUND', 'Booking not found');
+    const id = String(bookingId).toLowerCase();
+    const b = await BookingModel.findOne({ _id: id, specialistId: String(doctorId), bookingKind: 'instant' }).lean() as IBooking | null;
+    if (!b) throw err(404, 'BOOKING_NOT_FOUND', 'Booking not found');
+    const [held, r] = await Promise.all([
+      DoctorReservationModel.findOne({ refId: id, kind: 'instant' }).lean(),
+      b.instantRequestId ? InstantRequestModel.findById(b.instantRequestId).select({ patient: 1, acceptedFeeMinor: 1 }).lean() : null,
+    ]);
+    return {
+      bookingId: id, instantRequestId: b.instantRequestId, status: b.status, consultationMode: b.consultationMode, bookingDate: b.bookingDate,
+      bookingTime: b.bookingTime, feeMinor: r?.acceptedFeeMinor ?? paiseOf(Number(b.originalPrice ?? 0)),
+      patient: r ? { name: r.patient.name, age: r.patient.age, gender: r.patient.gender } : null,
+      held: held ? { startTime: held.startTime, endTime: held.endTime, isActive: held.isActive, current: held.isActive && now < new Date(held.endTime) } : null,
+      extensions: (b.instantExtensions ?? []).map((x) => ({ requestKey: x.requestKey, minutes: x.minutes, endTime: x.endTime, at: x.at })),
+      updatedAt: b.updatedAt,
+    };
   }
 
   // ───────────────────────────── Sweeps ─────────────────────────────

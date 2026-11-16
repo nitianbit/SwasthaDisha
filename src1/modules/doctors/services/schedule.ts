@@ -78,19 +78,31 @@ export async function getTemplate(doctorId: string, s?: ClientSession): Promise<
   return ((await DoctorScheduleTemplateModel.findOne({ doctorId: String(doctorId) }).session(s ?? null).lean()) as IDoctorScheduleTemplate | null) ?? null;
 }
 
-/** Writes the doctor's template in a transaction that bumps the schedule guard (serialized with every expansion). */
-async function writeTemplate(doctorId: string, update: Record<string, unknown>, upsert: boolean) {
+/**
+ * Writes the doctor's template in a transaction that bumps the schedule guard (serialized with every expansion and every
+ * other template/leave write). Q13: with `expectedUpdatedAt` (null = the editor started from no template) a different
+ * current template refuses the write (409 SCHEDULE_CHANGED); the guard bump makes a concurrent write conflict and re-read.
+ */
+async function writeTemplate(doctorId: string, update: Record<string, unknown>, upsert: boolean, expectedUpdatedAt?: Date | string | null) {
   await ensureScheduleGuard(doctorScheduleKey(doctorId));
   return runLedgerTransaction(async (s) => {
     await bumpScheduleGuard(doctorScheduleKey(doctorId), s);
+    if (expectedUpdatedAt !== undefined) {
+      const cur = await DoctorScheduleTemplateModel.findOne({ doctorId: String(doctorId) }).select({ updatedAt: 1 }).session(s).lean();
+      const curAt = cur?.updatedAt ? new Date(cur.updatedAt).getTime() : null;
+      const expAt = expectedUpdatedAt === null ? null : new Date(expectedUpdatedAt).getTime();
+      if (curAt !== expAt) throw new AppError({ status: 409, code: 'SCHEDULE_CHANGED', message: 'Your weekly schedule changed since you opened it; review it again' });
+    }
     return DoctorScheduleTemplateModel.findOneAndUpdate({ doctorId: String(doctorId) }, update, { upsert, new: true, session: s }).lean();
   });
 }
 
-export async function saveTemplate(doctorId: string, input: { slotMinutes: number; days: Partial<Record<Weekday, IScheduleWindow[]>> }, now = new Date()) {
+export async function saveTemplate(doctorId: string,
+  input: { slotMinutes: number; days: Partial<Record<Weekday, IScheduleWindow[]>>; expectedUpdatedAt?: Date | string | null }, now = new Date()) {
   await validateTemplate(doctorId, input.days, input.slotMinutes);
   const template = await writeTemplate(doctorId,
-    { $set: { slotMinutes: input.slotMinutes, days: input.days, isActive: true }, $setOnInsert: { doctorId: String(doctorId), leaveDates: [] } }, true);
+    { $set: { slotMinutes: input.slotMinutes, days: input.days, isActive: true }, $setOnInsert: { doctorId: String(doctorId), leaveDates: [] } }, true,
+    input.expectedUpdatedAt);
   const expansion = await expandDoctorSlots(doctorId, istDate(now), DOCTOR_ROLLING_DAYS);
   return { template, expansion };
 }

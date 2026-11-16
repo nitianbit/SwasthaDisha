@@ -85,8 +85,18 @@ async function heldFollowUpParent(b: IBooking, s: ClientSession): Promise<string
 type SlotRow = { _id?: unknown; date?: string; startTime?: string; endTime?: string; duration?: number; maxBookings?: number; specialistId?: string;
   serviceModes?: string[]; branchId?: string };
 
-/** Q6: a clinic desk acting: the slot must be at one of its branches within the desk member's scope (empty = all). */
-export interface DeskScope { partnerId: string; branchIds: string[] }
+/**
+ * Q6: a clinic desk acting: the slot must be at one of its branches within the desk member's scope (empty = all).
+ * Q13: with `refuseStartedAt`, a slot whose start is at or before that instant is refused (409 SLOT_STARTED).
+ */
+export interface DeskScope { partnerId: string; branchIds: string[]; refuseStartedAt?: Date }
+
+/** Q13: the booking's updatedAt the caller decided on; any other current value refuses the change (409 BOOKING_CHANGED). */
+export function assertBookingVersion(b: Pick<IBooking, 'updatedAt'>, expectedUpdatedAt?: Date | string | null): void {
+  if (expectedUpdatedAt === undefined || expectedUpdatedAt === null) return;
+  const cur = b.updatedAt ? new Date(b.updatedAt).getTime() : null;
+  if (cur !== new Date(expectedUpdatedAt).getTime()) throw conflict('BOOKING_CHANGED', 'The appointment changed since it was loaded; reload and try again');
+}
 
 /** The desk bookings a desk scope may act on, as currently stored (every attempt re-reads it in the transaction). */
 function deskOwnerFilter(desk?: DeskScope): Record<string, unknown> {
@@ -121,6 +131,10 @@ async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate'
   }
   if (desk && (!clinic || clinic.partnerId !== desk.partnerId || (desk.branchIds.length > 0 && !desk.branchIds.includes(clinic.branchId)))) {
     throw conflict('SLOT_NOT_AVAILABLE', 'This slot is not at one of your clinic branches');
+  }
+  if (desk?.refuseStartedAt) {
+    const w = slotIntervalOf(slot as SlotRow);
+    if (!w || w.start.getTime() <= desk.refuseStartedAt.getTime()) throw conflict('SLOT_STARTED', 'This slot has already started; choose a later one');
   }
   const r = await SlotModel.updateOne({ _id: slotId, ...(slot.currentBookings === undefined ? { currentBookings: { $exists: false } } : { currentBookings: current }) },
     { $inc: { currentBookings: 1 }, $set: { isAvailable: current + 1 < max } }, { session: s });
@@ -294,6 +308,8 @@ export async function cancelBookingSettlement(p: {
   inTx?: (b: IBooking, s: ClientSession) => Promise<void>;
   /** Q6: requester 'clinic' — the desk's clinic and branch scope, applied to the booking as read in the transaction. */
   desk?: DeskScope;
+  /** Q13: the booking version (updatedAt) the caller decided on, checked on the booking as read in the transaction. */
+  expectedUpdatedAt?: Date | string | null;
 }): Promise<CancelResult> {
   if (!Types.ObjectId.isValid(p.bookingId)) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
   const id = String(p.bookingId).toLowerCase();
@@ -312,6 +328,7 @@ export async function cancelBookingSettlement(p: {
     if (!already && !CANCELLABLE_BOOKING_STATUSES.includes(String(booking.status))) {
       throw conflict('BOOKING_NOT_CANCELLABLE', `A ${booking.status} booking cannot be cancelled`);
     }
+    if (!already) assertBookingVersion(booking, p.expectedUpdatedAt);
 
     // Serialize with capture: write every not-yet-settled payment record of this booking before reading them.
     await PaymentRecordModel.collection.updateMany({ context: 'booking', contextId: id, status: { $nin: ['paid', 'refunded'] } },
@@ -417,6 +434,8 @@ export async function rescheduleWithHolds(p: {
   /** Q6: set only by the clinic desk command; the target slot is admitted against it inside the transaction. */
   desk?: DeskScope;
   inTx?: (b: IBooking, s: ClientSession) => Promise<void>;
+  /** Q13: the booking version (updatedAt) the caller decided on, checked on the booking as read in the transaction. */
+  expectedUpdatedAt?: Date | string | null;
 }): Promise<IBooking> {
   if (!Types.ObjectId.isValid(p.bookingId)) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
   const id = String(p.bookingId).toLowerCase();
@@ -435,6 +454,7 @@ export async function rescheduleWithHolds(p: {
     if (!CANCELLABLE_BOOKING_STATUSES.includes(String(booking.status))) {
       throw conflict('BOOKING_NOT_RESCHEDULABLE', `A ${booking.status} booking cannot be rescheduled`);
     }
+    assertBookingVersion(booking, p.expectedUpdatedAt);
     const current = await heldSlot(booking, s);
     const target = canon(p.nextSlotId);
     if (!target) throw conflict('SLOT_NOT_AVAILABLE', 'Slot is not available');

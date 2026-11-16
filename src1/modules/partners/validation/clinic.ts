@@ -28,8 +28,12 @@ export const deskBookingSchema = Joi.object({
 });
 
 export const appointmentIdParamSchema = Joi.object({ bookingId: objectId.required() });
-export const deskCancelSchema = Joi.object({ reason: Joi.string().trim().max(500).allow('').optional() });
-export const deskRescheduleSchema = Joi.object({ slotId: objectId.required() });
+/** Q13: the appointment's updatedAt the desk decided on (409 BOOKING_CHANGED otherwise). */
+const expectedUpdatedAt = Joi.date().iso().optional();
+export const deskStepSchema = Joi.object({ expectedUpdatedAt });
+export const deskCancelSchema = Joi.object({ reason: Joi.string().trim().max(500).allow('').optional(), expectedUpdatedAt });
+export const deskRescheduleSchema = Joi.object({ slotId: objectId.required(), expectedUpdatedAt });
+export const deskKeyParamSchema = Joi.object({ key: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).required() });
 
 export const partnerIdParamSchema = Joi.object({ partnerId: objectId.required() });
 

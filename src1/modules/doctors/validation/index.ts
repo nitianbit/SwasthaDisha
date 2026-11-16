@@ -15,6 +15,8 @@ const day = Joi.array().items(window).max(12);
 export const scheduleTemplateSchema = Joi.object({
   slotMinutes: Joi.number().integer().min(5).max(240).required(),
   days: Joi.object({ mon: day, tue: day, wed: day, thu: day, fri: day, sat: day, sun: day }).required(),
+  /** Q13: the saved template's updatedAt the editor started from (null = there was none). */
+  expectedUpdatedAt: Joi.date().iso().allow(null).optional(),
 });
 export const leaveSchema = Joi.object({ date: ymd.required() });
 export const leaveParamSchema = Joi.object({ date: ymd.required() });
@@ -33,7 +35,11 @@ export const presenceSchema = Joi.object({
 });
 export const requestIdParamSchema = Joi.object({ requestId: objectId.required() });
 export const bookingIdParamSchema = Joi.object({ bookingId: objectId.required() });
-export const extendSchema = Joi.object({ minutes: Joi.number().integer().min(1).max(60).required() });
+export const extendSchema = Joi.object({
+  minutes: Joi.number().integer().min(1).max(60).required(),
+  /** Q13: the same key with the same minutes extends once. */
+  requestKey: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).optional(),
+});
 export const onlineDoctorsQuerySchema = Joi.object({ specialization: Joi.string().trim().min(2).max(80).required(), mode: instantMode.required() });
 export const quoteQuerySchema = onlineDoctorsQuerySchema.append({ doctorId: objectId });
 export const createInstantSchema = Joi.object({

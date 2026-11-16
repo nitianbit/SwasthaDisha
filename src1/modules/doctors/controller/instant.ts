@@ -16,10 +16,16 @@ function customerId(req: Request): string {
 // ── Doctor ──
 export const putPresence = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().setPresence(doctorOf(req), req.body));
 export const postHeartbeat = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().heartbeat(doctorOf(req)));
+export const getPresence = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().presence(doctorOf(req)));
 export const getOffers = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().myOffers(doctorOf(req)));
-export const acceptOffer = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().accept(doctorOf(req), req.params.requestId), 201);
+export const acceptOffer = async (req: Request, res: Response, _n: NextFunction) => {
+  const r = await svc().accept(doctorOf(req), req.params.requestId);
+  ok(res, r, r.replayed ? 200 : 201);
+};
 export const extendConsult = async (req: Request, res: Response, _n: NextFunction) =>
-  ok(res, await svc().extend(doctorOf(req), req.params.bookingId, req.body.minutes));
+  ok(res, await svc().extend(doctorOf(req), req.params.bookingId, req.body.minutes, new Date(), req.body.requestKey));
+export const getInstantBooking = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await svc().doctorInstantBooking(doctorOf(req), req.params.bookingId));
 
 // ── Customer ──
 export const onlineDoctors = async (req: Request, res: Response, _n: NextFunction) => {
