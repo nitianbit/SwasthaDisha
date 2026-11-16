@@ -475,11 +475,19 @@ export class LabBookingService {
     return { booking: customerView(after), refunded };
   }
 
-  async labReject(actor: PartnerActor, bookingId: string, note: string, now = new Date()): Promise<{ booking: Record<string, unknown>; refunded: number }> {
+  /** Q11: a staff step may name the statusVersion it was decided on; a different current version refuses it. */
+  private assertVersion(b: IPartnerLabBooking, expectedVersion?: number) {
+    if (expectedVersion !== undefined && expectedVersion !== null && Number(expectedVersion) !== Number(b.statusVersion)) {
+      throw err(409, 'LAB_BOOKING_CHANGED', 'The booking changed since you opened it; review it again');
+    }
+  }
+
+  async labReject(actor: PartnerActor, bookingId: string, note: string, now = new Date(), expectedVersion?: number): Promise<{ booking: Record<string, unknown>; refunded: number }> {
     const id = String(bookingId).toLowerCase();
     const refunded = await runLedgerTransaction(async (s) => {
       const b = await this.scopedBooking(actor, id, s);
       if (b.status !== 'confirmed') throw err(409, 'LAB_BOOKING_STATE_CONFLICT', `A ${b.status} booking cannot be rejected`);
+      this.assertVersion(b, expectedVersion);
       const records = await this.fenceRecords(id, s);
       return this.cancelIn(b, records, { reason: 'lab_reject', note, actor: { kind: 'partner', actor } }, s, now);
     });
@@ -492,11 +500,12 @@ export class LabBookingService {
   // ───────────────────────────── Reschedule ─────────────────────────────
 
   /** Lab moves the booking to another slot of the same branch; the customer may accept, or cancel with a full refund. */
-  async labReschedule(actor: PartnerActor, bookingId: string, newSlotId: string, reason: string, now = new Date()): Promise<Record<string, unknown>> {
+  async labReschedule(actor: PartnerActor, bookingId: string, newSlotId: string, reason: string, now = new Date(), expectedVersion?: number): Promise<Record<string, unknown>> {
     const id = String(bookingId).toLowerCase();
     const after = await runLedgerTransaction(async (s) => {
       const b = await this.scopedBooking(actor, id, s);
       if (b.status !== 'confirmed') throw err(409, 'LAB_BOOKING_STATE_CONFLICT', `A ${b.status} booking cannot be rescheduled`);
+      this.assertVersion(b, expectedVersion);
       if (String(newSlotId) === String(b.slot.slotId)) throw err(409, 'SAME_SLOT', 'Pick a different slot');
       const slot = await takeSeat(newSlotId, { partnerId: b.partnerId, branchId: b.branchId, visitMode: b.visitMode, minStart: now }, s);
       await releaseSeat(b.slot.slotId, s);
@@ -533,35 +542,36 @@ export class LabBookingService {
 
   // ───────────────────────────── Staff transitions (§4 table) ─────────────────────────────
 
-  async assignCollector(actor: PartnerActor, bookingId: string, collector: { memberId?: string; name: string; phone?: string }): Promise<Record<string, unknown>> {
+  async assignCollector(actor: PartnerActor, bookingId: string, collector: { memberId?: string; name: string; phone?: string }, expectedVersion?: number): Promise<Record<string, unknown>> {
     if (collector.memberId) {
       const m = await MemberModel.findOne({ _id: collector.memberId, partnerId: actor.partnerId, isActive: true }).lean();
       if (!m) throw err(400, 'COLLECTOR_NOT_MEMBER', 'The collector must be an active member of this partner');
     }
-    return this.transition(actor, bookingId, 'assign', ['confirmed'], 'confirmed', { collector });
+    // Q11: a collector is for home collections only.
+    return this.transition(actor, bookingId, 'assign', ['confirmed'], 'confirmed', { collector }, { visitMode: 'home', expectedVersion });
   }
 
-  async markCollected(actor: PartnerActor, bookingId: string) {
-    return this.transition(actor, bookingId, 'collect', ['confirmed'], 'sample_collected', { 'lifecycle.collectedAt': new Date() }, { visitMode: 'home', noPendingReschedule: true });
+  async markCollected(actor: PartnerActor, bookingId: string, expectedVersion?: number) {
+    return this.transition(actor, bookingId, 'collect', ['confirmed'], 'sample_collected', { 'lifecycle.collectedAt': new Date() }, { visitMode: 'home', noPendingReschedule: true, expectedVersion });
   }
 
-  async markVisited(actor: PartnerActor, bookingId: string) {
-    return this.transition(actor, bookingId, 'visit', ['confirmed'], 'visited', { 'lifecycle.visitedAt': new Date() }, { visitMode: 'lab', noPendingReschedule: true });
+  async markVisited(actor: PartnerActor, bookingId: string, expectedVersion?: number) {
+    return this.transition(actor, bookingId, 'visit', ['confirmed'], 'visited', { 'lifecycle.visitedAt': new Date() }, { visitMode: 'lab', noPendingReschedule: true, expectedVersion });
   }
 
   /** A no-show is not refunded (§4), so the partner earns it like a completed booking (its slot was kept). */
-  async markNoShow(actor: PartnerActor, bookingId: string, now = new Date()) {
-    return this.transition(actor, bookingId, 'no_show', ['confirmed'], 'no_show', { 'lifecycle.noShowAt': now }, { noPendingReschedule: true, slotStarted: now },
+  async markNoShow(actor: PartnerActor, bookingId: string, now = new Date(), expectedVersion?: number) {
+    return this.transition(actor, bookingId, 'no_show', ['confirmed'], 'no_show', { 'lifecycle.noShowAt': now }, { noPendingReschedule: true, slotStarted: now, expectedVersion },
       (b, s) => this.postEarning(actor, b, s));
   }
 
-  async startProcessing(actor: PartnerActor, bookingId: string) {
-    return this.transition(actor, bookingId, 'process', ['sample_collected', 'visited'], 'processing', { 'lifecycle.processingAt': new Date() });
+  async startProcessing(actor: PartnerActor, bookingId: string, expectedVersion?: number) {
+    return this.transition(actor, bookingId, 'process', ['sample_collected', 'visited'], 'processing', { 'lifecycle.processingAt': new Date() }, { expectedVersion });
   }
 
   /** Completion posts the partner's earning (its own price; commission 0) in the same transaction (§7). */
-  async complete(actor: PartnerActor, bookingId: string) {
-    return this.transition(actor, bookingId, 'complete', ['report_ready'], 'completed', { 'lifecycle.completedAt': new Date() }, {},
+  async complete(actor: PartnerActor, bookingId: string, expectedVersion?: number) {
+    return this.transition(actor, bookingId, 'complete', ['report_ready'], 'completed', { 'lifecycle.completedAt': new Date() }, { expectedVersion },
       (b, s) => this.postEarning(actor, b, s));
   }
 
@@ -577,15 +587,17 @@ export class LabBookingService {
 
   private async transition(
     actor: PartnerActor, bookingId: string, command: string, from: LabBookingStatus[], to: LabBookingStatus,
-    set: Record<string, unknown>, guards: { visitMode?: VisitMode; noPendingReschedule?: boolean; slotStarted?: Date } = {},
+    set: Record<string, unknown>, guards: { visitMode?: VisitMode; noPendingReschedule?: boolean; slotStarted?: Date; expectedVersion?: number } = {},
     sideEffect?: (b: IPartnerLabBooking, s: ClientSession) => Promise<void>
   ): Promise<Record<string, unknown>> {
     const id = String(bookingId).toLowerCase();
     const after = await runLedgerTransaction(async (s) => {
       const b = await this.scopedBooking(actor, id, s);
       if (!from.includes(b.status)) throw err(409, 'LAB_BOOKING_STATE_CONFLICT', `Not allowed while the booking is ${b.status}`);
+      this.assertVersion(b, guards.expectedVersion);
       if (guards.visitMode && b.visitMode !== guards.visitMode) {
-        throw err(409, 'WRONG_VISIT_MODE', guards.visitMode === 'home' ? 'Only home collections are collected' : 'Only lab visits are marked visited');
+        throw err(409, 'WRONG_VISIT_MODE', command === 'assign' ? 'A collector is assigned to home collections only'
+          : guards.visitMode === 'home' ? 'Only home collections are collected' : 'Only lab visits are marked visited');
       }
       if (guards.noPendingReschedule && b.reschedule?.pending) {
         throw err(409, 'RESCHEDULE_PENDING', 'The customer has not answered the new time yet');
@@ -617,7 +629,7 @@ export class LabBookingService {
 
   // ───────────────────────────── Reports (§4: upload draft, release separately) ─────────────────────────────
 
-  async uploadReports(actor: PartnerActor, bookingId: string, files: string[]): Promise<Record<string, unknown>> {
+  async uploadReports(actor: PartnerActor, bookingId: string, files: string[], requestKey?: string): Promise<Record<string, unknown>> {
     const id = String(bookingId).toLowerCase();
     const current = await this.scopedBooking(actor, id);
     if (!['processing', 'report_ready'].includes(current.status)) {
@@ -632,8 +644,8 @@ export class LabBookingService {
       [{ field: 'report.draftFiles', values: [...previous, ...paths], previous, kind: 'partner_lab_report_draft' }],
       () => runLedgerTransaction(async (s) => {
         const u = await PartnerLabBookingModel.findOneAndUpdate(
-          { _id: id, status: { $in: ['processing', 'report_ready'] } },
-          { $addToSet: { 'report.draftFiles': { $each: paths } } },
+          { _id: id, status: { $in: ['processing', 'report_ready'] }, ...(requestKey ? { 'report.uploadKeys': { $ne: requestKey } } : {}) },
+          { $addToSet: { 'report.draftFiles': { $each: paths }, ...(requestKey ? { 'report.uploadKeys': requestKey } : {}) } },
           { new: true, session: s }
         ).lean();
         if (!u) throw changed();
@@ -650,14 +662,33 @@ export class LabBookingService {
     return Container.get(FileService).uploadFiles(req, module, recordId, { allowReserved: true });
   };
 
-  async uploadReportFiles(actor: PartnerActor, bookingId: string, req: unknown): Promise<Record<string, unknown>> {
+  async uploadReportFiles(actor: PartnerActor, bookingId: string, req: unknown, requestKey?: string): Promise<Record<string, unknown> & { replayed?: boolean }> {
     const id = String(bookingId).toLowerCase();
     const b = await this.scopedBooking(actor, id);
+    // Q11: an upload whose answer was lost, sent again with its key, is answered with the booking (no second copy).
+    if (requestKey && (b.report?.uploadKeys ?? []).includes(requestKey)) return { ...partnerView(b), replayed: true };
     if (!['processing', 'report_ready'].includes(b.status)) {
       throw err(409, 'LAB_BOOKING_STATE_CONFLICT', 'Reports can be uploaded while the sample is being processed');
     }
     const files = await this.uploadFilesFor(req, REPORT_UPLOAD_MODULE, id);
-    return this.uploadReports(actor, id, files.map((f) => f.url));
+    return this.uploadReports(actor, id, files.map((f) => f.url), requestKey);
+  }
+
+  /** Q11: a draft report uploaded by mistake is taken off the booking (released reports cannot be removed). */
+  async removeDraftReport(actor: PartnerActor, bookingId: string, file: string): Promise<Record<string, unknown>> {
+    const id = String(bookingId).toLowerCase();
+    const path = uploadPathOf(file);
+    if (!path) throw err(400, 'INVALID_REPORT_FILE', 'Unknown report file');
+    const after = await runLedgerTransaction(async (s) => {
+      const b = await this.scopedBooking(actor, id, s);
+      if (!['processing', 'report_ready'].includes(b.status)) throw err(409, 'LAB_BOOKING_STATE_CONFLICT', `Not allowed while the booking is ${b.status}`);
+      const u = await PartnerLabBookingModel.findOneAndUpdate({ _id: id, 'report.draftFiles': path },
+        { $pull: { 'report.draftFiles': path } }, { new: true, session: s }).lean();
+      if (!u) throw err(404, 'REPORT_NOT_FOUND', 'That draft report is not on this booking');
+      await recordPartnerAudit(actor, 'lab_booking.report_remove_draft', { kind: 'lab_booking', id }, { file: path }, s);
+      return u as IPartnerLabBooking;
+    });
+    return partnerView(after);
   }
 
   /**
@@ -665,7 +696,7 @@ export class LabBookingService {
    * moves it to releasedFiles (customer-readable), stamps the signer, and sets report_ready. Idempotent: releasing an
    * already released file only repairs its grant.
    */
-  async releaseReport(actor: PartnerActor, bookingId: string, file: string, signerMemberId?: string, now = new Date()): Promise<Record<string, unknown>> {
+  async releaseReport(actor: PartnerActor, bookingId: string, file: string, signerMemberId?: string, now = new Date(), expectedVersion?: number): Promise<Record<string, unknown>> {
     const id = String(bookingId).toLowerCase();
     const path = uploadPathOf(file);
     if (!path) throw err(400, 'INVALID_REPORT_FILE', 'Unknown report file');
@@ -678,6 +709,7 @@ export class LabBookingService {
       after = await runLedgerTransaction(async (s) => {
         const b = await this.scopedBooking(actor, id, s);
         if (!['processing', 'report_ready'].includes(b.status)) throw err(409, 'LAB_BOOKING_STATE_CONFLICT', `Not allowed while the booking is ${b.status}`);
+        this.assertVersion(b, expectedVersion);
         if (!(b.report?.draftFiles ?? []).includes(path)) throw err(404, 'REPORT_NOT_FOUND', 'That draft report is not on this booking');
         const u = await PartnerLabBookingModel.findOneAndUpdate(
           { _id: id, statusVersion: b.statusVersion, 'report.draftFiles': path },
@@ -766,6 +798,44 @@ export class LabBookingService {
 
   async getForPartner(actor: PartnerActor, bookingId: string) {
     return partnerView(await this.scopedBooking(actor, bookingId));
+  }
+
+  /** Q11: paged by an exact cursor on (slot.startsAt, _id), soonest first, with the total. */
+  async listForPartnerPage(actor: PartnerActor, f: { status?: LabBookingStatus; branchId?: string; from?: string; to?: string; limit?: number; cursor?: string }) {
+    const q: Record<string, unknown> = { partnerId: actor.partnerId };
+    if (f.branchId) { assertBranchInScope(actor, f.branchId); q.branchId = f.branchId; }
+    else if (!hasGlobalScope(actor)) q.branchId = { $in: actor.branchIds };
+    if (f.status) q.status = f.status;
+    if (f.from || f.to) q['slot.date'] = { ...(f.from ? { $gte: f.from } : {}), ...(f.to ? { $lte: f.to } : {}) };
+    const total = await PartnerLabBookingModel.countDocuments(q);
+    const page: Record<string, unknown> = { ...q };
+    if (f.cursor) {
+      const [ms, cid] = f.cursor.split('_');
+      if (!/^\d{1,15}$/.test(ms ?? '') || !Types.ObjectId.isValid(cid ?? '')) throw err(400, 'INVALID_CURSOR', 'Invalid cursor');
+      const at = new Date(Number(ms));
+      page.$or = [{ 'slot.startsAt': { $gt: at } }, { 'slot.startsAt': at, _id: { $gt: new Types.ObjectId(cid) } }];
+    }
+    const limit = Math.min(Math.max(Number(f.limit) || 50, 1), 200);
+    const rows = await PartnerLabBookingModel.find(page).sort({ 'slot.startsAt': 1, _id: 1 }).limit(limit + 1).lean() as IPartnerLabBooking[];
+    const items = rows.slice(0, limit);
+    const last = items[items.length - 1];
+    return { items: items.map((b) => partnerView(b)), total,
+      nextCursor: rows.length > limit && last ? `${new Date(last.slot.startsAt).getTime()}_${String(last._id)}` : null };
+  }
+
+  /** Q11: admin list across partners — paged (newest first), filters, the partner view (never stored internals). */
+  async adminList(f: { partnerId?: string; status?: LabBookingStatus; from?: string; to?: string; page?: number; limit?: number }) {
+    const q: Record<string, unknown> = {};
+    if (f.partnerId) q.partnerId = String(f.partnerId).toLowerCase();
+    if (f.status) q.status = f.status;
+    if (f.from || f.to) q['slot.date'] = { ...(f.from ? { $gte: f.from } : {}), ...(f.to ? { $lte: f.to } : {}) };
+    const limit = Math.min(Math.max(Number(f.limit) || 50, 1), 200);
+    const pg = Math.max(Number(f.page) || 1, 1);
+    const [rows, total] = await Promise.all([
+      PartnerLabBookingModel.find(q).sort({ createdAt: -1, _id: -1 }).skip((pg - 1) * limit).limit(limit).lean(),
+      PartnerLabBookingModel.countDocuments(q),
+    ]);
+    return { items: (rows as IPartnerLabBooking[]).map((b) => partnerView(b)), page: pg, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)) };
   }
 
   async listForPartner(actor: PartnerActor, f: { status?: LabBookingStatus; branchId?: string; from?: string; to?: string; limit?: number }) {

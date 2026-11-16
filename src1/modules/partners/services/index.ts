@@ -1,3 +1,4 @@
+import type { ProfessionalKind } from '@/modules/partners/types';
 import { claimRequestKey, abandonRequestKey } from '@/modules/requestKeys';
 import { createHash } from 'crypto';
 import BranchModel from '@/modules/partners/model/branch';
@@ -577,6 +578,34 @@ export class PartnerService {
       await recordPartnerAudit(actor, 'member.branches', { kind: 'member', id: memberId }, { branchIds: scope }, session);
       return updated;
     });
+  }
+
+  /**
+   * Q11: a member's professional registration (who may sign reports/prescriptions under it). Owners only (admins act as
+   * owner): it is the legal identity reports are released under. Empty registration removes it. Audited.
+   */
+  async setMemberProfessional(actor: PartnerActor, memberId: string,
+    professional: { kind: ProfessionalKind; registrationNumber: string } | null, expectedUpdatedAt?: Date | string): Promise<IMember> {
+    if (actor.role !== 'owner') throw new AppError({ status: 403, code: 'OWNER_REQUIRED', message: 'Only an owner can record professional registrations' });
+    return inTransaction(async (session) => {
+      const current = await MemberModel.findOne({ _id: memberId, partnerId: actor.partnerId, isActive: true }).session(session).lean() as IMember | null;
+      if (!current) throw memberNotFound();
+      if (expectedUpdatedAt && new Date(current.updatedAt as Date).getTime() !== new Date(expectedUpdatedAt).getTime()) throw recordChanged();
+      const updated = await MemberModel.findOneAndUpdate({ _id: memberId, partnerId: actor.partnerId, isActive: true, updatedAt: current.updatedAt },
+        professional ? { $set: { professional: { kind: professional.kind, registrationNumber: professional.registrationNumber.trim() } } } : { $unset: { professional: 1 } },
+        { new: true, session }).lean() as IMember | null;
+      if (!updated) throw recordChanged();
+      await recordPartnerAudit(actor, 'member.professional', { kind: 'member', id: memberId },
+        professional ? { kind: professional.kind, registrationNumber: professional.registrationNumber.trim() } : { removed: true }, session);
+      return updated;
+    });
+  }
+
+  /** Q11: the signed-in member's own record (role, permissions, branches, professional registration). */
+  async getOwnMember(actor: PartnerActor): Promise<IMember> {
+    const m = await MemberModel.findOne({ _id: actor.memberId, partnerId: actor.partnerId, isActive: true }).lean() as IMember | null;
+    if (!m) throw memberNotFound();
+    return m;
   }
 
   async listMembers(actor: PartnerActor): Promise<IMember[]> {

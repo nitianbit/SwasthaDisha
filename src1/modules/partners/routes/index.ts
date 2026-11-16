@@ -13,6 +13,7 @@ import {
   addMemberSchema,
   updateMemberPermissionsSchema,
   updateMemberBranchesSchema,
+  memberProfessionalSchema,
   createKeyParamSchema,
   branchListQuerySchema,
   createBranchSchema,
@@ -79,6 +80,8 @@ import {
   adminPartnerByKey,
   adminAbandonPartnerKey,
   updateMemberBranches,
+  setMemberProfessional,
+  getOwnMember,
   reactivateBranch,
   attachAdminActor,
   attachMemberActor,
@@ -131,6 +134,9 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.delete('/members/:memberId', ...guard('staff.manage'), validate(memberIdParamSchema, 'params'), catchAsync(removeMember));
   r.put('/members/:memberId/permissions', ...guard('staff.manage'), validate(memberIdParamSchema, 'params'),
     validate(updateMemberPermissionsSchema, 'body'), catchAsync(updateMemberPermissions));
+  r.get('/me/member', ...guard(), catchAsync(getOwnMember));
+  r.put('/members/:memberId/professional', ...guard('staff.manage'), validate(memberIdParamSchema, 'params'),
+    validate(memberProfessionalSchema, 'body'), catchAsync(setMemberProfessional));
   r.put('/members/:memberId/branches', ...guard('staff.manage'), validate(memberIdParamSchema, 'params'),
     validate(updateMemberBranchesSchema, 'body'), catchAsync(updateMemberBranches));
 
@@ -169,6 +175,8 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
 
   // Q3: lab slots (server-owned) and online lab bookings
   r.get('/slots', ...guard.any('slots.manage', 'bookings.view', 'bookings.manage'), validate(labV.partnerSlotsQuerySchema, 'query'), catchAsync(lab.getPartnerSlots));
+  r.get('/branches/:branchId/slot-templates/:visitMode', ...guard.any('slots.manage', 'bookings.view', 'bookings.manage'), validate(labV.slotTemplateParamSchema, 'params'),
+    catchAsync(lab.getSlotTemplateHandler));
   r.put('/branches/:branchId/slot-templates/:visitMode', ...guard('slots.manage'), validate(labV.slotTemplateParamSchema, 'params'),
     validate(labV.slotTemplateSchema, 'body'), catchAsync(lab.putSlotTemplate));
   r.post('/slots', ...guard('slots.manage'), validate(labV.manualSlotSchema, 'body'), catchAsync(lab.postManualSlot));
@@ -182,15 +190,16 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.get('/lab-bookings', ...guard.any(...LAB_READERS), validate(labV.partnerLabBookingQuerySchema, 'query'), catchAsync(lab.listLabBookings));
   r.get('/lab-bookings/:bookingId', ...guard.any(...LAB_READERS), id, catchAsync(lab.getLabBooking));
   r.post('/lab-bookings/:bookingId/assign', ...guard('bookings.manage'), id, validate(labV.assignCollectorSchema, 'body'), catchAsync(lab.assignCollector));
-  r.post('/lab-bookings/:bookingId/collect', ...guard('bookings.manage'), id, catchAsync(lab.markCollected));
-  r.post('/lab-bookings/:bookingId/visit', ...guard('bookings.manage'), id, catchAsync(lab.markVisited));
-  r.post('/lab-bookings/:bookingId/no-show', ...guard('bookings.manage'), id, catchAsync(lab.markNoShow));
-  r.post('/lab-bookings/:bookingId/process', ...guard('bookings.manage'), id, catchAsync(lab.startProcessing));
-  r.post('/lab-bookings/:bookingId/complete', ...guard('bookings.manage'), id, catchAsync(lab.completeLabBooking));
+  r.post('/lab-bookings/:bookingId/collect', ...guard('bookings.manage'), id, validate(labV.expectedVersionSchema, 'body'), catchAsync(lab.markCollected));
+  r.post('/lab-bookings/:bookingId/visit', ...guard('bookings.manage'), id, validate(labV.expectedVersionSchema, 'body'), catchAsync(lab.markVisited));
+  r.post('/lab-bookings/:bookingId/no-show', ...guard('bookings.manage'), id, validate(labV.expectedVersionSchema, 'body'), catchAsync(lab.markNoShow));
+  r.post('/lab-bookings/:bookingId/process', ...guard('bookings.manage'), id, validate(labV.expectedVersionSchema, 'body'), catchAsync(lab.startProcessing));
+  r.post('/lab-bookings/:bookingId/complete', ...guard('bookings.manage'), id, validate(labV.expectedVersionSchema, 'body'), catchAsync(lab.completeLabBooking));
   r.post('/lab-bookings/:bookingId/reject', ...guard('bookings.manage'), id, validate(labV.rejectSchema, 'body'), catchAsync(lab.rejectLabBooking));
   r.post('/lab-bookings/:bookingId/reschedule', ...guard('bookings.manage'), id, validate(labV.labRescheduleSchema, 'body'), catchAsync(lab.rescheduleLabBooking));
   r.post('/lab-bookings/:bookingId/reports', ...guard('reports.upload'), id, catchAsync(lab.uploadLabReports));
   r.post('/lab-bookings/:bookingId/reports/release', ...guard('reports.release'), id, validate(labV.releaseReportSchema, 'body'), catchAsync(lab.releaseLabReport));
+  r.post('/lab-bookings/:bookingId/reports/remove-draft', ...guard('reports.upload'), id, validate(labV.removeDraftSchema, 'body'), catchAsync(lab.removeDraftLabReport));
 
   // Q6: clinic — doctors (by invitation the doctor accepts), front-desk appointments on clinic doctors' slots.
   const appt = validate(clinicV.appointmentIdParamSchema, 'params');
@@ -222,7 +231,7 @@ const partnerRouter = Router();
 partnerRouter.post('/admin', requireAdmin, validate(createPartnerSchema, 'body'), catchAsync(adminCreatePartner));
 partnerRouter.get('/admin', requireAdmin, validate(partnerQuerySchema, 'query'), catchAsync(adminListPartners));
 // Static admin paths before /admin/:partnerId (which would otherwise capture them).
-partnerRouter.get('/admin/lab-bookings', requireAdmin, catchAsync(lab.adminListLabBookings));
+partnerRouter.get('/admin/lab-bookings', requireAdmin, validate(labV.adminLabBookingQuerySchema, 'query'), catchAsync(lab.adminListLabBookings));
 // Q10: a lost create answer — look up or abandon the admin's own create key (static paths before /admin/:partnerId).
 partnerRouter.get('/admin/by-key/:key', requireAdmin, validate(createKeyParamSchema, 'params'), catchAsync(adminPartnerByKey));
 partnerRouter.post('/admin/by-key/:key/abandon', requireAdmin, validate(createKeyParamSchema, 'params'), catchAsync(adminAbandonPartnerKey));

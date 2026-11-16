@@ -12,11 +12,14 @@ export const slotTemplateSchema = Joi.object({
   slotMinutes: Joi.number().integer().min(5).max(480).required(),
   capacity: Joi.number().integer().min(1).max(500).required(),
   days: Joi.object({ mon: day, tue: day, wed: day, thu: day, fri: day, sat: day, sun: day }).required(),
+  /** Q11: the saved template's updatedAt the editor started from (null = there was none). */
+  expectedUpdatedAt: Joi.date().iso().allow(null).optional(),
 });
 export const slotTemplateParamSchema = Joi.object({ branchId: objectId.required(), visitMode: visitMode.required() });
 export const manualSlotSchema = Joi.object({
   branchId: objectId.required(), visitMode: visitMode.required(), date: date.required(),
   startTime: hhmm.required(), endTime: hhmm.required(), capacity: Joi.number().integer().min(1).max(500).required(),
+  requestKey: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).optional(),
 });
 export const slotIdParamSchema = Joi.object({ slotId: objectId.required() });
 export const slotCapacitySchema = Joi.object({ capacity: Joi.number().integer().min(0).max(500).required() });
@@ -26,13 +29,23 @@ export const labBookingIdParamSchema = Joi.object({ bookingId: objectId.required
 export const partnerLabBookingQuerySchema = Joi.object({
   status: Joi.string().valid('pending_payment', 'confirmed', 'sample_collected', 'visited', 'processing', 'report_ready', 'completed', 'cancelled', 'no_show'),
   branchId: objectId, from: date, to: date, limit: Joi.number().integer().min(1).max(500),
+  cursor: Joi.string().max(64),
+});
+
+/** Q11 */
+export const expectedVersionSchema = Joi.object({ expectedVersion: Joi.number().integer().min(0) });
+export const removeDraftSchema = Joi.object({ file: Joi.string().max(500).required() });
+export const adminLabBookingQuerySchema = Joi.object({
+  partnerId: objectId, status: Joi.string().valid('pending_payment', 'confirmed', 'sample_collected', 'visited', 'processing', 'report_ready', 'completed', 'cancelled', 'no_show'),
+  from: date, to: date, page: Joi.number().integer().min(1), limit: Joi.number().integer().min(1).max(200),
 });
 export const assignCollectorSchema = Joi.object({
   memberId: objectId, name: Joi.string().trim().min(1).max(120).required(), phone: Joi.string().pattern(/^[0-9]{10}$/),
+  expectedVersion: Joi.number().integer().min(0),
 });
-export const rejectSchema = Joi.object({ reason: Joi.string().trim().min(3).max(500).required() });
-export const labRescheduleSchema = Joi.object({ slotId: objectId.required(), reason: Joi.string().trim().min(3).max(500).required() });
-export const releaseReportSchema = Joi.object({ file: Joi.string().trim().max(500).required(), signerMemberId: objectId });
+export const rejectSchema = Joi.object({ reason: Joi.string().trim().min(3).max(500).required(), expectedVersion: Joi.number().integer().min(0) });
+export const labRescheduleSchema = Joi.object({ slotId: objectId.required(), reason: Joi.string().trim().min(3).max(500).required(), expectedVersion: Joi.number().integer().min(0) });
+export const releaseReportSchema = Joi.object({ file: Joi.string().trim().max(500).required(), signerMemberId: objectId, expectedVersion: Joi.number().integer().min(0) });
 
 export const createLabBookingSchema = Joi.object({
   partnerId: objectId.required(),

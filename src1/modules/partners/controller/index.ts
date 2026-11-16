@@ -212,3 +212,14 @@ export const listAudit = async (req: Request, res: Response, _next: NextFunction
   const data = await service().listAudit(actor);
   res.status(200).json({ success: true, data });
 };
+
+/** Q11 */
+export const setMemberProfessional = async (req: Request, res: Response, _next: NextFunction) => {
+  const p = req.body.professional;
+  const data = await service().setMemberProfessional(actorOf(req), req.params.memberId, p && p.registrationNumber ? p : null, req.body.expectedUpdatedAt);
+  res.status(200).json({ success: true, data });
+};
+
+export const getOwnMember = async (req: Request, res: Response, _next: NextFunction) => {
+  res.status(200).json({ success: true, data: await service().getOwnMember(actorOf(req)) });
+};

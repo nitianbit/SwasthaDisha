@@ -6,17 +6,23 @@ import { AppError } from '@/modules/common/types';
 import { actorOf } from '@/modules/partners/controller';
 import { LabBookingService } from '@/modules/partners/services/labBookings';
 import {
-  saveSlotTemplate, addManualSlot, setSlotCapacity, setSlotClosed, listSlotsForPartner,
+  saveSlotTemplate, getSlotTemplate, addManualSlot, setSlotCapacity, setSlotClosed, listSlotsForPartner,
 } from '@/modules/partners/services/slots';
-import { PartnerLabBookingModel } from '@/modules/partners/model/labBooking';
 
 const svc = () => Container.get(LabBookingService);
 const ok = (res: Response, data: unknown, status = 200) => res.status(status).json({ success: true, data });
 
 // ── Workspace: slots ──
+const ev = (req: Request) => (req.body && req.body.expectedVersion !== undefined ? Number(req.body.expectedVersion) : undefined);
 export const putSlotTemplate = async (req: Request, res: Response, _n: NextFunction) =>
   ok(res, await saveSlotTemplate(actorOf(req), req.params.branchId, req.params.visitMode as any, req.body));
-export const postManualSlot = async (req: Request, res: Response, _n: NextFunction) => ok(res, await addManualSlot(actorOf(req), req.body), 201);
+/** Q11: the saved weekly template (null when none). */
+export const getSlotTemplateHandler = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await getSlotTemplate(actorOf(req), req.params.branchId, req.params.visitMode as any));
+export const postManualSlot = async (req: Request, res: Response, _n: NextFunction) => {
+  const { replayed, ...slot } = await addManualSlot(actorOf(req), req.body) as any;
+  ok(res, slot, replayed ? 200 : 201);
+};
 export const putSlotCapacity = async (req: Request, res: Response, _n: NextFunction) =>
   ok(res, await setSlotCapacity(actorOf(req), req.params.slotId, req.body.capacity));
 export const closeSlot = async (req: Request, res: Response, _n: NextFunction) => ok(res, await setSlotClosed(actorOf(req), req.params.slotId, true));
@@ -25,34 +31,42 @@ export const getPartnerSlots = async (req: Request, res: Response, _n: NextFunct
   ok(res, await listSlotsForPartner(actorOf(req), String(req.query.branchId), req.query.visitMode as any, String(req.query.from), String(req.query.to)));
 
 // ── Workspace: lab bookings ──
-export const listLabBookings = async (req: Request, res: Response, _n: NextFunction) =>
-  ok(res, await svc().listForPartner(actorOf(req), req.query as any));
+/** Q11: paged (exact cursor), soonest first; data stays an array, plus pagination {total, nextCursor}. */
+export const listLabBookings = async (req: Request, res: Response, _n: NextFunction) => {
+  const r = await svc().listForPartnerPage(actorOf(req), req.query as any);
+  res.status(200).json({ success: true, data: r.items, pagination: { total: r.total, nextCursor: r.nextCursor } });
+};
 export const getLabBooking = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().getForPartner(actorOf(req), req.params.bookingId));
-export const assignCollector = async (req: Request, res: Response, _n: NextFunction) =>
-  ok(res, await svc().assignCollector(actorOf(req), req.params.bookingId, req.body));
-export const markCollected = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().markCollected(actorOf(req), req.params.bookingId));
-export const markVisited = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().markVisited(actorOf(req), req.params.bookingId));
-export const markNoShow = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().markNoShow(actorOf(req), req.params.bookingId));
-export const startProcessing = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().startProcessing(actorOf(req), req.params.bookingId));
-export const completeLabBooking = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().complete(actorOf(req), req.params.bookingId));
+export const assignCollector = async (req: Request, res: Response, _n: NextFunction) => {
+  const { expectedVersion: _e, ...collector } = req.body;
+  ok(res, await svc().assignCollector(actorOf(req), req.params.bookingId, collector, ev(req)));
+};
+export const markCollected = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().markCollected(actorOf(req), req.params.bookingId, ev(req)));
+export const markVisited = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().markVisited(actorOf(req), req.params.bookingId, ev(req)));
+export const markNoShow = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().markNoShow(actorOf(req), req.params.bookingId, new Date(), ev(req)));
+export const startProcessing = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().startProcessing(actorOf(req), req.params.bookingId, ev(req)));
+export const completeLabBooking = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().complete(actorOf(req), req.params.bookingId, ev(req)));
 export const rejectLabBooking = async (req: Request, res: Response, _n: NextFunction) =>
-  ok(res, await svc().labReject(actorOf(req), req.params.bookingId, req.body.reason));
+  ok(res, await svc().labReject(actorOf(req), req.params.bookingId, req.body.reason, new Date(), ev(req)));
 export const rescheduleLabBooking = async (req: Request, res: Response, _n: NextFunction) =>
-  ok(res, await svc().labReschedule(actorOf(req), req.params.bookingId, req.body.slotId, req.body.reason));
-/** multipart/form-data `files`: written under the booking's report folder and attached as drafts in one step. */
-export const uploadLabReports = async (req: Request, res: Response, _n: NextFunction) =>
-  ok(res, await svc().uploadReportFiles(actorOf(req), req.params.bookingId, req), 201);
+  ok(res, await svc().labReschedule(actorOf(req), req.params.bookingId, req.body.slotId, req.body.reason, new Date(), ev(req)));
+/** multipart/form-data `files`: written under the booking's report folder and attached as drafts in one step (Q11: ?requestKey=). */
+export const uploadLabReports = async (req: Request, res: Response, _n: NextFunction) => {
+  const key = typeof req.query.requestKey === 'string' && /^[A-Za-z0-9_-]{8,100}$/.test(req.query.requestKey) ? req.query.requestKey : undefined;
+  if (req.query.requestKey !== undefined && !key) throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'requestKey must be 8 to 100 letters, digits, - or _' });
+  const { replayed, ...view } = await svc().uploadReportFiles(actorOf(req), req.params.bookingId, req, key) as any;
+  ok(res, view, replayed ? 200 : 201);
+};
 export const releaseLabReport = async (req: Request, res: Response, _n: NextFunction) =>
-  ok(res, await svc().releaseReport(actorOf(req), req.params.bookingId, req.body.file, req.body.signerMemberId));
+  ok(res, await svc().releaseReport(actorOf(req), req.params.bookingId, req.body.file, req.body.signerMemberId, new Date(), ev(req)));
+/** Q11: remove a draft report uploaded by mistake. */
+export const removeDraftLabReport = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await svc().removeDraftReport(actorOf(req), req.params.bookingId, req.body.file));
 
-/** Admin: lab bookings across every partner (filters: partnerId, status). */
+/** Admin: lab bookings across every partner — Q11: paged, dated, the partner view. */
 export const adminListLabBookings = async (req: Request, res: Response, _n: NextFunction) => {
-  const q: Record<string, unknown> = {};
-  if (typeof req.query.partnerId === 'string' && /^[0-9a-fA-F]{24}$/.test(req.query.partnerId)) q.partnerId = req.query.partnerId;
-  if (typeof req.query.status === 'string') q.status = req.query.status;
-  const rows = await PartnerLabBookingModel.find(q).sort({ createdAt: -1 }).limit(200)
-    .select({ walletFunding: 0, createRequestKey: 0 }).lean();
-  ok(res, rows);
+  const r = await svc().adminList(req.query as any);
+  res.status(200).json({ success: true, data: r.items, pagination: { page: r.page, limit: r.limit, total: r.total, totalPages: r.totalPages } });
 };
 
 // ── Customer ──

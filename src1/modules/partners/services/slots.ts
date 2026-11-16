@@ -112,20 +112,29 @@ export async function saveSlotTemplate(
   actor: PartnerActor,
   branchId: string,
   visitMode: VisitMode,
-  input: { slotMinutes: number; capacity: number; days: Partial<Record<Weekday, ISlotWindow[]>> },
+  input: { slotMinutes: number; capacity: number; days: Partial<Record<Weekday, ISlotWindow[]>>; expectedUpdatedAt?: Date | string | null },
   now = new Date()
 ): Promise<{ template: IPartnerSlotTemplate; expansion: ExpansionResult }> {
   await branchFor(actor, branchId, visitMode);
   validateWindows(input.days);
   await ensureScheduleGuard(labScheduleKey(branchId, visitMode));
+  const { expectedUpdatedAt, ...content } = input;
   const template = await inTransaction(async (session) => {
+    // Q11: optimistic version — `expectedUpdatedAt` is the saved template's updatedAt the editor started from (null when
+    // it started from no template); a different current state refuses the save.
+    if (expectedUpdatedAt !== undefined) {
+      const cur = await PartnerSlotTemplateModel.findOne({ branchId, visitMode }).session(session).lean() as IPartnerSlotTemplate | null;
+      const curAt = cur?.updatedAt ? new Date(cur.updatedAt).getTime() : null;
+      const expAt = expectedUpdatedAt === null ? null : new Date(expectedUpdatedAt).getTime();
+      if (curAt !== expAt) throw new AppError({ status: 409, code: 'TEMPLATE_CHANGED', message: 'The weekly template changed since you opened it; review it again' });
+    }
     const t = await PartnerSlotTemplateModel.findOneAndUpdate(
       { branchId, visitMode },
-      { $set: { partnerId: actor.partnerId, slotMinutes: input.slotMinutes, capacity: input.capacity, days: input.days, isActive: true } },
+      { $set: { partnerId: actor.partnerId, slotMinutes: content.slotMinutes, capacity: content.capacity, days: content.days, isActive: true } },
       { upsert: true, new: true, session }
     ).lean();
     await bumpScheduleGuard(labScheduleKey(branchId, visitMode), session);
-    await recordPartnerAudit(actor, 'slots.template.save', { kind: 'branch', id: branchId }, { visitMode, ...input }, session);
+    await recordPartnerAudit(actor, 'slots.template.save', { kind: 'branch', id: branchId }, { visitMode, ...content }, session);
     return t as IPartnerSlotTemplate;
   });
   const expansion = await expandSlots(branchId, visitMode, istDate(now), ROLLING_DAYS);
@@ -244,15 +253,27 @@ export async function setSlotCapacity(actor: PartnerActor, slotId: string, capac
   });
 }
 
+/** Q11: the saved weekly template of a branch and visit mode (null when none was saved). */
+export async function getSlotTemplate(actor: PartnerActor, branchId: string, visitMode: VisitMode): Promise<IPartnerSlotTemplate | null> {
+  await branchFor(actor, branchId, visitMode);
+  return (await PartnerSlotTemplateModel.findOne({ branchId, visitMode, partnerId: actor.partnerId }).lean()) as IPartnerSlotTemplate | null;
+}
+
 /** Closing stops new bookings; existing holds stay. */
 export async function setSlotClosed(actor: PartnerActor, slotId: string, close: boolean): Promise<IPartnerSlot> {
   await slotFor(actor, slotId);
   return inTransaction(async (session) => {
+    // Q11: staff may close any slot (a staff closure outlasts a holiday), but reopen only what staff closed;
+    // holiday/template closures follow the branch and template.
     const updated = await PartnerSlotModel.findOneAndUpdate(
-      { _id: slotId, partnerId: actor.partnerId },
+      close ? { _id: slotId, partnerId: actor.partnerId } : { _id: slotId, partnerId: actor.partnerId, closed: 'manual' },
       { $set: { closed: close ? 'manual' : null } },
       { new: true, session }
     ).lean();
+    if (!updated) {
+      if (close) throw new AppError({ status: 404, code: 'SLOT_NOT_FOUND', message: 'Slot not found' });
+      throw new AppError({ status: 409, code: 'SLOT_CLOSED_BY_SCHEDULE', message: 'Only slots closed by staff can be reopened here; holidays and the weekly template decide the others' });
+    }
     await recordPartnerAudit(actor, close ? 'slots.close' : 'slots.reopen', { kind: 'slot', id: slotId }, undefined, session);
     return updated as IPartnerSlot;
   });
@@ -260,8 +281,9 @@ export async function setSlotClosed(actor: PartnerActor, slotId: string, close: 
 
 export async function addManualSlot(
   actor: PartnerActor,
-  input: { branchId: string; visitMode: VisitMode; date: string; startTime: string; endTime: string; capacity: number }
-): Promise<IPartnerSlot> {
+  input: { branchId: string; visitMode: VisitMode; date: string; startTime: string; endTime: string; capacity: number; requestKey?: string }
+): Promise<IPartnerSlot & { replayed?: boolean }> {
+  const { requestKey, ...slotInput } = input;
   await branchFor(actor, input.branchId, input.visitMode);
   assertRealDate(input.date);
   if (toMinutes(input.endTime) <= toMinutes(input.startTime)) {
@@ -270,15 +292,21 @@ export async function addManualSlot(
   try {
     return await inTransaction(async (session) => {
       const [slot] = await PartnerSlotModel.create([{
-        partnerId: actor.partnerId, ...input,
+        partnerId: actor.partnerId, ...slotInput, ...(requestKey ? { createRequestKey: requestKey } : {}),
         startsAt: istInstant(input.date, input.startTime), endsAt: istInstant(input.date, input.endTime),
         booked: 0, closed: null, source: 'manual',
       }], { session });
-      await recordPartnerAudit(actor, 'slots.add', { kind: 'slot', id: String(slot!._id) }, input, session);
+      await recordPartnerAudit(actor, 'slots.add', { kind: 'slot', id: String(slot!._id) }, slotInput, session);
       return slot!.toObject() as IPartnerSlot;
     });
   } catch (e: any) {
-    if (e?.code === 11000) throw new AppError({ status: 409, code: 'SLOT_EXISTS', message: 'A slot already starts at that time' });
+    if (e?.code === 11000) {
+      // Q11: the same keyed request again (its answer was lost) is answered with the slot it made.
+      const same = requestKey ? await PartnerSlotModel.findOne({ partnerId: actor.partnerId, branchId: input.branchId, visitMode: input.visitMode,
+        date: input.date, startTime: input.startTime, createRequestKey: requestKey }).lean() as IPartnerSlot | null : null;
+      if (same) return { ...same, replayed: true };
+      throw new AppError({ status: 409, code: 'SLOT_EXISTS', message: 'A slot already starts at that time' });
+    }
     throw e;
   }
 }

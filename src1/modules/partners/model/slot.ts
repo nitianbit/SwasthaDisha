@@ -24,6 +24,8 @@ export interface IPartnerSlot {
   booked: number;
   closed: SlotClosure;
   source: 'template' | 'manual';
+  /** Q11: the request key of a manual slot (replay of a lost answer). */
+  createRequestKey?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -42,6 +44,7 @@ const slotSchema = new Schema<IPartnerSlot>(
     booked: { type: Number, required: true, min: 0, default: 0 },
     closed: { type: String, enum: [null, 'holiday', 'template', 'manual'], default: null },
     source: { type: String, required: true, enum: ['template', 'manual'] },
+    createRequestKey: { type: String },
   },
   { timestamps: true }
 );

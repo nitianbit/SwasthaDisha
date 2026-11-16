@@ -640,7 +640,9 @@ async function main() {
 
   await check('a no-show is not refunded and the partner earns it once; customers never see staff ids', async () => {
     const { u, id } = await confirmedBooking(16, '08:00');
-    await labSvc.assignCollector(deskA, id, { memberId: String(desk._id), name: 'Ravi', phone: '9000011111' });
+    // Q11: a collector is for home collections only; this is a lab visit (the customer-view check below uses a stored one).
+    await assert.rejects(() => labSvc.assignCollector(deskA, id, { memberId: String(desk._id), name: 'Ravi', phone: '9000011111' }), code('WRONG_VISIT_MODE'));
+    await PartnerLabBookingModel.updateOne({ _id: id }, { $set: { collector: { memberId: String(desk._id), name: 'Ravi', phone: '9000011111' } } });
     const b = await PartnerLabBookingModel.findById(id).lean();
     const after = new Date(new Date(b!.slot.startsAt).getTime() + 60_000);
     assert.equal(((await labSvc.markNoShow(deskA, id, after)) as any).status, 'no_show');

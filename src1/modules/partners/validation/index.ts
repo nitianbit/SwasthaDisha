@@ -190,3 +190,12 @@ export const branchListQuerySchema = Joi.object({ includeInactive: Joi.string().
 
 /** Q10 */
 export const createKeyParamSchema = Joi.object({ key: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).required() });
+
+/** Q11: professional registration (null or an empty registration removes it). */
+export const memberProfessionalSchema = Joi.object({
+  professional: Joi.object({
+    kind: Joi.string().valid('pathologist', 'pharmacist', 'doctor').required(),
+    registrationNumber: Joi.string().trim().min(3).max(60).required(),
+  }).allow(null).required(),
+  expectedUpdatedAt: Joi.date().iso().optional(),
+});

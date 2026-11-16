@@ -58,7 +58,7 @@ export interface IPartnerLabBooking {
   cancellation?: { reason: 'timeout' | 'customer' | 'lab_reject'; note?: string; by: string; byKind: 'customer' | 'member' | 'admin' | 'system'; at: Date };
   reschedule: { version: number; pending: boolean; previousSlot?: ILabBookingSlot; reason?: string; at?: Date; by?: string };
   collector?: { memberId?: string; name: string; phone?: string };
-  report: { draftFiles: string[]; releasedFiles: string[]; releases: ILabReportRelease[] };
+  report: { draftFiles: string[]; releasedFiles: string[]; releases: ILabReportRelease[]; /** Q11 */ uploadKeys?: string[] };
   lifecycle: Partial<Record<'paidAt' | 'confirmedAt' | 'collectedAt' | 'visitedAt' | 'processingAt' | 'reportReadyAt' | 'completedAt' | 'cancelledAt' | 'noShowAt', Date>>;
   postPaymentCompletedFor?: string;
   createdAt?: Date;
@@ -176,6 +176,7 @@ const labBookingSchema = new Schema<IPartnerLabBooking>(
     report: {
       draftFiles: { type: [String], default: [] },
       releasedFiles: { type: [String], default: [] },
+      uploadKeys: { type: [String], default: undefined },
       releases: {
         type: [new Schema({
           path: { type: String, required: true },
