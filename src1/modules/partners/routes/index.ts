@@ -26,6 +26,7 @@ import {
   catalogueListQuerySchema,
   updateCatalogueItemSchema,
   catalogueItemParamSchema,
+  catalogueKeyParamSchema,
 } from '@/modules/partners/validation/catalogue';
 import {
   createInvoiceSchema,
@@ -45,6 +46,8 @@ import {
   reactivateCatalogueItem,
   adminDisableCatalogueItem,
   adminEnableCatalogueItem,
+  catalogueItemByKey,
+  abandonCatalogueKey,
 } from '@/modules/partners/controller/catalogue';
 import {
   createInvoice,
@@ -153,6 +156,8 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
 
   // Q2: catalogue (anyone who bills needs to read it) and in-house invoices
   r.get('/catalogue', ...guard.any('catalogue.manage', 'invoices.create'), validate(catalogueListQuerySchema, 'query'), catchAsync(listCatalogueItems));
+  r.get('/catalogue/by-key/:key', ...guard('catalogue.manage'), validate(catalogueKeyParamSchema, 'params'), catchAsync(catalogueItemByKey));
+  r.post('/catalogue/by-key/:key/abandon', ...guard('catalogue.manage'), validate(catalogueKeyParamSchema, 'params'), catchAsync(abandonCatalogueKey));
   r.post('/catalogue/:itemId/reactivate', ...guard('catalogue.manage'), validate(catalogueItemParamSchema, 'params'), catchAsync(reactivateCatalogueItem));
   r.get('/catalogue/:itemId', ...guard.any('catalogue.manage', 'invoices.create'), validate(catalogueItemParamSchema, 'params'), catchAsync(getCatalogueItem));
   r.post('/catalogue', ...guard('catalogue.manage'), validate(createCatalogueItemSchema, 'body'), catchAsync(createCatalogueItem));

@@ -8,8 +8,18 @@ import { actorOf } from '@/modules/partners/controller';
 const service = () => Container.get(CatalogueService);
 
 export const listCatalogueItems = async (req: Request, res: Response, _next: NextFunction) => {
-  const data = await service().listItems(actorOf(req), req.query.kind as any, req.query.includeInactive === 'true');
+  const data = await service().listItems(actorOf(req), req.query.kind as any, req.query.includeInactive === 'true', req.query.q as string | undefined);
   res.status(200).json({ success: true, data });
+};
+
+export const catalogueItemByKey = async (req: Request, res: Response, _next: NextFunction) => {
+  const data = await service().findByKey(actorOf(req), req.params.key);
+  if (!data) { res.status(404).json({ error: 404, code: 'ITEM_NOT_FOUND', message: 'No item was made with this key' }); return; }
+  res.status(200).json({ success: true, data });
+};
+
+export const abandonCatalogueKey = async (req: Request, res: Response, _next: NextFunction) => {
+  res.status(200).json({ success: true, data: await service().abandonKey(actorOf(req), req.params.key) });
 };
 
 export const getCatalogueItem = async (req: Request, res: Response, _next: NextFunction) => {

@@ -60,7 +60,8 @@ export const getInvoicePdf = async (req: Request, res: Response, _next: NextFunc
 
 export const recordPayment = async (req: Request, res: Response, _next: NextFunction) => {
   const data = await service().recordPayment(actorOf(req), req.params.invoiceId, req.body);
-  res.status(200).json({ success: true, data: { invoice: data.invoice, event: data.event }, replayed: !!data.replayed });
+  // Q12: `replayed` inside data (kept at the top level too for clients built before).
+  res.status(200).json({ success: true, data: { invoice: data.invoice, event: data.event, replayed: !!data.replayed }, replayed: !!data.replayed });
 };
 
 export const cancelInvoice = async (req: Request, res: Response, _next: NextFunction) => {

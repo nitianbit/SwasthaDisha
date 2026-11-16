@@ -42,7 +42,10 @@ export const updateCatalogueItemSchema = Joi.object({
 export const catalogueListQuerySchema = Joi.object({
   kind: Joi.string().valid('test', 'package', 'consultation', 'procedure', 'other').optional(),
   includeInactive: Joi.string().valid('true', 'false').optional(),
+  q: Joi.string().trim().min(1).max(60).optional(),
 });
+
+export const catalogueKeyParamSchema = Joi.object({ key: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).required() });
 
 export const catalogueItemParamSchema = Joi.object({
   itemId: Joi.string().pattern(objectIdPattern).required(),

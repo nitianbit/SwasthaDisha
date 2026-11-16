@@ -1,3 +1,4 @@
+import { claimRequestKey, abandonRequestKey } from '@/modules/requestKeys';
 import { createHash } from 'crypto';
 import { canonicalJson } from '@/modules/partners/services/invoice';
 import { Service } from 'typedi';
@@ -58,6 +59,10 @@ export type CatalogueItemInput = {
   reportTatHours?: number;
 };
 
+/** Q12: the admission scope of item-create request keys (claimed with the item; abandon makes a key unusable). */
+export const catalogueKeyScope = (partnerId: string) => `partner_catalogue_create:${String(partnerId).toLowerCase()}`;
+const escapeRegex = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 /** §4: the partner sets its menu and prices (live at once); admins can disable an item. Catalogue is partner-wide. */
 @Service()
 export class CatalogueService {
@@ -92,6 +97,8 @@ export class CatalogueService {
     }
     await assertItemFits(actor.partnerId, { kind: data.kind, gstRate: data.gstRate, visitModes: data.visitModes ?? [] });
     return inTransaction(async (session) => {
+      // Q12: the key is claimed with the item, so an abandon either wins (no item can follow) or finds it used.
+      if (requestKey) await claimRequestKey(catalogueKeyScope(actor.partnerId), requestKey, session);
       const item = await this.catalogueRepo.save({
         ...data,
         visitModes: data.visitModes ?? [],
@@ -161,13 +168,32 @@ export class CatalogueService {
     });
   }
 
-  async listItems(actor: PartnerActor, kind?: CatalogueItemKind, includeInactive = false): Promise<ICatalogueItem[]> {
-    if (includeInactive && (actor.role === 'owner' || actor.permissions.includes('catalogue.manage'))) {
-      return CatalogueItemModel.find({ partnerId: actor.partnerId, ...(kind ? { kind } : {}) }).sort({ name: 1 }).lean() as unknown as Promise<ICatalogueItem[]>;
+  async listItems(actor: PartnerActor, kind?: CatalogueItemKind, includeInactive = false, q?: string): Promise<ICatalogueItem[]> {
+    const all = includeInactive && (actor.role === 'owner' || actor.permissions.includes('catalogue.manage'));
+    // Q12: optional search on name or code (case-insensitive, literal text).
+    const text = q?.trim();
+    const match = text ? { $or: [{ name: { $regex: escapeRegex(text), $options: 'i' } }, { code: { $regex: escapeRegex(text), $options: 'i' } }] } : {};
+    if (all || text) {
+      return CatalogueItemModel.find({ partnerId: actor.partnerId, ...(all ? {} : { isActive: true }), ...(kind ? { kind } : {}), ...match })
+        .sort({ name: 1 }).lean() as unknown as Promise<ICatalogueItem[]>;
     }
     return kind
       ? this.catalogueRepo.findActiveByPartnerAndKind(actor.partnerId, kind)
       : this.catalogueRepo.findActiveByPartner(actor.partnerId);
+  }
+
+  /** Q12: the item a create request key made in this partner, or null (not made yet, never, or abandoned). */
+  async findByKey(actor: PartnerActor, key: string): Promise<ICatalogueItem | null> {
+    return CatalogueItemModel.findOne({ partnerId: actor.partnerId, createRequestKey: { $eq: key } }).lean() as unknown as Promise<ICatalogueItem | null>;
+  }
+
+  /** Q12: give up an item create whose answer was lost: abandoned (it can never be made) or used (here is the item). */
+  async abandonKey(actor: PartnerActor, key: string): Promise<{ state: 'abandoned' | 'used'; item?: ICatalogueItem | null }> {
+    // An item made under this key before claims existed (no claim row) is used, never abandoned.
+    const made = await this.findByKey(actor, key);
+    if (made) return { state: 'used', item: made };
+    const state = await abandonRequestKey(catalogueKeyScope(actor.partnerId), key);
+    return state === 'abandoned' ? { state } : { state, item: await this.findByKey(actor, key) };
   }
 
   async getItem(actor: PartnerActor, itemId: string): Promise<ICatalogueItem> {
