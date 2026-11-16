@@ -39,7 +39,7 @@ export interface PartnerActor {
 export function adminActor(adminId: string, partnerId: string): PartnerActor {
   return {
     memberId: `admin:${adminId}`,
-    partnerId,
+    partnerId: String(partnerId).toLowerCase(),
     role: 'owner',
     permissions: [...ALL_PERMISSIONS],
     branchIds: [],

@@ -61,6 +61,14 @@ export type CatalogueItemInput = {
 
 /** Q12: the admission scope of item-create request keys (claimed with the item; abandon makes a key unusable). */
 export const catalogueKeyScope = (partnerId: string) => `partner_catalogue_create:${String(partnerId).toLowerCase()}`;
+/**
+ * Q12: the partner's rows whatever the case of the stored id (ids are ObjectId hex; an older admin write may have kept
+ * the case of its URL), so a key lookup never misses an item that exists.
+ */
+const samePartner = (partnerId: string) => {
+  const pid = String(partnerId);
+  return /^[0-9a-fA-F]{24}$/.test(pid) ? { $regex: `^${pid}$`, $options: 'i' } : { $eq: pid };
+};
 const escapeRegex = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** §4: the partner sets its menu and prices (live at once); admins can disable an item. Catalogue is partner-wide. */
@@ -74,7 +82,7 @@ export class CatalogueService {
     const requestHash = requestKey ? createHash('sha256').update(canonicalJson(data)).digest('hex') : undefined;
     const replay = async () => {
       if (!requestKey) return null;
-      const prior = await CatalogueItemModel.findOne({ partnerId: actor.partnerId, createRequestKey: requestKey }).lean() as (ICatalogueItem & { createRequestHash?: string }) | null;
+      const prior = await CatalogueItemModel.findOne({ partnerId: samePartner(actor.partnerId), createRequestKey: { $eq: requestKey } }).lean() as (ICatalogueItem & { createRequestHash?: string }) | null;
       if (!prior) return null;
       if (prior.createRequestHash !== requestHash) throw new AppError({ status: 409, code: 'REQUEST_KEY_REUSED', message: 'This request key was already used for a different item' });
       return { ...prior, replayed: true };
@@ -184,7 +192,7 @@ export class CatalogueService {
 
   /** Q12: the item a create request key made in this partner, or null (not made yet, never, or abandoned). */
   async findByKey(actor: PartnerActor, key: string): Promise<ICatalogueItem | null> {
-    return CatalogueItemModel.findOne({ partnerId: actor.partnerId, createRequestKey: { $eq: key } }).lean() as unknown as Promise<ICatalogueItem | null>;
+    return CatalogueItemModel.findOne({ partnerId: samePartner(actor.partnerId), createRequestKey: { $eq: key } }).lean() as unknown as Promise<ICatalogueItem | null>;
   }
 
   /** Q12: give up an item create whose answer was lost: abandoned (it can never be made) or used (here is the item). */

@@ -22,7 +22,8 @@ import { PartnerRepository } from '@/modules/partners/repository';
 import { MemberRepository } from '@/modules/partners/repository/member';
 import { BranchRepository } from '@/modules/partners/repository/branch';
 import { CatalogueItemRepository } from '@/modules/partners/repository/catalogueItem';
-import { PartnerService, PartnerActor } from '@/modules/partners/services';
+import { PartnerService, PartnerActor, adminActor } from '@/modules/partners/services';
+import { attachAdminActor } from '@/modules/partners/controller';
 import { CatalogueService } from '@/modules/partners/services/catalogue';
 import { InvoiceService } from '@/modules/partners/services/invoice';
 import { recordPayment } from '@/modules/partners/controller/invoice';
@@ -84,6 +85,30 @@ async function main() {
       isActive: true, adminDisabled: false, createRequestKey: 'item-key-0003', createdAt: new Date(), updatedAt: new Date() } as never);
     assert.equal((await catalogueSvc.abandonKey(a, 'item-key-0003')).state, 'used');
     assert.equal(await RequestKeyModel.exists({ scope: `partner_catalogue_create:${a.partnerId}`, key: 'item-key-0003' }), null);
+  });
+
+  await check('one partner identity whatever the case of the id: an existing keyed item is never declared abandoned', async () => {
+    // An admin URL with an upper-case id: the actor carries the canonical id.
+    let attached: PartnerActor | undefined;
+    const req = { user: { _id: 'ad'.repeat(12), userType: 'admin' }, params: { partnerId: a.partnerId.toUpperCase() } } as any;
+    await attachAdminActor(req, {} as any, (e?: unknown) => { if (e) throw e; attached = req.partnerActor; });
+    assert.equal(attached!.partnerId, a.partnerId);
+    assert.equal(adminActor('x', a.partnerId.toUpperCase()).partnerId, a.partnerId);
+    // Legacy keyed items (no claim row), stored lower- and upper-case, are found and reported used from either case.
+    const loud = { ...a, partnerId: a.partnerId.toUpperCase() };
+    for (const [stored, k] of [[a.partnerId, 'item-case-0001'], [a.partnerId.toUpperCase(), 'item-case-0002']] as const) {
+      await CatalogueItemModel.collection.insertOne({ partnerId: stored, kind: 'test', name: k, priceMinor: 100, gstRate: 0, visitModes: ['lab'],
+        isActive: true, adminDisabled: false, createRequestKey: k, createdAt: new Date(), updatedAt: new Date() } as never);
+      for (const actor of [a, loud]) {
+        assert.equal((await catalogueSvc.findByKey(actor, k))?.name, k);
+        assert.equal((await catalogueSvc.abandonKey(actor, k)).state, 'used');
+      }
+      assert.equal(await RequestKeyModel.exists({ scope: `partner_catalogue_create:${a.partnerId}`, key: k }), null, 'no abandonment written');
+      // A replay of the same key returns the existing item instead of making another.
+      const again = await catalogueSvc.createItem(loud, { ...test(k), priceMinor: 100, requestKey: k } as any).catch((e) => e);
+      assert.ok(again?.replayed === true || again?.code === 'REQUEST_KEY_REUSED');
+      assert.equal(await CatalogueItemModel.countDocuments({ createRequestKey: k }), 1);
+    }
   });
 
   await check('a give-up racing the create: exactly one wins', async () => {
