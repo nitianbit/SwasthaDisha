@@ -124,11 +124,16 @@ export class CatalogueService {
       if (mrp !== undefined && mrp !== null && mrp < price) {
         throw new AppError({ status: 400, code: 'INVALID_MRP', message: 'MRP cannot be below the price' });
       }
+      // A conversion is admitted on the item as THIS attempt reads it (a concurrent conversion makes it KIND_FIXED), and the
+      // write below is fenced on that kind.
+      if (safe.kind !== undefined && await kindFits(actor.partnerId, item.kind)) {
+        throw new AppError({ status: 400, code: 'KIND_FIXED', message: 'An item’s kind cannot be changed; add a new item instead' });
+      }
       if (expectedUpdatedAt && new Date(item.updatedAt as Date).getTime() !== new Date(expectedUpdatedAt).getTime()) {
         throw new AppError({ status: 409, code: 'CATALOGUE_ITEM_CHANGED', message: 'The item changed since you opened it; reload and review' });
       }
       const updated = await this.catalogueRepo.update(
-        { _id: itemId, partnerId: actor.partnerId, priceMinor: item.priceMinor, mrpMinor: item.mrpMinor ?? null, updatedAt: item.updatedAt },
+        { _id: itemId, partnerId: actor.partnerId, kind: item.kind, priceMinor: item.priceMinor, mrpMinor: item.mrpMinor ?? null, updatedAt: item.updatedAt },
         { $set: safe }, { new: true, session } as any);
       if (!updated) throw Object.assign(new AppError({ status: 409, code: 'CATALOGUE_ITEM_CHANGED', message: 'The item changed meanwhile; reload and try again' }), { retryable: true });
       await recordPartnerAudit(actor, 'catalogue.update', { kind: 'catalogue_item', id: itemId }, { fields: Object.keys(safe) }, session);

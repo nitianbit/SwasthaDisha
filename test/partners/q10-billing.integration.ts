@@ -219,6 +219,13 @@ async function main() {
     assert.deepEqual((await catalogueSvc.updateItem(clinic.actor, String(legacy._id), { visitModes: [] })).visitModes, [], 'visit modes can be cleared');
     assert.equal((await catalogueSvc.updateItem(clinic.actor, String(legacy._id), { kind: 'procedure' } as any)).kind, 'procedure', 'converted once');
     await assert.rejects(() => catalogueSvc.updateItem(clinic.actor, String(legacy._id), { kind: 'other' } as any), code('KIND_FIXED'));
+    // Concurrent conversions of one legacy item: exactly one wins.
+    const twin = await CatalogueItemModel.create({ partnerId: clinic.partnerId, kind: 'test', name: 'Old ESR', priceMinor: 10000, gstRate: 0, visitModes: [], isActive: true });
+    const both = await Promise.allSettled([catalogueSvc.updateItem(clinic.actor, String(twin._id), { kind: 'procedure' } as any),
+      catalogueSvc.updateItem(clinic.actor, String(twin._id), { kind: 'other' } as any)]);
+    assert.equal(both.filter((x) => x.status === 'fulfilled').length, 1);
+    assert.ok(both.some((x) => x.status === 'rejected' && ['KIND_FIXED', 'CATALOGUE_ITEM_CHANGED'].includes((x as any).reason?.code)));
+    assert.equal(await PartnerAuditEventModel.countDocuments({ targetId: String(twin._id), action: 'catalogue.update' }), 1);
     await assert.rejects(() => catalogueSvc.updateItem(lab.actor, cbc, { visitModes: [] }), code('VISIT_MODES_REQUIRED'));
     await assert.rejects(() => invoiceSvc.listInvoicesPage(plainLab.actor, { from: '2026-99-99' }), code('INVALID_DATE'));
     await assert.rejects(() => invoiceSvc.listInvoicesPage(plainLab.actor, { to: '2026-02-30' }), code('INVALID_DATE'));
