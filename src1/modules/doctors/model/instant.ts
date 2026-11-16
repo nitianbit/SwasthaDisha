@@ -11,6 +11,8 @@ export interface IDoctorPresence {
   instantFeeMinor: number;
   specialization?: string;
   lastSeenAt?: Date;
+  /** Q13: bumped by every change of terms (switch, types, fee, forced offline); a change may name the version it saw. */
+  presenceVersion?: number;
   updatedAt?: Date;
 }
 
@@ -22,6 +24,7 @@ const presenceSchema = new Schema<IDoctorPresence>(
     instantFeeMinor: { type: Number, required: true, min: 0 },
     specialization: { type: String },
     lastSeenAt: { type: Date },
+    presenceVersion: { type: Number, default: 0, min: 0 },
   },
   { timestamps: true }
 );

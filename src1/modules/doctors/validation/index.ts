@@ -32,6 +32,8 @@ export const presenceSchema = Joi.object({
   available: Joi.boolean().required(),
   modes: Joi.array().items(instantMode).unique().max(3),
   instantFeeMinor: Joi.number().integer().min(0).max(100_000_000),
+  /** Q13: the presence version these terms were decided on (0 = never set); a change made meanwhile is refused. */
+  expectedPresenceVersion: Joi.number().integer().min(0).max(1_000_000_000),
 });
 export const requestIdParamSchema = Joi.object({ requestId: objectId.required() });
 export const bookingIdParamSchema = Joi.object({ bookingId: objectId.required() });

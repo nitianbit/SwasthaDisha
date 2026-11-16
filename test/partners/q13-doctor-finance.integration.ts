@@ -182,6 +182,36 @@ async function main() {
 
   let reqA = '';
   let bookingA = '';
+  await check('presence writes are ordered: a late older change can never overwrite newer acknowledged terms', async () => {
+    const drV = await doctor('Dr Vohra', 500, 'Dermatology');
+    const v0 = (await svc.presence(drV)).presenceVersion;
+    assert.ok(v0 >= 1, 'set once by the fixture');
+    // A: ₹100 decided on v0 (its answer is lost). B: the doctor re-reads (A not run yet), sends ₹300 on v0: acknowledged.
+    const b = await svc.setPresence(drV, { available: true, modes: ['video'], instantFeeMinor: 30000, expectedPresenceVersion: v0 });
+    assert.equal(b.presenceVersion, v0 + 1);
+    // A runs late: refused, B's terms stay.
+    await assert.rejects(() => svc.setPresence(drV, { available: true, modes: ['video'], instantFeeMinor: 10000, expectedPresenceVersion: v0 }), code('PRESENCE_CHANGED'));
+    const now = await svc.presence(drV);
+    assert.deepEqual([now.instantFeeMinor, now.presenceVersion], [30000, v0 + 1]);
+    // Racing writes on one version: exactly one wins.
+    const race = await Promise.allSettled([20000, 25000].map((fee) => svc.setPresence(drV, { available: true, modes: ['video'], instantFeeMinor: fee, expectedPresenceVersion: v0 + 1 })));
+    assert.equal(race.filter((x) => x.status === 'fulfilled').length, 1);
+    assert.equal((await svc.presence(drV)).presenceVersion, v0 + 2);
+    // A first-ever write names version 0; a second write naming 0 is refused (also when the row already exists).
+    const drW = await doctor('Dr Wani', 500, 'Dermatology');
+    await DoctorPresenceModel.deleteOne({ doctorId: drW });
+    assert.equal((await svc.presence(drW)).presenceVersion, 0);
+    assert.equal((await svc.setPresence(drW, { available: false, expectedPresenceVersion: 0 })).presenceVersion, 1);
+    await assert.rejects(() => svc.setPresence(drW, { available: true, modes: ['call'], expectedPresenceVersion: 0 }), code('PRESENCE_CHANGED'));
+    // Heartbeats do not move the version; a forced offline (deactivated doctor) does.
+    await svc.setPresence(drW, { available: true, modes: ['call'], expectedPresenceVersion: 1 });
+    await svc.heartbeat(drW);
+    assert.equal((await svc.presence(drW)).presenceVersion, 2);
+    await SpecialistModel.updateOne({ _id: drW }, { $set: { isActive: false } });
+    await assert.rejects(() => svc.heartbeat(drW), code('SPECIALIST_NOT_ACTIVE'));
+    assert.equal((await svc.presence(drW)).presenceVersion, 3);
+  });
+
   await check('offers carry the quote the patient paid and whether the doctor\'s fee fits; only the doctors offered see them', async () => {
     const u = await customer(2000);
     const r = await svc.create(u, ask());

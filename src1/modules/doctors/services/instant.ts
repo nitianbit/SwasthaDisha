@@ -114,26 +114,43 @@ export class InstantConsultService {
 
   // ───────────────────────────── Doctor presence ─────────────────────────────
 
-  async setPresence(doctorId: string, input: { available: boolean; modes?: InstantMode[]; instantFeeMinor?: number }, now = new Date()) {
+  async setPresence(doctorId: string, input: { available: boolean; modes?: InstantMode[]; instantFeeMinor?: number; expectedPresenceVersion?: number }, now = new Date()) {
     const sp = await SpecialistModel.findById(doctorId).lean() as any;
     if (!sp || sp.isActive === false || sp.isVerified === false) throw err(403, 'SPECIALIST_NOT_ACTIVE', 'Only active, verified doctors can take instant consultations');
     const modes = input.modes ?? [];
     if (input.available && modes.length === 0) throw err(400, 'MODES_REQUIRED', 'Choose at least one consultation type');
     const fee = input.instantFeeMinor ?? paiseOf(sp.consultationFee);
     if (!Number.isSafeInteger(fee) || fee < 0) throw err(400, 'INVALID_FEE', 'Invalid fee');
-    return DoctorPresenceModel.findOneAndUpdate(
-      { doctorId: String(doctorId) },
-      { $set: { available: input.available, modes, instantFeeMinor: fee, specialization: sp.specialization, ...(input.available ? { lastSeenAt: now } : {}) },
-        $setOnInsert: { doctorId: String(doctorId) } },
-      { upsert: true, new: true }
-    ).lean();
+    const update = {
+      $set: { available: input.available, modes, instantFeeMinor: fee, specialization: sp.specialization, ...(input.available ? { lastSeenAt: now } : {}) },
+      $inc: { presenceVersion: 1 },
+      $setOnInsert: { doctorId: String(doctorId) },
+    };
+    const expected = input.expectedPresenceVersion;
+    if (expected === undefined) {
+      return DoctorPresenceModel.findOneAndUpdate({ doctorId: String(doctorId) }, update, { upsert: true, new: true }).lean();
+    }
+    // Q13: an ordered write. Only the version the doctor's terms were decided on may be replaced, so an older request
+    // that runs late (its answer lost, newer terms acknowledged since) can never overwrite them: 409 PRESENCE_CHANGED.
+    const changed = () => err(409, 'PRESENCE_CHANGED', 'Your availability was changed meanwhile; check it and try again');
+    const filter = expected === 0
+      ? { doctorId: String(doctorId), $or: [{ presenceVersion: 0 }, { presenceVersion: { $exists: false } }] }
+      : { doctorId: String(doctorId), presenceVersion: expected };
+    try {
+      const done = await DoctorPresenceModel.findOneAndUpdate(filter, update, { upsert: expected === 0, new: true }).lean();
+      if (!done) throw changed();
+      return done;
+    } catch (e: any) {
+      if (e?.code === 11000) throw changed(); // version 0 expected, but a row with a newer version exists
+      throw e;
+    }
   }
 
   /** The doctor's account as it is now: active and verified, or refused (and taken offline). */
   private async activeDoctor(doctorId: string): Promise<{ name?: string; specialization?: string }> {
     const sp = Types.ObjectId.isValid(doctorId) ? await SpecialistModel.findById(doctorId).select({ name: 1, specialization: 1, isActive: 1, isVerified: 1 }).lean() as any : null;
     if (!sp || sp.isActive === false || sp.isVerified === false) {
-      await DoctorPresenceModel.updateOne({ doctorId: String(doctorId) }, { $set: { available: false } });
+      await DoctorPresenceModel.updateOne({ doctorId: String(doctorId), available: true }, { $set: { available: false }, $inc: { presenceVersion: 1 } });
       throw err(403, 'SPECIALIST_NOT_ACTIVE', 'Only active, verified doctors can take instant consultations');
     }
     return sp;
@@ -165,6 +182,7 @@ export class InstantConsultService {
     const feeMinor = p ? p.instantFeeMinor : paiseOf(sp?.consultationFee);
     return {
       doctorId: String(doctorId), eligible, available: !!p?.available, modes, instantFeeMinor: feeMinor, instantFee: rupees(feeMinor),
+      presenceVersion: p?.presenceVersion ?? 0,
       feeConfigured: !!p, lastSeenAt, heartbeatExpiresAt: lastSeenAt ? new Date(lastSeenAt.getTime() + PRESENCE_TTL_MS) : null, heartbeatExpired,
       heartbeatTtlSeconds: PRESENCE_TTL_MS / 1000,
       busy: !!held, busyUntil: held ? held.endTime : null, busyWith: held ? { kind: held.kind, bookingId: held.refId } : null,
