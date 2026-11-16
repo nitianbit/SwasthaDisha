@@ -62,8 +62,9 @@ export type CatalogueItemInput = {
 /** Q12: the admission scope of item-create request keys (claimed with the item; abandon makes a key unusable). */
 export const catalogueKeyScope = (partnerId: string) => `partner_catalogue_create:${String(partnerId).toLowerCase()}`;
 /**
- * Q12: the partner's rows whatever the case of the stored id (ids are ObjectId hex; an older admin write may have kept
- * the case of its URL), so a key lookup never misses an item that exists.
+ * Q12: the partner's catalogue rows whatever the case of the stored id (ids are ObjectId hex; an admin write keeps the
+ * case of its URL). Every catalogue read, lookup and write filter uses it, so the item a key lookup returns can also be
+ * opened, edited, deactivated and reactivated, and lists show it, from either spelling of the id.
  */
 const samePartner = (partnerId: string) => {
   const pid = String(partnerId);
@@ -132,7 +133,7 @@ export class CatalogueService {
     // The price/MRP pair is validated on the state read in this transaction attempt and written with a compare-and-set
     // on exactly that pair, so two concurrent edits can never combine into an invalid pair.
     return inTransaction(async (session) => {
-      const item = await this.catalogueRepo.findOne({ _id: itemId, partnerId: actor.partnerId }, session);
+      const item = await this.catalogueRepo.findOne({ _id: itemId, partnerId: samePartner(actor.partnerId) } as any, session);
       if (!item) throw notFound();
       const price = safe.priceMinor ?? item.priceMinor;
       const mrp = safe.mrpMinor ?? item.mrpMinor;
@@ -148,7 +149,7 @@ export class CatalogueService {
         throw new AppError({ status: 409, code: 'CATALOGUE_ITEM_CHANGED', message: 'The item changed since you opened it; reload and review' });
       }
       const updated = await this.catalogueRepo.update(
-        { _id: itemId, partnerId: actor.partnerId, kind: item.kind, priceMinor: item.priceMinor, mrpMinor: item.mrpMinor ?? null, updatedAt: item.updatedAt },
+        { _id: itemId, partnerId: samePartner(actor.partnerId), kind: item.kind, priceMinor: item.priceMinor, mrpMinor: item.mrpMinor ?? null, updatedAt: item.updatedAt },
         { $set: safe }, { new: true, session } as any);
       if (!updated) throw Object.assign(new AppError({ status: 409, code: 'CATALOGUE_ITEM_CHANGED', message: 'The item changed meanwhile; reload and try again' }), { retryable: true });
       await recordPartnerAudit(actor, 'catalogue.update', { kind: 'catalogue_item', id: itemId }, { fields: Object.keys(safe) }, session);
@@ -159,7 +160,7 @@ export class CatalogueService {
   async deactivateItem(actor: PartnerActor, itemId: string): Promise<void> {
     await this.getItem(actor, itemId);
     await inTransaction(async (session) => {
-      const done = await this.catalogueRepo.update({ _id: itemId, partnerId: actor.partnerId, isActive: true }, { isActive: false }, { new: true, session } as any);
+      const done = await this.catalogueRepo.update({ _id: itemId, partnerId: samePartner(actor.partnerId), isActive: true } as any, { isActive: false }, { new: true, session } as any);
       if (done) await recordPartnerAudit(actor, 'catalogue.deactivate', { kind: 'catalogue_item', id: itemId }, undefined, session);
     });
   }
@@ -169,7 +170,7 @@ export class CatalogueService {
   async reactivateItem(actor: PartnerActor, itemId: string): Promise<ICatalogueItem> {
     await this.getItem(actor, itemId);
     return inTransaction(async (session) => {
-      const done = await this.catalogueRepo.update({ _id: itemId, partnerId: actor.partnerId, isActive: false }, { isActive: true }, { new: true, session } as any);
+      const done = await this.catalogueRepo.update({ _id: itemId, partnerId: samePartner(actor.partnerId), isActive: false } as any, { isActive: true }, { new: true, session } as any);
       if (!done) throw new AppError({ status: 409, code: 'ITEM_ALREADY_ACTIVE', message: 'This item is already active' });
       await recordPartnerAudit(actor, 'catalogue.reactivate', { kind: 'catalogue_item', id: itemId }, undefined, session);
       return done;
@@ -181,13 +182,8 @@ export class CatalogueService {
     // Q12: optional search on name or code (case-insensitive, literal text).
     const text = q?.trim();
     const match = text ? { $or: [{ name: { $regex: escapeRegex(text), $options: 'i' } }, { code: { $regex: escapeRegex(text), $options: 'i' } }] } : {};
-    if (all || text) {
-      return CatalogueItemModel.find({ partnerId: actor.partnerId, ...(all ? {} : { isActive: true }), ...(kind ? { kind } : {}), ...match })
-        .sort({ name: 1 }).lean() as unknown as Promise<ICatalogueItem[]>;
-    }
-    return kind
-      ? this.catalogueRepo.findActiveByPartnerAndKind(actor.partnerId, kind)
-      : this.catalogueRepo.findActiveByPartner(actor.partnerId);
+    return CatalogueItemModel.find({ partnerId: samePartner(actor.partnerId), ...(all ? {} : { isActive: true }), ...(kind ? { kind } : {}), ...match })
+      .sort({ name: 1 }).lean() as unknown as Promise<ICatalogueItem[]>;
   }
 
   /** Q12: the item a create request key made in this partner, or null (not made yet, never, or abandoned). */
@@ -206,7 +202,7 @@ export class CatalogueService {
 
   async getItem(actor: PartnerActor, itemId: string): Promise<ICatalogueItem> {
     const item = await this.catalogueRepo.findById(itemId);
-    if (!item || String(item.partnerId) !== actor.partnerId) throw notFound();
+    if (!item || String(item.partnerId).toLowerCase() !== String(actor.partnerId).toLowerCase()) throw notFound();
     return item;
   }
 

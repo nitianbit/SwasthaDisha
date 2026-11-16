@@ -34,8 +34,7 @@ export const attachAdminActor = async (req: Request, _res: Response, next: NextF
     if (!user || user.userType !== 'admin') {
       throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Admin access is required' });
     }
-    // Q12: one canonical (lowercase) partner id for every query, claim scope and stored row made under this actor.
-    const partnerId = String(req.params.partnerId ?? '').toLowerCase();
+    const partnerId = String(req.params.partnerId ?? '');
     if (!/^[0-9a-fA-F]{24}$/.test(partnerId)) {
       throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid partner id' });
     }

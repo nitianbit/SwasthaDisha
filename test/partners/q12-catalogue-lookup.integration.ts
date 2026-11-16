@@ -22,7 +22,7 @@ import { PartnerRepository } from '@/modules/partners/repository';
 import { MemberRepository } from '@/modules/partners/repository/member';
 import { BranchRepository } from '@/modules/partners/repository/branch';
 import { CatalogueItemRepository } from '@/modules/partners/repository/catalogueItem';
-import { PartnerService, PartnerActor, adminActor } from '@/modules/partners/services';
+import { PartnerService, PartnerActor } from '@/modules/partners/services';
 import { attachAdminActor } from '@/modules/partners/controller';
 import { CatalogueService } from '@/modules/partners/services/catalogue';
 import { InvoiceService } from '@/modules/partners/services/invoice';
@@ -87,28 +87,40 @@ async function main() {
     assert.equal(await RequestKeyModel.exists({ scope: `partner_catalogue_create:${a.partnerId}`, key: 'item-key-0003' }), null);
   });
 
-  await check('one partner identity whatever the case of the id: an existing keyed item is never declared abandoned', async () => {
-    // An admin URL with an upper-case id: the actor carries the canonical id.
+  await check('one partner identity whatever the case of the id: found, never falsely abandoned, and fully usable', async () => {
+    // An admin URL keeps its spelling (as before Q12), so rows it wrote earlier stay reachable through it.
     let attached: PartnerActor | undefined;
     const req = { user: { _id: 'ad'.repeat(12), userType: 'admin' }, params: { partnerId: a.partnerId.toUpperCase() } } as any;
     await attachAdminActor(req, {} as any, (e?: unknown) => { if (e) throw e; attached = req.partnerActor; });
-    assert.equal(attached!.partnerId, a.partnerId);
-    assert.equal(adminActor('x', a.partnerId.toUpperCase()).partnerId, a.partnerId);
-    // Legacy keyed items (no claim row), stored lower- and upper-case, are found and reported used from either case.
-    const loud = { ...a, partnerId: a.partnerId.toUpperCase() };
+    const loud = attached!;
+    assert.equal(loud.partnerId, a.partnerId.toUpperCase());
+    // Legacy keyed items (no claim row), stored lower- and upper-case: either spelling of the actor finds, opens, lists,
+    // edits, deactivates and reactivates them; the key is reported used, never abandoned; a replay makes nothing new.
     for (const [stored, k] of [[a.partnerId, 'item-case-0001'], [a.partnerId.toUpperCase(), 'item-case-0002']] as const) {
       await CatalogueItemModel.collection.insertOne({ partnerId: stored, kind: 'test', name: k, priceMinor: 100, gstRate: 0, visitModes: ['lab'],
         isActive: true, adminDisabled: false, createRequestKey: k, createdAt: new Date(), updatedAt: new Date() } as never);
       for (const actor of [a, loud]) {
-        assert.equal((await catalogueSvc.findByKey(actor, k))?.name, k);
+        const found = await catalogueSvc.findByKey(actor, k);
+        assert.equal(found?.name, k);
         assert.equal((await catalogueSvc.abandonKey(actor, k)).state, 'used');
+        assert.equal((await catalogueSvc.getItem(actor, String(found!._id))).name, k);
+        assert.ok((await catalogueSvc.listItems(actor)).some((x) => x.name === k), 'listed');
+        assert.ok((await catalogueSvc.listItems(actor, undefined, false, k)).some((x) => x.name === k), 'searched');
+        const current = await catalogueSvc.getItem(actor, String(found!._id));
+        const edited = await catalogueSvc.updateItem(actor, String(found!._id), { priceMinor: current.priceMinor + 1, expectedUpdatedAt: current.updatedAt } as any);
+        assert.equal(edited.priceMinor, current.priceMinor + 1);
+        await catalogueSvc.deactivateItem(actor, String(found!._id));
+        assert.equal((await catalogueSvc.reactivateItem(actor, String(found!._id))).isActive, true);
       }
       assert.equal(await RequestKeyModel.exists({ scope: `partner_catalogue_create:${a.partnerId}`, key: k }), null, 'no abandonment written');
-      // A replay of the same key returns the existing item instead of making another.
       const again = await catalogueSvc.createItem(loud, { ...test(k), priceMinor: 100, requestKey: k } as any).catch((e) => e);
       assert.ok(again?.replayed === true || again?.code === 'REQUEST_KEY_REUSED');
       assert.equal(await CatalogueItemModel.countDocuments({ createRequestKey: k }), 1);
     }
+    // Another partner never reaches them, whatever the spelling.
+    const stranger = { ...b, partnerId: b.partnerId.toUpperCase() };
+    const legacy = await CatalogueItemModel.findOne({ createRequestKey: 'item-case-0002' }).lean();
+    await assert.rejects(() => catalogueSvc.getItem(stranger, String(legacy!._id)), code('CATALOGUE_ITEM_NOT_FOUND'));
   });
 
   await check('a give-up racing the create: exactly one wins', async () => {
