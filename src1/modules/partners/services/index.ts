@@ -5,7 +5,7 @@ import BranchModel from '@/modules/partners/model/branch';
 import MemberModel from '@/modules/partners/model/member';
 import PartnerModel from '@/modules/partners/model';
 import { Service } from 'typedi';
-import mongoose, { ClientSession } from 'mongoose';
+import mongoose, { ClientSession, isValidObjectId } from 'mongoose';
 import PartnerAuditEventModel from '@/modules/partners/model/audit';
 import { ScheduleGuardModel } from '@/modules/partners/model/slot';
 import { ensureSettlementAccount } from '@/modules/partners/services/settlement';
@@ -603,6 +603,10 @@ export class PartnerService {
 
   /** Q11: the signed-in member's own record (role, permissions, branches, professional registration). */
   async getOwnMember(actor: PartnerActor): Promise<IMember> {
+    // An admin acting as owner (memberId `admin:<id>`) has no member record in this partner.
+    if (actor.actorKind === 'admin' || !isValidObjectId(actor.memberId)) {
+      throw new AppError({ status: 404, code: 'NO_MEMBER_RECORD', message: 'An admin acting for this partner has no staff record here' });
+    }
     const m = await MemberModel.findOne({ _id: actor.memberId, partnerId: actor.partnerId, isActive: true }).lean() as IMember | null;
     if (!m) throw memberNotFound();
     return m;

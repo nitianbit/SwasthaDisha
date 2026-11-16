@@ -22,7 +22,7 @@ import type { VisitMode } from '@/modules/partners/model/slot';
 import { PartnerActor, assertBranchInScope, hasGlobalScope, recordPartnerAudit } from '@/modules/partners/services';
 import { ensureSettlementAccount, postLedgerEntry } from '@/modules/partners/services/settlement';
 import { takeSeat, releaseSeat, listBookableSlots, istDate, addDays } from '@/modules/partners/services/slots';
-import { attachFiles, grantFiles, uploadPathOf } from '@/modules/file/access';
+import { attachFiles, grantFiles, rebindStored, uploadPathOf } from '@/modules/file/access';
 import type { AuthRequest } from '@/modules/middleware/auth';
 
 export const LAB_PAYMENT_WINDOW_MS = 30 * 60_000;
@@ -640,7 +640,26 @@ export class LabBookingService {
     const prefix = `${REPORT_UPLOAD_MODULE}/${id}/`;
     if (paths.some((p) => !p.startsWith(prefix))) throw err(400, 'INVALID_REPORT_FILE', 'Report files must be uploaded for this booking');
     const previous = current.report?.draftFiles ?? [];
-    const saved = await attachFiles(readerOf(actor), 'PartnerLabBooking',
+    const saved = await this.attachUpload(actor, id, paths, previous, requestKey);
+    if ('replayed' in saved) return saved;
+    return partnerView(saved);
+  }
+
+  private async attachUpload(actor: PartnerActor, id: string, paths: string[], previous: string[], requestKey?: string): Promise<IPartnerLabBooking | (Record<string, unknown> & { replayed: true })> {
+    try {
+      return await this.attachUploadOnce(actor, id, paths, previous, requestKey);
+    } catch (e) {
+      // Q11: the same keyed upload committed meanwhile by a concurrent request: answer with that one (no second copy).
+      if (requestKey && (e as AppError)?.code === 'LAB_BOOKING_CHANGED') {
+        const now = await PartnerLabBookingModel.findById(id).select({ 'report.uploadKeys': 1 }).lean();
+        if ((now?.report?.uploadKeys ?? []).includes(requestKey)) return this.replayUpload(actor, id);
+      }
+      throw e;
+    }
+  }
+
+  private attachUploadOnce(actor: PartnerActor, id: string, paths: string[], previous: string[], requestKey?: string): Promise<IPartnerLabBooking> {
+    return attachFiles(readerOf(actor), 'PartnerLabBooking',
       [{ field: 'report.draftFiles', values: [...previous, ...paths], previous, kind: 'partner_lab_report_draft' }],
       () => runLedgerTransaction(async (s) => {
         const u = await PartnerLabBookingModel.findOneAndUpdate(
@@ -653,7 +672,17 @@ export class LabBookingService {
         return u as IPartnerLabBooking;
       }),
       (b) => b._id, id);
-    return partnerView(saved);
+  }
+
+  /**
+   * Q11: the answer to a keyed upload that is already recorded. The draft and its key are committed before the file
+   * grants are activated, so an activation that failed after that commit is repaired here (bindings of the files this
+   * actor has authority over, at the authority of now) before the booking is returned.
+   */
+  private async replayUpload(actor: PartnerActor, id: string): Promise<Record<string, unknown> & { replayed: true }> {
+    await rebindStored(readerOf(actor), 'PartnerLabBooking', id);
+    const b = await this.scopedBooking(actor, id);
+    return { ...partnerView(b), replayed: true };
   }
 
   /** Report bytes are written only here, under the booking's own folder, by an admitted member allowed to upload them. */
@@ -666,7 +695,7 @@ export class LabBookingService {
     const id = String(bookingId).toLowerCase();
     const b = await this.scopedBooking(actor, id);
     // Q11: an upload whose answer was lost, sent again with its key, is answered with the booking (no second copy).
-    if (requestKey && (b.report?.uploadKeys ?? []).includes(requestKey)) return { ...partnerView(b), replayed: true };
+    if (requestKey && (b.report?.uploadKeys ?? []).includes(requestKey)) return this.replayUpload(actor, id);
     if (!['processing', 'report_ready'].includes(b.status)) {
       throw err(409, 'LAB_BOOKING_STATE_CONFLICT', 'Reports can be uploaded while the sample is being processed');
     }

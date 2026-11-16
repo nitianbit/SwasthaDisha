@@ -92,6 +92,12 @@ async function main() {
     const again = await addManualSlot(own, input);
     assert.deepEqual([String(again._id), again.replayed], [String(made._id), true]);
     await assert.rejects(() => addManualSlot(own, { ...input, requestKey: 'slot-key-0002' }), code('SLOT_EXISTS'));
+    // The branch stops offering lab visits: the unchanged keyed retry still gets its receipt; a new slot is refused.
+    await BranchModel.updateOne({ _id: A }, { $set: { 'services.inLab': false } });
+    const late = await addManualSlot(own, input);
+    assert.deepEqual([String(late._id), late.replayed], [String(made._id), true]);
+    await assert.rejects(() => addManualSlot(own, { ...input, startTime: '16:00', endTime: '16:30', requestKey: 'slot-key-0003' }), code('VISIT_MODE_NOT_OFFERED'));
+    await BranchModel.updateOne({ _id: A }, { $set: { 'services.inLab': true } });
   });
 
   const slot = await PartnerSlotModel.findOne({ branchId: A, visitMode: 'lab', date: addDays(today, 5), startTime: '08:00' }).lean();
@@ -126,6 +132,18 @@ async function main() {
     assert.equal(b.report.draftFiles.length, 1);
     assert.equal(a.report.draftFiles.length, 1);
     const draft = a.report.draftFiles[0] as string;
+    // The draft and key committed but the grant activation failed: the keyed replay repairs the grant.
+    const rel = String(draft).replace(/^\/api\/static\//, '');
+    assert.ok(await FileGrantModel.exists({ path: rel, state: 'active' }), 'the upload activated its grant');
+    await FileGrantModel.deleteMany({ path: rel });
+    const repaired = await labSvc.uploadReportFiles(deskA, id, {}, 'upload-key-0001') as any;
+    assert.equal(repaired.replayed, true);
+    assert.ok(await FileGrantModel.exists({ path: rel, state: 'active' }), 'the replay re-activated the grant');
+    // Two concurrent sends of one key: one draft, both answered.
+    const id2 = await booking('lab', 'processing');
+    const both = await Promise.all([labSvc.uploadReportFiles(deskA, id2, {}, 'upload-key-0009'), labSvc.uploadReportFiles(deskA, id2, {}, 'upload-key-0009')]) as any[];
+    assert.equal((await PartnerLabBookingModel.findById(id2).lean())!.report!.draftFiles.length, 1);
+    assert.ok(both.every((x) => x.report.draftFiles.length === 1));
     const removed = await labSvc.removeDraftReport(deskA, id, draft) as any;
     assert.equal(removed.report.draftFiles.length, 0);
     await assert.rejects(() => labSvc.removeDraftReport(deskA, id, draft), code('REPORT_NOT_FOUND'));
@@ -136,6 +154,7 @@ async function main() {
     const m = await partnerSvc.setMemberProfessional(own, String(desk._id), { kind: 'pathologist', registrationNumber: ' KMC-12345 ' });
     assert.deepEqual(m.professional, { kind: 'pathologist', registrationNumber: 'KMC-12345' });
     assert.equal((await partnerSvc.getOwnMember(deskA)).professional?.registrationNumber, 'KMC-12345');
+    await assert.rejects(() => partnerSvc.getOwnMember(adminActor('ad'.repeat(12), partnerId)), code('NO_MEMBER_RECORD'));
     await assert.rejects(() => partnerSvc.setMemberProfessional(own, String(desk._id), null, new Date(0)), code('RECORD_CHANGED'));
     assert.ok(await PartnerAuditEventModel.exists({ partnerId, action: 'member.professional' }));
     // A member with a registration can now release under it.

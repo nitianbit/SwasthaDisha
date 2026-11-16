@@ -284,6 +284,15 @@ export async function addManualSlot(
   input: { branchId: string; visitMode: VisitMode; date: string; startTime: string; endTime: string; capacity: number; requestKey?: string }
 ): Promise<IPartnerSlot & { replayed?: boolean }> {
   const { requestKey, ...slotInput } = input;
+  const keyed = async (): Promise<IPartnerSlot | null> => (requestKey ? await PartnerSlotModel.findOne({ partnerId: actor.partnerId, branchId: input.branchId,
+    visitMode: input.visitMode, date: input.date, startTime: input.startTime, createRequestKey: requestKey }).lean() as IPartnerSlot | null : null);
+  if (requestKey) {
+    // Q11: an unchanged keyed retry gets its receipt under today's read authority (branch scope), even if the branch or
+    // visit mode was turned off after the slot was made; the availability checks below apply to new slots only.
+    assertBranchInScope(actor, input.branchId);
+    const same = await keyed();
+    if (same) return { ...same, replayed: true };
+  }
   await branchFor(actor, input.branchId, input.visitMode);
   assertRealDate(input.date);
   if (toMinutes(input.endTime) <= toMinutes(input.startTime)) {
@@ -302,8 +311,7 @@ export async function addManualSlot(
   } catch (e: any) {
     if (e?.code === 11000) {
       // Q11: the same keyed request again (its answer was lost) is answered with the slot it made.
-      const same = requestKey ? await PartnerSlotModel.findOne({ partnerId: actor.partnerId, branchId: input.branchId, visitMode: input.visitMode,
-        date: input.date, startTime: input.startTime, createRequestKey: requestKey }).lean() as IPartnerSlot | null : null;
+      const same = await keyed();
       if (same) return { ...same, replayed: true };
       throw new AppError({ status: 409, code: 'SLOT_EXISTS', message: 'A slot already starts at that time' });
     }
