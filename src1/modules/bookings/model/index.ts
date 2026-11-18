@@ -426,6 +426,22 @@ const bookingSchema = new Schema<IBooking>(
       default: 'pending',
       index: true,
     },
+    // Q14: the current no-show (who marked it, when); moved into noShows when the booking is rescheduled after it.
+    noShow: {
+      type: new Schema({ at: { type: Date, required: true }, by: { type: String, required: true }, byKind: { type: String, required: true } }, { _id: false }),
+      default: undefined,
+    },
+    // Q14: no-shows that were rescheduled (at most one: noShowReschedules ≤ 1); a second no-show is final.
+    noShows: {
+      type: [new Schema({
+        at: { type: Date }, by: { type: String }, byKind: { type: String },
+        rescheduledAt: { type: Date, required: true }, rescheduledBy: { type: String, required: true }, rescheduledByKind: { type: String, required: true },
+        fromSlotId: { type: String }, fromDate: { type: String }, fromTime: { type: String }, toSlotId: { type: String, required: true },
+        requestKey: { type: String, required: true }, requestHash: { type: String, required: true },
+      }, { _id: false })],
+      default: undefined,
+    },
+    noShowReschedules: { type: Number },
     // Q3 §7a: which system pays this booking's provider — the legacy monthly payouts or the new ledger. Exclusive.
     settlementSystem: {
       type: String,

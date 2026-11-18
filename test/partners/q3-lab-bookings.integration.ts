@@ -638,7 +638,7 @@ async function main() {
       .every((a) => audit.some((x) => x.action === a)));
   });
 
-  await check('a no-show is not refunded and the partner earns it once; customers never see staff ids', async () => {
+  await check('a no-show is not refunded and (Q14) the partner earns nothing for it; customers never see staff ids', async () => {
     const { u, id } = await confirmedBooking(16, '08:00');
     // Q11: a collector is for home collections only; this is a lab visit (the customer-view check below uses a stored one).
     await assert.rejects(() => labSvc.assignCollector(deskA, id, { memberId: String(desk._id), name: 'Ravi', phone: '9000011111' }), code('WRONG_VISIT_MODE'));
@@ -648,7 +648,7 @@ async function main() {
     assert.equal(((await labSvc.markNoShow(deskA, id, after)) as any).status, 'no_show');
     const acct = await SettlementAccountModel.findOne({ ownerKind: 'partner', ownerId: partnerId }).lean();
     const e = await LedgerEntryModel.find({ settlementAccountId: String(acct!._id), source: 'partner_lab_booking', sourceId: id }).lean();
-    assert.deepEqual(e.map((x) => [x.kind, x.amountMinor]), [['earning', 130000]]);
+    assert.deepEqual(e.map((x) => [x.kind, x.amountMinor]), [], 'Q14: no earning for a no-show');
     assert.equal(await balanceOf(u), 0, 'no refund');
     const cv = await labSvc.getForCustomer(u, id) as any;
     assert.deepEqual(cv.collector, { name: 'Ravi', phone: '9000011111' });

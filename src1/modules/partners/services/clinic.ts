@@ -21,7 +21,7 @@ import BookingModel from '@/modules/bookings/model';
 import UserModel from '@/modules/user/model';
 import { IBooking } from '@/modules/bookings/types';
 import {
-  assertBookingVersion, cancelBookingSettlement, createBookingWithHolds, deskBookingInScope, isReplayedBooking, rescheduleWithHolds, type DeskScope,
+  assertBookingVersion, cancelBookingSettlement, createBookingWithHolds, deskBookingInScope, isReplayedBooking, noShowRescheduleHash, rescheduleWithHolds, type DeskScope,
 } from '@/modules/bookings/holds';
 import { claimRequestKey, abandonRequestKey } from '@/modules/requestKeys';
 import { RequestKeyModel } from '@/modules/requestKeys/model';
@@ -614,7 +614,8 @@ export async function closeDeskAppointment(actor: PartnerActor, bookingId: strin
     const at = parseAppointment({ bookingDate: b.bookingDate, bookingTime: b.bookingTime });
     if (outcome === 'no_show' && (!at || now < at.at)) throw err(409, 'APPOINTMENT_NOT_STARTED', 'A no-show can be marked only after the appointment time');
     const r = await BookingModel.findOneAndUpdate({ _id: b._id, status: 'confirmed', 'clinicDesk.partnerId': actor.partnerId, ...atBranch(b) },
-      { $set: { status: outcome } }, { new: true, session: s }).lean() as IBooking | null;
+      { $set: { status: outcome, ...(outcome === 'no_show' ? { noShow: { at: now, by: actor.memberId, byKind: 'clinic' } } : {}) } },
+      { new: true, session: s }).lean() as IBooking | null;
     if (!r) throw err(409, 'BOOKING_CHANGED', 'The appointment changed; reload');
     await releaseInterval('scheduled', String(b._id).toLowerCase(), s);
     await audit(actor, outcome === 'completed' ? 'clinic.appointment_completed' : 'clinic.appointment_no_show', { kind: 'booking', id: String(b._id) }, {}, s);
@@ -652,6 +653,31 @@ export async function rescheduleDeskAppointment(actor: PartnerActor, bookingId: 
   });
   await notifyDesk(updated, 'moved');
   return deskView(updated);
+}
+
+/**
+ * Q14: a desk appointment marked no-show is moved once to a later slot of the same doctor at this clinic and confirmed
+ * again (nothing is paid or refunded through us); exactly once per (appointment, request key); a second no-show is final.
+ */
+export async function rescheduleDeskNoShow(actor: PartnerActor, bookingId: string, input: { slotId: string; requestKey: string; expectedUpdatedAt?: Date | string | null },
+  clock: DeskClock = () => new Date()) {
+  const b = await ownDeskBooking(actor, bookingId);
+  if (!Types.ObjectId.isValid(input.slotId)) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
+  const slot = await SlotModel.findById(input.slotId).lean() as any;
+  if (!slot?.branchId) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
+  await clinicBranch(actor, String(slot.branchId));
+  const desk = { ...deskScopeOf(actor), refuseStartedClock: clockOf(clock) };
+  const id = String(b._id).toLowerCase();
+  const updated = await rescheduleWithHolds({
+    bookingId: id, requester: { _id: actor.memberId, userType: 'admin' }, nextSlotId: String(slot._id), desk, expectedUpdatedAt: input.expectedUpdatedAt,
+    patch: { bookingDate: slot.date },
+    noShow: { owner: { 'clinicDesk.partnerId': actor.partnerId }, by: actor.memberId, byKind: 'clinic', keyScope: `booking_no_show_reschedule:${id}`,
+      requestKey: input.requestKey, requestHash: noShowRescheduleHash(String(slot._id)), startedClock: clockOf(clock) },
+    inTx: (x, s) => audit(actor, 'clinic.appointment_no_show_rescheduled', { kind: 'booking', id: String(x._id) }, { slotId: String(slot._id) }, s),
+  });
+  if (isReplayedBooking(updated)) return { ...deskView(updated), replayed: true };
+  await notifyDesk(updated, 'moved');
+  return { ...deskView(updated), replayed: false };
 }
 
 // ───────────────────────────── Solo practice ─────────────────────────────

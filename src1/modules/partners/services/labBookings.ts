@@ -35,6 +35,8 @@ export const REPORT_UPLOAD_MODULE = 'partner-lab-reports';
 const rupees = (paise: number) => Math.round(paise) / 100;
 const err = (status: number, code: string, message: string) => new AppError({ status, code, message });
 const notFound = () => err(404, 'LAB_BOOKING_NOT_FOUND', 'Booking not found');
+/** Q14: a booking rescheduled after a no-show is never refunded. */
+const noShowNotRefundable = () => err(409, 'NO_SHOW_NOT_REFUNDABLE', 'This booking was rescheduled after a no-show and cannot be refunded');
 const changed = () => Object.assign(err(409, 'LAB_BOOKING_CHANGED', 'The booking changed meanwhile; reload and try again'), { retryable: true });
 
 export type LabNotifier = (n: { userId: string; type: 'booking_confirmed' | 'booking_cancelled' | 'general'; title: string; message: string;
@@ -118,9 +120,11 @@ export async function customerViewNamed(b: IPartnerLabBooking): Promise<Record<s
 /** What a customer sees: never draft report files; released files as URLs. */
 export function customerView(b: IPartnerLabBooking): Record<string, unknown> {
   const { walletFunding: _w, createRequestKey: _k, createRequestHash: _h, expiryNextAt: _e, expiryChecks: _c, postPaymentCompletedFor: _p,
-    report, settlement: _s, cancellation, reschedule, collector, ...rest } = b as any;
+    report, settlement: _s, cancellation, reschedule, collector, noShows, ...rest } = b as any;
   return {
     ...rest,
+    // Q14: a rescheduled no-show, without staff identifiers or request keys.
+    ...(noShows ? { noShows: (noShows as any[]).map((n) => ({ at: n.at, rescheduledAt: n.rescheduledAt, fromSlot: n.fromSlot, toSlot: n.toSlot })) } : {}),
     // Member ids are internal: the customer sees what happened and who to expect, not staff identifiers.
     cancellation: cancellation ? { reason: cancellation.reason, note: cancellation.note, at: cancellation.at, byKind: cancellation.byKind } : undefined,
     reschedule: reschedule ? { version: reschedule.version, pending: reschedule.pending, previousSlot: reschedule.previousSlot, reason: reschedule.reason, at: reschedule.at } : undefined,
@@ -461,6 +465,7 @@ export class LabBookingService {
       const b = await PartnerLabBookingModel.findOne({ _id: id, userId: { $eq: userId } }).session(s).lean() as IPartnerLabBooking | null;
       if (!b) throw notFound();
       if (!['pending_payment', 'confirmed'].includes(b.status)) throw err(409, 'LAB_BOOKING_NOT_CANCELLABLE', `A ${b.status} booking cannot be cancelled`);
+      if ((b.noShows?.length ?? 0) > 0) throw noShowNotRefundable();
       const records = await this.fenceRecords(id, s);
       const captured = b.paymentStatus === 'paid' || records.some((r) => r.status === 'paid');
       if (captured && !b.reschedule?.pending && now.getTime() > new Date(b.slot.startsAt).getTime() - LAB_CANCEL_CUTOFF_MS) {
@@ -487,6 +492,7 @@ export class LabBookingService {
     const refunded = await runLedgerTransaction(async (s) => {
       const b = await this.scopedBooking(actor, id, s);
       if (b.status !== 'confirmed') throw err(409, 'LAB_BOOKING_STATE_CONFLICT', `A ${b.status} booking cannot be rejected`);
+      if ((b.noShows?.length ?? 0) > 0) throw noShowNotRefundable();
       this.assertVersion(b, expectedVersion);
       const records = await this.fenceRecords(id, s);
       return this.cancelIn(b, records, { reason: 'lab_reject', note, actor: { kind: 'partner', actor } }, s, now);
@@ -559,10 +565,60 @@ export class LabBookingService {
     return this.transition(actor, bookingId, 'visit', ['confirmed'], 'visited', { 'lifecycle.visitedAt': new Date() }, { visitMode: 'lab', noPendingReschedule: true, expectedVersion });
   }
 
-  /** A no-show is not refunded (§4), so the partner earns it like a completed booking (its slot was kept). */
+  /**
+   * A no-show is not refunded (§4). Q14 (owner, 18 Nov 2026): the lab earns nothing for it either — the platform keeps
+   * the money; the lab earns only when the booking is completed. Earnings posted before this rule stay as they are.
+   */
   async markNoShow(actor: PartnerActor, bookingId: string, now = new Date(), expectedVersion?: number) {
-    return this.transition(actor, bookingId, 'no_show', ['confirmed'], 'no_show', { 'lifecycle.noShowAt': now }, { noPendingReschedule: true, slotStarted: now, expectedVersion },
-      (b, s) => this.postEarning(actor, b, s));
+    return this.transition(actor, bookingId, 'no_show', ['confirmed'], 'no_show', { 'lifecycle.noShowAt': now }, { noPendingReschedule: true, slotStarted: now, expectedVersion });
+  }
+
+  /**
+   * Q14: the lab moves a no-show once to a later slot of the same branch and visit mode (same price, no new payment, no
+   * refund); the booking is confirmed again and earns on completion as usual; a second no-show is final. Exactly once
+   * per (booking, request key) with a content hash; `expectedVersion` (statusVersion) fences a stale view.
+   */
+  async rescheduleNoShow(actor: PartnerActor, bookingId: string, input: { slotId: string; requestKey: string; expectedVersion?: number },
+    now = new Date()): Promise<Record<string, unknown>> {
+    const id = String(bookingId).toLowerCase();
+    const requestHash = createHash('sha256').update(JSON.stringify({ slotId: String(input.slotId).toLowerCase() })).digest('hex');
+    let replayed = false;
+    const after = await runLedgerTransaction(async (s) => {
+      replayed = false;
+      const b = await this.scopedBooking(actor, id, s);
+      const prior = (b.noShows ?? []).find((n) => n.requestKey === input.requestKey);
+      if (prior) {
+        if (prior.requestHash !== requestHash) throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different reschedule');
+        replayed = true;
+        return b;
+      }
+      if ((b.noShowReschedules ?? 0) >= 1 || (b.noShows?.length ?? 0) >= 1) {
+        throw err(409, 'NO_SHOW_RESCHEDULE_USED', 'This booking was already rescheduled once after a no-show; a second no-show is final');
+      }
+      if (b.status !== 'no_show') throw err(409, 'BOOKING_NOT_NO_SHOW', `A ${b.status} booking is not a no-show`);
+      this.assertVersion(b, input.expectedVersion);
+      await claimRequestKey(`lab_no_show_reschedule:${id}`, input.requestKey, s);
+      if (String(input.slotId) === String(b.slot.slotId)) throw err(409, 'SAME_SLOT', 'Pick a later slot');
+      const slot = await takeSeat(input.slotId, { partnerId: b.partnerId, branchId: b.branchId, visitMode: b.visitMode, minStart: now }, s);
+      await releaseSeat(b.slot.slotId, s);
+      const next: ILabBookingSlot = { slotId: String(slot._id), date: slot.date, startTime: slot.startTime, endTime: slot.endTime, startsAt: slot.startsAt };
+      const who = byOf({ kind: 'partner', actor });
+      const updated = await PartnerLabBookingModel.findOneAndUpdate({ _id: id, status: 'no_show', statusVersion: b.statusVersion }, {
+        $set: { status: 'confirmed', slot: next, noShowReschedules: (b.noShowReschedules ?? 0) + 1, 'reschedule.pending': false },
+        $push: { noShows: { at: b.lifecycle?.noShowAt, rescheduledAt: now, by: who.by, byKind: who.byKind, fromSlot: b.slot, toSlot: next,
+          requestKey: input.requestKey, requestHash } },
+        $unset: { 'lifecycle.noShowAt': 1 },
+        $inc: { statusVersion: 1 },
+      }, { new: true, session: s }).lean();
+      if (!updated) throw changed();
+      await recordPartnerAudit(actor, 'lab_booking.no_show_rescheduled', { kind: 'lab_booking', id }, { from: b.slot, to: next }, s);
+      return updated as IPartnerLabBooking;
+    });
+    if (!replayed) {
+      await this.notify({ userId: after.userId, type: 'general', title: 'Your missed lab slot has a new time',
+        message: `New time: ${after.slot.date} ${after.slot.startTime}.`, bookingId: id, key: `plb:${id}:no_show_rescheduled` });
+    }
+    return { ...partnerView(after), replayed };
   }
 
   async startProcessing(actor: PartnerActor, bookingId: string, expectedVersion?: number) {

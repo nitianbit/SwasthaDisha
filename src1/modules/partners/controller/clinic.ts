@@ -29,6 +29,12 @@ export const deskCancel = async (req: Request, res: Response, _n: NextFunction) 
   ok(res, await c.cancelDeskAppointment(actorOf(req), req.params.bookingId, req.body?.reason, expected(req)));
 export const deskReschedule = async (req: Request, res: Response, _n: NextFunction) =>
   ok(res, await c.rescheduleDeskAppointment(actorOf(req), req.params.bookingId, req.body.slotId, expected(req)));
+// Q14: a desk no-show moved once to a later slot.
+export const deskNoShowReschedule = async (req: Request, res: Response, _n: NextFunction) => {
+  const { replayed, ...view } = await c.rescheduleDeskNoShow(actorOf(req), req.params.bookingId, { slotId: req.body.slotId, requestKey: req.body.requestKey,
+    expectedUpdatedAt: expected(req) });
+  ok(res, { ...view, replayed });
+};
 // Q13: a desk booking whose answer was lost — look it up by its key, or give the key up.
 export const deskByKey = async (req: Request, res: Response, _n: NextFunction) => {
   const b = await c.findDeskByKey(actorOf(req), req.params.key);

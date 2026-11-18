@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { claimRequestKey, scopeOf } from '@/modules/requestKeys';
 import { ClientSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
@@ -111,7 +112,7 @@ export const deskBookingInScope = (b: Pick<IBooking, 'clinicDesk'>, desk: DeskSc
   !!b.clinicDesk && b.clinicDesk.partnerId === desk.partnerId && (desk.branchIds.length === 0 || desk.branchIds.includes(String(b.clinicDesk.branchId)));
 
 async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate' | 'specialistId' | 'wellnessPackageId' | 'consultationMode'>, s: ClientSession,
-  desk?: DeskScope) {
+  desk?: DeskScope, startedClock?: () => Date) {
   if (!Types.ObjectId.isValid(slotId)) throw conflict('SLOT_NOT_AVAILABLE', 'Slot is not available');
   const slot = await SlotModel.findById(slotId).session(s).lean();
   const max = slot?.maxBookings ?? 1;
@@ -136,10 +137,11 @@ async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate'
   if (desk && (!clinic || clinic.partnerId !== desk.partnerId || (desk.branchIds.length > 0 && !desk.branchIds.includes(clinic.branchId)))) {
     throw conflict('SLOT_NOT_AVAILABLE', 'This slot is not at one of your clinic branches');
   }
-  if (desk?.refuseStartedClock) {
+  const refuseStarted = desk?.refuseStartedClock ?? startedClock;
+  if (refuseStarted) {
     const w = slotIntervalOf(slot as SlotRow);
     // Sampled now, at admission (each transaction attempt), not when the request arrived.
-    if (!w || w.start.getTime() <= desk.refuseStartedClock().getTime()) throw conflict('SLOT_STARTED', 'This slot has already started; choose a later one');
+    if (!w || w.start.getTime() <= refuseStarted().getTime()) throw conflict('SLOT_STARTED', 'This slot has already started; choose a later one');
   }
   const r = await SlotModel.updateOne({ _id: slotId, ...(slot.currentBookings === undefined ? { currentBookings: { $exists: false } } : { currentBookings: current }) },
     { $inc: { currentBookings: 1 }, $set: { isAvailable: current + 1 < max } }, { session: s });
@@ -333,6 +335,10 @@ export async function cancelBookingSettlement(p: {
     if (!already && !CANCELLABLE_BOOKING_STATUSES.includes(String(booking.status))) {
       throw conflict('BOOKING_NOT_CANCELLABLE', `A ${booking.status} booking cannot be cancelled`);
     }
+    // Q14: a booking rescheduled after a no-show is never refunded; only a clinic-paid one (nothing taken by us) may be cancelled.
+    if (!already && (booking.noShows?.length ?? 0) > 0 && booking.settlementSystem !== 'clinic') {
+      throw conflict('NO_SHOW_NOT_REFUNDABLE', 'This appointment was rescheduled after a no-show and cannot be cancelled for a refund');
+    }
     if (!already) assertBookingVersion(booking, p.expectedUpdatedAt);
 
     // Serialize with capture: write every not-yet-settled payment record of this booking before reading them.
@@ -430,6 +436,15 @@ export async function expireUnpaidBooking(p: { bookingId: string; now: Date; wal
   });
 }
 
+/** Q14: the content of a no-show reschedule request (its target slot). */
+export const noShowRescheduleHash = (slotId: string) => createHash('sha256').update(JSON.stringify({ slotId: String(slotId).toLowerCase() })).digest('hex');
+
+/** Q14: the no-show reschedule command's identity and admission (see rescheduleWithHolds). */
+export interface NoShowReschedule {
+  owner: Record<string, unknown>; by: string; byKind: 'specialist' | 'clinic' | 'admin';
+  keyScope: string; requestKey: string; requestHash: string; startedClock: () => Date;
+}
+
 /**
  * Moves the booking's slot hold to `nextSlotId` and writes the new appointment, atomically (milestone C3). The
  * appointment time is always the target slot's start time.
@@ -441,11 +456,16 @@ export async function rescheduleWithHolds(p: {
   inTx?: (b: IBooking, s: ClientSession) => Promise<void>;
   /** Q13: the booking version (updatedAt) the caller decided on, checked on the booking as read in the transaction. */
   expectedUpdatedAt?: Date | string | null;
+  /**
+   * Q14: move a no-show back to confirmed on a later slot, once (same price, no payment, no refund). The caller has
+   * already admitted the requester (doctor, clinic desk or admin); `owner` narrows the booking read in the transaction.
+   */
+  noShow?: NoShowReschedule;
 }): Promise<IBooking> {
   if (!Types.ObjectId.isValid(p.bookingId)) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
   const id = String(p.bookingId).toLowerCase();
   return runLedgerTransaction(async s => {
-    const owner = p.requester.userType === 'admin' ? {} : { userId: { $eq: p.requester._id } };
+    const owner = p.noShow ? p.noShow.owner : p.requester.userType === 'admin' ? {} : { userId: { $eq: p.requester._id } };
     const booking = await BookingModel.findOne({ _id: id, ...owner }).session(s).lean() as IBooking | null;
     if (!booking) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
     // Q4b: an instant consultation holds no slot and its own interval; it is never moved onto a scheduled slot.
@@ -456,20 +476,33 @@ export async function rescheduleWithHolds(p: {
     }
     // Q6: the source appointment must still be at one of the desk's branches as read now (another desk may have moved it).
     if (booking.clinicDesk && p.desk && !deskBookingInScope(booking, p.desk)) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
-    if (!CANCELLABLE_BOOKING_STATUSES.includes(String(booking.status))) {
+    // Q14: a replay of the no-show reschedule made with this key answers with the booking (same request only).
+    const priorMove = p.noShow ? (booking.noShows ?? []).find(n => n.requestKey === p.noShow!.requestKey) : undefined;
+    if (priorMove) {
+      if (priorMove.requestHash !== p.noShow!.requestHash) throw conflict('IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different reschedule');
+      return Object.assign(booking, { [REPLAYED]: true });
+    }
+    if (p.noShow) {
+      if ((booking.noShowReschedules ?? 0) >= 1 || (booking.noShows?.length ?? 0) >= 1) {
+        throw conflict('NO_SHOW_RESCHEDULE_USED', 'This booking was already rescheduled once after a no-show; a second no-show is final');
+      }
+      if (booking.status !== 'no_show') throw conflict('BOOKING_NOT_NO_SHOW', `A ${booking.status} booking is not a no-show`);
+    } else if (!CANCELLABLE_BOOKING_STATUSES.includes(String(booking.status))) {
       throw conflict('BOOKING_NOT_RESCHEDULABLE', `A ${booking.status} booking cannot be rescheduled`);
     }
     assertBookingVersion(booking, p.expectedUpdatedAt);
+    if (p.noShow) await claimRequestKey(p.noShow.keyScope, p.noShow.requestKey, s);
     const current = await heldSlot(booking, s);
     const target = canon(p.nextSlotId);
     if (!target) throw conflict('SLOT_NOT_AVAILABLE', 'Slot is not available');
+    if (p.noShow && target === current) throw conflict('SAME_SLOT', 'Pick a later slot');
     const next = { ...booking, ...p.patch } as IBooking;
     let bookingTime: string;
     // Q6: the clinic association follows the admitted target; a desk appointment that moves is no longer checked in.
     let clinicSet: Record<string, unknown> = {};
     let clinicUnset: Record<string, 1> = {};
     if (current !== target) {
-      const reserved = await reserveSlot(target, next, s, booking.clinicDesk ? p.desk : undefined);
+      const reserved = await reserveSlot(target, next, s, booking.clinicDesk ? p.desk : undefined, p.noShow?.startedClock);
       bookingTime = reserved.time;
       if (reserved.clinic) {
         clinicSet = { clinicVisit: reserved.clinic,
@@ -500,8 +533,16 @@ export async function rescheduleWithHolds(p: {
       if (next.consultationMode !== booking.consultationMode) assertSlotMode(slot as SlotRow, next);
     }
     const holds: Holds = { version: 1, heldSlotId: target, followUpParentId: await heldFollowUpParent(booking, s) };
+    // Q14: back to confirmed; the no-show is kept in the booking's history.
+    const noShowSet = p.noShow ? { status: 'confirmed', noShowReschedules: (booking.noShowReschedules ?? 0) + 1 } : {};
+    const noShowPush = p.noShow ? { $push: { noShows: {
+      at: booking.noShow?.at, by: booking.noShow?.by, byKind: booking.noShow?.byKind,
+      rescheduledAt: p.noShow.startedClock(), rescheduledBy: p.noShow.by, rescheduledByKind: p.noShow.byKind,
+      fromSlotId: current ?? undefined, fromDate: booking.bookingDate, fromTime: booking.bookingTime, toSlotId: target,
+      requestKey: p.noShow.requestKey, requestHash: p.noShow.requestHash } } } : {};
+    const unset = { ...clinicUnset, ...(p.noShow ? { noShow: 1 as const } : {}) };
     const updated = await BookingModel.findOneAndUpdate({ _id: id, status: booking.status },
-      { $set: { ...p.patch, bookingTime, slotId: target, holds, ...clinicSet }, ...(Object.keys(clinicUnset).length ? { $unset: clinicUnset } : {}) },
+      { $set: { ...p.patch, bookingTime, slotId: target, holds, ...clinicSet, ...noShowSet }, ...noShowPush, ...(Object.keys(unset).length ? { $unset: unset } : {}) },
       { new: true, session: s }).lean() as IBooking | null;
     if (!updated) throw changed();
     if (p.inTx) await p.inTx(updated, s);

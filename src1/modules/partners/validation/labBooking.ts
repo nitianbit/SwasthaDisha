@@ -44,6 +44,9 @@ export const assignCollectorSchema = Joi.object({
   expectedVersion: Joi.number().integer().min(0),
 });
 export const rejectSchema = Joi.object({ reason: Joi.string().trim().min(3).max(500).required(), expectedVersion: Joi.number().integer().min(0) });
+/** Q14: move a no-show once to a later slot (request key; statusVersion fence). */
+export const labNoShowRescheduleSchema = Joi.object({ slotId: objectId.required(), requestKey: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).required(),
+  expectedVersion: Joi.number().integer().min(0) });
 export const labRescheduleSchema = Joi.object({ slotId: objectId.required(), reason: Joi.string().trim().min(3).max(500).required(), expectedVersion: Joi.number().integer().min(0) });
 export const releaseReportSchema = Joi.object({ file: Joi.string().trim().max(500).required(), signerMemberId: objectId, expectedVersion: Joi.number().integer().min(0) });
 

@@ -5,6 +5,13 @@ export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' 
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 export type VirtualMeetingStatus = 'active' | 'cancelled' | 'failed';
 
+/** Q14: a no-show that was rescheduled once (same price, no new payment, no refund). */
+export interface IBookingNoShow {
+  at?: Date; by?: string; byKind?: string;
+  rescheduledAt: Date; rescheduledBy: string; rescheduledByKind: string;
+  fromSlotId?: string; fromDate?: string; fromTime?: string; toSlotId: string; requestKey: string; requestHash: string;
+}
+
 export interface IBookingLifecycleEvent {
   at: string;
   by?: string;
@@ -140,6 +147,10 @@ export interface IBooking {
   settlementSystem?: 'legacy' | 'ledger' | 'clinic';
   clinicDesk?: { partnerId: string; branchId: string; createdBy: string; arrivedAt?: Date | null; requestKey?: string; requestHash?: string };
   clinicVisit?: { partnerId: string; branchId: string };
+  /** Q14: the current no-show; rescheduled no-shows (≤ 1) and their count. */
+  noShow?: { at: Date; by: string; byKind: string };
+  noShows?: IBookingNoShow[];
+  noShowReschedules?: number;
   settlement?: { settlementAccountId?: string; beneficiaryName?: string };
   bookingKind?: 'scheduled' | 'instant';
   instantRequestId?: string;

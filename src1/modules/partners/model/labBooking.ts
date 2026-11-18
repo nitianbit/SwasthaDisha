@@ -61,6 +61,10 @@ export interface IPartnerLabBooking {
   report: { draftFiles: string[]; releasedFiles: string[]; releases: ILabReportRelease[]; /** Q11 */ uploadKeys?: string[] };
   lifecycle: Partial<Record<'paidAt' | 'confirmedAt' | 'collectedAt' | 'visitedAt' | 'processingAt' | 'reportReadyAt' | 'completedAt' | 'cancelledAt' | 'noShowAt', Date>>;
   postPaymentCompletedFor?: string;
+  /** Q14: no-shows that were rescheduled (at most one); a second no-show is final. */
+  noShows?: { at?: Date; rescheduledAt: Date; by: string; byKind: 'member' | 'admin'; fromSlot: ILabBookingSlot; toSlot: ILabBookingSlot;
+    requestKey: string; requestHash: string }[];
+  noShowReschedules?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -197,6 +201,15 @@ const labBookingSchema = new Schema<IPartnerLabBooking>(
       reportReadyAt: Date, completedAt: Date, cancelledAt: Date, noShowAt: Date,
     },
     postPaymentCompletedFor: { type: String },
+    noShows: {
+      type: [new Schema({
+        at: { type: Date }, rescheduledAt: { type: Date, required: true }, by: { type: String, required: true },
+        byKind: { type: String, required: true, enum: ['member', 'admin'] }, fromSlot: { type: slotSnapshot, required: true },
+        toSlot: { type: slotSnapshot, required: true }, requestKey: { type: String, required: true }, requestHash: { type: String, required: true },
+      }, { _id: false })],
+      default: undefined,
+    },
+    noShowReschedules: { type: Number },
   },
   { timestamps: true }
 );

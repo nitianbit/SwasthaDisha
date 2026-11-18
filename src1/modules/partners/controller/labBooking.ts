@@ -48,6 +48,8 @@ export const startProcessing = async (req: Request, res: Response, _n: NextFunct
 export const completeLabBooking = async (req: Request, res: Response, _n: NextFunction) => ok(res, await svc().complete(actorOf(req), req.params.bookingId, ev(req)));
 export const rejectLabBooking = async (req: Request, res: Response, _n: NextFunction) =>
   ok(res, await svc().labReject(actorOf(req), req.params.bookingId, req.body.reason, new Date(), ev(req)));
+export const rescheduleLabNoShow = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await svc().rescheduleNoShow(actorOf(req), req.params.bookingId, { slotId: req.body.slotId, requestKey: req.body.requestKey, expectedVersion: ev(req) }));
 export const rescheduleLabBooking = async (req: Request, res: Response, _n: NextFunction) =>
   ok(res, await svc().labReschedule(actorOf(req), req.params.bookingId, req.body.slotId, req.body.reason, new Date(), ev(req)));
 /** multipart/form-data `files`: written under the booking's report folder and attached as drafts in one step (Q11: ?requestKey=). */

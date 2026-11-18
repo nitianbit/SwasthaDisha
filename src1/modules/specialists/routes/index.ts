@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { getMySchedule, putMySchedule, addMyLeave, removeMyLeave } from '@/modules/doctors/controller';
+import { getMySchedule, putMySchedule, addMyLeave, removeMyLeave, rescheduleMyNoShow, adminRescheduleNoShow } from '@/modules/doctors/controller';
 import { scheduleTemplateSchema, leaveSchema, leaveParamSchema, presenceSchema, requestIdParamSchema, bookingIdParamSchema, extendSchema } from '@/modules/doctors/validation';
 import * as instantDoctor from '@/modules/doctors/controller/instant';
 import * as fin from '@/modules/partners/controller/finance';
@@ -97,6 +97,11 @@ specialistRouter.put('/me/schedule', requireSpecialist, validate(scheduleTemplat
 specialistRouter.post('/me/leave', requireSpecialist, validate(leaveSchema, 'body'), catchAsync(addMyLeave));
 specialistRouter.delete('/me/leave/:date', requireSpecialist, validate(leaveParamSchema, 'params'), catchAsync(removeMyLeave));
 // Q6: the clinics a doctor consults with (invitations to accept/decline, leave) and their own solo practice.
+// Q14: a no-show moved once to a later slot (the booking's doctor; admins for any booking).
+specialistRouter.post('/me/bookings/:bookingId/reschedule-no-show', requireSpecialist, validate(bookingIdParamSchema, 'params'),
+  validate(clinicV.noShowRescheduleSchema, 'body'), catchAsync(rescheduleMyNoShow));
+specialistRouter.post('/admin/bookings/:bookingId/reschedule-no-show', requireAdmin, validate(bookingIdParamSchema, 'params'),
+  validate(clinicV.noShowRescheduleSchema, 'body'), catchAsync(adminRescheduleNoShow));
 specialistRouter.get('/me/clinics', requireSpecialist, catchAsync(clinicDoc.myClinics));
 specialistRouter.post('/me/clinic-invites/:inviteId/accept', requireSpecialist, validate(clinicV.inviteIdParamSchema, 'params'), catchAsync(clinicDoc.acceptInvite));
 specialistRouter.post('/me/clinic-invites/:inviteId/decline', requireSpecialist, validate(clinicV.inviteIdParamSchema, 'params'), catchAsync(clinicDoc.declineInvite));

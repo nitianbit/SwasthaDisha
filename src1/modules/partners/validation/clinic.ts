@@ -51,6 +51,8 @@ const expectedUpdatedAt = Joi.date().iso().optional();
 export const deskStepSchema = Joi.object({ expectedUpdatedAt });
 export const deskCancelSchema = Joi.object({ reason: Joi.string().trim().max(500).allow('').optional(), expectedUpdatedAt });
 export const deskRescheduleSchema = Joi.object({ slotId: objectId.required(), expectedUpdatedAt });
+/** Q14: move a no-show once to a later slot (doctor, clinic desk, admin). */
+export const noShowRescheduleSchema = Joi.object({ slotId: objectId.required(), requestKey: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).required(), expectedUpdatedAt });
 export const deskKeyParamSchema = Joi.object({ key: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).required() });
 
 export const partnerIdParamSchema = Joi.object({ partnerId: objectId.required() });

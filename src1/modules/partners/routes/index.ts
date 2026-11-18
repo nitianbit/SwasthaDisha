@@ -202,6 +202,8 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.post('/lab-bookings/:bookingId/complete', ...guard('bookings.manage'), id, validate(labV.expectedVersionSchema, 'body'), catchAsync(lab.completeLabBooking));
   r.post('/lab-bookings/:bookingId/reject', ...guard('bookings.manage'), id, validate(labV.rejectSchema, 'body'), catchAsync(lab.rejectLabBooking));
   r.post('/lab-bookings/:bookingId/reschedule', ...guard('bookings.manage'), id, validate(labV.labRescheduleSchema, 'body'), catchAsync(lab.rescheduleLabBooking));
+  // Q14: a no-show moved once to a later slot (no refund, no new payment).
+  r.post('/lab-bookings/:bookingId/reschedule-no-show', ...guard('bookings.manage'), id, validate(labV.labNoShowRescheduleSchema, 'body'), catchAsync(lab.rescheduleLabNoShow));
   r.post('/lab-bookings/:bookingId/reports', ...guard('reports.upload'), id, catchAsync(lab.uploadLabReports));
   r.post('/lab-bookings/:bookingId/reports/release', ...guard('reports.release'), id, validate(labV.releaseReportSchema, 'body'), catchAsync(lab.releaseLabReport));
   r.post('/lab-bookings/:bookingId/reports/remove-draft', ...guard('reports.upload'), id, validate(labV.removeDraftSchema, 'body'), catchAsync(lab.removeDraftLabReport));
@@ -224,6 +226,7 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.post('/clinic/appointments/:bookingId/no-show', ...guard('bookings.manage'), appt, step, catchAsync(clinic.deskNoShow));
   r.post('/clinic/appointments/:bookingId/cancel', ...guard('bookings.manage'), appt, validate(clinicV.deskCancelSchema, 'body'), catchAsync(clinic.deskCancel));
   r.post('/clinic/appointments/:bookingId/reschedule', ...guard('bookings.manage'), appt, validate(clinicV.deskRescheduleSchema, 'body'), catchAsync(clinic.deskReschedule));
+  r.post('/clinic/appointments/:bookingId/reschedule-no-show', ...guard('bookings.manage'), appt, validate(clinicV.noShowRescheduleSchema, 'body'), catchAsync(clinic.deskNoShowReschedule));
 
   // Q5: finance — balance, statement (+CSV), payouts; the payout destination is set by an owner (verified by an admin).
   r.get('/finance', ...guard('finance.view'), catchAsync(fin.partnerFinance));

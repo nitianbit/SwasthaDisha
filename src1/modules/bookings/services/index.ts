@@ -6,7 +6,8 @@ import { parseAppointment } from '@/modules/common/utils/cancellationWindow';
 import { postConsultationEarningIn } from '@/modules/doctors/services/earnings';
 import { releaseInterval } from '@/modules/doctors/services/reservations';
 import { CreateDirectPaidTransactionRequest } from '@/modules/payment/types';
-import { assertModeForHeldSlot, cancelBookingSettlement, createBookingWithHolds, expireUnpaidBooking, isReplayedBooking, paymentDeadlinePassed, rescheduleWithHolds } from '@/modules/bookings/holds';
+import { assertModeForHeldSlot, cancelBookingSettlement, createBookingWithHolds, expireUnpaidBooking, isReplayedBooking, noShowRescheduleHash, paymentDeadlinePassed, rescheduleWithHolds } from '@/modules/bookings/holds';
+import SlotModel from '@/modules/slots/model';
 import {
   BookingType,
   CreateBookingRequest,
@@ -1579,7 +1580,7 @@ export class BookingService {
       const at = parseAppointment({ bookingDate: b.bookingDate, bookingTime: b.bookingTime });
       if (!at || now < at.at) throw new AppError({ status: 409, code: 'APPOINTMENT_NOT_STARTED', message: 'A no-show can be marked only after the appointment time' });
       const done = await BookingModel.findOneAndUpdate({ _id: bookingId, status: 'confirmed', paymentStatus: 'paid' },
-        { $set: { status: 'no_show' } }, { new: true, session }).lean() as IBooking | null;
+        { $set: { status: 'no_show', noShow: { at: now, by: String(requester._id), byKind: requester.userType } } }, { new: true, session }).lean() as IBooking | null;
       if (!done) throw new AppError({ status: 409, code: 'BOOKING_CHANGED', message: 'Booking changed; please retry' });
       await releaseInterval('scheduled', String(bookingId).toLowerCase(), session);
       await releaseInterval('instant', String(bookingId).toLowerCase(), session);
@@ -1590,6 +1591,37 @@ export class BookingService {
     try { await this.bookingReminderScheduler.clearBookingReminders(updated._id!); }
     catch (error) { console.error('Failed to clear booking reminders:', error); }
     return cancelBookingMeet({ booking: updated, reason: 'Patient did not attend', bookingRepository: this.bookingRepository });
+  }
+
+  /**
+   * Q14 (owner, 18 Nov 2026): a no-show may be moved once to a later slot of the same doctor by the booking's doctor or an
+   * admin — same price, no new payment, no refund — and is confirmed again (then it earns on completion as usual; a second
+   * no-show is final). Exactly once per (booking, request key) with a content hash; `expectedUpdatedAt` fences a stale
+   * view. Desk appointments are moved by their clinic; instant consultations are never rescheduled.
+   */
+  async rescheduleNoShow(bookingId: string, requester: { _id: string; userType: 'specialist' | 'admin' },
+    input: { slotId: string; requestKey: string; expectedUpdatedAt?: Date | string | null }, clock: () => Date = () => new Date()): Promise<IBooking & { replayed?: boolean }> {
+    if (!Types.ObjectId.isValid(bookingId)) throw new AppError({ status: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
+    if (!Types.ObjectId.isValid(input.slotId)) throw new AppError({ status: 409, code: 'SLOT_NOT_AVAILABLE', message: 'Slot is not available' });
+    const slot = await SlotModel.findById(input.slotId).select({ date: 1 }).lean() as { date?: string } | null;
+    if (!slot?.date) throw new AppError({ status: 409, code: 'SLOT_NOT_AVAILABLE', message: 'Slot is not available' });
+    const id = String(bookingId).toLowerCase();
+    const owner = requester.userType === 'admin' ? {} : { specialistId: { $eq: String(requester._id) } };
+    const updated = await rescheduleWithHolds({
+      bookingId: id, requester: { _id: String(requester._id), userType: requester.userType }, nextSlotId: String(input.slotId),
+      patch: { bookingDate: slot.date }, expectedUpdatedAt: input.expectedUpdatedAt,
+      noShow: { owner, by: String(requester._id), byKind: requester.userType, keyScope: `booking_no_show_reschedule:${id}`, requestKey: input.requestKey,
+        requestHash: noShowRescheduleHash(input.slotId), startedClock: clock },
+    });
+    if (isReplayedBooking(updated)) return { ...updated, replayed: true };
+    try {
+      await this.notificationService.create({
+        userId: String(updated.userId), type: 'general', title: 'Your missed appointment has a new time',
+        message: `Your appointment${updated.doctorName ? ` with ${updated.doctorName}` : ''} is now on ${updated.bookingDate} at ${updated.bookingTime}.`,
+        referenceType: 'booking', referenceId: id, idempotencyKey: `booking:${id}:no_show_rescheduled`,
+      });
+    } catch (error) { console.error('Failed to notify customer of the no-show reschedule:', (error as Error)?.message); }
+    return { ...updated, replayed: false };
   }
 
   async rescheduleBooking(
