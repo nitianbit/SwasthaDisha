@@ -62,6 +62,8 @@ import { istDate, addDays } from '@/modules/partners/services/slots';
 import { deskBookingSchema } from '@/modules/partners/validation/clinic';
 import { recordPaymentSchema } from '@/modules/partners/validation/invoice';
 import { SMSService } from '@/modules/sms/services';
+import { PayoutService } from '@/modules/payouts/services';
+import { saveTemplate as saveDoctorTemplate, clinicBranchAllowed } from '@/modules/doctors/services/schedule';
 import { IMember, PartnerPermission } from '@/modules/partners/types';
 
 const FIXTURE_URL = 'mongodb://127.0.0.1:27917/q14_owner_decisions_check?directConnection=true';
@@ -77,9 +79,13 @@ const invoiceSvc = new InvoiceService(new InvoiceRepository(), new InvoiceEventR
   new CatalogueItemRepository(), sms);
 Container.set(InvoiceService, invoiceSvc);
 const customerNotices: { userId: string; key?: string }[] = [];
+const reminders = { scheduled: [] as string[], cleared: [] as string[] };
 const bookings = Object.assign(Object.create(BookingService.prototype), {
   bookingRepository: new BookingRepository(), walletRepository: new WalletRepository(),
-  bookingReminderScheduler: { clearBookingReminders: async () => undefined, scheduleBookingReminders: async () => undefined },
+  bookingReminderScheduler: {
+    clearBookingReminders: async (id: unknown) => { reminders.cleared.push(String(id)); },
+    scheduleBookingReminders: async (b: { _id?: unknown }) => { reminders.scheduled.push(String(b._id)); },
+  },
   notificationService: {
     create: async (n: { userId: string; idempotencyKey?: string }) => { customerNotices.push({ userId: n.userId, key: n.idempotencyKey }); },
     createSpecialistAppointmentCancelledNotification: async () => undefined,
@@ -336,7 +342,84 @@ async function main() {
     await labSvc.markNoShow(labDesk, id2, new Date());
     await assert.rejects(async () => labSvc.rescheduleNoShow(labDesk, id2, { slotId: String((await labSlot(6))!._id), requestKey: rk('labns') }), code('NO_SHOW_RESCHEDULE_USED'));
   });
+
+  // ───────────────────────────── Q14 review ─────────────────────────────
+  await check('Q14 review 6: a lab booking moved after a no-show cannot be moved again by an ordinary lab reschedule', async () => {
+    const u = await customer();
+    const id = await labBooking(u.id);
+    await labSvc.markNoShow(labDesk, id, new Date());
+    await labSvc.rescheduleNoShow(labDesk, id, { slotId: String((await labSlot(4, '08:30'))!._id), requestKey: rk('labns') });
+    await assert.rejects(async () => labSvc.labReschedule(labDesk, id, String((await labSlot(5, '08:30'))!._id), 'Machine down'), code('NO_SHOW_RESCHEDULE_USED'));
+    const after = await PartnerLabBookingModel.findById(id).lean() as any;
+    assert.deepEqual([after.status, after.reschedule.pending], ['confirmed', false]);
+  });
+
+  await check('Q14 review 8: the second lab no-show notice is sent under its own key (the first keeps the pre-Q14 key)', async () => {
+    const u = await customer();
+    const id = await labBooking(u.id);
+    await labSvc.markNoShow(labDesk, id, new Date());
+    await labSvc.rescheduleNoShow(labDesk, id, { slotId: String((await labSlot(5, '09:00'))!._id), requestKey: rk('labns') });
+    await PartnerLabBookingModel.updateOne({ _id: id }, { $set: { 'slot.startsAt': new Date(Date.now() - 3_600_000) } });
+    await labSvc.markNoShow(labDesk, id, new Date());
+    const mine = labNotices.filter((k) => /:no_show(:\d+)?$/.test(k) && k.startsWith(`plb:${id}:`));
+    assert.deepEqual(mine, [`plb:${id}:no_show`, `plb:${id}:no_show:2`]);
+  });
+
+  await check('Q14 review 2: a doctor\'s no-show move restores the reminders and the meeting (a replay does neither again)', async () => {
+    const saved = { id: CONFIG.GOOGLE_OAUTH_CLIENT_ID, cal: CONFIG.GOOGLE_CALENDAR_ID };
+    (CONFIG as any).GOOGLE_OAUTH_CLIENT_ID = undefined; // no Google calls: the sync records "not configured"
+    (CONFIG as any).GOOGLE_CALENDAR_ID = undefined;
+    try {
+      const u = await customer();
+      const id = await onlineBooking(u.id, drN);
+      await BookingModel.updateOne({ _id: id }, { $set: { virtualMeeting: { provider: 'google_meet', status: 'active', joinUrl: 'https://meet.google.com/abc-defg-hij',
+        calendarEventId: 'evt-q14', createdAt: new Date(), updatedAt: new Date() } } });
+      await bookings.markNoShow(id, { _id: drN, userType: 'specialist' }, later());
+      assert.ok(reminders.cleared.includes(id), 'markNoShow clears the reminders');
+      assert.equal((await BookingModel.findById(id).lean() as any).virtualMeeting.status, 'cancelled');
+      const before = reminders.scheduled.length;
+      const key = rk('ns');
+      const target = await slotAt(drN, futureStart());
+      const moved = await bookings.rescheduleNoShow(id, { _id: drN, userType: 'specialist' }, { slotId: target, requestKey: key });
+      assert.deepEqual(reminders.scheduled.slice(before), [id], 'reminders scheduled again for the new time');
+      const vm = (await BookingModel.findById(id).lean() as any).virtualMeeting;
+      assert.notEqual(vm.status, 'cancelled', 'the meeting was synced again');
+      assert.equal(vm.calendarEventId, undefined, 'the deleted event is not patched; a new one is made');
+      assert.equal(moved.virtualMeeting?.status, vm.status);
+      const again = await bookings.rescheduleNoShow(id, { _id: drN, userType: 'specialist' }, { slotId: target, requestKey: key });
+      assert.equal(again.replayed, true);
+      assert.equal(reminders.scheduled.length, before + 1, 'a replay schedules nothing');
+      assert.equal(new Date((await BookingModel.findById(id).lean() as any).virtualMeeting.updatedAt).getTime(), new Date(vm.updatedAt).getTime(), 'a replay does not sync the meeting');
+    } finally {
+      (CONFIG as any).GOOGLE_OAUTH_CLIENT_ID = saved.id;
+      (CONFIG as any).GOOGLE_CALENDAR_ID = saved.cal;
+    }
+  });
   (CONFIG as any).SETTLEMENT_CUTOVER_AT = undefined;
+
+  await check('Q14 review 1: the legacy monthly payout neither counts nor pays a Q14 no-show (a pre-Q14 one and a moved-then-completed one still count)', async () => {
+    const drP = await doctor('Dr Payout');
+    const u = await customer();
+    const q14NoShow = await onlineBooking(u.id, drP);
+    const preQ14NoShow = await onlineBooking(u.id, drP);
+    const completed = await onlineBooking(u.id, drP);
+    const movedDone = await onlineBooking(u.id, drP);
+    assert.equal((await BookingModel.findById(q14NoShow).lean())!.settlementSystem, 'legacy');
+    await bookings.markNoShow(q14NoShow, { _id: drP, userType: 'specialist' }, later());
+    await BookingModel.updateOne({ _id: preQ14NoShow }, { $set: { status: 'no_show' } }); // marked before Q14: no noShow record
+    await BookingModel.updateOne({ _id: completed }, { $set: { status: 'completed' } });
+    await bookings.markNoShow(movedDone, { _id: drP, userType: 'specialist' }, later());
+    await bookings.rescheduleNoShow(movedDone, { _id: drP, userType: 'specialist' }, { slotId: await slotAt(drP, futureStart()), requestKey: rk('ns') });
+    await BookingModel.updateOne({ _id: movedDone }, { $set: { status: 'completed' } });
+    // One month for all four.
+    const day = (await BookingModel.findById(q14NoShow).lean())!.bookingDate;
+    await BookingModel.updateMany({ _id: { $in: [q14NoShow, preQ14NoShow, completed, movedDone] } }, { $set: { bookingDate: day } });
+    const payout = new PayoutService(new BookingRepository(), {} as any) as any;
+    const snap = await payout.calculateBillingSnapshot(drP, Number(day.slice(0, 6)));
+    assert.deepEqual([snap.total, snap.totalAppointments], [1200, 3], 'three bookings of 400 count; the Q14 no-show does not');
+    const stats = await new BookingRepository().getConsultationStatsBySpecialistId(drP, { from: day, to: day, legacyOnly: true });
+    assert.equal(stats.totalAppointments, snap.totalAppointments, 'the stats and the amount agree');
+  });
 
   // ───────────────────────────── 2. Desk notifications ─────────────────────────────
   await check('desk create/reschedule/cancel notify the account holder and the doctor after the commit; a replay sends nothing', async () => {
@@ -383,23 +466,25 @@ async function main() {
   const bill = (actor: PartnerActor, over: Record<string, unknown> = {}) =>
     invoiceSvc.createInvoice(actor, { branchId: A, customer: { name: 'Asha' }, items: [line], idempotencyKey: rk('bill'), ...over } as any);
   await check('a bill names its appointment: same clinic, branch and doctor, not cancelled; one open bill; cancelling allows a new one; replay', async () => {
-    const made = await clinic.createDeskAppointment(desk, { slotId: await deskSlot(), customer: { phone: nextPhone() }, requestKey: rk('desk') });
+    const holderPhone = nextPhone();
+    const made = await clinic.createDeskAppointment(desk, { slotId: await deskSlot(), customer: { phone: holderPhone }, requestKey: rk('desk') });
     const appt = made.booking.bookingId;
+    const customer = { name: 'Asha', phone: holderPhone };
     const elsewhere = await clinic.createDeskAppointment(other, { slotId: await deskSlot(drO, OB), customer: { phone: nextPhone() }, requestKey: rk('desk') });
     await assert.rejects(() => bill(desk, { appointmentId: elsewhere.booking.bookingId }), code('APPOINTMENT_NOT_FOUND'));
     await assert.rejects(() => bill(desk, { appointmentId: appt, doctorId: drD }), code('APPOINTMENT_DOCTOR_MISMATCH'));
     await assert.rejects(() => bill(own, { appointmentId: appt, branchId: B }), code('APPOINTMENT_BRANCH_MISMATCH'));
     const key = rk('bill');
-    const first = await bill(desk, { appointmentId: appt.toUpperCase(), doctorId: drC, idempotencyKey: key });
+    const first = await bill(desk, { appointmentId: appt.toUpperCase(), doctorId: drC, customer, idempotencyKey: key });
     assert.equal(first.appointmentId, appt);
-    const replay = await bill(desk, { appointmentId: appt, doctorId: drC, idempotencyKey: key });
+    const replay = await bill(desk, { appointmentId: appt, doctorId: drC, customer, idempotencyKey: key });
     assert.equal(String(replay._id), String(first._id));
     await assert.rejects(() => bill(desk, { appointmentId: elsewhere.booking.bookingId, doctorId: drC, idempotencyKey: key }), code('IDEMPOTENCY_KEY_REUSED'));
     await assert.rejects(() => bill(desk, { doctorId: drC, idempotencyKey: key }), code('IDEMPOTENCY_KEY_REUSED'));
-    await assert.rejects(() => bill(desk, { appointmentId: appt }), code('APPOINTMENT_ALREADY_BILLED'));
+    await assert.rejects(() => bill(desk, { appointmentId: appt, customer }), code('APPOINTMENT_ALREADY_BILLED'));
     // Racing second bills: one open bill at most.
     await invoiceSvc.cancelInvoice(desk, String(first._id), 'Wrong amount');
-    const race = await Promise.allSettled([bill(desk, { appointmentId: appt }), bill(desk, { appointmentId: appt }), bill(desk, { appointmentId: appt })]);
+    const race = await Promise.allSettled([bill(desk, { appointmentId: appt, customer }), bill(desk, { appointmentId: appt, customer }), bill(desk, { appointmentId: appt, customer })]);
     assert.equal(race.filter((r) => r.status === 'fulfilled').length, 1);
     assert.ok(race.filter((r) => r.status === 'rejected').every((r: any) => ['APPOINTMENT_ALREADY_BILLED', 'LIFECYCLE_VERSION_CONFLICT'].includes(r.reason?.code) || r.reason?.code === 112 || /WriteConflict/.test(String(r.reason))));
     const open = (race.find((r) => r.status === 'fulfilled') as PromiseFulfilledResult<any>).value;
@@ -409,9 +494,10 @@ async function main() {
     const row = rows.find((r) => r.bookingId === appt)!;
     assert.deepEqual(row.bill, { invoiceId: String(open._id), serial: open.serial, number: open.number, state: 'issued' });
     // A cancelled appointment cannot be billed.
-    const gone = await clinic.createDeskAppointment(desk, { slotId: await deskSlot(), customer: { phone: nextPhone() }, requestKey: rk('desk') });
+    const gonePhone = nextPhone();
+    const gone = await clinic.createDeskAppointment(desk, { slotId: await deskSlot(), customer: { phone: gonePhone }, requestKey: rk('desk') });
     await clinic.cancelDeskAppointment(desk, gone.booking.bookingId, 'x');
-    await assert.rejects(() => bill(desk, { appointmentId: gone.booking.bookingId }), code('APPOINTMENT_CANCELLED'));
+    await assert.rejects(() => bill(desk, { appointmentId: gone.booking.bookingId, customer: { name: 'G', phone: gonePhone } }), code('APPOINTMENT_CANCELLED'));
     assert.ok(InvoiceModel.schema.indexes().some(([k, o]: any) => k.openAppointmentId === 1 && o.unique === true), 'the unique index is declared on the schema');
   });
 
@@ -421,7 +507,9 @@ async function main() {
     const [dep] = await DependentModel.create([{ userId: holder.id, name: 'Ravi', relationship: 'Son', isActive: true }]);
     const k1 = rk('desk');
     const a = await clinic.createDeskAppointment(desk, { slotId: await deskSlot(), customer: { phone: holder.phone }, patient: { dependentId: String(dep!._id) }, requestKey: k1 });
-    assert.deepEqual([a.booking.dependentId, a.patient?.name, a.patient?.created], [String(dep!._id), 'Ravi', false]);
+    assert.deepEqual([a.booking.dependentId, a.patient?.name], [String(dep!._id), 'Ravi']);
+    // Q14 review: the answer does not say whether the family member existed (the audit does).
+    assert.deepEqual(Object.keys(a.patient ?? {}).sort(), ['dependentId', 'name', 'relationship']);
     assert.equal((await clinic.createDeskAppointment(desk, { slotId: a.booking.slotId!, customer: { phone: holder.phone }, patient: { dependentId: String(dep!._id) }, requestKey: k1 })).replayed, true);
     await assert.rejects(() => clinic.createDeskAppointment(desk, { slotId: a.booking.slotId!, customer: { phone: holder.phone }, requestKey: k1 }), code('IDEMPOTENCY_KEY_REUSED'));
     // Someone else's family member is refused, before any customer is created for a new number.
@@ -433,9 +521,13 @@ async function main() {
     const b = await clinic.createDeskAppointment(desk, { slotId: await deskSlot(), customer: { phone: holder.phone },
       patient: { name: 'Meera', relation: 'Mother', gender: 'Female', dateOfBirth: '1960-04-02' }, requestKey: rk('desk') });
     const meera = await DependentModel.findById(b.booking.dependentId).lean();
-    assert.deepEqual([meera!.userId, meera!.name, meera!.relationship, meera!.dateOfBirth, b.patient?.created], [holder.id, 'Meera', 'Mother', '19600402', true]);
+    assert.deepEqual([meera!.userId, meera!.name, meera!.relationship, meera!.dateOfBirth], [holder.id, 'Meera', 'Mother', '19600402']);
     const c = await clinic.createDeskAppointment(desk, { slotId: await deskSlot(), customer: { phone: holder.phone }, patient: { name: ' meera ', relation: 'Mother' }, requestKey: rk('desk') });
-    assert.deepEqual([c.booking.dependentId, c.patient?.created], [b.booking.dependentId, false]);
+    assert.equal(c.booking.dependentId, b.booking.dependentId);
+    // A new family member and an existing one answer with the same fields (no oracle of who is on the account).
+    assert.deepEqual(Object.keys(b.patient ?? {}).sort(), Object.keys(c.patient ?? {}).sort());
+    assert.ok(!('created' in (b.patient ?? {})) && !('created' in (c.patient ?? {})));
+    assert.ok(await PartnerAuditEventModel.exists({ targetId: b.booking.bookingId, action: 'clinic.appointment_booked', 'detail.dependentCreated': true }), 'the audit keeps it');
     assert.equal(await DependentModel.countDocuments({ userId: holder.id }), 2);
     // A failed booking creates no family member (same transaction).
     const taken = c.booking.slotId!;
@@ -510,6 +602,104 @@ async function main() {
     assert.equal(c.event.refund!.amountMinor, 50000);
   });
 
+  await check('Q14 review 3: a bill with a zero total is marked paid by its method alone (no zero split); a repeat answers the receipt', async () => {
+    const inv = await plain(desk, 0);
+    const r = await invoiceSvc.recordPayment(desk, String(inv._id), { mode: 'cash' });
+    assert.deepEqual([r.invoice.lifecycleState, r.invoice.paidMinor, r.invoice.dueMinor, r.event.mode, r.event.amountMinor, r.event.splits?.length ?? 0],
+      ['paid', 0, 0, 'cash', 0, 0]);
+    const again = await invoiceSvc.recordPayment(desk, String(inv._id), { mode: 'cash' });
+    assert.deepEqual([again.replayed, String(again.event._id)], [true, String(r.event._id)]);
+    // Real splits still need a positive amount.
+    const paid = await plain(desk, 1000);
+    await assert.rejects(() => invoiceSvc.recordPayment(desk, String(paid._id), { splits: [{ mode: 'cash', amountMinor: 0 }] }), code('INVALID_AMOUNT'));
+  });
+
+  await check('Q14 review 5: a second payment against the pre-Q14 event index answers 503 INVOICE_INDEXES_OUTDATED (one warning, no patient data); version races stay 409', async () => {
+    const events = InvoiceEventModel.collection;
+    const phone = nextPhone();
+    const inv = await invoiceSvc.createInvoice(desk, { branchId: A, customer: { name: 'Part', phone }, items: [{ description: 'Procedure', qty: 1, unitPriceMinor: 300000, gstRate: 0 }],
+      idempotencyKey: rk('bill') } as any);
+    // The pre-Q14 index as a database that has not run sync-indexes still has it (here limited to the bills from now
+    // on, as earlier checks already stored several payments of one bill).
+    const oldIndex = { unique: true, name: 'invoiceId_1_kind_1', partialFilterExpression: { invoiceId: { $gte: String(inv._id) } } };
+    let droppedNew = false;
+    try {
+      await events.createIndex({ invoiceId: 1, kind: 1 }, oldIndex);
+    } catch {
+      // A server that refuses two indexes with the same keys: drop the Q14 one for the check (restored below).
+      await events.dropIndex('q14_one_cancellation');
+      droppedNew = true;
+      await events.createIndex({ invoiceId: 1, kind: 1 }, oldIndex);
+    }
+    const warnings: string[] = [];
+    const origWarn = console.warn;
+    console.warn = (...a: unknown[]) => { warnings.push(a.map(String).join(' ')); };
+    await partnerSvc.updatePartner(clinicId, { allowPartPayments: true });
+    try {
+      await invoiceSvc.recordPayment(desk, String(inv._id), { splits: [{ mode: 'cash', amountMinor: 100000 }], requestKey: rk('pay') });
+      await assert.rejects(() => invoiceSvc.recordPayment(desk, String(inv._id), { splits: [{ mode: 'upi', amountMinor: 100000 }], requestKey: rk('pay') }),
+        (e: any) => e?.code === 'INVOICE_INDEXES_OUTDATED' && e?.status === 503 && e?.message === 'Bills need a database update (sync-indexes) before a second payment');
+      assert.equal(warnings.length, 1);
+      assert.ok(warnings[0]!.includes('sync-indexes') && !warnings[0]!.includes(phone) && !warnings[0]!.includes(String(inv._id)) && !warnings[0]!.includes('Part'));
+      assert.equal((await InvoiceModel.findById(inv._id).lean())!.paidMinor, 100000, 'nothing applied');
+      // A real version race (another event already took the next version) still answers LIFECYCLE_VERSION_CONFLICT.
+      const other = await plain(desk, 50000);
+      await InvoiceEventModel.collection.insertOne({ invoiceId: String(other._id), kind: 'cancellation', version: 1, at: new Date(), by: 'x', byKind: 'member' } as never);
+      await assert.rejects(() => invoiceSvc.recordPayment(desk, String(other._id), { mode: 'cash' }), code('LIFECYCLE_VERSION_CONFLICT'));
+      // After sync-indexes (the old index gone) the second payment goes through.
+      await events.dropIndex('invoiceId_1_kind_1');
+      if (droppedNew) { await InvoiceEventModel.syncIndexes(); droppedNew = false; }
+      const p2 = await invoiceSvc.recordPayment(desk, String(inv._id), { splits: [{ mode: 'upi', amountMinor: 100000 }], requestKey: rk('pay') });
+      assert.deepEqual([p2.invoice.lifecycleState, p2.invoice.paidMinor], ['partly_paid', 200000]);
+    } finally {
+      console.warn = origWarn;
+      await events.dropIndex('invoiceId_1_kind_1').catch(() => undefined);
+      if (droppedNew) await InvoiceEventModel.syncIndexes();
+      await partnerSvc.updatePartner(clinicId, { allowPartPayments: false });
+    }
+  });
+
+  await check('Q14 review 7: the customer bill and bills list show no request keys, hashes or staff ids (amounts, methods and the refund stay)', async () => {
+    const u = await customer();
+    const inv = await invoiceSvc.createInvoice(desk, { branchId: A, customer: { name: 'Asha', phone: u.phone }, items: [{ description: 'Procedure', qty: 1, unitPriceMinor: 30000, gstRate: 0 }],
+      idempotencyKey: rk('bill') } as any);
+    const key = rk('pay');
+    await invoiceSvc.recordPayment(desk, String(inv._id), { splits: [{ mode: 'cash', amountMinor: 10000 }, { mode: 'upi', amountMinor: 20000, reference: 'UPI9' }], requestKey: key });
+    await invoiceSvc.cancelInvoice(desk, String(inv._id), 'Wrong patient', { mode: 'cash' });
+    const stored = await InvoiceEventModel.find({ invoiceId: String(inv._id) }).lean() as any[];
+    const hash = stored.find((e) => e.kind === 'payment').requestHash;
+    assert.ok(hash);
+    const seen = await invoiceSvc.getCustomerBill(u.id, String(inv._id));
+    const text = JSON.stringify(seen);
+    for (const secret of [key, hash, String(deskM._id), (await InvoiceModel.findById(inv._id).lean())!.requestHash, (await InvoiceModel.findById(inv._id).lean())!.idempotencyKey]) {
+      assert.equal(text.includes(secret), false, `customer view leaks ${secret}`);
+    }
+    for (const e of seen.events as any[]) assert.ok(!('requestKey' in e) && !('requestHash' in e) && !('by' in e));
+    const pay = (seen.events as any[]).find((e) => e.kind === 'payment');
+    assert.deepEqual([pay.amountMinor, pay.splits.map((x: any) => [x.mode, x.amountMinor]), !!pay.at], [30000, [['cash', 10000], ['upi', 20000]], true]);
+    const cancel = (seen.events as any[]).find((e) => e.kind === 'cancellation');
+    assert.equal(cancel.refund.amountMinor, 30000);
+    assert.ok(!('createdBy' in seen.invoice) && !('idempotencyKey' in seen.invoice) && !('requestHash' in seen.invoice));
+    const list = await invoiceSvc.listCustomerBills(u.id);
+    const row = list.items.find((i: any) => String(i._id) === String(inv._id)) as any;
+    assert.ok(row && !('createdBy' in row) && !('idempotencyKey' in row) && !('requestHash' in row));
+  });
+
+  await check('Q14 review 9: a bill names an appointment only for the appointment\'s account holder (family members included)', async () => {
+    const holder = await customer();
+    const [dep] = await DependentModel.create([{ userId: holder.id, name: 'Tara', relationship: 'Daughter', isActive: true }]);
+    const made = await clinic.createDeskAppointment(desk, { slotId: await deskSlot(), customer: { phone: holder.phone }, patient: { dependentId: String(dep!._id) }, requestKey: rk('desk') });
+    const appt = made.booking.bookingId;
+    const someoneElse = await customer();
+    await assert.rejects(() => bill(desk, { appointmentId: appt, customer: { name: 'X', phone: someoneElse.phone } }), code('APPOINTMENT_CUSTOMER_MISMATCH'));
+    await assert.rejects(() => bill(desk, { appointmentId: appt, customer: { name: 'No phone' } }), code('APPOINTMENT_CUSTOMER_MISMATCH'));
+    const fresh = nextPhone();
+    await assert.rejects(() => bill(desk, { appointmentId: appt, customer: { name: 'New', phone: fresh } }), code('APPOINTMENT_CUSTOMER_MISMATCH'));
+    assert.equal(await UserModel.countDocuments({ phone: fresh }), 0, 'a refused bill creates no account');
+    const ok = await bill(desk, { appointmentId: appt, customer: { name: 'Tara', phone: holder.phone } });
+    assert.deepEqual([ok.appointmentId, String(ok.customer.userId)], [appt, holder.id]);
+  });
+
   // ───────────────────────────── 6. Doctors linked by admins; doctor-created clinics ─────────────────────────────
   await check('clinics cannot invite; pending invitations stay readable but cannot be accepted (declining still works)', async () => {
     const drI = await doctor('Dr Invited');
@@ -548,7 +738,7 @@ async function main() {
     await assert.rejects(() => clinic.unlinkDoctor(admin(clinicId), drL), code('DOCTOR_NOT_AT_CLINIC'));
   });
 
-  await check('a doctor creates their own clinic: owner + linked doctor at its first branch, pending, one transaction, replay, a second one refused', async () => {
+  await check('a doctor creates their own clinic: owner-doctor (all branches), pending, one transaction, replay, a second one refused', async () => {
     const drS = await doctor('Dr Solo');
     const drX = await doctor('Dr Unverified Two', { isVerified: false });
     const input = { name: 'Solo Care', invoiceSeriesPrefix: 'SOLO', branch: { name: 'Main', phone: '9876500001', address: addr } } as any;
@@ -563,7 +753,8 @@ async function main() {
     const pid = String(made.partner._id);
     assert.equal(made.partner.verification.state, 'pending', 'starts pending like every new partner; an admin verifies it');
     const ownerM = await MemberModel.findOne({ partnerId: pid, doctorId: drS, isActive: true }).lean();
-    assert.deepEqual([ownerM!.role, (ownerM as any).doctorBranchIds, ownerM!.permissions.length > 5], ['owner', [String(made.branch._id)], true]);
+    // Q14 review: no doctorBranchIds on the owner-doctor (all of the clinic's branches, as before Q14).
+    assert.deepEqual([ownerM!.role, (ownerM as any).doctorBranchIds, ownerM!.permissions.length > 5], ['owner', undefined, true]);
     const replay = await clinic.createSoloPractice(drS, { ...input, requestKey: key }) as any;
     assert.deepEqual([replay.created, replay.replayed, String(replay.partner._id)], [false, true, pid]);
     await assert.rejects(() => clinic.createSoloPractice(drS, { ...input, name: 'Changed', requestKey: key }), code('IDEMPOTENCY_KEY_REUSED'));
@@ -573,6 +764,26 @@ async function main() {
     const ownerActor = actorFor(ownerM as IMember);
     await assert.rejects(() => clinic.linkDoctor(ownerActor, { doctorId: drD, requestKey: rk('link') }), code('DOCTOR_LINK_ADMIN_ONLY'));
     await assert.rejects(() => clinic.inviteDoctor(ownerActor, { doctorId: drD }), code('DOCTOR_LINK_ADMIN_ONLY'));
+  });
+
+  await check('Q14 review 4: the owner-doctor of a doctor-created clinic consults at a branch added later (as before Q14; /me/practice too)', async () => {
+    const drT = await doctor('Dr Two Branch');
+    const made = await clinic.createSoloPractice(drT, { name: 'Two Branch Care', invoiceSeriesPrefix: 'TWOB', branch: { name: 'First', phone: '9876500003', address: addr },
+      requestKey: rk('clinic') } as any) as any;
+    const pid = String(made.partner._id);
+    await partnerSvc.verifyPartner(pid, 'admin');
+    const ownerM = await MemberModel.findOne({ partnerId: pid, doctorId: drT, isActive: true }).lean();
+    const second = String((await partnerSvc.createBranch(actorFor(ownerM as IMember), clinicBranch('Second')))._id);
+    assert.equal(await clinicBranchAllowed(drT, String(made.branch._id)), true);
+    assert.equal(await clinicBranchAllowed(drT, second), true, 'the second branch is allowed');
+    const win = [{ start: '17:00', end: '18:00', modes: ['in-person'], branchId: second }];
+    await saveDoctorTemplate(drT, { slotMinutes: 30, days: Object.fromEntries(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((d) => [d, win])) as any });
+    assert.ok(await SlotModel.exists({ specialistId: drT, branchId: second }), 'a schedule window at the second branch is accepted');
+    // The unkeyed Q6 route makes the same owner-doctor (no doctorBranchIds).
+    const drQ = await doctor('Dr Practice');
+    const practice = await clinic.createSoloPractice(drQ, { name: 'Practice', invoiceSeriesPrefix: 'PRAC', branch: { name: 'Main', phone: '9876500004', address: addr } } as any) as any;
+    const pm = await MemberModel.findOne({ partnerId: String(practice.partner._id), doctorId: drQ }).lean() as any;
+    assert.deepEqual([practice.created, pm.role, pm.doctorBranchIds], [true, 'owner', undefined]);
   });
 
   // ───────────────────────────── HTTP: the real routers ─────────────────────────────
@@ -598,12 +809,12 @@ async function main() {
       const holder = await customer();
       const made = await call('POST', '/api/v1/partner-workspace/clinic/appointments', t, { slotId: await deskSlot(), customer: { phone: holder.phone },
         patient: { name: 'Kiran', relation: 'Daughter' }, requestKey: 'http-desk-q14-01' });
-      assert.deepEqual([made.status, made.json.data.patient.name, made.json.data.patient.created], [201, 'Kiran', true]);
+      assert.deepEqual([made.status, made.json.data.patient.name, 'created' in made.json.data.patient], [201, 'Kiran', false]);
       const apptId = made.json.data.booking.bookingId;
-      const b1 = await call('POST', `${adminBase}/invoices`, adminToken, { branchId: A, customer: { name: 'Kiran' }, doctorId: drC, appointmentId: apptId,
+      const b1 = await call('POST', `${adminBase}/invoices`, adminToken, { branchId: A, customer: { name: 'Kiran', phone: holder.phone }, doctorId: drC, appointmentId: apptId,
         items: [line], idempotencyKey: 'http-bill-q14-01' });
       assert.deepEqual([b1.status, b1.json.data.appointmentId, b1.json.data.dueMinor], [201, apptId, 60000]);
-      const b2 = await call('POST', '/api/v1/partner-workspace/invoices', t, { branchId: A, customer: { name: 'Kiran' }, appointmentId: apptId, items: [line], idempotencyKey: 'http-bill-q14-02' });
+      const b2 = await call('POST', '/api/v1/partner-workspace/invoices', t, { branchId: A, customer: { name: 'Kiran', phone: holder.phone }, appointmentId: apptId, items: [line], idempotencyKey: 'http-bill-q14-02' });
       assert.deepEqual([b2.status, b2.json.code], [409, 'APPOINTMENT_ALREADY_BILLED']);
       const list = await call('GET', `/api/v1/partner-workspace/invoices?appointmentId=${apptId}`, t);
       assert.deepEqual([list.status, list.json.data.length], [200, 1]);
