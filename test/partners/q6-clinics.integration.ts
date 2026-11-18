@@ -39,7 +39,7 @@ import { ScheduleGuardModel } from '@/modules/partners/model/slot';
 import { PartnerRepository } from '@/modules/partners/repository';
 import { MemberRepository } from '@/modules/partners/repository/member';
 import { BranchRepository } from '@/modules/partners/repository/branch';
-import { PartnerService, PartnerActor } from '@/modules/partners/services';
+import { PartnerService, PartnerActor, adminActor } from '@/modules/partners/services';
 import * as clinic from '@/modules/partners/services/clinic';
 import { istDate, addDays } from '@/modules/partners/services/slots';
 import { DoctorReservationModel, DoctorScheduleGuardModel } from '@/modules/doctors/model/reservation';
@@ -79,6 +79,10 @@ const ymd = (iso: string) => iso.replace(/-/g, '');
 const addr = { line1: '1 Road', city: 'Pune', state: 'Maharashtra', stateCode: '27', pincode: '411001' };
 const branchIn = (name: string, inClinic = true) => ({ name, phone: '9876500000', holidays: [], hours: {},
   services: { homeCollection: false, inLab: !inClinic, inClinic }, address: addr }) as any;
+// Q14: clinics no longer invite doctors; an admin links them directly (no acceptance step).
+let linkSeq = 0;
+const linkAs = (partnerId: string, doctorId: string, branchIds: string[] = []) =>
+  clinic.linkDoctor(adminActor('q6-admin', partnerId), { doctorId, branchIds, requestKey: `q6-link-${String(++linkSeq).padStart(4, '0')}` });
 const every = (w: Record<string, unknown>) => Object.fromEntries(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map((d) => [d, [w]]));
 
 async function doctor(name: string, fee = 600) {
@@ -114,40 +118,27 @@ async function main() {
   const drSen = await doctor('Dr Sen', 800);
 
   let inviteId = '';
-  await check('invitation: clinic only, branch scope enforced, idempotent while pending; the doctor declines or accepts once', async () => {
-    await assert.rejects(() => clinic.inviteDoctor(actorFor(labOwner), { doctorId: drRao.id }), code('NOT_A_CLINIC'));
-    await assert.rejects(() => clinic.inviteDoctor(actorFor(deskA), { doctorId: drRao.id, branchIds: [] }), code('BRANCH_SCOPE_EXCEEDED'));
-    await assert.rejects(() => clinic.inviteDoctor(own, { phone: '12345' }), code('INVALID_PHONE'));
-    await assert.rejects(() => clinic.inviteDoctor(own, { phone: '9999999999' }), code('DOCTOR_NOT_FOUND'));
-    const first = await clinic.inviteDoctor(own, { phone: `+91 ${drRao.phone}`, branchIds: [A] });
-    assert.equal(first.created, true);
-    const again = await clinic.inviteDoctor(own, { doctorId: drRao.id, branchIds: [A] });
-    assert.equal(String(again.invite._id), String(first.invite._id));
-    // Before acceptance the clinic has no authority over the doctor's time.
+  await check('doctor link (Q14: admins only, no acceptance): clinic only, branches checked; before the link no authority', async () => {
+    await assert.rejects(() => clinic.linkDoctor(adminActor('q6-admin', String(lab._id)), { doctorId: drRao.id, requestKey: 'q6-link-lab-0001' }), code('NOT_A_CLINIC'));
+    await assert.rejects(() => clinic.inviteDoctor(own, { doctorId: drRao.id }), code('DOCTOR_LINK_ADMIN_ONLY'));
+    await assert.rejects(() => clinic.linkDoctor(own, { doctorId: drRao.id, requestKey: 'q6-link-own-0001' }), code('DOCTOR_LINK_ADMIN_ONLY'));
+    await assert.rejects(() => clinic.linkDoctor(adminActor('q6-admin', partnerId), { doctorId: new Types.ObjectId().toHexString(), requestKey: 'q6-link-none-001' }), code('DOCTOR_NOT_FOUND'));
+    // Before the link the clinic has no authority over the doctor's time.
     await assert.rejects(() => saveTemplate(drRao.id, { slotMinutes: 30, days: every({ start: '10:00', end: '12:00', modes: ['in-person'], branchId: A }) as any }),
       code('CLINIC_BRANCH_NOT_ALLOWED'));
-    const mine = await clinic.myClinics(drRao.id);
-    assert.equal(mine.invites.length, 1);
-    assert.equal(mine.invites[0]!.clinic, 'Care Clinic');
-    await clinic.respondToInvite(drRao.id, String(first.invite._id), false);
-    await assert.rejects(() => clinic.respondToInvite(drRao.id, String(first.invite._id), true), code('INVITE_NOT_PENDING'));
-    const second = await clinic.inviteDoctor(own, { doctorId: drRao.id, branchIds: [A] });
-    await assert.rejects(() => clinic.respondToInvite(drSen.id, String(second.invite._id), true), code('INVITE_NOT_FOUND'));
-    const r = await clinic.respondToInvite(drRao.id, String(second.invite._id), true);
-    assert.equal(r.accepted, true);
-    inviteId = String(second.invite._id);
+    const r = await linkAs(partnerId, drRao.id, [A]);
+    inviteId = String(r.link._id);
     const m = await MemberModel.findById(r.memberId).lean();
     assert.deepEqual([m!.doctorId, m!.role, m!.permissions.length, m!.branchIds.map(String), m!.phone], [drRao.id, 'staff', 0, [A], drRao.phone]);
-    assert.ok(await PartnerAuditEventModel.exists({ partnerId, action: 'clinic.doctor_joined' }));
-    await assert.rejects(() => clinic.inviteDoctor(own, { doctorId: drRao.id }), code('DOCTOR_ALREADY_MEMBER'));
+    assert.ok(await PartnerAuditEventModel.exists({ partnerId, action: 'clinic.doctor_linked' }));
+    await assert.rejects(() => linkAs(partnerId, drRao.id), code('DOCTOR_ALREADY_MEMBER'));
     assert.deepEqual((await clinic.listClinicDoctors(own)).map((d) => d.doctorId), [drRao.id]);
     assert.equal((await clinic.myClinics(drRao.id)).clinics[0]!.branches.map((b) => b.branchId).join(), A);
   });
 
   await check('a doctor already on the staff (same phone) is linked to that record, not duplicated', async () => {
     const staffDoc = await partnerSvc.addMember(own, { phone: drSen.phone, name: 'Sen (reception login)', role: 'staff', permissions: ['bookings.view'] } as any);
-    const inv = await clinic.inviteDoctor(own, { doctorId: drSen.id });
-    const r = await clinic.respondToInvite(drSen.id, String(inv.invite._id), true);
+    const r = await linkAs(partnerId, drSen.id);
     assert.equal(r.memberId, String(staffDoc._id));
     assert.equal(await MemberModel.countDocuments({ partnerId, phone: drSen.phone, isActive: true }), 1);
     assert.equal((await MemberModel.findById(staffDoc._id).lean())!.doctorId, drSen.id);
@@ -316,10 +307,7 @@ async function main() {
   const own2 = actorFor(second.owner);
   const CB = String((await partnerSvc.createBranch(own2, branchIn('Aundh')))._id);
   const drTwo = await doctor('Dr Two');
-  for (const [act, br] of [[own, [A]], [own2, [CB]]] as const) {
-    const inv = await clinic.inviteDoctor(act, { doctorId: drTwo.id, branchIds: [...br] });
-    await clinic.respondToInvite(drTwo.id, String(inv.invite._id), true);
-  }
+  for (const [pid, br] of [[partnerId, [A]], [C, [CB]]] as const) await linkAs(pid, drTwo.id, [...br]);
   const at = (n: number) => addDays(today, n);
 
   await check('history belongs to the booking: a freed slot moving to another clinic never shows (or exposes) the old appointment there', async () => {
@@ -368,25 +356,25 @@ async function main() {
     assert.ok(Array.isArray(sA));
   });
 
-  await check('invitations stay within a branch-restricted manager\'s scope (list, revoke, existing pending)', async () => {
+  await check('existing (pre-Q14) invitations stay within a branch-restricted manager\'s scope (list, revoke)', async () => {
     const drThree = await doctor('Dr Three');
-    const global = await clinic.inviteDoctor(own, { doctorId: drThree.id });
+    // Q14: invitations are no longer made; rows from before stay readable and revocable.
+    const [global] = await ClinicDoctorInviteModel.create([{ partnerId, doctorId: drThree.id, branchIds: [], invitedBy: String(owner._id), state: 'pending' }]);
     const deskAActor = actorFor(deskA);
-    assert.ok(!(await clinic.listInvites(deskAActor)).some((i) => String(i._id) === String(global.invite._id)));
-    await assert.rejects(() => clinic.revokeInvite(deskAActor, String(global.invite._id)), code('INVITE_NOT_FOUND'));
-    await assert.rejects(() => clinic.inviteDoctor(deskAActor, { doctorId: drThree.id, branchIds: [A] }), code('INVITE_PENDING'));
-    assert.equal((await ClinicDoctorInviteModel.findById(global.invite._id).lean())!.state, 'pending');
+    assert.ok(!(await clinic.listInvites(deskAActor)).some((i) => String(i._id) === String(global!._id)));
+    await assert.rejects(() => clinic.revokeInvite(deskAActor, String(global!._id)), code('INVITE_NOT_FOUND'));
+    await assert.rejects(() => clinic.inviteDoctor(deskAActor, { doctorId: drThree.id, branchIds: [A] }), code('DOCTOR_LINK_ADMIN_ONLY'));
+    assert.equal((await ClinicDoctorInviteModel.findById(global!._id).lean())!.state, 'pending');
     const drFour = await doctor('Dr Four');
-    const mineA = await clinic.inviteDoctor(deskAActor, { doctorId: drFour.id, branchIds: [A] });
-    assert.ok((await clinic.listInvites(deskAActor)).some((i) => String(i._id) === String(mineA.invite._id)));
-    await clinic.revokeInvite(deskAActor, String(mineA.invite._id));
+    const [mineA] = await ClinicDoctorInviteModel.create([{ partnerId, doctorId: drFour.id, branchIds: [A], invitedBy: String(deskA._id), state: 'pending' }]);
+    assert.ok((await clinic.listInvites(deskAActor)).some((i) => String(i._id) === String(mineA!._id)));
+    await clinic.revokeInvite(deskAActor, String(mineA!._id));
   });
 
   await check('a doctor linked to an existing staff record consults exactly where they accepted; the staff access is unchanged', async () => {
     const drFive = await doctor('Dr Five');
     const staffB = await partnerSvc.addMember(own, { phone: drFive.phone, name: 'Five at B desk', role: 'staff', branchIds: [B], permissions: ['bookings.view'] } as any);
-    const inv = await clinic.inviteDoctor(own, { doctorId: drFive.id, branchIds: [A] });
-    await clinic.respondToInvite(drFive.id, String(inv.invite._id), true);
+    await linkAs(partnerId, drFive.id, [A]);
     assert.equal(await clinicBranchAllowed(drFive.id, A), true);
     assert.equal(await clinicBranchAllowed(drFive.id, B), false);
     const m = await MemberModel.findById(staffB._id).lean();
@@ -396,7 +384,7 @@ async function main() {
   await check('a desk request key is used once per desk member, whatever customer or slot a repeat names; racing repeats make one', async () => {
     const slots = await clinic.deskSlots(own, { doctorId: drRao.id, branchId: A, date: at(10) }).catch(() => []);
     const fresh = slots.length ? slots : await (async () => {
-      await clinic.respondToInvite(drRao.id, String((await clinic.inviteDoctor(own, { doctorId: drRao.id, branchIds: [A] })).invite._id), true);
+      await linkAs(partnerId, drRao.id, [A]);
       await saveTemplate(drRao.id, { slotMinutes: 30, days: every({ start: '10:00', end: '12:00', modes: ['in-person'], branchId: A }) as any });
       return clinic.deskSlots(own, { doctorId: drRao.id, branchId: A, date: at(10) });
     })();
@@ -443,7 +431,7 @@ async function main() {
     const phone = nextPhone();
     const made = await clinic.createDeskAppointment(deskOnlyA, { slotId: slotsA[0]!.slotId, customer: { phone }, requestKey: key });
     // A clinic-wide desk moves it to branch B (the doctor consults there too).
-    await clinic.respondToInvite(drRao.id, String((await clinic.inviteDoctor(own, { doctorId: drRao.id, branchIds: [] }).catch(async () => ({ invite: { _id: '' } }))).invite._id), true).catch(() => undefined);
+    await linkAs(partnerId, drRao.id).catch(() => undefined);
     await MemberModel.updateOne({ partnerId, doctorId: drRao.id, isActive: true }, { $set: { doctorBranchIds: [] } });
     await saveTemplate(drRao.id, { slotMinutes: 30, days: every({ start: '10:00', end: '12:00', modes: ['in-person'], branchId: A }) as any });
     const sB = await SlotModel.create({ specialistId: drRao.id, date: ymd(at(13)), startTime: '13:00', endTime: '13:30', duration: 30, slotType: 'consultation',
@@ -474,8 +462,7 @@ async function main() {
   await check("the doctor's own clinic list shows the branches they accepted, not their staff access", async () => {
     const drSix = await doctor('Dr Six');
     await partnerSvc.addMember(own, { phone: drSix.phone, name: 'Six at B desk', role: 'staff', branchIds: [B], permissions: ['bookings.view'] } as any);
-    const inv = await clinic.inviteDoctor(own, { doctorId: drSix.id, branchIds: [A] });
-    await clinic.respondToInvite(drSix.id, String(inv.invite._id), true);
+    await linkAs(partnerId, drSix.id, [A]);
     const mine = (await clinic.myClinics(drSix.id)).clinics.find((c) => c.partnerId === partnerId)!;
     assert.deepEqual(mine.branches.map((b) => b.branchId), [A]);
     assert.deepEqual((await clinic.listClinicDoctors(own)).find((d) => d.doctorId === drSix.id)!.branchIds, [A]);
@@ -504,13 +491,17 @@ async function main() {
   try {
     await check('HTTP: invite → doctor accepts in the portal → desk books, lists, checks in, cancels; admins as owner; roles enforced', async () => {
       const drHttp = await doctor('Dr Http');
+      // Q14: the owner can no longer invite; an admin (as owner) links the doctor directly.
       const inv = await call('POST', '/api/v1/partner-workspace/clinic/doctor-invites', partnerToken(owner), { doctorId: drHttp.id, branchIds: [B] });
-      assert.equal(inv.status, 201);
+      assert.deepEqual([inv.status, inv.json.code], [403, 'DOCTOR_LINK_ADMIN_ONLY']);
       assert.equal((await call('POST', '/api/v1/partner-workspace/clinic/doctor-invites', partnerToken(viewer), { doctorId: drHttp.id })).status, 403);
       assert.equal((await call('POST', '/api/v1/partner-workspace/clinic/doctor-invites', partnerToken(owner), { doctorId: drHttp.id, phone: '9876543210' })).status, 400);
+      const ownerLink = await call('POST', '/api/v1/partner-workspace/clinic/doctors', partnerToken(owner), { doctorId: drHttp.id, branchIds: [B], requestKey: 'http-link-0001' });
+      assert.deepEqual([ownerLink.status, ownerLink.json.code], [403, 'DOCTOR_LINK_ADMIN_ONLY']);
+      const linked = await call('POST', `/api/v1/partner-workspace/admin/${partnerId}/workspace/clinic/doctors`, adminToken, { doctorId: drHttp.id, branchIds: [B], requestKey: 'http-link-0001' });
+      assert.equal(linked.status, 201);
       const mine = await call('GET', '/api/v1/specialists/me/clinics', docToken(drHttp.id));
-      assert.equal(mine.json.data.invites.length, 1);
-      assert.equal((await call('POST', `/api/v1/specialists/me/clinic-invites/${mine.json.data.invites[0].inviteId}/accept`, docToken(drHttp.id))).status, 200);
+      assert.equal(mine.json.data.clinics.length, 1);
       assert.equal((await call('GET', '/api/v1/specialists/me/clinics', userToken)).status, 403);
       await saveTemplate(drHttp.id, { slotMinutes: 30, days: every({ start: '15:00', end: '16:00', modes: ['in-person'], branchId: B }) as any });
       const slots = await call('GET', `/api/v1/partner-workspace/clinic/slots?doctorId=${drHttp.id}&branchId=${B}&date=${day}`, partnerToken(viewer));

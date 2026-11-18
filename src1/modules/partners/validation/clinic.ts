@@ -10,6 +10,14 @@ export const inviteDoctorSchema = Joi.object({
   branchIds: Joi.array().items(objectId).max(50).default([]),
 }).xor('doctorId', 'phone');
 
+/** Q14: an admin links a doctor to the clinic (branches empty = all). */
+export const linkDoctorSchema = Joi.object({
+  doctorId: objectId.required(),
+  branchIds: Joi.array().items(objectId).max(50).default([]),
+  requestKey: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).required(),
+});
+export const doctorIdParamSchema = Joi.object({ doctorId: objectId.required() });
+
 export const inviteIdParamSchema = Joi.object({ inviteId: objectId.required() });
 export const invitesQuerySchema = Joi.object({ state: Joi.string().valid('pending', 'accepted', 'declined', 'revoked').optional() });
 
@@ -68,4 +76,8 @@ export const soloPracticeSchema = Joi.object({
     phone: Joi.string().trim().pattern(/^[0-9]{10}$/).required(),
     address: addressSchema.required(),
   }).required(),
+  contactEmail: Joi.string().trim().email().optional(),
 });
+/** Q14: POST /specialists/me/clinic — the same fields with a request key. */
+export const doctorClinicSchema = soloPracticeSchema.keys({ requestKey: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).required() });
+export const doctorClinicKeyParamSchema = Joi.object({ key: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).required() });

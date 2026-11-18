@@ -187,8 +187,18 @@ export async function listClinicDoctors(actor: PartnerActor) {
   });
 }
 
-/** The clinic asks a doctor (by id or registered phone) to consult at some or all of its branches. Idempotent while pending. */
-export async function inviteDoctor(actor: PartnerActor, input: { doctorId?: string; phone?: string; branchIds?: string[] }) {
+/**
+ * Q14 (owner, 18 Nov 2026): clinics no longer invite doctors — an admin links them after checking (linkDoctor). Members
+ * are refused with 403 DOCTOR_LINK_ADMIN_ONLY; an admin is pointed at the direct link (invitations can no longer be accepted).
+ */
+export async function inviteDoctor(actor: PartnerActor, _input: { doctorId?: string; phone?: string; branchIds?: string[] }): Promise<never> {
+  await clinicOf(actor);
+  if (actor.actorKind === 'admin') throw err(409, 'USE_DOCTOR_LINK', 'Invitations are retired: link the doctor directly (POST /clinic/doctors)');
+  throw err(403, 'DOCTOR_LINK_ADMIN_ONLY', 'Doctors are linked to clinics by the platform team after checking; ask them to add this doctor');
+}
+
+/** Q6 (retired by Q14): the clinic asked a doctor (by id or registered phone) to consult at some or all of its branches. Kept for reference only. */
+export async function legacyInviteDoctor(actor: PartnerActor, input: { doctorId?: string; phone?: string; branchIds?: string[] }) {
   await clinicOf(actor);
   const branchIds = [...new Set((input.branchIds ?? []).map(String))];
   assertScopeWithin(actor, branchIds);
@@ -280,6 +290,114 @@ export async function myClinics(doctorId: string) {
   };
 }
 
+/**
+ * The doctor's membership of a clinic (Q6 acceptance; Q14 admin link): created, or the doctor's existing staff record
+ * with the same mobile linked (it keeps its workspace access; the clinical scope is exactly `branchIds`).
+ */
+async function attachDoctorMember(p: { partnerId: string; doctorId: string; phone: string; name?: string; branchIds: string[]; invitedBy: string },
+  s: ClientSession): Promise<IMember> {
+  const clinic = await PartnerOrgModel.findById(p.partnerId).session(s).lean() as IPartner | null;
+  if (!clinic || clinic.isActive === false || clinic.kind !== 'clinic') throw err(409, 'CLINIC_NOT_ACTIVE', 'This clinic is not active');
+  if (await MemberModel.exists({ partnerId: p.partnerId, doctorId: p.doctorId, isActive: true }).session(s)) {
+    throw err(409, 'DOCTOR_ALREADY_MEMBER', 'This doctor already consults here');
+  }
+  const samePhone = await MemberModel.findOne({ partnerId: p.partnerId, phone: p.phone, isActive: true }).session(s).lean() as IMember | null;
+  if (samePhone) {
+    if (samePhone.doctorId) throw err(409, 'PHONE_USED_BY_ANOTHER_DOCTOR', 'This mobile number belongs to another doctor at this clinic');
+    const member = await MemberModel.findOneAndUpdate({ _id: samePhone._id, isActive: true, doctorId: { $exists: false } },
+      { $set: { doctorId: p.doctorId, doctorBranchIds: p.branchIds } }, { new: true, session: s }).lean() as IMember;
+    if (!member) throw err(409, 'MEMBER_CHANGED', 'Please try again');
+    return member;
+  }
+  const [m] = await MemberModel.create([{ partnerId: p.partnerId, phone: p.phone, name: p.name, role: 'staff', permissions: [], branchIds: p.branchIds,
+    doctorId: p.doctorId, doctorBranchIds: p.branchIds, isActive: true, invitedBy: p.invitedBy }], { session: s });
+  return m!.toObject() as IMember;
+}
+
+/** Q14: the instant-consultation eligibility rule (Q13): stored isActive and isVerified both true. */
+const eligibleDoctor = (sp: { isActive?: unknown; isVerified?: unknown } | null | undefined) => !!sp && sp.isActive === true && sp.isVerified === true;
+export const doctorLinkKeyScope = (partnerId: string) => `clinic_doctor_link:${String(partnerId).toLowerCase()}`;
+
+/**
+ * Q14 (owner, 18 Nov 2026): an admin links a doctor to a clinic at chosen branches (empty = all) after checking — no
+ * acceptance step. Same records an accepted invitation made (an accepted link row, the doctor's membership with
+ * doctorBranchIds). Exactly once per (clinic, request key) with a content hash; audited; the doctor is told after commit.
+ */
+export async function linkDoctor(actor: PartnerActor, input: { doctorId: string; branchIds?: string[]; requestKey: string }) {
+  if (actor.actorKind !== 'admin') throw err(403, 'DOCTOR_LINK_ADMIN_ONLY', 'Doctors are linked to clinics by the platform team after checking');
+  await clinicOf(actor);
+  const branchIds = [...new Set((input.branchIds ?? []).map(String))];
+  for (const b of branchIds) await clinicBranch(actor, b);
+  const doctorId = String(input.doctorId).toLowerCase();
+  const requestHash = createHash('sha256').update(JSON.stringify({ doctorId, branchIds: [...branchIds].sort() })).digest('hex');
+  const view = async (link: IClinicDoctorInvite, replayed: boolean) => {
+    const sp = await SpecialistModel.findById(link.doctorId).select({ name: 1, specialization: 1 }).lean() as any;
+    return { link, doctor: { doctorId: String(link.doctorId), name: sp?.name ?? null, specialization: sp?.specialization ?? null }, memberId: link.memberId, replayed };
+  };
+  const prior = async () => {
+    const l = await ClinicDoctorInviteModel.findOne({ partnerId: actor.partnerId, requestKey: input.requestKey }).lean() as IClinicDoctorInvite | null;
+    if (l && l.requestHash !== requestHash) throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different link');
+    return l;
+  };
+  const before = await prior();
+  if (before) return view(before, true);
+  const sp = Types.ObjectId.isValid(doctorId) ? await SpecialistModel.findById(doctorId).lean() as any : null;
+  if (!sp) throw err(404, 'DOCTOR_NOT_FOUND', 'Doctor not found');
+  if (!eligibleDoctor(sp)) throw err(409, 'DOCTOR_NOT_ELIGIBLE', 'Only active, verified doctors can be linked to a clinic');
+  const phone = canonicalMobile(sp.phone);
+  if (!phone) throw err(409, 'DOCTOR_PHONE_REQUIRED', 'The doctor needs a mobile number on their profile (it is their clinic sign-in)');
+  let link: IClinicDoctorInvite;
+  try {
+    link = await inTransaction(async (s) => {
+      await claimRequestKey(doctorLinkKeyScope(actor.partnerId), input.requestKey, s);
+      const member = await attachDoctorMember({ partnerId: actor.partnerId, doctorId, phone, name: sp.name, branchIds, invitedBy: actor.memberId }, s);
+      // Any invitation still pending for this doctor is superseded by the link.
+      await ClinicDoctorInviteModel.updateMany({ partnerId: actor.partnerId, doctorId, state: 'pending' }, { $set: { state: 'revoked', respondedAt: new Date() } }, { session: s });
+      const [row] = await ClinicDoctorInviteModel.create([{ partnerId: actor.partnerId, doctorId, branchIds, invitedBy: actor.memberId, state: 'accepted',
+        respondedAt: new Date(), memberId: String(member._id), via: 'admin_link', requestKey: input.requestKey, requestHash }], { session: s });
+      await audit(actor, 'clinic.doctor_linked', { kind: 'member', id: String(member._id) }, { doctorId, branchIds }, s);
+      return row!.toObject() as IClinicDoctorInvite;
+    });
+  } catch (e) {
+    const raced = await prior();
+    if (raced) return view(raced, true);
+    throw e;
+  }
+  await refreshDoctorSlots(doctorId);
+  const clinicName = (await PartnerOrgModel.findById(actor.partnerId).select({ name: 1 }).lean().catch(() => null) as { name?: string } | null)?.name;
+  await sendClinicNotices([{ audience: 'doctor', userId: doctorId, type: 'specialist_general', title: 'Linked to a clinic',
+    message: `You can now consult at ${clinicName ?? 'a clinic'}. Its in-clinic slots follow your weekly schedule.`,
+    referenceType: 'clinic_doctor_invite', referenceId: String(link._id), key: `clinic_link:${String(link._id)}:doctor`,
+    data: { partnerId: actor.partnerId, linkId: String(link._id) } }]);
+  return view(link, false);
+}
+
+/**
+ * Q14: the clinic's owner (or an admin) removes a doctor from the clinic — it only reduces access. A membership that
+ * exists only for consulting (staff, no permissions) ends; a staff record the doctor was linked to keeps its workspace
+ * access and loses only its doctor link. A doctor who owns the clinic cannot be removed this way.
+ */
+export async function unlinkDoctor(actor: PartnerActor, doctorId: string) {
+  if (actor.role !== 'owner') throw err(403, 'OWNER_REQUIRED', 'Only an owner can remove a doctor from the clinic');
+  await clinicOf(actor);
+  const out = await inTransaction(async (s) => {
+    const m = await MemberModel.findOne({ partnerId: actor.partnerId, doctorId: String(doctorId), isActive: true }).session(s).lean() as IMember | null;
+    if (!m) throw err(404, 'DOCTOR_NOT_AT_CLINIC', 'This doctor does not consult here');
+    if (m.role === 'owner') throw err(409, 'DOCTOR_IS_OWNER', 'This doctor owns the clinic and cannot be removed');
+    const consultOnly = m.role === 'staff' && (m.permissions ?? []).length === 0;
+    const r = await MemberModel.updateOne({ _id: m._id, isActive: true, doctorId: m.doctorId },
+      consultOnly ? { $set: { isActive: false } } : { $unset: { doctorId: 1, doctorBranchIds: 1 } }, { session: s });
+    if (r.modifiedCount !== 1) throw err(409, 'MEMBER_CHANGED', 'Please try again');
+    await audit(actor, 'clinic.doctor_unlinked', { kind: 'member', id: String(m._id) }, { doctorId: String(doctorId), membershipEnded: consultOnly }, s);
+    return { unlinked: true, membershipEnded: consultOnly };
+  });
+  await refreshDoctorSlots(String(doctorId));
+  await sendClinicNotices([{ audience: 'doctor', userId: String(doctorId), type: 'specialist_general', title: 'Removed from a clinic',
+    message: 'A clinic no longer lists you as its doctor; its in-clinic slots are closed.', referenceType: 'clinic_doctor_invite',
+    referenceId: String(actor.partnerId), key: `clinic_unlink:${actor.partnerId}:${doctorId}:${Date.now()}`, data: { partnerId: actor.partnerId } }]);
+  return out;
+}
+
 /** The doctor accepts (membership created, or the doctor's existing staff record linked) or declines, once. */
 export async function respondToInvite(doctorId: string, inviteId: string, accept: boolean) {
   if (!Types.ObjectId.isValid(inviteId)) throw err(404, 'INVITE_NOT_FOUND', 'Invitation not found');
@@ -291,28 +409,14 @@ export async function respondToInvite(doctorId: string, inviteId: string, accept
     const inv = await ClinicDoctorInviteModel.findOne({ _id: inviteId, doctorId: String(doctorId) }).session(s).lean() as IClinicDoctorInvite | null;
     if (!inv) throw err(404, 'INVITE_NOT_FOUND', 'Invitation not found');
     if (inv.state !== 'pending') throw err(409, 'INVITE_NOT_PENDING', 'This invitation is no longer pending');
+    // Q14: invitations can no longer be accepted (an admin links doctors after checking); declining stays possible.
+    if (accept) throw err(409, 'INVITE_NO_LONGER_VALID', 'Clinic invitations are no longer used; the platform team links doctors to clinics');
     if (!accept) {
       await ClinicDoctorInviteModel.updateOne({ _id: inviteId, state: 'pending' }, { $set: { state: 'declined', respondedAt: new Date() } }, { session: s });
       return { accepted: false as const, partnerId: inv.partnerId };
     }
-    const p = await PartnerOrgModel.findById(inv.partnerId).session(s).lean() as IPartner | null;
-    if (!p || p.isActive === false || p.kind !== 'clinic') throw err(409, 'CLINIC_NOT_ACTIVE', 'This clinic is not active');
-    if (await MemberModel.exists({ partnerId: inv.partnerId, doctorId: String(doctorId), isActive: true }).session(s)) {
-      throw err(409, 'DOCTOR_ALREADY_MEMBER', 'You already consult here');
-    }
-    const samePhone = await MemberModel.findOne({ partnerId: inv.partnerId, phone, isActive: true }).session(s).lean() as IMember | null;
-    let member: IMember;
-    if (samePhone) {
-      if (samePhone.doctorId) throw err(409, 'PHONE_USED_BY_ANOTHER_DOCTOR', 'Your mobile number belongs to another doctor at this clinic');
-      // The staff record keeps its workspace access; the doctor's clinical scope is exactly what they accepted.
-      member = await MemberModel.findOneAndUpdate({ _id: samePhone._id, isActive: true, doctorId: { $exists: false } },
-        { $set: { doctorId: String(doctorId), doctorBranchIds: inv.branchIds } }, { new: true, session: s }).lean() as IMember;
-      if (!member) throw err(409, 'MEMBER_CHANGED', 'Please try again');
-    } else {
-      const [m] = await MemberModel.create([{ partnerId: inv.partnerId, phone, name: sp.name, role: 'staff', permissions: [], branchIds: inv.branchIds,
-        doctorId: String(doctorId), doctorBranchIds: inv.branchIds, isActive: true, invitedBy: inv.invitedBy }], { session: s });
-      member = m!.toObject() as IMember;
-    }
+    const member = await attachDoctorMember({ partnerId: inv.partnerId, doctorId: String(doctorId), phone: phone!, name: sp.name,
+      branchIds: inv.branchIds, invitedBy: inv.invitedBy }, s);
     const done = await ClinicDoctorInviteModel.updateOne({ _id: inviteId, state: 'pending' },
       { $set: { state: 'accepted', respondedAt: new Date(), memberId: String(member._id) } }, { session: s });
     if (done.modifiedCount !== 1) throw err(409, 'INVITE_NOT_PENDING', 'This invitation is no longer pending');
@@ -683,8 +787,28 @@ export async function rescheduleDeskNoShow(actor: PartnerActor, bookingId: strin
 // ───────────────────────────── Solo practice ─────────────────────────────
 
 export interface SoloPracticeInput {
-  name: string; legalName?: string; invoiceSeriesPrefix: string; gstin?: string; pan?: string;
+  name: string; legalName?: string; invoiceSeriesPrefix: string; gstin?: string; pan?: string; contactEmail?: string;
   branch: { name: string; phone: string; address: IBranch['address'] };
+  /** Q14: required on POST /specialists/me/clinic (replay by content hash; another clinic 409 DOCTOR_CLINIC_EXISTS). */
+  requestKey?: string;
+}
+const doctorClinicCreatedBy = (doctorId: string) => `doctor:${String(doctorId).toLowerCase()}`;
+const soloHash = (input: SoloPracticeInput) => {
+  const { requestKey: _k, ...rest } = input;
+  return createHash('sha256').update(canonicalStable(rest)).digest('hex');
+};
+function canonicalStable(v: unknown): string {
+  const norm = (x: unknown): unknown => Array.isArray(x) ? x.map(norm)
+    : x && typeof x === 'object' ? Object.fromEntries(Object.keys(x as object).sort().filter((k) => (x as any)[k] !== undefined && (x as any)[k] !== null).map((k) => [k, norm((x as any)[k])]))
+    : typeof x === 'string' ? x.trim() : x;
+  return JSON.stringify(norm(v));
+}
+
+/** Q14: the clinic a doctor created with this request key (a lost answer); null when none. */
+export async function findDoctorClinicByKey(doctorId: string, key: string) {
+  const partner = await PartnerOrgModel.findOne({ soloDoctorId: String(doctorId), createdBy: doctorClinicCreatedBy(doctorId), createRequestKey: { $eq: key } }).lean() as any;
+  if (!partner) return null;
+  return { partner, branches: await BranchModel.find({ partnerId: String(partner._id) }).lean() };
 }
 
 /**
@@ -693,24 +817,40 @@ export interface SoloPracticeInput {
  * before its in-clinic slots can be booked. The doctor signs in to the workspace with their mobile number.
  */
 export async function createSoloPractice(doctorId: string, input: SoloPracticeInput) {
+  // Q14: a keyed create (POST /me/clinic) replays its own clinic and refuses a second one; the unkeyed Q6 route keeps
+  // answering with the existing practice.
+  const requestHash = soloHash(input);
+  const answerExisting = (existing: any) => {
+    if (!input.requestKey) return { partner: existing, created: false, replayed: true };
+    if (existing.createRequestKey === input.requestKey && existing.createdBy === doctorClinicCreatedBy(doctorId)) {
+      if (existing.createRequestHash !== requestHash) throw err(409, 'IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different clinic');
+      return { partner: existing, created: false, replayed: true };
+    }
+    throw err(409, 'DOCTOR_CLINIC_EXISTS', 'You already have a clinic; ask the platform team to add another');
+  };
   const existing = await PartnerOrgModel.findOne({ soloDoctorId: String(doctorId) }).lean();
-  if (existing) return { partner: existing, created: false };
+  if (existing) return answerExisting(existing);
   const sp = await SpecialistModel.findById(doctorId).lean() as any;
-  if (!sp || sp.isActive === false || sp.isVerified === false) throw err(403, 'SPECIALIST_NOT_ACTIVE', 'Only active, verified doctors can open a practice');
+  // Q14: the same eligibility rule as instant consultations (stored isActive and isVerified both true).
+  if (!eligibleDoctor(sp)) throw err(403, 'SPECIALIST_NOT_ACTIVE', 'Only active, verified doctors can open a practice');
   const phone = canonicalMobile(sp.phone);
   if (!phone) throw err(409, 'DOCTOR_PHONE_REQUIRED', 'Add a mobile number to your profile first (it is your practice sign-in)');
   try {
     return await inTransaction(async (s) => {
+      if (input.requestKey) await claimRequestKey(`doctor_clinic_create:${String(doctorId).toLowerCase()}`, input.requestKey, s);
       const [partner] = await PartnerOrgModel.create([{
         kind: 'clinic', name: input.name.trim(), legalName: input.legalName?.trim() || input.name.trim(), gstin: input.gstin, pan: input.pan,
-        contact: { phone, email: sp.email }, taxRegime: 'unregistered', invoiceSeries: { prefix: input.invoiceSeriesPrefix }, activeOwnerCount: 1,
+        contact: { phone, email: input.contactEmail ?? sp.email }, taxRegime: 'unregistered', invoiceSeries: { prefix: input.invoiceSeriesPrefix }, activeOwnerCount: 1,
         solo: true, soloDoctorId: String(doctorId), isActive: true, verification: { state: 'pending', documents: [] },
+        ...(input.requestKey ? { createdBy: doctorClinicCreatedBy(doctorId), createRequestKey: input.requestKey, createRequestHash: requestHash } : {}),
       }], { session: s });
       const partnerId = String(partner!._id);
       await ensureSettlementAccount('partner', partnerId, input.legalName?.trim() || input.name.trim(), s);
+      const branchId = new Types.ObjectId();
+      // Q14: the doctor owns the clinic (all permissions) and consults at its first branch (doctorBranchIds).
       const [owner] = await MemberModel.create([{ partnerId, phone, name: sp.name, role: 'owner', permissions: [...ALL_PERMISSIONS], branchIds: [],
-        doctorId: String(doctorId), isActive: true }], { session: s });
-      const [branch] = await BranchModel.create([{ partnerId, name: input.branch.name, phone: input.branch.phone, address: input.branch.address, hours: {},
+        doctorId: String(doctorId), doctorBranchIds: [String(branchId)], isActive: true }], { session: s });
+      const [branch] = await BranchModel.create([{ _id: branchId, partnerId, name: input.branch.name, phone: input.branch.phone, address: input.branch.address, hours: {},
         holidays: [], services: { homeCollection: false, inLab: false, inClinic: true }, isActive: true }], { session: s });
       const self: PartnerActor = { memberId: String(owner!._id), partnerId, role: 'owner', permissions: [...ALL_PERMISSIONS], branchIds: [] };
       await audit(self, 'clinic.solo_practice_created', { kind: 'partner', id: partnerId }, { doctorId: String(doctorId), branchId: String(branch!._id) }, s);
@@ -720,7 +860,7 @@ export async function createSoloPractice(doctorId: string, input: SoloPracticeIn
     if (e?.code !== 11000) throw e;
     const raced = await PartnerOrgModel.findOne({ soloDoctorId: String(doctorId) }).lean();
     if (!raced) throw e;
-    return { partner: raced, created: false };
+    return answerExisting(raced);
   }
 }
 

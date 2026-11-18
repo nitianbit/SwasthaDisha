@@ -108,6 +108,10 @@ specialistRouter.post('/me/clinic-invites/:inviteId/decline', requireSpecialist,
 specialistRouter.post('/me/clinics/:partnerId/leave', requireSpecialist, validate(clinicV.partnerIdParamSchema, 'params'), catchAsync(clinicDoc.leaveClinic));
 specialistRouter.get('/me/practice', requireSpecialist, catchAsync(clinicDoc.getMyPractice));
 specialistRouter.post('/me/practice', requireSpecialist, validate(clinicV.soloPracticeSchema, 'body'), catchAsync(clinicDoc.createMyPractice));
+// Q14: a doctor creates their own clinic (owner + linked doctor at its first branch, pending admin verification).
+specialistRouter.get('/me/clinic', requireSpecialist, catchAsync(clinicDoc.getMyPractice));
+specialistRouter.post('/me/clinic', requireSpecialist, validate(clinicV.doctorClinicSchema, 'body'), catchAsync(clinicDoc.createMyClinic));
+specialistRouter.get('/me/clinic/by-key/:key', requireSpecialist, validate(clinicV.doctorClinicKeyParamSchema, 'params'), catchAsync(clinicDoc.myClinicByKey));
 // Q5: the doctor's own earnings — balance, statement (+CSV), payouts, legacy history, payout destination.
 specialistRouter.get('/me/finance', requireSpecialist, catchAsync(fin.doctorFinance));
 specialistRouter.get('/me/finance/statement', requireSpecialist, validate(finV.statementQuerySchema, 'query'), catchAsync(fin.doctorStatement));

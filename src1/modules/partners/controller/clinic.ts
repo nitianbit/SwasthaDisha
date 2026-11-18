@@ -8,10 +8,15 @@ const ok = (res: Response, data: unknown, status = 200) => res.status(status).js
 // ── Clinic workspace (members; admins as owner) ──
 export const clinicDoctors = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.listClinicDoctors(actorOf(req)));
 export const clinicInvites = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.listInvites(actorOf(req), req.query.state as any));
-export const inviteDoctor = async (req: Request, res: Response, _n: NextFunction) => {
-  const r = await c.inviteDoctor(actorOf(req), req.body);
-  ok(res, r, r.created ? 201 : 200);
+/** Q14: retired — members get 403 DOCTOR_LINK_ADMIN_ONLY (admins: 409 USE_DOCTOR_LINK). */
+export const inviteDoctor = async (req: Request, _res: Response, _n: NextFunction) => { await c.inviteDoctor(actorOf(req), req.body); };
+/** Q14: an admin (as owner) links a doctor directly; members are refused (403 DOCTOR_LINK_ADMIN_ONLY). */
+export const linkDoctor = async (req: Request, res: Response, _n: NextFunction) => {
+  const r = await c.linkDoctor(actorOf(req), req.body);
+  ok(res, r, r.replayed ? 200 : 201);
 };
+/** Q14: the owner (or an admin) removes a doctor from the clinic. */
+export const unlinkDoctor = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.unlinkDoctor(actorOf(req), req.params.doctorId));
 export const revokeInvite = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.revokeInvite(actorOf(req), req.params.inviteId));
 export const deskSlots = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.deskSlots(actorOf(req), req.query as any));
 export const clinicAppointments = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.listClinicAppointments(actorOf(req), req.query as any));
@@ -50,6 +55,16 @@ export const acceptInvite = async (req: Request, res: Response, _n: NextFunction
 export const declineInvite = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.respondToInvite(doctorOf(req), req.params.inviteId, false));
 export const leaveClinic = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.leaveClinic(doctorOf(req), req.params.partnerId));
 export const getMyPractice = async (req: Request, res: Response, _n: NextFunction) => ok(res, await c.mySoloPractice(doctorOf(req)));
+/** Q14: an onboarded doctor creates their own clinic (keyed; a second one 409 DOCTOR_CLINIC_EXISTS) and finds a lost answer by key. */
+export const createMyClinic = async (req: Request, res: Response, _n: NextFunction) => {
+  const r = await c.createSoloPractice(doctorOf(req), req.body);
+  ok(res, r, r.created ? 201 : 200);
+};
+export const myClinicByKey = async (req: Request, res: Response, _n: NextFunction) => {
+  const r = await c.findDoctorClinicByKey(doctorOf(req), req.params.key);
+  if (!r) { res.status(404).json({ error: 404, code: 'CLINIC_NOT_FOUND', message: 'No clinic was created with this key' }); return; }
+  ok(res, r);
+};
 export const createMyPractice = async (req: Request, res: Response, _n: NextFunction) => {
   const r = await c.createSoloPractice(doctorOf(req), req.body);
   ok(res, r, r.created ? 201 : 200);

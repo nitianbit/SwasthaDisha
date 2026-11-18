@@ -212,7 +212,10 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   const appt = validate(clinicV.appointmentIdParamSchema, 'params');
   r.get('/clinic/doctors', ...guard.any('staff.manage', 'bookings.view', 'bookings.manage', 'invoices.create'), catchAsync(clinic.clinicDoctors));
   r.get('/clinic/doctor-invites', ...guard('staff.manage'), validate(clinicV.invitesQuerySchema, 'query'), catchAsync(clinic.clinicInvites));
+  // Q14: clinics no longer invite (403 DOCTOR_LINK_ADMIN_ONLY); admins link directly; the owner or an admin removes a doctor.
   r.post('/clinic/doctor-invites', ...guard('staff.manage'), validate(clinicV.inviteDoctorSchema, 'body'), catchAsync(clinic.inviteDoctor));
+  r.post('/clinic/doctors', ...guard('staff.manage'), validate(clinicV.linkDoctorSchema, 'body'), catchAsync(clinic.linkDoctor));
+  r.delete('/clinic/doctors/:doctorId', ...guard('staff.manage'), validate(clinicV.doctorIdParamSchema, 'params'), catchAsync(clinic.unlinkDoctor));
   r.delete('/clinic/doctor-invites/:inviteId', ...guard('staff.manage'), validate(clinicV.inviteIdParamSchema, 'params'), catchAsync(clinic.revokeInvite));
   r.get('/clinic/slots', ...guard.any('bookings.view', 'bookings.manage'), validate(clinicV.deskSlotsQuerySchema, 'query'), catchAsync(clinic.deskSlots));
   r.get('/clinic/appointments', ...guard.any('bookings.view', 'bookings.manage'), validate(clinicV.appointmentsQuerySchema, 'query'), catchAsync(clinic.clinicAppointments));

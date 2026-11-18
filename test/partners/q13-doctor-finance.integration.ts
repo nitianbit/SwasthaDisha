@@ -54,7 +54,7 @@ import { ScheduleGuardModel } from '@/modules/partners/model/slot';
 import { PartnerRepository } from '@/modules/partners/repository';
 import { MemberRepository } from '@/modules/partners/repository/member';
 import { BranchRepository } from '@/modules/partners/repository/branch';
-import { PartnerService, PartnerActor } from '@/modules/partners/services';
+import { PartnerService, PartnerActor, adminActor } from '@/modules/partners/services';
 import { postLedgerEntry, ledgerBalance } from '@/modules/partners/services/settlement';
 import * as fin from '@/modules/partners/services/finance';
 import * as clinic from '@/modules/partners/services/clinic';
@@ -539,9 +539,9 @@ async function main() {
   const other = actorFor(c2Owner);
   const drC = await doctor('Dr Clinic', 600, 'Orthopaedics', false);
   const drT = await doctor('Dr Invited', 700, 'Cardiology', false);
-  const inv = await clinic.inviteDoctor(own, { doctorId: drC, branchIds: [A] });
-  await clinic.respondToInvite(drC, String(inv.invite._id), true);
-  await clinic.inviteDoctor(own, { doctorId: drT, branchIds: [A] });
+  // Q14: an admin links the doctor (clinics no longer invite); a pre-Q14 pending invitation stays readable.
+  await clinic.linkDoctor(adminActor('q13-admin', clinicId), { doctorId: drC, branchIds: [A], requestKey: 'q13-link-0001' });
+  await ClinicDoctorInviteModel.create([{ partnerId: clinicId, doctorId: drT, branchIds: [A], invitedBy: String(cOwner._id), state: 'pending' }]);
   const tomorrow = addDays(today, 1);
   const future = async (n: number) => slotAt(drC, A, new Date(new Date(`${tomorrow}T09:00:00+05:30`).getTime() + n * 30 * 60_000));
   let futureN = 0;
