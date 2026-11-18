@@ -14,6 +14,8 @@ export const createInvoiceSchema = Joi.object({
     placeOfSupply: Joi.string().pattern(/^[0-9]{2}$/).optional(),
   }).required(),
   doctorId: Joi.string().pattern(objectIdPattern).optional(),
+  /** Q14: the clinic appointment (booking id) this bill is for. */
+  appointmentId: Joi.string().pattern(objectIdPattern).optional(),
   items: Joi.array().items(
     Joi.object({
       catalogItemId: Joi.string().pattern(objectIdPattern).optional(),
@@ -67,6 +69,8 @@ export const invoiceQuerySchema = Joi.object({
   from: realDate.optional(),
   to: realDate.optional(),
   q: Joi.string().trim().max(100).allow('').optional(),
+  /** Q14: only the bills of this appointment. */
+  appointmentId: Joi.string().pattern(objectIdPattern).optional(),
 });
 
 export const invoicePdfQuerySchema = Joi.object({

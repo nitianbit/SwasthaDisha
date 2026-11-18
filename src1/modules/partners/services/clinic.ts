@@ -30,6 +30,9 @@ import { DoctorReservationModel } from '@/modules/doctors/model/reservation';
 import { releaseInterval } from '@/modules/doctors/services/reservations';
 import { clinicBranchAllowed, doctorScopeOf, expandDoctorSlots, DOCTOR_ROLLING_DAYS } from '@/modules/doctors/services/schedule';
 import { WalletRepository } from '@/modules/wallet/repository';
+import { Container } from 'typedi';
+import type { NotificationType } from '@/modules/notification/types';
+import { billsForAppointments } from '@/modules/partners/services/invoice';
 
 /**
  * Q6 — clinics with several doctors, the clinic front desk, and solo practices.
@@ -80,6 +83,92 @@ async function refreshDoctorSlots(doctorId: string): Promise<void> {
   catch (e) { console.error('doctor slot refresh failed', (e as Error)?.message); }
 }
 
+// ───────────────────────────── Notifications (Q14) ─────────────────────────────
+
+/** Q14: one in-app notice to the customer (account holder) or the doctor, as ordinary bookings notify today. */
+export interface ClinicNotice {
+  audience: 'customer' | 'doctor'; userId: string; type: NotificationType; title: string; message: string;
+  referenceType: 'booking' | 'clinic_doctor_invite'; referenceId: string; key: string; data?: Record<string, unknown>;
+}
+export type ClinicNotifier = (n: ClinicNotice) => Promise<void>;
+
+/** Default: the existing in-app notification (NotificationService; doctors receive theirs under their specialist id). */
+export const defaultClinicNotifier: ClinicNotifier = async (n) => {
+  const { NotificationService } = await import('@/modules/notification/services');
+  await Container.get(NotificationService).create({ userId: n.userId, type: n.type, title: n.title, message: n.message,
+    referenceType: n.referenceType, referenceId: n.referenceId, idempotencyKey: n.key, data: n.data ?? {} });
+};
+let clinicNotifier: ClinicNotifier = defaultClinicNotifier;
+/** Replaces the sender (tests); returns the previous one. No argument restores the default. */
+export function setClinicNotifier(n?: ClinicNotifier): ClinicNotifier {
+  const prev = clinicNotifier;
+  clinicNotifier = n ?? defaultClinicNotifier;
+  return prev;
+}
+
+/**
+ * Called only after the operation committed. Best effort: a failure is logged by notice kind (never the recipient,
+ * phone numbers or patient details) and never fails or undoes the operation.
+ */
+async function sendClinicNotices(notices: ClinicNotice[]): Promise<void> {
+  for (const n of notices) {
+    try { await clinicNotifier(n); }
+    catch (e) { console.error('clinic notification failed', n.audience, n.type, (e as Error)?.message); }
+  }
+}
+
+const shownDate = (d?: string) => (d && /^\d{8}$/.test(d) ? `${d.slice(6, 8)}/${d.slice(4, 6)}/${d.slice(0, 4)}` : String(d ?? ''));
+const placeOf = (clinicName?: string, branchName?: string) => [clinicName, branchName ? `(${branchName})` : ''].filter(Boolean).join(' ');
+
+/** The notices of a desk appointment event, for the account holder and the doctor (names read after the commit). */
+async function deskNotices(b: IBooking, event: 'booked' | 'moved' | 'cancelled', extra: { reason?: string } = {}): Promise<ClinicNotice[]> {
+  const partnerId = b.clinicDesk?.partnerId ?? b.clinicVisit?.partnerId;
+  const branchId = b.clinicDesk?.branchId ?? b.clinicVisit?.branchId;
+  const [p, br, dep] = await Promise.all([
+    partnerId ? PartnerOrgModel.findById(partnerId).select({ name: 1 }).lean().exec() as Promise<{ name?: string } | null> : null,
+    branchId && Types.ObjectId.isValid(String(branchId)) ? BranchModel.findById(branchId).select({ name: 1 }).lean().exec() as Promise<{ name?: string } | null> : null,
+    b.dependentId && Types.ObjectId.isValid(String(b.dependentId)) ? DependentModel.findById(b.dependentId).select({ name: 1 }).lean().exec() as Promise<{ name?: string } | null> : null,
+  ]);
+  const where = placeOf(p?.name, br?.name);
+  const when = `${shownDate(b.bookingDate)} at ${b.bookingTime}`;
+  const doctor = b.doctorName ? `${b.doctorName}` : 'your doctor';
+  const forWhom = dep?.name ? ` for ${dep.name}` : '';
+  const id = String(b._id);
+  const v = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+  const data = { bookingId: id, bookingDate: b.bookingDate, bookingTime: b.bookingTime, clinicPartnerId: partnerId, branchId, source: 'clinic_desk' };
+  const ref = { referenceType: 'booking' as const, referenceId: id, data };
+  const out: ClinicNotice[] = [];
+  const customer = (type: NotificationType, title: string, message: string, key: string) =>
+    out.push({ audience: 'customer', userId: String(b.userId), type, title, message, key, ...ref });
+  const doc = (type: NotificationType, title: string, message: string, key: string) => {
+    if (b.specialistId) out.push({ audience: 'doctor', userId: String(b.specialistId), type, title, message, key, ...ref });
+  };
+  if (event === 'booked') {
+    customer('booking_confirmed', 'Clinic appointment confirmed', `Your appointment${forWhom} with ${doctor} at ${where} is on ${when}. Pay at the clinic.`,
+      `clinic_desk:${id}:booked:customer`);
+    doc('specialist_new_booking', 'New clinic appointment', `A new appointment was booked with you at ${where} on ${when}.`, `clinic_desk:${id}:booked:doctor`);
+  } else if (event === 'moved') {
+    customer('general', 'Clinic appointment moved', `Your appointment${forWhom} with ${doctor} at ${where} is now on ${when}.`,
+      `clinic_desk:${id}:moved:${v}:customer`);
+    doc('specialist_general', 'Clinic appointment moved', `An appointment with you at ${where} was moved to ${when}.`, `clinic_desk:${id}:moved:${v}:doctor`);
+  } else {
+    const why = extra.reason ? ` Reason: ${extra.reason}` : '';
+    customer('booking_cancelled', 'Clinic appointment cancelled', `Your appointment${forWhom} with ${doctor} at ${where} on ${when} was cancelled by the clinic.${why}`,
+      `clinic_desk:${id}:cancelled:customer`);
+    doc('specialist_appointment_cancelled', 'Clinic appointment cancelled', `An appointment with you at ${where} on ${when} was cancelled by the clinic.`,
+      `clinic_desk:${id}:cancelled:doctor`);
+  }
+  return out;
+}
+
+/** After commit, best effort (building the notices reads names; that failing must not fail the operation either). */
+async function notifyDesk(b: IBooking, event: 'booked' | 'moved' | 'cancelled', extra: { reason?: string } = {}): Promise<void> {
+  let notices: ClinicNotice[] = [];
+  try { notices = await deskNotices(b, event, extra); }
+  catch (e) { console.error('clinic notification failed', event, (e as Error)?.message); return; }
+  await sendClinicNotices(notices);
+}
+
 // ───────────────────────────── Clinic: doctors and invitations ─────────────────────────────
 
 export async function listClinicDoctors(actor: PartnerActor) {
@@ -125,6 +214,12 @@ export async function inviteDoctor(actor: PartnerActor, input: { doctorId?: stri
       await audit(actor, 'clinic.doctor_invited', { kind: 'clinic_doctor_invite', id: String(inv!._id) }, { doctorId, branchIds }, s);
       return inv!.toObject() as IClinicDoctorInvite;
     });
+    // Q14: the doctor hears of the invitation in their portal notifications (after the commit, best effort).
+    const clinicName = (await PartnerOrgModel.findById(actor.partnerId).select({ name: 1 }).lean().catch(() => null) as { name?: string } | null)?.name;
+    await sendClinicNotices([{ audience: 'doctor', userId: doctorId, type: 'specialist_general', title: 'Clinic invitation',
+      message: `${clinicName ?? 'A clinic'} invited you to consult with them. Accept or decline it under My clinics.`,
+      referenceType: 'clinic_doctor_invite', referenceId: String(invite._id), key: `clinic_invite:${String(invite._id)}:doctor`,
+      data: { inviteId: String(invite._id), partnerId: actor.partnerId } }]);
     return { invite, doctor: { doctorId, name: sp.name, specialization: sp.specialization }, created: true };
   } catch (e: any) {
     if (e?.code !== 11000) throw e;
@@ -269,7 +364,31 @@ export async function deskSlots(actor: PartnerActor, q: { doctorId: string; bran
       seatsLeft: Number(s.maxBookings ?? 1) - Number(s.currentBookings ?? 0) }));
 }
 
-export interface DeskBookingInput { slotId: string; customer: { phone: string; name?: string }; notes?: string; requestKey: string }
+/**
+ * Q14: who is seen — omitted = the account holder; an existing family member of the account (`dependentId`); or a new
+ * family member created under the account with this appointment (an active one with the same name and relation is
+ * used as it is, never changed).
+ */
+export type DeskPatientInput = { dependentId: string } | { name: string; relation: string; gender?: 'Male' | 'Female' | 'Other'; dateOfBirth?: string };
+export interface DeskBookingInput { slotId: string; customer: { phone: string; name?: string }; patient?: DeskPatientInput; notes?: string; requestKey: string }
+
+const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/** Q14: the patient choice as part of the desk request identity (absent = as before, so older keys keep their hash). */
+function patientIdentity(p?: DeskPatientInput) {
+  if (!p) return undefined;
+  if ('dependentId' in p) return { dependentId: String(p.dependentId).toLowerCase() };
+  return { name: p.name.trim().replace(/\s+/g, ' '), relation: p.relation, gender: p.gender ?? null, dateOfBirth: p.dateOfBirth ?? null };
+}
+const dependentNotFound = () => err(404, 'DEPENDENT_NOT_FOUND', 'Family member not found');
+
+/** Q14: an existing family member named at the desk must belong to the account of this mobile (checked before any customer is created). */
+async function assertDependentOfPhone(dependentId: string, phone: string) {
+  if (!Types.ObjectId.isValid(dependentId)) throw dependentNotFound();
+  const dep = await DependentModel.findOne({ _id: dependentId, isActive: true }).select({ userId: 1 }).lean() as { userId?: string } | null;
+  if (!dep?.userId || !Types.ObjectId.isValid(String(dep.userId))) throw dependentNotFound();
+  const u = await UserModel.findOne({ _id: dep.userId, userType: 'user' }).select({ phone: 1 }).lean() as { phone?: string } | null;
+  if (!u?.phone || canonicalMobile(u.phone) !== canonicalMobile(phone)) throw dependentNotFound();
+}
 
 /** Q13: request-key scope of desk appointments, per clinic and desk member (claimed in the booking transaction). */
 export const deskKeyScope = (actor: PartnerActor) => `clinic_desk_create:${String(actor.partnerId).toLowerCase()}:${String(actor.memberId).toLowerCase()}`;
@@ -296,8 +415,10 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
   if (!sp) throw err(409, 'SLOT_NOT_AVAILABLE', 'Slot is not available');
   // Exactly once per (desk member, request key), whatever customer or slot a repeat names (unique clinicDesk.requestKey).
   const requestKey = storedDeskKey(actor, input.requestKey);
+  const patientKey = patientIdentity(input.patient);
   const requestHash = createHash('sha256').update(JSON.stringify({ slotId: String(slot._id).toLowerCase(),
-    phone: canonicalMobile(input.customer.phone) ?? input.customer.phone, notes: input.notes?.trim() || null })).digest('hex');
+    phone: canonicalMobile(input.customer.phone) ?? input.customer.phone, notes: input.notes?.trim() || null,
+    ...(patientKey ? { patient: patientKey } : {}) })).digest('hex');
   // Q13: a slot that has already started is refused, here and again inside the booking transaction.
   const desk: DeskScope = { ...deskScopeOf(actor), refuseStartedClock: readClock };
   const asReceipt = (prior: IBooking) => {
@@ -311,16 +432,35 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
     return prior ? asReceipt(prior) : null;
   };
   const prior = await replay();
-  if (prior) return { booking: deskView(prior), customer: { userId: String(prior.userId), phone: canonicalMobile(input.customer.phone), created: false }, replayed: true };
+  if (prior) return { booking: deskView(prior), customer: { userId: String(prior.userId), phone: canonicalMobile(input.customer.phone), created: false },
+    patient: await patientView(prior, false), replayed: true };
   // Q13: refused before a customer is resolved or created (the in-transaction claim and slot admission decide finally).
   if (await RequestKeyModel.exists({ scope: deskKeyScope(actor), key: input.requestKey, state: 'abandoned' })) {
     throw err(409, 'REQUEST_ABANDONED', 'This request was cancelled before it was recorded; make a new one');
   }
   const startsAt = slotIntervalOf(slot)?.start;
   if (!startsAt || startsAt.getTime() <= readClock().getTime()) throw err(409, 'SLOT_STARTED', 'This slot has already started; choose a later one');
+  if (input.patient && 'dependentId' in input.patient) await assertDependentOfPhone(String(input.patient.dependentId), input.customer.phone);
   const customer = await resolveCustomerByPhone(input.customer.phone, 'clinic_desk');
   const name = input.customer.name?.trim();
   if (name) await UserModel.updateOne({ _id: customer._id, $or: [{ name: { $exists: false } }, { name: null }, { name: '' }] }, { $set: { name } });
+  // Q14: the family member being seen. A new one is created inside the booking transaction (with a pre-chosen id).
+  let dependentId: string | undefined;
+  let newDependent: Record<string, unknown> | undefined;
+  if (input.patient && 'dependentId' in input.patient) {
+    dependentId = String(input.patient.dependentId).toLowerCase();
+  } else if (input.patient) {
+    const p = input.patient;
+    const depName = p.name.trim().replace(/\s+/g, ' ');
+    const same = await DependentModel.findOne({ userId: customer._id, isActive: true, relationship: p.relation,
+      name: { $regex: `^${escapeRx(depName)}$`, $options: 'i' } }).select({ _id: 1 }).lean() as { _id: unknown } | null;
+    if (same) dependentId = String(same._id);
+    else {
+      dependentId = new Types.ObjectId().toHexString();
+      newDependent = { _id: dependentId, userId: customer._id, name: depName, relationship: p.relation, isActive: true,
+        ...(p.gender ? { gender: p.gender } : {}), ...(p.dateOfBirth ? { dateOfBirth: ymd(p.dateOfBirth) } : {}) };
+    }
+  }
   const fee = Number(sp.consultationFee) > 0 ? Number(sp.consultationFee) : 0;
   let booking: IBooking;
   try {
@@ -330,30 +470,49 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
       bookingDate: slot.date, bookingTime: slot.startTime, consultationMode: 'in-person', serviceMode: 'in-person', price: fee, originalPrice: fee,
       status: 'confirmed', paymentStatus: 'pending',
       clinicDesk: { partnerId: actor.partnerId, branchId: String(branch._id), createdBy: actor.memberId, requestKey, requestHash },
+      ...(dependentId ? { dependentId } : {}),
       ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),
     } as IBooking, async (b, s) => {
       // Q13: the key is claimed with the appointment, so a desk's give-up of a lost answer and this booking cannot both win.
       await claimRequestKey(deskKeyScope(actor), input.requestKey, s);
+      // Q14: the family member is the account's, active, as read in this transaction; a new one commits with the booking.
+      if (newDependent) await DependentModel.create([newDependent], { session: s });
+      else if (dependentId && !(await DependentModel.exists({ _id: dependentId, userId: customer._id, isActive: true }).session(s))) throw dependentNotFound();
       await audit(actor, 'clinic.appointment_booked', { kind: 'booking', id: String(b._id) },
-        { doctorId: String(slot.specialistId), branchId: b.clinicDesk?.branchId, slotId: String(slot._id), customerCreated: customer.created }, s);
+        { doctorId: String(slot.specialistId), branchId: b.clinicDesk?.branchId, slotId: String(slot._id), customerCreated: customer.created,
+          ...(dependentId ? { dependentId, dependentCreated: !!newDependent } : {}) }, s);
     }, desk);
   } catch (e: any) {
     // A racing identical request may have committed first (seat taken, or the unique key): answer with its receipt.
     const raced = await replay();
     if (!raced) throw e;
-    return { booking: deskView(raced), customer: { userId: String(raced.userId), phone: customer.phone, created: false }, replayed: true };
+    return { booking: deskView(raced), customer: { userId: String(raced.userId), phone: customer.phone, created: false },
+      patient: await patientView(raced, false), replayed: true };
   }
   if (isReplayedBooking(booking)) {
     const r = asReceipt(booking);
-    return { booking: deskView(r), customer: { userId: String(r.userId), phone: customer.phone, created: false }, replayed: true };
+    return { booking: deskView(r), customer: { userId: String(r.userId), phone: customer.phone, created: false },
+      patient: await patientView(r, false), replayed: true };
   }
-  return { booking: deskView(booking), customer: { userId: customer._id, phone: customer.phone, created: customer.created }, replayed: false };
+  // Q14: the customer and the doctor are told, after the commit and best effort.
+  await notifyDesk(booking, 'booked');
+  return { booking: deskView(booking), customer: { userId: customer._id, phone: customer.phone, created: customer.created },
+    patient: await patientView(booking, !!newDependent), replayed: false };
+}
+
+/** Q14: the person being seen on a desk answer (null = the account holder). */
+async function patientView(b: IBooking, created: boolean) {
+  if (!b.dependentId) return null;
+  const d = await DependentModel.findById(b.dependentId).select({ name: 1, relationship: 1 }).lean() as { name?: string; relationship?: string } | null;
+  return { dependentId: String(b.dependentId), name: d?.name ?? null, relationship: d?.relationship ?? null, created };
 }
 
 function deskView(b: IBooking) {
   return { bookingId: String(b._id), bookingDate: b.bookingDate, bookingTime: b.bookingTime, status: b.status, doctorId: b.specialistId,
     doctorName: b.doctorName, branchId: b.clinicDesk?.branchId, slotId: b.slotId, consultationMode: b.consultationMode, fee: b.price,
     payAtClinic: b.settlementSystem === 'clinic', arrivedAt: b.clinicDesk?.arrivedAt,
+    // Q14: the family member being seen (null = the account holder).
+    dependentId: b.dependentId ?? null,
     // Q13: the version a desk step names (`expectedUpdatedAt`) to refuse acting on a stale view.
     updatedAt: b.updatedAt };
 }
@@ -416,6 +575,8 @@ export async function listClinicAppointments(actor: PartnerActor, q: { from: str
   const depIds = [...new Set(rows.map((r) => (r as { dependentId?: string }).dependentId).filter((d): d is string => !!d && Types.ObjectId.isValid(d)))];
   const deps = depIds.length ? await DependentModel.find({ _id: { $in: depIds } }).select({ name: 1, relationship: 1 }).lean() as any[] : [];
   const dById = new Map(deps.map((d) => [String(d._id), d]));
+  // Q14: the bill of each appointment (its open bill, else the latest cancelled one).
+  const bills = await billsForAppointments(actor.partnerId, rows.map((r) => String(r._id)));
   return rows.map((r) => {
     const account = uById.get(String(r.userId));
     const dep = (r as { dependentId?: string }).dependentId ? dById.get(String((r as { dependentId?: string }).dependentId)) : undefined;
@@ -423,7 +584,9 @@ export async function listClinicAppointments(actor: PartnerActor, q: { from: str
       ...deskView(r), branchId: r.clinicDesk?.branchId ?? r.clinicVisit?.branchId,
       source: r.clinicDesk ? 'desk' : 'online', paidOnline: r.settlementSystem !== 'clinic' && r.paymentStatus === 'paid',
       // The person being seen (a family member when booked for one); the account holder's mobile is the contact.
-      patient: { name: dep?.name ?? account?.name, relationship: dep?.relationship, accountName: dep ? account?.name : undefined, phone: account?.phone },
+      patient: { name: dep?.name ?? account?.name, relationship: dep?.relationship, accountName: dep ? account?.name : undefined, phone: account?.phone,
+        dependentId: dep ? String(dep._id) : null },
+      bill: bills.get(String(r._id).toLowerCase()) ?? null,
     };
   });
 }
@@ -469,6 +632,7 @@ export async function cancelDeskAppointment(actor: PartnerActor, bookingId: stri
     wallets: new WalletRepository(), enforceWindow: () => undefined, lifecycle: (x) => x.lifecycle,
     inTx: (x, s) => audit(actor, 'clinic.appointment_cancelled', { kind: 'booking', id: String(x._id) }, { reason: why }, s),
   });
+  if (!r.alreadyCancelled) await notifyDesk(r.booking, 'cancelled', { reason: why });
   return deskView(r.booking);
 }
 
@@ -486,6 +650,7 @@ export async function rescheduleDeskAppointment(actor: PartnerActor, bookingId: 
     patch: { bookingDate: slot.date },
     inTx: (x, s) => audit(actor, 'clinic.appointment_rescheduled', { kind: 'booking', id: String(x._id) }, { slotId: String(slot._id) }, s),
   });
+  await notifyDesk(updated, 'moved');
   return deskView(updated);
 }
 

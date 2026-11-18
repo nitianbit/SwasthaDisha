@@ -9,7 +9,8 @@ type EarningBooking = {
 /**
  * Q4 §7: a consultation settled by the ledger earns the doctor its price before coupons (coupons are platform-funded,
  * as for partner labs), commission 0, once per booking, inside the caller's transaction. Legacy bookings are never
- * touched here (the legacy payouts own them); unpaid bookings earn nothing.
+ * touched here (the legacy payouts own them); unpaid bookings earn nothing. Called on completion only: a no-show
+ * earns nothing (Q14, owner 18 Nov 2026).
  */
 export async function postConsultationEarningIn(b: EarningBooking, s: ClientSession, actor: { by: string; byKind: 'system' | 'admin' }): Promise<void> {
   if (b.settlementSystem !== 'ledger' || b.paymentStatus !== 'paid' || !b.specialistId) return;

@@ -38,7 +38,8 @@ export class InvoiceRepository extends BaseRepository<IInvoice> {
   ): Promise<IInvoice | null> {
     return InvoiceModel.findOneAndUpdate(
       { _id: invoiceId, partnerId, lifecycleVersion: expectedVersion, lifecycleState: expectedState },
-      { $set: { lifecycleVersion: expectedVersion + 1, lifecycleState: newState } },
+      // Q14: a cancelled bill no longer holds its appointment (a new bill may be issued for it).
+      { $set: { lifecycleVersion: expectedVersion + 1, lifecycleState: newState }, ...(newState === 'cancelled' ? { $unset: { openAppointmentId: 1 } } : {}) },
       { new: true, session }
     ).lean();
   }

@@ -58,6 +58,13 @@ export interface IInvoice {
   supplier: IInvoiceSupplier;
   customer: IInvoiceCustomer;
   doctorId?: string;
+  /** Q14: the clinic appointment (booking id, lower-case hex) this bill is for; part of the document and its checksum. */
+  appointmentId?: string;
+  /**
+   * Q14: equals appointmentId while the bill is not cancelled (unset by the cancellation), so at most one open bill per
+   * appointment (unique partial index). Bookkeeping only: not part of the checksum.
+   */
+  openAppointmentId?: string;
   items: IInvoiceLine[];
   totals: IInvoiceTotals;
   lifecycleState: InvoiceLifecycleState;

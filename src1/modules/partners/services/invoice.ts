@@ -27,6 +27,8 @@ import { SMSService } from '@/modules/sms/services';
 import { CONFIG } from '@/config/config';
 import { renderInvoicePdf } from '@/modules/partners/services/invoicePdf';
 import SpecialistModel from '@/modules/specialists/model';
+import BookingModel from '@/modules/bookings/model';
+import { IBooking } from '@/modules/bookings/types';
 
 /** Q10: request-key scope of partner bills (claim/abandon). */
 export const invoiceKeyScope = (partnerId: string) => `partner_invoice_create:${String(partnerId).toLowerCase()}`;
@@ -47,11 +49,59 @@ export interface CreateInvoiceInput {
   branchId: string;
   customer: { name: string; phone?: string; gstin?: string; age?: number; gender?: string; placeOfSupply?: string };
   doctorId?: string;
+  /** Q14: the clinic appointment (booking id) this bill is for. */
+  appointmentId?: string;
   items: { catalogItemId?: string; description: string; hsn?: string; sac?: string; qty: number; unitPriceMinor: number; discountMinor?: number; gstRate: GstRate }[];
   idempotencyKey: string;
 }
 
 const invoiceNotFound = () => new AppError({ status: 404, code: 'INVOICE_NOT_FOUND', message: 'Invoice not found' });
+const alreadyBilled = () => new AppError({ status: 409, code: 'APPOINTMENT_ALREADY_BILLED', message: 'This appointment already has a bill; cancel it first to issue a new one' });
+const lowerId = (v?: unknown) => (v === undefined || v === null ? undefined : String(v).toLowerCase());
+
+/**
+ * Q14: the appointment a bill names must be an in-clinic consultation at this partner (its desk clinic, or the clinic of
+ * its visit), at a branch in the actor's scope and at the bill's branch, with the bill's doctor (when named), not
+ * cancelled, and without another open bill. Read again inside the bill's transaction; the unique partial index on
+ * `openAppointmentId` decides a race.
+ */
+async function admitAppointment(actor: PartnerActor, data: Pick<CreateInvoiceInput, 'appointmentId' | 'branchId' | 'doctorId'>,
+  session?: mongoose.ClientSession): Promise<string> {
+  const id = lowerId(data.appointmentId)!;
+  const notFound = () => new AppError({ status: 404, code: 'APPOINTMENT_NOT_FOUND', message: 'Appointment not found' });
+  if (!/^[0-9a-f]{24}$/.test(id)) throw notFound();
+  const b = await BookingModel.findById(id).session(session ?? null).lean() as IBooking | null;
+  if (!b || b.bookingType !== 'consultation') throw notFound();
+  // Desk rows belong to their desk clinic only; online rows to the clinic of the visit (as the appointment list reads them).
+  const at = b.clinicDesk ?? b.clinicVisit;
+  if (!at || lowerId(at.partnerId) !== lowerId(actor.partnerId)) throw notFound();
+  if (!hasGlobalScope(actor) && !actor.branchIds.map(String).includes(String(at.branchId))) throw notFound();
+  if (String(at.branchId) !== String(data.branchId)) {
+    throw new AppError({ status: 400, code: 'APPOINTMENT_BRANCH_MISMATCH', message: 'Bill the appointment from the branch where it takes place' });
+  }
+  if (data.doctorId && lowerId(data.doctorId) !== lowerId(b.specialistId)) {
+    throw new AppError({ status: 400, code: 'APPOINTMENT_DOCTOR_MISMATCH', message: 'The bill names a different doctor than the appointment' });
+  }
+  if (b.status === 'cancelled') throw new AppError({ status: 409, code: 'APPOINTMENT_CANCELLED', message: 'A cancelled appointment cannot be billed' });
+  if (await InvoiceModel.exists({ openAppointmentId: id }).session(session ?? null)) throw alreadyBilled();
+  return id;
+}
+
+/** Q14: the open bill of each appointment, else its latest cancelled one (for the clinic appointment rows). */
+export async function billsForAppointments(partnerId: string, appointmentIds: string[]) {
+  const ids = [...new Set(appointmentIds.map((a) => String(a).toLowerCase()))];
+  const out = new Map<string, { invoiceId: string; serial: string; number: number; state: InvoiceLifecycleState }>();
+  if (!ids.length) return out;
+  const rows = await InvoiceModel.find({ partnerId, appointmentId: { $in: ids } }).sort({ issuedAt: -1, _id: -1 })
+    .select({ appointmentId: 1, serial: 1, number: 1, lifecycleState: 1 }).lean() as unknown as IInvoice[];
+  for (const r of rows) {
+    const k = String(r.appointmentId);
+    const cur = out.get(k);
+    if (cur && (cur.state !== 'cancelled' || r.lifecycleState === 'cancelled')) continue;
+    out.set(k, { invoiceId: String(r._id), serial: r.serial, number: r.number, state: r.lifecycleState });
+  }
+  return out;
+}
 
 /** Stable JSON: sorted keys, no undefined/null, dates as ISO strings. */
 export function canonicalJson(value: unknown): string {
@@ -76,12 +126,12 @@ const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 
 /** Every field of the issued document (identity, parties, lines, totals, provenance). */
 export function invoiceChecksum(inv: Pick<IInvoice, 'partnerId' | 'branchId' | 'number' | 'financialYear' | 'serial' | 'documentKind'
-  | 'issuedAt' | 'supplier' | 'customer' | 'doctorId' | 'items' | 'totals' | 'createdBy' | 'idempotencyKey' | 'requestHash'>): string {
+  | 'issuedAt' | 'supplier' | 'customer' | 'doctorId' | 'appointmentId' | 'items' | 'totals' | 'createdBy' | 'idempotencyKey' | 'requestHash'>): string {
   return sha256(canonicalJson({
     v: 1,
     partnerId: String(inv.partnerId), branchId: String(inv.branchId), number: inv.number, financialYear: inv.financialYear,
     serial: inv.serial, documentKind: inv.documentKind, issuedAt: new Date(inv.issuedAt), supplier: inv.supplier,
-    customer: inv.customer, doctorId: inv.doctorId, items: inv.items, totals: inv.totals, createdBy: inv.createdBy,
+    customer: inv.customer, doctorId: inv.doctorId, appointmentId: inv.appointmentId, items: inv.items, totals: inv.totals, createdBy: inv.createdBy,
     idempotencyKey: inv.idempotencyKey, requestHash: inv.requestHash,
   }));
 }
@@ -217,6 +267,8 @@ export class InvoiceService {
     const requestHash = sha256(canonicalJson({
       branchId: data.branchId, customer: { ...data.customer, phone: data.customer.phone ? normalizePhone(data.customer.phone) : undefined },
       doctorId: data.doctorId, items: data.items,
+      // Q14: the appointment is part of the request identity (absent = as before, so older keys keep their hash).
+      appointmentId: lowerId(data.appointmentId),
     }));
     const replay = await this.replayed(actor, data.idempotencyKey, requestHash);
     if (replay) return replay;
@@ -243,6 +295,9 @@ export class InvoiceService {
         throw new AppError({ status: 400, code: 'DOCTOR_NOT_AT_BRANCH', message: 'The doctor does not consult at this branch' });
       }
     }
+
+    // Q14: refused early here; admitted again inside the transaction.
+    if (data.appointmentId) await admitAppointment(actor, data);
 
     const catalogueIds = [...new Set(data.items.map((i) => i.catalogItemId).filter(Boolean).map(String))];
     const catalogue = new Map<string, { name: string }>();
@@ -295,6 +350,7 @@ export class InvoiceService {
       await session.withTransaction(async () => {
         // Q10: the key is claimed with the bill, so a reloaded client's abandon and this create cannot both win.
         await claimRequestKey(invoiceKeyScope(actor.partnerId), data.idempotencyKey, session);
+        const appointmentId = data.appointmentId ? await admitAppointment(actor, data, session) : undefined;
         const issuedAt = new Date();
         const fy = financialYearOf(issuedAt);
         const seq = await this.invoiceCounterRepository.nextSequence(actor.partnerId, fy, session);
@@ -309,6 +365,7 @@ export class InvoiceService {
           supplier,
           customer,
           doctorId: data.doctorId,
+          ...(appointmentId ? { appointmentId, openAppointmentId: appointmentId } : {}),
           items: lines,
           totals,
           lifecycleState: 'issued',
@@ -320,13 +377,16 @@ export class InvoiceService {
         doc.checksum = invoiceChecksum(doc as IInvoice);
         invoice = await this.invoiceRepository.save(doc, { session });
         await recordPartnerAudit(actor, 'invoice.create', { kind: 'invoice', id: String(invoice._id) },
-          { serial: doc.serial, totalMinor: totals.totalMinor }, session);
+          { serial: doc.serial, totalMinor: totals.totalMinor, ...(appointmentId ? { appointmentId } : {}) }, session);
       });
     } catch (error: any) {
-      if (error?.code === 11000 && error?.keyPattern?.idempotencyKey) {
+      // A racing identical request may have committed first (key, or the appointment's open bill): answer with its bill.
+      const billedRace = error?.code === 'APPOINTMENT_ALREADY_BILLED' || (error?.code === 11000 && error?.keyPattern?.openAppointmentId);
+      if ((error?.code === 11000 && error?.keyPattern?.idempotencyKey) || billedRace) {
         const again = await this.replayed(actor, data.idempotencyKey, requestHash);
         if (again) return again;
       }
+      if (billedRace) throw alreadyBilled();
       throw error;
     } finally {
       await session.endSession();
@@ -480,9 +540,10 @@ export class InvoiceService {
    * search on serial / customer name / phone, and the total matching count.
    */
   async listInvoicesPage(actor: PartnerActor, filter: { state?: InvoiceLifecycleState; branchId?: string; limit?: number; cursor?: string;
-    from?: string; to?: string; q?: string }): Promise<{ items: IInvoice[]; nextCursor: string | null; total: number }> {
+    from?: string; to?: string; q?: string; appointmentId?: string }): Promise<{ items: IInvoice[]; nextCursor: string | null; total: number }> {
     const query: any = { partnerId: actor.partnerId };
     if (filter.state) query.lifecycleState = filter.state;
+    if (filter.appointmentId) query.appointmentId = lowerId(filter.appointmentId);
     if (filter.branchId) { assertBranchInScope(actor, filter.branchId); query.branchId = filter.branchId; }
     else if (!hasGlobalScope(actor)) query.branchId = { $in: actor.branchIds };
     if (filter.from || filter.to) {
@@ -511,9 +572,11 @@ export class InvoiceService {
     return { items, total, nextCursor: rows.length > limit && last ? `${new Date(last.issuedAt).getTime()}_${String(last._id)}` : null };
   }
 
-  async listInvoices(actor: PartnerActor, filter: { state?: InvoiceLifecycleState; branchId?: string; limit?: number; before?: Date }): Promise<IInvoice[]> {
+  async listInvoices(actor: PartnerActor, filter: { state?: InvoiceLifecycleState; branchId?: string; limit?: number; before?: Date;
+    appointmentId?: string }): Promise<IInvoice[]> {
     const query: any = { partnerId: actor.partnerId };
     if (filter.state) query.lifecycleState = filter.state;
+    if (filter.appointmentId) query.appointmentId = lowerId(filter.appointmentId);
     if (filter.branchId) {
       assertBranchInScope(actor, filter.branchId);
       query.branchId = filter.branchId;

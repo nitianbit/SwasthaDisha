@@ -1565,7 +1565,7 @@ export class BookingService {
 
   /**
    * Q4: the patient did not attend a paid consultation: confirmed → no_show after the appointment time (no refund). The
-   * doctor's interval is freed and, for a ledger booking, the doctor earns it in the same transaction.
+   * doctor's interval is freed; the doctor earns nothing for it (Q14).
    */
   async markNoShow(bookingId: string, requester: { _id: string; userType: 'specialist' | 'admin' }, now = new Date()): Promise<IBooking> {
     if (!Types.ObjectId.isValid(bookingId)) throw new AppError({ status: 404, code: 'BOOKING_NOT_FOUND', message: 'Booking not found' });
@@ -1583,8 +1583,8 @@ export class BookingService {
       if (!done) throw new AppError({ status: 409, code: 'BOOKING_CHANGED', message: 'Booking changed; please retry' });
       await releaseInterval('scheduled', String(bookingId).toLowerCase(), session);
       await releaseInterval('instant', String(bookingId).toLowerCase(), session);
-      await postConsultationEarningIn(done, session, { by: requester.userType === 'admin' ? `admin:${requester._id}` : 'system',
-        byKind: requester.userType === 'admin' ? 'admin' : 'system' });
+      // Q14 (owner, 18 Nov 2026): the doctor is not paid for a no-show (the customer is still not refunded; the platform
+      // keeps the money). Completion remains the only consultation earning. Earnings posted before this rule stay as they are.
       return done;
     });
     try { await this.bookingReminderScheduler.clearBookingReminders(updated._id!); }

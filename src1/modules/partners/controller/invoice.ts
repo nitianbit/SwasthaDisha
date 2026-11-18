@@ -29,13 +29,13 @@ export const listPartnerInvoices = async (req: Request, res: Response, _next: Ne
     // Legacy `before` (Joi already made it a Date — keep its milliseconds).
     const before = q.before instanceof Date ? q.before : new Date(String(q.before));
     const data = await service().listInvoices(actorOf(req), { state: q.state as any, branchId: q.branchId as string | undefined,
-      limit: q.limit ? Number(q.limit) : undefined, before });
+      limit: q.limit ? Number(q.limit) : undefined, before, appointmentId: q.appointmentId as string | undefined });
     res.status(200).json({ success: true, data });
     return;
   }
   const r = await service().listInvoicesPage(actorOf(req), { state: q.state as any, branchId: q.branchId as string | undefined,
     limit: q.limit ? Number(q.limit) : undefined, cursor: q.cursor as string | undefined, from: q.from as string | undefined,
-    to: q.to as string | undefined, q: q.q as string | undefined });
+    to: q.to as string | undefined, q: q.q as string | undefined, appointmentId: q.appointmentId as string | undefined });
   res.status(200).json({ success: true, data: r.items, pagination: { total: r.total, nextCursor: r.nextCursor } });
 };
 

@@ -190,7 +190,7 @@ async function main() {
     await assert.rejects(() => bookings.update(String(b._id), { status: 'no_show' } as any), code('DEDICATED_BOOKING_COMMAND_REQUIRED'));
   });
 
-  await check('no-show only after the appointment, frees the interval, no refund; ledger bookings earn once', async () => {
+  await check('no-show only after the appointment, frees the interval, no refund, no earning (Q14); completion earns once', async () => {
     (CONFIG as any).SETTLEMENT_CUTOVER_AT = new Date(Date.now() - 60_000).toISOString();
     try {
       const s1 = await slot(docA, 6, '10:00', '10:30');
@@ -204,7 +204,7 @@ async function main() {
       assert.equal(ns.status, 'no_show');
       assert.equal(await DoctorReservationModel.countDocuments({ refId: String(b._id).toLowerCase(), isActive: true }), 0);
       const e = await LedgerEntryModel.find({ source: 'consultation', sourceId: String(b._id) }).lean();
-      assert.deepEqual(e.map((x) => [x.kind, x.amountMinor]), [['earning', 50000]], 'earns the pre-coupon price');
+      assert.deepEqual(e.map((x) => [x.kind, x.amountMinor]), [], 'Q14: a no-show earns the doctor nothing');
       await assert.rejects(() => bookings.markNoShow(String(b._id), { _id: docA, userType: 'specialist' }, later), code('BOOKING_STATE_CONFLICT'));
 
       const s2 = await slot(docA, 6, '11:00', '11:30');

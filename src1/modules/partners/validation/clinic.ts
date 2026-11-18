@@ -20,9 +20,27 @@ export const appointmentsQuerySchema = Joi.object({
   status: Joi.string().valid('pending', 'confirmed', 'completed', 'cancelled', 'no_show').optional(),
 });
 
+/** Q14: family relations a desk may record (the dependents module's list; 'Me' is the account holder = no patient). */
+export const DESK_RELATIONS = ['Father', 'Mother', 'Spouse', 'Wife', 'Husband', 'Son', 'Daughter', 'Brother', 'Sister', 'Friend', 'Grandfather', 'Grandmother', 'Other'];
+const pastRealDate = isoDate.custom((v: string, h) => {
+  const d = new Date(`${v}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v && d.getTime() <= Date.now() ? v : h.error('any.invalid');
+}).messages({ 'any.invalid': 'dateOfBirth must be a real date, not in the future' });
+export const deskPatientSchema = Joi.alternatives().try(
+  Joi.object({ dependentId: objectId.required() }),
+  Joi.object({
+    name: Joi.string().trim().min(1).max(200).required(),
+    relation: Joi.string().valid(...DESK_RELATIONS).required(),
+    gender: Joi.string().valid('Male', 'Female', 'Other').optional(),
+    dateOfBirth: pastRealDate.optional(),
+  }),
+);
+
 export const deskBookingSchema = Joi.object({
   slotId: objectId.required(),
   customer: Joi.object({ phone: Joi.string().trim().max(20).required(), name: Joi.string().trim().max(120).optional() }).required(),
+  /** Q14: omitted = the account holder; an existing family member; or a new family member of the account. */
+  patient: deskPatientSchema.optional(),
   notes: Joi.string().trim().max(1000).allow('').optional(),
   requestKey: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).required(),
 });
