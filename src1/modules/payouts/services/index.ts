@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import fs from 'fs';
 import path from 'path';
 import { CONFIG } from '@/config/config';
-import { BookingRepository } from '@/modules/bookings/repository';
+import { BookingRepository, EXCLUDE_Q14_NO_SHOWS } from '@/modules/bookings/repository';
 import BookingModel from '@/modules/bookings/model';
 import { SpecialistRepository } from '@/modules/specialists/repository';
 import {
@@ -128,6 +128,7 @@ export class PayoutService {
           settlementSystem: { $nin: ['ledger', 'clinic'] },
           paymentStatus: 'paid',
           status: { $ne: 'cancelled' },
+          ...EXCLUDE_Q14_NO_SHOWS,
           bookingDate: {
             $gte: from,
             $lte: to,

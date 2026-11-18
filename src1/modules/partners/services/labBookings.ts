@@ -511,6 +511,11 @@ export class LabBookingService {
     const after = await runLedgerTransaction(async (s) => {
       const b = await this.scopedBooking(actor, id, s);
       if (b.status !== 'confirmed') throw err(409, 'LAB_BOOKING_STATE_CONFLICT', `A ${b.status} booking cannot be rescheduled`);
+      // Q14 review: a booking moved after a no-show was moved once already. An ordinary proposal would let the customer
+      // cancel it for a refund, which a moved no-show never gets, so it is refused.
+      if ((b.noShows?.length ?? 0) > 0) {
+        throw err(409, 'NO_SHOW_RESCHEDULE_USED', 'This booking was already moved once after a no-show; it cannot be moved again');
+      }
       this.assertVersion(b, expectedVersion);
       if (String(newSlotId) === String(b.slot.slotId)) throw err(409, 'SAME_SLOT', 'Pick a different slot');
       const slot = await takeSeat(newSlotId, { partnerId: b.partnerId, branchId: b.branchId, visitMode: b.visitMode, minStart: now }, s);
@@ -677,8 +682,11 @@ export class LabBookingService {
       process: 'Your sample is being processed.', complete: 'Your lab booking is complete.',
     };
     if (messages[command]) {
+      // Q14 review: a booking can be a no-show twice (once before its one move); the second notice gets its own key (the
+      // first keeps the pre-Q14 key).
+      const occurrence = command === 'no_show' ? (after.noShows?.length ?? 0) + 1 : 1;
       await this.notify({ userId: after.userId, type: 'general', title: 'Lab booking update', message: messages[command]!,
-        bookingId: id, key: `plb:${id}:${command}` });
+        bookingId: id, key: `plb:${id}:${command}${occurrence > 1 ? `:${occurrence}` : ''}` });
     }
     return partnerView(after);
   }

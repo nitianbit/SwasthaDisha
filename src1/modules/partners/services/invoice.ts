@@ -29,6 +29,7 @@ import { CONFIG } from '@/config/config';
 import { renderInvoicePdf } from '@/modules/partners/services/invoicePdf';
 import SpecialistModel from '@/modules/specialists/model';
 import BookingModel from '@/modules/bookings/model';
+import UserModel from '@/modules/user/model';
 import { IBooking } from '@/modules/bookings/types';
 
 /** Q10: request-key scope of partner bills (claim/abandon). */
@@ -83,6 +84,17 @@ export interface RecordPaymentInput {
   /** Q14: the bill's lifecycleVersion the cashier decided on (409 LIFECYCLE_VERSION_CONFLICT otherwise). */
   expectedLifecycleVersion?: number;
 }
+/**
+ * Q14 review: the unique `{invoiceId, kind}` index of the events before Q14 (one payment per bill). `sync-indexes` drops
+ * it; until then a second payment collides on it. The Q14 cancellation index has the same keys but covers only
+ * cancellations, so a duplicate on a payment event (or under the old name) is the old index.
+ */
+const PRE_Q14_EVENT_INDEX = 'invoiceId_1_kind_1';
+function fromPreQ14PaymentIndex(error: any): boolean {
+  if (typeof error?.message === 'string' && error.message.includes(`index: ${PRE_Q14_EVENT_INDEX} `)) return true;
+  const kp = error?.keyPattern;
+  return !!kp && Object.keys(kp).length === 2 && kp.invoiceId === 1 && kp.kind === 1 && error?.keyValue?.kind === 'payment';
+}
 const paymentKeyScope = (invoiceId: string) => `invoice_payment:${String(invoiceId).toLowerCase()}`;
 const lowerId = (v?: unknown) => (v === undefined || v === null ? undefined : String(v).toLowerCase());
 
@@ -93,7 +105,7 @@ const lowerId = (v?: unknown) => (v === undefined || v === null ? undefined : St
  * `openAppointmentId` decides a race.
  */
 async function admitAppointment(actor: PartnerActor, data: Pick<CreateInvoiceInput, 'appointmentId' | 'branchId' | 'doctorId'>,
-  session?: mongoose.ClientSession): Promise<string> {
+  customerUserId: string | null | undefined, session?: mongoose.ClientSession): Promise<string> {
   const id = lowerId(data.appointmentId)!;
   const notFound = () => new AppError({ status: 404, code: 'APPOINTMENT_NOT_FOUND', message: 'Appointment not found' });
   if (!/^[0-9a-f]{24}$/.test(id)) throw notFound();
@@ -109,9 +121,36 @@ async function admitAppointment(actor: PartnerActor, data: Pick<CreateInvoiceInp
   if (data.doctorId && lowerId(data.doctorId) !== lowerId(b.specialistId)) {
     throw new AppError({ status: 400, code: 'APPOINTMENT_DOCTOR_MISMATCH', message: 'The bill names a different doctor than the appointment' });
   }
+  // Q14 review: the bill's customer (the account of its phone number) is the appointment's account holder; a family
+  // member's appointment belongs to the account holder. A bill without that customer cannot name the appointment.
+  if (!customerUserId || lowerId(customerUserId) !== lowerId(b.userId)) {
+    throw new AppError({ status: 409, code: 'APPOINTMENT_CUSTOMER_MISMATCH', message: "Bill the appointment to its patient's account: enter the mobile number it was booked with" });
+  }
   if (b.status === 'cancelled') throw new AppError({ status: 409, code: 'APPOINTMENT_CANCELLED', message: 'A cancelled appointment cannot be billed' });
   if (await InvoiceModel.exists({ openAppointmentId: id }).session(session ?? null)) throw alreadyBilled();
   return id;
+}
+
+/**
+ * Q14 review: what a customer sees of a bill and its events. Payment request keys and content hashes, the bill's own
+ * request key and hash, and staff ids (`by`, `createdBy`) are workspace bookkeeping and are left out; the kind, time,
+ * amounts, methods (splits), references, reasons and refund stay.
+ */
+export type CustomerInvoiceEvent = Omit<IInvoiceEvent, 'requestKey' | 'requestHash' | 'by'>;
+export function customerEventView(e: IInvoiceEvent): CustomerInvoiceEvent {
+  const { requestKey: _k, requestHash: _h, by: _b, ...rest } = e;
+  return rest;
+}
+export function customerInvoiceView<T extends IInvoice>(inv: T): Omit<T, 'idempotencyKey' | 'requestHash' | 'createdBy'> {
+  const { idempotencyKey: _k, requestHash: _h, createdBy: _c, ...rest } = inv;
+  return rest;
+}
+
+/** Q14 review: the existing customer account of a phone number (none is created); null when there is none. */
+async function existingCustomerId(rawPhone?: string): Promise<string | null> {
+  if (!rawPhone) return null;
+  const u = await UserModel.findOne({ phone: normalizePhone(rawPhone), userType: 'user' }).select({ _id: 1 }).lean() as { _id: unknown } | null;
+  return u ? String(u._id) : null;
 }
 
 /** Q14: the open bill of each appointment, else its latest cancelled one (for the clinic appointment rows). */
@@ -323,8 +362,9 @@ export class InvoiceService {
       }
     }
 
-    // Q14: refused early here; admitted again inside the transaction.
-    if (data.appointmentId) await admitAppointment(actor, data);
+    // Q14: refused early here (the customer looked up, never created, so a refused bill leaves no account behind);
+    // admitted again inside the transaction with the resolved customer.
+    if (data.appointmentId) await admitAppointment(actor, data, await existingCustomerId(data.customer.phone));
 
     const catalogueIds = [...new Set(data.items.map((i) => i.catalogItemId).filter(Boolean).map(String))];
     const catalogue = new Map<string, { name: string }>();
@@ -377,7 +417,7 @@ export class InvoiceService {
       await session.withTransaction(async () => {
         // Q10: the key is claimed with the bill, so a reloaded client's abandon and this create cannot both win.
         await claimRequestKey(invoiceKeyScope(actor.partnerId), data.idempotencyKey, session);
-        const appointmentId = data.appointmentId ? await admitAppointment(actor, data, session) : undefined;
+        const appointmentId = data.appointmentId ? await admitAppointment(actor, data, resolved?._id, session) : undefined;
         const issuedAt = new Date();
         const fy = financialYearOf(issuedAt);
         const seq = await this.invoiceCounterRepository.nextSequence(actor.partnerId, fy, session);
@@ -474,7 +514,7 @@ export class InvoiceService {
       }
     } else if (current.lifecycleState === 'paid' && !data.splits?.length) {
       // Q10: an unkeyed repeat of the full payment already recorded (same method and reference) answers with that receipt.
-      const ev = events.find((e) => e.kind === 'payment' && !e.requestKey && (e.splits?.length ?? 1) === 1);
+      const ev = events.find((e) => e.kind === 'payment' && !e.requestKey && (e.splits?.length || 1) === 1);
       if (ev && (ev.mode ?? ev.splits?.[0]?.mode) === data.mode && (ev.reference ?? ev.splits?.[0]?.reference ?? '') === (data.reference?.trim() ?? '')) {
         return { invoice: withDue(current, events), event: ev, replayed: true };
       }
@@ -521,7 +561,9 @@ export class InvoiceService {
         const one = splits.length === 1 ? splits[0]! : undefined;
         const event = await this.invoiceEventRepository.save({
           invoiceId, kind: 'payment', ...(one ? { mode: one.mode, reference: one.reference } : {}), note: data.note,
-          amountMinor: amount, splits, ...(data.requestKey ? { requestKey: data.requestKey, requestHash } : {}),
+          // Q14 review: a bill with nothing due (a zero total) is marked paid by its method alone, without a zero split
+          // (a recorded split is always a positive amount).
+          amountMinor: amount, splits: splits.filter((x) => x.amountMinor > 0), ...(data.requestKey ? { requestKey: data.requestKey, requestHash } : {}),
           version: cur.lifecycleVersion + 1, at: new Date(), by: actor.memberId, byKind: actor.actorKind === 'admin' ? 'admin' : 'member',
         } as Partial<IInvoiceEvent>, { session });
         await recordPartnerAudit(actor, 'invoice.pay', { kind: 'invoice', id: invoiceId },
@@ -532,6 +574,12 @@ export class InvoiceService {
       if (error?.code === 11000 && data.requestKey) {
         const ev = await InvoiceEventModel.findOne({ invoiceId, requestKey: data.requestKey }).lean() as unknown as IInvoiceEvent | null;
         if (ev && ev.requestHash === requestHash) return { invoice: withDue(await this.loadForActor(actor, invoiceId)), event: ev, replayed: true };
+      }
+      if (error?.code === 11000 && fromPreQ14PaymentIndex(error)) {
+        // Q14 review: the database still has the old one-event-per-kind index (sync-indexes has not run), so a second
+        // payment of a bill cannot be stored. Not a version race: say so, and leave one warning (no bill or patient data).
+        console.warn(`partner_invoice_events still has the pre-Q14 unique index ${PRE_Q14_EVENT_INDEX}; run npm run sync-indexes before part payments are used`);
+        throw new AppError({ status: 503, code: 'INVOICE_INDEXES_OUTDATED', message: 'Bills need a database update (sync-indexes) before a second payment' });
       }
       if (error?.code === 11000) throw new AppError({ status: 409, code: 'LIFECYCLE_VERSION_CONFLICT', message: 'The bill changed meanwhile; reload and try again' });
       throw error;
@@ -712,17 +760,23 @@ export class InvoiceService {
     ]);
     rows.forEach((r) => this.verifyChecksum(r));
     const names = await doctorNames(rows);
-    return { items: rows.map((r) => ({ ...withDue(r), doctorName: r.doctorId ? names[String(r.doctorId)] : undefined })), page: pg, limit: lim, total,
+    return { items: rows.map((r) => ({ ...customerInvoiceView(withDue(r)), doctorName: r.doctorId ? names[String(r.doctorId)] : undefined })), page: pg, limit: lim, total,
       totalPages: Math.max(1, Math.ceil(total / lim)) };
   }
 
-  async getCustomerBill(userId: string, invoiceId: string): Promise<{ invoice: IInvoice; events: IInvoiceEvent[] }> {
+  /** The customer's own bill as stored (checksum verified), with its events. */
+  private async loadCustomerBill(userId: string, invoiceId: string): Promise<{ invoice: IInvoice; events: IInvoiceEvent[] }> {
     const invoice = await this.invoiceRepository.findById(invoiceId);
     if (!invoice || !invoice.customer?.userId || String(invoice.customer.userId) !== String(userId)) throw invoiceNotFound();
     this.verifyChecksum(invoice);
+    return { invoice, events: await this.invoiceEventRepository.findByInvoice(invoiceId) };
+  }
+
+  /** GET /bills/:invoiceId — the customer view: no request keys or hashes and no staff ids (Q14 review). */
+  async getCustomerBill(userId: string, invoiceId: string): Promise<{ invoice: IInvoice; events: CustomerInvoiceEvent[] }> {
+    const { invoice, events } = await this.loadCustomerBill(userId, invoiceId);
     const doctorName = invoice.doctorId ? (await doctorNames([invoice]))[String(invoice.doctorId)] : undefined;
-    const events = await this.invoiceEventRepository.findByInvoice(invoiceId);
-    return { invoice: { ...withDue(invoice, events), ...(doctorName ? { doctorName } : {}) } as IInvoice, events };
+    return { invoice: { ...customerInvoiceView(withDue(invoice, events)), ...(doctorName ? { doctorName } : {}) } as IInvoice, events: events.map(customerEventView) };
   }
 
   /** PDF of the bill as of lifecycle `version` (0 = as issued; default = current). */
@@ -732,8 +786,8 @@ export class InvoiceService {
   }
 
   async pdfForCustomer(userId: string, invoiceId: string, version?: number): Promise<{ pdf: Buffer; fileName: string }> {
-    const { invoice, events } = await this.getCustomerBill(userId, invoiceId);
-    return this.pdf(invoice, events, version);
+    const { invoice, events } = await this.loadCustomerBill(userId, invoiceId);
+    return this.pdf(withDue(invoice, events), events, version);
   }
 
   private async pdf(invoice: IInvoice, events: IInvoiceEvent[], version?: number) {

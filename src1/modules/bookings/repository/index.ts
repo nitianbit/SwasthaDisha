@@ -9,6 +9,13 @@ import {
 import { BaseRepository } from '@/modules/common/repository';
 import { AppError } from '@/modules/common/types';
 
+/**
+ * Q14 review: a no-show marked under the Q14 rule (status no_show with a recorded `noShow.at`) earns the doctor nothing,
+ * so the legacy monthly payout neither counts nor pays it. `noShow` is new in Q14: no-shows marked before it keep
+ * counting, so months already computed do not change. A no-show moved and then completed is `completed` and counts.
+ */
+export const EXCLUDE_Q14_NO_SHOWS = Object.freeze({ $nor: [{ status: 'no_show', 'noShow.at': { $type: 'date' } }] });
+
 @Service()
 export class BookingRepository extends BaseRepository<IBooking> {
   constructor() {
@@ -56,7 +63,7 @@ export class BookingRepository extends BaseRepository<IBooking> {
     const match: Record<string, unknown> = {
       specialistId,
       bookingType: 'consultation',
-      ...(options.legacyOnly ? { settlementSystem: { $nin: ['ledger', 'clinic'] } } : {}),
+      ...(options.legacyOnly ? { settlementSystem: { $nin: ['ledger', 'clinic'] }, ...EXCLUDE_Q14_NO_SHOWS } : {}),
     };
 
     if (options.from || options.to) {

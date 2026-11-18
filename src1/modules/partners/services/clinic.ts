@@ -537,7 +537,7 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
   };
   const prior = await replay();
   if (prior) return { booking: deskView(prior), customer: { userId: String(prior.userId), phone: canonicalMobile(input.customer.phone), created: false },
-    patient: await patientView(prior, false), replayed: true };
+    patient: await patientView(prior), replayed: true };
   // Q13: refused before a customer is resolved or created (the in-transaction claim and slot admission decide finally).
   if (await RequestKeyModel.exists({ scope: deskKeyScope(actor), key: input.requestKey, state: 'abandoned' })) {
     throw err(409, 'REQUEST_ABANDONED', 'This request was cancelled before it was recorded; make a new one');
@@ -591,24 +591,28 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
     const raced = await replay();
     if (!raced) throw e;
     return { booking: deskView(raced), customer: { userId: String(raced.userId), phone: customer.phone, created: false },
-      patient: await patientView(raced, false), replayed: true };
+      patient: await patientView(raced), replayed: true };
   }
   if (isReplayedBooking(booking)) {
     const r = asReceipt(booking);
     return { booking: deskView(r), customer: { userId: String(r.userId), phone: customer.phone, created: false },
-      patient: await patientView(r, false), replayed: true };
+      patient: await patientView(r), replayed: true };
   }
   // Q14: the customer and the doctor are told, after the commit and best effort.
   await notifyDesk(booking, 'booked');
   return { booking: deskView(booking), customer: { userId: customer._id, phone: customer.phone, created: customer.created },
-    patient: await patientView(booking, !!newDependent), replayed: false };
+    patient: await patientView(booking), replayed: false };
 }
 
-/** Q14: the person being seen on a desk answer (null = the account holder). */
-async function patientView(b: IBooking, created: boolean) {
+/**
+ * Q14: the person being seen on a desk answer (null = the account holder). Q14 review: it does not say whether the
+ * family member was created by this booking (that would tell the desk who is on an account's family list); the audit
+ * records it.
+ */
+async function patientView(b: IBooking) {
   if (!b.dependentId) return null;
   const d = await DependentModel.findById(b.dependentId).select({ name: 1, relationship: 1 }).lean() as { name?: string; relationship?: string } | null;
-  return { dependentId: String(b.dependentId), name: d?.name ?? null, relationship: d?.relationship ?? null, created };
+  return { dependentId: String(b.dependentId), name: d?.name ?? null, relationship: d?.relationship ?? null };
 }
 
 function deskView(b: IBooking) {
@@ -847,9 +851,10 @@ export async function createSoloPractice(doctorId: string, input: SoloPracticeIn
       const partnerId = String(partner!._id);
       await ensureSettlementAccount('partner', partnerId, input.legalName?.trim() || input.name.trim(), s);
       const branchId = new Types.ObjectId();
-      // Q14: the doctor owns the clinic (all permissions) and consults at its first branch (doctorBranchIds).
+      // The doctor owns the clinic (all permissions). Q14 review: no doctorBranchIds — as before Q14, an owner-doctor
+      // without them consults at every branch of the clinic, including branches added later.
       const [owner] = await MemberModel.create([{ partnerId, phone, name: sp.name, role: 'owner', permissions: [...ALL_PERMISSIONS], branchIds: [],
-        doctorId: String(doctorId), doctorBranchIds: [String(branchId)], isActive: true }], { session: s });
+        doctorId: String(doctorId), isActive: true }], { session: s });
       const [branch] = await BranchModel.create([{ _id: branchId, partnerId, name: input.branch.name, phone: input.branch.phone, address: input.branch.address, hours: {},
         holidays: [], services: { homeCollection: false, inLab: false, inClinic: true }, isActive: true }], { session: s });
       const self: PartnerActor = { memberId: String(owner!._id), partnerId, role: 'owner', permissions: [...ALL_PERMISSIONS], branchIds: [] };

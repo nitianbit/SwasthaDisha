@@ -1621,7 +1621,24 @@ export class BookingService {
         referenceType: 'booking', referenceId: id, idempotencyKey: `booking:${id}:no_show_rescheduled`,
       });
     } catch (error) { console.error('Failed to notify customer of the no-show reschedule:', (error as Error)?.message); }
-    return { ...updated, replayed: false };
+    // Q14 review: markNoShow cleared the reminders and cancelled the Meet event; the moved booking gets them back, as an
+    // ordinary reschedule does (after the commit, best effort; a replay above does neither again). The cancelled event
+    // was deleted at Google, so a new one is created instead of patching it.
+    let restored: IBooking = updated;
+    try {
+      await this.bookingReminderScheduler.scheduleBookingReminders(updated);
+    } catch (error) { console.error('Failed to schedule reminders after the no-show reschedule:', (error as Error)?.message); }
+    try {
+      const vm = updated.virtualMeeting;
+      restored = await syncBookingMeet({
+        booking: vm?.status === 'cancelled' ? { ...updated, virtualMeeting: { ...vm, calendarEventId: undefined } } : updated,
+        bookingRepository: this.bookingRepository,
+        userRepository: this.userRepository,
+        specialistRepository: this.specialistRepository,
+        slotRepository: this.slotRepository,
+      });
+    } catch (error) { console.error('Failed to restore the meeting after the no-show reschedule:', (error as Error)?.message); }
+    return { ...restored, replayed: false };
   }
 
   async rescheduleBooking(
