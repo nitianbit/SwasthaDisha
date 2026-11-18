@@ -28,6 +28,7 @@ import BookingModel from '@/modules/bookings/model';
 import { BookingRepository } from '@/modules/bookings/repository';
 import { BookingService } from '@/modules/bookings/services';
 import { createBookingWithHolds, rescheduleWithHolds } from '@/modules/bookings/holds';
+import { publicNoShowView } from '@/modules/bookings/utils/noShowView';
 import PaymentRecordModel from '@/modules/payment/model';
 import { WalletModel, WalletTransactionModel } from '@/modules/wallet/model';
 import { WalletRepository } from '@/modules/wallet/repository';
@@ -638,6 +639,13 @@ async function main() {
       assert.deepEqual([mv.status, mv.json.data.status], [200, 'confirmed']);
       const again = await call('POST', `/api/v1/specialists/admin/bookings/${id}/reschedule-no-show`, adminToken, { slotId: target, requestKey: 'http-ns-q14-02' });
       assert.deepEqual([again.status, again.json.code], [409, 'NO_SHOW_RESCHEDULE_USED']);
+      // The generic booking routes (customers) see when and where, never who moved it nor the request key/hash.
+      const stored = await BookingModel.findById(id).lean() as any;
+      assert.ok(stored.noShows[0].rescheduledBy && stored.noShows[0].requestHash);
+      const [seen] = publicNoShowView([stored]) as any[];
+      assert.deepEqual(Object.keys(seen.noShows[0]).filter((k) => seen.noShows[0][k] !== undefined).sort(),
+        ['at', 'fromSlotId', 'rescheduledAt', 'toSlotId', ...(stored.noShows[0].fromDate ? ['fromDate'] : []), ...(stored.noShows[0].fromTime ? ['fromTime'] : [])].sort());
+      assert.equal(JSON.stringify(seen).includes(stored.noShows[0].requestHash), false);
     });
   } finally {
     server.close();

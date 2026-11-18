@@ -1,3 +1,4 @@
+import { publicNoShowView } from '@/modules/bookings/utils/noShowView';
 import 'reflect-metadata';
 import BookingModel from '@/modules/bookings/model';
 import { rebindStored, withFiles } from '@/modules/file/access';
@@ -256,7 +257,7 @@ export class BookingController {
       message: result.paymentRequired
         ? 'Booking created and payment initiated successfully'
         : 'Booking created successfully',
-      data: result,
+      data: publicNoShowView(result),
     });
   };
 
@@ -288,7 +289,7 @@ export class BookingController {
       message: result.paymentRequired
         ? 'Wellness package booking created and payment initiated successfully'
         : 'Wellness package booking created successfully',
-      data: result,
+      data: publicNoShowView(result),
     });
   };
 
@@ -320,7 +321,7 @@ export class BookingController {
       message: result.paymentRequired
         ? 'Specialist booking created and payment initiated successfully'
         : 'Specialist booking created successfully',
-      data: result,
+      data: publicNoShowView(result),
     });
   };
 
@@ -332,7 +333,7 @@ export class BookingController {
 
     res.status(200).json({
       success: true,
-      data: result,
+      data: publicNoShowView(result),
     });
   };
 
@@ -352,7 +353,7 @@ export class BookingController {
 
     res.status(200).json({
       success: true,
-      data: result,
+      data: publicNoShowView(result),
     });
   };
 
@@ -404,7 +405,7 @@ export class BookingController {
       // Paginated response
       res.status(200).json({
         success: true,
-        data: result.data,
+        data: publicNoShowView(result.data),
         pagination: {
           page: result.page!,
           limit: queryParams.limit!,
@@ -416,7 +417,7 @@ export class BookingController {
       // Non-paginated response
       res.status(200).json({
         success: true,
-        data: result.data,
+        data: publicNoShowView(result.data),
       });
     }
   };
@@ -432,7 +433,7 @@ export class BookingController {
     res.status(200).json({
       success: true,
       message: 'Booking updated successfully',
-      data: result,
+      data: publicNoShowView(result),
     });
   };
 
@@ -479,7 +480,7 @@ export class BookingController {
 
     res.status(200).json({
       success: true,
-      data: result,
+      data: publicNoShowView(result),
     });
   };
 
@@ -497,9 +498,9 @@ export class BookingController {
 
       res.status(200).json({
         success: true,
-        data: result.data.filter(
+        data: publicNoShowView(result.data.filter(
           (booking) => booking.status === 'pending' || booking.status === 'confirmed'
-        ),
+        )),
       });
       return;
     }
@@ -513,7 +514,7 @@ export class BookingController {
 
     res.status(200).json({
       success: true,
-      data: result,
+      data: publicNoShowView(result),
     });
   };
 
@@ -545,7 +546,7 @@ export class BookingController {
       message: result.paymentRequired
         ? 'Booking payment initiated successfully'
         : 'Booking payment completed successfully',
-      data: result,
+      data: publicNoShowView(result),
     });
   };
 
@@ -565,7 +566,7 @@ export class BookingController {
     res.status(200).json({
       success: true,
       message: 'Booking cancelled successfully',
-      data: result,
+      data: publicNoShowView(result),
     });
   };
 
@@ -585,7 +586,7 @@ export class BookingController {
     res.status(200).json({
       success: true,
       message: 'Booking rescheduled successfully',
-      data: result,
+      data: publicNoShowView(result),
     });
   };
 }
