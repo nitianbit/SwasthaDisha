@@ -37,6 +37,8 @@ const partnerSchema = new Schema<IPartner>(
       type: String,
       trim: true,
     },
+    // Q14: the partner's own counter policy — whether an in-house bill may be paid in parts over time.
+    allowPartPayments: { type: Boolean, default: false },
     verification: {
       state: {
         type: String,

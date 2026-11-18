@@ -295,6 +295,7 @@ export class PartnerService {
       taxRegime?: TaxRegime;
       invoiceSeriesPrefix?: string;
       logo?: string;
+      allowPartPayments?: boolean;
       expectedUpdatedAt?: Date | string;
     },
     session?: ClientSession
@@ -309,6 +310,7 @@ export class PartnerService {
     if (data.taxRegime !== undefined) update.taxRegime = data.taxRegime;
     if (data.invoiceSeriesPrefix !== undefined) update['invoiceSeries.prefix'] = data.invoiceSeriesPrefix;
     if (data.logo !== undefined) update.logo = data.logo;
+    if (data.allowPartPayments !== undefined) update.allowPartPayments = data.allowPartPayments;
 
     const updated = await this.partnerRepository.update({ _id: partnerId, ...versionFence(data.expectedUpdatedAt) }, update, { new: true, ...(session ? { session } : {}) } as any);
     if (!updated) {
@@ -320,12 +322,12 @@ export class PartnerService {
 
   async updateOwnProfile(
     actor: PartnerActor,
-    data: { name?: string; legalName?: string; contactPhone?: string; contactEmail?: string; logo?: string; expectedUpdatedAt?: Date | string }
+    data: { name?: string; legalName?: string; contactPhone?: string; contactEmail?: string; logo?: string; allowPartPayments?: boolean; expectedUpdatedAt?: Date | string }
   ): Promise<IPartner> {
     // Q8: the partner's public identity and contact are the owners' to change (admins act as owner).
     if (actor.role !== 'owner') throw new AppError({ status: 403, code: 'OWNER_REQUIRED', message: 'Only an owner can change the partner profile' });
-    const { name, legalName, contactPhone, contactEmail, logo } = data;
-    const fields = { name, legalName, contactPhone, contactEmail, logo };
+    const { name, legalName, contactPhone, contactEmail, logo, allowPartPayments } = data;
+    const fields = { name, legalName, contactPhone, contactEmail, logo, allowPartPayments };
     return inTransaction(async (session) => {
       const updated = await this.updatePartner(actor.partnerId, { ...fields, expectedUpdatedAt: data.expectedUpdatedAt }, session);
       await recordPartnerAudit(actor, 'partner.profile.update', { kind: 'partner', id: actor.partnerId },

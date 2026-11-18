@@ -162,7 +162,7 @@ async function main() {
     await assert.rejects(() => invoiceSvc.recordPayment(plainLab.actor, String(inv._id), { mode: 'upi', reference: 'R2' }), code('INVOICE_STATE_CONFLICT'));
     await assert.rejects(() => invoiceSvc.cancelInvoice(plainLab.actor, String(inv._id), 'Wrong'), code('REFUND_REQUIRED'));
     const c = await invoiceSvc.cancelInvoice(plainLab.actor, String(inv._id), 'Wrong', { mode: 'cash', note: 'Handed back at desk' });
-    assert.deepEqual(c.event.refund, { mode: 'cash', note: 'Handed back at desk' });
+    assert.deepEqual(c.event.refund, { mode: 'cash', note: 'Handed back at desk', amountMinor: inv.totals.totalMinor }); // Q14: the refund names the amount paid
     const issued = await invoiceSvc.createInvoice(plainLab.actor, { branchId: plainLab.A, customer: { name: 'NotPaid' }, items: [free], idempotencyKey: key() });
     await assert.rejects(() => invoiceSvc.cancelInvoice(plainLab.actor, String(issued._id), 'x', { mode: 'cash' }), code('NOTHING_TO_REFUND'));
   });

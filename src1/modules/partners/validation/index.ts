@@ -83,6 +83,8 @@ export const updatePartnerSchema = Joi.object({
   taxRegime: Joi.string().valid('regular', 'composition', 'unregistered').optional(),
   invoiceSeriesPrefix: Joi.string().trim().uppercase().pattern(/^[A-Z0-9]{1,6}$/).optional(),
   logo: Joi.string().trim().optional(),
+  /** Q14: in-house bills may be paid in parts. */
+  allowPartPayments: Joi.boolean().optional(),
 }).min(1);
 
 export const updateMyPartnerSchema = Joi.object({
@@ -93,6 +95,8 @@ export const updateMyPartnerSchema = Joi.object({
   contactPhone: Joi.string().pattern(phonePattern).optional(),
   contactEmail: Joi.string().email().optional(),
   logo: Joi.string().trim().optional(),
+  /** Q14: in-house bills may be paid in parts. */
+  allowPartPayments: Joi.boolean().optional(),
 }).min(1);
 
 export const addMemberSchema = Joi.object({

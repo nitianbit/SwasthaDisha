@@ -64,10 +64,12 @@ const invoiceSchema = new Schema<IInvoice>(
     lifecycleState: {
       type: String,
       required: true,
-      enum: ['issued', 'paid', 'cancelled'],
+      enum: ['issued', 'partly_paid', 'paid', 'cancelled'],
       default: 'issued',
     },
     lifecycleVersion: { type: Number, required: true, default: 0 },
+    // Q14: payments recorded so far (paise); absent on pre-Q14 bills (paid = the total).
+    paidMinor: { type: Number, min: 0 },
     createdBy: { type: String, required: true },
     checksum: { type: String, required: true },
     idempotencyKey: { type: String, required: true },
@@ -101,9 +103,18 @@ const invoiceEventSchema = new Schema<IInvoiceEvent>(
     // Q10: how the money of a cancelled paid bill went back.
     refund: {
       type: new Schema({ mode: { type: String, required: true, enum: ['cash', 'upi', 'card', 'bank', 'other'] },
-        reference: { type: String, trim: true }, note: { type: String, trim: true } }, { _id: false }),
+        reference: { type: String, trim: true }, note: { type: String, trim: true }, amountMinor: { type: Number, min: 0 } }, { _id: false }),
       default: undefined,
     },
+    // Q14: a payment's amount, its methods, and its request identity.
+    amountMinor: { type: Number, min: 0 },
+    splits: {
+      type: [new Schema({ mode: { type: String, required: true, enum: ['cash', 'upi', 'card', 'bank', 'other'] },
+        amountMinor: { type: Number, required: true, min: 1 }, reference: { type: String, trim: true } }, { _id: false })],
+      default: undefined,
+    },
+    requestKey: { type: String },
+    requestHash: { type: String },
     version: { type: Number, required: true, min: 1 },
     at: { type: Date, required: true },
     by: { type: String, required: true },
@@ -112,7 +123,9 @@ const invoiceEventSchema = new Schema<IInvoiceEvent>(
   { timestamps: true }
 );
 
-invoiceEventSchema.index({ invoiceId: 1, kind: 1 }, { unique: true });
+// Q14: a bill has many payments but at most one cancellation; a payment request key is used once per bill.
+invoiceEventSchema.index({ invoiceId: 1, kind: 1 }, { name: 'q14_one_cancellation', unique: true, partialFilterExpression: { kind: 'cancellation' } });
+invoiceEventSchema.index({ invoiceId: 1, requestKey: 1 }, { name: 'q14_payment_request_key', unique: true, partialFilterExpression: { requestKey: { $type: 'string' } } });
 invoiceEventSchema.index({ invoiceId: 1, version: 1 }, { unique: true });
 
 export const InvoiceEventModel: Model<IInvoiceEvent> = model<IInvoiceEvent>('PartnerInvoiceEvent', invoiceEventSchema, 'partner_invoice_events');

@@ -20,6 +20,8 @@ export interface IPartner {
   pan?: string;
   contact: { phone: string; email?: string };
   logo?: string;
+  /** Q14: in-house bills may be paid in several payments (default false: a payment settles the whole remaining amount). */
+  allowPartPayments?: boolean;
   verification: IPartnerVerification;
   taxRegime: TaxRegime;
   invoiceSeries: { prefix: string };

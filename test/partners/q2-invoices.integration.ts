@@ -287,7 +287,7 @@ async function main() {
     await assert.rejects(() => invoiceSvc.cancelInvoice(lab.actor, String(inv._id), 'Duplicate billing'), code('REFUND_REQUIRED'));
     const cancelled = await invoiceSvc.cancelInvoice(lab.actor, String(inv._id), 'Duplicate billing', { mode: 'upi', reference: 'RF-1' });
     assert.equal(cancelled.invoice.lifecycleVersion, 2);
-    assert.deepEqual(cancelled.event.refund, { mode: 'upi', reference: 'RF-1' });
+    assert.deepEqual(cancelled.event.refund, { mode: 'upi', reference: 'RF-1', amountMinor: inv.totals.totalMinor }); // Q14: the refund names the amount paid
     await assert.rejects(() => invoiceSvc.cancelInvoice(lab.actor, String(inv._id), 'again', { mode: 'cash' }), code('ALREADY_CANCELLED'));
     const { events } = await invoiceSvc.getInvoice(lab.actor, String(inv._id));
     assert.deepEqual(events.map((e) => e.kind), ['payment', 'cancellation']);

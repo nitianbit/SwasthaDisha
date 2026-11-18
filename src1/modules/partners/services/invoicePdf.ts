@@ -22,26 +22,39 @@ export const indiaDate = (d: Date | string) => {
 
 const TITLES = { tax_invoice: 'Tax Invoice', bill_of_supply: 'Bill of Supply', commercial_invoice: 'Invoice' } as const;
 
-/** Status of the bill after the given events (events are in lifecycle order). */
-export function statusAfter(events: IInvoiceEvent[]): { label: string; detail?: string } {
+const methodsOf = (e: IInvoiceEvent) => (e.splits?.length ? e.splits : [{ mode: e.mode, amountMinor: e.amountMinor, reference: e.reference }])
+  .map((x) => `${String(x.mode ?? '').toUpperCase()}${e.splits && e.splits.length > 1 && typeof x.amountMinor === 'number' ? ` ${rupees(x.amountMinor)}` : ''}${x.reference ? ` · Ref ${x.reference}` : ''}`)
+  .join(' + ');
+
+/**
+ * Status of the bill after the given events (events are in lifecycle order). Q14: with the bill's total, payments are
+ * summed (a pre-Q14 payment without an amount is the whole total): 'Partly paid' until the total is reached.
+ */
+export function statusAfter(events: IInvoiceEvent[], totalMinor?: number): { label: string; detail?: string; paidMinor: number; payments: string[] } {
   let label = 'Unpaid';
   let detail: string | undefined;
+  let paid = 0;
+  const payments: string[] = [];
   for (const e of events) {
     if (e.kind === 'payment') {
-      label = 'Paid';
-      detail = `${e.mode?.toUpperCase()}${e.reference ? ` · Ref ${e.reference}` : ''} · ${indiaDate(e.at)}`;
+      const amount = typeof e.amountMinor === 'number' ? e.amountMinor : (totalMinor ?? 0);
+      paid += amount;
+      label = totalMinor === undefined || paid >= totalMinor ? 'Paid' : 'Partly paid';
+      detail = `${methodsOf(e)} · ${indiaDate(e.at)}`;
+      payments.push(`${indiaDate(e.at)} · ${methodsOf(e)}${totalMinor !== undefined ? ` · ${rupees(amount)}` : ''}`);
     } else if (e.kind === 'cancellation') {
       label = 'Cancelled';
       detail = `${e.reason ?? ''} · ${indiaDate(e.at)}`;
     }
   }
-  return { label, detail };
+  if (label === 'Partly paid' && totalMinor !== undefined) detail = `Paid ${rupees(paid)} · Due ${rupees(totalMinor - paid)}`;
+  return { label, detail, paidMinor: paid, payments };
 }
 
 /** Self-contained HTML of the immutable invoice plus the given events; every value is escaped. */
 export function renderInvoiceHtml(inv: IInvoice, events: IInvoiceEvent[], extra: { doctorName?: string } = {}): string {
   const showTax = inv.documentKind === 'tax_invoice';
-  const status = statusAfter(events);
+  const status = statusAfter(events, inv.totals.totalMinor);
   const rows = inv.items.map((l, i) => `<tr><td>${i + 1}</td><td>${esc(l.description)}${l.sac ? ` <small>SAC ${esc(l.sac)}</small>` : ''}${l.hsn ? ` <small>HSN ${esc(l.hsn)}</small>` : ''}</td>
     <td class="n">${l.qty}</td><td class="n">${rupees(l.unitPriceMinor)}</td><td class="n">${rupees(l.discountMinor)}</td>
     ${showTax ? `<td class="n">${l.gstRate}%</td>` : ''}<td class="n">${rupees(l.amountMinor)}</td></tr>`).join('');
@@ -70,7 +83,9 @@ ${extra.doctorName ? `<br><strong>Doctor:</strong> ${esc(extra.doctorName)}` : '
 ${showTax ? '<th class="n">GST</th>' : ''}<th class="n">Amount</th></tr></thead><tbody>${rows}</tbody></table>
 <table style="margin-top:8px;width:40%;margin-left:auto"><tbody>
 <tr><td>Taxable value</td><td class="n">${rupees(t.taxableMinor)}</td></tr>${taxRows}
-<tr><td><strong>Total</strong></td><td class="n"><strong>${rupees(t.totalMinor)}</strong></td></tr></tbody></table>
+<tr><td><strong>Total</strong></td><td class="n"><strong>${rupees(t.totalMinor)}</strong></td></tr>${status.paidMinor > 0 && status.label !== 'Cancelled'
+  ? `<tr><td>Paid</td><td class="n">${rupees(status.paidMinor)}</td></tr><tr><td>Due</td><td class="n">${rupees(Math.max(0, t.totalMinor - status.paidMinor))}</td></tr>` : ''}</tbody></table>
+${status.payments.length > 1 ? `<p class="note"><strong>Payments:</strong><br>${status.payments.map(esc).join('<br>')}</p>` : ''}
 ${inv.documentKind === 'bill_of_supply' && s.gstin ? '<p class="note">Composition taxable person / exempt supply — tax not chargeable.</p>' : ''}
 ${inv.documentKind === 'commercial_invoice' ? '<p class="note">Supplier not registered under GST.</p>' : ''}
 </body></html>`;

@@ -1,5 +1,6 @@
 export type DocumentKind = 'tax_invoice' | 'bill_of_supply' | 'commercial_invoice';
-export type InvoiceLifecycleState = 'issued' | 'paid' | 'cancelled';
+/** Q14: 'partly_paid' — some payments recorded, an amount still due (only where the partner allows part payments). */
+export type InvoiceLifecycleState = 'issued' | 'partly_paid' | 'paid' | 'cancelled';
 export type InvoiceEventKind = 'payment' | 'cancellation';
 export type PaymentMode = 'cash' | 'upi' | 'card' | 'bank' | 'other';
 
@@ -69,6 +70,10 @@ export interface IInvoice {
   totals: IInvoiceTotals;
   lifecycleState: InvoiceLifecycleState;
   lifecycleVersion: number;
+  /** Q14: total of the payments recorded (paise). Absent on bills paid before Q14: read as the total when paid, else 0. */
+  paidMinor?: number;
+  /** Q14 (reads only, never stored): the amount still due. */
+  dueMinor?: number;
   createdBy: string;
   checksum: string;
   idempotencyKey: string;
@@ -86,8 +91,14 @@ export interface IInvoiceEvent {
   reference?: string;
   reason?: string;
   note?: string;
-  /** Q10: for the cancellation of a paid bill — how the money was returned. */
-  refund?: { mode: PaymentMode; reference?: string; note?: string };
+  /** Q10: for the cancellation of a paid bill — how the money was returned (Q14: amountMinor = the amount paid). */
+  refund?: { mode: PaymentMode; reference?: string; note?: string; amountMinor?: number };
+  /** Q14: a payment's amount and its methods (one or several, e.g. cash + UPI). Absent on pre-Q14 payments (full total). */
+  amountMinor?: number;
+  splits?: { mode: PaymentMode; amountMinor: number; reference?: string }[];
+  /** Q14: the payment's request key and content hash (replay answers with this event). */
+  requestKey?: string;
+  requestHash?: string;
   /** The invoice's lifecycleVersion this event produced (1, 2): the event order, independent of clocks. */
   version: number;
   at: Date;

@@ -1,5 +1,6 @@
 import { claimRequestKey, abandonRequestKey } from '@/modules/requestKeys';
-import { InvoiceModel } from '@/modules/partners/model/invoice';
+import { InvoiceModel, InvoiceEventModel } from '@/modules/partners/model/invoice';
+import PartnerModel from '@/modules/partners/model';
 import { Service } from 'typedi';
 import { createHash } from 'crypto';
 import mongoose from 'mongoose';
@@ -57,6 +58,32 @@ export interface CreateInvoiceInput {
 
 const invoiceNotFound = () => new AppError({ status: 404, code: 'INVOICE_NOT_FOUND', message: 'Invoice not found' });
 const alreadyBilled = () => new AppError({ status: 409, code: 'APPOINTMENT_ALREADY_BILLED', message: 'This appointment already has a bill; cancel it first to issue a new one' });
+/**
+ * Q14: what a bill has been paid. Bills paid before Q14 carry no paidMinor: with their events, each pre-Q14 payment
+ * counts as the full total; without them, a paid bill counts as fully paid (a cancelled one as 0).
+ */
+export function paidOf(inv: Pick<IInvoice, 'paidMinor' | 'lifecycleState' | 'totals'>, events?: IInvoiceEvent[]): number {
+  if (typeof inv.paidMinor === 'number') return inv.paidMinor;
+  if (events) return events.filter((e) => e.kind === 'payment').reduce((n, e) => n + (typeof e.amountMinor === 'number' ? e.amountMinor : inv.totals.totalMinor), 0);
+  return inv.lifecycleState === 'paid' ? inv.totals.totalMinor : 0;
+}
+/** Q14: a bill as read: its paid and due amounts (a cancelled bill has nothing due). */
+export function withDue<T extends IInvoice>(inv: T, events?: IInvoiceEvent[]): T {
+  const paid = paidOf(inv, events);
+  return { ...inv, paidMinor: paid, dueMinor: inv.lifecycleState === 'cancelled' ? 0 : Math.max(0, inv.totals.totalMinor - paid) };
+}
+export type PaymentSplit = { mode: PaymentMode; amountMinor: number; reference?: string };
+export interface RecordPaymentInput {
+  /** Pre-Q14 form: one method for the whole remaining amount. */
+  mode?: PaymentMode; reference?: string; note?: string;
+  /** Q14: one or several methods (e.g. cash + UPI); their sum is the payment. */
+  splits?: PaymentSplit[];
+  /** Q14: required for a part payment; the same key and request answer with the recorded payment. */
+  requestKey?: string;
+  /** Q14: the bill's lifecycleVersion the cashier decided on (409 LIFECYCLE_VERSION_CONFLICT otherwise). */
+  expectedLifecycleVersion?: number;
+}
+const paymentKeyScope = (invoiceId: string) => `invoice_payment:${String(invoiceId).toLowerCase()}`;
 const lowerId = (v?: unknown) => (v === undefined || v === null ? undefined : String(v).toLowerCase());
 
 /**
@@ -271,7 +298,7 @@ export class InvoiceService {
       appointmentId: lowerId(data.appointmentId),
     }));
     const replay = await this.replayed(actor, data.idempotencyKey, requestHash);
-    if (replay) return replay;
+    if (replay) return withDue(replay);
 
     const partner = await this.partnerRepository.findById(actor.partnerId);
     if (!partner) throw new AppError({ status: 404, code: 'PARTNER_NOT_FOUND', message: 'Partner not found' });
@@ -384,7 +411,7 @@ export class InvoiceService {
       const billedRace = error?.code === 'APPOINTMENT_ALREADY_BILLED' || (error?.code === 11000 && error?.keyPattern?.openAppointmentId);
       if ((error?.code === 11000 && error?.keyPattern?.idempotencyKey) || billedRace) {
         const again = await this.replayed(actor, data.idempotencyKey, requestHash);
-        if (again) return again;
+        if (again) return withDue(again);
       }
       if (billedRace) throw alreadyBilled();
       throw error;
@@ -393,7 +420,7 @@ export class InvoiceService {
     }
 
     if (resolved?.neverSignedIn) await this.sendBillNotice(resolved.phone, partner, invoice!.serial);
-    return invoice!;
+    return withDue(invoice!);
   }
 
   /**
@@ -421,20 +448,97 @@ export class InvoiceService {
     }
   }
 
-  async recordPayment(
-    actor: PartnerActor,
-    invoiceId: string,
-    data: { mode: PaymentMode; reference?: string; note?: string }
-  ): Promise<{ invoice: IInvoice; event: IInvoiceEvent; replayed?: boolean }> {
-    // Q10: a repeat of the payment already recorded (same mode and reference) answers with that receipt.
-    const current = await this.loadForActor(actor, invoiceId);
-    if (current.lifecycleState === 'paid') {
-      const ev = (await this.invoiceEventRepository.findByInvoice(invoiceId)).find((e) => e.kind === 'payment');
-      if (ev && ev.mode === data.mode && (ev.reference ?? '') === (data.reference?.trim() ?? '')) return { invoice: current, event: ev, replayed: true };
+  /**
+   * Q14: a payment of an in-house bill — one or several methods (always allowed), for the whole remaining amount or,
+   * where the partner allows part payments, a part of it (then `partly_paid` until the total is reached). Never more
+   * than is due. A keyed payment happens once per (bill, key) with a content hash; every payment is a CAS on the bill's
+   * lifecycle version (so concurrent payments, or a payment and a cancellation, cannot both apply to the same state).
+   */
+  async recordPayment(actor: PartnerActor, invoiceId: string, data: RecordPaymentInput): Promise<{ invoice: IInvoice; event: IInvoiceEvent; replayed?: boolean }> {
+    const bad = (code: string, message: string, status = 400) => new AppError({ status, code, message });
+    const splitsIn: { mode: PaymentMode; amountMinor?: number; reference?: string }[] = data.splits?.length
+      ? data.splits.map((x) => ({ mode: x.mode, amountMinor: x.amountMinor, reference: x.reference?.trim() || undefined }))
+      : data.mode ? [{ mode: data.mode, reference: data.reference?.trim() || undefined }] : [];
+    if (!splitsIn.length) throw bad('PAYMENT_METHOD_REQUIRED', 'Name how the bill was paid');
+    if (data.splits?.length && data.splits.some((x) => !Number.isSafeInteger(x.amountMinor) || x.amountMinor <= 0)) {
+      throw bad('INVALID_AMOUNT', 'Each part of a payment is a positive amount in paise');
     }
-    return this.transition(actor, invoiceId, ['issued'], 'paid', {
-      kind: 'payment', mode: data.mode, reference: data.reference, note: data.note,
-    }, 'invoice.pay');
+    const requestHash = sha256(canonicalJson({ splits: splitsIn, note: data.note?.trim() || undefined }));
+    const current = await this.loadForActor(actor, invoiceId);
+    const events = await this.invoiceEventRepository.findByInvoice(invoiceId);
+    if (data.requestKey) {
+      const prior = events.find((e) => e.kind === 'payment' && e.requestKey === data.requestKey);
+      if (prior) {
+        if (prior.requestHash !== requestHash) throw bad('IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different payment', 409);
+        return { invoice: withDue(current, events), event: prior, replayed: true };
+      }
+    } else if (current.lifecycleState === 'paid' && !data.splits?.length) {
+      // Q10: an unkeyed repeat of the full payment already recorded (same method and reference) answers with that receipt.
+      const ev = events.find((e) => e.kind === 'payment' && !e.requestKey && (e.splits?.length ?? 1) === 1);
+      if (ev && (ev.mode ?? ev.splits?.[0]?.mode) === data.mode && (ev.reference ?? ev.splits?.[0]?.reference ?? '') === (data.reference?.trim() ?? '')) {
+        return { invoice: withDue(current, events), event: ev, replayed: true };
+      }
+    }
+    let result!: { invoice: IInvoice; event: IInvoiceEvent; replayed?: boolean };
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        const cur = await InvoiceModel.findOne({ _id: invoiceId, partnerId: actor.partnerId }).session(session).lean() as unknown as IInvoice | null;
+        if (!cur) throw invoiceNotFound();
+        const curEvents = await InvoiceEventModel.find({ invoiceId }).sort({ version: 1 }).session(session).lean() as unknown as IInvoiceEvent[];
+        if (data.requestKey) {
+          const raced = curEvents.find((e) => e.kind === 'payment' && e.requestKey === data.requestKey);
+          if (raced) {
+            if (raced.requestHash !== requestHash) throw bad('IDEMPOTENCY_KEY_REUSED', 'This request key was already used for a different payment', 409);
+            result = { invoice: withDue(cur, curEvents), event: raced, replayed: true };
+            return;
+          }
+        }
+        if (cur.lifecycleState === 'cancelled') throw bad('ALREADY_CANCELLED', 'This bill is cancelled', 409);
+        if (cur.lifecycleState === 'paid') throw bad('INVOICE_STATE_CONFLICT', 'This bill is paid', 409);
+        if (data.expectedLifecycleVersion !== undefined && data.expectedLifecycleVersion !== null && Number(data.expectedLifecycleVersion) !== cur.lifecycleVersion) {
+          throw bad('LIFECYCLE_VERSION_CONFLICT', 'The bill changed meanwhile; reload and try again', 409);
+        }
+        const total = cur.totals.totalMinor;
+        const paid = paidOf(cur, curEvents);
+        const due = total - paid;
+        // A single method without an amount pays everything still due.
+        const splits: PaymentSplit[] = splitsIn.length === 1 && splitsIn[0]!.amountMinor === undefined
+          ? [{ ...splitsIn[0]!, amountMinor: due }] : splitsIn as PaymentSplit[];
+        const amount = splits.reduce((n, x) => n + x.amountMinor, 0);
+        if (amount > due) throw bad('AMOUNT_EXCEEDS_DUE', `Only ${(due / 100).toFixed(2)} is due on this bill`, 409);
+        if (amount <= 0 && due > 0) throw bad('INVALID_AMOUNT', 'A payment is a positive amount');
+        if (amount < due) {
+          const p = await PartnerModel.findById(actor.partnerId).select({ allowPartPayments: 1 }).session(session).lean() as { allowPartPayments?: boolean } | null;
+          if (!p?.allowPartPayments) throw bad('PART_PAYMENTS_NOT_ALLOWED', `This partner takes full payment only: ${(due / 100).toFixed(2)} is due`, 409);
+          if (!data.requestKey) throw bad('REQUEST_KEY_REQUIRED', 'A part payment needs a request key');
+        }
+        if (data.requestKey) await claimRequestKey(paymentKeyScope(invoiceId), data.requestKey, session);
+        const to: InvoiceLifecycleState = paid + amount >= total ? 'paid' : 'partly_paid';
+        const updated = await this.invoiceRepository.casLifecycle(actor.partnerId, invoiceId, cur.lifecycleVersion, cur.lifecycleState, to, session,
+          { paidMinor: paid + amount });
+        if (!updated) throw bad('LIFECYCLE_VERSION_CONFLICT', 'The bill changed meanwhile; reload and try again', 409);
+        const one = splits.length === 1 ? splits[0]! : undefined;
+        const event = await this.invoiceEventRepository.save({
+          invoiceId, kind: 'payment', ...(one ? { mode: one.mode, reference: one.reference } : {}), note: data.note,
+          amountMinor: amount, splits, ...(data.requestKey ? { requestKey: data.requestKey, requestHash } : {}),
+          version: cur.lifecycleVersion + 1, at: new Date(), by: actor.memberId, byKind: actor.actorKind === 'admin' ? 'admin' : 'member',
+        } as Partial<IInvoiceEvent>, { session });
+        await recordPartnerAudit(actor, 'invoice.pay', { kind: 'invoice', id: invoiceId },
+          { serial: cur.serial, amountMinor: amount, methods: splits.map((x) => x.mode), state: to }, session);
+        result = { invoice: withDue(updated), event };
+      });
+    } catch (error: any) {
+      if (error?.code === 11000 && data.requestKey) {
+        const ev = await InvoiceEventModel.findOne({ invoiceId, requestKey: data.requestKey }).lean() as unknown as IInvoiceEvent | null;
+        if (ev && ev.requestHash === requestHash) return { invoice: withDue(await this.loadForActor(actor, invoiceId)), event: ev, replayed: true };
+      }
+      if (error?.code === 11000) throw new AppError({ status: 409, code: 'LIFECYCLE_VERSION_CONFLICT', message: 'The bill changed meanwhile; reload and try again' });
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+    return result;
   }
 
   /**
@@ -442,17 +546,24 @@ export class InvoiceService {
    * needs none. The refund is part of the cancellation event and printed with it.
    */
   async cancelInvoice(actor: PartnerActor, invoiceId: string, reason: string,
-    refund?: { mode: PaymentMode; reference?: string; note?: string }): Promise<{ invoice: IInvoice; event: IInvoiceEvent }> {
+    refund?: { mode: PaymentMode; reference?: string; note?: string; amountMinor?: number }): Promise<{ invoice: IInvoice; event: IInvoiceEvent }> {
     const current = await this.loadForActor(actor, invoiceId);
     if (current.lifecycleState === 'cancelled') throw new AppError({ status: 409, code: 'ALREADY_CANCELLED', message: 'This bill is cancelled' });
-    if (current.lifecycleState === 'paid' && !refund) {
+    // Q14: whatever was paid (in full or in parts) goes back, and the refund record names exactly that amount. The
+    // cancellation is a CAS on the version read here, so a payment landing in between refuses it.
+    const paid = paidOf(current, await this.invoiceEventRepository.findByInvoice(invoiceId));
+    if (paid > 0 && !refund) {
       throw new AppError({ status: 400, code: 'REFUND_REQUIRED', message: 'This bill was paid: record how the money was returned' });
     }
-    if (current.lifecycleState !== 'paid' && refund) {
+    if (paid === 0 && refund) {
       throw new AppError({ status: 400, code: 'NOTHING_TO_REFUND', message: 'This bill was not paid' });
     }
-    return this.transition(actor, invoiceId, [current.lifecycleState === 'paid' ? 'paid' : 'issued'], 'cancelled',
-      { kind: 'cancellation', reason, ...(refund ? { refund } : {}) }, 'invoice.cancel', current);
+    if (refund && refund.amountMinor !== undefined && refund.amountMinor !== paid) {
+      throw new AppError({ status: 400, code: 'REFUND_AMOUNT_MISMATCH', message: `The refund must be the amount paid (${(paid / 100).toFixed(2)})` });
+    }
+    const out = await this.transition(actor, invoiceId, [current.lifecycleState], 'cancelled',
+      { kind: 'cancellation', reason, ...(refund ? { refund: { ...refund, amountMinor: paid } } : {}) }, 'invoice.cancel', current, { paidMinor: paid });
+    return { ...out, invoice: withDue(out.invoice) };
   }
 
   /** Q10: the bill a request key produced (a lost answer), within the actor's branch scope; null when none. */
@@ -461,7 +572,7 @@ export class InvoiceService {
     if (!inv) return null;
     if (!hasGlobalScope(actor) && !actor.branchIds.includes(String(inv.branchId))) return null;
     this.verifyChecksum(inv);
-    return inv;
+    return withDue(inv);
   }
 
   /** Q10: give up a bill whose answer was lost: abandoned (it can never be issued) or used (here is the bill). */
@@ -480,7 +591,8 @@ export class InvoiceService {
     to: InvoiceLifecycleState,
     payload: Partial<IInvoiceEvent>,
     action: string,
-    loaded?: IInvoice
+    loaded?: IInvoice,
+    extraSet: Record<string, unknown> = {}
   ): Promise<{ invoice: IInvoice; event: IInvoiceEvent }> {
     const current = loaded ?? await this.loadForActor(actor, invoiceId);
     if (!from.includes(current.lifecycleState)) {
@@ -494,7 +606,7 @@ export class InvoiceService {
     const session = await mongoose.startSession();
     try {
       await session.withTransaction(async () => {
-        const updated = await this.invoiceRepository.casLifecycle(actor.partnerId, invoiceId, current.lifecycleVersion, current.lifecycleState, to, session);
+        const updated = await this.invoiceRepository.casLifecycle(actor.partnerId, invoiceId, current.lifecycleVersion, current.lifecycleState, to, session, extraSet);
         if (!updated) {
           throw new AppError({ status: 409, code: 'LIFECYCLE_VERSION_CONFLICT', message: 'The bill changed meanwhile; reload and try again' });
         }
@@ -532,7 +644,7 @@ export class InvoiceService {
   async getInvoice(actor: PartnerActor, invoiceId: string): Promise<{ invoice: IInvoice; events: IInvoiceEvent[] }> {
     const invoice = await this.loadForActor(actor, invoiceId);
     const events = await this.invoiceEventRepository.findByInvoice(invoiceId);
-    return { invoice, events };
+    return { invoice: withDue(invoice, events), events };
   }
 
   /**
@@ -569,7 +681,7 @@ export class InvoiceService {
     const items = rows.slice(0, limit);
     items.forEach((r) => this.verifyChecksum(r));
     const last = items[items.length - 1];
-    return { items, total, nextCursor: rows.length > limit && last ? `${new Date(last.issuedAt).getTime()}_${String(last._id)}` : null };
+    return { items: items.map((r) => withDue(r)), total, nextCursor: rows.length > limit && last ? `${new Date(last.issuedAt).getTime()}_${String(last._id)}` : null };
   }
 
   async listInvoices(actor: PartnerActor, filter: { state?: InvoiceLifecycleState; branchId?: string; limit?: number; before?: Date;
@@ -586,7 +698,7 @@ export class InvoiceService {
     if (filter.before) query.issuedAt = { $lt: filter.before };
     const rows = await this.invoiceRepository.findAll(query, { sort: { issuedAt: -1, _id: -1 }, limit: Math.min(filter.limit ?? 50, 200) });
     rows.forEach((r) => this.verifyChecksum(r));
-    return rows;
+    return rows.map((r) => withDue(r));
   }
 
   /** Q9: paged, newest first; each bill names its doctor (clinic bills) from the doctor's current profile. */
@@ -600,7 +712,7 @@ export class InvoiceService {
     ]);
     rows.forEach((r) => this.verifyChecksum(r));
     const names = await doctorNames(rows);
-    return { items: rows.map((r) => ({ ...r, doctorName: r.doctorId ? names[String(r.doctorId)] : undefined })), page: pg, limit: lim, total,
+    return { items: rows.map((r) => ({ ...withDue(r), doctorName: r.doctorId ? names[String(r.doctorId)] : undefined })), page: pg, limit: lim, total,
       totalPages: Math.max(1, Math.ceil(total / lim)) };
   }
 
@@ -609,7 +721,8 @@ export class InvoiceService {
     if (!invoice || !invoice.customer?.userId || String(invoice.customer.userId) !== String(userId)) throw invoiceNotFound();
     this.verifyChecksum(invoice);
     const doctorName = invoice.doctorId ? (await doctorNames([invoice]))[String(invoice.doctorId)] : undefined;
-    return { invoice: { ...invoice, ...(doctorName ? { doctorName } : {}) } as IInvoice, events: await this.invoiceEventRepository.findByInvoice(invoiceId) };
+    const events = await this.invoiceEventRepository.findByInvoice(invoiceId);
+    return { invoice: { ...withDue(invoice, events), ...(doctorName ? { doctorName } : {}) } as IInvoice, events };
   }
 
   /** PDF of the bill as of lifecycle `version` (0 = as issued; default = current). */

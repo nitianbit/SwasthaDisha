@@ -31,11 +31,24 @@ export const createInvoiceSchema = Joi.object({
   idempotencyKey: Joi.string().trim().min(1).max(100).required(),
 });
 
+const paymentMode = Joi.string().valid('cash', 'upi', 'card', 'bank', 'other');
+/**
+ * Q14: either `mode` (+ reference) for the whole remaining amount (as before), or `splits` — one or several methods with
+ * their amounts in paise (e.g. cash 100000 + upi 200000). A part payment (less than is due) needs the partner's
+ * allowPartPayments setting and a `requestKey`.
+ */
 export const recordPaymentSchema = Joi.object({
-  mode: Joi.string().valid('cash', 'upi', 'card', 'bank', 'other').required(),
+  mode: paymentMode.optional(),
   reference: Joi.string().trim().max(200).optional(),
   note: Joi.string().trim().max(500).optional(),
-});
+  splits: Joi.array().items(Joi.object({
+    mode: paymentMode.required(),
+    amountMinor: Joi.number().integer().min(1).max(100_000_000_000_00).required(),
+    reference: Joi.string().trim().max(200).optional(),
+  })).min(1).max(10).optional(),
+  requestKey: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).optional(),
+  expectedLifecycleVersion: Joi.number().integer().min(0).optional(),
+}).xor('mode', 'splits').oxor('reference', 'splits');
 
 export const cancelInvoiceSchema = Joi.object({
   reason: Joi.string().trim().min(1).max(500).required(),
@@ -44,6 +57,8 @@ export const cancelInvoiceSchema = Joi.object({
     mode: Joi.string().valid('cash', 'upi', 'card', 'bank', 'other').required(),
     reference: Joi.string().trim().max(200).optional(),
     note: Joi.string().trim().max(500).optional(),
+    /** Q14: when given, it must equal the amount paid (the record always names that amount). */
+    amountMinor: Joi.number().integer().min(0).optional(),
   }).optional(),
 });
 
@@ -60,7 +75,7 @@ const realDate = Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).custom((v: string, 
 }).messages({ 'any.invalid': 'Dates must be real calendar dates (YYYY-MM-DD)', 'string.pattern.base': 'Dates are YYYY-MM-DD' });
 
 export const invoiceQuerySchema = Joi.object({
-  state: Joi.string().valid('issued', 'paid', 'cancelled').optional(),
+  state: Joi.string().valid('issued', 'partly_paid', 'paid', 'cancelled').optional(),
   branchId: Joi.string().pattern(objectIdPattern).optional(),
   limit: Joi.number().integer().min(1).max(200).optional(),
   before: Joi.date().iso().optional(),
