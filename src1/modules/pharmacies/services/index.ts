@@ -1,4 +1,5 @@
 import { Service } from 'typedi';
+import { ContactField, withoutSelfContacts } from '@/modules/common/utils/selfContacts';
 import { PharmacyRepository } from '@/modules/pharmacies/repository';
 import { UserRepository } from '@/modules/user/repository';
 import {
@@ -182,6 +183,18 @@ export class PharmacyService {
     const sort = this.pharmacyRepository.buildSortFromParams(effectiveParams);
     const data = await this.pharmacyRepository.findAll(filter, { sort });
     return { data };
+  }
+
+  /**
+   * The pharmacy's own profile edit (Q14 review N7). The sign-in contacts (mobile number, email) are never set or
+   * changed here — an unproven address could take someone else's sign-in; the SwasthaDisha team changes them (admin
+   * edit). They are left out, the rest is saved, and `ignoredContacts` names those that differed from the stored ones.
+   */
+  async updateOwnProfile(id: string, data: UpdatePharmacyRequest): Promise<{ pharmacy: IPharmacy; ignoredContacts: ContactField[] }> {
+    const current = await this.getById(id);
+    const { rest, ignoredContacts } = withoutSelfContacts(data as Record<string, unknown>, current as unknown as Record<string, unknown>, ['phone', 'email']);
+    if (Object.keys(rest).length === 0) return { pharmacy: current, ignoredContacts };
+    return { pharmacy: await this.update(id, rest as UpdatePharmacyRequest), ignoredContacts };
   }
 
   async update(id: string, data: UpdatePharmacyRequest): Promise<IPharmacy> {

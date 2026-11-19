@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { SELF_CONTACT_MESSAGE } from '@/modules/common/utils/selfContacts';
 import { withFiles } from '@/modules/file/access';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { Request, Response, NextFunction } from 'express';
@@ -182,12 +183,13 @@ export class SpecialistController {
     res: Response,
     _next: NextFunction
   ) => {
-    const data = await withFiles(req.user, 'Specialist', req.body, this.specialistId(req),
-      () => this.specialistPortalService.updateProfile(this.specialistId(req), req.body));
+    const { specialist: data, ignoredContacts } = await withFiles(req.user, 'Specialist', req.body, this.specialistId(req),
+      () => this.specialistPortalService.updateOwnProfile(this.specialistId(req), req.body), () => this.specialistId(req));
     res.status(200).json({
       success: true,
-      message: 'Profile updated successfully',
+      message: ignoredContacts.length ? SELF_CONTACT_MESSAGE.staff : 'Profile updated successfully',
       data,
+      ...(ignoredContacts.length ? { ignoredContacts } : {}),
     });
   };
 

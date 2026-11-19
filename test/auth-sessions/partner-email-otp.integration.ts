@@ -43,6 +43,10 @@ import { PartnerSelectionTicketModel } from '@/modules/auth/model/partnerSelecti
 import { AuthSessionModel } from '@/modules/auth/model/session';
 import { UserService } from '@/modules/user/services';
 import { CorporateRepository } from '@/modules/corporates/repository';
+import { SpecialistPortalService } from '@/modules/specialistPortal/services';
+import { SpecialistService } from '@/modules/specialists/services';
+import { PharmacyService } from '@/modules/pharmacies/services';
+import { BookingRepository } from '@/modules/bookings/repository';
 import { createNativeSession, refreshNativeSession } from '@/modules/auth/sessions';
 import { PartnerService, PartnerActor, adminActor } from '@/modules/partners/services';
 import * as clinic from '@/modules/partners/services/clinic';
@@ -62,6 +66,7 @@ const auth = new (AuthService as unknown as new (...a: unknown[]) => AuthService
   new SpecialistRepository(), new PharmacyRepository(), {}, new OTPService(new OTPRepository()), { getByUserId: async () => ({}) },
   new NotificationService(new NotificationRepository(), users, {} as never), emailService, smsService, new MemberRepository());
 const partners = new PartnerService(new PartnerRepository(), new MemberRepository(), new BranchRepository());
+const doctors = new SpecialistService(new SpecialistRepository(), new CorporateRepository(), new BookingRepository());
 Container.set(PartnerService, partners);
 clinic.setClinicNotifier(async () => undefined); // the doctor-link notice is not under test here
 
@@ -339,50 +344,87 @@ async function main() {
     }
   });
 
-  await check('a customer cannot put an unproven email on their profile (422 EMAIL_VERIFICATION_REQUIRED); admin edits unchanged', async () => {
+  await check('a customer\'s own edit leaves out an unproven email or corporate email and saves the rest (ignoredContacts); admin unchanged', async () => {
     const users = new UserService(new UserRepository(), new CorporateRepository());
     const me = await UserModel.create({ phone: nextPhone(), userType: 'user', name: 'Squatter' });
     const id = String(me._id);
     const self = { _id: id, userType: 'user' };
-    const msg = "Add your email from your profile; we'll send a code to confirm it.";
-    for (const body of [{ email: 'victim.person@example.com' }, { name: 'X', email: 'Victim.Person@example.com' }, { corporateEmail: 'victim.person@example.com' }]) {
-      await assert.rejects(users.update(id, body as never, self), (e: any) => e.code === 'EMAIL_VERIFICATION_REQUIRED' && e.status === 422 && e.message === msg);
-    }
+    const cases: [Record<string, unknown>, string[]][] = [
+      [{ email: 'victim.person@example.com' }, ['email']],
+      [{ name: 'Renamed', email: 'Victim.Person@example.com', gender: 'Female' }, ['email']],
+      [{ corporateEmail: 'victim.person@example.com', city: 'Pune' }, ['corporateEmail']],
+    ];
+    for (const [body, ignored] of cases) assert.deepEqual((await users.updateWithContacts(id, body as never, self)).ignoredContacts, ignored);
     const stored = await UserModel.findById(id).lean() as any;
-    assert.deepEqual([stored.email, stored.corporateEmail, stored.name], [undefined, undefined, 'Squatter']);
+    assert.deepEqual([stored.email, stored.corporateEmail, stored.name, stored.gender, stored.city], [undefined, undefined, 'Renamed', 'Female', 'Pune']);
     // The victim's address is still nobody's: their email sign-in is not taken over.
     await assert.rejects(send('user', { email: 'victim.person@example.com' }), code('EMAIL_NOT_REGISTERED'));
-    // Absent, null or empty: other edits go through as before.
-    assert.equal((await users.update(id, { name: 'Renamed', email: null } as never, self)).name, 'Renamed');
-    // An admin may still set it (unverified), and the customer may then send the same value again (no-op).
+    // Absent, null or empty: dropped silently, nothing reported.
+    const quiet = await users.updateWithContacts(id, { name: 'Quiet', email: null, corporateEmail: '' } as never, self);
+    assert.deepEqual([quiet.user.name, quiet.ignoredContacts], ['Quiet', []]);
+    // An admin may still set it (unverified); the customer sending the same value again is not reported.
     await users.update(id, { email: 'Admin.Set@example.com' } as never, { _id: new Types.ObjectId().toHexString(), userType: 'admin' });
     assert.equal((await UserModel.findById(id).lean() as any).email, 'admin.set@example.com');
-    assert.equal((await users.update(id, { name: 'Again', email: 'ADMIN.SET@example.com' } as never, self)).name, 'Again');
+    const same = await users.updateWithContacts(id, { name: 'Again', email: 'ADMIN.SET@example.com' } as never, self);
+    assert.deepEqual([same.user.name, same.ignoredContacts], ['Again', []]);
   });
 
-  await check('a customer cannot set or change their phone on the profile (422 PHONE_VERIFICATION_REQUIRED); admin edits unchanged', async () => {
+  await check('a customer\'s own edit leaves out a phone change and saves the rest (ignoredContacts); admin unchanged', async () => {
     const users = new UserService(new UserRepository(), new CorporateRepository());
-    const msg = "Your mobile number can't be changed here. Sign in with your mobile number to use it; contact support to change it.";
     const phone = nextPhone();
     const me = await UserModel.create({ phone, userType: 'user', name: 'Has Phone' });
     const id = String(me._id);
     const self = { _id: id, userType: 'user' };
     const other = nextPhone();
-    await assert.rejects(users.update(id, { name: 'X', phone: other } as never, self),
-      (e: any) => e.code === 'PHONE_VERIFICATION_REQUIRED' && e.status === 422 && e.message === msg);
-    assert.deepEqual([(await UserModel.findById(id).lean() as any).phone, (await UserModel.findById(id).lean() as any).name], [phone, 'Has Phone']);
-    // The stored number again (any supported spelling) is a no-op; absent, null and empty are ignored.
-    assert.equal((await users.update(id, { name: 'Same', phone: `+91 ${phone}` } as never, self)).name, 'Same');
-    assert.equal((await users.update(id, { name: 'Empty', phone: '' } as never, self)).name, 'Empty');
-    assert.equal((await users.update(id, { name: 'Null', phone: null } as never, self)).name, 'Null');
+    const r = await users.updateWithContacts(id, { name: 'X', phone: other } as never, self);
+    assert.deepEqual(r.ignoredContacts, ['phone']);
+    assert.deepEqual([(await UserModel.findById(id).lean() as any).phone, (await UserModel.findById(id).lean() as any).name], [phone, 'X']);
+    // The stored number again (any supported spelling) is not reported; absent, null and empty are dropped silently.
+    for (const p of [`+91 ${phone}`, '', null]) assert.deepEqual((await users.updateWithContacts(id, { name: 'N', phone: p } as never, self)).ignoredContacts, []);
     // A legacy email-only account cannot claim someone's phone here (support adds one).
     const legacy = await UserModel.create({ email: 'legacy.only@example.com', userType: 'user', name: 'Legacy' });
-    await assert.rejects(users.update(String(legacy._id), { phone: other } as never, { _id: String(legacy._id), userType: 'user' }), code('PHONE_VERIFICATION_REQUIRED'));
+    assert.deepEqual((await users.updateWithContacts(String(legacy._id), { phone: other } as never, { _id: String(legacy._id), userType: 'user' })).ignoredContacts, ['phone']);
     assert.equal((await UserModel.findById(legacy._id).lean() as any).phone, undefined);
     assert.equal(await UserModel.countDocuments({ phone: other }), 0);
     // An admin still sets it.
     await users.update(String(legacy._id), { phone: other } as never, { _id: new Types.ObjectId().toHexString(), userType: 'admin' });
     assert.equal((await UserModel.findById(legacy._id).lean() as any).phone, other);
+  });
+
+  await check('a doctor\'s own profile edit leaves out a phone or email change and saves the rest; an admin still changes them', async () => {
+    const portal = new SpecialistPortalService({} as never, {} as never, {} as never, {} as never, new UserRepository(), doctors, {} as never);
+    const sp = await SpecialistModel.create({ name: 'Dr Self', phone: nextPhone(), email: 'dr.self@example.com', isActive: true, isVerified: true, specialization: 'GP' });
+    const id = String(sp._id);
+    const other = nextPhone();
+    const r = await portal.updateOwnProfile(id, { bio: 'New bio', phone: other, email: 'victim.doc@example.com' } as never);
+    assert.deepEqual([...r.ignoredContacts].sort(), ['email', 'phone']);
+    const stored = await SpecialistModel.findById(id).lean() as any;
+    assert.deepEqual([stored.bio, stored.phone, stored.email], ['New bio', sp.phone, 'dr.self@example.com']);
+    assert.equal(await SpecialistModel.countDocuments({ $or: [{ phone: other }, { email: 'victim.doc@example.com' }] }), 0);
+    // The same values again (any spelling) are not reported; contacts alone change nothing.
+    assert.deepEqual((await portal.updateOwnProfile(id, { phone: `0${sp.phone}`, email: 'DR.SELF@example.com', bio: 'B2' } as never)).ignoredContacts, []);
+    assert.deepEqual((await portal.updateOwnProfile(id, { email: 'x.doc@example.com' } as never)).ignoredContacts, ['email']);
+    // The forbidden-field rule still comes first.
+    await assert.rejects(portal.updateOwnProfile(id, { isVerified: true, phone: other } as never), code('FORBIDDEN_FIELD'));
+    // The admin edit (support) still changes them.
+    await doctors.update(id, { phone: other, email: 'dr.new@example.com' });
+    assert.deepEqual([(await SpecialistModel.findById(id).lean() as any).phone, (await SpecialistModel.findById(id).lean() as any).email], [other, 'dr.new@example.com']);
+  });
+
+  await check('a pharmacy\'s own profile edit leaves out a phone or email change and saves the rest; an admin still changes them', async () => {
+    const pharmacies = new PharmacyService(new PharmacyRepository(), new UserRepository());
+    const ph = await PharmacyModel.create({ name: 'Self Shop', phone: nextPhone(), email: 'self.shop@example.com', isActive: true, isVerified: true });
+    const id = String(ph._id);
+    const other = nextPhone();
+    const r = await pharmacies.updateOwnProfile(id, { address: '9 New Road', phone: other, email: 'victim.shop@example.com' } as never);
+    assert.deepEqual([...r.ignoredContacts].sort(), ['email', 'phone']);
+    const stored = await PharmacyModel.findById(id).lean() as any;
+    assert.deepEqual([stored.address, stored.phone, stored.email], ['9 New Road', ph.phone, 'self.shop@example.com']);
+    assert.equal(await PharmacyModel.countDocuments({ $or: [{ phone: other }, { email: 'victim.shop@example.com' }] }), 0);
+    assert.deepEqual((await pharmacies.updateOwnProfile(id, { phone: ph.phone, email: 'SELF.SHOP@example.com', city: 'Pune' } as never)).ignoredContacts, []);
+    // The admin edit (support) still changes them.
+    await pharmacies.update(id, { phone: other, email: 'new.shop@example.com' });
+    assert.deepEqual([(await PharmacyModel.findById(id).lean() as any).phone, (await PharmacyModel.findById(id).lean() as any).email], [other, 'new.shop@example.com']);
   });
 
   await check('a customer adds an email from their profile (verification), then signs in by it to the same account', async () => {

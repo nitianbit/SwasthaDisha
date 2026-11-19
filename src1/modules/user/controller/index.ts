@@ -149,12 +149,17 @@ export class UserController {
     const data: UpdateUserRequest = { ...req.body };
     const hrCorporateId = this.getHRCorporateId(req);
     if (hrCorporateId) data.corporateId = hrCorporateId;
-    const user = await withFiles((req as AuthRequest).user, 'User', data, id, () => this.userService.update(id, data, req.user!));
+    const { user, ignoredContacts } = await withFiles((req as AuthRequest).user, 'User', data, id,
+      () => this.userService.updateWithContacts(id, data, req.user!), (r) => (r.user as { _id?: unknown })?._id ?? id);
 
+    // Contacts a customer's own edit may not set are left out (the rest is saved) and named here.
     res.status(200).json({
       success: true,
-      message: 'User updated successfully',
+      message: ignoredContacts.length
+        ? "Contact details weren't changed: add an email from your profile with a code; your mobile number can't be changed here."
+        : 'User updated successfully',
       data: { user },
+      ...(ignoredContacts.length ? { ignoredContacts } : {}),
     });
   };
 

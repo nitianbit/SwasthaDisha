@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { SELF_CONTACT_MESSAGE } from '@/modules/common/utils/selfContacts';
 import { withFiles } from '@/modules/file/access';
 import { AuthRequest } from '@/modules/middleware/auth';
 import { Request, Response, NextFunction } from 'express';
@@ -183,12 +184,14 @@ export class PharmacyController {
   updateMyProfile = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const pharmacyId = req.user?.pharmacyId || '';
     const data: UpdatePharmacyRequest = req.body;
-    const result = await withFiles((req as AuthRequest).user, 'Pharmacy', data, pharmacyId, () => this.pharmacyService.update(pharmacyId, data));
+    const { pharmacy: result, ignoredContacts } = await withFiles((req as AuthRequest).user, 'Pharmacy', data, pharmacyId,
+      () => this.pharmacyService.updateOwnProfile(pharmacyId, data), () => pharmacyId);
 
     res.status(200).json({
       success: true,
-      message: 'Profile updated successfully',
+      message: ignoredContacts.length ? SELF_CONTACT_MESSAGE.staff : 'Profile updated successfully',
       data: result,
+      ...(ignoredContacts.length ? { ignoredContacts } : {}),
     });
   };
 

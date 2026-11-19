@@ -1,4 +1,5 @@
 import { Service } from 'typedi';
+import { ContactField, withoutSelfContacts } from '@/modules/common/utils/selfContacts';
 import { AppError } from '@/modules/common/types';
 import { SlotService } from '@/modules/slots/services';
 import { SlotRepository } from '@/modules/slots/repository';
@@ -80,6 +81,18 @@ export class SpecialistPortalService {
     specialistId: string,
     body: UpdateSpecialistRequest
   ): Promise<ISpecialist> {
+    return (await this.updateOwnProfile(specialistId, body)).specialist;
+  }
+
+  /**
+   * The doctor's own profile edit (Q14 review N7). The sign-in contacts (mobile number, email) are never set or changed
+   * here — an unproven address could take someone else's sign-in; the SwasthaDisha team changes them (admin edit). They
+   * are left out, the rest is saved, and `ignoredContacts` names those that differed from the stored ones.
+   */
+  async updateOwnProfile(
+    specialistId: string,
+    body: UpdateSpecialistRequest
+  ): Promise<{ specialist: ISpecialist; ignoredContacts: ContactField[] }> {
     if (
       body !== null &&
       typeof body === 'object' &&
@@ -95,7 +108,10 @@ export class SpecialistPortalService {
       });
     }
 
-    return this.specialistService.update(specialistId, body);
+    const current = await this.specialistService.getById(specialistId);
+    const { rest, ignoredContacts } = withoutSelfContacts(body as unknown as Record<string, unknown>, current as unknown as Record<string, unknown>, ['phone', 'email']);
+    if (Object.keys(rest).length === 0) return { specialist: current, ignoredContacts };
+    return { specialist: await this.specialistService.update(specialistId, rest as UpdateSpecialistRequest), ignoredContacts };
   }
 
   async createSlot(

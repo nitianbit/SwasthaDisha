@@ -118,6 +118,18 @@ export class UserService {
     input: UpdateUserRequest,
     actor: { _id: string; userType: string; corporateId?: string }
   ): Promise<IUser> {
+    return (await this.updateWithContacts(id, input, actor)).user;
+  }
+
+  /**
+   * The profile save, plus the contacts a customer's own edit tried to set or change and that were left out
+   * (`ignoredContacts`; the rest of the edit is saved).
+   */
+  async updateWithContacts(
+    id: string,
+    input: UpdateUserRequest,
+    actor: { _id: string; userType: string; corporateId?: string }
+  ): Promise<{ user: IUser; ignoredContacts: ('email' | 'corporateEmail' | 'phone')[] }> {
     if (!actor?._id) {
       throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Authentication is required' });
     }
@@ -144,30 +156,29 @@ export class UserService {
       throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'HR can only access users from their own corporate' });
     }
 
-    // A customer's email (the email sign-in looks it up) and corporate email (an address held there is "in use" for
-    // everyone else's verification) are set only through their verification flows (/auth/email-verification,
-    // /auth/corporate-email), which prove the address: an unproven address here could take someone else's. Sending the
-    // stored value again is a no-op; absent, null, empty or malformed values are ignored as before. Admin edits unchanged.
-    // Likewise the phone (the phone sign-in looks it up): accounts are created by phone sign-in, so a customer's phone is
-    // never set or changed here; legacy email-only accounts get a phone added by support.
+    // A customer's sign-in contacts are never set or changed by their own edit (owner decision, Q14 review N6/N8): the
+    // email (the email sign-in looks it up) only through /auth/email-verification, the corporate email (an address held
+    // there is "in use" for everyone else's verification) only through /auth/corporate-email, the phone (the phone
+    // sign-in looks it up) not at all — accounts are created by phone sign-in; a legacy email-only account gets one from
+    // support. Released apps send contacts with other fields, so the edit is not refused: the contacts are left out, the
+    // rest is saved and the answer names what was left out. The stored value again (any spelling) is not "left out";
+    // absent, null, empty or malformed values are dropped silently, as before. Admin edits unchanged; HR never set contacts.
+    // (Same rule as common/utils/selfContacts.ts, inlined: this module keeps a closed import list.)
     const tidyPhone = (p: string) => p.trim().replace(/\s+/g, '').replace(/^\+91/, '').replace(/^0+(?=\d{10}$)/, '');
+    const ignoredContacts: ('email' | 'corporateEmail' | 'phone')[] = [];
     if (selfUpdate) {
-      const sentPhone = (input as Record<string, unknown>).phone;
-      if (typeof sentPhone === 'string' && sentPhone.trim() && tidyPhone(sentPhone) !== tidyPhone(String(user.phone ?? ''))) {
-        throw new AppError({ status: 422, code: 'PHONE_VERIFICATION_REQUIRED',
-          message: "Your mobile number can't be changed here. Sign in with your mobile number to use it; contact support to change it." });
-      }
-      for (const field of ['email', 'corporateEmail'] as const) {
+      for (const field of ['email', 'corporateEmail', 'phone'] as const) {
         const sent = (input as Record<string, unknown>)[field];
         if (typeof sent !== 'string' || !sent.trim()) continue;
-        if (sent.trim().toLowerCase() !== this.normalizeEmail(user[field])) {
-          throw new AppError({ status: 422, code: 'EMAIL_VERIFICATION_REQUIRED', message: "Add your email from your profile; we'll send a code to confirm it." });
-        }
+        const differs = field === 'phone'
+          ? tidyPhone(sent) !== tidyPhone(String(user.phone ?? ''))
+          : sent.trim().toLowerCase() !== (this.normalizeEmail(user[field]) ?? '');
+        if (differs) ignoredContacts.push(field);
       }
     }
 
     const candidate: UpdateUserRequest = { ...input };
-    // Only an admin sets contacts here (a customer's are refused above unless unchanged; HR never could).
+    // Only an admin sets contacts here.
     for (const field of ['phone', 'email'] as const) {
       if (actor.userType !== 'admin') delete candidate[field];
     }
@@ -178,7 +189,7 @@ export class UserService {
       throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: error.details.map(detail => detail.message).join(', ') });
     }
     const data: UpdateUserRequest = Object.fromEntries(Object.entries(value).filter(([, field]) => field !== undefined));
-    if (Object.keys(data).length === 0) return user;
+    if (Object.keys(data).length === 0) return { user, ignoredContacts };
 
     if (data.phone !== undefined) {
       const existing = await this.userRepository.findByPhone(data.phone, 'user');
@@ -252,7 +263,7 @@ export class UserService {
       });
     }
 
-    return updated;
+    return { user: updated, ignoredContacts };
   }
 
   private async verifyEmailDomain(email: string, corporateId?: string): Promise<void> {

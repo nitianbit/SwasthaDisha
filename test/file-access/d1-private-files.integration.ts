@@ -418,7 +418,13 @@ async function main() {
       assert.equal((await get(victim)).status, 401);
 
       const own = (await upload(me, 'logo.png')).body.data!.files[0]!.url;
-      assert.equal((await send({ profilePictureUrl: own })).status, 200);
+      // Q14 review N7: a contact change in the same save is left out and named; the rest (the avatar) is saved.
+      const withContact = await send({ profilePictureUrl: own, phone: '9123400099' });
+      assert.equal(withContact.status, 200);
+      const answer = await withContact.json() as { message?: string; ignoredContacts?: string[]; data?: { phone?: string; profilePictureUrl?: string } };
+      assert.deepEqual(answer.ignoredContacts, ['phone']);
+      assert.equal(answer.message, "Contact details weren't changed here; ask the SwasthaDisha team to update them.");
+      assert.equal((await PharmacyModel.collection.findOne({ _id: ph }))!.phone, '9123400001');
       assert.equal((await get(own)).status, 200, 'published');
       const next = (await upload(me, 'logo2.png')).body.data!.files[0]!.url;
       assert.equal((await send({ profilePictureUrl: next })).status, 200);
