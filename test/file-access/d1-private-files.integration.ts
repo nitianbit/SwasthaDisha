@@ -441,6 +441,19 @@ async function main() {
       // A PDF can never become a public avatar.
       const pdf = (await upload(me, 'menu.pdf')).body.data!.files[0]!.url;
       assert.equal((await send({ profilePictureUrl: pdf })).status, 400);
+
+      // Owner decision (19 Nov 2026): only admins create pharmacies. Even a verified, operational pharmacy cannot create
+      // one (it could pick any mobile number, which would then sign in to it); an admin can.
+      await PharmacyModel.collection.updateOne({ _id: ph }, { $set: { isVerified: true } });
+      const create = (token: string, phone: string) => fetch(base + '/api/v1/pharmacies', { method: 'POST',
+        headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' }, body: JSON.stringify({ name: 'New Pharmacy', phone }) });
+      const before = await PharmacyModel.countDocuments();
+      const byPharmacy = await create(me, '9123400077');
+      assert.equal(byPharmacy.status, 403, await byPharmacy.text());
+      assert.equal(await PharmacyModel.countDocuments({ phone: '9123400077' }), 0);
+      const byAdmin = await create(admin.token, '9123400078');
+      assert.equal(byAdmin.status, 201, await byAdmin.text());
+      assert.equal(await PharmacyModel.countDocuments(), before + 1);
     });
 
     await check('HTTP: an admin banner publishes its image', async () => {

@@ -312,16 +312,21 @@ async function main() {
       await assert.rejects(send(role, { email: `nobody.${role}@example.com` }), (e: any) => e.code === 'EMAIL_NOT_REGISTERED' && e.status === 404 && e.message === msg);
     }
     assert.deepEqual([await UserModel.countDocuments(), await SpecialistModel.countDocuments(), await PharmacyModel.countDocuments(), mails.length], [...before, sent]);
-    // Phone sign-up still creates the account (customer) and the sign-up rows (doctor, pharmacy).
+    // Phone sign-up still creates the account (customer) and the doctor's sign-up row; a pharmacy is never signed up
+    // (only admins create pharmacies, owner decision 19 Nov 2026).
     const phone = nextPhone();
-    for (const role of ['user', 'specialist', 'pharmacy']) await send(role, { phone });
-    assert.deepEqual([await UserModel.countDocuments(), await SpecialistModel.countDocuments(), await PharmacyModel.countDocuments()], before.map((n) => n + 1));
+    for (const role of ['user', 'specialist']) await send(role, { phone });
+    await assert.rejects(send('pharmacy', { phone }), (e: any) => e.code === 'PHARMACY_NOT_FOUND' && e.status === 404);
+    assert.deepEqual([await UserModel.countDocuments(), await SpecialistModel.countDocuments(), await PharmacyModel.countDocuments()],
+      [before[0]! + 1, before[1]! + 1, before[2]!]);
   });
 
   await check('a phone sign-up with an email in the same request never stores that email; phone wins at verify', async () => {
     for (const role of ['specialist', 'pharmacy'] as const) {
       const phone = nextPhone();
       const victim = `victim.${role}@example.com`;
+      // A pharmacy is never signed up by a code request; it exists (made by an admin) and has no email yet.
+      if (role === 'pharmacy') await PharmacyModel.create({ name: 'No Mail Pharmacy', phone, isActive: true, isVerified: false });
       await send(role, { phone, email: victim });
       assert.deepEqual(sms[sms.length - 1]!.to, phone);
       const M = (role === 'specialist' ? SpecialistModel : PharmacyModel) as mongoose.Model<any>;

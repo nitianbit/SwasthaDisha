@@ -67,6 +67,10 @@ const nextPhone = () => '96' + String(10_000_000 + ++phoneSeq).padStart(8, '0');
 const lastOtp = () => /(\d{6})/.exec(sms[sms.length - 1]!.text)![1]!;
 
 async function login(userType: string, origin: string, phone = nextPhone()) {
+  // Only admins create pharmacies (owner decision 19 Nov 2026): the pharmacy exists before it signs in.
+  if (userType === 'pharmacy' && !(await PharmacyModel.exists({ phone }))) {
+    await PharmacyModel.create({ name: 'Cookie Pharmacy', phone, isActive: true, isVerified: false });
+  }
   const sent = await call(`/api/v1/auth/${userType}/send`, { body: { phone }, origin, header: false });
   assert.equal(sent.status, 200, JSON.stringify(sent.body));
   const r = await call(`/api/v1/auth/${userType}/verify`, { body: { phone, otp: lastOtp(), session: 'cookie' }, origin });
@@ -259,6 +263,7 @@ async function main() {
       assert.equal((await call('/api/v1/auth/session/refresh', { cookie: again.cookie, origin: STAFF })).status, 401);
       // A pharmacy cannot open a customer-app session.
       const phone = nextPhone();
+      await PharmacyModel.create({ name: 'Refused Pharmacy', phone, isActive: true, isVerified: false });
       await call('/api/v1/auth/pharmacy/send', { body: { phone }, header: false, origin: STAFF });
       const refused = await call('/api/v1/auth/pharmacy/verify', { body: { phone, otp: lastOtp(), session: 'cookie' }, origin: CUSTOMER });
       assert.equal(refused.status, 403); assert.equal(refused.body.code, 'SESSION_ROLE_REFUSED');

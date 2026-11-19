@@ -370,7 +370,12 @@ async function main() {
   await check('sign-up placeholders (made by an earlier code request) are completed with the file profile; conflicts name the fix', async () => {
     // What a code request to an unknown phone creates for each role.
     await signUpPlaceholder('specialist', '9100000301');
-    await signUpPlaceholder('pharmacy', '9100000302');
+    // A code request no longer signs a pharmacy up (only admins create pharmacies, owner decision 19 Nov 2026), but rows it
+    // made before that decision still exist: insert one exactly as the old sign-up wrote it.
+    await assert.rejects(signUpPlaceholder('pharmacy', '9100000302'), (e: any) => e.code === 'PHARMACY_NOT_FOUND');
+    assert.equal(await PharmacyModel.countDocuments({ phone: '9100000302' }), 0);
+    await PharmacyModel.create({ name: 'Demo', phone: '9100000302', isActive: true, isVerified: false, walletEnabled: false,
+      pickupAvailable: false, deliveryAvailable: false } as any);
     await signUpPlaceholder('user', '9100000303');
     const sp0 = await SpecialistModel.findOne({ phone: '9100000301' }).lean() as any;
     const ph0 = await PharmacyModel.findOne({ phone: '9100000302' }).lean() as any;

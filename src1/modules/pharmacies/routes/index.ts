@@ -7,7 +7,6 @@ import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
 import {
   requireAdmin,
-  requireAdminOrOperationalPharmacy,
   requirePharmacy,
 } from '@/modules/middleware/auth';
 import { PharmacyController } from '@/modules/pharmacies/controller';
@@ -24,10 +23,11 @@ const pharmacyRouter = Router();
 const publicPharmacyRouter = Router();
 const pharmacyController = new PharmacyController();
 
-// Admin/pharmacy: create pharmacy
+// Owner decision (19 Nov 2026): only admins create pharmacies (a pharmacy account could otherwise create one for any
+// mobile number, which could then sign in to it).
 pharmacyRouter.post(
   '/',
-  requireAdminOrOperationalPharmacy,
+  requireAdmin,
   validate(createPharmacySchema, 'body'),
   catchAsync(pharmacyController.create)
 );

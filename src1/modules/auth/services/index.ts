@@ -115,19 +115,6 @@ export class AuthService {
     };
   }
 
-  private buildPharmacySignupPayload(data: SendOTPRequest): IPharmacy {
-    const normalizedPhone = data.phone?.trim();
-
-    return {
-      name: 'Demo',
-      phone: normalizedPhone!,
-      isActive: true,
-      isVerified: false,
-      walletEnabled: false,
-      pickupAvailable: false,
-      deliveryAvailable: false,
-    };
-  }
 
   async sendOTP(data: SendOTPRequest): Promise<{ message: string }> {
     const customerContact = data.userType === 'user'
@@ -211,12 +198,12 @@ export class AuthService {
         throw new AppError({ status: 404, code: 'EMAIL_NOT_REGISTERED',
           message: 'No account uses this email. Sign in with your mobile number, then add this email to your profile.' });
       }
+      // Owner decision (19 Nov 2026): only admins create pharmacies, so an unknown number does not sign a pharmacy up.
       if (data.userType === 'pharmacy') {
-        const newPharmacy = await this.pharmacyRepository.save(
-          this.buildPharmacySignupPayload(data)
-        );
-        userId = newPharmacy._id!;
-      } else if (data.userType === 'specialist') {
+        throw new AppError({ status: 404, code: 'PHARMACY_NOT_FOUND',
+          message: "This mobile number isn't registered as a pharmacy. Ask the Jansetu team to add your pharmacy." });
+      }
+      if (data.userType === 'specialist') {
         const newSpecialist = await this.specialistRepository.save(
           this.buildSpecialistSignupPayload(data)
         );
