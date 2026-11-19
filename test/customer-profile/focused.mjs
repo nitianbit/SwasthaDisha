@@ -83,7 +83,7 @@ async function rejectsCode(promise, code) { await assert.rejects(promise, error 
 const cases = [];
 function check(name, body) { cases.push({ name, body }); }
 check('mixed profile edit retains both stored contacts', async source => {
-  const f = fixture(source); const result = await f.service.update(base._id, { name: 'Ravi Kumar', phone: '8888888888', email: ' RAVI@example.test ' }, actor);
+  const f = fixture(source); const result = await f.service.update(base._id, { name: 'Ravi Kumar', phone: ' +91 99999 99999 ', email: ' RAVI@example.test ' }, actor);
   assert.equal(result.name, 'Ravi Kumar'); assert.equal(result.phone, base.phone); assert.equal(result.email, base.email);
   assert.equal(f.state.validations[0].candidate.phone, undefined); assert.equal(f.state.validations[0].candidate.email, undefined);
 });
@@ -108,19 +108,31 @@ check('the stored corporate email sent again is a no-op', async source => {
   const f = fixture(source, { ...base, corporateEmail: 'ravi@corp.test' }); const result = await f.service.update(base._id, { name: 'Changed', corporateEmail: 'RAVI@corp.test' }, actor);
   assert.equal(result.name, 'Changed'); assert.equal(f.state.validations[0].candidate.corporateEmail, undefined);
 });
-check('missing phone normalizes supported Indian format', async source => {
-  const f = fixture(source, { ...base, phone: undefined }); const result = await f.service.update(base._id, { phone: ' +91 88888 88888 ' }, actor);
-  assert.equal(result.phone, '8888888888');
+// Owner decision (after N6): a customer's phone is never set or changed here either (support adds one to legacy
+// email-only accounts).
+const phoneMessage = "Your mobile number can't be changed here. Sign in with your mobile number to use it; contact support to change it.";
+check('a different phone is refused (nothing written)', async source => {
+  const f = fixture(source); await assert.rejects(f.service.update(base._id, { name: 'X', phone: '8888888888' }, actor),
+    error => error.code === 'PHONE_VERIFICATION_REQUIRED' && error.status === 422 && error.message === phoneMessage);
+  assert.equal(f.state.writes.length, 0);
 });
-check('a null phone may be filled (an empty email stays empty)', async source => {
-  const f = fixture(source, { ...base, phone: null, email: '' }); const result = await f.service.update(base._id, { phone: '08888888888', email: '' }, actor);
-  assert.equal(result.phone, '8888888888'); assert.equal(result.email, '');
-  const filter = json(f.state.writes[0].filter);
-  assert.deepEqual(filter.phone, { $in: [null, ''] }); assert.equal(filter.email, undefined);
-  assert.deepEqual(filter.$expr, { $and: ['phone'].map(field => ({ $in: [{ $type: '$' + field }, ['missing', 'null', 'string']] })) });
+check('a missing phone cannot be filled (support adds it)', async source => {
+  const f = fixture(source, { ...base, phone: undefined }); await rejectsCode(f.service.update(base._id, { phone: ' +91 88888 88888 ' }, actor), 'PHONE_VERIFICATION_REQUIRED');
+  assert.equal(f.state.writes.length, 0);
+});
+check('a malformed phone string is refused too', async source => {
+  const f = fixture(source, { ...base, phone: undefined }); await rejectsCode(f.service.update(base._id, { phone: 'invalid' }, actor), 'PHONE_VERIFICATION_REQUIRED');
+  assert.equal(f.state.writes.length, 0);
+});
+check('a null phone cannot be filled either; empty and null contacts in the body are ignored', async source => {
+  const f = fixture(source, { ...base, phone: null, email: '' });
+  await rejectsCode(f.service.update(base._id, { phone: '08888888888', email: '' }, actor), 'PHONE_VERIFICATION_REQUIRED');
+  assert.equal(f.state.writes.length, 0);
+  const result = await f.service.update(base._id, { name: 'Changed', phone: '', email: null }, actor);
+  assert.equal(result.name, 'Changed'); assert.equal(result.phone, null); assert.deepEqual(json(f.state.writes[0].filter), { _id: base._id });
 });
 check('ignored contact-only self request is no-op', async source => {
-  const f = fixture(source); const result = await f.service.update(base._id, { phone: '8888888888', email: base.email }, actor);
+  const f = fixture(source); const result = await f.service.update(base._id, { phone: base.phone, email: base.email }, actor);
   assert.equal(result.phone, base.phone); assert.equal(f.state.writes.length, 0);
 });
 check('admin replaces contacts after normalization', async source => {
@@ -155,18 +167,6 @@ for (const field of forbidden) check('self privilege ' + field + ' rejected befo
 for (const [name, payload] of [['null', null], ['array', []], ['string', 'bad'], ['number', 3]]) check('service rejects ' + name + ' body', async source => {
   const f = fixture(source); await rejectsCode(f.service.update(base._id, payload, actor), 'VALIDATION_ERROR'); assert.equal(f.state.reads, 0);
 });
-for (const field of ['phone']) {
-  check('invalid missing ' + field + ' is rejected', async source => {
-    const f = fixture(source, { ...base, [field]: undefined }); await rejectsCode(f.service.update(base._id, { [field]: 'invalid' }, actor), 'VALIDATION_ERROR'); assert.equal(f.state.writes.length, 0);
-  });
-  check('observed duplicate ' + field + ' is rejected', async source => {
-    const f = fixture(source, { ...base, [field]: undefined }, { [field === 'phone' ? 'duplicatePhone' : 'duplicateEmail']: true });
-    await rejectsCode(f.service.update(base._id, { [field]: field === 'phone' ? '8888888888' : 'other@example.test' }, actor), field === 'phone' ? 'PHONE_ALREADY_IN_USE' : 'EMAIL_ALREADY_IN_USE'); assert.equal(f.state.writes.length, 0);
-  });
-  check('stale missing ' + field + ' cannot overwrite', async source => {
-    const f = fixture(source, { ...base, [field]: undefined }, { stale: true }); await rejectsCode(f.service.update(base._id, { name: 'Changed', [field]: field === 'phone' ? '8888888888' : 'other@example.test' }, actor), 'CONTACT_ALREADY_SET');
-  });
-}
 async function runSuite(source) {
   const passed = [], failures = [];
   for (const entry of cases) {
@@ -195,11 +195,11 @@ await rejectsCode(controller.update({ user: actor, params: { id: base._id }, bod
 await rejectsCode(controller.update({ user: { ...actor, _id: 'foreign' }, params: { id: base._id }, body: { name: 'bad' } }, res, () => {}), 'FORBIDDEN');
 
 const substitutions = [
-  ['allow contact replacement', "if (actor.userType !== 'admin' && (!selfUpdate || field === 'email' || !missingContact(user[field]))) delete candidate[field];", 'if (false) delete candidate[field];'],
+  ['allow contact replacement', "if (actor.userType !== 'admin') delete candidate[field];", 'if (false) delete candidate[field];'],
+  ['allow an unproven self phone', "if (typeof sentPhone === 'string' && sentPhone.trim() && tidyPhone(sentPhone) !== tidyPhone(String(user.phone ?? ''))) {", 'if (false) {'],
   ['allow an unproven self email', "if (sent.trim().toLowerCase() !== this.normalizeEmail(user[field])) {", 'if (false) {'],
   ['reject whole mixed update', 'const candidate: UpdateUserRequest = { ...input };', "if (selfUpdate && ('phone' in input || 'email' in input)) throw new AppError({ code: 'CONTACT_CHANGE_REQUIRED' });\n    const candidate: UpdateUserRequest = { ...input };"],
   ['validate before ignoring contacts', 'const candidate: UpdateUserRequest = { ...input };', "updateUserSchema.validate(input, { stripUnknown: true }).error && (() => { throw new AppError({ code: 'VALIDATION_ERROR' }); })();\n    const candidate: UpdateUserRequest = { ...input };"],
-  ['remove missing-contact compare-and-set', "const additions = selfUpdate ? (['phone', 'email'] as const).filter(field => data[field] !== undefined) : [];", 'const additions: string[] = [];'],
 ];
 const controls = [];
 for (const [name, before, after] of substitutions) {

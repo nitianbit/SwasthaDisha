@@ -148,7 +148,15 @@ export class UserService {
     // everyone else's verification) are set only through their verification flows (/auth/email-verification,
     // /auth/corporate-email), which prove the address: an unproven address here could take someone else's. Sending the
     // stored value again is a no-op; absent, null, empty or malformed values are ignored as before. Admin edits unchanged.
+    // Likewise the phone (the phone sign-in looks it up): accounts are created by phone sign-in, so a customer's phone is
+    // never set or changed here; legacy email-only accounts get a phone added by support.
+    const tidyPhone = (p: string) => p.trim().replace(/\s+/g, '').replace(/^\+91/, '').replace(/^0+(?=\d{10}$)/, '');
     if (selfUpdate) {
+      const sentPhone = (input as Record<string, unknown>).phone;
+      if (typeof sentPhone === 'string' && sentPhone.trim() && tidyPhone(sentPhone) !== tidyPhone(String(user.phone ?? ''))) {
+        throw new AppError({ status: 422, code: 'PHONE_VERIFICATION_REQUIRED',
+          message: "Your mobile number can't be changed here. Sign in with your mobile number to use it; contact support to change it." });
+      }
       for (const field of ['email', 'corporateEmail'] as const) {
         const sent = (input as Record<string, unknown>)[field];
         if (typeof sent !== 'string' || !sent.trim()) continue;
@@ -159,16 +167,12 @@ export class UserService {
     }
 
     const candidate: UpdateUserRequest = { ...input };
-    const missingContact = (value: unknown) => value === undefined || value === null || value === '';
-    // Customers can fill an absent phone, but submitted replacements never block other edits; emails are never set here
-    // by the customer (above).
+    // Only an admin sets contacts here (a customer's are refused above unless unchanged; HR never could).
     for (const field of ['phone', 'email'] as const) {
-      if (actor.userType !== 'admin' && (!selfUpdate || field === 'email' || !missingContact(user[field]))) delete candidate[field];
+      if (actor.userType !== 'admin') delete candidate[field];
     }
     if (selfUpdate) delete candidate.corporateEmail;
-    if (typeof candidate.phone === 'string') {
-      candidate.phone = candidate.phone.trim().replace(/\s+/g, '').replace(/^\+91/, '').replace(/^0+(?=\d{10}$)/, '');
-    }
+    if (typeof candidate.phone === 'string') candidate.phone = tidyPhone(candidate.phone);
     const { error, value } = updateUserSchema.validate(candidate, { abortEarly: false, stripUnknown: true });
     if (error) {
       throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: error.details.map(detail => detail.message).join(', ') });
@@ -238,17 +242,12 @@ export class UserService {
 
     const filter: Record<string, unknown> = { _id: id };
     if (actor.userType === 'hr') filter.corporateId = actor.corporateId;
-    const additions = selfUpdate ? (['phone', 'email'] as const).filter(field => data[field] !== undefined) : [];
-    for (const field of additions) filter[field] = { $in: [null, ''] };
-    if (additions.length) {
-      // Query equality alone can match arrays; require an actual scalar/missing field.
-      filter.$expr = { $and: additions.map(field => ({ $in: [{ $type: '$' + field }, ['missing', 'null', 'string']] })) };
-    }
+    // (A customer no longer fills contacts here, so the former missing-contact compare-and-set has nothing to guard.)
     const updated = await this.userRepository.update(filter, data, { new: true, runValidators: true });
     if (!updated) {
       throw new AppError({
-        status: additions.length || actor.userType === 'hr' ? 409 : 500,
-        code: additions.length ? 'CONTACT_ALREADY_SET' : actor.userType === 'hr' ? 'PROFILE_CHANGED' : 'UPDATE_FAILED',
+        status: actor.userType === 'hr' ? 409 : 500,
+        code: actor.userType === 'hr' ? 'PROFILE_CHANGED' : 'UPDATE_FAILED',
         message: 'Profile changed or could not be updated; refresh and try again',
       });
     }

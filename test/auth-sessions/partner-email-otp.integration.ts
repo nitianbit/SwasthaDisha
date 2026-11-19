@@ -360,6 +360,31 @@ async function main() {
     assert.equal((await users.update(id, { name: 'Again', email: 'ADMIN.SET@example.com' } as never, self)).name, 'Again');
   });
 
+  await check('a customer cannot set or change their phone on the profile (422 PHONE_VERIFICATION_REQUIRED); admin edits unchanged', async () => {
+    const users = new UserService(new UserRepository(), new CorporateRepository());
+    const msg = "Your mobile number can't be changed here. Sign in with your mobile number to use it; contact support to change it.";
+    const phone = nextPhone();
+    const me = await UserModel.create({ phone, userType: 'user', name: 'Has Phone' });
+    const id = String(me._id);
+    const self = { _id: id, userType: 'user' };
+    const other = nextPhone();
+    await assert.rejects(users.update(id, { name: 'X', phone: other } as never, self),
+      (e: any) => e.code === 'PHONE_VERIFICATION_REQUIRED' && e.status === 422 && e.message === msg);
+    assert.deepEqual([(await UserModel.findById(id).lean() as any).phone, (await UserModel.findById(id).lean() as any).name], [phone, 'Has Phone']);
+    // The stored number again (any supported spelling) is a no-op; absent, null and empty are ignored.
+    assert.equal((await users.update(id, { name: 'Same', phone: `+91 ${phone}` } as never, self)).name, 'Same');
+    assert.equal((await users.update(id, { name: 'Empty', phone: '' } as never, self)).name, 'Empty');
+    assert.equal((await users.update(id, { name: 'Null', phone: null } as never, self)).name, 'Null');
+    // A legacy email-only account cannot claim someone's phone here (support adds one).
+    const legacy = await UserModel.create({ email: 'legacy.only@example.com', userType: 'user', name: 'Legacy' });
+    await assert.rejects(users.update(String(legacy._id), { phone: other } as never, { _id: String(legacy._id), userType: 'user' }), code('PHONE_VERIFICATION_REQUIRED'));
+    assert.equal((await UserModel.findById(legacy._id).lean() as any).phone, undefined);
+    assert.equal(await UserModel.countDocuments({ phone: other }), 0);
+    // An admin still sets it.
+    await users.update(String(legacy._id), { phone: other } as never, { _id: new Types.ObjectId().toHexString(), userType: 'admin' });
+    assert.equal((await UserModel.findById(legacy._id).lean() as any).phone, other);
+  });
+
   await check('a customer adds an email from their profile (verification), then signs in by it to the same account', async () => {
     const phone = nextPhone();
     await send('user', { phone });
