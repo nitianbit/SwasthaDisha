@@ -41,6 +41,8 @@ import PharmacyModel from '@/modules/pharmacies/model';
 import MemberModel from '@/modules/partners/model/member';
 import { PartnerSelectionTicketModel } from '@/modules/auth/model/partnerSelection';
 import { AuthSessionModel } from '@/modules/auth/model/session';
+import { UserService } from '@/modules/user/services';
+import { CorporateRepository } from '@/modules/corporates/repository';
 import { createNativeSession, refreshNativeSession } from '@/modules/auth/sessions';
 import { PartnerService, PartnerActor, adminActor } from '@/modules/partners/services';
 import * as clinic from '@/modules/partners/services/clinic';
@@ -159,6 +161,33 @@ async function main() {
     await partners.updateMemberEmail(ownerA, String(m._id), null);
     assert.equal((await AuthSessionModel.findOne({ userId: String(m._id), revokedAt: { $exists: false } }).lean()), null);
     await assert.rejects(refreshNativeSession(req(again.refreshToken)));
+  });
+
+  await check('a first sign-in email ends no session (they were opened by phone); a later change does', async () => {
+    const m = await partners.addMember(ownerA, { phone: nextPhone(), name: 'First email', role: 'staff', permissions: [] } as any);
+    await createNativeSession('native_workspace', { _id: String(m._id), memberId: String(m._id), partnerId: A.partnerId, phone: m.phone, userType: 'partner' });
+    await partners.updateMemberEmail(ownerA, String(m._id), 'first.email@example.com');
+    assert.equal(await AuthSessionModel.countDocuments({ userId: String(m._id), revokedAt: { $exists: false } }), 1);
+    await partners.updateMemberEmail(ownerA, String(m._id), 'second.email@example.com');
+    assert.equal(await AuthSessionModel.countDocuments({ userId: String(m._id), revokedAt: { $exists: false } }), 0);
+  });
+
+  await check('the email change and the session revocation are saved together (a failed revocation leaves the old email)', async () => {
+    const m = await partners.addMember(ownerA, { phone: nextPhone(), name: 'Atomic', role: 'staff', email: 'atomic.old@example.com', permissions: [] } as any);
+    await createNativeSession('native_workspace', { _id: String(m._id), memberId: String(m._id), partnerId: A.partnerId, phone: m.phone, email: 'atomic.old@example.com', userType: 'partner' });
+    const coll = AuthSessionModel.collection.collectionName;
+    // Every revocation write is refused by the database.
+    await mongoose.connection.db.command({ collMod: coll, validator: { revokedAt: { $exists: false } }, validationLevel: 'strict', validationAction: 'error' });
+    try {
+      await assert.rejects(partners.updateMemberEmail(ownerA, String(m._id), 'atomic.new@example.com'));
+    } finally {
+      await mongoose.connection.db.command({ collMod: coll, validator: {}, validationLevel: 'off' });
+    }
+    assert.equal((await MemberModel.findById(m._id).lean() as any).email, 'atomic.old@example.com');
+    assert.equal(await AuthSessionModel.countDocuments({ userId: String(m._id), revokedAt: { $exists: false } }), 1);
+    // And with the database accepting it, both happen.
+    await partners.updateMemberEmail(ownerA, String(m._id), 'atomic.new@example.com');
+    assert.equal(await AuthSessionModel.countDocuments({ userId: String(m._id), revokedAt: { $exists: false } }), 0);
   });
 
   await check('only an owner (or an admin acting as owner) changes a member email, with the expectedUpdatedAt fence; null removes it', async () => {
@@ -282,6 +311,53 @@ async function main() {
     const phone = nextPhone();
     for (const role of ['user', 'specialist', 'pharmacy']) await send(role, { phone });
     assert.deepEqual([await UserModel.countDocuments(), await SpecialistModel.countDocuments(), await PharmacyModel.countDocuments()], before.map((n) => n + 1));
+  });
+
+  await check('a phone sign-up with an email in the same request never stores that email; phone wins at verify', async () => {
+    for (const role of ['specialist', 'pharmacy'] as const) {
+      const phone = nextPhone();
+      const victim = `victim.${role}@example.com`;
+      await send(role, { phone, email: victim });
+      assert.deepEqual(sms[sms.length - 1]!.to, phone);
+      const M = (role === 'specialist' ? SpecialistModel : PharmacyModel) as mongoose.Model<any>;
+      const row = await M.findOne({ phone }).lean() as any;
+      assert.ok(row, 'sign-up row made by phone');
+      assert.equal(row.email, undefined);
+      assert.equal(await M.countDocuments({ email: victim }), 0);
+      // The victim's address reaches nobody's account.
+      await assert.rejects(send(role, { email: victim }), code('EMAIL_NOT_REGISTERED'));
+      // Verify with both binds to the phone the code went to.
+      const r = await auth.verifyOTP({ userType: role, phone, email: victim, otp: /(\d{6})/.exec(sms[sms.length - 1]!.text)![1]! } as never);
+      assert.equal(decode(r.accessToken)[role === 'specialist' ? 'specialistId' : 'pharmacyId'], String(row._id));
+    }
+    // An existing account found by phone keeps its email; the other email in the request is written nowhere.
+    const sp = await SpecialistModel.create({ name: 'Dr Has Mail', phone: nextPhone(), email: 'has.mail@example.com', isActive: true, isVerified: true });
+    await send('specialist', { phone: sp.phone!, email: 'intruder@example.com' });
+    assert.equal((await SpecialistModel.findById(sp._id).lean() as any).email, 'has.mail@example.com');
+    for (const M of [SpecialistModel, PharmacyModel, UserModel, AdminModel, MemberModel] as mongoose.Model<any>[]) {
+      assert.equal(await M.countDocuments({ email: 'intruder@example.com' }), 0);
+    }
+  });
+
+  await check('a customer cannot put an unproven email on their profile (422 EMAIL_VERIFICATION_REQUIRED); admin edits unchanged', async () => {
+    const users = new UserService(new UserRepository(), new CorporateRepository());
+    const me = await UserModel.create({ phone: nextPhone(), userType: 'user', name: 'Squatter' });
+    const id = String(me._id);
+    const self = { _id: id, userType: 'user' };
+    const msg = "Add your email from your profile; we'll send a code to confirm it.";
+    for (const body of [{ email: 'victim.person@example.com' }, { name: 'X', email: 'Victim.Person@example.com' }, { corporateEmail: 'victim.person@example.com' }]) {
+      await assert.rejects(users.update(id, body as never, self), (e: any) => e.code === 'EMAIL_VERIFICATION_REQUIRED' && e.status === 422 && e.message === msg);
+    }
+    const stored = await UserModel.findById(id).lean() as any;
+    assert.deepEqual([stored.email, stored.corporateEmail, stored.name], [undefined, undefined, 'Squatter']);
+    // The victim's address is still nobody's: their email sign-in is not taken over.
+    await assert.rejects(send('user', { email: 'victim.person@example.com' }), code('EMAIL_NOT_REGISTERED'));
+    // Absent, null or empty: other edits go through as before.
+    assert.equal((await users.update(id, { name: 'Renamed', email: null } as never, self)).name, 'Renamed');
+    // An admin may still set it (unverified), and the customer may then send the same value again (no-op).
+    await users.update(id, { email: 'Admin.Set@example.com' } as never, { _id: new Types.ObjectId().toHexString(), userType: 'admin' });
+    assert.equal((await UserModel.findById(id).lean() as any).email, 'admin.set@example.com');
+    assert.equal((await users.update(id, { name: 'Again', email: 'ADMIN.SET@example.com' } as never, self)).name, 'Again');
   });
 
   await check('a customer adds an email from their profile (verification), then signs in by it to the same account', async () => {

@@ -1,5 +1,6 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import type { Request, Response } from 'express';
+import type { ClientSession } from 'mongoose';
 import jwt from 'jsonwebtoken';
 import { CONFIG } from '@/config/config';
 import { AppError } from '@/modules/common/types';
@@ -286,9 +287,9 @@ export function reissueForCaller(caller: { sid?: unknown; aud?: unknown; auth_ti
 }
 
 /** "Sign out everywhere": every session of this account ends. */
-export async function revokeAllSessions(userType: string, userId: string, reason = 'signed_out_everywhere'): Promise<number> {
+export async function revokeAllSessions(userType: string, userId: string, reason = 'signed_out_everywhere', session?: ClientSession): Promise<number> {
   const r = await AuthSessionModel.updateMany({ userType, userId, revokedAt: { $exists: false } },
-    { $set: { revokedAt: new Date(), revokeReason: reason } });
+    { $set: { revokedAt: new Date(), revokeReason: reason } }, session ? { session } : {});
   return r.modifiedCount;
 }
 

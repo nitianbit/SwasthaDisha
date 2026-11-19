@@ -144,12 +144,28 @@ export class UserService {
       throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'HR can only access users from their own corporate' });
     }
 
+    // A customer's email (the email sign-in looks it up) and corporate email (an address held there is "in use" for
+    // everyone else's verification) are set only through their verification flows (/auth/email-verification,
+    // /auth/corporate-email), which prove the address: an unproven address here could take someone else's. Sending the
+    // stored value again is a no-op; absent, null, empty or malformed values are ignored as before. Admin edits unchanged.
+    if (selfUpdate) {
+      for (const field of ['email', 'corporateEmail'] as const) {
+        const sent = (input as Record<string, unknown>)[field];
+        if (typeof sent !== 'string' || !sent.trim()) continue;
+        if (sent.trim().toLowerCase() !== this.normalizeEmail(user[field])) {
+          throw new AppError({ status: 422, code: 'EMAIL_VERIFICATION_REQUIRED', message: "Add your email from your profile; we'll send a code to confirm it." });
+        }
+      }
+    }
+
     const candidate: UpdateUserRequest = { ...input };
     const missingContact = (value: unknown) => value === undefined || value === null || value === '';
-    // Customers can fill an absent contact, but submitted replacements never block other edits.
+    // Customers can fill an absent phone, but submitted replacements never block other edits; emails are never set here
+    // by the customer (above).
     for (const field of ['phone', 'email'] as const) {
-      if (actor.userType !== 'admin' && (!selfUpdate || !missingContact(user[field]))) delete candidate[field];
+      if (actor.userType !== 'admin' && (!selfUpdate || field === 'email' || !missingContact(user[field]))) delete candidate[field];
     }
+    if (selfUpdate) delete candidate.corporateEmail;
     if (typeof candidate.phone === 'string') {
       candidate.phone = candidate.phone.trim().replace(/\s+/g, '').replace(/^\+91/, '').replace(/^0+(?=\d{10}$)/, '');
     }

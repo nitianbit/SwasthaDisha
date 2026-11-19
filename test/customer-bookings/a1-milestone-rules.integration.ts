@@ -265,14 +265,17 @@ async function main() {
     assert.equal((await UserModel.findById(v._id).lean())!.email, 'admin-set@example.com');
   });
 
-  await check('[F1] profile: a customer fills a missing contact but cannot replace one; HR is limited to its own corporate', async () => {
+  await check('[F1] profile: a customer fills a missing phone but cannot replace one (an email needs verification); HR is limited to its own corporate', async () => {
     const users = new UserService(new UserRepository(), new CorporateRepository());
     const corpA = new Types.ObjectId().toHexString(), corpB = new Types.ObjectId().toHexString();
     const u = await UserModel.create({ phone: '9811100003', userType: 'user', isActive: true, corporateId: corpA });
     const id = String(u._id);
-    await users.update(id, { email: 'Fill@Example.com', name: 'Asha' } as never, { _id: id, userType: 'user' });
+    // Q14 review N6: an email is added only through email verification (it is a sign-in identity).
+    await rejects(users.update(id, { email: 'Fill@Example.com', name: 'Asha' } as never, { _id: id, userType: 'user' }), 'EMAIL_VERIFICATION_REQUIRED', 422);
+    assert.equal((await UserModel.findById(id).lean())!.email, undefined);
+    await users.update(id, { name: 'Asha' } as never, { _id: id, userType: 'user' });
     const after = (await UserModel.findById(id).lean())!;
-    assert.equal(after.email, 'fill@example.com'); assert.equal(after.name, 'Asha');
+    assert.equal(after.name, 'Asha');
     await users.update(id, { phone: '9811199999' } as never, { _id: id, userType: 'user' });
     assert.equal((await UserModel.findById(id).lean())!.phone, '9811100003', 'existing phone not replaced by the customer');
     await rejects(users.update(id, { name: 'X' } as never, { _id: new Types.ObjectId().toHexString(), userType: 'user' }), 'FORBIDDEN', 403);

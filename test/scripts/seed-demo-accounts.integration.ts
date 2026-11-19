@@ -79,7 +79,8 @@ const inputFile = path.join(dir, 'demo-accounts.json');
 fs.writeFileSync(inputFile, JSON.stringify(input));
 const exampleFile = path.join(__dirname, '..', '..', 'demo-accounts.example.json');
 const DB = 'seed_demo_accounts_check';
-const ALLOWED = { SEED_DEMO_ALLOWED: 'true', SEED_DEMO_DATABASE: DB, NODE_ENV: 'production' } as NodeJS.ProcessEnv;
+const HOST = '127.0.0.1:27917';
+const ALLOWED = { SEED_DEMO_ALLOWED: 'true', SEED_DEMO_HOST: HOST, SEED_DEMO_DATABASE: DB, NODE_ENV: 'production' } as NodeJS.ProcessEnv;
 const clone = () => JSON.parse(JSON.stringify(input)) as DemoInput;
 
 async function counts(): Promise<Record<string, number>> {
@@ -156,19 +157,29 @@ async function main() {
     assert.equal(total(await counts()), 0);
   });
 
-  await check('production guard: SEED_DEMO_DATABASE must name the connected database (dry run included); "prod" names refused', async () => {
-    for (const env of [{ SEED_DEMO_ALLOWED: 'true' }, { SEED_DEMO_ALLOWED: 'true', SEED_DEMO_DATABASE: 'other_db' }]) {
+  await check('production guard: SEED_DEMO_HOST and SEED_DEMO_DATABASE must name the connected server (dry run included); "prod" refused', async () => {
+    const cases: [Record<string, string>, RegExp][] = [
+      [{ SEED_DEMO_ALLOWED: 'true' }, /REFUSED: set SEED_DEMO_HOST=127\.0\.0\.1:27917/],
+      [{ SEED_DEMO_ALLOWED: 'true', SEED_DEMO_HOST: 'stage.example.com:27017', SEED_DEMO_DATABASE: DB }, /REFUSED: set SEED_DEMO_HOST=127\.0\.0\.1:27917/],
+      [{ SEED_DEMO_ALLOWED: 'true', SEED_DEMO_HOST: HOST }, /REFUSED: set SEED_DEMO_DATABASE=seed_demo_accounts_check/],
+      [{ SEED_DEMO_ALLOWED: 'true', SEED_DEMO_HOST: HOST, SEED_DEMO_DATABASE: 'other_db' }, /REFUSED: set SEED_DEMO_DATABASE=seed_demo_accounts_check/],
+    ];
+    for (const [env, refused] of cases) {
       for (const argv of [[inputFile], [inputFile, '--commit']]) {
         const out: string[] = [];
         const r = await cli(argv, env as NodeJS.ProcessEnv, (l) => out.push(l));
         assert.equal(r.code, 2);
-        assert.match(out.join('\n'), /^Target: host 127\.0\.0\.1:27917 +database seed_demo_accounts_check[\s\S]*REFUSED: set SEED_DEMO_DATABASE=seed_demo_accounts_check/);
+        assert.match(out.join('\n'), /^Target: host 127\.0\.0\.1:27917 +database seed_demo_accounts_check/);
+        assert.match(out.join('\n'), refused);
       }
     }
     assert.equal(total(await counts()), 0);
-    assert.match(targetRefusal({ SEED_DEMO_DATABASE: 'jansetu_PROD' } as NodeJS.ProcessEnv, 'jansetu_PROD')!, /looks like production/);
-    assert.match(targetRefusal({ SEED_DEMO_DATABASE: 'prodcopy' } as NodeJS.ProcessEnv, 'prodcopy')!, /looks like production/);
-    assert.equal(targetRefusal({ SEED_DEMO_DATABASE: DB } as NodeJS.ProcessEnv, DB), null);
+    const env = (db: string, host = HOST) => ({ SEED_DEMO_DATABASE: db, SEED_DEMO_HOST: host }) as NodeJS.ProcessEnv;
+    assert.match(targetRefusal(env('jansetu_PROD'), 'jansetu_PROD', '127.0.0.1', 27917)!, /looks like production/);
+    assert.match(targetRefusal(env('prodcopy'), 'prodcopy', '127.0.0.1', 27917)!, /looks like production/);
+    assert.equal(targetRefusal(env(DB), DB, '127.0.0.1', 27917), null);
+    assert.equal(targetRefusal(env(DB, '127.0.0.1'), DB, '127.0.0.1', 27917), null);
+    assert.match(targetRefusal(env(DB, '127.0.0.1:27018'), DB, '127.0.0.1', 27917)!, /SEED_DEMO_HOST/);
   });
 
   const allOutput: string[] = [];
@@ -382,6 +393,31 @@ async function main() {
     await SpecialistModel.create({ name: 'Dr Mail', email: 'dr.mail2@example.com', isActive: true, isVerified: true, specialization: 'X' });
     await assert.rejects(runSeed({ doctors: [{ name: 'Dr X', phone: '9100000304', email: 'dr.mail2@example.com', specialization: 'X', fee: 1 }] } as DemoInput,
       { commit: true, log: () => {} }), /the one found by phone is an unverified placeholder[\s\S]*remove the unverified placeholder row created by an earlier code request/);
+  });
+
+  await check('a nameless customer made by a desk, bill or pharmacy is not a placeholder: name not filled, conflict hint not given', async () => {
+    const desk = await UserModel.create({ phone: '9100000501', userType: 'user', createdSource: 'clinic_desk', otpVerified: false } as any);
+    const linked = await UserModel.create({ phone: '9100000502', userType: 'user', createdSource: 'self_signup', otpVerified: false, linkedPharmacyId: 'p1' } as any);
+    const r = await runSeed({ customers: [{ name: 'Desk Person', phone: '9100000501' }, { name: 'Linked Person', phone: '9100000502' }] } as DemoInput,
+      { commit: true, log: () => {} });
+    assert.equal((await UserModel.findById(desk._id).lean() as any).name, undefined);
+    assert.equal((await UserModel.findById(linked._id).lean() as any).name, undefined);
+    assert.equal(r.warnings.filter((w) => /nameless customer not made by sign-up/.test(w)).length, 2);
+    await UserModel.create({ email: 'someone.else@example.com', userType: 'user', name: 'Someone' } as any);
+    await assert.rejects(runSeed({ customers: [{ name: 'X', phone: '9100000501', email: 'someone.else@example.com' }] } as DemoInput, { commit: true, log: () => {} }),
+      (e: any) => /two different existing accounts/.test(e.message) && !/the one found by phone is an unverified placeholder/.test(e.message));
+  });
+
+  await check('a pharmacy placeholder is completed only with fields the create form accepts (checked before writing)', async () => {
+    // A placeholder from before sign-up rows stopped storing an email (found here by that email).
+    const row = await PharmacyModel.create({ name: 'Demo', phone: '9100000601', email: 'old.shop@example.com', isActive: true, isVerified: false });
+    await assert.rejects(runSeed({ pharmacy: { name: 'Shop', email: 'old.shop@example.com', pincode: '41' } } as DemoInput, { commit: true, log: () => {} }),
+      /pharmacy: .*[Pp]incode/);
+    const after = await PharmacyModel.findById(row._id).lean() as any;
+    assert.deepEqual([after.name, after.pincode, after.isVerified], ['Demo', undefined, false]);
+    await runSeed({ pharmacy: { name: 'Shop', email: 'old.shop@example.com', pincode: '411001' } } as DemoInput, { commit: true, log: () => {} });
+    const done = await PharmacyModel.findById(row._id).lean() as any;
+    assert.deepEqual([done.name, done.pincode, done.isVerified], ['Shop', '411001', true]);
   });
 
   await check('a re-run adds the in-clinic windows to a saved schedule of a now-linked doctor (never removing windows)', async () => {

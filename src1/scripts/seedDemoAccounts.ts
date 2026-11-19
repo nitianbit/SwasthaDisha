@@ -3,11 +3,11 @@
  * (mobile number + SMS OTP, or email + emailed OTP; there is no bypass, fixed code or password, so every phone and email
  * must be one you control).
  *
- *   SEED_DEMO_ALLOWED=true SEED_DEMO_DATABASE=<db> npm run seed:demo -- demo-accounts.json            # dry run, writes nothing
- *   SEED_DEMO_ALLOWED=true SEED_DEMO_DATABASE=<db> npm run seed:demo -- demo-accounts.json --commit   # creates what is missing
+ *   SEED_DEMO_ALLOWED=true SEED_DEMO_HOST=<host:port> SEED_DEMO_DATABASE=<db> npm run seed:demo -- demo-accounts.json   # dry run
+ *   ... the same ... -- demo-accounts.json --commit                                                                  # creates what is missing
  *
- * SEED_DEMO_DATABASE must equal the connected database's name (printed first, with the host); a name containing "prod"
- * is always refused.
+ * SEED_DEMO_HOST and SEED_DEMO_DATABASE must equal the connected host and database (printed first; for a replica set the
+ * host is the first one in MONGODB_URL); a database name containing "prod" is always refused.
  *
  * Input: see demo-accounts.example.json (copy it to demo-accounts.json, which git ignores, and put in real numbers).
  *
@@ -228,12 +228,15 @@ const escapeRegex = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 /**
  * Rows a code request (AuthService.sendOTP) creates for an unknown phone before anyone completes a profile:
  * buildSpecialistSignupPayload ({name: 'demoName', isVerified: false}), buildPharmacySignupPayload ({name: 'Demo',
- * isVerified: false, nothing else}) and the customer sign-up row (no name, never verified). The seeder completes them with
- * the file's profile instead of only verifying them.
+ * isVerified: false, nothing else}) and the customer sign-up row (no name, never verified, `createdSource` 'self_signup'
+ * — absent on rows from before that field — and not linked to a pharmacy). Customers made by a clinic desk, a bill or a
+ * pharmacy (other `createdSource`, or a pharmacy link) can own bills and orders: they are never placeholders. The seeder
+ * completes placeholders with the file's profile instead of only verifying them.
  */
 export const isSpecialistPlaceholder = (sp: any) => !!sp && sp.name === 'demoName' && sp.isVerified !== true && !sp.specialization;
 export const isPharmacyPlaceholder = (p: any) => !!p && p.name === 'Demo' && p.isVerified !== true && !p.ownerName && !p.address;
-export const isCustomerPlaceholder = (u: any) => !!u && !u.name && u.otpVerified !== true;
+export const isCustomerPlaceholder = (u: any) => !!u && !u.name && u.otpVerified !== true
+  && (u.createdSource === undefined || u.createdSource === null || u.createdSource === 'self_signup') && !u.linkedPharmacyId;
 
 /** Same options as the request validation middleware (abortEarly off, unknown keys stripped); returns the converted value. */
 function validated<T>(schema: Joi.Schema, value: unknown, where: string): T {
@@ -345,7 +348,7 @@ class Seeder {
       const which = isPlaceholder(p) ? 'the one found by phone' : isPlaceholder(e) ? 'the one found by email' : null;
       throw new SeedError(`${label} ${maskContact(c)}: the phone and the email belong to two different existing accounts; refusing to merge them. `
         + (which
-          ? `Fix: ${which} is an unverified placeholder created by an earlier code request; remove the unverified placeholder row created by an earlier code request, then run again.`
+          ? `Fix: ${which} is an unverified placeholder created by an earlier code request; remove the unverified placeholder row created by an earlier code request (after checking in the admin app that it has no bookings, bills or orders), then run again.`
           : 'Fix: if one of them is an unverified placeholder created by an earlier code request, remove that row; otherwise list only one of the two (or fix the accounts in the admin app).'));
     }
     return p ?? e;
@@ -557,8 +560,10 @@ class Seeder {
         name = existing.name || c.name;
         if (existing.isActive === false) this.warn(`${what} exists but is inactive`);
         const set = this.missing(what, existing, c);
-        // Only a missing name is filled in (a code request's sign-up placeholder has none); an existing name is never changed.
-        if (!existing.name) set.name = c.name;
+        // A code request's sign-up placeholder gets the file's name; an existing name is never changed, and a nameless
+        // customer made by a desk, bill or pharmacy is left as it is (it may own bills or orders).
+        if (!existing.name && isCustomerPlaceholder(existing)) set.name = c.name;
+        else if (!existing.name) { name = '(no name)'; this.warn(`${what}: a nameless customer not made by sign-up (${existing.createdSource ?? 'linked to a pharmacy'}); left as it is`); }
         status = 'found';
         if (Object.keys(set).length) {
           if (this.commit) await UserModel.updateOne({ _id: existing._id }, { $set: set });
@@ -659,7 +664,9 @@ class Seeder {
       let status: Status = 'found';
       const placeholder = isPharmacyPlaceholder(existing);
       // A code request's sign-up placeholder gets the file's profile (name, owner, address, services); a real one keeps its own.
-      const { phone: _p, email: _e, ...profile } = this.pharmacyPayload() as Record<string, unknown>;
+      // Checked with the create form's own validation (with the stored phone) before anything is written.
+      const { phone: _p, email: _e, ...profile } = placeholder
+        ? validated<Record<string, unknown>>(createPharmacySchema, { ...this.pharmacyPayload(), phone: existing.phone }, 'pharmacy') : {};
       const set: Record<string, unknown> = { ...(placeholder ? profile : {}), ...this.missing(what, existing, p) };
       if (existing.isActive === false || existing.archivedAt) {
         this.warn(`${what} exists but is inactive/archived: it cannot sign in until an admin restores it`);
@@ -1012,11 +1019,18 @@ export async function runSeed(rawInput: unknown, opts: { commit: boolean; log?: 
 }
 
 /**
- * Production guard: the operator names the target database (SEED_DEMO_DATABASE must equal the connected database
- * exactly), and a database whose name contains "prod" is refused. Returns the refusal, or null when allowed.
+ * Production guard: the operator names the target host and database. SEED_DEMO_HOST must equal the connected host as
+ * printed (`host:port`, or `host` alone to match any port) — for a replica-set URI this is the FIRST host listed in
+ * MONGODB_URL (what the driver connection reports), not whichever member is primary. SEED_DEMO_DATABASE must equal the
+ * connected database exactly. A database whose name contains "prod" is always refused. Returns the refusal, or null.
  */
-export function targetRefusal(env: NodeJS.ProcessEnv, databaseName: string): string | null {
+export function targetRefusal(env: NodeJS.ProcessEnv, databaseName: string, host: string, port?: number | string): string | null {
   if (/prod/i.test(databaseName)) return `REFUSED: database "${databaseName}" looks like production; the demo seeder never writes there.`;
+  const hostPort = `${host}:${port ?? '?'}`;
+  const wantHost = String(env.SEED_DEMO_HOST ?? '').trim();
+  if (!wantHost || (wantHost !== hostPort && wantHost !== host)) {
+    return `REFUSED: set SEED_DEMO_HOST=${hostPort} to confirm this is the server to seed (it must match the connected host shown above).`;
+  }
   if (env.SEED_DEMO_DATABASE !== databaseName) {
     return `REFUSED: set SEED_DEMO_DATABASE=${databaseName} to confirm this is the database to seed (it must match the connected database exactly).`;
   }
@@ -1047,7 +1061,7 @@ export async function cli(argv: string[], env: NodeJS.ProcessEnv = process.env, 
     out('REFUSED: set SEED_DEMO_ALLOWED=true to run the demo-account seeder (stage runs with NODE_ENV=production, so this is the explicit opt-in).');
     return { code: 2 };
   }
-  if (!file) { out('Usage: SEED_DEMO_ALLOWED=true SEED_DEMO_DATABASE=<database> npm run seed:demo -- <demo-accounts.json> [--commit]'); return { code: 2 }; }
+  if (!file) { out('Usage: SEED_DEMO_ALLOWED=true SEED_DEMO_HOST=<host:port> SEED_DEMO_DATABASE=<database> npm run seed:demo -- <demo-accounts.json> [--commit]'); return { code: 2 }; }
   let input: any;
   try { input = JSON.parse(fs.readFileSync(path.resolve(file), 'utf8')); }
   catch (e) { out(`Cannot read ${path.basename(file)}: ${redact((e as Error).message)}`); return { code: 2 }; }
@@ -1062,7 +1076,7 @@ export async function cli(argv: string[], env: NodeJS.ProcessEnv = process.env, 
     const databaseName = conn.db.databaseName;
     // Host and database only (never the connection string, which may carry credentials).
     out(`Target: host ${conn.host ?? '?'}:${conn.port ?? '?'}   database ${databaseName}   NODE_ENV=${env.NODE_ENV ?? '(unset)'}   mode: ${commit ? 'COMMIT (writes)' : 'DRY RUN (no writes)'}`);
-    const refusal = targetRefusal(env, databaseName);
+    const refusal = targetRefusal(env, databaseName, String(conn.host ?? '?'), conn.port);
     if (refusal) { out(refusal); return { code: 2 }; }
     const report = await runSeed(input, { commit, log: out });
     printSummary(report, commit, out, false);

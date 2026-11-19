@@ -592,27 +592,27 @@ export class PartnerService {
       throw new AppError({ status: 403, code: 'OWNER_REQUIRED', message: 'Only an owner can change a member\'s sign-in email' });
     }
     const normalized = normalizeMemberEmail(email);
-    let changed = false;
     try {
-      const out = await inTransaction(async (session) => {
+      return await inTransaction(async (session) => {
         const current = await MemberModel.findOne({ _id: memberId, partnerId: actor.partnerId, isActive: true }).session(session).lean() as IMember | null;
         if (!current) throw memberNotFound();
         if (expectedUpdatedAt && new Date(current.updatedAt as Date).getTime() !== new Date(expectedUpdatedAt).getTime()) throw recordChanged();
-        changed = (current.email ?? undefined) !== normalized;
         await assertMemberEmailFree(actor.partnerId, normalized, memberId, session);
         const updated = await MemberModel.findOneAndUpdate({ _id: memberId, partnerId: actor.partnerId, isActive: true, updatedAt: current.updatedAt },
           normalized ? { $set: { email: normalized } } : { $unset: { email: 1 } }, { new: true, session }).lean() as IMember | null;
         if (!updated) throw recordChanged();
         await recordPartnerAudit(actor, 'member.email', { kind: 'member', id: memberId }, { email: normalized ? 'set' : 'removed' }, session);
+        // A previous email that is changed or removed ends the member's web and phone-app sessions, in this transaction
+        // (the change is saved only together with the revocation). A first email ends nothing: those sessions were
+        // opened with the phone, which still works. Legacy 30-day bearer tokens carry no session and end only when the
+        // member is removed.
+        const previous = current.email ?? undefined;
+        if (previous && previous !== normalized) {
+          const { revokeAllSessions } = await import('@/modules/auth/sessions');
+          await revokeAllSessions('partner', String(memberId), 'sign_in_email_changed', session);
+        }
         return updated;
       });
-      // A changed or removed sign-in email ends the member's web and phone-app sessions (they sign in again). Legacy
-      // 30-day bearer tokens carry no session and end only when the member is removed.
-      if (changed) {
-        const { revokeAllSessions } = await import('@/modules/auth/sessions');
-        await revokeAllSessions('partner', String(memberId), 'sign_in_email_changed');
-      }
-      return out;
     } catch (error: any) {
       if (isEmailDuplicate(error)) throw emailInUse();
       throw error;

@@ -99,27 +99,28 @@ export class AuthService {
     }
   }
 
+  /**
+   * Sign-up rows are made by mobile number only (an unknown email is EMAIL_NOT_REGISTERED). An email sent in the same
+   * request is never stored: the code proves only the phone, so storing it would let anyone attach someone else's
+   * address to their account (a later email sign-in would mail that person a code into it).
+   */
   private buildSpecialistSignupPayload(data: SendOTPRequest): ISpecialist {
-    const normalizedEmail = data.email?.trim().toLowerCase();
     const normalizedPhone = data.phone?.trim();
 
     return {
       name: 'demoName',
       phone: normalizedPhone,
-      email: normalizedEmail,
       isActive: true,
       isVerified: false,
     };
   }
 
   private buildPharmacySignupPayload(data: SendOTPRequest): IPharmacy {
-    const normalizedEmail = data.email?.trim().toLowerCase();
     const normalizedPhone = data.phone?.trim();
 
     return {
       name: 'Demo',
       phone: normalizedPhone!,
-      email: normalizedEmail,
       isActive: true,
       isVerified: false,
       walletEnabled: false,
