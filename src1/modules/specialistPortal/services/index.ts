@@ -86,7 +86,7 @@ export class SpecialistPortalService {
 
   /**
    * The doctor's own profile edit (Q14 review N7). The sign-in contacts (mobile number, email) are never set or changed
-   * here — an unproven address could take someone else's sign-in; the SwasthaDisha team changes them (admin edit). They
+   * here — an unproven address could take someone else's sign-in; the Jansetu team changes them (admin edit). They
    * are left out, the rest is saved, and `ignoredContacts` names those that differed from the stored ones.
    */
   async updateOwnProfile(

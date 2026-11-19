@@ -10,7 +10,7 @@ export type ContactField = 'email' | 'corporateEmail' | 'phone';
 
 export const SELF_CONTACT_MESSAGE = {
   customer: "Contact details weren't changed: add an email from your profile with a code; your mobile number can't be changed here.",
-  staff: "Contact details weren't changed here; ask the SwasthaDisha team to update them.",
+  staff: "Contact details weren't changed here; ask the Jansetu team to update them.",
 } as const;
 
 /** The spellings the profile forms accept for one number: spaces, +91 and leading zeros are not a different number. */
