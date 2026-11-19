@@ -30,3 +30,6 @@ remaining.tar.gz
 *postman_collection*.json
 /doctor_app
 output/brand/**/*.zip
+
+# Demo-account seed input with real phone numbers/emails (see demo-accounts.example.json)
+demo-accounts.json

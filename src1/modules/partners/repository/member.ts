@@ -40,4 +40,14 @@ export class MemberRepository extends BaseRepository<IMember> {
       { sort: { partnerId: 1 } }
     );
   }
+
+  /** The active memberships signed in to with this email (exact lower-cased match), in the same order as by phone. */
+  async findActiveByEmailAcrossPartners(email: string): Promise<IMember[]> {
+    const normalized = String(email ?? '').trim().toLowerCase();
+    if (!normalized) return [];
+    return this.findAll(
+      { email: normalized, isActive: true },
+      { sort: { partnerId: 1 } }
+    );
+  }
 }

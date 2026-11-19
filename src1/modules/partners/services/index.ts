@@ -144,6 +144,21 @@ export const partnerCreateScope = (adminId: string) => `partner_create:${String(
 const versionFence = (expected?: Date | string) => (expected ? { updatedAt: new Date(expected) } : {});
 const recordChanged = () => new AppError({ status: 409, code: 'RECORD_CHANGED', message: 'Someone else changed this meanwhile; reload and review' });
 
+/** A member's sign-in email: trimmed and lower-cased; empty = none. */
+export const normalizeMemberEmail = (email?: string | null): string | undefined => {
+  const e = typeof email === 'string' ? email.trim().toLowerCase() : '';
+  return e || undefined;
+};
+const emailInUse = () => new AppError({ status: 409, code: 'EMAIL_IN_USE', message: 'Another active member of this partner already signs in with this email' });
+/** A duplicate-key error raised by the member email index (rather than the phone index). */
+const isEmailDuplicate = (e: any) => e?.code === 11000 && (!!e?.keyPattern?.email || /email_1_partnerId_1/.test(String(e?.message ?? '')));
+async function assertMemberEmailFree(partnerId: string, email: string | undefined, exceptMemberId?: string, session?: ClientSession): Promise<void> {
+  if (!email) return;
+  const q = MemberModel.exists({ partnerId, email, isActive: true, ...(exceptMemberId ? { _id: { $ne: exceptMemberId } } : {}) });
+  if (session) q.session(session);
+  if (await q) throw emailInUse();
+}
+
 @Service()
 export class PartnerService {
   constructor(
@@ -163,7 +178,7 @@ export class PartnerService {
     taxRegime?: TaxRegime;
     invoiceSeriesPrefix: string;
     solo?: boolean;
-    firstOwner: { phone: string; name: string };
+    firstOwner: { phone: string; name: string; email?: string };
     /** Q8: admin create is exactly once per (admin, requestKey); a repeat with other content is refused. */
     requestKey?: string;
     createdBy?: string;
@@ -222,6 +237,7 @@ export class PartnerService {
         {
           partnerId: partner._id!,
           phone: data.firstOwner.phone,
+          ...(normalizeMemberEmail(data.firstOwner.email) ? { email: normalizeMemberEmail(data.firstOwner.email) } : {}),
           name: data.firstOwner.name,
           role: 'owner' as MemberRole,
           permissions: [...ALL_PERMISSIONS],
@@ -381,7 +397,7 @@ export class PartnerService {
 
   async addMember(
     actor: PartnerActor,
-    data: { phone: string; name: string; role: MemberRole; permissions: PartnerPermission[]; branchIds?: string[] }
+    data: { phone: string; email?: string; name: string; role: MemberRole; permissions: PartnerPermission[]; branchIds?: string[] }
   ): Promise<IMember> {
     if (data.role === 'owner' && actor.role !== 'owner') {
       throw new AppError({ status: 403, code: 'OWNER_REQUIRED', message: 'Only an owner can add another owner' });
@@ -396,9 +412,11 @@ export class PartnerService {
     if (existing) {
       throw new AppError({ status: 409, code: 'MEMBER_ALREADY_EXISTS', message: 'An active member with this phone already exists for this partner' });
     }
+    const email = normalizeMemberEmail(data.email);
+    await assertMemberEmailFree(actor.partnerId, email);
 
     if (data.role === 'owner') {
-      return this.addOwner(actor, data);
+      return this.addOwner(actor, { ...data, email });
     }
 
     try {
@@ -406,6 +424,7 @@ export class PartnerService {
         const member = await this.memberRepository.save({
           partnerId: actor.partnerId,
           phone: data.phone,
+          ...(email ? { email } : {}),
           name: data.name,
           role: 'staff',
           permissions: data.permissions,
@@ -414,10 +433,11 @@ export class PartnerService {
           invitedBy: actor.memberId,
         } as Partial<IMember>, { session });
         await recordPartnerAudit(actor, 'member.add', { kind: 'member', id: String(member._id) },
-          { role: 'staff', permissions: data.permissions, branchIds }, session);
+          { role: 'staff', permissions: data.permissions, branchIds, ...(email ? { email: true } : {}) }, session);
         return member;
       });
     } catch (error: any) {
+      if (isEmailDuplicate(error)) throw emailInUse();
       if (error?.code === 11000) {
         throw new AppError({ status: 409, code: 'MEMBER_ALREADY_EXISTS', message: 'An active member with this phone already exists for this partner' });
       }
@@ -425,7 +445,7 @@ export class PartnerService {
     }
   }
 
-  private async addOwner(actor: PartnerActor, data: { phone: string; name: string }): Promise<IMember> {
+  private async addOwner(actor: PartnerActor, data: { phone: string; name: string; email?: string }): Promise<IMember> {
     const partnerId = actor.partnerId;
     const partner = await this.getPartnerById(partnerId);
 
@@ -443,6 +463,7 @@ export class PartnerService {
         {
           partnerId,
           phone: data.phone,
+          ...(data.email ? { email: data.email } : {}),
           name: data.name,
           role: 'owner' as MemberRole,
           permissions: [...ALL_PERMISSIONS],
@@ -458,6 +479,7 @@ export class PartnerService {
       return member;
     } catch (error: any) {
       await session.abortTransaction();
+      if (isEmailDuplicate(error)) throw emailInUse();
       if (error?.code === 11000) {
         throw new AppError({ status: 409, code: 'MEMBER_ALREADY_EXISTS', message: 'An active member with this phone already exists for this partner' });
       }
@@ -553,6 +575,34 @@ export class PartnerService {
       await recordPartnerAudit(actor, 'member.permissions', { kind: 'member', id: memberId }, { permissions }, session);
       return updated;
     });
+  }
+
+  /**
+   * A member's sign-in email (null or empty removes it). It is a sign-in identity, so like permissions only an owner
+   * changes it (admins act as owner), for any member including owners; unique among the partner's active members (409
+   * EMAIL_IN_USE). Optimistic fence with `expectedUpdatedAt`. Audited (whether set or removed, not the address).
+   */
+  async updateMemberEmail(actor: PartnerActor, memberId: string, email: string | null | undefined, expectedUpdatedAt?: Date | string): Promise<IMember> {
+    if (actor.role !== 'owner') {
+      throw new AppError({ status: 403, code: 'OWNER_REQUIRED', message: 'Only an owner can change a member\'s sign-in email' });
+    }
+    const normalized = normalizeMemberEmail(email);
+    try {
+      return await inTransaction(async (session) => {
+        const current = await MemberModel.findOne({ _id: memberId, partnerId: actor.partnerId, isActive: true }).session(session).lean() as IMember | null;
+        if (!current) throw memberNotFound();
+        if (expectedUpdatedAt && new Date(current.updatedAt as Date).getTime() !== new Date(expectedUpdatedAt).getTime()) throw recordChanged();
+        await assertMemberEmailFree(actor.partnerId, normalized, memberId, session);
+        const updated = await MemberModel.findOneAndUpdate({ _id: memberId, partnerId: actor.partnerId, isActive: true, updatedAt: current.updatedAt },
+          normalized ? { $set: { email: normalized } } : { $unset: { email: 1 } }, { new: true, session }).lean() as IMember | null;
+        if (!updated) throw recordChanged();
+        await recordPartnerAudit(actor, 'member.email', { kind: 'member', id: memberId }, { email: normalized ? 'set' : 'removed' }, session);
+        return updated;
+      });
+    } catch (error: any) {
+      if (isEmailDuplicate(error)) throw emailInUse();
+      throw error;
+    }
   }
 
   /**

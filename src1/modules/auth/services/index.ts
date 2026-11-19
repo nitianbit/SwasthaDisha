@@ -41,6 +41,8 @@ import { createHmac } from 'crypto';
  * carrying a purpose).
  */
 const SELECTION_AUDIENCE = 'partner-select';
+/** The identity a partner sign-in proved: the phone, or (sign-in by email) the lower-cased email. */
+type PartnerIdentity = { phone: string; email?: undefined } | { email: string; phone?: undefined };
 const selectionKey = () => createHmac('sha256', CONFIG.JWT_SECRET_KEY).update('q7:partner-selection-ticket').digest('hex');
 import { advanceCredentialVersion, credentialFilter, readCredentialVersion, tokenCredentialVersion } from '@/modules/user/credentialGeneration';
 import { Service } from 'typedi';
@@ -162,9 +164,7 @@ export class AuthService {
         ? await this.pharmacyRepository.findByPhone(data.phone)
         : await this.pharmacyRepository.findByEmail(data.email!);
     } else if (data.userType === 'partner') {
-      const members = data.phone
-        ? await this.memberRepository.findActiveByPhoneAcrossPartners(data.phone)
-        : [];
+      const members = await this.partnerMembersOf(data.phone ? { phone: data.phone } : { email: data.email });
       // Q7: with several memberships and no choice yet, the code is bound to the first membership (partnerId order,
       // the same at verify); after the code proves the phone, the person chooses (selectPartner).
       if (data.partnerId) {
@@ -203,6 +203,11 @@ export class AuthService {
         });
       }
       if (data.userType === 'pharmacy') {
+        // A pharmacy record requires its (unique) mobile number, so sign-up is by phone only. An unknown email used to
+        // fail the save with a 500; this answer says no more than that did.
+        if (!data.phone) {
+          throw new AppError({ status: 422, code: 'PHARMACY_PHONE_REQUIRED', message: 'A new pharmacy signs up with its mobile number' });
+        }
         const newPharmacy = await this.pharmacyRepository.save(
           this.buildPharmacySignupPayload(data)
         );
@@ -344,9 +349,7 @@ export class AuthService {
         ? await this.pharmacyRepository.findByPhone(data.phone)
         : await this.pharmacyRepository.findByEmail(data.email!);
     } else if (data.userType === 'partner') {
-      const members = data.phone
-        ? await this.memberRepository.findActiveByPhoneAcrossPartners(data.phone)
-        : [];
+      const members = await this.partnerMembersOf(data.phone ? { phone: data.phone } : { email: data.email });
       // Q7: with several memberships and no choice yet, the code is bound to the first membership (partnerId order,
       // the same at verify); after the code proves the phone, the person chooses (selectPartner).
       if (data.partnerId) {
@@ -425,16 +428,17 @@ export class AuthService {
       targetValue,
     });
 
-    // Q7: the phone is proven; a person with several memberships (and no choice yet) now chooses one.
+    // Q7: the phone (or email) is proven; a person with several memberships (and no choice yet) now chooses one.
     if (data.userType === 'partner' && !data.partnerId) {
-      const choices = await this.partnerChoices(String(userRecord.phone));
+      const identity: PartnerIdentity = target === 'phone' ? { phone: String(userRecord.phone) } : { email: String(userRecord.email).trim().toLowerCase() };
+      const choices = await this.partnerChoices(identity);
       if (choices.length > 1) {
         return { message: 'Choose the workspace to open', accessToken: '', userData: { _id: '', userType: 'partner' },
-          selection: { ticket: await this.issueSelectionTicket(String(userRecord.phone)), choices } };
+          selection: { ticket: await this.issueSelectionTicket(identity), choices } };
       }
       if (choices.length === 1 && choices[0]!.partnerId !== String((userRecord as unknown as IMember).partnerId)) {
         // The proven membership's partner is inactive; the one active membership is the only choice.
-        const only = (await this.memberRepository.findActiveByPhoneAcrossPartners(String(userRecord.phone)))
+        const only = (await this.partnerMembersOf(identity))
           .find((m) => String((m as any).partnerId) === choices[0]!.partnerId);
         if (!only) throw new AppError({ status: 403, code: 'PARTNER_INACTIVE', message: 'None of your partner workspaces is active' });
         userRecord = only as unknown as IUser;
@@ -491,6 +495,7 @@ export class AuthService {
         memberId: id,
         partnerId: member.partnerId,
         phone: member.phone,
+        ...(member.email ? { email: member.email } : {}),
         userType: 'partner',
       };
     } else if (data.userType === 'pharmacy') {
@@ -561,9 +566,16 @@ export class AuthService {
     };
   };
 
-  /** Q7: the active memberships of a phone whose partner is active, in the order the sign-in uses. */
-  private async partnerChoices(phone: string): Promise<{ partnerId: string; name: string; kind: string; solo: boolean; role: string }[]> {
-    const members = await this.memberRepository.findActiveByPhoneAcrossPartners(phone);
+  /** The active memberships signed in to with this phone or (lower-cased, exact) email, in partnerId order. */
+  private async partnerMembersOf(identity: { phone?: string; email?: string }): Promise<IMember[]> {
+    if (identity.phone) return this.memberRepository.findActiveByPhoneAcrossPartners(identity.phone);
+    if (identity.email) return this.memberRepository.findActiveByEmailAcrossPartners(identity.email);
+    return [];
+  }
+
+  /** Q7: the active memberships of a phone/email whose partner is active, in the order the sign-in uses. */
+  private async partnerChoices(identity: PartnerIdentity): Promise<{ partnerId: string; name: string; kind: string; solo: boolean; role: string }[]> {
+    const members = await this.partnerMembersOf(identity);
     const partners = await PartnerModel.find({ _id: { $in: members.map((m) => String((m as any).partnerId)) }, isActive: { $ne: false } })
       .select({ name: 1, kind: 1, solo: 1 }).lean() as any[];
     const byId = new Map(partners.map((p) => [String(p._id), p]));
@@ -573,11 +585,11 @@ export class AuthService {
     });
   }
 
-  private async issueSelectionTicket(phone: string): Promise<string> {
+  private async issueSelectionTicket(identity: PartnerIdentity): Promise<string> {
     const jti = randomUUID();
     const ttl = 5 * 60;
-    await PartnerSelectionTicketModel.create({ jti, phone, expiresAt: new Date(Date.now() + ttl * 1000) });
-    return jwt.sign({ purpose: 'partner_select', phone, jti }, selectionKey(), { expiresIn: ttl, audience: SELECTION_AUDIENCE });
+    await PartnerSelectionTicketModel.create({ jti, ...identity, expiresAt: new Date(Date.now() + ttl * 1000) });
+    return jwt.sign({ purpose: 'partner_select', ...identity, jti }, selectionKey(), { expiresIn: ttl, audience: SELECTION_AUDIENCE });
   }
 
   /**
@@ -585,24 +597,28 @@ export class AuthService {
    * OTP the person already proved; the choice must be one of that phone's active memberships of an active partner.
    */
   selectPartner = async (data: { ticket: string; partnerId: string }) => {
-    let claims: { purpose?: string; phone?: string; jti?: string };
+    let claims: { purpose?: string; phone?: string; email?: string; jti?: string };
     try {
       claims = jwt.verify(data.ticket, selectionKey(), { audience: SELECTION_AUDIENCE }) as typeof claims;
     } catch {
       throw new AppError({ status: 401, code: 'SELECTION_EXPIRED', message: 'This sign-in expired; request a new code' });
     }
-    if (claims.purpose !== 'partner_select' || !claims.phone || !claims.jti) {
+    // Exactly one proven identity: the phone, or the email of an email sign-in.
+    const identity: PartnerIdentity | null = typeof claims.phone === 'string' && claims.phone && claims.email === undefined ? { phone: claims.phone }
+      : typeof claims.email === 'string' && claims.email && claims.phone === undefined ? { email: claims.email } : null;
+    if (claims.purpose !== 'partner_select' || !identity || !claims.jti) {
       throw new AppError({ status: 401, code: 'SELECTION_EXPIRED', message: 'This sign-in expired; request a new code' });
     }
-    const claimed = await PartnerSelectionTicketModel.findOneAndDelete({ jti: claims.jti, phone: claims.phone, expiresAt: { $gt: new Date() } });
+    const claimed = await PartnerSelectionTicketModel.findOneAndDelete({ jti: claims.jti, ...identity, expiresAt: { $gt: new Date() } });
     if (!claimed) throw new AppError({ status: 401, code: 'SELECTION_EXPIRED', message: 'This sign-in expired; request a new code' });
-    const choices = await this.partnerChoices(claims.phone);
+    const choices = await this.partnerChoices(identity);
     if (!choices.some((c) => c.partnerId === String(data.partnerId))) {
       throw new AppError({ status: 403, code: 'PARTNER_NOT_AVAILABLE', message: 'That workspace is not available to you' });
     }
-    const member = (await this.memberRepository.findActiveByPhoneAcrossPartners(claims.phone))
+    const member = (await this.partnerMembersOf(identity))
       .find((m) => String((m as any).partnerId) === String(data.partnerId)) as unknown as IMember;
-    const tokenPayload = { _id: String(member._id), memberId: String(member._id), partnerId: String(member.partnerId), phone: member.phone, userType: 'partner' };
+    const tokenPayload = { _id: String(member._id), memberId: String(member._id), partnerId: String(member.partnerId), phone: member.phone,
+      ...(member.email ? { email: member.email } : {}), userType: 'partner' };
     const accessToken = jwt.sign(tokenPayload, CONFIG.JWT_SECRET_KEY, { expiresIn: '30d' });
     return { message: 'Signed in', accessToken, userData: tokenPayload };
   };

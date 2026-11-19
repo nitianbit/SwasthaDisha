@@ -1,0 +1,48 @@
+{
+  "_comment": "Demo accounts for the STAGE server (one of every account type). Copy this file to demo-accounts.json (git-ignored), replace every placeholder phone and example.com email with ones you control (each sign-in is a one-time code sent by SMS to the phone or by email to the address), and delete the _example line. Every person takes a phone, an email or both; lab/clinic owners and staff and a NEW pharmacy need a phone (their records require one), the email is optional. Phones may repeat across roles (a phone with several lab/clinic memberships chooses the workspace after the code). Run: SEED_DEMO_ALLOWED=true npm run seed:demo -- demo-accounts.json   (dry run), then the same with --commit.",
+  "_example": true,
+  "admin": { "name": "Demo Admin", "phone": "9000000001", "email": "demo.admin@example.com" },
+  "customers": [
+    {
+      "name": "Asha Demo", "phone": "9000000002", "email": "asha.demo@example.com",
+      "family": [
+        { "name": "Ravi Demo", "relation": "Father", "gender": "Male", "dateOfBirth": "1960-01-15" },
+        { "name": "Meera Demo", "relation": "Daughter", "gender": "Female", "dateOfBirth": "2015-06-20" }
+      ]
+    },
+    { "name": "Imran Demo", "email": "imran.demo@example.com" },
+    { "name": "Lata Demo", "phone": "9000000012" }
+  ],
+  "doctors": [
+    { "name": "Dr Kavya Demo", "phone": "9000000003", "email": "dr.kavya@example.com", "specialization": "General Physician", "fee": 500, "modes": ["video", "call", "chat"] },
+    { "name": "Dr Arjun Demo", "phone": "9000000004", "email": "dr.arjun@example.com", "specialization": "Dermatologist", "fee": 700, "modes": ["video"] },
+    { "name": "Dr Sana Demo", "email": "dr.sana@example.com", "specialization": "Paediatrician", "fee": 600 }
+  ],
+  "pharmacy": {
+    "name": "Demo Pharmacy", "phone": "9000000005", "email": "pharmacy.demo@example.com", "ownerName": "Pooja Demo",
+    "address": "5 Demo Market Road", "city": "Pune", "state": "Maharashtra", "pincode": "411038"
+  },
+  "lab": {
+    "name": "Demo Diagnostics", "ownerName": "Suresh Demo", "ownerPhone": "9000000006", "ownerEmail": "lab.owner@example.com", "invoiceSeriesPrefix": "DLAB",
+    "branch": {
+      "name": "Demo Diagnostics Kothrud", "phone": "9000000006",
+      "address": { "line1": "21 Lab Lane", "city": "Pune", "state": "Maharashtra", "stateCode": "27", "pincode": "411038" }
+    },
+    "staff": [
+      { "name": "Lab Desk Demo", "phone": "9000000007", "email": "lab.desk@example.com" }
+    ]
+  },
+  "clinic": {
+    "name": "Demo Care Clinic", "ownerName": "Neha Demo", "ownerPhone": "9000000008", "ownerEmail": "clinic.owner@example.com", "invoiceSeriesPrefix": "DCC",
+    "branch": {
+      "name": "Demo Care Clinic Baner", "phone": "9000000008",
+      "address": { "line1": "8 Clinic Street", "city": "Pune", "state": "Maharashtra", "stateCode": "27", "pincode": "411045" }
+    },
+    "staff": [
+      { "name": "Clinic Desk Demo", "phone": "9000000009", "email": "clinic.desk@example.com" }
+    ],
+    "doctors": ["9000000003"],
+    "allowPartPayments": true
+  },
+  "doctorClinic": { "email": "dr.arjun@example.com", "name": "Dr Arjun Skin Clinic", "invoiceSeriesPrefix": "DSKIN" }
+}

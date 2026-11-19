@@ -68,6 +68,8 @@ export const createPartnerSchema = Joi.object({
       'string.pattern.base': 'Owner phone must be exactly 10 digits',
     }),
     name: Joi.string().trim().min(1).max(200).required(),
+    /** Optional sign-in email of the first owner. */
+    email: Joi.string().trim().lowercase().email().max(254).optional(),
   }).required(),
 });
 
@@ -103,6 +105,8 @@ export const addMemberSchema = Joi.object({
   phone: Joi.string().pattern(phonePattern).required().messages({
     'string.pattern.base': 'Phone must be exactly 10 digits',
   }),
+  /** Optional sign-in email (OTP by email); unique among the partner's active members (409 EMAIL_IN_USE). */
+  email: Joi.string().trim().lowercase().email().max(254).optional(),
   name: Joi.string().trim().min(1).max(200).required(),
   role: Joi.string().valid('owner', 'staff').required(),
   permissions: Joi.array()
@@ -117,6 +121,13 @@ export const updateMemberPermissionsSchema = Joi.object({
   permissions: Joi.array()
     .items(Joi.string().valid(...ALL_PERMISSIONS))
     .required(),
+});
+
+/** A member's sign-in email; null or '' removes it. */
+export const updateMemberEmailSchema = Joi.object({
+  /** Optimistic concurrency — the record's updatedAt the editor started from (409 RECORD_CHANGED if it moved). */
+  expectedUpdatedAt: Joi.date().iso().optional(),
+  email: Joi.string().trim().lowercase().email().max(254).allow(null, '').required(),
 });
 
 export const createBranchSchema = Joi.object({

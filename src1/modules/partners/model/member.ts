@@ -18,6 +18,12 @@ const memberSchema = new Schema<IMember>(
       required: true,
       trim: true,
     },
+    // Optional sign-in email (OTP by email, like the phone). Stored and queried lower-cased and trimmed.
+    email: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
     role: {
       type: String,
       required: true,
@@ -57,6 +63,12 @@ memberSchema.index({ partnerId: 1, isActive: 1 });
 memberSchema.index(
   { phone: 1, partnerId: 1 },
   { unique: true, partialFilterExpression: { isActive: true } }
+);
+// An email signs in to at most one active membership per partner (as the phone); removed members keep theirs without
+// blocking it. Found by email across partners at sign-in.
+memberSchema.index(
+  { email: 1, partnerId: 1 },
+  { unique: true, partialFilterExpression: { email: { $type: 'string' }, isActive: true } }
 );
 memberSchema.index({ partnerId: 1, role: 1, isActive: 1 });
 // Q6: a doctor is linked to a clinic at most once (active), and found by doctor across clinics.

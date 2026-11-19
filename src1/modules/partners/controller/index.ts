@@ -165,6 +165,11 @@ export const updateMemberPermissions = async (req: Request, res: Response, _next
   res.status(200).json({ success: true, data });
 };
 
+export const updateMemberEmail = async (req: Request, res: Response, _next: NextFunction) => {
+  const data = await service().updateMemberEmail(actorOf(req), req.params.memberId, req.body.email, req.body.expectedUpdatedAt);
+  res.status(200).json({ success: true, data });
+};
+
 export const updateMemberBranches = async (req: Request, res: Response, _next: NextFunction) => {
   const data = await service().updateMemberBranches(actorOf(req), req.params.memberId, req.body.branchIds, req.body.expectedUpdatedAt);
   res.status(200).json({ success: true, data });

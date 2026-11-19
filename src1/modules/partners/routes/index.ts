@@ -13,6 +13,7 @@ import {
   addMemberSchema,
   updateMemberPermissionsSchema,
   updateMemberBranchesSchema,
+  updateMemberEmailSchema,
   memberProfessionalSchema,
   createKeyParamSchema,
   branchListQuerySchema,
@@ -83,6 +84,7 @@ import {
   adminPartnerByKey,
   adminAbandonPartnerKey,
   updateMemberBranches,
+  updateMemberEmail,
   setMemberProfessional,
   getOwnMember,
   reactivateBranch,
@@ -140,6 +142,8 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.get('/me/member', ...guard(), catchAsync(getOwnMember));
   r.put('/members/:memberId/professional', ...guard('staff.manage'), validate(memberIdParamSchema, 'params'),
     validate(memberProfessionalSchema, 'body'), catchAsync(setMemberProfessional));
+  r.put('/members/:memberId/email', ...guard('staff.manage'), validate(memberIdParamSchema, 'params'),
+    validate(updateMemberEmailSchema, 'body'), catchAsync(updateMemberEmail));
   r.put('/members/:memberId/branches', ...guard('staff.manage'), validate(memberIdParamSchema, 'params'),
     validate(updateMemberBranchesSchema, 'body'), catchAsync(updateMemberBranches));
 

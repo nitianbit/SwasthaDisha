@@ -78,6 +78,8 @@ export interface IMember {
   _id?: string;
   partnerId: string;
   phone: string;
+  /** Optional sign-in email (lower-case); unique among the partner's active members. */
+  email?: string;
   name: string;
   role: MemberRole;
   permissions: PartnerPermission[];
