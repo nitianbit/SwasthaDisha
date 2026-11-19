@@ -199,15 +199,18 @@ export class AuthService {
         throw new AppError({
           status: 404,
           code: 'PARTNER_MEMBER_NOT_FOUND',
-          message: 'No active partner membership found for this phone',
+          message: 'No active partner membership found for this mobile number or email.',
         });
       }
+      // Owner decision: accounts are created only by mobile number. An email no customer, doctor or pharmacy uses creates
+      // nothing (it would be a second, empty account); the answer says the email is not registered (per-destination
+      // send limits above still apply). The email is added to an account from its profile (email verification).
+      const byEmail = data.userType === 'user' ? customerContact?.target === 'email' : !data.phone;
+      if (byEmail && (data.userType === 'user' || data.userType === 'specialist' || data.userType === 'pharmacy')) {
+        throw new AppError({ status: 404, code: 'EMAIL_NOT_REGISTERED',
+          message: 'No account uses this email. Sign in with your mobile number, then add this email to your profile.' });
+      }
       if (data.userType === 'pharmacy') {
-        // A pharmacy record requires its (unique) mobile number, so sign-up is by phone only. An unknown email used to
-        // fail the save with a 500; this answer says no more than that did.
-        if (!data.phone) {
-          throw new AppError({ status: 422, code: 'PHARMACY_PHONE_REQUIRED', message: 'A new pharmacy signs up with its mobile number' });
-        }
         const newPharmacy = await this.pharmacyRepository.save(
           this.buildPharmacySignupPayload(data)
         );

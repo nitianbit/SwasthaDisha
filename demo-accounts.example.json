@@ -1,5 +1,5 @@
 {
-  "_comment": "Demo accounts for the STAGE server (one of every account type). Copy this file to demo-accounts.json (git-ignored), replace every placeholder phone and example.com email with ones you control (each sign-in is a one-time code sent by SMS to the phone or by email to the address), and delete the _example line. Every person takes a phone, an email or both; lab/clinic owners and staff and a NEW pharmacy need a phone (their records require one), the email is optional. Phones may repeat across roles (a phone with several lab/clinic memberships chooses the workspace after the code). Run: SEED_DEMO_ALLOWED=true npm run seed:demo -- demo-accounts.json   (dry run), then the same with --commit.",
+  "_comment": "Demo accounts for the STAGE server (one of every account type). Copy this file to demo-accounts.json (git-ignored), replace every placeholder phone and example.com email with ones you control (each sign-in is a one-time code sent by SMS to the phone or by email to the address), and delete the _example line. Every person takes a phone, an email or both; lab/clinic owners and staff and a NEW pharmacy need a phone (their records require one), the email is optional. Phones may repeat across roles (a phone with several lab/clinic memberships chooses the workspace after the code). Linked clinic doctors sign in to the clinic workspace with their mobile number; give signInEmail to add an email sign-in there too. Run: SEED_DEMO_ALLOWED=true SEED_DEMO_DATABASE=<the stage database name> npm run seed:demo -- demo-accounts.json   (dry run; it prints the host and database first), then the same with --commit.",
   "_example": true,
   "admin": { "name": "Demo Admin", "phone": "9000000001", "email": "demo.admin@example.com" },
   "customers": [
@@ -41,8 +41,8 @@
     "staff": [
       { "name": "Clinic Desk Demo", "phone": "9000000009", "email": "clinic.desk@example.com" }
     ],
-    "doctors": ["9000000003"],
+    "doctors": [{ "doctor": "9000000003", "signInEmail": "dr.kavya@example.com" }],
     "allowPartPayments": true
   },
-  "doctorClinic": { "email": "dr.arjun@example.com", "name": "Dr Arjun Skin Clinic", "invoiceSeriesPrefix": "DSKIN" }
+  "doctorClinic": { "email": "dr.arjun@example.com", "name": "Dr Arjun Skin Clinic", "invoiceSeriesPrefix": "DSKIN", "signInEmail": "dr.arjun@example.com" }
 }

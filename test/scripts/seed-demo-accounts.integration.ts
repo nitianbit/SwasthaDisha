@@ -20,7 +20,8 @@ import os from 'node:os';
 import path from 'node:path';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
-import { cli, runSeed, maskPhone, maskEmail, DemoInput, SeedReport } from '../../src1/scripts/seedDemoAccounts';
+import { cli, runSeed, maskPhone, maskEmail, targetRefusal, DemoInput, SeedReport } from '../../src1/scripts/seedDemoAccounts';
+import { saveTemplate as saveDoctorSchedule } from '@/modules/doctors/services/schedule';
 import { AuthService } from '@/modules/auth/services';
 import { AdminRepository } from '@/modules/admin/repository';
 import { HRRepository } from '@/modules/hr/repository';
@@ -77,7 +78,8 @@ const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'seed-demo-'));
 const inputFile = path.join(dir, 'demo-accounts.json');
 fs.writeFileSync(inputFile, JSON.stringify(input));
 const exampleFile = path.join(__dirname, '..', '..', 'demo-accounts.example.json');
-const ALLOWED = { SEED_DEMO_ALLOWED: 'true', NODE_ENV: 'production' } as NodeJS.ProcessEnv;
+const DB = 'seed_demo_accounts_check';
+const ALLOWED = { SEED_DEMO_ALLOWED: 'true', SEED_DEMO_DATABASE: DB, NODE_ENV: 'production' } as NodeJS.ProcessEnv;
 const clone = () => JSON.parse(JSON.stringify(input)) as DemoInput;
 
 async function counts(): Promise<Record<string, number>> {
@@ -122,6 +124,12 @@ async function signIn(userType: Role, contact: { phone?: string; email?: string 
   return { claims: jwt.verify(r.accessToken, CONFIG.JWT_SECRET_KEY) as Record<string, any>, user: r.userData };
 }
 
+/** A code request to an unknown phone (the sign-up placeholder AuthService.sendOTP creates). */
+async function signUpPlaceholder(userType: 'specialist' | 'pharmacy' | 'user', phone: string) {
+  await OtpThrottleModel.deleteMany({});
+  await auth.sendOTP({ userType, phone } as never);
+}
+
 async function main() {
   await mongoose.connect(FIXTURE_URL, { autoCreate: false, autoIndex: false });
   await mongoose.connection.dropDatabase();
@@ -148,13 +156,29 @@ async function main() {
     assert.equal(total(await counts()), 0);
   });
 
+  await check('production guard: SEED_DEMO_DATABASE must name the connected database (dry run included); "prod" names refused', async () => {
+    for (const env of [{ SEED_DEMO_ALLOWED: 'true' }, { SEED_DEMO_ALLOWED: 'true', SEED_DEMO_DATABASE: 'other_db' }]) {
+      for (const argv of [[inputFile], [inputFile, '--commit']]) {
+        const out: string[] = [];
+        const r = await cli(argv, env as NodeJS.ProcessEnv, (l) => out.push(l));
+        assert.equal(r.code, 2);
+        assert.match(out.join('\n'), /^Target: host 127\.0\.0\.1:27917 +database seed_demo_accounts_check[\s\S]*REFUSED: set SEED_DEMO_DATABASE=seed_demo_accounts_check/);
+      }
+    }
+    assert.equal(total(await counts()), 0);
+    assert.match(targetRefusal({ SEED_DEMO_DATABASE: 'jansetu_PROD' } as NodeJS.ProcessEnv, 'jansetu_PROD')!, /looks like production/);
+    assert.match(targetRefusal({ SEED_DEMO_DATABASE: 'prodcopy' } as NodeJS.ProcessEnv, 'prodcopy')!, /looks like production/);
+    assert.equal(targetRefusal({ SEED_DEMO_DATABASE: DB } as NodeJS.ProcessEnv, DB), null);
+  });
+
   const allOutput: string[] = [];
   await check('dry run prints the plan and the database name, and writes nothing', async () => {
     const out: string[] = [];
     const r = await cli([inputFile], ALLOWED, (l) => out.push(l));
     allOutput.push(...out);
     assert.equal(r.code, 0);
-    assert.match(out[0]!, /Target database: seed_demo_accounts_check .*DRY RUN/);
+    assert.match(out[0]!, /^Target: host 127\.0\.0\.1:27917 +database seed_demo_accounts_check .*DRY RUN/);
+    assert.equal(out.join('\n').includes('mongodb://'), false);
     assert.equal(r.report!.counts.created, 0);
     assert.ok(r.report!.counts['would create'] > 20);
     assert.equal(total(await counts()), 0);
@@ -216,9 +240,12 @@ async function main() {
     const desk = await MemberModel.findOne({ partnerId: String(clinic._id), phone: input.clinic!.staff![0]!.phone }).lean() as any;
     assert.deepEqual([desk.role, desk.branchIds], ['staff', [String(cBranch._id)]]);
     assert.deepEqual((await CatalogueItemModel.find({ partnerId: String(clinic._id) }).lean()).map((i: any) => i.kind).sort(), ['consultation', 'procedure']);
-    const kavya = await SpecialistModel.findOne({ phone: input.clinic!.doctors![0] }).lean() as any;
+    const kavyaRef = input.clinic!.doctors![0] as { doctor: string; signInEmail: string };
+    const kavya = await SpecialistModel.findOne({ phone: kavyaRef.doctor }).lean() as any;
     const kMember = await MemberModel.findOne({ partnerId: String(clinic._id), doctorId: String(kavya._id), isActive: true }).lean() as any;
-    assert.deepEqual([kMember.role, kMember.doctorBranchIds, kMember.phone, kMember.email], ['staff', [String(cBranch._id)], kavya.phone, kavya.email]);
+    // The sign-in email on the clinic membership comes from the file's signInEmail (set by the admin as owner).
+    assert.deepEqual([kMember.role, kMember.doctorBranchIds, kMember.phone, kMember.email], ['staff', [String(cBranch._id)], kavya.phone, kavyaRef.signInEmail]);
+    assert.ok(await PartnerAuditEventModel.exists({ partnerId: String(clinic._id), action: 'member.email', actorKind: 'admin' }));
     assert.ok(await ClinicDoctorInviteModel.exists({ partnerId: String(clinic._id), doctorId: String(kavya._id), state: 'accepted', via: 'admin_link' }));
     assert.equal(await clinicBranchAllowed(String(kavya._id), String(cBranch._id)), true);
     const kSchedule = await DoctorScheduleTemplateModel.findOne({ doctorId: String(kavya._id) }).lean() as any;
@@ -230,7 +257,7 @@ async function main() {
     const own = await PartnerModel.findOne({ soloDoctorId: String(arjun._id) }).lean() as any;
     assert.deepEqual([own.verification.state, own.solo, own.name], ['pending', true, input.doctorClinic!.name]);
     const ownOwner = await MemberModel.findOne({ partnerId: String(own._id), doctorId: String(arjun._id) }).lean() as any;
-    assert.deepEqual([ownOwner.role, ownOwner.phone, ownOwner.email], ['owner', arjun.phone, arjun.email]);
+    assert.deepEqual([ownOwner.role, ownOwner.phone, ownOwner.email], ['owner', arjun.phone, input.doctorClinic!.signInEmail]);
     // Every doctor has a weekly schedule.
     assert.equal(await DoctorScheduleTemplateModel.countDocuments(), input.doctors!.length);
 
@@ -295,6 +322,95 @@ async function main() {
     assert.deepEqual(await counts(), before);
   });
 
+  await check('a doctor found by email with another stored phone is linked by its entry (no crash), with the stored phone', async () => {
+    const stored = await SpecialistModel.create({ name: 'Dr Moved', phone: '9100000101', email: 'dr.moved@example.com', specialization: 'ENT',
+      isActive: true, isVerified: true });
+    const i = clone();
+    i.doctors = [{ name: 'Dr Moved', phone: '9100000102', email: 'dr.moved@example.com', specialization: 'ENT', fee: 400 }];
+    i.clinic!.doctors = ['9100000102'];
+    delete i.doctorClinic; delete i.lab; delete i.customers; delete i.pharmacy;
+    const r = await runSeed(i, { commit: true, log: () => {} });
+    const clinicId = String(((await PartnerModel.findOne({ name: i.clinic!.name }).lean()) as any)._id);
+    const m = await MemberModel.findOne({ partnerId: clinicId, doctorId: String(stored._id), isActive: true }).lean() as any;
+    assert.equal(m.phone, '9100000101');
+    assert.ok(r.warnings.some((w) => /another phone on record \(91x{6}01\); kept/.test(w)));
+    // Without the email sign-in key a linked doctor's membership has no sign-in email.
+    assert.equal(m.email, undefined);
+  });
+
+  await check('a failure partway prints what was done before it (counts, warnings, accounts so far)', async () => {
+    const i = clone();
+    delete i.lab; delete i.clinic; delete i.doctorClinic; delete i.pharmacy;
+    // Admin and customers are found, then a doctor whose phone and email are two different accounts stops the run.
+    await SpecialistModel.create({ name: 'Dr A', phone: '9100000201', isActive: true, isVerified: true, specialization: 'X' });
+    await SpecialistModel.create({ name: 'Dr B', email: 'dr.b@example.com', isActive: true, isVerified: true, specialization: 'X' });
+    i.doctors = [{ name: 'Dr AB', phone: '9100000201', email: 'dr.b@example.com', specialization: 'X', fee: 1 }];
+    const file = path.join(dir, 'partial.json');
+    fs.writeFileSync(file, JSON.stringify(i));
+    const out: string[] = [];
+    const r = await cli([file, '--commit'], ALLOWED, (l) => out.push(l));
+    const text = out.join('\n');
+    assert.equal(r.code, 1);
+    assert.match(text, /Before the failure: 0 created, \d+ found/);
+    assert.match(text, /Accounts so far[\s\S]*Demo Admin[\s\S]*Asha Demo/);
+    assert.match(text, /FAILED: doctor 91x{6}01 \/ dr\*\*\*@example\.com: the phone and the email belong to two different existing accounts/);
+  });
+
+  await check('sign-up placeholders (made by an earlier code request) are completed with the file profile; conflicts name the fix', async () => {
+    // What a code request to an unknown phone creates for each role.
+    await signUpPlaceholder('specialist', '9100000301');
+    await signUpPlaceholder('pharmacy', '9100000302');
+    await signUpPlaceholder('user', '9100000303');
+    const sp0 = await SpecialistModel.findOne({ phone: '9100000301' }).lean() as any;
+    const ph0 = await PharmacyModel.findOne({ phone: '9100000302' }).lean() as any;
+    assert.deepEqual([sp0.name, sp0.isVerified, ph0.name, ph0.isVerified], ['demoName', false, 'Demo', false]);
+    const r = await runSeed({
+      doctors: [{ name: 'Dr Real', phone: '9100000301', email: 'dr.real@example.com', specialization: 'Cardiologist', fee: 900, modes: ['video'] }],
+      pharmacy: { name: 'Real Pharmacy', phone: '9100000302', ownerName: 'Owner', address: '1 Road', city: 'Pune', state: 'MH', pincode: '411001' },
+      customers: [{ name: 'Real Customer', phone: '9100000303' }],
+    } as DemoInput, { commit: true, log: () => {} });
+    const sp = await SpecialistModel.findOne({ phone: '9100000301' }).lean() as any;
+    assert.deepEqual([sp.name, sp.specialization, sp.consultationFee, sp.email, sp.isVerified, sp.availability.acceptVideoConsultations, sp.availability.acceptChatConsultations, sp.city],
+      ['Dr Real', 'Cardiologist', 900, 'dr.real@example.com', true, true, false, 'Pune']);
+    const ph = await PharmacyModel.findOne({ phone: '9100000302' }).lean() as any;
+    assert.deepEqual([ph.name, ph.ownerName, ph.address, ph.isVerified, ph.pickupAvailable], ['Real Pharmacy', 'Owner', '1 Road', true, true]);
+    assert.equal((await UserModel.findOne({ phone: '9100000303', userType: 'user' }).lean() as any).name, 'Real Customer');
+    assert.equal(await SpecialistModel.countDocuments({ phone: '9100000301' }), 1);
+    assert.ok(r.steps.filter((x) => /completed a sign-up placeholder/.test(x.note ?? '')).length === 3);
+    // A placeholder by phone and a real doctor by email: refused, and the message names the fix.
+    await signUpPlaceholder('specialist', '9100000304');
+    await SpecialistModel.create({ name: 'Dr Mail', email: 'dr.mail2@example.com', isActive: true, isVerified: true, specialization: 'X' });
+    await assert.rejects(runSeed({ doctors: [{ name: 'Dr X', phone: '9100000304', email: 'dr.mail2@example.com', specialization: 'X', fee: 1 }] } as DemoInput,
+      { commit: true, log: () => {} }), /the one found by phone is an unverified placeholder[\s\S]*remove the unverified placeholder row created by an earlier code request/);
+  });
+
+  await check('a re-run adds the in-clinic windows to a saved schedule of a now-linked doctor (never removing windows)', async () => {
+    const i = clone();
+    delete i.lab; delete i.customers; delete i.pharmacy; delete i.doctorClinic;
+    i.doctors = [{ name: 'Dr Later', phone: '9100000401', specialization: 'GP', fee: 300, modes: ['chat'] }];
+    i.clinic!.doctors = [];
+    await runSeed(i, { commit: true, log: () => {} });
+    const sp = await SpecialistModel.findOne({ phone: '9100000401' }).lean() as any;
+    // The doctor's own extra window (Sunday) must survive.
+    const t0 = await DoctorScheduleTemplateModel.findOne({ doctorId: String(sp._id) }).lean() as any;
+    await saveDoctorSchedule(String(sp._id), { slotMinutes: 30, days: { ...t0.days, sun: [{ start: '08:00', end: '09:00', modes: ['call'] }] },
+      expectedUpdatedAt: t0.updatedAt });
+    i.clinic!.doctors = ['9100000401'];
+    const r = await runSeed(i, { commit: true, log: () => {} });
+    const clinicId = String(((await PartnerModel.findOne({ name: i.clinic!.name }).lean()) as any)._id);
+    const branchId = String(((await BranchModel.findOne({ partnerId: clinicId }).lean()) as any)._id);
+    const t = await DoctorScheduleTemplateModel.findOne({ doctorId: String(sp._id) }).lean() as any;
+    for (const d of ['mon', 'tue', 'wed', 'thu', 'fri', 'sat']) {
+      assert.deepEqual(t.days[d].map((w: any) => [w.start, w.end, w.branchId ?? null]), [['10:00', '13:00', null], ['17:00', '19:00', branchId]], d);
+    }
+    assert.deepEqual(t.days.sun.map((w: any) => [w.start, w.modes.join()]), [['08:00', 'call']]);
+    assert.ok(r.steps.some((x) => x.status === 'updated' && /added in-clinic windows/.test(x.note ?? '')));
+    assert.ok(await SlotModel.exists({ specialistId: String(sp._id), branchId }));
+    // And once more: nothing to add.
+    const again = await runSeed(i, { commit: true, log: () => {} });
+    assert.deepEqual([again.counts.created, again.counts.updated], [0, 0]);
+  });
+
   await check('stops before writing when an index is missing, naming sync-indexes', async () => {
     await MemberModel.collection.dropIndex('email_1_partnerId_1');
     try {
@@ -348,10 +464,11 @@ async function main() {
       const p = input[kind]!;
       people.push({ partner: p.name, phone: p.ownerPhone, email: p.ownerEmail }, ...p.staff!.map((s) => ({ partner: p.name, phone: s.phone, email: s.email })));
     }
-    const kavya = input.doctors!.find((d) => d.phone === input.clinic!.doctors![0])!;
-    people.push({ partner: input.clinic!.name, phone: kavya.phone!, email: kavya.email });
+    const kavyaRef = input.clinic!.doctors![0] as { doctor: string; signInEmail: string };
+    const kavya = input.doctors!.find((d) => d.phone === kavyaRef.doctor)!;
+    people.push({ partner: input.clinic!.name, phone: kavya.phone!, email: kavyaRef.signInEmail });
     const arjun = input.doctors!.find((d) => d.email === input.doctorClinic!.email)!;
-    people.push({ partner: input.doctorClinic!.name!, phone: arjun.phone!, email: arjun.email });
+    people.push({ partner: input.doctorClinic!.name!, phone: arjun.phone!, email: input.doctorClinic!.signInEmail });
     for (const who of people) {
       const partnerId = String(((await PartnerModel.findOne({ name: who.partner }).lean()) as any)._id);
       const memberId = await idOf(MemberModel, { partnerId, phone: who.phone, isActive: true });

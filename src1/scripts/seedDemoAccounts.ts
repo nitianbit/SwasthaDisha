@@ -3,8 +3,11 @@
  * (mobile number + SMS OTP, or email + emailed OTP; there is no bypass, fixed code or password, so every phone and email
  * must be one you control).
  *
- *   SEED_DEMO_ALLOWED=true npm run seed:demo -- demo-accounts.json            # dry run: prints the plan, writes nothing
- *   SEED_DEMO_ALLOWED=true npm run seed:demo -- demo-accounts.json --commit   # creates what is missing
+ *   SEED_DEMO_ALLOWED=true SEED_DEMO_DATABASE=<db> npm run seed:demo -- demo-accounts.json            # dry run, writes nothing
+ *   SEED_DEMO_ALLOWED=true SEED_DEMO_DATABASE=<db> npm run seed:demo -- demo-accounts.json --commit   # creates what is missing
+ *
+ * SEED_DEMO_DATABASE must equal the connected database's name (printed first, with the host); a name containing "prod"
+ * is always refused.
  *
  * Input: see demo-accounts.example.json (copy it to demo-accounts.json, which git ignores, and put in real numbers).
  *
@@ -101,10 +104,14 @@ export interface DemoInput {
   pharmacy?: Contact & { name: string; ownerName?: string; address?: string; city?: string; state?: string; pincode?: string;
     drugLicenseNumber?: string; gstNumber?: string; pickupAvailable?: boolean; deliveryAvailable?: boolean };
   lab?: DemoPartner;
-  /** `doctors`: the phone or email of entries in the top-level "doctors" list, linked at the clinic branch by the admin. */
-  clinic?: DemoPartner & { doctors?: string[]; allowPartPayments?: boolean };
-  /** The doctor (by the phone and/or email of a "doctors" entry) who creates their own clinic. */
-  doctorClinic?: Contact & { name?: string; invoiceSeriesPrefix?: string; branch?: { name: string; phone: string; address: DemoAddress } };
+  /**
+   * `doctors`: entries of the top-level "doctors" list (by phone or email), linked at the clinic branch by the admin; as
+   * `{doctor, signInEmail}` the membership also gets that sign-in email (set by the admin as owner; linked doctors
+   * otherwise sign in to the clinic with their mobile number).
+   */
+  clinic?: DemoPartner & { doctors?: (string | { doctor: string; signInEmail?: string })[]; allowPartPayments?: boolean };
+  /** The doctor (by the phone and/or email of a "doctors" entry) who creates their own clinic; `signInEmail` as above. */
+  doctorClinic?: Contact & { name?: string; invoiceSeriesPrefix?: string; signInEmail?: string; branch?: { name: string; phone: string; address: DemoAddress } };
   [comment: `_${string}`]: unknown;
 }
 
@@ -146,9 +153,11 @@ const inputSchema = Joi.object({
   }).or('phone', 'email')).optional(),
   pharmacy: Joi.object({ name: Joi.string().trim().required(), phone: phoneOpt, email: emailOpt }).or('phone', 'email').unknown(true).optional(),
   lab: Joi.object(partner).optional(),
-  clinic: Joi.object({ ...partner, doctors: Joi.array().items(Joi.string().trim()).optional(), allowPartPayments: Joi.boolean().optional() }).optional(),
+  clinic: Joi.object({ ...partner, allowPartPayments: Joi.boolean().optional(),
+    doctors: Joi.array().items(Joi.alternatives(Joi.string().trim(), Joi.object({ doctor: Joi.string().trim().required(), signInEmail: emailOpt }))).optional(),
+  }).optional(),
   doctorClinic: Joi.object({
-    phone: phoneOpt, email: emailOpt, name: Joi.string().trim().optional(), invoiceSeriesPrefix: Joi.string().trim().optional(),
+    phone: phoneOpt, email: emailOpt, signInEmail: emailOpt, name: Joi.string().trim().optional(), invoiceSeriesPrefix: Joi.string().trim().optional(),
     branch: Joi.object({ name: Joi.string().trim().required(), phone: phoneReq, address: address.required() }).optional(),
   }).or('phone', 'email').optional(),
 }).pattern(/^_/, Joi.any());
@@ -215,6 +224,16 @@ const LOGIN = { admin: 'Admin', partner: 'Lab or clinic staff', doctor: 'Doctor'
 const key = (prefix: string, ...parts: string[]) => `seed-demo-${prefix}-${createHash('sha256').update(parts.join('|')).digest('hex').slice(0, 20)}`;
 const normDob = (d?: string) => (d ? d.replace(/-/g, '') : undefined);
 const escapeRegex = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Rows a code request (AuthService.sendOTP) creates for an unknown phone before anyone completes a profile:
+ * buildSpecialistSignupPayload ({name: 'demoName', isVerified: false}), buildPharmacySignupPayload ({name: 'Demo',
+ * isVerified: false, nothing else}) and the customer sign-up row (no name, never verified). The seeder completes them with
+ * the file's profile instead of only verifying them.
+ */
+export const isSpecialistPlaceholder = (sp: any) => !!sp && sp.name === 'demoName' && sp.isVerified !== true && !sp.specialization;
+export const isPharmacyPlaceholder = (p: any) => !!p && p.name === 'Demo' && p.isVerified !== true && !p.ownerName && !p.address;
+export const isCustomerPlaceholder = (u: any) => !!u && !u.name && u.otpVerified !== true;
 
 /** Same options as the request validation middleware (abortEarly off, unknown keys stripped); returns the converted value. */
 function validated<T>(schema: Joi.Schema, value: unknown, where: string): T {
@@ -288,7 +307,10 @@ interface DoctorRef extends Contact {
 class Seeder {
   readonly report: SeedReport;
   private adminId?: string;
+  /** One per "doctors" entry, at the entry's index (clinic links refer to the index, never to a phone). */
   private doctors: DoctorRef[] = [];
+  private clinicDoctorRefs: { index: number; signInEmail?: string }[] = [];
+  private doctorClinicIndex?: number;
   /** Raw identities of the partner-workspace rows (never printed), for the multi-workspace note. */
   private partnerRows: { row: AccountRow; contact: Contact }[] = [];
 
@@ -315,12 +337,16 @@ class Seeder {
    * The existing account for a phone and/or email (each looked up exactly as its sign-in does). Refuses when the phone
    * and the email belong to two different accounts: they are never merged.
    */
-  private async resolve(label: string, c: Contact, byPhone: (p: string) => PromiseLike<any>, byEmail: (e: string) => PromiseLike<any>): Promise<any | null> {
+  private async resolve(label: string, c: Contact, byPhone: (p: string) => PromiseLike<any>, byEmail: (e: string) => PromiseLike<any>,
+    isPlaceholder: (row: any) => boolean = () => false): Promise<any | null> {
     const p = c.phone ? await byPhone(c.phone) : null;
     const e = c.email ? await byEmail(c.email) : null;
     if (p && e && String(p._id) !== String(e._id)) {
-      throw new SeedError(`${label} ${maskContact(c)}: the phone and the email belong to two different existing accounts; refusing to merge them `
-        + '(list only one of them, or fix the accounts in the admin app first)');
+      const which = isPlaceholder(p) ? 'the one found by phone' : isPlaceholder(e) ? 'the one found by email' : null;
+      throw new SeedError(`${label} ${maskContact(c)}: the phone and the email belong to two different existing accounts; refusing to merge them. `
+        + (which
+          ? `Fix: ${which} is an unverified placeholder created by an earlier code request; remove the unverified placeholder row created by an earlier code request, then run again.`
+          : 'Fix: if one of them is an unverified placeholder created by an earlier code request, remove that row; otherwise list only one of the two (or fix the accounts in the admin app).'));
     }
     return p ?? e;
   }
@@ -340,8 +366,11 @@ class Seeder {
   }
   private added = (set: Record<string, string>) => `added ${Object.keys(set).join(' and ')} so both sign-ins work`;
 
-  private doctorFor(ref: Contact): DoctorRef | undefined {
-    return this.doctors.find((d) => (ref.phone && d.phone === ref.phone) || (ref.email && d.email === ref.email));
+  /** The doctor of a "doctors" entry (by index); a reference that cannot be resolved stops the run with a clear message. */
+  private doctorAt(index: number, where: string): DoctorRef {
+    const d = this.doctors[index];
+    if (!d) throw new SeedError(`${where}: the doctor (doctors[${index}]) could not be resolved to an account`);
+    return d;
   }
 
   // ── Input checks (no database access) ──
@@ -358,6 +387,7 @@ class Seeder {
   normalise(): void {
     const i = this.input;
     if ((i.lab || i.clinic) && !i.admin) throw new SeedError('"admin" is required when "lab" or "clinic" is given (partners are created and verified by the admin)');
+    if (i.doctorClinic?.signInEmail && !i.admin) throw new SeedError('"admin" is required for doctorClinic.signInEmail (the admin sets it as the clinic owner would)');
     if (i.admin) this.contact(i.admin, 'admin');
     const unique = (list: (string | undefined)[], where: string) => {
       const seen = new Set<string>();
@@ -400,22 +430,25 @@ class Seeder {
       validated(createBranchSchema, this.branchPayload(kind, p.branch), `${kind}.branch`);
       for (const [n, s] of (p.staff ?? []).entries()) validated(addMemberSchema, this.staffPayload(kind, s, '000000000000000000000000'), `${kind}.staff[${n}]`);
     }
-    const doctorEntry = (ref: Contact, where: string) => {
-      const d = (i.doctors ?? []).find((x) => (ref.phone && x.phone === ref.phone) || (ref.email && x.email === ref.email));
-      if (!d) throw new SeedError(`${where}: ${maskContact(ref)} is not one of "doctors"`);
+    /** The index of the "doctors" entry a reference names (by phone or email). */
+    const doctorIndex = (ref: Contact, where: string): number => {
+      const n = (i.doctors ?? []).findIndex((x) => (ref.phone && x.phone === ref.phone) || (ref.email && x.email === ref.email));
+      if (n < 0) throw new SeedError(`${where}: ${maskContact(ref)} is not one of "doctors"`);
       // The services require the doctor's mobile number: it is their clinic-workspace sign-in.
-      if (!d.phone) throw new SeedError(`${where}: the doctor ${maskContact(ref)} needs a phone in "doctors" (the clinic link uses it as the workspace sign-in)`);
-      return d;
+      if (!i.doctors![n]!.phone) throw new SeedError(`${where}: the doctor ${maskContact(ref)} needs a phone in "doctors" (the clinic link uses it as the workspace sign-in)`);
+      return n;
     };
     if (i.clinic) {
-      i.clinic.doctors = (i.clinic.doctors ?? []).map((ref, n) => {
+      this.clinicDoctorRefs = (i.clinic.doctors ?? []).map((item, n) => {
+        const ref = typeof item === 'string' ? item : item.doctor;
         const c: Contact = ref.includes('@') ? { email: ref.trim().toLowerCase() } : { phone: this.canonical(ref, `clinic.doctors[${n}]`) };
-        return doctorEntry(c, `clinic.doctors[${n}]`).phone!;
+        return { index: doctorIndex(c, `clinic.doctors[${n}]`), signInEmail: typeof item === 'string' ? undefined : item.signInEmail };
       });
     }
     if (i.doctorClinic) {
       this.contact(i.doctorClinic, 'doctorClinic');
-      const d = doctorEntry(i.doctorClinic, 'doctorClinic');
+      this.doctorClinicIndex = doctorIndex(i.doctorClinic, 'doctorClinic');
+      const d = i.doctors![this.doctorClinicIndex]!;
       i.doctorClinic.phone = d.phone;
       i.doctorClinic.email = d.email;
       if (i.doctorClinic.branch) i.doctorClinic.branch.phone = this.canonical(i.doctorClinic.branch.phone, 'doctorClinic.branch.phone');
@@ -463,7 +496,7 @@ class Seeder {
   }
   private doctorClinicPayload() {
     const dc = this.input.doctorClinic!;
-    const doctor = (this.input.doctors ?? []).find((d) => d.phone === dc.phone)!;
+    const doctor = this.input.doctors![this.doctorClinicIndex!]!;
     const name = dc.name ?? `${doctor.name} Clinic`;
     return {
       name, invoiceSeriesPrefix: dc.invoiceSeriesPrefix ?? 'DRC',
@@ -510,7 +543,7 @@ class Seeder {
       const what = `customer ${maskContact(c)}`;
       // The customer sign-in looks up {phone, userType: 'user'} or {email, userType: 'user'} (UserRepository.findByPhoneOrEmail).
       const existing = await this.resolve('customer', c, (phone) => UserModel.findOne({ phone, userType: 'user' }).lean(),
-        (email) => UserModel.findOne({ email, userType: 'user' }).lean()) as any;
+        (email) => UserModel.findOne({ email, userType: 'user' }).lean(), isCustomerPlaceholder) as any;
       // An email that is another customer's corporate email cannot become this one's (as the email-verification rule).
       if (c.email && await UserModel.exists({ userType: 'user', corporateEmail: c.email, ...(existing ? { _id: { $ne: existing._id } } : {}) })) {
         throw new SeedError(`${what}: the email is another customer's corporate email`);
@@ -524,7 +557,7 @@ class Seeder {
         name = existing.name || c.name;
         if (existing.isActive === false) this.warn(`${what} exists but is inactive`);
         const set = this.missing(what, existing, c);
-        // Only a missing name is filled in (an OTP sign-up row has none); an existing name is never changed.
+        // Only a missing name is filled in (a code request's sign-up placeholder has none); an existing name is never changed.
         if (!existing.name) set.name = c.name;
         status = 'found';
         if (Object.keys(set).length) {
@@ -532,7 +565,8 @@ class Seeder {
           status = this.commit ? 'updated' : 'would update';
         }
         contact = { phone: existing.phone ?? set.phone, email: existing.email ?? set.email };
-        this.step(what, status, status === 'found' ? undefined : `added ${Object.keys(set).join(', ')}`);
+        this.step(what, status, status === 'found' ? undefined
+          : isCustomerPlaceholder(existing) ? `completed a sign-up placeholder (${Object.keys(set).join(', ')})` : `added ${Object.keys(set).join(', ')}`);
       } else if (this.commit) {
         // As the OTP sign-up writes it (self_signup, otpVerified false); the wallet is made at the first sign-in.
         const filter = c.phone ? { phone: c.phone, userType: 'user' } : { email: c.email, userType: 'user' };
@@ -569,11 +603,12 @@ class Seeder {
     this.log('Doctors');
     const repo = this.svc.specialistRepo;
     const svc = this.svc.specialist;
-    for (const d of this.input.doctors) {
+    for (const [index, d] of this.input.doctors.entries()) {
       const modes = d.modes ?? ['video', 'call', 'chat'];
       const what = `doctor ${maskContact(d)}`;
       // The doctor sign-in looks up the specialist by phone or by email (SpecialistRepository.findByPhoneOrEmail).
-      const existing = await this.resolve('doctor', d, (phone) => repo.findByPhoneOrEmail({ phone }), (email) => repo.findByPhoneOrEmail({ email })) as any;
+      const existing = await this.resolve('doctor', d, (phone) => repo.findByPhoneOrEmail({ phone }), (email) => repo.findByPhoneOrEmail({ email }),
+        isSpecialistPlaceholder) as any;
       if (existing) {
         const ref: DoctorRef = { id: String(existing._id), name: existing.name, phone: existing.phone ?? d.phone, email: existing.email ?? d.email,
           eligible: existing.isActive !== false, status: 'found', modes };
@@ -581,28 +616,33 @@ class Seeder {
           this.warn(`${what} exists but is inactive: it cannot sign in, and is not linked or scheduled`);
           ref.status = 'skipped';
         } else {
-          const set: Record<string, unknown> = this.missing(what, existing, d);
-          // What the admin "verify doctor" action does (an OTP send creates unverified "demoName" profiles).
+          const placeholder = isSpecialistPlaceholder(existing);
+          // A code request's sign-up placeholder gets the file's whole profile (name, specialization, fee, modes,
+          // address); a real profile keeps its own and is only verified (what the admin "verify doctor" action does).
+          const { phone: _p, email: _e, ...profile } = this.doctorPayload(d);
+          const set: Record<string, unknown> = { ...(placeholder ? profile : {}), ...this.missing(what, existing, d) };
           if (existing.isVerified !== true) set.isVerified = true;
           if (Object.keys(set).length) {
             if (this.commit) await svc.update(String(existing._id), set);
             else if (set.isVerified) ref.eligible = false;
             ref.status = this.commit ? 'updated' : 'would update';
+            if (placeholder) ref.name = d.name;
           }
-          this.step(what, ref.status, ref.status === 'found' ? undefined : `${set.isVerified ? 'verified (was unverified); ' : ''}${Object.keys(set).filter((k) => k !== 'isVerified').length ? 'added contact' : ''} (name kept)`);
+          this.step(what, ref.status, ref.status === 'found' ? undefined : placeholder ? 'completed a sign-up placeholder with the profile from the file'
+            : `${set.isVerified ? 'verified (was unverified); ' : ''}${Object.keys(set).filter((k) => k !== 'isVerified').length ? 'added contact' : ''} (name kept)`);
         }
         if (ref.status === 'skipped') this.step(what, 'skipped', 'inactive');
-        this.doctors.push(ref);
+        this.doctors[index] = ref;
         continue;
       }
       if (!this.commit) {
         this.step(what, 'would create');
-        this.doctors.push({ name: d.name, phone: d.phone, email: d.email, eligible: true, status: 'would create', modes });
+        this.doctors[index] = { name: d.name, phone: d.phone, email: d.email, eligible: true, status: 'would create', modes };
         continue;
       }
       const created = await svc.create(validated(createSpecialistSchema, this.doctorPayload(d), 'doctor'));
       this.step(what, 'created');
-      this.doctors.push({ id: String(created._id), name: created.name, phone: d.phone, email: d.email, eligible: true, status: 'created', modes });
+      this.doctors[index] = { id: String(created._id), name: created.name, phone: d.phone, email: d.email, eligible: true, status: 'created', modes };
     }
   }
 
@@ -614,10 +654,13 @@ class Seeder {
     const what = `pharmacy ${maskContact(p)}`;
     const repo = this.svc.pharmacyRepo;
     // The pharmacy sign-in looks it up by phone, or by email (PharmacyRepository.findByPhone / findByEmail).
-    const existing = await this.resolve('pharmacy', p, (phone) => repo.findByPhone(phone), (email) => repo.findByEmail(email)) as any;
+    const existing = await this.resolve('pharmacy', p, (phone) => repo.findByPhone(phone), (email) => repo.findByEmail(email), isPharmacyPlaceholder) as any;
     if (existing) {
       let status: Status = 'found';
-      const set: Record<string, unknown> = this.missing(what, existing, p);
+      const placeholder = isPharmacyPlaceholder(existing);
+      // A code request's sign-up placeholder gets the file's profile (name, owner, address, services); a real one keeps its own.
+      const { phone: _p, email: _e, ...profile } = this.pharmacyPayload() as Record<string, unknown>;
+      const set: Record<string, unknown> = { ...(placeholder ? profile : {}), ...this.missing(what, existing, p) };
       if (existing.isActive === false || existing.archivedAt) {
         this.warn(`${what} exists but is inactive/archived: it cannot sign in until an admin restores it`);
       } else {
@@ -627,8 +670,10 @@ class Seeder {
           status = this.commit ? 'updated' : 'would update';
         }
       }
-      this.step(what, status, status === 'found' ? undefined : `${set.isVerified ? 'verified (was unverified) ' : ''}(name kept)`);
-      this.account('Pharmacy', existing.name, { phone: existing.phone, email: existing.email ?? (set.email as string | undefined) }, LOGIN.pharmacy, existing.name, status);
+      this.step(what, status, status === 'found' ? undefined : placeholder ? 'completed a sign-up placeholder with the profile from the file'
+        : `${set.isVerified ? 'verified (was unverified) ' : ''}(name kept)`);
+      const name = placeholder && status !== 'found' ? p.name : existing.name;
+      this.account('Pharmacy', name, { phone: existing.phone, email: existing.email ?? (set.email as string | undefined) }, LOGIN.pharmacy, name, status);
       return;
     }
     // The pharmacy model requires a phone (unique); a new pharmacy cannot be email-only.
@@ -772,8 +817,8 @@ class Seeder {
       this.step('  part payments allowed', this.commit ? 'updated' : 'would update');
     }
     // Doctors linked by the admin at the clinic branch (Q14; no invitation step).
-    for (const phone of spec.doctors ?? []) {
-      const doc = this.doctorFor({ phone })!;
+    for (const [n, ref] of this.clinicDoctorRefs.entries()) {
+      const doc = this.doctorAt(ref.index, `clinic.doctors[${n}]`);
       const lw = `  link doctor ${maskContact(doc)} at "${branchName}"`;
       doc.clinic = { partnerId, branchId, label: `${partnerName} / ${branchName}` };
       const member = doc.id && partnerId ? await MemberModel.findOne({ partnerId, doctorId: doc.id, isActive: true }).lean() as any : null;
@@ -792,8 +837,9 @@ class Seeder {
       }
       this.step(lw, st);
       if (st !== 'skipped') {
-        // The membership's sign-in is the doctor's phone, plus their profile email when it was free in this clinic.
-        this.account('Clinic doctor', linked?.name ?? doc.name, linked ? { phone: linked.phone, email: linked.email } : { phone: doc.phone, email: doc.email },
+        // The membership signs in with the doctor's mobile number; a sign-in email only when the file gives one.
+        linked = await this.memberSignInEmail(partnerId, linked, ref.signInEmail, `clinic doctor ${maskContact(doc)}`);
+        this.account('Clinic doctor', linked?.name ?? doc.name, linked ? { phone: linked.phone, email: linked.email } : { phone: doc.phone, email: ref.signInEmail },
           LOGIN.partner, `${partnerName} / ${branchName} (consults here)`, st);
       }
     }
@@ -803,7 +849,7 @@ class Seeder {
     const dc = this.input.doctorClinic;
     if (!dc) return;
     this.log("Doctor's own clinic");
-    const doc = this.doctorFor(dc)!;
+    const doc = this.doctorAt(this.doctorClinicIndex!, 'doctorClinic');
     const body = validated<any>(doctorClinicSchema, this.doctorClinicPayload(), 'doctorClinic');
     const what = `clinic of doctor ${maskContact(doc)}`;
     const existing = doc.id ? await PartnerModel.findOne({ soloDoctorId: doc.id }).lean() as any : null;
@@ -819,11 +865,38 @@ class Seeder {
     }
     this.step(what, st, partner ? `verification: ${partner.verification?.state}` : 'starts pending admin verification');
     if (st === 'skipped') return;
-    const owner = partner ? await MemberModel.findOne({ partnerId: String(partner._id), doctorId: doc.id, isActive: true }).lean() as any : null;
+    let owner = partner ? await MemberModel.findOne({ partnerId: String(partner._id), doctorId: doc.id, isActive: true }).lean() as any : null;
+    owner = await this.memberSignInEmail(partner ? String(partner._id) : undefined, owner, dc.signInEmail, `owner of ${what}`);
     const state = partner?.verification?.state ?? 'pending';
-    this.account("Doctor's clinic owner", doc.name, owner ? { phone: owner.phone, email: owner.email } : { phone: doc.phone, email: doc.email }, LOGIN.partner,
+    this.account("Doctor's clinic owner", doc.name, owner ? { phone: owner.phone, email: owner.email } : { phone: doc.phone, email: dc.signInEmail }, LOGIN.partner,
       `${partner?.name ?? body.name}${state === 'verified' ? '' : ' (pending: verify it in the admin app)'}`, st);
   }
+
+  /**
+   * A doctor membership's sign-in email, set only when the file gives one, through the owner's member edit (the admin
+   * acts as owner). A different stored email is kept; an email another member of the clinic uses is reported, not taken.
+   */
+  private async memberSignInEmail(partnerId: string | undefined, member: any, email: string | undefined, label: string): Promise<any> {
+    if (!email || !member || !partnerId) {
+      if (email && !member) this.step(`  sign-in email for ${label}`, 'would update');
+      return member;
+    }
+    if (member.email === email) return member;
+    if (member.email) { this.warn(`${label}: has another sign-in email (${maskEmail(member.email)}); kept`); return member; }
+    if (!this.commit) { this.step(`  sign-in email for ${label}`, 'would update'); return { ...member, email }; }
+    try {
+      const updated = await this.partnerSvc.updateMemberEmail(adminActor(this.adminId!, partnerId), String(member._id), email, member.updatedAt);
+      this.step(`  sign-in email for ${label}`, 'updated');
+      return updated;
+    } catch (e: any) {
+      if (e?.code !== 'EMAIL_IN_USE') throw e;
+      this.warn(`${label}: ${maskEmail(email)} is another member's sign-in email in that clinic; not set`);
+      return member;
+    }
+  }
+
+  /** The in-clinic window the seeder plans, on the six working days. */
+  private static readonly CLINIC_WINDOW = { start: '17:00', end: '19:00' };
 
   // ── Doctor weekly schedules (after the clinic links, so in-clinic windows pass the schedule guard) ──
   async doctorSchedules(): Promise<void> {
@@ -831,7 +904,8 @@ class Seeder {
     this.log('Doctor schedules');
     for (const doc of this.doctors) {
       const what = `weekly schedule of doctor ${maskContact(doc)}`;
-      if (doc.id && await getDoctorSchedule(doc.id)) { this.step(what, 'found', 'kept as saved'); this.doctorRow(doc); continue; }
+      const saved = doc.id ? await getDoctorSchedule(doc.id) : null;
+      if (saved) { await this.completeSchedule(doc, saved, what); this.doctorRow(doc); continue; }
       const inClinic = !!(doc.clinic?.branchId && doc.id && await clinicBranchAllowed(doc.id, doc.clinic.branchId));
       const plannedClinic = !!doc.clinic;
       if (!this.commit || !doc.id) {
@@ -845,7 +919,7 @@ class Seeder {
       for (const d of SIX_DAYS) {
         days[d] = [
           { start: '10:00', end: '13:00', modes: doc.modes },
-          ...(inClinic ? [{ start: '17:00', end: '19:00', modes: ['in-person'] as IScheduleWindow['modes'], branchId: doc.clinic!.branchId! }] : []),
+          ...(inClinic ? [{ ...Seeder.CLINIC_WINDOW, modes: ['in-person'] as IScheduleWindow['modes'], branchId: doc.clinic!.branchId! }] : []),
         ];
       }
       const body = validated<any>(scheduleTemplateSchema, { slotMinutes: 30, days }, 'doctor schedule');
@@ -853,6 +927,43 @@ class Seeder {
       this.step(what, 'created', `${inClinic ? `online + in-clinic at ${doc.clinic!.label}` : 'online'}; ${r.expansion.inserted} slots for the next 30 days`);
       this.doctorRow(doc);
     }
+  }
+
+  /**
+   * A saved schedule is kept; only the in-clinic windows at a clinic the doctor is now linked to are added (on working
+   * days that have none there and no window overlapping it), through the schedule service with its version fence.
+   * Windows are never removed or changed.
+   */
+  private async completeSchedule(doc: DoctorRef, saved: any, what: string): Promise<void> {
+    const branchId = doc.clinic?.branchId;
+    if (!doc.clinic || !doc.id) { this.step(what, 'found', 'kept as saved'); return; }
+    const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+    const W = Seeder.CLINIC_WINDOW;
+    const days: Partial<Record<Weekday, IScheduleWindow[]>> = {};
+    for (const [d, list] of Object.entries(saved.days ?? {}) as [Weekday, any[]][]) {
+      days[d] = (list ?? []).map((w) => ({ start: w.start, end: w.end, modes: [...w.modes], ...(w.branchId ? { branchId: String(w.branchId) } : {}) }));
+    }
+    const added: Weekday[] = [];
+    for (const d of SIX_DAYS) {
+      const list = days[d] ?? [];
+      if (branchId && list.some((w) => w.branchId === branchId)) continue;
+      if (list.some((w) => toMin(w.start) < toMin(W.end) && toMin(W.start) < toMin(w.end))) continue;
+      added.push(d);
+    }
+    if (!added.length) {
+      this.step(what, 'found', 'kept as saved');
+      return;
+    }
+    if (!this.commit || !branchId) { this.step(what, 'would update', `add in-clinic windows at ${doc.clinic.label} (${added.join(', ')})`); return; }
+    if (!(await clinicBranchAllowed(doc.id, branchId))) {
+      this.warn(`doctor ${maskContact(doc)}: in-clinic windows not added (the clinic link or verification is missing)`);
+      this.step(what, 'found', 'kept as saved');
+      return;
+    }
+    for (const d of added) days[d] = [...(days[d] ?? []), { ...W, modes: ['in-person'], branchId }];
+    const body = validated<any>(scheduleTemplateSchema, { slotMinutes: saved.slotMinutes, days, expectedUpdatedAt: saved.updatedAt ?? null }, 'doctor schedule');
+    const r = await saveDoctorSchedule(doc.id, body);
+    this.step(what, 'updated', `added in-clinic windows at ${doc.clinic.label} (${added.join(', ')}); ${r.expansion.inserted} new slots`);
   }
 
   private doctorRow(doc: DoctorRef) {
@@ -882,16 +993,41 @@ export async function runSeed(rawInput: unknown, opts: { commit: boolean; log?: 
   log('Checking collections and indexes…');
   await preflight(!!input.customers?.length);
   log(opts.commit ? 'Writing (re-running is safe: existing records are found and reused).' : 'DRY RUN: nothing is written. Plan:');
-  await seeder.admin();
-  await seeder.customers();
-  await seeder.doctorAccounts();
-  await seeder.pharmacy();
-  await seeder.lab();
-  await seeder.clinic();
-  await seeder.doctorClinic();
-  await seeder.doctorSchedules();
-  await seeder.markMultiWorkspace();
+  try {
+    await seeder.admin();
+    await seeder.customers();
+    await seeder.doctorAccounts();
+    await seeder.pharmacy();
+    await seeder.lab();
+    await seeder.clinic();
+    await seeder.doctorClinic();
+    await seeder.doctorSchedules();
+    await seeder.markMultiWorkspace();
+  } catch (e) {
+    // What was done before the failure is still reported (counts, warnings, the accounts so far).
+    if (e && typeof e === 'object') (e as { partialReport?: SeedReport }).partialReport = seeder.report;
+    throw e;
+  }
   return seeder.report;
+}
+
+/**
+ * Production guard: the operator names the target database (SEED_DEMO_DATABASE must equal the connected database
+ * exactly), and a database whose name contains "prod" is refused. Returns the refusal, or null when allowed.
+ */
+export function targetRefusal(env: NodeJS.ProcessEnv, databaseName: string): string | null {
+  if (/prod/i.test(databaseName)) return `REFUSED: database "${databaseName}" looks like production; the demo seeder never writes there.`;
+  if (env.SEED_DEMO_DATABASE !== databaseName) {
+    return `REFUSED: set SEED_DEMO_DATABASE=${databaseName} to confirm this is the database to seed (it must match the connected database exactly).`;
+  }
+  return null;
+}
+
+function printSummary(report: SeedReport, commit: boolean, out: (line: string) => void, partial: boolean) {
+  const c = report.counts;
+  out(`\n${partial ? 'Before the failure' : commit ? 'Done' : 'Plan'}: ${c.created} created, ${c.found} found, ${c.updated} updated, ${c['would create']} would be created, ${c['would update']} would be updated, ${c.skipped} skipped.`);
+  if (report.warnings.length) out(`Warnings:\n  - ${report.warnings.join('\n  - ')}`);
+  out(`\nAccounts${partial ? ' so far' : ''} (sign in with the phone number or the email; the code arrives by SMS or by email):\n${formatTable(report)}`);
 }
 
 export function formatTable(report: SeedReport): string {
@@ -911,7 +1047,7 @@ export async function cli(argv: string[], env: NodeJS.ProcessEnv = process.env, 
     out('REFUSED: set SEED_DEMO_ALLOWED=true to run the demo-account seeder (stage runs with NODE_ENV=production, so this is the explicit opt-in).');
     return { code: 2 };
   }
-  if (!file) { out('Usage: SEED_DEMO_ALLOWED=true npm run seed:demo -- <demo-accounts.json> [--commit]'); return { code: 2 }; }
+  if (!file) { out('Usage: SEED_DEMO_ALLOWED=true SEED_DEMO_DATABASE=<database> npm run seed:demo -- <demo-accounts.json> [--commit]'); return { code: 2 }; }
   let input: any;
   try { input = JSON.parse(fs.readFileSync(path.resolve(file), 'utf8')); }
   catch (e) { out(`Cannot read ${path.basename(file)}: ${redact((e as Error).message)}`); return { code: 2 }; }
@@ -922,15 +1058,19 @@ export async function cli(argv: string[], env: NodeJS.ProcessEnv = process.env, 
   const connectHere = mongoose.connection.readyState !== 1;
   try {
     if (connectHere) await mongoose.connect(CONFIG.MONGODB_URL, { autoCreate: false, autoIndex: false });
-    out(`Target database: ${mongoose.connection.db.databaseName}   NODE_ENV=${env.NODE_ENV ?? '(unset)'}   mode: ${commit ? 'COMMIT (writes)' : 'DRY RUN (no writes)'}`);
+    const conn = mongoose.connection;
+    const databaseName = conn.db.databaseName;
+    // Host and database only (never the connection string, which may carry credentials).
+    out(`Target: host ${conn.host ?? '?'}:${conn.port ?? '?'}   database ${databaseName}   NODE_ENV=${env.NODE_ENV ?? '(unset)'}   mode: ${commit ? 'COMMIT (writes)' : 'DRY RUN (no writes)'}`);
+    const refusal = targetRefusal(env, databaseName);
+    if (refusal) { out(refusal); return { code: 2 }; }
     const report = await runSeed(input, { commit, log: out });
-    const c = report.counts;
-    out(`\n${commit ? 'Done' : 'Plan'}: ${c.created} created, ${c.found} found, ${c.updated} updated, ${c['would create']} would be created, ${c['would update']} would be updated, ${c.skipped} skipped.`);
-    if (report.warnings.length) out(`Warnings:\n  - ${report.warnings.join('\n  - ')}`);
-    out(`\nAccounts (sign in with the phone number or the email; the code arrives by SMS or by email):\n${formatTable(report)}`);
+    printSummary(report, commit, out, false);
     if (!commit) out('\nNothing was written. Re-run with --commit to create what is missing.');
     return { code: 0, report };
   } catch (e) {
+    const partial = (e as { partialReport?: SeedReport })?.partialReport;
+    if (partial) printSummary(partial, commit, out, true);
     out(`FAILED: ${redact(e instanceof Error ? e.message : String(e))}`);
     if (commit) out('Whatever was completed before the failure is kept; fix the cause and run again (existing records are reused).');
     return { code: 1 };

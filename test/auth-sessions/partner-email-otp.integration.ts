@@ -40,6 +40,8 @@ import SpecialistModel from '@/modules/specialists/model';
 import PharmacyModel from '@/modules/pharmacies/model';
 import MemberModel from '@/modules/partners/model/member';
 import { PartnerSelectionTicketModel } from '@/modules/auth/model/partnerSelection';
+import { AuthSessionModel } from '@/modules/auth/model/session';
+import { createNativeSession, refreshNativeSession } from '@/modules/auth/sessions';
 import { PartnerService, PartnerActor, adminActor } from '@/modules/partners/services';
 import * as clinic from '@/modules/partners/services/clinic';
 import { addMemberSchema, createPartnerSchema, updateMemberEmailSchema } from '@/modules/partners/validation';
@@ -126,6 +128,39 @@ async function main() {
     assert.equal(addMemberSchema.validate({ phone: '9000000000', name: 'x', role: 'staff', permissions: [], email: ' Y@Z.IN ' }).value.email, 'y@z.in');
   });
 
+  await check('only an owner (or an admin acting as owner) gives a new member a sign-in email (403 OWNER_REQUIRED otherwise)', async () => {
+    const manager = actorFor(staffA); // staff with staff.manage
+    await assert.rejects(partners.addMember(manager, { phone: nextPhone(), name: 'Mine', role: 'staff', email: 'manager.pick@example.com', permissions: [] } as any),
+      code('OWNER_REQUIRED'));
+    assert.equal(await MemberModel.countDocuments({ email: 'manager.pick@example.com' }), 0);
+    const plain = await partners.addMember(manager, { phone: nextPhone(), name: 'No email', role: 'staff', permissions: [] } as any);
+    assert.equal(plain.email, undefined);
+    const byAdmin = await partners.addMember(adminActor(ADMIN, A.partnerId), { phone: nextPhone(), name: 'By admin', role: 'staff', email: 'by.admin@example.com',
+      permissions: [] } as any);
+    assert.equal(byAdmin.email, 'by.admin@example.com');
+  });
+
+  await check('a changed or removed sign-in email ends the member\'s web and app sessions; refreshed tokens carry the email', async () => {
+    const m = await partners.addMember(ownerA, { phone: nextPhone(), name: 'Sessions', role: 'staff', email: 'sess@example.com', permissions: [] } as any);
+    const claims = { _id: String(m._id), memberId: String(m._id), partnerId: A.partnerId, phone: m.phone, email: 'sess@example.com', userType: 'partner' };
+    const app = await createNativeSession('native_workspace', claims);
+    const req = (refreshToken: string) => ({ headers: { 'x-jansetu-native': '1', 'content-type': 'application/json' }, body: { app: 'workspace', refreshToken } }) as any;
+    const refreshed = await refreshNativeSession(req(app.refreshToken));
+    assert.equal(decode(refreshed.token).email, 'sess@example.com');
+    await AuthSessionModel.create({ _id: 'web-' + String(m._id), audience: 'workspace', userType: 'partner', userId: String(m._id), authTime: new Date(),
+      absoluteExpiresAt: new Date(Date.now() + 86_400_000), idleExpiresAt: new Date(Date.now() + 86_400_000), gen: 1, createdAt: new Date() } as any);
+    // Unchanged email: nothing ends.
+    await partners.updateMemberEmail(ownerA, String(m._id), 'SESS@example.com');
+    assert.equal(await AuthSessionModel.countDocuments({ userId: String(m._id), revokedAt: { $exists: false } }), 2);
+    await partners.updateMemberEmail(ownerA, String(m._id), 'sess.new@example.com');
+    assert.equal(await AuthSessionModel.countDocuments({ userId: String(m._id), revokedAt: { $exists: false } }), 0);
+    await assert.rejects(refreshNativeSession(req(refreshed.refreshToken)));
+    const again = await createNativeSession('native_workspace', { ...claims, email: 'sess.new@example.com' });
+    await partners.updateMemberEmail(ownerA, String(m._id), null);
+    assert.equal((await AuthSessionModel.findOne({ userId: String(m._id), revokedAt: { $exists: false } }).lean()), null);
+    await assert.rejects(refreshNativeSession(req(again.refreshToken)));
+  });
+
   await check('only an owner (or an admin acting as owner) changes a member email, with the expectedUpdatedAt fence; null removes it', async () => {
     const staffActor = actorFor(staffA);
     await assert.rejects(partners.updateMemberEmail(staffActor, String(A.owner._id), 'mine@example.com'), code('OWNER_REQUIRED'));
@@ -168,8 +203,9 @@ async function main() {
 
   await check('unknown email: the same answer as an unknown phone (404 PARTNER_MEMBER_NOT_FOUND), nothing sent', async () => {
     const n = mails.length + sms.length;
-    await assert.rejects(send('partner', { email: 'nobody@example.com' }), code('PARTNER_MEMBER_NOT_FOUND'));
-    await assert.rejects(send('partner', { phone: nextPhone() }), code('PARTNER_MEMBER_NOT_FOUND'));
+    const msg = 'No active partner membership found for this mobile number or email.';
+    await assert.rejects(send('partner', { email: 'nobody@example.com' }), (e: any) => e.code === 'PARTNER_MEMBER_NOT_FOUND' && e.message === msg);
+    await assert.rejects(send('partner', { phone: nextPhone() }), (e: any) => e.code === 'PARTNER_MEMBER_NOT_FOUND' && e.message === msg);
     assert.equal(mails.length + sms.length, n);
   });
 
@@ -188,7 +224,7 @@ async function main() {
     await assert.rejects(auth.verifyOTP({ userType: 'partner', phone: A.owner.phone, otp } as never));
   });
 
-  await check('clinic memberships copy the doctor email only when it is free in that clinic', async () => {
+  await check('clinic memberships never copy the doctor\'s profile email (sign-in by mobile; the owner can add an email)', async () => {
     const { partner: cp, owner: cOwner } = await partners.createPartner({ kind: 'clinic', name: 'Gamma Clinic', contactPhone: nextPhone(), invoiceSeriesPrefix: 'GC',
       firstOwner: { phone: nextPhone(), name: 'Owner', email: 'taken@example.com' } } as any);
     const cid = String(cp._id);
@@ -200,14 +236,16 @@ async function main() {
     const taken = await doctor('taken@example.com');
     const l1 = await clinic.linkDoctor(adminActor(ADMIN, cid), { doctorId: free, branchIds: [String(branch._id)], requestKey: 'pe-link-0001' });
     const l2 = await clinic.linkDoctor(adminActor(ADMIN, cid), { doctorId: taken, branchIds: [String(branch._id)], requestKey: 'pe-link-0002' });
-    assert.equal((await MemberModel.findById(l1.memberId).lean() as any).email, 'free.doc@example.com');
+    assert.equal((await MemberModel.findById(l1.memberId).lean() as any).email, undefined);
     assert.equal((await MemberModel.findById(l2.memberId).lean() as any).email, undefined);
-    // The doctor-created clinic: the doctor's email is the owner's second sign-in.
+    await assert.rejects(send('partner', { email: 'free.doc@example.com' }), code('PARTNER_MEMBER_NOT_FOUND'));
+    // The doctor-created clinic: the owner signs in by mobile, and as owner sets their own sign-in email.
     const solo = await doctor('solo@example.com');
     const r = await clinic.createSoloPractice(solo, { name: 'Solo Clinic', invoiceSeriesPrefix: 'SOLO', requestKey: 'pe-solo-0001',
       branch: { name: 'Main', phone: nextPhone(), address: { line1: '1', city: 'Pune', state: 'MH', stateCode: '27', pincode: '411001' } } });
     const soloOwner = await MemberModel.findOne({ partnerId: String(r.partner._id), role: 'owner' }).lean() as any;
-    assert.equal(soloOwner.email, 'solo@example.com');
+    assert.equal(soloOwner.email, undefined);
+    await partners.updateMemberEmail(actorFor(soloOwner), String(soloOwner._id), 'solo@example.com');
     const signIn = await emailSignIn('partner', 'SOLO@example.com', 'solo@example.com');
     assert.equal(decode(signIn.accessToken).partnerId, String(r.partner._id));
   });
@@ -226,16 +264,39 @@ async function main() {
     const p = decode((await emailSignIn('pharmacy', 'Shop@Example.com', 'SHOP@example.com')).accessToken);
     assert.deepEqual([p.userType, p.pharmacyId], ['pharmacy', String(ph._id)]);
 
-    // An unknown pharmacy email: sign-up needs the mobile number (it used to fail with a 500); nothing is created or sent.
-    const before = await PharmacyModel.countDocuments();
-    const sent = mails.length;
-    await assert.rejects(send('pharmacy', { email: 'unknown.shop@example.com' }), code('PHARMACY_PHONE_REQUIRED'));
-    assert.deepEqual([await PharmacyModel.countDocuments(), mails.length], [before, sent]);
-
     const u = await UserModel.create({ name: 'Mail Customer', email: 'cust@example.com', userType: 'user' });
     const c = decode((await emailSignIn('user', 'Cust@Example.com', 'CUST@example.com')).accessToken);
     assert.deepEqual([c.userType, c._id], ['user', String(u._id)]);
     assert.equal(await UserModel.countDocuments({ email: 'cust@example.com' }), 1, 'no second customer created');
+  });
+
+  await check('an email no account uses creates nothing for customers, doctors and pharmacies (404 EMAIL_NOT_REGISTERED); phone sign-up unchanged', async () => {
+    const msg = 'No account uses this email. Sign in with your mobile number, then add this email to your profile.';
+    const before = [await UserModel.countDocuments(), await SpecialistModel.countDocuments(), await PharmacyModel.countDocuments()];
+    const sent = mails.length;
+    for (const role of ['user', 'specialist', 'pharmacy']) {
+      await assert.rejects(send(role, { email: `nobody.${role}@example.com` }), (e: any) => e.code === 'EMAIL_NOT_REGISTERED' && e.status === 404 && e.message === msg);
+    }
+    assert.deepEqual([await UserModel.countDocuments(), await SpecialistModel.countDocuments(), await PharmacyModel.countDocuments(), mails.length], [...before, sent]);
+    // Phone sign-up still creates the account (customer) and the sign-up rows (doctor, pharmacy).
+    const phone = nextPhone();
+    for (const role of ['user', 'specialist', 'pharmacy']) await send(role, { phone });
+    assert.deepEqual([await UserModel.countDocuments(), await SpecialistModel.countDocuments(), await PharmacyModel.countDocuments()], before.map((n) => n + 1));
+  });
+
+  await check('a customer adds an email from their profile (verification), then signs in by it to the same account', async () => {
+    const phone = nextPhone();
+    await send('user', { phone });
+    const first = await auth.verifyOTP({ userType: 'user', phone, otp: /(\d{6})/.exec(sms[sms.length - 1]!.text)![1]! } as never);
+    const userId = String(decode(first.accessToken)._id);
+    await OtpThrottleModel.deleteMany({});
+    await auth.sendEmailVerificationOTP(userId, { email: 'Added.Later@Example.com' } as never);
+    assert.deepEqual(mails[mails.length - 1]!.to, ['added.later@example.com']);
+    await auth.verifyEmailVerificationOTP(userId, { email: 'added.later@example.com', otp: lastMailCode() } as never);
+    assert.equal((await UserModel.findById(userId).lean() as any).email, 'added.later@example.com');
+    const r = await emailSignIn('user', 'ADDED.LATER@example.com', 'added.later@example.com');
+    assert.equal(decode(r.accessToken)._id, userId);
+    assert.equal(await UserModel.countDocuments({ $or: [{ phone }, { email: 'added.later@example.com' }] }), 1);
   });
 
   console.log(`\n${passed} checks passed${failed.length ? `, ${failed.length} FAILED: ${failed.join(' | ')}` : ''}`);

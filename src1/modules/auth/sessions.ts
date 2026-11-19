@@ -199,11 +199,11 @@ async function accountStillAllowed(s: AuthSession): Promise<Claims | null> {
       return p && p.isActive !== false && !p.archivedAt ? { _id: id, pharmacyId: id, phone: p.phone, email: p.email, userType: 'pharmacy' } : null;
     }
     case 'partner': {
-      const member = await MemberModel.findById(id).lean() as { phone?: string; partnerId?: string; isActive?: boolean } | null;
+      const member = await MemberModel.findById(id).lean() as { phone?: string; email?: string; partnerId?: string; isActive?: boolean } | null;
       if (!member || member.isActive === false) return null;
       const partner = await PartnerModel.findById(member.partnerId).select('isActive verification.state').lean() as { isActive?: boolean; verification?: { state?: string } } | null;
       if (!partner || partner.isActive === false) return null;
-      return { _id: id, memberId: id, partnerId: String(member.partnerId), phone: member.phone, userType: 'partner' };
+      return { _id: id, memberId: id, partnerId: String(member.partnerId), phone: member.phone, ...(member.email ? { email: member.email } : {}), userType: 'partner' };
     }
     default:
       return null;

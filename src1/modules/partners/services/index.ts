@@ -413,6 +413,11 @@ export class PartnerService {
       throw new AppError({ status: 409, code: 'MEMBER_ALREADY_EXISTS', message: 'An active member with this phone already exists for this partner' });
     }
     const email = normalizeMemberEmail(data.email);
+    // A sign-in email is an identity: only an owner (or an admin acting as owner) sets it, on add as on edit (otherwise a
+    // staff manager could remove a member and add them back with an email of their choosing).
+    if (email && actor.role !== 'owner') {
+      throw new AppError({ status: 403, code: 'OWNER_REQUIRED', message: 'Only an owner can set a member\'s sign-in email' });
+    }
     await assertMemberEmailFree(actor.partnerId, email);
 
     if (data.role === 'owner') {
@@ -587,11 +592,13 @@ export class PartnerService {
       throw new AppError({ status: 403, code: 'OWNER_REQUIRED', message: 'Only an owner can change a member\'s sign-in email' });
     }
     const normalized = normalizeMemberEmail(email);
+    let changed = false;
     try {
-      return await inTransaction(async (session) => {
+      const out = await inTransaction(async (session) => {
         const current = await MemberModel.findOne({ _id: memberId, partnerId: actor.partnerId, isActive: true }).session(session).lean() as IMember | null;
         if (!current) throw memberNotFound();
         if (expectedUpdatedAt && new Date(current.updatedAt as Date).getTime() !== new Date(expectedUpdatedAt).getTime()) throw recordChanged();
+        changed = (current.email ?? undefined) !== normalized;
         await assertMemberEmailFree(actor.partnerId, normalized, memberId, session);
         const updated = await MemberModel.findOneAndUpdate({ _id: memberId, partnerId: actor.partnerId, isActive: true, updatedAt: current.updatedAt },
           normalized ? { $set: { email: normalized } } : { $unset: { email: 1 } }, { new: true, session }).lean() as IMember | null;
@@ -599,6 +606,13 @@ export class PartnerService {
         await recordPartnerAudit(actor, 'member.email', { kind: 'member', id: memberId }, { email: normalized ? 'set' : 'removed' }, session);
         return updated;
       });
+      // A changed or removed sign-in email ends the member's web and phone-app sessions (they sign in again). Legacy
+      // 30-day bearer tokens carry no session and end only when the member is removed.
+      if (changed) {
+        const { revokeAllSessions } = await import('@/modules/auth/sessions');
+        await revokeAllSessions('partner', String(memberId), 'sign_in_email_changed');
+      }
+      return out;
     } catch (error: any) {
       if (isEmailDuplicate(error)) throw emailInUse();
       throw error;

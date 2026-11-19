@@ -10,7 +10,7 @@ import MemberModel from '@/modules/partners/model/member';
 import { ClinicDoctorInviteModel, IClinicDoctorInvite } from '@/modules/partners/model/clinicDoctor';
 import { ALL_PERMISSIONS, IBranch, IMember, IPartner } from '@/modules/partners/types';
 import {
-  PartnerActor, assertBranchInScope, assertScopeWithin, hasGlobalScope, inTransaction, normalizeMemberEmail, recordPartnerAudit,
+  PartnerActor, assertBranchInScope, assertScopeWithin, hasGlobalScope, inTransaction, recordPartnerAudit,
 } from '@/modules/partners/services';
 import { ensureSettlementAccount } from '@/modules/partners/services/settlement';
 import { resolveCustomerByPhone } from '@/modules/partners/services/customerResolver';
@@ -294,7 +294,7 @@ export async function myClinics(doctorId: string) {
  * The doctor's membership of a clinic (Q6 acceptance; Q14 admin link): created, or the doctor's existing staff record
  * with the same mobile linked (it keeps its workspace access; the clinical scope is exactly `branchIds`).
  */
-async function attachDoctorMember(p: { partnerId: string; doctorId: string; phone: string; name?: string; email?: string; branchIds: string[]; invitedBy: string },
+async function attachDoctorMember(p: { partnerId: string; doctorId: string; phone: string; name?: string; branchIds: string[]; invitedBy: string },
   s: ClientSession): Promise<IMember> {
   const clinic = await PartnerOrgModel.findById(p.partnerId).session(s).lean() as IPartner | null;
   if (!clinic || clinic.isActive === false || clinic.kind !== 'clinic') throw err(409, 'CLINIC_NOT_ACTIVE', 'This clinic is not active');
@@ -309,11 +309,9 @@ async function attachDoctorMember(p: { partnerId: string; doctorId: string; phon
     if (!member) throw err(409, 'MEMBER_CHANGED', 'Please try again');
     return member;
   }
-  // The doctor's profile email becomes the membership's sign-in email only when no active member of this clinic uses it.
-  const email = normalizeMemberEmail(p.email);
-  const emailFree = !!email && !(await MemberModel.exists({ partnerId: p.partnerId, email, isActive: true }).session(s));
-  const [m] = await MemberModel.create([{ partnerId: p.partnerId, phone: p.phone, ...(emailFree ? { email } : {}), name: p.name, role: 'staff', permissions: [],
-    branchIds: p.branchIds, doctorId: p.doctorId, doctorBranchIds: p.branchIds, isActive: true, invitedBy: p.invitedBy }], { session: s });
+  // Linked doctors sign in to the clinic with their mobile number; a sign-in email is only ever set by the owner's edit.
+  const [m] = await MemberModel.create([{ partnerId: p.partnerId, phone: p.phone, name: p.name, role: 'staff', permissions: [], branchIds: p.branchIds,
+    doctorId: p.doctorId, doctorBranchIds: p.branchIds, isActive: true, invitedBy: p.invitedBy }], { session: s });
   return m!.toObject() as IMember;
 }
 
@@ -353,7 +351,7 @@ export async function linkDoctor(actor: PartnerActor, input: { doctorId: string;
   try {
     link = await inTransaction(async (s) => {
       await claimRequestKey(doctorLinkKeyScope(actor.partnerId), input.requestKey, s);
-      const member = await attachDoctorMember({ partnerId: actor.partnerId, doctorId, phone, name: sp.name, email: sp.email, branchIds, invitedBy: actor.memberId }, s);
+      const member = await attachDoctorMember({ partnerId: actor.partnerId, doctorId, phone, name: sp.name, branchIds, invitedBy: actor.memberId }, s);
       // Any invitation still pending for this doctor is superseded by the link.
       await ClinicDoctorInviteModel.updateMany({ partnerId: actor.partnerId, doctorId, state: 'pending' }, { $set: { state: 'revoked', respondedAt: new Date() } }, { session: s });
       const [row] = await ClinicDoctorInviteModel.create([{ partnerId: actor.partnerId, doctorId, branchIds, invitedBy: actor.memberId, state: 'accepted',
@@ -418,7 +416,7 @@ export async function respondToInvite(doctorId: string, inviteId: string, accept
       await ClinicDoctorInviteModel.updateOne({ _id: inviteId, state: 'pending' }, { $set: { state: 'declined', respondedAt: new Date() } }, { session: s });
       return { accepted: false as const, partnerId: inv.partnerId };
     }
-    const member = await attachDoctorMember({ partnerId: inv.partnerId, doctorId: String(doctorId), phone: phone!, name: sp.name, email: sp.email,
+    const member = await attachDoctorMember({ partnerId: inv.partnerId, doctorId: String(doctorId), phone: phone!, name: sp.name,
       branchIds: inv.branchIds, invitedBy: inv.invitedBy }, s);
     const done = await ClinicDoctorInviteModel.updateOne({ _id: inviteId, state: 'pending' },
       { $set: { state: 'accepted', respondedAt: new Date(), memberId: String(member._id) } }, { session: s });
@@ -856,10 +854,9 @@ export async function createSoloPractice(doctorId: string, input: SoloPracticeIn
       const branchId = new Types.ObjectId();
       // The doctor owns the clinic (all permissions). Q14 review: no doctorBranchIds — as before Q14, an owner-doctor
       // without them consults at every branch of the clinic, including branches added later.
-      // A new clinic: the doctor's profile email (if any) is free there and becomes the owner's sign-in email too.
-      const ownerEmail = normalizeMemberEmail(sp.email);
-      const [owner] = await MemberModel.create([{ partnerId, phone, ...(ownerEmail ? { email: ownerEmail } : {}), name: sp.name, role: 'owner',
-        permissions: [...ALL_PERMISSIONS], branchIds: [], doctorId: String(doctorId), isActive: true }], { session: s });
+      // The owner signs in with their mobile number; as owner they can add a sign-in email through the member edit.
+      const [owner] = await MemberModel.create([{ partnerId, phone, name: sp.name, role: 'owner', permissions: [...ALL_PERMISSIONS], branchIds: [],
+        doctorId: String(doctorId), isActive: true }], { session: s });
       const [branch] = await BranchModel.create([{ _id: branchId, partnerId, name: input.branch.name, phone: input.branch.phone, address: input.branch.address, hours: {},
         holidays: [], services: { homeCollection: false, inLab: false, inClinic: true }, isActive: true }], { session: s });
       const self: PartnerActor = { memberId: String(owner!._id), partnerId, role: 'owner', permissions: [...ALL_PERMISSIONS], branchIds: [] };
