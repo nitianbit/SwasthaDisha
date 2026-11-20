@@ -337,6 +337,20 @@ async function main() {
       assert.match(b.errors.join(' '), /quantity to add must be a whole number/);
     });
 
+    await check('a price with a decimal comma or extra text is refused, never read as a smaller number', async () => {
+      const file = path.join(tmp, 'decimal-comma.csv');
+      fs.writeFileSync(file, ['Medicine Name,Quantity To Add,Batch Number,Expiry Date,Retail Price,MRP',
+        'C,1,C1,12/2030,"1,5",10', 'D,1,D1,12/2030,12 rs,10', 'E,1,E1,12/2030,12.50,'].join('\n'));
+      const r = await upload(file, tA);
+      assert.equal(r.status, 200, JSON.stringify(r.json));
+      const [c, d, e] = r.json.data.previewRows;
+      assert.deepEqual([c.status, d.status], ['error', 'error']);
+      assert.match(c.errors.join(' '), /retail price must be >= 0/);
+      assert.match(d.errors.join(' '), /retail price must be >= 0/);
+      assert.equal(e.status, 'valid', JSON.stringify(e.errors));
+      assert.deepEqual([e.data.retailPrice, e.data.mrp], [12.5, 0]);
+    });
+
     await check('B: POST /pharmacy-inventory/by-key/:key/abandon: unknown key abandoned (a later save 409 REQUEST_ABANDONED, nothing saved); a used key answers used with its items; scoped to the pharmacy', async () => {
       const key = 'inv-abandon-q15-0001';
       const ab = await call('POST', `/api/v1/pharmacy-inventory/by-key/${key}/abandon`, tA);

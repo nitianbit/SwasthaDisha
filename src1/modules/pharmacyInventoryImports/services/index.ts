@@ -57,6 +57,19 @@ const pad = (n: number, w = 2) => String(n).padStart(w, '0');
  * Q15 re-review: a numeric cell typed with grouping commas — international ("1,000,000") or Indian ("10,00,000") — is
  * read without them; any other value is returned unchanged (and parsed as before).
  */
+/**
+ * A price or percentage cell as a number. A plain number stays as it is; text must be a plain decimal ("12", "12.50",
+ * "-3") once grouping commas are removed, otherwise NaN, so "1,5" (a decimal comma) or "12 rs" is refused rather than
+ * read as 1 or 12 the way parseFloat would. An empty cell is 0, as before.
+ */
+export function decimalOf(value: unknown): number {
+  if (value === undefined || value === null) return 0;
+  if (typeof value === 'number') return value;
+  const t = String(ungrouped(value)).trim();
+  if (t === '') return 0;
+  return /^-?\d+(?:\.\d+)?$/.test(t) ? Number(t) : NaN;
+}
+
 export function ungrouped(value: unknown): unknown {
   if (typeof value !== 'string') return value;
   const t = value.trim();
@@ -141,11 +154,11 @@ function validateRow(input: Record<string, any>, index: number): ImportRowResult
     errors.push('quantity to add must be a whole number >= 0');
   }
 
-  const retailPrice = parseFloat(ungrouped(row['retail price'] || row['retailprice'] || 0) as string);
-  const wholesalePrice = parseFloat(ungrouped(row['wholesale price'] || row['wholesaleprice'] || 0) as string);
-  const purchasePrice = parseFloat(ungrouped(row['purchase price'] || 0) as string);
-  const mrp = parseFloat(ungrouped(row['mrp'] || 0) as string);
-  const gstPercent = parseFloat(ungrouped(row['gst percent'] || 0) as string);
+  const retailPrice = decimalOf(row['retail price'] || row['retailprice']);
+  const wholesalePrice = decimalOf(row['wholesale price'] || row['wholesaleprice']);
+  const purchasePrice = decimalOf(row['purchase price']);
+  const mrp = decimalOf(row['mrp']);
+  const gstPercent = decimalOf(row['gst percent']);
   if (!Number.isFinite(retailPrice) || retailPrice < 0) errors.push('retail price must be >= 0');
   if (!Number.isFinite(wholesalePrice) || wholesalePrice < 0) errors.push('wholesale price must be >= 0');
   if (!Number.isFinite(purchasePrice) || purchasePrice < 0) errors.push('purchase price must be >= 0');
