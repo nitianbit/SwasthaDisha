@@ -18,6 +18,11 @@ export class PharmacyRepository extends BaseRepository<IPharmacy> {
       query.name = buildContainsRegex(filter.name);
     }
 
+    // Q15: exact canonical phone (admin list only; the controller drops it for other callers).
+    if (filter.phone) {
+      query.phone = { $eq: filter.phone };
+    }
+
     if (filter.city) {
       query.city = buildContainsRegex(filter.city);
     }

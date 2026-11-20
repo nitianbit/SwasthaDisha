@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { RequestHandler, Router } from 'express';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
+import { AppError } from '@/modules/common/types';
 import { requireAdmin, requireAnyPartnerPermission, requireOperationalPartner, requirePartnerPermission } from '@/modules/middleware/auth';
 import type { PartnerPermission } from '@/modules/partners/types';
 import {
@@ -123,6 +124,13 @@ const adminGuard: WorkspaceGuard = Object.assign(
   { any: (..._perms: PartnerPermission[]) => [requireAdmin, attachAdminActor] }
 );
 
+/** Q15: after a guard: only an owner actor (admins act as owner) may go on; others get 403 OWNER_REQUIRED. */
+const requireOwnerActor = (message: string): RequestHandler => (req, _res, next) => {
+  const actor = (req as unknown as { partnerActor?: { role?: string } }).partnerActor;
+  if (actor?.role === 'owner') { next(); return; }
+  next(new AppError({ status: 403, code: 'OWNER_REQUIRED', message }));
+};
+
 const INVOICE_READERS: PartnerPermission[] = ['invoices.create', 'invoices.cancel', 'payments.record', 'finance.view'];
 
 /**
@@ -140,7 +148,9 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.put('/members/:memberId/permissions', ...guard('staff.manage'), validate(memberIdParamSchema, 'params'),
     validate(updateMemberPermissionsSchema, 'body'), catchAsync(updateMemberPermissions));
   r.get('/me/member', ...guard(), catchAsync(getOwnMember));
-  r.put('/members/:memberId/professional', ...guard('staff.manage'), validate(memberIdParamSchema, 'params'),
+  // Q15: owners only (admins act as owner), refused at the route as the service does: staff.manage alone is not enough.
+  r.put('/members/:memberId/professional', ...guard('staff.manage'), requireOwnerActor('Only an owner can record professional registrations'),
+    validate(memberIdParamSchema, 'params'),
     validate(memberProfessionalSchema, 'body'), catchAsync(setMemberProfessional));
   r.put('/members/:memberId/email', ...guard('staff.manage'), validate(memberIdParamSchema, 'params'),
     validate(updateMemberEmailSchema, 'body'), catchAsync(updateMemberEmail));

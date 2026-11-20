@@ -9,6 +9,8 @@ import { supplierListQuerySchema } from '@/modules/pharmacySuppliers/validation'
 const supplierRouter = Router();
 const controller = new PharmacySupplierController();
 
+// Q15: the supplier a create key made (the pharmacy's own keys).
+supplierRouter.get('/by-key/:key', requireOperationalPharmacy, catchAsync(controller.byKey));
 supplierRouter.get('/', requireOperationalPharmacy, validate(supplierListQuerySchema, 'query'), catchAsync(controller.list));
 // Raw write keys reach the authoritative owned command flow unchanged.
 supplierRouter.post('/', requireOperationalPharmacy, catchAsync(controller.create));

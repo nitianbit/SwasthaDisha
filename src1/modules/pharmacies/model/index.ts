@@ -149,6 +149,10 @@ const pharmacySchema = new Schema<IPharmacy>(
       type: String,
       trim: true,
     },
+    // Q15: an admin create made under a request key (exactly once per admin and key; replay by content hash).
+    createdBy: { type: String },
+    createRequestKey: { type: String },
+    createRequestHash: { type: String },
   },
   {
     timestamps: true,
@@ -159,6 +163,8 @@ pharmacySchema.index({ name: 'text', city: 'text', address: 'text' });
 pharmacySchema.index({ city: 1, state: 1, isActive: 1 });
 pharmacySchema.index({ isVerified: 1, isActive: 1 });
 pharmacySchema.index({ latitude: 1, longitude: 1 });
+// Q15: one pharmacy per (admin, create key). Declared here so `npm run sync-indexes` builds it.
+pharmacySchema.index({ createdBy: 1, createRequestKey: 1 }, { unique: true, partialFilterExpression: { createRequestKey: { $type: 'string' } } });
 
 const PharmacyModel: Model<IPharmacy> = model<IPharmacy>('Pharmacy', pharmacySchema);
 

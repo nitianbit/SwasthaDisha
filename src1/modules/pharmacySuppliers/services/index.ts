@@ -17,6 +17,10 @@ export class PharmacySupplierService {
     return this.supplierRepository.archive(pharmacyId, actorId, id, body);
   }
 
+  findCreatedByKey(pharmacyId: unknown, key: unknown) {
+    return this.supplierRepository.findCreatedByKey(pharmacyId, key);
+  }
+
   list(pharmacyId: unknown, query: unknown) {
     return this.supplierRepository.list(pharmacyId, query);
   }

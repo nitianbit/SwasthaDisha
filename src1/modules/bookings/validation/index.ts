@@ -458,12 +458,13 @@ export const bookingQuerySchema = Joi.object({
     .messages({
       'string.pattern.base': 'Invalid specialist ID format',
     }),
+  // Q15: no_show is a stored status (Q4) and can be listed.
   status: Joi.string()
-    .valid('pending', 'confirmed', 'completed', 'cancelled')
+    .valid('pending', 'confirmed', 'completed', 'cancelled', 'no_show')
     .optional()
     .messages({
       'any.only':
-        'Status must be one of: pending, confirmed, completed, cancelled',
+        'Status must be one of: pending, confirmed, completed, cancelled, no_show',
     }),
   paymentStatus: Joi.string()
     .valid('pending', 'paid', 'failed', 'refunded')

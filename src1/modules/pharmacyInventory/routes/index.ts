@@ -20,6 +20,7 @@ import {
   supplierReturnListSchema,
   recallBatchSchema,
   customerReturnListSchema,
+  inventoryKeyParamSchema,
 } from '@/modules/pharmacyInventory/validation';
 
 const pharmacyInventoryRouter = Router();
@@ -31,6 +32,14 @@ pharmacyInventoryRouter.post(
   requireOperationalPharmacy,
   validate(createInventoryItemSchema, 'body'),
   catchAsync(inventoryController.addItem)
+);
+
+// Q15: the items a save key made (the pharmacy's own keys)
+pharmacyInventoryRouter.get(
+  '/by-key/:key',
+  requireOperationalPharmacy,
+  validate(inventoryKeyParamSchema, 'params'),
+  catchAsync(inventoryController.savedByKey)
 );
 
 // List inventory for a pharmacy

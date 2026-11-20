@@ -1621,6 +1621,17 @@ export class BookingService {
         referenceType: 'booking', referenceId: id, idempotencyKey: `booking:${id}:no_show_rescheduled`,
       });
     } catch (error) { console.error('Failed to notify customer of the no-show reschedule:', (error as Error)?.message); }
+    // Q15: an admin's move is news to the doctor too (after the commit, best effort, once per move; a doctor moving their
+    // own no-show is not told). Doctors receive in-app notices under their specialist id, as desk moves do.
+    if (requester.userType === 'admin' && updated.specialistId) {
+      try {
+        await this.notificationService.create({
+          userId: String(updated.specialistId), type: 'specialist_general', title: 'Missed appointment moved',
+          message: `A missed appointment with you was moved to ${updated.bookingDate} at ${updated.bookingTime} by the Jansetu team.`,
+          referenceType: 'booking', referenceId: id, idempotencyKey: `booking:${id}:no_show_rescheduled:doctor`,
+        });
+      } catch (error) { console.error('Failed to notify the doctor of the no-show reschedule:', (error as Error)?.message); }
+    }
     // Q14 review: markNoShow cleared the reminders and cancelled the Meet event; the moved booking gets them back, as an
     // ordinary reschedule does (after the commit, best effort; a replay above does neither again). The cancelled event
     // was deleted at Google, so a new one is created instead of patching it.

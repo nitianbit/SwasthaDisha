@@ -169,24 +169,9 @@ export async function billsForAppointments(partnerId: string, appointmentIds: st
   return out;
 }
 
-/** Stable JSON: sorted keys, no undefined/null, dates as ISO strings. */
-export function canonicalJson(value: unknown): string {
-  const norm = (v: unknown): unknown => {
-    if (v instanceof Date) return v.toISOString();
-    if (Array.isArray(v)) return v.map(norm);
-    if (v && typeof v === 'object') {
-      const out: Record<string, unknown> = {};
-      for (const k of Object.keys(v as object).sort()) {
-        const x = (v as Record<string, unknown>)[k];
-        if (x === undefined || x === null) continue;
-        out[k] = norm(x);
-      }
-      return out;
-    }
-    return v;
-  };
-  return JSON.stringify(norm(value));
-}
+/** Stable JSON (moved to common in Q15; re-exported for existing importers). */
+export { canonicalJson } from '@/modules/common/utils/canonicalJson';
+import { canonicalJson } from '@/modules/common/utils/canonicalJson';
 
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 

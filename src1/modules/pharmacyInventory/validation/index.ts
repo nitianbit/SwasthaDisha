@@ -1,5 +1,6 @@
 import Joi from 'joi';
 import { INVENTORY_QUALITY_HOLD_STATUSES } from '@/modules/pharmacyInventory/types';
+import { PHARMACY_REQUEST_KEY } from '@/modules/pharmacyInventory/model/createRequest';
 
 const adjustmentReasons = ['purchase', 'return', 'damage', 'expiry', 'correction', 'transfer', 'other'];
 
@@ -40,7 +41,12 @@ export const createInventoryItemSchema = Joi.object({
     'any.required': 'items is required',
     'array.min': 'At least one inventory item is required',
   }),
+  // Q15: exactly once per (pharmacy, key); a repeat with the same items answers with the first result.
+  requestKey: Joi.string().pattern(PHARMACY_REQUEST_KEY).optional(),
 });
+
+/** Q15: GET /pharmacy-inventory/by-key/:key. */
+export const inventoryKeyParamSchema = Joi.object({ key: Joi.string().pattern(PHARMACY_REQUEST_KEY).required() });
 
 export const reserveReleaseSchema = Joi.object({
   quantity: Joi.number().integer().min(1).required().messages({

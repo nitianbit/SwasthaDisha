@@ -496,6 +496,15 @@ export async function rescheduleWithHolds(p: {
     const target = canon(p.nextSlotId);
     if (!target) throw conflict('SLOT_NOT_AVAILABLE', 'Slot is not available');
     if (p.noShow && target === current) throw conflict('SAME_SLOT', 'Pick a later slot');
+    // Q15: every move (ordinary, desk, no-show) stays with the booking's doctor, decided on the stored booking and the
+    // target slot as this transaction reads them. (The slot-time match in reserveSlot also refused another doctor's
+    // slot, but only as SLOT_NOT_AVAILABLE.) Mode and in-clinic admission follow in reserveSlot, as for every booking.
+    if (booking.specialistId) {
+      const t = await SlotModel.findById(target).select({ specialistId: 1 }).session(s).lean() as { specialistId?: unknown } | null;
+      if (t && String(t.specialistId ?? '').toLowerCase() !== String(booking.specialistId).toLowerCase()) {
+        throw conflict('SLOT_NOT_THIS_DOCTOR', 'This slot belongs to another doctor; pick one of this doctor\'s slots');
+      }
+    }
     const next = { ...booking, ...p.patch } as IBooking;
     let bookingTime: string;
     // Q6: the clinic association follows the admitted target; a desk appointment that moves is no longer checked in.

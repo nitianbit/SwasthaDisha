@@ -15,6 +15,12 @@ import {
   MedicineAvailabilityQueryParams,
 } from '@/modules/pharmacies/types';
 
+/** Q15: the admin create key (and the admin who made it) are not part of the pharmacy's own profile. */
+const withoutCreateKey = (p: IPharmacy): IPharmacy => {
+  const { createdBy: _c, createRequestKey: _k, createRequestHash: _h, ...rest } = p;
+  return rest as IPharmacy;
+};
+
 export class PharmacyController {
   private pharmacyService: PharmacyService;
   private inventoryService: InventoryService;
@@ -65,16 +71,31 @@ export class PharmacyController {
 
   create = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const data: CreatePharmacyRequest = req.body;
-    const result = await withFiles((req as AuthRequest).user, 'Pharmacy', data, undefined, () => this.pharmacyService.create(data, req.user?.userType));
+    const { replayed, ...result } = await withFiles((req as AuthRequest).user, 'Pharmacy', data, undefined,
+      () => this.pharmacyService.create(data, req.user?.userType, req.user?._id ? String(req.user._id) : undefined));
 
-    res.status(201).json({
+    // Q15: a keyed repeat answers 200 with the pharmacy the key made.
+    res.status(replayed ? 200 : 201).json({
       success: true,
       message:
         req.user?.userType === 'pharmacy'
           ? 'Pharmacy created successfully and is pending verification'
           : 'Pharmacy created successfully',
       data: result,
+      ...(replayed ? { replayed: true } : {}),
     });
+  };
+
+  /** Q15: GET /pharmacies/by-key/:key (admin): the pharmacy this admin's create key made. */
+  createdByKey = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const data = await this.pharmacyService.findCreatedByKey(String(req.user?._id), req.params.key);
+    if (!data) { res.status(404).json({ error: 404, code: 'PHARMACY_NOT_FOUND', message: 'No pharmacy was created with this key' }); return; }
+    res.status(200).json({ success: true, data });
+  };
+
+  /** Q15: POST /pharmacies/by-key/:key/abandon (admin): abandoned (can never be made) or used (with the pharmacy). */
+  abandonCreateKey = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    res.status(200).json({ success: true, data: await this.pharmacyService.abandonCreateKey(String(req.user?._id), req.params.key) });
   };
 
   getById = async (req: AuthRequest, res: Response, _next: NextFunction) => {
@@ -95,6 +116,7 @@ export class PharmacyController {
 
     const queryParams: PharmacyQueryParams = {
       name: q.name,
+      phone: req.user?.userType === 'admin' ? q.phone : undefined,
       city: q.city,
       state: q.state,
       pincode: q.pincode,
@@ -177,7 +199,7 @@ export class PharmacyController {
 
     res.status(200).json({
       success: true,
-      data: result,
+      data: withoutCreateKey(result),
     });
   };
 
@@ -190,7 +212,7 @@ export class PharmacyController {
     res.status(200).json({
       success: true,
       message: ignoredContacts.length ? SELF_CONTACT_MESSAGE.staff : 'Profile updated successfully',
-      data: result,
+      data: withoutCreateKey(result),
       ...(ignoredContacts.length ? { ignoredContacts } : {}),
     });
   };

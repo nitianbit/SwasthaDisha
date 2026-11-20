@@ -1,4 +1,8 @@
 import { Service } from 'typedi';
+import mongoose, { ClientSession } from 'mongoose';
+import PharmacyModel from '@/modules/pharmacies/model';
+import { claimRequestKey, abandonRequestKey } from '@/modules/requestKeys';
+import { requestHashOf } from '@/modules/common/utils/canonicalJson';
 import { ContactField, withoutSelfContacts } from '@/modules/common/utils/selfContacts';
 import { PharmacyRepository } from '@/modules/pharmacies/repository';
 import { UserRepository } from '@/modules/user/repository';
@@ -9,6 +13,26 @@ import {
   PharmacyQueryParams,
 } from '@/modules/pharmacies/types';
 import { AppError } from '@/modules/common/types';
+
+/** Q15: the admission scope of admin pharmacy-create keys (claimed with the pharmacy; abandon makes a key unusable). */
+export const pharmacyCreateScope = (adminId: string) => `pharmacy_create:${String(adminId).toLowerCase()}`;
+
+/** Q15: optional fields an admin edit may clear with null or "" (the phone and name are required). */
+const CLEARABLE_FIELDS = new Set(['nickname', 'ownerName', 'email', 'address', 'city', 'state', 'pincode', 'latitude', 'longitude', 'gstNumber',
+  'drugLicenseNumber', 'gstCertificateUrl', 'drugLicenseDocumentUrl', 'ownerIdProofUrl', 'shopFrontPhotoUrl', 'profilePictureUrl']);
+const recordChanged = () => new AppError({ status: 409, code: 'RECORD_CHANGED', message: 'Someone else changed this pharmacy meanwhile; reload and review' });
+const phoneTaken = () => new AppError({ status: 400, code: 'PHONE_ALREADY_EXISTS', message: 'A pharmacy with this phone number already exists' });
+
+async function inTransaction<T>(fn: (session: ClientSession) => Promise<T>): Promise<T> {
+  const session = await mongoose.startSession();
+  try {
+    let result!: T;
+    await session.withTransaction(async () => { result = await fn(session); });
+    return result;
+  } finally {
+    await session.endSession();
+  }
+}
 
 @Service()
 export class PharmacyService {
@@ -47,11 +71,31 @@ export class PharmacyService {
     };
   }
 
+  /**
+   * Admin create. Q15: with `requestKey`, exactly once per (admin, key): the key is claimed in the create transaction
+   * (scope `pharmacy_create:<admin>`), a repeat with the same content answers with the pharmacy it made (`replayed`),
+   * other content under the key is refused (409 REQUEST_KEY_REUSED) and an abandoned key 409 REQUEST_ABANDONED.
+   */
   async create(
     data: CreatePharmacyRequest,
-    requesterType?: string
-  ): Promise<IPharmacy> {
-    const sanitizedData = this.sanitizeCreatePayload(data, requesterType);
+    requesterType?: string,
+    createdBy?: string
+  ): Promise<IPharmacy & { replayed?: boolean }> {
+    const { requestKey, ...content } = data;
+    const sanitizedData = this.sanitizeCreatePayload(content as CreatePharmacyRequest, requesterType);
+    const keyed = !!(requestKey && createdBy);
+    const requestHash = keyed ? requestHashOf(sanitizedData) : undefined;
+    const replay = async (): Promise<(IPharmacy & { replayed: true }) | null> => {
+      if (!keyed) return null;
+      const prior = await PharmacyModel.findOne({ createdBy: { $eq: createdBy }, createRequestKey: { $eq: requestKey } }).lean() as IPharmacy | null;
+      if (!prior) return null;
+      if (prior.createRequestHash !== requestHash) {
+        throw new AppError({ status: 409, code: 'REQUEST_KEY_REUSED', message: 'This request key was already used for a different pharmacy' });
+      }
+      return { ...prior, replayed: true };
+    };
+    const prior = await replay();
+    if (prior) return prior;
 
     const existingByPhone = await this.pharmacyRepository.findByPhone(
       sanitizedData.phone
@@ -77,7 +121,36 @@ export class PharmacyService {
       }
     }
 
-    return this.pharmacyRepository.save(sanitizedData);
+    if (!keyed) return this.pharmacyRepository.save(sanitizedData);
+    try {
+      return await inTransaction(async (session) => {
+        await claimRequestKey(pharmacyCreateScope(createdBy!), requestKey!, session);
+        const [made] = await PharmacyModel.create([{ ...sanitizedData, createdBy, createRequestKey: requestKey, createRequestHash: requestHash }], { session });
+        return made.toObject() as IPharmacy;
+      });
+    } catch (e: any) {
+      if (e?.code !== 11000) throw e;
+      // A concurrent identical create under the same key won: answer with it (other content is refused there).
+      const raced = await replay();
+      if (raced) return raced;
+      if (e?.keyPattern?.phone) {
+        throw new AppError({ status: 400, code: 'PHONE_ALREADY_EXISTS', message: 'A pharmacy with this phone number already exists' });
+      }
+      throw e;
+    }
+  }
+
+  /** Q15: the pharmacy an admin's create key made (that admin's keys only); null when none. */
+  async findCreatedByKey(adminId: string, key: string): Promise<IPharmacy | null> {
+    return PharmacyModel.findOne({ createdBy: { $eq: String(adminId) }, createRequestKey: { $eq: key } }).lean() as unknown as Promise<IPharmacy | null>;
+  }
+
+  /** Q15: give up a lost create: abandoned (it can never be made) or used (here is the pharmacy). */
+  async abandonCreateKey(adminId: string, key: string): Promise<{ state: 'abandoned' | 'used'; pharmacy?: IPharmacy | null }> {
+    const made = await this.findCreatedByKey(adminId, key);
+    if (made) return { state: 'used', pharmacy: made };
+    const state = await abandonRequestKey(pharmacyCreateScope(adminId), key);
+    return state === 'abandoned' ? { state } : { state, pharmacy: await this.findCreatedByKey(adminId, key) };
   }
 
   async getById(id: string): Promise<IPharmacy> {
@@ -197,53 +270,62 @@ export class PharmacyService {
     return { pharmacy: await this.update(id, rest as UpdatePharmacyRequest), ignoredContacts };
   }
 
+  /**
+   * Edit (the admin path; the pharmacy's own edit comes through updateOwnProfile without contacts). Q15:
+   * - `expectedUpdatedAt` fences a stale view (409 RECORD_CHANGED), also on the write itself;
+   * - an optional field sent as null or "" is removed (the phone and name stay required);
+   * - a changed phone, or a changed or removed previous email (the sign-in contacts), ends the pharmacy's web and app
+   *   sessions in the same transaction (a first email ends nothing). Legacy 30-day bearer tokens carry no session and
+   *   end only when the pharmacy is archived or deactivated (the operational check refuses them then);
+   * - phone and email stay unique among pharmacies.
+   */
   async update(id: string, data: UpdatePharmacyRequest): Promise<IPharmacy> {
-    const pharmacy = await this.pharmacyRepository.findById(id);
-    if (!pharmacy) {
-      throw new AppError({
-        status: 404,
-        code: 'PHARMACY_NOT_FOUND',
-        message: 'Pharmacy not found',
-      });
-    }
-
-    if (data.phone && data.phone !== pharmacy.phone) {
-      const existing = await this.pharmacyRepository.findOne({
-        phone: data.phone,
-        _id: { $ne: id },
-      });
-      if (existing) {
-        throw new AppError({
-          status: 400,
-          code: 'PHONE_ALREADY_EXISTS',
-          message: 'A pharmacy with this phone number already exists',
-        });
+    const { expectedUpdatedAt, ...fields } = data;
+    const set: Record<string, unknown> = {};
+    const unset: Record<string, 1> = {};
+    for (const [k, v] of Object.entries(fields)) {
+      if (v === undefined) continue;
+      if (v === null || v === '') {
+        if (CLEARABLE_FIELDS.has(k)) unset[k] = 1;
+        continue;
       }
+      set[k] = k === 'email' ? String(v).trim().toLowerCase() : v;
     }
-
-    if (data.email && data.email !== pharmacy.email) {
-      const existing = await this.pharmacyRepository.findOne({
-        email: data.email.toLowerCase(),
-        _id: { $ne: id },
+    try {
+      return await inTransaction(async (session) => {
+        const pharmacy = await PharmacyModel.findById(id).session(session).lean() as IPharmacy | null;
+        if (!pharmacy) {
+          throw new AppError({ status: 404, code: 'PHARMACY_NOT_FOUND', message: 'Pharmacy not found' });
+        }
+        if (expectedUpdatedAt !== undefined && expectedUpdatedAt !== null &&
+            new Date(pharmacy.updatedAt as Date).getTime() !== new Date(expectedUpdatedAt).getTime()) {
+          throw recordChanged();
+        }
+        if (typeof set.phone === 'string' && set.phone !== pharmacy.phone &&
+            await PharmacyModel.exists({ phone: set.phone, _id: { $ne: id } }).session(session)) {
+          throw phoneTaken();
+        }
+        if (typeof set.email === 'string' && set.email !== pharmacy.email &&
+            await PharmacyModel.exists({ email: set.email, _id: { $ne: id } }).session(session)) {
+          throw new AppError({ status: 400, code: 'EMAIL_ALREADY_EXISTS', message: 'A pharmacy with this email already exists' });
+        }
+        if (!Object.keys(set).length && !Object.keys(unset).length) return pharmacy;
+        const updated = await PharmacyModel.findOneAndUpdate({ _id: id, updatedAt: pharmacy.updatedAt },
+          { ...(Object.keys(set).length ? { $set: set } : {}), ...(Object.keys(unset).length ? { $unset: unset } : {}) },
+          { new: true, session, runValidators: true }).lean() as IPharmacy | null;
+        if (!updated) throw recordChanged();
+        const phoneChanged = updated.phone !== pharmacy.phone;
+        const emailChanged = !!pharmacy.email && updated.email !== pharmacy.email;
+        if (phoneChanged || emailChanged) {
+          const { revokeAllSessions } = await import('@/modules/auth/sessions');
+          await revokeAllSessions('pharmacy', String(pharmacy._id), phoneChanged ? 'sign_in_phone_changed' : 'sign_in_email_changed', session);
+        }
+        return updated;
       });
-      if (existing) {
-        throw new AppError({
-          status: 400,
-          code: 'EMAIL_ALREADY_EXISTS',
-          message: 'A pharmacy with this email already exists',
-        });
-      }
+    } catch (e: any) {
+      if (e?.code === 11000 && e?.keyPattern?.phone) throw phoneTaken();
+      throw e;
     }
-
-    const updated = await this.pharmacyRepository.update({ _id: id }, data);
-    if (!updated) {
-      throw new AppError({
-        status: 500,
-        code: 'UPDATE_FAILED',
-        message: 'Failed to update pharmacy',
-      });
-    }
-    return updated;
   }
 
   async delete(id: string, archivedBy?: string, archiveReason?: string): Promise<void> {

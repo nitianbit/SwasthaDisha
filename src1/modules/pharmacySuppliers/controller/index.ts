@@ -16,8 +16,16 @@ export class PharmacySupplierController {
   }
 
   create = async (req: AuthRequest, res: Response, _next: NextFunction) => {
-    const data = await this.service.create(req.user?.pharmacyId, req.user?._id, req.body);
-    this.reply(res, 201, { success: true, data });
+    // Q15: a keyed repeat answers 200 with the supplier the key made (`replayed`).
+    const { replayed, ...data } = await this.service.create(req.user?.pharmacyId, req.user?._id, req.body);
+    this.reply(res, replayed ? 200 : 201, { success: true, data, ...(replayed ? { replayed: true } : {}) });
+  };
+
+  /** Q15: GET /pharmacy-suppliers/by-key/:key — the supplier this pharmacy's create key made. */
+  byKey = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const data = await this.service.findCreatedByKey(req.user?.pharmacyId, req.params.key);
+    if (!data) { this.reply(res, 404, { error: 404, code: 'SUPPLIER_NOT_FOUND', message: 'No supplier was created with this key' }); return; }
+    this.reply(res, 200, { success: true, data });
   };
 
   update = async (req: AuthRequest, res: Response, _next: NextFunction) => {

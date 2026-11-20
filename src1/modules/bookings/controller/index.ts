@@ -1,4 +1,5 @@
 import { publicNoShowView } from '@/modules/bookings/utils/noShowView';
+import { withPatientNames } from '@/modules/bookings/utils/patientNames';
 import 'reflect-metadata';
 import BookingModel from '@/modules/bookings/model';
 import { rebindStored, withFiles } from '@/modules/file/access';
@@ -400,12 +401,14 @@ export class BookingController {
     const result = requiredCorporateId === undefined
       ? await this.bookingService.getAll(queryParams)
       : await this.bookingService.getAll(queryParams, requiredCorporateId);
+    // Q15: admin rows name the patient (family member or account holder); other callers see the rows unchanged.
+    const rows = req.user?.userType === 'admin' ? await withPatientNames(result.data as any[]) as unknown as typeof result.data : result.data;
 
     if (result.total !== undefined) {
       // Paginated response
       res.status(200).json({
         success: true,
-        data: publicNoShowView(result.data),
+        data: publicNoShowView(rows),
         pagination: {
           page: result.page!,
           limit: queryParams.limit!,
@@ -417,7 +420,7 @@ export class BookingController {
       // Non-paginated response
       res.status(200).json({
         success: true,
-        data: publicNoShowView(result.data),
+        data: publicNoShowView(rows),
       });
     }
   };

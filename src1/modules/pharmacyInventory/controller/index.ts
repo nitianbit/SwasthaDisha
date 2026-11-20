@@ -117,17 +117,27 @@ export class InventoryController {
     const data: CreateInventoryItemsRequest = {
       items: req.body.items.map((item: Record<string, unknown>) => ({ ...item, pharmacyId })),
     };
-    const result = await this.inventoryService.saveItems(
+    // Q15: with requestKey, a repeat of the same save answers 200 with the first result (`replayed`).
+    const { items, replayed } = await this.inventoryService.saveItemsOnce(
       data,
       req.user?._id || '',
-      req.user?.userType || 'pharmacy'
+      req.user?.userType || 'pharmacy',
+      typeof req.body.requestKey === 'string' ? req.body.requestKey : undefined
     );
-    const responseData = result.map((item) => this.sanitizeInventoryItem(req, item));
-    res.status(201).json({
+    const responseData = items.map((item) => this.sanitizeInventoryItem(req, item));
+    res.status(replayed ? 200 : 201).json({
       success: true,
       message: 'Inventory items saved',
       data: responseData,
+      ...(replayed ? { replayed: true } : {}),
     });
+  };
+
+  /** Q15: GET /pharmacy-inventory/by-key/:key — the items this pharmacy's save key made (current state). */
+  savedByKey = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const items = await this.inventoryService.findSavedByKey(String(req.user?.pharmacyId || ''), req.params.key);
+    if (!items) { res.status(404).json({ error: 404, code: 'REQUEST_KEY_NOT_FOUND', message: 'Nothing was saved with this key' }); return; }
+    res.status(200).json({ success: true, data: items.map((item) => this.sanitizeInventoryItem(req, item)) });
   };
 
   getItem = async (req: AuthRequest, res: Response, _next: NextFunction) => {

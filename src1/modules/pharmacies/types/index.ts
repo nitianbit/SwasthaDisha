@@ -45,6 +45,10 @@ export interface IPharmacy {
   archiveReason?: string;
   walletEnabled?: boolean;
   profilePictureUrl?: string;
+  /** Q15: set on an admin create made under a request key. */
+  createdBy?: string;
+  createRequestKey?: string;
+  createRequestHash?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -74,6 +78,8 @@ export interface CreatePharmacyRequest {
   isActive?: boolean;
   walletEnabled?: boolean;
   profilePictureUrl?: string;
+  /** Q15: admin create exactly once per (admin, requestKey); replayed by content hash. */
+  requestKey?: string;
 }
 
 export interface UpdatePharmacyRequest {
@@ -101,10 +107,14 @@ export interface UpdatePharmacyRequest {
   isActive?: boolean;
   walletEnabled?: boolean;
   profilePictureUrl?: string;
+  /** Q15 (admin edit): the updatedAt the editor started from; any other current value is refused (409 RECORD_CHANGED). */
+  expectedUpdatedAt?: Date | string | null;
 }
 
 export interface PharmacyQueryParams {
   name?: string;
+  /** Q15 (admin list): exact canonical 10-digit phone. */
+  phone?: string;
   city?: string;
   state?: string;
   pincode?: string;

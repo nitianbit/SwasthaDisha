@@ -24,6 +24,9 @@ import {
 import { PharmacyMedicineAvailabilityDto } from '@/modules/pharmacies/types';
 import { AppError } from '@/modules/common/types';
 import { isDuplicateKeyError } from '@/modules/common/utils/mongoErrors';
+import { requestHashOf } from '@/modules/common/utils/canonicalJson';
+import { InventoryItemModel } from '@/modules/pharmacyInventory/model';
+import { PharmacyCreateRequestModel } from '@/modules/pharmacyInventory/model/createRequest';
 
 function isValidInventoryDate(value: string): boolean {
   if (!/^\d{8}$/.test(value)) return false;
@@ -224,10 +227,63 @@ export class InventoryService {
     }
   }
 
+  /**
+   * Q15: POST /pharmacy-inventory with `requestKey`: exactly once per (pharmacy, key). The key is recorded with the item
+   * ids in the save transaction, bound to the content (the items as sent); a repeat with the same content answers with
+   * those items as they are now (`replayed`), other content under the key 409 REQUEST_KEY_REUSED. Without a key the
+   * save behaves as before.
+   */
+  async saveItemsOnce(
+    data: CreateInventoryItemsRequest,
+    adjustedBy?: string,
+    adjustedByRole?: string,
+    requestKey?: string
+  ): Promise<{ items: IInventoryItem[]; replayed: boolean }> {
+    if (!requestKey) return { items: await this.saveItems(data, adjustedBy, adjustedByRole), replayed: false };
+    const pharmacyId = String(data.items[0]?.pharmacyId ?? '').toLowerCase();
+    const requestHash = requestHashOf(data.items.map(({ pharmacyId: _p, ...rest }) => rest));
+    const replay = async () => {
+      const prior = await PharmacyCreateRequestModel.findOne({ pharmacyId: { $eq: pharmacyId }, kind: 'inventory_items', requestKey: { $eq: requestKey } }).lean();
+      if (!prior) return null;
+      if (prior.requestHash !== requestHash) {
+        throw new AppError({ status: 409, code: 'REQUEST_KEY_REUSED', message: 'This request key was already used for different inventory items' });
+      }
+      return { items: await this.itemsByIds(pharmacyId, prior.resultIds), replayed: true };
+    };
+    const prior = await replay();
+    if (prior) return prior;
+    try {
+      const items = await this.saveItems(data, adjustedBy, adjustedByRole, async (saved, session) => {
+        await PharmacyCreateRequestModel.create([{ pharmacyId, kind: 'inventory_items', requestKey, requestHash,
+          resultIds: saved.map((i) => String(i._id)), at: new Date() }], { session });
+      });
+      return { items, replayed: false };
+    } catch (error) {
+      if (!isDuplicateKeyError(error)) throw error;
+      const raced = await replay();
+      if (!raced) throw error;
+      return raced;
+    }
+  }
+
+  /** Q15: the items a pharmacy's save key made (current state, request order); null when the key made nothing. */
+  async findSavedByKey(pharmacyId: string, requestKey: string): Promise<IInventoryItem[] | null> {
+    const pid = String(pharmacyId).toLowerCase();
+    const prior = await PharmacyCreateRequestModel.findOne({ pharmacyId: { $eq: pid }, kind: 'inventory_items', requestKey: { $eq: requestKey } }).lean();
+    return prior ? this.itemsByIds(pid, prior.resultIds) : null;
+  }
+
+  private async itemsByIds(pharmacyId: string, ids: string[]): Promise<IInventoryItem[]> {
+    const rows = await InventoryItemModel.find({ _id: { $in: ids }, pharmacyId }).lean() as unknown as IInventoryItem[];
+    const byId = new Map(rows.map((r) => [String(r._id), r]));
+    return ids.map((id) => byId.get(id)).filter((r): r is IInventoryItem => !!r);
+  }
+
   async saveItems(
     data: CreateInventoryItemsRequest,
     adjustedBy?: string,
-    adjustedByRole?: string
+    adjustedByRole?: string,
+    inTx?: (saved: IInventoryItem[], session: ClientSession) => Promise<void>
   ): Promise<IInventoryItem[]> {
     if (data.items.length === 0) {
       throw new AppError({
@@ -271,6 +327,7 @@ export class InventoryService {
     try {
       const results: IInventoryItem[] = [];
       await session.withTransaction(async () => {
+        results.length = 0; // a retried transaction attempt starts over
         for (const item of items) {
           const saved = await this.saveItem(item, session);
           const actualDelta = item.quantity ?? 0;
@@ -298,6 +355,7 @@ export class InventoryService {
           }
           results.push(saved.item);
         }
+        if (inTx) await inTx(results, session);
       });
       return results;
     } finally {

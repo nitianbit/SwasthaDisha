@@ -17,6 +17,7 @@ import {
   updatePharmacySchema,
   updateMyPharmacySchema,
   idParamSchema,
+  pharmacyKeyParamSchema,
 } from '@/modules/pharmacies/validation';
 
 const pharmacyRouter = Router();
@@ -31,6 +32,10 @@ pharmacyRouter.post(
   validate(createPharmacySchema, 'body'),
   catchAsync(pharmacyController.create)
 );
+
+// Q15: what an admin's create key made, and giving up a lost create.
+pharmacyRouter.get('/by-key/:key', requireAdmin, validate(pharmacyKeyParamSchema, 'params'), catchAsync(pharmacyController.createdByKey));
+pharmacyRouter.post('/by-key/:key/abandon', requireAdmin, validate(pharmacyKeyParamSchema, 'params'), catchAsync(pharmacyController.abandonCreateKey));
 
 publicPharmacyRouter.get(
   '/medicine-availability',

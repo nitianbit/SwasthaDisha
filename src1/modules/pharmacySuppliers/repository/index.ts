@@ -1,5 +1,7 @@
 import { Service } from 'typedi';
-import { PipelineStage, Types } from 'mongoose';
+import mongoose, { PipelineStage, Types } from 'mongoose';
+import { requestHashOf } from '@/modules/common/utils/canonicalJson';
+import { PharmacyCreateRequestModel, PHARMACY_REQUEST_KEY } from '@/modules/pharmacyInventory/model/createRequest';
 import PharmacySupplierModel from '@/modules/pharmacySuppliers/model';
 import { AppError } from '@/modules/common/types';
 import { SUPPLIER_FIELDS, SupplierDto, SupplierPage } from '@/modules/pharmacySuppliers/types';
@@ -43,6 +45,16 @@ function supplierDto(value: unknown, pharmacyId: string, id?: string): SupplierD
   };
 }
 
+/** Q15: the optional create key, taken off the body before the strict field check (anything malformed is a 400). */
+function takeRequestKey(body: Record<string, unknown>): { requestKey?: string; rest: Record<string, unknown> } {
+  if (!Object.prototype.hasOwnProperty.call(body, 'requestKey')) return { rest: body };
+  const { requestKey, ...rest } = body;
+  if (typeof requestKey !== 'string' || !PHARMACY_REQUEST_KEY.test(requestKey)) {
+    throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid supplier request' });
+  }
+  return { requestKey, rest };
+}
+
 @Service()
 export class PharmacySupplierRepository {
   private owned(pharmacyId: string, id: string) {
@@ -62,21 +74,72 @@ export class PharmacySupplierRepository {
     return supplierDto(row, pharmacyId, id);
   }
 
-  async create(pharmacyId: unknown, actorId: unknown, body: unknown): Promise<SupplierDto> {
+  /**
+   * Q15: an optional `requestKey` makes the create exactly once per (pharmacy, key): it is recorded with the supplier
+   * in one transaction, bound to the normalized fields; a repeat with the same fields answers with the supplier as it
+   * is now (`replayed`), other fields under the key 409 REQUEST_KEY_REUSED.
+   */
+  async create(pharmacyId: unknown, actorId: unknown, body: unknown): Promise<SupplierDto & { replayed?: boolean }> {
     assertSupplierScope(pharmacyId);
     assertSupplierScope(actorId);
     assertSupplierBody(body);
-    const command = normalizeSupplierCommand('create', body);
-    const now = new Date();
-    const row = new PharmacySupplierModel({
-      schemaVersion: 1, pharmacyId: new Types.ObjectId(pharmacyId),
-      displayName: command.fields.displayName, contactName: command.fields.contactName,
-      phone: command.fields.phone, email: command.fields.email, address: command.fields.address,
-      state: 'active', revision: 1, createdByActorId: actorId, updatedByActorId: actorId,
-      createdAt: now, updatedAt: now, archivedAt: null,
-    });
-    await row.save();
-    return supplierDto(row.toObject(), pharmacyId);
+    const { requestKey, rest } = takeRequestKey(body);
+    const command = normalizeSupplierCommand('create', rest);
+    const build = () => {
+      const now = new Date();
+      return new PharmacySupplierModel({
+        schemaVersion: 1, pharmacyId: new Types.ObjectId(pharmacyId),
+        displayName: command.fields.displayName, contactName: command.fields.contactName,
+        phone: command.fields.phone, email: command.fields.email, address: command.fields.address,
+        state: 'active', revision: 1, createdByActorId: actorId, updatedByActorId: actorId,
+        createdAt: now, updatedAt: now, archivedAt: null,
+      });
+    };
+    if (!requestKey) {
+      const row = build();
+      await row.save();
+      return supplierDto(row.toObject(), pharmacyId);
+    }
+    const requestHash = requestHashOf(command.fields);
+    const replay = async () => {
+      const prior = await PharmacyCreateRequestModel.findOne({ pharmacyId: { $eq: pharmacyId }, kind: 'supplier', requestKey: { $eq: requestKey } }).lean();
+      if (!prior) return null;
+      if (prior.requestHash !== requestHash) {
+        throw new AppError({ status: 409, code: 'REQUEST_KEY_REUSED', message: 'This request key was already used for a different supplier' });
+      }
+      return { ...(await this.getOwned(pharmacyId, prior.resultIds[0]!)), replayed: true };
+    };
+    const prior = await replay();
+    if (prior) return prior;
+    const session = await mongoose.startSession();
+    try {
+      let made!: SupplierDto;
+      await session.withTransaction(async () => {
+        const row = build();
+        await row.save({ session });
+        await PharmacyCreateRequestModel.create([{ pharmacyId, kind: 'supplier', requestKey, requestHash, resultIds: [row._id.toHexString()], at: new Date() }],
+          { session });
+        made = supplierDto(row.toObject(), pharmacyId);
+      });
+      return made;
+    } catch (error) {
+      if ((error as { code?: number })?.code !== 11000) throw error;
+      const raced = await replay();
+      if (!raced) throw error;
+      return raced;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  /** Q15: the supplier this pharmacy's create key made (current state); null when the key made nothing. */
+  async findCreatedByKey(pharmacyId: unknown, key: unknown): Promise<SupplierDto | null> {
+    assertSupplierScope(pharmacyId);
+    if (typeof key !== 'string' || !PHARMACY_REQUEST_KEY.test(key)) {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid request key' });
+    }
+    const prior = await PharmacyCreateRequestModel.findOne({ pharmacyId: { $eq: pharmacyId }, kind: 'supplier', requestKey: { $eq: key } }).lean();
+    return prior ? this.getOwned(pharmacyId, prior.resultIds[0]!) : null;
   }
 
   async update(pharmacyId: unknown, actorId: unknown, id: unknown, body: unknown): Promise<SupplierDto> {

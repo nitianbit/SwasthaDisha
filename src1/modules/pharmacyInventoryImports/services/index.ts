@@ -38,11 +38,46 @@ class InventoryImportRepository extends BaseRepository<IInventoryImport> {
   }
 }
 
+/**
+ * Q15: column headers are matched case-insensitively and without surrounding spaces ("Batch Number ", "BATCH NUMBER"
+ * and "batch number" are one column; the first non-empty value wins if a sheet repeats one).
+ */
+export function normalizeHeaders(row: Record<string, any>): Record<string, any> {
+  const out: Record<string, any> = {};
+  for (const [k, v] of Object.entries(row)) {
+    const key = String(k).trim().toLowerCase();
+    if (!(key in out) || out[key] === '' || out[key] === undefined || out[key] === null) out[key] = v;
+  }
+  return out;
+}
+
 function parseSheet(filePath: string): Record<string, any>[] {
   const workbook = XLSX.readFile(filePath);
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
-  return XLSX.utils.sheet_to_json(sheet, { defval: '' });
+  // Raw values: a date-formatted cell arrives as its Excel serial number (read by expiryOf, without a time zone).
+  return XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' }).map(normalizeHeaders);
+}
+
+/**
+ * Q15: the expiry as YYYYMMDD from a text date (YYYYMMDD or YYYY-MM-DD), an 8-digit number, a spreadsheet date (its
+ * Excel serial number, read with the xlsx library's date code) or a Date. Anything else is returned as text (and then
+ * refused by the date check).
+ */
+export function expiryOf(value: unknown): string {
+  const pad = (n: number, w = 2) => String(n).padStart(w, '0');
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? '' : `${pad(value.getFullYear(), 4)}${pad(value.getMonth() + 1)}${pad(value.getDate())}`;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    if (Number.isInteger(value) && value >= 10_000_000 && value <= 99_999_999) return String(value); // typed as 20271231
+    if (value > 0 && value < 2_958_466) { // serials up to 9999-12-31
+      const d = XLSX.SSF.parse_date_code(value);
+      if (d && d.y && d.m && d.d) return `${pad(d.y, 4)}${pad(d.m)}${pad(d.d)}`;
+    }
+    return String(value);
+  }
+  return String(value ?? '').trim().replace(/-/g, '');
 }
 
 function isValidYyyymmdd(value: string): boolean {
@@ -54,20 +89,21 @@ function isValidYyyymmdd(value: string): boolean {
   return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
 }
 
-function validateRow(row: Record<string, any>, index: number): ImportRowResult {
+function validateRow(input: Record<string, any>, index: number): ImportRowResult {
+  const row = normalizeHeaders(input); // keys are lower-case and trimmed (parseSheet already does this)
   const errors: string[] = [];
   const name = String(row['medicine name'] || row['name'] || '').trim();
   if (!name) errors.push('medicine name is required');
 
   const quantityToAdd = Number(
-    row['quantity to add'] ?? row['quantityToAdd'] ?? row['available quantity'] ?? row['availableQty'] ?? 0
+    row['quantity to add'] ?? row['quantitytoadd'] ?? row['available quantity'] ?? row['availableqty'] ?? 0
   );
   if (!Number.isInteger(quantityToAdd) || quantityToAdd < 0) {
     errors.push('quantity to add must be a whole number >= 0');
   }
 
-  const retailPrice = parseFloat(row['retail price'] || row['retailPrice'] || 0);
-  const wholesalePrice = parseFloat(row['wholesale price'] || row['wholesalePrice'] || 0);
+  const retailPrice = parseFloat(row['retail price'] || row['retailprice'] || 0);
+  const wholesalePrice = parseFloat(row['wholesale price'] || row['wholesaleprice'] || 0);
   const purchasePrice = parseFloat(row['purchase price'] || 0);
   const mrp = parseFloat(row['mrp'] || 0);
   const gstPercent = parseFloat(row['gst percent'] || 0);
@@ -79,8 +115,8 @@ function validateRow(row: Record<string, any>, index: number): ImportRowResult {
     errors.push('gst percent must be between 0 and 100');
   }
 
-  const batchNumber = String(row['batch number'] || row['batchNumber'] || '').trim().toUpperCase();
-  const expiryDate = String(row['expiry date'] || row['expiryDate'] || '').trim().replace(/-/g, '');
+  const batchNumber = String(row['batch number'] || row['batchnumber'] || '').trim().toUpperCase();
+  const expiryDate = expiryOf(row['expiry date'] || row['expirydate'] || '');
   if (quantityToAdd > 0 && !batchNumber) errors.push('batch number is required when quantity is added');
   if (quantityToAdd > 0 && !isValidYyyymmdd(expiryDate)) errors.push('expiry date must be a valid YYYYMMDD date');
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -102,7 +138,7 @@ function validateRow(row: Record<string, any>, index: number): ImportRowResult {
           purchasePrice,
           mrp,
           gstPercent,
-          hsnCode: String(row['hsn code'] || row['hsnCode'] || '').trim(),
+          hsnCode: String(row['hsn code'] || row['hsncode'] || '').trim(),
           rackLocation: String(row['rack location'] || '').trim(),
           prescriptionRequired: String(row['prescription required'] || '').toLowerCase() === 'yes',
           isActive: String(row['active status'] || 'yes').toLowerCase() !== 'no',
