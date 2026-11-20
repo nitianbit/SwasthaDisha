@@ -140,6 +140,12 @@ export class InventoryController {
     res.status(200).json({ success: true, data: items.map((item) => this.sanitizeInventoryItem(req, item)) });
   };
 
+  /** Q15: POST /pharmacy-inventory/by-key/:key/abandon — abandoned, or used with the items it saved. */
+  abandonSaveKey = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const r = await this.inventoryService.abandonSaveKey(String(req.user?.pharmacyId || ''), req.params.key);
+    res.status(200).json({ success: true, data: r.state === 'used' ? { state: 'used', items: r.items.map((i) => this.sanitizeInventoryItem(req, i)) } : r });
+  };
+
   getItem = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const pharmacyId = req.user?.userType === 'pharmacy' ? req.user.pharmacyId : undefined;
     const result = await this.inventoryService.getItem(req.params.id, pharmacyId);

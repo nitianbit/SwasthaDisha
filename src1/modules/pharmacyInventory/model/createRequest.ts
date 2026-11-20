@@ -26,3 +26,9 @@ export const PharmacyCreateRequestModel = model<PharmacyCreateRequest>('Pharmacy
 
 /** The key format accepted for these creates (as catalogue and pharmacy create keys). */
 export const PHARMACY_REQUEST_KEY = /^[A-Za-z0-9_-]{8,100}$/;
+
+/**
+ * Q15: the request_keys scope of a pharmacy's keyed create. The key is claimed there ('used') in the create transaction,
+ * and an abandon claims it 'abandoned'; the unique {scope, key} index lets only one of the two ever exist.
+ */
+export const pharmacyCreateKeyScope = (kind: PharmacyCreateKind, pharmacyId: string) => `pharmacy_${kind}_create:${String(pharmacyId).toLowerCase()}`;

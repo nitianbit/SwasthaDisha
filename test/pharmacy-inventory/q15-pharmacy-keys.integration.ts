@@ -292,6 +292,90 @@ async function main() {
       assert.equal(new Set(sup.map((a) => a.json.data.supplierId)).size, 1);
       assert.equal(await PharmacySupplierModel.countDocuments({ displayName: 'Race Pharma' }), 1);
     });
+
+    await check('N1 re-review: a key index with a partial filter the schema does not declare does not count (503 INDEXES_OUTDATED; no duplicate supplier)', async () => {
+      const { PharmacyCreateRequestModel: Req } = await import('@/modules/pharmacyInventory/model/createRequest');
+      const reset = (await import('@/modules/common/utils/requiredIndex').catch(() => ({}))) as { resetIndexChecks?: () => void };
+      await Req.collection.drop().catch(() => undefined);
+      await Req.createCollection();
+      await Req.collection.createIndex({ pharmacyId: 1, kind: 1, requestKey: 1 }, { unique: true, name: 'narrow_req', partialFilterExpression: { kind: 'inventory_items' } });
+      reset.resetIndexChecks?.();
+      try {
+        const sup = await call('POST', '/api/v1/pharmacy-suppliers', tA, { displayName: 'Narrow Traders', requestKey: 'sup-narrow-q15-01' });
+        assert.deepEqual([sup.status, sup.json.code], [503, 'INDEXES_OUTDATED']);
+        assert.equal(await PharmacySupplierModel.countDocuments({ displayName: 'Narrow Traders' }), 0);
+      } finally {
+        await Req.collection.drop().catch(() => undefined);
+        await Req.createCollection(); await Req.createIndexes();
+        reset.resetIndexChecks?.();
+      }
+    });
+
+    await check('N2 re-review: a workbook on the 1904 date system reads its date cells on that base (not four years early)', async () => {
+      const ws = XLSX.utils.aoa_to_sheet([['Medicine Name', 'Quantity To Add', 'Batch Number', 'Expiry Date'], ['A', 1, 'B1', 0]]);
+      ws['D2'] = { t: 'n', v: 45290, z: 'dd/mm/yyyy' }; // 2027-12-31 counted from 1904-01-01
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'S');
+      wb.Workbook = { WBProps: { date1904: true } } as any;
+      const file = path.join(tmp, 'd1904.xlsx');
+      XLSX.writeFile(wb, file);
+      const r = await upload(file, tA);
+      assert.equal(r.status, 200, JSON.stringify(r.json));
+      assert.deepEqual(r.json.data.previewRows.map((x: any) => [x.status, x.data?.expiryDate]), [['valid', '20271231']]);
+    });
+
+    await check('N3 re-review: CSV quantities and prices with grouping commas (international and Indian) are read; malformed grouping is not', async () => {
+      const file = path.join(tmp, 'grouped.csv');
+      fs.writeFileSync(file, ['Medicine Name,Quantity To Add,Batch Number,Expiry Date,Retail Price,MRP,Purchase Price',
+        'A,"1,000",B1,12/2030,"1,25,000.50","2,500","10,00,000"', 'B,"1,0",B2,12/2030,5,5,5'].join('\n'));
+      const r = await upload(file, tA);
+      assert.equal(r.status, 200, JSON.stringify(r.json));
+      const [a, b] = r.json.data.previewRows;
+      assert.equal(a.status, 'valid', JSON.stringify(a.errors));
+      assert.deepEqual([a.data.quantityToAdd, a.data.retailPrice, a.data.mrp, a.data.purchasePrice], [1000, 125000.5, 2500, 1000000]);
+      assert.equal(b.status, 'error');
+      assert.match(b.errors.join(' '), /quantity to add must be a whole number/);
+    });
+
+    await check('B: POST /pharmacy-inventory/by-key/:key/abandon: unknown key abandoned (a later save 409 REQUEST_ABANDONED, nothing saved); a used key answers used with its items; scoped to the pharmacy', async () => {
+      const key = 'inv-abandon-q15-0001';
+      const ab = await call('POST', `/api/v1/pharmacy-inventory/by-key/${key}/abandon`, tA);
+      assert.deepEqual([ab.status, ab.json.data], [200, { state: 'abandoned' }]);
+      const before = (await InventoryItemModel.findOne({ pharmacyId: pA, medicineId: m2 }).lean())?.availableQty ?? 0;
+      const late = await call('POST', '/api/v1/pharmacy-inventory', tA, { items: [{ medicineId: m2, quantity: 3, batchNumber: 'b-ab', expiryDate: future }], requestKey: key });
+      assert.deepEqual([late.status, late.json.code], [409, 'REQUEST_ABANDONED']);
+      assert.equal((await InventoryItemModel.findOne({ pharmacyId: pA, medicineId: m2 }).lean())?.availableQty ?? 0, before);
+      assert.equal((await call('POST', '/api/v1/pharmacy-inventory', tB, { items: [{ medicineId: m2, reorderThreshold: 2 }], requestKey: key })).status, 201, 'another pharmacy\'s key of the same name is its own');
+      // (Earlier checks dropped the key records, so this check saves its own.)
+      assert.equal((await call('POST', '/api/v1/pharmacy-inventory', tA, { items: [{ medicineId: m1, reorderThreshold: 6 }, { medicineId: m2, reorderThreshold: 6 }],
+        requestKey: 'inv-abandon-q15-used' })).status, 201);
+      const used = await call('POST', '/api/v1/pharmacy-inventory/by-key/inv-abandon-q15-used/abandon', tA);
+      assert.deepEqual([used.status, used.json.data.state, used.json.data.items.map((i: any) => String(i.medicineId))], [200, 'used', [m1, m2]]);
+    });
+
+    await check('B: POST /pharmacy-suppliers/by-key/:key/abandon: abandoned (later create 409 REQUEST_ABANDONED) or used with the supplier; abandon races a create and exactly one wins', async () => {
+      const ab = await call('POST', '/api/v1/pharmacy-suppliers/by-key/sup-abandon-q15-0001/abandon', tA);
+      assert.deepEqual([ab.status, ab.json.data], [200, { state: 'abandoned' }]);
+      const late = await call('POST', '/api/v1/pharmacy-suppliers', tA, { displayName: 'Too Late', requestKey: 'sup-abandon-q15-0001' });
+      assert.deepEqual([late.status, late.json.code], [409, 'REQUEST_ABANDONED']);
+      assert.equal(await PharmacySupplierModel.countDocuments({ displayName: 'Too Late' }), 0);
+      assert.equal((await call('POST', '/api/v1/pharmacy-suppliers', tA, { displayName: 'Kept Traders', requestKey: 'sup-abandon-q15-used' })).status, 201);
+      const used = await call('POST', '/api/v1/pharmacy-suppliers/by-key/sup-abandon-q15-used/abandon', tA);
+      assert.deepEqual([used.status, used.json.data.state, used.json.data.supplier?.displayName], [200, 'used', 'Kept Traders']);
+      for (let i = 0; i < 4; i++) {
+        const key = `sup-race-ab-q15-${i}0`;
+        const [made, gaveUp] = await Promise.all([
+          call('POST', '/api/v1/pharmacy-suppliers', tA, { displayName: `Race Abandon ${i}`, requestKey: key }),
+          call('POST', `/api/v1/pharmacy-suppliers/by-key/${key}/abandon`, tA),
+        ]);
+        const count = await PharmacySupplierModel.countDocuments({ displayName: `Race Abandon ${i}` });
+        if (gaveUp.json.data.state === 'abandoned') {
+          assert.deepEqual([made.json.code, count], ['REQUEST_ABANDONED', 0], JSON.stringify([made.status, made.json.code, gaveUp.json]));
+        } else {
+          assert.deepEqual([made.status, count, gaveUp.json.data.supplier.supplierId], [201, 1, made.json.data.supplierId]);
+        }
+      }
+    });
   } finally {
     server.close();
     // The previews of this run leave their uploads behind until commit/cleanup; remove them (this run's records only).

@@ -54,6 +54,16 @@ export function normalizeHeaders(row: Record<string, any>): Record<string, any> 
 const pad = (n: number, w = 2) => String(n).padStart(w, '0');
 
 /**
+ * Q15 re-review: a numeric cell typed with grouping commas — international ("1,000,000") or Indian ("10,00,000") — is
+ * read without them; any other value is returned unchanged (and parsed as before).
+ */
+export function ungrouped(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  const t = value.trim();
+  return /^-?(?:\d{1,3}(?:,\d{3})+|\d{1,2}(?:,\d{2})*,\d{3})(?:\.\d+)?$/.test(t) ? t.replace(/,/g, '') : value;
+}
+
+/**
  * Q15 review: the first sheet as rows of raw values with normalized headers. CSV/text files are read with `raw: true`,
  * so every value stays the text that was typed (the library would otherwise turn "12-05-2027" into a US month-first
  * date). In a spreadsheet, ONLY a real date cell (a number with a date format) is a date: it becomes "YYYY-MM-DD" from
@@ -62,11 +72,14 @@ const pad = (n: number, w = 2) => String(n).padStart(w, '0');
 export function readSheetRows(filePath: string): Record<string, any>[] {
   const workbook = XLSX.readFile(filePath, { raw: true, cellDates: false, cellNF: true });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  // Q15 re-review: a workbook on the 1904 date system counts its serials from 1904-01-01 (1462 days after the 1900 base).
+  const offset = workbook.Workbook?.WBProps?.date1904 ? 1462 : 0;
   for (const [addr, cell] of Object.entries(sheet ?? {})) {
     if (addr.startsWith('!') || !cell || typeof cell !== 'object') continue;
     const c = cell as XLSX.CellObject;
     if (c.t === 'n' && typeof c.v === 'number' && typeof c.z === 'string' && XLSX.SSF.is_date(c.z)) {
-      const d = c.v >= 1 ? XLSX.SSF.parse_date_code(Math.floor(c.v)) : null;
+      const serial = Math.floor(c.v) + offset;
+      const d = serial >= 1 ? XLSX.SSF.parse_date_code(serial) : null;
       Object.assign(c, { t: 's', v: d && d.y && d.m && d.d ? `${pad(d.y, 4)}-${pad(d.m)}-${pad(d.d)}` : `#date-cell:${c.v}`, w: undefined, z: undefined });
     } else if (c.t === 'd') {
       Object.assign(c, { t: 's', v: `#date-cell:${String(c.v)}`, w: undefined }); // not produced with cellDates: false
@@ -122,17 +135,17 @@ function validateRow(input: Record<string, any>, index: number): ImportRowResult
   if (!name) errors.push('medicine name is required');
 
   const quantityToAdd = Number(
-    row['quantity to add'] ?? row['quantitytoadd'] ?? row['available quantity'] ?? row['availableqty'] ?? 0
+    ungrouped(row['quantity to add'] ?? row['quantitytoadd'] ?? row['available quantity'] ?? row['availableqty'] ?? 0) as number
   );
   if (!Number.isInteger(quantityToAdd) || quantityToAdd < 0) {
     errors.push('quantity to add must be a whole number >= 0');
   }
 
-  const retailPrice = parseFloat(row['retail price'] || row['retailprice'] || 0);
-  const wholesalePrice = parseFloat(row['wholesale price'] || row['wholesaleprice'] || 0);
-  const purchasePrice = parseFloat(row['purchase price'] || 0);
-  const mrp = parseFloat(row['mrp'] || 0);
-  const gstPercent = parseFloat(row['gst percent'] || 0);
+  const retailPrice = parseFloat(ungrouped(row['retail price'] || row['retailprice'] || 0) as string);
+  const wholesalePrice = parseFloat(ungrouped(row['wholesale price'] || row['wholesaleprice'] || 0) as string);
+  const purchasePrice = parseFloat(ungrouped(row['purchase price'] || 0) as string);
+  const mrp = parseFloat(ungrouped(row['mrp'] || 0) as string);
+  const gstPercent = parseFloat(ungrouped(row['gst percent'] || 0) as string);
   if (!Number.isFinite(retailPrice) || retailPrice < 0) errors.push('retail price must be >= 0');
   if (!Number.isFinite(wholesalePrice) || wholesalePrice < 0) errors.push('wholesale price must be >= 0');
   if (!Number.isFinite(purchasePrice) || purchasePrice < 0) errors.push('purchase price must be >= 0');

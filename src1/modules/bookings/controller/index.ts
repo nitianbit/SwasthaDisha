@@ -331,10 +331,12 @@ export class BookingController {
     const { id } = req.params;
     await this.ensureHRCanAccessBooking(req, id);
     const result = await this.bookingService.getById(id, userId);
+    // Q15: admins see the patient's name as on the admin list rows; other callers see the booking unchanged.
+    const row = req.user?.userType === 'admin' ? (await withPatientNames([result as any]))[0] as unknown as typeof result : result;
 
     res.status(200).json({
       success: true,
-      data: publicNoShowView(result),
+      data: publicNoShowView(row),
     });
   };
 

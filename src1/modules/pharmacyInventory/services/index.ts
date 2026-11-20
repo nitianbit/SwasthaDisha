@@ -26,7 +26,9 @@ import { AppError } from '@/modules/common/types';
 import { isDuplicateKeyError } from '@/modules/common/utils/mongoErrors';
 import { requestHashOf } from '@/modules/common/utils/canonicalJson';
 import { InventoryItemModel } from '@/modules/pharmacyInventory/model';
-import { PharmacyCreateRequestModel } from '@/modules/pharmacyInventory/model/createRequest';
+import { PharmacyCreateRequestModel, pharmacyCreateKeyScope } from '@/modules/pharmacyInventory/model/createRequest';
+import { claimRequestKey, abandonRequestKey } from '@/modules/requestKeys';
+import { RequestKeyModel } from '@/modules/requestKeys/model';
 import { assertUniqueIndex, KeyAlreadyUsed } from '@/modules/common/utils/requiredIndex';
 
 function isValidInventoryDate(value: string): boolean {
@@ -253,6 +255,7 @@ export class InventoryService {
     };
     // Q15 review: exactly-once rests on the unique key index; without it, refuse (503) rather than risk a double save.
     await assertUniqueIndex(PharmacyCreateRequestModel, { pharmacyId: 1, kind: 1, requestKey: 1 });
+    await assertUniqueIndex(RequestKeyModel, { scope: 1, key: 1 });
     const prior = await replay();
     if (prior) return prior;
     try {
@@ -265,6 +268,8 @@ export class InventoryService {
         if (await PharmacyCreateRequestModel.exists({ pharmacyId: { $eq: pharmacyId }, kind: 'inventory_items', requestKey: { $eq: requestKey } }).session(session)) {
           throw new KeyAlreadyUsed();
         }
+        // Q15: claimed with the save, so an abandon of this key either wins (409 REQUEST_ABANDONED here) or finds it used.
+        await claimRequestKey(pharmacyCreateKeyScope('inventory_items', pharmacyId), requestKey, session);
       });
       return { items, replayed: false };
     } catch (error) {
@@ -280,6 +285,19 @@ export class InventoryService {
     const pid = String(pharmacyId).toLowerCase();
     const prior = await PharmacyCreateRequestModel.findOne({ pharmacyId: { $eq: pid }, kind: 'inventory_items', requestKey: { $eq: requestKey } }).lean();
     return prior ? this.itemsByIds(pid, prior.resultIds) : null;
+  }
+
+  /**
+   * Q15: give up a save whose answer was lost: `abandoned` (the key can never save now: a later send gets 409
+   * REQUEST_ABANDONED) or `used` with the items it saved. Atomic against a concurrent save through the request_keys claim.
+   */
+  async abandonSaveKey(pharmacyId: string, requestKey: string): Promise<{ state: 'abandoned' } | { state: 'used'; items: IInventoryItem[] }> {
+    const pid = String(pharmacyId).toLowerCase();
+    await assertUniqueIndex(RequestKeyModel, { scope: 1, key: 1 });
+    const made = await this.findSavedByKey(pid, requestKey);
+    if (made) return { state: 'used', items: made };
+    const state = await abandonRequestKey(pharmacyCreateKeyScope('inventory_items', pid), requestKey);
+    return state === 'abandoned' ? { state } : { state, items: (await this.findSavedByKey(pid, requestKey)) ?? [] };
   }
 
   private async itemsByIds(pharmacyId: string, ids: string[]): Promise<IInventoryItem[]> {

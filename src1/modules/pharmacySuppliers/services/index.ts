@@ -21,6 +21,10 @@ export class PharmacySupplierService {
     return this.supplierRepository.findCreatedByKey(pharmacyId, key);
   }
 
+  abandonCreateKey(pharmacyId: unknown, key: unknown) {
+    return this.supplierRepository.abandonCreateKey(pharmacyId, key);
+  }
+
   list(pharmacyId: unknown, query: unknown) {
     return this.supplierRepository.list(pharmacyId, query);
   }

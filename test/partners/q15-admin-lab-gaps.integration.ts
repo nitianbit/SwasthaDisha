@@ -341,7 +341,7 @@ async function main() {
       const dupPhone = await call('PUT', `/api/v1/pharmacies/${p._id}`, adminToken, { phone: q.phone });
       assert.deepEqual([dupPhone.status, dupPhone.json.code], [400, 'PHONE_ALREADY_EXISTS']);
       const dupEmail = await call('PUT', `/api/v1/pharmacies/${p._id}`, adminToken, { email: q.email.toUpperCase() });
-      assert.deepEqual([dupEmail.status, dupEmail.json.code], [400, 'EMAIL_ALREADY_EXISTS']);
+      assert.deepEqual([dupEmail.status, dupEmail.json.code], [409, 'EMAIL_ALREADY_EXISTS'], 'Q15 re-review: a taken email is always 409');
       assert.equal(await live(s), 1, 'a refused edit ends nothing');
     });
 
@@ -446,13 +446,13 @@ async function main() {
       const email = `same${ph}@example.com`;
       const creates = await Promise.all([0, 1, 2, 3].map(() => call('POST', '/api/v1/pharmacies', adminToken, { name: 'Twin', phone: nextPhone(), email })));
       assert.equal(creates.filter((a) => a.status === 201).length, 1, JSON.stringify(creates.map((a) => [a.status, a.json.code])));
-      assert.ok(creates.filter((a) => a.status !== 201).every((a) => a.json.code === 'EMAIL_ALREADY_EXISTS' && [400, 409].includes(a.status)));
+      assert.ok(creates.filter((a) => a.status !== 201).every((a) => a.json.code === 'EMAIL_ALREADY_EXISTS' && a.status === 409), JSON.stringify(creates.map((a) => [a.status, a.json.code])));
       const p1 = await newPharmacy({ email: undefined });
       const p2 = await newPharmacy({ email: undefined });
       const email2 = `edit${ph}@example.com`;
       const edits = await Promise.all([p1, p2, p1, p2].map((p) => call('PUT', `/api/v1/pharmacies/${p._id}`, adminToken, { email: email2 })));
       assert.ok(edits.some((a) => a.status === 200));
-      assert.ok(edits.filter((a) => a.status !== 200).every((a) => a.json.code === 'EMAIL_ALREADY_EXISTS'), JSON.stringify(edits.map((a) => [a.status, a.json.code])));
+      assert.ok(edits.filter((a) => a.status !== 200).every((a) => a.json.code === 'EMAIL_ALREADY_EXISTS' && a.status === 409), JSON.stringify(edits.map((a) => [a.status, a.json.code])));
       assert.equal(await PharmacyModel.countDocuments({ email: email2 }), 1);
       const ix = (await PharmacyModel.collection.indexes()).find((i: any) => i.name === 'email_unique_1') as any;
       assert.deepEqual([ix?.unique, ix?.partialFilterExpression], [true, { email: { $type: 'string' } }]);
@@ -489,6 +489,40 @@ async function main() {
       assert.equal((await call('PUT', `/api/v1/pharmacies/${id}`, adminToken, { latitude: null })).status, 200);
       const after = await PharmacyModel.findById(id).lean() as any;
       assert.deepEqual([after.latitude, after.longitude], [undefined, undefined]);
+    });
+
+    await check('N1 re-review: a (admin, key) unique index with a narrower partial filter than declared does not count (503 INDEXES_OUTDATED)', async () => {
+      const reset = (await import('@/modules/common/utils/requiredIndex').catch(() => ({}))) as { resetIndexChecks?: () => void };
+      const name = (await PharmacyModel.collection.indexes()).find((ix: any) => ix.key?.createdBy === 1 && ix.key?.createRequestKey === 1)?.name;
+      if (name) await PharmacyModel.collection.dropIndex(name);
+      await PharmacyModel.collection.createIndex({ createdBy: 1, createRequestKey: 1 },
+        { unique: true, name: 'narrow_key', partialFilterExpression: { createRequestKey: { $type: 'string' }, isActive: true } });
+      reset.resetIndexChecks?.();
+      try {
+        const phone = nextPhone();
+        const r = await call('POST', '/api/v1/pharmacies', adminToken, { name: 'Narrow', phone, isActive: false, requestKey: rk('pharm') });
+        assert.deepEqual([r.status, r.json.code], [503, 'INDEXES_OUTDATED']);
+        assert.equal(await PharmacyModel.countDocuments({ phone }), 0);
+      } finally {
+        await PharmacyModel.collection.dropIndex('narrow_key');
+        await PharmacyModel.createIndexes();
+        reset.resetIndexChecks?.();
+      }
+      assert.equal((await call('POST', '/api/v1/pharmacies', adminToken, { name: 'Declared', phone: nextPhone(), requestKey: rk('pharm') })).status, 201);
+    });
+
+    await check('A: GET /bookings/:id carries patientName for admins (family member or holder); customers see the booking unchanged', async () => {
+      const holder = await customer('Sita Holder');
+      const dep = await DependentModel.create({ userId: holder.id, name: 'Ravi Son', relationship: 'Son', isActive: true } as any);
+      const forDep = await onlineBooking(holder.id, drN, { dependentId: String(dep._id) });
+      const self = await onlineBooking(holder.id, drN);
+      const a1 = await call('GET', `/api/v1/bookings/${forDep}`, adminToken);
+      const a2 = await call('GET', `/api/v1/bookings/${self}`, adminToken);
+      assert.deepEqual([a1.status, a1.json.data.patientName, a2.json.data.patientName], [200, 'Ravi Son', 'Sita Holder'], JSON.stringify(a1.json));
+      const userToken = jwt.sign({ _id: holder.id, userType: 'user' }, CONFIG.JWT_SECRET_KEY);
+      const mine = await call('GET', `/api/v1/bookings/${forDep}`, userToken);
+      assert.equal(mine.status, 200, JSON.stringify(mine.json));
+      assert.equal('patientName' in mine.json.data, false);
     });
   } finally {
     server.close();

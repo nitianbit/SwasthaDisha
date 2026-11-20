@@ -6,17 +6,24 @@ const ready = new Set<string>();
 
 /**
  * Q15 review: a keyed exactly-once command relies on a unique index. Before the first keyed call (per process), check
- * that it exists; if the collection or the index is missing (sync-indexes has not run), refuse with 503
+ * that it exists as the schema declares it (keys, unique, partial filter); if the collection or the index is missing (sync-indexes has not run), refuse with 503
  * INDEXES_OUTDATED rather than risk doing the work twice. Fails closed: a failed check also refuses.
  */
 export async function assertUniqueIndex(model: Model<any>, keys: Record<string, 1>): Promise<void> {
   const keyJson = JSON.stringify(keys);
   const id = `${model.collection.collectionName}|${keyJson}`;
   if (ready.has(id)) return;
+  // Q15 re-review: the index must be the one the schema declares — unique, the same keys and EXACTLY the same partial
+  // filter (none when none is declared). A narrower partial index would leave some keyed writes unguarded.
+  const declared = (model.schema.indexes() as unknown as [Record<string, unknown>, { unique?: boolean; partialFilterExpression?: unknown }?][])
+    .find(([fields]) => JSON.stringify(fields) === keyJson);
+  if (!declared || declared[1]?.unique !== true) throw new Error(`${model.modelName} declares no unique index ${keyJson}`);
+  const filterJson = JSON.stringify(declared[1]?.partialFilterExpression ?? null);
   let found = false;
   try {
     const indexes = await model.collection.listIndexes().toArray();
-    found = indexes.some((ix) => ix.unique === true && JSON.stringify(ix.key) === keyJson);
+    found = indexes.some((ix) => ix.unique === true && JSON.stringify(ix.key) === keyJson &&
+      JSON.stringify(ix.partialFilterExpression ?? null) === filterJson);
   } catch {
     found = false; // e.g. NamespaceNotFound: the collection was never created
   }

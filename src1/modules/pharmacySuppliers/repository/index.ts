@@ -2,7 +2,9 @@ import { Service } from 'typedi';
 import mongoose, { PipelineStage, Types } from 'mongoose';
 import { requestHashOf } from '@/modules/common/utils/canonicalJson';
 import { assertUniqueIndex, KeyAlreadyUsed } from '@/modules/common/utils/requiredIndex';
-import { PharmacyCreateRequestModel, PHARMACY_REQUEST_KEY } from '@/modules/pharmacyInventory/model/createRequest';
+import { PharmacyCreateRequestModel, PHARMACY_REQUEST_KEY, pharmacyCreateKeyScope } from '@/modules/pharmacyInventory/model/createRequest';
+import { claimRequestKey, abandonRequestKey } from '@/modules/requestKeys';
+import { RequestKeyModel } from '@/modules/requestKeys/model';
 import PharmacySupplierModel from '@/modules/pharmacySuppliers/model';
 import { AppError } from '@/modules/common/types';
 import { SUPPLIER_FIELDS, SupplierDto, SupplierPage } from '@/modules/pharmacySuppliers/types';
@@ -112,6 +114,7 @@ export class PharmacySupplierRepository {
     };
     // Q15 review: exactly-once rests on the unique key index; without it, refuse (503) rather than risk two suppliers.
     await assertUniqueIndex(PharmacyCreateRequestModel, { pharmacyId: 1, kind: 1, requestKey: 1 });
+    await assertUniqueIndex(RequestKeyModel, { scope: 1, key: 1 });
     const prior = await replay();
     if (prior) return prior;
     const session = await mongoose.startSession();
@@ -122,6 +125,8 @@ export class PharmacySupplierRepository {
         if (await PharmacyCreateRequestModel.exists({ pharmacyId: { $eq: pharmacyId }, kind: 'supplier', requestKey: { $eq: requestKey } }).session(session)) {
           throw new KeyAlreadyUsed();
         }
+        // Q15: claimed with the supplier, so an abandon of this key either wins (409 REQUEST_ABANDONED here) or finds it used.
+        await claimRequestKey(pharmacyCreateKeyScope('supplier', pharmacyId), requestKey, session);
         const row = build();
         await row.save({ session });
         await PharmacyCreateRequestModel.create([{ pharmacyId, kind: 'supplier', requestKey, requestHash, resultIds: [row._id.toHexString()], at: new Date() }],
@@ -137,6 +142,18 @@ export class PharmacySupplierRepository {
     } finally {
       await session.endSession();
     }
+  }
+
+  /**
+   * Q15: give up a create whose answer was lost: `abandoned` (the key can never create now: a later send gets 409
+   * REQUEST_ABANDONED) or `used` with the supplier. Atomic against a concurrent create through the request_keys claim.
+   */
+  async abandonCreateKey(pharmacyId: unknown, key: unknown): Promise<{ state: 'abandoned' } | { state: 'used'; supplier: SupplierDto | null }> {
+    const made = await this.findCreatedByKey(pharmacyId, key); // validates the scope and the key
+    if (made) return { state: 'used', supplier: made };
+    await assertUniqueIndex(RequestKeyModel, { scope: 1, key: 1 });
+    const state = await abandonRequestKey(pharmacyCreateKeyScope('supplier', pharmacyId as string), key as string);
+    return state === 'abandoned' ? { state } : { state, supplier: await this.findCreatedByKey(pharmacyId, key) };
   }
 
   /** Q15: the supplier this pharmacy's create key made (current state); null when the key made nothing. */

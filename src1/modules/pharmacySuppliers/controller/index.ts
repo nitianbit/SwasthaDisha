@@ -28,6 +28,11 @@ export class PharmacySupplierController {
     this.reply(res, 200, { success: true, data });
   };
 
+  /** Q15: POST /pharmacy-suppliers/by-key/:key/abandon — abandoned, or used with the supplier. */
+  abandonKey = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    this.reply(res, 200, { success: true, data: await this.service.abandonCreateKey(req.user?.pharmacyId, req.params.key) });
+  };
+
   update = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const data = await this.service.update(req.user?.pharmacyId, req.user?._id, req.params.id, req.body);
     this.reply(res, 200, { success: true, data });

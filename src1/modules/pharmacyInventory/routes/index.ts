@@ -41,6 +41,12 @@ pharmacyInventoryRouter.get(
   validate(inventoryKeyParamSchema, 'params'),
   catchAsync(inventoryController.savedByKey)
 );
+pharmacyInventoryRouter.post(
+  '/by-key/:key/abandon',
+  requireOperationalPharmacy,
+  validate(inventoryKeyParamSchema, 'params'),
+  catchAsync(inventoryController.abandonSaveKey)
+);
 
 // List inventory for a pharmacy
 pharmacyInventoryRouter.get(

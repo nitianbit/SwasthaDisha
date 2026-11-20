@@ -25,13 +25,15 @@ const recordChanged = () => new AppError({ status: 409, code: 'RECORD_CHANGED', 
 const phoneTaken = () => new AppError({ status: 400, code: 'PHONE_ALREADY_EXISTS', message: 'A pharmacy with this phone number already exists' });
 /**
  * Q15 review: a unique-index refusal that a concurrent write won. The phone keeps its 400; the email (index
- * `email_unique_1`, Q15 review) answers 409, as the check before the write could not see the other pharmacy yet.
+ * `email_unique_1`) answers 409 like the check before the write.
  */
+/** Q15 re-review: a taken email is a conflict (409), from the check before the write and from the index alike. */
+const emailTaken = () => new AppError({ status: 409, code: 'EMAIL_ALREADY_EXISTS', message: 'A pharmacy with this email already exists' });
 function duplicateError(e: any): unknown {
   if (e instanceof KeyAlreadyUsed) return new AppError({ status: 409, code: 'REQUEST_KEY_REUSED', message: 'This request key was already used' });
   if (e?.code !== 11000) return e;
   if (e?.keyPattern?.phone) return phoneTaken();
-  if (e?.keyPattern?.email) return new AppError({ status: 409, code: 'EMAIL_ALREADY_EXISTS', message: 'A pharmacy with this email already exists' });
+  if (e?.keyPattern?.email) return emailTaken();
   return e;
 }
 
@@ -122,7 +124,7 @@ export class PharmacyService {
 
     if (await this.pharmacyRepository.findByPhone(sanitizedData.phone)) return refuse(phoneTaken());
     if (sanitizedData.email && await this.pharmacyRepository.findByEmail(sanitizedData.email)) {
-      return refuse(new AppError({ status: 400, code: 'EMAIL_ALREADY_EXISTS', message: 'A pharmacy with this email already exists' }));
+      return refuse(emailTaken());
     }
 
     try {
@@ -321,7 +323,7 @@ export class PharmacyService {
         }
         if (typeof set.email === 'string' && set.email !== pharmacy.email &&
             await PharmacyModel.exists({ email: set.email, _id: { $ne: id } }).session(session)) {
-          throw new AppError({ status: 400, code: 'EMAIL_ALREADY_EXISTS', message: 'A pharmacy with this email already exists' });
+          throw emailTaken();
         }
         if (!Object.keys(set).length && !Object.keys(unset).length) return pharmacy;
         const updated = await PharmacyModel.findOneAndUpdate({ _id: id, updatedAt: pharmacy.updatedAt },
