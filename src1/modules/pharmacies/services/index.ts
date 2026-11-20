@@ -3,6 +3,7 @@ import mongoose, { ClientSession } from 'mongoose';
 import PharmacyModel from '@/modules/pharmacies/model';
 import { claimRequestKey, abandonRequestKey } from '@/modules/requestKeys';
 import { requestHashOf } from '@/modules/common/utils/canonicalJson';
+import { assertUniqueIndex, KeyAlreadyUsed } from '@/modules/common/utils/requiredIndex';
 import { ContactField, withoutSelfContacts } from '@/modules/common/utils/selfContacts';
 import { PharmacyRepository } from '@/modules/pharmacies/repository';
 import { UserRepository } from '@/modules/user/repository';
@@ -22,6 +23,17 @@ const CLEARABLE_FIELDS = new Set(['nickname', 'ownerName', 'email', 'address', '
   'drugLicenseNumber', 'gstCertificateUrl', 'drugLicenseDocumentUrl', 'ownerIdProofUrl', 'shopFrontPhotoUrl', 'profilePictureUrl']);
 const recordChanged = () => new AppError({ status: 409, code: 'RECORD_CHANGED', message: 'Someone else changed this pharmacy meanwhile; reload and review' });
 const phoneTaken = () => new AppError({ status: 400, code: 'PHONE_ALREADY_EXISTS', message: 'A pharmacy with this phone number already exists' });
+/**
+ * Q15 review: a unique-index refusal that a concurrent write won. The phone keeps its 400; the email (index
+ * `email_unique_1`, Q15 review) answers 409, as the check before the write could not see the other pharmacy yet.
+ */
+function duplicateError(e: any): unknown {
+  if (e instanceof KeyAlreadyUsed) return new AppError({ status: 409, code: 'REQUEST_KEY_REUSED', message: 'This request key was already used' });
+  if (e?.code !== 11000) return e;
+  if (e?.keyPattern?.phone) return phoneTaken();
+  if (e?.keyPattern?.email) return new AppError({ status: 409, code: 'EMAIL_ALREADY_EXISTS', message: 'A pharmacy with this email already exists' });
+  return e;
+}
 
 async function inTransaction<T>(fn: (session: ClientSession) => Promise<T>): Promise<T> {
   const session = await mongoose.startSession();
@@ -94,49 +106,42 @@ export class PharmacyService {
       }
       return { ...prior, replayed: true };
     };
+    if (keyed) {
+      // Q15 review: exactly-once rests on the unique (admin, key) index; without it, refuse (503) rather than risk two.
+      await assertUniqueIndex(PharmacyModel, { createdBy: 1, createRequestKey: 1 });
+    }
     const prior = await replay();
     if (prior) return prior;
+    // Q15 review: a refusal for a taken phone or email is given only after the key is looked up again (a concurrent
+    // identical create under this key may have just made the pharmacy that holds them).
+    const refuse = async (error: AppError) => {
+      const raced = await replay();
+      if (raced) return raced;
+      throw error;
+    };
 
-    const existingByPhone = await this.pharmacyRepository.findByPhone(
-      sanitizedData.phone
-    );
-    if (existingByPhone) {
-      throw new AppError({
-        status: 400,
-        code: 'PHONE_ALREADY_EXISTS',
-        message: 'A pharmacy with this phone number already exists',
-      });
+    if (await this.pharmacyRepository.findByPhone(sanitizedData.phone)) return refuse(phoneTaken());
+    if (sanitizedData.email && await this.pharmacyRepository.findByEmail(sanitizedData.email)) {
+      return refuse(new AppError({ status: 400, code: 'EMAIL_ALREADY_EXISTS', message: 'A pharmacy with this email already exists' }));
     }
 
-    if (sanitizedData.email) {
-      const existingByEmail = await this.pharmacyRepository.findByEmail(
-        sanitizedData.email
-      );
-      if (existingByEmail) {
-        throw new AppError({
-          status: 400,
-          code: 'EMAIL_ALREADY_EXISTS',
-          message: 'A pharmacy with this email already exists',
-        });
-      }
-    }
-
-    if (!keyed) return this.pharmacyRepository.save(sanitizedData);
     try {
+      if (!keyed) return await this.pharmacyRepository.save(sanitizedData);
       return await inTransaction(async (session) => {
+        // Looked up again inside every attempt: a concurrent same-key create that committed is answered as a replay.
+        if (await PharmacyModel.exists({ createdBy: { $eq: createdBy }, createRequestKey: { $eq: requestKey } }).session(session)) {
+          throw new KeyAlreadyUsed();
+        }
         await claimRequestKey(pharmacyCreateScope(createdBy!), requestKey!, session);
         const [made] = await PharmacyModel.create([{ ...sanitizedData, createdBy, createRequestKey: requestKey, createRequestHash: requestHash }], { session });
         return made.toObject() as IPharmacy;
       });
     } catch (e: any) {
-      if (e?.code !== 11000) throw e;
+      if (!(e instanceof KeyAlreadyUsed) && e?.code !== 11000) throw e;
       // A concurrent identical create under the same key won: answer with it (other content is refused there).
       const raced = await replay();
       if (raced) return raced;
-      if (e?.keyPattern?.phone) {
-        throw new AppError({ status: 400, code: 'PHONE_ALREADY_EXISTS', message: 'A pharmacy with this phone number already exists' });
-      }
-      throw e;
+      throw duplicateError(e);
     }
   }
 
@@ -291,6 +296,15 @@ export class PharmacyService {
       }
       set[k] = k === 'email' ? String(v).trim().toLowerCase() : v;
     }
+    // Q15 review: the location is one pair: clearing either coordinate clears both; clearing one while setting the
+    // other is refused.
+    if (unset.latitude || unset.longitude) {
+      if (set.latitude !== undefined || set.longitude !== undefined) {
+        throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'latitude and longitude are cleared together' });
+      }
+      unset.latitude = 1;
+      unset.longitude = 1;
+    }
     try {
       return await inTransaction(async (session) => {
         const pharmacy = await PharmacyModel.findById(id).session(session).lean() as IPharmacy | null;
@@ -315,7 +329,8 @@ export class PharmacyService {
           { new: true, session, runValidators: true }).lean() as IPharmacy | null;
         if (!updated) throw recordChanged();
         const phoneChanged = updated.phone !== pharmacy.phone;
-        const emailChanged = !!pharmacy.email && updated.email !== pharmacy.email;
+        // Q15 review: the same address in other letter case is no change of the sign-in email.
+        const emailChanged = !!pharmacy.email && String(updated.email ?? '').toLowerCase() !== String(pharmacy.email).toLowerCase();
         if (phoneChanged || emailChanged) {
           const { revokeAllSessions } = await import('@/modules/auth/sessions');
           await revokeAllSessions('pharmacy', String(pharmacy._id), phoneChanged ? 'sign_in_phone_changed' : 'sign_in_email_changed', session);
@@ -323,8 +338,7 @@ export class PharmacyService {
         return updated;
       });
     } catch (e: any) {
-      if (e?.code === 11000 && e?.keyPattern?.phone) throw phoneTaken();
-      throw e;
+      throw duplicateError(e);
     }
   }
 

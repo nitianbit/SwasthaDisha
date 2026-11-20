@@ -5,6 +5,7 @@ import { AuthRequest } from '@/modules/middleware/auth';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { PharmacyService } from '@/modules/pharmacies/services';
+import { withoutCreateKey } from '@/modules/pharmacies/ownView';
 import { InventoryService } from '@/modules/pharmacyInventory/services';
 import {
   CreatePharmacyRequest,
@@ -14,12 +15,6 @@ import {
   PublicPharmacyDto,
   MedicineAvailabilityQueryParams,
 } from '@/modules/pharmacies/types';
-
-/** Q15: the admin create key (and the admin who made it) are not part of the pharmacy's own profile. */
-const withoutCreateKey = (p: IPharmacy): IPharmacy => {
-  const { createdBy: _c, createRequestKey: _k, createRequestHash: _h, ...rest } = p;
-  return rest as IPharmacy;
-};
 
 export class PharmacyController {
   private pharmacyService: PharmacyService;

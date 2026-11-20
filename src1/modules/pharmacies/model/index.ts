@@ -46,12 +46,11 @@ const pharmacySchema = new Schema<IPharmacy>(
       unique: true,
       index: true,
     },
+    // Q15 review: unique among pharmacies (index email_unique_1 below, replacing the plain sparse email_1).
     email: {
       type: String,
       trim: true,
       lowercase: true,
-      sparse: true,
-      index: true,
     },
     address: {
       type: String,
@@ -163,6 +162,9 @@ pharmacySchema.index({ name: 'text', city: 'text', address: 'text' });
 pharmacySchema.index({ city: 1, state: 1, isActive: 1 });
 pharmacySchema.index({ isVerified: 1, isActive: 1 });
 pharmacySchema.index({ latitude: 1, longitude: 1 });
+// Q15 review: one pharmacy per (lower-cased, by the schema) email. Before `npm run sync-indexes` builds it, run
+// `npm run migrate:pharmacy-email-duplicates` (dry run) and have an admin resolve every listed duplicate.
+pharmacySchema.index({ email: 1 }, { name: 'email_unique_1', unique: true, partialFilterExpression: { email: { $type: 'string' } } });
 // Q15: one pharmacy per (admin, create key). Declared here so `npm run sync-indexes` builds it.
 pharmacySchema.index({ createdBy: 1, createRequestKey: 1 }, { unique: true, partialFilterExpression: { createRequestKey: { $type: 'string' } } });
 

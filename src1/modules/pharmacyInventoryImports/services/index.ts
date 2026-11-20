@@ -51,33 +51,59 @@ export function normalizeHeaders(row: Record<string, any>): Record<string, any> 
   return out;
 }
 
-function parseSheet(filePath: string): Record<string, any>[] {
-  const workbook = XLSX.readFile(filePath);
-  const sheetName = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
-  // Raw values: a date-formatted cell arrives as its Excel serial number (read by expiryOf, without a time zone).
-  return XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: '' }).map(normalizeHeaders);
-}
+const pad = (n: number, w = 2) => String(n).padStart(w, '0');
 
 /**
- * Q15: the expiry as YYYYMMDD from a text date (YYYYMMDD or YYYY-MM-DD), an 8-digit number, a spreadsheet date (its
- * Excel serial number, read with the xlsx library's date code) or a Date. Anything else is returned as text (and then
- * refused by the date check).
+ * Q15 review: the first sheet as rows of raw values with normalized headers. CSV/text files are read with `raw: true`,
+ * so every value stays the text that was typed (the library would otherwise turn "12-05-2027" into a US month-first
+ * date). In a spreadsheet, ONLY a real date cell (a number with a date format) is a date: it becomes "YYYY-MM-DD" from
+ * the library's date code of its serial, which involves no time zone. A plain number stays a number.
+ */
+export function readSheetRows(filePath: string): Record<string, any>[] {
+  const workbook = XLSX.readFile(filePath, { raw: true, cellDates: false, cellNF: true });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  for (const [addr, cell] of Object.entries(sheet ?? {})) {
+    if (addr.startsWith('!') || !cell || typeof cell !== 'object') continue;
+    const c = cell as XLSX.CellObject;
+    if (c.t === 'n' && typeof c.v === 'number' && typeof c.z === 'string' && XLSX.SSF.is_date(c.z)) {
+      const d = c.v >= 1 ? XLSX.SSF.parse_date_code(Math.floor(c.v)) : null;
+      Object.assign(c, { t: 's', v: d && d.y && d.m && d.d ? `${pad(d.y, 4)}-${pad(d.m)}-${pad(d.d)}` : `#date-cell:${c.v}`, w: undefined, z: undefined });
+    } else if (c.t === 'd') {
+      Object.assign(c, { t: 's', v: `#date-cell:${String(c.v)}`, w: undefined }); // not produced with cellDates: false
+    }
+  }
+  return XLSX.utils.sheet_to_json<Record<string, any>>(sheet!, { defval: '', raw: true }).map(normalizeHeaders);
+}
+
+/** Q15 review: the expiry forms an import accepts (shown to pharmacies in the error). */
+export const EXPIRY_FORMS = 'YYYYMMDD, YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY, or MM/YYYY / MM-YYYY (the last day of that month)';
+
+/**
+ * Q15 review: the expiry as YYYYMMDD, or '' when the value is not one of the accepted forms (the row is then refused):
+ *  - text `YYYYMMDD`, `YYYY-MM-DD` (also what a spreadsheet date cell becomes in readSheetRows);
+ *  - text `DD-MM-YYYY` / `DD/MM/YYYY`, always day first (Indian order);
+ *  - text `MM/YYYY` / `MM-YYYY` as printed on packs ("EXP 12/2027"): the LAST day of that month;
+ *  - a number only when it is an 8-digit YYYYMMDD (a spreadsheet cell typed as 20271231).
+ * Any other number (an Excel serial without a date format, 202712, 122027, …), Date object or form is refused.
+ * Calendar validity is checked afterwards (isValidYyyymmdd).
  */
 export function expiryOf(value: unknown): string {
-  const pad = (n: number, w = 2) => String(n).padStart(w, '0');
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? '' : `${pad(value.getFullYear(), 4)}${pad(value.getMonth() + 1)}${pad(value.getDate())}`;
+  if (typeof value === 'number') {
+    return Number.isInteger(value) && value >= 10_000_000 && value <= 99_999_999 ? String(value) : '';
   }
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    if (Number.isInteger(value) && value >= 10_000_000 && value <= 99_999_999) return String(value); // typed as 20271231
-    if (value > 0 && value < 2_958_466) { // serials up to 9999-12-31
-      const d = XLSX.SSF.parse_date_code(value);
-      if (d && d.y && d.m && d.d) return `${pad(d.y, 4)}${pad(d.m)}${pad(d.d)}`;
-    }
-    return String(value);
+  if (typeof value !== 'string') return '';
+  const t = value.trim();
+  let m: RegExpMatchArray | null;
+  if ((m = t.match(/^(\d{4})(\d{2})(\d{2})$/)) || (m = t.match(/^(\d{4})-(\d{2})-(\d{2})$/))) return `${m[1]}${m[2]}${m[3]}`;
+  if ((m = t.match(/^(\d{1,2})([-/])(\d{1,2})\2(\d{4})$/))) return `${m[4]}${pad(Number(m[3]))}${pad(Number(m[1]))}`;
+  if ((m = t.match(/^(\d{1,2})[-/](\d{4})$/))) {
+    const month = Number(m[1]);
+    const year = Number(m[2]);
+    if (month < 1 || month > 12) return '';
+    const last = new Date(Date.UTC(year, month, 0)).getUTCDate(); // day 0 of the next month
+    return `${pad(year, 4)}${pad(month)}${pad(last)}`;
   }
-  return String(value ?? '').trim().replace(/-/g, '');
+  return '';
 }
 
 function isValidYyyymmdd(value: string): boolean {
@@ -116,9 +142,13 @@ function validateRow(input: Record<string, any>, index: number): ImportRowResult
   }
 
   const batchNumber = String(row['batch number'] || row['batchnumber'] || '').trim().toUpperCase();
-  const expiryDate = expiryOf(row['expiry date'] || row['expirydate'] || '');
+  const expiryRaw = row['expiry date'] || row['expirydate'] || '';
+  const expiryDate = expiryOf(expiryRaw);
   if (quantityToAdd > 0 && !batchNumber) errors.push('batch number is required when quantity is added');
-  if (quantityToAdd > 0 && !isValidYyyymmdd(expiryDate)) errors.push('expiry date must be a valid YYYYMMDD date');
+  // Q15 review: an expiry that was given must be readable, with or without stock added.
+  if ((quantityToAdd > 0 || String(expiryRaw).trim() !== '') && !isValidYyyymmdd(expiryDate)) {
+    errors.push(`expiry date must be a valid date: ${EXPIRY_FORMS}`);
+  }
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   if (isValidYyyymmdd(expiryDate) && expiryDate < today) {
     errors.push('expired stock cannot be imported');
@@ -267,33 +297,37 @@ export class InventoryImportService {
   ): Promise<IInventoryImport> {
     let rows: Record<string, any>[];
     try {
-      rows = parseSheet(filePath);
+      rows = readSheetRows(filePath);
     } catch (e) {
       await fs.unlink(filePath).catch(() => undefined);
       throw new AppError({ status: 400, code: 'PARSE_FAILED', message: 'Could not parse the uploaded file' });
     }
 
-    const previewRows = await Promise.all(
-      rows.map(async (row, i) => this.enrichPreviewRow(validateRow(row, i)))
-    );
-    const validRows = previewRows.filter((r) => r.status === 'valid').length;
-    const errorRows = previewRows.filter((r) => r.status === 'error').length;
+    // Q15 review: whatever fails after parsing (a medicine lookup, the record save), the upload is not left behind.
+    try {
+      const previewRows = await Promise.all(
+        rows.map(async (row, i) => this.enrichPreviewRow(validateRow(row, i)))
+      );
+      const validRows = previewRows.filter((r) => r.status === 'valid').length;
+      const errorRows = previewRows.filter((r) => r.status === 'error').length;
 
-    const record = await this.importRepo.save({
-      pharmacyId,
-      uploadedBy,
-      uploadedByRole,
-      fileName,
-      filePath,
-      importMode,
-      status: 'previewed',
-      totalRows: rows.length,
-      validRows,
-      errorRows,
-      previewRows,
-    });
-
-    return record;
+      return await this.importRepo.save({
+        pharmacyId,
+        uploadedBy,
+        uploadedByRole,
+        fileName,
+        filePath,
+        importMode,
+        status: 'previewed',
+        totalRows: rows.length,
+        validRows,
+        errorRows,
+        previewRows,
+      });
+    } catch (error) {
+      await fs.unlink(filePath).catch(() => undefined);
+      throw error;
+    }
   }
 
   async commit(importId: string, pharmacyId: string, retryFailedOnly = false): Promise<IInventoryImport> {

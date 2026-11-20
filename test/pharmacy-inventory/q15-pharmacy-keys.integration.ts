@@ -159,23 +159,63 @@ async function main() {
     });
 
     // ───────────────────────────── 9. Inventory imports ─────────────────────────────
-    await check('9: import headers match in any case and spacing; spreadsheet dates (date cells and serial numbers) and text dates are read as expiry', async () => {
-      const serial = (y: number, m: number, d: number) => (Date.UTC(y, m - 1, d) - Date.UTC(1899, 11, 30)) / 86_400_000;
+    await check('9: import headers match in any case and spacing; real date cells, 8-digit numbers and text dates are read as expiry', async () => {
       const file = sheetFile('stock.xlsx', [
         [' Medicine Name ', 'QUANTITY TO ADD', 'Batch Number ', ' expiry date', 'Retail Price'],
         ['Paracetamol 500', 5, 'b-1', new Date(2028, 5, 30), 12.5],
-        ['Cetirizine 10', 3, 'b-2', serial(2029, 1, 15), 8],
         ['Vitamin C', 2, 'b-3', '2030-03-01', 4],
         ['Iron Tabs', 1, 'b-4', 20310102, 4],
       ]);
       const r = await upload(file, tA);
       assert.equal(r.status, 200, JSON.stringify(r.json));
       const rows = r.json.data.previewRows;
-      assert.deepEqual(rows.map((x: any) => x.status), ['valid', 'valid', 'valid', 'valid'], JSON.stringify(rows.map((x: any) => x.errors)));
-      assert.deepEqual(rows.map((x: any) => x.data.expiryDate), ['20280630', '20290115', '20300301', '20310102']);
+      assert.deepEqual(rows.map((x: any) => x.status), ['valid', 'valid', 'valid'], JSON.stringify(rows.map((x: any) => x.errors)));
+      assert.deepEqual(rows.map((x: any) => x.data.expiryDate), ['20280630', '20300301', '20310102']);
       assert.deepEqual(rows.map((x: any) => [x.data.name, x.data.quantityToAdd, x.data.batchNumber]),
-        [['Paracetamol 500', 5, 'B-1'], ['Cetirizine 10', 3, 'B-2'], ['Vitamin C', 2, 'B-3'], ['Iron Tabs', 1, 'B-4']]);
+        [['Paracetamol 500', 5, 'B-1'], ['Vitamin C', 2, 'B-3'], ['Iron Tabs', 1, 'B-4']]);
       assert.equal(rows[0].data.retailPrice, 12.5);
+    });
+
+    await check('9 review: CSV dates stay text and are read day-first (12-05-2027 is 12 May); MM/YYYY is the month\'s last day; other forms and plain numbers are refused', async () => {
+      const file = path.join(tmp, 'dates.csv');
+      fs.writeFileSync(file, ['Medicine Name,Quantity To Add,Batch Number,Expiry Date',
+        'A,1,B1,12-05-2027', 'B,1,B2,12/05/2027', 'C,1,B3,2027-12-31', 'D,1,B4,20271231', 'E,1,B5,12/2027', 'F,1,B6,02-2028',
+        'G,1,B7,202712', 'H,1,B8,122027', 'I,1,B9,50000', 'J,1,B10,12/31/27', 'K,1,B11,2027/12/31', 'L,1,B12,Dec-27', 'M,1,B13,13/2027', 'N,1,B14,31-02-2027'].join('\n'));
+      const r = await upload(file, tA);
+      assert.equal(r.status, 200, JSON.stringify(r.json));
+      const rows = r.json.data.previewRows;
+      assert.deepEqual(rows.slice(0, 6).map((x: any) => [x.status, x.data?.expiryDate]),
+        [['valid', '20270512'], ['valid', '20270512'], ['valid', '20271231'], ['valid', '20271231'], ['valid', '20271231'], ['valid', '20280229']]);
+      for (const x of rows.slice(6)) {
+        assert.equal(x.status, 'error', `${x.medicineName} refused`);
+        assert.match(x.errors.join(' '), /expiry date must be a valid date: YYYYMMDD, YYYY-MM-DD, DD-MM-YYYY, DD\/MM\/YYYY, or MM\/YYYY/);
+      }
+    });
+
+    await check('9 review: in a spreadsheet only a real date cell is a date, read the same under UTC, Asia/Kolkata and America/Los_Angeles; a plain serial number is refused', async () => {
+      const ws = XLSX.utils.aoa_to_sheet([['Medicine Name', 'Quantity To Add', 'Batch Number', 'Expiry Date'], ['A', 1, 'B1', 0], ['B', 1, 'B2', 0], ['C', 1, 'B3', 0]]);
+      ws['D2'] = { t: 'n', v: 46752.75, z: 'dd/mm/yyyy' }; // 2027-12-31 18:00, a date cell
+      ws['D3'] = { t: 'n', v: 46752, z: 'yyyy-mm-dd' };
+      ws['D4'] = { t: 'n', v: 46752 }; // the same serial without a date format: a plain number
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'S');
+      const file = path.join(tmp, 'zones.xlsx');
+      XLSX.writeFile(wb, file);
+      const { readSheetRows } = await import('@/modules/pharmacyInventoryImports/services') as any;
+      assert.equal(typeof readSheetRows, 'function', 'the sheet reader is exported');
+      const before = process.env.TZ;
+      const seen: string[] = [];
+      try {
+        for (const tz of ['UTC', 'Asia/Kolkata', 'America/Los_Angeles']) {
+          process.env.TZ = tz;
+          seen.push(JSON.stringify(readSheetRows(file).map((r: any) => r['expiry date'])));
+        }
+      } finally {
+        if (before === undefined) delete process.env.TZ; else process.env.TZ = before;
+      }
+      assert.deepEqual(seen, Array(3).fill(JSON.stringify(['2027-12-31', '2027-12-31', 46752])));
+      const r = await upload(file, tA);
+      assert.deepEqual(r.json.data.previewRows.map((x: any) => [x.status, x.data?.expiryDate]), [['valid', '20271231'], ['valid', '20271231'], ['error', undefined]]);
     });
 
     await check('9: the import answers never carry the server file path (preview, record, list)', async () => {
@@ -202,6 +242,55 @@ async function main() {
       assert.equal(filesNow(), files, 'the uploaded file was removed');
       const ok = await upload(file, tA, { importMode: 'update_only' });
       assert.deepEqual([ok.status, ok.json.data.importMode], [200, 'update_only']);
+    });
+
+    await check('9 review: a preview that fails after parsing (a database error) removes the uploaded file', async () => {
+      const svc = Container.get(InventoryImportService) as any;
+      const save = svc.importRepo.save;
+      svc.importRepo.save = async () => { throw new Error('database unavailable'); };
+      try {
+        const files = filesNow();
+        const r = await upload(sheetFile('dbfail.xlsx', [['name', 'quantity to add'], ['Paracetamol 500', 0]]), tA);
+        assert.equal(r.status, 500);
+        assert.equal(filesNow(), files, 'the uploaded file was removed');
+      } finally {
+        svc.importRepo.save = save;
+      }
+    });
+
+    // ───────────────────────────── Q15 review: keyed creates fail closed without their unique index ─────────────────────────────
+    await check('7/8 review: without the unique key index (sync-indexes not run) keyed saves and supplier creates answer 503 INDEXES_OUTDATED and change nothing; unkeyed ones still work', async () => {
+      const { PharmacyCreateRequestModel: Req } = await import('@/modules/pharmacyInventory/model/createRequest');
+      const reset = (await import('@/modules/common/utils/requiredIndex').catch(() => ({}))) as { resetIndexChecks?: () => void };
+      await Req.collection.drop().catch(() => undefined);
+      reset.resetIndexChecks?.();
+      try {
+        const qty = async () => (await InventoryItemModel.findOne({ pharmacyId: pA, medicineId: m2 }).lean())?.availableQty ?? 0;
+        const before = await qty();
+        const inv = await call('POST', '/api/v1/pharmacy-inventory', tA, { items: [{ medicineId: m2, quantity: 4, batchNumber: 'b-ix', expiryDate: future }], requestKey: 'inv-noindex-q15-01' });
+        assert.deepEqual([inv.status, inv.json.code], [503, 'INDEXES_OUTDATED']);
+        assert.equal(await qty(), before, 'no stock added');
+        const sup = await call('POST', '/api/v1/pharmacy-suppliers', tA, { displayName: 'No Index Traders', requestKey: 'sup-noindex-q15-01' });
+        assert.deepEqual([sup.status, sup.json.code], [503, 'INDEXES_OUTDATED']);
+        assert.equal(await PharmacySupplierModel.countDocuments({ displayName: 'No Index Traders' }), 0);
+        assert.equal((await call('POST', '/api/v1/pharmacy-inventory', tA, { items: [{ medicineId: m2, reorderThreshold: 3 }] })).status, 201, 'unkeyed save unchanged');
+      } finally {
+        await Req.createCollection(); await Req.createIndexes();
+      }
+      const ok = await call('POST', '/api/v1/pharmacy-inventory', tA, { items: [{ medicineId: m2, reorderThreshold: 4 }], requestKey: 'inv-noindex-q15-02' });
+      assert.equal(ok.status, 201, 'once the index exists, keyed saves work again (no restart)');
+    });
+
+    await check('7/8 review (regression): concurrent identical keyed saves add the stock once and concurrent keyed supplier creates make one supplier', async () => {
+      const body = { items: [{ medicineId: m1, quantity: 7, batchNumber: 'b-race', expiryDate: future }], requestKey: 'inv-race-q15-0001' };
+      const before = (await InventoryItemModel.findOne({ pharmacyId: pA, medicineId: m1 }).lean())!.availableQty;
+      const answers = await Promise.all(Array.from({ length: 8 }, () => call('POST', '/api/v1/pharmacy-inventory', tA, body)));
+      assert.ok(answers.every((a) => [200, 201].includes(a.status)), JSON.stringify(answers.map((a) => [a.status, a.json.code])));
+      assert.equal((await InventoryItemModel.findOne({ pharmacyId: pA, medicineId: m1 }).lean())!.availableQty, before + 7);
+      const sup = await Promise.all(Array.from({ length: 6 }, () => call('POST', '/api/v1/pharmacy-suppliers', tA, { displayName: 'Race Pharma', requestKey: 'sup-race-q15-0001' })));
+      assert.ok(sup.every((a) => [200, 201].includes(a.status)), JSON.stringify(sup.map((a) => [a.status, a.json.code])));
+      assert.equal(new Set(sup.map((a) => a.json.data.supplierId)).size, 1);
+      assert.equal(await PharmacySupplierModel.countDocuments({ displayName: 'Race Pharma' }), 1);
     });
   } finally {
     server.close();

@@ -1,4 +1,5 @@
 import { hitClient } from '@/modules/otp/throttle';
+import { withoutCreateKey } from '@/modules/pharmacies/ownView';
 import 'reflect-metadata';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
@@ -233,7 +234,7 @@ export class AuthController {
       return res.status(200).json({
         success: true,
         message: 'Profile retrieved successfully',
-        data: { user: pharmacy, userRole: 'pharmacy' },
+        data: { user: withoutCreateKey(pharmacy), userRole: 'pharmacy' }, // Q15 review: no admin create key
       });
     }
 

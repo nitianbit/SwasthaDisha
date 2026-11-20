@@ -402,6 +402,94 @@ async function main() {
       const byAdmin = await call('PUT', `/api/v1/partner-workspace/admin/${labId}/workspace/members/${tech._id}/professional`, adminToken, { professional: null });
       assert.equal(byAdmin.status, 200, JSON.stringify(byAdmin.json));
     });
+
+    // ───────────────────────────── Q15 review ─────────────────────────────
+    await check('5 review: without the (admin, key) unique index a keyed pharmacy create answers 503 INDEXES_OUTDATED and creates nothing', async () => {
+      const reset = (await import('@/modules/common/utils/requiredIndex').catch(() => ({}))) as { resetIndexChecks?: () => void };
+      const name = (await PharmacyModel.collection.indexes()).find((ix: any) => ix.key?.createdBy === 1 && ix.key?.createRequestKey === 1)?.name;
+      if (name) await PharmacyModel.collection.dropIndex(name);
+      reset.resetIndexChecks?.();
+      try {
+        const phone = nextPhone();
+        const r = await call('POST', '/api/v1/pharmacies', adminToken, { name: 'No Index', phone, requestKey: rk('pharm') });
+        assert.deepEqual([r.status, r.json.code], [503, 'INDEXES_OUTDATED']);
+        assert.equal(await PharmacyModel.countDocuments({ phone }), 0);
+        assert.equal((await call('POST', '/api/v1/pharmacies', adminToken, { name: 'Unkeyed', phone: nextPhone() })).status, 201, 'unkeyed create unchanged');
+      } finally {
+        await PharmacyModel.createIndexes();
+      }
+      assert.equal((await call('POST', '/api/v1/pharmacies', adminToken, { name: 'Keyed again', phone: nextPhone(), requestKey: rk('pharm') })).status, 201);
+    });
+
+    await check('3 review: concurrent identical keyed pharmacy creates all answer with the one pharmacy (never 400 PHONE/EMAIL_ALREADY_EXISTS)', async () => {
+      const body = { name: 'Race Pharmacy', phone: nextPhone(), email: `race${ph}@example.com`, requestKey: rk('pharm') };
+      const answers = await Promise.all(Array.from({ length: 8 }, () => call('POST', '/api/v1/pharmacies', adminToken, body)));
+      assert.ok(answers.every((a) => [200, 201].includes(a.status)), JSON.stringify(answers.map((a) => [a.status, a.json.code])));
+      assert.equal(new Set(answers.map((a) => a.json.data._id)).size, 1);
+      assert.equal(answers.filter((a) => a.status === 201).length, 1);
+    });
+
+    await check('4 review: GET /auth/profile for a pharmacy leaves out the admin create key', async () => {
+      const made = await call('POST', '/api/v1/pharmacies', adminToken, { name: 'Profile Pharmacy', phone: nextPhone(), requestKey: rk('pharm') });
+      assert.equal(made.status, 201);
+      assert.ok((await PharmacyModel.findById(made.json.data._id).lean() as any).createRequestKey, 'stored');
+      const { AuthController } = await import('@/modules/auth/controller');
+      const ctl = new AuthController();
+      let body: any;
+      const res: any = { status: () => res, json: (b: unknown) => { body = b; return res; } };
+      await ctl.getProfile({ user: { _id: made.json.data._id, pharmacyId: made.json.data._id, userType: 'pharmacy' } } as any, res, () => undefined);
+      assert.equal(body?.data?.user?.name, 'Profile Pharmacy');
+      assert.deepEqual(['createdBy', 'createRequestKey', 'createRequestHash'].filter((k) => k in body.data.user), []);
+    });
+
+    await check('5 review: pharmacy emails are unique under concurrency (index email_unique_1): two creates or two edits racing for one email never both win', async () => {
+      const email = `same${ph}@example.com`;
+      const creates = await Promise.all([0, 1, 2, 3].map(() => call('POST', '/api/v1/pharmacies', adminToken, { name: 'Twin', phone: nextPhone(), email })));
+      assert.equal(creates.filter((a) => a.status === 201).length, 1, JSON.stringify(creates.map((a) => [a.status, a.json.code])));
+      assert.ok(creates.filter((a) => a.status !== 201).every((a) => a.json.code === 'EMAIL_ALREADY_EXISTS' && [400, 409].includes(a.status)));
+      const p1 = await newPharmacy({ email: undefined });
+      const p2 = await newPharmacy({ email: undefined });
+      const email2 = `edit${ph}@example.com`;
+      const edits = await Promise.all([p1, p2, p1, p2].map((p) => call('PUT', `/api/v1/pharmacies/${p._id}`, adminToken, { email: email2 })));
+      assert.ok(edits.some((a) => a.status === 200));
+      assert.ok(edits.filter((a) => a.status !== 200).every((a) => a.json.code === 'EMAIL_ALREADY_EXISTS'), JSON.stringify(edits.map((a) => [a.status, a.json.code])));
+      assert.equal(await PharmacyModel.countDocuments({ email: email2 }), 1);
+      const ix = (await PharmacyModel.collection.indexes()).find((i: any) => i.name === 'email_unique_1') as any;
+      assert.deepEqual([ix?.unique, ix?.partialFilterExpression], [true, { email: { $type: 'string' } }]);
+    });
+
+    await check('5 review: migrate:pharmacy-email-duplicates (dry run) lists case-variant duplicates masked, with the pharmacy ids, and writes nothing', async () => {
+      const mod = await import('@/scripts/pharmacyEmailDuplicates').catch(() => null) as any;
+      assert.ok(mod?.findPharmacyEmailDuplicates, 'the dry-run script exists');
+      const pkg = JSON.parse(require('node:fs').readFileSync(require('node:path').resolve(process.cwd(), 'package.json'), 'utf8'));
+      assert.equal(pkg.scripts['migrate:pharmacy-email-duplicates'], 'tsx src1/scripts/pharmacyEmailDuplicates.ts');
+      const a = new Types.ObjectId();
+      const b = new Types.ObjectId();
+      // Legacy rows written around the schema: the same address in two letter cases (the index alone accepts both).
+      await PharmacyModel.collection.insertMany([{ _id: a, name: 'Old A', phone: nextPhone(), email: 'Ravi.Shop@Example.com' }, { _id: b, name: 'Old B', phone: nextPhone(), email: ' ravi.shop@example.com' }] as any);
+      const before = JSON.stringify(await PharmacyModel.find({ _id: { $in: [a, b] } }).lean());
+      const report = await mod.findPharmacyEmailDuplicates();
+      const dup = report.duplicates.find((d: any) => d.pharmacyIds.includes(String(a)));
+      assert.deepEqual(dup, { email: 'r***@e***.com', pharmacyIds: [String(a), String(b)] });
+      assert.equal(JSON.stringify(report).includes('ravi.shop'), false, 'emails are masked');
+      assert.equal(JSON.stringify(await PharmacyModel.find({ _id: { $in: [a, b] } }).lean()), before, 'nothing written');
+      await PharmacyModel.deleteMany({ _id: { $in: [a, b] } });
+    });
+
+    await check('6 review: the same email in other letter case keeps the sessions; clearing latitude or longitude clears both, and clearing one while setting the other is refused', async () => {
+      const id = new Types.ObjectId();
+      await PharmacyModel.collection.insertOne({ _id: id, name: 'Legacy Case', phone: nextPhone(), email: 'Legacy.Case@Example.com', latitude: 18.5, longitude: 73.8,
+        isActive: true, isVerified: true, createdAt: new Date(), updatedAt: new Date() } as any);
+      const s1 = [await openSession(String(id), 'workspace')];
+      const r = await call('PUT', `/api/v1/pharmacies/${id}`, adminToken, { email: 'legacy.case@example.com' });
+      assert.equal(r.status, 200, JSON.stringify(r.json));
+      assert.equal(await live(s1), 1, 'a letter-case change is not a new sign-in email');
+      const half = await call('PUT', `/api/v1/pharmacies/${id}`, adminToken, { latitude: null, longitude: 72.9 });
+      assert.deepEqual([half.status, half.json.code], [400, 'VALIDATION_ERROR']);
+      assert.equal((await call('PUT', `/api/v1/pharmacies/${id}`, adminToken, { latitude: null })).status, 200);
+      const after = await PharmacyModel.findById(id).lean() as any;
+      assert.deepEqual([after.latitude, after.longitude], [undefined, undefined]);
+    });
   } finally {
     server.close();
   }

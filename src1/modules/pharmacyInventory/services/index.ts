@@ -27,6 +27,7 @@ import { isDuplicateKeyError } from '@/modules/common/utils/mongoErrors';
 import { requestHashOf } from '@/modules/common/utils/canonicalJson';
 import { InventoryItemModel } from '@/modules/pharmacyInventory/model';
 import { PharmacyCreateRequestModel } from '@/modules/pharmacyInventory/model/createRequest';
+import { assertUniqueIndex, KeyAlreadyUsed } from '@/modules/common/utils/requiredIndex';
 
 function isValidInventoryDate(value: string): boolean {
   if (!/^\d{8}$/.test(value)) return false;
@@ -250,18 +251,26 @@ export class InventoryService {
       }
       return { items: await this.itemsByIds(pharmacyId, prior.resultIds), replayed: true };
     };
+    // Q15 review: exactly-once rests on the unique key index; without it, refuse (503) rather than risk a double save.
+    await assertUniqueIndex(PharmacyCreateRequestModel, { pharmacyId: 1, kind: 1, requestKey: 1 });
     const prior = await replay();
     if (prior) return prior;
     try {
       const items = await this.saveItems(data, adjustedBy, adjustedByRole, async (saved, session) => {
         await PharmacyCreateRequestModel.create([{ pharmacyId, kind: 'inventory_items', requestKey, requestHash,
           resultIds: saved.map((i) => String(i._id)), at: new Date() }], { session });
+      }, async (session) => {
+        // Q15 review: looked up again inside every attempt, so an attempt retried after a concurrent same-key save
+        // committed (a write conflict on the same stock) answers with that save instead of adding the stock again.
+        if (await PharmacyCreateRequestModel.exists({ pharmacyId: { $eq: pharmacyId }, kind: 'inventory_items', requestKey: { $eq: requestKey } }).session(session)) {
+          throw new KeyAlreadyUsed();
+        }
       });
       return { items, replayed: false };
     } catch (error) {
-      if (!isDuplicateKeyError(error)) throw error;
+      if (!(error instanceof KeyAlreadyUsed) && !isDuplicateKeyError(error)) throw error;
       const raced = await replay();
-      if (!raced) throw error;
+      if (!raced) throw error instanceof KeyAlreadyUsed ? new AppError({ status: 409, code: 'REQUEST_KEY_REUSED', message: 'This request key was already used' }) : error;
       return raced;
     }
   }
@@ -283,7 +292,8 @@ export class InventoryService {
     data: CreateInventoryItemsRequest,
     adjustedBy?: string,
     adjustedByRole?: string,
-    inTx?: (saved: IInventoryItem[], session: ClientSession) => Promise<void>
+    inTx?: (saved: IInventoryItem[], session: ClientSession) => Promise<void>,
+    beforeTx?: (session: ClientSession) => Promise<void>
   ): Promise<IInventoryItem[]> {
     if (data.items.length === 0) {
       throw new AppError({
@@ -328,6 +338,7 @@ export class InventoryService {
       const results: IInventoryItem[] = [];
       await session.withTransaction(async () => {
         results.length = 0; // a retried transaction attempt starts over
+        if (beforeTx) await beforeTx(session);
         for (const item of items) {
           const saved = await this.saveItem(item, session);
           const actualDelta = item.quantity ?? 0;

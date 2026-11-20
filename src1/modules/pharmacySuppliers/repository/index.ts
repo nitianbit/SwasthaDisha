@@ -1,6 +1,7 @@
 import { Service } from 'typedi';
 import mongoose, { PipelineStage, Types } from 'mongoose';
 import { requestHashOf } from '@/modules/common/utils/canonicalJson';
+import { assertUniqueIndex, KeyAlreadyUsed } from '@/modules/common/utils/requiredIndex';
 import { PharmacyCreateRequestModel, PHARMACY_REQUEST_KEY } from '@/modules/pharmacyInventory/model/createRequest';
 import PharmacySupplierModel from '@/modules/pharmacySuppliers/model';
 import { AppError } from '@/modules/common/types';
@@ -109,12 +110,18 @@ export class PharmacySupplierRepository {
       }
       return { ...(await this.getOwned(pharmacyId, prior.resultIds[0]!)), replayed: true };
     };
+    // Q15 review: exactly-once rests on the unique key index; without it, refuse (503) rather than risk two suppliers.
+    await assertUniqueIndex(PharmacyCreateRequestModel, { pharmacyId: 1, kind: 1, requestKey: 1 });
     const prior = await replay();
     if (prior) return prior;
     const session = await mongoose.startSession();
     try {
       let made!: SupplierDto;
       await session.withTransaction(async () => {
+        // Looked up again inside every attempt: a concurrent same-key create that committed is answered as a replay.
+        if (await PharmacyCreateRequestModel.exists({ pharmacyId: { $eq: pharmacyId }, kind: 'supplier', requestKey: { $eq: requestKey } }).session(session)) {
+          throw new KeyAlreadyUsed();
+        }
         const row = build();
         await row.save({ session });
         await PharmacyCreateRequestModel.create([{ pharmacyId, kind: 'supplier', requestKey, requestHash, resultIds: [row._id.toHexString()], at: new Date() }],
@@ -123,9 +130,9 @@ export class PharmacySupplierRepository {
       });
       return made;
     } catch (error) {
-      if ((error as { code?: number })?.code !== 11000) throw error;
+      if (!(error instanceof KeyAlreadyUsed) && (error as { code?: number })?.code !== 11000) throw error;
       const raced = await replay();
-      if (!raced) throw error;
+      if (!raced) throw error instanceof KeyAlreadyUsed ? new AppError({ status: 409, code: 'REQUEST_KEY_REUSED', message: 'This request key was already used' }) : error;
       return raced;
     } finally {
       await session.endSession();

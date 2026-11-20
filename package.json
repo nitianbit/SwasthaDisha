@@ -12,6 +12,7 @@
     "dev": "ts-node-dev -r tsconfig-paths/register --respawn src1/index.ts",
     "sync-indexes": "tsx src1/scripts/syncIndexes.ts",
     "d1-manifest": "tsx src1/scripts/d1LegacyFileManifest.ts",
+    "migrate:pharmacy-email-duplicates": "tsx src1/scripts/pharmacyEmailDuplicates.ts",
     "migrate:pharmacy-inventory-batches": "tsx src1/scripts/migratePharmacyInventoryBatches.ts",
     "migrate:q2-user-phones": "tsx src1/scripts/q2UserPhoneIndex.ts",
     "migrate:q3-settlement-cutover": "tsx src1/scripts/q3SettlementCutover.ts",
