@@ -221,6 +221,36 @@ async function main() {
     assert.equal(moved.status, 'confirmed');
   });
 
+  await check('owner rule: a customer refund is judged against the EARLIER of the original and the current appointment (a reschedule never reopens a closed window)', async () => {
+    // Inside the no-refund window (10 h away): the move is allowed, the booking stays non-refundable afterwards.
+    const u = await customer();
+    const soon = new Date(Date.now() + 10 * 3_600_000);
+    const id = await paidBooking(u.id, drM, {}, soon);
+    const before = await BookingModel.findById(id).lean();
+    await BookingModel.updateOne({ _id: id }, { $set: { walletFunding: { total: 400, revision: 1, closed: false, captures: [] } } });
+    const moved = await bookings.rescheduleBooking(id, { slotId: await slotAt(drM, new Date(Date.now() + 6 * DAY)) }, { _id: u.id, userType: 'user' });
+    assert.deepEqual(moved.originalAppointment, { bookingDate: before!.bookingDate, bookingTime: before!.bookingTime });
+    await assert.rejects(() => bookings.cancelBooking(id, { cancellationReason: 'x' }, { _id: u.id, userType: 'user' }), code('CANCELLATION_WINDOW_CLOSED'));
+    // A second move keeps the first original time.
+    const again = await bookings.rescheduleBooking(id, { slotId: await slotAt(drM, new Date(Date.now() + 7 * DAY)) }, { _id: u.id, userType: 'user' });
+    assert.deepEqual(again.originalAppointment, moved.originalAppointment);
+    await assert.rejects(() => bookings.cancelBooking(id, { cancellationReason: 'x' }, { _id: u.id, userType: 'user' }), code('CANCELLATION_WINDOW_CLOSED'));
+    // Doctor (and admin) cancellations are unchanged: a full refund.
+    await bookings.cancelByDoctor(id, { _id: drM, userType: 'specialist' }, 'Unavailable');
+    assert.equal(await balance(u.id), 400);
+    // Moved while the window was still open: still refundable while both windows are open.
+    const u2 = await customer();
+    const id2 = await paidBooking(u2.id, drM, {}, new Date(Date.now() + 5 * DAY));
+    await BookingModel.updateOne({ _id: id2 }, { $set: { walletFunding: { total: 400, revision: 1, closed: false, captures: [] } } });
+    await bookings.rescheduleBooking(id2, { slotId: await slotAt(drM, new Date(Date.now() + 6 * DAY + 3_600_000)) }, { _id: u2.id, userType: 'user' });
+    await bookings.cancelBooking(id2, { cancellationReason: 'x' }, { _id: u2.id, userType: 'user' });
+    assert.equal(await balance(u2.id), 400);
+    // An admin move does not record an original time.
+    const id3 = await paidBooking(u2.id, drM);
+    const admMoved = await bookings.rescheduleBooking(id3, { slotId: await slotAt(drM, futureStart()) }, { _id: ADMIN, userType: 'admin' });
+    assert.equal(admMoved.originalAppointment, undefined);
+  });
+
   // ───────────────────────────── M1: started slots and the no-show grace ─────────────────────────────
   await check('a slot that has started cannot be booked (India time), nor listed; the no-show grace is 15 minutes', async () => {
     const u = await customer();

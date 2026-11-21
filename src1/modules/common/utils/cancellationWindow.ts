@@ -62,10 +62,17 @@ export function parseAppointment({
   };
 }
 
+/**
+ * `earlierAppointments` (Q16a, owner rule of 23 Nov 2026): times the booking had before a customer moved it (the
+ * original appointment as first booked). They count only for the refund deadline — the earliest deadline of the
+ * current and earlier times applies, so a reschedule can never reopen a window that had already closed — never for
+ * "already started" (that is the current appointment's).
+ */
 export function enforceUserCancellationWindow(
   appointments: CancellationAppointment[],
   userType: string,
-  now = new Date()
+  now = new Date(),
+  earlierAppointments: CancellationAppointment[] = []
 ): void {
   const parsed = appointments.map(parseAppointment);
   if (!parsed.length || parsed.some((appointment) => !appointment)) {
@@ -91,11 +98,17 @@ export function enforceUserCancellationWindow(
 
   if (userType !== 'user') return;
 
-  const cancellationDeadline = appointmentsByTime
-    .map((appointment) => {
+  const earlier = earlierAppointments.map(parseAppointment)
+    .filter((value): value is NonNullable<typeof value> => Boolean(value));
+  const cancellationDeadline = [
+    ...appointmentsByTime.map((appointment) => ({ appointment, original: false })),
+    ...earlier.map((appointment) => ({ appointment, original: true })),
+  ]
+    .map(({ appointment, original }) => {
       const cutoffHours = appointment.weekday === 1 ? 48 : 24;
       return {
         cutoffHours,
+        original,
         at: appointment.at.getTime() - cutoffHours * HOUR_MS,
       };
     })
@@ -105,7 +118,9 @@ export function enforceUserCancellationWindow(
     throw new AppError({
       status: 400,
       code: 'CANCELLATION_WINDOW_CLOSED',
-      message: `Booking cannot be cancelled within ${cancellationDeadline.cutoffHours} hours of the appointment time`,
+      message: cancellationDeadline.original
+        ? `Booking cannot be cancelled for a refund: its cancellation window (${cancellationDeadline.cutoffHours} hours before the original appointment time) closed before it was rescheduled`
+        : `Booking cannot be cancelled within ${cancellationDeadline.cutoffHours} hours of the appointment time`,
     });
   }
 }

@@ -144,7 +144,11 @@ export class BookingService {
    * by anyone; customers must cancel at least 24 h before (48 h for a Monday appointment).
    */
   private enforceUserCancellationWindow(booking: IBooking, requester: { userType: string }): void {
-    enforceUserCancellationWindow([{ bookingDate: booking.bookingDate, bookingTime: booking.bookingTime }], requester.userType);
+    // Q16a (owner rule, 23 Nov 2026): the refund deadline is the earlier of the original appointment (stored on the first
+    // customer reschedule) and the current one, so rescheduling never reopens a closed window. Desk bookings are not
+    // paid through us (no captured money, no window); doctor and admin cancellations pass no window at all.
+    const original = booking.originalAppointment && !booking.clinicDesk ? [booking.originalAppointment] : [];
+    enforceUserCancellationWindow([{ bookingDate: booking.bookingDate, bookingTime: booking.bookingTime }], requester.userType, new Date(), original);
   }
 
   private isEligibleForNewFollowUpBenefit(booking: IBooking): boolean {
@@ -1803,7 +1807,7 @@ export class BookingService {
     // missed appointment is never moved away from its no-show and then cancelled for a refund.
     const updated = await rescheduleWithHolds({
       bookingId, requester, nextSlotId: data.slotId,
-      ...(requester.userType === 'admin' ? {} : { refuseStartedSource: () => new Date() }),
+      ...(requester.userType === 'admin' ? {} : { refuseStartedSource: () => new Date(), recordOriginalAppointment: true }),
       patch: { ...updatePayload, lifecycle: this.buildLifecyclePatch(booking.lifecycle, { rescheduled: true }) },
     });
 

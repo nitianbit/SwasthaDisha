@@ -153,6 +153,8 @@ export interface IBooking {
   noShowReschedules?: number;
   /** Q16a: a moved no-show cancelled by an admin, refunded or not (their choice). */
   noShowCancel?: { at: Date; by: string; refund: boolean };
+  /** Q16a: the appointment before the first customer reschedule; the refund window uses the earlier of it and the current one. */
+  originalAppointment?: { bookingDate: string; bookingTime: string };
   settlement?: { settlementAccountId?: string; beneficiaryName?: string };
   bookingKind?: 'scheduled' | 'instant';
   instantRequestId?: string;

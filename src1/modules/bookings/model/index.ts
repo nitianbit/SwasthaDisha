@@ -443,6 +443,11 @@ const bookingSchema = new Schema<IBooking>(
     },
     noShowReschedules: { type: Number },
     // Q16a: an admin cancelled this moved no-show; refund false = the money stays (nobody earns it).
+    // Q16a: the appointment before the first customer reschedule (never overwritten); refund window = earlier of it and the current one.
+    originalAppointment: {
+      type: new Schema({ bookingDate: { type: String, required: true }, bookingTime: { type: String, required: true } }, { _id: false }),
+      default: undefined,
+    },
     noShowCancel: {
       type: new Schema({ at: { type: Date, required: true }, by: { type: String, required: true }, refund: { type: Boolean, required: true } }, { _id: false }),
       default: undefined,

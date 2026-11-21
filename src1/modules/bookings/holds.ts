@@ -505,6 +505,12 @@ export async function rescheduleWithHolds(p: {
    */
   refuseStartedSource?: () => Date;
   /**
+   * Q16a (owner rule, 23 Nov 2026): a customer move keeps the appointment as it was before the FIRST such move
+   * (`originalAppointment`, never overwritten); the refund window is judged against the earlier of that and the
+   * current time. Not for desk appointments (not paid through us) nor no-show moves.
+   */
+  recordOriginalAppointment?: boolean;
+  /**
    * Q14: move a no-show back to confirmed on a later slot, once (same price, no payment, no refund). The caller has
    * already admitted the requester (doctor, clinic desk or admin); `owner` narrows the booking read in the transaction.
    */
@@ -604,8 +610,10 @@ export async function rescheduleWithHolds(p: {
       fromSlotId: current ?? undefined, fromDate: booking.bookingDate, fromTime: booking.bookingTime, toSlotId: target,
       requestKey: p.noShow.requestKey, requestHash: p.noShow.requestHash } } } : {};
     const unset = { ...clinicUnset, ...(p.noShow ? { noShow: 1 as const } : {}) };
+    const originalSet = p.recordOriginalAppointment && !p.noShow && !booking.clinicDesk && !booking.originalAppointment
+      ? { originalAppointment: { bookingDate: booking.bookingDate, bookingTime: booking.bookingTime } } : {};
     const updated = await BookingModel.findOneAndUpdate({ _id: id, status: booking.status },
-      { $set: { ...p.patch, bookingTime, slotId: target, holds, ...clinicSet, ...noShowSet }, ...noShowPush, ...(Object.keys(unset).length ? { $unset: unset } : {}) },
+      { $set: { ...p.patch, bookingTime, slotId: target, holds, ...clinicSet, ...noShowSet, ...originalSet }, ...noShowPush, ...(Object.keys(unset).length ? { $unset: unset } : {}) },
       { new: true, session: s }).lean() as IBooking | null;
     if (!updated) throw changed();
     if (p.inTx) await p.inTx(updated, s);
