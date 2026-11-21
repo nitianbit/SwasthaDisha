@@ -15,6 +15,7 @@ import {
   ManualInventoryReservationRequest,
 } from '@/modules/pharmacyInventory/types';
 import { AppError } from '@/modules/common/types';
+import { istTodayYyyymmdd } from '@/modules/pharmacyInventory/businessDate';
 
 type InventoryResponseShape = {
   _id?: string;
@@ -57,7 +58,7 @@ export class InventoryController {
         ? item.medicineId
         : undefined;
 
-      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const today = istTodayYyyymmdd();
       const sellableAvailableQty = item.batches?.length
         ? item.batches.reduce(
             (total: number, batch: any) =>
@@ -183,6 +184,8 @@ export class InventoryController {
       lowStock: q.lowStock !== undefined ? q.lowStock === 'true' : undefined,
       search: q.search,
       includeBatches: q.includeBatches === 'true',
+      // Q16c: customers see only priced items (an unpriced one is not on sale; the cart refuses it).
+      pricedForCustomers: isUser,
       page: q.page ? parseInt(q.page) : 1,
       limit: q.limit ? parseInt(q.limit) : 20,
     };

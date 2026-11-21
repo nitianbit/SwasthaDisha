@@ -35,6 +35,12 @@ export class InventoryImportController {
       throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: `importMode must be one of: ${IMPORT_MODES.join(', ')}` });
     }
     const importMode = (rawMode as ImportMode) || 'upsert';
+    // Q16c: optional supplier for the whole file (a form field): a supplier id; ownership is checked by the service.
+    const rawSupplier = req.body?.supplierId;
+    if (rawSupplier !== undefined && rawSupplier !== '' && !(typeof rawSupplier === 'string' && /^[0-9a-fA-F]{24}$/.test(rawSupplier))) {
+      await fs.unlink(req.file.path).catch(() => undefined);
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'supplierId must be a supplier id' });
+    }
 
     const result = await this.service.preview(
       pharmacyId,
@@ -42,7 +48,8 @@ export class InventoryImportController {
       req.user?.userType || 'pharmacy',
       req.file.originalname,
       req.file.path,
-      importMode
+      importMode,
+      rawSupplier ? String(rawSupplier).toLowerCase() : undefined
     );
 
     res.status(200).json({ success: true, message: 'Preview ready', data: publicImportView(result) });
@@ -72,6 +79,18 @@ export class InventoryImportController {
     );
     res.setHeader('Content-Disposition', `attachment; filename="inventory-import-${req.params.id}-failed.xlsx"`);
     res.status(200).send(buffer);
+  };
+
+  /** Q16c: GET /pharmacy-inventory-imports/template?format=xlsx|csv (default xlsx). */
+  template = async (req: AuthRequest, res: Response, _next: NextFunction) => {
+    const format = req.query.format === undefined || req.query.format === '' ? 'xlsx' : req.query.format;
+    if (format !== 'xlsx' && format !== 'csv') {
+      throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'format must be xlsx or csv' });
+    }
+    const file = this.service.buildTemplate(format);
+    res.setHeader('Content-Type', file.contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${file.fileName}"`);
+    res.status(200).send(file.body);
   };
 
   list = async (req: AuthRequest, res: Response, _next: NextFunction) => {

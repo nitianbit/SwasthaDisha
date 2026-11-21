@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { CONFIG } from '@/config/config';
 import { InventoryItemModel } from '@/modules/pharmacyInventory/model';
+import { istTodayYyyymmdd } from '@/modules/pharmacyInventory/businessDate';
 
 function validYyyymmdd(value?: string): value is string {
   if (!value || !/^\d{8}$/.test(value)) return false;
@@ -24,7 +25,7 @@ async function run(): Promise<void> {
     $or: [{ batches: { $exists: false } }, { batches: { $size: 0 } }],
   };
   const cursor = InventoryItemModel.find(query).sort({ _id: 1 }).cursor();
-  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const today = istTodayYyyymmdd();
   let inspected = 0;
   let eligible = 0;
   let migrated = 0;

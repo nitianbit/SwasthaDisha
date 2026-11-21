@@ -2,6 +2,7 @@ import { Service } from 'typedi';
 import mongoose, { ClientSession } from 'mongoose';
 import PharmacyModel from '@/modules/pharmacies/model';
 import { claimRequestKey, abandonRequestKey } from '@/modules/requestKeys';
+import { RequestKeyModel } from '@/modules/requestKeys/model';
 import { requestHashOf } from '@/modules/common/utils/canonicalJson';
 import { assertUniqueIndex, KeyAlreadyUsed } from '@/modules/common/utils/requiredIndex';
 import { ContactField, withoutSelfContacts } from '@/modules/common/utils/selfContacts';
@@ -111,6 +112,8 @@ export class PharmacyService {
     if (keyed) {
       // Q15 review: exactly-once rests on the unique (admin, key) index; without it, refuse (503) rather than risk two.
       await assertUniqueIndex(PharmacyModel, { createdBy: 1, createRequestKey: 1 });
+      // Q16c: the create also claims its key in request_keys (so an abandon and a create cannot both win).
+      await assertUniqueIndex(RequestKeyModel, { scope: 1, key: 1 });
     }
     const prior = await replay();
     if (prior) return prior;
@@ -154,6 +157,8 @@ export class PharmacyService {
 
   /** Q15: give up a lost create: abandoned (it can never be made) or used (here is the pharmacy). */
   async abandonCreateKey(adminId: string, key: string): Promise<{ state: 'abandoned' | 'used'; pharmacy?: IPharmacy | null }> {
+    // Q16c: abandoning rests on the unique request_keys {scope, key} index, like the keyed create.
+    await assertUniqueIndex(RequestKeyModel, { scope: 1, key: 1 });
     const made = await this.findCreatedByKey(adminId, key);
     if (made) return { state: 'used', pharmacy: made };
     const state = await abandonRequestKey(pharmacyCreateScope(adminId), key);
@@ -313,8 +318,12 @@ export class PharmacyService {
         if (!pharmacy) {
           throw new AppError({ status: 404, code: 'PHARMACY_NOT_FOUND', message: 'Pharmacy not found' });
         }
-        if (expectedUpdatedAt !== undefined && expectedUpdatedAt !== null &&
-            new Date(pharmacy.updatedAt as Date).getTime() !== new Date(expectedUpdatedAt).getTime()) {
+        // Q16c: a stored updatedAt that is not a BSON date (an old import wrote a string, or none at all) is "no
+        // version": no stale-view check, and the write is fenced on updatedAt still not being a date (any edit made
+        // meanwhile writes a real date and so still conflicts). Before, such a pharmacy could never be edited.
+        const versioned = pharmacy.updatedAt instanceof Date && !Number.isNaN(pharmacy.updatedAt.getTime());
+        if (versioned && expectedUpdatedAt !== undefined && expectedUpdatedAt !== null &&
+            (pharmacy.updatedAt as Date).getTime() !== new Date(expectedUpdatedAt).getTime()) {
           throw recordChanged();
         }
         if (typeof set.phone === 'string' && set.phone !== pharmacy.phone &&
@@ -326,7 +335,8 @@ export class PharmacyService {
           throw emailTaken();
         }
         if (!Object.keys(set).length && !Object.keys(unset).length) return pharmacy;
-        const updated = await PharmacyModel.findOneAndUpdate({ _id: id, updatedAt: pharmacy.updatedAt },
+        const fence = versioned ? { updatedAt: pharmacy.updatedAt } : { updatedAt: { $not: { $type: 'date' } } };
+        const updated = await PharmacyModel.findOneAndUpdate({ _id: id, ...fence } as Record<string, unknown>,
           { ...(Object.keys(set).length ? { $set: set } : {}), ...(Object.keys(unset).length ? { $unset: unset } : {}) },
           { new: true, session, runValidators: true }).lean() as IPharmacy | null;
         if (!updated) throw recordChanged();

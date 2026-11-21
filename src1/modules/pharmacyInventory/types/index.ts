@@ -113,6 +113,8 @@ export interface IInventoryAdjustment {
   sourceRowIndex?: number;
   reason: InventoryAdjustmentReason;
   notes?: string;
+  /** Q16c: the pharmacy's supplier this delivery came from (stock added only; kept per delivery, not per batch). */
+  supplierId?: string;
   adjustedBy: string;
   adjustedByRole: string;
   createdAt?: Date;
@@ -154,6 +156,8 @@ export interface CreateInventoryItemRequest {
   expiryDate?: string;
   reason?: InventoryAdjustmentReason;
   notes?: string;
+  /** Q16c: optional, with a positive quantity only: the pharmacy's own active supplier the stock came from. */
+  supplierId?: string;
 }
 
 export interface CreateInventoryItemsRequest {
@@ -167,6 +171,8 @@ export interface InventoryQueryParams {
   lowStock?: boolean;
   search?: string;
   includeBatches?: boolean;
+  /** Q16c: a customer's listing: only items with a retail price (the cart refuses the others). */
+  pricedForCustomers?: boolean;
   page?: number;
   limit?: number;
 }

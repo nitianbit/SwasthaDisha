@@ -8,6 +8,9 @@ const importRowSchema = new Schema(
     status: { type: String, enum: ['valid', 'error', 'skipped', 'committed', 'failed'], required: true },
     errors: { type: [String], default: [] },
     data: { type: Schema.Types.Mixed },
+    // Q16c: whether the pharmacy already stocks this medicine, and its current prices then (null otherwise).
+    inMyStock: { type: Boolean },
+    currentPrices: { type: Schema.Types.Mixed },
   },
   { _id: false, supressReservedKeysWarning: true } as any
 );
@@ -24,6 +27,7 @@ const inventoryImportSchema = new Schema<IInventoryImport>(
       enum: ['create_only', 'update_only', 'upsert'],
       default: 'upsert',
     },
+    supplierId: { type: Schema.Types.ObjectId as any, ref: 'PharmacySupplier' }, // Q16c: one supplier for the file
     status: {
       type: String,
       enum: ['pending', 'previewed', 'committing', 'committed', 'partially_committed', 'failed'],

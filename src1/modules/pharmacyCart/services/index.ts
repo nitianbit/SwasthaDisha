@@ -16,6 +16,7 @@ import { MedicineRepository } from '@/modules/pharmacyMedicines/repository';
 import { PharmacyOrderService } from '@/modules/pharmacyOrders/services';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
 import type { IPharmacyOrder } from '@/modules/pharmacyOrders/types';
+import { istTodayYyyymmdd } from '@/modules/pharmacyInventory/businessDate';
 
 @Service()
 export class PharmacyCartService {
@@ -112,7 +113,7 @@ export class PharmacyCartService {
     quantity: number
   ): Promise<IPharmacyCartItem> {
     const inventory = await this.inventoryService.getInventoryByMedicine(pharmacyId, medicineId);
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const today = istTodayYyyymmdd();
     const sellableAvailableQty = inventory.batches?.length
       ? inventory.batches.reduce(
           (total, batch) =>

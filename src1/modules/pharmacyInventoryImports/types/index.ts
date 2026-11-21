@@ -15,11 +15,22 @@ export interface ImportCommitError {
 }
 export type ImportMode = 'create_only' | 'update_only' | 'upsert';
 
+export interface ImportCurrentPrices {
+  mrp: number | null;
+  retailPrice: number | null;
+  wholesalePrice: number | null;
+  purchasePrice: number | null;
+}
+
 export interface ImportRowResult {
   rowIndex: number;
   medicineName?: string;
   status: 'valid' | 'error' | 'skipped' | 'committed' | 'failed';
   errors?: string[];
+  /** Q16c: the pharmacy already has this medicine in its inventory (an inventory record, whatever its quantity). */
+  inMyStock?: boolean;
+  /** Q16c: the pharmacy's current prices for it (MRP from the row's batch, else the latest batch); null if not stocked. */
+  currentPrices?: ImportCurrentPrices | null;
   data?: Record<string, any> & {
     medicineId?: string;
     medicineMatchStatus?: 'matched' | 'not_found' | 'duplicate';
@@ -35,6 +46,8 @@ export interface IInventoryImport {
   fileName: string;
   filePath: string;
   importMode: ImportMode;
+  /** Q16c: the supplier chosen for the whole file (optional; rows may name their own in a "supplier" column). */
+  supplierId?: string;
   status: ImportStatus;
   totalRows: number;
   validRows: number;

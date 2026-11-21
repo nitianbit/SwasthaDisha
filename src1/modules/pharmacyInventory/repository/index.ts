@@ -1,5 +1,5 @@
 import { Service } from 'typedi';
-import { rearmLowStock, rearmStage, sellableQtyExpr } from '@/modules/pharmacyInventory/sellable';
+import { pricedForViewerMatch, rearmLowStock, rearmStage, sellableQtyExpr } from '@/modules/pharmacyInventory/sellable';
 import { ClientSession, Model, PipelineStage, Types } from 'mongoose';
 import {
   InventoryItemModel,
@@ -23,6 +23,7 @@ import { PharmacyMedicineAvailabilityDto } from '@/modules/pharmacies/types';
 import { BaseRepository } from '@/modules/common/repository';
 import { buildContainsRegex } from '@/modules/common/utils/queryUtils';
 import { AppError } from '@/modules/common/types';
+import { istTodayYyyymmdd } from '@/modules/pharmacyInventory/businessDate';
 
 @Service()
 export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
@@ -155,7 +156,7 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
     }).session(session);
     if (!document) return null;
 
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const today = istTodayYyyymmdd();
     const eligible = (document.batches || [])
       .filter(
         (batch) =>
@@ -204,7 +205,7 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
     if (!document) return null;
 
     let total = 0;
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const today = istTodayYyyymmdd();
     for (const allocation of allocations) {
       const batch = (document.batches || []).find(
         (candidate) => String((candidate as any)._id) === String(allocation.batchId)
@@ -242,7 +243,7 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
     if (!document) return null;
 
     let total = 0;
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const today = istTodayYyyymmdd();
     for (const allocation of allocations) {
       const batch = (document.batches || []).find(
         (candidate) => String((candidate as any)._id) === String(allocation.batchId)
@@ -296,8 +297,10 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
       updatedAt: '$$NOW',
     };
 
+    // Q16c: a field not given (undefined, or null) keeps the stored value. Callers pass undefined for "not given" —
+    // an import's blank price cell is undefined, never 0 (0 would overwrite the price and make the item unsellable).
     for (const [key, value] of Object.entries(fields)) {
-      if (value !== undefined) {
+      if (value !== undefined && value !== null) {
         setStage[key] = { $literal: value };
       }
     }
@@ -451,6 +454,7 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
     if (filter.pharmacyId) query.pharmacyId = new Types.ObjectId(filter.pharmacyId);
     if (filter.medicineId) query.medicineId = new Types.ObjectId(filter.medicineId);
     if (filter.isActive !== undefined) query.isActive = filter.isActive;
+    if (filter.pricedForCustomers) Object.assign(query, pricedForViewerMatch(false)); // Q16c
     if (filter.lowStock) {
       // Sellable stock (active, unexpired batches), not the raw total (P7c).
       query.$expr = { $lte: [sellableQtyExpr(), '$reorderThreshold'] };
@@ -565,7 +569,7 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
     page: number;
     totalPages: number;
   }> {
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const today = istTodayYyyymmdd();
     const sellableBatchQuantity = {
       $sum: {
         $map: {
@@ -591,6 +595,7 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
         $match: {
           medicineId: new Types.ObjectId(medicineId),
           isActive: true,
+          ...pricedForViewerMatch(includeWholesalePrice), // Q16c: unpriced items are not on sale
         },
       },
       {
@@ -766,12 +771,13 @@ export class InventoryItemRepository extends BaseRepository<IInventoryItem> {
     page: number;
     totalPages: number;
   }> {
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const today = istTodayYyyymmdd();
     const pipeline: any[] = [
       {
         $match: {
           pharmacyId: new Types.ObjectId(pharmacyId),
           isActive: true,
+          ...pricedForViewerMatch(includeWholesalePrice), // Q16c: unpriced items are not on sale
         },
       },
       {
