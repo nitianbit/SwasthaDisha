@@ -99,7 +99,7 @@ async function main() {
     paymentService: payments, couponService: {}, emailService: {},
     bookingReminderScheduler: { scheduleBookingReminders: async () => undefined, clearBookingReminders: async () => undefined },
     sendPaidBookingEmailNotification: async () => undefined,
-    specialistService: { getById: async (id: string) => ({ _id: id, name: 'Dr S3', isActive: true, consultationFee: 100 }) },
+    specialistService: { getById: async (id: string) => ({ _id: id, name: 'Dr S3', isActive: true, isVerified: true, consultationFee: 100 }) },
     slotService: { getById: async (id: string) => SlotModel.findById(id).lean() },
   }) as BookingService;
   Container.set(BookingService, bookingService);
