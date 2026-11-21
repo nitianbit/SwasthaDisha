@@ -1,6 +1,6 @@
 import { Service } from 'typedi';
 import * as XLSX from 'xlsx';
-import { promises as fs } from 'fs';
+import { promises as fs, readFileSync } from 'fs';
 import { ClientSession, Model, startSession } from 'mongoose';
 import InventoryImportModel from '@/modules/pharmacyInventoryImports/model';
 import {
@@ -147,74 +147,96 @@ function isPercentFormat(z: unknown): boolean {
 /** The last day of a month (day 0 of the next one). */
 const lastDayOf = (year: number, month: number) => new Date(Date.UTC(year, month, 0)).getUTCDate();
 
-/** "YYYY-MM-DD" for a calendar date; for a month-year format, the last day of that month (as "EXP 12/2027" is read). */
+/**
+ * "YYYY-MM-DD" for a calendar date. Q16c re-review: a month-year format ("Dec-27") whose stored day is the 1st — what a
+ * spreadsheet stores when "12/2027" is typed — is the LAST day of that month, as "EXP 12/2027" is read; any other
+ * stored day (a real 15 Dec shown as "Dec-27") is that day.
+ */
 function calendarText(y: number, m: number, d: number, monthYearOnly: boolean): string {
-  return `${pad(y, 4)}-${pad(m)}-${pad(monthYearOnly ? lastDayOf(y, m) : d)}`;
+  return `${pad(y, 4)}-${pad(m)}-${pad(monthYearOnly && d === 1 ? lastDayOf(y, m) : d)}`;
+}
+
+/** Q16c re-review: the most cells an import file may hold (all sheets), and the longest its read may take. */
+export const MAX_IMPORT_CELLS = 200_000;
+export const MAX_IMPORT_PARSE_MS = 5_000;
+const tooBig = (why: string) => new AppError({ status: 400, code: 'IMPORT_FILE_TOO_BIG',
+  message: `The file is too big to import at once (${why}); split it into files of at most ${MAX_IMPORT_CELLS.toLocaleString('en-IN')} cells` });
+
+/** Linear count of the cell elements (`<c …>`, `<x:c …/>`) in sheet XML. */
+function countXmlCells(xml: string): number {
+  let n = 0;
+  const re = /<(?:[A-Za-z_][\w.-]*:)?c[\s>/]/g;
+  while (re.exec(xml)) n += 1;
+  return n;
 }
 
 /**
- * Q16c: the raw text of the first sheet's ISO date cells (`t="d"`, e.g. `<v>2027-12-31T00:00:00</v>`) of an .xlsx, by
- * cell address. The library turns such a cell into a date number, converting any time-zone offset written in it; the
- * calendar date is read from this text instead, with no conversion. Empty when the file is not an .xlsx.
+ * Q16c re-review: refuse an oversized file BEFORE the library parses it: an .xlsx by the cell elements in its
+ * worksheet XML (the zip is only inflated, not parsed), a text file by its separators and lines. Other formats (.xls)
+ * are counted after the parse. 400 IMPORT_FILE_TOO_BIG.
  */
-function isoDateCellTexts(workbook: XLSX.WorkBook): Map<string, string> {
-  const out = new Map<string, string>();
-  const files = (workbook as unknown as { files?: Record<string, { content?: unknown }> }).files;
-  if (!files) return out;
-  const text = (name: string): string => {
-    const entry = files[name] ?? files[`/${name}`];
-    return entry?.content ? Buffer.from(entry.content as Uint8Array).toString('utf8') : '';
-  };
-  const sheetTag = text('xl/workbook.xml').match(/<(?:\w+:)?sheet\b[^>]*>/)?.[0] ?? '';
-  const relId = sheetTag.match(/\b(?:\w+:)?id="([^"]+)"/)?.[1];
-  if (!relId) return out;
-  const rel = text('xl/_rels/workbook.xml.rels').match(new RegExp(`<Relationship\\b[^>]*\\bId="${relId.replace(/[^\w-]/g, '')}"[^>]*>`))?.[0] ?? '';
-  const target = rel.match(/\bTarget="([^"]+)"/)?.[1];
-  if (!target) return out;
-  const xml = text(target.startsWith('/') ? target.slice(1) : `xl/${target}`);
-  for (const m of xml.matchAll(/<(?:\w+:)?c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/(?:\w+:)?c>)/g)) {
-    const attrs = m[1];
-    if (!/\bt="d"/.test(attrs)) continue;
-    const ref = attrs.match(/\br="([A-Z]+\d+)"/)?.[1];
-    const v = (m[2] ?? '').match(/<(?:\w+:)?v>([^<]*)<\/(?:\w+:)?v>/)?.[1];
-    if (ref && v !== undefined) out.set(ref, v.trim());
+function assertImportSize(buf: Buffer): void {
+  if (buf.length >= 4 && buf.readUInt32LE(0) === 0x04034b50) { // "PK\x03\x04": a zip (.xlsx)
+    const zip = XLSX.CFB.read(buf, { type: 'buffer' });
+    let cells = 0;
+    zip.FullPaths.forEach((p: string, i: number) => {
+      if (!/\/xl\/worksheets\/[^/]+\.xml$/i.test(p)) return;
+      const content = zip.FileIndex[i]?.content;
+      if (content) cells += countXmlCells(Buffer.from(content as Uint8Array).toString('latin1'));
+    });
+    if (cells > MAX_IMPORT_CELLS) throw tooBig(`${cells} cells`);
+    return;
   }
-  return out;
+  if (buf.length >= 8 && buf.readUInt32LE(0) === 0xe011cfd0) return; // an OLE file (.xls): counted after the parse
+  let cells = 1;
+  for (let i = 0; i < buf.length; i += 1) {
+    const b = buf[i];
+    if (b === 0x2c || b === 0x0a || b === 0x09 || b === 0x3b) cells += 1; // , newline tab ;
+  }
+  if (cells > MAX_IMPORT_CELLS) throw tooBig(`about ${cells} cells`);
 }
 
 /**
  * Q15 review: the first sheet as rows of raw values with normalized headers. CSV/text files are read with `raw: true`,
  * so every value stays the text that was typed (the library would otherwise turn "12-05-2027" into a US month-first
- * date). In a spreadsheet, ONLY a real date cell is a date: it becomes "YYYY-MM-DD", with no time zone involved:
- *  - a number with a date format: from the library's date code of its serial (1904 workbooks on their base);
- *  - Q16c: an ISO date cell (`t="d"`): the calendar date written in the cell, as typed (no offset conversion);
- *  - Q16c: a date format with month and year only ("mmm-yy", "mm/yyyy"): the LAST day of that month, as for text.
+ * date). In a spreadsheet, ONLY a real date cell is a date: it becomes "YYYY-MM-DD" from the library's date code of its
+ * serial (1904 workbooks on their base), with no time zone involved. That includes ISO date cells (`t="d"`): xlsx
+ * 0.20.3 turns their text into a serial read as UTC (an explicit offset in the text is converted to UTC), the same on
+ * every server; an ISO cell without a date style is a plain number and refused.
+ * Q16c: a date format with month and year only ("mmm-yy", "mm/yyyy") storing the 1st is the LAST day of that month.
  * Q16c: a number with a percent format becomes text "18%" (a GST cell 0.18 shown as 18%); other columns refuse it.
- * A plain number stays a number.
+ * Q16c re-review: every cell then loses its number format (`z`) and formatted text (`w`), so the library never turns a
+ * text or boolean cell that carries a date format into a Date ("Invalid Date"). A plain number stays a number.
+ * Oversized files (more than MAX_IMPORT_CELLS cells, or a read over MAX_IMPORT_PARSE_MS) are 400 IMPORT_FILE_TOO_BIG.
  */
 export function readSheetRows(filePath: string): Record<string, any>[] {
-  const workbook = XLSX.readFile(filePath, { raw: true, cellDates: false, cellNF: true, bookFiles: true });
+  const buf = readFileSync(filePath);
+  assertImportSize(buf);
+  const started = Date.now();
+  const workbook = XLSX.read(buf, { type: 'buffer', raw: true, cellDates: false, cellNF: true });
+  if (Date.now() - started > MAX_IMPORT_PARSE_MS) throw tooBig('it took too long to read');
+  let cells = 0;
+  for (const name of workbook.SheetNames) {
+    for (const addr of Object.keys(workbook.Sheets[name] ?? {})) if (!addr.startsWith('!')) cells += 1;
+  }
+  if (cells > MAX_IMPORT_CELLS) throw tooBig(`${cells} cells`);
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
   // Q15 re-review: a workbook on the 1904 date system counts its serials from 1904-01-01 (1462 days after the 1900 base).
   const offset = workbook.Workbook?.WBProps?.date1904 ? 1462 : 0;
-  const isoTexts = isoDateCellTexts(workbook);
   for (const [addr, cell] of Object.entries(sheet ?? {})) {
     if (addr.startsWith('!') || !cell || typeof cell !== 'object') continue;
     const c = cell as XLSX.CellObject;
-    const monthYear = isMonthYearFormat(c.z);
-    const iso = isoTexts.get(addr);
-    if (iso !== undefined) {
-      const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})(?:$|[T ])/);
-      Object.assign(c, { t: 's', v: m ? calendarText(+m[1], +m[2], +m[3], monthYear) : `#date-cell:${iso}`, w: undefined, z: undefined });
-    } else if (c.t === 'n' && typeof c.v === 'number' && typeof c.z === 'string' && XLSX.SSF.is_date(c.z)) {
+    if (c.t === 'n' && typeof c.v === 'number' && typeof c.z === 'string' && XLSX.SSF.is_date(c.z)) {
       const serial = Math.floor(c.v) + offset;
       const d = serial >= 1 ? XLSX.SSF.parse_date_code(serial) : null;
-      Object.assign(c, { t: 's', v: d && d.y && d.m && d.d ? calendarText(d.y, d.m, d.d, monthYear) : `#date-cell:${c.v}`, w: undefined, z: undefined });
+      Object.assign(c, { t: 's', v: d && d.y && d.m && d.d ? calendarText(d.y, d.m, d.d, isMonthYearFormat(c.z)) : `#date-cell:${c.v}` });
     } else if (c.t === 'n' && typeof c.v === 'number' && isPercentFormat(c.z)) {
-      Object.assign(c, { t: 's', v: `${Math.round(c.v * 100 * 1e6) / 1e6}%`, w: undefined, z: undefined });
+      Object.assign(c, { t: 's', v: `${Math.round(c.v * 100 * 1e6) / 1e6}%` });
     } else if (c.t === 'd') {
-      Object.assign(c, { t: 's', v: `#date-cell:${String(c.v)}`, w: undefined }); // not produced with cellDates: false
+      Object.assign(c, { t: 's', v: `#date-cell:${String(c.v)}` }); // not produced with cellDates: false
     }
+    delete c.z;
+    delete c.w;
   }
   return XLSX.utils.sheet_to_json<Record<string, any>>(sheet!, { defval: '', raw: true }).map(normalizeHeaders);
 }
@@ -250,18 +272,26 @@ export function expiryOf(value: unknown): string {
 }
 
 /**
- * Q16c: how a text slash date `A/B/YYYY` reads. Dates are read day first; `month_first` when it is valid ONLY as
- * month first (12/31/2027), `ambiguous` when both orders give different valid dates (05/06/2027), else null.
+ * Q16c: how a text date `A/B/YYYY` (Q16c re-review: also `A-B-YYYY`) reads. Dates are read day first; `month_first`
+ * when it is valid ONLY as month first (12/31/2027, 12-31-2027), `ambiguous` when both orders give different valid
+ * dates (05/06/2027), else null. `sep` is the separator, so a file's evidence applies to dates written the same way.
  */
-export function slashDateOrder(value: unknown): 'month_first' | 'ambiguous' | null {
+export function dateOrder(value: unknown): { order: 'month_first' | 'ambiguous'; sep: '/' | '-' } | null {
   if (typeof value !== 'string') return null;
-  const m = value.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const m = value.trim().match(/^(\d{1,2})([/-])(\d{1,2})\2(\d{4})$/);
   if (!m) return null;
   const a = Number(m[1]);
-  const b = Number(m[2]);
-  if (a >= 1 && a <= 12 && b > 12 && b <= 31) return 'month_first';
-  if (a >= 1 && a <= 12 && b >= 1 && b <= 12 && a !== b) return 'ambiguous';
+  const b = Number(m[3]);
+  const sep = m[2] as '/' | '-';
+  if (a >= 1 && a <= 12 && b > 12 && b <= 31) return { order: 'month_first', sep };
+  if (a >= 1 && a <= 12 && b >= 1 && b <= 12 && a !== b) return { order: 'ambiguous', sep };
   return null;
+}
+
+/** Q16c: the slash form of dateOrder (kept for callers). */
+export function slashDateOrder(value: unknown): 'month_first' | 'ambiguous' | null {
+  const o = dateOrder(value);
+  return o && o.sep === '/' ? o.order : null;
 }
 
 function isValidYyyymmdd(value: string): boolean {
@@ -316,9 +346,17 @@ function validateRow(input: Record<string, any>, index: number): ImportRowResult
   const errors: string[] = [];
   const name = String(cellOf(row, ...NAME_HEADERS) ?? '').trim();
   if (!name) errors.push('medicine name is required');
+  // Q16c re-review (safety net): a name or batch the library turned into a date is not a name or batch.
+  const notText = (v: unknown) => v instanceof Date || /^invalid date$/i.test(String(v ?? '').trim());
+  if (name && notText(cellOf(row, ...NAME_HEADERS))) errors.push('medicine name could not be read as text');
+  if (notText(cellOf(row, 'batch number', 'batchnumber'))) errors.push('batch number could not be read as text');
   if (name.toLowerCase().includes(TEMPLATE_EXAMPLE_MARK)) errors.push("this is the template's example row; delete it");
 
-  const quantityToAdd = quantityOf(cellOf(row, 'quantity to add', 'quantitytoadd', 'available quantity', 'availableqty'));
+  // Q16c re-review: the older "available quantity" columns are read only when the sheet has no quantity-to-add column;
+  // an empty "quantity to add" cell is 0 (it used to fall back to the available quantity and add the stock again).
+  const quantityColumns = 'quantity to add' in row || 'quantitytoadd' in row
+    ? ['quantity to add', 'quantitytoadd'] : ['available quantity', 'availableqty'];
+  const quantityToAdd = quantityOf(cellOf(row, ...quantityColumns));
   if (!Number.isSafeInteger(quantityToAdd) || quantityToAdd < 0 || quantityToAdd > MAX_QUANTITY_PER_ROW) {
     errors.push(`quantity to add must be a whole number from 0 to ${MAX_QUANTITY_PER_ROW.toLocaleString('en-IN')}`);
   }
@@ -344,7 +382,7 @@ function validateRow(input: Record<string, any>, index: number): ImportRowResult
   if (quantityToAdd > 0 && !batchNumber) errors.push('batch number is required when quantity is added');
   // Q15 review: an expiry that was given must be readable, with or without stock added.
   if ((quantityToAdd > 0 || String(expiryRaw).trim() !== '') && !isValidYyyymmdd(expiryDate)) {
-    errors.push(slashDateOrder(expiryRaw) === 'month_first'
+    errors.push(dateOrder(expiryRaw)?.order === 'month_first'
       ? `expiry date ${String(expiryRaw).trim()} is written month first; dates are read day first: write it as DD/MM/YYYY, DD-MM-YYYY or YYYY-MM-DD`
       : `expiry date must be a valid date: ${EXPIRY_FORMS}`);
   }
@@ -388,16 +426,23 @@ function validateRow(input: Record<string, any>, index: number): ImportRowResult
 
 /**
  * Q16c: rows of one file, validated. Dates are read day first; when another row of the same file can only be a
- * month-first date (12/31/2027), the file was written month first, so every ambiguous slash date in it (05/06/2027) is
- * refused rather than read as 5 June.
+ * month-first date (12/31/2027), the file was written month first, so every ambiguous date in it written with the
+ * same separator (05/06/2027; Q16c re-review: dashes too, 12-31-2027 then refuses 05-06-2027) is refused rather than
+ * read as 5 June.
  */
 export function validateRows(rows: Record<string, any>[]): ImportRowResult[] {
   const checked = rows.map((row, i) => ({ row, i })).filter(({ row }) => !isCommentRow(row))
     .map(({ row, i }) => validateRow(row, i));
-  const evidence = checked.find((r) => slashDateOrder(r.expiryRaw) === 'month_first');
+  const evidence = new Map<string, (typeof checked)[number]>();
+  for (const r of checked) {
+    const o = dateOrder(r.expiryRaw);
+    if (o?.order === 'month_first' && !evidence.has(o.sep)) evidence.set(o.sep, r);
+  }
   return checked.map(({ expiryRaw, ...r }) => {
-    if (!evidence || slashDateOrder(expiryRaw) !== 'ambiguous') return r;
-    const message = `this file writes dates month first (row ${evidence.rowIndex}: ${String(evidence.expiryRaw).trim()}), ` +
+    const o = dateOrder(expiryRaw);
+    const proof = o?.order === 'ambiguous' ? evidence.get(o.sep) : undefined;
+    if (!proof) return r;
+    const message = `this file writes dates month first (row ${proof.rowIndex}: ${String(proof.expiryRaw).trim()}), ` +
       `so ${String(expiryRaw).trim()} cannot be read safely; write it as DD-MM-YYYY or YYYY-MM-DD`;
     return { ...r, status: 'error', errors: [...(r.errors ?? []), message], data: undefined };
   });
@@ -468,18 +513,38 @@ export class InventoryImportService {
     }
   }
 
+  /**
+   * Q16c: the row's medicine in the shared list (matched / not_found / duplicate) and, for the web, whether this
+   * pharmacy already stocks it (`inMyStock`) with its current prices (`currentPrices`, null when not stocked), so a
+   * blank price on a medicine the pharmacy does not stock yet can be shown as "not on sale until priced".
+   */
   private async enrichPreviewRow(
+    pharmacyId: string,
     previewRow: ImportRowResult
   ): Promise<ImportRowResult> {
+    const name = previewRow.data?.name ?? previewRow.medicineName;
+    if (!name) return { ...previewRow, inMyStock: false, currentPrices: null };
+    const matches = await this.medicineRepo.findByNormalizedName(name);
+    const stock = matches.length === 1
+      ? await this.inventoryItemRepo.findByPharmacyAndMedicine(pharmacyId, String(matches[0]._id))
+      : null;
+    const priceOf = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+    const batches = stock?.batches ?? [];
+    const batch = batches.find((b) => b.batchNumber === previewRow.data?.batchNumber && b.expiryDate === previewRow.data?.expiryDate)
+      ?? [...batches].sort((a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime())[0];
+    const known = {
+      inMyStock: !!stock,
+      currentPrices: stock ? { mrp: priceOf(batch?.mrp), retailPrice: priceOf(stock.retailPrice),
+        wholesalePrice: priceOf(stock.wholesalePrice), purchasePrice: priceOf(stock.purchasePrice) } : null,
+    };
     if (previewRow.status === 'error' || !previewRow.data?.name) {
-      return previewRow;
+      return { ...previewRow, ...known };
     }
-
-    const matches = await this.medicineRepo.findByNormalizedName(previewRow.data.name);
 
     if (matches.length > 1) {
       return {
         ...previewRow,
+        ...known,
         status: 'error',
         errors: [
           ...(previewRow.errors ?? []),
@@ -495,6 +560,7 @@ export class InventoryImportService {
     if (matches.length === 1) {
       return {
         ...previewRow,
+        ...known,
         data: {
           ...previewRow.data,
           medicineId: String(matches[0]._id),
@@ -506,6 +572,7 @@ export class InventoryImportService {
 
     return {
       ...previewRow,
+      ...known,
       data: {
         ...previewRow.data,
         medicineMatchStatus: 'not_found',
@@ -556,6 +623,7 @@ export class InventoryImportService {
       try {
         rows = readSheetRows(filePath);
       } catch (e) {
+        if (e instanceof AppError) throw e; // IMPORT_FILE_TOO_BIG
         throw new AppError({ status: 400, code: 'PARSE_FAILED', message: 'Could not parse the uploaded file' });
       }
       // Q16c: an empty sheet, or a file that is not a stock sheet (junk with an allowed extension), is refused.
@@ -575,7 +643,7 @@ export class InventoryImportService {
     try {
       const suppliers = await suppliersOf(pharmacyId);
       const previewRows = await Promise.all(
-        validateRows(rows).map(async (row) => this.enrichPreviewRow(this.resolveRowSupplier(row, suppliers, fileSupplier)))
+        validateRows(rows).map(async (row) => this.enrichPreviewRow(pharmacyId, this.resolveRowSupplier(row, suppliers, fileSupplier)))
       );
       const validRows = previewRows.filter((r) => r.status === 'valid').length;
       const errorRows = previewRows.filter((r) => r.status === 'error').length;
@@ -745,6 +813,18 @@ export class InventoryImportService {
     try {
       let outcome: 'committed' | 'skipped' = 'committed';
       await session.withTransaction(async () => {
+        // Q16c: "only medicines already in my stock" (update_only) never creates a medicine: a name not in the shared
+        // list, or a medicine this pharmacy does not stock, is skipped with nothing created (it used to create the
+        // medicine first and then skip the row). create_only and upsert create a medicine only for a stock row they
+        // go on to create.
+        if (importRecord.importMode === 'update_only' && !rowData.medicineId) {
+          const found = await this.medicineRepo.findByNormalizedName(normalizeMedicineName(String(rowData.name || '')), session);
+          if (found.length !== 1) {
+            outcome = 'skipped';
+            return;
+          }
+          rowData.medicineId = String(found[0]._id);
+        }
         const medicine = rowData.medicineId
           ? await this.medicineRepo.findById(rowData.medicineId, session)
           : await this.findOrCreateMedicine(rowData, session);

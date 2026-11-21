@@ -268,31 +268,36 @@ async function main() {
     });
 
     // ───────────────────────────── 4. Month-year date cells ─────────────────────────────
-    await check('4: a date cell formatted month-year only (mmm-yy, mm/yyyy) is the LAST day of that month; full dates unchanged', async () => {
-      const ws = XLSX.utils.aoa_to_sheet([['Medicine Name', 'Quantity To Add', 'Batch Number', 'Expiry Date'], ['A', 1, 'B1', 0], ['B', 1, 'B2', 0], ['C', 1, 'B3', 0], ['D', 1, 'B4', 0]]);
+    await check('4 + N4: a month-year date cell (mmm-yy, mm/yyyy) storing the 1st is the LAST day of that month; another stored day is that day; full dates unchanged', async () => {
+      const ws = XLSX.utils.aoa_to_sheet([['Medicine Name', 'Quantity To Add', 'Batch Number', 'Expiry Date'], ['A', 1, 'B1', 0], ['B', 1, 'B2', 0], ['C', 1, 'B3', 0], ['D', 1, 'B4', 0], ['E', 1, 'B5', 0]]);
+      ws['D6'] = { t: 'n', v: 47467, z: 'mmm-yy' }; // a real 15 Dec 2029 shown as Dec-29
       ws['D2'] = { t: 'n', v: 47453, z: 'mmm-yy' }; // 2029-12-01
       ws['D3'] = { t: 'n', v: 47515, z: 'mm/yyyy' }; // 2030-02-01
       ws['D4'] = { t: 'n', v: 47453, z: '[$-409]mmmm yyyy;@' };
       ws['D5'] = { t: 'n', v: 47453, z: 'dd/mm/yyyy' };
       const r = await upload(sheetFile('month-year.xlsx', ws), tA);
       assert.equal(r.status, 200, JSON.stringify(r.json));
-      assert.deepEqual(rowsOf(r).map((x) => [x.status, x.data?.expiryDate]), [['valid', '20291231'], ['valid', '20300228'], ['valid', '20291231'], ['valid', '20291201']]);
+      assert.deepEqual(rowsOf(r).map((x) => [x.status, x.data?.expiryDate]), [['valid', '20291231'], ['valid', '20300228'], ['valid', '20291231'], ['valid', '20291201'], ['valid', '20291215']]);
     });
 
-    // ───────────────────────────── 5. ISO date cells ─────────────────────────────
-    await check('5: ISO date cells (t="d") read their calendar date as written, with or without style or offset, in any server time zone', async () => {
-      const ws = XLSX.utils.aoa_to_sheet([['Medicine Name', 'Quantity To Add', 'Batch Number', 'Expiry Date'], ['A', 1, 'B1', 'x'], ['B', 1, 'B2', 'x'], ['C', 1, 'B3', 'x']]);
+    // ───────────────────────────── 5. ISO date cells (re-review: no scanner) ─────────────────────────────
+    const patchedSheet = (name: string, ws: XLSX.WorkSheet, patch: (xml: string) => string, writeOpts: XLSX.WritingOptions = {}) => {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Stock');
-      const cfb = XLSX.CFB.read(XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }), { type: 'buffer' });
+      const cfb = XLSX.CFB.read(XLSX.write(wb, { type: 'buffer', bookType: 'xlsx', ...writeOpts }), { type: 'buffer' });
       const i = cfb.FullPaths.findIndex((p: string) => p.endsWith('xl/worksheets/sheet1.xml'));
-      const xml = Buffer.from(cfb.FileIndex[i].content as Uint8Array).toString('utf8')
-        .replace(/<c r="D2"[^>]*>.*?<\/c>/, '<c r="D2" t="d"><v>2030-12-31T00:00:00+05:30</v></c>')
-        .replace(/<c r="D3"[^>]*>.*?<\/c>/, '<c r="D3" t="d"><v>2030-12-31T23:30:00-08:00</v></c>')
-        .replace(/<c r="D4"[^>]*>.*?<\/c>/, '<c r="D4" t="d"><v>2030-12-31</v></c>');
-      cfb.FileIndex[i].content = Buffer.from(xml) as never;
-      const file = path.join(tmp, 'iso.xlsx');
+      cfb.FileIndex[i].content = Buffer.from(patch(Buffer.from(cfb.FileIndex[i].content as Uint8Array).toString('utf8'))) as never;
+      const file = path.join(tmp, name);
       fs.writeFileSync(file, XLSX.CFB.write(cfb, { fileType: 'zip', type: 'buffer' }) as Buffer);
+      return file;
+    };
+    await check('5 + N1: ISO date cells (t="d") with a date style read the library\'s UTC serial (an offset converted to UTC) in any server time zone; without a style they are plain numbers', async () => {
+      const ws = XLSX.utils.aoa_to_sheet([['Medicine Name', 'Quantity To Add', 'Batch Number', 'Expiry Date'], ['A', 1, 'B1', 'x'], ['B', 1, 'B2', 'x'], ['C', 1, 'B3', 'x'], ['D', 1, 'B4', 'x']]);
+      for (const a of ['D2', 'D3', 'D4']) ws[a] = { t: 'd', v: '2030-12-31T00:00:00' } as never; // written t="d" with a date style
+      const file = patchedSheet('iso.xlsx', ws, (xml) => xml
+        .replace(/(<c r="D3"[^>]*>)<v>[^<]*<\/v>/, '$1<v>2030-12-31T00:00:00+05:30</v>')
+        .replace(/(<c r="D4"[^>]*>)<v>[^<]*<\/v>/, '$1<v>2030-12-31</v>')
+        .replace(/<c r="D5"[^>]*>.*?<\/c>/, '<c r="D5" t="d"><v>2030-12-31T00:00:00</v></c>'), { cellDates: true });
       const { readSheetRows } = await import('@/modules/pharmacyInventoryImports/services');
       const before = process.env.TZ;
       const seen: string[] = [];
@@ -302,9 +307,111 @@ async function main() {
           seen.push(JSON.stringify(readSheetRows(file).map((r: any) => r['expiry date'])));
         }
       } finally { if (before === undefined) delete process.env.TZ; else process.env.TZ = before; }
-      assert.deepEqual(seen, Array(3).fill(JSON.stringify(['2030-12-31', '2030-12-31', '2030-12-31'])));
+      assert.deepEqual(seen, Array(3).fill(JSON.stringify(['2030-12-31', '2030-12-30', '2030-12-31', 47848])));
       const r = await upload(file, tA);
-      assert.deepEqual(rowsOf(r).map((x) => [x.status, x.data?.expiryDate]), [['valid', '20301231'], ['valid', '20301231'], ['valid', '20301231']]);
+      assert.deepEqual(rowsOf(r).map((x) => [x.status, x.data?.expiryDate]), [['valid', '20301231'], ['valid', '20301230'], ['valid', '20301231'], ['error', undefined]]);
+    });
+
+    await check('N1: a crafted sheet of 64,000 unclosed cells parses in well under a second (no quadratic scan)', async () => {
+      const file = patchedSheet('crafted.xlsx', XLSX.utils.aoa_to_sheet([['Medicine Name'], ['A']]), (xml) =>
+        xml.replace(/<sheetData>[\s\S]*<\/sheetData>/, `<sheetData><row r="1"><c r="A1" t="str"><v>Medicine Name</v></c></row><row r="2">${'<c r="A2" t="d">'.repeat(64000)}</row></sheetData>`));
+      const { readSheetRows } = await import('@/modules/pharmacyInventoryImports/services');
+      const t0 = Date.now();
+      try { readSheetRows(file); } catch { /* refused or unreadable: either is fine, only the time matters */ }
+      assert.ok(Date.now() - t0 < 2000, `took ${Date.now() - t0} ms`);
+    });
+
+    await check('N1: a file of more than 200,000 cells is refused before parsing (400 IMPORT_FILE_TOO_BIG, file removed): .xlsx and .csv', async () => {
+      const files = filesNow();
+      const xlsx = patchedSheet('many-cells.xlsx', XLSX.utils.aoa_to_sheet([['Medicine Name'], ['A']]), (xml) =>
+        xml.replace(/<sheetData>[\s\S]*<\/sheetData>/, `<sheetData><row r="1"><c r="A1" t="str"><v>Medicine Name</v></c></row>${
+          Array.from({ length: 1000 }, (_, r) => `<row r="${r + 2}">${'<c><v>1</v></c>'.repeat(201)}</row>`).join('')}</sheetData>`));
+      const a = await upload(xlsx, tA);
+      assert.deepEqual([a.status, a.json.code], [400, 'IMPORT_FILE_TOO_BIG'], JSON.stringify(a.json).slice(0, 300));
+      const csv = csvFile('many-cells.csv', ['Medicine Name,Quantity To Add,Batch Number,Expiry Date', ...Array.from({ length: 50001 }, (_, i) => `M${i},0,,`)]);
+      const b = await upload(csv, tA);
+      assert.deepEqual([b.status, b.json.code], [400, 'IMPORT_FILE_TOO_BIG'], JSON.stringify(b.json).slice(0, 300));
+      assert.equal(filesNow(), files, 'both uploads removed');
+      const ok = await upload(csvFile('fewer-cells.csv', ['Medicine Name,Quantity To Add,Batch Number,Expiry Date', ...Array.from({ length: 1000 }, (_, i) => `M${i},0,,`)]), tA);
+      assert.equal(ok.status, 200, 'a normal file is read');
+    });
+
+    await check('N2: text and boolean cells that carry a date format stay text (no "Invalid Date" names, batches or expiries)', async () => {
+      const ws = XLSX.utils.aoa_to_sheet([['Medicine Name', 'Quantity To Add', 'Batch Number', 'Expiry Date', 'Active Status'],
+        ['Amox 500', 5, 'B-100', '31-12-2030', true], ['Dolo 650', 5, 'B-200', '12/2030', 'yes'], ['Cefix 200', 5, '2030-01', '20301231', 'yes']]);
+      for (const a of ['D2', 'D3', 'D4', 'E2']) ws[a].z = 'm/d/yy';
+      ws.C2.z = 'd-mmm-yy'; ws.A3.z = 'dd/mm/yyyy'; ws.C4.z = 'mmm-yy';
+      for (const [name, bookType] of [['textdate.xlsx', 'xlsx'], ['textdate.xls', 'biff8']] as const) {
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Stock');
+        const file = path.join(tmp, name);
+        XLSX.writeFile(wb, file, { bookType });
+        const r = await upload(file, tA);
+        assert.equal(r.status, 200, JSON.stringify(r.json));
+        assert.deepEqual(rowsOf(r).map((x) => [x.status, x.medicineName, x.data?.batchNumber, x.data?.expiryDate]),
+          [['valid', 'Amox 500', 'B-100', '20301231'], ['valid', 'Dolo 650', 'B-200', '20301231'], ['valid', 'Cefix 200', '2030-01', '20301231']], name);
+      }
+      // Safety net: a name or batch that reads "Invalid Date" is refused.
+      const net = await upload(csvFile('invalid-date.csv', ['Medicine Name,Quantity To Add,Batch Number,Expiry Date', `Invalid Date,1,B1,${FUTURE_DMY}`, `Good Med,1,Invalid Date,${FUTURE_DMY}`]), tA);
+      const rows = rowsOf(net);
+      assert.deepEqual(rows.map((x) => x.status), ['error', 'error']);
+      assert.match(rows[0].errors.join(' '), /medicine name could not be read as text/);
+      assert.match(rows[1].errors.join(' '), /batch number could not be read as text/);
+    });
+
+    await check('N3: an empty "quantity to add" cell is 0 even when the sheet also has an "available quantity" column (which is read only without one)', async () => {
+      const r = await upload(csvFile('both-qty.csv', ['Medicine Name,Available Quantity,Quantity To Add,Batch Number,Expiry Date',
+        `Both Qty A,50,,B1,${FUTURE_DMY}`, `Both Qty B,80,5,B2,${FUTURE_DMY}`]), tA);
+      assert.deepEqual(rowsOf(r).map((x) => [x.status, x.data?.quantityToAdd]), [['valid', 0], ['valid', 5]]);
+      const legacy = await upload(csvFile('legacy-qty.csv', ['Medicine Name,Available Quantity,Batch Number,Expiry Date', `Legacy Qty,7,B1,${FUTURE_DMY}`]), tA);
+      assert.deepEqual(rowsOf(legacy).map((x) => [x.status, x.data?.quantityToAdd]), [['valid', 7]]);
+    });
+
+    await check('N5: dash dates too: a file with a month-first-only dash date (12-31-2030) refuses its ambiguous dash dates; slash dates judged separately', async () => {
+      const r = await upload(csvFile('dash-month-first.csv', ['Medicine Name,Quantity To Add,Batch Number,Expiry Date',
+        'A,1,B1,1-12-2030', 'B,1,B2,12-31-2030', 'C,1,B3,05-05-2030', 'D,1,B4,05/06/2030', 'E,1,B5,25-06-2030']), tA);
+      const rows = rowsOf(r);
+      assert.deepEqual(rows.map((x) => [x.status, x.data?.expiryDate]), [['error', undefined], ['error', undefined], ['valid', '20300505'], ['valid', '20300605'], ['valid', '20300625']]);
+      assert.match(rows[0].errors.join(' '), /this file writes dates month first \(row 3: 12-31-2030\), so 1-12-2030 cannot be read safely/);
+      assert.match(rows[1].errors.join(' '), /12-31-2030 is written month first/);
+    });
+
+    // ───────────────────────────── Web review: stock info, update_only ─────────────────────────────
+    await check('web: preview rows carry inMyStock and currentPrices (null when the pharmacy does not stock the medicine)', async () => {
+      const m = await med('Stock Info Med');
+      await med('Catalogue Only Med');
+      await InventoryItemModel.collection.insertOne({ pharmacyId: pA, medicineId: new Types.ObjectId(m), availableQty: 2, reservedQty: 0, freeQty: 0,
+        reorderThreshold: 0, retailPrice: 40, purchasePrice: 25, isActive: true, createdAt: new Date(), updatedAt: new Date(),
+        batches: [{ _id: new Types.ObjectId(), batchNumber: 'SI1', expiryDate: FUTURE, receivedAt: new Date(), availableQty: 2, reservedQty: 0, freeQty: 0, mrp: 55, status: 'active' }] } as never);
+      const r = await upload(csvFile('stock-info.csv', ['Medicine Name,Quantity To Add,Batch Number,Expiry Date,Retail Price',
+        `Stock Info Med,1,SI1,${FUTURE_DMY},`, 'Catalogue Only Med,0,,,', 'Brand New Med,0,,,', 'Stock Info Med,1e3,,,']), tA);
+      assert.equal(r.status, 200, JSON.stringify(r.json));
+      assert.deepEqual(rowsOf(r).map((x) => [x.status, x.inMyStock, x.currentPrices]), [
+        ['valid', true, { mrp: 55, retailPrice: 40, wholesalePrice: null, purchasePrice: 25 }],
+        ['valid', false, null], ['valid', false, null],
+        ['error', true, { mrp: 55, retailPrice: 40, wholesalePrice: null, purchasePrice: 25 }]]);
+      const other = await upload(csvFile('stock-info-b.csv', ['Medicine Name,Quantity To Add', 'Stock Info Med,0']), tB);
+      assert.deepEqual(rowsOf(other).map((x) => [x.inMyStock, x.currentPrices]), [[false, null]], 'another pharmacy\'s stock is not mine');
+    });
+
+    await check('web: "only medicines already in my stock" (update_only) creates nothing for a row it skips: no medicine, no stock', async () => {
+      const inCatalogue = await med('Update Only Catalogue Med');
+      const r = await upload(csvFile('update-only.csv', ['Medicine Name,Quantity To Add,Batch Number,Expiry Date,Retail Price',
+        `Update Only Unknown Med,5,U1,${FUTURE_DMY},10`, `Update Only Catalogue Med,5,U2,${FUTURE_DMY},10`, `Kept Price Med,1,KP9,${FUTURE_DMY},`]), tA, { importMode: 'update_only' });
+      assert.equal(r.status, 200, JSON.stringify(r.json));
+      const meds = await MedicineModel.countDocuments();
+      const c = await commit(String(r.json.data._id));
+      assert.equal(c.status, 200, JSON.stringify(c.json));
+      assert.deepEqual(c.json.data.previewRows.map((x: any) => x.status), ['skipped', 'skipped', 'committed']);
+      assert.equal(await MedicineModel.countDocuments({ name: 'Update Only Unknown Med' }), 0, 'no medicine created');
+      assert.equal(await MedicineModel.countDocuments(), meds);
+      assert.equal(await InventoryItemModel.countDocuments({ pharmacyId: pA, medicineId: new Types.ObjectId(inCatalogue) }), 0, 'no stock created');
+      // create_only: a medicine already stocked is skipped without changes; a new one is created with its stock.
+      const k = await upload(csvFile('create-only.csv', ['Medicine Name,Quantity To Add,Batch Number,Expiry Date', `Kept Price Med,1,KP8,${FUTURE_DMY}`, `Create Only New Med,2,C1,${FUTURE_DMY}`]), tA, { importMode: 'create_only' });
+      const before = (await InventoryItemModel.findOne({ pharmacyId: pA, medicineId: (await MedicineModel.findOne({ name: 'Kept Price Med' }).lean())!._id }).lean())!.availableQty;
+      const kc = await commit(String(k.json.data._id));
+      assert.deepEqual(kc.json.data.previewRows.map((x: any) => x.status), ['skipped', 'committed']);
+      assert.equal((await InventoryItemModel.findOne({ pharmacyId: pA, medicineId: (await MedicineModel.findOne({ name: 'Kept Price Med' }).lean())!._id }).lean())!.availableQty, before);
     });
 
     // ───────────────────────────── 9. GST percent ─────────────────────────────
