@@ -1,6 +1,7 @@
 # Assisted booking: partners book for walk-in patients (design, 2026-11-22)
 
-Status: **design only, nothing built.**
+Status: **phase 0 built** (branch `m0/r2-assisted-phase0`, local commits, not pushed; build record §18). Phase 1a and
+later: design only.
 
 - **Revision 2** folded in the owner's 22 Nov answers (§2.2).
 - **Revision 3** applies all 20 findings of the independent review of 4b44435 and the coordinator's overnight decisions
@@ -1316,3 +1317,106 @@ holder; optional `note`):
 | Admin | `PUT /api/v1/admin/pharmacies/:id/wallet/freeze` | `{ frozen, reason }` |
 | Admin | Coupon edit adds `fundedBy` and `partnerUsable` | N1 |
 | Doctor | Appointment views add `assisted.identity` ("identity attested by the partner, not verified") and `source` | No new route |
+
+## 18. Assisted booking phase 0 built (build record, 2026-11-22)
+
+Built on `m0/r2-assisted-phase0` (base: stage line `286eb0a` + this design). Local commits only; nothing pushed or
+deployed. Suite: `test/assisted/phase0.integration.ts` (18 checks over HTTP; 17 fail without the source changes, the
+remaining one is the S3 regression guard).
+
+### 18.1 What was built
+
+| Part | Where | Notes |
+|---|---|---|
+| Booker list and detail | `GET /api/v1/pharmacy-bookings`, `GET /api/v1/pharmacy-bookings/:id` (`src1/modules/assisted/`) | `requireOperationalPharmacy`. Rows: `pharmacyId` = the caller (legacy pharmacy bookings; assisted ones from 1a). Newest first by `createdAt`, exact cursor `<ms>_<id>`; index `{pharmacyId, createdAt: -1, _id: -1}` |
+| Booker view | `assisted/bookerView.ts` | Exactly the §17.2 "Shown" list; hidden fields never copied (allowlist, not a denylist) |
+| Generic reads | `bookings/controller` | A pharmacy's `GET /bookings`, `/bookings/:id`, `/bookings/user/:userId` return the booker view (S2 scope unchanged). Its create, retry, reconcile and payment-details answers keep their fields (the released app's payment flow) but carry the booker prescription and no `documents` / `report` |
+| Dispensing copy (D15) | `assisted/dispensingCopy.ts`, PDF step `specialistPortal/pdf.ts` | `bookings/<id>/rx-dispense-<ms>.pdf`; stored as `prescription.dispensingCopy {url, hash, at}` |
+| File access | `file/access.ts` | `canReadBooking` no longer admits pharmacies; new `BOOKING_RX_DISPENSE` pattern; expiring server bindings |
+| Medicine order from the prescription | `POST /api/v1/pharmacy-orders` + `prescriptionFromBookingId` + `requestKey` (`assisted/rxOrder.ts`, `pharmacyOrders/services`) | Server binding of the dispensing copy; exactly once per (pharmacy, key) |
+| Audit | `assisted_audit_events` (`assisted/model`) | `rx_order.created`, in the order's transaction, ids only |
+
+### 18.2 Choices made while building (reversible)
+
+1. **Booker = `Booking.pharmacyId`.** Phase 0 has no `assisted` block; `assisted.bookedBy` joins in 1a. The view already
+   copies the allowed `assisted.*` sub-fields when present.
+2. **`patientName`**: the dependent's name (only a family member of that booking's account); otherwise the link's
+   `typedName` once 1a adds it; until then the account name **only when this pharmacy opened the account**
+   (`createdSource: 'pharmacy_app'` and `linkedPharmacyId` = it, the §17.4 backfill rule); otherwise masked (§6.2, D7).
+3. **`source`** is derived for stored rows exactly as §5.1 says (`clinic_desk` or `self`), so legacy pharmacy bookings
+   show `self` until 1a stores `pharmacy_assisted`.
+4. **Consultation end** (90-day window, §9.2): the later of the slot end (the booking's slot when it is on the booked
+   date, else the booked time + 30 min), the completion time and an instant consultation's last extension; when no time
+   parses, the end of the booked India day. Window = end + 90 days.
+5. **When the copy is made.** At the doctor's save, only for bookings with a booker (`pharmacyId`), best effort (the
+   prescription is saved even if the copy fails). Otherwise on the first booker read (list, detail, generic reads) or
+   order. The copy carries a hash of the prescription content it shows; a prescription saved again by any writer makes
+   the next request produce a fresh copy. The pharmacy reads only the **current** copy; older copies stay readable to the
+   patient and the doctor (and through an order that bound them). A list converts missing copies one at a time; a
+   converter failure shows `fileUrls: []` and never fails the read.
+6. **Copy content.** Doctor name and registration (`medicalRegistrationNumber`), patient name (rule 2), age and sex,
+   date, reference, medicines (name, dose, frequency, duration, instructions), advice, tests, "Dispensing copy: diagnosis
+   withheld", brand Jansetu. The doctor's free-text `message` is **not** printed (it may hold clinical detail); it stays
+   in the booker view as §17.2 lists it.
+7. **Who reads the copy.** Patient (account holder), the booking's doctor, and the booking pharmacy while operational
+   (active, verified, not archived) inside the window. HR is not given the copy; HR keeps reading the full PDF of its
+   corporate's bookings as before (unchanged, outside this phase).
+8. **Narrowing.** `canReadBooking` (full PDF and `booking` bindings: `documents.url`, `prescription.fileUrls`,
+   `report.fileUrls`) admits the patient, the booking's doctor and HR only. Files a pharmacy uploaded itself stay
+   readable through the uploader rule. `test/file-access/d1-private-files.integration.ts` was changed accordingly.
+9. **Order from the prescription.**
+   - Needs `requestKey` (`[A-Za-z0-9_-]{8,64}`, the existing request-key routes' format; kind `pharmacy_rx_order` in
+     `/request-keys/lookup` and `/abandon`). The hash is over the request body without the key.
+   - The customer is the booking's account (`customerId` may be omitted; another one is 404); `linkedConsultationId`
+     is set to the booking. Client `prescriptionUrls` are refused with it (`PRESCRIPTION_SOURCE_CONFLICT`); a client
+     can never attach the copy or the full PDF itself (uploader rule, `FILE_NOT_ATTACHABLE`).
+   - The S3 link must already exist with consent (`patient_agreed` or `customer_order`); no link is made silently.
+   - The binding is a `file_grants` row with `source: 'server'`, `expiresAt` = consultation end + 90 days and
+     `keepIfDispensed: true`; after the expiry it counts only while the order is `packed`, `ready_for_pickup`,
+     `out_for_delivery` or `completed` (current status; a cancelled order loses it).
+   - The order's customer and linked consultation are then locked (`ORDER_PRESCRIPTION_PARTY_LOCKED`), because the
+     order's customer reads the bound copy.
+   - Writers check their unique indexes fail-closed (503 `INDEXES_OUTDATED`): `pharmacy_orders {pharmacyId,
+     prescriptionFromBooking.requestKey}` and `request_keys {scope, key}`.
+10. **Not built (phase 1a or later):** `assisted` block, `typedName` and its edit route, the masked customer list, the
+    "Join call" for partner devices (the rule is in the view but no phase 0 row has `assisted.join`), wallets, partner
+    payment, lab and doctor bookers, record-access codes. DLT template registration (en, hi, records code) is an
+    operations task outside the code.
+
+### 18.3 API for the web (phase 0)
+
+`GET /api/v1/pharmacy-bookings?status&from&to&cursor&limit` — pharmacy token. `status` ∈ pending, confirmed,
+completed, cancelled, no_show; `from`/`to` = appointment date `YYYY-MM-DD` (inclusive); `limit` 1–50 (default 20).
+Answer `{ success, data: [view…], pagination: { total, nextCursor } }`. Errors: 400 `VALIDATION_ERROR`,
+`INVALID_CURSOR`, `INVALID_DATE_RANGE`; 401; 403 `FORBIDDEN` (not a pharmacy), `PHARMACY_INACTIVE`,
+`PHARMACY_NOT_VERIFIED`, `PHARMACY_PROFILE_REQUIRED`.
+
+`GET /api/v1/pharmacy-bookings/:id` — `{ success, data: view }`; 404 `BOOKING_NOT_FOUND` for another pharmacy's,
+a missing or a malformed id (one answer).
+
+View fields: §17.2 "Shown" plus `patientName`. `prescription` = `{ message, advice, medicines[], testsAdvised[],
+prescribedAt, prescribedBySpecialistName, fileUrls: [dispensing copy] }`, absent before the doctor writes one and after
+the 90-day window; `fileUrls` may be `[]` if the copy could not be made (retry later). Open the file through the usual
+`/api/static/…` URL with the pharmacy token.
+
+`POST /api/v1/pharmacy-orders` with `{ prescriptionFromBookingId, requestKey, orderType, items[], paymentMode,
+deliveryMode, deliveryAddress?, isWalkIn?, notes?, customerId? }` (pre-fill `items` from `prescription.medicines`; the
+web matches them to stock). 201 `{ order, paymentRequired, payment? }`; a replay adds `replayed: true`. Errors:
+400 `REQUEST_KEY_REQUIRED`, `REQUEST_KEY_UNSUPPORTED` (a key without `prescriptionFromBookingId`),
+`PRESCRIPTION_SOURCE_CONFLICT`, `LINKED_ORDER_REQUIRES_USER`, `FILE_NOT_ATTACHABLE`; 403 `CUSTOMER_NOT_LINKED`,
+`CUSTOMER_CONSENT_REQUIRED`, `PRESCRIPTION_ACCESS_EXPIRED`, pharmacy admission codes; 404 `BOOKING_NOT_FOUND`;
+409 `PRESCRIPTION_NOT_READY`, `IDEMPOTENCY_KEY_REUSED`, `REQUEST_ABANDONED`; 503 `DISPENSING_COPY_UNAVAILABLE`,
+`INDEXES_OUTDATED`; then the usual order errors (stock, prices). `PUT /pharmacy-orders/:id` changing the customer or
+linked consultation of such an order: 409 `ORDER_PRESCRIPTION_PARTY_LOCKED`.
+
+### 18.4 Deploy notes (phase 0)
+
+1. `npm run sync-indexes` before using the order route: new `bookings {pharmacyId, createdAt, _id}`,
+   `pharmacy_orders {pharmacyId, prescriptionFromBooking.requestKey}` (unique, partial) and the new collection
+   `assisted_audit_events`. Until then the order route answers 503 `INDEXES_OUTDATED`; the list works.
+2. No migration: copies of older prescriptions are made on first request.
+3. `wkhtmltopdf` must be on the server (`WKHTMLTOPDF_BINARY` to override), as for the full prescription PDF.
+4. Behaviour change for the released pharmacy app: generic `/bookings` reads no longer include the diagnosis,
+   documents, report, notes or money internals, and `prescription.fileUrls` now holds the dispensing copy; the full
+   PDF URL returns 404 to a pharmacy.
+
