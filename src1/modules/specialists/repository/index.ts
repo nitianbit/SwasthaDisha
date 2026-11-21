@@ -115,7 +115,7 @@ export class SpecialistRepository extends BaseRepository<ISpecialist> {
 
   async findBySpecialization(specialization: string): Promise<ISpecialist[]> {
     return this.findAll(
-      { specialization, isActive: true },
+      { specialization, isActive: true, isVerified: true }, // S5: patients see verified doctors only
       { sort: { rating: -1, experienceYears: -1 } }
     );
   }

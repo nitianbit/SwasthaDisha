@@ -46,6 +46,7 @@ import {
 import { SlotRepository } from '@/modules/slots/repository';
 import { UserRepository } from '@/modules/user/repository';
 import { EmailService } from '@/modules/email/services';
+import { assertBookableDoctor, assertNotIneligibleDoctor, loadBookableDoctor } from '@/modules/specialists/eligibility';
 import {
   buildPaidBookingEmailContent,
   cancelBookingMeet,
@@ -763,13 +764,8 @@ export class BookingService {
     const specialistId = followUpConfig.specialistIdOverride || data.specialistId;
     const specialist = await this.specialistService.getById(specialistId);
 
-    if (!specialist.isActive) {
-      throw new AppError({
-        status: 400,
-        code: 'SPECIALIST_NOT_ACTIVE',
-        message: 'Specialist is not active',
-      });
-    }
+    // S5: only a verified, active doctor can be booked (inactive: SPECIALIST_NOT_ACTIVE, unverified: SPECIALIST_NOT_VERIFIED).
+    assertBookableDoctor(specialist);
 
     await this.validateBookingDateAndSlot(data.bookingDate, data.slotId);
 
@@ -810,7 +806,7 @@ export class BookingService {
       dependentId: data.dependentId,
       corporateId: data.corporateId,
       specialistId,
-      doctorName: data.doctorName?.trim() || specialist.name,
+      doctorName: specialist.name, // S5: from the doctor's record, never the request
       primaryConcern: data.primaryConcern,
       consultationMode: data.consultationMode,
       slotId: data.slotId,
@@ -997,6 +993,9 @@ export class BookingService {
       });
     }
 
+    // S5: a named doctor must exist and be verified and active; the doctor's name comes from its record only.
+    const surgeon = data.specialistId ? await loadBookableDoctor(data.specialistId) : undefined;
+
     const booking: IBooking = {
       bookingType: 'surgery',
       userId: data.userId,
@@ -1006,7 +1005,7 @@ export class BookingService {
       wellnessPackageId: data.wellnessPackageId,
       packageName: data.packageName?.trim(),
       specialistId: data.specialistId,
-      doctorName: data.doctorName?.trim(),
+      doctorName: surgeon?.name,
       primaryConcern: data.primaryConcern,
       consultationMode: data.consultationMode,
       slotId: data.slotId,
@@ -1787,6 +1786,10 @@ export class BookingService {
     }
 
     const nextSlot = await this.slotService.getById(data.slotId);
+    // S5: never moved to (or kept with) a doctor who is not verified and active.
+    for (const doctorId of new Set([booking.specialistId, nextSlot.specialistId].filter(Boolean).map((x) => String(x).toLowerCase()))) {
+      await assertNotIneligibleDoctor(doctorId);
+    }
     const nextBookingDate = data.bookingDate || nextSlot.date;
     const nextBookingTime = data.bookingTime || nextSlot.startTime;
 
