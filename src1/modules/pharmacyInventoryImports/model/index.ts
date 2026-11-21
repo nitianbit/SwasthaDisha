@@ -10,6 +10,7 @@ const importRowSchema = new Schema(
     data: { type: Schema.Types.Mixed },
     // Q16c: whether the pharmacy already stocks this medicine, and its current prices then (null otherwise).
     inMyStock: { type: Boolean },
+    batchInStock: { type: Boolean }, // Q16d: this exact batch (number and expiry) is already held
     currentPrices: { type: Schema.Types.Mixed },
   },
   { _id: false, supressReservedKeysWarning: true } as any

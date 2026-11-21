@@ -14,6 +14,7 @@ import {
   WEEKDAYS,
 } from '@/modules/partners/model/slot';
 import { PartnerActor, assertBranchInScope, inTransaction, recordPartnerAudit } from '@/modules/partners/services';
+import { istDateIso } from '@/modules/common/utils/istDate';
 
 const IST_OFFSET_MIN = 330;
 export const ROLLING_DAYS = 30;
@@ -55,9 +56,9 @@ export function istInstant(date: string, hhmm: string): Date {
   return new Date(Date.UTC(y!, mo! - 1, d!, 0, 0) + (toMinutes(hhmm) - IST_OFFSET_MIN) * 60_000);
 }
 
-/** India-time calendar date of an instant, YYYY-MM-DD. */
+/** India-time calendar date of an instant, YYYY-MM-DD. Q16d (F10): the one shared IST date helper. */
 export function istDate(at: Date): string {
-  return new Date(at.getTime() + IST_OFFSET_MIN * 60_000).toISOString().slice(0, 10);
+  return istDateIso(at);
 }
 
 export function addDays(date: string, n: number): string {

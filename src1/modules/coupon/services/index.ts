@@ -1,5 +1,6 @@
+import { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
 import { AppError } from '@/modules/common/types';
-import { compareYyyymmdd, getTodayYyyymmdd } from '@/modules/common/utils/dateUtils';
+import { compareYyyymmdd } from '@/modules/common/utils/dateUtils';
 import { CouponRepository } from '@/modules/coupon/repository';
 import {
   ApplicableTo,
@@ -635,7 +636,7 @@ export class CouponService {
     }
 
     // Check validity dates
-    const today = getTodayYyyymmdd();
+    const today = istTodayYyyymmdd();
     if (compareYyyymmdd(today, coupon.startDate) < 0) {
       return {
         isValid: false,
@@ -783,7 +784,7 @@ export class CouponService {
       };
     }
 
-    const today = getTodayYyyymmdd();
+    const today = istTodayYyyymmdd();
     if (compareYyyymmdd(today, coupon.startDate) < 0) {
       return {
         isValid: false,

@@ -389,7 +389,8 @@ async function main() {
       assert.deepEqual(rowsOf(r).map((x) => [x.status, x.inMyStock, x.currentPrices]), [
         ['valid', true, { mrp: 55, retailPrice: 40, wholesalePrice: null, purchasePrice: 25 }],
         ['valid', false, null], ['valid', false, null],
-        ['error', true, { mrp: 55, retailPrice: 40, wholesalePrice: null, purchasePrice: 25 }]]);
+        // Q16d: a row naming no batch holds no batch in stock, so there is no MRP to show (no latest-batch fallback).
+        ['error', true, { mrp: null, retailPrice: 40, wholesalePrice: null, purchasePrice: 25 }]]);
       const other = await upload(csvFile('stock-info-b.csv', ['Medicine Name,Quantity To Add', 'Stock Info Med,0']), tB);
       assert.deepEqual(rowsOf(other).map((x) => [x.inMyStock, x.currentPrices]), [[false, null]], 'another pharmacy\'s stock is not mine');
     });

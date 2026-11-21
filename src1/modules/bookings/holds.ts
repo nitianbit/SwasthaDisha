@@ -14,7 +14,7 @@ import { WalletTransactionModel } from '@/modules/wallet/model';
 import { WalletRepository } from '@/modules/wallet/repository';
 import { settlementSystemFor } from '@/modules/partners/services/cutover';
 import { ensureSettlementAccount } from '@/modules/partners/services/settlement';
-import { slotIntervalOf } from '@/modules/common/utils/slotInterval';
+import { bookableUntilOf, slotIntervalOf } from '@/modules/common/utils/slotInterval';
 import { reserveInterval, moveInterval, releaseInterval } from '@/modules/doctors/services/reservations';
 import SpecialistModel from '@/modules/specialists/model';
 import { DoctorScheduleTemplateModel } from '@/modules/doctors/model/schedule';
@@ -52,6 +52,23 @@ export const appointmentStartOf = (b: Pick<IBooking, 'bookingDate' | 'bookingTim
 export function noShowAllowedFrom(b: Pick<IBooking, 'bookingDate' | 'bookingTime' | 'bookingKind' | 'createdAt'>): Date | null {
   const start = b.bookingKind === 'instant' && b.createdAt ? new Date(b.createdAt) : appointmentStartOf(b);
   return start ? new Date(start.getTime() + NO_SHOW_GRACE_MS) : null;
+}
+/**
+ * Q16d (F1): the no-show moment, judged on the booking's slot. A multi-seat window (maxBookings > 1) takes patients
+ * until it ENDS, so its no-show may be marked only 15 minutes after the window's END (a late joiner is never marked
+ * absent at once); a one-patient slot (or a booking whose slot is unknown) keeps start + 15 minutes.
+ */
+export async function noShowAllowedFromSlot(b: Pick<IBooking, 'bookingDate' | 'bookingTime' | 'bookingKind' | 'createdAt' | 'slotId'>,
+  s?: ClientSession): Promise<Date | null> {
+  if (b.bookingKind !== 'instant' && typeof b.slotId === 'string' && Types.ObjectId.isValid(b.slotId)) {
+    const slot = await SlotModel.findById(b.slotId).select({ date: 1, startTime: 1, endTime: 1, duration: 1, maxBookings: 1 })
+      .session(s ?? null).lean() as SlotRow | null;
+    if (slot && Number(slot.maxBookings ?? 1) > 1) {
+      const w = slotIntervalOf(slot);
+      if (w) return new Date(w.end.getTime() + NO_SHOW_GRACE_MS);
+    }
+  }
+  return noShowAllowedFrom(b);
 }
 type Holds = NonNullable<IBooking['holds']>;
 const conflict = (code: string, message: string, status = 409) => new AppError({ status, code, message });
@@ -160,9 +177,9 @@ async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate'
   // bookable until it ENDS, as before.
   const refuseStarted = desk?.refuseStartedClock ?? startedClock ?? (() => new Date());
   {
-    const w = slotIntervalOf(slot as SlotRow);
+    const until = bookableUntilOf(slot as SlotRow);
     // Sampled now, at admission (each transaction attempt), not when the request arrived.
-    if (!w || (max > 1 ? w.end : w.start).getTime() <= refuseStarted().getTime()) {
+    if (!until || until.getTime() <= refuseStarted().getTime()) {
       throw conflict('SLOT_STARTED', max > 1 ? 'This session has ended; choose a later one' : 'This slot has already started; choose a later one');
     }
   }
@@ -364,6 +381,11 @@ export async function cancelBookingSettlement(p: {
     if (!booking) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
     // Q4b: an instant consultation's money is held by its InstantRequest; only the instant cancel command refunds it.
     if (booking.bookingKind === 'instant') throw conflict('INSTANT_CONSULT_COMMAND_REQUIRED', 'Use the instant consultation cancel command');
+    // Q16d (F5): a clinic desk appointment (paid at the clinic, nothing taken by us) is cancelled with the clinic's own
+    // cancellation, never with the admin's moved-no-show command.
+    if (p.movedNoShow && (booking.settlementSystem === 'clinic' || booking.clinicDesk)) {
+      throw conflict('USE_CLINIC_CANCEL', 'This is a clinic desk appointment; cancel it with the clinic\'s cancellation');
+    }
     const already = booking.status === 'cancelled';
     // Q16a re-review (F): the admin's moved-no-show cancel is one decision; a second one is refused, not answered 200.
     if (already && p.movedNoShow) throw conflict('ALREADY_CANCELLED', 'This booking is already cancelled');
@@ -414,6 +436,9 @@ export async function cancelBookingSettlement(p: {
         ...(p.movedNoShow ? { noShowCancel: { at: new Date(), by: String(p.requester._id), refund: p.movedNoShow.refund } } : {}) } }, { session: s });
     if (cancelled.modifiedCount !== 1) throw changed();
     await releaseInterval('scheduled', id, s);
+    // Q16d (F2): a legacy booking moved after a no-show is billed in its ORIGINAL month; cancelling it changes that
+    // month's bill, so an already computed row of it is flagged for recalculation in this transaction (as the other paths do).
+    if (moved) await flagLegacyOriginalMonth(booking, s);
 
     // Coupon state first (it reads each record as captured, before the money step marks it refunded). Without a refund
     // the coupon stays used and the money stays where it is (nobody earns it: the booking is not completed).

@@ -1,7 +1,8 @@
+import { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
 import { Service } from 'typedi';
 import { Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
-import { addDaysToYyyymmdd, getTodayYyyymmdd } from '@/modules/common/utils/dateUtils';
+import { addDaysToYyyymmdd } from '@/modules/common/utils/dateUtils';
 import PharmacyModel from '@/modules/pharmacies/model';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
 import { PharmacyOrderService } from '@/modules/pharmacyOrders/services';
@@ -55,7 +56,7 @@ export class RefillOrderService {
       throw new AppError({ status: 403, code: 'PHARMACY_NOT_OPERATIONAL', message: 'This pharmacy is not accepting orders right now' });
     }
     if (sub.isActive !== true) throw conflict('SUBSCRIPTION_INACTIVE', 'This refill subscription is not active');
-    const today = getTodayYyyymmdd();
+    const today = istTodayYyyymmdd();
     if (sub.pausedUntil && sub.pausedUntil >= today) throw conflict('SUBSCRIPTION_PAUSED', `Refills are paused until ${sub.pausedUntil}`);
     const cycle = sub.nextRefillDate;
     if (!cycle) throw conflict('REFILL_DATE_MISSING', 'This subscription has no next refill date');

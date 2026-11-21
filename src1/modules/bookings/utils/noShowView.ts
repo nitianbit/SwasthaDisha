@@ -3,6 +3,7 @@
  * happened and where it moved — never who marked or moved it, nor the request key/hash of the reschedule.
  * Q16a (L3): nor the clinic desk's internals (the member who booked it, its request key and hash), the settlement
  * account the booking is settled to, or the request keys of instant-consultation extensions.
+ * Q16d (F7): nor the admin who cancelled a moved no-show (`noShowCancel.by`).
  */
 type Row = Record<string, any>;
 
@@ -14,7 +15,7 @@ function scrubOne<T>(b: T): T {
     return { ...row, booking: scrubOne(row.booking) } as unknown as T;
   }
   const internal = row.noShow !== undefined || row.noShows !== undefined || row.clinicDesk !== undefined || row.settlement !== undefined
-    || row.instantExtensions !== undefined;
+    || row.instantExtensions !== undefined || row.noShowCancel !== undefined;
   if (!internal) return b;
   const out: Row = { ...row };
   if (row.noShow) out.noShow = { at: row.noShow.at };
@@ -26,6 +27,11 @@ function scrubOne<T>(b: T): T {
   if (row.clinicDesk && typeof row.clinicDesk === 'object') {
     const { createdBy: _c, requestKey: _k, requestHash: _h, ...desk } = row.clinicDesk as Row;
     out.clinicDesk = desk;
+  }
+  // Q16d (F7): nor which admin cancelled a moved no-show.
+  if (row.noShowCancel && typeof row.noShowCancel === 'object') {
+    const { by: _b, ...cancel } = row.noShowCancel as Row;
+    out.noShowCancel = cancel;
   }
   if (row.settlement && typeof row.settlement === 'object') {
     const { settlementAccountId: _a, ...settlement } = row.settlement as Row;

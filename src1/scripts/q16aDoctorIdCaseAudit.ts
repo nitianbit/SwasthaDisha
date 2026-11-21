@@ -5,6 +5,8 @@
  * Lists (ids only — no names, phones or amounts):
  *   - doctors with more than one settlement account under different spellings of the same id (the lower-case one is
  *     the account new earnings use; the others need an admin decision);
+ *   - Q16d (F9): doctors whose settlement account(s) exist ONLY under an upper-case spelling (new earnings would open a
+ *     second, lower-case account beside them);
  *   - bookings whose `specialistId` is not lower-case, and reservations / schedule guards keyed by a non-lower-case
  *     doctor id.
  * Writes nothing. Exit code 2 when anything is found.
@@ -17,6 +19,8 @@ import { DoctorReservationModel, DoctorScheduleGuardModel } from '@/modules/doct
 
 export interface DoctorIdCaseReport {
   doubledAccounts: { doctorId: string; accountIds: string[]; canonicalAccountId: string | null }[];
+  /** Q16d (F9): doctors with no lower-case account, only upper-case spelled ones (ids only). */
+  upperCaseOnlyAccounts: { doctorId: string; accountIds: string[] }[];
   nonCanonicalBookings: string[];
   nonCanonicalReservations: string[];
   nonCanonicalGuards: string[];
@@ -28,9 +32,11 @@ export async function runDoctorIdCaseAudit(limit = 5000): Promise<DoctorIdCaseRe
   const groups = await SettlementAccountModel.aggregate([
     { $match: { ownerKind: 'doctor', ownerId: { $type: 'string' } } },
     { $group: { _id: { $toLower: '$ownerId' }, accounts: { $push: { id: '$_id', ownerId: '$ownerId' } }, n: { $sum: 1 } } },
-    { $match: { n: { $gt: 1 } } },
-  ]) as { _id: string; accounts: { id: unknown; ownerId: string }[] }[];
-  const doubledAccounts = groups.map((g) => ({
+  ]) as { _id: string; accounts: { id: unknown; ownerId: string }[]; n: number }[];
+  const upperCaseOnlyAccounts = groups
+    .filter((g) => UPPER_HEX.test(g._id.toUpperCase()) && !g.accounts.some((a) => a.ownerId === g._id))
+    .map((g) => ({ doctorId: g._id, accountIds: g.accounts.map((a) => String(a.id)).sort() }));
+  const doubledAccounts = groups.filter((g) => g.n > 1).map((g) => ({
     doctorId: g._id, accountIds: g.accounts.map((a) => String(a.id)).sort(),
     canonicalAccountId: (() => { const c = g.accounts.find((a) => a.ownerId === g._id); return c ? String(c.id) : null; })(),
   }));
@@ -38,6 +44,7 @@ export async function runDoctorIdCaseAudit(limit = 5000): Promise<DoctorIdCaseRe
     (await model.find({ [field]: UPPER_HEX }).select({ _id: 1 }).limit(limit).lean() as { _id: unknown }[]).map((r) => String(r._id));
   return {
     doubledAccounts,
+    upperCaseOnlyAccounts,
     nonCanonicalBookings: await ids(BookingModel, 'specialistId'),
     nonCanonicalReservations: await ids(DoctorReservationModel, 'doctorId'),
     nonCanonicalGuards: await ids(DoctorScheduleGuardModel, 'doctorId'),
@@ -49,7 +56,7 @@ async function main(): Promise<void> {
   try {
     const report = await runDoctorIdCaseAudit();
     console.log(JSON.stringify({ mode: 'read-only', ...report }, null, 2));
-    if (report.doubledAccounts.length || report.nonCanonicalBookings.length || report.nonCanonicalReservations.length || report.nonCanonicalGuards.length) {
+    if (report.doubledAccounts.length || report.upperCaseOnlyAccounts.length || report.nonCanonicalBookings.length || report.nonCanonicalReservations.length || report.nonCanonicalGuards.length) {
       console.log('FOUND: resolve the listed ids before relying on one account per doctor (nothing was changed).');
       process.exitCode = 2;
     }

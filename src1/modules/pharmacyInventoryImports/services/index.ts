@@ -517,24 +517,29 @@ export class InventoryImportService {
    * Q16c: the row's medicine in the shared list (matched / not_found / duplicate) and, for the web, whether this
    * pharmacy already stocks it (`inMyStock`) with its current prices (`currentPrices`, null when not stocked), so a
    * blank price on a medicine the pharmacy does not stock yet can be shown as "not on sale until priced".
+   * Q16d (web, MRP): `batchInStock` — the pharmacy already holds this exact batch (same batch number and expiry). Only
+   * then does `currentPrices.mrp` carry that batch's stored MRP; for a new batch it is null (there is no MRP to keep,
+   * and the latest other batch's MRP would mislead).
    */
   private async enrichPreviewRow(
     pharmacyId: string,
     previewRow: ImportRowResult
   ): Promise<ImportRowResult> {
     const name = previewRow.data?.name ?? previewRow.medicineName;
-    if (!name) return { ...previewRow, inMyStock: false, currentPrices: null };
+    if (!name) return { ...previewRow, inMyStock: false, batchInStock: false, currentPrices: null };
     const matches = await this.medicineRepo.findByNormalizedName(name);
     const stock = matches.length === 1
       ? await this.inventoryItemRepo.findByPharmacyAndMedicine(pharmacyId, String(matches[0]._id))
       : null;
     const priceOf = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
     const batches = stock?.batches ?? [];
-    const batch = batches.find((b) => b.batchNumber === previewRow.data?.batchNumber && b.expiryDate === previewRow.data?.expiryDate)
-      ?? [...batches].sort((a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime())[0];
+    const rowBatch = previewRow.data?.batchNumber;
+    const rowExpiry = previewRow.data?.expiryDate;
+    const batch = rowBatch && rowExpiry ? batches.find((b) => b.batchNumber === rowBatch && b.expiryDate === rowExpiry) : undefined;
     const known = {
       inMyStock: !!stock,
-      currentPrices: stock ? { mrp: priceOf(batch?.mrp), retailPrice: priceOf(stock.retailPrice),
+      batchInStock: !!batch,
+      currentPrices: stock ? { mrp: batch ? priceOf(batch.mrp) : null, retailPrice: priceOf(stock.retailPrice),
         wholesalePrice: priceOf(stock.wholesalePrice), purchasePrice: priceOf(stock.purchasePrice) } : null,
     };
     if (previewRow.status === 'error' || !previewRow.data?.name) {

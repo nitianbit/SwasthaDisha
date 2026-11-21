@@ -1,5 +1,6 @@
+import { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
 import { BaseRepository } from '@/modules/common/repository';
-import { getTodayYyyymmdd, compareYyyymmdd } from '@/modules/common/utils/dateUtils';
+import { compareYyyymmdd } from '@/modules/common/utils/dateUtils';
 import { CouponModel } from '@/modules/coupon/model';
 import {
   CouponQueryParams,
@@ -26,7 +27,7 @@ export class CouponRepository extends BaseRepository<ICoupon> {
   }
 
   async findActiveCoupons(): Promise<ICoupon[]> {
-    const today = getTodayYyyymmdd();
+    const today = istTodayYyyymmdd();
     return this.findAll(
       {
         isActive: true,
@@ -49,7 +50,7 @@ export class CouponRepository extends BaseRepository<ICoupon> {
     packageIds?: string[],
     testIds?: string[]
   ): Promise<ICoupon[]> {
-    const today = getTodayYyyymmdd();
+    const today = istTodayYyyymmdd();
     const eligibleFor = this.mapBookingTypeToEligibleFor(bookingType);
     const query: any = {
       isActive: true,
@@ -304,7 +305,7 @@ export class CouponRepository extends BaseRepository<ICoupon> {
   }
 
   async findByCorporateId(corporateId: string): Promise<ICoupon[]> {
-    const today = getTodayYyyymmdd();
+    const today = istTodayYyyymmdd();
     const query: any = {
       corporateIds: corporateId,
       isActive: true,

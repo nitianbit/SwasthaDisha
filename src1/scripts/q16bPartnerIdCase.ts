@@ -25,7 +25,11 @@ export async function findNonCanonicalPartnerIds(db = mongoose.connection.db): P
     if (info.name.startsWith('system.')) continue;
     const c = db.collection(info.name);
     for (const field of PARTNER_ID_FIELDS) {
-      const filter = { [field]: { $regex: NON_CANONICAL } };
+      // Q16d (F9): `ownerId` is a partner id only on partner-owned rows; a doctor's settlement account (ownerKind
+      // 'doctor') holds a doctor id there, reported by `npm run audit:q16a-doctor-id-case`, not here.
+      const filter = field === 'ownerId'
+        ? { ownerId: { $regex: NON_CANONICAL }, ownerKind: { $ne: 'doctor' } }
+        : { [field]: { $regex: NON_CANONICAL } };
       const rows = await c.countDocuments(filter);
       if (!rows) continue;
       const sample = await c.find(filter, { projection: { _id: 1 } }).limit(5).toArray();

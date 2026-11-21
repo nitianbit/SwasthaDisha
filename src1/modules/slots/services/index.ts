@@ -1,6 +1,7 @@
+import { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
 import { Service } from 'typedi';
 import { DoctorReservationModel } from '@/modules/doctors/model/reservation';
-import { slotIntervalOf } from '@/modules/common/utils/slotInterval';
+import { bookableUntilOf, slotIntervalOf } from '@/modules/common/utils/slotInterval';
 import { SlotRepository } from '@/modules/slots/repository';
 import {
   ISlot,
@@ -9,7 +10,7 @@ import {
   SlotQueryParams,
 } from '@/modules/slots/types';
 import { AppError } from '@/modules/common/types';
-import { getTodayYyyymmdd, compareYyyymmdd } from '@/modules/common/utils/dateUtils';
+import { compareYyyymmdd } from '@/modules/common/utils/dateUtils';
 import { branchHolidays } from '@/modules/doctors/services/schedule';
 import SlotModel from '@/modules/slots/model';
 import BranchModel from '@/modules/partners/model/branch';
@@ -20,10 +21,9 @@ import { istDate } from '@/modules/partners/services/slots';
  * time; a slot whose time does not parse is never admitted either) and an in-clinic slot on its branch's holiday.
  * Re-review N1 (owner): a multi-seat window (maxBookings > 1) stays listed until it ENDS, as admission allows.
  */
-const openUntil = (s: { maxBookings?: number }, w: { start: Date; end: Date }) => (Number(s.maxBookings ?? 1) > 1 ? w.end : w.start);
 export async function bookableNow<T extends { date?: string; startTime?: string; endTime?: string; duration?: number; branchId?: string; maxBookings?: number }>(
   slots: T[], now = new Date()): Promise<T[]> {
-  const future = slots.filter((s) => { const w = slotIntervalOf(s); return !!w && openUntil(s, w).getTime() > now.getTime(); });
+  const future = slots.filter((s) => { const until = bookableUntilOf(s); return !!until && until.getTime() > now.getTime(); });
   const branches = future.map((s) => s.branchId).filter((b): b is string => typeof b === 'string' && !!b);
   if (!branches.length) return future;
   const holidays = await branchHolidays(branches);
@@ -38,7 +38,7 @@ export async function bookableNow<T extends { date?: string; startTime?: string;
 export async function bookableQuery(base: Record<string, unknown>, now = new Date()): Promise<Record<string, unknown>> {
   const today = istDate(now).replace(/-/g, '');
   const todays = await SlotModel.find({ ...base, date: today }).select({ date: 1, startTime: 1, endTime: 1, duration: 1, maxBookings: 1 }).lean() as any[];
-  const closed = todays.filter((s) => { const w = slotIntervalOf(s); return !w || openUntil(s, w).getTime() <= now.getTime(); }).map((s) => s._id);
+  const closed = todays.filter((s) => { const until = bookableUntilOf(s); return !until || until.getTime() <= now.getTime(); }).map((s) => s._id);
   const branches = await BranchModel.find({ holidays: { $elemMatch: { $gte: istDate(now) } } }).select({ holidays: 1 }).lean() as { _id: unknown; holidays?: string[] }[];
   const holidayRows = branches.map((b) => ({ branchId: String(b._id), date: { $in: (b.holidays ?? []).map((h) => String(h).replace(/-/g, '')) } }));
   return { $and: [{ date: { $gte: today } }, ...(closed.length ? [{ _id: { $nin: closed } }] : []), ...(holidayRows.length ? [{ $nor: holidayRows }] : [])] };
@@ -115,7 +115,7 @@ export class SlotService {
     }
 
     // Validate date is not in the past
-    const today = getTodayYyyymmdd();
+    const today = istTodayYyyymmdd();
     if (compareYyyymmdd(data.date, today) < 0) {
       throw new AppError({
         status: 400,
@@ -317,7 +317,7 @@ export class SlotService {
 
     // Validate date if being updated
     if (data.date) {
-      const today = getTodayYyyymmdd();
+      const today = istTodayYyyymmdd();
       if (compareYyyymmdd(data.date, today) < 0) {
         throw new AppError({
           status: 400,

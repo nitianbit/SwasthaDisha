@@ -114,14 +114,18 @@ export function registerPaymentContextHandler(context: PaymentContext, handler: 
 }
 
 /**
- * Q16a (A): the booking price terms of a paying record — `originalPrice` its base amount, `price` the base minus the
- * coupon discount (what create sets with a coupon). Empty for a record without terms (nothing is rewritten).
+ * Q16a (A): the booking price terms of a paying record — `price` the base minus the coupon discount (what create sets
+ * with a coupon). Empty for a record without terms (nothing is rewritten).
+ * Q16d (F4): the booking's list price stays in `originalPrice` (a package's record base is its discounted price, not
+ * the list price); `originalPrice` is set from the record only when the booking has none.
  */
-export function bookingPriceTermsOf(r: { baseAmount?: unknown; discountAmount?: unknown }): { price?: number; originalPrice?: number } {
+export function bookingPriceTermsOf(r: { baseAmount?: unknown; discountAmount?: unknown },
+  booking?: { originalPrice?: unknown }): { price?: number; originalPrice?: number } {
   const base = Number(r.baseAmount);
   if (r.baseAmount === undefined || r.baseAmount === null || !Number.isFinite(base) || base < 0) return {};
   const discount = Math.max(0, Number(r.discountAmount || 0));
-  return { originalPrice: base, price: Math.round(Math.max(0, base - discount) * 100) / 100 };
+  const hasList = booking?.originalPrice !== undefined && booking?.originalPrice !== null;
+  return { ...(hasList ? {} : { originalPrice: base }), price: Math.round(Math.max(0, base - discount) * 100) / 100 };
 }
 
 @Service()
@@ -1099,7 +1103,7 @@ export class PaymentService {
         paymentTransactionId: thisRecord,
         // Q16a (A): the winning record's terms become the booking's price (a coupon taken at pay-again included), so the
         // earning and the legacy payout follow what the customer was actually charged.
-        ...bookingPriceTermsOf(paymentRecord),
+        ...bookingPriceTermsOf(paymentRecord, booking),
         status: booking.status === 'pending' ? 'confirmed' : booking.status,
         lifecycle: this.buildLifecyclePatch(booking.lifecycle, {
           paid: { amount: Number(paymentRecord.finalAmount || booking.price || 0) },

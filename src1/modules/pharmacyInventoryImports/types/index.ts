@@ -29,7 +29,12 @@ export interface ImportRowResult {
   errors?: string[];
   /** Q16c: the pharmacy already has this medicine in its inventory (an inventory record, whatever its quantity). */
   inMyStock?: boolean;
-  /** Q16c: the pharmacy's current prices for it (MRP from the row's batch, else the latest batch); null if not stocked. */
+  /** Q16d: the pharmacy already holds this exact batch (same batch number and expiry). */
+  batchInStock?: boolean;
+  /**
+   * Q16c: the pharmacy's current prices for it; null if not stocked. Q16d: `mrp` is the stored MRP of the row's exact
+   * batch, null when that batch is not in stock yet (no fallback to another batch).
+   */
   currentPrices?: ImportCurrentPrices | null;
   data?: Record<string, any> & {
     medicineId?: string;

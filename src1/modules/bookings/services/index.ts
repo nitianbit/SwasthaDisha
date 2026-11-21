@@ -1,3 +1,4 @@
+import { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
 import { BookingRepository, flagLegacyOriginalMonth } from '@/modules/bookings/repository';
 import BookingModel from '@/modules/bookings/model';
 import { fundBookingFromWallet, runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
@@ -5,8 +6,8 @@ import { Types } from 'mongoose';
 import { postConsultationEarningIn } from '@/modules/doctors/services/earnings';
 import { releaseInterval } from '@/modules/doctors/services/reservations';
 import { CreateDirectPaidTransactionRequest } from '@/modules/payment/types';
-import { appointmentStartOf, assertModeForHeldSlot, cancelBookingSettlement, createBookingWithHolds, expireUnpaidBooking, isReplayedBooking, noShowAllowedFrom, noShowRescheduleHash, paymentDeadlinePassed, rescheduleWithHolds } from '@/modules/bookings/holds';
-import { slotIntervalOf } from '@/modules/common/utils/slotInterval';
+import { appointmentStartOf, assertModeForHeldSlot, cancelBookingSettlement, createBookingWithHolds, expireUnpaidBooking, isReplayedBooking, noShowAllowedFromSlot, noShowRescheduleHash, paymentDeadlinePassed, rescheduleWithHolds } from '@/modules/bookings/holds';
+import { bookableUntilOf } from '@/modules/common/utils/slotInterval';
 import { istDate } from '@/modules/partners/services/slots';
 import SlotModel from '@/modules/slots/model';
 import {
@@ -404,10 +405,12 @@ export class BookingService {
     }
 
     // Q16a (M1): a slot that has started (India time) cannot be booked; admission refuses it again in the transaction.
+    // Q16d (F1): the same rule as admission and the lists — a multi-seat window stays bookable until it ENDS.
     if (!isCurrentSlot) {
-      const w = slotIntervalOf(slot);
-      if (!w || w.start.getTime() <= now.getTime()) {
-        throw new AppError({ status: 409, code: 'SLOT_STARTED', message: 'This slot has already started; choose a later one' });
+      const until = bookableUntilOf(slot);
+      if (!until || until.getTime() <= now.getTime()) {
+        const multi = Number(slot.maxBookings ?? 1) > 1;
+        throw new AppError({ status: 409, code: 'SLOT_STARTED', message: multi ? 'This session has ended; choose a later one' : 'This slot has already started; choose a later one' });
       }
     }
   }
@@ -1554,7 +1557,7 @@ export class BookingService {
     // One transaction (bookings/holds.ts): status, wallet refund, captured records, coupon reversal, slot release and
     // follow-up restore. The window applies only when money was captured, decided under the capture fence.
     const result = await cancelBookingSettlement({
-      bookingId, requester, reason, cancelledAt: getTodayYyyymmdd(), wallets: this.walletRepository,
+      bookingId, requester, reason, cancelledAt: istTodayYyyymmdd(), wallets: this.walletRepository,
       enforceWindow: booking => this.enforceUserCancellationWindow(booking, requester),
       lifecycle: booking => this.buildLifecyclePatch(booking.lifecycle, { cancelled: { reason }, refunded: { reason } }),
     });
@@ -1592,7 +1595,7 @@ export class BookingService {
       return cancelBookingMeet({ booking: after, reason: after.cancellationReason, bookingRepository: this.bookingRepository });
     }
     const result = await cancelBookingSettlement({
-      bookingId, requester, reason, cause: 'doctor', cancelledAt: getTodayYyyymmdd(), wallets: this.walletRepository,
+      bookingId, requester, reason, cause: 'doctor', cancelledAt: istTodayYyyymmdd(), wallets: this.walletRepository,
       enforceWindow: () => undefined,
       lifecycle: booking => this.buildLifecyclePatch(booking.lifecycle, { cancelled: { reason }, refunded: { reason } }),
       // Q16a (L8): a desk appointment the doctor cancels is recorded in the clinic's audit trail with the cancellation
@@ -1630,7 +1633,7 @@ export class BookingService {
   async adminCancelMovedNoShow(bookingId: string, admin: { _id: string }, input: { reason: string; refund: boolean }): Promise<IBooking & { refunded: number }> {
     const reason = String(input.reason ?? '').trim() || 'Cancelled by the Jansetu team';
     const result = await cancelBookingSettlement({
-      bookingId, requester: { _id: String(admin._id), userType: 'admin' }, reason, cause: 'admin', cancelledAt: getTodayYyyymmdd(),
+      bookingId, requester: { _id: String(admin._id), userType: 'admin' }, reason, cause: 'admin', cancelledAt: istTodayYyyymmdd(),
       wallets: this.walletRepository, enforceWindow: () => undefined, movedNoShow: { refund: input.refund === true },
       lifecycle: booking => this.buildLifecyclePatch(booking.lifecycle, input.refund === true
         ? { cancelled: { reason }, refunded: { reason } } : { cancelled: { reason } }),
@@ -1673,7 +1676,8 @@ export class BookingService {
         throw new AppError({ status: 409, code: 'BOOKING_STATE_CONFLICT', message: `A ${b.status} booking cannot be marked as no-show` });
       }
       // Q16a: only 15 minutes after the start (an instant consultation: after the doctor accepted).
-      const from = noShowAllowedFrom(b);
+      // Q16d (F1): in a multi-seat window, 15 minutes after the window's END.
+      const from = await noShowAllowedFromSlot(b, session);
       if (!from || now < from) throw new AppError({ status: 409, code: 'APPOINTMENT_NOT_STARTED', message: 'A no-show can be marked 15 minutes after the appointment time' });
       const done = await BookingModel.findOneAndUpdate({ _id: bookingId, status: 'confirmed', paymentStatus: 'paid' },
         { $set: { status: 'no_show', noShow: { at: now, by: String(requester._id), byKind: requester.userType } } }, { new: true, session }).lean() as IBooking | null;
@@ -1860,7 +1864,7 @@ export class BookingService {
           continue;
         }
         const reason = 'Payment was not completed in time';
-        const r = await expireUnpaidBooking({ bookingId: id, now, wallets: this.walletRepository, cancelledAt: getTodayYyyymmdd(),
+        const r = await expireUnpaidBooking({ bookingId: id, now, wallets: this.walletRepository, cancelledAt: istTodayYyyymmdd(),
           lifecycle: (b) => this.buildLifecyclePatch(b.lifecycle, { cancelled: { reason }, refunded: { reason } }) });
         if (r.expired) {
           expired += 1;
@@ -2052,7 +2056,7 @@ export class BookingService {
       }, {
         paymentStatus: 'paid',
         // Q16a (A): a coupon taken at pay-again is the booking's price from now on (earning and legacy payout follow it).
-        ...bookingPriceTermsOf({ baseAmount, discountAmount }),
+        ...bookingPriceTermsOf({ baseAmount, discountAmount }, booking),
         status: booking.status === 'pending' ? 'confirmed' : booking.status,
         lifecycle: this.buildLifecyclePatch(booking.lifecycle, {
           paid: { amount: grossAmount },

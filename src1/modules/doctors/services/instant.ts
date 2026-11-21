@@ -1,3 +1,4 @@
+import { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
 import { Service, Container } from 'typedi';
 import { createHash } from 'crypto';
 import { ClientSession, Types } from 'mongoose';
@@ -730,7 +731,7 @@ export class InstantConsultService {
       if (!r || r.fundingState !== 'allocated' || !r.allocated) throw err(409, 'FUNDING_STATE_CONFLICT', 'The consultation funding is not in an allocated state');
       const byAdmin = requester.userType === 'admin';
       const done = await BookingModel.updateOne({ _id: id, status: 'confirmed' },
-        { $set: { status: 'cancelled', paymentStatus: 'refunded', cancellationReason: reason, cancellationCause: byAdmin ? 'admin' : 'doctor', cancelledAt: getTodayYyyymmdd() } }, { session: s });
+        { $set: { status: 'cancelled', paymentStatus: 'refunded', cancellationReason: reason, cancellationCause: byAdmin ? 'admin' : 'doctor', cancelledAt: istTodayYyyymmdd() } }, { session: s });
       if (done.modifiedCount !== 1) throw changed();
       const already = r.refunded ?? { walletMinor: 0, gatewayMinor: 0, totalMinor: 0 };
       const wallet = r.allocated.walletMinor - already.walletMinor;

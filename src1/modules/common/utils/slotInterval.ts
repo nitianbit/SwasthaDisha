@@ -16,3 +16,15 @@ export function slotIntervalOf(slot: { date?: string; startTime?: string; endTim
     : new Date(start.getTime() + (Number(slot.duration) > 0 ? Number(slot.duration) : 30) * 60_000);
   return { start, end };
 }
+
+/**
+ * Q16d (F1): until when a slot takes bookings — the one rule of admission (`reserveSlot`), the lists (`bookableNow`),
+ * the service pre-checks and the clinic desk. A multi-seat window (maxBookings > 1: package windows, doctor sessions)
+ * until it ENDS; a one-patient slot until it STARTS. Null when the slot's time does not parse (never bookable).
+ */
+export function bookableUntilOf(slot: { date?: string; startTime?: string; endTime?: string; duration?: number; maxBookings?: number | null }):
+  Date | null {
+  const w = slotIntervalOf(slot);
+  if (!w) return null;
+  return Number(slot.maxBookings ?? 1) > 1 ? w.end : w.start;
+}

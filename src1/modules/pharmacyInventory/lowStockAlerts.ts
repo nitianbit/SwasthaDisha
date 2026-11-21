@@ -1,6 +1,7 @@
+import { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
 import { Service } from 'typedi';
 import { startSession, Types } from 'mongoose';
-import { addDaysToYyyymmdd, getTodayYyyymmdd } from '@/modules/common/utils/dateUtils';
+import { addDaysToYyyymmdd } from '@/modules/common/utils/dateUtils';
 import { InventoryItemModel } from '@/modules/pharmacyInventory/model';
 import MedicineModel from '@/modules/pharmacyMedicines/model';
 import NotificationModel from '@/modules/notification/model';
@@ -23,7 +24,7 @@ export class LowStockAlertService {
   async refillDemand(pharmacyId: string, medicineIds: string[]): Promise<Map<string, number>> {
     const ids = medicineIds.filter(id => Types.ObjectId.isValid(id)).map(id => new Types.ObjectId(id));
     if (!ids.length || !Types.ObjectId.isValid(pharmacyId)) return new Map();
-    const through = addDaysToYyyymmdd(getTodayYyyymmdd(), REFILL_DEMAND_DAYS);
+    const through = addDaysToYyyymmdd(istTodayYyyymmdd(), REFILL_DEMAND_DAYS);
     const rows = await PharmacySubscriptionModel.aggregate<{ _id: Types.ObjectId; count: number }>([
       { $match: { pharmacyId: new Types.ObjectId(pharmacyId), medicineId: { $in: ids }, isActive: true, nextRefillDate: { $lte: through } } },
       { $group: { _id: '$medicineId', count: { $sum: 1 } } },

@@ -1,8 +1,9 @@
 import { createHash } from 'crypto';
+import { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
 import { ClientSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import { canonicalMobile } from '@/modules/common/utils/phone';
-import { slotIntervalOf } from '@/modules/common/utils/slotInterval';
+import { bookableUntilOf, slotIntervalOf } from '@/modules/common/utils/slotInterval';
 import PartnerOrgModel from '@/modules/partners/model';
 import BranchModel from '@/modules/partners/model/branch';
 import MemberModel from '@/modules/partners/model/member';
@@ -20,7 +21,7 @@ import BookingModel from '@/modules/bookings/model';
 import UserModel from '@/modules/user/model';
 import { IBooking } from '@/modules/bookings/types';
 import {
-  appointmentStartOf, assertBookingVersion, cancelBookingSettlement, createBookingWithHolds, deskBookingInScope, isReplayedBooking, noShowAllowedFrom,
+  assertBookingVersion, cancelBookingSettlement, createBookingWithHolds, deskBookingInScope, isReplayedBooking, noShowAllowedFromSlot,
   noShowRescheduleHash, rescheduleWithHolds, type DeskScope,
 } from '@/modules/bookings/holds';
 import { claimRequestKey, abandonRequestKey } from '@/modules/requestKeys';
@@ -461,6 +462,7 @@ export async function leaveClinic(doctorId: string, partnerId: string) {
 /**
  * Bookable in-clinic slots of a clinic doctor at one branch on one day (seat free, doctor's time not held elsewhere).
  * Q13: slots that have already started are left out (the desk create refuses them with SLOT_STARTED).
+ * Q16d (F1): as admission decides — a multi-seat window is offered until it ENDS, a one-patient slot until it starts.
  */
 export async function deskSlots(actor: PartnerActor, q: { doctorId: string; branchId: string; date: string }, now = new Date()) {
   await clinicOf(actor);
@@ -472,7 +474,8 @@ export async function deskSlots(actor: PartnerActor, q: { doctorId: string; bran
   const slots = await SlotModel.find({ specialistId: String(q.doctorId), branchId: String(q.branchId), date: ymd(q.date), isActive: true, isAvailable: true,
     $expr: { $lt: [{ $ifNull: ['$currentBookings', 0] }, { $ifNull: ['$maxBookings', 1] }] } }).lean() as any[];
   const inPerson = slots.filter((s) => !(s.serviceModes?.length) || s.serviceModes.includes('in-person'));
-  const windows = inPerson.map((s) => ({ s, w: slotIntervalOf(s) })).filter((x) => x.w && x.w.start.getTime() > now.getTime());
+  const windows = inPerson.map((s) => ({ s, w: slotIntervalOf(s) }))
+    .filter((x) => { const until = bookableUntilOf(x.s); return !!x.w && !!until && until.getTime() > now.getTime(); });
   if (!windows.length) return [];
   const held = await DoctorReservationModel.find({ doctorId: String(q.doctorId).toLowerCase(), isActive: true,
     startTime: { $lt: new Date(Math.max(...windows.map((x) => x.w!.end.getTime()))) }, endTime: { $gt: new Date(Math.min(...windows.map((x) => x.w!.start.getTime()))) } }).lean();
@@ -557,8 +560,11 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
   if (await RequestKeyModel.exists({ scope: deskKeyScope(actor), key: input.requestKey, state: 'abandoned' })) {
     throw err(409, 'REQUEST_ABANDONED', 'This request was cancelled before it was recorded; make a new one');
   }
-  const startsAt = slotIntervalOf(slot)?.start;
-  if (!startsAt || startsAt.getTime() <= readClock().getTime()) throw err(409, 'SLOT_STARTED', 'This slot has already started; choose a later one');
+  // Q16d (F1): the admission rule (a multi-seat window until it ENDS, a one-patient slot until it starts).
+  const bookableUntil = bookableUntilOf(slot);
+  if (!bookableUntil || bookableUntil.getTime() <= readClock().getTime()) {
+    throw err(409, 'SLOT_STARTED', Number(slot.maxBookings ?? 1) > 1 ? 'This session has ended; choose a later one' : 'This slot has already started; choose a later one');
+  }
   if (input.patient && 'dependentId' in input.patient) await assertDependentOfPhone(String(input.patient.dependentId), input.customer.phone);
   const customer = await resolveCustomerByPhone(input.customer.phone, 'clinic_desk');
   const name = input.customer.name?.trim();
@@ -734,11 +740,14 @@ export async function closeDeskAppointment(actor: PartnerActor, bookingId: strin
     const b = await ownDeskBooking(actor, bookingId, s);
     if (b.status !== 'confirmed') throw err(409, 'BOOKING_STATE_CONFLICT', `A ${b.status} appointment cannot be closed`);
     assertBookingVersion(b, expectedUpdatedAt);
-    // Q16a: completed only once the appointment has started; a no-show only 15 minutes after it.
-    const start = appointmentStartOf(b);
-    if (outcome === 'completed' && start && now < start) throw err(409, 'NOT_STARTED_YET', 'An appointment can be completed only after it has started');
-    const noShowFrom = noShowAllowedFrom(b);
-    if (outcome === 'no_show' && (!noShowFrom || now < noShowFrom)) throw err(409, 'APPOINTMENT_NOT_STARTED', 'A no-show can be marked 15 minutes after the appointment time');
+    // Q16d (F8, owner, assumed): the desk may mark its appointment seen at any time on the appointment's own day (India
+    // date), even before the slot time — no platform money is involved. Not on an earlier day.
+    if (outcome === 'completed' && /^\d{8}$/.test(String(b.bookingDate ?? '')) && istTodayYyyymmdd(now) < String(b.bookingDate)) {
+      throw err(409, 'NOT_STARTED_YET', 'An appointment can be marked seen only on its own day');
+    }
+    // Q16a: a no-show only 15 minutes after the appointment time. Q16d (F1): in a multi-seat window, 15 minutes after its END.
+    const noShowFrom = outcome === 'no_show' ? await noShowAllowedFromSlot(b, s) : null;
+    if (outcome === 'no_show' && (!noShowFrom || now < noShowFrom)) throw err(409, 'APPOINTMENT_NOT_STARTED', 'A no-show can be marked 15 minutes after the appointment time (a session: after it ends)');
     const r = await BookingModel.findOneAndUpdate({ _id: b._id, status: 'confirmed', 'clinicDesk.partnerId': actor.partnerId, ...atBranch(b) },
       { $set: { status: outcome, ...(outcome === 'no_show' ? { noShow: { at: now, by: actor.memberId, byKind: 'clinic' } } : {}) } },
       { new: true, session: s }).lean() as IBooking | null;
