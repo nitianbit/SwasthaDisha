@@ -664,3 +664,34 @@ export async function adminAccountEvents(accountId: string) {
 }
 
 export { ensureOwnerAccount };
+
+// ── Q16a: consultations that were paid and are over but were never marked completed or no-show ──
+
+export interface UnmarkedConsultationQuery { doctorId?: string; from?: string; to?: string; cursor?: string; limit?: number }
+
+/**
+ * Q16a (owner, 22 Nov 2026): a ledger consultation that is not marked completed stays unpaid to the doctor. Admins
+ * list the past ones — paid through us, settled by the ledger, appointment day before today (India time), still
+ * pending/confirmed (never completed, no-show or cancelled) — to chase the doctor. Newest booked first, exact
+ * `<createdAt ms>_<id>` cursor and the total, as the other admin lists. `from`/`to` (YYYY-MM-DD) narrow the appointment day.
+ */
+export async function adminUnmarkedConsultations(q: UnmarkedConsultationQuery, now = new Date()) {
+  const today = istDate(now).replace(/-/g, '');
+  const day: Record<string, string> = { $lt: today };
+  if (q.from) day.$gte = q.from.replace(/-/g, '');
+  if (q.to && q.to.replace(/-/g, '') < today) { day.$lte = q.to.replace(/-/g, ''); delete day.$lt; }
+  const filter: Record<string, unknown> = {
+    bookingType: { $in: ['consultation', 'second-opinion'] }, settlementSystem: 'ledger', paymentStatus: 'paid',
+    status: { $in: ['pending', 'confirmed'] }, bookingDate: day,
+    ...(q.doctorId ? { specialistId: { $in: [canon(q.doctorId), String(q.doctorId)] } } : {}),
+  };
+  const page = await cursorPage<Record<string, any>>(BookingModel, filter, 'createdAt', q, 100);
+  return {
+    total: page.total, nextCursor: page.nextCursor,
+    items: page.items.map((b) => ({
+      bookingId: String(b._id), doctorId: b.specialistId, doctorName: b.doctorName ?? null, bookingDate: b.bookingDate, bookingTime: b.bookingTime,
+      bookingKind: b.bookingKind ?? 'scheduled', consultationMode: b.consultationMode ?? null, status: b.status,
+      priceMinor: Math.round(Number(b.price ?? 0) * 100), bookedAt: b.createdAt,
+    })),
+  };
+}

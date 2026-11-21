@@ -207,7 +207,7 @@ async function main() {
       const slots = await clinic.deskSlots(own, { doctorId: drRao.id, branchId: A, date: day });
       const r = await clinic.createDeskAppointment(own, { slotId: slots[0]!.slotId, customer: { phone: nextPhone() }, requestKey: rk() });
       assert.equal((await BookingModel.findById(r.booking.bookingId).lean() as any).settlementSystem, 'clinic');
-      await bookings.update(r.booking.bookingId, { status: 'completed' } as any); // the doctor completes it in the portal
+      await bookings.update(r.booking.bookingId, { status: 'completed' } as any, undefined, new Date(Date.now() + 30 * 86_400_000)); // the doctor completes it in the portal (Q16a: after the start)
       assert.equal(await LedgerEntryModel.countDocuments({ sourceId: r.booking.bookingId }), 0);
       assert.equal(await DoctorReservationModel.countDocuments({ refId: r.booking.bookingId, isActive: true }), 1, 'scheduled interval kept until closed by its own path');
     } finally { (CONFIG as any).SETTLEMENT_CUTOVER_AT = undefined; }
@@ -219,10 +219,10 @@ async function main() {
     assert.ok(a1.arrivedAt);
     await assert.rejects(() => clinic.markArrived(d, deskBookingId), code('BOOKING_STATE_CONFLICT'));
     await assert.rejects(() => clinic.closeDeskAppointment(d, deskBookingId, 'no_show'), code('APPOINTMENT_NOT_STARTED'));
-    const done = await clinic.closeDeskAppointment(d, deskBookingId, 'completed');
+    const done = await clinic.closeDeskAppointment(d, deskBookingId, 'completed', new Date(Date.now() + 30 * 86_400_000)); // Q16a: after the start
     assert.equal(done.status, 'completed');
     assert.equal(await DoctorReservationModel.countDocuments({ refId: deskBookingId, isActive: true }), 0);
-    await assert.rejects(() => clinic.closeDeskAppointment(d, deskBookingId, 'completed'), code('BOOKING_STATE_CONFLICT'));
+    await assert.rejects(() => clinic.closeDeskAppointment(d, deskBookingId, 'completed', new Date(Date.now() + 30 * 86_400_000)), code('BOOKING_STATE_CONFLICT'));
 
     const slots = await clinic.deskSlots(d, { doctorId: drRao.id, branchId: A, date: addDays(today, 3) });
     const c = await clinic.createDeskAppointment(d, { slotId: slots[0]!.slotId, customer: { phone: nextPhone() }, requestKey: rk() });

@@ -16,7 +16,9 @@ export interface ISlot {
   serviceModes?: ('chat' | 'call' | 'video' | 'in-person')[];
   branchId?: string;
   source?: 'manual' | 'template';
-  closedReason?: 'leave' | 'template';
+  closedReason?: 'leave' | 'template' | 'holiday';
+  /** Q16a: closed by hand; schedule changes never reopen it. */
+  manuallyClosed?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }

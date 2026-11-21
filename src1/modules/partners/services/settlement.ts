@@ -8,16 +8,34 @@ import {
   LedgerEntryKind,
 } from '@/modules/partners/model/settlement';
 
-/** §7a: idempotent find-or-create by owner; safe under concurrency (unique {ownerKind, ownerId}). */
+/** Q16a: an ObjectId-shaped owner id in its canonical (lower-case) spelling; anything else as given. */
+export const canonicalOwnerId = (id: unknown): string => {
+  const v = String(id ?? '');
+  return /^[0-9a-fA-F]{24}$/.test(v) ? v.toLowerCase() : v;
+};
+
+/**
+ * §7a: idempotent find-or-create by owner; safe under concurrency (unique {ownerKind, ownerId}). Q16a: the owner id is
+ * canonical (lower-case) — an id sent in another letter case finds the same account (also one stored earlier in another
+ * spelling) and never creates a second one.
+ */
 export async function ensureSettlementAccount(
   ownerKind: 'partner' | 'doctor',
-  ownerId: string,
+  ownerIdIn: string,
   beneficiaryName: string,
   session?: ClientSession
 ): Promise<ISettlementAccount> {
+  const ownerId = canonicalOwnerId(ownerIdIn);
+  if (/^[0-9a-f]{24}$/.test(ownerId)) {
+    const existing = await SettlementAccountModel.findOne({ ownerKind, ownerId: { $in: [ownerId, ownerId.toUpperCase(), String(ownerIdIn)] } })
+      .session(session ?? null).lean();
+    if (existing) return existing as ISettlementAccount;
+    const anyCase = await SettlementAccountModel.findOne({ ownerKind, ownerId: new RegExp(`^${ownerId}$`, 'i') }).session(session ?? null).lean();
+    if (anyCase) return anyCase as ISettlementAccount;
+  }
   const upsert = () => SettlementAccountModel.findOneAndUpdate(
-    { ownerKind, ownerId: String(ownerId) },
-    { $setOnInsert: { ownerKind, ownerId: String(ownerId), beneficiaryName, isActive: true } },
+    { ownerKind, ownerId },
+    { $setOnInsert: { ownerKind, ownerId, beneficiaryName, isActive: true } },
     { upsert: true, new: true, ...(session ? { session } : {}) }
   ).lean();
   try {

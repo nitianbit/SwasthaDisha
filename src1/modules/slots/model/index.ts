@@ -67,7 +67,9 @@ const slotSchema = new Schema<ISlot>(
     // Q4: 'template' slots are generated from the doctor's weekly template; others were created by hand.
     source: { type: String, enum: ['manual', 'template'], default: 'manual' },
     // Q4: why the slot is not bookable (leave/template change); manual deactivation leaves this empty.
-    closedReason: { type: String, enum: ['leave', 'template'] },
+    closedReason: { type: String, enum: ['leave', 'template', 'holiday'] },
+    // Q16a (L6): closed by hand (slot update API); leave, holiday and template changes never mark or reopen such a slot.
+    manuallyClosed: { type: Boolean },
     isActive: {
       type: Boolean,
       default: true,

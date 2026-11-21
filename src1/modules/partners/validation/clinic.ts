@@ -61,6 +61,8 @@ export const deskCancelSchema = Joi.object({ reason: Joi.string().trim().max(500
 export const deskRescheduleSchema = Joi.object({ slotId: objectId.required(), expectedUpdatedAt });
 /** Q14: move a no-show once to a later slot (doctor, clinic desk, admin). */
 export const noShowRescheduleSchema = Joi.object({ slotId: objectId.required(), requestKey: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).required(), expectedUpdatedAt });
+/** Q16a: an admin cancels a moved no-show; `refund` (required) chooses whether the patient gets their money back. */
+export const adminCancelNoShowSchema = Joi.object({ reason: Joi.string().trim().min(3).max(500).required(), refund: Joi.boolean().strict().required() });
 export const deskKeyParamSchema = Joi.object({ key: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).required() });
 
 export const partnerIdParamSchema = Joi.object({ partnerId: objectId.required() });

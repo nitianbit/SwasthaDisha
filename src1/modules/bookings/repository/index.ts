@@ -17,6 +17,22 @@ import { AppError } from '@/modules/common/types';
  */
 export const EXCLUDE_Q14_NO_SHOWS = Object.freeze({ $nor: [{ status: 'no_show', 'noShow.at': { $type: 'date' } }] });
 
+/**
+ * Q16a (item 3): the legacy monthly payout bills a booking in the month of its ORIGINAL appointment. A booking moved
+ * after a no-show keeps that month (`noShows[0].fromDate`), so a month billed before the move and the month it moved to
+ * can never both pay for it. Every other booking is billed by its `bookingDate`.
+ */
+export function legacyBillingMonthFilter(from?: string, to?: string): Record<string, unknown> {
+  const range: Record<string, string> = {};
+  if (from) range.$gte = from;
+  if (to) range.$lte = to;
+  if (!from && !to) return {};
+  return { $or: [
+    { 'noShows.0.fromDate': range },
+    { 'noShows.0.fromDate': { $exists: false }, bookingDate: range },
+  ] };
+}
+
 @Service()
 export class BookingRepository extends BaseRepository<IBooking> {
   constructor() {
@@ -67,7 +83,9 @@ export class BookingRepository extends BaseRepository<IBooking> {
       ...(options.legacyOnly ? { settlementSystem: { $nin: ['ledger', 'clinic'] }, ...EXCLUDE_Q14_NO_SHOWS } : {}),
     };
 
-    if (options.from || options.to) {
+    if (options.legacyOnly) {
+      Object.assign(match, legacyBillingMonthFilter(options.from, options.to));
+    } else if (options.from || options.to) {
       match.bookingDate = {} as Record<string, string>;
       if (options.from) {
         (match.bookingDate as Record<string, string>).$gte = options.from;

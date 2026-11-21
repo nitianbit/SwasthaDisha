@@ -442,6 +442,11 @@ const bookingSchema = new Schema<IBooking>(
       default: undefined,
     },
     noShowReschedules: { type: Number },
+    // Q16a: an admin cancelled this moved no-show; refund false = the money stays (nobody earns it).
+    noShowCancel: {
+      type: new Schema({ at: { type: Date, required: true }, by: { type: String, required: true }, refund: { type: Boolean, required: true } }, { _id: false }),
+      default: undefined,
+    },
     // Q3 §7a: which system pays this booking's provider — the legacy monthly payouts or the new ledger. Exclusive.
     settlementSystem: {
       type: String,

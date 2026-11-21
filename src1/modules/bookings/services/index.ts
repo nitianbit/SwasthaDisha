@@ -2,11 +2,12 @@ import { BookingRepository } from '@/modules/bookings/repository';
 import BookingModel from '@/modules/bookings/model';
 import { fundBookingFromWallet, runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
 import { Types } from 'mongoose';
-import { parseAppointment } from '@/modules/common/utils/cancellationWindow';
 import { postConsultationEarningIn } from '@/modules/doctors/services/earnings';
 import { releaseInterval } from '@/modules/doctors/services/reservations';
 import { CreateDirectPaidTransactionRequest } from '@/modules/payment/types';
-import { assertModeForHeldSlot, cancelBookingSettlement, createBookingWithHolds, expireUnpaidBooking, isReplayedBooking, noShowRescheduleHash, paymentDeadlinePassed, rescheduleWithHolds } from '@/modules/bookings/holds';
+import { appointmentStartOf, assertModeForHeldSlot, cancelBookingSettlement, createBookingWithHolds, expireUnpaidBooking, isReplayedBooking, noShowAllowedFrom, noShowRescheduleHash, paymentDeadlinePassed, rescheduleWithHolds } from '@/modules/bookings/holds';
+import { slotIntervalOf } from '@/modules/common/utils/slotInterval';
+import { istDate } from '@/modules/partners/services/slots';
 import SlotModel from '@/modules/slots/model';
 import {
   BookingType,
@@ -364,9 +365,11 @@ export class BookingService {
   private async validateBookingDateAndSlot(
     bookingDate: string,
     slotId: string,
-    options?: { allowCurrentSlotId?: string }
+    options?: { allowCurrentSlotId?: string },
+    now = new Date()
   ): Promise<void> {
-    const today = getTodayYyyymmdd();
+    // Q16a (M1): "today" is the India date, not the server's local date.
+    const today = istDate(now).replace(/-/g, '');
     if (compareYyyymmdd(bookingDate, today) < 0) {
       throw new AppError({
         status: 400,
@@ -401,6 +404,14 @@ export class BookingService {
         code: 'SLOT_FULL',
         message: 'Slot is already full',
       });
+    }
+
+    // Q16a (M1): a slot that has started (India time) cannot be booked; admission refuses it again in the transaction.
+    if (!isCurrentSlot) {
+      const w = slotIntervalOf(slot);
+      if (!w || w.start.getTime() <= now.getTime()) {
+        throw new AppError({ status: 409, code: 'SLOT_STARTED', message: 'This slot has already started; choose a later one' });
+      }
     }
   }
 
@@ -1405,7 +1416,8 @@ export class BookingService {
   async update(
     id: string,
     data: UpdateBookingRequest,
-    userId?: string
+    userId?: string,
+    now = new Date()
   ): Promise<IBooking> {
     const booking = await this.getById(id, userId);
     if (data.status === 'cancelled' || data.status === 'no_show' || data.paymentStatus !== undefined || Object.prototype.hasOwnProperty.call(data, 'paymentTransactionId') ||
@@ -1416,6 +1428,18 @@ export class BookingService {
     // Q4: completed and no-show are terminal (an earning may exist for them); no writer moves them back.
     if (TERMINAL_BOOKING_STATUSES.includes(String(booking.status)) && data.status !== undefined && data.status !== booking.status) {
       throw new AppError({ status: 409, code: 'BOOKING_TERMINAL', message: `A ${booking.status} booking cannot change status` });
+    }
+    // Q16a (L8): a clinic desk appointment never goes back to pending (it is confirmed at the desk; only the clinic manages it).
+    if (data.status === 'pending' && booking.clinicDesk && booking.status !== 'pending') {
+      throw new AppError({ status: 409, code: 'DESK_STATUS_NOT_ALLOWED', message: 'A clinic appointment cannot be set back to pending' });
+    }
+    // Q16a (item 4): nothing is completed (and no earning posted) before the appointment has started — for the doctor,
+    // the admin and every other writer of this route.
+    if (data.status === 'completed' && booking.status !== 'completed') {
+      const start = booking.bookingKind === 'instant' && booking.createdAt ? new Date(booking.createdAt) : appointmentStartOf(booking);
+      if (start && now.getTime() < start.getTime()) {
+        throw new AppError({ status: 409, code: 'NOT_STARTED_YET', message: 'An appointment can be completed only after it has started' });
+      }
     }
     // Any supplied consultation type (also one equal to the snapshot) is admitted against the held slot and fenced below.
     if (data.consultationMode !== undefined) {
@@ -1561,19 +1585,68 @@ export class BookingService {
       bookingId, requester, reason, cause: 'doctor', cancelledAt: getTodayYyyymmdd(), wallets: this.walletRepository,
       enforceWindow: () => undefined,
       lifecycle: booking => this.buildLifecyclePatch(booking.lifecycle, { cancelled: { reason }, refunded: { reason } }),
+      // Q16a (L8): a desk appointment the doctor cancels is recorded in the clinic's audit trail with the cancellation
+      // (the workspace has no notification inbox; the clinic sees it there and in its appointment list).
+      inTx: async (b, s) => {
+        if (!b.clinicDesk) return;
+        const { recordDoctorDeskCancelIn } = await import('@/modules/partners/services/clinic');
+        await recordDoctorDeskCancelIn(b, requester, reason, s);
+      },
     });
     const booking = result.booking;
     if (result.alreadyCancelled) return booking;
     try { await this.bookingReminderScheduler.clearBookingReminders(booking._id!); }
     catch (error) { console.error('Failed to clear booking reminders:', error); }
+    // Q16a (L8): a clinic-paid appointment had no online payment, so no wallet refund is promised.
+    const clinicPaid = booking.settlementSystem === 'clinic';
     try {
       await this.notificationService.create({
         userId: String(booking.userId), type: 'booking_cancelled', title: 'Your doctor cancelled the appointment',
-        message: `${reason}. Your full payment is back in your wallet.`, referenceType: 'booking', referenceId: String(booking._id),
+        message: clinicPaid ? `${reason}. Contact the clinic about anything you paid there.` : `${reason}. Your full payment is back in your wallet.`,
+        referenceType: 'booking', referenceId: String(booking._id),
         idempotencyKey: `booking:${booking._id}:doctor_cancelled`,
       });
     } catch (error) { console.error('Failed to notify customer of doctor cancellation:', error); }
     return cancelBookingMeet({ booking, reason: booking.cancellationReason, bookingRepository: this.bookingRepository });
+  }
+
+  /**
+   * Q16a (owner, 22 Nov 2026): a booking moved after a no-show whose provider cannot attend it is cancelled by an ADMIN
+   * only, who chooses whether the patient is refunded (`refund`). With a refund: as a doctor cancellation (full refund
+   * to the wallet, coupon undone). Without: the money stays with the platform (as for a no-show), the coupon stays used,
+   * nobody earns it. Seat and doctor time are released either way. Desk appointments (paid at the clinic) keep their
+   * own cancellation, which the admin can also use as owner.
+   */
+  async adminCancelMovedNoShow(bookingId: string, admin: { _id: string }, input: { reason: string; refund: boolean }): Promise<IBooking & { refunded: number }> {
+    const reason = String(input.reason ?? '').trim() || 'Cancelled by the Jansetu team';
+    const result = await cancelBookingSettlement({
+      bookingId, requester: { _id: String(admin._id), userType: 'admin' }, reason, cause: 'admin', cancelledAt: getTodayYyyymmdd(),
+      wallets: this.walletRepository, enforceWindow: () => undefined, movedNoShow: { refund: input.refund === true },
+      lifecycle: booking => this.buildLifecyclePatch(booking.lifecycle, input.refund === true
+        ? { cancelled: { reason }, refunded: { reason } } : { cancelled: { reason } }),
+    });
+    const booking = result.booking;
+    if (result.alreadyCancelled) return { ...booking, refunded: 0 };
+    try { await this.bookingReminderScheduler.clearBookingReminders(booking._id!); }
+    catch (error) { console.error('Failed to clear booking reminders:', (error as Error)?.message); }
+    try {
+      await this.notificationService.create({
+        userId: String(booking.userId), type: 'booking_cancelled', title: 'Your appointment was cancelled',
+        message: input.refund === true ? `${reason}. ₹${result.refunded.toFixed(2)} is back in your wallet.` : `${reason}.`,
+        referenceType: 'booking', referenceId: String(booking._id), idempotencyKey: `booking:${booking._id}:no_show_admin_cancelled`,
+      });
+    } catch (error) { console.error('Failed to notify customer of the admin cancellation:', (error as Error)?.message); }
+    if (booking.specialistId) {
+      try {
+        await this.notificationService.create({
+          userId: String(booking.specialistId), type: 'specialist_appointment_cancelled', title: 'Moved appointment cancelled',
+          message: `A moved appointment on ${booking.bookingDate} at ${booking.bookingTime} was cancelled by the Jansetu team.`,
+          referenceType: 'booking', referenceId: String(booking._id), idempotencyKey: `booking:${booking._id}:no_show_admin_cancelled:doctor`,
+        });
+      } catch (error) { console.error('Failed to notify the doctor of the admin cancellation:', (error as Error)?.message); }
+    }
+    const after = await cancelBookingMeet({ booking, reason: booking.cancellationReason, bookingRepository: this.bookingRepository });
+    return { ...after, refunded: result.refunded };
   }
 
   /**
@@ -1589,8 +1662,9 @@ export class BookingService {
       if (b.status !== 'confirmed' || b.paymentStatus !== 'paid') {
         throw new AppError({ status: 409, code: 'BOOKING_STATE_CONFLICT', message: `A ${b.status} booking cannot be marked as no-show` });
       }
-      const at = parseAppointment({ bookingDate: b.bookingDate, bookingTime: b.bookingTime });
-      if (!at || now < at.at) throw new AppError({ status: 409, code: 'APPOINTMENT_NOT_STARTED', message: 'A no-show can be marked only after the appointment time' });
+      // Q16a: only 15 minutes after the start (an instant consultation: after the doctor accepted).
+      const from = noShowAllowedFrom(b);
+      if (!from || now < from) throw new AppError({ status: 409, code: 'APPOINTMENT_NOT_STARTED', message: 'A no-show can be marked 15 minutes after the appointment time' });
       const done = await BookingModel.findOneAndUpdate({ _id: bookingId, status: 'confirmed', paymentStatus: 'paid' },
         { $set: { status: 'no_show', noShow: { at: now, by: String(requester._id), byKind: requester.userType } } }, { new: true, session }).lean() as IBooking | null;
       if (!done) throw new AppError({ status: 409, code: 'BOOKING_CHANGED', message: 'Booking changed; please retry' });
@@ -1725,8 +1799,11 @@ export class BookingService {
     }
 
     // The slot hold moves with the booking in one transaction (A2a): take the new slot, give back the old one.
+    // Q16a: a customer cannot move an appointment that has already started (as a cancellation is refused then), so a
+    // missed appointment is never moved away from its no-show and then cancelled for a refund.
     const updated = await rescheduleWithHolds({
       bookingId, requester, nextSlotId: data.slotId,
+      ...(requester.userType === 'admin' ? {} : { refuseStartedSource: () => new Date() }),
       patch: { ...updatePayload, lifecycle: this.buildLifecyclePatch(booking.lifecycle, { rescheduled: true }) },
     });
 

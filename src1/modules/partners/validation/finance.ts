@@ -73,3 +73,9 @@ export const payoutsQuerySchema = Joi.object({
 /** Q13: cursor pages of one account's payouts / finance events. */
 export const pageQuerySchema = Joi.object({ cursor: Joi.string().max(64).optional(), limit: Joi.number().integer().min(1).max(500).optional() });
 export const accountKeyParamSchema = Joi.object({ accountId: objectId.required(), key: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).required() });
+
+/** Q16a */
+export const unmarkedConsultationsQuerySchema = Joi.object({
+  doctorId: objectId.optional(), from: isoDate.optional(), to: isoDate.optional(),
+  cursor: Joi.string().max(64).optional(), limit: Joi.number().integer().min(1).max(500).optional(),
+});

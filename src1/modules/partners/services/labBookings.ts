@@ -6,6 +6,7 @@ import { AppError } from '@/modules/common/types';
 import { fundBookingFromWallet, recordGatewayCapture, refundAndCloseIn, runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
 import { claimRequestKey, scopeOf } from '@/modules/requestKeys';
 import { undoCouponUsageIn } from '@/modules/coupon/usage';
+import { sweepFailure } from '@/modules/common/utils/sweepFailure';
 import PaymentRecordModel from '@/modules/payment/model';
 import { PaymentService, registerPaymentContextHandler } from '@/modules/payment/services';
 import type { IPaymentRecord } from '@/modules/payment/types';
@@ -398,25 +399,31 @@ export class LabBookingService {
   }
 
   /** Scheduler sweep: reconcile each due booking's payments first; back off while the gateway state is unknown. */
-  async expireDue(now = new Date(), limit = 100): Promise<{ examined: number; expired: number; deferred: number }> {
+  async expireDue(now = new Date(), limit = 100): Promise<{ examined: number; expired: number; deferred: number; failed: number }> {
     const due = await PartnerLabBookingModel.find({
       status: 'pending_payment', paymentStatus: 'pending', paymentDeadline: { $lte: now },
       $or: [{ expiryNextAt: { $exists: false } }, { expiryNextAt: null }, { expiryNextAt: { $lte: now } }],
     }).sort({ paymentDeadline: 1 }).limit(limit).select({ _id: 1, expiryChecks: 1 }).lean();
-    let expired = 0; let deferred = 0;
+    let expired = 0; let deferred = 0; let failed = 0;
     for (const d of due) {
       const id = String(d._id);
-      const check = await this.paymentService.reconcileContextPayments('lab_booking', id).catch(() => ({ unknown: 1 }));
-      if (check.unknown > 0) {
-        const checks = Number(d.expiryChecks || 0) + 1;
-        await PartnerLabBookingModel.updateOne({ _id: id, status: 'pending_payment' },
-          { $set: { expiryNextAt: new Date(now.getTime() + Math.min(3_600_000, 60_000 * 2 ** Math.min(checks, 6))), expiryChecks: checks } });
-        deferred += 1;
-        continue;
+      // Q16a: one failing row never stops the sweep; logged by id and error only (no patient data), retried next run.
+      try {
+        const check = await this.paymentService.reconcileContextPayments('lab_booking', id).catch(() => ({ unknown: 1 }));
+        if (check.unknown > 0) {
+          const checks = Number(d.expiryChecks || 0) + 1;
+          await PartnerLabBookingModel.updateOne({ _id: id, status: 'pending_payment' },
+            { $set: { expiryNextAt: new Date(now.getTime() + Math.min(3_600_000, 60_000 * 2 ** Math.min(checks, 6))), expiryChecks: checks } });
+          deferred += 1;
+          continue;
+        }
+        if ((await this.expireUnpaid(id, now)).expired) expired += 1;
+      } catch (e) {
+        failed += 1;
+        sweepFailure('lab unpaid expiry', id, e);
       }
-      if ((await this.expireUnpaid(id, now)).expired) expired += 1;
     }
-    return { examined: due.length, expired, deferred };
+    return { examined: due.length, expired, deferred, failed };
   }
 
   // ───────────────────────────── Cancellation (customer, lab, timeout) ─────────────────────────────
@@ -434,11 +441,11 @@ export class LabBookingService {
    * release. Refunds draw only on what the booking holds.
    */
   private async cancelIn(b: IPartnerLabBooking, records: { _id: unknown; userId?: string; status?: string; finalAmount?: number }[],
-    c: { reason: 'timeout' | 'customer' | 'lab_reject'; note?: string; actor: Actor }, s: ClientSession, now: Date): Promise<number> {
+    c: { reason: 'timeout' | 'customer' | 'lab_reject' | 'admin_no_show'; note?: string; actor: Actor }, s: ClientSession, now: Date): Promise<number> {
     const id = String(b._id);
     const r = await PartnerLabBookingModel.updateOne({ _id: id, status: b.status, statusVersion: b.statusVersion }, {
       $set: { status: 'cancelled', paymentStatus: 'refunded', 'lifecycle.cancelledAt': now,
-        cancellation: { reason: c.reason, note: c.note, ...byOf(c.actor), at: now }, 'reschedule.pending': false },
+        cancellation: { reason: c.reason, note: c.note, ...byOf(c.actor), at: now, ...(c.reason === 'admin_no_show' ? { refund: true } : {}) }, 'reschedule.pending': false },
       $inc: { statusVersion: 1 }, $unset: { expiryNextAt: 1, expiryChecks: 1 },
     }, { session: s });
     if (r.modifiedCount !== 1) throw changed();
@@ -454,7 +461,8 @@ export class LabBookingService {
     if (settled.length) await PaymentRecordModel.updateMany({ _id: { $in: settled }, status: 'paid' }, { $set: { status: 'refunded' } }, { session: s });
     await releaseSeat(b.slot.slotId, s);
     if (c.actor.kind === 'partner') {
-      await recordPartnerAudit(c.actor.actor, 'lab_booking.reject', { kind: 'lab_booking', id }, { note: c.note, refunded }, s);
+      await recordPartnerAudit(c.actor.actor, c.reason === 'admin_no_show' ? 'lab_booking.no_show_cancelled' : 'lab_booking.reject',
+        { kind: 'lab_booking', id }, { note: c.note, refunded }, s);
     }
     return refunded;
   }
@@ -500,6 +508,42 @@ export class LabBookingService {
     const after = await PartnerLabBookingModel.findById(id).lean() as IPartnerLabBooking;
     await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'The lab could not take your booking',
       message: `${note}. Your full payment is back in your wallet.`, bookingId: id, key: `plb:${id}:cancelled` });
+    return { booking: partnerView(after), refunded };
+  }
+
+  /**
+   * Q16a (owner, 22 Nov 2026): a lab booking moved after a no-show that the lab cannot attend is cancelled by an ADMIN
+   * only, who chooses whether the patient is refunded. With a refund: the ordinary cancellation (coupon undone, full
+   * refund to the wallet once). Without: the money stays with the platform (as for a no-show), the coupon stays used and
+   * nobody earns it. The seat is released either way; audited in the partner's trail.
+   */
+  async adminCancelMovedNoShow(adminId: string, bookingId: string, input: { reason: string; refund: boolean }, now = new Date()): Promise<{ booking: Record<string, unknown>; refunded: number }> {
+    const id = String(bookingId).toLowerCase();
+    if (!Types.ObjectId.isValid(id)) throw notFound();
+    const note = String(input.reason ?? '').trim() || 'Cancelled by the Jansetu team';
+    const refunded = await runLedgerTransaction(async (s) => {
+      const b = await PartnerLabBookingModel.findById(id).session(s).lean() as IPartnerLabBooking | null;
+      if (!b) throw notFound();
+      if (b.status !== 'confirmed') throw err(409, 'LAB_BOOKING_STATE_CONFLICT', `A ${b.status} booking cannot be cancelled`);
+      if (!((b.noShows?.length ?? 0) > 0)) throw err(409, 'BOOKING_NOT_MOVED_NO_SHOW', 'This booking was not moved after a no-show; use the ordinary cancellation');
+      const actor: PartnerActor = { memberId: `admin:${adminId}`, partnerId: b.partnerId, role: 'owner', permissions: [], branchIds: [], actorKind: 'admin' };
+      if (input.refund === true) {
+        const records = await this.fenceRecords(id, s);
+        return this.cancelIn(b, records, { reason: 'admin_no_show', note, actor: { kind: 'partner', actor } }, s, now);
+      }
+      const r = await PartnerLabBookingModel.updateOne({ _id: id, status: b.status, statusVersion: b.statusVersion }, {
+        $set: { status: 'cancelled', 'lifecycle.cancelledAt': now, 'reschedule.pending': false,
+          cancellation: { reason: 'admin_no_show', note, ...byOf({ kind: 'partner', actor }), at: now, refund: false } },
+        $inc: { statusVersion: 1 },
+      }, { session: s });
+      if (r.modifiedCount !== 1) throw changed();
+      await releaseSeat(b.slot.slotId, s);
+      await recordPartnerAudit(actor, 'lab_booking.no_show_cancelled', { kind: 'lab_booking', id }, { note, refunded: 0 }, s);
+      return 0;
+    });
+    const after = await PartnerLabBookingModel.findById(id).lean() as IPartnerLabBooking;
+    await this.notify({ userId: after.userId, type: 'booking_cancelled', title: 'Lab booking cancelled',
+      message: refunded > 0 ? `${note}. ₹${refunded.toFixed(2)} is back in your wallet.` : `${note}.`, bookingId: id, key: `plb:${id}:no_show_admin_cancelled` });
     return { booking: partnerView(after), refunded };
   }
 
@@ -630,7 +674,10 @@ export class LabBookingService {
     return this.transition(actor, bookingId, 'process', ['sample_collected', 'visited'], 'processing', { 'lifecycle.processingAt': new Date() }, { expectedVersion });
   }
 
-  /** Completion posts the partner's earning (its own price; commission 0) in the same transaction (§7). */
+  /**
+   * Completion posts the partner's earning in the same transaction (§7), commission 0. Q16a (owner, 22 Nov 2026): the
+   * coupon is borne by the lab, so the earning is the price after the coupon (`payableMinor`), not the subtotal.
+   */
   async complete(actor: PartnerActor, bookingId: string, expectedVersion?: number) {
     return this.transition(actor, bookingId, 'complete', ['report_ready'], 'completed', { 'lifecycle.completedAt': new Date() }, { expectedVersion },
       (b, s) => this.postEarning(actor, b, s));
@@ -639,9 +686,11 @@ export class LabBookingService {
   /** Earnings only for money actually collected through us (paid bookings), once per booking. */
   private async postEarning(actor: PartnerActor, b: IPartnerLabBooking, s: ClientSession): Promise<void> {
     if (b.paymentStatus !== 'paid') return;
+    const amountMinor = Math.max(0, Number(b.pricing.subtotalMinor) - Number(b.pricing.discountMinor || 0));
+    if (!(amountMinor > 0)) return; // a fully discounted booking earns nothing (the coupon is never money)
     await postLedgerEntry({
-      settlementAccountId: b.settlement.settlementAccountId, kind: 'earning', amountMinor: b.pricing.subtotalMinor,
-      grossMinor: b.pricing.subtotalMinor, commissionMinor: 0, source: 'partner_lab_booking', sourceId: String(b._id),
+      settlementAccountId: b.settlement.settlementAccountId, kind: 'earning', amountMinor,
+      grossMinor: amountMinor, commissionMinor: 0, source: 'partner_lab_booking', sourceId: String(b._id),
       by: actor.memberId, byKind: actor.actorKind === 'admin' ? 'admin' : 'system',
     }, s);
   }

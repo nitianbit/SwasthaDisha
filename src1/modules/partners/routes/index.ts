@@ -261,6 +261,9 @@ partnerRouter.post('/admin', requireAdmin, validate(createPartnerSchema, 'body')
 partnerRouter.get('/admin', requireAdmin, validate(partnerQuerySchema, 'query'), catchAsync(adminListPartners));
 // Static admin paths before /admin/:partnerId (which would otherwise capture them).
 partnerRouter.get('/admin/lab-bookings', requireAdmin, validate(labV.adminLabBookingQuerySchema, 'query'), catchAsync(lab.adminListLabBookings));
+// Q16a: an admin cancels a lab booking moved after a no-show, choosing refund or not.
+partnerRouter.post('/admin/lab-bookings/:bookingId/cancel-no-show', requireAdmin, validate(labV.labBookingIdParamSchema, 'params'),
+  validate(labV.adminCancelNoShowSchema, 'body'), catchAsync(lab.adminCancelLabNoShow));
 // Q10: a lost create answer — look up or abandon the admin's own create key (static paths before /admin/:partnerId).
 partnerRouter.get('/admin/by-key/:key', requireAdmin, validate(createKeyParamSchema, 'params'), catchAsync(adminPartnerByKey));
 partnerRouter.post('/admin/by-key/:key/abandon', requireAdmin, validate(createKeyParamSchema, 'params'), catchAsync(adminAbandonPartnerKey));
@@ -337,4 +340,6 @@ settlementAdminRouter.post('/accounts/:accountId/payout-details/verify', acc, va
 settlementAdminRouter.post('/accounts/:accountId/payouts', acc, validate(finV.recordPayoutSchema, 'body'), catchAsync(fin.adminRecordPayout));
 settlementAdminRouter.post('/accounts/:accountId/adjustments', acc, validate(finV.adjustmentSchema, 'body'), catchAsync(fin.adminAdjustment));
 settlementAdminRouter.get('/payouts', validate(finV.payoutsQuerySchema, 'query'), catchAsync(fin.adminPayouts));
+// Q16a: past paid ledger consultations never marked completed or no-show (so never paid to the doctor).
+settlementAdminRouter.get('/unmarked-consultations', validate(finV.unmarkedConsultationsQuerySchema, 'query'), catchAsync(fin.adminUnmarkedConsultations));
 settlementAdminRouter.post('/payouts/:payoutId/void', validate(finV.payoutIdParamSchema, 'params'), validate(finV.voidPayoutSchema, 'body'), catchAsync(fin.adminVoidPayout));

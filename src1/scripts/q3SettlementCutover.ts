@@ -37,7 +37,8 @@ export async function runSettlementCutover(commit: boolean): Promise<CutoverRepo
   const unstampedBefore = await BookingModel.countDocuments(missing);
   let stamped = 0;
   if (commit && unstampedBefore > 0) {
-    const r = await BookingModel.updateMany(missing, { $set: { settlementSystem: 'legacy' } });
+    // Q16a: a migration stamp is not an edit of the booking — `updatedAt` (the version clients fence on) is kept.
+    const r = await BookingModel.updateMany(missing, { $set: { settlementSystem: 'legacy' } }, { timestamps: false });
     stamped = r.modifiedCount;
   }
   const unstampedAfter = commit ? await BookingModel.countDocuments(missing) : unstampedBefore;

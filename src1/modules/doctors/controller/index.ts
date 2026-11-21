@@ -20,3 +20,7 @@ export const rescheduleMyNoShow = async (req: Request, res: Response, _n: NextFu
   ok(res, await (await bookingSvc()).rescheduleNoShow(req.params.bookingId, { _id: doctorOf(req), userType: 'specialist' }, noShowInput(req)));
 export const adminRescheduleNoShow = async (req: Request, res: Response, _n: NextFunction) =>
   ok(res, await (await bookingSvc()).rescheduleNoShow(req.params.bookingId, { _id: String((req as AuthRequest).user!._id), userType: 'admin' }, noShowInput(req)));
+/** Q16a: an admin cancels a consultation moved after a no-show (the doctor cannot attend), choosing refund or not. */
+export const adminCancelNoShow = async (req: Request, res: Response, _n: NextFunction) =>
+  ok(res, await (await bookingSvc()).adminCancelMovedNoShow(req.params.bookingId, { _id: String((req as AuthRequest).user!._id) },
+    { reason: req.body.reason, refund: req.body.refund }));

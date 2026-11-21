@@ -80,3 +80,6 @@ export const labCatalogueParamSchema = Joi.object({ partnerId: objectId.required
 export const labCatalogueQuerySchema = Joi.object({ visitMode });
 export const branchSlotsParamSchema = Joi.object({ branchId: objectId.required() });
 export const branchSlotsQuerySchema = Joi.object({ visitMode: visitMode.required(), from: date, days: Joi.number().integer().min(1).max(30) });
+
+/** Q16a: an admin cancels a moved no-show; `refund` (required) chooses whether the patient gets their money back. */
+export const adminCancelNoShowSchema = Joi.object({ reason: Joi.string().trim().min(3).max(500).required(), refund: Joi.boolean().strict().required() });

@@ -55,6 +55,16 @@ export interface IInstantRequest {
   /** The coupon's doctor targets frozen with the price contract (absent = any doctor). Offers and acceptance honour it. */
   couponDoctorIds?: string[];
   discountMinor: number;
+  /**
+   * Q16a: the coupon's terms frozen at create (rupees, as on the coupon). At acceptance the discount is computed again
+   * on the fee actually charged (a percentage applies to that fee; the minimum purchase is re-checked against it).
+   */
+  couponTerms?: { discountType: 'percentage' | 'fixed'; discountValue: number; maximumDiscountAmount?: number; minimumPurchaseAmount?: number };
+  /**
+   * Q16a: each offered doctor's fee frozen when the offer is made (at hold and at every re-offer; the current
+   * generation only). At acceptance the doctor charges min(frozen fee, current fee).
+   */
+  offerFees?: { doctorId: string; feeMinor: number }[];
   /** What the customer put in (set when the funding is held): total == quotedAmountMinor. */
   funding?: MoneySplit;
   fundingState: FundingState;
@@ -80,7 +90,7 @@ export interface IInstantRequest {
   acceptedBy?: string;
   acceptedFeeMinor?: number;
   bookingId?: string;
-  refundReason?: 'customer' | 'inactivity' | 'doctor_cancelled';
+  refundReason?: 'customer' | 'inactivity' | 'doctor_cancelled' | 'admin_cancelled';
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -103,6 +113,12 @@ const instantSchema = new Schema<IInstantRequest>(
     couponCode: String,
     couponDoctorIds: { type: [String], default: undefined },
     discountMinor: { type: Number, required: true, default: 0, min: 0 },
+    couponTerms: {
+      type: new Schema({ discountType: { type: String, required: true, enum: ['percentage', 'fixed'] }, discountValue: { type: Number, required: true, min: 0 },
+        maximumDiscountAmount: Number, minimumPurchaseAmount: Number }, { _id: false }),
+      default: undefined,
+    },
+    offerFees: { type: [new Schema({ doctorId: { type: String, required: true }, feeMinor: { type: Number, required: true, min: 0 } }, { _id: false })], default: undefined },
     funding: split,
     fundingState: { type: String, required: true, enum: ['awaiting', 'held', 'allocated', 'refunded'] },
     allocated: split,
@@ -136,7 +152,7 @@ const instantSchema = new Schema<IInstantRequest>(
     acceptedBy: String,
     acceptedFeeMinor: Number,
     bookingId: String,
-    refundReason: { type: String, enum: ['customer', 'inactivity', 'doctor_cancelled'] },
+    refundReason: { type: String, enum: ['customer', 'inactivity', 'doctor_cancelled', 'admin_cancelled'] },
   },
   { timestamps: true }
 );

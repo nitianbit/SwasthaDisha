@@ -10,6 +10,20 @@ import {
 } from '@/modules/slots/types';
 import { AppError } from '@/modules/common/types';
 import { getTodayYyyymmdd, compareYyyymmdd } from '@/modules/common/utils/dateUtils';
+import { branchHolidays } from '@/modules/doctors/services/schedule';
+
+/**
+ * Q16a (M1, M4): what a booking admission would refuse is not listed as available — a slot that has started (India
+ * time; a slot whose time does not parse is never admitted either) and an in-clinic slot on its branch's holiday.
+ */
+export async function bookableNow<T extends { date?: string; startTime?: string; endTime?: string; duration?: number; branchId?: string }>(
+  slots: T[], now = new Date()): Promise<T[]> {
+  const future = slots.filter((s) => { const w = slotIntervalOf(s); return !!w && w.start.getTime() > now.getTime(); });
+  const branches = future.map((s) => s.branchId).filter((b): b is string => typeof b === 'string' && !!b);
+  if (!branches.length) return future;
+  const holidays = await branchHolidays(branches);
+  return future.filter((s) => !s.branchId || !holidays.get(String(s.branchId))?.has(String(s.date)));
+}
 
 @Service()
 export class SlotService {
@@ -180,8 +194,9 @@ export class SlotService {
         queryParams.page,
         queryParams.limit
       );
-      // Filter to only available slots (currentBookings < maxBookings)
-      return result;
+      // Filter to only available slots (currentBookings < maxBookings). Q16a: started and holiday slots are hidden
+      // from the page (the page total still counts them).
+      return { ...result, data: await bookableNow(result.data) };
     }
 
     // Otherwise return all matching records, but filter to only available slots
@@ -268,7 +283,7 @@ export class SlotService {
       (slot) => slot.isAvailable && slot.isActive && slot.currentBookings && slot.maxBookings && slot.currentBookings < slot.maxBookings
     );
 
-    return { data };
+    return { data: await bookableNow(data) };
   }
 
   async update(id: string, data: UpdateSlotRequest): Promise<ISlot> {
@@ -307,12 +322,18 @@ export class SlotService {
       });
     }
 
+    // Q16a (L6): a slot switched off by hand is a manual closure, tracked apart from leave/holiday/template closures so
+    // a schedule change never reopens it; switching it on by hand ends the manual closure.
+    const manual: Partial<ISlot> = {};
+    if (data.isActive === false || data.isAvailable === false) manual.manuallyClosed = true;
+    else if (data.isActive === true || data.isAvailable === true) manual.manuallyClosed = false;
+
     // Update availability based on booking count
     if (data.currentBookings !== undefined && slot.maxBookings !== undefined) {
       data.isAvailable = data.currentBookings < slot.maxBookings;
     }
 
-    const updated = await this.slotRepository.update({ _id: id }, data);
+    const updated = await this.slotRepository.update({ _id: id }, { ...data, ...manual });
 
     if (!updated) {
       throw new AppError({
@@ -343,17 +364,17 @@ export class SlotService {
     specialistId: string,
     date?: string
   ): Promise<ISlot[]> {
-    return this.slotRepository.findBySpecialistId(specialistId, date);
+    return bookableNow(await this.slotRepository.findBySpecialistId(specialistId, date));
   }
 
   async getByWellnessPackageId(
     wellnessPackageId: string,
     date?: string
   ): Promise<ISlot[]> {
-    return this.slotRepository.findByWellnessPackageId(
+    return bookableNow(await this.slotRepository.findByWellnessPackageId(
       wellnessPackageId,
       date
-    );
+    ));
   }
 
   async getAvailableSlots(
@@ -362,15 +383,16 @@ export class SlotService {
     date?: string,
     mode?: 'chat' | 'call' | 'video' | 'in-person'
   ): Promise<ISlot[]> {
-    const slots = await this.slotRepository.findAvailableSlots(
+    const slots = await bookableNow(await this.slotRepository.findAvailableSlots(
       specialistId,
       wellnessPackageId,
       date
-    );
+    ));
     // Q4: only slots offered for the requested mode, and never a one-patient slot overlapping time the doctor already
     // holds through another path (e.g. an instant consultation).
     const byMode = mode ? slots.filter((s) => !s.serviceModes?.length || s.serviceModes.includes(mode)) : slots;
-    const doctorIds = [...new Set(byMode.map((s) => s.specialistId).filter(Boolean).map(String))];
+    // Q16a: reservations are keyed by the canonical (lower-case) doctor id.
+    const doctorIds = [...new Set(byMode.map((s) => s.specialistId).filter(Boolean).map((x) => String(x).toLowerCase()))];
     if (!doctorIds.length) return byMode;
     // A slot whose time does not parse cannot be booked (admission refuses it), so it is not listed either.
     const parsed = byMode.map((s) => ({ s, w: slotIntervalOf(s) })).filter((x): x is { s: ISlot; w: { start: Date; end: Date } } => !!x.w);
@@ -381,7 +403,7 @@ export class SlotService {
     const held = await DoctorReservationModel.find({ doctorId: { $in: doctorIds }, isActive: true, startTime: { $lt: to }, endTime: { $gt: from } })
       .select({ doctorId: 1, startTime: 1, endTime: 1 }).lean();
     return parsed.filter(({ s, w }) => Number(s.maxBookings ?? 1) !== 1 || !held.some((h) =>
-      h.doctorId === String(s.specialistId) && h.startTime < w.end && h.endTime > w.start)).map((x) => x.s);
+      h.doctorId === String(s.specialistId).toLowerCase() && h.startTime < w.end && h.endTime > w.start)).map((x) => x.s);
   }
 
   async incrementBookingCount(id: string): Promise<ISlot> {

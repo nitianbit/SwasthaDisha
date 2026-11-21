@@ -17,7 +17,7 @@ import { slotIntervalOf } from '@/modules/common/utils/slotInterval';
 import { reserveInterval, moveInterval, releaseInterval } from '@/modules/doctors/services/reservations';
 import SpecialistModel from '@/modules/specialists/model';
 import { DoctorScheduleTemplateModel } from '@/modules/doctors/model/schedule';
-import { clinicBranchContext } from '@/modules/doctors/services/schedule';
+import { clinicBranchContext, branchClosedOn } from '@/modules/doctors/services/schedule';
 
 /**
  * Ordinary-booking holds and settlement (option A, phase A2a; milestone C1–C5/E5 on the walletFunding ledger).
@@ -39,6 +39,19 @@ import { clinicBranchContext } from '@/modules/doctors/services/schedule';
  * stay under-used; it is never oversold).
  */
 export const CANCELLABLE_BOOKING_STATUSES = ['pending', 'confirmed'];
+/**
+ * Q16a (owner, 22 Nov 2026 — assumption recorded in §11): a no-show can be marked only 15 minutes after the appointment
+ * starts (an instant consultation: 15 minutes after the doctor accepted).
+ */
+export const NO_SHOW_GRACE_MS = 15 * 60_000;
+/** The appointment start of a booking as stored (India time, either slot time format); null when it does not parse. */
+export const appointmentStartOf = (b: Pick<IBooking, 'bookingDate' | 'bookingTime'>): Date | null =>
+  parseAppointment({ bookingDate: String(b.bookingDate ?? ''), bookingTime: String(b.bookingTime ?? '') })?.at ?? null;
+/** The moment from which a no-show may be marked (instant: accept time = booking creation), or null when unknown. */
+export function noShowAllowedFrom(b: Pick<IBooking, 'bookingDate' | 'bookingTime' | 'bookingKind' | 'createdAt'>): Date | null {
+  const start = b.bookingKind === 'instant' && b.createdAt ? new Date(b.createdAt) : appointmentStartOf(b);
+  return start ? new Date(start.getTime() + NO_SHOW_GRACE_MS) : null;
+}
 type Holds = NonNullable<IBooking['holds']>;
 const conflict = (code: string, message: string, status = 409) => new AppError({ status, code, message });
 const changed = () => Object.assign(conflict('BOOKING_CHANGED', 'Booking changed; please retry'), { retryable: true });
@@ -126,6 +139,10 @@ async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate'
   if (slot.specialistId && await DoctorScheduleTemplateModel.exists({ doctorId: String(slot.specialistId), leaveDates: String(slot.date) }).session(s)) {
     throw conflict('SLOT_NOT_AVAILABLE', 'The doctor is on leave that day');
   }
+  // Q16a (M4): a clinic branch's holiday closes its in-clinic slots for every doctor, whatever any expansion has closed.
+  if ((slot as SlotRow).branchId && await branchClosedOn(String((slot as SlotRow).branchId), String(slot.date), s)) {
+    throw conflict('SLOT_NOT_AVAILABLE', 'The clinic is closed that day');
+  }
   assertSlotMode(slot as SlotRow, booking);
   // Q4: an in-clinic slot is sold only while the doctor still consults at that clinic branch (current state). Q6: the
   // clinic association is decided here, on the slot as this transaction reads it, and a desk may only use its own branches.
@@ -137,8 +154,9 @@ async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate'
   if (desk && (!clinic || clinic.partnerId !== desk.partnerId || (desk.branchIds.length > 0 && !desk.branchIds.includes(clinic.branchId)))) {
     throw conflict('SLOT_NOT_AVAILABLE', 'This slot is not at one of your clinic branches');
   }
-  const refuseStarted = desk?.refuseStartedClock ?? startedClock;
-  if (refuseStarted) {
+  // Q16a (M1): a slot that has started (India time) is never admitted, on every path (Q13 did this for the desk only).
+  const refuseStarted = desk?.refuseStartedClock ?? startedClock ?? (() => new Date());
+  {
     const w = slotIntervalOf(slot as SlotRow);
     // Sampled now, at admission (each transaction attempt), not when the request arrived.
     if (!w || w.start.getTime() <= refuseStarted().getTime()) throw conflict('SLOT_STARTED', 'This slot has already started; choose a later one');
@@ -231,20 +249,24 @@ export async function createBookingWithHolds(input: IBooking, inTx?: (b: IBookin
     if (input.followUp?.isFollowUp && input.followUp.parentConsultationId && !parentId) {
       throw conflict('FOLLOW_UP_UNAVAILABLE', 'The follow-up benefit of this consultation is no longer available');
     }
-    const doc = { ...input, ...(slotId ? { slotId } : {}), ...(parentId ? { followUp: { ...input.followUp!, parentConsultationId: parentId } } : {}) };
+    // Q16a: a doctor id is stored in its canonical (lower-case) spelling, so one doctor has one settlement account,
+    // one schedule guard and one set of reservations whatever letter case a client sent.
+    const specialistId = canon(input.specialistId) ?? input.specialistId;
+    const doc = { ...input, ...(specialistId ? { specialistId } : {}), ...(slotId ? { slotId } : {}),
+      ...(parentId ? { followUp: { ...input.followUp!, parentConsultationId: parentId } } : {}) };
     const holds: Holds = { version: 1, heldSlotId: input.bookingType !== 'surgery' ? slotId : null, followUpParentId: null };
     const bookingId = new Types.ObjectId();
     if (input.clinicDesk && !desk) throw conflict('SLOT_NOT_AVAILABLE', 'A clinic desk booking needs its clinic scope');
     if (holds.heldSlotId) {
-      const { time, slot, clinic } = await reserveSlot(holds.heldSlotId, input, s, desk);
+      const { time, slot, clinic } = await reserveSlot(holds.heldSlotId, doc, s, desk);
       doc.bookingTime = time;
       if (clinic) {
         doc.clinicVisit = clinic;
         if (doc.clinicDesk) doc.clinicDesk = { ...doc.clinicDesk, branchId: clinic.branchId };
       }
-      if (exclusiveFor(input, slot)) {
+      if (exclusiveFor(doc, slot)) {
         const { start, end } = slotInterval(slot);
-        await reserveInterval({ doctorId: String(input.specialistId), kind: 'scheduled', refId: String(bookingId), start, end, branchId: slot.branchId }, s);
+        await reserveInterval({ doctorId: String(doc.specialistId), kind: 'scheduled', refId: String(bookingId), start, end, branchId: slot.branchId }, s);
       }
     }
     if (parentId) {
@@ -262,9 +284,9 @@ export async function createBookingWithHolds(input: IBooking, inTx?: (b: IBookin
     const settlementSystem = input.clinicDesk ? 'clinic' as const : settlementSystemFor(new Date());
     // Q4 §7a: a ledger consultation snapshots the doctor's settlement account (created here on first use).
     let settlement: { settlementAccountId: string; beneficiaryName: string } | undefined;
-    if (settlementSystem === 'ledger' && input.specialistId) {
-      const sp = await SpecialistModel.findById(String(input.specialistId)).select({ name: 1 }).session(s).lean() as { name?: string } | null;
-      const account = await ensureSettlementAccount('doctor', String(input.specialistId), sp?.name || input.doctorName || 'Doctor', s);
+    if (settlementSystem === 'ledger' && doc.specialistId) {
+      const sp = await SpecialistModel.findById(String(doc.specialistId)).select({ name: 1 }).session(s).lean() as { name?: string } | null;
+      const account = await ensureSettlementAccount('doctor', String(doc.specialistId), sp?.name || input.doctorName || 'Doctor', s);
       settlement = { settlementAccountId: String(account._id), beneficiaryName: account.beneficiaryName };
     }
     const [created] = await BookingModel.create([{ ...doc, _id: bookingId, holds, settlementSystem, ...(settlement ? { settlement } : {}) }], { session: s });
@@ -317,6 +339,11 @@ export async function cancelBookingSettlement(p: {
   desk?: DeskScope;
   /** Q13: the booking version (updatedAt) the caller decided on, checked on the booking as read in the transaction. */
   expectedUpdatedAt?: Date | string | null;
+  /**
+   * Q16a (owner, 22 Nov 2026): an ADMIN cancels a booking that was moved after a no-show (the provider cannot attend)
+   * and chooses whether the patient is refunded. Only with requester 'admin'; the booking must have been moved.
+   */
+  movedNoShow?: { refund: boolean };
 }): Promise<CancelResult> {
   if (!Types.ObjectId.isValid(p.bookingId)) throw conflict('BOOKING_NOT_FOUND', 'Booking not found', 404);
   const id = String(p.bookingId).toLowerCase();
@@ -335,10 +362,20 @@ export async function cancelBookingSettlement(p: {
     if (!already && !CANCELLABLE_BOOKING_STATUSES.includes(String(booking.status))) {
       throw conflict('BOOKING_NOT_CANCELLABLE', `A ${booking.status} booking cannot be cancelled`);
     }
-    // Q14: a booking rescheduled after a no-show is never refunded; only a clinic-paid one (nothing taken by us) may be cancelled.
-    if (!already && (booking.noShows?.length ?? 0) > 0 && booking.settlementSystem !== 'clinic') {
+    const moved = (booking.noShows?.length ?? 0) > 0;
+    if (p.movedNoShow) {
+      if (p.requester.userType !== 'admin') throw conflict('ADMIN_ONLY', 'Only the Jansetu team can cancel a moved no-show', 403);
+      if (!already && !moved) throw conflict('BOOKING_NOT_MOVED_NO_SHOW', 'This booking was not moved after a no-show; use the ordinary cancellation');
+    }
+    // Q14: a booking rescheduled after a no-show is never refunded; only a clinic-paid one (nothing taken by us) may be
+    // cancelled. Q16a: an admin may cancel it with the dedicated command, refund or not (their choice).
+    if (!already && moved && booking.settlementSystem !== 'clinic' && !p.movedNoShow) {
       throw conflict('NO_SHOW_NOT_REFUNDABLE', 'This appointment was rescheduled after a no-show and cannot be cancelled for a refund');
     }
+    const keepMoney = !!p.movedNoShow && !p.movedNoShow.refund;
+    // A moved no-show cancelled without a refund keeps its money (the platform keeps it, as for a no-show): a repeat is
+    // answered as it is, never refunded later by the recovery path below.
+    if (already && booking.noShowCancel?.refund === false) return { booking, refunded: 0, alreadyCancelled: true };
     if (!already) assertBookingVersion(booking, p.expectedUpdatedAt);
 
     // Serialize with capture: write every not-yet-settled payment record of this booking before reading them.
@@ -356,21 +393,26 @@ export async function cancelBookingSettlement(p: {
 
     const captured = booking.paymentStatus === 'paid' || records.some(r => r.status === 'paid') ||
       (booking.walletFunding?.captures ?? []).some(c => c.state === 'applied');
-    if (captured) p.enforceWindow(booking);
+    if (captured && !p.movedNoShow) p.enforceWindow(booking);
 
     // What this booking holds is decided before its own status changes (a legacy booking counts as a claimant).
     const slot = await heldSlot(booking, s);
     const parent = await heldFollowUpParent(booking, s);
 
     const cancelled = await BookingModel.updateOne({ _id: id, status: booking.status },
-      { $set: { status: 'cancelled', paymentStatus: 'refunded', cancellationReason: p.reason, cancelledAt: p.cancelledAt,
-        ...(p.cause ? { cancellationCause: p.cause } : {}), lifecycle: p.lifecycle(booking) } }, { session: s });
+      { $set: { status: 'cancelled', ...(keepMoney ? {} : { paymentStatus: 'refunded' }), cancellationReason: p.reason, cancelledAt: p.cancelledAt,
+        ...(p.cause ? { cancellationCause: p.cause } : {}), lifecycle: p.lifecycle(booking),
+        ...(p.movedNoShow ? { noShowCancel: { at: new Date(), by: String(p.requester._id), refund: p.movedNoShow.refund } } : {}) } }, { session: s });
     if (cancelled.modifiedCount !== 1) throw changed();
     await releaseInterval('scheduled', id, s);
 
-    // Coupon state first (it reads each record as captured, before the money step marks it refunded).
-    await undoCouponUsageIn(records.map(r => String(r._id)), s);
-    const refunded = await settleMoney(booking, id, records, p.wallets, s);
+    // Coupon state first (it reads each record as captured, before the money step marks it refunded). Without a refund
+    // the coupon stays used and the money stays where it is (nobody earns it: the booking is not completed).
+    let refunded = 0;
+    if (!keepMoney) {
+      await undoCouponUsageIn(records.map(r => String(r._id)), s);
+      refunded = await settleMoney(booking, id, records, p.wallets, s);
+    }
 
     if (slot) await releaseSlot(slot, s);
     if (parent) {
@@ -457,6 +499,12 @@ export async function rescheduleWithHolds(p: {
   /** Q13: the booking version (updatedAt) the caller decided on, checked on the booking as read in the transaction. */
   expectedUpdatedAt?: Date | string | null;
   /**
+   * Q16a: refuse the move once the CURRENT appointment has started (the clock is read in the transaction), as a
+   * cancellation is refused — set for customers and the clinic desk, so a missed appointment cannot be moved away from
+   * its no-show (and then cancelled for a refund). Admins and no-show moves do not set it.
+   */
+  refuseStartedSource?: () => Date;
+  /**
    * Q14: move a no-show back to confirmed on a later slot, once (same price, no payment, no refund). The caller has
    * already admitted the requester (doctor, clinic desk or admin); `owner` narrows the booking read in the transaction.
    */
@@ -489,6 +537,12 @@ export async function rescheduleWithHolds(p: {
       if (booking.status !== 'no_show') throw conflict('BOOKING_NOT_NO_SHOW', `A ${booking.status} booking is not a no-show`);
     } else if (!CANCELLABLE_BOOKING_STATUSES.includes(String(booking.status))) {
       throw conflict('BOOKING_NOT_RESCHEDULABLE', `A ${booking.status} booking cannot be rescheduled`);
+    }
+    if (!p.noShow && p.refuseStartedSource) {
+      const start = appointmentStartOf(booking);
+      if (!start || start.getTime() <= p.refuseStartedSource().getTime()) {
+        throw conflict('BOOKING_ALREADY_STARTED', 'This appointment has already started; it can no longer be moved', 400);
+      }
     }
     assertBookingVersion(booking, p.expectedUpdatedAt);
     if (p.noShow) await claimRequestKey(p.noShow.keyScope, p.noShow.requestKey, s);

@@ -6,6 +6,7 @@ import MemberModel from '@/modules/partners/model/member';
 import { DoctorScheduleTemplateModel, IDoctorScheduleTemplate, IScheduleWindow, Weekday } from '@/modules/doctors/model/schedule';
 import { addDays, istDate, isRealDate, assertRealDate } from '@/modules/partners/services/slots';
 import { ClientSession } from 'mongoose';
+import { parseAppointment } from '@/modules/common/utils/cancellationWindow';
 import { runLedgerTransaction } from '@/modules/common/utils/bookingWalletFunding';
 import { ensureScheduleGuard, bumpScheduleGuard } from '@/modules/partners/services/slots';
 
@@ -42,6 +43,25 @@ export async function clinicBranchContext(doctorId: string, branchId: string, s?
   const scope = doctorScopeOf(member);
   const inScope = scope.length === 0 || scope.includes(String(branchId));
   return inScope ? { partnerId: String(branch.partnerId), branchId: String(branch._id) } : null;
+}
+
+/**
+ * Q16a (M4): whether a clinic branch is on holiday on `date` (YYYYMMDD). Branch holidays are stored as YYYY-MM-DD;
+ * both spellings are matched. Admission refuses such a slot, expansion closes it, and slot lists hide it.
+ */
+export async function branchClosedOn(branchId: string, date: string, s?: ClientSession): Promise<boolean> {
+  if (!/^[0-9a-fA-F]{24}$/.test(String(branchId)) || !/^\d{8}$/.test(String(date))) return false;
+  return !!(await BranchModel.exists({ _id: branchId, holidays: { $in: [iso(String(date)), String(date)] } }).session(s ?? null));
+}
+
+/** Q16a (M4): the holiday dates (YYYYMMDD) of each given branch, for filtering many slots at once. */
+export async function branchHolidays(branchIds: string[], s?: ClientSession): Promise<Map<string, Set<string>>> {
+  const ids = [...new Set(branchIds.map(String).filter((b) => /^[0-9a-fA-F]{24}$/.test(b)))];
+  const out = new Map<string, Set<string>>();
+  if (!ids.length) return out;
+  const rows = await BranchModel.find({ _id: { $in: ids } }).select({ holidays: 1 }).session(s ?? null).lean() as { _id: unknown; holidays?: string[] }[];
+  for (const r of rows) out.set(String(r._id), new Set((r.holidays ?? []).map((h) => String(h).replace(/-/g, '')).filter((h) => /^\d{8}$/.test(h))));
+  return out;
 }
 
 export async function clinicBranchAllowed(doctorId: string, branchId: string, s?: ClientSession): Promise<boolean> {
@@ -135,11 +155,11 @@ export async function setLeave(doctorId: string, date: string, onLeave: boolean,
 async function reconcileLeaveDayIn(doctorId: string, date: string, onLeave: boolean, s: ClientSession) {
   const specialistId = String(doctorId);
   if (onLeave) {
-    const r = await SlotModel.updateMany({ specialistId, date, isActive: { $ne: false } },
+    const r = await SlotModel.updateMany({ specialistId, date, isActive: { $ne: false }, manuallyClosed: { $ne: true } },
       { $set: { isActive: false, isAvailable: false, closedReason: 'leave' } }, { session: s });
     return { closed: r.modifiedCount, reopened: 0 };
   }
-  const r = await SlotModel.updateMany({ specialistId, date, closedReason: 'leave' },
+  const r = await SlotModel.updateMany({ specialistId, date, closedReason: 'leave', manuallyClosed: { $ne: true } },
     [{ $set: { isActive: true, isAvailable: { $lt: [{ $ifNull: ['$currentBookings', 0] }, { $ifNull: ['$maxBookings', 1] }] } } }, { $unset: 'closedReason' }],
     { session: s });
   return { closed: 0, reopened: r.modifiedCount };
@@ -153,22 +173,33 @@ export interface DoctorExpansion { inserted: number; updated: number; closed: nu
  * reason) slots on leave days and template slots no longer wanted; reopens only slots it closed. Never deletes a slot,
  * never changes currentBookings, never reopens a slot someone closed by hand. Idempotent.
  */
-export async function expandDoctorSlots(doctorId: string, fromIsoDate: string, days: number): Promise<DoctorExpansion> {
+export async function expandDoctorSlots(doctorId: string, fromIsoDate: string, days: number, now = new Date()): Promise<DoctorExpansion> {
   assertRealDate(fromIsoDate, 'from');
   // One transaction that first bumps the doctor's schedule guard (template/leave writes bump it too): a stale run can
   // never commit after a newer one — the loser is retried and re-reads the template that won. No lease.
   await ensureScheduleGuard(doctorScheduleKey(doctorId));
   return runLedgerTransaction(async (s) => {
     await bumpScheduleGuard(doctorScheduleKey(doctorId), s);
-    return expandDoctorSlotsIn(doctorId, fromIsoDate, days, s);
+    return expandDoctorSlotsIn(doctorId, fromIsoDate, days, s, now);
   });
 }
 
-async function expandDoctorSlotsIn(doctorId: string, fromIsoDate: string, days: number, s: ClientSession): Promise<DoctorExpansion> {
+async function expandDoctorSlotsIn(doctorId: string, fromIsoDate: string, days: number, s: ClientSession, now = new Date()): Promise<DoctorExpansion> {
   const out: DoctorExpansion = { inserted: 0, updated: 0, closed: 0, reopened: 0 };
-  const t = await getTemplate(doctorId, s);
-  if (!t) return out;
+  const found = await getTemplate(doctorId, s);
+  // Without a template (manual slots only) nothing is generated or closed for the template, but branch holidays still
+  // close and reopen in-clinic slots (Q16a).
+  const t = found ?? ({ doctorId, slotMinutes: 30, days: {}, leaveDates: [], isActive: false } as unknown as IDoctorScheduleTemplate);
   const leave = new Set((t.leaveDates ?? []).filter((d) => /^\d{8}$/.test(d) && isRealDate(iso(d))));
+  // Q16a (M4): the holidays of every clinic branch this doctor has (template windows) or holds slots at in the range.
+  const rangeEnd = ymd(addDays(fromIsoDate, days - 1));
+  const slotBranches = await SlotModel.distinct('branchId', { specialistId: String(doctorId), date: { $gte: ymd(fromIsoDate), $lte: rangeEnd },
+    branchId: { $type: 'string' } }).session(s) as string[];
+  const templateBranches = Object.values(t.days ?? {}).flat().map((w) => w?.branchId).filter((b): b is string => !!b).map(String);
+  const holidays = await branchHolidays([...slotBranches, ...templateBranches], s);
+  const closedBranchesOn = (date: string) => [...holidays.entries()].filter(([, days]) => days.has(date)).map(([b]) => b);
+  // Q16a (M1): a template slot that already started today (India time) is never created.
+  const todayYmd = ymd(istDate(now));
   // Clinic authority is re-checked on every run: windows at a clinic branch the doctor may no longer use generate
   // nothing, so their template slots close for new bookings (bookings already made are kept).
   const clinicOk = new Map<string, boolean>();
@@ -180,20 +211,27 @@ async function expandDoctorSlotsIn(doctorId: string, fromIsoDate: string, days: 
     const date = ymd(isoDate);
     const specialistId = String(doctorId);
     if (leave.has(date)) {
-      const r = await SlotModel.updateMany({ specialistId, date, isActive: { $ne: false } },
+      // Q16a (L6): a slot the doctor switched off by hand stays theirs (never marked or reopened as a leave closure).
+      const r = await SlotModel.updateMany({ specialistId, date, isActive: { $ne: false }, manuallyClosed: { $ne: true } },
         { $set: { isActive: false, isAvailable: false, closedReason: 'leave' } }, { session: s });
       out.closed += r.modifiedCount;
       continue;
     }
+    const closedBranches = closedBranchesOn(date);
     const wanted: { start: string; end: string; w: IScheduleWindow }[] = [];
     if (t.isActive) {
       for (const w of t.days[weekdayOf(isoDate)] ?? []) {
         if (w.branchId && !clinicOk.get(String(w.branchId))) continue;
+        if (w.branchId && closedBranches.includes(String(w.branchId))) continue; // the clinic branch is on holiday
         for (let m = toMin(w.start); m + t.slotMinutes <= toMin(w.end); m += t.slotMinutes) wanted.push({ start: toHHMM(m), end: toHHMM(m + t.slotMinutes), w });
       }
     }
-    if (wanted.length) {
-      const r = await SlotModel.bulkWrite(wanted.flatMap(({ start, end, w }) => [
+    // Slots of today that already started are not inserted (an existing one is left as it is).
+    const insertable = date === todayYmd
+      ? wanted.filter((x) => { const at = parseAppointment({ bookingDate: date, bookingTime: x.start })?.at; return !!at && at.getTime() > now.getTime(); })
+      : date < todayYmd ? [] : wanted;
+    if (insertable.length) {
+      const r = await SlotModel.bulkWrite(insertable.flatMap(({ start, end, w }) => [
         { updateOne: { filter: { specialistId, date, startTime: start }, upsert: true, update: { $setOnInsert: {
           specialistId, date, startTime: start, endTime: end, duration: t.slotMinutes, slotType: 'consultation', maxBookings: 1, currentBookings: 0,
           isAvailable: true, isActive: true, isRecurring: false, serviceModes: w.modes, ...(w.branchId ? { branchId: w.branchId } : {}), source: 'template',
@@ -206,19 +244,47 @@ async function expandDoctorSlotsIn(doctorId: string, fromIsoDate: string, days: 
       out.updated += Math.max(0, r.modifiedCount);
     }
     const starts = wanted.map((x) => x.start);
+    // Holiday closures of in-clinic slots (template or manual) at branches closed that day; reopened once it is not.
+    if (closedBranches.length) {
+      const h = await SlotModel.updateMany({ specialistId, date, branchId: { $in: closedBranches }, isActive: { $ne: false }, manuallyClosed: { $ne: true } },
+        { $set: { isActive: false, isAvailable: false, closedReason: 'holiday' } }, { session: s });
+      out.closed += h.modifiedCount;
+    }
     const reopened = await SlotModel.updateMany(
-      { specialistId, date, $or: [{ closedReason: 'leave' }, { closedReason: 'template', source: 'template', startTime: { $in: starts } }] },
+      { specialistId, date, manuallyClosed: { $ne: true }, $or: [{ closedReason: 'leave' },
+        { closedReason: 'holiday', branchId: { $nin: closedBranches } },
+        { closedReason: 'template', source: 'template', startTime: { $in: starts } }] },
       [{ $set: { isActive: true, isAvailable: { $lt: [{ $ifNull: ['$currentBookings', 0] }, { $ifNull: ['$maxBookings', 1] }] } } }, { $unset: 'closedReason' }],
       { session: s }
     );
     out.reopened += reopened.modifiedCount;
+    if (!found) continue;
     const closed = await SlotModel.updateMany(
-      { specialistId, date, source: 'template', startTime: { $nin: starts }, isActive: { $ne: false } },
+      { specialistId, date, source: 'template', startTime: { $nin: starts }, isActive: { $ne: false }, manuallyClosed: { $ne: true } },
       { $set: { isActive: false, isAvailable: false, closedReason: 'template' } }, { session: s }
     );
     out.closed += closed.modifiedCount;
   }
   return out;
+}
+
+/**
+ * Q16a (M4): after a clinic branch's holidays (or services/active state) change, every doctor with a template window or
+ * a slot at that branch is expanded again, so holiday closures and reopenings follow at once. Best effort per doctor
+ * (admission refuses holiday slots whatever this does).
+ */
+export async function expandDoctorsAtBranch(branchId: string, now = new Date()): Promise<void> {
+  const or = WEEKDAYS.map((d) => ({ [`days.${d}.branchId`]: String(branchId) }));
+  const [templates, withSlots] = await Promise.all([
+    DoctorScheduleTemplateModel.find({ $or: or }).select({ doctorId: 1 }).lean().exec() as unknown as Promise<{ doctorId: string }[]>,
+    SlotModel.distinct('specialistId', { branchId: String(branchId), date: { $gte: ymd(istDate(now)) } }).exec() as unknown as Promise<string[]>,
+  ]);
+  const doctors = new Set([...templates.map((t) => String(t.doctorId)), ...withSlots.filter(Boolean).map(String)]);
+  for (const doctorId of doctors) {
+    try {
+      await expandDoctorSlots(doctorId, istDate(now), DOCTOR_ROLLING_DAYS, now);
+    } catch (e) { console.error('doctor slot refresh after a branch change failed', (e as Error)?.message); }
+  }
 }
 
 /** Nightly: extend every active template to the rolling window. */

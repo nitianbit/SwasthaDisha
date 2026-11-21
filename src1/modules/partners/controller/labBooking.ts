@@ -71,6 +71,12 @@ export const adminListLabBookings = async (req: Request, res: Response, _n: Next
   res.status(200).json({ success: true, data: r.items, pagination: { page: r.page, limit: r.limit, total: r.total, totalPages: r.totalPages } });
 };
 
+/** Q16a: admin-only cancel of a moved no-show, refund or not. */
+export const adminCancelLabNoShow = async (req: Request, res: Response, _n: NextFunction) => {
+  const r = await svc().adminCancelMovedNoShow(String((req as AuthRequest).user!._id), req.params.bookingId, { reason: req.body.reason, refund: req.body.refund });
+  res.status(200).json({ success: true, data: r });
+};
+
 // ── Customer ──
 function customerId(req: Request): string {
   const u = (req as AuthRequest).user;

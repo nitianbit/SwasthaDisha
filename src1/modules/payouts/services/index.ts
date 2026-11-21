@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import fs from 'fs';
 import path from 'path';
 import { CONFIG } from '@/config/config';
-import { BookingRepository, EXCLUDE_Q14_NO_SHOWS } from '@/modules/bookings/repository';
+import { BookingRepository, EXCLUDE_Q14_NO_SHOWS, legacyBillingMonthFilter } from '@/modules/bookings/repository';
 import BookingModel from '@/modules/bookings/model';
 import { SpecialistRepository } from '@/modules/specialists/repository';
 import {
@@ -129,10 +129,8 @@ export class PayoutService {
           paymentStatus: 'paid',
           status: { $ne: 'cancelled' },
           ...EXCLUDE_Q14_NO_SHOWS,
-          bookingDate: {
-            $gte: from,
-            $lte: to,
-          },
+          // Q16a: billed in the month of the original appointment (a moved no-show keeps it; never billed twice).
+          ...legacyBillingMonthFilter(from, to),
         },
       },
       {

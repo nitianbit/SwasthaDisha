@@ -214,7 +214,7 @@ async function main() {
     assert.equal(Number((await WalletModel.findOne({ userId: u.id }).lean())!.balance), 0, 'no refund');
     assert.equal((await BookingModel.findById(id).lean() as any).noShow.by, drN);
     const done = await onlineBooking(u.id, drN);
-    await bookings.update(done, { status: 'completed' } as any);
+    await bookings.update(done, { status: 'completed' } as any, undefined, later()); // Q16a: after the start
     assert.equal(await earningsOf(done), 1);
   });
 
@@ -251,8 +251,8 @@ async function main() {
     await assert.rejects(async () => bookings.rescheduleNoShow(id, { _id: drN, userType: 'specialist' }, { slotId: await slotAt(drN, futureStart()), requestKey: key }), code('IDEMPOTENCY_KEY_REUSED'));
     // No refund after a no-show: the customer cannot cancel it for money back.
     await assert.rejects(() => bookings.cancelBooking(id, { cancellationReason: 'x' }, { _id: u.id, userType: 'user' }), code('NO_SHOW_NOT_REFUNDABLE'));
-    await bookings.update(id, { status: 'completed' } as any);
-    await bookings.update(id, { status: 'completed' } as any);
+    await bookings.update(id, { status: 'completed' } as any, undefined, later());
+    await bookings.update(id, { status: 'completed' } as any, undefined, later());
     assert.equal(await earningsOf(id), 1, 'earns exactly once after the reschedule');
   });
 

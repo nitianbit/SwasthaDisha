@@ -18,6 +18,7 @@ import { runBookingPaymentRecoveryScheduler } from '@/modules/payment/services/b
 import { runBookingPaymentTimeoutScheduler } from '@/modules/bookings/services/bookingPaymentTimeoutScheduler';
 import { runPartnerLabSchedulers } from '@/modules/partners/services/labSchedulers';
 import { runDoctorSchedulers } from '@/modules/doctors/services/schedulers';
+import { checkSettlementCutoverConfig } from '@/modules/partners/services/cutover';
 import { runLowStockAlertScheduler } from '@/modules/pharmacyInventory/lowStockScheduler';
 import { backfillMedicineNameKeys } from '@/modules/pharmacyMedicines/services/nameKeyMigration';
 import { runInventoryImportCleanupScheduler } from '@/modules/pharmacyInventoryImports/services/inventoryImportCleanupScheduler';
@@ -76,6 +77,8 @@ app.use('/', (_req, _res, next) => {
 connectDB()
   .then(() => {
     logger.info('Database connection established');
+    // Q16a: an unparseable SETTLEMENT_CUTOVER_AT is reported loudly instead of silently meaning "legacy".
+    checkSettlementCutoverConfig(logger);
     return backfillMedicineNameKeys();
   })
   .then(() => {

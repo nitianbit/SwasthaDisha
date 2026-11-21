@@ -6,40 +6,16 @@ import {
   ReminderType,
 } from '@/modules/queue/types';
 import { Service } from 'typedi';
+import { parseAppointment } from '@/modules/common/utils/cancellationWindow';
 
 @Service()
 export class BookingReminderScheduler {
+  /**
+   * Q16a (M3): the appointment instant in India time, from either stored slot format (`h:mm AM/PM` from the slot API,
+   * `HH:mm` from weekly templates) — the one appointment parser every other path uses.
+   */
   private parseBookingDateTime(bookingDate: string, bookingTime: string): Date | null {
-    if (!/^\d{8}$/.test(bookingDate)) {
-      return null;
-    }
-
-    const match = bookingTime.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-    if (!match) {
-      return null;
-    }
-
-    const [, hourStr, minuteStr, meridiem] = match;
-    let hour = parseInt(hourStr, 10);
-    const minute = parseInt(minuteStr, 10);
-
-    if (hour < 1 || hour > 12 || minute < 0 || minute > 59) {
-      return null;
-    }
-
-    const upperMeridiem = meridiem.toUpperCase();
-    if (upperMeridiem === 'AM') {
-      hour = hour === 12 ? 0 : hour;
-    } else {
-      hour = hour === 12 ? 12 : hour + 12;
-    }
-
-    const year = parseInt(bookingDate.slice(0, 4), 10);
-    const monthIndex = parseInt(bookingDate.slice(4, 6), 10) - 1;
-    const day = parseInt(bookingDate.slice(6, 8), 10);
-
-    const parsed = new Date(year, monthIndex, day, hour, minute, 0, 0);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
+    return parseAppointment({ bookingDate: String(bookingDate ?? ''), bookingTime: String(bookingTime ?? '') })?.at ?? null;
   }
 
   private reminderUniqueId(bookingId: string, reminderType: ReminderType): string {
@@ -67,6 +43,8 @@ export class BookingReminderScheduler {
       booking.bookingTime
     );
     if (!appointmentAt) {
+      // Q16a: a time that cannot be read schedules nothing, and the jobs of the booking's earlier time are removed.
+      await this.clearBookingReminders(booking._id);
       return;
     }
 

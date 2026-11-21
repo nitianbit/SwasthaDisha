@@ -263,7 +263,8 @@ async function main() {
     assert.equal(re.offerGeneration, 2);
     await assert.rejects(() => svc.accept(a, id), code('INSTANT_REQUEST_NOT_FOUND'));
     await DoctorPresenceModel.updateOne({ doctorId: b }, { $set: { instantFeeMinor: 70000 } });
-    await assert.rejects(() => svc.accept(b, id), code('FEE_ABOVE_QUOTE'));
+    // Q16a: a fee raised after the (re-)offer is capped at the fee frozen with it — accepting would charge 50000, never 70000.
+    assert.deepEqual((await svc.myOffers(b)).filter((o) => o.requestId === id).map((o) => [o.offeredFeeMinor, o.chargeFeeMinor]), [[50000, 50000]]);
     await DoctorPresenceModel.updateOne({ doctorId: b }, { $set: { instantFeeMinor: 50000 } });
     const busyAt = new Date();
     await runLedgerTransaction((s) => reserveInterval({ doctorId: b, kind: 'scheduled', refId: 'b-appt', start: new Date(busyAt.getTime() - 1000), end: new Date(busyAt.getTime() + 600_000) }, s));
