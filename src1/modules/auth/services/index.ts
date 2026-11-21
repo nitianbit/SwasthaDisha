@@ -34,6 +34,7 @@ import { randomUUID } from 'crypto';
 import PartnerModel from '@/modules/partners/model';
 import { PartnerSelectionTicketModel } from '@/modules/auth/model/partnerSelection';
 import { createHmac } from 'crypto';
+import { isVersionedRole, versionForNewToken } from '@/modules/auth/tokenVersion';
 
 /**
  * Q7: selection tickets are signed with their own key (derived from the secret, never the access-token key) and their
@@ -155,11 +156,9 @@ export class AuthService {
       const members = await this.partnerMembersOf(data.phone ? { phone: data.phone } : { email: data.email });
       // Q7: with several memberships and no choice yet, the code is bound to the first membership (partnerId order,
       // the same at verify); after the code proves the phone, the person chooses (selectPartner).
-      if (data.partnerId) {
-        userRecord = (members.find(m => String((m as any).partnerId) === data.partnerId) as any) ?? null;
-      } else {
-        userRecord = members.length > 0 ? (members[0] as any) : null;
-      }
+      // Q16b: a named partner only chooses which membership the code is bound to; it never changes the answer (a phone
+      // that is not staff there is answered exactly as without the name), so the send reveals nothing about that partner.
+      userRecord = (members.find(m => String((m as any).partnerId) === data.partnerId) as any) ?? (members[0] as any) ?? null;
     } else {
       userRecord = await this.userRepository.findByPhoneOrEmail(
         customerIdentity ?? { phone: data.phone, email: data.email },
@@ -343,11 +342,9 @@ export class AuthService {
       const members = await this.partnerMembersOf(data.phone ? { phone: data.phone } : { email: data.email });
       // Q7: with several memberships and no choice yet, the code is bound to the first membership (partnerId order,
       // the same at verify); after the code proves the phone, the person chooses (selectPartner).
-      if (data.partnerId) {
-        userRecord = (members.find(m => String((m as any).partnerId) === data.partnerId) as any) ?? null;
-      } else {
-        userRecord = members.length > 0 ? (members[0] as any) : null;
-      }
+      // Q16b: with a named partner the code is checked against the membership the send bound it to (that partner's, else
+      // the first); a phone that is not staff there learns so only after proving the code.
+      userRecord = (members.find(m => String((m as any).partnerId) === data.partnerId) as any) ?? (members[0] as any) ?? null;
     } else {
       userRecord = await this.userRepository.findByPhoneOrEmail(
         customerIdentity ?? { phone: data.phone, email: data.email },
@@ -419,6 +416,9 @@ export class AuthService {
       targetValue,
     });
 
+    if (data.userType === 'partner' && data.partnerId && String((userRecord as unknown as IMember).partnerId) !== String(data.partnerId)) {
+      throw new AppError({ status: 403, code: 'PARTNER_NOT_AVAILABLE', message: 'That workspace is not available to you' });
+    }
     // Q7: the phone (or email) is proven; a person with several memberships (and no choice yet) now chooses one.
     if (data.userType === 'partner' && !data.partnerId) {
       const identity: PartnerIdentity = target === 'phone' ? { phone: String(userRecord.phone) } : { email: String(userRecord.email).trim().toLowerCase() };
@@ -545,6 +545,9 @@ export class AuthService {
         throw new AppError({ status: 401, code: 'UNAUTHORIZED', message: 'Please sign in again' });
       }
       claims = { ...tokenPayload, authVersion };
+    } else if (isVersionedRole(tokenPayload.userType)) {
+      // Q16b: pharmacy, doctor and partner tokens carry their account's generation too (read after the code was used).
+      claims = { ...tokenPayload, authVersion: await versionForNewToken(tokenPayload.userType, String(id)) };
     }
     const accessToken = jwt.sign(claims, CONFIG.JWT_SECRET_KEY, {
       expiresIn: '30d', // Token expires in 30 days
@@ -610,7 +613,8 @@ export class AuthService {
       .find((m) => String((m as any).partnerId) === String(data.partnerId)) as unknown as IMember;
     const tokenPayload = { _id: String(member._id), memberId: String(member._id), partnerId: String(member.partnerId), phone: member.phone,
       ...(member.email ? { email: member.email } : {}), userType: 'partner' };
-    const accessToken = jwt.sign(tokenPayload, CONFIG.JWT_SECRET_KEY, { expiresIn: '30d' });
+    const authVersion = await versionForNewToken('partner', String(member._id));
+    const accessToken = jwt.sign({ ...tokenPayload, authVersion }, CONFIG.JWT_SECRET_KEY, { expiresIn: '30d' });
     return { message: 'Signed in', accessToken, userData: tokenPayload };
   };
 

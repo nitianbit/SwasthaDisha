@@ -48,6 +48,8 @@ const partnerSchema = new Schema<IPartner>(
       documents: [{ type: String }],
       verifiedAt: Date,
       verifiedBy: String,
+      // Q16b: what a suspension replaced; reinstate restores it (a never-verified partner is not verified by reinstating).
+      stateBeforeSuspension: { type: String, enum: ['pending', 'verified'] },
     },
     taxRegime: {
       type: String,

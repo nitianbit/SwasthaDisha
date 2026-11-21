@@ -58,6 +58,9 @@ const branchSchema = new Schema<IBranch>(
       default: true,
       index: true,
     },
+    // Q16b: POST /branches with a request key is exactly once per (partner, key); a replay answers with this branch.
+    createRequestKey: { type: String },
+    createRequestHash: { type: String, select: false },
   },
   {
     timestamps: true,
@@ -66,6 +69,8 @@ const branchSchema = new Schema<IBranch>(
 
 branchSchema.index({ partnerId: 1, isActive: 1 });
 branchSchema.index({ geo: '2dsphere' });
+// Q16b: one branch per (partner, request key) whatever the race (declared here so `npm run sync-indexes` builds it).
+branchSchema.index({ partnerId: 1, createRequestKey: 1 }, { unique: true, partialFilterExpression: { createRequestKey: { $type: 'string' } } });
 
 const BranchModel: Model<IBranch> = model<IBranch>('PartnerBranch', branchSchema, 'partner_branches');
 

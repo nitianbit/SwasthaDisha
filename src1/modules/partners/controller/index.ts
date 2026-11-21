@@ -2,7 +2,9 @@ import 'reflect-metadata';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { AuthRequest } from '@/modules/middleware/auth';
-import { PartnerService, PartnerActor, adminActor } from '@/modules/partners/services';
+import { PartnerService, PartnerActor, adminActor, canonicalPartnerId } from '@/modules/partners/services';
+import { partnerOwnView } from '@/modules/partners/ownView';
+import { withFiles } from '@/modules/file/access';
 import { PartnerPermission, MemberRole } from '@/modules/partners/types';
 import MemberModel from '@/modules/partners/model/member';
 import { AppError } from '@/modules/common/types';
@@ -34,10 +36,13 @@ export const attachAdminActor = async (req: Request, _res: Response, next: NextF
     if (!user || user.userType !== 'admin') {
       throw new AppError({ status: 403, code: 'FORBIDDEN', message: 'Admin access is required' });
     }
-    const partnerId = String(req.params.partnerId ?? '');
-    if (!/^[0-9a-fA-F]{24}$/.test(partnerId)) {
+    const raw = String(req.params.partnerId ?? '');
+    if (!/^[0-9a-fA-F]{24}$/.test(raw)) {
       throw new AppError({ status: 400, code: 'VALIDATION_ERROR', message: 'Invalid partner id' });
     }
+    // Q16b: the actor carries the canonical (lowercase) id whatever the URL's spelling, so every row written through it
+    // is stored under the one spelling members use.
+    const partnerId = canonicalPartnerId(raw);
     await service().getPartnerById(partnerId);
     (req as PartnerActorRequest).partnerActor = adminActor(String(user._id), partnerId);
     next();
@@ -68,7 +73,8 @@ export async function loadPartnerActor(req: AuthRequest): Promise<PartnerActor> 
 
 export const adminCreatePartner = async (req: Request, res: Response, _next: NextFunction) => {
   const { requestKey, ...body } = req.body;
-  const result = await service().createPartner({ ...body, ...(requestKey ? { requestKey, createdBy: String((req as AuthRequest).user!._id) } : {}) });
+  const adminId = String((req as AuthRequest).user!._id);
+  const result = await service().createPartner({ ...body, adminId, ...(requestKey ? { requestKey, createdBy: adminId } : {}) });
   res.status(result.replayed ? 200 : 201).json({ success: true, data: { partner: result.partner, owner: result.owner } });
 };
 
@@ -90,7 +96,10 @@ export const adminGetPartner = async (req: Request, res: Response, _next: NextFu
 };
 
 export const adminUpdatePartner = async (req: Request, res: Response, _next: NextFunction) => {
-  const data = await service().updatePartner(req.params.partnerId, req.body);
+  const user = (req as AuthRequest).user!;
+  const id = canonicalPartnerId(req.params.partnerId);
+  // Q16b: a logo of ours is bound to the partner (public image) when the admin attaches it; audited with the admin.
+  const data = await withFiles(user, 'PartnerOrg', req.body, id, () => service().adminUpdatePartner(id, req.body, String(user._id)));
   res.status(200).json({ success: true, data });
 };
 
@@ -100,7 +109,7 @@ export const adminVerifyPartner = async (req: Request, res: Response, _next: Nex
 };
 
 export const adminSuspendPartner = async (req: Request, res: Response, _next: NextFunction) => {
-  const data = await service().suspendPartner(req.params.partnerId);
+  const data = await service().suspendPartner(req.params.partnerId, String((req as AuthRequest).user!._id));
   res.status(200).json({ success: true, data });
 };
 
@@ -124,13 +133,19 @@ export const adminReinstatePartner = async (req: Request, res: Response, _next: 
 export const getMyPartner = async (req: Request, res: Response, _next: NextFunction) => {
   const actor = actorOf(req);
   const data = await service().getPartnerById(actor.partnerId);
-  res.status(200).json({ success: true, data });
+  res.status(200).json({ success: true, data: partnerOwnView(data) }); // Q16b: no admin create key / verifier
 };
 
 export const updateMyPartner = async (req: Request, res: Response, _next: NextFunction) => {
   const actor = actorOf(req);
-  const data = await service().updateOwnProfile(actor, req.body);
-  res.status(200).json({ success: true, data });
+  // Q16b: a logo must be the actor's own upload (or an https URL); ours is bound to the partner as a public image.
+  const data = await withFiles((req as AuthRequest).user, 'PartnerOrg', req.body, actor.partnerId, () => service().updateOwnProfile(actor, req.body));
+  res.status(200).json({ success: true, data: partnerOwnView(data) });
+};
+
+/** Q16b: the member's own in-app notifications (e.g. their sign-in email was changed). */
+export const listMyNotifications = async (req: Request, res: Response, _next: NextFunction) => {
+  res.status(200).json({ success: true, data: await service().listOwnNotifications(actorOf(req)) });
 };
 
 // ── Member endpoints ──
@@ -191,8 +206,9 @@ export const getBranch = async (req: Request, res: Response, _next: NextFunction
 
 export const createBranch = async (req: Request, res: Response, _next: NextFunction) => {
   const actor = actorOf(req);
-  const data = await service().createBranch(actor, req.body);
-  res.status(201).json({ success: true, data });
+  const { replayed, ...data } = await service().createBranch(actor, req.body);
+  // Q16b: a keyed resend answers 200 with the branch the first request made.
+  res.status(replayed ? 200 : 201).json({ success: true, data, ...(replayed ? { replayed: true } : {}) });
 };
 
 export const updateBranch = async (req: Request, res: Response, _next: NextFunction) => {

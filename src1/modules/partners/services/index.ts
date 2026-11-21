@@ -39,13 +39,18 @@ export interface PartnerActor {
 export function adminActor(adminId: string, partnerId: string): PartnerActor {
   return {
     memberId: `admin:${adminId}`,
-    partnerId,
+    // Q16b: the canonical (lowercase) id, as members' actors carry it, so an admin URL's spelling never makes rows
+    // under a second spelling of the partner.
+    partnerId: canonicalPartnerId(partnerId),
     role: 'owner',
     permissions: [...ALL_PERMISSIONS],
     branchIds: [],
     actorKind: 'admin',
   };
 }
+
+/** ObjectId hex lower-cased (the form String(partner._id) has); anything else unchanged. */
+export const canonicalPartnerId = (id: string): string => (/^[0-9a-fA-F]{24}$/.test(String(id)) ? String(id).toLowerCase() : String(id));
 
 const scopeExceeded = (message: string) => new AppError({ status: 403, code: 'BRANCH_SCOPE_EXCEEDED', message });
 const memberNotFound = () => new AppError({ status: 404, code: 'MEMBER_NOT_FOUND', message: 'Member not found in this partner' });
@@ -159,6 +164,49 @@ async function assertMemberEmailFree(partnerId: string, email: string | undefine
   if (await q) throw emailInUse();
 }
 
+const ownerEmailAdminOnly = () => new AppError({ status: 403, code: 'OWNER_EMAIL_ADMIN_ONLY',
+  message: "An owner's sign-in email can be set or changed only by the Jansetu team" });
+const useDoctorUnlink = () => new AppError({ status: 409, code: 'USE_DOCTOR_UNLINK',
+  message: 'This member is a doctor of the clinic: remove the doctor from the clinic instead (owner or admin)' });
+
+type EmailChange = 'set' | 'changed' | 'removed';
+const maskEmail = (e?: string) => {
+  if (!e) return '';
+  const [local, domain] = e.split('@');
+  return `${(local ?? '').slice(0, 2)}***@${domain ?? ''}`;
+};
+
+/**
+ * Q16b (owner, 22 Nov): a member is told when their sign-in email is set, changed or removed — an in-app notification
+ * (GET /partner-workspace/me/notifications) and, when an SMS sender and its DLT template (SMS_TEMPLATE_ID_MEMBER_EMAIL)
+ * are configured, an SMS to the member's phone. After the commit, best effort: a failure never affects the change.
+ */
+export async function notifyMemberEmailChange(member: Pick<IMember, '_id' | 'partnerId' | 'phone' | 'email' | 'name'>, actor: PartnerActor, change: EmailChange): Promise<void> {
+  const by = actor.actorKind === 'admin' ? 'the Jansetu team' : 'an owner of your workspace';
+  let partnerName = 'your workspace';
+  try {
+    const p = await PartnerModel.findById(String(member.partnerId)).select({ name: 1 }).lean() as { name?: string } | null;
+    if (p?.name) partnerName = p.name;
+  } catch { /* the name is only for the text */ }
+  const what = change === 'removed' ? 'was removed' : `is now ${maskEmail(member.email)}`;
+  const message = `Your sign-in email for ${partnerName} ${what} (changed by ${by}). If you did not expect this, tell your workspace owner or Jansetu support.`;
+  try {
+    const { Container } = await import('typedi');
+    const { NotificationService } = await import('@/modules/notification/services');
+    await Container.get(NotificationService).create({ userId: String(member._id), type: 'general', title: 'Your sign-in email changed', message,
+      referenceType: 'partner_member', referenceId: String(member._id), data: { partnerId: String(member.partnerId), change } } as never);
+  } catch (e) { console.error('member email notification failed', (e as Error)?.message); }
+  try {
+    const { CONFIG } = await import('@/config/config');
+    if (!CONFIG.SMS_TEMPLATE_ID_MEMBER_EMAIL || !CONFIG.SMS_API_BASE_URL || !CONFIG.SMS_USERNAME || !CONFIG.SMS_PASSWORD || !CONFIG.SMS_FROM || !member.phone) return;
+    const { Container } = await import('typedi');
+    const { SMSService } = await import('@/modules/sms/services');
+    const sms = Container.get(SMSService);
+    const content = sms.buildSMSContent('member_email', { supplierName: partnerName.slice(0, 30), change });
+    await sms.sendSMS({ to: member.phone, text: content.text, templateId: content.templateId });
+  } catch (e) { console.error('member email SMS failed', (e as Error)?.message); }
+}
+
 @Service()
 export class PartnerService {
   constructor(
@@ -182,8 +230,10 @@ export class PartnerService {
     /** Q8: admin create is exactly once per (admin, requestKey); a repeat with other content is refused. */
     requestKey?: string;
     createdBy?: string;
+    /** Q16b: the admin creating it (audited as the actor); defaults to createdBy. */
+    adminId?: string;
   }): Promise<{ partner: IPartner; owner: IMember; replayed?: boolean }> {
-    const { requestKey, createdBy, ...content } = data;
+    const { requestKey, createdBy, adminId: _a, ...content } = data;
     // Canonical (key-order independent) so an identical retry with reordered fields is the same request.
     const { canonicalJson } = await import('@/modules/partners/services/invoice');
     const requestHash = requestKey ? createHash('sha256').update(canonicalJson(content)).digest('hex') : undefined;
@@ -246,6 +296,9 @@ export class PartnerService {
         } as Partial<IMember>,
         { session }
       );
+      // Q16b: admin partner actions are audited in their transaction, with the admin as actor.
+      await recordPartnerAudit(adminActor(data.adminId ?? data.createdBy ?? 'unknown', String(partner._id)), 'partner.create',
+        { kind: 'partner', id: String(partner._id) }, { kind: data.kind, ownerMemberId: String(owner._id), solo: !!data.solo }, session);
 
       return { partner, owner };
     });
@@ -336,6 +389,18 @@ export class PartnerService {
     return updated;
   }
 
+  /** Q16b: the admin edit (PUT /partner-workspace/admin/:partnerId), audited with the admin as actor in its transaction. */
+  async adminUpdatePartner(partnerId: string, data: Parameters<PartnerService['updatePartner']>[1], adminId: string): Promise<IPartner> {
+    const id = canonicalPartnerId(partnerId);
+    return inTransaction(async (session) => {
+      const updated = await this.updatePartner(id, data, session);
+      const { expectedUpdatedAt: _e, ...fields } = data;
+      await recordPartnerAudit(adminActor(adminId, id), 'partner.update', { kind: 'partner', id },
+        { fields: Object.keys(fields).filter((k) => (fields as Record<string, unknown>)[k] !== undefined) }, session);
+      return updated;
+    });
+  }
+
   async updateOwnProfile(
     actor: PartnerActor,
     data: { name?: string; legalName?: string; contactPhone?: string; contactEmail?: string; logo?: string; allowPartPayments?: boolean; expectedUpdatedAt?: Date | string }
@@ -352,42 +417,68 @@ export class PartnerService {
     });
   }
 
+  /** Pending -> verified (admin), audited with the admin as actor in the same transaction. */
   async verifyPartner(partnerId: string, verifiedBy: string): Promise<IPartner> {
-    const updated = await this.partnerRepository.update(
-      { _id: partnerId, 'verification.state': 'pending' },
-      { 'verification.state': 'verified', 'verification.verifiedAt': new Date(), 'verification.verifiedBy': verifiedBy }
-    );
-    if (!updated) {
-      throw new AppError({ status: 409, code: 'VERIFICATION_STATE_CONFLICT', message: 'Partner is not in pending state' });
-    }
-    return updated;
-  }
-
-  async suspendPartner(partnerId: string): Promise<IPartner> {
-    const updated = await this.partnerRepository.update(
-      { _id: partnerId, 'verification.state': { $ne: 'suspended' } },
-      { 'verification.state': 'suspended', isActive: false }
-    );
-    if (!updated) {
-      throw new AppError({ status: 409, code: 'ALREADY_SUSPENDED', message: 'Partner is already suspended' });
-    }
-    return updated;
-  }
-
-  /** Q8: a suspended partner becomes verified and active again (admin), audited with the admin as actor. */
-  async reinstatePartner(partnerId: string, adminId: string): Promise<IPartner> {
+    const id = canonicalPartnerId(partnerId);
     return inTransaction(async (session) => {
       const updated = await this.partnerRepository.update(
-        { _id: partnerId, 'verification.state': 'suspended' },
-        { 'verification.state': 'verified', isActive: true, 'verification.verifiedAt': new Date(), 'verification.verifiedBy': adminId },
+        { _id: id, 'verification.state': 'pending' },
+        { 'verification.state': 'verified', 'verification.verifiedAt': new Date(), 'verification.verifiedBy': verifiedBy },
         { new: true, session } as any
       );
+      if (!updated) {
+        throw new AppError({ status: 409, code: 'VERIFICATION_STATE_CONFLICT', message: 'Partner is not in pending state' });
+      }
+      await recordPartnerAudit(adminActor(verifiedBy, id), 'partner.verify', { kind: 'partner', id }, undefined, session);
+      return updated;
+    });
+  }
+
+  /**
+   * Admin: the partner stops (inactive, state suspended). Q16b: the state it replaced (pending or verified) is kept, so a
+   * reinstate restores exactly that; audited with the admin as actor in the same transaction.
+   */
+  async suspendPartner(partnerId: string, adminId = 'unknown'): Promise<IPartner> {
+    const id = canonicalPartnerId(partnerId);
+    return inTransaction(async (session) => {
+      const current = await PartnerModel.findById(id).session(session).select({ verification: 1 }).lean() as IPartner | null;
+      if (!current) throw new AppError({ status: 404, code: 'PARTNER_NOT_FOUND', message: 'Partner not found' });
+      const before = current.verification?.state;
+      if (before === 'suspended') throw new AppError({ status: 409, code: 'ALREADY_SUSPENDED', message: 'Partner is already suspended' });
+      const updated = await this.partnerRepository.update(
+        { _id: id, 'verification.state': before },
+        { 'verification.state': 'suspended', 'verification.stateBeforeSuspension': before === 'verified' ? 'verified' : 'pending', isActive: false },
+        { new: true, session } as any
+      );
+      if (!updated) throw new AppError({ status: 409, code: 'ALREADY_SUSPENDED', message: 'Partner is already suspended' });
+      await recordPartnerAudit(adminActor(adminId, id), 'partner.suspend', { kind: 'partner', id }, { previousState: before }, session);
+      return updated;
+    });
+  }
+
+  /**
+   * Q8: a suspended partner becomes active again (admin), audited with the admin as actor. Q16b: it returns to the state
+   * the suspension replaced (a partner suspended while pending is pending again, never verified by reinstating); a
+   * partner suspended before that state was recorded returns to pending (an admin verifies it again). Verification
+   * details (who verified it, when) are left as they were.
+   */
+  async reinstatePartner(partnerId: string, adminId: string): Promise<IPartner> {
+    const id = canonicalPartnerId(partnerId);
+    return inTransaction(async (session) => {
+      const current = await PartnerModel.findOne({ _id: id, 'verification.state': 'suspended' }).session(session).select({ verification: 1 }).lean() as IPartner | null;
+      if (!current) throw new AppError({ status: 409, code: 'NOT_SUSPENDED', message: 'Only a suspended partner can be reinstated' });
+      const restored = current.verification?.stateBeforeSuspension === 'verified' ? 'verified' : 'pending';
+      const updated = await PartnerModel.findOneAndUpdate(
+        { _id: id, 'verification.state': 'suspended' },
+        { $set: { 'verification.state': restored, isActive: true }, $unset: { 'verification.stateBeforeSuspension': 1 } },
+        { new: true, session }
+      ).lean() as IPartner | null;
       if (!updated) throw new AppError({ status: 409, code: 'NOT_SUSPENDED', message: 'Only a suspended partner can be reinstated' });
-      await recordPartnerAudit(adminActor(adminId, partnerId), 'partner.reinstate', { kind: 'partner', id: partnerId }, undefined, session);
+      await recordPartnerAudit(adminActor(adminId, id), 'partner.reinstate', { kind: 'partner', id }, { restoredState: restored }, session);
       return updated;
     }).then(async (updated) => {
       // Clinic authority is valid again: the doctors' generated in-clinic slots at its branches follow at once.
-      const branchIds = (await BranchModel.find({ partnerId }).select({ _id: 1 }).lean()).map((b) => String(b._id));
+      const branchIds = (await BranchModel.find({ partnerId: id }).select({ _id: 1 }).lean()).map((b) => String(b._id));
       await refreshDoctorsAt(branchIds);
       return updated;
     });
@@ -418,6 +509,9 @@ export class PartnerService {
     if (email && actor.role !== 'owner') {
       throw new AppError({ status: 403, code: 'OWNER_REQUIRED', message: 'Only an owner can set a member\'s sign-in email' });
     }
+    // Q16b (owner, 22 Nov): an owner's sign-in email is set by the Jansetu team only (an owner could otherwise sign in as
+    // the new owner with an address of their own).
+    if (email && data.role === 'owner' && actor.actorKind !== 'admin') throw ownerEmailAdminOnly();
     await assertMemberEmailFree(actor.partnerId, email);
 
     if (data.role === 'owner') {
@@ -440,6 +534,9 @@ export class PartnerService {
         await recordPartnerAudit(actor, 'member.add', { kind: 'member', id: String(member._id) },
           { role: 'staff', permissions: data.permissions, branchIds, ...(email ? { email: true } : {}) }, session);
         return member;
+      }).then(async (member) => {
+        if (email) await notifyMemberEmailChange(member, actor, 'set');
+        return member;
       });
     } catch (error: any) {
       if (isEmailDuplicate(error)) throw emailInUse();
@@ -450,47 +547,46 @@ export class PartnerService {
     }
   }
 
+  /**
+   * An owner joins: the owner counter and the member row change together. Q16b: in the retrying transaction helper,
+   * reading the counter inside it, so concurrent owner changes are retried (never a raw WriteConflict 500).
+   */
   private async addOwner(actor: PartnerActor, data: { phone: string; name: string; email?: string }): Promise<IMember> {
     const partnerId = actor.partnerId;
-    const partner = await this.getPartnerById(partnerId);
-
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    await this.getPartnerById(partnerId);
     try {
-      const updated = await this.partnerRepository.incrementActiveOwnerCount(
-        partnerId, partner.activeOwnerCount, session
-      );
-      if (!updated) {
-        throw new AppError({ status: 409, code: 'OWNER_COUNT_CONFLICT', message: 'Owner count changed concurrently, please retry' });
-      }
-
-      const member = await this.memberRepository.save(
-        {
-          partnerId,
-          phone: data.phone,
-          ...(data.email ? { email: data.email } : {}),
-          name: data.name,
-          role: 'owner' as MemberRole,
-          permissions: [...ALL_PERMISSIONS],
-          branchIds: [],
-          isActive: true,
-          invitedBy: actor.memberId,
-        } as Partial<IMember>,
-        { session }
-      );
-      await recordPartnerAudit(actor, 'member.add', { kind: 'member', id: String(member._id) }, { role: 'owner' }, session);
-
-      await session.commitTransaction();
+      const member = await inTransaction(async (session) => {
+        const partner = await PartnerModel.findById(partnerId).session(session).select({ activeOwnerCount: 1 }).lean() as IPartner | null;
+        if (!partner) throw new AppError({ status: 404, code: 'PARTNER_NOT_FOUND', message: 'Partner not found' });
+        const updated = await this.partnerRepository.incrementActiveOwnerCount(partnerId, partner.activeOwnerCount, session);
+        if (!updated) {
+          throw new AppError({ status: 409, code: 'OWNER_COUNT_CONFLICT', message: 'Owner count changed concurrently, please retry' });
+        }
+        const created = await this.memberRepository.save(
+          {
+            partnerId,
+            phone: data.phone,
+            ...(data.email ? { email: data.email } : {}),
+            name: data.name,
+            role: 'owner' as MemberRole,
+            permissions: [...ALL_PERMISSIONS],
+            branchIds: [],
+            isActive: true,
+            invitedBy: actor.memberId,
+          } as Partial<IMember>,
+          { session }
+        );
+        await recordPartnerAudit(actor, 'member.add', { kind: 'member', id: String(created._id) }, { role: 'owner', ...(data.email ? { email: true } : {}) }, session);
+        return created;
+      });
+      if (data.email) await notifyMemberEmailChange(member, actor, 'set');
       return member;
     } catch (error: any) {
-      await session.abortTransaction();
       if (isEmailDuplicate(error)) throw emailInUse();
       if (error?.code === 11000) {
         throw new AppError({ status: 409, code: 'MEMBER_ALREADY_EXISTS', message: 'An active member with this phone already exists for this partner' });
       }
       throw error;
-    } finally {
-      session.endSession();
     }
   }
 
@@ -505,44 +601,44 @@ export class PartnerService {
     }
     if (!memberInScope(actor, member)) throw memberNotFound();
     if (!member.isActive) return;
+    // Q16b: a clinic's doctor leaves only through DELETE /clinic/doctors/:doctorId (owner or admin; it refreshes the
+    // doctor's slots, tells the doctor and is audited as a doctor unlink), never as plain staff removal.
+    if (member.doctorId) throw useDoctorUnlink();
 
     if (member.role === 'owner') {
       await this.removeOwner(actor, memberId);
     } else {
       await inTransaction(async (session) => {
         const removed = await this.memberRepository.update(
-          { _id: memberId, partnerId: actor.partnerId, role: 'staff', isActive: true },
+          // The doctor link is re-checked on the row written (a doctor linked meanwhile is refused, not removed).
+          { _id: memberId, partnerId: actor.partnerId, role: 'staff', isActive: true, doctorId: { $exists: false } },
           { isActive: false },
           { new: true, session } as any
         );
-        if (removed) await recordPartnerAudit(actor, 'member.remove', { kind: 'member', id: memberId }, undefined, session);
+        if (removed) { await recordPartnerAudit(actor, 'member.remove', { kind: 'member', id: memberId }, undefined, session); return; }
+        if (await MemberModel.exists({ _id: memberId, isActive: true, doctorId: { $type: 'string' } }).session(session)) throw useDoctorUnlink();
       });
     }
   }
 
+  /** Q16b: like addOwner, one retrying transaction that reads the owner counter inside it (§3 last-owner protection). */
   private async removeOwner(actor: PartnerActor, memberId: string): Promise<void> {
     const partnerId = actor.partnerId;
-    const partner = await this.getPartnerById(partnerId);
-    // §3: last-active-owner protection
-    if (partner.activeOwnerCount <= 1) {
-      throw new AppError({ status: 409, code: 'LAST_OWNER', message: 'Cannot remove the last owner' });
-    }
-
-    const session = await mongoose.startSession();
-    session.startTransaction();
-    try {
-      const updated = await this.partnerRepository.decrementActiveOwnerCount(
-        partnerId, partner.activeOwnerCount, session
-      );
+    await inTransaction(async (session) => {
+      const partner = await PartnerModel.findById(partnerId).session(session).select({ activeOwnerCount: 1 }).lean() as IPartner | null;
+      if (!partner) throw new AppError({ status: 404, code: 'PARTNER_NOT_FOUND', message: 'Partner not found' });
+      if (partner.activeOwnerCount <= 1) {
+        throw new AppError({ status: 409, code: 'LAST_OWNER', message: 'Cannot remove the last owner' });
+      }
+      const updated = await this.partnerRepository.decrementActiveOwnerCount(partnerId, partner.activeOwnerCount, session);
       if (!updated) {
         throw new AppError({ status: 409, code: 'OWNER_COUNT_CONFLICT', message: 'Owner count changed concurrently, please retry' });
       }
       if (updated.activeOwnerCount < 1) {
         throw new AppError({ status: 409, code: 'LAST_OWNER', message: 'Cannot remove the last owner' });
       }
-
       const deactivated = await this.memberRepository.update(
-        { _id: memberId, partnerId, isActive: true, role: 'owner' },
+        { _id: memberId, partnerId, isActive: true, role: 'owner', doctorId: { $exists: false } },
         { isActive: false },
         { new: true, session } as any
       );
@@ -550,14 +646,7 @@ export class PartnerService {
         throw new AppError({ status: 409, code: 'MEMBER_STATE_CONFLICT', message: 'Member state changed concurrently, please retry' });
       }
       await recordPartnerAudit(actor, 'member.remove', { kind: 'member', id: memberId }, { role: 'owner' }, session);
-
-      await session.commitTransaction();
-    } catch (error) {
-      await session.abortTransaction();
-      throw error;
-    } finally {
-      session.endSession();
-    }
+    });
   }
 
   async updateMemberPermissions(actor: PartnerActor, memberId: string, permissions: PartnerPermission[], expectedUpdatedAt?: Date | string): Promise<IMember> {
@@ -584,7 +673,8 @@ export class PartnerService {
 
   /**
    * A member's sign-in email (null or empty removes it). It is a sign-in identity, so like permissions only an owner
-   * changes it (admins act as owner), for any member including owners; unique among the partner's active members (409
+   * changes it (admins act as owner); Q16b: an owner's email only an admin (403 OWNER_EMAIL_ADMIN_ONLY), and the member
+   * is told of every set, change or removal. Unique among the partner's active members (409
    * EMAIL_IN_USE). Optimistic fence with `expectedUpdatedAt`. Audited (whether set or removed, not the address).
    */
   async updateMemberEmail(actor: PartnerActor, memberId: string, email: string | null | undefined, expectedUpdatedAt?: Date | string): Promise<IMember> {
@@ -593,9 +683,11 @@ export class PartnerService {
     }
     const normalized = normalizeMemberEmail(email);
     try {
-      return await inTransaction(async (session) => {
+      const result = await inTransaction(async (session) => {
         const current = await MemberModel.findOne({ _id: memberId, partnerId: actor.partnerId, isActive: true }).session(session).lean() as IMember | null;
         if (!current) throw memberNotFound();
+        // Q16b (owner, 22 Nov): an owner's sign-in email — another owner's or one's own — is changed by an admin only.
+        if (current.role === 'owner' && actor.actorKind !== 'admin') throw ownerEmailAdminOnly();
         if (expectedUpdatedAt && new Date(current.updatedAt as Date).getTime() !== new Date(expectedUpdatedAt).getTime()) throw recordChanged();
         await assertMemberEmailFree(actor.partnerId, normalized, memberId, session);
         const updated = await MemberModel.findOneAndUpdate({ _id: memberId, partnerId: actor.partnerId, isActive: true, updatedAt: current.updatedAt },
@@ -604,15 +696,18 @@ export class PartnerService {
         await recordPartnerAudit(actor, 'member.email', { kind: 'member', id: memberId }, { email: normalized ? 'set' : 'removed' }, session);
         // A previous email that is changed or removed ends the member's web and phone-app sessions, in this transaction
         // (the change is saved only together with the revocation). A first email ends nothing: those sessions were
-        // opened with the phone, which still works. Legacy 30-day bearer tokens carry no session and end only when the
-        // member is removed.
+        // opened with the phone, which still works. Q16b: revokeAllSessions also advances the member's token generation,
+        // so a bearer token from before ends with the sessions.
         const previous = current.email ?? undefined;
         if (previous && previous !== normalized) {
           const { revokeAllSessions } = await import('@/modules/auth/sessions');
           await revokeAllSessions('partner', String(memberId), 'sign_in_email_changed', session);
         }
-        return updated;
+        return { updated, change: (previous === normalized ? null : !previous ? 'set' : normalized ? 'changed' : 'removed') as EmailChange | null };
       });
+      // Q16b: the member hears of it (after the commit, best effort; never affects the change).
+      if (result.change) await notifyMemberEmailChange(result.updated, actor, result.change);
+      return result.updated;
     } catch (error: any) {
       if (isEmailDuplicate(error)) throw emailInUse();
       throw error;
@@ -678,6 +773,15 @@ export class PartnerService {
     return m;
   }
 
+  /** Q16b: the signed-in member's own in-app notifications (newest first). Admins acting as owner have none here. */
+  async listOwnNotifications(actor: PartnerActor, limit = 50) {
+    if (actor.actorKind === 'admin' || !isValidObjectId(actor.memberId)) {
+      throw new AppError({ status: 404, code: 'NO_MEMBER_RECORD', message: 'An admin acting for this partner has no staff record here' });
+    }
+    const { default: NotificationModel } = await import('@/modules/notification/model');
+    return NotificationModel.find({ userId: String(actor.memberId) }).sort({ createdAt: -1 }).limit(Math.min(Math.max(limit, 1), 100)).lean();
+  }
+
   async listMembers(actor: PartnerActor): Promise<IMember[]> {
     const all = await this.memberRepository.findActiveByPartner(actor.partnerId);
     return all.filter((m) => memberInScope(actor, m));
@@ -696,14 +800,42 @@ export class PartnerService {
 
   // ── Branch management (actor = admitted member) ──
 
-  async createBranch(actor: PartnerActor, data: Omit<IBranch, '_id' | 'partnerId' | 'isActive' | 'createdAt' | 'updatedAt'>): Promise<IBranch> {
+  /**
+   * Q16b: with a `requestKey` the create is exactly once per (partner, key): a resend answers with the branch it made
+   * (`replayed`), other content under the same key is refused (409 REQUEST_KEY_REUSED); the unique (partnerId,
+   * createRequestKey) index holds one branch per key whatever the race (run `npm run sync-indexes`).
+   */
+  async createBranch(actor: PartnerActor, input: Omit<IBranch, '_id' | 'partnerId' | 'isActive' | 'createdAt' | 'updatedAt'> & { requestKey?: string }): Promise<IBranch & { replayed?: boolean }> {
     if (!hasGlobalScope(actor)) throw scopeExceeded('Branch-scoped staff cannot create new branches');
-    await this.getPartnerById(actor.partnerId);
-    return inTransaction(async (session) => {
-      const branch = await this.branchRepository.save({ ...data, partnerId: actor.partnerId, isActive: true } as Partial<IBranch>, { session });
-      await recordPartnerAudit(actor, 'branch.create', { kind: 'branch', id: String(branch._id) }, undefined, session);
-      return branch;
-    });
+    const { requestKey, createRequestKey: _k, createRequestHash: _h, ...data } = input;
+    const partnerId = canonicalPartnerId(actor.partnerId);
+    const { canonicalJson } = await import('@/modules/partners/services/invoice');
+    const requestHash = requestKey ? createHash('sha256').update(canonicalJson(data)).digest('hex') : undefined;
+    const replay = async () => {
+      if (!requestKey) return null;
+      const prior = await BranchModel.findOne({ partnerId, createRequestKey: { $eq: requestKey } }).select('+createRequestHash').lean() as IBranch | null;
+      if (!prior) return null;
+      if (prior.createRequestHash !== requestHash) throw new AppError({ status: 409, code: 'REQUEST_KEY_REUSED', message: 'This request key was already used for a different branch' });
+      const { createRequestHash: _x, ...shown } = prior;
+      return { ...shown, replayed: true };
+    };
+    const prior = await replay();
+    if (prior) return prior;
+    await this.getPartnerById(partnerId);
+    try {
+      return await inTransaction(async (session) => {
+        const branch = await this.branchRepository.save({ ...data, partnerId, isActive: true,
+          ...(requestKey ? { createRequestKey: requestKey, createRequestHash: requestHash } : {}) } as Partial<IBranch>, { session });
+        await recordPartnerAudit(actor, 'branch.create', { kind: 'branch', id: String(branch._id) }, undefined, session);
+        const { createRequestHash: _x, ...shown } = branch as IBranch;
+        return shown as IBranch;
+      });
+    } catch (e: any) {
+      if (e?.code !== 11000) throw e;
+      const raced = await replay();
+      if (!raced) throw e;
+      return raced;
+    }
   }
 
   async updateBranch(actor: PartnerActor, branchId: string, data: Partial<IBranch> & { expectedUpdatedAt?: Date | string }): Promise<IBranch> {

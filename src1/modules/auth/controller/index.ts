@@ -1,5 +1,7 @@
 import { hitClient } from '@/modules/otp/throttle';
 import { withoutCreateKey } from '@/modules/pharmacies/ownView';
+import { partnerOwnView } from '@/modules/partners/ownView';
+import { AppError } from '@/modules/common/types';
 import 'reflect-metadata';
 import { Request, Response, NextFunction } from 'express';
 import { Container } from 'typedi';
@@ -18,6 +20,21 @@ import jwt from 'jsonwebtoken';
 import { ACCESS_TOKEN_TTL_SECONDS, assertRoleForAudience, createNativeSession, createSession, logoutNativeSession, logoutSession,
   nativeAudience, privateTokenResponse, refreshNativeSession, refreshSession, reissueForCaller, revokeAllSessions,
   sessionAudience } from '@/modules/auth/sessions';
+
+/**
+ * Q16b (owner, 22 Nov): partner members get no 30-day bearer token. Their sign-in (verify and select) must open a web
+ * (`session: 'cookie'`) or phone-app (`session: 'native'`) session; anything else is refused before the code or the
+ * selection ticket is used.
+ */
+function requirePartnerSession(userType: string, session: unknown): void {
+  if (userType === 'partner' && session !== 'cookie' && session !== 'native') {
+    throw new AppError({ status: 400, code: 'SESSION_REQUIRED',
+      message: "Partner sign-in needs session 'cookie' (web) or 'native' (phone app)" });
+  }
+}
+
+/** Q16b: a named partner id in its canonical (lowercase) spelling, as memberships store it. */
+const partnerIdOf = (v: unknown): string | undefined => (typeof v === 'string' ? v.toLowerCase() : undefined);
 
 export class AuthController {
   private authService: AuthService;
@@ -48,7 +65,7 @@ export class AuthController {
       userType: userType as SendOTPRequest['userType'],
       phone,
       email,
-      partnerId: req.body.partnerId,
+      partnerId: partnerIdOf(req.body.partnerId),
     };
 
     await hitClient('ip-send', req);
@@ -63,6 +80,7 @@ export class AuthController {
   verifyOTP = async (req: Request, res: Response, _next: NextFunction) => {
     const { userType } = req.params;
     const { phone, email, otp } = req.body;
+    requirePartnerSession(String(userType), req.body?.session);
     // D4: decided (origin, header, audience, role) BEFORE the single-use OTP is consumed.
     const audience = req.body?.session === 'cookie' ? sessionAudience(req) : null;
     if (audience) assertRoleForAudience(audience, String(userType));
@@ -75,7 +93,7 @@ export class AuthController {
       phone,
       email,
       otp,
-      partnerId: req.body.partnerId,
+      partnerId: partnerIdOf(req.body.partnerId),
     };
 
     await hitClient('ip-verify', req);
@@ -88,14 +106,15 @@ export class AuthController {
     return this.signedIn(res, req, result, audience, native);
   };
 
-  /** Q7: the partner chosen after a multi-membership OTP sign-in; answered exactly like a verify (bearer, cookie or native). */
+  /** Q7: the partner chosen after a multi-membership OTP sign-in; answered exactly like a verify (cookie or native: Q16b). */
   selectPartner = async (req: Request, res: Response, _next: NextFunction) => {
+    requirePartnerSession('partner', req.body?.session);
     const audience = req.body?.session === 'cookie' ? sessionAudience(req) : null;
     if (audience) assertRoleForAudience(audience, 'partner');
     const native = req.body?.session === 'native' ? nativeAudience(req) : null;
     if (native) assertRoleForAudience(native, 'partner');
     await hitClient('ip-verify', req);
-    const result = await this.authService.selectPartner({ ticket: req.body.ticket, partnerId: req.body.partnerId });
+    const result = await this.authService.selectPartner({ ticket: req.body.ticket, partnerId: partnerIdOf(req.body.partnerId)! });
     return this.signedIn(res, req, result, audience, native);
   };
 
@@ -248,7 +267,7 @@ export class AuthController {
       return res.status(200).json({
         success: true,
         message: 'Profile retrieved successfully',
-        data: { user: member, partner, userRole: 'partner' },
+        data: { user: member, partner: partner ? partnerOwnView(partner) : partner, userRole: 'partner' }, // Q16b: own view
       });
     }
 

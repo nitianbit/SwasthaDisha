@@ -11,6 +11,7 @@ import {
 import { CorporateRepository } from '@/modules/corporates/repository';
 import { AppError } from '@/modules/common/types';
 import { BookingRepository } from '@/modules/bookings/repository';
+import { inContactChange, signInContactChanged } from '@/modules/auth/contactChange';
 
 @Service()
 export class SpecialistService {
@@ -323,7 +324,12 @@ export class SpecialistService {
       data.consultationFee = 0;
     }
 
-    const updated = await this.specialistRepository.update({ _id: id }, data);
+    // Q16b: this is the admin edit (PUT /specialists/:id). A changed phone, or a changed or removed existing email, ends
+    // the doctor's sign-ins made with the old contact (token generation + sessions) in the write's transaction.
+    const updated = signInContactChanged(specialist, data)
+      ? await inContactChange('specialist', String(id), data.phone !== undefined && data.phone !== specialist.phone ? 'sign_in_phone_changed' : 'sign_in_email_changed',
+        (session) => this.specialistRepository.update({ _id: id }, data, { new: true, session }))
+      : await this.specialistRepository.update({ _id: id }, data);
 
     if (!updated) {
       throw new AppError({

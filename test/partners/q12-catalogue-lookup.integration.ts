@@ -88,12 +88,13 @@ async function main() {
   });
 
   await check('one partner identity whatever the case of the id: found, never falsely abandoned, and fully usable', async () => {
-    // An admin URL keeps its spelling (as before Q12), so rows it wrote earlier stay reachable through it.
+    // Q16b (replaces "an admin URL keeps its spelling"): the admin actor carries the lowercase id whatever the URL's
+    // spelling; rows written earlier under an upper-case spelling stay reachable (samePartner).
     let attached: PartnerActor | undefined;
     const req = { user: { _id: 'ad'.repeat(12), userType: 'admin' }, params: { partnerId: a.partnerId.toUpperCase() } } as any;
     await attachAdminActor(req, {} as any, (e?: unknown) => { if (e) throw e; attached = req.partnerActor; });
     const loud = attached!;
-    assert.equal(loud.partnerId, a.partnerId.toUpperCase());
+    assert.equal(loud.partnerId, a.partnerId.toLowerCase());
     // Legacy keyed items (no claim row), stored lower- and upper-case: either spelling of the actor finds, opens, lists,
     // edits, deactivates and reactivates them; the key is reported used, never abandoned; a replay makes nothing new.
     for (const [stored, k] of [[a.partnerId, 'item-case-0001'], [a.partnerId.toUpperCase(), 'item-case-0002']] as const) {

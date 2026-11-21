@@ -104,6 +104,7 @@ import {
   updateBranch,
   deactivateBranch,
   listAudit,
+  listMyNotifications,
 } from '@/modules/partners/controller';
 
 /** Admission for one workspace route: who may call it and which permissions a member needs (all, or any one of). */
@@ -148,6 +149,7 @@ export function registerWorkspaceRoutes(r: Router, guard: WorkspaceGuard): void 
   r.put('/members/:memberId/permissions', ...guard('staff.manage'), validate(memberIdParamSchema, 'params'),
     validate(updateMemberPermissionsSchema, 'body'), catchAsync(updateMemberPermissions));
   r.get('/me/member', ...guard(), catchAsync(getOwnMember));
+  r.get('/me/notifications', ...guard(), catchAsync(listMyNotifications));
   // Q15: owners only (admins act as owner), refused at the route as the service does: staff.manage alone is not enough.
   r.put('/members/:memberId/professional', ...guard('staff.manage'), requireOwnerActor('Only an owner can record professional registrations'),
     validate(memberIdParamSchema, 'params'),

@@ -1,8 +1,23 @@
 import Joi from 'joi';
 import { isRealDate } from '@/modules/partners/services/slots';
 import { ALL_PERMISSIONS } from '@/modules/partners/types';
+import { uploadPathOf } from '@/modules/file/access';
 
 const objectIdPattern = /^[0-9a-fA-F]{24}$/;
+
+/**
+ * Q16b: a partner logo is either a file of ours (an upload path: `/api/static/...`, `/api/v1/file/static/...` or the
+ * bare `folder/file.png` form; D1 then requires the actor to be its uploader, or an admin, and binds it as a public
+ * image) or an https URL. Anything else (http:, javascript:, data:, free text) is refused.
+ */
+const logoSchema = Joi.string().trim().max(2048).custom((value: string, helpers) => {
+  if (/^https:\/\//i.test(value)) {
+    try { new URL(value); return value; } catch { return helpers.error('any.invalid'); }
+  }
+  const path = uploadPathOf(value);
+  if (!path || path.includes('..') || /^[a-z][a-z0-9+.-]*:/i.test(value)) return helpers.error('any.invalid');
+  return value;
+}, 'logo: our upload path or an https URL').messages({ 'any.invalid': 'logo must be an uploaded image of yours or an https URL' });
 const phonePattern = /^[0-9]{10}$/;
 
 export const idParamSchema = Joi.object({
@@ -84,7 +99,7 @@ export const updatePartnerSchema = Joi.object({
   contactEmail: Joi.string().email().optional(),
   taxRegime: Joi.string().valid('regular', 'composition', 'unregistered').optional(),
   invoiceSeriesPrefix: Joi.string().trim().uppercase().pattern(/^[A-Z0-9]{1,6}$/).optional(),
-  logo: Joi.string().trim().optional(),
+  logo: logoSchema.optional(),
   /** Q14: in-house bills may be paid in parts. */
   allowPartPayments: Joi.boolean().optional(),
 }).min(1);
@@ -96,7 +111,7 @@ export const updateMyPartnerSchema = Joi.object({
   legalName: Joi.string().trim().max(200).optional(),
   contactPhone: Joi.string().pattern(phonePattern).optional(),
   contactEmail: Joi.string().email().optional(),
-  logo: Joi.string().trim().optional(),
+  logo: logoSchema.optional(),
   /** Q14: in-house bills may be paid in parts. */
   allowPartPayments: Joi.boolean().optional(),
 }).min(1);
@@ -131,6 +146,8 @@ export const updateMemberEmailSchema = Joi.object({
 });
 
 export const createBranchSchema = Joi.object({
+  /** Q16b: optional; the create is then exactly once per (partner, key). */
+  requestKey: Joi.string().pattern(/^[A-Za-z0-9_-]{8,100}$/).optional(),
   name: Joi.string().trim().min(1).max(200).required(),
   address: addressSchema.required(),
   geo: Joi.object({

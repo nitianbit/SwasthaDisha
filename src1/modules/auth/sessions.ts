@@ -12,6 +12,7 @@ import PharmacyModel from '@/modules/pharmacies/model';
 import MemberModel from '@/modules/partners/model/member';
 import PartnerModel from '@/modules/partners/model';
 import { readCredentialVersion } from '@/modules/user/credentialGeneration';
+import { advanceTokenVersion, isVersionedRole, readTokenVersion } from './tokenVersion';
 import { AuthSessionModel, type AuthSession } from './model/session';
 
 /**
@@ -167,7 +168,7 @@ async function newFamily(audience: Audience, claims: Claims, now: Date): Promise
     _id: sid, audience, userType: claims.userType, userId: String(claims._id), authTime: now,
     absoluteExpiresAt: new Date(now.getTime() + life.absolute), idleExpiresAt: new Date(now.getTime() + life.idle),
     gen: 1, createdAt: now,
-    ...(claims.userType === 'user' ? { authVersion: Number(claims.authVersion ?? 0) } : {}),
+    ...(claims.userType === 'user' || isVersionedRole(claims.userType) ? { authVersion: Number(claims.authVersion ?? 0) } : {}),
   });
   return { session: session.toObject() as AuthSession, token: refreshToken(sid, 1) };
 }
@@ -175,6 +176,14 @@ async function newFamily(audience: Audience, claims: Claims, now: Date): Promise
 /** The account behind a session is still allowed in (checked on every refresh). */
 async function accountStillAllowed(s: AuthSession): Promise<Claims | null> {
   const id = s.userId;
+  // Q16b: pharmacy, doctor and partner sessions end once the account's token generation moved on (contact change, sign
+  // out everywhere); sessions from before carry none (= 0), as do the accounts.
+  let authVersion: number | undefined;
+  if (isVersionedRole(s.userType)) {
+    const v = await readTokenVersion(s.userType, id);
+    if ((v ?? 0) !== Number(s.authVersion ?? 0)) return null;
+    authVersion = v ?? 0;
+  }
   switch (s.userType) {
     case 'user': {
       const version = await readCredentialVersion(id);
@@ -193,18 +202,18 @@ async function accountStillAllowed(s: AuthSession): Promise<Claims | null> {
     }
     case 'specialist': {
       const sp = await SpecialistModel.findById(id).lean() as { phone?: string; email?: string; isActive?: boolean } | null;
-      return sp && sp.isActive !== false ? { _id: id, specialistId: id, phone: sp.phone, email: sp.email, userType: 'specialist' } : null;
+      return sp && sp.isActive !== false ? { _id: id, specialistId: id, phone: sp.phone, email: sp.email, userType: 'specialist', authVersion } : null;
     }
     case 'pharmacy': {
       const p = await PharmacyModel.findById(id).lean() as { phone?: string; email?: string; isActive?: boolean; archivedAt?: Date } | null;
-      return p && p.isActive !== false && !p.archivedAt ? { _id: id, pharmacyId: id, phone: p.phone, email: p.email, userType: 'pharmacy' } : null;
+      return p && p.isActive !== false && !p.archivedAt ? { _id: id, pharmacyId: id, phone: p.phone, email: p.email, userType: 'pharmacy', authVersion } : null;
     }
     case 'partner': {
       const member = await MemberModel.findById(id).lean() as { phone?: string; email?: string; partnerId?: string; isActive?: boolean } | null;
       if (!member || member.isActive === false) return null;
       const partner = await PartnerModel.findById(member.partnerId).select('isActive verification.state').lean() as { isActive?: boolean; verification?: { state?: string } } | null;
       if (!partner || partner.isActive === false) return null;
-      return { _id: id, memberId: id, partnerId: String(member.partnerId), phone: member.phone, ...(member.email ? { email: member.email } : {}), userType: 'partner' };
+      return { _id: id, memberId: id, partnerId: String(member.partnerId), phone: member.phone, ...(member.email ? { email: member.email } : {}), userType: 'partner', authVersion };
     }
     default:
       return null;
@@ -286,8 +295,13 @@ export function reissueForCaller(caller: { sid?: unknown; aud?: unknown; auth_ti
   return jwt.sign({ ...rest, sid: caller.sid, aud: caller.aud, auth_time: caller.auth_time }, CONFIG.JWT_SECRET_KEY, { expiresIn: ACCESS_TOKEN_TTL_SECONDS });
 }
 
-/** "Sign out everywhere": every session of this account ends. */
+/**
+ * "Sign out everywhere": every session of this account ends. Q16b: for pharmacies, doctors and partner members the
+ * account's token generation advances too (in the same transaction when one is given), so their bearer tokens end with
+ * the sessions. Customers advance theirs through their own compare-and-set (C1r) or bumpCredentialVersion.
+ */
 export async function revokeAllSessions(userType: string, userId: string, reason = 'signed_out_everywhere', session?: ClientSession): Promise<number> {
+  if (isVersionedRole(userType)) await advanceTokenVersion(userType, userId, session);
   const r = await AuthSessionModel.updateMany({ userType, userId, revokedAt: { $exists: false } },
     { $set: { revokedAt: new Date(), revokeReason: reason } }, session ? { session } : {});
   return r.modifiedCount;

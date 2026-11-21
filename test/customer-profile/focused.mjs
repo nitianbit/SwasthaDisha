@@ -20,7 +20,8 @@ assert.match(sources.validation.slice(sources.validation.indexOf('export const u
 assert.doesNotMatch(sources.routes, /validate\(updateUserSchema/);
 
 const importAllowlist = {
-  service: ['typedi', '@/modules/user/repository', '@/modules/corporates/repository', '@/modules/user/types', '@/modules/common/types', '@/modules/common/utils/queryUtils', '@/modules/user/validation'],
+  // Q16b added the contact-change revocation (inContactChange; its behaviour is proven by test/partners/q16b-identity).
+  service: ['typedi', '@/modules/user/repository', '@/modules/corporates/repository', '@/modules/user/types', '@/modules/common/types', '@/modules/common/utils/queryUtils', '@/modules/user/validation', '@/modules/auth/contactChange'],
   // D1 added the file-binding wrapper (withFiles; its behaviour is proven by test/file-access/d1-private-files).
   controller: ['reflect-metadata', '@/modules/file/access', '@/modules/middleware/auth', 'express', 'typedi', '@/modules/common/types', '@/modules/user/services', '@/modules/user/types', '@/modules/user/validation'],
 };
@@ -74,6 +75,10 @@ function fixture(serviceSource = sources.service, row = base, overrides = {}) {
   const UserService = compileWhole(serviceSource, 'service', {
     AppError: RecordingAppError, PROFILE_SELF_FORBIDDEN_FIELDS: forbidden,
     updateUserSchema, buildContainsRegex: () => { throw Error('unadmitted method'); },
+    // Q16b: recording port; the real one (one transaction, token generation + sessions) is proven by its own suite.
+    signInContactChanged: (before, write) => (write.phone !== undefined && write.phone !== before.phone)
+      || (!!before.email && write.email !== undefined && String(write.email).toLowerCase() !== String(before.email).toLowerCase()),
+    inContactChange: async (userType, userId, reason, write) => { state.ended = [...(state.ended ?? []), { userType, userId, reason }]; return write('recorded-session'); },
   });
   const service = new UserService(repo, corporate);
   return { service, state, UserService };
@@ -139,6 +144,14 @@ check('ignored contact-only self request is no-op', async source => {
 check('admin replaces contacts after normalization', async source => {
   const f = fixture(source); const result = await f.service.update(base._id, { phone: '8888888888', email: 'NEW@EXAMPLE.TEST' }, { _id: 'admin-1', userType: 'admin' });
   assert.equal(result.phone, '8888888888'); assert.equal(result.email, 'new@example.test'); assert.equal(result.isVerified, false);
+  // Q16b: the admin change ends the customer's sign-ins in the write's transaction.
+  assert.deepEqual(f.state.ended, [{ userType: 'user', userId: base._id, reason: 'sign_in_phone_changed' }]);
+  assert.equal(f.state.writes[0].options.session, 'recorded-session');
+});
+check('Q16b: an admin edit that keeps the contacts ends nothing; a customer edit never does', async source => {
+  const f = fixture(source); await f.service.update(base._id, { name: 'Renamed', phone: base.phone }, { _id: 'admin-1', userType: 'admin' });
+  await f.service.update(base._id, { name: 'Self', phone: '8888888888' }, actor);
+  assert.equal(f.state.ended, undefined);
 });
 check('HR retains corporate profile edit but cannot alter contacts', async source => {
   const f = fixture(source, { ...base, corporateId: 'corp-1' }); const result = await f.service.update(base._id, { name: 'HR edit', phone: '8888888888', email: 'other@example.test' }, { _id: 'hr-1', userType: 'hr', corporateId: 'corp-1' });

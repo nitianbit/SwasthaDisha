@@ -10,13 +10,15 @@ export interface SendSMSPayload {
   peId?: string;
 }
 
-export type SMSType = 'otp' | 'partner_bill';
+export type SMSType = 'otp' | 'partner_bill' | 'member_email';
 
 export interface BuildSMSContentPayload {
   otp?: string;
   expiryMinutes?: number;
   supplierName?: string;
   serial?: string;
+  /** Q16b member_email: what happened to the sign-in email. */
+  change?: 'set' | 'changed' | 'removed';
 }
 
 @Service()
@@ -50,6 +52,12 @@ export class SMSService {
         return {
           text: `Your bill ${payload.serial} from ${payload.supplierName} is in the SwasthaDisha app. Sign in with this mobile number to view it.`,
           templateId: CONFIG.SMS_TEMPLATE_ID_PARTNER_BILL,
+        };
+      case 'member_email':
+        // Q16b: no address and no link; the member checks in the workspace or asks their owner.
+        return {
+          text: `Your sign-in email for ${payload.supplierName} on Jansetu was ${payload.change === 'removed' ? 'removed' : payload.change === 'set' ? 'added' : 'changed'}. If this was not expected, contact your workspace owner or Jansetu support.`,
+          templateId: CONFIG.SMS_TEMPLATE_ID_MEMBER_EMAIL,
         };
       default:
         throw new AppError({

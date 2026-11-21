@@ -448,6 +448,8 @@ export const FILE_FIELDS: Record<string, [field: string, kind: GrantKind][]> = {
   HR: [['profilePictureUrl', 'public'], ['documents.url', 'hr']],
   Corporate: [['logoUrl', 'public']],
   Partner: [['logoUrl', 'public']],
+  // Q16b: an operational partner's logo (partner_orgs) is shown to customers.
+  PartnerOrg: [['logo', 'public']],
   Banner: [['imageUrl', 'public']],
   Blog: [['heroImage', 'public'], ['sections.image', 'public'], ['seo.ogImage', 'public']],
   News: [['image', 'public']],
