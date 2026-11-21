@@ -561,8 +561,7 @@ export class BookingService {
       serviceMode: data.serviceMode,
       serviceAddress: data.serviceAddress,
       documents: data.documents || [],
-      prescription: data.prescription,
-      report: data.report,
+      // S4: prescription / report are server-owned; a create never stores them.
       followUp: this.buildDefaultFollowUpState(),
       contactNo: data.contactNo,
       alternateContactNo: data.alternateContactNo,
@@ -791,8 +790,7 @@ export class BookingService {
       serviceMode: data.consultationMode === 'in-person' ? 'in-person' : data.consultationMode,
       serviceAddress: data.serviceAddress,
       documents: data.documents || [],
-      prescription: data.prescription,
-      report: data.report,
+      // S4: prescription / report are server-owned; a create never stores them.
       followUp: followUpConfig.followUp || this.buildDefaultFollowUpState(),
       contactNo: data.contactNo,
       alternateContactNo: data.alternateContactNo,
@@ -988,8 +986,7 @@ export class BookingService {
       serviceMode: data.serviceMode || 'in-person',
       serviceAddress: data.serviceAddress,
       documents: data.documents || [],
-      prescription: data.prescription,
-      report: data.report,
+      // S4: prescription / report are server-owned; a create never stores them.
       followUp: this.buildDefaultFollowUpState(),
       contactNo: data.contactNo,
       alternateContactNo: data.alternateContactNo,

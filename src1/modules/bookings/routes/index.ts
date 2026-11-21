@@ -17,6 +17,7 @@ import {
   retryPaymentBodySchema,
   userIdParamSchema,
 } from '@/modules/bookings/validation';
+import { dropServerOwnedCreateFields } from '@/modules/bookings/serverOwnedFields';
 
 const bookingRouter = Router();
 
@@ -30,6 +31,9 @@ bookingRouter.use((req: AuthRequest, _res, next) => {
     ? undefined
     : new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access to this booking resource is not permitted' }));
 });
+
+// S4: create bodies never carry the server-owned prescription / report (dropped and logged; see serverOwnedFields).
+bookingRouter.use(dropServerOwnedCreateFields);
 
 // Create wellness package booking
 bookingRouter.post(
