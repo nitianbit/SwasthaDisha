@@ -80,13 +80,16 @@ fs.writeFileSync(inputFile, JSON.stringify(input));
 const exampleFile = path.join(__dirname, '..', '..', 'demo-accounts.example.json');
 const DB = 'seed_demo_accounts_check';
 const HOST = '127.0.0.1:27917';
-const ALLOWED = { SEED_DEMO_ALLOWED: 'true', SEED_DEMO_HOST: HOST, SEED_DEMO_DATABASE: DB, NODE_ENV: 'production' } as NodeJS.ProcessEnv;
+// Q16b: the positive stage marker (created once by an operator on the stage database; inserted by this test below).
+const STAGE_MARKER = 'q16b-test-stage-marker-0123456789';
+const ALLOWED = { SEED_DEMO_ALLOWED: 'true', SEED_DEMO_HOST: HOST, SEED_DEMO_DATABASE: DB, SEED_DEMO_STAGE_MARKER: STAGE_MARKER, NODE_ENV: 'production' } as NodeJS.ProcessEnv;
 const clone = () => JSON.parse(JSON.stringify(input)) as DemoInput;
 
 async function counts(): Promise<Record<string, number>> {
   const out: Record<string, number> = {};
   for (const c of await mongoose.connection.db.collections()) {
     if (['otps', 'otpthrottles', 'notifications', 'wallets'].includes(c.collectionName)) continue; // sign-in side effects
+    if (c.collectionName === 'stage_marker') continue; // Q16b: the operator's one-time marker, not seeded data
     out[c.collectionName] = await c.countDocuments();
   }
   return out;
@@ -180,6 +183,30 @@ async function main() {
     assert.equal(targetRefusal(env(DB), DB, '127.0.0.1', 27917), null);
     assert.equal(targetRefusal(env(DB, '127.0.0.1'), DB, '127.0.0.1', 27917), null);
     assert.match(targetRefusal(env(DB, '127.0.0.1:27018'), DB, '127.0.0.1', 27917)!, /SEED_DEMO_HOST/);
+  });
+
+  await check('Q16b stage marker: without the database marker, or with another value, every run is refused (dry run included)', async () => {
+    const run = async (env: NodeJS.ProcessEnv) => {
+      const out: string[] = [];
+      const results = [await cli([inputFile], env, (l) => out.push(l)), await cli([inputFile, '--commit'], env, (l) => out.push(l))];
+      return { codes: results.map((r) => r.code), out: out.join('\n') };
+    };
+    let r = await run(ALLOWED);
+    assert.deepEqual(r.codes, [2, 2]);
+    assert.match(r.out, /REFUSED: this database has no single stage marker/);
+    assert.match(r.out, /db\.stage_marker\.insertOne\(\{ environment: "stage", marker: /);
+    await mongoose.connection.db.collection('stage_marker').insertOne({ environment: 'stage', marker: STAGE_MARKER, createdAt: new Date() });
+    r = await run({ ...ALLOWED, SEED_DEMO_STAGE_MARKER: 'q16b-wrong-marker-value-000000' });
+    assert.deepEqual(r.codes, [2, 2]);
+    assert.match(r.out, /SEED_DEMO_STAGE_MARKER does not match/);
+    r = await run({ ...ALLOWED, SEED_DEMO_STAGE_MARKER: '' });
+    assert.deepEqual(r.codes, [2, 2]);
+    assert.match(r.out, /set SEED_DEMO_STAGE_MARKER/);
+    // A second marker document (ambiguous) is refused as well.
+    const extra = await mongoose.connection.db.collection('stage_marker').insertOne({ environment: 'stage', marker: STAGE_MARKER });
+    assert.deepEqual((await run(ALLOWED)).codes, [2, 2]);
+    await mongoose.connection.db.collection('stage_marker').deleteOne({ _id: extra.insertedId });
+    assert.equal(total(await counts()), 0);
   });
 
   const allOutput: string[] = [];
