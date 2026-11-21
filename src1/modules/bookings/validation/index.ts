@@ -254,8 +254,7 @@ export const createBookingSchema = Joi.object({
   serviceMode: serviceModeSchema.optional(),
   serviceAddress: serviceAddressSchema,
   documents: documentsSchema,
-  prescription: prescriptionSchema,
-  report: reportSchema,
+  // S4: no prescription / report here; they are server-owned (doctor's prescription endpoint, admin edit).
   followUp: followUpSchema,
   contactNo: contactNoSchema,
   alternateContactNo: alternateContactNoSchema,
@@ -319,8 +318,7 @@ export const createWellnessPackageBookingSchema = Joi.object({
   serviceMode: serviceModeSchema,
   serviceAddress: serviceAddressSchema,
   documents: documentsSchema,
-  prescription: prescriptionSchema,
-  report: reportSchema,
+  // S4: no prescription / report here; they are server-owned (doctor's prescription endpoint, admin edit).
   followUp: followUpSchema,
   contactNo: contactNoSchema,
   alternateContactNo: alternateContactNoSchema,
@@ -354,8 +352,7 @@ export const createSpecialistBookingSchema = Joi.object({
   bookingTime: bookingTimeSchema,
   serviceAddress: serviceAddressSchema,
   documents: documentsSchema,
-  prescription: prescriptionSchema,
-  report: reportSchema,
+  // S4: no prescription / report here; they are server-owned (doctor's prescription endpoint, admin edit).
   followUp: followUpSchema,
   contactNo: contactNoSchema,
   alternateContactNo: alternateContactNoSchema,
