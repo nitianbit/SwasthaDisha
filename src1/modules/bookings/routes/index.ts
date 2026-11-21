@@ -3,6 +3,8 @@ import { Router } from 'express';
 import { catchAsync } from '@/modules/common/utils/asyncHandler';
 import { validate } from '@/modules/common/middleware/validation';
 import { BookingController } from '@/modules/bookings/controller';
+import { AuthRequest } from '@/modules/middleware/auth';
+import { AppError } from '@/modules/common/types';
 import {
   cancelBookingSchema,
   createBookingSchema,
@@ -19,6 +21,15 @@ import {
 const bookingRouter = Router();
 
 const bookingController = new BookingController();
+
+// S2: these generic booking routes serve customers, admins, HR, specialists and pharmacies only (partner and any other
+// role is refused). Each handler then scopes the booking to the caller.
+const BOOKING_ROLES = new Set(['user', 'admin', 'hr', 'specialist', 'pharmacy']);
+bookingRouter.use((req: AuthRequest, _res, next) => {
+  next(req.user && BOOKING_ROLES.has(req.user.userType)
+    ? undefined
+    : new AppError({ status: 403, code: 'FORBIDDEN', message: 'Access to this booking resource is not permitted' }));
+});
 
 // Create wellness package booking
 bookingRouter.post(

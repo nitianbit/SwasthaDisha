@@ -103,6 +103,22 @@ export class BookingController {
     return userId;
   }
 
+  /**
+   * S2: a specialist sees only bookings with its own specialistId and a pharmacy only bookings with its own pharmacyId.
+   * Customers, admins and HR keep their own rules (undefined here); every other role is refused.
+   */
+  private resolveStaffBookingScope(req: AuthRequest): { specialistId: string } | { pharmacyId: string } | undefined {
+    const actor = this.requireBookingActor(req);
+    if (actor.userType === 'user' || actor.userType === 'admin' || actor.userType === 'hr') return undefined;
+    if (actor.userType === 'specialist') return { specialistId: String(actor.specialistId || actor._id) };
+    if (actor.userType === 'pharmacy') return { pharmacyId: String(actor.pharmacyId || actor._id) };
+    throw new AppError({
+      status: 403,
+      code: 'FORBIDDEN',
+      message: 'Access to this booking resource is not permitted',
+    });
+  }
+
   private resolveGenericBookingWriteScope(req: AuthRequest): string | undefined {
     const userId = this.resolveBookingOwnerScope(req);
     this.ensureHRReadOnly(req);
@@ -226,6 +242,13 @@ export class BookingController {
     }
   }
 
+  /** HR stays within its corporate (403); a specialist or pharmacy gets 404 for a booking that is not its own (S2). */
+  private async ensureCanReadBooking(req: AuthRequest, bookingId: string): Promise<void> {
+    await this.ensureHRCanAccessBooking(req, bookingId);
+    const staffScope = this.resolveStaffBookingScope(req);
+    if (staffScope) await this.bookingService.assertInOwnerScope(bookingId, staffScope);
+  }
+
   createBooking = async (
     req: AuthRequest,
     res: Response,
@@ -329,7 +352,7 @@ export class BookingController {
   getById = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const userId = this.resolveBookingOwnerScope(req);
     const { id } = req.params;
-    await this.ensureHRCanAccessBooking(req, id);
+    await this.ensureCanReadBooking(req, id);
     const result = await this.bookingService.getById(id, userId);
     // Q15: admins see the patient's name as on the admin list rows; other callers see the booking unchanged.
     const row = req.user?.userType === 'admin' ? (await withPatientNames([result as any]))[0] as unknown as typeof result : result;
@@ -346,7 +369,7 @@ export class BookingController {
     _next: NextFunction
   ) => {
     const { id } = req.params;
-    await this.ensureHRCanAccessBooking(req, id);
+    await this.ensureCanReadBooking(req, id);
     const result = await this.bookingService.getPaymentDetails(id, {
       _id: req.user!._id,
       userType: req.user!.userType,
@@ -362,13 +385,14 @@ export class BookingController {
 
   getAll = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     const requiredCorporateId = this.resolveHRBookingReadScope(req);
+    const staffScope = this.resolveStaffBookingScope(req);
     const effectiveUserId =
       req.user?.userType === 'admin'
         ? (req.query.userId as string | undefined)
         : req.user?.userType === 'hr'
           ? (req.query.userId as string | undefined)
-        : req.user?.userType === 'pharmacy'
-          ? undefined
+        : staffScope
+          ? (req.query.userId as string | undefined) // S2: only narrows the specialist's / pharmacy's own bookings
           : req.user?._id;
 
     const queryParams: BookingQueryParams = {
@@ -398,6 +422,7 @@ export class BookingController {
       sortBy: req.query.sortBy as string,
       sortOrder: req.query.sortOrder as 'asc' | 'desc',
       forUser: req.query.forUser === 'true',
+      ownerScope: staffScope,
     };
 
     const result = requiredCorporateId === undefined
@@ -471,6 +496,7 @@ export class BookingController {
     }
 
     const requiredCorporateId = this.resolveHRBookingReadScope(req);
+    const staffScope = this.resolveStaffBookingScope(req);
     const { userId } = req.params;
     const effectiveUserId = actor.userType === 'user' ? actor._id : userId;
     const result =
@@ -481,7 +507,9 @@ export class BookingController {
               corporateId: this.getHRCorporateId(req),
             }, requiredCorporateId)
           ).data
-        : await this.bookingService.getByUserId(effectiveUserId);
+        : staffScope
+          ? (await this.bookingService.getAll({ userId, ownerScope: staffScope })).data
+          : await this.bookingService.getByUserId(effectiveUserId);
 
     res.status(200).json({
       success: true,
@@ -525,6 +553,7 @@ export class BookingController {
 
   reconcilePayments = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     this.ensureHRReadOnly(req);
+    await this.ensureCanReadBooking(req, req.params.id);
     const result = await this.bookingService.reconcileBookingPayments(req.params.id, {
       _id: req.user!._id, userType: req.user!.userType, pharmacyId: req.user?.pharmacyId,
     });
@@ -535,6 +564,7 @@ export class BookingController {
   retryPayment = async (req: AuthRequest, res: Response, _next: NextFunction) => {
     this.ensureHRReadOnly(req);
     const { id } = req.params;
+    await this.ensureCanReadBooking(req, id);
     const data: RetryBookingPaymentRequest = req.body;
     const result = await this.bookingService.retryBookingPayment(id, {
       _id: req.user!._id,
