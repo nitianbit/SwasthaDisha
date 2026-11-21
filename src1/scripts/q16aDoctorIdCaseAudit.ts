@@ -5,8 +5,8 @@
  * Lists (ids only — no names, phones or amounts):
  *   - doctors with more than one settlement account under different spellings of the same id (the lower-case one is
  *     the account new earnings use; the others need an admin decision);
- *   - Q16d (F9): doctors whose settlement account(s) exist ONLY under an upper-case spelling (new earnings would open a
- *     second, lower-case account beside them);
+ *   - Q16d (F9): doctors whose settlement account(s) exist ONLY under an upper-case spelling (`ensureSettlementAccount`
+ *     reuses that spelling, oldest first, so no second account is opened; listed so the stored id can be normalised);
  *   - bookings whose `specialistId` is not lower-case, and reservations / schedule guards keyed by a non-lower-case
  *     doctor id.
  * Writes nothing. Exit code 2 when anything is found.
@@ -19,7 +19,7 @@ import { DoctorReservationModel, DoctorScheduleGuardModel } from '@/modules/doct
 
 export interface DoctorIdCaseReport {
   doubledAccounts: { doctorId: string; accountIds: string[]; canonicalAccountId: string | null }[];
-  /** Q16d (F9): doctors with no lower-case account, only upper-case spelled ones (ids only). */
+  /** Q16d (F9): doctors with no lower-case account, only upper-case spelled ones (reused as they are; ids only). */
   upperCaseOnlyAccounts: { doctorId: string; accountIds: string[] }[];
   nonCanonicalBookings: string[];
   nonCanonicalReservations: string[];

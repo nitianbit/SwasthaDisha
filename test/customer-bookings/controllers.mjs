@@ -48,7 +48,7 @@ function fixture(kind, source, options = {}) {
   } };
   const ports = {
     AppError, BookingService, ExternalBookingService, DependentService,
-    getTodayYyyymmdd: () => '20261113', CONFIG: { EXTERNAL_BOOKING_DEFAULT_INTEGRATION: 'labstack' },
+    getTodayYyyymmdd: () => '20261113', istTodayYyyymmdd: () => '20261113', CONFIG: { EXTERNAL_BOOKING_DEFAULT_INTEGRATION: 'labstack' },
     BookingModel: { findOne() { return { select() { return this; }, async lean() { return null; } }; } },
     withFiles: async (_actor, _model, _data, _id, run) => run(), rebindStored: async () => undefined,
     publicNoShowView: value => value, withPatientNames: async rows => rows,

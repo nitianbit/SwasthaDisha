@@ -13,7 +13,8 @@ import jwt from 'jsonwebtoken';
 import mongoose, { Types } from 'mongoose';
 import { Container } from 'typedi';
 import { CONFIG } from '@/config/config';
-import { addDaysToYyyymmdd, getTodayYyyymmdd } from '@/modules/common/utils/dateUtils';
+import { addDaysToYyyymmdd } from '@/modules/common/utils/dateUtils';
+import { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
 import PharmacyModel from '@/modules/pharmacies/model';
 import { PharmacyRepository } from '@/modules/pharmacies/repository';
 import { InventoryItemModel } from '@/modules/pharmacyInventory/model';
@@ -32,7 +33,7 @@ if (url !== FIXTURE_URL) throw new Error('Refusing to run: MONGODB_URL must be e
 const alerts = new LowStockAlertService();
 const pharmacyA = new Types.ObjectId().toHexString();
 const pharmacyB = new Types.ObjectId().toHexString();
-const today = getTodayYyyymmdd();
+const today = istTodayYyyymmdd(); // Q16d: the IST business date the low-stock window uses (passes on a UTC machine too)
 
 async function item(opts: { qty: number; threshold: number; active?: boolean; pharmacyId?: string; name?: string;
   batches?: { status: string; expiryDate: string; availableQty: number }[] }) {

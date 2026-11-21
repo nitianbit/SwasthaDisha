@@ -14,7 +14,7 @@ import { WalletTransactionModel } from '@/modules/wallet/model';
 import { WalletRepository } from '@/modules/wallet/repository';
 import { settlementSystemFor } from '@/modules/partners/services/cutover';
 import { ensureSettlementAccount } from '@/modules/partners/services/settlement';
-import { bookableUntilOf, slotIntervalOf } from '@/modules/common/utils/slotInterval';
+import { bookableUntilOf, isWindowSlot, slotIntervalOf } from '@/modules/common/utils/slotInterval';
 import { reserveInterval, moveInterval, releaseInterval } from '@/modules/doctors/services/reservations';
 import SpecialistModel from '@/modules/specialists/model';
 import { DoctorScheduleTemplateModel } from '@/modules/doctors/model/schedule';
@@ -54,16 +54,17 @@ export function noShowAllowedFrom(b: Pick<IBooking, 'bookingDate' | 'bookingTime
   return start ? new Date(start.getTime() + NO_SHOW_GRACE_MS) : null;
 }
 /**
- * Q16d (F1): the no-show moment, judged on the booking's slot. A multi-seat window (maxBookings > 1) takes patients
- * until it ENDS, so its no-show may be marked only 15 minutes after the window's END (a late joiner is never marked
- * absent at once); a one-patient slot (or a booking whose slot is unknown) keeps start + 15 minutes.
+ * Q16d (F1): the no-show moment, judged on the booking's slot. A window (`isWindowSlot`: a package window or a
+ * multi-seat session) takes patients until it ENDS, so its no-show may be marked only 15 minutes after the window's END
+ * (a late joiner is never marked absent at once); a doctor's one-patient slot (or a booking whose slot is unknown)
+ * keeps start + 15 minutes.
  */
 export async function noShowAllowedFromSlot(b: Pick<IBooking, 'bookingDate' | 'bookingTime' | 'bookingKind' | 'createdAt' | 'slotId'>,
   s?: ClientSession): Promise<Date | null> {
   if (b.bookingKind !== 'instant' && typeof b.slotId === 'string' && Types.ObjectId.isValid(b.slotId)) {
-    const slot = await SlotModel.findById(b.slotId).select({ date: 1, startTime: 1, endTime: 1, duration: 1, maxBookings: 1 })
+    const slot = await SlotModel.findById(b.slotId).select({ date: 1, startTime: 1, endTime: 1, duration: 1, maxBookings: 1, slotType: 1, wellnessPackageId: 1 })
       .session(s ?? null).lean() as SlotRow | null;
-    if (slot && Number(slot.maxBookings ?? 1) > 1) {
+    if (slot && isWindowSlot(slot)) {
       const w = slotIntervalOf(slot);
       if (w) return new Date(w.end.getTime() + NO_SHOW_GRACE_MS);
     }
@@ -115,7 +116,7 @@ async function heldFollowUpParent(b: IBooking, s: ClientSession): Promise<string
  * slot's start time, which becomes the booking's appointment time.
  */
 type SlotRow = { _id?: unknown; date?: string; startTime?: string; endTime?: string; duration?: number; maxBookings?: number; specialistId?: string;
-  serviceModes?: string[]; branchId?: string };
+  serviceModes?: string[]; branchId?: string; slotType?: string; wellnessPackageId?: string };
 
 /**
  * Q6: a clinic desk acting: the slot must be at one of its branches within the desk member's scope (empty = all).
@@ -180,7 +181,7 @@ async function reserveSlot(slotId: string, booking: Pick<IBooking, 'bookingDate'
     const until = bookableUntilOf(slot as SlotRow);
     // Sampled now, at admission (each transaction attempt), not when the request arrived.
     if (!until || until.getTime() <= refuseStarted().getTime()) {
-      throw conflict('SLOT_STARTED', max > 1 ? 'This session has ended; choose a later one' : 'This slot has already started; choose a later one');
+      throw conflict('SLOT_STARTED', isWindowSlot(slot as SlotRow) ? 'This session has ended; choose a later one' : 'This slot has already started; choose a later one');
     }
   }
   const r = await SlotModel.updateOne({ _id: slotId, ...(slot.currentBookings === undefined ? { currentBookings: { $exists: false } } : { currentBookings: current }) },

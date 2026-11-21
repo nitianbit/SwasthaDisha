@@ -3,7 +3,7 @@ import { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
 import { ClientSession, Types } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 import { canonicalMobile } from '@/modules/common/utils/phone';
-import { bookableUntilOf, slotIntervalOf } from '@/modules/common/utils/slotInterval';
+import { bookableUntilOf, isWindowSlot, slotIntervalOf } from '@/modules/common/utils/slotInterval';
 import PartnerOrgModel from '@/modules/partners/model';
 import BranchModel from '@/modules/partners/model/branch';
 import MemberModel from '@/modules/partners/model/member';
@@ -563,7 +563,7 @@ export async function createDeskAppointment(actor: PartnerActor, input: DeskBook
   // Q16d (F1): the admission rule (a multi-seat window until it ENDS, a one-patient slot until it starts).
   const bookableUntil = bookableUntilOf(slot);
   if (!bookableUntil || bookableUntil.getTime() <= readClock().getTime()) {
-    throw err(409, 'SLOT_STARTED', Number(slot.maxBookings ?? 1) > 1 ? 'This session has ended; choose a later one' : 'This slot has already started; choose a later one');
+    throw err(409, 'SLOT_STARTED', isWindowSlot(slot) ? 'This session has ended; choose a later one' : 'This slot has already started; choose a later one');
   }
   if (input.patient && 'dependentId' in input.patient) await assertDependentOfPhone(String(input.patient.dependentId), input.customer.phone);
   const customer = await resolveCustomerByPhone(input.customer.phone, 'clinic_desk');
@@ -747,7 +747,7 @@ export async function closeDeskAppointment(actor: PartnerActor, bookingId: strin
     }
     // Q16a: a no-show only 15 minutes after the appointment time. Q16d (F1): in a multi-seat window, 15 minutes after its END.
     const noShowFrom = outcome === 'no_show' ? await noShowAllowedFromSlot(b, s) : null;
-    if (outcome === 'no_show' && (!noShowFrom || now < noShowFrom)) throw err(409, 'APPOINTMENT_NOT_STARTED', 'A no-show can be marked 15 minutes after the appointment time (a session: after it ends)');
+    if (outcome === 'no_show' && (!noShowFrom || now < noShowFrom)) throw err(409, 'APPOINTMENT_NOT_STARTED', 'A no-show can be marked 15 minutes after the appointment time (a session: 15 minutes after the session ends)');
     const r = await BookingModel.findOneAndUpdate({ _id: b._id, status: 'confirmed', 'clinicDesk.partnerId': actor.partnerId, ...atBranch(b) },
       { $set: { status: outcome, ...(outcome === 'no_show' ? { noShow: { at: now, by: actor.memberId, byKind: 'clinic' } } : {}) } },
       { new: true, session: s }).lean() as IBooking | null;

@@ -170,6 +170,32 @@ async function main() {
     assert.equal(await pre(d, single, at(3, '12:55')), 'ADMITTED');
   });
 
+  await check('package windows (owner rule, assumed): a one-seat package window stays bookable until it ENDS (pre-check, lists, admission); a doctor\'s one-patient slot still closes at its start', async () => {
+    const pkg = String(new Types.ObjectId());
+    const s = ist(at(3, '15:00')), e = ist(at(3, '17:00'));
+    const win = String((await SlotModel.create({ wellnessPackageId: pkg, slotType: 'wellnessPackage', date: ymd(s.slice(0, 10)), startTime: s.slice(11, 16),
+      endTime: e.slice(11, 16), duration: 120, maxBookings: 1, currentBookings: 0, isAvailable: true, isActive: true } as any))._id);
+    const d = ymd(addDays(today, 3));
+    const pre = (slotId: string, now: Date) => (bookings as any).validateBookingDateAndSlot(d, slotId, undefined, now).then(() => 'ADMITTED', (x: any) => `${x.status} ${x.code}`);
+    assert.equal(await pre(win, at(3, '15:30')), 'ADMITTED', 'started 30 min ago, ends in 90 min');
+    assert.equal(await pre(win, at(3, '17:00')), '409 SLOT_STARTED', 'ended');
+    const { bookableNow } = await import('@/modules/slots/services');
+    const listed = await bookableNow([await SlotModel.findById(win).lean() as any], at(3, '15:30'));
+    assert.equal(listed.length, 1, 'still listed');
+    const doctorSlot = await windowSlot(dr, at(3, '15:00'), 30, 1);
+    assert.equal(await pre(doctorSlot, at(3, '15:05')), '409 SLOT_STARTED', 'a doctor one-patient slot closes at its start');
+    // Admission inside the transaction, sampled now: a package window that started 10 minutes ago and ends in 110.
+    const now = new Date();
+    const s2 = ist(new Date(now.getTime() - 10 * MIN)), e2 = ist(new Date(now.getTime() + 110 * MIN));
+    if (s2.slice(0, 10) === e2.slice(0, 10)) { // the same India day (not across midnight)
+      const live = String((await SlotModel.create({ wellnessPackageId: pkg, slotType: 'wellnessPackage', date: ymd(s2.slice(0, 10)), startTime: s2.slice(11, 16),
+        endTime: e2.slice(11, 16), duration: 120, maxBookings: 1, currentBookings: 0, isAvailable: true, isActive: true } as any))._id);
+      const made = await createBookingWithHolds({ bookingType: 'package', userId: await customer(), wellnessPackageId: pkg, slotId: live, bookingDate: ymd(s2.slice(0, 10)),
+        bookingTime: s2.slice(11, 16), serviceMode: 'in-person', price: 100, status: 'pending', paymentStatus: 'pending' } as any);
+      assert.ok(made._id, 'admitted');
+    }
+  });
+
   // Clinic with a desk for the desk checks.
   const { partner: cp, owner: cOwner } = await partnerSvc.createPartner({ kind: 'clinic', name: 'Final Clinic', contactPhone: nextPhone(), invoiceSeriesPrefix: 'QD',
     firstOwner: { phone: nextPhone(), name: 'Owner' } } as any);

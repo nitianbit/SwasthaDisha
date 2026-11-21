@@ -7,7 +7,7 @@ import { postConsultationEarningIn } from '@/modules/doctors/services/earnings';
 import { releaseInterval } from '@/modules/doctors/services/reservations';
 import { CreateDirectPaidTransactionRequest } from '@/modules/payment/types';
 import { appointmentStartOf, assertModeForHeldSlot, cancelBookingSettlement, createBookingWithHolds, expireUnpaidBooking, isReplayedBooking, noShowAllowedFromSlot, noShowRescheduleHash, paymentDeadlinePassed, rescheduleWithHolds } from '@/modules/bookings/holds';
-import { bookableUntilOf } from '@/modules/common/utils/slotInterval';
+import { bookableUntilOf, isWindowSlot } from '@/modules/common/utils/slotInterval';
 import { istDate } from '@/modules/partners/services/slots';
 import SlotModel from '@/modules/slots/model';
 import {
@@ -29,7 +29,6 @@ import { enforceUserCancellationWindow } from '@/modules/common/utils/cancellati
 import {
   addDaysToYyyymmdd,
   compareYyyymmdd,
-  getTodayYyyymmdd,
 } from '@/modules/common/utils/dateUtils';
 import { SpecialistService } from '@/modules/specialists/services';
 import { WellnessPackageService } from '@/modules/wellnessPackages/services';
@@ -289,7 +288,8 @@ export class BookingService {
       return booking;
     }
 
-    const completedAt = getTodayYyyymmdd();
+    // Q16d: the follow-up window starts on the IST date (its 14 days follow from it).
+    const completedAt = istTodayYyyymmdd();
     const followUp: IBookingFollowUp = {
       ...(booking.followUp || {}),
       isFollowUp: false,
@@ -409,8 +409,7 @@ export class BookingService {
     if (!isCurrentSlot) {
       const until = bookableUntilOf(slot);
       if (!until || until.getTime() <= now.getTime()) {
-        const multi = Number(slot.maxBookings ?? 1) > 1;
-        throw new AppError({ status: 409, code: 'SLOT_STARTED', message: multi ? 'This session has ended; choose a later one' : 'This slot has already started; choose a later one' });
+        throw new AppError({ status: 409, code: 'SLOT_STARTED', message: isWindowSlot(slot) ? 'This session has ended; choose a later one' : 'This slot has already started; choose a later one' });
       }
     }
   }
@@ -991,7 +990,7 @@ export class BookingService {
   async createSurgeryBooking(
     data: CreateBookingRequest
   ): Promise<BookingPaymentInitResponse> {
-    const today = getTodayYyyymmdd();
+    const today = istTodayYyyymmdd(); // Q16d: "not in the past" on the IST date
     if (compareYyyymmdd(data.bookingDate, today) < 0) {
       throw new AppError({
         status: 400,
@@ -1678,7 +1677,10 @@ export class BookingService {
       // Q16a: only 15 minutes after the start (an instant consultation: after the doctor accepted).
       // Q16d (F1): in a multi-seat window, 15 minutes after the window's END.
       const from = await noShowAllowedFromSlot(b, session);
-      if (!from || now < from) throw new AppError({ status: 409, code: 'APPOINTMENT_NOT_STARTED', message: 'A no-show can be marked 15 minutes after the appointment time' });
+      if (!from || now < from) {
+        throw new AppError({ status: 409, code: 'APPOINTMENT_NOT_STARTED',
+          message: 'A no-show can be marked 15 minutes after the appointment time (a session: 15 minutes after the session ends)' });
+      }
       const done = await BookingModel.findOneAndUpdate({ _id: bookingId, status: 'confirmed', paymentStatus: 'paid' },
         { $set: { status: 'no_show', noShow: { at: now, by: String(requester._id), byKind: requester.userType } } }, { new: true, session }).lean() as IBooking | null;
       if (!done) throw new AppError({ status: 409, code: 'BOOKING_CHANGED', message: 'Booking changed; please retry' });

@@ -9,6 +9,7 @@ import {
 } from '@/modules/bookings/types';
 import { BaseRepository } from '@/modules/common/repository';
 import { AppError } from '@/modules/common/types';
+import { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
 
 /**
  * Q14 review: a no-show marked under the Q14 rule (status no_show with a recorded `noShow.at`) earns the doctor nothing,
@@ -274,7 +275,7 @@ export class BookingRepository extends BaseRepository<IBooking> {
   }
 
   async findUpcomingBookings(userId?: string): Promise<IBooking[]> {
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, ''); // Get today in YYYYMMDD format
+    const today = istTodayYyyymmdd(); // Q16d: upcoming from the IST date (was the UTC date)
     const query: any = {
       bookingDate: { $gte: today },
       status: { $in: ['pending', 'confirmed'] },

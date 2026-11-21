@@ -37,7 +37,7 @@ export async function bookableNow<T extends { date?: string; startTime?: string;
  */
 export async function bookableQuery(base: Record<string, unknown>, now = new Date()): Promise<Record<string, unknown>> {
   const today = istDate(now).replace(/-/g, '');
-  const todays = await SlotModel.find({ ...base, date: today }).select({ date: 1, startTime: 1, endTime: 1, duration: 1, maxBookings: 1 }).lean() as any[];
+  const todays = await SlotModel.find({ ...base, date: today }).select({ date: 1, startTime: 1, endTime: 1, duration: 1, maxBookings: 1, slotType: 1, wellnessPackageId: 1 }).lean() as any[];
   const closed = todays.filter((s) => { const until = bookableUntilOf(s); return !until || until.getTime() <= now.getTime(); }).map((s) => s._id);
   const branches = await BranchModel.find({ holidays: { $elemMatch: { $gte: istDate(now) } } }).select({ holidays: 1 }).lean() as { _id: unknown; holidays?: string[] }[];
   const holidayRows = branches.map((b) => ({ branchId: String(b._id), date: { $in: (b.holidays ?? []).map((h) => String(h).replace(/-/g, '')) } }));

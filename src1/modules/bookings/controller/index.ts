@@ -6,7 +6,7 @@ import { rebindStored, withFiles } from '@/modules/file/access';
 import { Response, NextFunction } from 'express';
 import { Container } from 'typedi';
 import { AppError } from '@/modules/common/types';
-import { getTodayYyyymmdd } from '@/modules/common/utils/dateUtils';
+import { istTodayYyyymmdd } from '@/modules/common/utils/dateUtils';
 import { BookingService } from '@/modules/bookings/services';
 import { DependentService } from '@/modules/dependents/services';
 import { AuthRequest } from '@/modules/middleware/auth';
@@ -535,7 +535,7 @@ export class BookingController {
     if (actor.userType === 'hr') {
       const result = await this.bookingService.getAll({
         corporateId: this.getHRCorporateId(req),
-        bookingDateFrom: getTodayYyyymmdd(),
+        bookingDateFrom: istTodayYyyymmdd(), // Q16d: upcoming from the IST date
       }, requiredCorporateId);
 
       res.status(200).json({

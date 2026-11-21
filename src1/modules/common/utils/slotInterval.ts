@@ -17,14 +17,26 @@ export function slotIntervalOf(slot: { date?: string; startTime?: string; endTim
   return { start, end };
 }
 
+type WindowSlot = { date?: string; startTime?: string; endTime?: string; duration?: number; maxBookings?: number | null;
+  slotType?: string | null; wellnessPackageId?: unknown };
+
+/**
+ * Q16d: a slot that is a WINDOW (patients come at any time inside it) rather than an appointment time: every package
+ * window (slotType 'wellnessPackage', or a slot of a wellness package) whatever its capacity — owner-level rule
+ * (overnight, assumed; as on stage and production before Q16a) — and every multi-seat slot (maxBookings > 1: doctor
+ * sessions). A doctor's one-patient slot is an appointment time.
+ */
+export function isWindowSlot(slot: Pick<WindowSlot, 'maxBookings' | 'slotType' | 'wellnessPackageId'>): boolean {
+  return slot.slotType === 'wellnessPackage' || !!slot.wellnessPackageId || Number(slot.maxBookings ?? 1) > 1;
+}
+
 /**
  * Q16d (F1): until when a slot takes bookings — the one rule of admission (`reserveSlot`), the lists (`bookableNow`),
- * the service pre-checks and the clinic desk. A multi-seat window (maxBookings > 1: package windows, doctor sessions)
- * until it ENDS; a one-patient slot until it STARTS. Null when the slot's time does not parse (never bookable).
+ * the service pre-checks and the clinic desk. A window (`isWindowSlot`: package windows, multi-seat sessions) until it
+ * ENDS; a doctor's one-patient slot until it STARTS. Null when the slot's time does not parse (never bookable).
  */
-export function bookableUntilOf(slot: { date?: string; startTime?: string; endTime?: string; duration?: number; maxBookings?: number | null }):
-  Date | null {
+export function bookableUntilOf(slot: WindowSlot): Date | null {
   const w = slotIntervalOf(slot);
   if (!w) return null;
-  return Number(slot.maxBookings ?? 1) > 1 ? w.end : w.start;
+  return isWindowSlot(slot) ? w.end : w.start;
 }

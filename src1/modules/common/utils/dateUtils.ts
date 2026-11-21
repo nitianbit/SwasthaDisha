@@ -32,6 +32,9 @@ export const dateToYyyymmdd = (date: Date): string => {
  * Get today's date in YYYYMMDD format
  * @returns Today's date in YYYYMMDD format
  */
+/** Q16d: the shared IST date helper, re-exported for modules that read their dates from here. */
+export { istTodayYyyymmdd } from '@/modules/common/utils/istDate';
+
 export const getTodayYyyymmdd = (): string => {
   return dateToYyyymmdd(new Date());
 };
