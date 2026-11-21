@@ -8,6 +8,7 @@ import MemberModel from '@/modules/partners/model/member';
 import type { PartnerPermission } from '@/modules/partners/types';
 import { admitCustomerToken } from '@/modules/user/credentialGeneration';
 import { admitSessionToken } from '@/modules/auth/sessions';
+import { admitVersionedToken } from '@/modules/auth/tokenVersion';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -20,7 +21,7 @@ export interface AuthRequest extends Request {
     memberId?: string;
     partnerId?: string;
     userType: string;
-    /** Customer credential generation the token was issued at (absent on legacy tokens = 0). */
+    /** Credential generation the token was issued at (customers, pharmacies, doctors, partner members; absent = 0). */
     authVersion?: number;
   };
 }
@@ -84,6 +85,9 @@ export const authenticate = async (
     await admitSessionToken(req.user);
     // Q1: a partner token is admitted only while its member + parent partner are active.
     await admitPartnerToken(req.user);
+    // Q16b: pharmacy, doctor and partner tokens only at the account's current generation (contact change, sign out
+    // everywhere).
+    await admitVersionedToken(req.user as Record<string, unknown> | undefined);
   } catch (error) {
     next(error);
     return;
@@ -117,6 +121,7 @@ export const authenticateOptional = async (
     await admitCustomerToken(req.user);
     await admitSessionToken(req.user);
     await admitPartnerToken(req.user);
+    await admitVersionedToken(req.user as Record<string, unknown> | undefined);
   } catch (error) {
     next(error);
     return;

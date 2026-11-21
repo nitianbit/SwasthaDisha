@@ -15,6 +15,8 @@ export interface IPharmacyWeeklyHours {
 }
 
 export interface IPharmacy {
+  /** Q16b: token generation (never selected by default; written only by auth/tokenVersion.ts). */
+  authVersion?: number;
   _id?: string;
   name: string;
   nickname?: string;

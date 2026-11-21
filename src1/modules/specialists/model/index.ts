@@ -142,6 +142,8 @@ const specialistSchema = new Schema<ISpecialist>(
       sparse: true,
       index: true,
     },
+    // Q16b: token generation (auth/tokenVersion.ts; written only by it). Never selected, so no answer shows it.
+    authVersion: { type: Number, select: false },
     gender: {
       type: String,
       enum: ['Male', 'Female', 'Other'],

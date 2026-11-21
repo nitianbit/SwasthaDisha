@@ -9,6 +9,8 @@ export interface IPartnerVerification {
   documents: string[];
   verifiedAt?: Date;
   verifiedBy?: string;
+  /** Q16b: the state a suspension replaced (pending or verified); reinstate restores it. */
+  stateBeforeSuspension?: 'pending' | 'verified';
 }
 
 export interface IPartner {
@@ -75,6 +77,8 @@ export interface IMemberProfessional {
 }
 
 export interface IMember {
+  /** Q16b: token generation (never selected by default; written only by auth/tokenVersion.ts). */
+  authVersion?: number;
   _id?: string;
   partnerId: string;
   phone: string;
@@ -105,6 +109,9 @@ export interface IBranch {
   holidays: string[];
   services: { homeCollection: boolean; inLab: boolean; inClinic: boolean };
   isActive: boolean;
+  /** Q16b: a create sent with a request key (exactly once per partner and key). */
+  createRequestKey?: string;
+  createRequestHash?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

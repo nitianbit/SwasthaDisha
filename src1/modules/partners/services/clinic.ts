@@ -376,7 +376,8 @@ export async function linkDoctor(actor: PartnerActor, input: { doctorId: string;
 /**
  * Q14: the clinic's owner (or an admin) removes a doctor from the clinic — it only reduces access. A membership that
  * exists only for consulting (staff, no permissions) ends; a staff record the doctor was linked to keeps its workspace
- * access and loses only its doctor link. A doctor who owns the clinic cannot be removed this way.
+ * access and loses only its doctor link. Q16b: an owner record linked as the doctor loses only the link (by another owner
+ * or an admin); a doctor's own practice keeps its doctor.
  */
 export async function unlinkDoctor(actor: PartnerActor, doctorId: string) {
   if (actor.role !== 'owner') throw err(403, 'OWNER_REQUIRED', 'Only an owner can remove a doctor from the clinic');
@@ -384,7 +385,16 @@ export async function unlinkDoctor(actor: PartnerActor, doctorId: string) {
   const out = await inTransaction(async (s) => {
     const m = await MemberModel.findOne({ partnerId: actor.partnerId, doctorId: String(doctorId), isActive: true }).session(s).lean() as IMember | null;
     if (!m) throw err(404, 'DOCTOR_NOT_AT_CLINIC', 'This doctor does not consult here');
-    if (m.role === 'owner') throw err(409, 'DOCTOR_IS_OWNER', 'This doctor owns the clinic and cannot be removed');
+    if (m.role === 'owner') {
+      // Q16b N1: an owner who is also the clinic's linked doctor loses only the doctor link (the record stays an
+      // ordinary owner, removable as any owner), when another owner or an admin does it. A doctor's own practice (the
+      // clinic they created: soloDoctorId) keeps its doctor, and an owner cannot unlink themselves.
+      const p = await PartnerOrgModel.findById(actor.partnerId).session(s).select({ soloDoctorId: 1 }).lean() as { soloDoctorId?: string } | null;
+      if (p?.soloDoctorId && String(p.soloDoctorId).toLowerCase() === String(doctorId).toLowerCase()) {
+        throw err(409, 'DOCTOR_IS_OWNER', 'This is the doctor\'s own practice; its doctor cannot be removed');
+      }
+      if (String(m._id) === String(actor.memberId)) throw err(409, 'DOCTOR_IS_OWNER', 'Another owner or the platform team removes your doctor link');
+    }
     const consultOnly = m.role === 'staff' && (m.permissions ?? []).length === 0;
     const r = await MemberModel.updateOne({ _id: m._id, isActive: true, doctorId: m.doctorId },
       consultOnly ? { $set: { isActive: false } } : { $unset: { doctorId: 1, doctorBranchIds: 1 } }, { session: s });

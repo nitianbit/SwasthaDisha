@@ -3,11 +3,19 @@
  * (mobile number + SMS OTP, or email + emailed OTP; there is no bypass, fixed code or password, so every phone and email
  * must be one you control).
  *
- *   SEED_DEMO_ALLOWED=true SEED_DEMO_HOST=<host:port> SEED_DEMO_DATABASE=<db> npm run seed:demo -- demo-accounts.json   # dry run
+ *   SEED_DEMO_ALLOWED=true SEED_DEMO_HOST=<host:port> SEED_DEMO_DATABASE=<db> SEED_DEMO_STAGE_MARKER=<marker> npm run seed:demo -- demo-accounts.json   # dry run
  *   ... the same ... -- demo-accounts.json --commit                                                                  # creates what is missing
  *
  * SEED_DEMO_HOST and SEED_DEMO_DATABASE must equal the connected host and database (printed first; for a replica set the
  * host is the first one in MONGODB_URL); a database name containing "prod" is always refused.
+ *
+ * Q16b: and the database must say it is a stage database. An operator creates the marker ONCE on the stage database
+ * (never on production), with a long random value kept outside Git:
+ *
+ *   mongosh "$MONGODB_URL" --eval 'db.stage_marker.insertOne({ environment: "stage", marker: "<long random value>", createdAt: new Date() })'
+ *
+ * and every seeder run then needs SEED_DEMO_STAGE_MARKER=<that value>. A database without the marker document, or a
+ * different value, is refused (dry runs too); the host and database checks above still apply.
  *
  * Input: see demo-accounts.example.json (copy it to demo-accounts.json, which git ignores, and put in real numbers).
  *
@@ -24,7 +32,7 @@
 import 'reflect-metadata';
 import fs from 'fs';
 import path from 'path';
-import { createHash } from 'crypto';
+import { createHash, timingSafeEqual } from 'crypto';
 import Joi from 'joi';
 import mongoose from 'mongoose';
 import { Container } from 'typedi';
@@ -1037,6 +1045,27 @@ export function targetRefusal(env: NodeJS.ProcessEnv, databaseName: string, host
   return null;
 }
 
+/** Q16b: the collection and key of the one-time stage marker (see the header). */
+export const STAGE_MARKER_COLLECTION = 'stage_marker';
+
+/**
+ * Q16b positive stage check: SEED_DEMO_STAGE_MARKER must equal the `marker` of the database's one
+ * `{ environment: 'stage' }` document in `stage_marker`. Returns the refusal, or null. Only reads.
+ */
+export async function stageMarkerRefusal(env: NodeJS.ProcessEnv, db: { collection(name: string): { find(filter: object, options?: object): { limit(n: number): { toArray(): Promise<unknown[]> } } } }): Promise<string | null> {
+  const want = String(env.SEED_DEMO_STAGE_MARKER ?? '');
+  const howTo = `create it once on the STAGE database: db.${STAGE_MARKER_COLLECTION}.insertOne({ environment: "stage", marker: "<long random value>" }), then run with SEED_DEMO_STAGE_MARKER=<that value>`;
+  if (want.length < 16) return `REFUSED: set SEED_DEMO_STAGE_MARKER (at least 16 characters) to this stage database's marker; ${howTo}.`;
+  const rows = await db.collection(STAGE_MARKER_COLLECTION).find({ environment: 'stage' }, { projection: { marker: 1 } }).limit(2).toArray() as { marker?: unknown }[];
+  if (rows.length !== 1 || typeof rows[0]!.marker !== 'string') {
+    return `REFUSED: this database has no single stage marker (${STAGE_MARKER_COLLECTION} {environment: "stage"}); ${howTo}.`;
+  }
+  const a = Buffer.from(createHash('sha256').update(String(rows[0]!.marker)).digest('hex'));
+  const b = Buffer.from(createHash('sha256').update(want).digest('hex'));
+  if (!timingSafeEqual(a, b)) return 'REFUSED: SEED_DEMO_STAGE_MARKER does not match this database\'s stage marker.';
+  return null;
+}
+
 function printSummary(report: SeedReport, commit: boolean, out: (line: string) => void, partial: boolean) {
   const c = report.counts;
   out(`\n${partial ? 'Before the failure' : commit ? 'Done' : 'Plan'}: ${c.created} created, ${c.found} found, ${c.updated} updated, ${c['would create']} would be created, ${c['would update']} would be updated, ${c.skipped} skipped.`);
@@ -1061,7 +1090,7 @@ export async function cli(argv: string[], env: NodeJS.ProcessEnv = process.env, 
     out('REFUSED: set SEED_DEMO_ALLOWED=true to run the demo-account seeder (stage runs with NODE_ENV=production, so this is the explicit opt-in).');
     return { code: 2 };
   }
-  if (!file) { out('Usage: SEED_DEMO_ALLOWED=true SEED_DEMO_HOST=<host:port> SEED_DEMO_DATABASE=<database> npm run seed:demo -- <demo-accounts.json> [--commit]'); return { code: 2 }; }
+  if (!file) { out('Usage: SEED_DEMO_ALLOWED=true SEED_DEMO_HOST=<host:port> SEED_DEMO_DATABASE=<database> SEED_DEMO_STAGE_MARKER=<marker> npm run seed:demo -- <demo-accounts.json> [--commit]'); return { code: 2 }; }
   let input: any;
   try { input = JSON.parse(fs.readFileSync(path.resolve(file), 'utf8')); }
   catch (e) { out(`Cannot read ${path.basename(file)}: ${redact((e as Error).message)}`); return { code: 2 }; }
@@ -1076,7 +1105,7 @@ export async function cli(argv: string[], env: NodeJS.ProcessEnv = process.env, 
     const databaseName = conn.db.databaseName;
     // Host and database only (never the connection string, which may carry credentials).
     out(`Target: host ${conn.host ?? '?'}:${conn.port ?? '?'}   database ${databaseName}   NODE_ENV=${env.NODE_ENV ?? '(unset)'}   mode: ${commit ? 'COMMIT (writes)' : 'DRY RUN (no writes)'}`);
-    const refusal = targetRefusal(env, databaseName, String(conn.host ?? '?'), conn.port);
+    const refusal = targetRefusal(env, databaseName, String(conn.host ?? '?'), conn.port) ?? await stageMarkerRefusal(env, conn.db as never);
     if (refusal) { out(refusal); return { code: 2 }; }
     const report = await runSeed(input, { commit, log: out });
     printSummary(report, commit, out, false);

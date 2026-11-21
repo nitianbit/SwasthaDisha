@@ -47,8 +47,13 @@ const auth = new (AuthService as unknown as new (...a: unknown[]) => AuthService
 
 let base = '';
 type Res = { status: number; body: { data?: Record<string, any>; code?: string }; cookie: string | null };
-async function call(path: string, body: unknown, opts: { cookieMode?: boolean; native?: boolean; bearer?: string } = {}): Promise<Res> {
+async function call(path: string, body: unknown, opts: { cookieMode?: boolean; native?: boolean; bearer?: string; noSession?: boolean } = {}): Promise<Res> {
   if (path.endsWith('/send')) await OtpThrottleModel.deleteMany({});
+  // Q16b: partner sign-in (verify, select) always opens a session; a call that names none uses the phone-app session.
+  if (/\/auth\/partner\/(verify|select)$/.test(path) && !opts.noSession && body && typeof body === 'object' && !(body as { session?: unknown }).session) {
+    body = { ...body, session: 'native', app: 'workspace' };
+    opts = { ...opts, native: true };
+  }
   const headers: Record<string, string> = { 'content-type': 'application/json', origin: STAFF };
   if (opts.cookieMode) headers['x-jansetu-session'] = '1';
   if (opts.native) headers['x-jansetu-native'] = '1';

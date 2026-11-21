@@ -126,7 +126,10 @@ async function main() {
     assert.equal(staffA.email, 'desk@example.com');
     await assert.rejects(partners.addMember(ownerA, { phone: nextPhone(), name: 'Dup', role: 'staff', email: 'DESK@example.com', permissions: [] } as any),
       code('EMAIL_IN_USE'));
+    // Q16b: an owner's email is set by an admin only; the admin is refused a duplicate as well.
     await assert.rejects(partners.addMember(ownerA, { phone: nextPhone(), name: 'Dup owner', role: 'owner', email: 'owner.alpha@example.com', permissions: [] } as any),
+      code('OWNER_EMAIL_ADMIN_ONLY'));
+    await assert.rejects(partners.addMember(adminActor(ADMIN, A.partnerId), { phone: nextPhone(), name: 'Dup owner', role: 'owner', email: 'owner.alpha@example.com', permissions: [] } as any),
       code('EMAIL_IN_USE'));
     // The same email at another partner is fine (one person, several workspaces).
     const other = await partners.addMember(actorFor(B.owner), { phone: nextPhone(), name: 'Desk at B', role: 'staff', email: 'desk@example.com', permissions: [] } as any);
@@ -273,13 +276,14 @@ async function main() {
     assert.equal((await MemberModel.findById(l1.memberId).lean() as any).email, undefined);
     assert.equal((await MemberModel.findById(l2.memberId).lean() as any).email, undefined);
     await assert.rejects(send('partner', { email: 'free.doc@example.com' }), code('PARTNER_MEMBER_NOT_FOUND'));
-    // The doctor-created clinic: the owner signs in by mobile, and as owner sets their own sign-in email.
+    // The doctor-created clinic: the owner signs in by mobile; Q16b: an owner's own sign-in email is set by an admin.
     const solo = await doctor('solo@example.com');
     const r = await clinic.createSoloPractice(solo, { name: 'Solo Clinic', invoiceSeriesPrefix: 'SOLO', requestKey: 'pe-solo-0001',
       branch: { name: 'Main', phone: nextPhone(), address: { line1: '1', city: 'Pune', state: 'MH', stateCode: '27', pincode: '411001' } } });
     const soloOwner = await MemberModel.findOne({ partnerId: String(r.partner._id), role: 'owner' }).lean() as any;
     assert.equal(soloOwner.email, undefined);
-    await partners.updateMemberEmail(actorFor(soloOwner), String(soloOwner._id), 'solo@example.com');
+    await assert.rejects(partners.updateMemberEmail(actorFor(soloOwner), String(soloOwner._id), 'solo@example.com'), code('OWNER_EMAIL_ADMIN_ONLY'));
+    await partners.updateMemberEmail(adminActor(ADMIN, String(r.partner._id)), String(soloOwner._id), 'solo@example.com');
     const signIn = await emailSignIn('partner', 'SOLO@example.com', 'solo@example.com');
     assert.equal(decode(signIn.accessToken).partnerId, String(r.partner._id));
   });

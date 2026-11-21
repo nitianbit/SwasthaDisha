@@ -52,6 +52,8 @@ const pharmacySchema = new Schema<IPharmacy>(
       trim: true,
       lowercase: true,
     },
+    // Q16b: token generation (auth/tokenVersion.ts; written only by it). Never selected, so no answer shows it.
+    authVersion: { type: Number, select: false },
     address: {
       type: String,
       trim: true,

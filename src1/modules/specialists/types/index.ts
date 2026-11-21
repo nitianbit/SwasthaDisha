@@ -23,6 +23,8 @@ export interface ISpecialistAvailability {
 }
 
 export interface ISpecialist {
+  /** Q16b: token generation (never selected by default; written only by auth/tokenVersion.ts). */
+  authVersion?: number;
   _id?: string;
   name: string;
   profilePictureUrl?: string;

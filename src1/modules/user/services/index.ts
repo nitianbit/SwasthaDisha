@@ -5,6 +5,7 @@ import { IUser, CreateUserRequest, UpdateUserRequest, UserQueryParams } from '@/
 import { AppError } from '@/modules/common/types';
 import { buildContainsRegex } from '@/modules/common/utils/queryUtils';
 import { PROFILE_SELF_FORBIDDEN_FIELDS, updateUserSchema } from '@/modules/user/validation';
+import { inContactChange, signInContactChanged } from '@/modules/auth/contactChange';
 
 @Service()
 export class UserService {
@@ -254,7 +255,12 @@ export class UserService {
     const filter: Record<string, unknown> = { _id: id };
     if (actor.userType === 'hr') filter.corporateId = actor.corporateId;
     // (A customer no longer fills contacts here, so the former missing-contact compare-and-set has nothing to guard.)
-    const updated = await this.userRepository.update(filter, data, { new: true, runValidators: true });
+    // Q16b: an admin's change of the phone, or of an existing email, ends every sign-in made with the old one (token
+    // generation + sessions, in the write's transaction).
+    const updated = actor.userType === 'admin' && signInContactChanged(user, data)
+      ? await inContactChange('user', id, data.phone !== undefined && data.phone !== user.phone ? 'sign_in_phone_changed' : 'sign_in_email_changed',
+        (session) => this.userRepository.update(filter, data, { new: true, runValidators: true, session }))
+      : await this.userRepository.update(filter, data, { new: true, runValidators: true });
     if (!updated) {
       throw new AppError({
         status: actor.userType === 'hr' ? 409 : 500,

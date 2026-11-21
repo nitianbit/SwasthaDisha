@@ -68,3 +68,11 @@ export async function advanceCredentialVersion(userId: string, version: number):
     { $set: { authVersion: version + 1 } });
   return r.modifiedCount === 1;
 }
+
+/**
+ * Q16b: advances the generation whatever it is now (an admin changed the account's sign-in contact): every token issued
+ * so far stops working. In the caller's transaction.
+ */
+export async function bumpCredentialVersion(userId: string, session?: ClientSession): Promise<void> {
+  await UserModel.updateOne({ _id: new Types.ObjectId(userId), userType: 'user' }, { $inc: { authVersion: 1 } }, session ? { session } : {});
+}

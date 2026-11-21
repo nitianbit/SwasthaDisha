@@ -236,7 +236,7 @@ async function main() {
   await check('admin manages an unverified partner with owner authority; audit names the admin', async () => {
     const { partner: p3 } = await svc.createPartner({
       kind: 'clinic', name: 'Admin Managed', contactPhone: '2222222222', invoiceSeriesPrefix: 'AM',
-      firstOwner: { phone: '2222222222', name: 'Owner AM' },
+      firstOwner: { phone: '2222222222', name: 'Owner AM' }, adminId: 'admin-42',
     });
     const admin = adminActor('admin-42', String(p3._id));
     const br = await svc.createBranch(admin, branchInput('AM Main'));
@@ -245,10 +245,11 @@ async function main() {
     await svc.updateMemberPermissions(admin, String(st._id), ['bookings.view', 'bookings.manage']);
     await svc.removeMember(admin, String(o2._id));
     const audit = await PartnerAuditEventModel.find({ partnerId: String(p3._id) }).lean();
-    assert.equal(audit.length, 5);
+    // Q16b: the admin's create is audited too.
+    assert.equal(audit.length, 6);
     assert.ok(audit.every((a) => a.actorKind === 'admin' && a.actorId === 'admin-42'));
     assert.deepEqual(audit.map((a) => a.action).sort(),
-      ['branch.create', 'member.add', 'member.add', 'member.permissions', 'member.remove'].sort());
+      ['partner.create', 'branch.create', 'member.add', 'member.add', 'member.permissions', 'member.remove'].sort());
     const inv = await memberRepo.findById(String(st._id));
     assert.equal(inv!.invitedBy, 'admin:admin-42');
   });
