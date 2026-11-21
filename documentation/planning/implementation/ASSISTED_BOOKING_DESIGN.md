@@ -5,6 +5,9 @@ Status: **design only, nothing built.**
 - **Revision 2** folded in the owner's 22 Nov answers (§2.2).
 - **Revision 3** applies all 20 findings of the independent review of 4b44435 and the coordinator's overnight decisions
   A–I (§2.3).
+- **Revision 4** applies the re-review of 4aa13b0 (N1–N13 and remainders) and the coordinator's phase 1a decisions, so
+  phase 0 and phase 1a can be built without guessing. The consolidated build specification is §17; where an earlier
+  section and §17 differ, §17 wins.
 
 Owner decisions are requirements, not choices made here. Implementation follows the gates in
 [AGENTS.md](../../../AGENTS.md) and the established rules of
@@ -147,7 +150,7 @@ change.
 | Prescription | Server PDF `bookings/<id>/prescription-<ts>.pdf` (`specialistPortal/services/index.ts:328-397`, `:472-512`); free-text tests (`bookings/model/index.ts:107`) | No notice; no structured tests |
 | File access | Pharmacy with a matching `pharmacyId` reads every booking file (`file/access.ts:34-45`); partner lab reports (`:80-89`); attach needs the uploader (`:294-299`), used for `PharmacyOrder.prescriptionUrls` (`:458`) | Too broad / missing; bug cause 3 |
 | Meet | Needs the patient's email (`meet/service/index.ts:465-470`). The event title names the patient, and the description carries the primary concern and speciality (`:483-490`) | Walk-ins have no email; the invite must stay neutral |
-| Payments | Contexts appear in: the type and enum (`payment/types/index.ts:1`, `payment/model/index.ts:21`), the receipt code (`payment/services/index.ts:483-495`), the direct-paid guard (`:675`), verification ownership (`:695-727`, user or matching pharmacy only), the handler registry (`:110-112`, `:988-1016`), the webhook dispatch (`:2104-2124`), the recovery sweep (`:1873-1893`, **no `wallet_recharge`**) and the controller (`payment/controller/index.ts:25-27`). The router refuses partner tokens (`src1/routes/index.ts:94`) | New contexts must be added everywhere; lab members cannot verify today |
+| Payments | Contexts appear in: the type and enum (`payment/types/index.ts:1`, `payment/model/index.ts:21`), the receipt code (`payment/services/index.ts:483-495`), the direct-paid guard (`:675`), verification ownership (`:695-727`, user or matching pharmacy only), the handler registry (`:110-112`, `:988-1016`), the verify-and-process dispatch (`:2104-2124`), the recovery sweep (`:1873-1893`, **no `wallet_recharge`**) and the controller (`payment/controller/index.ts:25-27`). The router refuses partner tokens (`src1/routes/index.ts:94`) | New contexts must be added everywhere; lab members cannot verify today |
 | Settlement ledger | Unique `{ownerKind, ownerId}` (`partners/model/settlement.ts:69`); payout destination per account (`:24-30`); entries exactly once (`:75-110`, `partners/services/settlement.ts:51-80`) | No pharmacy or referral owner kinds |
 | SMS | `otp` and `partner_bill` only; no timeout; throws (`sms/services/index.ts:13`, `:63-111`); the bill notice is sent after commit (`partners/services/invoice.ts:466-474`) | Queue, languages, switches |
 | Jobs | Mongo `Job` with `uniqueId` (`queue/model/index.ts:4-16`) | Reused for SMS |
@@ -194,10 +197,10 @@ The block sits on `Booking`, `PartnerLabBooking` and `InstantRequest` (copied to
 | `assisted.consent` | `{ method: 'partner_attested', statementVersion, statementLanguage, at, actorId }` | Required (400 `CONSENT_REQUIRED`) |
 | `assisted.preferredLanguage` | language code | Required |
 | `assisted.identity` | `{ attested: true, newAccount, disputed?: { at, state: 'open' \| 'moved' \| 'dismissed' } }` | Doctors see "identity attested by the partner, not verified" (§14) |
-| `assisted.join` | `{ on: 'partner_device' \| 'patient_phone', phone?, linkVersion }` | `call` and `video` only. `linkVersion` bumps on a move or cancel, which invalidates the SMS link (§6.6) |
+| `assisted.join` | `{ on: 'partner_device' \| 'patient_phone', phone?, linkVersion }` | `call` and `video` only. `linkVersion` bumps **only on cancel**, which invalidates the SMS link. A move keeps the link, and the window follows the current slot (§6.6) |
 | `assisted.funding` | Scheduled and lab: `{ method, payerKind, payerId, amountMinor, state, walletEntryId?, paymentRecordId?, refunds[] }`. Instant: `{ instantRequestId }` only (money lives on the request) | Each refund row: `{ refundId, cause, amountMinor, method, sourceRef, state, walletEntryId?, razorpayRefundId?, attemptId, at }`. `cause` includes `late_capture` with its own source (§8.4) |
 | `assisted.split` | `{ listMinor, couponCode?, couponFundedBy?, discountMinor, baseMinor, cutMinor, providerMinor, rule: 'provider_coupon_v2' }` | Frozen at create (instant: at accept) |
-| `assisted.referral` | `{ rules: [{ id, version }], lines: [{ category, basis, value, lineBaseMinor, capMinor?, amountMinor }], amountMinor, settlementAccountId, state: 'expected' \| 'earned' \| 'none', disabledReason? }` | `disabledReason`: `consultation_cuts_off` or `doctor_cuts_off` |
+| `assisted.referral` | `{ rules: [{ id, version }], lines: [{ category, basis, value, lineBaseMinor, capMinor?, amountMinor }], amountMinor, settlementAccountId, state: 'expected' \| 'earned' \| 'none', disabledReason? }` | **`null` until phase 4** (in 1a–3 the cut is 0 and `split.cutMinor` = 0). `disabledReason`: `consultation_cuts_off` or `doctor_cuts_off` |
 | `assisted.shortRef` | 8-character random reference, unique partial index | Shown on slips and in SMS as "Ref"; part of the join token (§6.6) |
 | `assisted.recommendationId` | string | §7.6 |
 | `assisted.requestKey`, `assisted.requestHash` | strings | Unique partial index on `assisted.requestKey`, stored as `assisted:<kind>:<bookerId>:<actorId>:<key>`. Instant rows also fill the required `createRequestKey` with the same namespaced value |
@@ -209,7 +212,10 @@ The block sits on `Booking`, `PartnerLabBooking` and `InstantRequest` (copied to
   reads the stored rule, so in-flight bookings never change;
 - `Booking.pharmacyId` for pharmacy bookings, so S2-scoped readers keep working.
 
-**Indexes:** `{ 'assisted.bookedBy.kind': 1, 'assisted.bookedBy.id': 1, createdAt: -1 }` on all three collections.
+**Indexes** (declared on the schemas):
+- `{ 'assisted.bookedBy.kind': 1, 'assisted.bookedBy.id': 1, createdAt: -1 }` on all three collections;
+- `assisted.shortRef` unique partial (`$type: 'string'`) on `Booking` and `PartnerLabBooking`;
+- `assisted.requestKey` unique partial on all three.
 
 **Enums extended:**
 - `User.createdSource` and the resolver source union: `assisted_booking`;
@@ -232,17 +238,30 @@ The block sits on `Booking`, `PartnerLabBooking` and `InstantRequest` (copied to
 - Pharmacy: the existing `pharmacy_wallets` / `pharmacy_wallet_transactions` (live balances; no migration), extended
   with the fields below.
 - Lab partner and doctor: new `partner_wallets { ownerKind: 'lab' | 'doctor', ownerId, balanceMinor ≥ 0,
-  withdrawableMinor, receivableMinor ≥ 0, frozen, isActive, version }` (unique `{ownerKind, ownerId}`).
+  withdrawableMinor, receivableMinor ≥ 0, frozen, isActive, version }` (unique `{ownerKind, ownerId}`; also
+  `{frozen: 1}` for the admin list).
+- Pharmacy store fields, sign rules, unique index and opening-balance migration: §17.3.
 - Entries for labs and doctors: `partner_wallet_entries { walletId, kind, amountMinor (signed), balanceAfterMinor,
   withdrawableDeltaMinor, operationKey (unique), ref, lotAllocations?, by, byKind, at }`.
 
 **Withdrawable money.** Only money that really came in by card can go back out.
 
 - **Top-up lots.** Each captured top-up becomes a lot: `wallet_topup_lots { walletRef, paymentRecordId, amountMinor,
-  gatewayFeeMinor, remainingMinor }`. The fee is Razorpay's `fee` + `tax` on that capture, stored on the payment
-  record at capture.
-- **Withdrawable** = Σ lot `remainingMinor`. Everything else in the balance (admin credits, chargeback set-offs) is
-  **non-withdrawable**.
+  gatewayFeeMinor?, feeState: 'unknown' | 'known', disputeState: 'none' | 'open' | 'lost', closed, remainingMinor }`.
+  - The fee is Razorpay's `fee` field **alone**; it already includes GST, so `tax` is not added.
+  - Capture reads and stores it on the payment record (`gatewayFeeMinor`). Today `fetchRazorpayPayment` drops it
+    (`payment/services/index.ts:800-823`), and so does the order-payments reconcile (`:1787`); both must keep `fee`.
+  - A lot whose fee is not yet known is **not withdrawable**. A fee check job fills it later.
+  - Indexes: `wallet_topup_lots.paymentRecordId` unique; `{ walletRef.kind, walletRef.id, createdAt }`.
+- **Withdrawable** = Σ `remainingMinor` over lots that are not closed, have a known fee and no open dispute. Everything
+  else in the balance (admin credits, chargeback set-offs) is **non-withdrawable**.
+- **Lot rules (N10):**
+  - a lot with a lost chargeback is `closed` for good, and a refund never restores it (the refunded money returns as
+    non-withdrawable);
+  - a lot under an open dispute is not withdrawable;
+  - negative admin adjustments reduce lots first (oldest first), then non-withdrawable money;
+  - the pro-rata fee of a withdrawal is floored per lot, and the remainder of the total fee goes to the last lot
+    taken.
 - **Spending** consumes withdrawable lots first, oldest first (ASSUMED D9, conservative), then non-withdrawable money.
   The debit entry records its `lotAllocations`.
 - A **refund** of that spend restores exactly those allocations. A refund of non-withdrawable spend returns
@@ -362,7 +381,10 @@ pays.
 - **Per-user counting** (`coupon/repository/index.ts:126-134`) adds the patient's `counted` redemptions, so a patient's
   own app limits see partner-paid uses.
 
-**Funding.** `Coupon.fundedBy: 'provider' | 'platform'`, admin-editable and audited.
+**Funding.** `Coupon.fundedBy: 'provider' | 'platform'` and `Coupon.partnerUsable: boolean` (default `false`), both
+admin-editable and audited.
+- A `platform`-funded coupon is **refused on partner bookings** (400 `COUPON_NOT_FOR_ASSISTED`) unless an admin set
+  `partnerUsable: true` (N1).
 - The default is `provider`.
 - Coupons with `corporateIds` default to `platform`; a migration sets existing corporate coupons to `platform`.
 - The value is snapshotted on the split.
@@ -412,7 +434,8 @@ The order is fixed. The resolver stays as it is, outside transactions, as the cl
    - audit.
 
 The answer never says whether a family member was created (Q14 rule). It says `newAccount` only when the lookup
-already said the number had no account.
+already said the number had no account. A limit hit answers 429 `ASSISTED_LIMIT_REACHED` with
+`limit: 'lookups' | 'new_accounts' | 'bookings_per_phone' | 'booker_cancellations'`. Names: §17.4.
 
 **Pharmacy customer list.** `PharmacyCustomer` stores `typedName` (and the phone as typed, which is the account
 phone). `GET /pharmacy-customers` returns and searches only `typedName` and phone, never the account's `name` or
@@ -449,7 +472,7 @@ masked.
 
 | Method | What happens |
 |---|---|
-| Wallet | **One transaction:** key claim, seat and interval (`createBookingWithHolds` with its in-transaction callback, `bookings/holds.ts:214`) or lab seat, coupon redemption, insert as `confirmed` + `paid`, wallet debit with lot allocations, split and referral snapshot, audit |
+| Wallet | **One transaction:** key claim, seat and interval (`createBookingWithHolds` with its in-transaction callback, `bookings/holds.ts:214`) or lab seat, coupon redemption, insert as `confirmed` + `paid`, wallet debit with lot allocations, split and referral snapshot, audit. **No payment record is written**: the wallet entry plus `assisted.funding` are the record (N7) |
 | Razorpay | Insert `pending_payment` with the seat held. Then a Razorpay order: context `assisted_*`, payer = the booker organisation, record `userId` = the booker actor, **never the patient**. A `CONTEXT_HANDLERS` handler confirms on verified capture, idempotently. Pay-again within 30 min (also switching to the wallet). The existing sweep expires the booking after reconciling. A late or losing capture gets its own refund row (§8.4). Jansetu bears the fee |
 
 **Places that must learn the new contexts:**
@@ -458,14 +481,19 @@ masked.
 - direct-paid guard (`:675`), for wallet-paid booking records if any;
 - verification ownership (`:695-727`, by organisation);
 - handler registry and dispatch (`:988-1016`);
-- webhook dispatch (`:2104-2124`);
+- the verify-and-process dispatch (`:2104-2124`), which duplicate verify, check and sweep calls all reach;
 - `reconcilePaymentAndProcess` (`:1809`);
 - the recovery sweep (`:1873-1893`);
 - controller result shaping (`payment/controller/index.ts:25-27`);
 - the booking and lab expiry sweeps;
 - the reconciliation job.
 
-**Top-up recovery.** `wallet_recharge` joins the recovery sweep. Each booker surface gets
+**Assisted payment records carry no `couponCode`**, so `coupon/usage.ts` never counts them. Coupon use is counted
+only by the `coupon_redemptions` row, written in the create transaction (a reservation even while a Razorpay booking
+is `pending_payment`) and reversed on expiry or cancellation.
+
+**Top-up recovery.** `wallet_recharge` joins the recovery sweep for records created after the deploy
+(`WALLET_RECHARGE_SWEEP_FROM`). Older captured-but-uncredited top-ups go on an admin list (§8.8) instead. Each booker surface gets
 `POST …/wallet/topups/:paymentTransactionId/check`, which reconciles that attempt with Razorpay (W3b pattern).
 
 **Assisted bookings never touch the customer-wallet ledger.** The customer commands of §6.7 route or refuse them.
@@ -497,19 +525,20 @@ masked.
 
 **SMS join link:**
 - The template text holds the fixed URL `https://<jansetu-domain>/j/{#var#}`; the variable is the token only.
-- The token is `<ref>.<mac>`: `ref` is the booking's `shortRef` (8 characters, unique, also the SMS "Ref") and `mac` is base64url of the
-  first 12 bytes of `HMAC-SHA256(JOIN_LINK_SECRET, bookingId + ':' + linkVersion)`. Nothing is stored. `/j/` looks up
-  the booking by `ref`, recomputes the MAC and compares it in constant time.
+- The token is `<ref>-<mac>`, **29 characters**: `ref` is the booking's `shortRef` (8 base32 characters, unique, also
+  the SMS "Ref") and `mac` is the first 100 bits of `HMAC-SHA256(JOIN_LINK_SECRET, bookingId + ':' + linkVersion)`
+  as 20 base32 characters (RFC 4648 alphabet, upper case, no padding). Nothing is stored. `/j/` looks up the booking
+  by `ref`, recomputes the MAC and compares it in constant time.
 - The server redirects to the Meet URL only inside the join window; outside it, a neutral page.
 - `/j/` is rate-limited per IP (default 30 a minute) and returns the same page for unknown, expired and wrong tokens.
-- A move or cancel bumps `linkVersion`, killing old links.
+- A cancel bumps `linkVersion`, killing old links. A move does not; the window follows the current slot.
 
 **Meet:**
 - Attendees: the doctor plus the booker's contact email (or none).
 - A missing patient email no longer blocks the link (`meet/service/index.ts:465-470`).
 - For assisted bookings the event **title and description are neutral** ("Jansetu consultation", booking reference
   only), with no patient name, primary concern or speciality (`:483-490`).
-- Guest "ask to join" behaviour is verified in phase 1b.
+- Guest "ask to join" behaviour is verified in phase 1a (N6).
 
 ### 6.7 Customer commands and reads on a partner-paid booking
 
@@ -518,7 +547,7 @@ masked.
 | Pay-again / retry-payment / reconcile | Refused 409 `PARTNER_PAID_BOOKING` (the booker uses its own routes) | Refused | Pay-again refused; the request belongs to the booker |
 | Re-offer, request refund, activity heartbeat | — | — | Refused for the patient; the booker does them |
 | Cancel | **Allowed** (decision 6), patient windows (§8.7); routed to the partner refund | **Allowed**, routed likewise | Refused after acceptance (Q4b); before acceptance the request is the booker's |
-| Reschedule | Refused 409 `ASSISTED_RESCHEDULE_BY_PARTNER` (the booker moves it, same doctor and price, before start; ASSUMED D11) | Patient may accept or cancel a lab-proposed reschedule; no own reschedule (as today) | Never rescheduled |
+| Reschedule | Refused 409 `ASSISTED_RESCHEDULE_BY_PARTNER` (the booker moves it in phase 1a, same doctor and price, before start, same slot rules; ASSUMED D11) | Patient may accept or cancel a lab-proposed reschedule; no own reschedule (as today) | Never rescheduled |
 | Edit (`PUT /bookings/:id`) | Customer notes only; other fields refused | — | Notes only |
 | Delete | Refused | — | Refused |
 | Free follow-up from this consultation | The patient may book it in the app (their benefit; price 0; no partner money, no cut; ASSUMED D12) | — | As scheduled |
@@ -555,6 +584,7 @@ API:
 | Coupon / pay | As 7.1 |
 | Notices / SMS | In-app; SMS booked + reminder + "lab report ready" |
 | Pharmacy sees | Status, lab reschedule proposals (accept or cancel for a refund), the released report |
+| Model (phase 2) | `PartnerLabBooking.cancellation.reason` gains `'partner'` and `byKind` gains `'booker'` (`partners/model/labBooking.ts:58`) |
 | Patient later sees | The lab booking and report; may cancel |
 
 ### 7.3 Lab → doctor consultation
@@ -707,12 +737,13 @@ See §5.3. Invariants, checked daily:
 - **One settlement transaction:** CAS on state, seat and interval released, coupon redemption reversed, refund rows,
   `linkVersion` bumped, audit.
 - **Limits and monitoring per booker** (env; defaults ASSUMED D10):
-  - at most 20 partner cancellations a day;
+  - at 20 cancellations in a day (IST) by one booker, its **new** bookings are refused for the rest of the day (429
+    `ASSISTED_LIMIT_REACHED`, `limit: 'booker_cancellations'`); cancellations stay allowed; an alert is raised;
   - an alert when cancellations exceed 30% of the last 7 days' bookings (minimum 10);
   - an alert when withdrawals exceed 50% of 30-day top-ups;
-  - an alert when the same booker–doctor pair repeats unusually often.
+  - an alert when the same booker–doctor pair reaches 10 bookings in a day.
 
-  Admins review alerts and may freeze a wallet.
+  Alerts go to admin notifications and the daily reconciliation report. Admins review them and may freeze a wallet.
 
 ### 8.8 Reconciliation and the stuck-money report
 
@@ -732,7 +763,10 @@ Mismatches are reported, never auto-fixed.
 - late-capture rows;
 - withdrawals `requested` over 7 days;
 - frozen wallets with a receivable;
-- top-ups captured but not credited.
+- top-ups captured but not credited, including those created before the sweep's start date (N5);
+- **paid bookings stuck after their slot:** paid assisted bookings not completed, cancelled or no-show 7 days after
+  the slot end (money held with no outcome);
+- top-up lots with an unknown fee older than 2 days.
 
 ## 9. Access to records (decision 7; overnight A, G, H)
 
@@ -752,7 +786,8 @@ Mismatches are reported, never auto-fixed.
   - video / call: the join window opens (slot start − 10 min);
   - instant: acceptance;
   - in-person: desk check-in (`arrivedAt`), or the slot start for online in-clinic bookings.
-- It ends 30 days after completion (ASSUMED D5), or at once on cancellation or no-show.
+- It ends 30 days after completion (ASSUMED D5), or **7 days after the slot end if the booking is not completed**
+  (N8), or at once on cancellation or no-show.
 - A booking cancelled before it starts never opens a window.
 - The doctor must be **active and verified** at the assisted booking's admission and at every history read.
 - **Read log:** each history or record read writes `record_reads { doctorId, patient, bookingId, scope, at }`
@@ -760,21 +795,27 @@ Mismatches are reported, never auto-fixed.
 - **Read-then-cancel alert:** a booking cancelled or marked no-show after its doctor read history is flagged to admins.
 
 **Holder approval (overnight A).**
-1. `POST /specialists/me/bookings/:id/records-access/request` (or the booker's equivalent) sends a 6-digit code by SMS
+1. `POST /specialists/me/bookings/:id/records-access/request` (or the booker's equivalent), allowed **only inside an
+   open treating window** (N9), sends a 6-digit code by SMS
    to the **account holder's phone** (security message, §10.6), naming the patient's first name.
 2. The doctor or partner enters it at `…/records-access/confirm { code }`. Codes last 10 min, are stored hashed, and
    follow the O1 attempt and send limits.
-3. Success writes `record_access_grants { holderUserId, dependentId?, specialistId, via: 'sms_code', at, revokedAt? }`.
-4. **Once per doctor and person.** The holder can see and revoke grants in the app (ASSUMED D5). The grant applies only
-   inside a treating window.
-5. Without the SMS template no approval is possible, and the doctor keeps the no-approval view.
+3. Success writes `record_access_grants { holderUserId, dependentId?, specialistId, via: 'sms_code', at, expiresAt,
+   revokedAt?, revokedBy? }`.
+4. **Once per doctor and person, for 12 months** (`expiresAt` = grant + 12 months). The holder can see and revoke grants
+   in the app; an admin revokes one on request (audited). The grant applies only inside a treating window.
+5. A doctor's **own** consultations with the patient stay readable to that doctor, without a window or grant, as
+   `getPatientHistory` allows today.
+6. Without the SMS template no approval is possible, and the doctor keeps the no-approval view.
 
 ### 9.2 Code changes
 
 - **`file/access.ts` `canReadBooking`** becomes field-aware:
   - **Booker:** pharmacy by `assisted.bookedBy` (or legacy `pharmacyId`); lab member by `assisted.bookedBy` plus
-    current membership, permission and branch. It reads **only** `prescription.fileUrls` / `BOOKING_PRESCRIPTION`,
-    and only within 90 days of the consultation's end (slot end, or completion if later).
+    current membership, permission and branch. It reads **only the dispensing copy** of the prescription (§17.2:
+    medicines, advice and tests, without the diagnosis), never the full PDF, and only within 90 days of the
+    consultation's end (slot end, or completion if later). From phase 0 this also applies to legacy pharmacy
+    bookings.
   - **Treating doctor:** prescription files of the person's other consultations, if they are its own or covered by a
     grant.
   - **Other fields** (`documents.url`, `report.fileUrls`) stay with the patient and that booking's doctor.
@@ -783,9 +824,9 @@ Mismatches are reported, never auto-fixed.
   booker, and for a treating doctor with a grant. Drafts never.
 - **`getPatientHistory`** (`specialistPortal/services/index.ts:399-429`): treating-gated, per person, grant-aware,
   allowlisted, read log first.
-- **Generic `/bookings` reads for pharmacies:** for rows with an `assisted` block, the S2-scoped `GET /bookings`,
-  `/bookings/:id` and `/bookings/user/:userId` return **only the allowlisted assisted view**, the same as
-  `/pharmacy-assisted/bookings`, never the raw booking.
+- **Generic `/bookings` reads for pharmacies:** for every row the pharmacy booked (assisted or legacy), the S2-scoped
+  `GET /bookings`, `/bookings/:id` and `/bookings/user/:userId` return **only the booker view** of §17.2. It keeps the
+  raw field names minus the hidden fields, so the released app keeps working; it never returns the raw booking.
 - **Booker endpoints:** filter on `assisted.bookedBy` = the admitted organisation, cursor-paged.
 - **Access ends** with authority (pharmacy not operational, member deactivated, permission or branch removed) or with
   the 90-day window.
@@ -794,8 +835,11 @@ Mismatches are reported, never auto-fixed.
 
 - `POST /pharmacy-orders` with `prescriptionFromBookingId`. The server checks: this pharmacy booked it, it is within
   the 90-day window, a prescription PDF exists, the customer is the booking's account and is linked (S3).
-- The server sets `prescriptionUrls` and binds the `pharmacy_order` grant itself; the uploader rule is unchanged for
-  client values.
+- The server sets `prescriptionUrls` to the **dispensing copy** and binds the `pharmacy_order` grant itself; the
+  uploader rule is unchanged for client values.
+- The binding carries `expiresAt` = consultation + 90 days. It expires then **unless the order was dispensed**
+  (reached `packed` or later: `packed`, `ready_for_pickup`, `out_for_delivery`, `completed`), in which case it stays
+  as the dispensing record (N12).
 - Medicines pre-fill as suggestions; P9 review, stock and payment apply. It is optional.
 
 ## 10. SMS (decision 15; overnight D, I)
@@ -855,7 +899,8 @@ otherwise English (ASSUMED D1); otherwise nothing.
   `uniqueId: sms:<message>:<bookingKind>:<bookingId>:<version>`); a failed insert is logged and ignored.
 - **Sent marker.** `sms_notices_sent { bookingKind, bookingId, message, version, state: 'sending' | 'sent' | 'failed' |
   'skipped', leaseUntil, attempts }`, unique on the first four fields. The consumer claims the marker before sending
-  (lease) and records the outcome, so a retried job never sends twice.
+  (lease) and records the outcome. Delivery is **at-least-once**: a crash between the provider call and the outcome
+  write can send twice after the lease expires; everything else never repeats.
 - **The consumer drains** due jobs in a loop (bounded batch per tick) rather than one per tick. It re-reads the
   booking, skips stale states, sends with the timeout, retries with back-off, and logs only kind and outcome.
 - **Answers never depend on SMS;** replays enqueue nothing. Tests cover unconfigured, error, timeout and success.
@@ -919,22 +964,25 @@ The list is configuration. A language shows in a switcher once its catalogue is 
 | D2 | Recommended tests load by printed code plus phone | §7.6 |
 | D3 | The provider-coupon rule applies to every ledger booking from phase 4 (assisted ones from phase 1a); older bookings keep their rule | §8.3 |
 | D4 | A lab coupon is spread over lines by price, largest-remainder paise | §8.3 |
-| D5 | The treating window ends 30 days after completion; a records grant lasts until the holder revokes it | §9.1 |
+| D5 | The treating window ends 30 days after completion (7 days after the slot end if not completed); a records grant lasts 12 months unless revoked | §9.1 |
 | D6 | Patient cancellations follow the existing customer windows | §8.7 |
 | D7 | One-word names mask as two letters + "…" | §6.2 |
 | D8 | The patient app shows "Paid by <partner>", not the amount (O3 confirms) | §6.7 |
 | D9 | Spending uses withdrawable top-up money first, oldest lot first | §5.3 |
-| D10 | Abuse and alert thresholds: lookups 120/h, new accounts 30/day, 5 bookings per number per day, 20 partner cancellations a day, 30% cancel alert, 50% withdraw alert | §6.2, §8.7 |
+| D10 | Abuse and alert thresholds: lookups 120/h, new accounts 30/day, 5 bookings per number per day, 20 cancellations a day stop new bookings, 30% cancel alert, 50% withdraw alert, 10 same-pair bookings a day | §6.2, §8.7 |
 | D11 | Patients cannot reschedule partner-paid consultations; the booker can, before start, same doctor and price | §6.7 |
 | D12 | The patient may book the free follow-up from an assisted consultation in the app; partners may not (S3) | §6.7 |
 | D13 | Instant requests have no partner cancellation after acceptance | §7.7 |
 | D14 | Pharmacy wallet balances from before phase 1a are not withdrawable | §15 |
+| D15 | The booker and the generic-read view show a **dispensing copy** of the prescription without the diagnosis | §17.2 |
+
+**ASSUMED (overnight, phase 1a):** decisions P1–P10 of §17.1.
 
 ### 12.2 Still open for the owner, and go-live gates
 
 | # | Item | Status and gate |
 |---|---|---|
-| O1 | **Tax on referral payments** (GST invoices from partners, TDS) | **OPEN-OWNER**; `REFERRAL_PAYOUTS_ENABLED=false` until the accountant answers |
+| O1 | **Tax on referral payments** (GST invoices from partners, TDS). Note for the accountant: the commission is **paid out of the provider's earning and deducted by Jansetu** before the provider is paid, then paid to the partner by Jansetu | **OPEN-OWNER**; `REFERRAL_PAYOUTS_ENABLED=false` until the accountant answers |
 | O2 | **Wallet limits and checks:** top-up minimum and maximum, maximum balance, documents required, withdrawal minimum, frequency and any waiting period after a card top-up | **OPEN-OWNER** (proposed: ₹50,000 maximum balance; one withdrawal a week; card money withdrawable 7 days after capture) |
 | O3 | Confirm D8 (hide the partner's amount from the patient) | **OPEN-OWNER** |
 | O4 | North-east SMS language order and the Manipuri script | **OPEN-OWNER** |
@@ -950,9 +998,9 @@ owner's word. Sizes: S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks.
 | Phase | Content | Size |
 |---|---|---|
 | **Pre** | S2 (on production) and S3 (hotfix) merged; Q2/Q3/Q4 migrations done (§15) | — |
-| **0** | Pharmacy prescription bug: (a) "Bookings I made" (legacy, read-only, allowlisted, with the prescription); (b) "Create medicine order from this prescription" with server binding (legacy bookings: S3-linked customers). No "Pay now"; the dependent check is S3's. Start DLT registration (en, hi, records code) | S–M |
-| **1a — wallet only** | `assisted` block, `source`, consent, language, identity flag; lookup (masked) and the resolver order; pharmacy customer list fix; nearby doctor list; scheduled consultations by **pharmacy wallet only**; coupons with redemptions, `fundedBy` and `provider_coupon_v2` split; withdrawable lots (top-ups via the existing pharmacy Razorpay top-up + recovery sweep + "check my top-up"); always-posting refund credits; partner and patient cancellation; customer command routing (§6.7); booker-only prescription access with 90 days; generic `/bookings` assisted view; neutral Meet; Join call; **admin "move booking to another account" tool, holder "this isn't mine", doctor attestation badge**; **daily reconciliation, stuck-money report, abuse limits and alerts** | L |
-| **1b — Razorpay per booking** | `assisted_*` contexts in every place of §6.4; organisation verification; late-capture rows; Razorpay refund worker and **operator queue**; Meet guest check | M |
+| **0** | Pharmacy prescription bug (§17.2): (a) `GET /api/v1/pharmacy-bookings` (cursor), the booker view with the typed patient name, doctor, date, status and the prescription's medicines, advice and tests, **without the diagnosis**; the dispensing copy; the 90-day limit; the generic-read view; (b) "Create medicine order from this prescription" with server binding to the dispensing copy (S3-linked customers). No "Pay now"; the dependent check is S3's. Start DLT registration (en, hi, records code) | S–M |
+| **1a — wallet only** | `assisted` block, `source`, consent, language, identity flag; lookup (masked) and the resolver order; pharmacy customer list fix; nearby doctor list; scheduled consultations by **pharmacy wallet only**; coupons with redemptions, `fundedBy` and `provider_coupon_v2` split; withdrawable lots (top-ups via the existing pharmacy Razorpay top-up + recovery sweep + "check my top-up"); always-posting refund credits; partner and patient cancellation; customer command routing (§6.7); booker-only prescription access with 90 days; generic `/bookings` assisted view; neutral Meet; Join call; **admin "move booking to another account" tool, holder "this isn't mine", doctor attestation badge**; **daily reconciliation, stuck-money report, abuse limits and alerts**; Meet guest check; earnings with the provider-coupon rule and cut 0 (§17.1 P5). Build specification: §17 | L |
+| **1b — Razorpay per booking** | `assisted_*` contexts in every place of §6.4; organisation verification; late-capture rows; Razorpay refund worker and **operator queue** | M |
 | **2** | Lab wallets; pharmacy → lab; lab → consultation; lab desk (visits, walk-ins, home collection, bill link); booker report access | L |
 | **3** | Doctor wallet; doctor → lab; recommended tests; partner instant consults; treating window, read log, records-access codes and grants | L |
 | **4** | Referral rules, switches (consultation and doctor off), referral accounts; earnings and cuts; `provider_coupon_v2` for all new ledger bookings; pharmacy finance screen; wallet withdrawals (behind `WALLET_WITHDRAWALS_ENABLED`), freeze, chargebacks and receivables; referral payouts behind `REFERRAL_PAYOUTS_ENABLED` | M–L |
@@ -999,8 +1047,10 @@ owner's word. Sizes: S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks.
 2. Run the phase's migrations (dry run, then `--commit`):
    - `source` is **not** backfilled;
    - `Coupon.fundedBy` set to `platform` for coupons with `corporateIds`, `provider` otherwise;
-   - pharmacy wallets get `withdrawableMinor: 0` (pre-existing balances are not withdrawable; ASSUMED D14,
-     conservative);
+   - pharmacy wallets get `withdrawableMinor: 0` **only where the field is missing** (pre-existing balances are not
+     withdrawable; ASSUMED D14, conservative; a rerun never resets a later value);
+   - pharmacy wallet transactions get `signedAmountPaise`, and each wallet gets its opening-balance entry (§17.3);
+   - pharmacy customer links get `typedName` backfilled (§17.4);
    - admin credits stay non-withdrawable.
 3. `npm run sync-indexes` **before** turning on any writer. The order is the unique keys first:
    - `assisted.requestKey` (three collections);
@@ -1009,8 +1059,10 @@ owner's word. Sizes: S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks.
    - `sms_notices_sent`, `record_access_grants`, `referral_rules`, `wallet_withdrawals {requestKey}`;
    - then the lookup indexes.
 
-   Writers check their unique index with the fail-closed pattern of Q15 N1 (503 `INDEXES_OUTDATED` if missing or
-   different).
+   Add `assisted.shortRef`, `wallet_topup_lots.paymentRecordId`, `partner_wallets {ownerKind, ownerId}` and the
+   pharmacy `{pharmacyId, operationKey}` index (§17.3) to that list. Writers check their unique index with the
+   fail-closed pattern of Q15 N1 (503 `INDEXES_OUTDATED` if missing or different), and **every writer stays behind
+   its flag until `sync-indexes` has run** in that environment.
 4. Set env flags. Defaults are safe and off:
 
    | Flag | Default |
@@ -1025,6 +1077,11 @@ owner's word. Sizes: S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks.
 
 5. Stage first, then production only on the owner's word. Production auto-deploys from `main`.
 
+**Rollback.** Turning the `ASSISTED_BOOKING_ENABLED_*` flags off stops **new** assisted bookings, top-ups and
+withdrawal requests only. Reads, the booker view, cancellations, refunds (wallet and Razorpay worker), withdrawal
+cancel/reject/void, the sweeps and reconciliation keep working, so no money is stranded. Migrations are additive and
+leave old fields untouched.
+
 ## 16. Verification (to build with each phase)
 
 **Keys and money:**
@@ -1036,7 +1093,7 @@ owner's word. Sizes: S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks.
 - Chargeback with an empty wallet → receivable, freeze, set-off from referral.
 - Razorpay:
   - a capture on an expired or never-paid booking makes its own late-capture refund row to source;
-  - duplicate webhooks credit once;
+  - duplicate verify, check and sweep calls credit once;
   - top-ups are recovered by the sweep and "check my top-up";
   - a lab member other than the payer can verify.
 - Instant: the percentage coupon is recomputed on the accepted fee; the quote difference is refunded by method, once;
@@ -1075,3 +1132,187 @@ owner's word. Sizes: S ≈ days, M ≈ 1–2 weeks, L ≈ 3+ weeks.
 - Names are reduced to letters and spaces.
 - `/j/` tokens die on a move, are rate-limited, and redirect only in the window.
 - Per-language switches fall back to English.
+
+## 17. Phase 0 and phase 1a build specification (revision 4)
+
+Where an earlier section and this one differ, this one wins.
+
+### 17.1 Phase 1a decisions: ASSUMED (overnight, reversible)
+
+| Id | Decision |
+|---|---|
+| **P1** | Pharmacy wallet store fields, sign rules, unique index and opening entry: §17.3 |
+| **P2** | The gateway fee is Razorpay `fee` alone (GST included). A lot is not withdrawable until its fee is stored (§5.3) |
+| **P3** | A wallet-paid booking writes **no payment record**; the wallet entry plus `assisted.funding` are the record. Coupons are counted only through `coupon_redemptions` (§6.4) |
+| **P4** | Names, as set out in §17.4 |
+| **P5** | **Earnings in 1a.** Completion posts the provider's earning = `split.providerMinor` (provider-borne coupon, cut 0). `assisted.referral` is `null` until phase 4. A no-show earns nothing (§8.6) |
+| **P6** | **Views.** The booker view and the generic-read view keep the raw booking field names minus the hidden fields, so the released pharmacy app keeps working (§17.2) |
+| **P7** | **Limits.** A limit hit answers 429 `ASSISTED_LIMIT_REACHED` with the limit's name. At 20 cancellations in a day by one booker, its new bookings are refused for the rest of the IST day; cancellations stay allowed; an alert is raised |
+| **P8** | **Admin move and "not mine"**, as set out in §17.5 |
+| **P9** | **Booker reschedule.** The booker may reschedule a consultation before it starts in 1a: same doctor, same price, same slot rules (`rescheduleWithHolds`, `SLOT_NOT_THIS_DOCTOR`, started-slot fence) |
+| **P10** | **Alerts.** They go to admin notifications and the daily reconciliation report. The same booker–doctor pair alerts at 10 bookings a day |
+
+### 17.2 Phase 0: the booker's list, the view and the dispensing copy
+
+**Route.** `GET /api/v1/pharmacy-bookings` (`requireOperationalPharmacy`):
+- cursor-paged (`<ms>_<id>`), newest first;
+- filter `status`, date range;
+- rows are every booking with `pharmacyId` = this pharmacy, legacy and assisted;
+- `GET /api/v1/pharmacy-bookings/:id` reads one (404 for any other booking).
+
+**Booker view.** It keeps the raw field names. The same view is returned by S2-scoped generic `/bookings` reads to a
+pharmacy (§9.2).
+
+| Shown | Hidden |
+|---|---|
+| `_id`, `bookingType`, `bookingKind`, `source`, `assisted.shortRef`, `userId`, `dependentId`, **`patientName`** (added: the dependent's name when `dependentId` is set, otherwise the pharmacy link's `typedName`, otherwise the masked account name), `pharmacyId`, `specialistId`, `doctorName`, `primaryConcern` (typed at booking by the pharmacy), `consultationMode`, `serviceMode`, `clinicVisit`, `slotId`, `bookingDate`, `bookingTime`, `contactNo`, `status`, `paymentStatus`, `price`, `originalPrice`, `cancellationReason`, `cancelledAt`, `cancellationCause`, `noShow.at`, `lifecycle` (created/confirmed/completed/cancelled timestamps only), `virtualMeeting.joinUrl` (only for `join.on = partner_device`, inside the join window), `prescription.message`, `prescription.advice`, `prescription.medicines`, `prescription.testsAdvised`, `prescription.prescribedAt`, `prescription.prescribedBySpecialistName`, `prescription.fileUrls` (**the dispensing copy only**, within 90 days), `assisted.bookedBy.name`, `assisted.join.on`, `assisted.preferredLanguage`, `createdAt`, `updatedAt` | `prescription.diagnosis`, the full prescription PDF, `prescription.prescribedBySpecialistId`, `documents`, `report`, `followUp`, `alternateContactNo`, `serviceAddress`, `corporateId`, `wellnessPackageId`, `packageName`, `paymentTransactionId`, `holds`, `postPaymentCompletedFor`, `createRequestKey`, `createTerms`, `walletFunding`, `noShows`, `noShowReschedules`, `settlementSystem`, `settlement`, `clinicDesk`, `instantRequestId`, `instantExtensions`, `notes`, `expiryNextAt`, `expiryChecks`, other `lifecycle` details, `assisted.consent`, `assisted.identity`, `assisted.funding` (except in the booker's own payment screen), `assisted.split`, `assisted.referral`, `assisted.requestKey`, `assisted.requestHash` |
+
+After 90 days from the consultation's end, the prescription fields and `fileUrls` are omitted from the booker view
+(the rest stays).
+
+**Dispensing copy (ASSUMED D15).**
+- **What it is.** A server-rendered PDF `bookings/<id>/rx-dispense-<ts>.pdf` with: doctor name and registration,
+  patient name, age and sex, date, medicines (name, dose, frequency, duration, instructions), advice, tests advised,
+  and the line "Dispensing copy: diagnosis withheld". Jansetu brand.
+- **When it is made.** When the doctor saves the prescription (`specialistPortal/services/index.ts:328-397`, next to
+  the full PDF). For prescriptions saved before phase 0, it is made on the first booker request, idempotently.
+- **File access** (`file/access.ts`):
+  - a new server-folder pattern `^bookings/<id>/rx-dispense-\d+\.pdf$` is readable by the patient, the booking's
+    doctor and the booker (90-day window);
+  - the full-PDF pattern `BOOKING_PRESCRIPTION` stops admitting pharmacies (`:41`), leaving the patient and the doctor.
+- **Medicine orders.** The dispensing copy is the file bound to an order made from the prescription (§9.3).
+
+### 17.3 Pharmacy wallet store (N2)
+
+**Fields added to `pharmacy_wallet_transactions`** (`pharmacyWallet/model/index.ts:14-43`):
+
+| Field | Meaning |
+|---|---|
+| `signedAmountPaise` | Integer, signed; **required on new rows**; filled for old rows by the migration |
+| `operationKey` | Exactly-once key for every new movement (`assisted:<bookingId>:debit`, `wallet_recharge:<paymentRecordId>`, `withdrawal:<id>:hold` …) |
+| `withdrawableDeltaPaise` | Change to the withdrawable amount |
+| `lotAllocations` | `[{ lotId, amountPaise }]` on spends, withdrawals and their reversals |
+
+`amount` and `amountPaise` stay absolute (unsigned), as today.
+
+**Fields added to `pharmacy_wallets`:** `withdrawableMinor`, `receivableMinor`, `frozen`, `version`, `ledgerOpenedAt`.
+
+**Index:** `{ pharmacyId: 1, operationKey: 1 }` unique, partial on `{ operationKey: { $type: 'string' } }`. The
+existing unique `{ pharmacyId, referenceType, referenceId }` is kept.
+
+**Sign rules:**
+
+| `transactionType` | Sign | Use |
+|---|---|---|
+| `credit` (existing) | + | Admin top-up (non-withdrawable) and the Razorpay recharge credit (`referenceType: 'wallet_recharge'`, creates a lot) |
+| `debit` (existing) | − | Old rows only |
+| `consultation_payment` (existing) | − | Old rows only (unrouted `payConsultation`) |
+| `refund` (existing) | + | Old rows only |
+| `adjustment` (existing) | ± | Old rows: after − before. New rows: signed admin correction (negative reduces lots first) |
+| `booking_debit` (new) | − | Assisted booking paid from the wallet |
+| `refund_credit` (new) | + | Refund of an assisted booking; always posts |
+| `withdrawal_hold` (new) | − | Withdrawal request |
+| `withdrawal_release` (new) | + | Cancelled or rejected withdrawal; always posts |
+| `withdrawal_void` (new) | + | Bounced transfer; always posts |
+| `chargeback` (new) | − | Lost dispute on a top-up (shortfall to `receivableMinor`) |
+| `receivable_setoff` (new) | − | Clears a receivable from a credit that just arrived |
+| `opening_balance` (new) | ± | One per wallet, from the migration |
+
+For **old rows**, `signedAmountPaise` = `balanceAfterPaise − balanceBeforePaise` (the rupee fields × 100 where the
+paise fields are missing). A row whose sign contradicts the table is listed in the migration report, not changed.
+
+**Migration `npm run migrate:assisted-pharmacy-wallets`** (dry run, then `--commit`; run with the pharmacy flags off):
+1. Fill `signedAmountPaise` on rows missing it.
+2. Fill `balancePaise` from `balance` where it is missing.
+3. Per wallet, insert one `opening_balance` row with amount `balancePaise − Σ signedAmountPaise`
+   (`operationKey: migration:opening:<walletId>`; skipped when 0; non-withdrawable).
+4. Set `ledgerOpenedAt`, and `withdrawableMinor: 0` only where missing.
+5. Rerunnable: the key and the "only where missing" rules make a second run a no-op.
+
+From then on, balance = Σ `signedAmountPaise` holds and is checked daily. New writers update `balance` and
+`balancePaise` together, with paise authoritative.
+
+### 17.4 Names and the typed-name rule (P4, N4)
+
+- **The booker always types the patient's name**, including for "self".
+- **New accounts.** When the booking created the account (resolver `created: true`) and the account `name` is empty,
+  the typed holder name becomes `name`. Existing accounts are never renamed.
+- **`typedName`.** It is stored on the booker's link to the holder:
+  - pharmacies: `PharmacyCustomer`;
+  - labs and doctors: a new `assisted_links { bookerKind, bookerId, userId, typedName, consent, createdAt }`, unique on
+    `{bookerKind, bookerId, userId}`.
+
+  It is the **name first typed for the account holder**. The booker may edit it with
+  `PUT /api/v1/pharmacy-customers/:id/typed-name` (audited).
+- **Family-member bookings.** The name goes on the dependent (created or matched) and does not change `typedName`. If
+  the link has no `typedName` yet, the booking may carry an optional `holderName` to set it.
+- **Pharmacy-facing lists keep their response shape.** The name field is filled from the link, never from the
+  account:
+  - `GET /pharmacy-customers` (`pharmacyCustomers/repository/index.ts:28-54`): `userId.name` = `typedName`, or the
+    masked account name when empty; `userId.email` = `null`; search covers `typedName` and phone only;
+  - pharmacy order lists, both populates of `customerId` (`pharmacyOrders/repository/index.ts:281`, `:307`):
+    `customerId.name` from the link the same way;
+  - pharmacy subscriptions (`pharmacySubscriptions/repository/index.ts:121`): `userId.name` from the link.
+
+  These rules apply only when the caller is a pharmacy; admin and customer views are unchanged.
+- **Backfill** (in the same migration as §17.3): `typedName` = the account name where **that pharmacy created the
+  account** (`User.createdSource: 'pharmacy_app'` and `linkedPharmacyId` = the pharmacy). Other links stay empty and
+  show the masked name.
+
+### 17.5 Admin move and "this isn't mine" (P8)
+
+**`POST /api/v1/admin/assisted-bookings/:id/move`** with `{ toPhone, asFamily?: { name, relation, gender?,
+dateOfBirth? }, reason, requestKey, expectedUpdatedAt }`. It finds the booking in either collection (consultations,
+partner-lab bookings).
+
+1. The target account is resolved (resolver, outside the transaction).
+2. In one transaction:
+   - set `userId`, and `dependentId` (a family member created or matched under the target account; without `asFamily`
+     the holder is the patient); a lab booking's `patient` snapshot is updated too;
+   - move the booker's link: ensure the target link with `typedName` from the move, and remove the old link when no
+     other booking by this booker uses it;
+   - move the coupon redemption row (`patientUserId`, `dependentId`);
+   - set `assisted.identity.disputed.state: 'moved'`;
+   - bump `linkVersion` (an account move kills the old holder's join link);
+   - write the admin audit.
+3. **Completed bookings can move.** Prescriptions, reports and files follow the booking. The old holder loses access
+   at once, because every customer read checks `userId`. The records grants of the old holder never apply to the
+   moved booking.
+4. **Notices.** In-app to the old holder ("a booking was moved off your account"), the new holder and the booker, with
+   no health details. The SMS waits for phase 5.
+5. **Repeats.** Exactly once per (admin, request key), with a content hash.
+
+**`POST /api/v1/bookings/:id/not-mine`** and **`POST /api/v1/lab-bookings/:id/not-mine`** (customer, the account
+holder; optional `note`):
+1. The booking's `assisted.identity.disputed` becomes `{ state: 'open', at }`.
+2. It is **hidden from the holder's lists** (direct reads by id still work for the holder until resolved), and an
+   `assisted_review_items { kind: 'not_mine', bookingKind, bookingId, reportedBy, note, state: 'open' | 'moved' |
+   'dismissed', at }` row is created for admins.
+3. The booker sees the "reported as not mine" badge; the doctor's view shows the dispute.
+4. A second report is 409 `ALREADY_REPORTED`.
+5. Admins **dismiss** (unhide) or **move** (above).
+
+### 17.6 Phase 1a routes
+
+| Who | Route | Notes |
+|---|---|---|
+| Pharmacy | `POST /api/v1/pharmacy-assisted/patients/lookup` | Masked name; per-organisation limits |
+| Pharmacy | `GET /api/v1/pharmacy-assisted/doctors?speciality&mode&language&date` | Nearby first (§7.1); active and verified only |
+| Pharmacy | `POST /api/v1/pharmacy-assisted/consultations` | Wallet only in 1a; key, hash, coupon, split |
+| Pharmacy | `GET /api/v1/pharmacy-bookings`, `GET /api/v1/pharmacy-bookings/:id` | Phase 0 list, now with assisted rows |
+| Pharmacy | `POST /api/v1/pharmacy-assisted/bookings/:id/cancel` | `{ reason, expectedUpdatedAt }`; any time before start; limit P7 |
+| Pharmacy | `POST /api/v1/pharmacy-assisted/bookings/:id/reschedule` | `{ slotId, requestKey, expectedUpdatedAt }` (P9) |
+| Pharmacy | `GET /api/v1/pharmacy-assisted/bookings/by-key/:key`, `POST …/by-key/:key/abandon` | Q13 pattern |
+| Pharmacy | `GET /api/v1/pharmacy-wallet`, `GET /api/v1/pharmacy-wallet/transactions`, `POST /api/v1/pharmacy-wallet/topup` (existing) | Responses add `withdrawableMinor`, `frozen`, `signedAmountPaise` |
+| Pharmacy | `POST /api/v1/pharmacy-wallet/topups/:paymentTransactionId/check` | Reconcile one top-up |
+| Pharmacy | `PUT /api/v1/pharmacy-customers/:id/typed-name` | §17.4 |
+| Pharmacy | `POST /api/v1/pharmacy-orders` with `prescriptionFromBookingId` | Phase 0 |
+| Customer | `POST /api/v1/bookings/:id/cancel` (existing) | Routed to the partner refund for assisted bookings (§6.7) |
+| Customer | `POST /api/v1/bookings/:id/not-mine` | §17.5 |
+| Admin | `POST /api/v1/admin/assisted-bookings/:id/move` | §17.5 |
+| Admin | `GET /api/v1/admin/assisted/review-items`, `POST …/:id/dismiss` | "Not mine" queue |
+| Admin | `GET /api/v1/admin/assisted/reconciliation`, `GET /api/v1/admin/assisted/stuck-money` | §8.8 |
+| Admin | `GET /api/v1/admin/wallet-recharges/uncredited` | Old captured-but-uncredited top-ups (N5) |
+| Admin | `PUT /api/v1/admin/pharmacies/:id/wallet/freeze` | `{ frozen, reason }` |
+| Admin | Coupon edit adds `fundedBy` and `partnerUsable` | N1 |
+| Doctor | Appointment views add `assisted.identity` ("identity attested by the partner, not verified") and `source` | No new route |
