@@ -24,6 +24,7 @@ const inventoryImportSchema = new Schema<IInventoryImport>(
       enum: ['create_only', 'update_only', 'upsert'],
       default: 'upsert',
     },
+    supplierId: { type: Schema.Types.ObjectId as any, ref: 'PharmacySupplier' }, // Q16c: one supplier for the file
     status: {
       type: String,
       enum: ['pending', 'previewed', 'committing', 'committed', 'partially_committed', 'failed'],

@@ -39,6 +39,7 @@ import logger from '@/services/logger';
 import PharmacyModel from '@/modules/pharmacies/model';
 import { claimRequestKey, scopeOf } from '@/modules/requestKeys';
 import { InventoryItemModel } from '@/modules/pharmacyInventory/model';
+import { istTodayYyyymmdd } from '@/modules/pharmacyInventory/businessDate';
 
 const TERMINAL_STATUSES: OrderStatus[] = ['completed', 'abandoned', 'cancelled', 'rejected'];
 /** The only order states a prescription review accepts; the review queue lists exactly these (W1). */
@@ -1676,7 +1677,7 @@ export class PharmacyOrderService {
 
     const updated = await this.runOrderInventoryTransaction(async (session) => {
       // Only an order that really holds units of a withdrawn batch (checked in the transaction snapshot).
-      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const today = istTodayYyyymmdd();
       let held = false;
       const current = await this.orderRepo.findById(id, session);
       for (const item of (current?.items ?? []).filter(i => i.itemStatus === 'active' && i.batchAllocations?.length)) {

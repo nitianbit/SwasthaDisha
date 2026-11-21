@@ -348,7 +348,8 @@ async function main() {
       assert.match(c.errors.join(' '), /retail price must be >= 0/);
       assert.match(d.errors.join(' '), /retail price must be >= 0/);
       assert.equal(e.status, 'valid', JSON.stringify(e.errors));
-      assert.deepEqual([e.data.retailPrice, e.data.mrp], [12.5, 0]);
+      // Q16c: an empty MRP cell is "not given" (the stored MRP is kept), no longer 0.
+      assert.deepEqual([e.data.retailPrice, e.data.mrp], [12.5, undefined]);
     });
 
     await check('B: POST /pharmacy-inventory/by-key/:key/abandon: unknown key abandoned (a later save 409 REQUEST_ABANDONED, nothing saved); a used key answers used with its items; scoped to the pharmacy', async () => {

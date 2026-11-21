@@ -30,6 +30,8 @@ import { PharmacyCreateRequestModel, pharmacyCreateKeyScope } from '@/modules/ph
 import { claimRequestKey, abandonRequestKey } from '@/modules/requestKeys';
 import { RequestKeyModel } from '@/modules/requestKeys/model';
 import { assertUniqueIndex, KeyAlreadyUsed } from '@/modules/common/utils/requiredIndex';
+import { assertDeliverySupplier, withSuppliers } from '@/modules/pharmacyInventory/deliverySupplier';
+import { istTodayYyyymmdd } from '@/modules/pharmacyInventory/businessDate';
 
 function isValidInventoryDate(value: string): boolean {
   if (!/^\d{8}$/.test(value)) return false;
@@ -171,7 +173,7 @@ export class InventoryService {
           message: 'expiryDate must be a valid date in YYYYMMDD format',
         });
       }
-      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const today = istTodayYyyymmdd();
       if (data.quantity > 0 && data.expiryDate < today) {
         throw new AppError({
           status: 400,
@@ -358,6 +360,10 @@ export class InventoryService {
         results.length = 0; // a retried transaction attempt starts over
         if (beforeTx) await beforeTx(session);
         for (const item of items) {
+          // Q16c: the delivery's supplier, checked in the transaction: the pharmacy's own and active.
+          const supplier = item.supplierId !== undefined
+            ? await assertDeliverySupplier(String(pharmacyId), item.supplierId, session)
+            : undefined;
           const saved = await this.saveItem(item, session);
           const actualDelta = item.quantity ?? 0;
           if (actualDelta !== 0 && adjustedBy && adjustedByRole) {
@@ -376,6 +382,7 @@ export class InventoryService {
                 sourceType: 'manual',
                 reason: item.reason ?? 'correction',
                 notes: item.notes,
+                ...(supplier && actualDelta > 0 ? { supplierId: supplier.supplierId } : {}),
                 adjustedBy,
                 adjustedByRole,
               },
@@ -805,6 +812,8 @@ export class InventoryService {
   }
 
   async getAdjustmentHistory(pharmacyId: string, page: number = 1, limit: number = 20) {
-    return this.adjustmentRepo.findByPharmacy(pharmacyId, page, limit);
+    const result = await this.adjustmentRepo.findByPharmacy(pharmacyId, page, limit);
+    // Q16c: each delivery row names its supplier (`supplier: {supplierId, displayName, state}` or null).
+    return { ...result, data: await withSuppliers(pharmacyId, result.data) };
   }
 }

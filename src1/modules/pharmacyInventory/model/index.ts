@@ -165,6 +165,9 @@ const inventoryAdjustmentSchema = new Schema<IInventoryAdjustment>(
       type: String,
       trim: true,
     },
+    // Q16c: the supplier a stock delivery came from (a batch can be topped up from different suppliers, so it is kept
+    // on each delivery's adjustment, never on the batch).
+    supplierId: { type: Schema.Types.ObjectId as any, ref: 'PharmacySupplier' },
     adjustedBy: {
       type: Schema.Types.ObjectId as any,
       ref: 'User',

@@ -11,6 +11,8 @@ import { BaseRepository } from '@/modules/common/repository';
 import { buildContainsRegex } from '@/modules/common/utils/queryUtils';
 import { buildMedicineNameKey } from '@/modules/pharmacyMedicines/services/nameKeyMigration';
 import { InventoryItemModel } from '@/modules/pharmacyInventory/model';
+import { istTodayYyyymmdd } from '@/modules/pharmacyInventory/businessDate';
+import { pricedForViewerMatch } from '@/modules/pharmacyInventory/sellable';
 
 @Service()
 export class MedicineRepository extends BaseRepository<IMedicine> {
@@ -137,11 +139,12 @@ export class MedicineRepository extends BaseRepository<IMedicine> {
       ],
     };
 
-    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const today = istTodayYyyymmdd();
     const pipeline: any[] = [
       {
         $match: {
           isActive: true,
+          ...pricedForViewerMatch(includeWholesalePrice), // Q16c: unpriced items are not on sale
         },
       },
       {

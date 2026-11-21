@@ -27,14 +27,23 @@ const createInventoryItemBodySchema = Joi.object({
     'any.only': `reason must be one of: ${adjustmentReasons.join(', ')}`,
   }),
   notes: Joi.string().trim().max(500).optional(),
+  // Q16c: the pharmacy's own active supplier this stock came from (checked when saving; part of the request key hash).
+  supplierId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/).lowercase().optional().messages({
+    'string.pattern.base': 'Invalid supplierId',
+  }),
 }).custom((value, helpers) => {
   if (value.quantity && (!value.batchNumber || !value.expiryDate)) {
     return helpers.error('any.custom', {
       message: 'batchNumber and expiryDate are required when quantity is provided',
     });
   }
+  if (value.supplierId !== undefined && !(value.quantity > 0)) {
+    return helpers.error('any.custom', {
+      message: 'supplierId is recorded only with stock received (a positive quantity)',
+    });
+  }
   return value;
-});
+}).messages({ 'any.custom': '{#message}' });
 
 export const createInventoryItemSchema = Joi.object({
   items: Joi.array().items(createInventoryItemBodySchema).min(1).required().messages({

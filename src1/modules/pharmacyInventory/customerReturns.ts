@@ -5,7 +5,7 @@ import { AppError } from '@/modules/common/types';
 import { getTodayYyyymmdd } from '@/modules/common/utils/dateUtils';
 import { InventoryAdjustmentModel, InventoryItemModel } from '@/modules/pharmacyInventory/model';
 import { CustomerReturnModel, CustomerReturnDisposition, ICustomerReturn, ICustomerReturnLine } from '@/modules/pharmacyInventory/model/customerReturn';
-import { rearmLowStock } from '@/modules/pharmacyInventory/sellable';
+import { rearmLowStock, todayYyyymmdd } from '@/modules/pharmacyInventory/sellable';
 import PharmacyOrderModel from '@/modules/pharmacyOrders/model';
 import { WalletModel } from '@/modules/wallet/model';
 import { WalletRepository } from '@/modules/wallet/repository';
@@ -131,7 +131,7 @@ export class CustomerReturnService {
             batchStatusAtReturn = was.status;
             if (was.status === 'depleted') {
               // Sold-out batch takes units back: sellable again unless past its date. Held batches keep their status.
-              const next = was.expiryDate < getTodayYyyymmdd() ? 'expired' : 'active';
+              const next = was.expiryDate < todayYyyymmdd() ? 'expired' : 'active'; // Q16c: IST date
               const r = await InventoryItemModel.updateOne({ _id: pre._id, batches: { $elemMatch: { _id: new Types.ObjectId(batchId), status: 'depleted' } } },
                 { $set: { 'batches.$.status': next }, $unset: { 'batches.$.depletedAt': '' } }, { session: s });
               if (r.modifiedCount !== 1) throw changed();

@@ -1,8 +1,15 @@
 import type { Model } from 'mongoose';
 import { AppError } from '@/modules/common/types';
 
-/** Indexes found built, by collection and key; a missing one is looked up again next time (sync-indexes may have run). */
-const ready = new Set<string>();
+/**
+ * Indexes found built, by collection and key, with the time the finding stops counting. Q16c: a pass is trusted for at
+ * most INDEX_CHECK_TTL_MS (an index dropped later is noticed within that time); a missing one is looked up again next
+ * time (sync-indexes may have run).
+ */
+const ready = new Map<string, number>();
+export const INDEX_CHECK_TTL_MS = 5 * 60 * 1000;
+/** The clock the cache reads (tests move it). */
+export const indexCheckClock = { now: (): number => Date.now() };
 
 /**
  * Q15 review: a keyed exactly-once command relies on a unique index. Before the first keyed call (per process), check
@@ -12,7 +19,9 @@ const ready = new Set<string>();
 export async function assertUniqueIndex(model: Model<any>, keys: Record<string, 1>): Promise<void> {
   const keyJson = JSON.stringify(keys);
   const id = `${model.collection.collectionName}|${keyJson}`;
-  if (ready.has(id)) return;
+  const until = ready.get(id);
+  if (until !== undefined && indexCheckClock.now() < until) return;
+  ready.delete(id);
   // Q15 re-review: the index must be the one the schema declares — unique, the same keys and EXACTLY the same partial
   // filter (none when none is declared). A narrower partial index would leave some keyed writes unguarded.
   const declared = (model.schema.indexes() as unknown as [Record<string, unknown>, { unique?: boolean; partialFilterExpression?: unknown }?][])
@@ -31,7 +40,7 @@ export async function assertUniqueIndex(model: Model<any>, keys: Record<string, 
     console.warn(`${model.collection.collectionName} lacks the unique index ${keyJson}; run npm run sync-indexes`);
     throw new AppError({ status: 503, code: 'INDEXES_OUTDATED', message: 'The database needs an update (sync-indexes) before this can be used' });
   }
-  ready.add(id);
+  ready.set(id, indexCheckClock.now() + INDEX_CHECK_TTL_MS);
 }
 
 /** Tests only: forget what was found. */

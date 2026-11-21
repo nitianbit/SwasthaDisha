@@ -1,10 +1,9 @@
-import { getTodayYyyymmdd } from '@/modules/common/utils/dateUtils';
 import { ClientSession, Types } from 'mongoose';
 import { InventoryItemModel } from '@/modules/pharmacyInventory/model';
+import { istTodayYyyymmdd } from '@/modules/pharmacyInventory/businessDate';
 
-// The business date, the same one every other date in the system uses (getTodayYyyymmdd). It used to be the UTC date,
-// so between 00:00 and 05:30 IST a batch that expired "yesterday" still counted as sellable.
-export const todayYyyymmdd = () => getTodayYyyymmdd();
+// Q16c: the IST calendar date, explicitly (it was the process-local date, which is the UTC date on a UTC server).
+export const todayYyyymmdd = (): string => istTodayYyyymmdd();
 
 /**
  * Sellable stock, the same rule reservations use: active, unexpired batch quantity; items without batches (legacy)
@@ -26,6 +25,18 @@ export function sellableQty(item: { availableQty?: number; batches?: { status?: 
   const batches = item.batches ?? [];
   if (!batches.length) return Number(item.availableQty ?? 0);
   return batches.filter(b => b.status === 'active' && String(b.expiryDate) >= today).reduce((a, b) => a + Number(b.availableQty ?? 0), 0);
+}
+
+/**
+ * Q16c: the shelf lists an item only at a price its viewer can buy at, the cart's own rule (MEDICINE_PRICE_NOT_AVAILABLE
+ * otherwise): a customer pays the retail price; a pharmacy (or admin) viewer the wholesale price, or the retail price
+ * when no wholesale price is set. An item without that price (a new medicine imported without one) is not sellable
+ * until priced.
+ */
+export function pricedForViewerMatch(wholesaleViewer: boolean): Record<string, unknown> {
+  return wholesaleViewer
+    ? { $or: [{ wholesalePrice: { $gt: 0 } }, { wholesalePrice: null, retailPrice: { $gt: 0 } }] }
+    : { retailPrice: { $gt: 0 } };
 }
 
 /** Update-pipeline stage: clears the low-stock marker iff sellable stock (after the preceding stages) is above the level. */

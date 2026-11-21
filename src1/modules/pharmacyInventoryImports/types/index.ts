@@ -35,6 +35,8 @@ export interface IInventoryImport {
   fileName: string;
   filePath: string;
   importMode: ImportMode;
+  /** Q16c: the supplier chosen for the whole file (optional; rows may name their own in a "supplier" column). */
+  supplierId?: string;
   status: ImportStatus;
   totalRows: number;
   validRows: number;
